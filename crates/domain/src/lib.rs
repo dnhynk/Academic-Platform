@@ -725,6 +725,64 @@ pub struct ArtifactDescriptor {
     pub evidence_representations: Vec<ArtifactRepresentation>,
 }
 
+/// Enforces the raw JSON number-token profile for artifact descriptors.
+///
+/// Every number in this contract is an unsigned integer. Consumers must run
+/// this check on the original JSON text before JSON parsing so decimal and
+/// exponent spellings cannot be normalized into integers by JavaScript while
+/// Rust observes a floating-point token. Range checks remain the responsibility
+/// of typed deserialization, JSON Schema, and [`ArtifactDescriptor::validate`].
+pub fn validate_artifact_json_number_tokens(input: &str) -> Result<(), DomainError> {
+    let bytes = input.as_bytes();
+    let mut index = 0;
+    let mut in_string = false;
+    let mut escaped = false;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == b'"' {
+                in_string = false;
+            }
+            index += 1;
+            continue;
+        }
+        if byte == b'"' {
+            in_string = true;
+            index += 1;
+            continue;
+        }
+        if byte == b'-' {
+            return Err(DomainError::InvalidEventPayload(
+                "artifact JSON numbers must use canonical unsigned integer tokens".to_owned(),
+            ));
+        }
+        if byte.is_ascii_digit() {
+            let first = byte;
+            index += 1;
+            if first == b'0' && index < bytes.len() && bytes[index].is_ascii_digit() {
+                return Err(DomainError::InvalidEventPayload(
+                    "artifact JSON numbers must use canonical unsigned integer tokens".to_owned(),
+                ));
+            }
+            while index < bytes.len() && bytes[index].is_ascii_digit() {
+                index += 1;
+            }
+            if index < bytes.len() && matches!(bytes[index], b'.' | b'e' | b'E') {
+                return Err(DomainError::InvalidEventPayload(
+                    "artifact JSON numbers must use canonical unsigned integer tokens".to_owned(),
+                ));
+            }
+            continue;
+        }
+        index += 1;
+    }
+    Ok(())
+}
+
 impl ArtifactDescriptor {
     /// Validates the descriptor fields that are fixed in Phase 0.
     pub fn validate(&self) -> Result<(), DomainError> {
@@ -1434,6 +1492,7 @@ mod tests {
         #[derive(Deserialize)]
         struct Corpus {
             base: serde_json::Value,
+            raw_number_cases: Vec<RawNumberCase>,
             cases: Vec<Case>,
         }
         #[derive(Deserialize)]
@@ -1445,38 +1504,70 @@ mod tests {
             semantic_valid: bool,
         }
         #[derive(Deserialize)]
+        struct RawNumberCase {
+            name: String,
+            mutations: Vec<Mutation>,
+            path: String,
+            token: String,
+            valid: bool,
+        }
+        #[derive(Clone, Deserialize)]
         struct Mutation {
             op: String,
             path: String,
             value: serde_json::Value,
         }
 
+        fn apply_mutations(
+            base: &serde_json::Value,
+            mutations: &[Mutation],
+            name: &str,
+        ) -> Result<serde_json::Value, String> {
+            let mut candidate = base.clone();
+            for mutation in mutations {
+                let target = candidate
+                    .pointer_mut(&mutation.path)
+                    .ok_or_else(|| format!("{name}: invalid mutation path {}", mutation.path))?;
+                match mutation.op.as_str() {
+                    "replace" => *target = mutation.value.clone(),
+                    "append" => target
+                        .as_array_mut()
+                        .ok_or_else(|| format!("{name}: append target is not an array"))?
+                        .push(mutation.value.clone()),
+                    other => return Err(format!("{name}: unknown mutation op {other}")),
+                }
+            }
+            Ok(candidate)
+        }
+
         let corpus: Corpus = serde_json::from_str(include_str!(
             "../../../schemas/fixtures/artifact-descriptor-parity-v1.json"
         ))?;
-        for case in corpus.cases {
-            let mut candidate = corpus.base.clone();
-            for mutation in case.mutations {
-                let target = candidate.pointer_mut(&mutation.path).ok_or_else(|| {
-                    format!("{}: invalid mutation path {}", case.name, mutation.path)
-                })?;
-                match mutation.op.as_str() {
-                    "replace" => *target = mutation.value,
-                    "append" => target
-                        .as_array_mut()
-                        .ok_or_else(|| format!("{}: append target is not an array", case.name))?
-                        .push(mutation.value),
-                    other => {
-                        return Err(format!("{}: unknown mutation op {other}", case.name).into());
-                    }
-                }
-            }
+        for case in &corpus.cases {
+            let candidate = apply_mutations(&corpus.base, &case.mutations, &case.name)?;
             let rust_valid = serde_json::from_value::<ArtifactDescriptor>(candidate)
                 .is_ok_and(|descriptor| descriptor.validate().is_ok());
             assert_eq!(
                 rust_valid, case.semantic_valid,
                 "artifact parity corpus disagreement: {}",
                 case.name
+            );
+        }
+        for case in &corpus.raw_number_cases {
+            let mut candidate = apply_mutations(&corpus.base, &case.mutations, &case.name)?;
+            let target = candidate
+                .pointer_mut(&case.path)
+                .ok_or_else(|| format!("{}: invalid raw number path {}", case.name, case.path))?;
+            *target = serde_json::Value::String("__RAW_INTEGER_TOKEN__".to_owned());
+            let template = serde_json::to_string(&candidate)?;
+            let raw = template.replacen("\"__RAW_INTEGER_TOKEN__\"", &case.token, 1);
+            let rust_valid = validate_artifact_json_number_tokens(&raw).is_ok()
+                && serde_json::from_str::<ArtifactDescriptor>(&raw)
+                    .is_ok_and(|descriptor| descriptor.validate().is_ok());
+            assert_eq!(
+                rust_valid, case.valid,
+                "raw artifact number parity disagreement: {} ({})",
+                case.name, case.token,
             );
         }
         Ok(())

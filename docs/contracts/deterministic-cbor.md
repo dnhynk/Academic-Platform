@@ -36,16 +36,17 @@ Domain `Decimal` values are JSON-shaped objects whose `coefficient` is the canon
 1. Parse exactly one envelope value and reject trailing bytes.
 2. Enforce version and key/signature lengths.
 3. Re-encode and require byte equality.
-4. Match the embedded key, decoded `device_id`, and every user actor identity to the independent device authorization.
-5. Verify Ed25519 over exact payload bytes.
-6. Decode the payload, validate domain and batch invariants, then re-encode and require byte equality.
-7. Issue an opaque verified capability; only that capability may enter ledger acceptance.
-8. Check origin gap/fork, registered scope, domain, and exact evidence-representation closure, then assign local `accept_seq` atomically.
+4. Decode the generic payload shape, reject trailing/noncanonical payload bytes, and bind the embedded key to independent device authorization.
+5. Verify Ed25519 over exact original payload bytes before compatibility or typed semantic interpretation.
+6. Select the authenticated source schema, perform the constrained v1 compatibility transform when required, and validate domain and batch invariants.
+7. Re-encode the validated typed result through the exact authenticated source version and require byte equality, rejecting every signed field or representation that typed decoding would discard or normalize.
+8. Match the decoded `device_id` and every user actor identity to the independent device authorization, then issue an opaque verified capability; only that capability may enter ledger acceptance.
+9. Check origin gap/fork, registered scope, domain, and exact evidence-representation closure, then assign local `accept_seq` atomically.
 
 The committed JSON wrapper stores lowercase hex only for source-control portability. JSON is not signed and must not be used as an alternate signing representation.
 
 ## Event-schema compatibility
 
-`schemas/fixtures/signed-batch-v1.json` is immutable at SHA-256 `287F7DEA8FD24C3C6EB205C3F1E2873F6AFDF7D6532FE7BE4FCCFB44A0B7E163`. Its signed bytes and the v1 Proto `UserDecision` wire shape are never regenerated into the v2 shape. The reader first completes envelope canonicality, independent authorization, and signature checks over the original bytes, then deterministically upcasts a v1 decision by looking up its target claim in the same authenticated batch. It requires the legacy decision scope to equal the target scope and derives the v2 subject/predicate/scope slot, target object, and valid interval from that claim; missing targets and mismatches fail closed.
+`schemas/fixtures/signed-batch-v1.json`, its JSON Schema, and its Proto are immutable at SHA-256 `287F7DEA8FD24C3C6EB205C3F1E2873F6AFDF7D6532FE7BE4FCCFB44A0B7E163`, `9588EE9B439C9DBCF864A8F07BD64BD6353ECC8F1D46151348C9B3283B36E6BD`, and `8BC58C574E0BEC84F6BC3D6BB3A7E006E45DE69B1793C407BBCAC57FD29C507A`. Their signed bytes, declared shapes, and v1 Proto `UserDecision` wire shape are never regenerated into the v2 shape. The reader first completes envelope/payload canonicality, independent key binding, and signature checks over the original bytes, then deterministically upcasts a v1 decision by looking up its target claim in the same authenticated batch. It requires the legacy decision scope to equal the target scope and derives the v2 subject/predicate/scope slot, target object, and valid interval from that claim; missing targets and mismatches fail closed.
 
-Event schema v2 is the current writer profile and is represented by `signed-batch-v2.json`, the v2 fixture JSON Schema, and `schemas/proto/academic/v2/ledger.proto`. A compatibility-only v1 encoder exists to prove byte-exact reproduction of the frozen golden and accepts only v2 decisions whose semantics are losslessly identical to their same-batch targets.
+Event schema v2 is the only writer profile and is represented by `signed-batch-v2.json`, the v2 fixture JSON Schema, and `schemas/proto/academic/v2/ledger.proto`. Production-facing contracts/core APIs and the CLI expose no v1 signing or emission path. The reader's private v1 projection exists only for final source-aware byte equality, and core accepts the committed v1 fixture as exact frozen-golden verification rather than regenerating it.

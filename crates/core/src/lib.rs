@@ -7,8 +7,7 @@
 use std::{collections::BTreeSet, fmt, str::FromStr};
 
 use academic_contracts::{
-    ContractError, DeviceAuthorization, VerifiedBatch, sign_batch, sign_batch_v1_compat,
-    verify_signed_batch,
+    ContractError, DeviceAuthorization, VerifiedBatch, sign_batch, verify_signed_batch,
 };
 use academic_domain::{
     Actor, ArtifactDescriptor, ArtifactRepresentation, AuthorityClass, BatchId, Claim, ClaimId,
@@ -39,6 +38,8 @@ pub const SYNTHETIC_ARTIFACT_BYTES: &[u8] =
 /// Default final valid-time coordinate used by fixture replay.
 pub const FINAL_VALID_AT: TimestampMillis = TimestampMillis::new(700);
 const JSON_SAFE_INTEGER_MAX: u64 = 9_007_199_254_740_991;
+const IMMUTABLE_V1_FIXTURE_JSON: &str =
+    include_str!("../../../schemas/fixtures/signed-batch-v1.json");
 
 const FIXTURE_SIGNING_SEED: [u8; 32] = [7; 32];
 
@@ -316,45 +317,26 @@ struct ReplayDigestMaterial<'a> {
 
 /// Builds the current deterministic, signed, synthetic Phase 0 fixture.
 pub fn build_fixture_document() -> Result<FixtureDocument, CoreError> {
-    build_fixture_document_for_version(FIXTURE_VERSION)
-}
-
-/// Builds either the immutable v1 compatibility fixture or the current v2 fixture.
-pub fn build_fixture_document_for_version(
-    fixture_version: u16,
-) -> Result<FixtureDocument, CoreError> {
-    if !matches!(fixture_version, FIXTURE_VERSION_V1 | FIXTURE_VERSION_V2) {
-        return Err(CoreError::UnsupportedFixtureVersion(fixture_version));
-    }
     let batch = build_unsigned_fixture_batch()?;
     let signing_key = fixture_signing_key();
     let authorization = fixture_device_authorization()?;
-    let signed = match fixture_version {
-        FIXTURE_VERSION_V1 => sign_batch_v1_compat(&batch, &signing_key)?,
-        FIXTURE_VERSION_V2 => sign_batch(&batch, &signing_key)?,
-        _ => return Err(CoreError::UnsupportedFixtureVersion(fixture_version)),
-    };
+    let signed = sign_batch(&batch, &signing_key)?;
     let mut core = Core::new();
     let (verified, _) = core.accept_signed_batch(&signed, &authorization)?;
-    if verified.source_schema_version() != fixture_version {
+    if verified.source_schema_version() != FIXTURE_VERSION_V2 {
         return Err(CoreError::FixtureDrift);
     }
     let expected_replay = summarize_replay(&core, &verified, FINAL_VALID_AT, u64::MAX)?;
     Ok(FixtureDocument {
-        fixture_version,
-        name: match fixture_version {
-            FIXTURE_VERSION_V1 => "phase0-synthetic-bitemporal-ledger",
-            FIXTURE_VERSION_V2 => "phase0-synthetic-bitemporal-ledger-v2",
-            _ => return Err(CoreError::UnsupportedFixtureVersion(fixture_version)),
-        }
-        .to_owned(),
+        fixture_version: FIXTURE_VERSION_V2,
+        name: "phase0-synthetic-bitemporal-ledger-v2".to_owned(),
         data_class: "SYNTHETIC_ONLY".to_owned(),
         network_egress: "NONE".to_owned(),
         contract: FixtureContract {
             envelope: "academic.signed-batch-envelope/v1 deterministic-cbor".to_owned(),
-            payload: format!("academic.event-batch/v{fixture_version} deterministic-cbor"),
+            payload: "academic.event-batch/v2 deterministic-cbor".to_owned(),
             signature: "Ed25519".to_owned(),
-            event_schema_version: fixture_version,
+            event_schema_version: FIXTURE_VERSION_V2,
         },
         device_id: authorization.device_id(),
         user_id: authorization.user_id(),
@@ -379,8 +361,19 @@ pub fn verify_fixture_document(document: &FixtureDocument) -> Result<ReplaySumma
     if actual != document.expected_replay {
         return Err(CoreError::ExpectedReplayMismatch);
     }
-    if *document != build_fixture_document_for_version(document.fixture_version)? {
-        return Err(CoreError::FixtureDrift);
+    match document.fixture_version {
+        FIXTURE_VERSION_V1 => {
+            let immutable: FixtureDocument = serde_json::from_str(IMMUTABLE_V1_FIXTURE_JSON)?;
+            if *document != immutable {
+                return Err(CoreError::FixtureDrift);
+            }
+        }
+        FIXTURE_VERSION_V2 => {
+            if *document != build_fixture_document()? {
+                return Err(CoreError::FixtureDrift);
+            }
+        }
+        other => return Err(CoreError::UnsupportedFixtureVersion(other)),
     }
     Ok(actual)
 }
@@ -1000,10 +993,6 @@ mod tests {
         );
         let document: FixtureDocument = serde_json::from_str(committed_v1)?;
         assert_eq!(document.fixture_version, FIXTURE_VERSION_V1);
-        assert_eq!(
-            fixture_json(&build_fixture_document_for_version(FIXTURE_VERSION_V1)?)?,
-            committed_v1
-        );
         let replay = verify_fixture_document(&document)?;
         assert_eq!(
             replay.payload_hash.to_string(),
@@ -1043,6 +1032,18 @@ mod tests {
             assert_eq!(decision.resolution_slot.predicate_id, target.predicate_id);
             assert_eq!(decision.resolution_slot.scope_id, target.scope_id);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn t010_v1_fixture_verification_is_constrained_to_the_exact_frozen_golden()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut document: FixtureDocument = serde_json::from_str(IMMUTABLE_V1_FIXTURE_JSON)?;
+        document.name.push_str("-distinct");
+        assert!(matches!(
+            verify_fixture_document(&document),
+            Err(CoreError::FixtureDrift)
+        ));
         Ok(())
     }
 

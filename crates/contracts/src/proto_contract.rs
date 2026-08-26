@@ -1,7 +1,7 @@
 //! Executable Protobuf round-trip for the actor and claim-relation contract.
 //!
-//! The wire tags here are checked against `schemas/proto/academic/v1/ledger.proto`
-//! by `tools/verify-contracts.mjs`; the domain conversion revalidates all UUIDv7
+//! The wire tags here are checked against both declared v1 and v2 schemas by
+//! `tools/verify-contracts.mjs`; the domain conversion revalidates all UUIDv7
 //! and event invariants after decoding.
 
 use academic_domain::{

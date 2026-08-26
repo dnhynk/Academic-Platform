@@ -70,6 +70,32 @@ function inspectDependencyEntry(entry, path) {
   }
 }
 
+function inspectCatalogEntry(entry, path) {
+  if (typeof entry === "string") {
+    if (entry.trim().length === 0) {
+      fail(path, entry, "catalog source reference must be nonempty");
+    }
+    inspectReference(entry, path, { allowBareShorthand: true });
+    return;
+  }
+  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+    fail(path, entry, "catalog entry must be a string or specifier/version object");
+  }
+  const fields = Object.keys(entry);
+  if (
+    fields.length === 0 ||
+    fields.some((field) => field !== "specifier" && field !== "version")
+  ) {
+    fail(path, entry, "catalog entry must contain only specifier and/or version");
+  }
+  for (const field of fields) {
+    if (typeof entry[field] === "string" && entry[field].trim().length === 0) {
+      fail(`${path}.${field}`, entry[field], "catalog source reference must be nonempty");
+    }
+    inspectReference(entry[field], `${path}.${field}`, { allowBareShorthand: true });
+  }
+}
+
 function requireRecord(value, path) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     fail(path, value, "must be a mapping");
@@ -91,6 +117,16 @@ export function assertPnpmLockSourcePolicy(lockText, label = "pnpm-lock.yaml") {
     throw new Error(`${label}: ambiguous YAML warning: ${document.warnings.map((warning) => warning.message).join("; ")}`);
   }
   const lock = requireRecord(document.toJS({ maxAliasCount: 0 }), label);
+
+  if (lock.catalogs !== undefined) {
+    const catalogs = requireRecord(lock.catalogs, `${label}.catalogs`);
+    for (const [catalogName, catalogValue] of Object.entries(catalogs)) {
+      const catalog = requireRecord(catalogValue, `${label}.catalogs.${catalogName}`);
+      for (const [dependencyName, entry] of Object.entries(catalog)) {
+        inspectCatalogEntry(entry, `${label}.catalogs.${catalogName}.${dependencyName}`);
+      }
+    }
+  }
 
   if (lock.importers !== undefined) {
     const importers = requireRecord(lock.importers, `${label}.importers`);

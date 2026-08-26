@@ -14,7 +14,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
-    "fixture:emit": "cargo run --locked --quiet -p academic-cli -- fixture emit --fixture-version 2 --output schemas/fixtures/signed-batch-v2.json",
+    "fixture:emit": "cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v2.json",
     "fixture:verify": "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json",
     "fixture:replay": "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json",
     "fixture:verify:v1": "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",

@@ -187,6 +187,9 @@ pub enum ContractError {
     /// A legacy v1 payload could not be deterministically mapped into v2 semantics.
     #[error("legacy event-schema compatibility failure: {0}")]
     LegacyCompatibility(&'static str),
+    /// Typed decoding would discard or normalize bytes covered by the signature.
+    #[error("typed signed-batch decoding would discard or normalize authenticated fields")]
+    AuthenticatedFieldDiscarded,
 }
 
 /// Encodes and signs a batch with an explicit Ed25519 key.
@@ -203,23 +206,6 @@ pub fn sign_batch(
     )
 }
 
-/// Encodes and signs the legacy v1-compatible projection of a current v2 batch.
-///
-/// This exists only for byte-exact golden compatibility. It rejects any v2
-/// decision whose semantics cannot be represented losslessly by the v1 shape.
-pub fn sign_batch_v1_compat(
-    batch: &UnsignedBatch,
-    signing_key: &SigningKey,
-) -> Result<Vec<u8>, ContractError> {
-    let payload = encode_unsigned_batch_v1_compat(batch)?;
-    let signature = signing_key.sign(&payload);
-    encode_envelope(
-        &payload,
-        signing_key.verifying_key().as_bytes(),
-        &signature.to_bytes(),
-    )
-}
-
 /// Verifies canonical bytes, the independently anchored key, the signature,
 /// and all nested semantic invariants before returning a batch.
 pub fn verify_signed_batch(
@@ -228,6 +214,7 @@ pub fn verify_signed_batch(
 ) -> Result<VerifiedBatch, ContractError> {
     let decoded = decode_envelope(envelope_bytes)?;
     let payload = decoded.payload;
+    let json = decode_canonical_payload_json(&payload)?;
     let public_key_bytes = decoded.public_key;
     let signature_bytes = decoded.signature;
     let public_key_array: [u8; 32] =
@@ -256,7 +243,9 @@ pub fn verify_signed_batch(
         .verify(&payload, &signature)
         .map_err(|_| ContractError::InvalidSignature)?;
 
-    let (batch, source_schema_version) = decode_unsigned_batch_with_source(&payload)?;
+    let source_schema_version = read_schema_version(&json)?;
+    let batch = decode_source_payload(json, source_schema_version)?;
+    require_source_typed_equality(&batch, source_schema_version, &payload)?;
     if batch.device_id != authorization.device_id() {
         return Err(ContractError::UnexpectedDeviceId);
     }
@@ -284,8 +273,7 @@ pub fn encode_unsigned_batch(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractE
     encode_cbor_value(&json_to_cbor(&json)?)
 }
 
-/// Encodes the lossless v1 projection used to reproduce the immutable v1 golden fixture.
-pub fn encode_unsigned_batch_v1_compat(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {
+fn encode_unsigned_batch_v1_projection(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {
     batch.validate()?;
     let mut json = serde_json::to_value(batch)?;
     transform_decisions_for_v1(&mut json)?;
@@ -299,12 +287,26 @@ pub fn decode_unsigned_batch(bytes: &[u8]) -> Result<UnsignedBatch, ContractErro
 }
 
 fn decode_unsigned_batch_with_source(bytes: &[u8]) -> Result<(UnsignedBatch, u16), ContractError> {
+    let json = decode_canonical_payload_json(bytes)?;
+    let source_schema_version = read_schema_version(&json)?;
+    let batch = decode_source_payload(json, source_schema_version)?;
+    require_source_typed_equality(&batch, source_schema_version, bytes)?;
+    Ok((batch, source_schema_version))
+}
+
+fn decode_canonical_payload_json(bytes: &[u8]) -> Result<JsonValue, ContractError> {
     let cbor = decode_single_cbor(bytes)?;
-    let mut json = cbor_to_json(&cbor)?;
+    let json = cbor_to_json(&cbor)?;
     if encode_cbor_value(&json_to_cbor(&json)?)? != bytes {
         return Err(ContractError::NonCanonicalEncoding);
     }
-    let source_schema_version = read_schema_version(&json)?;
+    Ok(json)
+}
+
+fn decode_source_payload(
+    mut json: JsonValue,
+    source_schema_version: u16,
+) -> Result<UnsignedBatch, ContractError> {
     match source_schema_version {
         EVENT_SCHEMA_VERSION_V1 => {
             upcast_v1_to_v2(&mut json)?;
@@ -315,7 +317,23 @@ fn decode_unsigned_batch_with_source(bytes: &[u8]) -> Result<(UnsignedBatch, u16
     }
     let batch: UnsignedBatch = serde_json::from_value(json)?;
     batch.validate()?;
-    Ok((batch, source_schema_version))
+    Ok(batch)
+}
+
+fn require_source_typed_equality(
+    batch: &UnsignedBatch,
+    source_schema_version: u16,
+    original_bytes: &[u8],
+) -> Result<(), ContractError> {
+    let typed_bytes = match source_schema_version {
+        EVENT_SCHEMA_VERSION_V1 => encode_unsigned_batch_v1_projection(batch)?,
+        EVENT_SCHEMA_VERSION_V2 => encode_unsigned_batch(batch)?,
+        other => return Err(DomainError::UnsupportedSchemaVersion(other).into()),
+    };
+    if typed_bytes != original_bytes {
+        return Err(ContractError::AuthenticatedFieldDiscarded);
+    }
+    Ok(())
 }
 
 fn read_schema_version(json: &JsonValue) -> Result<u16, ContractError> {
@@ -821,19 +839,19 @@ mod tests {
         ))
     }
 
-    #[test]
-    fn encoding_is_deterministic() -> Result<(), Box<dyn std::error::Error>> {
-        let batch = minimal_batch()?;
-        let first = encode_unsigned_batch(&batch)?;
-        let second = encode_unsigned_batch(&batch)?;
-        assert_eq!(first, second);
-        assert_eq!(decode_unsigned_batch(&first)?, batch);
-        Ok(())
+    fn sign_test_payload(
+        payload: &[u8],
+        signing_key: &SigningKey,
+    ) -> Result<Vec<u8>, ContractError> {
+        let signature = signing_key.sign(payload);
+        encode_envelope(
+            payload,
+            signing_key.verifying_key().as_bytes(),
+            &signature.to_bytes(),
+        )
     }
 
-    #[test]
-    fn t008_v1_user_decision_wire_upcasts_deterministically_to_v2()
-    -> Result<(), Box<dyn std::error::Error>> {
+    fn v1_compatible_batch() -> Result<UnsignedBatch, DomainError> {
         let mut batch = minimal_batch()?;
         let user_id = EntityId::from_str("01900000-0000-7000-8000-000000000007")?;
         let domain_id = batch.events[0].domain_id;
@@ -866,10 +884,27 @@ mod tests {
             decision_event,
         ];
         batch.validate()?;
+        Ok(batch)
+    }
+
+    #[test]
+    fn encoding_is_deterministic() -> Result<(), Box<dyn std::error::Error>> {
+        let batch = minimal_batch()?;
+        let first = encode_unsigned_batch(&batch)?;
+        let second = encode_unsigned_batch(&batch)?;
+        assert_eq!(first, second);
+        assert_eq!(decode_unsigned_batch(&first)?, batch);
+        Ok(())
+    }
+
+    #[test]
+    fn t008_v1_user_decision_wire_upcasts_deterministically_to_v2()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut batch = v1_compatible_batch()?;
 
         let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
-        let first = encode_unsigned_batch_v1_compat(&batch)?;
-        let second = encode_unsigned_batch_v1_compat(&batch)?;
+        let first = encode_unsigned_batch_v1_projection(&batch)?;
+        let second = encode_unsigned_batch_v1_projection(&batch)?;
         assert_eq!(first, second);
         assert_eq!(decode_unsigned_batch(&first)?, batch);
 
@@ -905,7 +940,7 @@ mod tests {
             Err(ContractError::LegacyCompatibility(_))
         ));
 
-        let signed = sign_batch_v1_compat(&batch, &signing_key)?;
+        let signed = sign_test_payload(&first, &signing_key)?;
         let verified = verify_signed_batch(&signed, &authorization(&batch, &signing_key)?)?;
         assert_eq!(
             verified.source_schema_version(),
@@ -922,8 +957,149 @@ mod tests {
         };
         decision.valid_time = ValidInterval::open_ended(TimestampMillis::new(1));
         assert!(matches!(
-            encode_unsigned_batch_v1_compat(&batch),
+            encode_unsigned_batch_v1_projection(&batch),
             Err(ContractError::LegacyCompatibility(_))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn t010_signed_v1_and_v2_reject_unknown_authenticated_nested_fields()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = v1_compatible_batch()?;
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let authorization = authorization(&batch, &signing_key)?;
+        for (source_version, payload) in [
+            (
+                EVENT_SCHEMA_VERSION_V1,
+                encode_unsigned_batch_v1_projection(&batch)?,
+            ),
+            (EVENT_SCHEMA_VERSION_V2, encode_unsigned_batch(&batch)?),
+        ] {
+            let source_json = cbor_to_json(&decode_single_cbor(&payload)?)?;
+            for pointer in [
+                "",
+                "/events/0",
+                "/events/0/actor",
+                "/events/0/payload",
+                "/events/0/payload/value",
+                "/events/0/payload/value/object",
+                "/events/0/payload/value/valid_time",
+                "/events/1/actor",
+                "/events/1/payload/value",
+                "/events/1/payload/value/action",
+            ] {
+                let mut smuggled = source_json.clone();
+                let object = smuggled
+                    .pointer_mut(pointer)
+                    .and_then(JsonValue::as_object_mut)
+                    .ok_or_else(|| format!("test pointer must select an object: {pointer}"))?;
+                object.insert(
+                    "authenticated_unknown".to_owned(),
+                    JsonValue::String("must-not-disappear".to_owned()),
+                );
+                let smuggled_payload = encode_cbor_value(&json_to_cbor(&smuggled)?)?;
+                let signed = sign_test_payload(&smuggled_payload, &signing_key)?;
+                assert!(
+                    verify_signed_batch(&signed, &authorization).is_err(),
+                    "v{source_version} accepted unknown field at {pointer}",
+                );
+            }
+
+            if source_version == EVENT_SCHEMA_VERSION_V1 {
+                let current_json = serde_json::to_value(&batch)?;
+                for field in ["resolution_slot", "target_object", "valid_time"] {
+                    let mut smuggled = source_json.clone();
+                    smuggled["events"][1]["payload"]["value"][field] =
+                        current_json["events"][1]["payload"]["value"][field].clone();
+                    let smuggled_payload = encode_cbor_value(&json_to_cbor(&smuggled)?)?;
+                    let signed = sign_test_payload(&smuggled_payload, &signing_key)?;
+                    assert!(matches!(
+                        verify_signed_batch(&signed, &authorization),
+                        Err(ContractError::LegacyCompatibility(_))
+                    ));
+                }
+            } else {
+                for pointer in [
+                    "/events/1/payload/value/resolution_slot",
+                    "/events/1/payload/value/target_object",
+                    "/events/1/payload/value/valid_time",
+                ] {
+                    let mut smuggled = source_json.clone();
+                    smuggled
+                        .pointer_mut(pointer)
+                        .and_then(JsonValue::as_object_mut)
+                        .ok_or_else(|| format!("test pointer must select an object: {pointer}"))?
+                        .insert(
+                            "authenticated_unknown".to_owned(),
+                            JsonValue::String("must-not-disappear".to_owned()),
+                        );
+                    let smuggled_payload = encode_cbor_value(&json_to_cbor(&smuggled)?)?;
+                    let signed = sign_test_payload(&smuggled_payload, &signing_key)?;
+                    assert!(verify_signed_batch(&signed, &authorization).is_err());
+                }
+            }
+
+            let mut discarded_by_struct = source_json.clone();
+            discarded_by_struct["events"][0]["payload"]["value"]["authenticated_claim_field"] =
+                JsonValue::Bool(true);
+            let discarded_payload = encode_cbor_value(&json_to_cbor(&discarded_by_struct)?)?;
+            let signed = sign_test_payload(&discarded_payload, &signing_key)?;
+            assert!(matches!(
+                verify_signed_batch(&signed, &authorization),
+                Err(ContractError::AuthenticatedFieldDiscarded)
+            ));
+        }
+
+        let mut v2_smuggling = serde_json::to_value(&batch)?;
+        v2_smuggling["events"][1]["payload"]["value"]["scope_id"] =
+            JsonValue::String("01900000-0000-7000-8000-000000000008".to_owned());
+        let v2_payload = encode_cbor_value(&json_to_cbor(&v2_smuggling)?)?;
+        let signed = sign_test_payload(&v2_payload, &signing_key)?;
+        assert!(matches!(
+            verify_signed_batch(&signed, &authorization),
+            Err(ContractError::AuthenticatedFieldDiscarded)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn t010_verification_orders_canonicality_and_signature_before_typed_equality()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = v1_compatible_batch()?;
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let authorization = authorization(&batch, &signing_key)?;
+
+        let mut trailing_payload = encode_unsigned_batch(&batch)?;
+        trailing_payload.push(0);
+        let invalid_signature = [0_u8; 64];
+        let trailing_envelope = encode_envelope(
+            &trailing_payload,
+            signing_key.verifying_key().as_bytes(),
+            &invalid_signature,
+        )?;
+        assert!(matches!(
+            verify_signed_batch(&trailing_envelope, &authorization),
+            Err(ContractError::TrailingBytes)
+        ));
+
+        let mut lossy_json = serde_json::to_value(&batch)?;
+        lossy_json["events"][0]["authenticated_event_field"] = JsonValue::Bool(true);
+        let lossy_payload = encode_cbor_value(&json_to_cbor(&lossy_json)?)?;
+        let invalid_signature_envelope = encode_envelope(
+            &lossy_payload,
+            signing_key.verifying_key().as_bytes(),
+            &invalid_signature,
+        )?;
+        assert!(matches!(
+            verify_signed_batch(&invalid_signature_envelope, &authorization),
+            Err(ContractError::InvalidSignature)
+        ));
+
+        let signed_lossy = sign_test_payload(&lossy_payload, &signing_key)?;
+        assert!(matches!(
+            verify_signed_batch(&signed_lossy, &authorization),
+            Err(ContractError::AuthenticatedFieldDiscarded)
         ));
         Ok(())
     }

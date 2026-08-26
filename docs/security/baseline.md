@@ -3,12 +3,12 @@
 ## Enforced now
 
 - Product crates contain no HTTP client, socket, recorder, database, cloud SDK, shell execution, or telemetry dependency.
-- Both v1 compatibility and current v2 fixtures are visibly synthetic and declare no network egress; the v1 file has a pinned immutable byte hash.
-- Canonical acceptance requires canonical CBOR, an independent expected key/device/user authorization, a valid signature, a contiguous device origin chain, registered scope/domain closure, and exact evidence-representation closure. Ledger append accepts only the opaque verifier capability.
+- Both v1 compatibility and current v2 fixtures are visibly synthetic and declare no network egress; the v1 fixture, v1 JSON Schema, and v1 Proto have pinned immutable byte hashes, and only v2 has a signing/emission path.
+- Canonical acceptance requires canonical envelope and payload CBOR, an independent expected key/device/user authorization, a valid signature over original bytes, source-aware typed byte equality, a contiguous device origin chain, registered scope/domain closure, and exact evidence-representation closure. Ledger append accepts only the opaque verifier capability.
 - UUID ordering is never treated as causality; local acceptance sequence is explicit.
 - Artifact identity is `sha256:<plaintext digest>` inside the logical contract, while the physical locator is an HMAC-derived, domain-keyed value.
 - Normalized repository evidence paths reject POSIX roots, Windows drive/UNC/device forms, URI-like prefixes, backslashes, controls, empty components, and parent traversal on every host platform.
-- `Cargo.lock` and `pnpm-lock.yaml` are committed. `pnpm security` structurally parses pnpm YAML and rejects Git source types, repository fields, SSH/HTTPS/Git/file Git forms, hosted shorthands, and insecure HTTP tarballs regardless of serialization; registry, workspace/link, and ordinary local-file dependencies remain allowed. A committed allow/reject fixture corpus probes every supported encoding.
+- `Cargo.lock` and `pnpm-lock.yaml` are committed. `pnpm security` structurally parses pnpm YAML across importers, packages, snapshots, and default/named catalogs, rejecting malformed catalog shapes, Git source types, repository fields, SSH/HTTPS/Git/file Git forms, hosted shorthands, and insecure HTTP tarballs regardless of serialization; registry, workspace/link, and ordinary local-file dependencies remain allowed. A committed allow/reject fixture corpus probes every supported encoding.
 - Rust forbids unsafe code and denies clippy warnings. CI actions use full commit SHAs and minimum read-only repository permissions.
 
 ## Dependency admission

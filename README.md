@@ -6,12 +6,12 @@ This repository is the runnable foundation for a local-first Personal Academic Â
 
 - `academic-domain`: checked UUIDv7 IDs, canonical decimal coefficient strings, portable logical paths, registered evidence representations, required scopes, typed claims, actor/authority/status rules, half-open valid intervals, independent mastery/freshness types, and user decisions.
 - `academic-ledger`: verified-capability-only append, device origin-chain gap/fork checks, replica-local `accept_seq`, cross-domain evidence closure, scope-isolated authority resolution, and bitemporal queries.
-- `academic-contracts`: deterministic CBOR encode/decode, Ed25519 sign/verify, canonical-byte rejection, device/key/user identity binding, an immutable v1-to-v2 decision upcaster, and executable Protobuf actor/relation round trips.
+- `academic-contracts`: deterministic CBOR v2 encode/sign plus v1/v2 decode/verify, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, an immutable v1-to-v2 decision upcaster, and executable Protobuf actor/relation round trips.
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
 - `academic` CLI: privacy-safe doctor plus fixture emit/verify/replay commands.
 - `@academic-os/web-contracts`: exact TypeScript fixture validation kept in positive/negative parity with JSON Schema and Rust.
 
-Both committed fixtures are synthetic and declare `network_egress: NONE`. `signed-batch-v1.json` is a byte-immutable compatibility golden; v1 signed payloads are verified before a deterministic, fail-closed semantic upcast. `signed-batch-v2.json` is the current writer fixture and demonstrates that a later AI inference cannot override an explicit user decision and that freshness can become `STALE` while mastery remains `PRACTICED`.
+Both committed fixtures are synthetic and declare `network_egress: NONE`. `signed-batch-v1.json` is a byte-immutable read-only compatibility golden; v1 signed payloads are verified before a deterministic, fail-closed semantic upcast, and no public API or CLI can mint v1. `signed-batch-v2.json` is the only writer fixture and demonstrates that a later AI inference cannot override an explicit user decision and that freshness can become `STALE` while mastery remains `PRACTICED`. Artifact JSON additionally rejects noncanonical decimal/exponent number tokens before parsing so Ajv, TypeScript, and Rust share one exact integer policy.
 
 ## Bootstrap
 

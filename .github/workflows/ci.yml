@@ -39,7 +39,7 @@ jobs:
         run: |
           cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
           cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json
-          cargo run --locked --quiet -p academic-cli -- fixture emit --fixture-version 2 --output schemas/fixtures/signed-batch-v2.json
+          cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v2.json
           git diff --exit-code -- schemas/fixtures/signed-batch-v1.json schemas/fixtures/signed-batch-v2.json
           cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json
           cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json

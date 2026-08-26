@@ -1,0 +1,9 @@
+lockfileVersion: '9.0'
+catalogs:
+  default:
+    registry-package: ^1.2.3
+    workspace-package: workspace:*
+    linked-package: link:../linked-package
+    file-package: file:../archives/file-package.tgz
+importers:
+  .: {}

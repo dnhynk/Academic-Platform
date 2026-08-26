@@ -1,0 +1,5 @@
+lockfileVersion: '9.0'
+catalogs:
+  default:
+    forbidden:
+      version: ssh://git@example.invalid/owner/repository.git

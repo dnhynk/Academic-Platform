@@ -24,6 +24,128 @@
       }
     ]
   },
+  "raw_number_cases": [
+    {
+      "name": "canonical zero integer token",
+      "mutations": [],
+      "path": "/evidence_representations/0/locator/start",
+      "token": "0",
+      "valid": true
+    },
+    {
+      "name": "leading-zero integer token is noncanonical",
+      "mutations": [],
+      "path": "/evidence_representations/0/locator/start",
+      "token": "00",
+      "valid": false
+    },
+    {
+      "name": "canonical in-range artifact integer token",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "9",
+      "valid": true
+    },
+    {
+      "name": "canonical maximum safe artifact integer token",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "9007199254740991",
+      "valid": true
+    },
+    {
+      "name": "integral decimal artifact token is noncanonical",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "9.0",
+      "valid": false
+    },
+    {
+      "name": "integral exponent artifact token is noncanonical",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "9e0",
+      "valid": false
+    },
+    {
+      "name": "positive exponent artifact token is noncanonical",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "9E+0",
+      "valid": false
+    },
+    {
+      "name": "fractional artifact token is invalid",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "9.5",
+      "valid": false
+    },
+    {
+      "name": "negative artifact token is invalid",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "-1",
+      "valid": false
+    },
+    {
+      "name": "unsafe artifact integer token is invalid",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "9007199254740992",
+      "valid": false
+    },
+    {
+      "name": "unsafe integer token that JavaScript would round is invalid",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "9007199254740993",
+      "valid": false
+    },
+    {
+      "name": "out-of-range u64 artifact integer token is invalid",
+      "mutations": [],
+      "path": "/byte_length",
+      "token": "18446744073709551616",
+      "valid": false
+    },
+    {
+      "name": "canonical maximum u32 page token",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 1 } }
+      ],
+      "path": "/evidence_representations/0/locator/page_number",
+      "token": "4294967295",
+      "valid": true
+    },
+    {
+      "name": "out-of-range u32 page token is invalid",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 1 } }
+      ],
+      "path": "/evidence_representations/0/locator/page_number",
+      "token": "4294967296",
+      "valid": false
+    },
+    {
+      "name": "integral decimal page token is noncanonical",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 1 } }
+      ],
+      "path": "/evidence_representations/0/locator/page_number",
+      "token": "1.0",
+      "valid": false
+    },
+    {
+      "name": "integral exponent page token is noncanonical",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 1 } }
+      ],
+      "path": "/evidence_representations/0/locator/page_number",
+      "token": "1e0",
+      "valid": false
+    }
+  ],
   "cases": [
     {
       "name": "valid full artifact TEXT_BYTES binding",

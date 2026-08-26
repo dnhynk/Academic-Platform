@@ -175,9 +175,60 @@ function requireDigest(record: Record<string, unknown>, key: string): string {
 }
 
 /**
+ * Enforces the ArtifactDescriptor raw JSON number-token profile before JSON.parse.
+ * Every number in this contract is an unsigned integer and must use the exact
+ * lexical form `0|[1-9][0-9]*`; decimal and exponent spellings are rejected so
+ * JavaScript cannot normalize a token that Rust observes as floating point.
+ */
+export function assertCanonicalArtifactJsonNumberTokens(input: string): void {
+  let index = 0;
+  let inString = false;
+  let escaped = false;
+  while (index < input.length) {
+    const character = input[index] ?? "";
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      index += 1;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      index += 1;
+      continue;
+    }
+    if (character === "-") {
+      throw new TypeError("artifact JSON numbers must use canonical unsigned integer tokens");
+    }
+    if (character >= "0" && character <= "9") {
+      const first = character;
+      index += 1;
+      const next = input[index] ?? "";
+      if (first === "0" && next >= "0" && next <= "9") {
+        throw new TypeError("artifact JSON numbers must use canonical unsigned integer tokens");
+      }
+      while ((input[index] ?? "") >= "0" && (input[index] ?? "") <= "9") {
+        index += 1;
+      }
+      if ([".", "e", "E"].includes(input[index] ?? "")) {
+        throw new TypeError("artifact JSON numbers must use canonical unsigned integer tokens");
+      }
+      continue;
+    }
+    index += 1;
+  }
+}
+
+/**
  * Enforces ArtifactDescriptor invariants that JSON Schema cannot express.
- * Callers still run the Draft 2020-12 schema first; this layer deliberately
- * repeats security-sensitive primitive checks so it also fails closed alone.
+ * Callers first enforce raw tokens with assertCanonicalArtifactJsonNumberTokens,
+ * then parse and run the Draft 2020-12 schema. This layer deliberately repeats
+ * security-sensitive primitive checks so it also fails closed alone.
  */
 export function assertArtifactDescriptorSemantics(value: unknown): void {
   if (!isRecord(value)) {

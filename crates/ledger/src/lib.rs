@@ -593,6 +593,8 @@ impl LedgerState {
                 .map(|(claim, _)| claim.id),
         );
 
+        let user_decision_rank =
+            has_user_override.then(|| authority_rank(query.policy, AuthorityClass::UserExplicit));
         let eligible: Vec<(&Claim, u64, u16)> = candidates
             .into_iter()
             .filter(|(claim, _)| {
@@ -603,74 +605,39 @@ impl LedgerState {
                     )
             })
             .map(|(claim, accepted)| {
+                let effective_authority = if chosen_object.as_ref() == Some(&claim.object) {
+                    AuthorityClass::UserExplicit
+                } else {
+                    claim.authority_class
+                };
                 (
                     claim,
                     accepted,
-                    authority_rank(query.policy, claim.authority_class),
+                    authority_rank(query.policy, effective_authority),
                 )
             })
             .collect();
 
-        if has_user_override {
-            let mut conflicting = lifecycle_conflicts;
-            let active = match &chosen_object {
-                Some(chosen_object) => {
-                    let active: BTreeSet<ClaimId> = eligible
-                        .iter()
-                        .filter(|(claim, _, _)| chosen_object == &claim.object)
-                        .map(|(claim, _, _)| claim.id)
-                        .collect();
-                    conflicting.extend(
-                        eligible
-                            .iter()
-                            .filter(|(claim, _, _)| !active.contains(&claim.id))
-                            .map(|(claim, _, _)| claim.id),
-                    );
-                    active
-                }
-                None => {
-                    let user_candidates: Vec<&Claim> = eligible
-                        .iter()
-                        .filter(|(claim, _, _)| {
-                            claim.authority_class == AuthorityClass::UserExplicit
-                        })
-                        .map(|(claim, _, _)| *claim)
-                        .collect();
-                    let mut user_objects: Vec<&ClaimObject> = Vec::new();
-                    for claim in &user_candidates {
-                        if !user_objects.contains(&&claim.object) {
-                            user_objects.push(&claim.object);
-                        }
-                    }
-                    let active: BTreeSet<ClaimId> = if user_objects.len() == 1 {
-                        user_candidates.iter().map(|claim| claim.id).collect()
-                    } else {
-                        BTreeSet::new()
-                    };
-                    conflicting.extend(
-                        eligible
-                            .iter()
-                            .filter(|(claim, _, _)| !active.contains(&claim.id))
-                            .map(|(claim, _, _)| claim.id),
-                    );
-                    active
-                }
-            };
-            return ResolutionResult {
-                active_claim_ids: active.into_iter().collect(),
-                conflicting_claim_ids: conflicting.into_iter().collect(),
-                rejected_claim_ids: rejected.into_iter().collect(),
-            };
-        }
-
-        let Some(max_rank) = eligible.iter().map(|(_, _, rank)| *rank).max() else {
+        // An applicable decision is durable user-owned state for its exact object,
+        // not a universal predicate override. Confirm/Replace promote only the
+        // chosen object to user authority; Reject excludes only the rejected object.
+        // Remaining claims still follow the predicate policy against that user
+        // authority floor, so stronger policy authorities survive while weaker
+        // automated alternatives remain conflicts rather than reactivating.
+        let activation_candidates: Vec<&(&Claim, u64, u16)> = eligible
+            .iter()
+            .filter(|(_, _, rank)| user_decision_rank.is_none_or(|minimum| *rank >= minimum))
+            .collect();
+        let Some(max_rank) = activation_candidates.iter().map(|(_, _, rank)| *rank).max() else {
+            let mut conflicting_claim_ids = lifecycle_conflicts;
+            conflicting_claim_ids.extend(eligible.iter().map(|(claim, _, _)| claim.id));
             return ResolutionResult {
                 active_claim_ids: Vec::new(),
-                conflicting_claim_ids: lifecycle_conflicts.into_iter().collect(),
+                conflicting_claim_ids: conflicting_claim_ids.into_iter().collect(),
                 rejected_claim_ids: rejected.into_iter().collect(),
             };
         };
-        let top_ranked: Vec<&Claim> = eligible
+        let top_ranked: Vec<&Claim> = activation_candidates
             .iter()
             .filter(|(_, _, rank)| *rank == max_rank)
             .map(|(claim, _, _)| *claim)
@@ -1155,6 +1122,25 @@ mod tests {
         Ok(())
     }
 
+    fn policy_authority(policy: AuthorityPolicy) -> (AuthorityClass, EpistemicStatus) {
+        match policy {
+            AuthorityPolicy::UserOwned => {
+                (AuthorityClass::UserExplicit, EpistemicStatus::UserConfirmed)
+            }
+            AuthorityPolicy::OfficialFact => {
+                (AuthorityClass::Official, EpistemicStatus::OfficialConfirmed)
+            }
+            AuthorityPolicy::ImplementationObservation => (
+                AuthorityClass::DirectObservation,
+                EpistemicStatus::CodeObserved,
+            ),
+            AuthorityPolicy::CuratedRelation => (
+                AuthorityClass::Curated,
+                EpistemicStatus::DeterministicDerived,
+            ),
+        }
+    }
+
     #[test]
     fn ledger_acceptance_requires_verified_capability_and_is_idempotent()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -1474,6 +1460,229 @@ mod tests {
         assert_eq!(after_expiry.active_claim_ids, vec![first.id, rerun.id]);
         assert!(after_expiry.rejected_claim_ids.is_empty());
         assert!(after_expiry.conflicting_claim_ids.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn t010_decisions_preserve_predicate_authority_across_actions_and_time_boundaries()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let claim_interval =
+            ValidInterval::new(TimestampMillis::new(0), Some(TimestampMillis::new(30)))?;
+        let decision_interval =
+            ValidInterval::new(TimestampMillis::new(10), Some(TimestampMillis::new(20)))?;
+        for policy in [
+            AuthorityPolicy::UserOwned,
+            AuthorityPolicy::OfficialFact,
+            AuthorityPolicy::ImplementationObservation,
+            AuthorityPolicy::CuratedRelation,
+        ] {
+            let (strong_authority, strong_status) = policy_authority(policy);
+            for action_name in ["confirm", "reject", "replace"] {
+                let target = resolution_claim(
+                    260,
+                    ClaimObject::Text("target".to_owned()),
+                    AuthorityClass::ModelInference,
+                    EpistemicStatus::AiInferred,
+                    claim_interval,
+                )?;
+                let replacement = resolution_claim(
+                    261,
+                    ClaimObject::Text("replacement".to_owned()),
+                    AuthorityClass::ModelInference,
+                    EpistemicStatus::AiInferred,
+                    claim_interval,
+                )?;
+                let policy_authoritative = resolution_claim(
+                    262,
+                    ClaimObject::Text("unrelated-policy-authority".to_owned()),
+                    strong_authority,
+                    strong_status,
+                    claim_interval,
+                )?;
+                let action = match action_name {
+                    "confirm" => DecisionAction::Confirm,
+                    "reject" => DecisionAction::Reject,
+                    "replace" => DecisionAction::Replace {
+                        replacement_claim_id: replacement.id,
+                    },
+                    _ => return Err("unexpected decision action".into()),
+                };
+                let mut ledger = LedgerState::new();
+                insert_claim(&mut ledger, target.clone(), 1)?;
+                insert_claim(&mut ledger, replacement.clone(), 2)?;
+                insert_claim(&mut ledger, policy_authoritative.clone(), 3)?;
+                ledger.decisions.push((
+                    UserDecision {
+                        id: id(263)?,
+                        target_claim_id: target.id,
+                        target_object: target.object.clone(),
+                        resolution_slot: ResolutionSlot {
+                            subject_entity_id: target.subject_entity_id,
+                            predicate_id: target.predicate_id.clone(),
+                            scope_id: target.scope_id,
+                        },
+                        action,
+                        valid_time: decision_interval,
+                        rationale_evidence_ids: Vec::new(),
+                        decided_at: TimestampMillis::new(10),
+                        reversible_until: None,
+                    },
+                    AcceptedDecisionMeta { accept_seq: 4 },
+                ));
+
+                for (label, valid_at, known_at) in [
+                    ("before-known", TimestampMillis::new(15), 3),
+                    ("before-valid", TimestampMillis::new(9), 4),
+                    ("after-valid", TimestampMillis::new(20), 4),
+                ] {
+                    let outside = ledger.resolve(&ResolutionQuery {
+                        subject_entity_id: target.subject_entity_id,
+                        scope_id: target.scope_id,
+                        predicate_id: target.predicate_id.clone(),
+                        valid_at,
+                        known_at_accept_seq: known_at,
+                        policy,
+                    });
+                    assert_eq!(
+                        outside.active_claim_ids,
+                        vec![policy_authoritative.id],
+                        "{policy:?}/{action_name}/{label}",
+                    );
+                    assert_eq!(
+                        outside.conflicting_claim_ids,
+                        vec![target.id, replacement.id],
+                        "{policy:?}/{action_name}/{label}",
+                    );
+                    assert_eq!(
+                        outside.rejected_claim_ids,
+                        Vec::<ClaimId>::new(),
+                        "{policy:?}/{action_name}/{label}",
+                    );
+                }
+
+                let applicable = ledger.resolve(&ResolutionQuery {
+                    subject_entity_id: target.subject_entity_id,
+                    scope_id: target.scope_id,
+                    predicate_id: target.predicate_id.clone(),
+                    valid_at: TimestampMillis::new(10),
+                    known_at_accept_seq: 4,
+                    policy,
+                });
+                let equal_user_rank = matches!(
+                    policy,
+                    AuthorityPolicy::UserOwned | AuthorityPolicy::CuratedRelation
+                );
+                let (expected_active, expected_conflicting, expected_rejected) = match action_name {
+                    "confirm" if equal_user_rank => (
+                        Vec::new(),
+                        vec![target.id, replacement.id, policy_authoritative.id],
+                        Vec::new(),
+                    ),
+                    "confirm" => (
+                        vec![policy_authoritative.id],
+                        vec![target.id, replacement.id],
+                        Vec::new(),
+                    ),
+                    "reject" => (
+                        vec![policy_authoritative.id],
+                        vec![replacement.id],
+                        vec![target.id],
+                    ),
+                    "replace" if equal_user_rank => (
+                        Vec::new(),
+                        vec![replacement.id, policy_authoritative.id],
+                        vec![target.id],
+                    ),
+                    "replace" => (
+                        vec![policy_authoritative.id],
+                        vec![replacement.id],
+                        vec![target.id],
+                    ),
+                    _ => return Err("unexpected decision action".into()),
+                };
+                assert_eq!(
+                    applicable.active_claim_ids, expected_active,
+                    "{policy:?}/{action_name}",
+                );
+                assert_eq!(
+                    applicable.conflicting_claim_ids, expected_conflicting,
+                    "{policy:?}/{action_name}",
+                );
+                assert_eq!(
+                    applicable.rejected_claim_ids, expected_rejected,
+                    "{policy:?}/{action_name}",
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn t010_reject_is_object_scoped_without_reactivating_weaker_alternatives()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let interval = ValidInterval::open_ended(TimestampMillis::new(0));
+        for policy in [
+            AuthorityPolicy::UserOwned,
+            AuthorityPolicy::OfficialFact,
+            AuthorityPolicy::ImplementationObservation,
+            AuthorityPolicy::CuratedRelation,
+        ] {
+            let rejected_target = resolution_claim(
+                270,
+                ClaimObject::Text("rejected-target".to_owned()),
+                AuthorityClass::ModelInference,
+                EpistemicStatus::AiInferred,
+                interval,
+            )?;
+            let unaffected = resolution_claim(
+                271,
+                ClaimObject::Text("unaffected-alternative".to_owned()),
+                AuthorityClass::ModelInference,
+                EpistemicStatus::AiInferred,
+                interval,
+            )?;
+            let mut ledger = LedgerState::new();
+            insert_claim(&mut ledger, rejected_target.clone(), 1)?;
+            insert_claim(&mut ledger, unaffected.clone(), 2)?;
+            ledger.decisions.push((
+                UserDecision {
+                    id: id(272)?,
+                    target_claim_id: rejected_target.id,
+                    target_object: rejected_target.object.clone(),
+                    resolution_slot: ResolutionSlot {
+                        subject_entity_id: rejected_target.subject_entity_id,
+                        predicate_id: rejected_target.predicate_id.clone(),
+                        scope_id: rejected_target.scope_id,
+                    },
+                    action: DecisionAction::Reject,
+                    valid_time: interval,
+                    rationale_evidence_ids: Vec::new(),
+                    decided_at: TimestampMillis::new(1),
+                    reversible_until: None,
+                },
+                AcceptedDecisionMeta { accept_seq: 3 },
+            ));
+
+            let result = ledger.resolve(&ResolutionQuery {
+                subject_entity_id: rejected_target.subject_entity_id,
+                scope_id: rejected_target.scope_id,
+                predicate_id: rejected_target.predicate_id.clone(),
+                valid_at: TimestampMillis::new(1),
+                known_at_accept_seq: 3,
+                policy,
+            });
+            assert!(result.active_claim_ids.is_empty(), "{policy:?}");
+            assert_eq!(
+                result.rejected_claim_ids,
+                vec![rejected_target.id],
+                "{policy:?}",
+            );
+            assert_eq!(
+                result.conflicting_claim_ids,
+                vec![unaffected.id],
+                "{policy:?}"
+            );
+        }
         Ok(())
     }
 

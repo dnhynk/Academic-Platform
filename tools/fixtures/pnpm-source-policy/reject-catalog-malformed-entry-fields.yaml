@@ -1,0 +1,5 @@
+lockfileVersion: '9.0'
+catalogs:
+  named:
+    malformed:
+      resolution: 1.2.3

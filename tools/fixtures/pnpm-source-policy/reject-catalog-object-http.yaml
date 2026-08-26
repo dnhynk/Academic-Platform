@@ -1,0 +1,5 @@
+lockfileVersion: '9.0'
+catalogs:
+  default:
+    forbidden:
+      specifier: http://registry.example.invalid/forbidden.tgz
