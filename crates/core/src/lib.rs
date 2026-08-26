@@ -7,15 +7,17 @@
 use std::{collections::BTreeSet, fmt, str::FromStr};
 
 use academic_contracts::{
-    ContractError, DeviceAuthorization, VerifiedBatch, sign_batch, verify_signed_batch,
+    ContractError, DeviceAuthorization, VerifiedBatch, sign_batch, sign_batch_v1_compat,
+    verify_signed_batch,
 };
 use academic_domain::{
     Actor, ArtifactDescriptor, ArtifactRepresentation, AuthorityClass, BatchId, Claim, ClaimId,
     ClaimObject, ClaimRelation, ClaimRelationKind, ConfidencePermille, Confidentiality,
-    ContentDigest, DecisionAction, DecisionId, DeviceId, DomainError, EpistemicStatus,
-    EventPayload, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, FreshnessBand,
-    MasteryLevel, MediaType, PredicateId, RetentionClass, ScopeDescriptor, ScopeId,
-    TimestampMillis, UserDecision, ValidInterval, VaultLocator,
+    ContentDigest, DecisionAction, DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1,
+    EVENT_SCHEMA_VERSION_V2, EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator,
+    EvidenceRole, EvidenceStrength, FreshnessBand, MasteryLevel, MediaType, PredicateId,
+    ResolutionSlot, RetentionClass, ScopeDescriptor, ScopeId, TimestampMillis, UserDecision,
+    ValidInterval, VaultLocator,
 };
 use academic_ledger::{
     AcceptanceReceipt, AuthorityPolicy, EVENT_SCHEMA_VERSION, LedgerError, LedgerState,
@@ -25,8 +27,12 @@ use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Deserializer, Serialize, de};
 use thiserror::Error;
 
-/// Fixture contract version.
-pub const FIXTURE_VERSION: u16 = 1;
+/// Immutable legacy fixture wrapper version.
+pub const FIXTURE_VERSION_V1: u16 = EVENT_SCHEMA_VERSION_V1;
+/// Current fixture wrapper version carrying event schema v2.
+pub const FIXTURE_VERSION_V2: u16 = EVENT_SCHEMA_VERSION_V2;
+/// Fixture version emitted by current writers.
+pub const FIXTURE_VERSION: u16 = FIXTURE_VERSION_V2;
 /// Fixed synthetic artifact bytes. They contain no personal or production data.
 pub const SYNTHETIC_ARTIFACT_BYTES: &[u8] =
     b"SYNTHETIC ONLY: no personal data; no network egress.\n";
@@ -223,7 +229,10 @@ where
 impl FixtureDocument {
     /// Enforces the same exact wrapper constraints as JSON Schema and TypeScript.
     pub fn validate_contract(&self) -> Result<(), CoreError> {
-        if self.fixture_version != FIXTURE_VERSION {
+        if !matches!(
+            self.fixture_version,
+            FIXTURE_VERSION_V1 | FIXTURE_VERSION_V2
+        ) {
             return Err(CoreError::UnsupportedFixtureVersion(self.fixture_version));
         }
         if self.name.is_empty() {
@@ -234,13 +243,18 @@ impl FixtureDocument {
                 "data_class and network_egress must match fixture constants",
             ));
         }
+        let expected_payload = match self.fixture_version {
+            FIXTURE_VERSION_V1 => "academic.event-batch/v1 deterministic-cbor",
+            FIXTURE_VERSION_V2 => "academic.event-batch/v2 deterministic-cbor",
+            _ => return Err(CoreError::UnsupportedFixtureVersion(self.fixture_version)),
+        };
         if self.contract.envelope != "academic.signed-batch-envelope/v1 deterministic-cbor"
-            || self.contract.payload != "academic.event-batch/v1 deterministic-cbor"
+            || self.contract.payload != expected_payload
             || self.contract.signature != "Ed25519"
-            || self.contract.event_schema_version != EVENT_SCHEMA_VERSION
+            || self.contract.event_schema_version != self.fixture_version
         {
             return Err(CoreError::InvalidFixtureContract(
-                "contract metadata must match exact v1 constants",
+                "contract metadata must match exact versioned constants",
             ));
         }
         if !is_lower_hex(&self.public_key_hex, Some(64))
@@ -300,25 +314,47 @@ struct ReplayDigestMaterial<'a> {
     deadline_active_claim_ids: &'a [ClaimId],
 }
 
-/// Builds the one deterministic, signed, synthetic Phase 0 fixture.
+/// Builds the current deterministic, signed, synthetic Phase 0 fixture.
 pub fn build_fixture_document() -> Result<FixtureDocument, CoreError> {
+    build_fixture_document_for_version(FIXTURE_VERSION)
+}
+
+/// Builds either the immutable v1 compatibility fixture or the current v2 fixture.
+pub fn build_fixture_document_for_version(
+    fixture_version: u16,
+) -> Result<FixtureDocument, CoreError> {
+    if !matches!(fixture_version, FIXTURE_VERSION_V1 | FIXTURE_VERSION_V2) {
+        return Err(CoreError::UnsupportedFixtureVersion(fixture_version));
+    }
     let batch = build_unsigned_fixture_batch()?;
     let signing_key = fixture_signing_key();
     let authorization = fixture_device_authorization()?;
-    let signed = sign_batch(&batch, &signing_key)?;
+    let signed = match fixture_version {
+        FIXTURE_VERSION_V1 => sign_batch_v1_compat(&batch, &signing_key)?,
+        FIXTURE_VERSION_V2 => sign_batch(&batch, &signing_key)?,
+        _ => return Err(CoreError::UnsupportedFixtureVersion(fixture_version)),
+    };
     let mut core = Core::new();
     let (verified, _) = core.accept_signed_batch(&signed, &authorization)?;
+    if verified.source_schema_version() != fixture_version {
+        return Err(CoreError::FixtureDrift);
+    }
     let expected_replay = summarize_replay(&core, &verified, FINAL_VALID_AT, u64::MAX)?;
     Ok(FixtureDocument {
-        fixture_version: FIXTURE_VERSION,
-        name: "phase0-synthetic-bitemporal-ledger".to_owned(),
+        fixture_version,
+        name: match fixture_version {
+            FIXTURE_VERSION_V1 => "phase0-synthetic-bitemporal-ledger",
+            FIXTURE_VERSION_V2 => "phase0-synthetic-bitemporal-ledger-v2",
+            _ => return Err(CoreError::UnsupportedFixtureVersion(fixture_version)),
+        }
+        .to_owned(),
         data_class: "SYNTHETIC_ONLY".to_owned(),
         network_egress: "NONE".to_owned(),
         contract: FixtureContract {
             envelope: "academic.signed-batch-envelope/v1 deterministic-cbor".to_owned(),
-            payload: "academic.event-batch/v1 deterministic-cbor".to_owned(),
+            payload: format!("academic.event-batch/v{fixture_version} deterministic-cbor"),
             signature: "Ed25519".to_owned(),
-            event_schema_version: EVENT_SCHEMA_VERSION,
+            event_schema_version: fixture_version,
         },
         device_id: authorization.device_id(),
         user_id: authorization.user_id(),
@@ -336,11 +372,14 @@ pub fn verify_fixture_document(document: &FixtureDocument) -> Result<ReplaySumma
     let signed = hex::decode(&document.signed_batch_cbor_hex)?;
     let mut core = Core::new();
     let (verified, _) = core.accept_signed_batch(&signed, &authorization)?;
+    if verified.source_schema_version() != document.contract.event_schema_version {
+        return Err(CoreError::FixtureDrift);
+    }
     let actual = summarize_replay(&core, &verified, FINAL_VALID_AT, u64::MAX)?;
     if actual != document.expected_replay {
         return Err(CoreError::ExpectedReplayMismatch);
     }
-    if *document != build_fixture_document()? {
+    if *document != build_fixture_document_for_version(document.fixture_version)? {
         return Err(CoreError::FixtureDrift);
     }
     Ok(actual)
@@ -358,6 +397,9 @@ pub fn replay_fixture_document(
     let signed = hex::decode(&document.signed_batch_cbor_hex)?;
     let mut core = Core::new();
     let (verified, _) = core.accept_signed_batch(&signed, &authorization)?;
+    if verified.source_schema_version() != document.contract.event_schema_version {
+        return Err(CoreError::FixtureDrift);
+    }
     summarize_replay(&core, &verified, valid_at, known_at_accept_seq)
 }
 
@@ -684,8 +726,14 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EventPayload::DecisionRecorded(UserDecision {
                 id: parse_id::<DecisionId>("01900000-0000-7000-8000-000000000301")?,
                 target_claim_id: parse_id(CLAIM_AI_UNDERSTOOD)?,
+                target_object: ClaimObject::Mastery(MasteryLevel::Understood),
+                resolution_slot: ResolutionSlot {
+                    subject_entity_id: parse_id(CONCEPT_ID)?,
+                    predicate_id: PredicateId::parse("knowledge.mastery")?,
+                    scope_id: parse_id(SCOPE_ID)?,
+                },
                 action: DecisionAction::Reject,
-                scope_id: parse_id(SCOPE_ID)?,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(100)),
                 rationale_evidence_ids: vec![parse_id(EVIDENCE_ID)?],
                 decided_at: TimestampMillis::new(104),
                 reversible_until: None,
@@ -702,8 +750,14 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EventPayload::DecisionRecorded(UserDecision {
                 id: parse_id::<DecisionId>("01900000-0000-7000-8000-000000000302")?,
                 target_claim_id: parse_id(CLAIM_USER_PRACTICED)?,
+                target_object: ClaimObject::Mastery(MasteryLevel::Practiced),
+                resolution_slot: ResolutionSlot {
+                    subject_entity_id: parse_id(CONCEPT_ID)?,
+                    predicate_id: PredicateId::parse("knowledge.mastery")?,
+                    scope_id: parse_id(SCOPE_ID)?,
+                },
                 action: DecisionAction::Confirm,
-                scope_id: parse_id(SCOPE_ID)?,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(200)),
                 rationale_evidence_ids: vec![parse_id(EVIDENCE_ID)?],
                 decided_at: TimestampMillis::new(106),
                 reversible_until: None,
@@ -911,6 +965,84 @@ mod tests {
             replay.deadline_active_claim_ids,
             vec![parse_id(CLAIM_DEADLINE_NEW)?]
         );
+        Ok(())
+    }
+
+    #[test]
+    fn t008_v2_fixture_matches_repaired_builder() -> Result<(), Box<dyn std::error::Error>> {
+        let committed_v2 = include_str!("../../../schemas/fixtures/signed-batch-v2.json");
+        assert_eq!(
+            ContentDigest::sha256(committed_v2.as_bytes()).to_string(),
+            "sha256:41675cc19bfba5801f93d18efc4786e5d65a5166f466da0a2d43b05c379e43a6"
+        );
+        let document: FixtureDocument = serde_json::from_str(committed_v2)?;
+        assert_eq!(document.fixture_version, FIXTURE_VERSION_V2);
+        assert_eq!(fixture_json(&build_fixture_document()?)?, committed_v2);
+        let replay = verify_fixture_document(&document)?;
+        assert_eq!(
+            replay.payload_hash.to_string(),
+            "sha256:57fed3ddcc22be8708bd7406b6afdea9b416096a4a17023b4eda671338a3c4e3"
+        );
+        assert_eq!(
+            replay.envelope_hash.to_string(),
+            "sha256:8dd21058221e7d3189856c6d0b5eac5337c2b6ba9530d51460de46d00a0cdde8"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn t008_v1_golden_bytes_are_immutable_and_upcast_deterministically_to_v2()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let committed_v1 = include_str!("../../../schemas/fixtures/signed-batch-v1.json");
+        assert_eq!(
+            ContentDigest::sha256(committed_v1.as_bytes()).to_string(),
+            "sha256:287f7dea8fd24c3c6eb205c3f1e2873f6afdf7d6532fe7be4fccfb44a0b7e163"
+        );
+        let document: FixtureDocument = serde_json::from_str(committed_v1)?;
+        assert_eq!(document.fixture_version, FIXTURE_VERSION_V1);
+        assert_eq!(
+            fixture_json(&build_fixture_document_for_version(FIXTURE_VERSION_V1)?)?,
+            committed_v1
+        );
+        let replay = verify_fixture_document(&document)?;
+        assert_eq!(
+            replay.payload_hash.to_string(),
+            "sha256:b45c7eea2e1b7bf8071638a31c790519f96a7b0e17bd6963866495557701c3c9"
+        );
+        assert_eq!(
+            replay.envelope_hash.to_string(),
+            "sha256:dc498fa435985b94fd573ce1e94b4b7da16646ebd2abe73865d33e43070968ed"
+        );
+
+        let authorization = fixture_device_authorization()?;
+        let signed = hex::decode(&document.signed_batch_cbor_hex)?;
+        let verified = verify_signed_batch(&signed, &authorization)?;
+        assert_eq!(verified.source_schema_version(), EVENT_SCHEMA_VERSION_V1);
+        assert_eq!(verified.batch().schema_version, EVENT_SCHEMA_VERSION_V2);
+        for event in &verified.batch().events {
+            let EventPayload::DecisionRecorded(decision) = &event.payload else {
+                continue;
+            };
+            let target = verified
+                .batch()
+                .events
+                .iter()
+                .find_map(|candidate| match &candidate.payload {
+                    EventPayload::ClaimAsserted(claim) if claim.id == decision.target_claim_id => {
+                        Some(claim)
+                    }
+                    _ => None,
+                })
+                .ok_or(CoreError::MissingProjection("v1 decision target"))?;
+            assert_eq!(decision.target_object, target.object);
+            assert_eq!(decision.valid_time, target.valid_time);
+            assert_eq!(
+                decision.resolution_slot.subject_entity_id,
+                target.subject_entity_id
+            );
+            assert_eq!(decision.resolution_slot.predicate_id, target.predicate_id);
+            assert_eq!(decision.resolution_slot.scope_id, target.scope_id);
+        }
         Ok(())
     }
 

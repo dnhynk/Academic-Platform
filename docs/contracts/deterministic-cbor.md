@@ -1,8 +1,8 @@
-# Deterministic signed batch profile v1
+# Deterministic signed batch envelope v1
 
 ## Purpose
 
-Signed historical bytes must never be rewritten during schema migration. Phase 0 therefore defines one deterministic representation before introducing storage or sync.
+Signed historical bytes must never be rewritten during schema migration. Phase 0 therefore defines one deterministic envelope representation before introducing storage or sync. Event payload schemas v1 and v2 share that envelope; schema version is authenticated inside the signed payload.
 
 ## Envelope
 
@@ -43,3 +43,9 @@ Domain `Decimal` values are JSON-shaped objects whose `coefficient` is the canon
 8. Check origin gap/fork, registered scope, domain, and exact evidence-representation closure, then assign local `accept_seq` atomically.
 
 The committed JSON wrapper stores lowercase hex only for source-control portability. JSON is not signed and must not be used as an alternate signing representation.
+
+## Event-schema compatibility
+
+`schemas/fixtures/signed-batch-v1.json` is immutable at SHA-256 `287F7DEA8FD24C3C6EB205C3F1E2873F6AFDF7D6532FE7BE4FCCFB44A0B7E163`. Its signed bytes and the v1 Proto `UserDecision` wire shape are never regenerated into the v2 shape. The reader first completes envelope canonicality, independent authorization, and signature checks over the original bytes, then deterministically upcasts a v1 decision by looking up its target claim in the same authenticated batch. It requires the legacy decision scope to equal the target scope and derives the v2 subject/predicate/scope slot, target object, and valid interval from that claim; missing targets and mismatches fail closed.
+
+Event schema v2 is the current writer profile and is represented by `signed-batch-v2.json`, the v2 fixture JSON Schema, and `schemas/proto/academic/v2/ledger.proto`. A compatibility-only v1 encoder exists to prove byte-exact reproduction of the frozen golden and accepts only v2 decisions whose semantics are losslessly identical to their same-batch targets.

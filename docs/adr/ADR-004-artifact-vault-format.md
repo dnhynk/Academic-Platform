@@ -12,8 +12,10 @@ The eventual object format will use random per-artifact DEKs, domain KEK wrappin
 
 ## Implemented now
 
-Algorithm-prefixed digest and keyed locator newtypes, domain-key separation tests, byte-length/media metadata, and exact evidence locator validation are implemented. Each usable locator is bound to immutable `ArtifactRepresentation` metadata containing the exact locator, representation digest, and byte length. Text spans must remain within the registered source bytes; page, time, and repository locators fail closed unless an exact representation is registered. Evidence acceptance also enforces artifact/event domain closure. No encrypted object writer exists.
+Algorithm-prefixed digest and keyed locator newtypes, domain-key separation tests, byte-length/media metadata, and exact evidence locator validation are implemented. A complete `TEXT_BYTES 0..artifact.byte_length` representation must use the artifact content digest for both source and representation, cryptographically closing the excerpt to the registered bytes. Partial text, page, transcript-time, and repository representations remain valid descriptor vocabulary, but Phase 0 event/evidence acceptance fails closed because no byte-resolving verifier capability exists; an actor label alone is not trusted proof of resolved bytes. Evidence acceptance also enforces artifact/event domain closure and never compares two caller-controlled digests as proof. No encrypted object writer exists.
+
+The artifact JSON boundary rejects unsafe integers and nonportable paths at schema level, then executes a semantic post-validator for ranges, artifact bounds, span lengths, source/full-range digest binding, and locator-identity uniqueness. Rust and Ajv/TypeScript run the same committed mutation corpus, including positive text/page/time/repository and Unicode path descriptors.
 
 ## Acceptance gate
 
-Zero-byte/small/multi-GB/seekable-audio vectors; wrong key, truncation, reorder, splice, and wrong-domain detection; every crash-point closure outcome; cross-policy dedupe rejection; quarantine/GC dry run; and format N/N-1 read/migration.
+Zero-byte/small/multi-GB/seekable-audio vectors; a trusted byte-resolving verifier capability for partial/page/time/repository evidence; wrong key, truncation, reorder, splice, and wrong-domain detection; every crash-point closure outcome; cross-policy dedupe rejection; quarantine/GC dry run; and format N/N-1 read/migration.

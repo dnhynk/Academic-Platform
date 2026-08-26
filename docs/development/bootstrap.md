@@ -63,4 +63,4 @@ After the pinned tools are present, `pnpm bootstrap` validates exact versions, r
 
 ## Data warning
 
-Only `schemas/fixtures/signed-batch-v1.json` and similarly labeled synthetic fixtures may be processed. The doctor reports `SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED`; treating that message as a production-readiness statement is a defect.
+Only the committed, synthetic `schemas/fixtures/signed-batch-v1.json` compatibility golden, `signed-batch-v2.json` current fixture, and similarly labeled synthetic fixtures may be processed. The v1 file is read-only compatibility evidence; normal fixture emission targets v2. The doctor reports `SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED`; treating that message as a production-readiness statement is a defect.

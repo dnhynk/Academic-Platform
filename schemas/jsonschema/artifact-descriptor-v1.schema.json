@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://academic-os.invalid/schema/artifact-descriptor-v1.json",
   "title": "Academic OS artifact descriptor v1",
+  "$comment": "After schema validation, consumers must run the cross-field semantic validator conformance-tested by artifact-descriptor-parity-v1.json.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -24,7 +25,7 @@
       "type": "string",
       "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
     },
-    "byte_length": { "type": "integer", "minimum": 0 },
+    "byte_length": { "$ref": "#/$defs/safeUint" },
     "domain_id": { "$ref": "#/$defs/uuidV7" },
     "confidentiality": {
       "enum": ["PUBLIC", "PERSONAL", "RESTRICTED", "SECRET"]
@@ -45,6 +46,11 @@
     }
   },
   "$defs": {
+    "safeUint": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
     "uuidV7": {
       "type": "string",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
@@ -56,7 +62,7 @@
     "logicalPath": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/)(?!~)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))[^:\\u0000-\\u001f\\u007f-\\u009f]+$"
+      "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/)(?!~)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))[^/:\\u0000-\\u001f\\u007f-\\u009f]+(?:/[^/:\\u0000-\\u001f\\u007f-\\u009f]+)*$"
     },
     "evidenceLocator": {
       "oneOf": [
@@ -66,7 +72,11 @@
           "required": ["kind", "page_number"],
           "properties": {
             "kind": { "const": "PAGE" },
-            "page_number": { "type": "integer", "minimum": 1 }
+            "page_number": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         {
@@ -76,8 +86,8 @@
           "properties": {
             "kind": { "const": "TEXT_BYTES" },
             "source_digest": { "$ref": "#/$defs/digest" },
-            "start": { "type": "integer", "minimum": 0 },
-            "end": { "type": "integer", "minimum": 1 }
+            "start": { "$ref": "#/$defs/safeUint" },
+            "end": { "$ref": "#/$defs/safeUint" }
           }
         },
         {
@@ -86,8 +96,8 @@
           "required": ["kind", "start_ms", "end_ms"],
           "properties": {
             "kind": { "const": "TRANSCRIPT_TIME" },
-            "start_ms": { "type": "integer", "minimum": 0 },
-            "end_ms": { "type": "integer", "minimum": 1 }
+            "start_ms": { "$ref": "#/$defs/safeUint" },
+            "end_ms": { "$ref": "#/$defs/safeUint" }
           }
         },
         {
@@ -98,8 +108,8 @@
             "kind": { "const": "REPOSITORY_BYTES" },
             "snapshot_digest": { "$ref": "#/$defs/digest" },
             "path": { "$ref": "#/$defs/logicalPath" },
-            "start": { "type": "integer", "minimum": 0 },
-            "end": { "type": "integer", "minimum": 1 }
+            "start": { "$ref": "#/$defs/safeUint" },
+            "end": { "$ref": "#/$defs/safeUint" }
           }
         }
       ]
@@ -111,7 +121,7 @@
       "properties": {
         "locator": { "$ref": "#/$defs/evidenceLocator" },
         "content_digest": { "$ref": "#/$defs/digest" },
-        "byte_length": { "type": "integer", "minimum": 0 }
+        "byte_length": { "$ref": "#/$defs/safeUint" }
       }
     }
   }

@@ -59,6 +59,17 @@ pub enum LedgerError {
     /// A relationship or decision crossed claim scopes.
     #[error("{0} crosses claim scope boundaries")]
     CrossScope(&'static str),
+    /// A user decision's explicit semantic slot or target object did not match its claim.
+    #[error("user decision semantic target does not match the referenced claim")]
+    DecisionSemanticMismatch,
+    /// A state-removing relation was not authorized for both endpoint authorities.
+    #[error(
+        "actor {actor} is not authorized to apply {kind:?} to both claim authority/status pairs"
+    )]
+    UnauthorizedRelationEffect {
+        actor: &'static str,
+        kind: ClaimRelationKind,
+    },
     /// An acceptance sequence counter overflowed.
     #[error("acceptance sequence exhausted")]
     AcceptSequenceExhausted,
@@ -95,14 +106,33 @@ struct AcceptedClaimMeta {
     scope_id: ScopeId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct AcceptedRelationMeta {
     accept_seq: u64,
+    actor: Actor,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct AcceptedDecisionMeta {
     accept_seq: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AcceptedArtifact {
+    descriptor: ArtifactDescriptor,
+}
+
+impl AcceptedArtifact {
+    fn supports_evidence(&self, evidence: &EvidenceItem) -> bool {
+        if evidence.artifact_id != self.descriptor.id {
+            return false;
+        }
+        let Some(representation) = self.descriptor.representation(&evidence.locator) else {
+            return false;
+        };
+        self.descriptor.is_artifact_digest_bound(representation)
+            && evidence.excerpt_digest == self.descriptor.content_digest
+    }
 }
 
 /// In-memory Phase 0 ledger. Its public API exposes append and query, never mutation.
@@ -114,7 +144,7 @@ pub struct LedgerState {
     device_heads: BTreeMap<DeviceId, DeviceHead>,
     event_ids: BTreeSet<EventId>,
     scopes: BTreeMap<ScopeId, ScopeDescriptor>,
-    artifacts: BTreeMap<ArtifactId, ArtifactDescriptor>,
+    artifacts: BTreeMap<ArtifactId, AcceptedArtifact>,
     evidence: BTreeMap<EvidenceId, EvidenceItem>,
     claims: BTreeMap<ClaimId, (Claim, AcceptedClaimMeta)>,
     relations: Vec<(ClaimRelation, AcceptedRelationMeta)>,
@@ -271,14 +301,19 @@ impl LedgerState {
                         id: descriptor.id.to_string(),
                     });
                 }
-                self.artifacts.insert(descriptor.id, descriptor.clone());
+                self.artifacts.insert(
+                    descriptor.id,
+                    AcceptedArtifact {
+                        descriptor: descriptor.clone(),
+                    },
+                );
             }
             EventPayload::EvidenceRegistered(item) => {
                 let descriptor = self
                     .artifacts
                     .get(&item.artifact_id)
                     .ok_or(LedgerError::UnknownArtifact(item.artifact_id))?;
-                if descriptor.domain_id != event.domain_id {
+                if descriptor.descriptor.domain_id != event.domain_id {
                     return Err(LedgerError::CrossDomain("evidence artifact"));
                 }
                 if !descriptor.supports_evidence(item) {
@@ -309,7 +344,7 @@ impl LedgerState {
                         .artifacts
                         .get(&evidence.artifact_id)
                         .ok_or(LedgerError::UnknownArtifact(evidence.artifact_id))?;
-                    if artifact.domain_id != event.domain_id {
+                    if artifact.descriptor.domain_id != event.domain_id {
                         return Err(LedgerError::CrossDomain("claim evidence"));
                     }
                 }
@@ -332,24 +367,46 @@ impl LedgerState {
                 );
             }
             EventPayload::ClaimRelated(relation) => {
-                let source = self.claim_metadata(relation.source_claim_id)?;
-                let target = self.claim_metadata(relation.target_claim_id)?;
+                let (source_claim, source) = self.claim_record(relation.source_claim_id)?;
+                let (target_claim, target) = self.claim_record(relation.target_claim_id)?;
                 if source.scope_id != relation.scope_id || target.scope_id != relation.scope_id {
                     return Err(LedgerError::CrossScope("claim relation"));
                 }
                 if source.domain_id != event.domain_id || target.domain_id != event.domain_id {
                     return Err(LedgerError::CrossDomain("claim relation"));
                 }
-                self.relations
-                    .push((relation.clone(), AcceptedRelationMeta { accept_seq }));
+                if !relation_effect_is_authorized(
+                    &event.actor,
+                    relation.kind,
+                    source_claim,
+                    target_claim,
+                ) {
+                    return Err(LedgerError::UnauthorizedRelationEffect {
+                        actor: event.actor.kind_name(),
+                        kind: relation.kind,
+                    });
+                }
+                self.relations.push((
+                    relation.clone(),
+                    AcceptedRelationMeta {
+                        accept_seq,
+                        actor: event.actor.clone(),
+                    },
+                ));
             }
             EventPayload::DecisionRecorded(decision) => {
-                let target = self.claim_metadata(decision.target_claim_id)?;
-                if target.scope_id != decision.scope_id {
+                let (target_claim, target) = self.claim_record(decision.target_claim_id)?;
+                if target.scope_id != decision.resolution_slot.scope_id {
                     return Err(LedgerError::CrossScope("user decision"));
                 }
                 if target.domain_id != event.domain_id {
                     return Err(LedgerError::CrossDomain("user decision"));
+                }
+                if target_claim.subject_entity_id != decision.resolution_slot.subject_entity_id
+                    || target_claim.predicate_id != decision.resolution_slot.predicate_id
+                    || target_claim.object != decision.target_object
+                {
+                    return Err(LedgerError::DecisionSemanticMismatch);
                 }
                 if !self.decision_ids.insert(decision.id) {
                     return Err(LedgerError::DuplicateId {
@@ -366,7 +423,7 @@ impl LedgerState {
                         .artifacts
                         .get(&evidence.artifact_id)
                         .ok_or(LedgerError::UnknownArtifact(evidence.artifact_id))?;
-                    if artifact.domain_id != event.domain_id {
+                    if artifact.descriptor.domain_id != event.domain_id {
                         return Err(LedgerError::CrossDomain("decision evidence"));
                     }
                 }
@@ -374,12 +431,20 @@ impl LedgerState {
                     replacement_claim_id,
                 } = &decision.action
                 {
-                    let replacement = self.claim_metadata(*replacement_claim_id)?;
-                    if replacement.scope_id != decision.scope_id {
+                    let (replacement_claim, replacement) =
+                        self.claim_record(*replacement_claim_id)?;
+                    if replacement.scope_id != decision.resolution_slot.scope_id {
                         return Err(LedgerError::CrossScope("replacement decision"));
                     }
                     if replacement.domain_id != event.domain_id {
                         return Err(LedgerError::CrossDomain("replacement decision"));
+                    }
+                    if replacement_claim.subject_entity_id
+                        != decision.resolution_slot.subject_entity_id
+                        || replacement_claim.predicate_id != decision.resolution_slot.predicate_id
+                        || replacement_claim.object == decision.target_object
+                    {
+                        return Err(LedgerError::DecisionSemanticMismatch);
                     }
                 }
                 self.decisions
@@ -389,10 +454,10 @@ impl LedgerState {
         Ok(())
     }
 
-    fn claim_metadata(&self, claim_id: ClaimId) -> Result<AcceptedClaimMeta, LedgerError> {
+    fn claim_record(&self, claim_id: ClaimId) -> Result<(&Claim, AcceptedClaimMeta), LedgerError> {
         self.claims
             .get(&claim_id)
-            .map(|(_, metadata)| *metadata)
+            .map(|(claim, metadata)| (claim, *metadata))
             .ok_or(LedgerError::UnknownClaim(claim_id))
     }
 
@@ -411,7 +476,7 @@ impl LedgerState {
     /// Returns a descriptor by immutable identity.
     #[must_use]
     pub fn artifact(&self, id: ArtifactId) -> Option<&ArtifactDescriptor> {
-        self.artifacts.get(&id)
+        self.artifacts.get(&id).map(|artifact| &artifact.descriptor)
     }
 
     /// Returns an evidence item by immutable identity.
@@ -439,71 +504,169 @@ impl LedgerState {
 
         let candidate_ids: BTreeSet<ClaimId> =
             candidates.iter().map(|(claim, _)| claim.id).collect();
-        let superseded: BTreeSet<ClaimId> = self
-            .relations
+        let mut applicable_decisions: Vec<(&UserDecision, u64)> = self
+            .decisions
             .iter()
-            .filter(|(_, metadata)| metadata.accept_seq <= query.known_at_accept_seq)
-            .filter(|(relation, _)| {
-                matches!(
-                    relation.kind,
-                    ClaimRelationKind::Supersedes | ClaimRelationKind::Retracts
-                ) && relation.scope_id == query.scope_id
-                    && candidate_ids.contains(&relation.source_claim_id)
-                    && candidate_ids.contains(&relation.target_claim_id)
+            .filter_map(|(decision, metadata)| {
+                (metadata.accept_seq <= query.known_at_accept_seq
+                    && decision.resolution_slot.subject_entity_id == query.subject_entity_id
+                    && decision.resolution_slot.predicate_id == query.predicate_id
+                    && decision.resolution_slot.scope_id == query.scope_id
+                    && decision.valid_time.contains(query.valid_at))
+                .then_some((decision, metadata.accept_seq))
             })
-            .map(|(relation, _)| relation.target_claim_id)
             .collect();
-
-        let mut latest_decisions: BTreeMap<ClaimId, (u64, &DecisionAction)> = BTreeMap::new();
-        for (decision, metadata) in self.decisions.iter().filter(|(decision, metadata)| {
-            metadata.accept_seq <= query.known_at_accept_seq
-                && decision.scope_id == query.scope_id
-                && candidate_ids.contains(&decision.target_claim_id)
-        }) {
-            let entry = latest_decisions
-                .entry(decision.target_claim_id)
-                .or_insert((metadata.accept_seq, &decision.action));
-            if metadata.accept_seq > entry.0 {
-                *entry = (metadata.accept_seq, &decision.action);
-            }
-        }
-
-        let mut rejected = superseded;
-        let mut confirmed = BTreeSet::new();
-        for (target, (_, action)) in latest_decisions {
-            match action {
-                DecisionAction::Reject => {
-                    rejected.insert(target);
-                }
+        applicable_decisions.sort_by_key(|(decision, accept_seq)| (*accept_seq, decision.id));
+        let has_user_override = !applicable_decisions.is_empty();
+        let mut rejected_objects: Vec<ClaimObject> = Vec::new();
+        let mut chosen_object: Option<ClaimObject> = None;
+        for (decision, _) in applicable_decisions {
+            match &decision.action {
                 DecisionAction::Confirm => {
-                    confirmed.insert(target);
+                    rejected_objects.retain(|object| object != &decision.target_object);
+                    chosen_object = Some(decision.target_object.clone());
+                }
+                DecisionAction::Reject => {
+                    if !rejected_objects.contains(&decision.target_object) {
+                        rejected_objects.push(decision.target_object.clone());
+                    }
+                    if chosen_object.as_ref() == Some(&decision.target_object) {
+                        chosen_object = None;
+                    }
                 }
                 DecisionAction::Replace {
                     replacement_claim_id,
                 } => {
-                    rejected.insert(target);
-                    confirmed.insert(*replacement_claim_id);
+                    if !rejected_objects.contains(&decision.target_object) {
+                        rejected_objects.push(decision.target_object.clone());
+                    }
+                    if let Some((replacement, _)) = self.claims.get(replacement_claim_id) {
+                        rejected_objects.retain(|object| object != &replacement.object);
+                        chosen_object = Some(replacement.object.clone());
+                    }
                 }
             }
         }
 
+        let mut rejected: BTreeSet<ClaimId> = candidates
+            .iter()
+            .filter(|(claim, _)| claim.epistemic_status == EpistemicStatus::Superseded)
+            .map(|(claim, _)| claim.id)
+            .collect();
+        let lifecycle_conflicts: BTreeSet<ClaimId> = candidates
+            .iter()
+            .filter(|(claim, _)| claim.epistemic_status == EpistemicStatus::Disputed)
+            .map(|(claim, _)| claim.id)
+            .collect();
+
+        for (relation, metadata) in self.relations.iter().filter(|(relation, metadata)| {
+            metadata.accept_seq <= query.known_at_accept_seq
+                && relation.scope_id == query.scope_id
+                && candidate_ids.contains(&relation.source_claim_id)
+                && candidate_ids.contains(&relation.target_claim_id)
+                && matches!(
+                    relation.kind,
+                    ClaimRelationKind::Supersedes | ClaimRelationKind::Retracts
+                )
+        }) {
+            let Some((source, _)) = self.claims.get(&relation.source_claim_id) else {
+                continue;
+            };
+            let Some((target, _)) = self.claims.get(&relation.target_claim_id) else {
+                continue;
+            };
+            if chosen_object
+                .as_ref()
+                .is_some_and(|object| object == &target.object)
+            {
+                continue;
+            }
+            if relation_effect_is_authorized(&metadata.actor, relation.kind, source, target) {
+                rejected.insert(target.id);
+            }
+        }
+
+        rejected.extend(
+            candidates
+                .iter()
+                .filter(|(claim, _)| rejected_objects.contains(&claim.object))
+                .map(|(claim, _)| claim.id),
+        );
+
         let eligible: Vec<(&Claim, u64, u16)> = candidates
             .into_iter()
-            .filter(|(claim, _)| !rejected.contains(&claim.id))
+            .filter(|(claim, _)| {
+                !rejected.contains(&claim.id)
+                    && !matches!(
+                        claim.epistemic_status,
+                        EpistemicStatus::Disputed | EpistemicStatus::Superseded
+                    )
+            })
             .map(|(claim, accepted)| {
-                let decision_bonus = u16::from(confirmed.contains(&claim.id)) * 1000;
                 (
                     claim,
                     accepted,
-                    decision_bonus + authority_rank(query.policy, claim.authority_class),
+                    authority_rank(query.policy, claim.authority_class),
                 )
             })
             .collect();
 
+        if has_user_override {
+            let mut conflicting = lifecycle_conflicts;
+            let active = match &chosen_object {
+                Some(chosen_object) => {
+                    let active: BTreeSet<ClaimId> = eligible
+                        .iter()
+                        .filter(|(claim, _, _)| chosen_object == &claim.object)
+                        .map(|(claim, _, _)| claim.id)
+                        .collect();
+                    conflicting.extend(
+                        eligible
+                            .iter()
+                            .filter(|(claim, _, _)| !active.contains(&claim.id))
+                            .map(|(claim, _, _)| claim.id),
+                    );
+                    active
+                }
+                None => {
+                    let user_candidates: Vec<&Claim> = eligible
+                        .iter()
+                        .filter(|(claim, _, _)| {
+                            claim.authority_class == AuthorityClass::UserExplicit
+                        })
+                        .map(|(claim, _, _)| *claim)
+                        .collect();
+                    let mut user_objects: Vec<&ClaimObject> = Vec::new();
+                    for claim in &user_candidates {
+                        if !user_objects.contains(&&claim.object) {
+                            user_objects.push(&claim.object);
+                        }
+                    }
+                    let active: BTreeSet<ClaimId> = if user_objects.len() == 1 {
+                        user_candidates.iter().map(|claim| claim.id).collect()
+                    } else {
+                        BTreeSet::new()
+                    };
+                    conflicting.extend(
+                        eligible
+                            .iter()
+                            .filter(|(claim, _, _)| !active.contains(&claim.id))
+                            .map(|(claim, _, _)| claim.id),
+                    );
+                    active
+                }
+            };
+            return ResolutionResult {
+                active_claim_ids: active.into_iter().collect(),
+                conflicting_claim_ids: conflicting.into_iter().collect(),
+                rejected_claim_ids: rejected.into_iter().collect(),
+            };
+        }
+
         let Some(max_rank) = eligible.iter().map(|(_, _, rank)| *rank).max() else {
             return ResolutionResult {
                 active_claim_ids: Vec::new(),
-                conflicting_claim_ids: Vec::new(),
+                conflicting_claim_ids: lifecycle_conflicts.into_iter().collect(),
                 rejected_claim_ids: rejected.into_iter().collect(),
             };
         };
@@ -524,7 +687,7 @@ impl LedgerState {
         } else {
             top_ranked.iter().map(|claim| claim.id).collect()
         };
-        let conflicting_claim_ids = if equal_rank_conflict {
+        let mut conflicting_claim_ids: BTreeSet<ClaimId> = if equal_rank_conflict {
             eligible.iter().map(|(claim, _, _)| claim.id).collect()
         } else {
             eligible
@@ -534,10 +697,11 @@ impl LedgerState {
                 .map(|(claim, _, _)| claim.id)
                 .collect()
         };
+        conflicting_claim_ids.extend(lifecycle_conflicts);
 
         ResolutionResult {
             active_claim_ids,
-            conflicting_claim_ids,
+            conflicting_claim_ids: conflicting_claim_ids.into_iter().collect(),
             rejected_claim_ids: rejected.into_iter().collect(),
         }
     }
@@ -647,6 +811,62 @@ fn authority_rank(policy: AuthorityPolicy, authority: AuthorityClass) -> u16 {
             AuthorityClass::Unknown => 0,
         },
     }
+}
+
+fn relation_effect_is_authorized(
+    actor: &Actor,
+    kind: ClaimRelationKind,
+    source: &Claim,
+    target: &Claim,
+) -> bool {
+    if !matches!(
+        kind,
+        ClaimRelationKind::Supersedes | ClaimRelationKind::Retracts
+    ) {
+        return true;
+    }
+    if matches!(
+        source.epistemic_status,
+        EpistemicStatus::Disputed | EpistemicStatus::Superseded
+    ) || matches!(
+        target.epistemic_status,
+        EpistemicStatus::Disputed | EpistemicStatus::Superseded
+    ) {
+        return false;
+    }
+    if source.authority_class != target.authority_class
+        || source.epistemic_status != target.epistemic_status
+    {
+        return false;
+    }
+    matches!(
+        (actor, source.authority_class, source.epistemic_status),
+        (
+            Actor::User { .. },
+            AuthorityClass::UserExplicit,
+            EpistemicStatus::UserConfirmed
+        ) | (
+            Actor::DeterministicEngine { .. },
+            AuthorityClass::DeterministicEngine,
+            EpistemicStatus::DeterministicDerived
+        ) | (
+            Actor::ModelRun { .. },
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred
+        ) | (
+            Actor::ModelRun { .. },
+            AuthorityClass::Prediction,
+            EpistemicStatus::Prediction
+        ) | (
+            Actor::Importer { .. },
+            AuthorityClass::Official,
+            EpistemicStatus::OfficialConfirmed
+        ) | (
+            Actor::Importer { .. },
+            AuthorityClass::DirectObservation,
+            EpistemicStatus::CodeObserved
+        )
+    )
 }
 
 /// Coordinates for a bitemporal claim query.
@@ -762,8 +982,8 @@ mod tests {
     use academic_contracts::{DeviceAuthorization, sign_batch, verify_signed_batch};
     use academic_domain::{
         ArtifactRepresentation, ConfidencePermille, EvidenceLocator, EvidenceRole,
-        EvidenceStrength, MediaType, PermissionLineageId, RetentionClass, ScopeDescriptor,
-        ValidInterval, VaultLocator,
+        EvidenceStrength, MediaType, PermissionLineageId, ResolutionSlot, RetentionClass,
+        ScopeDescriptor, ValidInterval, VaultLocator,
     };
     use ed25519_dalek::SigningKey;
 
@@ -895,6 +1115,46 @@ mod tests {
         Ok(verify_signed_batch(&signed, &authorization)?)
     }
 
+    fn resolution_claim(
+        suffix: u32,
+        object: ClaimObject,
+        authority_class: AuthorityClass,
+        epistemic_status: EpistemicStatus,
+        valid_time: ValidInterval,
+    ) -> Result<Claim, DomainError> {
+        Ok(Claim {
+            id: id(suffix)?,
+            subject_entity_id: id(4)?,
+            predicate_id: PredicateId::parse("test.value")?,
+            object,
+            scope_id: id(12)?,
+            authority_class,
+            epistemic_status,
+            confidence: None,
+            valid_time,
+            evidence_ids: vec![id(3)?],
+        })
+    }
+
+    fn insert_claim(
+        ledger: &mut LedgerState,
+        claim: Claim,
+        accept_seq: u64,
+    ) -> Result<(), DomainError> {
+        ledger.claims.insert(
+            claim.id,
+            (
+                claim.clone(),
+                AcceptedClaimMeta {
+                    accept_seq,
+                    domain_id: id(1)?,
+                    scope_id: claim.scope_id,
+                },
+            ),
+        );
+        Ok(())
+    }
+
     #[test]
     fn ledger_acceptance_requires_verified_capability_and_is_idempotent()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -1020,7 +1280,7 @@ mod tests {
     }
 
     #[test]
-    fn explicit_page_time_and_repository_representation_metadata_closes_evidence()
+    fn page_time_and_repository_evidence_fails_closed_without_a_byte_resolver()
     -> Result<(), Box<dyn std::error::Error>> {
         let digest = ContentDigest::sha256(b"synthetic");
         let representations = [
@@ -1056,9 +1316,7 @@ mod tests {
                 return Err("fixture evidence event missing".into());
             };
             evidence.locator = locator;
-            let verified = verify_batch(&batch)?;
-            let receipt = LedgerState::new().accept_verified_batch(&verified)?;
-            assert_eq!(receipt.accept_seq_end, 4);
+            assert!(verify_batch(&batch).is_err());
         }
         Ok(())
     }
@@ -1077,6 +1335,644 @@ mod tests {
         };
         artifact.evidence_representations[0].byte_length = artifact.byte_length + 1;
         assert!(verify_batch(&batch).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn t007_forged_full_span_representation_digest_is_rejected()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut batch = fixture_batch()?;
+        let forged = ContentDigest::sha256(b"forged representation");
+        let EventPayload::ArtifactRegistered(artifact) = &mut batch.events[1].payload else {
+            return Err("fixture artifact event missing".into());
+        };
+        artifact.evidence_representations[0].content_digest = forged;
+        let EventPayload::EvidenceRegistered(evidence) = &mut batch.events[2].payload else {
+            return Err("fixture evidence event missing".into());
+        };
+        evidence.excerpt_digest = forged;
+        assert!(verify_batch(&batch).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn t007_partial_and_derived_representations_fail_closed_without_verifier_capability()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut batch = fixture_batch()?;
+        let partial_digest = ContentDigest::sha256(b"syntheti");
+        let partial_locator = EvidenceLocator::TextBytes {
+            source_digest: ContentDigest::sha256(b"synthetic"),
+            start: 0,
+            end: 8,
+        };
+        let EventPayload::ArtifactRegistered(artifact) = &mut batch.events[1].payload else {
+            return Err("fixture artifact event missing".into());
+        };
+        artifact.evidence_representations[0] = ArtifactRepresentation {
+            locator: partial_locator.clone(),
+            content_digest: partial_digest,
+            byte_length: 8,
+        };
+        let EventPayload::EvidenceRegistered(evidence) = &mut batch.events[2].payload else {
+            return Err("fixture evidence event missing".into());
+        };
+        evidence.locator = partial_locator;
+        evidence.excerpt_digest = partial_digest;
+
+        assert!(verify_batch(&batch).is_err());
+        batch.events[1].actor = Actor::DeterministicEngine {
+            name: "fixture.byte-resolver".to_owned(),
+            version: "1".to_owned(),
+        };
+        assert!(
+            verify_batch(&batch).is_err(),
+            "a caller-selected engine actor is not a byte-resolver capability"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn t007_user_reject_decision_survives_fresh_claim_id_rerun_and_known_time()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let decision_interval =
+            ValidInterval::new(TimestampMillis::new(0), Some(TimestampMillis::new(100)))?;
+        let claim_interval = ValidInterval::open_ended(TimestampMillis::new(0));
+        let first = resolution_claim(
+            200,
+            ClaimObject::Text("dismissed".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            claim_interval,
+        )?;
+        let rerun = resolution_claim(
+            201,
+            first.object.clone(),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            claim_interval,
+        )?;
+        let contrary = resolution_claim(
+            202,
+            ClaimObject::Text("contrary".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            claim_interval,
+        )?;
+        let mut ledger = LedgerState::new();
+        insert_claim(&mut ledger, first.clone(), 1)?;
+        ledger.decisions.push((
+            UserDecision {
+                id: id(203)?,
+                target_claim_id: first.id,
+                target_object: first.object.clone(),
+                resolution_slot: ResolutionSlot {
+                    subject_entity_id: first.subject_entity_id,
+                    predicate_id: first.predicate_id.clone(),
+                    scope_id: first.scope_id,
+                },
+                action: DecisionAction::Reject,
+                valid_time: decision_interval,
+                rationale_evidence_ids: Vec::new(),
+                decided_at: TimestampMillis::new(1),
+                reversible_until: None,
+            },
+            AcceptedDecisionMeta { accept_seq: 2 },
+        ));
+        insert_claim(&mut ledger, rerun.clone(), 3)?;
+        insert_claim(&mut ledger, contrary.clone(), 4)?;
+
+        let before_known = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: first.subject_entity_id,
+            scope_id: first.scope_id,
+            predicate_id: first.predicate_id.clone(),
+            valid_at: TimestampMillis::new(10),
+            known_at_accept_seq: 1,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert_eq!(before_known.active_claim_ids, vec![first.id]);
+
+        let after_rerun = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: first.subject_entity_id,
+            scope_id: first.scope_id,
+            predicate_id: first.predicate_id.clone(),
+            valid_at: TimestampMillis::new(10),
+            known_at_accept_seq: 4,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert!(after_rerun.active_claim_ids.is_empty());
+        assert_eq!(after_rerun.rejected_claim_ids, vec![first.id, rerun.id],);
+        assert_eq!(after_rerun.conflicting_claim_ids, vec![contrary.id]);
+
+        let after_expiry = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: first.subject_entity_id,
+            scope_id: first.scope_id,
+            predicate_id: first.predicate_id.clone(),
+            valid_at: TimestampMillis::new(100),
+            known_at_accept_seq: 3,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert_eq!(after_expiry.active_claim_ids, vec![first.id, rerun.id]);
+        assert!(after_expiry.rejected_claim_ids.is_empty());
+        assert!(after_expiry.conflicting_claim_ids.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn t007_distinct_object_decisions_compose_without_erasing_prior_rejection()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let interval = ValidInterval::open_ended(TimestampMillis::new(0));
+        let dismissed = resolution_claim(
+            204,
+            ClaimObject::Text("dismissed".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            interval,
+        )?;
+        let selected = resolution_claim(
+            205,
+            ClaimObject::Text("selected".to_owned()),
+            AuthorityClass::UserExplicit,
+            EpistemicStatus::UserConfirmed,
+            interval,
+        )?;
+        let rerun = resolution_claim(
+            206,
+            dismissed.object.clone(),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            interval,
+        )?;
+        let mut ledger = LedgerState::new();
+        insert_claim(&mut ledger, dismissed.clone(), 1)?;
+        insert_claim(&mut ledger, selected.clone(), 2)?;
+        ledger.decisions.push((
+            UserDecision {
+                id: id(207)?,
+                target_claim_id: dismissed.id,
+                target_object: dismissed.object.clone(),
+                resolution_slot: ResolutionSlot {
+                    subject_entity_id: dismissed.subject_entity_id,
+                    predicate_id: dismissed.predicate_id.clone(),
+                    scope_id: dismissed.scope_id,
+                },
+                action: DecisionAction::Reject,
+                valid_time: interval,
+                rationale_evidence_ids: Vec::new(),
+                decided_at: TimestampMillis::new(1),
+                reversible_until: None,
+            },
+            AcceptedDecisionMeta { accept_seq: 3 },
+        ));
+        ledger.decisions.push((
+            UserDecision {
+                id: id(208)?,
+                target_claim_id: selected.id,
+                target_object: selected.object.clone(),
+                resolution_slot: ResolutionSlot {
+                    subject_entity_id: selected.subject_entity_id,
+                    predicate_id: selected.predicate_id.clone(),
+                    scope_id: selected.scope_id,
+                },
+                action: DecisionAction::Confirm,
+                valid_time: interval,
+                rationale_evidence_ids: Vec::new(),
+                decided_at: TimestampMillis::new(2),
+                reversible_until: None,
+            },
+            AcceptedDecisionMeta { accept_seq: 4 },
+        ));
+        insert_claim(&mut ledger, rerun.clone(), 5)?;
+
+        let result = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: dismissed.subject_entity_id,
+            scope_id: dismissed.scope_id,
+            predicate_id: dismissed.predicate_id.clone(),
+            valid_at: TimestampMillis::new(10),
+            known_at_accept_seq: 5,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert_eq!(result.active_claim_ids, vec![selected.id]);
+        assert_eq!(result.rejected_claim_ids, vec![dismissed.id, rerun.id]);
+        assert!(result.conflicting_claim_ids.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn t007_replacement_decision_preserves_adjacent_valid_time_handoff()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let before = ValidInterval::new(TimestampMillis::new(0), Some(TimestampMillis::new(10)))?;
+        let after = ValidInterval::new(TimestampMillis::new(10), Some(TimestampMillis::new(20)))?;
+        let first = resolution_claim(
+            210,
+            ClaimObject::Text("A".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            before,
+        )?;
+        let replacement = resolution_claim(
+            211,
+            ClaimObject::Text("B".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            after,
+        )?;
+        let replacement_rerun = resolution_claim(
+            212,
+            replacement.object.clone(),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            after,
+        )?;
+        let mut ledger = LedgerState::new();
+        insert_claim(&mut ledger, first.clone(), 1)?;
+        insert_claim(&mut ledger, replacement.clone(), 2)?;
+        ledger.decisions.push((
+            UserDecision {
+                id: id(213)?,
+                target_claim_id: first.id,
+                target_object: first.object.clone(),
+                resolution_slot: ResolutionSlot {
+                    subject_entity_id: first.subject_entity_id,
+                    predicate_id: first.predicate_id.clone(),
+                    scope_id: first.scope_id,
+                },
+                action: DecisionAction::Replace {
+                    replacement_claim_id: replacement.id,
+                },
+                valid_time: after,
+                rationale_evidence_ids: Vec::new(),
+                decided_at: TimestampMillis::new(2),
+                reversible_until: None,
+            },
+            AcceptedDecisionMeta { accept_seq: 3 },
+        ));
+        insert_claim(&mut ledger, replacement_rerun.clone(), 4)?;
+
+        let before_handoff = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: first.subject_entity_id,
+            scope_id: first.scope_id,
+            predicate_id: first.predicate_id.clone(),
+            valid_at: TimestampMillis::new(9),
+            known_at_accept_seq: 4,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert_eq!(before_handoff.active_claim_ids, vec![first.id]);
+
+        let after_handoff = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: first.subject_entity_id,
+            scope_id: first.scope_id,
+            predicate_id: first.predicate_id.clone(),
+            valid_at: TimestampMillis::new(10),
+            known_at_accept_seq: 4,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert_eq!(
+            after_handoff.active_claim_ids,
+            vec![replacement.id, replacement_rerun.id],
+        );
+        assert!(after_handoff.conflicting_claim_ids.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn t007_replacement_must_belong_to_the_same_semantic_slot()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let interval = ValidInterval::open_ended(TimestampMillis::new(0));
+        let first = resolution_claim(
+            220,
+            ClaimObject::Text("A".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            interval,
+        )?;
+        let mut replacement = resolution_claim(
+            221,
+            ClaimObject::Text("B".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            interval,
+        )?;
+        replacement.predicate_id = PredicateId::parse("other.value")?;
+        let mut ledger = LedgerState::new();
+        insert_claim(&mut ledger, first.clone(), 1)?;
+        insert_claim(&mut ledger, replacement.clone(), 2)?;
+        let decision = UserDecision {
+            id: id(222)?,
+            target_claim_id: first.id,
+            target_object: first.object.clone(),
+            resolution_slot: ResolutionSlot {
+                subject_entity_id: first.subject_entity_id,
+                predicate_id: first.predicate_id.clone(),
+                scope_id: first.scope_id,
+            },
+            action: DecisionAction::Replace {
+                replacement_claim_id: replacement.id,
+            },
+            valid_time: interval,
+            rationale_evidence_ids: Vec::new(),
+            decided_at: TimestampMillis::new(1),
+            reversible_until: None,
+        };
+        let decision_event = event(
+            id(223)?,
+            3,
+            TimestampMillis::new(2),
+            Actor::User { user_id: id(13)? },
+            id(1)?,
+            EventPayload::DecisionRecorded(decision),
+        );
+        assert!(matches!(
+            ledger.apply_event(&decision_event, 3),
+            Err(LedgerError::DecisionSemanticMismatch)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn t007_model_supersession_of_user_confirmed_claim_is_rejected()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut batch = fixture_batch()?;
+        let EventPayload::ClaimAsserted(user_claim) = &batch.events[3].payload else {
+            return Err("fixture claim event missing".into());
+        };
+        let user_claim = user_claim.clone();
+        let mut model_claim = user_claim.clone();
+        model_claim.id = id(230)?;
+        model_claim.object = ClaimObject::Mastery(MasteryLevel::Fluent);
+        model_claim.authority_class = AuthorityClass::ModelInference;
+        model_claim.epistemic_status = EpistemicStatus::AiInferred;
+        model_claim.confidence = Some(ConfidencePermille::new(800)?);
+        let model_actor = Actor::ModelRun { run_id: id(231)? };
+        batch.events.push(event(
+            id(232)?,
+            5,
+            TimestampMillis::new(14),
+            model_actor.clone(),
+            id(1)?,
+            EventPayload::ClaimAsserted(model_claim.clone()),
+        ));
+        batch.events.push(event(
+            id(233)?,
+            6,
+            TimestampMillis::new(15),
+            model_actor,
+            id(1)?,
+            EventPayload::ClaimRelated(ClaimRelation {
+                source_claim_id: model_claim.id,
+                target_claim_id: user_claim.id,
+                kind: ClaimRelationKind::Supersedes,
+                scope_id: user_claim.scope_id,
+            }),
+        ));
+        batch.origin_seq_end = 6;
+        let verified = verify_batch(&batch)?;
+        assert!(matches!(
+            LedgerState::new().accept_verified_batch(&verified),
+            Err(LedgerError::UnauthorizedRelationEffect { .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn t007_state_removing_relation_matrix_checks_both_claims_fail_closed()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let interval = ValidInterval::open_ended(TimestampMillis::new(0));
+        let model_source = resolution_claim(
+            234,
+            ClaimObject::Text("new".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            interval,
+        )?;
+        let model_target = resolution_claim(
+            235,
+            ClaimObject::Text("old".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            interval,
+        )?;
+        let model_actor = Actor::ModelRun { run_id: id(236)? };
+        assert!(relation_effect_is_authorized(
+            &model_actor,
+            ClaimRelationKind::Supersedes,
+            &model_source,
+            &model_target,
+        ));
+        assert!(relation_effect_is_authorized(
+            &model_actor,
+            ClaimRelationKind::Contradicts,
+            &model_source,
+            &model_target,
+        ));
+
+        let user_target = resolution_claim(
+            237,
+            ClaimObject::Text("user".to_owned()),
+            AuthorityClass::UserExplicit,
+            EpistemicStatus::UserConfirmed,
+            interval,
+        )?;
+        let prediction_target = resolution_claim(
+            238,
+            ClaimObject::Text("prediction".to_owned()),
+            AuthorityClass::Prediction,
+            EpistemicStatus::Prediction,
+            interval,
+        )?;
+        let mut terminal_source = model_source.clone();
+        terminal_source.epistemic_status = EpistemicStatus::Disputed;
+        let mut terminal_target = model_target.clone();
+        terminal_target.epistemic_status = EpistemicStatus::Superseded;
+        let engine_actor = Actor::DeterministicEngine {
+            name: "test.engine".to_owned(),
+            version: "1".to_owned(),
+        };
+        for (name, actor, source, target) in [
+            (
+                "model cannot remove user-confirmed state",
+                &model_actor,
+                &model_source,
+                &user_target,
+            ),
+            (
+                "model inference cannot remove prediction authority",
+                &model_actor,
+                &model_source,
+                &prediction_target,
+            ),
+            (
+                "terminal source cannot remove state",
+                &model_actor,
+                &terminal_source,
+                &model_target,
+            ),
+            (
+                "terminal target cannot be state-removed again",
+                &model_actor,
+                &model_source,
+                &terminal_target,
+            ),
+            (
+                "actor must own the exact source and target status class",
+                &engine_actor,
+                &model_source,
+                &model_target,
+            ),
+        ] {
+            assert!(
+                !relation_effect_is_authorized(actor, ClaimRelationKind::Retracts, source, target,),
+                "{name}"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn t007_relation_actor_provenance_is_preserved_and_override_protects_target()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let interval = ValidInterval::open_ended(TimestampMillis::new(0));
+        let target = resolution_claim(
+            240,
+            ClaimObject::Text("kept".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            interval,
+        )?;
+        let source = resolution_claim(
+            241,
+            ClaimObject::Text("later".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::AiInferred,
+            interval,
+        )?;
+        let actor = Actor::ModelRun { run_id: id(242)? };
+        let mut ledger = LedgerState::new();
+        insert_claim(&mut ledger, target.clone(), 1)?;
+        insert_claim(&mut ledger, source.clone(), 2)?;
+        ledger.relations.push((
+            ClaimRelation {
+                source_claim_id: source.id,
+                target_claim_id: target.id,
+                kind: ClaimRelationKind::Supersedes,
+                scope_id: target.scope_id,
+            },
+            AcceptedRelationMeta {
+                accept_seq: 3,
+                actor: actor.clone(),
+            },
+        ));
+        ledger.decisions.push((
+            UserDecision {
+                id: id(243)?,
+                target_claim_id: target.id,
+                target_object: target.object.clone(),
+                resolution_slot: ResolutionSlot {
+                    subject_entity_id: target.subject_entity_id,
+                    predicate_id: target.predicate_id.clone(),
+                    scope_id: target.scope_id,
+                },
+                action: DecisionAction::Confirm,
+                valid_time: interval,
+                rationale_evidence_ids: Vec::new(),
+                decided_at: TimestampMillis::new(2),
+                reversible_until: None,
+            },
+            AcceptedDecisionMeta { accept_seq: 4 },
+        ));
+        assert_eq!(ledger.relations[0].1.actor, actor);
+        let result = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: target.subject_entity_id,
+            scope_id: target.scope_id,
+            predicate_id: target.predicate_id.clone(),
+            valid_at: TimestampMillis::new(1),
+            known_at_accept_seq: 4,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert_eq!(result.active_claim_ids, vec![target.id]);
+        assert_eq!(result.conflicting_claim_ids, vec![source.id]);
+        assert!(result.rejected_claim_ids.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn t007_standalone_terminal_lifecycle_claims_never_activate()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let interval = ValidInterval::open_ended(TimestampMillis::new(0));
+        let superseded = resolution_claim(
+            250,
+            ClaimObject::Text("old".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::Superseded,
+            interval,
+        )?;
+        let disputed = resolution_claim(
+            251,
+            ClaimObject::Text("uncertain".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::Disputed,
+            interval,
+        )?;
+        for (claim, expected_rejected, expected_conflict) in [
+            (superseded.clone(), vec![superseded.id], Vec::new()),
+            (disputed.clone(), Vec::new(), vec![disputed.id]),
+        ] {
+            let mut ledger = LedgerState::new();
+            insert_claim(&mut ledger, claim.clone(), 1)?;
+            let result = ledger.resolve(&ResolutionQuery {
+                subject_entity_id: claim.subject_entity_id,
+                scope_id: claim.scope_id,
+                predicate_id: claim.predicate_id.clone(),
+                valid_at: TimestampMillis::new(1),
+                known_at_accept_seq: 1,
+                policy: AuthorityPolicy::UserOwned,
+            });
+            assert!(result.active_claim_ids.is_empty());
+            assert_eq!(result.rejected_claim_ids, expected_rejected);
+            assert_eq!(result.conflicting_claim_ids, expected_conflict);
+        }
+
+        let corroborating = resolution_claim(
+            252,
+            disputed.object.clone(),
+            AuthorityClass::UserExplicit,
+            EpistemicStatus::UserConfirmed,
+            interval,
+        )?;
+        let mut ledger = LedgerState::new();
+        insert_claim(&mut ledger, corroborating.clone(), 1)?;
+        insert_claim(&mut ledger, disputed.clone(), 2)?;
+        let result = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: disputed.subject_entity_id,
+            scope_id: disputed.scope_id,
+            predicate_id: disputed.predicate_id.clone(),
+            valid_at: TimestampMillis::new(1),
+            known_at_accept_seq: 2,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert_eq!(result.active_claim_ids, vec![corroborating.id]);
+        assert_eq!(result.conflicting_claim_ids, vec![disputed.id]);
+
+        let contrary_disputed = resolution_claim(
+            253,
+            ClaimObject::Text("contrary".to_owned()),
+            AuthorityClass::ModelInference,
+            EpistemicStatus::Disputed,
+            interval,
+        )?;
+        insert_claim(&mut ledger, contrary_disputed.clone(), 3)?;
+        let conflicting = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: disputed.subject_entity_id,
+            scope_id: disputed.scope_id,
+            predicate_id: disputed.predicate_id.clone(),
+            valid_at: TimestampMillis::new(1),
+            known_at_accept_seq: 3,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert_eq!(conflicting.active_claim_ids, vec![corroborating.id]);
+        assert_eq!(
+            conflicting.conflicting_claim_ids,
+            vec![disputed.id, contrary_disputed.id]
+        );
         Ok(())
     }
 
@@ -1122,14 +2018,23 @@ mod tests {
                 kind: ClaimRelationKind::Retracts,
                 scope_id: second.scope_id,
             },
-            AcceptedRelationMeta { accept_seq: 3 },
+            AcceptedRelationMeta {
+                accept_seq: 3,
+                actor: Actor::ModelRun { run_id: id(95)? },
+            },
         ));
         ledger.decisions.push((
             UserDecision {
                 id: id(94)?,
                 target_claim_id: first.id,
+                target_object: first.object.clone(),
+                resolution_slot: ResolutionSlot {
+                    subject_entity_id: first.subject_entity_id,
+                    predicate_id: first.predicate_id.clone(),
+                    scope_id: second.scope_id,
+                },
                 action: DecisionAction::Reject,
-                scope_id: second.scope_id,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
                 rationale_evidence_ids: Vec::new(),
                 decided_at: TimestampMillis::new(20),
                 reversible_until: None,

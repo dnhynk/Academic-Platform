@@ -7,8 +7,8 @@ use std::{
 };
 
 use academic_core::{
-    FINAL_VALID_AT, FixtureDocument, build_fixture_document, fixture_json, replay_fixture_document,
-    verify_fixture_document,
+    FINAL_VALID_AT, FIXTURE_VERSION, FixtureDocument, build_fixture_document_for_version,
+    fixture_json, replay_fixture_document, verify_fixture_document,
 };
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -49,6 +49,9 @@ enum Commands {
 enum FixtureCommand {
     /// Emits the deterministic fixture JSON to stdout or an explicit path.
     Emit {
+        /// Fixture/event schema version (1 is immutable compatibility; 2 is current).
+        #[arg(long, default_value_t = FIXTURE_VERSION)]
+        fixture_version: u16,
         /// Writes the deterministic bytes directly to this file when supplied.
         #[arg(long)]
         output: Option<PathBuf>,
@@ -93,8 +96,11 @@ fn main() -> Result<()> {
 
 fn fixture(command: FixtureCommand) -> Result<()> {
     match command {
-        FixtureCommand::Emit { output } => {
-            let document = build_fixture_document()?;
+        FixtureCommand::Emit {
+            fixture_version,
+            output,
+        } => {
+            let document = build_fixture_document_for_version(fixture_version)?;
             let json = fixture_json(&document)?;
             if let Some(path) = output {
                 fs::write(&path, json)

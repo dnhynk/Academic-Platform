@@ -12,7 +12,7 @@ The tracked LF bytes of the canonical design document have SHA-256 `4830DEBD1A9E
 | [006](ADR-006-policy-and-egress-broker.md) | Proposed | runtime egress absent | scoped token, preview, default-deny network, policy replay/audit |
 | [007](ADR-007-pipeline-and-provider-sandbox.md) | Proposed | no worker runtime | OS containment, limits, malicious corpus, core-only output acceptance |
 | [008](ADR-008-projection-and-retrieval.md) | Proposed | pure replay summary | full rebuild, generations, Korean/code corpus, domain isolation |
-| [009](ADR-009-ipc-and-external-contracts.md) | Accepted Phase 0 profile | Proto, JSON Schema, deterministic CBOR, Rust/TS fixture | N-1 clients, Kotlin/Swift, fuzz/limits, IPC framing |
+| [009](ADR-009-ipc-and-external-contracts.md) | Accepted Phase 0 profile | v1/v2 Proto and fixture schemas, immutable v1 upcast, current v2, deterministic CBOR | N-1 generated clients, Kotlin/Swift, fuzz/limits, IPC framing |
 | [010](ADR-010-sync-and-device-conflict.md) | Proposed | device hash-chain semantics | offline merge, pairing/revoke, relay privacy, lost-device exercise |
 | [011](ADR-011-monorepo-toolchain-ci-release.md) | Accepted baseline | pinned Cargo/pnpm, Windows/Linux CI | installer/signing/SBOM/updater negative tests |
 | [012](ADR-012-migration-backup-restore-export.md) | Proposed | original signed bytes preserved | version fixtures, resumable migration, empty-target restore, export round-trip |

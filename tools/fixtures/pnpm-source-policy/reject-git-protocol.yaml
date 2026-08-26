@@ -1,0 +1,5 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      bad: {specifier: 'git://example.invalid/owner/repository.git', version: 'git://example.invalid/owner/repository.git'}

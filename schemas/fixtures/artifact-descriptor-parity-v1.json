@@ -1,0 +1,311 @@
+{
+  "corpus_version": 1,
+  "base": {
+    "id": "01900000-0000-7000-8000-000000000003",
+    "content_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "media_type": "text/plain",
+    "byte_length": 9,
+    "domain_id": "01900000-0000-7000-8000-000000000001",
+    "confidentiality": "PERSONAL",
+    "retention_class": "USER_MANAGED",
+    "permission_lineage_id": "01900000-0000-7000-8000-000000000002",
+    "format_version": 1,
+    "vault_locator": "locator:v1:1111111111111111111111111111111111111111111111111111111111111111",
+    "evidence_representations": [
+      {
+        "locator": {
+          "kind": "TEXT_BYTES",
+          "source_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          "start": 0,
+          "end": 9
+        },
+        "content_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "byte_length": 9
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "valid full artifact TEXT_BYTES binding",
+      "mutations": [],
+      "schema_valid": true,
+      "semantic_valid": true
+    },
+    {
+      "name": "valid partial TEXT_BYTES representation",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator/end", "value": 4 },
+        { "op": "replace", "path": "/evidence_representations/0/content_digest", "value": "sha256:3333333333333333333333333333333333333333333333333333333333333333" },
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 4 }
+      ],
+      "schema_valid": true,
+      "semantic_valid": true
+    },
+    {
+      "name": "valid PAGE representation",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 1 } }
+      ],
+      "schema_valid": true,
+      "semantic_valid": true
+    },
+    {
+      "name": "valid TRANSCRIPT_TIME representation",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "TRANSCRIPT_TIME", "start_ms": 1, "end_ms": 2 } }
+      ],
+      "schema_valid": true,
+      "semantic_valid": true
+    },
+    {
+      "name": "valid Unicode REPOSITORY_BYTES representation",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "docs/설계.md", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": true,
+      "semantic_valid": true
+    },
+    {
+      "name": "forged full-span representation digest",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/content_digest", "value": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "TEXT_BYTES reversed range",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator/start", "value": 5 },
+        { "op": "replace", "path": "/evidence_representations/0/locator/end", "value": 4 },
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 1 }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "TEXT_BYTES empty range",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator/end", "value": 0 },
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 0 }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "TEXT_BYTES end beyond artifact length",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator/end", "value": 10 },
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 10 }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "TEXT_BYTES representation length mismatch",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 8 }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "TEXT_BYTES source digest mismatch",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator/source_digest", "value": "sha256:2222222222222222222222222222222222222222222222222222222222222222" }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "duplicate locator identity despite different representation digest",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator/end", "value": 4 },
+        { "op": "replace", "path": "/evidence_representations/0/content_digest", "value": "sha256:3333333333333333333333333333333333333333333333333333333333333333" },
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 4 },
+        { "op": "append", "path": "/evidence_representations", "value": { "locator": { "kind": "TEXT_BYTES", "source_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "start": 0, "end": 4 }, "content_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444", "byte_length": 4 } }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "TRANSCRIPT_TIME reversed range",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "TRANSCRIPT_TIME", "start_ms": 2, "end_ms": 1 } }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "TRANSCRIPT_TIME empty range",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "TRANSCRIPT_TIME", "start_ms": 2, "end_ms": 2 } }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "REPOSITORY_BYTES reversed range",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src/lib.rs", "start": 4, "end": 3 } },
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 1 }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "REPOSITORY_BYTES representation length mismatch",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src/lib.rs", "start": 0, "end": 8 } }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "REPOSITORY_BYTES empty range",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src/lib.rs", "start": 3, "end": 3 } },
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 0 }
+      ],
+      "schema_valid": true,
+      "semantic_valid": false
+    },
+    {
+      "name": "unsafe artifact byte length",
+      "mutations": [
+        { "op": "replace", "path": "/byte_length", "value": 9007199254740992 }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "unsafe representation byte length",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 9007199254740992 }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "unsafe TEXT_BYTES range integer",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator/end", "value": 9007199254740992 },
+        { "op": "replace", "path": "/evidence_representations/0/byte_length", "value": 9007199254740992 }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "oversized numeric artifact byte length",
+      "mutations": [
+        { "op": "replace", "path": "/byte_length", "value": 1e30 }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "zero page number",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 0 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "oversized page number",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 4294967296 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path POSIX root",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "/etc/passwd", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path Windows drive",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "C:/Windows/System32", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path UNC form",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "\\\\server\\share\\file", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path Windows device form",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "\\\\?\\C:\\device", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path URI",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "https://example.invalid/a", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path backslash",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src\\lib.rs", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path control character",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src/\u001flib.rs", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path current directory component",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src/./lib.rs", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path parent component",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src/../lib.rs", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path empty component",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src//lib.rs", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "repository path trailing slash",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src/", "start": 0, "end": 9 } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    }
+  ]
+}

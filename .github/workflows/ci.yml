@@ -35,12 +35,14 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test Rust workspace
         run: cargo test --workspace --locked
-      - name: Verify and replay signed fixture
+      - name: Verify immutable v1/upcast and emit, diff, verify, replay v2
         run: |
-          cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v1.json
-          git diff --exit-code -- schemas/fixtures/signed-batch-v1.json
           cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
           cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json
+          cargo run --locked --quiet -p academic-cli -- fixture emit --fixture-version 2 --output schemas/fixtures/signed-batch-v2.json
+          git diff --exit-code -- schemas/fixtures/signed-batch-v1.json schemas/fixtures/signed-batch-v2.json
+          cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json
+          cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json
 
   contracts:
     name: pnpm-contracts
@@ -67,7 +69,7 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
-      - name: Verify schema and fixture contracts
+      - name: Verify schema, semantic parity, fixture, and Proto contracts
         run: pnpm verify:contracts
-      - name: Check dependency-source baseline
+      - name: Check structural dependency-source baseline and negative fixtures
         run: pnpm security

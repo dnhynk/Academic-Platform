@@ -1,0 +1,4 @@
+lockfileVersion: '9.0'
+packages:
+  bad@1.0.0:
+    resolution: {tarball: 'http://packages.example.invalid/bad-1.0.0.tgz'}

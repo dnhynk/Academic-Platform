@@ -1,26 +1,33 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { parseFixtureDocument } from "./index.js";
 
-const fixtureUrl = new URL("../../../schemas/fixtures/signed-batch-v1.json", import.meta.url);
+const fixtureV1Url = new URL("../../../schemas/fixtures/signed-batch-v1.json", import.meta.url);
+const fixtureV2Url = new URL("../../../schemas/fixtures/signed-batch-v2.json", import.meta.url);
+const immutableV1Sha256 = "287f7dea8fd24c3c6eb205c3f1e2873f6afdf7d6532fe7be4fccfb44a0b7e163";
 
-void test("the cross-language fixture is synthetic and structurally valid", async () => {
-  const text = await readFile(fixtureUrl, "utf8");
-  const input: unknown = JSON.parse(text) as unknown;
-  const fixture = parseFixtureDocument(input);
+void test("the immutable v1 and current v2 fixtures are synthetic and structurally valid", async () => {
+  const [v1Bytes, v2Text] = await Promise.all([readFile(fixtureV1Url), readFile(fixtureV2Url, "utf8")]);
+  assert.equal(createHash("sha256").update(v1Bytes).digest("hex"), immutableV1Sha256);
 
-  assert.equal(fixture.fixture_version, 1);
-  assert.equal(fixture.data_class, "SYNTHETIC_ONLY");
-  assert.equal(fixture.network_egress, "NONE");
-  assert.equal(fixture.expected_replay.mastery, "PRACTICED");
-  assert.equal(fixture.expected_replay.freshness, "STALE");
-  assert.equal(fixture.expected_replay.accepted_events, 13);
+  for (const [version, text] of [[1, v1Bytes.toString("utf8")], [2, v2Text]] as const) {
+    const input: unknown = JSON.parse(text) as unknown;
+    const fixture = parseFixtureDocument(input);
+
+    assert.equal(fixture.fixture_version, version);
+    assert.equal(fixture.data_class, "SYNTHETIC_ONLY");
+    assert.equal(fixture.network_egress, "NONE");
+    assert.equal(fixture.expected_replay.mastery, "PRACTICED");
+    assert.equal(fixture.expected_replay.freshness, "STALE");
+    assert.equal(fixture.expected_replay.accepted_events, 13);
+  }
 });
 
 void test("const, minimum, uniqueness, and additional-property violations fail closed", async () => {
-  const text = await readFile(fixtureUrl, "utf8");
+  const text = await readFile(fixtureV2Url, "utf8");
   const fixture: unknown = JSON.parse(text) as unknown;
   assert.equal(typeof fixture, "object");
   const mutations: readonly ((value: Record<string, unknown>) => void)[] = [
@@ -30,6 +37,9 @@ void test("const, minimum, uniqueness, and additional-property violations fail c
     (value) => {
       const contract = value.contract as Record<string, unknown>;
       contract.payload = "wrong";
+    },
+    (value) => {
+      value.fixture_version = 1;
     },
     (value) => {
       const replay = value.expected_replay as Record<string, unknown>;

@@ -9,4 +9,4 @@ Phase 0 changes must preserve the following review rules:
 5. Update a golden fixture only through the deterministic builder and explain the semantic change in the relevant ADR.
 6. Run every command in the README verification block before commit.
 
-Dependency additions require an owner, license review, feature review, advisory path, and an explanation of why the dependency belongs inside its trust boundary. Git dependencies and insecure package tarballs are rejected by `pnpm security`.
+Dependency additions require an owner, license review, feature review, advisory path, and an explanation of why the dependency belongs inside its trust boundary. Git dependencies and insecure package tarballs are rejected by the structural `pnpm security` lock parser; update its source-encoding fixtures with any pnpm lock-format change.

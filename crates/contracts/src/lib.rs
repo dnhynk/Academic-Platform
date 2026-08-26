@@ -4,9 +4,12 @@
 //! integers, booleans, text, and bytes. JSON-shaped domain values are encoded
 //! as tagged arrays, so map iteration order cannot affect signed bytes.
 
-use std::io::Cursor;
+use std::{collections::BTreeMap, io::Cursor};
 
-use academic_domain::{Actor, ContentDigest, DeviceId, DomainError, EntityId, UnsignedBatch};
+use academic_domain::{
+    Actor, ContentDigest, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2,
+    EntityId, UnsignedBatch,
+};
 use ciborium::value::{Integer, Value as CborValue};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue};
@@ -41,6 +44,7 @@ const JSON_OBJECT: u64 = 5;
 ///     VerifiedBatch {
 ///         batch,
 ///         public_key,
+///         source_schema_version: 2,
 ///         payload_hash: hash,
 ///         envelope_hash: hash,
 ///     }
@@ -50,6 +54,7 @@ const JSON_OBJECT: u64 = 5;
 pub struct VerifiedBatch {
     batch: UnsignedBatch,
     public_key: VerifyingKey,
+    source_schema_version: u16,
     payload_hash: ContentDigest,
     envelope_hash: ContentDigest,
 }
@@ -65,6 +70,12 @@ impl VerifiedBatch {
     #[must_use]
     pub const fn public_key(&self) -> &VerifyingKey {
         &self.public_key
+    }
+
+    /// Returns the schema version authenticated in the original signed bytes.
+    #[must_use]
+    pub const fn source_schema_version(&self) -> u16 {
+        self.source_schema_version
     }
 
     /// Returns the digest of the canonical signing payload.
@@ -173,6 +184,9 @@ pub enum ContractError {
     /// Ed25519 verification failed.
     #[error("Ed25519 signature verification failed")]
     InvalidSignature,
+    /// A legacy v1 payload could not be deterministically mapped into v2 semantics.
+    #[error("legacy event-schema compatibility failure: {0}")]
+    LegacyCompatibility(&'static str),
 }
 
 /// Encodes and signs a batch with an explicit Ed25519 key.
@@ -181,6 +195,23 @@ pub fn sign_batch(
     signing_key: &SigningKey,
 ) -> Result<Vec<u8>, ContractError> {
     let payload = encode_unsigned_batch(batch)?;
+    let signature = signing_key.sign(&payload);
+    encode_envelope(
+        &payload,
+        signing_key.verifying_key().as_bytes(),
+        &signature.to_bytes(),
+    )
+}
+
+/// Encodes and signs the legacy v1-compatible projection of a current v2 batch.
+///
+/// This exists only for byte-exact golden compatibility. It rejects any v2
+/// decision whose semantics cannot be represented losslessly by the v1 shape.
+pub fn sign_batch_v1_compat(
+    batch: &UnsignedBatch,
+    signing_key: &SigningKey,
+) -> Result<Vec<u8>, ContractError> {
+    let payload = encode_unsigned_batch_v1_compat(batch)?;
     let signature = signing_key.sign(&payload);
     encode_envelope(
         &payload,
@@ -225,7 +256,7 @@ pub fn verify_signed_batch(
         .verify(&payload, &signature)
         .map_err(|_| ContractError::InvalidSignature)?;
 
-    let batch = decode_unsigned_batch(&payload)?;
+    let (batch, source_schema_version) = decode_unsigned_batch_with_source(&payload)?;
     if batch.device_id != authorization.device_id() {
         return Err(ContractError::UnexpectedDeviceId);
     }
@@ -240,6 +271,7 @@ pub fn verify_signed_batch(
     Ok(VerifiedBatch {
         batch,
         public_key,
+        source_schema_version,
         payload_hash: ContentDigest::sha256(&payload),
         envelope_hash: ContentDigest::sha256(envelope_bytes),
     })
@@ -252,16 +284,248 @@ pub fn encode_unsigned_batch(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractE
     encode_cbor_value(&json_to_cbor(&json)?)
 }
 
+/// Encodes the lossless v1 projection used to reproduce the immutable v1 golden fixture.
+pub fn encode_unsigned_batch_v1_compat(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {
+    batch.validate()?;
+    let mut json = serde_json::to_value(batch)?;
+    transform_decisions_for_v1(&mut json)?;
+    set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V1)?;
+    encode_cbor_value(&json_to_cbor(&json)?)
+}
+
 /// Decodes and canonicality-checks an unsigned signing payload.
 pub fn decode_unsigned_batch(bytes: &[u8]) -> Result<UnsignedBatch, ContractError> {
+    decode_unsigned_batch_with_source(bytes).map(|(batch, _)| batch)
+}
+
+fn decode_unsigned_batch_with_source(bytes: &[u8]) -> Result<(UnsignedBatch, u16), ContractError> {
     let cbor = decode_single_cbor(bytes)?;
-    let json = cbor_to_json(&cbor)?;
-    let batch: UnsignedBatch = serde_json::from_value(json)?;
-    batch.validate()?;
-    if encode_unsigned_batch(&batch)? != bytes {
+    let mut json = cbor_to_json(&cbor)?;
+    if encode_cbor_value(&json_to_cbor(&json)?)? != bytes {
         return Err(ContractError::NonCanonicalEncoding);
     }
-    Ok(batch)
+    let source_schema_version = read_schema_version(&json)?;
+    match source_schema_version {
+        EVENT_SCHEMA_VERSION_V1 => {
+            upcast_v1_to_v2(&mut json)?;
+            set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V2)?;
+        }
+        EVENT_SCHEMA_VERSION_V2 => {}
+        other => return Err(DomainError::UnsupportedSchemaVersion(other).into()),
+    }
+    let batch: UnsignedBatch = serde_json::from_value(json)?;
+    batch.validate()?;
+    Ok((batch, source_schema_version))
+}
+
+fn read_schema_version(json: &JsonValue) -> Result<u16, ContractError> {
+    json.get("schema_version")
+        .and_then(JsonValue::as_u64)
+        .and_then(|version| u16::try_from(version).ok())
+        .ok_or(ContractError::InvalidShape(
+            "batch schema_version must be a u16 integer",
+        ))
+}
+
+fn set_schema_version(json: &mut JsonValue, version: u16) -> Result<(), ContractError> {
+    let object = json.as_object_mut().ok_or(ContractError::InvalidShape(
+        "batch must be a JSON-shaped object",
+    ))?;
+    object.insert(
+        "schema_version".to_owned(),
+        JsonValue::Number(JsonNumber::from(version)),
+    );
+    Ok(())
+}
+
+fn claim_index(json: &JsonValue) -> Result<BTreeMap<String, JsonValue>, ContractError> {
+    let events = json
+        .get("events")
+        .and_then(JsonValue::as_array)
+        .ok_or(ContractError::InvalidShape("batch events must be an array"))?;
+    let mut claims = BTreeMap::new();
+    for event in events {
+        let Some(payload) = event.get("payload").and_then(JsonValue::as_object) else {
+            return Err(ContractError::InvalidShape(
+                "event payload must be an object",
+            ));
+        };
+        if payload.get("kind").and_then(JsonValue::as_str) != Some("CLAIM_ASSERTED") {
+            continue;
+        }
+        let claim = payload.get("value").and_then(JsonValue::as_object).ok_or(
+            ContractError::InvalidShape("claim assertion value must be an object"),
+        )?;
+        let id = claim
+            .get("id")
+            .and_then(JsonValue::as_str)
+            .ok_or(ContractError::InvalidShape("claim id must be a string"))?;
+        if claims
+            .insert(id.to_owned(), JsonValue::Object(claim.clone()))
+            .is_some()
+        {
+            return Err(ContractError::LegacyCompatibility(
+                "duplicate claim id in compatibility batch",
+            ));
+        }
+    }
+    Ok(claims)
+}
+
+fn transform_decisions_for_v1(json: &mut JsonValue) -> Result<(), ContractError> {
+    let claims = claim_index(json)?;
+    let events = json
+        .get_mut("events")
+        .and_then(JsonValue::as_array_mut)
+        .ok_or(ContractError::InvalidShape("batch events must be an array"))?;
+    for event in events {
+        let payload = event
+            .get_mut("payload")
+            .and_then(JsonValue::as_object_mut)
+            .ok_or(ContractError::InvalidShape(
+                "event payload must be an object",
+            ))?;
+        if payload.get("kind").and_then(JsonValue::as_str) != Some("DECISION_RECORDED") {
+            continue;
+        }
+        let decision = payload
+            .get_mut("value")
+            .and_then(JsonValue::as_object_mut)
+            .ok_or(ContractError::InvalidShape(
+                "decision value must be an object",
+            ))?;
+        let target_id = decision
+            .get("target_claim_id")
+            .and_then(JsonValue::as_str)
+            .ok_or(ContractError::InvalidShape(
+                "decision target_claim_id must be a string",
+            ))?;
+        let target = claims.get(target_id).and_then(JsonValue::as_object).ok_or(
+            ContractError::LegacyCompatibility(
+                "v1-compatible decision target must be asserted in the same batch",
+            ),
+        )?;
+        let slot = decision
+            .get("resolution_slot")
+            .and_then(JsonValue::as_object)
+            .ok_or(ContractError::LegacyCompatibility(
+                "v2 decision is missing its resolution slot",
+            ))?;
+        for (slot_field, claim_field) in [
+            ("subject_entity_id", "subject_entity_id"),
+            ("predicate_id", "predicate_id"),
+            ("scope_id", "scope_id"),
+        ] {
+            if slot.get(slot_field) != target.get(claim_field) {
+                return Err(ContractError::LegacyCompatibility(
+                    "v2 decision slot cannot be represented by its v1 target",
+                ));
+            }
+        }
+        if decision.get("target_object") != target.get("object")
+            || decision.get("valid_time") != target.get("valid_time")
+        {
+            return Err(ContractError::LegacyCompatibility(
+                "v2 decision object or validity cannot be represented losslessly by v1",
+            ));
+        }
+        let scope_id = slot
+            .get("scope_id")
+            .cloned()
+            .ok_or(ContractError::LegacyCompatibility(
+                "v2 decision slot is missing scope_id",
+            ))?;
+        decision.remove("target_object");
+        decision.remove("resolution_slot");
+        decision.remove("valid_time");
+        decision.insert("scope_id".to_owned(), scope_id);
+    }
+    Ok(())
+}
+
+fn upcast_v1_to_v2(json: &mut JsonValue) -> Result<(), ContractError> {
+    let claims = claim_index(json)?;
+    let events = json
+        .get_mut("events")
+        .and_then(JsonValue::as_array_mut)
+        .ok_or(ContractError::InvalidShape("batch events must be an array"))?;
+    for event in events {
+        let payload = event
+            .get_mut("payload")
+            .and_then(JsonValue::as_object_mut)
+            .ok_or(ContractError::InvalidShape(
+                "event payload must be an object",
+            ))?;
+        if payload.get("kind").and_then(JsonValue::as_str) != Some("DECISION_RECORDED") {
+            continue;
+        }
+        let decision = payload
+            .get_mut("value")
+            .and_then(JsonValue::as_object_mut)
+            .ok_or(ContractError::InvalidShape(
+                "decision value must be an object",
+            ))?;
+        if decision.contains_key("target_object")
+            || decision.contains_key("resolution_slot")
+            || decision.contains_key("valid_time")
+        {
+            return Err(ContractError::LegacyCompatibility(
+                "v1 decision contains v2-only semantic fields",
+            ));
+        }
+        let target_id = decision
+            .get("target_claim_id")
+            .and_then(JsonValue::as_str)
+            .ok_or(ContractError::InvalidShape(
+                "decision target_claim_id must be a string",
+            ))?;
+        let target = claims.get(target_id).and_then(JsonValue::as_object).ok_or(
+            ContractError::LegacyCompatibility(
+                "v1 decision target must be asserted in the same batch",
+            ),
+        )?;
+        let legacy_scope =
+            decision
+                .remove("scope_id")
+                .ok_or(ContractError::LegacyCompatibility(
+                    "v1 decision is missing scope_id",
+                ))?;
+        if Some(&legacy_scope) != target.get("scope_id") {
+            return Err(ContractError::LegacyCompatibility(
+                "v1 decision scope does not match its target claim",
+            ));
+        }
+        let target_object = target
+            .get("object")
+            .cloned()
+            .ok_or(ContractError::InvalidShape("claim object is missing"))?;
+        let valid_time = target
+            .get("valid_time")
+            .cloned()
+            .ok_or(ContractError::InvalidShape("claim valid_time is missing"))?;
+        let subject_entity_id =
+            target
+                .get("subject_entity_id")
+                .cloned()
+                .ok_or(ContractError::InvalidShape(
+                    "claim subject_entity_id is missing",
+                ))?;
+        let predicate_id = target
+            .get("predicate_id")
+            .cloned()
+            .ok_or(ContractError::InvalidShape("claim predicate_id is missing"))?;
+        decision.insert("target_object".to_owned(), target_object);
+        decision.insert(
+            "resolution_slot".to_owned(),
+            JsonValue::Object(JsonMap::from_iter([
+                ("subject_entity_id".to_owned(), subject_entity_id),
+                ("predicate_id".to_owned(), predicate_id),
+                ("scope_id".to_owned(), legacy_scope),
+            ])),
+        );
+        decision.insert("valid_time".to_owned(), valid_time);
+    }
+    Ok(())
 }
 
 fn encode_envelope(
@@ -498,8 +762,8 @@ mod tests {
     use academic_domain::{
         Actor, AuthorityClass, BatchId, Claim, ClaimId, ClaimObject, ClaimRelation,
         ClaimRelationKind, Decimal, DeviceId, DomainId, EVENT_SCHEMA_VERSION, EntityId,
-        EpistemicStatus, Event, EventId, EventPayload, EvidenceId, PredicateId, ScopeId,
-        TimestampMillis, ValidInterval,
+        EpistemicStatus, Event, EventId, EventPayload, EvidenceId, PredicateId, ResolutionSlot,
+        ScopeId, TimestampMillis, ValidInterval,
     };
 
     use super::*;
@@ -528,8 +792,16 @@ mod tests {
                     target_claim_id: academic_domain::ClaimId::from_str(
                         "01900000-0000-7000-8000-000000000006",
                     )?,
+                    target_object: ClaimObject::Text("synthetic".to_owned()),
+                    resolution_slot: ResolutionSlot {
+                        subject_entity_id: EntityId::from_str(
+                            "01900000-0000-7000-8000-000000000009",
+                        )?,
+                        predicate_id: PredicateId::parse("test.value")?,
+                        scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000008")?,
+                    },
                     action: academic_domain::DecisionAction::Reject,
-                    scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000008")?,
+                    valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
                     rationale_evidence_ids: Vec::new(),
                     decided_at: TimestampMillis::new(9),
                     reversible_until: None,
@@ -556,6 +828,103 @@ mod tests {
         let second = encode_unsigned_batch(&batch)?;
         assert_eq!(first, second);
         assert_eq!(decode_unsigned_batch(&first)?, batch);
+        Ok(())
+    }
+
+    #[test]
+    fn t008_v1_user_decision_wire_upcasts_deterministically_to_v2()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut batch = minimal_batch()?;
+        let user_id = EntityId::from_str("01900000-0000-7000-8000-000000000007")?;
+        let domain_id = batch.events[0].domain_id;
+        let mut decision_event = batch.events.remove(0);
+        decision_event.origin_seq = 2;
+        let claim = Claim {
+            id: ClaimId::from_str("01900000-0000-7000-8000-000000000006")?,
+            subject_entity_id: EntityId::from_str("01900000-0000-7000-8000-000000000009")?,
+            predicate_id: PredicateId::parse("test.value")?,
+            object: ClaimObject::Text("synthetic".to_owned()),
+            scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000008")?,
+            authority_class: AuthorityClass::UserExplicit,
+            epistemic_status: EpistemicStatus::UserConfirmed,
+            confidence: None,
+            valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
+            evidence_ids: vec![EvidenceId::from_str(
+                "01900000-0000-7000-8000-00000000000b",
+            )?],
+        };
+        batch.origin_seq_end = 2;
+        batch.events = vec![
+            Event {
+                id: EventId::from_str("01900000-0000-7000-8000-00000000000a")?,
+                origin_seq: 1,
+                origin_observed_at: TimestampMillis::new(8),
+                actor: Actor::User { user_id },
+                domain_id,
+                payload: EventPayload::ClaimAsserted(claim),
+            },
+            decision_event,
+        ];
+        batch.validate()?;
+
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let first = encode_unsigned_batch_v1_compat(&batch)?;
+        let second = encode_unsigned_batch_v1_compat(&batch)?;
+        assert_eq!(first, second);
+        assert_eq!(decode_unsigned_batch(&first)?, batch);
+
+        let legacy_json = cbor_to_json(&decode_single_cbor(&first)?)?;
+        let mut mismatched_scope = legacy_json.clone();
+        mismatched_scope["events"][1]["payload"]["value"]["scope_id"] =
+            JsonValue::String("01900000-0000-7000-8000-000000000099".to_owned());
+        let mismatched_scope_bytes = encode_cbor_value(&json_to_cbor(&mismatched_scope)?)?;
+        assert!(matches!(
+            decode_unsigned_batch(&mismatched_scope_bytes),
+            Err(ContractError::LegacyCompatibility(_))
+        ));
+
+        let mut missing_target = legacy_json.clone();
+        missing_target["events"]
+            .as_array_mut()
+            .ok_or(ContractError::InvalidShape(
+                "test batch events must be an array",
+            ))?
+            .remove(0);
+        let missing_target_bytes = encode_cbor_value(&json_to_cbor(&missing_target)?)?;
+        assert!(matches!(
+            decode_unsigned_batch(&missing_target_bytes),
+            Err(ContractError::LegacyCompatibility(_))
+        ));
+
+        let mut smuggled_v2_field = legacy_json;
+        smuggled_v2_field["events"][1]["payload"]["value"]["target_object"] =
+            serde_json::to_value(ClaimObject::Text("synthetic".to_owned()))?;
+        let smuggled_v2_bytes = encode_cbor_value(&json_to_cbor(&smuggled_v2_field)?)?;
+        assert!(matches!(
+            decode_unsigned_batch(&smuggled_v2_bytes),
+            Err(ContractError::LegacyCompatibility(_))
+        ));
+
+        let signed = sign_batch_v1_compat(&batch, &signing_key)?;
+        let verified = verify_signed_batch(&signed, &authorization(&batch, &signing_key)?)?;
+        assert_eq!(
+            verified.source_schema_version(),
+            academic_domain::EVENT_SCHEMA_VERSION_V1
+        );
+        assert_eq!(
+            verified.batch().schema_version,
+            academic_domain::EVENT_SCHEMA_VERSION_V2
+        );
+        assert_eq!(verified.batch(), &batch);
+
+        let EventPayload::DecisionRecorded(decision) = &mut batch.events[1].payload else {
+            unreachable!("test fixture has a decision event")
+        };
+        decision.valid_time = ValidInterval::open_ended(TimestampMillis::new(1));
+        assert!(matches!(
+            encode_unsigned_batch_v1_compat(&batch),
+            Err(ContractError::LegacyCompatibility(_))
+        ));
         Ok(())
     }
 
@@ -661,6 +1030,58 @@ mod tests {
             };
             let encoded = encode_claim_relation_event_proto(&event)?;
             assert_eq!(decode_claim_relation_event_proto(&encoded)?, event);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn t007_known_proto_oneof_arms_obey_last_value_wins_in_every_field_order()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let event = Event {
+            id: EventId::from_str("01900000-0000-7000-8000-000000000030")?,
+            origin_seq: 1,
+            origin_observed_at: TimestampMillis::new(1),
+            actor: Actor::Importer {
+                name: "fixture".to_owned(),
+                version: "1".to_owned(),
+            },
+            domain_id: DomainId::from_str("01900000-0000-7000-8000-000000000022")?,
+            payload: EventPayload::ClaimRelated(ClaimRelation {
+                source_claim_id: ClaimId::from_str("01900000-0000-7000-8000-000000000023")?,
+                target_claim_id: ClaimId::from_str("01900000-0000-7000-8000-000000000024")?,
+                kind: ClaimRelationKind::Supersedes,
+                scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000025")?,
+            }),
+        };
+        let relation_last = encode_claim_relation_event_proto(&event)?;
+        for (name, encoded_key) in [
+            ("artifact_registered", 0x52_u8),
+            ("evidence_registered", 0x5a),
+            ("claim_asserted", 0x62),
+            ("decision_recorded", 0x6a),
+            ("scope_registered", 0x72),
+        ] {
+            let mut earlier_known_arm = vec![encoded_key, 0];
+            earlier_known_arm.extend_from_slice(&relation_last);
+            assert_eq!(
+                decode_claim_relation_event_proto(&earlier_known_arm)?,
+                event,
+                "relation must win when it is the final oneof arm after {name}",
+            );
+
+            let mut later_known_arm = relation_last.clone();
+            later_known_arm.extend_from_slice(&[encoded_key, 0]);
+            assert!(
+                matches!(
+                    decode_claim_relation_event_proto(&later_known_arm),
+                    Err(ProtoContractError::UnsupportedPayload)
+                ),
+                "{name} must replace an earlier relation",
+            );
+            assert!(matches!(
+                decode_claim_relation_event_proto(&[encoded_key, 0]),
+                Err(ProtoContractError::UnsupportedPayload)
+            ));
         }
         Ok(())
     }

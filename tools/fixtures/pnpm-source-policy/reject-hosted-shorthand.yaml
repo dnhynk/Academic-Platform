@@ -1,0 +1,7 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      bad:
+        specifier: owner/repository#main
+        version: github:owner/repository#main

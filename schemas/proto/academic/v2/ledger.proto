@@ -1,0 +1,283 @@
+syntax = "proto3";
+
+package academic.v2;
+
+// Protobuf is the IPC/sync DTO contract. These bytes are never signed directly;
+// SignedBatch carries the independently deterministic CBOR signing payload.
+
+message UuidV7 {
+  bytes value = 1; // exactly 16 bytes; version nibble 7
+}
+
+message Sha256Digest {
+  bytes value = 1; // exactly 32 bytes
+}
+
+message TimestampMillis {
+  sint64 unix_epoch_millis = 1;
+}
+
+message ValidInterval {
+  TimestampMillis from = 1;
+  optional TimestampMillis to = 2; // half-open [from, to)
+}
+
+enum AuthorityClass {
+  AUTHORITY_CLASS_UNSPECIFIED = 0;
+  AUTHORITY_CLASS_OFFICIAL = 1;
+  AUTHORITY_CLASS_USER_EXPLICIT = 2;
+  AUTHORITY_CLASS_DIRECT_OBSERVATION = 3;
+  AUTHORITY_CLASS_DETERMINISTIC_ENGINE = 4;
+  AUTHORITY_CLASS_CURATED = 5;
+  AUTHORITY_CLASS_MODEL_INFERENCE = 6;
+  AUTHORITY_CLASS_PREDICTION = 7;
+  AUTHORITY_CLASS_UNKNOWN = 8;
+}
+
+enum EpistemicStatus {
+  EPISTEMIC_STATUS_UNSPECIFIED = 0;
+  EPISTEMIC_STATUS_OFFICIAL_CONFIRMED = 1;
+  EPISTEMIC_STATUS_USER_CONFIRMED = 2;
+  EPISTEMIC_STATUS_CODE_OBSERVED = 3;
+  EPISTEMIC_STATUS_DETERMINISTIC_DERIVED = 4;
+  EPISTEMIC_STATUS_AI_INFERRED = 5;
+  EPISTEMIC_STATUS_PREDICTION = 6;
+  EPISTEMIC_STATUS_DISPUTED = 7;
+  EPISTEMIC_STATUS_SUPERSEDED = 8;
+  EPISTEMIC_STATUS_UNKNOWN = 9;
+}
+
+enum MasteryLevel {
+  MASTERY_LEVEL_UNSPECIFIED = 0;
+  MASTERY_LEVEL_UNSEEN = 1;
+  MASTERY_LEVEL_EXPOSED = 2;
+  MASTERY_LEVEL_UNDERSTOOD = 3;
+  MASTERY_LEVEL_PRACTICED = 4;
+  MASTERY_LEVEL_APPLIED = 5;
+  MASTERY_LEVEL_FLUENT = 6;
+}
+
+enum FreshnessBand {
+  FRESHNESS_BAND_UNSPECIFIED = 0;
+  FRESHNESS_BAND_UNKNOWN = 1;
+  FRESHNESS_BAND_STALE = 2;
+  FRESHNESS_BAND_LOW = 3;
+  FRESHNESS_BAND_MODERATE = 4;
+  FRESHNESS_BAND_HIGH = 5;
+  FRESHNESS_BAND_VERY_HIGH = 6;
+}
+
+message DecimalValue {
+  string coefficient = 1;
+  uint32 scale = 2;
+}
+
+message ClaimObject {
+  oneof value {
+    UuidV7 entity_id = 1;
+    string text = 2;
+    sint64 integer = 3;
+    bool boolean = 4;
+    DecimalValue decimal = 5;
+    TimestampMillis instant = 6;
+    ValidInterval interval = 7;
+    MasteryLevel mastery = 8;
+    FreshnessBand freshness = 9;
+  }
+}
+
+message ArtifactDescriptor {
+  UuidV7 id = 1;
+  Sha256Digest content_digest = 2;
+  string media_type = 3;
+  uint64 byte_length = 4;
+  UuidV7 domain_id = 5;
+  string confidentiality = 6;
+  string retention_class = 7;
+  UuidV7 permission_lineage_id = 8;
+  uint32 format_version = 9;
+  bytes vault_locator = 10;
+  repeated ArtifactRepresentation evidence_representations = 11;
+}
+
+message ArtifactRepresentation {
+  EvidenceLocator locator = 1;
+  Sha256Digest content_digest = 2;
+  uint64 byte_length = 3;
+}
+
+message EvidenceLocator {
+  oneof value {
+    uint32 page_number = 1;
+    ByteSpan text_bytes = 2;
+    TimeSpan transcript_time = 3;
+    RepositorySpan repository_bytes = 4;
+  }
+}
+
+message ByteSpan {
+  Sha256Digest source_digest = 1;
+  uint64 start = 2;
+  uint64 end = 3;
+}
+
+message TimeSpan {
+  uint64 start_ms = 1;
+  uint64 end_ms = 2;
+}
+
+message RepositorySpan {
+  Sha256Digest snapshot_digest = 1;
+  string path = 2;
+  uint64 start = 3;
+  uint64 end = 4;
+}
+
+message EvidenceItem {
+  UuidV7 id = 1;
+  UuidV7 artifact_id = 2;
+  EvidenceLocator locator = 3;
+  Sha256Digest excerpt_digest = 4;
+  string role = 5;
+  string strength = 6;
+  string extraction_method = 7;
+  string extractor_version = 8;
+}
+
+message Claim {
+  UuidV7 id = 1;
+  UuidV7 subject_entity_id = 2;
+  string predicate_id = 3;
+  ClaimObject object = 4;
+  UuidV7 scope_id = 5; // required by semantic validation
+  AuthorityClass authority_class = 6;
+  EpistemicStatus epistemic_status = 7;
+  optional uint32 confidence = 8;
+  ValidInterval valid_time = 9;
+  repeated UuidV7 evidence_ids = 10;
+  reserved 11 to 19;
+}
+
+message ConfirmDecision {}
+
+message RejectDecision {}
+
+message ReplaceDecision {
+  UuidV7 replacement_claim_id = 1;
+}
+
+message DecisionAction {
+  oneof action {
+    ConfirmDecision confirm = 1;
+    RejectDecision reject = 2;
+    ReplaceDecision replace = 3;
+  }
+}
+
+message UserDecision {
+  UuidV7 id = 1;
+  UuidV7 target_claim_id = 2;
+  DecisionAction action = 3;
+  reserved 4;
+  UuidV7 scope_id = 5; // semantic resolution slot scope
+  repeated UuidV7 rationale_evidence_ids = 6;
+  TimestampMillis decided_at = 7;
+  optional TimestampMillis reversible_until = 8;
+  UuidV7 subject_entity_id = 9; // semantic resolution slot subject
+  string predicate_id = 10; // semantic resolution slot predicate
+  ClaimObject target_object = 11; // durable assertion semantics across claim IDs
+  ValidInterval valid_time = 12; // explicit user-controlled applicability
+}
+
+message ScopeDescriptor {
+  UuidV7 id = 1;
+  UuidV7 domain_id = 2;
+  string label = 3;
+}
+
+enum ClaimRelationKind {
+  CLAIM_RELATION_KIND_UNSPECIFIED = 0;
+  CLAIM_RELATION_KIND_SUPPORTS = 1;
+  CLAIM_RELATION_KIND_CONTRADICTS = 2;
+  CLAIM_RELATION_KIND_SUPERSEDES = 3;
+  CLAIM_RELATION_KIND_RETRACTS = 4;
+  CLAIM_RELATION_KIND_DUPLICATES = 5;
+}
+
+message ClaimRelation {
+  UuidV7 source_claim_id = 1;
+  UuidV7 target_claim_id = 2;
+  ClaimRelationKind kind = 3;
+  UuidV7 scope_id = 4;
+}
+
+message UserActor {
+  UuidV7 user_id = 1;
+}
+
+message DeterministicEngineActor {
+  string name = 1;
+  string version = 2;
+}
+
+message ModelRunActor {
+  UuidV7 run_id = 1;
+}
+
+message ImporterActor {
+  string name = 1;
+  string version = 2;
+}
+
+message Actor {
+  oneof kind {
+    UserActor user = 1;
+    DeterministicEngineActor deterministic_engine = 2;
+    ModelRunActor model_run = 3;
+    ImporterActor importer = 4;
+  }
+}
+
+message OriginEvent {
+  UuidV7 id = 1;
+  uint64 origin_seq = 2;
+  TimestampMillis origin_observed_at = 3;
+  UuidV7 domain_id = 4;
+  Actor actor = 5;
+  oneof payload {
+    ArtifactDescriptor artifact_registered = 10;
+    EvidenceItem evidence_registered = 11;
+    Claim claim_asserted = 12;
+    UserDecision decision_recorded = 13;
+    ScopeDescriptor scope_registered = 14;
+    ClaimRelation claim_related = 15;
+  }
+  reserved 6 to 9;
+}
+
+message EventBatchDescriptor {
+  uint32 schema_version = 1;
+  UuidV7 batch_id = 2;
+  UuidV7 device_id = 3;
+  uint64 origin_seq_start = 4;
+  uint64 origin_seq_end = 5;
+  optional Sha256Digest previous_batch_hash = 6;
+  TimestampMillis origin_created_at = 7;
+  repeated OriginEvent events = 8;
+}
+
+message SignedBatch {
+  uint32 envelope_version = 1;
+  bytes deterministic_payload_cbor = 2;
+  bytes ed25519_public_key = 3;
+  bytes ed25519_signature = 4;
+  reserved 5 to 15;
+}
+
+message AcceptanceReceipt {
+  UuidV7 batch_id = 1;
+  uint64 accept_seq_start = 2;
+  uint64 accept_seq_end = 3;
+  Sha256Digest envelope_hash = 4;
+  bool duplicate = 5;
+}

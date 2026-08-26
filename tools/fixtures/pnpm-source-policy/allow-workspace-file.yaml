@@ -1,0 +1,18 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      workspace-example:
+        specifier: workspace:*
+        version: link:../workspace-example
+      local-archive:
+        specifier: file:../fixtures/local-package.tgz
+        version: file:../fixtures/local-package.tgz
+      local-directory:
+        specifier: file:../local-directory
+        version: file:../local-directory
+packages:
+  local-archive@file:../fixtures/local-package.tgz:
+    resolution: {integrity: sha512-bG9jYWw=, tarball: 'file:../fixtures/local-package.tgz'}
+  local-directory@file:../local-directory:
+    resolution: {directory: ../local-directory, type: directory}

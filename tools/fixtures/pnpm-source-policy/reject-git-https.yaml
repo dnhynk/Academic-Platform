@@ -1,0 +1,7 @@
+lockfileVersion: '9.0'
+packages:
+  bad@git+https://example.invalid/owner/repo.git#commit:
+    resolution:
+      type: git
+      repo: 'https://example.invalid/owner/repo.git'
+      commit: deadbeef

@@ -1,0 +1,10 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      example:
+        specifier: 1.2.3
+        version: 1.2.3
+packages:
+  example@1.2.3:
+    resolution: {integrity: sha512-c3ludGhldGlj}

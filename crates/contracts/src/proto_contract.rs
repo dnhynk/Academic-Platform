@@ -120,6 +120,25 @@ struct ProtoClaimRelation {
     scope_id: Option<ProtoUuidV7>,
 }
 
+// The relation decoder intentionally supports only ClaimRelated semantically,
+// but it must still model every currently known oneof arm. Otherwise Prost
+// treats tags 10-14 as unknown fields and can retain an earlier relation even
+// though generated clients correctly apply protobuf's last-oneof-value rule.
+#[derive(Clone, PartialEq, Message)]
+struct ProtoArtifactDescriptor {}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoEvidenceItem {}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoClaim {}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoUserDecision {}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoScopeDescriptor {}
+
 #[derive(Clone, PartialEq, Message)]
 struct ProtoOriginEvent {
     #[prost(message, optional, tag = "1")]
@@ -132,16 +151,29 @@ struct ProtoOriginEvent {
     domain_id: Option<ProtoUuidV7>,
     #[prost(message, optional, tag = "5")]
     actor: Option<ProtoActor>,
-    #[prost(oneof = "proto_origin_event::Payload", tags = "15")]
+    #[prost(oneof = "proto_origin_event::Payload", tags = "10, 11, 12, 13, 14, 15")]
     payload: Option<proto_origin_event::Payload>,
 }
 
 mod proto_origin_event {
-    use super::ProtoClaimRelation;
+    use super::{
+        ProtoArtifactDescriptor, ProtoClaim, ProtoClaimRelation, ProtoEvidenceItem,
+        ProtoScopeDescriptor, ProtoUserDecision,
+    };
     use prost::Oneof;
 
     #[derive(Clone, PartialEq, Oneof)]
     pub(super) enum Payload {
+        #[prost(message, tag = "10")]
+        ArtifactRegistered(ProtoArtifactDescriptor),
+        #[prost(message, tag = "11")]
+        EvidenceRegistered(ProtoEvidenceItem),
+        #[prost(message, tag = "12")]
+        ClaimAsserted(ProtoClaim),
+        #[prost(message, tag = "13")]
+        DecisionRecorded(ProtoUserDecision),
+        #[prost(message, tag = "14")]
+        ScopeRegistered(ProtoScopeDescriptor),
         #[prost(message, tag = "15")]
         ClaimRelated(ProtoClaimRelation),
     }
@@ -176,10 +208,13 @@ pub fn encode_claim_relation_event_proto(event: &Event) -> Result<Vec<u8>, Proto
 /// Decodes Protobuf bytes and reconstructs the complete structured actor/relation event.
 pub fn decode_claim_relation_event_proto(bytes: &[u8]) -> Result<Event, ProtoContractError> {
     let value = ProtoOriginEvent::decode(bytes)?;
+    let Some(payload) = value.payload else {
+        return Err(ProtoContractError::Missing("payload"));
+    };
+    let proto_origin_event::Payload::ClaimRelated(relation) = payload else {
+        return Err(ProtoContractError::UnsupportedPayload);
+    };
     let actor = decode_actor(value.actor.ok_or(ProtoContractError::Missing("actor"))?)?;
-    let proto_origin_event::Payload::ClaimRelated(relation) = value
-        .payload
-        .ok_or(ProtoContractError::Missing("claim_related"))?;
     let kind = ProtoClaimRelationKind::try_from(relation.kind)
         .map_err(|_| ProtoContractError::InvalidRelationKind(relation.kind))?;
     let event = Event {

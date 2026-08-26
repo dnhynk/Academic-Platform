@@ -14,11 +14,14 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
-    "fixture:emit": "cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v1.json",
-    "fixture:verify": "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",
-    "fixture:replay": "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
+    "fixture:emit": "cargo run --locked --quiet -p academic-cli -- fixture emit --fixture-version 2 --output schemas/fixtures/signed-batch-v2.json",
+    "fixture:verify": "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json",
+    "fixture:replay": "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json",
+    "fixture:verify:v1": "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",
+    "fixture:replay:v1": "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
     "verify:contracts": "node tools/verify-contracts.mjs",
-    "security": "node tools/security-baseline.mjs"
+    "security:source-probes": "node tools/dependency-source-policy.test.mjs",
+    "security": "node tools/security-baseline.mjs && pnpm security:source-probes"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -28,6 +31,7 @@
     "globals": "17.11.0",
     "protobufjs": "8.7.2",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.68.0"
+    "typescript-eslint": "8.68.0",
+    "yaml": "2.8.1"
   }
 }

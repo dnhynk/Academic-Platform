@@ -1,0 +1,7 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      bad:
+        specifier: 'git+ssh://git@example.invalid/owner/repo.git#main'
+        version: 'git+ssh://git@example.invalid/owner/repo.git#main'

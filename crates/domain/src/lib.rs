@@ -14,6 +14,9 @@ use uuid::Uuid;
 
 type HmacSha256 = Hmac<Sha256>;
 
+/// Largest integer that can cross the JSON contract without precision loss.
+pub const MAX_SAFE_JSON_INTEGER: u64 = 9_007_199_254_740_991;
+
 /// Failures raised while constructing canonical domain values.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum DomainError {
@@ -83,6 +86,9 @@ pub enum DomainError {
     /// A user decision had an invalid replacement or reversal interval.
     #[error("invalid user decision: {0}")]
     InvalidDecision(String),
+    /// A representation requiring byte resolution was not issued by a trusted verifier actor.
+    #[error("partial or derived evidence representations require a deterministic verifier actor")]
+    UntrustedEvidenceRepresentation,
     /// The event schema is unsupported and therefore fails closed.
     #[error("unsupported event schema version {0}")]
     UnsupportedSchemaVersion(u16),
@@ -727,8 +733,19 @@ impl ArtifactDescriptor {
                 "unsupported artifact format version".to_owned(),
             ));
         }
+        if self.byte_length > MAX_SAFE_JSON_INTEGER {
+            return Err(DomainError::InvalidEventPayload(
+                "artifact byte length exceeds the portable exact-integer range".to_owned(),
+            ));
+        }
         for (index, representation) in self.evidence_representations.iter().enumerate() {
             representation.locator.validate()?;
+            if representation.byte_length > MAX_SAFE_JSON_INTEGER {
+                return Err(DomainError::InvalidEventPayload(
+                    "representation byte length exceeds the portable exact-integer range"
+                        .to_owned(),
+                ));
+            }
             if self.evidence_representations[..index]
                 .iter()
                 .any(|prior| prior.locator == representation.locator)
@@ -752,6 +769,15 @@ impl ArtifactDescriptor {
                                 .to_owned(),
                         ));
                     }
+                    if *start == 0
+                        && *end == self.byte_length
+                        && representation.content_digest != self.content_digest
+                    {
+                        return Err(DomainError::InvalidEventPayload(
+                            "full-range text representation digest must equal the artifact content digest"
+                                .to_owned(),
+                        ));
+                    }
                 }
                 EvidenceLocator::RepositoryBytes { start, end, .. } => {
                     if representation.byte_length != *end - *start {
@@ -767,14 +793,45 @@ impl ArtifactDescriptor {
         Ok(())
     }
 
-    /// Returns whether exact descriptor metadata proves the evidence locator and digest.
+    /// Rejects derived representations until a byte-resolving verifier capability exists.
+    ///
+    /// An authenticated actor label is not proof that caller-supplied representation bytes
+    /// were resolved from the artifact. Phase 0 therefore admits only the whole-artifact
+    /// text representation whose digest is already bound by the artifact identity.
+    pub fn validate_for_actor(&self, _actor: &Actor) -> Result<(), DomainError> {
+        self.validate()?;
+        let has_unverified_representation = self
+            .evidence_representations
+            .iter()
+            .any(|representation| !self.is_artifact_digest_bound(representation));
+        if has_unverified_representation {
+            return Err(DomainError::UntrustedEvidenceRepresentation);
+        }
+        Ok(())
+    }
+
+    /// Finds exact immutable representation metadata for a locator.
     #[must_use]
-    pub fn supports_evidence(&self, evidence: &EvidenceItem) -> bool {
-        evidence.artifact_id == self.id
-            && self.evidence_representations.iter().any(|representation| {
-                representation.locator == evidence.locator
-                    && representation.content_digest == evidence.excerpt_digest
-            })
+    pub fn representation(&self, locator: &EvidenceLocator) -> Option<&ArtifactRepresentation> {
+        self.evidence_representations
+            .iter()
+            .find(|representation| &representation.locator == locator)
+    }
+
+    /// Returns whether the representation is cryptographically identical to the whole artifact.
+    #[must_use]
+    pub fn is_artifact_digest_bound(&self, representation: &ArtifactRepresentation) -> bool {
+        matches!(
+            &representation.locator,
+            EvidenceLocator::TextBytes {
+                source_digest,
+                start: 0,
+                end,
+            } if *source_digest == self.content_digest
+                && *end == self.byte_length
+                && representation.byte_length == self.byte_length
+                && representation.content_digest == self.content_digest
+        )
     }
 }
 
@@ -812,7 +869,9 @@ impl EvidenceLocator {
                 start_ms: start,
                 end_ms: end,
             }
-            | Self::RepositoryBytes { start, end, .. } => start < end,
+            | Self::RepositoryBytes { start, end, .. } => {
+                start < end && *start <= MAX_SAFE_JSON_INTEGER && *end <= MAX_SAFE_JSON_INTEGER
+            }
         };
         if valid {
             Ok(())
@@ -1091,13 +1150,24 @@ pub enum DecisionAction {
     Replace { replacement_claim_id: ClaimId },
 }
 
+/// Semantic identity against which user decisions remain durable across claim IDs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResolutionSlot {
+    pub subject_entity_id: EntityId,
+    pub predicate_id: PredicateId,
+    pub scope_id: ScopeId,
+}
+
 /// Immutable explicit user decision that automated inference cannot erase.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserDecision {
     pub id: DecisionId,
     pub target_claim_id: ClaimId,
+    pub target_object: ClaimObject,
+    pub resolution_slot: ResolutionSlot,
     pub action: DecisionAction,
-    pub scope_id: ScopeId,
+    pub valid_time: ValidInterval,
     pub rationale_evidence_ids: Vec<EvidenceId>,
     pub decided_at: TimestampMillis,
     pub reversible_until: Option<TimestampMillis>,
@@ -1169,7 +1239,7 @@ impl Event {
                         "artifact domain must match event domain".to_owned(),
                     ));
                 }
-                descriptor.validate()
+                descriptor.validate_for_actor(&self.actor)
             }
             EventPayload::EvidenceRegistered(evidence) => evidence.validate(),
             EventPayload::ClaimAsserted(claim) => claim.validate_for_actor(&self.actor),
@@ -1193,8 +1263,12 @@ impl Event {
     }
 }
 
-/// Signed batch semantic version implemented by the Phase 0 ledger.
-pub const EVENT_SCHEMA_VERSION: u16 = 1;
+/// Legacy signed-batch semantic version accepted only through deterministic upcasting.
+pub const EVENT_SCHEMA_VERSION_V1: u16 = 1;
+/// Current signed-batch semantic version with durable user-decision applicability.
+pub const EVENT_SCHEMA_VERSION_V2: u16 = 2;
+/// Signed-batch semantic version emitted by current writers.
+pub const EVENT_SCHEMA_VERSION: u16 = EVENT_SCHEMA_VERSION_V2;
 
 /// An origin-authored batch before canonical framing and signature verification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1341,6 +1415,8 @@ mod tests {
             "https://example.invalid/a",
             "urn:academic:test",
             "~/private",
+            "src//lib.rs",
+            "src/",
         ] {
             assert!(LogicalPath::parse(invalid).is_err(), "{invalid}");
         }
@@ -1350,6 +1426,60 @@ mod tests {
                 Ok(valid.to_owned())
             );
         }
+    }
+
+    #[test]
+    fn t007_artifact_descriptor_mutation_corpus_matches_rust_semantics()
+    -> Result<(), Box<dyn std::error::Error>> {
+        #[derive(Deserialize)]
+        struct Corpus {
+            base: serde_json::Value,
+            cases: Vec<Case>,
+        }
+        #[derive(Deserialize)]
+        struct Case {
+            name: String,
+            mutations: Vec<Mutation>,
+            #[serde(rename = "schema_valid")]
+            _schema_valid: bool,
+            semantic_valid: bool,
+        }
+        #[derive(Deserialize)]
+        struct Mutation {
+            op: String,
+            path: String,
+            value: serde_json::Value,
+        }
+
+        let corpus: Corpus = serde_json::from_str(include_str!(
+            "../../../schemas/fixtures/artifact-descriptor-parity-v1.json"
+        ))?;
+        for case in corpus.cases {
+            let mut candidate = corpus.base.clone();
+            for mutation in case.mutations {
+                let target = candidate.pointer_mut(&mutation.path).ok_or_else(|| {
+                    format!("{}: invalid mutation path {}", case.name, mutation.path)
+                })?;
+                match mutation.op.as_str() {
+                    "replace" => *target = mutation.value,
+                    "append" => target
+                        .as_array_mut()
+                        .ok_or_else(|| format!("{}: append target is not an array", case.name))?
+                        .push(mutation.value),
+                    other => {
+                        return Err(format!("{}: unknown mutation op {other}", case.name).into());
+                    }
+                }
+            }
+            let rust_valid = serde_json::from_value::<ArtifactDescriptor>(candidate)
+                .is_ok_and(|descriptor| descriptor.validate().is_ok());
+            assert_eq!(
+                rust_valid, case.semantic_valid,
+                "artifact parity corpus disagreement: {}",
+                case.name
+            );
+        }
+        Ok(())
     }
 
     #[test]
