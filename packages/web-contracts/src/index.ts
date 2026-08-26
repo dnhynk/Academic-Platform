@@ -15,8 +15,8 @@ export type FreshnessBand =
   | "VERY_HIGH";
 
 export interface FixtureContract {
-  readonly envelope: string;
-  readonly payload: string;
+  readonly envelope: "academic.signed-batch-envelope/v1 deterministic-cbor";
+  readonly payload: "academic.event-batch/v1 deterministic-cbor";
   readonly signature: "Ed25519";
   readonly event_schema_version: 1;
 }
@@ -43,6 +43,8 @@ export interface FixtureDocument {
   readonly data_class: "SYNTHETIC_ONLY";
   readonly network_egress: "NONE";
   readonly contract: FixtureContract;
+  readonly device_id: string;
+  readonly user_id: string;
   readonly public_key_hex: string;
   readonly signed_batch_cbor_hex: string;
   readonly expected_replay: ReplaySummary;
@@ -82,10 +84,30 @@ function requireString(record: Record<string, unknown>, key: string): string {
   return value;
 }
 
-function requireInteger(record: Record<string, unknown>, key: string): number {
+function requireExactKeys(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+  label: string,
+): void {
+  const actual = Object.keys(record);
+  const allowed = new Set(keys);
+  if (actual.length !== keys.length || !actual.every((key) => allowed.has(key))) {
+    throw new TypeError(`${label} must contain exactly the declared properties`);
+  }
+}
+
+function requireNonemptyString(record: Record<string, unknown>, key: string): string {
+  const value = requireString(record, key);
+  if (value.length === 0) {
+    throw new TypeError(`${key} must be nonempty`);
+  }
+  return value;
+}
+
+function requirePositiveInteger(record: Record<string, unknown>, key: string): number {
   const value = record[key];
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    throw new TypeError(`${key} must be a non-negative safe integer`);
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
+    throw new TypeError(`${key} must be a positive safe integer`);
   }
   return value;
 }
@@ -95,6 +117,9 @@ function requireUuidArray(record: Record<string, unknown>, key: string): readonl
   if (!Array.isArray(value) || !value.every((item) => typeof item === "string" && uuidV7Pattern.test(item))) {
     throw new TypeError(`${key} must contain only UUIDv7 strings`);
   }
+  if (new Set(value).size !== value.length) {
+    throw new TypeError(`${key} must contain unique UUIDv7 strings`);
+  }
   return value.map((item) => String(item));
 }
 
@@ -102,18 +127,48 @@ function parseContract(value: unknown): FixtureContract {
   if (!isRecord(value)) {
     throw new TypeError("contract must be an object");
   }
+  requireExactKeys(value, ["envelope", "payload", "signature", "event_schema_version"], "contract");
   const envelope = requireString(value, "envelope");
   const payload = requireString(value, "payload");
-  if (value.signature !== "Ed25519" || value.event_schema_version !== 1) {
+  if (
+    envelope !== "academic.signed-batch-envelope/v1 deterministic-cbor" ||
+    payload !== "academic.event-batch/v1 deterministic-cbor" ||
+    value.signature !== "Ed25519" ||
+    value.event_schema_version !== 1
+  ) {
     throw new TypeError("unsupported fixture contract");
   }
-  return { envelope, payload, signature: "Ed25519", event_schema_version: 1 };
+  return {
+    envelope: "academic.signed-batch-envelope/v1 deterministic-cbor",
+    payload: "academic.event-batch/v1 deterministic-cbor",
+    signature: "Ed25519",
+    event_schema_version: 1,
+  };
 }
 
 function parseReplay(value: unknown): ReplaySummary {
   if (!isRecord(value)) {
     throw new TypeError("expected_replay must be an object");
   }
+  requireExactKeys(
+    value,
+    [
+      "accepted_events",
+      "accept_seq_head",
+      "payload_hash",
+      "envelope_hash",
+      "artifact_digest",
+      "artifact_locator",
+      "mastery",
+      "freshness",
+      "mastery_active_claim_ids",
+      "mastery_conflicting_claim_ids",
+      "mastery_rejected_claim_ids",
+      "deadline_active_claim_ids",
+      "semantic_digest",
+    ],
+    "expected_replay",
+  );
   const digests = [
     requireString(value, "payload_hash"),
     requireString(value, "envelope_hash"),
@@ -133,8 +188,8 @@ function parseReplay(value: unknown): ReplaySummary {
     throw new TypeError("unsupported mastery or freshness vocabulary");
   }
   return {
-    accepted_events: requireInteger(value, "accepted_events"),
-    accept_seq_head: requireInteger(value, "accept_seq_head"),
+    accepted_events: requirePositiveInteger(value, "accepted_events"),
+    accept_seq_head: requirePositiveInteger(value, "accept_seq_head"),
     payload_hash: digests[0] ?? "",
     envelope_hash: digests[1] ?? "",
     artifact_digest: digests[2] ?? "",
@@ -153,6 +208,22 @@ export function parseFixtureDocument(value: unknown): FixtureDocument {
   if (!isRecord(value)) {
     throw new TypeError("fixture must be an object");
   }
+  requireExactKeys(
+    value,
+    [
+      "fixture_version",
+      "name",
+      "data_class",
+      "network_egress",
+      "contract",
+      "device_id",
+      "user_id",
+      "public_key_hex",
+      "signed_batch_cbor_hex",
+      "expected_replay",
+    ],
+    "fixture",
+  );
   if (value.fixture_version !== 1) {
     throw new TypeError("unsupported fixture_version");
   }
@@ -164,12 +235,19 @@ export function parseFixtureDocument(value: unknown): FixtureDocument {
   if (!/^[0-9a-f]{64}$/u.test(publicKey) || !hexPattern.test(signedBatch)) {
     throw new TypeError("fixture cryptographic fields must be lowercase hex");
   }
+  const deviceId = requireString(value, "device_id");
+  const userId = requireString(value, "user_id");
+  if (!uuidV7Pattern.test(deviceId) || !uuidV7Pattern.test(userId)) {
+    throw new TypeError("device_id and user_id must be UUIDv7 strings");
+  }
   return {
     fixture_version: 1,
-    name: requireString(value, "name"),
+    name: requireNonemptyString(value, "name"),
     data_class: "SYNTHETIC_ONLY",
     network_egress: "NONE",
     contract: parseContract(value.contract),
+    device_id: deviceId,
+    user_id: userId,
     public_key_hex: publicKey,
     signed_batch_cbor_hex: signedBatch,
     expected_replay: parseReplay(value.expected_replay),

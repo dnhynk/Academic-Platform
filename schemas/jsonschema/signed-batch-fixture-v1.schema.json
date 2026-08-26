@@ -10,6 +10,8 @@
     "data_class",
     "network_egress",
     "contract",
+    "device_id",
+    "user_id",
     "public_key_hex",
     "signed_batch_cbor_hex",
     "expected_replay"
@@ -30,6 +32,8 @@
         "event_schema_version": { "const": 1 }
       }
     },
+    "device_id": { "$ref": "#/$defs/uuidV7" },
+    "user_id": { "$ref": "#/$defs/uuidV7" },
     "public_key_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "signed_batch_cbor_hex": {
       "type": "string",
@@ -55,8 +59,8 @@
         "semantic_digest"
       ],
       "properties": {
-        "accepted_events": { "type": "integer", "minimum": 1 },
-        "accept_seq_head": { "type": "integer", "minimum": 1 },
+        "accepted_events": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "accept_seq_head": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         "payload_hash": { "$ref": "#/$defs/digest" },
         "envelope_hash": { "$ref": "#/$defs/digest" },
         "artifact_digest": { "$ref": "#/$defs/digest" },

@@ -10,7 +10,7 @@ Windows native and Linux are required CI environments for core tests and fixture
 
 ## Implemented evidence
 
-Workspace manifests, locks, line-ending/format rules, doctor/bootstrap scripts, full required commands, and Windows/Linux CI are present. Docker is not used. The repository has no remote, and Phase 0 does not publish an artifact.
+Workspace manifests, locks, line-ending/format rules, doctor/bootstrap scripts, full locked commands, and Windows/Linux CI are present. CI deterministically emits and diffs the fixture, cryptographically verifies/replays it, validates committed JSON through Draft 2020-12 schemas, checks TypeScript/Rust parity negatives, checks Proto drift, and hashes the exact LF canonical-spec bytes. Docker is not used. The repository has no remote, and Phase 0 does not publish an artifact.
 
 ## Acceptance gates
 

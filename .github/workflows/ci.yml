@@ -30,13 +30,15 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
       - name: Check formatting
-        run: cargo fmt --check
+        run: cargo fmt --all -- --check
       - name: Lint all Rust targets
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test Rust workspace
         run: cargo test --workspace --locked
       - name: Verify and replay signed fixture
         run: |
+          cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v1.json
+          git diff --exit-code -- schemas/fixtures/signed-batch-v1.json
           cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
           cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json
 

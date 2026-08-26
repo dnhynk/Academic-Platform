@@ -12,7 +12,7 @@ The eventual object format will use random per-artifact DEKs, domain KEK wrappin
 
 ## Implemented now
 
-Algorithm-prefixed digest and keyed locator newtypes, domain-key separation tests, byte-length/media metadata, and exact evidence locator validation. No encrypted object writer exists.
+Algorithm-prefixed digest and keyed locator newtypes, domain-key separation tests, byte-length/media metadata, and exact evidence locator validation are implemented. Each usable locator is bound to immutable `ArtifactRepresentation` metadata containing the exact locator, representation digest, and byte length. Text spans must remain within the registered source bytes; page, time, and repository locators fail closed unless an exact representation is registered. Evidence acceptance also enforces artifact/event domain closure. No encrypted object writer exists.
 
 ## Acceptance gate
 

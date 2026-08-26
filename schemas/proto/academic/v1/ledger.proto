@@ -87,8 +87,8 @@ message ClaimObject {
 }
 
 message ArtifactDescriptor {
-  UuidV7 artifact_id = 1;
-  Sha256Digest plaintext_digest = 2;
+  UuidV7 id = 1;
+  Sha256Digest content_digest = 2;
   string media_type = 3;
   uint64 byte_length = 4;
   UuidV7 domain_id = 5;
@@ -96,7 +96,14 @@ message ArtifactDescriptor {
   string retention_class = 7;
   UuidV7 permission_lineage_id = 8;
   uint32 format_version = 9;
-  bytes keyed_vault_locator = 10;
+  bytes vault_locator = 10;
+  repeated ArtifactRepresentation evidence_representations = 11;
+}
+
+message ArtifactRepresentation {
+  EvidenceLocator locator = 1;
+  Sha256Digest content_digest = 2;
+  uint64 byte_length = 3;
 }
 
 message EvidenceLocator {
@@ -115,19 +122,19 @@ message ByteSpan {
 }
 
 message TimeSpan {
-  uint64 start_millis = 1;
-  uint64 end_millis = 2;
+  uint64 start_ms = 1;
+  uint64 end_ms = 2;
 }
 
 message RepositorySpan {
   Sha256Digest snapshot_digest = 1;
-  string normalized_relative_path = 2;
+  string path = 2;
   uint64 start = 3;
   uint64 end = 4;
 }
 
 message EvidenceItem {
-  UuidV7 evidence_id = 1;
+  UuidV7 id = 1;
   UuidV7 artifact_id = 2;
   EvidenceLocator locator = 3;
   Sha256Digest excerpt_digest = 4;
@@ -138,47 +145,114 @@ message EvidenceItem {
 }
 
 message Claim {
-  UuidV7 claim_id = 1;
+  UuidV7 id = 1;
   UuidV7 subject_entity_id = 2;
   string predicate_id = 3;
   ClaimObject object = 4;
-  optional UuidV7 scope_id = 5;
+  UuidV7 scope_id = 5; // required by semantic validation
   AuthorityClass authority_class = 6;
   EpistemicStatus epistemic_status = 7;
-  optional uint32 confidence_permille = 8;
+  optional uint32 confidence = 8;
   ValidInterval valid_time = 9;
   repeated UuidV7 evidence_ids = 10;
   reserved 11 to 19;
 }
 
+message ConfirmDecision {}
+
+message RejectDecision {}
+
+message ReplaceDecision {
+  UuidV7 replacement_claim_id = 1;
+}
+
+message DecisionAction {
+  oneof action {
+    ConfirmDecision confirm = 1;
+    RejectDecision reject = 2;
+    ReplaceDecision replace = 3;
+  }
+}
+
 message UserDecision {
-  UuidV7 decision_id = 1;
+  UuidV7 id = 1;
   UuidV7 target_claim_id = 2;
-  string action = 3;
-  optional UuidV7 replacement_claim_id = 4;
-  optional UuidV7 scope_id = 5;
+  DecisionAction action = 3;
+  reserved 4;
+  UuidV7 scope_id = 5; // required by semantic validation
   repeated UuidV7 rationale_evidence_ids = 6;
   TimestampMillis decided_at = 7;
   optional TimestampMillis reversible_until = 8;
 }
 
+message ScopeDescriptor {
+  UuidV7 id = 1;
+  UuidV7 domain_id = 2;
+  string label = 3;
+}
+
+enum ClaimRelationKind {
+  CLAIM_RELATION_KIND_UNSPECIFIED = 0;
+  CLAIM_RELATION_KIND_SUPPORTS = 1;
+  CLAIM_RELATION_KIND_CONTRADICTS = 2;
+  CLAIM_RELATION_KIND_SUPERSEDES = 3;
+  CLAIM_RELATION_KIND_RETRACTS = 4;
+  CLAIM_RELATION_KIND_DUPLICATES = 5;
+}
+
+message ClaimRelation {
+  UuidV7 source_claim_id = 1;
+  UuidV7 target_claim_id = 2;
+  ClaimRelationKind kind = 3;
+  UuidV7 scope_id = 4;
+}
+
+message UserActor {
+  UuidV7 user_id = 1;
+}
+
+message DeterministicEngineActor {
+  string name = 1;
+  string version = 2;
+}
+
+message ModelRunActor {
+  UuidV7 run_id = 1;
+}
+
+message ImporterActor {
+  string name = 1;
+  string version = 2;
+}
+
+message Actor {
+  oneof kind {
+    UserActor user = 1;
+    DeterministicEngineActor deterministic_engine = 2;
+    ModelRunActor model_run = 3;
+    ImporterActor importer = 4;
+  }
+}
+
 message OriginEvent {
-  UuidV7 event_id = 1;
+  UuidV7 id = 1;
   uint64 origin_seq = 2;
   TimestampMillis origin_observed_at = 3;
   UuidV7 domain_id = 4;
-  string actor_kind = 5;
+  Actor actor = 5;
   oneof payload {
     ArtifactDescriptor artifact_registered = 10;
     EvidenceItem evidence_registered = 11;
     Claim claim_asserted = 12;
     UserDecision decision_recorded = 13;
+    ScopeDescriptor scope_registered = 14;
+    ClaimRelation claim_related = 15;
   }
   reserved 6 to 9;
 }
 
 message EventBatchDescriptor {
-  uint32 event_schema_version = 1;
+  uint32 schema_version = 1;
   UuidV7 batch_id = 2;
   UuidV7 device_id = 3;
   uint64 origin_seq_start = 4;

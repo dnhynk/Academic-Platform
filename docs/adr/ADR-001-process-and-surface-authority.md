@@ -25,7 +25,7 @@ Initial IPC is length-prefixed Protobuf request/response plus server events: cur
 
 ## Phase 0 evidence
 
-`academic-core::Core::accept_signed_batch` is the sole executable acceptance boundary and checks canonical bytes, expected device key, and signature before append. The CLI exposes only doctor and synthetic fixture workflows. There is no daemon, DB, recorder, or network path yet.
+`academic-core::Core::accept_signed_batch` checks canonical bytes, expected device/key/user authorization, and signature before append. Contract verification returns an opaque `VerifiedBatch`; the ledger exposes no append accepting caller-provided unsigned bytes or hashes. The CLI exposes only doctor and synthetic fixture workflows. There is no daemon, DB, recorder, or network path yet.
 
 ## Acceptance gates
 

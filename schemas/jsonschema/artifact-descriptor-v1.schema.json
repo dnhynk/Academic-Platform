@@ -5,7 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "artifact_id",
+    "id",
     "content_digest",
     "media_type",
     "byte_length",
@@ -14,10 +14,11 @@
     "retention_class",
     "permission_lineage_id",
     "format_version",
-    "vault_locator"
+    "vault_locator",
+    "evidence_representations"
   ],
   "properties": {
-    "artifact_id": { "$ref": "#/$defs/uuidV7" },
+    "id": { "$ref": "#/$defs/uuidV7" },
     "content_digest": { "$ref": "#/$defs/digest" },
     "media_type": {
       "type": "string",
@@ -36,6 +37,11 @@
     "vault_locator": {
       "type": "string",
       "pattern": "^locator:v1:[0-9a-f]{64}$"
+    },
+    "evidence_representations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/evidenceRepresentation" }
     }
   },
   "$defs": {
@@ -46,6 +52,67 @@
     "digest": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "logicalPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/)(?!~)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))[^:\\u0000-\\u001f\\u007f-\\u009f]+$"
+    },
+    "evidenceLocator": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "page_number"],
+          "properties": {
+            "kind": { "const": "PAGE" },
+            "page_number": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "source_digest", "start", "end"],
+          "properties": {
+            "kind": { "const": "TEXT_BYTES" },
+            "source_digest": { "$ref": "#/$defs/digest" },
+            "start": { "type": "integer", "minimum": 0 },
+            "end": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "start_ms", "end_ms"],
+          "properties": {
+            "kind": { "const": "TRANSCRIPT_TIME" },
+            "start_ms": { "type": "integer", "minimum": 0 },
+            "end_ms": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "snapshot_digest", "path", "start", "end"],
+          "properties": {
+            "kind": { "const": "REPOSITORY_BYTES" },
+            "snapshot_digest": { "$ref": "#/$defs/digest" },
+            "path": { "$ref": "#/$defs/logicalPath" },
+            "start": { "type": "integer", "minimum": 0 },
+            "end": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "evidenceRepresentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locator", "content_digest", "byte_length"],
+      "properties": {
+        "locator": { "$ref": "#/$defs/evidenceLocator" },
+        "content_digest": { "$ref": "#/$defs/digest" },
+        "byte_length": { "type": "integer", "minimum": 0 }
+      }
     }
   }
 }

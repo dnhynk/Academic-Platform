@@ -4,10 +4,10 @@
 
 - Product crates contain no HTTP client, socket, recorder, database, cloud SDK, shell execution, or telemetry dependency.
 - The only fixture is visibly synthetic and declares no network egress.
-- Canonical acceptance requires canonical CBOR, an expected Ed25519 key, a valid signature, a contiguous device origin chain, and evidence-reference closure.
+- Canonical acceptance requires canonical CBOR, an independent expected key/device/user authorization, a valid signature, a contiguous device origin chain, registered scope/domain closure, and exact evidence-representation closure. Ledger append accepts only the opaque verifier capability.
 - UUID ordering is never treated as causality; local acceptance sequence is explicit.
 - Artifact identity is `sha256:<plaintext digest>` inside the logical contract, while the physical locator is an HMAC-derived, domain-keyed value.
-- Normalized repository evidence paths reject absolute paths, backslashes, empty components, and parent traversal.
+- Normalized repository evidence paths reject POSIX roots, Windows drive/UNC/device forms, URI-like prefixes, backslashes, controls, empty components, and parent traversal on every host platform.
 - `Cargo.lock` and `pnpm-lock.yaml` are committed. Git Cargo sources, pnpm SSH dependencies, and insecure tarballs fail `pnpm security`.
 - Rust forbids unsafe code and denies clippy warnings. CI actions use full commit SHAs and minimum read-only repository permissions.
 

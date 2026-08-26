@@ -9,21 +9,24 @@
   "packageManager": "pnpm@11.22.0",
   "scripts": {
     "bootstrap": "node tools/bootstrap.mjs",
-    "doctor": "cargo run --quiet -p academic-cli -- doctor --format json",
+    "doctor": "cargo run --locked --quiet -p academic-cli -- doctor --format json",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
-    "fixture:verify": "cargo run --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",
-    "fixture:replay": "cargo run --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
+    "fixture:emit": "cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v1.json",
+    "fixture:verify": "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",
+    "fixture:replay": "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
     "verify:contracts": "node tools/verify-contracts.mjs",
     "security": "node tools/security-baseline.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "24.13.3",
+    "ajv": "8.17.1",
     "eslint": "10.9.1",
     "globals": "17.11.0",
+    "protobufjs": "8.7.2",
     "typescript": "6.0.3",
     "typescript-eslint": "8.68.0"
   }

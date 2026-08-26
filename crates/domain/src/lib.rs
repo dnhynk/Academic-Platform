@@ -7,7 +7,7 @@
 use std::{fmt, str::FromStr};
 
 use hmac::{Hmac, Mac};
-use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser::SerializeStruct};
 use sha2::{Digest as _, Sha256};
 use thiserror::Error;
 use uuid::Uuid;
@@ -38,6 +38,9 @@ pub enum DomainError {
     /// A decimal scale was outside the portable baseline.
     #[error("decimal scale must be in 0..=18, got {0}")]
     InvalidDecimalScale(u8),
+    /// A decimal coefficient was not the canonical base-10 i128 spelling.
+    #[error("invalid canonical decimal coefficient: {0}")]
+    InvalidDecimalCoefficient(String),
     /// A media type did not meet the portable contract.
     #[error("invalid media type: {0}")]
     InvalidMediaType(String),
@@ -59,6 +62,12 @@ pub enum DomainError {
         status: EpistemicStatus,
         authority: AuthorityClass,
     },
+    /// The signed event actor is not permitted to assert the claim authority.
+    #[error("actor {actor} cannot assert authority {authority:?}")]
+    ActorAuthorityMismatch {
+        actor: &'static str,
+        authority: AuthorityClass,
+    },
     /// An official or unknown claim carried an invalid confidence value.
     #[error("status {0:?} must not carry model confidence")]
     ConfidenceNotAllowed(EpistemicStatus),
@@ -74,14 +83,24 @@ pub enum DomainError {
     /// A user decision had an invalid replacement or reversal interval.
     #[error("invalid user decision: {0}")]
     InvalidDecision(String),
+    /// The event schema is unsupported and therefore fails closed.
+    #[error("unsupported event schema version {0}")]
+    UnsupportedSchemaVersion(u16),
+    /// Empty batches are not admitted.
+    #[error("event batch must not be empty")]
+    EmptyBatch,
+    /// The declared origin range did not match the event list.
+    #[error("batch origin range does not match its event count")]
+    InvalidOriginRange,
+    /// Event origin sequence numbers were not contiguous.
+    #[error("origin sequence must be contiguous: expected {expected}, got {actual}")]
+    NonContiguousOrigin { expected: u64, actual: u64 },
 }
 
 macro_rules! uuid_id {
     ($name:ident, $kind:literal) => {
         #[doc = concat!("Opaque UUIDv7-backed ", $kind, " identifier.")]
-        #[derive(
-            Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-        )]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
         #[serde(transparent)]
         pub struct $name(Uuid);
 
@@ -128,6 +147,23 @@ macro_rules! uuid_id {
                 Self::try_from_uuid(uuid)
             }
         }
+
+        impl<'de> Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let encoded = String::deserialize(deserializer)?;
+                let value = Uuid::parse_str(&encoded).map_err(de::Error::custom)?;
+                if value.to_string() != encoded {
+                    return Err(de::Error::custom(DomainError::InvalidId {
+                        kind: $kind,
+                        value: encoded,
+                    }));
+                }
+                Self::try_from_uuid(value).map_err(de::Error::custom)
+            }
+        }
     };
 }
 
@@ -141,6 +177,7 @@ uuid_id!(DeviceId, "device");
 uuid_id!(DomainId, "domain");
 uuid_id!(DecisionId, "decision");
 uuid_id!(PermissionLineageId, "permission lineage");
+uuid_id!(ScopeId, "scope");
 
 /// A UTC instant represented as Unix epoch milliseconds.
 #[derive(
@@ -164,10 +201,27 @@ impl TimestampMillis {
 }
 
 /// A half-open domain-valid interval `[from, to)`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct ValidInterval {
     from: TimestampMillis,
     to: Option<TimestampMillis>,
+}
+
+impl<'de> Deserialize<'de> for ValidInterval {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct WireInterval {
+            from: TimestampMillis,
+            to: Option<TimestampMillis>,
+        }
+
+        let value = WireInterval::deserialize(deserializer)?;
+        Self::new(value.from, value.to).map_err(de::Error::custom)
+    }
 }
 
 impl ValidInterval {
@@ -357,7 +411,7 @@ impl<'de> Deserialize<'de> for VaultLocator {
 }
 
 /// A normalized internet media type.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(transparent)]
 pub struct MediaType(String);
 
@@ -393,8 +447,17 @@ impl MediaType {
     }
 }
 
+impl<'de> Deserialize<'de> for MediaType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::parse(String::deserialize(deserializer)?).map_err(de::Error::custom)
+    }
+}
+
 /// A normalized repository-relative logical path.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(transparent)]
 pub struct LogicalPath(String);
 
@@ -405,7 +468,10 @@ impl LogicalPath {
         if value.is_empty()
             || value.starts_with('/')
             || value.contains('\\')
+            || value.contains(':')
+            || value.starts_with('~')
             || value.contains('\0')
+            || value.chars().any(char::is_control)
             || value
                 .split('/')
                 .any(|component| component.is_empty() || matches!(component, "." | ".."))
@@ -422,8 +488,17 @@ impl LogicalPath {
     }
 }
 
+impl<'de> Deserialize<'de> for LogicalPath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::parse(String::deserialize(deserializer)?).map_err(de::Error::custom)
+    }
+}
+
 /// A stable predicate registry key.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(transparent)]
 pub struct PredicateId(String);
 
@@ -452,8 +527,17 @@ impl PredicateId {
     }
 }
 
+impl<'de> Deserialize<'de> for PredicateId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::parse(String::deserialize(deserializer)?).map_err(de::Error::custom)
+    }
+}
+
 /// A bounded confidence value, distinct from authority or mastery.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(transparent)]
 pub struct ConfidencePermille(u16);
 
@@ -473,11 +557,59 @@ impl ConfidencePermille {
     }
 }
 
+impl<'de> Deserialize<'de> for ConfidencePermille {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::new(u16::deserialize(deserializer)?).map_err(de::Error::custom)
+    }
+}
+
 /// An exact base-10 decimal, avoiding binary floating-point semantics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Decimal {
     coefficient: i128,
     scale: u8,
+}
+
+impl Serialize for Decimal {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Decimal", 2)?;
+        state.serialize_field("coefficient", &self.coefficient.to_string())?;
+        state.serialize_field("scale", &self.scale)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Decimal {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct WireDecimal {
+            coefficient: String,
+            scale: u8,
+        }
+
+        let value = WireDecimal::deserialize(deserializer)?;
+        let coefficient = value.coefficient.parse::<i128>().map_err(|_| {
+            de::Error::custom(DomainError::InvalidDecimalCoefficient(
+                value.coefficient.clone(),
+            ))
+        })?;
+        if coefficient.to_string() != value.coefficient {
+            return Err(de::Error::custom(DomainError::InvalidDecimalCoefficient(
+                value.coefficient,
+            )));
+        }
+        Self::new(coefficient, value.scale).map_err(de::Error::custom)
+    }
 }
 
 impl Decimal {
@@ -538,8 +670,41 @@ pub enum RetentionClass {
     LegalHold,
 }
 
+/// A scope that may be referenced by claims, relations, decisions, and queries.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScopeDescriptor {
+    pub id: ScopeId,
+    pub domain_id: DomainId,
+    pub label: String,
+}
+
+impl ScopeDescriptor {
+    /// Validates the human-readable scope provenance label.
+    pub fn validate(&self) -> Result<(), DomainError> {
+        if self.label.trim().is_empty() {
+            return Err(DomainError::EmptyValue("scope label"));
+        }
+        Ok(())
+    }
+}
+
+/// An immutable, explicitly locatable representation registered for evidence use.
+///
+/// The descriptor binds an exact locator to the digest and byte length of the
+/// representation extracted at that locator. A ledger never guesses page,
+/// timestamp, or repository bounds from a media type.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactRepresentation {
+    pub locator: EvidenceLocator,
+    pub content_digest: ContentDigest,
+    pub byte_length: u64,
+}
+
 /// Logical content-addressed artifact descriptor.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ArtifactDescriptor {
     pub id: ArtifactId,
     pub content_digest: ContentDigest,
@@ -551,15 +716,65 @@ pub struct ArtifactDescriptor {
     pub permission_lineage_id: PermissionLineageId,
     pub format_version: u16,
     pub vault_locator: VaultLocator,
+    pub evidence_representations: Vec<ArtifactRepresentation>,
 }
 
 impl ArtifactDescriptor {
     /// Validates the descriptor fields that are fixed in Phase 0.
     pub fn validate(&self) -> Result<(), DomainError> {
-        if self.format_version == 0 {
-            return Err(DomainError::InvalidVersion("artifact format"));
+        if self.format_version != 1 {
+            return Err(DomainError::InvalidEventPayload(
+                "unsupported artifact format version".to_owned(),
+            ));
+        }
+        for (index, representation) in self.evidence_representations.iter().enumerate() {
+            representation.locator.validate()?;
+            if self.evidence_representations[..index]
+                .iter()
+                .any(|prior| prior.locator == representation.locator)
+            {
+                return Err(DomainError::InvalidEventPayload(
+                    "artifact evidence representation locators must be unique".to_owned(),
+                ));
+            }
+            match &representation.locator {
+                EvidenceLocator::TextBytes {
+                    source_digest,
+                    start,
+                    end,
+                } => {
+                    if *source_digest != self.content_digest
+                        || *end > self.byte_length
+                        || representation.byte_length != *end - *start
+                    {
+                        return Err(DomainError::InvalidEventPayload(
+                            "text representation must be bounded by the registered artifact bytes"
+                                .to_owned(),
+                        ));
+                    }
+                }
+                EvidenceLocator::RepositoryBytes { start, end, .. } => {
+                    if representation.byte_length != *end - *start {
+                        return Err(DomainError::InvalidEventPayload(
+                            "repository representation byte length must match its exact span"
+                                .to_owned(),
+                        ));
+                    }
+                }
+                EvidenceLocator::Page { .. } | EvidenceLocator::TranscriptTime { .. } => {}
+            }
         }
         Ok(())
+    }
+
+    /// Returns whether exact descriptor metadata proves the evidence locator and digest.
+    #[must_use]
+    pub fn supports_evidence(&self, evidence: &EvidenceItem) -> bool {
+        evidence.artifact_id == self.id
+            && self.evidence_representations.iter().any(|representation| {
+                representation.locator == evidence.locator
+                    && representation.content_digest == evidence.excerpt_digest
+            })
     }
 }
 
@@ -727,7 +942,7 @@ pub struct Claim {
     pub subject_entity_id: EntityId,
     pub predicate_id: PredicateId,
     pub object: ClaimObject,
-    pub scope_id: Option<EntityId>,
+    pub scope_id: ScopeId,
     pub authority_class: AuthorityClass,
     pub epistemic_status: EpistemicStatus,
     pub confidence: Option<ConfidencePermille>,
@@ -776,13 +991,43 @@ impl Claim {
         }
         Ok(())
     }
+
+    /// Enforces the fail-closed actor/authority/status matrix for signed events.
+    pub fn validate_for_actor(&self, actor: &Actor) -> Result<(), DomainError> {
+        self.validate()?;
+        let permitted = match actor {
+            Actor::User { .. } => self.authority_class == AuthorityClass::UserExplicit,
+            Actor::DeterministicEngine { .. } => {
+                self.authority_class == AuthorityClass::DeterministicEngine
+            }
+            Actor::ModelRun { .. } => matches!(
+                self.authority_class,
+                AuthorityClass::ModelInference | AuthorityClass::Prediction
+            ),
+            Actor::Importer { .. } => matches!(
+                self.authority_class,
+                AuthorityClass::Official
+                    | AuthorityClass::DirectObservation
+                    | AuthorityClass::Curated
+                    | AuthorityClass::Unknown
+            ),
+        };
+        if permitted {
+            Ok(())
+        } else {
+            Err(DomainError::ActorAuthorityMismatch {
+                actor: actor.kind_name(),
+                authority: self.authority_class,
+            })
+        }
+    }
 }
 
 /// Provenance-bearing actor, never inferred from wall-clock or process identity.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Actor {
-    User,
+    User { user_id: EntityId },
     DeterministicEngine { name: String, version: String },
     ModelRun { run_id: EntityId },
     Importer { name: String, version: String },
@@ -792,7 +1037,7 @@ impl Actor {
     /// Validates actor labels used in signed bytes.
     pub fn validate(&self) -> Result<(), DomainError> {
         match self {
-            Self::User | Self::ModelRun { .. } => Ok(()),
+            Self::User { .. } | Self::ModelRun { .. } => Ok(()),
             Self::DeterministicEngine { name, version } | Self::Importer { name, version } => {
                 if name.trim().is_empty() {
                     return Err(DomainError::EmptyValue("actor name"));
@@ -804,6 +1049,17 @@ impl Actor {
             }
         }
     }
+
+    /// Returns the stable actor variant name used in validation diagnostics.
+    #[must_use]
+    pub const fn kind_name(&self) -> &'static str {
+        match self {
+            Self::User { .. } => "USER",
+            Self::DeterministicEngine { .. } => "DETERMINISTIC_ENGINE",
+            Self::ModelRun { .. } => "MODEL_RUN",
+            Self::Importer { .. } => "IMPORTER",
+        }
+    }
 }
 
 /// Append-only relationship between two claims.
@@ -812,6 +1068,7 @@ pub struct ClaimRelation {
     pub source_claim_id: ClaimId,
     pub target_claim_id: ClaimId,
     pub kind: ClaimRelationKind,
+    pub scope_id: ScopeId,
 }
 
 /// Meaning of an immutable claim relationship.
@@ -840,7 +1097,7 @@ pub struct UserDecision {
     pub id: DecisionId,
     pub target_claim_id: ClaimId,
     pub action: DecisionAction,
-    pub scope_id: Option<EntityId>,
+    pub scope_id: ScopeId,
     pub rationale_evidence_ids: Vec<EvidenceId>,
     pub decided_at: TimestampMillis,
     pub reversible_until: Option<TimestampMillis>,
@@ -874,6 +1131,7 @@ impl UserDecision {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "value", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EventPayload {
+    ScopeRegistered(ScopeDescriptor),
     ArtifactRegistered(ArtifactDescriptor),
     EvidenceRegistered(EvidenceItem),
     ClaimAsserted(Claim),
@@ -897,9 +1155,24 @@ impl Event {
     pub fn validate(&self) -> Result<(), DomainError> {
         self.actor.validate()?;
         match &self.payload {
-            EventPayload::ArtifactRegistered(descriptor) => descriptor.validate(),
+            EventPayload::ScopeRegistered(scope) => {
+                if scope.domain_id != self.domain_id {
+                    return Err(DomainError::InvalidEventPayload(
+                        "scope domain must match event domain".to_owned(),
+                    ));
+                }
+                scope.validate()
+            }
+            EventPayload::ArtifactRegistered(descriptor) => {
+                if descriptor.domain_id != self.domain_id {
+                    return Err(DomainError::InvalidEventPayload(
+                        "artifact domain must match event domain".to_owned(),
+                    ));
+                }
+                descriptor.validate()
+            }
             EventPayload::EvidenceRegistered(evidence) => evidence.validate(),
-            EventPayload::ClaimAsserted(claim) => claim.validate(),
+            EventPayload::ClaimAsserted(claim) => claim.validate_for_actor(&self.actor),
             EventPayload::ClaimRelated(relation) => {
                 if relation.source_claim_id == relation.target_claim_id {
                     Err(DomainError::InvalidEventPayload(
@@ -910,7 +1183,7 @@ impl Event {
                 }
             }
             EventPayload::DecisionRecorded(decision) => {
-                if self.actor == Actor::User {
+                if matches!(&self.actor, Actor::User { .. }) {
                     decision.validate()
                 } else {
                     Err(DomainError::DecisionActorNotUser)
@@ -920,10 +1193,65 @@ impl Event {
     }
 }
 
+/// Signed batch semantic version implemented by the Phase 0 ledger.
+pub const EVENT_SCHEMA_VERSION: u16 = 1;
+
+/// An origin-authored batch before canonical framing and signature verification.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UnsignedBatch {
+    pub schema_version: u16,
+    pub batch_id: BatchId,
+    pub device_id: DeviceId,
+    pub origin_seq_start: u64,
+    pub origin_seq_end: u64,
+    pub previous_batch_hash: Option<ContentDigest>,
+    pub origin_created_at: TimestampMillis,
+    pub events: Vec<Event>,
+}
+
+impl UnsignedBatch {
+    /// Revalidates the full decoded batch before signing or acceptance.
+    pub fn validate(&self) -> Result<(), DomainError> {
+        if self.schema_version != EVENT_SCHEMA_VERSION {
+            return Err(DomainError::UnsupportedSchemaVersion(self.schema_version));
+        }
+        if self.events.is_empty() {
+            return Err(DomainError::EmptyBatch);
+        }
+        let expected_count = self
+            .origin_seq_end
+            .checked_sub(self.origin_seq_start)
+            .and_then(|difference| difference.checked_add(1))
+            .ok_or(DomainError::InvalidOriginRange)?;
+        if usize::try_from(expected_count).ok() != Some(self.events.len()) {
+            return Err(DomainError::InvalidOriginRange);
+        }
+        for (offset, event) in self.events.iter().enumerate() {
+            let expected = self
+                .origin_seq_start
+                .checked_add(u64::try_from(offset).map_err(|_| DomainError::InvalidOriginRange)?)
+                .ok_or(DomainError::InvalidOriginRange)?;
+            if event.origin_seq != expected {
+                return Err(DomainError::NonContiguousOrigin {
+                    expected,
+                    actual: event.origin_seq,
+                });
+            }
+            event.validate()?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use proptest::prelude::*;
+
+    fn id<T: FromStr<Err = DomainError>>(suffix: u32) -> Result<T, DomainError> {
+        format!("01900000-0000-7000-8000-{suffix:012x}").parse()
+    }
 
     #[test]
     fn uuid_id_rejects_non_v7() {
@@ -955,6 +1283,182 @@ mod tests {
         let mastery = ClaimObject::Mastery(MasteryLevel::Applied);
         let freshness = ClaimObject::Freshness(FreshnessBand::Stale);
         assert_ne!(mastery, freshness);
+    }
+
+    #[test]
+    fn constrained_deserialization_cannot_bypass_constructors() {
+        assert!(
+            serde_json::from_str::<EntityId>("\"00000000-0000-4000-8000-000000000000\"").is_err()
+        );
+        assert!(
+            serde_json::from_str::<EntityId>("\"01900000-0000-7000-8000-0000000000AA\"").is_err()
+        );
+        assert!(serde_json::from_str::<ValidInterval>("{\"from\":7,\"to\":7}").is_err());
+        assert!(serde_json::from_str::<MediaType>("\"Text/Plain\"").is_err());
+        assert!(serde_json::from_str::<LogicalPath>("\"../escape\"").is_err());
+        assert!(serde_json::from_str::<PredicateId>("\"missing_namespace\"").is_err());
+        assert!(serde_json::from_str::<ConfidencePermille>("1001").is_err());
+        assert!(serde_json::from_str::<Decimal>("{\"coefficient\":\"1\",\"scale\":19}").is_err());
+    }
+
+    #[test]
+    fn decimal_uses_canonical_string_coefficients_at_i128_boundaries()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for coefficient in [i128::MIN, -1, 0, 1, i128::MAX] {
+            let value = Decimal::new(coefficient, 18)?;
+            let json = serde_json::to_string(&value)?;
+            assert!(json.contains(&format!("\"coefficient\":\"{coefficient}\"")));
+            assert_eq!(serde_json::from_str::<Decimal>(&json)?, value);
+        }
+        for invalid in [
+            "",
+            "+1",
+            "01",
+            "-0",
+            " 1",
+            "1 ",
+            "170141183460469231731687303715884105728",
+            "-170141183460469231731687303715884105729",
+        ] {
+            let json = format!("{{\"coefficient\":\"{invalid}\",\"scale\":0}}");
+            assert!(serde_json::from_str::<Decimal>(&json).is_err(), "{invalid}");
+        }
+        assert!(serde_json::from_str::<Decimal>("{\"coefficient\":1,\"scale\":0}").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn logical_path_rejects_all_platform_absolute_and_uri_forms() {
+        for invalid in [
+            "/etc/passwd",
+            "C:/Windows/System32",
+            "c:relative.txt",
+            "C:\\Windows\\System32",
+            "\\\\server\\share\\file",
+            "\\\\?\\C:\\device",
+            "\\\\.\\PhysicalDrive0",
+            "file:///tmp/data",
+            "https://example.invalid/a",
+            "urn:academic:test",
+            "~/private",
+        ] {
+            assert!(LogicalPath::parse(invalid).is_err(), "{invalid}");
+        }
+        for valid in ["src/domain.rs", "docs/설계.md", "a/b-c_1.txt"] {
+            assert_eq!(
+                LogicalPath::parse(valid).map(|path| path.0),
+                Ok(valid.to_owned())
+            );
+        }
+    }
+
+    #[test]
+    fn claim_actor_authority_status_matrix_fails_closed() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let user = Actor::User { user_id: id(1)? };
+        let engine = Actor::DeterministicEngine {
+            name: "engine".to_owned(),
+            version: "1".to_owned(),
+        };
+        let model = Actor::ModelRun { run_id: id(2)? };
+        let importer = Actor::Importer {
+            name: "importer".to_owned(),
+            version: "1".to_owned(),
+        };
+        let actors = [&user, &engine, &model, &importer];
+        let rows = [
+            (
+                AuthorityClass::Official,
+                EpistemicStatus::OfficialConfirmed,
+                [false, false, false, true],
+            ),
+            (
+                AuthorityClass::UserExplicit,
+                EpistemicStatus::UserConfirmed,
+                [true, false, false, false],
+            ),
+            (
+                AuthorityClass::DirectObservation,
+                EpistemicStatus::CodeObserved,
+                [false, false, false, true],
+            ),
+            (
+                AuthorityClass::DeterministicEngine,
+                EpistemicStatus::DeterministicDerived,
+                [false, true, false, false],
+            ),
+            (
+                AuthorityClass::Curated,
+                EpistemicStatus::Disputed,
+                [false, false, false, true],
+            ),
+            (
+                AuthorityClass::ModelInference,
+                EpistemicStatus::AiInferred,
+                [false, false, true, false],
+            ),
+            (
+                AuthorityClass::Prediction,
+                EpistemicStatus::Prediction,
+                [false, false, true, false],
+            ),
+            (
+                AuthorityClass::Unknown,
+                EpistemicStatus::Unknown,
+                [false, false, false, true],
+            ),
+        ];
+        for (row_index, (authority, status, expected)) in rows.into_iter().enumerate() {
+            let claim = Claim {
+                id: id(100 + u32::try_from(row_index)?)?,
+                subject_entity_id: id(10)?,
+                predicate_id: PredicateId::parse("test.value")?,
+                object: ClaimObject::Text("synthetic".to_owned()),
+                scope_id: id(11)?,
+                authority_class: authority,
+                epistemic_status: status,
+                confidence: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
+                evidence_ids: if status == EpistemicStatus::Unknown {
+                    Vec::new()
+                } else {
+                    vec![id(12)?]
+                },
+            };
+            for (actor, permitted) in actors.into_iter().zip(expected) {
+                assert_eq!(claim.validate_for_actor(actor).is_ok(), permitted);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn model_event_cannot_impersonate_user_confirmed_claim()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let event = Event {
+            id: id(200)?,
+            origin_seq: 1,
+            origin_observed_at: TimestampMillis::new(0),
+            actor: Actor::ModelRun { run_id: id(201)? },
+            domain_id: id(202)?,
+            payload: EventPayload::ClaimAsserted(Claim {
+                id: id(203)?,
+                subject_entity_id: id(204)?,
+                predicate_id: PredicateId::parse("test.value")?,
+                object: ClaimObject::Text("synthetic".to_owned()),
+                scope_id: id(205)?,
+                authority_class: AuthorityClass::UserExplicit,
+                epistemic_status: EpistemicStatus::UserConfirmed,
+                confidence: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
+                evidence_ids: vec![id(206)?],
+            }),
+        };
+        assert!(matches!(
+            event.validate(),
+            Err(DomainError::ActorAuthorityMismatch { .. })
+        ));
+        Ok(())
     }
 
     proptest! {

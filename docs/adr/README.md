@@ -1,6 +1,6 @@
 # Architecture decision register
 
-The canonical design document has SHA-256 `D11EE78B3EBE728A0520C454BB29501ACCD2EE6397F3089C9041EF2EF85E1F60`. The approved T002 architecture report has SHA-256 `A74768B811524FDCA8FEB0E1C63B87440BE626B182C04B22D00C7E39B5C6C469`. Those sources outrank this register if an accidental wording drift is found; a corrective ADR must then make the reconciliation explicit.
+The tracked LF bytes of the canonical design document have SHA-256 `4830DEBD1A9EE8BE13B10D1E72BA3D2A3943F9D63417051CC123EF51743B2E45`; `.gitattributes` fixes text checkout to LF and `pnpm verify:contracts` hashes the exact file bytes. The approved T002 architecture report has SHA-256 `A74768B811524FDCA8FEB0E1C63B87440BE626B182C04B22D00C7E39B5C6C469`. Those sources outrank this register if an accidental wording drift is found; a corrective ADR must then make the reconciliation explicit.
 
 | ADR | Status | Phase 0 evidence | Remaining acceptance gate |
 |---|---|---|---|

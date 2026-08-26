@@ -6,12 +6,17 @@
 
 use std::io::Cursor;
 
-use academic_domain::{ContentDigest, DomainError};
-use academic_ledger::{LedgerError, UnsignedBatch};
+use academic_domain::{Actor, ContentDigest, DeviceId, DomainError, EntityId, UnsignedBatch};
 use ciborium::value::{Integer, Value as CborValue};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue};
 use thiserror::Error;
+
+mod proto_contract;
+
+pub use proto_contract::{
+    ProtoContractError, decode_claim_relation_event_proto, encode_claim_relation_event_proto,
+};
 
 /// Signed-envelope format version.
 pub const SIGNED_ENVELOPE_VERSION: u16 = 1;
@@ -24,12 +29,93 @@ const JSON_ARRAY: u64 = 4;
 const JSON_OBJECT: u64 = 5;
 
 /// Verified and decoded batch plus both semantic and envelope digests.
+///
+/// Callers cannot construct this acceptance capability:
+///
+/// ```compile_fail
+/// use academic_contracts::VerifiedBatch;
+/// use academic_domain::{ContentDigest, UnsignedBatch};
+/// use ed25519_dalek::VerifyingKey;
+///
+/// fn forge(batch: UnsignedBatch, public_key: VerifyingKey, hash: ContentDigest) -> VerifiedBatch {
+///     VerifiedBatch {
+///         batch,
+///         public_key,
+///         payload_hash: hash,
+///         envelope_hash: hash,
+///     }
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerifiedBatch {
-    pub batch: UnsignedBatch,
-    pub public_key: VerifyingKey,
-    pub payload_hash: ContentDigest,
-    pub envelope_hash: ContentDigest,
+    batch: UnsignedBatch,
+    public_key: VerifyingKey,
+    payload_hash: ContentDigest,
+    envelope_hash: ContentDigest,
+}
+
+impl VerifiedBatch {
+    /// Returns the fully revalidated semantic batch.
+    #[must_use]
+    pub const fn batch(&self) -> &UnsignedBatch {
+        &self.batch
+    }
+
+    /// Returns the independently expected key that authenticated the batch.
+    #[must_use]
+    pub const fn public_key(&self) -> &VerifyingKey {
+        &self.public_key
+    }
+
+    /// Returns the digest of the canonical signing payload.
+    #[must_use]
+    pub const fn payload_hash(&self) -> ContentDigest {
+        self.payload_hash
+    }
+
+    /// Returns the digest of the complete canonical signed envelope.
+    #[must_use]
+    pub const fn envelope_hash(&self) -> ContentDigest {
+        self.envelope_hash
+    }
+}
+
+/// Independent trust anchor binding a signing key to a device and user identity.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeviceAuthorization {
+    device_id: DeviceId,
+    user_id: EntityId,
+    verifying_key: VerifyingKey,
+}
+
+impl DeviceAuthorization {
+    /// Constructs an authorization from configuration outside the signed envelope.
+    #[must_use]
+    pub const fn new(device_id: DeviceId, user_id: EntityId, verifying_key: VerifyingKey) -> Self {
+        Self {
+            device_id,
+            user_id,
+            verifying_key,
+        }
+    }
+
+    /// Returns the authorized device identity.
+    #[must_use]
+    pub const fn device_id(&self) -> DeviceId {
+        self.device_id
+    }
+
+    /// Returns the user identity whose explicit actions this device may attest.
+    #[must_use]
+    pub const fn user_id(&self) -> EntityId {
+        self.user_id
+    }
+
+    /// Returns the independently configured verification key.
+    #[must_use]
+    pub const fn verifying_key(&self) -> &VerifyingKey {
+        &self.verifying_key
+    }
 }
 
 #[derive(Debug)]
@@ -45,9 +131,6 @@ pub enum ContractError {
     /// A domain invariant failed before or after transport.
     #[error(transparent)]
     Domain(#[from] DomainError),
-    /// A ledger semantic invariant failed before or after transport.
-    #[error(transparent)]
-    Ledger(#[from] LedgerError),
     /// JSON conversion failed.
     #[error("domain JSON conversion failed: {0}")]
     Json(#[from] serde_json::Error),
@@ -81,6 +164,12 @@ pub enum ContractError {
     /// The embedded key was not the independently expected device key.
     #[error("embedded signing key does not match the expected device key")]
     UnexpectedSigningKey,
+    /// The signed batch named a different device than the key's authorization.
+    #[error("signed batch device does not match the authorized device")]
+    UnexpectedDeviceId,
+    /// A user actor did not match the identity authorized for this device.
+    #[error("signed user actor does not match the authorized user")]
+    UnexpectedUserActor,
     /// Ed25519 verification failed.
     #[error("Ed25519 signature verification failed")]
     InvalidSignature,
@@ -104,7 +193,7 @@ pub fn sign_batch(
 /// and all nested semantic invariants before returning a batch.
 pub fn verify_signed_batch(
     envelope_bytes: &[u8],
-    expected_key: &VerifyingKey,
+    authorization: &DeviceAuthorization,
 ) -> Result<VerifiedBatch, ContractError> {
     let decoded = decode_envelope(envelope_bytes)?;
     let payload = decoded.payload;
@@ -120,7 +209,7 @@ pub fn verify_signed_batch(
             })?;
     let public_key =
         VerifyingKey::from_bytes(&public_key_array).map_err(|_| ContractError::InvalidSignature)?;
-    if public_key != *expected_key {
+    if public_key != *authorization.verifying_key() {
         return Err(ContractError::UnexpectedSigningKey);
     }
     let signature_array: [u8; 64] =
@@ -137,6 +226,17 @@ pub fn verify_signed_batch(
         .map_err(|_| ContractError::InvalidSignature)?;
 
     let batch = decode_unsigned_batch(&payload)?;
+    if batch.device_id != authorization.device_id() {
+        return Err(ContractError::UnexpectedDeviceId);
+    }
+    if batch.events.iter().any(|event| {
+        matches!(
+            &event.actor,
+            Actor::User { user_id } if *user_id != authorization.user_id()
+        )
+    }) {
+        return Err(ContractError::UnexpectedUserActor);
+    }
     Ok(VerifiedBatch {
         batch,
         public_key,
@@ -396,14 +496,17 @@ mod tests {
     use std::str::FromStr;
 
     use academic_domain::{
-        Actor, BatchId, DeviceId, DomainId, EventId, EventPayload, TimestampMillis,
+        Actor, AuthorityClass, BatchId, Claim, ClaimId, ClaimObject, ClaimRelation,
+        ClaimRelationKind, Decimal, DeviceId, DomainId, EVENT_SCHEMA_VERSION, EntityId,
+        EpistemicStatus, Event, EventId, EventPayload, EvidenceId, PredicateId, ScopeId,
+        TimestampMillis, ValidInterval,
     };
-    use academic_ledger::{EVENT_SCHEMA_VERSION, event};
 
     use super::*;
 
     fn minimal_batch() -> Result<UnsignedBatch, DomainError> {
         let domain_id = DomainId::from_str("01900000-0000-7000-8000-000000000001")?;
+        let user_id = EntityId::from_str("01900000-0000-7000-8000-000000000007")?;
         Ok(UnsignedBatch {
             schema_version: EVENT_SCHEMA_VERSION,
             batch_id: BatchId::from_str("01900000-0000-7000-8000-000000000002")?,
@@ -412,13 +515,13 @@ mod tests {
             origin_seq_end: 1,
             previous_batch_hash: None,
             origin_created_at: TimestampMillis::new(10),
-            events: vec![event(
-                EventId::from_str("01900000-0000-7000-8000-000000000004")?,
-                1,
-                TimestampMillis::new(9),
-                Actor::User,
+            events: vec![Event {
+                id: EventId::from_str("01900000-0000-7000-8000-000000000004")?,
+                origin_seq: 1,
+                origin_observed_at: TimestampMillis::new(9),
+                actor: Actor::User { user_id },
                 domain_id,
-                EventPayload::DecisionRecorded(academic_domain::UserDecision {
+                payload: EventPayload::DecisionRecorded(academic_domain::UserDecision {
                     id: academic_domain::DecisionId::from_str(
                         "01900000-0000-7000-8000-000000000005",
                     )?,
@@ -426,13 +529,24 @@ mod tests {
                         "01900000-0000-7000-8000-000000000006",
                     )?,
                     action: academic_domain::DecisionAction::Reject,
-                    scope_id: None,
+                    scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000008")?,
                     rationale_evidence_ids: Vec::new(),
                     decided_at: TimestampMillis::new(9),
                     reversible_until: None,
                 }),
-            )],
+            }],
         })
+    }
+
+    fn authorization(
+        batch: &UnsignedBatch,
+        signing_key: &SigningKey,
+    ) -> Result<DeviceAuthorization, DomainError> {
+        Ok(DeviceAuthorization::new(
+            batch.device_id,
+            EntityId::from_str("01900000-0000-7000-8000-000000000007")?,
+            signing_key.verifying_key(),
+        ))
     }
 
     #[test]
@@ -451,12 +565,17 @@ mod tests {
         let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
         let other_key = SigningKey::from_bytes(&[8_u8; 32]).verifying_key();
         let signed = sign_batch(&batch, &signing_key)?;
+        let wrong_key_authorization = DeviceAuthorization::new(
+            batch.device_id,
+            EntityId::from_str("01900000-0000-7000-8000-000000000007")?,
+            other_key,
+        );
         assert!(matches!(
-            verify_signed_batch(&signed, &other_key),
+            verify_signed_batch(&signed, &wrong_key_authorization),
             Err(ContractError::UnexpectedSigningKey)
         ));
-        let verified = verify_signed_batch(&signed, &signing_key.verifying_key())?;
-        assert_eq!(verified.batch, batch);
+        let verified = verify_signed_batch(&signed, &authorization(&batch, &signing_key)?)?;
+        assert_eq!(verified.batch(), &batch);
         Ok(())
     }
 
@@ -467,7 +586,129 @@ mod tests {
         let mut signed = sign_batch(&batch, &signing_key)?;
         let middle = signed.len() / 2;
         signed[middle] ^= 1;
-        assert!(verify_signed_batch(&signed, &signing_key.verifying_key()).is_err());
+        assert!(verify_signed_batch(&signed, &authorization(&batch, &signing_key)?).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn signed_batch_rejects_device_id_key_binding_mismatch()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = minimal_batch()?;
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let signed = sign_batch(&batch, &signing_key)?;
+        let authorization = DeviceAuthorization::new(
+            DeviceId::from_str("01900000-0000-7000-8000-000000000099")?,
+            EntityId::from_str("01900000-0000-7000-8000-000000000007")?,
+            signing_key.verifying_key(),
+        );
+        assert!(matches!(
+            verify_signed_batch(&signed, &authorization),
+            Err(ContractError::UnexpectedDeviceId)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn signed_batch_rejects_user_actor_identity_mismatch() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let batch = minimal_batch()?;
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let signed = sign_batch(&batch, &signing_key)?;
+        let authorization = DeviceAuthorization::new(
+            batch.device_id,
+            EntityId::from_str("01900000-0000-7000-8000-000000000099")?,
+            signing_key.verifying_key(),
+        );
+        assert!(matches!(
+            verify_signed_batch(&signed, &authorization),
+            Err(ContractError::UnexpectedUserActor)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn protobuf_relation_and_structured_actor_round_trip_is_lossless()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let actors = [
+            Actor::User {
+                user_id: EntityId::from_str("01900000-0000-7000-8000-000000000020")?,
+            },
+            Actor::DeterministicEngine {
+                name: "resolver".to_owned(),
+                version: "1.2.3".to_owned(),
+            },
+            Actor::ModelRun {
+                run_id: EntityId::from_str("01900000-0000-7000-8000-000000000021")?,
+            },
+            Actor::Importer {
+                name: "registrar".to_owned(),
+                version: "2026.08".to_owned(),
+            },
+        ];
+        for (index, actor) in actors.into_iter().enumerate() {
+            let event = Event {
+                id: EventId::from_str(&format!("01900000-0000-7000-8000-{:012x}", 30 + index))?,
+                origin_seq: u64::try_from(index + 1)?,
+                origin_observed_at: TimestampMillis::new(i64::try_from(index)?),
+                actor,
+                domain_id: DomainId::from_str("01900000-0000-7000-8000-000000000022")?,
+                payload: EventPayload::ClaimRelated(ClaimRelation {
+                    source_claim_id: ClaimId::from_str("01900000-0000-7000-8000-000000000023")?,
+                    target_claim_id: ClaimId::from_str("01900000-0000-7000-8000-000000000024")?,
+                    kind: ClaimRelationKind::Supersedes,
+                    scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000025")?,
+                }),
+            };
+            let encoded = encode_claim_relation_event_proto(&event)?;
+            assert_eq!(decode_claim_relation_event_proto(&encoded)?, event);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn signed_decode_revalidates_uuidv7_before_issuing_capability()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = minimal_batch()?;
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let authorization = authorization(&batch, &signing_key)?;
+        let mut json = serde_json::to_value(&batch)?;
+        json["batch_id"] = JsonValue::String("00000000-0000-4000-8000-000000000000".to_owned());
+        let payload = encode_cbor_value(&json_to_cbor(&json)?)?;
+        let signature = signing_key.sign(&payload);
+        let envelope = encode_envelope(
+            &payload,
+            signing_key.verifying_key().as_bytes(),
+            &signature.to_bytes(),
+        )?;
+        assert!(matches!(
+            verify_signed_batch(&envelope, &authorization),
+            Err(ContractError::Json(_))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn deterministic_cbor_round_trips_decimal_i128_boundaries()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for (offset, coefficient) in [i128::MIN, i128::MAX].into_iter().enumerate() {
+            let mut batch = minimal_batch()?;
+            batch.events[0].payload = EventPayload::ClaimAsserted(Claim {
+                id: ClaimId::from_str(&format!("01900000-0000-7000-8000-{:012x}", 100 + offset))?,
+                subject_entity_id: EntityId::from_str("01900000-0000-7000-8000-000000000101")?,
+                predicate_id: PredicateId::parse("test.decimal")?,
+                object: ClaimObject::Decimal(Decimal::new(coefficient, 18)?),
+                scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000008")?,
+                authority_class: AuthorityClass::UserExplicit,
+                epistemic_status: EpistemicStatus::UserConfirmed,
+                confidence: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
+                evidence_ids: vec![EvidenceId::from_str(
+                    "01900000-0000-7000-8000-000000000102",
+                )?],
+            });
+            let encoded = encode_unsigned_batch(&batch)?;
+            assert_eq!(decode_unsigned_batch(&encoded)?, batch);
+        }
         Ok(())
     }
 }

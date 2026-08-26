@@ -47,8 +47,12 @@ enum Commands {
 
 #[derive(Debug, Subcommand)]
 enum FixtureCommand {
-    /// Emits the deterministic fixture JSON to stdout.
-    Emit,
+    /// Emits the deterministic fixture JSON to stdout or an explicit path.
+    Emit {
+        /// Writes the deterministic bytes directly to this file when supplied.
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
     /// Verifies exact bytes, signature, expected replay, and builder drift.
     Verify { path: PathBuf },
     /// Verifies the signature and replays accepted events from sequence zero.
@@ -89,9 +93,15 @@ fn main() -> Result<()> {
 
 fn fixture(command: FixtureCommand) -> Result<()> {
     match command {
-        FixtureCommand::Emit => {
+        FixtureCommand::Emit { output } => {
             let document = build_fixture_document()?;
-            print!("{}", fixture_json(&document)?);
+            let json = fixture_json(&document)?;
+            if let Some(path) = output {
+                fs::write(&path, json)
+                    .with_context(|| format!("failed to write fixture {}", path.display()))?;
+            } else {
+                print!("{json}");
+            }
         }
         FixtureCommand::Verify { path } => {
             let document = read_fixture(&path)?;

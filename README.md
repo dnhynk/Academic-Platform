@@ -4,12 +4,12 @@ This repository is the runnable foundation for a local-first Personal Academic Â
 
 ## What is executable
 
-- `academic-domain`: UUIDv7 IDs, algorithm-prefixed digests, keyed vault locators, exact evidence spans, typed claims, epistemic and authority vocabularies, half-open valid intervals, independent mastery/freshness types, and user decisions.
-- `academic-ledger`: append-only batch acceptance, device origin-chain gap/fork checks, replica-local `accept_seq`, evidence closure, predicate-specific authority resolution, and bitemporal queries.
-- `academic-contracts`: deterministic CBOR encode/decode, Ed25519 sign/verify, canonical-byte rejection, and expected device-key anchoring.
-- `academic-core`: the acceptance boundary; unsigned or unverified events never reach the ledger.
+- `academic-domain`: checked UUIDv7 IDs, canonical decimal coefficient strings, portable logical paths, registered evidence representations, required scopes, typed claims, actor/authority/status rules, half-open valid intervals, independent mastery/freshness types, and user decisions.
+- `academic-ledger`: verified-capability-only append, device origin-chain gap/fork checks, replica-local `accept_seq`, cross-domain evidence closure, scope-isolated authority resolution, and bitemporal queries.
+- `academic-contracts`: deterministic CBOR encode/decode, Ed25519 sign/verify, canonical-byte rejection, device/key/user identity binding, and executable Protobuf actor/relation round trips.
+- `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
 - `academic` CLI: privacy-safe doctor plus fixture emit/verify/replay commands.
-- `@academic-os/web-contracts`: TypeScript-side fixture contract validation.
+- `@academic-os/web-contracts`: exact TypeScript fixture validation kept in positive/negative parity with JSON Schema and Rust.
 
 The committed fixture is synthetic and declares `network_egress: NONE`. Its replay demonstrates that a later AI inference cannot override an explicit user decision and that freshness can become `STALE` while mastery remains `PRACTICED`.
 
@@ -30,9 +30,9 @@ No Docker or cloud account is required.
 ## Required verification
 
 ```powershell
-cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
 pnpm install --frozen-lockfile
 pnpm lint
 pnpm typecheck
@@ -40,6 +40,8 @@ pnpm test
 pnpm build
 pnpm verify:contracts
 pnpm security
+pnpm fixture:emit
+pnpm fixture:verify
 pnpm fixture:replay
 ```
 

@@ -6,7 +6,7 @@
 
 Sync transports immutable signed batches and encrypted object chunks. Merge is authenticated set union plus device origin-chain validation; generic LWW and whole-state CRDT overwrite are rejected. Replica-local `accept_seq` is not presented as a universal device clock. Competing claims remain visible and predicate authority/user decisions resolve an active view without deleting conflict history.
 
-Pairing grants a device identity and scoped domain capability through an authenticated user-confirmed exchange. Revocation blocks future grants/keys and triggers the appropriate rotation workflow. A relay, if product need justifies one, sees only opaque envelopes/chunks and the minimum routing metadata declared in its threat model. Filesystem export/import is the first transport conformance surface.
+Pairing grants a device identity and scoped domain capability through an authenticated user-confirmed exchange. Even in Phase 0, verification consumes an independent authorization binding the Ed25519 public key, `device_id`, and permitted user identity; mismatched batch devices and user actors fail before a ledger capability is issued. Revocation blocks future grants/keys and triggers the appropriate rotation workflow. A relay, if product need justifies one, sees only opaque envelopes/chunks and the minimum routing metadata declared in its threat model. Filesystem export/import is the first transport conformance surface.
 
 ## Acceptance gate
 
