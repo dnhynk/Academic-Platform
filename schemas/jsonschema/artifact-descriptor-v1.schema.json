@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://academic-os.invalid/schema/artifact-descriptor-v1.json",
+  "title": "Academic OS artifact descriptor v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_id",
+    "content_digest",
+    "media_type",
+    "byte_length",
+    "domain_id",
+    "confidentiality",
+    "retention_class",
+    "permission_lineage_id",
+    "format_version",
+    "vault_locator"
+  ],
+  "properties": {
+    "artifact_id": { "$ref": "#/$defs/uuidV7" },
+    "content_digest": { "$ref": "#/$defs/digest" },
+    "media_type": {
+      "type": "string",
+      "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+    },
+    "byte_length": { "type": "integer", "minimum": 0 },
+    "domain_id": { "$ref": "#/$defs/uuidV7" },
+    "confidentiality": {
+      "enum": ["PUBLIC", "PERSONAL", "RESTRICTED", "SECRET"]
+    },
+    "retention_class": {
+      "enum": ["EPHEMERAL", "COURSE_TERM", "USER_MANAGED", "LEGAL_HOLD"]
+    },
+    "permission_lineage_id": { "$ref": "#/$defs/uuidV7" },
+    "format_version": { "const": 1 },
+    "vault_locator": {
+      "type": "string",
+      "pattern": "^locator:v1:[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

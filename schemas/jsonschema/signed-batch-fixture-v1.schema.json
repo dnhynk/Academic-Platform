@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://academic-os.invalid/schema/signed-batch-fixture-v1.json",
+  "title": "Academic OS deterministic signed batch fixture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "fixture_version",
+    "name",
+    "data_class",
+    "network_egress",
+    "contract",
+    "public_key_hex",
+    "signed_batch_cbor_hex",
+    "expected_replay"
+  ],
+  "properties": {
+    "fixture_version": { "const": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "data_class": { "const": "SYNTHETIC_ONLY" },
+    "network_egress": { "const": "NONE" },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["envelope", "payload", "signature", "event_schema_version"],
+      "properties": {
+        "envelope": { "const": "academic.signed-batch-envelope/v1 deterministic-cbor" },
+        "payload": { "const": "academic.event-batch/v1 deterministic-cbor" },
+        "signature": { "const": "Ed25519" },
+        "event_schema_version": { "const": 1 }
+      }
+    },
+    "public_key_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "signed_batch_cbor_hex": {
+      "type": "string",
+      "minLength": 2,
+      "pattern": "^(?:[0-9a-f]{2})+$"
+    },
+    "expected_replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_events",
+        "accept_seq_head",
+        "payload_hash",
+        "envelope_hash",
+        "artifact_digest",
+        "artifact_locator",
+        "mastery",
+        "freshness",
+        "mastery_active_claim_ids",
+        "mastery_conflicting_claim_ids",
+        "mastery_rejected_claim_ids",
+        "deadline_active_claim_ids",
+        "semantic_digest"
+      ],
+      "properties": {
+        "accepted_events": { "type": "integer", "minimum": 1 },
+        "accept_seq_head": { "type": "integer", "minimum": 1 },
+        "payload_hash": { "$ref": "#/$defs/digest" },
+        "envelope_hash": { "$ref": "#/$defs/digest" },
+        "artifact_digest": { "$ref": "#/$defs/digest" },
+        "artifact_locator": {
+          "type": "string",
+          "pattern": "^locator:v1:[0-9a-f]{64}$"
+        },
+        "mastery": {
+          "enum": ["UNSEEN", "EXPOSED", "UNDERSTOOD", "PRACTICED", "APPLIED", "FLUENT"]
+        },
+        "freshness": {
+          "enum": ["UNKNOWN", "STALE", "LOW", "MODERATE", "HIGH", "VERY_HIGH"]
+        },
+        "mastery_active_claim_ids": { "$ref": "#/$defs/uuidArray" },
+        "mastery_conflicting_claim_ids": { "$ref": "#/$defs/uuidArray" },
+        "mastery_rejected_claim_ids": { "$ref": "#/$defs/uuidArray" },
+        "deadline_active_claim_ids": { "$ref": "#/$defs/uuidArray" },
+        "semantic_digest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "uuidArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/uuidV7" },
+      "uniqueItems": true
+    }
+  }
+}
