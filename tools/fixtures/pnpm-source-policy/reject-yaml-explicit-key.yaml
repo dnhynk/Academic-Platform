@@ -1,0 +1,4 @@
+lockfileVersion: '9.0'
+
+packages:
+  ? git+https://example.invalid/repository#deadbeef: {}

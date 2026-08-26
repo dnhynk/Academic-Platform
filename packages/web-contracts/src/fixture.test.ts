@@ -90,3 +90,22 @@ void test("raw artifact validation rejects unknown fields in every evidence loca
     assert.throws(() => parseArtifactDescriptorJson(JSON.stringify(candidate)), TypeError);
   }
 });
+
+void test("raw artifact validation rejects duplicate keys and non-scalar strings", async () => {
+  const corpus = JSON.parse(await readFile(artifactCorpusUrl, "utf8")) as {
+    readonly raw_json_cases: readonly {
+      readonly name: string;
+      readonly raw_json: string;
+      readonly valid: boolean;
+    }[];
+  };
+  assert.ok(corpus.raw_json_cases.some((entry) => entry.name.includes("duplicate")));
+  assert.ok(corpus.raw_json_cases.some((entry) => entry.name.includes("surrogate")));
+  for (const entry of corpus.raw_json_cases) {
+    if (entry.valid) {
+      assert.doesNotThrow(() => parseArtifactDescriptorJson(entry.raw_json), entry.name);
+    } else {
+      assert.throws(() => parseArtifactDescriptorJson(entry.raw_json), TypeError, entry.name);
+    }
+  }
+});

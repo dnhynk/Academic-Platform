@@ -1,4 +1,4 @@
-import YAML from "yaml";
+import { parsePnpmLockYaml } from "./restricted-yaml.mjs";
 
 const dependencyGroups = ["dependencies", "devDependencies", "optionalDependencies"];
 const gitSchemePattern = /(?:^|[@(])(?:git(?:\+[a-z0-9+.-]+)?:|git:\/\/|ssh:\/\/|git@)/iu;
@@ -134,18 +134,7 @@ function requireRecord(value, path) {
 
 /** Parse a pnpm lock structurally and reject disallowed source encodings. */
 export function assertPnpmLockSourcePolicy(lockText, label = "pnpm-lock.yaml") {
-  const document = YAML.parseDocument(lockText, {
-    prettyErrors: true,
-    strict: true,
-    uniqueKeys: true,
-  });
-  if (document.errors.length > 0) {
-    throw new Error(`${label}: invalid YAML: ${document.errors.map((error) => error.message).join("; ")}`);
-  }
-  if (document.warnings.length > 0) {
-    throw new Error(`${label}: ambiguous YAML warning: ${document.warnings.map((warning) => warning.message).join("; ")}`);
-  }
-  const lock = requireRecord(document.toJS({ maxAliasCount: 0 }), label);
+  const lock = requireRecord(parsePnpmLockYaml(lockText, label), label);
 
   if (lock.catalogs !== undefined) {
     const catalogs = requireRecord(lock.catalogs, `${label}.catalogs`);

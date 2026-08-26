@@ -146,6 +146,28 @@
       "valid": false
     }
   ],
+  "raw_json_cases": [
+    {
+      "name": "valid escaped supplementary Unicode scalar",
+      "raw_json": "{\"id\":\"01900000-0000-7000-8000-000000000003\",\"content_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"media_type\":\"text/plain\",\"byte_length\":9,\"domain_id\":\"01900000-0000-7000-8000-000000000001\",\"confidentiality\":\"PERSONAL\",\"retention_class\":\"USER_MANAGED\",\"permission_lineage_id\":\"01900000-0000-7000-8000-000000000002\",\"format_version\":1,\"vault_locator\":\"locator:v1:1111111111111111111111111111111111111111111111111111111111111111\",\"evidence_representations\":[{\"locator\":{\"kind\":\"REPOSITORY_BYTES\",\"snapshot_digest\":\"sha256:2222222222222222222222222222222222222222222222222222222222222222\",\"path\":\"docs/\\ud83d\\ude80.md\",\"start\":0,\"end\":9},\"content_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"byte_length\":9}]}",
+      "valid": true
+    },
+    {
+      "name": "duplicate top-level property is ambiguous",
+      "raw_json": "{\"id\":\"01900000-0000-7000-8000-000000000003\",\"content_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"media_type\":\"text/plain\",\"byte_length\":9,\"domain_id\":\"01900000-0000-7000-8000-000000000001\",\"confidentiality\":\"PERSONAL\",\"retention_class\":\"USER_MANAGED\",\"permission_lineage_id\":\"01900000-0000-7000-8000-000000000002\",\"format_version\":2,\"format_version\":1,\"vault_locator\":\"locator:v1:1111111111111111111111111111111111111111111111111111111111111111\",\"evidence_representations\":[{\"locator\":{\"kind\":\"TEXT_BYTES\",\"source_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"start\":0,\"end\":9},\"content_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"byte_length\":9}]}",
+      "valid": false
+    },
+    {
+      "name": "escaped-equivalent nested property is duplicate",
+      "raw_json": "{\"id\":\"01900000-0000-7000-8000-000000000003\",\"content_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"media_type\":\"text/plain\",\"byte_length\":9,\"domain_id\":\"01900000-0000-7000-8000-000000000001\",\"confidentiality\":\"PERSONAL\",\"retention_class\":\"USER_MANAGED\",\"permission_lineage_id\":\"01900000-0000-7000-8000-000000000002\",\"format_version\":1,\"vault_locator\":\"locator:v1:1111111111111111111111111111111111111111111111111111111111111111\",\"evidence_representations\":[{\"locator\":{\"kind\":\"REPOSITORY_BYTES\",\"snapshot_digest\":\"sha256:2222222222222222222222222222222222222222222222222222222222222222\",\"path\":\"docs/a.md\",\"pa\\u0074h\":\"docs/b.md\",\"start\":0,\"end\":9},\"content_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"byte_length\":9}]}",
+      "valid": false
+    },
+    {
+      "name": "lone surrogate repository path is not a Unicode scalar string",
+      "raw_json": "{\"id\":\"01900000-0000-7000-8000-000000000003\",\"content_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"media_type\":\"text/plain\",\"byte_length\":9,\"domain_id\":\"01900000-0000-7000-8000-000000000001\",\"confidentiality\":\"PERSONAL\",\"retention_class\":\"USER_MANAGED\",\"permission_lineage_id\":\"01900000-0000-7000-8000-000000000002\",\"format_version\":1,\"vault_locator\":\"locator:v1:1111111111111111111111111111111111111111111111111111111111111111\",\"evidence_representations\":[{\"locator\":{\"kind\":\"REPOSITORY_BYTES\",\"snapshot_digest\":\"sha256:2222222222222222222222222222222222222222222222222222222222222222\",\"path\":\"\\ud800\",\"start\":0,\"end\":9},\"content_digest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"byte_length\":9}]}",
+      "valid": false
+    }
+  ],
   "cases": [
     {
       "name": "valid full artifact TEXT_BYTES binding",

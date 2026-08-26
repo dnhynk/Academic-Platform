@@ -20,6 +20,12 @@ const [
   rustContractsText,
   rustCoreText,
   rustCliText,
+  bootstrapText,
+  sourcePreflightText,
+  dependencySourcePolicyText,
+  cargoLockSourcePolicyText,
+  restrictedYamlText,
+  ciText,
 ] = await Promise.all([
   readFile("schemas/fixtures/signed-batch-v1.json"),
   readFile("schemas/fixtures/signed-batch-v2.json", "utf8"),
@@ -35,6 +41,12 @@ const [
   readFile("crates/contracts/src/lib.rs", "utf8"),
   readFile("crates/core/src/lib.rs", "utf8"),
   readFile("crates/cli/src/main.rs", "utf8"),
+  readFile("tools/bootstrap.mjs", "utf8"),
+  readFile("tools/source-preflight.mjs", "utf8"),
+  readFile("tools/dependency-source-policy.mjs", "utf8"),
+  readFile("tools/cargo-lock-source-policy.mjs", "utf8"),
+  readFile("tools/restricted-yaml.mjs", "utf8"),
+  readFile(".github/workflows/ci.yml", "utf8"),
 ]);
 
 const fixtureV1Text = fixtureV1Bytes.toString("utf8");
@@ -120,6 +132,32 @@ for (const [version, fixture, validateFixtureSchema] of [
     `committed v${version} fixture must satisfy JSON Schema: ${ajv.errorsText(validateFixtureSchema.errors)}`,
   );
   assert.deepEqual(parseFixtureDocument(fixture), fixture);
+}
+for (const [field, token, valid] of [
+  ["fixture_version", "2.0", true],
+  ["fixture_version", "2e0", true],
+  ["event_schema_version", "2.0", true],
+  ["event_schema_version", "2e0", true],
+  ["fixture_version", "2.5", false],
+  ["event_schema_version", "65536", false],
+]) {
+  const rawFixture = fixtureV2Text.replace(`"${field}": 2`, `"${field}": ${token}`);
+  assert.notEqual(rawFixture, fixtureV2Text, `${field} fixture lexeme probe must mutate source`);
+  let schemaValid = true;
+  let typescriptValid = true;
+  try {
+    const parsed = JSON.parse(rawFixture);
+    schemaValid = validateFixtureSchemaV2(parsed);
+    parseFixtureDocument(parsed);
+  } catch {
+    typescriptValid = false;
+  }
+  assert.equal(schemaValid, valid, `schema fixture integer-lexeme parity: ${field}=${token}`);
+  assert.equal(
+    typescriptValid,
+    valid,
+    `TypeScript fixture integer-lexeme parity: ${field}=${token}`,
+  );
 }
 
 const validArtifact = artifactCorpus.base;
@@ -222,6 +260,37 @@ for (const testCase of artifactCorpus.raw_number_cases) {
   );
 }
 
+for (const testCase of artifactCorpus.raw_json_cases) {
+  let schemaRawValid = true;
+  try {
+    assertCanonicalArtifactJsonNumberTokens(testCase.raw_json);
+    const candidate = JSON.parse(testCase.raw_json);
+    schemaRawValid = validateArtifactSchema(candidate);
+    if (schemaRawValid) {
+      assertArtifactDescriptorSemantics(candidate);
+    }
+  } catch {
+    schemaRawValid = false;
+  }
+  assert.equal(
+    schemaRawValid,
+    testCase.valid,
+    `JSON Schema raw artifact parity disagreement: ${testCase.name}`,
+  );
+
+  let typescriptRawValid = true;
+  try {
+    parseArtifactDescriptorJson(testCase.raw_json);
+  } catch {
+    typescriptRawValid = false;
+  }
+  assert.equal(
+    typescriptRawValid,
+    testCase.valid,
+    `TypeScript raw artifact parity disagreement: ${testCase.name}`,
+  );
+}
+
 const clone = (value) => structuredClone(value);
 const invalidFixtures = [
   ["fixture/contract version mismatch", (value) => { value.fixture_version = 1; }],
@@ -273,6 +342,96 @@ assert.doesNotMatch(
   /fixture_version|fixture-version/u,
   "the production-facing CLI must emit only the current v2 fixture",
 );
+const assertSourcePreflightTopology = ({ bootstrap, preflightModules, ci }) => {
+  for (const [moduleName, source] of preflightModules) {
+    const externalImports = [
+      ...source.matchAll(/\bfrom\s+["'](?<specifier>[^"']+)["']/gu),
+      ...source.matchAll(/\bimport\s*(?:\(\s*)?["'](?<specifier>[^"']+)["']/gu),
+    ]
+      .map((match) => match.groups?.specifier)
+      .filter((specifier) => specifier !== undefined)
+      .filter((specifier) => !specifier.startsWith("node:") && !specifier.startsWith("./"));
+    assert.deepEqual(
+      externalImports,
+      [],
+      `source-preflight module ${moduleName} must have no installed dependencies`,
+    );
+  }
+  const bootstrapGate = bootstrap.indexOf("await assertRepositorySourcePolicy()");
+  assert.ok(bootstrapGate >= 0, "bootstrap must run the source preflight");
+  for (const operation of ['["pnpm", ["install"', '["cargo", ["fetch"']) {
+    assert.ok(
+      bootstrapGate < bootstrap.indexOf(operation),
+      `bootstrap source preflight must precede ${operation}`,
+    );
+  }
+  assert.match(
+    ci,
+    /jobs:\s*\n\s{2}source-preflight:[\s\S]*?run: node tools\/source-preflight\.mjs/u,
+    "CI must begin with a dependency-free source-preflight job",
+  );
+  for (const job of ["rust", "contracts"]) {
+    const marker = `\n  ${job}:\n`;
+    const start = ci.indexOf(marker);
+    assert.ok(start >= 0, `CI executable job ${job} must exist`);
+    const remainder = ci.slice(start + marker.length);
+    const nextJob = remainder.search(/\n  [a-z0-9-]+:\n/iu);
+    const jobBody = nextJob < 0 ? remainder : remainder.slice(0, nextJob);
+    assert.match(
+      jobBody,
+      /^    needs: source-preflight$/mu,
+      `CI executable job ${job} must depend on source-preflight`,
+    );
+  }
+};
+assertSourcePreflightTopology({
+  bootstrap: bootstrapText,
+  preflightModules: [
+    ["source-preflight.mjs", sourcePreflightText],
+    ["dependency-source-policy.mjs", dependencySourcePolicyText],
+    ["cargo-lock-source-policy.mjs", cargoLockSourcePolicyText],
+    ["restricted-yaml.mjs", restrictedYamlText],
+  ],
+  ci: ciText,
+});
+for (const [name, topology] of [
+  [
+    "bootstrap ordering",
+    {
+      bootstrap: bootstrapText.replace(
+        "await assertRepositorySourcePolicy();",
+        "// source preflight removed by mutation",
+      ),
+      preflightModules: [["source-preflight.mjs", sourcePreflightText]],
+      ci: ciText,
+    },
+  ],
+  [
+    "Rust CI dependency",
+    {
+      bootstrap: bootstrapText,
+      preflightModules: [["source-preflight.mjs", sourcePreflightText]],
+      ci: ciText.replace("    needs: source-preflight\n", ""),
+    },
+  ],
+  [
+    "transitive installed dependency",
+    {
+      bootstrap: bootstrapText,
+      preflightModules: [[
+        "dependency-source-policy.mjs",
+        `import YAML from "yaml";\n${dependencySourcePolicyText}`,
+      ]],
+      ci: ciText,
+    },
+  ],
+]) {
+  assert.throws(
+    () => assertSourcePreflightTopology(topology),
+    undefined,
+    `${name} mutation must fail source-preflight topology verification`,
+  );
+}
 const protoRoots = [protoV1Text, protoV2Text].map((text) => {
   const root = protobuf.parse(text, { keepCase: true }).root;
   root.resolveAll();
@@ -332,6 +491,111 @@ const relationKindValues = [
   ["Duplicates", "CLAIM_RELATION_KIND_DUPLICATES", 5],
 ];
 const relationKindNames = relationKindValues.slice(1).map(([rustName]) => rustName);
+const parseRustProstField = (source, structName, fieldName) => {
+  const body = rustStructBody(source, structName);
+  const match = body.match(
+    new RegExp(
+      `#\\[prost\\((?<options>[^\\]]+)\\)\\]\\s*${fieldName}:\\s*(?<rustType>[^,\\n]+),`,
+      "u",
+    ),
+  );
+  assert.ok(match?.groups, `Rust wire field ${structName}.${fieldName} must exist`);
+  const options = match.groups.options;
+  const scalarKind = options.match(
+    /(?:^|,\s*)(?<kind>bytes|double|float|fixed32|fixed64|int32|int64|message|sfixed32|sfixed64|sint32|sint64|string|uint32|uint64)\b/u,
+  )?.groups?.kind;
+  const enumeration = options.match(/\benumeration\s*=\s*"(?<name>[^"]+)"/u)?.groups?.name;
+  const oneof = options.match(/\boneof\s*=\s*"(?<name>[^"]+)"/u)?.groups?.name;
+  const bytes = options.match(/\bbytes\s*=\s*"(?<storage>[^"]+)"/u)?.groups?.storage;
+  const tagText = options.match(/\btag\s*=\s*"(?<tag>\d+)"/u)?.groups?.tag;
+  const tags = options.match(/\btags\s*=\s*"(?<tags>[\d, ]+)"/u)?.groups?.tags;
+  return {
+    kind: oneof === undefined ? enumeration === undefined ? scalarKind : "enumeration" : "oneof",
+    typeParameter: oneof ?? enumeration ?? bytes,
+    cardinality: /(?:^|,\s*)repeated(?:,|$)/u.test(options)
+      ? "repeated"
+      : /(?:^|,\s*)optional(?:,|$)/u.test(options)
+        ? "optional"
+        : "singular",
+    tag: tagText === undefined ? undefined : Number(tagText),
+    tags: tags?.split(",").map((tag) => Number(tag.trim())),
+    rustType: match.groups.rustType.trim(),
+  };
+};
+const rustProstFieldNames = (source, structName) => [
+  ...rustStructBody(source, structName).matchAll(
+    /#\[prost\([^\]]+\)\]\s*(?<fieldName>[A-Za-z_][A-Za-z0-9_]*):/gu,
+  ),
+].map((match) => match.groups.fieldName);
+const expectedProstField = (field) => {
+  const isMessage = field.resolvedType instanceof protobuf.Type;
+  const isEnumeration = field.resolvedType instanceof protobuf.Enum;
+  const kind = isMessage ? "message" : isEnumeration ? "enumeration" : field.type;
+  const cardinality = field.repeated
+    ? "repeated"
+    : field.partOf !== null && field.partOf !== undefined
+      ? "oneof"
+      : isMessage || field.options?.proto3_optional === true
+        ? "optional"
+        : "singular";
+  const scalarRustTypes = new Map([
+    ["bytes", "Vec<u8>"],
+    ["double", "f64"],
+    ["float", "f32"],
+    ["fixed32", "u32"],
+    ["fixed64", "u64"],
+    ["int32", "i32"],
+    ["int64", "i64"],
+    ["sfixed32", "i32"],
+    ["sfixed64", "i64"],
+    ["sint32", "i32"],
+    ["sint64", "i64"],
+    ["string", "String"],
+    ["uint32", "u32"],
+    ["uint64", "u64"],
+  ]);
+  const baseRustType = isMessage || isEnumeration
+    ? isMessage ? `Proto${field.resolvedType.name}` : "i32"
+    : scalarRustTypes.get(field.type);
+  assert.ok(baseRustType, `unsupported Proto field type ${field.type}`);
+  const rustType = cardinality === "optional"
+    ? `Option<${baseRustType}>`
+    : cardinality === "repeated"
+      ? `Vec<${baseRustType}>`
+      : baseRustType;
+  return {
+    kind,
+    typeParameter: isEnumeration ? `Proto${field.resolvedType.name}` : kind === "bytes" ? "vec" : undefined,
+    cardinality,
+    tag: field.id,
+    rustType,
+    oneof: field.partOf?.name,
+  };
+};
+const parseRustOneofVariant = (source, moduleName, enumName, variantName) => {
+  const body = rustModuleEnumBody(source, moduleName, enumName);
+  const match = body.match(
+    new RegExp(
+      `#\\[prost\\((?<options>[^\\]]+)\\)\\]\\s*${variantName}\\((?<rustType>[^)]+)\\),`,
+      "u",
+    ),
+  );
+  assert.ok(match?.groups, `Rust oneof variant ${moduleName}::${variantName} must exist`);
+  const tag = match.groups.options.match(/\btag\s*=\s*"(?<tag>\d+)"/u)?.groups?.tag;
+  const kind = match.groups.options.match(
+    /(?:^|,\s*)(?<kind>bytes|enumeration|message|string|sint64|uint64)\b/u,
+  )?.groups?.kind;
+  return {
+    kind,
+    tag: tag === undefined ? undefined : Number(tag),
+    rustType: match.groups.rustType.trim(),
+  };
+};
+const rustOneofVariantNames = (source, moduleName, enumName) => [
+  ...rustModuleEnumBody(source, moduleName, enumName).matchAll(
+    /#\[prost\([^\]]+\)\]\s*(?<variantName>[A-Za-z_][A-Za-z0-9_]*)\(/gu,
+  ),
+].map((match) => match.groups.variantName);
 const rustRelationMappingLines = (source, functionName) => {
   const body = source.match(
     new RegExp(
@@ -374,6 +638,34 @@ const assertRustRelationMappings = (source) => {
   );
 };
 const assertRustWireContract = (source) => {
+  const expectedFieldsByStruct = new Map();
+  for (const [structName, fieldName] of rustScalarFields) {
+    const fields = expectedFieldsByStruct.get(structName) ?? [];
+    fields.push(fieldName);
+    expectedFieldsByStruct.set(structName, fields);
+  }
+  expectedFieldsByStruct.set("ProtoActor", ["kind"]);
+  expectedFieldsByStruct.set("ProtoOriginEvent", [
+    ...(expectedFieldsByStruct.get("ProtoOriginEvent") ?? []),
+    "payload",
+  ]);
+  for (const [structName, expectedFields] of expectedFieldsByStruct) {
+    assert.deepEqual(
+      rustProstFieldNames(source, structName).sort(),
+      expectedFields.toSorted(),
+      `${structName} hand-written Prost field membership must be exact`,
+    );
+  }
+  assert.deepEqual(
+    rustOneofVariantNames(source, "proto_actor", "Kind"),
+    actorWireFields.map(([variantName]) => variantName),
+    "ProtoActor.kind hand-written oneof membership must be exact",
+  );
+  assert.deepEqual(
+    rustOneofVariantNames(source, "proto_origin_event", "Payload"),
+    payloadWireFields.map(([variantName]) => variantName),
+    "ProtoOriginEvent.payload hand-written oneof membership must be exact",
+  );
   for (const [structName, fieldName, tag] of rustScalarFields) {
     const body = rustStructBody(source, structName);
     assert.match(
@@ -397,11 +689,74 @@ const assertRustWireContract = (source) => {
     ["proto_origin_event", payloadWireFields],
   ]) {
     const body = rustModuleEnumBody(source, moduleName, moduleName === "proto_actor" ? "Kind" : "Payload");
-    for (const [variantName, , tag] of fields) {
+    for (const [variantName, fieldName, tag] of fields) {
       assert.match(
         body,
         new RegExp(`#\\[prost\\(message, tag = "${tag}"\\)\\]\\s*${variantName}\\(`, "u"),
         `${moduleName}::${variantName} must retain tag ${tag}`,
+      );
+      for (const [versionIndex, root] of protoRoots.entries()) {
+        const messageName = moduleName === "proto_actor" ? "Actor" : "OriginEvent";
+        const oneofName = moduleName === "proto_actor" ? "kind" : "payload";
+        const field = root.lookupType(`academic.v${versionIndex + 1}.${messageName}`).fields[fieldName];
+        assert.ok(field, `v${versionIndex + 1} ${messageName}.${fieldName} must exist`);
+        const actual = parseRustOneofVariant(
+          source,
+          moduleName,
+          moduleName === "proto_actor" ? "Kind" : "Payload",
+          variantName,
+        );
+        assert.equal(field.partOf?.name, oneofName, `v${versionIndex + 1} ${messageName}.${fieldName} oneof`);
+        assert.equal(actual.kind, "message", `${moduleName}::${variantName} Prost type`);
+        assert.equal(actual.tag, field.id, `${moduleName}::${variantName} tag`);
+        assert.equal(
+          actual.rustType,
+          `Proto${field.resolvedType.name}`,
+          `${moduleName}::${variantName} payload type`,
+        );
+      }
+    }
+  }
+  for (const [versionIndex, root] of protoRoots.entries()) {
+    for (const [structName, fieldName] of rustScalarFields) {
+      const messageName = structName.slice("Proto".length);
+      const protoField = root.lookupType(`academic.v${versionIndex + 1}.${messageName}`).fields[fieldName];
+      assert.ok(protoField, `v${versionIndex + 1} ${messageName}.${fieldName} must exist`);
+      const expected = expectedProstField(protoField);
+      const actual = parseRustProstField(source, structName, fieldName);
+      assert.deepEqual(
+        actual,
+        {
+          kind: expected.kind,
+          typeParameter: expected.typeParameter,
+          cardinality: expected.cardinality,
+          tag: expected.tag,
+          tags: undefined,
+          rustType: expected.rustType,
+        },
+        `v${versionIndex + 1} ${structName}.${fieldName} Prost type/cardinality/tag parity`,
+      );
+    }
+    for (const [structName, fieldName, moduleName, enumName, protoMessage, oneofName] of [
+      ["ProtoActor", "kind", "proto_actor", "Kind", "Actor", "kind"],
+      ["ProtoOriginEvent", "payload", "proto_origin_event", "Payload", "OriginEvent", "payload"],
+    ]) {
+      const actual = parseRustProstField(source, structName, fieldName);
+      const oneof = root.lookupType(`academic.v${versionIndex + 1}.${protoMessage}`).oneofs[oneofName];
+      const expectedTags = oneof.oneof.map((name) => root.lookupType(
+        `academic.v${versionIndex + 1}.${protoMessage}`,
+      ).fields[name].id);
+      assert.deepEqual(
+        actual,
+        {
+          kind: "oneof",
+          typeParameter: `${moduleName}::${enumName}`,
+          cardinality: "singular",
+          tag: undefined,
+          tags: expectedTags,
+          rustType: `Option<${moduleName}::${enumName}>`,
+        },
+        `v${versionIndex + 1} ${structName}.${fieldName} oneof membership/type/tag parity`,
       );
     }
   }
@@ -427,6 +782,57 @@ assert.throws(
   undefined,
   "a hand-written Rust wire-tag mutation must fail contract verification",
 );
+for (const [name, mutated] of [
+  [
+    "scalar wire type",
+    rustProtoContractText.replace(
+      '#[prost(sint64, tag = "1")]',
+      '#[prost(int64, tag = "1")]',
+    ),
+  ],
+  [
+    "message cardinality",
+    rustProtoContractText.replace(
+      '#[prost(message, optional, tag = "1")]\n    user_id:',
+      '#[prost(message, tag = "1")]\n    user_id:',
+    ),
+  ],
+  [
+    "Rust field payload type",
+    rustProtoContractText.replace(
+      'user_id: Option<ProtoUuidV7>,',
+      'user_id: Option<ProtoTimestampMillis>,',
+    ),
+  ],
+  [
+    "oneof variant wire type",
+    rustProtoContractText.replace(
+      '#[prost(message, tag = "1")]\n        User(ProtoUserActor),',
+      '#[prost(bytes, tag = "1")]\n        User(ProtoUserActor),',
+    ),
+  ],
+  [
+    "extra Rust field",
+    rustProtoContractText.replace(
+      'struct ProtoTimestampMillis {\n    #[prost(sint64, tag = "1")]\n    unix_epoch_millis: i64,',
+      'struct ProtoTimestampMillis {\n    #[prost(sint64, tag = "1")]\n    unix_epoch_millis: i64,\n    #[prost(uint64, tag = "2")]\n    unexpected: u64,',
+    ),
+  ],
+  [
+    "extra oneof variant",
+    rustProtoContractText.replace(
+      '        Importer(ProtoImporterActor),',
+      '        Importer(ProtoImporterActor),\n        #[prost(message, tag = "5")]\n        Unexpected(ProtoImporterActor),',
+    ),
+  ],
+]) {
+  assert.notEqual(mutated, rustProtoContractText, `${name} mutation must change Rust source`);
+  assert.throws(
+    () => assertRustWireContract(mutated),
+    undefined,
+    `a hand-written Rust ${name} mutation must fail contract verification`,
+  );
+}
 const mutatedRustEncodeMapping = rustProtoContractText.replace(
   "ClaimRelationKind::Supports => ProtoClaimRelationKind::Supports,",
   "ClaimRelationKind::Supports => ProtoClaimRelationKind::Contradicts,",
@@ -543,6 +949,7 @@ const protoRelationEvent = {
     scope_id: { value: uuidBytes("01900000-0000-7000-8000-000000000007") },
   },
 };
+const relationWireGolden = "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e307a3e0a120a100190000000007000800000000000020612120a1001900000000070008000000000000205180322120a1001900000000070008000000000000007";
 const competingKnownPayloads = [
   [Buffer.from([0x52, 0x00]), "artifact_registered"],
   [Buffer.from([0x5a, 0x00]), "evidence_registered"],
@@ -556,6 +963,11 @@ for (const version of [1, 2]) {
   const originEventType = protoRoot.lookupType(`academic.v${version}.OriginEvent`);
   assert.equal(originEventType.verify(protoRelationEvent), null);
   const relationWire = Buffer.from(originEventType.encode(protoRelationEvent).finish());
+  assert.equal(
+    relationWire.toString("hex"),
+    relationWireGolden,
+    `v${version} protobuf.js relation bytes must match the Rust/Proto golden`,
+  );
   const protoRoundTrip = originEventType.toObject(
     originEventType.decode(relationWire),
     { bytes: String, enums: String, longs: Number, oneofs: true },
@@ -613,5 +1025,5 @@ assert.doesNotMatch(fixtureV1Text, /https?:\/\//u);
 assert.doesNotMatch(fixtureV2Text, /https?:\/\//u);
 
 console.log(
-  "Immutable v1 contracts, source-aware signed decoding, v2-only writers, exact artifact locators, raw-number parity, and exhaustive Rust/Proto relation mappings verified.",
+  "Immutable v1 contracts, source-aware signed decoding, v2-only writers, portable raw artifact JSON, fixture integer lexemes, exact Rust/Proto wire descriptors, and source-preflight topology verified.",
 );

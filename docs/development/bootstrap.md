@@ -34,6 +34,7 @@ Then install repository pins:
 rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
 nvm use 24.19.0
 npm install --global pnpm@11.22.0
+node tools/source-preflight.mjs
 pnpm install --frozen-lockfile
 pnpm run doctor
 ```
@@ -53,13 +54,14 @@ Install Node 24.19.0 with the organization's approved version manager, then:
 
 ```bash
 npm install --global pnpm@11.22.0
+node tools/source-preflight.mjs
 pnpm install --frozen-lockfile
 pnpm run doctor
 ```
 
 ## Reproducible bootstrap script
 
-After the pinned tools are present, `pnpm bootstrap` validates exact versions, runs `pnpm install --frozen-lockfile`, and runs `cargo fetch --locked`. It does not collect data or start a service.
+After the pinned tools are present, run `node tools/source-preflight.mjs` before any package-manager operation. The script uses only Node built-ins and checked-in parsers to reject forbidden Cargo and pnpm sources in a fresh checkout. `pnpm bootstrap` runs the same preflight first, validates exact versions, runs `pnpm install --frozen-lockfile`, and runs `cargo fetch --locked`; it does not collect data or start a service.
 
 ## Data warning
 

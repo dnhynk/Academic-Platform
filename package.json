@@ -9,6 +9,7 @@
   "packageManager": "pnpm@11.22.0",
   "scripts": {
     "bootstrap": "node tools/bootstrap.mjs",
+    "source:preflight": "node tools/source-preflight.mjs",
     "doctor": "cargo run --locked --quiet -p academic-cli -- doctor --format json",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
@@ -31,7 +32,6 @@
     "globals": "17.11.0",
     "protobufjs": "8.7.2",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.68.0",
-    "yaml": "2.8.1"
+    "typescript-eslint": "8.68.0"
   }
 }

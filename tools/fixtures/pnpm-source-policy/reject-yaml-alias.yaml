@@ -1,0 +1,6 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      forbidden: &source git+https://example.invalid/owner/repository.git#main
+      replay: *source

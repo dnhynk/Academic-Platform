@@ -1,5 +1,9 @@
 import { spawnSync } from "node:child_process";
 
+import { assertRepositorySourcePolicy } from "./source-preflight.mjs";
+
+await assertRepositorySourcePolicy();
+
 const expected = new Map([
   ["node", "v24.19.0"],
   ["pnpm", "11.22.0"],

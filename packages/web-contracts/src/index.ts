@@ -186,54 +186,201 @@ function requireDigest(record: Record<string, unknown>, key: string): string {
   return value;
 }
 
-/**
- * Enforces the ArtifactDescriptor raw JSON number-token profile before JSON.parse.
- * Every number in this contract is an unsigned integer and must use the exact
- * lexical form `0|[1-9][0-9]*`; decimal and exponent spellings are rejected so
- * JavaScript cannot normalize a token that Rust observes as floating point.
- */
-export function assertCanonicalArtifactJsonNumberTokens(input: string): void {
-  let index = 0;
-  let inString = false;
-  let escaped = false;
-  while (index < input.length) {
-    const character = input[index] ?? "";
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (character === "\\") {
-        escaped = true;
-      } else if (character === '"') {
-        inString = false;
-      }
-      index += 1;
-      continue;
-    }
-    if (character === '"') {
-      inString = true;
-      index += 1;
-      continue;
-    }
-    if (character === "-") {
-      throw new TypeError("artifact JSON numbers must use canonical unsigned integer tokens");
-    }
-    if (character >= "0" && character <= "9") {
-      const first = character;
-      index += 1;
-      const next = input[index] ?? "";
-      if (first === "0" && next >= "0" && next <= "9") {
-        throw new TypeError("artifact JSON numbers must use canonical unsigned integer tokens");
-      }
-      while ((input[index] ?? "") >= "0" && (input[index] ?? "") <= "9") {
-        index += 1;
-      }
-      if ([".", "e", "E"].includes(input[index] ?? "")) {
-        throw new TypeError("artifact JSON numbers must use canonical unsigned integer tokens");
-      }
-      continue;
-    }
-    index += 1;
+class ArtifactJsonRawParser {
+  private index = 0;
+
+  public constructor(private readonly input: string) {}
+
+  private error(message: string): never {
+    throw new TypeError(
+      `invalid raw artifact JSON at UTF-16 offset ${String(this.index)}: ${message}`,
+    );
   }
+
+  private peek(): string {
+    return this.input[this.index] ?? "";
+  }
+
+  private skipWhitespace(): void {
+    while ([" ", "\t", "\r", "\n"].includes(this.peek())) {
+      this.index += 1;
+    }
+  }
+
+  private assertUnicodeScalarString(value: string): void {
+    for (let index = 0; index < value.length; index += 1) {
+      const codeUnit = value.charCodeAt(index);
+      if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+        const next = value.charCodeAt(index + 1);
+        if (!(next >= 0xdc00 && next <= 0xdfff)) {
+          this.error("string contains an unpaired high surrogate");
+        }
+        index += 1;
+      } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+        this.error("string contains an unpaired low surrogate");
+      }
+    }
+  }
+
+  private parseString(): string {
+    const start = this.index;
+    this.index += 1;
+    while (this.index < this.input.length) {
+      const character = this.peek();
+      if (character === '"') {
+        this.index += 1;
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(this.input.slice(start, this.index)) as unknown;
+        } catch {
+          this.error("malformed JSON string");
+        }
+        if (typeof parsed !== "string") {
+          this.error("internal string parser mismatch");
+        }
+        this.assertUnicodeScalarString(parsed);
+        return parsed;
+      }
+      if (character === "\\") {
+        this.index += 1;
+        if (this.peek() === "") {
+          this.error("unterminated escape sequence");
+        }
+        this.index += 1;
+        continue;
+      }
+      if (character.charCodeAt(0) < 0x20) {
+        this.error("unescaped control character in string");
+      }
+      this.index += 1;
+    }
+    this.error("unterminated string");
+  }
+
+  private parseNumber(): void {
+    const token = this.input.slice(this.index).match(
+      /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/u,
+    )?.[0];
+    if (token === undefined) {
+      this.error("malformed number token");
+    }
+    this.index += token.length;
+    if (!/^(?:0|[1-9][0-9]*)$/u.test(token)) {
+      this.error("numbers must use canonical unsigned integer tokens");
+    }
+  }
+
+  private parseLiteral(literal: "true" | "false" | "null"): void {
+    if (!this.input.startsWith(literal, this.index)) {
+      this.error(`expected ${literal}`);
+    }
+    this.index += literal.length;
+  }
+
+  private parseArray(): void {
+    this.index += 1;
+    this.skipWhitespace();
+    if (this.peek() === "]") {
+      this.index += 1;
+      return;
+    }
+    while (this.index < this.input.length) {
+      this.parseValue();
+      this.skipWhitespace();
+      if (this.peek() === "]") {
+        this.index += 1;
+        return;
+      }
+      if (this.peek() !== ",") {
+        this.error("array entries must be comma-separated");
+      }
+      this.index += 1;
+      this.skipWhitespace();
+    }
+    this.error("unterminated array");
+  }
+
+  private parseObject(): void {
+    const keys = new Set<string>();
+    this.index += 1;
+    this.skipWhitespace();
+    if (this.peek() === "}") {
+      this.index += 1;
+      return;
+    }
+    while (this.index < this.input.length) {
+      if (this.peek() !== '"') {
+        this.error("object keys must be JSON strings");
+      }
+      const key = this.parseString();
+      if (keys.has(key)) {
+        this.error(`duplicate object key ${JSON.stringify(key)}`);
+      }
+      keys.add(key);
+      this.skipWhitespace();
+      if (this.peek() !== ":") {
+        this.error("object key must be followed by ':'");
+      }
+      this.index += 1;
+      this.skipWhitespace();
+      this.parseValue();
+      this.skipWhitespace();
+      if (this.peek() === "}") {
+        this.index += 1;
+        return;
+      }
+      if (this.peek() !== ",") {
+        this.error("object entries must be comma-separated");
+      }
+      this.index += 1;
+      this.skipWhitespace();
+    }
+    this.error("unterminated object");
+  }
+
+  private parseValue(): void {
+    const character = this.peek();
+    if (character === "{") {
+      this.parseObject();
+    } else if (character === "[") {
+      this.parseArray();
+    } else if (character === '"') {
+      this.parseString();
+    } else if (character === "t") {
+      this.parseLiteral("true");
+    } else if (character === "f") {
+      this.parseLiteral("false");
+    } else if (character === "n") {
+      this.parseLiteral("null");
+    } else if (character === "-" || (character >= "0" && character <= "9")) {
+      this.parseNumber();
+    } else {
+      this.error("expected a JSON value");
+    }
+  }
+
+  public parse(): void {
+    this.skipWhitespace();
+    this.parseValue();
+    this.skipWhitespace();
+    if (this.index !== this.input.length) {
+      this.error("trailing content after the JSON value");
+    }
+  }
+}
+
+/**
+ * Enforces the complete raw ArtifactDescriptor JSON profile before JSON.parse:
+ * well-formed JSON, unique decoded property names, Unicode-scalar strings, and
+ * canonical unsigned integer number tokens.
+ */
+export function assertPortableArtifactJsonText(input: string): void {
+  new ArtifactJsonRawParser(input).parse();
+}
+
+/** Backward-compatible name for the raw gate, now stronger than number checks alone. */
+export function assertCanonicalArtifactJsonNumberTokens(input: string): void {
+  assertPortableArtifactJsonText(input);
 }
 
 /**
@@ -394,7 +541,7 @@ export function assertArtifactDescriptorSemantics(
 
 /** Parses raw ArtifactDescriptor JSON through lexical, structural, and semantic validation. */
 export function parseArtifactDescriptorJson(input: string): Record<string, unknown> {
-  assertCanonicalArtifactJsonNumberTokens(input);
+  assertPortableArtifactJsonText(input);
   const value: unknown = JSON.parse(input) as unknown;
   assertArtifactDescriptorSemantics(value);
   return value;

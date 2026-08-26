@@ -732,6 +732,9 @@ pub struct ArtifactDescriptor {
 /// exponent spellings cannot be normalized into integers by JavaScript while
 /// Rust observes a floating-point token. Range checks remain the responsibility
 /// of typed deserialization, JSON Schema, and [`ArtifactDescriptor::validate`].
+/// The same raw boundary must use Serde's typed struct deserializer, which
+/// rejects duplicate fields and JSON strings that do not decode to Unicode
+/// scalar values; the shared exact-raw corpus exercises the combined boundary.
 pub fn validate_artifact_json_number_tokens(input: &str) -> Result<(), DomainError> {
     let bytes = input.as_bytes();
     let mut index = 0;
@@ -1497,6 +1500,7 @@ mod tests {
         struct Corpus {
             base: serde_json::Value,
             raw_number_cases: Vec<RawNumberCase>,
+            raw_json_cases: Vec<RawJsonCase>,
             cases: Vec<Case>,
         }
         #[derive(Deserialize)]
@@ -1512,6 +1516,12 @@ mod tests {
             mutations: Vec<Mutation>,
             path: String,
             token: String,
+            valid: bool,
+        }
+        #[derive(Deserialize)]
+        struct RawJsonCase {
+            name: String,
+            raw_json: String,
             valid: bool,
         }
         #[derive(Clone, Deserialize)]
@@ -1572,6 +1582,16 @@ mod tests {
                 rust_valid, case.valid,
                 "raw artifact number parity disagreement: {} ({})",
                 case.name, case.token,
+            );
+        }
+        for case in &corpus.raw_json_cases {
+            let rust_valid = validate_artifact_json_number_tokens(&case.raw_json).is_ok()
+                && serde_json::from_str::<ArtifactDescriptor>(&case.raw_json)
+                    .is_ok_and(|descriptor| descriptor.validate().is_ok());
+            assert_eq!(
+                rust_valid, case.valid,
+                "raw artifact JSON parity disagreement: {}",
+                case.name,
             );
         }
         Ok(())

@@ -1,0 +1,7 @@
+version = 4
+
+[[package]]
+name = "forbidden"
+version = "0.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+file:///tmp/repository#deadbeef"

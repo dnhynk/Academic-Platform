@@ -14,8 +14,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source-preflight:
+    name: dependency-source-preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Reject forbidden dependency sources before tool or dependency setup
+        run: node tools/source-preflight.mjs
+
   rust:
     name: rust-${{ matrix.os }}
+    needs: source-preflight
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -46,6 +59,7 @@ jobs:
 
   contracts:
     name: pnpm-contracts
+    needs: source-preflight
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

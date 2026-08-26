@@ -1,0 +1,7 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      forbidden:
+        specifier: "git\u002bhttps://example.invalid/owner/repository.git#main"
+        version: 1.0.0

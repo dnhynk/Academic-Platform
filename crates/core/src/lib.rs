@@ -138,6 +138,7 @@ impl Core {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FixtureDocument {
+    #[serde(deserialize_with = "deserialize_json_safe_u16")]
     pub fixture_version: u16,
     pub name: String,
     pub data_class: String,
@@ -157,6 +158,7 @@ pub struct FixtureContract {
     pub envelope: String,
     pub payload: String,
     pub signature: String,
+    #[serde(deserialize_with = "deserialize_json_safe_u16")]
     pub event_schema_version: u16,
 }
 
@@ -225,6 +227,15 @@ where
     }
 
     deserializer.deserialize_any(JsonSafeIntegerVisitor)
+}
+
+fn deserialize_json_safe_u16<'de, D>(deserializer: D) -> Result<u16, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = deserialize_json_safe_u64(deserializer)?;
+    u16::try_from(value)
+        .map_err(|_| <D::Error as de::Error>::custom("number exceeds the unsigned 16-bit range"))
 }
 
 impl FixtureDocument {
@@ -1150,6 +1161,32 @@ mod tests {
         let parsed: FixtureDocument = serde_json::from_str(&integer_lexeme)?;
         parsed.validate_contract()?;
         assert_eq!(parsed.expected_replay.accepted_events, 13);
+
+        for (needle, replacement) in [
+            ("\"fixture_version\": 2", "\"fixture_version\": 2.0"),
+            (
+                "\"event_schema_version\": 2",
+                "\"event_schema_version\": 2e0",
+            ),
+        ] {
+            let version_lexeme =
+                fixture_json(&build_fixture_document()?)?.replacen(needle, replacement, 1);
+            let parsed: FixtureDocument = serde_json::from_str(&version_lexeme)?;
+            parsed.validate_contract()?;
+            assert_eq!(parsed.fixture_version, FIXTURE_VERSION_V2);
+            assert_eq!(
+                parsed.contract.event_schema_version,
+                EVENT_SCHEMA_VERSION_V2
+            );
+        }
+        for replacement in ["2.5", "65536", "-1"] {
+            let invalid = fixture_json(&build_fixture_document()?)?.replacen(
+                "\"fixture_version\": 2",
+                &format!("\"fixture_version\": {replacement}"),
+                1,
+            );
+            assert!(serde_json::from_str::<FixtureDocument>(&invalid).is_err());
+        }
         Ok(())
     }
 

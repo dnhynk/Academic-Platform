@@ -1,0 +1,5 @@
+version = 4
+package = [
+  { name = "workspace-package", version = "0.1.0" },
+  { name = "sparse-package", version = "1.2.3", source = "sparse+https://index.crates.io/" },
+]

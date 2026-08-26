@@ -1211,6 +1211,33 @@ mod tests {
     }
 
     #[test]
+    fn t015_rust_relation_bytes_match_both_declared_proto_runtimes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let event = Event {
+            id: EventId::from_str("01900000-0000-7000-8000-00000000000c")?,
+            origin_seq: 12,
+            origin_observed_at: TimestampMillis::new(112),
+            actor: Actor::Importer {
+                name: "synthetic.official.fixture".to_owned(),
+                version: "1.0.0".to_owned(),
+            },
+            domain_id: DomainId::from_str("01900000-0000-7000-8000-000000000001")?,
+            payload: EventPayload::ClaimRelated(ClaimRelation {
+                source_claim_id: ClaimId::from_str("01900000-0000-7000-8000-000000000206")?,
+                target_claim_id: ClaimId::from_str("01900000-0000-7000-8000-000000000205")?,
+                kind: ClaimRelationKind::Supersedes,
+                scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000007")?,
+            }),
+        };
+        let expected = hex::decode(
+            "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e307a3e0a120a100190000000007000800000000000020612120a1001900000000070008000000000000205180322120a1001900000000070008000000000000007",
+        )?;
+        assert_eq!(encode_claim_relation_event_proto(&event)?, expected);
+        assert_eq!(decode_claim_relation_event_proto(&expected)?, event);
+        Ok(())
+    }
+
+    #[test]
     fn t013_every_relation_kind_round_trips_exactly() -> Result<(), Box<dyn std::error::Error>> {
         for (index, kind) in [
             ClaimRelationKind::Supports,

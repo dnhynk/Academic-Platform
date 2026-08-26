@@ -11,7 +11,7 @@ This repository is the runnable foundation for a local-first Personal Academic Â
 - `academic` CLI: privacy-safe doctor plus fixture emit/verify/replay commands.
 - `@academic-os/web-contracts`: exact TypeScript fixture validation kept in positive/negative parity with JSON Schema and Rust.
 
-Both committed fixtures are synthetic and declare `network_egress: NONE`. `signed-batch-v1.json` is a byte-immutable read-only compatibility golden; v1 signed payloads are verified before a deterministic, fail-closed semantic upcast, and no public API or CLI can mint v1. `signed-batch-v2.json` is the only writer fixture and demonstrates that a later AI inference cannot override an explicit user decision and that freshness can become `STALE` while mastery remains `PRACTICED`. Artifact JSON additionally rejects noncanonical decimal/exponent number tokens before parsing so Ajv, TypeScript, and Rust share one exact integer policy.
+Both committed fixtures are synthetic and declare `network_egress: NONE`. `signed-batch-v1.json` is a byte-immutable read-only compatibility golden; v1 signed payloads are verified before a deterministic, fail-closed semantic upcast, and no public API or CLI can mint v1. `signed-batch-v2.json` is the only writer fixture and demonstrates that a later AI inference cannot override an explicit user decision and that freshness can become `STALE` while mastery remains `PRACTICED`. Artifact JSON additionally rejects duplicate decoded property names, non-Unicode-scalar strings, and noncanonical decimal/exponent number tokens before parsing so Ajv, TypeScript, and Rust share one raw boundary.
 
 ## Bootstrap
 
@@ -21,6 +21,7 @@ Prerequisites are pinned to Rust 1.98.0, Node 24.19.0, and pnpm 11.22.0. See [th
 nvm use 24.19.0
 rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
 npm install --global pnpm@11.22.0
+node tools/source-preflight.mjs
 pnpm install --frozen-lockfile
 pnpm run doctor
 ```
@@ -30,6 +31,7 @@ No Docker or cloud account is required.
 ## Required verification
 
 ```powershell
+node tools/source-preflight.mjs
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
