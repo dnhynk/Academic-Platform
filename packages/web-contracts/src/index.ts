@@ -82,6 +82,18 @@ const freshnessBands: ReadonlySet<string> = new Set([
   "HIGH",
   "VERY_HIGH",
 ]);
+const confidentialityValues: ReadonlySet<string> = new Set([
+  "PUBLIC",
+  "PERSONAL",
+  "RESTRICTED",
+  "SECRET",
+]);
+const retentionClassValues: ReadonlySet<string> = new Set([
+  "EPHEMERAL",
+  "COURSE_TERM",
+  "USER_MANAGED",
+  "LEGAL_HOLD",
+]);
 const maxSafeJsonInteger = 9_007_199_254_740_991;
 const maxUint32 = 4_294_967_295;
 
@@ -230,9 +242,48 @@ export function assertCanonicalArtifactJsonNumberTokens(input: string): void {
  * then parse and run the Draft 2020-12 schema. This layer deliberately repeats
  * security-sensitive primitive checks so it also fails closed alone.
  */
-export function assertArtifactDescriptorSemantics(value: unknown): void {
+export function assertArtifactDescriptorSemantics(
+  value: unknown,
+): asserts value is Record<string, unknown> {
   if (!isRecord(value)) {
     throw new TypeError("artifact descriptor must be an object");
+  }
+  requireExactKeys(
+    value,
+    [
+      "id",
+      "content_digest",
+      "media_type",
+      "byte_length",
+      "domain_id",
+      "confidentiality",
+      "retention_class",
+      "permission_lineage_id",
+      "format_version",
+      "vault_locator",
+      "evidence_representations",
+    ],
+    "artifact descriptor",
+  );
+  for (const key of ["id", "domain_id", "permission_lineage_id"]) {
+    if (!uuidV7Pattern.test(requireString(value, key))) {
+      throw new TypeError(`${key} must be a UUIDv7 string`);
+    }
+  }
+  if (!/^[a-z0-9.+-]+\/[a-z0-9.+-]+$/u.test(requireString(value, "media_type"))) {
+    throw new TypeError("media_type must be a canonical media type");
+  }
+  if (!confidentialityValues.has(requireString(value, "confidentiality"))) {
+    throw new TypeError("unsupported confidentiality value");
+  }
+  if (!retentionClassValues.has(requireString(value, "retention_class"))) {
+    throw new TypeError("unsupported retention_class value");
+  }
+  if (value.format_version !== 1) {
+    throw new TypeError("unsupported artifact format_version");
+  }
+  if (!locatorPattern.test(requireString(value, "vault_locator"))) {
+    throw new TypeError("vault_locator must be a keyed v1 locator");
   }
   const artifactDigest = requireDigest(value, "content_digest");
   const artifactByteLength = requirePortableUint(value, "byte_length");
@@ -246,6 +297,11 @@ export function assertArtifactDescriptorSemantics(value: unknown): void {
     if (!isRecord(representationValue)) {
       throw new TypeError("evidence representation must be an object");
     }
+    requireExactKeys(
+      representationValue,
+      ["locator", "content_digest", "byte_length"],
+      "evidence representation",
+    );
     const representationDigest = requireDigest(representationValue, "content_digest");
     const representationByteLength = requirePortableUint(representationValue, "byte_length");
     const locator = representationValue.locator;
@@ -256,6 +312,7 @@ export function assertArtifactDescriptorSemantics(value: unknown): void {
     let identity: string;
     switch (kind) {
       case "PAGE": {
+        requireExactKeys(locator, ["kind", "page_number"], "PAGE evidence locator");
         const pageNumber = requirePortableUint(locator, "page_number", maxUint32);
         if (pageNumber === 0) {
           throw new TypeError("page_number must be positive");
@@ -264,6 +321,11 @@ export function assertArtifactDescriptorSemantics(value: unknown): void {
         break;
       }
       case "TEXT_BYTES": {
+        requireExactKeys(
+          locator,
+          ["kind", "source_digest", "start", "end"],
+          "TEXT_BYTES evidence locator",
+        );
         const sourceDigest = requireDigest(locator, "source_digest");
         const start = requirePortableUint(locator, "start");
         const end = requirePortableUint(locator, "end");
@@ -288,6 +350,11 @@ export function assertArtifactDescriptorSemantics(value: unknown): void {
         break;
       }
       case "TRANSCRIPT_TIME": {
+        requireExactKeys(
+          locator,
+          ["kind", "start_ms", "end_ms"],
+          "TRANSCRIPT_TIME evidence locator",
+        );
         const start = requirePortableUint(locator, "start_ms");
         const end = requirePortableUint(locator, "end_ms");
         if (start >= end) {
@@ -297,6 +364,11 @@ export function assertArtifactDescriptorSemantics(value: unknown): void {
         break;
       }
       case "REPOSITORY_BYTES": {
+        requireExactKeys(
+          locator,
+          ["kind", "snapshot_digest", "path", "start", "end"],
+          "REPOSITORY_BYTES evidence locator",
+        );
         const snapshotDigest = requireDigest(locator, "snapshot_digest");
         const path = requireString(locator, "path");
         const start = requirePortableUint(locator, "start");
@@ -318,6 +390,14 @@ export function assertArtifactDescriptorSemantics(value: unknown): void {
     }
     locatorIdentities.add(identity);
   }
+}
+
+/** Parses raw ArtifactDescriptor JSON through lexical, structural, and semantic validation. */
+export function parseArtifactDescriptorJson(input: string): Record<string, unknown> {
+  assertCanonicalArtifactJsonNumberTokens(input);
+  const value: unknown = JSON.parse(input) as unknown;
+  assertArtifactDescriptorSemantics(value);
+  return value;
 }
 
 function requireUuidArray(record: Record<string, unknown>, key: string): readonly string[] {

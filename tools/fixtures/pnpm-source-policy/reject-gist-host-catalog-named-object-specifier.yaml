@@ -1,0 +1,6 @@
+lockfileVersion: '9.0'
+catalogs:
+  security-review:
+    forbidden:
+      specifier: https://gist.github.com/example/deadbeef
+      version: 1.0.0

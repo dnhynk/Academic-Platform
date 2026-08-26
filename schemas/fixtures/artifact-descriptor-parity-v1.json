@@ -188,6 +188,38 @@
       "semantic_valid": true
     },
     {
+      "name": "unknown field in PAGE locator",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 1, "unexpected": true } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "unknown field in TEXT_BYTES locator",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "TEXT_BYTES", "source_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "start": 0, "end": 9, "unexpected": true } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "unknown field in TRANSCRIPT_TIME locator",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "TRANSCRIPT_TIME", "start_ms": 1, "end_ms": 2, "unexpected": true } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "unknown field in REPOSITORY_BYTES locator",
+      "mutations": [
+        { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "REPOSITORY_BYTES", "snapshot_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "path": "src/lib.rs", "start": 0, "end": 9, "unexpected": true } }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
       "name": "forged full-span representation digest",
       "mutations": [
         { "op": "replace", "path": "/evidence_representations/0/content_digest", "value": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }

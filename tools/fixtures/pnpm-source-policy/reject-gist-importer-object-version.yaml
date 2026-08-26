@@ -1,0 +1,7 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      forbidden:
+        specifier: 1.0.0
+        version: gist:deadbeef

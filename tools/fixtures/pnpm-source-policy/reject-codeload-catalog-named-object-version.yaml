@@ -1,0 +1,6 @@
+lockfileVersion: '9.0'
+catalogs:
+  security-review:
+    forbidden:
+      specifier: 1.0.0
+      version: https://codeload.github.com/example/repository/tar.gz/deadbeef

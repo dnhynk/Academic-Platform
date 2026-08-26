@@ -2,14 +2,43 @@ import YAML from "yaml";
 
 const dependencyGroups = ["dependencies", "devDependencies", "optionalDependencies"];
 const gitSchemePattern = /(?:^|[@(])(?:git(?:\+[a-z0-9+.-]+)?:|git:\/\/|ssh:\/\/|git@)/iu;
-const gitHostPattern = /(?:^|[@(])(?:https?:\/\/)?(?:www\.)?(?:github\.com|gitlab\.com|bitbucket\.org)\//iu;
+const gitDistributionHosts = new Set([
+  "github.com",
+  "gist.github.com",
+  "codeload.github.com",
+  "gitlab.com",
+  "bitbucket.org",
+]);
+const gitHostReferencePattern = /(?:^|[@(])(?:https?:\/\/)?(?:www\.)?(?:github\.com|gist\.github\.com|codeload\.github\.com|gitlab\.com|bitbucket\.org)\//iu;
+const sourceUrlPattern = /(?:https?|git|ssh):\/\/[^\s)]+/giu;
 const gitFileSuffixPattern = /(?:^|[@(])https?:\/\/[^\s#]+\.git(?:[#)]|$)/iu;
-const hostedShorthandPattern = /(?:^|[@(])(?:github|gitlab|bitbucket):/iu;
+const hostedShorthandPattern = /(?:^|[@(])(?:github|gitlab|bitbucket|gist):/iu;
 const bareGithubShorthandPattern = /^[a-z0-9_.-]+\/[a-z0-9_.-]+(?:#[^\s]+)?$/iu;
 const insecureHttpPattern = /(?:^|[@(])http:\/\//iu;
 
 function fail(path, value, reason) {
   throw new Error(`${path}: ${reason}: ${JSON.stringify(value)}`);
+}
+
+function canonicalHostname(hostname) {
+  return hostname
+    .toLowerCase()
+    .replace(/\.$/u, "")
+    .replace(/^www\./u, "");
+}
+
+function hasForbiddenGitDistributionHost(reference) {
+  for (const match of reference.matchAll(sourceUrlPattern)) {
+    const candidate = match[0];
+    try {
+      if (gitDistributionHosts.has(canonicalHostname(new URL(candidate).hostname))) {
+        return true;
+      }
+    } catch {
+      // A malformed URL still falls through to the bounded spelling check below.
+    }
+  }
+  return gitHostReferencePattern.test(reference);
 }
 
 function inspectReference(value, path, { allowBareShorthand = false } = {}) {
@@ -20,7 +49,7 @@ function inspectReference(value, path, { allowBareShorthand = false } = {}) {
   if (
     insecureHttpPattern.test(reference) ||
     gitSchemePattern.test(reference) ||
-    gitHostPattern.test(reference) ||
+    hasForbiddenGitDistributionHost(reference) ||
     gitFileSuffixPattern.test(reference) ||
     hostedShorthandPattern.test(reference) ||
     (allowBareShorthand && bareGithubShorthandPattern.test(reference))

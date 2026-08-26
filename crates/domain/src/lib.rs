@@ -895,7 +895,7 @@ impl ArtifactDescriptor {
 
 /// Exact evidence location inside an immutable artifact.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(deny_unknown_fields, tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EvidenceLocator {
     Page {
         page_number: u32,
@@ -1081,6 +1081,10 @@ impl Claim {
                 | (
                     EpistemicStatus::DeterministicDerived,
                     AuthorityClass::DeterministicEngine
+                )
+                | (
+                    EpistemicStatus::DeterministicDerived,
+                    AuthorityClass::Curated
                 )
                 | (EpistemicStatus::AiInferred, AuthorityClass::ModelInference)
                 | (EpistemicStatus::Prediction, AuthorityClass::Prediction)
@@ -1499,8 +1503,7 @@ mod tests {
         struct Case {
             name: String,
             mutations: Vec<Mutation>,
-            #[serde(rename = "schema_valid")]
-            _schema_valid: bool,
+            schema_valid: bool,
             semantic_valid: bool,
         }
         #[derive(Deserialize)]
@@ -1548,7 +1551,8 @@ mod tests {
             let rust_valid = serde_json::from_value::<ArtifactDescriptor>(candidate)
                 .is_ok_and(|descriptor| descriptor.validate().is_ok());
             assert_eq!(
-                rust_valid, case.semantic_valid,
+                rust_valid,
+                case.schema_valid && case.semantic_valid,
                 "artifact parity corpus disagreement: {}",
                 case.name
             );
@@ -1610,7 +1614,7 @@ mod tests {
             ),
             (
                 AuthorityClass::Curated,
-                EpistemicStatus::Disputed,
+                EpistemicStatus::DeterministicDerived,
                 [false, false, false, true],
             ),
             (
@@ -1649,6 +1653,67 @@ mod tests {
             for (actor, permitted) in actors.into_iter().zip(expected) {
                 assert_eq!(claim.validate_for_actor(actor).is_ok(), permitted);
             }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn t013_curated_deterministic_claims_require_importer_provenance()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let importer = Actor::Importer {
+            name: "curated-ontology".to_owned(),
+            version: "1".to_owned(),
+        };
+        let mut claim = Claim {
+            id: id(180)?,
+            subject_entity_id: id(181)?,
+            predicate_id: PredicateId::parse("knowledge.prerequisite")?,
+            object: ClaimObject::Text("synthetic curated relation".to_owned()),
+            scope_id: id(182)?,
+            authority_class: AuthorityClass::Curated,
+            epistemic_status: EpistemicStatus::DeterministicDerived,
+            confidence: None,
+            valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
+            evidence_ids: vec![id(183)?],
+        };
+        assert!(claim.validate_for_actor(&importer).is_ok());
+        for actor in [
+            Actor::User { user_id: id(184)? },
+            Actor::DeterministicEngine {
+                name: "engine".to_owned(),
+                version: "1".to_owned(),
+            },
+            Actor::ModelRun { run_id: id(185)? },
+        ] {
+            assert!(
+                matches!(
+                    claim.validate_for_actor(&actor),
+                    Err(DomainError::ActorAuthorityMismatch { .. })
+                ),
+                "only an importer may author Curated + DeterministicDerived"
+            );
+        }
+        for status in [
+            EpistemicStatus::OfficialConfirmed,
+            EpistemicStatus::UserConfirmed,
+            EpistemicStatus::CodeObserved,
+            EpistemicStatus::AiInferred,
+            EpistemicStatus::Prediction,
+            EpistemicStatus::Unknown,
+        ] {
+            claim.epistemic_status = status;
+            claim.evidence_ids = if status == EpistemicStatus::Unknown {
+                Vec::new()
+            } else {
+                vec![id(183)?]
+            };
+            assert!(
+                matches!(
+                    claim.validate_for_actor(&importer),
+                    Err(DomainError::StatusAuthorityMismatch { .. })
+                ),
+                "Curated must not pair with active status {status:?}"
+            );
         }
         Ok(())
     }

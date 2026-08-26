@@ -16,6 +16,7 @@ const [
   protoV2Text,
   canonicalSpecBytes,
   rustProtoContractText,
+  rustDomainText,
   rustContractsText,
   rustCoreText,
   rustCliText,
@@ -30,6 +31,7 @@ const [
   readFile("schemas/proto/academic/v2/ledger.proto", "utf8"),
   readFile("PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md"),
   readFile("crates/contracts/src/proto_contract.rs", "utf8"),
+  readFile("crates/domain/src/lib.rs", "utf8"),
   readFile("crates/contracts/src/lib.rs", "utf8"),
   readFile("crates/core/src/lib.rs", "utf8"),
   readFile("crates/cli/src/main.rs", "utf8"),
@@ -47,6 +49,7 @@ const artifactCorpus = JSON.parse(artifactCorpusText);
 const {
   assertArtifactDescriptorSemantics,
   assertCanonicalArtifactJsonNumberTokens,
+  parseArtifactDescriptorJson,
   parseFixtureDocument,
 } = await import("../packages/web-contracts/dist/index.js");
 
@@ -163,16 +166,16 @@ for (const testCase of artifactCorpus.cases) {
     testCase.schema_valid,
     `Ajv artifact parity disagreement: ${testCase.name}: ${ajv.errorsText(validateArtifactSchema.errors)}`,
   );
-  let semanticValid = true;
+  let typescriptRawValid = true;
   try {
-    assertArtifactDescriptorSemantics(candidate);
+    parseArtifactDescriptorJson(JSON.stringify(candidate));
   } catch {
-    semanticValid = false;
+    typescriptRawValid = false;
   }
   assert.equal(
-    semanticValid,
-    testCase.semantic_valid,
-    `TypeScript artifact parity disagreement: ${testCase.name}`,
+    typescriptRawValid,
+    testCase.schema_valid && testCase.semantic_valid,
+    `TypeScript raw artifact parity disagreement: ${testCase.name}`,
   );
 }
 
@@ -208,8 +211,7 @@ for (const testCase of artifactCorpus.raw_number_cases) {
 
   let typescriptRawValid = true;
   try {
-    assertCanonicalArtifactJsonNumberTokens(rawJson);
-    assertArtifactDescriptorSemantics(JSON.parse(rawJson));
+    parseArtifactDescriptorJson(rawJson);
   } catch {
     typescriptRawValid = false;
   }
@@ -329,6 +331,48 @@ const relationKindValues = [
   ["Retracts", "CLAIM_RELATION_KIND_RETRACTS", 4],
   ["Duplicates", "CLAIM_RELATION_KIND_DUPLICATES", 5],
 ];
+const relationKindNames = relationKindValues.slice(1).map(([rustName]) => rustName);
+const rustRelationMappingLines = (source, functionName) => {
+  const body = source.match(
+    new RegExp(
+      `const fn ${functionName}\\(value: [^)]+\\) -> [^{]+ \\{\\s*match value \\{(?<body>[\\s\\S]*?)\\n    \\}\\n\\}`,
+      "u",
+    ),
+  )?.groups?.body;
+  assert.ok(body, `Rust relation mapping ${functionName} must exist`);
+  return body
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+};
+const assertExactRustDomainRelationKind = (source) => {
+  const body = source.match(
+    /pub enum ClaimRelationKind \{(?<body>[\s\S]*?)\n\}/u,
+  )?.groups?.body;
+  assert.ok(body, "Rust domain ClaimRelationKind enum must exist");
+  const actual = [...body.matchAll(/^\s*(\w+),\s*$/gmu)].map((match) => match[1]);
+  assert.deepEqual(actual, relationKindNames, "Rust domain relation membership must be exact");
+};
+const assertRustRelationMappings = (source) => {
+  assert.deepEqual(
+    rustRelationMappingLines(source, "encode_relation_kind"),
+    relationKindNames.map(
+      (name) => `ClaimRelationKind::${name} => ProtoClaimRelationKind::${name},`,
+    ),
+    "every domain relation kind must encode to the identically named Proto discriminant",
+  );
+  assert.deepEqual(
+    rustRelationMappingLines(source, "decode_relation_kind"),
+    [
+      ...relationKindNames.map(
+        (name) =>
+          `ProtoClaimRelationKind::${name} => Some(ClaimRelationKind::${name}),`,
+      ),
+      "ProtoClaimRelationKind::Unspecified => None,",
+    ],
+    "every Proto relation discriminant must decode to the identical domain kind",
+  );
+};
 const assertRustWireContract = (source) => {
   for (const [structName, fieldName, tag] of rustScalarFields) {
     const body = rustStructBody(source, structName);
@@ -363,14 +407,16 @@ const assertRustWireContract = (source) => {
   }
   const relationEnum = source.match(/enum ProtoClaimRelationKind \{(?<body>[\s\S]*?)\n\}/u)?.groups?.body;
   assert.ok(relationEnum, "Rust relation enum must exist");
-  for (const [rustName, , value] of relationKindValues) {
-    assert.match(
-      relationEnum,
-      new RegExp(`\\b${rustName} = ${value},`, "u"),
-      `ProtoClaimRelationKind::${rustName} must retain discriminant ${value}`,
-    );
-  }
+  const actualRelationEntries = [...relationEnum.matchAll(/^\s*(\w+)\s*=\s*(-?\d+),\s*$/gmu)]
+    .map((match) => [match[1], Number(match[2])]);
+  assert.deepEqual(
+    actualRelationEntries,
+    relationKindValues.map(([rustName, , value]) => [rustName, value]),
+    "hand-written Rust Proto relation membership and discriminants must be exact",
+  );
+  assertRustRelationMappings(source);
 };
+assertExactRustDomainRelationKind(rustDomainText);
 assertRustWireContract(rustProtoContractText);
 const mutatedRustWire = rustProtoContractText.replace(
   '#[prost(message, tag = "15")]\n        ClaimRelated',
@@ -380,6 +426,26 @@ assert.throws(
   () => assertRustWireContract(mutatedRustWire),
   undefined,
   "a hand-written Rust wire-tag mutation must fail contract verification",
+);
+const mutatedRustEncodeMapping = rustProtoContractText.replace(
+  "ClaimRelationKind::Supports => ProtoClaimRelationKind::Supports,",
+  "ClaimRelationKind::Supports => ProtoClaimRelationKind::Contradicts,",
+);
+assert.notEqual(mutatedRustEncodeMapping, rustProtoContractText);
+assert.throws(
+  () => assertRustWireContract(mutatedRustEncodeMapping),
+  undefined,
+  "a Rust relation encode-mapping mutation must fail contract verification",
+);
+const mutatedRustDecodeMapping = rustProtoContractText.replace(
+  "ProtoClaimRelationKind::Supports => Some(ClaimRelationKind::Supports),",
+  "ProtoClaimRelationKind::Supports => Some(ClaimRelationKind::Contradicts),",
+);
+assert.notEqual(mutatedRustDecodeMapping, rustProtoContractText);
+assert.throws(
+  () => assertRustWireContract(mutatedRustDecodeMapping),
+  undefined,
+  "a Rust relation decode-mapping mutation must fail contract verification",
 );
 
 const declaredMessageFields = [
@@ -431,7 +497,36 @@ for (const version of [1, 2]) {
   for (const [, protoName, value] of relationKindValues) {
     assert.equal(relationKind.values[protoName], value, `v${version} ${protoName}`);
   }
+  if (version === 2) {
+    assert.deepEqual(
+      Object.entries(relationKind.values).sort(([left], [right]) => left.localeCompare(right)),
+      relationKindValues
+        .map(([, protoName, value]) => [protoName, value])
+        .sort(([left], [right]) => left.localeCompare(right)),
+      "current v2 relation enum membership and discriminants must be exact",
+    );
+  }
 }
+const mutatedProtoV2RelationKind = protoV2Text.replace(
+  "  CLAIM_RELATION_KIND_DUPLICATES = 5;",
+  "  CLAIM_RELATION_KIND_DUPLICATES = 5;\n  CLAIM_RELATION_KIND_REPLACES = 6;",
+);
+assert.notEqual(mutatedProtoV2RelationKind, protoV2Text);
+const mutatedProtoV2Root = protobuf.parse(mutatedProtoV2RelationKind, { keepCase: true }).root;
+mutatedProtoV2Root.resolveAll();
+assert.throws(
+  () => {
+    const relationKind = mutatedProtoV2Root.lookupEnum("academic.v2.ClaimRelationKind");
+    assert.deepEqual(
+      Object.entries(relationKind.values).sort(([left], [right]) => left.localeCompare(right)),
+      relationKindValues
+        .map(([, protoName, value]) => [protoName, value])
+        .sort(([left], [right]) => left.localeCompare(right)),
+    );
+  },
+  undefined,
+  "an added current-v2 relation discriminant must fail contract verification",
+);
 const uuidBytes = (value) => Buffer.from(value.replaceAll("-", ""), "hex");
 const protoRelationEvent = {
   id: { value: uuidBytes("01900000-0000-7000-8000-00000000000c") },
@@ -518,5 +613,5 @@ assert.doesNotMatch(fixtureV1Text, /https?:\/\//u);
 assert.doesNotMatch(fixtureV2Text, /https?:\/\//u);
 
 console.log(
-  "Immutable v1 contracts, source-aware signed decoding, v2-only writers, raw artifact-number parity, and Rust/Proto wire profiles verified.",
+  "Immutable v1 contracts, source-aware signed decoding, v2-only writers, exact artifact locators, raw-number parity, and exhaustive Rust/Proto relation mappings verified.",
 );

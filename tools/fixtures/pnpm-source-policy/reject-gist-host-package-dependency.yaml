@@ -1,0 +1,5 @@
+lockfileVersion: '9.0'
+packages:
+  parent@1.0.0:
+    dependencies:
+      forbidden: https://gist.github.com/example/deadbeef

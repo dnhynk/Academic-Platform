@@ -1,0 +1,5 @@
+lockfileVersion: '9.0'
+snapshots:
+  forbidden@0.0.0:
+    resolution:
+      tarball: https://codeload.github.com/example/repository/tar.gz/deadbeef

@@ -3,11 +3,15 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { parseFixtureDocument } from "./index.js";
+import { parseArtifactDescriptorJson, parseFixtureDocument } from "./index.js";
 
 const fixtureV1Url = new URL("../../../schemas/fixtures/signed-batch-v1.json", import.meta.url);
 const fixtureV2Url = new URL("../../../schemas/fixtures/signed-batch-v2.json", import.meta.url);
 const immutableV1Sha256 = "287f7dea8fd24c3c6eb205c3f1e2873f6afdf7d6532fe7be4fccfb44a0b7e163";
+const artifactCorpusUrl = new URL(
+  "../../../schemas/fixtures/artifact-descriptor-parity-v1.json",
+  import.meta.url,
+);
 
 void test("the immutable v1 and current v2 fixtures are synthetic and structurally valid", async () => {
   const [v1Bytes, v2Text] = await Promise.all([readFile(fixtureV1Url), readFile(fixtureV2Url, "utf8")]);
@@ -58,5 +62,31 @@ void test("const, minimum, uniqueness, and additional-property violations fail c
     const candidate = structuredClone(fixture) as Record<string, unknown>;
     mutate(candidate);
     assert.throws(() => parseFixtureDocument(candidate), TypeError);
+  }
+});
+
+void test("raw artifact validation rejects unknown fields in every evidence locator", async () => {
+  const corpus = JSON.parse(await readFile(artifactCorpusUrl, "utf8")) as {
+    readonly base: unknown;
+    readonly cases: readonly {
+      readonly name: string;
+      readonly mutations: readonly { readonly value: unknown }[];
+    }[];
+  };
+  const unknownLocatorCases = corpus.cases.filter((entry) =>
+    entry.name.startsWith("unknown field in "),
+  );
+  assert.equal(unknownLocatorCases.length, 4);
+  for (const entry of unknownLocatorCases) {
+    const mutation = entry.mutations[0];
+    const candidate = structuredClone(corpus.base) as {
+      evidence_representations: { locator: unknown }[];
+    };
+    const representation = candidate.evidence_representations[0];
+    if (mutation === undefined || representation === undefined) {
+      assert.fail(`${entry.name} must replace one evidence locator`);
+    }
+    representation.locator = structuredClone(mutation.value);
+    assert.throws(() => parseArtifactDescriptorJson(JSON.stringify(candidate)), TypeError);
   }
 });

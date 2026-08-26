@@ -1,0 +1,21 @@
+lockfileVersion: '9.0'
+catalogs:
+  default:
+    registry-package: ^1.2.3
+  named:
+    aliased-package:
+      specifier: npm:example@^1.2.0
+      version: 1.2.3
+importers:
+  .:
+    dependencies:
+      workspace-package:
+        specifier: workspace:*
+        version: link:packages/workspace-package
+packages:
+  '@scope/example@1.2.3':
+    resolution: {integrity: sha512-c3ludGhldGlj}
+snapshots:
+  '@scope/example@1.2.3':
+    dependencies:
+      transitive: 2.0.0

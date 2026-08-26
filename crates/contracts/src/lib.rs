@@ -1211,6 +1211,44 @@ mod tests {
     }
 
     #[test]
+    fn t013_every_relation_kind_round_trips_exactly() -> Result<(), Box<dyn std::error::Error>> {
+        for (index, kind) in [
+            ClaimRelationKind::Supports,
+            ClaimRelationKind::Contradicts,
+            ClaimRelationKind::Supersedes,
+            ClaimRelationKind::Retracts,
+            ClaimRelationKind::Duplicates,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let event = Event {
+                id: EventId::from_str(&format!("01900000-0000-7000-8000-{:012x}", 200 + index))?,
+                origin_seq: u64::try_from(index + 1)?,
+                origin_observed_at: TimestampMillis::new(i64::try_from(index)?),
+                actor: Actor::Importer {
+                    name: "relation-profile".to_owned(),
+                    version: "1".to_owned(),
+                },
+                domain_id: DomainId::from_str("01900000-0000-7000-8000-000000000022")?,
+                payload: EventPayload::ClaimRelated(ClaimRelation {
+                    source_claim_id: ClaimId::from_str("01900000-0000-7000-8000-000000000023")?,
+                    target_claim_id: ClaimId::from_str("01900000-0000-7000-8000-000000000024")?,
+                    kind,
+                    scope_id: ScopeId::from_str("01900000-0000-7000-8000-000000000025")?,
+                }),
+            };
+            let encoded = encode_claim_relation_event_proto(&event)?;
+            assert_eq!(
+                decode_claim_relation_event_proto(&encoded)?,
+                event,
+                "relation kind {kind:?} changed during Rust/Proto conversion"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
     fn t007_known_proto_oneof_arms_obey_last_value_wins_in_every_field_order()
     -> Result<(), Box<dyn std::error::Error>> {
         let event = Event {

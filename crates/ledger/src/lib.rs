@@ -605,16 +605,15 @@ impl LedgerState {
                     )
             })
             .map(|(claim, accepted)| {
-                let effective_authority = if chosen_object.as_ref() == Some(&claim.object) {
-                    AuthorityClass::UserExplicit
+                let original_rank = authority_rank(query.policy, claim.authority_class);
+                let effective_rank = if chosen_object.as_ref() == Some(&claim.object) {
+                    user_decision_rank.map_or(original_rank, |decision_rank| {
+                        original_rank.max(decision_rank)
+                    })
                 } else {
-                    claim.authority_class
+                    original_rank
                 };
-                (
-                    claim,
-                    accepted,
-                    authority_rank(query.policy, effective_authority),
-                )
+                (claim, accepted, effective_rank)
             })
             .collect();
 
@@ -1141,6 +1140,66 @@ mod tests {
         }
     }
 
+    fn actor_for_resolution_claim(claim: &Claim) -> Result<Actor, DomainError> {
+        Ok(match claim.authority_class {
+            AuthorityClass::UserExplicit => Actor::User { user_id: id(13)? },
+            AuthorityClass::DeterministicEngine => Actor::DeterministicEngine {
+                name: "resolution-engine".to_owned(),
+                version: "1".to_owned(),
+            },
+            AuthorityClass::ModelInference | AuthorityClass::Prediction => {
+                Actor::ModelRun { run_id: id(901)? }
+            }
+            AuthorityClass::Official
+            | AuthorityClass::DirectObservation
+            | AuthorityClass::Curated
+            | AuthorityClass::Unknown => Actor::Importer {
+                name: "resolution-importer".to_owned(),
+                version: "1".to_owned(),
+            },
+        })
+    }
+
+    fn accept_resolution_batch(
+        claims: &[Claim],
+        decision: UserDecision,
+    ) -> Result<(LedgerState, u64), Box<dyn std::error::Error>> {
+        let mut batch = fixture_batch()?;
+        batch.batch_id = id(902)?;
+        batch.events.truncate(3);
+        for (index, claim) in claims.iter().enumerate() {
+            let origin_seq = 4 + u64::try_from(index)?;
+            batch.events.push(event(
+                id(910 + u32::try_from(index)?)?,
+                origin_seq,
+                TimestampMillis::new(i64::try_from(origin_seq)?),
+                actor_for_resolution_claim(claim)?,
+                id(1)?,
+                EventPayload::ClaimAsserted(claim.clone()),
+            ));
+        }
+        let decision_origin_seq = 4 + u64::try_from(claims.len())?;
+        batch.events.push(event(
+            id(920)?,
+            decision_origin_seq,
+            TimestampMillis::new(i64::try_from(decision_origin_seq)?),
+            Actor::User { user_id: id(13)? },
+            id(1)?,
+            EventPayload::DecisionRecorded(decision),
+        ));
+        batch.origin_seq_end = decision_origin_seq;
+
+        let verified = verify_batch(&batch)?;
+        let mut ledger = LedgerState::new();
+        let first = ledger.accept_verified_batch(&verified)?;
+        let replay = ledger.accept_verified_batch(&verified)?;
+        assert!(!first.duplicate);
+        assert!(replay.duplicate);
+        assert_eq!(first.accept_seq_end, replay.accept_seq_end);
+        assert_eq!(ledger.accepted_events().len(), batch.events.len());
+        Ok((ledger, first.accept_seq_end))
+    }
+
     #[test]
     fn ledger_acceptance_requires_verified_capability_and_is_idempotent()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -1507,11 +1566,12 @@ mod tests {
                     },
                     _ => return Err("unexpected decision action".into()),
                 };
-                let mut ledger = LedgerState::new();
-                insert_claim(&mut ledger, target.clone(), 1)?;
-                insert_claim(&mut ledger, replacement.clone(), 2)?;
-                insert_claim(&mut ledger, policy_authoritative.clone(), 3)?;
-                ledger.decisions.push((
+                let (ledger, decision_accept_seq) = accept_resolution_batch(
+                    &[
+                        target.clone(),
+                        replacement.clone(),
+                        policy_authoritative.clone(),
+                    ],
                     UserDecision {
                         id: id(263)?,
                         target_claim_id: target.id,
@@ -1527,13 +1587,16 @@ mod tests {
                         decided_at: TimestampMillis::new(10),
                         reversible_until: None,
                     },
-                    AcceptedDecisionMeta { accept_seq: 4 },
-                ));
+                )?;
 
                 for (label, valid_at, known_at) in [
-                    ("before-known", TimestampMillis::new(15), 3),
-                    ("before-valid", TimestampMillis::new(9), 4),
-                    ("after-valid", TimestampMillis::new(20), 4),
+                    (
+                        "before-known",
+                        TimestampMillis::new(15),
+                        decision_accept_seq - 1,
+                    ),
+                    ("before-valid", TimestampMillis::new(9), decision_accept_seq),
+                    ("after-valid", TimestampMillis::new(20), decision_accept_seq),
                 ] {
                     let outside = ledger.resolve(&ResolutionQuery {
                         subject_entity_id: target.subject_entity_id,
@@ -1565,7 +1628,7 @@ mod tests {
                     scope_id: target.scope_id,
                     predicate_id: target.predicate_id.clone(),
                     valid_at: TimestampMillis::new(10),
-                    known_at_accept_seq: 4,
+                    known_at_accept_seq: decision_accept_seq,
                     policy,
                 });
                 let equal_user_rank = matches!(
@@ -1611,6 +1674,135 @@ mod tests {
                 assert_eq!(
                     applicable.rejected_claim_ids, expected_rejected,
                     "{policy:?}/{action_name}",
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn t013_confirm_and_replace_preserve_same_object_policy_authority()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let interval = ValidInterval::open_ended(TimestampMillis::new(0));
+        for policy in [
+            AuthorityPolicy::UserOwned,
+            AuthorityPolicy::OfficialFact,
+            AuthorityPolicy::ImplementationObservation,
+            AuthorityPolicy::CuratedRelation,
+        ] {
+            let (same_object_authority, same_object_status) = policy_authority(policy);
+            let (unrelated_authority, unrelated_status) = match policy {
+                AuthorityPolicy::UserOwned | AuthorityPolicy::OfficialFact => (
+                    AuthorityClass::DirectObservation,
+                    EpistemicStatus::CodeObserved,
+                ),
+                AuthorityPolicy::ImplementationObservation => {
+                    (AuthorityClass::UserExplicit, EpistemicStatus::UserConfirmed)
+                }
+                AuthorityPolicy::CuratedRelation => {
+                    (AuthorityClass::Official, EpistemicStatus::OfficialConfirmed)
+                }
+            };
+            for action_name in ["confirm", "replace"] {
+                let target = resolution_claim(
+                    280,
+                    ClaimObject::Text("target".to_owned()),
+                    AuthorityClass::ModelInference,
+                    EpistemicStatus::AiInferred,
+                    interval,
+                )?;
+                let replacement = resolution_claim(
+                    281,
+                    ClaimObject::Text("replacement".to_owned()),
+                    AuthorityClass::ModelInference,
+                    EpistemicStatus::AiInferred,
+                    interval,
+                )?;
+                let chosen = if action_name == "confirm" {
+                    &target
+                } else {
+                    &replacement
+                };
+                let same_object = resolution_claim(
+                    282,
+                    chosen.object.clone(),
+                    same_object_authority,
+                    same_object_status,
+                    interval,
+                )?;
+                let unrelated = resolution_claim(
+                    283,
+                    ClaimObject::Text("unrelated".to_owned()),
+                    unrelated_authority,
+                    unrelated_status,
+                    interval,
+                )?;
+                let action = if action_name == "confirm" {
+                    DecisionAction::Confirm
+                } else {
+                    DecisionAction::Replace {
+                        replacement_claim_id: replacement.id,
+                    }
+                };
+                let (ledger, decision_accept_seq) = accept_resolution_batch(
+                    &[
+                        target.clone(),
+                        replacement.clone(),
+                        same_object.clone(),
+                        unrelated.clone(),
+                    ],
+                    UserDecision {
+                        id: id(284)?,
+                        target_claim_id: target.id,
+                        target_object: target.object.clone(),
+                        resolution_slot: ResolutionSlot {
+                            subject_entity_id: target.subject_entity_id,
+                            predicate_id: target.predicate_id.clone(),
+                            scope_id: target.scope_id,
+                        },
+                        action,
+                        valid_time: interval,
+                        rationale_evidence_ids: Vec::new(),
+                        decided_at: TimestampMillis::new(1),
+                        reversible_until: None,
+                    },
+                )?;
+                let actual = ledger.resolve(&ResolutionQuery {
+                    subject_entity_id: target.subject_entity_id,
+                    scope_id: target.scope_id,
+                    predicate_id: target.predicate_id.clone(),
+                    valid_at: TimestampMillis::new(1),
+                    known_at_accept_seq: decision_accept_seq,
+                    policy,
+                });
+                let user_rank = authority_rank(policy, AuthorityClass::UserExplicit);
+                let original_rank = authority_rank(policy, same_object.authority_class);
+                let expected_active = if original_rank > user_rank {
+                    vec![same_object.id]
+                } else {
+                    vec![chosen.id, same_object.id]
+                };
+                assert_eq!(
+                    actual.active_claim_ids, expected_active,
+                    "{policy:?}/{action_name}: the decision rank must be a floor, not a downgrade"
+                );
+                assert_eq!(
+                    actual.conflicting_claim_ids,
+                    if action_name == "confirm" {
+                        vec![replacement.id, unrelated.id]
+                    } else {
+                        vec![unrelated.id]
+                    },
+                    "{policy:?}/{action_name}"
+                );
+                assert_eq!(
+                    actual.rejected_claim_ids,
+                    if action_name == "replace" {
+                        vec![target.id]
+                    } else {
+                        Vec::new()
+                    },
+                    "{policy:?}/{action_name}"
                 );
             }
         }

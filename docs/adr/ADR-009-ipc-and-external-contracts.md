@@ -21,7 +21,11 @@ Versioned Proto schemas, three JSON Schemas, the deterministic CBOR profile, v1/
 
 Both Proto versions carry lossless `ClaimRelation` scope plus structured user/engine/model/importer provenance. The hand-written Prost `OriginEvent` recognizes every current payload tag 10–15, so the final known oneof arm wins; Rust returns `UnsupportedPayload` when it is not `ClaimRelated`, and Rust/Protobuf.js execute every competing field-order permutation for both declared Proto versions. Contract verification reflects both declared Proto versions and cross-checks every hand-written Rust message, actor, relation, enum, and payload tag; a Rust tag mutation fails the gate.
 
+The current v2 `ClaimRelationKind` set is exactly `UNSPECIFIED`, `SUPPORTS`, `CONTRADICTS`, `SUPERSEDES`, `RETRACTS`, and `DUPLICATES` at discriminants 0–5. The official gate checks exact Proto and Rust membership, both hand-written Rust conversion directions, and in-memory mapping and added-discriminant mutations; Rust execution round-trips all five domain kinds.
+
 Ajv 8.17.1 validates Draft 2020-12 syntax, while an exported TypeScript artifact semantic validator enforces cross-field invariants JSON Schema cannot express. Artifact JSON has one raw lexical policy before parsing: every number token must match `0|[1-9][0-9]*`; decimal, exponent, negative, unsafe, out-of-range, and fractional cases execute through the raw gate plus Ajv, TypeScript, and Rust. Typed range and cross-field checks still follow lexical validation, so distinct raw tokens are never silently normalized.
+
+Every `EvidenceLocator` variant is an exact closed object in JSON Schema, TypeScript raw validation, and Rust Serde. Undeclared page, text-byte, transcript-time, or repository-byte coordinates fail before an `ArtifactDescriptor` can cross the common contract boundary.
 
 Canonical signed verification first enforces exact envelope and generic payload canonicality plus independent key binding, then verifies Ed25519 over the original payload bytes, performs source-aware v1 compatibility, validates the typed batch, and finally re-encodes through the authenticated source version before issuing `VerifiedBatch`. Unknown authenticated fields at event, actor, payload, claim/object, decision/action, and version-specific nested levels fail closed for both v1 and v2 instead of disappearing during Serde conversion.
 
