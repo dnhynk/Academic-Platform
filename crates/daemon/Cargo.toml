@@ -13,7 +13,15 @@ path = "src/main.rs"
 [dependencies]
 academic-core = { path = "../core" }
 academic-rpc = { path = "../rpc" }
+academic-store = { path = "../store" }
+getrandom.workspace = true
+hex.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 rustix.workspace = true
@@ -26,10 +34,22 @@ windows-sys = { workspace = true, features = [
   "Win32_Storage_FileSystem",
   "Win32_System_IO",
   "Win32_System_Pipes",
+  "Win32_System_RemoteDesktop",
   "Win32_System_SystemServices",
   "Win32_System_Threading",
   "Win32_System_WindowsProgramming",
 ] }
 
-[lints]
-workspace = true
+# This crate contains the reviewed Windows named-pipe and Unix local-IPC
+# boundary. Native calls remain denied unless locally allowed with a concrete
+# safety proof.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
