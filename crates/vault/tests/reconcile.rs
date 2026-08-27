@@ -2,17 +2,29 @@
 mod synthetic_artifacts;
 
 use std::{
+    collections::BTreeSet,
     error::Error,
     fs::{self, File, OpenOptions},
-    path::Path,
-    time::{Duration, SystemTime},
+    io,
+    path::{Path, PathBuf},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use academic_vault::{ReconcileOptions, ReconcileState, SealDisposition};
-use synthetic_artifacts::{SAMPLE_BYTES, ingest_request, open_test_vault};
+use academic_domain::RetentionClass;
+use academic_vault::{
+    ReconcileOptions, ReconcileReport, ReconcileState, SealDisposition, VaultError,
+};
+use synthetic_artifacts::{
+    ARTIFACT_ID, DOMAIN_ID, PERMISSION_LINEAGE_ID, SAMPLE_BYTES, SECOND_ARTIFACT_ID,
+    SECOND_DOMAIN_ID, SECOND_PERMISSION_LINEAGE_ID, ingest_request, open_test_vault, request_with,
+};
 
 const FUTURE: Duration = Duration::from_secs(48 * 60 * 60);
 const ONE_HOUR: Duration = Duration::from_secs(60 * 60);
+const FIXED_RECONCILE_MILLIS: u64 = 1_788_033_675_111;
+const THIRD_ARTIFACT_ID: &str = "01900000-0000-7000-8000-000000000103";
+const PREOCCUPIED_QUARANTINE_BYTES: &[u8] = b"preoccupied quarantine bytes\n";
+const MAX_QUARANTINE_FILENAME_BYTES: usize = 157;
 
 #[test]
 fn same_policy_retry_adopts_sealed_orphan() -> Result<(), Box<dyn Error>> {
@@ -156,6 +168,134 @@ fn referenced_valid_object_survives_orphan_grace() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
+#[test]
+fn audit_cross_policy_orphans_collide_in_flat_quarantine_namespace() -> Result<(), Box<dyn Error>> {
+    let (_root, vault) = open_test_vault("audit-cross-policy-quarantine")?;
+    let first = vault.ingest(
+        &request_with(
+            ARTIFACT_ID,
+            DOMAIN_ID,
+            RetentionClass::UserManaged,
+            PERMISSION_LINEAGE_ID,
+        )?,
+        SAMPLE_BYTES,
+    )?;
+    let second = vault.ingest(
+        &request_with(
+            SECOND_ARTIFACT_ID,
+            DOMAIN_ID,
+            RetentionClass::LegalHold,
+            PERMISSION_LINEAGE_ID,
+        )?,
+        SAMPLE_BYTES,
+    )?;
+
+    assert_eq!(
+        first.descriptor().vault_locator,
+        second.descriptor().vault_locator
+    );
+    assert_ne!(first.object_path(), second.object_path());
+    let first_live_path = first.object_path().to_path_buf();
+    let second_live_path = second.object_path().to_path_buf();
+    let options = ReconcileOptions::new(fixed_reconcile_time()).with_orphan_grace(Duration::ZERO);
+
+    let report = vault.reconcile(&options)?;
+    let quarantined = quarantined_paths(&report);
+    assert_eq!(quarantined.len(), 2);
+    for path in &quarantined {
+        assert_eq!(fs::read(path)?, SAMPLE_BYTES);
+        assert_portable_quarantine_filename(path)?;
+    }
+    assert!(!first_live_path.exists());
+    assert!(!second_live_path.exists());
+    assert!(object_files(vault.layout().objects_root())?.is_empty());
+
+    let repeated = vault.reconcile(&options)?;
+    assert_eq!(quarantined_paths(&repeated), quarantined);
+    assert!(object_files(vault.layout().objects_root())?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn quarantine_identity_separates_permission_lineage_and_domain() -> Result<(), Box<dyn Error>> {
+    let (_root, vault) = open_test_vault("quarantine-policy-identity")?;
+    let first = vault.ingest(
+        &request_with(
+            ARTIFACT_ID,
+            DOMAIN_ID,
+            RetentionClass::UserManaged,
+            PERMISSION_LINEAGE_ID,
+        )?,
+        SAMPLE_BYTES,
+    )?;
+    let second = vault.ingest(
+        &request_with(
+            SECOND_ARTIFACT_ID,
+            DOMAIN_ID,
+            RetentionClass::UserManaged,
+            SECOND_PERMISSION_LINEAGE_ID,
+        )?,
+        SAMPLE_BYTES,
+    )?;
+    let third = vault.ingest(
+        &request_with(
+            THIRD_ARTIFACT_ID,
+            SECOND_DOMAIN_ID,
+            RetentionClass::UserManaged,
+            PERMISSION_LINEAGE_ID,
+        )?,
+        SAMPLE_BYTES,
+    )?;
+
+    assert_eq!(
+        first.descriptor().vault_locator,
+        second.descriptor().vault_locator
+    );
+    assert_ne!(
+        first.descriptor().vault_locator,
+        third.descriptor().vault_locator
+    );
+    let report = vault.reconcile(
+        &ReconcileOptions::new(fixed_reconcile_time()).with_orphan_grace(Duration::ZERO),
+    )?;
+    let quarantined = quarantined_paths(&report);
+    assert_eq!(quarantined.len(), 3);
+    for path in &quarantined {
+        assert_eq!(fs::read(path)?, SAMPLE_BYTES);
+        assert_portable_quarantine_filename(path)?;
+    }
+    assert!(object_files(vault.layout().objects_root())?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn preoccupied_quarantine_destination_never_overwrites_bytes() -> Result<(), Box<dyn Error>> {
+    let (_root, vault) = open_test_vault("preoccupied-quarantine")?;
+    let request = ingest_request()?;
+    let first = vault.ingest(&request, SAMPLE_BYTES)?;
+    let live_path = first.object_path().to_path_buf();
+    let options = ReconcileOptions::new(fixed_reconcile_time()).with_orphan_grace(Duration::ZERO);
+    let first_report = vault.reconcile(&options)?;
+    let destination = quarantined_paths(&first_report)
+        .into_iter()
+        .next()
+        .ok_or("first orphan was not quarantined")?;
+    fs::write(&destination, PREOCCUPIED_QUARANTINE_BYTES)?;
+
+    let republished = vault.ingest(&request, SAMPLE_BYTES)?;
+    assert_eq!(republished.object_path(), live_path);
+    let result = vault.reconcile(&options);
+    let collision = match result {
+        Err(VaultError::PathCollision(path)) => path,
+        other => return Err(format!("expected PathCollision, observed {other:?}").into()),
+    };
+
+    assert_eq!(collision, destination);
+    assert_eq!(fs::read(&destination)?, PREOCCUPIED_QUARANTINE_BYTES);
+    assert_eq!(fs::read(&live_path)?, SAMPLE_BYTES);
+    Ok(())
+}
+
 #[cfg(windows)]
 #[test]
 fn retry_candidate_io_error_does_not_quarantine() -> Result<(), Box<dyn Error>> {
@@ -201,4 +341,63 @@ fn hold_exclusive(path: &Path) -> Result<File, Box<dyn Error>> {
         .write(true)
         .share_mode(0)
         .open(path)?)
+}
+
+fn fixed_reconcile_time() -> SystemTime {
+    UNIX_EPOCH + Duration::from_millis(FIXED_RECONCILE_MILLIS)
+}
+
+fn quarantined_paths(report: &ReconcileReport) -> BTreeSet<PathBuf> {
+    report
+        .records()
+        .iter()
+        .filter(|record| record.state() == ReconcileState::QuarantinedOrphan)
+        .map(|record| record.path().to_path_buf())
+        .collect()
+}
+
+fn assert_portable_quarantine_filename(path: &Path) -> Result<(), Box<dyn Error>> {
+    let filename = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or("quarantine filename was not Unicode")?;
+    assert!(filename.is_ascii());
+    assert!(filename.len() <= MAX_QUARANTINE_FILENAME_BYTES);
+    let stem = filename
+        .strip_suffix(".orphan")
+        .ok_or("quarantine filename had the wrong extension")?;
+    let components = stem.split('-').collect::<Vec<_>>();
+    assert_eq!(components.len(), 3);
+    assert_eq!(components[0].len(), 13);
+    assert_eq!(components[1].len(), 64);
+    assert_eq!(components[2].len(), 64);
+    assert!(components[0].bytes().all(|byte| byte.is_ascii_digit()));
+    assert!(components[1].bytes().all(is_lower_hex));
+    assert!(components[2].bytes().all(is_lower_hex));
+    Ok(())
+}
+
+fn is_lower_hex(byte: u8) -> bool {
+    byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
+}
+
+fn object_files(directory: &Path) -> io::Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    collect_object_files(directory, &mut files)?;
+    Ok(files)
+}
+
+fn collect_object_files(directory: &Path, files: &mut Vec<PathBuf>) -> io::Result<()> {
+    for entry in fs::read_dir(directory)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            collect_object_files(&entry.path(), files)?;
+        } else if file_type.is_file()
+            && entry.path().extension().and_then(|value| value.to_str()) == Some("obj")
+        {
+            files.push(entry.path());
+        }
+    }
+    Ok(())
 }

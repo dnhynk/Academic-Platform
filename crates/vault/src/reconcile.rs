@@ -3,17 +3,20 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs, io,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use academic_domain::{ArtifactDescriptor, ArtifactId};
+use sha2::{Digest as _, Sha256};
 
-use crate::{Vault, VaultError, VaultResult, durability, ingest::verify_object};
+use crate::{Vault, VaultError, VaultResult, durability, encode_hex, ingest::verify_object};
 
 const DEFAULT_TEMP_EXPIRY: Duration = Duration::from_secs(24 * 60 * 60);
 const DEFAULT_ORPHAN_GRACE: Duration = Duration::from_secs(24 * 60 * 60);
 const DIRECTORY_BARRIER_FILE: &str = ".academic-vault-directory-barrier";
+const QUARANTINE_SUFFIX: &str = ".orphan";
+const MAX_QUARANTINE_FILENAME_BYTES: usize = 20 + 1 + 64 + 1 + 64 + QUARANTINE_SUFFIX.len();
 
 /// Configuration and authoritative descriptor sets consumed by one reconciliation pass.
 #[derive(Debug, Clone)]
@@ -374,11 +377,13 @@ fn quarantine(vault: &Vault, source: &Path, now: SystemTime) -> VaultResult<Path
         .file_stem()
         .and_then(|value| value.to_str())
         .ok_or_else(|| VaultError::UnsafeEntry(source.to_path_buf()))?;
+    let path_identity = quarantine_path_identity(vault, source)?;
     let timestamp = system_time_millis(now)?;
-    let destination = vault
-        .layout
-        .quarantine_dir()
-        .join(format!("{timestamp:013}-{locator}.orphan"));
+    let filename = format!("{timestamp:013}-{path_identity}-{locator}{QUARANTINE_SUFFIX}");
+    if filename.len() > MAX_QUARANTINE_FILENAME_BYTES || !filename.is_ascii() {
+        return Err(VaultError::UnsafeEntry(source.to_path_buf()));
+    }
+    let destination = vault.layout.quarantine_dir().join(filename);
     if !durability::publish_no_replace(source, &destination)? {
         return Err(VaultError::PathCollision(destination));
     }
@@ -388,6 +393,35 @@ fn quarantine(vault: &Vault, source: &Path, now: SystemTime) -> VaultResult<Path
     durability::sync_directory(source_parent)?;
     durability::sync_directory(vault.layout.quarantine_dir())?;
     Ok(destination)
+}
+
+fn quarantine_path_identity(vault: &Vault, source: &Path) -> VaultResult<String> {
+    if !vault.layout.is_canonical_object_path(source) {
+        return Err(VaultError::UnsafeEntry(source.to_path_buf()));
+    }
+    let relative = source
+        .strip_prefix(vault.layout.objects_root())
+        .map_err(|_| VaultError::UnsafeEntry(source.to_path_buf()))?;
+    let portable = portable_relative_object_path(relative, source)?;
+    Ok(encode_hex(&Sha256::digest(portable.as_bytes())))
+}
+
+fn portable_relative_object_path(relative: &Path, source: &Path) -> VaultResult<String> {
+    let mut portable = String::new();
+    for component in relative.components() {
+        let Component::Normal(value) = component else {
+            return Err(VaultError::UnsafeEntry(source.to_path_buf()));
+        };
+        let value = value
+            .to_str()
+            .filter(|value| value.is_ascii())
+            .ok_or_else(|| VaultError::UnsafeEntry(source.to_path_buf()))?;
+        if !portable.is_empty() {
+            portable.push('/');
+        }
+        portable.push_str(value);
+    }
+    Ok(portable)
 }
 
 fn file_age(path: &Path, now: SystemTime) -> VaultResult<Duration> {
@@ -423,5 +457,53 @@ fn record(
         state,
         path,
         artifact_id,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DOMAIN: &str = "01900000-0000-7000-8000-000000000201";
+    const LINEAGE: &str = "01900000-0000-7000-8000-000000000301";
+    const LOCATOR: &str = "0c7ab0ce2ec59dd5f7987f7c15edaeee47f3d3080b7c88d794423ce8606aa004";
+
+    #[test]
+    fn quarantine_identity_serialization_is_platform_neutral() -> VaultResult<()> {
+        let relative = PathBuf::new()
+            .join(DOMAIN)
+            .join("USER_MANAGED")
+            .join(LINEAGE)
+            .join("0c")
+            .join("7a")
+            .join(format!("{LOCATOR}.obj"));
+        let portable = portable_relative_object_path(&relative, &relative)?;
+
+        assert_eq!(
+            portable,
+            format!("{DOMAIN}/USER_MANAGED/{LINEAGE}/0c/7a/{LOCATOR}.obj")
+        );
+        let identity = encode_hex(&Sha256::digest(portable.as_bytes()));
+        assert_eq!(identity.len(), 64);
+        assert!(
+            identity
+                .bytes()
+                .all(|byte| { byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte) })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn quarantine_filename_bound_covers_maximum_system_time() {
+        let filename = format!(
+            "{}-{}-{}{}",
+            u64::MAX,
+            "a".repeat(64),
+            "b".repeat(64),
+            QUARANTINE_SUFFIX
+        );
+        assert_eq!(filename.len(), MAX_QUARANTINE_FILENAME_BYTES);
+        assert!(filename.is_ascii());
+        assert!(!filename.ends_with([' ', '.']));
     }
 }
