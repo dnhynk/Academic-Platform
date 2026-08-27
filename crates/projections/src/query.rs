@@ -8,7 +8,7 @@ use std::{
 use academic_domain::{DomainId, EntityId};
 use academic_store::{
     connection::{ReaderConnection, open_reader},
-    queries::canonical_snapshot,
+    queries::projection_source_authority,
 };
 use rusqlite::{Connection, TransactionBehavior};
 
@@ -22,27 +22,57 @@ use crate::{
     resolution::{CANONICAL_RESOLVER_VERSION, PredicatePolicies},
     runner::{
         ProjectionError, ProjectionResult, Watermark, open_projection_reader,
-        read_active_generation,
+        read_active_generation, read_verified_generation,
     },
 };
 
-/// Deterministic test barrier after active metadata is read and before rows are
-/// read from the same SQLite snapshot.
-#[doc(hidden)]
-pub trait ProjectionReadBarrier: fmt::Debug {
-    fn after_active_metadata(&self) -> ProjectionResult<()>;
-}
+mod read_boundary {
+    use super::{ProjectionResult, fmt};
 
-#[derive(Debug, Clone, Copy, Default)]
-struct NoProjectionReadBarrier;
+    pub(crate) trait ProjectionReadBehavior: fmt::Debug {
+        fn after_active_metadata(&self) -> ProjectionResult<()>;
+    }
 
-impl ProjectionReadBarrier for NoProjectionReadBarrier {
-    fn after_active_metadata(&self) -> ProjectionResult<()> {
-        Ok(())
+    #[derive(Debug, Clone, Copy, Default)]
+    pub(crate) struct NoProjectionReadBarrier;
+
+    impl ProjectionReadBehavior for NoProjectionReadBarrier {
+        fn after_active_metadata(&self) -> ProjectionResult<()> {
+            Ok(())
+        }
+    }
+
+    /// Deterministic test barrier after generation metadata is selected and
+    /// before rows are read from the same SQLite snapshot.
+    #[cfg(feature = "phase1-fault-injection")]
+    #[doc(hidden)]
+    pub trait ProjectionReadBarrier: fmt::Debug {
+        fn after_active_metadata(&self) -> ProjectionResult<()>;
+    }
+
+    #[cfg(feature = "phase1-fault-injection")]
+    impl<T> ProjectionReadBehavior for T
+    where
+        T: ProjectionReadBarrier + ?Sized,
+    {
+        fn after_active_metadata(&self) -> ProjectionResult<()> {
+            ProjectionReadBarrier::after_active_metadata(self)
+        }
     }
 }
 
-/// Read-only facade that exposes only atomically active VERIFIED generations.
+#[cfg(feature = "phase1-fault-injection")]
+pub use read_boundary::ProjectionReadBarrier;
+use read_boundary::{NoProjectionReadBarrier, ProjectionReadBehavior};
+
+#[derive(Debug, Clone, Copy)]
+struct CanonicalBinding {
+    requested: Watermark,
+    latest_accept_seq: u64,
+    latest_outbox_seq: u64,
+}
+
+/// Read-only facade that exposes only source-bound VERIFIED generations.
 #[derive(Debug, Clone)]
 pub struct ProjectionReader {
     canonical_database_path: PathBuf,
@@ -70,12 +100,17 @@ impl ProjectionReader {
         coordinates: ProjectionCoordinates,
         policies: &PredicatePolicies,
     ) -> ProjectionResult<ProjectionAvailability> {
-        let (canonical, mut projection) = self.open_snapshot_connections()?;
+        let (mut canonical, mut projection) = self.open_snapshot_connections()?;
         let projection_transaction =
             projection.transaction_with_behavior(TransactionBehavior::Deferred)?;
-        let active = read_active_generation(&projection_transaction, kind, domain)?;
-        let latest = canonical_watermark(&canonical)?;
-        let availability = bind_availability(latest, active, coordinates, policies)?;
+        let availability = select_availability(
+            &mut canonical,
+            &projection_transaction,
+            kind,
+            domain,
+            coordinates,
+            policies,
+        )?;
         projection_transaction.commit()?;
         Ok(availability)
     }
@@ -88,7 +123,7 @@ impl ProjectionReader {
         coordinates: ProjectionCoordinates,
         policies: &PredicatePolicies,
     ) -> ProjectionResult<ProjectionPage<GraphEdge>> {
-        self.graph_neighbors_with_barrier(
+        self.graph_neighbors_impl(
             domain,
             source_entity_id,
             coordinates,
@@ -98,6 +133,7 @@ impl ProjectionReader {
     }
 
     /// Barrier-enabled form used to prove metadata/row snapshot atomicity.
+    #[cfg(feature = "phase1-fault-injection")]
     #[doc(hidden)]
     pub fn graph_neighbors_with_barrier<B: ProjectionReadBarrier + ?Sized>(
         &self,
@@ -107,18 +143,33 @@ impl ProjectionReader {
         policies: &PredicatePolicies,
         barrier: &B,
     ) -> ProjectionResult<ProjectionPage<GraphEdge>> {
-        let (canonical, mut projection) = self.open_snapshot_connections()?;
+        self.graph_neighbors_impl(domain, source_entity_id, coordinates, policies, barrier)
+    }
+
+    fn graph_neighbors_impl<B: ProjectionReadBehavior + ?Sized>(
+        &self,
+        domain: DomainId,
+        source_entity_id: EntityId,
+        coordinates: ProjectionCoordinates,
+        policies: &PredicatePolicies,
+        barrier: &B,
+    ) -> ProjectionResult<ProjectionPage<GraphEdge>> {
+        let (mut canonical, mut projection) = self.open_snapshot_connections()?;
         let projection_transaction =
             projection.transaction_with_behavior(TransactionBehavior::Deferred)?;
-        let active =
-            read_active_generation(&projection_transaction, ProjectionKind::Graph, domain)?;
-        let latest = canonical_watermark(&canonical)?;
-        let availability = bind_availability(latest, active, coordinates, policies)?;
+        let availability = select_availability(
+            &mut canonical,
+            &projection_transaction,
+            ProjectionKind::Graph,
+            domain,
+            coordinates,
+            policies,
+        )?;
         barrier.after_active_metadata()?;
-        let records = if let Some(active) = availability.active() {
+        let records = if let Some(generation) = availability.selected() {
             read_graph_edges(
                 &projection_transaction,
-                active.generation_id,
+                generation.generation_id,
                 coordinates,
                 source_entity_id,
             )?
@@ -142,7 +193,7 @@ impl ProjectionReader {
         query: &str,
         limit: usize,
     ) -> ProjectionResult<ProjectionPage<SearchHit>> {
-        self.search_ranked_with_barrier(
+        self.search_ranked_impl(
             kind,
             domain,
             coordinates,
@@ -154,9 +205,24 @@ impl ProjectionReader {
     }
 
     /// Barrier-enabled ranked search snapshot proof boundary.
+    #[cfg(feature = "phase1-fault-injection")]
     #[doc(hidden)]
     #[allow(clippy::too_many_arguments)]
     pub fn search_ranked_with_barrier<B: ProjectionReadBarrier + ?Sized>(
+        &self,
+        kind: ProjectionKind,
+        domain: DomainId,
+        coordinates: ProjectionCoordinates,
+        policies: &PredicatePolicies,
+        query: &str,
+        limit: usize,
+        barrier: &B,
+    ) -> ProjectionResult<ProjectionPage<SearchHit>> {
+        self.search_ranked_impl(kind, domain, coordinates, policies, query, limit, barrier)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn search_ranked_impl<B: ProjectionReadBehavior + ?Sized>(
         &self,
         kind: ProjectionKind,
         domain: DomainId,
@@ -171,18 +237,23 @@ impl ProjectionReader {
                 "graph generations do not support lexical search",
             ));
         }
-        let (canonical, mut projection) = self.open_snapshot_connections()?;
+        let (mut canonical, mut projection) = self.open_snapshot_connections()?;
         let projection_transaction =
             projection.transaction_with_behavior(TransactionBehavior::Deferred)?;
-        let active = read_active_generation(&projection_transaction, kind, domain)?;
-        let latest = canonical_watermark(&canonical)?;
-        let availability = bind_availability(latest, active, coordinates, policies)?;
+        let availability = select_availability(
+            &mut canonical,
+            &projection_transaction,
+            kind,
+            domain,
+            coordinates,
+            policies,
+        )?;
         barrier.after_active_metadata()?;
-        let records = if let Some(active) = availability.active() {
+        let records = if let Some(generation) = availability.selected() {
             read_ranked_hits(
                 &projection_transaction,
                 kind,
-                active.generation_id,
+                generation.generation_id,
                 coordinates,
                 query,
                 limit,
@@ -206,7 +277,7 @@ impl ProjectionReader {
         policies: &PredicatePolicies,
         symbol: &str,
     ) -> ProjectionResult<ProjectionPage<ExactSymbolHit>> {
-        self.exact_symbol_lookup_with_barrier(
+        self.exact_symbol_lookup_impl(
             kind,
             domain,
             coordinates,
@@ -217,8 +288,21 @@ impl ProjectionReader {
     }
 
     /// Barrier-enabled exact-symbol snapshot proof boundary.
+    #[cfg(feature = "phase1-fault-injection")]
     #[doc(hidden)]
     pub fn exact_symbol_lookup_with_barrier<B: ProjectionReadBarrier + ?Sized>(
+        &self,
+        kind: ProjectionKind,
+        domain: DomainId,
+        coordinates: ProjectionCoordinates,
+        policies: &PredicatePolicies,
+        symbol: &str,
+        barrier: &B,
+    ) -> ProjectionResult<ProjectionPage<ExactSymbolHit>> {
+        self.exact_symbol_lookup_impl(kind, domain, coordinates, policies, symbol, barrier)
+    }
+
+    fn exact_symbol_lookup_impl<B: ProjectionReadBehavior + ?Sized>(
         &self,
         kind: ProjectionKind,
         domain: DomainId,
@@ -232,17 +316,22 @@ impl ProjectionReader {
                 "graph generations do not support exact symbol lookup",
             ));
         }
-        let (canonical, mut projection) = self.open_snapshot_connections()?;
+        let (mut canonical, mut projection) = self.open_snapshot_connections()?;
         let projection_transaction =
             projection.transaction_with_behavior(TransactionBehavior::Deferred)?;
-        let active = read_active_generation(&projection_transaction, kind, domain)?;
-        let latest = canonical_watermark(&canonical)?;
-        let availability = bind_availability(latest, active, coordinates, policies)?;
+        let availability = select_availability(
+            &mut canonical,
+            &projection_transaction,
+            kind,
+            domain,
+            coordinates,
+            policies,
+        )?;
         barrier.after_active_metadata()?;
-        let records = if let Some(active) = availability.active() {
+        let records = if let Some(generation) = availability.selected() {
             read_exact_symbol_hits(
                 &projection_transaction,
-                active.generation_id,
+                generation.generation_id,
                 coordinates,
                 symbol,
             )?
@@ -264,59 +353,120 @@ impl ProjectionReader {
     }
 }
 
-fn canonical_watermark(reader: &ReaderConnection) -> ProjectionResult<Watermark> {
-    let snapshot = canonical_snapshot(reader)?;
-    Ok(Watermark {
-        source_accept_seq: snapshot.accept_seq_head,
-        source_outbox_seq: snapshot.outbox_head,
-    })
-}
-
-fn bind_availability(
-    latest: Watermark,
-    active: Option<ActiveGeneration>,
+fn select_availability(
+    canonical: &mut ReaderConnection,
+    projection: &Connection,
+    kind: ProjectionKind,
+    domain: DomainId,
     coordinates: ProjectionCoordinates,
     policies: &PredicatePolicies,
 ) -> ProjectionResult<ProjectionAvailability> {
-    let Some(active) = active else {
-        return Ok(ProjectionAvailability::NoActive {
-            latest_known_at_accept_seq: latest.source_accept_seq,
-            latest_source_outbox_seq: latest.source_outbox_seq,
-        });
-    };
-    if active.coordinates.known_at_accept_seq > latest.source_accept_seq
-        || active.source_outbox_seq > latest.source_outbox_seq
+    let active = read_active_generation(projection, kind, domain)?;
+    let binding = canonical_binding(canonical, domain, coordinates)?;
+    bind_availability(
+        projection,
+        binding,
+        active,
+        kind,
+        domain,
+        coordinates,
+        policies,
+    )
+}
+
+fn canonical_binding(
+    reader: &mut ReaderConnection,
+    domain: DomainId,
+    coordinates: ProjectionCoordinates,
+) -> ProjectionResult<CanonicalBinding> {
+    let authority = projection_source_authority(reader, domain, coordinates.known_at_accept_seq)?;
+    Ok(CanonicalBinding {
+        requested: Watermark {
+            source_accept_seq: coordinates.known_at_accept_seq,
+            source_outbox_seq: authority.source_outbox_seq,
+            source_ledger_digest: authority.source_ledger_digest,
+        },
+        latest_accept_seq: authority.latest_accept_seq,
+        latest_outbox_seq: authority.latest_outbox_seq,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn bind_availability(
+    projection: &Connection,
+    binding: CanonicalBinding,
+    active: Option<ActiveGeneration>,
+    kind: ProjectionKind,
+    domain: DomainId,
+    coordinates: ProjectionCoordinates,
+    policies: &PredicatePolicies,
+) -> ProjectionResult<ProjectionAvailability> {
+    if let Some(active) = active.as_ref()
+        && (active.coordinates.known_at_accept_seq > binding.latest_accept_seq
+            || active.source_outbox_seq > binding.latest_outbox_seq)
     {
         return Err(ProjectionError::Corrupt(
-            "active projection watermark is ahead of the canonical outbox".to_owned(),
+            "active projection watermark is ahead of the canonical ledger".to_owned(),
         ));
     }
-    if active.coordinates != coordinates {
-        return Err(ProjectionError::AuthorityMismatch(format!(
-            "requested known_at_accept_seq={}/valid_at={} but active generation binds {}/{}",
-            coordinates.known_at_accept_seq,
-            coordinates.valid_at.value(),
-            active.coordinates.known_at_accept_seq,
-            active.coordinates.valid_at.value(),
-        )));
-    }
-    if active.resolver_version != CANONICAL_RESOLVER_VERSION
-        || active.policy_registry_version != policies.version()
-        || active.policy_registry_hash != policies.canonical_hash()
+
+    let authority_matches = |generation: &ActiveGeneration| {
+        generation.coordinates == coordinates
+            && generation.resolver_version == CANONICAL_RESOLVER_VERSION
+            && generation.policy_registry_version == policies.version()
+            && generation.policy_registry_hash == policies.canonical_hash()
+    };
+    if let Some(active) = active.as_ref()
+        && authority_matches(active)
     {
-        return Err(ProjectionError::AuthorityMismatch(
-            "requested resolver/policy registry does not exactly match active authority".to_owned(),
-        ));
+        if active.source_outbox_seq != binding.requested.source_outbox_seq
+            || active.source_ledger_digest != binding.requested.source_ledger_digest
+        {
+            return Err(ProjectionError::AuthorityMismatch(
+                "active generation does not bind the attached canonical source ledger".to_owned(),
+            ));
+        }
+        let active = active.clone();
+        return if active.coordinates.known_at_accept_seq == binding.latest_accept_seq
+            && active.source_outbox_seq == binding.latest_outbox_seq
+        {
+            Ok(ProjectionAvailability::Current { active })
+        } else {
+            Ok(ProjectionAvailability::Lagging {
+                active,
+                latest_known_at_accept_seq: binding.latest_accept_seq,
+                latest_source_outbox_seq: binding.latest_outbox_seq,
+            })
+        };
     }
-    if active.coordinates.known_at_accept_seq == latest.source_accept_seq
-        && active.source_outbox_seq == latest.source_outbox_seq
-    {
-        Ok(ProjectionAvailability::Current { active })
-    } else {
-        Ok(ProjectionAvailability::Lagging {
-            active,
-            latest_known_at_accept_seq: latest.source_accept_seq,
-            latest_source_outbox_seq: latest.source_outbox_seq,
-        })
+
+    if let Some(generation) = read_verified_generation(
+        projection,
+        kind,
+        domain,
+        coordinates,
+        binding.requested,
+        policies,
+    )? {
+        return Ok(ProjectionAvailability::Historical {
+            generation,
+            current_generation_id: active.as_ref().map(|generation| generation.generation_id),
+            latest_known_at_accept_seq: binding.latest_accept_seq,
+            latest_source_outbox_seq: binding.latest_outbox_seq,
+        });
     }
+
+    let Some(active) = active else {
+        return Ok(ProjectionAvailability::NoActive {
+            latest_known_at_accept_seq: binding.latest_accept_seq,
+            latest_source_outbox_seq: binding.latest_outbox_seq,
+        });
+    };
+    Err(ProjectionError::AuthorityMismatch(format!(
+        "requested known_at_accept_seq={}/valid_at={} has no exact source-bound VERIFIED generation; current pointer binds {}/{}",
+        coordinates.known_at_accept_seq,
+        coordinates.valid_at.value(),
+        active.coordinates.known_at_accept_seq,
+        active.coordinates.valid_at.value(),
+    )))
 }

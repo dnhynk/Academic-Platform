@@ -45,6 +45,7 @@ pub struct EvidenceFixture {
     pub evidence_id: EvidenceId,
     pub locator: EvidenceLocator,
     pub digest: ContentDigest,
+    pub vault_object_path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -197,6 +198,7 @@ impl Fixture {
             .vault()
             .ingest(&request, Cursor::new(bytes))?;
         let mut descriptor = receipt.descriptor().clone();
+        let vault_object_path = receipt.object_path().to_path_buf();
         let locator = EvidenceLocator::TextBytes {
             source_digest: descriptor.content_digest,
             start: 0,
@@ -237,6 +239,7 @@ impl Fixture {
             evidence_id,
             locator,
             digest: descriptor.content_digest,
+            vault_object_path,
         })
     }
 

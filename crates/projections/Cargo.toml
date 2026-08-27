@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+default = []
+phase1-fault-injection = []
+
 [dependencies]
 academic-domain = { path = "../domain" }
 academic-store = { path = "../store" }

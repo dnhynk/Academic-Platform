@@ -1,9 +1,11 @@
+#![cfg(feature = "phase1-fault-injection")]
+
 mod support;
 
 use academic_domain::{AuthorityClass, EpistemicStatus};
 use academic_ledger::AuthorityPolicy;
 use academic_projections::{
-    generation::{GenerationState, ProjectionKind},
+    generation::{GenerationState, ProjectionAvailability, ProjectionKind},
     runner::{
         ProjectionFaultInjector, ProjectionFaultPoint, ProjectionResult,
         ProjectionVerificationCorruption,
@@ -57,14 +59,14 @@ fn assert_corruption_never_verifies(corruption: Corruption) -> TestResult {
         Corruption::WrongPersistedTiebreaker => "wrong-tiebreaker",
     })?;
     let evidence = fixture.register_scope_evidence(7, 1, b"verification corruption evidence")?;
-    fixture.accept_claim(
+    let active_known = fixture.accept_claim(
         importer_actor(),
         evidence.domain_id,
         text_claim(
             claim_id(7_001)?,
             entity(7_001)?,
             "note.body",
-            "verificationcorruptiontoken",
+            "activepreservationtoken",
             evidence.scope_id,
             evidence.evidence_id,
             AuthorityClass::DirectObservation,
@@ -75,6 +77,33 @@ fn assert_corruption_never_verifies(corruption: Corruption) -> TestResult {
     )?;
     let policies = policies(&[("note.body", AuthorityPolicy::ImplementationObservation)])?;
     let runner = fixture.runner()?;
+    let active_coordinates = academic_projections::generation::ProjectionCoordinates::new(
+        active_known,
+        academic_domain::TimestampMillis::new(100),
+    );
+    let active_receipt = runner.rebuild_at(
+        ProjectionKind::Unicode61,
+        evidence.domain_id,
+        active_coordinates,
+        &policies,
+    )?;
+    assert!(active_receipt.activated);
+    fixture.accept_claim(
+        importer_actor(),
+        evidence.domain_id,
+        text_claim(
+            claim_id(7_002)?,
+            entity(7_002)?,
+            "note.body",
+            "candidatecorruptiontoken",
+            evidence.scope_id,
+            evidence.evidence_id,
+            AuthorityClass::DirectObservation,
+            EpistemicStatus::CodeObserved,
+            0,
+            None,
+        )?,
+    )?;
     let result = runner.rebuild_at_with_faults(
         ProjectionKind::Unicode61,
         evidence.domain_id,
@@ -92,10 +121,26 @@ fn assert_corruption_never_verifies(corruption: Corruption) -> TestResult {
         )?,
         1
     );
-    assert!(
-        runner
-            .audit_active_generation(ProjectionKind::Unicode61, evidence.domain_id)?
-            .is_none()
+    let active_after = runner
+        .audit_active_generation(ProjectionKind::Unicode61, evidence.domain_id)?
+        .ok_or("injected candidate failure removed the active generation")?;
+    assert_eq!(
+        active_after.generation_id,
+        active_receipt.metadata.generation_id
     );
+    let page = fixture.projection_reader()?.search_ranked(
+        ProjectionKind::Unicode61,
+        evidence.domain_id,
+        active_coordinates,
+        &policies,
+        "activepreservationtoken",
+        10,
+    )?;
+    assert!(matches!(
+        page.availability,
+        ProjectionAvailability::Lagging { .. }
+    ));
+    assert_eq!(page.records.len(), 1);
+    assert_eq!(page.records[0].claim_id, claim_id(7_001)?);
     Ok(())
 }

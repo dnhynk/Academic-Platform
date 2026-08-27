@@ -18,8 +18,8 @@ pub const GRAPH_PROJECTION_KIND: &str = "relational-graph-v1";
 pub const UNICODE_LEXICAL_PROJECTION_KIND: &str = "fts5-unicode61-v1";
 /// FTS5 trigram baseline name; this is not a relevance acceptance claim.
 pub const TRIGRAM_LEXICAL_PROJECTION_KIND: &str = "fts5-trigram-v1";
-/// Initial projection-generation schema version.
-pub const PROJECTION_SCHEMA_VERSION: u32 = 1;
+/// Source-ledger-bound projection-generation schema version.
+pub const PROJECTION_SCHEMA_VERSION: u32 = 2;
 
 /// Projection names in stable lexical order for receipts and handshakes.
 pub const PHASE1_PROJECTION_KINDS: &[&str] = &[

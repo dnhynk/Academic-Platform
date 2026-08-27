@@ -132,6 +132,7 @@ pub struct GenerationMetadata {
     pub effective_config_hash: ContentDigest,
     pub coordinates: ProjectionCoordinates,
     pub source_outbox_seq: u64,
+    pub source_ledger_digest: ContentDigest,
     pub resolver_version: String,
     pub policy_registry_version: String,
     pub policy_registry_hash: ContentDigest,
@@ -150,6 +151,7 @@ pub struct ActiveGeneration {
     pub security_domain: DomainId,
     pub coordinates: ProjectionCoordinates,
     pub source_outbox_seq: u64,
+    pub source_ledger_digest: ContentDigest,
     pub resolver_version: String,
     pub policy_registry_version: String,
     pub policy_registry_hash: ContentDigest,
@@ -200,15 +202,24 @@ pub enum ProjectionAvailability {
         latest_known_at_accept_seq: u64,
         latest_source_outbox_seq: u64,
     },
+    /// An exact source-bound VERIFIED generation was selected without changing
+    /// the monotonic default-current pointer.
+    Historical {
+        generation: ActiveGeneration,
+        current_generation_id: Option<GenerationId>,
+        latest_known_at_accept_seq: u64,
+        latest_source_outbox_seq: u64,
+    },
 }
 
 impl ProjectionAvailability {
-    /// Returns the queryable active generation, including an explicitly lagging one.
+    /// Returns the exact generation selected for this query.
     #[must_use]
-    pub const fn active(&self) -> Option<&ActiveGeneration> {
+    pub const fn selected(&self) -> Option<&ActiveGeneration> {
         match self {
             Self::NoActive { .. } => None,
             Self::Current { active } | Self::Lagging { active, .. } => Some(active),
+            Self::Historical { generation, .. } => Some(generation),
         }
     }
 }

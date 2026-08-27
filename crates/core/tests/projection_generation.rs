@@ -1,3 +1,5 @@
+#![cfg(feature = "phase1-fault-injection")]
+
 mod support;
 
 use std::{
