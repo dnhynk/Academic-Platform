@@ -125,7 +125,16 @@ dependencies = [
  "academic-contracts",
  "academic-domain",
  "academic-ledger",
+ "academic-store-platform",
  "rusqlite",
+]
+
+[[package]]
+name = "academic-store-platform"
+version = "0.1.0"
+dependencies = [
+ "rustix",
+ "windows-sys",
 ]
 
 [[package]]

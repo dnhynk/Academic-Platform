@@ -49,6 +49,23 @@ const workspaceIds = new Set(metadata.workspace_members);
 const workspacePackages = metadata.workspace_members.map((id) => packagesById.get(id));
 const workspaceNames = new Set(workspacePackages.map((pkg) => pkg.name));
 
+function cargoLockPackageTuples(cargoLock) {
+  const field = (body, name) =>
+    body.match(new RegExp(`^${name} = "(?<value>[^"]+)"$`, "mu"))?.groups?.value ?? null;
+  return [...cargoLock.matchAll(/\[\[package\]\]\r?\n(?<body>.*?)(?=\r?\n\[\[package\]\]|\s*$)/gsu)]
+    .map(({ groups }) => [
+      field(groups.body, "name"),
+      field(groups.body, "version"),
+      field(groups.body, "source"),
+      field(groups.body, "checksum"),
+    ])
+    .toSorted((left, right) => {
+      const leftText = JSON.stringify(left);
+      const rightText = JSON.stringify(right);
+      return leftText < rightText ? -1 : leftText > rightText ? 1 : 0;
+    });
+}
+
 function workspaceDependencyNames(pkg) {
   return pkg.dependencies
     .filter((dependency) => dependency.source === null && workspaceNames.has(dependency.name))
@@ -110,7 +127,13 @@ test("workspace_dependency_direction_is_acyclic", () => {
     ],
     "academic-projections": ["academic-domain", "academic-store"],
     "academic-rpc": ["academic-contracts", "academic-domain"],
-    "academic-store": ["academic-contracts", "academic-domain", "academic-ledger"],
+    "academic-store": [
+      "academic-contracts",
+      "academic-domain",
+      "academic-ledger",
+      "academic-store-platform",
+    ],
+    "academic-store-platform": [],
     "academic-test-support": [],
     "academic-vault": ["academic-domain", "academic-store"],
   });
@@ -164,6 +187,62 @@ async function rustSources(root) {
   }
   return sources;
 }
+
+test("store_platform_native_unsafe_boundary_is_isolated", async () => {
+  const [manifest, publicFacade, windowsSource, sources] = await Promise.all([
+    readFile("crates/store-platform/Cargo.toml", "utf8"),
+    readFile("crates/store-platform/src/lib.rs", "utf8"),
+    readFile("crates/store-platform/src/windows.rs", "utf8"),
+    rustSources("crates/store-platform/src"),
+  ]);
+  assert.match(manifest, /^unsafe_code = "deny"$/mu);
+  assert.doesNotMatch(manifest, /^unsafe_code = "(?:allow|warn|forbid)"$/mu);
+  for (const lint of [
+    "missing_debug_implementations = \"deny\"",
+    "unused_must_use = \"deny\"",
+    "all = { level = \"deny\", priority = -1 }",
+    "unwrap_used = \"deny\"",
+    "expect_used = \"deny\"",
+    "panic = \"deny\"",
+  ]) {
+    assert.ok(manifest.includes(lint), `store-platform omitted workspace deny: ${lint}`);
+  }
+  assert.doesNotMatch(manifest, /\[lints\]\s*\nworkspace\s*=\s*true/u);
+  assert.doesNotMatch(publicFacade, /\bpub\s+unsafe\b|\b(?:RawHandle|HANDLE)\b/u);
+  assert.doesNotMatch(windowsSource, /#!\[allow\(unsafe_code\)\]|\bunsafe\s+fn\b/u);
+
+  const allowances = windowsSource.match(/#\[allow\(unsafe_code\)\]/gu) ?? [];
+  const privateFunctionAllowances =
+    windowsSource.match(/#\[allow\(unsafe_code\)\]\s*\n\s*fn\s+[a-z_][a-z0-9_]*\s*\(/gu) ?? [];
+  assert.equal(
+    privateFunctionAllowances.length,
+    allowances.length,
+    "unsafe_code allowance must be attached directly to a private function",
+  );
+
+  for (const [path, source] of sources) {
+    assert.doesNotMatch(
+      source,
+      /\b(?:Command|Child|Stdio)::|std::process|powershell|cmd\.exe|\/bin\/(?:ba)?sh/u,
+      `store-platform contains a shell/process probe in ${path}`,
+    );
+    for (const match of source.matchAll(/\bunsafe\s*\{/gu)) {
+      assert.ok(path.endsWith(join("crates", "store-platform", "src", "windows.rs")));
+      const prefix = source.slice(0, match.index);
+      const functionMatches = [
+        ...prefix.matchAll(/(?:^|\n)\s*fn\s+[a-z_][a-z0-9_]*\s*\([^)]*\)[^{]*\{/gsu),
+      ];
+      const currentFunction = functionMatches.at(-1);
+      assert.ok(currentFunction, `unsafe block has no private function in ${path}`);
+      const allowancePrefix = source.slice(
+        Math.max(0, currentFunction.index - 80),
+        currentFunction.index,
+      );
+      assert.match(allowancePrefix, /#\[allow\(unsafe_code\)\]/u);
+      assert.match(source.slice(Math.max(0, match.index - 400), match.index), /\/\/ SAFETY:/u);
+    }
+  }
+});
 
 test("phase1_default_features_have_no_product_network", async () => {
   const productPackages = defaultProductPackageNames();
@@ -315,6 +394,30 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const receipt = JSON.parse(receiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
+  assert.deepEqual(receipt.lock_delta, {
+    base_commit: "4f84bf78e51e04a0347c9475e08292da1c7d4608",
+    incoming_package_tuple_count: 173,
+    incoming_package_tuple_sha256: "4f370a5dd80938b0b6a00de809985f7ff32378a866ec570e13d9b650e7ce01c7",
+    added_workspace_path_packages: [
+      {
+        name: "academic-store-platform",
+        version: "0.1.0",
+        source: null,
+        checksum: null,
+      },
+    ],
+  });
+  const lockTuples = cargoLockPackageTuples(cargoLock);
+  const platformTuples = lockTuples.filter(([name]) => name === "academic-store-platform");
+  assert.deepEqual(platformTuples, [["academic-store-platform", "0.1.0", null, null]]);
+  const incomingTuples = lockTuples.filter(([name]) => name !== "academic-store-platform");
+  assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
+  assert.equal(
+    createHash("sha256").update(JSON.stringify(incomingTuples)).digest("hex"),
+    receipt.lock_delta.incoming_package_tuple_sha256,
+    "an incoming Cargo.lock package tuple changed",
+  );
+  assert.equal(lockTuples.length, receipt.lock_delta.incoming_package_tuple_count + 1);
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
     node: "24.19.0",

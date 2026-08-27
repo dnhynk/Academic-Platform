@@ -15,6 +15,7 @@ sqlcipher-spike = ["rusqlite/bundled-sqlcipher-vendored-openssl"]
 academic-contracts = { path = "../contracts" }
 academic-domain = { path = "../domain" }
 academic-ledger = { path = "../ledger" }
+academic-store-platform = { path = "../store-platform" }
 rusqlite.workspace = true
 
 [lints]

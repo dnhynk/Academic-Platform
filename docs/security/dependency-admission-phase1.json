@@ -2,6 +2,19 @@
   "receipt_version": 1,
   "phase": "phase1-f0",
   "resolution_budget": 1,
+  "lock_delta": {
+    "base_commit": "4f84bf78e51e04a0347c9475e08292da1c7d4608",
+    "incoming_package_tuple_count": 173,
+    "incoming_package_tuple_sha256": "4f370a5dd80938b0b6a00de809985f7ff32378a866ec570e13d9b650e7ce01c7",
+    "added_workspace_path_packages": [
+      {
+        "name": "academic-store-platform",
+        "version": "0.1.0",
+        "source": null,
+        "checksum": null
+      }
+    ]
+  },
   "toolchain": {
     "rust": "1.98.0",
     "node": "24.19.0",
@@ -346,7 +359,7 @@
       "rust_version": "1.63",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "repository": "https://github.com/bytecodealliance/rustix",
-      "owner": "academic-vault and academic-daemon (Unix adapters)",
+      "owner": "academic-vault, academic-daemon, and academic-store-platform (Unix adapters)",
       "admitted_features": ["fs", "net", "process", "std"],
       "network_role": "local IPC and filesystem capability only",
       "install_scripts": false,
@@ -357,6 +370,13 @@
           "target": "cfg(unix)",
           "default_features": false,
           "features": ["fs", "net", "process", "std"]
+        },
+        {
+          "package": "academic-store-platform",
+          "kind": "normal",
+          "target": "cfg(unix)",
+          "default_features": false,
+          "features": ["fs", "process", "std"]
         },
         {
           "package": "academic-vault",
@@ -434,8 +454,11 @@
       "rust_version": "1.71",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "repository": "https://github.com/microsoft/windows-rs",
-      "owner": "academic-vault and academic-daemon (Windows adapters)",
+      "owner": "academic-vault, academic-daemon, and academic-store-platform (Windows adapters)",
       "admitted_features": [
+        "Wdk_Foundation",
+        "Wdk_Storage_FileSystem",
+        "Wdk_System_SystemServices",
         "Win32_Foundation",
         "Win32_Security",
         "Win32_Security_Authorization",
@@ -461,6 +484,25 @@
             "Win32_Storage_FileSystem",
             "Win32_System_IO",
             "Win32_System_Pipes",
+            "Win32_System_SystemServices",
+            "Win32_System_Threading",
+            "Win32_System_WindowsProgramming"
+          ]
+        },
+        {
+          "package": "academic-store-platform",
+          "kind": "normal",
+          "target": "cfg(windows)",
+          "default_features": false,
+          "features": [
+            "Wdk_Foundation",
+            "Wdk_Storage_FileSystem",
+            "Wdk_System_SystemServices",
+            "Win32_Foundation",
+            "Win32_Security",
+            "Win32_Security_Authorization",
+            "Win32_Storage_FileSystem",
+            "Win32_System_IO",
             "Win32_System_SystemServices",
             "Win32_System_Threading",
             "Win32_System_WindowsProgramming"
