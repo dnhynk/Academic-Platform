@@ -37,6 +37,7 @@ const [
   fixtureRawCorpusText,
   fixtureIntegerCorpusText,
   fixtureByteCorpusText,
+  predictionMetadataCorpusText,
   toolVersionCorpusText,
   nodePinText,
   rustToolchainText,
@@ -65,6 +66,7 @@ const [
   readFile("schemas/fixtures/signed-batch-raw-parity-v1.json", "utf8"),
   readFile("schemas/fixtures/signed-batch-integer-lexeme-parity-v1.json", "utf8"),
   readFile("schemas/fixtures/signed-batch-byte-parity-v1.json", "utf8"),
+  readFile("schemas/fixtures/prediction-metadata-parity-v1.json", "utf8"),
   readFile("tools/fixtures/tool-version-conformance-v1.json", "utf8"),
   readFile(".nvmrc", "utf8"),
   readFile("rust-toolchain.toml", "utf8"),
@@ -102,11 +104,17 @@ const artifactCorpus = JSON.parse(artifactCorpusText);
 const fixtureRawCorpus = JSON.parse(fixtureRawCorpusText);
 const fixtureIntegerCorpus = JSON.parse(fixtureIntegerCorpusText);
 const fixtureByteCorpus = JSON.parse(fixtureByteCorpusText);
+const predictionMetadataCorpus = JSON.parse(predictionMetadataCorpusText);
 const toolVersionCorpus = JSON.parse(toolVersionCorpusText);
 const packageJson = JSON.parse(packageJsonText);
 assert.equal(fixtureRawCorpus.schema_version, 1, "raw fixture corpus schema version");
 assert.equal(fixtureIntegerCorpus.schema_version, 1, "integer fixture corpus schema version");
 assert.equal(fixtureByteCorpus.schema_version, 1, "byte fixture corpus schema version");
+assert.equal(
+  predictionMetadataCorpus.schema_version,
+  1,
+  "prediction metadata corpus schema version",
+);
 const {
   assertArtifactDescriptorSemantics,
   assertCanonicalArtifactJsonNumberTokens,
@@ -139,6 +147,21 @@ assert.equal(
   packageJson.engines.pnpm,
   packageJson.packageManager.replace("pnpm@", ""),
   "package pnpm engine and packageManager pins must agree",
+);
+const expectedDoctorScript =
+  "cargo run --locked --offline --quiet -p academic-cli -- doctor --format json";
+assert.equal(
+  packageJson.scripts.doctor,
+  expectedDoctorScript,
+  "the pnpm doctor wrapper must force locked, offline Cargo execution",
+);
+const doctorWithoutOffline = structuredClone(packageJson);
+doctorWithoutOffline.scripts.doctor =
+  "cargo run --locked --quiet -p academic-cli -- doctor --format json";
+assert.throws(
+  () => assert.equal(doctorWithoutOffline.scripts.doctor, expectedDoctorScript),
+  undefined,
+  "a doctor wrapper without --offline must fail exact script verification",
 );
 assert.match(
   bootstrapText,
@@ -237,7 +260,7 @@ for (const [label, mutated, expected] of [
 }
 assert.equal(
   createHash("sha256").update(fixtureV2Bytes).digest("hex").toUpperCase(),
-  "41675CC19BFBA5801F93D18EFC4786E5D65A5166F466DA0A2D43B05C379E43A6",
+  "F94DFCF7E3E376E54B5514CEB3016B0B7D97D17366562F7AC4A16286D3AA367D",
   "signed-batch-v2 must match the repaired deterministic builder",
 );
 for (const [version, fixture, validateFixtureSchema] of [
@@ -333,6 +356,27 @@ for (const testCase of fixtureByteCorpus.cases) {
       `malformed UTF-8 must reject before JSON/Ajv: ${testCase.name}`,
     );
   }
+}
+
+for (const testCase of predictionMetadataCorpus.cases) {
+  const candidate = structuredClone(fixtureV2);
+  candidate.expected_replay.prediction_claims = [structuredClone(testCase.disclosure)];
+  assert.equal(
+    validateFixtureSchemaV2(candidate),
+    testCase.schema_valid,
+    `prediction metadata/Ajv parity disagreement: ${testCase.name}: ${ajv.errorsText(validateFixtureSchemaV2.errors)}`,
+  );
+  let typescriptValid = true;
+  try {
+    parseFixtureDocument(candidate);
+  } catch {
+    typescriptValid = false;
+  }
+  assert.equal(
+    typescriptValid,
+    testCase.semantic_valid,
+    `prediction metadata/TypeScript parity disagreement: ${testCase.name}`,
+  );
 }
 
 const validArtifact = artifactCorpus.base;
@@ -1695,6 +1739,115 @@ const assertUnconditionalRequiredExecution = (value, label) => {
   );
 };
 const parseCiWorkflow = (ci) => parsePnpmLockYaml(ci, ".github/workflows/ci.yml");
+const expectedCiWorkflow = {
+  name: "ci",
+  on: {
+    pull_request: null,
+    push: { branches: ["main"] },
+    workflow_dispatch: null,
+  },
+  permissions: { contents: "read" },
+  concurrency: {
+    group: "ci-${{ github.workflow }}-${{ github.ref }}",
+    "cancel-in-progress": true,
+  },
+  jobs: {
+    "source-preflight": {
+      name: "dependency-source-preflight",
+      "runs-on": "ubuntu-latest",
+      "timeout-minutes": 5,
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Reject forbidden dependency sources before tool or dependency setup",
+          run: "node tools/source-preflight.mjs",
+        },
+      ],
+    },
+    rust: {
+      name: "rust-${{ matrix.os }}",
+      needs: "source-preflight",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 20,
+      strategy: {
+        "fail-fast": false,
+        matrix: { os: ["ubuntu-latest", "windows-latest"] },
+      },
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Install pinned Rust toolchain",
+          run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        { name: "Check formatting", run: "cargo fmt --all -- --check" },
+        {
+          name: "Lint all Rust targets",
+          run: "cargo clippy --workspace --all-targets --locked -- -D warnings",
+        },
+        { name: "Test Rust workspace", run: "cargo test --workspace --locked" },
+        {
+          name: "Verify immutable v1 fixture and upcast",
+          run: nativeFixtureCiCommands[0],
+        },
+        { name: "Replay immutable v1 fixture", run: nativeFixtureCiCommands[1] },
+        { name: "Emit deterministic v2 fixture", run: nativeFixtureCiCommands[2] },
+        { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[3] },
+        { name: "Verify deterministic v2 fixture", run: nativeFixtureCiCommands[4] },
+        { name: "Replay deterministic v2 fixture", run: nativeFixtureCiCommands[5] },
+      ],
+    },
+    contracts: {
+      name: "pnpm-contracts",
+      needs: "source-preflight",
+      "runs-on": "ubuntu-latest",
+      "timeout-minutes": 15,
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Install pinned Node",
+          uses: "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          with: { "node-version-file": ".nvmrc" },
+        },
+        { name: "Install pinned pnpm", run: "npm install --global pnpm@11.22.0" },
+        { name: "Frozen dependency install", run: "pnpm install --frozen-lockfile" },
+        { name: "Lint", run: "pnpm lint" },
+        { name: "Typecheck", run: "pnpm typecheck" },
+        { name: "Test", run: "pnpm test" },
+        { name: "Build", run: "pnpm build" },
+        {
+          name: "Verify schema, semantic parity, fixture, and Proto contracts",
+          run: "pnpm verify:contracts",
+        },
+        {
+          name: "Check structural dependency-source baseline and negative fixtures",
+          run: "pnpm security",
+        },
+      ],
+    },
+  },
+};
+const assertExactCiExecutionPolicy = (ci) => {
+  const parsed = parseCiWorkflow(ci);
+  const ordinaryObjects = JSON.parse(JSON.stringify(parsed));
+  assert.deepEqual(
+    ordinaryObjects,
+    expectedCiWorkflow,
+    "CI workflow, job, and step inventory/values must match the reviewed execution policy",
+  );
+};
+assertExactCiExecutionPolicy(ciText);
 const assertNativeFixtureCiTopology = (ci) => {
   const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
   const jobs = requireCiRecord(workflow.jobs, "CI jobs");
@@ -1827,6 +1980,7 @@ const assertSourcePreflightTopology = ({ bootstrap, preflightModules, ci }) => {
     );
   }
   const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
+  assertExactCiExecutionPolicy(ci);
   const jobs = requireCiRecord(workflow.jobs, "CI jobs");
   const sourcePreflight = requireCiRecord(jobs["source-preflight"], "CI job source-preflight");
   assertUnconditionalRequiredExecution(sourcePreflight, "CI job source-preflight");
@@ -1910,6 +2064,104 @@ const assertCompleteCiTopology = (ci) => assertSourcePreflightTopology({
 });
 for (const [name, mutation] of [
   [
+    "source-preflight materialization before the gate",
+    ciText.replace(
+      "      - name: Reject forbidden dependency sources before tool or dependency setup",
+      [
+        "      - name: Unreviewed package materialization",
+        "        run: npm install --global pnpm@11.22.0",
+        "      - name: Reject forbidden dependency sources before tool or dependency setup",
+      ].join("\n"),
+    ),
+  ],
+  [
+    "source-preflight step reordering",
+    ciText.replace(
+      [
+        "      - name: Checkout without persisted credentials",
+        "        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2",
+        "        with:",
+        "          persist-credentials: false",
+        "      - name: Reject forbidden dependency sources before tool or dependency setup",
+        "        run: node tools/source-preflight.mjs",
+      ].join("\n"),
+      [
+        "      - name: Reject forbidden dependency sources before tool or dependency setup",
+        "        run: node tools/source-preflight.mjs",
+        "      - name: Checkout without persisted credentials",
+        "        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2",
+        "        with:",
+        "          persist-credentials: false",
+      ].join("\n"),
+    ),
+  ],
+  [
+    "writable top-level contents permission",
+    ciText.replace("  contents: read", "  contents: write"),
+  ],
+  [
+    "floating checkout action reference",
+    ciText.replace(
+      "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+      "actions/checkout@main",
+    ),
+  ],
+  [
+    "checkout credential persistence",
+    ciText.replace("          persist-credentials: false", "          persist-credentials: true"),
+  ],
+  [
+    "missing source-preflight timeout",
+    ciText.replace("    timeout-minutes: 5\n", ""),
+  ],
+  [
+    "changed Rust timeout",
+    ciText.replace("    timeout-minutes: 20", "    timeout-minutes: 21"),
+  ],
+  [
+    "extra required job key",
+    ciText.replace("  rust:\n    name:", "  rust:\n    env: {UNREVIEWED: true}\n    name:"),
+  ],
+  [
+    "extra required step key",
+    ciText.replace(
+      "        run: cargo fmt --all -- --check",
+      "        run: cargo fmt --all -- --check\n        working-directory: .",
+    ),
+  ],
+  [
+    "custom shell suppressing the reviewed run command",
+    ciText.replace(
+      "        run: cargo fmt --all -- --check",
+      "        run: cargo fmt --all -- --check\n        shell: node -e \"process.exit(0)\" {0}",
+    ),
+  ],
+  [
+    "unreviewed run-step environment",
+    ciText.replace(
+      "        run: cargo fmt --all -- --check",
+      "        run: cargo fmt --all -- --check\n        env: {UNREVIEWED: true}",
+    ),
+  ],
+  [
+    "flow-map explicit if key",
+    ciText.replace(
+      "      - name: Check formatting\n        run: cargo fmt --all -- --check",
+      "      - {name: Check formatting, run: cargo fmt --all -- --check, ? if: false}",
+    ),
+  ],
+  [
+    "combined permission action credential and timeout drift",
+    ciText
+      .replace("  contents: read", "  contents: write")
+      .replace(
+        "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+        "actions/checkout@main",
+      )
+      .replace("          persist-credentials: false", "          persist-credentials: true")
+      .replace("    timeout-minutes: 5\n", ""),
+  ],
+  [
     "Windows matrix exclusion",
     ciText.replace(
       "        os: [ubuntu-latest, windows-latest]",
@@ -1979,6 +2231,72 @@ const protoRoots = [protoV1Text, protoV2Text].map((text) => {
   root.resolveAll();
   return root;
 });
+const assertPredictionProtoContract = ([v1Root, v2Root]) => {
+  assert.ok(v1Root !== undefined && v2Root !== undefined);
+  const v1Claim = v1Root.lookupType("academic.v1.Claim");
+  const v2Claim = v2Root.lookupType("academic.v2.Claim");
+  assert.equal(
+    v1Claim.fields.prediction_metadata,
+    undefined,
+    "immutable v1 Claim must not acquire prediction metadata",
+  );
+  const predictionField = v2Claim.fields.prediction_metadata;
+  assert.ok(predictionField, "current v2 Claim.prediction_metadata must exist");
+  assert.equal(predictionField.id, 11);
+  assert.equal(predictionField.resolvedType?.fullName, ".academic.v2.PredictionMetadata");
+
+  const observationWindow = v2Root.lookupType("academic.v2.PredictionObservationWindow");
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(observationWindow.fields).map(([name, field]) => [name, field.id])),
+    { from: 1, to: 2 },
+  );
+  const metadata = v2Root.lookupType("academic.v2.PredictionMetadata");
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(metadata.fields).map(([name, field]) => [name, field.id])),
+    { version: 1, observation_window: 2, positive_sample_count: 3 },
+  );
+
+  const value = {
+    confidence: 720,
+    valid_time: {
+      from: { unix_epoch_millis: 800 },
+      to: { unix_epoch_millis: 1200 },
+    },
+    prediction_metadata: {
+      version: 1,
+      observation_window: {
+        from: { unix_epoch_millis: 100 },
+        to: { unix_epoch_millis: 700 },
+      },
+      positive_sample_count: 6,
+    },
+  };
+  assert.equal(v2Claim.verify(value), null);
+  const roundTrip = v2Claim.toObject(v2Claim.decode(v2Claim.encode(value).finish()), {
+    longs: Number,
+  });
+  assert.equal(roundTrip.confidence, 720);
+  assert.equal(roundTrip.prediction_metadata.version, 1);
+  assert.equal(roundTrip.prediction_metadata.positive_sample_count, 6);
+  assert.equal(
+    roundTrip.prediction_metadata.observation_window.from.unix_epoch_millis,
+    100,
+  );
+  assert.equal(roundTrip.valid_time.from.unix_epoch_millis, 800);
+};
+assertPredictionProtoContract(protoRoots);
+const predictionTagMutation = protoV2Text.replace(
+  "PredictionMetadata prediction_metadata = 11;",
+  "PredictionMetadata prediction_metadata = 12;",
+);
+assert.notEqual(predictionTagMutation, protoV2Text);
+const mutatedPredictionRoot = protobuf.parse(predictionTagMutation, { keepCase: true }).root;
+mutatedPredictionRoot.resolveAll();
+assert.throws(
+  () => assertPredictionProtoContract([protoRoots[0], mutatedPredictionRoot]),
+  undefined,
+  "a current prediction metadata tag mutation must fail Proto verification",
+);
 const rustStructBody = (source, name) => {
   const body = source.match(new RegExp(`struct ${name} \\{(?<body>[\\s\\S]*?)\\n\\}`, "u"))?.groups?.body;
   assert.ok(body, `Rust wire message ${name} must exist`);
@@ -2663,6 +2981,11 @@ assert.match(protoV2Text, /message ArtifactDescriptor\s*\{\s*UuidV7 id = 1;\s*Sh
 assert.match(protoV2Text, /uint64 start_ms = 1;\s*uint64 end_ms = 2;/su);
 assert.match(protoV2Text, /string path = 2;/u);
 assert.match(protoV2Text, /optional uint32 confidence = 8;/u);
+assert.match(
+  protoV2Text,
+  /message PredictionMetadata\s*\{\s*uint32 version = 1;[\s\S]*PredictionObservationWindow observation_window = 2;[\s\S]*uint32 positive_sample_count = 3;/u,
+);
+assert.match(protoV2Text, /PredictionMetadata prediction_metadata = 11;/u);
 assert.doesNotMatch(protoV2Text, /actor_kind/u);
 assert.doesNotMatch(protoV2Text, /optional UuidV7 scope_id/u);
 assert.doesNotMatch(protoV2Text, /plaintext_digest|keyed_vault_locator|confidence_permille/u);

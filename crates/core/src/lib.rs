@@ -15,8 +15,8 @@ use academic_domain::{
     ContentDigest, DecisionAction, DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1,
     EVENT_SCHEMA_VERSION_V2, EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator,
     EvidenceRole, EvidenceStrength, FreshnessBand, MasteryLevel, MediaType, PredicateId,
-    ResolutionSlot, RetentionClass, ScopeDescriptor, ScopeId, TimestampMillis, UserDecision,
-    ValidInterval, VaultLocator,
+    PredictionMetadata, PredictionObservationWindow, ResolutionSlot, RetentionClass,
+    ScopeDescriptor, ScopeId, TimestampMillis, UserDecision, ValidInterval, VaultLocator,
 };
 use academic_ledger::{
     AcceptanceReceipt, AuthorityPolicy, EVENT_SCHEMA_VERSION, LedgerError, LedgerState,
@@ -62,6 +62,8 @@ const CLAIM_FRESH_STALE: &str = "01900000-0000-7000-8000-000000000204";
 const CLAIM_DEADLINE_OLD: &str = "01900000-0000-7000-8000-000000000205";
 const CLAIM_DEADLINE_NEW: &str = "01900000-0000-7000-8000-000000000206";
 const CLAIM_AI_FLUENT: &str = "01900000-0000-7000-8000-000000000207";
+const CLAIM_COURSE_OFFERING_PREDICTION: &str = "01900000-0000-7000-8000-000000000208";
+const PREDICTION_SUBJECT_ID: &str = "01900000-0000-7000-8000-00000000000c";
 
 /// Core boundary error.
 #[derive(Debug, Error)]
@@ -183,7 +185,19 @@ pub struct ReplaySummary {
     pub mastery_conflicting_claim_ids: Vec<ClaimId>,
     pub mastery_rejected_claim_ids: Vec<ClaimId>,
     pub deadline_active_claim_ids: Vec<ClaimId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prediction_claims: Option<Vec<PredictionClaimDisclosure>>,
     pub semantic_digest: ContentDigest,
+}
+
+/// Human-inspectable current-fixture disclosure for a signed Prediction claim.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PredictionClaimDisclosure {
+    pub claim_id: ClaimId,
+    pub confidence: ConfidencePermille,
+    pub prediction_metadata: PredictionMetadata,
+    pub valid_time: ValidInterval,
 }
 
 fn deserialize_json_safe_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
@@ -300,6 +314,37 @@ impl FixtureDocument {
                     "replay claim id arrays must contain unique values",
                 ));
             }
+        }
+        match (
+            self.fixture_version,
+            self.expected_replay.prediction_claims.as_deref(),
+        ) {
+            (FIXTURE_VERSION_V1, None) => {}
+            (FIXTURE_VERSION_V1, Some(_)) => {
+                return Err(CoreError::InvalidFixtureContract(
+                    "v1 replay must not invent prediction disclosures",
+                ));
+            }
+            (FIXTURE_VERSION_V2, Some(disclosures)) if !disclosures.is_empty() => {
+                let ids = disclosures
+                    .iter()
+                    .map(|disclosure| disclosure.claim_id)
+                    .collect::<BTreeSet<_>>();
+                if ids.len() != disclosures.len() {
+                    return Err(CoreError::InvalidFixtureContract(
+                        "prediction claim disclosures must have unique claim ids",
+                    ));
+                }
+                for disclosure in disclosures {
+                    disclosure.prediction_metadata.validate()?;
+                }
+            }
+            (FIXTURE_VERSION_V2, _) => {
+                return Err(CoreError::InvalidFixtureContract(
+                    "v2 replay requires prediction claim disclosures",
+                ));
+            }
+            (other, _) => return Err(CoreError::UnsupportedFixtureVersion(other)),
         }
         Ok(())
     }
@@ -486,6 +531,8 @@ struct ReplayDigestMaterial<'a> {
     mastery_conflicting_claim_ids: &'a [ClaimId],
     mastery_rejected_claim_ids: &'a [ClaimId],
     deadline_active_claim_ids: &'a [ClaimId],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    prediction_claims: Option<&'a [PredictionClaimDisclosure]>,
 }
 
 /// Builds the current deterministic, signed, synthetic Phase 0 fixture.
@@ -632,6 +679,24 @@ fn summarize_replay(
     let freshness = knowledge
         .freshness
         .ok_or(CoreError::MissingProjection("freshness"))?;
+    let prediction_claims = if verified.source_schema_version() == EVENT_SCHEMA_VERSION_V1 {
+        None
+    } else {
+        let claim = core
+            .ledger()
+            .claim(parse_id(CLAIM_COURSE_OFFERING_PREDICTION)?)
+            .ok_or(CoreError::MissingProjection("prediction claim"))?;
+        Some(vec![PredictionClaimDisclosure {
+            claim_id: claim.id,
+            confidence: claim
+                .confidence
+                .ok_or(DomainError::MissingPredictionConfidence)?,
+            prediction_metadata: claim
+                .prediction_metadata
+                .ok_or(DomainError::MissingPredictionMetadata)?,
+            valid_time: claim.valid_time,
+        }])
+    };
     let material = ReplayDigestMaterial {
         accepted_events: u64::try_from(core.ledger().accepted_events().len())
             .map_err(|_| CoreError::MissingProjection("accepted event count"))?,
@@ -646,6 +711,7 @@ fn summarize_replay(
         mastery_conflicting_claim_ids: &knowledge.mastery_resolution.conflicting_claim_ids,
         mastery_rejected_claim_ids: &knowledge.mastery_resolution.rejected_claim_ids,
         deadline_active_claim_ids: &deadline.active_claim_ids,
+        prediction_claims: prediction_claims.as_deref(),
     };
     let semantic_bytes = serde_json::to_vec(&material)?;
     Ok(ReplaySummary {
@@ -661,6 +727,7 @@ fn summarize_replay(
         mastery_conflicting_claim_ids: material.mastery_conflicting_claim_ids.to_vec(),
         mastery_rejected_claim_ids: material.mastery_rejected_claim_ids.to_vec(),
         deadline_active_claim_ids: material.deadline_active_claim_ids.to_vec(),
+        prediction_claims,
         semantic_digest: ContentDigest::sha256(&semantic_bytes),
     })
 }
@@ -682,6 +749,7 @@ fn claim(
     predicate: &str,
     object: ClaimObject,
     provenance: (AuthorityClass, EpistemicStatus, Option<u16>),
+    prediction_metadata: Option<PredictionMetadata>,
     valid_time: ValidInterval,
 ) -> Result<Claim, DomainError> {
     let (authority_class, epistemic_status, confidence) = provenance;
@@ -694,6 +762,7 @@ fn claim(
         authority_class,
         epistemic_status,
         confidence: confidence.map(ConfidencePermille::new).transpose()?,
+        prediction_metadata,
         valid_time,
         evidence_ids: vec![parse_id(EVIDENCE_ID)?],
     })
@@ -790,6 +859,7 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EpistemicStatus::AiInferred,
             Some(720),
         ),
+        None,
         valid_from_100,
     )?;
     let user_practiced = claim(
@@ -802,6 +872,7 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EpistemicStatus::UserConfirmed,
             Some(1000),
         ),
+        None,
         valid_from_200,
     )?;
     let fresh_high = claim(
@@ -814,6 +885,7 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EpistemicStatus::DeterministicDerived,
             Some(900),
         ),
+        None,
         ValidInterval::new(TimestampMillis::new(200), Some(TimestampMillis::new(600)))?,
     )?;
     let fresh_stale = claim(
@@ -826,6 +898,7 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EpistemicStatus::DeterministicDerived,
             Some(900),
         ),
+        None,
         ValidInterval::open_ended(TimestampMillis::new(600)),
     )?;
     let deadline_old = claim(
@@ -838,6 +911,7 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EpistemicStatus::OfficialConfirmed,
             None,
         ),
+        None,
         ValidInterval::open_ended(TimestampMillis::new(300)),
     )?;
     let deadline_new = claim(
@@ -850,6 +924,7 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EpistemicStatus::OfficialConfirmed,
             None,
         ),
+        None,
         ValidInterval::open_ended(TimestampMillis::new(300)),
     )?;
     let ai_fluent = claim(
@@ -862,7 +937,24 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             EpistemicStatus::AiInferred,
             Some(810),
         ),
+        None,
         valid_from_200,
+    )?;
+    let course_offering_prediction = claim(
+        CLAIM_COURSE_OFFERING_PREDICTION,
+        PREDICTION_SUBJECT_ID,
+        "academic.course.offering",
+        ClaimObject::Boolean(true),
+        (
+            AuthorityClass::Prediction,
+            EpistemicStatus::Prediction,
+            Some(720),
+        ),
+        Some(PredictionMetadata::new(
+            PredictionObservationWindow::new(TimestampMillis::new(100), TimestampMillis::new(700))?,
+            6,
+        )?),
+        ValidInterval::new(TimestampMillis::new(800), Some(TimestampMillis::new(1_200)))?,
     )?;
 
     let events = vec![
@@ -955,7 +1047,12 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
                 scope_id: parse_id(SCOPE_ID)?,
             }),
         )?,
-        fixture_event(13, ai_actor, EventPayload::ClaimAsserted(ai_fluent))?,
+        fixture_event(13, ai_actor.clone(), EventPayload::ClaimAsserted(ai_fluent))?,
+        fixture_event(
+            14,
+            ai_actor,
+            EventPayload::ClaimAsserted(course_offering_prediction),
+        )?,
     ];
     Ok(UnsignedBatch {
         schema_version: EVENT_SCHEMA_VERSION,
@@ -965,7 +1062,7 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
         origin_seq_end: u64::try_from(events.len())
             .map_err(|_| CoreError::MissingProjection("event count"))?,
         previous_batch_hash: None,
-        origin_created_at: TimestampMillis::new(113),
+        origin_created_at: TimestampMillis::new(114),
         events,
     })
 }
@@ -1112,7 +1209,7 @@ mod tests {
     fn signed_fixture_round_trips_and_replays() -> Result<(), Box<dyn std::error::Error>> {
         let document = build_fixture_document()?;
         let replay = verify_fixture_document(&document)?;
-        assert_eq!(replay.accepted_events, 13);
+        assert_eq!(replay.accepted_events, 14);
         assert_eq!(replay.mastery, MasteryLevel::Practiced);
         assert_eq!(replay.freshness, FreshnessBand::Stale);
         assert_eq!(
@@ -1131,6 +1228,22 @@ mod tests {
             replay.deadline_active_claim_ids,
             vec![parse_id(CLAIM_DEADLINE_NEW)?]
         );
+        let prediction_claims = replay
+            .prediction_claims
+            .ok_or(CoreError::MissingProjection("prediction disclosures"))?;
+        assert_eq!(prediction_claims.len(), 1);
+        let disclosure = &prediction_claims[0];
+        assert_eq!(
+            disclosure.claim_id,
+            parse_id(CLAIM_COURSE_OFFERING_PREDICTION)?
+        );
+        assert_eq!(disclosure.confidence, ConfidencePermille::new(720)?);
+        assert_eq!(disclosure.prediction_metadata.positive_sample_count(), 6);
+        assert_eq!(
+            disclosure.prediction_metadata.observation_window().from(),
+            TimestampMillis::new(100)
+        );
+        assert_eq!(disclosure.valid_time.from(), TimestampMillis::new(800));
         Ok(())
     }
 
@@ -1139,7 +1252,7 @@ mod tests {
         let committed_v2 = include_str!("../../../schemas/fixtures/signed-batch-v2.json");
         assert_eq!(
             ContentDigest::sha256(committed_v2.as_bytes()).to_string(),
-            "sha256:41675cc19bfba5801f93d18efc4786e5d65a5166f466da0a2d43b05c379e43a6"
+            "sha256:f94dfcf7e3e376e54b5514ceb3016b0b7d97d17366562f7ac4a16286d3aa367d"
         );
         let document: FixtureDocument = serde_json::from_str(committed_v2)?;
         assert_eq!(document.fixture_version, FIXTURE_VERSION_V2);
@@ -1147,11 +1260,11 @@ mod tests {
         let replay = verify_fixture_document(&document)?;
         assert_eq!(
             replay.payload_hash.to_string(),
-            "sha256:57fed3ddcc22be8708bd7406b6afdea9b416096a4a17023b4eda671338a3c4e3"
+            "sha256:4d326913780bbf93c61d7e4b20492ccf5c2553f53e61994874b290c78e3638fc"
         );
         assert_eq!(
             replay.envelope_hash.to_string(),
-            "sha256:8dd21058221e7d3189856c6d0b5eac5337c2b6ba9530d51460de46d00a0cdde8"
+            "sha256:9fb709fd242c4ff4992337a7813e06b9c4e20174a1de22a57e28013e9b6994b6"
         );
         Ok(())
     }
@@ -1166,6 +1279,7 @@ mod tests {
         );
         let document: FixtureDocument = serde_json::from_str(committed_v1)?;
         assert_eq!(document.fixture_version, FIXTURE_VERSION_V1);
+        assert!(document.expected_replay.prediction_claims.is_none());
         let replay = verify_fixture_document(&document)?;
         assert_eq!(
             replay.payload_hash.to_string(),
@@ -1259,7 +1373,7 @@ mod tests {
                 case.name
             );
         }
-        assert_eq!(verified.batch().events.len(), 13);
+        assert_eq!(verified.batch().events.len(), 14);
         Ok(())
     }
 
@@ -1311,17 +1425,23 @@ mod tests {
             .push(first);
         assert!(duplicate.validate_contract().is_err());
 
+        let mut missing_prediction_disclosure = document.clone();
+        missing_prediction_disclosure
+            .expected_replay
+            .prediction_claims = None;
+        assert!(missing_prediction_disclosure.validate_contract().is_err());
+
         let mut with_extra = serde_json::to_value(document)?;
         with_extra["unexpected"] = serde_json::Value::Bool(true);
         assert!(serde_json::from_value::<FixtureDocument>(with_extra).is_err());
 
         let integer_lexeme = fixture_json(&build_fixture_document()?)?.replacen(
-            "\"accepted_events\": 13",
-            "\"accepted_events\": 13.0",
+            "\"accepted_events\": 14",
+            "\"accepted_events\": 14.0",
             1,
         );
         let parsed = parse_fixture_document_json(integer_lexeme.as_bytes())?;
-        assert_eq!(parsed.expected_replay.accepted_events, 13);
+        assert_eq!(parsed.expected_replay.accepted_events, 14);
 
         for (needle, replacement) in [
             ("\"fixture_version\": 2", "\"fixture_version\": 2.0"),
@@ -1346,6 +1466,47 @@ mod tests {
                 1,
             );
             assert!(parse_fixture_document_json(invalid.as_bytes()).is_err());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn shared_prediction_metadata_corpus_matches_rust_wrapper_semantics()
+    -> Result<(), Box<dyn std::error::Error>> {
+        #[derive(Deserialize)]
+        struct Corpus {
+            schema_version: u8,
+            cases: Vec<PredictionCase>,
+        }
+        #[derive(Deserialize)]
+        struct PredictionCase {
+            name: String,
+            schema_valid: bool,
+            semantic_valid: bool,
+            disclosure: serde_json::Value,
+        }
+
+        let corpus: Corpus = serde_json::from_str(include_str!(
+            "../../../schemas/fixtures/prediction-metadata-parity-v1.json"
+        ))?;
+        assert_eq!(corpus.schema_version, 1);
+        let base = serde_json::to_value(build_fixture_document()?)?;
+        for case in corpus.cases {
+            assert!(
+                !case.semantic_valid || case.schema_valid,
+                "semantically valid cases must also satisfy the JSON Schema: {}",
+                case.name
+            );
+            let mut candidate = base.clone();
+            candidate["expected_replay"]["prediction_claims"] =
+                serde_json::Value::Array(vec![case.disclosure]);
+            let bytes = serde_json::to_vec(&candidate)?;
+            assert_eq!(
+                parse_fixture_document_json(&bytes).is_ok(),
+                case.semantic_valid,
+                "{}",
+                case.name
+            );
         }
         Ok(())
     }

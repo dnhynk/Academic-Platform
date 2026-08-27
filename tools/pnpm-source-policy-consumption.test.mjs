@@ -49,7 +49,13 @@ try {
   const dependencyRoot = join(root, "dependency");
   const consumerRoot = join(root, "consumer");
   const variationConsumerRoot = join(root, "variation-consumer");
-  await Promise.all([mkdir(dependencyRoot), mkdir(consumerRoot), mkdir(variationConsumerRoot)]);
+  const explicitVariationConsumerRoot = join(root, "explicit-variation-consumer");
+  await Promise.all([
+    mkdir(dependencyRoot),
+    mkdir(consumerRoot),
+    mkdir(variationConsumerRoot),
+    mkdir(explicitVariationConsumerRoot),
+  ]);
   await writeFile(
     join(dependencyRoot, "package.json"),
     `${JSON.stringify({ name: "t017-local-git", version: "1.0.0", main: "index.js" }, null, 2)}\n`,
@@ -174,8 +180,56 @@ try {
     "frozen pnpm consumption must leave the rejected variation lock unchanged",
   );
 
+  await writeFile(
+    join(explicitVariationConsumerRoot, "package.json"),
+    `${JSON.stringify({
+      name: "phase0-synthetic-explicit-key-runtime-variation",
+      version: "1.0.0",
+      private: true,
+      devDependencies: { node: "runtime:24.19.0" },
+    }, null, 2)}\n`,
+  );
+  const explicitVariationLock = [
+    "lockfileVersion: '9.0'",
+    "",
+    "importers:",
+    "  .:",
+    "    devDependencies:",
+    "      node:",
+    "        specifier: runtime:24.19.0",
+    "        version: runtime:24.19.0",
+    "",
+    "packages: {'node@runtime:24.19.0': {version: 24.19.0, ? resolution: {type: variations, variants: [{targets: [{os: win32, cpu: x64}], resolution: {type: binary, archive: zip, bin: node.exe, integrity: 'sha512-AA==', url: 'http://127.0.0.1:9/node.zip'}}, {targets: [{os: linux, cpu: x64}], resolution: {type: binary, archive: tarball, bin: bin/node, integrity: 'sha512-AA==', url: 'http://127.0.0.1:9/node.tar.gz'}}]}}}",
+    "",
+    "snapshots:",
+    "  node@runtime:24.19.0: {}",
+    "",
+  ].join("\n");
+  const explicitVariationLockPath = join(explicitVariationConsumerRoot, "pnpm-lock.yaml");
+  await writeFile(explicitVariationLockPath, explicitVariationLock);
+  assert.throws(
+    () => assertPnpmLockSourcePolicy(explicitVariationLock, "explicit-flow-variation-lock.yaml"),
+    /explicit mapping keys are outside the lockfile profile/u,
+  );
+  const explicitBefore = createHash("sha256").update(explicitVariationLock).digest("hex");
+  const explicitResult = runExpectingFailure(
+    "pnpm",
+    ["install", "--frozen-lockfile", "--offline", "--ignore-scripts"],
+    explicitVariationConsumerRoot,
+  );
+  const explicitOutput = `${explicitResult.stdout}\n${explicitResult.stderr}`;
+  assert.match(explicitOutput, /ERR_PNPM_CANNOT_DOWNLOAD_BINARY_OFFLINE/u);
+  assert.match(explicitOutput, /http:\/\/127\.0\.0\.1:9\/node\.(?:zip|tar\.gz)/u);
+  assert.equal(
+    createHash("sha256")
+      .update(await readFile(explicitVariationLockPath, "utf8"))
+      .digest("hex"),
+    explicitBefore,
+    "frozen pnpm consumption must leave the explicit-key variation lock unchanged",
+  );
+
   console.log(
-    "Restricted YAML and recursive variation policy rejected concealed sources before real frozen/offline pnpm consumption.",
+    "Restricted YAML, explicit keys, and recursive variations were checked against real frozen/offline pnpm consumption.",
   );
 } finally {
   await rm(root, { recursive: true, force: true });

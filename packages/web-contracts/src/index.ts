@@ -32,6 +32,29 @@ export interface FixtureContractV2 {
 
 export type FixtureContract = FixtureContractV1 | FixtureContractV2;
 
+export interface PredictionObservationWindow {
+  readonly from: number;
+  readonly to: number;
+}
+
+export interface PredictionMetadata {
+  readonly version: 1;
+  readonly observation_window: PredictionObservationWindow;
+  readonly positive_sample_count: number;
+}
+
+export interface ValidInterval {
+  readonly from: number;
+  readonly to: number | null;
+}
+
+export interface PredictionClaimDisclosure {
+  readonly claim_id: string;
+  readonly confidence: number;
+  readonly prediction_metadata: PredictionMetadata;
+  readonly valid_time: ValidInterval;
+}
+
 export interface ReplaySummary {
   readonly accepted_events: number;
   readonly accept_seq_head: number;
@@ -45,6 +68,7 @@ export interface ReplaySummary {
   readonly mastery_conflicting_claim_ids: readonly string[];
   readonly mastery_rejected_claim_ids: readonly string[];
   readonly deadline_active_claim_ids: readonly string[];
+  readonly prediction_claims?: readonly PredictionClaimDisclosure[];
   readonly semantic_digest: string;
 }
 
@@ -102,6 +126,12 @@ const fixtureIntegerPaths: ReadonlySet<string> = new Set([
   "expected_replay.accepted_events",
   "expected_replay.accept_seq_head",
 ]);
+const predictionIntegerPathPattern = /^expected_replay\.prediction_claims\.[0-9]+\.(?:confidence|prediction_metadata\.(?:version|positive_sample_count|observation_window\.(?:from|to))|valid_time\.(?:from|to))$/u;
+
+function isFixtureIntegerPath(path: readonly string[]): boolean {
+  const joined = path.join(".");
+  return fixtureIntegerPaths.has(joined) || predictionIntegerPathPattern.test(joined);
+}
 
 function boundedDecimalMagnitude(digits: string, limit: number): number {
   const normalized = digits.replace(/^0+/u, "") || "0";
@@ -320,7 +350,7 @@ class PortableJsonRawParser {
     }
     if (
       this.contractLabel === "fixture" &&
-      fixtureIntegerPaths.has(path.join(".")) &&
+      isFixtureIntegerPath(path) &&
       !isNonnegativeMathematicalIntegerToken(token)
     ) {
       this.error("fixture integer fields must be mathematically integral before conversion");
@@ -680,13 +710,89 @@ function parseContract(value: unknown, fixtureVersion: FixtureVersion): FixtureC
   };
 }
 
-function parseReplay(value: unknown): ReplaySummary {
+function parsePredictionObservationWindow(value: unknown): PredictionObservationWindow {
   if (!isRecord(value)) {
-    throw new TypeError("expected_replay must be an object");
+    throw new TypeError("prediction observation_window must be an object");
+  }
+  requireExactKeys(value, ["from", "to"], "prediction observation_window");
+  const from = requirePortableUint(value, "from");
+  const to = requirePortableUint(value, "to");
+  if (from >= to) {
+    throw new TypeError("prediction observation_window must be nonempty and increasing");
+  }
+  return { from, to };
+}
+
+function parsePredictionMetadata(value: unknown): PredictionMetadata {
+  if (!isRecord(value)) {
+    throw new TypeError("prediction_metadata must be an object");
   }
   requireExactKeys(
     value,
-    [
+    ["version", "observation_window", "positive_sample_count"],
+    "prediction_metadata",
+  );
+  if (value.version !== 1) {
+    throw new TypeError("unsupported prediction_metadata version");
+  }
+  const positiveSampleCount = requirePortableUint(
+    value,
+    "positive_sample_count",
+    maxUint32,
+  );
+  if (positiveSampleCount === 0) {
+    throw new TypeError("positive_sample_count must be positive");
+  }
+  return {
+    version: 1,
+    observation_window: parsePredictionObservationWindow(value.observation_window),
+    positive_sample_count: positiveSampleCount,
+  };
+}
+
+function parseValidInterval(value: unknown): ValidInterval {
+  if (!isRecord(value)) {
+    throw new TypeError("prediction valid_time must be an object");
+  }
+  requireExactKeys(value, ["from", "to"], "prediction valid_time");
+  const from = requirePortableUint(value, "from");
+  const rawTo = value.to;
+  if (rawTo === null) {
+    return { from, to: null };
+  }
+  const to = requirePortableUint(value, "to");
+  if (from >= to) {
+    throw new TypeError("prediction valid_time must be open-ended or increasing");
+  }
+  return { from, to };
+}
+
+function parsePredictionClaimDisclosure(value: unknown): PredictionClaimDisclosure {
+  if (!isRecord(value)) {
+    throw new TypeError("prediction claim disclosure must be an object");
+  }
+  requireExactKeys(
+    value,
+    ["claim_id", "confidence", "prediction_metadata", "valid_time"],
+    "prediction claim disclosure",
+  );
+  const claimId = requireString(value, "claim_id");
+  if (!uuidV7Pattern.test(claimId)) {
+    throw new TypeError("prediction claim_id must be a UUIDv7 string");
+  }
+  return {
+    claim_id: claimId,
+    confidence: requirePortableUint(value, "confidence", 1000),
+    prediction_metadata: parsePredictionMetadata(value.prediction_metadata),
+    valid_time: parseValidInterval(value.valid_time),
+  };
+}
+
+function parseReplay(value: unknown, fixtureVersion: FixtureVersion): ReplaySummary {
+  if (!isRecord(value)) {
+    throw new TypeError("expected_replay must be an object");
+  }
+  const keys = [
       "accepted_events",
       "accept_seq_head",
       "payload_hash",
@@ -699,10 +805,10 @@ function parseReplay(value: unknown): ReplaySummary {
       "mastery_conflicting_claim_ids",
       "mastery_rejected_claim_ids",
       "deadline_active_claim_ids",
+      ...(fixtureVersion === 2 ? ["prediction_claims"] : []),
       "semantic_digest",
-    ],
-    "expected_replay",
-  );
+  ];
+  requireExactKeys(value, keys, "expected_replay");
   const digests = [
     requireString(value, "payload_hash"),
     requireString(value, "envelope_hash"),
@@ -721,6 +827,21 @@ function parseReplay(value: unknown): ReplaySummary {
   if (!masteryLevels.has(mastery) || !freshnessBands.has(freshness)) {
     throw new TypeError("unsupported mastery or freshness vocabulary");
   }
+  const predictionClaims = fixtureVersion === 2
+    ? value.prediction_claims
+    : undefined;
+  if (fixtureVersion === 2 && (!Array.isArray(predictionClaims) || predictionClaims.length === 0)) {
+    throw new TypeError("v2 prediction_claims must be a nonempty array");
+  }
+  const parsedPredictionClaims = Array.isArray(predictionClaims)
+    ? predictionClaims.map(parsePredictionClaimDisclosure)
+    : undefined;
+  if (
+    parsedPredictionClaims !== undefined &&
+    new Set(parsedPredictionClaims.map((claim) => claim.claim_id)).size !== parsedPredictionClaims.length
+  ) {
+    throw new TypeError("prediction_claims must contain unique claim ids");
+  }
   return {
     accepted_events: requirePositiveInteger(value, "accepted_events"),
     accept_seq_head: requirePositiveInteger(value, "accept_seq_head"),
@@ -734,6 +855,9 @@ function parseReplay(value: unknown): ReplaySummary {
     mastery_conflicting_claim_ids: requireUuidArray(value, "mastery_conflicting_claim_ids"),
     mastery_rejected_claim_ids: requireUuidArray(value, "mastery_rejected_claim_ids"),
     deadline_active_claim_ids: requireUuidArray(value, "deadline_active_claim_ids"),
+    ...(parsedPredictionClaims === undefined
+      ? {}
+      : { prediction_claims: parsedPredictionClaims }),
     semantic_digest: digests[3] ?? "",
   };
 }
@@ -785,7 +909,7 @@ export function parseFixtureDocument(value: unknown): FixtureDocument {
     user_id: userId,
     public_key_hex: publicKey,
     signed_batch_cbor_hex: signedBatch,
-    expected_replay: parseReplay(value.expected_replay),
+    expected_replay: parseReplay(value.expected_replay, fixtureVersion),
   };
 }
 

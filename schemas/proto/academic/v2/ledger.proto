@@ -22,6 +22,17 @@ message ValidInterval {
   optional TimestampMillis to = 2; // half-open [from, to)
 }
 
+message PredictionObservationWindow {
+  TimestampMillis from = 1;
+  TimestampMillis to = 2; // bounded half-open evidence/history interval [from, to)
+}
+
+message PredictionMetadata {
+  uint32 version = 1; // current semantic version is 1
+  PredictionObservationWindow observation_window = 2;
+  uint32 positive_sample_count = 3; // semantic validation requires a positive value
+}
+
 enum AuthorityClass {
   AUTHORITY_CLASS_UNSPECIFIED = 0;
   AUTHORITY_CLASS_OFFICIAL = 1;
@@ -155,7 +166,8 @@ message Claim {
   optional uint32 confidence = 8;
   ValidInterval valid_time = 9;
   repeated UuidV7 evidence_ids = 10;
-  reserved 11 to 19;
+  PredictionMetadata prediction_metadata = 11; // required only for active Prediction claims
+  reserved 12 to 19;
 }
 
 message ConfirmDecision {}

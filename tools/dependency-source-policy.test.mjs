@@ -46,6 +46,45 @@ for (const corpus of corpora) {
   }
 }
 
+const explicitFlowVariation = await readFile(
+  "tools/fixtures/pnpm-source-policy/reject-yaml-explicit-flow-key.yaml",
+  "utf8",
+);
+assert.throws(
+  () => parsePnpmLockYaml(explicitFlowVariation, "explicit-flow-variation"),
+  /explicit mapping keys are outside the lockfile profile/u,
+  "a compact flow explicit key must reject before nested variation/binary decoding",
+);
+for (const [name, source] of [
+  [
+    "nested block sequence explicit key",
+    "lockfileVersion: '9.0'\nprobe:\n  - ? resolution: {type: binary}\n",
+  ],
+  [
+    "nested flow sequence explicit key",
+    "lockfileVersion: '9.0'\nprobe: [{? resolution: {type: binary}}]\n",
+  ],
+]) {
+  assert.throws(
+    () => parsePnpmLockYaml(source, name),
+    /explicit mapping keys are outside the lockfile profile/u,
+    `${name} must reject before key decoding`,
+  );
+}
+const questionKeyControls = parsePnpmLockYaml(
+  [
+    "lockfileVersion: '9.0'",
+    "ordinary: {resolution: registry}",
+    "quoted: {'? resolution': literal}",
+    "plain: {?resolution: literal}",
+    "",
+  ].join("\n"),
+  "question-key-controls",
+);
+assert.equal(questionKeyControls.ordinary.resolution, "registry");
+assert.equal(questionKeyControls.quoted["? resolution"], "literal");
+assert.equal(questionKeyControls.plain["?resolution"], "literal");
+
 const scalarKindCorpus = JSON.parse(
   await readFile("tools/fixtures/pnpm-yaml-scalar-kind-conformance-v1.json", "utf8"),
 );

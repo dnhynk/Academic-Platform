@@ -61,7 +61,7 @@ pnpm run doctor
 
 ## Reproducible bootstrap script
 
-After the pinned tools are present, run `node tools/source-preflight.mjs` before any package-manager operation. The script uses only Node built-ins and checked-in parsers to reject forbidden Cargo and pnpm sources in a fresh checkout. `pnpm bootstrap` runs the same preflight first, validates outputs against the shared token-exact doctor corpus, runs `pnpm install --frozen-lockfile`, and runs `cargo fetch --locked`; it does not collect data or start a service. Node and pnpm must equal their exact version tokens. Rust and Cargo may append only their ordinary parenthesized stable commit/date metadata; prerelease, nightly, longer-prefix, and wrapper output is unsupported.
+After the pinned tools are present, run `node tools/source-preflight.mjs` before any package-manager operation. The script uses only Node built-ins and checked-in parsers to reject forbidden Cargo and pnpm sources in a fresh checkout. `pnpm bootstrap` runs the same preflight first, validates outputs against the shared token-exact doctor corpus, runs `pnpm install --frozen-lockfile`, and runs `cargo fetch --locked`; it does not collect data or start a service. That bootstrap (or an equivalent successful fetch) populates the dependency cache required by the deliberately network-free `pnpm run doctor` wrapper, which invokes Cargo with `--locked --offline` and fails locally when cached dependencies are absent. Node and pnpm must equal their exact version tokens. Rust and Cargo may append only their ordinary parenthesized stable commit/date metadata; prerelease, nightly, longer-prefix, and wrapper output is unsupported.
 
 ## Data warning
 

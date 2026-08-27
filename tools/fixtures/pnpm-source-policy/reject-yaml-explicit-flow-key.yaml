@@ -1,0 +1,2 @@
+lockfileVersion: '9.0'
+packages: {'node@runtime:24.19.0': {version: 24.19.0, ? resolution: {type: variations, variants: [{targets: [{os: win32, cpu: x64}], resolution: {type: binary, archive: zip, bin: node.exe, integrity: 'sha512-AA==', url: 'http://127.0.0.1:9/node.zip'}}]}}}

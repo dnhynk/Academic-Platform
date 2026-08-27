@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "valid distinct evidence and applicability windows",
+      "schema_valid": true,
+      "semantic_valid": true,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    },
+    {
+      "name": "valid inclusive numeric boundaries",
+      "schema_valid": true,
+      "semantic_valid": true,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 0,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 0, "to": 9007199254740991 },
+          "positive_sample_count": 4294967295
+        },
+        "valid_time": { "from": 0, "to": null }
+      }
+    },
+    {
+      "name": "missing confidence",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    },
+    {
+      "name": "missing prediction metadata",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    },
+    {
+      "name": "unsupported prediction metadata version",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 2,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    },
+    {
+      "name": "zero positive sample count",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 0
+        },
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    },
+    {
+      "name": "empty observation window",
+      "schema_valid": true,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 700, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    },
+    {
+      "name": "reversed observation window",
+      "schema_valid": true,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 701, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    },
+    {
+      "name": "reversed applicability window",
+      "schema_valid": true,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 1200, "to": 800 }
+      }
+    },
+    {
+      "name": "unexpected metadata field",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 6,
+          "unexpected": true
+        },
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    }
+  ]
+}

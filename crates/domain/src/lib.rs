@@ -74,6 +74,24 @@ pub enum DomainError {
     /// An official or unknown claim carried an invalid confidence value.
     #[error("status {0:?} must not carry model confidence")]
     ConfidenceNotAllowed(EpistemicStatus),
+    /// An active prediction omitted its required uncertainty value.
+    #[error("active Prediction claims require confidence permille")]
+    MissingPredictionConfidence,
+    /// An active prediction omitted its evidence/sample disclosure.
+    #[error("active Prediction claims require prediction metadata")]
+    MissingPredictionMetadata,
+    /// A non-prediction state carried prediction-only metadata.
+    #[error("status {0:?} must not carry prediction metadata")]
+    PredictionMetadataNotAllowed(EpistemicStatus),
+    /// Prediction metadata used an unsupported semantic version.
+    #[error("unsupported prediction metadata version {0}")]
+    UnsupportedPredictionMetadataVersion(u16),
+    /// A prediction observation window was open, empty, or reversed.
+    #[error("prediction observation window must be bounded and satisfy from < to")]
+    InvalidPredictionObservationWindow,
+    /// Prediction metadata disclosed no positive samples.
+    #[error("prediction positive sample count must be greater than zero")]
+    InvalidPredictionSampleCount,
     /// A claim that requires evidence had no evidence links.
     #[error("status {0:?} requires at least one evidence link")]
     MissingEvidence(EpistemicStatus),
@@ -261,6 +279,157 @@ impl ValidInterval {
     #[must_use]
     pub fn contains(self, instant: TimestampMillis) -> bool {
         self.from <= instant && self.to.is_none_or(|end| instant < end)
+    }
+}
+
+/// Current semantic version of the prediction evidence/sample disclosure.
+pub const PREDICTION_METADATA_VERSION_V1: u16 = 1;
+
+/// A bounded half-open observation/history window `[from, to)` used as prediction evidence.
+///
+/// This coordinate is deliberately distinct from [`ValidInterval`], which says when a claim
+/// applies in the domain rather than which historical observations produced it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub struct PredictionObservationWindow {
+    from: TimestampMillis,
+    to: TimestampMillis,
+}
+
+impl<'de> Deserialize<'de> for PredictionObservationWindow {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct WireWindow {
+            from: TimestampMillis,
+            to: TimestampMillis,
+        }
+
+        let value = WireWindow::deserialize(deserializer)?;
+        Self::new(value.from, value.to).map_err(de::Error::custom)
+    }
+}
+
+impl PredictionObservationWindow {
+    /// Constructs a bounded, nonempty observation window.
+    pub fn new(from: TimestampMillis, to: TimestampMillis) -> Result<Self, DomainError> {
+        let window = Self { from, to };
+        window.validate()?;
+        Ok(window)
+    }
+
+    /// Revalidates the bounded, nonempty observation interval.
+    pub fn validate(self) -> Result<(), DomainError> {
+        if self.from >= self.to {
+            return Err(DomainError::InvalidPredictionObservationWindow);
+        }
+        Ok(())
+    }
+
+    /// Returns the inclusive observation lower bound.
+    #[must_use]
+    pub const fn from(self) -> TimestampMillis {
+        self.from
+    }
+
+    /// Returns the exclusive observation upper bound.
+    #[must_use]
+    pub const fn to(self) -> TimestampMillis {
+        self.to
+    }
+}
+
+/// Versioned disclosure of the bounded evidence interval and positive sample count for a prediction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub struct PredictionMetadata {
+    version: u16,
+    observation_window: PredictionObservationWindow,
+    positive_sample_count: u32,
+}
+
+impl<'de> Deserialize<'de> for PredictionMetadata {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct WireMetadata {
+            version: u16,
+            observation_window: PredictionObservationWindow,
+            positive_sample_count: u32,
+        }
+
+        let value = WireMetadata::deserialize(deserializer)?;
+        Self::from_version(
+            value.version,
+            value.observation_window,
+            value.positive_sample_count,
+        )
+        .map_err(de::Error::custom)
+    }
+}
+
+impl PredictionMetadata {
+    /// Constructs current-version prediction metadata.
+    pub fn new(
+        observation_window: PredictionObservationWindow,
+        positive_sample_count: u32,
+    ) -> Result<Self, DomainError> {
+        Self::from_version(
+            PREDICTION_METADATA_VERSION_V1,
+            observation_window,
+            positive_sample_count,
+        )
+    }
+
+    fn from_version(
+        version: u16,
+        observation_window: PredictionObservationWindow,
+        positive_sample_count: u32,
+    ) -> Result<Self, DomainError> {
+        if version != PREDICTION_METADATA_VERSION_V1 {
+            return Err(DomainError::UnsupportedPredictionMetadataVersion(version));
+        }
+        if positive_sample_count == 0 {
+            return Err(DomainError::InvalidPredictionSampleCount);
+        }
+        Ok(Self {
+            version,
+            observation_window,
+            positive_sample_count,
+        })
+    }
+
+    /// Revalidates the complete metadata contract at an acceptance boundary.
+    pub fn validate(self) -> Result<(), DomainError> {
+        self.observation_window.validate()?;
+        Self::from_version(
+            self.version,
+            self.observation_window,
+            self.positive_sample_count,
+        )
+        .map(|_| ())
+    }
+
+    /// Returns the semantic metadata version.
+    #[must_use]
+    pub const fn version(self) -> u16 {
+        self.version
+    }
+
+    /// Returns the evidence/history window that produced the prediction.
+    #[must_use]
+    pub const fn observation_window(self) -> PredictionObservationWindow {
+        self.observation_window
+    }
+
+    /// Returns the disclosed positive sample count.
+    #[must_use]
+    pub const fn positive_sample_count(self) -> u32 {
+        self.positive_sample_count
     }
 }
 
@@ -1066,6 +1235,8 @@ pub struct Claim {
     pub authority_class: AuthorityClass,
     pub epistemic_status: EpistemicStatus,
     pub confidence: Option<ConfidencePermille>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prediction_metadata: Option<PredictionMetadata>,
     pub valid_time: ValidInterval,
     pub evidence_ids: Vec<EvidenceId>,
 }
@@ -1107,6 +1278,17 @@ impl Claim {
         ) && self.confidence.is_some()
         {
             return Err(DomainError::ConfidenceNotAllowed(self.epistemic_status));
+        }
+        if self.epistemic_status == EpistemicStatus::Prediction && self.confidence.is_none() {
+            return Err(DomainError::MissingPredictionConfidence);
+        }
+        match (self.epistemic_status, self.prediction_metadata) {
+            (EpistemicStatus::Prediction, Some(metadata)) => metadata.validate()?,
+            (EpistemicStatus::Prediction, None) => {
+                return Err(DomainError::MissingPredictionMetadata);
+            }
+            (status, Some(_)) => return Err(DomainError::PredictionMetadataNotAllowed(status)),
+            (_, None) => {}
         }
         if !matches!(self.epistemic_status, EpistemicStatus::Unknown)
             && self.evidence_ids.is_empty()
@@ -1463,6 +1645,21 @@ mod tests {
             serde_json::from_str::<EntityId>("\"01900000-0000-7000-8000-0000000000AA\"").is_err()
         );
         assert!(serde_json::from_str::<ValidInterval>("{\"from\":7,\"to\":7}").is_err());
+        assert!(
+            serde_json::from_str::<PredictionObservationWindow>("{\"from\":7,\"to\":7}").is_err()
+        );
+        assert!(
+            serde_json::from_str::<PredictionMetadata>(
+                "{\"version\":2,\"observation_window\":{\"from\":1,\"to\":2},\"positive_sample_count\":1}"
+            )
+            .is_err()
+        );
+        assert!(
+            serde_json::from_str::<PredictionMetadata>(
+                "{\"version\":1,\"observation_window\":{\"from\":1,\"to\":2},\"positive_sample_count\":0}"
+            )
+            .is_err()
+        );
         assert!(serde_json::from_str::<MediaType>("\"Text/Plain\"").is_err());
         assert!(serde_json::from_str::<LogicalPath>("\"../escape\"").is_err());
         assert!(serde_json::from_str::<PredicateId>("\"missing_namespace\"").is_err());
@@ -1709,6 +1906,7 @@ mod tests {
             ),
         ];
         for (row_index, (authority, status, expected)) in rows.into_iter().enumerate() {
+            let is_prediction = status == EpistemicStatus::Prediction;
             let claim = Claim {
                 id: id(100 + u32::try_from(row_index)?)?,
                 subject_entity_id: id(10)?,
@@ -1717,7 +1915,20 @@ mod tests {
                 scope_id: id(11)?,
                 authority_class: authority,
                 epistemic_status: status,
-                confidence: None,
+                confidence: is_prediction
+                    .then(|| ConfidencePermille::new(500))
+                    .transpose()?,
+                prediction_metadata: is_prediction
+                    .then(|| {
+                        PredictionMetadata::new(
+                            PredictionObservationWindow::new(
+                                TimestampMillis::new(-10),
+                                TimestampMillis::new(0),
+                            )?,
+                            1,
+                        )
+                    })
+                    .transpose()?,
                 valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
                 evidence_ids: if status == EpistemicStatus::Unknown {
                     Vec::new()
@@ -1729,6 +1940,81 @@ mod tests {
                 assert_eq!(claim.validate_for_actor(actor).is_ok(), permitted);
             }
         }
+        Ok(())
+    }
+
+    #[test]
+    fn prediction_requires_confidence_and_typed_metadata_without_changing_ai_inference()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let model = Actor::ModelRun { run_id: id(160)? };
+        let mut claim = Claim {
+            id: id(161)?,
+            subject_entity_id: id(162)?,
+            predicate_id: PredicateId::parse("academic.course.offering")?,
+            object: ClaimObject::Boolean(true),
+            scope_id: id(163)?,
+            authority_class: AuthorityClass::Prediction,
+            epistemic_status: EpistemicStatus::Prediction,
+            confidence: None,
+            prediction_metadata: Some(PredictionMetadata::new(
+                PredictionObservationWindow::new(
+                    TimestampMillis::new(i64::MIN),
+                    TimestampMillis::new(i64::MAX),
+                )?,
+                u32::MAX,
+            )?),
+            valid_time: ValidInterval::new(
+                TimestampMillis::new(10),
+                Some(TimestampMillis::new(20)),
+            )?,
+            evidence_ids: vec![id(164)?],
+        };
+        assert_eq!(
+            claim.validate_for_actor(&model),
+            Err(DomainError::MissingPredictionConfidence)
+        );
+
+        claim.confidence = Some(ConfidencePermille::new(0)?);
+        claim.prediction_metadata = None;
+        assert_eq!(
+            claim.validate_for_actor(&model),
+            Err(DomainError::MissingPredictionMetadata)
+        );
+
+        claim.prediction_metadata = Some(PredictionMetadata::new(
+            PredictionObservationWindow::new(TimestampMillis::new(-20), TimestampMillis::new(0))?,
+            1,
+        )?);
+        assert!(claim.validate_for_actor(&model).is_ok());
+        assert_ne!(
+            claim
+                .prediction_metadata
+                .map(PredictionMetadata::observation_window),
+            Some(PredictionObservationWindow::new(
+                claim.valid_time.from(),
+                claim
+                    .valid_time
+                    .to()
+                    .ok_or("test valid_time must be bounded")?,
+            )?)
+        );
+
+        claim.authority_class = AuthorityClass::ModelInference;
+        claim.epistemic_status = EpistemicStatus::AiInferred;
+        claim.confidence = None;
+        claim.prediction_metadata = None;
+        assert!(claim.validate_for_actor(&model).is_ok());
+
+        claim.prediction_metadata = Some(PredictionMetadata::new(
+            PredictionObservationWindow::new(TimestampMillis::new(0), TimestampMillis::new(1))?,
+            1,
+        )?);
+        assert_eq!(
+            claim.validate_for_actor(&model),
+            Err(DomainError::PredictionMetadataNotAllowed(
+                EpistemicStatus::AiInferred
+            ))
+        );
         Ok(())
     }
 
@@ -1748,6 +2034,7 @@ mod tests {
             authority_class: AuthorityClass::Curated,
             epistemic_status: EpistemicStatus::DeterministicDerived,
             confidence: None,
+            prediction_metadata: None,
             valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
             evidence_ids: vec![id(183)?],
         };
@@ -1811,6 +2098,7 @@ mod tests {
                 authority_class: AuthorityClass::UserExplicit,
                 epistemic_status: EpistemicStatus::UserConfirmed,
                 confidence: None,
+                prediction_metadata: None,
                 valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
                 evidence_ids: vec![id(206)?],
             }),

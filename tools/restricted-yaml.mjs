@@ -346,6 +346,12 @@ class FlowParser {
     if (this.input[this.index] === '"' || this.input[this.index] === "'") {
       return this.parseQuoted();
     }
+    if (
+      this.input[this.index] === "?" &&
+      (this.input[this.index + 1] === undefined || /[\t\r\n ]/u.test(this.input[this.index + 1]))
+    ) {
+      this.error("explicit mapping keys are outside the lockfile profile");
+    }
     const start = this.index;
     while (this.index < this.input.length && this.input[this.index] !== ":") {
       if (this.input[this.index] === "," || this.input[this.index] === "}") {
@@ -462,7 +468,7 @@ function parseLines(lines, start, indent, label) {
     if (line.indent > indent) {
       fail(label, line.number, "unexpected indentation");
     }
-    if (line.text === "?" || line.text.startsWith("? ")) {
+    if (/^\?(?:$|[\t ])/u.test(line.text)) {
       fail(label, line.number, "explicit mapping keys are outside the lockfile profile");
     }
     const lineIsSequence = line.text === "-" || line.text.startsWith("- ");

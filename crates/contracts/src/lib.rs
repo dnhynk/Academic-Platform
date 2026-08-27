@@ -809,9 +809,10 @@ mod tests {
 
     use academic_domain::{
         Actor, AuthorityClass, BatchId, Claim, ClaimId, ClaimObject, ClaimRelation,
-        ClaimRelationKind, Decimal, DeviceId, DomainId, EVENT_SCHEMA_VERSION, EntityId,
-        EpistemicStatus, Event, EventId, EventPayload, EvidenceId, PredicateId, ResolutionSlot,
-        ScopeId, TimestampMillis, ValidInterval,
+        ClaimRelationKind, ConfidencePermille, Decimal, DeviceId, DomainId, EVENT_SCHEMA_VERSION,
+        EntityId, EpistemicStatus, Event, EventId, EventPayload, EvidenceId, PredicateId,
+        PredictionMetadata, PredictionObservationWindow, ResolutionSlot, ScopeId, TimestampMillis,
+        ValidInterval,
     };
 
     use super::*;
@@ -896,6 +897,7 @@ mod tests {
             authority_class: AuthorityClass::UserExplicit,
             epistemic_status: EpistemicStatus::UserConfirmed,
             confidence: None,
+            prediction_metadata: None,
             valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
             evidence_ids: vec![EvidenceId::from_str(
                 "01900000-0000-7000-8000-00000000000b",
@@ -917,6 +919,41 @@ mod tests {
         Ok(batch)
     }
 
+    fn prediction_batch() -> Result<UnsignedBatch, DomainError> {
+        let mut batch = v1_compatible_batch()?;
+        batch.events[0].actor = Actor::ModelRun {
+            run_id: EntityId::from_str("01900000-0000-7000-8000-00000000000c")?,
+        };
+        let prediction_valid_time = {
+            let EventPayload::ClaimAsserted(claim) = &mut batch.events[0].payload else {
+                return Err(DomainError::InvalidEventPayload(
+                    "test prediction batch requires a claim".to_owned(),
+                ));
+            };
+            claim.authority_class = AuthorityClass::Prediction;
+            claim.epistemic_status = EpistemicStatus::Prediction;
+            claim.confidence = Some(ConfidencePermille::new(720)?);
+            claim.prediction_metadata = Some(PredictionMetadata::new(
+                PredictionObservationWindow::new(
+                    TimestampMillis::new(-1_000),
+                    TimestampMillis::new(-100),
+                )?,
+                6,
+            )?);
+            claim.valid_time =
+                ValidInterval::new(TimestampMillis::new(100), Some(TimestampMillis::new(200)))?;
+            claim.valid_time
+        };
+        let EventPayload::DecisionRecorded(decision) = &mut batch.events[1].payload else {
+            return Err(DomainError::InvalidEventPayload(
+                "test prediction batch requires a decision".to_owned(),
+            ));
+        };
+        decision.valid_time = prediction_valid_time;
+        batch.validate()?;
+        Ok(batch)
+    }
+
     #[test]
     fn encoding_is_deterministic() -> Result<(), Box<dyn std::error::Error>> {
         let batch = minimal_batch()?;
@@ -924,6 +961,129 @@ mod tests {
         let second = encode_unsigned_batch(&batch)?;
         assert_eq!(first, second);
         assert_eq!(decode_unsigned_batch(&first)?, batch);
+        Ok(())
+    }
+
+    #[test]
+    fn prediction_without_confidence_produces_no_payload_or_signature()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut batch = prediction_batch()?;
+        let EventPayload::ClaimAsserted(claim) = &mut batch.events[0].payload else {
+            return Err("test prediction batch requires a claim".into());
+        };
+        claim.confidence = None;
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        assert!(matches!(
+            encode_unsigned_batch(&batch),
+            Err(ContractError::Domain(
+                DomainError::MissingPredictionConfidence
+            ))
+        ));
+        assert!(matches!(
+            sign_batch(&batch, &signing_key),
+            Err(ContractError::Domain(
+                DomainError::MissingPredictionConfidence
+            ))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn prediction_metadata_round_trips_signed_cbor_and_malformed_forms_fail_closed()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = prediction_batch()?;
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let authorization = authorization(&batch, &signing_key)?;
+        let signed = sign_batch(&batch, &signing_key)?;
+        let verified = verify_signed_batch(&signed, &authorization)?;
+        assert_eq!(verified.batch(), &batch);
+        let EventPayload::ClaimAsserted(claim) = &verified.batch().events[0].payload else {
+            return Err("verified prediction batch requires a claim".into());
+        };
+        let metadata = claim
+            .prediction_metadata
+            .ok_or(DomainError::MissingPredictionMetadata)?;
+        assert_eq!(metadata.version(), 1);
+        assert_eq!(metadata.positive_sample_count(), 6);
+        assert_eq!(metadata.observation_window().from().value(), -1_000);
+        assert_eq!(metadata.observation_window().to().value(), -100);
+        assert_eq!(claim.valid_time.from().value(), 100);
+
+        let base = serde_json::to_value(&batch)?;
+        type JsonMutation = (&'static str, Box<dyn Fn(&mut JsonValue)>);
+        let mutations: [JsonMutation; 5] = [
+            (
+                "absent prediction metadata",
+                Box::new(|json| {
+                    if let Some(claim) = json["events"][0]["payload"]["value"].as_object_mut() {
+                        claim.remove("prediction_metadata");
+                    }
+                }),
+            ),
+            (
+                "zero positive sample count",
+                Box::new(|json| {
+                    json["events"][0]["payload"]["value"]["prediction_metadata"]["positive_sample_count"] =
+                        JsonValue::Number(JsonNumber::from(0));
+                }),
+            ),
+            (
+                "unsupported metadata version",
+                Box::new(|json| {
+                    json["events"][0]["payload"]["value"]["prediction_metadata"]["version"] =
+                        JsonValue::Number(JsonNumber::from(2));
+                }),
+            ),
+            (
+                "empty observation window",
+                Box::new(|json| {
+                    json["events"][0]["payload"]["value"]["prediction_metadata"]["observation_window"]
+                        ["to"] = JsonValue::Number(JsonNumber::from(-1_000));
+                }),
+            ),
+            (
+                "missing prediction confidence",
+                Box::new(|json| {
+                    json["events"][0]["payload"]["value"]["confidence"] = JsonValue::Null;
+                }),
+            ),
+        ];
+        for (name, mutate) in mutations {
+            let mut candidate = base.clone();
+            mutate(&mut candidate);
+            let payload = encode_cbor_value(&json_to_cbor(&candidate)?)?;
+            let envelope = sign_test_payload(&payload, &signing_key)?;
+            assert!(
+                verify_signed_batch(&envelope, &authorization).is_err(),
+                "{name} must fail before a verification capability is issued"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn v1_upcast_does_not_invent_prediction_metadata() -> Result<(), Box<dyn std::error::Error>> {
+        let batch = v1_compatible_batch()?;
+        let mut legacy = cbor_to_json(&decode_single_cbor(&encode_unsigned_batch_v1_projection(
+            &batch,
+            LegacySourceEqualityCapability,
+        )?)?)?;
+        legacy["events"][0]["actor"] = serde_json::to_value(Actor::ModelRun {
+            run_id: EntityId::from_str("01900000-0000-7000-8000-00000000000c")?,
+        })?;
+        legacy["events"][0]["payload"]["value"]["authority_class"] =
+            JsonValue::String("PREDICTION".to_owned());
+        legacy["events"][0]["payload"]["value"]["epistemic_status"] =
+            JsonValue::String("PREDICTION".to_owned());
+        legacy["events"][0]["payload"]["value"]["confidence"] =
+            JsonValue::Number(JsonNumber::from(720));
+        let payload = encode_cbor_value(&json_to_cbor(&legacy)?)?;
+        assert!(matches!(
+            decode_unsigned_batch(&payload),
+            Err(ContractError::Domain(
+                DomainError::MissingPredictionMetadata
+            ))
+        ));
         Ok(())
     }
 
@@ -1419,6 +1579,7 @@ mod tests {
                 authority_class: AuthorityClass::UserExplicit,
                 epistemic_status: EpistemicStatus::UserConfirmed,
                 confidence: None,
+                prediction_metadata: None,
                 valid_time: ValidInterval::open_ended(TimestampMillis::new(0)),
                 evidence_ids: vec![EvidenceId::from_str(
                     "01900000-0000-7000-8000-000000000102",

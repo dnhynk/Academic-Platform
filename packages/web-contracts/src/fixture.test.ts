@@ -29,6 +29,10 @@ const fixtureByteCorpusUrl = new URL(
   "../../../schemas/fixtures/signed-batch-byte-parity-v1.json",
   import.meta.url,
 );
+const predictionMetadataCorpusUrl = new URL(
+  "../../../schemas/fixtures/prediction-metadata-parity-v1.json",
+  import.meta.url,
+);
 
 function replaceBytesOnce(
   source: Uint8Array,
@@ -61,7 +65,28 @@ void test("the immutable v1 and current v2 fixtures are synthetic and structural
     assert.equal(fixture.network_egress, "NONE");
     assert.equal(fixture.expected_replay.mastery, "PRACTICED");
     assert.equal(fixture.expected_replay.freshness, "STALE");
-    assert.equal(fixture.expected_replay.accepted_events, 13);
+    assert.equal(fixture.expected_replay.accepted_events, version === 1 ? 13 : 14);
+    if (version === 1) {
+      assert.equal(fixture.expected_replay.prediction_claims, undefined);
+    } else {
+      const disclosures = fixture.expected_replay.prediction_claims;
+      assert.ok(disclosures !== undefined);
+      assert.equal(disclosures.length, 1);
+      const disclosure = disclosures[0];
+      assert.ok(disclosure !== undefined);
+      assert.equal(disclosure.confidence, 720);
+      assert.equal(disclosure.prediction_metadata.version, 1);
+      assert.equal(disclosure.prediction_metadata.positive_sample_count, 6);
+      assert.deepEqual(disclosure.prediction_metadata.observation_window, {
+        from: 100,
+        to: 700,
+      });
+      assert.deepEqual(disclosure.valid_time, { from: 800, to: 1200 });
+      assert.notDeepEqual(
+        disclosure.prediction_metadata.observation_window,
+        disclosure.valid_time,
+      );
+    }
   }
 });
 
@@ -184,6 +209,113 @@ void test("const, minimum, uniqueness, and additional-property violations fail c
     const candidate = structuredClone(fixture) as Record<string, unknown>;
     mutate(candidate);
     assert.throws(() => parseFixtureDocument(candidate), TypeError);
+  }
+});
+
+void test("v2 prediction disclosure is required, bounded, versioned, and semantically validated", async () => {
+  const text = await readFile(fixtureV2Url, "utf8");
+  const fixture = JSON.parse(text) as Record<string, unknown>;
+  const mutateDisclosure = (
+    candidate: Record<string, unknown>,
+    mutate: (disclosure: Record<string, unknown>) => void,
+  ): void => {
+    const replay = candidate.expected_replay as Record<string, unknown>;
+    const disclosures = replay.prediction_claims as Record<string, unknown>[];
+    const disclosure = disclosures[0];
+    assert.ok(disclosure !== undefined);
+    mutate(disclosure);
+  };
+  const mutations: readonly ((candidate: Record<string, unknown>) => void)[] = [
+    (candidate) => {
+      delete (candidate.expected_replay as Record<string, unknown>).prediction_claims;
+    },
+    (candidate) => {
+      (candidate.expected_replay as Record<string, unknown>).prediction_claims = [];
+    },
+    (candidate) => {
+      mutateDisclosure(candidate, (disclosure) => {
+        disclosure.confidence = 1001;
+      });
+    },
+    (candidate) => {
+      mutateDisclosure(candidate, (disclosure) => {
+        const metadata = disclosure.prediction_metadata as Record<string, unknown>;
+        metadata.version = 2;
+      });
+    },
+    (candidate) => {
+      mutateDisclosure(candidate, (disclosure) => {
+        const metadata = disclosure.prediction_metadata as Record<string, unknown>;
+        metadata.positive_sample_count = 0;
+      });
+    },
+    (candidate) => {
+      mutateDisclosure(candidate, (disclosure) => {
+        const metadata = disclosure.prediction_metadata as Record<string, unknown>;
+        const window = metadata.observation_window as Record<string, unknown>;
+        window.to = window.from;
+      });
+    },
+    (candidate) => {
+      mutateDisclosure(candidate, (disclosure) => {
+        const validTime = disclosure.valid_time as Record<string, unknown>;
+        validTime.to = validTime.from;
+      });
+    },
+    (candidate) => {
+      mutateDisclosure(candidate, (disclosure) => {
+        const metadata = disclosure.prediction_metadata as Record<string, unknown>;
+        metadata.unexpected = true;
+      });
+    },
+  ];
+  for (const mutate of mutations) {
+    const candidate = structuredClone(fixture);
+    mutate(candidate);
+    assert.throws(() => parseFixtureDocument(candidate), TypeError);
+  }
+
+  const boundary = structuredClone(fixture);
+  mutateDisclosure(boundary, (disclosure) => {
+    disclosure.confidence = 0;
+    const metadata = disclosure.prediction_metadata as Record<string, unknown>;
+    metadata.positive_sample_count = 4_294_967_295;
+    metadata.observation_window = { from: 0, to: 9_007_199_254_740_991 };
+    disclosure.valid_time = { from: 0, to: null };
+  });
+  assert.doesNotThrow(() => parseFixtureDocument(boundary));
+
+  const v1 = JSON.parse(await readFile(fixtureV1Url, "utf8")) as Record<string, unknown>;
+  (v1.expected_replay as Record<string, unknown>).prediction_claims = [];
+  assert.throws(() => parseFixtureDocument(v1), TypeError);
+});
+
+void test("shared prediction metadata corpus matches TypeScript semantics", async () => {
+  const [fixtureText, corpusText] = await Promise.all([
+    readFile(fixtureV2Url, "utf8"),
+    readFile(predictionMetadataCorpusUrl, "utf8"),
+  ]);
+  const fixture = JSON.parse(fixtureText) as Record<string, unknown>;
+  const corpus = JSON.parse(corpusText) as {
+    readonly schema_version: number;
+    readonly cases: readonly {
+      readonly name: string;
+      readonly schema_valid: boolean;
+      readonly semantic_valid: boolean;
+      readonly disclosure: unknown;
+    }[];
+  };
+  assert.equal(corpus.schema_version, 1);
+  for (const entry of corpus.cases) {
+    const candidate = structuredClone(fixture);
+    (candidate.expected_replay as Record<string, unknown>).prediction_claims = [
+      structuredClone(entry.disclosure),
+    ];
+    if (entry.semantic_valid) {
+      assert.doesNotThrow(() => parseFixtureDocument(candidate), entry.name);
+    } else {
+      assert.throws(() => parseFixtureDocument(candidate), TypeError, entry.name);
+    }
   }
 });
 

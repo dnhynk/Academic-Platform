@@ -56,6 +56,7 @@
         "mastery_conflicting_claim_ids",
         "mastery_rejected_claim_ids",
         "deadline_active_claim_ids",
+        "prediction_claims",
         "semantic_digest"
       ],
       "properties": {
@@ -78,6 +79,12 @@
         "mastery_conflicting_claim_ids": { "$ref": "#/$defs/uuidArray" },
         "mastery_rejected_claim_ids": { "$ref": "#/$defs/uuidArray" },
         "deadline_active_claim_ids": { "$ref": "#/$defs/uuidArray" },
+        "prediction_claims": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/predictionClaimDisclosure" }
+        },
         "semantic_digest": { "$ref": "#/$defs/digest" }
       }
     }
@@ -95,6 +102,54 @@
       "type": "array",
       "items": { "$ref": "#/$defs/uuidV7" },
       "uniqueItems": true
+    },
+    "predictionClaimDisclosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "confidence", "prediction_metadata", "valid_time"],
+      "properties": {
+        "claim_id": { "$ref": "#/$defs/uuidV7" },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "prediction_metadata": { "$ref": "#/$defs/predictionMetadata" },
+        "valid_time": { "$ref": "#/$defs/validInterval" }
+      }
+    },
+    "predictionMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "observation_window", "positive_sample_count"],
+      "properties": {
+        "version": { "const": 1 },
+        "observation_window": { "$ref": "#/$defs/predictionObservationWindow" },
+        "positive_sample_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        }
+      }
+    },
+    "predictionObservationWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "to": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      }
+    },
+    "validInterval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "to": {
+          "anyOf": [
+            { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            { "type": "null" }
+          ]
+        }
+      }
     }
   }
 }

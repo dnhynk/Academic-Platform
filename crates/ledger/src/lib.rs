@@ -275,6 +275,10 @@ impl LedgerState {
     }
 
     fn apply_event(&mut self, event: &Event, accept_seq: u64) -> Result<(), LedgerError> {
+        // Acceptance revalidates the authenticated event instead of relying on a caller's
+        // earlier batch traversal. This keeps claim provenance and prediction requirements
+        // fail-closed at the append boundary itself.
+        event.validate()?;
         if !self.event_ids.insert(event.id) {
             return Err(LedgerError::DuplicateId {
                 kind: "event",
@@ -485,6 +489,12 @@ impl LedgerState {
         self.evidence.get(&id)
     }
 
+    /// Returns an accepted claim by immutable identity.
+    #[must_use]
+    pub fn claim(&self, id: ClaimId) -> Option<&Claim> {
+        self.claims.get(&id).map(|(claim, _)| claim)
+    }
+
     /// Resolves active and conflicting claims at independent valid/known coordinates.
     #[must_use]
     pub fn resolve(&self, query: &ResolutionQuery) -> ResolutionResult {
@@ -493,6 +503,7 @@ impl LedgerState {
             .values()
             .filter_map(|(claim, metadata)| {
                 (metadata.accept_seq <= query.known_at_accept_seq
+                    && claim.validate().is_ok()
                     && claim.subject_entity_id == query.subject_entity_id
                     && claim.predicate_id == query.predicate_id
                     && claim.scope_id == query.scope_id
@@ -948,8 +959,9 @@ mod tests {
     use academic_contracts::{DeviceAuthorization, sign_batch, verify_signed_batch};
     use academic_domain::{
         ArtifactRepresentation, ConfidencePermille, EvidenceLocator, EvidenceRole,
-        EvidenceStrength, MediaType, PermissionLineageId, ResolutionSlot, RetentionClass,
-        ScopeDescriptor, ValidInterval, VaultLocator,
+        EvidenceStrength, MediaType, PermissionLineageId, PredictionMetadata,
+        PredictionObservationWindow, ResolutionSlot, RetentionClass, ScopeDescriptor,
+        ValidInterval, VaultLocator,
     };
     use ed25519_dalek::SigningKey;
 
@@ -1012,6 +1024,7 @@ mod tests {
             authority_class: AuthorityClass::UserExplicit,
             epistemic_status: EpistemicStatus::UserConfirmed,
             confidence: Some(ConfidencePermille::new(900)?),
+            prediction_metadata: None,
             valid_time: ValidInterval::open_ended(TimestampMillis::new(10)),
             evidence_ids: vec![evidence_id],
         };
@@ -1088,6 +1101,7 @@ mod tests {
         epistemic_status: EpistemicStatus,
         valid_time: ValidInterval,
     ) -> Result<Claim, DomainError> {
+        let is_prediction = epistemic_status == EpistemicStatus::Prediction;
         Ok(Claim {
             id: id(suffix)?,
             subject_entity_id: id(4)?,
@@ -1096,7 +1110,20 @@ mod tests {
             scope_id: id(12)?,
             authority_class,
             epistemic_status,
-            confidence: None,
+            confidence: is_prediction
+                .then(|| ConfidencePermille::new(500))
+                .transpose()?,
+            prediction_metadata: is_prediction
+                .then(|| {
+                    PredictionMetadata::new(
+                        PredictionObservationWindow::new(
+                            TimestampMillis::new(-100),
+                            TimestampMillis::new(0),
+                        )?,
+                        1,
+                    )
+                })
+                .transpose()?,
             valid_time,
             evidence_ids: vec![id(3)?],
         })
@@ -1213,6 +1240,85 @@ mod tests {
         assert!(!first.duplicate);
         assert!(duplicate.duplicate);
         assert_eq!(ledger.accepted_events().len(), 4);
+        Ok(())
+    }
+
+    #[test]
+    fn prediction_requirements_are_rechecked_at_acceptance_and_resolution_boundaries()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut batch = fixture_batch()?;
+        let (prediction_event, invalid_prediction) = {
+            let event = batch
+                .events
+                .get_mut(3)
+                .ok_or("fixture batch must contain its claim event")?;
+            event.actor = Actor::ModelRun { run_id: id(40)? };
+            let EventPayload::ClaimAsserted(prediction) = &mut event.payload else {
+                return Err("fixture batch must contain a claim event".into());
+            };
+            prediction.authority_class = AuthorityClass::Prediction;
+            prediction.epistemic_status = EpistemicStatus::Prediction;
+            prediction.confidence = None;
+            prediction.prediction_metadata = Some(PredictionMetadata::new(
+                PredictionObservationWindow::new(
+                    TimestampMillis::new(-20),
+                    TimestampMillis::new(0),
+                )?,
+                2,
+            )?);
+            let invalid_prediction = prediction.clone();
+            let prediction_event = event.clone();
+            (prediction_event, invalid_prediction)
+        };
+        let signing_key = SigningKey::from_bytes(&[1; 32]);
+        assert!(matches!(
+            sign_batch(&batch, &signing_key),
+            Err(academic_contracts::ContractError::Domain(
+                DomainError::MissingPredictionConfidence
+            ))
+        ));
+
+        let mut ledger = LedgerState::new();
+        for (index, prerequisite) in batch.events[..3].iter().enumerate() {
+            ledger.apply_event(prerequisite, 1 + u64::try_from(index)?)?;
+        }
+        assert!(matches!(
+            ledger.apply_event(&prediction_event, 4),
+            Err(LedgerError::Domain(
+                DomainError::MissingPredictionConfidence
+            ))
+        ));
+        assert!(ledger.claim(invalid_prediction.id).is_none());
+
+        let mut missing_metadata_event = prediction_event.clone();
+        missing_metadata_event.id = id(41)?;
+        let EventPayload::ClaimAsserted(missing_metadata) = &mut missing_metadata_event.payload
+        else {
+            return Err("fixture batch must contain a claim event".into());
+        };
+        missing_metadata.confidence = Some(ConfidencePermille::new(500)?);
+        missing_metadata.prediction_metadata = None;
+        let missing_metadata_claim_id = missing_metadata.id;
+        assert!(matches!(
+            ledger.apply_event(&missing_metadata_event, 4),
+            Err(LedgerError::Domain(DomainError::MissingPredictionMetadata))
+        ));
+        assert!(ledger.claim(missing_metadata_claim_id).is_none());
+
+        // Resolution is defensive even against an impossible in-memory insertion that bypasses
+        // signed verification and append validation.
+        insert_claim(&mut ledger, invalid_prediction.clone(), 4)?;
+        let result = ledger.resolve(&ResolutionQuery {
+            subject_entity_id: invalid_prediction.subject_entity_id,
+            scope_id: invalid_prediction.scope_id,
+            predicate_id: invalid_prediction.predicate_id,
+            valid_at: TimestampMillis::new(10),
+            known_at_accept_seq: 4,
+            policy: AuthorityPolicy::UserOwned,
+        });
+        assert!(result.active_claim_ids.is_empty());
+        assert!(result.conflicting_claim_ids.is_empty());
+        assert!(result.rejected_claim_ids.is_empty());
         Ok(())
     }
 
