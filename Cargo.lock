@@ -154,6 +154,7 @@ dependencies = [
  "academic-store",
  "getrandom 0.4.3",
  "rustix",
+ "sha2",
  "windows-sys",
 ]
 
