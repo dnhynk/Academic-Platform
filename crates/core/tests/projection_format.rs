@@ -8,8 +8,8 @@ use academic_projections::{
     PROJECTION_SCHEMA_VERSION,
     generation::{ProjectionAvailability, ProjectionKind},
     runner::{
-        MIGRATION_0002_SQL, PROJECTION_ALGORITHM_VERSION, PROJECTION_APPLICATION_ID,
-        PROJECTION_DATABASE_VERSION, ProjectionError, ProjectionRunner,
+        MIGRATION_0002_SQL, MIGRATION_0003_SQL, PROJECTION_ALGORITHM_VERSION,
+        PROJECTION_APPLICATION_ID, PROJECTION_DATABASE_VERSION, ProjectionError, ProjectionRunner,
     },
 };
 use academic_store::queries::canonical_snapshot;
@@ -203,7 +203,21 @@ fn current_identity_with_missing_columns_is_rejected() -> TestResult {
     let Err(error) = open_runner(&fixture) else {
         return Err("missing version-3 columns did not fail closed".into());
     };
-    assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("columns")));
+    assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("schema")));
+    Ok(())
+}
+
+#[test]
+fn current_v3_with_missing_index_is_rejected_by_exact_fingerprint() -> TestResult {
+    let fixture = Fixture::new("current-missing-index")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    connection.execute("DROP INDEX idx_projection_generation_authority", [])?;
+    drop(connection);
+    let Err(error) = open_runner(&fixture) else {
+        return Err("v3 sidecar with a missing required index did not fail closed".into());
+    };
+    assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
     Ok(())
 }
 

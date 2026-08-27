@@ -1214,6 +1214,13 @@ fn verify_projection_identity(connection: &Connection) -> ProjectionResult<()> {
 
 fn verify_projection_schema(connection: &Connection) -> ProjectionResult<()> {
     verify_projection_identity(connection)?;
+    if projection_schema_fingerprint(connection)?
+        != migration_schema_fingerprint(MIGRATION_0003_SQL)?
+    {
+        return Err(ProjectionError::Corrupt(format!(
+            "projection schema does not exactly match physical version {PROJECTION_DATABASE_VERSION}"
+        )));
+    }
     for (name, columns) in [
         (
             "projection_generation",

@@ -7,7 +7,10 @@ use academic_projections::{
     query::ProjectionReader,
     runner::ProjectionError,
 };
-use academic_store::queries::{batch_material, canonical_snapshot, projection_source_authority};
+use academic_store::queries::{
+    QueryError, batch_material, canonical_snapshot, projection_source_authority,
+};
+use rusqlite::Connection;
 
 use support::{
     Fixture, TestResult, claim_id, entity, id, importer_actor, observed_entity_claim, policies,
@@ -160,6 +163,48 @@ fn equal_head_sidecar_swap_fails_every_query_path_even_inside_a_batch() -> TestR
             "LedgerBoundSymbol",
         ));
     }
+    Ok(())
+}
+
+#[test]
+fn truncated_outbox_prefix_cannot_hash_as_source_authority() -> TestResult {
+    let mut fixture = Fixture::new("truncated-source-prefix")?;
+    let evidence = fixture.register_scope_evidence(11, 1, b"prefix coverage evidence")?;
+    let requested_known = fixture.accept_claim(
+        importer_actor(),
+        evidence.domain_id,
+        observed_entity_claim(
+            claim_id(11_001)?,
+            entity(11_001)?,
+            "graph.related",
+            entity(11_011)?,
+            evidence.scope_id,
+            evidence.evidence_id,
+            0,
+            None,
+        )?,
+    )?;
+    let connection = Connection::open(fixture.canonical_path())?;
+    connection.execute_batch(concat!(
+        "DROP TRIGGER guard_projection_outbox_delete; ",
+        "DELETE FROM projection_outbox WHERE outbox_seq = ",
+        "(SELECT max(outbox_seq) FROM projection_outbox); ",
+        "CREATE TRIGGER guard_projection_outbox_delete BEFORE DELETE ON projection_outbox ",
+        "BEGIN SELECT RAISE(ABORT, 'canonical table is append-only'); END;"
+    ))?;
+    drop(connection);
+
+    let mut reader = fixture.store_reader()?;
+    let Err(error) = projection_source_authority(&mut reader, evidence.domain_id, requested_known)
+    else {
+        return Err("truncated outbox prefix produced source authority".into());
+    };
+    assert!(matches!(
+        error,
+        QueryError::Corrupt(
+            "projection source outbox prefix does not cover the requested acceptance coordinate"
+        )
+    ));
     Ok(())
 }
 

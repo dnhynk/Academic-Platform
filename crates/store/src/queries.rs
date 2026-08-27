@@ -630,6 +630,13 @@ fn projection_source_authority_from_connection(
             "projection source acceptance sequence overflow",
         ))?;
     }
+    if (known_at_accept_seq == 0 && row_count != 0)
+        || (known_at_accept_seq > 0 && expected_accept_seq_start <= known_at_accept_seq)
+    {
+        return Err(QueryError::Corrupt(
+            "projection source outbox prefix does not cover the requested acceptance coordinate",
+        ));
+    }
 
     Ok(ProjectionSourceAuthority {
         latest_accept_seq,
