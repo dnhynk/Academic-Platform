@@ -132,10 +132,11 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-domain",
       "academic-ledger",
       "academic-store-platform",
+      "academic-vault",
     ],
     "academic-store-platform": [],
     "academic-test-support": [],
-    "academic-vault": ["academic-domain", "academic-store"],
+    "academic-vault": ["academic-domain"],
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
