@@ -94,11 +94,27 @@ pub struct ProjectionEvidenceLocator {
     pub locator_payload: Vec<u8>,
 }
 
+/// Canonical source-ledger authority at one requested known-time coordinate.
+///
+/// The digest is domain-separated and commits to every ordered outbox row whose
+/// accepted batch starts at or before the requested coordinate. Consequently a
+/// coordinate inside a multi-event batch still binds the complete signed batch
+/// identity and payload digest.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectionSourceAuthority {
+    pub latest_accept_seq: u64,
+    pub latest_outbox_seq: u64,
+    pub source_outbox_seq: u64,
+    pub source_ledger_digest: ContentDigest,
+}
+
 /// Materialized projection input read and resolved inside one canonical transaction.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectionSourceSnapshot {
     pub latest_accept_seq: u64,
+    pub latest_outbox_seq: u64,
     pub source_outbox_seq: u64,
+    pub source_ledger_digest: ContentDigest,
     pub resolved_claims: Vec<ProjectionResolvedClaim>,
     pub evidence_locators: Vec<ProjectionEvidenceLocator>,
 }
@@ -329,36 +345,12 @@ pub fn projection_source_snapshot(
     request: &ProjectionSnapshotRequest<'_>,
 ) -> Result<ProjectionSourceSnapshot, QueryError> {
     let transaction = reader.begin_deferred()?;
-    let latest_accept_seq = nonnegative_u64(
-        transaction
-            .query_row(
-                "SELECT coalesce(max(accept_seq), 0) FROM ledger_event",
-                [],
-                |row| row.get::<_, i64>(0),
-            )
-            .map_err(StoreError::from)?,
-        "latest acceptance sequence",
+    let source_authority = projection_source_authority_from_connection(
+        &transaction,
+        request.domain_id,
+        request.known_at_accept_seq,
     )?;
-    if request.known_at_accept_seq > latest_accept_seq {
-        return Err(QueryError::KnownAtBeyondHead {
-            requested: request.known_at_accept_seq,
-            latest: latest_accept_seq,
-        });
-    }
     let known_at = checked_i64(request.known_at_accept_seq)?;
-    let source_outbox_seq = nonnegative_u64(
-        transaction
-            .query_row(
-                concat!(
-                    "SELECT coalesce(max(outbox_seq), 0) FROM projection_outbox ",
-                    "WHERE accept_seq_end <= ?1"
-                ),
-                [known_at],
-                |row| row.get::<_, i64>(0),
-            )
-            .map_err(StoreError::from)?,
-        "projection outbox sequence",
-    )?;
 
     type RawSlot = (Vec<u8>, String, Vec<u8>);
     let raw_slots: Vec<RawSlot> = query_collect(
@@ -472,13 +464,179 @@ pub fn projection_source_snapshot(
     }
 
     let snapshot = ProjectionSourceSnapshot {
-        latest_accept_seq,
-        source_outbox_seq,
+        latest_accept_seq: source_authority.latest_accept_seq,
+        latest_outbox_seq: source_authority.latest_outbox_seq,
+        source_outbox_seq: source_authority.source_outbox_seq,
+        source_ledger_digest: source_authority.source_ledger_digest,
         resolved_claims: selected.into_values().collect(),
         evidence_locators,
     };
     transaction.commit().map_err(StoreError::from)?;
     Ok(snapshot)
+}
+
+/// Recomputes only the canonical source-ledger authority needed to bind a
+/// projection query. No unresolved canonical claims leave the Store boundary.
+pub fn projection_source_authority(
+    reader: &mut ReaderConnection,
+    domain_id: DomainId,
+    known_at_accept_seq: u64,
+) -> Result<ProjectionSourceAuthority, QueryError> {
+    let transaction = reader.begin_deferred()?;
+    let authority =
+        projection_source_authority_from_connection(&transaction, domain_id, known_at_accept_seq)?;
+    transaction.commit().map_err(StoreError::from)?;
+    Ok(authority)
+}
+
+fn projection_source_authority_from_connection(
+    connection: &Connection,
+    domain_id: DomainId,
+    known_at_accept_seq: u64,
+) -> Result<ProjectionSourceAuthority, QueryError> {
+    let latest_accept_seq = nonnegative_u64(
+        connection
+            .query_row(
+                "SELECT coalesce(max(accept_seq), 0) FROM ledger_event",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(StoreError::from)?,
+        "latest acceptance sequence",
+    )?;
+    if known_at_accept_seq > latest_accept_seq {
+        return Err(QueryError::KnownAtBeyondHead {
+            requested: known_at_accept_seq,
+            latest: latest_accept_seq,
+        });
+    }
+    let latest_outbox_seq = nonnegative_u64(
+        connection
+            .query_row(
+                "SELECT coalesce(max(outbox_seq), 0) FROM projection_outbox",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(StoreError::from)?,
+        "latest projection outbox sequence",
+    )?;
+
+    type RawSourceRow = (
+        i64,
+        Vec<u8>,
+        i64,
+        i64,
+        i64,
+        Vec<u8>,
+        Vec<u8>,
+        Option<Vec<u8>>,
+        Option<i64>,
+        Option<i64>,
+    );
+    let rows: Vec<RawSourceRow> = query_collect(
+        connection,
+        concat!(
+            "SELECT o.outbox_seq, o.accepted_batch_id, o.accept_seq_start, o.accept_seq_end, ",
+            "o.canonical_revision, o.event_kind_mask, o.payload_digest, ",
+            "b.deterministic_payload_hash, b.accept_seq_start, b.accept_seq_end ",
+            "FROM projection_outbox o LEFT JOIN ledger_batch b ",
+            "ON b.batch_id = o.accepted_batch_id ",
+            "WHERE o.accept_seq_start <= ?1 ORDER BY o.outbox_seq"
+        ),
+        [checked_i64(known_at_accept_seq)?],
+        |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7)?,
+                row.get(8)?,
+                row.get(9)?,
+            ))
+        },
+    )?;
+
+    let row_count = u64::try_from(rows.len())
+        .map_err(|_| QueryError::Corrupt("projection source row count overflow"))?;
+    let mut digest_material =
+        Vec::with_capacity(64_usize.saturating_add(rows.len().saturating_mul(88)));
+    digest_material.extend_from_slice(b"ACADEMIC_PROJECTION_SOURCE_LEDGER_V1\0");
+    digest_material.extend_from_slice(domain_id.as_bytes());
+    digest_material.extend_from_slice(&known_at_accept_seq.to_be_bytes());
+    digest_material.extend_from_slice(&row_count.to_be_bytes());
+
+    let mut expected_outbox_seq = 1_u64;
+    let mut expected_accept_seq_start = 1_u64;
+    let mut source_outbox_seq = 0_u64;
+    for row in rows {
+        let outbox_seq = positive_u64(row.0, "projection source outbox sequence")?;
+        let accepted_batch_id = fixed_bytes::<16>(row.1, "projection source batch identifier")?;
+        let accept_seq_start = positive_u64(row.2, "projection source acceptance start")?;
+        let accept_seq_end = positive_u64(row.3, "projection source acceptance end")?;
+        let canonical_revision = positive_u64(row.4, "projection source canonical revision")?;
+        let event_kind_mask = fixed_bytes::<8>(row.5, "projection source event-kind mask")?;
+        let payload_digest = fixed_bytes::<32>(row.6, "projection source payload digest")?;
+        let batch_payload_digest = fixed_bytes::<32>(
+            row.7.ok_or(QueryError::Corrupt(
+                "projection source outbox has no accepted batch",
+            ))?,
+            "projection source batch payload digest",
+        )?;
+        let batch_accept_seq_start = positive_u64(
+            row.8.ok_or(QueryError::Corrupt(
+                "projection source outbox has no batch acceptance start",
+            ))?,
+            "projection source batch acceptance start",
+        )?;
+        let batch_accept_seq_end = positive_u64(
+            row.9.ok_or(QueryError::Corrupt(
+                "projection source outbox has no batch acceptance end",
+            ))?,
+            "projection source batch acceptance end",
+        )?;
+        if outbox_seq != expected_outbox_seq
+            || canonical_revision != outbox_seq
+            || accept_seq_start != expected_accept_seq_start
+            || accept_seq_end < accept_seq_start
+            || accept_seq_end > latest_accept_seq
+            || payload_digest != batch_payload_digest
+            || accept_seq_start != batch_accept_seq_start
+            || accept_seq_end != batch_accept_seq_end
+        {
+            return Err(QueryError::Corrupt(
+                "projection source outbox ordering or acceptance range is invalid",
+            ));
+        }
+        if accept_seq_end <= known_at_accept_seq {
+            source_outbox_seq = outbox_seq;
+        }
+        digest_material.extend_from_slice(&outbox_seq.to_be_bytes());
+        digest_material.extend_from_slice(&accepted_batch_id);
+        digest_material.extend_from_slice(&accept_seq_start.to_be_bytes());
+        digest_material.extend_from_slice(&accept_seq_end.to_be_bytes());
+        digest_material.extend_from_slice(&canonical_revision.to_be_bytes());
+        digest_material.extend_from_slice(&event_kind_mask);
+        digest_material.extend_from_slice(&payload_digest);
+        expected_outbox_seq = expected_outbox_seq
+            .checked_add(1)
+            .ok_or(QueryError::Corrupt(
+                "projection source outbox sequence overflow",
+            ))?;
+        expected_accept_seq_start = accept_seq_end.checked_add(1).ok_or(QueryError::Corrupt(
+            "projection source acceptance sequence overflow",
+        ))?;
+    }
+
+    Ok(ProjectionSourceAuthority {
+        latest_accept_seq,
+        latest_outbox_seq,
+        source_outbox_seq,
+        source_ledger_digest: ContentDigest::sha256(&digest_material),
+    })
 }
 
 type RawClaim = (

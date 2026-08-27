@@ -306,6 +306,67 @@ test("sqlcipher_feature_is_not_default", () => {
   assert.equal(storeNode.features.includes("sqlcipher-spike"), false);
 });
 
+test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", async () => {
+  const projectionsPackage = packagesByName.get("academic-projections");
+  const corePackage = packagesByName.get("academic-core");
+  assert.deepEqual(projectionsPackage.features.default, []);
+  assert.deepEqual(projectionsPackage.features["phase1-fault-injection"], []);
+  assert.deepEqual(corePackage.features.default, []);
+  assert.deepEqual(corePackage.features["phase1-fault-injection"], [
+    "academic-projections/phase1-fault-injection",
+  ]);
+  assert.equal(
+    resolveNodesById.get(projectionsPackage.id).features.includes("phase1-fault-injection"),
+    false,
+    "default product resolution enabled projection fault injection",
+  );
+  assert.equal(
+    resolveNodesById.get(corePackage.id).features.includes("phase1-fault-injection"),
+    false,
+    "default product resolution enabled the core fault harness",
+  );
+  for (const pkg of workspacePackages) {
+    for (const dependency of pkg.dependencies) {
+      assert.equal(
+        dependency.features.includes("phase1-fault-injection"),
+        false,
+        `${pkg.name} enables phase1-fault-injection on ${dependency.name}`,
+      );
+    }
+  }
+
+  const [runnerSource, querySource] = await Promise.all([
+    readFile("crates/projections/src/runner.rs", "utf8"),
+    readFile("crates/projections/src/query.rs", "utf8"),
+  ]);
+  const assertFeatureGuarded = (source, declaration) => {
+    const index = source.indexOf(declaration);
+    assert.notEqual(index, -1, `missing fault-harness declaration: ${declaration}`);
+    assert.match(
+      source.slice(Math.max(0, index - 240), index),
+      /#\[cfg\(feature = "phase1-fault-injection"\)\]/u,
+      `${declaration} is not guarded by phase1-fault-injection`,
+    );
+  };
+  for (const declaration of [
+    "pub use fault_boundary::{",
+    "pub fn rebuild_at_with_faults",
+    "pub fn generation(",
+    "pub fn audit_active_generation",
+    "pub fn audit_generation_state_count",
+  ]) {
+    assertFeatureGuarded(runnerSource, declaration);
+  }
+  for (const declaration of [
+    "pub use read_boundary::ProjectionReadBarrier",
+    "pub fn graph_neighbors_with_barrier",
+    "pub fn search_ranked_with_barrier",
+    "pub fn exact_symbol_lookup_with_barrier",
+  ]) {
+    assertFeatureGuarded(querySource, declaration);
+  }
+});
+
 test("synthetic_manifest_schema_rejects_non_synthetic_data", async () => {
   const [schemaText, fixtureBytes, storeSource, rpcSource, daemonMainSource] = await Promise.all([
     readFile("schemas/jsonschema/synthetic-ingest-manifest-v1.schema.json", "utf8"),
@@ -534,7 +595,19 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
-    const expectedUses = [...admission.uses, ...j1ProjectionUse]
+    const t047FormatTestUse =
+      admission.name === "rusqlite"
+        ? [
+            {
+              package: "academic-core",
+              kind: "dev",
+              target: null,
+              default_features: false,
+              features: ["backup", "hooks", "limits"],
+            },
+          ]
+        : [];
+    const expectedUses = [...admission.uses, ...j1ProjectionUse, ...t047FormatTestUse]
       .map((use) => ({ ...use, features: use.features.toSorted() }))
       .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
     assert.deepEqual(actualUses, expectedUses, `${admission.name} owner/feature receipt`);
