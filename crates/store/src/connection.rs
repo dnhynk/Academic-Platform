@@ -1,0 +1,481 @@
+//! Exact SQLite connection policy for the one writer and query-only readers.
+
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
+
+use rusqlite::{Connection, OpenFlags, OptionalExtension, Params, Row};
+
+use crate::{
+    SQLITE_APPLICATION_ID, SQLITE_BUSY_TIMEOUT_MILLIS, STORE_SCHEMA_VERSION,
+    authorizer::{install_canonical_authorizer, install_reader_authorizer},
+    error::{StoreError, StoreResult},
+    migration::verify_current_schema,
+};
+
+const SQLITE_SYNCHRONOUS_FULL: i64 = 2;
+const SQLITE_TEMP_STORE_MEMORY: i64 = 2;
+
+/// Read-back of every connection PRAGMA fixed by the S1 policy.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PragmaSnapshot {
+    /// SQLite file application identity.
+    pub application_id: i64,
+    /// Physical schema number.
+    pub user_version: i64,
+    /// Persistent journaling mode, normalized to lowercase.
+    pub journal_mode: String,
+    /// SQLite synchronous level (`2` is `FULL`).
+    pub synchronous: i64,
+    /// Whether foreign-key enforcement is active on this connection.
+    pub foreign_keys: bool,
+    /// Whether application schemas are trusted on this connection.
+    pub trusted_schema: bool,
+    /// Busy timeout in milliseconds.
+    pub busy_timeout_millis: i64,
+    /// Temporary storage mode (`2` is memory).
+    pub temp_store: i64,
+    /// Whether SQLite itself rejects every data-changing statement.
+    pub query_only: bool,
+    /// Whether replace-style implicit deletes execute persisted delete triggers.
+    pub recursive_triggers: bool,
+}
+
+/// The product writer connection with canonical-table authorizer installed.
+pub struct WriterConnection {
+    connection: Connection,
+    database_path: PathBuf,
+}
+
+impl fmt::Debug for WriterConnection {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("WriterConnection")
+            .field("database_path", &self.database_path)
+            .field("canonical_authorizer", &true)
+            .finish_non_exhaustive()
+    }
+}
+
+impl WriterConnection {
+    /// Executes SQL through the guarded product writer.
+    pub fn execute<P: Params>(&self, sql: &str, params: P) -> StoreResult<usize> {
+        self.connection
+            .execute(sql, params)
+            .map_err(StoreError::from)
+    }
+
+    /// Executes a SQL batch through the guarded product writer.
+    pub fn execute_batch(&self, sql: &str) -> StoreResult<()> {
+        self.connection.execute_batch(sql).map_err(StoreError::from)
+    }
+
+    /// Runs one query row without exposing the underlying connection capability.
+    pub fn query_row<T, P, F>(&self, sql: &str, params: P, mapper: F) -> StoreResult<T>
+    where
+        P: Params,
+        F: FnOnce(&Row<'_>) -> rusqlite::Result<T>,
+    {
+        self.connection
+            .query_row(sql, params, mapper)
+            .map_err(StoreError::from)
+    }
+
+    /// Reads back the exact active PRAGMAs.
+    pub fn pragma_snapshot(&self) -> StoreResult<PragmaSnapshot> {
+        read_pragma_snapshot(&self.connection)
+    }
+
+    /// Returns the database path without exposing a raw SQLite handle.
+    #[must_use]
+    pub fn database_path(&self) -> &Path {
+        &self.database_path
+    }
+}
+
+/// A filesystem-read-only and SQLite-`query_only` connection.
+pub struct ReaderConnection {
+    connection: Connection,
+    database_path: PathBuf,
+}
+
+impl fmt::Debug for ReaderConnection {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ReaderConnection")
+            .field("database_path", &self.database_path)
+            .field("query_only", &true)
+            .finish_non_exhaustive()
+    }
+}
+
+impl ReaderConnection {
+    /// Runs one query row without exposing the underlying connection capability.
+    pub fn query_row<T, P, F>(&self, sql: &str, params: P, mapper: F) -> StoreResult<T>
+    where
+        P: Params,
+        F: FnOnce(&Row<'_>) -> rusqlite::Result<T>,
+    {
+        self.connection
+            .query_row(sql, params, mapper)
+            .map_err(StoreError::from)
+    }
+
+    /// Attempts one statement through both OS read-only and SQLite query-only enforcement.
+    ///
+    /// This method exists so callers can receive the real denial rather than assuming a
+    /// high-level wrapper is the only protection.
+    pub fn execute<P: Params>(&self, sql: &str, params: P) -> StoreResult<usize> {
+        self.connection
+            .execute(sql, params)
+            .map_err(StoreError::from)
+    }
+
+    /// Attempts a batch through both reader protections.
+    pub fn execute_batch(&self, sql: &str) -> StoreResult<()> {
+        self.connection.execute_batch(sql).map_err(StoreError::from)
+    }
+
+    /// Reads back the exact active PRAGMAs.
+    pub fn pragma_snapshot(&self) -> StoreResult<PragmaSnapshot> {
+        read_pragma_snapshot(&self.connection)
+    }
+
+    /// Returns the database path without exposing a raw SQLite handle.
+    #[must_use]
+    pub fn database_path(&self) -> &Path {
+        &self.database_path
+    }
+}
+
+/// Opens the existing schema as the sole guarded product writer.
+pub fn open_writer(database_path: &Path) -> StoreResult<WriterConnection> {
+    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let connection = Connection::open_with_flags(database_path, flags)?;
+    configure_writer_connection(&connection)?;
+    verify_fts5(&connection)?;
+    let pragmas = read_pragma_snapshot(&connection)?;
+    verify_writer_pragmas(&pragmas)?;
+    verify_current_schema(&connection, &pragmas)?;
+    install_canonical_authorizer(&connection)?;
+    Ok(WriterConnection {
+        connection,
+        database_path: database_path.to_path_buf(),
+    })
+}
+
+/// Opens an existing database with OS read-only flags and SQLite `query_only=ON`.
+pub fn open_reader(database_path: &Path) -> StoreResult<ReaderConnection> {
+    let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let connection = Connection::open_with_flags(database_path, flags)?;
+    configure_reader_connection(&connection)?;
+    let pragmas = read_pragma_snapshot(&connection)?;
+    verify_reader_pragmas(&pragmas)?;
+    verify_current_schema(&connection, &pragmas)?;
+    install_reader_authorizer(&connection)?;
+    Ok(ReaderConnection {
+        connection,
+        database_path: database_path.to_path_buf(),
+    })
+}
+
+pub(crate) fn configure_migration_connection(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(
+        "PRAGMA journal_mode = WAL;\
+         PRAGMA synchronous = FULL;\
+         PRAGMA foreign_keys = ON;\
+         PRAGMA trusted_schema = OFF;\
+         PRAGMA busy_timeout = 250;\
+         PRAGMA temp_store = MEMORY;\
+         PRAGMA recursive_triggers = ON;\
+         PRAGMA query_only = OFF;",
+    )?;
+    Ok(())
+}
+
+fn configure_writer_connection(connection: &Connection) -> StoreResult<()> {
+    configure_migration_connection(connection)
+}
+
+fn configure_reader_connection(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(
+        "PRAGMA query_only = ON;\
+         PRAGMA foreign_keys = ON;\
+         PRAGMA trusted_schema = OFF;\
+         PRAGMA busy_timeout = 250;\
+         PRAGMA temp_store = MEMORY;",
+    )?;
+    Ok(())
+}
+
+pub(crate) fn read_pragma_snapshot(connection: &Connection) -> StoreResult<PragmaSnapshot> {
+    Ok(PragmaSnapshot {
+        application_id: pragma_i64(connection, "application_id")?,
+        user_version: pragma_i64(connection, "user_version")?,
+        journal_mode: pragma_text(connection, "journal_mode")?.to_ascii_lowercase(),
+        synchronous: pragma_i64(connection, "synchronous")?,
+        foreign_keys: pragma_i64(connection, "foreign_keys")? == 1,
+        trusted_schema: pragma_i64(connection, "trusted_schema")? == 1,
+        busy_timeout_millis: pragma_i64(connection, "busy_timeout")?,
+        temp_store: pragma_i64(connection, "temp_store")?,
+        query_only: pragma_i64(connection, "query_only")? == 1,
+        recursive_triggers: pragma_i64(connection, "recursive_triggers")? == 1,
+    })
+}
+
+pub(crate) fn verify_fts5(connection: &Connection) -> StoreResult<()> {
+    let compile_option = connection
+        .query_row(
+            "SELECT 1 FROM pragma_compile_options WHERE compile_options = 'ENABLE_FTS5'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?;
+    if compile_option != Some(1) {
+        return Err(StoreError::UnsupportedSqliteBuild(
+            "ENABLE_FTS5 compile option is absent",
+        ));
+    }
+    connection.execute_batch(
+        "SAVEPOINT academic_fts5_probe;\
+         CREATE VIRTUAL TABLE temp.academic_fts5_probe USING fts5(body);\
+         INSERT INTO temp.academic_fts5_probe(body) VALUES ('synthetic probe');",
+    )?;
+    let matches = connection.query_row(
+        "SELECT count(*) FROM temp.academic_fts5_probe WHERE body MATCH 'synthetic'",
+        [],
+        |row| row.get::<_, i64>(0),
+    );
+    let cleanup = connection.execute_batch(
+        "DROP TABLE IF EXISTS temp.academic_fts5_probe;\
+         RELEASE academic_fts5_probe;",
+    );
+    let matches = matches?;
+    cleanup?;
+    if matches != 1 {
+        return Err(StoreError::UnsupportedSqliteBuild(
+            "FTS5 executable create/query probe failed",
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn verify_writer_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> {
+    verify_identity_pragmas(pragmas)?;
+    verify_migration_pragmas(pragmas)
+}
+
+pub(crate) fn verify_migration_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> {
+    verify_writer_operational_pragmas(pragmas)?;
+    exact("query_only", "0", bool_i64(pragmas.query_only).to_string())
+}
+
+fn verify_reader_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> {
+    exact(
+        "application_id",
+        &SQLITE_APPLICATION_ID.to_string(),
+        pragmas.application_id.to_string(),
+    )?;
+    exact(
+        "user_version",
+        &STORE_SCHEMA_VERSION.to_string(),
+        pragmas.user_version.to_string(),
+    )?;
+    exact("journal_mode", "wal", pragmas.journal_mode.clone())?;
+    exact(
+        "foreign_keys",
+        "1",
+        bool_i64(pragmas.foreign_keys).to_string(),
+    )?;
+    exact(
+        "trusted_schema",
+        "0",
+        bool_i64(pragmas.trusted_schema).to_string(),
+    )?;
+    exact(
+        "busy_timeout",
+        &SQLITE_BUSY_TIMEOUT_MILLIS.to_string(),
+        pragmas.busy_timeout_millis.to_string(),
+    )?;
+    exact("query_only", "1", bool_i64(pragmas.query_only).to_string())
+}
+
+fn verify_identity_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> {
+    exact(
+        "application_id",
+        &SQLITE_APPLICATION_ID.to_string(),
+        pragmas.application_id.to_string(),
+    )?;
+    exact(
+        "user_version",
+        &STORE_SCHEMA_VERSION.to_string(),
+        pragmas.user_version.to_string(),
+    )
+}
+
+fn verify_writer_operational_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> {
+    exact("journal_mode", "wal", pragmas.journal_mode.clone())?;
+    exact(
+        "synchronous",
+        &SQLITE_SYNCHRONOUS_FULL.to_string(),
+        pragmas.synchronous.to_string(),
+    )?;
+    exact(
+        "foreign_keys",
+        "1",
+        bool_i64(pragmas.foreign_keys).to_string(),
+    )?;
+    exact(
+        "trusted_schema",
+        "0",
+        bool_i64(pragmas.trusted_schema).to_string(),
+    )?;
+    exact(
+        "busy_timeout",
+        &SQLITE_BUSY_TIMEOUT_MILLIS.to_string(),
+        pragmas.busy_timeout_millis.to_string(),
+    )?;
+    exact(
+        "temp_store",
+        &SQLITE_TEMP_STORE_MEMORY.to_string(),
+        pragmas.temp_store.to_string(),
+    )?;
+    exact(
+        "recursive_triggers",
+        "1",
+        bool_i64(pragmas.recursive_triggers).to_string(),
+    )
+}
+
+fn exact(pragma: &'static str, expected: &str, actual: String) -> StoreResult<()> {
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(StoreError::PragmaMismatch {
+            pragma,
+            expected: expected.to_owned(),
+            actual,
+        })
+    }
+}
+
+fn pragma_i64(connection: &Connection, name: &'static str) -> StoreResult<i64> {
+    connection
+        .query_row(&format!("PRAGMA {name}"), [], |row| row.get(0))
+        .map_err(StoreError::from)
+}
+
+fn pragma_text(connection: &Connection, name: &'static str) -> StoreResult<String> {
+    connection
+        .query_row(&format!("PRAGMA {name}"), [], |row| row.get(0))
+        .map_err(StoreError::from)
+}
+
+const fn bool_i64(value: bool) -> i64 {
+    if value { 1 } else { 0 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn migration_snapshot_allows_uninitialized_identity_but_writer_snapshot_does_not() {
+        let snapshot = expected_migration_snapshot();
+
+        assert!(verify_migration_pragmas(&snapshot).is_ok());
+        assert!(matches!(
+            verify_writer_pragmas(&snapshot),
+            Err(StoreError::PragmaMismatch {
+                pragma: "application_id",
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn migration_snapshot_rejects_every_operational_mismatch() {
+        let expected = expected_migration_snapshot();
+        let mismatches = [
+            (
+                "journal_mode",
+                PragmaSnapshot {
+                    journal_mode: "delete".to_owned(),
+                    ..expected.clone()
+                },
+            ),
+            (
+                "synchronous",
+                PragmaSnapshot {
+                    synchronous: 1,
+                    ..expected.clone()
+                },
+            ),
+            (
+                "foreign_keys",
+                PragmaSnapshot {
+                    foreign_keys: false,
+                    ..expected.clone()
+                },
+            ),
+            (
+                "trusted_schema",
+                PragmaSnapshot {
+                    trusted_schema: true,
+                    ..expected.clone()
+                },
+            ),
+            (
+                "busy_timeout",
+                PragmaSnapshot {
+                    busy_timeout_millis: 0,
+                    ..expected.clone()
+                },
+            ),
+            (
+                "temp_store",
+                PragmaSnapshot {
+                    temp_store: 0,
+                    ..expected.clone()
+                },
+            ),
+            (
+                "recursive_triggers",
+                PragmaSnapshot {
+                    recursive_triggers: false,
+                    ..expected.clone()
+                },
+            ),
+            (
+                "query_only",
+                PragmaSnapshot {
+                    query_only: true,
+                    ..expected
+                },
+            ),
+        ];
+
+        for (expected_pragma, snapshot) in mismatches {
+            assert!(matches!(
+                verify_migration_pragmas(&snapshot),
+                Err(StoreError::PragmaMismatch { pragma, .. }) if pragma == expected_pragma
+            ));
+        }
+    }
+
+    fn expected_migration_snapshot() -> PragmaSnapshot {
+        PragmaSnapshot {
+            application_id: 0,
+            user_version: 0,
+            journal_mode: "wal".to_owned(),
+            synchronous: SQLITE_SYNCHRONOUS_FULL,
+            foreign_keys: true,
+            trusted_schema: false,
+            busy_timeout_millis: 250,
+            temp_store: SQLITE_TEMP_STORE_MEMORY,
+            query_only: false,
+            recursive_triggers: true,
+        }
+    }
+}
