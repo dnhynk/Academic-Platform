@@ -1108,7 +1108,20 @@ const assertV2WriterCapabilityGate = (input) => {
     .toSorted();
   assert.deepEqual(
     publicFunctions,
-    ["decode_unsigned_batch", "encode_unsigned_batch", "sign_batch", "verify_signed_batch"],
+    [
+      "decode_canonical_claim_object",
+      "decode_canonical_evidence_ids",
+      "decode_canonical_evidence_locator",
+      "decode_unsigned_batch",
+      "encode_canonical_actor",
+      "encode_canonical_claim_object",
+      "encode_canonical_event_payload",
+      "encode_canonical_evidence_ids",
+      "encode_canonical_evidence_locator",
+      "encode_unsigned_batch",
+      "sign_batch",
+      "verify_signed_batch",
+    ],
     "academic-contracts root public functions must match the reviewed capability allowlist",
   );
   assert.deepEqual(
@@ -1167,6 +1180,14 @@ const assertV2WriterCapabilityGate = (input) => {
       verify_signed_batch: "pub fn verify_signed_batch(envelope_bytes: &[u8], authorization: &DeviceAuthorization,) -> Result<VerifiedBatch, ContractError> {}",
       encode_unsigned_batch: "pub fn encode_unsigned_batch(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {}",
       decode_unsigned_batch: "pub fn decode_unsigned_batch(bytes: &[u8]) -> Result<UnsignedBatch, ContractError> {}",
+      encode_canonical_actor: "pub fn encode_canonical_actor(actor: &Actor) -> Result<Vec<u8>, ContractError> {}",
+      encode_canonical_event_payload: "pub fn encode_canonical_event_payload(event: &Event) -> Result<Vec<u8>, ContractError> {}",
+      encode_canonical_claim_object: "pub fn encode_canonical_claim_object(object: &ClaimObject) -> Result<Vec<u8>, ContractError> {}",
+      decode_canonical_claim_object: "pub fn decode_canonical_claim_object(bytes: &[u8]) -> Result<ClaimObject, ContractError> {}",
+      encode_canonical_evidence_ids: "pub fn encode_canonical_evidence_ids(ids: &[EvidenceId]) -> Result<Vec<u8>, ContractError> {}",
+      decode_canonical_evidence_ids: "pub fn decode_canonical_evidence_ids(bytes: &[u8]) -> Result<Vec<EvidenceId>, ContractError> {}",
+      encode_canonical_evidence_locator: "pub fn encode_canonical_evidence_locator(locator: &EvidenceLocator,) -> Result<Vec<u8>, ContractError> {}",
+      decode_canonical_evidence_locator: "pub fn decode_canonical_evidence_locator(bytes: &[u8]) -> Result<EvidenceLocator, ContractError> {}",
     },
     "academic-contracts root",
   );
@@ -1202,11 +1223,23 @@ const assertV2WriterCapabilityGate = (input) => {
     [
       {
         name: "VerifiedBatch",
-        methods: ["batch", "public_key", "source_schema_version", "payload_hash", "envelope_hash"],
+        methods: [
+          "batch",
+          "public_key",
+          "source_schema_version",
+          "source_envelope",
+          "source_payload",
+          "signature_bytes",
+          "payload_hash",
+          "envelope_hash",
+        ],
         publicMethods: [
           "batch",
           "public_key",
           "source_schema_version",
+          "source_envelope",
+          "source_payload",
+          "signature_bytes",
           "payload_hash",
           "envelope_hash",
         ],
@@ -1231,6 +1264,9 @@ const assertV2WriterCapabilityGate = (input) => {
     "VerifiedBatch::batch": "pub const fn batch(&self) -> &UnsignedBatch {}",
     "VerifiedBatch::public_key": "pub const fn public_key(&self) -> &VerifyingKey {}",
     "VerifiedBatch::source_schema_version": "pub const fn source_schema_version(&self) -> u16 {}",
+    "VerifiedBatch::source_envelope": "pub fn source_envelope(&self) -> &[u8] {}",
+    "VerifiedBatch::source_payload": "pub fn source_payload(&self) -> &[u8] {}",
+    "VerifiedBatch::signature_bytes": "pub const fn signature_bytes(&self) -> &[u8] {}",
     "VerifiedBatch::payload_hash": "pub const fn payload_hash(&self) -> ContentDigest {}",
     "VerifiedBatch::envelope_hash": "pub const fn envelope_hash(&self) -> ContentDigest {}",
     "DeviceAuthorization::new": "pub const fn new(device_id: DeviceId, user_id: EntityId, verifying_key: VerifyingKey) -> Self {}",
@@ -1407,6 +1443,26 @@ assert.throws(
   () => assertV2WriterCapabilityGate(publicSignatureConstnessDrift),
   /public inherent method signature must remain token-exact/u,
   "public API constness drift must fail signature-exact review",
+);
+const sealedSourceAccessorSignatureDrift = rustContractsText.replace(
+  "    pub fn source_envelope(&self) -> &[u8] {",
+  "    pub fn source_envelope(&self, normalized: bool) -> &[u8] {",
+);
+assert.notEqual(sealedSourceAccessorSignatureDrift, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(sealedSourceAccessorSignatureDrift),
+  /public inherent method signature must remain token-exact/u,
+  "sealed source accessor signature drift must fail signature-exact review",
+);
+const unrelatedCanonicalCapability = rustContractsText.replace(
+  "\n#[cfg(test)]\nmod tests {",
+  "\npub fn encode_unreviewed_value() -> Vec<u8> { Vec::new() }\n\n#[cfg(test)]\nmod tests {",
+);
+assert.notEqual(unrelatedCanonicalCapability, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(unrelatedCanonicalCapability),
+  /public functions must match the reviewed capability allowlist/u,
+  "an unrelated public canonical capability must fail the allowlist",
 );
 const neutralV1CloneReachedByWriter = rustContractsText
   .replace(

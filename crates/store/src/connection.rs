@@ -5,7 +5,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rusqlite::{Connection, OpenFlags, OptionalExtension, Params, Row};
+use rusqlite::{
+    Connection, OpenFlags, OptionalExtension, Params, Row, Transaction, TransactionBehavior,
+};
 
 use crate::{
     SQLITE_APPLICATION_ID, SQLITE_BUSY_TIMEOUT_MILLIS, STORE_SCHEMA_VERSION,
@@ -59,6 +61,28 @@ impl fmt::Debug for WriterConnection {
 }
 
 impl WriterConnection {
+    /// Starts the one allowed acceptance transaction with an eager write lock.
+    ///
+    /// This crate-private capability keeps the raw SQLite connection hidden while
+    /// statically preventing nested transactions through the mutable borrow.
+    pub(crate) fn begin_immediate(&mut self) -> StoreResult<Transaction<'_>> {
+        self.connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(StoreError::from)
+    }
+
+    /// Runs a bounded repository preflight against the guarded connection.
+    ///
+    /// The higher-ranked callback cannot return a borrowed connection, and the
+    /// installed authorizer remains active. S2 uses this only to resolve the
+    /// complete sealed-artifact reference closure before `BEGIN IMMEDIATE`.
+    pub(crate) fn with_preflight_reader<T>(
+        &self,
+        operation: impl for<'connection> FnOnce(&'connection Connection) -> T,
+    ) -> T {
+        operation(&self.connection)
+    }
+
     /// Executes SQL through the guarded product writer.
     pub fn execute<P: Params>(&self, sql: &str, params: P) -> StoreResult<usize> {
         self.connection
@@ -119,6 +143,27 @@ impl ReaderConnection {
     {
         self.connection
             .query_row(sql, params, mapper)
+            .map_err(StoreError::from)
+    }
+
+    /// Collects a read-only result set without exposing the SQLite connection.
+    ///
+    /// S2 bitemporal resolution needs more than one normalized row. Keeping the
+    /// statement and iterator inside this boundary preserves the OS/query-only
+    /// reader capability while avoiding a raw-connection escape hatch.
+    pub(crate) fn query_collect<T, P, F>(
+        &self,
+        sql: &str,
+        params: P,
+        mapper: F,
+    ) -> StoreResult<Vec<T>>
+    where
+        P: Params,
+        F: FnMut(&Row<'_>) -> rusqlite::Result<T>,
+    {
+        let mut statement = self.connection.prepare(sql)?;
+        let rows = statement.query_map(params, mapper)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(StoreError::from)
     }
 

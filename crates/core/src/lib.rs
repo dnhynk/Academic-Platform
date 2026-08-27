@@ -4,6 +4,8 @@
 //! It accepts only canonically encoded batches whose signature matches an
 //! independently supplied device key.
 
+pub mod service;
+
 use std::{collections::BTreeSet, fmt, str::FromStr};
 
 use academic_contracts::{

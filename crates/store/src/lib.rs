@@ -5,13 +5,19 @@
 //! admission point for a later evidence spike; enabling it is not acceptance of
 //! encrypted storage or permission to process production data.
 
+pub mod accept;
 mod authorizer;
 pub mod connection;
 pub mod error;
+pub mod fault;
+pub mod idempotency;
 pub mod migration;
+pub mod outbox;
 pub mod path_policy;
 mod platform;
 pub mod profile;
+pub mod queries;
+pub mod repository;
 
 use std::{error::Error, fmt};
 

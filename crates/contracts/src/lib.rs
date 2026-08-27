@@ -18,11 +18,12 @@
 use std::{collections::BTreeMap, io::Cursor};
 
 use academic_domain::{
-    Actor, ContentDigest, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2,
-    EntityId, UnsignedBatch,
+    Actor, ClaimObject, ContentDigest, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1,
+    EVENT_SCHEMA_VERSION_V2, EntityId, Event, EvidenceId, EvidenceLocator, UnsignedBatch,
 };
 use ciborium::value::{Integer, Value as CborValue};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue};
 use thiserror::Error;
 
@@ -66,6 +67,9 @@ pub struct VerifiedBatch {
     batch: UnsignedBatch,
     public_key: VerifyingKey,
     source_schema_version: u16,
+    source_envelope: Vec<u8>,
+    source_payload: Vec<u8>,
+    signature: [u8; 64],
     payload_hash: ContentDigest,
     envelope_hash: ContentDigest,
 }
@@ -87,6 +91,27 @@ impl VerifiedBatch {
     #[must_use]
     pub const fn source_schema_version(&self) -> u16 {
         self.source_schema_version
+    }
+
+    /// Returns the exact canonical signed envelope authenticated by verification.
+    ///
+    /// This is intentionally retained inside the opaque capability so storage can
+    /// preserve source bytes without decoding or reconstructing legacy payloads.
+    #[must_use]
+    pub fn source_envelope(&self) -> &[u8] {
+        &self.source_envelope
+    }
+
+    /// Returns the exact canonical source payload covered by the signature.
+    #[must_use]
+    pub fn source_payload(&self) -> &[u8] {
+        &self.source_payload
+    }
+
+    /// Returns the exact Ed25519 signature authenticated for the source payload.
+    #[must_use]
+    pub const fn signature_bytes(&self) -> &[u8] {
+        &self.signature
     }
 
     /// Returns the digest of the canonical signing payload.
@@ -268,12 +293,17 @@ pub fn verify_signed_batch(
     }) {
         return Err(ContractError::UnexpectedUserActor);
     }
+    let payload_hash = ContentDigest::sha256(&payload);
+    let envelope_hash = ContentDigest::sha256(envelope_bytes);
     Ok(VerifiedBatch {
         batch,
         public_key,
         source_schema_version,
-        payload_hash: ContentDigest::sha256(&payload),
-        envelope_hash: ContentDigest::sha256(envelope_bytes),
+        source_envelope: envelope_bytes.to_vec(),
+        source_payload: payload,
+        signature: signature_array,
+        payload_hash,
+        envelope_hash,
     })
 }
 
@@ -284,6 +314,67 @@ pub fn encode_unsigned_batch(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractE
     let bytes = encode_cbor_value(&json_to_cbor(&json)?)?;
     require_current_writer_payload(&bytes)?;
     Ok(bytes)
+}
+
+/// Canonically encodes one validated actor with the signed-contract CBOR profile.
+pub fn encode_canonical_actor(actor: &Actor) -> Result<Vec<u8>, ContractError> {
+    actor.validate()?;
+    encode_domain_value(actor)
+}
+
+/// Canonically encodes the payload of one fully validated event.
+pub fn encode_canonical_event_payload(event: &Event) -> Result<Vec<u8>, ContractError> {
+    event.validate()?;
+    encode_domain_value(&event.payload)
+}
+
+/// Canonically encodes one typed claim object for normalized closure storage.
+pub fn encode_canonical_claim_object(object: &ClaimObject) -> Result<Vec<u8>, ContractError> {
+    encode_domain_value(object)
+}
+
+/// Decodes a canonical typed claim object without a store-local wire format.
+pub fn decode_canonical_claim_object(bytes: &[u8]) -> Result<ClaimObject, ContractError> {
+    decode_domain_value(bytes)
+}
+
+/// Canonically encodes a decision's ordered rationale evidence identifiers.
+pub fn encode_canonical_evidence_ids(ids: &[EvidenceId]) -> Result<Vec<u8>, ContractError> {
+    encode_domain_value(ids)
+}
+
+/// Decodes an ordered canonical rationale evidence identifier list.
+pub fn decode_canonical_evidence_ids(bytes: &[u8]) -> Result<Vec<EvidenceId>, ContractError> {
+    decode_domain_value(bytes)
+}
+
+/// Canonically encodes a typed evidence locator for normalized closure storage.
+pub fn encode_canonical_evidence_locator(
+    locator: &EvidenceLocator,
+) -> Result<Vec<u8>, ContractError> {
+    locator.validate()?;
+    encode_domain_value(locator)
+}
+
+/// Decodes and validates a canonical typed evidence locator.
+pub fn decode_canonical_evidence_locator(bytes: &[u8]) -> Result<EvidenceLocator, ContractError> {
+    let locator: EvidenceLocator = decode_domain_value(bytes)?;
+    locator.validate()?;
+    Ok(locator)
+}
+
+fn encode_domain_value<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, ContractError> {
+    let json = serde_json::to_value(value)?;
+    encode_cbor_value(&json_to_cbor(&json)?)
+}
+
+fn decode_domain_value<T: DeserializeOwned + Serialize>(bytes: &[u8]) -> Result<T, ContractError> {
+    let json = decode_canonical_payload_json(bytes)?;
+    let value = serde_json::from_value(json)?;
+    if encode_domain_value(&value)? != bytes {
+        return Err(ContractError::NonCanonicalEncoding);
+    }
+    Ok(value)
 }
 
 fn require_current_writer_payload(bytes: &[u8]) -> Result<(), ContractError> {
@@ -836,9 +927,9 @@ mod tests {
     use academic_domain::{
         Actor, AuthorityClass, BatchId, Claim, ClaimId, ClaimObject, ClaimRelation,
         ClaimRelationKind, ConfidencePermille, Decimal, DeviceId, DomainId, EVENT_SCHEMA_VERSION,
-        EntityId, EpistemicStatus, Event, EventId, EventPayload, EvidenceId, PredicateId,
-        PredictionMetadata, PredictionObservationWindow, ResolutionSlot, ScopeId, TimestampMillis,
-        ValidInterval,
+        EntityId, EpistemicStatus, Event, EventId, EventPayload, EvidenceId, EvidenceLocator,
+        PredicateId, PredictionMetadata, PredictionObservationWindow, ResolutionSlot, ScopeId,
+        TimestampMillis, ValidInterval,
     };
 
     use super::*;
@@ -906,6 +997,56 @@ mod tests {
             signing_key.verifying_key().as_bytes(),
             &signature.to_bytes(),
         )
+    }
+
+    #[test]
+    fn verified_capability_retains_exact_authenticated_source_bytes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = minimal_batch()?;
+        let signing_key = SigningKey::from_bytes(&[0x31; 32]);
+        let envelope = sign_batch(&batch, &signing_key)?;
+        let decoded = decode_envelope(&envelope)?;
+        let verified = verify_signed_batch(&envelope, &authorization(&batch, &signing_key)?)?;
+        assert_eq!(verified.source_envelope(), envelope);
+        assert_eq!(verified.source_payload(), decoded.payload);
+        assert_eq!(verified.signature_bytes(), decoded.signature);
+        assert_eq!(
+            verified.payload_hash(),
+            ContentDigest::sha256(&decoded.payload)
+        );
+        assert_eq!(verified.envelope_hash(), ContentDigest::sha256(&envelope));
+        Ok(())
+    }
+
+    #[test]
+    fn normalized_value_encoders_are_exact_signed_contract_subvalues()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = minimal_batch()?;
+        let event = &batch.events[0];
+        let batch_json = serde_json::to_value(&batch)?;
+        let event_json = &batch_json["events"][0];
+        let expected_actor = encode_cbor_value(&json_to_cbor(&event_json["actor"])?)?;
+        let expected_payload = encode_cbor_value(&json_to_cbor(&event_json["payload"])?)?;
+        assert_eq!(encode_canonical_actor(&event.actor)?, expected_actor);
+        assert_eq!(encode_canonical_event_payload(event)?, expected_payload);
+
+        let EventPayload::DecisionRecorded(decision) = &event.payload else {
+            unreachable!("minimal fixture is a decision");
+        };
+        let object_bytes = encode_canonical_claim_object(&decision.target_object)?;
+        assert_eq!(
+            decode_canonical_claim_object(&object_bytes)?,
+            decision.target_object
+        );
+        let evidence_bytes = encode_canonical_evidence_ids(&decision.rationale_evidence_ids)?;
+        assert_eq!(
+            decode_canonical_evidence_ids(&evidence_bytes)?,
+            decision.rationale_evidence_ids
+        );
+        let locator = EvidenceLocator::Page { page_number: 7 };
+        let locator_bytes = encode_canonical_evidence_locator(&locator)?;
+        assert_eq!(decode_canonical_evidence_locator(&locator_bytes)?, locator);
+        Ok(())
     }
 
     fn v1_compatible_batch() -> Result<UnsignedBatch, DomainError> {

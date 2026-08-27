@@ -7,15 +7,28 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use academic_contracts::VerifiedBatch;
 use academic_domain::{
-    Actor, ArtifactDescriptor, ArtifactId, AuthorityClass, BatchId, Claim, ClaimId, ClaimObject,
-    ClaimRelation, ClaimRelationKind, ContentDigest, DecisionAction, DeviceId, DomainError,
-    DomainId, EntityId, EpistemicStatus, Event, EventId, EventPayload, EvidenceId, EvidenceItem,
-    FreshnessBand, MasteryLevel, PredicateId, ScopeDescriptor, ScopeId, TimestampMillis,
-    UserDecision,
+    Actor, ArtifactDescriptor, ArtifactId, BatchId, Claim, ClaimId, ClaimObject, ClaimRelation,
+    ClaimRelationKind, ContentDigest, DecisionAction, DeviceId, DomainError, DomainId, EntityId,
+    EpistemicStatus, Event, EventId, EventPayload, EvidenceId, EvidenceItem, PredicateId,
+    ScopeDescriptor, ScopeId, TimestampMillis, UserDecision,
 };
 pub use academic_domain::{EVENT_SCHEMA_VERSION, UnsignedBatch};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+mod resolver;
+
+use resolver::relation_effect_is_authorized;
+pub use resolver::{
+    AuthorityPolicy, KnowledgeStateView, ResolutionClaim, ResolutionDecision, ResolutionQuery,
+    ResolutionRelation, ResolutionResult, ResolverActorKind,
+    relation_effect_is_authorized_for_kind, resolve_snapshot,
+};
+
+#[cfg(test)]
+use academic_domain::{AuthorityClass, MasteryLevel};
+#[cfg(test)]
+use resolver::authority_rank;
 
 /// Ledger acceptance or replay failure.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -498,189 +511,32 @@ impl LedgerState {
     /// Resolves active and conflicting claims at independent valid/known coordinates.
     #[must_use]
     pub fn resolve(&self, query: &ResolutionQuery) -> ResolutionResult {
-        let mut candidates: Vec<(&Claim, u64)> = self
+        let claims = self
             .claims
             .values()
-            .filter_map(|(claim, metadata)| {
-                (metadata.accept_seq <= query.known_at_accept_seq
-                    && claim.validate().is_ok()
-                    && claim.subject_entity_id == query.subject_entity_id
-                    && claim.predicate_id == query.predicate_id
-                    && claim.scope_id == query.scope_id
-                    && claim.valid_time.contains(query.valid_at))
-                .then_some((claim, metadata.accept_seq))
+            .map(|(claim, metadata)| ResolutionClaim {
+                claim: claim.clone(),
+                accept_seq: metadata.accept_seq,
             })
-            .collect();
-        candidates.sort_by_key(|(claim, accepted)| (*accepted, claim.id));
-
-        let candidate_ids: BTreeSet<ClaimId> =
-            candidates.iter().map(|(claim, _)| claim.id).collect();
-        let mut applicable_decisions: Vec<(&UserDecision, u64)> = self
+            .collect::<Vec<_>>();
+        let relations = self
+            .relations
+            .iter()
+            .map(|(relation, metadata)| ResolutionRelation {
+                relation: relation.clone(),
+                accept_seq: metadata.accept_seq,
+                actor_kind: ResolverActorKind::from(&metadata.actor),
+            })
+            .collect::<Vec<_>>();
+        let decisions = self
             .decisions
             .iter()
-            .filter_map(|(decision, metadata)| {
-                (metadata.accept_seq <= query.known_at_accept_seq
-                    && decision.resolution_slot.subject_entity_id == query.subject_entity_id
-                    && decision.resolution_slot.predicate_id == query.predicate_id
-                    && decision.resolution_slot.scope_id == query.scope_id
-                    && decision.valid_time.contains(query.valid_at))
-                .then_some((decision, metadata.accept_seq))
+            .map(|(decision, metadata)| ResolutionDecision {
+                decision: decision.clone(),
+                accept_seq: metadata.accept_seq,
             })
-            .collect();
-        applicable_decisions.sort_by_key(|(decision, accept_seq)| (*accept_seq, decision.id));
-        let has_user_override = !applicable_decisions.is_empty();
-        let mut rejected_objects: Vec<ClaimObject> = Vec::new();
-        let mut chosen_object: Option<ClaimObject> = None;
-        for (decision, _) in applicable_decisions {
-            match &decision.action {
-                DecisionAction::Confirm => {
-                    rejected_objects.retain(|object| object != &decision.target_object);
-                    chosen_object = Some(decision.target_object.clone());
-                }
-                DecisionAction::Reject => {
-                    if !rejected_objects.contains(&decision.target_object) {
-                        rejected_objects.push(decision.target_object.clone());
-                    }
-                    if chosen_object.as_ref() == Some(&decision.target_object) {
-                        chosen_object = None;
-                    }
-                }
-                DecisionAction::Replace {
-                    replacement_claim_id,
-                } => {
-                    if !rejected_objects.contains(&decision.target_object) {
-                        rejected_objects.push(decision.target_object.clone());
-                    }
-                    if let Some((replacement, _)) = self.claims.get(replacement_claim_id) {
-                        rejected_objects.retain(|object| object != &replacement.object);
-                        chosen_object = Some(replacement.object.clone());
-                    }
-                }
-            }
-        }
-
-        let mut rejected: BTreeSet<ClaimId> = candidates
-            .iter()
-            .filter(|(claim, _)| claim.epistemic_status == EpistemicStatus::Superseded)
-            .map(|(claim, _)| claim.id)
-            .collect();
-        let lifecycle_conflicts: BTreeSet<ClaimId> = candidates
-            .iter()
-            .filter(|(claim, _)| claim.epistemic_status == EpistemicStatus::Disputed)
-            .map(|(claim, _)| claim.id)
-            .collect();
-
-        for (relation, metadata) in self.relations.iter().filter(|(relation, metadata)| {
-            metadata.accept_seq <= query.known_at_accept_seq
-                && relation.scope_id == query.scope_id
-                && candidate_ids.contains(&relation.source_claim_id)
-                && candidate_ids.contains(&relation.target_claim_id)
-                && matches!(
-                    relation.kind,
-                    ClaimRelationKind::Supersedes | ClaimRelationKind::Retracts
-                )
-        }) {
-            let Some((source, _)) = self.claims.get(&relation.source_claim_id) else {
-                continue;
-            };
-            let Some((target, _)) = self.claims.get(&relation.target_claim_id) else {
-                continue;
-            };
-            if chosen_object
-                .as_ref()
-                .is_some_and(|object| object == &target.object)
-            {
-                continue;
-            }
-            if relation_effect_is_authorized(&metadata.actor, relation.kind, source, target) {
-                rejected.insert(target.id);
-            }
-        }
-
-        rejected.extend(
-            candidates
-                .iter()
-                .filter(|(claim, _)| rejected_objects.contains(&claim.object))
-                .map(|(claim, _)| claim.id),
-        );
-
-        let user_decision_rank =
-            has_user_override.then(|| authority_rank(query.policy, AuthorityClass::UserExplicit));
-        let eligible: Vec<(&Claim, u64, u16)> = candidates
-            .into_iter()
-            .filter(|(claim, _)| {
-                !rejected.contains(&claim.id)
-                    && !matches!(
-                        claim.epistemic_status,
-                        EpistemicStatus::Disputed | EpistemicStatus::Superseded
-                    )
-            })
-            .map(|(claim, accepted)| {
-                let original_rank = authority_rank(query.policy, claim.authority_class);
-                let effective_rank = if chosen_object.as_ref() == Some(&claim.object) {
-                    user_decision_rank.map_or(original_rank, |decision_rank| {
-                        original_rank.max(decision_rank)
-                    })
-                } else {
-                    original_rank
-                };
-                (claim, accepted, effective_rank)
-            })
-            .collect();
-
-        // An applicable decision is durable user-owned state for its exact object,
-        // not a universal predicate override. Confirm/Replace promote only the
-        // chosen object to user authority; Reject excludes only the rejected object.
-        // Remaining claims still follow the predicate policy against that user
-        // authority floor, so stronger policy authorities survive while weaker
-        // automated alternatives remain conflicts rather than reactivating.
-        let activation_candidates: Vec<&(&Claim, u64, u16)> = eligible
-            .iter()
-            .filter(|(_, _, rank)| user_decision_rank.is_none_or(|minimum| *rank >= minimum))
-            .collect();
-        let Some(max_rank) = activation_candidates.iter().map(|(_, _, rank)| *rank).max() else {
-            let mut conflicting_claim_ids = lifecycle_conflicts;
-            conflicting_claim_ids.extend(eligible.iter().map(|(claim, _, _)| claim.id));
-            return ResolutionResult {
-                active_claim_ids: Vec::new(),
-                conflicting_claim_ids: conflicting_claim_ids.into_iter().collect(),
-                rejected_claim_ids: rejected.into_iter().collect(),
-            };
-        };
-        let top_ranked: Vec<&Claim> = activation_candidates
-            .iter()
-            .filter(|(_, _, rank)| *rank == max_rank)
-            .map(|(claim, _, _)| *claim)
-            .collect();
-        let mut top_objects: Vec<&ClaimObject> = Vec::new();
-        for claim in &top_ranked {
-            if !top_objects.contains(&&claim.object) {
-                top_objects.push(&claim.object);
-            }
-        }
-        let equal_rank_conflict = top_objects.len() > 1;
-        let active_claim_ids = if equal_rank_conflict {
-            Vec::new()
-        } else {
-            top_ranked.iter().map(|claim| claim.id).collect()
-        };
-        let mut conflicting_claim_ids: BTreeSet<ClaimId> = if equal_rank_conflict {
-            eligible.iter().map(|(claim, _, _)| claim.id).collect()
-        } else {
-            eligible
-                .iter()
-                .filter(|(claim, _, _)| !top_ranked.contains(claim))
-                .filter(|(claim, _, _)| !top_objects.contains(&&claim.object))
-                .map(|(claim, _, _)| claim.id)
-                .collect()
-        };
-        conflicting_claim_ids.extend(lifecycle_conflicts);
-
-        ResolutionResult {
-            active_claim_ids,
-            conflicting_claim_ids: conflicting_claim_ids.into_iter().collect(),
-            rejected_claim_ids: rejected.into_iter().collect(),
-        }
+            .collect::<Vec<_>>();
+        resolve_snapshot(query, &claims, &relations, &decisions)
     }
 
     /// Resolves mastery and freshness as separate projections at the same coordinates.
@@ -735,143 +591,6 @@ impl LedgerState {
             freshness_resolution,
         }
     }
-}
-
-/// Predicate-specific authority policy used instead of arrival-time LWW.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum AuthorityPolicy {
-    UserOwned,
-    OfficialFact,
-    ImplementationObservation,
-    CuratedRelation,
-}
-
-fn authority_rank(policy: AuthorityPolicy, authority: AuthorityClass) -> u16 {
-    match policy {
-        AuthorityPolicy::UserOwned => match authority {
-            AuthorityClass::UserExplicit => 800,
-            AuthorityClass::DirectObservation => 600,
-            AuthorityClass::DeterministicEngine => 500,
-            AuthorityClass::Curated => 400,
-            AuthorityClass::Official => 350,
-            AuthorityClass::ModelInference => 200,
-            AuthorityClass::Prediction => 100,
-            AuthorityClass::Unknown => 0,
-        },
-        AuthorityPolicy::OfficialFact => match authority {
-            AuthorityClass::Official => 800,
-            AuthorityClass::DirectObservation => 600,
-            AuthorityClass::Curated => 500,
-            AuthorityClass::UserExplicit => 400,
-            AuthorityClass::DeterministicEngine => 350,
-            AuthorityClass::ModelInference => 200,
-            AuthorityClass::Prediction => 100,
-            AuthorityClass::Unknown => 0,
-        },
-        AuthorityPolicy::ImplementationObservation => match authority {
-            AuthorityClass::DirectObservation => 800,
-            AuthorityClass::UserExplicit => 600,
-            AuthorityClass::Official | AuthorityClass::Curated => 400,
-            AuthorityClass::DeterministicEngine => 350,
-            AuthorityClass::ModelInference => 200,
-            AuthorityClass::Prediction => 100,
-            AuthorityClass::Unknown => 0,
-        },
-        AuthorityPolicy::CuratedRelation => match authority {
-            AuthorityClass::Curated | AuthorityClass::UserExplicit => 800,
-            AuthorityClass::Official => 700,
-            AuthorityClass::DirectObservation => 600,
-            AuthorityClass::DeterministicEngine => 500,
-            AuthorityClass::ModelInference => 200,
-            AuthorityClass::Prediction => 100,
-            AuthorityClass::Unknown => 0,
-        },
-    }
-}
-
-fn relation_effect_is_authorized(
-    actor: &Actor,
-    kind: ClaimRelationKind,
-    source: &Claim,
-    target: &Claim,
-) -> bool {
-    if !matches!(
-        kind,
-        ClaimRelationKind::Supersedes | ClaimRelationKind::Retracts
-    ) {
-        return true;
-    }
-    if matches!(
-        source.epistemic_status,
-        EpistemicStatus::Disputed | EpistemicStatus::Superseded
-    ) || matches!(
-        target.epistemic_status,
-        EpistemicStatus::Disputed | EpistemicStatus::Superseded
-    ) {
-        return false;
-    }
-    if source.authority_class != target.authority_class
-        || source.epistemic_status != target.epistemic_status
-    {
-        return false;
-    }
-    matches!(
-        (actor, source.authority_class, source.epistemic_status),
-        (
-            Actor::User { .. },
-            AuthorityClass::UserExplicit,
-            EpistemicStatus::UserConfirmed
-        ) | (
-            Actor::DeterministicEngine { .. },
-            AuthorityClass::DeterministicEngine,
-            EpistemicStatus::DeterministicDerived
-        ) | (
-            Actor::ModelRun { .. },
-            AuthorityClass::ModelInference,
-            EpistemicStatus::AiInferred
-        ) | (
-            Actor::ModelRun { .. },
-            AuthorityClass::Prediction,
-            EpistemicStatus::Prediction
-        ) | (
-            Actor::Importer { .. },
-            AuthorityClass::Official,
-            EpistemicStatus::OfficialConfirmed
-        ) | (
-            Actor::Importer { .. },
-            AuthorityClass::DirectObservation,
-            EpistemicStatus::CodeObserved
-        )
-    )
-}
-
-/// Coordinates for a bitemporal claim query.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResolutionQuery {
-    pub subject_entity_id: EntityId,
-    pub scope_id: ScopeId,
-    pub predicate_id: PredicateId,
-    pub valid_at: TimestampMillis,
-    pub known_at_accept_seq: u64,
-    pub policy: AuthorityPolicy,
-}
-
-/// Stable resolution result with lower-authority conflicts still visible.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ResolutionResult {
-    pub active_claim_ids: Vec<ClaimId>,
-    pub conflicting_claim_ids: Vec<ClaimId>,
-    pub rejected_claim_ids: Vec<ClaimId>,
-}
-
-/// Knowledge projection that cannot decay mastery when freshness changes.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct KnowledgeStateView {
-    pub mastery: Option<MasteryLevel>,
-    pub freshness: Option<FreshnessBand>,
-    pub mastery_resolution: ResolutionResult,
-    pub freshness_resolution: ResolutionResult,
 }
 
 /// Minimal predicate registry entry needed to validate resolution semantics.
