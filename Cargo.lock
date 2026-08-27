@@ -57,7 +57,13 @@ version = "0.1.0"
 dependencies = [
  "academic-core",
  "academic-rpc",
+ "academic-store",
+ "getrandom 0.4.3",
+ "hex",
  "rustix",
+ "sha2",
+ "tempfile",
+ "thiserror",
  "tokio",
  "windows-sys",
 ]

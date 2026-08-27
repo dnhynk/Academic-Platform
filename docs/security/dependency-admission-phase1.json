@@ -243,11 +243,18 @@
       "rust_version": "1.85",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "repository": "https://github.com/rust-random/getrandom",
-      "owner": "academic-vault",
+      "owner": "academic-vault and academic-daemon",
       "admitted_features": ["std"],
       "network_role": "none",
       "install_scripts": false,
       "uses": [
+        {
+          "package": "academic-daemon",
+          "kind": "normal",
+          "target": null,
+          "default_features": false,
+          "features": ["std"]
+        },
         {
           "package": "academic-vault",
           "kind": "normal",
@@ -395,11 +402,18 @@
       "rust_version": "1.63",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "repository": "https://github.com/Stebalien/tempfile",
-      "owner": "academic-test-support (development only)",
+      "owner": "academic-test-support and academic-daemon (development only)",
       "admitted_features": ["getrandom"],
       "network_role": "none",
       "install_scripts": false,
       "uses": [
+        {
+          "package": "academic-daemon",
+          "kind": "dev",
+          "target": null,
+          "default_features": true,
+          "features": []
+        },
         {
           "package": "academic-test-support",
           "kind": "dev",
@@ -465,6 +479,7 @@
         "Win32_Storage_FileSystem",
         "Win32_System_IO",
         "Win32_System_Pipes",
+        "Win32_System_RemoteDesktop",
         "Win32_System_SystemServices",
         "Win32_System_Threading",
         "Win32_System_WindowsProgramming"
@@ -484,6 +499,7 @@
             "Win32_Storage_FileSystem",
             "Win32_System_IO",
             "Win32_System_Pipes",
+            "Win32_System_RemoteDesktop",
             "Win32_System_SystemServices",
             "Win32_System_Threading",
             "Win32_System_WindowsProgramming"

@@ -116,7 +116,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-store",
       "academic-vault",
     ],
-    "academic-daemon": ["academic-core", "academic-rpc"],
+    "academic-daemon": ["academic-core", "academic-rpc", "academic-store"],
     "academic-domain": [],
     "academic-ledger": ["academic-contracts", "academic-domain"],
     "academic-portability": [

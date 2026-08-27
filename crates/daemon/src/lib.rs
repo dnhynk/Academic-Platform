@@ -1,24 +1,79 @@
-//! Compileable Phase 1 daemon shell.
+//! Synthetic-only Phase 1 local-core daemon.
 //!
-//! There is no listener, profile, database handle, writer, reader, transport,
-//! process singleton, or background task in F0.
+//! Startup validates one profile, acquires one current-user/profile singleton,
+//! reconciles V1 on the dedicated writer thread, publishes a fresh session
+//! nonce, and only then exposes a current-user-only local transport.
 
-/// Product binary name reserved for the local-core daemon.
+mod readers;
+mod runtime_meta;
+mod service;
+mod shutdown;
+mod singleton;
+mod transport;
+mod writer;
+
+use std::{fmt, io};
+
+use academic_core::local_service::LocalServiceError;
+use academic_rpc::RpcError;
+use academic_store::error::StoreError;
+use thiserror::Error;
+
+pub use readers::ReaderFactory;
+pub use runtime_meta::SessionNonce;
+pub use service::{DaemonConfig, RunningDaemon};
+pub use transport::LocalEndpoint;
+pub use writer::{AdmissionError, AdmittedMutation, WriterQueue};
+
+/// Product binary name for the local-core daemon.
 pub const DAEMON_BINARY_NAME: &str = "academicd";
 /// Reversible Phase 1 bounded-writer queue default.
 pub const WRITER_QUEUE_CAPACITY: usize = 64;
-/// Human-readable scaffold notice. It deliberately makes no readiness claim.
-pub const F0_SCAFFOLD_NOTICE: &str =
-    "academicd Phase 1 F0 contract scaffold — no profile was opened";
+/// Capability prefix carrying the fresh current-session nonce.
+pub const SESSION_NONCE_CAPABILITY_PREFIX: &str = "learning-platform.local.session-nonce.";
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// Fail-closed daemon startup or transport error.
+#[derive(Debug, Error)]
+pub enum DaemonError {
+    /// The profile failed S1 validation or opening.
+    #[error(transparent)]
+    Store(#[from] StoreError),
+    /// The V1/S2 local composition failed.
+    #[error(transparent)]
+    LocalService(#[from] LocalServiceError),
+    /// P1 framing, validation, negotiation, or authorization failed.
+    #[error(transparent)]
+    Rpc(#[from] RpcError),
+    /// An operating-system boundary failed.
+    #[error("{operation} failed for {path}: {source}")]
+    Io {
+        /// Stable operation label.
+        operation: &'static str,
+        /// Relevant local path or endpoint.
+        path: String,
+        /// Native error.
+        #[source]
+        source: io::Error,
+    },
+    /// Another daemon owns this current-user/profile identity.
+    #[error("another daemon already owns this current-user profile")]
+    AlreadyRunning,
+    /// The session metadata was malformed or could not be published safely.
+    #[error("session metadata is invalid: {0}")]
+    InvalidSessionMetadata(&'static str),
+    /// The listener task failed or was cancelled unexpectedly.
+    #[error("local listener task failed: {0}")]
+    ListenerTask(String),
+}
 
-    #[test]
-    fn daemon_scaffold_has_no_runtime_claim() {
-        assert_eq!(DAEMON_BINARY_NAME, "academicd");
-        assert_eq!(WRITER_QUEUE_CAPACITY, 64);
-        assert!(F0_SCAFFOLD_NOTICE.contains("no profile was opened"));
+pub(crate) fn daemon_io(
+    operation: &'static str,
+    path: impl fmt::Display,
+    source: io::Error,
+) -> DaemonError {
+    DaemonError::Io {
+        operation,
+        path: path.to_string(),
+        source,
     }
 }

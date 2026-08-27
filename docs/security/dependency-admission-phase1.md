@@ -19,12 +19,12 @@ The Phase 0 direct versions already accepted in the incoming lock are preserved 
 |---|---|---|---|---:|---|
 | `rusqlite 0.40.2` | `academic-store` | no defaults; `backup`, `hooks`, `limits`; `bundled` only through default `bundled-sqlite`; vendored SQLCipher only through non-default `sqlcipher-spike` | MIT | not declared upstream; compiled on Rust 1.98 | no network; native build receipt required; no load extension |
 | `tokio 1.53.1` | `academic-rpc`, `academic-daemon` | `io-util`, `macros`, `net`, `rt-multi-thread`, `signal`, `sync`, `time` | MIT | 1.71 | `net` is restricted to named pipe/UDS local IPC; no HTTP/TCP/UDP/DNS behavior |
-| `windows-sys 0.61.2` | Windows vault/daemon adapters and the isolated store path-capability boundary | explicit WDK Foundation/FileSystem/SystemServices plus Win32 Foundation, Security/Authorization, FileSystem, IO, Pipes, SystemServices, Threading, WindowsProgramming subsets | MIT OR Apache-2.0 | 1.71 | native path, volume, ACL, named-pipe, and local filesystem capability only; no WinHTTP/WinInet/WinSock feature admitted |
+| `windows-sys 0.61.2` | Windows vault/daemon adapters and the isolated store path-capability boundary | explicit WDK Foundation/FileSystem/SystemServices plus Win32 Foundation, Security/Authorization, FileSystem, IO, Pipes, RemoteDesktop session identity, SystemServices, Threading, WindowsProgramming subsets | MIT OR Apache-2.0 | 1.71 | native path, session, volume, ACL, named-pipe, and local filesystem capability only; no WinHTTP/WinInet/WinSock feature admitted |
 | `rustix 1.1.4` | Unix vault/daemon adapters and the isolated store path-capability boundary | no defaults; `fs`, `net`, `process`, `std` across admitted owners; store-platform omits `net` | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 1.63 | local filesystem, peer identity, and UDS capability only |
-| `getrandom 0.4.3` | synthetic vault nonce/locator-key seed only | no defaults; `std`; no `wasm_js` or custom backend | MIT OR Apache-2.0 | 1.85 | OS entropy only; not a production key hierarchy |
+| `getrandom 0.4.3` | synthetic vault nonce/locator-key seed and daemon session nonce | no defaults; `std`; no `wasm_js` or custom backend | MIT OR Apache-2.0 | 1.85 | OS entropy only; not a production key hierarchy |
 | `prost-build 0.14.1` | RPC build tooling | no defaults | Apache-2.0 | 1.71.1 | build-time only; aligned with frozen `prost 0.14.1` |
 | `protoc-bin-vendored 3.2.0` | RPC build tooling | no defaults/features | MIT | not declared upstream; compiled on Rust 1.98 | pinned vendored compiler packages; no runtime dependency |
-| `tempfile 3.27.0` | test support only | default `getrandom` | MIT OR Apache-2.0 | 1.63 | no product inclusion |
+| `tempfile 3.27.0` | test support and daemon integration tests only | default `getrandom` | MIT OR Apache-2.0 | 1.63 | no product inclusion |
 | `assert_cmd 2.2.2` | test support only | no defaults | MIT OR Apache-2.0 | 1.85 | no product inclusion |
 | `predicates 3.1.4` | test support only | no defaults | MIT OR Apache-2.0 | 1.74 | no regex/color/default expansion; no product inclusion |
 
