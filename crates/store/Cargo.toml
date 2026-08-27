@@ -11,6 +11,11 @@ default = ["bundled-sqlite"]
 bundled-sqlite = ["rusqlite/bundled"]
 sqlcipher-spike = ["rusqlite/bundled-sqlcipher-vendored-openssl"]
 
+[[bin]]
+name = "sqlcipher_spike"
+path = "src/bin/sqlcipher_spike.rs"
+required-features = ["sqlcipher-spike"]
+
 [dependencies]
 academic-contracts = { path = "../contracts" }
 academic-domain = { path = "../domain" }

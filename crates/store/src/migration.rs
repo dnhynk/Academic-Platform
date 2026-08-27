@@ -70,10 +70,24 @@ pub fn migrate_pre_listen(
         | OpenFlags::SQLITE_OPEN_CREATE
         | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let mut connection = Connection::open_with_flags(database_path, flags)?;
-    configure_migration_connection(&connection)?;
-    let before = read_pragma_snapshot(&connection)?;
+    migrate_open_connection_pre_listen(&mut connection, creating_build_digest)
+}
+
+/// Migrates or verifies an already-opened maintenance connection.
+///
+/// This is the narrow boundary used by evidence-only encrypted-store probes:
+/// an encrypted caller must apply its key as the first SQLite statement after
+/// opening the handle, then call this function. The exact S1 connection policy,
+/// migration SQL, identity checks, and integrity checks remain centralized here.
+/// Product callers should normally use [`migrate_pre_listen`] instead.
+pub fn migrate_open_connection_pre_listen(
+    connection: &mut Connection,
+    creating_build_digest: [u8; 32],
+) -> StoreResult<MigrationStatus> {
+    configure_migration_connection(connection)?;
+    let before = read_pragma_snapshot(connection)?;
     verify_migration_pragmas(&before)?;
-    verify_fts5(&connection)?;
+    verify_fts5(connection)?;
     connection.execute_batch("PRAGMA locking_mode = EXCLUSIVE;")?;
     let locking_mode = connection
         .query_row("PRAGMA locking_mode", [], |row| row.get::<_, String>(0))?
@@ -85,7 +99,7 @@ pub fn migrate_pre_listen(
             actual: locking_mode,
         });
     }
-    verify_integrity(&connection)?;
+    verify_integrity(connection)?;
     if before.application_id == i64::from(SQLITE_APPLICATION_ID)
         && before.user_version > i64::from(STORE_SCHEMA_VERSION)
     {
@@ -98,10 +112,10 @@ pub fn migrate_pre_listen(
         && before.user_version == i64::from(STORE_SCHEMA_VERSION)
     {
         verify_writer_pragmas(&before)?;
-        verify_current_schema(&connection, &before)?;
+        verify_current_schema(connection, &before)?;
         return Ok(MigrationStatus::AlreadyCurrent);
     }
-    if before.application_id != 0 || before.user_version != 0 || user_table_count(&connection)? != 0
+    if before.application_id != 0 || before.user_version != 0 || user_table_count(connection)? != 0
     {
         return Err(StoreError::UnsupportedMigrationState {
             application_id: before.application_id,
@@ -137,9 +151,9 @@ pub fn migrate_pre_listen(
     transaction.pragma_update(None, "user_version", STORE_SCHEMA_VERSION)?;
     transaction.commit()?;
 
-    let after = read_pragma_snapshot(&connection)?;
+    let after = read_pragma_snapshot(connection)?;
     verify_writer_pragmas(&after)?;
-    verify_current_schema(&connection, &after)?;
+    verify_current_schema(connection, &after)?;
     Ok(MigrationStatus::Applied)
 }
 
