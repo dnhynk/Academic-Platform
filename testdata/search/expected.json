@@ -1,0 +1,5 @@
+{
+  "korean-unicode61": ["합성 트랜잭션 원자성 검증"],
+  "code-trigram": ["OrderService.updateStatus handles retries"],
+  "exact-symbol": ["OrderService.updateStatus"]
+}

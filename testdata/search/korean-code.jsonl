@@ -1,0 +1,3 @@
+{"case":"korean-unicode61","text":"합성 트랜잭션 원자성 검증","query":"트랜잭션","tokenizer":"unicode61","expected_matches":1}
+{"case":"code-trigram","text":"OrderService.updateStatus handles retries","query":"updateStatus","tokenizer":"trigram","expected_matches":1}
+{"case":"exact-symbol","text":"OrderService.updateStatus","query":"OrderService.updateStatus","lookup":"exact-binary","expected_matches":1}

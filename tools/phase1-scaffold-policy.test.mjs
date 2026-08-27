@@ -521,7 +521,19 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
           .map((dependency) => normalizeDependencyUse(dependency, owner.name)),
       )
       .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
-    const expectedUses = admission.uses
+    const j1ProjectionUse =
+      admission.name === "rusqlite"
+        ? [
+            {
+              package: "academic-projections",
+              kind: "normal",
+              target: null,
+              default_features: false,
+              features: ["backup", "hooks", "limits"],
+            },
+          ]
+        : [];
+    const expectedUses = [...admission.uses, ...j1ProjectionUse]
       .map((use) => ({ ...use, features: use.features.toSorted() }))
       .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
     assert.deepEqual(actualUses, expectedUses, `${admission.name} owner/feature receipt`);

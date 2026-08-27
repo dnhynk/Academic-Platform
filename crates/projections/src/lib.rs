@@ -1,7 +1,15 @@
-//! Names for disposable Phase 1 projection generations.
+//! Disposable Phase 1 graph and lexical projection generations.
 //!
-//! No projection tables, builders, tokenizers, or query implementations exist
-//! in F0. Canonical ledger and object data remain the only planned authority.
+//! The canonical store is opened read-only. Every graph and search record is
+//! written to a separate disposable SQLite sidecar, verified, and made visible
+//! only by an atomic active-generation pointer change.
+
+pub mod checksum;
+pub mod fts;
+pub mod generation;
+pub mod graph;
+pub mod query;
+pub mod runner;
 
 /// First relational graph generation contract.
 pub const GRAPH_PROJECTION_KIND: &str = "relational-graph-v1";
