@@ -2,7 +2,7 @@
 
 ## Enforced now
 
-- Product crates contain no HTTP client, socket, recorder, database, cloud SDK, shell execution, or telemetry dependency.
+- Product crates contain no HTTP client, recorder, cloud SDK, shell execution, telemetry dependency, or product HTTP/TCP/UDP/DNS behavior. Phase 1 F0 admits bundled plaintext SQLite only as a compile-time scaffold and Tokio `net` only for the later current-user named-pipe/UDS boundary; F0 creates no database, table, listener, socket, profile, or transport.
 - Both v1 compatibility and current v2 fixtures are visibly synthetic and declare no network egress; the v1 fixture, v1 JSON Schema, and v1 Proto have pinned immutable byte hashes, and only v2 has a signing/emission path. The contracts crate has a complete source inventory, exact public function and inherent-method signatures, and a semantic returned-byte v2 guard. The legacy projection requires a private verification capability, is absent from every reviewed module and impl surface, and is unreachable from current writers.
 - Active Prediction claims fail closed unless a ModelRun-authored claim carries both bounded confidence and versioned metadata disclosing a bounded observation/history window plus a positive sample count. The evidence window remains distinct from domain `valid_time`; non-Prediction states cannot carry the metadata, and `AiInferred` keeps its separate semantics. Claim, event, signed-CBOR, append, resolution, current Proto, JSON Schema, TypeScript, and deterministic-fixture boundaries exercise the rule without changing frozen v1 bytes or inventing v1 facts.
 - Canonical acceptance requires canonical envelope and payload CBOR, an independent expected key/device/user authorization, a valid signature over original bytes, source-aware typed byte equality, a contiguous device origin chain, registered scope/domain closure, and exact evidence-representation closure. Ledger append accepts only the opaque verifier capability.
@@ -20,4 +20,4 @@ Automated advisory services can change independently of source. CI's determinist
 
 ## Not yet provided
 
-Encrypted transactional storage, SQLCipher packaging, WAL/temp plaintext leakage tests, OS keystore integration, key recovery/rotation, daemon single-writer IPC, process sandboxing, native capability enforcement, backup/restore, secure deletion, and egress audit are not implemented. Their ADRs explicitly prevent production use from being inferred from Phase 0 tests.
+Functional or encrypted transactional storage, SQLCipher packaging/acceptance, WAL/temp plaintext leakage tests, OS keystore integration, key recovery/rotation, daemon single-writer IPC, process sandboxing, native capability enforcement, backup/restore, secure deletion, and egress audit are not implemented. The Phase 1 F0 crates and explicit SQLCipher spike feature are dependency/contract scaffolds only; their ADRs explicitly prevent production use from being inferred from compilation or Phase 0 tests.

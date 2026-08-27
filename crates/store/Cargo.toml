@@ -1,0 +1,21 @@
+[package]
+name = "academic-store"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["bundled-sqlite"]
+bundled-sqlite = ["rusqlite/bundled"]
+sqlcipher-spike = ["rusqlite/bundled-sqlcipher-vendored-openssl"]
+
+[dependencies]
+academic-contracts = { path = "../contracts" }
+academic-domain = { path = "../domain" }
+academic-ledger = { path = "../ledger" }
+rusqlite.workspace = true
+
+[lints]
+workspace = true

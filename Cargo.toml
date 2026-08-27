@@ -3,8 +3,15 @@ members = [
   "crates/cli",
   "crates/contracts",
   "crates/core",
+  "crates/daemon",
   "crates/domain",
   "crates/ledger",
+  "crates/portability",
+  "crates/projections",
+  "crates/rpc",
+  "crates/store",
+  "crates/test-support",
+  "crates/vault",
 ]
 resolver = "3"
 
@@ -16,19 +23,29 @@ license = "UNLICENSED"
 publish = false
 
 [workspace.dependencies]
-anyhow = "1.0.99"
-ciborium = "0.2.2"
-clap = { version = "4.5.46", features = ["derive"] }
-ed25519-dalek = "2.2.0"
-hex = "0.4.3"
-hmac = "0.12.1"
-proptest = "1.7.0"
+anyhow = "=1.0.104"
+assert_cmd = { version = "=2.2.2", default-features = false }
+ciborium = "=0.2.2"
+clap = { version = "=4.6.6", features = ["derive"] }
+ed25519-dalek = "=2.2.0"
+getrandom = { version = "=0.4.3", default-features = false, features = ["std"] }
+hex = "=0.4.3"
+hmac = "=0.12.1"
+predicates = { version = "=3.1.4", default-features = false }
+proptest = "=1.11.0"
 prost = { version = "=0.14.1", default-features = false, features = ["derive", "std"] }
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.143"
-sha2 = "0.10.9"
-thiserror = "2.0.16"
-uuid = { version = "1.18.0", features = ["serde", "v7"] }
+prost-build = { version = "=0.14.1", default-features = false }
+protoc-bin-vendored = { version = "=3.2.0", default-features = false }
+rusqlite = { version = "=0.40.2", default-features = false, features = ["backup", "hooks", "limits"] }
+rustix = { version = "=1.1.4", default-features = false, features = ["fs", "net", "process", "std"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+sha2 = "=0.10.9"
+tempfile = "=3.27.0"
+thiserror = "=2.0.20"
+tokio = { version = "=1.53.1", default-features = false, features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+uuid = { version = "=1.25.0", features = ["serde", "v7"] }
+windows-sys = { version = "=0.61.2", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

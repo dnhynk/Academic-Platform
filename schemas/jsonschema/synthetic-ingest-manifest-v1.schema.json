@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:learning-platform:schema:synthetic-ingest-manifest:v1",
+  "title": "Learning platform synthetic ingest manifest v1",
+  "description": "Allowlisted Phase 1 input for a disposable plaintext profile. Schema validity is necessary but never sufficient runtime authorization.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "data_policy",
+    "data_class",
+    "network_egress",
+    "storage_mode",
+    "storage_encryption",
+    "production_data_allowed",
+    "product_network",
+    "fixture_id",
+    "fixture_schema_version",
+    "fixture_relative_path",
+    "fixture_sha256",
+    "fixture_byte_length",
+    "builder_id"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": 1
+    },
+    "data_policy": {
+      "const": "SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED"
+    },
+    "data_class": {
+      "const": "SYNTHETIC_ONLY"
+    },
+    "network_egress": {
+      "const": "NONE"
+    },
+    "storage_mode": {
+      "const": "PLAINTEXT_TEMPORARY_SQLITE"
+    },
+    "storage_encryption": {
+      "const": "NONE"
+    },
+    "production_data_allowed": {
+      "const": false
+    },
+    "product_network": {
+      "const": "NONE"
+    },
+    "fixture_id": {
+      "const": "signed-batch-v2"
+    },
+    "fixture_schema_version": {
+      "const": 2
+    },
+    "fixture_relative_path": {
+      "const": "schemas/fixtures/signed-batch-v2.json"
+    },
+    "fixture_sha256": {
+      "type": "string",
+      "const": "f94dfcf7e3e376e54b5514ceb3016b0b7d97d17366562f7ac4a16286d3aa367d",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "fixture_byte_length": {
+      "const": 21748
+    },
+    "builder_id": {
+      "const": "learning-platform.deterministic-synthetic-fixture-builder.v1"
+    }
+  },
+  "examples": [
+    {
+      "manifest_version": 1,
+      "data_policy": "SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED",
+      "data_class": "SYNTHETIC_ONLY",
+      "network_egress": "NONE",
+      "storage_mode": "PLAINTEXT_TEMPORARY_SQLITE",
+      "storage_encryption": "NONE",
+      "production_data_allowed": false,
+      "product_network": "NONE",
+      "fixture_id": "signed-batch-v2",
+      "fixture_schema_version": 2,
+      "fixture_relative_path": "schemas/fixtures/signed-batch-v2.json",
+      "fixture_sha256": "f94dfcf7e3e376e54b5514ceb3016b0b7d97d17366562f7ac4a16286d3aa367d",
+      "fixture_byte_length": 21748,
+      "builder_id": "learning-platform.deterministic-synthetic-fixture-builder.v1"
+    }
+  ]
+}

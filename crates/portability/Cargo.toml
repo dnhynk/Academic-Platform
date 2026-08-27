@@ -1,5 +1,5 @@
 [package]
-name = "academic-core"
+name = "academic-portability"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,23 +7,11 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-academic-contracts = { path = "../contracts" }
 academic-domain = { path = "../domain" }
-academic-ledger = { path = "../ledger" }
-academic-portability = { path = "../portability" }
 academic-projections = { path = "../projections" }
-academic-rpc = { path = "../rpc" }
 academic-store = { path = "../store" }
 academic-vault = { path = "../vault" }
-ed25519-dalek.workspace = true
-hex.workspace = true
 serde.workspace = true
-serde_json.workspace = true
-sha2.workspace = true
-thiserror.workspace = true
-
-[dev-dependencies]
-proptest.workspace = true
 
 [lints]
 workspace = true

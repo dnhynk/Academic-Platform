@@ -1,0 +1,486 @@
+{
+  "receipt_version": 1,
+  "phase": "phase1-f0",
+  "resolution_budget": 1,
+  "toolchain": {
+    "rust": "1.98.0",
+    "node": "24.19.0",
+    "pnpm": "11.22.0"
+  },
+  "preserved_phase0_direct_versions": {
+    "anyhow": "1.0.104",
+    "ciborium": "0.2.2",
+    "clap": "4.6.6",
+    "ed25519-dalek": "2.2.0",
+    "hex": "0.4.3",
+    "hmac": "0.12.1",
+    "proptest": "1.11.0",
+    "prost": "0.14.1",
+    "serde": "1.0.229",
+    "serde_json": "1.0.151",
+    "sha2": "0.10.9",
+    "thiserror": "2.0.20",
+    "uuid": "1.25.0"
+  },
+  "npm_additions": [],
+  "npm_install_scripts_added": false,
+  "native_transitives": [
+    {
+      "name": "cc",
+      "version": "1.4.4",
+      "checksum": "0ad534f4357a5264cce5019c989cf66a4f0dc4e0d1b1d15f8aacec0ff7360273",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.65.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "default_features": [],
+      "sqlcipher_spike_features": []
+    },
+    {
+      "name": "find-msvc-tools",
+      "version": "0.1.11",
+      "checksum": "d45db016d36b838f563236e9193d0ee6ce38f3f68b6c94e914b4929c96bbb890",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.65.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "default_features": [],
+      "sqlcipher_spike_features": []
+    },
+    {
+      "name": "libsqlite3-sys",
+      "version": "0.38.2",
+      "checksum": "f1d20bef17f513b9b3004532233187769cd072d790971f4e4da0e346eb6401e8",
+      "license": "MIT",
+      "rust_version": null,
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "default_features": [
+        "bundled",
+        "bundled_bindings",
+        "cc",
+        "default",
+        "min_sqlite_version_3_34_1",
+        "pkg-config",
+        "vcpkg"
+      ],
+      "sqlcipher_spike_features": [
+        "bundled",
+        "bundled-sqlcipher",
+        "bundled-sqlcipher-vendored-openssl",
+        "bundled_bindings",
+        "cc",
+        "default",
+        "min_sqlite_version_3_34_1",
+        "openssl-sys",
+        "pkg-config",
+        "vcpkg"
+      ]
+    },
+    {
+      "name": "openssl-src",
+      "version": "300.6.1+3.6.3",
+      "checksum": "46eb8fb9fb3b61ce1c0f8a026c4c1a0714d3a9e138e7fbde78753ce2babc3846",
+      "license": "MIT/Apache-2.0",
+      "rust_version": null,
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "default_features": null,
+      "sqlcipher_spike_features": ["default", "legacy"]
+    },
+    {
+      "name": "openssl-sys",
+      "version": "0.9.117",
+      "checksum": "b47e7e6bb2c38cd930d25a23b40fa52e068c10e85f3e03a7f5ba5aaca5713695",
+      "license": "MIT",
+      "rust_version": "1.80.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "default_features": null,
+      "sqlcipher_spike_features": ["openssl-src", "vendored"]
+    },
+    {
+      "name": "pkg-config",
+      "version": "0.3.34",
+      "checksum": "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.63",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "default_features": [],
+      "sqlcipher_spike_features": []
+    },
+    {
+      "name": "shlex",
+      "version": "2.0.1",
+      "checksum": "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.46.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "default_features": ["default", "std"],
+      "sqlcipher_spike_features": ["default", "std"]
+    },
+    {
+      "name": "vcpkg",
+      "version": "0.2.15",
+      "checksum": "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426",
+      "license": "MIT/Apache-2.0",
+      "rust_version": null,
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "default_features": [],
+      "sqlcipher_spike_features": []
+    }
+  ],
+  "vendored_protoc_packages": [
+    {
+      "name": "protoc-bin-vendored-linux-aarch_64",
+      "version": "3.2.0",
+      "checksum": "c350df4d49b5b9e3ca79f7e646fde2377b199e13cfa87320308397e1f37e1a4c",
+      "license": "MIT"
+    },
+    {
+      "name": "protoc-bin-vendored-linux-ppcle_64",
+      "version": "3.2.0",
+      "checksum": "a55a63e6c7244f19b5c6393f025017eb5d793fd5467823a099740a7a4222440c",
+      "license": "MIT"
+    },
+    {
+      "name": "protoc-bin-vendored-linux-s390_64",
+      "version": "3.2.0",
+      "checksum": "1dba5565db4288e935d5330a07c264a4ee8e4a5b4a4e6f4e83fad824cc32f3b0",
+      "license": "MIT"
+    },
+    {
+      "name": "protoc-bin-vendored-linux-x86_32",
+      "version": "3.2.0",
+      "checksum": "8854774b24ee28b7868cd71dccaae8e02a2365e67a4a87a6cd11ee6cdbdf9cf5",
+      "license": "MIT"
+    },
+    {
+      "name": "protoc-bin-vendored-linux-x86_64",
+      "version": "3.2.0",
+      "checksum": "b38b07546580df720fa464ce124c4b03630a6fb83e05c336fea2a241df7e5d78",
+      "license": "MIT"
+    },
+    {
+      "name": "protoc-bin-vendored-macos-aarch_64",
+      "version": "3.2.0",
+      "checksum": "89278a9926ce312e51f1d999fee8825d324d603213344a9a706daa009f1d8092",
+      "license": "MIT"
+    },
+    {
+      "name": "protoc-bin-vendored-macos-x86_64",
+      "version": "3.2.0",
+      "checksum": "81745feda7ccfb9471d7a4de888f0652e806d5795b61480605d4943176299756",
+      "license": "MIT"
+    },
+    {
+      "name": "protoc-bin-vendored-win32",
+      "version": "3.2.0",
+      "checksum": "95067976aca6421a523e491fce939a3e65249bac4b977adee0ee9771568e8aa3",
+      "license": "MIT"
+    }
+  ],
+  "bundled_sources": {
+    "plaintext_sqlite": {
+      "lane": "default",
+      "version": "3.53.2",
+      "source_id": "2026-06-03 19:12:13 d6e03d8c777cfa2d35e3b60d8ec3e0187f3e9f99d8e2ee9cac695fd6fcdf1a24",
+      "license_posture": "SQLite public-domain dedication"
+    },
+    "sqlcipher_community": {
+      "lane": "sqlcipher-spike",
+      "version": "4.14.0",
+      "sqlite_version": "3.51.3",
+      "sqlite_source_id": "2026-03-13 10:38:09 737ae4a34738ffa0c3ff7f9bb18df914dd1cad163f28fd6b6e114a344fe6alt1",
+      "license_posture": "BSD-style attribution; legal and distribution acceptance remains open",
+      "license_sha256": "ea4fcb309f14a22065e1ea45362d494d320012249ed865fe9c7c0946db754131",
+      "adr_002_accepted": false
+    },
+    "openssl": {
+      "lane": "sqlcipher-spike",
+      "version": "3.6.3",
+      "license": "Apache-2.0",
+      "license_sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+      "adr_002_accepted": false
+    }
+  },
+  "admissions": [
+    {
+      "name": "assert_cmd",
+      "version": "2.2.2",
+      "checksum": "2aa3a22042e45de04255c7bf3626e239f450200fd0493c1e382263544b20aea6",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.85",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/assert-rs/assert_cmd.git",
+      "owner": "academic-test-support (development only)",
+      "admitted_features": [],
+      "network_role": "none",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-test-support",
+          "kind": "dev",
+          "target": null,
+          "default_features": false,
+          "features": []
+        }
+      ]
+    },
+    {
+      "name": "getrandom",
+      "version": "0.4.3",
+      "checksum": "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.85",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/rust-random/getrandom",
+      "owner": "academic-vault",
+      "admitted_features": ["std"],
+      "network_role": "none",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-vault",
+          "kind": "normal",
+          "target": null,
+          "default_features": false,
+          "features": ["std"]
+        }
+      ]
+    },
+    {
+      "name": "predicates",
+      "version": "3.1.4",
+      "checksum": "ada8f2932f28a27ee7b70dd6c1c39ea0675c55a36879ab92f3a715eaa1e63cfe",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.74",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/assert-rs/predicates-rs",
+      "owner": "academic-test-support (development only)",
+      "admitted_features": [],
+      "network_role": "none",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-test-support",
+          "kind": "dev",
+          "target": null,
+          "default_features": false,
+          "features": []
+        }
+      ]
+    },
+    {
+      "name": "prost-build",
+      "version": "0.14.1",
+      "checksum": "ac6c3320f9abac597dcbc668774ef006702672474aad53c6d596b62e487b40b1",
+      "license": "Apache-2.0",
+      "rust_version": "1.71.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/tokio-rs/prost",
+      "owner": "academic-rpc (build only)",
+      "admitted_features": [],
+      "network_role": "none",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-rpc",
+          "kind": "build",
+          "target": null,
+          "default_features": false,
+          "features": []
+        }
+      ]
+    },
+    {
+      "name": "protoc-bin-vendored",
+      "version": "3.2.0",
+      "checksum": "d1c381df33c98266b5f08186583660090a4ffa0889e76c7e9a5e175f645a67fa",
+      "license": "MIT",
+      "rust_version": null,
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/stepancheg/rust-protoc-bin-vendored/",
+      "owner": "academic-rpc (build only)",
+      "admitted_features": [],
+      "network_role": "none",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-rpc",
+          "kind": "build",
+          "target": null,
+          "default_features": false,
+          "features": []
+        }
+      ]
+    },
+    {
+      "name": "rusqlite",
+      "version": "0.40.2",
+      "checksum": "23f2a97da3e3873c73cb2a2e71b35c40ff95e0b1eefa8d72d8499a6928c3b5b3",
+      "license": "MIT",
+      "rust_version": null,
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/rusqlite/rusqlite",
+      "owner": "academic-store",
+      "admitted_features": [
+        "backup",
+        "bundled",
+        "bundled-sqlcipher-vendored-openssl",
+        "hooks",
+        "limits"
+      ],
+      "network_role": "none",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-store",
+          "kind": "normal",
+          "target": null,
+          "default_features": false,
+          "features": ["backup", "hooks", "limits"]
+        }
+      ]
+    },
+    {
+      "name": "rustix",
+      "version": "1.1.4",
+      "checksum": "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190",
+      "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+      "rust_version": "1.63",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/bytecodealliance/rustix",
+      "owner": "academic-vault and academic-daemon (Unix adapters)",
+      "admitted_features": ["fs", "net", "process", "std"],
+      "network_role": "local IPC and filesystem capability only",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-daemon",
+          "kind": "normal",
+          "target": "cfg(unix)",
+          "default_features": false,
+          "features": ["fs", "net", "process", "std"]
+        },
+        {
+          "package": "academic-vault",
+          "kind": "normal",
+          "target": "cfg(unix)",
+          "default_features": false,
+          "features": ["fs", "net", "process", "std"]
+        }
+      ]
+    },
+    {
+      "name": "tempfile",
+      "version": "3.27.0",
+      "checksum": "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.63",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/Stebalien/tempfile",
+      "owner": "academic-test-support (development only)",
+      "admitted_features": ["getrandom"],
+      "network_role": "none",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-test-support",
+          "kind": "dev",
+          "target": null,
+          "default_features": true,
+          "features": []
+        }
+      ]
+    },
+    {
+      "name": "tokio",
+      "version": "1.53.1",
+      "checksum": "202caea871b69668250d242070849eb495be178ed697a3e98aebce5bc81a0bed",
+      "license": "MIT",
+      "rust_version": "1.71",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/tokio-rs/tokio",
+      "owner": "academic-rpc and academic-daemon",
+      "admitted_features": [
+        "io-util",
+        "macros",
+        "net",
+        "rt-multi-thread",
+        "signal",
+        "sync",
+        "time"
+      ],
+      "network_role": "local named-pipe and Unix-domain-socket IPC only",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-daemon",
+          "kind": "normal",
+          "target": null,
+          "default_features": false,
+          "features": ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"]
+        },
+        {
+          "package": "academic-rpc",
+          "kind": "normal",
+          "target": null,
+          "default_features": false,
+          "features": ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"]
+        }
+      ]
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.61.2",
+      "checksum": "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.71",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/microsoft/windows-rs",
+      "owner": "academic-vault and academic-daemon (Windows adapters)",
+      "admitted_features": [
+        "Win32_Foundation",
+        "Win32_Security",
+        "Win32_Security_Authorization",
+        "Win32_Storage_FileSystem",
+        "Win32_System_IO",
+        "Win32_System_Pipes",
+        "Win32_System_SystemServices",
+        "Win32_System_Threading",
+        "Win32_System_WindowsProgramming"
+      ],
+      "network_role": "local named-pipe and filesystem capability only",
+      "install_scripts": false,
+      "uses": [
+        {
+          "package": "academic-daemon",
+          "kind": "normal",
+          "target": "cfg(windows)",
+          "default_features": false,
+          "features": [
+            "Win32_Foundation",
+            "Win32_Security",
+            "Win32_Security_Authorization",
+            "Win32_Storage_FileSystem",
+            "Win32_System_IO",
+            "Win32_System_Pipes",
+            "Win32_System_SystemServices",
+            "Win32_System_Threading",
+            "Win32_System_WindowsProgramming"
+          ]
+        },
+        {
+          "package": "academic-vault",
+          "kind": "normal",
+          "target": "cfg(windows)",
+          "default_features": false,
+          "features": [
+            "Win32_Foundation",
+            "Win32_Security",
+            "Win32_Security_Authorization",
+            "Win32_Storage_FileSystem",
+            "Win32_System_IO",
+            "Win32_System_SystemServices"
+          ]
+        }
+      ]
+    }
+  ]
+}

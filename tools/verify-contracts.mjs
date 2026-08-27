@@ -33,6 +33,7 @@ const [
   fixtureSchemaV1Bytes,
   fixtureSchemaV2Text,
   artifactSchemaText,
+  syntheticManifestSchemaText,
   artifactCorpusText,
   fixtureRawCorpusText,
   fixtureIntegerCorpusText,
@@ -62,6 +63,7 @@ const [
   readFile("schemas/jsonschema/signed-batch-fixture-v1.schema.json"),
   readFile("schemas/jsonschema/signed-batch-fixture-v2.schema.json", "utf8"),
   readFile("schemas/jsonschema/artifact-descriptor-v1.schema.json", "utf8"),
+  readFile("schemas/jsonschema/synthetic-ingest-manifest-v1.schema.json", "utf8"),
   readFile("schemas/fixtures/artifact-descriptor-parity-v1.json", "utf8"),
   readFile("schemas/fixtures/signed-batch-raw-parity-v1.json", "utf8"),
   readFile("schemas/fixtures/signed-batch-integer-lexeme-parity-v1.json", "utf8"),
@@ -100,6 +102,7 @@ const protoV1Text = protoV1Bytes.toString("utf8");
 const fixtureSchemaV1 = JSON.parse(fixtureSchemaV1Text);
 const fixtureSchemaV2 = JSON.parse(fixtureSchemaV2Text);
 const artifactSchema = JSON.parse(artifactSchemaText);
+const syntheticManifestSchema = JSON.parse(syntheticManifestSchemaText);
 const artifactCorpus = JSON.parse(artifactCorpusText);
 const fixtureRawCorpus = JSON.parse(fixtureRawCorpusText);
 const fixtureIntegerCorpus = JSON.parse(fixtureIntegerCorpusText);
@@ -193,6 +196,32 @@ const ajv = new Ajv2020({ allErrors: true, strict: true });
 const validateFixtureSchemaV1 = ajv.compile(fixtureSchemaV1);
 const validateFixtureSchemaV2 = ajv.compile(fixtureSchemaV2);
 const validateArtifactSchema = ajv.compile(artifactSchema);
+const validateSyntheticManifestSchema = ajv.compile(syntheticManifestSchema);
+const syntheticManifest = structuredClone(syntheticManifestSchema.examples[0]);
+assert.equal(
+  validateSyntheticManifestSchema(syntheticManifest),
+  true,
+  `synthetic ingest example must satisfy JSON Schema: ${ajv.errorsText(validateSyntheticManifestSchema.errors)}`,
+);
+assert.equal(syntheticManifest.fixture_byte_length, fixtureV2Bytes.length);
+assert.equal(
+  syntheticManifest.fixture_sha256,
+  createHash("sha256").update(fixtureV2Bytes).digest("hex"),
+  "synthetic manifest must bind the current deterministic v2 fixture bytes",
+);
+for (const [field, value] of [
+  ["data_class", "PERSONAL"],
+  ["network_egress", "HTTPS"],
+  ["storage_encryption", "SQLCIPHER"],
+  ["production_data_allowed", true],
+  ["product_network", "TCP"],
+]) {
+  assert.equal(
+    validateSyntheticManifestSchema({ ...syntheticManifest, [field]: value }),
+    false,
+    `synthetic manifest schema accepted ${field}=${String(value)}`,
+  );
+}
 const sha256Upper = (bytes) => createHash("sha256").update(bytes).digest("hex").toUpperCase();
 const assertImmutableV1Bytes = (bytes, expected, label) => {
   assert.equal(sha256Upper(bytes), expected, `${label} bytes are immutable`);
@@ -612,6 +641,10 @@ for (const [invalidKind, invalidUuid] of [
 assert.equal(fixtureSchemaV1.$schema, "https://json-schema.org/draft/2020-12/schema");
 assert.equal(fixtureSchemaV2.$schema, "https://json-schema.org/draft/2020-12/schema");
 assert.equal(artifactSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
+assert.equal(
+  syntheticManifestSchema.$schema,
+  "https://json-schema.org/draft/2020-12/schema",
+);
 const maskRustCommentsAndLiterals = (source) => {
   const masked = source.split("");
   const blank = (index) => {
@@ -2994,5 +3027,5 @@ assert.doesNotMatch(fixtureV1Text, /https?:\/\//u);
 assert.doesNotMatch(fixtureV2Text, /https?:\/\//u);
 
 console.log(
-  "Immutable v1 contracts, strict fixture ingress, crate-wide semantic v2-only writers, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
+  "Immutable v1 contracts, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v2-only writers, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
 );

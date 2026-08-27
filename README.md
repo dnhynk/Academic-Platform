@@ -1,6 +1,6 @@
-# Academic Platform — Phase 0 executable invariants
+# Academic Platform — Phase 0 invariants and Phase 1 F0 contracts
 
-This repository is the runnable foundation for a local-first Personal Academic · CS · Project OS. Phase 0 deliberately ships no database, daemon, desktop UI, recorder, cloud connector, or network-capable product path. It proves the canonical vocabulary and signed-ledger semantics with synthetic fixtures before any real personal data is allowed.
+This repository is the runnable foundation for a local-first Personal Academic · CS · Project OS. Phase 0 proves the canonical vocabulary and signed-ledger semantics with synthetic fixtures before any real personal data is allowed. Phase 1 F0 adds only compileable crate, dependency, protocol, feature, policy, and fault-name contracts: it has no profile, table, functional persistence, daemon listener, desktop UI, recorder, cloud connector, arbitrary input, or network-capable product behavior.
 
 ## What is executable
 
@@ -10,6 +10,7 @@ This repository is the runnable foundation for a local-first Personal Academic �
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
 - `academic` CLI: privacy-safe doctor plus fixture emit/verify/replay commands.
 - `@academic-os/web-contracts`: exact TypeScript fixture validation kept in positive/negative parity with JSON Schema and Rust.
+- Phase 1 F0 crates: empty store/vault/RPC/daemon/projection/portability/test-support boundaries, bundled plaintext SQLite as the default compile lane, and an explicit non-default SQLCipher spike feature that carries no acceptance claim.
 
 Both committed fixtures are synthetic and declare `network_egress: NONE`. `signed-batch-v1.json` is a byte-immutable read-only compatibility golden; v1 signed payloads are verified before a deterministic, fail-closed semantic upcast, and no public API or CLI can mint v1. `signed-batch-v2.json` is the only writer fixture and demonstrates that a later AI inference cannot override an explicit user decision, that freshness can become `STALE` while mastery remains `PRACTICED`, and that a Prediction retains confidence plus versioned evidence-window/sample metadata distinct from its applicability interval. Fixture-wrapper ingress consumes original bytes with fatal UTF-8 decoding, so malformed sequences never become U+FFFD before JSON, Ajv, or semantic parsing. The raw boundary also rejects duplicate decoded property names, non-Unicode-scalar strings, and mathematically fractional designated integer lexemes at arbitrary precision while preserving integral spellings such as `2.0` and `2e0`. Prediction disclosure integers follow that same lexical rule while enforcing their typed bounds; every disclosed timestamp is a non-negative JavaScript-safe integer, and an applicability `to` key is required with explicit `null` as the sole open-ended representation. Artifact JSON applies the same ambiguity checks plus canonical unsigned number tokens, and Ajv, TypeScript, and Rust run the shared byte, exact-integer, prediction-metadata, and raw corpora.
 
@@ -33,9 +34,10 @@ No Docker or cloud account is required.
 ```powershell
 node tools/source-preflight.mjs
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked
-pnpm install --frozen-lockfile
+cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+cargo test --workspace --all-targets --locked --offline
+cargo test --workspace --doc --locked --offline
+pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
 pnpm test
