@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package academic.v1;
+
+// Local-only DTOs. A frame is exactly a four-byte big-endian unsigned length
+// followed by one LocalCoreEnvelope. Compression and OS transport are outside
+// this schema.
+
+message ProtocolVersion {
+  uint32 major = 1; // semantically bounded to u16
+  uint32 minor = 2; // semantically bounded to u16
+  reserved 3 to 15;
+}
+
+message StorageSchemaVersion {
+  uint32 number = 1;
+  string semantic_version = 2;
+  reserved 3 to 15;
+}
+
+message ProjectionState {
+  string projection_id = 1;
+  uint32 builder_schema_version = 2;
+  bytes builder_digest = 3; // exactly 32 SHA-256 bytes
+  uint64 source_accept_seq_watermark = 4;
+  reserved 5 to 15;
+}
+
+enum ProfileLockState {
+  PROFILE_LOCK_STATE_UNSPECIFIED = 0;
+  PROFILE_LOCK_STATE_UNLOCKED = 1;
+  PROFILE_LOCK_STATE_LOCKED = 2;
+  PROFILE_LOCK_STATE_REPAIR_REQUIRED = 3;
+  reserved 4 to 15;
+}
+
+message SyntheticOnlyPolicy {
+  string data_policy = 1;
+  string storage_mode = 2;
+  string storage_encryption = 3;
+  bool production_data_allowed = 4;
+  string product_network = 5;
+  reserved 6 to 15;
+}
+
+message ClientHandshake {
+  string protocol_name = 1;
+  ProtocolVersion protocol_version = 2;
+  repeated string capability_ids = 3;
+  reserved 4 to 15;
+}
+
+enum WriteDisposition {
+  WRITE_DISPOSITION_UNSPECIFIED = 0;
+  WRITE_DISPOSITION_ALLOWED = 1;
+  WRITE_DISPOSITION_DENIED_MAJOR_VERSION = 2;
+  WRITE_DISPOSITION_DENIED_UNKNOWN_CAPABILITY = 3;
+  WRITE_DISPOSITION_DENIED_CLIENT_TOO_OLD = 4;
+  reserved 5 to 15;
+}
+
+message ServerHandshake {
+  string protocol_name = 1;
+  ProtocolVersion protocol_version = 2;
+  ProtocolVersion minimum_client_version = 3;
+  string daemon_build = 4;
+  StorageSchemaVersion storage_schema = 5;
+  repeated string vault_read_formats = 6;
+  string vault_write_format = 7;
+  repeated ProjectionState projections = 8;
+  ProfileLockState lock_state = 9;
+  SyntheticOnlyPolicy policy = 10;
+  repeated string capability_ids = 11; // deterministic negotiated intersection
+  ProtocolVersion negotiated_protocol_version = 12; // absent on major mismatch
+  WriteDisposition write_disposition = 13;
+  string write_denial_reason = 14;
+  reserved 15 to 31;
+}
+
+message SyntheticIngestCommand {
+  // Names one fixture from the repository allowlist; it is not an input path.
+  string synthetic_fixture_id = 1;
+  reserved 16 to 31;
+}
+
+message SyntheticBackupCommand {
+  reserved 16 to 31;
+}
+
+message SyntheticRestoreCommand {
+  bytes backup_receipt_id = 1; // exactly 16 opaque bytes
+  reserved 16 to 31;
+}
+
+message MutableRequest {
+  bytes request_id = 1; // exactly 16 opaque bytes
+  bytes client_instance_id = 2; // exactly 16 opaque bytes
+  bytes idempotency_key = 3; // exactly 32 bytes
+  bytes request_digest = 4; // exactly 32 SHA-256 bytes
+  optional uint64 expected_profile_revision = 5;
+  string capability_id = 6;
+
+  // These tag bands are permanently unavailable. A write decoder rejects any
+  // unrecognized field, so an unknown command cannot be treated as a known arm.
+  reserved 7 to 9;
+  oneof command {
+    SyntheticIngestCommand synthetic_ingest = 10;
+    SyntheticBackupCommand synthetic_backup = 11;
+    SyntheticRestoreCommand synthetic_restore = 12;
+  }
+  reserved 13 to 31;
+}
+
+message AcceptanceRange {
+  uint64 accept_seq_start = 1;
+  uint64 accept_seq_end = 2;
+  reserved 3 to 15;
+}
+
+message ImmutableReceipt {
+  bytes receipt_id = 1; // exactly 16 opaque bytes
+  bytes request_id = 2; // exactly 16 opaque bytes
+  bytes client_instance_id = 3; // exactly 16 opaque bytes
+  bytes idempotency_key = 4; // exactly 32 bytes
+  bytes request_digest = 5; // exactly 32 SHA-256 bytes
+  uint64 profile_revision = 6;
+  AcceptanceRange acceptance_range = 7; // absent when no ledger range applies
+  reserved 8 to 15;
+}
+
+enum MutationStatus {
+  MUTATION_STATUS_UNSPECIFIED = 0;
+  MUTATION_STATUS_ACCEPTED = 1;
+  MUTATION_STATUS_DUPLICATE = 2;
+  MUTATION_STATUS_REJECTED = 3;
+  reserved 4 to 15;
+}
+
+message MutableResponse {
+  bytes request_id = 1; // exactly 16 opaque bytes
+  MutationStatus status = 2;
+  string reason = 3;
+  ImmutableReceipt receipt = 4;
+  uint64 profile_revision = 5;
+  AcceptanceRange acceptance_range = 6; // absent when no ledger range applies
+  bytes response_digest = 7; // exactly 32 SHA-256 bytes
+  reserved 8 to 15;
+}
+
+message LocalCoreEnvelope {
+  oneof payload {
+    ClientHandshake client_handshake = 1;
+    ServerHandshake server_handshake = 2;
+    MutableRequest mutable_request = 3;
+    MutableResponse mutable_response = 4;
+  }
+  reserved 5 to 15;
+}
