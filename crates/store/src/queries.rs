@@ -1,19 +1,25 @@
 //! Read-only canonical snapshots and SQL-backed bitemporal resolution.
 
-use std::{collections::BTreeMap, error::Error, fmt};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    fmt,
+};
 
 use academic_contracts::{
     ContractError, decode_canonical_claim_object, decode_canonical_evidence_ids,
 };
 use academic_domain::{
-    Claim, ClaimId, ClaimRelation, ClaimRelationKind, ConfidencePermille, ContentDigest,
-    DecisionAction, DecisionId, DomainError, EntityId, EvidenceId, PredicateId, ResolutionSlot,
-    ScopeId, TimestampMillis, UserDecision, ValidInterval,
+    ArtifactId, Claim, ClaimId, ClaimRelation, ClaimRelationKind, ConfidencePermille,
+    ContentDigest, DecisionAction, DecisionId, DomainError, DomainId, EntityId, EvidenceId,
+    PredicateId, ResolutionSlot, ScopeId, TimestampMillis, UserDecision, ValidInterval,
 };
+pub use academic_ledger::AuthorityPolicy;
 use academic_ledger::{
     ResolutionClaim, ResolutionDecision, ResolutionQuery, ResolutionRelation, ResolutionResult,
     ResolverActorKind, resolve_snapshot,
 };
+use rusqlite::{Connection, Params, Row};
 
 use crate::{
     connection::ReaderConnection,
@@ -57,6 +63,46 @@ pub struct StoredBatchMaterial {
     pub accept_seq_end: u64,
 }
 
+/// Exact canonical resolver implementation bound into projection generations.
+pub const PROJECTION_RESOLVER_VERSION: &str = "academic-ledger-resolve-snapshot-v1";
+
+/// Store-owned request for one resolved projection source snapshot.
+#[derive(Debug)]
+pub struct ProjectionSnapshotRequest<'policy> {
+    pub domain_id: DomainId,
+    pub valid_at: TimestampMillis,
+    pub known_at_accept_seq: u64,
+    pub predicate_policies: &'policy BTreeMap<PredicateId, AuthorityPolicy>,
+}
+
+/// One active canonical claim and the exact predicate policy that selected it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectionResolvedClaim {
+    pub claim: Claim,
+    pub accept_seq: u64,
+    pub applied_policy: AuthorityPolicy,
+}
+
+/// Lossless evidence locator material used to build disposable search rows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectionEvidenceLocator {
+    pub claim_id: ClaimId,
+    pub evidence_id: EvidenceId,
+    pub artifact_id: ArtifactId,
+    pub representation_index: u64,
+    pub locator_kind: String,
+    pub locator_payload: Vec<u8>,
+}
+
+/// Materialized projection input read and resolved inside one canonical transaction.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectionSourceSnapshot {
+    pub latest_accept_seq: u64,
+    pub source_outbox_seq: u64,
+    pub resolved_claims: Vec<ProjectionResolvedClaim>,
+    pub evidence_locators: Vec<ProjectionEvidenceLocator>,
+}
+
 /// Query or normalized-row integrity failure.
 #[derive(Debug)]
 pub enum QueryError {
@@ -65,6 +111,8 @@ pub enum QueryError {
     Contract(ContractError),
     Domain(DomainError),
     Corrupt(&'static str),
+    MissingPredicatePolicy(String),
+    KnownAtBeyondHead { requested: u64, latest: u64 },
     IntegerOverflow(u64),
 }
 
@@ -76,6 +124,14 @@ impl fmt::Display for QueryError {
             Self::Contract(error) => write!(formatter, "canonical query error: {error}"),
             Self::Domain(error) => write!(formatter, "invalid normalized domain row: {error}"),
             Self::Corrupt(reason) => write!(formatter, "canonical snapshot is corrupt: {reason}"),
+            Self::MissingPredicatePolicy(predicate) => write!(
+                formatter,
+                "canonical projection policy registry has no entry for predicate {predicate}"
+            ),
+            Self::KnownAtBeyondHead { requested, latest } => write!(
+                formatter,
+                "projection known-at coordinate {requested} exceeds canonical head {latest}"
+            ),
             Self::IntegerOverflow(value) => {
                 write!(
                     formatter,
@@ -93,7 +149,10 @@ impl Error for QueryError {
             Self::Repository(error) => Some(error),
             Self::Contract(error) => Some(error),
             Self::Domain(error) => Some(error),
-            Self::Corrupt(_) | Self::IntegerOverflow(_) => None,
+            Self::Corrupt(_)
+            | Self::MissingPredicatePolicy(_)
+            | Self::KnownAtBeyondHead { .. }
+            | Self::IntegerOverflow(_) => None,
         }
     }
 }
@@ -247,10 +306,179 @@ pub fn resolve(
     reader: &ReaderConnection,
     query: &ResolutionQuery,
 ) -> Result<ResolutionResult, QueryError> {
-    let claims = read_claims(reader, query)?;
-    let relations = read_relations(reader, query)?;
-    let decisions = read_decisions(reader, query)?;
+    reader.with_query_connection(|connection| resolve_from_connection(connection, query))
+}
+
+fn resolve_from_connection(
+    connection: &Connection,
+    query: &ResolutionQuery,
+) -> Result<ResolutionResult, QueryError> {
+    let claims = read_claims(connection, query)?;
+    let relations = read_relations(connection, query)?;
+    let decisions = read_decisions(connection, query)?;
     Ok(resolve_snapshot(query, &claims, &relations, &decisions))
+}
+
+/// Resolves every semantic slot for one domain and materializes projection
+/// source DTOs while one deferred canonical read transaction is held.
+///
+/// No caller receives a raw connection or unresolved claim candidate. Missing
+/// predicate policies and normalized-row corruption fail the whole snapshot.
+pub fn projection_source_snapshot(
+    reader: &mut ReaderConnection,
+    request: &ProjectionSnapshotRequest<'_>,
+) -> Result<ProjectionSourceSnapshot, QueryError> {
+    let transaction = reader.begin_deferred()?;
+    let latest_accept_seq = nonnegative_u64(
+        transaction
+            .query_row(
+                "SELECT coalesce(max(accept_seq), 0) FROM ledger_event",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(StoreError::from)?,
+        "latest acceptance sequence",
+    )?;
+    if request.known_at_accept_seq > latest_accept_seq {
+        return Err(QueryError::KnownAtBeyondHead {
+            requested: request.known_at_accept_seq,
+            latest: latest_accept_seq,
+        });
+    }
+    let known_at = checked_i64(request.known_at_accept_seq)?;
+    let source_outbox_seq = nonnegative_u64(
+        transaction
+            .query_row(
+                concat!(
+                    "SELECT coalesce(max(outbox_seq), 0) FROM projection_outbox ",
+                    "WHERE accept_seq_end <= ?1"
+                ),
+                [known_at],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(StoreError::from)?,
+        "projection outbox sequence",
+    )?;
+
+    type RawSlot = (Vec<u8>, String, Vec<u8>);
+    let raw_slots: Vec<RawSlot> = query_collect(
+        &transaction,
+        concat!(
+            "SELECT DISTINCT c.subject_entity_id, c.predicate_id, c.scope_id FROM claim c ",
+            "JOIN ledger_event e ON e.event_id = c.assertion_event_id ",
+            "WHERE e.domain_id = ?1 AND e.accept_seq <= ?2 ",
+            "ORDER BY c.subject_entity_id, c.predicate_id, c.scope_id"
+        ),
+        rusqlite::params![request.domain_id.as_bytes().as_slice(), known_at],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    )?;
+
+    let mut selected = BTreeMap::<ClaimId, ProjectionResolvedClaim>::new();
+    for (subject, predicate, scope) in raw_slots {
+        let predicate_id = PredicateId::parse(predicate)?;
+        let policy = request
+            .predicate_policies
+            .get(&predicate_id)
+            .copied()
+            .ok_or_else(|| QueryError::MissingPredicatePolicy(predicate_id.as_str().to_owned()))?;
+        let query = ResolutionQuery {
+            subject_entity_id: id_from_blob(subject)?,
+            predicate_id,
+            scope_id: id_from_blob(scope)?,
+            valid_at: request.valid_at,
+            known_at_accept_seq: request.known_at_accept_seq,
+            policy,
+        };
+        let claims = read_claims(&transaction, &query)?;
+        let relations = read_relations(&transaction, &query)?;
+        let decisions = read_decisions(&transaction, &query)?;
+        let result = resolve_snapshot(&query, &claims, &relations, &decisions);
+        let active = result.active_claim_ids.into_iter().collect::<BTreeSet<_>>();
+        let mut found = 0_usize;
+        for record in claims {
+            if !active.contains(&record.claim.id) {
+                continue;
+            }
+            found = found.checked_add(1).ok_or(QueryError::Corrupt(
+                "active projection claim count overflow",
+            ))?;
+            let claim_id = record.claim.id;
+            if selected
+                .insert(
+                    claim_id,
+                    ProjectionResolvedClaim {
+                        claim: record.claim,
+                        accept_seq: record.accept_seq,
+                        applied_policy: policy,
+                    },
+                )
+                .is_some()
+            {
+                return Err(QueryError::Corrupt(
+                    "active projection claim occurs in more than one resolution slot",
+                ));
+            }
+        }
+        if found != active.len() {
+            return Err(QueryError::Corrupt(
+                "canonical resolver selected a claim absent from its normalized input",
+            ));
+        }
+    }
+
+    type RawLocator = (Vec<u8>, Vec<u8>, Vec<u8>, i64, String, Vec<u8>);
+    let raw_locators: Vec<RawLocator> = query_collect(
+        &transaction,
+        concat!(
+            "SELECT c.claim_id, ce.evidence_id, ei.artifact_id, ei.representation_index, ",
+            "ar.locator_kind, ar.locator_payload FROM claim c ",
+            "JOIN ledger_event e ON e.event_id = c.assertion_event_id ",
+            "JOIN claim_evidence ce ON ce.claim_id = c.claim_id ",
+            "JOIN evidence_item ei ON ei.evidence_id = ce.evidence_id ",
+            "JOIN artifact_representation ar ON ar.artifact_id = ei.artifact_id ",
+            "AND ar.representation_index = ei.representation_index ",
+            "WHERE c.object_kind = 'TEXT' AND length(c.object_text) > 0 ",
+            "AND e.domain_id = ?1 AND e.accept_seq <= ?2 ",
+            "ORDER BY c.claim_id, ce.evidence_ordinal, ce.evidence_id"
+        ),
+        rusqlite::params![request.domain_id.as_bytes().as_slice(), known_at],
+        |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+            ))
+        },
+    )?;
+    let mut evidence_locators = Vec::new();
+    for row in raw_locators {
+        let claim_id = id_from_blob(row.0)?;
+        if selected.contains_key(&claim_id) {
+            evidence_locators.push(ProjectionEvidenceLocator {
+                claim_id,
+                evidence_id: id_from_blob(row.1)?,
+                artifact_id: id_from_blob(row.2)?,
+                representation_index: nonnegative_u64(
+                    row.3,
+                    "projection evidence representation index",
+                )?,
+                locator_kind: row.4,
+                locator_payload: row.5,
+            });
+        }
+    }
+
+    let snapshot = ProjectionSourceSnapshot {
+        latest_accept_seq,
+        source_outbox_seq,
+        resolved_claims: selected.into_values().collect(),
+        evidence_locators,
+    };
+    transaction.commit().map_err(StoreError::from)?;
+    Ok(snapshot)
 }
 
 type RawClaim = (
@@ -279,7 +507,7 @@ type RawClaim = (
 );
 
 fn read_claims(
-    reader: &ReaderConnection,
+    connection: &Connection,
     query: &ResolutionQuery,
 ) -> Result<Vec<ResolutionClaim>, QueryError> {
     let known_at = checked_i64(query.known_at_accept_seq)?;
@@ -289,7 +517,8 @@ fn read_claims(
         query.scope_id.as_bytes().as_slice(),
         known_at,
     ];
-    let raw: Vec<RawClaim> = reader.query_collect(
+    let raw: Vec<RawClaim> = query_collect(
+        connection,
         concat!(
             "SELECT c.claim_id, c.subject_entity_id, c.predicate_id, c.scope_id, c.object_kind, ",
             "c.object_entity_id, c.object_text, c.object_integer, c.object_decimal_coefficient, ",
@@ -329,7 +558,8 @@ fn read_claims(
             ))
         },
     )?;
-    let evidence_rows: Vec<(Vec<u8>, Vec<u8>)> = reader.query_collect(
+    let evidence_rows: Vec<(Vec<u8>, Vec<u8>)> = query_collect(
+        connection,
         concat!(
             "SELECT ce.claim_id, ce.evidence_id FROM claim_evidence ce ",
             "JOIN claim c ON c.claim_id = ce.claim_id ",
@@ -399,11 +629,12 @@ fn read_claims(
 }
 
 fn read_relations(
-    reader: &ReaderConnection,
+    connection: &Connection,
     query: &ResolutionQuery,
 ) -> Result<Vec<ResolutionRelation>, QueryError> {
     type Raw = (Vec<u8>, Vec<u8>, String, Vec<u8>, String, i64);
-    let rows: Vec<Raw> = reader.query_collect(
+    let rows: Vec<Raw> = query_collect(
+        connection,
         concat!(
             "SELECT r.source_claim_id, r.target_claim_id, r.relation_kind, r.scope_id, ",
             "r.actor_kind, e.accept_seq FROM claim_relation r ",
@@ -443,7 +674,7 @@ fn read_relations(
 }
 
 fn read_decisions(
-    reader: &ReaderConnection,
+    connection: &Connection,
     query: &ResolutionQuery,
 ) -> Result<Vec<ResolutionDecision>, QueryError> {
     type Raw = (
@@ -462,7 +693,8 @@ fn read_decisions(
         Option<i64>,
         i64,
     );
-    let rows: Vec<Raw> = reader.query_collect(
+    let rows: Vec<Raw> = query_collect(
+        connection,
         concat!(
             "SELECT d.decision_id, d.target_claim_id, d.target_object_canonical, ",
             "d.resolution_subject_entity_id, d.resolution_predicate_id, d.resolution_scope_id, ",
@@ -536,6 +768,25 @@ fn read_decisions(
             })
         })
         .collect()
+}
+
+fn query_collect<T, P, F>(
+    connection: &Connection,
+    sql: &str,
+    params: P,
+    mapper: F,
+) -> Result<Vec<T>, QueryError>
+where
+    P: Params,
+    F: FnMut(&Row<'_>) -> rusqlite::Result<T>,
+{
+    let mut statement = connection.prepare(sql).map_err(StoreError::from)?;
+    let rows = statement
+        .query_map(params, mapper)
+        .map_err(StoreError::from)?;
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(StoreError::from)
+        .map_err(QueryError::from)
 }
 
 fn parse_relation_kind(value: &str) -> Result<ClaimRelationKind, QueryError> {

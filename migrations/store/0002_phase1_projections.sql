@@ -22,8 +22,14 @@ CREATE TABLE projection_generation (
     effective_config_hash BLOB NOT NULL CHECK (
         typeof(effective_config_hash) = 'blob' AND length(effective_config_hash) = 32
     ),
-    source_accept_seq INTEGER NOT NULL CHECK (source_accept_seq >= 0),
+    known_at_accept_seq INTEGER NOT NULL CHECK (known_at_accept_seq >= 0),
+    valid_at_unix_ms INTEGER NOT NULL,
     source_outbox_seq INTEGER NOT NULL CHECK (source_outbox_seq >= 0),
+    resolver_version TEXT NOT NULL CHECK (length(trim(resolver_version)) > 0),
+    policy_registry_version TEXT NOT NULL CHECK (length(trim(policy_registry_version)) > 0),
+    policy_registry_hash BLOB NOT NULL CHECK (
+        typeof(policy_registry_hash) = 'blob' AND length(policy_registry_hash) = 32
+    ),
     security_domain BLOB NOT NULL CHECK (
         typeof(security_domain) = 'blob' AND length(security_domain) = 16
     ),
@@ -52,8 +58,14 @@ CREATE TABLE projection_active (
     generation_id BLOB NOT NULL CHECK (
         typeof(generation_id) = 'blob' AND length(generation_id) = 16
     ),
-    source_accept_seq INTEGER NOT NULL CHECK (source_accept_seq >= 0),
+    known_at_accept_seq INTEGER NOT NULL CHECK (known_at_accept_seq >= 0),
+    valid_at_unix_ms INTEGER NOT NULL,
     source_outbox_seq INTEGER NOT NULL CHECK (source_outbox_seq >= 0),
+    resolver_version TEXT NOT NULL CHECK (length(trim(resolver_version)) > 0),
+    policy_registry_version TEXT NOT NULL CHECK (length(trim(policy_registry_version)) > 0),
+    policy_registry_hash BLOB NOT NULL CHECK (
+        typeof(policy_registry_hash) = 'blob' AND length(policy_registry_hash) = 32
+    ),
     activated_at_unix_ms INTEGER NOT NULL CHECK (activated_at_unix_ms >= 0),
     PRIMARY KEY (projection_kind, security_domain),
     FOREIGN KEY (generation_id, projection_kind, security_domain)
@@ -67,7 +79,13 @@ CREATE TABLE projection_cursor (
         typeof(security_domain) = 'blob' AND length(security_domain) = 16
     ),
     last_outbox_seq INTEGER NOT NULL CHECK (last_outbox_seq >= 0),
-    source_accept_seq INTEGER NOT NULL CHECK (source_accept_seq >= 0),
+    known_at_accept_seq INTEGER NOT NULL CHECK (known_at_accept_seq >= 0),
+    valid_at_unix_ms INTEGER NOT NULL,
+    resolver_version TEXT NOT NULL CHECK (length(trim(resolver_version)) > 0),
+    policy_registry_version TEXT NOT NULL CHECK (length(trim(policy_registry_version)) > 0),
+    policy_registry_hash BLOB NOT NULL CHECK (
+        typeof(policy_registry_hash) = 'blob' AND length(policy_registry_hash) = 32
+    ),
     updated_at_unix_ms INTEGER NOT NULL CHECK (updated_at_unix_ms >= 0),
     PRIMARY KEY (projection_kind, security_domain)
 ) STRICT;
@@ -89,11 +107,17 @@ CREATE TABLE projection_graph_edge (
     ),
     authority_class TEXT NOT NULL,
     epistemic_status TEXT NOT NULL,
+    authority_policy TEXT NOT NULL CHECK (
+        authority_policy IN ('USER_OWNED', 'OFFICIAL_FACT', 'IMPLEMENTATION_OBSERVATION', 'CURATED_RELATION')
+    ),
+    valid_from_unix_ms INTEGER NOT NULL,
+    valid_to_unix_ms INTEGER,
     source_accept_seq INTEGER NOT NULL CHECK (source_accept_seq >= 1),
     stable_tiebreaker BLOB NOT NULL CHECK (
         typeof(stable_tiebreaker) = 'blob' AND length(stable_tiebreaker) = 32
     ),
-    PRIMARY KEY (generation_id, claim_id)
+    PRIMARY KEY (generation_id, claim_id),
+    CHECK (valid_to_unix_ms IS NULL OR valid_from_unix_ms < valid_to_unix_ms)
 ) STRICT;
 
 CREATE TABLE projection_graph_edge_evidence (
@@ -133,23 +157,34 @@ CREATE TABLE projection_search_content (
     security_domain BLOB NOT NULL CHECK (
         typeof(security_domain) = 'blob' AND length(security_domain) = 16
     ),
+    authority_class TEXT NOT NULL,
+    epistemic_status TEXT NOT NULL,
+    authority_policy TEXT NOT NULL CHECK (
+        authority_policy IN ('USER_OWNED', 'OFFICIAL_FACT', 'IMPLEMENTATION_OBSERVATION', 'CURATED_RELATION')
+    ),
+    valid_from_unix_ms INTEGER NOT NULL,
+    valid_to_unix_ms INTEGER,
     source_accept_seq INTEGER NOT NULL CHECK (source_accept_seq >= 1),
     stable_tiebreaker BLOB NOT NULL CHECK (
         typeof(stable_tiebreaker) = 'blob' AND length(stable_tiebreaker) = 32
     ),
-    UNIQUE (generation_id, record_key)
+    UNIQUE (generation_id, record_key),
+    UNIQUE (generation_id, content_id),
+    CHECK (valid_to_unix_ms IS NULL OR valid_from_unix_ms < valid_to_unix_ms)
 ) STRICT;
 
 CREATE TABLE projection_exact_symbol (
     generation_id BLOB NOT NULL REFERENCES projection_generation(generation_id)
         ON UPDATE RESTRICT ON DELETE CASCADE,
     symbol TEXT NOT NULL CHECK (length(symbol) > 0),
-    content_id INTEGER NOT NULL REFERENCES projection_search_content(content_id)
-        ON UPDATE RESTRICT ON DELETE CASCADE,
+    content_id INTEGER NOT NULL,
     stable_tiebreaker BLOB NOT NULL CHECK (
         typeof(stable_tiebreaker) = 'blob' AND length(stable_tiebreaker) = 32
     ),
-    PRIMARY KEY (generation_id, symbol, content_id)
+    PRIMARY KEY (generation_id, symbol, content_id),
+    FOREIGN KEY (generation_id, content_id)
+        REFERENCES projection_search_content(generation_id, content_id)
+        ON UPDATE RESTRICT ON DELETE CASCADE
 ) STRICT;
 
 CREATE VIRTUAL TABLE projection_search_unicode USING fts5(

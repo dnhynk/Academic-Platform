@@ -9,6 +9,7 @@ pub mod fts;
 pub mod generation;
 pub mod graph;
 pub mod query;
+pub mod resolution;
 pub mod runner;
 
 /// First relational graph generation contract.

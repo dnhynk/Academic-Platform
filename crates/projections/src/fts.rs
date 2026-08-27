@@ -1,15 +1,21 @@
 //! FTS5 Korean/code baselines and separate exact-symbol retrieval.
 
-use std::str::FromStr;
+use std::{collections::BTreeMap, str::FromStr};
 
 use academic_domain::{
-    ArtifactId, ClaimId, ContentDigest, DomainError, DomainId, EntityId, EvidenceId,
+    ArtifactId, AuthorityClass, ClaimId, ClaimObject, ContentDigest, DomainError, DomainId,
+    EntityId, EpistemicStatus, EvidenceId, TimestampMillis, ValidInterval,
 };
+use academic_store::queries::{ProjectionEvidenceLocator, ProjectionResolvedClaim};
 use rusqlite::{Connection, Transaction, params};
 
 use crate::{
     checksum::{append_field, append_optional_field},
-    generation::{GenerationId, ProjectionKind},
+    generation::{GenerationId, ProjectionCoordinates, ProjectionKind, ResolutionProvenance},
+    resolution::{
+        AuthorityPolicy, authority_name, authority_policy_name, epistemic_name, parse_authority,
+        parse_authority_policy, parse_epistemic,
+    },
     runner::{ProjectionError, ProjectionResult},
 };
 
@@ -34,8 +40,11 @@ pub struct SearchHit {
     pub claim_id: ClaimId,
     pub locator: ExactLocator,
     pub domain: DomainId,
+    pub authority_class: AuthorityClass,
+    pub epistemic_status: EpistemicStatus,
+    pub valid_time: ValidInterval,
+    pub resolution: ResolutionProvenance,
     pub generation_id: GenerationId,
-    pub source_watermark: u64,
     pub source_record_accept_seq: u64,
     pub stable_tiebreaker: ContentDigest,
 }
@@ -50,8 +59,11 @@ pub struct ExactSymbolHit {
     pub claim_id: ClaimId,
     pub locator: ExactLocator,
     pub domain: DomainId,
+    pub authority_class: AuthorityClass,
+    pub epistemic_status: EpistemicStatus,
+    pub valid_time: ValidInterval,
+    pub resolution: ResolutionProvenance,
     pub generation_id: GenerationId,
-    pub source_watermark: u64,
     pub source_record_accept_seq: u64,
     pub stable_tiebreaker: ContentDigest,
 }
@@ -70,6 +82,11 @@ pub(crate) struct SearchSourceRecord {
     locator_kind: String,
     locator_payload: Vec<u8>,
     domain: [u8; 16],
+    authority_class: AuthorityClass,
+    epistemic_status: EpistemicStatus,
+    authority_policy: AuthorityPolicy,
+    valid_from_unix_ms: i64,
+    valid_to_unix_ms: Option<i64>,
     source_accept_seq: u64,
 }
 
@@ -88,6 +105,20 @@ impl SearchSourceRecord {
         append_field(&mut bytes, self.locator_kind.as_bytes());
         append_field(&mut bytes, &self.locator_payload);
         append_field(&mut bytes, &self.domain);
+        append_field(&mut bytes, authority_name(self.authority_class).as_bytes());
+        append_field(&mut bytes, epistemic_name(self.epistemic_status).as_bytes());
+        append_field(
+            &mut bytes,
+            authority_policy_name(self.authority_policy).as_bytes(),
+        );
+        append_field(&mut bytes, &self.valid_from_unix_ms.to_be_bytes());
+        match self.valid_to_unix_ms {
+            Some(valid_to) => {
+                bytes.push(1);
+                append_field(&mut bytes, &valid_to.to_be_bytes());
+            }
+            None => bytes.push(0),
+        }
         append_field(&mut bytes, &self.source_accept_seq.to_be_bytes());
         bytes
     }
@@ -101,83 +132,66 @@ impl SearchSourceRecord {
     fn stable_tiebreaker(&self) -> ContentDigest {
         ContentDigest::sha256(&self.canonical_bytes())
     }
-}
 
-#[derive(Debug)]
-struct RawSearchRow {
-    claim_id: Vec<u8>,
-    evidence_id: Vec<u8>,
-    subject_entity_id: Vec<u8>,
-    predicate_id: String,
-    body: String,
-    artifact_id: Vec<u8>,
-    representation_index: i64,
-    locator_kind: String,
-    locator_payload: Vec<u8>,
-    domain: Vec<u8>,
-    source_accept_seq: i64,
+    pub(crate) fn verification_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.canonical_bytes();
+        let stable_tiebreaker = self.stable_tiebreaker();
+        append_field(&mut bytes, stable_tiebreaker.as_bytes().as_slice());
+        bytes
+    }
 }
 
 pub(crate) fn load_search_sources(
-    canonical: &Connection,
+    resolved: &[ProjectionResolvedClaim],
+    evidence_locators: &[ProjectionEvidenceLocator],
     domain: DomainId,
-    watermark: u64,
 ) -> ProjectionResult<Vec<SearchSourceRecord>> {
-    let mut statement = canonical.prepare(concat!(
-        "SELECT c.claim_id, ce.evidence_id, c.subject_entity_id, c.predicate_id, ",
-        "c.object_text, ei.artifact_id, ei.representation_index, ar.locator_kind, ",
-        "ar.locator_payload, e.domain_id, e.accept_seq FROM claim c ",
-        "JOIN ledger_event e ON e.event_id = c.assertion_event_id ",
-        "JOIN claim_evidence ce ON ce.claim_id = c.claim_id ",
-        "JOIN evidence_item ei ON ei.evidence_id = ce.evidence_id ",
-        "JOIN artifact_representation ar ON ar.artifact_id = ei.artifact_id ",
-        "AND ar.representation_index = ei.representation_index ",
-        "WHERE c.object_kind = 'TEXT' AND length(c.object_text) > 0 ",
-        "AND e.domain_id = ?1 AND e.accept_seq <= ?2 ",
-        "ORDER BY c.claim_id, ce.evidence_ordinal, ce.evidence_id"
-    ))?;
-    let rows = statement.query_map(
-        params![domain.as_bytes().as_slice(), checked_i64(watermark)?],
-        |row| {
-            Ok(RawSearchRow {
-                claim_id: row.get(0)?,
-                evidence_id: row.get(1)?,
-                subject_entity_id: row.get(2)?,
-                predicate_id: row.get(3)?,
-                body: row.get(4)?,
-                artifact_id: row.get(5)?,
-                representation_index: row.get(6)?,
-                locator_kind: row.get(7)?,
-                locator_payload: row.get(8)?,
-                domain: row.get(9)?,
-                source_accept_seq: row.get(10)?,
-            })
-        },
-    )?;
+    let claims = resolved
+        .iter()
+        .map(|record| (record.claim.id, record))
+        .collect::<BTreeMap<_, _>>();
     let mut records = Vec::new();
-    for row in rows {
-        let row = row?;
-        let symbol = row
+    for locator in evidence_locators {
+        let claim = claims.get(&locator.claim_id).ok_or_else(|| {
+            ProjectionError::Corrupt(
+                "search locator references a claim absent from the resolved snapshot".to_owned(),
+            )
+        })?;
+        let ClaimObject::Text(canonical_body) = &claim.claim.object else {
+            return Err(ProjectionError::Corrupt(
+                "active search claim is not text-valued".to_owned(),
+            ));
+        };
+        if canonical_body.is_empty() || !claim.claim.evidence_ids.contains(&locator.evidence_id) {
+            return Err(ProjectionError::Corrupt(
+                "search locator disagrees with the resolved claim evidence".to_owned(),
+            ));
+        }
+        let symbol = claim
+            .claim
             .predicate_id
+            .as_str()
             .ends_with(".symbol")
-            .then(|| row.body.clone());
+            .then(|| canonical_body.clone());
         let mut record = SearchSourceRecord {
             record_key: [0_u8; 32],
-            claim_id: fixed_bytes(row.claim_id, "search claim identifier")?,
-            evidence_id: fixed_bytes(row.evidence_id, "search evidence identifier")?,
-            subject_entity_id: fixed_bytes(row.subject_entity_id, "search subject entity")?,
-            predicate_id: row.predicate_id,
-            body: row.body,
+            claim_id: *claim.claim.id.as_bytes(),
+            evidence_id: *locator.evidence_id.as_bytes(),
+            subject_entity_id: *claim.claim.subject_entity_id.as_bytes(),
+            predicate_id: claim.claim.predicate_id.as_str().to_owned(),
+            body: canonical_body.clone(),
             symbol,
-            artifact_id: fixed_bytes(row.artifact_id, "search artifact identifier")?,
-            representation_index: nonnegative_u64(
-                row.representation_index,
-                "search representation index",
-            )?,
-            locator_kind: row.locator_kind,
-            locator_payload: row.locator_payload,
-            domain: fixed_bytes(row.domain, "search domain identifier")?,
-            source_accept_seq: positive_u64(row.source_accept_seq, "search source accept_seq")?,
+            artifact_id: *locator.artifact_id.as_bytes(),
+            representation_index: locator.representation_index,
+            locator_kind: locator.locator_kind.clone(),
+            locator_payload: locator.locator_payload.clone(),
+            domain: *domain.as_bytes(),
+            authority_class: claim.claim.authority_class,
+            epistemic_status: claim.claim.epistemic_status,
+            authority_policy: claim.applied_policy,
+            valid_from_unix_ms: claim.claim.valid_time.from().value(),
+            valid_to_unix_ms: claim.claim.valid_time.to().map(TimestampMillis::value),
+            source_accept_seq: claim.accept_seq,
         };
         record.record_key =
             *ContentDigest::sha256(&record.without_key_canonical_bytes()).as_bytes();
@@ -205,8 +219,10 @@ where
                 "INSERT INTO projection_search_content (generation_id, record_key, claim_id, ",
                 "evidence_id, subject_entity_id, predicate_id, body, artifact_id, ",
                 "representation_index, locator_kind, locator_payload, security_domain, ",
-                "source_accept_seq, stable_tiebreaker) ",
-                "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)"
+                "authority_class, epistemic_status, authority_policy, valid_from_unix_ms, ",
+                "valid_to_unix_ms, source_accept_seq, stable_tiebreaker) ",
+                "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ",
+                "?14, ?15, ?16, ?17, ?18, ?19)"
             ),
             params![
                 generation_id.as_bytes().as_slice(),
@@ -221,6 +237,11 @@ where
                 record.locator_kind,
                 record.locator_payload,
                 record.domain.as_slice(),
+                authority_name(record.authority_class),
+                epistemic_name(record.epistemic_status),
+                authority_policy_name(record.authority_policy),
+                record.valid_from_unix_ms,
+                record.valid_to_unix_ms,
                 checked_i64(record.source_accept_seq)?,
                 stable_tiebreaker.as_bytes().as_slice(),
             ],
@@ -256,7 +277,9 @@ pub(crate) fn persisted_search_canonical_records(
     let mut statement = connection.prepare(concat!(
         "SELECT c.record_key, c.claim_id, c.evidence_id, c.subject_entity_id, c.predicate_id, ",
         "c.body, s.symbol, c.artifact_id, c.representation_index, c.locator_kind, ",
-        "c.locator_payload, c.security_domain, c.source_accept_seq ",
+        "c.locator_payload, c.security_domain, c.authority_class, c.epistemic_status, ",
+        "c.authority_policy, c.valid_from_unix_ms, c.valid_to_unix_ms, c.source_accept_seq, ",
+        "c.stable_tiebreaker ",
         "FROM projection_search_content c LEFT JOIN projection_exact_symbol s ",
         "ON s.generation_id = c.generation_id AND s.content_id = c.content_id ",
         "WHERE c.generation_id = ?1 ORDER BY c.record_key"
@@ -275,33 +298,48 @@ pub(crate) fn persisted_search_canonical_records(
             row.get::<_, String>(9)?,
             row.get::<_, Vec<u8>>(10)?,
             row.get::<_, Vec<u8>>(11)?,
-            row.get::<_, i64>(12)?,
+            row.get::<_, String>(12)?,
+            row.get::<_, String>(13)?,
+            row.get::<_, String>(14)?,
+            row.get::<_, i64>(15)?,
+            row.get::<_, Option<i64>>(16)?,
+            row.get::<_, i64>(17)?,
+            row.get::<_, Vec<u8>>(18)?,
         ))
     })?;
     let mut canonical = Vec::new();
     for row in rows {
         let row = row?;
-        canonical.push(
-            SearchSourceRecord {
-                record_key: fixed_bytes(row.0, "persisted search record key")?,
-                claim_id: fixed_bytes(row.1, "persisted search claim identifier")?,
-                evidence_id: fixed_bytes(row.2, "persisted search evidence identifier")?,
-                subject_entity_id: fixed_bytes(row.3, "persisted search subject entity")?,
-                predicate_id: row.4,
-                body: row.5,
-                symbol: row.6,
-                artifact_id: fixed_bytes(row.7, "persisted search artifact identifier")?,
-                representation_index: nonnegative_u64(
-                    row.8,
-                    "persisted search representation index",
-                )?,
-                locator_kind: row.9,
-                locator_payload: row.10,
-                domain: fixed_bytes(row.11, "persisted search domain")?,
-                source_accept_seq: positive_u64(row.12, "persisted search accept_seq")?,
-            }
-            .canonical_bytes(),
-        );
+        let record = SearchSourceRecord {
+            record_key: fixed_bytes(row.0, "persisted search record key")?,
+            claim_id: fixed_bytes(row.1, "persisted search claim identifier")?,
+            evidence_id: fixed_bytes(row.2, "persisted search evidence identifier")?,
+            subject_entity_id: fixed_bytes(row.3, "persisted search subject entity")?,
+            predicate_id: row.4,
+            body: row.5,
+            symbol: row.6,
+            artifact_id: fixed_bytes(row.7, "persisted search artifact identifier")?,
+            representation_index: nonnegative_u64(row.8, "persisted search representation index")?,
+            locator_kind: row.9,
+            locator_payload: row.10,
+            domain: fixed_bytes(row.11, "persisted search domain")?,
+            authority_class: parse_authority(&row.12)?,
+            epistemic_status: parse_epistemic(&row.13)?,
+            authority_policy: parse_authority_policy(&row.14)?,
+            valid_from_unix_ms: row.15,
+            valid_to_unix_ms: row.16,
+            source_accept_seq: positive_u64(row.17, "persisted search accept_seq")?,
+        };
+        let stored_tiebreaker = ContentDigest::from_sha256_bytes(fixed_bytes(
+            row.18,
+            "persisted search stable tiebreaker",
+        )?);
+        if stored_tiebreaker != record.stable_tiebreaker() {
+            return Err(ProjectionError::Corrupt(
+                "persisted search stable tiebreaker does not match canonical record".to_owned(),
+            ));
+        }
+        canonical.push(record.verification_bytes());
     }
     Ok(canonical)
 }
@@ -310,7 +348,7 @@ pub(crate) fn read_ranked_hits(
     connection: &Connection,
     kind: ProjectionKind,
     generation_id: GenerationId,
-    source_watermark: u64,
+    coordinates: ProjectionCoordinates,
     query: &str,
     limit: usize,
 ) -> ProjectionResult<Vec<SearchHit>> {
@@ -321,7 +359,9 @@ pub(crate) fn read_ranked_hits(
     let sql = format!(
         "SELECT c.body, c.subject_entity_id, c.predicate_id, c.claim_id, c.evidence_id, \
          c.artifact_id, c.representation_index, c.locator_kind, c.locator_payload, \
-         c.security_domain, c.source_accept_seq, c.stable_tiebreaker FROM {table} f \
+         c.security_domain, c.authority_class, c.epistemic_status, c.authority_policy, \
+         c.valid_from_unix_ms, c.valid_to_unix_ms, c.source_accept_seq, \
+         c.stable_tiebreaker FROM {table} f \
          JOIN projection_search_content c ON c.content_id = f.content_id \
          WHERE {table} MATCH ?1 AND c.generation_id = ?2 \
          ORDER BY bm25({table}), c.stable_tiebreaker, c.record_key LIMIT ?3"
@@ -340,7 +380,7 @@ pub(crate) fn read_ranked_hits(
                     ProjectionError::Corrupt("search rank ordinal overflow".to_owned())
                 })?,
                 generation_id,
-                source_watermark,
+                coordinates,
             )
         })
         .collect()
@@ -349,7 +389,7 @@ pub(crate) fn read_ranked_hits(
 pub(crate) fn read_exact_symbol_hits(
     connection: &Connection,
     generation_id: GenerationId,
-    source_watermark: u64,
+    coordinates: ProjectionCoordinates,
     symbol: &str,
 ) -> ProjectionResult<Vec<ExactSymbolHit>> {
     if symbol.is_empty() || symbol.contains('\0') {
@@ -360,7 +400,9 @@ pub(crate) fn read_exact_symbol_hits(
     let mut statement = connection.prepare(concat!(
         "SELECT s.symbol, c.body, c.subject_entity_id, c.predicate_id, c.claim_id, ",
         "c.evidence_id, c.artifact_id, c.representation_index, c.locator_kind, ",
-        "c.locator_payload, c.security_domain, c.source_accept_seq, c.stable_tiebreaker ",
+        "c.locator_payload, c.security_domain, c.authority_class, c.epistemic_status, ",
+        "c.authority_policy, c.valid_from_unix_ms, c.valid_to_unix_ms, c.source_accept_seq, ",
+        "c.stable_tiebreaker ",
         "FROM projection_exact_symbol s JOIN projection_search_content c ",
         "ON c.content_id = s.content_id AND c.generation_id = s.generation_id ",
         "WHERE s.generation_id = ?1 AND s.symbol = ?2 COLLATE BINARY ",
@@ -381,8 +423,13 @@ pub(crate) fn read_exact_symbol_hits(
                 row.get::<_, String>(8)?,
                 row.get::<_, Vec<u8>>(9)?,
                 row.get::<_, Vec<u8>>(10)?,
-                row.get::<_, i64>(11)?,
-                row.get::<_, Vec<u8>>(12)?,
+                row.get::<_, String>(11)?,
+                row.get::<_, String>(12)?,
+                row.get::<_, String>(13)?,
+                row.get::<_, i64>(14)?,
+                row.get::<_, Option<i64>>(15)?,
+                row.get::<_, i64>(16)?,
+                row.get::<_, Vec<u8>>(17)?,
             ))
         },
     )?;
@@ -402,11 +449,21 @@ pub(crate) fn read_exact_symbol_hits(
                 locator_payload: row.9,
             },
             domain: id_from_bytes(row.10, "symbol domain identifier")?,
+            authority_class: parse_authority(&row.11)?,
+            epistemic_status: parse_epistemic(&row.12)?,
+            valid_time: ValidInterval::new(
+                TimestampMillis::new(row.14),
+                row.15.map(TimestampMillis::new),
+            )
+            .map_err(ProjectionError::Domain)?,
+            resolution: ResolutionProvenance {
+                authority_policy: parse_authority_policy(&row.13)?,
+                coordinates,
+            },
             generation_id,
-            source_watermark,
-            source_record_accept_seq: positive_u64(row.11, "symbol source accept_seq")?,
+            source_record_accept_seq: positive_u64(row.16, "symbol source accept_seq")?,
             stable_tiebreaker: ContentDigest::from_sha256_bytes(fixed_bytes(
-                row.12,
+                row.17,
                 "symbol stable tiebreaker",
             )?),
         })
@@ -425,6 +482,11 @@ type RawHit = (
     String,
     Vec<u8>,
     Vec<u8>,
+    String,
+    String,
+    String,
+    i64,
+    Option<i64>,
     i64,
     Vec<u8>,
 );
@@ -443,6 +505,11 @@ fn read_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawHit> {
         row.get(9)?,
         row.get(10)?,
         row.get(11)?,
+        row.get(12)?,
+        row.get(13)?,
+        row.get(14)?,
+        row.get(15)?,
+        row.get(16)?,
     ))
 }
 
@@ -450,7 +517,7 @@ fn hit_from_raw(
     row: RawHit,
     rank: u64,
     generation_id: GenerationId,
-    source_watermark: u64,
+    coordinates: ProjectionCoordinates,
 ) -> ProjectionResult<SearchHit> {
     Ok(SearchHit {
         rank,
@@ -466,11 +533,21 @@ fn hit_from_raw(
             locator_payload: row.8,
         },
         domain: id_from_bytes(row.9, "search hit domain identifier")?,
+        authority_class: parse_authority(&row.10)?,
+        epistemic_status: parse_epistemic(&row.11)?,
+        valid_time: ValidInterval::new(
+            TimestampMillis::new(row.13),
+            row.14.map(TimestampMillis::new),
+        )
+        .map_err(ProjectionError::Domain)?,
+        resolution: ResolutionProvenance {
+            authority_policy: parse_authority_policy(&row.12)?,
+            coordinates,
+        },
         generation_id,
-        source_watermark,
-        source_record_accept_seq: positive_u64(row.10, "search hit source accept_seq")?,
+        source_record_accept_seq: positive_u64(row.15, "search hit source accept_seq")?,
         stable_tiebreaker: ContentDigest::from_sha256_bytes(fixed_bytes(
-            row.11,
+            row.16,
             "search hit stable tiebreaker",
         )?),
     })
