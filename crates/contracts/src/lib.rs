@@ -281,7 +281,18 @@ pub fn verify_signed_batch(
 pub fn encode_unsigned_batch(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {
     batch.validate()?;
     let json = serde_json::to_value(batch)?;
-    encode_cbor_value(&json_to_cbor(&json)?)
+    let bytes = encode_cbor_value(&json_to_cbor(&json)?)?;
+    require_current_writer_payload(&bytes)?;
+    Ok(bytes)
+}
+
+fn require_current_writer_payload(bytes: &[u8]) -> Result<(), ContractError> {
+    let json = decode_canonical_payload_json(bytes)?;
+    let source_schema_version = read_schema_version(&json)?;
+    if source_schema_version != EVENT_SCHEMA_VERSION_V2 {
+        return Err(DomainError::UnsupportedSchemaVersion(source_schema_version).into());
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -917,6 +928,25 @@ mod tests {
     }
 
     #[test]
+    fn every_current_writer_semantically_emits_v2_payloads()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = minimal_batch()?;
+        let payload = encode_unsigned_batch(&batch)?;
+        assert_eq!(
+            read_schema_version(&decode_canonical_payload_json(&payload)?)?,
+            EVENT_SCHEMA_VERSION_V2
+        );
+
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let envelope = decode_envelope(&sign_batch(&batch, &signing_key)?)?;
+        assert_eq!(
+            read_schema_version(&decode_canonical_payload_json(&envelope.payload)?)?,
+            EVENT_SCHEMA_VERSION_V2
+        );
+        Ok(())
+    }
+
+    #[test]
     fn t008_v1_user_decision_wire_upcasts_deterministically_to_v2()
     -> Result<(), Box<dyn std::error::Error>> {
         let mut batch = v1_compatible_batch()?;
@@ -1347,24 +1377,31 @@ mod tests {
     }
 
     #[test]
-    fn signed_decode_revalidates_uuidv7_before_issuing_capability()
+    fn signed_decode_revalidates_rfc_variant_uuidv7_before_issuing_capability()
     -> Result<(), Box<dyn std::error::Error>> {
         let batch = minimal_batch()?;
         let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
         let authorization = authorization(&batch, &signing_key)?;
-        let mut json = serde_json::to_value(&batch)?;
-        json["batch_id"] = JsonValue::String("00000000-0000-4000-8000-000000000000".to_owned());
-        let payload = encode_cbor_value(&json_to_cbor(&json)?)?;
-        let signature = signing_key.sign(&payload);
-        let envelope = encode_envelope(
-            &payload,
-            signing_key.verifying_key().as_bytes(),
-            &signature.to_bytes(),
-        )?;
-        assert!(matches!(
-            verify_signed_batch(&envelope, &authorization),
-            Err(ContractError::Json(_))
-        ));
+        for invalid in [
+            "00000000-0000-4000-8000-000000000000",
+            "01900000-0000-7000-0000-000000000001",
+            "01900000-0000-7000-c000-000000000001",
+            "01900000-0000-7000-e000-000000000001",
+        ] {
+            let mut json = serde_json::to_value(&batch)?;
+            json["batch_id"] = JsonValue::String(invalid.to_owned());
+            let payload = encode_cbor_value(&json_to_cbor(&json)?)?;
+            let signature = signing_key.sign(&payload);
+            let envelope = encode_envelope(
+                &payload,
+                signing_key.verifying_key().as_bytes(),
+                &signature.to_bytes(),
+            )?;
+            assert!(matches!(
+                verify_signed_batch(&envelope, &authorization),
+                Err(ContractError::Json(_))
+            ));
+        }
         Ok(())
     }
 

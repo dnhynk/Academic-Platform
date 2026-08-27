@@ -15,6 +15,7 @@ const gitFileSuffixPattern = /(?:^|[@(])https?:\/\/[^\s#]+\.git(?:[#)]|$)/iu;
 const hostedShorthandPattern = /(?:^|[@(])(?:github|gitlab|bitbucket|gist):/iu;
 const bareGithubShorthandPattern = /^[a-z0-9_.-]+\/[a-z0-9_.-]+(?:#[^\s]+)?$/iu;
 const insecureHttpPattern = /(?:^|[@(])http:\/\//iu;
+const maximumResolutionDepth = 16;
 
 function fail(path, value, reason) {
   throw new Error(`${path}: ${reason}: ${JSON.stringify(value)}`);
@@ -61,30 +62,132 @@ function inspectReference(value, path, { allowBareShorthand = false } = {}) {
   }
 }
 
-function inspectResolution(resolution, path) {
+function requireExactFields(value, path, allowedFields, requiredFields = []) {
+  const fields = Object.keys(value);
+  const unexpected = fields.filter((field) => !allowedFields.includes(field));
+  if (unexpected.length > 0) {
+    fail(path, value, `unsupported fields: ${unexpected.join(", ")}`);
+  }
+  const missing = requiredFields.filter((field) => !Object.hasOwn(value, field));
+  if (missing.length > 0) {
+    fail(path, value, `missing required fields: ${missing.join(", ")}`);
+  }
+}
+
+function requireNonemptyString(value, path, description) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    fail(path, value, `${description} must be a nonempty string`);
+  }
+  return value;
+}
+
+function inspectBinaryBin(value, path) {
+  if (typeof value === "string") {
+    requireNonemptyString(value, path, "binary executable path");
+    return;
+  }
+  const bins = requireRecord(value, path);
+  if (Object.keys(bins).length === 0) {
+    fail(path, value, "binary executable mapping must be nonempty");
+  }
+  for (const [name, executablePath] of Object.entries(bins)) {
+    requireNonemptyString(name, `${path} key`, "binary executable name");
+    requireNonemptyString(executablePath, `${path}.${name}`, "binary executable path");
+  }
+}
+
+function inspectVariationTarget(target, path) {
+  const record = requireRecord(target, path);
+  requireExactFields(record, path, ["os", "cpu", "libc"], ["os", "cpu"]);
+  requireNonemptyString(record.os, `${path}.os`, "variation target os");
+  requireNonemptyString(record.cpu, `${path}.cpu`, "variation target cpu");
+  if (Object.hasOwn(record, "libc")) {
+    requireNonemptyString(record.libc, `${path}.libc`, "variation target libc");
+  }
+}
+
+function inspectResolution(resolution, path, depth = 0) {
+  if (depth > maximumResolutionDepth) {
+    fail(path, resolution, `resolution nesting exceeds ${maximumResolutionDepth}`);
+  }
   if (typeof resolution === "string") {
     inspectReference(resolution, path, { allowBareShorthand: true });
     return;
   }
-  if (typeof resolution !== "object" || resolution === null || Array.isArray(resolution)) {
-    fail(path, resolution, "resolution must be a source object or string");
-  }
-  if (Object.hasOwn(resolution, "repo")) {
-    fail(`${path}.repo`, resolution.repo, "repository resolutions are forbidden");
-  }
-  if (typeof resolution.type === "string" && resolution.type.toLowerCase() === "git") {
-    fail(`${path}.type`, resolution.type, "Git resolution type is forbidden");
-  }
-  if (Object.hasOwn(resolution, "tarball")) {
-    if (typeof resolution.tarball !== "string") {
-      fail(`${path}.tarball`, resolution.tarball, "tarball source must be a string");
+  const record = requireRecord(resolution, path);
+  if (!Object.hasOwn(record, "type")) {
+    requireExactFields(record, path, ["integrity", "tarball"]);
+    if (!Object.hasOwn(record, "integrity") && !Object.hasOwn(record, "tarball")) {
+      fail(path, resolution, "registry or tarball resolution must identify its source");
     }
-    const tarball = resolution.tarball.trim();
-    if (/^http:\/\//iu.test(tarball)) {
-      fail(`${path}.tarball`, resolution.tarball, "insecure HTTP tarballs are forbidden");
+    if (Object.hasOwn(record, "integrity")) {
+      requireNonemptyString(record.integrity, `${path}.integrity`, "resolution integrity");
     }
-    inspectReference(tarball, `${path}.tarball`);
+    if (Object.hasOwn(record, "tarball")) {
+      requireNonemptyString(record.tarball, `${path}.tarball`, "tarball source");
+      inspectReference(record.tarball, `${path}.tarball`);
+    }
+    return;
   }
+
+  const type = requireNonemptyString(record.type, `${path}.type`, "resolution type");
+  if (type === "git") {
+    fail(`${path}.type`, type, "Git resolution type is forbidden");
+  }
+  if (type === "directory") {
+    requireExactFields(record, path, ["type", "directory"], ["type", "directory"]);
+    requireNonemptyString(record.directory, `${path}.directory`, "directory resolution path");
+    inspectReference(record.directory, `${path}.directory`);
+    return;
+  }
+  if (type === "binary") {
+    requireExactFields(
+      record,
+      path,
+      ["type", "url", "integrity", "bin", "archive", "prefix"],
+      ["type", "url", "integrity", "bin", "archive"],
+    );
+    requireNonemptyString(record.url, `${path}.url`, "binary source URL");
+    inspectReference(record.url, `${path}.url`);
+    requireNonemptyString(record.integrity, `${path}.integrity`, "binary integrity");
+    inspectBinaryBin(record.bin, `${path}.bin`);
+    if (record.archive !== "zip" && record.archive !== "tarball") {
+      fail(`${path}.archive`, record.archive, "binary archive must be zip or tarball");
+    }
+    if (Object.hasOwn(record, "prefix")) {
+      requireNonemptyString(record.prefix, `${path}.prefix`, "binary archive prefix");
+    }
+    return;
+  }
+  if (type === "variations") {
+    requireExactFields(record, path, ["type", "variants"], ["type", "variants"]);
+    if (!Array.isArray(record.variants) || record.variants.length === 0) {
+      fail(`${path}.variants`, record.variants, "variation resolutions must be a nonempty array");
+    }
+    for (const [variantIndex, variant] of record.variants.entries()) {
+      const variantPath = `${path}.variants[${variantIndex}]`;
+      const variantRecord = requireRecord(variant, variantPath);
+      requireExactFields(
+        variantRecord,
+        variantPath,
+        ["targets", "resolution"],
+        ["targets", "resolution"],
+      );
+      if (!Array.isArray(variantRecord.targets) || variantRecord.targets.length === 0) {
+        fail(
+          `${variantPath}.targets`,
+          variantRecord.targets,
+          "variation targets must be a nonempty array",
+        );
+      }
+      for (const [targetIndex, target] of variantRecord.targets.entries()) {
+        inspectVariationTarget(target, `${variantPath}.targets[${targetIndex}]`);
+      }
+      inspectResolution(variantRecord.resolution, `${variantPath}.resolution`, depth + 1);
+    }
+    return;
+  }
+  fail(`${path}.type`, type, "unsupported resolution type");
 }
 
 function inspectDependencyEntry(entry, path) {

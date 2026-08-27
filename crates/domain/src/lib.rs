@@ -111,9 +111,9 @@ macro_rules! uuid_id {
         pub struct $name(Uuid);
 
         impl $name {
-            /// Constructs the identifier only when the UUID version is seven.
+            /// Constructs the identifier only for RFC-variant UUID version seven values.
             pub fn try_from_uuid(value: Uuid) -> Result<Self, DomainError> {
-                if value.get_version_num() == 7 {
+                if value.get_variant() == uuid::Variant::RFC4122 && value.get_version_num() == 7 {
                     Ok(Self(value))
                 } else {
                     Err(DomainError::InvalidId {
@@ -1393,9 +1393,39 @@ mod tests {
     }
 
     #[test]
-    fn uuid_id_rejects_non_v7() {
-        let result = EntityId::try_from_uuid(Uuid::nil());
-        assert!(matches!(result, Err(DomainError::InvalidId { .. })));
+    fn uuid_ids_require_rfc_variant_and_version_seven_at_every_constructor() {
+        let invalid = [
+            "00000000-0000-4000-8000-000000000000",
+            "01900000-0000-7000-0000-000000000001",
+            "01900000-0000-7000-c000-000000000001",
+            "01900000-0000-7000-e000-000000000001",
+        ];
+
+        macro_rules! assert_constructor_rejects {
+            ($id:ty) => {
+                for encoded in invalid {
+                    let value = Uuid::parse_str(encoded).expect("test UUID must parse");
+                    assert!(matches!(
+                        <$id>::try_from_uuid(value),
+                        Err(DomainError::InvalidId { .. })
+                    ));
+                    assert!(encoded.parse::<$id>().is_err());
+                    assert!(serde_json::from_str::<$id>(&format!("\"{encoded}\"")).is_err());
+                }
+            };
+        }
+
+        assert_constructor_rejects!(EntityId);
+        assert_constructor_rejects!(EventId);
+        assert_constructor_rejects!(ClaimId);
+        assert_constructor_rejects!(EvidenceId);
+        assert_constructor_rejects!(ArtifactId);
+        assert_constructor_rejects!(BatchId);
+        assert_constructor_rejects!(DeviceId);
+        assert_constructor_rejects!(DomainId);
+        assert_constructor_rejects!(DecisionId);
+        assert_constructor_rejects!(PermissionLineageId);
+        assert_constructor_rejects!(ScopeId);
     }
 
     #[test]

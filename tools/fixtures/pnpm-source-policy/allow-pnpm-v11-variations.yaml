@@ -1,0 +1,23 @@
+lockfileVersion: '9.0'
+packages:
+  node@runtime:24.19.0:
+    resolution:
+      type: variations
+      variants:
+        - targets:
+            - os: win32
+              cpu: x64
+          resolution:
+            type: binary
+            archive: zip
+            bin: node.exe
+            integrity: sha512-AA==
+            prefix: node-v24.19.0-win-x64
+            url: https://downloads.example.invalid/node-synthetic.zip
+        - targets: [{os: linux, cpu: x64, libc: musl}]
+          resolution:
+            type: binary
+            archive: tarball
+            bin: {node: bin/node}
+            integrity: sha512-BB==
+            url: https://downloads.example.invalid/node-synthetic.tar.gz

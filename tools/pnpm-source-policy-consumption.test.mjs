@@ -27,6 +27,20 @@ function run(command, commandArguments, cwd) {
   );
 }
 
+function runExpectingFailure(command, commandArguments, cwd) {
+  const result = spawnSync(command, commandArguments, {
+    cwd,
+    encoding: "utf8",
+    env: { ...process.env, npm_config_update_notifier: "false" },
+  });
+  assert.notEqual(
+    result.status,
+    0,
+    `${command} ${commandArguments.join(" ")} unexpectedly succeeded`,
+  );
+  return result;
+}
+
 const temporaryBase = resolve(tmpdir());
 const root = await mkdtemp(join(temporaryBase, "academic-pnpm-key-policy-"));
 assert.ok(resolve(root).startsWith(`${temporaryBase}\\`) || resolve(root).startsWith(`${temporaryBase}/`));
@@ -34,7 +48,8 @@ assert.ok(resolve(root).startsWith(`${temporaryBase}\\`) || resolve(root).starts
 try {
   const dependencyRoot = join(root, "dependency");
   const consumerRoot = join(root, "consumer");
-  await Promise.all([mkdir(dependencyRoot), mkdir(consumerRoot)]);
+  const variationConsumerRoot = join(root, "variation-consumer");
+  await Promise.all([mkdir(dependencyRoot), mkdir(consumerRoot), mkdir(variationConsumerRoot)]);
   await writeFile(
     join(dependencyRoot, "package.json"),
     `${JSON.stringify({ name: "t017-local-git", version: "1.0.0", main: "index.js" }, null, 2)}\n`,
@@ -93,7 +108,75 @@ try {
   const after = createHash("sha256").update(afterText).digest("hex");
   assert.equal(after, before, "frozen pnpm consumption must leave the concealed-source lock unchanged");
 
-  console.log("Restricted YAML rejected anchored mapping keys before real frozen/offline pnpm consumption.");
+  await writeFile(
+    join(variationConsumerRoot, "package.json"),
+    `${JSON.stringify({
+      name: "phase0-synthetic-runtime-variation",
+      version: "1.0.0",
+      private: true,
+      devDependencies: { node: "runtime:24.19.0" },
+    }, null, 2)}\n`,
+  );
+  const variationLock = [
+    "lockfileVersion: '9.0'",
+    "",
+    "importers:",
+    "  .:",
+    "    devDependencies:",
+    "      node:",
+    "        specifier: runtime:24.19.0",
+    "        version: runtime:24.19.0",
+    "",
+    "packages:",
+    "  node@runtime:24.19.0:",
+    "    version: 24.19.0",
+    "    resolution:",
+    "      type: variations",
+    "      variants:",
+    "        - targets: [{os: win32, cpu: x64}]",
+    "          resolution:",
+    "            type: binary",
+    "            archive: zip",
+    "            bin: node.exe",
+    "            integrity: sha512-AA==",
+    "            url: http://127.0.0.1:9/node.zip",
+    "        - targets: [{os: linux, cpu: x64}]",
+    "          resolution:",
+    "            type: binary",
+    "            archive: tarball",
+    "            bin: bin/node",
+    "            integrity: sha512-AA==",
+    "            url: http://127.0.0.1:9/node.tar.gz",
+    "",
+    "snapshots:",
+    "  node@runtime:24.19.0: {}",
+    "",
+  ].join("\n");
+  const variationLockPath = join(variationConsumerRoot, "pnpm-lock.yaml");
+  await writeFile(variationLockPath, variationLock);
+  assert.throws(
+    () => assertPnpmLockSourcePolicy(variationLock, "runtime-variations-lock.yaml"),
+    /insecure HTTP or Git dependency sources are forbidden/u,
+  );
+  const variationBefore = createHash("sha256").update(variationLock).digest("hex");
+  const variationResult = runExpectingFailure(
+    "pnpm",
+    ["install", "--frozen-lockfile", "--offline", "--ignore-scripts"],
+    variationConsumerRoot,
+  );
+  const variationOutput = `${variationResult.stdout}\n${variationResult.stderr}`;
+  assert.match(variationOutput, /ERR_PNPM_CANNOT_DOWNLOAD_BINARY_OFFLINE/u);
+  assert.match(variationOutput, /http:\/\/127\.0\.0\.1:9\/node\.(?:zip|tar\.gz)/u);
+  const variationAfterText = await readFile(variationLockPath, "utf8");
+  assert.equal(
+    createHash("sha256").update(variationAfterText).digest("hex"),
+    variationBefore,
+    "frozen pnpm consumption must leave the rejected variation lock unchanged",
+  );
+
+  console.log(
+    "Restricted YAML and recursive variation policy rejected concealed sources before real frozen/offline pnpm consumption.",
+  );
 } finally {
   await rm(root, { recursive: true, force: true });
 }

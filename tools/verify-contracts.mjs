@@ -1,9 +1,31 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import Ajv2020 from "ajv/dist/2020.js";
 import protobuf from "protobufjs";
+
+import { parsePnpmLockYaml } from "./restricted-yaml.mjs";
+
+async function readRustSourceTree(root, relative = "") {
+  const directory = join(root, relative);
+  const entries = await readdir(directory, { withFileTypes: true });
+  const sources = new Map();
+  for (const entry of entries.toSorted((left, right) => left.name.localeCompare(right.name))) {
+    const childRelative = relative.length === 0 ? entry.name : `${relative}/${entry.name}`;
+    if (entry.isDirectory()) {
+      for (const [path, source] of await readRustSourceTree(root, childRelative)) {
+        sources.set(path, source);
+      }
+    } else if (entry.isFile() && entry.name.endsWith(".rs")) {
+      sources.set(childRelative, await readFile(join(root, childRelative), "utf8"));
+    } else {
+      assert.fail(`unreviewed contracts source entry is forbidden: ${childRelative}`);
+    }
+  }
+  return sources;
+}
 
 const [
   fixtureV1Bytes,
@@ -62,6 +84,14 @@ const [
   readFile("tools/restricted-yaml.mjs", "utf8"),
   readFile(".github/workflows/ci.yml", "utf8"),
 ]);
+const rustContractsSources = await readRustSourceTree("crates/contracts/src");
+assert.deepEqual(
+  [...rustContractsSources.keys()],
+  ["lib.rs", "proto_contract.rs"],
+  "academic-contracts source inventory must remain explicit and complete",
+);
+assert.equal(rustContractsSources.get("lib.rs"), rustContractsText);
+assert.equal(rustContractsSources.get("proto_contract.rs"), rustProtoContractText);
 
 const fixtureSchemaV1Text = fixtureSchemaV1Bytes.toString("utf8");
 const protoV1Text = protoV1Bytes.toString("utf8");
@@ -498,6 +528,43 @@ for (const [name, mutate] of invalidFixtures) {
   );
 }
 
+for (const [invalidKind, invalidUuid] of [
+  ["version-four", "00000000-0000-4000-8000-000000000000"],
+  ["NCS-variant version-seven", "01900000-0000-7000-0000-000000000001"],
+  ["Microsoft-variant version-seven", "01900000-0000-7000-c000-000000000001"],
+  ["future-variant version-seven", "01900000-0000-7000-e000-000000000001"],
+]) {
+  for (const [version, fixture, validateFixtureSchema] of [
+    [1, fixtureV1, validateFixtureSchemaV1],
+    [2, fixtureV2, validateFixtureSchemaV2],
+  ]) {
+    const candidate = clone(fixture);
+    candidate.device_id = invalidUuid;
+    assert.equal(
+      validateFixtureSchema(candidate),
+      false,
+      `v${version} schema accepted ${invalidKind} UUID`,
+    );
+    assert.throws(
+      () => parseFixtureDocument(candidate),
+      undefined,
+      `v${version} TypeScript parser accepted ${invalidKind} UUID`,
+    );
+  }
+  const artifactCandidate = clone(artifactCorpus.base);
+  artifactCandidate.id = invalidUuid;
+  assert.equal(
+    validateArtifactSchema(artifactCandidate),
+    false,
+    `artifact schema accepted ${invalidKind} UUID`,
+  );
+  assert.throws(
+    () => parseArtifactDescriptorJson(JSON.stringify(artifactCandidate)),
+    undefined,
+    `TypeScript artifact parser accepted ${invalidKind} UUID`,
+  );
+}
+
 assert.equal(fixtureSchemaV1.$schema, "https://json-schema.org/draft/2020-12/schema");
 assert.equal(fixtureSchemaV2.$schema, "https://json-schema.org/draft/2020-12/schema");
 assert.equal(artifactSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
@@ -846,11 +913,12 @@ const rustRootImplMethods = (source) => {
         );
         const prefix = stripRustAttributes(masked.slice(memberStart, cursor));
         const visibility = [...prefix.matchAll(/\bpub(?<restriction>\s*\([^)]*\))?/gu)].at(-1);
+        const end = rustFunctionEnd(masked, cursor);
         methods.push({
           name: nameMatch.groups.name,
           public: visibility !== undefined && visibility.groups?.restriction === undefined,
+          source: source.slice(memberStart, end),
         });
-        const end = rustFunctionEnd(masked, cursor);
         memberStart = end;
         cursor = end - 1;
         continue;
@@ -873,6 +941,56 @@ const rustRootImplMethods = (source) => {
   assert.equal(rootDepth, 0, "Rust impl root braces must balance");
   return implementations;
 };
+const rustSignatureTokens = (source) => {
+  const masked = maskRustCommentsAndLiterals(source);
+  const openingBrace = masked.indexOf("{");
+  assert.ok(openingBrace >= 0, "reviewed Rust function signatures must have bodies");
+  const signature = stripRustAttributes(masked.slice(0, openingBrace));
+  return [...signature.matchAll(/->|::|[A-Za-z_][A-Za-z0-9_]*|[&<>()\[\],:]/gu)]
+    .map((match) => match[0])
+    .join(" ");
+};
+const assertExactRustSignatures = (declarations, expected, label) => {
+  const actual = Object.fromEntries(
+    [...declarations]
+      .filter(([, declaration]) => declaration.public)
+      .map(([name, declaration]) => [name, rustSignatureTokens(declaration.source)]),
+  );
+  assert.deepEqual(
+    actual,
+    Object.fromEntries(
+      Object.entries(expected).map(([name, signature]) => [name, rustSignatureTokens(signature)]),
+    ),
+    `${label} public function signatures must remain token-exact`,
+  );
+};
+const rustCrateImplInventory = (sources) => {
+  const inventory = [];
+  for (const [path, source] of sources) {
+    const production = maskedRustProductionSource(source);
+    for (const match of production.matchAll(/\bimpl\b/gu)) {
+      const start = match.index;
+      assert.ok(start !== undefined);
+      const lineEnd = production.indexOf("\n", start);
+      const line = production
+        .slice(start, lineEnd < 0 ? production.length : lineEnd)
+        .replace(/\s+/gu, " ")
+        .trim();
+      if (path === "proto_contract.rs" && line === "impl FnOnce(Uuid) -> Result<T, DomainError>,") {
+        inventory.push({ path, kind: "opaque-parameter", header: line });
+        continue;
+      }
+      const openingBrace = production.indexOf("{", start);
+      assert.ok(openingBrace >= 0, `production impl token in ${path} must have a reviewed body`);
+      inventory.push({
+        path,
+        kind: "block",
+        header: production.slice(start, openingBrace).replace(/\s+/gu, " ").trim(),
+      });
+    }
+  }
+  return inventory;
+};
 const rustRootReferences = (source, functionNames) => {
   const masked = maskRustCommentsAndLiterals(source);
   const references = new Set();
@@ -883,10 +1001,30 @@ const rustRootReferences = (source, functionNames) => {
   }
   return [...references];
 };
-const assertV2WriterCapabilityGate = (source) => {
+const assertV2WriterCapabilityGate = (input) => {
+  const sources = input instanceof Map
+    ? input
+    : new Map(rustContractsSources).set("lib.rs", input);
+  assert.deepEqual(
+    [...sources.keys()],
+    ["lib.rs", "proto_contract.rs"],
+    "academic-contracts source inventory must remain explicit and complete",
+  );
+  const source = sources.get("lib.rs");
+  const protoSource = sources.get("proto_contract.rs");
+  assert.ok(source !== undefined && protoSource !== undefined);
+  for (const [path, contractSource] of sources) {
+    assert.doesNotMatch(
+      maskedRustProductionSource(contractSource),
+      /#\s*\[\s*path\s*=/u,
+      `external Rust module paths are forbidden in contracts source ${path}`,
+    );
+  }
   const functions = rustRootFunctionBodies(source);
   const publicItems = rustRootPublicItems(source);
   const implementations = rustRootImplMethods(source);
+  const protoFunctions = rustRootFunctionBodies(protoSource);
+  const protoPublicItems = rustRootPublicItems(protoSource);
   const publicFunctions = [...functions]
     .filter(([, declaration]) => declaration.public)
     .map(([name]) => name)
@@ -937,6 +1075,46 @@ const assertV2WriterCapabilityGate = (source) => {
     "academic-contracts Proto reexports must match the reviewed capability allowlist",
   );
   assert.deepEqual(
+    protoPublicItems.map((item) => ({ kind: item.kind, name: item.name })),
+    [
+      { kind: "enum", name: "ProtoContractError" },
+      { kind: "fn", name: "encode_claim_relation_event_proto" },
+      { kind: "fn", name: "decode_claim_relation_event_proto" },
+    ],
+    "every child-module public item must match the reviewed capability allowlist",
+  );
+  assertExactRustSignatures(
+    functions,
+    {
+      sign_batch: "pub fn sign_batch(batch: &UnsignedBatch, signing_key: &SigningKey,) -> Result<Vec<u8>, ContractError> {}",
+      verify_signed_batch: "pub fn verify_signed_batch(envelope_bytes: &[u8], authorization: &DeviceAuthorization,) -> Result<VerifiedBatch, ContractError> {}",
+      encode_unsigned_batch: "pub fn encode_unsigned_batch(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {}",
+      decode_unsigned_batch: "pub fn decode_unsigned_batch(bytes: &[u8]) -> Result<UnsignedBatch, ContractError> {}",
+    },
+    "academic-contracts root",
+  );
+  assertExactRustSignatures(
+    protoFunctions,
+    {
+      encode_claim_relation_event_proto: "pub fn encode_claim_relation_event_proto(event: &Event) -> Result<Vec<u8>, ProtoContractError> {}",
+      decode_claim_relation_event_proto: "pub fn decode_claim_relation_event_proto(bytes: &[u8]) -> Result<Event, ProtoContractError> {}",
+    },
+    "academic-contracts Proto module",
+  );
+  assert.deepEqual(
+    rustCrateImplInventory(sources),
+    [
+      { path: "lib.rs", kind: "block", header: "impl VerifiedBatch" },
+      { path: "lib.rs", kind: "block", header: "impl DeviceAuthorization" },
+      {
+        path: "proto_contract.rs",
+        kind: "opaque-parameter",
+        header: "impl FnOnce(Uuid) -> Result<T, DomainError>,",
+      },
+    ],
+    "crate-wide production impl blocks must match the reviewed allowlist",
+  );
+  assert.deepEqual(
     implementations.map((implementation) => ({
       name: implementation.name,
       methods: implementation.methods.map((method) => method.name),
@@ -963,6 +1141,50 @@ const assertV2WriterCapabilityGate = (source) => {
       },
     ],
     "root impl blocks and their public/private method surfaces must match the reviewed allowlist",
+  );
+  const methodSignatures = Object.fromEntries(
+    implementations.flatMap((implementation) => implementation.methods
+      .filter((method) => method.public)
+      .map((method) => [
+        `${implementation.name}::${method.name}`,
+        rustSignatureTokens(method.source),
+      ])),
+  );
+  const expectedMethodSignatures = {
+    "VerifiedBatch::batch": "pub const fn batch(&self) -> &UnsignedBatch {}",
+    "VerifiedBatch::public_key": "pub const fn public_key(&self) -> &VerifyingKey {}",
+    "VerifiedBatch::source_schema_version": "pub const fn source_schema_version(&self) -> u16 {}",
+    "VerifiedBatch::payload_hash": "pub const fn payload_hash(&self) -> ContentDigest {}",
+    "VerifiedBatch::envelope_hash": "pub const fn envelope_hash(&self) -> ContentDigest {}",
+    "DeviceAuthorization::new": "pub const fn new(device_id: DeviceId, user_id: EntityId, verifying_key: VerifyingKey) -> Self {}",
+    "DeviceAuthorization::device_id": "pub const fn device_id(&self) -> DeviceId {}",
+    "DeviceAuthorization::user_id": "pub const fn user_id(&self) -> EntityId {}",
+    "DeviceAuthorization::verifying_key": "pub const fn verifying_key(&self) -> &VerifyingKey {}",
+  };
+  assert.deepEqual(
+    methodSignatures,
+    Object.fromEntries(
+      Object.entries(expectedMethodSignatures)
+        .map(([name, signature]) => [name, rustSignatureTokens(signature)]),
+    ),
+    "every public inherent method signature must remain token-exact",
+  );
+  const writerSource = functions.get("encode_unsigned_batch")?.source ?? "";
+  assert.match(
+    writerSource,
+    /let bytes = encode_cbor_value\(&json_to_cbor\(&json\)\?\)\?;\s*require_current_writer_payload\(&bytes\)\?;\s*Ok\(bytes\)/u,
+    "the current writer must semantically validate the exact bytes it returns",
+  );
+  const writerGuard = functions.get("require_current_writer_payload")?.source ?? "";
+  assert.match(
+    writerGuard,
+    /let json = decode_canonical_payload_json\(bytes\)\?;\s*let source_schema_version = read_schema_version\(&json\)\?;\s*if source_schema_version != EVENT_SCHEMA_VERSION_V2 \{\s*return Err\(DomainError::UnsupportedSchemaVersion\(source_schema_version\)\.into\(\)\);\s*\}/u,
+    "the writer guard must decode returned bytes and require semantic schema v2",
+  );
+  assert.match(
+    functions.get("sign_batch")?.source ?? "",
+    /let payload = encode_unsigned_batch\(batch\)\?;/u,
+    "the signed writer must obtain its payload from the guarded current writer",
   );
   const projection = functions.get("encode_unsigned_batch_v1_projection")?.source;
   assert.ok(projection, "the private v1 verification projection must remain explicitly named");
@@ -1025,6 +1247,20 @@ const assertV2WriterCapabilityGate = (source) => {
     /\bLegacySourceEqualityCapability\b/u,
     "the legacy capability identifier is forbidden outside reviewed declaration/equality sites",
   );
+  for (const [path, childSource] of sources) {
+    if (path === "lib.rs") continue;
+    const childProduction = maskedRustProductionSource(childSource);
+    assert.doesNotMatch(
+      childProduction,
+      /\bencode_unsigned_batch_v1_projection\b/u,
+      `the legacy projection identifier is forbidden in child module ${path}`,
+    );
+    assert.doesNotMatch(
+      childProduction,
+      /\bLegacySourceEqualityCapability\b/u,
+      `the legacy capability identifier is forbidden in child module ${path}`,
+    );
+  }
   const callGraph = new Map([...functions].map(([name, declaration]) => [
     name,
     rustRootReferences(declaration.source, new Set(functions.keys()))
@@ -1058,6 +1294,77 @@ const assertV2WriterCapabilityGate = (source) => {
   }
 };
 assertV2WriterCapabilityGate(rustContractsText);
+const childModulePublicLegacyWriter = rustProtoContractText.replace(
+  "#[cfg(test)]\nmod tests {",
+  [
+    "impl super::DeviceAuthorization {",
+    "    pub fn encode_archived_batch(",
+    "        &self,",
+    "        batch: &academic_domain::UnsignedBatch,",
+    "    ) -> Result<Vec<u8>, super::ContractError> {",
+    "        super::encode_unsigned_batch_v1_projection(",
+    "            batch,",
+    "            super::LegacySourceEqualityCapability,",
+    "        )",
+    "    }",
+    "}",
+    "",
+    "#[cfg(test)]",
+    "mod tests {",
+  ].join("\n"),
+);
+assert.notEqual(childModulePublicLegacyWriter, rustProtoContractText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(
+    new Map(rustContractsSources).set("proto_contract.rs", childModulePublicLegacyWriter),
+  ),
+  undefined,
+  "a public inherent v1 writer declared in a child module must fail crate-wide review",
+);
+const publicSignatureConstnessDrift = rustContractsText.replace(
+  "    pub const fn new(device_id: DeviceId, user_id: EntityId, verifying_key: VerifyingKey) -> Self {",
+  "    pub fn new(device_id: DeviceId, user_id: EntityId, verifying_key: VerifyingKey) -> Self {",
+);
+assert.notEqual(publicSignatureConstnessDrift, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(publicSignatureConstnessDrift),
+  /public inherent method signature must remain token-exact/u,
+  "public API constness drift must fail signature-exact review",
+);
+const neutralV1CloneReachedByWriter = rustContractsText
+  .replace(
+    "fn encode_unsigned_batch_v1_projection(",
+    [
+      "fn neutral_projection_clone(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {",
+      "    batch.validate()?;",
+      "    let mut json = serde_json::to_value(batch)?;",
+      "    transform_decisions_for_v1(&mut json)?;",
+      "    set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V1)?;",
+      "    encode_cbor_value(&json_to_cbor(&json)?)",
+      "}",
+      "",
+      "fn encode_unsigned_batch_v1_projection(",
+    ].join("\n"),
+  )
+  .replace(
+    "    let bytes = encode_cbor_value(&json_to_cbor(&json)?)?;",
+    "    let bytes = neutral_projection_clone(batch)?;",
+  );
+assert.notEqual(neutralV1CloneReachedByWriter, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(neutralV1CloneReachedByWriter),
+  /current writer must semantically validate the exact bytes it returns/u,
+  "a neutrally named v1 transform reached by the current writer must fail semantic review",
+);
+const additionalContractModule = new Map(rustContractsSources).set(
+  "unreviewed.rs",
+  "pub fn encode_archived_batch() {}\n#[cfg(test)]\nmod tests {}\n",
+);
+assert.throws(
+  () => assertV2WriterCapabilityGate(additionalContractModule),
+  /source inventory must remain explicit and complete/u,
+  "an added crate source module must fail closed until its public surface is reviewed",
+);
 const renamedPublicLegacyWriter = rustContractsText
   .replaceAll("encode_unsigned_batch_v1_projection", "encode_legacy_projection")
   .replace("fn encode_legacy_projection(", "pub fn encode_legacy_projection(");
@@ -1329,8 +1636,8 @@ assert.deepEqual(
 );
 assert.throws(
   () => assertV2WriterCapabilityGate(allowedMethodBodyLegacyCall),
-  /legacy projection identifier is forbidden outside/u,
-  "a legacy projection call injected into an allowed method body must fail whole-source review",
+  undefined,
+  "a compile-valid legacy projection call injected into an allowed method must fail exact crate review",
 );
 const extraPublicReexport = rustContractsText.replace(
   "pub use proto_contract::{",
@@ -1364,38 +1671,64 @@ const nativeFixtureCiCommands = [
   "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json",
   "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json",
 ];
-const ciJobBody = (ci, name) => {
-  const marker = `\n  ${name}:\n`;
-  const start = ci.indexOf(marker);
-  assert.ok(start >= 0, `CI job ${name} must exist`);
-  const remainder = ci.slice(start + marker.length);
-  const nextJob = remainder.search(/\n  [a-z0-9-]+:\n/iu);
-  return nextJob < 0 ? remainder : remainder.slice(0, nextJob);
+const requireCiRecord = (value, label) => {
+  assert.ok(
+    typeof value === "object" && value !== null && !Array.isArray(value),
+    `${label} must be a mapping`,
+  );
+  return value;
 };
+const requireCiSteps = (job, label) => {
+  assert.ok(Array.isArray(job.steps), `${label}.steps must be a sequence`);
+  return job.steps.map((step, index) => requireCiRecord(step, `${label}.steps[${index}]`));
+};
+const assertUnconditionalRequiredExecution = (value, label) => {
+  assert.equal(
+    Object.hasOwn(value, "if"),
+    false,
+    `${label} must not declare a condition`,
+  );
+  assert.equal(
+    Object.hasOwn(value, "continue-on-error"),
+    false,
+    `${label} must not tolerate failure`,
+  );
+};
+const parseCiWorkflow = (ci) => parsePnpmLockYaml(ci, ".github/workflows/ci.yml");
 const assertNativeFixtureCiTopology = (ci) => {
-  const rustJob = ciJobBody(ci, "rust");
-  const runsOnBindings = [...rustJob.matchAll(/^    runs-on:\s*(?<binding>[^\r\n]+)$/gmu)]
-    .map((match) => match.groups.binding.trim());
-  assert.deepEqual(
-    runsOnBindings,
-    ["${{ matrix.os }}"],
+  const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
+  const jobs = requireCiRecord(workflow.jobs, "CI jobs");
+  const rustJob = requireCiRecord(jobs.rust, "CI job rust");
+  assertUnconditionalRequiredExecution(rustJob, "CI job rust");
+  assert.equal(
+    rustJob["runs-on"],
+    "${{ matrix.os }}",
     "the Rust native job must bind runs-on exactly to matrix.os",
   );
-  const osDefinitions = [...rustJob.matchAll(
-    /^        os:\s*\[(?<entries>[^\]\r\n]*)\]\s*$/gmu,
-  )];
-  assert.equal(osDefinitions.length, 1, "the Rust native job must declare one OS matrix");
-  const osEntries = (osDefinitions[0]?.groups?.entries ?? "")
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+  const strategy = requireCiRecord(rustJob.strategy, "CI job rust.strategy");
   assert.deepEqual(
-    osEntries,
+    Object.keys(strategy).toSorted(),
+    ["fail-fast", "matrix"],
+    "the Rust strategy must contain only the reviewed fail-fast and matrix keys",
+  );
+  const matrix = requireCiRecord(strategy.matrix, "CI job rust.strategy.matrix");
+  assert.deepEqual(
+    Object.keys(matrix),
+    ["os"],
+    "the Rust matrix must not add include, exclude, or unreviewed dimensions",
+  );
+  assert.deepEqual(
+    matrix.os,
     ["ubuntu-latest", "windows-latest"],
     "the Rust native job must use the exact supported Windows/Linux OS set",
   );
-  const independentRuns = [...rustJob.matchAll(/^\s+run:\s+(?<command>[^|>].*)$/gmu)]
-    .map((match) => match.groups.command.trim())
+  const steps = requireCiSteps(rustJob, "CI job rust");
+  for (const [index, step] of steps.entries()) {
+    assertUnconditionalRequiredExecution(step, `CI job rust.steps[${index}]`);
+  }
+  const independentRuns = steps
+    .map((step) => step.run)
+    .filter((command) => typeof command === "string")
     .filter((command) => command.includes("fixture ") || command.startsWith("git diff --exit-code"));
   assert.deepEqual(
     independentRuns,
@@ -1493,18 +1826,27 @@ const assertSourcePreflightTopology = ({ bootstrap, preflightModules, ci }) => {
       `bootstrap source preflight must precede ${operation}`,
     );
   }
-  assert.match(
-    ci,
-    /jobs:\s*\n\s{2}source-preflight:[\s\S]*?run: node tools\/source-preflight\.mjs/u,
-    "CI must begin with a dependency-free source-preflight job",
+  const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
+  const jobs = requireCiRecord(workflow.jobs, "CI jobs");
+  const sourcePreflight = requireCiRecord(jobs["source-preflight"], "CI job source-preflight");
+  assertUnconditionalRequiredExecution(sourcePreflight, "CI job source-preflight");
+  const sourcePreflightSteps = requireCiSteps(sourcePreflight, "CI job source-preflight");
+  for (const [index, step] of sourcePreflightSteps.entries()) {
+    assertUnconditionalRequiredExecution(step, `CI job source-preflight.steps[${index}]`);
+  }
+  assert.equal(
+    sourcePreflightSteps.filter((step) => step.run === "node tools/source-preflight.mjs").length,
+    1,
+    "CI must execute the dependency-free source preflight exactly once",
   );
-  for (const job of ["rust", "contracts"]) {
-    const jobBody = ciJobBody(ci, job);
-    assert.match(
-      jobBody,
-      /^    needs: source-preflight$/mu,
-      `CI executable job ${job} must depend on source-preflight`,
-    );
+  for (const jobName of ["rust", "contracts"]) {
+    const job = requireCiRecord(jobs[jobName], `CI job ${jobName}`);
+    assertUnconditionalRequiredExecution(job, `CI job ${jobName}`);
+    assert.equal(job.needs, "source-preflight", `CI executable job ${jobName} must depend on source-preflight`);
+    const steps = requireCiSteps(job, `CI job ${jobName}`);
+    for (const [index, step] of steps.entries()) {
+      assertUnconditionalRequiredExecution(step, `CI job ${jobName}.steps[${index}]`);
+    }
   }
   assertNativeFixtureCiTopology(ci);
 };
@@ -1554,6 +1896,82 @@ for (const [name, topology] of [
     () => assertSourcePreflightTopology(topology),
     undefined,
     `${name} mutation must fail source-preflight topology verification`,
+  );
+}
+const assertCompleteCiTopology = (ci) => assertSourcePreflightTopology({
+  bootstrap: bootstrapText,
+  preflightModules: [
+    ["source-preflight.mjs", sourcePreflightText],
+    ["dependency-source-policy.mjs", dependencySourcePolicyText],
+    ["cargo-lock-source-policy.mjs", cargoLockSourcePolicyText],
+    ["restricted-yaml.mjs", restrictedYamlText],
+  ],
+  ci,
+});
+for (const [name, mutation] of [
+  [
+    "Windows matrix exclusion",
+    ciText.replace(
+      "        os: [ubuntu-latest, windows-latest]",
+      "        os: [ubuntu-latest, windows-latest]\n        exclude:\n          - os: windows-latest",
+    ),
+  ],
+  [
+    "disabled Rust job",
+    ciText.replace("  rust:\n    name:", "  rust:\n    if: false\n    name:"),
+  ],
+  [
+    "failure-tolerant Rust job",
+    ciText.replace("  rust:\n    name:", "  rust:\n    continue-on-error: true\n    name:"),
+  ],
+  [
+    "failure-tolerant source-preflight step",
+    ciText.replace(
+      "        run: node tools/source-preflight.mjs",
+      "        run: node tools/source-preflight.mjs\n        continue-on-error: true",
+    ),
+  ],
+  [
+    "failure-tolerant v2 verification step",
+    ciText.replace(
+      "      - name: Verify deterministic v2 fixture",
+      "      - name: Verify deterministic v2 fixture\n        continue-on-error: true",
+    ),
+  ],
+  [
+    "disabled v2 replay step",
+    ciText.replace(
+      "      - name: Replay deterministic v2 fixture",
+      "      - name: Replay deterministic v2 fixture\n        if: false",
+    ),
+  ],
+  [
+    "duplicate key in required Rust job",
+    ciText.replace(
+      "    runs-on: ${{ matrix.os }}",
+      "    runs-on: ${{ matrix.os }}\n    runs-on: ubuntu-latest",
+    ),
+  ],
+  [
+    "duplicate key in required fixture step",
+    ciText.replace(
+      `        run: ${nativeFixtureCiCommands[4]}`,
+      `        run: ${nativeFixtureCiCommands[4]}\n        run: ${nativeFixtureCiCommands[4]}`,
+    ),
+  ],
+  [
+    "duplicate required job identifier",
+    ciText.replace(
+      "\n  contracts:\n",
+      "\n  rust:\n    runs-on: ubuntu-latest\n    steps: []\n\n  contracts:\n",
+    ),
+  ],
+]) {
+  assert.notEqual(mutation, ciText, `${name} mutation must alter the workflow`);
+  assert.throws(
+    () => assertCompleteCiTopology(mutation),
+    undefined,
+    `${name} must fail effective CI conformance verification`,
   );
 }
 const protoRoots = [protoV1Text, protoV2Text].map((text) => {
@@ -2253,5 +2671,5 @@ assert.doesNotMatch(fixtureV1Text, /https?:\/\//u);
 assert.doesNotMatch(fixtureV2Text, /https?:\/\//u);
 
 console.log(
-  "Immutable v1 contracts, strict fixture UTF-8/integer ingress, structural v2-only writers, exact native CI topology, portable raw artifact JSON, Rust/Proto wire descriptors, and source-preflight topology verified.",
+  "Immutable v1 contracts, strict fixture ingress, crate-wide semantic v2-only writers, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
 );

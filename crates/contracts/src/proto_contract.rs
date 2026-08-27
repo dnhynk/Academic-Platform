@@ -337,6 +337,30 @@ mod tests {
     use super::*;
 
     #[test]
+    fn protobuf_uuid_boundary_requires_rfc_variant_uuidv7() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let encoded = hex::decode(
+            "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e307a3e0a120a100190000000007000800000000000020612120a1001900000000070008000000000000205180322120a1001900000000070008000000000000007",
+        )?;
+        let valid = ProtoOriginEvent::decode(encoded.as_slice())?;
+        for (octet_index, replacement) in [(6_usize, 0x40_u8), (8, 0x00), (8, 0xc0), (8, 0xe0)] {
+            let mut mutated = valid.clone();
+            *mutated
+                .id
+                .as_mut()
+                .ok_or(ProtoContractError::Missing("id"))?
+                .value
+                .get_mut(octet_index)
+                .ok_or(ProtoContractError::Missing("id.value invariant octet"))? = replacement;
+            assert!(matches!(
+                decode_claim_relation_event_proto(&mutated.encode_to_vec()),
+                Err(ProtoContractError::Domain(DomainError::InvalidId { .. }))
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
     fn t017_every_actor_variant_matches_independent_v1_v2_protobufjs_bytes()
     -> Result<(), Box<dyn std::error::Error>> {
         let actors = [

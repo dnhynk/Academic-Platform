@@ -472,8 +472,21 @@ function parseLines(lines, start, indent, label) {
     if (sequence) {
       const remainder = line.text.slice(1).trimStart();
       if (remainder.length > 0) {
-        result.push(parseInlineValue(remainder, label, line.number));
-        index += 1;
+        const mappingColon = findMappingColon(remainder);
+        if (mappingColon >= 0) {
+          const compactMappingLines = lines.slice();
+          compactMappingLines[index] = {
+            indent: indent + 2,
+            text: remainder,
+            number: line.number,
+          };
+          const parsed = parseLines(compactMappingLines, index, indent + 2, label);
+          result.push(parsed.value);
+          index = parsed.index;
+        } else {
+          result.push(parseInlineValue(remainder, label, line.number));
+          index += 1;
+        }
       } else {
         const next = lines[index + 1];
         if (next === undefined || next.indent <= indent) {

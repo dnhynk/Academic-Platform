@@ -4,9 +4,9 @@ This repository is the runnable foundation for a local-first Personal Academic Â
 
 ## What is executable
 
-- `academic-domain`: checked UUIDv7 IDs, canonical decimal coefficient strings, portable logical paths, registered evidence representations, required scopes, typed claims, actor/authority/status rules, half-open valid intervals, independent mastery/freshness types, and user decisions.
+- `academic-domain`: RFC-variant UUIDv7 IDs enforced by every constructor, canonical decimal coefficient strings, portable logical paths, registered evidence representations, required scopes, typed claims, actor/authority/status rules, half-open valid intervals, independent mastery/freshness types, and user decisions.
 - `academic-ledger`: verified-capability-only append, device origin-chain gap/fork checks, replica-local `accept_seq`, cross-domain evidence closure, scope-isolated authority resolution, and bitemporal queries.
-- `academic-contracts`: deterministic CBOR v2 encode/sign plus v1/v2 decode/verify, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, an immutable v1-to-v2 decision upcaster, and executable Protobuf actor/relation round trips.
+- `academic-contracts`: deterministic CBOR v2 encode/sign plus v1/v2 decode/verify, semantic v2 validation of returned writer bytes, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, an immutable v1-to-v2 decision upcaster, and executable Protobuf actor/relation round trips with the same RFC-variant UUIDv7 boundary.
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
 - `academic` CLI: privacy-safe doctor plus fixture emit/verify/replay commands.
 - `@academic-os/web-contracts`: exact TypeScript fixture validation kept in positive/negative parity with JSON Schema and Rust.

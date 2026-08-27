@@ -1,0 +1,11 @@
+lockfileVersion: '9.0'
+packages:
+  node@runtime:24.19.0:
+    resolution:
+      type: variations
+      variants:
+        - targets: [{os: win32, cpu: x64}]
+          resolution:
+            type: git
+            repo: https://example.invalid/concealed.git
+            commit: deadbeef
