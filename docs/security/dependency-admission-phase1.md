@@ -8,6 +8,7 @@ This receipt admits only dependencies needed to freeze the Phase 1 crate, SQLite
 - All new Rust versions use `=` requirements and the crates.io registry source. Git dependencies, HTTP archives, loadable SQLite extensions, and unreviewed sources remain rejected by the dependency-free preflight.
 - No npm package was added. `pnpm-lock.yaml` therefore retains the previously reviewed graph and adds no lifecycle/install script.
 - One Cargo resolution is authorized for F0. After that lock update, every install, metadata query, build, test, and documentation command uses `--locked` and, where Cargo accepts it, `--offline`.
+- The S1 path-capability delta performs no registry resolution: all 173 incoming `(name, version, source, checksum)` tuples remain exact under the canonical tuple receipt (`SHA-256 4f370a5dd80938b0b6a00de809985f7ff32378a866ec570e13d9b650e7ce01c7`), and the only added lock package is the source-less/checksum-less workspace path package `academic-store-platform 0.1.0`.
 - RustSec/crates.io advisories, GitHub security advisories, and upstream release notices are the review channels. An applicable advisory requires a pinned update or a recorded exploitability decision; silent suppression is forbidden.
 
 The Phase 0 direct versions already accepted in the incoming lock are preserved exactly while their compatible-range requirements become exact pins: `anyhow 1.0.104`, `ciborium 0.2.2`, `clap 4.6.6`, `ed25519-dalek 2.2.0`, `hex 0.4.3`, `hmac 0.12.1`, `proptest 1.11.0`, `prost 0.14.1`, `serde 1.0.229`, `serde_json 1.0.151`, `sha2 0.10.9`, `thiserror 2.0.20`, and `uuid 1.25.0`. F0 does not replace those accepted versions with lower manifest minima.
@@ -18,8 +19,8 @@ The Phase 0 direct versions already accepted in the incoming lock are preserved 
 |---|---|---|---|---:|---|
 | `rusqlite 0.40.2` | `academic-store` | no defaults; `backup`, `hooks`, `limits`; `bundled` only through default `bundled-sqlite`; vendored SQLCipher only through non-default `sqlcipher-spike` | MIT | not declared upstream; compiled on Rust 1.98 | no network; native build receipt required; no load extension |
 | `tokio 1.53.1` | `academic-rpc`, `academic-daemon` | `io-util`, `macros`, `net`, `rt-multi-thread`, `signal`, `sync`, `time` | MIT | 1.71 | `net` is restricted to named pipe/UDS local IPC; no HTTP/TCP/UDP/DNS behavior |
-| `windows-sys 0.61.2` | Windows vault/daemon adapters | explicit Foundation, Security/Authorization, FileSystem, IO, Pipes, SystemServices, Threading, WindowsProgramming subsets | MIT OR Apache-2.0 | 1.71 | no WinHTTP/WinInet/WinSock feature admitted |
-| `rustix 1.1.4` | Unix vault/daemon adapters | no defaults; `fs`, `net`, `process`, `std` | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 1.63 | local filesystem, peer identity, and UDS capability only |
+| `windows-sys 0.61.2` | Windows vault/daemon adapters and the isolated store path-capability boundary | explicit WDK Foundation/FileSystem/SystemServices plus Win32 Foundation, Security/Authorization, FileSystem, IO, Pipes, SystemServices, Threading, WindowsProgramming subsets | MIT OR Apache-2.0 | 1.71 | native path, volume, ACL, named-pipe, and local filesystem capability only; no WinHTTP/WinInet/WinSock feature admitted |
+| `rustix 1.1.4` | Unix vault/daemon adapters and the isolated store path-capability boundary | no defaults; `fs`, `net`, `process`, `std` across admitted owners; store-platform omits `net` | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 1.63 | local filesystem, peer identity, and UDS capability only |
 | `getrandom 0.4.3` | synthetic vault nonce/locator-key seed only | no defaults; `std`; no `wasm_js` or custom backend | MIT OR Apache-2.0 | 1.85 | OS entropy only; not a production key hierarchy |
 | `prost-build 0.14.1` | RPC build tooling | no defaults | Apache-2.0 | 1.71.1 | build-time only; aligned with frozen `prost 0.14.1` |
 | `protoc-bin-vendored 3.2.0` | RPC build tooling | no defaults/features | MIT | not declared upstream; compiled on Rust 1.98 | pinned vendored compiler packages; no runtime dependency |
@@ -28,6 +29,12 @@ The Phase 0 direct versions already accepted in the incoming lock are preserved 
 | `predicates 3.1.4` | test support only | no defaults | MIT OR Apache-2.0 | 1.74 | no regex/color/default expansion; no product inclusion |
 
 The existing Phase 0 cryptographic and contract dependencies retain their prior owners and features. F0 changes their Cargo requirements from compatible ranges to exact requirements without changing versions.
+
+## Reviewed store path-capability boundary
+
+`academic-store-platform` is a private workspace leaf used only by `academic-store`. It reuses the exact admitted `windows-sys 0.61.2` and `rustix 1.1.4` packages and adds no registry tuple, build script, network feature, or process/shell probe. The crate reproduces every workspace Rust/Clippy deny, changes only `unsafe_code` from workspace `forbid` to crate-default `deny`, and permits reviewed unsafe blocks solely on the smallest private Windows FFI functions; its public facade is safe and exposes no raw handle.
+
+The Windows creation DACL is protected and explicit. It grants full access only to the current logon SID and LocalSystem, with LocalSystem narrowly retained for OS backup/recovery and security services; Administrators, Users, Everyone, creator-owner expansion, and inherited parent grants are not admitted. Native verification rejects any different owner, unprotected DACL, inherited ACE, extra trustee, ACE type, or access mask.
 
 ## Native and vendored transitive receipt
 

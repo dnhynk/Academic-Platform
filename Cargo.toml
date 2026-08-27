@@ -10,6 +10,7 @@ members = [
   "crates/projections",
   "crates/rpc",
   "crates/store",
+  "crates/store-platform",
   "crates/test-support",
   "crates/vault",
 ]
