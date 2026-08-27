@@ -12,6 +12,11 @@ const [
   fixtureSchemaV2Text,
   artifactSchemaText,
   artifactCorpusText,
+  fixtureRawCorpusText,
+  toolVersionCorpusText,
+  nodePinText,
+  rustToolchainText,
+  packageJsonText,
   protoV1Bytes,
   protoV2Text,
   canonicalSpecBytes,
@@ -33,6 +38,11 @@ const [
   readFile("schemas/jsonschema/signed-batch-fixture-v2.schema.json", "utf8"),
   readFile("schemas/jsonschema/artifact-descriptor-v1.schema.json", "utf8"),
   readFile("schemas/fixtures/artifact-descriptor-parity-v1.json", "utf8"),
+  readFile("schemas/fixtures/signed-batch-raw-parity-v1.json", "utf8"),
+  readFile("tools/fixtures/tool-version-conformance-v1.json", "utf8"),
+  readFile(".nvmrc", "utf8"),
+  readFile("rust-toolchain.toml", "utf8"),
+  readFile("package.json", "utf8"),
   readFile("schemas/proto/academic/v1/ledger.proto"),
   readFile("schemas/proto/academic/v2/ledger.proto", "utf8"),
   readFile("PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md"),
@@ -52,18 +62,72 @@ const [
 const fixtureV1Text = fixtureV1Bytes.toString("utf8");
 const fixtureSchemaV1Text = fixtureSchemaV1Bytes.toString("utf8");
 const protoV1Text = protoV1Bytes.toString("utf8");
-const fixtureV1 = JSON.parse(fixtureV1Text);
-const fixtureV2 = JSON.parse(fixtureV2Text);
 const fixtureSchemaV1 = JSON.parse(fixtureSchemaV1Text);
 const fixtureSchemaV2 = JSON.parse(fixtureSchemaV2Text);
 const artifactSchema = JSON.parse(artifactSchemaText);
 const artifactCorpus = JSON.parse(artifactCorpusText);
+const fixtureRawCorpus = JSON.parse(fixtureRawCorpusText);
+const toolVersionCorpus = JSON.parse(toolVersionCorpusText);
+const packageJson = JSON.parse(packageJsonText);
+assert.equal(fixtureRawCorpus.schema_version, 1, "raw fixture corpus schema version");
 const {
   assertArtifactDescriptorSemantics,
   assertCanonicalArtifactJsonNumberTokens,
+  assertPortableFixtureJsonText,
   parseArtifactDescriptorJson,
   parseFixtureDocument,
+  parseFixtureDocumentJson,
 } = await import("../packages/web-contracts/dist/index.js");
+const { assertToolVersionConformanceCorpus } = await import("./tool-version-policy.mjs");
+
+assertPortableFixtureJsonText(fixtureV1Text);
+assertPortableFixtureJsonText(fixtureV2Text);
+const fixtureV1 = JSON.parse(fixtureV1Text);
+const fixtureV2 = JSON.parse(fixtureV2Text);
+assertToolVersionConformanceCorpus(toolVersionCorpus);
+const rustPin = rustToolchainText.match(/^channel = "(?<version>[^"]+)"$/mu)?.groups?.version;
+assert.ok(rustPin, "rust-toolchain.toml must contain one exact channel pin");
+assert.deepEqual(
+  Object.fromEntries(toolVersionCorpus.tools.map((tool) => [tool.name, tool.expected])),
+  {
+    rustc: `rustc ${rustPin}`,
+    cargo: `cargo ${rustPin}`,
+    node: `v${nodePinText.trim()}`,
+    pnpm: packageJson.packageManager.replace("pnpm@", ""),
+  },
+  "shared conformance outputs must be derived token-exactly from repository pins",
+);
+assert.equal(packageJson.engines.node, nodePinText.trim(), "package Node engine must match .nvmrc");
+assert.equal(
+  packageJson.engines.pnpm,
+  packageJson.packageManager.replace("pnpm@", ""),
+  "package pnpm engine and packageManager pins must agree",
+);
+assert.match(
+  bootstrapText,
+  /const versionCorpus = await loadToolVersionConformanceCorpus\(\);[\s\S]*!isSupportedToolVersion\(tool, observed\)/u,
+  "bootstrap must enforce the shared token-exact corpus at the executable probe",
+);
+assert.doesNotMatch(
+  bootstrapText,
+  /observed\.startsWith|observed\.starts_with/u,
+  "bootstrap must not use unrestricted version-prefix acceptance",
+);
+assert.match(
+  rustCliText,
+  /include_str!\("\.\.\/\.\.\/\.\.\/tools\/fixtures\/tool-version-conformance-v1\.json"\)/u,
+  "Rust doctor must consume the same committed conformance corpus as bootstrap",
+);
+assert.match(
+  rustCliText,
+  /is_some_and\(\|value\| is_supported_tool_version\(specification, value\)\)/u,
+  "Rust doctor executable probes must use token-exact conformance",
+);
+assert.doesNotMatch(
+  rustCliText,
+  /value\.starts_with\([^\n]*expected|value\.starts_with\([^\n]*EXPECTED/u,
+  "Rust doctor must not use unrestricted expected-version prefix acceptance",
+);
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const validateFixtureSchemaV1 = ajv.compile(fixtureSchemaV1);
@@ -131,32 +195,43 @@ for (const [version, fixture, validateFixtureSchema] of [
     true,
     `committed v${version} fixture must satisfy JSON Schema: ${ajv.errorsText(validateFixtureSchema.errors)}`,
   );
-  assert.deepEqual(parseFixtureDocument(fixture), fixture);
+  const rawFixture = version === 1 ? fixtureV1Text : fixtureV2Text;
+  assert.deepEqual(parseFixtureDocumentJson(rawFixture), fixture);
 }
-for (const [field, token, valid] of [
-  ["fixture_version", "2.0", true],
-  ["fixture_version", "2e0", true],
-  ["event_schema_version", "2.0", true],
-  ["event_schema_version", "2e0", true],
-  ["fixture_version", "2.5", false],
-  ["event_schema_version", "65536", false],
-]) {
-  const rawFixture = fixtureV2Text.replace(`"${field}": 2`, `"${field}": ${token}`);
-  assert.notEqual(rawFixture, fixtureV2Text, `${field} fixture lexeme probe must mutate source`);
-  let schemaValid = true;
+
+for (const testCase of fixtureRawCorpus.cases) {
+  const baseText = testCase.fixture === 1 ? fixtureV1Text : fixtureV2Text;
+  const validateFixtureSchema = testCase.fixture === 1
+    ? validateFixtureSchemaV1
+    : validateFixtureSchemaV2;
+  let rawFixture = baseText;
+  for (const replacement of testCase.replacements) {
+    const next = rawFixture.replace(replacement.needle, replacement.replacement);
+    assert.notEqual(next, rawFixture, `${testCase.name}: replacement must mutate fixture text`);
+    rawFixture = next;
+  }
+  let schemaBoundaryValid = true;
+  try {
+    assertPortableFixtureJsonText(rawFixture);
+    schemaBoundaryValid = validateFixtureSchema(JSON.parse(rawFixture));
+  } catch {
+    schemaBoundaryValid = false;
+  }
+  assert.equal(
+    schemaBoundaryValid,
+    testCase.valid,
+    `raw fixture/Ajv boundary disagreement: ${testCase.name}`,
+  );
   let typescriptValid = true;
   try {
-    const parsed = JSON.parse(rawFixture);
-    schemaValid = validateFixtureSchemaV2(parsed);
-    parseFixtureDocument(parsed);
+    parseFixtureDocumentJson(rawFixture);
   } catch {
     typescriptValid = false;
   }
-  assert.equal(schemaValid, valid, `schema fixture integer-lexeme parity: ${field}=${token}`);
   assert.equal(
     typescriptValid,
-    valid,
-    `TypeScript fixture integer-lexeme parity: ${field}=${token}`,
+    testCase.valid,
+    `raw fixture/TypeScript boundary disagreement: ${testCase.name}`,
   );
 }
 
@@ -186,6 +261,9 @@ const applyArtifactMutations = (base, mutations) => {
     assert.notEqual(finalComponent, undefined, `${mutation.path} must select a value`);
     if (mutation.op === "replace") {
       assert.ok(Object.hasOwn(target, finalComponent), `${mutation.path} must already exist`);
+      target[finalComponent] = structuredClone(mutation.value);
+    } else if (mutation.op === "add") {
+      assert.ok(!Object.hasOwn(target, finalComponent), `${mutation.path} must be a new property`);
       target[finalComponent] = structuredClone(mutation.value);
     } else if (mutation.op === "append") {
       assert.ok(Array.isArray(target[finalComponent]), `${mutation.path} must select an array`);
@@ -291,6 +369,32 @@ for (const testCase of artifactCorpus.raw_json_cases) {
   );
 }
 
+const assertRustArtifactUnknownFieldDenial = (source) => {
+  for (const name of ["ArtifactRepresentation", "ArtifactDescriptor"]) {
+    assert.match(
+      source,
+      new RegExp(
+        `#\\[serde\\(deny_unknown_fields\\)\\]\\s*pub struct ${name}\\s*\\{`,
+        "u",
+      ),
+      `${name} Rust typed deserialization must deny unknown properties`,
+    );
+  }
+};
+assertRustArtifactUnknownFieldDenial(rustDomainText);
+for (const name of ["ArtifactRepresentation", "ArtifactDescriptor"]) {
+  const mutated = rustDomainText.replace(
+    `#[serde(deny_unknown_fields)]\npub struct ${name}`,
+    `pub struct ${name}`,
+  );
+  assert.notEqual(mutated, rustDomainText, `${name} deny-attribute mutation must alter source`);
+  assert.throws(
+    () => assertRustArtifactUnknownFieldDenial(mutated),
+    undefined,
+    `${name} deny-attribute mutation must fail contract verification`,
+  );
+}
+
 const clone = (value) => structuredClone(value);
 const invalidFixtures = [
   ["fixture/contract version mismatch", (value) => { value.fixture_version = 1; }],
@@ -327,10 +431,125 @@ for (const [name, mutate] of invalidFixtures) {
 assert.equal(fixtureSchemaV1.$schema, "https://json-schema.org/draft/2020-12/schema");
 assert.equal(fixtureSchemaV2.$schema, "https://json-schema.org/draft/2020-12/schema");
 assert.equal(artifactSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
-assert.doesNotMatch(
-  rustContractsText,
-  /pub\s+fn\s+\w*v1\w*|sign_batch_v1/u,
-  "academic-contracts must expose no general v1 encoder or signer",
+const rustRootFunctionBodies = (source) => {
+  const production = source.split("#[cfg(test)]", 1)[0];
+  const declarations = [...production.matchAll(/^(?<visibility>pub\s+)?fn\s+(?<name>[a-z_][a-z0-9_]*)\s*\(/gmu)];
+  return new Map(declarations.map((match, index) => {
+    const start = match.index ?? 0;
+    const end = declarations[index + 1]?.index ?? production.length;
+    return [match.groups.name, {
+      public: match.groups.visibility !== undefined,
+      source: production.slice(start, end),
+    }];
+  }));
+};
+const assertV2WriterCapabilityGate = (source) => {
+  const functions = rustRootFunctionBodies(source);
+  const publicFunctions = [...functions]
+    .filter(([, declaration]) => declaration.public)
+    .map(([name]) => name)
+    .toSorted();
+  assert.deepEqual(
+    publicFunctions,
+    ["decode_unsigned_batch", "encode_unsigned_batch", "sign_batch", "verify_signed_batch"],
+    "academic-contracts root public functions must match the reviewed capability allowlist",
+  );
+  const publicTypes = [...source.matchAll(
+    /^pub\s+(?:struct|enum)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)/gmu,
+  )].map((match) => match.groups.name).toSorted();
+  assert.deepEqual(
+    publicTypes,
+    ["ContractError", "DeviceAuthorization", "VerifiedBatch"],
+    "academic-contracts root public types must match the reviewed capability allowlist",
+  );
+  const publicConstants = [...source.matchAll(
+    /^pub\s+const\s+(?<name>[A-Z_][A-Z0-9_]*)/gmu,
+  )].map((match) => match.groups.name);
+  assert.deepEqual(
+    publicConstants,
+    ["SIGNED_ENVELOPE_VERSION"],
+    "academic-contracts root public constants must match the reviewed capability allowlist",
+  );
+  const reexports = source.match(
+    /pub use proto_contract::\{(?<names>[\s\S]*?)\};/u,
+  )?.groups?.names
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .toSorted();
+  assert.deepEqual(
+    reexports,
+    [
+      "ProtoContractError",
+      "decode_claim_relation_event_proto",
+      "encode_claim_relation_event_proto",
+    ].toSorted(),
+    "academic-contracts Proto reexports must match the reviewed capability allowlist",
+  );
+  const projection = functions.get("encode_unsigned_batch_v1_projection")?.source;
+  assert.ok(projection, "the private v1 verification projection must remain explicitly named");
+  assert.match(
+    projection,
+    /fn encode_unsigned_batch_v1_projection\([\s\S]*_capability: LegacySourceEqualityCapability,/u,
+    "legacy projection access must require the private source-equality capability",
+  );
+  assert.match(
+    functions.get("require_source_typed_equality")?.source ?? "",
+    /encode_unsigned_batch_v1_projection\(batch, LegacySourceEqualityCapability\)/u,
+    "only authenticated source equality may construct and consume the legacy capability",
+  );
+  const callGraph = new Map([...functions].map(([name, declaration]) => [
+    name,
+    [...declaration.source.matchAll(/\b(?<callee>[a-z_][a-z0-9_]*)\s*\(/gu)]
+      .map((match) => match.groups.callee)
+      .filter((callee) => functions.has(callee) && callee !== name),
+  ]));
+  const reachableFromWriters = new Set();
+  const pending = ["sign_batch", "encode_unsigned_batch"];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === undefined || reachableFromWriters.has(current)) continue;
+    reachableFromWriters.add(current);
+    pending.push(...(callGraph.get(current) ?? []));
+  }
+  assert.equal(
+    reachableFromWriters.has("encode_unsigned_batch_v1_projection"),
+    false,
+    "current writer data flow must never reach the legacy v1 projection capability",
+  );
+  for (const legacyImport of [
+    "encode_unsigned_batch_v1_projection",
+    "encode_legacy_projection",
+  ]) {
+    assert.ok(
+      source.includes([
+        "//! ```compile_fail",
+        `//! use academic_contracts::${legacyImport};`,
+        "//! ```",
+      ].join("\n")),
+      `downstream compile-fail evidence must pin private import ${legacyImport}`,
+    );
+  }
+};
+assertV2WriterCapabilityGate(rustContractsText);
+const renamedPublicLegacyWriter = rustContractsText
+  .replaceAll("encode_unsigned_batch_v1_projection", "encode_legacy_projection")
+  .replace("fn encode_legacy_projection(", "pub fn encode_legacy_projection(");
+assert.notEqual(renamedPublicLegacyWriter, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(renamedPublicLegacyWriter),
+  undefined,
+  "a renamed public legacy projection must fail the public API allowlist",
+);
+const writerReachesLegacyProjection = rustContractsText.replace(
+  "    batch.validate()?;\n    let json = serde_json::to_value(batch)?;",
+  "    let _legacy = encode_unsigned_batch_v1_projection(batch, LegacySourceEqualityCapability)?;\n    batch.validate()?;\n    let json = serde_json::to_value(batch)?;",
+);
+assert.notEqual(writerReachesLegacyProjection, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(writerReachesLegacyProjection),
+  undefined,
+  "writer data flow reaching the legacy capability must fail contract verification",
 );
 assert.doesNotMatch(
   rustCoreText,
@@ -341,6 +560,55 @@ assert.doesNotMatch(
   rustCliText.split(/\n#\[cfg\(test\)\]/u, 1)[0],
   /fixture_version|fixture-version/u,
   "the production-facing CLI must emit only the current v2 fixture",
+);
+const nativeFixtureCiCommands = [
+  "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",
+  "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
+  "cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v2.json",
+  "git diff --exit-code -- schemas/fixtures/signed-batch-v1.json schemas/fixtures/signed-batch-v2.json",
+  "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json",
+  "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json",
+];
+const ciJobBody = (ci, name) => {
+  const marker = `\n  ${name}:\n`;
+  const start = ci.indexOf(marker);
+  assert.ok(start >= 0, `CI job ${name} must exist`);
+  const remainder = ci.slice(start + marker.length);
+  const nextJob = remainder.search(/\n  [a-z0-9-]+:\n/iu);
+  return nextJob < 0 ? remainder : remainder.slice(0, nextJob);
+};
+const assertNativeFixtureCiTopology = (ci) => {
+  const rustJob = ciJobBody(ci, "rust");
+  const independentRuns = [...rustJob.matchAll(/^\s+run:\s+(?<command>[^|>].*)$/gmu)]
+    .map((match) => match.groups.command.trim())
+    .filter((command) => command.includes("fixture ") || command.startsWith("git diff --exit-code"));
+  assert.deepEqual(
+    independentRuns,
+    nativeFixtureCiCommands,
+    "every native fixture command must be an ordered independent CI step on Windows and Linux",
+  );
+};
+assertNativeFixtureCiTopology(ciText);
+const combinedNativeFixtureStep = ciText.replace(
+  [
+    "      - name: Verify immutable v1 fixture and upcast",
+    `        run: ${nativeFixtureCiCommands[0]}`,
+    "      - name: Replay immutable v1 fixture",
+    `        run: ${nativeFixtureCiCommands[1]}`,
+  ].join("\n"),
+  [
+    "      - name: Combined native fixture commands that can mask an intermediate failure",
+    "        run: |",
+    `          ${nativeFixtureCiCommands[0]}`,
+    "          node -e \"process.exit(7)\"",
+    `          ${nativeFixtureCiCommands[1]}`,
+  ].join("\n"),
+);
+assert.notEqual(combinedNativeFixtureStep, ciText, "CI topology mutation must alter the workflow");
+assert.throws(
+  () => assertNativeFixtureCiTopology(combinedNativeFixtureStep),
+  undefined,
+  "a multiline native-fixture step with an intermediate native failure must be rejected",
 );
 const assertSourcePreflightTopology = ({ bootstrap, preflightModules, ci }) => {
   for (const [moduleName, source] of preflightModules) {
@@ -371,18 +639,14 @@ const assertSourcePreflightTopology = ({ bootstrap, preflightModules, ci }) => {
     "CI must begin with a dependency-free source-preflight job",
   );
   for (const job of ["rust", "contracts"]) {
-    const marker = `\n  ${job}:\n`;
-    const start = ci.indexOf(marker);
-    assert.ok(start >= 0, `CI executable job ${job} must exist`);
-    const remainder = ci.slice(start + marker.length);
-    const nextJob = remainder.search(/\n  [a-z0-9-]+:\n/iu);
-    const jobBody = nextJob < 0 ? remainder : remainder.slice(0, nextJob);
+    const jobBody = ciJobBody(ci, job);
     assert.match(
       jobBody,
       /^    needs: source-preflight$/mu,
       `CI executable job ${job} must depend on source-preflight`,
     );
   }
+  assertNativeFixtureCiTopology(ci);
 };
 assertSourcePreflightTopology({
   bootstrap: bootstrapText,
@@ -637,6 +901,29 @@ const assertRustRelationMappings = (source) => {
     "every Proto relation discriminant must decode to the identical domain kind",
   );
 };
+const actorVariantNames = actorWireFields.map(([name]) => name);
+const assertRustActorMappings = (source) => {
+  const functions = rustRootFunctionBodies(source);
+  const encodeSource = functions.get("encode_actor")?.source ?? "";
+  const decodeSource = functions.get("decode_actor")?.source ?? "";
+  const encodedPairs = [...encodeSource.matchAll(
+    /Actor::(?<domain>User|DeterministicEngine|ModelRun|Importer)\s*\{[^}]*\}\s*=>[\s\S]*?proto_actor::Kind::(?<wire>User|DeterministicEngine|ModelRun|Importer)\b/gu,
+  )].map((match) => [match.groups.domain, match.groups.wire]);
+  const decodedPairs = [...decodeSource.matchAll(
+    /proto_actor::Kind::(?<wire>User|DeterministicEngine|ModelRun|Importer)\([^)]*\)\s*=>\s*Ok\(Actor::(?<domain>User|DeterministicEngine|ModelRun|Importer)\b/gu,
+  )].map((match) => [match.groups.wire, match.groups.domain]);
+  const identity = actorVariantNames.map((name) => [name, name]);
+  assert.deepEqual(
+    encodedPairs,
+    identity,
+    "every domain actor variant must encode to the independently matching Proto oneof arm",
+  );
+  assert.deepEqual(
+    decodedPairs,
+    identity,
+    "every Proto actor oneof arm must decode to the independently matching domain variant",
+  );
+};
 const assertRustWireContract = (source) => {
   const expectedFieldsByStruct = new Map();
   for (const [structName, fieldName] of rustScalarFields) {
@@ -770,6 +1057,7 @@ const assertRustWireContract = (source) => {
     "hand-written Rust Proto relation membership and discriminants must be exact",
   );
   assertRustRelationMappings(source);
+  assertRustActorMappings(source);
 };
 assertExactRustDomainRelationKind(rustDomainText);
 assertRustWireContract(rustProtoContractText);
@@ -853,6 +1141,36 @@ assert.throws(
   undefined,
   "a Rust relation decode-mapping mutation must fail contract verification",
 );
+const mutatedRustActorEncodeMapping = rustProtoContractText
+  .replace(
+    "Actor::User { user_id } => proto_actor::Kind::User(ProtoUserActor {",
+    "Actor::User { user_id } => proto_actor::Kind::ModelRun(ProtoUserActor {",
+  )
+  .replace(
+    "Actor::ModelRun { run_id } => proto_actor::Kind::ModelRun(ProtoModelRunActor {",
+    "Actor::ModelRun { run_id } => proto_actor::Kind::User(ProtoModelRunActor {",
+  );
+assert.notEqual(mutatedRustActorEncodeMapping, rustProtoContractText);
+assert.throws(
+  () => assertRustWireContract(mutatedRustActorEncodeMapping),
+  undefined,
+  "a symmetric User/ModelRun actor encode-mapping swap must fail contract verification",
+);
+const mutatedRustActorDecodeMapping = rustProtoContractText
+  .replace(
+    "proto_actor::Kind::User(value) => Ok(Actor::User {",
+    "proto_actor::Kind::User(value) => Ok(Actor::ModelRun {",
+  )
+  .replace(
+    "proto_actor::Kind::ModelRun(value) => Ok(Actor::ModelRun {",
+    "proto_actor::Kind::ModelRun(value) => Ok(Actor::User {",
+  );
+assert.notEqual(mutatedRustActorDecodeMapping, rustProtoContractText);
+assert.throws(
+  () => assertRustWireContract(mutatedRustActorDecodeMapping),
+  undefined,
+  "a symmetric User/ModelRun actor decode-mapping swap must fail contract verification",
+);
 
 const declaredMessageFields = [
   ["UuidV7", [["value", 1]]],
@@ -934,6 +1252,36 @@ assert.throws(
   "an added current-v2 relation discriminant must fail contract verification",
 );
 const uuidBytes = (value) => Buffer.from(value.replaceAll("-", ""), "hex");
+const actorWireGoldens = [
+  {
+    name: "User",
+    arm: "user",
+    value: { user: { user_id: { value: uuidBytes("01900000-0000-7000-8000-000000000020") } } },
+    decoded: { user_id: { value: "AZAAAAAAcACAAAAAAAAAIA==" } },
+    hex: "0a140a120a1001900000000070008000000000000020",
+  },
+  {
+    name: "DeterministicEngine",
+    arm: "deterministic_engine",
+    value: { deterministic_engine: { name: "resolver", version: "1.2.3" } },
+    decoded: { name: "resolver", version: "1.2.3" },
+    hex: "12110a087265736f6c7665721205312e322e33",
+  },
+  {
+    name: "ModelRun",
+    arm: "model_run",
+    value: { model_run: { run_id: { value: uuidBytes("01900000-0000-7000-8000-000000000021") } } },
+    decoded: { run_id: { value: "AZAAAAAAcACAAAAAAAAAIQ==" } },
+    hex: "1a140a120a1001900000000070008000000000000021",
+  },
+  {
+    name: "Importer",
+    arm: "importer",
+    value: { importer: { name: "registrar", version: "2026.08" } },
+    decoded: { name: "registrar", version: "2026.08" },
+    hex: "22140a097265676973747261721207323032362e3038",
+  },
+];
 const protoRelationEvent = {
   id: { value: uuidBytes("01900000-0000-7000-8000-00000000000c") },
   origin_seq: 12,
@@ -960,6 +1308,26 @@ const competingKnownPayloads = [
 for (const version of [1, 2]) {
   const protoRoot = protoRoots[version - 1];
   assert.ok(protoRoot);
+  const actorType = protoRoot.lookupType(`academic.v${version}.Actor`);
+  for (const golden of actorWireGoldens) {
+    assert.equal(actorType.verify(golden.value), null, `v${version} ${golden.name} actor shape`);
+    const actorBytes = Buffer.from(actorType.encode(golden.value).finish());
+    assert.equal(
+      actorBytes.toString("hex"),
+      golden.hex,
+      `v${version} protobuf.js ${golden.name} bytes must match the independent Rust golden`,
+    );
+    const actorRoundTrip = actorType.toObject(actorType.decode(actorBytes), {
+      bytes: String,
+      oneofs: true,
+    });
+    assert.equal(actorRoundTrip.kind, golden.arm, `v${version} ${golden.name} selected oneof arm`);
+    assert.deepEqual(
+      actorRoundTrip[golden.arm],
+      golden.decoded,
+      `v${version} ${golden.name} decoded fields`,
+    );
+  }
   const originEventType = protoRoot.lookupType(`academic.v${version}.OriginEvent`);
   assert.equal(originEventType.verify(protoRelationEvent), null);
   const relationWire = Buffer.from(originEventType.encode(protoRelationEvent).finish());

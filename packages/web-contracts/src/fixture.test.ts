@@ -3,7 +3,11 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { parseArtifactDescriptorJson, parseFixtureDocument } from "./index.js";
+import {
+  parseArtifactDescriptorJson,
+  parseFixtureDocument,
+  parseFixtureDocumentJson,
+} from "./index.js";
 
 const fixtureV1Url = new URL("../../../schemas/fixtures/signed-batch-v1.json", import.meta.url);
 const fixtureV2Url = new URL("../../../schemas/fixtures/signed-batch-v2.json", import.meta.url);
@@ -12,14 +16,17 @@ const artifactCorpusUrl = new URL(
   "../../../schemas/fixtures/artifact-descriptor-parity-v1.json",
   import.meta.url,
 );
+const fixtureRawCorpusUrl = new URL(
+  "../../../schemas/fixtures/signed-batch-raw-parity-v1.json",
+  import.meta.url,
+);
 
 void test("the immutable v1 and current v2 fixtures are synthetic and structurally valid", async () => {
   const [v1Bytes, v2Text] = await Promise.all([readFile(fixtureV1Url), readFile(fixtureV2Url, "utf8")]);
   assert.equal(createHash("sha256").update(v1Bytes).digest("hex"), immutableV1Sha256);
 
   for (const [version, text] of [[1, v1Bytes.toString("utf8")], [2, v2Text]] as const) {
-    const input: unknown = JSON.parse(text) as unknown;
-    const fixture = parseFixtureDocument(input);
+    const fixture = parseFixtureDocumentJson(text);
 
     assert.equal(fixture.fixture_version, version);
     assert.equal(fixture.data_class, "SYNTHETIC_ONLY");
@@ -27,6 +34,45 @@ void test("the immutable v1 and current v2 fixtures are synthetic and structural
     assert.equal(fixture.expected_replay.mastery, "PRACTICED");
     assert.equal(fixture.expected_replay.freshness, "STALE");
     assert.equal(fixture.expected_replay.accepted_events, 13);
+  }
+});
+
+void test("shared raw v1/v2 fixture corpus rejects duplicates and surrogates before semantics", async () => {
+  const [corpusText, fixtureV1Text, fixtureV2Text] = await Promise.all([
+    readFile(fixtureRawCorpusUrl, "utf8"),
+    readFile(fixtureV1Url, "utf8"),
+    readFile(fixtureV2Url, "utf8"),
+  ]);
+  const corpus = JSON.parse(corpusText) as {
+    readonly schema_version: number;
+    readonly cases: readonly {
+      readonly name: string;
+      readonly fixture: 1 | 2;
+      readonly valid: boolean;
+      readonly replacements: readonly {
+        readonly needle: string;
+        readonly replacement: string;
+      }[];
+    }[];
+  };
+  assert.equal(corpus.schema_version, 1);
+  assert.ok(corpus.cases.some((entry) => entry.name.includes("duplicate")));
+  assert.ok(corpus.cases.some((entry) => entry.name.includes("surrogate")));
+  assert.ok(corpus.cases.some((entry) => entry.name.includes("decimal")));
+  assert.ok(corpus.cases.some((entry) => entry.name.includes("exponent")));
+  for (const entry of corpus.cases) {
+    let raw = entry.fixture === 1 ? fixtureV1Text : fixtureV2Text;
+    for (const replacement of entry.replacements) {
+      const next = raw.replace(replacement.needle, replacement.replacement);
+      assert.notEqual(next, raw, `${entry.name}: replacement must mutate the fixture`);
+      raw = next;
+    }
+    if (entry.valid) {
+      const parsed = parseFixtureDocumentJson(raw);
+      assert.equal(parsed.fixture_version, entry.fixture, entry.name);
+    } else {
+      assert.throws(() => parseFixtureDocumentJson(raw), TypeError, entry.name);
+    }
   }
 });
 
@@ -65,28 +111,41 @@ void test("const, minimum, uniqueness, and additional-property violations fail c
   }
 });
 
-void test("raw artifact validation rejects unknown fields in every evidence locator", async () => {
+void test("raw artifact validation rejects unknown fields at every descriptor boundary", async () => {
   const corpus = JSON.parse(await readFile(artifactCorpusUrl, "utf8")) as {
     readonly base: unknown;
     readonly cases: readonly {
       readonly name: string;
-      readonly mutations: readonly { readonly value: unknown }[];
+      readonly mutations: readonly {
+        readonly op: string;
+        readonly path: string;
+        readonly value: unknown;
+      }[];
     }[];
   };
-  const unknownLocatorCases = corpus.cases.filter((entry) =>
-    entry.name.startsWith("unknown field in "),
+  const unknownPropertyCases = corpus.cases.filter((entry) =>
+    entry.name.startsWith("unknown field"),
   );
-  assert.equal(unknownLocatorCases.length, 4);
-  for (const entry of unknownLocatorCases) {
+  assert.equal(unknownPropertyCases.length, 6);
+  for (const entry of unknownPropertyCases) {
     const mutation = entry.mutations[0];
-    const candidate = structuredClone(corpus.base) as {
-      evidence_representations: { locator: unknown }[];
-    };
-    const representation = candidate.evidence_representations[0];
-    if (mutation === undefined || representation === undefined) {
-      assert.fail(`${entry.name} must replace one evidence locator`);
+    if (mutation === undefined) {
+      assert.fail(`${entry.name} must contain one unknown-property mutation`);
     }
-    representation.locator = structuredClone(mutation.value);
+    const candidate = structuredClone(corpus.base) as Record<string, unknown>;
+    const components = mutation.path.split("/").slice(1);
+    let target: unknown = candidate;
+    for (const component of components.slice(0, -1)) {
+      if (typeof target !== "object" || target === null) {
+        assert.fail(`${entry.name}: invalid mutation path`);
+      }
+      target = (target as Record<string, unknown>)[component];
+    }
+    const finalComponent = components.at(-1);
+    if (typeof target !== "object" || target === null || finalComponent === undefined) {
+      assert.fail(`${entry.name}: invalid mutation target`);
+    }
+    (target as Record<string, unknown>)[finalComponent] = structuredClone(mutation.value);
     assert.throws(() => parseArtifactDescriptorJson(JSON.stringify(candidate)), TypeError);
   }
 });

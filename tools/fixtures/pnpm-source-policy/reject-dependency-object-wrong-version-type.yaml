@@ -1,0 +1,7 @@
+lockfileVersion: '9.0'
+snapshots:
+  example@1.0.0:
+    dependencies:
+      unsupported:
+        specifier: 1.0.0
+        version: [1.0.0]

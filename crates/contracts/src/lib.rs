@@ -3,6 +3,17 @@
 //! The signing surface is a strict CBOR profile made only of definite arrays,
 //! integers, booleans, text, and bytes. JSON-shaped domain values are encoded
 //! as tagged arrays, so map iteration order cannot affect signed bytes.
+//!
+//! Legacy source projections are verification capabilities, not writer APIs.
+//! Neither the historical name nor a renamed projection may become public:
+//!
+//! ```compile_fail
+//! use academic_contracts::encode_unsigned_batch_v1_projection;
+//! ```
+//!
+//! ```compile_fail
+//! use academic_contracts::encode_legacy_projection;
+//! ```
 
 use std::{collections::BTreeMap, io::Cursor};
 
@@ -273,7 +284,13 @@ pub fn encode_unsigned_batch(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractE
     encode_cbor_value(&json_to_cbor(&json)?)
 }
 
-fn encode_unsigned_batch_v1_projection(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {
+#[derive(Debug, Clone, Copy)]
+struct LegacySourceEqualityCapability;
+
+fn encode_unsigned_batch_v1_projection(
+    batch: &UnsignedBatch,
+    _capability: LegacySourceEqualityCapability,
+) -> Result<Vec<u8>, ContractError> {
     batch.validate()?;
     let mut json = serde_json::to_value(batch)?;
     transform_decisions_for_v1(&mut json)?;
@@ -326,7 +343,9 @@ fn require_source_typed_equality(
     original_bytes: &[u8],
 ) -> Result<(), ContractError> {
     let typed_bytes = match source_schema_version {
-        EVENT_SCHEMA_VERSION_V1 => encode_unsigned_batch_v1_projection(batch)?,
+        EVENT_SCHEMA_VERSION_V1 => {
+            encode_unsigned_batch_v1_projection(batch, LegacySourceEqualityCapability)?
+        }
         EVENT_SCHEMA_VERSION_V2 => encode_unsigned_batch(batch)?,
         other => return Err(DomainError::UnsupportedSchemaVersion(other).into()),
     };
@@ -903,8 +922,8 @@ mod tests {
         let mut batch = v1_compatible_batch()?;
 
         let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
-        let first = encode_unsigned_batch_v1_projection(&batch)?;
-        let second = encode_unsigned_batch_v1_projection(&batch)?;
+        let first = encode_unsigned_batch_v1_projection(&batch, LegacySourceEqualityCapability)?;
+        let second = encode_unsigned_batch_v1_projection(&batch, LegacySourceEqualityCapability)?;
         assert_eq!(first, second);
         assert_eq!(decode_unsigned_batch(&first)?, batch);
 
@@ -957,7 +976,7 @@ mod tests {
         };
         decision.valid_time = ValidInterval::open_ended(TimestampMillis::new(1));
         assert!(matches!(
-            encode_unsigned_batch_v1_projection(&batch),
+            encode_unsigned_batch_v1_projection(&batch, LegacySourceEqualityCapability),
             Err(ContractError::LegacyCompatibility(_))
         ));
         Ok(())
@@ -972,7 +991,7 @@ mod tests {
         for (source_version, payload) in [
             (
                 EVENT_SCHEMA_VERSION_V1,
-                encode_unsigned_batch_v1_projection(&batch)?,
+                encode_unsigned_batch_v1_projection(&batch, LegacySourceEqualityCapability)?,
             ),
             (EVENT_SCHEMA_VERSION_V2, encode_unsigned_batch(&batch)?),
         ] {

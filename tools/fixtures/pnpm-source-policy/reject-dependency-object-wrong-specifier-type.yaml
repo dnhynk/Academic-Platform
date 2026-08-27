@@ -1,0 +1,7 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      unsupported:
+        specifier: {value: 1.0.0}
+        version: 1.0.0

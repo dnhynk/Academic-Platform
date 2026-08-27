@@ -7,17 +7,15 @@ use std::{
 };
 
 use academic_core::{
-    FINAL_VALID_AT, FixtureDocument, build_fixture_document, fixture_json, replay_fixture_document,
-    verify_fixture_document,
+    FINAL_VALID_AT, FixtureDocument, build_fixture_document, fixture_json,
+    parse_fixture_document_json, replay_fixture_document, verify_fixture_document,
 };
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-const EXPECTED_RUSTC: &str = "rustc 1.98.0";
-const EXPECTED_CARGO: &str = "cargo 1.98.0";
-const EXPECTED_NODE: &str = "v24.19.0";
-const EXPECTED_PNPM: &str = "11.22.0";
+const TOOL_VERSION_CORPUS_JSON: &str =
+    include_str!("../../../tools/fixtures/tool-version-conformance-v1.json");
 
 #[derive(Debug, Parser)]
 #[command(
@@ -76,12 +74,41 @@ struct DoctorReport {
 
 #[derive(Debug, Serialize)]
 struct ToolCheck {
-    tool: &'static str,
-    expected: &'static str,
+    tool: String,
+    expected: String,
     observed: Option<String>,
     resolved_path: Option<PathBuf>,
     supported: bool,
-    remediation: &'static str,
+    remediation: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ToolVersionCorpus {
+    schema_version: u8,
+    tools: Vec<ToolVersionSpecification>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ToolVersionSpecification {
+    name: String,
+    expected: String,
+    policy: ToolVersionPolicy,
+    remediation: String,
+    cases: Vec<ToolVersionCase>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ToolVersionCase {
+    name: String,
+    output: String,
+    supported: bool,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum ToolVersionPolicy {
+    Exact,
+    StableRustTool,
 }
 
 fn main() -> Result<()> {
@@ -120,37 +147,14 @@ fn fixture(command: FixtureCommand) -> Result<()> {
 fn read_fixture(path: &Path) -> Result<FixtureDocument> {
     let bytes =
         fs::read(path).with_context(|| format!("failed to read fixture {}", path.display()))?;
-    serde_json::from_slice(&bytes)
+    parse_fixture_document_json(&bytes)
         .with_context(|| format!("failed to parse fixture {}", path.display()))
 }
 
 fn doctor(format: OutputFormat) -> Result<()> {
-    let checks = vec![
-        check_tool(
-            "rustc",
-            EXPECTED_RUSTC,
-            &["--version"],
-            "Install rustup, then run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
-        ),
-        check_tool(
-            "cargo",
-            EXPECTED_CARGO,
-            &["--version"],
-            "Restart the shell after rustup, or add %USERPROFILE%\\.cargo\\bin to PATH.",
-        ),
-        check_tool(
-            "node",
-            EXPECTED_NODE,
-            &["--version"],
-            "Use Node 24.19.0; with nvm-windows run: nvm use 24.19.0",
-        ),
-        check_tool(
-            "pnpm",
-            EXPECTED_PNPM,
-            &["--version"],
-            "Install the pinned package manager: npm install --global pnpm@11.22.0",
-        ),
-    ];
+    let corpus: ToolVersionCorpus = serde_json::from_str(TOOL_VERSION_CORPUS_JSON)?;
+    validate_tool_version_corpus(&corpus)?;
+    let checks = corpus.tools.iter().map(check_tool).collect::<Vec<_>>();
     let report = DoctorReport {
         ready: checks.iter().all(|check| check.supported),
         phase: "PHASE_0_EXECUTABLE_INVARIANTS",
@@ -185,15 +189,10 @@ fn doctor(format: OutputFormat) -> Result<()> {
     Ok(())
 }
 
-fn check_tool(
-    tool: &'static str,
-    expected: &'static str,
-    arguments: &[&str],
-    remediation: &'static str,
-) -> ToolCheck {
-    let resolved_path = resolve_executable(tool);
-    let observed = Command::new(tool)
-        .args(arguments)
+fn check_tool(specification: &ToolVersionSpecification) -> ToolCheck {
+    let resolved_path = resolve_executable(&specification.name);
+    let observed = Command::new(&specification.name)
+        .arg("--version")
         .output()
         .ok()
         .filter(|output| output.status.success())
@@ -201,15 +200,90 @@ fn check_tool(
         .map(|value| value.trim().to_owned());
     let supported = observed
         .as_deref()
-        .is_some_and(|value| value.starts_with(expected));
+        .is_some_and(|value| is_supported_tool_version(specification, value));
     ToolCheck {
-        tool,
-        expected,
+        tool: specification.name.clone(),
+        expected: specification.expected.clone(),
         observed,
         resolved_path,
         supported,
-        remediation,
+        remediation: specification.remediation.clone(),
     }
+}
+
+fn is_supported_tool_version(specification: &ToolVersionSpecification, output: &str) -> bool {
+    let observed = output.trim();
+    match specification.policy {
+        ToolVersionPolicy::Exact => observed == specification.expected,
+        ToolVersionPolicy::StableRustTool => {
+            if observed == specification.expected {
+                return true;
+            }
+            observed
+                .strip_prefix(&format!("{} ", specification.expected))
+                .is_some_and(has_ordinary_stable_build_metadata)
+        }
+    }
+}
+
+fn has_ordinary_stable_build_metadata(value: &str) -> bool {
+    let Some(metadata) = value
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return false;
+    };
+    let mut fields = metadata.split(' ');
+    let Some(commit) = fields.next() else {
+        return false;
+    };
+    let Some(date) = fields.next() else {
+        return false;
+    };
+    fields.next().is_none()
+        && (9..=40).contains(&commit.len())
+        && commit
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+        && date.len() == 10
+        && date.bytes().enumerate().all(|(index, byte)| {
+            matches!(index, 4 | 7) && byte == b'-'
+                || !matches!(index, 4 | 7) && byte.is_ascii_digit()
+        })
+}
+
+fn validate_tool_version_corpus(corpus: &ToolVersionCorpus) -> Result<()> {
+    if corpus.schema_version != 1
+        || corpus
+            .tools
+            .iter()
+            .map(|tool| tool.name.as_str())
+            .ne(["rustc", "cargo", "node", "pnpm"])
+    {
+        bail!("tool-version conformance corpus has an unsupported shape");
+    }
+    for tool in &corpus.tools {
+        if tool.expected.is_empty()
+            || tool.remediation.is_empty()
+            || !tool.cases.iter().any(|test_case| test_case.supported)
+            || !tool.cases.iter().any(|test_case| !test_case.supported)
+        {
+            bail!(
+                "tool-version conformance corpus is incomplete for {}",
+                tool.name
+            );
+        }
+        for test_case in &tool.cases {
+            if is_supported_tool_version(tool, &test_case.output) != test_case.supported {
+                bail!(
+                    "tool-version conformance disagreement for {}: {}",
+                    tool.name,
+                    test_case.name
+                );
+            }
+        }
+    }
+    Ok(())
 }
 
 fn resolve_executable(tool: &str) -> Option<PathBuf> {
@@ -258,6 +332,25 @@ mod tests {
                 .is_err(),
             "the CLI must not expose a caller-selectable legacy writer"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn t017_doctor_and_bootstrap_share_token_exact_version_conformance()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let corpus: ToolVersionCorpus = serde_json::from_str(TOOL_VERSION_CORPUS_JSON)?;
+        validate_tool_version_corpus(&corpus)?;
+        for tool in &corpus.tools {
+            for test_case in &tool.cases {
+                assert_eq!(
+                    is_supported_tool_version(tool, &test_case.output),
+                    test_case.supported,
+                    "{}: {}",
+                    tool.name,
+                    test_case.name
+                );
+            }
+        }
         Ok(())
     }
 }

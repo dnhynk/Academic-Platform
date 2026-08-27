@@ -1538,15 +1538,40 @@ mod tests {
         ) -> Result<serde_json::Value, String> {
             let mut candidate = base.clone();
             for mutation in mutations {
-                let target = candidate
-                    .pointer_mut(&mutation.path)
-                    .ok_or_else(|| format!("{name}: invalid mutation path {}", mutation.path))?;
                 match mutation.op.as_str() {
-                    "replace" => *target = mutation.value.clone(),
-                    "append" => target
-                        .as_array_mut()
-                        .ok_or_else(|| format!("{name}: append target is not an array"))?
-                        .push(mutation.value.clone()),
+                    "replace" | "append" => {
+                        let target = candidate.pointer_mut(&mutation.path).ok_or_else(|| {
+                            format!("{name}: invalid mutation path {}", mutation.path)
+                        })?;
+                        if mutation.op == "replace" {
+                            *target = mutation.value.clone();
+                        } else {
+                            target
+                                .as_array_mut()
+                                .ok_or_else(|| format!("{name}: append target is not an array"))?
+                                .push(mutation.value.clone());
+                        }
+                    }
+                    "add" => {
+                        let (parent_path, encoded_key) =
+                            mutation.path.rsplit_once('/').ok_or_else(|| {
+                                format!("{name}: add path must identify an object property")
+                            })?;
+                        let parent = if parent_path.is_empty() {
+                            &mut candidate
+                        } else {
+                            candidate.pointer_mut(parent_path).ok_or_else(|| {
+                                format!("{name}: invalid mutation parent {parent_path}")
+                            })?
+                        };
+                        let key = encoded_key.replace("~1", "/").replace("~0", "~");
+                        let object = parent
+                            .as_object_mut()
+                            .ok_or_else(|| format!("{name}: add target parent is not an object"))?;
+                        if object.insert(key, mutation.value.clone()).is_some() {
+                            return Err(format!("{name}: add target already exists"));
+                        }
+                    }
                     other => return Err(format!("{name}: unknown mutation op {other}")),
                 }
             }

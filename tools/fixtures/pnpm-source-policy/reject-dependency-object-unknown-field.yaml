@@ -1,0 +1,6 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      unsupported:
+        resolution: git+https://example.invalid/concealed.git

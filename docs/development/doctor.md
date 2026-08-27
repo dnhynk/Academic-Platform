@@ -10,3 +10,4 @@ Expected JSON invariants:
 - `data_policy` is `SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED`.
 - `network_egress` is `PRODUCT_RUNTIME_NONE`.
 - missing or mismatched tools include a remediation string and make the command fail.
+- Node and pnpm output equals the exact pin token; rustc and cargo may add only ordinary parenthesized stable commit/date metadata after their exact token. Prerelease, nightly, longer-prefix, and wrapper spellings are mismatches. Bootstrap and doctor execute the same committed conformance corpus for these decisions.

@@ -331,3 +331,63 @@ const fn decode_relation_kind(value: ProtoClaimRelationKind) -> Option<ClaimRela
         ProtoClaimRelationKind::Unspecified => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn t017_every_actor_variant_matches_independent_v1_v2_protobufjs_bytes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let actors = [
+            (
+                Actor::User {
+                    user_id: "01900000-0000-7000-8000-000000000020".parse()?,
+                },
+                "User",
+                "0a140a120a1001900000000070008000000000000020",
+            ),
+            (
+                Actor::DeterministicEngine {
+                    name: "resolver".to_owned(),
+                    version: "1.2.3".to_owned(),
+                },
+                "DeterministicEngine",
+                "12110a087265736f6c7665721205312e322e33",
+            ),
+            (
+                Actor::ModelRun {
+                    run_id: "01900000-0000-7000-8000-000000000021".parse()?,
+                },
+                "ModelRun",
+                "1a140a120a1001900000000070008000000000000021",
+            ),
+            (
+                Actor::Importer {
+                    name: "registrar".to_owned(),
+                    version: "2026.08".to_owned(),
+                },
+                "Importer",
+                "22140a097265676973747261721207323032362e3038",
+            ),
+        ];
+        for (actor, expected_arm, expected_hex) in actors {
+            let wire = encode_actor(&actor);
+            let selected_arm = match wire.kind.as_ref() {
+                Some(proto_actor::Kind::User(_)) => "User",
+                Some(proto_actor::Kind::DeterministicEngine(_)) => "DeterministicEngine",
+                Some(proto_actor::Kind::ModelRun(_)) => "ModelRun",
+                Some(proto_actor::Kind::Importer(_)) => "Importer",
+                None => "Missing",
+            };
+            assert_eq!(selected_arm, expected_arm);
+            let encoded = wire.encode_to_vec();
+            assert_eq!(hex::encode(&encoded), expected_hex);
+            assert_eq!(
+                decode_actor(ProtoActor::decode(encoded.as_slice())?)?,
+                actor
+            );
+        }
+        Ok(())
+    }
+}

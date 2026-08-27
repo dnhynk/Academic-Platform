@@ -1,21 +1,24 @@
 import { spawnSync } from "node:child_process";
 
 import { assertRepositorySourcePolicy } from "./source-preflight.mjs";
+import {
+  assertToolVersionConformanceCorpus,
+  isSupportedToolVersion,
+  loadToolVersionConformanceCorpus,
+} from "./tool-version-policy.mjs";
 
 await assertRepositorySourcePolicy();
 
-const expected = new Map([
-  ["node", "v24.19.0"],
-  ["pnpm", "11.22.0"],
-  ["rustc", "rustc 1.98.0"],
-  ["cargo", "cargo 1.98.0"],
-]);
+const versionCorpus = await loadToolVersionConformanceCorpus();
+assertToolVersionConformanceCorpus(versionCorpus);
 
-for (const [tool, version] of expected) {
-  const result = spawnSync(tool, ["--version"], { encoding: "utf8" });
+for (const tool of versionCorpus.tools) {
+  const result = spawnSync(tool.name, ["--version"], { encoding: "utf8" });
   const observed = result.stdout.trim();
-  if (result.status !== 0 || !observed.startsWith(version)) {
-    throw new Error(`${tool}: expected ${version}, observed ${observed || "missing"}`);
+  if (result.status !== 0 || !isSupportedToolVersion(tool, observed)) {
+    throw new Error(
+      `${tool.name}: expected ${tool.expected}, observed ${observed || "missing"}`,
+    );
   }
 }
 

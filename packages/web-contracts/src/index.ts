@@ -186,14 +186,18 @@ function requireDigest(record: Record<string, unknown>, key: string): string {
   return value;
 }
 
-class ArtifactJsonRawParser {
+class PortableJsonRawParser {
   private index = 0;
 
-  public constructor(private readonly input: string) {}
+  public constructor(
+    private readonly input: string,
+    private readonly contractLabel: string,
+    private readonly requireCanonicalUnsignedIntegerNumbers: boolean,
+  ) {}
 
   private error(message: string): never {
     throw new TypeError(
-      `invalid raw artifact JSON at UTF-16 offset ${String(this.index)}: ${message}`,
+      `invalid raw ${this.contractLabel} JSON at UTF-16 offset ${String(this.index)}: ${message}`,
     );
   }
 
@@ -265,7 +269,10 @@ class ArtifactJsonRawParser {
       this.error("malformed number token");
     }
     this.index += token.length;
-    if (!/^(?:0|[1-9][0-9]*)$/u.test(token)) {
+    if (
+      this.requireCanonicalUnsignedIntegerNumbers &&
+      !/^(?:0|[1-9][0-9]*)$/u.test(token)
+    ) {
       this.error("numbers must use canonical unsigned integer tokens");
     }
   }
@@ -375,7 +382,17 @@ class ArtifactJsonRawParser {
  * canonical unsigned integer number tokens.
  */
 export function assertPortableArtifactJsonText(input: string): void {
-  new ArtifactJsonRawParser(input).parse();
+  new PortableJsonRawParser(input, "artifact", true).parse();
+}
+
+/**
+ * Enforces the raw signed-fixture wrapper boundary before JSON.parse or Ajv:
+ * well-formed JSON, unique decoded property names, and Unicode-scalar strings.
+ * Fixture numbers retain ordinary JSON syntax because schema/semantic integer
+ * validation intentionally accepts integral decimal and exponent lexemes.
+ */
+export function assertPortableFixtureJsonText(input: string): void {
+  new PortableJsonRawParser(input, "fixture", false).parse();
 }
 
 /** Backward-compatible name for the raw gate, now stronger than number checks alone. */
@@ -700,4 +717,10 @@ export function parseFixtureDocument(value: unknown): FixtureDocument {
     signed_batch_cbor_hex: signedBatch,
     expected_replay: parseReplay(value.expected_replay),
   };
+}
+
+/** Parses raw fixture JSON through the lexical boundary and TypeScript semantics. */
+export function parseFixtureDocumentJson(input: string): FixtureDocument {
+  assertPortableFixtureJsonText(input);
+  return parseFixtureDocument(JSON.parse(input) as unknown);
 }

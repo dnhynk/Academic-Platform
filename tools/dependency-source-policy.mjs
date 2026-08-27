@@ -46,6 +46,9 @@ function inspectReference(value, path, { allowBareShorthand = false } = {}) {
     fail(path, value, "dependency source reference must be a string");
   }
   const reference = value.trim();
+  if (reference.length === 0) {
+    fail(path, value, "dependency source reference must be nonempty");
+  }
   if (
     insecureHttpPattern.test(reference) ||
     gitSchemePattern.test(reference) ||
@@ -92,10 +95,15 @@ function inspectDependencyEntry(entry, path) {
   if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
     fail(path, entry, "dependency entry must be a string or object");
   }
-  for (const field of ["specifier", "version"]) {
-    if (Object.hasOwn(entry, field)) {
-      inspectReference(entry[field], `${path}.${field}`, { allowBareShorthand: true });
-    }
+  const fields = Object.keys(entry);
+  if (
+    fields.length === 0 ||
+    fields.some((field) => field !== "specifier" && field !== "version")
+  ) {
+    fail(path, entry, "dependency object must contain only specifier and/or version");
+  }
+  for (const field of fields) {
+    inspectReference(entry[field], `${path}.${field}`, { allowBareShorthand: true });
   }
 }
 

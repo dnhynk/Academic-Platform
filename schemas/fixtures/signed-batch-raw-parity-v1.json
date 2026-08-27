@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "committed v1 raw fixture",
+      "fixture": 1,
+      "valid": true,
+      "replacements": []
+    },
+    {
+      "name": "committed v2 raw fixture",
+      "fixture": 2,
+      "valid": true,
+      "replacements": []
+    },
+    {
+      "name": "v1 duplicate decoded fixture_version",
+      "fixture": 1,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 1,",
+          "replacement": "\"fixture_version\": 999,\n  \"fixture_version\": 1,"
+        }
+      ]
+    },
+    {
+      "name": "v2 escaped-equivalent duplicate fixture_version",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 2,",
+          "replacement": "\"fixture\\u005fversion\": 999,\n  \"fixture_version\": 2,"
+        }
+      ]
+    },
+    {
+      "name": "v1 lone high surrogate string",
+      "fixture": 1,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"name\": \"phase0-synthetic-bitemporal-ledger\"",
+          "replacement": "\"name\": \"\\ud800\""
+        }
+      ]
+    },
+    {
+      "name": "v2 lone low surrogate string",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"name\": \"phase0-synthetic-bitemporal-ledger-v2\"",
+          "replacement": "\"name\": \"\\udfff\""
+        }
+      ]
+    },
+    {
+      "name": "v1 integral decimal fixture version",
+      "fixture": 1,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 1",
+          "replacement": "\"fixture_version\": 1.0"
+        }
+      ]
+    },
+    {
+      "name": "v1 integral exponent event schema version",
+      "fixture": 1,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"event_schema_version\": 1",
+          "replacement": "\"event_schema_version\": 1e0"
+        }
+      ]
+    },
+    {
+      "name": "v2 integral exponent fixture version",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 2",
+          "replacement": "\"fixture_version\": 2e0"
+        }
+      ]
+    },
+    {
+      "name": "v2 integral decimal event schema version",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"event_schema_version\": 2",
+          "replacement": "\"event_schema_version\": 2.0"
+        }
+      ]
+    }
+  ]
+}

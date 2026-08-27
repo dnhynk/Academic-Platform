@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "tools": [
+    {
+      "name": "rustc",
+      "expected": "rustc 1.98.0",
+      "policy": "stable-rust-tool",
+      "remediation": "Install rustup, then run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+      "cases": [
+        { "name": "exact stable token", "output": "rustc 1.98.0", "supported": true },
+        { "name": "ordinary stable build metadata", "output": "rustc 1.98.0 (88d9e12ae 2026-08-18)", "supported": true },
+        { "name": "ordinary surrounding whitespace", "output": "\r\nrustc 1.98.0 (88d9e12ae 2026-08-18)\n", "supported": true },
+        { "name": "nightly suffix", "output": "rustc 1.98.0-nightly", "supported": false },
+        { "name": "prerelease suffix", "output": "rustc 1.98.0-rc.1", "supported": false },
+        { "name": "longer version token", "output": "rustc 1.98.00", "supported": false },
+        { "name": "unparenthesized metadata", "output": "rustc 1.98.0 88d9e12ae 2026-08-18", "supported": false },
+        { "name": "non-build metadata", "output": "rustc 1.98.0 (nightly)", "supported": false },
+        { "name": "trailing wrapper text", "output": "rustc 1.98.0 (88d9e12ae 2026-08-18) local", "supported": false }
+      ]
+    },
+    {
+      "name": "cargo",
+      "expected": "cargo 1.98.0",
+      "policy": "stable-rust-tool",
+      "remediation": "Restart the shell after rustup, or add %USERPROFILE%\\.cargo\\bin to PATH.",
+      "cases": [
+        { "name": "exact stable token", "output": "cargo 1.98.0", "supported": true },
+        { "name": "ordinary stable build metadata", "output": "cargo 1.98.0 (797e8a9bc 2026-08-05)", "supported": true },
+        { "name": "ordinary surrounding whitespace", "output": " cargo 1.98.0 (797e8a9bc 2026-08-05)\n", "supported": true },
+        { "name": "nightly suffix", "output": "cargo 1.98.0-nightly", "supported": false },
+        { "name": "prerelease suffix", "output": "cargo 1.98.0-beta.1", "supported": false },
+        { "name": "longer version token", "output": "cargo 1.98.01", "supported": false },
+        { "name": "wrong command token", "output": "rustc 1.98.0 (797e8a9bc 2026-08-05)", "supported": false },
+        { "name": "non-build metadata", "output": "cargo 1.98.0 (locally-modified)", "supported": false }
+      ]
+    },
+    {
+      "name": "node",
+      "expected": "v24.19.0",
+      "policy": "exact",
+      "remediation": "Use Node 24.19.0; with nvm-windows run: nvm use 24.19.0",
+      "cases": [
+        { "name": "exact pin", "output": "v24.19.0", "supported": true },
+        { "name": "ordinary surrounding whitespace", "output": "\r\nv24.19.0\n", "supported": true },
+        { "name": "release candidate", "output": "v24.19.0-rc.1", "supported": false },
+        { "name": "longer patch token", "output": "v24.19.00", "supported": false },
+        { "name": "long prefix shim", "output": "v24.19.0-local", "supported": false },
+        { "name": "trailing wrapper text", "output": "v24.19.0 wrapper", "supported": false },
+        { "name": "missing v prefix", "output": "24.19.0", "supported": false }
+      ]
+    },
+    {
+      "name": "pnpm",
+      "expected": "11.22.0",
+      "policy": "exact",
+      "remediation": "Install the pinned package manager: npm install --global pnpm@11.22.0",
+      "cases": [
+        { "name": "exact pin", "output": "11.22.0", "supported": true },
+        { "name": "ordinary surrounding whitespace", "output": " 11.22.0\n", "supported": true },
+        { "name": "release candidate", "output": "11.22.0-rc.1", "supported": false },
+        { "name": "longer patch token", "output": "11.22.00", "supported": false },
+        { "name": "long prefix shim", "output": "11.22.0-local", "supported": false },
+        { "name": "trailing wrapper text", "output": "11.22.0 wrapper", "supported": false },
+        { "name": "v-prefixed token", "output": "v11.22.0", "supported": false }
+      ]
+    }
+  ]
+}

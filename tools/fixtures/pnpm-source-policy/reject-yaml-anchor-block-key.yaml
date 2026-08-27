@@ -1,0 +1,7 @@
+lockfileVersion: '9.0'
+&hidden importers:
+  .:
+    dependencies:
+      concealed:
+        specifier: git+https://example.invalid/concealed.git
+        version: git+https://example.invalid/concealed.git

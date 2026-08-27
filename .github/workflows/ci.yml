@@ -48,14 +48,18 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test Rust workspace
         run: cargo test --workspace --locked
-      - name: Verify immutable v1/upcast and emit, diff, verify, replay v2
-        run: |
-          cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
-          cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json
-          cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v2.json
-          git diff --exit-code -- schemas/fixtures/signed-batch-v1.json schemas/fixtures/signed-batch-v2.json
-          cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json
-          cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json
+      - name: Verify immutable v1 fixture and upcast
+        run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
+      - name: Replay immutable v1 fixture
+        run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json
+      - name: Emit deterministic v2 fixture
+        run: cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v2.json
+      - name: Reject fixture byte drift
+        run: git diff --exit-code -- schemas/fixtures/signed-batch-v1.json schemas/fixtures/signed-batch-v2.json
+      - name: Verify deterministic v2 fixture
+        run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json
+      - name: Replay deterministic v2 fixture
+        run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json
 
   contracts:
     name: pnpm-contracts

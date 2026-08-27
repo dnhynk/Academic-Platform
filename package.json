@@ -21,7 +21,7 @@
     "fixture:verify:v1": "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",
     "fixture:replay:v1": "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
     "verify:contracts": "node tools/verify-contracts.mjs",
-    "security:source-probes": "node tools/dependency-source-policy.test.mjs",
+    "security:source-probes": "node tools/dependency-source-policy.test.mjs && node tools/pnpm-source-policy-consumption.test.mjs",
     "security": "node tools/security-baseline.mjs && pnpm security:source-probes"
   },
   "devDependencies": {

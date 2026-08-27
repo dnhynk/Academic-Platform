@@ -302,6 +302,17 @@ impl FixtureDocument {
     }
 }
 
+/// Parses original fixture-wrapper bytes before any normalized value boundary.
+///
+/// Serde's typed struct deserializer rejects duplicate decoded field names and
+/// non-Unicode-scalar JSON strings while the bounded integer visitors preserve
+/// semantic integer acceptance for decimal and exponent fixture-version tokens.
+pub fn parse_fixture_document_json(input: &[u8]) -> Result<FixtureDocument, CoreError> {
+    let document: FixtureDocument = serde_json::from_slice(input)?;
+    document.validate_contract()?;
+    Ok(document)
+}
+
 fn is_lower_hex(value: &str, exact_len: Option<usize>) -> bool {
     exact_len.is_none_or(|length| value.len() == length)
         && value.len().is_multiple_of(2)
@@ -1186,6 +1197,52 @@ mod tests {
                 1,
             );
             assert!(serde_json::from_str::<FixtureDocument>(&invalid).is_err());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn t017_shared_raw_fixture_corpus_matches_rust_typed_deserialization()
+    -> Result<(), Box<dyn std::error::Error>> {
+        #[derive(Debug, Deserialize)]
+        struct Corpus {
+            schema_version: u8,
+            cases: Vec<RawFixtureCase>,
+        }
+        #[derive(Debug, Deserialize)]
+        struct RawFixtureCase {
+            name: String,
+            fixture: u16,
+            valid: bool,
+            replacements: Vec<RawReplacement>,
+        }
+        #[derive(Debug, Deserialize)]
+        struct RawReplacement {
+            needle: String,
+            replacement: String,
+        }
+
+        let corpus: Corpus = serde_json::from_str(include_str!(
+            "../../../schemas/fixtures/signed-batch-raw-parity-v1.json"
+        ))?;
+        assert_eq!(corpus.schema_version, 1);
+        let fixture_v1 = include_str!("../../../schemas/fixtures/signed-batch-v1.json");
+        let fixture_v2 = include_str!("../../../schemas/fixtures/signed-batch-v2.json");
+        for case in corpus.cases {
+            let mut raw = match case.fixture {
+                FIXTURE_VERSION_V1 => fixture_v1.to_owned(),
+                FIXTURE_VERSION_V2 => fixture_v2.to_owned(),
+                other => return Err(format!("unsupported corpus fixture {other}").into()),
+            };
+            for replacement in case.replacements {
+                let next = raw.replacen(&replacement.needle, &replacement.replacement, 1);
+                assert_ne!(next, raw, "{}: replacement must mutate fixture", case.name);
+                raw = next;
+            }
+            let rust_valid = parse_fixture_document_json(raw.as_bytes())
+                .and_then(|document| verify_fixture_document(&document).map(|_| document))
+                .is_ok();
+            assert_eq!(rust_valid, case.valid, "{}", case.name);
         }
         Ok(())
     }

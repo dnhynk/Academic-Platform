@@ -184,6 +184,9 @@ function parseKey(value, label, line) {
   if (trimmed.length === 0) {
     fail(label, line, "mapping key must be nonempty");
   }
+  if (forbiddenPlainScalarPrefixes.some((prefix) => trimmed.startsWith(prefix))) {
+    fail(label, line, "anchors, aliases, and tags are forbidden on mapping keys");
+  }
   const key = trimmed.startsWith("'") || trimmed.startsWith('"')
     ? decodeQuotedScalar(trimmed, label, line)
     : assertUnicodeScalars(trimmed, label, line);

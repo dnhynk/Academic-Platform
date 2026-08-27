@@ -210,6 +210,22 @@
       "semantic_valid": true
     },
     {
+      "name": "unknown field at ArtifactDescriptor root",
+      "mutations": [
+        { "op": "add", "path": "/unexpected", "value": true }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "unknown field in ArtifactRepresentation",
+      "mutations": [
+        { "op": "add", "path": "/evidence_representations/0/unexpected", "value": true }
+      ],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
       "name": "unknown field in PAGE locator",
       "mutations": [
         { "op": "replace", "path": "/evidence_representations/0/locator", "value": { "kind": "PAGE", "page_number": 1, "unexpected": true } }
