@@ -118,6 +118,11 @@ void test("shared raw and exact-integer fixture corpora reject before semantics"
   assert.ok(corpus.cases.some((entry) => entry.name.includes("exponent")));
   assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("high-precision integral")));
   assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("high-precision fractional")));
+  assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("prediction confidence")));
+  assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("prediction metadata version")));
+  assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("prediction sample count")));
+  assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("prediction observation")));
+  assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("prediction applicability")));
   for (const entry of [...corpus.cases, ...integerCorpus.cases]) {
     let raw = decodePortableFixtureJsonBytes(entry.fixture === 1 ? fixtureV1Text : fixtureV2Text);
     for (const replacement of entry.replacements) {

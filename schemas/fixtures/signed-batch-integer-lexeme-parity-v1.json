@@ -46,6 +46,127 @@
       ]
     },
     {
+      "name": "v2 prediction confidence decimal token",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"confidence\": 720",
+          "replacement": "\"confidence\": 720.0"
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction metadata version exponent token",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"version\": 1,\n          \"observation_window\"",
+          "replacement": "\"version\": 1e0,\n          \"observation_window\""
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction sample count decimal token",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"positive_sample_count\": 6",
+          "replacement": "\"positive_sample_count\": 6.0"
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction observation lower exponent token",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"from\": 100,",
+          "replacement": "\"from\": 100e0,"
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction observation upper decimal token",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"to\": 700",
+          "replacement": "\"to\": 700.0"
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction applicability lower exponent token",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"from\": 800,",
+          "replacement": "\"from\": 800e0,"
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction applicability upper decimal token",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"to\": 1200",
+          "replacement": "\"to\": 1200.0"
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction confidence fractional token",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"confidence\": 720",
+          "replacement": "\"confidence\": 720.5"
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction metadata version negative token",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"version\": 1,\n          \"observation_window\"",
+          "replacement": "\"version\": -1,\n          \"observation_window\""
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction sample count overflow token",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"positive_sample_count\": 6",
+          "replacement": "\"positive_sample_count\": 4294967296"
+        }
+      ]
+    },
+    {
+      "name": "v2 prediction observation imprecise token",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"to\": 700",
+          "replacement": "\"to\": 9007199254740993"
+        }
+      ]
+    },
+    {
       "name": "v1 high-precision fractional fixture version",
       "fixture": 1,
       "valid": false,

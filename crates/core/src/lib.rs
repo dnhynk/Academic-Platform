@@ -14,9 +14,10 @@ use academic_domain::{
     ClaimObject, ClaimRelation, ClaimRelationKind, ConfidencePermille, Confidentiality,
     ContentDigest, DecisionAction, DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1,
     EVENT_SCHEMA_VERSION_V2, EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator,
-    EvidenceRole, EvidenceStrength, FreshnessBand, MasteryLevel, MediaType, PredicateId,
-    PredictionMetadata, PredictionObservationWindow, ResolutionSlot, RetentionClass,
-    ScopeDescriptor, ScopeId, TimestampMillis, UserDecision, ValidInterval, VaultLocator,
+    EvidenceRole, EvidenceStrength, FreshnessBand, MasteryLevel, MediaType,
+    PREDICTION_METADATA_VERSION_V1, PredicateId, PredictionMetadata, PredictionObservationWindow,
+    ResolutionSlot, RetentionClass, ScopeDescriptor, ScopeId, TimestampMillis, UserDecision,
+    ValidInterval, VaultLocator,
 };
 use academic_ledger::{
     AcceptanceReceipt, AuthorityPolicy, EVENT_SCHEMA_VERSION, LedgerError, LedgerState,
@@ -185,19 +186,162 @@ pub struct ReplaySummary {
     pub mastery_conflicting_claim_ids: Vec<ClaimId>,
     pub mastery_rejected_claim_ids: Vec<ClaimId>,
     pub deadline_active_claim_ids: Vec<ClaimId>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_present_prediction_claims"
+    )]
     pub prediction_claims: Option<Vec<PredictionClaimDisclosure>>,
     pub semantic_digest: ContentDigest,
 }
 
 /// Human-inspectable current-fixture disclosure for a signed Prediction claim.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PredictionClaimDisclosure {
     pub claim_id: ClaimId,
     pub confidence: ConfidencePermille,
     pub prediction_metadata: PredictionMetadata,
     pub valid_time: ValidInterval,
+}
+
+fn deserialize_present_prediction_claims<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<PredictionClaimDisclosure>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Vec::<PredictionClaimDisclosure>::deserialize(deserializer).map(Some)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PredictionClaimDisclosureWire {
+    claim_id: ClaimId,
+    #[serde(deserialize_with = "deserialize_json_safe_u16")]
+    confidence: u16,
+    prediction_metadata: PredictionMetadataWire,
+    valid_time: PredictionValidIntervalWire,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PredictionMetadataWire {
+    #[serde(deserialize_with = "deserialize_json_safe_u16")]
+    version: u16,
+    observation_window: PredictionObservationWindowWire,
+    #[serde(deserialize_with = "deserialize_json_safe_u32")]
+    positive_sample_count: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PredictionObservationWindowWire {
+    #[serde(deserialize_with = "deserialize_json_safe_timestamp")]
+    from: TimestampMillis,
+    #[serde(deserialize_with = "deserialize_json_safe_timestamp")]
+    to: TimestampMillis,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PredictionValidIntervalWire {
+    #[serde(deserialize_with = "deserialize_json_safe_timestamp")]
+    from: TimestampMillis,
+    to: RequiredNullableJsonSafeTimestamp,
+}
+
+#[derive(Debug)]
+struct RequiredNullableJsonSafeTimestamp(Option<TimestampMillis>);
+
+impl<'de> Deserialize<'de> for RequiredNullableJsonSafeTimestamp {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct RequiredNullableJsonSafeTimestampVisitor;
+
+        impl de::Visitor<'_> for RequiredNullableJsonSafeTimestampVisitor {
+            type Value = RequiredNullableJsonSafeTimestamp;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("null or a non-negative JSON safe integer")
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(RequiredNullableJsonSafeTimestamp(None))
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                json_safe_u64_from_u64(value).map(|value| {
+                    RequiredNullableJsonSafeTimestamp(Some(TimestampMillis::new(value as i64)))
+                })
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                json_safe_u64_from_i64(value).map(|value| {
+                    RequiredNullableJsonSafeTimestamp(Some(TimestampMillis::new(value as i64)))
+                })
+            }
+
+            fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                json_safe_u64_from_f64(value).map(|value| {
+                    RequiredNullableJsonSafeTimestamp(Some(TimestampMillis::new(value as i64)))
+                })
+            }
+        }
+
+        // `deserialize_any` makes a JSON null visit `visit_unit`, while Serde's
+        // missing-field deserializer remains an error. That preserves the
+        // fixture contract's required-but-nullable `to` key.
+        deserializer.deserialize_any(RequiredNullableJsonSafeTimestampVisitor)
+    }
+}
+
+impl<'de> Deserialize<'de> for PredictionClaimDisclosure {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = PredictionClaimDisclosureWire::deserialize(deserializer)?;
+        if value.prediction_metadata.version != PREDICTION_METADATA_VERSION_V1 {
+            return Err(de::Error::custom(
+                DomainError::UnsupportedPredictionMetadataVersion(
+                    value.prediction_metadata.version,
+                ),
+            ));
+        }
+        let observation_window = PredictionObservationWindow::new(
+            value.prediction_metadata.observation_window.from,
+            value.prediction_metadata.observation_window.to,
+        )
+        .map_err(de::Error::custom)?;
+        let prediction_metadata = PredictionMetadata::new(
+            observation_window,
+            value.prediction_metadata.positive_sample_count,
+        )
+        .map_err(de::Error::custom)?;
+        let valid_time = ValidInterval::new(value.valid_time.from, value.valid_time.to.0)
+            .map_err(de::Error::custom)?;
+        Ok(Self {
+            claim_id: value.claim_id,
+            confidence: ConfidencePermille::new(value.confidence).map_err(de::Error::custom)?,
+            prediction_metadata,
+            valid_time,
+        })
+    }
 }
 
 fn deserialize_json_safe_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
@@ -217,33 +361,60 @@ where
         where
             E: de::Error,
         {
-            Ok(value)
+            json_safe_u64_from_u64(value)
         }
 
         fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
         where
             E: de::Error,
         {
-            u64::try_from(value).map_err(E::custom)
+            json_safe_u64_from_i64(value)
         }
 
         fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
         where
             E: de::Error,
         {
-            if value.is_finite()
-                && value >= 0.0
-                && value <= JSON_SAFE_INTEGER_MAX as f64
-                && value.fract() == 0.0
-            {
-                Ok(value as u64)
-            } else {
-                Err(E::custom("number is not a non-negative JSON safe integer"))
-            }
+            json_safe_u64_from_f64(value)
         }
     }
 
     deserializer.deserialize_any(JsonSafeIntegerVisitor)
+}
+
+fn json_safe_u64_from_u64<E>(value: u64) -> Result<u64, E>
+where
+    E: de::Error,
+{
+    if value <= JSON_SAFE_INTEGER_MAX {
+        Ok(value)
+    } else {
+        Err(E::custom("number is not a non-negative JSON safe integer"))
+    }
+}
+
+fn json_safe_u64_from_i64<E>(value: i64) -> Result<u64, E>
+where
+    E: de::Error,
+{
+    u64::try_from(value)
+        .map_err(E::custom)
+        .and_then(json_safe_u64_from_u64)
+}
+
+fn json_safe_u64_from_f64<E>(value: f64) -> Result<u64, E>
+where
+    E: de::Error,
+{
+    if value.is_finite()
+        && value >= 0.0
+        && value <= JSON_SAFE_INTEGER_MAX as f64
+        && value.fract() == 0.0
+    {
+        Ok(value as u64)
+    } else {
+        Err(E::custom("number is not a non-negative JSON safe integer"))
+    }
 }
 
 fn deserialize_json_safe_u16<'de, D>(deserializer: D) -> Result<u16, D::Error>
@@ -253,6 +424,25 @@ where
     let value = deserialize_json_safe_u64(deserializer)?;
     u16::try_from(value)
         .map_err(|_| <D::Error as de::Error>::custom("number exceeds the unsigned 16-bit range"))
+}
+
+fn deserialize_json_safe_u32<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = deserialize_json_safe_u64(deserializer)?;
+    u32::try_from(value)
+        .map_err(|_| <D::Error as de::Error>::custom("number exceeds the unsigned 32-bit range"))
+}
+
+fn deserialize_json_safe_timestamp<'de, D>(deserializer: D) -> Result<TimestampMillis, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = deserialize_json_safe_u64(deserializer)?;
+    i64::try_from(value)
+        .map(TimestampMillis::new)
+        .map_err(|_| <D::Error as de::Error>::custom("timestamp exceeds the signed 64-bit range"))
 }
 
 impl FixtureDocument {

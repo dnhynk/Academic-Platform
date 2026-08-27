@@ -304,6 +304,7 @@ fn encode_unsigned_batch_v1_projection(
 ) -> Result<Vec<u8>, ContractError> {
     batch.validate()?;
     let mut json = serde_json::to_value(batch)?;
+    require_v1_claim_shape(&json)?;
     transform_decisions_for_v1(&mut json)?;
     set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V1)?;
     encode_cbor_value(&json_to_cbor(&json)?)
@@ -337,6 +338,7 @@ fn decode_source_payload(
 ) -> Result<UnsignedBatch, ContractError> {
     match source_schema_version {
         EVENT_SCHEMA_VERSION_V1 => {
+            require_v1_claim_shape(&json)?;
             upcast_v1_to_v2(&mut json)?;
             set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V2)?;
         }
@@ -346,6 +348,30 @@ fn decode_source_payload(
     let batch: UnsignedBatch = serde_json::from_value(json)?;
     batch.validate()?;
     Ok(batch)
+}
+
+fn require_v1_claim_shape(json: &JsonValue) -> Result<(), ContractError> {
+    let events = json
+        .get("events")
+        .and_then(JsonValue::as_array)
+        .ok_or(ContractError::InvalidShape("batch events must be an array"))?;
+    for event in events {
+        let payload = event.get("payload").and_then(JsonValue::as_object).ok_or(
+            ContractError::InvalidShape("event payload must be an object"),
+        )?;
+        if payload.get("kind").and_then(JsonValue::as_str) != Some("CLAIM_ASSERTED") {
+            continue;
+        }
+        let claim = payload.get("value").and_then(JsonValue::as_object).ok_or(
+            ContractError::InvalidShape("claim assertion value must be an object"),
+        )?;
+        if claim.contains_key("prediction_metadata") {
+            return Err(ContractError::LegacyCompatibility(
+                "v1 claim contains v2-only prediction metadata",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn require_source_typed_equality(
@@ -1083,6 +1109,40 @@ mod tests {
             Err(ContractError::Domain(
                 DomainError::MissingPredictionMetadata
             ))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn source_v1_rejects_v2_prediction_metadata_before_verified_capability()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let batch = v1_compatible_batch()?;
+        let mut legacy = cbor_to_json(&decode_single_cbor(&encode_unsigned_batch_v1_projection(
+            &batch,
+            LegacySourceEqualityCapability,
+        )?)?)?;
+        legacy["events"][0]["actor"] = serde_json::to_value(Actor::ModelRun {
+            run_id: EntityId::from_str("01900000-0000-7000-8000-00000000000c")?,
+        })?;
+        legacy["events"][0]["payload"]["value"]["authority_class"] =
+            JsonValue::String("PREDICTION".to_owned());
+        legacy["events"][0]["payload"]["value"]["epistemic_status"] =
+            JsonValue::String("PREDICTION".to_owned());
+        legacy["events"][0]["payload"]["value"]["confidence"] =
+            JsonValue::Number(JsonNumber::from(720));
+        legacy["events"][0]["payload"]["value"]["prediction_metadata"] = serde_json::json!({
+            "version": 1,
+            "observation_window": { "from": -1_000, "to": -100 },
+            "positive_sample_count": 6
+        });
+        let payload = encode_cbor_value(&json_to_cbor(&legacy)?)?;
+        let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+        let authorization = authorization(&batch, &signing_key)?;
+        let envelope = sign_test_payload(&payload, &signing_key)?;
+
+        assert!(matches!(
+            verify_signed_batch(&envelope, &authorization),
+            Err(ContractError::LegacyCompatibility(_))
         ));
         Ok(())
     }

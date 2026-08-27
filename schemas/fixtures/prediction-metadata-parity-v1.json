@@ -131,6 +131,66 @@
       }
     },
     {
+      "name": "missing explicit open-ended applicability bound",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 800 }
+      }
+    },
+    {
+      "name": "unsafe observation upper bound",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 9007199254740992 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 800, "to": 1200 }
+      }
+    },
+    {
+      "name": "unsafe applicability lower bound",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 9007199254740992, "to": null }
+      }
+    },
+    {
+      "name": "unsafe applicability upper bound",
+      "schema_valid": false,
+      "semantic_valid": false,
+      "disclosure": {
+        "claim_id": "01900000-0000-7000-8000-000000000208",
+        "confidence": 720,
+        "prediction_metadata": {
+          "version": 1,
+          "observation_window": { "from": 100, "to": 700 },
+          "positive_sample_count": 6
+        },
+        "valid_time": { "from": 800, "to": 9007199254740992 }
+      }
+    },
+    {
       "name": "unexpected metadata field",
       "schema_valid": false,
       "semantic_valid": false,

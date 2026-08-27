@@ -14,6 +14,28 @@
       "replacements": []
     },
     {
+      "name": "v1 explicit null prediction disclosures",
+      "fixture": 1,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"semantic_digest\":",
+          "replacement": "\"prediction_claims\": null,\n    \"semantic_digest\":"
+        }
+      ]
+    },
+    {
+      "name": "v2 omitted open-ended applicability bound",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"from\": 800,\n          \"to\": 1200",
+          "replacement": "\"from\": 800"
+        }
+      ]
+    },
+    {
       "name": "v1 duplicate decoded fixture_version",
       "fixture": 1,
       "valid": false,
