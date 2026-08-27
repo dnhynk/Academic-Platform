@@ -1,9 +1,9 @@
 //! Crash-safe, synthetic-only Phase 1 artifact vault.
 //!
-//! The vault accepts only an already validated [`academic_store::profile::SyntheticProfile`].
-//! Its plaintext format is deliberately unsuitable for real or production data; the purpose of
-//! this crate is to make durable publication, exact-policy deduplication, and reconciliation
-//! executable before ADR-004 selects an encrypted object format.
+//! The product composition root supplies a validated profile root. Its plaintext format is
+//! deliberately unsuitable for real or production data; the purpose of this crate is to make
+//! durable publication, exact-policy deduplication, and reconciliation executable before ADR-004
+//! selects an encrypted object format.
 
 mod durability;
 mod fault;
@@ -20,11 +20,10 @@ use std::{
 };
 
 use academic_domain::{ArtifactDescriptor, ArtifactId, DomainError, DomainId, VaultLocator};
-use academic_store::{SealedObjectVerifier, profile::SyntheticProfile};
 
 pub use ingest::ArtifactIngestRequest;
 pub use layout::VaultLayout;
-pub use receipt::{SealDisposition, SealedArtifactReceipt};
+pub use receipt::{SealDisposition, SealedArtifactReceipt, SealedObjectCapability};
 pub use reconcile::{ReconcileOptions, ReconcileRecord, ReconcileReport, ReconcileState};
 
 /// Disposable plaintext object format used only by synthetic Phase 1 work.
@@ -247,10 +246,16 @@ pub struct Vault {
 
 impl Vault {
     /// Opens the vault below a validated synthetic-only profile and durably initializes layout.
-    pub fn open(profile: &SyntheticProfile, keyring: DomainKeyring) -> VaultResult<Self> {
-        let layout = VaultLayout::new(profile.root());
+    pub fn open(profile_root: &Path, keyring: DomainKeyring) -> VaultResult<Self> {
+        let layout = VaultLayout::new(profile_root);
         layout.initialize()?;
         Ok(Self { layout, keyring })
+    }
+
+    /// Returns the validated profile root to which every issued capability is physically bound.
+    #[must_use]
+    pub fn profile_root(&self) -> &Path {
+        self.layout.profile_root()
     }
 
     /// Returns the physical layout rooted below this profile.
@@ -300,10 +305,11 @@ impl Vault {
         self.layout.object_path(descriptor)
     }
 
-    fn verify_descriptor(
+    /// Reads back the exact canonical object and issues a non-mintable concrete capability.
+    pub fn verify_sealed_object(
         &self,
         descriptor: &ArtifactDescriptor,
-    ) -> VaultResult<SealedArtifactReceipt> {
+    ) -> VaultResult<SealedObjectCapability> {
         let path = self.validate_descriptor_locator(descriptor)?;
         ingest::verify_object(&path, descriptor.content_digest, descriptor.byte_length)?;
         Ok(SealedArtifactReceipt::new(
@@ -311,18 +317,6 @@ impl Vault {
             path,
             SealDisposition::AdoptedExisting,
         ))
-    }
-}
-
-impl SealedObjectVerifier for Vault {
-    type Receipt = SealedArtifactReceipt;
-    type Error = VaultError;
-
-    fn verify_sealed_object(
-        &self,
-        descriptor: &ArtifactDescriptor,
-    ) -> Result<Self::Receipt, Self::Error> {
-        self.verify_descriptor(descriptor)
     }
 }
 

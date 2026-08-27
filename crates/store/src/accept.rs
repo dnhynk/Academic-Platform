@@ -4,6 +4,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     error::Error,
     fmt,
+    path::{Path, PathBuf},
 };
 
 use academic_contracts::VerifiedBatch;
@@ -12,11 +13,11 @@ use academic_domain::{
     TimestampMillis, UnsignedBatch,
 };
 use academic_ledger::LedgerError;
+use academic_vault::{SealedObjectCapability, Vault};
 
 use crate::{
-    SealedObjectReceipt, SealedObjectVerifier,
-    connection::WriterConnection,
-    error::StoreError,
+    connection::{PragmaSnapshot, WriterConnection, open_writer},
+    error::{StoreError, StoreResult},
     fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault, NoFault},
     idempotency::{
         AcceptanceCommand, DurableAcceptanceReceipt, IdempotencyError, insert_command_receipt,
@@ -36,6 +37,101 @@ pub struct AcceptanceOutcome {
     pub receipt: DurableAcceptanceReceipt,
     pub replayed_request: bool,
     pub duplicate_batch: bool,
+}
+
+/// Sole owned product writer with only the authenticated acceptance operation exposed.
+///
+/// The raw SQLite writer and its construction functions are crate-private. This type is neither
+/// cloneable nor convertible to a connection, and it exposes no arbitrary SQL surface.
+pub struct AcceptanceStore {
+    writer: WriterConnection,
+    profile_root: PathBuf,
+}
+
+impl fmt::Debug for AcceptanceStore {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AcceptanceStore")
+            .field("database_path", &self.writer.database_path())
+            .field("profile_root", &self.profile_root)
+            .finish_non_exhaustive()
+    }
+}
+
+impl AcceptanceStore {
+    pub(crate) fn open(profile_root: &Path, database_path: &Path) -> StoreResult<Self> {
+        Ok(Self {
+            writer: open_writer(database_path)?,
+            profile_root: profile_root.to_path_buf(),
+        })
+    }
+
+    /// Returns the database path for read-only diagnostics and projection composition.
+    #[must_use]
+    pub fn database_path(&self) -> &Path {
+        self.writer.database_path()
+    }
+
+    /// Reads the exact configured writer PRAGMAs without exposing a SQL handle.
+    pub fn pragma_snapshot(&self) -> StoreResult<PragmaSnapshot> {
+        self.writer.pragma_snapshot()
+    }
+
+    /// Accepts an authenticated batch after concrete vault read-back, with faults disabled.
+    pub fn accept_verified_batch(
+        &mut self,
+        verified: &VerifiedBatch,
+        command: AcceptanceCommand<'_>,
+        accepted_at: TimestampMillis,
+        vault: &Vault,
+    ) -> Result<AcceptanceOutcome, AcceptError> {
+        self.ensure_vault_profile(vault)?;
+        accept_verified_batch_with_faults(
+            &mut self.writer,
+            verified,
+            command,
+            accepted_at,
+            vault,
+            &NoFault,
+        )
+    }
+
+    /// Deterministic DB01-DB07 harness over the same owned acceptance writer.
+    ///
+    /// The callback can stop or pause a test at a checkpoint, but it cannot alter verification,
+    /// issue a vault capability, execute SQL, or reach a second writer.
+    pub fn accept_verified_batch_with_faults<F>(
+        &mut self,
+        verified: &VerifiedBatch,
+        command: AcceptanceCommand<'_>,
+        accepted_at: TimestampMillis,
+        vault: &Vault,
+        faults: &F,
+    ) -> Result<AcceptanceOutcome, AcceptError>
+    where
+        F: AcceptanceFaultInjector,
+    {
+        self.ensure_vault_profile(vault)?;
+        accept_verified_batch_with_faults(
+            &mut self.writer,
+            verified,
+            command,
+            accepted_at,
+            vault,
+            faults,
+        )
+    }
+
+    fn ensure_vault_profile(&self, vault: &Vault) -> Result<(), AcceptError> {
+        if vault.profile_root() == self.profile_root {
+            Ok(())
+        } else {
+            Err(AcceptError::VaultProfileMismatch {
+                expected: self.profile_root.clone(),
+                actual: vault.profile_root().to_path_buf(),
+            })
+        }
+    }
 }
 
 /// Fail-closed acceptance error. Every variant before commit consumes no row,
@@ -60,6 +156,10 @@ pub enum AcceptError {
     },
     SealedReceiptMismatch {
         artifact_id: ArtifactId,
+    },
+    VaultProfileMismatch {
+        expected: PathBuf,
+        actual: PathBuf,
     },
     IntegerOverflow(u64),
 }
@@ -89,6 +189,12 @@ impl fmt::Display for AcceptError {
                 formatter,
                 "sealed receipt does not match artifact descriptor {artifact_id}"
             ),
+            Self::VaultProfileMismatch { expected, actual } => write!(
+                formatter,
+                "acceptance store profile {} does not own vault profile {}",
+                expected.display(),
+                actual.display()
+            ),
             Self::IntegerOverflow(value) => write!(
                 formatter,
                 "acceptance value {value} exceeds the signed SQLite coordinate"
@@ -111,6 +217,7 @@ impl Error for AcceptError {
             Self::CommandEnvelopeMismatch
             | Self::ExpectedRevisionConflict { .. }
             | Self::SealedReceiptMismatch { .. }
+            | Self::VaultProfileMismatch { .. }
             | Self::IntegerOverflow(_) => None,
         }
     }
@@ -158,37 +265,18 @@ impl From<InjectedFault> for AcceptError {
     }
 }
 
-/// Accepts an already authenticated batch with production fault injection disabled.
-pub fn accept_verified_batch<V: SealedObjectVerifier>(
-    writer: &mut WriterConnection,
-    verified: &VerifiedBatch,
-    command: AcceptanceCommand<'_>,
-    accepted_at: TimestampMillis,
-    sealed_objects: &V,
-) -> Result<AcceptanceOutcome, AcceptError> {
-    accept_verified_batch_with_faults(
-        writer,
-        verified,
-        command,
-        accepted_at,
-        sealed_objects,
-        &NoFault,
-    )
-}
-
 /// Same acceptance boundary with an explicit test-harness callback.
 ///
 /// No environment variable or command-line switch can reach this capability.
-pub fn accept_verified_batch_with_faults<V, F>(
+fn accept_verified_batch_with_faults<F>(
     writer: &mut WriterConnection,
     verified: &VerifiedBatch,
     command: AcceptanceCommand<'_>,
     accepted_at: TimestampMillis,
-    sealed_objects: &V,
+    vault: &Vault,
     faults: &F,
 ) -> Result<AcceptanceOutcome, AcceptError>
 where
-    V: SealedObjectVerifier,
     F: AcceptanceFaultInjector,
 {
     if command.envelope_bytes != verified.source_envelope() {
@@ -199,17 +287,15 @@ where
     // Opaque receipt values remain alive and are required by normalized writes
     // through commit; an artifact-id set alone is not an acceptance capability.
     let descriptors = preflight_artifact_closure(writer, verified.batch())?;
-    let mut sealed_receipts = BTreeMap::new();
+    let mut sealed_receipts = BTreeMap::<ArtifactId, SealedObjectCapability>::new();
     for descriptor in descriptors.into_values() {
-        let receipt = sealed_objects
-            .verify_sealed_object(&descriptor)
-            .map_err(|source| AcceptError::SealingFailed {
+        let receipt = vault.verify_sealed_object(&descriptor).map_err(|source| {
+            AcceptError::SealingFailed {
                 artifact_id: descriptor.id,
                 source: Box::new(source),
-            })?;
-        if receipt.artifact_id() != descriptor.id
-            || receipt.content_digest() != descriptor.content_digest
-        {
+            }
+        })?;
+        if receipt.descriptor() != &descriptor {
             return Err(AcceptError::SealedReceiptMismatch {
                 artifact_id: descriptor.id,
             });
@@ -217,6 +303,7 @@ where
         sealed_receipts.insert(descriptor.id, receipt);
     }
 
+    let _authorization = writer.authorize_acceptance();
     let transaction = writer.begin_immediate()?;
     faults.hit(AcceptanceFaultPoint::Db01)?;
 

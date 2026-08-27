@@ -3,7 +3,6 @@ mod synthetic_artifacts;
 
 use std::{error::Error, fs};
 
-use academic_store::{SealedObjectReceipt, SealedObjectVerifier};
 use academic_vault::{SealDisposition, SealedArtifactReceipt};
 use synthetic_artifacts::{SAMPLE_BYTES, ingest_request, open_test_vault};
 
@@ -13,12 +12,11 @@ fn sealed_before_reference_type_state() -> Result<(), Box<dyn Error>> {
     let request = ingest_request()?;
     let receipt = vault.ingest(&request, SAMPLE_BYTES)?;
 
-    fn accepts_only_sealed(receipt: &impl SealedObjectReceipt) {
-        let _ = receipt.artifact_id();
-        let _ = receipt.content_digest();
-    }
-
-    accepts_only_sealed(&receipt);
+    assert_eq!(receipt.descriptor().id, request.artifact_id());
+    assert_eq!(
+        receipt.descriptor().content_digest,
+        academic_domain::ContentDigest::sha256(SAMPLE_BYTES)
+    );
     assert_eq!(receipt.disposition(), SealDisposition::PublishedNew);
     assert_eq!(fs::read(receipt.object_path())?, SAMPLE_BYTES);
 

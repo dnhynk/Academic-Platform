@@ -9,7 +9,8 @@ use std::{
 use crate::{
     INCOMPLETE_PROFILE_MARKER, PHASE1_POLICY_BANNER, PHASE1_STORAGE_POLICY, STORE_DATABASE_FILE,
     SYNTHETIC_PROFILE_MARKER,
-    connection::{ReaderConnection, WriterConnection, open_reader, open_writer},
+    accept::AcceptanceStore,
+    connection::{ReaderConnection, open_reader, open_writer},
     error::{StoreError, StoreResult},
     migration::{MigrationStatus, migrate_pre_listen},
     path_policy::{
@@ -195,9 +196,9 @@ impl SyntheticProfile {
         self.migration_status
     }
 
-    /// Opens the sole product writer with its authorizer installed.
-    pub fn open_writer(&self) -> StoreResult<WriterConnection> {
-        open_writer(&self.database_path)
+    /// Opens the sole owned acceptance service without exposing a raw SQLite writer.
+    pub fn open_acceptance_store(&self) -> StoreResult<AcceptanceStore> {
+        AcceptanceStore::open(&self.root, &self.database_path)
     }
 
     /// Opens a filesystem-read-only, SQLite-query-only reader.

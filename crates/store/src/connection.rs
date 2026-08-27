@@ -3,6 +3,10 @@
 use std::{
     fmt,
     path::{Path, PathBuf},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use rusqlite::{
@@ -45,9 +49,10 @@ pub struct PragmaSnapshot {
 }
 
 /// The product writer connection with canonical-table authorizer installed.
-pub struct WriterConnection {
+pub(crate) struct WriterConnection {
     connection: Connection,
     database_path: PathBuf,
+    acceptance_authorized: Arc<AtomicBool>,
 }
 
 impl fmt::Debug for WriterConnection {
@@ -61,6 +66,15 @@ impl fmt::Debug for WriterConnection {
 }
 
 impl WriterConnection {
+    /// Enables the exact acceptance mutation set until the returned guard is dropped.
+    pub(crate) fn authorize_acceptance(&self) -> AcceptanceAuthorization {
+        let previously_authorized = self.acceptance_authorized.swap(true, Ordering::AcqRel);
+        AcceptanceAuthorization {
+            acceptance_authorized: Arc::clone(&self.acceptance_authorized),
+            previously_authorized,
+        }
+    }
+
     /// Starts the one allowed acceptance transaction with an eager write lock.
     ///
     /// This crate-private capability keeps the raw SQLite connection hidden while
@@ -84,19 +98,22 @@ impl WriterConnection {
     }
 
     /// Executes SQL through the guarded product writer.
-    pub fn execute<P: Params>(&self, sql: &str, params: P) -> StoreResult<usize> {
+    #[cfg(test)]
+    pub(crate) fn execute<P: Params>(&self, sql: &str, params: P) -> StoreResult<usize> {
         self.connection
             .execute(sql, params)
             .map_err(StoreError::from)
     }
 
     /// Executes a SQL batch through the guarded product writer.
-    pub fn execute_batch(&self, sql: &str) -> StoreResult<()> {
+    #[cfg(test)]
+    pub(crate) fn execute_batch(&self, sql: &str) -> StoreResult<()> {
         self.connection.execute_batch(sql).map_err(StoreError::from)
     }
 
     /// Runs one query row without exposing the underlying connection capability.
-    pub fn query_row<T, P, F>(&self, sql: &str, params: P, mapper: F) -> StoreResult<T>
+    #[cfg(test)]
+    pub(crate) fn query_row<T, P, F>(&self, sql: &str, params: P, mapper: F) -> StoreResult<T>
     where
         P: Params,
         F: FnOnce(&Row<'_>) -> rusqlite::Result<T>,
@@ -107,14 +124,36 @@ impl WriterConnection {
     }
 
     /// Reads back the exact active PRAGMAs.
-    pub fn pragma_snapshot(&self) -> StoreResult<PragmaSnapshot> {
+    pub(crate) fn pragma_snapshot(&self) -> StoreResult<PragmaSnapshot> {
         read_pragma_snapshot(&self.connection)
     }
 
     /// Returns the database path without exposing a raw SQLite handle.
     #[must_use]
-    pub fn database_path(&self) -> &Path {
+    pub(crate) fn database_path(&self) -> &Path {
         &self.database_path
+    }
+}
+
+/// Restores the writer's fail-closed authorizer state on every return path.
+pub(crate) struct AcceptanceAuthorization {
+    acceptance_authorized: Arc<AtomicBool>,
+    previously_authorized: bool,
+}
+
+impl fmt::Debug for AcceptanceAuthorization {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AcceptanceAuthorization")
+            .field("previously_authorized", &self.previously_authorized)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Drop for AcceptanceAuthorization {
+    fn drop(&mut self) {
+        self.acceptance_authorized
+            .store(self.previously_authorized, Ordering::Release);
     }
 }
 
@@ -195,7 +234,7 @@ impl ReaderConnection {
 }
 
 /// Opens the existing schema as the sole guarded product writer.
-pub fn open_writer(database_path: &Path) -> StoreResult<WriterConnection> {
+pub(crate) fn open_writer(database_path: &Path) -> StoreResult<WriterConnection> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection = Connection::open_with_flags(database_path, flags)?;
     configure_writer_connection(&connection)?;
@@ -203,10 +242,12 @@ pub fn open_writer(database_path: &Path) -> StoreResult<WriterConnection> {
     let pragmas = read_pragma_snapshot(&connection)?;
     verify_writer_pragmas(&pragmas)?;
     verify_current_schema(&connection, &pragmas)?;
-    install_canonical_authorizer(&connection)?;
+    let acceptance_authorized = Arc::new(AtomicBool::new(false));
+    install_canonical_authorizer(&connection, Arc::clone(&acceptance_authorized))?;
     Ok(WriterConnection {
         connection,
         database_path: database_path.to_path_buf(),
+        acceptance_authorized,
     })
 }
 
@@ -423,7 +464,83 @@ const fn bool_i64(value: bool) -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        error::Error,
+        fs,
+        sync::atomic::{AtomicU64, Ordering as AtomicOrdering},
+    };
+
+    use crate::migration::migrate_pre_listen;
+
     use super::*;
+
+    static NEXT_TEST_DATABASE: AtomicU64 = AtomicU64::new(0);
+
+    const CANONICAL_FRAGMENT: &str = concat!(
+        "INSERT INTO command_receipt (",
+        "client_instance_id, idempotency_key, request_hash, expected_revision, ",
+        "committed_revision, response_bytes, response_hash, created_at",
+        ") VALUES (zeroblob(16), zeroblob(32), zeroblob(32), NULL, 1, x'00', ",
+        "zeroblob(32), 0)"
+    );
+
+    #[test]
+    fn public_writer_rejects_canonical_insert_outside_acceptance() -> Result<(), Box<dyn Error>> {
+        let (root, path) = migrated_database("canonical-insert")?;
+        let writer = open_writer(&path)?;
+
+        assert!(writer.execute(CANONICAL_FRAGMENT, []).is_err());
+        assert_eq!(
+            writer.query_row("SELECT count(*) FROM command_receipt", [], |row| row
+                .get::<_, i64>(0))?,
+            0
+        );
+        assert!(
+            writer
+                .execute_batch("UPDATE replica_state SET profile_revision = 1;")
+                .is_err()
+        );
+
+        drop(writer);
+        remove_test_root(&root);
+        Ok(())
+    }
+
+    #[test]
+    fn acceptance_authorization_allows_only_append_and_head_updates() -> Result<(), Box<dyn Error>>
+    {
+        let (root, path) = migrated_database("exact-authority")?;
+        let writer = open_writer(&path)?;
+        let authorization = writer.authorize_acceptance();
+
+        assert_eq!(
+            writer.execute(
+                "UPDATE replica_state SET profile_revision = profile_revision WHERE singleton = 1",
+                [],
+            )?,
+            1
+        );
+        assert!(writer.execute("DELETE FROM command_receipt", []).is_err());
+        assert!(
+            writer
+                .execute("UPDATE schema_meta SET singleton = 1", [])
+                .is_err()
+        );
+        assert!(writer.execute_batch("DROP TABLE claim;").is_err());
+
+        drop(authorization);
+        assert!(
+            writer
+                .execute(
+                    "UPDATE replica_state SET profile_revision = profile_revision WHERE singleton = 1",
+                    [],
+                )
+                .is_err()
+        );
+        drop(writer);
+        remove_test_root(&root);
+        Ok(())
+    }
 
     #[test]
     fn migration_snapshot_allows_uninitialized_identity_but_writer_snapshot_does_not() {
@@ -521,6 +638,24 @@ mod tests {
             temp_store: SQLITE_TEMP_STORE_MEMORY,
             query_only: false,
             recursive_triggers: true,
+        }
+    }
+
+    fn migrated_database(label: &str) -> Result<(PathBuf, PathBuf), Box<dyn Error>> {
+        let sequence = NEXT_TEST_DATABASE.fetch_add(1, AtomicOrdering::Relaxed);
+        let root = std::env::temp_dir().join(format!(
+            "academic-store-connection-{label}-{}-{sequence}",
+            std::process::id()
+        ));
+        fs::create_dir(&root)?;
+        let path = root.join("store.sqlite3");
+        migrate_pre_listen(&path, [0x8d; 32])?;
+        Ok((root, path))
+    }
+
+    fn remove_test_root(root: &Path) {
+        if let Err(error) = fs::remove_dir_all(root) {
+            eprintln!("test cleanup failed for {}: {error}", root.display());
         }
     }
 }

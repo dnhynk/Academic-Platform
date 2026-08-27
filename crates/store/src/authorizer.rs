@@ -1,5 +1,10 @@
 //! SQLite authorizer for the product writer's append-only canonical tables.
 
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+
 use rusqlite::{
     Connection,
     hooks::{AuthAction, AuthContext, Authorization},
@@ -25,8 +30,13 @@ pub const CANONICAL_TABLES: &[&str] = &[
 ];
 
 /// Installs the product-writer guard after migration and identity verification.
-pub(crate) fn install_canonical_authorizer(connection: &Connection) -> StoreResult<()> {
-    connection.authorizer(Some(authorize_product_statement))?;
+pub(crate) fn install_canonical_authorizer(
+    connection: &Connection,
+    acceptance_authorized: Arc<AtomicBool>,
+) -> StoreResult<()> {
+    connection.authorizer(Some(move |context: AuthContext<'_>| -> Authorization {
+        authorize_product_statement(context, acceptance_authorized.load(Ordering::Acquire))
+    }))?;
     Ok(())
 }
 
@@ -36,30 +46,31 @@ pub(crate) fn install_reader_authorizer(connection: &Connection) -> StoreResult<
     Ok(())
 }
 
-fn authorize_product_statement(context: AuthContext<'_>) -> Authorization {
-    if matches!(
-        context.action,
-        AuthAction::Pragma {
-            pragma_value: Some(_),
-            ..
-        } | AuthAction::Attach { .. }
-            | AuthAction::Detach { .. }
-    ) {
-        return Authorization::Deny;
-    }
-    let protected_table = match context.action {
+fn authorize_product_statement(
+    context: AuthContext<'_>,
+    acceptance_authorized: bool,
+) -> Authorization {
+    match context.action {
+        AuthAction::Select
+        | AuthAction::Read { .. }
+        | AuthAction::Function { .. }
+        | AuthAction::Recursive
+        | AuthAction::Transaction { .. }
+        | AuthAction::Savepoint { .. }
+        | AuthAction::Pragma {
+            pragma_value: None, ..
+        } => Authorization::Allow,
+        AuthAction::Insert { table_name }
+            if acceptance_authorized && is_acceptance_insert_table(table_name) =>
+        {
+            Authorization::Allow
+        }
         AuthAction::Update { table_name, .. }
-        | AuthAction::Delete { table_name }
-        | AuthAction::DropTable { table_name }
-        | AuthAction::AlterTable { table_name, .. }
-        | AuthAction::DropIndex { table_name, .. }
-        | AuthAction::DropTrigger { table_name, .. } => Some(table_name),
-        _ => None,
-    };
-    if protected_table.is_some_and(is_canonical_table) {
-        Authorization::Deny
-    } else {
-        Authorization::Allow
+            if acceptance_authorized && is_acceptance_update_table(table_name) =>
+        {
+            Authorization::Allow
+        }
+        _ => Authorization::Deny,
     }
 }
 
@@ -67,6 +78,16 @@ fn is_canonical_table(table_name: &str) -> bool {
     CANONICAL_TABLES
         .iter()
         .any(|canonical| table_name.eq_ignore_ascii_case(canonical))
+}
+
+fn is_acceptance_insert_table(table_name: &str) -> bool {
+    (is_canonical_table(table_name) && !table_name.eq_ignore_ascii_case("schema_meta"))
+        || table_name.eq_ignore_ascii_case("device_head")
+}
+
+fn is_acceptance_update_table(table_name: &str) -> bool {
+    table_name.eq_ignore_ascii_case("device_head")
+        || table_name.eq_ignore_ascii_case("replica_state")
 }
 
 fn authorize_reader_statement(context: AuthContext<'_>) -> Authorization {

@@ -19,10 +19,6 @@ pub mod profile;
 pub mod queries;
 pub mod repository;
 
-use std::{error::Error, fmt};
-
-use academic_domain::{ArtifactDescriptor, ArtifactId, ContentDigest};
-
 /// SQLite application identifier (`ACAD`) reserved for the local core store.
 pub const SQLITE_APPLICATION_ID: u32 = 0x4143_4144;
 /// First physical store schema version.
@@ -68,30 +64,6 @@ pub const SYNTHETIC_PROFILE_MARKER: &str = "SYNTHETIC_ONLY_PLAINTEXT_DO_NOT_USE_
 pub const STORE_DATABASE_FILE: &str = "academic-platform.sqlite3";
 /// Bootstrap marker whose presence makes startup fail closed.
 pub const INCOMPLETE_PROFILE_MARKER: &str = ".academic-profile-incomplete";
-
-/// Opaque evidence that an object was sealed and read back before SQL begins.
-pub trait SealedObjectReceipt: fmt::Debug + Send + Sync {
-    /// Identifies the descriptor whose exact bytes were sealed.
-    fn artifact_id(&self) -> ArtifactId;
-    /// Returns the exact plaintext digest verified during sealing.
-    fn content_digest(&self) -> ContentDigest;
-}
-
-/// Capability boundary consumed by the later store acceptance transaction.
-///
-/// The store depends on this interface and never on the daemon. A vault may
-/// implement it for its own private receipt type, while the core composes the
-/// two crates without giving SQL a byte/hash bypass.
-pub trait SealedObjectVerifier: fmt::Debug + Send + Sync {
-    type Receipt: SealedObjectReceipt;
-    type Error: Error + Send + Sync + 'static;
-
-    /// Verifies an already sealed object for the exact immutable descriptor.
-    fn verify_sealed_object(
-        &self,
-        descriptor: &ArtifactDescriptor,
-    ) -> Result<Self::Receipt, Self::Error>;
-}
 
 #[cfg(test)]
 mod tests {

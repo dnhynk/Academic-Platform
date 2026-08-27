@@ -5,19 +5,23 @@ use std::{error::Error, fmt};
 use academic_contracts::{ContractError, DeviceAuthorization, verify_signed_batch};
 use academic_domain::TimestampMillis;
 use academic_store::{
-    SealedObjectVerifier,
-    accept::{
-        AcceptError, AcceptanceOutcome, accept_verified_batch, accept_verified_batch_with_faults,
-    },
-    connection::WriterConnection,
-    fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault},
+    accept::{AcceptError, AcceptanceOutcome, AcceptanceStore},
+    error::StoreError,
+    fault::InjectedFault,
     idempotency::AcceptanceCommand,
+    profile::SyntheticProfile,
 };
+use academic_vault::{DomainKeyring, Vault, VaultError};
+
+#[cfg(test)]
+use academic_store::fault::{AcceptanceFaultInjector, AcceptanceFaultPoint};
 
 /// Authentication or durable-store failure at the local core boundary.
 #[derive(Debug)]
 pub enum ServiceError {
     Contract(ContractError),
+    Store(StoreError),
+    Vault(VaultError),
     Acceptance(AcceptError),
     Injected(InjectedFault),
 }
@@ -26,6 +30,8 @@ impl fmt::Display for ServiceError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Contract(error) => write!(formatter, "signed acceptance rejected: {error}"),
+            Self::Store(error) => write!(formatter, "acceptance store could not open: {error}"),
+            Self::Vault(error) => write!(formatter, "acceptance vault could not open: {error}"),
             Self::Acceptance(error) => write!(formatter, "durable acceptance rejected: {error}"),
             Self::Injected(error) => write!(formatter, "{error}"),
         }
@@ -36,6 +42,8 @@ impl Error for ServiceError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Contract(error) => Some(error),
+            Self::Store(error) => Some(error),
+            Self::Vault(error) => Some(error),
             Self::Acceptance(error) => Some(error),
             Self::Injected(error) => Some(error),
         }
@@ -45,6 +53,18 @@ impl Error for ServiceError {
 impl From<ContractError> for ServiceError {
     fn from(error: ContractError) -> Self {
         Self::Contract(error)
+    }
+}
+
+impl From<StoreError> for ServiceError {
+    fn from(error: StoreError) -> Self {
+        Self::Store(error)
+    }
+}
+
+impl From<VaultError> for ServiceError {
+    fn from(error: VaultError) -> Self {
+        Self::Vault(error)
     }
 }
 
@@ -60,49 +80,74 @@ impl From<InjectedFault> for ServiceError {
     }
 }
 
-/// Verifies canonical bytes/signature, seals every referenced artifact, and
-/// commits the resulting batch through the one synchronous writer.
-pub fn accept_signed_command<V: SealedObjectVerifier>(
-    writer: &mut WriterConnection,
-    command: AcceptanceCommand<'_>,
-    authorization: &DeviceAuthorization,
-    accepted_at: TimestampMillis,
-    sealed_objects: &V,
-) -> Result<AcceptanceOutcome, ServiceError> {
-    let verified = verify_signed_batch(command.envelope_bytes, authorization)?;
-    Ok(accept_verified_batch(
-        writer,
-        &verified,
-        command,
-        accepted_at,
-        sealed_objects,
-    )?)
+/// Single-owner local composition of the concrete vault and the only canonical writer.
+///
+/// This service exposes artifact ingest/read-back and signed acceptance, but no raw SQLite
+/// connection, arbitrary SQL method, verifier trait, receipt constructor, or second writer alias.
+pub struct AcceptanceService {
+    store: AcceptanceStore,
+    vault: Vault,
 }
 
-/// Test-harness composition with DB01-DB07 and IPC02 checkpoints.
-pub fn accept_signed_command_with_faults<V, F>(
-    writer: &mut WriterConnection,
-    command: AcceptanceCommand<'_>,
-    authorization: &DeviceAuthorization,
-    accepted_at: TimestampMillis,
-    sealed_objects: &V,
-    faults: &F,
-) -> Result<AcceptanceOutcome, ServiceError>
-where
-    V: SealedObjectVerifier,
-    F: AcceptanceFaultInjector,
-{
-    let verified = verify_signed_batch(command.envelope_bytes, authorization)?;
-    let outcome = accept_verified_batch_with_faults(
-        writer,
-        &verified,
-        command,
-        accepted_at,
-        sealed_objects,
-        faults,
-    )?;
-    faults.hit(AcceptanceFaultPoint::Ipc02)?;
-    Ok(outcome)
+impl fmt::Debug for AcceptanceService {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AcceptanceService")
+            .field("store", &self.store)
+            .field("vault", &self.vault)
+            .finish_non_exhaustive()
+    }
+}
+
+impl AcceptanceService {
+    /// Opens one concrete vault and one owned acceptance writer for the same validated profile.
+    pub fn open(profile: &SyntheticProfile, keyring: DomainKeyring) -> Result<Self, ServiceError> {
+        let vault = Vault::open(profile.root(), keyring)?;
+        let store = profile.open_acceptance_store()?;
+        Ok(Self { store, vault })
+    }
+
+    /// Returns the concrete vault used to ingest exact bytes before signed acceptance.
+    #[must_use]
+    pub const fn vault(&self) -> &Vault {
+        &self.vault
+    }
+
+    /// Verifies canonical source bytes/signature and commits one atomic acceptance unit.
+    pub fn accept_signed_command(
+        &mut self,
+        command: AcceptanceCommand<'_>,
+        authorization: &DeviceAuthorization,
+        accepted_at: TimestampMillis,
+    ) -> Result<AcceptanceOutcome, ServiceError> {
+        let verified = verify_signed_batch(command.envelope_bytes, authorization)?;
+        Ok(self
+            .store
+            .accept_verified_batch(&verified, command, accepted_at, &self.vault)?)
+    }
+
+    #[cfg(test)]
+    fn accept_signed_command_with_faults<F>(
+        &mut self,
+        command: AcceptanceCommand<'_>,
+        authorization: &DeviceAuthorization,
+        accepted_at: TimestampMillis,
+        faults: &F,
+    ) -> Result<AcceptanceOutcome, ServiceError>
+    where
+        F: AcceptanceFaultInjector,
+    {
+        let verified = verify_signed_batch(command.envelope_bytes, authorization)?;
+        let outcome = self.store.accept_verified_batch_with_faults(
+            &verified,
+            command,
+            accepted_at,
+            &self.vault,
+            faults,
+        )?;
+        faults.hit(AcceptanceFaultPoint::Ipc02)?;
+        Ok(outcome)
+    }
 }
 
 #[cfg(test)]
@@ -110,7 +155,7 @@ mod tests {
     use std::{
         env,
         error::Error,
-        fmt, fs,
+        fs,
         path::PathBuf,
         process::Command as ProcessCommand,
         str::FromStr,
@@ -118,17 +163,18 @@ mod tests {
     };
 
     use academic_domain::{
-        Actor, ArtifactDescriptor, ArtifactId, BatchId, ContentDigest, DeviceId, DomainError,
-        DomainId, EntityId, Event, EventId, EventPayload, ScopeDescriptor, ScopeId, UnsignedBatch,
+        Actor, BatchId, DeviceId, DomainError, DomainId, EntityId, Event, EventId, EventPayload,
+        ScopeDescriptor, ScopeId, UnsignedBatch,
     };
     use academic_ledger::EVENT_SCHEMA_VERSION;
     use academic_store::{
-        SealedObjectReceipt,
-        connection::{open_reader, open_writer},
+        connection::open_reader,
         fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault},
-        migration::migrate_pre_listen,
+        path_policy::NativePathProbe,
+        profile::{SyntheticProfile, create_synthetic_profile, open_synthetic_profile},
         queries::canonical_snapshot,
     };
+    use academic_vault::ArtifactIngestRequest;
     use ed25519_dalek::SigningKey;
 
     use super::*;
@@ -138,7 +184,7 @@ mod tests {
     #[derive(Debug)]
     struct TemporaryDatabase {
         root: PathBuf,
-        path: PathBuf,
+        profile: SyntheticProfile,
     }
 
     impl TemporaryDatabase {
@@ -148,10 +194,8 @@ mod tests {
                 "academic-s2-ipc02-{}-{sequence}",
                 std::process::id()
             ));
-            fs::create_dir(&root)?;
-            let path = root.join("store.sqlite3");
-            migrate_pre_listen(&path, [0x82; 32])?;
-            Ok(Self { root, path })
+            let profile = create_synthetic_profile(&root, &NativePathProbe::default(), [0x82; 32])?;
+            Ok(Self { root, profile })
         }
     }
 
@@ -160,48 +204,6 @@ mod tests {
             if let Err(error) = fs::remove_dir_all(&self.root) {
                 eprintln!("test cleanup failed for {}: {error}", self.root.display());
             }
-        }
-    }
-
-    #[derive(Debug, Clone, Copy)]
-    struct DummyReceipt {
-        artifact_id: ArtifactId,
-        digest: ContentDigest,
-    }
-
-    impl SealedObjectReceipt for DummyReceipt {
-        fn artifact_id(&self) -> ArtifactId {
-            self.artifact_id
-        }
-
-        fn content_digest(&self) -> ContentDigest {
-            self.digest
-        }
-    }
-
-    #[derive(Debug)]
-    struct EmptyGate;
-
-    #[derive(Debug)]
-    struct UnexpectedArtifact;
-
-    impl fmt::Display for UnexpectedArtifact {
-        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-            formatter.write_str("scope-only IPC fixture has no artifact")
-        }
-    }
-
-    impl Error for UnexpectedArtifact {}
-
-    impl SealedObjectVerifier for EmptyGate {
-        type Receipt = DummyReceipt;
-        type Error = UnexpectedArtifact;
-
-        fn verify_sealed_object(
-            &self,
-            _descriptor: &ArtifactDescriptor,
-        ) -> Result<Self::Receipt, Self::Error> {
-            Err(UnexpectedArtifact)
         }
     }
 
@@ -225,11 +227,11 @@ mod tests {
             .arg("service::tests::ipc02_fault_child")
             .arg("--nocapture")
             .env("ACADEMIC_S2_IPC02_CHILD", "1")
-            .env("ACADEMIC_S2_IPC02_DATABASE", &database.path)
+            .env("ACADEMIC_S2_IPC02_PROFILE", database.profile.root())
             .status()?;
         assert_eq!(status.code(), Some(98));
 
-        let restart = canonical_snapshot(&open_reader(&database.path)?)?;
+        let restart = canonical_snapshot(&open_reader(database.profile.database_path())?)?;
         assert_eq!(restart.batch_count, 1);
         assert_eq!(restart.event_count, 1);
         assert_eq!(restart.outbox_count, 1);
@@ -238,23 +240,19 @@ mod tests {
         assert_eq!(restart.next_accept_seq, 2);
 
         let (batch, envelope, authorization) = signed_scope_batch()?;
-        let mut writer = open_writer(&database.path)?;
-        let replay = accept_signed_command(
-            &mut writer,
+        let mut service = AcceptanceService::open(&database.profile, DomainKeyring::new())?;
+        let replay = service.accept_signed_command(
             acceptance_command(&envelope),
             &authorization,
             TimestampMillis::new(1_001),
-            &EmptyGate,
         )?;
         assert!(replay.replayed_request);
         assert_eq!(replay.receipt.batch_id, batch.batch_id);
         let exact = replay.receipt.response_bytes().to_vec();
-        let second = accept_signed_command(
-            &mut writer,
+        let second = service.accept_signed_command(
             acceptance_command(&envelope),
             &authorization,
             TimestampMillis::new(1_002),
-            &EmptyGate,
         )?;
         assert_eq!(second.receipt.response_bytes(), exact);
         Ok(())
@@ -265,21 +263,85 @@ mod tests {
         if env::var_os("ACADEMIC_S2_IPC02_CHILD").is_none() {
             return Ok(());
         }
-        let path = PathBuf::from(
-            env::var_os("ACADEMIC_S2_IPC02_DATABASE")
-                .ok_or("ACADEMIC_S2_IPC02_DATABASE is required")?,
+        let root = PathBuf::from(
+            env::var_os("ACADEMIC_S2_IPC02_PROFILE")
+                .ok_or("ACADEMIC_S2_IPC02_PROFILE is required")?,
         );
         let (_batch, envelope, authorization) = signed_scope_batch()?;
-        let mut writer = open_writer(&path)?;
-        let _ = accept_signed_command_with_faults(
-            &mut writer,
+        let profile = open_synthetic_profile(&root, &NativePathProbe::default())?;
+        let mut service = AcceptanceService::open(&profile, DomainKeyring::new())?;
+        let _ = service.accept_signed_command_with_faults(
             acceptance_command(&envelope),
             &authorization,
             TimestampMillis::new(1_000),
-            &EmptyGate,
             &ExitAtIpc02,
         )?;
         Err("IPC02 checkpoint was not reached".into())
+    }
+
+    #[test]
+    fn core_acceptance_with_real_vault_bytes_rejects_missing_object() -> Result<(), Box<dyn Error>>
+    {
+        let database = TemporaryDatabase::new()?;
+        let document = crate::build_fixture_document()?;
+        let envelope = hex::decode(&document.signed_batch_cbor_hex)?;
+        let authorization = crate::fixture_device_authorization()?;
+        let verified = verify_signed_batch(&envelope, &authorization)?;
+        let descriptor = verified
+            .batch()
+            .events
+            .iter()
+            .find_map(|event| match &event.payload {
+                EventPayload::ArtifactRegistered(descriptor) => Some(descriptor.clone()),
+                _ => None,
+            })
+            .ok_or("fixture must register an artifact")?;
+        let mut keyring = DomainKeyring::new();
+        keyring.insert(descriptor.domain_id, b"phase0-synthetic-domain-locator-key")?;
+        let mut service = AcceptanceService::open(&database.profile, keyring)?;
+
+        let rejected = service.accept_signed_command(
+            acceptance_command(&envelope),
+            &authorization,
+            TimestampMillis::new(2_000),
+        );
+        assert!(matches!(
+            rejected,
+            Err(ServiceError::Acceptance(AcceptError::SealingFailed { .. }))
+        ));
+        let empty = canonical_snapshot(&open_reader(database.profile.database_path())?)?;
+        assert_eq!(empty.batch_count, 0);
+        assert_eq!(empty.event_count, 0);
+        assert_eq!(empty.outbox_count, 0);
+        assert_eq!(empty.profile_revision, 0);
+
+        let request = ArtifactIngestRequest::new(
+            descriptor.id,
+            descriptor.media_type.clone(),
+            descriptor.domain_id,
+            descriptor.confidentiality,
+            descriptor.retention_class,
+            descriptor.permission_lineage_id,
+        );
+        let receipt = service
+            .vault()
+            .ingest(&request, crate::SYNTHETIC_ARTIFACT_BYTES)?;
+        assert_eq!(
+            receipt.descriptor().content_digest,
+            descriptor.content_digest
+        );
+        let accepted = service.accept_signed_command(
+            acceptance_command(&envelope),
+            &authorization,
+            TimestampMillis::new(2_001),
+        )?;
+        assert!(!accepted.replayed_request);
+        let committed = canonical_snapshot(&open_reader(database.profile.database_path())?)?;
+        assert_eq!(committed.batch_count, 1);
+        assert_eq!(committed.event_count, 14);
+        assert_eq!(committed.outbox_count, 1);
+        assert_eq!(committed.profile_revision, 1);
+        Ok(())
     }
 
     fn signed_scope_batch() -> Result<(UnsignedBatch, Vec<u8>, DeviceAuthorization), Box<dyn Error>>

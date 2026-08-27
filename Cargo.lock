@@ -127,6 +127,7 @@ dependencies = [
  "academic-domain",
  "academic-ledger",
  "academic-store-platform",
+ "academic-vault",
  "rusqlite",
 ]
 
@@ -152,7 +153,6 @@ name = "academic-vault"
 version = "0.1.0"
 dependencies = [
  "academic-domain",
- "academic-store",
  "getrandom 0.4.3",
  "rustix",
  "sha2",

@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    fmt, fs,
+    fs,
     path::PathBuf,
     str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
@@ -8,29 +8,28 @@ use std::{
 
 use academic_contracts::{DeviceAuthorization, sign_batch, verify_signed_batch};
 use academic_domain::{
-    Actor, ArtifactDescriptor, ArtifactId, ArtifactRepresentation, AuthorityClass, BatchId, Claim,
-    ClaimObject, ClaimRelation, ClaimRelationKind, Confidentiality, ContentDigest, DeviceId,
-    DomainError, DomainId, EpistemicStatus, Event, EventId, EventPayload, EvidenceId, EvidenceItem,
+    Actor, ArtifactId, ArtifactRepresentation, AuthorityClass, BatchId, Claim, ClaimObject,
+    ClaimRelation, ClaimRelationKind, Confidentiality, ContentDigest, DeviceId, DomainError,
+    DomainId, EpistemicStatus, Event, EventId, EventPayload, EvidenceId, EvidenceItem,
     EvidenceLocator, EvidenceRole, EvidenceStrength, MediaType, PermissionLineageId, PredicateId,
     RetentionClass, ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch, ValidInterval,
-    VaultLocator,
 };
 use academic_ledger::{AuthorityPolicy, EVENT_SCHEMA_VERSION, LedgerState, ResolutionQuery};
 use academic_store::{
-    SealedObjectReceipt, SealedObjectVerifier,
-    accept::accept_verified_batch,
-    connection::{open_reader, open_writer},
+    connection::open_reader,
     idempotency::AcceptanceCommand,
-    migration::migrate_pre_listen,
+    path_policy::NativePathProbe,
+    profile::{SyntheticProfile, create_synthetic_profile},
     queries::resolve,
 };
+use academic_vault::{ArtifactIngestRequest, DomainKeyring, Vault};
 
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug)]
 struct TemporaryDatabase {
     root: PathBuf,
-    path: PathBuf,
+    profile: SyntheticProfile,
 }
 
 impl TemporaryDatabase {
@@ -40,10 +39,8 @@ impl TemporaryDatabase {
             "academic-s2-bitemporal-{}-{sequence}",
             std::process::id()
         ));
-        fs::create_dir(&root)?;
-        let path = root.join("store.sqlite3");
-        migrate_pre_listen(&path, [0x82; 32])?;
-        Ok(Self { root, path })
+        let profile = create_synthetic_profile(&root, &NativePathProbe::default(), [0x82; 32])?;
+        Ok(Self { root, profile })
     }
 }
 
@@ -55,55 +52,14 @@ impl Drop for TemporaryDatabase {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct Receipt {
-    artifact_id: ArtifactId,
-    digest: ContentDigest,
-}
-
-impl SealedObjectReceipt for Receipt {
-    fn artifact_id(&self) -> ArtifactId {
-        self.artifact_id
-    }
-
-    fn content_digest(&self) -> ContentDigest {
-        self.digest
-    }
-}
-
-#[derive(Debug)]
-struct Gate;
-
-#[derive(Debug)]
-struct Never;
-
-impl fmt::Display for Never {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("infallible synthetic gate")
-    }
-}
-
-impl Error for Never {}
-
-impl SealedObjectVerifier for Gate {
-    type Receipt = Receipt;
-    type Error = Never;
-
-    fn verify_sealed_object(
-        &self,
-        descriptor: &ArtifactDescriptor,
-    ) -> Result<Self::Receipt, Self::Error> {
-        Ok(Receipt {
-            artifact_id: descriptor.id,
-            digest: descriptor.content_digest,
-        })
-    }
-}
-
 #[test]
 fn sql_bitemporal_cases_match_oracle() -> Result<(), Box<dyn Error>> {
     let database = TemporaryDatabase::new()?;
-    let (batch, subject_id, scope_id, predicate_id) = bitemporal_batch()?;
+    let domain_id = id::<DomainId>(0x101)?;
+    let mut keyring = DomainKeyring::new();
+    keyring.insert(domain_id, b"academic-s2-bitemporal-key")?;
+    let vault = Vault::open(database.profile.root(), keyring)?;
+    let (batch, subject_id, scope_id, predicate_id) = bitemporal_batch(&vault)?;
     let seed = [0x59_u8; 32];
     let signing_key = seed.as_slice().try_into()?;
     let envelope = sign_batch(&batch, &signing_key)?;
@@ -113,9 +69,8 @@ fn sql_bitemporal_cases_match_oracle() -> Result<(), Box<dyn Error>> {
 
     let mut oracle = LedgerState::new();
     oracle.accept_verified_batch(&verified)?;
-    let mut writer = open_writer(&database.path)?;
-    accept_verified_batch(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    store.accept_verified_batch(
         &verified,
         AcceptanceCommand {
             request_id: [1; 16],
@@ -125,10 +80,10 @@ fn sql_bitemporal_cases_match_oracle() -> Result<(), Box<dyn Error>> {
             envelope_bytes: &envelope,
         },
         TimestampMillis::new(1_000),
-        &Gate,
+        &vault,
     )?;
-    drop(writer);
-    let reader = open_reader(&database.path)?;
+    drop(store);
+    let reader = open_reader(database.profile.database_path())?;
 
     let cases = [
         (TimestampMillis::new(50), 0),
@@ -163,14 +118,16 @@ fn sql_bitemporal_cases_match_oracle() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn bitemporal_batch() -> Result<
+fn bitemporal_batch(
+    vault: &Vault,
+) -> Result<
     (
         UnsignedBatch,
         academic_domain::EntityId,
         ScopeId,
         PredicateId,
     ),
-    DomainError,
+    Box<dyn Error>,
 > {
     let namespace = 0x100_u32;
     let domain_id = id::<DomainId>(namespace + 1)?;
@@ -194,6 +151,21 @@ fn bitemporal_batch() -> Result<
         name: "academic.s2.bitemporal".to_owned(),
         version: "1.0.0".to_owned(),
     };
+    let request = ArtifactIngestRequest::new(
+        artifact_id,
+        media_type,
+        domain_id,
+        Confidentiality::Personal,
+        RetentionClass::UserManaged,
+        id::<PermissionLineageId>(namespace + 8)?,
+    );
+    let receipt = vault.ingest(&request, bytes.as_slice())?;
+    let mut descriptor = receipt.descriptor().clone();
+    descriptor.evidence_representations = vec![ArtifactRepresentation {
+        locator: locator.clone(),
+        content_digest: digest,
+        byte_length: length,
+    }];
     let claim = |id, value: &str| Claim {
         id,
         subject_entity_id: subject_id,
@@ -213,28 +185,7 @@ fn bitemporal_batch() -> Result<
             domain_id,
             label: "synthetic bitemporal scope".to_owned(),
         }),
-        EventPayload::ArtifactRegistered(ArtifactDescriptor {
-            id: artifact_id,
-            content_digest: digest,
-            media_type: media_type.clone(),
-            byte_length: length,
-            domain_id,
-            confidentiality: Confidentiality::Personal,
-            retention_class: RetentionClass::UserManaged,
-            permission_lineage_id: id::<PermissionLineageId>(namespace + 8)?,
-            format_version: 1,
-            vault_locator: VaultLocator::derive(
-                b"academic-s2-bitemporal-key",
-                1,
-                &media_type,
-                digest,
-            )?,
-            evidence_representations: vec![ArtifactRepresentation {
-                locator: locator.clone(),
-                content_digest: digest,
-                byte_length: length,
-            }],
-        }),
+        EventPayload::ArtifactRegistered(descriptor),
         EventPayload::EvidenceRegistered(EvidenceItem {
             id: evidence_id,
             artifact_id,

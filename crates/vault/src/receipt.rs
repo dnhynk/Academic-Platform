@@ -2,8 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use academic_domain::{ArtifactDescriptor, ArtifactId, ContentDigest};
-use academic_store::SealedObjectReceipt;
+use academic_domain::ArtifactDescriptor;
 
 /// Whether sealing published new bytes or adopted an exact existing object.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +30,13 @@ pub struct SealedArtifactReceipt {
     object_path: PathBuf,
     disposition: SealDisposition,
 }
+
+/// Concrete vault-backed capability consumed by durable acceptance.
+///
+/// This alias deliberately has no constructor of its own. Safe downstream code can only obtain
+/// a value after [`crate::Vault::ingest`] or [`crate::Vault::verify_sealed_object`] has read back
+/// the exact bytes from the canonical policy-namespaced vault path.
+pub type SealedObjectCapability = SealedArtifactReceipt;
 
 impl SealedArtifactReceipt {
     pub(crate) fn new(
@@ -61,15 +67,5 @@ impl SealedArtifactReceipt {
     #[must_use]
     pub const fn disposition(&self) -> SealDisposition {
         self.disposition
-    }
-}
-
-impl SealedObjectReceipt for SealedArtifactReceipt {
-    fn artifact_id(&self) -> ArtifactId {
-        self.descriptor.id
-    }
-
-    fn content_digest(&self) -> ContentDigest {
-        self.descriptor.content_digest
     }
 }

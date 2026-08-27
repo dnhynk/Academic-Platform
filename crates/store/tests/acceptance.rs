@@ -1,7 +1,7 @@
 use std::{
     env,
     error::Error,
-    fmt, fs,
+    fs,
     path::{Path, PathBuf},
     process::Command as ProcessCommand,
     str::FromStr,
@@ -10,29 +10,30 @@ use std::{
 
 use academic_contracts::{DeviceAuthorization, sign_batch, verify_signed_batch};
 use academic_domain::{
-    Actor, ArtifactDescriptor, ArtifactId, ArtifactRepresentation, AuthorityClass, BatchId, Claim,
-    ClaimObject, Confidentiality, ContentDigest, DeviceId, DomainError, DomainId, EpistemicStatus,
-    Event, EventId, EventPayload, EvidenceId, EvidenceItem, EvidenceLocator, EvidenceRole,
+    Actor, ArtifactId, ArtifactRepresentation, AuthorityClass, BatchId, Claim, ClaimObject,
+    Confidentiality, ContentDigest, DeviceId, DomainError, DomainId, EpistemicStatus, Event,
+    EventId, EventPayload, EvidenceId, EvidenceItem, EvidenceLocator, EvidenceRole,
     EvidenceStrength, MediaType, PermissionLineageId, PredicateId, RetentionClass, ScopeDescriptor,
-    ScopeId, TimestampMillis, UnsignedBatch, ValidInterval, VaultLocator,
+    ScopeId, TimestampMillis, UnsignedBatch, ValidInterval,
 };
 use academic_ledger::{EVENT_SCHEMA_VERSION, LedgerError, LedgerState};
 use academic_store::{
-    SealedObjectReceipt, SealedObjectVerifier,
-    accept::{AcceptError, accept_verified_batch, accept_verified_batch_with_faults},
-    connection::{open_reader, open_writer},
+    accept::AcceptError,
+    connection::open_reader,
     fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault},
     idempotency::{AcceptanceCommand, IdempotencyError},
-    migration::migrate_pre_listen,
+    path_policy::NativePathProbe,
+    profile::{SyntheticProfile, create_synthetic_profile, open_synthetic_profile},
     queries::{batch_material, canonical_snapshot},
 };
+use academic_vault::{ArtifactIngestRequest, DomainKeyring, SealedArtifactReceipt, Vault};
 
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug)]
 struct TestDatabase {
     root: PathBuf,
-    path: PathBuf,
+    profile: SyntheticProfile,
 }
 
 impl TestDatabase {
@@ -42,14 +43,16 @@ impl TestDatabase {
             "academic-s2-acceptance-{label}-{}-{sequence}",
             std::process::id()
         ));
-        fs::create_dir(&root)?;
-        let path = root.join("store.sqlite3");
-        migrate_pre_listen(&path, [0x82; 32])?;
-        Ok(Self { root, path })
+        let profile = create_synthetic_profile(&root, &NativePathProbe::default(), [0x82; 32])?;
+        Ok(Self { root, profile })
     }
 
     fn path(&self) -> &Path {
-        &self.path
+        self.profile.database_path()
+    }
+
+    fn vault(&self, namespace: u32) -> Result<Vault, Box<dyn Error>> {
+        vault_for_namespace(self.profile.root(), namespace)
     }
 }
 
@@ -57,65 +60,6 @@ impl Drop for TestDatabase {
     fn drop(&mut self) {
         if let Err(error) = fs::remove_dir_all(&self.root) {
             eprintln!("test cleanup failed for {}: {error}", self.root.display());
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct TestReceipt {
-    artifact_id: ArtifactId,
-    content_digest: ContentDigest,
-}
-
-impl SealedObjectReceipt for TestReceipt {
-    fn artifact_id(&self) -> ArtifactId {
-        self.artifact_id
-    }
-
-    fn content_digest(&self) -> ContentDigest {
-        self.content_digest
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum GateMode {
-    Accept,
-    Reject,
-    Mismatch,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct TestGate(GateMode);
-
-#[derive(Debug)]
-struct GateError;
-
-impl fmt::Display for GateError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("synthetic object is not sealed")
-    }
-}
-
-impl Error for GateError {}
-
-impl SealedObjectVerifier for TestGate {
-    type Receipt = TestReceipt;
-    type Error = GateError;
-
-    fn verify_sealed_object(
-        &self,
-        descriptor: &ArtifactDescriptor,
-    ) -> Result<Self::Receipt, Self::Error> {
-        match self.0 {
-            GateMode::Accept => Ok(TestReceipt {
-                artifact_id: descriptor.id,
-                content_digest: descriptor.content_digest,
-            }),
-            GateMode::Reject => Err(GateError),
-            GateMode::Mismatch => Ok(TestReceipt {
-                artifact_id: descriptor.id,
-                content_digest: ContentDigest::sha256(b"different object"),
-            }),
         }
     }
 }
@@ -153,19 +97,19 @@ struct SignedBatch {
 #[test]
 fn sql_acceptance_matches_pure_ledger() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("oracle")?;
-    let batch = artifact_batch(0x100, 0x900)?;
+    let vault = database.vault(0x100)?;
+    let batch = artifact_batch(&vault, 0x100, 0x900)?;
     let signed = signed(&batch)?;
     let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
     let mut oracle = LedgerState::new();
     let pure = oracle.accept_verified_batch(&verified)?;
 
-    let mut writer = open_writer(database.path())?;
-    let outcome = accept_verified_batch(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    let outcome = store.accept_verified_batch(
         &verified,
         command(&signed.envelope, 1, Some(0)),
         TimestampMillis::new(1_000),
-        &TestGate(GateMode::Accept),
+        &vault,
     )?;
     assert_eq!(outcome.receipt.batch_id, pure.batch_id);
     assert_eq!(outcome.receipt.envelope_hash, pure.batch_hash);
@@ -189,20 +133,20 @@ fn sql_acceptance_matches_pure_ledger() -> Result<(), Box<dyn Error>> {
 #[test]
 fn sql_batch_acceptance_is_atomic() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("atomic")?;
-    let batch = artifact_batch(0x200, 0x901)?;
+    let vault = database.vault(0x200)?;
+    let batch = artifact_batch(&vault, 0x200, 0x901)?;
     let signed = signed(&batch)?;
     let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
-    let result = accept_verified_batch_with_faults(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    let result = store.accept_verified_batch_with_faults(
         &verified,
         command(&signed.envelope, 2, Some(0)),
         TimestampMillis::new(2_000),
-        &TestGate(GateMode::Accept),
+        &vault,
         &FailAt(AcceptanceFaultPoint::Db03),
     );
     assert!(matches!(result, Err(AcceptError::Injected(_))));
-    drop(writer);
+    drop(store);
 
     let snapshot = canonical_snapshot(&open_reader(database.path())?)?;
     assert_empty(snapshot);
@@ -212,23 +156,22 @@ fn sql_batch_acceptance_is_atomic() -> Result<(), Box<dyn Error>> {
 #[test]
 fn duplicate_batch_returns_original_receipt() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("duplicate")?;
-    let batch = artifact_batch(0x300, 0x902)?;
+    let vault = database.vault(0x300)?;
+    let batch = artifact_batch(&vault, 0x300, 0x902)?;
     let signed = signed(&batch)?;
     let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
-    let first = accept_verified_batch(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    let first = store.accept_verified_batch(
         &verified,
         command(&signed.envelope, 3, Some(0)),
         TimestampMillis::new(3_000),
-        &TestGate(GateMode::Accept),
+        &vault,
     )?;
-    let duplicate = accept_verified_batch(
-        &mut writer,
+    let duplicate = store.accept_verified_batch(
         &verified,
         command(&signed.envelope, 4, Some(1)),
         TimestampMillis::new(3_001),
-        &TestGate(GateMode::Accept),
+        &vault,
     )?;
     assert!(duplicate.duplicate_batch);
     assert_eq!(duplicate.receipt, first.receipt);
@@ -236,7 +179,7 @@ fn duplicate_batch_returns_original_receipt() -> Result<(), Box<dyn Error>> {
         duplicate.receipt.response_bytes(),
         first.receipt.response_bytes()
     );
-    drop(writer);
+    drop(store);
 
     let snapshot = canonical_snapshot(&open_reader(database.path())?)?;
     assert_eq!(snapshot.batch_count, 1);
@@ -250,18 +193,13 @@ fn duplicate_batch_returns_original_receipt() -> Result<(), Box<dyn Error>> {
 #[test]
 fn idempotency_key_hash_collision_fails() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("key-collision")?;
-    let batch = artifact_batch(0x400, 0x903)?;
+    let vault = database.vault(0x400)?;
+    let batch = artifact_batch(&vault, 0x400, 0x903)?;
     let signed = signed(&batch)?;
     let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
+    let mut store = database.profile.open_acceptance_store()?;
     let original = command(&signed.envelope, 5, Some(0));
-    accept_verified_batch(
-        &mut writer,
-        &verified,
-        original,
-        TimestampMillis::new(4_000),
-        &TestGate(GateMode::Accept),
-    )?;
+    store.accept_verified_batch(&verified, original, TimestampMillis::new(4_000), &vault)?;
     let collision = AcceptanceCommand {
         request_id: [0x99; 16],
         client_instance_id: original.client_instance_id,
@@ -269,18 +207,13 @@ fn idempotency_key_hash_collision_fails() -> Result<(), Box<dyn Error>> {
         expected_revision: original.expected_revision,
         envelope_bytes: original.envelope_bytes,
     };
-    let result = accept_verified_batch(
-        &mut writer,
-        &verified,
-        collision,
-        TimestampMillis::new(4_001),
-        &TestGate(GateMode::Accept),
-    );
+    let result =
+        store.accept_verified_batch(&verified, collision, TimestampMillis::new(4_001), &vault);
     assert!(matches!(
         result,
         Err(AcceptError::Idempotency(IdempotencyError::KeyCollision))
     ));
-    drop(writer);
+    drop(store);
     let snapshot = canonical_snapshot(&open_reader(database.path())?)?;
     assert_eq!(snapshot.batch_count, 1);
     assert_eq!(snapshot.receipt_count, 1);
@@ -291,16 +224,16 @@ fn idempotency_key_hash_collision_fails() -> Result<(), Box<dyn Error>> {
 #[test]
 fn expected_revision_conflict_has_no_effect() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("revision")?;
+    let vault = database.vault(0x500)?;
     let batch = scope_batch(0x500, 0x904, 1, None)?;
     let signed = signed(&batch)?;
     let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
-    let result = accept_verified_batch(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    let result = store.accept_verified_batch(
         &verified,
         command(&signed.envelope, 6, Some(7)),
         TimestampMillis::new(5_000),
-        &TestGate(GateMode::Accept),
+        &vault,
     );
     assert!(matches!(
         result,
@@ -309,7 +242,7 @@ fn expected_revision_conflict_has_no_effect() -> Result<(), Box<dyn Error>> {
             actual: 0
         })
     ));
-    drop(writer);
+    drop(store);
     assert_empty(canonical_snapshot(&open_reader(database.path())?)?);
     Ok(())
 }
@@ -317,17 +250,17 @@ fn expected_revision_conflict_has_no_effect() -> Result<(), Box<dyn Error>> {
 #[test]
 fn accept_seq_is_contiguous_after_failed_batch() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("contiguous")?;
-    let failed_batch = artifact_batch(0x600, 0x905)?;
+    let vault = database.vault(0x600)?;
+    let failed_batch = artifact_batch(&vault, 0x600, 0x905)?;
     let failed_signed = signed(&failed_batch)?;
     let failed_verified =
         verify_signed_batch(&failed_signed.envelope, &failed_signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
-    let result = accept_verified_batch_with_faults(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    let result = store.accept_verified_batch_with_faults(
         &failed_verified,
         command(&failed_signed.envelope, 7, Some(0)),
         TimestampMillis::new(6_000),
-        &TestGate(GateMode::Accept),
+        &vault,
         &FailAt(AcceptanceFaultPoint::Db04),
     );
     assert!(result.is_err());
@@ -335,16 +268,15 @@ fn accept_seq_is_contiguous_after_failed_batch() -> Result<(), Box<dyn Error>> {
     let good_batch = scope_batch(0x700, 0x905, 1, None)?;
     let good_signed = signed(&good_batch)?;
     let good_verified = verify_signed_batch(&good_signed.envelope, &good_signed.authorization)?;
-    let outcome = accept_verified_batch(
-        &mut writer,
+    let outcome = store.accept_verified_batch(
         &good_verified,
         command(&good_signed.envelope, 8, Some(0)),
         TimestampMillis::new(6_001),
-        &TestGate(GateMode::Accept),
+        &vault,
     )?;
     assert_eq!(outcome.receipt.accept_seq_start, 1);
     assert_eq!(outcome.receipt.accept_seq_end, 1);
-    drop(writer);
+    drop(store);
     let snapshot = canonical_snapshot(&open_reader(database.path())?)?;
     assert_eq!(snapshot.next_accept_seq, 2);
     assert_eq!(snapshot.accept_seq_head, 1);
@@ -354,28 +286,27 @@ fn accept_seq_is_contiguous_after_failed_batch() -> Result<(), Box<dyn Error>> {
 #[test]
 fn sql_device_gap_and_fork_consume_nothing() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("device-chain")?;
+    let vault = database.vault(0x710)?;
     let first_batch = scope_batch(0x710, 0x918, 1, None)?;
     let first_signed = signed(&first_batch)?;
     let first_verified = verify_signed_batch(&first_signed.envelope, &first_signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
-    let first = accept_verified_batch(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    let first = store.accept_verified_batch(
         &first_verified,
         command(&first_signed.envelope, 50, Some(0)),
         TimestampMillis::new(6_100),
-        &TestGate(GateMode::Accept),
+        &vault,
     )?;
 
     let gap_batch = scope_batch(0x720, 0x918, 3, Some(first.receipt.envelope_hash))?;
     let gap_signed = signed(&gap_batch)?;
     let gap_verified = verify_signed_batch(&gap_signed.envelope, &gap_signed.authorization)?;
     assert!(matches!(
-        accept_verified_batch(
-            &mut writer,
+        store.accept_verified_batch(
             &gap_verified,
             command(&gap_signed.envelope, 51, Some(1)),
             TimestampMillis::new(6_101),
-            &TestGate(GateMode::Accept),
+            &vault,
         ),
         Err(AcceptError::Ledger(LedgerError::OriginGap {
             expected: 2,
@@ -392,17 +323,16 @@ fn sql_device_gap_and_fork_consume_nothing() -> Result<(), Box<dyn Error>> {
     let fork_signed = signed(&fork_batch)?;
     let fork_verified = verify_signed_batch(&fork_signed.envelope, &fork_signed.authorization)?;
     assert!(matches!(
-        accept_verified_batch(
-            &mut writer,
+        store.accept_verified_batch(
             &fork_verified,
             command(&fork_signed.envelope, 52, Some(1)),
             TimestampMillis::new(6_102),
-            &TestGate(GateMode::Accept),
+            &vault,
         ),
         Err(AcceptError::Ledger(LedgerError::DeviceFork))
     ));
 
-    drop(writer);
+    drop(store);
     let unchanged = canonical_snapshot(&open_reader(database.path())?)?;
     assert_eq!(unchanged.batch_count, 1);
     assert_eq!(unchanged.event_count, 1);
@@ -413,13 +343,12 @@ fn sql_device_gap_and_fork_consume_nothing() -> Result<(), Box<dyn Error>> {
     let good_batch = scope_batch(0x740, 0x918, 2, Some(first.receipt.envelope_hash))?;
     let good_signed = signed(&good_batch)?;
     let good_verified = verify_signed_batch(&good_signed.envelope, &good_signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
-    let good = accept_verified_batch(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    let good = store.accept_verified_batch(
         &good_verified,
         command(&good_signed.envelope, 53, Some(1)),
         TimestampMillis::new(6_103),
-        &TestGate(GateMode::Accept),
+        &vault,
     )?;
     assert_eq!(good.receipt.accept_seq_start, 2);
     assert_eq!(good.receipt.accept_seq_end, 2);
@@ -429,16 +358,16 @@ fn sql_device_gap_and_fork_consume_nothing() -> Result<(), Box<dyn Error>> {
 #[test]
 fn batch_id_collision_and_signed_i64_overflow_have_no_effect() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("collision-overflow")?;
+    let vault = database.vault(0x750)?;
     let batch = scope_batch(0x750, 0x919, 1, None)?;
     let initial_signed = signed(&batch)?;
     let verified = verify_signed_batch(&initial_signed.envelope, &initial_signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
-    accept_verified_batch(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    store.accept_verified_batch(
         &verified,
         command(&initial_signed.envelope, 54, Some(0)),
         TimestampMillis::new(6_200),
-        &TestGate(GateMode::Accept),
+        &vault,
     )?;
 
     let mut collision_batch = batch.clone();
@@ -450,41 +379,41 @@ fn batch_id_collision_and_signed_i64_overflow_have_no_effect() -> Result<(), Box
     let collision_verified =
         verify_signed_batch(&collision_signed.envelope, &collision_signed.authorization)?;
     assert!(matches!(
-        accept_verified_batch(
-            &mut writer,
+        store.accept_verified_batch(
             &collision_verified,
             command(&collision_signed.envelope, 55, Some(1)),
             TimestampMillis::new(6_201),
-            &TestGate(GateMode::Accept),
+            &vault,
         ),
         Err(AcceptError::Ledger(LedgerError::BatchIdCollision))
     ));
-    drop(writer);
+    drop(store);
     let unchanged = canonical_snapshot(&open_reader(database.path())?)?;
     assert_eq!(unchanged.batch_count, 1);
     assert_eq!(unchanged.profile_revision, 1);
 
     let overflow_database = TestDatabase::new("signed-i64")?;
-    let mut overflow_writer = open_writer(overflow_database.path())?;
-    overflow_writer.execute(
+    rusqlite::Connection::open(overflow_database.path())?.execute(
         "UPDATE replica_state SET next_accept_seq = ?1 WHERE singleton = 1",
         [i64::MAX],
     )?;
+    let overflow_vault = overflow_database.vault(0x760)?;
     let overflow_batch = scope_batch(0x760, 0x920, 1, None)?;
     let overflow_signed = signed(&overflow_batch)?;
     let overflow_verified =
         verify_signed_batch(&overflow_signed.envelope, &overflow_signed.authorization)?;
     assert!(matches!(
-        accept_verified_batch(
-            &mut overflow_writer,
-            &overflow_verified,
-            command(&overflow_signed.envelope, 56, Some(0)),
-            TimestampMillis::new(6_202),
-            &TestGate(GateMode::Accept),
-        ),
+        overflow_database
+            .profile
+            .open_acceptance_store()?
+            .accept_verified_batch(
+                &overflow_verified,
+                command(&overflow_signed.envelope, 56, Some(0)),
+                TimestampMillis::new(6_202),
+                &overflow_vault,
+            ),
         Err(AcceptError::IntegerOverflow(_))
     ));
-    drop(overflow_writer);
     let overflow_snapshot = canonical_snapshot(&open_reader(overflow_database.path())?)?;
     assert_eq!(overflow_snapshot.next_accept_seq, i64::MAX as u64);
     assert_eq!(overflow_snapshot.batch_count, 0);
@@ -495,30 +424,33 @@ fn batch_id_collision_and_signed_i64_overflow_have_no_effect() -> Result<(), Box
 #[test]
 fn sealed_receipt_is_required_for_artifact_reference() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("sealed")?;
-    let batch = artifact_batch(0x800, 0x906)?;
+    let vault = database.vault(0x800)?;
+    let batch = artifact_batch(&vault, 0x800, 0x906)?;
     let initial_signed = signed(&batch)?;
     let verified = verify_signed_batch(&initial_signed.envelope, &initial_signed.authorization)?;
-    let mut writer = open_writer(database.path())?;
-    for mode in [GateMode::Reject, GateMode::Mismatch] {
-        let result = accept_verified_batch(
-            &mut writer,
-            &verified,
-            command(&initial_signed.envelope, 9, Some(0)),
-            TimestampMillis::new(7_000),
-            &TestGate(mode),
-        );
-        assert!(result.is_err());
-    }
-    drop(writer);
+    let descriptor = match &batch.events[1].payload {
+        EventPayload::ArtifactRegistered(descriptor) => descriptor,
+        _ => unreachable!(),
+    };
+    fs::remove_file(vault.layout().object_path(descriptor)?)?;
+    let mut store = database.profile.open_acceptance_store()?;
+    let result = store.accept_verified_batch(
+        &verified,
+        command(&initial_signed.envelope, 9, Some(0)),
+        TimestampMillis::new(7_000),
+        &vault,
+    );
+    assert!(matches!(result, Err(AcceptError::SealingFailed { .. })));
+    drop(store);
     assert_empty(canonical_snapshot(&open_reader(database.path())?)?);
 
-    let mut writer = open_writer(database.path())?;
-    let accepted = accept_verified_batch(
-        &mut writer,
+    let _receipt = ingest_artifact(&vault, 0x800)?;
+    let mut store = database.profile.open_acceptance_store()?;
+    let accepted = store.accept_verified_batch(
         &verified,
         command(&initial_signed.envelope, 10, Some(0)),
         TimestampMillis::new(7_001),
-        &TestGate(GateMode::Accept),
+        &vault,
     )?;
     let reference = existing_evidence_claim_batch(
         0x900,
@@ -536,8 +468,8 @@ fn sealed_receipt_is_required_for_artifact_reference() -> Result<(), Box<dyn Err
     let reference_signed = signed(&reference)?;
     let reference_verified =
         verify_signed_batch(&reference_signed.envelope, &reference_signed.authorization)?;
-    let result = accept_verified_batch(
-        &mut writer,
+    fs::remove_file(vault.layout().object_path(descriptor)?)?;
+    let result = store.accept_verified_batch(
         &reference_verified,
         command(
             &reference_signed.envelope,
@@ -545,10 +477,10 @@ fn sealed_receipt_is_required_for_artifact_reference() -> Result<(), Box<dyn Err
             Some(accepted.receipt.committed_revision),
         ),
         TimestampMillis::new(7_002),
-        &TestGate(GateMode::Reject),
+        &vault,
     );
     assert!(matches!(result, Err(AcceptError::SealingFailed { .. })));
-    drop(writer);
+    drop(store);
     let snapshot = canonical_snapshot(&open_reader(database.path())?)?;
     assert_eq!(snapshot.batch_count, 1);
     assert_eq!(snapshot.event_count, 4);
@@ -577,7 +509,7 @@ fn db01_db07_process_exit_restart_matrix() -> Result<(), Box<dyn Error>> {
             .arg("process_fault_child")
             .arg("--nocapture")
             .env("ACADEMIC_S2_FAULT_CHILD", point.as_str())
-            .env("ACADEMIC_S2_FAULT_DATABASE", database.path())
+            .env("ACADEMIC_S2_FAULT_PROFILE", database.profile.root())
             .status()?;
         assert_eq!(
             status.code(),
@@ -598,16 +530,17 @@ fn db01_db07_process_exit_restart_matrix() -> Result<(), Box<dyn Error>> {
             assert_empty(restart);
         }
 
-        let batch = artifact_batch(0xa00 + u32::try_from(index)?, 0xb00 + u32::try_from(index)?)?;
+        let namespace = 0xa00 + u32::try_from(index)?;
+        let vault = database.vault(namespace)?;
+        let batch = artifact_batch(&vault, namespace, 0xb00 + u32::try_from(index)?)?;
         let signed = signed(&batch)?;
         let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
-        let mut writer = open_writer(database.path())?;
-        let retry = accept_verified_batch(
-            &mut writer,
+        let mut store = database.profile.open_acceptance_store()?;
+        let retry = store.accept_verified_batch(
             &verified,
             command(&signed.envelope, 42, Some(0)),
             TimestampMillis::new(8_000),
-            &TestGate(GateMode::Accept),
+            &vault,
         )?;
         assert_eq!(
             retry.replayed_request,
@@ -616,12 +549,11 @@ fn db01_db07_process_exit_restart_matrix() -> Result<(), Box<dyn Error>> {
             point.as_str()
         );
         if point == AcceptanceFaultPoint::Db07 {
-            let replay = accept_verified_batch(
-                &mut writer,
+            let replay = store.accept_verified_batch(
                 &verified,
                 command(&signed.envelope, 42, Some(0)),
                 TimestampMillis::new(8_001),
-                &TestGate(GateMode::Accept),
+                &vault,
             )?;
             assert!(replay.replayed_request);
             assert_eq!(
@@ -629,7 +561,7 @@ fn db01_db07_process_exit_restart_matrix() -> Result<(), Box<dyn Error>> {
                 retry.receipt.response_bytes()
             );
         }
-        drop(writer);
+        drop(store);
         let final_snapshot = canonical_snapshot(&open_reader(database.path())?)?;
         assert_eq!(final_snapshot.batch_count, 1);
         assert_eq!(final_snapshot.event_count, 4);
@@ -646,22 +578,24 @@ fn process_fault_child() -> Result<(), Box<dyn Error>> {
     let Ok(point_name) = env::var("ACADEMIC_S2_FAULT_CHILD") else {
         return Ok(());
     };
-    let database_path = PathBuf::from(
-        env::var_os("ACADEMIC_S2_FAULT_DATABASE")
-            .ok_or("ACADEMIC_S2_FAULT_DATABASE must accompany ACADEMIC_S2_FAULT_CHILD")?,
+    let profile_root = PathBuf::from(
+        env::var_os("ACADEMIC_S2_FAULT_PROFILE")
+            .ok_or("ACADEMIC_S2_FAULT_PROFILE must accompany ACADEMIC_S2_FAULT_CHILD")?,
     );
     let point = parse_db_fault(&point_name).ok_or("unknown DB fault point")?;
     let index = u32::try_from(fault_ordinal(point) - 1)?;
-    let batch = artifact_batch(0xa00 + index, 0xb00 + index)?;
+    let namespace = 0xa00 + index;
+    let profile = open_synthetic_profile(&profile_root, &NativePathProbe::default())?;
+    let vault = vault_for_namespace(&profile_root, namespace)?;
+    let batch = artifact_batch(&vault, namespace, 0xb00 + index)?;
     let signed = signed(&batch)?;
     let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
-    let mut writer = open_writer(&database_path)?;
-    let _ = accept_verified_batch_with_faults(
-        &mut writer,
+    let mut store = profile.open_acceptance_store()?;
+    let _ = store.accept_verified_batch_with_faults(
         &verified,
         command(&signed.envelope, 42, Some(0)),
         TimestampMillis::new(8_000),
-        &TestGate(GateMode::Accept),
+        &vault,
         &ProcessExitAt(point),
     )?;
     Err(format!("{} checkpoint was not reached", point.as_str()).into())
@@ -725,12 +659,14 @@ fn command(envelope: &[u8], seed: u8, expected_revision: Option<u64>) -> Accepta
     }
 }
 
-fn artifact_batch(namespace: u32, device: u32) -> Result<UnsignedBatch, DomainError> {
+fn artifact_batch(
+    vault: &Vault,
+    namespace: u32,
+    device: u32,
+) -> Result<UnsignedBatch, Box<dyn Error>> {
     let domain_id: DomainId = id(namespace + 1)?;
     let scope_id: ScopeId = id(namespace + 2)?;
-    let artifact_id: ArtifactId = id(namespace + 3)?;
     let evidence_id: EvidenceId = id(namespace + 4)?;
-    let media_type = MediaType::parse("text/plain")?;
     let bytes = format!("SYNTHETIC S2 {namespace}").into_bytes();
     let digest = ContentDigest::sha256(&bytes);
     let length = u64::try_from(bytes.len()).map_err(|_| DomainError::InvalidRange)?;
@@ -739,6 +675,14 @@ fn artifact_batch(namespace: u32, device: u32) -> Result<UnsignedBatch, DomainEr
         start: 0,
         end: length,
     };
+    let receipt = ingest_artifact(vault, namespace)?;
+    let mut descriptor = receipt.descriptor().clone();
+    let artifact_id = descriptor.id;
+    descriptor.evidence_representations = vec![ArtifactRepresentation {
+        locator: locator.clone(),
+        content_digest: digest,
+        byte_length: length,
+    }];
     let actor = Actor::Importer {
         name: "academic.s2.test".to_owned(),
         version: "1.0.0".to_owned(),
@@ -760,28 +704,7 @@ fn artifact_batch(namespace: u32, device: u32) -> Result<UnsignedBatch, DomainEr
             2,
             actor.clone(),
             domain_id,
-            EventPayload::ArtifactRegistered(ArtifactDescriptor {
-                id: artifact_id,
-                content_digest: digest,
-                media_type,
-                byte_length: length,
-                domain_id,
-                confidentiality: Confidentiality::Personal,
-                retention_class: RetentionClass::UserManaged,
-                permission_lineage_id: id::<PermissionLineageId>(namespace + 5)?,
-                format_version: 1,
-                vault_locator: VaultLocator::derive(
-                    b"academic-s2-test-locator-key",
-                    1,
-                    &MediaType::parse("text/plain")?,
-                    digest,
-                )?,
-                evidence_representations: vec![ArtifactRepresentation {
-                    locator: locator.clone(),
-                    content_digest: digest,
-                    byte_length: length,
-                }],
-            }),
+            EventPayload::ArtifactRegistered(descriptor),
         )?,
         event(
             namespace + 12,
@@ -829,6 +752,28 @@ fn artifact_batch(namespace: u32, device: u32) -> Result<UnsignedBatch, DomainEr
         origin_created_at: TimestampMillis::new(100),
         events,
     })
+}
+
+fn vault_for_namespace(root: &Path, namespace: u32) -> Result<Vault, Box<dyn Error>> {
+    let mut keyring = DomainKeyring::new();
+    keyring.insert(
+        id::<DomainId>(namespace + 1)?,
+        b"academic-s2-test-locator-key",
+    )?;
+    Ok(Vault::open(root, keyring)?)
+}
+
+fn ingest_artifact(vault: &Vault, namespace: u32) -> Result<SealedArtifactReceipt, Box<dyn Error>> {
+    let request = ArtifactIngestRequest::new(
+        id::<ArtifactId>(namespace + 3)?,
+        MediaType::parse("text/plain")?,
+        id::<DomainId>(namespace + 1)?,
+        Confidentiality::Personal,
+        RetentionClass::UserManaged,
+        id::<PermissionLineageId>(namespace + 5)?,
+    );
+    let bytes = format!("SYNTHETIC S2 {namespace}").into_bytes();
+    Ok(vault.ingest(&request, bytes.as_slice())?)
 }
 
 fn scope_batch(

@@ -16,16 +16,12 @@ use academic_domain::{
     ArtifactDescriptor, ArtifactId, Confidentiality, ContentDigest, DomainId, MediaType,
     PermissionLineageId, RetentionClass, VaultLocator,
 };
-use academic_store::{
-    path_policy::NativePathProbe,
-    profile::{create_synthetic_profile, open_synthetic_profile},
-};
 use academic_vault::{
     DomainKeyring, ReconcileOptions, ReconcileState, SealDisposition, VAULT_FORMAT_VERSION, Vault,
 };
 use synthetic_artifacts::{
     ARTIFACT_ID, DOMAIN_ID, DOMAIN_KEY, PERMISSION_LINEAGE_ID, SyntheticTestRoot,
-    large_artifact_bytes,
+    create_private_test_root, large_artifact_bytes,
 };
 
 const CHILD_ENV: &str = "ACADEMIC_VAULT_TEST_CHILD";
@@ -42,8 +38,8 @@ fn fault_child_entrypoint() -> Result<(), Box<dyn Error>> {
     let root = env::var_os(PROFILE_ENV)
         .map(PathBuf::from)
         .ok_or("fault child profile path was not supplied")?;
-    let profile = create_synthetic_profile(&root, &NativePathProbe::default(), [0x62; 32])?;
-    let vault = open_vault(&profile)?;
+    create_private_test_root(&root)?;
+    let vault = open_vault(&root)?;
     let request = synthetic_artifacts::ingest_request()?;
     let bytes = large_artifact_bytes();
     let _receipt = vault.ingest(&request, bytes.as_slice())?;
@@ -76,8 +72,7 @@ fn exercise_fault(fault: &str) -> Result<(), Box<dyn Error>> {
     assert!(!status.success(), "{fault} child unexpectedly succeeded");
     assert_eq!(fs::read_to_string(&ready)?, fault);
 
-    let profile = open_synthetic_profile(root.path(), &NativePathProbe::default())?;
-    let vault = open_vault(&profile)?;
+    let vault = open_vault(root.path())?;
     let bytes = large_artifact_bytes();
     let expected = expected_descriptor(&bytes)?;
     let retry_candidates = [expected.clone()];
@@ -113,13 +108,11 @@ fn exercise_fault(fault: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn open_vault(
-    profile: &academic_store::profile::SyntheticProfile,
-) -> Result<Vault, Box<dyn Error>> {
+fn open_vault(profile_root: &Path) -> Result<Vault, Box<dyn Error>> {
     let domain_id: DomainId = DOMAIN_ID.parse()?;
     let mut keyring = DomainKeyring::new();
     keyring.insert(domain_id, DOMAIN_KEY)?;
-    Ok(Vault::open(profile, keyring)?)
+    Ok(Vault::open(profile_root, keyring)?)
 }
 
 fn expected_descriptor(bytes: &[u8]) -> Result<ArtifactDescriptor, Box<dyn Error>> {

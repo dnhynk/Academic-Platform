@@ -48,6 +48,12 @@ impl VaultLayout {
         Ok(())
     }
 
+    /// Returns the profile root that owns this vault namespace.
+    #[must_use]
+    pub fn profile_root(&self) -> &Path {
+        &self.profile_root
+    }
+
     /// Returns the profile's vault directory.
     #[must_use]
     pub fn vault_root(&self) -> &Path {

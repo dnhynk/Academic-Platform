@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    fmt, fs,
+    fs,
     path::{Path, PathBuf},
     str::FromStr,
     sync::{
@@ -13,27 +13,27 @@ use std::{
 
 use academic_contracts::{DeviceAuthorization, sign_batch, verify_signed_batch};
 use academic_domain::{
-    ArtifactDescriptor, ArtifactId, BatchId, ContentDigest, DeviceId, DomainError, DomainId, Event,
-    EventId, EventPayload, ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch,
+    BatchId, DeviceId, DomainError, DomainId, Event, EventId, EventPayload, ScopeDescriptor,
+    ScopeId, TimestampMillis, UnsignedBatch,
 };
 use academic_ledger::EVENT_SCHEMA_VERSION;
 use academic_store::{
-    SealedObjectReceipt, SealedObjectVerifier,
-    accept::{accept_verified_batch, accept_verified_batch_with_faults},
-    connection::{open_reader, open_writer},
+    connection::open_reader,
     fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault},
     idempotency::AcceptanceCommand,
-    migration::migrate_pre_listen,
     outbox::read_outbox,
+    path_policy::NativePathProbe,
+    profile::{SyntheticProfile, create_synthetic_profile, open_synthetic_profile},
     queries::canonical_snapshot,
 };
+use academic_vault::{DomainKeyring, Vault};
 
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug)]
 struct TestDatabase {
     root: PathBuf,
-    path: PathBuf,
+    profile: SyntheticProfile,
 }
 
 impl TestDatabase {
@@ -43,14 +43,12 @@ impl TestDatabase {
             "academic-s2-outbox-{label}-{}-{sequence}",
             std::process::id()
         ));
-        fs::create_dir(&root)?;
-        let path = root.join("store.sqlite3");
-        migrate_pre_listen(&path, [0x82; 32])?;
-        Ok(Self { root, path })
+        let profile = create_synthetic_profile(&root, &NativePathProbe::default(), [0x82; 32])?;
+        Ok(Self { root, profile })
     }
 
     fn path(&self) -> &Path {
-        &self.path
+        self.profile.database_path()
     }
 }
 
@@ -59,48 +57,6 @@ impl Drop for TestDatabase {
         if let Err(error) = fs::remove_dir_all(&self.root) {
             eprintln!("test cleanup failed for {}: {error}", self.root.display());
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct DummyReceipt {
-    artifact_id: ArtifactId,
-    content_digest: ContentDigest,
-}
-
-impl SealedObjectReceipt for DummyReceipt {
-    fn artifact_id(&self) -> ArtifactId {
-        self.artifact_id
-    }
-
-    fn content_digest(&self) -> ContentDigest {
-        self.content_digest
-    }
-}
-
-#[derive(Debug)]
-struct EmptyGate;
-
-#[derive(Debug)]
-struct UnexpectedArtifact;
-
-impl fmt::Display for UnexpectedArtifact {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("scope-only batch unexpectedly referenced an artifact")
-    }
-}
-
-impl Error for UnexpectedArtifact {}
-
-impl SealedObjectVerifier for EmptyGate {
-    type Receipt = DummyReceipt;
-    type Error = UnexpectedArtifact;
-
-    fn verify_sealed_object(
-        &self,
-        _descriptor: &ArtifactDescriptor,
-    ) -> Result<Self::Receipt, Self::Error> {
-        Err(UnexpectedArtifact)
     }
 }
 
@@ -143,18 +99,18 @@ impl AcceptanceFaultInjector for PauseAtDb05 {
 #[test]
 fn outbox_commits_with_batch() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("commit")?;
+    let vault = Vault::open(database.profile.root(), DomainKeyring::new())?;
     let batch = scope_batch(0x100, 0x800)?;
     let signed = signed(&batch)?;
     let verified = verify_signed_batch(&signed.0, &signed.1)?;
-    let mut writer = open_writer(database.path())?;
-    let outcome = accept_verified_batch(
-        &mut writer,
+    let mut store = database.profile.open_acceptance_store()?;
+    let outcome = store.accept_verified_batch(
         &verified,
         command(&signed.0, 1),
         TimestampMillis::new(1_000),
-        &EmptyGate,
+        &vault,
     )?;
-    drop(writer);
+    drop(store);
 
     let reader = open_reader(database.path())?;
     let entries = read_outbox(&reader)?;
@@ -175,22 +131,23 @@ fn outbox_commits_with_batch() -> Result<(), Box<dyn Error>> {
 #[test]
 fn outbox_never_leads_canonical_commit() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("rollback")?;
+    let vault = Vault::open(database.profile.root(), DomainKeyring::new())?;
     let batch = scope_batch(0x200, 0x801)?;
     let signed = signed(&batch)?;
     let verified = verify_signed_batch(&signed.0, &signed.1)?;
-    let mut writer = open_writer(database.path())?;
+    let mut store = database.profile.open_acceptance_store()?;
     assert!(
-        accept_verified_batch_with_faults(
-            &mut writer,
-            &verified,
-            command(&signed.0, 2),
-            TimestampMillis::new(2_000),
-            &EmptyGate,
-            &FailAt(AcceptanceFaultPoint::Db05),
-        )
-        .is_err()
+        store
+            .accept_verified_batch_with_faults(
+                &verified,
+                command(&signed.0, 2),
+                TimestampMillis::new(2_000),
+                &vault,
+                &FailAt(AcceptanceFaultPoint::Db05),
+            )
+            .is_err()
     );
-    drop(writer);
+    drop(store);
     let reader = open_reader(database.path())?;
     let snapshot = canonical_snapshot(&reader)?;
     assert_eq!(snapshot.batch_count, 0);
@@ -205,28 +162,35 @@ fn outbox_never_leads_canonical_commit() -> Result<(), Box<dyn Error>> {
 fn readers_observe_before_or_after_not_partial() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("concurrency")?;
     let path = Arc::new(database.path().to_path_buf());
+    let profile_root = Arc::new(database.profile.root().to_path_buf());
     let batch = scope_batch(0x300, 0x802)?;
     let signed = signed(&batch)?;
     let (reached_sender, reached_receiver) = mpsc::channel();
     let (release_sender, release_receiver) = mpsc::channel();
 
-    let writer_path = Arc::clone(&path);
+    let writer_root = Arc::clone(&profile_root);
     let writer = thread::spawn(move || -> Result<(), String> {
         let verified =
             verify_signed_batch(&signed.0, &signed.1).map_err(|error| error.to_string())?;
-        let mut writer = open_writer(&writer_path).map_err(|error| error.to_string())?;
-        accept_verified_batch_with_faults(
-            &mut writer,
-            &verified,
-            command(&signed.0, 3),
-            TimestampMillis::new(3_000),
-            &EmptyGate,
-            &PauseAtDb05 {
-                reached: reached_sender,
-                release: Mutex::new(release_receiver),
-            },
-        )
-        .map_err(|error| error.to_string())?;
+        let profile = open_synthetic_profile(&writer_root, &NativePathProbe::default())
+            .map_err(|error| error.to_string())?;
+        let vault =
+            Vault::open(&writer_root, DomainKeyring::new()).map_err(|error| error.to_string())?;
+        let mut store = profile
+            .open_acceptance_store()
+            .map_err(|error| error.to_string())?;
+        store
+            .accept_verified_batch_with_faults(
+                &verified,
+                command(&signed.0, 3),
+                TimestampMillis::new(3_000),
+                &vault,
+                &PauseAtDb05 {
+                    reached: reached_sender,
+                    release: Mutex::new(release_receiver),
+                },
+            )
+            .map_err(|error| error.to_string())?;
         Ok(())
     });
     reached_receiver.recv()?;
