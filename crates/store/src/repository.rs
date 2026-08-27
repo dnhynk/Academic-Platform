@@ -21,9 +21,10 @@ use academic_domain::{
     ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch, UserDecision, ValidInterval,
 };
 use academic_ledger::{LedgerError, ResolverActorKind, relation_effect_is_authorized_for_kind};
+use academic_vault::SealedObjectCapability;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
-use crate::{SealedObjectReceipt, connection::WriterConnection};
+use crate::connection::WriterConnection;
 
 /// Current singleton counters read under `BEGIN IMMEDIATE`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -375,28 +376,21 @@ struct AcceptedClaim {
 }
 
 /// Stages closure knowledge while normalized rows are appended in event order.
-pub(crate) struct ClosureWriter<'transaction, 'connection, 'receipts, Receipt>
-where
-    Receipt: SealedObjectReceipt,
-{
+pub(crate) struct ClosureWriter<'transaction, 'connection, 'receipts> {
     transaction: &'transaction Transaction<'connection>,
     batch: &'transaction UnsignedBatch,
-    sealed_receipts: &'receipts BTreeMap<ArtifactId, Receipt>,
+    sealed_receipts: &'receipts BTreeMap<ArtifactId, SealedObjectCapability>,
     scopes: BTreeMap<ScopeId, ScopeDescriptor>,
     artifacts: BTreeMap<ArtifactId, ArtifactDescriptor>,
     evidence: BTreeMap<EvidenceId, AcceptedEvidence>,
     claims: BTreeMap<ClaimId, AcceptedClaim>,
 }
 
-impl<'transaction, 'connection, 'receipts, Receipt>
-    ClosureWriter<'transaction, 'connection, 'receipts, Receipt>
-where
-    Receipt: SealedObjectReceipt,
-{
+impl<'transaction, 'connection, 'receipts> ClosureWriter<'transaction, 'connection, 'receipts> {
     pub(crate) fn new(
         transaction: &'transaction Transaction<'connection>,
         batch: &'transaction UnsignedBatch,
-        sealed_receipts: &'receipts BTreeMap<ArtifactId, Receipt>,
+        sealed_receipts: &'receipts BTreeMap<ArtifactId, SealedObjectCapability>,
     ) -> Self {
         Self {
             transaction,
@@ -906,9 +900,7 @@ where
         let Some(receipt) = self.sealed_receipts.get(&descriptor.id) else {
             return Err(RepositoryError::MissingSealedReceipt(descriptor.id));
         };
-        if receipt.artifact_id() != descriptor.id
-            || receipt.content_digest() != descriptor.content_digest
-        {
+        if receipt.descriptor() != descriptor {
             return Err(RepositoryError::MismatchedSealedReceipt(descriptor.id));
         }
         Ok(())

@@ -21,6 +21,7 @@ academic-contracts = { path = "../contracts" }
 academic-domain = { path = "../domain" }
 academic-ledger = { path = "../ledger" }
 academic-store-platform = { path = "../store-platform" }
+academic-vault = { path = "../vault" }
 rusqlite.workspace = true
 
 [lints]

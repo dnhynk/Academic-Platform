@@ -7,7 +7,7 @@ use std::{
 
 use academic_store::{
     SQLITE_APPLICATION_ID, STORE_FORMAT_UUID, STORE_SCHEMA_SEMVER, STORE_SCHEMA_VERSION,
-    connection::open_writer,
+    connection::open_reader,
     error::StoreError,
     migration::{
         MigrationStatus, checked_sqlite_integer, migrate_pre_listen, read_schema_identity,
@@ -56,8 +56,8 @@ fn schema_identity_triplet_agrees() -> Result<(), Box<dyn Error>> {
         migrate_pre_listen(database.path(), BUILD_DIGEST)?,
         MigrationStatus::Applied
     );
-    let writer = open_writer(database.path())?;
-    let pragmas = writer.pragma_snapshot()?;
+    let reader = open_reader(database.path())?;
+    let pragmas = reader.pragma_snapshot()?;
     assert_eq!(pragmas.application_id, i64::from(SQLITE_APPLICATION_ID));
     assert_eq!(pragmas.user_version, i64::from(STORE_SCHEMA_VERSION));
 
@@ -121,7 +121,7 @@ fn migration_is_idempotent_only_at_same_version() -> Result<(), Box<dyn Error>> 
     raw.execute_batch("DROP TRIGGER guard_claim_delete;")?;
     drop(raw);
     assert!(matches!(
-        open_writer(tampered.path()),
+        open_reader(tampered.path()),
         Err(StoreError::SchemaIdentityMismatch { .. })
     ));
     assert!(matches!(

@@ -13,7 +13,6 @@ use std::{
 use academic_domain::{
     ArtifactId, Confidentiality, DomainId, MediaType, PermissionLineageId, RetentionClass,
 };
-use academic_store::{path_policy::NativePathProbe, profile::create_synthetic_profile};
 use academic_vault::{ArtifactIngestRequest, DomainKeyring, Vault};
 
 /// Locator key used only by disposable test profiles.
@@ -110,12 +109,24 @@ pub fn large_artifact_bytes() -> Vec<u8> {
 /// Creates and opens one complete disposable vault with both fixture domains keyed.
 pub fn open_test_vault(label: &str) -> Result<(SyntheticTestRoot, Vault), Box<dyn Error>> {
     let root = SyntheticTestRoot::new(label)?;
-    let profile = create_synthetic_profile(root.path(), &NativePathProbe::default(), [0x51; 32])?;
+    create_private_test_root(root.path())?;
     let mut keyring = DomainKeyring::new();
     keyring.insert(DOMAIN_ID.parse()?, DOMAIN_KEY)?;
     keyring.insert(SECOND_DOMAIN_ID.parse()?, SECOND_DOMAIN_KEY)?;
-    let vault = Vault::open(&profile, keyring)?;
+    let vault = Vault::open(root.path(), keyring)?;
     Ok((root, vault))
+}
+
+/// Creates a vault test root with the owner-only Unix mode required by the native path policy.
+pub fn create_private_test_root(path: &Path) -> io::Result<()> {
+    fs::create_dir(path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
+    }
+    Ok(())
 }
 
 /// Constructs the default exact-policy fixture request.
