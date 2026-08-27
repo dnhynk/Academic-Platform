@@ -7,12 +7,14 @@ import protobuf from "protobufjs";
 
 const [
   fixtureV1Bytes,
-  fixtureV2Text,
+  fixtureV2Bytes,
   fixtureSchemaV1Bytes,
   fixtureSchemaV2Text,
   artifactSchemaText,
   artifactCorpusText,
   fixtureRawCorpusText,
+  fixtureIntegerCorpusText,
+  fixtureByteCorpusText,
   toolVersionCorpusText,
   nodePinText,
   rustToolchainText,
@@ -33,12 +35,14 @@ const [
   ciText,
 ] = await Promise.all([
   readFile("schemas/fixtures/signed-batch-v1.json"),
-  readFile("schemas/fixtures/signed-batch-v2.json", "utf8"),
+  readFile("schemas/fixtures/signed-batch-v2.json"),
   readFile("schemas/jsonschema/signed-batch-fixture-v1.schema.json"),
   readFile("schemas/jsonschema/signed-batch-fixture-v2.schema.json", "utf8"),
   readFile("schemas/jsonschema/artifact-descriptor-v1.schema.json", "utf8"),
   readFile("schemas/fixtures/artifact-descriptor-parity-v1.json", "utf8"),
   readFile("schemas/fixtures/signed-batch-raw-parity-v1.json", "utf8"),
+  readFile("schemas/fixtures/signed-batch-integer-lexeme-parity-v1.json", "utf8"),
+  readFile("schemas/fixtures/signed-batch-byte-parity-v1.json", "utf8"),
   readFile("tools/fixtures/tool-version-conformance-v1.json", "utf8"),
   readFile(".nvmrc", "utf8"),
   readFile("rust-toolchain.toml", "utf8"),
@@ -59,7 +63,6 @@ const [
   readFile(".github/workflows/ci.yml", "utf8"),
 ]);
 
-const fixtureV1Text = fixtureV1Bytes.toString("utf8");
 const fixtureSchemaV1Text = fixtureSchemaV1Bytes.toString("utf8");
 const protoV1Text = protoV1Bytes.toString("utf8");
 const fixtureSchemaV1 = JSON.parse(fixtureSchemaV1Text);
@@ -67,21 +70,25 @@ const fixtureSchemaV2 = JSON.parse(fixtureSchemaV2Text);
 const artifactSchema = JSON.parse(artifactSchemaText);
 const artifactCorpus = JSON.parse(artifactCorpusText);
 const fixtureRawCorpus = JSON.parse(fixtureRawCorpusText);
+const fixtureIntegerCorpus = JSON.parse(fixtureIntegerCorpusText);
+const fixtureByteCorpus = JSON.parse(fixtureByteCorpusText);
 const toolVersionCorpus = JSON.parse(toolVersionCorpusText);
 const packageJson = JSON.parse(packageJsonText);
 assert.equal(fixtureRawCorpus.schema_version, 1, "raw fixture corpus schema version");
+assert.equal(fixtureIntegerCorpus.schema_version, 1, "integer fixture corpus schema version");
+assert.equal(fixtureByteCorpus.schema_version, 1, "byte fixture corpus schema version");
 const {
   assertArtifactDescriptorSemantics,
   assertCanonicalArtifactJsonNumberTokens,
-  assertPortableFixtureJsonText,
+  decodePortableFixtureJsonBytes,
   parseArtifactDescriptorJson,
   parseFixtureDocument,
   parseFixtureDocumentJson,
 } = await import("../packages/web-contracts/dist/index.js");
 const { assertToolVersionConformanceCorpus } = await import("./tool-version-policy.mjs");
 
-assertPortableFixtureJsonText(fixtureV1Text);
-assertPortableFixtureJsonText(fixtureV2Text);
+const fixtureV1Text = decodePortableFixtureJsonBytes(fixtureV1Bytes);
+const fixtureV2Text = decodePortableFixtureJsonBytes(fixtureV2Bytes);
 const fixtureV1 = JSON.parse(fixtureV1Text);
 const fixtureV2 = JSON.parse(fixtureV2Text);
 assertToolVersionConformanceCorpus(toolVersionCorpus);
@@ -137,6 +144,23 @@ const sha256Upper = (bytes) => createHash("sha256").update(bytes).digest("hex").
 const assertImmutableV1Bytes = (bytes, expected, label) => {
   assert.equal(sha256Upper(bytes), expected, `${label} bytes are immutable`);
 };
+const replaceBytesOnce = (source, needleUtf8, replacementHex, label) => {
+  assert.match(replacementHex, /^(?:[0-9a-f]{2})+$/u, `${label}: canonical replacement hex`);
+  const sourceBuffer = Buffer.from(source);
+  const needle = Buffer.from(needleUtf8, "utf8");
+  const index = sourceBuffer.indexOf(needle);
+  assert.ok(index >= 0, `${label}: byte needle must exist`);
+  assert.equal(
+    sourceBuffer.indexOf(needle, index + needle.length),
+    -1,
+    `${label}: byte needle must be unique`,
+  );
+  return Buffer.concat([
+    sourceBuffer.subarray(0, index),
+    Buffer.from(replacementHex, "hex"),
+    sourceBuffer.subarray(index + needle.length),
+  ]);
+};
 assert.equal(
   sha256Upper(canonicalSpecBytes),
   "4830DEBD1A9EE8BE13B10D1E72BA3D2A3943F9D63417051CC123EF51743B2E45",
@@ -182,7 +206,7 @@ for (const [label, mutated, expected] of [
   );
 }
 assert.equal(
-  createHash("sha256").update(fixtureV2Text).digest("hex").toUpperCase(),
+  createHash("sha256").update(fixtureV2Bytes).digest("hex").toUpperCase(),
   "41675CC19BFBA5801F93D18EFC4786E5D65A5166F466DA0A2D43B05C379E43A6",
   "signed-batch-v2 must match the repaired deterministic builder",
 );
@@ -195,11 +219,11 @@ for (const [version, fixture, validateFixtureSchema] of [
     true,
     `committed v${version} fixture must satisfy JSON Schema: ${ajv.errorsText(validateFixtureSchema.errors)}`,
   );
-  const rawFixture = version === 1 ? fixtureV1Text : fixtureV2Text;
+  const rawFixture = version === 1 ? fixtureV1Bytes : fixtureV2Bytes;
   assert.deepEqual(parseFixtureDocumentJson(rawFixture), fixture);
 }
 
-for (const testCase of fixtureRawCorpus.cases) {
+for (const testCase of [...fixtureRawCorpus.cases, ...fixtureIntegerCorpus.cases]) {
   const baseText = testCase.fixture === 1 ? fixtureV1Text : fixtureV2Text;
   const validateFixtureSchema = testCase.fixture === 1
     ? validateFixtureSchemaV1
@@ -210,10 +234,11 @@ for (const testCase of fixtureRawCorpus.cases) {
     assert.notEqual(next, rawFixture, `${testCase.name}: replacement must mutate fixture text`);
     rawFixture = next;
   }
+  const rawFixtureBytes = Buffer.from(rawFixture, "utf8");
   let schemaBoundaryValid = true;
   try {
-    assertPortableFixtureJsonText(rawFixture);
-    schemaBoundaryValid = validateFixtureSchema(JSON.parse(rawFixture));
+    const decoded = decodePortableFixtureJsonBytes(rawFixtureBytes);
+    schemaBoundaryValid = validateFixtureSchema(JSON.parse(decoded));
   } catch {
     schemaBoundaryValid = false;
   }
@@ -224,7 +249,7 @@ for (const testCase of fixtureRawCorpus.cases) {
   );
   let typescriptValid = true;
   try {
-    parseFixtureDocumentJson(rawFixture);
+    parseFixtureDocumentJson(rawFixtureBytes);
   } catch {
     typescriptValid = false;
   }
@@ -233,6 +258,51 @@ for (const testCase of fixtureRawCorpus.cases) {
     testCase.valid,
     `raw fixture/TypeScript boundary disagreement: ${testCase.name}`,
   );
+}
+
+for (const testCase of fixtureByteCorpus.cases) {
+  let bytes = Buffer.from(testCase.fixture === 1 ? fixtureV1Bytes : fixtureV2Bytes);
+  for (const replacement of testCase.replacements) {
+    bytes = replaceBytesOnce(
+      bytes,
+      replacement.needle_utf8,
+      replacement.replacement_hex,
+      testCase.name,
+    );
+  }
+  const validateFixtureSchema = testCase.fixture === 1
+    ? validateFixtureSchemaV1
+    : validateFixtureSchemaV2;
+  let schemaBoundaryValid = true;
+  try {
+    const decoded = decodePortableFixtureJsonBytes(bytes);
+    schemaBoundaryValid = validateFixtureSchema(JSON.parse(decoded));
+  } catch {
+    schemaBoundaryValid = false;
+  }
+  assert.equal(
+    schemaBoundaryValid,
+    testCase.valid,
+    `strict UTF-8/Ajv boundary disagreement: ${testCase.name}`,
+  );
+  let typescriptValid = true;
+  try {
+    parseFixtureDocumentJson(bytes);
+  } catch {
+    typescriptValid = false;
+  }
+  assert.equal(
+    typescriptValid,
+    testCase.valid,
+    `strict UTF-8/TypeScript boundary disagreement: ${testCase.name}`,
+  );
+  if (!testCase.valid) {
+    assert.throws(
+      () => decodePortableFixtureJsonBytes(bytes),
+      TypeError,
+      `malformed UTF-8 must reject before JSON/Ajv: ${testCase.name}`,
+    );
+  }
 }
 
 const validArtifact = artifactCorpus.base;
@@ -431,20 +501,392 @@ for (const [name, mutate] of invalidFixtures) {
 assert.equal(fixtureSchemaV1.$schema, "https://json-schema.org/draft/2020-12/schema");
 assert.equal(fixtureSchemaV2.$schema, "https://json-schema.org/draft/2020-12/schema");
 assert.equal(artifactSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
+const maskRustCommentsAndLiterals = (source) => {
+  const masked = source.split("");
+  const blank = (index) => {
+    if (masked[index] !== "\n" && masked[index] !== "\r") masked[index] = " ";
+  };
+  const blankRange = (start, end) => {
+    for (let index = start; index < end; index += 1) blank(index);
+  };
+  let index = 0;
+  while (index < source.length) {
+    if (source.startsWith("//", index)) {
+      const end = source.indexOf("\n", index + 2);
+      const boundedEnd = end < 0 ? source.length : end;
+      blankRange(index, boundedEnd);
+      index = boundedEnd;
+      continue;
+    }
+    if (source.startsWith("/*", index)) {
+      const start = index;
+      let depth = 1;
+      index += 2;
+      while (index < source.length && depth > 0) {
+        if (source.startsWith("/*", index)) {
+          depth += 1;
+          index += 2;
+        } else if (source.startsWith("*/", index)) {
+          depth -= 1;
+          index += 2;
+        } else {
+          index += 1;
+        }
+      }
+      blankRange(start, index);
+      continue;
+    }
+    const raw = source.slice(index).match(/^(?:br|cr|r)(?<hashes>#+)?"/u);
+    if (raw !== null) {
+      const hashes = raw.groups?.hashes ?? "";
+      const terminator = `"${hashes}`;
+      const end = source.indexOf(terminator, index + raw[0].length);
+      const boundedEnd = end < 0 ? source.length : end + terminator.length;
+      blankRange(index, boundedEnd);
+      index = boundedEnd;
+      continue;
+    }
+    const stringPrefix = source.startsWith('b"', index) || source.startsWith('c"', index)
+      ? 2
+      : source[index] === '"' ? 1 : 0;
+    if (stringPrefix > 0) {
+      const start = index;
+      index += stringPrefix;
+      while (index < source.length) {
+        if (source[index] === "\\") {
+          index += 2;
+        } else if (source[index] === '"') {
+          index += 1;
+          break;
+        } else {
+          index += 1;
+        }
+      }
+      blankRange(start, index);
+      continue;
+    }
+    if (source[index] === "'") {
+      let end = index + 1;
+      let escaped = false;
+      while (end < source.length && source[end] !== "\n" && source[end] !== "\r") {
+        if (!escaped && source[end] === "'") break;
+        escaped = !escaped && source[end] === "\\";
+        if (source[end] !== "\\") escaped = false;
+        end += 1;
+      }
+      if (source[end] === "'") {
+        blankRange(index, end + 1);
+        index = end + 1;
+        continue;
+      }
+    }
+    index += 1;
+  }
+  return masked.join("");
+};
+const stripRustAttributes = (prefix) => {
+  let result = "";
+  let index = 0;
+  while (index < prefix.length) {
+    if (prefix[index] === "#" && prefix[index + 1] === "[") {
+      let depth = 1;
+      index += 2;
+      while (index < prefix.length && depth > 0) {
+        if (prefix[index] === "[") depth += 1;
+        if (prefix[index] === "]") depth -= 1;
+        index += 1;
+      }
+    } else {
+      result += prefix[index];
+      index += 1;
+    }
+  }
+  return result;
+};
+const rustFunctionEnd = (masked, fnIndex) => {
+  const openingBrace = masked.indexOf("{", fnIndex);
+  const declarationEnd = masked.indexOf(";", fnIndex);
+  if (openingBrace < 0 || (declarationEnd >= 0 && declarationEnd < openingBrace)) {
+    assert.ok(declarationEnd >= 0, "root Rust function declaration must terminate");
+    return declarationEnd + 1;
+  }
+  let depth = 1;
+  for (let index = openingBrace + 1; index < masked.length; index += 1) {
+    if (masked[index] === "{") depth += 1;
+    if (masked[index] === "}") depth -= 1;
+    if (depth === 0) return index + 1;
+  }
+  assert.fail("root Rust function body must terminate");
+};
 const rustRootFunctionBodies = (source) => {
-  const production = source.split("#[cfg(test)]", 1)[0];
-  const declarations = [...production.matchAll(/^(?<visibility>pub\s+)?fn\s+(?<name>[a-z_][a-z0-9_]*)\s*\(/gmu)];
-  return new Map(declarations.map((match, index) => {
-    const start = match.index ?? 0;
-    const end = declarations[index + 1]?.index ?? production.length;
-    return [match.groups.name, {
-      public: match.groups.visibility !== undefined,
-      source: production.slice(start, end),
-    }];
-  }));
+  const masked = maskRustCommentsAndLiterals(source);
+  const functions = new Map();
+  let itemStart = 0;
+  let braceDepth = 0;
+  let index = 0;
+  while (index < masked.length) {
+    const character = masked[index];
+    if (braceDepth === 0 && character === "!" && masked[index + 1] !== "=") {
+      assert.fail("unreviewed root Rust macros and includes are forbidden");
+    }
+    if (character === "{") {
+      braceDepth += 1;
+      index += 1;
+      continue;
+    }
+    if (character === "}") {
+      braceDepth -= 1;
+      assert.ok(braceDepth >= 0, "Rust root item braces must remain balanced");
+      index += 1;
+      if (braceDepth === 0) itemStart = index;
+      continue;
+    }
+    if (braceDepth === 0 && character === ";") {
+      itemStart = index + 1;
+      index += 1;
+      continue;
+    }
+    const isIdentifierBefore = /[A-Za-z0-9_]/u.test(masked[index - 1] ?? "");
+    const isIdentifierAfter = /[A-Za-z0-9_]/u.test(masked[index + 2] ?? "");
+    if (
+      braceDepth === 0 &&
+      masked.startsWith("fn", index) &&
+      !isIdentifierBefore &&
+      !isIdentifierAfter
+    ) {
+      const nameMatch = masked.slice(index + 2).match(
+        /^\s+(?<name>[a-z_][a-z0-9_]*)(?=\s*(?:<|\())/u,
+      );
+      assert.ok(
+        nameMatch?.groups?.name !== undefined,
+        "root Rust fn tokens must use the reviewed ASCII declaration grammar",
+      );
+      const name = nameMatch.groups.name;
+      const prefix = stripRustAttributes(masked.slice(itemStart, index));
+      const visibility = [...prefix.matchAll(/\bpub(?<restriction>\s*\([^)]*\))?/gu)].at(-1);
+      const end = rustFunctionEnd(masked, index);
+      assert.equal(functions.has(name), false, `duplicate root Rust function ${name}`);
+      functions.set(name, {
+        public: visibility !== undefined && visibility.groups?.restriction === undefined,
+        source: source.slice(itemStart, end),
+        start: itemStart,
+        end,
+      });
+      itemStart = end;
+      index = end;
+      continue;
+    }
+    index += 1;
+  }
+  assert.equal(braceDepth, 0, "Rust root item braces must balance");
+  return functions;
+};
+const maskedRustProductionSource = (source) => {
+  const masked = maskRustCommentsAndLiterals(source);
+  const output = masked.split("");
+  const testModules = [...masked.matchAll(
+    /#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]\s*mod\s+tests\s*\{/gu,
+  )];
+  assert.equal(testModules.length, 1, "the reviewed Rust source must have one cfg(test) module");
+  const testModule = testModules[0];
+  const start = testModule.index ?? -1;
+  assert.ok(start >= 0, "the reviewed cfg(test) module must have a source position");
+  let rootDepth = 0;
+  for (let index = 0; index < start; index += 1) {
+    if (masked[index] === "{") rootDepth += 1;
+    if (masked[index] === "}") rootDepth -= 1;
+  }
+  assert.equal(rootDepth, 0, "the reviewed cfg(test) module must be a root item");
+  const openingBrace = start + testModule[0].lastIndexOf("{");
+  let depth = 1;
+  let end = -1;
+  for (let index = openingBrace + 1; index < masked.length; index += 1) {
+    if (masked[index] === "{") depth += 1;
+    if (masked[index] === "}") depth -= 1;
+    if (depth === 0) {
+      end = index + 1;
+      break;
+    }
+  }
+  assert.ok(end >= 0, "the reviewed cfg(test) module must terminate");
+  for (let index = start; index < end; index += 1) {
+    if (output[index] !== "\n" && output[index] !== "\r") output[index] = " ";
+  }
+  return output.join("");
+};
+const rustRootPublicItems = (source) => {
+  const masked = maskRustCommentsAndLiterals(source);
+  const items = [];
+  let braceDepth = 0;
+  for (let index = 0; index < masked.length; index += 1) {
+    if (masked[index] === "{") {
+      braceDepth += 1;
+      continue;
+    }
+    if (masked[index] === "}") {
+      braceDepth -= 1;
+      assert.ok(braceDepth >= 0, "Rust public-item braces must remain balanced");
+      continue;
+    }
+    if (
+      braceDepth !== 0 ||
+      !masked.startsWith("pub", index) ||
+      /[A-Za-z0-9_]/u.test(masked[index - 1] ?? "") ||
+      /[A-Za-z0-9_]/u.test(masked[index + 3] ?? "")
+    ) {
+      continue;
+    }
+    const tail = masked.slice(index + 3);
+    if (/^\s*\(/u.test(tail)) continue;
+    const functionMatch = tail.match(
+      /^\s+(?:(?:const|async|unsafe|extern)\s+)*fn\s+(?<name>[a-z_][a-z0-9_]*)(?=\s*(?:<|\())/u,
+    );
+    if (functionMatch?.groups?.name !== undefined) {
+      items.push({ kind: "fn", name: functionMatch.groups.name, source: "" });
+      continue;
+    }
+    const typeMatch = tail.match(
+      /^\s+(?<kind>struct|enum)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)(?=\s*(?:<|where\b|\{|\(|;))/u,
+    );
+    if (typeMatch?.groups?.kind !== undefined && typeMatch.groups.name !== undefined) {
+      items.push({ kind: typeMatch.groups.kind, name: typeMatch.groups.name, source: "" });
+      continue;
+    }
+    const constantMatch = tail.match(
+      /^\s+const\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)(?=\s*(?::|=))/u,
+    );
+    if (constantMatch?.groups?.name !== undefined) {
+      items.push({ kind: "const", name: constantMatch.groups.name, source: "" });
+      continue;
+    }
+    if (/^\s+use\b/u.test(tail)) {
+      const end = masked.indexOf(";", index);
+      assert.ok(end >= 0, "root public Rust use must terminate");
+      items.push({ kind: "use", name: "", source: source.slice(index, end + 1) });
+      continue;
+    }
+    assert.fail("unreviewed root public Rust item is forbidden");
+  }
+  assert.equal(braceDepth, 0, "Rust public-item braces must balance");
+  return items;
+};
+const rustRootImplMethods = (source) => {
+  const masked = maskRustCommentsAndLiterals(source);
+  const implementations = [];
+  let rootDepth = 0;
+  for (let index = 0; index < masked.length; index += 1) {
+    if (masked[index] === "{") {
+      rootDepth += 1;
+      continue;
+    }
+    if (masked[index] === "}") {
+      rootDepth -= 1;
+      assert.ok(rootDepth >= 0, "Rust impl root braces must remain balanced");
+      continue;
+    }
+    if (
+      rootDepth !== 0 ||
+      !masked.startsWith("impl", index) ||
+      /[A-Za-z0-9_]/u.test(masked[index - 1] ?? "") ||
+      /[A-Za-z0-9_]/u.test(masked[index + 4] ?? "")
+    ) {
+      continue;
+    }
+    const openingBrace = masked.indexOf("{", index + 4);
+    const declarationEnd = masked.indexOf(";", index + 4);
+    assert.ok(
+      openingBrace >= 0 && (declarationEnd < 0 || openingBrace < declarationEnd),
+      "reviewed root Rust impls must have bodies",
+    );
+    const typeMatch = masked
+      .slice(index, openingBrace)
+      .match(/^impl\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*$/u);
+    assert.ok(
+      typeMatch?.groups?.name !== undefined,
+      "unreviewed generic or trait root Rust impl is forbidden",
+    );
+    let closingBrace = -1;
+    let memberDepth = 1;
+    let memberStart = openingBrace + 1;
+    const methods = [];
+    for (let cursor = openingBrace + 1; cursor < masked.length; cursor += 1) {
+      const character = masked[cursor];
+      if (memberDepth === 1 && character === "!" && masked[cursor + 1] !== "=") {
+        assert.fail("unreviewed Rust impl macros and includes are forbidden");
+      }
+      if (
+        memberDepth === 1 &&
+        masked.startsWith("pub", cursor) &&
+        !/[A-Za-z0-9_]/u.test(masked[cursor - 1] ?? "") &&
+        !/[A-Za-z0-9_]/u.test(masked[cursor + 3] ?? "")
+      ) {
+        const tail = masked.slice(cursor + 3);
+        if (!/^\s*\(/u.test(tail)) {
+          assert.match(
+            tail,
+            /^\s+(?:(?:const|async|unsafe|extern)\s+)*fn\s+[a-z_][a-z0-9_]*(?=\s*(?:<|\())/u,
+            "unreviewed public Rust impl item is forbidden",
+          );
+        }
+      }
+      const isIdentifierBefore = /[A-Za-z0-9_]/u.test(masked[cursor - 1] ?? "");
+      const isIdentifierAfter = /[A-Za-z0-9_]/u.test(masked[cursor + 2] ?? "");
+      if (
+        memberDepth === 1 &&
+        masked.startsWith("fn", cursor) &&
+        !isIdentifierBefore &&
+        !isIdentifierAfter
+      ) {
+        const nameMatch = masked.slice(cursor + 2).match(
+          /^\s+(?<name>[a-z_][a-z0-9_]*)(?=\s*(?:<|\())/u,
+        );
+        assert.ok(
+          nameMatch?.groups?.name !== undefined,
+          "Rust impl fn tokens must use the reviewed ASCII declaration grammar",
+        );
+        const prefix = stripRustAttributes(masked.slice(memberStart, cursor));
+        const visibility = [...prefix.matchAll(/\bpub(?<restriction>\s*\([^)]*\))?/gu)].at(-1);
+        methods.push({
+          name: nameMatch.groups.name,
+          public: visibility !== undefined && visibility.groups?.restriction === undefined,
+        });
+        const end = rustFunctionEnd(masked, cursor);
+        memberStart = end;
+        cursor = end - 1;
+        continue;
+      }
+      if (character === "{") memberDepth += 1;
+      if (character === "}") {
+        memberDepth -= 1;
+        if (memberDepth === 0) {
+          closingBrace = cursor;
+          break;
+        }
+        if (memberDepth === 1) memberStart = cursor + 1;
+      }
+      if (memberDepth === 1 && character === ";") memberStart = cursor + 1;
+    }
+    assert.ok(closingBrace >= 0, "reviewed root Rust impl body must terminate");
+    implementations.push({ name: typeMatch.groups.name, methods });
+    index = closingBrace;
+  }
+  assert.equal(rootDepth, 0, "Rust impl root braces must balance");
+  return implementations;
+};
+const rustRootReferences = (source, functionNames) => {
+  const masked = maskRustCommentsAndLiterals(source);
+  const references = new Set();
+  for (const match of masked.matchAll(/\b(?<name>[a-z_][a-z0-9_]*)\b/gu)) {
+    const name = match.groups?.name;
+    if (name === undefined || !functionNames.has(name)) continue;
+    references.add(name);
+  }
+  return [...references];
 };
 const assertV2WriterCapabilityGate = (source) => {
   const functions = rustRootFunctionBodies(source);
+  const publicItems = rustRootPublicItems(source);
+  const implementations = rustRootImplMethods(source);
   const publicFunctions = [...functions]
     .filter(([, declaration]) => declaration.public)
     .map(([name]) => name)
@@ -454,23 +896,31 @@ const assertV2WriterCapabilityGate = (source) => {
     ["decode_unsigned_batch", "encode_unsigned_batch", "sign_batch", "verify_signed_batch"],
     "academic-contracts root public functions must match the reviewed capability allowlist",
   );
-  const publicTypes = [...source.matchAll(
-    /^pub\s+(?:struct|enum)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)/gmu,
-  )].map((match) => match.groups.name).toSorted();
+  assert.deepEqual(
+    publicItems.filter((item) => item.kind === "fn").map((item) => item.name).toSorted(),
+    publicFunctions,
+    "every public root function must be covered by structural declaration analysis",
+  );
+  const publicTypes = publicItems
+    .filter((item) => item.kind === "struct" || item.kind === "enum")
+    .map((item) => item.name)
+    .toSorted();
   assert.deepEqual(
     publicTypes,
     ["ContractError", "DeviceAuthorization", "VerifiedBatch"],
     "academic-contracts root public types must match the reviewed capability allowlist",
   );
-  const publicConstants = [...source.matchAll(
-    /^pub\s+const\s+(?<name>[A-Z_][A-Z0-9_]*)/gmu,
-  )].map((match) => match.groups.name);
+  const publicConstants = publicItems
+    .filter((item) => item.kind === "const")
+    .map((item) => item.name);
   assert.deepEqual(
     publicConstants,
     ["SIGNED_ENVELOPE_VERSION"],
     "academic-contracts root public constants must match the reviewed capability allowlist",
   );
-  const reexports = source.match(
+  const publicUses = publicItems.filter((item) => item.kind === "use");
+  assert.equal(publicUses.length, 1, "the reviewed root public use count must remain exact");
+  const reexports = publicUses[0]?.source.match(
     /pub use proto_contract::\{(?<names>[\s\S]*?)\};/u,
   )?.groups?.names
     .split(",")
@@ -486,6 +936,34 @@ const assertV2WriterCapabilityGate = (source) => {
     ].toSorted(),
     "academic-contracts Proto reexports must match the reviewed capability allowlist",
   );
+  assert.deepEqual(
+    implementations.map((implementation) => ({
+      name: implementation.name,
+      methods: implementation.methods.map((method) => method.name),
+      publicMethods: implementation.methods
+        .filter((method) => method.public)
+        .map((method) => method.name),
+    })),
+    [
+      {
+        name: "VerifiedBatch",
+        methods: ["batch", "public_key", "source_schema_version", "payload_hash", "envelope_hash"],
+        publicMethods: [
+          "batch",
+          "public_key",
+          "source_schema_version",
+          "payload_hash",
+          "envelope_hash",
+        ],
+      },
+      {
+        name: "DeviceAuthorization",
+        methods: ["new", "device_id", "user_id", "verifying_key"],
+        publicMethods: ["new", "device_id", "user_id", "verifying_key"],
+      },
+    ],
+    "root impl blocks and their public/private method surfaces must match the reviewed allowlist",
+  );
   const projection = functions.get("encode_unsigned_batch_v1_projection")?.source;
   assert.ok(projection, "the private v1 verification projection must remain explicitly named");
   assert.match(
@@ -498,11 +976,59 @@ const assertV2WriterCapabilityGate = (source) => {
     /encode_unsigned_batch_v1_projection\(batch, LegacySourceEqualityCapability\)/u,
     "only authenticated source equality may construct and consume the legacy capability",
   );
+  const projectionDeclaration = functions.get("encode_unsigned_batch_v1_projection");
+  const equalityFunction = functions.get("require_source_typed_equality");
+  assert.ok(projectionDeclaration !== undefined && equalityFunction !== undefined);
+  const countProjectionIdentifiers = (text) => [
+    ...maskRustCommentsAndLiterals(text).matchAll(/\bencode_unsigned_batch_v1_projection\b/gu),
+  ].length;
+  const countCapabilityIdentifiers = (text) => [
+    ...maskRustCommentsAndLiterals(text).matchAll(/\bLegacySourceEqualityCapability\b/gu),
+  ].length;
+  assert.equal(countProjectionIdentifiers(projectionDeclaration.source), 1);
+  assert.equal(countCapabilityIdentifiers(projectionDeclaration.source), 1);
+  assert.equal(countProjectionIdentifiers(equalityFunction.source), 1);
+  assert.equal(countCapabilityIdentifiers(equalityFunction.source), 1);
+  const productionReview = maskedRustProductionSource(source).split("");
+  for (const declaration of [projectionDeclaration, equalityFunction]) {
+    for (let index = declaration.start; index < declaration.end; index += 1) {
+      if (productionReview[index] !== "\n" && productionReview[index] !== "\r") {
+        productionReview[index] = " ";
+      }
+    }
+  }
+  const productionWithoutReviewedFunctions = productionReview.join("");
+  const capabilityDeclarations = [...productionWithoutReviewedFunctions.matchAll(
+    /^struct LegacySourceEqualityCapability;[ \t]*$/gmu,
+  )];
+  assert.equal(capabilityDeclarations.length, 1, "the private legacy capability declaration is exact");
+  const capabilityDeclaration = capabilityDeclarations[0];
+  const capabilityStart = capabilityDeclaration.index ?? -1;
+  assert.ok(capabilityStart >= 0);
+  for (
+    let index = capabilityStart;
+    index < capabilityStart + capabilityDeclaration[0].length;
+    index += 1
+  ) {
+    if (productionReview[index] !== "\n" && productionReview[index] !== "\r") {
+      productionReview[index] = " ";
+    }
+  }
+  const unreviewedProduction = productionReview.join("");
+  assert.doesNotMatch(
+    unreviewedProduction,
+    /\bencode_unsigned_batch_v1_projection\b/u,
+    "the legacy projection identifier is forbidden outside its declaration and authenticated equality",
+  );
+  assert.doesNotMatch(
+    unreviewedProduction,
+    /\bLegacySourceEqualityCapability\b/u,
+    "the legacy capability identifier is forbidden outside reviewed declaration/equality sites",
+  );
   const callGraph = new Map([...functions].map(([name, declaration]) => [
     name,
-    [...declaration.source.matchAll(/\b(?<callee>[a-z_][a-z0-9_]*)\s*\(/gu)]
-      .map((match) => match.groups.callee)
-      .filter((callee) => functions.has(callee) && callee !== name),
+    rustRootReferences(declaration.source, new Set(functions.keys()))
+      .filter((callee) => callee !== name),
   ]));
   const reachableFromWriters = new Set();
   const pending = ["sign_batch", "encode_unsigned_batch"];
@@ -551,6 +1077,275 @@ assert.throws(
   undefined,
   "writer data flow reaching the legacy capability must fail contract verification",
 );
+const genericWriterBridge = rustContractsText
+  .replace(
+    "fn encode_unsigned_batch_v1_projection(",
+    [
+      "fn generic_legacy_bridge<T>(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError>",
+      "where",
+      "    T: Copy,",
+      "{",
+      "    let _marker = std::marker::PhantomData::<T>;",
+      "    encode_unsigned_batch_v1_projection(batch, LegacySourceEqualityCapability)",
+      "}",
+      "",
+      "fn encode_unsigned_batch_v1_projection(",
+    ].join("\n"),
+  )
+  .replace(
+    "    batch.validate()?;\n    let json = serde_json::to_value(batch)?;",
+    "    let _legacy = generic_legacy_bridge::<u8>(batch)?;\n    batch.validate()?;\n    let json = serde_json::to_value(batch)?;",
+  );
+assert.notEqual(genericWriterBridge, rustContractsText);
+assert.ok(
+  rustRootFunctionBodies(genericWriterBridge).has("generic_legacy_bridge"),
+  "the structural Rust declaration parser must discover private generic bridges",
+);
+assert.throws(
+  () => assertV2WriterCapabilityGate(genericWriterBridge),
+  undefined,
+  "a current writer reaching the legacy projection through a generic turbofish bridge must fail",
+);
+const functionValueWriterBridge = rustContractsText
+  .replace(
+    "fn encode_unsigned_batch_v1_projection(",
+    [
+      "fn function_value_legacy_bridge(",
+      "    batch: &UnsignedBatch,",
+      ") -> Result<Vec<u8>, ContractError> {",
+      "    let project = encode_unsigned_batch_v1_projection;",
+      "    project(batch, LegacySourceEqualityCapability)",
+      "}",
+      "",
+      "fn encode_unsigned_batch_v1_projection(",
+    ].join("\n"),
+  )
+  .replace(
+    "    batch.validate()?;\n    let json = serde_json::to_value(batch)?;",
+    "    let _legacy = function_value_legacy_bridge(batch)?;\n    batch.validate()?;\n    let json = serde_json::to_value(batch)?;",
+  );
+assert.notEqual(functionValueWriterBridge, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(functionValueWriterBridge),
+  undefined,
+  "a writer reaching the legacy projection through a function value must fail",
+);
+const traitMethodWriterBridge = rustContractsText
+  .replace(
+    "fn encode_unsigned_batch_v1_projection(",
+    [
+      "trait LegacyBridge {",
+      "    fn legacy_bridge(&self) -> Result<Vec<u8>, ContractError>;",
+      "}",
+      "",
+      "impl LegacyBridge for UnsignedBatch {",
+      "    fn legacy_bridge(&self) -> Result<Vec<u8>, ContractError> {",
+      "        encode_unsigned_batch_v1_projection(self, LegacySourceEqualityCapability)",
+      "    }",
+      "}",
+      "",
+      "fn encode_unsigned_batch_v1_projection(",
+    ].join("\n"),
+  )
+  .replace(
+    "    batch.validate()?;\n    let json = serde_json::to_value(batch)?;",
+    "    let _legacy = batch.legacy_bridge()?;\n    batch.validate()?;\n    let json = serde_json::to_value(batch)?;",
+  );
+assert.notEqual(traitMethodWriterBridge, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(traitMethodWriterBridge),
+  undefined,
+  "a writer reaching the legacy projection through a private trait method must fail",
+);
+const genericPublicLegacyWrapper = rustContractsText.replace(
+  "fn encode_unsigned_batch_v1_projection(",
+  [
+    "#[inline]",
+    "pub fn encode_archived<T>(",
+    "    batch: &UnsignedBatch,",
+    "    _marker: std::marker::PhantomData<T>,",
+    ") -> Result<Vec<u8>, ContractError>",
+    "where",
+    "    T: Copy,",
+    "{",
+    "    encode_unsigned_batch_v1_projection(batch, LegacySourceEqualityCapability)",
+    "}",
+    "",
+    "fn encode_unsigned_batch_v1_projection(",
+  ].join("\n"),
+);
+assert.notEqual(genericPublicLegacyWrapper, rustContractsText);
+assert.equal(
+  rustRootFunctionBodies(genericPublicLegacyWrapper).get("encode_archived")?.public,
+  true,
+  "the structural Rust declaration parser must discover attributed generic qualified public wrappers",
+);
+assert.throws(
+  () => assertV2WriterCapabilityGate(genericPublicLegacyWrapper),
+  undefined,
+  "an attributed generic public wrapper around the legacy projection must fail the official gate",
+);
+const commentedCfgTestGenericPublicWrapper = genericPublicLegacyWrapper.replace(
+  "#[inline]\npub fn encode_archived<T>(",
+  "// #[cfg(test)]\n#[inline]\npub fn encode_archived<T>(",
+);
+assert.notEqual(commentedCfgTestGenericPublicWrapper, genericPublicLegacyWrapper);
+assert.equal(
+  rustRootFunctionBodies(commentedCfgTestGenericPublicWrapper).get("encode_archived")?.public,
+  true,
+  "a cfg-test token inside a line comment must not truncate root declaration analysis",
+);
+assert.throws(
+  () => assertV2WriterCapabilityGate(commentedCfgTestGenericPublicWrapper),
+  undefined,
+  "a commented cfg-test token must not hide a compiling public generic legacy wrapper",
+);
+for (const [name, mutation] of [
+  [
+    "raw identifier public wrapper",
+    genericPublicLegacyWrapper.replace(
+      "pub fn encode_archived<T>(",
+      "pub fn r#encode_archived<T>(",
+    ),
+  ],
+  [
+    "Unicode identifier public wrapper",
+    genericPublicLegacyWrapper.replace(
+      "pub fn encode_archived<T>(",
+      "pub fn 归档编码<T>(",
+    ),
+  ],
+]) {
+  assert.notEqual(mutation, genericPublicLegacyWrapper, `${name} mutation must alter the source`);
+  assert.throws(
+    () => assertV2WriterCapabilityGate(mutation),
+    undefined,
+    `${name} must fail closed instead of escaping the public function allowlist`,
+  );
+}
+const unicodePublicType = rustContractsText.replaceAll("VerifiedBatch", "VerifiedBatché");
+assert.notEqual(unicodePublicType, rustContractsText);
+assert.throws(
+  () => rustRootPublicItems(unicodePublicType),
+  /unreviewed root public Rust item is forbidden/u,
+  "an ASCII-prefix Unicode public type must not be tokenized as the reviewed ASCII type",
+);
+assert.throws(
+  () => assertV2WriterCapabilityGate(unicodePublicType),
+  undefined,
+  "a compile-valid Unicode public type rename must fail the exact public-item allowlist",
+);
+const macroGeneratedLegacyWrapper = rustContractsText.replace(
+  "fn encode_unsigned_batch_v1_projection(",
+  [
+    "macro_rules! expose_legacy_writer {",
+    "    () => {",
+    "        pub fn encode_archived(",
+    "            batch: &UnsignedBatch,",
+    "        ) -> Result<Vec<u8>, ContractError> {",
+    "            encode_unsigned_batch_v1_projection(batch, LegacySourceEqualityCapability)",
+    "        }",
+    "    };",
+    "}",
+    "expose_legacy_writer!();",
+    "",
+    "fn encode_unsigned_batch_v1_projection(",
+  ].join("\n"),
+);
+assert.notEqual(macroGeneratedLegacyWrapper, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(macroGeneratedLegacyWrapper),
+  /unreviewed root Rust macros and includes are forbidden/u,
+  "a compile-valid root macro-generated public writer must fail closed",
+);
+const rootIncludeMutation = rustContractsText.replace(
+  "fn encode_unsigned_batch_v1_projection(",
+  [
+    "const _REVIEWED_SOURCE_BYTES: &[u8] = include_bytes!(\"lib.rs\");",
+    "",
+    "fn encode_unsigned_batch_v1_projection(",
+  ].join("\n"),
+);
+assert.notEqual(rootIncludeMutation, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(rootIncludeMutation),
+  /unreviewed root Rust macros and includes are forbidden/u,
+  "a compile-valid unreviewed root include path must fail closed",
+);
+const publicModuleMutation = rustContractsText.replace(
+  "fn encode_unsigned_batch_v1_projection(",
+  "pub mod unreviewed_export {}\n\nfn encode_unsigned_batch_v1_projection(",
+);
+assert.notEqual(publicModuleMutation, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(publicModuleMutation),
+  /unreviewed root public Rust item is forbidden/u,
+  "an unreviewed public root module must fail closed",
+);
+const publicImplLegacyWrapper = rustContractsText.replace(
+  "impl VerifiedBatch {",
+  [
+    "impl VerifiedBatch {",
+    "    #[inline]",
+    "    pub fn encode_archived<T>(",
+    "        batch: &UnsignedBatch,",
+    "        _marker: std::marker::PhantomData<T>,",
+    "    ) -> Result<Vec<u8>, ContractError>",
+    "    where",
+    "        T: Copy,",
+    "    {",
+    "        encode_unsigned_batch_v1_projection(batch, LegacySourceEqualityCapability)",
+    "    }",
+  ].join("\n"),
+);
+assert.notEqual(publicImplLegacyWrapper, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(publicImplLegacyWrapper),
+  undefined,
+  "a compile-valid public generic legacy writer in a reviewed impl must fail the method allowlist",
+);
+const allowedMethodBodyLegacyCall = rustContractsText.replace(
+  "    pub const fn batch(&self) -> &UnsignedBatch {\n        &self.batch",
+  [
+    "    pub fn batch(&self) -> &UnsignedBatch {",
+    "        let _legacy = encode_unsigned_batch_v1_projection(",
+    "            &self.batch,",
+    "            LegacySourceEqualityCapability,",
+    "        );",
+    "        &self.batch",
+  ].join("\n"),
+);
+assert.notEqual(allowedMethodBodyLegacyCall, rustContractsText);
+assert.deepEqual(
+  rustRootImplMethods(allowedMethodBodyLegacyCall).map((implementation) => ({
+    name: implementation.name,
+    methods: implementation.methods.map((method) => method.name),
+  })),
+  rustRootImplMethods(rustContractsText).map((implementation) => ({
+    name: implementation.name,
+    methods: implementation.methods.map((method) => method.name),
+  })),
+  "the allowed-method-body mutation must retain the reviewed impl/method names",
+);
+assert.throws(
+  () => assertV2WriterCapabilityGate(allowedMethodBodyLegacyCall),
+  /legacy projection identifier is forbidden outside/u,
+  "a legacy projection call injected into an allowed method body must fail whole-source review",
+);
+const extraPublicReexport = rustContractsText.replace(
+  "pub use proto_contract::{",
+  [
+    "pub use academic_domain::UnsignedBatch as ArchivedBatch;",
+    "",
+    "pub use proto_contract::{",
+  ].join("\n"),
+);
+assert.notEqual(extraPublicReexport, rustContractsText);
+assert.throws(
+  () => assertV2WriterCapabilityGate(extraPublicReexport),
+  undefined,
+  "an additional compile-valid public root re-export must fail the exact use allowlist",
+);
 assert.doesNotMatch(
   rustCoreText,
   /build_fixture_document_for_version|sign_batch_v1/u,
@@ -579,6 +1374,26 @@ const ciJobBody = (ci, name) => {
 };
 const assertNativeFixtureCiTopology = (ci) => {
   const rustJob = ciJobBody(ci, "rust");
+  const runsOnBindings = [...rustJob.matchAll(/^    runs-on:\s*(?<binding>[^\r\n]+)$/gmu)]
+    .map((match) => match.groups.binding.trim());
+  assert.deepEqual(
+    runsOnBindings,
+    ["${{ matrix.os }}"],
+    "the Rust native job must bind runs-on exactly to matrix.os",
+  );
+  const osDefinitions = [...rustJob.matchAll(
+    /^        os:\s*\[(?<entries>[^\]\r\n]*)\]\s*$/gmu,
+  )];
+  assert.equal(osDefinitions.length, 1, "the Rust native job must declare one OS matrix");
+  const osEntries = (osDefinitions[0]?.groups?.entries ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  assert.deepEqual(
+    osEntries,
+    ["ubuntu-latest", "windows-latest"],
+    "the Rust native job must use the exact supported Windows/Linux OS set",
+  );
   const independentRuns = [...rustJob.matchAll(/^\s+run:\s+(?<command>[^|>].*)$/gmu)]
     .map((match) => match.groups.command.trim())
     .filter((command) => command.includes("fixture ") || command.startsWith("git diff --exit-code"));
@@ -610,6 +1425,51 @@ assert.throws(
   undefined,
   "a multiline native-fixture step with an intermediate native failure must be rejected",
 );
+for (const [name, mutation] of [
+  [
+    "fixed Ubuntu runner",
+    ciText.replace("    runs-on: ${{ matrix.os }}", "    runs-on: ubuntu-latest"),
+  ],
+  [
+    "broken runner binding",
+    ciText.replace("    runs-on: ${{ matrix.os }}", "    runs-on: ${{ matrix.runner }}"),
+  ],
+  [
+    "missing Windows matrix entry",
+    ciText.replace(
+      "        os: [ubuntu-latest, windows-latest]",
+      "        os: [ubuntu-latest]",
+    ),
+  ],
+  [
+    "missing Ubuntu matrix entry",
+    ciText.replace(
+      "        os: [ubuntu-latest, windows-latest]",
+      "        os: [windows-latest]",
+    ),
+  ],
+  [
+    "duplicate matrix entry",
+    ciText.replace(
+      "        os: [ubuntu-latest, windows-latest]",
+      "        os: [ubuntu-latest, windows-latest, windows-latest]",
+    ),
+  ],
+  [
+    "extra matrix entry",
+    ciText.replace(
+      "        os: [ubuntu-latest, windows-latest]",
+      "        os: [ubuntu-latest, windows-latest, macos-latest]",
+    ),
+  ],
+]) {
+  assert.notEqual(mutation, ciText, `${name} mutation must alter the workflow`);
+  assert.throws(
+    () => assertNativeFixtureCiTopology(mutation),
+    undefined,
+    `${name} must fail the native fixture topology gate`,
+  );
+}
 const assertSourcePreflightTopology = ({ bootstrap, preflightModules, ci }) => {
   for (const [moduleName, source] of preflightModules) {
     const externalImports = [
@@ -1393,5 +2253,5 @@ assert.doesNotMatch(fixtureV1Text, /https?:\/\//u);
 assert.doesNotMatch(fixtureV2Text, /https?:\/\//u);
 
 console.log(
-  "Immutable v1 contracts, source-aware signed decoding, v2-only writers, portable raw artifact JSON, fixture integer lexemes, exact Rust/Proto wire descriptors, and source-preflight topology verified.",
+  "Immutable v1 contracts, strict fixture UTF-8/integer ingress, structural v2-only writers, exact native CI topology, portable raw artifact JSON, Rust/Proto wire descriptors, and source-preflight topology verified.",
 );

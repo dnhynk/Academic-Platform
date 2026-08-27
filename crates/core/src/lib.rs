@@ -78,6 +78,9 @@ pub enum CoreError {
     /// Fixture JSON could not be parsed or serialized.
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    /// Fixture input was not strict UTF-8.
+    #[error("fixture JSON bytes are not strict UTF-8")]
+    Utf8(#[from] std::str::Utf8Error),
     /// Fixture hex was malformed.
     #[error("invalid fixture hex: {0}")]
     Hex(#[from] hex::FromHexError),
@@ -302,13 +305,161 @@ impl FixtureDocument {
     }
 }
 
+fn json_number_token_end(bytes: &[u8], start: usize) -> Option<usize> {
+    let mut index = start;
+    if bytes.get(index) == Some(&b'-') {
+        index += 1;
+    }
+    match bytes.get(index) {
+        Some(b'0') => index += 1,
+        Some(b'1'..=b'9') => {
+            index += 1;
+            while bytes.get(index).is_some_and(u8::is_ascii_digit) {
+                index += 1;
+            }
+        }
+        _ => return None,
+    }
+    if bytes.get(index) == Some(&b'.') {
+        index += 1;
+        let fraction_start = index;
+        while bytes.get(index).is_some_and(u8::is_ascii_digit) {
+            index += 1;
+        }
+        if index == fraction_start {
+            return None;
+        }
+    }
+    if bytes
+        .get(index)
+        .is_some_and(|byte| matches!(byte, b'e' | b'E'))
+    {
+        index += 1;
+        if bytes
+            .get(index)
+            .is_some_and(|byte| matches!(byte, b'+' | b'-'))
+        {
+            index += 1;
+        }
+        let exponent_start = index;
+        while bytes.get(index).is_some_and(u8::is_ascii_digit) {
+            index += 1;
+        }
+        if index == exponent_start {
+            return None;
+        }
+    }
+    Some(index)
+}
+
+fn bounded_decimal_magnitude(digits: &[u8], limit: usize) -> usize {
+    let mut value = 0_usize;
+    for digit in digits {
+        let digit = usize::from(*digit - b'0');
+        if value > limit.saturating_sub(digit) / 10 {
+            return limit.saturating_add(1);
+        }
+        value = value * 10 + digit;
+        if value > limit {
+            return limit.saturating_add(1);
+        }
+    }
+    value
+}
+
+fn is_nonnegative_mathematical_integer_token(token: &str) -> bool {
+    if token.starts_with('-') {
+        return false;
+    }
+    let bytes = token.as_bytes();
+    let exponent_marker = bytes.iter().position(|byte| matches!(byte, b'e' | b'E'));
+    let mantissa_end = exponent_marker.unwrap_or(bytes.len());
+    let fraction_digits = bytes[..mantissa_end]
+        .iter()
+        .position(|byte| *byte == b'.')
+        .map_or(0, |point| mantissa_end - point - 1);
+    let coefficient_is_zero = bytes[..mantissa_end]
+        .iter()
+        .filter(|byte| byte.is_ascii_digit())
+        .all(|byte| *byte == b'0');
+    if coefficient_is_zero {
+        return true;
+    }
+    let trailing_zeros = bytes[..mantissa_end]
+        .iter()
+        .rev()
+        .filter(|byte| **byte != b'.')
+        .take_while(|byte| **byte == b'0')
+        .count();
+    let Some(marker) = exponent_marker else {
+        return trailing_zeros >= fraction_digits;
+    };
+    let mut exponent = &bytes[marker + 1..];
+    let exponent_is_negative = exponent.first() == Some(&b'-');
+    if exponent
+        .first()
+        .is_some_and(|byte| matches!(byte, b'+' | b'-'))
+    {
+        exponent = &exponent[1..];
+    }
+    let magnitude = bounded_decimal_magnitude(
+        exponent,
+        fraction_digits
+            .saturating_add(trailing_zeros)
+            .saturating_add(1),
+    );
+    if exponent_is_negative {
+        magnitude <= trailing_zeros && fraction_digits <= trailing_zeros.saturating_sub(magnitude)
+    } else {
+        magnitude >= fraction_digits || trailing_zeros >= fraction_digits - magnitude
+    }
+}
+
+fn assert_fixture_integer_lexemes(input: &str) -> Result<(), CoreError> {
+    let bytes = input.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'"' {
+            index += 1;
+            while index < bytes.len() {
+                match bytes[index] {
+                    b'\\' => index = index.saturating_add(2),
+                    b'"' => {
+                        index += 1;
+                        break;
+                    }
+                    _ => index += 1,
+                }
+            }
+            continue;
+        }
+        if bytes[index] == b'-' || bytes[index].is_ascii_digit() {
+            let end = json_number_token_end(bytes, index).ok_or(
+                CoreError::InvalidFixtureContract("fixture number token is malformed"),
+            )?;
+            let token = &input[index..end];
+            if !is_nonnegative_mathematical_integer_token(token) {
+                return Err(CoreError::InvalidFixtureContract(
+                    "fixture integer fields must be mathematically integral before conversion",
+                ));
+            }
+            index = end;
+            continue;
+        }
+        index += 1;
+    }
+    Ok(())
+}
+
 /// Parses original fixture-wrapper bytes before any normalized value boundary.
 ///
-/// Serde's typed struct deserializer rejects duplicate decoded field names and
-/// non-Unicode-scalar JSON strings while the bounded integer visitors preserve
-/// semantic integer acceptance for decimal and exponent fixture-version tokens.
+/// UTF-8 decoding is strict, raw arbitrary-precision number lexemes must be
+/// mathematically integral, and Serde then enforces decoded-name, scalar-string,
+/// bounded-value, and exact typed-object semantics.
 pub fn parse_fixture_document_json(input: &[u8]) -> Result<FixtureDocument, CoreError> {
-    let document: FixtureDocument = serde_json::from_slice(input)?;
+    let text = std::str::from_utf8(input)?;
+    assert_fixture_integer_lexemes(text)?;
+    let document: FixtureDocument = serde_json::from_str(text)?;
     document.validate_contract()?;
     Ok(document)
 }
@@ -1169,8 +1320,7 @@ mod tests {
             "\"accepted_events\": 13.0",
             1,
         );
-        let parsed: FixtureDocument = serde_json::from_str(&integer_lexeme)?;
-        parsed.validate_contract()?;
+        let parsed = parse_fixture_document_json(integer_lexeme.as_bytes())?;
         assert_eq!(parsed.expected_replay.accepted_events, 13);
 
         for (needle, replacement) in [
@@ -1182,8 +1332,7 @@ mod tests {
         ] {
             let version_lexeme =
                 fixture_json(&build_fixture_document()?)?.replacen(needle, replacement, 1);
-            let parsed: FixtureDocument = serde_json::from_str(&version_lexeme)?;
-            parsed.validate_contract()?;
+            let parsed = parse_fixture_document_json(version_lexeme.as_bytes())?;
             assert_eq!(parsed.fixture_version, FIXTURE_VERSION_V2);
             assert_eq!(
                 parsed.contract.event_schema_version,
@@ -1196,13 +1345,13 @@ mod tests {
                 &format!("\"fixture_version\": {replacement}"),
                 1,
             );
-            assert!(serde_json::from_str::<FixtureDocument>(&invalid).is_err());
+            assert!(parse_fixture_document_json(invalid.as_bytes()).is_err());
         }
         Ok(())
     }
 
     #[test]
-    fn t017_shared_raw_fixture_corpus_matches_rust_typed_deserialization()
+    fn shared_raw_and_integer_fixture_corpora_match_rust_typed_deserialization()
     -> Result<(), Box<dyn std::error::Error>> {
         #[derive(Debug, Deserialize)]
         struct Corpus {
@@ -1222,27 +1371,93 @@ mod tests {
             replacement: String,
         }
 
-        let corpus: Corpus = serde_json::from_str(include_str!(
-            "../../../schemas/fixtures/signed-batch-raw-parity-v1.json"
-        ))?;
-        assert_eq!(corpus.schema_version, 1);
+        let corpora: [Corpus; 2] = [
+            serde_json::from_str(include_str!(
+                "../../../schemas/fixtures/signed-batch-raw-parity-v1.json"
+            ))?,
+            serde_json::from_str(include_str!(
+                "../../../schemas/fixtures/signed-batch-integer-lexeme-parity-v1.json"
+            ))?,
+        ];
         let fixture_v1 = include_str!("../../../schemas/fixtures/signed-batch-v1.json");
         let fixture_v2 = include_str!("../../../schemas/fixtures/signed-batch-v2.json");
+        for corpus in corpora {
+            assert_eq!(corpus.schema_version, 1);
+            for case in corpus.cases {
+                let mut raw = match case.fixture {
+                    FIXTURE_VERSION_V1 => fixture_v1.to_owned(),
+                    FIXTURE_VERSION_V2 => fixture_v2.to_owned(),
+                    other => return Err(format!("unsupported corpus fixture {other}").into()),
+                };
+                for replacement in case.replacements {
+                    let next = raw.replacen(&replacement.needle, &replacement.replacement, 1);
+                    assert_ne!(next, raw, "{}: replacement must mutate fixture", case.name);
+                    raw = next;
+                }
+                let rust_valid = parse_fixture_document_json(raw.as_bytes())
+                    .and_then(|document| verify_fixture_document(&document).map(|_| document))
+                    .is_ok();
+                assert_eq!(rust_valid, case.valid, "{}", case.name);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn strict_utf8_byte_corpus_rejects_before_json_deserialization()
+    -> Result<(), Box<dyn std::error::Error>> {
+        #[derive(Debug, Deserialize)]
+        struct Corpus {
+            schema_version: u8,
+            cases: Vec<ByteFixtureCase>,
+        }
+        #[derive(Debug, Deserialize)]
+        struct ByteFixtureCase {
+            name: String,
+            fixture: u16,
+            valid: bool,
+            replacements: Vec<ByteReplacement>,
+        }
+        #[derive(Debug, Deserialize)]
+        struct ByteReplacement {
+            needle_utf8: String,
+            replacement_hex: String,
+        }
+
+        let corpus: Corpus = serde_json::from_str(include_str!(
+            "../../../schemas/fixtures/signed-batch-byte-parity-v1.json"
+        ))?;
+        assert_eq!(corpus.schema_version, 1);
+        let fixture_v1 = include_bytes!("../../../schemas/fixtures/signed-batch-v1.json");
+        let fixture_v2 = include_bytes!("../../../schemas/fixtures/signed-batch-v2.json");
         for case in corpus.cases {
-            let mut raw = match case.fixture {
-                FIXTURE_VERSION_V1 => fixture_v1.to_owned(),
-                FIXTURE_VERSION_V2 => fixture_v2.to_owned(),
+            let mut bytes = match case.fixture {
+                FIXTURE_VERSION_V1 => fixture_v1.to_vec(),
+                FIXTURE_VERSION_V2 => fixture_v2.to_vec(),
                 other => return Err(format!("unsupported corpus fixture {other}").into()),
             };
             for replacement in case.replacements {
-                let next = raw.replacen(&replacement.needle, &replacement.replacement, 1);
-                assert_ne!(next, raw, "{}: replacement must mutate fixture", case.name);
-                raw = next;
+                let needle = replacement.needle_utf8.as_bytes();
+                let Some(position) = bytes
+                    .windows(needle.len())
+                    .position(|window| window == needle)
+                else {
+                    return Err(format!("{}: byte needle must exist", case.name).into());
+                };
+                if bytes[position + needle.len()..]
+                    .windows(needle.len())
+                    .any(|window| window == needle)
+                {
+                    return Err(format!("{}: byte needle must be unique", case.name).into());
+                }
+                let replacement_bytes = hex::decode(replacement.replacement_hex)?;
+                bytes.splice(position..position + needle.len(), replacement_bytes);
             }
-            let rust_valid = parse_fixture_document_json(raw.as_bytes())
-                .and_then(|document| verify_fixture_document(&document).map(|_| document))
-                .is_ok();
-            assert_eq!(rust_valid, case.valid, "{}", case.name);
+            let result = parse_fixture_document_json(&bytes);
+            assert_eq!(result.is_ok(), case.valid, "{}", case.name);
+            if !case.valid {
+                assert!(matches!(result, Err(CoreError::Utf8(_))), "{}", case.name);
+            }
         }
         Ok(())
     }

@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "v1 high-precision integral fixture version",
+      "fixture": 1,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 1",
+          "replacement": "\"fixture_version\": 1.0000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "name": "v2 high-precision integral event schema version",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"event_schema_version\": 2",
+          "replacement": "\"event_schema_version\": 2.0000000000000000000000000000000000000000e0"
+        }
+      ]
+    },
+    {
+      "name": "v2 high-precision integral accepted events",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"accepted_events\": 13",
+          "replacement": "\"accepted_events\": 13.0000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "name": "v2 high-precision integral negative-exponent cancellation",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 2",
+          "replacement": "\"fixture_version\": 2000000000000000000000000000000000000000e-39"
+        }
+      ]
+    },
+    {
+      "name": "v1 high-precision fractional fixture version",
+      "fixture": 1,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 1",
+          "replacement": "\"fixture_version\": 1.0000000000000000000000000000000000000001"
+        }
+      ]
+    },
+    {
+      "name": "v2 high-precision fractional fixture version",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 2",
+          "replacement": "\"fixture_version\": 2.0000000000000000000000000000000000000001"
+        }
+      ]
+    },
+    {
+      "name": "v2 high-precision fractional event schema version",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"event_schema_version\": 2",
+          "replacement": "\"event_schema_version\": 2.0000000000000000000000000000000000000001"
+        }
+      ]
+    },
+    {
+      "name": "v2 high-precision fractional accepted events",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"accepted_events\": 13",
+          "replacement": "\"accepted_events\": 13.0000000000000000000000000000000000000001"
+        }
+      ]
+    },
+    {
+      "name": "v2 high-precision fractional accept sequence head",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"accept_seq_head\": 13",
+          "replacement": "\"accept_seq_head\": 13.0000000000000000000000000000000000000001"
+        }
+      ]
+    },
+    {
+      "name": "v2 high-precision fractional negative exponent",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle": "\"fixture_version\": 2",
+          "replacement": "\"fixture_version\": 20000000000000000000000000000000000000001e-40"
+        }
+      ]
+    }
+  ]
+}

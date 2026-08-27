@@ -196,6 +196,78 @@ function parseKey(value, label, line) {
   return key;
 }
 
+const yamlDatePattern = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/u;
+const yamlTimestampPattern = /^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})(?:[Tt]|[ \t]+)([0-9]{1,2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]*))?(?:[ \t]*(Z|([-+])([0-9]{1,2})(?::([0-9]{2}))?))?$/u;
+
+function decodePlainTimestamp(value) {
+  const match = value.match(yamlDatePattern) ?? value.match(yamlTimestampPattern);
+  if (match === null) return undefined;
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  if (match[4] === undefined) {
+    return new Date(Date.UTC(year, month, day));
+  }
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const fractionText = (match[7] ?? "").slice(0, 3).padEnd(3, "0");
+  const fraction = Number(fractionText);
+  const date = new Date(Date.UTC(year, month, day, hour, minute, second, fraction));
+  if (match[9] !== undefined) {
+    const timezoneMinutes = Number(match[10]) * 60 + Number(match[11] ?? 0);
+    const signedDelta = (match[9] === "-" ? -1 : 1) * timezoneMinutes * 60_000;
+    date.setTime(date.getTime() - signedDelta);
+  }
+  return date;
+}
+
+function decodePlainInteger(value) {
+  const sign = value.startsWith("-") ? -1 : 1;
+  const unsigned = /^[+-]/u.test(value) ? value.slice(1) : value;
+  const lowercase = unsigned.toLowerCase();
+  if (lowercase.startsWith("0b")) return sign * Number.parseInt(unsigned.slice(2), 2);
+  if (lowercase.startsWith("0o")) return sign * Number.parseInt(unsigned.slice(2), 8);
+  if (lowercase.startsWith("0x")) return sign * Number.parseInt(unsigned.slice(2), 16);
+  return sign * Number.parseInt(unsigned, 10);
+}
+
+function decodePlainScalar(value, label, line) {
+  const scalar = assertUnicodeScalars(value, label, line);
+  if (scalar === "~" || /^null$/iu.test(scalar)) {
+    return null;
+  }
+  if (/^true$/iu.test(scalar)) {
+    return true;
+  }
+  if (/^false$/iu.test(scalar)) {
+    return false;
+  }
+  const normalized = scalar.replaceAll("_", "");
+  if (
+    /^[-+]?[0-9]+$/u.test(normalized) ||
+    /^[-+]?0b[01]+$/iu.test(normalized) ||
+    /^[-+]?0o[0-7]+$/iu.test(normalized) ||
+    /^[-+]?0x[0-9a-f]+$/iu.test(normalized)
+  ) {
+    return decodePlainInteger(normalized);
+  }
+  if (/^[-+]?\.(?:inf|nan)$/iu.test(normalized)) {
+    if (/nan$/iu.test(normalized)) return Number.NaN;
+    return normalized.startsWith("-") ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
+  }
+  if (
+    /^[-+]?(?:(?:[0-9]+\.[0-9]*|\.[0-9]+)(?:e[-+]?[0-9]+)?|[0-9]+e[-+]?[0-9]+)$/iu.test(
+      normalized,
+    )
+  ) {
+    return Number(normalized);
+  }
+  const timestamp = decodePlainTimestamp(scalar);
+  if (timestamp !== undefined) return timestamp;
+  return scalar;
+}
+
 class FlowParser {
   constructor(input, label, line) {
     this.input = input;
@@ -251,7 +323,7 @@ class FlowParser {
     if (value === "|" || value === ">") {
       this.error("block scalars are outside the lockfile profile");
     }
-    return assertUnicodeScalars(value, this.label, this.line);
+    return decodePlainScalar(value, this.label, this.line);
   }
 
   parseValue() {
@@ -375,7 +447,7 @@ function parseInlineValue(value, label, line) {
   if (trimmed.startsWith("'") || trimmed.startsWith('"')) {
     return decodeQuotedScalar(trimmed, label, line);
   }
-  return assertUnicodeScalars(trimmed, label, line);
+  return decodePlainScalar(trimmed, label, line);
 }
 
 function parseLines(lines, start, indent, label) {

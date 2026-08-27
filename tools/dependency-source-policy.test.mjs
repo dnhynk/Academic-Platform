@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 
 import { assertCargoLockSourcePolicy } from "./cargo-lock-source-policy.mjs";
 import { assertPnpmLockSourcePolicy } from "./dependency-source-policy.mjs";
+import { parsePnpmLockYaml } from "./restricted-yaml.mjs";
 
 const corpora = [
   {
@@ -45,4 +46,101 @@ for (const corpus of corpora) {
   }
 }
 
-console.log(`Cargo/pnpm structural source-policy corpora passed (${fixtureCount} fixtures).`);
+const scalarKindCorpus = JSON.parse(
+  await readFile("tools/fixtures/pnpm-yaml-scalar-kind-conformance-v1.json", "utf8"),
+);
+assert.equal(scalarKindCorpus.schema_version, 1);
+const dependencyEntry = (position, scalar) => {
+  if (position === "direct") return scalar;
+  if (position === "specifier") {
+    return `{specifier: ${scalar}, version: '1.0.0'}`;
+  }
+  if (position === "version") {
+    return `{specifier: '1.0.0', version: ${scalar}}`;
+  }
+  assert.fail(`unsupported scalar-kind position ${position}`);
+};
+const scalarFixture = (style, position, scalar) => {
+  const entry = dependencyEntry(position, scalar);
+  if (style === "flow") {
+    return [
+      "lockfileVersion: '9.0'",
+      `importers: {'.': {dependencies: {probe: ${entry}}}}`,
+      "",
+    ].join("\n");
+  }
+  if (style === "block") {
+    if (position === "direct") {
+      return [
+        "lockfileVersion: '9.0'",
+        "importers:",
+        "  .:",
+        "    dependencies:",
+        `      probe: ${entry}`,
+        "",
+      ].join("\n");
+    }
+    const field = position === "specifier" ? "specifier" : "version";
+    const otherField = field === "specifier" ? "version" : "specifier";
+    return [
+      "lockfileVersion: '9.0'",
+      "importers:",
+      "  .:",
+      "    dependencies:",
+      "      probe:",
+      `        ${field}: ${scalar}`,
+      `        ${otherField}: '1.0.0'`,
+      "",
+    ].join("\n");
+  }
+  assert.fail(`unsupported scalar-kind style ${style}`);
+};
+const parsedProbeValue = (lock, position) => {
+  const entry = lock.importers["."].dependencies.probe;
+  return position === "direct" ? entry : entry[position];
+};
+
+let scalarFixtureCount = 0;
+for (const style of scalarKindCorpus.styles) {
+  for (const position of scalarKindCorpus.positions) {
+    for (const scalar of scalarKindCorpus.scalars) {
+      const label = `${style} ${position} ${scalar.name}`;
+      const plainFixture = scalarFixture(style, position, scalar.plain);
+      const parsedPlain = parsePnpmLockYaml(plainFixture, label);
+      const plainValue = parsedProbeValue(parsedPlain, position);
+      if (scalar.kind === "null") {
+        assert.equal(plainValue, null, `${label}: null kind must be preserved`);
+      } else if (scalar.kind === "date") {
+        assert.ok(plainValue instanceof Date, `${label}: timestamp kind must be preserved`);
+        assert.equal(plainValue.toISOString(), scalar.iso, `${label}: timestamp value must match pnpm`);
+      } else if (scalar.kind === "number") {
+        assert.equal(typeof plainValue, "number", `${label}: numeric kind must be preserved`);
+        assert.equal(plainValue, scalar.value, `${label}: numeric value must match pnpm`);
+      } else {
+        assert.equal(typeof plainValue, scalar.kind, `${label}: scalar kind must be preserved`);
+      }
+      assert.throws(
+        () => assertPnpmLockSourcePolicy(plainFixture, label),
+        undefined,
+        `${label}: unquoted non-string dependency source must reject`,
+      );
+
+      const quotedFixture = scalarFixture(style, position, JSON.stringify(scalar.plain));
+      const parsedQuoted = parsePnpmLockYaml(quotedFixture, `${label} quoted`);
+      assert.equal(
+        parsedProbeValue(parsedQuoted, position),
+        scalar.plain,
+        `${label}: explicitly quoted lookalike must remain a string`,
+      );
+      assert.doesNotThrow(
+        () => assertPnpmLockSourcePolicy(quotedFixture, `${label} quoted`),
+        `${label}: quoted source lookalike must remain allowed`,
+      );
+      scalarFixtureCount += 2;
+    }
+  }
+}
+
+console.log(
+  `Cargo/pnpm structural source-policy corpora passed (${fixtureCount} files + ${scalarFixtureCount} scalar-kind cases).`,
+);

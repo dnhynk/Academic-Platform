@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "styles": ["block", "flow"],
+  "positions": ["direct", "specifier", "version"],
+  "scalars": [
+    { "name": "null", "plain": "null", "kind": "null" },
+    { "name": "true", "plain": "true", "kind": "boolean" },
+    { "name": "false", "plain": "false", "kind": "boolean" },
+    { "name": "zero integer", "plain": "0", "kind": "number", "value": 0 },
+    { "name": "one integer", "plain": "1", "kind": "number", "value": 1 },
+    { "name": "binary integer", "plain": "0b10", "kind": "number", "value": 2 },
+    { "name": "signed underscored binary integer", "plain": "+0b1_0", "kind": "number", "value": 2 },
+    { "name": "decimal float", "plain": "1.0", "kind": "number", "value": 1 },
+    { "name": "ISO date", "plain": "2026-08-27", "kind": "date", "iso": "2026-08-27T00:00:00.000Z" },
+    { "name": "ISO timestamp", "plain": "2026-08-27T13:14:15Z", "kind": "date", "iso": "2026-08-27T13:14:15.000Z" }
+  ]
+}

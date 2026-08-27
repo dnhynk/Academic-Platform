@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "committed v1 strict UTF-8 bytes",
+      "fixture": 1,
+      "valid": true,
+      "replacements": []
+    },
+    {
+      "name": "committed v2 strict UTF-8 bytes",
+      "fixture": 2,
+      "valid": true,
+      "replacements": []
+    },
+    {
+      "name": "valid supplementary Unicode scalar bytes",
+      "fixture": 2,
+      "valid": true,
+      "replacements": [
+        {
+          "needle_utf8": "phase0-synthetic-bitemporal-ledger-v2",
+          "replacement_hex": "f09f92a1"
+        }
+      ]
+    },
+    {
+      "name": "invalid standalone ff byte",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle_utf8": "phase0-synthetic-bitemporal-ledger-v2",
+          "replacement_hex": "ff"
+        }
+      ]
+    },
+    {
+      "name": "invalid truncated two-byte sequence",
+      "fixture": 1,
+      "valid": false,
+      "replacements": [
+        {
+          "needle_utf8": "phase0-synthetic-bitemporal-ledger",
+          "replacement_hex": "c2"
+        }
+      ]
+    },
+    {
+      "name": "invalid truncated three-byte sequence",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle_utf8": "phase0-synthetic-bitemporal-ledger-v2",
+          "replacement_hex": "e282"
+        }
+      ]
+    },
+    {
+      "name": "invalid truncated four-byte sequence",
+      "fixture": 1,
+      "valid": false,
+      "replacements": [
+        {
+          "needle_utf8": "phase0-synthetic-bitemporal-ledger",
+          "replacement_hex": "f09f92"
+        }
+      ]
+    },
+    {
+      "name": "invalid two-byte overlong encoding",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle_utf8": "phase0-synthetic-bitemporal-ledger-v2",
+          "replacement_hex": "c0af"
+        }
+      ]
+    },
+    {
+      "name": "invalid three-byte overlong encoding",
+      "fixture": 1,
+      "valid": false,
+      "replacements": [
+        {
+          "needle_utf8": "phase0-synthetic-bitemporal-ledger",
+          "replacement_hex": "e080af"
+        }
+      ]
+    },
+    {
+      "name": "invalid UTF-8 surrogate encoding",
+      "fixture": 2,
+      "valid": false,
+      "replacements": [
+        {
+          "needle_utf8": "phase0-synthetic-bitemporal-ledger-v2",
+          "replacement_hex": "eda080"
+        }
+      ]
+    }
+  ]
+}

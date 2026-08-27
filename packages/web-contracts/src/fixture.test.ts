@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  decodePortableFixtureJsonBytes,
   parseArtifactDescriptorJson,
   parseFixtureDocument,
   parseFixtureDocumentJson,
@@ -20,13 +21,40 @@ const fixtureRawCorpusUrl = new URL(
   "../../../schemas/fixtures/signed-batch-raw-parity-v1.json",
   import.meta.url,
 );
+const fixtureIntegerCorpusUrl = new URL(
+  "../../../schemas/fixtures/signed-batch-integer-lexeme-parity-v1.json",
+  import.meta.url,
+);
+const fixtureByteCorpusUrl = new URL(
+  "../../../schemas/fixtures/signed-batch-byte-parity-v1.json",
+  import.meta.url,
+);
+
+function replaceBytesOnce(
+  source: Uint8Array,
+  needleUtf8: string,
+  replacementHex: string,
+  label: string,
+): Buffer {
+  assert.match(replacementHex, /^(?:[0-9a-f]{2})+$/u, `${label}: canonical replacement hex`);
+  const sourceBuffer = Buffer.from(source);
+  const needle = Buffer.from(needleUtf8, "utf8");
+  const index = sourceBuffer.indexOf(needle);
+  assert.ok(index >= 0, `${label}: byte needle must exist`);
+  assert.equal(sourceBuffer.indexOf(needle, index + needle.length), -1, `${label}: byte needle must be unique`);
+  return Buffer.concat([
+    sourceBuffer.subarray(0, index),
+    Buffer.from(replacementHex, "hex"),
+    sourceBuffer.subarray(index + needle.length),
+  ]);
+}
 
 void test("the immutable v1 and current v2 fixtures are synthetic and structurally valid", async () => {
-  const [v1Bytes, v2Text] = await Promise.all([readFile(fixtureV1Url), readFile(fixtureV2Url, "utf8")]);
+  const [v1Bytes, v2Bytes] = await Promise.all([readFile(fixtureV1Url), readFile(fixtureV2Url)]);
   assert.equal(createHash("sha256").update(v1Bytes).digest("hex"), immutableV1Sha256);
 
-  for (const [version, text] of [[1, v1Bytes.toString("utf8")], [2, v2Text]] as const) {
-    const fixture = parseFixtureDocumentJson(text);
+  for (const [version, bytes] of [[1, v1Bytes], [2, v2Bytes]] as const) {
+    const fixture = parseFixtureDocumentJson(bytes);
 
     assert.equal(fixture.fixture_version, version);
     assert.equal(fixture.data_class, "SYNTHETIC_ONLY");
@@ -37,11 +65,12 @@ void test("the immutable v1 and current v2 fixtures are synthetic and structural
   }
 });
 
-void test("shared raw v1/v2 fixture corpus rejects duplicates and surrogates before semantics", async () => {
-  const [corpusText, fixtureV1Text, fixtureV2Text] = await Promise.all([
+void test("shared raw and exact-integer fixture corpora reject before semantics", async () => {
+  const [corpusText, integerCorpusText, fixtureV1Text, fixtureV2Text] = await Promise.all([
     readFile(fixtureRawCorpusUrl, "utf8"),
-    readFile(fixtureV1Url, "utf8"),
-    readFile(fixtureV2Url, "utf8"),
+    readFile(fixtureIntegerCorpusUrl, "utf8"),
+    readFile(fixtureV1Url),
+    readFile(fixtureV2Url),
   ]);
   const corpus = JSON.parse(corpusText) as {
     readonly schema_version: number;
@@ -55,23 +84,70 @@ void test("shared raw v1/v2 fixture corpus rejects duplicates and surrogates bef
       }[];
     }[];
   };
+  const integerCorpus = JSON.parse(integerCorpusText) as typeof corpus;
   assert.equal(corpus.schema_version, 1);
+  assert.equal(integerCorpus.schema_version, 1);
   assert.ok(corpus.cases.some((entry) => entry.name.includes("duplicate")));
   assert.ok(corpus.cases.some((entry) => entry.name.includes("surrogate")));
   assert.ok(corpus.cases.some((entry) => entry.name.includes("decimal")));
   assert.ok(corpus.cases.some((entry) => entry.name.includes("exponent")));
-  for (const entry of corpus.cases) {
-    let raw = entry.fixture === 1 ? fixtureV1Text : fixtureV2Text;
+  assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("high-precision integral")));
+  assert.ok(integerCorpus.cases.some((entry) => entry.name.includes("high-precision fractional")));
+  for (const entry of [...corpus.cases, ...integerCorpus.cases]) {
+    let raw = decodePortableFixtureJsonBytes(entry.fixture === 1 ? fixtureV1Text : fixtureV2Text);
     for (const replacement of entry.replacements) {
       const next = raw.replace(replacement.needle, replacement.replacement);
       assert.notEqual(next, raw, `${entry.name}: replacement must mutate the fixture`);
       raw = next;
     }
     if (entry.valid) {
-      const parsed = parseFixtureDocumentJson(raw);
+      const parsed = parseFixtureDocumentJson(Buffer.from(raw, "utf8"));
       assert.equal(parsed.fixture_version, entry.fixture, entry.name);
     } else {
-      assert.throws(() => parseFixtureDocumentJson(raw), TypeError, entry.name);
+      assert.throws(() => parseFixtureDocumentJson(Buffer.from(raw, "utf8")), TypeError, entry.name);
+    }
+  }
+});
+
+void test("shared byte corpus rejects malformed UTF-8 before JSON and semantics", async () => {
+  const [corpusText, fixtureV1Bytes, fixtureV2Bytes] = await Promise.all([
+    readFile(fixtureByteCorpusUrl, "utf8"),
+    readFile(fixtureV1Url),
+    readFile(fixtureV2Url),
+  ]);
+  const corpus = JSON.parse(corpusText) as {
+    readonly schema_version: number;
+    readonly cases: readonly {
+      readonly name: string;
+      readonly fixture: 1 | 2;
+      readonly valid: boolean;
+      readonly replacements: readonly {
+        readonly needle_utf8: string;
+        readonly replacement_hex: string;
+      }[];
+    }[];
+  };
+  assert.equal(corpus.schema_version, 1);
+  assert.ok(corpus.cases.some((entry) => entry.name.includes("ff byte")));
+  assert.ok(corpus.cases.some((entry) => entry.name.includes("truncated")));
+  assert.ok(corpus.cases.some((entry) => entry.name.includes("overlong")));
+  assert.ok(corpus.cases.some((entry) => entry.name.includes("surrogate")));
+  for (const entry of corpus.cases) {
+    let bytes: Uint8Array = Buffer.from(entry.fixture === 1 ? fixtureV1Bytes : fixtureV2Bytes);
+    for (const replacement of entry.replacements) {
+      bytes = replaceBytesOnce(
+        bytes,
+        replacement.needle_utf8,
+        replacement.replacement_hex,
+        entry.name,
+      );
+    }
+    if (entry.valid) {
+      assert.doesNotThrow(() => decodePortableFixtureJsonBytes(bytes), entry.name);
+      assert.equal(parseFixtureDocumentJson(bytes).fixture_version, entry.fixture, entry.name);
+    } else {
+      assert.throws(() => decodePortableFixtureJsonBytes(bytes), TypeError, entry.name);
+      assert.throws(() => parseFixtureDocumentJson(bytes), TypeError, entry.name);
     }
   }
 });

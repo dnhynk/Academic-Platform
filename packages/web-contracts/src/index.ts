@@ -96,6 +96,49 @@ const retentionClassValues: ReadonlySet<string> = new Set([
 ]);
 const maxSafeJsonInteger = 9_007_199_254_740_991;
 const maxUint32 = 4_294_967_295;
+const fixtureIntegerPaths: ReadonlySet<string> = new Set([
+  "fixture_version",
+  "contract.event_schema_version",
+  "expected_replay.accepted_events",
+  "expected_replay.accept_seq_head",
+]);
+
+function boundedDecimalMagnitude(digits: string, limit: number): number {
+  const normalized = digits.replace(/^0+/u, "") || "0";
+  const limitText = String(limit);
+  if (
+    normalized.length > limitText.length ||
+    (normalized.length === limitText.length && normalized > limitText)
+  ) {
+    return limit + 1;
+  }
+  return Number.parseInt(normalized, 10);
+}
+
+function isNonnegativeMathematicalIntegerToken(token: string): boolean {
+  const match = token.match(
+    /^(?<integer>0|[1-9][0-9]*)(?:\.(?<fraction>[0-9]+))?(?:[eE](?<exponentSign>[+-]?)(?<exponent>[0-9]+))?$/u,
+  );
+  if (match?.groups === undefined) {
+    return false;
+  }
+  const integer = match.groups.integer ?? "";
+  const fraction = match.groups.fraction ?? "";
+  const coefficient = `${integer}${fraction}`;
+  if (/^0+$/u.test(coefficient)) {
+    return true;
+  }
+  const trailingZeros = coefficient.match(/0+$/u)?.[0].length ?? 0;
+  const exponentDigits = match.groups.exponent ?? "0";
+  const exponent = boundedDecimalMagnitude(
+    exponentDigits,
+    fraction.length + trailingZeros + 1,
+  );
+  if (match.groups.exponentSign === "-") {
+    return exponent <= trailingZeros && fraction.length <= trailingZeros - exponent;
+  }
+  return exponent >= fraction.length || trailingZeros >= fraction.length - exponent;
+}
 
 function containsControlCharacter(value: string): boolean {
   for (const character of value) {
@@ -261,7 +304,7 @@ class PortableJsonRawParser {
     this.error("unterminated string");
   }
 
-  private parseNumber(): void {
+  private parseNumber(path: readonly string[]): void {
     const token = this.input.slice(this.index).match(
       /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/u,
     )?.[0];
@@ -275,6 +318,13 @@ class PortableJsonRawParser {
     ) {
       this.error("numbers must use canonical unsigned integer tokens");
     }
+    if (
+      this.contractLabel === "fixture" &&
+      fixtureIntegerPaths.has(path.join(".")) &&
+      !isNonnegativeMathematicalIntegerToken(token)
+    ) {
+      this.error("fixture integer fields must be mathematically integral before conversion");
+    }
   }
 
   private parseLiteral(literal: "true" | "false" | "null"): void {
@@ -284,15 +334,17 @@ class PortableJsonRawParser {
     this.index += literal.length;
   }
 
-  private parseArray(): void {
+  private parseArray(path: readonly string[]): void {
     this.index += 1;
     this.skipWhitespace();
     if (this.peek() === "]") {
       this.index += 1;
       return;
     }
+    let elementIndex = 0;
     while (this.index < this.input.length) {
-      this.parseValue();
+      this.parseValue([...path, String(elementIndex)]);
+      elementIndex += 1;
       this.skipWhitespace();
       if (this.peek() === "]") {
         this.index += 1;
@@ -307,7 +359,7 @@ class PortableJsonRawParser {
     this.error("unterminated array");
   }
 
-  private parseObject(): void {
+  private parseObject(path: readonly string[]): void {
     const keys = new Set<string>();
     this.index += 1;
     this.skipWhitespace();
@@ -330,7 +382,7 @@ class PortableJsonRawParser {
       }
       this.index += 1;
       this.skipWhitespace();
-      this.parseValue();
+      this.parseValue([...path, key]);
       this.skipWhitespace();
       if (this.peek() === "}") {
         this.index += 1;
@@ -345,12 +397,12 @@ class PortableJsonRawParser {
     this.error("unterminated object");
   }
 
-  private parseValue(): void {
+  private parseValue(path: readonly string[]): void {
     const character = this.peek();
     if (character === "{") {
-      this.parseObject();
+      this.parseObject(path);
     } else if (character === "[") {
-      this.parseArray();
+      this.parseArray(path);
     } else if (character === '"') {
       this.parseString();
     } else if (character === "t") {
@@ -360,7 +412,7 @@ class PortableJsonRawParser {
     } else if (character === "n") {
       this.parseLiteral("null");
     } else if (character === "-" || (character >= "0" && character <= "9")) {
-      this.parseNumber();
+      this.parseNumber(path);
     } else {
       this.error("expected a JSON value");
     }
@@ -368,7 +420,7 @@ class PortableJsonRawParser {
 
   public parse(): void {
     this.skipWhitespace();
-    this.parseValue();
+    this.parseValue([]);
     this.skipWhitespace();
     if (this.index !== this.input.length) {
       this.error("trailing content after the JSON value");
@@ -393,6 +445,24 @@ export function assertPortableArtifactJsonText(input: string): void {
  */
 export function assertPortableFixtureJsonText(input: string): void {
   new PortableJsonRawParser(input, "fixture", false).parse();
+}
+
+/**
+ * Decodes original fixture bytes with fatal UTF-8 semantics, then enforces the
+ * raw fixture profile. Invalid byte sequences never become replacement text.
+ */
+export function decodePortableFixtureJsonBytes(input: Uint8Array): string {
+  if (!(input instanceof Uint8Array)) {
+    throw new TypeError("fixture JSON input must be original bytes");
+  }
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input);
+  } catch (error: unknown) {
+    throw new TypeError("fixture JSON bytes must be strict UTF-8", { cause: error });
+  }
+  assertPortableFixtureJsonText(text);
+  return text;
 }
 
 /** Backward-compatible name for the raw gate, now stronger than number checks alone. */
@@ -719,8 +789,8 @@ export function parseFixtureDocument(value: unknown): FixtureDocument {
   };
 }
 
-/** Parses raw fixture JSON through the lexical boundary and TypeScript semantics. */
-export function parseFixtureDocumentJson(input: string): FixtureDocument {
-  assertPortableFixtureJsonText(input);
-  return parseFixtureDocument(JSON.parse(input) as unknown);
+/** Parses original fixture bytes through strict UTF-8, raw JSON, and TypeScript semantics. */
+export function parseFixtureDocumentJson(input: Uint8Array): FixtureDocument {
+  const text = decodePortableFixtureJsonBytes(input);
+  return parseFixtureDocument(JSON.parse(text) as unknown);
 }
