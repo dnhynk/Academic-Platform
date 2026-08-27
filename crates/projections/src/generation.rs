@@ -2,7 +2,8 @@
 
 use std::fmt;
 
-use academic_domain::{ContentDigest, DomainId};
+use crate::resolution::AuthorityPolicy;
+use academic_domain::{ContentDigest, DomainId, TimestampMillis};
 
 use crate::{
     GRAPH_PROJECTION_KIND, TRIGRAM_LEXICAL_PROJECTION_KIND, UNICODE_LEXICAL_PROJECTION_KIND,
@@ -129,8 +130,11 @@ pub struct GenerationMetadata {
     pub algorithm_version: String,
     pub tokenizer_version: String,
     pub effective_config_hash: ContentDigest,
-    pub source_accept_seq: u64,
+    pub coordinates: ProjectionCoordinates,
     pub source_outbox_seq: u64,
+    pub resolver_version: String,
+    pub policy_registry_version: String,
+    pub policy_registry_hash: ContentDigest,
     pub security_domain: DomainId,
     pub built_at_unix_ms: i64,
     pub state: GenerationState,
@@ -144,10 +148,40 @@ pub struct ActiveGeneration {
     pub generation_id: GenerationId,
     pub kind: ProjectionKind,
     pub security_domain: DomainId,
-    pub source_accept_seq: u64,
+    pub coordinates: ProjectionCoordinates,
     pub source_outbox_seq: u64,
+    pub resolver_version: String,
+    pub policy_registry_version: String,
+    pub policy_registry_hash: ContentDigest,
     pub record_count: u64,
     pub canonical_checksum: ContentDigest,
+}
+
+/// The two mandatory bitemporal coordinates for an active projection result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ProjectionCoordinates {
+    /// Replica-local acceptance sequence through which canonical facts are known.
+    pub known_at_accept_seq: u64,
+    /// Domain-valid instant at which canonical facts are evaluated.
+    pub valid_at: TimestampMillis,
+}
+
+impl ProjectionCoordinates {
+    /// Constructs explicit bitemporal coordinates.
+    #[must_use]
+    pub const fn new(known_at_accept_seq: u64, valid_at: TimestampMillis) -> Self {
+        Self {
+            known_at_accept_seq,
+            valid_at,
+        }
+    }
+}
+
+/// Resolver provenance copied onto every active projection record.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolutionProvenance {
+    pub authority_policy: AuthorityPolicy,
+    pub coordinates: ProjectionCoordinates,
 }
 
 /// Explicit query authority/lag state; BUILDING or FAILED is never represented here.
@@ -155,7 +189,7 @@ pub struct ActiveGeneration {
 pub enum ProjectionAvailability {
     /// No generation has ever been atomically activated for this kind/domain.
     NoActive {
-        latest_source_accept_seq: u64,
+        latest_known_at_accept_seq: u64,
         latest_source_outbox_seq: u64,
     },
     /// The active generation covers the latest committed outbox watermark.
@@ -163,7 +197,7 @@ pub enum ProjectionAvailability {
     /// The old active generation remains queryable while canonical input is ahead.
     Lagging {
         active: ActiveGeneration,
-        latest_source_accept_seq: u64,
+        latest_known_at_accept_seq: u64,
         latest_source_outbox_seq: u64,
     },
 }

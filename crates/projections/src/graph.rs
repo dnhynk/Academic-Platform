@@ -1,15 +1,21 @@
 //! Relational adjacency projection derived from entity-valued canonical claims.
 
-use std::{collections::BTreeMap, str::FromStr};
+use std::str::FromStr;
 
 use academic_domain::{
-    ClaimId, ContentDigest, DomainError, DomainId, EntityId, EvidenceId, ScopeId,
+    AuthorityClass, ClaimId, ClaimObject, ContentDigest, DomainError, DomainId, EntityId,
+    EpistemicStatus, EvidenceId, ScopeId, TimestampMillis, ValidInterval,
 };
+use academic_store::queries::ProjectionResolvedClaim;
 use rusqlite::{Connection, Transaction, params};
 
 use crate::{
     checksum::append_field,
-    generation::GenerationId,
+    generation::{GenerationId, ProjectionCoordinates, ResolutionProvenance},
+    resolution::{
+        AuthorityPolicy, authority_name, authority_policy_name, epistemic_name, parse_authority,
+        parse_authority_policy, parse_epistemic,
+    },
     runner::{ProjectionError, ProjectionResult},
 };
 
@@ -23,9 +29,12 @@ pub struct GraphEdge {
     pub evidence_ids: Vec<EvidenceId>,
     pub scope_id: ScopeId,
     pub domain: DomainId,
+    pub authority_class: AuthorityClass,
+    pub epistemic_status: EpistemicStatus,
+    pub valid_time: ValidInterval,
+    pub resolution: ResolutionProvenance,
     pub source_record_accept_seq: u64,
     pub generation_id: GenerationId,
-    pub source_watermark: u64,
     pub stable_tiebreaker: ContentDigest,
 }
 
@@ -37,8 +46,11 @@ pub(crate) struct GraphSourceRecord {
     target_entity_id: [u8; 16],
     scope_id: [u8; 16],
     domain: [u8; 16],
-    authority_class: String,
-    epistemic_status: String,
+    authority_class: AuthorityClass,
+    epistemic_status: EpistemicStatus,
+    authority_policy: AuthorityPolicy,
+    valid_from_unix_ms: i64,
+    valid_to_unix_ms: Option<i64>,
     source_accept_seq: u64,
     evidence_ids: Vec<[u8; 16]>,
 }
@@ -53,85 +65,72 @@ impl GraphSourceRecord {
         append_field(&mut bytes, &self.target_entity_id);
         append_field(&mut bytes, &self.scope_id);
         append_field(&mut bytes, &self.domain);
-        append_field(&mut bytes, self.authority_class.as_bytes());
-        append_field(&mut bytes, self.epistemic_status.as_bytes());
+        append_field(&mut bytes, authority_name(self.authority_class).as_bytes());
+        append_field(&mut bytes, epistemic_name(self.epistemic_status).as_bytes());
+        append_field(
+            &mut bytes,
+            authority_policy_name(self.authority_policy).as_bytes(),
+        );
+        append_field(&mut bytes, &self.valid_from_unix_ms.to_be_bytes());
+        match self.valid_to_unix_ms {
+            Some(valid_to) => {
+                bytes.push(1);
+                append_field(&mut bytes, &valid_to.to_be_bytes());
+            }
+            None => bytes.push(0),
+        }
         append_field(&mut bytes, &self.source_accept_seq.to_be_bytes());
         for evidence_id in &self.evidence_ids {
             append_field(&mut bytes, evidence_id);
         }
         bytes
     }
-}
 
-#[derive(Debug)]
-struct RawGraphRow {
-    claim_id: Vec<u8>,
-    source_entity_id: Vec<u8>,
-    predicate_id: String,
-    target_entity_id: Vec<u8>,
-    scope_id: Vec<u8>,
-    domain: Vec<u8>,
-    authority_class: String,
-    epistemic_status: String,
-    source_accept_seq: i64,
-    evidence_id: Option<Vec<u8>>,
+    pub(crate) fn verification_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.canonical_bytes();
+        let stable_tiebreaker = ContentDigest::sha256(&bytes);
+        append_field(&mut bytes, stable_tiebreaker.as_bytes().as_slice());
+        bytes
+    }
 }
 
 pub(crate) fn load_graph_sources(
-    canonical: &Connection,
+    resolved: &[ProjectionResolvedClaim],
     domain: DomainId,
-    watermark: u64,
 ) -> ProjectionResult<Vec<GraphSourceRecord>> {
-    let watermark = checked_i64(watermark)?;
-    let mut statement = canonical.prepare(concat!(
-        "SELECT c.claim_id, c.subject_entity_id, c.predicate_id, c.object_entity_id, ",
-        "c.scope_id, e.domain_id, c.authority_class, c.epistemic_status, e.accept_seq, ",
-        "ce.evidence_id FROM claim c ",
-        "JOIN ledger_event e ON e.event_id = c.assertion_event_id ",
-        "LEFT JOIN claim_evidence ce ON ce.claim_id = c.claim_id ",
-        "WHERE c.object_kind = 'ENTITY' AND e.domain_id = ?1 AND e.accept_seq <= ?2 ",
-        "ORDER BY c.claim_id, ce.evidence_ordinal, ce.evidence_id"
-    ))?;
-    let rows = statement.query_map(params![domain.as_bytes().as_slice(), watermark], |row| {
-        Ok(RawGraphRow {
-            claim_id: row.get(0)?,
-            source_entity_id: row.get(1)?,
-            predicate_id: row.get(2)?,
-            target_entity_id: row.get(3)?,
-            scope_id: row.get(4)?,
-            domain: row.get(5)?,
-            authority_class: row.get(6)?,
-            epistemic_status: row.get(7)?,
-            source_accept_seq: row.get(8)?,
-            evidence_id: row.get(9)?,
+    let mut records = resolved
+        .iter()
+        .filter_map(|record| {
+            let ClaimObject::Entity(target_entity_id) = record.claim.object else {
+                return None;
+            };
+            Some((record, target_entity_id))
         })
-    })?;
-
-    let mut grouped = BTreeMap::<[u8; 16], GraphSourceRecord>::new();
-    for row in rows {
-        let row = row?;
-        let claim_id = fixed_bytes(row.claim_id, "graph claim identifier")?;
-        let evidence_id = row
-            .evidence_id
-            .map(|value| fixed_bytes(value, "graph evidence identifier"))
-            .transpose()?;
-        let record = grouped.entry(claim_id).or_insert(GraphSourceRecord {
-            claim_id,
-            source_entity_id: fixed_bytes(row.source_entity_id, "graph source entity")?,
-            predicate_id: row.predicate_id,
-            target_entity_id: fixed_bytes(row.target_entity_id, "graph target entity")?,
-            scope_id: fixed_bytes(row.scope_id, "graph scope identifier")?,
-            domain: fixed_bytes(row.domain, "graph domain identifier")?,
-            authority_class: row.authority_class,
-            epistemic_status: row.epistemic_status,
-            source_accept_seq: positive_u64(row.source_accept_seq, "graph source accept_seq")?,
-            evidence_ids: Vec::new(),
-        });
-        if let Some(evidence_id) = evidence_id {
-            record.evidence_ids.push(evidence_id);
-        }
-    }
-    Ok(grouped.into_values().collect())
+        .map(|(record, target_entity_id)| {
+            Ok(GraphSourceRecord {
+                claim_id: *record.claim.id.as_bytes(),
+                source_entity_id: *record.claim.subject_entity_id.as_bytes(),
+                predicate_id: record.claim.predicate_id.as_str().to_owned(),
+                target_entity_id: *target_entity_id.as_bytes(),
+                scope_id: *record.claim.scope_id.as_bytes(),
+                domain: *domain.as_bytes(),
+                authority_class: record.claim.authority_class,
+                epistemic_status: record.claim.epistemic_status,
+                authority_policy: record.applied_policy,
+                valid_from_unix_ms: record.claim.valid_time.from().value(),
+                valid_to_unix_ms: record.claim.valid_time.to().map(TimestampMillis::value),
+                source_accept_seq: record.accept_seq,
+                evidence_ids: record
+                    .claim
+                    .evidence_ids
+                    .iter()
+                    .map(|evidence_id| *evidence_id.as_bytes())
+                    .collect(),
+            })
+        })
+        .collect::<ProjectionResult<Vec<_>>>()?;
+    records.sort_by_key(|record| record.claim_id);
+    Ok(records)
 }
 
 pub(crate) fn write_graph_records<F>(
@@ -149,8 +148,9 @@ where
             concat!(
                 "INSERT INTO projection_graph_edge (generation_id, claim_id, source_entity_id, ",
                 "predicate_id, target_entity_id, scope_id, security_domain, authority_class, ",
-                "epistemic_status, source_accept_seq, stable_tiebreaker) ",
-                "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)"
+                "epistemic_status, authority_policy, valid_from_unix_ms, valid_to_unix_ms, ",
+                "source_accept_seq, stable_tiebreaker) ",
+                "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)"
             ),
             params![
                 generation_id.as_bytes().as_slice(),
@@ -160,8 +160,11 @@ where
                 record.target_entity_id.as_slice(),
                 record.scope_id.as_slice(),
                 record.domain.as_slice(),
-                record.authority_class,
-                record.epistemic_status,
+                authority_name(record.authority_class),
+                epistemic_name(record.epistemic_status),
+                authority_policy_name(record.authority_policy),
+                record.valid_from_unix_ms,
+                record.valid_to_unix_ms,
                 checked_i64(record.source_accept_seq)?,
                 stable_tiebreaker.as_bytes().as_slice(),
             ],
@@ -192,7 +195,8 @@ pub(crate) fn persisted_graph_canonical_records(
 ) -> ProjectionResult<Vec<Vec<u8>>> {
     let mut statement = connection.prepare(concat!(
         "SELECT claim_id, source_entity_id, predicate_id, target_entity_id, scope_id, ",
-        "security_domain, authority_class, epistemic_status, source_accept_seq ",
+        "security_domain, authority_class, epistemic_status, authority_policy, ",
+        "valid_from_unix_ms, valid_to_unix_ms, source_accept_seq, stable_tiebreaker ",
         "FROM projection_graph_edge WHERE generation_id = ?1 ORDER BY claim_id"
     ))?;
     let rows = statement.query_map([generation_id.as_bytes().as_slice()], |row| {
@@ -205,7 +209,11 @@ pub(crate) fn persisted_graph_canonical_records(
             row.get::<_, Vec<u8>>(5)?,
             row.get::<_, String>(6)?,
             row.get::<_, String>(7)?,
-            row.get::<_, i64>(8)?,
+            row.get::<_, String>(8)?,
+            row.get::<_, i64>(9)?,
+            row.get::<_, Option<i64>>(10)?,
+            row.get::<_, i64>(11)?,
+            row.get::<_, Vec<u8>>(12)?,
         ))
     })?;
     let mut canonical = Vec::new();
@@ -213,21 +221,32 @@ pub(crate) fn persisted_graph_canonical_records(
         let row = row?;
         let claim_id = fixed_bytes(row.0, "persisted graph claim identifier")?;
         let evidence_ids = read_evidence_bytes(connection, generation_id, claim_id)?;
-        canonical.push(
-            GraphSourceRecord {
-                claim_id,
-                source_entity_id: fixed_bytes(row.1, "persisted graph source entity")?,
-                predicate_id: row.2,
-                target_entity_id: fixed_bytes(row.3, "persisted graph target entity")?,
-                scope_id: fixed_bytes(row.4, "persisted graph scope")?,
-                domain: fixed_bytes(row.5, "persisted graph domain")?,
-                authority_class: row.6,
-                epistemic_status: row.7,
-                source_accept_seq: positive_u64(row.8, "persisted graph accept_seq")?,
-                evidence_ids,
-            }
-            .canonical_bytes(),
-        );
+        let record = GraphSourceRecord {
+            claim_id,
+            source_entity_id: fixed_bytes(row.1, "persisted graph source entity")?,
+            predicate_id: row.2,
+            target_entity_id: fixed_bytes(row.3, "persisted graph target entity")?,
+            scope_id: fixed_bytes(row.4, "persisted graph scope")?,
+            domain: fixed_bytes(row.5, "persisted graph domain")?,
+            authority_class: parse_authority(&row.6)?,
+            epistemic_status: parse_epistemic(&row.7)?,
+            authority_policy: parse_authority_policy(&row.8)?,
+            valid_from_unix_ms: row.9,
+            valid_to_unix_ms: row.10,
+            source_accept_seq: positive_u64(row.11, "persisted graph accept_seq")?,
+            evidence_ids,
+        };
+        let stored_tiebreaker = ContentDigest::from_sha256_bytes(fixed_bytes(
+            row.12,
+            "persisted graph stable tiebreaker",
+        )?);
+        let expected_tiebreaker = ContentDigest::sha256(&record.canonical_bytes());
+        if stored_tiebreaker != expected_tiebreaker {
+            return Err(ProjectionError::Corrupt(
+                "persisted graph stable tiebreaker does not match canonical record".to_owned(),
+            ));
+        }
+        canonical.push(record.verification_bytes());
     }
     Ok(canonical)
 }
@@ -235,12 +254,13 @@ pub(crate) fn persisted_graph_canonical_records(
 pub(crate) fn read_graph_edges(
     connection: &Connection,
     generation_id: GenerationId,
-    source_watermark: u64,
+    coordinates: ProjectionCoordinates,
     source_entity_id: EntityId,
 ) -> ProjectionResult<Vec<GraphEdge>> {
     let mut statement = connection.prepare(concat!(
         "SELECT claim_id, source_entity_id, predicate_id, target_entity_id, scope_id, ",
-        "security_domain, source_accept_seq, stable_tiebreaker ",
+        "security_domain, authority_class, epistemic_status, authority_policy, ",
+        "valid_from_unix_ms, valid_to_unix_ms, source_accept_seq, stable_tiebreaker ",
         "FROM projection_graph_edge WHERE generation_id = ?1 AND source_entity_id = ?2 ",
         "ORDER BY stable_tiebreaker, claim_id"
     ))?;
@@ -257,8 +277,13 @@ pub(crate) fn read_graph_edges(
                 row.get::<_, Vec<u8>>(3)?,
                 row.get::<_, Vec<u8>>(4)?,
                 row.get::<_, Vec<u8>>(5)?,
-                row.get::<_, i64>(6)?,
-                row.get::<_, Vec<u8>>(7)?,
+                row.get::<_, String>(6)?,
+                row.get::<_, String>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, i64>(9)?,
+                row.get::<_, Option<i64>>(10)?,
+                row.get::<_, i64>(11)?,
+                row.get::<_, Vec<u8>>(12)?,
             ))
         },
     )?;
@@ -277,11 +302,21 @@ pub(crate) fn read_graph_edges(
                 .collect::<Result<Vec<_>, _>>()?,
             scope_id: id_from_bytes(row.4, "query graph scope")?,
             domain: id_from_bytes(row.5, "query graph domain")?,
-            source_record_accept_seq: positive_u64(row.6, "query graph accept_seq")?,
+            authority_class: parse_authority(&row.6)?,
+            epistemic_status: parse_epistemic(&row.7)?,
+            valid_time: ValidInterval::new(
+                TimestampMillis::new(row.9),
+                row.10.map(TimestampMillis::new),
+            )
+            .map_err(ProjectionError::Domain)?,
+            resolution: ResolutionProvenance {
+                authority_policy: parse_authority_policy(&row.8)?,
+                coordinates,
+            },
+            source_record_accept_seq: positive_u64(row.11, "query graph accept_seq")?,
             generation_id,
-            source_watermark,
             stable_tiebreaker: ContentDigest::from_sha256_bytes(fixed_bytes(
-                row.7,
+                row.12,
                 "query graph stable tiebreaker",
             )?),
         });

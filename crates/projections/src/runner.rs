@@ -8,8 +8,12 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use academic_domain::{ContentDigest, DomainError, DomainId};
-use academic_store::{SQLITE_APPLICATION_ID, STORE_SCHEMA_VERSION, connection::ReaderConnection};
+use academic_domain::{ContentDigest, DomainError, DomainId, TimestampMillis};
+use academic_store::{
+    connection::{ReaderConnection, open_reader},
+    error::StoreError,
+    queries::{ProjectionSnapshotRequest, QueryError, projection_source_snapshot},
+};
 use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, params};
 
 use crate::{
@@ -20,12 +24,14 @@ use crate::{
         write_search_records,
     },
     generation::{
-        ActiveGeneration, GenerationId, GenerationMetadata, GenerationState, ProjectionKind,
+        ActiveGeneration, GenerationId, GenerationMetadata, GenerationState, ProjectionCoordinates,
+        ProjectionKind,
     },
     graph::{
         GraphSourceRecord, load_graph_sources, persisted_graph_canonical_records,
         write_graph_records,
     },
+    resolution::{CANONICAL_RESOLVER_VERSION, PredicatePolicies},
 };
 
 /// Application identity for the disposable projection sidecar (`ACPR`).
@@ -38,6 +44,15 @@ pub const MIGRATION_0002_SQL: &str =
 /// Stable Phase 1 builder algorithm identifier.
 pub const PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v1";
 
+const UNICODE_FTS_SCHEMA_SQL: &str = concat!(
+    "CREATE VIRTUAL TABLE projection_search_unicode USING fts5(",
+    "body, content_id UNINDEXED, tokenize = 'unicode61 remove_diacritics 2')"
+);
+const TRIGRAM_FTS_SCHEMA_SQL: &str = concat!(
+    "CREATE VIRTUAL TABLE projection_search_trigram USING fts5(",
+    "body, content_id UNINDEXED, tokenize = 'trigram')"
+);
+
 /// Deterministic projection failpoints used only through an injected test harness.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectionFaultPoint {
@@ -47,6 +62,15 @@ pub enum ProjectionFaultPoint {
     Pr02AfterChecksum,
     /// PR03: after active pointer update but before cursor update in one transaction.
     Pr03DuringActivation,
+}
+
+/// Sidecar-only verification corruptions used by the adversarial test harness.
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectionVerificationCorruption {
+    WrongNamedTokenizer,
+    MissingFtsRow,
+    WrongPersistedTiebreaker,
 }
 
 impl ProjectionFaultPoint {
@@ -65,6 +89,12 @@ impl ProjectionFaultPoint {
 pub trait ProjectionFaultInjector: fmt::Debug {
     /// Called only at one of the three fixed J1 ordering boundaries.
     fn hit(&self, point: ProjectionFaultPoint) -> ProjectionResult<()>;
+
+    /// Requests one test-only sidecar mutation after rows are durable but before VERIFIED.
+    #[doc(hidden)]
+    fn verification_corruption(&self) -> Option<ProjectionVerificationCorruption> {
+        None
+    }
 }
 
 /// Production/default runner with no fault behavior.
@@ -81,6 +111,8 @@ impl ProjectionFaultInjector for NoProjectionFault {
 #[derive(Debug)]
 pub enum ProjectionError {
     Sqlite(rusqlite::Error),
+    Store(StoreError),
+    CanonicalQuery(QueryError),
     Domain(DomainError),
     Corrupt(String),
     InvalidCanonicalStore {
@@ -95,6 +127,9 @@ pub enum ProjectionError {
         latest: u64,
     },
     InvalidQuery(&'static str),
+    InvalidPolicyRegistry(String),
+    MissingPredicatePolicy(String),
+    AuthorityMismatch(String),
     InjectedFault(ProjectionFaultPoint),
     SystemClock,
 }
@@ -103,6 +138,10 @@ impl fmt::Display for ProjectionError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Sqlite(error) => write!(formatter, "projection SQLite error: {error}"),
+            Self::Store(error) => write!(formatter, "canonical store open error: {error}"),
+            Self::CanonicalQuery(error) => {
+                write!(formatter, "canonical projection snapshot error: {error}")
+            }
             Self::Domain(error) => write!(formatter, "projection domain identity error: {error}"),
             Self::Corrupt(reason) => write!(formatter, "projection state is corrupt: {reason}"),
             Self::InvalidCanonicalStore {
@@ -127,6 +166,16 @@ impl fmt::Display for ProjectionError {
                 "requested source watermark {requested} exceeds latest canonical watermark {latest}"
             ),
             Self::InvalidQuery(reason) => write!(formatter, "invalid projection query: {reason}"),
+            Self::InvalidPolicyRegistry(reason) => {
+                write!(formatter, "invalid projection policy registry: {reason}")
+            }
+            Self::MissingPredicatePolicy(predicate) => write!(
+                formatter,
+                "projection policy registry has no entry for predicate {predicate}"
+            ),
+            Self::AuthorityMismatch(reason) => {
+                write!(formatter, "projection authority mismatch: {reason}")
+            }
             Self::InjectedFault(point) => {
                 write!(formatter, "injected projection fault {}", point.as_str())
             }
@@ -141,6 +190,8 @@ impl Error for ProjectionError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Sqlite(error) => Some(error),
+            Self::Store(error) => Some(error),
+            Self::CanonicalQuery(error) => Some(error),
             Self::Domain(error) => Some(error),
             Self::Corrupt(_)
             | Self::InvalidCanonicalStore { .. }
@@ -148,6 +199,9 @@ impl Error for ProjectionError {
             | Self::IntegerOverflow(_)
             | Self::InvalidWatermark { .. }
             | Self::InvalidQuery(_)
+            | Self::InvalidPolicyRegistry(_)
+            | Self::MissingPredicatePolicy(_)
+            | Self::AuthorityMismatch(_)
             | Self::InjectedFault(_)
             | Self::SystemClock => None,
         }
@@ -157,6 +211,26 @@ impl Error for ProjectionError {
 impl From<rusqlite::Error> for ProjectionError {
     fn from(error: rusqlite::Error) -> Self {
         Self::Sqlite(error)
+    }
+}
+
+impl From<StoreError> for ProjectionError {
+    fn from(error: StoreError) -> Self {
+        Self::Store(error)
+    }
+}
+
+impl From<QueryError> for ProjectionError {
+    fn from(error: QueryError) -> Self {
+        match error {
+            QueryError::KnownAtBeyondHead { requested, latest } => {
+                Self::InvalidWatermark { requested, latest }
+            }
+            QueryError::MissingPredicatePolicy(predicate) => {
+                Self::MissingPredicatePolicy(predicate)
+            }
+            other => Self::CanonicalQuery(other),
+        }
     }
 }
 
@@ -217,28 +291,38 @@ impl ProjectionRunner {
         &self.projection_database_path
     }
 
-    /// Consumes the latest committed outbox watermark and atomically activates
-    /// a complete new generation for one security domain.
-    pub fn rebuild_latest(
+    /// Resolves and atomically activates one generation at explicit known/valid
+    /// coordinates under the exact versioned predicate policy registry.
+    pub fn rebuild_at(
         &self,
         kind: ProjectionKind,
         domain: DomainId,
-    ) -> ProjectionResult<GenerationReceipt> {
-        self.rebuild(kind, domain, BuildTarget::Latest, true, &NoProjectionFault)
-    }
-
-    /// Builds a VERIFIED, inactive generation at an explicit historical
-    /// `accept_seq` watermark for time-travel comparison.
-    pub fn build_as_known(
-        &self,
-        kind: ProjectionKind,
-        domain: DomainId,
-        source_accept_seq: u64,
+        coordinates: ProjectionCoordinates,
+        policies: &PredicatePolicies,
     ) -> ProjectionResult<GenerationReceipt> {
         self.rebuild(
             kind,
             domain,
-            BuildTarget::AsKnown(source_accept_seq),
+            coordinates,
+            policies,
+            true,
+            &NoProjectionFault,
+        )
+    }
+
+    /// Builds a VERIFIED, inactive generation at explicit bitemporal coordinates.
+    pub fn build_inactive_at(
+        &self,
+        kind: ProjectionKind,
+        domain: DomainId,
+        coordinates: ProjectionCoordinates,
+        policies: &PredicatePolicies,
+    ) -> ProjectionResult<GenerationReceipt> {
+        self.rebuild(
+            kind,
+            domain,
+            coordinates,
+            policies,
             false,
             &NoProjectionFault,
         )
@@ -247,13 +331,15 @@ impl ProjectionRunner {
     /// Fault-harness entrypoint. The trait has no process-exit implementation in
     /// production code; integration tests provide one in a child process.
     #[doc(hidden)]
-    pub fn rebuild_latest_with_faults<F: ProjectionFaultInjector + ?Sized>(
+    pub fn rebuild_at_with_faults<F: ProjectionFaultInjector + ?Sized>(
         &self,
         kind: ProjectionKind,
         domain: DomainId,
+        coordinates: ProjectionCoordinates,
+        policies: &PredicatePolicies,
         faults: &F,
     ) -> ProjectionResult<GenerationReceipt> {
-        self.rebuild(kind, domain, BuildTarget::Latest, true, faults)
+        self.rebuild(kind, domain, coordinates, policies, true, faults)
     }
 
     /// Drops every disposable generation, pointer, cursor, and FTS row for one
@@ -298,52 +384,101 @@ impl ProjectionRunner {
         read_generation_metadata(&connection, generation_id)
     }
 
+    /// Reads active/cursor authority for adversarial tests without exposing SQL.
+    #[doc(hidden)]
+    pub fn audit_active_generation(
+        &self,
+        kind: ProjectionKind,
+        domain: DomainId,
+    ) -> ProjectionResult<Option<ActiveGeneration>> {
+        let connection = open_projection_writer(&self.projection_database_path)?;
+        read_active_generation(&connection, kind, domain)
+    }
+
+    /// Counts lifecycle rows for adversarial tests without exposing the sidecar connection.
+    #[doc(hidden)]
+    pub fn audit_generation_state_count(
+        &self,
+        kind: ProjectionKind,
+        domain: DomainId,
+        state: GenerationState,
+        excluding: Option<GenerationId>,
+    ) -> ProjectionResult<u64> {
+        let connection = open_projection_writer(&self.projection_database_path)?;
+        let count = match excluding {
+            Some(generation_id) => connection.query_row(
+                concat!(
+                    "SELECT count(*) FROM projection_generation WHERE projection_kind = ?1 ",
+                    "AND security_domain = ?2 AND state = ?3 AND generation_id <> ?4"
+                ),
+                params![
+                    kind.as_str(),
+                    domain.as_bytes().as_slice(),
+                    state.as_str(),
+                    generation_id.as_bytes().as_slice()
+                ],
+                |row| row.get::<_, i64>(0),
+            )?,
+            None => connection.query_row(
+                concat!(
+                    "SELECT count(*) FROM projection_generation WHERE projection_kind = ?1 ",
+                    "AND security_domain = ?2 AND state = ?3"
+                ),
+                params![kind.as_str(), domain.as_bytes().as_slice(), state.as_str()],
+                |row| row.get::<_, i64>(0),
+            )?,
+        };
+        nonnegative_u64(count, "projection generation state count")
+    }
+
     fn rebuild<F: ProjectionFaultInjector + ?Sized>(
         &self,
         kind: ProjectionKind,
         domain: DomainId,
-        target: BuildTarget,
+        coordinates: ProjectionCoordinates,
+        policies: &PredicatePolicies,
         activate: bool,
         faults: &F,
     ) -> ProjectionResult<GenerationReceipt> {
-        let mut canonical = open_canonical_reader(&self.canonical_database_path)?;
-        let canonical_transaction =
-            canonical.transaction_with_behavior(TransactionBehavior::Deferred)?;
-        let latest = latest_watermark(&canonical_transaction)?;
-        let watermark = match target {
-            BuildTarget::Latest => latest,
-            BuildTarget::AsKnown(requested) => {
-                if requested > latest.source_accept_seq {
-                    return Err(ProjectionError::InvalidWatermark {
-                        requested,
-                        latest: latest.source_accept_seq,
-                    });
-                }
-                Watermark {
-                    source_accept_seq: requested,
-                    source_outbox_seq: outbox_at_or_before(&canonical_transaction, requested)?,
-                }
-            }
+        let mut canonical = open_reader(&self.canonical_database_path)?;
+        let snapshot = projection_source_snapshot(
+            &mut canonical,
+            &ProjectionSnapshotRequest {
+                domain_id: domain,
+                valid_at: coordinates.valid_at,
+                known_at_accept_seq: coordinates.known_at_accept_seq,
+                predicate_policies: policies.entries(),
+            },
+        )?;
+        let watermark = Watermark {
+            source_accept_seq: coordinates.known_at_accept_seq,
+            source_outbox_seq: snapshot.source_outbox_seq,
         };
         let source_records = match kind {
-            ProjectionKind::Graph => SourceRecords::Graph(load_graph_sources(
-                &canonical_transaction,
-                domain,
-                watermark.source_accept_seq,
-            )?),
-            ProjectionKind::Unicode61 | ProjectionKind::Trigram => SourceRecords::Search(
-                load_search_sources(&canonical_transaction, domain, watermark.source_accept_seq)?,
-            ),
+            ProjectionKind::Graph => {
+                SourceRecords::Graph(load_graph_sources(&snapshot.resolved_claims, domain)?)
+            }
+            ProjectionKind::Unicode61 | ProjectionKind::Trigram => {
+                SourceRecords::Search(load_search_sources(
+                    &snapshot.resolved_claims,
+                    &snapshot.evidence_locators,
+                    domain,
+                )?)
+            }
         };
-        canonical_transaction.commit()?;
 
         let built_at_unix_ms = unix_time_millis()?;
         let mut projection = open_projection_writer(&self.projection_database_path)?;
-        let generation_id = create_building_generation(
-            &mut projection,
+        let authority = BuildAuthority {
             kind,
             domain,
             watermark,
+            coordinates,
+            policies,
+        };
+        let generation_id = create_building_generation(
+            &mut projection,
+            &authority,
             self.builder_binary_digest,
             self.effective_config_hash,
             built_at_unix_ms,
@@ -361,14 +496,30 @@ impl ProjectionRunner {
             return Err(error);
         }
 
-        let expected_records = source_records.canonical_records();
+        let expected_records = source_records.verification_records();
         let expected_count = u64::try_from(expected_records.len())
             .map_err(|_| ProjectionError::Corrupt("projection record count overflow".to_owned()))?;
         let expected_checksum = order_stable_checksum(expected_records);
-        let persisted_records = match kind {
-            ProjectionKind::Graph => persisted_graph_canonical_records(&projection, generation_id)?,
-            ProjectionKind::Unicode61 | ProjectionKind::Trigram => {
-                persisted_search_canonical_records(&projection, generation_id)?
+        let verification: ProjectionResult<Vec<Vec<u8>>> = (|| {
+            if let Some(corruption) = faults.verification_corruption() {
+                apply_verification_corruption(&projection, generation_id, kind, corruption)?;
+            }
+            let persisted_records = match kind {
+                ProjectionKind::Graph => {
+                    persisted_graph_canonical_records(&projection, generation_id)?
+                }
+                ProjectionKind::Unicode61 | ProjectionKind::Trigram => {
+                    persisted_search_canonical_records(&projection, generation_id)?
+                }
+            };
+            verify_generation_storage(&projection, generation_id, kind, coordinates, policies)?;
+            Ok(persisted_records)
+        })();
+        let persisted_records = match verification {
+            Ok(records) => records,
+            Err(error) => {
+                mark_failed(&mut projection, generation_id, &error.to_string())?;
+                return Err(error);
             }
         };
         let actual_count = u64::try_from(persisted_records.len())
@@ -393,9 +544,7 @@ impl ProjectionRunner {
             activate_generation(
                 &mut projection,
                 generation_id,
-                kind,
-                domain,
-                watermark,
+                &authority,
                 built_at_unix_ms,
                 faults,
             )?
@@ -407,12 +556,6 @@ impl ProjectionRunner {
             activated,
         })
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum BuildTarget {
-    Latest,
-    AsKnown(u64),
 }
 
 #[derive(Debug)]
@@ -429,15 +572,15 @@ impl SourceRecords {
         }
     }
 
-    fn canonical_records(&self) -> Vec<Vec<u8>> {
+    fn verification_records(&self) -> Vec<Vec<u8>> {
         match self {
             Self::Graph(records) => records
                 .iter()
-                .map(GraphSourceRecord::canonical_bytes)
+                .map(GraphSourceRecord::verification_bytes)
                 .collect(),
             Self::Search(records) => records
                 .iter()
-                .map(SearchSourceRecord::canonical_bytes)
+                .map(SearchSourceRecord::verification_bytes)
                 .collect(),
         }
     }
@@ -447,6 +590,15 @@ impl SourceRecords {
 pub(crate) struct Watermark {
     pub(crate) source_accept_seq: u64,
     pub(crate) source_outbox_seq: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct BuildAuthority<'a> {
+    kind: ProjectionKind,
+    domain: DomainId,
+    watermark: Watermark,
+    coordinates: ProjectionCoordinates,
+    policies: &'a PredicatePolicies,
 }
 
 /// Creates or verifies the disposable projection database and executable FTS5
@@ -514,11 +666,53 @@ fn write_records<F: ProjectionFaultInjector + ?Sized>(
     Ok(())
 }
 
+fn apply_verification_corruption(
+    connection: &Connection,
+    generation_id: GenerationId,
+    kind: ProjectionKind,
+    corruption: ProjectionVerificationCorruption,
+) -> ProjectionResult<()> {
+    let table = match kind {
+        ProjectionKind::Unicode61 => "projection_search_unicode",
+        ProjectionKind::Trigram => "projection_search_trigram",
+        ProjectionKind::Graph => {
+            return Err(ProjectionError::InvalidQuery(
+                "FTS verification corruption requires a search generation",
+            ));
+        }
+    };
+    match corruption {
+        ProjectionVerificationCorruption::WrongNamedTokenizer => {
+            connection.execute_batch(&format!(
+                "DROP TABLE {table}; CREATE VIRTUAL TABLE {table} USING fts5(\
+                 body, content_id UNINDEXED, tokenize = 'ascii');"
+            ))?;
+        }
+        ProjectionVerificationCorruption::MissingFtsRow => {
+            connection.execute(
+                &format!(
+                    "DELETE FROM {table} WHERE rowid = (SELECT min(content_id) FROM \
+                     projection_search_content WHERE generation_id = ?1)"
+                ),
+                [generation_id.as_bytes().as_slice()],
+            )?;
+        }
+        ProjectionVerificationCorruption::WrongPersistedTiebreaker => {
+            connection.execute(
+                concat!(
+                    "UPDATE projection_search_content SET stable_tiebreaker = zeroblob(32) ",
+                    "WHERE generation_id = ?1"
+                ),
+                [generation_id.as_bytes().as_slice()],
+            )?;
+        }
+    }
+    Ok(())
+}
+
 fn create_building_generation(
     projection: &mut Connection,
-    kind: ProjectionKind,
-    domain: DomainId,
-    watermark: Watermark,
+    authority: &BuildAuthority<'_>,
     builder_binary_digest: ContentDigest,
     effective_config_hash: ContentDigest,
     built_at_unix_ms: i64,
@@ -536,8 +730,8 @@ fn create_building_generation(
     }
     let generation_id = derive_generation_id(
         generation_seq,
-        kind,
-        domain,
+        authority.kind,
+        authority.domain,
         built_at_unix_ms,
         builder_binary_digest,
         effective_config_hash,
@@ -546,22 +740,28 @@ fn create_building_generation(
         concat!(
             "INSERT INTO projection_generation (generation_seq, generation_id, projection_kind, ",
             "schema_version, builder_binary_digest, algorithm_version, tokenizer_version, ",
-            "effective_config_hash, source_accept_seq, source_outbox_seq, security_domain, ",
+            "effective_config_hash, known_at_accept_seq, valid_at_unix_ms, source_outbox_seq, ",
+            "resolver_version, policy_registry_version, policy_registry_hash, security_domain, ",
             "built_at_unix_ms, state) ",
-            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 'BUILDING')"
+            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ",
+            "?15, ?16, 'BUILDING')"
         ),
         params![
             generation_seq,
             generation_id.as_bytes().as_slice(),
-            kind.as_str(),
+            authority.kind.as_str(),
             i64::from(PROJECTION_SCHEMA_VERSION),
             builder_binary_digest.as_bytes().as_slice(),
             PROJECTION_ALGORITHM_VERSION,
-            kind.tokenizer_version(),
+            authority.kind.tokenizer_version(),
             effective_config_hash.as_bytes().as_slice(),
-            checked_i64(watermark.source_accept_seq)?,
-            checked_i64(watermark.source_outbox_seq)?,
-            domain.as_bytes().as_slice(),
+            checked_i64(authority.coordinates.known_at_accept_seq)?,
+            authority.coordinates.valid_at.value(),
+            checked_i64(authority.watermark.source_outbox_seq)?,
+            CANONICAL_RESOLVER_VERSION,
+            authority.policies.version(),
+            authority.policies.canonical_hash().as_bytes().as_slice(),
+            authority.domain.as_bytes().as_slice(),
             built_at_unix_ms,
         ],
     )?;
@@ -618,9 +818,7 @@ fn mark_verified(
 fn activate_generation<F: ProjectionFaultInjector + ?Sized>(
     projection: &mut Connection,
     generation_id: GenerationId,
-    kind: ProjectionKind,
-    domain: DomainId,
-    watermark: Watermark,
+    authority: &BuildAuthority<'_>,
     activated_at_unix_ms: i64,
     faults: &F,
 ) -> ProjectionResult<bool> {
@@ -632,8 +830,8 @@ fn activate_generation<F: ProjectionFaultInjector + ?Sized>(
         ),
         params![
             generation_id.as_bytes().as_slice(),
-            kind.as_str(),
-            domain.as_bytes().as_slice()
+            authority.kind.as_str(),
+            authority.domain.as_bytes().as_slice()
         ],
         |row| row.get::<_, String>(0),
     )?;
@@ -642,60 +840,68 @@ fn activate_generation<F: ProjectionFaultInjector + ?Sized>(
             "only a VERIFIED generation may be activated".to_owned(),
         ));
     }
-    let active_watermark = transaction
-        .query_row(
-            concat!(
-                "SELECT source_accept_seq, source_outbox_seq FROM projection_active ",
-                "WHERE projection_kind = ?1 AND security_domain = ?2"
-            ),
-            params![kind.as_str(), domain.as_bytes().as_slice()],
-            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
-        )
-        .optional()?;
-    let cursor_watermark = transaction
-        .query_row(
-            concat!(
-                "SELECT source_accept_seq, last_outbox_seq FROM projection_cursor ",
-                "WHERE projection_kind = ?1 AND security_domain = ?2"
-            ),
-            params![kind.as_str(), domain.as_bytes().as_slice()],
-            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
-        )
-        .optional()?;
-    match (active_watermark, cursor_watermark) {
-        (None, None) => {}
-        (Some(active), Some(cursor)) if active == cursor => {
-            let active_accept = nonnegative_u64(active.0, "active source accept_seq")?;
-            let active_outbox = nonnegative_u64(active.1, "active source outbox_seq")?;
-            if active_outbox > watermark.source_outbox_seq
-                || (active_outbox == watermark.source_outbox_seq
-                    && active_accept > watermark.source_accept_seq)
-            {
-                return Ok(false);
-            }
-        }
-        _ => {
-            return Err(ProjectionError::Corrupt(
-                "active generation pointer and cursor do not agree".to_owned(),
-            ));
-        }
+    let candidate = read_generation_metadata(&transaction, generation_id)?;
+    if candidate.kind != authority.kind
+        || candidate.security_domain != authority.domain
+        || candidate.coordinates != authority.coordinates
+        || candidate.resolver_version != CANONICAL_RESOLVER_VERSION
+        || candidate.policy_registry_version != authority.policies.version()
+        || candidate.policy_registry_hash != authority.policies.canonical_hash()
+    {
+        return Err(ProjectionError::Corrupt(
+            "VERIFIED generation authority does not match activation input".to_owned(),
+        ));
+    }
+    let existing = read_active_generation(&transaction, authority.kind, authority.domain)?;
+    let cursor_exists = transaction.query_row(
+        concat!(
+            "SELECT EXISTS(SELECT 1 FROM projection_cursor ",
+            "WHERE projection_kind = ?1 AND security_domain = ?2)"
+        ),
+        params![
+            authority.kind.as_str(),
+            authority.domain.as_bytes().as_slice()
+        ],
+        |row| row.get::<_, bool>(0),
+    )?;
+    if existing.is_none() && cursor_exists {
+        return Err(ProjectionError::Corrupt(
+            "projection cursor exists without an active authority pointer".to_owned(),
+        ));
+    }
+    if let Some(active) = existing
+        && (active.source_outbox_seq > authority.watermark.source_outbox_seq
+            || (active.source_outbox_seq == authority.watermark.source_outbox_seq
+                && active.coordinates.known_at_accept_seq > authority.watermark.source_accept_seq))
+    {
+        return Ok(false);
     }
     transaction.execute(
         concat!(
             "INSERT INTO projection_active (projection_kind, security_domain, generation_id, ",
-            "source_accept_seq, source_outbox_seq, activated_at_unix_ms) ",
-            "VALUES (?1, ?2, ?3, ?4, ?5, ?6) ",
+            "known_at_accept_seq, valid_at_unix_ms, source_outbox_seq, resolver_version, ",
+            "policy_registry_version, policy_registry_hash, activated_at_unix_ms) ",
+            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) ",
             "ON CONFLICT(projection_kind, security_domain) DO UPDATE SET ",
-            "generation_id = excluded.generation_id, source_accept_seq = excluded.source_accept_seq, ",
+            "generation_id = excluded.generation_id, ",
+            "known_at_accept_seq = excluded.known_at_accept_seq, ",
+            "valid_at_unix_ms = excluded.valid_at_unix_ms, ",
             "source_outbox_seq = excluded.source_outbox_seq, ",
+            "resolver_version = excluded.resolver_version, ",
+            "policy_registry_version = excluded.policy_registry_version, ",
+            "policy_registry_hash = excluded.policy_registry_hash, ",
             "activated_at_unix_ms = excluded.activated_at_unix_ms"
         ),
         params![
-            kind.as_str(),
-            domain.as_bytes().as_slice(),
+            authority.kind.as_str(),
+            authority.domain.as_bytes().as_slice(),
             generation_id.as_bytes().as_slice(),
-            checked_i64(watermark.source_accept_seq)?,
-            checked_i64(watermark.source_outbox_seq)?,
+            checked_i64(authority.coordinates.known_at_accept_seq)?,
+            authority.coordinates.valid_at.value(),
+            checked_i64(authority.watermark.source_outbox_seq)?,
+            CANONICAL_RESOLVER_VERSION,
+            authority.policies.version(),
+            authority.policies.canonical_hash().as_bytes().as_slice(),
             activated_at_unix_ms,
         ],
     )?;
@@ -703,44 +909,32 @@ fn activate_generation<F: ProjectionFaultInjector + ?Sized>(
     transaction.execute(
         concat!(
             "INSERT INTO projection_cursor (projection_kind, security_domain, last_outbox_seq, ",
-            "source_accept_seq, updated_at_unix_ms) VALUES (?1, ?2, ?3, ?4, ?5) ",
+            "known_at_accept_seq, valid_at_unix_ms, resolver_version, policy_registry_version, ",
+            "policy_registry_hash, updated_at_unix_ms) ",
+            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) ",
             "ON CONFLICT(projection_kind, security_domain) DO UPDATE SET ",
             "last_outbox_seq = excluded.last_outbox_seq, ",
-            "source_accept_seq = excluded.source_accept_seq, ",
+            "known_at_accept_seq = excluded.known_at_accept_seq, ",
+            "valid_at_unix_ms = excluded.valid_at_unix_ms, ",
+            "resolver_version = excluded.resolver_version, ",
+            "policy_registry_version = excluded.policy_registry_version, ",
+            "policy_registry_hash = excluded.policy_registry_hash, ",
             "updated_at_unix_ms = excluded.updated_at_unix_ms"
         ),
         params![
-            kind.as_str(),
-            domain.as_bytes().as_slice(),
-            checked_i64(watermark.source_outbox_seq)?,
-            checked_i64(watermark.source_accept_seq)?,
+            authority.kind.as_str(),
+            authority.domain.as_bytes().as_slice(),
+            checked_i64(authority.watermark.source_outbox_seq)?,
+            checked_i64(authority.coordinates.known_at_accept_seq)?,
+            authority.coordinates.valid_at.value(),
+            CANONICAL_RESOLVER_VERSION,
+            authority.policies.version(),
+            authority.policies.canonical_hash().as_bytes().as_slice(),
             activated_at_unix_ms,
         ],
     )?;
     transaction.commit()?;
     Ok(true)
-}
-
-pub(crate) fn open_canonical_reader(path: &Path) -> ProjectionResult<Connection> {
-    let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
-    let connection = Connection::open_with_flags(path, flags)?;
-    connection.execute_batch(
-        "PRAGMA query_only = ON; PRAGMA foreign_keys = ON; PRAGMA trusted_schema = OFF; \
-         PRAGMA busy_timeout = 250; PRAGMA temp_store = MEMORY;",
-    )?;
-    let application_id = pragma_i64(&connection, "application_id")?;
-    let user_version = pragma_i64(&connection, "user_version")?;
-    exact_canonical(
-        "application_id",
-        i64::from(SQLITE_APPLICATION_ID),
-        application_id,
-    )?;
-    exact_canonical(
-        "user_version",
-        i64::from(STORE_SCHEMA_VERSION),
-        user_version,
-    )?;
-    Ok(connection)
 }
 
 pub(crate) fn open_projection_reader(path: &Path) -> ProjectionResult<Connection> {
@@ -750,7 +944,7 @@ pub(crate) fn open_projection_reader(path: &Path) -> ProjectionResult<Connection
         "PRAGMA query_only = ON; PRAGMA foreign_keys = ON; PRAGMA trusted_schema = OFF; \
          PRAGMA busy_timeout = 250; PRAGMA temp_store = MEMORY;",
     )?;
-    verify_projection_identity(&connection)?;
+    verify_projection_schema(&connection)?;
     Ok(connection)
 }
 
@@ -798,11 +992,9 @@ fn verify_projection_schema(connection: &Connection) -> ProjectionResult<()> {
         "projection_graph_edge_evidence",
         "projection_search_content",
         "projection_exact_symbol",
-        "projection_search_unicode",
-        "projection_search_trigram",
     ] {
         let count = connection.query_row(
-            "SELECT count(*) FROM sqlite_schema WHERE name = ?1",
+            "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name = ?1",
             [name],
             |row| row.get::<_, i64>(0),
         )?;
@@ -812,10 +1004,46 @@ fn verify_projection_schema(connection: &Connection) -> ProjectionResult<()> {
             )));
         }
     }
+    verify_named_fts_schema(connection)
+}
+
+fn verify_named_fts_schema(connection: &Connection) -> ProjectionResult<()> {
+    for (name, expected_sql) in [
+        ("projection_search_unicode", UNICODE_FTS_SCHEMA_SQL),
+        ("projection_search_trigram", TRIGRAM_FTS_SCHEMA_SQL),
+    ] {
+        let row = connection
+            .query_row(
+                "SELECT type, sql FROM sqlite_schema WHERE name = ?1",
+                [name],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
+            )
+            .optional()?;
+        let Some((object_type, Some(actual_sql))) = row else {
+            return Err(ProjectionError::Corrupt(format!(
+                "required named FTS object {name} is absent or has no schema SQL"
+            )));
+        };
+        if object_type != "table"
+            || compact_schema_sql(&actual_sql) != compact_schema_sql(expected_sql)
+        {
+            return Err(ProjectionError::Corrupt(format!(
+                "named FTS object {name} has the wrong type, schema, or tokenizer"
+            )));
+        }
+    }
     Ok(())
 }
 
+fn compact_schema_sql(sql: &str) -> String {
+    sql.chars()
+        .filter(|character| !character.is_ascii_whitespace())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
 fn verify_fts5(connection: &Connection) -> ProjectionResult<()> {
+    verify_named_fts_schema(connection)?;
     let enabled = connection
         .query_row(
             "SELECT 1 FROM pragma_compile_options WHERE compile_options = 'ENABLE_FTS5'",
@@ -858,41 +1086,133 @@ fn verify_fts5(connection: &Connection) -> ProjectionResult<()> {
     Ok(())
 }
 
-pub(crate) fn latest_watermark(connection: &Connection) -> ProjectionResult<Watermark> {
-    let row = connection
-        .query_row(
-            concat!(
-                "SELECT accept_seq_end, outbox_seq FROM projection_outbox ",
-                "ORDER BY outbox_seq DESC LIMIT 1"
-            ),
-            [],
-            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
-        )
-        .optional()?;
-    row.map_or(
-        Ok(Watermark {
-            source_accept_seq: 0,
-            source_outbox_seq: 0,
-        }),
-        |row| {
-            Ok(Watermark {
-                source_accept_seq: nonnegative_u64(row.0, "latest source accept_seq")?,
-                source_outbox_seq: nonnegative_u64(row.1, "latest source outbox_seq")?,
-            })
-        },
-    )
-}
-
-fn outbox_at_or_before(connection: &Connection, watermark: u64) -> ProjectionResult<u64> {
-    let value = connection.query_row(
-        concat!(
-            "SELECT coalesce(max(outbox_seq), 0) FROM projection_outbox ",
-            "WHERE accept_seq_end <= ?1"
+fn verify_generation_storage(
+    connection: &Connection,
+    generation_id: GenerationId,
+    kind: ProjectionKind,
+    coordinates: ProjectionCoordinates,
+    policies: &PredicatePolicies,
+) -> ProjectionResult<()> {
+    verify_named_fts_schema(connection)?;
+    let metadata = read_generation_metadata(connection, generation_id)?;
+    if metadata.kind != kind
+        || metadata.state != GenerationState::Building
+        || metadata.schema_version != PROJECTION_SCHEMA_VERSION
+        || metadata.algorithm_version != PROJECTION_ALGORITHM_VERSION
+        || metadata.tokenizer_version != kind.tokenizer_version()
+        || metadata.coordinates != coordinates
+        || metadata.resolver_version != CANONICAL_RESOLVER_VERSION
+        || metadata.policy_registry_version != policies.version()
+        || metadata.policy_registry_hash != policies.canonical_hash()
+    {
+        return Err(ProjectionError::Corrupt(
+            "BUILDING generation authority metadata does not match the verified build input"
+                .to_owned(),
+        ));
+    }
+    let generation = generation_id.as_bytes().as_slice();
+    let policy_rows_sql = match kind {
+        ProjectionKind::Graph => concat!(
+            "SELECT predicate_id, authority_policy FROM projection_graph_edge ",
+            "WHERE generation_id = ?1"
         ),
-        [checked_i64(watermark)?],
-        |row| row.get::<_, i64>(0),
-    )?;
-    nonnegative_u64(value, "historical source outbox_seq")
+        ProjectionKind::Unicode61 | ProjectionKind::Trigram => concat!(
+            "SELECT predicate_id, authority_policy FROM projection_search_content ",
+            "WHERE generation_id = ?1"
+        ),
+    };
+    let mut policy_statement = connection.prepare(policy_rows_sql)?;
+    let policy_rows = policy_statement.query_map([generation], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    for row in policy_rows {
+        let (predicate, persisted_policy) = row?;
+        let predicate =
+            academic_domain::PredicateId::parse(predicate).map_err(ProjectionError::Domain)?;
+        let expected_policy = policies.policy_for(&predicate)?;
+        if persisted_policy != crate::resolution::authority_policy_name(expected_policy) {
+            return Err(ProjectionError::Corrupt(format!(
+                "record policy for {} does not match the bound registry",
+                predicate.as_str()
+            )));
+        }
+    }
+    match kind {
+        ProjectionKind::Graph => {
+            let lexical_rows = connection.query_row(
+                "SELECT count(*) FROM projection_search_content WHERE generation_id = ?1",
+                [generation],
+                |row| row.get::<_, i64>(0),
+            )?;
+            if lexical_rows != 0 {
+                return Err(ProjectionError::Corrupt(
+                    "graph generation contains lexical rows".to_owned(),
+                ));
+            }
+        }
+        ProjectionKind::Unicode61 | ProjectionKind::Trigram => {
+            let (table, other) = if kind == ProjectionKind::Unicode61 {
+                ("projection_search_unicode", "projection_search_trigram")
+            } else {
+                ("projection_search_trigram", "projection_search_unicode")
+            };
+            let expected = connection.query_row(
+                "SELECT count(*) FROM projection_search_content WHERE generation_id = ?1",
+                [generation],
+                |row| row.get::<_, i64>(0),
+            )?;
+            let covered_sql = format!(
+                "SELECT count(*) FROM projection_search_content c JOIN {table} f \
+                 ON f.rowid = c.content_id AND f.content_id = c.content_id AND f.body = c.body \
+                 WHERE c.generation_id = ?1"
+            );
+            let covered =
+                connection.query_row(&covered_sql, [generation], |row| row.get::<_, i64>(0))?;
+            let wrong_table_sql = format!(
+                "SELECT count(*) FROM projection_search_content c JOIN {other} f \
+                 ON f.rowid = c.content_id WHERE c.generation_id = ?1"
+            );
+            let wrong_table =
+                connection.query_row(&wrong_table_sql, [generation], |row| row.get::<_, i64>(0))?;
+            if covered != expected || wrong_table != 0 {
+                return Err(ProjectionError::Corrupt(format!(
+                    "{table} rowid/content coverage mismatch: expected {expected}, covered {covered}, opposite-table {wrong_table}"
+                )));
+            }
+            let orphan_sql = format!(
+                "SELECT count(*) FROM {table} f LEFT JOIN projection_search_content c \
+                 ON c.content_id = f.rowid WHERE c.content_id IS NULL \
+                 OR f.content_id <> f.rowid OR f.body <> c.body"
+            );
+            let orphan_rows = connection.query_row(&orphan_sql, [], |row| row.get::<_, i64>(0))?;
+            if orphan_rows != 0 {
+                return Err(ProjectionError::Corrupt(format!(
+                    "{table} contains orphaned or mismatched rowid/content rows"
+                )));
+            }
+            let symbol_mismatch = connection.query_row(
+                concat!(
+                    "SELECT count(*) FROM projection_search_content c ",
+                    "LEFT JOIN projection_exact_symbol s ON s.generation_id = c.generation_id ",
+                    "AND s.content_id = c.content_id WHERE c.generation_id = ?1 AND ",
+                    "((c.predicate_id LIKE '%.symbol' AND ",
+                    "(s.content_id IS NULL OR s.symbol <> c.body COLLATE BINARY ",
+                    "OR s.stable_tiebreaker <> c.stable_tiebreaker)) OR ",
+                    "(c.predicate_id NOT LIKE '%.symbol' AND s.content_id IS NOT NULL))"
+                ),
+                [generation],
+                |row| row.get::<_, i64>(0),
+            )?;
+            if symbol_mismatch != 0 {
+                return Err(ProjectionError::Corrupt(
+                    "exact-symbol coverage or stable tiebreaker mismatch".to_owned(),
+                ));
+            }
+            let integrity_sql = format!("INSERT INTO {table}({table}) VALUES('integrity-check')");
+            connection.execute(&integrity_sql, [])?;
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn read_active_generation(
@@ -900,24 +1220,41 @@ pub(crate) fn read_active_generation(
     kind: ProjectionKind,
     domain: DomainId,
 ) -> ProjectionResult<Option<ActiveGeneration>> {
-    type Raw = (
-        Vec<u8>,
-        i64,
-        i64,
-        Option<i64>,
-        Option<Vec<u8>>,
-        Option<String>,
-        Option<i64>,
-        Option<i64>,
-        Option<i64>,
-        Option<i64>,
-    );
-    let row: Option<Raw> = connection
+    #[derive(Debug)]
+    struct RawActive {
+        generation_id: Vec<u8>,
+        active_known: i64,
+        active_valid: i64,
+        active_outbox: i64,
+        active_resolver: String,
+        active_policy_version: String,
+        active_policy_hash: Vec<u8>,
+        record_count: Option<i64>,
+        checksum: Option<Vec<u8>>,
+        state: Option<String>,
+        generation_known: Option<i64>,
+        generation_valid: Option<i64>,
+        generation_outbox: Option<i64>,
+        generation_resolver: Option<String>,
+        generation_policy_version: Option<String>,
+        generation_policy_hash: Option<Vec<u8>>,
+        cursor_known: Option<i64>,
+        cursor_valid: Option<i64>,
+        cursor_outbox: Option<i64>,
+        cursor_resolver: Option<String>,
+        cursor_policy_version: Option<String>,
+        cursor_policy_hash: Option<Vec<u8>>,
+    }
+    let row: Option<RawActive> = connection
         .query_row(
             concat!(
-                "SELECT a.generation_id, a.source_accept_seq, a.source_outbox_seq, ",
-                "g.record_count, g.canonical_checksum, g.state, g.source_accept_seq, ",
-                "g.source_outbox_seq, c.source_accept_seq, c.last_outbox_seq ",
+                "SELECT a.generation_id, a.known_at_accept_seq, a.valid_at_unix_ms, ",
+                "a.source_outbox_seq, a.resolver_version, a.policy_registry_version, ",
+                "a.policy_registry_hash, g.record_count, g.canonical_checksum, g.state, ",
+                "g.known_at_accept_seq, g.valid_at_unix_ms, g.source_outbox_seq, ",
+                "g.resolver_version, g.policy_registry_version, g.policy_registry_hash, ",
+                "c.known_at_accept_seq, c.valid_at_unix_ms, c.last_outbox_seq, ",
+                "c.resolver_version, c.policy_registry_version, c.policy_registry_hash ",
                 "FROM projection_active a LEFT JOIN projection_generation g ",
                 "ON g.generation_id = a.generation_id ",
                 "AND g.projection_kind = a.projection_kind ",
@@ -928,75 +1265,95 @@ pub(crate) fn read_active_generation(
             ),
             params![kind.as_str(), domain.as_bytes().as_slice()],
             |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                    row.get(6)?,
-                    row.get(7)?,
-                    row.get(8)?,
-                    row.get(9)?,
-                ))
+                Ok(RawActive {
+                    generation_id: row.get(0)?,
+                    active_known: row.get(1)?,
+                    active_valid: row.get(2)?,
+                    active_outbox: row.get(3)?,
+                    active_resolver: row.get(4)?,
+                    active_policy_version: row.get(5)?,
+                    active_policy_hash: row.get(6)?,
+                    record_count: row.get(7)?,
+                    checksum: row.get(8)?,
+                    state: row.get(9)?,
+                    generation_known: row.get(10)?,
+                    generation_valid: row.get(11)?,
+                    generation_outbox: row.get(12)?,
+                    generation_resolver: row.get(13)?,
+                    generation_policy_version: row.get(14)?,
+                    generation_policy_hash: row.get(15)?,
+                    cursor_known: row.get(16)?,
+                    cursor_valid: row.get(17)?,
+                    cursor_outbox: row.get(18)?,
+                    cursor_resolver: row.get(19)?,
+                    cursor_policy_version: row.get(20)?,
+                    cursor_policy_hash: row.get(21)?,
+                })
             },
         )
         .optional()?;
     row.map(|row| {
-        let (
-            record_count,
-            checksum,
-            state,
-            generation_accept,
-            generation_outbox,
-            cursor_accept,
-            cursor_outbox,
-        ) = match (row.3, row.4, row.5, row.6, row.7, row.8, row.9) {
-            (
-                Some(count),
-                Some(checksum),
-                Some(state),
-                Some(generation_accept),
-                Some(generation_outbox),
-                Some(cursor_accept),
-                Some(cursor_outbox),
-            ) => (
-                count,
-                checksum,
-                state,
-                generation_accept,
-                generation_outbox,
-                cursor_accept,
-                cursor_outbox,
-            ),
-            _ => {
-                return Err(ProjectionError::Corrupt(
-                    "active pointer is missing VERIFIED generation or cursor authority".to_owned(),
-                ));
-            }
-        };
+        let record_count = row.record_count.ok_or_else(|| {
+            ProjectionError::Corrupt("active generation has no record count".to_owned())
+        })?;
+        let checksum = row.checksum.ok_or_else(|| {
+            ProjectionError::Corrupt("active generation has no checksum".to_owned())
+        })?;
+        let state = row.state.ok_or_else(|| {
+            ProjectionError::Corrupt("active pointer has no generation".to_owned())
+        })?;
         if state != GenerationState::Verified.as_str() {
             return Err(ProjectionError::Corrupt(
                 "active pointer references a non-VERIFIED generation".to_owned(),
             ));
         }
-        if (row.1, row.2) != (generation_accept, generation_outbox)
-            || (row.1, row.2) != (cursor_accept, cursor_outbox)
-        {
+        let generation_authority = (
+            row.generation_known,
+            row.generation_valid,
+            row.generation_outbox,
+            row.generation_resolver.as_deref(),
+            row.generation_policy_version.as_deref(),
+            row.generation_policy_hash.as_deref(),
+        );
+        let cursor_authority = (
+            row.cursor_known,
+            row.cursor_valid,
+            row.cursor_outbox,
+            row.cursor_resolver.as_deref(),
+            row.cursor_policy_version.as_deref(),
+            row.cursor_policy_hash.as_deref(),
+        );
+        let active_authority = (
+            Some(row.active_known),
+            Some(row.active_valid),
+            Some(row.active_outbox),
+            Some(row.active_resolver.as_str()),
+            Some(row.active_policy_version.as_str()),
+            Some(row.active_policy_hash.as_slice()),
+        );
+        if active_authority != generation_authority || active_authority != cursor_authority {
             return Err(ProjectionError::Corrupt(
-                "active generation, generation metadata, and cursor watermarks disagree".to_owned(),
+                "active generation, generation metadata, and cursor authority disagree".to_owned(),
             ));
         }
         Ok(ActiveGeneration {
             generation_id: GenerationId::from_bytes(fixed_bytes(
-                row.0,
+                row.generation_id,
                 "active generation identifier",
             )?),
             kind,
             security_domain: domain,
-            source_accept_seq: nonnegative_u64(row.1, "active source accept_seq")?,
-            source_outbox_seq: nonnegative_u64(row.2, "active source outbox_seq")?,
+            coordinates: ProjectionCoordinates::new(
+                nonnegative_u64(row.active_known, "active known_at_accept_seq")?,
+                TimestampMillis::new(row.active_valid),
+            ),
+            source_outbox_seq: nonnegative_u64(row.active_outbox, "active source outbox_seq")?,
+            resolver_version: row.active_resolver,
+            policy_registry_version: row.active_policy_version,
+            policy_registry_hash: ContentDigest::from_sha256_bytes(fixed_bytes(
+                row.active_policy_hash,
+                "active policy registry hash",
+            )?),
             record_count: nonnegative_u64(record_count, "active record count")?,
             canonical_checksum: ContentDigest::from_sha256_bytes(fixed_bytes(
                 checksum,
@@ -1011,76 +1368,95 @@ fn read_generation_metadata(
     connection: &Connection,
     generation_id: GenerationId,
 ) -> ProjectionResult<GenerationMetadata> {
-    type Raw = (
-        String,
-        i64,
-        Vec<u8>,
-        String,
-        String,
-        Vec<u8>,
-        i64,
-        i64,
-        Vec<u8>,
-        i64,
-        String,
-        Option<i64>,
-        Option<Vec<u8>>,
-    );
-    let row: Raw = connection.query_row(
+    #[derive(Debug)]
+    struct RawGeneration {
+        kind: String,
+        schema_version: i64,
+        builder_digest: Vec<u8>,
+        algorithm_version: String,
+        tokenizer_version: String,
+        config_hash: Vec<u8>,
+        known_at_accept_seq: i64,
+        valid_at_unix_ms: i64,
+        source_outbox_seq: i64,
+        resolver_version: String,
+        policy_registry_version: String,
+        policy_registry_hash: Vec<u8>,
+        domain: Vec<u8>,
+        built_at_unix_ms: i64,
+        state: String,
+        record_count: Option<i64>,
+        checksum: Option<Vec<u8>>,
+    }
+    let row: RawGeneration = connection.query_row(
         concat!(
             "SELECT projection_kind, schema_version, builder_binary_digest, algorithm_version, ",
-            "tokenizer_version, effective_config_hash, source_accept_seq, source_outbox_seq, ",
+            "tokenizer_version, effective_config_hash, known_at_accept_seq, valid_at_unix_ms, ",
+            "source_outbox_seq, resolver_version, policy_registry_version, policy_registry_hash, ",
             "security_domain, built_at_unix_ms, state, record_count, canonical_checksum ",
             "FROM projection_generation WHERE generation_id = ?1"
         ),
         [generation_id.as_bytes().as_slice()],
         |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-                row.get(5)?,
-                row.get(6)?,
-                row.get(7)?,
-                row.get(8)?,
-                row.get(9)?,
-                row.get(10)?,
-                row.get(11)?,
-                row.get(12)?,
-            ))
+            Ok(RawGeneration {
+                kind: row.get(0)?,
+                schema_version: row.get(1)?,
+                builder_digest: row.get(2)?,
+                algorithm_version: row.get(3)?,
+                tokenizer_version: row.get(4)?,
+                config_hash: row.get(5)?,
+                known_at_accept_seq: row.get(6)?,
+                valid_at_unix_ms: row.get(7)?,
+                source_outbox_seq: row.get(8)?,
+                resolver_version: row.get(9)?,
+                policy_registry_version: row.get(10)?,
+                policy_registry_hash: row.get(11)?,
+                domain: row.get(12)?,
+                built_at_unix_ms: row.get(13)?,
+                state: row.get(14)?,
+                record_count: row.get(15)?,
+                checksum: row.get(16)?,
+            })
         },
     )?;
     Ok(GenerationMetadata {
         generation_id,
-        kind: ProjectionKind::parse(&row.0)
+        kind: ProjectionKind::parse(&row.kind)
             .ok_or_else(|| ProjectionError::Corrupt("unknown projection kind".to_owned()))?,
-        schema_version: u32::try_from(row.1).map_err(|_| {
+        schema_version: u32::try_from(row.schema_version).map_err(|_| {
             ProjectionError::Corrupt("invalid projection schema version".to_owned())
         })?,
         builder_binary_digest: ContentDigest::from_sha256_bytes(fixed_bytes(
-            row.2,
+            row.builder_digest,
             "builder binary digest",
         )?),
-        algorithm_version: row.3,
-        tokenizer_version: row.4,
+        algorithm_version: row.algorithm_version,
+        tokenizer_version: row.tokenizer_version,
         effective_config_hash: ContentDigest::from_sha256_bytes(fixed_bytes(
-            row.5,
+            row.config_hash,
             "effective config hash",
         )?),
-        source_accept_seq: nonnegative_u64(row.6, "generation source accept_seq")?,
-        source_outbox_seq: nonnegative_u64(row.7, "generation source outbox_seq")?,
-        security_domain: id_from_bytes(row.8, "generation security domain")?,
-        built_at_unix_ms: row.9,
-        state: GenerationState::parse(&row.10)
+        coordinates: ProjectionCoordinates::new(
+            nonnegative_u64(row.known_at_accept_seq, "generation known_at_accept_seq")?,
+            TimestampMillis::new(row.valid_at_unix_ms),
+        ),
+        source_outbox_seq: nonnegative_u64(row.source_outbox_seq, "generation source outbox_seq")?,
+        resolver_version: row.resolver_version,
+        policy_registry_version: row.policy_registry_version,
+        policy_registry_hash: ContentDigest::from_sha256_bytes(fixed_bytes(
+            row.policy_registry_hash,
+            "generation policy registry hash",
+        )?),
+        security_domain: id_from_bytes(row.domain, "generation security domain")?,
+        built_at_unix_ms: row.built_at_unix_ms,
+        state: GenerationState::parse(&row.state)
             .ok_or_else(|| ProjectionError::Corrupt("unknown generation state".to_owned()))?,
         record_count: row
-            .11
+            .record_count
             .map(|value| nonnegative_u64(value, "generation record count"))
             .transpose()?,
         canonical_checksum: row
-            .12
+            .checksum
             .map(|value| {
                 fixed_bytes(value, "generation checksum").map(ContentDigest::from_sha256_bytes)
             })
@@ -1110,18 +1486,6 @@ fn derive_generation_id(
     bytes[6] = (bytes[6] & 0x0f) | 0x70;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
     GenerationId::from_bytes(bytes)
-}
-
-fn exact_canonical(component: &'static str, expected: i64, actual: i64) -> ProjectionResult<()> {
-    if expected == actual {
-        Ok(())
-    } else {
-        Err(ProjectionError::InvalidCanonicalStore {
-            component,
-            expected: expected.to_string(),
-            actual: actual.to_string(),
-        })
-    }
 }
 
 fn pragma_i64(connection: &Connection, name: &'static str) -> ProjectionResult<i64> {

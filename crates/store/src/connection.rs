@@ -174,6 +174,24 @@ impl fmt::Debug for ReaderConnection {
 }
 
 impl ReaderConnection {
+    /// Starts one deferred read transaction for a multi-statement canonical snapshot.
+    ///
+    /// The transaction remains crate-private so consumers receive typed query DTOs
+    /// rather than a raw SQLite capability.
+    pub(crate) fn begin_deferred(&mut self) -> StoreResult<Transaction<'_>> {
+        self.connection
+            .transaction_with_behavior(TransactionBehavior::Deferred)
+            .map_err(StoreError::from)
+    }
+
+    /// Runs an internal typed query against the guarded read-only connection.
+    pub(crate) fn with_query_connection<T>(
+        &self,
+        operation: impl for<'connection> FnOnce(&'connection Connection) -> T,
+    ) -> T {
+        operation(&self.connection)
+    }
+
     /// Runs one query row without exposing the underlying connection capability.
     pub fn query_row<T, P, F>(&self, sql: &str, params: P, mapper: F) -> StoreResult<T>
     where
