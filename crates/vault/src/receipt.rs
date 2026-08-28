@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 
 use academic_domain::ArtifactDescriptor;
 
+use crate::{VaultResult, ingest::LiveObjectEvidence, integrity_mismatch};
+
 /// Whether sealing published new bytes or adopted an exact existing object.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SealDisposition {
@@ -24,11 +26,12 @@ pub enum SealDisposition {
 /// // There is deliberately no public hash/ID constructor or public field literal.
 /// let _forged = SealedArtifactReceipt {};
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct SealedArtifactReceipt {
     descriptor: ArtifactDescriptor,
     object_path: PathBuf,
     disposition: SealDisposition,
+    live_evidence: LiveObjectEvidence,
 }
 
 /// Concrete vault-backed capability consumed by durable acceptance.
@@ -43,12 +46,25 @@ impl SealedArtifactReceipt {
         descriptor: ArtifactDescriptor,
         object_path: PathBuf,
         disposition: SealDisposition,
+        live_evidence: LiveObjectEvidence,
     ) -> Self {
         Self {
             descriptor,
             object_path,
             disposition,
+            live_evidence,
         }
+    }
+
+    pub(crate) fn revalidate(&mut self, canonical_path: &Path) -> VaultResult<()> {
+        if canonical_path != self.object_path {
+            return Err(integrity_mismatch(canonical_path));
+        }
+        self.live_evidence.revalidate(
+            canonical_path,
+            self.descriptor.content_digest,
+            self.descriptor.byte_length,
+        )
     }
 
     /// Returns the exact immutable descriptor bound by the receipt.

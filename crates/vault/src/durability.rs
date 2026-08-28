@@ -15,6 +15,15 @@ mod host;
 mod host {
     use std::{fs::File, io, path::Path};
 
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub(crate) struct ObjectIdentity;
+
+    #[derive(Debug)]
+    pub(crate) struct SharedObjectLease;
+
+    #[derive(Debug)]
+    pub(crate) struct ExclusiveObjectLease;
+
     #[derive(Debug)]
     pub(crate) struct LockedTemp(File);
 
@@ -76,9 +85,34 @@ mod host {
             "unsupported vault host",
         ))
     }
+
+    pub(crate) fn try_acquire_shared_object_lease(
+        _path: &Path,
+    ) -> io::Result<Option<SharedObjectLease>> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "unsupported vault host",
+        ))
+    }
+
+    pub(crate) fn try_acquire_exclusive_object_lease(
+        _path: &Path,
+    ) -> io::Result<Option<ExclusiveObjectLease>> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "unsupported vault host",
+        ))
+    }
+
+    pub(crate) fn object_identity(_file: &File) -> io::Result<ObjectIdentity> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "unsupported vault host",
+        ))
+    }
 }
 
-pub(crate) use host::LockedTemp;
+pub(crate) use host::{ExclusiveObjectLease, LockedTemp, ObjectIdentity, SharedObjectLease};
 
 pub(crate) fn create_locked_temp(path: &Path) -> VaultResult<LockedTemp> {
     host::create_locked_temp(path)
@@ -136,4 +170,25 @@ pub(crate) fn publish_no_replace(source: &Path, destination: &Path) -> VaultResu
 pub(crate) fn try_remove_unlocked(path: &Path) -> VaultResult<bool> {
     host::try_remove_unlocked(path)
         .map_err(|source| VaultError::io("remove expired unlocked vault temp", path, source))
+}
+
+/// Acquires the shared lease retained by a transaction-lifetime object capability.
+pub(crate) fn acquire_shared_object_lease(path: &Path) -> VaultResult<SharedObjectLease> {
+    host::try_acquire_shared_object_lease(path)
+        .map_err(|source| VaultError::io("acquire shared vault object lease", path, source))?
+        .ok_or_else(|| VaultError::LeaseUnavailable(path.to_path_buf()))
+}
+
+/// Attempts the exclusive lease required by product-controlled remove/replace/quarantine paths.
+pub(crate) fn try_acquire_exclusive_object_lease(
+    path: &Path,
+) -> VaultResult<Option<ExclusiveObjectLease>> {
+    host::try_acquire_exclusive_object_lease(path)
+        .map_err(|source| VaultError::io("acquire exclusive vault object lease", path, source))
+}
+
+/// Returns the stable host identity of one already-open exact object.
+pub(crate) fn object_identity(file: &File, path: &Path) -> VaultResult<ObjectIdentity> {
+    host::object_identity(file)
+        .map_err(|source| VaultError::io("inspect opened vault object identity", path, source))
 }

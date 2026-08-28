@@ -308,6 +308,7 @@ where
     faults.hit(AcceptanceFaultPoint::Db01)?;
 
     if let Some(receipt) = lookup_command_receipt(&transaction, &command)? {
+        revalidate_sealed_receipts(vault, &mut sealed_receipts)?;
         transaction.commit()?;
         return Ok(AcceptanceOutcome {
             receipt,
@@ -342,6 +343,7 @@ where
         );
         insert_command_receipt(&transaction, &command, &receipt, accepted_at)?;
         faults.hit(AcceptanceFaultPoint::Db02)?;
+        revalidate_sealed_receipts(vault, &mut sealed_receipts)?;
         transaction.commit()?;
         faults.hit(AcceptanceFaultPoint::Db07)?;
         return Ok(AcceptanceOutcome {
@@ -420,6 +422,7 @@ where
         }
     }
     faults.hit(AcceptanceFaultPoint::Db04)?;
+    drop(closure);
 
     insert_outbox(
         &transaction,
@@ -442,6 +445,7 @@ where
     )?;
     faults.hit(AcceptanceFaultPoint::Db06)?;
 
+    revalidate_sealed_receipts(vault, &mut sealed_receipts)?;
     transaction.commit()?;
     faults.hit(AcceptanceFaultPoint::Db07)?;
     Ok(AcceptanceOutcome {
@@ -449,6 +453,21 @@ where
         replayed_request: false,
         duplicate_batch: false,
     })
+}
+
+fn revalidate_sealed_receipts(
+    vault: &Vault,
+    sealed_receipts: &mut BTreeMap<ArtifactId, SealedObjectCapability>,
+) -> Result<(), AcceptError> {
+    for (artifact_id, capability) in sealed_receipts {
+        vault
+            .revalidate_sealed_object(capability)
+            .map_err(|source| AcceptError::SealingFailed {
+                artifact_id: *artifact_id,
+                source: Box::new(source),
+            })?;
+    }
+    Ok(())
 }
 
 fn ensure_sqlite_coordinate(value: u64) -> Result<(), AcceptError> {

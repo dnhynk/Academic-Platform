@@ -4,6 +4,7 @@ use std::{
     ffi::OsString,
     fs::{self, File, OpenOptions},
     io::{self, Write},
+    mem::size_of,
     os::windows::{
         ffi::{OsStrExt, OsStringExt},
         fs::{MetadataExt, OpenOptionsExt},
@@ -22,8 +23,9 @@ use windows_sys::Win32::{
     Storage::FileSystem::{
         DELETE, FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS,
         FILE_FLAG_DELETE_ON_CLOSE, FILE_FLAG_OPEN_REPARSE_POINT, FILE_FLAG_WRITE_THROUGH,
-        FILE_RENAME_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FileRenameInfoEx,
-        FlushFileBuffers, MOVEFILE_WRITE_THROUGH, MoveFileExW, SetFileInformationByHandle,
+        FILE_ID_INFO, FILE_RENAME_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+        FileIdInfo, FileRenameInfoEx, FlushFileBuffers, GetFileInformationByHandleEx,
+        MOVEFILE_WRITE_THROUGH, MoveFileExW, SetFileInformationByHandle,
     },
 };
 
@@ -43,6 +45,25 @@ impl LockedTemp {
     pub(crate) fn file_mut(&mut self) -> &mut File {
         &mut self.0
     }
+}
+
+/// Stable Windows volume/file ID captured from one live exact-object handle.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ObjectIdentity {
+    volume_serial: u64,
+    file_id: [u8; 16],
+}
+
+/// Shared namespace lease retained by a sealed capability.
+#[derive(Debug)]
+pub(crate) struct SharedObjectLease {
+    _file: File,
+}
+
+/// Exclusive namespace lease retained by a product mutation.
+#[derive(Debug)]
+pub(crate) struct ExclusiveObjectLease {
+    _file: File,
 }
 
 pub(crate) fn create_locked_temp(path: &Path) -> io::Result<LockedTemp> {
@@ -131,6 +152,116 @@ pub(crate) fn try_remove_unlocked(path: &Path) -> io::Result<bool> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(true),
         Err(error) if is_sharing_violation(&error) => Ok(false),
         Err(error) => Err(error),
+    }
+}
+
+pub(crate) fn try_acquire_shared_object_lease(
+    path: &Path,
+) -> io::Result<Option<SharedObjectLease>> {
+    ensure_lease_file(path)?;
+    let result = OpenOptions::new()
+        .read(true)
+        .access_mode(GENERIC_READ)
+        .share_mode(FILE_SHARE_READ)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+        .open(verbatim_path(path)?);
+    match result {
+        Ok(file) => {
+            require_regular_non_reparse_handle(&file)?;
+            Ok(Some(SharedObjectLease { _file: file }))
+        }
+        Err(error) if is_sharing_violation(&error) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+pub(crate) fn try_acquire_exclusive_object_lease(
+    path: &Path,
+) -> io::Result<Option<ExclusiveObjectLease>> {
+    ensure_lease_file(path)?;
+    let result = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .access_mode(GENERIC_READ | GENERIC_WRITE)
+        .share_mode(0)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+        .open(verbatim_path(path)?);
+    match result {
+        Ok(file) => {
+            require_regular_non_reparse_handle(&file)?;
+            Ok(Some(ExclusiveObjectLease { _file: file }))
+        }
+        Err(error) if is_sharing_violation(&error) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+#[allow(unsafe_code)]
+pub(crate) fn object_identity(file: &File) -> io::Result<ObjectIdentity> {
+    let mut information = FILE_ID_INFO::default();
+    // SAFETY: `file` owns a live handle and the output buffer has exactly FILE_ID_INFO's size.
+    let result = unsafe {
+        GetFileInformationByHandleEx(
+            raw_handle(file),
+            FileIdInfo,
+            (&raw mut information).cast(),
+            u32::try_from(size_of::<FILE_ID_INFO>()).map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "file identity buffer is too large",
+                )
+            })?,
+        )
+    };
+    if result == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(ObjectIdentity {
+        volume_serial: information.VolumeSerialNumber,
+        file_id: information.FileId.Identifier,
+    })
+}
+
+fn ensure_lease_file(path: &Path) -> io::Result<()> {
+    let verbatim = verbatim_path(path)?;
+    match fs::symlink_metadata(&verbatim) {
+        Ok(metadata)
+            if metadata.file_type().is_file()
+                && metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT == 0 =>
+        {
+            return Ok(());
+        }
+        Ok(_) => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "vault object lease is not a non-reparse regular file",
+            ));
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error),
+    }
+    let file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .access_mode(GENERIC_READ | GENERIC_WRITE)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+        .open(verbatim)?;
+    require_regular_non_reparse_handle(&file)
+}
+
+fn require_regular_non_reparse_handle(file: &File) -> io::Result<()> {
+    let metadata = file.metadata()?;
+    if metadata.file_type().is_file()
+        && metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT == 0
+    {
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "vault object lease is not a non-reparse regular file",
+        ))
     }
 }
 

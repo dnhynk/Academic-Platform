@@ -16,6 +16,23 @@ Algorithm-prefixed digest and keyed locator newtypes, domain-key separation test
 
 The artifact JSON boundary first parses the raw text with unique decoded property names, Unicode-scalar-only strings, and canonical unsigned integer lexemes. It then rejects unsafe integers and nonportable paths at schema level and executes a semantic post-validator for ranges, artifact bounds, span lengths, source/full-range digest binding, and locator-identity uniqueness. Rust and Ajv/TypeScript run the same committed structured and exact-raw mutation corpus, including duplicate names, lone surrogates, positive text/page/time/repository Unicode descriptors, and unknown properties at the descriptor, representation, and locator levels. Mutation checks independently require Rust's descriptor and representation structs to retain closed-object deserialization.
 
+The synthetic Phase 1 vault also binds object liveness to Store transaction lifetime. A sealed
+capability owns a live no-follow object handle, its exact host file identity, and a shared lease in
+the policy-namespaced `vault/leases/v1` tree. Ingest and verification acquire that shared lease;
+product-controlled quarantine, removal, and replacement must acquire the corresponding exclusive
+lease. Store re-hashes the retained handle and reopens/re-hashes the canonical path under that same
+lease immediately before every successful new, duplicate, or idempotent commit, rejecting missing,
+truncated, replaced, or identity-changed objects without a new durable receipt.
+
+This lease is a product coordination boundary, not an OS sandbox claim. Windows file sharing and
+Unix advisory `flock` provide a portable cross-process protocol for every Academic Platform owner,
+but an unrelated same-user process, malware, administrator, or storage failure can ignore or bypass
+the Unix advisory lease. Immediate pre-commit revalidation detects mutations visible at that gate;
+SQLite and a separate filesystem cannot be made atomic against a hostile mutation in the final
+instruction window. The single-owner daemon, protected local profile, and out-of-process trust
+boundary therefore remain required, and this Phase 1 mechanism does not accept or close ADR-004's
+encrypted production format gate.
+
 ## Acceptance gate
 
 Zero-byte/small/multi-GB/seekable-audio vectors; a trusted byte-resolving verifier capability for partial/page/time/repository evidence; wrong key, truncation, reorder, splice, and wrong-domain detection; every crash-point closure outcome; cross-policy dedupe rejection; quarantine/GC dry run; and format N/N-1 read/migration.

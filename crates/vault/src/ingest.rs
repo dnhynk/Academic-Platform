@@ -1,8 +1,8 @@
 //! Streaming hash/count, no-replace publish, exact dedupe, and read-back sealing.
 
 use std::{
-    fs,
-    io::{self, Read, Write},
+    fs::{self, File},
+    io::{self, Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
 };
 
@@ -20,6 +20,35 @@ use crate::{
 };
 
 const STREAM_BUFFER_BYTES: usize = 64 * 1024;
+
+/// Live exact-object evidence retained by an opaque sealed capability.
+#[derive(Debug)]
+pub(crate) struct LiveObjectEvidence {
+    file: File,
+    identity: durability::ObjectIdentity,
+    _lease: durability::SharedObjectLease,
+}
+
+impl LiveObjectEvidence {
+    pub(crate) fn revalidate(
+        &mut self,
+        path: &Path,
+        expected_digest: ContentDigest,
+        expected_length: u64,
+    ) -> VaultResult<()> {
+        if durability::object_identity(&self.file, path)? != self.identity {
+            return Err(integrity_mismatch(path));
+        }
+        verify_open_file(&mut self.file, path, expected_digest, expected_length)?;
+
+        let (_canonical_file, canonical_identity) =
+            open_exact_object(path, expected_digest, expected_length)?;
+        if canonical_identity != self.identity {
+            return Err(integrity_mismatch(path));
+        }
+        Ok(())
+    }
+}
 
 /// Immutable policy and identity supplied before streaming begins.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -141,6 +170,8 @@ pub(crate) fn ingest(
     let descriptor = request.descriptor(content_digest, byte_length, locator);
     descriptor.validate()?;
     let object_path = vault.layout.ensure_object_parent(&descriptor)?;
+    let lease_path = vault.layout.ensure_lease_path(&descriptor)?;
+    let lease = durability::acquire_shared_object_lease(&lease_path)?;
     let object_parent = object_path
         .parent()
         .ok_or_else(|| VaultError::UnsafeEntry(object_path.clone()))?;
@@ -153,20 +184,26 @@ pub(crate) fn ingest(
         durability::sync_directory(object_parent)?;
         durability::sync_directory(vault.layout.temp_dir())?;
         drop(temp);
-        verify_object(&object_path, content_digest, byte_length)?;
-        let receipt =
-            SealedArtifactReceipt::new(descriptor, object_path, SealDisposition::PublishedNew);
+        let live_evidence =
+            verify_object_with_lease(&object_path, content_digest, byte_length, lease)?;
+        let receipt = SealedArtifactReceipt::new(
+            descriptor,
+            object_path,
+            SealDisposition::PublishedNew,
+            live_evidence,
+        );
         fault::trip(FaultPoint::V06);
         return Ok(receipt);
     }
 
-    match verify_object(&object_path, content_digest, byte_length) {
-        Ok(()) => {}
-        Err(VaultError::IntegrityMismatch(_)) => {
-            return Err(VaultError::PathCollision(object_path));
-        }
-        Err(error) => return Err(error),
-    }
+    let live_evidence =
+        match verify_object_with_lease(&object_path, content_digest, byte_length, lease) {
+            Ok(evidence) => evidence,
+            Err(VaultError::IntegrityMismatch(_)) => {
+                return Err(VaultError::PathCollision(object_path));
+            }
+            Err(error) => return Err(error),
+        };
     drop(temp);
     match fs::remove_file(&temp_path) {
         Ok(()) => {}
@@ -180,8 +217,12 @@ pub(crate) fn ingest(
         }
     }
     durability::sync_directory(vault.layout.temp_dir())?;
-    let receipt =
-        SealedArtifactReceipt::new(descriptor, object_path, SealDisposition::AdoptedExisting);
+    let receipt = SealedArtifactReceipt::new(
+        descriptor,
+        object_path,
+        SealDisposition::AdoptedExisting,
+        live_evidence,
+    );
     fault::trip(FaultPoint::V06);
     Ok(receipt)
 }
@@ -202,11 +243,25 @@ fn create_temp(vault: &Vault) -> VaultResult<(PathBuf, durability::LockedTemp)> 
     Err(VaultError::EntropyUnavailable)
 }
 
-pub(crate) fn verify_object(
+pub(crate) fn verify_object_with_lease(
     path: &Path,
     expected_digest: ContentDigest,
     expected_length: u64,
-) -> VaultResult<()> {
+    lease: durability::SharedObjectLease,
+) -> VaultResult<LiveObjectEvidence> {
+    let (file, identity) = open_exact_object(path, expected_digest, expected_length)?;
+    Ok(LiveObjectEvidence {
+        file,
+        identity,
+        _lease: lease,
+    })
+}
+
+fn open_exact_object(
+    path: &Path,
+    expected_digest: ContentDigest,
+    expected_length: u64,
+) -> VaultResult<(File, durability::ObjectIdentity)> {
     let metadata = match durability::symlink_metadata_no_follow(path) {
         Ok(metadata) => metadata,
         Err(source) if source.kind() == io::ErrorKind::NotFound => {
@@ -220,7 +275,7 @@ pub(crate) fn verify_object(
     {
         return Err(integrity_mismatch(path));
     }
-    let file = durability::open_readonly_no_follow(path)?;
+    let mut file = durability::open_readonly_no_follow(path)?;
     let opened_metadata = file
         .metadata()
         .map_err(|source| VaultError::io("inspect opened sealed vault object", path, source))?;
@@ -230,8 +285,39 @@ pub(crate) fn verify_object(
     {
         return Err(integrity_mismatch(path));
     }
-    let (actual_digest, actual_length) = hash_reader(file, path)?;
+    let identity = durability::object_identity(&file, path)?;
+    verify_open_file(&mut file, path, expected_digest, expected_length)?;
+    Ok((file, identity))
+}
+
+fn verify_open_file(
+    file: &mut File,
+    path: &Path,
+    expected_digest: ContentDigest,
+    expected_length: u64,
+) -> VaultResult<()> {
+    let before = file
+        .metadata()
+        .map_err(|source| VaultError::io("inspect live sealed vault object", path, source))?;
+    if !before.file_type().is_file()
+        || crate::layout::is_link_or_reparse(&before)
+        || before.len() != expected_length
+    {
+        return Err(integrity_mismatch(path));
+    }
+    file.seek(SeekFrom::Start(0))
+        .map_err(|source| VaultError::io("rewind live sealed vault object", path, source))?;
+    let (actual_digest, actual_length) = hash_reader(&mut *file, path)?;
+    let after = file
+        .metadata()
+        .map_err(|source| VaultError::io("reinspect live sealed vault object", path, source))?;
     if actual_digest != expected_digest || actual_length != expected_length {
+        return Err(integrity_mismatch(path));
+    }
+    if !after.file_type().is_file()
+        || crate::layout::is_link_or_reparse(&after)
+        || after.len() != expected_length
+    {
         return Err(integrity_mismatch(path));
     }
     Ok(())

@@ -13,6 +13,8 @@ use crate::{VAULT_FORMAT_VERSION, VaultError, VaultResult, durability, encode_he
 
 const VAULT_DIRECTORY: &str = "vault";
 const OBJECTS_DIRECTORY: &str = "v1";
+const LEASES_DIRECTORY: &str = "leases";
+const LEASES_VERSION_DIRECTORY: &str = "v1";
 const TEMP_DIRECTORY: &str = "tmp";
 const QUARANTINE_DIRECTORY: &str = "quarantine";
 
@@ -22,6 +24,8 @@ pub struct VaultLayout {
     profile_root: PathBuf,
     vault_root: PathBuf,
     objects_root: PathBuf,
+    leases_directory: PathBuf,
+    leases_root: PathBuf,
     temp_dir: PathBuf,
     quarantine_dir: PathBuf,
 }
@@ -29,9 +33,12 @@ pub struct VaultLayout {
 impl VaultLayout {
     pub(crate) fn new(profile_root: &Path) -> Self {
         let vault_root = profile_root.join(VAULT_DIRECTORY);
+        let leases_directory = vault_root.join(LEASES_DIRECTORY);
         Self {
             profile_root: profile_root.to_path_buf(),
             objects_root: vault_root.join(OBJECTS_DIRECTORY),
+            leases_root: leases_directory.join(LEASES_VERSION_DIRECTORY),
+            leases_directory,
             temp_dir: vault_root.join(TEMP_DIRECTORY),
             quarantine_dir: vault_root.join(QUARANTINE_DIRECTORY),
             vault_root,
@@ -42,6 +49,8 @@ impl VaultLayout {
         require_safe_directory(&self.profile_root)?;
         ensure_child_directory(&self.profile_root, &self.vault_root)?;
         ensure_child_directory(&self.vault_root, &self.objects_root)?;
+        ensure_child_directory(&self.vault_root, &self.leases_directory)?;
+        ensure_child_directory(&self.leases_directory, &self.leases_root)?;
         ensure_child_directory(&self.vault_root, &self.temp_dir)?;
         ensure_child_directory(&self.vault_root, &self.quarantine_dir)?;
         durability::sync_directory(&self.vault_root)?;
@@ -64,6 +73,15 @@ impl VaultLayout {
     #[must_use]
     pub fn objects_root(&self) -> &Path {
         &self.objects_root
+    }
+
+    /// Returns the operational object-lease namespace.
+    ///
+    /// Lease files are not artifacts or canonical truth. They coordinate every product-controlled
+    /// object publish, verification, quarantine, remove, and replacement path across processes.
+    #[must_use]
+    pub fn leases_root(&self) -> &Path {
+        &self.leases_root
     }
 
     /// Returns the ingest-temp directory.
@@ -113,13 +131,67 @@ impl VaultLayout {
         descriptor: &ArtifactDescriptor,
     ) -> VaultResult<PathBuf> {
         let object_path = self.object_path(descriptor)?;
-        let parent = object_path
-            .parent()
-            .ok_or_else(|| VaultError::UnsafeEntry(object_path.clone()))?;
-        let relative = parent
+        self.ensure_namespaced_parent(&self.objects_root, &object_path)?;
+        Ok(object_path)
+    }
+
+    pub(crate) fn ensure_lease_path(
+        &self,
+        descriptor: &ArtifactDescriptor,
+    ) -> VaultResult<PathBuf> {
+        if descriptor.format_version != VAULT_FORMAT_VERSION {
+            return Err(VaultError::UnsafeEntry(self.leases_root.clone()));
+        }
+        let lease_path = self.lease_path_parts(
+            descriptor.domain_id,
+            descriptor.retention_class,
+            descriptor.permission_lineage_id,
+            &descriptor.vault_locator,
+        );
+        self.ensure_namespaced_parent(&self.leases_root, &lease_path)?;
+        Ok(lease_path)
+    }
+
+    pub(crate) fn ensure_lease_path_for_object(&self, object_path: &Path) -> VaultResult<PathBuf> {
+        if !self.is_canonical_object_path(object_path) {
+            return Err(VaultError::UnsafeEntry(object_path.to_path_buf()));
+        }
+        let relative = object_path
             .strip_prefix(&self.objects_root)
+            .map_err(|_| VaultError::UnsafeEntry(object_path.to_path_buf()))?;
+        let mut lease_path = self.leases_root.join(relative);
+        if !lease_path.set_extension("lease") {
+            return Err(VaultError::UnsafeEntry(object_path.to_path_buf()));
+        }
+        self.ensure_namespaced_parent(&self.leases_root, &lease_path)?;
+        Ok(lease_path)
+    }
+
+    fn lease_path_parts(
+        &self,
+        domain_id: DomainId,
+        retention_class: RetentionClass,
+        permission_lineage_id: PermissionLineageId,
+        locator: &VaultLocator,
+    ) -> PathBuf {
+        let encoded_locator = encode_hex(locator.as_bytes());
+        self.leases_root
+            .join(domain_id.to_string())
+            .join(retention_component(retention_class))
+            .join(permission_lineage_id.to_string())
+            .join(&encoded_locator[0..2])
+            .join(&encoded_locator[2..4])
+            .join(format!("{encoded_locator}.lease"))
+    }
+
+    fn ensure_namespaced_parent(&self, root: &Path, path: &Path) -> VaultResult<()> {
+        let parent = path
+            .parent()
+            .ok_or_else(|| VaultError::UnsafeEntry(path.to_path_buf()))?;
+        let relative = parent
+            .strip_prefix(root)
             .map_err(|_| VaultError::UnsafeEntry(parent.to_path_buf()))?;
-        let mut current = self.objects_root.clone();
+        let mut current = root.to_path_buf();
         require_safe_directory(&current)?;
         for component in relative.components() {
             current.push(component.as_os_str());
@@ -128,7 +200,7 @@ impl VaultLayout {
                 .ok_or_else(|| VaultError::UnsafeEntry(current.clone()))?;
             ensure_child_directory(parent, &current)?;
         }
-        Ok(object_path)
+        Ok(())
     }
 
     pub(crate) fn is_canonical_object_path(&self, path: &Path) -> bool {
