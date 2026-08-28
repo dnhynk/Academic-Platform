@@ -49,6 +49,99 @@ impl Drop for TemporaryDatabase {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct DatabaseFamilySnapshot(Vec<(String, Option<Vec<u8>>)>);
+
+fn database_family_snapshot(path: &Path) -> Result<DatabaseFamilySnapshot, Box<dyn Error>> {
+    let mut members = Vec::new();
+    for suffix in ["", "-wal", "-shm", "-journal"] {
+        let member = if suffix.is_empty() {
+            path.to_path_buf()
+        } else {
+            let mut value = path.as_os_str().to_os_string();
+            value.push(suffix);
+            PathBuf::from(value)
+        };
+        let bytes = if member.try_exists()? {
+            Some(fs::read(&member)?)
+        } else {
+            None
+        };
+        members.push((suffix.to_owned(), bytes));
+    }
+    Ok(DatabaseFamilySnapshot(members))
+}
+
+fn assert_maintenance_and_reader_reject_without_mutation(
+    path: &Path,
+) -> Result<(StoreError, StoreError), Box<dyn Error>> {
+    let before_maintenance = database_family_snapshot(path)?;
+    let maintenance_error = match migrate_pre_listen(path, BUILD_DIGEST) {
+        Ok(status) => {
+            return Err(std::io::Error::other(format!(
+                "maintenance unexpectedly admitted schema as {status:?}"
+            ))
+            .into());
+        }
+        Err(error) => error,
+    };
+    assert_eq!(
+        database_family_snapshot(path)?,
+        before_maintenance,
+        "maintenance rejection changed the database family"
+    );
+
+    let before_reader = database_family_snapshot(path)?;
+    let reader_error = match open_reader(path) {
+        Ok(_) => {
+            return Err(
+                std::io::Error::other("read-only reader unexpectedly admitted schema").into(),
+            );
+        }
+        Err(error) => error,
+    };
+    assert_eq!(
+        database_family_snapshot(path)?,
+        before_reader,
+        "reader rejection changed the database family"
+    );
+    Ok((maintenance_error, reader_error))
+}
+
+fn use_delete_journal(connection: &Connection) -> Result<(), Box<dyn Error>> {
+    let journal_mode = connection.query_row("PRAGMA journal_mode = DELETE", [], |row| {
+        row.get::<_, String>(0)
+    })?;
+    assert_eq!(journal_mode.to_ascii_lowercase(), "delete");
+    Ok(())
+}
+
+fn replace_schema_sql(
+    connection: &Connection,
+    object_type: &str,
+    name: &str,
+    from: &str,
+    to: &str,
+) -> Result<(), Box<dyn Error>> {
+    let original = connection.query_row(
+        "SELECT sql FROM sqlite_schema WHERE type = ?1 AND name = ?2",
+        [object_type, name],
+        |row| row.get::<_, String>(0),
+    )?;
+    let replacement = original.replacen(from, to, 1);
+    assert_ne!(replacement, original, "schema mutation anchor must exist");
+    connection.execute_batch("PRAGMA writable_schema = ON;")?;
+    connection.execute(
+        "UPDATE sqlite_schema SET sql = ?3 WHERE type = ?1 AND name = ?2",
+        (object_type, name, replacement),
+    )?;
+    connection.execute_batch("PRAGMA writable_schema = OFF;")?;
+    let schema_version =
+        connection.query_row("PRAGMA schema_version", [], |row| row.get::<_, i64>(0))?;
+    connection.pragma_update(None, "schema_version", schema_version + 1)?;
+    Ok(())
+}
+
 #[test]
 fn schema_identity_triplet_agrees() -> Result<(), Box<dyn Error>> {
     let database = TemporaryDatabase::new("identity")?;
@@ -68,6 +161,189 @@ fn schema_identity_triplet_agrees() -> Result<(), Box<dyn Error>> {
     assert_eq!(identity.schema_semver, STORE_SCHEMA_SEMVER);
     assert_eq!(identity.creating_build_digest, BUILD_DIGEST);
     assert!(!identity.production_data_allowed);
+    Ok(())
+}
+
+#[test]
+fn canonical_schema_fingerprint_admits_maintenance_and_reader() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("canonical-fingerprint")?;
+    assert_eq!(
+        migrate_pre_listen(database.path(), BUILD_DIGEST)?,
+        MigrationStatus::Applied
+    );
+    assert_eq!(
+        migrate_pre_listen(database.path(), [0x7c; 32])?,
+        MigrationStatus::AlreadyCurrent
+    );
+    let reader = open_reader(database.path())?;
+    assert_eq!(
+        reader.pragma_snapshot()?.user_version,
+        i64::from(STORE_SCHEMA_VERSION)
+    );
+    Ok(())
+}
+
+#[test]
+fn formatting_only_trigger_definition_is_canonically_admitted() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("canonical-formatting")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    raw.execute_batch(concat!(
+        "DROP TRIGGER guard_claim_delete;",
+        "CREATE TRIGGER \"guard_claim_delete\" before delete ON \"claim\" ",
+        "BEGIN /* formatting-only */ SELECT raise(abort, ",
+        "'canonical table is append-only'); END;"
+    ))?;
+    drop(raw);
+
+    assert_eq!(
+        migrate_pre_listen(database.path(), BUILD_DIGEST)?,
+        MigrationStatus::AlreadyCurrent
+    );
+    let _reader = open_reader(database.path())?;
+    Ok(())
+}
+
+#[test]
+fn version_zero_sqlite_x_user_object_is_rejected_without_mutation() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("version-zero-sqlite-x")?;
+    let raw = Connection::open(database.path())?;
+    raw.execute_batch("CREATE TABLE sqliteXforeign(value INTEGER) STRICT;")?;
+    drop(raw);
+
+    let (maintenance_error, _) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::UnsupportedMigrationState {
+            application_id: 0,
+            user_version: 0
+        }
+    ));
+    Ok(())
+}
+
+#[test]
+fn current_schema_extra_sqlite_x_object_is_rejected_without_mutation() -> Result<(), Box<dyn Error>>
+{
+    let database = TemporaryDatabase::new("current-sqlite-x")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    use_delete_journal(&raw)?;
+    raw.execute_batch("CREATE TABLE sqliteXshadow(value INTEGER) STRICT;")?;
+    drop(raw);
+
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    Ok(())
+}
+
+#[test]
+fn same_name_changed_trigger_is_rejected_without_mutation() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("changed-trigger")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    use_delete_journal(&raw)?;
+    raw.execute_batch(concat!(
+        "DROP TRIGGER guard_claim_delete;",
+        "CREATE TRIGGER guard_claim_delete BEFORE DELETE ON claim ",
+        "BEGIN SELECT 1; END;"
+    ))?;
+    drop(raw);
+
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    Ok(())
+}
+
+#[test]
+fn same_name_changed_index_is_rejected_without_mutation() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("changed-index")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    use_delete_journal(&raw)?;
+    raw.execute_batch(concat!(
+        "DROP INDEX idx_ledger_event_domain_accept;",
+        "CREATE UNIQUE INDEX idx_ledger_event_domain_accept ",
+        "ON ledger_event(lower(event_kind), accept_seq) WHERE accept_seq > 0;"
+    ))?;
+    drop(raw);
+
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    Ok(())
+}
+
+#[test]
+fn same_name_changed_table_definition_is_rejected_without_mutation() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("changed-table")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    use_delete_journal(&raw)?;
+    replace_schema_sql(
+        &raw,
+        "table",
+        "ingest_lease",
+        "lease_id BLOB PRIMARY KEY CHECK",
+        "lease_id BLOB NOT NULL UNIQUE CHECK",
+    )?;
+    replace_schema_sql(
+        &raw,
+        "table",
+        "ingest_lease",
+        "owner_instance_id BLOB NOT NULL CHECK (",
+        "owner_instance_id TEXT DEFAULT 'synthetic' CHECK (",
+    )?;
+    replace_schema_sql(
+        &raw,
+        "table",
+        "ingest_lease",
+        "expires_at > acquired_at",
+        "expires_at >= acquired_at",
+    )?;
+    replace_schema_sql(
+        &raw,
+        "table",
+        "claim_evidence",
+        "REFERENCES claim(claim_id) ON UPDATE RESTRICT ON DELETE RESTRICT",
+        "REFERENCES claim(claim_id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    )?;
+    drop(raw);
+
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
     Ok(())
 }
 
@@ -152,7 +428,8 @@ fn canonical_and_operational_schema_is_complete_and_strict() -> Result<(), Box<d
     migrate_pre_listen(database.path(), BUILD_DIGEST)?;
     let raw = Connection::open(database.path())?;
     let mut statement = raw.prepare(
-        "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        "SELECT name FROM sqlite_schema WHERE type = 'table' \
+         AND substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_' ORDER BY name",
     )?;
     let names = statement
         .query_map([], |row| row.get::<_, String>(0))?
@@ -181,7 +458,8 @@ fn canonical_and_operational_schema_is_complete_and_strict() -> Result<(), Box<d
         ]
     );
     let non_strict = raw.query_row(
-        "SELECT count(*) FROM pragma_table_list WHERE schema = 'main' AND name NOT LIKE 'sqlite_%' AND strict <> 1",
+        "SELECT count(*) FROM pragma_table_list WHERE schema = 'main' \
+         AND substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_' AND strict <> 1",
         [],
         |row| row.get::<_, i64>(0),
     )?;

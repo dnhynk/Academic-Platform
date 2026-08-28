@@ -255,8 +255,12 @@ impl ReaderConnection {
 pub(crate) fn open_writer(database_path: &Path) -> StoreResult<WriterConnection> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection = Connection::open_with_flags(database_path, flags)?;
-    configure_writer_connection(&connection)?;
+    // Reject a foreign or tampered schema before journal-mode or any other
+    // writer configuration can change the database family.
+    let admission_pragmas = read_pragma_snapshot(&connection)?;
+    verify_current_schema(&connection, &admission_pragmas)?;
     verify_fts5(&connection)?;
+    configure_writer_connection(&connection)?;
     let pragmas = read_pragma_snapshot(&connection)?;
     verify_writer_pragmas(&pragmas)?;
     verify_current_schema(&connection, &pragmas)?;
@@ -273,10 +277,11 @@ pub(crate) fn open_writer(database_path: &Path) -> StoreResult<WriterConnection>
 pub fn open_reader(database_path: &Path) -> StoreResult<ReaderConnection> {
     let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection = Connection::open_with_flags(database_path, flags)?;
+    let admission_pragmas = read_pragma_snapshot(&connection)?;
+    verify_current_schema(&connection, &admission_pragmas)?;
     configure_reader_connection(&connection)?;
     let pragmas = read_pragma_snapshot(&connection)?;
     verify_reader_pragmas(&pragmas)?;
-    verify_current_schema(&connection, &pragmas)?;
     install_reader_authorizer(&connection)?;
     Ok(ReaderConnection {
         connection,

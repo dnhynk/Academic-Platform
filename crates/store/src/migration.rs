@@ -15,6 +15,7 @@ use crate::{
         verify_migration_pragmas, verify_writer_pragmas,
     },
     error::{StoreError, StoreResult},
+    schema_fingerprint::{user_schema_object_count, verify_store_schema_fingerprint},
 };
 
 /// First and only S1 migration, embedded byte-for-byte from the ordered migration directory.
@@ -84,10 +85,13 @@ pub fn migrate_open_connection_pre_listen(
     connection: &mut Connection,
     creating_build_digest: [u8; 32],
 ) -> StoreResult<MigrationStatus> {
-    configure_migration_connection(connection)?;
-    let before = read_pragma_snapshot(connection)?;
-    verify_migration_pragmas(&before)?;
+    // Admission is deliberately read-only. In particular, journal_mode is not
+    // changed to WAL until a database is proven empty or exactly current, so a
+    // rejected foreign/tampered database and its sidecar family stay intact.
+    let admission = inspect_schema_before_mutation(connection)?;
     verify_fts5(connection)?;
+    configure_migration_connection(connection)?;
+    let configured = read_pragma_snapshot(connection)?;
     connection.execute_batch("PRAGMA locking_mode = EXCLUSIVE;")?;
     let locking_mode = connection
         .query_row("PRAGMA locking_mode", [], |row| row.get::<_, String>(0))?
@@ -99,29 +103,13 @@ pub fn migrate_open_connection_pre_listen(
             actual: locking_mode,
         });
     }
-    verify_integrity(connection)?;
-    if before.application_id == i64::from(SQLITE_APPLICATION_ID)
-        && before.user_version > i64::from(STORE_SCHEMA_VERSION)
-    {
-        return Err(StoreError::NewerSchema {
-            found: observed_version_for_error(before.user_version),
-            supported: STORE_SCHEMA_VERSION,
-        });
-    }
-    if before.application_id == i64::from(SQLITE_APPLICATION_ID)
-        && before.user_version == i64::from(STORE_SCHEMA_VERSION)
-    {
-        verify_writer_pragmas(&before)?;
-        verify_current_schema(connection, &before)?;
+
+    if admission == SchemaAdmission::Current {
+        verify_writer_pragmas(&configured)?;
+        verify_current_schema(connection, &configured)?;
         return Ok(MigrationStatus::AlreadyCurrent);
     }
-    if before.application_id != 0 || before.user_version != 0 || user_table_count(connection)? != 0
-    {
-        return Err(StoreError::UnsupportedMigrationState {
-            application_id: before.application_id,
-            user_version: before.user_version,
-        });
-    }
+    verify_migration_pragmas(&configured)?;
 
     let created_at_unix_ms = unix_time_millis()?;
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
@@ -157,13 +145,48 @@ pub fn migrate_open_connection_pre_listen(
     Ok(MigrationStatus::Applied)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SchemaAdmission {
+    Empty,
+    Current,
+}
+
+fn inspect_schema_before_mutation(connection: &Connection) -> StoreResult<SchemaAdmission> {
+    let observed = read_pragma_snapshot(connection)?;
+    verify_integrity(connection)?;
+    if observed.application_id == i64::from(SQLITE_APPLICATION_ID)
+        && observed.user_version > i64::from(STORE_SCHEMA_VERSION)
+    {
+        return Err(StoreError::NewerSchema {
+            found: observed_version_for_error(observed.user_version),
+            supported: STORE_SCHEMA_VERSION,
+        });
+    }
+    if observed.application_id == i64::from(SQLITE_APPLICATION_ID)
+        && observed.user_version == i64::from(STORE_SCHEMA_VERSION)
+    {
+        verify_current_schema(connection, &observed)?;
+        return Ok(SchemaAdmission::Current);
+    }
+    if observed.application_id == 0
+        && observed.user_version == 0
+        && user_schema_object_count(connection)? == 0
+    {
+        return Ok(SchemaAdmission::Empty);
+    }
+    Err(StoreError::UnsupportedMigrationState {
+        application_id: observed.application_id,
+        user_version: observed.user_version,
+    })
+}
+
 pub(crate) fn verify_current_schema(
     connection: &Connection,
     pragmas: &PragmaSnapshot,
 ) -> StoreResult<()> {
     let identity = read_schema_identity(connection)?;
     verify_schema_identity(&identity, pragmas)?;
-    verify_schema_shape(connection)?;
+    verify_store_schema_fingerprint(connection, MIGRATION_0001_SQL)?;
     verify_integrity(connection)
 }
 
@@ -326,143 +349,6 @@ fn verify_integrity(connection: &Connection) -> StoreResult<()> {
         });
     }
     Ok(())
-}
-
-fn verify_schema_shape(connection: &Connection) -> StoreResult<()> {
-    const TABLES: &[&str] = &[
-        "schema_meta",
-        "ledger_batch",
-        "ledger_event",
-        "scope",
-        "artifact_descriptor",
-        "artifact_representation",
-        "evidence_item",
-        "claim",
-        "claim_evidence",
-        "claim_relation",
-        "user_decision",
-        "projection_outbox",
-        "command_receipt",
-        "replica_state",
-        "device_head",
-        "projection_cursor",
-        "projection_active",
-        "ingest_lease",
-    ];
-    const INDEXES: &[&str] = &[
-        "idx_ledger_batch_device_range",
-        "idx_ledger_event_batch_origin",
-        "idx_ledger_event_domain_accept",
-        "idx_scope_domain",
-        "idx_artifact_domain",
-        "idx_evidence_artifact",
-        "idx_claim_resolution",
-        "idx_claim_assertion_event",
-        "idx_claim_evidence_evidence",
-        "idx_claim_relation_target",
-        "idx_user_decision_slot",
-        "idx_projection_outbox_accept",
-        "idx_ingest_lease_expiry",
-    ];
-    const TRIGGERS: &[&str] = &[
-        "guard_schema_meta_update",
-        "guard_schema_meta_delete",
-        "guard_ledger_batch_update",
-        "guard_ledger_batch_delete",
-        "guard_ledger_event_update",
-        "guard_ledger_event_delete",
-        "guard_scope_update",
-        "guard_scope_delete",
-        "guard_artifact_descriptor_update",
-        "guard_artifact_descriptor_delete",
-        "guard_artifact_representation_update",
-        "guard_artifact_representation_delete",
-        "guard_evidence_item_update",
-        "guard_evidence_item_delete",
-        "guard_claim_update",
-        "guard_claim_delete",
-        "guard_claim_evidence_update",
-        "guard_claim_evidence_delete",
-        "guard_claim_relation_update",
-        "guard_claim_relation_delete",
-        "guard_user_decision_update",
-        "guard_user_decision_delete",
-        "guard_projection_outbox_update",
-        "guard_projection_outbox_delete",
-        "guard_command_receipt_update",
-        "guard_command_receipt_delete",
-    ];
-
-    verify_object_set(connection, "table", TABLES)?;
-    for table in TABLES {
-        let strict = connection.query_row(
-            "SELECT strict FROM pragma_table_list WHERE schema = 'main' AND name = ?1",
-            [table],
-            |row| row.get::<_, i64>(0),
-        )?;
-        if strict != 1 {
-            return Err(StoreError::SchemaIdentityMismatch {
-                component: "schema.strict_table",
-                expected: format!("{table}=1"),
-                actual: format!("{table}={strict}"),
-            });
-        }
-    }
-    verify_object_set(connection, "index", INDEXES)?;
-    verify_object_set(connection, "trigger", TRIGGERS)
-}
-
-fn verify_object_set(
-    connection: &Connection,
-    object_type: &'static str,
-    expected_names: &[&str],
-) -> StoreResult<()> {
-    for name in expected_names {
-        let count = connection.query_row(
-            "SELECT count(*) FROM sqlite_schema WHERE type = ?1 AND name = ?2",
-            [object_type, name],
-            |row| row.get::<_, i64>(0),
-        )?;
-        if count != 1 {
-            return Err(StoreError::SchemaIdentityMismatch {
-                component: "schema.required_object",
-                expected: format!("one {object_type} named {name}"),
-                actual: format!("{count} matching objects"),
-            });
-        }
-    }
-    let actual_count = connection.query_row(
-        "SELECT count(*) FROM sqlite_schema \
-         WHERE type = ?1 AND name NOT LIKE 'sqlite_%'",
-        [object_type],
-        |row| row.get::<_, i64>(0),
-    )?;
-    let expected_count =
-        i64::try_from(expected_names.len()).map_err(|_| StoreError::SchemaIdentityMismatch {
-            component: "schema.object_count",
-            expected: "object count fitting signed 64-bit".to_owned(),
-            actual: expected_names.len().to_string(),
-        })?;
-    if actual_count == expected_count {
-        Ok(())
-    } else {
-        Err(StoreError::SchemaIdentityMismatch {
-            component: "schema.object_count",
-            expected: format!("{expected_count} {object_type} objects"),
-            actual: format!("{actual_count} {object_type} objects"),
-        })
-    }
-}
-
-fn user_table_count(connection: &Connection) -> StoreResult<i64> {
-    connection
-        .query_row(
-            "SELECT count(*) FROM sqlite_schema \
-             WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(StoreError::from)
 }
 
 fn unix_time_millis() -> StoreResult<i64> {
