@@ -8,9 +8,8 @@ use std::{
 use academic_store::{
     INCOMPLETE_PROFILE_MARKER, PHASE1_POLICY_BANNER, SYNTHETIC_PROFILE_MARKER,
     path_policy::{
-        NativePathProbe, PathEvidence, PathPolicyViolation, PathProbe, PathProbeFailure,
-        ProfileAccess, ProfileRootState, StorageLocality, validate_existing_profile_path,
-        validate_new_profile_path,
+        PathEvidence, PathPolicyViolation, PathProbe, PathProbeFailure, ProfileAccess,
+        ProfileRootState, StorageLocality, validate_new_profile_path,
     },
     profile::{
         SYNTHETIC_PROFILE_MARKER_CONTENTS, SyntheticIngestManifest, create_synthetic_profile,
@@ -18,6 +17,10 @@ use academic_store::{
         validate_synthetic_manifest, write_policy_banner,
     },
 };
+
+// Only the native Linux and Windows tests below reach the real probe.
+#[cfg(any(target_os = "linux", windows))]
+use academic_store::path_policy::{NativePathProbe, validate_existing_profile_path};
 
 static NEXT_TEMP_DIRECTORY: AtomicU64 = AtomicU64::new(0);
 
