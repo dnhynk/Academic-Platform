@@ -32,7 +32,7 @@ struct TemporaryDirectory {
 impl TemporaryDirectory {
     fn new(label: &str) -> std::io::Result<Self> {
         let sequence = NEXT_TEMP_DIRECTORY.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
+        let path = temporary_base()?.join(format!(
             "academic-store-{label}-{}-{sequence}",
             std::process::id()
         ));
@@ -51,6 +51,20 @@ impl Drop for TemporaryDirectory {
             eprintln!("test cleanup failed for {}: {error}", self.path.display());
         }
     }
+}
+
+/// macOS exposes `$TMPDIR` beneath the `/var` symlink and the native facade
+/// refuses to follow a link component, so the tests address the real directory.
+#[cfg(unix)]
+fn temporary_base() -> std::io::Result<PathBuf> {
+    fs::canonicalize(std::env::temp_dir())
+}
+
+/// Windows must not canonicalize: that yields the Win32 verbatim device
+/// spelling the facade rejects, trading one refused spelling for another.
+#[cfg(windows)]
+fn temporary_base() -> std::io::Result<PathBuf> {
+    Ok(std::env::temp_dir())
 }
 
 #[derive(Debug, Clone)]
