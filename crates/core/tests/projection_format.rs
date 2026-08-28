@@ -21,6 +21,20 @@ use support::{
 
 const PARENT_MIGRATION_0002_SQL: &str =
     include_str!("../../../migrations/store/fixtures/0002_phase1_projections_parent.sql");
+const SQLITEX_TRIGGER_NAME: &str = "sqliteX_block_generation";
+const SQLITEX_TRIGGER_SQL: &str = concat!(
+    "CREATE TRIGGER sqliteX_block_generation ",
+    "BEFORE INSERT ON projection_generation BEGIN ",
+    "SELECT RAISE(ABORT, 'blocked by sqliteX trigger'); END;"
+);
+
+#[derive(Debug, PartialEq, Eq)]
+struct SidecarState {
+    application_id: i64,
+    user_version: i64,
+    schema: Vec<(String, String, String)>,
+    generation_count: Option<i64>,
+}
 
 #[test]
 fn exact_parent_v2_is_replaced_from_canonical_without_touching_vault() -> TestResult {
@@ -160,6 +174,153 @@ fn exact_v2_schema_literal_mutations_are_not_replaced() -> TestResult {
                 } if application_id == i64::from(PROJECTION_APPLICATION_ID)
             ));
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn current_v3_sqlitex_trigger_is_corrupt_and_unchanged() -> TestResult {
+    let fixture = Fixture::new("current-sqlitex-trigger")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    connection.execute_batch(SQLITEX_TRIGGER_SQL)?;
+    assert_eq!(
+        named_schema_object_count(&connection, "trigger", SQLITEX_TRIGGER_NAME)?,
+        1
+    );
+    assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
+    let before = sidecar_state(&connection)?;
+    assert_eq!(before.user_version, i64::from(PROJECTION_DATABASE_VERSION));
+    assert_eq!(before.generation_count, Some(0));
+    drop(connection);
+
+    let Err(error) = open_runner(&fixture) else {
+        return Err("current v3 sidecar with a sqliteX trigger was accepted".into());
+    };
+    assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
+
+    let connection = Connection::open(fixture.sidecar_path())?;
+    assert_eq!(sidecar_state(&connection)?, before);
+    assert_eq!(
+        named_schema_object_count(&connection, "trigger", SQLITEX_TRIGGER_NAME)?,
+        1
+    );
+    assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
+    Ok(())
+}
+
+#[test]
+fn known_v2_shapes_with_sqlitex_trigger_are_not_replaced() -> TestResult {
+    for (label, migration) in [
+        ("parent", PARENT_MIGRATION_0002_SQL),
+        ("audited", MIGRATION_0002_SQL),
+    ] {
+        let fixture = Fixture::new(&format!("v2-{label}-sqlitex-trigger"))?;
+        let connection = Connection::open(fixture.sidecar_path())?;
+        connection.execute_batch(migration)?;
+        connection.execute_batch(SQLITEX_TRIGGER_SQL)?;
+        assert_eq!(
+            named_schema_object_count(&connection, "trigger", SQLITEX_TRIGGER_NAME)?,
+            1
+        );
+        assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
+        let before = sidecar_state(&connection)?;
+        assert_eq!(before.user_version, 2);
+        assert_eq!(before.generation_count, Some(0));
+        drop(connection);
+
+        let Err(error) = open_runner(&fixture) else {
+            return Err(format!("{label} v2 sidecar with a sqliteX trigger was replaced").into());
+        };
+        assert!(matches!(
+            error,
+            ProjectionError::UnsupportedProjectionFormat {
+                application_id,
+                user_version: 2,
+                ..
+            } if application_id == i64::from(PROJECTION_APPLICATION_ID)
+        ));
+
+        let connection = Connection::open(fixture.sidecar_path())?;
+        assert_eq!(sidecar_state(&connection)?, before);
+        assert_eq!(
+            named_schema_object_count(&connection, "trigger", SQLITEX_TRIGGER_NAME)?,
+            1
+        );
+        assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn version_zero_sqlitex_object_is_not_initialized() -> TestResult {
+    let fixture = Fixture::new("version-zero-sqlitex-object")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(
+        "CREATE TABLE sqliteXunexpected(value TEXT NOT NULL); \
+         INSERT INTO sqliteXunexpected(value) VALUES ('sentinel');",
+    )?;
+    let before = sidecar_state(&connection)?;
+    assert_eq!(before.application_id, 0);
+    assert_eq!(before.user_version, 0);
+    assert_eq!(before.generation_count, None);
+    assert_eq!(
+        named_schema_object_count(&connection, "table", "sqliteXunexpected")?,
+        1
+    );
+    drop(connection);
+
+    let Err(error) = open_runner(&fixture) else {
+        return Err("version-zero database with a sqliteX object was initialized".into());
+    };
+    assert!(matches!(
+        error,
+        ProjectionError::UnsupportedProjectionFormat {
+            application_id: 0,
+            user_version: 0,
+            ..
+        }
+    ));
+
+    let connection = Connection::open(fixture.sidecar_path())?;
+    assert_eq!(sidecar_state(&connection)?, before);
+    assert_eq!(
+        named_schema_object_count(&connection, "table", "sqliteXunexpected")?,
+        1
+    );
+    assert_eq!(
+        connection.query_row("SELECT value FROM sqliteXunexpected", [], |row| {
+            row.get::<_, String>(0)
+        })?,
+        "sentinel"
+    );
+    Ok(())
+}
+
+#[test]
+fn sqlite_owned_objects_remain_excluded_for_exact_known_schemas() -> TestResult {
+    let expected = {
+        let connection = Connection::open_in_memory()?;
+        connection.execute_batch(MIGRATION_0003_SQL)?;
+        assert!(sqlite_owned_schema_object_count(&connection)? > 0);
+        sidecar_state(&connection)?
+    };
+
+    for (label, migration) in [
+        ("current", MIGRATION_0003_SQL),
+        ("parent-v2", PARENT_MIGRATION_0002_SQL),
+        ("audited-v2", MIGRATION_0002_SQL),
+    ] {
+        let fixture = Fixture::new(&format!("sqlite-owned-{label}"))?;
+        let connection = Connection::open(fixture.sidecar_path())?;
+        connection.execute_batch(migration)?;
+        assert!(sqlite_owned_schema_object_count(&connection)? > 0);
+        drop(connection);
+
+        drop(open_runner(&fixture)?);
+        let connection = Connection::open(fixture.sidecar_path())?;
+        assert!(sqlite_owned_schema_object_count(&connection)? > 0);
+        assert_eq!(sidecar_state(&connection)?, expected);
     }
     Ok(())
 }
@@ -323,6 +484,75 @@ fn assert_current_v3_literal_mutation_is_corrupt(label: &str, from: &str, to: &s
         return Err(format!("current v3 literal mutation {label} was accepted").into());
     };
     assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
+    Ok(())
+}
+
+fn sidecar_state(connection: &Connection) -> TestResult<SidecarState> {
+    let application_id = connection.query_row("PRAGMA application_id", [], |row| row.get(0))?;
+    let user_version = connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+    let mut statement = connection
+        .prepare("SELECT type, name, coalesce(sql, '') FROM sqlite_schema ORDER BY type, name")?;
+    let rows = statement.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+        ))
+    })?;
+    let schema = rows.collect::<Result<Vec<_>, _>>()?;
+    let generation_count =
+        if named_schema_object_count(connection, "table", "projection_generation")? == 1 {
+            Some(
+                connection.query_row("SELECT count(*) FROM projection_generation", [], |row| {
+                    row.get(0)
+                })?,
+            )
+        } else {
+            None
+        };
+    Ok(SidecarState {
+        application_id,
+        user_version,
+        schema,
+        generation_count,
+    })
+}
+
+fn named_schema_object_count(
+    connection: &Connection,
+    object_type: &str,
+    name: &str,
+) -> TestResult<i64> {
+    Ok(connection.query_row(
+        concat!(
+            "SELECT count(*) FROM sqlite_schema ",
+            "WHERE type = ?1 AND name = ?2 COLLATE BINARY"
+        ),
+        [object_type, name],
+        |row| row.get(0),
+    )?)
+}
+
+fn sqlite_owned_schema_object_count(connection: &Connection) -> TestResult<i64> {
+    Ok(connection.query_row(
+        "SELECT count(*) FROM sqlite_schema WHERE name GLOB 'sqlite_*'",
+        [],
+        |row| row.get(0),
+    )?)
+}
+
+fn assert_sqlitex_trigger_blocks_generation_insert(connection: &Connection) -> TestResult {
+    let Err(error) = connection.execute("INSERT INTO projection_generation DEFAULT VALUES", [])
+    else {
+        return Err("sqliteX trigger did not block a generation insert".into());
+    };
+    assert!(error.to_string().contains("blocked by sqliteX trigger"));
+    assert_eq!(
+        connection.query_row("SELECT count(*) FROM projection_generation", [], |row| {
+            row.get::<_, i64>(0)
+        })?,
+        0
+    );
     Ok(())
 }
 
