@@ -50,6 +50,11 @@ pub const MIGRATION_0003_SQL: &str =
 /// Source-ledger-bound, coordinate-selectable Phase 1 builder algorithm identifier.
 pub const PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v3";
 const PREVIOUS_PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v2";
+// SQLite reserves this literal prefix case-insensitively. Comparing the prefix
+// directly keeps the underscore literal while admitting valid `sqliteX...`
+// user object names.
+const USER_SCHEMA_OBJECT_PREDICATE: &str =
+    "substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_'";
 
 mod fault_boundary {
     use super::{ProjectionResult, fmt};
@@ -874,10 +879,11 @@ fn migration_schema_fingerprint(sql: &str) -> ProjectionResult<Vec<(String, Stri
 fn projection_schema_fingerprint(
     connection: &Connection,
 ) -> ProjectionResult<Vec<(String, String, String)>> {
-    let mut statement = connection.prepare(concat!(
-        "SELECT type, name, coalesce(sql, '') FROM sqlite_schema ",
-        "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-    ))?;
+    let query = format!(
+        "SELECT type, name, coalesce(sql, '') FROM sqlite_schema \
+         WHERE {USER_SCHEMA_OBJECT_PREDICATE} ORDER BY type, name"
+    );
+    let mut statement = connection.prepare(&query)?;
     let rows = statement.query_map([], |row| {
         Ok((
             row.get::<_, String>(0)?,
@@ -2029,12 +2035,9 @@ fn pragma_i64(connection: &Connection, name: &'static str) -> ProjectionResult<i
 }
 
 fn user_object_count(connection: &Connection) -> ProjectionResult<i64> {
+    let query = format!("SELECT count(*) FROM sqlite_schema WHERE {USER_SCHEMA_OBJECT_PREDICATE}");
     connection
-        .query_row(
-            "SELECT count(*) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'",
-            [],
-            |row| row.get(0),
-        )
+        .query_row(&query, [], |row| row.get(0))
         .map_err(ProjectionError::from)
 }
 
