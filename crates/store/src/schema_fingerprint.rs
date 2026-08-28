@@ -24,8 +24,16 @@ const STORE_SCHEMA_FINGERPRINT_VERSION: u32 = 1;
 // SQLite reserves this literal prefix case-insensitively. Comparing the prefix
 // directly keeps the underscore literal while admitting valid `sqliteX...`
 // user object names.
-const USER_SCHEMA_OBJECT_PREDICATE: &str =
-    "substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_'";
+//
+// Only `CREATE` applies the reserved-prefix rejection; during schema load
+// SQLite installs whatever `sqlite_schema` holds. A reserved-prefix trigger or
+// view written directly into `sqlite_schema` therefore loads and fires, so the
+// prefix exclusion is narrowed to the object kinds SQLite itself creates —
+// `sqlite_sequence`, `sqlite_stat1`..`sqlite_stat4` and `sqlite_autoindex_*`,
+// all of them tables or indexes. Every trigger and view is fingerprinted
+// unconditionally.
+const USER_SCHEMA_OBJECT_PREDICATE: &str = "(type NOT IN ('table', 'index') \
+     OR substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_')";
 
 static EXPECTED_SCHEMA_FINGERPRINT: OnceLock<SchemaFingerprint> = OnceLock::new();
 
@@ -54,9 +62,10 @@ pub(crate) fn verify_store_schema_fingerprint(
     }
 }
 
-/// Counts every non-SQLite-owned schema object. This is deliberately broader
-/// than tables so a version-zero view, index, or trigger cannot be migrated in
-/// place before the exact current fingerprint rejects it.
+/// Counts every non-SQLite-created schema object. This is deliberately broader
+/// than tables so a version-zero view, index, or trigger — including one whose
+/// name carries SQLite's reserved prefix — cannot be migrated in place before
+/// the exact current fingerprint rejects it.
 pub(crate) fn user_schema_object_count(connection: &Connection) -> StoreResult<i64> {
     let query = format!("SELECT count(*) FROM sqlite_schema WHERE {USER_SCHEMA_OBJECT_PREDICATE}");
     connection
