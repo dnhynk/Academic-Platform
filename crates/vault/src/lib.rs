@@ -13,6 +13,19 @@
 //! missing, truncated, replaced, or identity-changed object as failure. Preventing a hostile
 //! out-of-process filesystem mutation in the final instruction window is outside this local
 //! cooperative boundary and remains part of the daemon/profile trust assumption.
+//!
+//! # Concurrency contract
+//!
+//! One [`Vault`] value is safe to share by reference across threads: [`Vault::ingest`],
+//! [`Vault::verify_sealed_object`], and [`Vault::revalidate_sealed_object`] may run concurrently
+//! on `&Vault`, for the same artifact or for different artifacts, without a caller-supplied lock.
+//! Concurrent ingest of identical bytes into the same policy namespace publishes exactly one
+//! object and adopts it for every other caller. A caller therefore never has to serialize ingest
+//! to avoid spurious failures, receipt-less published objects, or leaked partials.
+//!
+//! [`Vault::reconcile`] carries no such guarantee. It is a startup pass that removes expired
+//! partials and quarantines orphans, and no test exercises it concurrently with ingest, so the
+//! daemon must run it before it accepts clients.
 
 mod durability;
 mod fault;
@@ -254,6 +267,9 @@ impl Drop for DomainKeyring {
 }
 
 /// Open synthetic vault bound to one validated local profile.
+///
+/// Sharing one value by reference across threads is supported; see the crate-level concurrency
+/// contract for exactly which operations that covers.
 #[derive(Debug)]
 pub struct Vault {
     layout: VaultLayout,
@@ -281,6 +297,8 @@ impl Vault {
     }
 
     /// Streams, seals, publishes, and reads back one exact synthetic artifact.
+    ///
+    /// Concurrent calls on a shared `&Vault` are supported; the caller must not serialize them.
     pub fn ingest(
         &self,
         request: &ArtifactIngestRequest,
@@ -290,6 +308,8 @@ impl Vault {
     }
 
     /// Reconciles temp files, sealed objects, quarantine, and authoritative references.
+    ///
+    /// This is a startup pass. It carries no concurrency guarantee against a running ingest.
     pub fn reconcile(&self, options: &ReconcileOptions<'_>) -> VaultResult<ReconcileReport> {
         reconcile::reconcile(self, options)
     }

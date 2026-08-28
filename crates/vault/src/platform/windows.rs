@@ -79,34 +79,56 @@ pub(crate) fn create_locked_temp(path: &Path) -> io::Result<LockedTemp> {
 }
 
 pub(crate) fn sync_directory(path: &Path) -> io::Result<()> {
-    let directory = OpenOptions::new()
-        .read(true)
-        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
-        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_WRITE_THROUGH)
-        .open(path)?;
-    let directory_flush = flush_handle(&directory);
+    let directory_flush = flush_directory(path);
 
     // Some supported Windows filesystems reject FlushFileBuffers for directory handles. A
     // write-through file in that directory supplies a conservative ordering barrier for the
     // preceding metadata operation; it never substitutes for a successful flush when the host
     // reports a different error.
+    //
+    // Concurrent ingests synchronize the same shared directory - `vault/tmp`, an object fan-out
+    // parent, a lease parent - so the barrier permits write sharing and its open/write/flush is
+    // covered by the same bounded sharing retry as publication. Barrier content is a fixed
+    // marker, never read back, so a concurrent truncate is not a loss.
     let barrier_path = path.join(DIRECTORY_BARRIER_FILE);
     require_safe_barrier_shape(&barrier_path)?;
-    let mut barrier = OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .share_mode(FILE_SHARE_READ)
-        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_WRITE_THROUGH)
-        .open(&barrier_path)?;
-    barrier.write_all(b"PLAINTEXT_SYNTHETIC_V1_DIRECTORY_BARRIER\n")?;
-    barrier.sync_all()?;
+    retry_sharing_violation(|| {
+        let mut barrier = open_directory_barrier(&barrier_path)?;
+        barrier.write_all(b"PLAINTEXT_SYNTHETIC_V1_DIRECTORY_BARRIER\n")?;
+        barrier.sync_all()
+    })?;
 
     match directory_flush {
         Ok(()) => Ok(()),
         Err(error) if is_directory_flush_unsupported(&error) => Ok(()),
         Err(error) => Err(error),
     }
+}
+
+/// Opens the explicit durable directory handle and flushes it.
+///
+/// `FlushFileBuffers` requires write access, so a read-only directory handle always fails with
+/// `ERROR_ACCESS_DENIED` and the designed flush never executes. Requesting `GENERIC_WRITE` makes
+/// it run; a host that refuses a writable directory handle still reports one of the errors
+/// `is_directory_flush_unsupported` classifies, so the barrier remains the fallback there.
+fn flush_directory(path: &Path) -> io::Result<()> {
+    let directory = OpenOptions::new()
+        .read(true)
+        .access_mode(GENERIC_READ | GENERIC_WRITE)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_WRITE_THROUGH)
+        .open(path)?;
+    flush_handle(&directory)
+}
+
+fn open_directory_barrier(path: &Path) -> io::Result<File> {
+    OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_WRITE_THROUGH)
+        .open(path)
 }
 
 pub(crate) fn open_readonly_no_follow(path: &Path) -> io::Result<File> {
@@ -240,15 +262,26 @@ fn ensure_lease_file(path: &Path) -> io::Result<()> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => return Err(error),
     }
-    let file = OpenOptions::new()
+    let file = open_lease_file_for_creation(&verbatim)?;
+    require_regular_non_reparse_handle(&file)
+}
+
+/// Creates an absent lease file without requesting more access than a live shared lease permits.
+///
+/// The existence check above is a fast path, not a guarantee: another thread can create the file
+/// and take its shared lease - which permits only `FILE_SHARE_READ` - inside that window, and a
+/// `GENERIC_WRITE` request would then fail with `ERROR_SHARING_VIOLATION`. `OPEN_ALWAYS` creates
+/// the file from the parent directory's permission, so read access is sufficient. `.write(true)`
+/// only satisfies the standard library's creation-mode rule; `access_mode` sets the real request.
+fn open_lease_file_for_creation(path: &Path) -> io::Result<File> {
+    OpenOptions::new()
         .create(true)
         .read(true)
         .write(true)
-        .access_mode(GENERIC_READ | GENERIC_WRITE)
+        .access_mode(GENERIC_READ)
         .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
         .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
-        .open(verbatim)?;
-    require_regular_non_reparse_handle(&file)
+        .open(path)
 }
 
 fn require_regular_non_reparse_handle(file: &File) -> io::Result<()> {
@@ -495,7 +528,9 @@ fn is_sharing_violation(error: &io::Error) -> bool {
 }
 
 fn is_directory_flush_unsupported(error: &io::Error) -> bool {
-    // ERROR_INVALID_FUNCTION, ERROR_ACCESS_DENIED, ERROR_INVALID_HANDLE.
+    // ERROR_INVALID_FUNCTION, ERROR_ACCESS_DENIED, ERROR_INVALID_HANDLE. Because the durable
+    // handle now requests GENERIC_WRITE, ERROR_ACCESS_DENIED means the host refused a writable
+    // directory handle rather than that a readable one cannot be flushed.
     matches!(error.raw_os_error(), Some(1 | 5 | 6))
 }
 
@@ -569,6 +604,52 @@ mod tests {
         });
         assert!(result.is_err());
         assert_eq!(attempts.get(), MAX_SHARING_ATTEMPTS);
+    }
+
+    #[test]
+    fn native_directory_flush_requires_a_writable_handle() -> io::Result<()> {
+        let directory = TestDirectory::create()?;
+        let readonly = OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_WRITE_THROUGH)
+            .open(&directory.0)?;
+        let refused = flush_handle(&readonly)
+            .err()
+            .and_then(|error| error.raw_os_error());
+        assert_eq!(
+            refused,
+            Some(i32::try_from(ERROR_ACCESS_DENIED).unwrap_or(5)),
+            "a read-only directory handle cannot flush, so the durable flush must request write"
+        );
+        drop(readonly);
+
+        flush_directory(&directory.0)?;
+        Ok(())
+    }
+
+    #[test]
+    fn native_directory_sync_tolerates_a_concurrently_open_barrier() -> io::Result<()> {
+        let directory = TestDirectory::create()?;
+        sync_directory(&directory.0)?;
+        let held = open_directory_barrier(&directory.0.join(DIRECTORY_BARRIER_FILE))?;
+        sync_directory(&directory.0)?;
+        drop(held);
+        Ok(())
+    }
+
+    #[test]
+    fn native_lease_creation_tolerates_a_live_shared_lease() -> io::Result<()> {
+        let directory = TestDirectory::create()?;
+        let lease_path = directory.0.join("object.lease");
+        let held = try_acquire_shared_object_lease(&lease_path)?;
+        assert!(held.is_some(), "the first shared lease must be granted");
+
+        let created = open_lease_file_for_creation(&verbatim_path(&lease_path)?)?;
+        require_regular_non_reparse_handle(&created)?;
+        drop(created);
+        drop(held);
+        Ok(())
     }
 
     #[test]
