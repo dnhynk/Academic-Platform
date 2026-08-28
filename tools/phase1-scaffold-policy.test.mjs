@@ -120,6 +120,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-domain": [],
     "academic-ledger": ["academic-contracts", "academic-domain"],
     "academic-portability": [
+      "academic-contracts",
       "academic-domain",
       "academic-projections",
       "academic-store",

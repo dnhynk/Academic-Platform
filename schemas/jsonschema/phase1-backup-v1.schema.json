@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://learning-platform.local/schemas/phase1-backup-v1.schema.json",
+  "title": "Phase 1 plaintext synthetic backup manifest",
+  "description": "Manifest of a Phase 1 backup directory produced by SQLite Online Backup at a fixed commit watermark plus every reachable sealed object. The backup is PLAINTEXT and SYNTHETIC-ONLY: it protects nothing, it is not encrypted, and it is not evidence for ADR-002, ADR-005, or ADR-012. Values under `semantic` are hashed into `semantic_digest`; `volatile` carries the generation instant and is outside that digest. The SQLite file itself need not be byte-identical across runs, but its integrity and `canonical_semantic_digest` must be.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["semantic", "semantic_digest", "volatile"],
+  "properties": {
+    "semantic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "manifest_version",
+        "generator",
+        "policy",
+        "encrypted",
+        "plaintext_warning",
+        "store_schema",
+        "watermark",
+        "counts",
+        "device_heads",
+        "canonical_semantic_digest",
+        "database",
+        "objects",
+        "files"
+      ],
+      "properties": {
+        "format": { "const": "learning-platform-phase1-backup-v1" },
+        "manifest_version": { "const": 1 },
+        "generator": { "const": "learning-platform.phase1-portability.v1" },
+        "policy": { "$ref": "#/$defs/policy" },
+        "encrypted": { "const": false },
+        "plaintext_warning": {
+          "const": "PLAINTEXT SYNTHETIC-ONLY BACKUP — NOT ENCRYPTED, NOT CONFIDENTIAL, NOT PRODUCTION EVIDENCE"
+        },
+        "store_schema": { "$ref": "#/$defs/storeSchema" },
+        "watermark": { "$ref": "#/$defs/watermark" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "device_heads": { "type": "array", "items": { "$ref": "#/$defs/deviceHead" } },
+        "canonical_semantic_digest": { "$ref": "#/$defs/sha256" },
+        "database": { "$ref": "#/$defs/file" },
+        "objects": { "type": "array", "items": { "$ref": "#/$defs/object" } },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/file" },
+          "description": "Every produced file except this manifest, strictly sorted by relative forward-slash path."
+        }
+      }
+    },
+    "semantic_digest": { "$ref": "#/$defs/sha256" },
+    "volatile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generated_at_unix_ms"],
+      "properties": {
+        "generated_at_unix_ms": { "type": "integer" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "relativePath": { "type": "string", "pattern": "^[^/\\\\][^\\\\]*$" },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_policy",
+        "storage_mode",
+        "storage_encryption",
+        "production_data_allowed",
+        "product_network"
+      ],
+      "properties": {
+        "data_policy": { "const": "SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED" },
+        "storage_mode": { "const": "PLAINTEXT_TEMPORARY_SQLITE" },
+        "storage_encryption": { "const": "NONE" },
+        "production_data_allowed": { "const": false },
+        "product_network": { "const": "NONE" }
+      }
+    },
+    "storeSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format_uuid",
+        "schema_version",
+        "schema_semver",
+        "minimum_reader_protocol_major",
+        "minimum_reader_protocol_minor",
+        "minimum_writer_protocol_major",
+        "minimum_writer_protocol_minor",
+        "policy"
+      ],
+      "properties": {
+        "format_uuid": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+        "schema_version": { "type": "integer", "minimum": 1 },
+        "schema_semver": { "type": "string", "minLength": 1 },
+        "minimum_reader_protocol_major": { "type": "integer", "minimum": 0 },
+        "minimum_reader_protocol_minor": { "type": "integer", "minimum": 0 },
+        "minimum_writer_protocol_major": { "type": "integer", "minimum": 0 },
+        "minimum_writer_protocol_minor": { "type": "integer", "minimum": 0 },
+        "policy": { "$ref": "#/$defs/policy" }
+      }
+    },
+    "watermark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "next_accept_seq",
+        "profile_revision",
+        "accept_seq_head",
+        "outbox_head"
+      ],
+      "properties": {
+        "next_accept_seq": { "type": "integer", "minimum": 1 },
+        "profile_revision": { "type": "integer", "minimum": 0 },
+        "accept_seq_head": { "type": "integer", "minimum": 0 },
+        "outbox_head": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "batches",
+        "events",
+        "scopes",
+        "artifacts",
+        "artifact_representations",
+        "evidence",
+        "claims",
+        "claim_evidence_links",
+        "relations",
+        "decisions",
+        "outbox",
+        "command_receipts",
+        "device_heads"
+      ],
+      "properties": {
+        "batches": { "type": "integer", "minimum": 0 },
+        "events": { "type": "integer", "minimum": 0 },
+        "scopes": { "type": "integer", "minimum": 0 },
+        "artifacts": { "type": "integer", "minimum": 0 },
+        "artifact_representations": { "type": "integer", "minimum": 0 },
+        "evidence": { "type": "integer", "minimum": 0 },
+        "claims": { "type": "integer", "minimum": 0 },
+        "claim_evidence_links": { "type": "integer", "minimum": 0 },
+        "relations": { "type": "integer", "minimum": 0 },
+        "decisions": { "type": "integer", "minimum": 0 },
+        "outbox": { "type": "integer", "minimum": 0 },
+        "command_receipts": { "type": "integer", "minimum": 0 },
+        "device_heads": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "deviceHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device_id",
+        "next_origin_seq",
+        "head_batch_id",
+        "head_envelope_sha256",
+        "updated_at_unix_ms"
+      ],
+      "properties": {
+        "device_id": { "$ref": "#/$defs/uuid" },
+        "next_origin_seq": { "type": "integer", "minimum": 1 },
+        "head_batch_id": { "$ref": "#/$defs/uuid" },
+        "head_envelope_sha256": { "$ref": "#/$defs/sha256" },
+        "updated_at_unix_ms": { "type": "integer" }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "domain_id",
+        "retention_class",
+        "permission_lineage_id",
+        "vault_locator",
+        "path",
+        "byte_length",
+        "plaintext_sha256"
+      ],
+      "properties": {
+        "artifact_id": { "$ref": "#/$defs/uuid" },
+        "domain_id": { "$ref": "#/$defs/uuid" },
+        "retention_class": {
+          "enum": ["EPHEMERAL", "COURSE_TERM", "USER_MANAGED", "LEGAL_HOLD"]
+        },
+        "permission_lineage_id": { "$ref": "#/$defs/uuid" },
+        "vault_locator": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "path": { "$ref": "#/$defs/relativePath" },
+        "byte_length": { "type": "integer", "minimum": 0 },
+        "plaintext_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "byte_length", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relativePath" },
+        "byte_length": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}
