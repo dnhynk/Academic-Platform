@@ -1796,6 +1796,15 @@ assert.doesNotMatch(
   /fixture_version|fixture-version/u,
   "the production-facing CLI must emit only the current v2 fixture",
 );
+const lockedCargoRegistryFetch = "cargo fetch --locked";
+const lockfileCacheActionReference = "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9";
+const hostedRustMatrixLabels = [
+  "ubuntu-latest",
+  "ubuntu-24.04-arm",
+  "windows-latest",
+  "windows-11-arm",
+  "macos-latest",
+];
 const nativeFixtureCiCommands = [
   "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",
   "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
@@ -1864,7 +1873,7 @@ const expectedCiWorkflow = {
       "timeout-minutes": 20,
       strategy: {
         "fail-fast": false,
-        matrix: { os: ["ubuntu-latest", "windows-latest"] },
+        matrix: { os: hostedRustMatrixLabels },
       },
       steps: [
         {
@@ -1875,6 +1884,18 @@ const expectedCiWorkflow = {
         {
           name: "Install pinned Rust toolchain",
           run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        {
+          name: "Restore the Cargo registry keyed on the committed Cargo lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.cargo/registry",
+            key: "cargo-registry-rust-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
+          },
+        },
+        {
+          name: "Populate the Cargo registry from the committed lockfile",
+          run: lockedCargoRegistryFetch,
         },
         { name: "Check formatting", run: "cargo fmt --all -- --check" },
         {
@@ -1905,12 +1926,39 @@ const expectedCiWorkflow = {
           with: { "persist-credentials": false },
         },
         {
+          name: "Install pinned Rust toolchain",
+          run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        {
+          name: "Restore the Cargo registry keyed on the committed Cargo lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.cargo/registry",
+            key: "cargo-registry-contracts-ubuntu-latest-${{ hashFiles('Cargo.lock') }}",
+          },
+        },
+        {
+          name: "Populate the Cargo registry from the committed lockfile",
+          run: lockedCargoRegistryFetch,
+        },
+        {
           name: "Install pinned Node",
           uses: "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
           with: { "node-version-file": ".nvmrc" },
         },
         { name: "Install pinned pnpm", run: "npm install --global pnpm@11.22.0" },
-        { name: "Frozen dependency install", run: "pnpm install --frozen-lockfile" },
+        {
+          name: "Restore the pnpm store keyed on the committed pnpm lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.pnpm-store",
+            key: "pnpm-store-contracts-ubuntu-latest-${{ hashFiles('pnpm-lock.yaml') }}",
+          },
+        },
+        {
+          name: "Frozen dependency install",
+          run: "pnpm install --frozen-lockfile --store-dir ~/.pnpm-store",
+        },
         { name: "Lint", run: "pnpm lint" },
         { name: "Typecheck", run: "pnpm typecheck" },
         { name: "Test", run: "pnpm test" },
@@ -1961,8 +2009,8 @@ const assertNativeFixtureCiTopology = (ci) => {
   );
   assert.deepEqual(
     matrix.os,
-    ["ubuntu-latest", "windows-latest"],
-    "the Rust native job must use the exact supported Windows/Linux OS set",
+    hostedRustMatrixLabels,
+    "the Rust native job must use the exact hosted runner labels that carry the admission platform triples",
   );
   const steps = requireCiSteps(rustJob, "CI job rust");
   for (const [index, step] of steps.entries()) {
@@ -2012,29 +2060,29 @@ for (const [name, mutation] of [
   [
     "missing Windows matrix entry",
     ciText.replace(
-      "        os: [ubuntu-latest, windows-latest]",
+      "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]",
       "        os: [ubuntu-latest]",
     ),
   ],
   [
     "missing Ubuntu matrix entry",
     ciText.replace(
-      "        os: [ubuntu-latest, windows-latest]",
+      "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]",
       "        os: [windows-latest]",
     ),
   ],
   [
     "duplicate matrix entry",
     ciText.replace(
-      "        os: [ubuntu-latest, windows-latest]",
-      "        os: [ubuntu-latest, windows-latest, windows-latest]",
+      "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]",
+      "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest, macos-latest]",
     ),
   ],
   [
     "extra matrix entry",
     ciText.replace(
-      "        os: [ubuntu-latest, windows-latest]",
-      "        os: [ubuntu-latest, windows-latest, macos-latest]",
+      "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]",
+      "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest, macos-13]",
     ),
   ],
 ]) {
@@ -2089,6 +2137,29 @@ const assertSourcePreflightTopology = ({ bootstrap, preflightModules, ci }) => {
     const steps = requireCiSteps(job, `CI job ${jobName}`);
     for (const [index, step] of steps.entries()) {
       assertUnconditionalRequiredExecution(step, `CI job ${jobName}.steps[${index}]`);
+    }
+    const runs = steps.map((step) => step.run).filter((command) => typeof command === "string");
+    assert.equal(
+      runs.filter((command) => command === lockedCargoRegistryFetch).length,
+      1,
+      `CI job ${jobName} must fill the Cargo registry exactly once with an explicit locked fetch`,
+    );
+    assert.ok(
+      runs
+        .slice(0, runs.indexOf(lockedCargoRegistryFetch))
+        .every((command) => !/^(?:cargo|pnpm) /u.test(command)),
+      `CI job ${jobName} must fill the Cargo registry before any resolving Cargo or pnpm command`,
+    );
+    const cacheKeys = steps
+      .filter((step) => step.uses === lockfileCacheActionReference)
+      .map((step) => step.with?.key);
+    assert.ok(cacheKeys.length > 0, `CI job ${jobName} must cache resolved dependency state`);
+    for (const key of cacheKeys) {
+      assert.match(
+        String(key),
+        /\$\{\{ hashFiles\('(?:Cargo\.lock|pnpm-lock\.yaml)'\) \}\}$/u,
+        `CI job ${jobName} cache keys must be bound to a committed lockfile digest`,
+      );
     }
   }
   assertNativeFixtureCiTopology(ci);
@@ -2253,8 +2324,8 @@ for (const [name, mutation] of [
   [
     "Windows matrix exclusion",
     ciText.replace(
-      "        os: [ubuntu-latest, windows-latest]",
-      "        os: [ubuntu-latest, windows-latest]\n        exclude:\n          - os: windows-latest",
+      "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]",
+      "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]\n        exclude:\n          - os: windows-latest",
     ),
   ],
   [
@@ -2299,6 +2370,29 @@ for (const [name, mutation] of [
       `        run: ${nativeFixtureCiCommands[4]}`,
       `        run: ${nativeFixtureCiCommands[4]}\n        run: ${nativeFixtureCiCommands[4]}`,
     ),
+  ],
+  [
+    "contracts job without Cargo registry population",
+    ciText.replace(
+      [
+        "          key: cargo-registry-contracts-ubuntu-latest-${{ hashFiles('Cargo.lock') }}",
+        "      - name: Populate the Cargo registry from the committed lockfile",
+        "        run: cargo fetch --locked",
+      ].join("\n"),
+      "          key: cargo-registry-contracts-ubuntu-latest-${{ hashFiles('Cargo.lock') }}",
+    ),
+  ],
+  [
+    "unlocked Cargo registry population",
+    ciText.replaceAll("        run: cargo fetch --locked", "        run: cargo fetch"),
+  ],
+  [
+    "Cargo cache key detached from the committed lockfile",
+    ciText.replaceAll("${{ hashFiles('Cargo.lock') }}", "static"),
+  ],
+  [
+    "pnpm cache key detached from the committed lockfile",
+    ciText.replaceAll("${{ hashFiles('pnpm-lock.yaml') }}", "static"),
   ],
   [
     "duplicate required job identifier",
