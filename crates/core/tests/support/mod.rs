@@ -21,7 +21,11 @@ use academic_domain::{
 };
 use academic_ledger::{AuthorityPolicy, EVENT_SCHEMA_VERSION};
 use academic_projections::{
-    generation::ProjectionCoordinates, query::ProjectionReader, resolution::PredicatePolicies,
+    fts::{ExactSymbolHit, SearchHit},
+    generation::{ProjectionCoordinates, ProjectionKind, ProjectionPage},
+    graph::GraphEdge,
+    query::ProjectionReader,
+    resolution::PredicatePolicies,
     runner::ProjectionRunner,
 };
 use academic_store::{
@@ -392,6 +396,199 @@ pub fn policies(entries: &[(&str, AuthorityPolicy)]) -> TestResult<PredicatePoli
             .map(|(predicate, policy)| Ok((PredicateId::parse(*predicate)?, *policy)))
             .collect::<Result<Vec<_>, DomainError>>()?,
     )?)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RankSkewCorpus {
+    InactiveHistorical,
+    FailedOrOtherDomain,
+}
+
+#[derive(Debug)]
+pub struct RankedIsolationFixture {
+    pub fixture: Fixture,
+    pub kind: ProjectionKind,
+    pub selected_domain: DomainId,
+    pub noise_domain: DomainId,
+    pub selected_coordinates: ProjectionCoordinates,
+    pub noise_coordinates: ProjectionCoordinates,
+    pub policies: PredicatePolicies,
+    pub query: &'static str,
+    pub exact_symbol: &'static str,
+    pub graph_source: EntityId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RankedIsolationSnapshot {
+    ranked: ProjectionPage<SearchHit>,
+    exact_symbol: ProjectionPage<ExactSymbolHit>,
+    graph: ProjectionPage<GraphEdge>,
+}
+
+impl RankedIsolationFixture {
+    pub fn new(
+        label: &str,
+        kind: ProjectionKind,
+        corpus: RankSkewCorpus,
+        noise_in_other_domain: bool,
+    ) -> TestResult<Self> {
+        let mut fixture = Fixture::new(label)?;
+        let selected_evidence =
+            fixture.register_scope_evidence(8, 1, b"rank isolation selected evidence")?;
+        let noise_evidence = if noise_in_other_domain {
+            fixture.register_scope_evidence(9, 1, b"rank isolation noise evidence")?
+        } else {
+            selected_evidence.clone()
+        };
+        let (query, first_body, second_body, noise_body, noise_count) = match (kind, corpus) {
+            (ProjectionKind::Unicode61, RankSkewCorpus::InactiveHistorical) => {
+                ("alpha", "alpha", "alpha alpha alpha z", "z", 100_u64)
+            }
+            (ProjectionKind::Trigram, RankSkewCorpus::InactiveHistorical) => {
+                ("abc", "abc", "abcabcabcabcabc", "zzz", 100_u64)
+            }
+            (
+                ProjectionKind::Unicode61 | ProjectionKind::Trigram,
+                RankSkewCorpus::FailedOrOtherDomain,
+            ) => (
+                "alpha",
+                "alpha",
+                "alpha alpha z",
+                "q q q q q q q q q q",
+                20_u64,
+            ),
+            (ProjectionKind::Graph, _) => {
+                return Err("rank isolation fixture requires a lexical projection kind".into());
+            }
+        };
+        let graph_source = entity(80_003)?;
+        for (seed, predicate, body) in [
+            (80_001, "code.symbol", first_body),
+            (80_002, "note.body", second_body),
+        ] {
+            fixture.accept_claim(
+                importer_actor(),
+                selected_evidence.domain_id,
+                text_claim(
+                    claim_id(seed)?,
+                    entity(seed)?,
+                    predicate,
+                    body,
+                    selected_evidence.scope_id,
+                    selected_evidence.evidence_id,
+                    AuthorityClass::DirectObservation,
+                    EpistemicStatus::CodeObserved,
+                    75,
+                    None,
+                )?,
+            )?;
+        }
+        fixture.accept_claim(
+            importer_actor(),
+            selected_evidence.domain_id,
+            observed_entity_claim(
+                claim_id(80_003)?,
+                graph_source,
+                "graph.related",
+                entity(80_004)?,
+                selected_evidence.scope_id,
+                selected_evidence.evidence_id,
+                75,
+                None,
+            )?,
+        )?;
+        let noise_payloads = (0..noise_count)
+            .map(|offset| {
+                Ok(EventPayload::ClaimAsserted(text_claim(
+                    claim_id(90_000 + offset)?,
+                    entity(90_000 + offset)?,
+                    "note.body",
+                    noise_body,
+                    noise_evidence.scope_id,
+                    noise_evidence.evidence_id,
+                    AuthorityClass::DirectObservation,
+                    EpistemicStatus::CodeObserved,
+                    0,
+                    Some(50),
+                )?))
+            })
+            .collect::<TestResult<Vec<_>>>()?;
+        fixture.accept_payloads(importer_actor(), noise_evidence.domain_id, noise_payloads)?;
+
+        let selected_coordinates = fixture.coordinates(100);
+        let noise_coordinates = fixture.coordinates(25);
+        let policies = policies(&[
+            ("code.symbol", AuthorityPolicy::ImplementationObservation),
+            ("graph.related", AuthorityPolicy::ImplementationObservation),
+            ("note.body", AuthorityPolicy::ImplementationObservation),
+        ])?;
+        let runner = fixture.runner()?;
+        runner.rebuild_at(
+            ProjectionKind::Graph,
+            selected_evidence.domain_id,
+            selected_coordinates,
+            &policies,
+        )?;
+        runner.rebuild_at(
+            kind,
+            selected_evidence.domain_id,
+            selected_coordinates,
+            &policies,
+        )?;
+        Ok(Self {
+            fixture,
+            kind,
+            selected_domain: selected_evidence.domain_id,
+            noise_domain: noise_evidence.domain_id,
+            selected_coordinates,
+            noise_coordinates,
+            policies,
+            query,
+            exact_symbol: first_body,
+            graph_source,
+        })
+    }
+
+    pub fn snapshot(&self) -> TestResult<RankedIsolationSnapshot> {
+        let reader = self.fixture.projection_reader()?;
+        let ranked = reader.search_ranked(
+            self.kind,
+            self.selected_domain,
+            self.selected_coordinates,
+            &self.policies,
+            self.query,
+            20,
+        )?;
+        assert_eq!(ranked.records.len(), 2);
+        assert_eq!(
+            ranked
+                .records
+                .iter()
+                .map(|record| record.rank)
+                .collect::<Vec<_>>(),
+            vec![0, 1]
+        );
+        let exact_symbol = reader.exact_symbol_lookup(
+            self.kind,
+            self.selected_domain,
+            self.selected_coordinates,
+            &self.policies,
+            self.exact_symbol,
+        )?;
+        assert_eq!(exact_symbol.records.len(), 1);
+        let graph = reader.graph_neighbors(
+            self.selected_domain,
+            self.graph_source,
+            self.selected_coordinates,
+            &self.policies,
+        )?;
+        assert_eq!(graph.records.len(), 1);
+        Ok(RankedIsolationSnapshot {
+            ranked,
+            exact_symbol,
+            graph,
+        })
+    }
 }
 
 pub fn importer_actor() -> Actor {

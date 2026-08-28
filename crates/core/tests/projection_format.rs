@@ -121,6 +121,79 @@ fn audited_base_v2_sidecar_is_also_replaced() -> TestResult {
 }
 
 #[test]
+fn exact_v2_schema_literal_mutations_are_not_replaced() -> TestResult {
+    for (fixture_name, migration) in [
+        ("parent", PARENT_MIGRATION_0002_SQL),
+        ("audited", MIGRATION_0002_SQL),
+    ] {
+        for (mutation_name, from, to) in [
+            (
+                "case",
+                "state IN ('BUILDING', 'VERIFIED', 'FAILED')",
+                "state IN ('building', 'verified', 'failed')",
+            ),
+            (
+                "whitespace",
+                "state IN ('BUILDING', 'VERIFIED', 'FAILED')",
+                "state IN ('BUILDING ', 'VERIFIED', 'FAILED')",
+            ),
+        ] {
+            let fixture = Fixture::new(&format!("v2-{fixture_name}-{mutation_name}"))?;
+            let mutated = migration.replace(from, to);
+            assert_ne!(mutated, migration);
+            let connection = Connection::open(fixture.sidecar_path())?;
+            connection.execute_batch(&mutated)?;
+            drop(connection);
+
+            let Err(error) = open_runner(&fixture) else {
+                return Err(format!(
+                    "{fixture_name} v2 {mutation_name} literal mutation was replaced"
+                )
+                .into());
+            };
+            assert!(matches!(
+                error,
+                ProjectionError::UnsupportedProjectionFormat {
+                    application_id,
+                    user_version: 2,
+                    ..
+                } if application_id == i64::from(PROJECTION_APPLICATION_ID)
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn exact_previous_ranking_algorithm_is_replaced() -> TestResult {
+    let fixture = Fixture::new("previous-ranking-algorithm")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    connection.execute_batch(concat!(
+        "INSERT INTO projection_generation(",
+        "generation_seq, generation_id, projection_kind, schema_version, ",
+        "builder_binary_digest, algorithm_version, tokenizer_version, effective_config_hash, ",
+        "known_at_accept_seq, valid_at_unix_ms, source_outbox_seq, source_ledger_digest, ",
+        "resolver_version, policy_registry_version, policy_registry_hash, security_domain, ",
+        "built_at_unix_ms, state, record_count, canonical_checksum, failure_reason) VALUES(",
+        "1, zeroblob(16), 'fts5-unicode61-v1', 2, zeroblob(32), ",
+        "'phase1-full-generation-v2', 'sqlite-fts5-unicode61-v1', zeroblob(32), ",
+        "0, 0, 0, zeroblob(32), 'resolver', 'policy', zeroblob(32), zeroblob(16), ",
+        "0, 'FAILED', NULL, NULL, 'old ranking algorithm');"
+    ))?;
+    drop(connection);
+
+    drop(open_runner(&fixture)?);
+    let replacement = Connection::open(fixture.sidecar_path())?;
+    let generation_count =
+        replacement.query_row("SELECT count(*) FROM projection_generation", [], |row| {
+            row.get::<_, i64>(0)
+        })?;
+    assert_eq!(generation_count, 0);
+    Ok(())
+}
+
+#[test]
 fn unknown_non_projection_database_fails_with_typed_format_error() -> TestResult {
     let fixture = Fixture::new("unknown-non-projection")?;
     let connection = Connection::open(fixture.sidecar_path())?;
@@ -216,6 +289,38 @@ fn current_v3_with_missing_index_is_rejected_by_exact_fingerprint() -> TestResul
     drop(connection);
     let Err(error) = open_runner(&fixture) else {
         return Err("v3 sidecar with a missing required index did not fail closed".into());
+    };
+    assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
+    Ok(())
+}
+
+#[test]
+fn current_v3_schema_literal_case_mutation_is_corrupt() -> TestResult {
+    assert_current_v3_literal_mutation_is_corrupt(
+        "current-literal-case",
+        "state IN ('BUILDING', 'VERIFIED', 'FAILED')",
+        "state IN ('building', 'verified', 'failed')",
+    )
+}
+
+#[test]
+fn current_v3_schema_literal_whitespace_mutation_is_corrupt() -> TestResult {
+    assert_current_v3_literal_mutation_is_corrupt(
+        "current-literal-whitespace",
+        "state IN ('BUILDING', 'VERIFIED', 'FAILED')",
+        "state IN ('BUILDING ', 'VERIFIED', 'FAILED')",
+    )
+}
+
+fn assert_current_v3_literal_mutation_is_corrupt(label: &str, from: &str, to: &str) -> TestResult {
+    let fixture = Fixture::new(label)?;
+    let mutated = MIGRATION_0003_SQL.replace(from, to);
+    assert_ne!(mutated, MIGRATION_0003_SQL);
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(&mutated)?;
+    drop(connection);
+    let Err(error) = open_runner(&fixture) else {
+        return Err(format!("current v3 literal mutation {label} was accepted").into());
     };
     assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
     Ok(())

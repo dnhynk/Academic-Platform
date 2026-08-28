@@ -352,30 +352,71 @@ pub(crate) fn read_ranked_hits(
     query: &str,
     limit: usize,
 ) -> ProjectionResult<Vec<SearchHit>> {
-    let table = lexical_table(kind)?;
     let query = fts_literal(query)?;
     let limit = i64::try_from(limit.min(100))
         .map_err(|_| ProjectionError::Corrupt("search result limit overflow".to_owned()))?;
-    let sql = format!(
-        "SELECT c.body, c.subject_entity_id, c.predicate_id, c.claim_id, c.evidence_id, \
-         c.artifact_id, c.representation_index, c.locator_kind, c.locator_payload, \
-         c.security_domain, c.authority_class, c.epistemic_status, c.authority_policy, \
-         c.valid_from_unix_ms, c.valid_to_unix_ms, c.source_accept_seq, \
-         c.stable_tiebreaker FROM {table} f \
-         JOIN projection_search_content c ON c.content_id = f.content_id \
-         WHERE {table} MATCH ?1 AND c.generation_id = ?2 \
-         ORDER BY bm25({table}), c.stable_tiebreaker, c.record_key LIMIT ?3"
-    );
-    let mut statement = connection.prepare(&sql)?;
+    let mut statement = connection.prepare(concat!(
+        "SELECT content_id, record_key, body, subject_entity_id, predicate_id, claim_id, ",
+        "evidence_id, artifact_id, representation_index, locator_kind, locator_payload, ",
+        "security_domain, authority_class, epistemic_status, authority_policy, ",
+        "valid_from_unix_ms, valid_to_unix_ms, source_accept_seq, stable_tiebreaker ",
+        "FROM projection_search_content WHERE generation_id = ?1 ORDER BY content_id"
+    ))?;
     let rows = statement.query_map(
-        params![query, generation_id.as_bytes().as_slice(), limit],
-        read_hit_row,
+        [generation_id.as_bytes().as_slice()],
+        read_isolated_document_row,
     )?;
-    rows.enumerate()
-        .map(|(rank, row)| {
-            let row = row?;
+    let documents = rows.collect::<Result<Vec<_>, _>>()?;
+    let mut isolated = Connection::open_in_memory()?;
+    isolated.execute_batch(isolated_fts_schema(kind)?)?;
+    let isolated_transaction = isolated.transaction()?;
+    let mut hits = BTreeMap::new();
+    for (content_id, record_key, hit) in documents {
+        if content_id <= 0 || hits.contains_key(&content_id) {
+            return Err(ProjectionError::Corrupt(
+                "selected generation has an invalid or duplicate content id".to_owned(),
+            ));
+        }
+        let record_key: [u8; 32] = fixed_bytes(record_key, "search result record key")?;
+        let stable_tiebreaker: [u8; 32] =
+            fixed_bytes(hit.16.clone(), "search result stable tiebreaker")?;
+        isolated_transaction.execute(
+            "INSERT INTO selected_search(rowid, body, content_id) VALUES (?1, ?2, ?1)",
+            params![content_id, &hit.0],
+        )?;
+        isolated_transaction.execute(
+            concat!(
+                "INSERT INTO selected_search_metadata ",
+                "(content_id, stable_tiebreaker, record_key) VALUES (?1, ?2, ?3)"
+            ),
+            params![
+                content_id,
+                stable_tiebreaker.as_slice(),
+                record_key.as_slice()
+            ],
+        )?;
+        hits.insert(content_id, hit);
+    }
+    isolated_transaction.commit()?;
+
+    let mut ranked = isolated.prepare(concat!(
+        "SELECT m.content_id FROM selected_search f ",
+        "JOIN selected_search_metadata m ON m.content_id = f.content_id ",
+        "WHERE selected_search MATCH ?1 ",
+        "ORDER BY bm25(selected_search), m.stable_tiebreaker, m.record_key LIMIT ?2"
+    ))?;
+    let ranked_ids = ranked.query_map(params![query, limit], |row| row.get::<_, i64>(0))?;
+    ranked_ids
+        .enumerate()
+        .map(|(rank, content_id)| {
+            let content_id = content_id?;
+            let hit = hits.remove(&content_id).ok_or_else(|| {
+                ProjectionError::Corrupt(
+                    "isolated FTS5 result does not identify selected-generation content".to_owned(),
+                )
+            })?;
             hit_from_raw(
-                row,
+                hit,
                 u64::try_from(rank).map_err(|_| {
                     ProjectionError::Corrupt("search rank ordinal overflow".to_owned())
                 })?,
@@ -491,26 +532,54 @@ type RawHit = (
     Vec<u8>,
 );
 
-fn read_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawHit> {
+type RawIsolatedDocument = (i64, Vec<u8>, RawHit);
+
+fn read_isolated_document_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawIsolatedDocument> {
     Ok((
         row.get(0)?,
         row.get(1)?,
-        row.get(2)?,
-        row.get(3)?,
-        row.get(4)?,
-        row.get(5)?,
-        row.get(6)?,
-        row.get(7)?,
-        row.get(8)?,
-        row.get(9)?,
-        row.get(10)?,
-        row.get(11)?,
-        row.get(12)?,
-        row.get(13)?,
-        row.get(14)?,
-        row.get(15)?,
-        row.get(16)?,
+        (
+            row.get(2)?,
+            row.get(3)?,
+            row.get(4)?,
+            row.get(5)?,
+            row.get(6)?,
+            row.get(7)?,
+            row.get(8)?,
+            row.get(9)?,
+            row.get(10)?,
+            row.get(11)?,
+            row.get(12)?,
+            row.get(13)?,
+            row.get(14)?,
+            row.get(15)?,
+            row.get(16)?,
+            row.get(17)?,
+            row.get(18)?,
+        ),
     ))
+}
+
+fn isolated_fts_schema(kind: ProjectionKind) -> ProjectionResult<&'static str> {
+    match kind {
+        ProjectionKind::Unicode61 => Ok(concat!(
+            "CREATE VIRTUAL TABLE selected_search USING fts5(",
+            "body, content_id UNINDEXED, tokenize = 'unicode61 remove_diacritics 2');",
+            "CREATE TABLE selected_search_metadata(",
+            "content_id INTEGER PRIMARY KEY, stable_tiebreaker BLOB NOT NULL, ",
+            "record_key BLOB NOT NULL) STRICT;"
+        )),
+        ProjectionKind::Trigram => Ok(concat!(
+            "CREATE VIRTUAL TABLE selected_search USING fts5(",
+            "body, content_id UNINDEXED, tokenize = 'trigram');",
+            "CREATE TABLE selected_search_metadata(",
+            "content_id INTEGER PRIMARY KEY, stable_tiebreaker BLOB NOT NULL, ",
+            "record_key BLOB NOT NULL) STRICT;"
+        )),
+        ProjectionKind::Graph => Err(ProjectionError::InvalidQuery(
+            "graph generations do not support lexical search",
+        )),
+    }
 }
 
 fn hit_from_raw(

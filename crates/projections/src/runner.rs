@@ -48,16 +48,8 @@ const PARENT_MIGRATION_0002_SQL: &str =
 pub const MIGRATION_0003_SQL: &str =
     include_str!("../../../migrations/store/0003_phase1_projections.sql");
 /// Source-ledger-bound, coordinate-selectable Phase 1 builder algorithm identifier.
-pub const PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v2";
-
-const UNICODE_FTS_SCHEMA_SQL: &str = concat!(
-    "CREATE VIRTUAL TABLE projection_search_unicode USING fts5(",
-    "body, content_id UNINDEXED, tokenize = 'unicode61 remove_diacritics 2')"
-);
-const TRIGRAM_FTS_SCHEMA_SQL: &str = concat!(
-    "CREATE VIRTUAL TABLE projection_search_trigram USING fts5(",
-    "body, content_id UNINDEXED, tokenize = 'trigram')"
-);
+pub const PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v3";
+const PREVIOUS_PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v2";
 
 mod fault_boundary {
     use super::{ProjectionResult, fmt};
@@ -782,15 +774,20 @@ pub fn migrate_projection_database(path: &Path) -> ProjectionResult<()> {
         });
     };
 
-    if matches!(format, ExistingFormat::Current) {
+    let replace_previous_algorithm = if matches!(format, ExistingFormat::Current) {
         configure_projection_writer(&connection)?;
         verify_projection_schema(&connection)?;
         verify_fts5(&connection)?;
-        return Ok(());
-    }
+        match persisted_generation_format(&connection)? {
+            PersistedGenerationFormat::Current => return Ok(()),
+            PersistedGenerationFormat::ExactPreviousAlgorithm => true,
+        }
+    } else {
+        false
+    };
 
     drop(connection);
-    if matches!(format, ExistingFormat::ExactParentV2) {
+    if matches!(format, ExistingFormat::ExactParentV2) || replace_previous_algorithm {
         remove_disposable_sidecar(path)?;
     }
     let mut connection = Connection::open_with_flags(path, flags)?;
@@ -800,6 +797,72 @@ pub fn migrate_projection_database(path: &Path) -> ProjectionResult<()> {
     transaction.commit()?;
     verify_projection_schema(&connection)?;
     verify_fts5(&connection)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PersistedGenerationFormat {
+    Current,
+    ExactPreviousAlgorithm,
+}
+
+fn persisted_generation_format(
+    connection: &Connection,
+) -> ProjectionResult<PersistedGenerationFormat> {
+    let mut statement = connection.prepare(concat!(
+        "SELECT projection_kind, schema_version, algorithm_version, tokenizer_version ",
+        "FROM projection_generation ORDER BY generation_seq"
+    ))?;
+    let rows = statement.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, i64>(1)?,
+            row.get::<_, String>(2)?,
+            row.get::<_, String>(3)?,
+        ))
+    })?;
+    let mut current = 0_u64;
+    let mut previous = 0_u64;
+    for row in rows {
+        let (kind, schema_version, algorithm_version, tokenizer_version) = row?;
+        let kind = ProjectionKind::parse(&kind).ok_or_else(|| {
+            ProjectionError::Corrupt(
+                "projection generation has an unknown projection kind".to_owned(),
+            )
+        })?;
+        if schema_version != i64::from(PROJECTION_SCHEMA_VERSION)
+            || tokenizer_version != kind.tokenizer_version()
+        {
+            return Err(ProjectionError::Corrupt(
+                "projection generation has incompatible schema or tokenizer provenance".to_owned(),
+            ));
+        }
+        match algorithm_version.as_str() {
+            PROJECTION_ALGORITHM_VERSION => {
+                current = current.checked_add(1).ok_or_else(|| {
+                    ProjectionError::Corrupt("projection generation count overflow".to_owned())
+                })?
+            }
+            PREVIOUS_PROJECTION_ALGORITHM_VERSION => {
+                previous = previous.checked_add(1).ok_or_else(|| {
+                    ProjectionError::Corrupt("projection generation count overflow".to_owned())
+                })?;
+            }
+            _ => {
+                return Err(ProjectionError::Corrupt(
+                    "projection generation has unknown algorithm provenance".to_owned(),
+                ));
+            }
+        }
+    }
+    if previous == 0 {
+        Ok(PersistedGenerationFormat::Current)
+    } else if current == 0 {
+        Ok(PersistedGenerationFormat::ExactPreviousAlgorithm)
+    } else {
+        Err(ProjectionError::Corrupt(
+            "projection sidecar mixes incompatible ranking algorithms".to_owned(),
+        ))
+    }
 }
 
 fn migration_schema_fingerprint(sql: &str) -> ProjectionResult<Vec<(String, String, String)>> {
@@ -819,7 +882,7 @@ fn projection_schema_fingerprint(
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
-            compact_schema_sql(&row.get::<_, String>(2)?),
+            row.get::<_, String>(2)?,
         ))
     })?;
     rows.collect::<Result<Vec<_>, _>>()
@@ -1369,10 +1432,16 @@ fn verify_table_columns(
 }
 
 fn verify_named_fts_schema(connection: &Connection) -> ProjectionResult<()> {
-    for (name, expected_sql) in [
-        ("projection_search_unicode", UNICODE_FTS_SCHEMA_SQL),
-        ("projection_search_trigram", TRIGRAM_FTS_SCHEMA_SQL),
-    ] {
+    let expected_schema = migration_schema_fingerprint(MIGRATION_0003_SQL)?;
+    for name in ["projection_search_unicode", "projection_search_trigram"] {
+        let expected = expected_schema
+            .iter()
+            .find(|(_, expected_name, _)| expected_name == name)
+            .ok_or_else(|| {
+                ProjectionError::Corrupt(format!(
+                    "current migration does not define required named FTS object {name}"
+                ))
+            })?;
         let row = connection
             .query_row(
                 "SELECT type, sql FROM sqlite_schema WHERE name = ?1",
@@ -1385,22 +1454,13 @@ fn verify_named_fts_schema(connection: &Connection) -> ProjectionResult<()> {
                 "required named FTS object {name} is absent or has no schema SQL"
             )));
         };
-        if object_type != "table"
-            || compact_schema_sql(&actual_sql) != compact_schema_sql(expected_sql)
-        {
+        if object_type != expected.0 || actual_sql != expected.2 {
             return Err(ProjectionError::Corrupt(format!(
                 "named FTS object {name} has the wrong type, schema, or tokenizer"
             )));
         }
     }
     Ok(())
-}
-
-fn compact_schema_sql(sql: &str) -> String {
-    sql.chars()
-        .filter(|character| !character.is_ascii_whitespace())
-        .flat_map(char::to_lowercase)
-        .collect()
 }
 
 fn verify_fts5(connection: &Connection) -> ProjectionResult<()> {
@@ -1947,7 +2007,7 @@ fn derive_generation_id(
     effective_config_hash: ContentDigest,
 ) -> GenerationId {
     let mut material = Vec::new();
-    material.extend_from_slice(b"ACADEMIC_PROJECTION_GENERATION_V2");
+    material.extend_from_slice(b"ACADEMIC_PROJECTION_GENERATION_V3");
     material.extend_from_slice(&generation_seq.to_be_bytes());
     material.extend_from_slice(kind.as_str().as_bytes());
     material.extend_from_slice(domain.as_bytes());
