@@ -11,8 +11,12 @@ use academic_projections::{
         ProjectionVerificationCorruption,
     },
 };
+use rusqlite::Connection;
 
-use support::{Fixture, TestResult, claim_id, entity, importer_actor, policies, text_claim};
+use support::{
+    Fixture, RankSkewCorpus, RankedIsolationFixture, TestResult, claim_id, entity, importer_actor,
+    policies, text_claim,
+};
 
 #[derive(Debug, Clone, Copy)]
 enum Corruption {
@@ -50,6 +54,52 @@ fn missing_fts_row_never_verifies() -> TestResult {
 #[test]
 fn wrong_persisted_tiebreaker_never_verifies() -> TestResult {
     assert_corruption_never_verifies(Corruption::WrongPersistedTiebreaker)
+}
+
+#[test]
+fn failed_candidate_rows_cannot_change_prior_active_ranks() -> TestResult {
+    for kind in [ProjectionKind::Unicode61, ProjectionKind::Trigram] {
+        let case = RankedIsolationFixture::new(
+            &format!("failed-rank-isolation-{kind}"),
+            kind,
+            RankSkewCorpus::FailedOrOtherDomain,
+            false,
+        )?;
+        let before = case.snapshot()?;
+        let runner = case.fixture.runner()?;
+        let result = runner.rebuild_at_with_faults(
+            kind,
+            case.selected_domain,
+            case.noise_coordinates,
+            &case.policies,
+            &Corruption::WrongPersistedTiebreaker,
+        );
+        assert!(result.is_err());
+        assert_eq!(
+            runner.audit_generation_state_count(
+                kind,
+                case.selected_domain,
+                GenerationState::Failed,
+                None,
+            )?,
+            1
+        );
+        let sidecar = Connection::open(case.fixture.sidecar_path())?;
+        let failed_content_rows = sidecar.query_row(
+            concat!(
+                "SELECT count(*) FROM projection_search_content c ",
+                "JOIN projection_generation g ON g.generation_id = c.generation_id ",
+                "WHERE g.projection_kind = ?1 AND g.security_domain = ?2 AND g.state = 'FAILED'"
+            ),
+            rusqlite::params![kind.as_str(), case.selected_domain.as_bytes().as_slice()],
+            |row| row.get::<_, i64>(0),
+        )?;
+        assert_eq!(failed_content_rows, 20);
+        drop(sidecar);
+        let after = case.snapshot()?;
+        assert_eq!(after, before);
+    }
+    Ok(())
 }
 
 fn assert_corruption_never_verifies(corruption: Corruption) -> TestResult {
