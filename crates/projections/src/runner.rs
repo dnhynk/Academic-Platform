@@ -735,27 +735,56 @@ struct BuildAuthority<'a> {
 /// Creates or verifies the disposable projection database and executable FTS5
 /// unicode61/trigram availability.
 pub fn migrate_projection_database(path: &Path) -> ProjectionResult<()> {
-    enum ExistingFormat {
-        Empty,
-        Current,
-        ExactParentV2,
+    // Atomic creation prevents a missing-path check from admitting a sidecar
+    // that appeared before the first SQLite writer open.
+    if create_sidecar_file(path)? {
+        return initialize_projection_database(path);
     }
 
-    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
-        | OpenFlags::SQLITE_OPEN_CREATE
-        | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection = Connection::open_with_flags(path, flags)?;
-    let application_id = pragma_i64(&connection, "application_id")?;
-    let user_version = pragma_i64(&connection, "user_version")?;
-    let format = if application_id == 0 && user_version == 0 && user_object_count(&connection)? == 0
-    {
-        ExistingFormat::Empty
+    let format = existing_projection_format(&connection)?;
+
+    match format {
+        ExistingFormat::Empty => initialize_admitted_empty_database(path, connection),
+        ExistingFormat::ExactParentV2 => {
+            drop(connection);
+            replace_projection_database(path)
+        }
+        ExistingFormat::Current => {
+            verify_projection_schema(&connection)?;
+            verify_fts5(&connection)?;
+            match persisted_generation_format(&connection)? {
+                PersistedGenerationFormat::Current => {
+                    configure_admitted_current_database(path, connection)
+                }
+                PersistedGenerationFormat::ExactPreviousAlgorithm => {
+                    drop(connection);
+                    replace_projection_database(path)
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExistingFormat {
+    Empty,
+    Current,
+    ExactParentV2,
+}
+
+fn existing_projection_format(connection: &Connection) -> ProjectionResult<ExistingFormat> {
+    let application_id = pragma_i64(connection, "application_id")?;
+    let user_version = pragma_i64(connection, "user_version")?;
+    if application_id == 0 && user_version == 0 && user_object_count(connection)? == 0 {
+        Ok(ExistingFormat::Empty)
     } else if application_id == i64::from(PROJECTION_APPLICATION_ID)
         && user_version == i64::from(PROJECTION_DATABASE_VERSION)
     {
-        ExistingFormat::Current
+        Ok(ExistingFormat::Current)
     } else if application_id == i64::from(PROJECTION_APPLICATION_ID) && user_version == 2 {
-        let actual_fingerprint = projection_schema_fingerprint(&connection)?;
+        let actual_fingerprint = projection_schema_fingerprint(connection)?;
         let is_known_v2 = [PARENT_MIGRATION_0002_SQL, MIGRATION_0002_SQL]
             .into_iter()
             .map(migration_schema_fingerprint)
@@ -763,47 +792,133 @@ pub fn migrate_projection_database(path: &Path) -> ProjectionResult<()> {
             .into_iter()
             .any(|expected| actual_fingerprint == expected);
         if is_known_v2 {
-            ExistingFormat::ExactParentV2
+            Ok(ExistingFormat::ExactParentV2)
         } else {
-            return Err(ProjectionError::UnsupportedProjectionFormat {
+            Err(ProjectionError::UnsupportedProjectionFormat {
                 application_id,
                 user_version,
                 reason: "version 2 does not exactly match a known disposable projection format",
-            });
+            })
         }
     } else {
-        return Err(ProjectionError::UnsupportedProjectionFormat {
+        Err(ProjectionError::UnsupportedProjectionFormat {
             application_id,
             user_version,
             reason: "database is neither an empty sidecar nor a supported projection format",
-        });
-    };
-
-    let replace_previous_algorithm = if matches!(format, ExistingFormat::Current) {
-        verify_projection_schema(&connection)?;
-        verify_fts5(&connection)?;
-        match persisted_generation_format(&connection)? {
-            PersistedGenerationFormat::Current => {
-                configure_projection_writer(&connection)?;
-                return Ok(());
-            }
-            PersistedGenerationFormat::ExactPreviousAlgorithm => true,
-        }
-    } else {
-        false
-    };
-
-    drop(connection);
-    if matches!(format, ExistingFormat::ExactParentV2) || replace_previous_algorithm {
-        remove_disposable_sidecar(path)?;
+        })
     }
+}
+
+fn create_sidecar_file(path: &Path) -> ProjectionResult<bool> {
+    match fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(path)
+    {
+        Ok(file) => {
+            drop(file);
+            Ok(true)
+        }
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(false),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn replace_projection_database(path: &Path) -> ProjectionResult<()> {
+    remove_disposable_sidecar(path)?;
+    let created = create_sidecar_file(path)?;
+    if !created {
+        return Err(ProjectionError::Io(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "projection sidecar appeared during disposable replacement",
+        )));
+    }
+    initialize_projection_database(path)
+}
+
+fn initialize_projection_database(path: &Path) -> ProjectionResult<()> {
+    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let mut connection = Connection::open_with_flags(path, flags)?;
-    configure_projection_writer(&connection)?;
+    initialize_projection_connection(&mut connection)
+}
+
+fn initialize_admitted_empty_database(path: &Path, admission: Connection) -> ProjectionResult<()> {
+    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let mut writer = match Connection::open_with_flags(path, flags) {
+        Ok(connection) => connection,
+        Err(error) => {
+            drop(admission);
+            return Err(error.into());
+        }
+    };
+    let result = match existing_projection_format(&writer)? {
+        ExistingFormat::Empty => initialize_projection_connection(&mut writer),
+        ExistingFormat::Current | ExistingFormat::ExactParentV2 => Err(ProjectionError::Corrupt(
+            "projection sidecar changed during empty-sidecar admission".to_owned(),
+        )),
+    };
+    finish_writer_handoff(admission, writer, result)
+}
+
+fn initialize_projection_connection(connection: &mut Connection) -> ProjectionResult<()> {
+    configure_projection_writer(connection)?;
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
     transaction.execute_batch(MIGRATION_0003_SQL)?;
     transaction.commit()?;
-    verify_projection_schema(&connection)?;
-    verify_fts5(&connection)
+    verify_projection_schema(connection)?;
+    verify_fts5(connection)
+}
+
+fn configure_admitted_current_database(path: &Path, admission: Connection) -> ProjectionResult<()> {
+    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let writer = match Connection::open_with_flags(path, flags) {
+        Ok(connection) => connection,
+        Err(error) => {
+            drop(admission);
+            return Err(error.into());
+        }
+    };
+
+    // Keep the read-only admission connection alive through writer
+    // revalidation. On a failed handoff the writer is therefore not the last
+    // connection that can checkpoint a recovered WAL.
+    let result = (|| {
+        if existing_projection_format(&writer)? != ExistingFormat::Current {
+            return Err(ProjectionError::Corrupt(
+                "projection sidecar changed during current-format admission".to_owned(),
+            ));
+        }
+        verify_projection_schema(&writer)?;
+        verify_fts5(&writer)?;
+        if persisted_generation_format(&writer)? != PersistedGenerationFormat::Current {
+            return Err(ProjectionError::Corrupt(
+                "projection sidecar generation changed during current-format admission".to_owned(),
+            ));
+        }
+        configure_projection_writer(&writer)
+    })();
+
+    finish_writer_handoff(admission, writer, result)
+}
+
+fn finish_writer_handoff(
+    admission: Connection,
+    writer: Connection,
+    result: ProjectionResult<()>,
+) -> ProjectionResult<()> {
+    match result {
+        Ok(()) => {
+            drop(admission);
+            drop(writer);
+            Ok(())
+        }
+        Err(error) => {
+            drop(writer);
+            drop(admission);
+            Err(error)
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

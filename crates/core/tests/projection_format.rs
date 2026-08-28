@@ -1,6 +1,11 @@
 mod support;
 
-use std::fs;
+use std::{
+    env, fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+    process::{self, Command},
+};
 
 use academic_domain::ContentDigest;
 use academic_ledger::AuthorityPolicy;
@@ -27,6 +32,9 @@ const SQLITEX_TRIGGER_SQL: &str = concat!(
     "BEFORE INSERT ON projection_generation BEGIN ",
     "SELECT RAISE(ABORT, 'blocked by sqliteX trigger'); END;"
 );
+const CRASH_WAL_CHILD_ENV: &str = "ACADEMIC_PROJECTION_FORMAT_CRASH_WAL_CHILD";
+const CRASH_WAL_SIDECAR_ENV: &str = "ACADEMIC_PROJECTION_FORMAT_CRASH_WAL_SIDECAR";
+const CRASH_WAL_CHILD_EXIT_CODE: i32 = 86;
 
 #[derive(Debug, PartialEq, Eq)]
 struct SidecarState {
@@ -39,7 +47,15 @@ struct SidecarState {
 struct PersistentSidecarState {
     logical: SidecarState,
     journal_mode: String,
-    main_database_bytes: Vec<u8>,
+    file_family: SqliteFileFamily,
+}
+
+#[derive(Debug)]
+struct SqliteFileFamily {
+    main: Option<Vec<u8>>,
+    wal: Option<Vec<u8>>,
+    shm: Option<Vec<u8>>,
+    journal: Option<Vec<u8>>,
 }
 
 #[test]
@@ -270,6 +286,136 @@ fn current_v3_generation_provenance_rejection_is_corrupt_and_unchanged() -> Test
 }
 
 #[test]
+fn crash_wal_sqlitex_rejection_preserves_file_family_and_trigger() -> TestResult {
+    let fixture = Fixture::new("crash-wal-sqlitex")?;
+    seed_crash_wal_child(fixture.sidecar_path(), "sqlitex")?;
+    let before = sqlite_file_family(fixture.sidecar_path())?;
+    assert_crash_wal_present(&before);
+
+    let Err(error) = open_runner(&fixture) else {
+        return Err("crash-WAL sidecar with a sqliteX trigger was accepted".into());
+    };
+    assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
+
+    let after = sqlite_file_family(fixture.sidecar_path())?;
+    assert_rejected_crash_wal_unchanged(&before, &after);
+    let connection = Connection::open(fixture.sidecar_path())?;
+    assert_eq!(
+        named_schema_object_count(&connection, "trigger", SQLITEX_TRIGGER_NAME)?,
+        1
+    );
+    assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
+    Ok(())
+}
+
+#[test]
+fn crash_wal_unknown_algorithm_rejection_preserves_file_family_and_row() -> TestResult {
+    let fixture = Fixture::new("crash-wal-unknown-algorithm")?;
+    seed_crash_wal_child(fixture.sidecar_path(), "unknown-algorithm")?;
+    let before = sqlite_file_family(fixture.sidecar_path())?;
+    assert_crash_wal_present(&before);
+
+    let Err(error) = open_runner(&fixture) else {
+        return Err("crash-WAL sidecar with unknown generation provenance was accepted".into());
+    };
+    assert!(
+        matches!(error, ProjectionError::Corrupt(reason) if reason.contains("unknown algorithm provenance"))
+    );
+
+    let after = sqlite_file_family(fixture.sidecar_path())?;
+    assert_rejected_crash_wal_unchanged(&before, &after);
+    let connection = Connection::open(fixture.sidecar_path())?;
+    let (algorithm_version, state, failure_reason) = connection.query_row(
+        "SELECT algorithm_version, state, failure_reason FROM projection_generation",
+        [],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
+    )?;
+    assert_eq!(algorithm_version, "unknown-crash-wal-algorithm");
+    assert_eq!(state, "FAILED");
+    assert_eq!(failure_reason, "crash WAL unknown provenance sentinel");
+    Ok(())
+}
+
+#[test]
+fn crash_wal_exact_current_is_accepted_and_configured_for_wal() -> TestResult {
+    let fixture = Fixture::new("crash-wal-valid-current")?;
+    seed_crash_wal_child(fixture.sidecar_path(), "valid-current")?;
+    let before = sqlite_file_family(fixture.sidecar_path())?;
+    assert_crash_wal_present(&before);
+
+    drop(open_runner(&fixture)?);
+
+    let connection = Connection::open(fixture.sidecar_path())?;
+    let journal_mode: String = connection.query_row("PRAGMA journal_mode", [], |row| row.get(0))?;
+    let (algorithm_version, state, failure_reason) = connection.query_row(
+        "SELECT algorithm_version, state, failure_reason FROM projection_generation",
+        [],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
+    )?;
+    assert_eq!(journal_mode, "wal");
+    assert_eq!(algorithm_version, PROJECTION_ALGORITHM_VERSION);
+    assert_eq!(state, "FAILED");
+    assert_eq!(failure_reason, "crash WAL valid-current sentinel");
+    Ok(())
+}
+
+#[test]
+fn projection_format_crash_wal_child() -> TestResult {
+    let Ok(kind) = env::var(CRASH_WAL_CHILD_ENV) else {
+        return Ok(());
+    };
+    let path = PathBuf::from(required_env_os(CRASH_WAL_SIDECAR_ENV)?);
+    let connection = Connection::open(&path)?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    let journal_mode: String =
+        connection.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
+    assert_eq!(journal_mode, "wal");
+    connection.execute_batch("PRAGMA wal_autocheckpoint=0")?;
+    match kind.as_str() {
+        "sqlitex" => connection.execute_batch(SQLITEX_TRIGGER_SQL)?,
+        "unknown-algorithm" => insert_crash_wal_generation(
+            &connection,
+            "unknown-crash-wal-algorithm",
+            "crash WAL unknown provenance sentinel",
+        )?,
+        "valid-current" => insert_crash_wal_generation(
+            &connection,
+            PROJECTION_ALGORITHM_VERSION,
+            "crash WAL valid-current sentinel",
+        )?,
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("unknown crash-WAL child kind {kind}"),
+            )
+            .into());
+        }
+    }
+    let family = sqlite_file_family(&path)?;
+    assert_crash_wal_present(&family);
+    println!(
+        "crash-WAL child committed kind={kind} main={} wal={} shm={}",
+        family.main.as_ref().map_or(0, Vec::len),
+        family.wal.as_ref().map_or(0, Vec::len),
+        family.shm.as_ref().map_or(0, Vec::len)
+    );
+    io::stdout().flush()?;
+    process::exit(CRASH_WAL_CHILD_EXIT_CODE)
+}
+
+#[test]
 fn exact_current_v3_is_accepted_and_configured_for_wal() -> TestResult {
     let fixture = Fixture::new("current-valid-wal")?;
     let connection = Connection::open(fixture.sidecar_path())?;
@@ -283,6 +429,39 @@ fn exact_current_v3_is_accepted_and_configured_for_wal() -> TestResult {
     let after = persistent_sidecar_state(fixture.sidecar_path())?;
     assert_eq!(after.logical, before.logical);
     assert_eq!(after.journal_mode, "wal");
+    Ok(())
+}
+
+#[test]
+fn missing_and_existing_empty_sidecars_are_initialized() -> TestResult {
+    for (label, create_empty_file) in [("missing", false), ("empty", true)] {
+        let fixture = Fixture::new(&format!("initialize-{label}"))?;
+        if create_empty_file {
+            drop(fs::File::create(fixture.sidecar_path())?);
+        }
+        assert_eq!(
+            fs::metadata(fixture.sidecar_path())
+                .map(|metadata| metadata.len())
+                .unwrap_or(0),
+            0
+        );
+
+        drop(open_runner(&fixture)?);
+
+        let connection = Connection::open(fixture.sidecar_path())?;
+        assert_eq!(
+            connection.query_row("PRAGMA application_id", [], |row| row.get::<_, i64>(0))?,
+            i64::from(PROJECTION_APPLICATION_ID)
+        );
+        assert_eq!(
+            connection.query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))?,
+            i64::from(PROJECTION_DATABASE_VERSION)
+        );
+        assert_eq!(
+            connection.query_row("PRAGMA journal_mode", [], |row| row.get::<_, String>(0))?,
+            "wal"
+        );
+    }
     Ok(())
 }
 
@@ -599,16 +778,19 @@ fn sidecar_state(connection: &Connection) -> TestResult<SidecarState> {
     })
 }
 
-fn persistent_sidecar_state(path: &std::path::Path) -> TestResult<PersistentSidecarState> {
-    let connection = Connection::open(path)?;
+fn persistent_sidecar_state(path: &Path) -> TestResult<PersistentSidecarState> {
+    let file_family = sqlite_file_family(path)?;
+    let connection = Connection::open_with_flags(
+        path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
     let logical = sidecar_state(&connection)?;
     let journal_mode = connection.query_row("PRAGMA journal_mode", [], |row| row.get(0))?;
     drop(connection);
-    let main_database_bytes = fs::read(path)?;
     Ok(PersistentSidecarState {
         logical,
         journal_mode,
-        main_database_bytes,
+        file_family,
     })
 }
 
@@ -619,9 +801,116 @@ fn assert_persistent_sidecar_unchanged(
     assert_eq!(after.logical, before.logical);
     assert_eq!(after.journal_mode, before.journal_mode);
     assert!(
-        after.main_database_bytes == before.main_database_bytes,
-        "projection main database bytes changed on rejection"
+        after.file_family.main == before.file_family.main,
+        "projection main database bytes or presence changed on rejection"
     );
+    assert!(
+        after.file_family.wal == before.file_family.wal,
+        "projection WAL bytes or presence changed on rejection"
+    );
+    assert_eq!(
+        after.file_family.shm.is_some(),
+        before.file_family.shm.is_some()
+    );
+    assert_eq!(
+        after.file_family.shm.as_ref().map(Vec::len),
+        before.file_family.shm.as_ref().map(Vec::len)
+    );
+    assert!(
+        after.file_family.journal == before.file_family.journal,
+        "projection rollback-journal bytes or presence changed on rejection"
+    );
+}
+
+fn sqlite_file_family(path: &Path) -> TestResult<SqliteFileFamily> {
+    Ok(SqliteFileFamily {
+        main: read_optional_file(path)?,
+        wal: read_optional_file(&sidecar_family_path(path, "-wal"))?,
+        shm: read_optional_file(&sidecar_family_path(path, "-shm"))?,
+        journal: read_optional_file(&sidecar_family_path(path, "-journal"))?,
+    })
+}
+
+fn read_optional_file(path: &Path) -> TestResult<Option<Vec<u8>>> {
+    match fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn sidecar_family_path(path: &Path, suffix: &str) -> PathBuf {
+    let mut value = path.as_os_str().to_os_string();
+    value.push(suffix);
+    PathBuf::from(value)
+}
+
+fn assert_crash_wal_present(family: &SqliteFileFamily) {
+    assert!(family.main.as_ref().is_some_and(|bytes| !bytes.is_empty()));
+    assert!(family.wal.as_ref().is_some_and(|bytes| bytes.len() > 32));
+    assert!(family.shm.as_ref().is_some_and(|bytes| !bytes.is_empty()));
+    assert!(family.journal.is_none());
+}
+
+fn assert_rejected_crash_wal_unchanged(before: &SqliteFileFamily, after: &SqliteFileFamily) {
+    assert!(
+        after.main == before.main,
+        "projection main database bytes or presence changed on crash-WAL rejection"
+    );
+    assert!(
+        after.wal == before.wal,
+        "projection WAL bytes or presence changed on crash-WAL rejection"
+    );
+    assert_eq!(after.shm.is_some(), before.shm.is_some());
+    assert_eq!(
+        after.shm.as_ref().map(Vec::len),
+        before.shm.as_ref().map(Vec::len)
+    );
+    assert!(
+        after.journal == before.journal,
+        "projection rollback-journal bytes or presence changed on crash-WAL rejection"
+    );
+}
+
+fn seed_crash_wal_child(path: &Path, kind: &str) -> TestResult {
+    let status = Command::new(env::current_exe()?)
+        .arg("--exact")
+        .arg("projection_format_crash_wal_child")
+        .arg("--nocapture")
+        .arg("--test-threads=1")
+        .env(CRASH_WAL_CHILD_ENV, kind)
+        .env(CRASH_WAL_SIDECAR_ENV, path)
+        .status()?;
+    assert_eq!(status.code(), Some(CRASH_WAL_CHILD_EXIT_CODE));
+    Ok(())
+}
+
+fn insert_crash_wal_generation(
+    connection: &Connection,
+    algorithm_version: &str,
+    failure_reason: &str,
+) -> TestResult {
+    connection.execute(
+        concat!(
+            "INSERT INTO projection_generation(",
+            "generation_seq, generation_id, projection_kind, schema_version, ",
+            "builder_binary_digest, algorithm_version, tokenizer_version, effective_config_hash, ",
+            "known_at_accept_seq, valid_at_unix_ms, source_outbox_seq, source_ledger_digest, ",
+            "resolver_version, policy_registry_version, policy_registry_hash, security_domain, ",
+            "built_at_unix_ms, state, record_count, canonical_checksum, failure_reason) VALUES(",
+            "1, zeroblob(16), 'fts5-unicode61-v1', 2, zeroblob(32), ?1, ",
+            "'sqlite-fts5-unicode61-v1', zeroblob(32), 0, 0, 0, zeroblob(32), ",
+            "'resolver', 'policy', zeroblob(32), zeroblob(16), 0, 'FAILED', NULL, NULL, ?2)"
+        ),
+        [algorithm_version, failure_reason],
+    )?;
+    Ok(())
+}
+
+fn required_env_os(key: &str) -> TestResult<std::ffi::OsString> {
+    env::var_os(key).ok_or_else(|| {
+        io::Error::new(io::ErrorKind::NotFound, format!("child {key} missing")).into()
+    })
 }
 
 fn named_schema_object_count(
