@@ -338,7 +338,7 @@
       "rust_version": null,
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "repository": "https://github.com/rusqlite/rusqlite",
-      "owner": "academic-store",
+      "owner": "academic-store, academic-projections, and academic-portability",
       "admitted_features": [
         "backup",
         "bundled",
@@ -349,6 +349,13 @@
       "network_role": "none",
       "install_scripts": false,
       "uses": [
+        {
+          "package": "academic-portability",
+          "kind": "normal",
+          "target": null,
+          "default_features": false,
+          "features": ["backup", "hooks", "limits"]
+        },
         {
           "package": "academic-store",
           "kind": "normal",

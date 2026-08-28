@@ -17,7 +17,7 @@ The Phase 0 direct versions already accepted in the incoming lock are preserved 
 
 | Dependency | Owner and scope | Exact features | License | Declared MSRV | Network/install posture |
 |---|---|---|---|---:|---|
-| `rusqlite 0.40.2` | `academic-store` | no defaults; `backup`, `hooks`, `limits`; `bundled` only through default `bundled-sqlite`; vendored SQLCipher only through non-default `sqlcipher-spike` | MIT | not declared upstream; compiled on Rust 1.98 | no network; native build receipt required; no load extension |
+| `rusqlite 0.40.2` | `academic-store`, `academic-projections`, `academic-portability` | no defaults; `backup`, `hooks`, `limits`; `bundled` only through default `bundled-sqlite`; vendored SQLCipher only through non-default `sqlcipher-spike` | MIT | not declared upstream; compiled on Rust 1.98 | no network; native build receipt required; no load extension |
 | `tokio 1.53.1` | `academic-rpc`, `academic-daemon` | `io-util`, `macros`, `net`, `rt-multi-thread`, `signal`, `sync`, `time` | MIT | 1.71 | `net` is restricted to named pipe/UDS local IPC; no HTTP/TCP/UDP/DNS behavior |
 | `windows-sys 0.61.2` | Windows vault/daemon adapters and the isolated store path-capability boundary | explicit WDK Foundation/FileSystem/SystemServices plus Win32 Foundation, Security/Authorization, FileSystem, IO, Pipes, RemoteDesktop session identity, SystemServices, Threading, WindowsProgramming subsets | MIT OR Apache-2.0 | 1.71 | native path, session, volume, ACL, named-pipe, and local filesystem capability only; no WinHTTP/WinInet/WinSock feature admitted |
 | `rustix 1.1.4` | Unix vault/daemon adapters and the isolated store path-capability boundary | no defaults; `fs`, `net`, `process`, `std` across admitted owners; store-platform omits `net` | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 1.63 | local filesystem, peer identity, and UDS capability only |
@@ -29,6 +29,14 @@ The Phase 0 direct versions already accepted in the incoming lock are preserved 
 | `predicates 3.1.4` | test support only | no defaults | MIT OR Apache-2.0 | 1.74 | no regex/color/default expansion; no product inclusion |
 
 The existing Phase 0 cryptographic and contract dependencies retain their prior owners and features. F0 changes their Cargo requirements from compatible ranges to exact requirements without changing versions.
+
+## Portability use of the already-admitted `backup` feature
+
+`academic-portability` is the third owner of the already-admitted `rusqlite 0.40.2` package and adds no new dependency, feature, or resolution. It selects the same `backup`, `hooks`, and `limits` feature set with `default-features = false` and inherits the bundled plaintext SQLite lane from `academic-store`.
+
+The `backup` feature was admitted in F0 and is now exercised: the Phase 1 backup copies the canonical database with the SQLite Online Backup API into a temporary directory at a fixed commit watermark, instead of copying a live file whose pages may be mid-transaction. Portability also opens its own read-only SQLite connection so it can enumerate canonical rows in canonical-identifier order; the guarded store reader admits the schema first, and the portability connection is immediately constrained to `query_only`. No archive, compression, cloud, or network dependency is added, and the resulting backup remains plaintext and synthetic-only.
+
+`academic-portability` additionally takes an ordinary workspace edge on `academic-contracts` so restore can re-verify every stored signed envelope against an independent device authorization instead of trusting the signing key carried inside the restored bytes. The Phase 0 direct packages `serde`, `serde_json`, `sha2`, and the dev-only `ed25519-dalek` keep their accepted exact versions.
 
 ## Reviewed store path-capability boundary
 

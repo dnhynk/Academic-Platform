@@ -98,11 +98,16 @@ dependencies = [
 name = "academic-portability"
 version = "0.1.0"
 dependencies = [
+ "academic-contracts",
  "academic-domain",
  "academic-projections",
  "academic-store",
  "academic-vault",
+ "ed25519-dalek",
+ "rusqlite",
  "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]
