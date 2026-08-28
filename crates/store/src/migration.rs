@@ -12,7 +12,8 @@ use crate::{
     STORE_SCHEMA_VERSION,
     connection::{
         PragmaSnapshot, configure_migration_connection, disable_checkpoint_on_close,
-        read_pragma_snapshot, verify_fts5, verify_migration_pragmas, verify_writer_pragmas,
+        enable_checkpoint_on_close, read_pragma_snapshot, verify_fts5, verify_migration_pragmas,
+        verify_writer_pragmas,
     },
     error::{StoreError, StoreResult},
     schema_fingerprint::{user_schema_object_count, verify_store_schema_fingerprint},
@@ -90,9 +91,17 @@ pub fn migrate_open_connection_pre_listen(
     // rejected foreign/tampered database keeps its exact main-database and
     // committed-WAL bytes. Closing a read-write handle would otherwise
     // checkpoint an uncheckpointed WAL into the main database and rewrite it
-    // even on the rejection path, so checkpoint-on-close is disabled first.
-    // SQLite's own read and recovery path may still create or refresh the
-    // rebuildable `-wal`/`-shm` sidecars; that is outside the claim.
+    // even on the rejection path, so checkpoint-on-close is disabled here and
+    // restored only once admission has decided. SQLite's own read and recovery
+    // path may still create or refresh the rebuildable `-wal`/`-shm` sidecars;
+    // that is outside the claim.
+    //
+    // A hot `-journal` is the one input this handle cannot leave untouched:
+    // SQLite rolls a rollback journal back on the first read of a read-write
+    // handle, before any admission statement runs. A rejected input in that
+    // state is therefore restored to its last committed main-database bytes
+    // and loses its `-journal`; no committed content is lost, and the
+    // read-only reader path leaves even that input byte-identical.
     disable_checkpoint_on_close(connection)?;
     let admission = inspect_schema_before_mutation(connection)?;
     verify_fts5(connection)?;
@@ -113,6 +122,7 @@ pub fn migrate_open_connection_pre_listen(
     if admission == SchemaAdmission::Current {
         verify_writer_pragmas(&configured)?;
         verify_current_schema(connection, &configured)?;
+        enable_checkpoint_on_close(connection)?;
         return Ok(MigrationStatus::AlreadyCurrent);
     }
     verify_migration_pragmas(&configured)?;
@@ -148,6 +158,7 @@ pub fn migrate_open_connection_pre_listen(
     let after = read_pragma_snapshot(connection)?;
     verify_writer_pragmas(&after)?;
     verify_current_schema(connection, &after)?;
+    enable_checkpoint_on_close(connection)?;
     Ok(MigrationStatus::Applied)
 }
 

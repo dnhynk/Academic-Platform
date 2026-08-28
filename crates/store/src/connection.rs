@@ -54,6 +54,7 @@ pub(crate) struct WriterConnection {
     connection: Connection,
     database_path: PathBuf,
     acceptance_authorized: Arc<AtomicBool>,
+    admitted_schema_version: i64,
 }
 
 impl fmt::Debug for WriterConnection {
@@ -74,6 +75,14 @@ impl WriterConnection {
             acceptance_authorized: Arc::clone(&self.acceptance_authorized),
             previously_authorized,
         }
+    }
+
+    /// Schema cookie SQLite reported when this writer passed admission.
+    ///
+    /// Acceptance compares it again inside the write transaction, so the value
+    /// must be read out before the transaction borrows the connection.
+    pub(crate) const fn admitted_schema_version(&self) -> i64 {
+        self.admitted_schema_version
     }
 
     /// Starts the one allowed acceptance transaction with an eager write lock.
@@ -268,12 +277,17 @@ pub(crate) fn open_writer(database_path: &Path) -> StoreResult<WriterConnection>
     let pragmas = read_pragma_snapshot(&connection)?;
     verify_writer_pragmas(&pragmas)?;
     verify_current_schema(&connection, &pragmas)?;
+    // Admission is complete: this handle can no longer reject, so it must
+    // checkpoint on close exactly as it did before the rejection protection.
+    enable_checkpoint_on_close(&connection)?;
+    let admitted_schema_version = read_schema_version(&connection)?;
     let acceptance_authorized = Arc::new(AtomicBool::new(false));
     install_canonical_authorizer(&connection, Arc::clone(&acceptance_authorized))?;
     Ok(WriterConnection {
         connection,
         database_path: database_path.to_path_buf(),
         acceptance_authorized,
+        admitted_schema_version,
     })
 }
 
@@ -293,13 +307,17 @@ pub fn open_reader(database_path: &Path) -> StoreResult<ReaderConnection> {
     })
 }
 
-/// Disables SQLite's checkpoint-on-close for a read-write admission handle.
+/// Disables SQLite's checkpoint-on-close for the admission window only.
 ///
 /// Rejecting a database must leave its exact main-database and committed-WAL
 /// bytes. Without this, closing the handle checkpoints an uncheckpointed WAL
 /// into the main database and rewrites it after admission already failed. The
 /// rebuildable `-shm` index and an empty `-wal` that SQLite's own read path
 /// creates carry no committed content and are outside that claim.
+///
+/// The window ends where admission does: every caller that reaches an admitted
+/// handle restores the default through [`enable_checkpoint_on_close`], so
+/// normal operation keeps bringing the main database current at a clean close.
 pub(crate) fn disable_checkpoint_on_close(connection: &Connection) -> StoreResult<()> {
     let disabled = connection.set_db_config(DbConfig::SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE, true)?;
     if disabled {
@@ -309,6 +327,57 @@ pub(crate) fn disable_checkpoint_on_close(connection: &Connection) -> StoreResul
             pragma: "db_config.no_ckpt_on_close",
             expected: "1".to_owned(),
             actual: "0".to_owned(),
+        })
+    }
+}
+
+/// Restores SQLite's checkpoint-on-close once admission has succeeded.
+///
+/// The protection above is needed only while a rejection is still possible. An
+/// admitted handle that kept it would never bring the main database current
+/// again, so a clean close would leave every committed byte in `-wal` until the
+/// autocheckpoint threshold, and any consumer of the main database alone would
+/// read an empty database. Restoring the default here keeps the rejection path
+/// byte-preserving and the admitted path's steady state unchanged.
+pub(crate) fn enable_checkpoint_on_close(connection: &Connection) -> StoreResult<()> {
+    let disabled = connection.set_db_config(DbConfig::SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE, false)?;
+    if disabled {
+        Err(StoreError::PragmaMismatch {
+            pragma: "db_config.no_ckpt_on_close",
+            expected: "0".to_owned(),
+            actual: "1".to_owned(),
+        })
+    } else {
+        Ok(())
+    }
+}
+
+/// Reads SQLite's schema cookie, which changes whenever the schema changes.
+pub(crate) fn read_schema_version(connection: &Connection) -> StoreResult<i64> {
+    pragma_i64(connection, "schema_version")
+}
+
+/// Fails an acceptance closed when the schema changed under an admitted writer.
+///
+/// The structural fingerprint is verified when the writer is opened and never
+/// again, but SQLite reloads `sqlite_schema` on an already-open connection
+/// whenever the cookie changes, so a same-user process that edits the schema
+/// after admission would otherwise reach the inside of a receipted acceptance.
+/// The cookie is the same signal SQLite itself uses for that reload, and it is
+/// compared after `BEGIN IMMEDIATE` has taken the write lock, so an acceptance
+/// can only commit against the exact schema that was admitted.
+pub(crate) fn verify_admitted_schema_version(
+    connection: &Connection,
+    admitted: i64,
+) -> StoreResult<()> {
+    let observed = read_schema_version(connection)?;
+    if observed == admitted {
+        Ok(())
+    } else {
+        Err(StoreError::SchemaIdentityMismatch {
+            component: "schema.cookie",
+            expected: admitted.to_string(),
+            actual: observed.to_string(),
         })
     }
 }
@@ -671,6 +740,56 @@ mod tests {
                 Err(StoreError::PragmaMismatch { pragma, .. }) if pragma == expected_pragma
             ));
         }
+    }
+
+    #[test]
+    fn admitted_writer_close_checkpoints_the_main_database() -> Result<(), Box<dyn Error>> {
+        let (root, path) = migrated_database("checkpoint-on-close")?;
+        let writer = open_writer(&path)?;
+        // The rejection protection is lifted once admission has succeeded, so
+        // this handle is the last-connection checkpointer again.
+        assert!(
+            !writer
+                .connection
+                .db_config(DbConfig::SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE)?
+        );
+        drop(writer);
+
+        let mut wal = path.as_os_str().to_os_string();
+        wal.push("-wal");
+        assert!(
+            !PathBuf::from(wal).try_exists()?,
+            "a clean writer close must checkpoint and remove the WAL"
+        );
+        let main_length = fs::metadata(&path)?.len();
+        assert!(
+            main_length > 4096,
+            "the main database must hold the checkpointed schema, saw {main_length} bytes"
+        );
+
+        remove_test_root(&root);
+        Ok(())
+    }
+
+    #[test]
+    fn admitted_writer_records_the_schema_cookie_it_was_admitted_with() -> Result<(), Box<dyn Error>>
+    {
+        let (root, path) = migrated_database("admitted-cookie")?;
+        let writer = open_writer(&path)?;
+        let admitted = writer.admitted_schema_version();
+        assert_eq!(read_schema_version(&writer.connection)?, admitted);
+        assert!(verify_admitted_schema_version(&writer.connection, admitted).is_ok());
+        assert!(matches!(
+            verify_admitted_schema_version(&writer.connection, admitted + 1),
+            Err(StoreError::SchemaIdentityMismatch {
+                component: "schema.cookie",
+                ..
+            })
+        ));
+
+        drop(writer);
+        remove_test_root(&root);
+        Ok(())
     }
 
     fn expected_migration_snapshot() -> PragmaSnapshot {

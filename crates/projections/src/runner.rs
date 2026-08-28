@@ -50,14 +50,16 @@ pub const MIGRATION_0003_SQL: &str =
 /// Source-ledger-bound, coordinate-selectable Phase 1 builder algorithm identifier.
 pub const PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v3";
 const PREVIOUS_PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v2";
-// SQLite reserves this literal prefix case-insensitively. Comparing the prefix
-// directly keeps the underscore literal while admitting valid `sqliteX...`
-// user object names. Only `CREATE` applies the reserved-prefix rejection, so a
-// reserved-prefix trigger or view written directly into `sqlite_schema` loads
-// and fires; the exclusion is therefore narrowed to the tables and indexes
-// SQLite itself creates, exactly as the canonical store admission does.
-const USER_SCHEMA_OBJECT_PREDICATE: &str = "(type NOT IN ('table', 'index') \
-     OR substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_')";
+// Only `CREATE` applies SQLite's reserved-prefix rejection, so a `sqlite_`
+// prefixed object written directly into `sqlite_schema` loads like any other
+// and the prefix says nothing about ownership. The exclusion is the exact set
+// of objects SQLite creates itself, and every other object is a user object
+// regardless of its type or name — exactly as the canonical store admission
+// does.
+const USER_SCHEMA_OBJECT_PREDICATE: &str = "NOT ( \
+     (type = 'table' AND name IN \
+      ('sqlite_sequence', 'sqlite_stat1', 'sqlite_stat2', 'sqlite_stat3', 'sqlite_stat4')) \
+     OR (type = 'index' AND name GLOB 'sqlite_autoindex_*'))";
 
 mod fault_boundary {
     use super::{ProjectionResult, fmt};

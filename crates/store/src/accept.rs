@@ -16,7 +16,7 @@ use academic_ledger::LedgerError;
 use academic_vault::{SealedObjectCapability, Vault};
 
 use crate::{
-    connection::{PragmaSnapshot, WriterConnection, open_writer},
+    connection::{PragmaSnapshot, WriterConnection, open_writer, verify_admitted_schema_version},
     error::{StoreError, StoreResult},
     fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault, NoFault},
     idempotency::{
@@ -303,8 +303,15 @@ where
         sealed_receipts.insert(descriptor.id, receipt);
     }
 
+    // The structural fingerprint was verified once, when this writer was
+    // admitted. Re-comparing SQLite's schema cookie under the write lock binds
+    // every committed acceptance to that exact schema, so a schema changed
+    // under the running writer fails the acceptance closed instead of silently
+    // altering the durable closure of a receipted batch.
+    let admitted_schema_version = writer.admitted_schema_version();
     let _authorization = writer.authorize_acceptance();
     let transaction = writer.begin_immediate()?;
+    verify_admitted_schema_version(&transaction, admitted_schema_version)?;
     faults.hit(AcceptanceFaultPoint::Db01)?;
 
     if let Some(receipt) = lookup_command_receipt(&transaction, &command)? {

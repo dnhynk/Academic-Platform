@@ -993,6 +993,166 @@ fn install_reserved_prefix_trigger(
 }
 
 #[test]
+fn schema_change_after_writer_admission_fails_the_acceptance_closed() -> Result<(), Box<dyn Error>>
+{
+    const NAMESPACE: u32 = 0x1b00;
+    let database = TestDatabase::new("post-admission-schema-change")?;
+    let vault = database.vault(NAMESPACE)?;
+    let batch = artifact_batch(&vault, NAMESPACE, 0x1b80)?;
+    let signed = signed(&batch)?;
+    let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
+    let mut store = database.profile.open_acceptance_store()?;
+
+    // A same-user process changes the schema under the already-admitted
+    // writer. The trigger name carries no reserved prefix, so this is not the
+    // predicate gap: the structural fingerprint was verified once, at open,
+    // and SQLite reloads `sqlite_schema` on the open connection by itself.
+    let tamper = rusqlite::Connection::open(database.path())?;
+    tamper.execute_batch(
+        "CREATE TRIGGER shadow_claim_evidence BEFORE INSERT ON claim_evidence \
+         BEGIN SELECT RAISE(IGNORE); END;",
+    )?;
+    drop(tamper);
+
+    let error = match store.accept_verified_batch(
+        &verified,
+        command(&signed.envelope, 82, Some(0)),
+        TimestampMillis::new(7_400),
+        &vault,
+    ) {
+        Ok(outcome) => {
+            return Err(std::io::Error::other(format!(
+                "acceptance committed revision {} against a schema that changed under it",
+                outcome.receipt.committed_revision
+            ))
+            .into());
+        }
+        Err(error) => error,
+    };
+    assert!(
+        matches!(
+            error,
+            AcceptError::Store(academic_store::error::StoreError::SchemaIdentityMismatch {
+                component: "schema.cookie",
+                ..
+            })
+        ),
+        "acceptance must fail closed on the admitted schema cookie: {error}"
+    );
+    drop(store);
+
+    // Nothing was consumed: no batch, no receipt, no evidence closure, no
+    // outbox row, and the acceptance sequence is untouched.
+    let durable = rusqlite::Connection::open_with_flags(
+        database.path(),
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
+    for table in [
+        "ledger_batch",
+        "ledger_event",
+        "command_receipt",
+        "claim_evidence",
+        "projection_outbox",
+    ] {
+        assert_eq!(
+            durable.query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row
+                .get::<_, i64>(0))?,
+            0,
+            "{table} must be empty after a fail-closed acceptance"
+        );
+    }
+    assert_eq!(
+        durable.query_row(
+            "SELECT next_accept_seq, profile_revision FROM replica_state WHERE singleton = 1",
+            [],
+            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
+        )?,
+        (1, 0)
+    );
+    Ok(())
+}
+
+#[test]
+fn reserved_prefix_table_is_refused_at_writer_and_acceptance_admission()
+-> Result<(), Box<dyn Error>> {
+    const NAMESPACE: u32 = 0x1c00;
+    let database = TestDatabase::new("reserved-prefix-table-admission")?;
+    let vault = database.vault(NAMESPACE)?;
+    let batch = artifact_batch(&vault, NAMESPACE, 0x1c80)?;
+    let signed = signed(&batch)?;
+    let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
+    install_reserved_prefix_table(database.path(), "shadow_ledger")?;
+
+    // ADR-012 excludes only what SQLite creates itself. A foreign table that
+    // merely carries the reserved prefix is a user object, so the writer must
+    // refuse it and no acceptance can run behind it.
+    let probe = NativePathProbe::default();
+    let profile_error = match open_synthetic_profile(&database.root, &probe) {
+        Ok(_) => return Err("writer admission accepted a foreign reserved-prefix table".into()),
+        Err(error) => error,
+    };
+    assert!(matches!(
+        profile_error,
+        academic_store::error::StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        database.profile.open_acceptance_store(),
+        Err(academic_store::error::StoreError::SchemaIdentityMismatch { .. })
+    ));
+    assert!(matches!(
+        open_reader(database.path()),
+        Err(academic_store::error::StoreError::SchemaIdentityMismatch { .. })
+    ));
+
+    // The batch material exists and is valid; only admission stops it.
+    assert_eq!(verified.batch().batch_id, batch.batch_id);
+    Ok(())
+}
+
+/// Installs a foreign table and renames it into SQLite's reserved prefix
+/// through `writable_schema`, the only way such a name reaches `sqlite_schema`.
+fn install_reserved_prefix_table(database_path: &Path, name: &str) -> Result<(), Box<dyn Error>> {
+    let reserved = format!("sqlite_{name}");
+    let connection = rusqlite::Connection::open(database_path)?;
+    connection.execute_batch(&format!(
+        "CREATE TABLE {name}(value INTEGER NOT NULL) STRICT; \
+         INSERT INTO {name}(value) VALUES (1);"
+    ))?;
+    let original = connection.query_row(
+        "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?1",
+        [name],
+        |row| row.get::<_, String>(0),
+    )?;
+    let renamed = original.replacen(name, &reserved, 1);
+    assert_ne!(renamed, original, "table rename anchor must exist");
+    connection.execute_batch("PRAGMA writable_schema = ON;")?;
+    connection.execute(
+        "UPDATE sqlite_schema SET name = ?2, tbl_name = ?2, sql = ?3 \
+         WHERE type = 'table' AND name = ?1",
+        (name, reserved.as_str(), renamed),
+    )?;
+    connection.execute_batch("PRAGMA writable_schema = OFF;")?;
+    let schema_version =
+        connection.query_row("PRAGMA schema_version", [], |row| row.get::<_, i64>(0))?;
+    connection.pragma_update(None, "schema_version", schema_version + 1)?;
+    drop(connection);
+
+    // A fresh connection proves SQLite loads the reserved-prefix table it
+    // refuses to create, and that the database is otherwise intact.
+    let loaded = rusqlite::Connection::open(database_path)?;
+    assert_eq!(
+        loaded.query_row(&format!("SELECT value FROM {reserved}"), [], |row| row
+            .get::<_, i64>(0),)?,
+        1
+    );
+    assert_eq!(
+        loaded.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))?,
+        "ok"
+    );
+    Ok(())
+}
+
+#[test]
 fn db01_db07_process_exit_restart_matrix() -> Result<(), Box<dyn Error>> {
     for (index, point) in [
         AcceptanceFaultPoint::Db01,
