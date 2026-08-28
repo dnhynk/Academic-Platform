@@ -68,10 +68,24 @@ pub struct Fixture {
     known_at_accept_seq: u64,
 }
 
+/// macOS exposes `$TMPDIR` beneath the `/var` symlink and the native facade
+/// refuses to follow a link component, so the tests address the real directory.
+#[cfg(unix)]
+fn temporary_base() -> std::io::Result<PathBuf> {
+    std::fs::canonicalize(std::env::temp_dir())
+}
+
+/// Windows must not canonicalize: that yields the Win32 verbatim device
+/// spelling the facade rejects, trading one refused spelling for another.
+#[cfg(windows)]
+fn temporary_base() -> std::io::Result<PathBuf> {
+    Ok(std::env::temp_dir())
+}
+
 impl Fixture {
     pub fn new(label: &str) -> TestResult<Self> {
         let sequence = NEXT_ROOT.fetch_add(1, Ordering::Relaxed);
-        let root = std::env::temp_dir().join(format!(
+        let root = temporary_base()?.join(format!(
             "academic-projections-{}-{}-{sequence}",
             sanitize(label),
             std::process::id()
