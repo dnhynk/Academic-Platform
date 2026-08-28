@@ -1,17 +1,23 @@
 version: 2
+# Version-update pull requests are disabled with open-pull-requests-limit: 0.
+# CONTRIBUTING.md requires an owner, a license review, a feature review, an
+# advisory path, and a written trust-boundary justification for every dependency
+# change, and the signed v1 fixture bytes are frozen; an automatic bump produces
+# none of that. Security advisories are unaffected by this setting and still
+# reach the repository, where they enter through the same admission process.
 updates:
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0
