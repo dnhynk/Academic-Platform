@@ -4,6 +4,7 @@ use std::{
     fmt, io,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use academic_core::local_service::{LocalServiceStartup, rejection_response};
@@ -23,8 +24,8 @@ use tokio::{
 };
 
 use crate::{
-    AdmissionError, DaemonError, LocalEndpoint, ReaderFactory, SessionNonce, WriterQueue,
-    daemon_io, runtime_meta, shutdown, singleton, transport,
+    AdmissionError, CLIENT_FRAME_TIMEOUT, DaemonError, LocalEndpoint, ReaderFactory, SessionNonce,
+    WriterQueue, daemon_io, runtime_meta, shutdown, singleton, transport,
 };
 
 /// Startup inputs. Production uses the native fail-closed path probe.
@@ -33,6 +34,7 @@ pub struct DaemonConfig {
     profile_root: PathBuf,
     runtime_root: PathBuf,
     probe: Arc<dyn PathProbe>,
+    client_frame_timeout: Duration,
     #[cfg(unix)]
     required_peer_uid: Option<u32>,
 }
@@ -56,6 +58,7 @@ impl DaemonConfig {
             profile_root: profile_root.into(),
             runtime_root: runtime_root.into(),
             probe: Arc::new(NativePathProbe::default()),
+            client_frame_timeout: CLIENT_FRAME_TIMEOUT,
             #[cfg(unix)]
             required_peer_uid: None,
         }
@@ -65,6 +68,15 @@ impl DaemonConfig {
     #[must_use]
     pub fn with_path_probe(mut self, probe: Arc<dyn PathProbe>) -> Self {
         self.probe = probe;
+        self
+    }
+
+    /// Narrows the bounded wait for one client frame. It can only shorten the
+    /// default [`CLIENT_FRAME_TIMEOUT`] and is exposed so timeout evidence runs
+    /// deterministically instead of waiting out the product value.
+    #[must_use]
+    pub fn with_client_frame_timeout(mut self, timeout: Duration) -> Self {
+        self.client_frame_timeout = timeout.min(CLIENT_FRAME_TIMEOUT);
         self
     }
 
@@ -131,11 +143,13 @@ impl RunningDaemon {
         let listener_writer = Arc::clone(&writer);
         let listener_nonce = nonce.clone();
         let listener_paths = runtime_paths.clone();
+        let frame_timeout = config.client_frame_timeout;
         let listener_task = tokio::spawn(async move {
             shutdown::listener_loop(
                 listener,
                 listener_writer,
                 listener_nonce,
+                frame_timeout,
                 stop_receiver,
                 singleton,
                 listener_paths,
@@ -215,18 +229,55 @@ fn bind_listener(
     }
 }
 
+/// Reads one client frame under a bounded deadline.
+///
+/// `Ok(None)` means graceful shutdown began first. An expired deadline is an
+/// error so the caller closes the connection: without it a client that connects
+/// and sends nothing parks a serve task and a transport instance forever.
+async fn read_client_frame<S>(
+    stream: &mut S,
+    class: FrameClass,
+    frame_timeout: Duration,
+    shutdown: &mut watch::Receiver<bool>,
+) -> Result<Option<LocalCoreEnvelope>, DaemonError>
+where
+    S: AsyncRead + Unpin,
+{
+    tokio::select! {
+        received = tokio::time::timeout(frame_timeout, read_envelope(stream, class)) => match received {
+            Ok(envelope) => Ok(Some(envelope?)),
+            Err(_elapsed) => Err(daemon_io(
+                "read client frame",
+                "local endpoint",
+                io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "client frame did not arrive within the bounded wait",
+                ),
+            )),
+        },
+        _ = shutdown.changed() => Ok(None),
+    }
+}
+
 pub(crate) async fn serve_connection<S>(
     mut stream: S,
     writer: Arc<WriterQueue>,
     nonce: &SessionNonce,
+    frame_timeout: Duration,
     mut shutdown: watch::Receiver<bool>,
 ) -> Result<(), DaemonError>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    let envelope = tokio::select! {
-        envelope = read_envelope(&mut stream, FrameClass::Handshake) => envelope?,
-        _ = shutdown.changed() => return Ok(()),
+    let Some(envelope) = read_client_frame(
+        &mut stream,
+        FrameClass::Handshake,
+        frame_timeout,
+        &mut shutdown,
+    )
+    .await?
+    else {
+        return Ok(());
     };
     let client = match envelope.payload {
         Some(local_core_envelope::Payload::ClientHandshake(client)) => client,
@@ -245,9 +296,15 @@ where
     };
     write_envelope(&mut stream, &response, FrameClass::Handshake).await?;
 
-    let envelope = tokio::select! {
-        envelope = read_envelope(&mut stream, FrameClass::Command) => envelope?,
-        _ = shutdown.changed() => return Ok(()),
+    let Some(envelope) = read_client_frame(
+        &mut stream,
+        FrameClass::Command,
+        frame_timeout,
+        &mut shutdown,
+    )
+    .await?
+    else {
+        return Ok(());
     };
     let request = match envelope.payload {
         Some(local_core_envelope::Payload::MutableRequest(request)) => request,

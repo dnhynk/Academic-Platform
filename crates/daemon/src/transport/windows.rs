@@ -2,8 +2,9 @@
 
 use std::{
     ffi::{OsStr, c_void},
+    fs::{File, OpenOptions},
     io,
-    os::windows::{ffi::OsStrExt, io::AsRawHandle},
+    os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle},
     path::Path,
     ptr,
 };
@@ -11,7 +12,8 @@ use std::{
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use windows_sys::Win32::{
     Foundation::{
-        CloseHandle, ERROR_ALREADY_EXISTS, ERROR_SUCCESS, GetLastError, HANDLE, LocalFree,
+        CloseHandle, ERROR_BROKEN_PIPE, ERROR_LOCK_VIOLATION, ERROR_NO_DATA, ERROR_PIPE_BUSY,
+        ERROR_SUCCESS, HANDLE, LocalFree,
     },
     Security::{
         ACCESS_ALLOWED_ACE, ACL,
@@ -25,14 +27,19 @@ use windows_sys::Win32::{
         PSECURITY_DESCRIPTOR, PSID, SE_DACL_PROTECTED, SECURITY_ATTRIBUTES, TOKEN_QUERY,
         TOKEN_USER, TokenUser,
     },
+    Storage::FileSystem::{
+        FILE_FLAG_OPEN_REPARSE_POINT, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY,
+        LockFileEx,
+    },
     System::{
+        IO::OVERLAPPED,
         RemoteDesktop::ProcessIdToSessionId,
         SystemServices::ACCESS_ALLOWED_ACE_TYPE,
-        Threading::{CreateMutexW, GetCurrentProcess, GetCurrentProcessId, OpenProcessToken},
+        Threading::{GetCurrentProcess, GetCurrentProcessId, OpenProcessToken},
     },
 };
 
-use super::{LocalEndpoint, RuntimePaths, profile_key};
+use super::{LocalEndpoint, RuntimePaths, SINGLETON_LOCK_FILE, profile_key};
 
 #[derive(Debug)]
 struct OwnedHandle(HANDLE);
@@ -97,32 +104,63 @@ impl Drop for SecurityDescriptor {
 
 #[derive(Debug)]
 pub(crate) struct SingletonGuard {
-    _handle: OwnedHandle,
+    _lock: File,
 }
 
 impl SingletonGuard {
+    /// Binds the singleton to the profile runtime directory instead of the
+    /// logon session.
+    ///
+    /// A `Local\` named mutex cannot carry this guarantee: that namespace is
+    /// per-logon-session, so two concurrent sessions of the same user — RDP
+    /// beside the console, or fast user switching — each create their own,
+    /// neither observes `ERROR_ALREADY_EXISTS`, and both acquire. An exclusive
+    /// byte-range lock is taken on a file object instead: one profile resolves
+    /// to one file from every session on the machine, the kernel releases it
+    /// when the owning process dies so no lock is orphaned, and a lock file that
+    /// cannot be opened or locked refuses startup, so the failure mode is
+    /// closed. This is the same shape as the Unix `flock` guard.
+    ///
+    /// It guarantees at most one daemon per profile runtime directory on this
+    /// machine, across logon sessions. It does not couple distinct profiles,
+    /// which hash to distinct directories and stay independent by design, and it
+    /// does not make one daemon reachable from another logon session, because
+    /// the named-pipe endpoint still carries the session id.
     pub(crate) fn acquire(paths: &RuntimePaths) -> io::Result<Self> {
-        let mut security = SecurityDescriptor::current_user_only()?;
-        let attributes = security.attributes();
-        let name = wide(&format!("Local\\academicd-{}", paths.profile_key));
-        // SAFETY: pointers are valid for the synchronous call; the returned handle is owned.
-        let handle = unsafe { CreateMutexW(&attributes, 0, name.as_ptr()) };
-        if handle.is_null() {
-            return Err(io::Error::last_os_error());
+        // The containing directory already carries a protected current-user-only
+        // DACL, so no other principal can reach this file. The reparse-point flag
+        // is the Windows analogue of `O_NOFOLLOW`: a planted link is opened as
+        // itself instead of redirecting the lock to another file.
+        let lock = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+            .open(paths.directory.join(SINGLETON_LOCK_FILE))?;
+        let handle = lock.as_raw_handle() as HANDLE;
+        let mut overlapped = OVERLAPPED::default();
+        // SAFETY: the handle is owned by `lock` and `overlapped` outlives the call.
+        let locked = unsafe {
+            LockFileEx(
+                handle,
+                LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
+                0,
+                u32::MAX,
+                u32::MAX,
+                &mut overlapped,
+            )
+        };
+        if locked == 0 {
+            let error = io::Error::last_os_error();
+            if error.raw_os_error() == i32::try_from(ERROR_LOCK_VIOLATION).ok() {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "profile daemon already running",
+                ));
+            }
+            return Err(error);
         }
-        // SAFETY: immediately reads this thread's last-error slot.
-        let already_exists = unsafe { GetLastError() } == ERROR_ALREADY_EXISTS;
-        if already_exists {
-            // SAFETY: initial ownership was not granted for an existing mutex.
-            unsafe { CloseHandle(handle) };
-            return Err(io::Error::new(
-                io::ErrorKind::AlreadyExists,
-                "profile daemon already running",
-            ));
-        }
-        Ok(Self {
-            _handle: OwnedHandle(handle),
-        })
+        Ok(Self { _lock: lock })
     }
 }
 
@@ -155,17 +193,35 @@ impl LocalListener {
     }
 
     pub(crate) async fn accept(&mut self) -> io::Result<NamedPipeServer> {
-        let connected = self.next.take().ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::BrokenPipe,
-                "named-pipe listener lost its instance",
-            )
-        })?;
-        connected.connect().await?;
-        let replacement = create_pipe(&self.name, &mut self.security, false)?;
-        self.next = Some(replacement);
-        Ok(connected)
+        let pending = match self.next.take() {
+            Some(pending) => pending,
+            // The previous accept could not pre-create the replacement because
+            // the instance ceiling was momentarily full. Re-creating it here
+            // means one transient failure never costs the endpoint permanently.
+            None => create_pipe(&self.name, &mut self.security, false)?,
+        };
+        pending.connect().await?;
+        // Pre-create the next instance so another client can connect while this
+        // one is served. Failing here is transient and must not drop the client
+        // that already connected: the instance is re-created on the next accept.
+        self.next = create_pipe(&self.name, &mut self.security, false).ok();
+        Ok(pending)
     }
+}
+
+/// Accept errors that describe one connection or a momentarily full instance
+/// ceiling rather than a dead endpoint.
+///
+/// `ERROR_PIPE_BUSY` is reported when every instance of the pipe is in use,
+/// which is exactly the state a client that connects and holds produces. Ending
+/// the listener for it removes the pending instance and the session metadata
+/// while the process stays alive, so every later client — including legitimate
+/// writers — silently fails to connect.
+pub(crate) fn accept_error_is_transient(error: &io::Error) -> bool {
+    let code = error.raw_os_error();
+    [ERROR_PIPE_BUSY, ERROR_NO_DATA, ERROR_BROKEN_PIPE]
+        .into_iter()
+        .any(|transient| code == i32::try_from(transient).ok())
 }
 
 pub(crate) fn prepare_runtime(

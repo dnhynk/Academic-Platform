@@ -1,6 +1,6 @@
 //! Listener coordination and deterministic graceful shutdown.
 
-use std::{io, sync::Arc};
+use std::{io, sync::Arc, time::Duration};
 
 use tokio::{
     sync::{oneshot, watch},
@@ -8,11 +8,18 @@ use tokio::{
 };
 
 use crate::{
-    DaemonError, SessionNonce, WriterQueue, daemon_io,
+    DaemonError, MAX_CONCURRENT_CONNECTIONS, SessionNonce, WriterQueue, daemon_io,
     runtime_meta::remove_metadata,
     service::{RunningDaemon, serve_connection},
     transport::{self, LocalListener, RuntimePaths, SingletonGuard},
 };
+
+/// Pause before retrying an accept that failed transiently.
+///
+/// A transient transport error such as a momentarily full Windows named-pipe
+/// instance ceiling must not stop the listener, and retrying it with no pause
+/// would spin one core for as long as the condition lasts.
+const TRANSIENT_ACCEPT_BACKOFF: Duration = Duration::from_millis(50);
 
 impl RunningDaemon {
     /// Stops accepting connections, lets admitted connection work finish,
@@ -50,6 +57,7 @@ pub(crate) async fn listener_loop(
     mut listener: LocalListener,
     writer: Arc<WriterQueue>,
     nonce: SessionNonce,
+    frame_timeout: Duration,
     mut stop: oneshot::Receiver<()>,
     _singleton: SingletonGuard,
     runtime_paths: RuntimePaths,
@@ -58,12 +66,37 @@ pub(crate) async fn listener_loop(
     let mut connections = JoinSet::new();
     let (connection_stop, _) = watch::channel(false);
     let mut listener_error = None;
+    let mut backoff = false;
     loop {
+        if backoff {
+            backoff = false;
+            tokio::select! {
+                _ = &mut stop => {
+                    let _previous = connection_stop.send_replace(true);
+                    break;
+                },
+                () = tokio::time::sleep(TRANSIENT_ACCEPT_BACKOFF) => {}
+            }
+        }
+        // At the concurrency bound the listener reaps finished work instead of
+        // accepting, so a client that connects and holds cannot grow the live
+        // serve tasks, descriptors, and transport instances without limit.
+        if connections.len() >= MAX_CONCURRENT_CONNECTIONS {
+            tokio::select! {
+                _ = &mut stop => {
+                    let _previous = connection_stop.send_replace(true);
+                    break;
+                },
+                Some(result) = connections.join_next() => join_connection(result)?,
+            }
+            continue;
+        }
         tokio::select! {
             _ = &mut stop => {
                 let _previous = connection_stop.send_replace(true);
                 break;
             },
+            Some(result) = connections.join_next() => join_connection(result)?,
             accepted = listener.accept() => match accepted {
                 Ok(stream) => {
                     let connection_writer = Arc::clone(&writer);
@@ -74,12 +107,18 @@ pub(crate) async fn listener_loop(
                             stream,
                             connection_writer,
                             &connection_nonce,
+                            frame_timeout,
                             connection_shutdown,
                         )
                         .await
                     });
                 }
                 Err(error) if error.kind() == io::ErrorKind::PermissionDenied => continue,
+                // A transient transport error describes one connection or a
+                // momentarily unavailable instance, not a dead endpoint. Tearing
+                // the listener down for it turns backpressure into a permanent
+                // outage that no client can observe until shutdown.
+                Err(error) if transport::accept_error_is_transient(&error) => backoff = true,
                 Err(source) => {
                     let _previous = connection_stop.send_replace(true);
                     listener_error = Some(daemon_io(
@@ -93,14 +132,18 @@ pub(crate) async fn listener_loop(
         }
     }
     while let Some(result) = connections.join_next().await {
-        match result {
-            Ok(Ok(())) | Ok(Err(_)) => {}
-            Err(error) => return Err(DaemonError::ListenerTask(error.to_string())),
-        }
+        join_connection(result)?;
     }
     match listener_error {
         Some(error) => Err(error),
         None => Ok(()),
+    }
+}
+
+fn join_connection(result: Result<Result<(), DaemonError>, JoinError>) -> Result<(), DaemonError> {
+    match result {
+        Ok(Ok(())) | Ok(Err(_)) => Ok(()),
+        Err(error) => Err(DaemonError::ListenerTask(error.to_string())),
     }
 }
 
