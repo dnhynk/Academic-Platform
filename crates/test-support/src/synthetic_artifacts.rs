@@ -32,6 +32,21 @@ pub const SAMPLE_BYTES: &[u8] = b"synthetic academic artifact\nwith exact bytes\
 
 static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);
 
+/// macOS exposes `$TMPDIR` beneath the `/var` symlink and the native path
+/// facade refuses to follow a link component, so profile roots are reserved
+/// below the real directory.
+#[cfg(unix)]
+fn temporary_base() -> io::Result<PathBuf> {
+    fs::canonicalize(std::env::temp_dir())
+}
+
+/// Windows must not canonicalize: that yields the Win32 verbatim device
+/// spelling the facade rejects, trading one refused spelling for another.
+#[cfg(windows)]
+fn temporary_base() -> io::Result<PathBuf> {
+    Ok(std::env::temp_dir())
+}
+
 /// Owner of one unique disposable profile root.
 #[derive(Debug)]
 pub struct SyntheticTestRoot {
@@ -42,13 +57,14 @@ impl SyntheticTestRoot {
     /// Reserves a unique, initially absent path below the host temp directory.
     pub fn new(label: &str) -> io::Result<Self> {
         let label = sanitize_label(label);
+        let base = temporary_base()?;
         for _ in 0..64 {
             let sequence = NEXT_ROOT.fetch_add(1, Ordering::Relaxed);
             let nanos = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_nanos();
-            let path = std::env::temp_dir().join(format!(
+            let path = base.join(format!(
                 "academic-vault-{label}-{}-{nanos}-{sequence}",
                 std::process::id()
             ));
