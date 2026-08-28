@@ -1,14 +1,22 @@
 //! Safe Unix descriptor-relative implementation.
 
 use std::{
-    ffi::{OsStr, OsString},
-    fs,
-    os::{
-        fd::{AsRawFd, OwnedFd},
-        unix::ffi::{OsStrExt, OsStringExt},
-    },
+    ffi::OsStr,
+    os::fd::OwnedFd,
     path::{Component, Path, PathBuf},
 };
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::{ffi::OsString, os::unix::ffi::OsStringExt};
+
+#[cfg(target_os = "linux")]
+use std::{
+    fs,
+    os::{fd::AsRawFd, unix::ffi::OsStrExt},
+};
+
+#[cfg(target_os = "macos")]
+use std::ffi::c_char;
 
 use rustix::{
     fs::{self as rfs, AtFlags, Dir, FileType, Mode, OFlags},
@@ -18,8 +26,11 @@ use rustix::{
 
 use crate::{
     DirectoryAccess, FinalPathStatus, LocalityUnknown, PathCapabilities, PathCapabilityError,
-    PathCapabilityErrorCode, RootState, StorageLocality, classify_unix_filesystem_type,
+    PathCapabilityErrorCode, RootState, StorageLocality,
 };
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use crate::classify_unix_filesystem_type;
 
 #[derive(Debug)]
 struct Walk {
@@ -316,7 +327,25 @@ fn descriptor_path(handle: &OwnedFd) -> Result<PathBuf, PathCapabilityError> {
         }
         Ok(path)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    {
+        // Linux marks an unlinked descriptor path with a " (deleted)" suffix.
+        // macOS has no such marker, so a removed directory is rejected by the
+        // zero link count its pinned descriptor still reports.
+        let metadata = rfs::fstat(handle)
+            .map_err(|error| errno_error("inspect pinned descriptor link count", error))?;
+        if metadata.st_nlink == 0 {
+            return Err(PathCapabilityError::new(
+                PathCapabilityErrorCode::IdentityChanged,
+                "reject deleted pinned descriptor path",
+                None,
+            ));
+        }
+        let path = rfs::getpath(handle)
+            .map_err(|error| errno_error("read final path from pinned descriptor", error))?;
+        Ok(PathBuf::from(OsString::from_vec(path.into_bytes())))
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         let _ = handle;
         Err(PathCapabilityError::new(
@@ -393,7 +422,62 @@ fn mount_locality(
     ))
 }
 
-#[cfg(not(target_os = "linux"))]
+/// `MNT_LOCAL` from macOS `<sys/mount.h>`: the filesystem is stored locally.
+#[cfg(target_os = "macos")]
+const MNT_LOCAL: u32 = 0x0000_1000;
+
+/// `MNT_REMOVABLE` from macOS `<sys/mount.h>`: the filesystem is removable
+/// media such as a USB stick or an external disk.
+#[cfg(target_os = "macos")]
+const MNT_REMOVABLE: u32 = 0x0000_0200;
+
+#[cfg(target_os = "macos")]
+fn mount_locality(
+    _canonical_path: &Path,
+    handle: &OwnedFd,
+) -> Result<StorageLocality, PathCapabilityError> {
+    // `fstatfs` answers for the filesystem actually backing this descriptor, so
+    // unlike Linux there is no mount table to read and no path prefix to match.
+    let mount = rfs::fstatfs(handle)
+        .map_err(|error| errno_error("inspect mounted filesystem identity", error))?;
+    Ok(classify_macos_mount(
+        mount.f_flags,
+        &mount_type_name(&mount.f_fstypename),
+    ))
+}
+
+/// Combines the two independent macOS mount facts fail closed.
+///
+/// `MNT_LOCAL` is the kernel's own local/remote verdict and is authoritative
+/// for a remote answer. The mounted filesystem type is a second, independent
+/// check that can only make the verdict stricter; it is what catches a macFUSE
+/// network mount that still sets `MNT_LOCAL`. A locally stored volume whose
+/// type is not admitted stays unknown, because `MNT_LOCAL` alone does not
+/// separate an internal disk from a file-provider synchronization volume.
+#[cfg(target_os = "macos")]
+fn classify_macos_mount(flags: u32, filesystem_type: &str) -> StorageLocality {
+    let locality = classify_unix_filesystem_type(filesystem_type);
+    if locality == StorageLocality::Remote || flags & MNT_LOCAL == 0 {
+        return StorageLocality::Remote;
+    }
+    if flags & MNT_REMOVABLE != 0 {
+        return StorageLocality::Unknown(LocalityUnknown::RemovableVolume);
+    }
+    locality
+}
+
+/// Decodes the NUL-padded `f_fstypename` field of a macOS `statfs` result.
+#[cfg(target_os = "macos")]
+fn mount_type_name(raw: &[c_char]) -> String {
+    let bytes: Vec<u8> = raw
+        .iter()
+        .take_while(|value| **value != 0)
+        .map(|value| *value as u8)
+        .collect();
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 fn mount_locality(
     _canonical_path: &Path,
     _handle: &OwnedFd,
@@ -403,6 +487,7 @@ fn mount_locality(
     ))
 }
 
+#[cfg(target_os = "linux")]
 fn decode_mount_field(value: &[u8]) -> Vec<u8> {
     let mut output = Vec::with_capacity(value.len());
     let mut index = 0;
@@ -442,10 +527,95 @@ fn errno_error(operation: &'static str, error: Errno) -> PathCapabilityError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    #[cfg(target_os = "linux")]
+    use super::decode_mount_field;
 
+    #[cfg(target_os = "macos")]
+    use std::{ffi::c_char, path::Path};
+
+    #[cfg(target_os = "macos")]
+    use rustix::fs::{self as rfs, Mode, OFlags};
+
+    #[cfg(target_os = "macos")]
+    use super::{
+        MNT_LOCAL, MNT_REMOVABLE, classify_macos_mount, errno_error, mount_locality,
+        mount_type_name,
+    };
+
+    #[cfg(target_os = "macos")]
+    use crate::{LocalityUnknown, PathCapabilityError, StorageLocality};
+
+    #[cfg(target_os = "linux")]
     #[test]
     fn mount_field_decoder_handles_kernel_octal_escapes() {
         assert_eq!(decode_mount_field(br"/tmp/a\040b\134c"), br"/tmp/a b\c");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn statfs_type_name_stops_at_the_padding_nul() {
+        let mut raw: [c_char; 16] = [0; 16];
+        for (slot, byte) in raw.iter_mut().zip(b"apfs") {
+            *slot = *byte as c_char;
+        }
+        assert_eq!(mount_type_name(&raw), "apfs");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn injected_macos_mount_facts_decide_locality_fail_closed() {
+        assert_eq!(
+            classify_macos_mount(MNT_LOCAL, "apfs"),
+            StorageLocality::Local
+        );
+        // A cleared MNT_LOCAL is the kernel's own remote verdict. macOS network
+        // filesystems also report type names the shared table does not admit,
+        // so the flag rather than the name is what proves them remote.
+        for filesystem in ["apfs", "smbfs", "webdav", "afpfs"] {
+            assert_eq!(
+                classify_macos_mount(0, filesystem),
+                StorageLocality::Remote,
+                "{filesystem}"
+            );
+        }
+        // An admitted network type wins even when the mount claims to be local.
+        assert_eq!(
+            classify_macos_mount(MNT_LOCAL, "fuse.sshfs"),
+            StorageLocality::Remote
+        );
+        assert_eq!(
+            classify_macos_mount(MNT_LOCAL | MNT_REMOVABLE, "nfs"),
+            StorageLocality::Remote
+        );
+        assert_eq!(
+            classify_macos_mount(MNT_LOCAL | MNT_REMOVABLE, "apfs"),
+            StorageLocality::Unknown(LocalityUnknown::RemovableVolume)
+        );
+        assert_eq!(
+            classify_macos_mount(MNT_LOCAL, "lifs"),
+            StorageLocality::Unknown(LocalityUnknown::UnrecognizedFileSystem("lifs".to_owned()))
+        );
+    }
+
+    /// Proves both `<sys/mount.h>` bit positions against the live kernel: the
+    /// boot volume must be reported local and must not be reported removable.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn native_macos_boot_volume_is_local_and_not_removable() -> Result<(), PathCapabilityError> {
+        let root = rfs::open(
+            "/",
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
+        .map_err(|error| errno_error("open filesystem root without following links", error))?;
+        let mount = rfs::fstatfs(&root)
+            .map_err(|error| errno_error("inspect mounted filesystem identity", error))?;
+        assert_ne!(mount.f_flags & MNT_LOCAL, 0);
+        assert_eq!(mount.f_flags & MNT_REMOVABLE, 0);
+        assert_eq!(
+            mount_locality(Path::new("/"), &root)?,
+            StorageLocality::Local
+        );
+        Ok(())
     }
 }

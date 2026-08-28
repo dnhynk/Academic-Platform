@@ -60,6 +60,14 @@ pub enum LocalityUnknown {
     RemoteDeviceUnavailable,
     NoCoveringMount,
     UnrecognizedFileSystem(String),
+    /// The volume backing the probed descriptor is removable media.
+    ///
+    /// macOS produces this when `fstatfs` on the pinned descriptor reports a
+    /// mount that is otherwise local -- `MNT_LOCAL` set and `f_fstypename` not
+    /// a known network filesystem -- but that also carries `MNT_REMOVABLE`.
+    /// Removable media can vanish under an open profile, so it is never
+    /// promoted to `Local`.
+    RemovableVolume,
     UnsupportedPlatform,
 }
 

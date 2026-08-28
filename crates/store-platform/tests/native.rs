@@ -21,7 +21,7 @@ struct TestDirectory(PathBuf);
 impl TestDirectory {
     fn create(label: &str) -> Result<Self, Box<dyn Error>> {
         let counter = TEST_DIRECTORY_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
+        let path = temporary_base()?.join(format!(
             "academic-store-platform-{label}-{}-{counter}",
             process::id()
         ));
@@ -112,6 +112,18 @@ fn native_windows_reparse_and_inherited_broad_dacl_are_rejected() -> Result<(), 
     fs::create_dir(&broad)?;
     assert_eq!(inspect_path(&broad)?.access, DirectoryAccess::Broad);
     Ok(())
+}
+
+/// macOS exposes `$TMPDIR` beneath the `/var` symlink and the facade refuses to
+/// follow a link component, so the tests address the real directory.
+#[cfg(unix)]
+fn temporary_base() -> Result<PathBuf, Box<dyn Error>> {
+    Ok(fs::canonicalize(std::env::temp_dir())?)
+}
+
+#[cfg(windows)]
+fn temporary_base() -> Result<PathBuf, Box<dyn Error>> {
+    Ok(std::env::temp_dir())
 }
 
 #[cfg(windows)]
