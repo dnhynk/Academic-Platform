@@ -36,6 +36,12 @@ struct SidecarState {
     generation_count: Option<i64>,
 }
 
+struct PersistentSidecarState {
+    logical: SidecarState,
+    journal_mode: String,
+    main_database_bytes: Vec<u8>,
+}
+
 #[test]
 fn exact_parent_v2_is_replaced_from_canonical_without_touching_vault() -> TestResult {
     let mut fixture = Fixture::new("exact-parent-v2")?;
@@ -189,23 +195,94 @@ fn current_v3_sqlitex_trigger_is_corrupt_and_unchanged() -> TestResult {
         1
     );
     assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
-    let before = sidecar_state(&connection)?;
-    assert_eq!(before.user_version, i64::from(PROJECTION_DATABASE_VERSION));
-    assert_eq!(before.generation_count, Some(0));
     drop(connection);
+    let before = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_eq!(
+        before.logical.user_version,
+        i64::from(PROJECTION_DATABASE_VERSION)
+    );
+    assert_eq!(before.logical.generation_count, Some(0));
+    assert_eq!(before.journal_mode, "delete");
 
     let Err(error) = open_runner(&fixture) else {
         return Err("current v3 sidecar with a sqliteX trigger was accepted".into());
     };
     assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
 
+    let after = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_persistent_sidecar_unchanged(&before, &after);
     let connection = Connection::open(fixture.sidecar_path())?;
-    assert_eq!(sidecar_state(&connection)?, before);
     assert_eq!(
         named_schema_object_count(&connection, "trigger", SQLITEX_TRIGGER_NAME)?,
         1
     );
     assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
+    Ok(())
+}
+
+#[test]
+fn current_v3_generation_provenance_rejection_is_corrupt_and_unchanged() -> TestResult {
+    let fixture = Fixture::new("current-invalid-generation-provenance")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    connection.execute_batch(concat!(
+        "INSERT INTO projection_generation(",
+        "generation_seq, generation_id, projection_kind, schema_version, ",
+        "builder_binary_digest, algorithm_version, tokenizer_version, effective_config_hash, ",
+        "known_at_accept_seq, valid_at_unix_ms, source_outbox_seq, source_ledger_digest, ",
+        "resolver_version, policy_registry_version, policy_registry_hash, security_domain, ",
+        "built_at_unix_ms, state, record_count, canonical_checksum, failure_reason) VALUES(",
+        "1, zeroblob(16), 'fts5-unicode61-v1', 2, zeroblob(32), ",
+        "'unknown-ranking-algorithm', 'sqlite-fts5-unicode61-v1', zeroblob(32), ",
+        "0, 0, 0, zeroblob(32), 'resolver', 'policy', zeroblob(32), zeroblob(16), ",
+        "0, 'FAILED', NULL, NULL, 'unknown provenance sentinel');"
+    ))?;
+    drop(connection);
+    let before = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_eq!(before.logical.generation_count, Some(1));
+    assert_eq!(before.journal_mode, "delete");
+
+    let Err(error) = open_runner(&fixture) else {
+        return Err("current v3 sidecar with unknown generation provenance was accepted".into());
+    };
+    assert!(
+        matches!(error, ProjectionError::Corrupt(reason) if reason.contains("unknown algorithm provenance"))
+    );
+
+    let after = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_persistent_sidecar_unchanged(&before, &after);
+    let connection = Connection::open(fixture.sidecar_path())?;
+    let (algorithm_version, state, failure_reason) = connection.query_row(
+        "SELECT algorithm_version, state, failure_reason FROM projection_generation",
+        [],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
+    )?;
+    assert_eq!(algorithm_version, "unknown-ranking-algorithm");
+    assert_eq!(state, "FAILED");
+    assert_eq!(failure_reason, "unknown provenance sentinel");
+    Ok(())
+}
+
+#[test]
+fn exact_current_v3_is_accepted_and_configured_for_wal() -> TestResult {
+    let fixture = Fixture::new("current-valid-wal")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    drop(connection);
+    let before = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_eq!(before.journal_mode, "delete");
+
+    drop(open_runner(&fixture)?);
+
+    let after = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_eq!(after.logical, before.logical);
+    assert_eq!(after.journal_mode, "wal");
     Ok(())
 }
 
@@ -224,10 +301,11 @@ fn known_v2_shapes_with_sqlitex_trigger_are_not_replaced() -> TestResult {
             1
         );
         assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
-        let before = sidecar_state(&connection)?;
-        assert_eq!(before.user_version, 2);
-        assert_eq!(before.generation_count, Some(0));
         drop(connection);
+        let before = persistent_sidecar_state(fixture.sidecar_path())?;
+        assert_eq!(before.logical.user_version, 2);
+        assert_eq!(before.logical.generation_count, Some(0));
+        assert_eq!(before.journal_mode, "delete");
 
         let Err(error) = open_runner(&fixture) else {
             return Err(format!("{label} v2 sidecar with a sqliteX trigger was replaced").into());
@@ -241,8 +319,9 @@ fn known_v2_shapes_with_sqlitex_trigger_are_not_replaced() -> TestResult {
             } if application_id == i64::from(PROJECTION_APPLICATION_ID)
         ));
 
+        let after = persistent_sidecar_state(fixture.sidecar_path())?;
+        assert_persistent_sidecar_unchanged(&before, &after);
         let connection = Connection::open(fixture.sidecar_path())?;
-        assert_eq!(sidecar_state(&connection)?, before);
         assert_eq!(
             named_schema_object_count(&connection, "trigger", SQLITEX_TRIGGER_NAME)?,
             1
@@ -260,15 +339,16 @@ fn version_zero_sqlitex_object_is_not_initialized() -> TestResult {
         "CREATE TABLE sqliteXunexpected(value TEXT NOT NULL); \
          INSERT INTO sqliteXunexpected(value) VALUES ('sentinel');",
     )?;
-    let before = sidecar_state(&connection)?;
-    assert_eq!(before.application_id, 0);
-    assert_eq!(before.user_version, 0);
-    assert_eq!(before.generation_count, None);
     assert_eq!(
         named_schema_object_count(&connection, "table", "sqliteXunexpected")?,
         1
     );
     drop(connection);
+    let before = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_eq!(before.logical.application_id, 0);
+    assert_eq!(before.logical.user_version, 0);
+    assert_eq!(before.logical.generation_count, None);
+    assert_eq!(before.journal_mode, "delete");
 
     let Err(error) = open_runner(&fixture) else {
         return Err("version-zero database with a sqliteX object was initialized".into());
@@ -282,8 +362,9 @@ fn version_zero_sqlitex_object_is_not_initialized() -> TestResult {
         }
     ));
 
+    let after = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_persistent_sidecar_unchanged(&before, &after);
     let connection = Connection::open(fixture.sidecar_path())?;
-    assert_eq!(sidecar_state(&connection)?, before);
     assert_eq!(
         named_schema_object_count(&connection, "table", "sqliteXunexpected")?,
         1
@@ -516,6 +597,31 @@ fn sidecar_state(connection: &Connection) -> TestResult<SidecarState> {
         schema,
         generation_count,
     })
+}
+
+fn persistent_sidecar_state(path: &std::path::Path) -> TestResult<PersistentSidecarState> {
+    let connection = Connection::open(path)?;
+    let logical = sidecar_state(&connection)?;
+    let journal_mode = connection.query_row("PRAGMA journal_mode", [], |row| row.get(0))?;
+    drop(connection);
+    let main_database_bytes = fs::read(path)?;
+    Ok(PersistentSidecarState {
+        logical,
+        journal_mode,
+        main_database_bytes,
+    })
+}
+
+fn assert_persistent_sidecar_unchanged(
+    before: &PersistentSidecarState,
+    after: &PersistentSidecarState,
+) {
+    assert_eq!(after.logical, before.logical);
+    assert_eq!(after.journal_mode, before.journal_mode);
+    assert!(
+        after.main_database_bytes == before.main_database_bytes,
+        "projection main database bytes changed on rejection"
+    );
 }
 
 fn named_schema_object_count(
