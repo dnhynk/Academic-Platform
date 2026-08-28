@@ -780,11 +780,13 @@ pub fn migrate_projection_database(path: &Path) -> ProjectionResult<()> {
     };
 
     let replace_previous_algorithm = if matches!(format, ExistingFormat::Current) {
-        configure_projection_writer(&connection)?;
         verify_projection_schema(&connection)?;
         verify_fts5(&connection)?;
         match persisted_generation_format(&connection)? {
-            PersistedGenerationFormat::Current => return Ok(()),
+            PersistedGenerationFormat::Current => {
+                configure_projection_writer(&connection)?;
+                return Ok(());
+            }
             PersistedGenerationFormat::ExactPreviousAlgorithm => true,
         }
     } else {
