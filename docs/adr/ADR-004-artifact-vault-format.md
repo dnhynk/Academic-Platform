@@ -24,6 +24,25 @@ lease. Store re-hashes the retained handle and reopens/re-hashes the canonical p
 lease immediately before every successful new, duplicate, or idempotent commit, rejecting missing,
 truncated, replaced, or identity-changed objects without a new durable receipt.
 
+One `Vault` value is safe to share by reference across threads. Ingest, sealed-object
+verification, and pre-commit revalidation may run concurrently on `&Vault`, for the same artifact
+or for different artifacts, without a caller-supplied lock; the daemon must not serialize ingest to
+work around them. Concurrent ingest of identical bytes into one policy namespace publishes exactly
+one object and adopts it for every other caller, so no caller receives a spurious failure, no
+object is published without a receipt, and no partial is leaked into `vault/tmp`. Reconciliation is
+excluded from that contract: it is a startup pass that removes expired partials and quarantines
+orphans, and it must complete before the daemon accepts clients.
+
+Windows makes that contract concrete. The explicit durable directory handle is opened with
+`GENERIC_WRITE` because `FlushFileBuffers` refuses a read-only directory handle, so the flush the
+design names actually executes instead of being swallowed as unsupported. Every synchronization
+still writes the write-through directory barrier, which is the ordering mechanism only on a host
+that rejects the flush; the barrier permits read and write sharing and its write is covered by the
+same bounded sharing-violation retry as publication, because concurrent ingests synchronize the
+same `vault/tmp`, object fan-out, and lease directories. Lease-file creation requests read access
+only, so it cannot collide with a shared lease another thread took inside the existence-check
+window.
+
 This lease is a product coordination boundary, not an OS sandbox claim. Windows file sharing and
 Unix advisory `flock` provide a portable cross-process protocol for every Academic Platform owner,
 but an unrelated same-user process, malware, administrator, or storage failure can ignore or bypass
