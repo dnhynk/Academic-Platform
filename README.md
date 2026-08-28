@@ -8,7 +8,7 @@ This repository is the runnable foundation for a local-first Personal Academic Â
 - `academic-ledger`: verified-capability-only append, device origin-chain gap/fork checks, replica-local `accept_seq`, cross-domain evidence closure, scope-isolated authority resolution, and bitemporal queries.
 - `academic-contracts`: deterministic CBOR v2 encode/sign plus v1/v2 decode/verify, semantic v2 validation of returned writer bytes, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, an immutable v1-to-v2 decision upcaster, and executable Protobuf actor/relation round trips with the same RFC-variant UUIDv7 boundary.
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
-- `academic` CLI: privacy-safe doctor plus fixture emit/verify/replay commands.
+- `academic` CLI: `daemon serve|status`, `doctor` (with `--profile`/`--deep`), `ingest`, `export`, `backup`, `restore`, `crash-replay`, and `fixture emit|verify|replay`. Every path prints the synthetic-only banner before its results and repeats the policy object in JSON, and exit codes distinguish policy denial, conflict, repair-required, incompatible, unavailable, and internal failure. See [the CLI contract](docs/contracts/phase1-cli.md).
 - `@academic-os/web-contracts`: exact TypeScript fixture validation kept in positive/negative parity with JSON Schema and Rust.
 - Phase 1 F0 crates: empty store/vault/RPC/daemon/projection/portability/test-support boundaries, bundled plaintext SQLite as the default compile lane, and an explicit non-default SQLCipher spike feature that carries no acceptance claim.
 
@@ -51,6 +51,26 @@ pnpm fixture:replay
 pnpm fixture:verify:v1
 pnpm fixture:replay:v1
 ```
+
+## Operating a throwaway Phase 1 profile
+
+Every path below is synthetic-only and disposable. Do not point any of them at
+real data.
+
+```powershell
+cargo run --locked --offline -p academic-cli -- daemon serve --profile <profile> --runtime <runtime>
+cargo run --locked --offline -p academic-cli -- daemon status --profile <profile> --runtime <runtime> --format json
+cargo run --locked --offline -p academic-cli -- ingest --profile <profile> --runtime <runtime> --fixture phase0-synthetic-bitemporal-ledger-v2
+cargo run --locked --offline -p academic-cli -- doctor --profile <profile> --deep --format json
+cargo run --locked --offline -p academic-cli -- export --profile <profile> --destination <export>
+cargo run --locked --offline -p academic-cli -- backup --profile <profile> --destination <backup>
+cargo run --locked --offline -p academic-cli -- restore --backup <backup> --new-profile <fresh>
+cargo run --locked --offline -p academic-cli -- crash-replay --all --format json
+```
+
+`daemon serve` runs in the foreground and creates the profile when its root is
+absent. `crash-replay` only reports the enumerated fault matrix; it cannot
+terminate a process, and a production build carries no crash switch.
 
 ## Safety boundary
 

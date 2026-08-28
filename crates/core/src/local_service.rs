@@ -41,7 +41,7 @@ use crate::{
 
 /// The only mutable D1 fixture identifier.
 pub const PHASE1_SYNTHETIC_FIXTURE_ID: &str = "phase0-synthetic-bitemporal-ledger-v2";
-const FIXTURE_LOCATOR_KEY: &[u8] = b"phase0-synthetic-domain-locator-key";
+pub(crate) const FIXTURE_LOCATOR_KEY: &[u8] = b"phase0-synthetic-domain-locator-key";
 const REQUEST_DIGEST_DOMAIN: &[u8] = b"academic.local-mutable-request.v1\0";
 const RESPONSE_DIGEST_DOMAIN: &[u8] = b"academic.local-mutable-response.v1\0";
 

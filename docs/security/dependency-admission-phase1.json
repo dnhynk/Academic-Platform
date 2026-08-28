@@ -227,6 +227,13 @@
       "install_scripts": false,
       "uses": [
         {
+          "package": "academic-cli",
+          "kind": "dev",
+          "target": null,
+          "default_features": false,
+          "features": []
+        },
+        {
           "package": "academic-test-support",
           "kind": "dev",
           "target": null,
@@ -277,6 +284,13 @@
       "network_role": "none",
       "install_scripts": false,
       "uses": [
+        {
+          "package": "academic-cli",
+          "kind": "dev",
+          "target": null,
+          "default_features": false,
+          "features": []
+        },
         {
           "package": "academic-test-support",
           "kind": "dev",
@@ -422,6 +436,13 @@
           "features": []
         },
         {
+          "package": "academic-cli",
+          "kind": "dev",
+          "target": null,
+          "default_features": true,
+          "features": []
+        },
+        {
           "package": "academic-test-support",
           "kind": "dev",
           "target": null,
@@ -438,7 +459,7 @@
       "rust_version": "1.71",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
       "repository": "https://github.com/tokio-rs/tokio",
-      "owner": "academic-rpc and academic-daemon",
+      "owner": "academic-rpc, academic-daemon, and academic-cli",
       "admitted_features": [
         "io-util",
         "macros",
@@ -460,6 +481,13 @@
         },
         {
           "package": "academic-rpc",
+          "kind": "normal",
+          "target": null,
+          "default_features": false,
+          "features": ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"]
+        },
+        {
+          "package": "academic-cli",
           "kind": "normal",
           "target": null,
           "default_features": false,

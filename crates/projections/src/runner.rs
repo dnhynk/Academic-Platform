@@ -449,6 +449,21 @@ impl ProjectionRunner {
         Ok(())
     }
 
+    /// Reads the active generation selected for one projection kind and domain.
+    ///
+    /// Deep doctor reports projection lag against the canonical outbox head, so
+    /// this watermark read belongs to the product surface rather than the fault
+    /// harness. It opens the sidecar read-only and returns owned metadata,
+    /// never a connection.
+    pub fn active_generation(
+        &self,
+        kind: ProjectionKind,
+        domain: DomainId,
+    ) -> ProjectionResult<Option<ActiveGeneration>> {
+        let connection = open_projection_reader(&self.projection_database_path)?;
+        read_active_generation(&connection, kind, domain)
+    }
+
     /// Reads immutable generation metadata for the explicit fault harness.
     #[cfg(feature = "phase1-fault-injection")]
     pub fn generation(&self, generation_id: GenerationId) -> ProjectionResult<GenerationMetadata> {

@@ -40,8 +40,8 @@ use windows_sys::Win32::{
 };
 
 use super::{
-    LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SINGLETON_LOCK_FILE,
-    profile_key,
+    LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SESSION_METADATA_FILE,
+    SINGLETON_LOCK_FILE, profile_key,
 };
 
 #[derive(Debug)]
@@ -251,7 +251,7 @@ pub(crate) fn prepare_runtime(
     }
     Ok(RuntimePaths {
         profile_key: key.clone(),
-        metadata: directory.join("session.meta"),
+        metadata: directory.join(SESSION_METADATA_FILE),
         endpoint: LocalEndpoint::NamedPipe(format!(r"\\.\pipe\academic-os\{session}\{key}")),
         directory,
     })

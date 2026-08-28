@@ -11,6 +11,7 @@
     "bootstrap": "node tools/bootstrap.mjs",
     "source:preflight": "node tools/source-preflight.mjs",
     "doctor": "cargo run --locked --offline --quiet -p academic-cli -- doctor --format json",
+    "crash:matrix": "cargo run --locked --offline --quiet -p academic-cli -- crash-replay --all --format json",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test && node --test tools/phase1-scaffold-policy.test.mjs",

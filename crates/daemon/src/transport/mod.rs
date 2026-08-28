@@ -33,6 +33,9 @@ impl LocalEndpoint {
     }
 }
 
+/// Current-user session metadata file published by a running daemon.
+pub(crate) const SESSION_METADATA_FILE: &str = "session.meta";
+
 /// Lock file backing the per-profile singleton on both platforms.
 pub(crate) const SINGLETON_LOCK_FILE: &str = "academicd.lock";
 
@@ -125,3 +128,20 @@ pub(crate) use windows::{
     LocalListener, SingletonGuard, accept_error_is_transient, cleanup_endpoint, prepare_runtime,
     secure_metadata,
 };
+
+/// Returns the current-user runtime directory that owns one profile's session
+/// metadata and endpoint.
+///
+/// A local client needs this to find what a running daemon published. Exposing
+/// the resolved directory keeps the profile-key derivation in one place instead
+/// of duplicating it in every client.
+pub fn runtime_profile_directory(runtime_root: &Path, profile_root: &Path) -> io::Result<PathBuf> {
+    Ok(runtime_root
+        .join(PRODUCT_RUNTIME_DIR)
+        .join(profile_key(profile_root)?))
+}
+
+/// Returns the session metadata path a running daemon publishes for a profile.
+pub fn session_metadata_path(runtime_root: &Path, profile_root: &Path) -> io::Result<PathBuf> {
+    Ok(runtime_profile_directory(runtime_root, profile_root)?.join(SESSION_METADATA_FILE))
+}
