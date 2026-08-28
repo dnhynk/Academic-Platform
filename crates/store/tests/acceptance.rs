@@ -740,6 +740,258 @@ fn duplicate_batch_revalidates_object_before_receipt_commit() -> Result<(), Box<
     Ok(())
 }
 
+/// One normalized `claim_evidence` row: claim, evidence, and ordinal.
+type EvidenceLink = (Vec<u8>, Vec<u8>, i64);
+
+/// Normalized closure a receipted acceptance must leave durable.
+#[derive(Debug, PartialEq, Eq)]
+struct DurableAcceptance {
+    claim_evidence_links: Vec<EvidenceLink>,
+    outbox_count: u64,
+    next_accept_seq: u64,
+    accept_seq_head: u64,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ReservedPrefixOutcome {
+    AdmissionRefused,
+    Accepted(DurableAcceptance),
+}
+
+/// Exact reserved-prefix trigger bodies whose effects a receipted acceptance
+/// must never absorb: silent evidence-closure loss, silent outbox loss, and a
+/// forged acceptance sequence.
+const RESERVED_PREFIX_TRIGGERS: [(&str, &str); 3] = [
+    (
+        "shadow_claim_evidence",
+        "CREATE TRIGGER shadow_claim_evidence BEFORE INSERT ON claim_evidence \
+         BEGIN SELECT RAISE(IGNORE); END;",
+    ),
+    (
+        "shadow_projection_outbox",
+        "CREATE TRIGGER shadow_projection_outbox BEFORE INSERT ON projection_outbox \
+         BEGIN SELECT RAISE(IGNORE); END;",
+    ),
+    (
+        "shadow_replica_state",
+        "CREATE TRIGGER shadow_replica_state AFTER UPDATE ON replica_state \
+         WHEN NEW.next_accept_seq < 1000 \
+         BEGIN UPDATE replica_state SET next_accept_seq = 1000 WHERE singleton = 1; END;",
+    ),
+];
+
+#[test]
+fn reserved_prefix_trigger_cannot_alter_receipted_acceptance() -> Result<(), Box<dyn Error>> {
+    let control = reserved_prefix_acceptance("reserved-prefix-control", None)?;
+    let ReservedPrefixOutcome::Accepted(expected) = &control.outcome else {
+        return Err("untampered control acceptance was refused".into());
+    };
+    assert_eq!(expected.claim_evidence_links, control.payload_links);
+    assert_eq!(expected.outbox_count, 1);
+    assert_eq!(expected.next_accept_seq, 5);
+    assert_eq!(expected.accept_seq_head, 4);
+
+    let mut outcomes = Vec::new();
+    for (name, sql) in RESERVED_PREFIX_TRIGGERS {
+        let reserved = format!("sqlite_{name}");
+        let run = reserved_prefix_acceptance(name, Some((name, sql)))?;
+        if let ReservedPrefixOutcome::Accepted(actual) = &run.outcome {
+            // A receipted acceptance must store exactly the signed closure,
+            // one outbox row, and the reserved contiguous acceptance range.
+            assert_eq!(
+                actual.claim_evidence_links, run.payload_links,
+                "{reserved} changed the durable evidence closure of a receipted acceptance"
+            );
+            assert_eq!(
+                actual.outbox_count, expected.outbox_count,
+                "{reserved} changed the durable outbox of a receipted acceptance"
+            );
+            assert_eq!(
+                actual.next_accept_seq, expected.next_accept_seq,
+                "{reserved} changed the durable acceptance sequence"
+            );
+            assert_eq!(
+                actual.accept_seq_head, expected.accept_seq_head,
+                "{reserved} changed the durable acceptance head"
+            );
+        }
+        outcomes.push((reserved, run.outcome));
+    }
+    for (reserved, outcome) in &outcomes {
+        assert_eq!(
+            *outcome,
+            ReservedPrefixOutcome::AdmissionRefused,
+            "{reserved} passed writer and acceptance admission"
+        );
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
+struct ReservedPrefixRun {
+    payload_links: Vec<EvidenceLink>,
+    outcome: ReservedPrefixOutcome,
+}
+
+fn reserved_prefix_acceptance(
+    label: &str,
+    tamper: Option<(&str, &str)>,
+) -> Result<ReservedPrefixRun, Box<dyn Error>> {
+    const NAMESPACE: u32 = 0x1a00;
+    let database = TestDatabase::new(label)?;
+    let vault = database.vault(NAMESPACE)?;
+    let batch = artifact_batch(&vault, NAMESPACE, 0x1a80)?;
+    let payload_links = signed_evidence_links(&batch)?;
+    assert_eq!(payload_links.len(), 1);
+    let signed = signed(&batch)?;
+    let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
+
+    if let Some((name, sql)) = tamper {
+        install_reserved_prefix_trigger(database.path(), name, sql)?;
+    }
+
+    let probe = NativePathProbe::default();
+    let profile = match open_synthetic_profile(&database.root, &probe) {
+        Ok(profile) => profile,
+        Err(academic_store::error::StoreError::SchemaIdentityMismatch { .. }) => {
+            return Ok(ReservedPrefixRun {
+                payload_links,
+                outcome: ReservedPrefixOutcome::AdmissionRefused,
+            });
+        }
+        Err(error) => return Err(error.into()),
+    };
+    let mut store = match profile.open_acceptance_store() {
+        Ok(store) => store,
+        Err(academic_store::error::StoreError::SchemaIdentityMismatch { .. }) => {
+            return Ok(ReservedPrefixRun {
+                payload_links,
+                outcome: ReservedPrefixOutcome::AdmissionRefused,
+            });
+        }
+        Err(error) => return Err(error.into()),
+    };
+    let accepted = store.accept_verified_batch(
+        &verified,
+        command(&signed.envelope, 80, Some(0)),
+        TimestampMillis::new(7_300),
+        &vault,
+    )?;
+    assert_eq!(accepted.receipt.committed_revision, 1);
+    drop(store);
+
+    let reader = match open_reader(database.path()) {
+        Ok(reader) => reader,
+        Err(academic_store::error::StoreError::SchemaIdentityMismatch { .. }) => {
+            return Ok(ReservedPrefixRun {
+                payload_links,
+                outcome: ReservedPrefixOutcome::AdmissionRefused,
+            });
+        }
+        Err(error) => return Err(error.into()),
+    };
+    let snapshot = canonical_snapshot(&reader)?;
+    drop(reader);
+    let claim_evidence_links = durable_claim_evidence_links(database.path())?;
+    Ok(ReservedPrefixRun {
+        payload_links,
+        outcome: ReservedPrefixOutcome::Accepted(DurableAcceptance {
+            claim_evidence_links,
+            outbox_count: snapshot.outbox_count,
+            next_accept_seq: snapshot.next_accept_seq,
+            accept_seq_head: snapshot.accept_seq_head,
+        }),
+    })
+}
+
+/// Reads the durable normalized evidence closure straight from the database
+/// file, so the comparison is against what acceptance actually committed.
+fn durable_claim_evidence_links(database_path: &Path) -> Result<Vec<EvidenceLink>, Box<dyn Error>> {
+    let connection = rusqlite::Connection::open_with_flags(
+        database_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
+    let mut statement = connection.prepare(
+        "SELECT claim_id, evidence_id, evidence_ordinal FROM claim_evidence \
+         ORDER BY claim_id, evidence_ordinal",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok((
+            row.get::<_, Vec<u8>>(0)?,
+            row.get::<_, Vec<u8>>(1)?,
+            row.get::<_, i64>(2)?,
+        ))
+    })?;
+    let mut links = rows.collect::<rusqlite::Result<Vec<_>>>()?;
+    links.sort();
+    Ok(links)
+}
+
+/// Derives the exact normalized evidence closure the signed payload requires.
+fn signed_evidence_links(batch: &UnsignedBatch) -> Result<Vec<EvidenceLink>, Box<dyn Error>> {
+    let mut links = Vec::new();
+    for event in &batch.events {
+        let EventPayload::ClaimAsserted(claim) = &event.payload else {
+            continue;
+        };
+        for (ordinal, evidence_id) in claim.evidence_ids.iter().enumerate() {
+            links.push((
+                claim.id.as_bytes().to_vec(),
+                evidence_id.as_bytes().to_vec(),
+                i64::try_from(ordinal)?,
+            ));
+        }
+    }
+    links.sort();
+    Ok(links)
+}
+
+/// Installs a trigger and renames it into SQLite's reserved prefix through
+/// `writable_schema`, the only way such a name reaches `sqlite_schema`.
+fn install_reserved_prefix_trigger(
+    database_path: &Path,
+    name: &str,
+    sql: &str,
+) -> Result<(), Box<dyn Error>> {
+    let reserved = format!("sqlite_{name}");
+    let connection = rusqlite::Connection::open(database_path)?;
+    connection.execute_batch(sql)?;
+    let original = connection.query_row(
+        "SELECT sql FROM sqlite_schema WHERE type = 'trigger' AND name = ?1",
+        [name],
+        |row| row.get::<_, String>(0),
+    )?;
+    let renamed = original.replacen(name, &reserved, 1);
+    assert_ne!(renamed, original, "trigger rename anchor must exist");
+    connection.execute_batch("PRAGMA writable_schema = ON;")?;
+    connection.execute(
+        "UPDATE sqlite_schema SET name = ?2, sql = ?3 WHERE type = 'trigger' AND name = ?1",
+        (name, reserved.as_str(), renamed),
+    )?;
+    connection.execute_batch("PRAGMA writable_schema = OFF;")?;
+    let schema_version =
+        connection.query_row("PRAGMA schema_version", [], |row| row.get::<_, i64>(0))?;
+    connection.pragma_update(None, "schema_version", schema_version + 1)?;
+    drop(connection);
+
+    // A fresh connection proves SQLite loads the reserved-prefix trigger it
+    // refuses to create: only `CREATE` applies the reserved-prefix rejection.
+    let loaded = rusqlite::Connection::open(database_path)?;
+    assert_eq!(
+        loaded.query_row(
+            "SELECT count(*) FROM sqlite_schema WHERE type = 'trigger' AND name = ?1 COLLATE BINARY",
+            [reserved.as_str()],
+            |row| row.get::<_, i64>(0),
+        )?,
+        1
+    );
+    assert_eq!(
+        loaded.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))?,
+        "ok"
+    );
+    Ok(())
+}
+
 #[test]
 fn db01_db07_process_exit_restart_matrix() -> Result<(), Box<dyn Error>> {
     for (index, point) in [

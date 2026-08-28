@@ -1,7 +1,10 @@
 use std::{
+    env,
     error::Error,
     fs,
+    io::{self, Write},
     path::{Path, PathBuf},
+    process::{self, Command},
     sync::atomic::{AtomicU64, Ordering},
 };
 
@@ -17,6 +20,10 @@ use rusqlite::Connection;
 
 static NEXT_TEMP_DIRECTORY: AtomicU64 = AtomicU64::new(0);
 const BUILD_DIGEST: [u8; 32] = [0x5a; 32];
+const CRASH_WAL_CHILD_ENV: &str = "ACADEMIC_STORE_MIGRATION_CRASH_WAL_CHILD";
+const CRASH_WAL_DATABASE_ENV: &str = "ACADEMIC_STORE_MIGRATION_CRASH_WAL_DATABASE";
+const CRASH_WAL_CHILD_EXIT_CODE: i32 = 87;
+const RESERVED_PREFIX_TRIGGER_SENTINEL: &str = "reserved-prefix trigger executed";
 
 #[derive(Debug)]
 struct TemporaryDatabase {
@@ -106,6 +113,128 @@ fn assert_maintenance_and_reader_reject_without_mutation(
         "reader rejection changed the database family"
     );
     Ok((maintenance_error, reader_error))
+}
+
+/// Content the T060 rejection property preserves for every journal mode.
+///
+/// SQLite's own read and recovery path may create or refresh the `-wal`/`-shm`
+/// sidecars of a WAL database even when admission rejects it, so presence of an
+/// empty WAL is not a content change; an absent and an empty WAL carry the same
+/// committed content. The `-shm` file is a rebuildable shared index and carries
+/// no committed content at all, so it is deliberately outside this snapshot.
+#[derive(Debug, PartialEq, Eq)]
+struct DatabaseContentSnapshot {
+    main: Option<Vec<u8>>,
+    wal: Vec<u8>,
+    journal: Vec<u8>,
+}
+
+fn database_content_snapshot(path: &Path) -> Result<DatabaseContentSnapshot, Box<dyn Error>> {
+    Ok(DatabaseContentSnapshot {
+        main: read_optional_family_member(path, "")?,
+        wal: read_optional_family_member(path, "-wal")?.unwrap_or_default(),
+        journal: read_optional_family_member(path, "-journal")?.unwrap_or_default(),
+    })
+}
+
+fn read_optional_family_member(
+    path: &Path,
+    suffix: &str,
+) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
+    let member = family_member_path(path, suffix);
+    if member.try_exists()? {
+        Ok(Some(fs::read(&member)?))
+    } else {
+        Ok(None)
+    }
+}
+
+fn family_member_path(path: &Path, suffix: &str) -> PathBuf {
+    if suffix.is_empty() {
+        return path.to_path_buf();
+    }
+    let mut value = path.as_os_str().to_os_string();
+    value.push(suffix);
+    PathBuf::from(value)
+}
+
+fn assert_maintenance_and_reader_reject_preserving_content(
+    path: &Path,
+) -> Result<(StoreError, StoreError), Box<dyn Error>> {
+    let before_maintenance = database_content_snapshot(path)?;
+    let maintenance_error = match migrate_pre_listen(path, BUILD_DIGEST) {
+        Ok(status) => {
+            return Err(std::io::Error::other(format!(
+                "maintenance unexpectedly admitted schema as {status:?}"
+            ))
+            .into());
+        }
+        Err(error) => error,
+    };
+    assert_eq!(
+        database_content_snapshot(path)?,
+        before_maintenance,
+        "maintenance rejection changed durable database content"
+    );
+
+    let before_reader = database_content_snapshot(path)?;
+    let reader_error = match open_reader(path) {
+        Ok(_) => {
+            return Err(
+                std::io::Error::other("read-only reader unexpectedly admitted schema").into(),
+            );
+        }
+        Err(error) => error,
+    };
+    assert_eq!(
+        database_content_snapshot(path)?,
+        before_reader,
+        "reader rejection changed durable database content"
+    );
+    Ok((maintenance_error, reader_error))
+}
+
+/// Renames an existing schema object through `writable_schema` so a reserved
+/// `sqlite_` prefix that `CREATE` refuses can still reach `sqlite_schema`.
+fn rename_schema_object(
+    connection: &Connection,
+    object_type: &str,
+    from: &str,
+    to: &str,
+) -> Result<(), Box<dyn Error>> {
+    let original = connection.query_row(
+        "SELECT sql FROM sqlite_schema WHERE type = ?1 AND name = ?2",
+        [object_type, from],
+        |row| row.get::<_, String>(0),
+    )?;
+    let renamed = original.replacen(from, to, 1);
+    assert_ne!(renamed, original, "schema rename anchor must exist");
+    connection.execute_batch("PRAGMA writable_schema = ON;")?;
+    connection.execute(
+        concat!(
+            "UPDATE sqlite_schema SET name = ?3, ",
+            "tbl_name = CASE WHEN tbl_name = ?2 THEN ?3 ELSE tbl_name END, sql = ?4 ",
+            "WHERE type = ?1 AND name = ?2"
+        ),
+        (object_type, from, to, renamed),
+    )?;
+    connection.execute_batch("PRAGMA writable_schema = OFF;")?;
+    let schema_version =
+        connection.query_row("PRAGMA schema_version", [], |row| row.get::<_, i64>(0))?;
+    connection.pragma_update(None, "schema_version", schema_version + 1)?;
+    Ok(())
+}
+
+fn named_schema_object_count(
+    connection: &Connection,
+    object_type: &str,
+    name: &str,
+) -> Result<i64, Box<dyn Error>> {
+    Ok(connection.query_row(
+        "SELECT count(*) FROM sqlite_schema WHERE type = ?1 AND name = ?2 COLLATE BINARY",
+        [object_type, name],
+        |row| row.get(0),
+    )?)
 }
 
 fn use_delete_journal(connection: &Connection) -> Result<(), Box<dyn Error>> {
@@ -344,6 +473,202 @@ fn same_name_changed_table_definition_is_rejected_without_mutation() -> Result<(
         reader_error,
         StoreError::SchemaIdentityMismatch { .. }
     ));
+    Ok(())
+}
+
+#[test]
+fn version_zero_reserved_prefix_view_is_rejected_without_mutation() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("version-zero-reserved-prefix")?;
+    let raw = Connection::open(database.path())?;
+    raw.execute_batch("CREATE VIEW shadow_admission AS SELECT 1 AS value;")?;
+    rename_schema_object(&raw, "view", "shadow_admission", "sqlite_shadow_admission")?;
+    drop(raw);
+
+    // SQLite loads reserved-prefix objects it did not create: only `CREATE`
+    // rejects the prefix, so the view is live for every later connection.
+    let loaded = Connection::open(database.path())?;
+    assert_eq!(
+        named_schema_object_count(&loaded, "view", "sqlite_shadow_admission")?,
+        1
+    );
+    assert_eq!(
+        loaded.query_row("SELECT value FROM sqlite_shadow_admission", [], |row| row
+            .get::<_, i64>(
+            0
+        ))?,
+        1
+    );
+    drop(loaded);
+
+    let (maintenance_error, _) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::UnsupportedMigrationState {
+            application_id: 0,
+            user_version: 0
+        }
+    ));
+    Ok(())
+}
+
+#[test]
+fn current_schema_reserved_prefix_trigger_is_rejected_without_mutation()
+-> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("current-reserved-prefix")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    use_delete_journal(&raw)?;
+    raw.execute_batch(&format!(
+        "CREATE TRIGGER shadow_claim_evidence BEFORE INSERT ON claim_evidence \
+         BEGIN SELECT RAISE(ABORT, '{RESERVED_PREFIX_TRIGGER_SENTINEL}'); END;"
+    ))?;
+    rename_schema_object(
+        &raw,
+        "trigger",
+        "shadow_claim_evidence",
+        "sqlite_shadow_claim_evidence",
+    )?;
+    drop(raw);
+
+    let loaded = Connection::open(database.path())?;
+    assert_eq!(
+        named_schema_object_count(&loaded, "trigger", "sqlite_shadow_claim_evidence")?,
+        1
+    );
+    let Err(fired) = loaded.execute("INSERT INTO claim_evidence DEFAULT VALUES", []) else {
+        return Err("reserved-prefix trigger did not run".into());
+    };
+    assert!(
+        fired.to_string().contains(RESERVED_PREFIX_TRIGGER_SENTINEL),
+        "reserved-prefix trigger did not run: {fired}"
+    );
+    drop(loaded);
+
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    Ok(())
+}
+
+#[test]
+fn sqlite_created_reserved_prefix_tables_and_indexes_remain_admitted() -> Result<(), Box<dyn Error>>
+{
+    let database = TemporaryDatabase::new("sqlite-owned-objects")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    raw.execute_batch("ANALYZE;")?;
+    assert_eq!(named_schema_object_count(&raw, "table", "sqlite_stat1")?, 1);
+    let autoindexes = raw.query_row(
+        "SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND name GLOB 'sqlite_autoindex_*'",
+        [],
+        |row| row.get::<_, i64>(0),
+    )?;
+    assert!(autoindexes > 0, "migration 0001 must create autoindexes");
+    drop(raw);
+
+    assert_eq!(
+        migrate_pre_listen(database.path(), BUILD_DIGEST)?,
+        MigrationStatus::AlreadyCurrent
+    );
+    let _reader = open_reader(database.path())?;
+    Ok(())
+}
+
+#[test]
+fn wal_mode_rejection_preserves_durable_content() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("wal-rejection")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    assert_eq!(
+        raw.query_row("PRAGMA journal_mode", [], |row| row.get::<_, String>(0))?
+            .to_ascii_lowercase(),
+        "wal"
+    );
+    raw.execute_batch("CREATE TABLE sqliteXshadow(value INTEGER) STRICT;")?;
+    drop(raw);
+
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_preserving_content(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    Ok(())
+}
+
+#[test]
+fn crash_wal_rejection_preserves_durable_content() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("crash-wal-rejection")?;
+    seed_crash_wal_child(database.path())?;
+    let before = database_content_snapshot(database.path())?;
+    assert!(
+        before.wal.len() > 32,
+        "crash-WAL fixture must retain uncheckpointed frames"
+    );
+    assert!(family_member_path(database.path(), "-shm").try_exists()?);
+
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_preserving_content(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    Ok(())
+}
+
+/// Child half of [`crash_wal_rejection_preserves_durable_content`]: it commits a
+/// tampering object into the WAL and exits without closing SQLite, leaving the
+/// exact uncheckpointed state a crash leaves behind.
+#[test]
+fn migration_crash_wal_child() -> Result<(), Box<dyn Error>> {
+    if env::var_os(CRASH_WAL_CHILD_ENV).is_none() {
+        return Ok(());
+    }
+    let path =
+        PathBuf::from(env::var_os(CRASH_WAL_DATABASE_ENV).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::NotFound, "child database path missing")
+        })?);
+    migrate_pre_listen(&path, BUILD_DIGEST)?;
+    let connection = Connection::open(&path)?;
+    let journal_mode = connection.query_row("PRAGMA journal_mode = WAL", [], |row| {
+        row.get::<_, String>(0)
+    })?;
+    assert_eq!(journal_mode.to_ascii_lowercase(), "wal");
+    connection.execute_batch("PRAGMA wal_autocheckpoint = 0;")?;
+    connection.execute_batch("CREATE TABLE sqliteXshadow(value INTEGER) STRICT;")?;
+    let wal = fs::read(family_member_path(&path, "-wal"))?;
+    assert!(wal.len() > 32, "child did not leave uncheckpointed frames");
+    println!("crash-WAL child committed wal={} bytes", wal.len());
+    io::stdout().flush()?;
+    process::exit(CRASH_WAL_CHILD_EXIT_CODE)
+}
+
+fn seed_crash_wal_child(path: &Path) -> Result<(), Box<dyn Error>> {
+    let status = Command::new(env::current_exe()?)
+        .arg("--exact")
+        .arg("migration_crash_wal_child")
+        .arg("--nocapture")
+        .arg("--test-threads=1")
+        .env(CRASH_WAL_CHILD_ENV, "1")
+        .env(CRASH_WAL_DATABASE_ENV, path)
+        .status()?;
+    assert_eq!(status.code(), Some(CRASH_WAL_CHILD_EXIT_CODE));
     Ok(())
 }
 

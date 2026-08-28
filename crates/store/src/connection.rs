@@ -11,6 +11,7 @@ use std::{
 
 use rusqlite::{
     Connection, OpenFlags, OptionalExtension, Params, Row, Transaction, TransactionBehavior,
+    config::DbConfig,
 };
 
 use crate::{
@@ -256,7 +257,10 @@ pub(crate) fn open_writer(database_path: &Path) -> StoreResult<WriterConnection>
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection = Connection::open_with_flags(database_path, flags)?;
     // Reject a foreign or tampered schema before journal-mode or any other
-    // writer configuration can change the database family.
+    // writer configuration can change the database family, and before closing
+    // this read-write handle can checkpoint an uncheckpointed WAL into the
+    // main database.
+    disable_checkpoint_on_close(&connection)?;
     let admission_pragmas = read_pragma_snapshot(&connection)?;
     verify_current_schema(&connection, &admission_pragmas)?;
     verify_fts5(&connection)?;
@@ -287,6 +291,26 @@ pub fn open_reader(database_path: &Path) -> StoreResult<ReaderConnection> {
         connection,
         database_path: database_path.to_path_buf(),
     })
+}
+
+/// Disables SQLite's checkpoint-on-close for a read-write admission handle.
+///
+/// Rejecting a database must leave its exact main-database and committed-WAL
+/// bytes. Without this, closing the handle checkpoints an uncheckpointed WAL
+/// into the main database and rewrites it after admission already failed. The
+/// rebuildable `-shm` index and an empty `-wal` that SQLite's own read path
+/// creates carry no committed content and are outside that claim.
+pub(crate) fn disable_checkpoint_on_close(connection: &Connection) -> StoreResult<()> {
+    let disabled = connection.set_db_config(DbConfig::SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE, true)?;
+    if disabled {
+        Ok(())
+    } else {
+        Err(StoreError::PragmaMismatch {
+            pragma: "db_config.no_ckpt_on_close",
+            expected: "1".to_owned(),
+            actual: "0".to_owned(),
+        })
+    }
 }
 
 pub(crate) fn configure_migration_connection(connection: &Connection) -> StoreResult<()> {

@@ -52,9 +52,12 @@ pub const PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v3";
 const PREVIOUS_PROJECTION_ALGORITHM_VERSION: &str = "phase1-full-generation-v2";
 // SQLite reserves this literal prefix case-insensitively. Comparing the prefix
 // directly keeps the underscore literal while admitting valid `sqliteX...`
-// user object names.
-const USER_SCHEMA_OBJECT_PREDICATE: &str =
-    "substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_'";
+// user object names. Only `CREATE` applies the reserved-prefix rejection, so a
+// reserved-prefix trigger or view written directly into `sqlite_schema` loads
+// and fires; the exclusion is therefore narrowed to the tables and indexes
+// SQLite itself creates, exactly as the canonical store admission does.
+const USER_SCHEMA_OBJECT_PREDICATE: &str = "(type NOT IN ('table', 'index') \
+     OR substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_')";
 
 mod fault_boundary {
     use super::{ProjectionResult, fmt};

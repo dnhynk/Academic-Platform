@@ -32,6 +32,13 @@ const SQLITEX_TRIGGER_SQL: &str = concat!(
     "BEFORE INSERT ON projection_generation BEGIN ",
     "SELECT RAISE(ABORT, 'blocked by sqliteX trigger'); END;"
 );
+const UNRESERVED_PREFIX_TRIGGER_NAME: &str = "shadow_block_generation";
+const RESERVED_PREFIX_TRIGGER_NAME: &str = "sqlite_shadow_block_generation";
+const RESERVED_PREFIX_TRIGGER_SQL: &str = concat!(
+    "CREATE TRIGGER shadow_block_generation ",
+    "BEFORE INSERT ON projection_generation BEGIN ",
+    "SELECT RAISE(ABORT, 'blocked by reserved-prefix trigger'); END;"
+);
 const CRASH_WAL_CHILD_ENV: &str = "ACADEMIC_PROJECTION_FORMAT_CRASH_WAL_CHILD";
 const CRASH_WAL_SIDECAR_ENV: &str = "ACADEMIC_PROJECTION_FORMAT_CRASH_WAL_SIDECAR";
 const CRASH_WAL_CHILD_EXIT_CODE: i32 = 86;
@@ -233,6 +240,46 @@ fn current_v3_sqlitex_trigger_is_corrupt_and_unchanged() -> TestResult {
         1
     );
     assert_sqlitex_trigger_blocks_generation_insert(&connection)?;
+    Ok(())
+}
+
+#[test]
+fn current_v3_reserved_prefix_trigger_is_corrupt_and_unchanged() -> TestResult {
+    let fixture = Fixture::new("current-reserved-prefix-trigger")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    connection.execute_batch(RESERVED_PREFIX_TRIGGER_SQL)?;
+    rename_schema_object(
+        &connection,
+        "trigger",
+        UNRESERVED_PREFIX_TRIGGER_NAME,
+        RESERVED_PREFIX_TRIGGER_NAME,
+    )?;
+    drop(connection);
+
+    // SQLite loads the reserved-prefix trigger it refuses to create.
+    let loaded = Connection::open(fixture.sidecar_path())?;
+    assert_eq!(
+        named_schema_object_count(&loaded, "trigger", RESERVED_PREFIX_TRIGGER_NAME)?,
+        1
+    );
+    assert_reserved_prefix_trigger_blocks_generation_insert(&loaded)?;
+    drop(loaded);
+    let before = persistent_sidecar_state(fixture.sidecar_path())?;
+
+    let Err(error) = open_runner(&fixture) else {
+        return Err("current v3 sidecar with a reserved-prefix trigger was accepted".into());
+    };
+    assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
+
+    let after = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_persistent_sidecar_unchanged(&before, &after);
+    let connection = Connection::open(fixture.sidecar_path())?;
+    assert_eq!(
+        named_schema_object_count(&connection, "trigger", RESERVED_PREFIX_TRIGGER_NAME)?,
+        1
+    );
+    assert_reserved_prefix_trigger_blocks_generation_insert(&connection)?;
     Ok(())
 }
 
@@ -934,6 +981,56 @@ fn sqlite_owned_schema_object_count(connection: &Connection) -> TestResult<i64> 
         [],
         |row| row.get(0),
     )?)
+}
+
+/// Renames an existing schema object through `writable_schema`, the only way a
+/// reserved `sqlite_` prefix that `CREATE` refuses reaches `sqlite_schema`.
+fn rename_schema_object(
+    connection: &Connection,
+    object_type: &str,
+    from: &str,
+    to: &str,
+) -> TestResult {
+    let original = connection.query_row(
+        "SELECT sql FROM sqlite_schema WHERE type = ?1 AND name = ?2",
+        [object_type, from],
+        |row| row.get::<_, String>(0),
+    )?;
+    let renamed = original.replacen(from, to, 1);
+    assert_ne!(renamed, original, "schema rename anchor must exist");
+    connection.execute_batch("PRAGMA writable_schema = ON;")?;
+    connection.execute(
+        concat!(
+            "UPDATE sqlite_schema SET name = ?3, ",
+            "tbl_name = CASE WHEN tbl_name = ?2 THEN ?3 ELSE tbl_name END, sql = ?4 ",
+            "WHERE type = ?1 AND name = ?2"
+        ),
+        (object_type, from, to, renamed),
+    )?;
+    connection.execute_batch("PRAGMA writable_schema = OFF;")?;
+    let schema_version =
+        connection.query_row("PRAGMA schema_version", [], |row| row.get::<_, i64>(0))?;
+    connection.pragma_update(None, "schema_version", schema_version + 1)?;
+    Ok(())
+}
+
+fn assert_reserved_prefix_trigger_blocks_generation_insert(connection: &Connection) -> TestResult {
+    let Err(error) = connection.execute("INSERT INTO projection_generation DEFAULT VALUES", [])
+    else {
+        return Err("reserved-prefix trigger did not block a generation insert".into());
+    };
+    assert!(
+        error
+            .to_string()
+            .contains("blocked by reserved-prefix trigger")
+    );
+    assert_eq!(
+        connection.query_row("SELECT count(*) FROM projection_generation", [], |row| {
+            row.get::<_, i64>(0)
+        })?,
+        0
+    );
+    Ok(())
 }
 
 fn assert_sqlitex_trigger_blocks_generation_insert(connection: &Connection) -> TestResult {

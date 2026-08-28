@@ -11,8 +11,8 @@ use crate::{
     PHASE1_STORAGE_POLICY, SQLITE_APPLICATION_ID, STORE_FORMAT_UUID, STORE_SCHEMA_SEMVER,
     STORE_SCHEMA_VERSION,
     connection::{
-        PragmaSnapshot, configure_migration_connection, read_pragma_snapshot, verify_fts5,
-        verify_migration_pragmas, verify_writer_pragmas,
+        PragmaSnapshot, configure_migration_connection, disable_checkpoint_on_close,
+        read_pragma_snapshot, verify_fts5, verify_migration_pragmas, verify_writer_pragmas,
     },
     error::{StoreError, StoreResult},
     schema_fingerprint::{user_schema_object_count, verify_store_schema_fingerprint},
@@ -87,7 +87,13 @@ pub fn migrate_open_connection_pre_listen(
 ) -> StoreResult<MigrationStatus> {
     // Admission is deliberately read-only. In particular, journal_mode is not
     // changed to WAL until a database is proven empty or exactly current, so a
-    // rejected foreign/tampered database and its sidecar family stay intact.
+    // rejected foreign/tampered database keeps its exact main-database and
+    // committed-WAL bytes. Closing a read-write handle would otherwise
+    // checkpoint an uncheckpointed WAL into the main database and rewrite it
+    // even on the rejection path, so checkpoint-on-close is disabled first.
+    // SQLite's own read and recovery path may still create or refresh the
+    // rebuildable `-wal`/`-shm` sidecars; that is outside the claim.
+    disable_checkpoint_on_close(connection)?;
     let admission = inspect_schema_before_mutation(connection)?;
     verify_fts5(connection)?;
     configure_migration_connection(connection)?;
