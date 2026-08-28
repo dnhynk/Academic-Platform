@@ -4,6 +4,15 @@
 //! deliberately unsuitable for real or production data; the purpose of this crate is to make
 //! durable publication, exact-policy deduplication, and reconciliation executable before ADR-004
 //! selects an encrypted object format.
+//!
+//! A sealed capability retains a no-follow handle, exact host object identity, and a shared
+//! policy-namespace lease until Store finishes its SQL transaction. Every product-controlled
+//! ingest/reconcile/remove/replace path uses the same lease namespace. Unix leases are advisory,
+//! so an unrelated same-user process or stronger local attacker can ignore them; Store still
+//! revalidates the retained handle and canonical path immediately before commit and treats any
+//! missing, truncated, replaced, or identity-changed object as failure. Preventing a hostile
+//! out-of-process filesystem mutation in the final instruction window is outside this local
+//! cooperative boundary and remains part of the daemon/profile trust assumption.
 
 mod durability;
 mod fault;
@@ -74,6 +83,8 @@ pub enum VaultError {
     PathCollision(PathBuf),
     /// A just-published or referenced object failed exact read-back verification.
     IntegrityMismatch(PathBuf),
+    /// Another product-controlled operation owns the object's exclusive namespace lease.
+    LeaseUnavailable(PathBuf),
     /// A vault entry had an unsafe or unsupported physical shape.
     UnsafeEntry(PathBuf),
     /// The operating system could not provide random bytes for a unique ingest session.
@@ -135,6 +146,11 @@ impl fmt::Display for VaultError {
                     path.display()
                 )
             }
+            Self::LeaseUnavailable(path) => write!(
+                formatter,
+                "vault object namespace lease is unavailable at {}",
+                path.display()
+            ),
             Self::UnsafeEntry(path) => {
                 write!(
                     formatter,
@@ -311,12 +327,32 @@ impl Vault {
         descriptor: &ArtifactDescriptor,
     ) -> VaultResult<SealedObjectCapability> {
         let path = self.validate_descriptor_locator(descriptor)?;
-        ingest::verify_object(&path, descriptor.content_digest, descriptor.byte_length)?;
+        let lease_path = self.layout.ensure_lease_path(descriptor)?;
+        let lease = durability::acquire_shared_object_lease(&lease_path)?;
+        let evidence = ingest::verify_object_with_lease(
+            &path,
+            descriptor.content_digest,
+            descriptor.byte_length,
+            lease,
+        )?;
         Ok(SealedArtifactReceipt::new(
             descriptor.clone(),
             path,
             SealDisposition::AdoptedExisting,
+            evidence,
         ))
+    }
+
+    /// Revalidates one live capability against this vault immediately before SQL commit.
+    ///
+    /// The retained no-follow handle must still contain the exact digest/length, and reopening the
+    /// canonical path under the same shared lease must resolve to that same host object identity.
+    pub fn revalidate_sealed_object(
+        &self,
+        capability: &mut SealedObjectCapability,
+    ) -> VaultResult<()> {
+        let canonical_path = self.validate_descriptor_locator(capability.descriptor())?;
+        capability.revalidate(&canonical_path)
     }
 }
 

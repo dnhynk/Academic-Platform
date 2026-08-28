@@ -134,6 +134,7 @@ fn unrecognized_expired_orphan_is_quarantined() -> Result<(), Box<dyn Error>> {
     let (_root, vault) = open_test_vault("quarantine-orphan")?;
     let sealed = vault.ingest(&ingest_request()?, SAMPLE_BYTES)?;
     let original = sealed.object_path().to_path_buf();
+    drop(sealed);
     let report = vault.reconcile(
         &ReconcileOptions::new(SystemTime::now() + FUTURE).with_orphan_grace(ONE_HOUR),
     )?;
@@ -146,6 +147,29 @@ fn unrecognized_expired_orphan_is_quarantined() -> Result<(), Box<dyn Error>> {
     assert!(!original.exists());
     assert!(quarantined.path().is_file());
     assert_eq!(quarantined.artifact_id(), None);
+    Ok(())
+}
+
+#[test]
+fn live_sealed_capability_defers_product_quarantine() -> Result<(), Box<dyn Error>> {
+    let (_root, vault) = open_test_vault("live-capability-lease")?;
+    let sealed = vault.ingest(&ingest_request()?, SAMPLE_BYTES)?;
+    let original = sealed.object_path().to_path_buf();
+    let options =
+        ReconcileOptions::new(SystemTime::now() + FUTURE).with_orphan_grace(Duration::ZERO);
+
+    let leased = vault.reconcile(&options)?;
+    assert!(leased.records().iter().any(|record| {
+        record.state() == ReconcileState::OrphanLeaseHeld && record.path() == original
+    }));
+    assert!(original.is_file());
+
+    drop(sealed);
+    let released = vault.reconcile(&options)?;
+    assert!(released.records().iter().any(|record| {
+        record.state() == ReconcileState::QuarantinedOrphan && record.path() != original
+    }));
+    assert!(!original.exists());
     Ok(())
 }
 
@@ -197,6 +221,8 @@ fn audit_cross_policy_orphans_collide_in_flat_quarantine_namespace() -> Result<(
     assert_ne!(first.object_path(), second.object_path());
     let first_live_path = first.object_path().to_path_buf();
     let second_live_path = second.object_path().to_path_buf();
+    drop(first);
+    drop(second);
     let options = ReconcileOptions::new(fixed_reconcile_time()).with_orphan_grace(Duration::ZERO);
 
     let report = vault.reconcile(&options)?;
@@ -247,14 +273,14 @@ fn quarantine_identity_separates_permission_lineage_and_domain() -> Result<(), B
         SAMPLE_BYTES,
     )?;
 
-    assert_eq!(
-        first.descriptor().vault_locator,
-        second.descriptor().vault_locator
-    );
-    assert_ne!(
-        first.descriptor().vault_locator,
-        third.descriptor().vault_locator
-    );
+    let first_locator = first.descriptor().vault_locator.clone();
+    let second_locator = second.descriptor().vault_locator.clone();
+    let third_locator = third.descriptor().vault_locator.clone();
+    assert_eq!(first_locator, second_locator);
+    assert_ne!(first_locator, third_locator);
+    drop(first);
+    drop(second);
+    drop(third);
     let report = vault.reconcile(
         &ReconcileOptions::new(fixed_reconcile_time()).with_orphan_grace(Duration::ZERO),
     )?;
@@ -274,6 +300,7 @@ fn preoccupied_quarantine_destination_never_overwrites_bytes() -> Result<(), Box
     let request = ingest_request()?;
     let first = vault.ingest(&request, SAMPLE_BYTES)?;
     let live_path = first.object_path().to_path_buf();
+    drop(first);
     let options = ReconcileOptions::new(fixed_reconcile_time()).with_orphan_grace(Duration::ZERO);
     let first_report = vault.reconcile(&options)?;
     let destination = quarantined_paths(&first_report)
@@ -284,6 +311,7 @@ fn preoccupied_quarantine_destination_never_overwrites_bytes() -> Result<(), Box
 
     let republished = vault.ingest(&request, SAMPLE_BYTES)?;
     assert_eq!(republished.object_path(), live_path);
+    drop(republished);
     let result = vault.reconcile(&options);
     let collision = match result {
         Err(VaultError::PathCollision(path)) => path,
@@ -303,6 +331,7 @@ fn retry_candidate_io_error_does_not_quarantine() -> Result<(), Box<dyn Error>> 
     let sealed = vault.ingest(&ingest_request()?, SAMPLE_BYTES)?;
     let original = sealed.object_path().to_path_buf();
     let candidates = [sealed.descriptor().clone()];
+    drop(sealed);
     let lock = hold_exclusive(&original)?;
     let result = vault.reconcile(
         &ReconcileOptions::new(SystemTime::now() + FUTURE)

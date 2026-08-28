@@ -5,7 +5,8 @@ use std::{
     path::{Path, PathBuf},
     process::Command as ProcessCommand,
     str::FromStr,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+    time::SystemTime,
 };
 
 use academic_contracts::{DeviceAuthorization, sign_batch, verify_signed_batch};
@@ -26,7 +27,9 @@ use academic_store::{
     profile::{SyntheticProfile, create_synthetic_profile, open_synthetic_profile},
     queries::{batch_material, canonical_snapshot},
 };
-use academic_vault::{ArtifactIngestRequest, DomainKeyring, SealedArtifactReceipt, Vault};
+use academic_vault::{
+    ArtifactIngestRequest, DomainKeyring, ReconcileOptions, SealedArtifactReceipt, Vault,
+};
 
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
@@ -85,6 +88,75 @@ impl AcceptanceFaultInjector for ProcessExitAt {
         if point == self.0 {
             std::process::exit(90 + fault_ordinal(point));
         }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ObjectAttackKind {
+    Delete,
+    Truncate,
+    ReplaceSameBytes,
+}
+
+impl ObjectAttackKind {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Delete => "delete",
+            Self::Truncate => "truncate",
+            Self::ReplaceSameBytes => "replace-same-bytes",
+        }
+    }
+}
+
+#[derive(Debug)]
+struct ObjectAttackAt {
+    point: AcceptanceFaultPoint,
+    kind: ObjectAttackKind,
+    object_path: PathBuf,
+    replacement_bytes: Vec<u8>,
+    applied: AtomicBool,
+}
+
+impl ObjectAttackAt {
+    fn new(
+        point: AcceptanceFaultPoint,
+        kind: ObjectAttackKind,
+        object_path: PathBuf,
+        replacement_bytes: Vec<u8>,
+    ) -> Self {
+        Self {
+            point,
+            kind,
+            object_path,
+            replacement_bytes,
+            applied: AtomicBool::new(false),
+        }
+    }
+
+    fn was_applied(&self) -> bool {
+        self.applied.load(Ordering::SeqCst)
+    }
+
+    fn apply(&self) -> std::io::Result<()> {
+        match self.kind {
+            ObjectAttackKind::Delete => fs::remove_file(&self.object_path),
+            ObjectAttackKind::Truncate => fs::write(&self.object_path, b"x"),
+            ObjectAttackKind::ReplaceSameBytes => {
+                fs::remove_file(&self.object_path)?;
+                fs::write(&self.object_path, &self.replacement_bytes)
+            }
+        }
+    }
+}
+
+impl AcceptanceFaultInjector for ObjectAttackAt {
+    fn hit(&self, point: AcceptanceFaultPoint) -> Result<(), InjectedFault> {
+        if point != self.point {
+            return Ok(());
+        }
+        self.apply().map_err(|_| InjectedFault { point })?;
+        self.applied.store(true, Ordering::SeqCst);
         Ok(())
     }
 }
@@ -490,6 +562,185 @@ fn sealed_receipt_is_required_for_artifact_reference() -> Result<(), Box<dyn Err
 }
 
 #[test]
+fn db01_db06_object_liveness_attacks_rollback_without_receipt() -> Result<(), Box<dyn Error>> {
+    let points = [
+        AcceptanceFaultPoint::Db01,
+        AcceptanceFaultPoint::Db02,
+        AcceptanceFaultPoint::Db03,
+        AcceptanceFaultPoint::Db04,
+        AcceptanceFaultPoint::Db05,
+        AcceptanceFaultPoint::Db06,
+    ];
+    let attacks = [
+        ObjectAttackKind::Delete,
+        ObjectAttackKind::Truncate,
+        ObjectAttackKind::ReplaceSameBytes,
+    ];
+
+    for (point_index, point) in points.into_iter().enumerate() {
+        for (attack_index, attack_kind) in attacks.into_iter().enumerate() {
+            let case_index = point_index
+                .checked_mul(attacks.len())
+                .and_then(|value| value.checked_add(attack_index))
+                .ok_or("object attack case index overflowed")?;
+            let case_index = u32::try_from(case_index)?;
+            let namespace = 0xc00 + case_index * 0x20;
+            let database =
+                TestDatabase::new(&format!("{}-{}", point.as_str(), attack_kind.as_str()))?;
+            let vault = database.vault(namespace)?;
+            let batch = artifact_batch(&vault, namespace, 0xd00 + case_index)?;
+            let descriptor = batch
+                .events
+                .iter()
+                .find_map(|event| match &event.payload {
+                    EventPayload::ArtifactRegistered(descriptor) => Some(descriptor.clone()),
+                    _ => None,
+                })
+                .ok_or("synthetic attack batch did not register an artifact")?;
+            let object_path = vault.layout().object_path(&descriptor)?;
+            let exact_bytes = format!("SYNTHETIC S2 {namespace}").into_bytes();
+            assert_eq!(fs::read(&object_path)?, exact_bytes);
+
+            let signed = signed(&batch)?;
+            let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
+            let attack =
+                ObjectAttackAt::new(point, attack_kind, object_path.clone(), exact_bytes.clone());
+            let mut store = database.profile.open_acceptance_store()?;
+            let result = store.accept_verified_batch_with_faults(
+                &verified,
+                command(&signed.envelope, 60, Some(0)),
+                TimestampMillis::new(7_100 + i64::from(case_index)),
+                &vault,
+                &attack,
+            );
+            assert!(
+                attack.was_applied(),
+                "{} {} attack did not reach the object",
+                point.as_str(),
+                attack_kind.as_str()
+            );
+            assert!(
+                matches!(result, Err(AcceptError::SealingFailed { .. })),
+                "{} {} returned {result:?}",
+                point.as_str(),
+                attack_kind.as_str()
+            );
+            drop(store);
+            assert_empty(canonical_snapshot(&open_reader(database.path())?)?);
+
+            match attack_kind {
+                ObjectAttackKind::Delete => assert!(!object_path.exists()),
+                ObjectAttackKind::Truncate => assert_ne!(fs::read(&object_path)?, exact_bytes),
+                ObjectAttackKind::ReplaceSameBytes => {
+                    assert_eq!(fs::read(&object_path)?, exact_bytes)
+                }
+            }
+            let report = vault.reconcile(&ReconcileOptions::new(SystemTime::now()))?;
+            assert!(
+                !report.repair_required(),
+                "rollback must not leave a durable reference requiring repair"
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn idempotent_replay_revalidates_object_before_success() -> Result<(), Box<dyn Error>> {
+    let database = TestDatabase::new("idempotent-liveness")?;
+    let namespace = 0xf00;
+    let vault = database.vault(namespace)?;
+    let batch = artifact_batch(&vault, namespace, 0xf80)?;
+    let descriptor = registered_descriptor(&batch)?;
+    let object_path = vault.layout().object_path(&descriptor)?;
+    let signed = signed(&batch)?;
+    let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
+    let first_command = command(&signed.envelope, 70, Some(0));
+    let mut store = database.profile.open_acceptance_store()?;
+    store.accept_verified_batch(
+        &verified,
+        first_command,
+        TimestampMillis::new(7_500),
+        &vault,
+    )?;
+
+    let attack = ObjectAttackAt::new(
+        AcceptanceFaultPoint::Db01,
+        ObjectAttackKind::Delete,
+        object_path,
+        Vec::new(),
+    );
+    let replay = store.accept_verified_batch_with_faults(
+        &verified,
+        first_command,
+        TimestampMillis::new(7_501),
+        &vault,
+        &attack,
+    );
+    assert!(attack.was_applied());
+    assert!(matches!(replay, Err(AcceptError::SealingFailed { .. })));
+    drop(store);
+
+    let snapshot = canonical_snapshot(&open_reader(database.path())?)?;
+    assert_eq!(snapshot.batch_count, 1);
+    assert_eq!(snapshot.event_count, 4);
+    assert_eq!(snapshot.receipt_count, 1);
+    assert_eq!(snapshot.profile_revision, 1);
+    let referenced = [descriptor];
+    let report =
+        vault.reconcile(&ReconcileOptions::new(SystemTime::now()).with_referenced(&referenced))?;
+    assert!(report.repair_required());
+    Ok(())
+}
+
+#[test]
+fn duplicate_batch_revalidates_object_before_receipt_commit() -> Result<(), Box<dyn Error>> {
+    let database = TestDatabase::new("duplicate-liveness")?;
+    let namespace = 0x1000;
+    let vault = database.vault(namespace)?;
+    let batch = artifact_batch(&vault, namespace, 0x1080)?;
+    let descriptor = registered_descriptor(&batch)?;
+    let object_path = vault.layout().object_path(&descriptor)?;
+    let signed = signed(&batch)?;
+    let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
+    let mut store = database.profile.open_acceptance_store()?;
+    store.accept_verified_batch(
+        &verified,
+        command(&signed.envelope, 71, Some(0)),
+        TimestampMillis::new(7_600),
+        &vault,
+    )?;
+
+    let attack = ObjectAttackAt::new(
+        AcceptanceFaultPoint::Db02,
+        ObjectAttackKind::Truncate,
+        object_path,
+        Vec::new(),
+    );
+    let duplicate = store.accept_verified_batch_with_faults(
+        &verified,
+        command(&signed.envelope, 72, Some(1)),
+        TimestampMillis::new(7_601),
+        &vault,
+        &attack,
+    );
+    assert!(attack.was_applied());
+    assert!(matches!(duplicate, Err(AcceptError::SealingFailed { .. })));
+    drop(store);
+
+    let snapshot = canonical_snapshot(&open_reader(database.path())?)?;
+    assert_eq!(snapshot.batch_count, 1);
+    assert_eq!(snapshot.event_count, 4);
+    assert_eq!(snapshot.receipt_count, 1);
+    assert_eq!(snapshot.profile_revision, 1);
+    let referenced = [descriptor];
+    let report =
+        vault.reconcile(&ReconcileOptions::new(SystemTime::now()).with_referenced(&referenced))?;
+    assert!(report.repair_required());
+    Ok(())
+}
+
+#[test]
 fn db01_db07_process_exit_restart_matrix() -> Result<(), Box<dyn Error>> {
     for (index, point) in [
         AcceptanceFaultPoint::Db01,
@@ -657,6 +908,19 @@ fn command(envelope: &[u8], seed: u8, expected_revision: Option<u64>) -> Accepta
         expected_revision,
         envelope_bytes: envelope,
     }
+}
+
+fn registered_descriptor(
+    batch: &UnsignedBatch,
+) -> Result<academic_domain::ArtifactDescriptor, Box<dyn Error>> {
+    batch
+        .events
+        .iter()
+        .find_map(|event| match &event.payload {
+            EventPayload::ArtifactRegistered(descriptor) => Some(descriptor.clone()),
+            _ => None,
+        })
+        .ok_or_else(|| "synthetic batch did not register an artifact".into())
 }
 
 fn artifact_batch(

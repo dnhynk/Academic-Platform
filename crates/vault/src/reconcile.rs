@@ -10,7 +10,7 @@ use std::{
 use academic_domain::{ArtifactDescriptor, ArtifactId};
 use sha2::{Digest as _, Sha256};
 
-use crate::{Vault, VaultError, VaultResult, durability, encode_hex, ingest::verify_object};
+use crate::{Vault, VaultError, VaultResult, durability, encode_hex};
 
 const DEFAULT_TEMP_EXPIRY: Duration = Duration::from_secs(24 * 60 * 60);
 const DEFAULT_ORPHAN_GRACE: Duration = Duration::from_secs(24 * 60 * 60);
@@ -82,6 +82,7 @@ pub enum ReconcileState {
     TempLive,
     TempExpiredRemoved,
     OrphanPendingGrace,
+    OrphanLeaseHeld,
     ValidOrphan,
     QuarantinedOrphan,
     ReferencedValid,
@@ -170,21 +171,19 @@ pub(crate) fn reconcile(
                     source,
                 ));
             }
-            Ok(_) => {
-                match verify_object(&path, descriptor.content_digest, descriptor.byte_length) {
-                    Ok(()) => report.records.push(record(
-                        ReconcileState::ReferencedValid,
-                        path,
-                        Some(descriptor.id),
-                    )),
-                    Err(VaultError::IntegrityMismatch(_)) => report.records.push(record(
-                        ReconcileState::ReferencedCorruptRepairRequired,
-                        path,
-                        Some(descriptor.id),
-                    )),
-                    Err(error) => return Err(error),
-                }
-            }
+            Ok(_) => match vault.verify_sealed_object(descriptor) {
+                Ok(_capability) => report.records.push(record(
+                    ReconcileState::ReferencedValid,
+                    path,
+                    Some(descriptor.id),
+                )),
+                Err(VaultError::IntegrityMismatch(_)) => report.records.push(record(
+                    ReconcileState::ReferencedCorruptRepairRequired,
+                    path,
+                    Some(descriptor.id),
+                )),
+                Err(error) => return Err(error),
+            },
         }
     }
 
@@ -208,8 +207,8 @@ pub(crate) fn reconcile(
         let age = file_age(&path, options.now)?;
         let candidate = retry_paths.get(&path).copied();
         let candidate_is_valid = if let Some(descriptor) = candidate {
-            match verify_object(&path, descriptor.content_digest, descriptor.byte_length) {
-                Ok(()) => true,
+            match vault.verify_sealed_object(descriptor) {
+                Ok(_capability) => true,
                 Err(VaultError::IntegrityMismatch(_)) => false,
                 Err(error) => return Err(error),
             }
@@ -223,12 +222,19 @@ pub(crate) fn reconcile(
                 candidate.map(|descriptor| descriptor.id),
             ));
         } else if age >= options.orphan_grace {
-            let quarantined = quarantine(vault, &path, options.now)?;
-            report.records.push(record(
-                ReconcileState::QuarantinedOrphan,
-                quarantined,
-                candidate.map(|descriptor| descriptor.id),
-            ));
+            if let Some(quarantined) = quarantine(vault, &path, options.now)? {
+                report.records.push(record(
+                    ReconcileState::QuarantinedOrphan,
+                    quarantined,
+                    candidate.map(|descriptor| descriptor.id),
+                ));
+            } else {
+                report.records.push(record(
+                    ReconcileState::OrphanLeaseHeld,
+                    path,
+                    candidate.map(|descriptor| descriptor.id),
+                ));
+            }
         } else {
             report
                 .records
@@ -372,7 +378,24 @@ fn reconcile_existing_quarantine(vault: &Vault, report: &mut ReconcileReport) ->
     Ok(())
 }
 
-fn quarantine(vault: &Vault, source: &Path, now: SystemTime) -> VaultResult<PathBuf> {
+fn quarantine(vault: &Vault, source: &Path, now: SystemTime) -> VaultResult<Option<PathBuf>> {
+    let lease_path = vault.layout.ensure_lease_path_for_object(source)?;
+    let Some(_lease) = durability::try_acquire_exclusive_object_lease(&lease_path)? else {
+        return Ok(None);
+    };
+    match fs::symlink_metadata(source) {
+        Ok(metadata)
+            if metadata.file_type().is_file() && !crate::layout::is_link_or_reparse(&metadata) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(VaultError::io(
+                "reinspect leased vault orphan",
+                source,
+                error,
+            ));
+        }
+        Ok(_) => return Err(VaultError::UnsafeEntry(source.to_path_buf())),
+    }
     let locator = source
         .file_stem()
         .and_then(|value| value.to_str())
@@ -392,7 +415,7 @@ fn quarantine(vault: &Vault, source: &Path, now: SystemTime) -> VaultResult<Path
         .ok_or_else(|| VaultError::UnsafeEntry(source.to_path_buf()))?;
     durability::sync_directory(source_parent)?;
     durability::sync_directory(vault.layout.quarantine_dir())?;
-    Ok(destination)
+    Ok(Some(destination))
 }
 
 fn quarantine_path_identity(vault: &Vault, source: &Path) -> VaultResult<String> {
