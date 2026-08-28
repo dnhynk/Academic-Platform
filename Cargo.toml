@@ -34,7 +34,7 @@ hex = "=0.4.3"
 hmac = "=0.12.1"
 predicates = { version = "=3.1.4", default-features = false }
 proptest = "=1.11.0"
-prost = { version = "=0.14.1", default-features = false, features = ["derive", "std"] }
+prost = { version = "=0.14.4", default-features = false, features = ["derive", "std"] }
 prost-build = { version = "=0.14.1", default-features = false }
 protoc-bin-vendored = { version = "=3.2.0", default-features = false }
 rusqlite = { version = "=0.40.2", default-features = false, features = ["backup", "hooks", "limits"] }
