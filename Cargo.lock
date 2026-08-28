@@ -7,10 +7,16 @@ name = "academic-cli"
 version = "0.1.0"
 dependencies = [
  "academic-core",
+ "academic-daemon",
+ "academic-rpc",
  "anyhow",
+ "assert_cmd",
  "clap",
+ "predicates",
  "serde",
  "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

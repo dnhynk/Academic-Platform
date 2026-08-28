@@ -22,9 +22,9 @@ use thiserror::Error;
 pub use readers::ReaderFactory;
 pub use runtime_meta::SessionNonce;
 pub use service::{DaemonConfig, RunningDaemon};
-pub use transport::LocalEndpoint;
 #[cfg(unix)]
 pub use transport::MAX_UNIX_ENDPOINT_PATH_LEN;
+pub use transport::{LocalEndpoint, runtime_profile_directory, session_metadata_path};
 pub use writer::{AdmissionError, AdmittedMutation, WriterQueue};
 
 /// Product binary name for the local-core daemon.

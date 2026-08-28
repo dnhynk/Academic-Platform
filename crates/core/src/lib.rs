@@ -5,6 +5,7 @@
 //! independently supplied device key.
 
 pub mod local_service;
+pub mod operations;
 pub mod service;
 
 use std::{collections::BTreeSet, fmt, str::FromStr};

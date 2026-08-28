@@ -104,7 +104,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
       .toSorted(([left], [right]) => left.localeCompare(right)),
   );
   assert.deepEqual(actual, {
-    "academic-cli": ["academic-core"],
+    "academic-cli": ["academic-core", "academic-daemon", "academic-rpc"],
     "academic-contracts": ["academic-domain"],
     "academic-core": [
       "academic-contracts",

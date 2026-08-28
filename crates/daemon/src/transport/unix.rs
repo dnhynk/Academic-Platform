@@ -15,8 +15,8 @@ use rustix::{
 use tokio::net::{UnixListener, UnixStream};
 
 use super::{
-    LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SINGLETON_LOCK_FILE,
-    profile_key,
+    LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SESSION_METADATA_FILE,
+    SINGLETON_LOCK_FILE, profile_key,
 };
 
 /// Bytes of `sockaddr_un::sun_path`, which has to hold the whole absolute
@@ -173,7 +173,7 @@ pub(crate) fn prepare_runtime(
     ensure_private_directory(&directory)?;
     Ok(RuntimePaths {
         profile_key: key,
-        metadata: directory.join("session.meta"),
+        metadata: directory.join(SESSION_METADATA_FILE),
         endpoint: LocalEndpoint::UnixSocket(endpoint),
         directory,
     })

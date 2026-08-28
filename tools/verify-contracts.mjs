@@ -51,6 +51,8 @@ const [
   rustContractsText,
   rustCoreText,
   rustCliText,
+  rustCliDoctorText,
+  rustCliFixtureText,
   bootstrapText,
   sourcePreflightText,
   dependencySourcePolicyText,
@@ -81,6 +83,8 @@ const [
   readFile("crates/contracts/src/lib.rs", "utf8"),
   readFile("crates/core/src/lib.rs", "utf8"),
   readFile("crates/cli/src/main.rs", "utf8"),
+  readFile("crates/cli/src/commands/doctor.rs", "utf8"),
+  readFile("crates/cli/src/commands/fixture.rs", "utf8"),
   readFile("tools/bootstrap.mjs", "utf8"),
   readFile("tools/source-preflight.mjs", "utf8"),
   readFile("tools/dependency-source-policy.mjs", "utf8"),
@@ -177,17 +181,17 @@ assert.doesNotMatch(
   "bootstrap must not use unrestricted version-prefix acceptance",
 );
 assert.match(
-  rustCliText,
-  /include_str!\("\.\.\/\.\.\/\.\.\/tools\/fixtures\/tool-version-conformance-v1\.json"\)/u,
+  rustCliDoctorText,
+  /include_str!\("\.\.\/\.\.\/\.\.\/\.\.\/tools\/fixtures\/tool-version-conformance-v1\.json"\)/u,
   "Rust doctor must consume the same committed conformance corpus as bootstrap",
 );
 assert.match(
-  rustCliText,
+  rustCliDoctorText,
   /is_some_and\(\|value\| is_supported_tool_version\(specification, value\)\)/u,
   "Rust doctor executable probes must use token-exact conformance",
 );
 assert.doesNotMatch(
-  rustCliText,
+  rustCliDoctorText,
   /value\.starts_with\([^\n]*expected|value\.starts_with\([^\n]*EXPECTED/u,
   "Rust doctor must not use unrestricted expected-version prefix acceptance",
 );
@@ -1791,11 +1795,16 @@ assert.doesNotMatch(
   /build_fixture_document_for_version|sign_batch_v1/u,
   "academic-core must not offer version-selectable or v1 fixture emission",
 );
-assert.doesNotMatch(
-  rustCliText.split(/\n#\[cfg\(test\)\]/u, 1)[0],
-  /fixture_version|fixture-version/u,
-  "the production-facing CLI must emit only the current v2 fixture",
-);
+for (const [label, text] of [
+  ["crates/cli/src/main.rs", rustCliText],
+  ["crates/cli/src/commands/fixture.rs", rustCliFixtureText],
+]) {
+  assert.doesNotMatch(
+    text.split(/\n#\[cfg\(test\)\]/u, 1)[0],
+    /fixture_version|fixture-version/u,
+    `the production-facing CLI must emit only the current v2 fixture (${label})`,
+  );
+}
 const lockedCargoRegistryFetch = "cargo fetch --locked";
 const lockfileCacheActionReference = "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9";
 // Hosted labels observed to schedule AND build clean. Each label carries one

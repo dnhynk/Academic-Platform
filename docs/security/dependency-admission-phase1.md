@@ -18,17 +18,38 @@ The Phase 0 direct versions already accepted in the incoming lock are preserved 
 | Dependency | Owner and scope | Exact features | License | Declared MSRV | Network/install posture |
 |---|---|---|---|---:|---|
 | `rusqlite 0.40.2` | `academic-store`, `academic-projections`, `academic-portability` | no defaults; `backup`, `hooks`, `limits`; `bundled` only through default `bundled-sqlite`; vendored SQLCipher only through non-default `sqlcipher-spike` | MIT | not declared upstream; compiled on Rust 1.98 | no network; native build receipt required; no load extension |
-| `tokio 1.53.1` | `academic-rpc`, `academic-daemon` | `io-util`, `macros`, `net`, `rt-multi-thread`, `signal`, `sync`, `time` | MIT | 1.71 | `net` is restricted to named pipe/UDS local IPC; no HTTP/TCP/UDP/DNS behavior |
+| `tokio 1.53.1` | `academic-rpc`, `academic-daemon`, `academic-cli` | `io-util`, `macros`, `net`, `rt-multi-thread`, `signal`, `sync`, `time` | MIT | 1.71 | `net` is restricted to named pipe/UDS local IPC; no HTTP/TCP/UDP/DNS behavior |
 | `windows-sys 0.61.2` | Windows vault/daemon adapters and the isolated store path-capability boundary | explicit WDK Foundation/FileSystem/SystemServices plus Win32 Foundation, Security/Authorization, FileSystem, IO, Pipes, RemoteDesktop session identity, SystemServices, Threading, WindowsProgramming subsets | MIT OR Apache-2.0 | 1.71 | native path, session, volume, ACL, named-pipe, and local filesystem capability only; no WinHTTP/WinInet/WinSock feature admitted |
 | `rustix 1.1.4` | Unix vault/daemon adapters and the isolated store path-capability boundary | no defaults; `fs`, `net`, `process`, `std` across admitted owners; store-platform omits `net` | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 1.63 | local filesystem, peer identity, and UDS capability only |
 | `getrandom 0.4.3` | synthetic vault nonce/locator-key seed and daemon session nonce | no defaults; `std`; no `wasm_js` or custom backend | MIT OR Apache-2.0 | 1.85 | OS entropy only; not a production key hierarchy |
 | `prost-build 0.14.1` | RPC build tooling | no defaults | Apache-2.0 | 1.71.1 | build-time only; aligned with frozen `prost 0.14.1` |
 | `protoc-bin-vendored 3.2.0` | RPC build tooling | no defaults/features | MIT | not declared upstream; compiled on Rust 1.98 | pinned vendored compiler packages; no runtime dependency |
-| `tempfile 3.27.0` | test support and daemon integration tests only | default `getrandom` | MIT OR Apache-2.0 | 1.63 | no product inclusion |
-| `assert_cmd 2.2.2` | test support only | no defaults | MIT OR Apache-2.0 | 1.85 | no product inclusion |
-| `predicates 3.1.4` | test support only | no defaults | MIT OR Apache-2.0 | 1.74 | no regex/color/default expansion; no product inclusion |
+| `tempfile 3.27.0` | test support, daemon integration tests, and CLI integration tests only | default `getrandom` | MIT OR Apache-2.0 | 1.63 | no product inclusion |
+| `assert_cmd 2.2.2` | test support and CLI integration tests only | no defaults | MIT OR Apache-2.0 | 1.85 | no product inclusion |
+| `predicates 3.1.4` | test support and CLI integration tests only | no defaults | MIT OR Apache-2.0 | 1.74 | no regex/color/default expansion; no product inclusion |
 
 The existing Phase 0 cryptographic and contract dependencies retain their prior owners and features. F0 changes their Cargo requirements from compatible ranges to exact requirements without changing versions.
+
+## CLI use of already-admitted packages
+
+`academic-cli` adds no new package, feature, or resolution. It becomes the third
+owner of `tokio 1.53.1` with exactly the admitted feature set, because
+`academic daemon serve` hosts the local-core daemon and every data command
+completes the asynchronous local handshake. The `net` feature stays restricted
+to the named-pipe and Unix-domain-socket endpoints the daemon already owns; the
+CLI opens no other socket and resolves no name.
+
+Its workspace edges become `academic-core`, `academic-daemon`, and
+`academic-rpc`, recorded in the frozen `workspace_dependency_direction_is_acyclic`
+expectation. The CLI deliberately takes **no** direct edge to `academic-store`,
+`academic-vault`, `academic-projections`, or `academic-portability`: the
+operational surface it needs is composed once in `academic-core::operations`, so
+the CLI holds no writer handle, no raw SQLite connection, and no vault locator
+key. There is no SQLCipher feature, key option, or configuration key anywhere on
+the CLI surface.
+
+`assert_cmd`, `predicates`, and `tempfile` remain development-only and appear
+solely in `crates/cli/tests/cli.rs`.
 
 ## Portability use of the already-admitted `backup` feature
 
