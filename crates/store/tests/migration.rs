@@ -23,6 +23,9 @@ const BUILD_DIGEST: [u8; 32] = [0x5a; 32];
 const CRASH_WAL_CHILD_ENV: &str = "ACADEMIC_STORE_MIGRATION_CRASH_WAL_CHILD";
 const CRASH_WAL_DATABASE_ENV: &str = "ACADEMIC_STORE_MIGRATION_CRASH_WAL_DATABASE";
 const CRASH_WAL_CHILD_EXIT_CODE: i32 = 87;
+const HOT_JOURNAL_CHILD_ENV: &str = "ACADEMIC_STORE_MIGRATION_HOT_JOURNAL_CHILD";
+const HOT_JOURNAL_DATABASE_ENV: &str = "ACADEMIC_STORE_MIGRATION_HOT_JOURNAL_DATABASE";
+const HOT_JOURNAL_CHILD_EXIT_CODE: i32 = 88;
 const RESERVED_PREFIX_TRIGGER_SENTINEL: &str = "reserved-prefix trigger executed";
 
 #[derive(Debug)]
@@ -669,6 +672,264 @@ fn seed_crash_wal_child(path: &Path) -> Result<(), Box<dyn Error>> {
         .env(CRASH_WAL_DATABASE_ENV, path)
         .status()?;
     assert_eq!(status.code(), Some(CRASH_WAL_CHILD_EXIT_CODE));
+    Ok(())
+}
+
+#[test]
+fn admitted_close_checkpoints_while_rejection_preserves_content() -> Result<(), Box<dyn Error>> {
+    // Half one: checkpoint-on-close is restored once admission succeeds, so a
+    // clean close brings the main database current and the main file alone is
+    // a complete database again.
+    let admitted = TemporaryDatabase::new("checkpoint-admitted")?;
+    assert_eq!(
+        migrate_pre_listen(admitted.path(), BUILD_DIGEST)?,
+        MigrationStatus::Applied
+    );
+    assert!(!family_member_path(admitted.path(), "-wal").try_exists()?);
+    assert!(!family_member_path(admitted.path(), "-shm").try_exists()?);
+    let migrated_length = fs::metadata(admitted.path())?.len();
+    assert!(
+        migrated_length > 4096,
+        "an admitted clean close must checkpoint the schema into the main database, \
+         saw {migrated_length} bytes"
+    );
+
+    // The already-current admission path closes the same way.
+    assert_eq!(
+        migrate_pre_listen(admitted.path(), BUILD_DIGEST)?,
+        MigrationStatus::AlreadyCurrent
+    );
+    assert!(!family_member_path(admitted.path(), "-wal").try_exists()?);
+    assert_eq!(fs::metadata(admitted.path())?.len(), migrated_length);
+
+    let main_only = admitted.path().with_extension("main-only");
+    fs::copy(admitted.path(), &main_only)?;
+    let alone = Connection::open_with_flags(
+        &main_only,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
+    assert_eq!(
+        alone.query_row("SELECT count(*) FROM ledger_batch", [], |row| row
+            .get::<_, i64>(0))?,
+        0,
+        "the main database alone must carry the canonical schema"
+    );
+    assert_eq!(
+        read_schema_identity(&alone)?.schema_version,
+        STORE_SCHEMA_VERSION
+    );
+    drop(alone);
+
+    // Half two: the admission window keeps its protection. A crash-WAL input
+    // is still rejected without touching its durable content.
+    let rejected = TemporaryDatabase::new("checkpoint-rejected")?;
+    seed_crash_wal_child(rejected.path())?;
+    let before = database_content_snapshot(rejected.path())?;
+    assert!(
+        before.wal.len() > 32,
+        "crash-WAL fixture must retain uncheckpointed frames"
+    );
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_preserving_content(rejected.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    Ok(())
+}
+
+#[test]
+fn version_zero_reserved_prefix_table_is_rejected_without_mutation() -> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("version-zero-reserved-prefix-table")?;
+    let raw = Connection::open(database.path())?;
+    raw.execute_batch(
+        "CREATE TABLE shadow_admission(value INTEGER NOT NULL) STRICT; \
+         INSERT INTO shadow_admission(value) VALUES (1);",
+    )?;
+    rename_schema_object(&raw, "table", "shadow_admission", "sqlite_shadow_admission")?;
+    drop(raw);
+
+    // SQLite creates no such table, but it loads the one it finds: only
+    // `CREATE` applies the reserved-prefix rejection.
+    let loaded = Connection::open(database.path())?;
+    assert_eq!(
+        named_schema_object_count(&loaded, "table", "sqlite_shadow_admission")?,
+        1
+    );
+    assert_eq!(
+        loaded.query_row("SELECT value FROM sqlite_shadow_admission", [], |row| row
+            .get::<_, i64>(
+            0
+        ))?,
+        1
+    );
+    assert_eq!(
+        loaded.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))?,
+        "ok"
+    );
+    drop(loaded);
+
+    let (maintenance_error, _) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::UnsupportedMigrationState {
+            application_id: 0,
+            user_version: 0
+        }
+    ));
+    Ok(())
+}
+
+#[test]
+fn current_schema_reserved_prefix_table_is_rejected_without_mutation() -> Result<(), Box<dyn Error>>
+{
+    let database = TemporaryDatabase::new("current-reserved-prefix-table")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    use_delete_journal(&raw)?;
+    raw.execute_batch(
+        "CREATE TABLE shadow_ledger(value INTEGER NOT NULL) STRICT; \
+         INSERT INTO shadow_ledger(value) VALUES (1);",
+    )?;
+    rename_schema_object(&raw, "table", "shadow_ledger", "sqlite_shadow_ledger")?;
+    drop(raw);
+
+    let loaded = Connection::open(database.path())?;
+    assert_eq!(
+        named_schema_object_count(&loaded, "table", "sqlite_shadow_ledger")?,
+        1
+    );
+    assert_eq!(
+        loaded.query_row("SELECT value FROM sqlite_shadow_ledger", [], |row| row
+            .get::<_, i64>(0))?,
+        1
+    );
+    drop(loaded);
+
+    let (maintenance_error, reader_error) =
+        assert_maintenance_and_reader_reject_without_mutation(database.path())?;
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        reader_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    Ok(())
+}
+
+#[test]
+fn hot_journal_rejection_restores_committed_content_without_reader_mutation()
+-> Result<(), Box<dyn Error>> {
+    let database = TemporaryDatabase::new("hot-journal-rejection")?;
+    migrate_pre_listen(database.path(), BUILD_DIGEST)?;
+    let raw = Connection::open(database.path())?;
+    use_delete_journal(&raw)?;
+    raw.execute_batch("CREATE TABLE sqliteXjournal(value BLOB NOT NULL) STRICT;")?;
+    drop(raw);
+    let committed = database_family_snapshot(database.path())?;
+    assert!(
+        !family_member_path(database.path(), "-journal").try_exists()?,
+        "the committed fixture must have no journal"
+    );
+
+    seed_hot_journal_child(database.path())?;
+    let hot = database_family_snapshot(database.path())?;
+    assert_ne!(
+        hot, committed,
+        "the hot-journal child must leave spilled pages and a journal behind"
+    );
+    let journal_length = fs::metadata(family_member_path(database.path(), "-journal"))?.len();
+    assert!(journal_length > 0, "hot journal must carry page images");
+
+    // The read-only reader refuses to roll a hot journal back, so it changes
+    // nothing at all.
+    let before_reader = database_family_snapshot(database.path())?;
+    let reader_error = match open_reader(database.path()) {
+        Ok(_) => return Err("read-only reader unexpectedly admitted a hot journal".into()),
+        Err(error) => error,
+    };
+    assert!(matches!(reader_error, StoreError::Sqlite(_)));
+    assert_eq!(
+        database_family_snapshot(database.path())?,
+        before_reader,
+        "reader rejection changed the database family"
+    );
+
+    // The read-write maintenance handle is the one path SQLite rolls the
+    // journal back on, before admission can read anything: it restores the
+    // last committed main database and deletes the journal, and changes
+    // nothing else.
+    let maintenance_error = match migrate_pre_listen(database.path(), BUILD_DIGEST) {
+        Ok(status) => {
+            return Err(std::io::Error::other(format!(
+                "maintenance unexpectedly admitted schema as {status:?}"
+            ))
+            .into());
+        }
+        Err(error) => error,
+    };
+    assert!(matches!(
+        maintenance_error,
+        StoreError::SchemaIdentityMismatch { .. }
+    ));
+    assert_eq!(
+        database_family_snapshot(database.path())?,
+        committed,
+        "hot-journal rejection must restore exactly the last committed family"
+    );
+    Ok(())
+}
+
+/// Child half of the hot-journal canary: it spills an uncommitted
+/// rollback-journal transaction to the main database and exits, leaving the
+/// exact hot-journal state a crash leaves behind.
+#[test]
+fn migration_hot_journal_child() -> Result<(), Box<dyn Error>> {
+    if env::var_os(HOT_JOURNAL_CHILD_ENV).is_none() {
+        return Ok(());
+    }
+    let path =
+        PathBuf::from(env::var_os(HOT_JOURNAL_DATABASE_ENV).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::NotFound, "child database path missing")
+        })?);
+    let connection = Connection::open(&path)?;
+    assert_eq!(
+        connection
+            .query_row("PRAGMA journal_mode", [], |row| row.get::<_, String>(0))?
+            .to_ascii_lowercase(),
+        "delete"
+    );
+    connection.execute_batch(concat!(
+        "PRAGMA cache_size = -16;",
+        "BEGIN;",
+        "INSERT INTO sqliteXjournal(value) SELECT zeroblob(4096) FROM (",
+        "WITH RECURSIVE spill(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM spill WHERE i < 512) ",
+        "SELECT i FROM spill);"
+    ))?;
+    let journal = fs::metadata(family_member_path(&path, "-journal"))?.len();
+    assert!(journal > 0, "child did not spill a hot journal");
+    println!("hot-journal child left journal={journal} bytes");
+    io::stdout().flush()?;
+    process::exit(HOT_JOURNAL_CHILD_EXIT_CODE)
+}
+
+fn seed_hot_journal_child(path: &Path) -> Result<(), Box<dyn Error>> {
+    let status = Command::new(env::current_exe()?)
+        .arg("--exact")
+        .arg("migration_hot_journal_child")
+        .arg("--nocapture")
+        .arg("--test-threads=1")
+        .env(HOT_JOURNAL_CHILD_ENV, "1")
+        .env(HOT_JOURNAL_DATABASE_ENV, path)
+        .status()?;
+    assert_eq!(status.code(), Some(HOT_JOURNAL_CHILD_EXIT_CODE));
     Ok(())
 }
 

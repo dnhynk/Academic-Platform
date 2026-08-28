@@ -21,19 +21,23 @@ use crate::{
 /// `STORE_SCHEMA_VERSION` and its ordered migration.
 const STORE_SCHEMA_FINGERPRINT_VERSION: u32 = 1;
 
-// SQLite reserves this literal prefix case-insensitively. Comparing the prefix
-// directly keeps the underscore literal while admitting valid `sqliteX...`
-// user object names.
+// Only `CREATE` applies SQLite's reserved-prefix rejection; during schema load
+// SQLite installs whatever `sqlite_schema` holds. A `sqlite_`-prefixed object
+// written directly into `sqlite_schema` therefore loads like any other, so the
+// prefix says nothing about ownership and a name-prefix exclusion would hide a
+// foreign table or index from the fingerprint and from the version-zero
+// emptiness count.
 //
-// Only `CREATE` applies the reserved-prefix rejection; during schema load
-// SQLite installs whatever `sqlite_schema` holds. A reserved-prefix trigger or
-// view written directly into `sqlite_schema` therefore loads and fires, so the
-// prefix exclusion is narrowed to the object kinds SQLite itself creates —
-// `sqlite_sequence`, `sqlite_stat1`..`sqlite_stat4` and `sqlite_autoindex_*`,
-// all of them tables or indexes. Every trigger and view is fingerprinted
-// unconditionally.
-const USER_SCHEMA_OBJECT_PREDICATE: &str = "(type NOT IN ('table', 'index') \
-     OR substr(name, 1, length('sqlite_')) COLLATE NOCASE <> 'sqlite_')";
+// The exclusion is instead the exact set of objects SQLite creates itself:
+// `sqlite_sequence` for AUTOINCREMENT, `sqlite_stat1`..`sqlite_stat4` for
+// ANALYZE, and the `sqlite_autoindex_*` family for implicit UNIQUE/PRIMARY KEY
+// indexes. Every other object is a user object regardless of its type or name,
+// and the comparisons are exact, so a differently-spelled twin of an owned
+// name is included rather than excluded.
+const USER_SCHEMA_OBJECT_PREDICATE: &str = "NOT ( \
+     (type = 'table' AND name IN \
+      ('sqlite_sequence', 'sqlite_stat1', 'sqlite_stat2', 'sqlite_stat3', 'sqlite_stat4')) \
+     OR (type = 'index' AND name GLOB 'sqlite_autoindex_*'))";
 
 static EXPECTED_SCHEMA_FINGERPRINT: OnceLock<SchemaFingerprint> = OnceLock::new();
 

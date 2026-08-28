@@ -39,6 +39,12 @@ const RESERVED_PREFIX_TRIGGER_SQL: &str = concat!(
     "BEFORE INSERT ON projection_generation BEGIN ",
     "SELECT RAISE(ABORT, 'blocked by reserved-prefix trigger'); END;"
 );
+const UNRESERVED_PREFIX_TABLE_NAME: &str = "shadow_generation_store";
+const RESERVED_PREFIX_TABLE_NAME: &str = "sqlite_shadow_generation_store";
+const RESERVED_PREFIX_TABLE_SQL: &str = concat!(
+    "CREATE TABLE shadow_generation_store(value INTEGER NOT NULL) STRICT; ",
+    "INSERT INTO shadow_generation_store(value) VALUES (1);"
+);
 const CRASH_WAL_CHILD_ENV: &str = "ACADEMIC_PROJECTION_FORMAT_CRASH_WAL_CHILD";
 const CRASH_WAL_SIDECAR_ENV: &str = "ACADEMIC_PROJECTION_FORMAT_CRASH_WAL_SIDECAR";
 const CRASH_WAL_CHILD_EXIT_CODE: i32 = 86;
@@ -280,6 +286,96 @@ fn current_v3_reserved_prefix_trigger_is_corrupt_and_unchanged() -> TestResult {
         1
     );
     assert_reserved_prefix_trigger_blocks_generation_insert(&connection)?;
+    Ok(())
+}
+
+#[test]
+fn current_v3_reserved_prefix_table_is_corrupt_and_unchanged() -> TestResult {
+    let fixture = Fixture::new("current-reserved-prefix-table")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    connection.execute_batch(RESERVED_PREFIX_TABLE_SQL)?;
+    rename_schema_object(
+        &connection,
+        "table",
+        UNRESERVED_PREFIX_TABLE_NAME,
+        RESERVED_PREFIX_TABLE_NAME,
+    )?;
+    drop(connection);
+
+    // SQLite creates no such table, but it loads the one it finds; only the
+    // names SQLite owns are excluded from the sidecar fingerprint.
+    let loaded = Connection::open(fixture.sidecar_path())?;
+    assert_eq!(
+        named_schema_object_count(&loaded, "table", RESERVED_PREFIX_TABLE_NAME)?,
+        1
+    );
+    assert_eq!(
+        loaded.query_row(
+            &format!("SELECT value FROM {RESERVED_PREFIX_TABLE_NAME}"),
+            [],
+            |row| row.get::<_, i64>(0)
+        )?,
+        1
+    );
+    drop(loaded);
+    let before = persistent_sidecar_state(fixture.sidecar_path())?;
+
+    let Err(error) = open_runner(&fixture) else {
+        return Err("current v3 sidecar with a reserved-prefix table was accepted".into());
+    };
+    assert!(matches!(error, ProjectionError::Corrupt(reason) if reason.contains("exactly")));
+
+    let after = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_persistent_sidecar_unchanged(&before, &after);
+    let connection = Connection::open(fixture.sidecar_path())?;
+    assert_eq!(
+        named_schema_object_count(&connection, "table", RESERVED_PREFIX_TABLE_NAME)?,
+        1
+    );
+    Ok(())
+}
+
+#[test]
+fn version_zero_reserved_prefix_table_is_not_initialized() -> TestResult {
+    let fixture = Fixture::new("version-zero-reserved-prefix-table")?;
+    let connection = Connection::open(fixture.sidecar_path())?;
+    connection.execute_batch(RESERVED_PREFIX_TABLE_SQL)?;
+    rename_schema_object(
+        &connection,
+        "table",
+        UNRESERVED_PREFIX_TABLE_NAME,
+        RESERVED_PREFIX_TABLE_NAME,
+    )?;
+    drop(connection);
+    let before = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_eq!(before.logical.application_id, 0);
+    assert_eq!(before.logical.user_version, 0);
+    assert_eq!(before.logical.generation_count, None);
+
+    let Err(error) = open_runner(&fixture) else {
+        return Err("version-zero sidecar with a reserved-prefix table was initialized".into());
+    };
+    assert!(matches!(
+        error,
+        ProjectionError::UnsupportedProjectionFormat {
+            application_id: 0,
+            user_version: 0,
+            ..
+        }
+    ));
+
+    let after = persistent_sidecar_state(fixture.sidecar_path())?;
+    assert_persistent_sidecar_unchanged(&before, &after);
+    let connection = Connection::open(fixture.sidecar_path())?;
+    assert_eq!(
+        connection.query_row(
+            &format!("SELECT value FROM {RESERVED_PREFIX_TABLE_NAME}"),
+            [],
+            |row| row.get::<_, i64>(0)
+        )?,
+        1
+    );
     Ok(())
 }
 
