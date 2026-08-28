@@ -81,7 +81,7 @@ impl fmt::Debug for WriterQueue {
 
 impl WriterQueue {
     /// Starts the dedicated writer thread and blocks until V1 reconciliation
-    /// and the sole `WriterConnection` have been established on that thread.
+    /// and the sole `AcceptanceStore` have been established on that thread.
     pub fn start(
         profile: SyntheticProfile,
     ) -> Result<(Self, LocalServiceStartup), LocalServiceError> {

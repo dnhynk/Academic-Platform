@@ -22,13 +22,12 @@ use academic_rpc::{
 };
 use academic_store::{
     accept::{AcceptError, AcceptanceOutcome},
-    connection::WriterConnection,
     idempotency::{AcceptanceCommand, IdempotencyError},
     profile::SyntheticProfile,
     queries::{QueryError, batch_material, canonical_snapshot},
 };
 use academic_vault::{
-    ArtifactIngestRequest, DomainKeyring, ReconcileOptions, ReconcileReport, ReconcileState, Vault,
+    ArtifactIngestRequest, DomainKeyring, ReconcileOptions, ReconcileReport, ReconcileState,
     VaultError,
 };
 use thiserror::Error;
@@ -36,7 +35,7 @@ use thiserror::Error;
 use crate::{
     CoreError, FixtureDocument, SYNTHETIC_ARTIFACT_BYTES, build_fixture_document,
     fixture_device_authorization,
-    service::{ServiceError, accept_signed_command},
+    service::{AcceptanceService, ServiceError},
     verify_fixture_document,
 };
 
@@ -110,8 +109,7 @@ pub enum LocalServiceError {
 #[derive(Debug)]
 pub struct LocalService {
     profile: SyntheticProfile,
-    writer: WriterConnection,
-    vault: Vault,
+    service: AcceptanceService,
     fixture: FixtureContext,
 }
 
@@ -163,8 +161,9 @@ impl LocalService {
                 keyring.insert(descriptor.domain_id, FIXTURE_LOCATOR_KEY)?;
             }
         }
-        let vault = Vault::open(&profile, keyring)?;
-        let reconciliation = vault.reconcile(
+        drop(reader);
+        let service = AcceptanceService::open(&profile, keyring)?;
+        let reconciliation = service.vault().reconcile(
             &ReconcileOptions::new(now)
                 .with_referenced(&referenced)
                 .with_retry_candidates(&fixture.descriptors),
@@ -178,13 +177,10 @@ impl LocalService {
             return Err(LocalServiceError::RepairRequired);
         }
 
-        drop(reader);
-        let writer = profile.open_writer().map_err(QueryError::from)?;
         Ok((
             Self {
                 profile,
-                writer,
-                vault,
+                service,
                 fixture,
             },
             LocalServiceStartup {
@@ -228,12 +224,10 @@ impl LocalService {
             expected_revision: validated.expected_profile_revision,
             envelope_bytes: &self.fixture.envelope,
         };
-        let outcome = match accept_signed_command(
-            &mut self.writer,
+        let outcome = match self.service.accept_signed_command(
             command,
             &self.fixture.authorization,
             accepted_at,
-            &self.vault,
         ) {
             Ok(outcome) => outcome,
             Err(ServiceError::Acceptance(AcceptError::ExpectedRevisionConflict {
@@ -274,7 +268,8 @@ impl LocalService {
                 descriptor.permission_lineage_id,
             );
             let receipt = self
-                .vault
+                .service
+                .vault()
                 .ingest(&request, Cursor::new(SYNTHETIC_ARTIFACT_BYTES))?;
             if receipt.descriptor().content_digest != descriptor.content_digest
                 || receipt.descriptor().byte_length != descriptor.byte_length
