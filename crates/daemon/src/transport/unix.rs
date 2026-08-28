@@ -14,7 +14,7 @@ use rustix::{
 };
 use tokio::net::{UnixListener, UnixStream};
 
-use super::{LocalEndpoint, RuntimePaths, profile_key};
+use super::{LocalEndpoint, RuntimePaths, SINGLETON_LOCK_FILE, profile_key};
 
 #[derive(Debug)]
 pub(crate) struct SingletonGuard {
@@ -30,7 +30,7 @@ impl SingletonGuard {
         )?;
         let lock = rfs::openat(
             &directory,
-            "academicd.lock",
+            SINGLETON_LOCK_FILE,
             OFlags::CREATE | OFlags::RDWR | OFlags::NOFOLLOW | OFlags::CLOEXEC,
             Mode::RUSR | Mode::WUSR,
         )?;
@@ -94,6 +94,23 @@ impl LocalListener {
         }
         Ok(stream)
     }
+}
+
+/// Accept errors that describe one connection or a momentarily unavailable
+/// resource rather than a dead endpoint.
+///
+/// `ECONNABORTED` is a client that vanished between connect and accept, and
+/// descriptor exhaustion clears as live connections finish. Ending the listener
+/// for either would convert transient backpressure into a silent, permanent
+/// loss of local IPC for every client.
+pub(crate) fn accept_error_is_transient(error: &io::Error) -> bool {
+    if error.kind() == io::ErrorKind::ConnectionAborted {
+        return true;
+    }
+    let code = error.raw_os_error();
+    [rustix::io::Errno::MFILE, rustix::io::Errno::NFILE]
+        .into_iter()
+        .any(|transient| code == Some(transient.raw_os_error()))
 }
 
 pub(crate) fn prepare_runtime(

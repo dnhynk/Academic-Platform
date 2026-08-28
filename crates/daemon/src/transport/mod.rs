@@ -33,6 +33,9 @@ impl LocalEndpoint {
     }
 }
 
+/// Lock file backing the per-profile singleton on both platforms.
+pub(crate) const SINGLETON_LOCK_FILE: &str = "academicd.lock";
+
 /// Paths resolved before singleton acquisition and listener creation.
 #[derive(Debug, Clone)]
 pub(crate) struct RuntimePaths {
@@ -65,9 +68,11 @@ fn profile_key(profile_root: &Path) -> io::Result<String> {
 
 #[cfg(unix)]
 pub(crate) use unix::{
-    LocalListener, SingletonGuard, cleanup_endpoint, prepare_runtime, secure_metadata,
+    LocalListener, SingletonGuard, accept_error_is_transient, cleanup_endpoint, prepare_runtime,
+    secure_metadata,
 };
 #[cfg(windows)]
 pub(crate) use windows::{
-    LocalListener, SingletonGuard, cleanup_endpoint, prepare_runtime, secure_metadata,
+    LocalListener, SingletonGuard, accept_error_is_transient, cleanup_endpoint, prepare_runtime,
+    secure_metadata,
 };

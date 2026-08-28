@@ -12,7 +12,7 @@ mod singleton;
 mod transport;
 mod writer;
 
-use std::{fmt, io};
+use std::{fmt, io, time::Duration};
 
 use academic_core::local_service::LocalServiceError;
 use academic_rpc::RpcError;
@@ -29,6 +29,24 @@ pub use writer::{AdmissionError, AdmittedMutation, WriterQueue};
 pub const DAEMON_BINARY_NAME: &str = "academicd";
 /// Reversible Phase 1 bounded-writer queue default.
 pub const WRITER_QUEUE_CAPACITY: usize = 64;
+/// Maximum number of connections served at the same time.
+///
+/// One connection carries at most one queued mutation, so half
+/// [`WRITER_QUEUE_CAPACITY`] cannot starve the writer lane, and half the
+/// 64-instance Windows named-pipe ceiling always leaves the listener room to
+/// create its replacement instance. Above this bound the listener stops
+/// accepting and only drains, so held-open connections can no longer grow the
+/// number of live serve tasks, descriptors, or transport instances without
+/// limit.
+pub const MAX_CONCURRENT_CONNECTIONS: usize = 32;
+/// Bounded wait for one client frame before the connection is closed.
+///
+/// Both frames of the one-request-per-connection protocol arrive from a
+/// same-host process over a named pipe or Unix socket, so a healthy client
+/// needs milliseconds and never a network round trip. Ten seconds is far above
+/// any local scheduling delay and still stops a stalled or hostile client from
+/// holding a served slot for the lifetime of the daemon.
+pub const CLIENT_FRAME_TIMEOUT: Duration = Duration::from_secs(10);
 /// Capability prefix carrying the fresh current-session nonce.
 pub const SESSION_NONCE_CAPABILITY_PREFIX: &str = "learning-platform.local.session-nonce.";
 
