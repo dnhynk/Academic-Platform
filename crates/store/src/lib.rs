@@ -18,6 +18,7 @@ mod platform;
 pub mod profile;
 pub mod queries;
 pub mod repository;
+mod schema_fingerprint;
 
 /// SQLite application identifier (`ACAD`) reserved for the local core store.
 pub const SQLITE_APPLICATION_ID: u32 = 0x4143_4144;
