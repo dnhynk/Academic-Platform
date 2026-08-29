@@ -186,9 +186,13 @@ impl IncompleteEncryptedProfile {
             | OpenFlags::SQLITE_OPEN_NO_MUTEX;
         let mut connection = Connection::open_with_flags(&database_path, flags)?;
         apply_store_key(&connection, key, &database_path)?;
-        let cipher = read_and_verify_cipher_settings(&connection, &database_path)?;
+        read_and_verify_cipher_settings(&connection, &database_path)?;
         let migration_status =
             migrate_open_connection_pre_listen(&mut connection, creating_build_digest)?;
+        // Read them again after the migration wrote pages: the settings this
+        // profile records must describe the database as it now exists on disk,
+        // not the configuration a still-empty file reported.
+        let cipher = read_and_verify_cipher_settings(&connection, &database_path)?;
         drop(connection);
 
         let incomplete_path = self.root.join(INCOMPLETE_PROFILE_MARKER);
