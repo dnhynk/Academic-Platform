@@ -211,6 +211,11 @@ impl fmt::Debug for KeystoreLabel {
 pub struct RecoveredSecret(Zeroizing<Vec<u8>>);
 
 impl RecoveredSecret {
+    // Only a build that carries a broker can produce one of these. A target
+    // with no reviewed broker returns `Unsupported` from `open` and never
+    // constructs a recovered secret, so the constructor is absent there rather
+    // than present and unreachable.
+    #[cfg(any(windows, all(target_os = "linux", feature = "secret-service"), test))]
     pub(crate) fn new(bytes: Vec<u8>) -> Self {
         Self(Zeroizing::new(bytes))
     }
@@ -250,6 +255,13 @@ const ENVELOPE_HEADER_LEN: usize = 10;
 
 /// Frames a provider payload so a foreign or corrupt blob fails before any
 /// native call, and a blob from the other platform is refused by provider tag.
+///
+/// Both brokers frame their blob with this, so the envelope is common; only the
+/// payload inside it is provider-specific. Compiled only where a broker is,
+/// because a build with none seals nothing. `decode_envelope` stays
+/// unconditional: `open` and `purge` exist on every target and must still
+/// reject a blob rather than read it.
+#[cfg(any(windows, all(target_os = "linux", feature = "secret-service"), test))]
 fn encode_envelope(provider: KeystoreProvider, payload: &[u8]) -> Vec<u8> {
     let declared = u32::try_from(payload.len()).unwrap_or(u32::MAX);
     let mut blob = Vec::with_capacity(ENVELOPE_HEADER_LEN + payload.len());
