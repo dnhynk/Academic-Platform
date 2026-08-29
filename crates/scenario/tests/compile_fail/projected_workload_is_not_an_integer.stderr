@@ -1,0 +1,11 @@
+error[E0599]: no method named `high_hours` found for struct `Proposed<T>` in the current scope
+  --> tests/compile_fail/projected_workload_is_not_an_integer.rs:26:38
+   |
+26 |     let _by_accessor: u16 = workload.high_hours();
+   |                                      ^^^^^^^^^^ method not found in `Proposed<WorkloadHoursRange>`
+
+error[E0599]: no method named `into_inner` found for struct `Proposed<T>` in the current scope
+  --> tests/compile_fail/projected_workload_is_not_an_integer.rs:27:50
+   |
+27 |     let _by_inner: WorkloadHoursRange = workload.into_inner();
+   |                                                  ^^^^^^^^^^ method not found in `Proposed<WorkloadHoursRange>`

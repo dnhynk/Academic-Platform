@@ -11,6 +11,7 @@ members = [
   "crates/portability",
   "crates/projections",
   "crates/rpc",
+  "crates/scenario",
   "crates/store",
   "crates/store-platform",
   "crates/test-support",
@@ -50,6 +51,7 @@ sha2 = "=0.10.9"
 subtle = { version = "=2.6.1", default-features = false }
 tempfile = "=3.27.0"
 thiserror = "=2.0.20"
+trybuild = "=1.0.120"
 tokio = { version = "=1.53.1", default-features = false, features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
 zbus = { version = "=5.19.0", default-features = false, features = ["tokio"] }
 uuid = { version = "=1.25.0", features = ["serde", "v7"] }

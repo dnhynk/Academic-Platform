@@ -1,0 +1,32 @@
+error[E0614]: type `Proposed<MasteryLevel>` cannot be dereferenced
+  --> tests/compile_fail/projected_mastery_has_no_conversion.rs:26:35
+   |
+26 |     let _by_deref: MasteryLevel = *projected;
+   |                                   ^^^^^^^^^^ can't be dereferenced
+
+error[E0599]: no method named `as_ref` found for struct `Proposed<T>` in the current scope
+  --> tests/compile_fail/projected_mastery_has_no_conversion.rs:27:47
+   |
+27 |     let _by_as_ref: &MasteryLevel = projected.as_ref();
+   |                                               ^^^^^^ method not found in `Proposed<MasteryLevel>`
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/projected_mastery_has_no_conversion.rs:28:53
+   |
+28 |     let _by_from: MasteryLevel = MasteryLevel::from(projected);
+   |                                  ------------------ ^^^^^^^^^ expected `MasteryLevel`, found `Proposed<MasteryLevel>`
+   |                                  |
+   |                                  arguments to this function are incorrect
+   |
+   = note: expected enum `MasteryLevel`
+            found struct `Proposed<MasteryLevel>`
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0277]: the trait bound `MasteryLevel: From<Proposed<MasteryLevel>>` is not satisfied
+  --> tests/compile_fail/projected_mastery_has_no_conversion.rs:29:44
+   |
+29 |     let _by_into: MasteryLevel = projected.into();
+   |                                            ^^^^ the trait `From<Proposed<MasteryLevel>>` is not implemented for `MasteryLevel`
+   |
+   = note: required for `Proposed<MasteryLevel>` to implement `Into<MasteryLevel>`

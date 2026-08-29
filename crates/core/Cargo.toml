@@ -31,6 +31,12 @@ sha2.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+# `tests/scenario_isolation.rs` needs the projection engine and the canonical
+# writer in one process to prove that driving the first leaves the second
+# untouched. The edge is deliberately dev-only: `academic-scenario` is a
+# projection lane, and a shipping edge from the composition root would be the
+# start of the coupling this crate exists to keep absent.
+academic-scenario = { path = "../scenario" }
 proptest.workspace = true
 rusqlite.workspace = true
 
