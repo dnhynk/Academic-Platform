@@ -62,8 +62,11 @@ name = "academic-daemon"
 version = "0.1.0"
 dependencies = [
  "academic-core",
+ "academic-portability",
+ "academic-projections",
  "academic-rpc",
  "academic-store",
+ "academic-vault",
  "getrandom 0.4.3",
  "hex",
  "rustix",

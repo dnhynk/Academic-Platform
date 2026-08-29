@@ -7,14 +7,11 @@ use academic_domain::TimestampMillis;
 use academic_store::{
     accept::{AcceptError, AcceptanceOutcome, AcceptanceStore},
     error::StoreError,
-    fault::InjectedFault,
+    fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault, NoFault},
     idempotency::AcceptanceCommand,
     profile::SyntheticProfile,
 };
 use academic_vault::{DomainKeyring, Vault, VaultError};
-
-#[cfg(test)]
-use academic_store::fault::{AcceptanceFaultInjector, AcceptanceFaultPoint};
 
 /// Authentication or durable-store failure at the local core boundary.
 #[derive(Debug)]
@@ -120,14 +117,32 @@ impl AcceptanceService {
         authorization: &DeviceAuthorization,
         accepted_at: TimestampMillis,
     ) -> Result<AcceptanceOutcome, ServiceError> {
-        let verified = verify_signed_batch(command.envelope_bytes, authorization)?;
-        Ok(self
-            .store
-            .accept_verified_batch(&verified, command, accepted_at, &self.vault)?)
+        self.accept_signed_command_with(command, authorization, accepted_at, &NoFault)
     }
 
-    #[cfg(test)]
-    fn accept_signed_command_with_faults<F>(
+    /// Fault-harness entry point over the identical acceptance body.
+    ///
+    /// It exists only for the in-crate S2 tests and, under the non-default
+    /// `phase1-fault-injection` feature, for the X1 process harness. The
+    /// production entry point above reaches the same code with [`NoFault`], so
+    /// there is one acceptance implementation and the feature decides only
+    /// whether a second entry point is compiled.
+    #[cfg(any(test, feature = "phase1-fault-injection"))]
+    pub fn accept_signed_command_with_faults<F>(
+        &mut self,
+        command: AcceptanceCommand<'_>,
+        authorization: &DeviceAuthorization,
+        accepted_at: TimestampMillis,
+        faults: &F,
+    ) -> Result<AcceptanceOutcome, ServiceError>
+    where
+        F: AcceptanceFaultInjector,
+    {
+        self.accept_signed_command_with(command, authorization, accepted_at, faults)
+    }
+
+    /// The single acceptance body. `NoFault` compiles every checkpoint away.
+    pub(crate) fn accept_signed_command_with<F>(
         &mut self,
         command: AcceptanceCommand<'_>,
         authorization: &DeviceAuthorization,
@@ -169,7 +184,6 @@ mod tests {
     use academic_ledger::EVENT_SCHEMA_VERSION;
     use academic_store::{
         connection::open_reader,
-        fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault},
         path_policy::NativePathProbe,
         profile::{SyntheticProfile, create_synthetic_profile, open_synthetic_profile},
         queries::canonical_snapshot,

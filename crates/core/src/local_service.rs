@@ -22,6 +22,7 @@ use academic_rpc::{
 };
 use academic_store::{
     accept::{AcceptError, AcceptanceOutcome},
+    fault::{AcceptanceFaultInjector, NoFault},
     idempotency::{AcceptanceCommand, IdempotencyError},
     profile::SyntheticProfile,
     queries::{QueryError, batch_material, canonical_snapshot},
@@ -197,6 +198,44 @@ impl LocalService {
         request: &MutableRequest,
         accepted_at: TimestampMillis,
     ) -> Result<MutableResponse, LocalServiceError> {
+        self.handle_mutable_request_with(request, accepted_at, &NoFault)
+    }
+
+    /// Executes one request using the current UTC system clock.
+    pub fn handle_mutable_request_now(
+        &mut self,
+        request: &MutableRequest,
+    ) -> Result<MutableResponse, LocalServiceError> {
+        self.handle_mutable_request(request, timestamp_now()?)
+    }
+
+    /// X1 process-harness entry point over the identical request body.
+    ///
+    /// Compiled only by the non-default `phase1-fault-injection` feature. The
+    /// production entry points above reach the same body with [`NoFault`], so
+    /// the harness kills the real acceptance path rather than a copy of it.
+    #[cfg(feature = "phase1-fault-injection")]
+    pub fn handle_mutable_request_now_with_faults<F>(
+        &mut self,
+        request: &MutableRequest,
+        faults: &F,
+    ) -> Result<MutableResponse, LocalServiceError>
+    where
+        F: AcceptanceFaultInjector,
+    {
+        self.handle_mutable_request_with(request, timestamp_now()?, faults)
+    }
+
+    /// The single mutable-request body. `NoFault` compiles every checkpoint away.
+    fn handle_mutable_request_with<F>(
+        &mut self,
+        request: &MutableRequest,
+        accepted_at: TimestampMillis,
+        faults: &F,
+    ) -> Result<MutableResponse, LocalServiceError>
+    where
+        F: AcceptanceFaultInjector,
+    {
         let validated = validate_mutable_request(request)?;
         if mutable_request_digest(request)? != validated.request_digest {
             return self.reject(request, "REQUEST_DIGEST_MISMATCH", None);
@@ -224,10 +263,11 @@ impl LocalService {
             expected_revision: validated.expected_profile_revision,
             envelope_bytes: &self.fixture.envelope,
         };
-        let outcome = match self.service.accept_signed_command(
+        let outcome = match self.service.accept_signed_command_with(
             command,
             &self.fixture.authorization,
             accepted_at,
+            faults,
         ) {
             Ok(outcome) => outcome,
             Err(ServiceError::Acceptance(AcceptError::ExpectedRevisionConflict {
@@ -239,14 +279,6 @@ impl LocalService {
             Err(error) => return Err(error.into()),
         };
         accepted_response(request, &validated, &outcome)
-    }
-
-    /// Executes one request using the current UTC system clock.
-    pub fn handle_mutable_request_now(
-        &mut self,
-        request: &MutableRequest,
-    ) -> Result<MutableResponse, LocalServiceError> {
-        self.handle_mutable_request(request, timestamp_now()?)
     }
 
     /// Opens a fresh OS-read-only/query-only connection for a caller that does

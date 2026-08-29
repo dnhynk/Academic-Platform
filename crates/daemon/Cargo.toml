@@ -10,6 +10,12 @@ publish.workspace = true
 name = "academicd"
 path = "src/main.rs"
 
+[features]
+default = []
+# Compiles the X1 exit harness lane. It forwards to the crates that own
+# the named failpoints and is never selected by a default build.
+phase1-fault-injection = ["academic-core/phase1-fault-injection"]
+
 [dependencies]
 academic-core = { path = "../core" }
 academic-rpc = { path = "../rpc" }
@@ -21,6 +27,13 @@ thiserror.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+# Test-only edges used by the X1 exit harness to drive projection
+# rebuilds and to read published backup and restore evidence. The harness
+# vocabulary itself arrives through `#[path]` includes of
+# `crates/test-support/src`, so `academic-test-support` keeps no dependents.
+academic-portability = { path = "../portability" }
+academic-projections = { path = "../projections" }
+academic-vault = { path = "../vault" }
 tempfile.workspace = true
 
 [target.'cfg(unix)'.dependencies]

@@ -1827,6 +1827,28 @@ const nativeFixtureCiCommands = [
   "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json",
   "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json",
 ];
+// The exit's platform claims are the Windows named-pipe endpoint and the Unix
+// domain socket, so its matrix is exactly the two labels that carry one of
+// those. macOS stays an open gate rather than an included label.
+const phase1ExitMatrixLabels = ["ubuntu-latest", "windows-latest"];
+// The fault lane is selected by naming each owning crate's non-default feature.
+// `academic-daemon` forwards to `academic-core`, which forwards to the three
+// crates that own failpoints, so the daemon feature alone would compile the
+// lane; the full list is spelled out because clippy runs `--workspace` and each
+// crate's own test targets need their own feature selected too.
+const phase1FaultFeatureSelection = [
+  "academic-core/phase1-fault-injection",
+  "academic-daemon/phase1-fault-injection",
+  "academic-portability/phase1-fault-injection",
+  "academic-projections/phase1-fault-injection",
+  "academic-test-support/phase1-fault-injection",
+  "academic-vault/phase1-fault-injection",
+].join(",");
+const phase1ExitCiCommands = [
+  `cargo clippy --workspace --all-targets --locked --features ${phase1FaultFeatureSelection} -- -D warnings`,
+  "cargo test -p academic-daemon --test phase1_exit --locked --features phase1-fault-injection",
+  "node tools/phase1-exit.mjs --all-faults --format json",
+];
 const requireCiRecord = (value, label) => {
   assert.ok(
     typeof value === "object" && value !== null && !Array.isArray(value),
@@ -1932,6 +1954,52 @@ const expectedCiWorkflow = {
         { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[3] },
         { name: "Verify deterministic v2 fixture", run: nativeFixtureCiCommands[4] },
         { name: "Replay deterministic v2 fixture", run: nativeFixtureCiCommands[5] },
+      ],
+    },
+    // The Phase 1 crash, replay, and restore exit. Its matrix is a two-label
+    // set rather than the full hosted Rust matrix: the exit's platform claims
+    // are about the Windows named-pipe endpoint and the Unix domain socket, and
+    // a label that carries neither adds no evidence. macOS remains an open gate
+    // rather than a silently included one.
+    "phase1-exit": {
+      name: "phase1-exit-${{ matrix.os }}",
+      needs: "source-preflight",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 45,
+      strategy: {
+        "fail-fast": false,
+        matrix: { os: phase1ExitMatrixLabels },
+      },
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Install pinned Rust toolchain",
+          run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        {
+          name: "Restore the Cargo registry keyed on the committed Cargo lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.cargo/registry",
+            key: "cargo-registry-phase1-exit-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
+          },
+        },
+        {
+          name: "Populate the Cargo registry from the committed lockfile",
+          run: lockedCargoRegistryFetch,
+        },
+        {
+          name: "Install pinned Node",
+          uses: "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          with: { "node-version-file": ".nvmrc" },
+        },
+        { name: "Lint the fault-injection lane", run: phase1ExitCiCommands[0] },
+        { name: "Run the enumerated Phase 1 exit matrix", run: phase1ExitCiCommands[1] },
+        { name: "Assemble the Phase 1 exit receipt", run: phase1ExitCiCommands[2] },
       ],
     },
     contracts: {

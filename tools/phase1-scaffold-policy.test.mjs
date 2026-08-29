@@ -66,12 +66,79 @@ function cargoLockPackageTuples(cargoLock) {
     });
 }
 
-function workspaceDependencyNames(pkg) {
+/**
+ * Names the workspace crates `pkg` depends on through edges of the given kinds.
+ *
+ * `kind` is `null` for a normal dependency, `"dev"` for a test-only one, and
+ * `"build"` for a build script's. The distinction is load-bearing: a normal
+ * edge ships inside the product, a dev edge exists only while a test target is
+ * being compiled, and the two must never be asserted against one frozen list —
+ * doing that would let a new product edge hide behind an expected dev one.
+ */
+function workspaceDependencyNamesOfKinds(pkg, kinds) {
   return pkg.dependencies
-    .filter((dependency) => dependency.source === null && workspaceNames.has(dependency.name))
+    .filter(
+      (dependency) =>
+        dependency.source === null &&
+        workspaceNames.has(dependency.name) &&
+        kinds.includes(dependency.kind ?? null),
+    )
     .map((dependency) => dependency.name)
     .toSorted();
 }
+
+/** Workspace crates that ship inside `pkg`. */
+function productDependencyNames(pkg) {
+  return workspaceDependencyNamesOfKinds(pkg, [null, "build"]);
+}
+
+/** Workspace crates `pkg` links only while building a test target. */
+function devDependencyNames(pkg) {
+  return workspaceDependencyNamesOfKinds(pkg, ["dev"]);
+}
+
+/** Every workspace edge of `pkg`, of any kind. */
+function workspaceDependencyNames(pkg) {
+  return workspaceDependencyNamesOfKinds(pkg, [null, "build", "dev"]);
+}
+
+/**
+ * Returns the packages that reach the fault harness through a shipping edge.
+ *
+ * The harness may be reached by a dev edge — that is what a dev edge is for —
+ * but never by an edge that ends up in a product build.
+ */
+function packagesWithProductEdgeTo(packages, target) {
+  return packages
+    .filter((pkg) => pkg.name !== target && productDependencyNames(pkg).includes(target))
+    .map((pkg) => pkg.name)
+    .toSorted();
+}
+
+/**
+ * Returns the fault-injection feature each package forwards, keyed by name.
+ *
+ * A package with no such feature is absent from the result, so a package that
+ * silently gains one shows up as an unexpected key rather than as nothing.
+ */
+function faultFeatureForwarding(packages) {
+  return Object.fromEntries(
+    packages
+      .filter((pkg) => FAULT_FEATURE in pkg.features)
+      .map((pkg) => [pkg.name, pkg.features[FAULT_FEATURE].toSorted()])
+      .toSorted(([left], [right]) => left.localeCompare(right)),
+  );
+}
+
+/** Packages whose resolved feature set enables fault injection. */
+function packagesResolvingFaultFeature(packages, resolveNodes) {
+  return packages
+    .filter((pkg) => (resolveNodes.get(pkg.id)?.features ?? []).includes(FAULT_FEATURE))
+    .map((pkg) => pkg.name)
+    .toSorted();
+}
+
+const FAULT_FEATURE = "phase1-fault-injection";
 
 function assertAcyclic(graph) {
   const permanent = new Set();
@@ -98,9 +165,13 @@ function assertAcyclic(graph) {
 }
 
 test("workspace_dependency_direction_is_acyclic", () => {
+  // Only the shipping graph is frozen here. A dev edge does not travel into a
+  // product build and Cargo permits it to point back the way a normal edge may
+  // not, so mixing the two into one expectation would either forbid a legal
+  // test edge or let a new product edge pass as an expected dev one.
   const actual = Object.fromEntries(
     workspacePackages
-      .map((pkg) => [pkg.name, workspaceDependencyNames(pkg)])
+      .map((pkg) => [pkg.name, productDependencyNames(pkg)])
       .toSorted(([left], [right]) => left.localeCompare(right)),
   );
   assert.deepEqual(actual, {
@@ -141,12 +212,34 @@ test("workspace_dependency_direction_is_acyclic", () => {
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
+
+  // Test-only edges are frozen separately. `academic-daemon` owns the X1 exit
+  // harness in `tests/phase1_exit.rs`, which drives projection rebuilds and
+  // reads published backup, restore, and vault evidence, so it links those
+  // three crates while a test target is compiling and never in a product build.
+  const devEdges = Object.fromEntries(
+    workspacePackages
+      .map((pkg) => [pkg.name, devDependencyNames(pkg)])
+      .filter(([, dependencies]) => dependencies.length > 0)
+      .toSorted(([left], [right]) => left.localeCompare(right)),
+  );
+  assert.deepEqual(devEdges, {
+    "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
+  });
+
+  assert.deepEqual(
+    packagesWithProductEdgeTo(workspacePackages, "academic-test-support"),
+    [],
+    "product crates must not depend on the fault/test harness",
+  );
+  // The harness crate is reached by `#[path]` includes rather than by a Cargo
+  // edge, so it must have no dependents of any kind at all.
   assert.equal(
     workspacePackages
       .filter((pkg) => pkg.name !== "academic-test-support")
       .some((pkg) => workspaceDependencyNames(pkg).includes("academic-test-support")),
     false,
-    "product crates must not depend on the fault/test harness",
+    "nothing may depend on the fault/test harness crate",
   );
 });
 
@@ -308,28 +401,49 @@ test("sqlcipher_feature_is_not_default", () => {
 });
 
 test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", async () => {
-  const projectionsPackage = packagesByName.get("academic-projections");
-  const corePackage = packagesByName.get("academic-core");
-  assert.deepEqual(projectionsPackage.features.default, []);
-  assert.deepEqual(projectionsPackage.features["phase1-fault-injection"], []);
-  assert.deepEqual(corePackage.features.default, []);
-  assert.deepEqual(corePackage.features["phase1-fault-injection"], [
-    "academic-projections/phase1-fault-injection",
-  ]);
-  assert.equal(
-    resolveNodesById.get(projectionsPackage.id).features.includes("phase1-fault-injection"),
-    false,
-    "default product resolution enabled projection fault injection",
-  );
-  assert.equal(
-    resolveNodesById.get(corePackage.id).features.includes("phase1-fault-injection"),
-    false,
-    "default product resolution enabled the core fault harness",
+  // Exactly which crates declare the harness feature, and exactly what each
+  // forwards. `academic-core` forwards to the three crates that own the named
+  // failpoints; `academic-daemon` forwards to `academic-core` so the X1 exit
+  // lane is one feature selection rather than five. Anything else appearing
+  // here is a new fault surface and has to be declared in the open.
+  assert.deepEqual(faultFeatureForwarding(workspacePackages), {
+    "academic-core": [
+      "academic-portability/phase1-fault-injection",
+      "academic-projections/phase1-fault-injection",
+      "academic-vault/phase1-fault-injection",
+    ],
+    "academic-daemon": ["academic-core/phase1-fault-injection"],
+    "academic-portability": [],
+    "academic-projections": [],
+    "academic-test-support": [],
+    "academic-vault": [],
+  });
+  for (const name of [
+    "academic-core",
+    "academic-daemon",
+    "academic-portability",
+    "academic-projections",
+    "academic-test-support",
+    "academic-vault",
+  ]) {
+    assert.deepEqual(
+      packagesByName.get(name).features.default,
+      name === "academic-store" ? ["bundled-sqlite"] : [],
+      `${name} must not enable a fault lane by default`,
+    );
+  }
+
+  // Nothing enables it in a default resolution, which is the property that
+  // keeps a product build free of any crash switch.
+  assert.deepEqual(
+    packagesResolvingFaultFeature(workspacePackages, resolveNodesById),
+    [],
+    "default product resolution enabled a fault-injection lane",
   );
   for (const pkg of workspacePackages) {
     for (const dependency of pkg.dependencies) {
       assert.equal(
-        dependency.features.includes("phase1-fault-injection"),
+        dependency.features.includes(FAULT_FEATURE),
         false,
         `${pkg.name} enables phase1-fault-injection on ${dependency.name}`,
       );
@@ -366,6 +480,101 @@ test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", as
   ]) {
     assertFeatureGuarded(querySource, declaration);
   }
+});
+
+test("fault_harness_and_dependency_gates_reject_their_violations", () => {
+  // The two gates above assert facts about the real graph. On their own that is
+  // an invariant held by coincidence: if the predicates were wrong, the real
+  // graph would still satisfy them and both tests would still pass. These
+  // fixtures put the predicates in front of graphs that violate the invariant
+  // and require them to say so, which is what makes the assertions load-bearing.
+  const workspacePackage = (name, dependencies = [], features = {}) => ({
+    id: `${name}-id`,
+    name,
+    dependencies: dependencies.map(([dependencyName, kind]) => ({
+      name: dependencyName,
+      kind,
+      source: null,
+      features: [],
+    })),
+    features,
+  });
+
+  // (1) A product edge to the harness is caught; a dev edge is not, because a
+  //     dev edge is exactly what a test target is allowed to have.
+  const shippingHarnessEdge = [
+    workspacePackage("academic-daemon", [["academic-test-support", null]]),
+    workspacePackage("academic-test-support"),
+  ];
+  assert.deepEqual(
+    packagesWithProductEdgeTo(shippingHarnessEdge, "academic-test-support"),
+    ["academic-daemon"],
+    "a normal dependency on the harness must be reported",
+  );
+  const buildHarnessEdge = [
+    workspacePackage("academic-store", [["academic-test-support", "build"]]),
+    workspacePackage("academic-test-support"),
+  ];
+  assert.deepEqual(
+    packagesWithProductEdgeTo(buildHarnessEdge, "academic-test-support"),
+    ["academic-store"],
+    "a build-script dependency on the harness must be reported",
+  );
+  const devHarnessEdge = [
+    workspacePackage("academic-daemon", [["academic-test-support", "dev"]]),
+    workspacePackage("academic-test-support"),
+  ];
+  assert.deepEqual(
+    packagesWithProductEdgeTo(devHarnessEdge, "academic-test-support"),
+    [],
+    "a dev dependency is not a product edge",
+  );
+
+  // (2) The product and dev graphs are read apart, so a new product edge cannot
+  //     hide behind an expected dev one.
+  const mixedEdges = workspacePackage("academic-daemon", [
+    ["academic-core", null],
+    ["academic-vault", "dev"],
+  ]);
+  assert.deepEqual(productDependencyNames(mixedEdges), ["academic-core"]);
+  assert.deepEqual(devDependencyNames(mixedEdges), ["academic-vault"]);
+
+  // (3) A crate that quietly gains the fault feature, or forwards it somewhere
+  //     new, appears in the forwarding map rather than passing unnoticed.
+  const smuggledFeature = [
+    workspacePackage("academic-rpc", [], { default: [], [FAULT_FEATURE]: [] }),
+    workspacePackage("academic-core", [], {
+      default: [],
+      [FAULT_FEATURE]: ["academic-vault/phase1-fault-injection"],
+    }),
+    workspacePackage("academic-domain", [], { default: [] }),
+  ];
+  assert.deepEqual(faultFeatureForwarding(smuggledFeature), {
+    "academic-core": ["academic-vault/phase1-fault-injection"],
+    "academic-rpc": [],
+  });
+
+  // (4) A default resolution that enables the fault lane is reported, which is
+  //     the property that keeps a product build free of a crash switch.
+  const resolved = new Map([
+    ["academic-core-id", { features: ["default", FAULT_FEATURE] }],
+    ["academic-domain-id", { features: [] }],
+  ]);
+  assert.deepEqual(
+    packagesResolvingFaultFeature(
+      [workspacePackage("academic-core"), workspacePackage("academic-domain")],
+      resolved,
+    ),
+    ["academic-core"],
+    "a resolution that enables the fault lane must be reported",
+  );
+  assert.deepEqual(
+    packagesResolvingFaultFeature(
+      [workspacePackage("academic-domain")],
+      new Map([["academic-domain-id", { features: ["default"] }]]),
+    ),
+    [],
+  );
 });
 
 test("synthetic_manifest_schema_rejects_non_synthetic_data", async () => {

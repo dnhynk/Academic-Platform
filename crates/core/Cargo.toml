@@ -8,7 +8,11 @@ publish.workspace = true
 
 [features]
 default = []
-phase1-fault-injection = ["academic-projections/phase1-fault-injection"]
+phase1-fault-injection = [
+  "academic-portability/phase1-fault-injection",
+  "academic-projections/phase1-fault-injection",
+  "academic-vault/phase1-fault-injection",
+]
 
 [dependencies]
 academic-contracts = { path = "../contracts" }
