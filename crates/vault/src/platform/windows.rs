@@ -423,24 +423,11 @@ fn wide_path_without_terminator(path: &Path) -> io::Result<Vec<u16>> {
         BACKSLASH,
     ];
 
-    let original = path.as_os_str().encode_wide().collect::<Vec<_>>();
-    let value = if original.starts_with(&EXTENDED_PREFIX) || !path.is_absolute() {
-        original
-    } else if original.starts_with(&[BACKSLASH, BACKSLASH]) {
-        UNC_PREFIX
-            .into_iter()
-            .chain(original.into_iter().skip(2))
-            .collect()
-    } else {
-        EXTENDED_PREFIX.into_iter().chain(original).collect()
-    };
-    if value.contains(&0) {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Windows vault path contains an interior NUL",
-        ));
-    }
-    Ok(value)
+    Ok(match verbatim_body(path)? {
+        VerbatimBody::Rooted(body) => EXTENDED_PREFIX.into_iter().chain(body).collect(),
+        VerbatimBody::Unc(body) => UNC_PREFIX.into_iter().chain(body).collect(),
+        VerbatimBody::Unprefixed(original) => original,
+    })
 }
 
 fn verbatim_path(path: &Path) -> io::Result<PathBuf> {
@@ -464,21 +451,123 @@ fn wide_nt_path(path: &Path) -> io::Result<Vec<u16>> {
         BACKSLASH,
     ];
 
-    let original = path.as_os_str().encode_wide().collect::<Vec<_>>();
-    if original.contains(&0) || !path.is_absolute() {
-        return Err(io::Error::new(
+    match verbatim_body(path)? {
+        VerbatimBody::Rooted(body) => Ok(NT_PREFIX.into_iter().chain(body).collect()),
+        VerbatimBody::Unc(body) => Ok(NT_UNC_PREFIX.into_iter().chain(body).collect()),
+        VerbatimBody::Unprefixed(_) => Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "Windows handle rename requires an absolute path without an interior NUL",
+        )),
+    }
+}
+
+/// One caller spelling classified for the verbatim namespace.
+///
+/// Each body is already spelled with single backslashes, so applying the Win32 `\\?\`/`\\?\UNC\`
+/// or the NT `\??\`/`\??\UNC\` prefix to it yields a usable path.
+enum VerbatimBody {
+    /// A drive-rooted body, or the tail of a spelling that already carried a verbatim prefix.
+    Rooted(Vec<u16>),
+    /// A UNC body stripped of its two leading separators.
+    Unc(Vec<u16>),
+    /// A spelling no verbatim prefix applies to, returned exactly as the caller wrote it so that
+    /// Win32 resolves it against the current directory as it always has.
+    Unprefixed(Vec<u16>),
+}
+
+/// Classifies `path` for the verbatim namespace, normalising its separators first.
+///
+/// The verbatim namespace performs no separator translation: a forward slash inside `\\?\` is an
+/// ordinary name character, so an unrewritten spelling names one long nonexistent file and every
+/// operation below it fails with `ERROR_PATH_NOT_FOUND` far from the cause. Forward-slash and
+/// mixed spellings reach the vault routinely - configuration text, a command-line argument, any
+/// path built as a string - so the rewrite belongs here rather than at one caller's boundary.
+fn verbatim_body(path: &Path) -> io::Result<VerbatimBody> {
+    const BACKSLASH: u16 = b'\\' as u16;
+    const QUESTION: u16 = b'?' as u16;
+    const COLON: u16 = b':' as u16;
+    const DOT: u16 = b'.' as u16;
+    const EXTENDED_PREFIX: [u16; 4] = [BACKSLASH, BACKSLASH, QUESTION, BACKSLASH];
+
+    let original = path.as_os_str().encode_wide().collect::<Vec<_>>();
+    if original.contains(&0) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Windows vault path contains an interior NUL",
         ));
     }
-    if original.starts_with(&[BACKSLASH, BACKSLASH]) {
-        Ok(NT_UNC_PREFIX
-            .into_iter()
-            .chain(original.into_iter().skip(2))
-            .collect())
-    } else {
-        Ok(NT_PREFIX.into_iter().chain(original).collect())
+
+    let normalized = normalize_separators(&original);
+    if let Some(body) = normalized.strip_prefix(&EXTENDED_PREFIX) {
+        return require_resolved_components(body).map(VerbatimBody::Rooted);
     }
+    if let Some(body) = normalized.strip_prefix(&[BACKSLASH, BACKSLASH]) {
+        if matches!(body, [] | [DOT]) || body.starts_with(&[DOT, BACKSLASH]) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Windows vault path names a device namespace no verbatim prefix applies to",
+            ));
+        }
+        return require_resolved_components(body).map(VerbatimBody::Unc);
+    }
+    if matches!(normalized.get(1..3), Some([COLON, BACKSLASH])) {
+        return require_resolved_components(&normalized).map(VerbatimBody::Rooted);
+    }
+    Ok(VerbatimBody::Unprefixed(original))
+}
+
+/// Rewrites a caller spelling into the single-backslash form the verbatim namespace requires.
+///
+/// Every forward slash becomes a backslash, interior separator runs collapse, and a trailing
+/// separator is dropped unless it belongs to a drive root. Exactly two leading separators survive
+/// so that a UNC or already-verbatim spelling keeps its root.
+fn normalize_separators(original: &[u16]) -> Vec<u16> {
+    const BACKSLASH: u16 = b'\\' as u16;
+    const SLASH: u16 = b'/' as u16;
+    const COLON: u16 = b':' as u16;
+
+    let is_separator = |unit: u16| unit == BACKSLASH || unit == SLASH;
+    let leading = original
+        .iter()
+        .take_while(|unit| is_separator(**unit))
+        .count();
+    let root = leading.min(2);
+    let mut value = vec![BACKSLASH; root];
+    for unit in original.iter().skip(leading).copied() {
+        if !is_separator(unit) {
+            value.push(unit);
+        } else if value.last() != Some(&BACKSLASH) {
+            value.push(BACKSLASH);
+        }
+    }
+    while value.len() > root && value.last() == Some(&BACKSLASH) {
+        value.pop();
+    }
+    if value.last() == Some(&COLON) {
+        value.push(BACKSLASH);
+    }
+    value
+}
+
+/// Rejects `.` and `..` components.
+///
+/// The verbatim namespace resolves neither, so prefixing such a spelling names a literal directory
+/// that does not exist. Resolving them here would have to guess whether an intervening component
+/// is a link, so the composition root that owns the profile path resolves them instead.
+fn require_resolved_components(body: &[u16]) -> io::Result<Vec<u16>> {
+    const BACKSLASH: u16 = b'\\' as u16;
+    const DOT: u16 = b'.' as u16;
+
+    if body
+        .split(|unit| *unit == BACKSLASH)
+        .any(|component| matches!(component, [DOT] | [DOT, DOT]))
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Windows vault path has a relative component the verbatim namespace cannot resolve",
+        ));
+    }
+    Ok(body.to_vec())
 }
 
 fn require_safe_barrier_shape(path: &Path) -> io::Result<()> {
@@ -538,6 +627,8 @@ fn is_directory_flush_unsupported(error: &io::Error) -> bool {
 mod tests {
     use std::{
         cell::Cell,
+        ffi::OsStr,
+        io::Read as _,
         path::PathBuf,
         sync::atomic::{AtomicU64, Ordering},
     };
@@ -574,6 +665,206 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    fn verbatim_text(path: &str) -> io::Result<String> {
+        Ok(String::from_utf16_lossy(&wide_path_without_terminator(
+            Path::new(path),
+        )?))
+    }
+
+    fn nt_text(path: &str) -> io::Result<String> {
+        Ok(String::from_utf16_lossy(&wide_nt_path(Path::new(path))?))
+    }
+
+    fn respell_with_forward_slashes(path: &Path) -> PathBuf {
+        PathBuf::from(path.to_string_lossy().replace('\\', "/"))
+    }
+
+    /// The Win32 verbatim namespace performs no separator translation, so a caller spelling has
+    /// to be rewritten before `\\?\` is applied. Every input here is an ordinary Windows spelling
+    /// that configuration text, a command-line argument, or string concatenation produces.
+    #[test]
+    fn verbatim_prefix_normalizes_caller_separators() -> io::Result<()> {
+        let cases = [
+            (
+                "C:/profile/.vault/objects",
+                r"\\?\C:\profile\.vault\objects",
+            ),
+            (
+                r"C:\profile/.vault\objects",
+                r"\\?\C:\profile\.vault\objects",
+            ),
+            ("C://profile///objects", r"\\?\C:\profile\objects"),
+            ("C:/profile/objects/", r"\\?\C:\profile\objects"),
+            ("C:/", r"\\?\C:\"),
+            (r"C:\", r"\\?\C:\"),
+            ("//server/share/profile", r"\\?\UNC\server\share\profile"),
+            ("//server/share/", r"\\?\UNC\server\share"),
+            ("//?/C:/profile/objects", r"\\?\C:\profile\objects"),
+            (
+                r"\\?\UNC\server\share\profile",
+                r"\\?\UNC\server\share\profile",
+            ),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(
+                verbatim_text(input)?,
+                expected,
+                "verbatim spelling of {input}"
+            );
+        }
+        Ok(())
+    }
+
+    /// The rewrite must leave the canonical backslash spellings every existing caller supplies
+    /// byte-for-byte unchanged, including the relative fallback Win32 resolves for itself.
+    #[test]
+    fn verbatim_prefix_preserves_canonical_backslash_spellings() -> io::Result<()> {
+        let cases = [
+            (
+                r"C:\Users\profile\.vault\objects\ab\cd.obj",
+                r"\\?\C:\Users\profile\.vault\objects\ab\cd.obj",
+            ),
+            (
+                r"\\server\share\profile\.vault",
+                r"\\?\UNC\server\share\profile\.vault",
+            ),
+            (r"\\?\C:\already\verbatim", r"\\?\C:\already\verbatim"),
+            (r"\\?\UNC\server\share", r"\\?\UNC\server\share"),
+            (r"relative\tail", r"relative\tail"),
+            ("C:relative", "C:relative"),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(
+                verbatim_text(input)?,
+                expected,
+                "verbatim spelling of {input}"
+            );
+        }
+        Ok(())
+    }
+
+    /// The NT spelling handed to `FileRenameInfoEx` shares the same namespace rule.
+    #[test]
+    fn handle_rename_path_normalizes_caller_separators() -> io::Result<()> {
+        let cases = [
+            (
+                "C:/profile/objects/cd.obj",
+                r"\??\C:\profile\objects\cd.obj",
+            ),
+            (
+                r"C:\profile\objects\cd.obj",
+                r"\??\C:\profile\objects\cd.obj",
+            ),
+            (
+                r"C:\profile/objects\cd.obj",
+                r"\??\C:\profile\objects\cd.obj",
+            ),
+            ("//server/share/profile", r"\??\UNC\server\share\profile"),
+            (r"\\server\share\profile", r"\??\UNC\server\share\profile"),
+            (r"\\?\C:\already\verbatim", r"\??\C:\already\verbatim"),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(nt_text(input)?, expected, "NT spelling of {input}");
+        }
+        assert!(
+            matches!(wide_nt_path(Path::new(r"relative\tail")), Err(error)
+                if error.kind() == io::ErrorKind::InvalidInput),
+            "a relative rename destination has no NT spelling"
+        );
+        Ok(())
+    }
+
+    /// A spelling the verbatim namespace cannot express must fail here, with the vault's own
+    /// input error, rather than downstream with an unrelated operating-system code.
+    #[test]
+    fn verbatim_prefix_rejects_spellings_it_cannot_express() {
+        for input in [
+            r"C:\profile\..\escape",
+            "C:/profile/./same",
+            r"\\.\PhysicalDrive0",
+            "//./PhysicalDrive0",
+        ] {
+            assert!(
+                matches!(verbatim_path(Path::new(input)), Err(error)
+                    if error.kind() == io::ErrorKind::InvalidInput),
+                "the verbatim namespace cannot express {input}"
+            );
+        }
+
+        let interior_nul =
+            OsString::from_wide(&[b'C' as u16, b':' as u16, b'\\' as u16, 0, b'a' as u16]);
+        assert!(
+            matches!(verbatim_path(Path::new(OsStr::new(&interior_nul))), Err(error)
+                if error.kind() == io::ErrorKind::InvalidInput),
+            "an interior NUL has no verbatim spelling"
+        );
+    }
+
+    /// A forward-slash profile root is an ordinary Windows spelling, so every verbatim-namespace
+    /// operation must reach the same objects a backslash spelling reaches.
+    #[test]
+    fn native_forward_slash_spelling_reaches_vault_operations() -> io::Result<()> {
+        let directory = TestDirectory::create()?;
+        let respelled = respell_with_forward_slashes(&directory.0);
+
+        let lease_path = respelled.join("object.lease");
+        let held = try_acquire_shared_object_lease(&lease_path)?;
+        assert!(
+            held.is_some(),
+            "a forward-slash lease path must reach the lease namespace"
+        );
+        drop(held);
+
+        let source = respelled.join("source.partial");
+        let destination = respelled.join("destination.obj");
+        let mut temp = create_locked_temp(&source)?;
+        temp.file_mut().write_all(b"forward slash bytes")?;
+        temp.file_mut().sync_all()?;
+        assert!(publish_locked_no_replace(&mut temp, &source, &destination)?);
+        sync_directory(&respelled)?;
+        drop(temp);
+
+        assert!(symlink_metadata_no_follow(&destination)?.is_file());
+        let mut bytes = Vec::new();
+        open_readonly_no_follow(&destination)?.read_to_end(&mut bytes)?;
+        assert_eq!(bytes, b"forward slash bytes");
+
+        assert!(directory.0.join("destination.obj").is_file());
+        Ok(())
+    }
+
+    /// Beyond the legacy limit the verbatim prefix is the only thing that makes the path usable,
+    /// so the rewrite must normalise separators without losing it.
+    #[test]
+    fn native_long_forward_slash_path_publishes_through_the_verbatim_prefix() -> io::Result<()> {
+        let directory = TestDirectory::create()?;
+        let mut deep = directory.0.clone();
+        for index in 0_u32..4 {
+            deep.push(format!("{index}{}", "d".repeat(79)));
+            fs::create_dir(verbatim_path(&deep)?)?;
+        }
+        let respelled = respell_with_forward_slashes(&deep);
+        assert!(
+            respelled.as_os_str().len() > 260,
+            "the long-path case requires a spelling past the legacy limit"
+        );
+
+        let source = respelled.join("source.partial");
+        let destination = respelled.join("destination.obj");
+        let mut temp = create_locked_temp(&source)?;
+        temp.file_mut().write_all(b"long path bytes")?;
+        temp.file_mut().sync_all()?;
+        assert!(publish_locked_no_replace(&mut temp, &source, &destination)?);
+        drop(temp);
+
+        let mut bytes = Vec::new();
+        open_readonly_no_follow(&destination)?.read_to_end(&mut bytes)?;
+        assert_eq!(bytes, b"long path bytes");
+
+        fs::remove_dir_all(verbatim_path(&directory.0)?)?;
+        Ok(())
     }
 
     #[test]
