@@ -184,7 +184,9 @@ Enforced in the two halves §2.3-14 already establishes for a capability.
 network, or model crate is in it. `getrandom` *is*, because §2.3-18 admits it
 for a synthetic nonce and locator seed and `uuid`'s `v7` feature reaches it; the
 test therefore asserts `uuid` is its only owner rather than pretending the
-capability is absent.
+capability is absent. The closure is resolved with `--target all`, not for the
+host: `getrandom` reaches `libc` on Linux and not on Windows, so a host-resolved
+list would be one platform's claim asserted on every runner.
 
 **Used.** The same test scans the engine sources the registry accounts for —
 today the harness module, its generated registry, and the reference engine — for
