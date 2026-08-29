@@ -436,11 +436,19 @@ impl EncryptedVault {
         })
     }
 
-    /// Re-seals one reachable object under a fresh DEK and base nonce.
+    /// Re-seals one reachable object into `destination` under fresh key material.
     ///
-    /// The old object is left exactly as it is. `P2-K5` calls this for rotation;
-    /// the caller quarantines the superseded object only after its migration
-    /// event has committed.
+    /// `destination` is a vault holding the keyring the object is moving *to*.
+    /// For a `P2-K5` KEK rotation that is a different `KEK_d`, so the locator —
+    /// which derives from it — changes and the re-sealed object lands on a new
+    /// canonical path. Passing `self` re-seals in place under the same key,
+    /// which lands on the same locator and adopts the existing bytes; that is
+    /// the degenerate case, not the rotation one.
+    ///
+    /// The old object is left exactly as it is: nothing here edits an object in
+    /// place, and nothing here moves reachability. The caller appends the
+    /// descriptor-migration event, and only after that event commits may it
+    /// quarantine the superseded object.
     pub fn reseal(
         &self,
         descriptor: &ArtifactDescriptor,
@@ -559,10 +567,11 @@ impl ObjectNamespace for EncryptedVault {
             // A file that is present but does not authenticate is the same
             // reconciliation outcome as one whose bytes do not match: corrupt,
             // repair-required. It is never silently valid.
-            Err(VaultError::ObjectFormat(_)) => Err(integrity_mismatch(descriptor_path_hint(
-                descriptor,
-                Self::layout(self),
-            ))),
+            Err(VaultError::ObjectFormat(_)) => {
+                let path = Self::validate_descriptor_locator(self, descriptor)
+                    .unwrap_or_else(|_| self.layout.objects_root().to_path_buf());
+                Err(integrity_mismatch(&path))
+            }
             Err(error) => Err(error),
         }
     }
@@ -742,13 +751,6 @@ fn fill(source: &mut impl Read, buffer: &mut [u8], path: &Path) -> VaultResult<u
         filled += read;
     }
     Ok(filled)
-}
-
-fn descriptor_path_hint<'layout>(
-    _descriptor: &ArtifactDescriptor,
-    layout: &'layout VaultLayout,
-) -> &'layout Path {
-    layout.objects_root()
 }
 
 fn read_and_open_header(
