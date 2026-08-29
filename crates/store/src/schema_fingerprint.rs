@@ -1,10 +1,12 @@
 //! Versioned, reference-derived admission for the complete Store user schema.
 //!
-//! The embedded migration is executed against an in-memory database to derive
-//! the expected fingerprint. Candidate databases are inspected through the
-//! same SQLite build. This keeps the migration as the single schema authority
-//! while avoiding a second hand-maintained list of tables, indexes, triggers,
-//! columns, or constraints.
+//! The embedded migration set is executed in order against an in-memory
+//! database to derive the expected fingerprint. Candidate databases are
+//! inspected through the same SQLite build. This keeps the migrations as the
+//! single schema authority while avoiding a second hand-maintained list of
+//! tables, indexes, triggers, columns, or constraints. The set is the one this
+//! binary's lane applies, so the encrypted lane fingerprints the schema-2
+//! result of `0001` followed by `0003` rather than the Phase 1 one.
 
 use std::sync::OnceLock;
 
@@ -51,7 +53,7 @@ struct SchemaFingerprint {
 /// the exact embedded migration.
 pub(crate) fn verify_store_schema_fingerprint(
     connection: &Connection,
-    migration_sql: &str,
+    migration_sql: &[&str],
 ) -> StoreResult<()> {
     let expected = expected_schema_fingerprint(migration_sql)?;
     let actual = schema_fingerprint(connection)?;
@@ -77,13 +79,15 @@ pub(crate) fn user_schema_object_count(connection: &Connection) -> StoreResult<i
         .map_err(StoreError::from)
 }
 
-fn expected_schema_fingerprint(migration_sql: &str) -> StoreResult<&'static SchemaFingerprint> {
+fn expected_schema_fingerprint(migration_sql: &[&str]) -> StoreResult<&'static SchemaFingerprint> {
     if let Some(fingerprint) = EXPECTED_SCHEMA_FINGERPRINT.get() {
         return Ok(fingerprint);
     }
 
     let reference = Connection::open_in_memory()?;
-    reference.execute_batch(migration_sql)?;
+    for step in migration_sql {
+        reference.execute_batch(step)?;
+    }
     let computed = schema_fingerprint(&reference)?;
 
     // Concurrent first readers may derive the same immutable reference in

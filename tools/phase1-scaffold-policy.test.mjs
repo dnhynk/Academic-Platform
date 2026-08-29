@@ -226,8 +226,15 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-projections": ["academic-domain", "academic-store"],
     "academic-rpc": ["academic-contracts", "academic-domain"],
     "academic-scenario": ["academic-domain"],
+    // `academic-crypto` is an optional edge behind `sqlcipher-store`. It is
+    // listed here because `cargo metadata` reports declared dependencies, not
+    // resolved ones: the encrypted lane's `SKEY_p` comes from the `P2-K1` key
+    // schedule rather than from a second derivation inside the store, and
+    // `sqlcipher_feature_is_not_default` proves the edge stays unresolved in a
+    // default build.
     "academic-store": [
       "academic-contracts",
+      "academic-crypto",
       "academic-domain",
       "academic-ledger",
       "academic-store-platform",
@@ -833,10 +840,122 @@ test("sqlcipher_feature_is_not_default", () => {
   assert.deepEqual(storePackage.features["sqlcipher-spike"], [
     "rusqlite/bundled-sqlcipher-vendored-openssl",
   ]);
+  assert.deepEqual(storePackage.features["sqlcipher-store"], [
+    "dep:academic-crypto",
+    "rusqlite/bundled-sqlcipher-vendored-openssl",
+  ]);
   const storeNode = resolveNodesById.get(storePackage.id);
   assert.equal(storeNode.features.includes("bundled-sqlite"), true);
   assert.equal(storeNode.features.includes("sqlcipher-spike"), false);
+  assert.equal(storeNode.features.includes("sqlcipher-store"), false);
+
+  // The default product graph resolves neither the encrypted lane's crypto
+  // edge nor the OpenSSL that SQLCipher would drag in with it.
+  const defaultPackages = defaultProductPackageNames();
+  assert.equal(defaultPackages.has("openssl-src"), false);
+  assert.equal(
+    (resolveNodesById.get(packagesByName.get("libsqlite3-sys").id)?.features ?? []).some(
+      (feature) => feature.startsWith("bundled-sqlcipher"),
+    ),
+    false,
+    "the default graph resolved a SQLCipher libsqlite3-sys",
+  );
 });
+
+// t068 section 2.3-13. The two lanes are mutually exclusive at compile time, so
+// the claim to enforce is not "the encrypted lane is absent" -- it is that
+// selecting it swaps the whole lane rather than adding to the default one.
+//
+// This asks `cargo tree` rather than `cargo metadata`: metadata resolves
+// features across the entire workspace, where every other crate still asks for
+// the default `academic-store`, so it cannot answer a package-scoped question.
+// `cargo tree -p ... --no-default-features` resolves exactly what the encrypted
+// lane's own build command resolves.
+test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
+  // The encrypted lane pulls the SQLCipher build and the key schedule.
+  const cipherTree = featureTree([
+    "-p",
+    "academic-store",
+    "--no-default-features",
+    "--features",
+    "sqlcipher-store",
+  ]);
+  assert.ok(
+    cipherTree.includes("openssl-sys"),
+    "the encrypted lane did not select a SQLCipher build",
+  );
+  assert.ok(
+    cipherTree.includes("academic-crypto"),
+    "the encrypted lane did not select the P2-K1 key schedule",
+  );
+
+  // The default store lane pulls neither. The `dep:academic-crypto` edge is
+  // what makes this a lane swap rather than an addition: it exists only when
+  // `sqlcipher-store` is on, so its presence or absence reads the resolved
+  // feature set without having to parse one.
+  const plaintextTree = featureTree(["-p", "academic-store"]);
+  for (const forbidden of ["openssl", "academic-crypto"]) {
+    assert.equal(
+      plaintextTree.includes(forbidden),
+      false,
+      `the default store graph selected ${forbidden}`,
+    );
+  }
+
+  const defaultTree = featureTree(["-p", "academic-daemon"]);
+  for (const forbidden of ["sqlcipher", "openssl", "academic-crypto"]) {
+    assert.equal(
+      defaultTree.includes(forbidden),
+      false,
+      `the default daemon graph selected ${forbidden}`,
+    );
+  }
+
+  // Only `academic-store` declares the encrypted lane's crypto edge.
+  const storeCryptoDependents = workspacePackages
+    .filter((pkg) => productDependencyNames(pkg).includes("academic-crypto"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(storeCryptoDependents, ["academic-store"]);
+
+  // The compile-time guard itself, in the library that declares both features.
+  const lib = await readFile("crates/store/src/lib.rs", "utf8");
+  assert.match(
+    lib,
+    /#\[cfg\(all\(feature = "bundled-sqlite", feature = "sqlcipher-store"\)\)\]\s+compile_error!/u,
+    "the mutually exclusive lane guard is missing",
+  );
+
+  // Migration numbering is allocated once and never reordered.
+  const migration = await readFile(
+    "migrations/store/0003_phase2_encrypted_identity.sql",
+    "utf8",
+  );
+  assert.match(migration, /CHECK \(schema_version = 2\)/u);
+  assert.match(migration, /CHECK \(schema_semver = '2\.0\.0'\)/u);
+  assert.match(
+    migration,
+    /format_uuid = x'67cb6d3ea27e4b53b1e727d46920e4f9'/u,
+    "migration 0003 does not pin the frozen schema-2 format UUID",
+  );
+});
+
+/**
+ * Resolves a feature tree exactly as the corresponding build would.
+ *
+ * The trailing `(path)` of every workspace entry is stripped: it is the
+ * checkout location, and a worktree whose directory name happens to contain
+ * `sqlcipher` would otherwise read as a selected dependency.
+ */
+function featureTree(selector) {
+  const run = spawnSync(
+    "cargo",
+    ["tree", "--locked", "--offline", "--edges", "features", ...selector],
+    { encoding: "utf8" },
+  );
+  assert.equal(run.status, 0, `locked offline cargo tree failed: ${run.stderr}`);
+  return run.stdout.replaceAll(/\([^)]*\)/gu, "");
+}
 
 test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", async () => {
   // Exactly which crates declare the harness feature, and exactly what each

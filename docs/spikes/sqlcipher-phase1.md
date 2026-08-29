@@ -103,12 +103,15 @@ work; the presence of admitted sources is not license approval.
   reached `perl ./Configure ... VC-WIN64A`, then stopped because that Cygwin Perl
   lacks `Locale::Maketext::Simple` (loaded through `Params/Check.pm`). Nothing
   was fetched or installed. This is a concrete native-host toolchain limit, not
-  a SQLCipher pass or an implementation blocker.
+  a SQLCipher pass or an implementation blocker. `P2-K2` reproduced the same
+  stop and enumerated the routes out of it; see
+  [the encrypted store lane](../contracts/encrypted-store-lane.md).
 - macOS, Android and iOS compile/runtime, packaging, symbol, crash-dump and
   artifact-leak evidence remain H1.
-- Disk-full injection through a bounded/failing VFS was not practical in this
-  file-limited spike and remains explicitly unresolved; no simulated pass is
-  recorded.
+- Disk-full injection was not practical in this file-limited spike and no
+  simulated pass is recorded here. `P2-K2` closed it for the encrypted store
+  lane with bounded storage exhaustion at SQLite's own allocation boundary; see
+  [the encrypted store lane](../contracts/encrypted-store-lane.md).
 - Hardware-backed key brokering, production key lifecycle, migration from a
   future plaintext product store, update cadence, legal review and distribution
   notices remain out of scope.

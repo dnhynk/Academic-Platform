@@ -7,9 +7,11 @@ use std::{
 
 use rusqlite::{Connection, OpenFlags, TransactionBehavior, params};
 
+#[cfg(not(feature = "sqlcipher-store"))]
+use crate::PHASE1_STORAGE_POLICY;
 use crate::{
-    PHASE1_STORAGE_POLICY, SQLITE_APPLICATION_ID, STORE_FORMAT_UUID, STORE_SCHEMA_SEMVER,
-    STORE_SCHEMA_VERSION,
+    SQLITE_APPLICATION_ID, STORE_FORMAT_UUID, STORE_MINIMUM_READER_PROTOCOL,
+    STORE_MINIMUM_WRITER_PROTOCOL, STORE_SCHEMA_SEMVER, STORE_SCHEMA_VERSION,
     connection::{
         PragmaSnapshot, configure_migration_connection, disable_checkpoint_on_close,
         enable_checkpoint_on_close, read_pragma_snapshot, verify_fts5, verify_migration_pragmas,
@@ -25,10 +27,35 @@ pub const MIGRATION_0001_SQL: &str = include_str!("../../../migrations/store/000
 /// Typed canonical closure tables for the eighteen event schema v3 registration arms.
 ///
 /// Applies on top of store schema version 2. Migration `0003` establishes that
-/// version, its identity triplet, and the encrypted lane; this migration reads
-/// and writes no part of that identity.
+/// version, its identity, and the encrypted lane; this migration reads and
+/// writes no part of that identity.
 pub const MIGRATION_0004_SQL: &str =
     include_str!("../../../migrations/store/0004_phase2_canonical_aggregates.sql");
+
+/// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
+///
+/// It replaces the Phase 1 identity singleton with the schema-2 one. The
+/// encrypted lane applies it; the plaintext lane never does, and
+/// [`STORE_MIGRATION_SQL`] is what proves that. It is also available to this
+/// crate's own unit tests in either lane, because migration `0004` layers on
+/// the schema-2 base and its tests have to build the real one rather than
+/// something that resembles it. A `cfg(test)` item reaches no product binary,
+/// so the plaintext product graph still carries neither this text nor the
+/// SQLCipher build it belongs to.
+#[cfg(any(feature = "sqlcipher-store", test))]
+pub const MIGRATION_0003_SQL: &str =
+    include_str!("../../../migrations/store/0003_phase2_encrypted_identity.sql");
+
+/// The ordered migration set this binary's lane applies to an empty database.
+///
+/// Both the runtime migration and the reference fingerprint execute exactly
+/// this sequence, so the schema authority stays the committed SQL rather than
+/// a second hand-maintained description of it.
+#[cfg(not(feature = "sqlcipher-store"))]
+pub const STORE_MIGRATION_SQL: &[&str] = &[MIGRATION_0001_SQL];
+/// The ordered migration set this binary's lane applies to an empty database.
+#[cfg(feature = "sqlcipher-store")]
+pub const STORE_MIGRATION_SQL: &[&str] = &[MIGRATION_0001_SQL, MIGRATION_0003_SQL];
 
 /// Result of invoking the forward-only migration runner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,8 +86,15 @@ pub struct SchemaIdentity {
     /// Encryption declaration, always `NONE` in S1.
     pub storage_encryption: String,
     /// Whether production input is permitted, always false in S1.
+    ///
+    /// Absent from the schema-2 singleton: t068 sections 3.1 and 6 make the
+    /// emitted posture the admission verifier's runtime output, not a stored
+    /// column, so the encrypted lane does not freeze an admission decision
+    /// that `P2-K6` has not made.
+    #[cfg(not(feature = "sqlcipher-store"))]
     pub production_data_allowed: bool,
     /// Product network declaration, always `NONE` in S1.
+    #[cfg(not(feature = "sqlcipher-store"))]
     pub product_network: String,
     /// Digest of the binary/build that created the schema.
     pub creating_build_digest: [u8; 32],
@@ -137,28 +171,10 @@ pub fn migrate_open_connection_pre_listen(
 
     let created_at_unix_ms = unix_time_millis()?;
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
-    transaction.execute_batch(MIGRATION_0001_SQL)?;
-    transaction.execute(
-        "INSERT INTO schema_meta (\
-             singleton, format_uuid, schema_version, schema_semver,\
-             minimum_reader_protocol_major, minimum_reader_protocol_minor,\
-             minimum_writer_protocol_major, minimum_writer_protocol_minor,\
-             data_policy, storage_mode, storage_encryption,\
-             production_data_allowed, product_network, creating_build_digest, created_at_unix_ms\
-         ) VALUES (1, ?1, ?2, ?3, 1, 0, 1, 0, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        params![
-            STORE_FORMAT_UUID.as_slice(),
-            i64::from(STORE_SCHEMA_VERSION),
-            STORE_SCHEMA_SEMVER,
-            PHASE1_STORAGE_POLICY.data_policy,
-            PHASE1_STORAGE_POLICY.storage_mode,
-            PHASE1_STORAGE_POLICY.storage_encryption,
-            PHASE1_STORAGE_POLICY.production_data_allowed,
-            PHASE1_STORAGE_POLICY.product_network,
-            creating_build_digest.as_slice(),
-            created_at_unix_ms,
-        ],
-    )?;
+    for step in STORE_MIGRATION_SQL {
+        transaction.execute_batch(step)?;
+    }
+    insert_schema_identity(&transaction, creating_build_digest, created_at_unix_ms)?;
     transaction.pragma_update(None, "application_id", SQLITE_APPLICATION_ID)?;
     transaction.pragma_update(None, "user_version", STORE_SCHEMA_VERSION)?;
     transaction.commit()?;
@@ -243,11 +259,80 @@ pub(crate) fn verify_current_schema(
 ) -> StoreResult<()> {
     let identity = read_schema_identity(connection)?;
     verify_schema_identity(&identity, pragmas)?;
-    verify_store_schema_fingerprint(connection, MIGRATION_0001_SQL)?;
+    verify_store_schema_fingerprint(connection, STORE_MIGRATION_SQL)?;
     verify_integrity(connection)
 }
 
+/// Writes the one schema identity row this lane is allowed to create.
+#[cfg(not(feature = "sqlcipher-store"))]
+fn insert_schema_identity(
+    transaction: &rusqlite::Transaction<'_>,
+    creating_build_digest: [u8; 32],
+    created_at_unix_ms: i64,
+) -> StoreResult<()> {
+    transaction.execute(
+        "INSERT INTO schema_meta (\
+             singleton, format_uuid, schema_version, schema_semver,\
+             minimum_reader_protocol_major, minimum_reader_protocol_minor,\
+             minimum_writer_protocol_major, minimum_writer_protocol_minor,\
+             data_policy, storage_mode, storage_encryption,\
+             production_data_allowed, product_network, creating_build_digest, created_at_unix_ms\
+         ) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+        params![
+            STORE_FORMAT_UUID.as_slice(),
+            i64::from(STORE_SCHEMA_VERSION),
+            STORE_SCHEMA_SEMVER,
+            i64::from(STORE_MINIMUM_READER_PROTOCOL.0),
+            i64::from(STORE_MINIMUM_READER_PROTOCOL.1),
+            i64::from(STORE_MINIMUM_WRITER_PROTOCOL.0),
+            i64::from(STORE_MINIMUM_WRITER_PROTOCOL.1),
+            PHASE1_STORAGE_POLICY.data_policy,
+            PHASE1_STORAGE_POLICY.storage_mode,
+            PHASE1_STORAGE_POLICY.storage_encryption,
+            PHASE1_STORAGE_POLICY.production_data_allowed,
+            PHASE1_STORAGE_POLICY.product_network,
+            creating_build_digest.as_slice(),
+            created_at_unix_ms,
+        ],
+    )?;
+    Ok(())
+}
+
+/// Writes the one schema identity row this lane is allowed to create.
+#[cfg(feature = "sqlcipher-store")]
+fn insert_schema_identity(
+    transaction: &rusqlite::Transaction<'_>,
+    creating_build_digest: [u8; 32],
+    created_at_unix_ms: i64,
+) -> StoreResult<()> {
+    transaction.execute(
+        "INSERT INTO schema_meta (\
+             singleton, format_uuid, schema_version, schema_semver,\
+             minimum_reader_protocol_major, minimum_reader_protocol_minor,\
+             minimum_writer_protocol_major, minimum_writer_protocol_minor,\
+             data_policy, storage_mode, storage_encryption,\
+             creating_build_digest, created_at_unix_ms\
+         ) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        params![
+            STORE_FORMAT_UUID.as_slice(),
+            i64::from(STORE_SCHEMA_VERSION),
+            STORE_SCHEMA_SEMVER,
+            i64::from(STORE_MINIMUM_READER_PROTOCOL.0),
+            i64::from(STORE_MINIMUM_READER_PROTOCOL.1),
+            i64::from(STORE_MINIMUM_WRITER_PROTOCOL.0),
+            i64::from(STORE_MINIMUM_WRITER_PROTOCOL.1),
+            crate::cipher::ENCRYPTED_STORE_DATA_POLICY,
+            crate::cipher::ENCRYPTED_STORE_STORAGE_MODE,
+            crate::cipher::ENCRYPTED_STORE_STORAGE_ENCRYPTION,
+            creating_build_digest.as_slice(),
+            created_at_unix_ms,
+        ],
+    )?;
+    Ok(())
+}
+
 /// Reads the singleton without assuming that its checks are sufficient by themselves.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdentity> {
     let raw = connection.query_row(
         concat!(
@@ -300,6 +385,56 @@ pub fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdenti
     })
 }
 
+/// Reads the singleton without assuming that its checks are sufficient by themselves.
+#[cfg(feature = "sqlcipher-store")]
+pub fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdentity> {
+    let raw = connection.query_row(
+        concat!(
+            "SELECT format_uuid, schema_version, schema_semver, ",
+            "minimum_reader_protocol_major, minimum_reader_protocol_minor, ",
+            "minimum_writer_protocol_major, minimum_writer_protocol_minor, ",
+            "data_policy, storage_mode, storage_encryption, ",
+            "creating_build_digest, created_at_unix_ms ",
+            "FROM schema_meta WHERE singleton = 1"
+        ),
+        [],
+        |row| {
+            Ok((
+                row.get::<_, Vec<u8>>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, i64>(4)?,
+                row.get::<_, i64>(5)?,
+                row.get::<_, i64>(6)?,
+                row.get::<_, String>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, String>(9)?,
+                row.get::<_, Vec<u8>>(10)?,
+                row.get::<_, i64>(11)?,
+            ))
+        },
+    )?;
+    Ok(SchemaIdentity {
+        format_uuid: fixed_bytes::<16>("format_uuid", raw.0)?,
+        schema_version: nonnegative_u32("schema_version", raw.1)?,
+        schema_semver: raw.2,
+        minimum_reader_protocol: (
+            nonnegative_u32("minimum_reader_protocol_major", raw.3)?,
+            nonnegative_u32("minimum_reader_protocol_minor", raw.4)?,
+        ),
+        minimum_writer_protocol: (
+            nonnegative_u32("minimum_writer_protocol_major", raw.5)?,
+            nonnegative_u32("minimum_writer_protocol_minor", raw.6)?,
+        ),
+        data_policy: raw.7,
+        storage_mode: raw.8,
+        storage_encryption: raw.9,
+        creating_build_digest: fixed_bytes::<32>("creating_build_digest", raw.10)?,
+        created_at_unix_ms: raw.11,
+    })
+}
+
 /// Verifies that `application_id`, `user_version`, and `schema_meta` are one identity.
 pub fn verify_schema_identity(
     identity: &SchemaIdentity,
@@ -332,7 +467,10 @@ pub fn verify_schema_identity(
     )?;
     identity_exact(
         "schema_meta.minimum_reader_protocol",
-        "1.0".to_owned(),
+        format!(
+            "{}.{}",
+            STORE_MINIMUM_READER_PROTOCOL.0, STORE_MINIMUM_READER_PROTOCOL.1
+        ),
         format!(
             "{}.{}",
             identity.minimum_reader_protocol.0, identity.minimum_reader_protocol.1
@@ -340,12 +478,29 @@ pub fn verify_schema_identity(
     )?;
     identity_exact(
         "schema_meta.minimum_writer_protocol",
-        "1.0".to_owned(),
+        format!(
+            "{}.{}",
+            STORE_MINIMUM_WRITER_PROTOCOL.0, STORE_MINIMUM_WRITER_PROTOCOL.1
+        ),
         format!(
             "{}.{}",
             identity.minimum_writer_protocol.0, identity.minimum_writer_protocol.1
         ),
     )?;
+    verify_storage_declaration(identity)?;
+    if identity.created_at_unix_ms < 0 {
+        return Err(StoreError::SchemaIdentityMismatch {
+            component: "schema_meta.created_at_unix_ms",
+            expected: "non-negative".to_owned(),
+            actual: identity.created_at_unix_ms.to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// Verifies the storage declaration columns this lane pins in the singleton.
+#[cfg(not(feature = "sqlcipher-store"))]
+fn verify_storage_declaration(identity: &SchemaIdentity) -> StoreResult<()> {
     identity_exact(
         "schema_meta.data_policy",
         PHASE1_STORAGE_POLICY.data_policy.to_owned(),
@@ -370,15 +525,27 @@ pub fn verify_schema_identity(
         "schema_meta.product_network",
         PHASE1_STORAGE_POLICY.product_network.to_owned(),
         identity.product_network.clone(),
+    )
+}
+
+/// Verifies the storage declaration columns this lane pins in the singleton.
+#[cfg(feature = "sqlcipher-store")]
+fn verify_storage_declaration(identity: &SchemaIdentity) -> StoreResult<()> {
+    identity_exact(
+        "schema_meta.data_policy",
+        crate::cipher::ENCRYPTED_STORE_DATA_POLICY.to_owned(),
+        identity.data_policy.clone(),
     )?;
-    if identity.created_at_unix_ms < 0 {
-        return Err(StoreError::SchemaIdentityMismatch {
-            component: "schema_meta.created_at_unix_ms",
-            expected: "non-negative".to_owned(),
-            actual: identity.created_at_unix_ms.to_string(),
-        });
-    }
-    Ok(())
+    identity_exact(
+        "schema_meta.storage_mode",
+        crate::cipher::ENCRYPTED_STORE_STORAGE_MODE.to_owned(),
+        identity.storage_mode.clone(),
+    )?;
+    identity_exact(
+        "schema_meta.storage_encryption",
+        crate::cipher::ENCRYPTED_STORE_STORAGE_ENCRYPTION.to_owned(),
+        identity.storage_encryption.clone(),
+    )
 }
 
 /// Converts an unsigned domain integer into SQLite's signed integer domain.

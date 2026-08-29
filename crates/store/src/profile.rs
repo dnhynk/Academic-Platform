@@ -1,26 +1,41 @@
 //! Creation and opening of disposable, plaintext, synthetic-only profiles.
+//!
+//! Everything that creates, opens, or describes a plaintext synthetic profile
+//! is compiled out of the encrypted lane, so a `sqlcipher-store` binary
+//! contains neither the plaintext posture strings nor the code that could
+//! write them. What remains is the lane-neutral file and directory handling
+//! that `cipher` reuses.
 
+#[cfg(not(feature = "sqlcipher-store"))]
+use std::path::PathBuf;
 use std::{
     fs::{self, File, OpenOptions},
     io::{Read, Write},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
+#[cfg(not(feature = "sqlcipher-store"))]
+use crate::path_policy::PathProbe;
+#[cfg(not(feature = "sqlcipher-store"))]
 use crate::{
     INCOMPLETE_PROFILE_MARKER, PHASE1_POLICY_BANNER, PHASE1_STORAGE_POLICY, STORE_DATABASE_FILE,
     SYNTHETIC_PROFILE_MARKER,
     accept::AcceptanceStore,
     connection::{ReaderConnection, open_reader, open_writer},
-    error::{StoreError, StoreResult},
     migration::{MigrationStatus, migrate_pre_listen},
     path_policy::{
-        PathPolicyViolation, PathProbe, ProfileRootState, validate_created_profile_path,
-        validate_existing_profile_path, validate_new_profile_path,
+        ProfileRootState, validate_created_profile_path, validate_existing_profile_path,
+        validate_new_profile_path,
     },
+};
+use crate::{
+    error::{StoreError, StoreResult},
+    path_policy::PathPolicyViolation,
     platform,
 };
 
 /// Exact contents of the unavoidable plaintext warning file.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub const SYNTHETIC_PROFILE_MARKER_CONTENTS: &str = concat!(
     "PLAINTEXT SYNTHETIC-ONLY PROFILE — REAL OR PRODUCTION DATA IS FORBIDDEN\n",
     "data_policy=SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED\n",
@@ -30,10 +45,12 @@ pub const SYNTHETIC_PROFILE_MARKER_CONTENTS: &str = concat!(
     "product_network=NONE\n",
 );
 
+#[cfg(not(feature = "sqlcipher-store"))]
 const INCOMPLETE_PROFILE_MARKER_CONTENTS: &str =
     "ACADEMIC_PLATFORM_PHASE1_PROFILE_BOOTSTRAP_INCOMPLETE\n";
 
 /// Only runtime manifest admitted by the S1 synthetic fixture boundary.
+#[cfg(not(feature = "sqlcipher-store"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SyntheticIngestManifest<'a> {
     pub manifest_version: u32,
@@ -52,6 +69,7 @@ pub struct SyntheticIngestManifest<'a> {
     pub builder_id: &'a str,
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 impl SyntheticIngestManifest<'static> {
     /// Returns the sole manifest bound to the reviewed deterministic fixture bytes.
     #[must_use]
@@ -76,6 +94,7 @@ impl SyntheticIngestManifest<'static> {
 }
 
 /// Independently checks every allowlisted manifest field at the runtime boundary.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub fn validate_synthetic_manifest(manifest: &SyntheticIngestManifest<'_>) -> StoreResult<()> {
     manifest_field(manifest.manifest_version == 1, "manifest_version")?;
     manifest_field(
@@ -125,6 +144,7 @@ pub fn validate_synthetic_manifest(manifest: &SyntheticIngestManifest<'_>) -> St
 }
 
 /// Writes the mandatory warning line with no quiet or bypass argument.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub fn write_policy_banner(mut output: impl Write) -> StoreResult<()> {
     output
         .write_all(PHASE1_POLICY_BANNER.as_bytes())
@@ -133,11 +153,13 @@ pub fn write_policy_banner(mut output: impl Write) -> StoreResult<()> {
 }
 
 /// A root with its explicit incomplete marker durably written.
+#[cfg(not(feature = "sqlcipher-store"))]
 #[derive(Debug)]
 pub struct IncompleteProfile {
     root: PathBuf,
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 impl IncompleteProfile {
     /// Returns the root that startup must refuse until completion.
     #[must_use]
@@ -170,6 +192,7 @@ impl IncompleteProfile {
 }
 
 /// A complete synthetic-only profile whose marker and schema were verified.
+#[cfg(not(feature = "sqlcipher-store"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyntheticProfile {
     root: PathBuf,
@@ -177,6 +200,7 @@ pub struct SyntheticProfile {
     migration_status: MigrationStatus,
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 impl SyntheticProfile {
     /// Returns the profile root.
     #[must_use]
@@ -208,6 +232,7 @@ impl SyntheticProfile {
 }
 
 /// Creates a secure root and writes the incomplete marker before any database work.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub fn prepare_synthetic_profile<P: PathProbe + ?Sized>(
     root: &Path,
     probe: &P,
@@ -234,6 +259,7 @@ pub fn prepare_synthetic_profile<P: PathProbe + ?Sized>(
 }
 
 /// Creates and migrates a new synthetic-only profile.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub fn create_synthetic_profile<P: PathProbe + ?Sized>(
     root: &Path,
     probe: &P,
@@ -243,6 +269,7 @@ pub fn create_synthetic_profile<P: PathProbe + ?Sized>(
 }
 
 /// Opens a complete profile and refuses any interrupted bootstrap first.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub fn open_synthetic_profile<P: PathProbe + ?Sized>(
     root: &Path,
     probe: &P,
@@ -275,6 +302,7 @@ pub fn open_synthetic_profile<P: PathProbe + ?Sized>(
 /// Removes only a provably incomplete profile containing no unrecognized entries.
 ///
 /// This never performs recursive deletion. Any unknown entry or link makes cleanup fail closed.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub fn remove_incomplete_profile<P: PathProbe + ?Sized>(root: &Path, probe: &P) -> StoreResult<()> {
     validate_existing_profile_path(root, probe)?;
     verify_removable_incomplete_marker(root)?;
@@ -329,6 +357,7 @@ pub fn remove_incomplete_profile<P: PathProbe + ?Sized>(root: &Path, probe: &P) 
     Ok(())
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 fn manifest_field(accepted: bool, field: &'static str) -> StoreResult<()> {
     if accepted {
         Ok(())
@@ -337,7 +366,7 @@ fn manifest_field(accepted: bool, field: &'static str) -> StoreResult<()> {
     }
 }
 
-fn write_new_synced_file(path: &Path, contents: &[u8]) -> StoreResult<()> {
+pub(crate) fn write_new_synced_file(path: &Path, contents: &[u8]) -> StoreResult<()> {
     let mut file = OpenOptions::new()
         .create_new(true)
         .write(true)
@@ -349,7 +378,18 @@ fn write_new_synced_file(path: &Path, contents: &[u8]) -> StoreResult<()> {
         .map_err(|source| StoreError::io("synchronize profile marker", path, source))
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 fn verify_marker(root: &Path) -> StoreResult<()> {
+    // Section 3.2: the plaintext marker and `PROFILE_FORMAT_V2` are mutually
+    // exclusive and startup refuses a profile carrying both. This is the
+    // plaintext side of that rule; `cipher::verify_format_marker` is the other.
+    let encrypted = root.join(crate::PROFILE_FORMAT_V2_MARKER);
+    if fs::symlink_metadata(&encrypted).is_ok() {
+        return Err(StoreError::InvalidProfileState {
+            path: root.to_path_buf(),
+            reason: "profile carries both the plaintext marker and the encrypted format marker",
+        });
+    }
     let path = root.join(SYNTHETIC_PROFILE_MARKER);
     let contents = read_bounded_file(&path, SYNTHETIC_PROFILE_MARKER_CONTENTS.len() + 1)?;
     if contents == SYNTHETIC_PROFILE_MARKER_CONTENTS.as_bytes() {
@@ -359,6 +399,7 @@ fn verify_marker(root: &Path) -> StoreResult<()> {
     }
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 fn verify_complete_incomplete_marker(root: &Path) -> StoreResult<()> {
     let path = root.join(INCOMPLETE_PROFILE_MARKER);
     let contents = read_bounded_file(&path, INCOMPLETE_PROFILE_MARKER_CONTENTS.len() + 1)
@@ -370,6 +411,7 @@ fn verify_complete_incomplete_marker(root: &Path) -> StoreResult<()> {
     }
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 fn verify_removable_incomplete_marker(root: &Path) -> StoreResult<()> {
     let path = root.join(INCOMPLETE_PROFILE_MARKER);
     let contents = read_bounded_file(&path, INCOMPLETE_PROFILE_MARKER_CONTENTS.len() + 1)
@@ -384,7 +426,7 @@ fn verify_removable_incomplete_marker(root: &Path) -> StoreResult<()> {
     }
 }
 
-fn read_bounded_file(path: &Path, maximum_bytes: usize) -> StoreResult<Vec<u8>> {
+pub(crate) fn read_bounded_file(path: &Path, maximum_bytes: usize) -> StoreResult<Vec<u8>> {
     require_regular_file(path)?;
     let file =
         File::open(path).map_err(|source| StoreError::io("open profile marker", path, source))?;
@@ -400,7 +442,7 @@ fn read_bounded_file(path: &Path, maximum_bytes: usize) -> StoreResult<Vec<u8>> 
     Ok(contents)
 }
 
-fn require_regular_file(path: &Path) -> StoreResult<()> {
+pub(crate) fn require_regular_file(path: &Path) -> StoreResult<()> {
     let metadata = fs::symlink_metadata(path)
         .map_err(|source| StoreError::io("inspect profile file", path, source))?;
     if metadata.file_type().is_file() && !metadata.file_type().is_symlink() {
@@ -413,18 +455,19 @@ fn require_regular_file(path: &Path) -> StoreResult<()> {
     }
 }
 
-fn sync_directory(path: &Path) -> StoreResult<()> {
+pub(crate) fn sync_directory(path: &Path) -> StoreResult<()> {
     platform::sync_directory(path).map_err(probe_failure)
 }
 
-fn sync_parent_directory(path: &Path) -> StoreResult<()> {
+pub(crate) fn sync_parent_directory(path: &Path) -> StoreResult<()> {
     platform::sync_parent_directory(path).map_err(probe_failure)
 }
 
-fn probe_failure(failure: crate::path_policy::PathProbeFailure) -> StoreError {
+pub(crate) fn probe_failure(failure: crate::path_policy::PathProbeFailure) -> StoreError {
     StoreError::UnsafeProfilePath(PathPolicyViolation::ProbeFailed(failure))
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 fn known_profile_files() -> [&'static str; 6] {
     [
         SYNTHETIC_PROFILE_MARKER,
@@ -436,6 +479,7 @@ fn known_profile_files() -> [&'static str; 6] {
     ]
 }
 
+#[cfg(not(feature = "sqlcipher-store"))]
 fn is_known_profile_file(name: &str) -> bool {
     known_profile_files().contains(&name)
 }

@@ -1,0 +1,8 @@
+# Synthetic high-entropy plaintext canaries for the encrypted schema-2 store lane.
+# Never use personal or production data here. Each value is 32 random bytes in hex.
+K2-CANARY-DB-b28a107c151a48dc07713593198899f6ad116ba0c6052e2f7455baa4424e24b2
+K2-CANARY-WAL-3a53057819bddaf13ab8c056474be09f48663fa81d55e25df1800c82a6f7dc4b
+K2-CANARY-SHM-9e25a11f9d338cf1097ac1e587f37c55bb0689165aa48575e0024354e72dbeca
+K2-CANARY-TEMP-9ef9647113f10e6589d12df5f7e3e34e10615c3d32099bb19bbc5fa6d9f900b6
+K2-CANARY-BACKUP-b9f41995cedc8dfea893ee166e196a01dc7ac1bca398ac93137f92420a35012a
+K2-CANARY-CRASH-e7b9f835aae06fb94a77fe249be0cd7537917cb8f6d98314171d682a490858d1

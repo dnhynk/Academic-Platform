@@ -76,6 +76,34 @@ pub enum StoreError {
     UnsignedIntegerOverflow(u64),
     /// Required bundled SQLite behavior is unavailable.
     UnsupportedSqliteBuild(&'static str),
+    /// An encrypted profile did not unlock; it stays locked and no plaintext
+    /// was produced.
+    #[cfg(feature = "sqlcipher-store")]
+    EncryptedStoreLocked {
+        /// Database that stayed locked.
+        path: PathBuf,
+        /// Stable, actionable reason. Never names a key or a key byte.
+        reason: &'static str,
+    },
+    /// A SQLCipher setting did not read back as the frozen encrypted-lane value.
+    #[cfg(feature = "sqlcipher-store")]
+    CipherSettingMismatch {
+        /// SQLCipher PRAGMA whose observed value was wrong.
+        setting: &'static str,
+        /// Expected value.
+        expected: String,
+        /// Observed value.
+        actual: String,
+    },
+    /// A profile root carries both the Phase 1 and the Phase 2 format markers.
+    #[cfg(feature = "sqlcipher-store")]
+    ConflictingProfileFormat(PathBuf),
+    /// Storage was exhausted; the transaction aborted with nothing committed.
+    #[cfg(feature = "sqlcipher-store")]
+    StorageFull {
+        /// Operation that could not obtain space.
+        operation: &'static str,
+    },
 }
 
 impl StoreError {
@@ -160,6 +188,35 @@ impl fmt::Display for StoreError {
             Self::UnsupportedSqliteBuild(reason) => {
                 write!(formatter, "unsupported bundled SQLite build: {reason}")
             }
+            #[cfg(feature = "sqlcipher-store")]
+            Self::EncryptedStoreLocked { path, reason } => write!(
+                formatter,
+                "encrypted profile {} stays locked: {reason}. No plaintext was produced \
+                 and no weaker key was used",
+                path.display()
+            ),
+            #[cfg(feature = "sqlcipher-store")]
+            Self::CipherSettingMismatch {
+                setting,
+                expected,
+                actual,
+            } => write!(
+                formatter,
+                "SQLCipher setting {setting} mismatch: expected {expected}, observed {actual}"
+            ),
+            #[cfg(feature = "sqlcipher-store")]
+            Self::ConflictingProfileFormat(path) => write!(
+                formatter,
+                "profile {} carries both the Phase 1 plaintext marker and the \
+                 Phase 2 encrypted format marker; startup refuses it",
+                path.display()
+            ),
+            #[cfg(feature = "sqlcipher-store")]
+            Self::StorageFull { operation } => write!(
+                formatter,
+                "storage is full during {operation}: the transaction was aborted and \
+                 nothing was committed. Free space and retry"
+            ),
         }
     }
 }
@@ -180,6 +237,11 @@ impl Error for StoreError {
             | Self::UnsupportedMigrationState { .. }
             | Self::UnsignedIntegerOverflow(_)
             | Self::UnsupportedSqliteBuild(_) => None,
+            #[cfg(feature = "sqlcipher-store")]
+            Self::EncryptedStoreLocked { .. }
+            | Self::CipherSettingMismatch { .. }
+            | Self::ConflictingProfileFormat(_)
+            | Self::StorageFull { .. } => None,
         }
     }
 }
