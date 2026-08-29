@@ -23,7 +23,7 @@ pub struct SpecRow {
     pub invariant: &'static str,
 }
 
-/// The thirteen §28 engines, in specification order.
+/// The twelve §28 engines, in specification order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EngineName {
     /// `GPA`: REQ-28-001.
@@ -50,13 +50,11 @@ pub enum EngineName {
     PermissionBroker,
     /// `RETENTION_DELETION`: REQ-28-012.
     RetentionDeletion,
-    /// `PUBLISHED_RULE_EXECUTOR`: REQ-28-013.
-    PublishedRuleExecutor,
 }
 
 impl EngineName {
     /// Every registered engine, in specification order.
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 12] = [
         Self::Gpa,
         Self::CreditAccounting,
         Self::GraduationAudit,
@@ -69,7 +67,6 @@ impl EngineName {
         Self::OverrideResolver,
         Self::PermissionBroker,
         Self::RetentionDeletion,
-        Self::PublishedRuleExecutor,
     ];
 
     /// Returns the registry name of the engine.
@@ -88,7 +85,6 @@ impl EngineName {
             Self::OverrideResolver => "OVERRIDE_RESOLVER",
             Self::PermissionBroker => "PERMISSION_BROKER",
             Self::RetentionDeletion => "RETENTION_DELETION",
-            Self::PublishedRuleExecutor => "PUBLISHED_RULE_EXECUTOR",
         }
     }
 
@@ -110,19 +106,18 @@ impl EngineName {
 /// The layout below is the generator's, not rustfmt's, so that a byte
 /// comparison against a fresh render is the whole drift check.
 #[rustfmt::skip]
-pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
+pub const ENGINE_REGISTRY: [EngineDescriptor; 12] = [
     EngineDescriptor {
         name: EngineName::Gpa,
         engine_id: "engine.gpa",
         requirement_id: "REQ-28-001",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "GPA",
         inputs: "attempt snapshot, grade/repeat policy",
         outputs: "GPA + inclusion proof",
         invariant: "동일 입력·rule hash면 동일 결과",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: Some(HighImpactPath::Gpa),
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "gpa",
@@ -132,13 +127,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.credit.accounting",
         requirement_id: "REQ-28-002",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Credit Accounting",
         inputs: "recognized attempts, category rules",
         outputs: "category totals",
         invariant: "한 학점의 중복 인정 근거 추적",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: None,
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "credit_accounting",
@@ -148,13 +142,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.graduation.audit",
         requirement_id: "REQ-28-003",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Graduation Audit",
         inputs: "profile, transcript, RequirementSet",
         outputs: "proof tree",
         invariant: "unknown을 pass/fail로 강제하지 않음",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: Some(HighImpactPath::Graduation),
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "graduation_audit",
@@ -164,13 +157,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.timetable",
         requirement_id: "REQ-28-004",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Timetable",
         inputs: "meeting intervals, exception approvals",
         outputs: "conflicts",
         invariant: "시간대·부분중복·시험시간 분리",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: None,
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "timetable",
@@ -180,13 +172,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.official.prerequisite",
         requirement_id: "REQ-28-005",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Official Prerequisite",
         inputs: "catalog rules, attempts",
         outputs: "eligibility",
         invariant: "AI-inferred 선수지식과 분리",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: None,
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "official_prerequisite",
@@ -196,13 +187,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.equivalency",
         requirement_id: "REQ-28-006",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Equivalency",
         inputs: "effective-dated relation, attempts",
         outputs: "substitution proof",
         invariant: "대체 방향·시점 보존",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: None,
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "equivalency",
@@ -212,13 +202,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.transcript.coverage",
         requirement_id: "REQ-28-007",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Transcript Coverage",
         inputs: "segments, document mapping",
         outputs: "coverage report",
         invariant: "모든 segment가 정확히 한 처리 상태",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: None,
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "transcript_coverage",
@@ -228,13 +217,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.artifact.integrity",
         requirement_id: "REQ-28-008",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Artifact Integrity",
         inputs: "content hash, manifest",
         outputs: "tamper/corruption result",
         invariant: "원본 변경 탐지",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: None,
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "artifact_integrity",
@@ -244,13 +232,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.repository.diff",
         requirement_id: "REQ-28-009",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Repository Diff",
         inputs: "snapshot manifests",
         outputs: "file/symbol/config diff",
         invariant: "analyzer change와 code change 분리",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: None,
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "repository_diff",
@@ -260,13 +247,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.override.resolver",
         requirement_id: "REQ-28-010",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Override Resolver",
         inputs: "claim type, source authority, user decision",
         outputs: "active view + conflicts",
         invariant: "AI가 user-confirmed를 덮지 않음",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: None,
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "override_resolver",
@@ -276,13 +262,12 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.permission.broker",
         requirement_id: "REQ-28-011",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Permission Broker",
         inputs: "data class, purpose, destination, consent",
         outputs: "allow/deny + audit",
         invariant: "default deny, scope 최소화",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: Some(HighImpactPath::Egress),
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "permission_broker",
@@ -292,26 +277,14 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 13] = [
         engine_id: "engine.retention.deletion",
         requirement_id: "REQ-28-012",
         since_registry_version: 1,
-        spec_row: Some(SpecRow {
+        spec_row: SpecRow {
         engine: "Retention/Deletion",
         inputs: "policy, artifacts, derived graph",
         outputs: "deletion plan/result",
         invariant: "derivative와 backup까지 추적",
-    }),
-        spec_sentence: None,
+    },
         high_impact_path: Some(HighImpactPath::Deletion),
         lifecycle: EngineLifecycle::Planned,
         harness_dir: "retention_deletion",
-    },
-    EngineDescriptor {
-        name: EngineName::PublishedRuleExecutor,
-        engine_id: "engine.published.rule.executor",
-        requirement_id: "REQ-28-013",
-        since_registry_version: 1,
-        spec_row: None,
-        spec_sentence: Some("AI가 원문에서 rule 후보를 추출해도 publish된 rule 실행은 deterministic하다."),
-        high_impact_path: None,
-        lifecycle: EngineLifecycle::Planned,
-        harness_dir: "published_rule_executor",
     },
 ];

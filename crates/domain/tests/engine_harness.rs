@@ -1,12 +1,12 @@
 //! Named acceptance evidence for the §3.9 deterministic engine harness.
 //!
-//! None of the thirteen §28 engines is implemented yet and this task invents
+//! None of the twelve §28 engines is implemented yet and this task invents
 //! none. Two of the named acceptance tests nevertheless need an engine to exist:
 //! `same_inputs_and_rule_hash_yield_byte_equal_results` has to run one twice,
 //! and the harness audit's `IMPLEMENTED` branch has to run against a complete
 //! artifact set or the guard would never be observed to bite. [`Reference`]
 //! below is that engine. It is test-only, it is deliberately not one of the
-//! thirteen, `reference_engine_is_not_registered` proves it, and it ships in no
+//! twelve, `reference_engine_is_not_registered` proves it, and it ships in no
 //! product build.
 
 use std::{
@@ -310,16 +310,91 @@ fn implemented_descriptor(high_impact: Option<HighImpactPath>) -> EngineDescript
 // Named acceptance evidence
 // ---------------------------------------------------------------------------
 
+/// The §28 table, enumerated rather than counted.
+///
+/// t068 §3.9 calls this a "thirteen-engine registry". §28 tabulates twelve, and
+/// the thirteenth t068 implies is the property sentence under the table — that a
+/// published rule executes deterministically even when a model proposed it —
+/// which has no inputs, no outputs, and no invariant of its own, and which the
+/// twelve engines below are the subjects of. The specification is the source of
+/// truth; the list below is checked against it rather than against t068.
+const SECTION_28_ENGINES: [&str; 12] = [
+    "GPA",
+    "CREDIT_ACCOUNTING",
+    "GRADUATION_AUDIT",
+    "TIMETABLE",
+    "OFFICIAL_PREREQUISITE",
+    "EQUIVALENCY",
+    "TRANSCRIPT_COVERAGE",
+    "ARTIFACT_INTEGRITY",
+    "REPOSITORY_DIFF",
+    "OVERRIDE_RESOLVER",
+    "PERMISSION_BROKER",
+    "RETENTION_DELETION",
+];
+
+/// Reads the `Engine` cell of every §28 table row, in specification order.
+fn section_28_table_engines() -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let spec = fs::read_to_string(
+        repository_root().join("PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md"),
+    )?;
+    let start = spec
+        .find("## 28. Deterministic Engines")
+        .ok_or("§28 heading is missing")?;
+    let end = spec
+        .find("## 29. Data Ingestion")
+        .ok_or("§29 heading is missing")?;
+    Ok(spec[start..end]
+        .lines()
+        .filter(|line| line.starts_with("| "))
+        .filter_map(|line| line.split('|').nth(1))
+        .map(str::trim)
+        .filter(|cell| *cell != "Engine")
+        .map(|cell| {
+            let screaming: String = cell
+                .to_uppercase()
+                .chars()
+                .map(|character| {
+                    if character.is_ascii_alphanumeric() {
+                        character
+                    } else {
+                        '_'
+                    }
+                })
+                .collect();
+            screaming.trim_matches('_').to_owned()
+        })
+        .collect())
+}
+
 #[test]
 fn engine_registry_is_complete() -> TestResult {
+    // The registry is the §28 table and nothing else. Enumerating rather than
+    // counting is what makes both directions fail: dropping a tabulated engine
+    // and registering one the table does not name are the same mismatch.
+    assert_eq!(
+        section_28_table_engines()?,
+        SECTION_28_ENGINES,
+        "the §28 table no longer holds exactly the engines this registry names"
+    );
+    assert_eq!(
+        EngineName::ALL.map(EngineName::as_str).to_vec(),
+        SECTION_28_ENGINES.to_vec(),
+        "the registered engines are not the §28 table"
+    );
+
     let source: serde_json::Value = serde_json::from_str(REGISTRY_SOURCE)?;
     let rows = source["engines"]
         .as_array()
         .ok_or("registry must list engines")?;
-
-    assert_eq!(rows.len(), 13, "§28 fixes exactly thirteen engines");
-    assert_eq!(ENGINE_REGISTRY.len(), rows.len());
-    assert_eq!(EngineName::ALL.len(), rows.len());
+    assert_eq!(
+        rows.iter()
+            .map(|row| row["name"].as_str().unwrap_or_default())
+            .collect::<Vec<_>>(),
+        SECTION_28_ENGINES.to_vec(),
+        "the registry source is not the §28 table"
+    );
+    assert_eq!(ENGINE_REGISTRY.len(), SECTION_28_ENGINES.len());
     assert_eq!(
         ENGINE_REGISTRY_VERSION,
         u16::try_from(source["registry_version"].as_u64().ok_or("version")?)?
@@ -332,7 +407,6 @@ fn engine_registry_is_complete() -> TestResult {
 
         assert_eq!(descriptor.name, engine, "registry is indexed by name");
         assert_eq!(index, engine as usize, "index must equal discriminant");
-        assert_eq!(Some(engine.as_str()), row["name"].as_str());
         assert_eq!(Some(descriptor.engine_id), row["engine_id"].as_str());
         assert_eq!(
             descriptor.requirement_id,
@@ -343,12 +417,6 @@ fn engine_registry_is_complete() -> TestResult {
         assert!(
             ids.insert(descriptor.engine_id),
             "{} reuses an engine id",
-            engine.as_str()
-        );
-        assert_eq!(
-            descriptor.spec_row.is_some(),
-            descriptor.spec_sentence.is_none(),
-            "{} must quote exactly one of the §28 table row and the §28 sentence",
             engine.as_str()
         );
         assert_eq!(
@@ -574,7 +642,7 @@ fn high_impact_engines_cover_unknown_conflict_partial() -> TestResult {
 
 #[test]
 fn planned_engine_that_gains_an_implementation_fails_ci() -> TestResult {
-    // The real registry with the real inventory: thirteen planned engines, no
+    // The real registry with the real inventory: twelve planned engines, no
     // harness artifacts, and no workspace source naming any engine id.
     let root = repository_root();
     let mut discovered = BTreeMap::new();

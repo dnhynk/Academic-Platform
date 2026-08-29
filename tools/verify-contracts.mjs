@@ -3779,10 +3779,15 @@ await predicate_registry_matches_its_source_and_the_specification();
 
 // The engine registry is the same two-file contract as the predicate registry:
 // a JSON source of truth and Rust constants rendered from it, both pinned to
-// the canonical design document whose digest is asserted above. §3.9 fixes the
-// registry at thirteen engines, and §28 fixes what each of them is, so a
-// specification edit that renames or drops an engine fails here rather than
-// reaching a caller.
+// the canonical design document whose digest is asserted above. §28 fixes what
+// each engine is, so a specification edit that renames, drops, or adds an
+// engine fails here rather than reaching a caller.
+//
+// The registry is the §28 table and nothing else. t068 §3.9 calls it a
+// "thirteen-engine registry"; §28 tabulates twelve, and the thirteenth t068
+// implies is the property sentence under the table, which names no inputs, no
+// outputs, and no invariant. The comparison below is against the table, so the
+// registry follows the specification rather than t068's count.
 const engine_registry_matches_its_source_and_the_specification = async () => {
   const registry = JSON.parse(await readFile(ENGINE_REGISTRY_PATH, "utf8"));
   const generated = await readFile(ENGINE_GENERATED_PATH, "utf8");
@@ -3807,34 +3812,29 @@ const engine_registry_matches_its_source_and_the_specification = async () => {
         .map((cell) => cell.trim())
         .slice(1, -1),
     );
-  assert.equal(rows.length, 12, "§28 must still tabulate exactly twelve engines");
-  assert.equal(
-    registry.engines.length,
-    13,
-    "§3.9 fixes the registry at thirteen engines: the twelve tabulated plus the published-rule executor",
+
+  // Enumerated, not counted: a registered engine the table does not name and a
+  // tabulated engine the registry drops are the same mismatch.
+  assert.deepEqual(
+    registry.engines.map((entry) => entry.name),
+    rows.map((row) => specName(row[0])),
+    "the registered engines are not the §28 table",
   );
 
-  // The twelve tabulated engines, in table order and quoting their own cells.
+  // Each entry quotes its own row.
   for (const [index, row] of rows.entries()) {
     const entry = registry.engines[index];
-    assert.equal(entry.name, specName(row[0]), "registry order must follow the §28 table");
     assert.deepEqual(
       entry.spec_row,
       { engine: row[0], inputs: row[1], outputs: row[2], invariant: row[3] },
       `${entry.name} must quote its §28 row verbatim`,
     );
-    assert.equal(entry.spec_sentence, null, `${entry.name} is tabulated and quotes no sentence`);
+    assert.equal(
+      entry.spec_sentence,
+      undefined,
+      `${entry.name} must be registered from a table row, never from prose`,
+    );
   }
-
-  // The thirteenth is the §28 prose engine: an approved rule executes
-  // deterministically even though a model may have proposed it.
-  const executor = registry.engines[12];
-  assert.equal(executor.name, "PUBLISHED_RULE_EXECUTOR");
-  assert.equal(executor.spec_row, null);
-  assert.ok(
-    section.includes(executor.spec_sentence),
-    "the published-rule executor must quote its §28 sentence verbatim",
-  );
 
   const harnessDirs = new Set();
   const engineIds = new Set();

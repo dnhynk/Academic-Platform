@@ -863,7 +863,24 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
   const registry = JSON.parse(
     await readFile("schemas/registry/engine-registry-v1.json", "utf8"),
   );
-  assert.equal(registry.engines.length, 13, "the registry must still name thirteen engines");
+  assert.deepEqual(
+    registry.engines.map((entry) => entry.name),
+    [
+      "GPA",
+      "CREDIT_ACCOUNTING",
+      "GRADUATION_AUDIT",
+      "TIMETABLE",
+      "OFFICIAL_PREREQUISITE",
+      "EQUIVALENCY",
+      "TRANSCRIPT_COVERAGE",
+      "ARTIFACT_INTEGRITY",
+      "REPOSITORY_DIFF",
+      "OVERRIDE_RESOLVER",
+      "PERMISSION_BROKER",
+      "RETENTION_DELETION",
+    ],
+    "the scan must cover exactly the engines the §28 table names",
+  );
   const scanned = [
     join("crates", "domain", "src", "engines.rs"),
     join("crates", "domain", "src", "engines", "generated.rs"),
