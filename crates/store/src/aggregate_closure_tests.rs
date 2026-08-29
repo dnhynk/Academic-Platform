@@ -143,14 +143,15 @@ impl Drop for MigratedDatabase {
 
 /// Installs the canonical core that migration 0004 layers on.
 ///
-/// See the module comment: this is 0001's canonical core, not a schema-2
-/// identity. It creates no `schema_meta` row and stamps no `user_version`.
-/// Builds the store schema version 2 base: `0001`, then the real `0003`.
+/// Builds the store schema version 2 base: `0001`, then the real `0003`, then
+/// the identity row and the two SQLite identifiers `0003` pins.
 ///
 /// The identity row uses the values 0003 pins. Any drift in a pinned value
 /// makes 0003's own `CHECK` reject this insert, so the base cannot silently
 /// stop matching the migration it is supposed to reproduce.
-fn apply_schema_two_canonical_core(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub(crate) fn apply_schema_two_canonical_core(
+    connection: &Connection,
+) -> Result<(), Box<dyn Error>> {
     connection.execute_batch(MIGRATION_0001_SQL)?;
     connection.execute_batch(MIGRATION_0003_SQL)?;
     connection.execute(
@@ -199,7 +200,7 @@ fn synthetic_id(suffix: u32) -> [u8; 16] {
     bytes
 }
 
-fn typed_id<T>(suffix: u32) -> Result<T, Box<dyn Error>>
+pub(crate) fn typed_id<T>(suffix: u32) -> Result<T, Box<dyn Error>>
 where
     T: std::str::FromStr,
     T::Err: std::fmt::Display,
