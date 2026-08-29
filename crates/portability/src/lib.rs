@@ -94,6 +94,13 @@ pub enum PortabilityError {
     /// The key schedule refused to derive a key.
     #[cfg(feature = "encrypted-portability")]
     KeySchedule,
+    /// No recovery recipient in the backup opened with the presented secret.
+    ///
+    /// The reason is the *last* recipient's, and every recipient reports the
+    /// same refusal for a wrong secret, so nothing here can be read as an
+    /// oracle about which recipient or which part of the secret was wrong.
+    #[cfg(feature = "encrypted-portability")]
+    RecoveryUnlockRefused { reason: String },
     /// A stored signed envelope failed independent verification.
     Contract(ContractError),
     /// A stored canonical row failed domain validation.
@@ -190,6 +197,11 @@ impl fmt::Display for PortabilityError {
             Self::RecoveryProfile(source) => write!(formatter, "recovery profile: {source}"),
             #[cfg(feature = "encrypted-portability")]
             Self::KeySchedule => formatter.write_str("the key schedule refused a derivation"),
+            #[cfg(feature = "encrypted-portability")]
+            Self::RecoveryUnlockRefused { reason } => write!(
+                formatter,
+                "no recovery recipient in this backup opened with the presented                  secret: {reason}"
+            ),
             Self::Contract(source) => write!(formatter, "signed envelope replay: {source}"),
             Self::Domain(source) => write!(formatter, "canonical row validation: {source}"),
             Self::Sqlite(source) => write!(formatter, "SQLite portability statement: {source}"),

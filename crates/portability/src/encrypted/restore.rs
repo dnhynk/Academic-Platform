@@ -135,9 +135,9 @@ pub fn recover_profile_keys(
                 });
             }
             Err(error) => {
-                last = Some(PortabilityError::MissingAuthorization {
-                    device_id: error.to_string(),
-                })
+                last = Some(PortabilityError::RecoveryUnlockRefused {
+                    reason: error.to_string(),
+                });
             }
         }
     }
