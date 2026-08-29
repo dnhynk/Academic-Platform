@@ -675,7 +675,7 @@ impl EncryptedObjectReader {
     /// Returns the logical plaintext digest recovered from the sealed header.
     #[must_use]
     pub const fn plaintext_digest(&self) -> &[u8; 32] {
-        &self.opened.plaintext_digest
+        self.opened.plaintext_digest()
     }
 
     fn load_chunk(&mut self, index: u64) -> VaultResult<()> {
@@ -692,7 +692,7 @@ impl EncryptedObjectReader {
         self.file
             .read_exact(&mut self.chunk)
             .map_err(|error| VaultError::io("read encrypted object chunk", &self.path, error))?;
-        object::open_chunk(&self.opened.dek, header, index, &mut self.chunk)?;
+        object::open_chunk(self.opened.expose_dek(), header, index, &mut self.chunk)?;
         self.loaded = Some(index);
         Ok(())
     }
@@ -840,7 +840,7 @@ fn verify_open_object(
         buffer.resize(length, 0);
         file.read_exact(&mut buffer)
             .map_err(|error| VaultError::io("read encrypted object chunk", path, error))?;
-        object::open_chunk(&opened.dek, &opened.header, index, &mut buffer)?;
+        object::open_chunk(opened.expose_dek(), &opened.header, index, &mut buffer)?;
         hasher.update(&buffer);
         observed = observed
             .checked_add(u64::try_from(buffer.len()).map_err(|_| VaultError::ArtifactTooLarge)?)
@@ -852,7 +852,7 @@ fn verify_open_object(
         return Err(integrity_mismatch(path));
     }
     let digest = ContentDigest::from_sha256_bytes(hasher.finalize().into());
-    object::require_plaintext_digest(&opened.plaintext_digest, digest)?;
+    object::require_plaintext_digest(opened.plaintext_digest(), digest)?;
     if digest != descriptor.content_digest {
         return Err(integrity_mismatch(path));
     }

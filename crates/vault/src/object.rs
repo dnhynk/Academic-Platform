@@ -476,19 +476,54 @@ impl StreamingPrefix {
 }
 
 /// The DEK and plaintext digest recovered from a verified header.
-#[derive(Debug)]
 pub struct OpenedHeader {
     /// The authenticated header fields.
     pub header: ObjectHeader,
-    /// The per-object data-encryption key.
-    pub dek: [u8; KEY_BYTES],
-    /// The logical SHA-256 of the object's plaintext.
-    pub plaintext_digest: [u8; 32],
+    dek: [u8; KEY_BYTES],
+    plaintext_digest: [u8; 32],
+}
+
+impl OpenedHeader {
+    /// Borrows the per-object data-encryption key for the length of the call.
+    ///
+    /// The name is deliberate and greppable, matching `academic-crypto`: every
+    /// call site is a place a reviewer must confirm the bytes do not escape.
+    #[must_use]
+    pub const fn expose_dek(&self) -> &[u8; KEY_BYTES] {
+        &self.dek
+    }
+
+    /// Returns the logical SHA-256 of the object's plaintext.
+    ///
+    /// t068 §3.4 keeps this digest inside the encrypted metadata, so it is a
+    /// borrow rather than a field: it identifies the plaintext and must not
+    /// reach a log line or an audit row by accident.
+    #[must_use]
+    pub const fn plaintext_digest(&self) -> &[u8; 32] {
+        &self.plaintext_digest
+    }
+}
+
+/// Prints no key byte and no plaintext digest.
+///
+/// The derived implementation would put a live DEK into any log line, panic
+/// message, or audit row that formatted a reader, which is exactly what ADR-005
+/// forbids.
+impl core::fmt::Debug for OpenedHeader {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("OpenedHeader")
+            .field("header", &self.header)
+            .field("dek", &"<redacted>")
+            .field("plaintext_digest", &"<redacted>")
+            .finish()
+    }
 }
 
 impl Drop for OpenedHeader {
     fn drop(&mut self) {
         self.dek.fill(0);
+        self.plaintext_digest.fill(0);
     }
 }
 
@@ -695,6 +730,26 @@ mod tests {
             [0x66; 16],
             NONCE,
         )
+    }
+
+    #[test]
+    fn an_opened_header_prints_no_key_byte_or_plaintext_digest() {
+        let prefix = prefix();
+        let Ok(header) = prefix.seal_header(&KEK, &DEK, [0x77; 32], 9, [0x88; 32]) else {
+            unreachable!("sealing must succeed");
+        };
+        let Ok(opened) = open_header(&header, &KEK) else {
+            unreachable!("the sealing key must open the header");
+        };
+        let rendered = format!("{opened:?}");
+        assert!(rendered.contains("<redacted>"));
+        // The DEK is 0x20..0x3f and the digest is 0x88 repeated; neither may
+        // appear in any spelling a formatter could produce.
+        assert!(!rendered.contains("32, 33, 34"));
+        assert!(!rendered.contains("136, 136"));
+        assert!(!rendered.contains("2021222324"));
+        assert_eq!(opened.expose_dek(), &DEK);
+        assert_eq!(opened.plaintext_digest(), &[0x88; 32]);
     }
 
     #[test]

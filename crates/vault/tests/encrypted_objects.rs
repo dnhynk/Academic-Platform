@@ -712,7 +712,7 @@ fn format_n_minus_1_reader_corpus() -> Result<(), Box<dyn Error>> {
         let start = usize::try_from(opened.header.chunk_offset(index))?;
         let length = usize::try_from(opened.header.chunk_plaintext_len(index))? + TAG_BYTES;
         let mut chunk = sealed[start..start + length].to_vec();
-        object::open_chunk(&opened.dek, &opened.header, index, &mut chunk)?;
+        object::open_chunk(opened.expose_dek(), &opened.header, index, &mut chunk)?;
         recovered.extend_from_slice(&chunk);
     }
     assert_eq!(
@@ -721,7 +721,7 @@ fn format_n_minus_1_reader_corpus() -> Result<(), Box<dyn Error>> {
     );
     assert_eq!(
         ContentDigest::sha256(&recovered).as_bytes(),
-        &opened.plaintext_digest,
+        opened.plaintext_digest(),
         "the sealed digest no longer describes the sealed plaintext"
     );
 
@@ -787,11 +787,16 @@ fn format_n_minus_1_reader_corpus() -> Result<(), Box<dyn Error>> {
         empty_opened.header.sealed_len()
     );
     let mut empty_chunk = empty[HEADER_BYTES..].to_vec();
-    object::open_chunk(&empty_opened.dek, &empty_opened.header, 0, &mut empty_chunk)?;
+    object::open_chunk(
+        empty_opened.expose_dek(),
+        &empty_opened.header,
+        0,
+        &mut empty_chunk,
+    )?;
     assert!(empty_chunk.is_empty());
     assert_eq!(
         ContentDigest::sha256(&[]).as_bytes(),
-        &empty_opened.plaintext_digest
+        empty_opened.plaintext_digest()
     );
     assert_eq!(
         u64::try_from(sealed.len())?,
