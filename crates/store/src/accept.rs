@@ -15,8 +15,10 @@ use academic_domain::{
 use academic_ledger::LedgerError;
 use academic_vault::{SealedObjectCapability, Vault};
 
+#[cfg(not(feature = "sqlcipher-store"))]
+use crate::connection::open_writer;
 use crate::{
-    connection::{PragmaSnapshot, WriterConnection, open_writer, verify_admitted_schema_version},
+    connection::{PragmaSnapshot, WriterConnection, verify_admitted_schema_version},
     error::{StoreError, StoreResult},
     fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault, NoFault},
     idempotency::{
@@ -59,9 +61,28 @@ impl fmt::Debug for AcceptanceStore {
 }
 
 impl AcceptanceStore {
+    #[cfg(not(feature = "sqlcipher-store"))]
     pub(crate) fn open(profile_root: &Path, database_path: &Path) -> StoreResult<Self> {
         Ok(Self {
             writer: open_writer(database_path)?,
+            profile_root: profile_root.to_path_buf(),
+        })
+    }
+
+    /// Opens the sole owned acceptance service against an encrypted profile.
+    ///
+    /// The raw store key is applied as the first statement on the writer
+    /// handle, so the acceptance transaction, its authorizer, and its
+    /// append-only triggers run over exactly the same schema as the
+    /// plaintext lane and gain no bypass from encryption.
+    #[cfg(feature = "sqlcipher-store")]
+    pub(crate) fn open(
+        profile_root: &Path,
+        database_path: &Path,
+        key: &academic_crypto::StoreKey,
+    ) -> StoreResult<Self> {
+        Ok(Self {
+            writer: crate::connection::open_keyed_writer(database_path, key)?,
             profile_root: profile_root.to_path_buf(),
         })
     }

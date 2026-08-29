@@ -108,7 +108,7 @@ impl WriterConnection {
     }
 
     /// Executes SQL through the guarded product writer.
-    #[cfg(test)]
+    #[cfg(all(test, not(feature = "sqlcipher-store")))]
     pub(crate) fn execute<P: Params>(&self, sql: &str, params: P) -> StoreResult<usize> {
         self.connection
             .execute(sql, params)
@@ -116,13 +116,13 @@ impl WriterConnection {
     }
 
     /// Executes a SQL batch through the guarded product writer.
-    #[cfg(test)]
+    #[cfg(all(test, not(feature = "sqlcipher-store")))]
     pub(crate) fn execute_batch(&self, sql: &str) -> StoreResult<()> {
         self.connection.execute_batch(sql).map_err(StoreError::from)
     }
 
     /// Runs one query row without exposing the underlying connection capability.
-    #[cfg(test)]
+    #[cfg(all(test, not(feature = "sqlcipher-store")))]
     pub(crate) fn query_row<T, P, F>(&self, sql: &str, params: P, mapper: F) -> StoreResult<T>
     where
         P: Params,
@@ -262,9 +262,34 @@ impl ReaderConnection {
 }
 
 /// Opens the existing schema as the sole guarded product writer.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub(crate) fn open_writer(database_path: &Path) -> StoreResult<WriterConnection> {
+    open_writer_prepared(database_path, |_| Ok(()))
+}
+
+/// Opens the existing schema as the sole guarded product writer, keyed.
+///
+/// The key is applied by `prepare` as the first statement issued on the fresh
+/// handle, before any admission read, so no page is touched unkeyed.
+#[cfg(feature = "sqlcipher-store")]
+pub(crate) fn open_keyed_writer(
+    database_path: &Path,
+    key: &academic_crypto::StoreKey,
+) -> StoreResult<WriterConnection> {
+    open_writer_prepared(database_path, |connection| {
+        crate::cipher::apply_store_key(connection, key, database_path)
+    })
+}
+
+/// The one writer-admission sequence, parameterized only by how the handle is
+/// prepared before its first page access.
+fn open_writer_prepared(
+    database_path: &Path,
+    prepare: impl FnOnce(&Connection) -> StoreResult<()>,
+) -> StoreResult<WriterConnection> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection = Connection::open_with_flags(database_path, flags)?;
+    prepare(&connection)?;
     // Reject a foreign or tampered schema before journal-mode or any other
     // writer configuration can change the database family, and before closing
     // this read-write handle can checkpoint an uncheckpointed WAL into the
@@ -292,9 +317,34 @@ pub(crate) fn open_writer(database_path: &Path) -> StoreResult<WriterConnection>
 }
 
 /// Opens an existing database with OS read-only flags and SQLite `query_only=ON`.
+#[cfg(not(feature = "sqlcipher-store"))]
 pub fn open_reader(database_path: &Path) -> StoreResult<ReaderConnection> {
+    open_reader_prepared(database_path, |_| Ok(()))
+}
+
+/// Opens an existing encrypted database read-only with its raw store key.
+///
+/// The encrypted lane has no unkeyed reader: [`open_reader`] is compiled out,
+/// so no call site can reach an encrypted database without supplying a key.
+#[cfg(feature = "sqlcipher-store")]
+pub fn open_keyed_reader(
+    database_path: &Path,
+    key: &academic_crypto::StoreKey,
+) -> StoreResult<ReaderConnection> {
+    open_reader_prepared(database_path, |connection| {
+        crate::cipher::apply_store_key(connection, key, database_path)
+    })
+}
+
+/// The one reader-admission sequence, parameterized only by how the handle is
+/// prepared before its first page access.
+fn open_reader_prepared(
+    database_path: &Path,
+    prepare: impl FnOnce(&Connection) -> StoreResult<()>,
+) -> StoreResult<ReaderConnection> {
     let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection = Connection::open_with_flags(database_path, flags)?;
+    prepare(&connection)?;
     let admission_pragmas = read_pragma_snapshot(&connection)?;
     verify_current_schema(&connection, &admission_pragmas)?;
     configure_reader_connection(&connection)?;
@@ -578,7 +628,9 @@ const fn bool_i64(value: bool) -> i64 {
     if value { 1 } else { 0 }
 }
 
-#[cfg(test)]
+// The plaintext-lane connection policy. The encrypted lane opens every handle
+// keyed and is covered by `tests/encrypted_profile.rs` instead.
+#[cfg(all(test, not(feature = "sqlcipher-store")))]
 mod tests {
     use std::{
         error::Error,

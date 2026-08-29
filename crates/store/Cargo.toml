@@ -10,14 +10,27 @@ publish.workspace = true
 default = ["bundled-sqlite"]
 bundled-sqlite = ["rusqlite/bundled"]
 sqlcipher-spike = ["rusqlite/bundled-sqlcipher-vendored-openssl"]
+# The accepted encrypted lane. Non-default and non-overlapping with
+# `bundled-sqlite`: enabling both is a compile error, so the plaintext
+# synthetic lane and the encrypted lane can never link into one binary.
+sqlcipher-store = [
+  "dep:academic-crypto",
+  "rusqlite/bundled-sqlcipher-vendored-openssl",
+]
 
 [[bin]]
 name = "sqlcipher_spike"
 path = "src/bin/sqlcipher_spike.rs"
 required-features = ["sqlcipher-spike"]
 
+[[bin]]
+name = "sqlcipher_store_probe"
+path = "src/bin/sqlcipher_store_probe.rs"
+required-features = ["sqlcipher-store"]
+
 [dependencies]
 academic-contracts = { path = "../contracts" }
+academic-crypto = { path = "../crypto", optional = true }
 academic-domain = { path = "../domain" }
 academic-ledger = { path = "../ledger" }
 academic-store-platform = { path = "../store-platform" }

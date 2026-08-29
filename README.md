@@ -56,6 +56,19 @@ pnpm fixture:replay:v2
 git diff --exit-code -- schemas/fixtures/
 ```
 
+The encrypted store lane is non-default and is verified separately, because it
+cannot be linked into the same binary as the plaintext synthetic lane:
+
+```powershell
+cargo clippy -p academic-store --no-default-features --features sqlcipher-store --all-targets --locked --offline -- -D warnings
+cargo test -p academic-store --no-default-features --features sqlcipher-store --locked --offline
+```
+
+Building it needs a native SQLCipher and OpenSSL. That is verified on Linux; on
+Windows it stops inside `openssl-src`, and
+[the encrypted store lane](docs/contracts/encrypted-store-lane.md) records
+exactly why, what would resolve it, and what is therefore not yet proved.
+
 ## Operating a throwaway Phase 1 profile
 
 Every path below is synthetic-only and disposable. Do not point any of them at

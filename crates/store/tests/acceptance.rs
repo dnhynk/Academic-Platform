@@ -1,3 +1,9 @@
+// The plaintext synthetic lane only. The encrypted lane cannot link this lane's
+// profile API at all (t068 section 2.3-13), so under `sqlcipher-store` this file
+// compiles to nothing and `tests/encrypted_profile.rs` carries the equivalent
+// coverage against the schema-2 profile.
+#![cfg(not(feature = "sqlcipher-store"))]
+
 use std::{
     env,
     error::Error,

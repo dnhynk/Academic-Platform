@@ -188,6 +188,7 @@ name = "academic-store"
 version = "0.1.0"
 dependencies = [
  "academic-contracts",
+ "academic-crypto",
  "academic-domain",
  "academic-ledger",
  "academic-store-platform",
