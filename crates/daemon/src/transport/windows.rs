@@ -39,7 +39,10 @@ use windows_sys::Win32::{
     },
 };
 
-use super::{LocalEndpoint, RuntimePaths, SINGLETON_LOCK_FILE, profile_key};
+use super::{
+    LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SINGLETON_LOCK_FILE,
+    profile_key,
+};
 
 #[derive(Debug)]
 struct OwnedHandle(HANDLE);
@@ -227,15 +230,16 @@ pub(crate) fn accept_error_is_transient(error: &io::Error) -> bool {
 pub(crate) fn prepare_runtime(
     runtime_root: &Path,
     profile_root: &Path,
-) -> io::Result<RuntimePaths> {
+) -> Result<RuntimePaths, RuntimeLayoutError> {
     let metadata = std::fs::symlink_metadata(runtime_root)?;
     if !metadata.is_dir() || metadata.file_type().is_symlink() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "runtime root is not a plain directory",
-        ));
+        )
+        .into());
     }
-    let product = runtime_root.join("academic-os");
+    let product = runtime_root.join(PRODUCT_RUNTIME_DIR);
     ensure_private_directory(&product)?;
     let key = profile_key(profile_root)?;
     let directory = product.join(&key);
@@ -243,7 +247,7 @@ pub(crate) fn prepare_runtime(
     let mut session = 0_u32;
     // SAFETY: output points at an initialized u32 for the current process ID.
     if unsafe { ProcessIdToSessionId(GetCurrentProcessId(), &mut session) } == 0 {
-        return Err(io::Error::last_os_error());
+        return Err(io::Error::last_os_error().into());
     }
     Ok(RuntimePaths {
         profile_key: key.clone(),

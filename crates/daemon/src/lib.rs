@@ -23,6 +23,8 @@ pub use readers::ReaderFactory;
 pub use runtime_meta::SessionNonce;
 pub use service::{DaemonConfig, RunningDaemon};
 pub use transport::LocalEndpoint;
+#[cfg(unix)]
+pub use transport::MAX_UNIX_ENDPOINT_PATH_LEN;
 pub use writer::{AdmissionError, AdmittedMutation, WriterQueue};
 
 /// Product binary name for the local-core daemon.
@@ -72,6 +74,21 @@ pub enum DaemonError {
         /// Native error.
         #[source]
         source: io::Error,
+    },
+    /// The assembled local endpoint path exceeds the platform address bound.
+    ///
+    /// On Unix the whole absolute socket path travels in `sun_path`, so a
+    /// runtime root that leaves no room for the per-profile suffix cannot host
+    /// a profile. Startup reports the bound, the measured length, and the path
+    /// it refused rather than shortening it or letting `bind` fail obscurely.
+    #[error("local endpoint path is {length} bytes, above the {limit}-byte platform limit: {path}")]
+    EndpointPathTooLong {
+        /// Longest endpoint path the platform address can carry.
+        limit: usize,
+        /// Measured length of the assembled endpoint path.
+        length: usize,
+        /// The offending assembled path, never truncated to fit.
+        path: String,
     },
     /// Another daemon owns this current-user/profile identity.
     #[error("another daemon already owns this current-user profile")]

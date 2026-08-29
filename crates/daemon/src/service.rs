@@ -113,8 +113,20 @@ impl RunningDaemon {
         let profile = open_synthetic_profile(&config.profile_root, config.probe.as_ref())?;
         let readers = ReaderFactory::new(profile.clone());
         let runtime_paths = transport::prepare_runtime(&config.runtime_root, profile.root())
-            .map_err(|source| {
-                daemon_io("prepare runtime", config.runtime_root.display(), source)
+            .map_err(|error| match error {
+                transport::RuntimeLayoutError::Io(source) => {
+                    daemon_io("prepare runtime", config.runtime_root.display(), source)
+                }
+                #[cfg(unix)]
+                transport::RuntimeLayoutError::EndpointPathTooLong {
+                    limit,
+                    length,
+                    path,
+                } => DaemonError::EndpointPathTooLong {
+                    limit,
+                    length,
+                    path: path.display().to_string(),
+                },
             })?;
         let singleton = singleton::acquire(&runtime_paths)?;
 

@@ -14,7 +14,31 @@ use rustix::{
 };
 use tokio::net::{UnixListener, UnixStream};
 
-use super::{LocalEndpoint, RuntimePaths, SINGLETON_LOCK_FILE, profile_key};
+use super::{
+    LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SINGLETON_LOCK_FILE,
+    profile_key,
+};
+
+/// Bytes of `sockaddr_un::sun_path`, which has to hold the whole absolute
+/// endpoint path and its terminating NUL. Linux and Android carry 108; macOS
+/// and the BSDs carry 104.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+const SUN_PATH_CAPACITY: usize = 108;
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+const SUN_PATH_CAPACITY: usize = 104;
+
+/// Endpoint file below the per-profile runtime directory. Every byte of it is
+/// charged against [`MAX_UNIX_ENDPOINT_PATH_LEN`].
+const ENDPOINT_FILE: &str = "d.sock";
+
+/// Longest Unix endpoint path this platform can address.
+///
+/// The endpoint is the caller's runtime root followed by the fixed
+/// `academic-os/<profile key>/d.sock` suffix, and the whole absolute path has
+/// to fit `sun_path`. A runtime root that leaves no room for that suffix is
+/// refused by [`prepare_runtime`] with the measured length and the offending
+/// path, because the alternative is an unexplained `InvalidInput` from `bind`.
+pub const MAX_UNIX_ENDPOINT_PATH_LEN: usize = SUN_PATH_CAPACITY - 1;
 
 #[derive(Debug)]
 pub(crate) struct SingletonGuard {
@@ -85,7 +109,20 @@ impl LocalListener {
 
     pub(crate) async fn accept(&mut self) -> io::Result<UnixStream> {
         let (stream, _) = self.listener.accept().await?;
-        let credentials = stream.peer_cred()?;
+        // Peer credentials describe one connection, not the endpoint. macOS
+        // reads them with `LOCAL_PEEREPID` and `getpeereid`, which need a
+        // still-connected peer, so a client that closed between connect and
+        // accept fails this call with `ENOTCONN` where Linux answers from what
+        // `SO_PEERCRED` recorded at connect time. Either way the connection is
+        // refused and never served, so this is the same current-user decision
+        // as a UID mismatch; ending the listener for it would take local IPC
+        // down for every client until the daemon restarts.
+        let credentials = stream.peer_cred().map_err(|source| {
+            io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                format!("Unix peer credentials are unreadable: {source}"),
+            )
+        })?;
         if credentials.uid() != self.expected_uid.as_raw() {
             return Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
@@ -116,19 +153,39 @@ pub(crate) fn accept_error_is_transient(error: &io::Error) -> bool {
 pub(crate) fn prepare_runtime(
     runtime_root: &Path,
     profile_root: &Path,
-) -> io::Result<RuntimePaths> {
+) -> Result<RuntimePaths, RuntimeLayoutError> {
     require_plain_directory(runtime_root, false)?;
-    let product = runtime_root.join("academic-os");
-    ensure_private_directory(&product)?;
     let key = profile_key(profile_root)?;
+    let product = runtime_root.join(PRODUCT_RUNTIME_DIR);
     let directory = product.join(&key);
+    let endpoint = directory.join(ENDPOINT_FILE);
+    // The address bound decides the whole layout, so it is answered from the
+    // assembled path before any directory is created and long before `bind`.
+    let length = path_len(&endpoint);
+    if length > MAX_UNIX_ENDPOINT_PATH_LEN {
+        return Err(RuntimeLayoutError::EndpointPathTooLong {
+            limit: MAX_UNIX_ENDPOINT_PATH_LEN,
+            length,
+            path: endpoint,
+        });
+    }
+    ensure_private_directory(&product)?;
     ensure_private_directory(&directory)?;
     Ok(RuntimePaths {
         profile_key: key,
         metadata: directory.join("session.meta"),
-        endpoint: LocalEndpoint::UnixSocket(directory.join("academicd.sock")),
+        endpoint: LocalEndpoint::UnixSocket(endpoint),
         directory,
     })
+}
+
+/// Length of a path in the bytes the kernel copies into `sun_path`, which is
+/// what the bound is stated in. Character counts would understate any
+/// non-ASCII component.
+fn path_len(path: &Path) -> usize {
+    use std::os::unix::ffi::OsStrExt;
+
+    path.as_os_str().as_bytes().len()
 }
 
 fn verify_socket(path: &Path) -> io::Result<()> {
