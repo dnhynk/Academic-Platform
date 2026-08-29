@@ -27,6 +27,29 @@ pub const CANONICAL_TABLES: &[&str] = &[
     "user_decision",
     "projection_outbox",
     "command_receipt",
+    // Migration 0004 aggregate closure tables, in event schema v3 Proto tag
+    // order. They are canonical history on exactly the same terms as the set
+    // above: the trigger pair in the migration is the first enforcement layer,
+    // and this list is the second. A table missing from here would keep its
+    // triggers but lose the authorizer's blanket denial of DROP and ALTER.
+    "curriculum_version",
+    "course_revision",
+    "offering",
+    "attempt",
+    "requirement_set",
+    "audit",
+    "capture_permission",
+    "lecture_session",
+    "transcript_version",
+    "lecture_document",
+    "snapshot",
+    "finding",
+    "model_run",
+    "proposal_disposition",
+    "egress_decision",
+    "consent",
+    "entity_identity_change",
+    "retention_action",
 ];
 
 /// Installs the product-writer guard after migration and identity verification.

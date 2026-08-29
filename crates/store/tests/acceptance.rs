@@ -12,10 +12,10 @@ use std::{
 use academic_contracts::{DeviceAuthorization, sign_batch, verify_signed_batch};
 use academic_domain::{
     Actor, ArtifactId, ArtifactRepresentation, AuthorityClass, BatchId, Claim, ClaimObject,
-    Confidentiality, ContentDigest, DeviceId, DomainError, DomainId, EpistemicStatus, Event,
-    EventId, EventPayload, EvidenceId, EvidenceItem, EvidenceLocator, EvidenceRole,
-    EvidenceStrength, MediaType, PermissionLineageId, PredicateId, RetentionClass, ScopeDescriptor,
-    ScopeId, TimestampMillis, UnsignedBatch, ValidInterval,
+    Confidentiality, ContentDigest, CurriculumVersionRegistration, DeviceId, DomainError, DomainId,
+    EpistemicStatus, Event, EventId, EventPayload, EvidenceId, EvidenceItem, EvidenceLocator,
+    EvidenceRole, EvidenceStrength, MediaType, PermissionLineageId, PredicateId, RetentionClass,
+    ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch, ValidInterval,
 };
 use academic_ledger::{EVENT_SCHEMA_VERSION, LedgerError, LedgerState};
 use academic_store::{
@@ -1276,6 +1276,95 @@ fn process_fault_child() -> Result<(), Box<dyn Error>> {
         &ProcessExitAt(point),
     )?;
     Err(format!("{} checkpoint was not reached", point.as_str()).into())
+}
+
+/// An event schema v3 aggregate arm is refused by a schema-1 profile, by name.
+///
+/// The typed refusal is deliberate rather than incidental. Migration 0004 adds
+/// the closure tables and widens the `ledger_event.event_kind` CHECK together, so
+/// on a schema-1 profile a v3 arm has neither a table nor an admitted kind.
+/// Letting it fail on the missing table would be fail-closed by accident; this
+/// path names the reason before any SQL runs, and leaves the profile untouched.
+#[test]
+fn v3_registration_arm_is_rejected_on_schema_one() -> Result<(), Box<dyn Error>> {
+    let database = TestDatabase::new("v3-on-schema-one")?;
+    let namespace = 0x1500;
+    let vault = database.vault(namespace)?;
+    let batch = registration_batch(namespace, 0x9500)?;
+    let signed = signed(&batch)?;
+    let verified = verify_signed_batch(&signed.envelope, &signed.authorization)?;
+
+    let mut store = database.profile.open_acceptance_store()?;
+    let refused = store.accept_verified_batch(
+        &verified,
+        command(&signed.envelope, 21, Some(0)),
+        TimestampMillis::new(11_000),
+        &vault,
+    );
+    let Err(AcceptError::UnstorableEventKind(kind)) = refused else {
+        return Err(format!("expected a typed refusal, observed {refused:?}").into());
+    };
+    assert_eq!(kind, "CURRICULUM_VERSION_PUBLISHED");
+    assert_eq!(
+        refused_display(kind),
+        "event kind CURRICULUM_VERSION_PUBLISHED has no canonical table in this store schema"
+    );
+    drop(store);
+
+    // The refusal happens before the transaction opens, so nothing was consumed:
+    // not the accept sequence, not the batch, not a command receipt.
+    assert_empty(canonical_snapshot(&open_reader(database.path())?)?);
+    Ok(())
+}
+
+fn refused_display(kind: &'static str) -> String {
+    AcceptError::UnstorableEventKind(kind).to_string()
+}
+
+/// A scope followed by one event schema v3 registration arm.
+fn registration_batch(namespace: u32, device: u32) -> Result<UnsignedBatch, Box<dyn Error>> {
+    let domain_id: DomainId = id(namespace + 1)?;
+    let scope_id: ScopeId = id(namespace + 2)?;
+    let actor = Actor::Importer {
+        name: "academic.s2.test".to_owned(),
+        version: "1.0.0".to_owned(),
+    };
+    let events = vec![
+        event(
+            namespace + 10,
+            1,
+            actor.clone(),
+            domain_id,
+            EventPayload::ScopeRegistered(ScopeDescriptor {
+                id: scope_id,
+                domain_id,
+                label: format!("synthetic scope {namespace}"),
+            }),
+        )?,
+        event(
+            namespace + 11,
+            2,
+            actor,
+            domain_id,
+            EventPayload::CurriculumVersionPublished(CurriculumVersionRegistration {
+                id: id(namespace + 3)?,
+                domain_id,
+                scope_id,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(100)),
+            }),
+        )?,
+    ];
+    Ok(UnsignedBatch {
+        schema_version: EVENT_SCHEMA_VERSION,
+        batch_id: id::<BatchId>(namespace + 20)?,
+        device_id: id::<DeviceId>(device)?,
+        origin_seq_start: 1,
+        origin_seq_end: 2,
+        previous_batch_hash: None,
+        origin_created_at: TimestampMillis::new(100),
+        events,
+    })
 }
 
 fn assert_empty(snapshot: academic_store::queries::CanonicalSnapshot) {
