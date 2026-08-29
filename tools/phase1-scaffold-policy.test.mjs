@@ -920,9 +920,30 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
 
   // The available half. Names only: versions are pinned by the lockfile gate,
   // and what matters here is that no new capability entered the graph.
-  const engineTree = featureTree(["-p", "academic-domain", "--edges", "normal"]);
+  //
+  // `--target all` rather than the host target. A host-resolved closure differs
+  // between Windows and Linux -- `getrandom` reaches `libc` on one and not the
+  // other -- so a host-resolved list would be a Windows claim asserted on every
+  // runner. The union over every target in the lockfile is the same everywhere.
+  const engineRun = spawnSync(
+    "cargo",
+    [
+      "tree",
+      "--locked",
+      "--offline",
+      "--edges",
+      "normal",
+      "--target",
+      "all",
+      "-p",
+      "academic-domain",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(engineRun.status, 0, `locked offline cargo tree failed: ${engineRun.stderr}`);
   const crates = new Set(
-    engineTree
+    engineRun.stdout
+      .replaceAll(/\([^)]*\)/gu, "")
       .split("\n")
       .map((line) => line.replace(/^[^A-Za-z]*/u, "").split(" ")[0].trim())
       .filter((name) => name.length > 0),
@@ -940,8 +961,10 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
       "getrandom",
       "hex",
       "hmac",
+      "libc",
       "proc-macro2",
       "quote",
+      "r-efi",
       "serde",
       "serde_core",
       "serde_derive",
