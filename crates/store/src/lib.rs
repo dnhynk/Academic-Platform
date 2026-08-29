@@ -166,3 +166,5 @@ mod tests {
 
 #[cfg(test)]
 mod aggregate_closure_tests;
+#[cfg(test)]
+mod entity_registry_tests;
