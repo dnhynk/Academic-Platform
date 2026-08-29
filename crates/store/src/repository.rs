@@ -390,6 +390,159 @@ pub(crate) struct ClosureWriter<'transaction, 'connection, 'receipts> {
     artifacts: BTreeMap<ArtifactId, ArtifactDescriptor>,
     evidence: BTreeMap<EvidenceId, AcceptedEvidence>,
     claims: BTreeMap<ClaimId, AcceptedClaim>,
+    registrations: BTreeSet<(&'static str, [u8; 16])>,
+}
+
+/// One aggregate closure row in the exact shape migration 0004 gives every event
+/// schema v3 registration arm.
+///
+/// The fields are the whole of the v3 registration frame. Typed aggregate
+/// attributes are deliberately absent here and in the schema; each aggregate
+/// owner adds its own columns later, and none of them may be smuggled into
+/// `claim.object_text`.
+struct AggregateClosureRow<'payload> {
+    table: &'static str,
+    primary_key_column: &'static str,
+    aggregate_id: &'payload [u8; 16],
+    /// The same identifier in its typed spelling, used only to name a duplicate.
+    aggregate_id_display: &'payload dyn fmt::Display,
+    parent: Option<(&'static str, &'payload [u8; 16])>,
+    domain_id: &'payload DomainId,
+    scope_id: &'payload ScopeId,
+    source_digest: Option<&'payload ContentDigest>,
+    valid_time: ValidInterval,
+}
+
+/// Maps an event schema v3 registration arm onto its migration 0004 table.
+///
+/// Returns `None` for the six v1/v2 arms, which have their own typed writers.
+/// The match is exhaustive over `EventPayload`, so a nineteenth arm cannot be
+/// added without deciding where its closure row lives.
+fn aggregate_closure_row(payload: &EventPayload) -> Option<AggregateClosureRow<'_>> {
+    macro_rules! row {
+        ($record:expr, $table:literal, $key:literal) => {
+            AggregateClosureRow {
+                table: $table,
+                primary_key_column: $key,
+                aggregate_id: $record.id.as_bytes(),
+                aggregate_id_display: &$record.id,
+                parent: None,
+                domain_id: &$record.domain_id,
+                scope_id: &$record.scope_id,
+                source_digest: $record.source_digest.as_ref(),
+                valid_time: $record.valid_time,
+            }
+        };
+        ($record:expr, $table:literal, $key:literal, $parent_column:literal, $parent:ident) => {
+            AggregateClosureRow {
+                parent: Some(($parent_column, $record.$parent.as_bytes())),
+                ..row!($record, $table, $key)
+            }
+        };
+    }
+
+    Some(match payload {
+        EventPayload::ScopeRegistered(_)
+        | EventPayload::ArtifactRegistered(_)
+        | EventPayload::EvidenceRegistered(_)
+        | EventPayload::ClaimAsserted(_)
+        | EventPayload::ClaimRelated(_)
+        | EventPayload::DecisionRecorded(_) => return None,
+        EventPayload::CurriculumVersionPublished(record) => {
+            row!(record, "curriculum_version", "curriculum_version_id")
+        }
+        EventPayload::CourseRevisionPublished(record) => row!(
+            record,
+            "course_revision",
+            "course_revision_id",
+            "curriculum_version_id",
+            curriculum_version_id
+        ),
+        EventPayload::OfferingObserved(record) => row!(
+            record,
+            "offering",
+            "offering_id",
+            "course_revision_id",
+            course_revision_id
+        ),
+        EventPayload::AttemptRecorded(record) => {
+            row!(record, "attempt", "attempt_id", "offering_id", offering_id)
+        }
+        EventPayload::RequirementSetPublished(record) => row!(
+            record,
+            "requirement_set",
+            "requirement_set_id",
+            "curriculum_version_id",
+            curriculum_version_id
+        ),
+        EventPayload::AuditComputed(record) => row!(
+            record,
+            "audit",
+            "audit_id",
+            "requirement_set_id",
+            requirement_set_id
+        ),
+        EventPayload::CapturePermissionRecorded(record) => row!(
+            record,
+            "capture_permission",
+            "capture_permission_id",
+            "offering_id",
+            offering_id
+        ),
+        EventPayload::LectureSessionRecorded(record) => row!(
+            record,
+            "lecture_session",
+            "lecture_session_id",
+            "offering_id",
+            offering_id
+        ),
+        EventPayload::TranscriptVersionAdded(record) => row!(
+            record,
+            "transcript_version",
+            "transcript_version_id",
+            "lecture_session_id",
+            lecture_session_id
+        ),
+        EventPayload::LectureDocumentPublished(record) => row!(
+            record,
+            "lecture_document",
+            "lecture_document_id",
+            "lecture_session_id",
+            lecture_session_id
+        ),
+        EventPayload::SnapshotRegistered(record) => row!(
+            record,
+            "snapshot",
+            "snapshot_id",
+            "repository_id",
+            repository_id
+        ),
+        EventPayload::FindingPublished(record) => {
+            row!(record, "finding", "finding_id", "snapshot_id", snapshot_id)
+        }
+        EventPayload::ModelRunRecorded(record) => row!(record, "model_run", "model_run_id"),
+        EventPayload::ProposalDisposed(record) => row!(
+            record,
+            "proposal_disposition",
+            "proposal_id",
+            "model_run_id",
+            model_run_id
+        ),
+        EventPayload::EgressDecided(record) => {
+            row!(record, "egress_decision", "egress_decision_id")
+        }
+        EventPayload::ConsentRecorded(record) => row!(record, "consent", "consent_id"),
+        EventPayload::EntityIdentityChanged(record) => row!(
+            record,
+            "entity_identity_change",
+            "entity_identity_change_id",
+            "entity_id",
+            entity_id
+        ),
+        EventPayload::RetentionActionRecorded(record) => {
+            row!(record, "retention_action", "retention_action_id")
+        }
+    })
 }
 
 impl<'transaction, 'connection, 'receipts> ClosureWriter<'transaction, 'connection, 'receipts> {
@@ -406,6 +559,7 @@ impl<'transaction, 'connection, 'receipts> ClosureWriter<'transaction, 'connecti
             artifacts: BTreeMap::new(),
             evidence: BTreeMap::new(),
             claims: BTreeMap::new(),
+            registrations: BTreeSet::new(),
         }
     }
 
@@ -464,11 +618,82 @@ impl<'transaction, 'connection, 'receipts> ClosureWriter<'transaction, 'connecti
             EventPayload::DecisionRecorded(decision) => {
                 self.append_decision(event, decision, accept_seq)
             }
-            // Unreachable in practice: acceptance rejects every event schema v3
-            // arm before the transaction opens, because this store schema has no
-            // canonical table for one. Kept typed rather than panicking.
-            payload => Err(RepositoryError::UnstorableEventKind(payload.kind())),
+            payload => {
+                let row = aggregate_closure_row(payload)
+                    .ok_or(RepositoryError::UnstorableEventKind(payload.kind()))?;
+                self.append_registration(event, &row)
+            }
         }
+    }
+
+    /// Writes one migration 0004 closure row inside the acceptance transaction.
+    ///
+    /// The row lands in the same transaction as its own `ledger_event` insert, so
+    /// an aggregate can never outlive or precede the event that registered it.
+    /// `registered_event_id` is UNIQUE within each closure table, the same
+    /// per-table shape `scope.created_event_id` and `claim.assertion_event_id`
+    /// carry. Across tables the binding is structural instead: an event holds one
+    /// payload arm and [`aggregate_closure_row`] maps each arm to one table.
+    fn append_registration(
+        &mut self,
+        event: &Event,
+        row: &AggregateClosureRow<'_>,
+    ) -> Result<(), RepositoryError> {
+        if !self.registrations.insert((row.table, *row.aggregate_id))
+            || row_exists(
+                self.transaction,
+                row.table,
+                row.primary_key_column,
+                row.aggregate_id,
+            )?
+        {
+            return Err(LedgerError::DuplicateId {
+                kind: row.table,
+                id: row.aggregate_id_display.to_string(),
+            }
+            .into());
+        }
+        // Every identifier interpolated below is a `&'static str` chosen by
+        // `aggregate_closure_row`, never caller input; every value is bound.
+        let valid_to = row.valid_time.to().map(TimestampMillis::value);
+        match row.parent {
+            Some((parent_column, parent_id)) => self.transaction.execute(
+                &format!(
+                    "INSERT INTO {} ({}, registered_event_id, {parent_column}, domain_id, \
+                     scope_id, source_digest, valid_from, valid_to) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    row.table, row.primary_key_column
+                ),
+                params![
+                    row.aggregate_id.as_slice(),
+                    event.id.as_bytes().as_slice(),
+                    parent_id.as_slice(),
+                    row.domain_id.as_bytes().as_slice(),
+                    row.scope_id.as_bytes().as_slice(),
+                    row.source_digest.map(|digest| digest.as_bytes().as_slice()),
+                    row.valid_time.from().value(),
+                    valid_to,
+                ],
+            )?,
+            None => self.transaction.execute(
+                &format!(
+                    "INSERT INTO {} ({}, registered_event_id, domain_id, scope_id, \
+                     source_digest, valid_from, valid_to) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    row.table, row.primary_key_column
+                ),
+                params![
+                    row.aggregate_id.as_slice(),
+                    event.id.as_bytes().as_slice(),
+                    row.domain_id.as_bytes().as_slice(),
+                    row.scope_id.as_bytes().as_slice(),
+                    row.source_digest.map(|digest| digest.as_bytes().as_slice()),
+                    row.valid_time.from().value(),
+                    valid_to,
+                ],
+            )?,
+        };
+        Ok(())
     }
 
     fn append_scope(

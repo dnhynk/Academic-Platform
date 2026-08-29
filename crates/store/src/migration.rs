@@ -22,6 +22,14 @@ use crate::{
 /// First and only S1 migration, embedded byte-for-byte from the ordered migration directory.
 pub const MIGRATION_0001_SQL: &str = include_str!("../../../migrations/store/0001_phase1_core.sql");
 
+/// Typed canonical closure tables for the eighteen event schema v3 registration arms.
+///
+/// Applies on top of store schema version 2. Migration `0003` establishes that
+/// version, its identity triplet, and the encrypted lane; this migration reads
+/// and writes no part of that identity.
+pub const MIGRATION_0004_SQL: &str =
+    include_str!("../../../migrations/store/0004_phase2_canonical_aggregates.sql");
+
 /// Result of invoking the forward-only migration runner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MigrationStatus {
@@ -160,6 +168,38 @@ pub fn migrate_open_connection_pre_listen(
     verify_current_schema(connection, &after)?;
     enable_checkpoint_on_close(connection)?;
     Ok(MigrationStatus::Applied)
+}
+
+/// Applies migration `0004` to an already-open store schema version 2 connection.
+///
+/// This is the same narrow, forward-only, pre-listen boundary as
+/// [`migrate_open_connection_pre_listen`]: the caller owns opening and keying the
+/// handle, and this function owns the migration SQL, the foreign-key discipline
+/// that the `ledger_event` rebuild requires, and the post-migration integrity
+/// checks. It installs no authorizer and must run before any daemon listener
+/// exists.
+///
+/// The migration is a delta on the canonical core, not on the schema identity
+/// singleton: it neither reads nor writes `schema_meta`, `application_id`, or
+/// `user_version`, so applying it cannot turn one profile format into another.
+pub fn apply_aggregate_migration_pre_listen(connection: &mut Connection) -> StoreResult<()> {
+    // `PRAGMA foreign_keys` is a no-op inside a transaction, and SQLite's
+    // documented table-rebuild procedure needs it off while the old
+    // `ledger_event` is dropped and its replacement is renamed into place.
+    // `foreign_key_check` inside the transaction is what proves no reference was
+    // left dangling, and it runs before the commit.
+    connection.execute_batch("PRAGMA foreign_keys = OFF;")?;
+    let applied = apply_aggregate_migration_in_transaction(connection);
+    connection.execute_batch("PRAGMA foreign_keys = ON;")?;
+    applied
+}
+
+fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> StoreResult<()> {
+    let transaction = connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
+    transaction.execute_batch(MIGRATION_0004_SQL)?;
+    verify_integrity(&transaction)?;
+    transaction.commit()?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

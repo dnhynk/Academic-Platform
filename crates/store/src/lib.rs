@@ -84,3 +84,6 @@ mod tests {
         assert_eq!(SQLITE_APPLICATION_ID.to_be_bytes(), *b"ACAD");
     }
 }
+
+#[cfg(test)]
+mod aggregate_closure_tests;
