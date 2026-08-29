@@ -650,7 +650,7 @@ pub fn open_header(
     }
 
     let cipher = XChaCha20Poly1305::new(domain_kek.into());
-    let opened = cipher
+    let mut opened = cipher
         .decrypt(
             XNonce::from_slice(&base_nonce),
             Payload {
@@ -659,7 +659,11 @@ pub fn open_header(
             },
         )
         .map_err(|_| ObjectFormatError::Aead)?;
+    // This buffer is the unwrapped `DEK || plaintext_digest`. `OpenedHeader`
+    // clears the copies it keeps, so this one is cleared on every path out
+    // rather than dropped as a plain `Vec` that leaves the DEK in freed heap.
     if opened.len() != KEY_BYTES + 32 {
+        opened.fill(0);
         return Err(ObjectFormatError::MalformedHeader("wrapped_dek"));
     }
 
@@ -667,6 +671,7 @@ pub fn open_header(
     dek.copy_from_slice(&opened[..KEY_BYTES]);
     let mut plaintext_digest = [0_u8; 32];
     plaintext_digest.copy_from_slice(&opened[KEY_BYTES..]);
+    opened.fill(0);
 
     let mut artifact_id = [0_u8; 16];
     artifact_id.copy_from_slice(&bytes[ARTIFACT_ID_AT..ARTIFACT_ID_AT + 16]);

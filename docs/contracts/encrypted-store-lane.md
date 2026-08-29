@@ -122,9 +122,25 @@ SKEY_p = HKDF-SHA-512(VMK, salt=profile_id, info="academic-os/store/v1")
 
 It is supplied as a **raw 32-byte key**, `PRAGMA key = "x'<64 hex>'"`, never as
 a passphrase, and it is the first SQLite statement issued on every handle —
-creation, writer, and reader alike. The rendered hex lives in a zeroizing buffer
-for the length of the call. `open_reader` (unkeyed) is compiled out of this
-lane, so no call site can reach an encrypted database without a key.
+creation, writer, and reader alike. `open_reader` (unkeyed) is compiled out of
+this lane, so no call site can reach an encrypted database without a key.
+
+**The key hex reaches SQLite as SQL text, not as a bound parameter.** A PRAGMA
+value cannot be bound: SQLite parses it at prepare time, so rusqlite's
+`pragma_update` renders the value into a statement string. `apply_store_key`
+therefore builds that statement itself, byte for byte what `pragma_update` would
+have emitted, so that the buffer belongs to this crate:
+
+| Buffer | Cleared before it is freed |
+| --- | --- |
+| the hex from `StoreKey::expose_raw_hex` | yes — `Zeroizing<String>` |
+| the `PRAGMA key=…` statement text | yes — overwritten in `apply_store_key` |
+| SQLite's copy inside the prepared statement | **no** — `sqlite3_prepare_v2` copies the text and frees it uncleared at finalize |
+
+The last row is not reachable from this crate and is stated rather than
+papered over. It is an in-process memory exposure only: the byte-level canary
+scan of a keyed database, its WAL, and its shared-memory file reports zero
+plaintext-key hits, so no route puts the key on disk.
 
 A key that does not authenticate page one produces `EncryptedStoreLocked` and
 nothing else. The reason string is identical for a wrong key and for a destroyed

@@ -100,7 +100,7 @@ not carry:
 pnpm verify:windows-toolchain
 cargo clippy -p academic-store --no-default-features --features sqlcipher-store --all-targets --locked --offline -- -D warnings
 cargo test -p academic-store --no-default-features --features sqlcipher-store --locked --offline
-cargo clippy -p academic-portability --no-default-features --features encrypted-portability --all-targets --locked --offline -- -D warnings
+cargo clippy -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --all-targets --locked --offline -- -D warnings
 cargo test -p academic-portability --no-default-features --features encrypted-portability --locked --offline
 cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --offline --test encrypted_crash
 ```

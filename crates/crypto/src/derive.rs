@@ -226,6 +226,8 @@ mod tests {
         assert_eq!(AUDIT_INFO, b"academic-os/audit/v1");
         assert_eq!(RECIPIENT_MAC_INFO, b"academic-os/recipient-mac/v1");
         assert_eq!(VAULT_LOCATOR_INFO, b"academic-os/vault-locator/v1");
+        assert_eq!(REHEARSAL_INFO, b"academic-os/rehearsal/v1");
+        assert_eq!(KEY_GENERATION_INFO, b"academic-os/key-generation/v1");
         assert_eq!(KEK_INFO_PREFIX.len(), 18);
     }
 

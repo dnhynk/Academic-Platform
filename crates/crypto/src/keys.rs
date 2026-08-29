@@ -250,6 +250,7 @@ mod tests {
         assert_zeroize_on_drop::<RecipientMacKey>();
         assert_zeroize_on_drop::<RecipientWrapKey>();
         assert_zeroize_on_drop::<DomainLocatorKey>();
+        assert_zeroize_on_drop::<RehearsalKey>();
     }
 
     #[test]
