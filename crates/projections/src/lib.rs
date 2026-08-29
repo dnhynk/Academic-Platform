@@ -4,6 +4,7 @@
 //! written to a separate disposable SQLite sidecar, verified, and made visible
 //! only by an atomic active-generation pointer change.
 
+pub mod bitemporal;
 pub mod checksum;
 pub mod fts;
 pub mod generation;
