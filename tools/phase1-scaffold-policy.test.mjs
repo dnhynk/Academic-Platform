@@ -38,6 +38,31 @@ assert.equal(
   `locked offline SQLCipher-spike metadata failed: ${spikeMetadataRun.stderr}`,
 );
 const spikeMetadata = JSON.parse(spikeMetadataRun.stdout);
+const osKeystoreMetadataRun = spawnSync(
+  "cargo",
+  [
+    "metadata",
+    "--locked",
+    "--offline",
+    "--format-version",
+    "1",
+    "--features",
+    "academic-crypto/os-keystore",
+  ],
+  { encoding: "utf8" },
+);
+assert.equal(
+  osKeystoreMetadataRun.status,
+  0,
+  `locked offline os-keystore metadata failed: ${osKeystoreMetadataRun.stderr}`,
+);
+const osKeystoreMetadata = JSON.parse(osKeystoreMetadataRun.stdout);
+const osKeystorePackagesByName = new Map(
+  osKeystoreMetadata.packages.map((pkg) => [pkg.name, pkg]),
+);
+const osKeystoreResolveNodesById = new Map(
+  osKeystoreMetadata.resolve.nodes.map((node) => [node.id, node]),
+);
 const packagesById = new Map(metadata.packages.map((pkg) => [pkg.id, pkg]));
 const packagesByName = new Map(metadata.packages.map((pkg) => [pkg.name, pkg]));
 const resolveNodesById = new Map(metadata.resolve.nodes.map((node) => [node.id, node]));
@@ -387,6 +412,200 @@ test("phase1_default_features_have_no_product_network", async () => {
     for (const [path, source] of await rustSources(root)) {
       assert.doesNotMatch(source, prohibitedBehavior, `product network behavior in ${path}`);
     }
+  }
+});
+
+// Placed here rather than in `tools/security-baseline.mjs`, which t068 section
+// 2.3-14 names, because the two other feature-resolved graphs this repository
+// asserts against -- the default one and the SQLCipher spike -- already live in
+// this file with their own `cargo metadata` runs, and splitting the third one
+// into another tool would put the same kind of claim in two places.
+//
+// The rule being enforced is 2.3-14's: an exception is enumerated **by crate**
+// rather than granted globally. Cargo unifies features across the whole graph,
+// so enabling `os-keystore` cannot be stopped from making a capability
+// *available*; what can be pinned is exactly which capabilities appear and
+// which crate is responsible for each. A capability that appears with no crate
+// named for it fails here.
+test("os_keystore_lane_expands_tokio_only_by_named_crate", () => {
+  // Every tokio feature the `os-keystore` lane adds on top of the default
+  // graph, and the crate that requires it. `zbus` declares its optional tokio
+  // dependency with `features = [..., "fs", "process", "tracing", ...]` and
+  // without `default-features = false`, which is where all four come from.
+  // `zbus` itself enters only through `academic-keystore-platform`'s
+  // non-default `secret-service` feature.
+  const expectedAdditions = {
+    default: "zbus (declares tokio without default-features = false)",
+    fs: "zbus (tokio feature list, for its Unix-domain socket transport)",
+    process: "zbus (tokio feature list)",
+    tracing: "zbus (tokio feature list, its logging facade)",
+  };
+
+  const tokioFeaturesIn = (packagesByNameMap, nodesByIdMap) => {
+    const tokioPackage = packagesByNameMap.get("tokio");
+    assert.ok(tokioPackage, "tokio must be present in the resolved graph");
+    const node = nodesByIdMap.get(tokioPackage.id);
+    assert.ok(node, "tokio must have a resolve node");
+    return new Set(node.features);
+  };
+
+  const defaultFeatures = tokioFeaturesIn(packagesByName, resolveNodesById);
+  const laneFeatures = tokioFeaturesIn(
+    osKeystorePackagesByName,
+    osKeystoreResolveNodesById,
+  );
+
+  // The lane may only ever add. Losing a default-graph feature would mean the
+  // two lanes are not the same build plus a broker.
+  const removed = [...defaultFeatures].filter((feature) => !laneFeatures.has(feature));
+  assert.deepEqual(removed, [], "the os-keystore lane dropped a default tokio feature");
+
+  const added = [...laneFeatures].filter((feature) => !defaultFeatures.has(feature)).toSorted();
+  assert.deepEqual(
+    added,
+    Object.keys(expectedAdditions).toSorted(),
+    "the os-keystore lane changed which tokio features it adds; enumerate the new one with the crate that requires it",
+  );
+
+  // The crate named for each addition must actually be in the lane's graph.
+  const laneNames = new Set(osKeystoreMetadata.packages.map((pkg) => pkg.name));
+  for (const [feature, justification] of Object.entries(expectedAdditions)) {
+    const crate = justification.split(" ")[0];
+    assert.equal(
+      laneNames.has(crate),
+      true,
+      `${feature} is justified by ${crate}, which is not in the os-keystore graph`,
+    );
+  }
+
+  // The exception is scoped to this lane. The default graph keeps the Phase 1
+  // posture that `phase1_default_features_have_no_product_network` asserts, and
+  // this test does not restate or relax it.
+  for (const forbiddenInDefault of ["fs", "full", "io-std", "io-uring", "process"]) {
+    assert.equal(
+      defaultFeatures.has(forbiddenInDefault),
+      false,
+      `the default graph gained ${forbiddenInDefault}`,
+    );
+  }
+
+  // The lane still buys no network stack, whatever it does to tokio.
+  for (const forbidden of ["full", "io-std", "io-uring"]) {
+    assert.equal(
+      laneFeatures.has(forbidden),
+      false,
+      `the os-keystore lane selected tokio/${forbidden}`,
+    );
+  }
+  for (const forbidden of ["hyper", "reqwest", "tonic", "ureq", "curl", "native-tls", "openssl"]) {
+    assert.equal(
+      laneNames.has(forbidden),
+      false,
+      `the os-keystore graph contains ${forbidden}`,
+    );
+  }
+
+  // Only one crate may pull `zbus` in, and only through its non-default feature.
+  const zbusOwners = osKeystoreMetadata.packages
+    .filter((pkg) => pkg.dependencies.some((dependency) => dependency.name === "zbus"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(zbusOwners, ["academic-keystore-platform"]);
+  const leaf = osKeystorePackagesByName.get("academic-keystore-platform");
+  assert.deepEqual(leaf.features.default, []);
+  assert.deepEqual(leaf.features["secret-service"], ["dep:tokio", "dep:zbus"]);
+});
+
+// The other half of 2.3-14's "by crate" rule. The test above pins which
+// capabilities the `os-keystore` lane makes *available*; this one proves they
+// are not *used*. Cargo can only be stopped from granting a capability
+// globally, so the executable claim has to be that no crate but the one that
+// owns the broker reaches for it. Same shape as the `prohibitedBehavior` scan
+// in `phase1_default_features_have_no_product_network`, applied to the
+// filesystem and subprocess capability instead of the network one.
+test("os_keystore_capabilities_are_available_but_unused", async () => {
+  // `academic-keystore-platform` is exempt because it is the crate the
+  // capability is admitted for. `academic-test-support` is excluded on the
+  // existing convention that it is test-only and ships in no product build,
+  // the same exclusion the network scan already makes.
+  const scanned = workspacePackages
+    .filter(
+      (pkg) =>
+        pkg.name !== "academic-test-support" && pkg.name !== "academic-keystore-platform",
+    )
+    .map((pkg) => [pkg.name, join(dirname(pkg.manifest_path), "src")]);
+  assert.ok(scanned.length >= 10, "the capability scan covers too few crates to be meaningful");
+
+  // Matches `tokio::fs`, `tokio::process`, and the grouped `use tokio::{fs, ..}`
+  // spelling, which a bare path regex would miss.
+  const directTokioCapability = /\btokio::(?:fs|process)\b/u;
+  const groupedTokioImport = /\buse\s+tokio::\{(?<items>[^}]*)\}/gsu;
+  const groupedCapability = /(?:^|[\s,{])(?:fs|process)(?:[\s,:}]|$)/u;
+
+  // `std::process::Command` predates this task in two files. Each is enumerated
+  // with its reason rather than the rule being dropped; every other file fails.
+  const commandAllowlist = new Map([
+    [
+      join("crates", "cli", "src", "commands", "doctor.rs"),
+      "product: `doctor` observes an external tool's own `--version` output. It " +
+        "starts no daemon, opens no socket, and reads no file through the child.",
+    ],
+    [
+      join("crates", "core", "src", "service.rs"),
+      "test-only: inside `#[cfg(test)] mod tests`, spawning the IPC02 fault " +
+        "child. Ships in no product build.",
+    ],
+  ]);
+  const commandUse = /\bprocess::Command\b/u;
+  const seenCommandFiles = new Set();
+
+  for (const [crateName, root] of scanned) {
+    for (const [path, source] of await rustSources(root)) {
+      assert.doesNotMatch(
+        source,
+        directTokioCapability,
+        `${crateName} reaches for a tokio filesystem or subprocess capability in ${path}`,
+      );
+      for (const grouped of source.matchAll(groupedTokioImport)) {
+        assert.doesNotMatch(
+          grouped.groups.items,
+          groupedCapability,
+          `${crateName} imports a tokio filesystem or subprocess capability in ${path}`,
+        );
+      }
+
+      if (!commandUse.test(source)) {
+        continue;
+      }
+      const relative = path.slice(path.indexOf("crates"));
+      assert.equal(
+        commandAllowlist.has(relative),
+        true,
+        `${relative} spawns a subprocess and is not one of the two reviewed sites`,
+      );
+      seenCommandFiles.add(relative);
+    }
+  }
+
+  // An allowlist entry that no longer matches anything is a stale exception.
+  assert.deepEqual(
+    [...seenCommandFiles].toSorted(),
+    [...commandAllowlist.keys()].toSorted(),
+    "a subprocess allowlist entry no longer applies and must be removed",
+  );
+
+  // The test-only entry must stay test-only: every `process::Command` in that
+  // file has to sit after the `#[cfg(test)]` marker, or the exception has
+  // quietly become a product one.
+  const serviceRelative = join("crates", "core", "src", "service.rs");
+  const serviceSource = await readFile(serviceRelative, "utf8");
+  const testModuleAt = serviceSource.indexOf("#[cfg(test)]");
+  assert.ok(testModuleAt > 0, `${serviceRelative} no longer has a #[cfg(test)] module`);
+  for (const match of serviceSource.matchAll(/\bprocess::Command\b/gu)) {
+    assert.ok(
+      match.index > testModuleAt,
+      `${serviceRelative} uses process::Command outside its #[cfg(test)] module`,
+    );
   }
 });
 
