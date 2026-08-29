@@ -2186,13 +2186,16 @@ fn nonnegative_u64(value: i64, reason: &'static str) -> ProjectionResult<u64> {
     u64::try_from(value).map_err(|_| ProjectionError::Corrupt(reason.to_owned()))
 }
 
-fn fixed_bytes<const N: usize>(bytes: Vec<u8>, reason: &'static str) -> ProjectionResult<[u8; N]> {
+pub(crate) fn fixed_bytes<const N: usize>(
+    bytes: Vec<u8>,
+    reason: &'static str,
+) -> ProjectionResult<[u8; N]> {
     bytes
         .try_into()
         .map_err(|_| ProjectionError::Corrupt(reason.to_owned()))
 }
 
-fn id_from_bytes<T>(bytes: Vec<u8>, reason: &'static str) -> ProjectionResult<T>
+pub(crate) fn id_from_bytes<T>(bytes: Vec<u8>, reason: &'static str) -> ProjectionResult<T>
 where
     T: FromStr<Err = DomainError>,
 {
