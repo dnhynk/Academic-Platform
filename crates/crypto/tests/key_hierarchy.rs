@@ -14,9 +14,9 @@ use std::{
 
 use academic_crypto::{
     AUDIT_INFO, DeviceKeystore, DomainId, IDENTIFIER_BYTES, KEK_INFO_PREFIX, KEY_BYTES,
-    KeystoreFailure, PINNED_PROFILES, ProfileId, RECIPIENT_MAC_INFO, RECOVERY_ARGON2ID_V1,
-    REHEARSAL_INFO, RecipientParameters, RecipientRecord, RecipientSet, RecordError,
-    RecoverySecret, STORE_INFO, UnlockError, UnlockThrottle, VaultMasterKey,
+    KEY_GENERATION_INFO, KeystoreFailure, PINNED_PROFILES, ProfileId, RECIPIENT_MAC_INFO,
+    RECOVERY_ARGON2ID_V1, REHEARSAL_INFO, RecipientParameters, RecipientRecord, RecipientSet,
+    RecordError, RecoverySecret, STORE_INFO, UnlockError, UnlockThrottle, VaultMasterKey,
     create_device_recipient, create_recovery_recipient, unlock_with_device, unlock_with_recovery,
 };
 use ciborium::value::{Integer, Value};
@@ -346,6 +346,7 @@ fn hkdf_domain_separation_is_exact() {
     assert_eq!(AUDIT_INFO, b"academic-os/audit/v1");
     assert_eq!(RECIPIENT_MAC_INFO, b"academic-os/recipient-mac/v1");
     assert_eq!(REHEARSAL_INFO, b"academic-os/rehearsal/v1");
+    assert_eq!(KEY_GENERATION_INFO, b"academic-os/key-generation/v1");
 
     let (Ok(kek_first), Ok(kek_second)) = (
         key.derive_domain_kek(PROFILE, first),
@@ -397,6 +398,30 @@ fn hkdf_domain_separation_is_exact() {
         unreachable!("KEK derivation must succeed");
     };
     assert_eq!(again.expose_secret(), kek_first.expose_secret());
+
+    // The generation name is a public commitment, not a sixth key. It is a
+    // function of the key and the profile, it changes with either, and it
+    // equals none of the keys derived above -- so a leaked generation name
+    // cannot be pasted into a constructor and used as key material.
+    let (Ok(generation), Ok(generation_again), Ok(other_generation)) = (
+        key.generation_id(PROFILE),
+        key.generation_id(PROFILE),
+        key.generation_id(other_profile),
+    ) else {
+        unreachable!("generation naming must succeed");
+    };
+    assert_eq!(generation, generation_again);
+    assert_ne!(generation, other_generation);
+    let Ok(different_key) = master().generation_id(PROFILE) else {
+        unreachable!("generation naming must succeed");
+    };
+    assert_ne!(generation, different_key);
+    for (name, secret) in purposes {
+        assert_ne!(
+            &generation, secret,
+            "the generation name equals the {name} key"
+        );
+    }
 }
 
 /// `KY01`: an unavailable broker leaves the profile locked with an actionable

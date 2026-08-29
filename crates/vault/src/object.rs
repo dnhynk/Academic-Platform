@@ -100,6 +100,66 @@ pub const HEADER_BYTES: usize = WRAP_AAD_BYTES + WRAPPED_DEK_BYTES;
 /// and version prefix.
 pub const HEADER_LEN_FIELD: u16 = 200;
 
+/// Byte offset at which the key slot — the wrapped DEK — starts.
+///
+/// `P2-K5` destroys exactly `[KEY_SLOT_OFFSET, HEADER_BYTES)` to crypto-shred
+/// an object. Nothing else in the file is touched: the chunks stay, the file
+/// stays, and its length stays.
+pub const KEY_SLOT_OFFSET: usize = WRAP_AAD_BYTES;
+
+/// Marker written over a destroyed key slot.
+///
+/// Exactly 24 bytes, followed by the 32-byte digest of the tombstone that
+/// authorized the shred and 24 zero bytes, so a destroyed slot is the same
+/// width as the wrapped DEK it replaced and names the record that explains it.
+///
+/// A shredded object is *not* a corrupt object and must not be reported as
+/// one. An attacker who can write these bytes can equally overwrite the slot
+/// with noise, so the marker is an operator-facing label rather than a
+/// security boundary; what it buys is that a deliberate shred and a bit-rotted
+/// object have different reports.
+pub const KEY_SLOT_SHRED_MARKER: &[u8; 24] = b"ACOB-KEYSLOT-SHREDDED-V1";
+
+/// Builds the exact 80 bytes a shredded key slot holds.
+#[must_use]
+pub fn shredded_key_slot(tombstone_digest: &[u8; 32]) -> [u8; WRAPPED_DEK_BYTES] {
+    let mut slot = [0_u8; WRAPPED_DEK_BYTES];
+    slot[..KEY_SLOT_SHRED_MARKER.len()].copy_from_slice(KEY_SLOT_SHRED_MARKER);
+    slot[KEY_SLOT_SHRED_MARKER.len()..KEY_SLOT_SHRED_MARKER.len() + 32]
+        .copy_from_slice(tombstone_digest);
+    slot
+}
+
+/// Reports whether these header bytes carry a destroyed key slot.
+#[must_use]
+pub fn is_shredded_header(bytes: &[u8]) -> bool {
+    bytes.len() >= HEADER_BYTES
+        && bytes[KEY_SLOT_OFFSET..KEY_SLOT_OFFSET + KEY_SLOT_SHRED_MARKER.len()]
+            == *KEY_SLOT_SHRED_MARKER
+}
+
+/// Reads the cleartext locator out of a header without any key.
+///
+/// The locator is a domain-keyed HMAC written in the clear at a fixed offset,
+/// so a restore can match an object against a backup tombstone without holding
+/// the profile key. That is what makes re-deletion on restore possible before
+/// anything is unlocked.
+pub fn read_locator(bytes: &[u8]) -> Result<[u8; 32], ObjectFormatError> {
+    if bytes.len() < HEADER_BYTES {
+        return Err(ObjectFormatError::Truncated);
+    }
+    if bytes[MAGIC_AT..MAGIC_AT + 4] != OBJECT_MAGIC {
+        return Err(ObjectFormatError::BadMagic);
+    }
+    let format_version = read_u16(bytes, FORMAT_VERSION_AT);
+    if format_version != OBJECT_FORMAT_VERSION {
+        return Err(ObjectFormatError::UnsupportedFormatVersion(format_version));
+    }
+    let mut locator = [0_u8; 32];
+    locator.copy_from_slice(&bytes[LOCATOR_AT..LOCATOR_AT + 32]);
+    Ok(locator)
+}
+
 const MAGIC_AT: usize = 0;
 const FORMAT_VERSION_AT: usize = 4;
 const HEADER_LEN_AT: usize = 6;
@@ -150,6 +210,13 @@ pub enum ObjectFormatError {
     MalformedHeader(&'static str),
     /// An AEAD tag did not verify.
     Aead,
+    /// The key slot was deliberately destroyed by a crypto-shred.
+    ///
+    /// This is terminal and is not repairable: the wrapped DEK is the only
+    /// copy of the key this object was sealed under. It is a distinct variant
+    /// from [`Self::Aead`] so an operator report can tell "we destroyed this"
+    /// from "this failed to authenticate".
+    Shredded,
     /// The header does not describe the descriptor it was fetched for.
     IdentityMismatch(&'static str),
     /// The plaintext read back is not the plaintext the header commits to.
@@ -176,6 +243,11 @@ impl core::fmt::Display for ObjectFormatError {
             }
             Self::Aead => formatter
                 .write_str("encrypted object failed authentication; no plaintext was produced"),
+            Self::Shredded => formatter.write_str(concat!(
+                "encrypted object was crypto-shredded: its key slot was destroyed, ",
+                "so no key opens it and the remaining ciphertext is unreadable. ",
+                "The file itself was not deleted",
+            )),
             Self::IdentityMismatch(field) => write!(
                 formatter,
                 "encrypted object header field {field} does not match its descriptor"
@@ -570,6 +642,12 @@ pub fn open_header(
 
     let mut base_nonce = [0_u8; BASE_NONCE_BYTES];
     base_nonce.copy_from_slice(&bytes[BASE_NONCE_AT..BASE_NONCE_AT + BASE_NONCE_BYTES]);
+
+    // A destroyed key slot is checked before the AEAD is attempted, so a
+    // shredded object is reported as shredded rather than as a failed tag.
+    if is_shredded_header(bytes) {
+        return Err(ObjectFormatError::Shredded);
+    }
 
     let cipher = XChaCha20Poly1305::new(domain_kek.into());
     let opened = cipher

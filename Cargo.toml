@@ -11,6 +11,7 @@ members = [
   "crates/portability",
   "crates/projections",
   "crates/recovery",
+  "crates/retention",
   "crates/rpc",
   "crates/scenario",
   "crates/store",

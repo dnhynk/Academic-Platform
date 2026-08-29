@@ -58,7 +58,7 @@ pub use seal::{SealedObjectReceipt, SealedObjectVerifier};
 pub use encrypted::{
     ENCRYPTED_FORMAT_VERSION, ENCRYPTED_OBJECT_FORMAT, EncryptedDomainKeyring,
     EncryptedObjectReader, EncryptedVault, PHASE2_OBJECT_FAULT_IDS, ResealOutcome,
-    SealedEncryptedObject,
+    SealedEncryptedObject, ShredReceipt, shred_key_slot_at,
 };
 
 /// Disposable plaintext object format used only by synthetic Phase 1 work.

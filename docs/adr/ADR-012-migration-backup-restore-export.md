@@ -34,6 +34,24 @@ The window ends where admission does. A handle that is admitted restores checkpo
 
 A rollback-journal-mode input keeps the whole family byte-identical only when it carries no hot journal. A hot `-journal` is SQLite's own recovery record, and SQLite rolls it back on the first read of a read-write handle, before any admission statement can run. On such an input the read-only reader path refuses the rollback and leaves every family member byte-identical, while the read-write maintenance path restores the main database to its last committed bytes and deletes the `-journal`. Nothing else in the family changes on either path and no committed content is lost.
 
+## Deletion reaches the copies a backup holds
+
+A backup holds `AEAD_CHUNKED_V2` objects byte for byte, so crypto-shredding the
+live object does not reach the copy inside one. `P2-K5` closes that with a
+backup tombstone: one JSON record per shredded locator, written into
+`<backup>/tombstones/<locator>.tombstone` with a single atomic write, and applied
+to the object tree a restore materialises.
+
+The re-deletion needs **no key**. The locator is cleartext at a fixed header
+offset and destroying a key slot is a positioned write, so a restore onto a fresh
+machine re-deletes before anything is unlocked. A tombstone whose object is not
+in the tree is reported as absent rather than ignored, and a tombstone write that
+fails makes the deletion `REPAIR_REQUIRED` rather than `PARTIAL` — a deletion
+whose tombstone did not land is one that will not re-apply on restore.
+
+The record shape, the retention result vocabulary, and the fault rows are in
+[rotation and retention](../contracts/rotation-and-retention.md).
+
 ## Acceptance gate
 
 Fixture for each supported schema version; interrupted large migration resume; restore only to empty destination; object/ledger/key closure; independent fresh-profile restore; and vendor-neutral export/import round trip.
