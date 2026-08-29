@@ -1120,6 +1120,50 @@ mod encrypted {
         std::path::PathBuf::from(name)
     }
 
+    /// The one owned acceptance writer opens over the encrypted profile.
+    ///
+    /// The `DB01`-`DB07` replay below drives the canonical insert ordering
+    /// directly, because a killed child cannot carry a `VerifiedBatch` across a
+    /// process boundary. This covers the other half: that the guarded writer
+    /// -- keyed connection, schema-2 admission, canonical authorizer -- comes up
+    /// over an encrypted profile at all, and reports the schema-2 identity and
+    /// the frozen Phase 1 connection policy.
+    #[test]
+    fn acceptance_store_opens_over_the_encrypted_profile() -> Result<(), Box<dyn Error>> {
+        let root = TempRoot::new("acceptance")?;
+        let workdir = root.workdir();
+        let key = harness::provision(&workdir)?;
+        let profile = harness::create_profile(&workdir, &key)?;
+
+        let store = profile.open_acceptance_store(&key)?;
+        assert_eq!(store.database_path(), profile.database_path());
+        let pragmas = store.pragma_snapshot()?;
+        assert_eq!(
+            pragmas.application_id,
+            i64::from(academic_store::SQLITE_APPLICATION_ID)
+        );
+        assert_eq!(pragmas.user_version, 2);
+        assert_eq!(pragmas.journal_mode, "wal");
+        assert_eq!(pragmas.synchronous, 2);
+        assert!(pragmas.foreign_keys);
+        assert!(!pragmas.trusted_schema);
+        assert!(!pragmas.query_only);
+        assert!(pragmas.recursive_triggers);
+
+        // A wrong key does not reach the writer at all.
+        let other = root.path.join("other-acceptance");
+        let wrong = harness::provision(&other)?;
+        let locked = must_fail(
+            profile.open_acceptance_store(&wrong),
+            "a wrong store key opened the acceptance writer",
+        )?;
+        assert!(
+            matches!(locked, StoreError::EncryptedStoreLocked { .. }),
+            "unexpected error: {locked}"
+        );
+        Ok(())
+    }
+
     /// `DB01`-`DB07` replayed under the cipher lane: a process killed at each
     /// acceptance-transaction boundary never leaves a committed partial state.
     #[test]
