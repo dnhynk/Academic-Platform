@@ -128,8 +128,20 @@ pub enum QueryError {
     Domain(DomainError),
     Corrupt(&'static str),
     MissingPredicatePolicy(String),
-    KnownAtBeyondHead { requested: u64, latest: u64 },
+    KnownAtBeyondHead {
+        requested: u64,
+        latest: u64,
+    },
     IntegerOverflow(u64),
+    /// The profile carries no Phase 2 aggregate closure tables.
+    ///
+    /// This is deliberately not an empty result: an empty aggregate reading
+    /// says no aggregate was registered by the requested coordinate, which is a
+    /// different statement from a profile that cannot hold one.
+    AggregatesAbsent {
+        missing: usize,
+        first: &'static str,
+    },
 }
 
 impl fmt::Display for QueryError {
@@ -154,6 +166,10 @@ impl fmt::Display for QueryError {
                     "query value {value} exceeds signed 64-bit storage"
                 )
             }
+            Self::AggregatesAbsent { missing, first } => write!(
+                formatter,
+                "profile carries no Phase 2 aggregate tables: {missing} are absent,                  starting with {first}"
+            ),
         }
     }
 }
@@ -168,7 +184,8 @@ impl Error for QueryError {
             Self::Corrupt(_)
             | Self::MissingPredicatePolicy(_)
             | Self::KnownAtBeyondHead { .. }
-            | Self::IntegerOverflow(_) => None,
+            | Self::IntegerOverflow(_)
+            | Self::AggregatesAbsent { .. } => None,
         }
     }
 }
@@ -935,7 +952,7 @@ fn read_decisions(
         .collect()
 }
 
-fn query_collect<T, P, F>(
+pub(crate) fn query_collect<T, P, F>(
     connection: &Connection,
     sql: &str,
     params: P,
@@ -975,15 +992,15 @@ fn parse_actor_kind(value: &str) -> Result<ResolverActorKind, QueryError> {
     }
 }
 
-fn checked_i64(value: u64) -> Result<i64, QueryError> {
+pub(crate) fn checked_i64(value: u64) -> Result<i64, QueryError> {
     i64::try_from(value).map_err(|_| QueryError::IntegerOverflow(value))
 }
 
-fn nonnegative_u64(value: i64, reason: &'static str) -> Result<u64, QueryError> {
+pub(crate) fn nonnegative_u64(value: i64, reason: &'static str) -> Result<u64, QueryError> {
     u64::try_from(value).map_err(|_| QueryError::Corrupt(reason))
 }
 
-fn positive_u64(value: i64, reason: &'static str) -> Result<u64, QueryError> {
+pub(crate) fn positive_u64(value: i64, reason: &'static str) -> Result<u64, QueryError> {
     let value = nonnegative_u64(value, reason)?;
     if value == 0 {
         return Err(QueryError::Corrupt(reason));
@@ -991,7 +1008,7 @@ fn positive_u64(value: i64, reason: &'static str) -> Result<u64, QueryError> {
     Ok(value)
 }
 
-fn fixed_bytes<const LENGTH: usize>(
+pub(crate) fn fixed_bytes<const LENGTH: usize>(
     bytes: Vec<u8>,
     reason: &'static str,
 ) -> Result<[u8; LENGTH], QueryError> {

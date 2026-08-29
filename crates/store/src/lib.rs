@@ -47,6 +47,7 @@ pub mod profile;
 pub mod queries;
 pub mod repository;
 mod schema_fingerprint;
+pub mod timeline;
 
 /// SQLite application identifier (`ACAD`) reserved for the local core store.
 ///
@@ -172,5 +173,7 @@ mod tests {
 
 #[cfg(test)]
 mod aggregate_closure_tests;
+#[cfg(test)]
+mod aggregate_timeline_tests;
 #[cfg(test)]
 mod entity_registry_tests;
