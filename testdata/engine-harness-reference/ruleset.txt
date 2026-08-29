@@ -1,0 +1,4 @@
+reference-harness-ruleset v1
+rule.reference.root: fold of the two rules below, worst status wins
+rule.source.agreement: reference.source.a and reference.source.b must name the same source
+rule.threshold: reference.value must reach reference.threshold; a negative value can never reach it

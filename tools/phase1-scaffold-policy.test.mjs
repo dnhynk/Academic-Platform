@@ -843,6 +843,130 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
   }
 });
 
+// t068 section 3.9. A deterministic engine has no clock, no RNG, no network,
+// and no model. That is enforced here rather than by a comment, in the two
+// halves 2.3-14 already establishes for a capability: which capabilities the
+// engine crate's graph makes *available*, and whether engine source *uses* one.
+//
+// The available half cannot simply forbid an RNG. 2.3-18 admits `getrandom` for
+// a synthetic nonce and locator seed, and `uuid`'s v7 feature reaches it, so the
+// executable claim is that the engine crate's product closure is exactly the
+// reviewed set, that `getrandom` enters it through `uuid` alone, and that no
+// clock, network, or model crate is in it at all.
+//
+// The used half is the source scan. Every registered engine is `PLANNED`, so
+// the scanned set is the harness module, its generated registry, and the
+// reference engine in the harness test. An entry that flips to `IMPLEMENTED`
+// without adding its source here fails the first assertion below rather than
+// quietly leaving its implementation unscanned.
+test("engine_source_contains_no_clock_rng_network_or_model", async () => {
+  const registry = JSON.parse(
+    await readFile("schemas/registry/engine-registry-v1.json", "utf8"),
+  );
+  assert.equal(registry.engines.length, 13, "the registry must still name thirteen engines");
+  const scanned = [
+    join("crates", "domain", "src", "engines.rs"),
+    join("crates", "domain", "src", "engines", "generated.rs"),
+    join("crates", "domain", "tests", "engine_harness.rs"),
+  ];
+  for (const engine of registry.engines) {
+    assert.equal(
+      engine.lifecycle,
+      "PLANNED",
+      `${engine.name} is IMPLEMENTED; add its source files to this scan`,
+    );
+  }
+
+  // API spellings, not prose: a comment that says "no clock" must not trip the
+  // scan and a call that reads one must.
+  const forbidden = [
+    ["clock", /\bSystemTime\b/u],
+    ["clock", /\bInstant::/u],
+    ["clock", /\bstd::time\b/u],
+    ["clock", /\bchrono::/u],
+    ["clock", /\bUtc::now\b/u],
+    ["clock", /\bnow_v7\b/u],
+    ["RNG", /\bgetrandom\b/u],
+    ["RNG", /\brand::/u],
+    ["RNG", /\bthread_rng\b/u],
+    ["RNG", /\bOsRng\b/u],
+    ["RNG", /\bnew_v4\b/u],
+    ["network", /\bTcp(?:Stream|Listener)\b/u],
+    ["network", /\bUdpSocket\b/u],
+    ["network", /\bstd::net\b/u],
+    ["network", /\btokio::net\b/u],
+    ["network", /\breqwest\b/u],
+    ["model", /\bModelRun\b/u],
+    ["model", /\bModelProvider\b/u],
+    ["model", /\bInferenceRun\b/u],
+  ];
+  for (const path of scanned) {
+    const source = await readFile(path, "utf8");
+    for (const [capability, pattern] of forbidden) {
+      assert.doesNotMatch(source, pattern, `${path} reaches for a ${capability} capability`);
+    }
+  }
+
+  // The scan is not vacuous: each rule matches the call it forbids.
+  for (const [capability, pattern] of forbidden) {
+    const sample = {
+      clock: "let at = SystemTime::now(); Instant::now(); std::time::Duration; chrono::Utc::now(); Uuid::now_v7();",
+      RNG: "getrandom::fill(&mut seed); rand::random(); thread_rng(); OsRng.fill(); Uuid::new_v4();",
+      network: "TcpStream::connect(); TcpListener::bind(); UdpSocket::bind(); std::net::Ipv4Addr; tokio::net::TcpStream; reqwest::get();",
+      model: "ModelRun::record(); ModelProvider::call(); InferenceRun::start();",
+    }[capability];
+    assert.match(sample, pattern, `the ${capability} rule matches nothing`);
+  }
+
+  // The available half. Names only: versions are pinned by the lockfile gate,
+  // and what matters here is that no new capability entered the graph.
+  const engineTree = featureTree(["-p", "academic-domain", "--edges", "normal"]);
+  const crates = new Set(
+    engineTree
+      .split("\n")
+      .map((line) => line.replace(/^[^A-Za-z]*/u, "").split(" ")[0].trim())
+      .filter((name) => name.length > 0),
+  );
+  assert.deepEqual(
+    [...crates].toSorted(),
+    [
+      "academic-domain",
+      "block-buffer",
+      "cfg-if",
+      "cpufeatures",
+      "crypto-common",
+      "digest",
+      "generic-array",
+      "getrandom",
+      "hex",
+      "hmac",
+      "proc-macro2",
+      "quote",
+      "serde",
+      "serde_core",
+      "serde_derive",
+      "sha2",
+      "subtle",
+      "syn",
+      "thiserror",
+      "thiserror-impl",
+      "typenum",
+      "unicode-ident",
+      "uuid",
+    ],
+    "the engine crate's product closure changed; review the new capability",
+  );
+
+  // `getrandom` is reachable, and only under `uuid`. Nothing else may bring it.
+  const getrandomOwners = metadata.packages
+    .filter((pkg) => crates.has(pkg.name))
+    .filter((pkg) => pkg.dependencies.some((dependency) => dependency.name === "getrandom"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(getrandomOwners, ["uuid"]);
+});
+
+
 test("sqlcipher_feature_is_not_default", () => {
   const storePackage = packagesByName.get("academic-store");
   assert.deepEqual(storePackage.features.default, ["bundled-sqlite"]);

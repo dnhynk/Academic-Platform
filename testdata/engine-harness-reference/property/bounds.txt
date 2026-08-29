@@ -1,0 +1,4 @@
+integer.low=-1000
+integer.high=1000
+reference=registrar.v1
+reference=department.v3

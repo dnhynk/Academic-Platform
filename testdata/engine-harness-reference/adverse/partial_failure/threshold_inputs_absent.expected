@@ -1,0 +1,9 @@
+engine engine.reference.harness
+engine_version 1
+rule_set_hash sha256:5d17547794248e6221563cdfc2a50797846b48886cc480facff9473eefd3ca47
+frozen_inputs sha256:2d3d6baf8e7e7bd7f8905965dc4b398425e67a75e81c9469d66d7ce2bb3dae9c
+result SATISFIED
+unevaluated rule.threshold
+proof
+  SATISFIED rule.reference.root [n.root]
+    SATISFIED rule.source.agreement [n.agreement] inputs=reference.source.a,reference.source.b
