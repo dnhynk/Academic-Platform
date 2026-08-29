@@ -310,11 +310,17 @@ where
         return Err(AcceptError::CommandEnvelopeMismatch);
     }
 
-    // Event schema v3 arms are readable and verifiable, but this store schema has
-    // no canonical table for them and `ledger_event.event_kind` is a closed CHECK
-    // over the v1/v2 set. Reject them with a typed error before any SQL runs
-    // rather than letting a CHECK violation surface as an opaque SQLite failure.
-    // The tables and the widened CHECK arrive together in migration 0004.
+    // Event schema v3 arms are readable and verifiable, but no acceptance path
+    // places their closure rows yet. Reject them with a typed error before any
+    // SQL runs, so nothing is consumed and the reason is named.
+    //
+    // On a schema-1 profile the refusal is also the only fail-closed answer
+    // available: migration 0004 adds the closure tables and widens the
+    // `ledger_event.event_kind` CHECK together, and the plaintext lane's
+    // `STORE_MIGRATION_SQL` does not apply it, so a v3 arm has neither a table
+    // nor an admitted kind there. The encrypted lane's set ends with 0004, so a
+    // schema-2 profile does carry both; this guard is what keeps the arms out
+    // until the task that writes them lifts it.
     for event in &verified.batch().events {
         if event.payload.registration().is_some() {
             return Err(AcceptError::UnstorableEventKind(event.payload.kind()));

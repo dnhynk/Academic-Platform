@@ -28,7 +28,11 @@ pub const MIGRATION_0001_SQL: &str = include_str!("../../../migrations/store/000
 ///
 /// Applies on top of store schema version 2. Migration `0003` establishes that
 /// version, its identity, and the encrypted lane; this migration reads and
-/// writes no part of that identity.
+/// writes no part of that identity, so it extends what a schema-2 profile holds
+/// without changing which format that profile is.
+///
+/// The encrypted lane's [`STORE_MIGRATION_SQL`] ends with it, so an encrypted
+/// profile carries these tables from creation and admission fingerprints them.
 pub const MIGRATION_0004_SQL: &str =
     include_str!("../../../migrations/store/0004_phase2_canonical_aggregates.sql");
 
@@ -50,12 +54,22 @@ pub const MIGRATION_0003_SQL: &str =
 ///
 /// Both the runtime migration and the reference fingerprint execute exactly
 /// this sequence, so the schema authority stays the committed SQL rather than
-/// a second hand-maintained description of it.
+/// a second hand-maintained description of it. That is also why the set is what
+/// decides whether a profile is admitted: the fingerprint is exact structural
+/// equality against the reference this sequence produces, never a subset test,
+/// so a profile carrying an object this sequence does not create is refused.
 #[cfg(not(feature = "sqlcipher-store"))]
 pub const STORE_MIGRATION_SQL: &[&str] = &[MIGRATION_0001_SQL];
 /// The ordered migration set this binary's lane applies to an empty database.
+///
+/// `0004` belongs to store schema version 2, not to a version after it: t068
+/// section 3.8 has `0003` establish the version and `0004` add the aggregates.
+/// Both therefore run in this one creation transaction, and both are inside the
+/// admission fingerprint. `0004` stamps no identity of its own, so the frozen
+/// schema-2 identity is entirely `0003`'s.
 #[cfg(feature = "sqlcipher-store")]
-pub const STORE_MIGRATION_SQL: &[&str] = &[MIGRATION_0001_SQL, MIGRATION_0003_SQL];
+pub const STORE_MIGRATION_SQL: &[&str] =
+    &[MIGRATION_0001_SQL, MIGRATION_0003_SQL, MIGRATION_0004_SQL];
 
 /// Result of invoking the forward-only migration runner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -188,14 +202,22 @@ pub fn migrate_open_connection_pre_listen(
     Ok(MigrationStatus::Applied)
 }
 
-/// Applies migration `0004` to an already-open store schema version 2 connection.
+/// Applies migration `0004` to a schema-2 connection that does not carry it yet.
 ///
-/// This is the same narrow, forward-only, pre-listen boundary as
+/// Profile creation does not come through here: [`STORE_MIGRATION_SQL`] ends
+/// with `0004` in the encrypted lane, so a profile carries the aggregates from
+/// the creation transaction. What is left for this entry point is a schema-2
+/// base assembled from the migration text rather than by that runner, which is
+/// how the `0004` suite builds one in either lane.
+///
+/// It is the same narrow, forward-only, pre-listen boundary as
 /// [`migrate_open_connection_pre_listen`]: the caller owns opening and keying the
 /// handle, and this function owns the migration SQL, the foreign-key discipline
-/// that the `ledger_event` rebuild requires, and the post-migration integrity
-/// checks. It installs no authorizer and must run before any daemon listener
-/// exists.
+/// that the `ledger_event` rebuild requires on a base that may already hold
+/// rows, and the pre-commit integrity checks. It installs no authorizer and must
+/// run before any daemon listener exists. Against a connection that already
+/// carries `0004` it fails, which is what makes the migration forward-only for
+/// a created profile too.
 ///
 /// The migration is a delta on the canonical core, not on the schema identity
 /// singleton: it neither reads nor writes `schema_meta`, `application_id`, or

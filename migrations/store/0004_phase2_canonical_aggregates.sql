@@ -30,9 +30,17 @@
 -- `ledger_event.event_kind` from the six v1/v2 kinds to those plus the
 -- eighteen v3 kinds uses SQLite's documented table-rebuild procedure. The copy
 -- preserves every canonical row byte-for-byte, and the rebuild runs only on the
--- pre-listen migration connection, which installs no authorizer. The caller
--- disables foreign keys around the enclosing transaction and verifies
--- `foreign_key_check` and `integrity_check` before it commits.
+-- pre-listen migration connection, which installs no authorizer.
+--
+-- Profile creation runs this file as the last step of `STORE_MIGRATION_SQL`,
+-- inside the one exclusive creation transaction, against a database admission
+-- has proved empty. The rebuild therefore copies no rows, and the
+-- `integrity_check` and `foreign_key_check` that run on the migrated database
+-- before the profile is admitted are what prove nothing was left dangling.
+-- `apply_aggregate_migration_pre_listen`, which layers this file onto a
+-- schema-2 base assembled by hand, additionally disables foreign keys around
+-- its transaction and runs both checks before committing, because such a base
+-- may already hold rows.
 
 DROP TRIGGER guard_ledger_event_update;
 DROP TRIGGER guard_ledger_event_delete;
