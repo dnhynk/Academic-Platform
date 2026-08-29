@@ -54,7 +54,7 @@ jobs:
       - name: Lint all Rust targets
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test Rust workspace
-        run: cargo test --workspace --locked --no-fail-fast
+        run: cargo test --workspace --locked
       - name: Verify immutable v1 fixture and upcast
         run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
       - name: Replay immutable v1 fixture
