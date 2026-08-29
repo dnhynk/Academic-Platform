@@ -364,11 +364,10 @@ pub(crate) fn apply_store_key(
     // SQLCipher take the 32 raw bytes directly instead of running the passphrase
     // KDF over the hex text.
     let literal = format!("x'{}'", hex.as_str());
-    // On an existing database SQLCipher authenticates page one while the key is
-    // being installed, so a wrong key surfaces here rather than at the first
-    // query. Translating it keeps every caller on one fail-closed error that
-    // says the profile stayed locked, and keeps a raw `file is not a database`
-    // from reaching a surface that would have to interpret it.
+    // Installing the key can itself touch page one, so a wrong key may surface
+    // here; it may equally surface at the next statement. Both routes translate
+    // through the same helper, so no caller has to interpret a raw SQLite code
+    // whichever one fires.
     connection
         .pragma_update(None, "key", literal.as_str())
         .map_err(|error| locked_if_undecryptable(StoreError::Sqlite(error), database_path))
@@ -376,9 +375,11 @@ pub(crate) fn apply_store_key(
 
 /// Reads the SQLCipher settings from a keyed connection.
 ///
-/// The first statement issued after `PRAGMA key` decides whether the key was
-/// right. `cipher_version` answers on any handle, so the wrong-key signal is
-/// taken from an actual page read below rather than from this read-back.
+/// On an existing database these reads touch page one, so on a wrong key they
+/// fail with `SQLITE_NOTADB` rather than returning wrong values. Callers that
+/// need the fail-closed outcome go through `read_and_verify_cipher_settings`,
+/// which translates that code; this entry point returns the raw error so a
+/// harness can see exactly what SQLCipher said.
 pub fn read_cipher_settings(connection: &Connection) -> StoreResult<CipherSettings> {
     Ok(CipherSettings {
         cipher_version: pragma_text(connection, "cipher_version")?,
