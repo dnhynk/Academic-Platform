@@ -176,26 +176,31 @@ return, which remains a host-level check.
 
 ## Migration order
 
-The real order is `0001`, then `0003`, then `0004`. `0001` and `0003` are what
-profile creation applies, and `STORE_MIGRATION_SQL` is both what the runner
-executes and what the structural fingerprint is derived from.
+`STORE_MIGRATION_SQL` is `0001`, then `0003`, then `0004`. It is both what the
+creation runner executes, in one exclusive transaction against a database
+admission has proved empty, and what the structural fingerprint is derived from.
+An encrypted profile therefore carries `P2-C2`'s aggregate closure tables from
+creation, and reopening one is admitted.
 
-Migration `0004` (`P2-C2`'s aggregate closure tables) layers on the schema-2
-base through its own pre-listen entry point. It is a delta on the canonical
-core: it leaves `schema_meta`, `application_id`, and `user_version` untouched,
-so applying it cannot turn one profile format into another, and re-applying it
-fails.
+All three steps belong to store schema version 2. t068 section 3.8 has `0003`
+establish the version and `0004` add the aggregates, so a schema-2 profile
+without the closure tables is a half-built one, not an earlier format. `0004`
+stamps no identity of its own — it leaves `schema_meta`, `application_id`, and
+`user_version` to `0003` — so it decides what a schema-2 profile holds and not
+which format that profile is. The frozen identity above is what `0003` writes,
+`phase1_profile_cannot_be_converted` holds because the plaintext lane's set is
+`0001` alone, and re-applying `0004` fails.
 
-**`0004` is not part of profile creation yet.** A profile that has had it
-applied no longer matches the fingerprint derived from `STORE_MIGRATION_SQL`,
-so admission refuses to reopen it with
-`SchemaIdentityMismatch { component: "schema.structural_fingerprint.v1" }`.
-Nothing in the product applies `0004` to a profile today, so this is the seam
-for whoever wires the aggregates into creation, not a defect in either
-migration. `migration_0004_applies_on_a_real_encrypted_schema_two_profile`
-records the whole sequence including that refusal, because admission failing
-closed on a schema it was not admitted against is the behaviour that must not
-change when the seam is closed.
+**The fingerprint is exact structural equality, never a subset test.** A profile
+whose user schema is not exactly what this set produces is refused with
+`SchemaIdentityMismatch { component: "schema.structural_fingerprint.v1" }`, in
+either direction: an object the set does not create and an object the set
+creates but the profile lacks both fail. A migration that is applied to a
+profile without being added to `STORE_MIGRATION_SQL` therefore makes that
+profile unopenable. `profile_carrying_0004_is_admitted_on_reopen` runs the round
+trip — create, close, reopen — and then adds an object outside the set to observe
+that admission still fails closed on a schema this binary was not admitted
+against.
 
 ## Canary scan
 

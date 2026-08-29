@@ -343,7 +343,9 @@ mod encrypted {
             open_encrypted_profile,
         },
         error::StoreError,
-        migration::{MIGRATION_0001_SQL, MIGRATION_0003_SQL, STORE_MIGRATION_SQL},
+        migration::{
+            MIGRATION_0001_SQL, MIGRATION_0003_SQL, MIGRATION_0004_SQL, STORE_MIGRATION_SQL,
+        },
         path_policy::{
             PathEvidence, PathProbe, PathProbeFailure, ProfileAccess, ProfileRootState,
             StorageLocality,
@@ -437,11 +439,13 @@ mod encrypted {
             i64::from(academic_store::SQLITE_APPLICATION_ID)
         );
 
-        // The lane runs the Phase 1 migration as well: the canonical tables and
-        // their append-only triggers are present and still bite.
-        assert_eq!(STORE_MIGRATION_SQL.len(), 2);
+        // The lane runs the Phase 1 migration and the aggregate migration as
+        // well: the canonical tables and their append-only triggers are present
+        // and still bite.
+        assert_eq!(STORE_MIGRATION_SQL.len(), 3);
         assert_eq!(STORE_MIGRATION_SQL[0], MIGRATION_0001_SQL);
         assert_eq!(STORE_MIGRATION_SQL[1], MIGRATION_0003_SQL);
+        assert_eq!(STORE_MIGRATION_SQL[2], MIGRATION_0004_SQL);
         let append_only = must_fail(
             connection.execute(
                 "UPDATE schema_meta SET schema_semver = '2.0.1' WHERE singleton = 1",
@@ -1231,44 +1235,53 @@ mod encrypted {
         );
     }
 
-    /// The real migration order is `0001` then `0003` then `0004`.
+    /// A profile created with `0004` in the chain closes and reopens.
     ///
-    /// The lib-level 0004 suite builds that base from the migration text. This
-    /// builds it the way a profile does -- the real pre-listen runner over a
-    /// real keyed connection -- and then applies 0004 through its own
-    /// pre-listen entry point, so the order is exercised end to end rather than
+    /// Admission derives its reference fingerprint from `STORE_MIGRATION_SQL`
+    /// and compares by exact structural equality, so a migration applied to a
+    /// profile but left out of that set makes the profile unopenable with
+    /// `SchemaIdentityMismatch { component: "schema.structural_fingerprint.v1" }`.
+    /// This is the round trip that binds the two together for `0004`.
+    ///
+    /// The lib-level 0004 suite builds its schema-2 base from the migration text.
+    /// This builds it the way a profile does -- the real pre-listen runner over a
+    /// real keyed connection -- so the order runs end to end rather than
     /// reconstructed.
     #[test]
-    fn migration_0004_applies_on_a_real_encrypted_schema_two_profile() -> Result<(), Box<dyn Error>>
-    {
+    fn profile_carrying_0004_is_admitted_on_reopen() -> Result<(), Box<dyn Error>> {
         let root = TempRoot::new("order")?;
         let workdir = root.workdir();
         let key = harness::provision(&workdir)?;
         let profile = harness::create_profile(&workdir, &key)?;
+        assert_eq!(
+            profile.migration_status(),
+            academic_store::migration::MigrationStatus::Applied
+        );
 
-        // `0001` and `0003` are already applied by creation: the identity is
-        // schema 2 and the aggregate tables do not exist yet.
+        // Creation applied `0001`, `0003`, and `0004` in that order: the
+        // identity is schema 2 and the aggregate tables are already there.
         let mut connection = harness::open_keyed(profile.database_path(), &key)?;
         let identity = academic_store::migration::read_schema_identity(&connection)?;
         assert_eq!(identity.schema_version, 2);
-        assert!(
-            table_missing(&connection, "curriculum_version")?,
-            "0004 was already applied before it was asked for"
-        );
+        for table in ["curriculum_version", "snapshot", "retention_action"] {
+            assert!(
+                !table_missing(&connection, table)?,
+                "creation left {table} out of the profile"
+            );
+        }
 
-        academic_store::migration::apply_aggregate_migration_pre_listen(&mut connection)?;
-
-        // The aggregates exist and the schema-2 identity is untouched: 0004 is a
-        // delta on the canonical core, not on the profile format.
-        assert!(!table_missing(&connection, "curriculum_version")?);
-        assert!(!table_missing(&connection, "retention_action")?);
-        let after = academic_store::migration::read_schema_identity(&connection)?;
-        assert_eq!(after, identity, "0004 changed the schema-2 identity");
+        // `0004` is a delta on the canonical core, not on the profile format, so
+        // the frozen schema-2 identity is exactly what `0003` wrote.
         let user_version: i64 =
             connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
         assert_eq!(user_version, 2, "0004 moved the physical schema version");
+        assert_eq!(identity.schema_semver, "2.0.0");
+        assert_eq!(identity.minimum_reader_protocol, (2, 0));
+        assert_eq!(identity.minimum_writer_protocol, (2, 0));
+        assert_eq!(identity.format_uuid, academic_store::STORE_FORMAT_UUID);
 
-        // Forward-only, and every page still authenticates afterwards.
+        // Forward-only: the aggregate migration refuses to run a second time on
+        // a profile that already carries it, and every page still authenticates.
         let reapplied =
             academic_store::migration::apply_aggregate_migration_pre_listen(&mut connection);
         assert!(
@@ -1278,21 +1291,35 @@ mod encrypted {
         assert!(cipher::cipher_integrity_report(&connection)?.is_empty());
         drop(connection);
 
-        // Reopening is refused, and this is the point of running the order for
-        // real. `STORE_MIGRATION_SQL` is what a profile is admitted against, and
-        // it is `0001` + `0003`; a profile carrying 0004 no longer matches that
-        // structural fingerprint. Nothing in the product applies 0004 to a
-        // profile today -- `P2-K2` creates `0001` + `0003` and stops -- so this
-        // is the recorded seam for whoever wires the aggregates into profile
-        // creation, not a defect in either migration. Admission failing closed
-        // on an unexpected schema is the behaviour that must not change.
+        // The round trip. Admission is exact structural equality against the
+        // reference `STORE_MIGRATION_SQL` produces, so a profile carrying the
+        // aggregates being admitted here is the whole observation.
+        let probe = academic_store::path_policy::NativePathProbe::default();
+        let reopened = open_encrypted_profile(profile.root(), &probe, &key)?;
+        assert_eq!(reopened.database_path(), profile.database_path());
+        assert_eq!(
+            reopened.migration_status(),
+            academic_store::migration::MigrationStatus::AlreadyCurrent
+        );
+        let after = harness::open_keyed(reopened.database_path(), &key)?;
+        assert_eq!(
+            academic_store::migration::read_schema_identity(&after)?,
+            identity,
+            "reopening changed the schema-2 identity"
+        );
+        assert!(!table_missing(&after, "curriculum_version")?);
+
+        // Admitting `0004` is not the same as admitting anything: the
+        // fingerprint is still exact, so one object the migration set does not
+        // create is refused by the same component that used to refuse `0004`.
+        // Failing closed on a schema this binary was not admitted against is the
+        // behaviour that must not change.
+        after.execute_batch("CREATE TABLE unadmitted_probe (probe_id INTEGER) STRICT;")?;
+        drop(after);
+        drop(reopened);
         let refused = must_fail(
-            open_encrypted_profile(
-                profile.root(),
-                &academic_store::path_policy::NativePathProbe::default(),
-                &key,
-            ),
-            "a profile carrying an unadmitted migration was opened",
+            open_encrypted_profile(profile.root(), &probe, &key),
+            "a profile carrying an object outside the migration set was opened",
         )?;
         assert!(
             matches!(
