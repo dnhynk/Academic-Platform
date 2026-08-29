@@ -104,6 +104,30 @@ impl CanonicalDatabase {
         &self.path
     }
 
+    /// Opens one deferred read transaction, or joins the one already open.
+    ///
+    /// SQLite gives every autocommit statement its own read snapshot, so a
+    /// sequence of `SELECT`s against a live profile can observe rows a writer
+    /// committed between two of them. Every read *set* this crate publishes is
+    /// a claim about one committed state — an export manifest's watermark,
+    /// counts, and rows have to describe the same commit or they describe none
+    /// — so the whole set runs inside one transaction. Deferred is the exact
+    /// mode: the snapshot is taken by the first read, not by `BEGIN`, and a
+    /// `query_only` connection may open one.
+    ///
+    /// The guard joins an already-open transaction rather than nesting, so a
+    /// caller needing a wider snapshot than one read function opens the outer
+    /// one and the inner guards leave it alone.
+    pub fn begin_read(&self) -> PortabilityResult<ReadSnapshot<'_>> {
+        if !self.connection.is_autocommit() {
+            return Ok(ReadSnapshot { owned: None });
+        }
+        self.connection.execute_batch("BEGIN DEFERRED")?;
+        Ok(ReadSnapshot {
+            owned: Some(&self.connection),
+        })
+    }
+
     pub(crate) const fn connection(&self) -> &Connection {
         &self.connection
     }
@@ -521,8 +545,33 @@ pub fn canonical_json<T: Serialize>(value: &T) -> PortabilityResult<Vec<u8>> {
     })
 }
 
+/// One deferred read transaction pinning a single snapshot for a read set.
+///
+/// Created by [`CanonicalDatabase::begin_read`]. Ending it is the whole
+/// contract, so it ends on drop; a read transaction has nothing to commit,
+/// which makes rollback its exact end rather than a discarded outcome.
+#[derive(Debug)]
+pub struct ReadSnapshot<'a> {
+    /// The connection this guard must end the transaction on, or `None` when
+    /// an outer guard owns it and is still reading through it.
+    owned: Option<&'a Connection>,
+}
+
+impl Drop for ReadSnapshot<'_> {
+    fn drop(&mut self) {
+        if let Some(connection) = self.owned {
+            // The only way this fails is a transaction that is already closed,
+            // which is the state the drop is trying to reach.
+            let _ = connection.execute_batch("ROLLBACK");
+        }
+    }
+}
+
 /// Reads the complete canonical state at the database's committed watermark.
 pub fn read_canonical_rows(database: &CanonicalDatabase) -> PortabilityResult<CanonicalRows> {
+    // Every table below is read through one snapshot: the counts, the
+    // watermark, and the rows have to describe the same commit.
+    let _snapshot = database.begin_read()?;
     let connection = database.connection();
     let schema = read_schema_identity(connection)?;
     let watermark = read_watermark(connection)?;

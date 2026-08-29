@@ -172,17 +172,33 @@ against a two-artifact corpus that crate builds for itself.
 `["BK03"]`, so a second unreachable row cannot appear silently. A receipt says
 25 PASS and 1 NOT_RUN; it never says 26 passed.
 
+A pointer is not evidence, so the exit lane runs the suite it points at. Both
+`tools/phase1-exit.mjs` and the `phase1-exit` CI job execute
+`cargo test -p academic-portability -p academic-vault --test crash --locked --offline --features phase1-fault-injection`
+— those tests are `#![cfg(feature = "phase1-fault-injection")]` and compile to
+nothing in every default-feature build, so nothing else in the lane executes
+them — and record its argv and exit status in every `not_run[].covered_by_result`.
+A `NOT_RUN` row whose covering suite did not pass fails the run.
+
 ## The normalized result
 
 `tools/phase1-exit.mjs --format json` emits one
 `learning-platform.phase1-exit-result.v1` document containing the commit and
-tree hash, worktree cleanliness, tool versions, the resolved default Cargo
-feature graph, the banner and policy object read back from every data-bearing
-surface, the accepted fixture's acceptance range and receipt identity, the deep
+tree hash, worktree cleanliness, the pinned tool versions, the resolved default
+Cargo feature graph, the banner and policy object read back from every data-bearing
+surface, the accepted fixture's acceptance range, receipt identity and stored
+signed-envelope SHA-256, the deep
 doctor before and after an abrupt kill, the two exports' agreement, the backup,
 the restore into a new empty profile, every fault row with its expected and
 observed letters, the six named-test results, the open gates, and the exact
 command receipt.
+
+The tool versions are read from `doctor --format json`, not from a direct
+spawn. On Windows a bare-name spawn appends only `.exe` and never consults
+`PATHEXT`, so the `.cmd` shim `npm install --global pnpm@11.22.0` writes is
+unreachable by name, and Node refuses to spawn a resolved `.cmd` without a
+shell. `doctor` already resolves and runs it over the same four pinned tools,
+so the receipt and the doctor cannot disagree about a tool the host has.
 
 The command receipt records argv, working directory, exit status, and duration
 for every command the run executed. It never records command output: a receipt

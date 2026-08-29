@@ -206,6 +206,8 @@ pub enum PathPolicyViolation {
     ProfileNotEmpty,
     /// The final component is not a directory.
     ProfileNotDirectory,
+    /// The directory exists but holds no store database to read.
+    MissingStoreDatabase,
     /// The probe proved a remote/network filesystem or device.
     RemoteStorage,
     /// The probe could not prove local storage.
@@ -241,6 +243,9 @@ impl fmt::Display for PathPolicyViolation {
             }
             Self::ProfileNotEmpty => formatter.write_str("new profile root is not empty"),
             Self::ProfileNotDirectory => formatter.write_str("profile root is not a directory"),
+            Self::MissingStoreDatabase => {
+                formatter.write_str("profile root holds no store database")
+            }
             Self::RemoteStorage => formatter.write_str("remote storage is forbidden"),
             Self::UnknownStorage => formatter.write_str("local storage could not be proved"),
             Self::SymlinkOrReparsePoint => {

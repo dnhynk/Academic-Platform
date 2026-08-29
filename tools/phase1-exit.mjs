@@ -232,16 +232,37 @@ function commitIdentity(root, options) {
   };
 }
 
+/**
+ * Reads the pinned tool versions from the CLI's own doctor.
+ *
+ * A direct spawn cannot observe pnpm on Windows at all. Program resolution
+ * there appends only `.exe` and never consults `PATHEXT`, so the `.cmd` shim
+ * `npm install --global pnpm@11.22.0` writes — the documented bootstrap step,
+ * and the one the hosted lane runs — is unreachable by name; and Node refuses
+ * to spawn a `.cmd` even by resolved path unless a shell is opened, which this
+ * tool will not do. Observed directly on Windows: a bare-name spawn of a
+ * `.cmd`-only tool fails `ENOENT`, and spawning its resolved path fails
+ * `EINVAL`.
+ *
+ * `doctor` already resolves the shim through `PATHEXT` and runs it, over the
+ * same four pinned tools this receipt names, and its answer is what decides
+ * `toolchain_ready`. Reading it here is what stops the receipt from recording
+ * `null` for a tool the doctor on the same host reports as present and correct.
+ */
 function toolVersions(root) {
-  const versions = {};
-  for (const [tool, argv] of [
-    ["rustc", ["rustc", "--version"]],
-    ["cargo", ["cargo", "--version"]],
-    ["node", ["node", "--version"]],
-    ["pnpm", ["pnpm", "--version"]],
-  ]) {
-    const result = run(argv, { cwd: root, label: `version ${tool}` });
-    versions[tool] = result.exit_code === 0 ? result.stdout.trim() : null;
+  const versions = { rustc: null, cargo: null, node: null, pnpm: null };
+  // `doctor` exits INCOMPATIBLE when a tool does not match its pin, and still
+  // emits the report that says which. That is a fact for the receipt to carry,
+  // so the document is read whatever the exit status was.
+  const result = run(cliArgv(root, ["doctor", "--format", "json"]), {
+    cwd: root,
+    label: "tool versions",
+  });
+  const document = parseCliJson(result, "doctor tool versions");
+  for (const check of document.result?.checks ?? []) {
+    if (Object.hasOwn(versions, check.tool)) {
+      versions[check.tool] = check.observed ?? null;
+    }
   }
   return versions;
 }
@@ -486,9 +507,20 @@ function driveLane(root, lane) {
       parseCliJson(firstExport, "export").result?.ownership?.daemon_owns_profile ?? null;
     requireExtracted(
       evidence.exports,
-      ["semantic_digest", "file_count", "object_count", "canonical_semantic_digest"],
+      [
+        "semantic_digest",
+        "file_count",
+        "object_count",
+        "canonical_semantic_digest",
+        "batch_envelope_sha256",
+      ],
       "export",
     );
+    // T009 §13-3 requires the envelope hash. The P1 acceptance response does not
+    // carry it, so it is read back out of the profile rather than recomputed
+    // from the builder: the export manifest records the SHA-256 of the signed
+    // envelope canonical state actually stores for the accepted batch.
+    evidence.accepted_fixture.envelope_sha256 = evidence.exports.batch_envelope_sha256;
 
     const backup = runOrThrow(
       cliArgv(root, [
@@ -655,6 +687,7 @@ function compareExports(first, second) {
     encrypted: left.semantic?.encrypted ?? null,
     projections_included: left.semantic?.projections_included ?? null,
     canonical_semantic_digest: left.semantic?.canonical_semantic_digest ?? null,
+    batch_envelope_sha256: left.semantic?.batches?.[0]?.envelope_sha256 ?? null,
   };
 }
 
@@ -718,6 +751,41 @@ function runFaultMatrix(root) {
     rows,
     summary,
     named_tests: named,
+    covering_suite: runCoveringSuite(root),
+  };
+}
+
+/**
+ * Runs the kill matrices a `NOT_RUN` row points at, so the pointer is evidence.
+ *
+ * A row the exit corpus cannot reach — BK03, which needs a second object to be
+ * killed between — is honest only while the suite that does assert its outcome
+ * actually passes at this commit. That suite is compiled out of every
+ * default-feature build (`crates/portability/tests/crash.rs` and
+ * `crates/vault/tests/crash.rs` are `#![cfg(feature = "phase1-fault-injection")]`),
+ * so nothing else in the exit lane executes it. Its exit status is recorded
+ * against every `NOT_RUN` row and gates the run.
+ */
+function runCoveringSuite(root) {
+  const argv = [
+    "cargo",
+    "test",
+    "-p",
+    "academic-portability",
+    "-p",
+    "academic-vault",
+    "--test",
+    "crash",
+    "--locked",
+    "--offline",
+    "--features",
+    FAULT_FEATURE,
+  ];
+  const result = run(argv, { cwd: root, label: "not-run coverage suite" });
+  return {
+    argv,
+    exit_code: result.exit_code,
+    status: result.exit_code === 0 ? "PASS" : "FAIL",
   };
 }
 
@@ -789,7 +857,13 @@ export function assemblePhase1ExitReceipt(root, options) {
     const { surfaces, evidence } = driveLane(root, lane);
     const matrix = options.allFaults
       ? runFaultMatrix(root)
-      : { harness_exit_code: null, rows: [], summary: null, named_tests: [] };
+      : {
+          harness_exit_code: null,
+          rows: [],
+          summary: null,
+          named_tests: [],
+          covering_suite: null,
+        };
     const reconciliation = reconcileMatrix(matrix.rows, evidence.declared_matrix ?? []);
 
     const passed = matrix.rows.filter((row) => row.status === "PASS").length;
@@ -828,10 +902,12 @@ export function assemblePhase1ExitReceipt(root, options) {
           not_run: notRun.length,
           fail: failed.length,
         },
+        covering_suite: matrix.covering_suite,
         not_run: notRun.map((row) => ({
           id: row.id,
           reason: row.not_run_reason,
           covered_by: row.covered_by,
+          covered_by_result: matrix.covering_suite,
         })),
       },
       claims: {
@@ -892,7 +968,8 @@ function renderHuman(document) {
       `fixture ${document.accepted_fixture.fixture_ids.join(",")} ${document.accepted_fixture.status}` +
         ` accept_seq ${JSON.stringify(document.accepted_fixture.accept_seq_range)}` +
         ` revision ${document.accepted_fixture.profile_revision}` +
-        ` receipt ${document.accepted_fixture.receipt_id}`,
+        ` receipt ${document.accepted_fixture.receipt_id}` +
+        ` envelope ${document.accepted_fixture.envelope_sha256}`,
       `idempotent retry returns the original receipt: ${document.accepted_fixture.idempotent_retry_returns_original_receipt}`,
     );
   }
@@ -909,7 +986,10 @@ function renderHuman(document) {
     lines.push(`  ${row.id} expected=${row.expected} observed=${row.observed} ${row.status}`);
   }
   for (const row of document.fault_matrix.not_run) {
-    lines.push(`  NOT_RUN ${row.id}: ${row.reason} (covered by ${row.covered_by})`);
+    lines.push(
+      `  NOT_RUN ${row.id}: ${row.reason} (covered by ${row.covered_by}` +
+        ` — ${row.covered_by_result?.status ?? "NOT_EXECUTED"})`,
+    );
   }
   for (const test of document.fault_matrix.named_tests) {
     lines.push(`  ${test.name}: ${test.status}`);
@@ -937,13 +1017,27 @@ if (invokedPath !== undefined && import.meta.url === pathToFileURL(resolve(invok
   // the CLI's own declared expectations each fail the run.
   const matrix = document.fault_matrix;
   const failedTests = matrix.named_tests.filter((test) => test.status !== "PASS");
+  // A NOT_RUN row is honest only while the suite it points at passes at this
+  // commit, so that suite's exit status is a gate condition and not a note.
+  const uncoveredNotRun = matrix.not_run.some(
+    (row) => row.covered_by_result?.status !== "PASS",
+  );
   const failed =
     matrix.totals.fail > 0 ||
     matrix.reconciliation.disagreements.length > 0 ||
+    uncoveredNotRun ||
     (options.allFaults && (matrix.harness_exit_code !== 0 || failedTests.length > 0));
   if (failed) {
     for (const test of failedTests) {
       process.stderr.write(`named test did not complete: ${test.name}\n`);
+    }
+    for (const row of matrix.not_run.filter((entry) => entry.covered_by_result?.status !== "PASS")) {
+      process.stderr.write(
+        `${row.id} is NOT_RUN and the suite covering it did not pass: ` +
+          `${row.covered_by_result?.argv?.join(" ") ?? "not executed"}` +
+          ` exited ${row.covered_by_result?.exit_code ?? "nothing"}` +
+          "\n",
+      );
     }
     for (const row of matrix.reconciliation.disagreements) {
       process.stderr.write(

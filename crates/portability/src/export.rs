@@ -76,6 +76,14 @@ pub fn export_profile(
     directory::require_absent(destination)?;
     let database_path = profile_root.join(academic_store::STORE_DATABASE_FILE);
     let database = CanonicalDatabase::open_source(&database_path)?;
+    // The manifest is written from the first read set and never re-checked, so
+    // that read set has to be one snapshot and it is wider than any single read
+    // function: the canonical rows, the artifact descriptors, and the batch
+    // envelopes `write_export` reads back all have to come from the same
+    // commit. Backup does not need this outer guard — it compares its source
+    // read against the Online-Backup copy and fails closed on drift — but an
+    // export has nothing to compare against.
+    let snapshot = database.begin_read()?;
     let rows = read_canonical_rows(&database)?;
     rows.schema.policy.require_phase1()?;
     let canonical_semantic_digest = encode_hex(rows.semantic_digest()?.as_bytes().as_slice());
@@ -95,10 +103,12 @@ pub fn export_profile(
     let objects = match result {
         Ok(objects) => objects,
         Err(error) => {
+            drop(snapshot);
             drop(database);
             return Err(error);
         }
     };
+    drop(snapshot);
     drop(database);
 
     let mut files = Vec::new();

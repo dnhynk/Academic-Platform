@@ -40,7 +40,8 @@ use academic_rpc::generated::{MutableRequest, SyntheticIngestCommand, mutable_re
 use academic_store::{
     SYNTHETIC_PROFILE_MARKER,
     connection::open_reader,
-    path_policy::NativePathProbe,
+    error::StoreError,
+    path_policy::{NativePathProbe, PathPolicyViolation},
     queries::{QueryError, canonical_snapshot},
 };
 use academic_vault::{DomainKeyring, Vault};
@@ -176,6 +177,8 @@ pub enum FailureClass {
     RepairRequired,
     /// This build cannot consume the artefact at all.
     Incompatible,
+    /// The named location is not one this build may use as a profile.
+    PathRejected,
     /// None of the above describes the failure.
     Internal,
 }
@@ -186,6 +189,7 @@ impl OperationError {
     pub fn classify(&self) -> FailureClass {
         match self {
             Self::Portability(error) => classify_portability(error),
+            Self::Store(error) => classify_store(error),
             Self::UnexpectedState(_) | Self::Vault(_) => FailureClass::RepairRequired,
             Self::Contract(_) => FailureClass::PolicyDenied,
             _ => FailureClass::Internal,
@@ -193,8 +197,25 @@ impl OperationError {
     }
 }
 
+/// Classifies a store-boundary failure.
+///
+/// A profile path policy refusal is a decision about the location the caller
+/// named, not a fault in this build, and a caller has to be able to tell the
+/// two apart: retrying a rejected path is pointless, retrying an internal
+/// failure is not. `POLICY_DENIED` cannot carry it, because that class is the
+/// synthetic-only *data* policy and a caller branches on it to mean exactly
+/// that.
+fn classify_store(error: &StoreError) -> FailureClass {
+    match error {
+        StoreError::UnsafeProfilePath(_) => FailureClass::PathRejected,
+        _ => FailureClass::Internal,
+    }
+}
+
 fn classify_portability(error: &PortabilityError) -> FailureClass {
     match error {
+        // The location the caller named failed the profile path policy.
+        PortabilityError::Store(error) => classify_store(error),
         // The synthetic-only policy block in a manifest did not match.
         PortabilityError::ManifestRejected { .. } => FailureClass::PolicyDenied,
         // The caller aimed at a destination that is already occupied.
@@ -593,6 +614,15 @@ pub fn diagnose_profile(
 ) -> Result<ProfileDiagnosis, OperationError> {
     let material = fixture_material()?;
     let database_path = profile_root.join(academic_store::STORE_DATABASE_FILE);
+    // A directory that is not a profile is a refused location, not a fault. It
+    // is checked here rather than being read out of SQLite's "unable to open
+    // database file", which a caller cannot distinguish from a real open
+    // failure and which carries no reason it can branch on.
+    if !database_path.is_file() {
+        return Err(OperationError::Store(StoreError::UnsafeProfilePath(
+            PathPolicyViolation::MissingStoreDatabase,
+        )));
+    }
     let database = CanonicalDatabase::open_source(&database_path)?;
     let rows = read_canonical_rows(&database)?;
     rows.schema.policy.require_phase1()?;

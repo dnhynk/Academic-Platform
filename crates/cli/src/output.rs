@@ -43,6 +43,8 @@ pub enum ExitClass {
     Incompatible,
     /// No daemon owns the profile, so an IPC-only command cannot proceed.
     Unavailable,
+    /// The named location is not one this build may use as a profile.
+    PathRejected,
     /// The command failed for a reason none of the above describes.
     Internal,
 }
@@ -58,6 +60,7 @@ impl ExitClass {
             Self::RepairRequired => 12,
             Self::Incompatible => 13,
             Self::Unavailable => 14,
+            Self::PathRejected => 15,
             Self::Internal => 20,
         }
     }
@@ -72,6 +75,7 @@ impl ExitClass {
             Self::RepairRequired => "REPAIR_REQUIRED",
             Self::Incompatible => "INCOMPATIBLE",
             Self::Unavailable => "UNAVAILABLE",
+            Self::PathRejected => "PATH_REJECTED",
             Self::Internal => "INTERNAL",
         }
     }
@@ -258,6 +262,7 @@ mod tests {
             ExitClass::RepairRequired,
             ExitClass::Incompatible,
             ExitClass::Unavailable,
+            ExitClass::PathRejected,
             ExitClass::Internal,
         ];
         let mut codes = classes.map(ExitClass::code).to_vec();
@@ -279,6 +284,7 @@ mod tests {
                 ExitClass::RepairRequired,
                 ExitClass::Incompatible,
                 ExitClass::Unavailable,
+                ExitClass::PathRejected,
                 ExitClass::Internal,
             ]
             .iter()

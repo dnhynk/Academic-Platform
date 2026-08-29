@@ -2,10 +2,19 @@
 //!
 //! `export` and `backup` read a profile the daemon may currently own. They
 //! never bypass it silently: if a daemon has published session metadata, the
-//! CLI completes the versioned handshake first and refuses when the daemon
-//! reports the profile locked or in need of repair. That keeps the running
-//! daemon the authority over its own profile even though the frozen Phase 1
-//! protocol carries no export or destination-bearing backup command.
+//! CLI completes the versioned handshake first, which proves a live daemon owns
+//! the profile, accepted the published session nonce, and granted the
+//! capability. That keeps the running daemon the authority over its own profile
+//! even though the frozen Phase 1 protocol carries no export or
+//! destination-bearing backup command.
+//!
+//! The locked and repair-required refusals below cannot fire against a Phase 1
+//! daemon: it answers every handshake from `ServerHandshakeConfig::default()`,
+//! and it refuses to start at all on a repair-required profile, so no runtime
+//! state can move `lock_state` off `UNLOCKED`. They are kept so a daemon that
+//! does report either state is refused rather than silently accepted; they are
+//! not a defence this phase provides. `docs/contracts/phase1-cli.md`, *What the
+//! handshake does not carry*, records why that is deferred to Phase 2.
 
 use std::path::Path;
 
