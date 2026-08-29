@@ -14,14 +14,19 @@ use academic_contracts::{
     ContractError, DeviceAuthorization, VerifiedBatch, sign_batch, verify_signed_batch,
 };
 use academic_domain::{
-    Actor, ArtifactDescriptor, ArtifactRepresentation, AuthorityClass, BatchId, Claim, ClaimId,
-    ClaimObject, ClaimRelation, ClaimRelationKind, ConfidencePermille, Confidentiality,
-    ContentDigest, DecisionAction, DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1,
-    EVENT_SCHEMA_VERSION_V2, EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator,
-    EvidenceRole, EvidenceStrength, FreshnessBand, MasteryLevel, MediaType,
+    Actor, ArtifactDescriptor, ArtifactRepresentation, AttemptRegistration, AuditRegistration,
+    AuthorityClass, BatchId, CapturePermissionRegistration, Claim, ClaimId, ClaimObject,
+    ClaimRelation, ClaimRelationKind, ConfidencePermille, Confidentiality, ConsentRegistration,
+    ContentDigest, CourseRevisionRegistration, CurriculumVersionRegistration, DecisionAction,
+    DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2,
+    EVENT_SCHEMA_VERSION_V3, EgressDecisionRegistration, EntityIdentityChangeRegistration,
+    EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength,
+    FindingRegistration, FreshnessBand, LectureDocumentRegistration, LectureSessionRegistration,
+    MasteryLevel, MediaType, ModelRunRegistration, OfferingRegistration,
     PREDICTION_METADATA_VERSION_V1, PredicateId, PredictionMetadata, PredictionObservationWindow,
-    ResolutionSlot, RetentionClass, ScopeDescriptor, ScopeId, TimestampMillis, UserDecision,
-    ValidInterval, VaultLocator,
+    ProposalDispositionRegistration, RequirementSetRegistration, ResolutionSlot,
+    RetentionActionRegistration, RetentionClass, ScopeDescriptor, ScopeId, SnapshotRegistration,
+    TimestampMillis, TranscriptVersionRegistration, UserDecision, ValidInterval, VaultLocator,
 };
 use academic_ledger::{
     AcceptanceReceipt, AuthorityPolicy, EVENT_SCHEMA_VERSION, LedgerError, LedgerState,
@@ -33,10 +38,12 @@ use thiserror::Error;
 
 /// Immutable legacy fixture wrapper version.
 pub const FIXTURE_VERSION_V1: u16 = EVENT_SCHEMA_VERSION_V1;
-/// Current fixture wrapper version carrying event schema v2.
+/// Immutable legacy fixture wrapper version carrying event schema v2.
 pub const FIXTURE_VERSION_V2: u16 = EVENT_SCHEMA_VERSION_V2;
+/// Current fixture wrapper version carrying event schema v3.
+pub const FIXTURE_VERSION_V3: u16 = EVENT_SCHEMA_VERSION_V3;
 /// Fixture version emitted by current writers.
-pub const FIXTURE_VERSION: u16 = FIXTURE_VERSION_V2;
+pub const FIXTURE_VERSION: u16 = FIXTURE_VERSION_V3;
 /// Fixed synthetic artifact bytes. They contain no personal or production data.
 pub const SYNTHETIC_ARTIFACT_BYTES: &[u8] =
     b"SYNTHETIC ONLY: no personal data; no network egress.\n";
@@ -45,6 +52,11 @@ pub const FINAL_VALID_AT: TimestampMillis = TimestampMillis::new(700);
 const JSON_SAFE_INTEGER_MAX: u64 = 9_007_199_254_740_991;
 const IMMUTABLE_V1_FIXTURE_JSON: &str =
     include_str!("../../../schemas/fixtures/signed-batch-v1.json");
+// v2 joined v1 as a read-only compatibility golden when v3 became the writer
+// version. Both are compared against their committed document rather than
+// regenerated, so no builder change can rewrite historical signed bytes.
+const IMMUTABLE_V2_FIXTURE_JSON: &str =
+    include_str!("../../../schemas/fixtures/signed-batch-v2.json");
 
 const FIXTURE_SIGNING_SEED: [u8; 32] = [7; 32];
 
@@ -69,6 +81,28 @@ const CLAIM_DEADLINE_NEW: &str = "01900000-0000-7000-8000-000000000206";
 const CLAIM_AI_FLUENT: &str = "01900000-0000-7000-8000-000000000207";
 const CLAIM_COURSE_OFFERING_PREDICTION: &str = "01900000-0000-7000-8000-000000000208";
 const PREDICTION_SUBJECT_ID: &str = "01900000-0000-7000-8000-00000000000c";
+
+// Event schema v3 aggregate identifiers, one per arm in Proto tag order 16..=33.
+// `REPOSITORY_ID` is a parent reference only: no v3 arm registers a repository.
+const CURRICULUM_VERSION_ID: &str = "01900000-0000-7000-8000-000000000410";
+const COURSE_REVISION_ID: &str = "01900000-0000-7000-8000-000000000411";
+const OFFERING_ID: &str = "01900000-0000-7000-8000-000000000412";
+const ATTEMPT_ID: &str = "01900000-0000-7000-8000-000000000413";
+const REQUIREMENT_SET_ID: &str = "01900000-0000-7000-8000-000000000414";
+const AUDIT_ID: &str = "01900000-0000-7000-8000-000000000415";
+const CAPTURE_PERMISSION_ID: &str = "01900000-0000-7000-8000-000000000416";
+const LECTURE_SESSION_ID: &str = "01900000-0000-7000-8000-000000000417";
+const TRANSCRIPT_VERSION_ID: &str = "01900000-0000-7000-8000-000000000418";
+const LECTURE_DOCUMENT_ID: &str = "01900000-0000-7000-8000-000000000419";
+const REPOSITORY_ID: &str = "01900000-0000-7000-8000-00000000041a";
+const SNAPSHOT_ID: &str = "01900000-0000-7000-8000-00000000041b";
+const FINDING_ID: &str = "01900000-0000-7000-8000-00000000041c";
+const MODEL_RUN_AGGREGATE_ID: &str = "01900000-0000-7000-8000-00000000041d";
+const PROPOSAL_ID: &str = "01900000-0000-7000-8000-00000000041e";
+const EGRESS_DECISION_ID: &str = "01900000-0000-7000-8000-00000000041f";
+const CONSENT_ID: &str = "01900000-0000-7000-8000-000000000420";
+const ENTITY_IDENTITY_CHANGE_ID: &str = "01900000-0000-7000-8000-000000000421";
+const RETENTION_ACTION_ID: &str = "01900000-0000-7000-8000-000000000422";
 
 /// Core boundary error.
 #[derive(Debug, Error)]
@@ -454,7 +488,7 @@ impl FixtureDocument {
     pub fn validate_contract(&self) -> Result<(), CoreError> {
         if !matches!(
             self.fixture_version,
-            FIXTURE_VERSION_V1 | FIXTURE_VERSION_V2
+            FIXTURE_VERSION_V1 | FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3
         ) {
             return Err(CoreError::UnsupportedFixtureVersion(self.fixture_version));
         }
@@ -469,6 +503,7 @@ impl FixtureDocument {
         let expected_payload = match self.fixture_version {
             FIXTURE_VERSION_V1 => "academic.event-batch/v1 deterministic-cbor",
             FIXTURE_VERSION_V2 => "academic.event-batch/v2 deterministic-cbor",
+            FIXTURE_VERSION_V3 => "academic.event-batch/v3 deterministic-cbor",
             _ => return Err(CoreError::UnsupportedFixtureVersion(self.fixture_version)),
         };
         if self.contract.envelope != "academic.signed-batch-envelope/v1 deterministic-cbor"
@@ -519,7 +554,9 @@ impl FixtureDocument {
                     "v1 replay must not invent prediction disclosures",
                 ));
             }
-            (FIXTURE_VERSION_V2, Some(disclosures)) if !disclosures.is_empty() => {
+            (FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3, Some(disclosures))
+                if !disclosures.is_empty() =>
+            {
                 let ids = disclosures
                     .iter()
                     .map(|disclosure| disclosure.claim_id)
@@ -533,9 +570,9 @@ impl FixtureDocument {
                     disclosure.prediction_metadata.validate()?;
                 }
             }
-            (FIXTURE_VERSION_V2, _) => {
+            (FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3, _) => {
                 return Err(CoreError::InvalidFixtureContract(
-                    "v2 replay requires prediction claim disclosures",
+                    "v2 and v3 replay require prediction claim disclosures",
                 ));
             }
             (other, _) => return Err(CoreError::UnsupportedFixtureVersion(other)),
@@ -729,6 +766,18 @@ struct ReplayDigestMaterial<'a> {
     prediction_claims: Option<&'a [PredictionClaimDisclosure]>,
 }
 
+/// Returns the frozen, read-only event schema v2 compatibility fixture.
+///
+/// The Phase 1 store lane still ingests this document: `ledger_event.event_kind`
+/// is a closed CHECK over the v1/v2 arms and gains the v3 values only with
+/// migration 0004, so a batch carrying a v3 arm has no canonical table yet. Read
+/// verification upcasts it to v3 without rewriting a byte of it.
+pub fn immutable_v2_fixture_document() -> Result<FixtureDocument, CoreError> {
+    let document: FixtureDocument = serde_json::from_str(IMMUTABLE_V2_FIXTURE_JSON)?;
+    document.validate_contract()?;
+    Ok(document)
+}
+
 /// Builds the current deterministic, signed, synthetic Phase 0 fixture.
 pub fn build_fixture_document() -> Result<FixtureDocument, CoreError> {
     let batch = build_unsigned_fixture_batch()?;
@@ -737,20 +786,20 @@ pub fn build_fixture_document() -> Result<FixtureDocument, CoreError> {
     let signed = sign_batch(&batch, &signing_key)?;
     let mut core = Core::new();
     let (verified, _) = core.accept_signed_batch(&signed, &authorization)?;
-    if verified.source_schema_version() != FIXTURE_VERSION_V2 {
+    if verified.source_schema_version() != FIXTURE_VERSION_V3 {
         return Err(CoreError::FixtureDrift);
     }
     let expected_replay = summarize_replay(&core, &verified, FINAL_VALID_AT, u64::MAX)?;
     Ok(FixtureDocument {
-        fixture_version: FIXTURE_VERSION_V2,
-        name: "phase0-synthetic-bitemporal-ledger-v2".to_owned(),
+        fixture_version: FIXTURE_VERSION_V3,
+        name: "phase0-synthetic-bitemporal-ledger-v3".to_owned(),
         data_class: "SYNTHETIC_ONLY".to_owned(),
         network_egress: "NONE".to_owned(),
         contract: FixtureContract {
             envelope: "academic.signed-batch-envelope/v1 deterministic-cbor".to_owned(),
-            payload: "academic.event-batch/v2 deterministic-cbor".to_owned(),
+            payload: "academic.event-batch/v3 deterministic-cbor".to_owned(),
             signature: "Ed25519".to_owned(),
-            event_schema_version: FIXTURE_VERSION_V2,
+            event_schema_version: FIXTURE_VERSION_V3,
         },
         device_id: authorization.device_id(),
         user_id: authorization.user_id(),
@@ -783,6 +832,12 @@ pub fn verify_fixture_document(document: &FixtureDocument) -> Result<ReplaySumma
             }
         }
         FIXTURE_VERSION_V2 => {
+            let immutable: FixtureDocument = serde_json::from_str(IMMUTABLE_V2_FIXTURE_JSON)?;
+            if *document != immutable {
+                return Err(CoreError::FixtureDrift);
+            }
+        }
+        FIXTURE_VERSION_V3 => {
             if *document != build_fixture_document()? {
                 return Err(CoreError::FixtureDrift);
             }
@@ -1035,6 +1090,10 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
     let user_actor = Actor::User {
         user_id: parse_id(USER_ID)?,
     };
+    let registrar_actor = Actor::Importer {
+        name: "synthetic.registrar.fixture".to_owned(),
+        version: "1.0.0".to_owned(),
+    };
     let scope = ScopeDescriptor {
         id: parse_id::<ScopeId>(SCOPE_ID)?,
         domain_id: parse_id(DOMAIN_ID)?,
@@ -1247,6 +1306,221 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
             ai_actor,
             EventPayload::ClaimAsserted(course_offering_prediction),
         )?,
+        // Event schema v3 arms, Proto tags 16..=33 in declaration order. Each
+        // registers an aggregate at registration depth only; `source_digest` is
+        // present on the arms whose fixture registration ingests a document and
+        // absent on the rest, so both encodings appear in signed golden bytes.
+        fixture_event(
+            15,
+            registrar_actor.clone(),
+            EventPayload::CurriculumVersionPublished(CurriculumVersionRegistration {
+                id: parse_id(CURRICULUM_VERSION_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(100)),
+            }),
+        )?,
+        fixture_event(
+            16,
+            registrar_actor.clone(),
+            EventPayload::CourseRevisionPublished(CourseRevisionRegistration {
+                id: parse_id(COURSE_REVISION_ID)?,
+                curriculum_version_id: parse_id(CURRICULUM_VERSION_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(100)),
+            }),
+        )?,
+        fixture_event(
+            17,
+            registrar_actor.clone(),
+            EventPayload::OfferingObserved(OfferingRegistration {
+                id: parse_id(OFFERING_ID)?,
+                course_revision_id: parse_id(COURSE_REVISION_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(200)),
+            }),
+        )?,
+        fixture_event(
+            18,
+            registrar_actor.clone(),
+            EventPayload::AttemptRecorded(AttemptRegistration {
+                id: parse_id(ATTEMPT_ID)?,
+                offering_id: parse_id(OFFERING_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(200)),
+            }),
+        )?,
+        fixture_event(
+            19,
+            registrar_actor.clone(),
+            EventPayload::RequirementSetPublished(RequirementSetRegistration {
+                id: parse_id(REQUIREMENT_SET_ID)?,
+                curriculum_version_id: parse_id(CURRICULUM_VERSION_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(100)),
+            }),
+        )?,
+        fixture_event(
+            20,
+            registrar_actor.clone(),
+            EventPayload::AuditComputed(AuditRegistration {
+                id: parse_id(AUDIT_ID)?,
+                requirement_set_id: parse_id(REQUIREMENT_SET_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(300)),
+            }),
+        )?,
+        fixture_event(
+            21,
+            registrar_actor.clone(),
+            EventPayload::CapturePermissionRecorded(CapturePermissionRegistration {
+                id: parse_id(CAPTURE_PERMISSION_ID)?,
+                offering_id: parse_id(OFFERING_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(200)),
+            }),
+        )?,
+        fixture_event(
+            22,
+            registrar_actor.clone(),
+            EventPayload::LectureSessionRecorded(LectureSessionRegistration {
+                id: parse_id(LECTURE_SESSION_ID)?,
+                offering_id: parse_id(OFFERING_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(300)),
+            }),
+        )?,
+        fixture_event(
+            23,
+            registrar_actor.clone(),
+            EventPayload::TranscriptVersionAdded(TranscriptVersionRegistration {
+                id: parse_id(TRANSCRIPT_VERSION_ID)?,
+                lecture_session_id: parse_id(LECTURE_SESSION_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(300)),
+            }),
+        )?,
+        fixture_event(
+            24,
+            registrar_actor.clone(),
+            EventPayload::LectureDocumentPublished(LectureDocumentRegistration {
+                id: parse_id(LECTURE_DOCUMENT_ID)?,
+                lecture_session_id: parse_id(LECTURE_SESSION_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(300)),
+            }),
+        )?,
+        fixture_event(
+            25,
+            registrar_actor.clone(),
+            EventPayload::SnapshotRegistered(SnapshotRegistration {
+                id: parse_id(SNAPSHOT_ID)?,
+                repository_id: parse_id(REPOSITORY_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: Some(artifact_digest),
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(400)),
+            }),
+        )?,
+        fixture_event(
+            26,
+            registrar_actor.clone(),
+            EventPayload::FindingPublished(FindingRegistration {
+                id: parse_id(FINDING_ID)?,
+                snapshot_id: parse_id(SNAPSHOT_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(400)),
+            }),
+        )?,
+        fixture_event(
+            27,
+            registrar_actor.clone(),
+            EventPayload::ModelRunRecorded(ModelRunRegistration {
+                id: parse_id(MODEL_RUN_AGGREGATE_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(100)),
+            }),
+        )?,
+        fixture_event(
+            28,
+            registrar_actor.clone(),
+            EventPayload::ProposalDisposed(ProposalDispositionRegistration {
+                id: parse_id(PROPOSAL_ID)?,
+                model_run_id: parse_id(MODEL_RUN_AGGREGATE_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(100)),
+            }),
+        )?,
+        fixture_event(
+            29,
+            registrar_actor.clone(),
+            EventPayload::EgressDecided(EgressDecisionRegistration {
+                id: parse_id(EGRESS_DECISION_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(500)),
+            }),
+        )?,
+        fixture_event(
+            30,
+            registrar_actor.clone(),
+            EventPayload::ConsentRecorded(ConsentRegistration {
+                id: parse_id(CONSENT_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(500)),
+            }),
+        )?,
+        fixture_event(
+            31,
+            registrar_actor.clone(),
+            EventPayload::EntityIdentityChanged(EntityIdentityChangeRegistration {
+                id: parse_id(ENTITY_IDENTITY_CHANGE_ID)?,
+                entity_id: parse_id(CONCEPT_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(600)),
+            }),
+        )?,
+        fixture_event(
+            32,
+            registrar_actor.clone(),
+            EventPayload::RetentionActionRecorded(RetentionActionRegistration {
+                id: parse_id(RETENTION_ACTION_ID)?,
+                domain_id: parse_id(DOMAIN_ID)?,
+                scope_id: parse_id(SCOPE_ID)?,
+                source_digest: None,
+                valid_time: ValidInterval::open_ended(TimestampMillis::new(600)),
+            }),
+        )?,
     ];
     Ok(UnsignedBatch {
         schema_version: EVENT_SCHEMA_VERSION,
@@ -1403,7 +1677,7 @@ mod tests {
     fn signed_fixture_round_trips_and_replays() -> Result<(), Box<dyn std::error::Error>> {
         let document = build_fixture_document()?;
         let replay = verify_fixture_document(&document)?;
-        assert_eq!(replay.accepted_events, 14);
+        assert_eq!(replay.accepted_events, 32);
         assert_eq!(replay.mastery, MasteryLevel::Practiced);
         assert_eq!(replay.freshness, FreshnessBand::Stale);
         assert_eq!(
@@ -1441,78 +1715,122 @@ mod tests {
         Ok(())
     }
 
+    /// Neither historical fixture moved a byte when v3 became the writer version.
+    ///
+    /// Both documents are restated by their frozen SHA-256, both are compared
+    /// against the exact committed text rather than regenerated, and the
+    /// deterministic builder is proved to emit neither of them. `git diff
+    /// --exit-code -- schemas/fixtures/` is the same claim at the tree level.
     #[test]
-    fn t008_v2_fixture_matches_repaired_builder() -> Result<(), Box<dyn std::error::Error>> {
-        let committed_v2 = include_str!("../../../schemas/fixtures/signed-batch-v2.json");
-        assert_eq!(
-            ContentDigest::sha256(committed_v2.as_bytes()).to_string(),
-            "sha256:f94dfcf7e3e376e54b5514ceb3016b0b7d97d17366562f7ac4a16286d3aa367d"
-        );
-        let document: FixtureDocument = serde_json::from_str(committed_v2)?;
-        assert_eq!(document.fixture_version, FIXTURE_VERSION_V2);
-        assert_eq!(fixture_json(&build_fixture_document()?)?, committed_v2);
-        let replay = verify_fixture_document(&document)?;
-        assert_eq!(
-            replay.payload_hash.to_string(),
-            "sha256:4d326913780bbf93c61d7e4b20492ccf5c2553f53e61994874b290c78e3638fc"
-        );
-        assert_eq!(
-            replay.envelope_hash.to_string(),
-            "sha256:9fb709fd242c4ff4992337a7813e06b9c4e20174a1de22a57e28013e9b6994b6"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn t008_v1_golden_bytes_are_immutable_and_upcast_deterministically_to_v2()
-    -> Result<(), Box<dyn std::error::Error>> {
+    fn v1_and_v2_bytes_remain_byte_identical() -> Result<(), Box<dyn std::error::Error>> {
         let committed_v1 = include_str!("../../../schemas/fixtures/signed-batch-v1.json");
+        let committed_v2 = include_str!("../../../schemas/fixtures/signed-batch-v2.json");
         assert_eq!(
             ContentDigest::sha256(committed_v1.as_bytes()).to_string(),
             "sha256:287f7dea8fd24c3c6eb205c3f1e2873f6afdf7d6532fe7be4fccfb44a0b7e163"
         );
-        let document: FixtureDocument = serde_json::from_str(committed_v1)?;
-        assert_eq!(document.fixture_version, FIXTURE_VERSION_V1);
-        assert!(document.expected_replay.prediction_claims.is_none());
-        let replay = verify_fixture_document(&document)?;
         assert_eq!(
-            replay.payload_hash.to_string(),
+            ContentDigest::sha256(committed_v2.as_bytes()).to_string(),
+            "sha256:f94dfcf7e3e376e54b5514ceb3016b0b7d97d17366562f7ac4a16286d3aa367d"
+        );
+
+        let built = fixture_json(&build_fixture_document()?)?;
+        assert_ne!(built, committed_v1, "the writer cannot mint v1");
+        assert_ne!(built, committed_v2, "the writer cannot mint v2");
+
+        let v1: FixtureDocument = serde_json::from_str(committed_v1)?;
+        let v2: FixtureDocument = serde_json::from_str(committed_v2)?;
+        assert_eq!(v1.fixture_version, FIXTURE_VERSION_V1);
+        assert_eq!(v2.fixture_version, FIXTURE_VERSION_V2);
+        assert_eq!(v2, immutable_v2_fixture_document()?);
+
+        // Both still verify and replay to their frozen digests through the v3
+        // reader, so compatibility is executable rather than asserted.
+        let v1_replay = verify_fixture_document(&v1)?;
+        assert_eq!(
+            v1_replay.payload_hash.to_string(),
             "sha256:b45c7eea2e1b7bf8071638a31c790519f96a7b0e17bd6963866495557701c3c9"
         );
         assert_eq!(
-            replay.envelope_hash.to_string(),
+            v1_replay.envelope_hash.to_string(),
             "sha256:dc498fa435985b94fd573ce1e94b4b7da16646ebd2abe73865d33e43070968ed"
+        );
+        let v2_replay = verify_fixture_document(&v2)?;
+        assert_eq!(
+            v2_replay.payload_hash.to_string(),
+            "sha256:4d326913780bbf93c61d7e4b20492ccf5c2553f53e61994874b290c78e3638fc"
+        );
+        assert_eq!(
+            v2_replay.envelope_hash.to_string(),
+            "sha256:9fb709fd242c4ff4992337a7813e06b9c4e20174a1de22a57e28013e9b6994b6"
         );
 
         let authorization = fixture_device_authorization()?;
-        let signed = hex::decode(&document.signed_batch_cbor_hex)?;
-        let verified = verify_signed_batch(&signed, &authorization)?;
-        assert_eq!(verified.source_schema_version(), EVENT_SCHEMA_VERSION_V1);
-        assert_eq!(verified.batch().schema_version, EVENT_SCHEMA_VERSION_V2);
-        for event in &verified.batch().events {
-            let EventPayload::DecisionRecorded(decision) = &event.payload else {
-                continue;
-            };
-            let target = verified
-                .batch()
-                .events
-                .iter()
-                .find_map(|candidate| match &candidate.payload {
-                    EventPayload::ClaimAsserted(claim) if claim.id == decision.target_claim_id => {
-                        Some(claim)
-                    }
-                    _ => None,
-                })
-                .ok_or(CoreError::MissingProjection("v1 decision target"))?;
-            assert_eq!(decision.target_object, target.object);
-            assert_eq!(decision.valid_time, target.valid_time);
+        for (document, source) in [
+            (&v1, EVENT_SCHEMA_VERSION_V1),
+            (&v2, EVENT_SCHEMA_VERSION_V2),
+        ] {
+            let signed = hex::decode(&document.signed_batch_cbor_hex)?;
+            let verified = verify_signed_batch(&signed, &authorization)?;
+            assert_eq!(verified.source_schema_version(), source);
+            assert_eq!(verified.batch().schema_version, EVENT_SCHEMA_VERSION_V3);
             assert_eq!(
-                decision.resolution_slot.subject_entity_id,
-                target.subject_entity_id
+                verified.source_envelope(),
+                signed.as_slice(),
+                "verification retains the original envelope bytes"
             );
-            assert_eq!(decision.resolution_slot.predicate_id, target.predicate_id);
-            assert_eq!(decision.resolution_slot.scope_id, target.scope_id);
+            assert!(
+                verified
+                    .batch()
+                    .events
+                    .iter()
+                    .all(|event| event.payload.registration().is_none()),
+                "a historical batch never gains a v3 arm by being read"
+            );
         }
+        Ok(())
+    }
+
+    /// The committed v3 fixture is exactly what the deterministic builder emits.
+    #[test]
+    fn t093_v3_fixture_matches_the_deterministic_builder() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let committed_v3 = include_str!("../../../schemas/fixtures/signed-batch-v3.json");
+        let document: FixtureDocument = serde_json::from_str(committed_v3)?;
+        assert_eq!(document.fixture_version, FIXTURE_VERSION_V3);
+        assert_eq!(fixture_json(&build_fixture_document()?)?, committed_v3);
+        verify_fixture_document(&document)?;
+
+        let authorization = fixture_device_authorization()?;
+        let verified = verify_signed_batch(
+            &hex::decode(&document.signed_batch_cbor_hex)?,
+            &authorization,
+        )?;
+        assert_eq!(verified.source_schema_version(), EVENT_SCHEMA_VERSION_V3);
+        let registered = verified
+            .batch()
+            .events
+            .iter()
+            .filter_map(|event| event.payload.registration().map(|view| view.kind))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            registered,
+            academic_domain::V3_EVENT_KINDS.to_vec(),
+            "the v3 fixture exercises every v3 arm exactly once, in tag order"
+        );
+        assert!(
+            verified.batch().events.iter().any(|event| matches!(
+                &event.payload,
+                EventPayload::SnapshotRegistered(record) if record.source_digest.is_none()
+            )) || verified.batch().events.iter().any(|event| event
+                .payload
+                .registration()
+                .is_some_and(|_| matches!(
+                    &event.payload,
+                    EventPayload::AttemptRecorded(record) if record.source_digest.is_none()
+                ))),
+            "the v3 fixture must sign at least one arm with no source digest"
+        );
         Ok(())
     }
 
@@ -1567,7 +1885,7 @@ mod tests {
                 case.name
             );
         }
-        assert_eq!(verified.batch().events.len(), 14);
+        assert_eq!(verified.batch().events.len(), 32);
         Ok(())
     }
 
@@ -1630,32 +1948,32 @@ mod tests {
         assert!(serde_json::from_value::<FixtureDocument>(with_extra).is_err());
 
         let integer_lexeme = fixture_json(&build_fixture_document()?)?.replacen(
-            "\"accepted_events\": 14",
-            "\"accepted_events\": 14.0",
+            "\"accepted_events\": 32",
+            "\"accepted_events\": 32.0",
             1,
         );
         let parsed = parse_fixture_document_json(integer_lexeme.as_bytes())?;
-        assert_eq!(parsed.expected_replay.accepted_events, 14);
+        assert_eq!(parsed.expected_replay.accepted_events, 32);
 
         for (needle, replacement) in [
-            ("\"fixture_version\": 2", "\"fixture_version\": 2.0"),
+            ("\"fixture_version\": 3", "\"fixture_version\": 3.0"),
             (
-                "\"event_schema_version\": 2",
-                "\"event_schema_version\": 2e0",
+                "\"event_schema_version\": 3",
+                "\"event_schema_version\": 3e0",
             ),
         ] {
             let version_lexeme =
                 fixture_json(&build_fixture_document()?)?.replacen(needle, replacement, 1);
             let parsed = parse_fixture_document_json(version_lexeme.as_bytes())?;
-            assert_eq!(parsed.fixture_version, FIXTURE_VERSION_V2);
+            assert_eq!(parsed.fixture_version, FIXTURE_VERSION_V3);
             assert_eq!(
                 parsed.contract.event_schema_version,
-                EVENT_SCHEMA_VERSION_V2
+                EVENT_SCHEMA_VERSION_V3
             );
         }
-        for replacement in ["2.5", "65536", "-1"] {
+        for replacement in ["3.5", "65536", "-1"] {
             let invalid = fixture_json(&build_fixture_document()?)?.replacen(
-                "\"fixture_version\": 2",
+                "\"fixture_version\": 3",
                 &format!("\"fixture_version\": {replacement}"),
                 1,
             );

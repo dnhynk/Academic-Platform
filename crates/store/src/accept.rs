@@ -162,6 +162,7 @@ pub enum AcceptError {
         actual: PathBuf,
     },
     IntegerOverflow(u64),
+    UnstorableEventKind(&'static str),
 }
 
 impl fmt::Display for AcceptError {
@@ -177,6 +178,10 @@ impl fmt::Display for AcceptError {
             Self::CommandEnvelopeMismatch => {
                 formatter.write_str("verified envelope differs from command source bytes")
             }
+            Self::UnstorableEventKind(kind) => write!(
+                formatter,
+                "event kind {kind} has no canonical table in this store schema"
+            ),
             Self::ExpectedRevisionConflict { expected, actual } => write!(
                 formatter,
                 "expected profile revision {expected}, observed {actual}"
@@ -218,7 +223,8 @@ impl Error for AcceptError {
             | Self::ExpectedRevisionConflict { .. }
             | Self::SealedReceiptMismatch { .. }
             | Self::VaultProfileMismatch { .. }
-            | Self::IntegerOverflow(_) => None,
+            | Self::IntegerOverflow(_)
+            | Self::UnstorableEventKind(_) => None,
         }
     }
 }
@@ -281,6 +287,17 @@ where
 {
     if command.envelope_bytes != verified.source_envelope() {
         return Err(AcceptError::CommandEnvelopeMismatch);
+    }
+
+    // Event schema v3 arms are readable and verifiable, but this store schema has
+    // no canonical table for them and `ledger_event.event_kind` is a closed CHECK
+    // over the v1/v2 set. Reject them with a typed error before any SQL runs
+    // rather than letting a CHECK violation surface as an opaque SQLite failure.
+    // The tables and the widened CHECK arrive together in migration 0004.
+    for event in &verified.batch().events {
+        if event.payload.registration().is_some() {
+            return Err(AcceptError::UnstorableEventKind(event.payload.kind()));
+        }
     }
 
     // Resolve the complete transitive artifact-reference closure before SQL.
@@ -503,7 +520,25 @@ fn preflight_artifact_closure(
             }
             EventPayload::ScopeRegistered(_)
             | EventPayload::ClaimRelated(_)
-            | EventPayload::DecisionRecorded(_) => {}
+            | EventPayload::DecisionRecorded(_)
+            | EventPayload::CurriculumVersionPublished(_)
+            | EventPayload::CourseRevisionPublished(_)
+            | EventPayload::OfferingObserved(_)
+            | EventPayload::AttemptRecorded(_)
+            | EventPayload::RequirementSetPublished(_)
+            | EventPayload::AuditComputed(_)
+            | EventPayload::CapturePermissionRecorded(_)
+            | EventPayload::LectureSessionRecorded(_)
+            | EventPayload::TranscriptVersionAdded(_)
+            | EventPayload::LectureDocumentPublished(_)
+            | EventPayload::SnapshotRegistered(_)
+            | EventPayload::FindingPublished(_)
+            | EventPayload::ModelRunRecorded(_)
+            | EventPayload::ProposalDisposed(_)
+            | EventPayload::EgressDecided(_)
+            | EventPayload::ConsentRecorded(_)
+            | EventPayload::EntityIdentityChanged(_)
+            | EventPayload::RetentionActionRecorded(_) => {}
         }
     }
 
@@ -532,7 +567,25 @@ fn preflight_artifact_closure(
             }
             EventPayload::ScopeRegistered(_)
             | EventPayload::ArtifactRegistered(_)
-            | EventPayload::EvidenceRegistered(_) => {}
+            | EventPayload::EvidenceRegistered(_)
+            | EventPayload::CurriculumVersionPublished(_)
+            | EventPayload::CourseRevisionPublished(_)
+            | EventPayload::OfferingObserved(_)
+            | EventPayload::AttemptRecorded(_)
+            | EventPayload::RequirementSetPublished(_)
+            | EventPayload::AuditComputed(_)
+            | EventPayload::CapturePermissionRecorded(_)
+            | EventPayload::LectureSessionRecorded(_)
+            | EventPayload::TranscriptVersionAdded(_)
+            | EventPayload::LectureDocumentPublished(_)
+            | EventPayload::SnapshotRegistered(_)
+            | EventPayload::FindingPublished(_)
+            | EventPayload::ModelRunRecorded(_)
+            | EventPayload::ProposalDisposed(_)
+            | EventPayload::EgressDecided(_)
+            | EventPayload::ConsentRecorded(_)
+            | EventPayload::EntityIdentityChanged(_)
+            | EventPayload::RetentionActionRecorded(_) => {}
         }
     }
 

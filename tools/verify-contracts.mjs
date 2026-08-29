@@ -30,8 +30,10 @@ async function readRustSourceTree(root, relative = "") {
 const [
   fixtureV1Bytes,
   fixtureV2Bytes,
+  fixtureV3Bytes,
   fixtureSchemaV1Bytes,
   fixtureSchemaV2Text,
+  fixtureSchemaV3Text,
   artifactSchemaText,
   syntheticManifestSchemaText,
   artifactCorpusText,
@@ -45,6 +47,7 @@ const [
   packageJsonText,
   protoV1Bytes,
   protoV2Text,
+  protoV3Text,
   canonicalSpecBytes,
   rustProtoContractText,
   rustDomainText,
@@ -62,8 +65,10 @@ const [
 ] = await Promise.all([
   readFile("schemas/fixtures/signed-batch-v1.json"),
   readFile("schemas/fixtures/signed-batch-v2.json"),
+  readFile("schemas/fixtures/signed-batch-v3.json"),
   readFile("schemas/jsonschema/signed-batch-fixture-v1.schema.json"),
   readFile("schemas/jsonschema/signed-batch-fixture-v2.schema.json", "utf8"),
+  readFile("schemas/jsonschema/signed-batch-fixture-v3.schema.json", "utf8"),
   readFile("schemas/jsonschema/artifact-descriptor-v1.schema.json", "utf8"),
   readFile("schemas/jsonschema/synthetic-ingest-manifest-v1.schema.json", "utf8"),
   readFile("schemas/fixtures/artifact-descriptor-parity-v1.json", "utf8"),
@@ -77,6 +82,7 @@ const [
   readFile("package.json", "utf8"),
   readFile("schemas/proto/academic/v1/ledger.proto"),
   readFile("schemas/proto/academic/v2/ledger.proto", "utf8"),
+  readFile("schemas/proto/academic/v3/ledger.proto", "utf8"),
   readFile("PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md"),
   readFile("crates/contracts/src/proto_contract.rs", "utf8"),
   readFile("crates/domain/src/lib.rs", "utf8"),
@@ -105,6 +111,7 @@ const fixtureSchemaV1Text = fixtureSchemaV1Bytes.toString("utf8");
 const protoV1Text = protoV1Bytes.toString("utf8");
 const fixtureSchemaV1 = JSON.parse(fixtureSchemaV1Text);
 const fixtureSchemaV2 = JSON.parse(fixtureSchemaV2Text);
+const fixtureSchemaV3 = JSON.parse(fixtureSchemaV3Text);
 const artifactSchema = JSON.parse(artifactSchemaText);
 const syntheticManifestSchema = JSON.parse(syntheticManifestSchemaText);
 const artifactCorpus = JSON.parse(artifactCorpusText);
@@ -134,8 +141,10 @@ const { assertToolVersionConformanceCorpus } = await import("./tool-version-poli
 
 const fixtureV1Text = decodePortableFixtureJsonBytes(fixtureV1Bytes);
 const fixtureV2Text = decodePortableFixtureJsonBytes(fixtureV2Bytes);
+const fixtureV3Text = decodePortableFixtureJsonBytes(fixtureV3Bytes);
 const fixtureV1 = JSON.parse(fixtureV1Text);
 const fixtureV2 = JSON.parse(fixtureV2Text);
+const fixtureV3 = JSON.parse(fixtureV3Text);
 assertToolVersionConformanceCorpus(toolVersionCorpus);
 const rustPin = rustToolchainText.match(/^channel = "(?<version>[^"]+)"$/mu)?.groups?.version;
 assert.ok(rustPin, "rust-toolchain.toml must contain one exact channel pin");
@@ -199,6 +208,7 @@ assert.doesNotMatch(
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const validateFixtureSchemaV1 = ajv.compile(fixtureSchemaV1);
 const validateFixtureSchemaV2 = ajv.compile(fixtureSchemaV2);
+const validateFixtureSchemaV3 = ajv.compile(fixtureSchemaV3);
 const validateArtifactSchema = ajv.compile(artifactSchema);
 const validateSyntheticManifestSchema = ajv.compile(syntheticManifestSchema);
 const syntheticManifest = structuredClone(syntheticManifestSchema.examples[0]);
@@ -211,7 +221,7 @@ assert.equal(syntheticManifest.fixture_byte_length, fixtureV2Bytes.length);
 assert.equal(
   syntheticManifest.fixture_sha256,
   createHash("sha256").update(fixtureV2Bytes).digest("hex"),
-  "synthetic manifest must bind the current deterministic v2 fixture bytes",
+  "synthetic manifest must bind the frozen v2 fixture the store lane ingests",
 );
 for (const [field, value] of [
   ["data_class", "PERSONAL"],
@@ -296,16 +306,26 @@ assert.equal(
   "F94DFCF7E3E376E54B5514CEB3016B0B7D97D17366562F7AC4A16286D3AA367D",
   "signed-batch-v2 must match the repaired deterministic builder",
 );
-for (const [version, fixture, validateFixtureSchema] of [
-  [1, fixtureV1, validateFixtureSchemaV1],
-  [2, fixtureV2, validateFixtureSchemaV2],
+// Ajv, TypeScript, and Rust all read all three fixtures. A fixture may satisfy
+// only its own version's schema: the wrapper version, payload label, and event
+// schema version are `const` in each, so a cross-version match is drift.
+const fixtureSchemaValidators = [
+  [1, validateFixtureSchemaV1],
+  [2, validateFixtureSchemaV2],
+  [3, validateFixtureSchemaV3],
+];
+for (const [version, fixture, rawFixture] of [
+  [1, fixtureV1, fixtureV1Bytes],
+  [2, fixtureV2, fixtureV2Bytes],
+  [3, fixtureV3, fixtureV3Bytes],
 ]) {
-  assert.equal(
-    validateFixtureSchema(fixture),
-    true,
-    `committed v${version} fixture must satisfy JSON Schema: ${ajv.errorsText(validateFixtureSchema.errors)}`,
-  );
-  const rawFixture = version === 1 ? fixtureV1Bytes : fixtureV2Bytes;
+  for (const [schemaVersion, validateFixtureSchema] of fixtureSchemaValidators) {
+    assert.equal(
+      validateFixtureSchema(fixture),
+      schemaVersion === version,
+      `committed v${version} fixture against the v${schemaVersion} JSON Schema: ${ajv.errorsText(validateFixtureSchema.errors)}`,
+    );
+  }
   assert.deepEqual(parseFixtureDocumentJson(rawFixture), fixture);
 }
 
@@ -1295,41 +1315,57 @@ const assertV2WriterCapabilityGate = (input) => {
   const writerGuard = functions.get("require_current_writer_payload")?.source ?? "";
   assert.match(
     writerGuard,
-    /let json = decode_canonical_payload_json\(bytes\)\?;\s*let source_schema_version = read_schema_version\(&json\)\?;\s*if source_schema_version != EVENT_SCHEMA_VERSION_V2 \{\s*return Err\(DomainError::UnsupportedSchemaVersion\(source_schema_version\)\.into\(\)\);\s*\}/u,
-    "the writer guard must decode returned bytes and require semantic schema v2",
+    /let json = decode_canonical_payload_json\(bytes\)\?;\s*let source_schema_version = read_schema_version\(&json\)\?;\s*if source_schema_version != EVENT_SCHEMA_VERSION_V3 \{\s*return Err\(DomainError::UnsupportedSchemaVersion\(source_schema_version\)\.into\(\)\);\s*\}/u,
+    "the writer guard must decode returned bytes and require semantic schema v3",
   );
   assert.match(
     functions.get("sign_batch")?.source ?? "",
     /let payload = encode_unsigned_batch\(batch\)\?;/u,
     "the signed writer must obtain its payload from the guarded current writer",
   );
-  const projection = functions.get("encode_unsigned_batch_v1_projection")?.source;
-  assert.ok(projection, "the private v1 verification projection must remain explicitly named");
-  assert.match(
-    projection,
-    /fn encode_unsigned_batch_v1_projection\([\s\S]*_capability: LegacySourceEqualityCapability,/u,
-    "legacy projection access must require the private source-equality capability",
-  );
-  assert.match(
-    functions.get("require_source_typed_equality")?.source ?? "",
-    /encode_unsigned_batch_v1_projection\(batch, LegacySourceEqualityCapability\)/u,
-    "only authenticated source equality may construct and consume the legacy capability",
-  );
-  const projectionDeclaration = functions.get("encode_unsigned_batch_v1_projection");
+  // v1 and v2 are both read-only source versions now, so each owns a private
+  // projection reachable only through the same source-equality capability.
+  const legacyProjectionNames = [
+    "encode_unsigned_batch_v1_projection",
+    "encode_unsigned_batch_v2_projection",
+  ];
+  for (const name of legacyProjectionNames) {
+    const projection = functions.get(name)?.source;
+    assert.ok(projection, `the private ${name} verification projection must remain explicitly named`);
+    assert.match(
+      projection,
+      new RegExp(`fn ${name}\\([\\s\\S]*_capability: LegacySourceEqualityCapability,`, "u"),
+      "legacy projection access must require the private source-equality capability",
+    );
+    assert.match(
+      functions.get("require_source_typed_equality")?.source ?? "",
+      new RegExp(`${name}\\(batch, LegacySourceEqualityCapability\\)`, "u"),
+      "only authenticated source equality may construct and consume the legacy capability",
+    );
+  }
+  const projectionDeclarations = legacyProjectionNames.map((name) => functions.get(name));
   const equalityFunction = functions.get("require_source_typed_equality");
-  assert.ok(projectionDeclaration !== undefined && equalityFunction !== undefined);
-  const countProjectionIdentifiers = (text) => [
-    ...maskRustCommentsAndLiterals(text).matchAll(/\bencode_unsigned_batch_v1_projection\b/gu),
+  assert.ok(projectionDeclarations.every((declaration) => declaration !== undefined));
+  assert.ok(equalityFunction !== undefined);
+  const countProjectionIdentifiers = (text, name) => [
+    ...maskRustCommentsAndLiterals(text).matchAll(new RegExp(`\\b${name}\\b`, "gu")),
   ].length;
   const countCapabilityIdentifiers = (text) => [
     ...maskRustCommentsAndLiterals(text).matchAll(/\bLegacySourceEqualityCapability\b/gu),
   ].length;
-  assert.equal(countProjectionIdentifiers(projectionDeclaration.source), 1);
-  assert.equal(countCapabilityIdentifiers(projectionDeclaration.source), 1);
-  assert.equal(countProjectionIdentifiers(equalityFunction.source), 1);
-  assert.equal(countCapabilityIdentifiers(equalityFunction.source), 1);
+  for (const [index, name] of legacyProjectionNames.entries()) {
+    const declaration = projectionDeclarations[index];
+    assert.equal(countProjectionIdentifiers(declaration.source, name), 1);
+    assert.equal(countCapabilityIdentifiers(declaration.source), 1);
+    assert.equal(countProjectionIdentifiers(equalityFunction.source, name), 1);
+  }
+  assert.equal(
+    countCapabilityIdentifiers(equalityFunction.source),
+    legacyProjectionNames.length,
+    "source equality constructs the capability exactly once per legacy source version",
+  );
   const productionReview = maskedRustProductionSource(source).split("");
-  for (const declaration of [projectionDeclaration, equalityFunction]) {
+  for (const declaration of [...projectionDeclarations, equalityFunction]) {
     for (let index = declaration.start; index < declaration.end; index += 1) {
       if (productionReview[index] !== "\n" && productionReview[index] !== "\r") {
         productionReview[index] = " ";
@@ -1819,13 +1855,18 @@ const hostedRustMatrixLabels = [
   "windows-11-arm",
   "macos-latest",
 ];
+// v1 and v2 are both read-only compatibility goldens; only v3 is emitted. The
+// drift check covers the whole fixture directory rather than two named files,
+// so a newly frozen golden cannot be added without also being held immutable.
 const nativeFixtureCiCommands = [
   "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json",
   "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
-  "cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v2.json",
-  "git diff --exit-code -- schemas/fixtures/signed-batch-v1.json schemas/fixtures/signed-batch-v2.json",
   "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json",
   "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json",
+  "cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v3.json",
+  "git diff --exit-code -- schemas/fixtures/",
+  "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json",
+  "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v3.json",
 ];
 // The exit's platform claims are the Windows named-pipe endpoint and the Unix
 // domain socket, so its matrix is exactly the two labels that carry one of
@@ -1955,10 +1996,15 @@ const expectedCiWorkflow = {
           run: nativeFixtureCiCommands[0],
         },
         { name: "Replay immutable v1 fixture", run: nativeFixtureCiCommands[1] },
-        { name: "Emit deterministic v2 fixture", run: nativeFixtureCiCommands[2] },
-        { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[3] },
-        { name: "Verify deterministic v2 fixture", run: nativeFixtureCiCommands[4] },
-        { name: "Replay deterministic v2 fixture", run: nativeFixtureCiCommands[5] },
+        {
+          name: "Verify immutable v2 fixture and upcast",
+          run: nativeFixtureCiCommands[2],
+        },
+        { name: "Replay immutable v2 fixture", run: nativeFixtureCiCommands[3] },
+        { name: "Emit deterministic v3 fixture", run: nativeFixtureCiCommands[4] },
+        { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[5] },
+        { name: "Verify deterministic v3 fixture", run: nativeFixtureCiCommands[6] },
+        { name: "Replay deterministic v3 fixture", run: nativeFixtureCiCommands[7] },
       ],
     },
     // The Phase 1 crash, replay, and restore exit. Its matrix is a two-label
@@ -2442,17 +2488,17 @@ for (const [name, mutation] of [
     ),
   ],
   [
-    "failure-tolerant v2 verification step",
+    "failure-tolerant v3 verification step",
     ciText.replace(
-      "      - name: Verify deterministic v2 fixture",
-      "      - name: Verify deterministic v2 fixture\n        continue-on-error: true",
+      "      - name: Verify deterministic v3 fixture",
+      "      - name: Verify deterministic v3 fixture\n        continue-on-error: true",
     ),
   ],
   [
-    "disabled v2 replay step",
+    "disabled v3 replay step",
     ciText.replace(
-      "      - name: Replay deterministic v2 fixture",
-      "      - name: Replay deterministic v2 fixture\n        if: false",
+      "      - name: Replay deterministic v3 fixture",
+      "      - name: Replay deterministic v3 fixture\n        if: false",
     ),
   ],
   [
@@ -2507,7 +2553,7 @@ for (const [name, mutation] of [
     `${name} must fail effective CI conformance verification`,
   );
 }
-const protoRoots = [protoV1Text, protoV2Text].map((text) => {
+const protoRoots = [protoV1Text, protoV2Text, protoV3Text].map((text) => {
   const root = protobuf.parse(text, { keepCase: true }).root;
   root.resolveAll();
   return root;
@@ -2592,6 +2638,9 @@ const rustModuleEnumBody = (source, moduleName, enumName) => {
 };
 const rustScalarFields = [
   ["ProtoUuidV7", "value", 1],
+  ["ProtoSha256Digest", "value", 1],
+  ["ProtoValidInterval", "from", 1],
+  ["ProtoValidInterval", "to", 2],
   ["ProtoTimestampMillis", "unix_epoch_millis", 1],
   ["ProtoUserActor", "user_id", 1],
   ["ProtoDeterministicEngineActor", "name", 1],
@@ -2615,7 +2664,8 @@ const actorWireFields = [
   ["ModelRun", "model_run", 3],
   ["Importer", "importer", 4],
 ];
-const payloadWireFields = [
+// Arms every declared Proto version carries. Tags 10..=15 are frozen.
+const legacyPayloadWireFields = [
   ["ArtifactRegistered", "artifact_registered", 10],
   ["EvidenceRegistered", "evidence_registered", 11],
   ["ClaimAsserted", "claim_asserted", 12],
@@ -2623,6 +2673,53 @@ const payloadWireFields = [
   ["ScopeRegistered", "scope_registered", 14],
   ["ClaimRelated", "claim_related", 15],
 ];
+// Event schema v3 arms, declared only by academic.v3 and additive over the
+// frozen legacy tags: [Rust oneof variant, Proto field, tag, message, parent].
+const v3PayloadWireFields = [
+  ["CurriculumVersionPublished", "curriculum_version_published", 16, "CurriculumVersionRegistration", undefined],
+  ["CourseRevisionPublished", "course_revision_published", 17, "CourseRevisionRegistration", "curriculum_version_id"],
+  ["OfferingObserved", "offering_observed", 18, "OfferingRegistration", "course_revision_id"],
+  ["AttemptRecorded", "attempt_recorded", 19, "AttemptRegistration", "offering_id"],
+  ["RequirementSetPublished", "requirement_set_published", 20, "RequirementSetRegistration", "curriculum_version_id"],
+  ["AuditComputed", "audit_computed", 21, "AuditRegistration", "requirement_set_id"],
+  ["CapturePermissionRecorded", "capture_permission_recorded", 22, "CapturePermissionRegistration", "offering_id"],
+  ["LectureSessionRecorded", "lecture_session_recorded", 23, "LectureSessionRegistration", "offering_id"],
+  ["TranscriptVersionAdded", "transcript_version_added", 24, "TranscriptVersionRegistration", "lecture_session_id"],
+  ["LectureDocumentPublished", "lecture_document_published", 25, "LectureDocumentRegistration", "lecture_session_id"],
+  ["SnapshotRegistered", "snapshot_registered", 26, "SnapshotRegistration", "repository_id"],
+  ["FindingPublished", "finding_published", 27, "FindingRegistration", "snapshot_id"],
+  ["ModelRunRecorded", "model_run_recorded", 28, "ModelRunRegistration", undefined],
+  ["ProposalDisposed", "proposal_disposed", 29, "ProposalDispositionRegistration", "model_run_id"],
+  ["EgressDecided", "egress_decided", 30, "EgressDecisionRegistration", undefined],
+  ["ConsentRecorded", "consent_recorded", 31, "ConsentRegistration", undefined],
+  ["EntityIdentityChanged", "entity_identity_changed", 32, "EntityIdentityChangeRegistration", "entity_id"],
+  ["RetentionActionRecorded", "retention_action_recorded", 33, "RetentionActionRegistration", undefined],
+];
+const payloadWireFields = [...legacyPayloadWireFields, ...v3PayloadWireFields];
+// Every registration message carries the identical frame, so one row states the
+// whole v3 arm payload contract: 1 id, 2 parent where one exists, 3 domain_id,
+// 4 scope_id, 5 source_digest, 6 valid_time.
+const registrationMessageFields = (parent) => [
+  ["id", 1],
+  ...(parent === undefined ? [] : [[parent, 2]]),
+  ["domain_id", 3],
+  ["scope_id", 4],
+  ["source_digest", 5],
+  ["valid_time", 6],
+];
+// The same frame as hand-written Rust field rows, reviewed only against v3.
+const v3RustScalarFields = v3PayloadWireFields.flatMap(([, , , messageName, parent]) =>
+  registrationMessageFields(parent).map(([fieldName, tag]) => [
+    `Proto${messageName}`,
+    fieldName,
+    tag,
+  ]),
+);
+// The hand-written Prost mirror models the v3 superset so Prost applies
+// protobuf's last-oneof-value rule to every tag any declared version emits. A
+// v1 or v2 root therefore declares a subset of the arms Rust knows.
+const declaredPayloadWireFields = (version) =>
+  version === 3 ? payloadWireFields : legacyPayloadWireFields;
 const relationKindValues = [
   ["Unspecified", "CLAIM_RELATION_KIND_UNSPECIFIED", 0],
   ["Supports", "CLAIM_RELATION_KIND_SUPPORTS", 1],
@@ -2672,9 +2769,11 @@ const expectedProstField = (field) => {
   const isMessage = field.resolvedType instanceof protobuf.Type;
   const isEnumeration = field.resolvedType instanceof protobuf.Enum;
   const kind = isMessage ? "message" : isEnumeration ? "enumeration" : field.type;
+  const syntheticOptional =
+    field.options?.proto3_optional === true && field.partOf?.name === `_${field.name}`;
   const cardinality = field.repeated
     ? "repeated"
-    : field.partOf !== null && field.partOf !== undefined
+    : field.partOf !== null && field.partOf !== undefined && !syntheticOptional
       ? "oneof"
       : isMessage || field.options?.proto3_optional === true
         ? "optional"
@@ -2710,7 +2809,7 @@ const expectedProstField = (field) => {
     cardinality,
     tag: field.id,
     rustType,
-    oneof: field.partOf?.name,
+    oneof: syntheticOptional ? undefined : field.partOf?.name,
   };
 };
 const parseRustOneofVariant = (source, moduleName, enumName, variantName) => {
@@ -2803,7 +2902,7 @@ const assertRustActorMappings = (source) => {
 };
 const assertRustWireContract = (source) => {
   const expectedFieldsByStruct = new Map();
-  for (const [structName, fieldName] of rustScalarFields) {
+  for (const [structName, fieldName] of [...rustScalarFields, ...v3RustScalarFields]) {
     const fields = expectedFieldsByStruct.get(structName) ?? [];
     fields.push(fieldName);
     expectedFieldsByStruct.set(structName, fields);
@@ -2830,7 +2929,7 @@ const assertRustWireContract = (source) => {
     payloadWireFields.map(([variantName]) => variantName),
     "ProtoOriginEvent.payload hand-written oneof membership must be exact",
   );
-  for (const [structName, fieldName, tag] of rustScalarFields) {
+  for (const [structName, fieldName, tag] of [...rustScalarFields, ...v3RustScalarFields]) {
     const body = rustStructBody(source, structName);
     assert.match(
       body,
@@ -2840,11 +2939,16 @@ const assertRustWireContract = (source) => {
   }
   for (const [structName, oneofField, tags] of [
     ["ProtoActor", "kind", "1, 2, 3, 4"],
-    ["ProtoOriginEvent", "payload", "10, 11, 12, 13, 14, 15"],
+    ["ProtoOriginEvent", "payload", "10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33"],
   ]) {
     assert.match(
       rustStructBody(source, structName),
-      new RegExp(`#\\[prost\\(oneof = "[^"]+", tags = "${tags}"\\)\\]\\s*${oneofField}:`, "u"),
+      // rustfmt breaks a long attribute across lines, so the review tolerates
+      // whitespace between the reviewed tokens but not a change to any of them.
+      new RegExp(
+        `#\\[prost\\(\\s*oneof = "[^"]+",\\s*tags = "${tags}",?\\s*\\)\\]\\s*${oneofField}:`,
+        "u",
+      ),
       `${structName}.${oneofField} must enumerate every declared oneof tag`,
     );
   }
@@ -2860,17 +2964,25 @@ const assertRustWireContract = (source) => {
         `${moduleName}::${variantName} must retain tag ${tag}`,
       );
       for (const [versionIndex, root] of protoRoots.entries()) {
+        const version = versionIndex + 1;
         const messageName = moduleName === "proto_actor" ? "Actor" : "OriginEvent";
         const oneofName = moduleName === "proto_actor" ? "kind" : "payload";
-        const field = root.lookupType(`academic.v${versionIndex + 1}.${messageName}`).fields[fieldName];
-        assert.ok(field, `v${versionIndex + 1} ${messageName}.${fieldName} must exist`);
+        const field = root.lookupType(`academic.v${version}.${messageName}`).fields[fieldName];
+        if (
+          moduleName === "proto_origin_event" &&
+          !declaredPayloadWireFields(version).some(([, name]) => name === fieldName)
+        ) {
+          assert.equal(field, undefined, `v${version} must not declare ${fieldName}`);
+          continue;
+        }
+        assert.ok(field, `v${version} ${messageName}.${fieldName} must exist`);
         const actual = parseRustOneofVariant(
           source,
           moduleName,
           moduleName === "proto_actor" ? "Kind" : "Payload",
           variantName,
         );
-        assert.equal(field.partOf?.name, oneofName, `v${versionIndex + 1} ${messageName}.${fieldName} oneof`);
+        assert.equal(field.partOf?.name, oneofName, `v${version} ${messageName}.${fieldName} oneof`);
         assert.equal(actual.kind, "message", `${moduleName}::${variantName} Prost type`);
         assert.equal(actual.tag, field.id, `${moduleName}::${variantName} tag`);
         assert.equal(
@@ -2882,7 +2994,10 @@ const assertRustWireContract = (source) => {
     }
   }
   for (const [versionIndex, root] of protoRoots.entries()) {
-    for (const [structName, fieldName] of rustScalarFields) {
+    const reviewedFields = versionIndex + 1 === 3
+      ? [...rustScalarFields, ...v3RustScalarFields]
+      : rustScalarFields;
+    for (const [structName, fieldName] of reviewedFields) {
       const messageName = structName.slice("Proto".length);
       const protoField = root.lookupType(`academic.v${versionIndex + 1}.${messageName}`).fields[fieldName];
       assert.ok(protoField, `v${versionIndex + 1} ${messageName}.${fieldName} must exist`);
@@ -2906,10 +3021,22 @@ const assertRustWireContract = (source) => {
       ["ProtoOriginEvent", "payload", "proto_origin_event", "Payload", "OriginEvent", "payload"],
     ]) {
       const actual = parseRustProstField(source, structName, fieldName);
-      const oneof = root.lookupType(`academic.v${versionIndex + 1}.${protoMessage}`).oneofs[oneofName];
-      const expectedTags = oneof.oneof.map((name) => root.lookupType(
-        `academic.v${versionIndex + 1}.${protoMessage}`,
+      const version = versionIndex + 1;
+      const oneof = root.lookupType(`academic.v${version}.${protoMessage}`).oneofs[oneofName];
+      const declaredTags = oneof.oneof.map((name) => root.lookupType(
+        `academic.v${version}.${protoMessage}`,
       ).fields[name].id);
+      // Rust enumerates every tag any declared version emits; each version's own
+      // tag list must be exactly the prefix of that superset it declares, so no
+      // emitted tag is ever dropped, reordered, or reused across the three.
+      const supersetTags = protoMessage === "OriginEvent"
+        ? payloadWireFields.map(([, , tag]) => tag)
+        : declaredTags;
+      assert.deepEqual(
+        declaredTags,
+        supersetTags.slice(0, declaredTags.length),
+        `v${version} ${protoMessage}.${oneofName} tags must be a prefix of the emitted superset`,
+      );
       assert.deepEqual(
         actual,
         {
@@ -2917,10 +3044,10 @@ const assertRustWireContract = (source) => {
           typeParameter: `${moduleName}::${enumName}`,
           cardinality: "singular",
           tag: undefined,
-          tags: expectedTags,
+          tags: supersetTags,
           rustType: `Option<${moduleName}::${enumName}>`,
         },
-        `v${versionIndex + 1} ${structName}.${fieldName} oneof membership/type/tag parity`,
+        `v${version} ${structName}.${fieldName} oneof membership/type/tag parity`,
       );
     }
   }
@@ -3051,6 +3178,8 @@ assert.throws(
 
 const declaredMessageFields = [
   ["UuidV7", [["value", 1]]],
+  ["Sha256Digest", [["value", 1]]],
+  ["ValidInterval", [["from", 1], ["to", 2]]],
   ["TimestampMillis", [["unix_epoch_millis", 1]]],
   ["UserActor", [["user_id", 1]]],
   ["DeterministicEngineActor", [["name", 1], ["version", 2]]],
@@ -3073,26 +3202,48 @@ const declaredMessageFields = [
     ],
   ],
 ];
-for (const version of [1, 2]) {
+const v3OnlyMessageFields = v3PayloadWireFields.map(([, , , messageName, parent]) => [
+  messageName,
+  registrationMessageFields(parent),
+]);
+for (const version of [1, 2, 3]) {
   const root = protoRoots[version - 1];
   assert.ok(root);
-  for (const [messageName, fields] of declaredMessageFields) {
+  const messagesForVersion = version === 3
+    ? [...declaredMessageFields, ...v3OnlyMessageFields]
+    : declaredMessageFields;
+  for (const [messageName, fields] of messagesForVersion) {
+    const declared = messageName === "OriginEvent"
+      ? fields.filter(([fieldName]) =>
+        !v3PayloadWireFields.some(([, v3Field]) => v3Field === fieldName) ||
+        version === 3)
+      : fields;
     const message = root.lookupType(`academic.v${version}.${messageName}`);
     assert.deepEqual(
       Object.keys(message.fields).sort(),
-      fields.map(([fieldName]) => fieldName).sort(),
+      declared.map(([fieldName]) => fieldName).sort(),
       `v${version} ${messageName} shape must match every hand-written Rust field`,
     );
-    for (const [fieldName, tag] of fields) {
+    for (const [fieldName, tag] of declared) {
       assert.equal(message.fields[fieldName]?.id, tag, `v${version} ${messageName}.${fieldName}`);
     }
+  }
+  for (const [, , , messageName] of v3PayloadWireFields) {
+    if (version === 3) {
+      continue;
+    }
+    assert.throws(
+      () => root.lookupType(`academic.v${version}.${messageName}`),
+      undefined,
+      `v${version} must not declare the v3 registration message ${messageName}`,
+    );
   }
   const actor = root.lookupType(`academic.v${version}.Actor`);
   const originEvent = root.lookupType(`academic.v${version}.OriginEvent`);
   assert.deepEqual(actor.oneofs.kind.oneof, actorWireFields.map(([, fieldName]) => fieldName));
   assert.deepEqual(
     originEvent.oneofs.payload.oneof,
-    payloadWireFields.map(([, fieldName]) => fieldName),
+    declaredPayloadWireFields(version).map(([, fieldName]) => fieldName),
   );
   const relationKind = root.lookupEnum(`academic.v${version}.ClaimRelationKind`);
   for (const [, protoName, value] of relationKindValues) {
@@ -3274,6 +3425,229 @@ assert.match(protoV2Text, /bytes deterministic_payload_cbor = 2;/u);
 assert.doesNotMatch(fixtureV1Text, /https?:\/\//u);
 assert.doesNotMatch(fixtureV2Text, /https?:\/\//u);
 
+// ---------------------------------------------------------------------------
+// Event schema v3: tag discipline, three-version codegen drift, and independent
+// cross-runtime agreement on every new arm. The three assertions below carry the
+// acceptance-evidence names for P2-C1 so an audit can find them by name.
+// ---------------------------------------------------------------------------
+
+/// `v3_arms_use_unreused_tags`
+///
+/// Tags 10..=15 stay bound to their v1/v2 arms across all three declared
+/// versions, 6..=9 stay reserved in every version, and the eighteen v3 arms
+/// occupy 16..=33 with no tag emitted by an earlier version reused or moved.
+const v3_arms_use_unreused_tags = (roots) => {
+  const emitted = new Map();
+  for (const [versionIndex, root] of roots.entries()) {
+    const version = versionIndex + 1;
+    const originEvent = root.lookupType(`academic.v${version}.OriginEvent`);
+    for (const fieldName of originEvent.oneofs.payload.oneof) {
+      const tag = originEvent.fields[fieldName].id;
+      const previous = emitted.get(tag);
+      assert.ok(
+        previous === undefined || previous === fieldName,
+        `Proto tag ${tag} is ${previous} in an earlier version and ${fieldName} in v${version}`,
+      );
+      emitted.set(tag, fieldName);
+    }
+    for (const reserved of [6, 7, 8, 9]) {
+      assert.ok(
+        !Object.values(originEvent.fields).some((field) => field.id === reserved),
+        `v${version} OriginEvent must keep tag ${reserved} reserved`,
+      );
+    }
+  }
+  assert.deepEqual(
+    [...emitted.entries()].toSorted(([left], [right]) => left - right),
+    payloadWireFields.map(([, fieldName, tag]) => [tag, fieldName]),
+    "the union of every declared version's arms is exactly the emitted tag table",
+  );
+  const v3Tags = v3PayloadWireFields.map(([, , tag]) => tag);
+  assert.deepEqual(v3Tags, Array.from({ length: 18 }, (_, index) => 16 + index));
+  assert.equal(new Set(v3Tags).size, 18, "no v3 arm may share a tag with another");
+  for (const [, , legacyTag] of legacyPayloadWireFields) {
+    assert.ok(!v3Tags.includes(legacyTag), `v3 must not reuse tag ${legacyTag}`);
+  }
+};
+v3_arms_use_unreused_tags(protoRoots);
+
+/// `proto_codegen_has_no_drift_v3`
+///
+/// The hand-written Prost mirror and all three declared schemas are reviewed
+/// together, and a tag mutation on either side of the v3 boundary fails.
+const proto_codegen_has_no_drift_v3 = () => {
+  assert.match(protoV3Text, /package academic\.v3;/u);
+  assert.equal(protoRoots.length, 3, "the drift gate reviews three Proto versions");
+  assertRustWireContract(rustProtoContractText);
+
+  const rustTagMutation = rustProtoContractText.replace(
+    '#[prost(message, tag = "16")]\n        CurriculumVersionPublished',
+    '#[prost(message, tag = "34")]\n        CurriculumVersionPublished',
+  );
+  assert.notEqual(rustTagMutation, rustProtoContractText);
+  assert.throws(
+    () => assertRustWireContract(rustTagMutation),
+    undefined,
+    "a hand-written v3 arm tag mutation must fail contract verification",
+  );
+
+  const rustFieldMutation = rustProtoContractText.replace(
+    '#[prost(message, optional, tag = "5")]\n    source_digest: Option<ProtoSha256Digest>,\n    #[prost(message, optional, tag = "6")]\n    valid_time: Option<ProtoValidInterval>,\n}\n\n#[derive(Clone, PartialEq, Message)]\nstruct ProtoCourseRevisionRegistration',
+    '#[prost(message, optional, tag = "7")]\n    source_digest: Option<ProtoSha256Digest>,\n    #[prost(message, optional, tag = "6")]\n    valid_time: Option<ProtoValidInterval>,\n}\n\n#[derive(Clone, PartialEq, Message)]\nstruct ProtoCourseRevisionRegistration',
+  );
+  assert.notEqual(rustFieldMutation, rustProtoContractText);
+  assert.throws(
+    () => assertRustWireContract(rustFieldMutation),
+    undefined,
+    "a v3 registration field tag mutation must fail contract verification",
+  );
+
+  const protoTagMutation = protoV3Text.replace(
+    "CurriculumVersionRegistration curriculum_version_published = 16;",
+    "CurriculumVersionRegistration curriculum_version_published = 34;",
+  );
+  assert.notEqual(protoTagMutation, protoV3Text);
+  const mutatedRoot = protobuf.parse(protoTagMutation, { keepCase: true }).root;
+  mutatedRoot.resolveAll();
+  assert.throws(
+    () => v3_arms_use_unreused_tags([protoRoots[0], protoRoots[1], mutatedRoot]),
+    undefined,
+    "a declared v3 arm tag mutation must fail Proto verification",
+  );
+
+  const reusedLegacyTag = protoV3Text.replace(
+    "CurriculumVersionRegistration curriculum_version_published = 16;",
+    "CurriculumVersionRegistration curriculum_version_published = 15;",
+  );
+  assert.notEqual(reusedLegacyTag, protoV3Text);
+  assert.throws(
+    () => {
+      const reusedRoot = protobuf.parse(reusedLegacyTag, { keepCase: true }).root;
+      reusedRoot.resolveAll();
+      v3_arms_use_unreused_tags([protoRoots[0], protoRoots[1], reusedRoot]);
+    },
+    undefined,
+    "reusing a frozen v1/v2 tag in v3 must fail Proto verification",
+  );
+};
+proto_codegen_has_no_drift_v3();
+
+/// `rust_and_protobufjs_agree_on_every_v3_arm`
+///
+/// Every golden in the Rust wire test is recomputed here from the declared
+/// `academic.v3` schema by protobuf.js. Neither runtime can move without the
+/// other, and each arm is proved to select its own tag and round-trip.
+const rust_and_protobufjs_agree_on_every_v3_arm = () => {
+  const goldenBody = rustProtoContractText.match(
+    /fn v3_arm_goldens\(\)[\s\S]*?\n    \}\n/u,
+  )?.[0];
+  assert.ok(goldenBody, "the Rust v3 arm golden table must remain explicitly named");
+  const rustGoldens = [...goldenBody.matchAll(
+    /\n {12}\(\n {16}(?<tag>\d+),\n {16}"(?<field>[a-z_]+)",[\s\S]*?\n {16}"(?<hex>[0-9a-f]+)",\n {12}\),/gu,
+  )].map((match) => [Number(match.groups.tag), match.groups.field, match.groups.hex]);
+  assert.equal(rustGoldens.length, 18, "Rust must publish one golden per v3 arm");
+
+  const v3Root = protoRoots[2];
+  assert.ok(v3Root);
+  const originEvent = v3Root.lookupType("academic.v3.OriginEvent");
+  const registrationBase = {
+    id: { value: uuidBytes("01900000-0000-7000-8000-00000000000c") },
+    origin_seq: 12,
+    origin_observed_at: { unix_epoch_millis: 112 },
+    domain_id: { value: uuidBytes("01900000-0000-7000-8000-000000000001") },
+    actor: { importer: { name: "synthetic.official.fixture", version: "1.0.0" } },
+  };
+  const registrationRecord = (parent, withDigest) => ({
+    id: { value: uuidBytes("01900000-0000-7000-8000-000000000410") },
+    ...(parent === undefined
+      ? {}
+      : { [parent]: { value: uuidBytes("01900000-0000-7000-8000-000000000411") } }),
+    domain_id: { value: uuidBytes("01900000-0000-7000-8000-000000000001") },
+    scope_id: { value: uuidBytes("01900000-0000-7000-8000-000000000007") },
+    ...(withDigest
+      ? {
+        source_digest: {
+          value: Buffer.from(
+            "0aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b8134",
+            "hex",
+          ),
+        },
+      }
+      : {}),
+    valid_time: { from: { unix_epoch_millis: 100 } },
+  });
+
+  for (const [index, [, fieldName, tag, , parent]] of v3PayloadWireFields.entries()) {
+    const [rustTag, rustField, rustHex] = rustGoldens[index];
+    assert.equal(rustTag, tag, `Rust golden ${index} must carry tag ${tag}`);
+    assert.equal(rustField, fieldName, `Rust golden ${index} must name ${fieldName}`);
+
+    const value = { ...registrationBase, [fieldName]: registrationRecord(parent, true) };
+    assert.equal(originEvent.verify(value), null, `${fieldName} shape`);
+    const bytes = Buffer.from(originEvent.encode(value).finish());
+    assert.equal(
+      bytes.toString("hex"),
+      rustHex,
+      `protobuf.js ${fieldName} bytes must match the independent Rust golden`,
+    );
+    const roundTrip = originEvent.toObject(originEvent.decode(bytes), {
+      bytes: String,
+      longs: Number,
+      oneofs: true,
+    });
+    assert.equal(roundTrip.payload, fieldName, `${fieldName} selected oneof arm`);
+    assert.equal(
+      roundTrip[fieldName].id.value,
+      Buffer.from("01900000000070008000000000000410", "hex").toString("base64"),
+      `${fieldName} decoded aggregate identity`,
+    );
+
+    // The last known arm still wins, so a v3 arm cannot be shadowed by a legacy
+    // one appearing after it and vice versa.
+    const emptyRelation = Buffer.from([0x7a, 0x00]);
+    assert.equal(
+      originEvent.toObject(
+        originEvent.decode(Buffer.concat([emptyRelation, bytes])),
+        { oneofs: true },
+      ).payload,
+      fieldName,
+      `${fieldName} after claim_related must override it`,
+    );
+    assert.equal(
+      originEvent.toObject(
+        originEvent.decode(Buffer.concat([bytes, emptyRelation])),
+        { oneofs: true },
+      ).payload,
+      "claim_related",
+      `claim_related after ${fieldName} must override it`,
+    );
+  }
+
+  // The optional provenance digest is absence, not an empty digest.
+  const bareHex = rustProtoContractText.match(
+    /fn t093_v3_source_digest_round_trips_present_and_absent\(\)[\s\S]*?hex::encode\(&encoded\),\s*"(?<hex>[0-9a-f]+)"\s*[,)]/u,
+  )?.groups?.hex;
+  assert.ok(bareHex, "the Rust absent-source-digest golden must remain named");
+  const bareValue = {
+    ...registrationBase,
+    curriculum_version_published: registrationRecord(undefined, false),
+  };
+  assert.equal(
+    Buffer.from(originEvent.encode(bareValue).finish()).toString("hex"),
+    bareHex,
+    "protobuf.js must reproduce the absent-source-digest golden",
+  );
+  assert.equal(
+    originEvent.toObject(
+      originEvent.decode(Buffer.from(bareHex, "hex")),
+      { oneofs: true },
+    ).curriculum_version_published.source_digest,
+    undefined,
+    "an absent source digest must decode as absent",
+  );
+};
+rust_and_protobufjs_agree_on_every_v3_arm();
+
 console.log(
-  "Immutable v1 contracts, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v2-only writers, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
+  "Immutable v1 and v2 contracts, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v3-only writers, event schema v3 arm and tag discipline across three Proto versions, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
 );

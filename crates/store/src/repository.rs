@@ -61,6 +61,7 @@ pub enum RepositoryError {
     MismatchedSealedReceipt(ArtifactId),
     Corrupt(&'static str),
     IntegerOverflow(u64),
+    UnstorableEventKind(&'static str),
 }
 
 impl fmt::Display for RepositoryError {
@@ -81,6 +82,10 @@ impl fmt::Display for RepositoryError {
                 "artifact {artifact_id} has a mismatched retained sealed receipt"
             ),
             Self::Corrupt(reason) => write!(formatter, "normalized store is corrupt: {reason}"),
+            Self::UnstorableEventKind(kind) => write!(
+                formatter,
+                "event kind {kind} has no canonical table in this store schema"
+            ),
             Self::IntegerOverflow(value) => {
                 write!(
                     formatter,
@@ -101,7 +106,8 @@ impl Error for RepositoryError {
             Self::MissingSealedReceipt(_)
             | Self::MismatchedSealedReceipt(_)
             | Self::Corrupt(_)
-            | Self::IntegerOverflow(_) => None,
+            | Self::IntegerOverflow(_)
+            | Self::UnstorableEventKind(_) => None,
         }
     }
 }
@@ -458,6 +464,10 @@ impl<'transaction, 'connection, 'receipts> ClosureWriter<'transaction, 'connecti
             EventPayload::DecisionRecorded(decision) => {
                 self.append_decision(event, decision, accept_seq)
             }
+            // Unreachable in practice: acceptance rejects every event schema v3
+            // arm before the transaction opens, because this store schema has no
+            // canonical table for one. Kept typed rather than panicking.
+            payload => Err(RepositoryError::UnstorableEventKind(payload.kind())),
         }
     }
 
@@ -1464,14 +1474,7 @@ fn actor_kind(actor: &Actor) -> &'static str {
 }
 
 fn event_kind(payload: &EventPayload) -> &'static str {
-    match payload {
-        EventPayload::ScopeRegistered(_) => "SCOPE_REGISTERED",
-        EventPayload::ArtifactRegistered(_) => "ARTIFACT_REGISTERED",
-        EventPayload::EvidenceRegistered(_) => "EVIDENCE_REGISTERED",
-        EventPayload::ClaimAsserted(_) => "CLAIM_ASSERTED",
-        EventPayload::ClaimRelated(_) => "CLAIM_RELATED",
-        EventPayload::DecisionRecorded(_) => "DECISION_RECORDED",
-    }
+    payload.kind()
 }
 
 fn confidentiality(value: Confidentiality) -> &'static str {

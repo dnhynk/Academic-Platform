@@ -12,7 +12,9 @@ import {
 
 const fixtureV1Url = new URL("../../../schemas/fixtures/signed-batch-v1.json", import.meta.url);
 const fixtureV2Url = new URL("../../../schemas/fixtures/signed-batch-v2.json", import.meta.url);
+const fixtureV3Url = new URL("../../../schemas/fixtures/signed-batch-v3.json", import.meta.url);
 const immutableV1Sha256 = "287f7dea8fd24c3c6eb205c3f1e2873f6afdf7d6532fe7be4fccfb44a0b7e163";
+const immutableV2Sha256 = "f94dfcf7e3e376e54b5514ceb3016b0b7d97d17366562f7ac4a16286d3aa367d";
 const artifactCorpusUrl = new URL(
   "../../../schemas/fixtures/artifact-descriptor-parity-v1.json",
   import.meta.url,
@@ -53,11 +55,16 @@ function replaceBytesOnce(
   ]);
 }
 
-void test("the immutable v1 and current v2 fixtures are synthetic and structurally valid", async () => {
-  const [v1Bytes, v2Bytes] = await Promise.all([readFile(fixtureV1Url), readFile(fixtureV2Url)]);
+void test("the immutable v1 and v2 fixtures and the current v3 fixture are synthetic and structurally valid", async () => {
+  const [v1Bytes, v2Bytes, v3Bytes] = await Promise.all([
+    readFile(fixtureV1Url),
+    readFile(fixtureV2Url),
+    readFile(fixtureV3Url),
+  ]);
   assert.equal(createHash("sha256").update(v1Bytes).digest("hex"), immutableV1Sha256);
+  assert.equal(createHash("sha256").update(v2Bytes).digest("hex"), immutableV2Sha256);
 
-  for (const [version, bytes] of [[1, v1Bytes], [2, v2Bytes]] as const) {
+  for (const [version, bytes] of [[1, v1Bytes], [2, v2Bytes], [3, v3Bytes]] as const) {
     const fixture = parseFixtureDocumentJson(bytes);
 
     assert.equal(fixture.fixture_version, version);
@@ -65,7 +72,10 @@ void test("the immutable v1 and current v2 fixtures are synthetic and structural
     assert.equal(fixture.network_egress, "NONE");
     assert.equal(fixture.expected_replay.mastery, "PRACTICED");
     assert.equal(fixture.expected_replay.freshness, "STALE");
-    assert.equal(fixture.expected_replay.accepted_events, version === 1 ? 13 : 14);
+    assert.equal(
+      fixture.expected_replay.accepted_events,
+      version === 1 ? 13 : version === 2 ? 14 : 32,
+    );
     if (version === 1) {
       assert.equal(fixture.expected_replay.prediction_claims, undefined);
     } else {

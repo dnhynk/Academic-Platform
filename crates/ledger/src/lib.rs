@@ -86,6 +86,13 @@ pub enum LedgerError {
     /// An acceptance sequence counter overflowed.
     #[error("acceptance sequence exhausted")]
     AcceptSequenceExhausted,
+    /// An arm reached acceptance without a registration view or a dedicated handler.
+    ///
+    /// `EventPayload::registration` is the single exhaustive statement of which
+    /// arms are registrations. An arm that is neither handled above nor a
+    /// registration fails closed here rather than being accepted unapplied.
+    #[error("event payload {0} has no accepted ledger effect")]
+    UnregisteredEventPayload(&'static str),
 }
 
 /// A replica-local receipt. It does not pretend to be global wall-clock order.
@@ -163,6 +170,11 @@ pub struct LedgerState {
     relations: Vec<(ClaimRelation, AcceptedRelationMeta)>,
     decision_ids: BTreeSet<academic_domain::DecisionId>,
     decisions: Vec<(UserDecision, AcceptedDecisionMeta)>,
+    // Event schema v3 registrations carry no attribute state in this ledger: the
+    // typed closure tables that hold aggregate attributes arrive with migration
+    // 0004. What the pure ledger owes them now is identity uniqueness and the
+    // same domain/scope closure it enforces for every other arm.
+    registrations: BTreeSet<(&'static str, [u8; 16])>,
 }
 
 impl Default for LedgerState {
@@ -188,6 +200,7 @@ impl LedgerState {
             relations: Vec::new(),
             decision_ids: BTreeSet::new(),
             decisions: Vec::new(),
+            registrations: BTreeSet::new(),
         }
     }
 
@@ -466,6 +479,27 @@ impl LedgerState {
                 }
                 self.decisions
                     .push((decision.clone(), AcceptedDecisionMeta { accept_seq }));
+            }
+            payload => {
+                let registration = payload
+                    .registration()
+                    .ok_or(LedgerError::UnregisteredEventPayload(payload.kind()))?;
+                let scope = self
+                    .scopes
+                    .get(&registration.scope_id)
+                    .ok_or(LedgerError::UnknownScope(registration.scope_id))?;
+                if scope.domain_id != event.domain_id {
+                    return Err(LedgerError::CrossDomain("aggregate registration scope"));
+                }
+                if !self
+                    .registrations
+                    .insert((registration.kind, *registration.id.as_bytes()))
+                {
+                    return Err(LedgerError::DuplicateId {
+                        kind: registration.kind,
+                        id: registration.id.to_string(),
+                    });
+                }
             }
         }
         Ok(())

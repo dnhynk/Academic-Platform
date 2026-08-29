@@ -311,7 +311,10 @@ mod tests {
     fn core_acceptance_with_real_vault_bytes_rejects_missing_object() -> Result<(), Box<dyn Error>>
     {
         let database = TemporaryDatabase::new()?;
-        let document = crate::build_fixture_document()?;
+        // The store lane accepts the v2 compatibility fixture: a v3 arm has no
+        // canonical table until migration 0004, so a v3 batch is refused before
+        // sealing and this test could never reach the sealing failure it asserts.
+        let document = crate::immutable_v2_fixture_document()?;
         let envelope = hex::decode(&document.signed_batch_cbor_hex)?;
         let authorization = crate::fixture_device_authorization()?;
         let verified = verify_signed_batch(&envelope, &authorization)?;
