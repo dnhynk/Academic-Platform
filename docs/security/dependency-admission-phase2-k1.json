@@ -1,0 +1,597 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-a",
+  "task": "P2-K1",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 43,
+    "key_schedule_and_wrap_count": 13,
+    "linux_secret_service_broker_count": 30,
+    "linked_into_binary_count": 29,
+    "build_time_only_count": 14,
+    "second_async_runtime_added": false,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {
+    "argon2": "0.5.3",
+    "chacha20poly1305": "0.10.1",
+    "hkdf": "0.12.4",
+    "subtle": "2.6.1",
+    "zbus": "5.19.0",
+    "zeroize": "1.9.0"
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-crypto",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    },
+    {
+      "name": "academic-keystore-platform",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "digest_tree_unification": {
+    "generation": "digest 0.10",
+    "rationale": "hkdf 0.12.4, argon2 0.5.3, blake2 0.10.6, and chacha20poly1305 0.10.1 were pinned to the versions sharing the digest 0.10 and crypto-common 0.1 generation already used by the admitted sha2 0.10.9 and hmac 0.12.1, so no second copy of the RustCrypto trait stack enters the graph.",
+    "duplicate_trait_generations": 0
+  },
+  "feature_reviews_of_already_admitted_packages": [
+    {
+      "name": "windows-sys",
+      "version": "0.61.2",
+      "added_features": [
+        "Win32_Security_Cryptography"
+      ],
+      "justification": "Supplies NCryptCreateProtectionDescriptor, NCryptProtectSecret, NCryptUnprotectSecret, and NCryptFreeBuffer for the Windows DPAPI-CNG broker. No new package, and no networking API is reachable through this feature."
+    },
+    {
+      "name": "tokio",
+      "version": "1.53.1",
+      "added_features": [
+        "rt"
+      ],
+      "target": "cfg(target_os = \"linux\")",
+      "justification": "The keystore leaf runs each Secret Service conversation on a dedicated thread with its own current-thread runtime, so the facade stays callable from a synchronous caller and from inside the daemon runtime. No new package and no new socket: zbus reaches the session bus over the same local Unix-domain-socket capability tokio already holds."
+    },
+    {
+      "name": "zeroize",
+      "version": "1.9.0",
+      "added_features": [
+        "alloc",
+        "derive"
+      ],
+      "justification": "Promoted from an existing transitive to a direct dependency. It is the zeroization boundary ADR-005 requires, and derive supplies the ZeroizeOnDrop bound the key types assert."
+    },
+    {
+      "name": "subtle",
+      "version": "2.6.1",
+      "added_features": [],
+      "justification": "Promoted from an existing transitive to a direct dependency for the constant-time recipient-record MAC comparison KY06 requires."
+    }
+  ],
+  "network_posture": "No dependency admitted here opens an outbound socket. zbus speaks only to the session D-Bus over a local Unix-domain socket owned by the user, matching the local-IPC posture already admitted for tokio and rustix.",
+  "advisory_path": "RustSec and crates.io advisories, GitHub security advisories, and upstream release notices, triaged as reviewed commits through this same admission process. .github/dependabot.yml opens no version-update pull request, so no automatic bump can bypass the review.",
+  "admissions": [
+    {
+      "name": "aead",
+      "version": "0.5.2",
+      "checksum": "d122413f284cf2d62fb1b7db97e02edb8cda96d769b16e443a4f6195e35662b0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.56",
+      "repository": "https://github.com/RustCrypto/traits",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "RustCrypto AEAD trait surface used by chacha20poly1305."
+    },
+    {
+      "name": "argon2",
+      "version": "0.5.3",
+      "checksum": "3c3610892ee6e0cbce8ae2700349fcf8f98adb0dbfbee85aec3c9179d29cc072",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.65",
+      "repository": "https://github.com/RustCrypto/password-hashes/tree/master/argon2",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Derives the recovery recipient wrapping key; a password KDF must not be hand-written, and this is the reference RustCrypto implementation."
+    },
+    {
+      "name": "async-broadcast",
+      "version": "0.7.2",
+      "checksum": "435a87a52755b8f27fcf321ac4f04b2802e337c8c4872923137471ec39c37532",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.60",
+      "repository": "https://github.com/smol-rs/async-broadcast",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Broadcast channel zbus uses to fan out signals; performs no I/O of its own."
+    },
+    {
+      "name": "async-recursion",
+      "version": "1.1.1",
+      "checksum": "3b43422f69d8ff38f95f1b2bb76517c91589a924d1559a0e935d7c8ce0274c11",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": null,
+      "repository": "https://github.com/dcchut/async-recursion",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Async recursion desugaring for zbus; build-time only."
+    },
+    {
+      "name": "async-trait",
+      "version": "0.1.92",
+      "checksum": "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.71",
+      "repository": "https://github.com/dtolnay/async-trait",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Async trait desugaring for zbus; build-time only."
+    },
+    {
+      "name": "blake2",
+      "version": "0.10.6",
+      "checksum": "46502ad458c9a52b69d4d4d32775c788b7a1b85e8bc9d482d92250fc0e3f8efe",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": null,
+      "repository": "https://github.com/RustCrypto/hashes",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Argon2 internal compression function; never called directly by this workspace."
+    },
+    {
+      "name": "chacha20",
+      "version": "0.9.1",
+      "checksum": "c3613f74bd2eac03dad61bd53dbe620703d4371614fe0bc3b9f04dd36fe4e818",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.56",
+      "repository": "https://github.com/RustCrypto/stream-ciphers",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "The stream cipher inside chacha20poly1305."
+    },
+    {
+      "name": "chacha20poly1305",
+      "version": "0.10.1",
+      "checksum": "10cd79432192d1c0f4e1a0fef9527696cc039165d729fb41b3f4f4f354c2dc35",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": null,
+      "repository": "https://github.com/RustCrypto/AEADs/tree/master/chacha20poly1305",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "XChaCha20-Poly1305 is the wrap AEAD of the recipient record and the aead_id = 1 of the t068 section 3.4 object format, so P2-K3 inherits the same reviewed primitive."
+    },
+    {
+      "name": "cipher",
+      "version": "0.4.4",
+      "checksum": "773f3b9af64447d2ce9850330c473515014aa235e6a783b02db81ff39e4a3dad",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.56",
+      "repository": "https://github.com/RustCrypto/traits",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "RustCrypto block and stream cipher traits used by chacha20."
+    },
+    {
+      "name": "endi",
+      "version": "1.1.1",
+      "checksum": "66b7e2430c6dff6a955451e2cfc438f09cea1965a9d6f87f7e3b90decc014099",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.60",
+      "repository": "https://github.com/zeenix/endi",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Endianness helpers for the zvariant wire encoding."
+    },
+    {
+      "name": "enumflags2",
+      "version": "0.7.12",
+      "checksum": "1027f7680c853e056ebcec683615fb6fbbc07dbaa13b4d5d9442b146ded4ecef",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.56",
+      "repository": "https://github.com/meithecatte/enumflags2",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Bitflag types used by zbus for D-Bus message flags."
+    },
+    {
+      "name": "enumflags2_derive",
+      "version": "0.7.12",
+      "checksum": "67c78a4d8fdf9953a5c9d458f9efe940fd97a0cab0941c075a813ac594733827",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.56",
+      "repository": "https://github.com/meithecatte/enumflags2",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Proc-macro half of enumflags2; build-time only."
+    },
+    {
+      "name": "event-listener-strategy",
+      "version": "0.5.4",
+      "checksum": "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.60",
+      "repository": "https://github.com/smol-rs/event-listener-strategy",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Blocking and async strategy wrapper over event-listener; not an executor."
+    },
+    {
+      "name": "event-listener",
+      "version": "5.4.2",
+      "checksum": "5a23add41df1562121a9393cb065eab5146a1242410f23a644851e90cfd669d2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.60",
+      "repository": "https://github.com/smol-rs/event-listener",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Synchronisation primitive used by zbus; not an executor."
+    },
+    {
+      "name": "futures-io",
+      "version": "0.3.34",
+      "checksum": "53c0fa8157de1303bfffdaa1cc2a673bfffb60102f76b0ef4441659124373fed",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.36",
+      "repository": "https://github.com/rust-lang/futures-rs",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "AsyncRead and AsyncWrite trait definitions used by zbus; trait definitions only."
+    },
+    {
+      "name": "futures-lite",
+      "version": "2.6.1",
+      "checksum": "f78e10609fe0e0b3f4157ffab1876319b5b0db102a2c60dc4626306dc46b44ad",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.60",
+      "repository": "https://github.com/smol-rs/futures-lite",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Small future combinators used by zbus. No reactor is started: the tokio feature routes all I/O through the already-admitted tokio."
+    },
+    {
+      "name": "hkdf",
+      "version": "0.12.4",
+      "checksum": "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": null,
+      "repository": "https://github.com/RustCrypto/KDFs/",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "HKDF-SHA-512 is the ADR-005 key schedule itself; a thin RustCrypto wrapper over the already-admitted hmac 0.12 that adds no new transitive."
+    },
+    {
+      "name": "inout",
+      "version": "0.1.4",
+      "checksum": "879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.56",
+      "repository": "https://github.com/RustCrypto/utils",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "In-place buffer handling used by cipher so a stream cipher can transform a buffer without a second allocation."
+    },
+    {
+      "name": "memoffset",
+      "version": "0.9.1",
+      "checksum": "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": null,
+      "repository": "https://github.com/Gilnaa/memoffset",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Struct offset helper used by the zbus socket ancillary-data handling."
+    },
+    {
+      "name": "opaque-debug",
+      "version": "0.3.1",
+      "checksum": "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": null,
+      "repository": "https://github.com/RustCrypto/utils",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Suppresses Debug output for cipher internal state, which is the redaction posture this task requires."
+    },
+    {
+      "name": "ordered-stream",
+      "version": "0.2.0",
+      "checksum": "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": null,
+      "repository": "https://github.com/danieldg/ordered-stream",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Ordered stream combinator zbus uses to preserve signal ordering."
+    },
+    {
+      "name": "parking",
+      "version": "2.2.1",
+      "checksum": "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.51",
+      "repository": "https://github.com/smol-rs/parking",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Thread parking primitive used by event-listener."
+    },
+    {
+      "name": "password-hash",
+      "version": "0.5.0",
+      "checksum": "346f04948ba92c43e8469c1ee6736c7563d71012b17d40745260fe106aac2166",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.60",
+      "repository": "https://github.com/RustCrypto/traits/tree/master/password-hash",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Required by the argon2 alloc feature; only its allocation traits are reached, and this crate produces and parses no PHC string."
+    },
+    {
+      "name": "poly1305",
+      "version": "0.8.0",
+      "checksum": "8159bd90725d2df49889a078b54f4f79e87f1f8a8444194cdca81d38f5393abf",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.56",
+      "repository": "https://github.com/RustCrypto/universal-hashes",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "The authenticator inside chacha20poly1305."
+    },
+    {
+      "name": "proc-macro-crate",
+      "version": "3.5.0",
+      "checksum": "e67ba7e9b2b56446f1d419b1d807906278ffa1a658a8a5d8a39dcb1f5a78614f",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.82.0",
+      "repository": "https://github.com/bkchr/proc-macro-crate",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Resolves crate renames for the derive macros above; build-time only."
+    },
+    {
+      "name": "serde_repr",
+      "version": "0.1.21",
+      "checksum": "8d3b1629de253c70a0508c3899572da79ca359fdab27c7920ff00406df418906",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.71",
+      "repository": "https://github.com/dtolnay/serde-repr",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Numeric enum representation for zbus protocol enums; build-time derive."
+    },
+    {
+      "name": "toml_datetime",
+      "version": "1.1.1+spec-1.1.0",
+      "checksum": "3165f65f62e28e0115a00b2ebdd37eb6f3b641855f9d636d3cd4103767159ad7",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.85",
+      "repository": "https://github.com/toml-rs/toml",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "TOML datetime type behind toml_edit; build-time only."
+    },
+    {
+      "name": "toml_edit",
+      "version": "0.25.13+spec-1.1.0",
+      "checksum": "6975367e4d2ef766d86af01ffad14b622fecc8d4357a998fbc4deb6e9bacaf9b",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.85",
+      "repository": "https://github.com/toml-rs/toml",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "TOML parsing behind proc-macro-crate; build-time only."
+    },
+    {
+      "name": "toml_parser",
+      "version": "1.1.3+spec-1.1.0",
+      "checksum": "1d38ac1cf9b95face32296c0a3ede1fdc270627c9d9c02a7274dd6d960dc4d56",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.85",
+      "repository": "https://github.com/toml-rs/toml",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "TOML parsing behind toml_edit; build-time only."
+    },
+    {
+      "name": "tracing-attributes",
+      "version": "0.1.31",
+      "checksum": "7490cfa5ec963746568740651ac6781f701c9c5ea257c58e057f3ba8cf69e8da",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.65.0",
+      "repository": "https://github.com/tokio-rs/tracing",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Proc-macro half of tracing; build-time only."
+    },
+    {
+      "name": "tracing-core",
+      "version": "0.1.36",
+      "checksum": "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.65.0",
+      "repository": "https://github.com/tokio-rs/tracing",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Core span and event types behind the tracing facade; inert here because this workspace installs no subscriber."
+    },
+    {
+      "name": "tracing",
+      "version": "0.1.44",
+      "checksum": "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.65.0",
+      "repository": "https://github.com/tokio-rs/tracing",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Logging facade zbus emits through. This workspace installs no subscriber, so the records are discarded; the broker additionally passes no key material to it, which no_key_bytes_in_logs_audit_or_export asserts."
+    },
+    {
+      "name": "uds_windows",
+      "version": "1.2.1",
+      "checksum": "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.85",
+      "repository": "https://github.com/haraldh/rust_uds_windows",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Windows Unix-domain-socket shim zbus declares unconditionally. It is unreachable on Linux and unused on Windows, where the broker is DPAPI-CNG and links no zbus."
+    },
+    {
+      "name": "universal-hash",
+      "version": "0.5.1",
+      "checksum": "fc1de2c688dc15305988b563c3854064043356019f97a4b46276fe734c4f07ea",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.56",
+      "repository": "https://github.com/RustCrypto/traits",
+      "group": "key-schedule-and-wrap",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "RustCrypto universal-hash trait surface that poly1305 implements; trait definitions only, no algorithm of its own."
+    },
+    {
+      "name": "winnow",
+      "version": "1.0.4",
+      "checksum": "23b97319f7b8343df12cc98938e5c3eb436064524c8d2b4e30a1d3a36eecdf81",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.65.0",
+      "repository": "https://github.com/winnow-rs/winnow",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Parser combinator behind toml_parser; build-time only."
+    },
+    {
+      "name": "zbus",
+      "version": "5.19.0",
+      "checksum": "5db4be7c075cb421e4b7ee645541604239bd243ba7c357511f4ff3a74b555907",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.87",
+      "repository": "https://github.com/z-galaxy/zbus/",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "The D-Bus client for org.freedesktop.secrets, the Linux device-recipient broker for this task. It is confined to the reviewed keystore leaf and speaks only to the session bus."
+    },
+    {
+      "name": "zbus_macros",
+      "version": "5.19.0",
+      "checksum": "2990635d09ade6df1868f72f8cac69a876a90981e8bd3c40b1be413f8dc88f40",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.87",
+      "repository": "https://github.com/z-galaxy/zbus/",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Proc-macro half of zbus; build-time only."
+    },
+    {
+      "name": "zbus_names",
+      "version": "4.3.4",
+      "checksum": "d8bf88b4a3ff53e883001e0e0115b297a9d53c31b9c1edd2bfdd853e3428624e",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.87",
+      "repository": "https://github.com/z-galaxy/zbus/",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Validated D-Bus bus, interface, and member name types used by zbus."
+    },
+    {
+      "name": "zcheapstr",
+      "version": "1.1.0",
+      "checksum": "d1afec51604565183aeb5c54c20aeab286120d4e4460f7f76e3e8bb8c0d99473",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.87",
+      "repository": "https://github.com/z-galaxy/zcheapstr/",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "Small-string type zvariant uses for D-Bus signature and name strings; a data type only, with no I/O."
+    },
+    {
+      "name": "zeroize_derive",
+      "version": "1.5.0",
+      "checksum": "3c50655cbb0fe3fc43170059e702f1ce5e19b84cec58dc87b037a09935c2f328",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.85",
+      "repository": "https://github.com/RustCrypto/utils",
+      "group": "key-schedule-and-wrap",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Derive half of the already-admitted zeroize; supplies the ZeroizeOnDrop bound the key types assert."
+    },
+    {
+      "name": "zvariant",
+      "version": "5.15.0",
+      "checksum": "c1d34c27cc6cdd1f458427519dd6b8612f7b7e3f7b9a0b2355d041dda9869147",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.87",
+      "repository": "https://github.com/z-galaxy/zbus/",
+      "group": "linux-secret-service-broker",
+      "role": "linked into the product binary",
+      "trust_boundary_justification": "D-Bus wire-type serialisation used by zbus; this workspace exchanges only object paths, byte arrays, and string maps with the bus."
+    },
+    {
+      "name": "zvariant_derive",
+      "version": "5.15.0",
+      "checksum": "864155e69b4352db0c7f374917bf45d1e0c8d17659c8b3dbf9795f3673f8c497",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.87",
+      "repository": "https://github.com/z-galaxy/zbus/",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Proc-macro half of zvariant; build-time only."
+    },
+    {
+      "name": "zvariant_utils",
+      "version": "4.2.0",
+      "checksum": "bad0294361a320b694a328460dc73add56c306150f5cb6bfafc44446120008a3",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "MIT",
+      "rust_version": "1.87",
+      "repository": "https://github.com/z-galaxy/zbus/",
+      "group": "linux-secret-service-broker",
+      "role": "build-time proc-macro or its support",
+      "trust_boundary_justification": "Shared parsing support for the zvariant and zbus macros; build-time only."
+    }
+  ]
+}

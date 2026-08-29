@@ -177,6 +177,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
   assert.deepEqual(actual, {
     "academic-cli": ["academic-core", "academic-daemon", "academic-rpc"],
     "academic-contracts": ["academic-domain"],
+    "academic-crypto": ["academic-keystore-platform"],
     "academic-core": [
       "academic-contracts",
       "academic-domain",
@@ -206,6 +207,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-store-platform",
       "academic-vault",
     ],
+    "academic-keystore-platform": [],
     "academic-store-platform": [],
     "academic-test-support": [],
     "academic-vault": ["academic-domain"],
@@ -659,11 +661,13 @@ function normalizeDependencyUse(dependency, packageName) {
 }
 
 test("dependency_license_and_source_receipt_is_complete", async () => {
-  const [receiptText, cargoLock] = await Promise.all([
+  const [receiptText, keyReceiptText, cargoLock] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-k1.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
+  const keyReceipt = JSON.parse(keyReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -682,14 +686,42 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const lockTuples = cargoLockPackageTuples(cargoLock);
   const platformTuples = lockTuples.filter(([name]) => name === "academic-store-platform");
   assert.deepEqual(platformTuples, [["academic-store-platform", "0.1.0", null, null]]);
-  const incomingTuples = lockTuples.filter(([name]) => name !== "academic-store-platform");
+
+  // Every package `P2-K1` added is enumerated in its own receipt. Subtracting
+  // exactly that set and re-checking the frozen Phase 1 digest proves two
+  // things at once: no Phase 1 dependency moved, and nothing entered the lock
+  // that is not covered by a reviewed admission receipt.
+  const keyAdmitted = new Set(
+    keyReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const keyPathPackages = new Set(
+    keyReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  const keyTuples = lockTuples.filter(([name, version]) =>
+    keyAdmitted.has(`${name}@${version}`) || keyPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    keyTuples.length,
+    keyAdmitted.size + keyPathPackages.size,
+    "a P2-K1 admitted package is missing from Cargo.lock",
+  );
+
+  const incomingTuples = lockTuples.filter(
+    ([name, version]) =>
+      name !== "academic-store-platform" &&
+      !keyAdmitted.has(`${name}@${version}`) &&
+      !keyPathPackages.has(`${name}@${version}`),
+  );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
     createHash("sha256").update(JSON.stringify(incomingTuples)).digest("hex"),
     receipt.lock_delta.incoming_package_tuple_sha256,
     "an incoming Cargo.lock package tuple changed",
   );
-  assert.equal(lockTuples.length, receipt.lock_delta.incoming_package_tuple_count + 1);
+  assert.equal(
+    lockTuples.length,
+    receipt.lock_delta.incoming_package_tuple_count + 1 + keyTuples.length,
+  );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
     node: "24.19.0",
@@ -735,7 +767,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const admittedVersions = Object.fromEntries(
     receipt.admissions.map((entry) => [entry.name, entry.version]),
   );
-  const expectedDirectVersions = { ...preservedPhase0Versions, ...admittedVersions };
+  const expectedDirectVersions = {
+    ...preservedPhase0Versions,
+    ...admittedVersions,
+    ...keyReceipt.direct_workspace_dependencies,
+  };
   const directRegistryDependencies = workspacePackages.flatMap((pkg) =>
     pkg.dependencies.filter((dependency) => dependency.source !== null),
   );

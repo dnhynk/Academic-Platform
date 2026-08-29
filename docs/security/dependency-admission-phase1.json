@@ -256,6 +256,13 @@
       "install_scripts": false,
       "uses": [
         {
+          "package": "academic-crypto",
+          "kind": "normal",
+          "target": null,
+          "default_features": false,
+          "features": ["std"]
+        },
+        {
           "package": "academic-daemon",
           "kind": "normal",
           "target": null,
@@ -429,6 +436,13 @@
       "install_scripts": false,
       "uses": [
         {
+          "package": "academic-crypto",
+          "kind": "dev",
+          "target": null,
+          "default_features": true,
+          "features": []
+        },
+        {
           "package": "academic-daemon",
           "kind": "dev",
           "target": null,
@@ -472,6 +486,13 @@
       "network_role": "local named-pipe and Unix-domain-socket IPC only",
       "install_scripts": false,
       "uses": [
+        {
+          "package": "academic-keystore-platform",
+          "kind": "normal",
+          "target": "cfg(target_os = \"linux\")",
+          "default_features": false,
+          "features": ["io-util", "macros", "net", "rt", "rt-multi-thread", "signal", "sync", "time"]
+        },
         {
           "package": "academic-daemon",
           "kind": "normal",
@@ -522,6 +543,17 @@
       "network_role": "local named-pipe and filesystem capability only",
       "install_scripts": false,
       "uses": [
+        {
+          "package": "academic-keystore-platform",
+          "kind": "normal",
+          "target": "cfg(windows)",
+          "default_features": false,
+          "features": [
+            "Win32_Foundation",
+            "Win32_Security",
+            "Win32_Security_Cryptography"
+          ]
+        },
         {
           "package": "academic-daemon",
           "kind": "normal",
