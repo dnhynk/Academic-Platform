@@ -5,9 +5,10 @@
 //! — a SQLCipher profile and `AEAD_CHUNKED_V2` objects — so a difference in
 //! behaviour between the lanes is a difference in the lane, not in the corpus.
 //!
-//! Two artifacts is not incidental. `BK03` fires on the second object copy, and
-//! Phase 1's `A3` recorded it `NOT_RUN` against a one-artifact corpus. Under
-//! encryption it is reachable and it is run.
+//! Two artifacts is not incidental. `BK03` fires on the second object copy, so
+//! a one-artifact corpus never reaches it — which is why Phase 1's daemon exit
+//! corpus records it `NOT_RUN` and points at its own crash suite. This corpus
+//! reaches it directly.
 
 #![allow(dead_code)]
 
