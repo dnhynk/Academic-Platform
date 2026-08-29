@@ -12,7 +12,7 @@ use std::{error::Error, fs};
 
 use academic_retention::{
     AppendOnlyJournal, BackupTombstone, JournalEntry, RotationId, RotationPlan, RotationState,
-    RotationUnit, UnitProgress,
+    RotationUnit, UnitKind, UnitProgress,
     engine::{
         HeaderProbe, OpeningObservation, RotationEngine, RotationKeys, apply_tombstones,
         observe_reachable_opening, probe_header, rebind_locator, shred_with_tombstone,
@@ -23,7 +23,7 @@ use academic_retention::{
 use academic_vault::object::{HEADER_BYTES, KEY_SLOT_OFFSET, KEY_SLOT_SHRED_MARKER};
 use rotation_support::{
     CHUNK_SIZE, SOURCE_ENTROPY, SOURCE_RECIPIENT, TARGET_ENTROPY, TARGET_RECIPIENT, TestRoot,
-    create_generation, domain, domain_kek, generation_of, open_vault, profile_id, seal_corpus,
+    create_generation, domain_kek, generation_of, open_vault, profile_id, seal_corpus,
 };
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -457,7 +457,6 @@ fn the_invariant_checker_reports_both_and_neither_when_they_happen() -> TestResu
     let also_same = domain_kek(&master)?;
     let both = RotationKeys {
         profile: profile_id(),
-        domain: domain()?,
         source_kek: &same,
         target_kek: &also_same,
     };
@@ -487,7 +486,6 @@ fn the_invariant_checker_reports_both_and_neither_when_they_happen() -> TestResu
     let target_kek = domain_kek(&other)?;
     let neither = RotationKeys {
         profile: profile_id(),
-        domain: domain()?,
         source_kek: &same,
         target_kek: &target_kek,
     };
@@ -634,6 +632,102 @@ fn a_settled_deletion_really_shreds_its_derivatives() -> TestResult {
     assert_eq!(
         probe_header(&vault.layout().object_path(&descriptors[0])?, &kek),
         HeaderProbe::Opened
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The store database unit
+// ---------------------------------------------------------------------------
+
+/// The store database is planned, journalled, and invariant-checked here; its
+/// executor is the encrypted store lane's `PRAGMA rekey`, which cannot link
+/// into this build. So a rotation that reaches it stops and says so, rather
+/// than recording a migration that did not happen.
+#[test]
+fn a_rotation_will_not_complete_over_a_store_database_it_cannot_rekey() -> TestResult {
+    let root = TestRoot::new("store-unit")?;
+    let (source_master, _) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
+    let (target_master, _) = create_generation(TARGET_RECIPIENT, TARGET_ENTROPY)?;
+    let source_vault = open_vault(root.path(), &source_master)?;
+    let target_vault = open_vault(root.path(), &target_master)?;
+    let descriptors = seal_corpus(&source_vault, 1)?;
+
+    let object = RotationUnit::object(*descriptors[0].vault_locator.as_bytes());
+    let database = RotationUnit::store_database(profile_id());
+    assert_eq!(database.kind(), UnitKind::StoreDatabase);
+    assert!(
+        database.source_locator().is_none(),
+        "the store database is not an object and has no locator"
+    );
+    assert_ne!(object.unit_id(), database.unit_id());
+
+    let plan = RotationPlan::new(
+        RotationId::from_bytes([0x66; 16]),
+        profile_id(),
+        generation_of(&source_master)?,
+        generation_of(&target_master)?,
+        vec![object.clone(), database.clone()],
+    )?;
+    let mut journal = AppendOnlyJournal::open(&root.path().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+    engine.begin(&mut journal)?;
+    engine.rotate_object(&mut journal, &object, &descriptors[0])?;
+
+    // Every object has moved and the rotation still refuses to complete, and it
+    // refuses by naming the database rather than by reporting a missing
+    // descriptor: "this build cannot run it" and "you forgot a descriptor" are
+    // different facts.
+    let refusal = engine
+        .complete(&mut journal)
+        .err()
+        .ok_or("a rotation completed over a database it never rekeyed")?
+        .to_string();
+    assert!(
+        refusal.contains("store database") && refusal.contains("will not record it as migrated"),
+        "the refusal did not name the absent executor: {refusal}"
+    );
+
+    // The journal still enumerates it as remaining, so the operator is told
+    // exactly what is left.
+    let state = RotationState::replay(journal.entries())?.ok_or("no rotation replayed")?;
+    let remaining: Vec<UnitKind> = state
+        .remaining()
+        .iter()
+        .map(|unit| unit.unit.kind())
+        .collect();
+    assert_eq!(remaining, vec![UnitKind::StoreDatabase]);
+    assert!(!state.is_complete());
+    Ok(())
+}
+
+/// The fault rows this crate answers for, named rather than counted.
+#[test]
+fn the_named_fault_rows_are_the_ones_t068_assigns() -> TestResult {
+    assert_eq!(
+        academic_retention::PHASE2_ROTATION_FAULT_IDS,
+        &["KY03", "KY04", "KY05"]
+    );
+    assert_eq!(
+        academic_retention::PHASE2_RETENTION_FAULT_IDS,
+        &["RB01", "RB02", "RB03", "RB04"]
+    );
+    // Every failpoint this crate compiles is one of those rows, spelled with the
+    // row identifier so a report can be grepped for it. `RB01`'s failpoint is
+    // `academic-vault`'s and is deliberately absent here.
+    for selector in academic_retention::FAULT_SELECTORS {
+        let row = selector.split(':').next().unwrap_or_default();
+        assert!(
+            academic_retention::PHASE2_ROTATION_FAULT_IDS.contains(&row)
+                || academic_retention::PHASE2_RETENTION_FAULT_IDS.contains(&row),
+            "failpoint {selector} names {row}, which is not a fault row this crate owns"
+        );
+    }
+    assert!(
+        !academic_retention::FAULT_SELECTORS
+            .iter()
+            .any(|selector| selector.starts_with("RB01")),
+        "RB01's failpoint belongs to academic-vault, beside the key slot it destroys"
     );
     Ok(())
 }

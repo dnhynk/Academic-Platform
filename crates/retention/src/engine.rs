@@ -15,7 +15,7 @@ use academic_vault::{
 };
 
 use crate::{
-    entry::JournalEntry,
+    entry::{JournalEntry, UnitKind},
     fault::{self, FaultPoint},
     journal::{AppendOnlyJournal, JournalError},
     rotation::{
@@ -167,12 +167,14 @@ impl OpeningObservation {
 }
 
 /// The two keyed views a rotation moves an object between.
+///
+/// Both KEKs are one domain's. A rotation spans every domain, but the invariant
+/// is checked one object at a time and an object belongs to exactly one domain,
+/// which the descriptor already names.
 #[derive(Debug)]
 pub struct RotationKeys<'a> {
     /// Profile identity both generations are salted with.
     pub profile: ProfileId,
-    /// The domain this unit's object belongs to.
-    pub domain: DomainId,
     /// The domain KEK of the generation being rotated away from.
     pub source_kek: &'a DomainKek,
     /// The domain KEK of the generation being rotated to.
@@ -296,7 +298,15 @@ impl<'a> RotationEngine<'a> {
             return Err(EngineError::Rotation(RotationError::EmptyPlan));
         };
         if let Some(unit) = state.remaining().first() {
-            return Err(EngineError::DescriptorMissing(unit.unit.unit_id_hex()));
+            // The store database is named separately, because "this build
+            // cannot run it" and "the caller forgot a descriptor" are different
+            // facts and only one of them is fixable here.
+            return Err(match unit.unit.kind() {
+                UnitKind::StoreDatabase => {
+                    EngineError::StoreDatabaseExecutorAbsent(unit.unit.unit_id_hex())
+                }
+                UnitKind::Object => EngineError::DescriptorMissing(unit.unit.unit_id_hex()),
+            });
         }
         let unit_count = u64::try_from(self.plan.units().len()).unwrap_or(u64::MAX);
         journal.append(JournalEntry::RotationCompleted {
