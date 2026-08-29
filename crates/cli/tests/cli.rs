@@ -87,16 +87,49 @@ fn run_with_env(arguments: &[&str], environment: &[(&str, &str)]) -> TestResult<
 }
 
 /// One disposable lane holding a profile root, a runtime root, and work paths.
+/// macOS exposes `$TMPDIR` beneath the `/var` symlink and the native path
+/// facade refuses to follow a link component, so the tests address the real
+/// directory. This mirrors `crates/daemon/tests/support`.
+#[cfg(unix)]
+fn temporary_base() -> std::io::Result<PathBuf> {
+    fs::canonicalize(std::env::temp_dir())
+}
+
+/// Windows must not canonicalize: that yields the Win32 verbatim device
+/// spelling the facade rejects, trading one refused spelling for another.
+#[cfg(windows)]
+fn temporary_base() -> std::io::Result<PathBuf> {
+    Ok(std::env::temp_dir())
+}
+
+/// Base for the runtime lane, which the Unix endpoint bound constrains.
+///
+/// The whole assembled socket path has to fit `sun_path`, and macOS
+/// canonicalizes `$TMPDIR` to a 56-byte private path that leaves no room for
+/// it. `/tmp` canonicalizes into the same link-free tree in 12 bytes, so the
+/// runtime lane is reserved there.
+#[cfg(unix)]
+fn runtime_base() -> std::io::Result<PathBuf> {
+    fs::canonicalize("/tmp").or_else(|_| temporary_base())
+}
+
+/// Windows named-pipe endpoints carry no comparable path bound.
+#[cfg(windows)]
+fn runtime_base() -> std::io::Result<PathBuf> {
+    temporary_base()
+}
+
 #[derive(Debug)]
 struct Lane {
     root: TempDir,
+    runtime: TempDir,
 }
 
 impl Lane {
     fn new() -> TestResult<Self> {
-        let root = TempDir::new()?;
-        fs::create_dir(root.path().join("runtime"))?;
-        Ok(Self { root })
+        let root = TempDir::new_in(temporary_base()?)?;
+        let runtime = TempDir::new_in(runtime_base()?)?;
+        Ok(Self { root, runtime })
     }
 
     fn path(&self, name: &str) -> PathBuf {
@@ -108,7 +141,7 @@ impl Lane {
     }
 
     fn runtime(&self) -> PathBuf {
-        self.path("runtime")
+        self.runtime.path().to_path_buf()
     }
 }
 
