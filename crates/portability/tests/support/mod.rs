@@ -58,6 +58,21 @@ pub const POLICY_REGISTRY_VERSION: &str = "portability-test-policies-v1";
 
 static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);
 
+/// macOS exposes `$TMPDIR` beneath the `/var` symlink and the native path
+/// facade refuses to follow a link component, so the tests address the real
+/// directory. This mirrors `crates/daemon/tests/support`.
+#[cfg(unix)]
+fn temporary_base() -> io::Result<PathBuf> {
+    fs::canonicalize(std::env::temp_dir())
+}
+
+/// Windows must not canonicalize: that yields the Win32 verbatim device
+/// spelling the facade rejects, trading one refused spelling for another.
+#[cfg(windows)]
+fn temporary_base() -> io::Result<PathBuf> {
+    Ok(std::env::temp_dir())
+}
+
 /// Owner of one disposable temporary tree removed on drop.
 #[derive(Debug)]
 pub struct TestRoot {
@@ -74,7 +89,7 @@ impl TestRoot {
                 .duration_since(UNIX_EPOCH)
                 .map_err(|_| "system clock is before the Unix epoch")?
                 .as_nanos();
-            let path = std::env::temp_dir().join(format!(
+            let path = temporary_base()?.join(format!(
                 "acad-b1-{label}-{}-{nanos}-{sequence}",
                 std::process::id()
             ));
