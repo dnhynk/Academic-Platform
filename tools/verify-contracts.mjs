@@ -7,6 +7,12 @@ import Ajv2020 from "ajv/dist/2020.js";
 import protobuf from "protobufjs";
 
 import { parsePnpmLockYaml } from "./restricted-yaml.mjs";
+import {
+  GENERATED_PATH,
+  REGISTRY_PATH,
+  predicateId,
+  renderRustModule,
+} from "./predicate-registry.mjs";
 
 async function readRustSourceTree(root, relative = "") {
   const directory = join(root, relative);
@@ -3648,6 +3654,105 @@ const rust_and_protobufjs_agree_on_every_v3_arm = () => {
 };
 rust_and_protobufjs_agree_on_every_v3_arm();
 
+// The predicate registry is one contract in two files: the JSON source of truth
+// and the Rust constants rendered from it. Both are pinned to the §7.1 node
+// hierarchy and the §7.2 edge table of the canonical design document, whose
+// digest is already asserted above, so a specification edit that moves an edge
+// fails here before it can reach a caller.
+const predicate_registry_matches_its_source_and_the_specification = async () => {
+  const registry = JSON.parse(await readFile(REGISTRY_PATH, "utf8"));
+  const generated = await readFile(GENERATED_PATH, "utf8");
+  assert.equal(
+    generated,
+    renderRustModule(registry),
+    "the generated predicate constants must be a fresh render of the registry file",
+  );
+
+  const specText = canonicalSpecBytes.toString("utf8");
+  const section = (heading, next) =>
+    specText.slice(specText.indexOf(heading), specText.indexOf(next));
+
+  const screaming = (name) =>
+    name.replaceAll(/(?<lower>[a-z])(?<upper>[A-Z])/gu, "$<lower>_$<upper>").toUpperCase();
+  const nodeTypes = section("### 7.1", "### 7.2")
+    .split("\n")
+    .filter((line) => line.includes("─ ") && line.includes(": "))
+    .flatMap((line) => line.slice(line.indexOf(": ") + 2).split(", "))
+    .map((name) => screaming(name.trim()));
+  assert.deepEqual(
+    registry.node_types,
+    nodeTypes,
+    "registry node types must be the §7.1 hierarchy leaves in specification order",
+  );
+
+  const edges = section("### 7.2", "### 7.3")
+    .split("\n")
+    .filter((line) => line.startsWith("| `"))
+    .map((line) => line.split("|").map((cell) => cell.trim()));
+  assert.equal(edges.length, 20, "§7.2 must still fix exactly twenty edges");
+  assert.equal(registry.predicates.length, edges.length);
+
+  for (const [index, entry] of registry.predicates.entries()) {
+    const [, name, direction, meaning] = edges[index];
+    assert.equal(`\`${entry.name}\``, name, "registry order must follow the §7.2 table");
+    assert.equal(entry.spec_direction, direction, `${entry.name} must quote its direction cell`);
+    assert.equal(entry.spec_meaning, meaning, `${entry.name} must quote its meaning cell`);
+    assert.equal(entry.predicate_id, predicateId(entry.name));
+    assert.ok(
+      entry.subject_types.length > 0 && entry.object_types.length > 0,
+      `${entry.name} must declare both ends`,
+    );
+    for (const node of [...entry.subject_types, ...entry.object_types]) {
+      assert.ok(registry.node_types.includes(node), `${entry.name} uses unknown node type ${node}`);
+    }
+    assert.equal(
+      entry.prerequisite,
+      entry.strengths.length > 0,
+      `${entry.name} must carry a strength exactly when it is a prerequisite edge`,
+    );
+    assert.ok(entry.inverse_label.length > 0, `${entry.name} must name its inverse reading`);
+  }
+
+  // An inverse is a view. No registry name is another entry's inverse label, so
+  // there is no reverse predicate to store a duplicate row under.
+  const names = new Set(registry.predicates.map((entry) => entry.name));
+  for (const entry of registry.predicates) {
+    assert.ok(
+      !names.has(entry.inverse_label.toUpperCase().replaceAll(" ", "_")),
+      `${entry.name} declares an inverse label that is itself a predicate`,
+    );
+  }
+
+  // A single-source HARD prerequisite is rejected by the registry, not by a
+  // caller's own rule.
+  const requires = registry.predicates.find((entry) => entry.name === "REQUIRES");
+  const hard = requires.minimum_evidence.by_strength.find((row) => row.strength === "HARD");
+  assert.ok(hard, "REQUIRES must override its evidence rule at HARD");
+  assert.ok(
+    hard.rule.independent_sources >= 2,
+    "a HARD REQUIRES edge must demand more than one independent source",
+  );
+  assert.ok(
+    !requires.strengths.includes("HELPFUL"),
+    "REQUIRES is a hard/near-hard dependency, never a preference",
+  );
+  assert.ok(
+    !registry.predicates.find((entry) => entry.name === "BUILDS_ON").strengths.includes("HARD"),
+    "BUILDS_ON must stay distinguishable from REQUIRES",
+  );
+  assert.deepEqual(
+    registry.predicates.find((entry) => entry.name === "RELATED_TO").strengths,
+    [],
+    "RELATED_TO must not be usable as a prerequisite",
+  );
+
+  assert.ok(
+    registry.open_gates.includes("GATE-38-022"),
+    "the base taxonomy mix must stay a visibly open gate",
+  );
+};
+await predicate_registry_matches_its_source_and_the_specification();
+
 console.log(
-  "Immutable v1 and v2 contracts, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v3-only writers, event schema v3 arm and tag discipline across three Proto versions, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
+  "Immutable v1 and v2 contracts, the §7.1/§7.2 predicate registry and its generated constants, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v3-only writers, event schema v3 arm and tag discipline across three Proto versions, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
 );

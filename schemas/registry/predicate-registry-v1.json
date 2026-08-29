@@ -1,0 +1,598 @@
+{
+  "registry_version": 1,
+  "spec_section": "7.2",
+  "open_gates": ["GATE-38-022"],
+  "node_types": [
+    "UNIVERSITY",
+    "COLLEGE",
+    "DEPARTMENT",
+    "INSTRUCTOR",
+    "CURRICULUM_VERSION",
+    "REQUIREMENT_SET",
+    "RULE",
+    "COURSE",
+    "COURSE_REVISION",
+    "COURSE_OFFERING",
+    "LECTURE",
+    "ASSIGNMENT",
+    "ASSESSMENT",
+    "ENROLLMENT",
+    "FIELD",
+    "CONCEPT",
+    "CONCEPT_SENSE",
+    "COMPETENCY",
+    "ARTIFACT",
+    "EVIDENCE_ITEM",
+    "CLAIM",
+    "USER_DECISION",
+    "QUESTION",
+    "REFRAME",
+    "RESOLUTION",
+    "PROJECT",
+    "REPOSITORY",
+    "SNAPSHOT",
+    "CODE_COMPONENT",
+    "SPEC",
+    "ADR",
+    "ISSUE",
+    "INCIDENT",
+    "PROJECT_GOAL",
+    "LEARNING_GOAL",
+    "ROLE_PROFILE",
+    "PLAN_SCENARIO"
+  ],
+  "predicates": [
+    {
+      "name": "REQUIRES",
+      "predicate_id": "graph.requires",
+      "since_registry_version": 1,
+      "spec_direction": "advanced concept/competency/goal → prerequisite",
+      "spec_meaning": "없으면 목표 수행이 신뢰성 있게 막히는 hard/near-hard dependency. 단순 선호는 금지",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY", "PROJECT_GOAL", "LEARNING_GOAL"],
+      "object_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY"],
+      "prerequisite": true,
+      "strengths": ["HARD", "STRONG"],
+      "personal_state_ceiling": null,
+      "inverse_label": "is prerequisite of",
+      "qualifiers": [
+        { "key": "prerequisite_strength", "kind": "PREREQUISITE_STRENGTH", "required": true }
+      ],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": [
+          {
+            "strength": "HARD",
+            "rule": {
+              "supporting": 2,
+              "independent_sources": 2,
+              "min_strength": "DIRECT",
+              "authority": [],
+              "locator_kinds": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BUILDS_ON",
+      "predicate_id": "graph.builds.on",
+      "since_registry_version": 1,
+      "spec_direction": "advanced → foundation",
+      "spec_meaning": "이해를 깊게 하지만 반드시 선행해야 하는 것은 아닐 수 있음; `REQUIRES`와 구분",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY"],
+      "object_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY"],
+      "prerequisite": true,
+      "strengths": ["STRONG", "HELPFUL"],
+      "personal_state_ceiling": null,
+      "inverse_label": "is built on by",
+      "qualifiers": [
+        { "key": "prerequisite_strength", "kind": "PREREQUISITE_STRENGTH", "required": true }
+      ],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "WEAK",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "RELATED_TO",
+      "predicate_id": "graph.related.to",
+      "since_registry_version": 1,
+      "spec_direction": "canonical smaller-ID ↔ larger-ID",
+      "spec_meaning": "비방향 연관. path engine의 prerequisite로 사용 금지",
+      "direction": "UNDIRECTED_CANONICAL",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY", "FIELD"],
+      "object_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY", "FIELD"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "is related to",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "WEAK",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "USED_IN",
+      "predicate_id": "graph.used.in",
+      "since_registry_version": 1,
+      "spec_direction": "concept → system/technique/context",
+      "spec_meaning": "일반적으로 사용되는 곳. 개인이 적용했다는 증거는 아님",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["CONCEPT", "CONCEPT_SENSE", "CODE_COMPONENT", "PROJECT"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "uses",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "IMPLEMENTS",
+      "predicate_id": "graph.implements",
+      "since_registry_version": 1,
+      "spec_direction": "code component/technique → abstraction/concept",
+      "spec_meaning": "구체물이 추상 개념을 구현함",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CODE_COMPONENT", "CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["CONCEPT", "CONCEPT_SENSE"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "is implemented by",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "ABSTRACTS",
+      "predicate_id": "graph.abstracts",
+      "since_registry_version": 1,
+      "spec_direction": "abstraction/API → lower mechanism/component",
+      "spec_meaning": "세부를 감추는 계약; 단순 상위 분류가 아님",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE", "CODE_COMPONENT"],
+      "object_types": ["CONCEPT", "CONCEPT_SENSE", "CODE_COMPONENT"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "is abstracted by",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "SPECIAL_CASE_OF",
+      "predicate_id": "graph.special.case.of",
+      "since_registry_version": 1,
+      "spec_direction": "specific → general",
+      "spec_meaning": "논리적 subtype/specialization",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY"],
+      "object_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY", "FIELD"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "generalizes",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "DESIGNED_TO_TEACH",
+      "predicate_id": "graph.designed.to.teach",
+      "since_registry_version": 1,
+      "spec_direction": "CourseRevision → concept/competency",
+      "spec_meaning": "공식 설명·검토된 curriculum 의도",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["COURSE_REVISION"],
+      "object_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "is intended to be taught by",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": ["OFFICIAL", "CURATED"],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "TAUGHT_IN",
+      "predicate_id": "graph.taught.in",
+      "since_registry_version": 1,
+      "spec_direction": "concept → Lecture",
+      "spec_meaning": "실제 특정 강의에서 설명됨. transcript/material evidence 필요",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["LECTURE"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": "EXPOSED",
+      "inverse_label": "teaches",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "DIRECT",
+          "authority": [],
+          "locator_kinds": ["TRANSCRIPT_TIME", "TEXT_BYTES", "PAGE"]
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "PRACTICED_IN",
+      "predicate_id": "graph.practiced.in",
+      "since_registry_version": 1,
+      "spec_direction": "concept/competency → Assignment/Practice",
+      "spec_meaning": "사용·연습 기회가 있었음; 성공 의미 아님",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY"],
+      "object_types": ["ASSIGNMENT"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": "PRACTICED",
+      "inverse_label": "gives practice in",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "ASSESSED_IN",
+      "predicate_id": "graph.assessed.in",
+      "since_registry_version": 1,
+      "spec_direction": "concept/competency → AssessmentItem",
+      "spec_meaning": "실제 평가 대상. 성적과 mastery는 별도",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY"],
+      "object_types": ["ASSESSMENT"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": "EXPOSED",
+      "inverse_label": "assesses",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "APPLIED_IN",
+      "predicate_id": "graph.applied.in",
+      "since_registry_version": 1,
+      "spec_direction": "concept/competency → ProjectSnapshot/CodeComponent",
+      "spec_meaning": "사용자의 실전 적용 evidence가 있음",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE", "COMPETENCY"],
+      "object_types": ["SNAPSHOT", "CODE_COMPONENT"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": "APPLIED",
+      "inverse_label": "applies",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "DIRECT",
+          "authority": ["USER_EXPLICIT", "DIRECT_OBSERVATION"],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "MENTIONED_IN",
+      "predicate_id": "graph.mentioned.in",
+      "since_registry_version": 1,
+      "spec_direction": "concept/term → source segment",
+      "spec_meaning": "언급만 됨; teaching/understanding으로 승격 금지",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["EVIDENCE_ITEM"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": "EXPOSED",
+      "inverse_label": "mentions",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "WEAK",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "ENABLES_COMPETENCY",
+      "predicate_id": "graph.enables.competency",
+      "since_registry_version": 1,
+      "spec_direction": "concept → competency",
+      "spec_meaning": "수행에 기여. 중요도와 필요/선택 구분 필요",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["COMPETENCY"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "is enabled by",
+      "qualifiers": [
+        {
+          "key": "contribution_importance",
+          "kind": "ENUMERATION",
+          "required": true,
+          "values": ["CRITICAL", "SUBSTANTIAL", "MINOR"]
+        },
+        {
+          "key": "necessity",
+          "kind": "ENUMERATION",
+          "required": true,
+          "values": ["NECESSARY", "OPTIONAL"]
+        }
+      ],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "RELEVANT_TO_ROLE",
+      "predicate_id": "graph.relevant.to.role",
+      "since_registry_version": 1,
+      "spec_direction": "competency/concept → RoleProfile",
+      "spec_meaning": "versioned role bundle에서의 관련성",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["COMPETENCY", "CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["ROLE_PROFILE"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "draws on",
+      "qualifiers": [
+        { "key": "role_profile_version", "kind": "POSITIVE_INTEGER", "required": true }
+      ],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "OBSERVED_IN_PROJECT",
+      "predicate_id": "graph.observed.in.project",
+      "since_registry_version": 1,
+      "spec_direction": "concept → ProjectSnapshot",
+      "spec_meaning": "code/config/test/runtime에서 강한 증거가 있음",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["SNAPSHOT"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": "APPLIED",
+      "inverse_label": "shows evidence of",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "DIRECT",
+          "authority": ["DIRECT_OBSERVATION", "DETERMINISTIC_ENGINE"],
+          "locator_kinds": ["REPOSITORY_BYTES"]
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "REQUIRED_BY_PROJECT",
+      "predicate_id": "graph.required.by.project",
+      "since_registry_version": 1,
+      "spec_direction": "concept → ProjectSnapshot/Goal",
+      "spec_meaning": "현재 안전한 이해·유지·요구 기능에 필요; failure chain 필요",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["SNAPSHOT", "PROJECT_GOAL"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "currently needs",
+      "qualifiers": [
+        { "key": "failure_chain_ref", "kind": "ENTITY_REFERENCE", "required": true }
+      ],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "BENEFICIAL_TO_PROJECT",
+      "predicate_id": "graph.beneficial.to.project",
+      "since_registry_version": 1,
+      "spec_direction": "concept → ProjectSnapshot/Goal",
+      "spec_meaning": "명시된 trigger가 생길 때 유익; 현재 필수 아님",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CONCEPT", "CONCEPT_SENSE"],
+      "object_types": ["SNAPSHOT", "PROJECT_GOAL"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "would benefit from",
+      "qualifiers": [{ "key": "trigger_ref", "kind": "ENTITY_REFERENCE", "required": true }],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 1,
+          "independent_sources": 1,
+          "min_strength": "CORROBORATING",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "RESOLVES_QUESTION",
+      "predicate_id": "graph.resolves.question",
+      "since_registry_version": 1,
+      "spec_direction": "EvidenceItem/Decision → Question",
+      "spec_meaning": "해결 근거. 상태 변경은 사용자 decision과 별도",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["EVIDENCE_ITEM", "USER_DECISION"],
+      "object_types": ["QUESTION"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "is resolved by",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 0,
+          "independent_sources": 0,
+          "min_strength": "WEAK",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    },
+    {
+      "name": "EVIDENCED_BY",
+      "predicate_id": "graph.evidenced.by",
+      "since_registry_version": 1,
+      "spec_direction": "Claim/StateAssertion → EvidenceItem",
+      "spec_meaning": "claim이 의존하는 근거",
+      "direction": "DIRECTED",
+      "cardinality": "MANY_TO_MANY",
+      "subject_types": ["CLAIM"],
+      "object_types": ["EVIDENCE_ITEM"],
+      "prerequisite": false,
+      "strengths": [],
+      "personal_state_ceiling": null,
+      "inverse_label": "supports",
+      "qualifiers": [],
+      "minimum_evidence": {
+        "base": {
+          "supporting": 0,
+          "independent_sources": 0,
+          "min_strength": "WEAK",
+          "authority": [],
+          "locator_kinds": []
+        },
+        "by_strength": []
+      }
+    }
+  ]
+}
