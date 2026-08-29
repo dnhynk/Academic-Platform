@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use academic_domain::ArtifactDescriptor;
 
-use crate::{VaultResult, ingest::LiveObjectEvidence, integrity_mismatch};
+use crate::{SealedObjectReceipt, VaultResult, ingest::LiveObjectEvidence, integrity_mismatch};
 
 /// Whether sealing published new bytes or adopted an exact existing object.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,5 +83,19 @@ impl SealedArtifactReceipt {
     #[must_use]
     pub const fn disposition(&self) -> SealDisposition {
         self.disposition
+    }
+}
+
+impl SealedObjectReceipt for SealedArtifactReceipt {
+    fn descriptor(&self) -> &ArtifactDescriptor {
+        Self::descriptor(self)
+    }
+
+    fn object_path(&self) -> &Path {
+        Self::object_path(self)
+    }
+
+    fn disposition(&self) -> SealDisposition {
+        Self::disposition(self)
     }
 }

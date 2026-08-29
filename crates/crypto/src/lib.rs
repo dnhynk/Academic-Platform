@@ -31,12 +31,15 @@ pub mod recovery;
 
 use zeroize::Zeroizing;
 
-pub use derive::{AUDIT_INFO, KEK_INFO_PREFIX, KeyScheduleError, RECIPIENT_MAC_INFO, STORE_INFO};
+pub use derive::{
+    AUDIT_INFO, KEK_INFO_PREFIX, KeyScheduleError, RECIPIENT_MAC_INFO, STORE_INFO,
+    VAULT_LOCATOR_INFO,
+};
 pub use fault::{FAULT_ACTION_VARIABLE, FAULT_READY_MARKER_VARIABLE, FAULT_SELECTION_VARIABLE};
 pub use keys::{
-    ArtifactDek, AuditKey, DeviceWrappingKey, DomainId, DomainKek, IDENTIFIER_BYTES, KEY_BYTES,
-    ProfileId, RandomnessUnavailable, RecipientMacKey, RecipientWrapKey, RecoverySecret, StoreKey,
-    VaultMasterKey,
+    ArtifactDek, AuditKey, DeviceWrappingKey, DomainId, DomainKek, DomainLocatorKey,
+    IDENTIFIER_BYTES, KEY_BYTES, ProfileId, RandomnessUnavailable, RecipientMacKey,
+    RecipientWrapKey, RecoverySecret, StoreKey, VaultMasterKey,
 };
 pub use keystore::{DeviceKeystore, KeystoreFailure};
 #[cfg(feature = "os-keystore")]

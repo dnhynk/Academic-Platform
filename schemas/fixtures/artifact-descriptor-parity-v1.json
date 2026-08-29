@@ -498,6 +498,24 @@
       ],
       "schema_valid": false,
       "semantic_valid": false
+    },
+    {
+      "name": "encrypted AEAD_CHUNKED_V2 format version",
+      "mutations": [{ "op": "replace", "path": "/format_version", "value": 2 }],
+      "schema_valid": true,
+      "semantic_valid": true
+    },
+    {
+      "name": "unallocated artifact format version",
+      "mutations": [{ "op": "replace", "path": "/format_version", "value": 3 }],
+      "schema_valid": false,
+      "semantic_valid": false
+    },
+    {
+      "name": "zero artifact format version",
+      "mutations": [{ "op": "replace", "path": "/format_version", "value": 0 }],
+      "schema_valid": false,
+      "semantic_valid": false
     }
   ]
 }

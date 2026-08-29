@@ -125,6 +125,10 @@ const retentionClassValues: ReadonlySet<string> = new Set([
   "USER_MANAGED",
   "LEGAL_HOLD",
 ]);
+// 1 is PLAINTEXT_SYNTHETIC_V1 and 2 is AEAD_CHUNKED_V2. Which one a profile
+// admits is a physical property of the vault that owns the object namespace;
+// this contract only says both spellings exist.
+const artifactFormatVersions: ReadonlySet<unknown> = new Set([1, 2]);
 const maxSafeJsonInteger = 9_007_199_254_740_991;
 const maxUint32 = 4_294_967_295;
 const fixtureIntegerPaths: ReadonlySet<string> = new Set([
@@ -550,7 +554,7 @@ export function assertArtifactDescriptorSemantics(
   if (!retentionClassValues.has(requireString(value, "retention_class"))) {
     throw new TypeError("unsupported retention_class value");
   }
-  if (value.format_version !== 1) {
+  if (!artifactFormatVersions.has(value.format_version)) {
     throw new TypeError("unsupported artifact format_version");
   }
   if (!locatorPattern.test(requireString(value, "vault_locator"))) {

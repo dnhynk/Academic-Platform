@@ -25,6 +25,12 @@ compile_error!(
      `--no-default-features --features sqlcipher-store`."
 );
 
+// t068 section 2.3-8: the store<->vault seam is a trait pair, not a concrete
+// vault. `academic-store` names only these two traits, so an encrypted vault
+// can supply read-back evidence without the store gaining a byte or hash
+// bypass, and no second acceptance path exists for one of the two lanes.
+pub use academic_vault::{SealedObjectReceipt, SealedObjectVerifier};
+
 pub mod accept;
 mod authorizer;
 #[cfg(feature = "sqlcipher-store")]

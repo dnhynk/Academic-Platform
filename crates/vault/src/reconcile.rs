@@ -10,7 +10,7 @@ use std::{
 use academic_domain::{ArtifactDescriptor, ArtifactId};
 use sha2::{Digest as _, Sha256};
 
-use crate::{Vault, VaultError, VaultResult, durability, encode_hex};
+use crate::{VaultError, VaultResult, durability, encode_hex, layout::VaultLayout};
 
 const DEFAULT_TEMP_EXPIRY: Duration = Duration::from_secs(24 * 60 * 60);
 const DEFAULT_ORPHAN_GRACE: Duration = Duration::from_secs(24 * 60 * 60);
@@ -145,8 +145,34 @@ impl ReconcileReport {
     }
 }
 
-pub(crate) fn reconcile(
-    vault: &Vault,
+/// The object namespace one reconciliation pass walks.
+///
+/// Reconciliation is identical for both object formats: it removes expired
+/// partials, decides orphans against the authoritative descriptor set, and
+/// quarantines what no reference reaches. Only three things differ between a
+/// plaintext and an encrypted vault, and they are exactly the three methods
+/// here: which physical namespace the objects live in, how a descriptor's
+/// locator is validated, and what "read this object back exactly" means.
+///
+/// Keeping it a trait is what stops the encrypted lane from growing a second,
+/// weaker reconciliation with its own orphan and quarantine rules.
+pub(crate) trait ObjectNamespace {
+    /// Returns the physical layout this namespace is bound to.
+    fn layout(&self) -> &VaultLayout;
+
+    /// Validates a descriptor against this namespace and returns its canonical path.
+    fn validate_descriptor_locator(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf>;
+
+    /// Reads one canonical object back exactly.
+    ///
+    /// `Err(VaultError::IntegrityMismatch)` means an object is present at the
+    /// canonical path but is not the one the descriptor names. Every other
+    /// error is an inspection failure and stops the pass.
+    fn verify_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<()>;
+}
+
+pub(crate) fn reconcile<N: ObjectNamespace>(
+    vault: &N,
     options: &ReconcileOptions<'_>,
 ) -> VaultResult<ReconcileReport> {
     let mut report = ReconcileReport::default();
@@ -171,8 +197,8 @@ pub(crate) fn reconcile(
                     source,
                 ));
             }
-            Ok(_) => match vault.verify_sealed_object(descriptor) {
-                Ok(_capability) => report.records.push(record(
+            Ok(_) => match vault.verify_object(descriptor) {
+                Ok(()) => report.records.push(record(
                     ReconcileState::ReferencedValid,
                     path,
                     Some(descriptor.id),
@@ -195,7 +221,7 @@ pub(crate) fn reconcile(
 
     let mut object_files = Vec::new();
     walk_objects(
-        vault.layout.objects_root(),
+        vault.layout().objects_root(),
         vault,
         &mut object_files,
         &mut report,
@@ -207,8 +233,8 @@ pub(crate) fn reconcile(
         let age = file_age(&path, options.now)?;
         let candidate = retry_paths.get(&path).copied();
         let candidate_is_valid = if let Some(descriptor) = candidate {
-            match vault.verify_sealed_object(descriptor) {
-                Ok(_capability) => true,
+            match vault.verify_object(descriptor) {
+                Ok(()) => true,
                 Err(VaultError::IntegrityMismatch(_)) => false,
                 Err(error) => return Err(error),
             }
@@ -246,22 +272,22 @@ pub(crate) fn reconcile(
     Ok(report)
 }
 
-fn reconcile_temps(
-    vault: &Vault,
+fn reconcile_temps<N: ObjectNamespace>(
+    vault: &N,
     options: &ReconcileOptions<'_>,
     report: &mut ReconcileReport,
 ) -> VaultResult<()> {
-    for entry in fs::read_dir(vault.layout.temp_dir()).map_err(|source| {
+    for entry in fs::read_dir(vault.layout().temp_dir()).map_err(|source| {
         VaultError::io(
             "enumerate vault temp directory",
-            vault.layout.temp_dir(),
+            vault.layout().temp_dir(),
             source,
         )
     })? {
         let entry = entry.map_err(|source| {
             VaultError::io(
                 "read vault temp directory entry",
-                vault.layout.temp_dir(),
+                vault.layout().temp_dir(),
                 source,
             )
         })?;
@@ -287,7 +313,7 @@ fn reconcile_temps(
             continue;
         }
         if durability::try_remove_unlocked(&path)? {
-            durability::sync_directory(vault.layout.temp_dir())?;
+            durability::sync_directory(vault.layout().temp_dir())?;
             report
                 .records
                 .push(record(ReconcileState::TempExpiredRemoved, path, None));
@@ -300,9 +326,9 @@ fn reconcile_temps(
     Ok(())
 }
 
-fn walk_objects(
+fn walk_objects<N: ObjectNamespace>(
     directory: &Path,
-    vault: &Vault,
+    vault: &N,
     files: &mut Vec<PathBuf>,
     report: &mut ReconcileReport,
 ) -> VaultResult<()> {
@@ -324,7 +350,7 @@ fn walk_objects(
                 .push(record(ReconcileState::UnsafeEntry, path, None));
         } else if metadata.file_type().is_dir() {
             walk_objects(&path, vault, files, report)?;
-        } else if metadata.file_type().is_file() && vault.layout.is_canonical_object_path(&path) {
+        } else if metadata.file_type().is_file() && vault.layout().is_canonical_object_path(&path) {
             files.push(path);
         } else {
             report
@@ -335,24 +361,27 @@ fn walk_objects(
     Ok(())
 }
 
-fn reconcile_existing_quarantine(vault: &Vault, report: &mut ReconcileReport) -> VaultResult<()> {
+fn reconcile_existing_quarantine<N: ObjectNamespace>(
+    vault: &N,
+    report: &mut ReconcileReport,
+) -> VaultResult<()> {
     let already_reported = report
         .records
         .iter()
         .filter(|record| record.state == ReconcileState::QuarantinedOrphan)
         .map(|record| record.path.clone())
         .collect::<BTreeSet<_>>();
-    for entry in fs::read_dir(vault.layout.quarantine_dir()).map_err(|source| {
+    for entry in fs::read_dir(vault.layout().quarantine_dir()).map_err(|source| {
         VaultError::io(
             "enumerate vault quarantine directory",
-            vault.layout.quarantine_dir(),
+            vault.layout().quarantine_dir(),
             source,
         )
     })? {
         let entry = entry.map_err(|source| {
             VaultError::io(
                 "read vault quarantine entry",
-                vault.layout.quarantine_dir(),
+                vault.layout().quarantine_dir(),
                 source,
             )
         })?;
@@ -378,8 +407,12 @@ fn reconcile_existing_quarantine(vault: &Vault, report: &mut ReconcileReport) ->
     Ok(())
 }
 
-fn quarantine(vault: &Vault, source: &Path, now: SystemTime) -> VaultResult<Option<PathBuf>> {
-    let lease_path = vault.layout.ensure_lease_path_for_object(source)?;
+fn quarantine<N: ObjectNamespace>(
+    vault: &N,
+    source: &Path,
+    now: SystemTime,
+) -> VaultResult<Option<PathBuf>> {
+    let lease_path = vault.layout().ensure_lease_path_for_object(source)?;
     let Some(_lease) = durability::try_acquire_exclusive_object_lease(&lease_path)? else {
         return Ok(None);
     };
@@ -406,7 +439,7 @@ fn quarantine(vault: &Vault, source: &Path, now: SystemTime) -> VaultResult<Opti
     if filename.len() > MAX_QUARANTINE_FILENAME_BYTES || !filename.is_ascii() {
         return Err(VaultError::UnsafeEntry(source.to_path_buf()));
     }
-    let destination = vault.layout.quarantine_dir().join(filename);
+    let destination = vault.layout().quarantine_dir().join(filename);
     if !durability::publish_no_replace(source, &destination)? {
         return Err(VaultError::PathCollision(destination));
     }
@@ -414,16 +447,16 @@ fn quarantine(vault: &Vault, source: &Path, now: SystemTime) -> VaultResult<Opti
         .parent()
         .ok_or_else(|| VaultError::UnsafeEntry(source.to_path_buf()))?;
     durability::sync_directory(source_parent)?;
-    durability::sync_directory(vault.layout.quarantine_dir())?;
+    durability::sync_directory(vault.layout().quarantine_dir())?;
     Ok(Some(destination))
 }
 
-fn quarantine_path_identity(vault: &Vault, source: &Path) -> VaultResult<String> {
-    if !vault.layout.is_canonical_object_path(source) {
+fn quarantine_path_identity<N: ObjectNamespace>(vault: &N, source: &Path) -> VaultResult<String> {
+    if !vault.layout().is_canonical_object_path(source) {
         return Err(VaultError::UnsafeEntry(source.to_path_buf()));
     }
     let relative = source
-        .strip_prefix(vault.layout.objects_root())
+        .strip_prefix(vault.layout().objects_root())
         .map_err(|_| VaultError::UnsafeEntry(source.to_path_buf()))?;
     let portable = portable_relative_object_path(relative, source)?;
     Ok(encode_hex(&Sha256::digest(portable.as_bytes())))

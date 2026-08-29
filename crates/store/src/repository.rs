@@ -21,7 +21,7 @@ use academic_domain::{
     ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch, UserDecision, ValidInterval,
 };
 use academic_ledger::{LedgerError, ResolverActorKind, relation_effect_is_authorized_for_kind};
-use academic_vault::SealedObjectCapability;
+use academic_vault::SealedObjectReceipt;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
 use crate::connection::WriterConnection;
@@ -382,10 +382,10 @@ struct AcceptedClaim {
 }
 
 /// Stages closure knowledge while normalized rows are appended in event order.
-pub(crate) struct ClosureWriter<'transaction, 'connection, 'receipts> {
+pub(crate) struct ClosureWriter<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> {
     transaction: &'transaction Transaction<'connection>,
     batch: &'transaction UnsignedBatch,
-    sealed_receipts: &'receipts BTreeMap<ArtifactId, SealedObjectCapability>,
+    sealed_receipts: &'receipts BTreeMap<ArtifactId, R>,
     scopes: BTreeMap<ScopeId, ScopeDescriptor>,
     artifacts: BTreeMap<ArtifactId, ArtifactDescriptor>,
     evidence: BTreeMap<EvidenceId, AcceptedEvidence>,
@@ -545,11 +545,13 @@ fn aggregate_closure_row(payload: &EventPayload) -> Option<AggregateClosureRow<'
     })
 }
 
-impl<'transaction, 'connection, 'receipts> ClosureWriter<'transaction, 'connection, 'receipts> {
+impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt>
+    ClosureWriter<'transaction, 'connection, 'receipts, R>
+{
     pub(crate) fn new(
         transaction: &'transaction Transaction<'connection>,
         batch: &'transaction UnsignedBatch,
-        sealed_receipts: &'receipts BTreeMap<ArtifactId, SealedObjectCapability>,
+        sealed_receipts: &'receipts BTreeMap<ArtifactId, R>,
     ) -> Self {
         Self {
             transaction,

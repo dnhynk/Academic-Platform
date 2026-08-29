@@ -9,11 +9,33 @@ publish.workspace = true
 [features]
 default = []
 phase1-fault-injection = []
+# The encrypted object lane. Non-default, so the plaintext synthetic vault and
+# the default product graph pull neither the key schedule nor an AEAD.
+aead-objects = ["dep:academic-crypto", "dep:chacha20poly1305", "dep:subtle"]
+# Test-only deterministic OB failpoints. A product build contains no
+# environment lookup and no crash switch.
+phase2-fault-injection = []
 
 [dependencies]
+academic-crypto = { path = "../crypto", optional = true }
 academic-domain = { path = "../domain" }
+chacha20poly1305 = { workspace = true, optional = true }
 getrandom.workspace = true
 sha2.workspace = true
+subtle = { workspace = true, optional = true }
+
+# The encrypted-lane tests build keys through the P2-K1 public schedule rather
+# than fabricating them, so the test targets link the key crate directly. This
+# is a dev edge only: the product edge above stays behind `aead-objects`.
+[dev-dependencies]
+academic-crypto = { path = "../crypto" }
+
+# The frozen corpus emitter. It exists only under the encrypted lane, is never
+# built by a default product build, and writes nothing but test vectors.
+[[bin]]
+name = "emit-object-corpus"
+path = "src/bin/emit-object-corpus.rs"
+required-features = ["aead-objects"]
 
 [target.'cfg(unix)'.dependencies]
 rustix.workspace = true

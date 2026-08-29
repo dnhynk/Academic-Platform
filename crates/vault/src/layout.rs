@@ -9,18 +9,61 @@ use academic_domain::{
     ArtifactDescriptor, DomainId, PermissionLineageId, RetentionClass, VaultLocator,
 };
 
-use crate::{VAULT_FORMAT_VERSION, VaultError, VaultResult, durability, encode_hex};
+use crate::{VaultError, VaultResult, durability, encode_hex};
 
 const VAULT_DIRECTORY: &str = "vault";
-const OBJECTS_DIRECTORY: &str = "v1";
 const LEASES_DIRECTORY: &str = "leases";
-const LEASES_VERSION_DIRECTORY: &str = "v1";
 const TEMP_DIRECTORY: &str = "tmp";
 const QUARANTINE_DIRECTORY: &str = "quarantine";
+
+/// One physical object namespace below a profile's `vault/` directory.
+///
+/// A layout is bound to exactly one of these for its whole life, so a vault
+/// that owns the synthetic namespace has no spelling for an encrypted object
+/// path and an encrypted vault has none for a plaintext one. t068 section 3.4
+/// requires exactly that separation: a reader accepts format `1` only inside a
+/// synthetic profile, and a writer in an encrypted profile emits `2` only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ObjectFormat {
+    /// `PLAINTEXT_SYNTHETIC_V1` under `vault/v1`, file extension `.obj`.
+    PlaintextSyntheticV1,
+    /// `AEAD_CHUNKED_V2` under `vault/v2`, file extension `.aobj`.
+    AeadChunkedV2,
+}
+
+impl ObjectFormat {
+    /// Returns the descriptor `format_version` this namespace admits.
+    #[must_use]
+    pub const fn format_version(self) -> u16 {
+        match self {
+            Self::PlaintextSyntheticV1 => 1,
+            Self::AeadChunkedV2 => 2,
+        }
+    }
+
+    /// Returns the `vault/<component>` directory holding the namespace.
+    #[must_use]
+    pub const fn directory_component(self) -> &'static str {
+        match self {
+            Self::PlaintextSyntheticV1 => "v1",
+            Self::AeadChunkedV2 => "v2",
+        }
+    }
+
+    /// Returns the object file extension, without its dot.
+    #[must_use]
+    pub const fn object_extension(self) -> &'static str {
+        match self {
+            Self::PlaintextSyntheticV1 => "obj",
+            Self::AeadChunkedV2 => "aobj",
+        }
+    }
+}
 
 /// Canonical physical namespace below one synthetic profile.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VaultLayout {
+    format: ObjectFormat,
     profile_root: PathBuf,
     vault_root: PathBuf,
     objects_root: PathBuf,
@@ -31,18 +74,25 @@ pub struct VaultLayout {
 }
 
 impl VaultLayout {
-    pub(crate) fn new(profile_root: &Path) -> Self {
+    pub(crate) fn new(profile_root: &Path, format: ObjectFormat) -> Self {
         let vault_root = profile_root.join(VAULT_DIRECTORY);
         let leases_directory = vault_root.join(LEASES_DIRECTORY);
         Self {
+            format,
             profile_root: profile_root.to_path_buf(),
-            objects_root: vault_root.join(OBJECTS_DIRECTORY),
-            leases_root: leases_directory.join(LEASES_VERSION_DIRECTORY),
+            objects_root: vault_root.join(format.directory_component()),
+            leases_root: leases_directory.join(format.directory_component()),
             leases_directory,
             temp_dir: vault_root.join(TEMP_DIRECTORY),
             quarantine_dir: vault_root.join(QUARANTINE_DIRECTORY),
             vault_root,
         }
+    }
+
+    /// Returns the object format this namespace is bound to.
+    #[must_use]
+    pub const fn format(&self) -> ObjectFormat {
+        self.format
     }
 
     pub(crate) fn initialize(&self) -> VaultResult<()> {
@@ -69,7 +119,7 @@ impl VaultLayout {
         &self.vault_root
     }
 
-    /// Returns the version-one object namespace.
+    /// Returns this layout's object namespace.
     #[must_use]
     pub fn objects_root(&self) -> &Path {
         &self.objects_root
@@ -98,7 +148,7 @@ impl VaultLayout {
 
     /// Computes the canonical policy-namespaced path for a descriptor.
     pub fn object_path(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf> {
-        if descriptor.format_version != VAULT_FORMAT_VERSION {
+        if descriptor.format_version != self.format.format_version() {
             return Err(VaultError::UnsafeEntry(self.objects_root.clone()));
         }
         Ok(self.object_path_parts(
@@ -117,13 +167,14 @@ impl VaultLayout {
         locator: &VaultLocator,
     ) -> PathBuf {
         let encoded_locator = encode_hex(locator.as_bytes());
+        let extension = self.format.object_extension();
         self.objects_root
             .join(domain_id.to_string())
             .join(retention_component(retention_class))
             .join(permission_lineage_id.to_string())
             .join(&encoded_locator[0..2])
             .join(&encoded_locator[2..4])
-            .join(format!("{encoded_locator}.obj"))
+            .join(format!("{encoded_locator}.{extension}"))
     }
 
     pub(crate) fn ensure_object_parent(
@@ -139,7 +190,7 @@ impl VaultLayout {
         &self,
         descriptor: &ArtifactDescriptor,
     ) -> VaultResult<PathBuf> {
-        if descriptor.format_version != VAULT_FORMAT_VERSION {
+        if descriptor.format_version != self.format.format_version() {
             return Err(VaultError::UnsafeEntry(self.leases_root.clone()));
         }
         let lease_path = self.lease_path_parts(
@@ -218,7 +269,8 @@ impl VaultLayout {
             return false;
         }
         let filename = components[5];
-        let Some(locator) = filename.strip_suffix(".obj") else {
+        let suffix = format!(".{}", self.format.object_extension());
+        let Some(locator) = filename.strip_suffix(suffix.as_str()) else {
             return false;
         };
         is_uuid_component(components[0])
@@ -360,7 +412,7 @@ mod tests {
     #[test]
     fn canonical_path_shape_rejects_bad_fanout() {
         let root = PathBuf::from("profile");
-        let layout = VaultLayout::new(&root);
+        let layout = VaultLayout::new(&root, ObjectFormat::PlaintextSyntheticV1);
         let valid = layout
             .objects_root()
             .join("01900000-0000-7000-8000-000000000001")
@@ -378,5 +430,35 @@ mod tests {
                 "0".repeat(60)
             )))
         );
+    }
+
+    #[test]
+    fn the_two_object_namespaces_never_share_a_path() {
+        let root = PathBuf::from("profile");
+        let plaintext = VaultLayout::new(&root, ObjectFormat::PlaintextSyntheticV1);
+        let encrypted = VaultLayout::new(&root, ObjectFormat::AeadChunkedV2);
+        assert_ne!(plaintext.objects_root(), encrypted.objects_root());
+        assert_ne!(plaintext.leases_root(), encrypted.leases_root());
+        assert_eq!(plaintext.temp_dir(), encrypted.temp_dir());
+
+        let name = format!("{}{}{}", "ab", "cd", "0".repeat(60));
+        let tail = |layout: &VaultLayout, extension: &str| {
+            layout
+                .objects_root()
+                .join("01900000-0000-7000-8000-000000000001")
+                .join("USER_MANAGED")
+                .join("01900000-0000-7000-8000-000000000002")
+                .join("ab")
+                .join("cd")
+                .join(format!("{name}.{extension}"))
+        };
+        let plaintext_object = tail(&plaintext, "obj");
+        let encrypted_object = tail(&encrypted, "aobj");
+        assert!(plaintext.is_canonical_object_path(&plaintext_object));
+        assert!(encrypted.is_canonical_object_path(&encrypted_object));
+        // Neither namespace can name the other's object.
+        assert!(!plaintext.is_canonical_object_path(&encrypted_object));
+        assert!(!encrypted.is_canonical_object_path(&plaintext_object));
+        assert!(!plaintext.is_canonical_object_path(&tail(&plaintext, "aobj")));
     }
 }
