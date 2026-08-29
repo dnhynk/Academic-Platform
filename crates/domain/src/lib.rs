@@ -4,6 +4,8 @@
 //! evidence, authority, epistemic status, and time semantics executable before
 //! a transactional store is selected.
 
+pub mod predicates;
+
 use std::{fmt, str::FromStr};
 
 use hmac::{Hmac, Mac};
