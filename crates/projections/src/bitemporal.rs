@@ -46,7 +46,7 @@ use academic_store::{
         AggregateTimelineRequest, AggregateTimelineRow, OriginMarks, aggregate_timeline_snapshot,
     },
 };
-use rusqlite::{Connection, OpenFlags, TransactionBehavior, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension as _, TransactionBehavior, params};
 
 use crate::{
     generation::ProjectionCoordinates,
@@ -827,7 +827,10 @@ fn read_persisted(
                 ))
             },
         )
-        .ok();
+        // Only "no such snapshot" is absence. Any other SQLite failure is a
+        // corrupt or unreadable sidecar and must not read as "not materialized
+        // yet", which would silently rebuild over a database that is broken.
+        .optional()?;
     let Some(raw) = raw else {
         return Ok(None);
     };
