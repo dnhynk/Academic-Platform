@@ -8,7 +8,7 @@ Every §28 engine is a pure function
 (frozen_inputs, rule_set_hash, engine_version) -> (result, proof_tree, explanation_snapshot)
 ```
 
-with no clock, no RNG, no network, no model, and no ambient state. Thirteen
+with no clock, no RNG, no network, no model, and no ambient state. Twelve
 engines decide credit, graduation, deletion, and egress, so the answer to "did
 this run produce the same result as the last one" has to be a byte comparison
 rather than an absence of errors. This harness fixes the signature, the
@@ -30,21 +30,18 @@ node tools/engine-registry.mjs --write
 
 `pnpm verify:contracts` renders again and compares byte-for-byte, so neither
 file can be edited alone. The same check pins the registry to the canonical
-design document, whose digest is already asserted there: the twelve tabulated
-engines must appear in §28 table order with `spec_row` equal to their four table
-cells verbatim, and the thirteenth must quote the §28 sentence that makes a
-published rule's execution deterministic. A specification edit that renames or
-drops an engine fails the build before it can reach a caller.
+design document, whose digest is already asserted there: the registered engines
+must be exactly the §28 table rows, in table order, each with `spec_row` equal
+to its four table cells verbatim. The comparison is an enumeration, not a count,
+so a specification edit that renames or drops an engine and a registry edit that
+adds one the table does not name fail the same assertion.
 
 `registry_version` is `1`; every entry records the `since_registry_version` that
 introduced it.
 
-## The thirteen engines
+## The twelve engines
 
-§28 tabulates twelve. The thirteenth is the prose engine in the same section —
-a model may propose a rule candidate, and the *published* rule executes
-deterministically — which `REQ-28-014` confirms by resolving "every
-deterministic engine" to `REQ-28-001`…`REQ-28-013`.
+The registry is the §28 table and nothing else.
 
 | Engine | Requirement | High-impact path |
 |---|---|---|
@@ -60,15 +57,40 @@ deterministic engine" to `REQ-28-001`…`REQ-28-013`.
 | `OVERRIDE_RESOLVER` | `REQ-28-010` | — |
 | `PERMISSION_BROKER` | `REQ-28-011` | `EGRESS` |
 | `RETENTION_DELETION` | `REQ-28-012` | `DELETION` |
-| `PUBLISHED_RULE_EXECUTOR` | `REQ-28-013` | — |
 
-`EGRESS` belongs to the permission broker because it is the only registered
+The high-impact four come from the §28 closing paragraph, which names the paths
+that must be tested beyond a successful computation as money, graduation,
+deletion, and external transmission. `GPA` carries money because it is the
+engine a grade, a repeat decision, and every downstream credit consequence rest
+on. `EGRESS` belongs to the permission broker because it is the only registered
 engine whose output governs whether data may leave the device: its inputs are
 the data class, the purpose, the destination, and the consent, and its output is
 the allow/deny decision plus the audit row.
 
 Which Phase 2 task implements each engine is fixed by the task catalog, not by
 this registry.
+
+### The count is twelve, not thirteen
+
+t068 §3.9 and its `P2-C5` entry call this a "thirteen-engine registry". **That
+number is wrong and this registry does not follow it.** §28 tabulates twelve
+engines; the thirteenth t068 implies is the property sentence printed under the
+table — that a published rule executes deterministically even when a model
+extracted the candidate. That sentence names no input, no output, and no
+invariant of its own, and the twelve engines below the table are the subjects it
+is about, so counting it as a thirteenth engine counts them twice.
+
+`REQ-28-013` states that same property. It is therefore an obligation on rule
+publication (`P2-U2`) and on every engine here, not an engine of its own, even
+though `t001`'s `REQ-28-014` row resolves "every deterministic engine" to
+`REQ-28-001`…`REQ-28-013`. The registry closes `REQ-28-001`…`REQ-28-012`.
+
+The same class of error appears independently in t068 §31.3, which says
+"thirteen named dimensions" where the specification names fifteen. **Treat every
+count in t068 as derived and unverified; the specification is the source of
+truth.** `engine_registry_is_complete` compares against the §28 table itself for
+exactly that reason, and its name is kept as t068 spells it because the name
+carries no count.
 
 ## Registration is not implementation
 
@@ -205,7 +227,7 @@ twice, and the audit's `IMPLEMENTED` branch needs a complete artifact set or the
 guard would never be observed to bite. `Reference` in
 `crates/domain/tests/engine_harness.rs` is that engine, with its corpus in
 `testdata/engine-harness-reference/`. It is test-only, ships in no product
-build, is deliberately not one of the thirteen, and
+build, is deliberately not one of the twelve, and
 `reference_engine_is_not_registered` proves it. Its corpus is the worked example
 a real engine's harness directory copies.
 

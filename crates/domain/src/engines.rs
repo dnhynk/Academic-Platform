@@ -27,8 +27,9 @@
 //!   hash yield the same result" is a byte comparison rather than an absence of
 //!   errors.
 //!
-//! The registry names the thirteen §28 engines and none of them is implemented
-//! yet. [`EngineLifecycle::Planned`] records that, and the harness audit
+//! The registry names the twelve §28 engines — the twelve rows of the §28
+//! table and nothing else — and none of them is implemented yet.
+//! [`EngineLifecycle::Planned`] records that, and the harness audit
 //! ([`audit_engine_harness`]) fails a planned entry that has acquired harness
 //! artifacts as well as an implemented entry that is missing any.
 
@@ -195,10 +196,8 @@ pub struct EngineDescriptor {
     pub requirement_id: &'static str,
     /// The registry version that introduced the entry.
     pub since_registry_version: u16,
-    /// The §28 table row, verbatim, for the twelve tabulated engines.
-    pub spec_row: Option<SpecRow>,
-    /// The §28 prose sentence, verbatim, for the engine with no table row.
-    pub spec_sentence: Option<&'static str>,
+    /// The §28 table row this engine is registered from, verbatim.
+    pub spec_row: SpecRow,
     /// The high-impact path this engine decides, when it decides one.
     pub high_impact_path: Option<HighImpactPath>,
     /// Whether an implementation exists yet.

@@ -1,7 +1,7 @@
 // Renders the generated half of the deterministic engine registry.
 //
 // `schemas/registry/engine-registry-v1.json` is the single source of truth for
-// the thirteen §28 engines. This module turns it into the Rust constants in
+// the twelve §28 engines. This module turns it into the Rust constants in
 // `crates/domain/src/engines/generated.rs`. `pnpm verify:contracts` renders
 // again and compares byte-for-byte, so neither side can be edited alone.
 //
@@ -66,8 +66,7 @@ function descriptorLines(entry) {
     `    engine_id: ${quote(entry.engine_id)},`,
     `    requirement_id: ${quote(entry.requirement_id)},`,
     `    since_registry_version: ${entry.since_registry_version},`,
-    `    spec_row: ${optional(entry.spec_row, specRow)},`,
-    `    spec_sentence: ${optional(entry.spec_sentence, quote)},`,
+    `    spec_row: ${specRow(entry.spec_row)},`,
     `    high_impact_path: ${optional(
       entry.high_impact_path,
       (value) => `HighImpactPath::${variant(value)}`,
@@ -116,7 +115,7 @@ export function renderRustModule(registry) {
     "    pub invariant: &'static str,",
     "}",
     "",
-    "/// The thirteen §28 engines, in specification order.",
+    "/// The twelve §28 engines, in specification order.",
     "#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]",
     "pub enum EngineName {",
     ...registry.engines.flatMap((entry) => [
