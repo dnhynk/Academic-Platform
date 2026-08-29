@@ -69,6 +69,10 @@ pub struct TestRoot {
 
 impl TestRoot {
     /// Creates a unique, owner-only directory below the host temp directory.
+    ///
+    /// The owner-only mode is not decoration: the vault's path policy refuses a
+    /// profile root any group or other bit can reach, so a root created with the
+    /// default mode fails on Unix while passing on Windows.
     pub fn new(label: &str) -> Result<Self, Box<dyn Error>> {
         let path = std::env::temp_dir().join(format!(
             "academic-retention-{label}-{}-{}",
@@ -79,6 +83,12 @@ impl TestRoot {
             fs::remove_dir_all(&path)?;
         }
         fs::create_dir_all(&path)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o700))?;
+        }
         Ok(Self { path })
     }
 
