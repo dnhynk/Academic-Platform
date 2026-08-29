@@ -1,0 +1,47 @@
+[package]
+name = "academic-keystore-platform"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# The Linux broker only. It is not default because `zbus` requires
+# `tokio/fs`, and Cargo unifies features across the graph: enabling it would
+# hand the daemon's already-admitted `tokio` filesystem and child-process
+# capability that `phase1_default_features_have_no_product_network` forbids.
+# `academic-crypto/os-keystore` turns it on for the lane that needs a host
+# broker, and the default product graph stays exactly as Phase 1 froze it.
+secret-service = ["dep:tokio", "dep:zbus"]
+
+[dependencies]
+zeroize.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+tokio = { workspace = true, features = ["rt"], optional = true }
+zbus = { workspace = true, optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Cryptography",
+] }
+
+# This crate is the second reviewed native FFI boundary, after
+# `academic-store-platform`. It intentionally does not inherit the workspace's
+# `unsafe_code = "forbid"`; every private unsafe FFI block stays denied unless
+# locally allowed with a concrete safety proof, and all other workspace Rust and
+# Clippy denies are reproduced exactly.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
