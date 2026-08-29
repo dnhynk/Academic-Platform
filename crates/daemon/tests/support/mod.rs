@@ -89,6 +89,20 @@ fn probe_error(error: io::Error) -> PathProbeFailure {
     )
 }
 
+/// macOS exposes `$TMPDIR` beneath the `/var` symlink and the native facade
+/// refuses to follow a link component, so the tests address the real directory.
+#[cfg(unix)]
+fn temporary_base() -> std::io::Result<PathBuf> {
+    fs::canonicalize(std::env::temp_dir())
+}
+
+/// Windows must not canonicalize: that yields the Win32 verbatim device
+/// spelling the facade rejects, trading one refused spelling for another.
+#[cfg(windows)]
+fn temporary_base() -> std::io::Result<PathBuf> {
+    Ok(std::env::temp_dir())
+}
+
 #[derive(Debug)]
 pub struct TestEnvironment {
     pub root: TempDir,
@@ -97,7 +111,7 @@ pub struct TestEnvironment {
 
 impl TestEnvironment {
     pub fn new() -> Result<Self, Box<dyn Error>> {
-        let root = TempDir::new()?;
+        let root = TempDir::new_in(temporary_base()?)?;
         let runtime_root = root.path().join("runtime");
         fs::create_dir(&runtime_root)?;
         Ok(Self { root, runtime_root })
