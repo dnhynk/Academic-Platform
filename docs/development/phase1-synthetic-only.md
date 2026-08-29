@@ -68,6 +68,7 @@ academic-domain
             -> academic-portability
 
 academic-domain + academic-contracts -> academic-rpc
+academic-domain -> academic-scenario
 
 store + vault + rpc + projections + portability -> academic-core
 academic-core -> academic-daemon / academic-cli
@@ -76,6 +77,8 @@ academic-test-support is test-only and no product crate depends on it.
 ```
 
 The arrows mean “may be depended on by the item to the right.” The checked policy uses the actual Cargo metadata graph, rejects cycles and upward edges, and prevents the daemon from becoming a dependency of the store or any canonical layer.
+
+`academic-scenario` is placed off `academic-domain` and nowhere else on purpose. It holds every projected what-if value, and the absence of an edge to `academic-store` is what makes a projected mastery, opportunity, or workload value unable to reach an actual-state write: the writer is not in the dependency closure a projection is compiled against, so nothing there can name it. `scenario_crate_has_no_writer_dependency` asserts that from the Cargo metadata graph across normal, build, and dev edges, and `academic-core` links the crate by a dev edge only, so that `tests/scenario_isolation.rs` can hold the projection engine and the canonical writer in one process and prove the canonical state digest is unchanged after a fuzz.
 
 ## Current boundary and open gates
 
