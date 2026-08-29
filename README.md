@@ -38,6 +38,8 @@ cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 cargo test --workspace --all-targets --locked --offline
 cargo test --workspace --doc --locked --offline
 cargo test -p academic-scenario --test compile_fail --locked --offline
+cargo clippy -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection -- -D warnings
+cargo test -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
@@ -55,6 +57,11 @@ pnpm fixture:verify:v2
 pnpm fixture:replay:v2
 git diff --exit-code -- schemas/fixtures/
 ```
+
+The encrypted object lane above is a non-default `academic-vault` feature and
+needs no native toolchain: it is pure-Rust XChaCha20-Poly1305 over the Phase 1
+publish sequence. What it is and is not evidence for is in
+[the encrypted object format](docs/contracts/encrypted-object-format.md).
 
 The encrypted store lane is non-default and is verified separately, because it
 cannot be linked into the same binary as the plaintext synthetic lane:

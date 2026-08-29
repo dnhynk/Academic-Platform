@@ -7,7 +7,7 @@ The tracked LF bytes of the canonical design document have SHA-256 `4830DEBD1A9E
 | [001](ADR-001-process-and-surface-authority.md) | Accepted architecture | Core admits only verified batches; CLI is headless | daemon singleton, authenticated IPC, client compatibility, Tauri capability/CSP |
 | [002](ADR-002-encrypted-transactional-store-gate.md) | Proposed / blocked for real data | synthetic-only warning | SQLCipher five-OS packaging/license/leakage, fault, backup/restore, unsafe-location tests |
 | [003](ADR-003-ledger-and-bitemporal-semantics.md) | Accepted semantics | append-only ledger, gap/fork checks, 14 time-travel examples | physical INSERT-only enforcement, anchoring, full predicate corpus |
-| [004](ADR-004-artifact-vault-format.md) | Proposed | digest, keyed locator, exact evidence span | chunk AEAD, crash matrix, large/seek vectors, GC/migration |
+| [004](ADR-004-artifact-vault-format.md) | Proposed | digest, keyed locator, exact evidence span; `AEAD_CHUNKED_V2` writer with the `OB01`-`OB09` matrix, dedupe rejection, and a committed N/N-1 corpus | byte-resolving verifier capability, seekable-audio vectors, GC |
 | [005](ADR-005-key-hierarchy-and-recovery.md) | Proposed | no production key path | OS keystore, recovery, rewrap, revoke, irrecoverability UX |
 | [006](ADR-006-policy-and-egress-broker.md) | Proposed | runtime egress absent | scoped token, preview, default-deny network, policy replay/audit |
 | [007](ADR-007-pipeline-and-provider-sandbox.md) | Proposed | no worker runtime | OS containment, limits, malicious corpus, core-only output acceptance |

@@ -1918,6 +1918,15 @@ const assertUnconditionalRequiredExecution = (value, label) => {
     `${label} must not tolerate failure`,
   );
 };
+// t068 section 3.4's AEAD_CHUNKED_V2 lane. It is a non-default vault feature,
+// so `cargo clippy --workspace` and `cargo test --workspace` never build it;
+// without these two steps the lane would be linted and tested only on a
+// developer's machine. Both run on every hosted Rust label, because the object
+// format's durability boundary is per-platform.
+const encryptedObjectCiCommands = [
+  "cargo clippy -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection -- -D warnings",
+  "cargo test -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection",
+];
 const parseCiWorkflow = (ci) => parsePnpmLockYaml(ci, ".github/workflows/ci.yml");
 const expectedCiWorkflow = {
   name: "ci",
@@ -1991,6 +2000,14 @@ const expectedCiWorkflow = {
           run: "cargo clippy --workspace --all-targets --locked -- -D warnings",
         },
         { name: "Test Rust workspace", run: "cargo test --workspace --locked" },
+        {
+          name: "Lint the encrypted object lane",
+          run: encryptedObjectCiCommands[0],
+        },
+        {
+          name: "Test the encrypted object lane",
+          run: encryptedObjectCiCommands[1],
+        },
         {
           name: "Verify immutable v1 fixture and upcast",
           run: nativeFixtureCiCommands[0],

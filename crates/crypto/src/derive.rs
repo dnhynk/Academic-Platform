@@ -10,8 +10,8 @@ use sha2::Sha512;
 use zeroize::Zeroizing;
 
 use crate::keys::{
-    AuditKey, DomainId, DomainKek, IDENTIFIER_BYTES, KEY_BYTES, ProfileId, RecipientMacKey,
-    StoreKey, VaultMasterKey,
+    AuditKey, DomainId, DomainKek, DomainLocatorKey, IDENTIFIER_BYTES, KEY_BYTES, ProfileId,
+    RecipientMacKey, StoreKey, VaultMasterKey,
 };
 
 /// Info prefix for a per-domain key-encryption key; the domain identity is
@@ -28,6 +28,16 @@ pub const AUDIT_INFO: &[u8] = b"academic-os/audit/v1";
 /// reusing one of the three, so `P2-K1` fixes this fourth info string in the
 /// same `academic-os/<purpose>/v1` scheme.
 pub const RECIPIENT_MAC_INFO: &[u8] = b"academic-os/recipient-mac/v1";
+/// Info string for a domain's vault-locator HMAC key.
+///
+/// t068 section 2.3-7 keeps the physical locator a domain-keyed HMAC, and
+/// `P2-K3` needs that key for an encrypted profile. It is a *sub-derivation of
+/// `KEK_d`*, not a fifth key off the Vault Master Key: the input keying
+/// material is the domain KEK, so a domain's locator namespace cannot be
+/// computed by anyone who cannot already open that domain's objects. Deriving
+/// it rather than using `KEK_d` directly keeps one key from being both an
+/// XChaCha20-Poly1305 key and an HMAC-SHA-256 key.
+pub const VAULT_LOCATOR_INFO: &[u8] = b"academic-os/vault-locator/v1";
 
 /// A key-schedule failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -41,17 +51,25 @@ pub enum KeyScheduleError {
     Derivation,
 }
 
-fn expand(
-    master: &VaultMasterKey,
+fn expand_from(
+    ikm: &[u8; KEY_BYTES],
     profile: ProfileId,
     info: &[u8],
 ) -> Result<Zeroizing<[u8; KEY_BYTES]>, KeyScheduleError> {
-    let extracted = Hkdf::<Sha512>::new(Some(profile.as_bytes()), master.expose_secret());
+    let extracted = Hkdf::<Sha512>::new(Some(profile.as_bytes()), ikm);
     let mut output = Zeroizing::new([0_u8; KEY_BYTES]);
     extracted
         .expand(info, output.as_mut())
         .map_err(|_| KeyScheduleError::Derivation)?;
     Ok(output)
+}
+
+fn expand(
+    master: &VaultMasterKey,
+    profile: ProfileId,
+    info: &[u8],
+) -> Result<Zeroizing<[u8; KEY_BYTES]>, KeyScheduleError> {
+    expand_from(master.expose_secret(), profile, info)
 }
 
 /// Builds the KEK info string: the fixed prefix followed by the domain identity.
@@ -95,6 +113,23 @@ impl VaultMasterKey {
             self,
             profile,
             RECIPIENT_MAC_INFO,
+        )?))
+    }
+}
+
+impl DomainKek {
+    /// Derives `LOC_d`, the HMAC key this domain's vault locators use.
+    ///
+    /// The input keying material is this domain KEK, so the locator namespace
+    /// stays scoped to exactly the domain that can open the objects in it.
+    pub fn derive_locator_key(
+        &self,
+        profile: ProfileId,
+    ) -> Result<DomainLocatorKey, KeyScheduleError> {
+        Ok(DomainLocatorKey::from_zeroizing(expand_from(
+            self.expose_secret(),
+            profile,
+            VAULT_LOCATOR_INFO,
         )?))
     }
 }
@@ -143,7 +178,54 @@ mod tests {
         assert_eq!(STORE_INFO, b"academic-os/store/v1");
         assert_eq!(AUDIT_INFO, b"academic-os/audit/v1");
         assert_eq!(RECIPIENT_MAC_INFO, b"academic-os/recipient-mac/v1");
+        assert_eq!(VAULT_LOCATOR_INFO, b"academic-os/vault-locator/v1");
         assert_eq!(KEK_INFO_PREFIX.len(), 18);
+    }
+
+    #[test]
+    fn the_locator_key_is_an_hkdf_sub_derivation_of_the_domain_kek() {
+        let key = master(0x44);
+        let profile = ProfileId::from_bytes([0x55; IDENTIFIER_BYTES]);
+        let domain = DomainId::from_bytes([0x66; IDENTIFIER_BYTES]);
+        let Ok(kek) = key.derive_domain_kek(profile, domain) else {
+            unreachable!("KEK derivation must succeed");
+        };
+        let Ok(locator) = kek.derive_locator_key(profile) else {
+            unreachable!("locator derivation must succeed");
+        };
+        assert_eq!(
+            locator.expose_secret().as_slice(),
+            rfc5869_hkdf_sha512(
+                profile.as_bytes(),
+                kek.expose_secret(),
+                VAULT_LOCATOR_INFO,
+                KEY_BYTES
+            )
+            .as_slice()
+        );
+        // The locator key is never the KEK it came from.
+        assert_ne!(locator.expose_secret(), kek.expose_secret());
+    }
+
+    #[test]
+    fn locator_keys_are_separated_by_domain_and_by_profile() {
+        let key = master(0x77);
+        let profile_a = ProfileId::from_bytes([0x01; IDENTIFIER_BYTES]);
+        let profile_b = ProfileId::from_bytes([0x02; IDENTIFIER_BYTES]);
+        let domain_a = DomainId::from_bytes([0x03; IDENTIFIER_BYTES]);
+        let domain_b = DomainId::from_bytes([0x04; IDENTIFIER_BYTES]);
+        let derive = |profile, domain| {
+            let Ok(kek) = key.derive_domain_kek(profile, domain) else {
+                unreachable!("KEK derivation must succeed");
+            };
+            let Ok(locator) = kek.derive_locator_key(profile) else {
+                unreachable!("locator derivation must succeed");
+            };
+            *locator.expose_secret()
+        };
+        let base = derive(profile_a, domain_a);
+        assert_ne!(base, derive(profile_a, domain_b));
+        assert_ne!(base, derive(profile_b, domain_a));
     }
 
     #[test]

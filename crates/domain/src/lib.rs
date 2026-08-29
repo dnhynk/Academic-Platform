@@ -900,6 +900,16 @@ pub struct ArtifactRepresentation {
     pub byte_length: u64,
 }
 
+/// Object formats a descriptor may name.
+///
+/// `1` is `PLAINTEXT_SYNTHETIC_V1`, written and read only inside a synthetic
+/// profile. `2` is `AEAD_CHUNKED_V2`, written and read only inside an encrypted
+/// profile. Which of the two a given profile admits is a physical property of
+/// the vault that owns the object namespace, not of this validator: this list
+/// only says that both spellings exist. A descriptor naming any other version
+/// is rejected here, before any vault sees it.
+pub const ARTIFACT_FORMAT_VERSIONS: [u16; 2] = [1, 2];
+
 /// Logical content-addressed artifact descriptor.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -981,7 +991,7 @@ pub fn validate_artifact_json_number_tokens(input: &str) -> Result<(), DomainErr
 impl ArtifactDescriptor {
     /// Validates the descriptor fields that are fixed in Phase 0.
     pub fn validate(&self) -> Result<(), DomainError> {
-        if self.format_version != 1 {
+        if !ARTIFACT_FORMAT_VERSIONS.contains(&self.format_version) {
             return Err(DomainError::InvalidEventPayload(
                 "unsupported artifact format version".to_owned(),
             ));

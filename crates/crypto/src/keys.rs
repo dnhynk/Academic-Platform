@@ -154,6 +154,10 @@ secret_key!(
     RecipientWrapKey,
     "The key a single recipient's wrapped VMK is sealed under."
 );
+secret_key!(
+    DomainLocatorKey,
+    "The HMAC key one domain's vault locators are derived under."
+);
 
 impl VaultMasterKey {
     /// Generates a fresh Vault Master Key from operating-system randomness.
@@ -241,6 +245,7 @@ mod tests {
         assert_zeroize_on_drop::<RecoverySecret>();
         assert_zeroize_on_drop::<RecipientMacKey>();
         assert_zeroize_on_drop::<RecipientWrapKey>();
+        assert_zeroize_on_drop::<DomainLocatorKey>();
     }
 
     #[test]

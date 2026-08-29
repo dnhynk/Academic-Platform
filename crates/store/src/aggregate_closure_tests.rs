@@ -408,7 +408,10 @@ fn append_all_arms<'connection>(
         u64::try_from(batch.events.len())?,
     )?;
     let written = {
-        let receipts = std::collections::BTreeMap::new();
+        // No registration arm references an artifact, so this closure needs no
+        // sealed receipts; the receipt type is named only to fix the parameter.
+        let receipts =
+            std::collections::BTreeMap::<_, academic_vault::SealedObjectCapability>::new();
         let mut closure = ClosureWriter::new(&transaction, &batch, &receipts);
         let mut written = 0_usize;
         for (index, event) in batch.events.iter().enumerate() {

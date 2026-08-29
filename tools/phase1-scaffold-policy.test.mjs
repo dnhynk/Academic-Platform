@@ -243,7 +243,12 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-keystore-platform": [],
     "academic-store-platform": [],
     "academic-test-support": [],
-    "academic-vault": ["academic-domain"],
+    // `academic-crypto` is an optional edge behind `aead-objects`, the same
+    // shape the store's encrypted lane uses: `cargo metadata` reports declared
+    // dependencies rather than resolved ones, and
+    // `encrypted_object_lane_is_not_default` proves the edge stays unresolved
+    // in a default build.
+    "academic-vault": ["academic-crypto", "academic-domain"],
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
@@ -268,6 +273,11 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // must never become.
     "academic-core": ["academic-scenario"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
+    // `academic-vault` owns the encrypted-object acceptance suite, which builds
+    // its keys through the `P2-K1` public schedule rather than fabricating
+    // them. That is a test edge only; the product edge is the optional one
+    // above.
+    "academic-vault": ["academic-crypto"],
     "academic-scenario": ["academic-domain"],
   });
 
@@ -911,12 +921,14 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
     );
   }
 
-  // Only `academic-store` declares the encrypted lane's crypto edge.
+  // Only the two encrypted lanes declare a crypto edge: the store's schema-2
+  // database and the vault's AEAD_CHUNKED_V2 objects. Both are optional and
+  // both are off by default.
   const storeCryptoDependents = workspacePackages
     .filter((pkg) => productDependencyNames(pkg).includes("academic-crypto"))
     .map((pkg) => pkg.name)
     .toSorted();
-  assert.deepEqual(storeCryptoDependents, ["academic-store"]);
+  assert.deepEqual(storeCryptoDependents, ["academic-store", "academic-vault"]);
 
   // The compile-time guard itself, in the library that declares both features.
   const lib = await readFile("crates/store/src/lib.rs", "utf8");
@@ -938,6 +950,74 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
     /format_uuid = x'67cb6d3ea27e4b53b1e727d46920e4f9'/u,
     "migration 0003 does not pin the frozen schema-2 format UUID",
   );
+});
+
+// t068 section 3.4. The encrypted object lane is a non-default feature on the
+// vault, exactly like the encrypted store lane is on the store: a default
+// product build resolves neither the key schedule nor an AEAD, and the two
+// object namespaces (`vault/v1` plaintext, `vault/v2` encrypted) are separate
+// physical trees rather than one tree with a flag.
+test("encrypted_object_lane_is_not_default", async () => {
+  const vaultPackage = packagesByName.get("academic-vault");
+  assert.deepEqual(vaultPackage.features.default, []);
+  assert.deepEqual(vaultPackage.features["aead-objects"], [
+    "dep:academic-crypto",
+    "dep:chacha20poly1305",
+    "dep:subtle",
+  ]);
+  assert.deepEqual(vaultPackage.features["phase2-fault-injection"], []);
+
+  const vaultNode = resolveNodesById.get(vaultPackage.id);
+  assert.equal(vaultNode.features.includes("aead-objects"), false);
+  assert.equal(vaultNode.features.includes("phase2-fault-injection"), false);
+
+  // The default product graph resolves no AEAD through the vault.
+  const defaultTree = featureTree(["-p", "academic-daemon"]);
+  for (const forbidden of ["chacha20poly1305", "academic-crypto"]) {
+    assert.equal(
+      defaultTree.includes(forbidden),
+      false,
+      `the default daemon graph selected ${forbidden}`,
+    );
+  }
+
+  // Selecting the lane is what pulls them in.
+  const encryptedTree = featureTree([
+    "-p",
+    "academic-vault",
+    "--features",
+    "aead-objects",
+  ]);
+  for (const required of ["chacha20poly1305", "academic-crypto"]) {
+    assert.ok(
+      encryptedTree.includes(required),
+      `the encrypted object lane did not select ${required}`,
+    );
+  }
+
+  // The two namespaces and their extensions are frozen in one place.
+  const layout = await readFile("crates/vault/src/layout.rs", "utf8");
+  assert.match(layout, /PlaintextSyntheticV1 => "v1"/u);
+  assert.match(layout, /AeadChunkedV2 => "v2"/u);
+  assert.match(layout, /PlaintextSyntheticV1 => "obj"/u);
+  assert.match(layout, /AeadChunkedV2 => "aobj"/u);
+
+  // The frozen header geometry. A silent change to any of these moves every
+  // committed object byte.
+  const object = await readFile("crates/vault/src/object.rs", "utf8");
+  for (const [name, value] of [
+    ["OBJECT_FORMAT_VERSION: u16", "2"],
+    ["AEAD_ID_XCHACHA20_POLY1305: u8", "1"],
+    ["BASE_NONCE_BYTES: usize", "24"],
+    ["STREAMING_PREFIX_BYTES: usize", "86"],
+    ["WRAP_AAD_BYTES: usize", "128"],
+    ["HEADER_LEN_FIELD: u16", "200"],
+  ]) {
+    assert.ok(
+      object.includes(`${name} = ${value};`),
+      `the frozen object constant ${name} is no longer ${value}`,
+    );
+  }
 });
 
 /**

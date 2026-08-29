@@ -28,11 +28,16 @@
 //! daemon must run it before it accepts clients.
 
 mod durability;
+#[cfg(feature = "aead-objects")]
+mod encrypted;
 mod fault;
 mod ingest;
 pub mod layout;
+#[cfg(feature = "aead-objects")]
+pub mod object;
 mod receipt;
 mod reconcile;
+mod seal;
 
 use std::{
     collections::BTreeMap,
@@ -44,9 +49,17 @@ use std::{
 use academic_domain::{ArtifactDescriptor, ArtifactId, DomainError, DomainId, VaultLocator};
 
 pub use ingest::ArtifactIngestRequest;
-pub use layout::VaultLayout;
+pub use layout::{ObjectFormat, VaultLayout};
 pub use receipt::{SealDisposition, SealedArtifactReceipt, SealedObjectCapability};
 pub use reconcile::{ReconcileOptions, ReconcileRecord, ReconcileReport, ReconcileState};
+pub use seal::{SealedObjectReceipt, SealedObjectVerifier};
+
+#[cfg(feature = "aead-objects")]
+pub use encrypted::{
+    ENCRYPTED_FORMAT_VERSION, ENCRYPTED_OBJECT_FORMAT, EncryptedDomainKeyring,
+    EncryptedObjectReader, EncryptedVault, PHASE2_OBJECT_FAULT_IDS, ResealOutcome,
+    SealedEncryptedObject,
+};
 
 /// Disposable plaintext object format used only by synthetic Phase 1 work.
 pub const VAULT_WRITE_FORMAT: &str = "PLAINTEXT_SYNTHETIC_V1";
@@ -106,6 +119,9 @@ pub enum VaultError {
     ClockUnavailable,
     /// The streamed byte count exceeded the portable artifact contract.
     ArtifactTooLarge,
+    /// An encrypted object failed to parse, authenticate, or match its descriptor.
+    #[cfg(feature = "aead-objects")]
+    ObjectFormat(object::ObjectFormatError),
 }
 
 impl VaultError {
@@ -180,6 +196,8 @@ impl fmt::Display for VaultError {
             Self::ArtifactTooLarge => {
                 formatter.write_str("artifact exceeds the portable exact byte-length range")
             }
+            #[cfg(feature = "aead-objects")]
+            Self::ObjectFormat(source) => source.fmt(formatter),
         }
     }
 }
@@ -189,6 +207,8 @@ impl Error for VaultError {
         match self {
             Self::Io { source, .. } => Some(source),
             Self::Domain(source) => Some(source),
+            #[cfg(feature = "aead-objects")]
+            Self::ObjectFormat(source) => Some(source),
             _ => None,
         }
     }
@@ -279,7 +299,7 @@ pub struct Vault {
 impl Vault {
     /// Opens the vault below a validated synthetic-only profile and durably initializes layout.
     pub fn open(profile_root: &Path, keyring: DomainKeyring) -> VaultResult<Self> {
-        let layout = VaultLayout::new(profile_root);
+        let layout = VaultLayout::new(profile_root, ObjectFormat::PlaintextSyntheticV1);
         layout.initialize()?;
         Ok(Self { layout, keyring })
     }
@@ -373,6 +393,36 @@ impl Vault {
     ) -> VaultResult<()> {
         let canonical_path = self.validate_descriptor_locator(capability.descriptor())?;
         capability.revalidate(&canonical_path)
+    }
+}
+
+impl reconcile::ObjectNamespace for Vault {
+    fn layout(&self) -> &VaultLayout {
+        Self::layout(self)
+    }
+
+    fn validate_descriptor_locator(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf> {
+        Self::validate_descriptor_locator(self, descriptor)
+    }
+
+    fn verify_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<()> {
+        Self::verify_sealed_object(self, descriptor).map(|_capability| ())
+    }
+}
+
+impl SealedObjectVerifier for Vault {
+    type Receipt = SealedObjectCapability;
+
+    fn profile_root(&self) -> &Path {
+        Self::profile_root(self)
+    }
+
+    fn verify_sealed_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<Self::Receipt> {
+        Self::verify_sealed_object(self, descriptor)
+    }
+
+    fn revalidate_sealed_object(&self, receipt: &mut Self::Receipt) -> VaultResult<()> {
+        Self::revalidate_sealed_object(self, receipt)
     }
 }
 

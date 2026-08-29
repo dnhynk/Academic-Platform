@@ -34,7 +34,7 @@
       "enum": ["EPHEMERAL", "COURSE_TERM", "USER_MANAGED", "LEGAL_HOLD"]
     },
     "permission_lineage_id": { "$ref": "#/$defs/uuidV7" },
-    "format_version": { "const": 1 },
+    "format_version": { "enum": [1, 2] },
     "vault_locator": {
       "type": "string",
       "pattern": "^locator:v1:[0-9a-f]{64}$"

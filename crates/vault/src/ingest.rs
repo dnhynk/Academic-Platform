@@ -88,6 +88,36 @@ impl ArtifactIngestRequest {
         self.artifact_id
     }
 
+    /// Returns the requested media type.
+    #[must_use]
+    pub const fn media_type(&self) -> &MediaType {
+        &self.media_type
+    }
+
+    /// Returns the requested security domain.
+    #[must_use]
+    pub const fn domain_id(&self) -> DomainId {
+        self.domain_id
+    }
+
+    /// Returns the requested confidentiality label.
+    #[must_use]
+    pub const fn confidentiality(&self) -> Confidentiality {
+        self.confidentiality
+    }
+
+    /// Returns the requested retention class.
+    #[must_use]
+    pub const fn retention_class(&self) -> RetentionClass {
+        self.retention_class
+    }
+
+    /// Returns the requested permission lineage.
+    #[must_use]
+    pub const fn permission_lineage_id(&self) -> PermissionLineageId {
+        self.permission_lineage_id
+    }
+
     fn descriptor(
         &self,
         content_digest: ContentDigest,

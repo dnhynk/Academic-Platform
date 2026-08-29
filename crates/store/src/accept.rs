@@ -13,7 +13,7 @@ use academic_domain::{
     TimestampMillis, UnsignedBatch,
 };
 use academic_ledger::LedgerError;
-use academic_vault::{SealedObjectCapability, Vault};
+use academic_vault::{SealedObjectReceipt, SealedObjectVerifier};
 
 #[cfg(not(feature = "sqlcipher-store"))]
 use crate::connection::open_writer;
@@ -99,12 +99,12 @@ impl AcceptanceStore {
     }
 
     /// Accepts an authenticated batch after concrete vault read-back, with faults disabled.
-    pub fn accept_verified_batch(
+    pub fn accept_verified_batch<V: SealedObjectVerifier>(
         &mut self,
         verified: &VerifiedBatch,
         command: AcceptanceCommand<'_>,
         accepted_at: TimestampMillis,
-        vault: &Vault,
+        vault: &V,
     ) -> Result<AcceptanceOutcome, AcceptError> {
         self.ensure_vault_profile(vault)?;
         accept_verified_batch_with_faults(
@@ -121,15 +121,16 @@ impl AcceptanceStore {
     ///
     /// The callback can stop or pause a test at a checkpoint, but it cannot alter verification,
     /// issue a vault capability, execute SQL, or reach a second writer.
-    pub fn accept_verified_batch_with_faults<F>(
+    pub fn accept_verified_batch_with_faults<V, F>(
         &mut self,
         verified: &VerifiedBatch,
         command: AcceptanceCommand<'_>,
         accepted_at: TimestampMillis,
-        vault: &Vault,
+        vault: &V,
         faults: &F,
     ) -> Result<AcceptanceOutcome, AcceptError>
     where
+        V: SealedObjectVerifier,
         F: AcceptanceFaultInjector,
     {
         self.ensure_vault_profile(vault)?;
@@ -143,7 +144,7 @@ impl AcceptanceStore {
         )
     }
 
-    fn ensure_vault_profile(&self, vault: &Vault) -> Result<(), AcceptError> {
+    fn ensure_vault_profile<V: SealedObjectVerifier>(&self, vault: &V) -> Result<(), AcceptError> {
         if vault.profile_root() == self.profile_root {
             Ok(())
         } else {
@@ -295,15 +296,16 @@ impl From<InjectedFault> for AcceptError {
 /// Same acceptance boundary with an explicit test-harness callback.
 ///
 /// No environment variable or command-line switch can reach this capability.
-fn accept_verified_batch_with_faults<F>(
+fn accept_verified_batch_with_faults<V, F>(
     writer: &mut WriterConnection,
     verified: &VerifiedBatch,
     command: AcceptanceCommand<'_>,
     accepted_at: TimestampMillis,
-    vault: &Vault,
+    vault: &V,
     faults: &F,
 ) -> Result<AcceptanceOutcome, AcceptError>
 where
+    V: SealedObjectVerifier,
     F: AcceptanceFaultInjector,
 {
     if command.envelope_bytes != verified.source_envelope() {
@@ -325,7 +327,7 @@ where
     // Opaque receipt values remain alive and are required by normalized writes
     // through commit; an artifact-id set alone is not an acceptance capability.
     let descriptors = preflight_artifact_closure(writer, verified.batch())?;
-    let mut sealed_receipts = BTreeMap::<ArtifactId, SealedObjectCapability>::new();
+    let mut sealed_receipts = BTreeMap::<ArtifactId, V::Receipt>::new();
     for descriptor in descriptors.into_values() {
         let receipt = vault.verify_sealed_object(&descriptor).map_err(|source| {
             AcceptError::SealingFailed {
@@ -500,9 +502,9 @@ where
     })
 }
 
-fn revalidate_sealed_receipts(
-    vault: &Vault,
-    sealed_receipts: &mut BTreeMap<ArtifactId, SealedObjectCapability>,
+fn revalidate_sealed_receipts<V: SealedObjectVerifier>(
+    vault: &V,
+    sealed_receipts: &mut BTreeMap<ArtifactId, V::Receipt>,
 ) -> Result<(), AcceptError> {
     for (artifact_id, capability) in sealed_receipts {
         vault
