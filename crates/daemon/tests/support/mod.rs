@@ -103,18 +103,52 @@ fn temporary_base() -> std::io::Result<PathBuf> {
     Ok(std::env::temp_dir())
 }
 
+/// Base for the runtime lane, which the Unix endpoint bound constrains.
+///
+/// A profile root may sit anywhere, but the runtime root has to leave room for
+/// the whole assembled socket path inside `sun_path`. macOS canonicalizes
+/// `$TMPDIR` to a 56-byte private path, so nesting a per-test directory below
+/// it spends the budget an ordinary deployment needs. `/tmp` canonicalizes to
+/// the same link-free `/private` tree in 12 bytes and is the shortest such base
+/// every Unix offers, so the runtime lane is reserved there and the tests that
+/// address the bound build their own root explicitly.
+#[cfg(unix)]
+fn runtime_base() -> std::io::Result<PathBuf> {
+    fs::canonicalize("/tmp").or_else(|_| temporary_base())
+}
+
+/// Windows named-pipe endpoints carry no comparable path bound.
+#[cfg(windows)]
+fn runtime_base() -> std::io::Result<PathBuf> {
+    temporary_base()
+}
+
+/// Length of a path in the bytes the Unix endpoint bound is stated in.
+#[cfg(unix)]
+#[must_use]
+pub fn path_len(path: &Path) -> usize {
+    use std::os::unix::ffi::OsStrExt;
+
+    path.as_os_str().as_bytes().len()
+}
+
 #[derive(Debug)]
 pub struct TestEnvironment {
     pub root: TempDir,
+    pub runtime: TempDir,
     pub runtime_root: PathBuf,
 }
 
 impl TestEnvironment {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         let root = TempDir::new_in(temporary_base()?)?;
-        let runtime_root = root.path().join("runtime");
-        fs::create_dir(&runtime_root)?;
-        Ok(Self { root, runtime_root })
+        let runtime = TempDir::new_in(runtime_base()?)?;
+        let runtime_root = runtime.path().to_path_buf();
+        Ok(Self {
+            root,
+            runtime,
+            runtime_root,
+        })
     }
 
     pub fn profile(&self, name: &str) -> Result<SyntheticProfile, Box<dyn Error>> {
@@ -127,8 +161,29 @@ impl TestEnvironment {
     }
 
     pub fn config(&self, profile: &SyntheticProfile) -> DaemonConfig {
-        DaemonConfig::new(profile.root(), &self.runtime_root)
-            .with_path_probe(Arc::new(LocalTestProbe))
+        self.config_at(profile, &self.runtime_root)
+    }
+
+    pub fn config_at(&self, profile: &SyntheticProfile, runtime_root: &Path) -> DaemonConfig {
+        DaemonConfig::new(profile.root(), runtime_root).with_path_probe(Arc::new(LocalTestProbe))
+    }
+
+    /// Creates a runtime root of exactly `length` bytes below the runtime lane,
+    /// so a test addresses the real endpoint bound instead of whatever length
+    /// the environment happens to hand it.
+    #[cfg(unix)]
+    pub fn runtime_root_of_length(&self, length: usize) -> Result<PathBuf, Box<dyn Error>> {
+        let padding = length
+            .checked_sub(path_len(&self.runtime_root) + 1)
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "the runtime lane is already longer than the requested root",
+                )
+            })?;
+        let root = self.runtime_root.join("r".repeat(padding));
+        fs::create_dir(&root)?;
+        Ok(root)
     }
 }
 

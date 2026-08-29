@@ -36,6 +36,36 @@ impl LocalEndpoint {
 /// Lock file backing the per-profile singleton on both platforms.
 pub(crate) const SINGLETON_LOCK_FILE: &str = "academicd.lock";
 
+/// Product namespace directory below the caller-supplied runtime root.
+pub(crate) const PRODUCT_RUNTIME_DIR: &str = "academic-os";
+
+/// Failure while resolving the runtime layout for one profile.
+///
+/// A layout failure is not always an operating-system error: on Unix the
+/// assembled endpoint path has to fit the platform socket address, and that is
+/// decided from the path alone, before anything is created or bound.
+#[derive(Debug)]
+pub(crate) enum RuntimeLayoutError {
+    /// An operating-system boundary failed.
+    Io(io::Error),
+    /// The assembled Unix endpoint path exceeds the platform address bound.
+    #[cfg(unix)]
+    EndpointPathTooLong {
+        /// Longest endpoint path the platform address can carry.
+        limit: usize,
+        /// Measured length of the assembled endpoint path.
+        length: usize,
+        /// The offending assembled path, never truncated to fit.
+        path: PathBuf,
+    },
+}
+
+impl From<io::Error> for RuntimeLayoutError {
+    fn from(source: io::Error) -> Self {
+        Self::Io(source)
+    }
+}
+
 /// Paths resolved before singleton acquisition and listener creation.
 #[derive(Debug, Clone)]
 pub(crate) struct RuntimePaths {
@@ -45,6 +75,25 @@ pub(crate) struct RuntimePaths {
     pub(crate) endpoint: LocalEndpoint,
 }
 
+/// Digest bytes carried by [`profile_key`], hexadecimal-encoded to twice as
+/// many path characters.
+///
+/// The key namespaces profiles inside one user's runtime area, so the bound
+/// that matters is the birthday bound over the profile roots that user actually
+/// hosts: with a 64-bit key, `n` distinct roots share one key with probability
+/// about `n^2 / 2^65`, which is 3e-14 at a thousand roots and still 3e-12 at
+/// ten thousand, both far past what one person reaches. Every character also
+/// costs one byte of the Unix endpoint path, which `sun_path` bounds at 104
+/// bytes on macOS, so the key is kept exactly as long as that namespace needs
+/// and no longer.
+const PROFILE_KEY_BYTES: usize = 8;
+
+/// Maps one canonical profile root to the directory that carries its singleton
+/// lock, its session metadata, and its endpoint.
+///
+/// The mapping is a pure function of the canonical root, so one profile always
+/// resolves to one runtime directory and two profiles resolve to the same one
+/// only on a [`PROFILE_KEY_BYTES`] digest-prefix collision.
 fn profile_key(profile_root: &Path) -> io::Result<String> {
     let canonical = fs::canonicalize(profile_root)?;
     let mut hasher = Sha256::new();
@@ -61,11 +110,11 @@ fn profile_key(profile_root: &Path) -> io::Result<String> {
         }
     }
     let digest = hasher.finalize();
-    // A 160-bit profile namespace keeps Unix socket paths below SUN_LEN
-    // while retaining collision resistance far beyond the per-user scope.
-    Ok(hex::encode(&digest[..20]))
+    Ok(hex::encode(&digest[..PROFILE_KEY_BYTES]))
 }
 
+#[cfg(unix)]
+pub use unix::MAX_UNIX_ENDPOINT_PATH_LEN;
 #[cfg(unix)]
 pub(crate) use unix::{
     LocalListener, SingletonGuard, accept_error_is_transient, cleanup_endpoint, prepare_runtime,
