@@ -523,8 +523,17 @@ fn cli_doctor_detects_orphan_temp_and_projection_lag() -> TestResult {
         "--format",
         "json",
     ])?;
-    assert_eq!(healthy.code, exit::OK, "stderr: {}", healthy.stderr);
+    // The doctor composes two independent axes into one exit code: the ambient
+    // developer toolchain and profile health. A profile assertion can only be
+    // read off the exit code on a host that satisfies the pinned baseline, so
+    // that precondition is checked here rather than assumed.
     let report = healthy.json()?;
+    assert_eq!(
+        report["result"]["toolchain_ready"], true,
+        "this host does not satisfy docs/development/bootstrap.md; checks were {}",
+        report["result"]["checks"]
+    );
+    assert_eq!(healthy.code, exit::OK, "stderr: {}", healthy.stderr);
     let profile = &report["result"]["profile"];
     assert_eq!(profile["deep"], true);
     assert_eq!(profile["integrity_check"], true);
