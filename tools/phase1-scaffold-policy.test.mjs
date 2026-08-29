@@ -1097,13 +1097,15 @@ function normalizeDependencyUse(dependency, packageName) {
 }
 
 test("dependency_license_and_source_receipt_is_complete", async () => {
-  const [receiptText, keyReceiptText, cargoLock] = await Promise.all([
+  const [receiptText, keyReceiptText, scenarioReceiptText, cargoLock] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-k1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-c7.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
   const keyReceipt = JSON.parse(keyReceiptText);
+  const scenarioReceipt = JSON.parse(scenarioReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -1142,11 +1144,40 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-K1 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-C7` is subtracted the same way and for the same reason. The two
+  // receipts must not overlap: a package claimed by both would be subtracted
+  // twice and the arithmetic below would hide a third, unreceipted arrival.
+  const scenarioAdmitted = new Set(
+    scenarioReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const scenarioPathPackages = new Set(
+    scenarioReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  for (const claimed of [...scenarioAdmitted, ...scenarioPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) || keyPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const scenarioTuples = lockTuples.filter(
+    ([name, version]) =>
+      scenarioAdmitted.has(`${name}@${version}`) ||
+      scenarioPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    scenarioTuples.length,
+    scenarioAdmitted.size + scenarioPathPackages.size,
+    "a P2-C7 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
       !keyAdmitted.has(`${name}@${version}`) &&
-      !keyPathPackages.has(`${name}@${version}`),
+      !keyPathPackages.has(`${name}@${version}`) &&
+      !scenarioAdmitted.has(`${name}@${version}`) &&
+      !scenarioPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -1156,7 +1187,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   );
   assert.equal(
     lockTuples.length,
-    receipt.lock_delta.incoming_package_tuple_count + 1 + keyTuples.length,
+    receipt.lock_delta.incoming_package_tuple_count + 1 + keyTuples.length + scenarioTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -1207,6 +1238,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     ...preservedPhase0Versions,
     ...admittedVersions,
     ...keyReceipt.direct_workspace_dependencies,
+    ...scenarioReceipt.direct_workspace_dependencies,
   };
   const directRegistryDependencies = workspacePackages.flatMap((pkg) =>
     pkg.dependencies.filter((dependency) => dependency.source !== null),
@@ -1293,6 +1325,36 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       .map((use) => ({ ...use, features: use.features.toSorted() }))
       .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
     assert.deepEqual(actualUses, expectedUses, `${admission.name} owner/feature receipt`);
+  }
+
+  // Unlike the name/version subtraction above, each `P2-C7` admission is
+  // checked against what Cargo actually resolved. A receipt that named the
+  // right package under the wrong licence, checksum, or registry would
+  // otherwise still subtract cleanly.
+  for (const admission of scenarioReceipt.admissions) {
+    const pkg = metadata.packages.find(
+      (candidate) =>
+        candidate.name === admission.name && candidate.version === admission.version,
+    );
+    assert.ok(pkg, `metadata omitted P2-C7 dependency ${admission.name}`);
+    assert.equal(pkg.license, admission.license, `${admission.name} license`);
+    assert.equal(pkg.rust_version, admission.rust_version, `${admission.name} rust-version`);
+    assert.equal(pkg.source, admission.source, `${admission.name} source`);
+    assert.equal(
+      lockChecksum(admission.name, admission.version),
+      admission.checksum,
+      `${admission.name} checksum`,
+    );
+    assert.equal(
+      admission.role,
+      "build-time only, never linked into a product binary",
+      `${admission.name} was admitted as a shipping dependency`,
+    );
+    assert.equal(
+      defaultProductPackageNames().has(admission.name),
+      false,
+      `${admission.name} entered the default product graph`,
+    );
   }
 
   const expectedNativeNames = [

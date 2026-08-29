@@ -37,6 +37,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 cargo test --workspace --all-targets --locked --offline
 cargo test --workspace --doc --locked --offline
+cargo test -p academic-scenario --test compile_fail --locked --offline
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck

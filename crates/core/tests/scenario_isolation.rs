@@ -19,9 +19,9 @@ use academic_domain::{
     TimestampMillis,
 };
 use academic_scenario::{
-    OpportunityBasis, ProjectedMastery, ProjectionCalibration, ProjectionEnvelope, ProposalProvenance,
-    Proposed, ScenarioAssumption, ScenarioChoice, ScenarioInputs, SyllabusConceptSignal,
-    WorkloadHoursRange, admit_projection_payload, project,
+    OpportunityBasis, ProjectedMastery, ProjectionCalibration, ProjectionEnvelope,
+    ProposalProvenance, Proposed, ScenarioAssumption, ScenarioChoice, ScenarioInputs,
+    SyllabusConceptSignal, WorkloadHoursRange, admit_projection_payload, project,
 };
 use academic_store::queries::canonical_snapshot;
 use rusqlite::{Connection, OpenFlags, types::ValueRef};
@@ -65,7 +65,10 @@ fn simulation_fuzz_leaves_actual_state_hash_identical() -> TestResult {
     // duplicates occur, which means a healthy run both projects and rejects.
     // Requiring both keeps a generator that degenerated into one branch from
     // passing as a thorough one.
-    assert_eq!(observed.projected + observed.rejected_inputs, FUZZ_ITERATIONS);
+    assert_eq!(
+        observed.projected + observed.rejected_inputs,
+        FUZZ_ITERATIONS
+    );
     assert!(
         observed.projected > FUZZ_ITERATIONS / 8 && observed.rejected_inputs > 0,
         "the fuzz must both project and reject, saw {observed:?}"
@@ -281,10 +284,7 @@ fn actual_state_digest(fixture: &Fixture) -> Result<ContentDigest, Box<dyn Error
     // The logical rows are the state; the file bytes catch anything that
     // changed the database without changing a row this query can see.
     hash_field(&mut hasher, &file_bytes_digest(path)?);
-    hash_field(
-        &mut hasher,
-        &file_bytes_digest(&with_suffix(path, "-wal"))?,
-    );
+    hash_field(&mut hasher, &file_bytes_digest(&with_suffix(path, "-wal"))?);
     Ok(ContentDigest::from_sha256_bytes(hasher.finalize().into()))
 }
 
@@ -388,18 +388,22 @@ fn random_inputs(
                 // The modulus is deliberately small so duplicate concepts and
                 // duplicate offerings occur, driving the rejection paths.
                 concept_entity_id: identifier::<EntityId>(
-                    0x300 + u16::try_from(random.next_u32() % 6).unwrap_or(0) + u16::try_from(concept).unwrap_or(0),
+                    0x300
+                        + u16::try_from(random.next_u32() % 6).unwrap_or(0)
+                        + u16::try_from(concept).unwrap_or(0),
                 )?,
                 basis: basis(random.next_u32()),
                 coverage_permille: u16::try_from(random.next_u32() % 1_200).unwrap_or(0),
-                assessed: random.next_u32() % 2 == 0,
+                assessed: random.next_u32().is_multiple_of(2),
             });
         }
         let low = u16::try_from(random.next_u32() % 30).unwrap_or(0);
         let span = u16::try_from(random.next_u32() % 20).unwrap_or(0);
         choices.push(ScenarioChoice {
             offering_id: identifier::<OfferingId>(
-                0x400 + u16::try_from(random.next_u32() % 5).unwrap_or(0) + u16::try_from(index).unwrap_or(0),
+                0x400
+                    + u16::try_from(random.next_u32() % 5).unwrap_or(0)
+                    + u16::try_from(index).unwrap_or(0),
             )?,
             credit_units: u16::try_from(random.next_u32() % 6).unwrap_or(0),
             assumed_weekly_hours: WorkloadHoursRange::new(low, low.saturating_add(span))?,

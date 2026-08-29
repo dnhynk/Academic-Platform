@@ -11,7 +11,9 @@ use sha2::{Digest, Sha256};
 use crate::{
     SCENARIO_ENGINE_VERSION,
     error::ScenarioError,
-    opportunity::{LikelihoodBand, OpportunityBasis, OpportunityKind, ProjectedEvidenceOpportunity},
+    opportunity::{
+        LikelihoodBand, OpportunityBasis, OpportunityKind, ProjectedEvidenceOpportunity,
+    },
     proposed::ProposalProvenance,
     workload::{ProjectedWorkloadRange, WorkloadHoursRange},
 };
