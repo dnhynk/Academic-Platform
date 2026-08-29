@@ -184,11 +184,14 @@ positions, re-run against an encrypted profile under the
 `phase2-fault-injection` feature. A production build compiles every checkpoint
 away: there is no environment lookup and no crash switch.
 
-**`BK03` is reachable here.** It fires on the second object copy, and Phase 1's
-`A3` accepted it as `NOT_RUN` because that corpus registered one artifact. The
-encrypted corpus registers two, the child process reaches the checkpoint — the
-harness asserts the ready marker names it — and the parent observes exactly one
-copied object and no manifest.
+**`BK03` is reachable here.** It fires on the second object copy, so it needs a
+corpus with two registered artifacts. Phase 1's daemon *exit* corpus registers
+one and records `BK03` as `NOT_RUN` pointing at `crates/portability/tests/crash.rs`,
+which does register two and does assert the outcome; `tools/phase1-exit.mjs`
+gates the run on that suite passing. The encrypted corpus registers two for the
+same reason, so the checkpoint is reached rather than pointed at: the child
+process aborts there — the harness asserts the ready marker names it — and the
+parent observes exactly one copied object and no manifest.
 
 ## Building and verifying
 

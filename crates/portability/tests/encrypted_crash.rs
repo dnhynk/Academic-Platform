@@ -6,10 +6,12 @@
 //! The required outcome is unchanged — unpublished partial output, or a
 //! complete verified destination, never a normal-looking partial state.
 //!
-//! **`BK03` is reachable here.** It fires on the second object copy, and Phase
-//! 1's `A3` recorded it `NOT_RUN` because that corpus registered one artifact.
-//! This corpus registers two, so the checkpoint is hit and the assertion below
-//! observes exactly one copied object.
+//! **`BK03` is reached here rather than pointed at.** It fires on the second
+//! object copy, so it needs two registered artifacts. Phase 1's daemon exit
+//! corpus registers one and records `BK03` as `NOT_RUN` pointing at
+//! `tests/crash.rs`, which does assert it. This corpus registers two, so the
+//! checkpoint is hit directly and the assertion below observes exactly one
+//! copied object.
 //!
 //! Run with:
 //! `cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --test encrypted_crash`
@@ -208,8 +210,9 @@ fn bk01_bk04_leave_no_partially_published_encrypted_backup() -> TestResult {
             "BK03" => {
                 assert!(!manifest_present, "{fault} wrote a manifest too early");
                 // The reachable-object copy was interrupted between the first
-                // and the second object. Phase 1 could not observe this: its
-                // corpus had one artifact and the checkpoint was never hit.
+                // and the second object. A one-artifact corpus never reaches
+                // this checkpoint, which is why Phase 1's exit corpus records
+                // BK03 as NOT_RUN and defers to its own crash suite.
                 assert_eq!(objects, 1, "{fault} was not interrupted midway");
             }
             _ => {
