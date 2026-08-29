@@ -53,11 +53,15 @@ shared temporary directory would let another account present a socket or a
 session file to this one.
 
 Caller-supplied paths are normalized to the host's native absolute form at the
-argument boundary. This is required on Windows, where the durability layer
-addresses files through verbatim `\\?\` paths and Windows performs **no**
-normalization on a verbatim path: a forward slash the caller typed would
-otherwise be read as an ordinary filename character and every open below the
-profile would fail with `ERROR_PATH_NOT_FOUND`.
+argument boundary. On Windows this is what makes a relative or dot-bearing
+spelling usable below the vault: the durability layer prefixes only a rooted
+spelling and refuses a non-absolute one at the handle rename, and it rejects a
+`.` or `..` component with a typed error instead of collapsing it, because
+collapsing is only correct when no earlier component is a link. Resolving both
+needs the process working directory, which the composition root owns. Separator
+spelling is not part of this: the vault normalizes separators itself before it
+applies any prefix, for every caller, so a forward-slash argument is addressed
+correctly either way.
 
 ## Exit codes
 
