@@ -125,6 +125,12 @@ KEK_d = HKDF-SHA-512(VMK, salt = profile_id, info = "academic-os/kek/v1" || doma
 LOC_d = HKDF-SHA-512(KEK_d, salt = profile_id, info = "academic-os/vault-locator/v1")
 ```
 
+An opened header holds a live DEK and the logical plaintext digest. Both are
+private, both are reached only through a named `expose_dek` / `plaintext_digest`
+borrow, both zeroize on drop, and `Debug` prints neither: a derived `Debug`
+would put a live key into any log line, panic message, or audit row that
+formatted a reader.
+
 `LOC_d` is the HMAC key the domain-keyed locator is derived under. It is a
 sub-derivation of `KEK_d`, not a fifth key off the Vault Master Key: a domain's
 locator namespace cannot be computed by anyone who cannot already open that
