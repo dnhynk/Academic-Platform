@@ -46,7 +46,7 @@ use academic_retention::{
 use academic_vault::object::{HEADER_BYTES, KEY_SLOT_OFFSET, KEY_SLOT_SHRED_MARKER};
 use rotation_support::{
     SOURCE_ENTROPY, SOURCE_RECIPIENT, TARGET_ENTROPY, TARGET_RECIPIENT, TestRoot,
-    create_generation, domain, domain_kek, generation_of, load_generations, open_vault,
+    create_generation, domain_kek, generation_of, load_generations, open_vault,
     persist_generations, profile_id, seal_corpus,
 };
 
@@ -264,7 +264,6 @@ fn assert_exactly_one_opening_key(
     let target_kek = domain_kek(target_master)?;
     let keys = RotationKeys {
         profile: profile_id(),
-        domain: domain()?,
         source_kek: &source_kek,
         target_kek: &target_kek,
     };
@@ -415,7 +414,6 @@ fn interrupted_rewrap_has_exactly_one_opening_key() -> TestResult {
         let target_kek = domain_kek(&target_master)?;
         let keys = RotationKeys {
             profile: profile_id(),
-            domain: domain()?,
             source_kek: &source_kek,
             target_kek: &target_kek,
         };
