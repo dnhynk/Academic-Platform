@@ -18,7 +18,6 @@ use academic_retention::{
         observe_reachable_opening, probe_header, rebind_locator, shred_with_tombstone,
     },
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
-    tombstone,
 };
 use academic_vault::object::{HEADER_BYTES, KEY_SLOT_OFFSET, KEY_SLOT_SHRED_MARKER};
 use rotation_support::{
@@ -251,16 +250,25 @@ fn crypto_shred_makes_ciphertext_unreadable() -> TestResult {
 }
 
 // ---------------------------------------------------------------------------
-// backup_tombstone_is_present_and_re_deletes_on_restore
+// The tombstone half a restore needs, without a restore
 // ---------------------------------------------------------------------------
 
-/// A deletion reaches the copy inside an already-taken backup: the tombstone is
-/// present in the backup, and restoring re-deletes without any key.
+/// A shred writes the tombstone that authorizes it, and re-applying that
+/// tombstone destroys the key slot of the object it names and of nothing else.
+///
+/// This is the half of a deletion that lives in this crate: the record, the
+/// keyless positioned write, and the report of what was and was not reached.
+/// The other half — that a real backup carries the tombstone and that the
+/// product restore applies it — is
+/// `backup_tombstone_is_present_and_re_deletes_on_restore`, and it lives in
+/// `academic-portability`'s encrypted suite because only that crate can call
+/// `backup_encrypted_profile` and `restore_encrypted_profile`. It used to live
+/// here and imitate both with `fs::copy`, which is why it passed while the
+/// product restore read no tombstone at all.
 #[test]
-fn backup_tombstone_is_present_and_re_deletes_on_restore() -> TestResult {
+fn a_tombstone_re_deletes_the_object_it_names_and_no_other() -> TestResult {
     let live = TestRoot::new("tombstone-live")?;
-    let backup = TestRoot::new("tombstone-backup")?;
-    let restored = TestRoot::new("tombstone-restored")?;
+    let materialised = TestRoot::new("tombstone-materialised")?;
 
     let (master, _) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
     let vault = open_vault(live.path(), &master)?;
@@ -269,21 +277,6 @@ fn backup_tombstone_is_present_and_re_deletes_on_restore() -> TestResult {
     let bystander = &descriptors[1];
     let kek = domain_kek(&master)?;
 
-    // A backup is taken before the deletion: it holds both objects byte for
-    // byte, which is precisely why shredding the live object is not enough.
-    let backup_objects = backup.path().join("objects");
-    fs::create_dir_all(&backup_objects)?;
-    for descriptor in &descriptors {
-        let source = vault.layout().object_path(descriptor)?;
-        fs::copy(
-            &source,
-            backup_objects.join(format!("{}.aobj", descriptor.id)),
-        )?;
-    }
-    let copied_subject = backup_objects.join(format!("{}.aobj", subject.id));
-    assert_eq!(probe_header(&copied_subject, &kek), HeaderProbe::Opened);
-
-    // The deletion: shred live, then tombstone the backup.
     let mut journal = AppendOnlyJournal::open(&live.path().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
     let stone = BackupTombstone::new(
         hex::encode([0x21_u8; 16]),
@@ -291,60 +284,70 @@ fn backup_tombstone_is_present_and_re_deletes_on_restore() -> TestResult {
         1_700_000_000_001,
     );
     shred_with_tombstone(&mut journal, &vault, subject, &stone)?;
-    let written = tombstone::write_into_backup(backup.path(), &stone)?;
 
-    // The tombstone is present in the backup, under the locator it names.
-    assert!(written.is_file(), "the tombstone was not written");
+    // The live object is gone and the record that authorized it is on disk.
     assert_eq!(
-        written.file_name().and_then(|name| name.to_str()),
-        Some(format!("{}.tombstone", stone.locator).as_str())
+        probe_header(&vault.layout().object_path(subject)?, &kek),
+        HeaderProbe::Shredded
     );
-    let read_back = tombstone::read_from_backup(backup.path())?;
-    assert_eq!(read_back, vec![stone.clone()]);
-    // The backup's own copy is untouched by the live shred: without the
-    // tombstone the deletion would not have reached it.
-    assert_eq!(probe_header(&copied_subject, &kek), HeaderProbe::Opened);
 
-    // The restore: materialise the backup's objects into a fresh tree, then
-    // apply every tombstone the backup carries. No key is unlocked here.
-    let restored_objects = restored.path().join("vault/v2/restored");
-    fs::create_dir_all(&restored_objects)?;
+    // A tree of objects that were copied out before the shred: the state any
+    // already-taken backup is in.
+    let objects_root = materialised.path().join("vault/v2/objects");
+    fs::create_dir_all(&objects_root)?;
+    let intact = open_vault(live.path(), &master)?;
     for descriptor in &descriptors {
-        fs::copy(
-            backup_objects.join(format!("{}.aobj", descriptor.id)),
-            restored_objects.join(format!("{}.aobj", descriptor.id)),
-        )?;
+        let name = format!("{}.aobj", descriptor.id);
+        let source = intact.layout().object_path(descriptor)?;
+        if descriptor.id == subject.id {
+            // The shredded live object cannot stand in for the copy a backup
+            // took before the deletion, so the subject is re-sealed into a
+            // second vault and taken from there.
+            let untouched = TestRoot::new("tombstone-untouched")?;
+            let second = open_vault(untouched.path(), &master)?;
+            let resealed = seal_corpus(&second, 2)?;
+            let from = second.layout().object_path(&resealed[0])?;
+            fs::copy(&from, objects_root.join(&name))?;
+        } else {
+            fs::copy(&source, objects_root.join(&name))?;
+        }
     }
-    let restored_subject = restored_objects.join(format!("{}.aobj", subject.id));
-    let restored_bystander = restored_objects.join(format!("{}.aobj", bystander.id));
-    assert_eq!(probe_header(&restored_subject, &kek), HeaderProbe::Opened);
+    let materialised_subject = objects_root.join(format!("{}.aobj", subject.id));
+    let materialised_bystander = objects_root.join(format!("{}.aobj", bystander.id));
+    assert_eq!(
+        probe_header(&materialised_subject, &kek),
+        HeaderProbe::Opened
+    );
 
-    let applied = apply_tombstones(&restored.path().join("vault/v2"), &read_back)?;
+    let applied = apply_tombstones(
+        &materialised.path().join("vault/v2"),
+        std::slice::from_ref(&stone),
+    )?;
     assert_eq!(applied.applied, vec![stone.locator.clone()]);
     assert!(applied.absent.is_empty());
-
-    // Re-deleted: the restored copy is unreadable to the key that opened it a
-    // moment ago, and the bystander is untouched.
     assert_eq!(
-        probe_header(&restored_subject, &kek),
+        probe_header(&materialised_subject, &kek),
         HeaderProbe::Shredded,
-        "the restore did not re-delete the tombstoned object"
+        "the tombstone did not re-delete the object it names"
     );
     assert_eq!(
-        probe_header(&restored_bystander, &kek),
+        probe_header(&materialised_bystander, &kek),
         HeaderProbe::Opened,
-        "the restore re-deleted an object no tombstone named"
+        "the tombstone re-deleted an object it does not name"
     );
-    assert!(restored_subject.is_file());
+    assert!(materialised_subject.is_file());
 
-    // Applying again is idempotent, so a restore that is retried is safe.
-    let again = apply_tombstones(&restored.path().join("vault/v2"), &read_back)?;
+    // Applying again is idempotent, so a retried restore is safe.
+    let again = apply_tombstones(
+        &materialised.path().join("vault/v2"),
+        std::slice::from_ref(&stone),
+    )?;
     assert_eq!(again.applied, vec![stone.locator.clone()]);
 
     // A tombstone whose object is not in the tree is reported, not ignored.
     let orphan = BackupTombstone::new(hex::encode([0x22_u8; 16]), [0xFE; 32], 1);
     let mixed = apply_tombstones(
-        &restored.path().join("vault/v2"),
+        &materialised.path().join("vault/v2"),
         &[stone.clone(), orphan.clone()],
     )?;
     assert_eq!(mixed.absent, vec![orphan.locator]);

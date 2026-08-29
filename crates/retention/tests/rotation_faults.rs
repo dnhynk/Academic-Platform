@@ -46,8 +46,8 @@ use academic_retention::{
 use academic_vault::object::{HEADER_BYTES, KEY_SLOT_OFFSET, KEY_SLOT_SHRED_MARKER};
 use rotation_support::{
     SOURCE_ENTROPY, SOURCE_RECIPIENT, TARGET_ENTROPY, TARGET_RECIPIENT, TestRoot,
-    create_generation, domain_kek, generation_of, load_generations, open_vault,
-    persist_generations, profile_id, seal_corpus,
+    create_generation, domain_kek, generation_of, load_generations, open_vault, profile_id,
+    publish_generations, seal_corpus,
 };
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -302,7 +302,13 @@ fn prepare(label: &str) -> Result<Prepared, Box<dyn Error>> {
     let root = TestRoot::new(label)?;
     let (source_master, source_record) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
     let (target_master, target_record) = create_generation(TARGET_RECIPIENT, TARGET_ENTROPY)?;
-    persist_generations(root.path(), &source_record, &target_record)?;
+    publish_generations(
+        root.path(),
+        &source_master,
+        &source_record,
+        &target_master,
+        &target_record,
+    )?;
     let vault = open_vault(root.path(), &source_master)?;
     let descriptors = seal_corpus(&vault, CORPUS)?;
     Ok(Prepared {
@@ -506,21 +512,16 @@ fn recipient_set_is_old_or_new_and_never_partial() -> TestResult {
         let root = TestRoot::new(label)?;
         let (source_master, source_record) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
         let (target_master, target_record) = create_generation(TARGET_RECIPIENT, TARGET_ENTROPY)?;
-        persist_generations(root.path(), &source_record, &target_record)?;
 
-        // Two recipients hold the source generation before the kill.
-        let mut journal =
-            AppendOnlyJournal::open(&root.path().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
-        for record in [source_record.clone(), target_record.clone()] {
-            recipients::add_recipient(
-                root.path(),
-                profile_id(),
-                &mut journal,
-                record,
-                generation_of(&source_master)?,
-            )?;
-        }
-        drop(journal);
+        // Two recipients are on disk before the kill: the source generation's,
+        // and the target generation's added beside it by the rewrap.
+        publish_generations(
+            root.path(),
+            &source_master,
+            &source_record,
+            &target_master,
+            &target_record,
+        )?;
         let before = fs::read(
             root.path()
                 .join(academic_retention::RECIPIENTS_RELATIVE_PATH),

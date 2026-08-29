@@ -19,6 +19,8 @@ plaintext-portability = ["dep:academic-projections", "academic-store/bundled-sql
 encrypted-portability = [
   "dep:academic-crypto",
   "dep:academic-recovery",
+  "dep:academic-retention",
+  "academic-retention/rotation-engine",
   "academic-store/sqlcipher-store",
   "academic-vault/aead-objects",
 ]
@@ -33,6 +35,10 @@ academic-crypto = { path = "../crypto", optional = true }
 academic-domain = { path = "../domain" }
 academic-projections = { path = "../projections", optional = true }
 academic-recovery = { path = "../recovery", optional = true }
+# `P2-K5`'s tombstone record and its keyless positioned re-deletion. The
+# encrypted restore calls them, so a deletion reaches the copies a backup
+# holds through the product path rather than through a test that imitates it.
+academic-retention = { path = "../retention", optional = true, default-features = false }
 academic-store = { path = "../store", default-features = false }
 academic-vault = { path = "../vault" }
 rusqlite.workspace = true

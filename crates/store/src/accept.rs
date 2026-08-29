@@ -41,6 +41,23 @@ pub struct AcceptanceOutcome {
     pub duplicate_batch: bool,
 }
 
+/// The one event schema v3 arm this build accepts.
+///
+/// `P2-K5` owns `RETENTION_ACTION_RECORDED`. Migration `0004` gives it a
+/// closure table, migration `0005` gives it the typed columns a descriptor
+/// migration needs, and [`crate::repository::ClosureWriter`] places its row, so
+/// it has a complete write path. The other seventeen arms do not yet and stay
+/// refused until each owner writes one.
+///
+/// It is admitted only in the encrypted lane, because only that lane's
+/// `STORE_MIGRATION_SQL` applies the two migrations it depends on.
+#[cfg(feature = "sqlcipher-store")]
+const WRITABLE_V3_ARM: Option<&str> = Some("RETENTION_ACTION_RECORDED");
+/// The plaintext synthetic lane carries neither closure table, so no v3 arm is
+/// storable there.
+#[cfg(not(feature = "sqlcipher-store"))]
+const WRITABLE_V3_ARM: Option<&str> = None;
+
 /// Sole owned product writer with only the authenticated acceptance operation exposed.
 ///
 /// The raw SQLite writer and its construction functions are crate-private. This type is neither
@@ -142,6 +159,72 @@ impl AcceptanceStore {
             vault,
             faults,
         )
+    }
+
+    /// Appends one descriptor migration, moving an artifact's object reference.
+    ///
+    /// This is the second half of a re-seal. The first half is an accepted
+    /// `RETENTION_ACTION_RECORDED` event whose `source_digest` is
+    /// `migration.record_digest()`; migration `0005`'s triggers refuse this
+    /// insert unless that event exists and carries exactly that digest, so a
+    /// reference cannot move without a canonical event authorizing precisely
+    /// where it moved to.
+    ///
+    /// `migrated` is the descriptor as it is after the move. It is
+    /// authenticated through the same `SealedObjectVerifier` seam acceptance
+    /// uses before the row is written, so the store never starts resolving to
+    /// an object it has not opened.
+    ///
+    /// Re-running with the same record is idempotent: the primary key refuses
+    /// the second insert and the reference is already where it belongs, which
+    /// is what a rotation resume needs.
+    pub fn record_descriptor_migration<V: SealedObjectVerifier>(
+        &mut self,
+        migration: &crate::descriptor_migration::DescriptorMigration,
+        migrated: &ArtifactDescriptor,
+        vault: &V,
+    ) -> StoreResult<()> {
+        if vault.profile_root() != self.profile_root {
+            return Err(StoreError::DescriptorMigrationRejected {
+                reason: "the verifying vault belongs to a different profile",
+                detail: vault.profile_root().display().to_string(),
+            });
+        }
+        let authorization = self.writer.authorize_acceptance();
+        let transaction = self.writer.begin_immediate()?;
+        let outcome = crate::descriptor_migration::insert_descriptor_migration(
+            &transaction,
+            migration,
+            migrated,
+            vault,
+        );
+        match outcome {
+            Ok(()) => {
+                transaction.commit()?;
+                drop(authorization);
+                Ok(())
+            }
+            Err(error) => {
+                drop(transaction);
+                drop(authorization);
+                Err(error)
+            }
+        }
+    }
+
+    /// Reads every recorded descriptor migration, in chain order.
+    pub fn descriptor_migrations(
+        &self,
+    ) -> StoreResult<Vec<crate::descriptor_migration::DescriptorMigration>> {
+        self.writer
+            .with_preflight_reader(crate::descriptor_migration::read_descriptor_migrations)
+    }
+
+    /// Returns the next chain position for one artifact's reference.
+    pub fn next_descriptor_migration_seq(&self, artifact: ArtifactId) -> StoreResult<u64> {
+        self.writer.with_preflight_reader(|connection| {
+            crate::descriptor_migration::next_migration_seq(connection, artifact)
+        })
     }
 
     fn ensure_vault_profile<V: SealedObjectVerifier>(&self, vault: &V) -> Result<(), AcceptError> {
@@ -312,19 +395,17 @@ where
         return Err(AcceptError::CommandEnvelopeMismatch);
     }
 
-    // Event schema v3 arms are readable and verifiable, but no acceptance path
-    // places their closure rows yet. Reject them with a typed error before any
-    // SQL runs, so nothing is consumed and the reason is named.
+    // Event schema v3 arms are readable and verifiable, but an arm whose owner
+    // has not written its closure path yet is refused with a typed error before
+    // any SQL runs, so nothing is consumed and the reason is named.
     //
-    // On a schema-1 profile the refusal is also the only fail-closed answer
-    // available: migration 0004 adds the closure tables and widens the
-    // `ledger_event.event_kind` CHECK together, and the plaintext lane's
-    // `STORE_MIGRATION_SQL` does not apply it, so a v3 arm has neither a table
-    // nor an admitted kind there. The encrypted lane's set ends with 0004, so a
-    // schema-2 profile does carry both; this guard is what keeps the arms out
-    // until the task that writes them lifts it.
+    // On a schema-1 profile the refusal covers every arm, and that is the only
+    // fail-closed answer available: migration 0004 adds the closure tables and
+    // widens the `ledger_event.event_kind` CHECK together, and the plaintext
+    // lane's `STORE_MIGRATION_SQL` does not apply it, so a v3 arm has neither a
+    // table nor an admitted kind there.
     for event in &verified.batch().events {
-        if event.payload.registration().is_some() {
+        if event.payload.registration().is_some() && Some(event.payload.kind()) != WRITABLE_V3_ARM {
             return Err(AcceptError::UnstorableEventKind(event.payload.kind()));
         }
     }

@@ -66,6 +66,21 @@ pub enum EngineError {
     /// The descriptor set does not cover the plan.
     #[error("the rotation plan names unit {0}, for which no descriptor was supplied")]
     DescriptorMissing(String),
+    /// A retirement was attempted before the rotation recorded its completion.
+    #[error(
+        "unit {0} cannot retire its superseded object: the rotation has not recorded          its completion, so destroying it could leave an artifact no key opens"
+    )]
+    RotationNotComplete(String),
+    /// A retirement was attempted for a unit whose reachability has not moved.
+    #[error(
+        "unit {0} cannot retire its superseded object: the journal does not record          the unit as migrated"
+    )]
+    UnitNotMigrated(String),
+    /// A retirement was attempted while the canonical reference still names it.
+    #[error(
+        "unit {0} cannot retire its superseded object: the descriptor the store          resolves to is still the superseded one"
+    )]
+    ReferenceNotMoved(String),
 }
 
 /// Returns `descriptor` with the locator a keyring holding `kek` would give it.
@@ -315,6 +330,99 @@ impl<'a> RotationEngine<'a> {
         })?;
         Ok(())
     }
+}
+
+/// Domain separator for the digest a retirement's destroyed key slot names.
+pub const RETIREMENT_DIGEST_DOMAIN: &[u8] = b"academic-os/rotation-retirement/v1";
+
+/// Returns the digest that labels one unit's retired source object.
+///
+/// It names the rotation, the unit, and both locators, so the marker left in
+/// the retired file points at the exact move that made it unreferenced. It is
+/// deliberately not a [`BackupTombstone`] digest: a retirement is not a
+/// deletion of the artifact, and a restore must not re-apply it to a backup
+/// copy of an artifact that still exists.
+#[must_use]
+pub fn retirement_digest(
+    rotation_id: &str,
+    unit_id: &str,
+    source_locator: &[u8; 32],
+    target_locator: &[u8; 32],
+) -> [u8; 32] {
+    use sha2::{Digest as _, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(RETIREMENT_DIGEST_DOMAIN);
+    hasher.update([0]);
+    hasher.update(rotation_id.as_bytes());
+    hasher.update([0]);
+    hasher.update(unit_id.as_bytes());
+    hasher.update([0]);
+    hasher.update(source_locator);
+    hasher.update(target_locator);
+    hasher.finalize().into()
+}
+
+/// Destroys the key slot of one completed rotation's superseded object.
+///
+/// This is the garbage collection `ADR-004` leaves open, and it is what makes
+/// t068 section 5's `P2-K5` sentence — exactly one of the old and the new key
+/// opens any object — true of the files on disk rather than only of the object
+/// the journal calls reachable. Until a unit is retired, a holder of the
+/// superseded generation's key still opens the superseded copy in the live
+/// tree, including a recipient the rotation revoked.
+///
+/// It refuses unless the rotation recorded its completion and this unit
+/// recorded its migration, because a source object destroyed before its
+/// replacement is reachable is an artifact no key opens.
+///
+/// `current` is the descriptor the *store* now resolves to. Passing it is how
+/// the caller states that the canonical reference has already moved: this crate
+/// cannot read the store, and retiring on the strength of the journal alone
+/// would destroy the only object the store could still name.
+///
+/// A kill during the marker write is safe for the same reason a shred is: the
+/// write is positioned and idempotent, and re-running reaches the same state.
+/// A kill before the journal record leaves an object already retired and a
+/// journal that does not say so, which a resume repairs by re-running.
+pub fn retire_superseded_object(
+    journal: &mut AppendOnlyJournal,
+    vault: &EncryptedVault,
+    unit: &RotationUnit,
+    superseded: &ArtifactDescriptor,
+    current: &ArtifactDescriptor,
+) -> Result<[u8; 32], EngineError> {
+    let Some(state) = RotationState::replay(journal.entries())? else {
+        return Err(EngineError::Rotation(RotationError::EmptyPlan));
+    };
+    if !state.is_complete() {
+        return Err(EngineError::RotationNotComplete(unit.unit_id_hex()));
+    }
+    if !state
+        .migrated()
+        .iter()
+        .any(|migrated| migrated.unit.unit_id_hex() == unit.unit_id_hex())
+    {
+        return Err(EngineError::UnitNotMigrated(unit.unit_id_hex()));
+    }
+    if current.vault_locator == superseded.vault_locator {
+        return Err(EngineError::ReferenceNotMoved(unit.unit_id_hex()));
+    }
+
+    let digest = retirement_digest(
+        state.rotation_id(),
+        &unit.unit_id_hex(),
+        superseded.vault_locator.as_bytes(),
+        current.vault_locator.as_bytes(),
+    );
+    let path = vault.layout().object_path(superseded)?;
+    shred_key_slot_at(&path, &digest)?;
+    journal.append(JournalEntry::UnitSourceRetired {
+        rotation_id: state.rotation_id().to_owned(),
+        unit_id: unit.unit_id_hex(),
+        source_locator: hex::encode(superseded.vault_locator.as_bytes()),
+        retirement_digest: hex::encode(digest),
+    })?;
+    Ok(digest)
 }
 
 /// Crypto-shreds one object and records the tombstone that authorized it.

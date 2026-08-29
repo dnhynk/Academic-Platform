@@ -11,9 +11,20 @@ production_data_allowed=false
 default storage_encryption=NONE
 ```
 
-`academic-retention` is a workspace crate no product binary links. `P2-P2` is
-the task that wires the real transcript, embedding, claim, document, cache, and
-replica subsystems to it.
+`academic-retention` is a workspace crate no product binary links. One crate
+declares a product edge to it — `academic-portability`, optional and selected
+only by the non-default `encrypted-portability` lane, so the encrypted restore
+can re-apply the tombstones a backup carries — and
+`rotation_engine_lane_is_not_default` proves no default graph resolves it.
+`P2-P2` is the task that wires the real transcript, embedding, claim, document,
+cache, and replica subsystems to it.
+
+**What is not here.** No daemon or CLI command runs a rotation: the sequence
+below is a library sequence, executed end to end by
+`crates/portability/tests/encrypted_rotation.rs` and by nothing a user can
+invoke. The `STORE_DATABASE` unit still has no bound executor, so a rotation
+covers objects and leaves `SKEY_p` where it was. Both are stated again where
+they bite rather than only here.
 
 ## What rotates, and why one rotation moves everything
 
@@ -53,16 +64,40 @@ where `entry_json` is the serialized `entry` of that same line. Record zero link
 to 64 zero characters; every later record links to its predecessor's
 `entry_digest`.
 
-That chain is what makes append-only *checkable*. A removed line breaks the
-sequence, a rewritten line breaks its own digest, a reordered pair breaks the
-link, and `AppendOnlyJournal::open` verifies the whole chain before it will
-append — so a tampered journal cannot be extended. The handle is held in append
-mode for the life of the value; nothing in the type can position a write
-anywhere but the end.
+That chain is what makes append-only *checkable* for every edit inside the file.
+A rewritten line breaks its own digest, a reordered pair breaks the link, and a
+line removed from the middle breaks the sequence of everything after it;
+`AppendOnlyJournal::open` verifies the whole chain before it will append. The
+handle is held in append mode for the life of the value.
+
+A backward chain cannot see its own tail being cut off — drop the last *k*
+records and the remaining prefix still verifies — so the head is recorded beside
+the journal:
+
+```json
+<journal>.head   {"journal_version":1,"record_count":3,"head_digest":"<64 hex>"}
+```
+
+It is written after the record it names is already durable. A journal holding
+*fewer* records than its head declares, or a different digest at the position
+the head names, is refused and cannot be extended. A journal holding *more* is a
+kill between an append and the head write; the next open repairs the head.
+
+**This is a consistency anchor, not a MAC.** A profile's journal is cleartext by
+design and nothing here is keyed, so an adversary who can write both files can
+rewrite both consistently and is not detected. What the head closes is the case
+the chain alone could not see at all.
+
+A torn final line — a fragment with no newline — is a crash, not tampering:
+`append` writes one whole line and syncs it before returning, so a fragment was
+never a durable record. It is dropped and truncated away when the journal is
+opened, which is what makes an interrupted rotation resumable. A *complete* line
+that does not parse is still `Malformed`.
 
 Entries are a closed set: `RotationStarted`, `UnitResealed`, `UnitMigrated`,
-`RotationCompleted`, `RecipientAdded`, `RecipientRevoked`, `RetentionPlanned`,
-`ArtifactShredded`, `BackupTombstoneWritten`, `RetentionSettled`.
+`UnitSourceRetired`, `RotationCompleted`, `RecipientAdded`, `RecipientRevoked`,
+`RetentionPlanned`, `ArtifactShredded`, `BackupTombstoneWritten`,
+`RetentionSettled`.
 
 **A journal is not encrypted, so nothing private may be in one.** Entries carry
 locators — which are already the on-disk filenames — digests of them, generation
@@ -101,6 +136,68 @@ Which generation is in force is a pure function of the journal
 (`UnitProgress::opening_generation`), so a resumed process decides without
 holding either key.
 
+**The invariant is over the object the profile resolves to, not over every file
+on disk.** Until a superseded object is retired (below) it is still a readable
+file under the superseded key. What the sentence rules out is an artifact with
+two live references or none.
+
+## Moving the canonical reference
+
+Reachability inside the journal is not reachability for the store. The store's
+`artifact_descriptor.vault_locator` is inside the signed `ARTIFACT_REGISTERED`
+payload and the table is INSERT-only twice over, so a rotation cannot write the
+new locator over the old one. The reference moves the way every other correction
+in this store moves: an appended row supersedes an older one.
+
+```text
+artifact_descriptor_migration
+  retention_action_id  -> retention_action(retention_action_id)
+  artifact_id          -> artifact_descriptor(artifact_id)
+  migration_seq, superseded_locator, vault_locator, format_version, record_digest
+```
+
+Migration `0005` adds it, as the typed columns migration `0004` reserves for each
+aggregate owner. **No new event kind and no nineteenth v3 arm**: the canonical
+authorization is the existing `RETENTION_ACTION_RECORDED` arm, whose registration
+frame carries the optional provenance digest that binds this exact move.
+`record_digest` is `SHA-256` over the domain separator, the retention action
+identity, the artifact identity, the sequence, both locators, and the format
+version, and migration `0005`'s triggers refuse a row whose digest is not the
+`source_digest` its retention action carries, or that does not continue the
+chain. `read_artifact_descriptors` resolves the chain, so backup, restore, the
+store's own pre-commit revalidation, and reconciliation all name the object the
+current key opens.
+
+The order is event first, row second. A kill between them leaves the reference
+where it was, the superseded object still reachable, and the migration
+re-runnable. The opposite order would point the store at an object no accepted
+event had authorized.
+
+## Retiring a superseded object
+
+`ADR-004` quarantines the superseded object and leaves the collection point
+open. `retire_superseded_object` is that point: it destroys the superseded
+object's key slot, using a digest that names the rotation rather than a
+deletion, and records `UnitSourceRetired`.
+
+It is what makes "exactly one of the old and the new key opens this artifact"
+true of the files on disk. **Before retirement it is not.** A holder of the
+superseded generation's key — including a recipient the rotation revoked — opens
+the superseded copy in the live tree for as long as it is merely unreferenced.
+`revocation stops this recipient from receiving any future key` is exactly that
+narrow, and retirement is the operation that closes the window.
+
+Retirement refuses unless the journal records the rotation complete and the unit
+migrated, and unless the caller passes the descriptor the *store* now resolves
+to and it differs from the superseded one. The retention crate cannot read the
+store, so that argument is how a caller states that the canonical reference has
+already moved; retiring on the journal alone would destroy the only object the
+store could still name.
+
+A retirement is not a deletion of the artifact. It leaves backup copies taken
+before the rotation untouched and writes no tombstone: the artifact still exists,
+at the locator the migration chain resolves to.
+
 ## The store database unit
 
 The rotation plan carries a `STORE_DATABASE` unit. Its executor is `P2-K2`'s
@@ -135,11 +232,20 @@ written into the journal so an audit of the file alone cannot read a revocation
 as an erasure. `revocation_does_not_claim_prior_plaintext_erasure` fails if a
 surface stops carrying it or if any library source starts claiming more.
 
-Two independent things stop a revoked recipient from receiving the new key: the
-rewrap iterates the *current* set, which the revocation already removed the
-record from; and every produced record is checked against the journal's
-revocation history, so a caller holding a stale record — or minting a fresh one
-under the same identity — is refused.
+Three independent things stop a revoked recipient from receiving the new key:
+the rewrap iterates the *current* set, which the revocation already removed the
+record from; every produced record is checked against the journal's revocation
+history; and `add_recipient` reads the same history, so a caller minting a fresh
+record under a revoked `recipient_id` is refused as an identity rather than as a
+record. Revocation is a fact about an identity, not about one stored record.
+
+A rotation touches the set twice, and the order is the point.
+`rewrap_for_generation` adds the new generation's records **beside** the old
+ones, so while units are still moving both generations are openable from the one
+document the profile holds. `retire_generation` writes the set holding only the
+new generation, and refuses while any planned unit is still under the old one —
+a set holding only the new generation before then would name a key that opens
+nothing for those units while the key that does open them is no longer on disk.
 
 Revoking the last remaining recipient is refused. That is not access control, it
 is data destruction.
@@ -190,11 +296,32 @@ object does not reach the copy inside one. A tombstone closes that gap:
 <backup>/tombstones/<locator>.tombstone     # one JSON object, one atomic write
 ```
 
-A restore applies every tombstone the backup carries to the objects it
-materialises. **The re-deletion needs no key**: the locator lives in the clear at
-a fixed header offset and destroying a key slot is a positioned write, so a
-restore onto a fresh machine re-deletes before anything is unlocked. A tombstone
-whose object is not in the tree is reported as absent, not ignored.
+`restore_encrypted_profile` applies every tombstone the backup carries to the
+objects it materialises, in the staging tree, after every object has been
+authenticated and before the rename that publishes the restore. So no published
+restore holds a key slot the profile it came from had destroyed, and a tombstone
+that cannot be applied fails the restore instead of silently resurrecting an
+artifact. **The re-deletion needs no key**: the locator lives in the clear at a
+fixed header offset and destroying a key slot is a positioned write. A tombstone
+whose object is not in the tree is reported as absent, not ignored — the
+artifact may have been registered after the backup was taken, or shredded before
+it.
+
+`tombstones/` is the one path in a published backup the sealed manifest does not
+cover, because a tombstone is written into a backup that was published and
+sealed long before, and no re-seal is possible without the backup root.
+`verify_encrypted_backup_directory` therefore excludes it from the inventory
+comparison. That weakens nothing the manifest proved: every listed file is still
+required, present, and digest-checked. What an added tombstone can do is destroy
+a key slot on restore, and anyone who can write into the backup directory could
+delete the object outright.
+
+A crypto-shredded object does not stop a backup. Its `artifact_descriptor` row
+is append-only and stays, so refusing the profile would make one that had ever
+deleted an artifact permanently un-backupable. The object is copied as the
+destroyed thing it is — the shred marker is inside the bytes and the ciphertext
+digest covers it — and the restore digest-checks it without asking it to
+authenticate.
 
 `RB02` — a tombstone write that fails — makes the deletion `REPAIR_REQUIRED`
 rather than `PARTIAL`. A deletion whose tombstone did not land is not "mostly

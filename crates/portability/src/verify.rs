@@ -1674,6 +1674,13 @@ fn read_command_receipts(connection: &Connection) -> PortabilityResult<Vec<Comma
 ///
 /// The descriptors are revalidated by the same domain rules that admitted them,
 /// so a corrupted normalized row can never silently become an object reference.
+///
+/// The locator each descriptor carries is the *current* one: a `P2-K5` rotation
+/// appends its move to `artifact_descriptor_migration` rather than editing the
+/// signed row, and this resolves that chain. Every caller — backup, restore,
+/// export — therefore names the object the profile can actually open. A profile
+/// with no migrations, and the whole plaintext lane, resolve to the signed
+/// locator unchanged.
 pub fn read_artifact_descriptors(
     database: &CanonicalDatabase,
 ) -> PortabilityResult<Vec<ArtifactDescriptor>> {
@@ -1682,6 +1689,11 @@ pub fn read_artifact_descriptors(
     for row in &rows {
         descriptors.push(artifact_descriptor(row)?);
     }
+    academic_store::descriptor_migration::resolve_with_stored_migrations(
+        database.connection(),
+        &mut descriptors,
+    )
+    .map_err(PortabilityError::Store)?;
     Ok(descriptors)
 }
 

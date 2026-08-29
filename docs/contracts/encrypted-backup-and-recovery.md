@@ -208,8 +208,16 @@ cargo test -p academic-portability --no-default-features --features encrypted-po
 `academic-recovery` is pure Rust and runs in the default workspace lane on every
 CI platform. The `academic-portability` encrypted lane needs a native SQLCipher
 and OpenSSL, the same requirement and the same pinned Windows toolchain as
-[the encrypted store lane](encrypted-store-lane.md), and is verified separately
-for the same reason.
+[the encrypted store lane](encrypted-store-lane.md). Since `P2-RF1` it runs in
+hosted CI on `ubuntu-latest` as the `encrypted-portability-lane` job; native
+Windows stays the README-documented local lane, for the `openssl-src` reason
+t068 section 2.3-17 records.
+
+`tests/encrypted_rotation.rs` is in that job. It is where `P2-K5`'s rotation and
+deletion meet this boundary: a rotation moving the canonical object reference, a
+crypto-shredded object that no longer blocks a backup, a tombstoned backup that
+still verifies and restores, and a restore that refuses a destination inside the
+backup it is reading.
 
 ## Which named test proves what
 

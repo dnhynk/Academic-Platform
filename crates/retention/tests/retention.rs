@@ -18,15 +18,15 @@ use std::{
 
 use academic_crypto::{
     DeviceKeystore, IDENTIFIER_BYTES, KeystoreFailure, ProfileId, RECOVERY_ARGON2ID_V1,
-    RecoverySecret, VaultMasterKey, create_device_recipient, create_recovery_recipient,
-    unlock_with_device,
+    RecoverySecret, UnlockThrottle, VaultMasterKey, create_device_recipient,
+    create_recovery_recipient, unlock_with_device, unlock_with_recovery,
 };
 use academic_retention::{
     ActionId, AppendOnlyJournal, ClassResolution, DERIVATIVE_CLASSES, DeletionPlan,
     DerivativeClass, DerivativeResolver, ExecutionFailure, GATE_38_026_STATEMENT, JournalEntry,
     OriginalVoiceAuthority, PlannedAction, REVOCATION_SCOPE_STATEMENT, RetentionExecutor,
     RetentionOutcome, RetentionSubject, RotationId, RotationPlan, RotationState, RotationUnit,
-    UnresolvedReason, VoiceSpan, execute::settle, journal::ROTATION_JOURNAL_RELATIVE_PATH,
+    UnresolvedReason, VoiceSpan, execute::settle, journal, journal::ROTATION_JOURNAL_RELATIVE_PATH,
     recipients, rotation::KeyGeneration,
 };
 
@@ -123,6 +123,44 @@ impl DeviceKeystore for MemoryKeystore {
 
 fn phrase(byte: u8) -> RecoverySecret {
     RecoverySecret::from_entropy([byte; 32])
+}
+
+/// Opens one recovery-class record with the phrase that wrapped it.
+fn open_with_phrase(
+    record: &academic_crypto::RecipientRecord,
+    secret: &RecoverySecret,
+) -> Result<VaultMasterKey, Box<dyn Error>> {
+    let mut throttle = UnlockThrottle::new();
+    Ok(unlock_with_recovery(
+        record,
+        profile(),
+        secret,
+        &mut throttle,
+        0,
+    )?)
+}
+
+/// Reports whether one stored record wraps `generation`.
+///
+/// This is the caller-side test [`recipients::retire_generation`] takes: the
+/// retention crate holds no key, so the generation a record wraps is answered
+/// by whoever can open it. A device record is tried through the broker and a
+/// recovery record through the phrase; a record neither opens is not kept.
+fn opens_generation(
+    record: &academic_crypto::RecipientRecord,
+    secret: &RecoverySecret,
+    keystore: &MemoryKeystore,
+    generation: KeyGeneration,
+) -> bool {
+    let opened = unlock_with_device(record, profile(), keystore)
+        .ok()
+        .or_else(|| {
+            let mut throttle = UnlockThrottle::new();
+            unlock_with_recovery(record, profile(), secret, &mut throttle, 0).ok()
+        });
+    opened
+        .and_then(|master| KeyGeneration::of(&master, profile()).ok())
+        .is_some_and(|opened| opened == generation)
 }
 
 fn open_journal(root: &Path) -> Result<AppendOnlyJournal, Box<dyn Error>> {
@@ -276,7 +314,79 @@ fn revoked_recipient_gets_no_new_key() -> TestResult {
             .any(|record| record.recipient_id() == &DEVICE_A),
         "a record for the revoked recipient reappeared"
     );
+    // The new generation's records are written beside the old ones, not over
+    // them. One object has not migrated yet, so a set holding only the new
+    // generation would name a key that opens nothing for it while the key that
+    // does open it is no longer on disk.
+    //
+    // The recovery recipient is the one this corpus can read both ways: its
+    // records derive from the phrase, while the memory broker holds one secret
+    // per device label and the second `create_device_recipient` call replaces
+    // the first. So the phrase is what shows that both generations are on disk.
+    let mut phrase_generations = Vec::new();
+    for record in stored.records() {
+        if record.recipient_id() == &PHRASE_RECIPIENT {
+            let opened = open_with_phrase(record, &phrase(0x11))?;
+            phrase_generations.push(KeyGeneration::of(&opened, profile())?);
+        }
+    }
+    assert_eq!(
+        phrase_generations,
+        vec![source_generation, target_generation],
+        "the rewrap did not leave both generations openable while a unit is still under the old key"
+    );
+
+    // Retiring the old generation is refused while that unit is outstanding.
+    let refused = recipients::retire_generation(
+        root.path(),
+        profile(),
+        &journal,
+        target_generation,
+        |record| opens_generation(record, &phrase(0x11), &keystore, target_generation),
+    );
+    let message = refused
+        .err()
+        .ok_or("the old generation was retired while a unit was still under it")?
+        .to_string();
+    assert!(
+        message.contains("rotation is not complete") && message.contains("1 of 2"),
+        "the refusal did not name the outstanding units: {message}"
+    );
+
+    // The rotation finishes, and only then does the old generation leave.
+    journal.append(JournalEntry::UnitResealed {
+        rotation_id: plan.rotation_id().to_hex(),
+        unit_id: second.unit_id_hex(),
+        target_locator: hex::encode([0xBB; 32]),
+    })?;
+    journal.append(JournalEntry::UnitMigrated {
+        rotation_id: plan.rotation_id().to_hex(),
+        unit_id: second.unit_id_hex(),
+    })?;
+    journal.append(JournalEntry::RotationCompleted {
+        rotation_id: plan.rotation_id().to_hex(),
+        unit_count: 2,
+    })?;
+    let kept = recipients::retire_generation(
+        root.path(),
+        profile(),
+        &journal,
+        target_generation,
+        |record| opens_generation(record, &phrase(0x11), &keystore, target_generation),
+    )?;
+    assert_eq!(
+        kept.len(),
+        2,
+        "retiring kept the wrong number of records: {kept:?}"
+    );
+
     // And device B, which was not revoked, really does open the new generation.
+    let stored = recipients::read_set(root.path(), profile())?;
+    assert_eq!(
+        stored.records().len(),
+        2,
+        "the old generation did not leave the recipient set"
+    );
     let device_b_new = stored
         .records()
         .iter()
@@ -287,6 +397,34 @@ fn revoked_recipient_gets_no_new_key() -> TestResult {
         KeyGeneration::of(&opened, profile())?,
         target_generation,
         "the surviving recipient did not receive the new generation"
+    );
+
+    // Re-adding the revoked identity is refused as an identity, not as a
+    // record: a caller minting a brand-new record under the same
+    // `recipient_id` would otherwise hand it the current key straight back.
+    let reminted = create_device_recipient(&target, profile(), DEVICE_A, LABEL_A, &keystore)?;
+    let readded = recipients::add_recipient(
+        root.path(),
+        profile(),
+        &mut journal,
+        reminted,
+        target_generation,
+    );
+    let message = readded
+        .err()
+        .ok_or("a revoked identity was added back to the recipient set")?
+        .to_string();
+    assert!(
+        message.contains("recorded as revoked") && message.contains("receives no key"),
+        "the refusal did not say a revoked identity receives no key: {message}"
+    );
+    let unchanged = recipients::read_set(root.path(), profile())?;
+    assert!(
+        !unchanged
+            .records()
+            .iter()
+            .any(|record| record.recipient_id() == &DEVICE_A),
+        "the refused addition still wrote the revoked identity"
     );
 
     // A caller holding a stale record cannot smuggle the revoked identity back
@@ -813,17 +951,156 @@ fn rotation_journal_is_append_only_and_says_so_when_it_is_not() -> TestResult {
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// T111 P2-3
+// ---------------------------------------------------------------------------
+
+/// A removed tail is detected, and a torn tail is repaired rather than fatal.
+///
+/// `T111`'s reproduction: a backward-linked chain cannot see its own tail being
+/// cut off, so dropping `UnitMigrated` and `RotationCompleted` left a journal
+/// that opened cleanly and replayed the unit's reachability back to the source.
+/// The head file closes that. Its counterpart is the torn final line: a
+/// fragment with no newline was `Malformed` and blocked the resume the rotation
+/// contract promises, and it is now dropped, because the writer syncs a whole
+/// line before it returns and a fragment was therefore never a record.
+#[test]
+fn a_removed_journal_tail_is_refused_and_a_torn_one_resumes() -> TestResult {
+    let root = TestRoot::new("journal-tail")?;
+    let path = root.path().join(ROTATION_JOURNAL_RELATIVE_PATH);
+    let master = VaultMasterKey::generate()?;
+    let generation = KeyGeneration::of(&master, profile())?;
+    let target = VaultMasterKey::generate()?;
+    let target_generation = KeyGeneration::of(&target, profile())?;
+    let unit = RotationUnit::object([0x01; 32]);
+    let plan = RotationPlan::new(
+        RotationId::from_bytes([0x78; 16]),
+        profile(),
+        generation,
+        target_generation,
+        vec![unit.clone()],
+    )?;
+
+    let mut journal = open_journal(root.path())?;
+    journal.append(plan.started_entry())?;
+    journal.append(JournalEntry::UnitResealed {
+        rotation_id: plan.rotation_id().to_hex(),
+        unit_id: unit.unit_id_hex(),
+        target_locator: hex::encode([0xAA; 32]),
+    })?;
+    journal.append(JournalEntry::UnitMigrated {
+        rotation_id: plan.rotation_id().to_hex(),
+        unit_id: unit.unit_id_hex(),
+    })?;
+    journal.append(JournalEntry::RotationCompleted {
+        rotation_id: plan.rotation_id().to_hex(),
+        unit_count: 1,
+    })?;
+    drop(journal);
+    let complete = fs::read_to_string(&path)?;
+    let lines: Vec<&str> = complete.lines().collect();
+    assert_eq!(lines.len(), 4);
+
+    // The head file names the last record, beside the journal.
+    let head = fs::read_to_string(journal::head_path(&path))?;
+    assert!(
+        head.contains("\"record_count\":4"),
+        "the head file is {head}"
+    );
+
+    // Cutting the tail off: the remaining prefix still chains, and that is
+    // exactly why the chain alone could not see it.
+    fs::write(&path, format!("{}\n{}\n", lines[0], lines[1]))?;
+    let refused = AppendOnlyJournal::open(&path)
+        .err()
+        .ok_or("a journal with its tail removed was accepted")?
+        .to_string();
+    assert!(
+        refused.contains("the tail was removed"),
+        "the refusal did not name the removed tail: {refused}"
+    );
+
+    // Restoring the exact bytes makes it readable again, so the check is about
+    // the missing records and not about the file having been touched.
+    fs::write(&path, &complete)?;
+    let restored = AppendOnlyJournal::open(&path)?;
+    assert_eq!(restored.records().len(), 4);
+    drop(restored);
+
+    // A torn final line — the state a kill during `append` leaves — is dropped
+    // and truncated away, so the rotation resumes instead of stopping.
+    let torn = format!("{}\n{}\n{}", lines[0], lines[1], &lines[2][..20]);
+    fs::write(&path, &torn)?;
+    fs::write(
+        journal::head_path(&path),
+        format!(
+            "{{\"journal_version\":1,\"record_count\":2,\"head_digest\":\"{}\"}}\n",
+            serde_json::from_str::<serde_json::Value>(lines[1])
+                .ok()
+                .and_then(|value| value
+                    .get("entry_digest")
+                    .and_then(|digest| digest.as_str().map(str::to_owned)))
+                .ok_or("the second record has no digest")?
+        ),
+    )?;
+    let mut resumed = AppendOnlyJournal::open(&path)?;
+    assert_eq!(
+        resumed.records().len(),
+        2,
+        "the torn fragment was counted as a record"
+    );
+    assert_eq!(
+        fs::read(&path)?.len(),
+        format!("{}\n{}\n", lines[0], lines[1]).len(),
+        "the torn fragment was left in the file for the next append to extend"
+    );
+    resumed.append(JournalEntry::UnitMigrated {
+        rotation_id: plan.rotation_id().to_hex(),
+        unit_id: unit.unit_id_hex(),
+    })?;
+    drop(resumed);
+    assert_eq!(AppendOnlyJournal::open(&path)?.records().len(), 3);
+    Ok(())
+}
+
 /// Nothing in this crate opens a journal for anything but appending.
+///
+/// `set_len` has exactly one reviewed call site: the torn-tail repair in
+/// `journal.rs`, which drops a trailing fragment that has no newline and was
+/// therefore never a durable record. That repair is what makes an interrupted
+/// rotation resumable, and it is bounded here — one occurrence, in one file —
+/// so a second truncation anywhere in the crate fails this test.
 #[test]
 fn no_source_truncates_or_rewrites_a_journal() -> TestResult {
+    let journal_source = Path::new("src").join("journal.rs");
+    let mut repairs = 0;
     for (path, text) in read_crate_sources()? {
-        for forbidden in [".truncate(true)", "set_len(", "File::create(&path)"] {
+        for forbidden in [".truncate(true)", "File::create(&path)"] {
             assert!(
                 !text.contains(forbidden),
                 "{} can shorten or rewrite a journal through {forbidden}",
                 path.display()
             );
         }
+        let truncations = text.matches("set_len(").count();
+        if path.ends_with(&journal_source) {
+            repairs += truncations;
+            assert!(
+                text.contains("truncate torn journal record"),
+                "the one reviewed truncation is no longer the torn-tail repair"
+            );
+        } else {
+            assert_eq!(
+                truncations,
+                0,
+                "{} can shorten a journal through set_len",
+                path.display()
+            );
+        }
     }
+    assert_eq!(
+        repairs, 1,
+        "journal.rs holds {repairs} truncations; the torn-tail repair is the only reviewed one"
+    );
     Ok(())
 }

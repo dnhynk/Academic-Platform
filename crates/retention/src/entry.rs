@@ -86,6 +86,24 @@ pub enum JournalEntry {
         /// Unit identity from the plan.
         unit_id: String,
     },
+    /// A migrated unit's superseded object was retired.
+    ///
+    /// Retirement is the garbage collection `ADR-004` leaves open: the object
+    /// the rotation moved away from is unreferenced, its grace window has
+    /// passed, and its key slot is destroyed. After it, no key opens the
+    /// superseded copy — which is what makes "exactly one of the old and the
+    /// new key opens this artifact" true of the files on disk and not only of
+    /// the journal-reachable one.
+    UnitSourceRetired {
+        /// Owning rotation.
+        rotation_id: String,
+        /// Unit identity from the plan.
+        unit_id: String,
+        /// 64 lowercase hex locator of the retired object.
+        source_locator: String,
+        /// 64 lowercase hex digest the destroyed key slot names.
+        retirement_digest: String,
+    },
     /// Every planned unit migrated.
     RotationCompleted {
         /// Owning rotation.

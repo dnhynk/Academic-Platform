@@ -50,6 +50,11 @@ pub const CANONICAL_TABLES: &[&str] = &[
     "consent",
     "entity_identity_change",
     "retention_action",
+    // Migration 0005's typed columns for the RETENTION_ACTION_RECORDED
+    // aggregate. It is canonical history: the reference an artifact resolves to
+    // is decided by the rows here, so an UPDATE or a DELETE would move an
+    // object reference without an event authorizing it.
+    "artifact_descriptor_migration",
 ];
 
 /// Installs the product-writer guard after migration and identity verification.

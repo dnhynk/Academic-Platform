@@ -7,10 +7,21 @@ import test from "node:test";
 
 import Ajv2020 from "ajv/dist/2020.js";
 
+/**
+ * Output bound for every `cargo` invocation below.
+ *
+ * `spawnSync` defaults to one mebibyte and silently reports `status: null`
+ * with an empty stderr when a child exceeds it. `cargo metadata` over this
+ * workspace is already past that, so the default turns "the graph grew by one
+ * edge" into an unexplained policy failure. The bound is explicit and far
+ * above any plausible workspace rather than absent.
+ */
+const CARGO_OUTPUT_BYTES = 64 * 1024 * 1024;
+
 const metadataRun = spawnSync(
   "cargo",
   ["metadata", "--locked", "--offline", "--format-version", "1"],
-  { encoding: "utf8" },
+  { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
 );
 assert.equal(
   metadataRun.status,
@@ -30,7 +41,7 @@ const spikeMetadataRun = spawnSync(
     "--features",
     "academic-store/sqlcipher-spike",
   ],
-  { encoding: "utf8" },
+  { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
 );
 assert.equal(
   spikeMetadataRun.status,
@@ -49,7 +60,7 @@ const osKeystoreMetadataRun = spawnSync(
     "--features",
     "academic-crypto/os-keystore",
   ],
-  { encoding: "utf8" },
+  { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
 );
 assert.equal(
   osKeystoreMetadataRun.status,
@@ -229,6 +240,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-domain",
       "academic-projections",
       "academic-recovery",
+      "academic-retention",
       "academic-store",
       "academic-vault",
     ],
@@ -980,7 +992,7 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
       "-p",
       "academic-domain",
     ],
-    { encoding: "utf8" },
+    { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
   );
   assert.equal(engineRun.status, 0, `locked offline cargo tree failed: ${engineRun.stderr}`);
   const crates = new Set(
@@ -1130,11 +1142,26 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
     "academic-store",
     "academic-vault",
   ]);
+  // The encrypted restore reaches the key schedule through its own edge and
+  // the rotation engine through a second one; both are optional and both are
+  // selected by the same non-default lane feature.
+  assert.equal(
+    productDependencyNames(packagesByName.get("academic-portability")).includes(
+      "academic-retention",
+    ),
+    true,
+    "the encrypted restore no longer declares the tombstone edge",
+  );
 
   // The default portability lane pulls neither the key schedule nor the
   // recovery contract, so nothing on the shipping path can reach a backup key.
   const plaintextPortabilityTree = shippingTree(["-p", "academic-portability"]);
-  for (const forbidden of ["openssl", "academic-crypto", "academic-recovery"]) {
+  for (const forbidden of [
+    "openssl",
+    "academic-crypto",
+    "academic-recovery",
+    "academic-retention",
+  ]) {
     assert.equal(
       plaintextPortabilityTree.includes(forbidden),
       false,
@@ -1278,14 +1305,41 @@ test("rotation_engine_lane_is_not_default", async () => {
     "the retention crate turned the encrypted object lane on for the whole workspace",
   );
 
-  // Nothing on the shipping path reaches it yet: `P2-P2` is the task that
-  // wires the real derivative subsystems to this engine, and until then a
-  // product binary must not link a crate that can destroy a key slot.
-  for (const dependent of workspacePackages) {
+  // One workspace crate declares a product edge to it, and it is optional:
+  // `academic-portability`'s encrypted restore re-applies the tombstones a
+  // backup carries, which is `P2-K5`'s keyless positioned write and cannot be
+  // imitated on the portability side without duplicating a deletion mechanism.
+  // Every other crate must not declare the edge at all, and no default graph
+  // may resolve it: `P2-P2` is the task that wires the real derivative
+  // subsystems, and until then no product binary links a crate that can
+  // destroy a key slot.
+  const retentionDependents = workspacePackages
+    .filter((pkg) => productDependencyNames(pkg).includes("academic-retention"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(
+    retentionDependents,
+    ["academic-portability"],
+    "a crate other than the encrypted restore links the rotation engine",
+  );
+  const portabilityRetentionEdge = packagesByName
+    .get("academic-portability")
+    .dependencies.find((dependency) => dependency.name === "academic-retention");
+  assert.ok(portabilityRetentionEdge, "the encrypted restore lost its tombstone edge");
+  assert.equal(
+    portabilityRetentionEdge.optional,
+    true,
+    "the tombstone edge is not behind the encrypted portability lane",
+  );
+  for (const shipping of [
+    shippingTree(["-p", "academic-portability"]),
+    shippingTree(["-p", "academic-daemon"]),
+    shippingTree(["-p", "academic-cli"]),
+  ]) {
     assert.equal(
-      productDependencyNames(dependent).includes("academic-retention"),
+      shipping.includes("academic-retention"),
       false,
-      `${dependent.name} links the rotation engine into a product build`,
+      "a default graph selected the rotation engine",
     );
   }
 
@@ -1341,7 +1395,7 @@ function featureTree(selector) {
   const run = spawnSync(
     "cargo",
     ["tree", "--locked", "--offline", "--edges", "features", ...selector],
-    { encoding: "utf8" },
+    { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
   );
   assert.equal(run.status, 0, `locked offline cargo tree failed: ${run.stderr}`);
   return run.stdout.replaceAll(/\([^)]*\)/gu, "");
@@ -1354,7 +1408,7 @@ function shippingTree(selector) {
   const run = spawnSync(
     "cargo",
     ["tree", "--locked", "--offline", "--edges", "normal,build", ...selector],
-    { encoding: "utf8" },
+    { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
   );
   assert.equal(run.status, 0, `locked offline cargo tree failed: ${run.stderr}`);
   return run.stdout.replaceAll(/\([^)]*\)/gu, "");

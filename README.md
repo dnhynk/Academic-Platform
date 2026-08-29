@@ -73,7 +73,10 @@ above, on every platform. What it is and is not evidence for is in
 [encrypted backup and recovery](docs/contracts/encrypted-backup-and-recovery.md).
 
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
-vocabulary live in `academic-retention`. Its default-lane half is pure Rust and
+vocabulary live in `academic-retention`. Where a rotation moves the canonical
+object reference and where a deletion reaches a backup are in the encrypted
+portability lane below, because only that lane links the store and the backup
+boundary in one process. Its default-lane half is pure Rust and
 runs inside `cargo test --workspace`; the half that rewraps and shreds real
 `AEAD_CHUNKED_V2` objects needs the non-default `rotation-engine` feature and the
 two commands above, which are also hosted CI steps on every Rust matrix label.
@@ -82,10 +85,14 @@ What a rotation and a crypto-shred do and do not claim is in
 
 The encrypted store lane and the encrypted backup lane are non-default and are
 verified separately, because neither can be linked into the same binary as the
-plaintext synthetic lane. The store half of that pair also runs in hosted CI on
-`ubuntu-latest` as the `encrypted-store-lane` job, which is what makes `EN01`
-— the store-rekey kill the `P2-K5` rotation journal's database unit depends on
-— executed evidence rather than a citation. Native Windows is not in that job
+plaintext synthetic lane. Both halves also run in hosted CI on `ubuntu-latest`,
+as the `encrypted-store-lane` and `encrypted-portability-lane` jobs. The first
+is what makes `EN01` — the store-rekey kill the `P2-K5` rotation journal's
+database unit depends on — executed evidence rather than a citation. The second
+covers the seam where that rotation and its deletions meet the canonical store
+and the backup boundary, including
+`backup_tombstone_is_present_and_re_deletes_on_restore`, which calls the product
+backup and the product restore rather than imitating them. Native Windows is not in that job
 and stays local, because `openssl-src` needs a Perl the hosted Windows image does
 not carry:
 

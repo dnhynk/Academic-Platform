@@ -142,6 +142,7 @@ dependencies = [
  "academic-domain",
  "academic-projections",
  "academic-recovery",
+ "academic-retention",
  "academic-store",
  "academic-vault",
  "ed25519-dalek",

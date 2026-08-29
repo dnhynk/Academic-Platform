@@ -186,6 +186,14 @@ the superseded object. A termination between the two leaves the old object
 reachable and the new one an unreferenced orphan, which reconciliation
 quarantines after the grace window.
 
+That event is the existing event schema v3 arm `RETENTION_ACTION_RECORDED`, and
+what it authorizes is one appended `artifact_descriptor_migration` row naming
+the superseded and the new locator — `artifact_descriptor` is INSERT-only and
+its locator is inside the signed payload, so the reference moves by appending.
+`academic_store::descriptor_migration` holds the resolution, and
+[rotation and retention](rotation-and-retention.md) holds the ordering and the
+retirement that ends the superseded object's readable life.
+
 ## Committed corpus
 
 `testdata/aead-chunked-v2/` holds one object of each format, the zero-length

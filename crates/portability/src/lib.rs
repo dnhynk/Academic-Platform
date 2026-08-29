@@ -75,6 +75,12 @@ pub enum PortabilityError {
     },
     /// The guarded store boundary refused the database.
     Store(StoreError),
+    /// A `P2-K5` backup tombstone could not be read or re-applied.
+    ///
+    /// The detail is `academic-retention`'s own message. A restore that cannot
+    /// re-apply a deletion fails rather than publishing a profile in which the
+    /// deletion silently did not happen.
+    Tombstone(String),
     /// A canonical query failed.
     Query(QueryError),
     /// The synthetic vault refused an object.
@@ -185,6 +191,10 @@ impl fmt::Display for PortabilityError {
                 source,
             } => write!(formatter, "{operation} at {}: {source}", path.display()),
             Self::Store(source) => write!(formatter, "canonical store boundary: {source}"),
+            Self::Tombstone(detail) => write!(
+                formatter,
+                "a backup tombstone could not be re-applied to the restored objects: {detail}"
+            ),
             Self::Query(source) => write!(formatter, "canonical query: {source}"),
             Self::Vault(source) => write!(formatter, "synthetic vault: {source}"),
             #[cfg(feature = "plaintext-portability")]
