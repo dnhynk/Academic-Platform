@@ -29,7 +29,7 @@ use sha2::{Digest as _, Sha256};
 
 use crate::{
     fault::{self, FaultPoint},
-    journal::sync_directory,
+    journal::{JournalError, sync_directory},
 };
 
 /// Relative directory holding tombstones inside a backup.
@@ -139,6 +139,9 @@ pub enum TombstoneError {
     /// The record could not be encoded.
     #[error("a tombstone could not be encoded")]
     Encode,
+    /// The tombstone directory could not be made durable.
+    #[error("the tombstone directory could not be synchronized: {0}")]
+    Directory(#[from] JournalError),
 }
 
 fn io(operation: &'static str, path: &Path, source: std::io::Error) -> TombstoneError {
@@ -183,13 +186,7 @@ pub fn write_into_backup(
         .map_err(|source| io("synchronize tombstone temp", &temp, source))?;
     drop(file);
     fs::rename(&temp, &path).map_err(|source| io("publish tombstone", &path, source))?;
-    sync_directory(&directory).map_err(|_| {
-        io(
-            "synchronize tombstone directory",
-            &directory,
-            std::io::Error::from(std::io::ErrorKind::Other),
-        )
-    })?;
+    sync_directory(&directory)?;
     Ok(path)
 }
 

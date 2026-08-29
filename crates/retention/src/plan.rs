@@ -240,6 +240,9 @@ impl RetentionSubject {
 #[non_exhaustive]
 pub enum ClassResolution {
     /// These exact locators belong to the class.
+    ///
+    /// For `BACKUP_EXPIRY` these identify backups rather than objects; see
+    /// [`PlannedAction::locator`].
     Locators(Vec<[u8; 32]>),
     /// The class holds nothing for this subject, for a stated reason.
     NothingToDelete {
@@ -302,7 +305,11 @@ pub struct PlannedAction {
     pub class: DerivativeClass,
     /// How it deletes.
     pub kind: ActionKind,
-    /// The locator it deletes.
+    /// What it acts on.
+    ///
+    /// For every class but `BACKUP_EXPIRY` this is a vault locator. For
+    /// `BACKUP_EXPIRY` it identifies the backup a tombstone has to be written
+    /// into, because a backup is not an object and has no locator of its own.
     pub locator: [u8; 32],
 }
 
