@@ -1,0 +1,29 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-a",
+  "task": "P2-K5",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-K5 admits no external crate. academic-retention is built entirely from dependencies earlier receipts already admitted (hex, serde, serde_json, sha2, thiserror) plus the workspace path crates academic-crypto, academic-domain, and academic-vault. The rotation journal is JSON Lines because t068 section 3.2 names keys/rotation-journal.jsonl, and serde_json is Phase 0 admitted; no new serialization crate enters.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-retention",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-retention",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-retention is a workspace path crate, not an external dependency. It exists because the four things P2-K5 owns — the append-only rotation journal, recipient add and revoke, the crypto-shred that destroys an object key slot, and the deletion plan with its {PLANNED, COMPLETE, PARTIAL, REPAIR_REQUIRED} vocabulary — are one contract. academic-crypto writes no file and selects no policy, so the journal cannot live there; academic-vault owns an object format, not a retention planner; and academic-portability is reachable only from the encrypted lane, which needs a native SQLCipher toolchain and therefore does not run in hosted CI. This is the same reasoning P2-K4 recorded for academic-recovery. The journal, plan, vocabulary, and revocation contract are pure Rust in the default lane and run on every CI platform; only the executor that rewraps and shreds real AEAD_CHUNKED_V2 objects needs the non-default rotation-engine feature, which selects academic-vault/aead-objects.",
+  "network_posture": "The crate opens no socket, spawns no process, and runs no build script. It reads no clock: every timestamp is supplied by the caller. Its only host interaction is reading and writing files under a caller-supplied profile root and, under the test-only phase2-fault-injection feature, reading the three failpoint environment variables a default build does not compile.",
+  "advisory_path": "Unchanged. Every crate academic-retention links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

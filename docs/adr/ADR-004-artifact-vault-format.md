@@ -62,8 +62,37 @@ instruction window. The single-owner daemon, protected local profile, and out-of
 boundary therefore remain required, and this Phase 1 mechanism does not accept or close ADR-004's
 encrypted production format gate.
 
+## Crypto-shredding an object
+
+`P2-K5` adds the one operation in this format that writes into an object that is
+already published, and it is deliberate: a crypto-shred that wrote a new file and
+left the old one would have destroyed nothing.
+
+An object's DEK exists in exactly one place — the 80-byte wrapped-DEK key slot at
+offset 128 of its header, sealed under `KEK_d`, holding the DEK and the plaintext
+digest. Destroying that slot is the shred. It is one positioned write plus a
+sync, covering exactly `[KEY_SLOT_OFFSET, HEADER_BYTES)`; every other byte, the
+file itself, and its length are left as they are.
+
+```text
+slot := "ACOB-KEYSLOT-SHREDDED-V1" (24) | tombstone_digest (32) | zero (24)
+```
+
+It claims the ciphertext is unreadable: no key opens the object afterwards, not
+the domain KEK it was sealed under, not a rotated generation's, and not one
+recovered from a backup. It does **not** claim the file was deleted, that its
+bytes were overwritten, or that a copy taken earlier was reached — a copy inside
+a backup is reached by `P2-K5`'s backup tombstone instead.
+`ObjectFormatError::Shredded` states that in those words and is a distinct
+variant from `Aead`, so a deliberate shred and a bit-rotted object have different
+operator reports. The marker is that label and not a security boundary: whoever
+can write it can equally overwrite the slot with noise.
+
+The details, and the `RB01` "shredded or intact" argument, are in
+[rotation and retention](../contracts/rotation-and-retention.md).
+
 ## Acceptance gate
 
 Zero-byte/small/multi-GB/seekable-audio vectors; a trusted byte-resolving verifier capability for partial/page/time/repository evidence; wrong key, truncation, reorder, splice, and wrong-domain detection; every crash-point closure outcome; cross-policy dedupe rejection; quarantine/GC dry run; and format N/N-1 read/migration.
 
-Discharged by `P2-K3`: wrong key, truncation, reorder, splice, and wrong-domain detection; the `OB01`-`OB09` crash-point outcomes; cross-policy dedupe rejection; quarantine of an unreferenced re-sealed object; zero-byte, one-byte, sub-chunk, exact-chunk, and exact-multiple vectors; and a committed format N and N-1 corpus. Seeking is exact over a real multi-chunk object; the multi-gigabyte half of that row is the chunk arithmetic, checked at a 6 GiB header rather than against a 6 GiB file, and is recorded as such rather than as an executed multi-gigabyte write. Still open: the byte-resolving verifier capability for partial, page, time, and repository evidence; seekable-audio vectors, which need `P2-L2`'s capture format; and GC, which is `P2-K5`'s.
+Discharged by `P2-K3`: wrong key, truncation, reorder, splice, and wrong-domain detection; the `OB01`-`OB09` crash-point outcomes; cross-policy dedupe rejection; quarantine of an unreferenced re-sealed object; zero-byte, one-byte, sub-chunk, exact-chunk, and exact-multiple vectors; and a committed format N and N-1 corpus. Seeking is exact over a real multi-chunk object; the multi-gigabyte half of that row is the chunk arithmetic, checked at a 6 GiB header rather than against a 6 GiB file, and is recorded as such rather than as an executed multi-gigabyte write. Still open: the byte-resolving verifier capability for partial, page, time, and repository evidence; seekable-audio vectors, which need `P2-L2`'s capture format; and GC of quarantined objects, which stays open: `P2-K5` added the crypto-shred and the rotation that makes an object unreferenced, and left collection of the quarantine directory to the daemon lane.

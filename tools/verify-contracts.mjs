@@ -1940,6 +1940,32 @@ const encryptedObjectCiCommands = [
   "cargo clippy -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection -- -D warnings",
   "cargo test -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection",
 ];
+// t068 section 5's `P2-K5` rotation and retention lane, for the same reason:
+// `rotation-engine` is non-default, so a workspace build never reaches the
+// half of it that rewraps and shreds real objects. `phase2-fault-injection` is
+// selected too because `KY03`-`KY05` and `RB01`-`RB02` are process kills whose
+// failpoints exist only under it. Both run on every hosted Rust label, because
+// the key-slot write and the recipient-set rename are per-platform.
+const rotationEngineCiCommands = [
+  "cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection -- -D warnings",
+  "cargo test -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection",
+];
+// The encrypted store lane. It is the executor of `P2-K5`'s store-database
+// rotation unit and the home of `EN01` ("kill mid store rekey; exactly one of
+// the old and new keys opens the database"), which is the byte-level half of
+// the rotation invariant. Before `P2-K5` no hosted job built this lane, so
+// `EN01` was a pointer rather than evidence; this job runs it.
+//
+// Linux only, and that is a claim about the toolchain rather than about the
+// lane: `openssl-src` needs a native Perl that the hosted Windows image does
+// not carry, which t068 section 2.3-17 already records. Native Windows stays
+// the README-documented local lane with its pinned interpreter.
+const encryptedStoreCiCommands = [
+  "cargo clippy -p academic-store --no-default-features --features sqlcipher-store --all-targets --locked -- -D warnings",
+  "cargo test -p academic-store --no-default-features --features sqlcipher-store --locked",
+  "cargo test -p academic-store --no-default-features --features sqlcipher-store --locked --test encrypted_profile encrypted::store_rekey_kill_leaves_exactly_one_working_key -- --exact",
+];
+const encryptedStoreMatrixLabels = ["ubuntu-latest"];
 const parseCiWorkflow = (ci) => parsePnpmLockYaml(ci, ".github/workflows/ci.yml");
 const expectedCiWorkflow = {
   name: "ci",
@@ -2022,6 +2048,14 @@ const expectedCiWorkflow = {
           run: encryptedObjectCiCommands[1],
         },
         {
+          name: "Lint the rotation and retention lane",
+          run: rotationEngineCiCommands[0],
+        },
+        {
+          name: "Test the rotation and retention lane",
+          run: rotationEngineCiCommands[1],
+        },
+        {
           name: "Verify immutable v1 fixture and upcast",
           run: nativeFixtureCiCommands[0],
         },
@@ -2086,6 +2120,55 @@ const expectedCiWorkflow = {
           run: phase1ExitCiCommands[2],
         },
         { name: "Assemble the Phase 1 exit receipt", run: phase1ExitCiCommands[3] },
+      ],
+    },
+    // The encrypted store lane, on Linux. It exists so `EN01` is executed
+    // evidence rather than a citation: `P2-K5`'s rotation journal carries a
+    // store-database unit whose executor is this lane's `PRAGMA rekey`, and a
+    // covering suite no job runs is the defect `A3` found once already.
+    "encrypted-store-lane": {
+      name: "encrypted-store-lane-${{ matrix.os }}",
+      needs: "source-preflight",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 45,
+      strategy: {
+        "fail-fast": false,
+        matrix: { os: encryptedStoreMatrixLabels },
+      },
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Install pinned Rust toolchain",
+          run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        {
+          name: "Restore the Cargo registry keyed on the committed Cargo lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.cargo/registry",
+            key: "cargo-registry-encrypted-store-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
+          },
+        },
+        {
+          name: "Populate the Cargo registry from the committed lockfile",
+          run: lockedCargoRegistryFetch,
+        },
+        {
+          name: "Lint the encrypted store lane",
+          run: encryptedStoreCiCommands[0],
+        },
+        {
+          name: "Test the encrypted store lane",
+          run: encryptedStoreCiCommands[1],
+        },
+        {
+          name: "Run EN01, the store-rekey kill the rotation journal depends on",
+          run: encryptedStoreCiCommands[2],
+        },
       ],
     },
     contracts: {

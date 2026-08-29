@@ -35,6 +35,9 @@ pub(crate) enum FaultPoint {
     Ob08,
     #[cfg(feature = "aead-objects")]
     Ob09,
+    /// `P2-K5`'s `RB01`: between reading a live key slot and destroying it.
+    #[cfg(feature = "aead-objects")]
+    Rb01,
 }
 
 impl FaultPoint {
@@ -61,6 +64,8 @@ impl FaultPoint {
             Self::Ob08 => "OB08",
             #[cfg(feature = "aead-objects")]
             Self::Ob09 => "OB09",
+            #[cfg(feature = "aead-objects")]
+            Self::Rb01 => "RB01",
         }
     }
 
@@ -78,6 +83,7 @@ impl FaultPoint {
                     | Self::Ob05
                     | Self::Ob08
                     | Self::Ob09
+                    | Self::Rb01
             )
         }
         #[cfg(not(feature = "aead-objects"))]

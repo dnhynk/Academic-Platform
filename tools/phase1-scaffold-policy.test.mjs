@@ -237,6 +237,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // rehearsal receipt. It sits above the key schedule and below the
     // portability boundary, opens no database, and reads no vault.
     "academic-recovery": ["academic-crypto"],
+    // `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and
+    // retention vocabulary. `academic-vault` is an optional edge behind the
+    // non-default `rotation-engine` feature, which is what selects the vault's
+    // own non-default encrypted object lane; `cargo metadata` reports declared
+    // dependencies rather than resolved ones, so it is listed here and
+    // `rotation_engine_lane_is_not_default` proves it stays unresolved in a
+    // default build.
+    "academic-retention": ["academic-crypto", "academic-domain", "academic-vault"],
     "academic-rpc": ["academic-contracts", "academic-domain"],
     "academic-scenario": ["academic-domain"],
     // `academic-crypto` is an optional edge behind `sqlcipher-store`. It is
@@ -1102,13 +1110,15 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
     );
   }
 
-  // Four crates declare a crypto edge, and every one of them is a lane that is
+  // Five crates declare a crypto edge, and every one of them is a lane that is
   // off by default: the store's schema-2 database, the vault's
-  // AEAD_CHUNKED_V2 objects, the encrypted portability lane, and `P2-K4`'s
-  // recovery contract. `academic-recovery` is the one non-optional edge,
-  // because that crate *is* the recovery contract and has no other lane; it is
-  // reached from a product binary only through `encrypted-portability`, and
-  // `encrypted_portability_lane_is_not_default` proves that below.
+  // AEAD_CHUNKED_V2 objects, the encrypted portability lane, `P2-K4`'s
+  // recovery contract, and `P2-K5`'s rotation and retention engine.
+  // `academic-recovery` and `academic-retention` are the two non-optional
+  // edges, because each of those crates *is* its contract and has no other
+  // lane; neither is reached from any product binary, which
+  // `encrypted_portability_lane_is_not_default` and
+  // `rotation_engine_lane_is_not_default` prove below.
   const storeCryptoDependents = workspacePackages
     .filter((pkg) => productDependencyNames(pkg).includes("academic-crypto"))
     .map((pkg) => pkg.name)
@@ -1116,6 +1126,7 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
   assert.deepEqual(storeCryptoDependents, [
     "academic-portability",
     "academic-recovery",
+    "academic-retention",
     "academic-store",
     "academic-vault",
   ]);
@@ -1217,6 +1228,104 @@ test("encrypted_object_lane_is_not_default", async () => {
     assert.ok(
       object.includes(`${name} = ${value};`),
       `the frozen object constant ${name} is no longer ${value}`,
+    );
+  }
+});
+
+// t068 section 5, `P2-K5`. The rotation and retention engine is a workspace
+// crate nothing in the shipping graph links, and the half of it that touches
+// real `AEAD_CHUNKED_V2` objects sits behind a non-default feature — so a
+// default product build resolves neither an AEAD nor the key schedule through
+// it, exactly as the encrypted store, object, and portability lanes do.
+test("rotation_engine_lane_is_not_default", async () => {
+  const retention = packagesByName.get("academic-retention");
+  assert.ok(retention, "academic-retention is not a workspace member");
+  assert.deepEqual(retention.features.default, []);
+  assert.deepEqual(retention.features["rotation-engine"], [
+    "dep:academic-vault",
+    "academic-vault/aead-objects",
+  ]);
+  assert.deepEqual(retention.features["phase2-fault-injection"], [
+    "academic-vault?/phase2-fault-injection",
+  ]);
+
+  const node = resolveNodesById.get(retention.id);
+  assert.equal(node.features.includes("rotation-engine"), false);
+  assert.equal(node.features.includes("phase2-fault-injection"), false);
+
+  // Selecting the lane is what pulls the encrypted object namespace in.
+  const engineTree = featureTree(["-p", "academic-retention", "--features", "rotation-engine"]);
+  for (const required of ["academic-vault", "chacha20poly1305", "academic-crypto"]) {
+    assert.ok(
+      engineTree.includes(required),
+      `the rotation engine lane did not select ${required}`,
+    );
+  }
+  // Without the lane the object namespace is not there at all. The key schedule
+  // still is, and deliberately: the journal names key *generations* and the
+  // revocation contract reads recipient records, both of which are
+  // `academic-crypto`'s and neither of which opens an object.
+  const defaultRetentionTree = shippingTree(["-p", "academic-retention"]);
+  assert.equal(
+    defaultRetentionTree.includes("academic-vault"),
+    false,
+    "the default retention graph selected the object vault",
+  );
+  const vaultNode = resolveNodesById.get(packagesByName.get("academic-vault").id);
+  assert.equal(
+    vaultNode.features.includes("aead-objects"),
+    false,
+    "the retention crate turned the encrypted object lane on for the whole workspace",
+  );
+
+  // Nothing on the shipping path reaches it yet: `P2-P2` is the task that
+  // wires the real derivative subsystems to this engine, and until then a
+  // product binary must not link a crate that can destroy a key slot.
+  for (const dependent of workspacePackages) {
+    assert.equal(
+      productDependencyNames(dependent).includes("academic-retention"),
+      false,
+      `${dependent.name} links the rotation engine into a product build`,
+    );
+  }
+
+  // The frozen journal and shred contracts, in the one place each is defined.
+  const journal = await readFile("crates/retention/src/journal.rs", "utf8");
+  assert.ok(journal.includes('pub const JOURNAL_VERSION: u8 = 1;'));
+  assert.ok(
+    journal.includes('pub const ROTATION_JOURNAL_RELATIVE_PATH: &str = "keys/rotation-journal.jsonl";'),
+    "the rotation journal is no longer at the t068 section 3.2 path",
+  );
+  const object = await readFile("crates/vault/src/object.rs", "utf8");
+  assert.ok(
+    object.includes('pub const KEY_SLOT_OFFSET: usize = WRAP_AAD_BYTES;'),
+    "the crypto-shred key slot is no longer defined as the wrapped DEK offset",
+  );
+  assert.ok(
+    object.includes('pub const KEY_SLOT_SHRED_MARKER: &[u8; 24] = b"ACOB-KEYSLOT-SHREDDED-V1";'),
+    "the shred marker changed, which is an object-format break",
+  );
+
+  // The four-word retention vocabulary is closed and is not a free string.
+  const plan = await readFile("crates/retention/src/plan.rs", "utf8");
+  assert.ok(
+    plan.includes(
+      'pub const RETENTION_OUTCOMES: &[&str] = &["PLANNED", "COMPLETE", "PARTIAL", "REPAIR_REQUIRED"];',
+    ),
+    "the retention result vocabulary is not the four words t068 section 5 fixes",
+  );
+
+  // `GATE-38-026` stays a user decision: the mechanism is here and no default
+  // policy is, which is the same shape `P2-K4` used for `GATE-38-031`.
+  for (const forbidden of [
+    "impl Default for OriginalVoiceAuthority",
+    "DEFAULT_ORIGINAL_VOICE_AUTHORITY",
+    "ORIGINAL_VOICE_DELETION_ALLOWED",
+  ]) {
+    assert.equal(
+      plan.includes(forbidden),
+      false,
+      `the retention planner decides GATE-38-026 through ${forbidden}`,
     );
   }
 });
@@ -1517,18 +1626,26 @@ function normalizeDependencyUse(dependency, packageName) {
 }
 
 test("dependency_license_and_source_receipt_is_complete", async () => {
-  const [receiptText, keyReceiptText, scenarioReceiptText, recoveryReceiptText, cargoLock] =
-    await Promise.all([
-      readFile("docs/security/dependency-admission-phase1.json", "utf8"),
-      readFile("docs/security/dependency-admission-phase2-k1.json", "utf8"),
-      readFile("docs/security/dependency-admission-phase2-c7.json", "utf8"),
-      readFile("docs/security/dependency-admission-phase2-k4.json", "utf8"),
-      readFile("Cargo.lock", "utf8"),
-    ]);
+  const [
+    receiptText,
+    keyReceiptText,
+    scenarioReceiptText,
+    recoveryReceiptText,
+    retentionReceiptText,
+    cargoLock,
+  ] = await Promise.all([
+    readFile("docs/security/dependency-admission-phase1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-k1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-c7.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-k4.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-k5.json", "utf8"),
+    readFile("Cargo.lock", "utf8"),
+  ]);
   const receipt = JSON.parse(receiptText);
   const keyReceipt = JSON.parse(keyReceiptText);
   const scenarioReceipt = JSON.parse(scenarioReceiptText);
   const recoveryReceipt = JSON.parse(recoveryReceiptText);
+  const retentionReceipt = JSON.parse(retentionReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -1626,6 +1743,38 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-K4 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-K5` admits no external crate either; its receipt covers exactly the one
+  // workspace path package `academic-retention`, subtracted for the same reason.
+  const retentionAdmitted = new Set(
+    retentionReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const retentionPathPackages = new Set(
+    retentionReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(retentionAdmitted.size, 0, "P2-K5 must admit no external crate");
+  for (const claimed of [...retentionAdmitted, ...retentionPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const retentionTuples = lockTuples.filter(
+    ([name, version]) =>
+      retentionAdmitted.has(`${name}@${version}`) ||
+      retentionPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    retentionTuples.length,
+    retentionAdmitted.size + retentionPathPackages.size,
+    "a P2-K5 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -1634,7 +1783,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !scenarioAdmitted.has(`${name}@${version}`) &&
       !scenarioPathPackages.has(`${name}@${version}`) &&
       !recoveryAdmitted.has(`${name}@${version}`) &&
-      !recoveryPathPackages.has(`${name}@${version}`),
+      !recoveryPathPackages.has(`${name}@${version}`) &&
+      !retentionAdmitted.has(`${name}@${version}`) &&
+      !retentionPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -1648,7 +1799,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       1 +
       keyTuples.length +
       scenarioTuples.length +
-      recoveryTuples.length,
+      recoveryTuples.length +
+      retentionTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

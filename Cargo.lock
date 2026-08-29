@@ -179,6 +179,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-retention"
+version = "0.1.0"
+dependencies = [
+ "academic-crypto",
+ "academic-domain",
+ "academic-vault",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
 name = "academic-rpc"
 version = "0.1.0"
 dependencies = [

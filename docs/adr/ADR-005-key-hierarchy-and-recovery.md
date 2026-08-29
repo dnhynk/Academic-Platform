@@ -1,6 +1,6 @@
 # ADR-005: Key hierarchy and recovery
 
-- Status: Proposed decision register. The hierarchy below is implemented by `academic-crypto` and `academic-keystore-platform` (`P2-K1`); recovery-profile selection is not decided.
+- Status: Proposed decision register. The hierarchy below is implemented by `academic-crypto` and `academic-keystore-platform` (`P2-K1`), its rotation and revocation by `academic-retention` (`P2-K5`); recovery-profile selection is not decided.
 
 ## Registered direction
 
@@ -16,11 +16,14 @@ KEK_d    = HKDF-SHA-512(VMK, salt = profile_id, info = "academic-os/kek/v1" || d
 SKEY_p   = HKDF-SHA-512(VMK, salt = profile_id, info = "academic-os/store/v1")
 AUDKEY   = HKDF-SHA-512(VMK, salt = profile_id, info = "academic-os/audit/v1")
 RMACKEY  = HKDF-SHA-512(VMK, salt = profile_id, info = "academic-os/recipient-mac/v1")
+GENID    = SHA-256(HKDF-SHA-512(VMK, salt = profile_id, info = "academic-os/key-generation/v1"))
 ```
 
-All four outputs are 32 bytes. `profile_id` and `domain_id` are the caller's canonical 16-byte identities; `academic-crypto` does not parse UUIDs, so the schedule cannot drift from the identities the rest of the profile uses.
+All four key outputs are 32 bytes. `profile_id` and `domain_id` are the caller's canonical 16-byte identities; `academic-crypto` does not parse UUIDs, so the schedule cannot drift from the identities the rest of the profile uses.
 
 `RMACKEY` is the fourth info string. The three named in the design document do not cover the separate requirement that each recipient record carry a MAC *under the VMK*; that MAC needs its own key rather than borrowing one of the other three.
+
+`GENID` is not a key and no constructor accepts it. It is the public *name* of one key generation, which `P2-K5`'s rotation journal and recipient records need in order to say which generation a record belongs to while the profile is still locked. That name must therefore be readable without a key and must reveal nothing about one: HKDF-SHA-512 is one-way, and hashing its output again means the published value is structurally not usable as key material. Two Vault Master Keys share a generation name only if they are the same key.
 
 `SKEY_p` is supplied to SQLCipher as a raw 32-byte key rendered as 64 lowercase hex characters, never as a passphrase.
 
@@ -80,8 +83,33 @@ Every key type owns exactly 32 bytes, implements `Zeroize` and `ZeroizeOnDrop`, 
   **The 24-word codec and its wordlist belong to that same decision and are also still open.** `P2-K4` shipped no codec, deliberately. t068 section 5 fixes no wordlist for `P2-K4`, none of its eight named acceptance tests needs one, and a wordlist is permanently frozen the moment a phrase is printed under it — a phrase written from one list cannot be read back under another — so adopting a language and a list is a user decision, not an implementation detail a task may guess at. The next implementer must not assume `P2-K4` did it.
 
   What `P2-K4` did do is keep the cryptographic contract independent of that decision. `academic-crypto` and `academic-recovery` both accept only a whole 256-bit `RecoverySecret` and expose no word-level entry point, so a codec can be added later without changing a single derivation, and no API in either crate can report *which* word of a phrase was wrong — which is how `KY06`'s "no oracle" requirement is met structurally rather than by care. `recovery_secret_api_has_no_word_level_entry_point` fails if that regresses. Every test whose name says "phrase" is exercising a 256-bit secret and says so; none of them is evidence that a codec works.
-- **Rotation, rewrap, and revocation are `P2-K5`'s.** A stateless sealing broker cannot revoke a blob it already issued; that asymmetry is carried in `PurgeOutcome` rather than hidden.
+- **A stateless sealing broker cannot revoke a blob it already issued.** That asymmetry is carried in `PurgeOutcome` rather than hidden.
 - **ADR-002 is not accepted.** The default lane is still plaintext SQLite with `storage_encryption = NONE` and `adr_002_accepted = false`. A key hierarchy existing does not admit real data; `GATE-P2-ADMISSION` governs that and is closed.
+
+## Rotation and revocation
+
+Rotating a domain KEK means rotating the Vault Master Key: `KEK_d` and `SKEY_p`
+take no epoch, so they change only when the VMK does. One rotation therefore
+moves every object and the store database, cannot be atomic, and is driven by an
+append-only journal at `<profile>/keys/rotation-journal.jsonl`.
+
+The invariant is that after an interruption at any point, exactly one of the old
+and new keys opens any object or database. "Both open" and "neither opens" are
+both violations, and the three rules that make it hold — refusing a rotation that
+does not change the key, moving reachability only after a verified read-back, and
+never editing or removing the source object — are in
+[rotation and retention](../contracts/rotation-and-retention.md) with the fault
+rows that prove each one.
+
+Revocation removes a recipient's wrapped key and stops any future generation from
+being wrapped for it. **That is the whole of it.** It does not erase plaintext
+that recipient already read and it does not reach a copy taken while the
+recipient was live; `academic_retention::REVOCATION_SCOPE_STATEMENT` says so in
+the words every surface repeats, and
+`revocation_does_not_claim_prior_plaintext_erasure` fails if any surface stops
+carrying them or starts claiming more. The operation that *can* make one
+artifact's ciphertext unreadable is the crypto-shred of ADR-004, and it works by
+destroying key material rather than by revoking a recipient.
 
 ## Acceptance gate
 

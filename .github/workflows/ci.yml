@@ -65,6 +65,10 @@ jobs:
         run: cargo clippy -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection -- -D warnings
       - name: Test the encrypted object lane
         run: cargo test -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection
+      - name: Lint the rotation and retention lane
+        run: cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection -- -D warnings
+      - name: Test the rotation and retention lane
+        run: cargo test -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection
       - name: Verify immutable v1 fixture and upcast
         run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
       - name: Replay immutable v1 fixture
@@ -124,6 +128,43 @@ jobs:
         run: cargo test -p academic-portability -p academic-vault --test crash --locked --offline --features phase1-fault-injection
       - name: Assemble the Phase 1 exit receipt
         run: node tools/phase1-exit.mjs --all-faults --format json
+
+  # The encrypted store lane, on Linux only. `openssl-src` needs a native Perl
+  # the hosted Windows image does not carry; t068 section 2.3-17 records that,
+  # and native Windows stays the README-documented local lane with its pinned
+  # interpreter. What this job buys is that `EN01` -- "kill mid store rekey;
+  # exactly one of the old and new keys opens the database" -- is executed
+  # rather than cited, because `P2-K5`'s rotation journal carries a
+  # store-database unit whose executor is this lane's `PRAGMA rekey`.
+  encrypted-store-lane:
+    name: encrypted-store-lane-${{ matrix.os }}
+    needs: source-preflight
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+      - name: Restore the Cargo registry keyed on the committed Cargo lockfile
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-encrypted-store-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Populate the Cargo registry from the committed lockfile
+        run: cargo fetch --locked
+      - name: Lint the encrypted store lane
+        run: cargo clippy -p academic-store --no-default-features --features sqlcipher-store --all-targets --locked -- -D warnings
+      - name: Test the encrypted store lane
+        run: cargo test -p academic-store --no-default-features --features sqlcipher-store --locked
+      - name: Run EN01, the store-rekey kill the rotation journal depends on
+        run: cargo test -p academic-store --no-default-features --features sqlcipher-store --locked --test encrypted_profile encrypted::store_rekey_kill_leaves_exactly_one_working_key -- --exact
 
   contracts:
     name: pnpm-contracts

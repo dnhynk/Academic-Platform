@@ -41,6 +41,8 @@ cargo test --workspace --doc --locked --offline
 cargo test -p academic-scenario --test compile_fail --locked --offline
 cargo clippy -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection -- -D warnings
 cargo test -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection
+cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection -- -D warnings
+cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
@@ -70,9 +72,22 @@ rehearsal receipt — is pure Rust in `academic-recovery` and runs in the block
 above, on every platform. What it is and is not evidence for is in
 [encrypted backup and recovery](docs/contracts/encrypted-backup-and-recovery.md).
 
+`P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
+vocabulary live in `academic-retention`. Its default-lane half is pure Rust and
+runs inside `cargo test --workspace`; the half that rewraps and shreds real
+`AEAD_CHUNKED_V2` objects needs the non-default `rotation-engine` feature and the
+two commands above, which are also hosted CI steps on every Rust matrix label.
+What a rotation and a crypto-shred do and do not claim is in
+[rotation and retention](docs/contracts/rotation-and-retention.md).
+
 The encrypted store lane and the encrypted backup lane are non-default and are
 verified separately, because neither can be linked into the same binary as the
-plaintext synthetic lane:
+plaintext synthetic lane. The store half of that pair also runs in hosted CI on
+`ubuntu-latest` as the `encrypted-store-lane` job, which is what makes `EN01`
+— the store-rekey kill the `P2-K5` rotation journal's database unit depends on
+— executed evidence rather than a citation. Native Windows is not in that job
+and stays local, because `openssl-src` needs a Perl the hosted Windows image does
+not carry:
 
 ```powershell
 pnpm verify:windows-toolchain

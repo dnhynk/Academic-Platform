@@ -482,6 +482,39 @@ impl EncryptedVault {
         crate::reconcile::reconcile(self, options)
     }
 
+    /// Crypto-shreds one object by destroying its key slot.
+    ///
+    /// This is the one operation in this vault that writes into an object that
+    /// is already published, and it is deliberate: a crypto-shred that wrote a
+    /// new file and left the old one would have destroyed nothing. The write
+    /// covers exactly `[KEY_SLOT_OFFSET, HEADER_BYTES)` — the wrapped DEK,
+    /// which is the only copy of the key this object was sealed under, and the
+    /// only copy of its plaintext digest. Every other byte, the file itself,
+    /// and its length are left exactly as they are.
+    ///
+    /// # What this claims, and what it does not
+    ///
+    /// It claims the ciphertext is unreadable: no key opens the object
+    /// afterwards, not the domain KEK it was sealed under, not a rotated one,
+    /// and not one recovered from a backup. It does **not** claim the file was
+    /// deleted, that its bytes were overwritten, or that a copy taken earlier
+    /// was reached. Copies inside a backup are reached by `P2-K5`'s backup
+    /// tombstone, not by this call.
+    ///
+    /// `RB01` requires the outcome to be "shredded or intact". The slot write
+    /// is one positioned write plus a sync, so a kill leaves the slot either
+    /// untouched or destroyed; a kill *during* that write destroys the key but
+    /// may leave the marker incomplete, which is why the caller journals its
+    /// intent first and re-applies on resume. Re-applying is idempotent.
+    pub fn shred_key_slot(
+        &self,
+        descriptor: &ArtifactDescriptor,
+        tombstone_digest: &[u8; 32],
+    ) -> VaultResult<ShredReceipt> {
+        let path = self.validate_descriptor_locator(descriptor)?;
+        shred_key_slot_at(&path, tombstone_digest)
+    }
+
     /// Opens a seekable plaintext reader over one canonical encrypted object.
     ///
     /// The header is authenticated before the reader exists, so a wrong key, a
@@ -882,4 +915,74 @@ impl ArtifactIngestRequest {
             evidence_representations: Vec::new(),
         }
     }
+}
+
+/// Evidence that one object's key slot is destroyed and durable.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShredReceipt {
+    object_path: PathBuf,
+    locator: [u8; 32],
+    was_already_shredded: bool,
+}
+
+impl ShredReceipt {
+    /// Returns the object whose key slot was destroyed.
+    #[must_use]
+    pub fn object_path(&self) -> &Path {
+        &self.object_path
+    }
+
+    /// Returns the object's cleartext locator.
+    #[must_use]
+    pub const fn locator(&self) -> &[u8; 32] {
+        &self.locator
+    }
+
+    /// Reports whether the slot was already destroyed before this call.
+    ///
+    /// Re-applying a shred is not an error: a resumed retention action has to
+    /// be able to finish one it started.
+    #[must_use]
+    pub const fn was_already_shredded(&self) -> bool {
+        self.was_already_shredded
+    }
+}
+
+/// Destroys the key slot of the object at `path`, without needing any key.
+///
+/// This is the entry point a restore uses: re-applying a backup tombstone to a
+/// restored object happens before anything is unlocked, so it cannot go through
+/// a keyed vault handle.
+pub fn shred_key_slot_at(path: &Path, tombstone_digest: &[u8; 32]) -> VaultResult<ShredReceipt> {
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .map_err(|error| VaultError::io("open object for key-slot shred", path, error))?;
+    let mut header = [0_u8; HEADER_BYTES];
+    file.read_exact(&mut header)
+        .map_err(|error| VaultError::io("read object header for key-slot shred", path, error))?;
+    let locator = object::read_locator(&header).map_err(VaultError::ObjectFormat)?;
+    if object::is_shredded_header(&header) {
+        return Ok(ShredReceipt {
+            object_path: path.to_path_buf(),
+            locator,
+            was_already_shredded: true,
+        });
+    }
+
+    fault::trip(FaultPoint::Rb01);
+
+    let slot = object::shredded_key_slot(tombstone_digest);
+    file.seek(SeekFrom::Start(object::KEY_SLOT_OFFSET as u64))
+        .map_err(|error| VaultError::io("seek to object key slot", path, error))?;
+    file.write_all(&slot)
+        .map_err(|error| VaultError::io("destroy object key slot", path, error))?;
+    file.sync_all()
+        .map_err(|error| VaultError::io("synchronize destroyed key slot", path, error))?;
+    Ok(ShredReceipt {
+        object_path: path.to_path_buf(),
+        locator,
+        was_already_shredded: false,
+    })
 }

@@ -6,7 +6,7 @@
 //! break, not a refactor, so they are constants asserted by name in the tests.
 
 use hkdf::Hkdf;
-use sha2::Sha512;
+use sha2::{Digest as _, Sha256, Sha512};
 use zeroize::Zeroizing;
 
 use crate::keys::{
@@ -38,6 +38,17 @@ pub const RECIPIENT_MAC_INFO: &[u8] = b"academic-os/recipient-mac/v1";
 /// not. Deriving it here rather than reusing `AUDKEY` keeps one key from
 /// authenticating both egress audit rows and admission receipts.
 pub const REHEARSAL_INFO: &[u8] = b"academic-os/rehearsal/v1";
+/// Info string for the public commitment that names one key generation.
+///
+/// `P2-K5` rotates the Vault Master Key, and both the rotation journal and the
+/// recipient set have to say *which* generation a record belongs to while the
+/// profile is still locked. That name must therefore be readable without a key
+/// and must reveal nothing about one. It is the SHA-256 of an HKDF output
+/// under this info string: HKDF-SHA-512 is one-way, and hashing its output
+/// again means the published value is structurally not usable as a key, so a
+/// leaked generation name cannot become key material by being pasted into the
+/// wrong constructor.
+pub const KEY_GENERATION_INFO: &[u8] = b"academic-os/key-generation/v1";
 /// Info string for a domain's vault-locator HMAC key.
 ///
 /// t068 section 2.3-7 keeps the physical locator a domain-keyed HMAC, and
@@ -124,6 +135,20 @@ impl VaultMasterKey {
             profile,
             REHEARSAL_INFO,
         )?))
+    }
+
+    /// Returns the public, non-secret name of this key generation.
+    ///
+    /// Two Vault Master Keys have the same generation name only if they are the
+    /// same key, and the name discloses no part of it. `P2-K5` writes it into
+    /// the rotation journal so a resumed rotation can prove it was handed the
+    /// same pair of keys it started with, and so the journal can be read and
+    /// audited on a locked profile.
+    ///
+    /// This is not a key and no constructor in this crate accepts it.
+    pub fn generation_id(&self, profile: ProfileId) -> Result<[u8; KEY_BYTES], KeyScheduleError> {
+        let expanded = expand(self, profile, KEY_GENERATION_INFO)?;
+        Ok(Sha256::digest(expanded.as_ref()).into())
     }
 
     /// Derives the key the recipient-record MAC is taken under.
