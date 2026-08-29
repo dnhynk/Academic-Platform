@@ -1,0 +1,29 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-a",
+  "task": "P2-K4",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-K4 admits no external crate. academic-recovery is built entirely from dependencies P2-K1 already admitted (argon2, chacha20poly1305, ciborium, getrandom, hkdf, hmac, sha2, subtle, thiserror, zeroize) plus ed25519-dalek, which Phase 0 admitted for the signed-envelope profile and which is reused here for the backup manifest signature rather than a second signature scheme being introduced.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-recovery",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-recovery",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-recovery is a workspace path crate, not an external dependency. It exists because the three things P2-K4 owns — the section 3.3 recovery-profile registry, the backup root that must be independent of the operating-system device wrapper, and the restore-rehearsal receipt that gates the first real ingest — are one contract and belong together. Putting them in academic-crypto would break that crate's stated boundary, which writes no file and selects no recovery profile; putting them in academic-portability would make them reachable only from the encrypted lane, which needs a native SQLCipher toolchain and therefore does not run in hosted CI. As its own crate they are pure Rust, they build and run on every CI platform in the default workspace lane, and the encrypted portability lane depends on them rather than restating them.",
+  "network_posture": "The crate opens no socket, reads no environment variable, spawns no process, and runs no build script. Its only host interaction is operating-system randomness through the already-admitted getrandom and reading and writing one file under a caller-supplied profile root.",
+  "advisory_path": "Unchanged. Every crate academic-recovery links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

@@ -73,7 +73,12 @@ impl Argon2idProfile {
     }
 
     /// Derives the wrapping key for a recovery recipient.
-    pub(crate) fn derive_wrap_key(
+    ///
+    /// Public because `P2-K4` wraps its own backup root under the same pinned
+    /// profile: a backup recipient must be derived by exactly this KDF with
+    /// exactly these costs, and a second implementation of it would be a
+    /// second place the parameters could drift.
+    pub fn derive_wrap_key(
         self,
         secret: &RecoverySecret,
         salt: &[u8; IDENTIFIER_BYTES],

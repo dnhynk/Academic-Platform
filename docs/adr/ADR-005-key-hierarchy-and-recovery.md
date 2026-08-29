@@ -75,8 +75,11 @@ Every key type owns exactly 32 bytes, implements `Zeroize` and `ZeroizeOnDrop`, 
 
 ## Still open
 
-- **Recovery-profile selection is a user choice with no default** (`GATE-38-031`). `P2-K1` builds the hierarchy and selects nothing. The three profiles and the rehearsal receipt are `P2-K4`'s.
-- **The 24-word recovery-phrase codec and its wordlist are `P2-K4`'s.** `academic-crypto` accepts only a whole 256-bit secret and exposes no word-level entry point, so no API here can report *which* word of a phrase was wrong.
+- **Recovery-profile selection is a user choice with no default** (`GATE-38-031`). `P2-K1` builds the hierarchy and selects nothing, and `P2-K4` ships and drills all three profiles without selecting one either: `academic_recovery::RecoveryProfile` implements no `Default` and no constant names a selection. What is still open is the selection itself, and the first real ingest stays blocked until it is made.
+
+  **The 24-word codec and its wordlist belong to that same decision and are also still open.** `P2-K4` shipped no codec, deliberately. t068 section 5 fixes no wordlist for `P2-K4`, none of its eight named acceptance tests needs one, and a wordlist is permanently frozen the moment a phrase is printed under it — a phrase written from one list cannot be read back under another — so adopting a language and a list is a user decision, not an implementation detail a task may guess at. The next implementer must not assume `P2-K4` did it.
+
+  What `P2-K4` did do is keep the cryptographic contract independent of that decision. `academic-crypto` and `academic-recovery` both accept only a whole 256-bit `RecoverySecret` and expose no word-level entry point, so a codec can be added later without changing a single derivation, and no API in either crate can report *which* word of a phrase was wrong — which is how `KY06`'s "no oracle" requirement is met structurally rather than by care. `recovery_secret_api_has_no_word_level_entry_point` fails if that regresses. Every test whose name says "phrase" is exercising a 256-bit secret and says so; none of them is evidence that a codec works.
 - **Rotation, rewrap, and revocation are `P2-K5`'s.** A stateless sealing broker cannot revoke a blob it already issued; that asymmetry is carried in `PurgeOutcome` rather than hidden.
 - **ADR-002 is not accepted.** The default lane is still plaintext SQLite with `storage_encryption = NONE` and `adr_002_accepted = false`. A key hierarchy existing does not admit real data; `GATE-P2-ADMISSION` governs that and is closed.
 

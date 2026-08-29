@@ -22,6 +22,14 @@ Every manifest repeats the frozen policy object and fails closed if it differs:
 Projections are disposable generations rebuilt from the ledger. They are never
 export content, never backup content, and never restore authority.
 
+`academic-portability` carries two mutually exclusive lanes, for the same
+reason `academic-store` does: the plaintext synthetic lane and the encrypted
+lane cannot link into one binary. This contract is the default
+`plaintext-portability` lane. The non-default `encrypted-portability` lane is a
+different format with a different manifest, a different posture block, and no
+projection rebuild; it is described in
+[encrypted backup and recovery](encrypted-backup-and-recovery.md).
+
 ## Deterministic open export
 
 `academic_portability::export::export_profile` writes a directory, never an

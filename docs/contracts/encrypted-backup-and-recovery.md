@@ -1,0 +1,222 @@
+# Encrypted backup, independent restore, recovery profiles, rehearsal
+
+## Posture
+
+Producing an encrypted backup is not ADR-002, ADR-005, or ADR-012 acceptance
+and is not permission to back up a real byte.
+
+```text
+adr_002_accepted=false
+production_data_allowed=false
+default storage_encryption=NONE
+```
+
+Every manifest this build writes records `production_data_allowed=false` and
+`adr_002_accepted=false`, and a manifest claiming otherwise is refused on read.
+
+## The recovery profile is a user choice
+
+`GATE-38-031` is open. This build ships all three profiles of section 3.3,
+drills all three, and states what each one loses. It selects none:
+`RecoveryProfile` implements no `Default`, no constant names a selected profile,
+and `backup_key_is_independent_of_device_wrapper` fails if one appears.
+
+| Profile | Recipients | Loss behaviour | Can hold a backup key |
+| --- | --- | --- | --- |
+| `DEVICE_ONLY` | device keystore | `OS reimage or device loss is unrecoverable` | **no** |
+| `DEVICE_PLUS_PHRASE` | device keystore + printed recovery phrase | recoverable on a fresh machine with the phrase | yes |
+| `DEVICE_PLUS_PHRASE_PLUS_OFFLINE_FILE` | above + an offline key file | recoverable with either secondary recipient; largest exposure surface | yes |
+
+The `DEVICE_ONLY` cell is a constant, not a sentence someone retyped. Every
+surface that shows the profile shows
+`academic_recovery::DEVICE_ONLY_IRRECOVERABILITY_STATEMENT`, and the refusal a
+user sees when they attempt a backup under `DEVICE_ONLY` quotes it verbatim.
+
+`DEVICE_ONLY` cannot hold a backup key because a backup key must be independent
+of the device wrapper and that profile has no recipient which survives the loss
+of the device. The table's last column is therefore mechanical rather than
+advisory: `create_backup_key_set` refuses, and so does `backup_encrypted_profile`.
+
+## Backup key independence, and its exact boundary
+
+The backup root is 32 random bytes generated for one backup key set and wrapped
+**only** by recovery-class recipients. Independence fails in two ways and both
+are closed:
+
+- **Directly**, if a device recipient could wrap the root.
+  `BackupRecipientKind` has no device variant, and
+  `BackupRecipientKind::from_requirement(RecipientRequirement::DeviceKeystore)`
+  is `None`. There is nowhere in the type system to put one.
+- **Transitively**, if the root were derived from the Vault Master Key. The
+  device wrapper unwraps the VMK, so every key derived from the VMK is a key
+  the device wrapper produces. The root is a *root*: no derivation edge from
+  the VMK exists, and nothing in `academic-recovery` accepts a `VaultMasterKey`.
+
+```text
+recovery phrase ──Argon2id(pinned)──> wrap key ──XChaCha20-Poly1305──> BMK
+                                                                        │
+                            MKEY   = HKDF-SHA-512(BMK, salt = backup_set_id, info = "academic-os/backup-manifest/v1")
+                            SIGSEED= HKDF-SHA-512(BMK, salt = backup_set_id, info = "academic-os/backup-signature/v1")
+                            MACKEY = HKDF-SHA-512(BMK, salt = backup_set_id, info = "academic-os/backup-recipient-mac/v1")
+```
+
+**What this does not claim.** The snapshot inside the backup is still the
+profile's own SQLCipher database under `SKEY_p`, and the objects are still
+`AEAD_CHUNKED_V2` under `KEK_d`. Someone holding the live device already holds
+those keys and already holds the live profile, so re-encrypting the payload
+under the backup root would move no threat boundary. What the backup root
+guarantees is the property recovery actually depends on: the manifest — and with
+it the file inventory, the object closure, and the profile's own recovery
+recipient records — cannot be opened by the device, so a backup whose only
+reader was the lost machine cannot exist.
+
+## Backup layout
+
+```text
+<backup>/
+  BACKUP_FORMAT_V2                   # plaintext marker: format name + manifest version
+  keys/backup-recipients.cbor        # BMK wrapped per recovery-class recipient
+  manifest.cbor                      # sealed and signed under the BMK
+  store/academic-platform.sqlite3    # SQLCipher snapshot at a fixed watermark
+  objects/<artifact-id>.aobj         # AEAD_CHUNKED_V2 objects, byte-for-byte
+```
+
+The copy into `store/` is keyed **before** the first page is written. A SQLite
+Online Backup into an unkeyed destination writes plaintext pages, so this is not
+a convenience: `require_unreadable_without_key` re-opens the copy with no key
+and fails the backup if the schema is readable.
+
+## The manifest, and the two digests
+
+The sealed body carries the store schema identity, the watermark, the counts,
+the device heads, the canonical semantic digest, the file inventory, one entry
+per object with **both** its ciphertext and its plaintext digest, and the
+profile's recovery-class recipient records. Only the format marker and the
+wrapped key set are readable without a secret.
+
+Two digests, and they answer different questions.
+
+| Digest | Covers | Equal for two backups of one watermark |
+| --- | --- | --- |
+| `semantic_digest` | the whole semantic block, file inventory included | **no** |
+| `semantic_identity_digest` | format, posture, schema identity, watermark, counts, device heads, canonical semantic digest, and each object's logical identity and plaintext digest | **yes** |
+
+`semantic_digest` cannot be stable, and pretending otherwise would be the
+mistake. SQLCipher re-encrypts every page it writes with a fresh initialisation
+vector, so two Online Backup copies of one unchanged database are different byte
+strings. `two_backups_at_same_watermark_have_equal_semantic_digest` asserts the
+identity digests are equal **and** that the database digests differ, so the
+equality is a claim about committed state rather than an artifact of copying.
+
+## Restore
+
+Restore targets only a new empty destination and publishes with one rename, so
+every failure leaves the backup and the current profile untouched and the
+destination either absent or completely verified. The order is fixed:
+
+1. refuse a destination that is not new and empty;
+2. read the format marker and the wrapped key set;
+3. verify the manifest signature, then open it with the backup root;
+4. check the recorded digest and length of every file in the directory;
+5. stage an encrypted profile and copy the database, then prove the copy is
+   unreadable without its key;
+6. `cipher_integrity_check`, `integrity_check`, `foreign_key_check`;
+7. compare schema identity, watermark, counts, device heads, and the canonical
+   semantic digest against the manifest;
+8. replay every signed batch against **caller-supplied** trust anchors — never
+   anchors read out of the backup, which would authenticate nothing;
+9. copy every object, check its ciphertext and plaintext digests, then
+   authenticate each one through the vault;
+10. remove the incomplete markers, synchronize, publish.
+
+A restore does not trust its manifest. A manifest re-sealed with the real backup
+key after its counts were altered verifies and decrypts, and the restore still
+refuses, because step 7 re-derives the counts from the restored database.
+
+Projections are not restored. They are disposable, are never backed up as truth,
+and are rebuilt by the projection engine, which the encrypted lane does not link.
+
+## Fresh-machine recovery
+
+A fresh machine holds the backup directory and the printed phrase, and nothing
+else. That is the whole chain:
+
+```text
+phrase → BMK → sealed manifest → the profile's recovery recipients → VMK → SKEY_p and KEK_d → restored profile
+```
+
+The profile's *device* recipient records are deliberately not carried into a
+backup: they name a broker that does not exist on the machine the backup is
+being restored onto, and carrying them would invite a restore that depends on
+the device that was lost. `a_backup_carries_no_device_recipient` asserts it.
+
+## The rehearsal receipt
+
+```text
+<profile>/admission/rehearsal.cbor
+```
+
+`GATE-P2-RECOVERY` blocks the first real ingest of any kind until a rehearsal
+receipt exists which belongs to this profile, authenticates under this profile's
+key, exercised the recovery profile that is in force, and names the key material
+the profile holds **now**.
+
+"Newer than the last key change" is not a clock comparison. A wall clock can
+move backwards and two key changes inside one millisecond are
+indistinguishable, so the receipt records a monotonic `key_material_generation`
+**and** a digest over the recipient set, and the gate requires both to match. A
+rotation, a recipient added, or a recipient revoked changes the digest, and the
+rehearsal stops admitting until a new drill runs.
+
+The receipt is authenticated under `HKDF-SHA-512(VMK, salt = profile_id,
+info = "academic-os/rehearsal/v1")` rather than under the backup key, because the
+gate runs at ingest time on an unlocked profile, where the VMK is in hand and
+the recovery phrase is not.
+
+Refusal reasons are a closed set: `RehearsalAbsent`, `ProfileMismatch`,
+`ReceiptUnverified`, `RecoveryProfileMismatch`, `StaleKeyMaterial`,
+`KeyMaterialMismatch`. There is no seventh outcome that admits.
+
+## Faults
+
+`BK01`–`BK04` and `RS01`–`RS04` are the Phase 1 identifiers at the Phase 1
+positions, re-run against an encrypted profile under the
+`phase2-fault-injection` feature. A production build compiles every checkpoint
+away: there is no environment lookup and no crash switch.
+
+**`BK03` is reachable here.** It fires on the second object copy, and Phase 1's
+`A3` accepted it as `NOT_RUN` because that corpus registered one artifact. The
+encrypted corpus registers two, the child process reaches the checkpoint — the
+harness asserts the ready marker names it — and the parent observes exactly one
+copied object and no manifest.
+
+## Building and verifying
+
+The encrypted lane is non-default and cannot link into the same binary as the
+plaintext synthetic lane, because `academic-store`'s two lanes cannot.
+
+```sh
+cargo test -p academic-recovery --locked --offline
+cargo clippy -p academic-portability --no-default-features --features encrypted-portability --all-targets --locked -- -D warnings
+cargo test -p academic-portability --no-default-features --features encrypted-portability --locked --offline
+cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --offline --test encrypted_crash
+```
+
+`academic-recovery` is pure Rust and runs in the default workspace lane on every
+CI platform. The `academic-portability` encrypted lane needs a native SQLCipher
+and OpenSSL, the same requirement and the same pinned Windows toolchain as
+[the encrypted store lane](encrypted-store-lane.md), and is verified separately
+for the same reason.
+
+## Which named test proves what
+
+| Test | Crate | Lane |
+| --- | --- | --- |
+| `backup_key_is_independent_of_device_wrapper` | `academic-recovery` | default, in CI |
+| `device_only_profile_states_irrecoverability_verbatim` | `academic-recovery` | default, in CI |
+| `rehearsal_receipt_is_required_before_first_ingest` | `academic-recovery` | default, in CI |
+| `rehearsal_is_invalidated_by_key_change` | `academic-recovery` | default, in CI |
+| `restore_rejects_nonempty_target` | `academic-portability` | `encrypted-portability` |
+| `restore_verifies_ledger_object_and_count_closure` | `academic-portability` | `encrypted-portability` |
+| `fresh_machine_restore_with_phrase_only` | `academic-portability` | `encrypted-portability` |
+| `two_backups_at_same_watermark_have_equal_semantic_digest` | `academic-portability` | `encrypted-portability` |

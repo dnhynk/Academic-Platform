@@ -8,20 +8,26 @@
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "plaintext-portability")]
 use crate::{
     PHASE1_BACKUP_FORMAT, PHASE1_BACKUP_MANIFEST_VERSION, PHASE1_BACKUP_PLAINTEXT_WARNING,
     PHASE1_EXPORT_FORMAT, PHASE1_EXPORT_MANIFEST_VERSION, PHASE1_PORTABILITY_GENERATOR,
-    PortabilityError, PortabilityResult,
-    checksum::{CanonicalDigest, encode_hex},
     verify::{
         BatchRow, CanonicalCounts, CanonicalWatermark, DeviceHeadRow, PolicyBlock,
-        StoreSchemaIdentity, canonical_json,
+        StoreSchemaIdentity,
     },
+};
+use crate::{
+    PortabilityError, PortabilityResult,
+    checksum::{CanonicalDigest, encode_hex},
+    verify::canonical_json,
 };
 
 /// Domain separator for the export manifest digest.
+#[cfg(feature = "plaintext-portability")]
 pub const EXPORT_SEMANTIC_DIGEST_DOMAIN: &str = "learning-platform.phase1.export-manifest.v1";
 /// Domain separator for the backup manifest digest.
+#[cfg(feature = "plaintext-portability")]
 pub const BACKUP_SEMANTIC_DIGEST_DOMAIN: &str = "learning-platform.phase1.backup-manifest.v1";
 
 /// One produced file with its exact content digest.
@@ -59,6 +65,7 @@ pub struct VolatileBlock {
 }
 
 /// Hashed content of one deterministic export directory.
+#[cfg(feature = "plaintext-portability")]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExportSemantic {
@@ -79,6 +86,7 @@ pub struct ExportSemantic {
 }
 
 /// Complete export manifest as written to `manifest.json`.
+#[cfg(feature = "plaintext-portability")]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExportManifest {
@@ -87,6 +95,7 @@ pub struct ExportManifest {
     pub volatile: VolatileBlock,
 }
 
+#[cfg(feature = "plaintext-portability")]
 impl ExportManifest {
     /// Seals a semantic block with its digest and the volatile generation time.
     pub fn seal(semantic: ExportSemantic, generated_at_unix_ms: i64) -> PortabilityResult<Self> {
@@ -152,6 +161,7 @@ impl ExportManifest {
 }
 
 /// Hashed content of one plaintext synthetic backup directory.
+#[cfg(feature = "plaintext-portability")]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BackupSemantic {
@@ -172,6 +182,7 @@ pub struct BackupSemantic {
 }
 
 /// Complete backup manifest as written to `manifest.json`.
+#[cfg(feature = "plaintext-portability")]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BackupManifest {
@@ -180,6 +191,7 @@ pub struct BackupManifest {
     pub volatile: VolatileBlock,
 }
 
+#[cfg(feature = "plaintext-portability")]
 impl BackupManifest {
     /// Seals a semantic block with its digest and the volatile generation time.
     pub fn seal(semantic: BackupSemantic, generated_at_unix_ms: i64) -> PortabilityResult<Self> {
@@ -244,12 +256,13 @@ impl BackupManifest {
     }
 }
 
-fn digest_of<T: Serialize>(domain: &str, value: &T) -> PortabilityResult<String> {
+pub(crate) fn digest_of<T: Serialize>(domain: &str, value: &T) -> PortabilityResult<String> {
     let mut digest = CanonicalDigest::new(domain);
     digest.field(&canonical_json(value)?);
     Ok(encode_hex(digest.finish().as_bytes().as_slice()))
 }
 
+#[cfg(feature = "plaintext-portability")]
 fn render_json<T: Serialize>(value: &T) -> PortabilityResult<Vec<u8>> {
     let mut bytes = serde_json::to_vec_pretty(value).map_err(|source| PortabilityError::Json {
         operation: "render manifest",
@@ -259,6 +272,7 @@ fn render_json<T: Serialize>(value: &T) -> PortabilityResult<Vec<u8>> {
     Ok(bytes)
 }
 
+#[cfg(feature = "plaintext-portability")]
 fn parse_json<T: for<'de> Deserialize<'de>>(
     bytes: &[u8],
     operation: &'static str,
@@ -266,7 +280,7 @@ fn parse_json<T: for<'de> Deserialize<'de>>(
     serde_json::from_slice(bytes).map_err(|source| PortabilityError::Json { operation, source })
 }
 
-fn require_sorted_unique(files: &[FileEntry]) -> PortabilityResult<()> {
+pub(crate) fn require_sorted_unique(files: &[FileEntry]) -> PortabilityResult<()> {
     for window in files.windows(2) {
         let (left, right) = (&window[0], &window[1]);
         if left.path >= right.path {
@@ -278,7 +292,7 @@ fn require_sorted_unique(files: &[FileEntry]) -> PortabilityResult<()> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "plaintext-portability"))]
 mod tests {
     use super::*;
 

@@ -63,13 +63,23 @@ needs no native toolchain: it is pure-Rust XChaCha20-Poly1305 over the Phase 1
 publish sequence. What it is and is not evidence for is in
 [the encrypted object format](docs/contracts/encrypted-object-format.md).
 
-The encrypted store lane is non-default and is verified separately, because it
-cannot be linked into the same binary as the plaintext synthetic lane:
+The recovery contract of `P2-K4` — the section 3.3 profile registry, the backup
+key that is independent of the operating-system device wrapper, and the restore
+rehearsal receipt — is pure Rust in `academic-recovery` and runs in the block
+above, on every platform. What it is and is not evidence for is in
+[encrypted backup and recovery](docs/contracts/encrypted-backup-and-recovery.md).
+
+The encrypted store lane and the encrypted backup lane are non-default and are
+verified separately, because neither can be linked into the same binary as the
+plaintext synthetic lane:
 
 ```powershell
 pnpm verify:windows-toolchain
 cargo clippy -p academic-store --no-default-features --features sqlcipher-store --all-targets --locked --offline -- -D warnings
 cargo test -p academic-store --no-default-features --features sqlcipher-store --locked --offline
+cargo clippy -p academic-portability --no-default-features --features encrypted-portability --all-targets --locked --offline -- -D warnings
+cargo test -p academic-portability --no-default-features --features encrypted-portability --locked --offline
+cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --offline --test encrypted_crash
 ```
 
 Building it needs a native SQLCipher and OpenSSL. On Windows that needs a native

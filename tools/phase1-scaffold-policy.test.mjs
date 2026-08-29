@@ -216,14 +216,27 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-daemon": ["academic-core", "academic-rpc", "academic-store"],
     "academic-domain": [],
     "academic-ledger": ["academic-contracts", "academic-domain"],
+    // `academic-crypto`, `academic-recovery`, and `academic-projections` are
+    // all optional edges here, and the two lane features that select them are
+    // mutually exclusive: `plaintext-portability` (default) selects the
+    // projection engine and the plaintext store lane, `encrypted-portability`
+    // selects the key schedule, the `P2-K4` recovery contract, and the
+    // SQLCipher store lane. `cargo metadata` reports declared dependencies
+    // rather than resolved ones, so all three are listed.
     "academic-portability": [
       "academic-contracts",
+      "academic-crypto",
       "academic-domain",
       "academic-projections",
+      "academic-recovery",
       "academic-store",
       "academic-vault",
     ],
     "academic-projections": ["academic-domain", "academic-store"],
+    // `P2-K4`'s recovery-profile registry, independent backup key, and
+    // rehearsal receipt. It sits above the key schedule and below the
+    // portability boundary, opens no database, and reads no vault.
+    "academic-recovery": ["academic-crypto"],
     "academic-rpc": ["academic-contracts", "academic-domain"],
     "academic-scenario": ["academic-domain"],
     // `academic-crypto` is an optional edge behind `sqlcipher-store`. It is
@@ -273,6 +286,10 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // must never become.
     "academic-core": ["academic-scenario"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
+    // The encrypted portability acceptance suite builds its keys through the
+    // `P2-K1` public schedule rather than fabricating them, exactly as the
+    // encrypted object suite does. The product edge is the optional one above.
+    "academic-portability": ["academic-crypto"],
     // `academic-vault` owns the encrypted-object acceptance suite, which builds
     // its keys through the `P2-K1` public schedule rather than fabricating
     // them. That is a test edge only; the product edge is the optional one
@@ -921,14 +938,34 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
     );
   }
 
-  // Only the two encrypted lanes declare a crypto edge: the store's schema-2
-  // database and the vault's AEAD_CHUNKED_V2 objects. Both are optional and
-  // both are off by default.
+  // Four crates declare a crypto edge, and every one of them is a lane that is
+  // off by default: the store's schema-2 database, the vault's
+  // AEAD_CHUNKED_V2 objects, the encrypted portability lane, and `P2-K4`'s
+  // recovery contract. `academic-recovery` is the one non-optional edge,
+  // because that crate *is* the recovery contract and has no other lane; it is
+  // reached from a product binary only through `encrypted-portability`, and
+  // `encrypted_portability_lane_is_not_default` proves that below.
   const storeCryptoDependents = workspacePackages
     .filter((pkg) => productDependencyNames(pkg).includes("academic-crypto"))
     .map((pkg) => pkg.name)
     .toSorted();
-  assert.deepEqual(storeCryptoDependents, ["academic-store", "academic-vault"]);
+  assert.deepEqual(storeCryptoDependents, [
+    "academic-portability",
+    "academic-recovery",
+    "academic-store",
+    "academic-vault",
+  ]);
+
+  // The default portability lane pulls neither the key schedule nor the
+  // recovery contract, so nothing on the shipping path can reach a backup key.
+  const plaintextPortabilityTree = shippingTree(["-p", "academic-portability"]);
+  for (const forbidden of ["openssl", "academic-crypto", "academic-recovery"]) {
+    assert.equal(
+      plaintextPortabilityTree.includes(forbidden),
+      false,
+      `the default portability graph selected ${forbidden}`,
+    );
+  }
 
   // The compile-time guard itself, in the library that declares both features.
   const lib = await readFile("crates/store/src/lib.rs", "utf8");
@@ -1037,6 +1074,19 @@ function featureTree(selector) {
   return run.stdout.replaceAll(/\([^)]*\)/gu, "");
 }
 
+/// The shipping graph only. `featureTree` includes dev edges, which is right
+/// when the question is "what does this feature select" and wrong when the
+/// question is "what does a product binary link".
+function shippingTree(selector) {
+  const run = spawnSync(
+    "cargo",
+    ["tree", "--locked", "--offline", "--edges", "normal,build", ...selector],
+    { encoding: "utf8" },
+  );
+  assert.equal(run.status, 0, `locked offline cargo tree failed: ${run.stderr}`);
+  return run.stdout.replaceAll(/\([^)]*\)/gu, "");
+}
+
 test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", async () => {
   // Exactly which crates declare the harness feature, and exactly what each
   // forwards. `academic-core` forwards to the three crates that own the named
@@ -1055,6 +1105,13 @@ test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", as
     "academic-test-support": [],
     "academic-vault": [],
   });
+  // A *lane* may be a default feature; a *fault harness* may not. The only
+  // default any of these crates is allowed to carry is the one that selects
+  // which store lane it links, and `academic-portability` carries exactly that.
+  const allowedDefaults = new Map([
+    ["academic-store", ["bundled-sqlite"]],
+    ["academic-portability", ["plaintext-portability"]],
+  ]);
   for (const name of [
     "academic-core",
     "academic-daemon",
@@ -1065,7 +1122,7 @@ test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", as
   ]) {
     assert.deepEqual(
       packagesByName.get(name).features.default,
-      name === "academic-store" ? ["bundled-sqlite"] : [],
+      allowedDefaults.get(name) ?? [],
       `${name} must not enable a fault lane by default`,
     );
   }
@@ -1296,15 +1353,18 @@ function normalizeDependencyUse(dependency, packageName) {
 }
 
 test("dependency_license_and_source_receipt_is_complete", async () => {
-  const [receiptText, keyReceiptText, scenarioReceiptText, cargoLock] = await Promise.all([
-    readFile("docs/security/dependency-admission-phase1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-k1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-c7.json", "utf8"),
-    readFile("Cargo.lock", "utf8"),
-  ]);
+  const [receiptText, keyReceiptText, scenarioReceiptText, recoveryReceiptText, cargoLock] =
+    await Promise.all([
+      readFile("docs/security/dependency-admission-phase1.json", "utf8"),
+      readFile("docs/security/dependency-admission-phase2-k1.json", "utf8"),
+      readFile("docs/security/dependency-admission-phase2-c7.json", "utf8"),
+      readFile("docs/security/dependency-admission-phase2-k4.json", "utf8"),
+      readFile("Cargo.lock", "utf8"),
+    ]);
   const receipt = JSON.parse(receiptText);
   const keyReceipt = JSON.parse(keyReceiptText);
   const scenarioReceipt = JSON.parse(scenarioReceiptText);
+  const recoveryReceipt = JSON.parse(recoveryReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -1370,13 +1430,47 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-C7 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-K4` admits no external crate at all; its receipt covers exactly one
+  // workspace path package. It is subtracted here for the same reason as the
+  // other two: a path package with no receipt would otherwise be counted as an
+  // unreviewed arrival, and one with a receipt must not be counted twice.
+  const recoveryAdmitted = new Set(
+    recoveryReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const recoveryPathPackages = new Set(
+    recoveryReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(recoveryAdmitted.size, 0, "P2-K4 must admit no external crate");
+  for (const claimed of [...recoveryAdmitted, ...recoveryPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const recoveryTuples = lockTuples.filter(
+    ([name, version]) =>
+      recoveryAdmitted.has(`${name}@${version}`) ||
+      recoveryPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    recoveryTuples.length,
+    recoveryAdmitted.size + recoveryPathPackages.size,
+    "a P2-K4 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
       !keyAdmitted.has(`${name}@${version}`) &&
       !keyPathPackages.has(`${name}@${version}`) &&
       !scenarioAdmitted.has(`${name}@${version}`) &&
-      !scenarioPathPackages.has(`${name}@${version}`),
+      !scenarioPathPackages.has(`${name}@${version}`) &&
+      !recoveryAdmitted.has(`${name}@${version}`) &&
+      !recoveryPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -1386,7 +1480,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   );
   assert.equal(
     lockTuples.length,
-    receipt.lock_delta.incoming_package_tuple_count + 1 + keyTuples.length + scenarioTuples.length,
+    receipt.lock_delta.incoming_package_tuple_count +
+      1 +
+      keyTuples.length +
+      scenarioTuples.length +
+      recoveryTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -1520,7 +1618,27 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
-    const expectedUses = [...admission.uses, ...j1ProjectionUse, ...t047FormatTestUse]
+    // `P2-K4` generates the backup root and every nonce it wraps with, from the
+    // same admitted randomness source and the same feature set. It adds no
+    // second entropy path.
+    const k4RecoveryUse =
+      admission.name === "getrandom"
+        ? [
+            {
+              package: "academic-recovery",
+              kind: "normal",
+              target: null,
+              default_features: false,
+              features: ["std"],
+            },
+          ]
+        : [];
+    const expectedUses = [
+      ...admission.uses,
+      ...j1ProjectionUse,
+      ...t047FormatTestUse,
+      ...k4RecoveryUse,
+    ]
       .map((use) => ({ ...use, features: use.features.toSorted() }))
       .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
     assert.deepEqual(actualUses, expectedUses, `${admission.name} owner/feature receipt`);

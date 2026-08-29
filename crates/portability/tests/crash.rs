@@ -4,7 +4,7 @@
 //! verified destination. A partially activated profile or a half-published
 //! backup is never allowed.
 
-#![cfg(feature = "phase1-fault-injection")]
+#![cfg(all(feature = "phase1-fault-injection", feature = "plaintext-portability"))]
 
 mod support;
 

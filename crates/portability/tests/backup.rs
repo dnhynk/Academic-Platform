@@ -1,5 +1,7 @@
 //! Fixed-watermark plaintext backup behaviour.
 
+#![cfg(feature = "plaintext-portability")]
+
 mod support;
 
 use std::{collections::BTreeSet, fs};
