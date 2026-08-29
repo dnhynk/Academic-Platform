@@ -206,13 +206,7 @@ pub fn lines(value: &serde_json::Value) -> Vec<String> {
 
 fn check_tool(specification: &ToolVersionSpecification) -> ToolCheck {
     let resolved_path = resolve_executable(&specification.name);
-    let observed = Command::new(&specification.name)
-        .arg("--version")
-        .output()
-        .ok()
-        .filter(|output| output.status.success())
-        .and_then(|output| String::from_utf8(output.stdout).ok())
-        .map(|value| value.trim().to_owned());
+    let observed = observe_tool_version(&specification.name, resolved_path.as_deref());
     let supported = observed
         .as_deref()
         .is_some_and(|value| is_supported_tool_version(specification, value));
@@ -224,6 +218,28 @@ fn check_tool(specification: &ToolVersionSpecification) -> ToolCheck {
         supported,
         remediation: specification.remediation.clone(),
     }
+}
+
+/// Reads `--version` from the tool, preferring the platform's own resolution.
+///
+/// Windows program resolution appends only `.exe` and never consults
+/// `PATHEXT`, so a tool installed as a `.cmd` shim cannot be spawned by bare
+/// name at all. That is exactly what `npm install --global pnpm@11.22.0` — the
+/// remediation this command prints, and the documented Windows bootstrap step —
+/// writes. The PATHEXT-aware search has already located the shim, so it answers
+/// when the name cannot; a conforming host must not read as a missing tool.
+fn observe_tool_version(name: &str, resolved_path: Option<&Path>) -> Option<String> {
+    tool_version(Path::new(name)).or_else(|| resolved_path.and_then(tool_version))
+}
+
+fn tool_version(program: &Path) -> Option<String> {
+    Command::new(program)
+        .arg("--version")
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|value| value.trim().to_owned())
 }
 
 fn is_supported_tool_version(specification: &ToolVersionSpecification, output: &str) -> bool {
@@ -357,5 +373,69 @@ mod tests {
             }
         }
         Ok(())
+    }
+
+    /// A tool the platform's bare-name resolution cannot reach must still be
+    /// observed through the path the `PATHEXT`-aware search resolved.
+    ///
+    /// On Windows that is not hypothetical: `npm install --global` writes a
+    /// `.cmd` shim and no `.exe`, and a bare-name spawn there appends only
+    /// `.exe`. Reporting such a tool as absent fails a conforming host.
+    #[test]
+    fn a_shim_only_tool_is_observed_through_its_resolved_path()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let directory = tempfile::TempDir::new()?;
+        let shim = write_version_shim(directory.path(), "11.22.0")?;
+
+        assert_eq!(
+            observe_tool_version("academic-tool-absent-from-every-path", Some(&shim)),
+            Some("11.22.0".to_owned()),
+            "the resolved shim must answer when the bare name cannot be spawned"
+        );
+        assert_eq!(
+            observe_tool_version("academic-tool-absent-from-every-path", None),
+            None,
+            "an unresolvable tool stays unobserved rather than inventing a version"
+        );
+        Ok(())
+    }
+
+    /// Writes an executable that prints `version` and nothing else, in the one
+    /// form the host can run without an interpreter argument.
+    #[cfg(windows)]
+    fn write_version_shim(
+        directory: &Path,
+        version: &str,
+    ) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let shim = directory.join("academic-version-shim.cmd");
+        std::fs::write(
+            &shim,
+            format!(
+                "@ECHO OFF
+ECHO {version}
+"
+            ),
+        )?;
+        Ok(shim)
+    }
+
+    #[cfg(unix)]
+    fn write_version_shim(
+        directory: &Path,
+        version: &str,
+    ) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        use std::os::unix::fs::PermissionsExt;
+
+        let shim = directory.join("academic-version-shim");
+        std::fs::write(
+            &shim,
+            format!(
+                "#!/bin/sh
+echo {version}
+"
+            ),
+        )?;
+        std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755))?;
+        Ok(shim)
     }
 }
