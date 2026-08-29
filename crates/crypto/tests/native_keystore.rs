@@ -131,33 +131,57 @@ fn windows_dpapi_roundtrip_native() {
 /// Linux Secret Service (`org.freedesktop.secrets`) stores and returns the
 /// device key.
 ///
-/// This needs a session D-Bus and an unlocked login keyring. Where neither is
-/// present the broker reports `Unavailable`; the plan's rule for a privileged
-/// negative that cannot run is `NOT_RUN` with a reason rather than a coerced
-/// pass, so this test records that state explicitly and does not assert a
-/// round trip it did not perform.
+/// Ignored by default and never reported as a pass it did not earn. The broker
+/// needs a session D-Bus and an unlocked login keyring; a host that has them
+/// runs this with `--ignored` and gets a real result, and a host that does not
+/// sees `ignored`, which is the honest status. Reporting `ok` from a branch
+/// that skipped the round trip would be exactly the coerced pass section 8.4
+/// forbids.
+///
+/// The fail-closed half of the Linux evidence does not need a broker and is
+/// asserted unconditionally below.
 #[cfg(target_os = "linux")]
 #[test]
+#[ignore = "requires a session D-Bus and an unlocked login keyring; run with --ignored"]
 fn linux_secret_service_roundtrip_native() {
     let keystore = PlatformKeystore::new();
     assert_eq!(keystore.provider(), "LINUX_SECRET_SERVICE");
+    native_roundtrip("secret-service");
+}
 
-    let probe_label = unique_label("probe");
-    match keystore.seal(&probe_label, &[0_u8; 32]) {
+/// The Linux half that this host can prove without a keyring: the compiled
+/// broker is Secret Service, and with nothing answering on the bus an unlock
+/// fails closed instead of succeeding, panicking, or falling back.
+#[cfg(target_os = "linux")]
+#[test]
+fn linux_secret_service_is_selected_and_fails_closed_without_a_provider() {
+    let keystore = PlatformKeystore::new();
+    assert_eq!(keystore.provider(), "LINUX_SECRET_SERVICE");
+
+    let label = unique_label("absent");
+    match keystore.seal(&label, &[0_u8; 32]) {
         Ok(blob) => {
-            let _ = purge_device_key(&probe_label, &blob);
-            native_roundtrip("secret-service");
+            // A provider is present after all, so the sealed key must reopen.
+            let Ok(recovered) = keystore.open(&label, &blob) else {
+                unreachable!("a present provider must reopen what it sealed");
+            };
+            assert_eq!(recovered.len(), 32);
+            let _ = purge_device_key(&label, &blob);
         }
-        Err(KeystoreFailure::Unavailable | KeystoreFailure::AccessDenied) => {
-            println!(
-                "NOT_RUN: linux_secret_service_roundtrip_native. \
-                 org.freedesktop.secrets did not answer on this host. \
-                 It runs where a session D-Bus (DBUS_SESSION_BUS_ADDRESS) and an \
-                 unlocked login keyring are both present, for example under \
-                 `dbus-run-session` with gnome-keyring-daemon started and unlocked. \
-                 This is a real coverage gap for P2-A1 to judge, not a pass."
+        Err(failure) => {
+            assert!(
+                matches!(
+                    failure,
+                    KeystoreFailure::Unavailable | KeystoreFailure::AccessDenied
+                ),
+                "an absent provider must fail closed, got {failure}"
             );
         }
-        Err(other) => unreachable!("unexpected broker failure: {other}"),
     }
+
+    // Whatever the host, opening a label that was never sealed never yields a
+    // key, and never reports success.
+    let never = unique_label("never-sealed");
+    let refused = keystore.open(&never, never.as_bytes());
+    assert!(refused.is_err(), "an unsealed label must not open");
 }
