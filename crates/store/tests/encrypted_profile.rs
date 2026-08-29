@@ -170,7 +170,9 @@ fn phase1_profile_cannot_be_converted() -> Result<(), Box<dyn std::error::Error>
     assert_eq!(STORE_MIGRATION_SQL[0], MIGRATION_0001_SQL);
 
     // The Phase 1 singleton is CHECK-pinned to schema 1, so a schema-2 row is
-    // not merely disallowed by convention: SQLite refuses to store it.
+    // not merely disallowed by convention: SQLite refuses to store it. The
+    // values come out of the committed migration, so what is proved rejected is
+    // the frozen schema-2 identity and not a copy of it that could drift.
     let connection = rusqlite::Connection::open_in_memory()?;
     connection.execute_batch(MIGRATION_0001_SQL)?;
     let rejected = connection.execute(
@@ -180,14 +182,14 @@ fn phase1_profile_cannot_be_converted() -> Result<(), Box<dyn std::error::Error>
              minimum_writer_protocol_major, minimum_writer_protocol_minor,\
              data_policy, storage_mode, storage_encryption,\
              production_data_allowed, product_network, creating_build_digest, created_at_unix_ms\
-         ) VALUES (1, ?1, 2, '2.0.0', 2, 0, 2, 0, ?2, ?3, ?4, 1, 'BROKERED_EGRESS_ONLY', ?5, 1)",
-        // Read out of the committed migration for the same reason the scan
-        // needles are, and with the same benefit: what the Phase 1 singleton is
-        // proved to reject is exactly the frozen schema-2 identity, not a copy
-        // of it that could drift.
+         ) VALUES (1, ?1, 2, '2.0.0', 2, 0, 2, 0, ?2, ?3, ?4, 0, 'NONE', ?5, 1)",
         rusqlite::params![
             hex_bytes(&frozen_check_literal("format_uuid = x'")?),
-            frozen_check_literal("data_policy = '")?,
+            // The schema-2 singleton has no `data_policy`, so there is no
+            // schema-2 value to try here. The Phase 1 one is supplied to keep
+            // this row otherwise valid, which makes the rejection below come
+            // from the identity columns rather than from a NOT NULL.
+            "SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED",
             frozen_check_literal("storage_mode = '")?,
             frozen_check_literal("storage_encryption = '")?,
             vec![0_u8; 32],
@@ -199,6 +201,29 @@ fn phase1_profile_cannot_be_converted() -> Result<(), Box<dyn std::error::Error>
         message.contains("CHECK constraint failed"),
         "unexpected rejection: {message}"
     );
+
+    // The substitution is refused in both directions, and structurally rather
+    // than only by value: the schema-2 singleton drops three columns the Phase 1
+    // one requires, so a Phase 1 row cannot be written into it either.
+    let migration_0003 = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../migrations/store/0003_phase2_encrypted_identity.sql"),
+    )?;
+    // Statements only. The header comment names all three columns to explain
+    // why they are absent, and a scan of the whole file would read that
+    // explanation as the thing it forbids.
+    let statements = migration_0003
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("--"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for absent in ["data_policy", "production_data_allowed", "product_network"] {
+        assert!(
+            !statements.contains(absent),
+            "migration 0003 still records {absent}; the schema-2 singleton must \
+             describe the format and leave the posture to the admission verifier"
+        );
+    }
 
     // And no source file offers a conversion entry point.
     let source_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
@@ -312,10 +337,10 @@ mod encrypted {
     use academic_store::{
         PROFILE_FORMAT_V2_MARKER, STORE_DATABASE_FILE, SYNTHETIC_PROFILE_MARKER,
         cipher::{
-            self, ENCRYPTED_STORE_DATA_POLICY, ENCRYPTED_STORE_STORAGE_ENCRYPTION,
-            ENCRYPTED_STORE_STORAGE_MODE, PROFILE_FORMAT_V2_MARKER_CONTENTS,
-            REQUIRED_CIPHER_HMAC_ALGORITHM, REQUIRED_CIPHER_KDF_ALGORITHM,
-            REQUIRED_CIPHER_PAGE_SIZE, REQUIRED_KDF_ITER, open_encrypted_profile,
+            self, ENCRYPTED_STORE_STORAGE_ENCRYPTION, ENCRYPTED_STORE_STORAGE_MODE,
+            PROFILE_FORMAT_V2_MARKER_CONTENTS, REQUIRED_CIPHER_HMAC_ALGORITHM,
+            REQUIRED_CIPHER_KDF_ALGORITHM, REQUIRED_CIPHER_PAGE_SIZE, REQUIRED_KDF_ITER,
+            open_encrypted_profile,
         },
         error::StoreError,
         migration::{MIGRATION_0001_SQL, MIGRATION_0003_SQL, STORE_MIGRATION_SQL},
@@ -352,14 +377,13 @@ mod encrypted {
         assert_eq!(marker, PROFILE_FORMAT_V2_MARKER_CONTENTS);
         assert!(!profile.root().join(SYNTHETIC_PROFILE_MARKER).exists());
 
-        // The identity singleton carries exactly the frozen schema-2 triplet.
+        // The identity singleton carries exactly the frozen schema-2 identity.
         let connection = harness::open_keyed(profile.database_path(), &key)?;
         let identity = academic_store::migration::read_schema_identity(&connection)?;
         assert_eq!(identity.schema_version, 2);
         assert_eq!(identity.schema_semver, "2.0.0");
         assert_eq!(identity.minimum_reader_protocol, (2, 0));
         assert_eq!(identity.minimum_writer_protocol, (2, 0));
-        assert_eq!(identity.data_policy, ENCRYPTED_STORE_DATA_POLICY);
         assert_eq!(identity.storage_mode, ENCRYPTED_STORE_STORAGE_MODE);
         assert_eq!(
             identity.storage_encryption,
@@ -373,6 +397,39 @@ mod encrypted {
         let user_version: i64 =
             connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
         assert_eq!(user_version, 2);
+        // The singleton records the format and nothing about posture. A stored
+        // `data_policy` would have the file claim that real personal data is
+        // permitted while no admission receipt exists anywhere, so its absence
+        // is asserted against the live schema rather than only against the
+        // migration text.
+        let columns = {
+            let mut statement = connection.prepare("PRAGMA table_info(schema_meta)")?;
+            let mut rows = statement.query([])?;
+            let mut names = Vec::new();
+            while let Some(row) = rows.next()? {
+                names.push(row.get::<_, String>(1)?);
+            }
+            names
+        };
+        assert_eq!(
+            columns,
+            vec![
+                "singleton",
+                "format_uuid",
+                "schema_version",
+                "schema_semver",
+                "minimum_reader_protocol_major",
+                "minimum_reader_protocol_minor",
+                "minimum_writer_protocol_major",
+                "minimum_writer_protocol_minor",
+                "storage_mode",
+                "storage_encryption",
+                "creating_build_digest",
+                "created_at_unix_ms",
+            ],
+            "the schema-2 singleton is not exactly the format-fact column set"
+        );
+
         let application_id: i64 =
             connection.query_row("PRAGMA application_id", [], |row| row.get(0))?;
         assert_eq!(
@@ -1172,6 +1229,91 @@ mod encrypted {
             cipher::PHASE2_ENCRYPTED_STORE_FAULT_IDS,
             ["EN01", "EN02", "EN03", "EN04", "EN05", "EN06"]
         );
+    }
+
+    /// The real migration order is `0001` then `0003` then `0004`.
+    ///
+    /// The lib-level 0004 suite builds that base from the migration text. This
+    /// builds it the way a profile does -- the real pre-listen runner over a
+    /// real keyed connection -- and then applies 0004 through its own
+    /// pre-listen entry point, so the order is exercised end to end rather than
+    /// reconstructed.
+    #[test]
+    fn migration_0004_applies_on_a_real_encrypted_schema_two_profile() -> Result<(), Box<dyn Error>>
+    {
+        let root = TempRoot::new("order")?;
+        let workdir = root.workdir();
+        let key = harness::provision(&workdir)?;
+        let profile = harness::create_profile(&workdir, &key)?;
+
+        // `0001` and `0003` are already applied by creation: the identity is
+        // schema 2 and the aggregate tables do not exist yet.
+        let mut connection = harness::open_keyed(profile.database_path(), &key)?;
+        let identity = academic_store::migration::read_schema_identity(&connection)?;
+        assert_eq!(identity.schema_version, 2);
+        assert!(
+            table_missing(&connection, "curriculum_version")?,
+            "0004 was already applied before it was asked for"
+        );
+
+        academic_store::migration::apply_aggregate_migration_pre_listen(&mut connection)?;
+
+        // The aggregates exist and the schema-2 identity is untouched: 0004 is a
+        // delta on the canonical core, not on the profile format.
+        assert!(!table_missing(&connection, "curriculum_version")?);
+        assert!(!table_missing(&connection, "retention_action")?);
+        let after = academic_store::migration::read_schema_identity(&connection)?;
+        assert_eq!(after, identity, "0004 changed the schema-2 identity");
+        let user_version: i64 =
+            connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+        assert_eq!(user_version, 2, "0004 moved the physical schema version");
+
+        // Forward-only, and every page still authenticates afterwards.
+        let reapplied =
+            academic_store::migration::apply_aggregate_migration_pre_listen(&mut connection);
+        assert!(
+            reapplied.is_err(),
+            "migration 0004 re-applied itself on an encrypted profile"
+        );
+        assert!(cipher::cipher_integrity_report(&connection)?.is_empty());
+        drop(connection);
+
+        // Reopening is refused, and this is the point of running the order for
+        // real. `STORE_MIGRATION_SQL` is what a profile is admitted against, and
+        // it is `0001` + `0003`; a profile carrying 0004 no longer matches that
+        // structural fingerprint. Nothing in the product applies 0004 to a
+        // profile today -- `P2-K2` creates `0001` + `0003` and stops -- so this
+        // is the recorded seam for whoever wires the aggregates into profile
+        // creation, not a defect in either migration. Admission failing closed
+        // on an unexpected schema is the behaviour that must not change.
+        let refused = must_fail(
+            open_encrypted_profile(
+                profile.root(),
+                &academic_store::path_policy::NativePathProbe::default(),
+                &key,
+            ),
+            "a profile carrying an unadmitted migration was opened",
+        )?;
+        assert!(
+            matches!(
+                refused,
+                StoreError::SchemaIdentityMismatch {
+                    component: "schema.structural_fingerprint.v1",
+                    ..
+                }
+            ),
+            "unexpected refusal: {refused}"
+        );
+        Ok(())
+    }
+
+    fn table_missing(connection: &Connection, table: &str) -> Result<bool, Box<dyn Error>> {
+        let count: i64 = connection.query_row(
+            "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name = ?1",
+            [table],
+            |row| row.get(0),
+        )?;
+        Ok(count == 0)
     }
 
     /// The one owned acceptance writer opens over the encrypted profile.

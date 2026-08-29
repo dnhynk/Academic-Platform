@@ -725,7 +725,7 @@ pub mod enabled {
              \"cipher_hmac_algorithm\":\"{}\",\"cipher_kdf_algorithm\":\"{}\",\
              \"schema_version\":{},\"schema_semver\":\"{}\",\
              \"minimum_reader_protocol\":\"{}.{}\",\"minimum_writer_protocol\":\"{}.{}\",\
-             \"data_policy\":\"{}\",\"storage_mode\":\"{}\",\"storage_encryption\":\"{}\",\
+             \"storage_mode\":\"{}\",\"storage_encryption\":\"{}\",\
              \"canary_count\":{},\"readable_canary_count\":{},\
              \"files_scanned\":{},\"bytes_scanned\":{},\"plaintext_canary_hits\":{}}}",
             cipher.cipher_version,
@@ -740,7 +740,6 @@ pub mod enabled {
             identity.minimum_reader_protocol.1,
             identity.minimum_writer_protocol.0,
             identity.minimum_writer_protocol.1,
-            identity.data_policy,
             identity.storage_mode,
             identity.storage_encryption,
             canaries.len(),

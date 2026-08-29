@@ -43,15 +43,15 @@ use crate::{
     },
 };
 
-/// Data policy recorded in the schema-2 identity singleton.
-///
-/// Frozen by `P2-K2` and pinned by a CHECK in migration `0003`. It states what
-/// the *format* is for, not what the running profile is permitted to do: an
-/// encrypted profile without a verified admission receipt still serves the
-/// synthetic posture, because the posture is the admission verifier's output
-/// and is never read from this singleton.
-pub const ENCRYPTED_STORE_DATA_POLICY: &str = "REAL_PERSONAL_DATA_PERMITTED";
 /// Storage mode recorded in the schema-2 identity singleton.
+///
+/// The singleton records the FORMAT, and this is a physical fact about how the
+/// bytes are stored. `data_policy`, `production_data_allowed`, and
+/// `product_network` are deliberately not recorded: t068 section 3.1 emits all
+/// three only when `AdmissionVerifier::verify()` succeeds, so they are
+/// `P2-K6`'s runtime output rather than anything true of this file. A stored
+/// `data_policy = "REAL_PERSONAL_DATA_PERMITTED"` would have the file claim
+/// that real personal data is permitted while no receipt exists anywhere.
 pub const ENCRYPTED_STORE_STORAGE_MODE: &str = "SQLCIPHER_ENCRYPTED_PROFILE_V2";
 /// Storage encryption recorded in the schema-2 identity singleton.
 pub const ENCRYPTED_STORE_STORAGE_ENCRYPTION: &str =
@@ -595,9 +595,6 @@ mod tests {
         assert!(migration.contains("CHECK (schema_semver = '2.0.0')"));
         assert!(migration.contains("CHECK (minimum_reader_protocol_major = 2)"));
         assert!(migration.contains("CHECK (minimum_writer_protocol_major = 2)"));
-        assert!(migration.contains(&format!(
-            "CHECK (data_policy = '{ENCRYPTED_STORE_DATA_POLICY}')"
-        )));
         assert!(migration.contains(&format!(
             "CHECK (storage_mode = '{ENCRYPTED_STORE_STORAGE_MODE}')"
         )));
