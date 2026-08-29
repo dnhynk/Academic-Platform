@@ -30,6 +30,7 @@ pub fn classify(operation: &'static str, error: &OperationError) -> CliFailure {
         FailureClass::Conflict => ExitClass::Conflict,
         FailureClass::RepairRequired => ExitClass::RepairRequired,
         FailureClass::Incompatible => ExitClass::Incompatible,
+        FailureClass::PathRejected => ExitClass::PathRejected,
         FailureClass::Internal => ExitClass::Internal,
     };
     CliFailure::new(class, operation, error.to_string())

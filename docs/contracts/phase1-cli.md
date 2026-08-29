@@ -78,10 +78,20 @@ rather than asserting against this table.
 | 12 | `REPAIR_REQUIRED` | The profile or artefact must be repaired before it is served or published. |
 | 13 | `INCOMPATIBLE` | A protocol version, capability, artefact format, or fault identifier could not be negotiated. |
 | 14 | `UNAVAILABLE` | No daemon owns the profile, so an IPC-only command cannot proceed. |
+| 15 | `PATH_REJECTED` | The location the caller named is not one this build may use as a profile: it failed the profile path policy, or it holds no store database. |
 | 20 | `INTERNAL` | None of the above describes the failure. |
 
 A failing command still emits its structured result where it produced one, so a
 `REPAIR_REQUIRED` doctor shows the findings that demanded the repair.
+
+`PATH_REJECTED` and `POLICY_DENIED` are not interchangeable. `POLICY_DENIED` is
+the synthetic-only *data* policy and nothing else; a caller branches on it to
+mean "this input is not an allowlisted synthetic fixture". `PATH_REJECTED` is a
+decision about a *location* — a Git worktree, a network share, a sync folder, a
+non-empty new-profile root, a directory holding no store database — and it tells
+the caller to name a different path rather than to file a bug. Neither may be
+answered with `INTERNAL`, which means this build failed for a reason it cannot
+name.
 
 ## What travels over IPC, and what cannot
 
@@ -91,11 +101,20 @@ daemon, which is the sole canonical writer. There is no offline ingest path.
 `daemon status` completes a read-only handshake.
 
 `export` and `backup` are reads. When a daemon owns the profile they complete a
-read-only handshake first, so the owning daemon remains the authority over its
-own profile: a `LOCKED` or `REPAIR_REQUIRED` lock state stops the command before
-anything is written. When no daemon owns the profile they run offline against the
-same read-only boundary, which opens the database with SQLite read-only flags
-through the guarded store reader. The CLI never holds a writer handle.
+read-only handshake first. That handshake proves four things and no more: a live
+daemon owns this profile and answered, the caller presented the session nonce
+published for it, protocol 1.0 was negotiated, and the required capability was
+granted. A profile that was repair-required is refused earlier and elsewhere —
+the daemon will not start on one — so a served profile was reconciled clean at
+bind time. The handshake does not report runtime lock or projection state; see
+*What the handshake does not carry* below.
+
+When no daemon owns the profile these commands run offline against the same
+read-only boundary, which opens the database with SQLite read-only flags through
+the guarded store reader. The CLI never holds a writer handle, and neither mode
+performs a canonical or artefact write. Both open the vault, which initializes
+its directory structure and therefore writes the platform directory barrier
+(ADR-004); that is documented structure, not profile content.
 
 Two limits come from the frozen P1 contract rather than from this task:
 
@@ -122,17 +141,45 @@ no export arm at all, and neither `SyntheticBackupCommand` nor
 "back up to `<path>`" have no wire representation. This build therefore routes
 ingest — the only canonical mutation — strictly over IPC with no local fallback,
 answers `daemon status` from the IPC handshake, and runs export and backup
-locally read-only after first handshaking with any daemon that owns the profile
-and refusing when that daemon reports `LOCKED` or `REPAIR_REQUIRED`. The
-single-writer invariant of ADR-001 is intact because the deviation moves only
+locally read-only after first handshaking with any daemon that owns the profile.
+The single-writer invariant of ADR-001 is intact because the deviation moves only
 reads: export and backup admit the source profile through the guarded store
 reader, then read it through a `SQLITE_OPEN_READ_ONLY` handle constrained to
 `query_only`, hold no writer handle on it, and append no event, receipt, or
-revision — so the owning daemon remains the sole canonical writer and keeps its
-veto over both commands through the handshake. This is a deliberate recorded
-deviation, not an omission; it ends when the protocol gains an export arm and a
-destination-bearing backup, which is a Proto change against the F0 frozen
-surface.
+revision — so the owning daemon remains the sole canonical writer. What protects a
+damaged profile here is the read path itself, not the handshake: export reads
+every referenced object back through `Vault::verify_sealed_object` and refuses to
+publish a missing or corrupt one, and backup additionally re-reads the copied
+snapshot and fails closed on any watermark, count, head, or digest drift. This is
+a deliberate recorded deviation, not an omission; it ends when the protocol gains
+an export arm and a destination-bearing backup, which is a Proto change against
+the F0 frozen surface.
+
+### What the handshake does not carry
+
+`ServerHandshake` has a `lock_state` field and a `projections` list, and T009
+§6.7 and ADR-001/ADR-009 require the daemon to fill them with the profile's lock
+state and its projection builders' source watermarks. This build does not: the
+daemon answers every handshake from `ServerHandshakeConfig::default()`, so
+`lock_state` is always `UNLOCKED` and `projections` is always empty.
+
+That is not a stub standing in for state the daemon has. There is no runtime lock
+word and no runtime repair-required transition in Phase 1. A repair-required
+profile is refused at `LocalService::open`, before the listener binds, so a daemon
+that answers at all reconciled clean; nothing after start re-evaluates it. Filling
+`lock_state` from startup reconciliation would therefore still be the constant
+`UNLOCKED`, reached through a longer path — a veto that looks dynamic and is not.
+Making it genuinely dynamic needs a store-backed lock word and a repair-required
+transition the writer can take while serving, which is a Phase 2 daemon state
+machine, so the §6.7 requirement is deferred to Phase 2 rather than approximated
+here.
+
+Two consequences a caller must know. `daemon status` reads projection watermarks
+from its own read-only pass over the profile, not from the handshake. And the
+`PROFILE_LOCKED` and `PROFILE_REPAIR_REQUIRED` refusals in
+`crates/cli/src/commands/ownership.rs` are unreachable against a Phase 1 daemon;
+they are kept so that a daemon which does report those states is refused rather
+than silently accepted, and they are not a defence this phase provides.
 
 ### After an abrupt daemon termination
 

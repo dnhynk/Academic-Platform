@@ -37,6 +37,7 @@ mod exit {
     pub const REPAIR_REQUIRED: i32 = 12;
     pub const INCOMPATIBLE: i32 = 13;
     pub const UNAVAILABLE: i32 = 14;
+    pub const PATH_REJECTED: i32 = 15;
     pub const INTERNAL: i32 = 20;
 }
 
@@ -1039,6 +1040,40 @@ fn cli_exit_codes_distinguish_every_failure_class() -> TestResult {
     // USAGE: clap owns exit code 2 and no outcome class may claim it.
     assert_eq!(run(&["doctor", "--allow-real-data"])?.code, exit::USAGE);
 
+    // PATH_REJECTED: the location the caller named is refused, in both of the
+    // ways it can be. These are decisions about a path, not faults, and a
+    // caller that cannot tell them from INTERNAL cannot tell "fix the path"
+    // from "file a bug".
+    let occupied = lane.path("not-a-profile");
+    fs::create_dir(&occupied)?;
+    fs::write(occupied.join("stray.txt"), b"not profile content\n")?;
+    let unsafe_path = run(&[
+        "daemon",
+        "serve",
+        "--profile",
+        &text(&occupied),
+        "--runtime",
+        &text(&lane.runtime()),
+        "--format",
+        "json",
+    ])?;
+    assert_eq!(
+        unsafe_path.code,
+        exit::PATH_REJECTED,
+        "stdout: {}",
+        unsafe_path.stdout
+    );
+
+    let empty = lane.path("empty-directory");
+    fs::create_dir(&empty)?;
+    let not_a_profile = run(&["doctor", "--profile", &text(&empty), "--format", "json"])?;
+    assert_eq!(
+        not_a_profile.code,
+        exit::PATH_REJECTED,
+        "stdout: {}",
+        not_a_profile.stdout
+    );
+
     let seeded = seeded_lane()?;
 
     // CONFLICT: the destination already exists.
@@ -1089,6 +1124,7 @@ fn cli_exit_codes_distinguish_every_failure_class() -> TestResult {
         exit::REPAIR_REQUIRED,
         exit::INCOMPATIBLE,
         exit::UNAVAILABLE,
+        exit::PATH_REJECTED,
     ] {
         assert_ne!(code, exit::INTERNAL);
     }

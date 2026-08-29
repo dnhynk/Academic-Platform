@@ -112,6 +112,8 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked --features academic-core/phase1-fault-injection,academic-daemon/phase1-fault-injection,academic-portability/phase1-fault-injection,academic-projections/phase1-fault-injection,academic-test-support/phase1-fault-injection,academic-vault/phase1-fault-injection -- -D warnings
       - name: Run the enumerated Phase 1 exit matrix
         run: cargo test -p academic-daemon --test phase1_exit --locked --features phase1-fault-injection
+      - name: Run the kill matrices the NOT_RUN rows are covered by
+        run: cargo test -p academic-portability -p academic-vault --test crash --locked --offline --features phase1-fault-injection
       - name: Assemble the Phase 1 exit receipt
         run: node tools/phase1-exit.mjs --all-faults --format json
 

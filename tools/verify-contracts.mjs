@@ -1847,6 +1847,11 @@ const phase1FaultFeatureSelection = [
 const phase1ExitCiCommands = [
   `cargo clippy --workspace --all-targets --locked --features ${phase1FaultFeatureSelection} -- -D warnings`,
   "cargo test -p academic-daemon --test phase1_exit --locked --features phase1-fault-injection",
+  // The exit corpus cannot reach BK03, so its NOT_RUN row points at the kill
+  // matrices in the owner crates. Those suites compile to nothing under default
+  // features, so the exit job has to run them itself or the pointer is not
+  // evidence.
+  "cargo test -p academic-portability -p academic-vault --test crash --locked --offline --features phase1-fault-injection",
   "node tools/phase1-exit.mjs --all-faults --format json",
 ];
 const requireCiRecord = (value, label) => {
@@ -2000,7 +2005,11 @@ const expectedCiWorkflow = {
         { name: "Install pinned pnpm", run: "npm install --global pnpm@11.22.0" },
         { name: "Lint the fault-injection lane", run: phase1ExitCiCommands[0] },
         { name: "Run the enumerated Phase 1 exit matrix", run: phase1ExitCiCommands[1] },
-        { name: "Assemble the Phase 1 exit receipt", run: phase1ExitCiCommands[2] },
+        {
+          name: "Run the kill matrices the NOT_RUN rows are covered by",
+          run: phase1ExitCiCommands[2],
+        },
+        { name: "Assemble the Phase 1 exit receipt", run: phase1ExitCiCommands[3] },
       ],
     },
     contracts: {

@@ -12,7 +12,9 @@ use academic_portability::{
         verify_export_directory,
     },
     restore::PROJECTION_SIDECAR_FILE,
+    verify::{CanonicalDatabase, read_canonical_rows},
 };
+use rusqlite::Connection;
 use support::{Fixture, TestResult};
 
 /// Names Windows refuses as a path component in any directory, with or without
@@ -311,6 +313,57 @@ fn export_verification_rejects_a_tampered_record() -> TestResult {
     assert!(
         verify_export_directory(&destination).is_err(),
         "a tampered canonical record survived export verification"
+    );
+    Ok(())
+}
+
+/// A canonical read set must describe exactly one commit.
+///
+/// SQLite gives every autocommit statement its own read snapshot, so a
+/// sequence of `SELECT`s against a live profile can straddle a writer's commit
+/// and yield a manifest whose watermark, counts, and rows describe different
+/// states. Export has nothing to compare its read set against — the manifest is
+/// written from the first read and never re-checked — so the property has to
+/// hold at the read boundary itself.
+///
+/// The interleaving cannot be driven through a product command: no Phase 1
+/// command can perform a second acceptance while an export reads, which is why
+/// the concurrent writer here is a direct connection. What is asserted is the
+/// boundary that owns the property: one reader, two read sets, a commit
+/// between them.
+#[test]
+fn a_canonical_read_set_does_not_straddle_a_concurrent_commit() -> TestResult {
+    let fixture = Fixture::new("export-read-snapshot")?;
+
+    // The writer opens and touches the database first so the WAL index exists
+    // before the read-only handle attaches to it; a reader that attached to a
+    // checkpointed database with no index would not be reading the same file
+    // the writer is about to append to.
+    let writer = Connection::open(fixture.database_path())?;
+    let _: i64 = writer.query_row("SELECT count(*) FROM replica_state", [], |row| row.get(0))?;
+
+    let database = CanonicalDatabase::open_source(fixture.database_path())?;
+    let snapshot = database.begin_read()?;
+    let first = read_canonical_rows(&database)?;
+    writer.execute(
+        "UPDATE replica_state SET profile_revision = profile_revision + 1 WHERE singleton = 1",
+        [],
+    )?;
+    let second = read_canonical_rows(&database)?;
+    assert_eq!(
+        first.watermark, second.watermark,
+        "a read inside the snapshot observed a commit that landed after it opened"
+    );
+    drop(snapshot);
+
+    // Without the snapshot the same reader sees the commit, which is what makes
+    // the assertion above evidence rather than a statement about a writer that
+    // never wrote.
+    let third = read_canonical_rows(&database)?;
+    assert_eq!(
+        third.watermark.profile_revision,
+        first.watermark.profile_revision + 1,
+        "the concurrent commit was never observable, so the snapshot proved nothing"
     );
     Ok(())
 }
