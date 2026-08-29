@@ -37,12 +37,26 @@ pub fn classify(operation: &'static str, error: &OperationError) -> CliFailure {
 
 /// Normalizes a caller-supplied path to the host's native absolute form.
 ///
-/// This matters on Windows. The durability layer addresses files through
-/// verbatim `\?\` paths, and Windows performs **no** normalization on a
-/// verbatim path: a forward slash a caller typed is then read as an ordinary
-/// filename character rather than a separator, and every open below that
-/// profile fails with `ERROR_PATH_NOT_FOUND`. Normalizing once here, at the
-/// argument boundary, keeps every downstream primitive on a native path.
+/// Two of the three things this does are load-bearing for the vault below it,
+/// on Windows.
+///
+/// Absolutization: the Windows durability layer applies its verbatim prefix
+/// only to a rooted spelling and leaves a non-absolute one to Win32, and its
+/// handle-rename builder refuses a non-absolute spelling outright. A relative
+/// `--profile profile` therefore has to become absolute before it reaches a
+/// durable primitive, and the argument boundary is the only place that owns
+/// the process working directory it is relative to.
+///
+/// Dot resolution: `.` and `..` are a typed vault error rather than something
+/// the verbatim namespace can resolve, deliberately, because collapsing
+/// `a\..\b` lexically is only correct when `a` is not a link. `std::path::absolute`
+/// resolves them here through `GetFullPathNameW`, which is the composition-root
+/// resolution that error defers to.
+///
+/// Separator spelling is *not* one of those things. `crates/vault` normalizes
+/// separators itself before it applies any prefix, for every caller, so a
+/// forward-slash argument is addressed correctly with or without this call;
+/// `cli_accepts_forward_slash_paths_on_every_host` holds that from the CLI side.
 ///
 /// The path is not required to exist, so a destination that must be absent
 /// normalizes just as well as a profile that already exists.
