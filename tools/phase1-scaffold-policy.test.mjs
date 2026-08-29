@@ -225,6 +225,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     ],
     "academic-projections": ["academic-domain", "academic-store"],
     "academic-rpc": ["academic-contracts", "academic-domain"],
+    "academic-scenario": ["academic-domain"],
     "academic-store": [
       "academic-contracts",
       "academic-domain",
@@ -251,7 +252,16 @@ test("workspace_dependency_direction_is_acyclic", () => {
       .toSorted(([left], [right]) => left.localeCompare(right)),
   );
   assert.deepEqual(devEdges, {
+    // `academic-core` owns `tests/scenario_isolation.rs`, which needs the
+    // projection engine and the canonical writer in one process to prove that
+    // driving the first leaves the second byte-identical. `academic-scenario`
+    // links its own domain crate a second time as a dev edge because the
+    // `trybuild` cases compile against the crate under test plus that crate's
+    // dev-dependencies, and a case has to name the canonical types a projection
+    // must never become.
+    "academic-core": ["academic-scenario"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
+    "academic-scenario": ["academic-domain"],
   });
 
   assert.deepEqual(
@@ -309,6 +319,213 @@ async function rustSources(root) {
   }
   return sources;
 }
+
+/**
+ * Names the canonical writer crates: the ones that own a handle able to change
+ * accepted state.
+ *
+ * `academic-store` exposes the single acceptance writer, and
+ * `academic-store-platform` is the private FFI leaf it opens files through.
+ * Reaching either from a projection crate — by a normal, build, or dev edge —
+ * would mean a projected value could be compiled into the same binary as the
+ * write it must never reach.
+ */
+const CANONICAL_WRITER_CRATES = ["academic-store", "academic-store-platform"];
+
+/**
+ * Every workspace crate reachable from `root` through edges of any kind.
+ *
+ * Declared edges rather than resolved ones, and every kind rather than only the
+ * shipping ones: a dev edge is still a compiled edge, and a projection crate
+ * that dev-depended on the writer would be able to name it in a test.
+ */
+function workspaceClosureOfEveryKind(root, packages) {
+  const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
+  const names = new Set(packages.map((pkg) => pkg.name));
+  const reached = new Set();
+  const pending = [root];
+  while (pending.length > 0) {
+    const name = pending.pop();
+    const pkg = byName.get(name);
+    if (pkg === undefined) {
+      continue;
+    }
+    for (const dependency of pkg.dependencies) {
+      if (dependency.source !== null || !names.has(dependency.name)) {
+        continue;
+      }
+      if (!reached.has(dependency.name)) {
+        reached.add(dependency.name);
+        pending.push(dependency.name);
+      }
+    }
+  }
+  return reached;
+}
+
+/**
+ * Every package reachable from `rootId` in the resolved graph, across all edge
+ * kinds, named rather than identified.
+ *
+ * The declared-edge walk above reads the manifests; this one reads what Cargo
+ * actually resolved, so a writer that arrived through a renamed dependency or a
+ * feature-activated optional edge is caught as well.
+ */
+function resolvedClosureNames(rootId, nodesById, packagesById) {
+  const seen = new Set();
+  const pending = [rootId];
+  while (pending.length > 0) {
+    const id = pending.pop();
+    if (id === undefined || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    for (const dependency of nodesById.get(id)?.deps ?? []) {
+      pending.push(dependency.pkg);
+    }
+  }
+  return new Set([...seen].map((id) => packagesById.get(id)?.name));
+}
+
+test("scenario_crate_has_no_writer_dependency", () => {
+  // Judged from the Cargo dependency graph, never from the source text. A
+  // source grep would pass for a crate that linked the writer and simply did
+  // not mention it yet, which is the state one edit away from a leak.
+  const scenario = packagesByName.get("academic-scenario");
+  assert.ok(scenario, "academic-scenario is not a workspace member");
+
+  assert.deepEqual(
+    productDependencyNames(scenario),
+    ["academic-domain"],
+    "the projection crate ships only the domain vocabulary",
+  );
+
+  const declared = workspaceClosureOfEveryKind("academic-scenario", workspacePackages);
+  for (const writer of CANONICAL_WRITER_CRATES) {
+    assert.equal(
+      declared.has(writer),
+      false,
+      `academic-scenario reaches the canonical writer ${writer} through a declared edge`,
+    );
+  }
+
+  const resolved = resolvedClosureNames(scenario.id, resolveNodesById, packagesById);
+  for (const writer of CANONICAL_WRITER_CRATES) {
+    assert.equal(
+      resolved.has(writer),
+      false,
+      `academic-scenario reaches the canonical writer ${writer} in the resolved graph`,
+    );
+  }
+  // The vault and the ledger are the writer's own seam and its append-only
+  // rules. A projection crate has no business holding either.
+  for (const canonical of ["academic-vault", "academic-ledger", "academic-portability"]) {
+    assert.equal(
+      declared.has(canonical),
+      false,
+      `academic-scenario reaches the canonical crate ${canonical}`,
+    );
+  }
+
+  // The reverse edge would be worse than the forward one: it would let the
+  // writer take a projected value as an argument.
+  for (const writer of CANONICAL_WRITER_CRATES) {
+    assert.equal(
+      workspaceDependencyNames(packagesByName.get(writer)).includes("academic-scenario"),
+      false,
+      `${writer} depends on the projection crate`,
+    );
+  }
+});
+
+test("scenario_writer_gate_rejects_its_violation", () => {
+  // The assertion above is a fact about the real graph. If the closure walk
+  // were wrong, the real graph would still satisfy it and the test would still
+  // pass, so the walk is put in front of graphs that do violate the invariant
+  // and required to say so.
+  const pkg = (name, dependencies = []) => ({
+    id: `${name}-id`,
+    name,
+    dependencies: dependencies.map(([dependencyName, kind]) => ({
+      name: dependencyName,
+      kind,
+      source: null,
+      features: [],
+    })),
+    features: {},
+  });
+
+  const direct = [
+    pkg("academic-scenario", [
+      ["academic-domain", null],
+      ["academic-store", null],
+    ]),
+    pkg("academic-store", []),
+    pkg("academic-domain", []),
+  ];
+  assert.equal(
+    workspaceClosureOfEveryKind("academic-scenario", direct).has("academic-store"),
+    true,
+    "a direct writer edge must be reported",
+  );
+
+  // A dev edge is still a compiled edge, so it must be reported too. This is
+  // the case a shipping-graph-only check would miss.
+  const devOnly = [
+    pkg("academic-scenario", [
+      ["academic-domain", null],
+      ["academic-store", "dev"],
+    ]),
+    pkg("academic-store", []),
+    pkg("academic-domain", []),
+  ];
+  assert.equal(
+    workspaceClosureOfEveryKind("academic-scenario", devOnly).has("academic-store"),
+    true,
+    "a dev writer edge must be reported",
+  );
+
+  // And an edge that arrives two crates away, which is how a writer would
+  // realistically reappear once other projection crates exist.
+  const transitive = [
+    pkg("academic-scenario", [["academic-projections", null]]),
+    pkg("academic-projections", [["academic-store", null]]),
+    pkg("academic-store", []),
+  ];
+  assert.equal(
+    workspaceClosureOfEveryKind("academic-scenario", transitive).has("academic-store"),
+    true,
+    "a transitive writer edge must be reported",
+  );
+
+  const clean = [pkg("academic-scenario", [["academic-domain", null]]), pkg("academic-domain", [])];
+  assert.equal(
+    workspaceClosureOfEveryKind("academic-scenario", clean).has("academic-store"),
+    false,
+    "a clean graph must not be reported",
+  );
+
+  // The resolved walk is checked the same way, because it is the one that sees
+  // a renamed or feature-activated edge.
+  const resolvedNodes = new Map([
+    ["academic-scenario-id", { deps: [{ pkg: "academic-projections-id" }] }],
+    ["academic-projections-id", { deps: [{ pkg: "academic-store-id" }] }],
+    ["academic-store-id", { deps: [] }],
+  ]);
+  const resolvedPackages = new Map(
+    ["academic-scenario", "academic-projections", "academic-store"].map((name) => [
+      `${name}-id`,
+      { name },
+    ]),
+  );
+  assert.equal(
+    resolvedClosureNames("academic-scenario-id", resolvedNodes, resolvedPackages).has(
+      "academic-store",
+    ),
+    true,
+    "the resolved walk must report a writer two edges away",
+  );
+});
 
 test("store_platform_native_unsafe_boundary_is_isolated", async () => {
   const [manifest, publicFacade, windowsSource, sources] = await Promise.all([

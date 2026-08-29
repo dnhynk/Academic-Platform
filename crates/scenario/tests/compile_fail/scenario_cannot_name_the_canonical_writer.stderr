@@ -1,0 +1,7 @@
+error[E0433]: cannot find module or crate `academic_store` in this scope
+ --> tests/compile_fail/scenario_cannot_name_the_canonical_writer.rs:9:5
+  |
+9 | use academic_store::accept::AcceptanceStore;
+  |     ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `academic_store`
+  |
+  = help: if you wanted to use a crate named `academic_store`, use `cargo add academic_store` to add it to your `Cargo.toml`

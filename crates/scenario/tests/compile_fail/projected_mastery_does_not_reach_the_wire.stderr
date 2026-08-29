@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/projected_mastery_does_not_reach_the_wire.rs:26:44
+   |
+26 |     let _sealed = ProjectionEnvelope::seal(projected);
+   |                   ------------------------ ^^^^^^^^^ expected `ScenarioProjection`, found `Proposed<MasteryLevel>`
+   |                   |
+   |                   arguments to this function are incorrect
+   |
+   = note: expected struct `ScenarioProjection`
+              found struct `Proposed<MasteryLevel>`
+note: associated function defined here
+  --> src/envelope.rs
+   |
+   |     pub fn seal(projection: ScenarioProjection) -> Self {
+   |            ^^^^
