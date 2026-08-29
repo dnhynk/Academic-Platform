@@ -105,10 +105,12 @@ Comparing a pre-change node to a post-change node produces exactly one class.
 | `IDENTICAL` | same identity, untouched by any identity change | permitted |
 | `REFINED` | a redirect chain leads from the earlier identity to the later one, which covers at least as much | permitted |
 | `SPLIT_AMBIGUOUS` | the earlier identity was split; no single successor inherits its state until the reclassification queue is decided | withheld |
-| `INCOMPARABLE` | no justified correspondence in either direction, or one side has no observation | refused |
+| `INCOMPARABLE` | no justified correspondence in either direction, or a correspondence that would be permitted but whose other side was never observed | refused |
 
 A split dominates a merge. If the earlier identity was split, the class is
-`SPLIT_AMBIGUOUS` even when a redirect also exists, because attributing the
+`SPLIT_AMBIGUOUS` even when a redirect also exists, and it stays
+`SPLIT_AMBIGUOUS` when nothing was observed on the other side, because the
+split is the more informative reason the comparison is refused. Attributing an
 earlier state to one successor is the distortion this contract prevents.
 
 `StateComparison.delta` is `Some` exactly when
