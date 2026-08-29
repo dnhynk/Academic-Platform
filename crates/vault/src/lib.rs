@@ -85,6 +85,20 @@ pub const PHASE1_VAULT_FORMAT: VaultFormatContract = VaultFormatContract {
     production_data_allowed: false,
 };
 
+/// Exact encrypted-lane vault posture.
+///
+/// `production_data_allowed` is `false` here too, and that is the point:
+/// encrypting an object is not permission to store a real one. That permission
+/// comes from `P2-K6`'s verified admission receipt, which this crate neither
+/// reads nor can construct.
+#[cfg(feature = "aead-objects")]
+pub const ENCRYPTED_VAULT_FORMAT: VaultFormatContract = VaultFormatContract {
+    read_format: encrypted::ENCRYPTED_OBJECT_FORMAT,
+    write_format: encrypted::ENCRYPTED_OBJECT_FORMAT,
+    encrypted: true,
+    production_data_allowed: false,
+};
+
 /// Stable error boundary for vault mutation and integrity checks.
 #[derive(Debug)]
 #[non_exhaustive]
@@ -460,6 +474,32 @@ mod tests {
             assert!(!PHASE1_VAULT_FORMAT.production_data_allowed);
         }
         assert!(VAULT_WRITE_FORMAT.contains("PLAINTEXT_SYNTHETIC"));
+    }
+
+    /// Encryption is not acceptance. A vault that seals its objects still says
+    /// production data is not allowed, because that answer belongs to `P2-K6`'s
+    /// admission receipt and to nothing in this crate.
+    #[cfg(feature = "aead-objects")]
+    #[test]
+    fn the_encrypted_lane_still_refuses_to_claim_acceptance() {
+        const {
+            assert!(ENCRYPTED_VAULT_FORMAT.encrypted);
+            assert!(!ENCRYPTED_VAULT_FORMAT.production_data_allowed);
+        }
+        assert_eq!(ENCRYPTED_VAULT_FORMAT.write_format, "AEAD_CHUNKED_V2");
+        assert_eq!(
+            ENCRYPTED_VAULT_FORMAT.read_format, ENCRYPTED_VAULT_FORMAT.write_format,
+            "an encrypted profile writes and reads exactly one object format"
+        );
+        assert_ne!(ENCRYPTED_VAULT_FORMAT.write_format, VAULT_WRITE_FORMAT);
+        assert_eq!(
+            encrypted::ENCRYPTED_FORMAT_VERSION,
+            layout::ObjectFormat::AeadChunkedV2.format_version()
+        );
+        assert_eq!(
+            VAULT_FORMAT_VERSION,
+            layout::ObjectFormat::PlaintextSyntheticV1.format_version()
+        );
     }
 
     #[test]

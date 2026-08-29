@@ -208,6 +208,12 @@ cannot be fired by the Phase 2 feature or the reverse.
 
 ## What this is not evidence for
 
+`ENCRYPTED_VAULT_FORMAT` reports `encrypted: true` and
+`production_data_allowed: false`, and that pairing is the point: encrypting an
+object is not permission to store a real one. That permission comes from
+`P2-K6`'s verified admission receipt, which this crate neither reads nor can
+construct.
+
 It is not evidence that real data may be stored: `adr_002_accepted` is still
 `false`, no admission receipt exists, and `P2-K6` has not shipped. It is not
 five-platform evidence: the suite runs on every hosted Rust label, but macOS,
