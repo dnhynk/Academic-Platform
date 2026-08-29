@@ -236,12 +236,13 @@ fn bk01_bk04_leave_no_partially_published_encrypted_backup() -> TestResult {
                 BackupRecipientKind::RecoveryPhrase,
                 &recovery_secret(),
             );
-            match attempted {
-                Ok((root, _)) => assert!(
+            // Refusing to open at all is the other acceptable outcome, so only
+            // the branch that did open has something left to check.
+            if let Ok((root, _)) = attempted {
+                assert!(
                     verify_encrypted_backup_directory(&staging, &root).is_err(),
                     "{fault} produced an acceptable backup"
-                ),
-                Err(_) => {}
+                );
             }
         }
         if fault == "BK01" {

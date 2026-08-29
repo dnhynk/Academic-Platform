@@ -17,7 +17,6 @@
 //! The body is opaque here. What goes into it — watermark, counts, object
 //! closure, file inventory — is the encrypted portability lane's contract.
 
-use academic_crypto::KEY_BYTES;
 use chacha20poly1305::{
     XChaCha20Poly1305, XNonce,
     aead::{Aead, KeyInit, Payload},
@@ -93,11 +92,19 @@ impl SealedManifest {
         Ok(sealed)
     }
 
-    /// Verifies the signature without opening the manifest.
+    /// Verifies the signature against the verifying key carried in the header.
     ///
-    /// This is the half a holder of the public key alone can do; it proves the
-    /// bytes came from a holder of the backup root and have not been edited,
-    /// and it reads nothing out of the body.
+    /// **This proves internal consistency only.** The verifying key is the
+    /// envelope's own field, so a signature that checks here says the header
+    /// and body have not been edited *since whoever wrote them signed them* —
+    /// not that the writer held the backup root. An envelope rewritten end to
+    /// end under a freshly generated signing key passes this.
+    ///
+    /// What binds the envelope to the root is `open`, which rederives the
+    /// signing key from the root and refuses a header whose verifying key is
+    /// not the one that derivation produces. Callers that need provenance must
+    /// go through `open`; this entry point is the cheap edit check that runs
+    /// first, and it reads nothing out of the body.
     pub fn verify_signature(&self) -> Result<(), SealedManifestError> {
         let verifying = VerifyingKey::from_bytes(&self.verifying_key)
             .map_err(|_| SealedManifestError::Signature)?;
@@ -292,9 +299,11 @@ fn signing_key(
     let seed = root
         .derive(set_id, MANIFEST_SIGNING_INFO)
         .map_err(SealedManifestError::Key)?;
-    let mut bytes = [0_u8; KEY_BYTES];
-    bytes.copy_from_slice(seed.as_ref());
-    Ok(SigningKey::from_bytes(&bytes))
+    // Handed straight out of the zeroizing buffer `derive` returned. The
+    // intermediate 32-byte array this used to copy into was a plain stack
+    // array that nothing cleared, so the seed outlived the call in whatever
+    // frame happened to be there next.
+    Ok(SigningKey::from_bytes(&seed))
 }
 
 /// Why a sealed manifest could not be produced, verified, or opened.

@@ -185,6 +185,14 @@ pub mod enabled {
     }
 
     /// Applies a raw 32-byte key as `PRAGMA key = "x'<64 hex>'"`.
+    ///
+    /// Deliberately `pragma_update`, which is *not* what production uses:
+    /// `cipher::apply_store_key` renders the same statement itself so the
+    /// buffer holding the key text can be cleared. Keeping rusqlite's rendering
+    /// here means every profile this harness creates through production code
+    /// and reopens through this helper cross-checks the two against each other.
+    /// If they ever diverge — a different literal, or a fall back to the
+    /// passphrase KDF — the lane stops opening its own databases.
     pub fn apply_raw_key(connection: &Connection, key: &StoreKey) -> ProbeResult<()> {
         let hex = key.expose_raw_hex();
         let literal = format!("x'{}'", hex.as_str());

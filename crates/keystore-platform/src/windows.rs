@@ -85,10 +85,39 @@ impl OwnedNcryptBuffer {
     }
 }
 
+impl OwnedNcryptBuffer {
+    /// Overwrites the NCrypt allocation before it is handed back.
+    ///
+    /// On an unprotect the buffer holds `label ‖ device wrapping key` in the
+    /// clear. `to_vec`'s copy is zeroized by `unbind_label`, but the NCrypt
+    /// allocation itself is not: freeing it without a clear would leave the
+    /// wrapping key in this process's heap for the rest of its life, which is
+    /// the core-dump exposure `KY02` forbids and the exception to ADR-005's
+    /// "never leaves the broker except for the length of one wrap or unwrap
+    /// call".
+    #[allow(unsafe_code)]
+    fn zeroize(&mut self) {
+        if self.pointer.is_null() || self.len == 0 {
+            return;
+        }
+        // SAFETY: `pointer` and `len` are the out-parameters of a successful
+        // protect or unprotect call, so the region is one live allocation of
+        // exactly `len` writable bytes owned by `self`, and no other reference
+        // to it exists while `&mut self` is held.
+        //
+        // The write is not elided as dead: the only caller is `drop`, which
+        // hands the same pointer to `NCryptFreeBuffer` on the next line, and an
+        // `extern "C"` call the compiler cannot see through may read what it
+        // points at.
+        unsafe { std::ptr::write_bytes(self.pointer, 0, self.len as usize) };
+    }
+}
+
 impl Drop for OwnedNcryptBuffer {
     #[allow(unsafe_code)]
     fn drop(&mut self) {
         if !self.pointer.is_null() {
+            self.zeroize();
             // SAFETY: `pointer` was allocated by NCrypt on a successful protect
             // or unprotect call with a null `pMemPara`, so `NCryptFreeBuffer`
             // is its matching deallocator. It runs exactly once because the

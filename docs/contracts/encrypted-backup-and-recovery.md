@@ -200,7 +200,7 @@ plaintext synthetic lane, because `academic-store`'s two lanes cannot.
 
 ```sh
 cargo test -p academic-recovery --locked --offline
-cargo clippy -p academic-portability --no-default-features --features encrypted-portability --all-targets --locked -- -D warnings
+cargo clippy -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --all-targets --locked -- -D warnings
 cargo test -p academic-portability --no-default-features --features encrypted-portability --locked --offline
 cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --offline --test encrypted_crash
 ```

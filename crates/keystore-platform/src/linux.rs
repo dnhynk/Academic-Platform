@@ -93,11 +93,13 @@ where
 type BoxedFuture<T> =
     std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, KeystoreError>> + Send>>;
 
-/// Opens a plaintext transport session.
+/// Opens a `plain` transport session.
 ///
-/// The session is local to one D-Bus connection over a Unix socket owned by the
-/// user; the product does not negotiate DH because the transport never leaves
-/// the machine and a negotiated session would add a second cipher to review.
+/// The device wrapping key therefore crosses the session bus in the clear, on
+/// `CreateItem` and on every `GetSecret`. That is a registered decision, not an
+/// oversight: ADR-005 "Secret Service transport: the session is `plain`" states
+/// what it exposes and why `dh-ietf1024-sha256-aes128-cbc-pkcs7` is not used
+/// instead. Do not change the algorithm here without changing that section.
 async fn open_session(
     connection: &Connection,
     operation: &'static str,
@@ -225,16 +227,22 @@ async fn seal_inner(
         attribute_value.into(),
     );
 
+    // Kept owned rather than moved into a temporary, so the copy of the
+    // wrapping key this call needed can be cleared once the call is over. The
+    // buffer `zbus` serialized the message into is not reachable from here;
+    // ADR-005 records that boundary.
+    let mut payload = (properties, secret_value, true);
     let result = connection
         .call_method(
             Some(SERVICE_NAME),
             DEFAULT_COLLECTION_PATH,
             Some(COLLECTION_INTERFACE),
             "CreateItem",
-            &(properties, secret_value, true),
+            &payload,
         )
         .await;
     close_session(&connection, &session).await;
+    payload.1.2.fill(0);
 
     let reply = result.map_err(|_| unavailable(operation))?;
     let (item, prompt): (OwnedObjectPath, OwnedObjectPath) = reply

@@ -72,6 +72,22 @@ The input is a 256-bit secret, so the KDF is defence in depth rather than the se
 
 Every key type owns exactly 32 bytes, implements `Zeroize` and `ZeroizeOnDrop`, prints a redacted `Debug`, and hands its bytes out only through an explicitly named `expose_secret`. There is no `Deref`, no `AsRef<[u8]>`, no `Clone`, and no `Serialize`, so a key cannot reach a writer, a log line, an audit row, or an export by accident.
 
+**"Zeroized on drop" is a property of the named key types, not of every buffer a key byte passes through.** A key is derived, wrapped, or applied by copying bytes somewhere, and the copies outside a named type are cleared one by one where the code owns them:
+
+| Buffer | Cleared |
+| --- | --- |
+| the eleven `secret_key!` types, `BackupMasterKey`, `RecoveredSecret` | yes — `Zeroize`/`ZeroizeOnDrop` |
+| `OpenedHeader`'s DEK and plaintext digest, `DomainKeyring`'s domain keys | yes — hand-written `Drop` |
+| the unwrapped `DEK ‖ digest` inside `open_header`, `EncryptedObjectReader`'s decrypted chunk | yes — cleared on every path out |
+| the NCrypt output buffer holding `label ‖ device wrapping key` | yes — overwritten before `NCryptFreeBuffer` |
+| the `PRAGMA key=…` statement text | yes — overwritten in `apply_store_key` |
+| SQLite's copy of that statement inside the prepared statement | **no** — not reachable from this codebase |
+| the D-Bus message buffers `zbus` serializes a Secret Service call into | **no** — not reachable from this codebase |
+
+The two "no" rows are in-process memory only. No route puts a key byte on disk: the byte-level canary scan of the vault tree, the store database with its WAL and shared-memory file, and the backup and restore trees reports zero hits for any key in this schedule.
+
+A type carrying key material or decrypted plaintext must not derive `Debug`; `missing_debug_implementations = "deny"` demands an implementation and the derive is the leaking way to supply one. That has regressed three times, so it is checked mechanically by `tools/secret-debug-policy.test.mjs` rather than by review.
+
 ## `unsafe` confinement
 
 `academic-keystore-platform` is the second reviewed native FFI boundary after `academic-store-platform` and follows the same pattern: the crate overrides the workspace's `unsafe_code = "forbid"` to `deny`, each `unsafe` block sits in a small private function carrying `#[allow(unsafe_code)]` and a concrete safety argument, and the public facade exposes no raw handle, pointer, descriptor, or D-Bus object. The Linux half contains no `unsafe`. `academic-crypto` inherits `unsafe_code = "forbid"` unchanged.
@@ -83,8 +99,25 @@ Every key type owns exactly 32 bytes, implements `Zeroize` and `ZeroizeOnDrop`, 
   **The 24-word codec and its wordlist belong to that same decision and are also still open.** `P2-K4` shipped no codec, deliberately. t068 section 5 fixes no wordlist for `P2-K4`, none of its eight named acceptance tests needs one, and a wordlist is permanently frozen the moment a phrase is printed under it — a phrase written from one list cannot be read back under another — so adopting a language and a list is a user decision, not an implementation detail a task may guess at. The next implementer must not assume `P2-K4` did it.
 
   What `P2-K4` did do is keep the cryptographic contract independent of that decision. `academic-crypto` and `academic-recovery` both accept only a whole 256-bit `RecoverySecret` and expose no word-level entry point, so a codec can be added later without changing a single derivation, and no API in either crate can report *which* word of a phrase was wrong — which is how `KY06`'s "no oracle" requirement is met structurally rather than by care. `recovery_secret_api_has_no_word_level_entry_point` fails if that regresses. Every test whose name says "phrase" is exercising a 256-bit secret and says so; none of them is evidence that a codec works.
-- **A stateless sealing broker cannot revoke a blob it already issued.** That asymmetry is carried in `PurgeOutcome` rather than hidden.
+- **A stateless sealing broker cannot revoke a blob it already issued.** That asymmetry is carried in `PurgeOutcome` rather than hidden, and `native_roundtrip` asserts each broker's half of it unconditionally: on Windows that a purge reports nothing stored and the blob still opens, on Linux that a purge removes the item and the next unlock fails closed.
+- **The Linux Secret Service session is `plain`, so the device wrapping key crosses the session bus in the clear.** The specification's alternative, `dh-ietf1024-sha256-aes128-cbc-pkcs7`, is not adopted. What that costs and why it is the choice are below.
 - **ADR-002 is not accepted.** The default lane is still plaintext SQLite with `storage_encryption = NONE` and `adr_002_accepted = false`. A key hierarchy existing does not admit real data; `GATE-P2-ADMISSION` governs that and is closed.
+
+## Secret Service transport: the session is `plain`
+
+`open_session` opens the Secret Service session with the `plain` algorithm, so the 32-byte device wrapping key travels the user's session bus as cleartext inside the D-Bus message body — on `CreateItem` when it is sealed, and on `GetSecret` every time the profile is unlocked. This is a Linux-only exposure; the Windows broker seals in-process and puts nothing on a bus.
+
+**What is exposed.** Anything that can observe that bus traffic or dump those buffers sees the key: a bus monitor running as the same user, a captured message dump, a core dump of the broker process or of this one. The `zbus` message buffers are not reachable from this codebase and are not cleared, which is the second "no" row above.
+
+**What is not exposed.** Nothing crosses a machine boundary — the session bus is a Unix socket owned by the user — and nothing reaches disk. The blob persisted beside the recipient record carries only the label binding, never a key byte.
+
+**Why `dh-ietf1024-sha256-aes128-cbc-pkcs7` is not used instead.**
+
+- It does not gate access to the key. The session algorithm encrypts the secret in transit between this process and the broker; it authenticates neither end. Any process running as the same user can call `SearchItems` and `GetSecret` itself and be handed the key by the broker, because Secret Service authorizes on the bus connection and the item lives in the default collection. A negotiated session raises the bar against passive capture of bus traffic and against nothing else.
+- It cannot be built in this lane. AES-128-CBC and the 1024-bit modular exponentiation the group needs are absent from the locked dependency graph — there is no `aes`, no `cbc`, and no big-integer crate in `Cargo.lock`. Adopting it means three new dependencies through the source policy and a second reviewed cipher path inside the broker crate, whose stated design is that it carries exactly one.
+- 1024-bit MODP is below current guidance, so the second cipher path would be added at a strength the rest of this schedule does not use anywhere.
+
+The decision is therefore to keep `plain` and state the exposure here rather than in a source comment only. It is revisited if the threat model ever admits an attacker who can observe the session bus but cannot talk to the broker; that attacker does not exist in the current model, where both capabilities come with being the same user.
 
 ## Rotation and revocation
 

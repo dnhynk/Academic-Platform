@@ -348,12 +348,43 @@ pub fn remove_incomplete_encrypted_profile<P: PathProbe + ?Sized>(
     Ok(())
 }
 
+/// Renders the keying statement `pragma_update(None, "key", "x'<hex>'")` emits.
+///
+/// A PRAGMA value cannot be a bound parameter — SQLite parses it at prepare
+/// time — so rusqlite renders the value into SQL text either way. Building the
+/// text here instead means the buffer holding it belongs to this crate and can
+/// be overwritten; `Sql`, the `String` rusqlite would have used, cannot be.
+///
+/// The bytes are the same ones `pragma_update` produces: `PRAGMA key=`, then
+/// the value as a SQL string literal with each inner quote doubled. Its content
+/// is SQLCipher's `x'...'` raw-key form, which is what makes SQLCipher take the
+/// 32 raw bytes directly instead of running the passphrase KDF over the hex
+/// text. `hex` is 64 lowercase hex characters rendered nibble by nibble by
+/// `StoreKey::expose_raw_hex`, so it structurally cannot carry a quote of its
+/// own.
+fn key_statement(hex: &str) -> String {
+    let mut rendered = String::with_capacity(hex.len() + KEY_STATEMENT_OVERHEAD);
+    rendered.push_str("PRAGMA key='x''");
+    rendered.push_str(hex);
+    rendered.push_str("'''");
+    rendered
+}
+
+/// Characters `key_statement` adds around the hex.
+const KEY_STATEMENT_OVERHEAD: usize = 18;
+
 /// Applies the raw store key as the first statement issued on a fresh handle.
 ///
-/// SQLCipher requires the key before the first page is touched. `pragma_update`
-/// binds the key as a parameter rather than interpolating it into SQL, and the
-/// rendered hex lives in a zeroizing buffer that is cleared when this function
-/// returns.
+/// SQLCipher requires the key before the first page is touched.
+///
+/// **The key hex reaches SQLite as SQL text, not as a bound parameter**, because
+/// `PRAGMA` takes no parameter. What this function controls it clears: the hex
+/// `expose_raw_hex` renders lives in a zeroizing buffer, and the statement built
+/// around it is overwritten before it is freed. What it does not control is
+/// SQLite's own copy — `sqlite3_prepare_v2` copies the statement text into the
+/// prepared statement, and that copy is freed without being cleared when the
+/// statement is finalized. No key byte reaches disk on either route; the lane's
+/// byte-level canary scan of a keyed database reports zero plaintext hits.
 ///
 /// Public because the encrypted portability lane opens its own read-only
 /// snapshot handle after the guarded reader has already admitted the database,
@@ -366,17 +397,19 @@ pub fn apply_store_key(
     database_path: &Path,
 ) -> StoreResult<()> {
     let hex = key.expose_raw_hex();
-    // `PRAGMA key = "x'<64 hex>'"`: the `x'...'` wrapper is what makes
-    // SQLCipher take the 32 raw bytes directly instead of running the passphrase
-    // KDF over the hex text.
-    let literal = format!("x'{}'", hex.as_str());
+    let statement = key_statement(hex.as_str());
     // Installing the key can itself touch page one, so a wrong key may surface
     // here; it may equally surface at the next statement. Both routes translate
     // through the same helper, so no caller has to interpret a raw SQLite code
     // whichever one fires.
-    connection
-        .pragma_update(None, "key", literal.as_str())
-        .map_err(|error| locked_if_undecryptable(StoreError::Sqlite(error), database_path))
+    let outcome = connection.execute_batch(&statement);
+    // Cleared before the allocation is returned, and before any `?` can leave
+    // the function while it still holds the key text. `academic-store` carries
+    // no `zeroize` dependency; this is the same hand-written clear the vault
+    // uses for its key buffers.
+    let mut spent = statement.into_bytes();
+    spent.fill(0);
+    outcome.map_err(|error| locked_if_undecryptable(StoreError::Sqlite(error), database_path))
 }
 
 /// Reads the SQLCipher settings from a keyed connection.
@@ -616,6 +649,20 @@ mod tests {
             .collect();
         assert_eq!(rendered, "67cb6d3ea27e4b53b1e727d46920e4f9");
         assert!(PROFILE_FORMAT_V2_MARKER_CONTENTS.contains(&format!("format_uuid={rendered}\n")));
+    }
+
+    #[test]
+    fn the_key_statement_is_the_raw_key_form_with_inner_quotes_doubled() {
+        let hex = "a".repeat(64);
+        let rendered = key_statement(&hex);
+        // Byte for byte what `pragma_update(None, "key", "x'<hex>'")` emits:
+        // `PRAGMA key=` with no spaces, then the value as a SQL string literal.
+        assert_eq!(rendered, format!("PRAGMA key='x''{hex}'''"));
+        assert_eq!(rendered.len(), hex.len() + KEY_STATEMENT_OVERHEAD);
+        // The literal's content — what SQLCipher sees after unescaping — is the
+        // `x'...'` raw-key form, not a passphrase.
+        assert!(rendered.starts_with("PRAGMA key='x''"));
+        assert!(rendered.ends_with("'''"));
     }
 
     #[test]

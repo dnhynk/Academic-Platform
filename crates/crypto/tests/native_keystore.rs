@@ -34,8 +34,14 @@ fn cleanup(label: &str, record: &RecipientRecord) {
 }
 
 /// Exercises the full device-recipient path against the real host broker:
-/// seal, reopen, reject a foreign label, and reject a corrupted blob.
-fn native_roundtrip(prefix: &str) {
+/// seal, reopen, reject a foreign label, reject a corrupted blob, and hold the
+/// broker to its own revocation contract.
+///
+/// `purge_removes` is that contract, and the two hosts genuinely differ: a
+/// stored-key broker removes an object, a stateless sealing broker has nothing
+/// to remove. Passing it in keeps both branches unconditional, so neither host
+/// can pass by skipping the assertion the other one runs.
+fn native_roundtrip(prefix: &str, purge_removes: bool) {
     let keystore = PlatformKeystore::new();
     let label = unique_label(prefix);
     let Ok(key) = VaultMasterKey::generate() else {
@@ -98,15 +104,24 @@ fn native_roundtrip(prefix: &str) {
     let refused = keystore.open(&label, &corrupt);
     assert!(refused.is_err(), "a corrupted blob must be refused");
 
-    cleanup(&label, &record);
-
-    // After the purge the broker no longer serves the key, and the unlock fails
-    // closed instead of falling back to anything weaker.
-    if matches!(
-        purge_device_key(&label, record.keystore_blob()),
-        Ok(true) | Err(_)
-    ) && let Err(error) = unlock_with_device(&record, PROFILE, &keystore)
-    {
+    // The purge is issued exactly once and its outcome is asserted. An earlier
+    // shape called `cleanup` first and then guarded the assertions on a second
+    // purge reporting `Ok(true)`; that second purge reports `Ok(false)` on both
+    // hosts — on Linux because the first one already removed the item, on
+    // Windows because the broker is stateless — so every assertion inside the
+    // guard was skipped on every platform.
+    let purged = purge_device_key(&label, record.keystore_blob());
+    let reopened = unlock_with_device(&record, PROFILE, &keystore);
+    if purge_removes {
+        assert!(
+            matches!(purged, Ok(true)),
+            "a stored-key broker must report the item removed, got {purged:?}"
+        );
+        // The key is gone, so the unlock fails closed rather than falling back
+        // to anything weaker.
+        let Err(error) = reopened else {
+            unreachable!("a purged device key must not unlock the profile");
+        };
         assert!(error.leaves_profile_locked(), "{error}");
         assert!(
             matches!(
@@ -117,7 +132,23 @@ fn native_roundtrip(prefix: &str) {
             ),
             "a purged key must fail closed, got {error}"
         );
+    } else {
+        // A stateless sealing broker stores nothing to remove and cannot revoke
+        // a blob it already issued. ADR-005 carries that asymmetry in
+        // `PurgeOutcome` rather than hiding it, so the test asserts it instead
+        // of skipping: the purge reports nothing stored, and the blob still
+        // opens for its owner.
+        assert!(
+            matches!(purged, Ok(false)),
+            "a stateless broker must report nothing stored, got {purged:?}"
+        );
+        let Ok(still) = reopened else {
+            unreachable!("a stateless broker's blob stays openable after a purge");
+        };
+        assert_eq!(still.expose_secret(), key.expose_secret());
     }
+
+    cleanup(&label, &record);
 }
 
 /// Windows DPAPI-CNG (`NCryptProtectSecret`) seals and opens the device key.
@@ -125,7 +156,9 @@ fn native_roundtrip(prefix: &str) {
 #[test]
 fn windows_dpapi_roundtrip_native() {
     assert_eq!(PlatformKeystore::new().provider(), "WINDOWS_DPAPI_CNG");
-    native_roundtrip("dpapi");
+    // DPAPI-CNG seals statelessly and stores nothing, so a purge removes
+    // nothing and the issued blob stays openable.
+    native_roundtrip("dpapi", false);
 }
 
 /// Linux Secret Service (`org.freedesktop.secrets`) stores and returns the
@@ -146,7 +179,9 @@ fn windows_dpapi_roundtrip_native() {
 fn linux_secret_service_roundtrip_native() {
     let keystore = PlatformKeystore::new();
     assert_eq!(keystore.provider(), "LINUX_SECRET_SERVICE");
-    native_roundtrip("secret-service");
+    // Secret Service stores the key in the default collection, so a purge
+    // removes it and the next unlock must fail closed.
+    native_roundtrip("secret-service", true);
 }
 
 /// The Linux half that this host can prove without a keyring: the compiled

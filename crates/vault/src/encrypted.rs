@@ -665,7 +665,6 @@ impl SealedObjectVerifier for EncryptedVault {
 /// into a multi-gigabyte object reads exactly one chunk rather than the prefix
 /// before it. Every chunk is authenticated as it is read; a reader never
 /// returns a byte from a chunk whose tag did not verify.
-#[derive(Debug)]
 pub struct EncryptedObjectReader {
     file: File,
     path: PathBuf,
@@ -673,6 +672,36 @@ pub struct EncryptedObjectReader {
     position: u64,
     loaded: Option<u64>,
     chunk: Vec<u8>,
+}
+
+/// Prints no plaintext byte.
+///
+/// `chunk` holds the decrypted contents of whichever chunk was read last — up
+/// to `chunk_size` bytes, a mebibyte by default — so the derived implementation
+/// would put artifact plaintext into any log line, panic message, or audit row
+/// that formatted a reader. That is the same defect `OpenedHeader` carried, and
+/// `tools/secret-debug-policy.test.mjs` is what keeps it from returning.
+impl std::fmt::Debug for EncryptedObjectReader {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("EncryptedObjectReader")
+            .field("path", &self.path)
+            .field("position", &self.position)
+            .field("loaded_chunk", &self.loaded)
+            .field("chunk", &"<redacted>")
+            .finish_non_exhaustive()
+    }
+}
+
+/// Clears the decrypted chunk rather than leaving it in freed heap.
+///
+/// This is the same hand-written clear `OpenedHeader` and `DomainKeyring` use;
+/// `academic-vault` carries no `zeroize` dependency and this crate's other key
+/// buffers are cleared the same way.
+impl Drop for EncryptedObjectReader {
+    fn drop(&mut self) {
+        self.chunk.fill(0);
+    }
 }
 
 impl EncryptedObjectReader {
@@ -720,6 +749,11 @@ impl EncryptedObjectReader {
         self.file
             .seek(SeekFrom::Start(header.chunk_offset(index)))
             .map_err(|error| VaultError::io("seek encrypted object chunk", &self.path, error))?;
+        // Cleared before the length changes: `clear` does not overwrite, and a
+        // `resize` that grows past the capacity would otherwise copy the
+        // previous chunk's plaintext into a new allocation and leave the old
+        // one in freed heap.
+        self.chunk.fill(0);
         self.chunk.clear();
         self.chunk.resize(length, 0);
         self.file
