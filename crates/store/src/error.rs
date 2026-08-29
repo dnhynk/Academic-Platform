@@ -76,6 +76,17 @@ pub enum StoreError {
     UnsignedIntegerOverflow(u64),
     /// Required bundled SQLite behavior is unavailable.
     UnsupportedSqliteBuild(&'static str),
+    /// A descriptor migration was refused and the object reference did not move.
+    ///
+    /// Every rejection here is fail-closed: the artifact keeps resolving to the
+    /// locator it already resolved to, which is the object the store has always
+    /// been able to open.
+    DescriptorMigrationRejected {
+        /// Stable, actionable reason. Never names a key or a key byte.
+        reason: &'static str,
+        /// What the underlying layer reported, when there is one.
+        detail: String,
+    },
     /// An encrypted profile did not unlock; it stays locked and no plaintext
     /// was produced.
     #[cfg(feature = "sqlcipher-store")]
@@ -188,6 +199,16 @@ impl fmt::Display for StoreError {
             Self::UnsupportedSqliteBuild(reason) => {
                 write!(formatter, "unsupported bundled SQLite build: {reason}")
             }
+            Self::DescriptorMigrationRejected { reason, detail } => {
+                if detail.is_empty() {
+                    write!(formatter, "descriptor migration refused: {reason}")
+                } else {
+                    write!(
+                        formatter,
+                        "descriptor migration refused: {reason}: {detail}"
+                    )
+                }
+            }
             #[cfg(feature = "sqlcipher-store")]
             Self::EncryptedStoreLocked { path, reason } => write!(
                 formatter,
@@ -236,7 +257,8 @@ impl Error for StoreError {
             | Self::NewerSchema { .. }
             | Self::UnsupportedMigrationState { .. }
             | Self::UnsignedIntegerOverflow(_)
-            | Self::UnsupportedSqliteBuild(_) => None,
+            | Self::UnsupportedSqliteBuild(_)
+            | Self::DescriptorMigrationRejected { .. } => None,
             #[cfg(feature = "sqlcipher-store")]
             Self::EncryptedStoreLocked { .. }
             | Self::CipherSettingMismatch { .. }

@@ -42,6 +42,20 @@ use crate::{
 /// still lands midway through a copy rather than before or after it.
 const BACKUP_PAGES_PER_STEP: i32 = 8;
 
+/// Reports whether a vault refusal is a destroyed key slot rather than damage.
+///
+/// The distinction matters in exactly two places — taking a backup and
+/// restoring one — and in both of them a crypto-shredded object is a state the
+/// product produced on purpose, while every other refusal is corruption.
+pub(crate) fn is_shredded(error: &academic_vault::VaultError) -> bool {
+    matches!(
+        error,
+        academic_vault::VaultError::ObjectFormat(
+            academic_vault::object::ObjectFormatError::Shredded
+        )
+    )
+}
+
 /// Everything one backup needs that is not in the profile.
 #[derive(Debug)]
 pub struct BackupPlan<'a> {
@@ -134,15 +148,24 @@ pub fn backup_encrypted_profile(
         }
         // Reading the object back through the vault authenticates its header
         // and every chunk, so a backup never copies an object that would fail
-        // to open on restore.
-        let sealed = vault.verify_sealed_object(descriptor)?;
+        // to open on restore — except a crypto-shredded one, which is not a
+        // damaged object but a destroyed key slot. `P2-K5` destroys those on
+        // purpose and the descriptor row that names them is append-only, so
+        // refusing the whole backup over one would make a profile that had ever
+        // deleted an artifact permanently un-backupable. It is copied as the
+        // destroyed thing it is: the shred marker is inside the bytes, the
+        // ciphertext digest covers it, and a restore re-derives the same state.
+        let source_path = match vault.verify_sealed_object(descriptor) {
+            Ok(sealed) => sealed.object_path().to_path_buf(),
+            Err(source) if is_shredded(&source) => vault.layout().object_path(descriptor)?,
+            Err(source) => return Err(source.into()),
+        };
         let relative = object_relative_path(&descriptor.id.to_string())?;
         let path = directory::resolve_relative(&staging, &relative)?;
         if let Some(parent) = path.parent() {
             directory::create_directories(parent)?;
         }
-        let (ciphertext_digest, byte_length) =
-            directory::copy_new_file(sealed.object_path(), &path)?;
+        let (ciphertext_digest, byte_length) = directory::copy_new_file(&source_path, &path)?;
         objects.push(EncryptedObjectEntry {
             artifact_id: descriptor.id.to_string(),
             domain_id: descriptor.domain_id.to_string(),
@@ -281,7 +304,21 @@ pub fn verify_encrypted_backup_directory(
         .collect();
     expected.push(MANIFEST_FILE);
     expected.sort_unstable();
-    let observed = directory::list_files(root)?;
+    // `tombstones/` is the one exception, and it is an exception because of
+    // when it is written: a `P2-K5` deletion writes a tombstone into a backup
+    // that was published and sealed long before, so the manifest cannot list
+    // it and no re-seal is possible without the backup root. Excluding it here
+    // is what stops a deletion from making its own backups unrestorable.
+    //
+    // It weakens nothing the manifest was proving. Every file the manifest
+    // lists is still required, present, and digest-checked, so no listed byte
+    // can be swapped or dropped. What an added tombstone can do is destroy a
+    // key slot on restore — and anyone who can write into the backup directory
+    // could delete the object outright, so this adds no reach.
+    let observed: Vec<String> = directory::list_files(root)?
+        .into_iter()
+        .filter(|path| !crate::encrypted::is_tombstone_path(path))
+        .collect();
     if observed != expected {
         return Err(PortabilityError::mismatch(
             "encrypted backup directory inventory",

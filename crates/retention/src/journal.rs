@@ -18,11 +18,44 @@
 //! zero's `previous_digest` is 64 zero hex characters. Each later record's
 //! `previous_digest` is the previous record's `entry_digest`.
 //!
-//! That chain is what makes "append-only" checkable rather than asserted: a
-//! removed line breaks the sequence, a rewritten line breaks its own digest,
-//! and a reordered pair breaks the link. [`AppendOnlyJournal::open`] verifies
-//! the whole chain before it will append, so a tampered journal cannot be
-//! extended.
+//! That chain is what makes "append-only" checkable rather than asserted for
+//! every edit *inside* the file: a rewritten line breaks its own digest, a
+//! reordered pair breaks the link, and a line removed from the middle breaks
+//! the sequence of everything after it. [`AppendOnlyJournal::open`] verifies
+//! the whole chain before it will append.
+//!
+//! # The head file, and what a backward chain cannot see
+//!
+//! A backward chain cannot see its own tail being cut off: drop the last `k`
+//! records and the remaining prefix still verifies. So the record count and
+//! the head digest are also written beside the journal, in
+//! `<journal>.head`, after every append:
+//!
+//! ```json
+//! {"journal_version":1,"record_count":3,"head_digest":"<64 hex>"}
+//! ```
+//!
+//! A journal holding fewer records than its head declares, or holding a
+//! different digest at the position the head names, is [`JournalError::HeadMismatch`]
+//! and neither reads nor extends. The asymmetry is deliberate: the head is
+//! written after the record it names is already durable, so a kill between the
+//! two leaves the journal *ahead* of the head, which is a crash and is
+//! repaired on the next open. A journal *behind* its head is a removal.
+//!
+//! This is a consistency anchor, not a MAC. Nothing in a profile's cleartext
+//! journal is keyed, so an adversary who can write both files can rewrite both
+//! consistently and is not detected here. What the head closes is the one case
+//! the chain alone could not see at all.
+//!
+//! # A torn final line is a crash, not tampering
+//!
+//! [`AppendOnlyJournal::append`] writes one whole line and syncs it before it
+//! returns, so a record that ends without its newline was never durable and
+//! never reported. Such a trailing fragment is dropped and the file is
+//! truncated back to the last complete record when the journal is opened for
+//! append, which is what lets an interrupted rotation resume. A *complete*
+//! line that does not parse is still [`JournalError::Malformed`]: the two are
+//! different facts.
 //!
 //! # What a journal must never carry
 //!
@@ -113,6 +146,33 @@ pub enum JournalError {
         /// Path involved.
         path: PathBuf,
     },
+    /// The journal does not hold the head its own head file names.
+    ///
+    /// This is the tail-removal violation the backward chain cannot see. A
+    /// journal that holds *more* records than the head names is not this: that
+    /// is a kill between an append and the head write, and it is repaired.
+    #[error(
+        "journal {path} holds {observed} records ending at {observed_digest}, but its head \
+         file names {declared} records ending at {declared_digest}, so the tail was removed"
+    )]
+    HeadMismatch {
+        /// Path of the journal, not of the head file.
+        path: PathBuf,
+        /// Records the head file declares.
+        declared: u64,
+        /// Digest the head file declares for record `declared - 1`.
+        declared_digest: String,
+        /// Records the journal holds.
+        observed: u64,
+        /// Digest the journal holds at the position the head names, or `absent`.
+        observed_digest: String,
+    },
+    /// The head file exists but is not a well-formed head record.
+    #[error("journal head file {path} is not a well-formed head record")]
+    MalformedHead {
+        /// Path of the head file.
+        path: PathBuf,
+    },
     /// A record could not be encoded.
     #[error("a journal record could not be encoded")]
     Encode,
@@ -146,6 +206,113 @@ pub struct JournalRecord {
 #[must_use]
 pub fn genesis_digest() -> String {
     "0".repeat(64)
+}
+
+/// Filename suffix of the head file written beside a journal.
+pub const JOURNAL_HEAD_SUFFIX: &str = ".head";
+
+/// The head file's single record.
+///
+/// It names how many records the journal held when it was last appended to and
+/// the digest of the last of them. See the module documentation for exactly
+/// what that does and does not detect.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JournalHead {
+    /// Frozen record version, shared with [`JournalRecord`].
+    pub journal_version: u8,
+    /// How many records the journal held.
+    pub record_count: u64,
+    /// `entry_digest` of record `record_count - 1`.
+    pub head_digest: String,
+}
+
+/// Returns the head file that belongs to one journal path.
+#[must_use]
+pub fn head_path(journal: &Path) -> PathBuf {
+    let mut name = journal.as_os_str().to_os_string();
+    name.push(JOURNAL_HEAD_SUFFIX);
+    PathBuf::from(name)
+}
+
+fn read_head(journal: &Path) -> Result<Option<JournalHead>, JournalError> {
+    let path = head_path(journal);
+    let bytes = match fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(source) => return Err(io("read journal head", &path, source)),
+    };
+    let head: JournalHead =
+        serde_json::from_slice(&bytes).map_err(|_| JournalError::MalformedHead { path })?;
+    if head.journal_version != JOURNAL_VERSION {
+        return Err(JournalError::UnsupportedVersion {
+            sequence: head.record_count,
+            version: head.journal_version,
+        });
+    }
+    Ok(Some(head))
+}
+
+/// Writes the head file for a journal that now holds `records`.
+///
+/// The write is a temp file and a rename, so a kill leaves either the previous
+/// head or the new one and never a half-written line.
+fn write_head(journal: &Path, records: &[JournalRecord]) -> Result<(), JournalError> {
+    let Some(last) = records.last() else {
+        return Ok(());
+    };
+    let head = JournalHead {
+        journal_version: JOURNAL_VERSION,
+        record_count: u64::try_from(records.len()).map_err(|_| JournalError::Encode)?,
+        head_digest: last.entry_digest.clone(),
+    };
+    let path = head_path(journal);
+    let temp = {
+        let mut name = path.as_os_str().to_os_string();
+        name.push(".partial");
+        PathBuf::from(name)
+    };
+    let mut bytes = serde_json::to_vec(&head).map_err(|_| JournalError::Encode)?;
+    bytes.push(b'\n');
+    let mut file =
+        File::create(&temp).map_err(|source| io("create journal head", &temp, source))?;
+    file.write_all(&bytes)
+        .map_err(|source| io("write journal head", &temp, source))?;
+    file.sync_all()
+        .map_err(|source| io("synchronize journal head", &temp, source))?;
+    drop(file);
+    fs::rename(&temp, &path).map_err(|source| io("publish journal head", &path, source))?;
+    if let Some(parent) = path.parent() {
+        sync_directory(parent)?;
+    }
+    Ok(())
+}
+
+/// Refuses a journal that holds fewer records than its head declares.
+fn require_head_covered(
+    path: &Path,
+    records: &[JournalRecord],
+    head: Option<&JournalHead>,
+) -> Result<(), JournalError> {
+    let Some(head) = head else {
+        return Ok(());
+    };
+    let observed = u64::try_from(records.len()).map_err(|_| JournalError::Encode)?;
+    let named = usize::try_from(head.record_count.saturating_sub(1)).unwrap_or(usize::MAX);
+    let observed_digest = records
+        .get(named)
+        .map(|record| record.entry_digest.clone())
+        .unwrap_or_else(|| "absent".to_owned());
+    if observed < head.record_count || observed_digest != head.head_digest {
+        return Err(JournalError::HeadMismatch {
+            path: path.to_path_buf(),
+            declared: head.record_count,
+            declared_digest: head.head_digest.clone(),
+            observed,
+            observed_digest,
+        });
+    }
+    Ok(())
 }
 
 fn entry_json(entry: &JournalEntry) -> Result<String, JournalError> {
@@ -185,12 +352,36 @@ impl AppendOnlyJournal {
             fs::create_dir_all(parent)
                 .map_err(|source| io("create journal directory", parent, source))?;
         }
-        let records = read_verified(path)?;
+        let (records, complete_bytes) = read_complete_records(path)?;
+        require_head_covered(path, &records, read_head(path)?.as_ref())?;
+        // A torn final line is dropped before the append handle exists.
+        // Truncating it is what makes a rotation resumable: the next append
+        // starts at a record boundary rather than extending a fragment. The
+        // handle is a separate, short-lived write handle, because an
+        // append-mode handle cannot shorten a file on Windows and the append
+        // handle this journal keeps must never be able to.
+        if let Ok(existing) = OpenOptions::new().write(true).open(path) {
+            let length = existing
+                .metadata()
+                .map_err(|source| io("inspect journal", path, source))?
+                .len();
+            if length != complete_bytes {
+                existing
+                    .set_len(complete_bytes)
+                    .map_err(|source| io("truncate torn journal record", path, source))?;
+                existing
+                    .sync_all()
+                    .map_err(|source| io("synchronize journal", path, source))?;
+            }
+        }
         let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(path)
             .map_err(|source| io("open journal for append", path, source))?;
+        // A kill between an append and its head write leaves the head behind.
+        // Re-writing it here from the verified records is the repair.
+        write_head(path, &records)?;
         Ok(Self {
             path: path.to_path_buf(),
             file,
@@ -245,16 +436,35 @@ impl AppendOnlyJournal {
             sync_directory(parent)?;
         }
         self.records.push(record);
+        // The head names a record that is already durable, so it is written
+        // after the line it names and never before it.
+        write_head(&self.path, &self.records)?;
         // `push` above guarantees a last element.
         self.records.last().ok_or(JournalError::Encode)
     }
 }
 
 /// Reads and verifies a journal without opening it for append.
+///
+/// A trailing fragment with no newline is dropped before verification, and the
+/// head file is checked afterwards, so this refuses a journal whose tail was
+/// removed as well as one whose interior was edited.
 pub fn read_verified(path: &Path) -> Result<Vec<JournalRecord>, JournalError> {
+    let (records, _complete_bytes) = read_complete_records(path)?;
+    require_head_covered(path, &records, read_head(path)?.as_ref())?;
+    Ok(records)
+}
+
+/// Verifies every complete line and reports how many bytes they occupy.
+///
+/// The byte count is what an open-for-append truncates to, so a torn final
+/// line cannot become the prefix of the next record.
+fn read_complete_records(path: &Path) -> Result<(Vec<JournalRecord>, u64), JournalError> {
     let file = match File::open(path) {
         Ok(file) => file,
-        Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => {
+            return Ok((Vec::new(), 0));
+        }
         Err(source) => return Err(io("open journal", path, source)),
     };
     let length = file
@@ -269,13 +479,30 @@ pub fn read_verified(path: &Path) -> Result<Vec<JournalRecord>, JournalError> {
 
     let mut records = Vec::new();
     let mut previous_digest = genesis_digest();
-    for (index, line) in BufReader::new(file).lines().enumerate() {
+    let mut complete_bytes: u64 = 0;
+    let mut index: usize = 0;
+    let mut reader = BufReader::new(file);
+    loop {
+        let mut line = String::new();
+        let read = reader
+            .read_line(&mut line)
+            .map_err(|source| io("read journal record", path, source))?;
+        if read == 0 {
+            break;
+        }
+        if !line.ends_with('\n') {
+            // The writer syncs one whole line before it returns, so a fragment
+            // without its newline was never a durable record. It is dropped
+            // rather than refused; `AppendOnlyJournal::open` truncates it away.
+            break;
+        }
         let sequence = u64::try_from(index).map_err(|_| JournalError::Encode)?;
-        let line = line.map_err(|source| io("read journal record", path, source))?;
         let record: JournalRecord =
-            serde_json::from_str(&line).map_err(|_| JournalError::Malformed {
-                sequence,
-                path: path.to_path_buf(),
+            serde_json::from_str(line.trim_end_matches('\n')).map_err(|_| {
+                JournalError::Malformed {
+                    sequence,
+                    path: path.to_path_buf(),
+                }
             })?;
         if record.journal_version != JOURNAL_VERSION {
             return Err(JournalError::UnsupportedVersion {
@@ -295,8 +522,11 @@ pub fn read_verified(path: &Path) -> Result<Vec<JournalRecord>, JournalError> {
         }
         previous_digest.clone_from(&record.entry_digest);
         records.push(record);
+        complete_bytes = complete_bytes
+            .saturating_add(u64::try_from(line.len()).map_err(|_| JournalError::Encode)?);
+        index = index.saturating_add(1);
     }
-    Ok(records)
+    Ok((records, complete_bytes))
 }
 
 /// Flushes a directory entry where the host allows it.

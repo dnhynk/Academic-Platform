@@ -2,8 +2,16 @@
 //!
 //! `keys/recipients.cbor` is `P2-K1`'s frozen document and nothing here
 //! changes its shape. A rotation adds records for the new generation beside the
-//! old ones and a completed rotation writes a set holding only the new
-//! generation; a revocation writes a set with the revoked records absent.
+//! old ones ([`rewrap_for_generation`]) and a *completed* rotation writes a set
+//! holding only the new generation ([`retire_generation`]); a revocation writes
+//! a set with the revoked records absent.
+//!
+//! The order is the whole point. Between the two calls, both generations are on
+//! disk, so an object that has not migrated yet is still openable by a key the
+//! profile actually holds. Retiring the old generation before every unit moved
+//! would leave objects that no key on disk opens, which is why
+//! [`retire_generation`] refuses until the journal records the rotation as
+//! complete.
 //!
 //! # What revocation is, exactly
 //!
@@ -36,7 +44,7 @@ use crate::{
     entry::JournalEntry,
     fault::{self, FaultPoint},
     journal::{AppendOnlyJournal, JournalError, sync_directory},
-    rotation::{KeyGeneration, RotationError},
+    rotation::{KeyGeneration, RotationError, RotationState},
 };
 
 /// Relative path of the recipient set inside a profile.
@@ -91,6 +99,33 @@ pub enum RecipientError {
         "a rewrap produced a record for recipient {0}, which is revoked; the revoked recipient receives no new key"
     )]
     RevokedRecipientRewrapped(String),
+    /// A revoked identity was offered to [`add_recipient`].
+    ///
+    /// Revocation is a journal fact about an identity, not about one stored
+    /// record. Re-adding the same identity with a freshly wrapped record would
+    /// hand the current key back to exactly the holder the revocation removed
+    /// it from, so the identity is refused rather than the record.
+    #[error(
+        "recipient {0} is recorded as revoked and cannot be added again; a revoked identity receives no key"
+    )]
+    RevokedRecipientAdded(String),
+    /// The old generation was asked to retire while a rotation is unfinished.
+    #[error(
+        "the rotation is not complete: {remaining} of {planned} units are still under the \
+         old generation, so retiring it would leave objects no key on disk opens"
+    )]
+    RotationIncomplete {
+        /// Units the journal still lists as not migrated.
+        remaining: usize,
+        /// Units the plan named.
+        planned: usize,
+    },
+    /// The set holds no record wrapping the generation that was to be kept.
+    #[error(
+        "the recipient set holds no record for generation {0}; retiring the other generation \
+         would leave the profile permanently locked"
+    )]
+    GenerationAbsent(String),
     /// Producing a record for one recipient failed.
     ///
     /// The wrapping itself is `academic-crypto`'s: this crate hands it the
@@ -229,6 +264,12 @@ pub fn write_set(profile_root: &Path, set: &RecipientSet) -> Result<(), Recipien
 /// Adds one recipient record and journals the addition.
 ///
 /// The record is produced by `academic-crypto`; nothing here wraps a key.
+///
+/// A revoked identity is refused here, not only in [`rewrap_for_generation`]:
+/// `revoked_recipient_gets_no_new_key` is a statement about the identity, and
+/// an addition path that did not read the revocation history would let a
+/// caller undo a revocation by minting a fresh record under the same
+/// `recipient_id`.
 pub fn add_recipient(
     profile_root: &Path,
     profile: ProfileId,
@@ -236,8 +277,11 @@ pub fn add_recipient(
     record: RecipientRecord,
     generation: KeyGeneration,
 ) -> Result<(), RecipientError> {
-    let mut set = read_set(profile_root, profile)?;
     let recipient_id = hex::encode(record.recipient_id());
+    if revoked_recipient_ids(journal).contains(&recipient_id) {
+        return Err(RecipientError::RevokedRecipientAdded(recipient_id));
+    }
+    let mut set = read_set(profile_root, profile)?;
     let kind = kind_name(record.kind());
     set.push(record);
     write_set(profile_root, &set)?;
@@ -312,7 +356,7 @@ pub fn revoked_recipient_ids(journal: &AppendOnlyJournal) -> BTreeSet<String> {
         .collect()
 }
 
-/// Rewraps the profile's key for the recipients that survive, and only those.
+/// Wraps the profile's key for the recipients that survive, and only those.
 ///
 /// This is the operation `revoked_recipient_gets_no_new_key` is about. Two
 /// independent things stop a revoked recipient from receiving the new key:
@@ -323,6 +367,13 @@ pub fn revoked_recipient_ids(journal: &AppendOnlyJournal) -> BTreeSet<String> {
 ///    history, so a caller that reintroduces a revoked identity — by holding a
 ///    stale record, or by minting a fresh record under the same identity — is
 ///    refused rather than silently honoured.
+///
+/// The produced records are written **beside** the ones already stored, not
+/// over them. That is what the rotation depends on: while units are still
+/// moving, some reachable objects are under the old generation and some are
+/// under the new one, so both generations have to be openable from the one
+/// document the profile holds. [`retire_generation`] is the other half, and it
+/// refuses until every unit has moved.
 ///
 /// `wrap` is the caller's `academic-crypto` call: this function never holds a
 /// wrapping key, never reaches a broker, and never invents a recipient.
@@ -352,11 +403,14 @@ where
         rewrapped.push(produced);
     }
 
-    let mut replacement = RecipientSet::new(profile);
-    for record in &rewrapped {
-        replacement.push(record.clone());
+    let mut extended = RecipientSet::new(profile);
+    for record in survivors.records() {
+        extended.push(record.clone());
     }
-    write_set(profile_root, &replacement)?;
+    for record in &rewrapped {
+        extended.push(record.clone());
+    }
+    write_set(profile_root, &extended)?;
     for record in &rewrapped {
         journal.append(JournalEntry::RecipientAdded {
             recipient_id: hex::encode(record.recipient_id()),
@@ -365,4 +419,63 @@ where
         })?;
     }
     Ok(rewrapped)
+}
+
+/// Writes a recipient set holding only the generation a completed rotation left.
+///
+/// This is the second half of [`rewrap_for_generation`] and the point at which
+/// the old generation's wrapped copies leave the profile. It refuses while any
+/// planned unit is still under the old generation, because a set holding only
+/// the new generation would then name a key that opens nothing for those units
+/// while the key that does open them is no longer on disk.
+///
+/// `keeps` is the caller's test of whether one stored record wraps the
+/// generation being kept. A record's generation is not readable without the
+/// key it wraps, and this crate holds no key, so the caller — which has just
+/// finished rotating to that generation — answers it.
+///
+/// Returns the records that were kept.
+pub fn retire_generation<F>(
+    profile_root: &Path,
+    profile: ProfileId,
+    journal: &AppendOnlyJournal,
+    kept_generation: KeyGeneration,
+    mut keeps: F,
+) -> Result<Vec<RecipientRecord>, RecipientError>
+where
+    F: FnMut(&RecipientRecord) -> bool,
+{
+    if let Some(state) = RotationState::replay(journal.entries())? {
+        let remaining = state.remaining().len();
+        if !state.is_complete() || remaining > 0 {
+            return Err(RecipientError::RotationIncomplete {
+                remaining,
+                planned: state.units().len(),
+            });
+        }
+    }
+
+    let revoked = revoked_recipient_ids(journal);
+    let stored = read_set(profile_root, profile)?;
+    let mut kept = Vec::new();
+    for record in stored.records() {
+        if !keeps(record) {
+            continue;
+        }
+        let identity = hex::encode(record.recipient_id());
+        if revoked.contains(&identity) {
+            return Err(RecipientError::RevokedRecipientInSet(identity));
+        }
+        kept.push(record.clone());
+    }
+    if kept.is_empty() {
+        return Err(RecipientError::GenerationAbsent(kept_generation.to_hex()));
+    }
+
+    let mut replacement = RecipientSet::new(profile);
+    for record in &kept {
+        replacement.push(record.clone());
+    }
+    write_set(profile_root, &replacement)?;
+    Ok(kept)
 }

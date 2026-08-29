@@ -36,6 +36,16 @@ pub const MIGRATION_0001_SQL: &str = include_str!("../../../migrations/store/000
 pub const MIGRATION_0004_SQL: &str =
     include_str!("../../../migrations/store/0004_phase2_canonical_aggregates.sql");
 
+/// `P2-K5`'s typed columns for the `RETENTION_ACTION_RECORDED` aggregate.
+///
+/// Migration `0004` states the rule this file follows: the v3 registration
+/// frame carries no typed aggregate attributes and each aggregate owner adds
+/// its own in a later migration. This is that migration for `P2-K5`, and it is
+/// what lets a re-sealed object's canonical reference move without an edit to
+/// the signed `artifact_descriptor` row.
+pub const MIGRATION_0005_SQL: &str =
+    include_str!("../../../migrations/store/0005_phase2_descriptor_migration.sql");
+
 /// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
 ///
 /// It replaces the Phase 1 identity singleton with the schema-2 one. The
@@ -68,8 +78,12 @@ pub const STORE_MIGRATION_SQL: &[&str] = &[MIGRATION_0001_SQL];
 /// admission fingerprint. `0004` stamps no identity of its own, so the frozen
 /// schema-2 identity is entirely `0003`'s.
 #[cfg(feature = "sqlcipher-store")]
-pub const STORE_MIGRATION_SQL: &[&str] =
-    &[MIGRATION_0001_SQL, MIGRATION_0003_SQL, MIGRATION_0004_SQL];
+pub const STORE_MIGRATION_SQL: &[&str] = &[
+    MIGRATION_0001_SQL,
+    MIGRATION_0003_SQL,
+    MIGRATION_0004_SQL,
+    MIGRATION_0005_SQL,
+];
 
 /// Result of invoking the forward-only migration runner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -202,13 +216,17 @@ pub fn migrate_open_connection_pre_listen(
     Ok(MigrationStatus::Applied)
 }
 
-/// Applies migration `0004` to a schema-2 connection that does not carry it yet.
+/// Applies migrations `0004` and `0005` to a schema-2 connection without them.
 ///
 /// Profile creation does not come through here: [`STORE_MIGRATION_SQL`] ends
-/// with `0004` in the encrypted lane, so a profile carries the aggregates from
-/// the creation transaction. What is left for this entry point is a schema-2
-/// base assembled from the migration text rather than by that runner, which is
-/// how the `0004` suite builds one in either lane.
+/// with `0005` in the encrypted lane, so a profile carries the aggregates and
+/// `P2-K5`'s typed columns from the creation transaction. What is left for this
+/// entry point is a schema-2 base assembled from the migration text rather than
+/// by that runner, which is how the aggregate suite builds one in either lane.
+///
+/// The two files are one step here because `0005` is `0004`'s continuation: it
+/// adds the typed columns `0004` deliberately left to each aggregate owner, and
+/// a base carrying one without the other is not a schema this build admits.
 ///
 /// It is the same narrow, forward-only, pre-listen boundary as
 /// [`migrate_open_connection_pre_listen`]: the caller owns opening and keying the
@@ -237,6 +255,7 @@ pub fn apply_aggregate_migration_pre_listen(connection: &mut Connection) -> Stor
 fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> StoreResult<()> {
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
     transaction.execute_batch(MIGRATION_0004_SQL)?;
+    transaction.execute_batch(MIGRATION_0005_SQL)?;
     verify_integrity(&transaction)?;
     transaction.commit()?;
     Ok(())

@@ -6,11 +6,21 @@
 //! A deletion that stopped there would be a deletion that did not happen.
 //!
 //! A tombstone is the record that closes that gap. It is written into the
-//! backup directory beside the objects, and a restore applies every tombstone
-//! it finds to the objects it materialises. The re-deletion needs **no key**:
-//! the locator lives in the clear at a fixed header offset, and destroying a
-//! key slot is a positioned write. So a restore that has not been unlocked yet
-//! — the normal case, on a fresh machine — still re-deletes.
+//! backup directory beside the objects, and `restore_encrypted_profile` applies
+//! every tombstone it finds to the objects it materialises — in the staging
+//! tree, after each object has been authenticated and before the rename that
+//! publishes the restore, so no published restore holds a key slot the profile
+//! it came from had destroyed.
+//!
+//! The re-deletion needs **no key**: the locator lives in the clear at a fixed
+//! header offset, and destroying a key slot is a positioned write. That is what
+//! makes it work on a fresh machine, and it is why [`apply_tombstones`] takes a
+//! directory rather than a vault.
+//!
+//! `tombstones/` is the one path in a published backup the sealed manifest does
+//! not list, because the manifest was sealed before this record existed and
+//! re-sealing needs the backup root. The backup's verifier excludes it from the
+//! inventory comparison and still requires every listed file.
 //!
 //! ```text
 //! <backup>/

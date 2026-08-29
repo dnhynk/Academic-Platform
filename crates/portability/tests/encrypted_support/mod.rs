@@ -33,15 +33,19 @@ use academic_domain::{
     DecisionAction, DecisionId, DeviceId, DomainError, DomainId, EVENT_SCHEMA_VERSION, EntityId,
     EpistemicStatus, Event, EventId, EventPayload, EvidenceId, EvidenceItem, EvidenceLocator,
     EvidenceRole, EvidenceStrength, MediaType, PermissionLineageId, PredicateId, ResolutionSlot,
-    RetentionClass, ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch, UserDecision,
-    ValidInterval,
+    RetentionActionId, RetentionActionRegistration, RetentionClass, ScopeDescriptor, ScopeId,
+    TimestampMillis, UnsignedBatch, UserDecision, ValidInterval,
 };
-use academic_portability::encrypted::ProfileKeys;
+use academic_portability::{
+    encrypted::ProfileKeys,
+    verify::{CanonicalDatabase, read_artifact_descriptors},
+};
 use academic_recovery::{
     BackupMasterKey, BackupRecipientKind, BackupRecipientSet, BackupSetId, RecoveryProfile,
     create_backup_key_set,
 };
 use academic_store::{
+    accept::AcceptanceStore,
     cipher::{EncryptedProfile, create_encrypted_profile},
     idempotency::AcceptanceCommand,
     path_policy::NativePathProbe,
@@ -485,6 +489,66 @@ impl EncryptedFixture {
         Ok(self.keys.keyring(&self.master)?)
     }
 
+    /// Opens the profile's object vault under an arbitrary generation's key.
+    ///
+    /// A rotation moves objects to a second Vault Master Key while the store
+    /// database keeps the key it was created with, because the store's rekey is
+    /// `P2-K2`'s `PRAGMA rekey` and no executor for it is bound here. Deriving
+    /// the keyring from the passed master and the store key from `keys()` is
+    /// exactly that split, and it is the split every caller after a rotation
+    /// uses.
+    pub fn open_vault_under(&self, master: &VaultMasterKey) -> TestResult<EncryptedVault> {
+        Ok(EncryptedVault::open(
+            &self.profile_root,
+            self.keys.keyring(master)?,
+        )?)
+    }
+
+    /// Opens the profile's object vault under the generation that created it.
+    pub fn open_vault(&self) -> TestResult<EncryptedVault> {
+        Ok(EncryptedVault::open(&self.profile_root, self.keyring()?)?)
+    }
+
+    /// Opens the owned acceptance writer over the profile's canonical store.
+    pub fn open_store(&self) -> TestResult<AcceptanceStore> {
+        Ok(self.profile.open_acceptance_store(self.keys.store_key())?)
+    }
+
+    /// Reads every registered descriptor, with every recorded migration applied.
+    pub fn descriptors(&self) -> TestResult<Vec<ArtifactDescriptor>> {
+        let database = CanonicalDatabase::open_source(
+            &self.profile_root.join(academic_store::STORE_DATABASE_FILE),
+            self.keys.store_key(),
+        )?;
+        Ok(read_artifact_descriptors(&database)?)
+    }
+
+    /// Accepts one `RETENTION_ACTION_RECORDED` event authorizing `source_digest`.
+    ///
+    /// This is the canonical half of a descriptor migration: the typed row that
+    /// moves the reference is refused unless this event exists and carries this
+    /// exact digest.
+    pub fn accept_retention_action(
+        &mut self,
+        action: RetentionActionId,
+        source_digest: ContentDigest,
+    ) -> TestResult<()> {
+        let domain = domain_id()?;
+        self.accept(
+            importer_actor(),
+            domain,
+            vec![EventPayload::RetentionActionRecorded(
+                RetentionActionRegistration {
+                    id: action,
+                    domain_id: domain,
+                    scope_id: id(0x0102)?,
+                    source_digest: Some(source_digest),
+                    valid_time: ValidInterval::open_ended(TimestampMillis::new(700)),
+                },
+            )],
+        )
+    }
+
     fn register_artifact(
         &self,
         vault: &EncryptedVault,
@@ -518,7 +582,8 @@ impl EncryptedFixture {
         })
     }
 
-    fn accept(
+    /// Signs and accepts one batch of payloads through the product writer.
+    pub fn accept(
         &mut self,
         actor: Actor,
         domain: DomainId,

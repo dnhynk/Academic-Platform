@@ -94,22 +94,35 @@ moves every object and the store database, cannot be atomic, and is driven by an
 append-only journal at `<profile>/keys/rotation-journal.jsonl`.
 
 The invariant is that after an interruption at any point, exactly one of the old
-and new keys opens any object or database. "Both open" and "neither opens" are
-both violations, and the three rules that make it hold — refusing a rotation that
-does not change the key, moving reachability only after a verified read-back, and
-never editing or removing the source object — are in
+and new keys opens **the object the profile resolves to**. "Both open" and
+"neither opens" are both violations, and the rules that make it hold — refusing a
+rotation that does not change the key, moving reachability only after a verified
+read-back, never editing or removing the source object, and moving the canonical
+reference by an appended `artifact_descriptor_migration` row that a
+`RETENTION_ACTION_RECORDED` event authorizes — are in
 [rotation and retention](../contracts/rotation-and-retention.md) with the fault
 rows that prove each one.
 
+It is an invariant over the resolved object and not over every file on disk. A
+superseded object stays a readable file under the superseded key until
+`retire_superseded_object` destroys its key slot, which is the collection point
+ADR-004 leaves open. The store database is not covered at all in this build: its
+executor is `P2-K2`'s `PRAGMA rekey`, which does not link into
+`academic-retention`, so a rotation that reaches that unit stops rather than
+recording a migration that did not happen.
+
 Revocation removes a recipient's wrapped key and stops any future generation from
 being wrapped for it. **That is the whole of it.** It does not erase plaintext
-that recipient already read and it does not reach a copy taken while the
-recipient was live; `academic_retention::REVOCATION_SCOPE_STATEMENT` says so in
-the words every surface repeats, and
-`revocation_does_not_claim_prior_plaintext_erasure` fails if any surface stops
-carrying them or starts claiming more. The operation that *can* make one
-artifact's ciphertext unreadable is the crypto-shred of ADR-004, and it works by
-destroying key material rather than by revoking a recipient.
+that recipient already read, it does not reach a copy taken while the recipient
+was live, and — until the rotation's superseded objects are retired — it does not
+stop that recipient's key from opening the superseded copies still in the live
+tree. `academic_retention::REVOCATION_SCOPE_STATEMENT` says the first two in the
+words every surface repeats, `revocation_does_not_claim_prior_plaintext_erasure`
+fails if any surface stops carrying them or starts claiming more, and
+`a_retired_source_object_is_opened_by_neither_generation` is the third. The
+operation that *can* make one artifact's ciphertext unreadable is the
+crypto-shred of ADR-004, and it works by destroying key material rather than by
+revoking a recipient.
 
 ## Acceptance gate
 

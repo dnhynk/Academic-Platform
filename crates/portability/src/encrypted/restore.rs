@@ -6,11 +6,23 @@
 //! so a fresh machine with the recovery phrase and the backup directory is
 //! enough, and a fresh machine with the backup directory alone is not.
 //!
-//! The order is fixed: accept only a new empty destination, open the manifest,
-//! verify file digests, stage a profile, copy the database, check cipher and
-//! b-tree integrity, compare schema, watermark, counts and heads, replay every
-//! signed batch against independent trust anchors, close over every object and
-//! authenticate it, then publish with one rename.
+//! The order is fixed: accept only a new empty destination that is not inside
+//! the backup, open the manifest, verify file digests, stage a profile, copy
+//! the database, check cipher and b-tree integrity, compare schema, watermark,
+//! counts and heads, replay every signed batch against independent trust
+//! anchors, close over every object and authenticate it, re-apply every
+//! tombstone the backup carries, then publish with one rename.
+//!
+//! # Where the tombstones land in that order
+//!
+//! A `P2-K5` crypto-shred destroys the live key slot and writes a tombstone
+//! into each backup that still holds a copy. Re-deletion happens here, in the
+//! staging tree, after every object has been authenticated and before the
+//! rename that publishes it: a restore therefore never publishes a profile
+//! holding a key slot the profile it came from had destroyed, and the failure
+//! of a tombstone to apply is a failed restore rather than a silent
+//! resurrection. Authenticating first is what keeps "the backup was intact"
+//! and "the deletion was re-applied" two separate, observable facts.
 
 use std::path::{Path, PathBuf};
 
@@ -59,6 +71,11 @@ pub struct EncryptedRestoreReceipt {
     pub replay: ReplayReport,
     pub canonical_semantic_digest: String,
     pub restored_object_count: u64,
+    /// Locators re-deleted from the restored tree by the backup's tombstones.
+    ///
+    /// Sorted. Empty when the backup carries no tombstone, which is the case
+    /// for a backup taken from a profile that never deleted an artifact.
+    pub re_deleted_locators: Vec<String>,
 }
 
 /// The key material a restore recovered from a backup and one secret.
@@ -156,6 +173,7 @@ pub fn restore_encrypted_profile<P: PathProbe + ?Sized>(
     plan: &EncryptedRestorePlan<'_>,
 ) -> PortabilityResult<EncryptedRestoreReceipt> {
     directory::require_new_empty_directory(destination)?;
+    require_outside_backup(backup_root_directory, destination)?;
     let verified = verify_encrypted_backup_directory(backup_root_directory, backup_root)?;
 
     let staging = directory::reserve_staging_path(destination, "restore-staging")?;
@@ -172,6 +190,7 @@ pub fn restore_encrypted_profile<P: PathProbe + ?Sized>(
 
     let outcome = build_restored_profile(&staging, &verified, recovered, plan);
     let (replay, canonical_semantic_digest, restored_object_count) = outcome?;
+    let re_deleted = apply_backup_tombstones(backup_root_directory, &staging)?;
 
     remove_marker(&staging, RESTORE_INCOMPLETE_MARKER)?;
     remove_marker(&staging, INCOMPLETE_PROFILE_MARKER)?;
@@ -186,7 +205,83 @@ pub fn restore_encrypted_profile<P: PathProbe + ?Sized>(
         replay,
         canonical_semantic_digest,
         restored_object_count,
+        re_deleted_locators: re_deleted,
     })
+}
+
+/// Refuses a destination inside the backup being restored.
+///
+/// A restore into the backup's own tree publishes a directory the backup does
+/// not list, so the backup stops verifying against its own manifest — the
+/// deletion is silent and permanent, and the destination looked like a
+/// perfectly good new empty directory on the way in. The comparison is over
+/// canonical paths, and the destination does not exist yet, so its nearest
+/// existing ancestor is what is compared.
+fn require_outside_backup(
+    backup_root_directory: &Path,
+    destination: &Path,
+) -> PortabilityResult<()> {
+    let backup = std::fs::canonicalize(backup_root_directory).map_err(|source| {
+        PortabilityError::io(
+            "resolve backup root for containment",
+            backup_root_directory,
+            source,
+        )
+    })?;
+    let mut candidate = destination.to_path_buf();
+    loop {
+        match std::fs::canonicalize(&candidate) {
+            Ok(resolved) => {
+                if resolved == backup || resolved.starts_with(&backup) {
+                    return Err(PortabilityError::UnsafeEntry(destination.to_path_buf()));
+                }
+                return Ok(());
+            }
+            Err(source) if source.kind() == std::io::ErrorKind::NotFound => {
+                let Some(parent) = candidate.parent().map(Path::to_path_buf) else {
+                    return Ok(());
+                };
+                if parent == candidate {
+                    return Ok(());
+                }
+                candidate = parent;
+            }
+            Err(source) => {
+                return Err(PortabilityError::io(
+                    "resolve restore destination for containment",
+                    destination,
+                    source,
+                ));
+            }
+        }
+    }
+}
+
+/// Re-applies every tombstone the backup carries to the staged object tree.
+///
+/// This is the restore half of a `P2-K5` deletion and it is the product path:
+/// `academic-retention` owns the tombstone record and the positioned write, and
+/// this calls it. The re-deletion needs no key — the locator is cleartext at a
+/// fixed header offset — so what it proves is that a deletion reaches the
+/// copies a backup holds, not merely that a record of one was filed.
+///
+/// A tombstone whose object is not in the tree is not an error: the artifact
+/// may have been registered after the backup was taken, or shredded before it.
+/// A tombstone that names an object that *is* present and cannot be shredded is
+/// a failed restore.
+fn apply_backup_tombstones(
+    backup_root_directory: &Path,
+    staging: &Path,
+) -> PortabilityResult<Vec<String>> {
+    let tombstones = academic_retention::tombstone::read_from_backup(backup_root_directory)
+        .map_err(|source| PortabilityError::Tombstone(source.to_string()))?;
+    if tombstones.is_empty() {
+        return Ok(Vec::new());
+    }
+    let objects_root = staging.join(crate::encrypted::RESTORED_VAULT_OBJECTS_DIRECTORY);
+    let applied = academic_retention::engine::apply_tombstones(&objects_root, &tombstones)
+        .map_err(|source| PortabilityError::Tombstone(source.to_string()))?;
+    Ok(applied.applied)
 }
 
 type RestoreOutcome = (ReplayReport, String, u64);
@@ -343,9 +438,16 @@ fn build_restored_profile(
     fault::trip(PortabilityFaultPoint::Rs03);
 
     // Authentication happens after every object is in place, so a restore that
-    // is interrupted midway leaves no object that has been declared good.
+    // is interrupted midway leaves no object that has been declared good. A
+    // crypto-shredded object authenticates nothing because its key slot was
+    // destroyed on purpose; its bytes were still digest-checked above, which is
+    // the whole of what a backup can promise about it.
     for descriptor in &descriptors {
-        vault.verify_sealed_object(descriptor)?;
+        match vault.verify_sealed_object(descriptor) {
+            Ok(_) => {}
+            Err(source) if crate::encrypted::backup::is_shredded(&source) => {}
+            Err(source) => return Err(source.into()),
+        }
     }
 
     Ok((

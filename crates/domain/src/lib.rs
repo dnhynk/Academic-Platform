@@ -565,6 +565,17 @@ impl VaultLocator {
     pub const fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
+
+    /// Rebuilds a locator from bytes this type produced.
+    ///
+    /// The inverse of [`VaultLocator::as_bytes`], for a reader taking back a
+    /// locator it stored itself. It derives nothing and proves nothing: a
+    /// locator is only meaningful against the domain key that produced it, and
+    /// a caller that fabricates one reaches a path no object is at.
+    #[must_use]
+    pub const fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
 }
 
 impl fmt::Display for VaultLocator {

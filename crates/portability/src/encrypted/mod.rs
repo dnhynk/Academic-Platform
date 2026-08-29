@@ -61,6 +61,22 @@ pub const DATABASE_DIRECTORY: &str = "store";
 pub const OBJECTS_DIRECTORY: &str = "objects";
 /// Encrypted object namespace inside a restored profile.
 pub const RESTORED_VAULT_OBJECTS_DIRECTORY: &str = "vault/v2";
+
+/// Reports whether one relative backup path is a tombstone rather than backup content.
+///
+/// `tombstones/` is the one part of a published backup the sealed manifest does
+/// not cover, because a `P2-K5` deletion writes a tombstone into a backup that
+/// was already published and sealed. See
+/// [`crate::encrypted::backup::verify_encrypted_backup_directory`] for exactly
+/// what that does and does not weaken. The directory name is
+/// `academic-retention`'s, not a second spelling of it.
+#[must_use]
+pub fn is_tombstone_path(relative: &str) -> bool {
+    relative
+        .strip_prefix(academic_retention::TOMBSTONE_DIRECTORY)
+        .and_then(|rest| rest.strip_prefix('/'))
+        .is_some_and(|name| !name.is_empty() && !name.contains('/'))
+}
 /// Marker written into every unpublished restore staging directory.
 pub const RESTORE_INCOMPLETE_MARKER: &str = crate::RESTORE_INCOMPLETE_MARKER;
 

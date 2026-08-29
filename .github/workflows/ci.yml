@@ -166,6 +166,43 @@ jobs:
       - name: Run EN01, the store-rekey kill the rotation journal depends on
         run: cargo test -p academic-store --no-default-features --features sqlcipher-store --locked --test encrypted_profile encrypted::store_rekey_kill_leaves_exactly_one_working_key -- --exact
 
+  # The encrypted portability lane, on Linux only, for the same toolchain
+  # reason as the store lane above. What this job buys is that the seam where
+  # `P2-K5`'s rotation and deletion meet `P2-K2`'s store and `P2-K4`'s backup
+  # and restore is executed rather than cited. `T111` found a named acceptance
+  # row there that imitated a restore with `fs::copy` and passed while the
+  # product restore read no tombstone at all; `encrypted_rotation` calls the
+  # product functions, and no hosted job built this lane before.
+  encrypted-portability-lane:
+    name: encrypted-portability-lane-${{ matrix.os }}
+    needs: source-preflight
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+      - name: Restore the Cargo registry keyed on the committed Cargo lockfile
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-encrypted-portability-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Populate the Cargo registry from the committed lockfile
+        run: cargo fetch --locked
+      - name: Lint the encrypted portability lane
+        run: cargo clippy -p academic-portability --no-default-features --features encrypted-portability --all-targets --locked -- -D warnings
+      - name: Test the encrypted portability lane
+        run: cargo test -p academic-portability --no-default-features --features encrypted-portability --locked
+      - name: Run the BK and RS kill rows under encryption
+        run: cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --test encrypted_crash
+
   contracts:
     name: pnpm-contracts
     needs: source-preflight

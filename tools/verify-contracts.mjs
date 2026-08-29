@@ -1966,6 +1966,18 @@ const encryptedStoreCiCommands = [
   "cargo test -p academic-store --no-default-features --features sqlcipher-store --locked --test encrypted_profile encrypted::store_rekey_kill_leaves_exactly_one_working_key -- --exact",
 ];
 const encryptedStoreMatrixLabels = ["ubuntu-latest"];
+// The encrypted portability lane. It exists so the seam where `P2-K5`'s
+// rotation and deletion meet `P2-K2`'s store and `P2-K4`'s backup and restore
+// is executed evidence: `T111` found a named acceptance row there that
+// imitated a restore and passed while the product restore applied no
+// tombstone, and no hosted job built this lane at all. Linux only, for the
+// same `openssl-src` toolchain reason as the store lane.
+const encryptedPortabilityCiCommands = [
+  "cargo clippy -p academic-portability --no-default-features --features encrypted-portability --all-targets --locked -- -D warnings",
+  "cargo test -p academic-portability --no-default-features --features encrypted-portability --locked",
+  "cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --test encrypted_crash",
+];
+const encryptedPortabilityMatrixLabels = ["ubuntu-latest"];
 const parseCiWorkflow = (ci) => parsePnpmLockYaml(ci, ".github/workflows/ci.yml");
 const expectedCiWorkflow = {
   name: "ci",
@@ -2168,6 +2180,51 @@ const expectedCiWorkflow = {
         {
           name: "Run EN01, the store-rekey kill the rotation journal depends on",
           run: encryptedStoreCiCommands[2],
+        },
+      ],
+    },
+    "encrypted-portability-lane": {
+      name: "encrypted-portability-lane-${{ matrix.os }}",
+      needs: "source-preflight",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 45,
+      strategy: {
+        "fail-fast": false,
+        matrix: { os: encryptedPortabilityMatrixLabels },
+      },
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Install pinned Rust toolchain",
+          run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        {
+          name: "Restore the Cargo registry keyed on the committed Cargo lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.cargo/registry",
+            key: "cargo-registry-encrypted-portability-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
+          },
+        },
+        {
+          name: "Populate the Cargo registry from the committed lockfile",
+          run: lockedCargoRegistryFetch,
+        },
+        {
+          name: "Lint the encrypted portability lane",
+          run: encryptedPortabilityCiCommands[0],
+        },
+        {
+          name: "Test the encrypted portability lane",
+          run: encryptedPortabilityCiCommands[1],
+        },
+        {
+          name: "Run the BK and RS kill rows under encryption",
+          run: encryptedPortabilityCiCommands[2],
         },
       ],
     },

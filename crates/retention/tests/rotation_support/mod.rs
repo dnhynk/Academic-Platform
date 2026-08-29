@@ -5,6 +5,11 @@
 //! "the only key opens this". Both are reachable from a recipient record and a
 //! fixed synthetic secret, so a child process reopens the same keys the parent
 //! wrote without ever receiving one.
+//!
+//! Both records live in the profile's own `keys/recipients.cbor`, written
+//! through `add_recipient` and `rewrap_for_generation`. There is no test-only
+//! side file holding a generation: a suite that kept one could not observe a
+//! rotation leaving the profile with no key for an object that had not moved.
 
 #![allow(dead_code)]
 
@@ -22,7 +27,9 @@ use academic_crypto::{
 use academic_domain::{
     ArtifactDescriptor, Confidentiality, DomainId as CanonicalDomainId, MediaType, RetentionClass,
 };
-use academic_retention::rotation::KeyGeneration;
+use academic_retention::{
+    AppendOnlyJournal, journal::ROTATION_JOURNAL_RELATIVE_PATH, recipients, rotation::KeyGeneration,
+};
 use academic_vault::{ArtifactIngestRequest, EncryptedDomainKeyring, EncryptedVault};
 
 /// Profile identity every fixture derives under.
@@ -35,11 +42,6 @@ pub const TARGET_RECIPIENT: [u8; IDENTIFIER_BYTES] = [0xB2; IDENTIFIER_BYTES];
 pub const SOURCE_ENTROPY: [u8; 32] = [0xC1; 32];
 /// Fixed synthetic secret opening the target generation.
 pub const TARGET_ENTROPY: [u8; 32] = [0xC2; 32];
-
-/// Relative file the source generation's recipient record is written to.
-pub const SOURCE_RECORD_FILE: &str = "source-recipient.cbor";
-/// Relative file the target generation's recipient record is written to.
-pub const TARGET_RECORD_FILE: &str = "target-recipient.cbor";
 
 /// The one security domain these fixtures use.
 pub const DOMAIN_ID: &str = "01900000-0000-7000-8000-000000000201";
@@ -147,21 +149,50 @@ pub fn unlock_generation(
     )?)
 }
 
-/// Writes both generations' recipient records so a child process can reopen them.
-pub fn persist_generations(
+/// Publishes both generations into the profile's own `keys/recipients.cbor`.
+///
+/// This is the product path, not a test file: `add_recipient` writes the source
+/// generation's record and `rewrap_for_generation` adds the target
+/// generation's record beside it, which is exactly what a rotation does before
+/// it starts moving units. A child process therefore reopens both generations
+/// from the document the profile really holds, so a rotation that left the
+/// profile with no key for an unmigrated object would be observable here.
+pub fn publish_generations(
     root: &Path,
-    source: &RecipientRecord,
-    target: &RecipientRecord,
+    source_master: &VaultMasterKey,
+    source_record: &RecipientRecord,
+    target_master: &VaultMasterKey,
+    target_record: &RecipientRecord,
 ) -> Result<(), Box<dyn Error>> {
-    fs::write(root.join(SOURCE_RECORD_FILE), source.to_canonical_cbor()?)?;
-    fs::write(root.join(TARGET_RECORD_FILE), target.to_canonical_cbor()?)?;
+    let mut journal = AppendOnlyJournal::open(&root.join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+    recipients::add_recipient(
+        root,
+        profile_id(),
+        &mut journal,
+        source_record.clone(),
+        generation_of(source_master)?,
+    )?;
+    recipients::rewrap_for_generation(
+        root,
+        profile_id(),
+        &mut journal,
+        generation_of(target_master)?,
+        |_| Ok(target_record.clone()),
+    )?;
     Ok(())
 }
 
-/// Reads both generations back out of a profile root.
+/// Reads both generations back out of the profile's stored recipient set.
 pub fn load_generations(root: &Path) -> Result<(VaultMasterKey, VaultMasterKey), Box<dyn Error>> {
-    let source = RecipientRecord::from_canonical_cbor(&fs::read(root.join(SOURCE_RECORD_FILE))?)?;
-    let target = RecipientRecord::from_canonical_cbor(&fs::read(root.join(TARGET_RECORD_FILE))?)?;
+    let set = recipients::read_set(root, profile_id())?;
+    let find = |wanted: [u8; IDENTIFIER_BYTES]| {
+        set.records()
+            .iter()
+            .find(|record| record.recipient_id() == &wanted)
+            .cloned()
+    };
+    let source = find(SOURCE_RECIPIENT).ok_or("the recipient set holds no source generation")?;
+    let target = find(TARGET_RECIPIENT).ok_or("the recipient set holds no target generation")?;
     Ok((
         unlock_generation(&source, SOURCE_ENTROPY)?,
         unlock_generation(&target, TARGET_ENTROPY)?,

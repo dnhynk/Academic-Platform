@@ -36,6 +36,7 @@ mod authorizer;
 #[cfg(feature = "sqlcipher-store")]
 pub mod cipher;
 pub mod connection;
+pub mod descriptor_migration;
 pub mod error;
 pub mod fault;
 pub mod idempotency;
