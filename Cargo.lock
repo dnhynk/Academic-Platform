@@ -138,8 +138,10 @@ name = "academic-portability"
 version = "0.1.0"
 dependencies = [
  "academic-contracts",
+ "academic-crypto",
  "academic-domain",
  "academic-projections",
+ "academic-recovery",
  "academic-store",
  "academic-vault",
  "ed25519-dalek",
@@ -147,6 +149,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "zeroize",
 ]
 
 [[package]]
@@ -156,6 +159,23 @@ dependencies = [
  "academic-domain",
  "academic-store",
  "rusqlite",
+]
+
+[[package]]
+name = "academic-recovery"
+version = "0.1.0"
+dependencies = [
+ "academic-crypto",
+ "chacha20poly1305",
+ "ciborium",
+ "ed25519-dalek",
+ "getrandom 0.4.3",
+ "hkdf",
+ "hmac",
+ "sha2",
+ "subtle",
+ "thiserror",
+ "zeroize",
 ]
 
 [[package]]

@@ -10,6 +10,7 @@ members = [
   "crates/ledger",
   "crates/portability",
   "crates/projections",
+  "crates/recovery",
   "crates/rpc",
   "crates/scenario",
   "crates/store",

@@ -7,14 +7,33 @@ license.workspace = true
 publish.workspace = true
 
 [features]
-default = []
+default = ["plaintext-portability"]
+# The Phase 1 synthetic lane: deterministic export, plaintext backup, and
+# empty-profile restore over the bundled plaintext SQLite build.
+plaintext-portability = ["dep:academic-projections", "academic-store/bundled-sqlite"]
+# The `P2-K4` encrypted lane: a snapshot of the SQLCipher profile, the
+# `AEAD_CHUNKED_V2` object closure, and a manifest sealed under a backup key
+# independent of the device wrapper. Non-default and non-overlapping with the
+# plaintext lane, because `academic-store`'s two lanes cannot link into one
+# binary.
+encrypted-portability = [
+  "dep:academic-crypto",
+  "dep:academic-recovery",
+  "academic-store/sqlcipher-store",
+  "academic-vault/aead-objects",
+]
 phase1-fault-injection = []
+# Compiles the same BK/RS failpoints for the encrypted lane, so the Phase 1
+# fault matrix is re-run under encryption rather than restated.
+phase2-fault-injection = []
 
 [dependencies]
 academic-contracts = { path = "../contracts" }
+academic-crypto = { path = "../crypto", optional = true }
 academic-domain = { path = "../domain" }
-academic-projections = { path = "../projections" }
-academic-store = { path = "../store" }
+academic-projections = { path = "../projections", optional = true }
+academic-recovery = { path = "../recovery", optional = true }
+academic-store = { path = "../store", default-features = false }
 academic-vault = { path = "../vault" }
 rusqlite.workspace = true
 serde.workspace = true
@@ -22,7 +41,9 @@ serde_json.workspace = true
 sha2.workspace = true
 
 [dev-dependencies]
+academic-crypto = { path = "../crypto" }
 ed25519-dalek.workspace = true
+zeroize.workspace = true
 
 [lints]
 workspace = true

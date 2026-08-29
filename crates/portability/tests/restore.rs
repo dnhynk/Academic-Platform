@@ -1,5 +1,7 @@
 //! Empty-profile restore behaviour and vendor-neutral round trip.
 
+#![cfg(feature = "plaintext-portability")]
+
 mod support;
 
 use std::{

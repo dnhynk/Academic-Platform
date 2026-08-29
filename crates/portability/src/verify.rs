@@ -47,6 +47,7 @@ pub struct CanonicalDatabase {
 
 impl CanonicalDatabase {
     /// Opens a live profile database through the guarded store boundary first.
+    #[cfg(not(feature = "encrypted-portability"))]
     pub fn open_source(database_path: &Path) -> PortabilityResult<Self> {
         let guarded = academic_store::connection::open_reader(database_path)?;
         drop(guarded);
@@ -57,12 +58,47 @@ impl CanonicalDatabase {
         Self::constrain(connection, database_path)
     }
 
+    /// Opens a live encrypted profile through the guarded keyed boundary first.
+    ///
+    /// The guarded reader admits the schema and pragmas exactly as it does in
+    /// the plaintext lane; this handle then re-applies the key as its own first
+    /// statement, because SQLCipher needs it before the first page is read.
+    #[cfg(feature = "encrypted-portability")]
+    pub fn open_source(
+        database_path: &Path,
+        key: &academic_crypto::StoreKey,
+    ) -> PortabilityResult<Self> {
+        let guarded = academic_store::connection::open_keyed_reader(database_path, key)?;
+        drop(guarded);
+        let connection = Connection::open_with_flags(
+            database_path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        academic_store::cipher::apply_store_key(&connection, key, database_path)?;
+        Self::constrain(connection, database_path)
+    }
+
     /// Opens a database this crate copied, without granting a write capability.
+    #[cfg(not(feature = "encrypted-portability"))]
     pub fn open_copy(database_path: &Path) -> PortabilityResult<Self> {
         let connection = Connection::open_with_flags(
             database_path,
             OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         )?;
+        Self::constrain(connection, database_path)
+    }
+
+    /// Opens an encrypted database this crate copied, keyed before first read.
+    #[cfg(feature = "encrypted-portability")]
+    pub fn open_copy(
+        database_path: &Path,
+        key: &academic_crypto::StoreKey,
+    ) -> PortabilityResult<Self> {
+        let connection = Connection::open_with_flags(
+            database_path,
+            OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        academic_store::cipher::apply_store_key(&connection, key, database_path)?;
         Self::constrain(connection, database_path)
     }
 
@@ -132,6 +168,23 @@ impl CanonicalDatabase {
         &self.connection
     }
 
+    /// Runs `PRAGMA cipher_integrity_check` and fails closed on any report.
+    ///
+    /// SQLite's own `integrity_check` walks the decrypted pages; this walks the
+    /// per-page HMACs, so a page whose ciphertext was edited is reported even
+    /// when the b-tree it decrypts to is still well formed.
+    #[cfg(feature = "encrypted-portability")]
+    pub fn cipher_integrity_check(&self) -> PortabilityResult<()> {
+        let reported = academic_store::cipher::cipher_integrity_report(&self.connection)?;
+        if reported.is_empty() {
+            return Ok(());
+        }
+        Err(PortabilityError::DatabaseCheckFailed {
+            check: "cipher_integrity_check",
+            detail: reported.join("; "),
+        })
+    }
+
     /// Runs `PRAGMA integrity_check` and fails closed on anything but `ok`.
     pub fn integrity_check(&self) -> PortabilityResult<()> {
         let mut statement = self.connection.prepare("PRAGMA integrity_check")?;
@@ -174,6 +227,7 @@ impl CanonicalDatabase {
 }
 
 /// Frozen synthetic-only policy repeated by every portable manifest.
+#[cfg(not(feature = "encrypted-portability"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PolicyBlock {
@@ -184,6 +238,66 @@ pub struct PolicyBlock {
     pub product_network: String,
 }
 
+/// The posture an encrypted backup is allowed to claim.
+///
+/// The schema-2 singleton records the *format* and nothing else: t068 section
+/// 3.1 emits `data_policy`, `production_data_allowed`, and `product_network`
+/// only when `AdmissionVerifier::verify()` succeeds, which `P2-K6` has not
+/// shipped and `P2-H1` has not signed. So a manifest may not read those three
+/// out of the database, and it may not invent them either. The two booleans
+/// below are compiled facts about *this build*, asserted on write and on read.
+#[cfg(feature = "encrypted-portability")]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PolicyBlock {
+    pub storage_mode: String,
+    pub storage_encryption: String,
+    pub production_data_allowed: bool,
+    pub adr_002_accepted: bool,
+}
+
+#[cfg(feature = "encrypted-portability")]
+impl PolicyBlock {
+    /// Returns the exact posture an encrypted backup may claim today.
+    #[must_use]
+    pub fn encrypted_v2() -> Self {
+        Self {
+            storage_mode: academic_store::cipher::ENCRYPTED_STORE_STORAGE_MODE.to_owned(),
+            storage_encryption: academic_store::cipher::ENCRYPTED_STORE_STORAGE_ENCRYPTION
+                .to_owned(),
+            production_data_allowed: false,
+            adr_002_accepted: false,
+        }
+    }
+
+    /// Rejects any policy block that claims more than this build may claim.
+    pub fn require_encrypted_v2(&self) -> PortabilityResult<()> {
+        let expected = Self::encrypted_v2();
+        if self.storage_mode != expected.storage_mode {
+            return Err(PortabilityError::ManifestRejected {
+                field: "policy.storage_mode",
+            });
+        }
+        if self.storage_encryption != expected.storage_encryption {
+            return Err(PortabilityError::ManifestRejected {
+                field: "policy.storage_encryption",
+            });
+        }
+        if self.production_data_allowed {
+            return Err(PortabilityError::ManifestRejected {
+                field: "policy.production_data_allowed",
+            });
+        }
+        if self.adr_002_accepted {
+            return Err(PortabilityError::ManifestRejected {
+                field: "policy.adr_002_accepted",
+            });
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(feature = "encrypted-portability"))]
 impl PolicyBlock {
     /// Returns the exact frozen Phase 1 policy.
     #[must_use]
@@ -231,6 +345,27 @@ impl PolicyBlock {
 }
 
 /// Physical store identity copied from the `schema_meta` singleton.
+#[cfg(not(feature = "encrypted-portability"))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreSchemaIdentity {
+    pub format_uuid: String,
+    pub schema_version: u32,
+    pub schema_semver: String,
+    pub minimum_reader_protocol_major: u32,
+    pub minimum_reader_protocol_minor: u32,
+    pub minimum_writer_protocol_major: u32,
+    pub minimum_writer_protocol_minor: u32,
+    pub policy: PolicyBlock,
+}
+
+/// Physical store identity copied from the schema-2 `schema_meta` singleton.
+///
+/// The field list is exactly the columns migration `0003` creates. The three
+/// posture columns the Phase 1 singleton carried are absent from the table, so
+/// they are absent here; `policy` is this build's compiled posture rather than
+/// a database read.
+#[cfg(feature = "encrypted-portability")]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StoreSchemaIdentity {
@@ -629,6 +764,7 @@ pub(crate) fn count_of(value: usize) -> u64 {
     u64::try_from(value).unwrap_or(u64::MAX)
 }
 
+#[cfg(not(feature = "encrypted-portability"))]
 type SchemaRaw = (
     Vec<u8>,
     i64,
@@ -644,6 +780,67 @@ type SchemaRaw = (
     String,
 );
 
+#[cfg(feature = "encrypted-portability")]
+type EncryptedSchemaRaw = (Vec<u8>, i64, String, i64, i64, i64, i64, String, String);
+
+#[cfg(feature = "encrypted-portability")]
+fn read_schema_identity(connection: &Connection) -> PortabilityResult<StoreSchemaIdentity> {
+    let raw: EncryptedSchemaRaw = connection.query_row(
+        concat!(
+            "SELECT format_uuid, schema_version, schema_semver, ",
+            "minimum_reader_protocol_major, minimum_reader_protocol_minor, ",
+            "minimum_writer_protocol_major, minimum_writer_protocol_minor, ",
+            "storage_mode, storage_encryption FROM schema_meta WHERE singleton = 1"
+        ),
+        [],
+        |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7)?,
+                row.get(8)?,
+            ))
+        },
+    )?;
+    let (
+        format_uuid,
+        schema_version,
+        schema_semver,
+        reader_major,
+        reader_minor,
+        writer_major,
+        writer_minor,
+        storage_mode,
+        storage_encryption,
+    ) = raw;
+    let policy = PolicyBlock {
+        storage_mode,
+        storage_encryption,
+        production_data_allowed: false,
+        adr_002_accepted: false,
+    };
+    // The physical facts are compared against what this build knows the
+    // encrypted lane writes, so a manifest can never record a storage mode the
+    // running binary does not implement.
+    policy.require_encrypted_v2()?;
+    Ok(StoreSchemaIdentity {
+        format_uuid: encode_hex(&format_uuid),
+        schema_version: bounded_u32(schema_version, "store schema version")?,
+        schema_semver,
+        minimum_reader_protocol_major: bounded_u32(reader_major, "minimum reader major")?,
+        minimum_reader_protocol_minor: bounded_u32(reader_minor, "minimum reader minor")?,
+        minimum_writer_protocol_major: bounded_u32(writer_major, "minimum writer major")?,
+        minimum_writer_protocol_minor: bounded_u32(writer_minor, "minimum writer minor")?,
+        policy,
+    })
+}
+
+#[cfg(not(feature = "encrypted-portability"))]
 fn read_schema_identity(connection: &Connection) -> PortabilityResult<StoreSchemaIdentity> {
     let raw: SchemaRaw = connection.query_row(
         concat!(
@@ -1879,6 +2076,12 @@ fn parse_digest(hex: &str) -> PortabilityResult<ContentDigest> {
     ContentDigest::from_str(&format!("sha256:{hex}")).map_err(PortabilityError::from)
 }
 
+/// Parses one security-domain identifier out of a manifest field.
+#[cfg(feature = "encrypted-portability")]
+pub(crate) fn parse_domain_id(text: &str) -> PortabilityResult<DomainId> {
+    parse_id(text)
+}
+
 fn parse_id<T>(text: &str) -> PortabilityResult<T>
 where
     T: FromStr<Err = DomainError>,
@@ -1961,7 +2164,7 @@ pub(crate) fn uuid_bytes(text: &str) -> PortabilityResult<[u8; 16]> {
         .map_err(|_| PortabilityError::mismatch("canonical identifier length", 16, text.len()))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "encrypted-portability")))]
 mod tests {
     use super::*;
 

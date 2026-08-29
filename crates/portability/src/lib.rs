@@ -10,11 +10,16 @@
 //! confidential, is not ADR-002 or ADR-012 acceptance evidence, and must never
 //! be described as a secure backup.
 
+#[cfg(feature = "plaintext-portability")]
 pub mod backup;
 pub mod checksum;
+#[cfg(feature = "encrypted-portability")]
+pub mod encrypted;
+#[cfg(feature = "plaintext-portability")]
 pub mod export;
 pub mod fault;
 pub mod manifest;
+#[cfg(feature = "plaintext-portability")]
 pub mod restore;
 pub mod verify;
 
@@ -22,6 +27,7 @@ use std::{error::Error, fmt, io, path::PathBuf};
 
 use academic_contracts::ContractError;
 use academic_domain::DomainError;
+#[cfg(feature = "plaintext-portability")]
 use academic_projections::runner::ProjectionError;
 use academic_store::{error::StoreError, queries::QueryError};
 use academic_vault::VaultError;
@@ -74,7 +80,20 @@ pub enum PortabilityError {
     /// The synthetic vault refused an object.
     Vault(VaultError),
     /// Rebuilding disposable projections failed.
+    #[cfg(feature = "plaintext-portability")]
     Projection(ProjectionError),
+    /// A backup key, recipient record, or sealed manifest was refused.
+    #[cfg(feature = "encrypted-portability")]
+    BackupKey(academic_recovery::BackupKeyError),
+    /// The sealed backup manifest could not be produced, verified, or opened.
+    #[cfg(feature = "encrypted-portability")]
+    SealedManifest(academic_recovery::SealedManifestError),
+    /// The selected recovery profile refused the operation.
+    #[cfg(feature = "encrypted-portability")]
+    RecoveryProfile(academic_recovery::RecoveryProfileError),
+    /// The key schedule refused to derive a key.
+    #[cfg(feature = "encrypted-portability")]
+    KeySchedule,
     /// A stored signed envelope failed independent verification.
     Contract(ContractError),
     /// A stored canonical row failed domain validation.
@@ -161,7 +180,16 @@ impl fmt::Display for PortabilityError {
             Self::Store(source) => write!(formatter, "canonical store boundary: {source}"),
             Self::Query(source) => write!(formatter, "canonical query: {source}"),
             Self::Vault(source) => write!(formatter, "synthetic vault: {source}"),
+            #[cfg(feature = "plaintext-portability")]
             Self::Projection(source) => write!(formatter, "projection rebuild: {source}"),
+            #[cfg(feature = "encrypted-portability")]
+            Self::BackupKey(source) => write!(formatter, "backup key material: {source}"),
+            #[cfg(feature = "encrypted-portability")]
+            Self::SealedManifest(source) => write!(formatter, "sealed backup manifest: {source}"),
+            #[cfg(feature = "encrypted-portability")]
+            Self::RecoveryProfile(source) => write!(formatter, "recovery profile: {source}"),
+            #[cfg(feature = "encrypted-portability")]
+            Self::KeySchedule => formatter.write_str("the key schedule refused a derivation"),
             Self::Contract(source) => write!(formatter, "signed envelope replay: {source}"),
             Self::Domain(source) => write!(formatter, "canonical row validation: {source}"),
             Self::Sqlite(source) => write!(formatter, "SQLite portability statement: {source}"),
@@ -234,7 +262,14 @@ impl Error for PortabilityError {
             Self::Store(source) => Some(source),
             Self::Query(source) => Some(source),
             Self::Vault(source) => Some(source),
+            #[cfg(feature = "plaintext-portability")]
             Self::Projection(source) => Some(source),
+            #[cfg(feature = "encrypted-portability")]
+            Self::BackupKey(source) => Some(source),
+            #[cfg(feature = "encrypted-portability")]
+            Self::SealedManifest(source) => Some(source),
+            #[cfg(feature = "encrypted-portability")]
+            Self::RecoveryProfile(source) => Some(source),
             Self::Contract(source) => Some(source),
             Self::Domain(source) => Some(source),
             Self::Sqlite(source) => Some(source),
@@ -262,9 +297,38 @@ impl From<VaultError> for PortabilityError {
     }
 }
 
+#[cfg(feature = "plaintext-portability")]
 impl From<ProjectionError> for PortabilityError {
     fn from(value: ProjectionError) -> Self {
         Self::Projection(value)
+    }
+}
+
+#[cfg(feature = "encrypted-portability")]
+impl From<academic_recovery::BackupKeyError> for PortabilityError {
+    fn from(value: academic_recovery::BackupKeyError) -> Self {
+        Self::BackupKey(value)
+    }
+}
+
+#[cfg(feature = "encrypted-portability")]
+impl From<academic_recovery::SealedManifestError> for PortabilityError {
+    fn from(value: academic_recovery::SealedManifestError) -> Self {
+        Self::SealedManifest(value)
+    }
+}
+
+#[cfg(feature = "encrypted-portability")]
+impl From<academic_recovery::RecoveryProfileError> for PortabilityError {
+    fn from(value: academic_recovery::RecoveryProfileError) -> Self {
+        Self::RecoveryProfile(value)
+    }
+}
+
+#[cfg(feature = "encrypted-portability")]
+impl From<academic_crypto::KeyScheduleError> for PortabilityError {
+    fn from(_: academic_crypto::KeyScheduleError) -> Self {
+        Self::KeySchedule
     }
 }
 

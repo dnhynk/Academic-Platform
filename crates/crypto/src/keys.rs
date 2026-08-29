@@ -158,6 +158,10 @@ secret_key!(
     DomainLocatorKey,
     "The HMAC key one domain's vault locators are derived under."
 );
+secret_key!(
+    RehearsalKey,
+    "The key a restore-rehearsal receipt is authenticated under, derived from the VMK."
+);
 
 impl VaultMasterKey {
     /// Generates a fresh Vault Master Key from operating-system randomness.

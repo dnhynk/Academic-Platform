@@ -15,9 +15,9 @@ use std::{
 use academic_crypto::{
     AUDIT_INFO, DeviceKeystore, DomainId, IDENTIFIER_BYTES, KEK_INFO_PREFIX, KEY_BYTES,
     KeystoreFailure, PINNED_PROFILES, ProfileId, RECIPIENT_MAC_INFO, RECOVERY_ARGON2ID_V1,
-    RecipientParameters, RecipientRecord, RecipientSet, RecordError, RecoverySecret, STORE_INFO,
-    UnlockError, UnlockThrottle, VaultMasterKey, create_device_recipient,
-    create_recovery_recipient, unlock_with_device, unlock_with_recovery,
+    REHEARSAL_INFO, RecipientParameters, RecipientRecord, RecipientSet, RecordError,
+    RecoverySecret, STORE_INFO, UnlockError, UnlockThrottle, VaultMasterKey,
+    create_device_recipient, create_recovery_recipient, unlock_with_device, unlock_with_recovery,
 };
 use ciborium::value::{Integer, Value};
 use zeroize::Zeroize as _;
@@ -345,6 +345,7 @@ fn hkdf_domain_separation_is_exact() {
     assert_eq!(STORE_INFO, b"academic-os/store/v1");
     assert_eq!(AUDIT_INFO, b"academic-os/audit/v1");
     assert_eq!(RECIPIENT_MAC_INFO, b"academic-os/recipient-mac/v1");
+    assert_eq!(REHEARSAL_INFO, b"academic-os/rehearsal/v1");
 
     let (Ok(kek_first), Ok(kek_second)) = (
         key.derive_domain_kek(PROFILE, first),
@@ -352,10 +353,11 @@ fn hkdf_domain_separation_is_exact() {
     ) else {
         unreachable!("KEK derivation must succeed");
     };
-    let (Ok(store), Ok(audit), Ok(mac)) = (
+    let (Ok(store), Ok(audit), Ok(mac), Ok(rehearsal)) = (
         key.derive_store_key(PROFILE),
         key.derive_audit_key(PROFILE),
         key.derive_recipient_mac_key(PROFILE),
+        key.derive_rehearsal_key(PROFILE),
     ) else {
         unreachable!("purpose derivation must succeed");
     };
@@ -366,6 +368,7 @@ fn hkdf_domain_separation_is_exact() {
         ("store", store.expose_secret()),
         ("audit", audit.expose_secret()),
         ("recipient-mac", mac.expose_secret()),
+        ("rehearsal", rehearsal.expose_secret()),
     ];
     for (index, (left_name, left)) in purposes.iter().enumerate() {
         for (right_name, right) in purposes.iter().skip(index + 1) {
@@ -374,11 +377,12 @@ fn hkdf_domain_separation_is_exact() {
     }
 
     // The profile identity is a real salt: every purpose changes with it.
-    let (Ok(other_kek), Ok(other_store), Ok(other_audit), Ok(other_mac)) = (
+    let (Ok(other_kek), Ok(other_store), Ok(other_audit), Ok(other_mac), Ok(other_rehearsal)) = (
         key.derive_domain_kek(other_profile, first),
         key.derive_store_key(other_profile),
         key.derive_audit_key(other_profile),
         key.derive_recipient_mac_key(other_profile),
+        key.derive_rehearsal_key(other_profile),
     ) else {
         unreachable!("derivation under another profile must succeed");
     };
@@ -386,6 +390,7 @@ fn hkdf_domain_separation_is_exact() {
     assert_ne!(other_store.expose_secret(), store.expose_secret());
     assert_ne!(other_audit.expose_secret(), audit.expose_secret());
     assert_ne!(other_mac.expose_secret(), mac.expose_secret());
+    assert_ne!(other_rehearsal.expose_secret(), rehearsal.expose_secret());
 
     // Derivation is a function: the same inputs give the same key.
     let Ok(again) = key.derive_domain_kek(PROFILE, first) else {

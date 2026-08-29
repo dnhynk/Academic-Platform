@@ -11,7 +11,7 @@ use zeroize::Zeroizing;
 
 use crate::keys::{
     AuditKey, DomainId, DomainKek, DomainLocatorKey, IDENTIFIER_BYTES, KEY_BYTES, ProfileId,
-    RecipientMacKey, StoreKey, VaultMasterKey,
+    RecipientMacKey, RehearsalKey, StoreKey, VaultMasterKey,
 };
 
 /// Info prefix for a per-domain key-encryption key; the domain identity is
@@ -28,6 +28,16 @@ pub const AUDIT_INFO: &[u8] = b"academic-os/audit/v1";
 /// reusing one of the three, so `P2-K1` fixes this fourth info string in the
 /// same `academic-os/<purpose>/v1` scheme.
 pub const RECIPIENT_MAC_INFO: &[u8] = b"academic-os/recipient-mac/v1";
+/// Info string for the restore-rehearsal receipt MAC key.
+///
+/// `P2-K4`'s rehearsal receipt is a profile-local admission fact: it states
+/// that a restore of this profile was actually carried out against the key
+/// material in force at the time. It is authenticated under the VMK rather
+/// than under the backup key, because the gate it feeds runs at ingest time on
+/// an unlocked profile, where the VMK is in hand and the recovery phrase is
+/// not. Deriving it here rather than reusing `AUDKEY` keeps one key from
+/// authenticating both egress audit rows and admission receipts.
+pub const REHEARSAL_INFO: &[u8] = b"academic-os/rehearsal/v1";
 /// Info string for a domain's vault-locator HMAC key.
 ///
 /// t068 section 2.3-7 keeps the physical locator a domain-keyed HMAC, and
@@ -102,6 +112,18 @@ impl VaultMasterKey {
     /// Derives `AUDKEY`, the egress-audit key.
     pub fn derive_audit_key(&self, profile: ProfileId) -> Result<AuditKey, KeyScheduleError> {
         Ok(AuditKey::from_zeroizing(expand(self, profile, AUDIT_INFO)?))
+    }
+
+    /// Derives the key a restore-rehearsal receipt is authenticated under.
+    pub fn derive_rehearsal_key(
+        &self,
+        profile: ProfileId,
+    ) -> Result<RehearsalKey, KeyScheduleError> {
+        Ok(RehearsalKey::from_zeroizing(expand(
+            self,
+            profile,
+            REHEARSAL_INFO,
+        )?))
     }
 
     /// Derives the key the recipient-record MAC is taken under.

@@ -354,7 +354,13 @@ pub fn remove_incomplete_encrypted_profile<P: PathProbe + ?Sized>(
 /// binds the key as a parameter rather than interpolating it into SQL, and the
 /// rendered hex lives in a zeroizing buffer that is cleared when this function
 /// returns.
-pub(crate) fn apply_store_key(
+///
+/// Public because the encrypted portability lane opens its own read-only
+/// snapshot handle after the guarded reader has already admitted the database,
+/// exactly as the plaintext lane does. It grants no capability the caller did
+/// not already have: the argument is a `StoreKey`, which only the `P2-K1`
+/// schedule produces.
+pub fn apply_store_key(
     connection: &Connection,
     key: &StoreKey,
     database_path: &Path,

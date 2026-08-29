@@ -78,7 +78,7 @@ pub const FAULT_SELECTION_VARIABLE: &str = "ACADEMIC_PORTABILITY_TEST_FAULT";
 pub const FAULT_READY_MARKER_VARIABLE: &str = "ACADEMIC_PORTABILITY_TEST_READY_MARKER";
 
 /// Aborts the current process at one named checkpoint when a harness selected it.
-#[cfg(feature = "phase1-fault-injection")]
+#[cfg(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection"))]
 pub(crate) fn trip(point: PortabilityFaultPoint) {
     use std::{env, fs::OpenOptions, io::Write as _, path::PathBuf};
 
@@ -95,7 +95,7 @@ pub(crate) fn trip(point: PortabilityFaultPoint) {
 }
 
 /// Production build: every checkpoint compiles away.
-#[cfg(not(feature = "phase1-fault-injection"))]
+#[cfg(not(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection")))]
 pub(crate) const fn trip(_point: PortabilityFaultPoint) {}
 
 #[cfg(test)]
