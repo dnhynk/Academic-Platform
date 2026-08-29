@@ -74,6 +74,45 @@ jobs:
       - name: Replay deterministic v2 fixture
         run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json
 
+  # The Phase 1 crash, replay, and restore exit, on native Windows and native
+  # Linux. The two are separate verdicts: Windows proves the named-pipe endpoint
+  # and NTFS durability, Linux proves the Unix domain socket and its filesystem,
+  # and neither substitutes for the other. A definition existing here is not a
+  # hosted run; it is evidence only once these jobs have actually concluded.
+  phase1-exit:
+    name: phase1-exit-${{ matrix.os }}
+    needs: source-preflight
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+      - name: Restore the Cargo registry keyed on the committed Cargo lockfile
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-phase1-exit-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Populate the Cargo registry from the committed lockfile
+        run: cargo fetch --locked
+      - name: Install pinned Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - name: Lint the fault-injection lane
+        run: cargo clippy --workspace --all-targets --locked --features academic-core/phase1-fault-injection,academic-daemon/phase1-fault-injection,academic-portability/phase1-fault-injection,academic-projections/phase1-fault-injection,academic-test-support/phase1-fault-injection,academic-vault/phase1-fault-injection -- -D warnings
+      - name: Run the enumerated Phase 1 exit matrix
+        run: cargo test -p academic-daemon --test phase1_exit --locked --features phase1-fault-injection
+      - name: Assemble the Phase 1 exit receipt
+        run: node tools/phase1-exit.mjs --all-faults --format json
+
   contracts:
     name: pnpm-contracts
     needs: source-preflight
