@@ -3,7 +3,7 @@
 use std::fmt;
 
 use crate::resolution::AuthorityPolicy;
-use academic_domain::{ContentDigest, DomainId, TimestampMillis};
+use academic_domain::{ContentDigest, DomainId};
 
 use crate::{
     GRAPH_PROJECTION_KIND, TRIGRAM_LEXICAL_PROJECTION_KIND, UNICODE_LEXICAL_PROJECTION_KIND,
@@ -160,24 +160,13 @@ pub struct ActiveGeneration {
 }
 
 /// The two mandatory bitemporal coordinates for an active projection result.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ProjectionCoordinates {
-    /// Replica-local acceptance sequence through which canonical facts are known.
-    pub known_at_accept_seq: u64,
-    /// Domain-valid instant at which canonical facts are evaluated.
-    pub valid_at: TimestampMillis,
-}
-
-impl ProjectionCoordinates {
-    /// Constructs explicit bitemporal coordinates.
-    #[must_use]
-    pub const fn new(known_at_accept_seq: u64, valid_at: TimestampMillis) -> Self {
-        Self {
-            known_at_accept_seq,
-            valid_at,
-        }
-    }
-}
+///
+/// This is the canonical coordinate pair from the domain vocabulary rather than
+/// a second copy of it: the canonical store's aggregate timeline read and this
+/// sidecar's generation reads take the same value, so there is one place where
+/// "both coordinates are required" is stated and no way for the two surfaces to
+/// drift into differently shaped coordinates.
+pub use academic_domain::temporal::TimeCoordinates as ProjectionCoordinates;
 
 /// Resolver provenance copied onto every active projection record.
 #[derive(Debug, Clone, PartialEq, Eq)]
