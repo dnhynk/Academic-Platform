@@ -624,3 +624,46 @@ fn time_travel_target_bullets() -> Result<Vec<String>, Box<dyn Error>> {
         .map(str::to_owned)
         .collect())
 }
+
+/// An unreadable sidecar is an error, not "no snapshot materialized yet".
+///
+/// Only `QueryReturnedNoRows` is absence. Treating any SQLite failure as
+/// absence would rebuild silently over a broken database and report success.
+#[test]
+fn an_unreadable_sidecar_refuses_instead_of_reporting_absence() -> TestResult {
+    let history = History::build("corrupt-sidecar")?;
+    let policies = registry("timeline-policies-v1", AuthorityPolicy::OfficialFact)?;
+    let store = history.store()?;
+    let mut reader = history.fixture.store_reader()?;
+    let coordinates = at(history.head, 300);
+    let version = projector(&policies).version;
+    store.materialize(
+        &mut reader,
+        history.domain_id,
+        coordinates,
+        &policies,
+        &projector(&policies),
+    )?;
+    assert!(
+        store
+            .snapshot(history.domain_id, coordinates, &version)?
+            .is_some()
+    );
+
+    // A coordinate that was never materialized is genuine absence.
+    assert!(
+        store
+            .snapshot(history.domain_id, at(history.head, 999), &version)?
+            .is_none()
+    );
+
+    rusqlite::Connection::open(history.timeline_path())?
+        .execute_batch("DROP TABLE timeline_snapshot_claim; DROP TABLE timeline_snapshot;")?;
+    assert!(
+        store
+            .snapshot(history.domain_id, coordinates, &version)
+            .is_err(),
+        "a sidecar whose tables are gone must refuse, not read as absent"
+    );
+    Ok(())
+}
