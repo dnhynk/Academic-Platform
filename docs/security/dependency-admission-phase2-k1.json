@@ -5,6 +5,7 @@
   "resolution_budget": 1,
   "summary": {
     "added_external_crate_count": 43,
+    "added_external_crate_count_note": "43 and not 42: argon2's hash_password_into, the raw-output KDF entry point this task needs rather than a PHC-string API, is gated behind that crate's alloc feature, and alloc pulls password-hash. A consequence of the crate's feature layout, not a change of approach.",
     "key_schedule_and_wrap_count": 13,
     "linux_secret_service_broker_count": 30,
     "linked_into_binary_count": 29,
