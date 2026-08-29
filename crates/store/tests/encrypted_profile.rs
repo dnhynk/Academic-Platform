@@ -1120,6 +1120,60 @@ mod encrypted {
         std::path::PathBuf::from(name)
     }
 
+    /// An interrupted bootstrap is refused by startup and can be removed.
+    ///
+    /// The removal never recurses: an unrecognized entry makes it fail closed
+    /// rather than deleting a directory whose contents it does not know.
+    #[test]
+    fn incomplete_encrypted_profile_is_refused_and_removable() -> Result<(), Box<dyn Error>> {
+        let root = TempRoot::new("incomplete")?;
+        let workdir = root.workdir();
+        let key = harness::provision(&workdir)?;
+        let probe = academic_store::path_policy::NativePathProbe::default();
+        let target = harness::profile_root(&workdir);
+
+        let incomplete = cipher::prepare_encrypted_profile(&target, &probe)?;
+        assert_eq!(incomplete.root(), target);
+        assert!(target.join(PROFILE_FORMAT_V2_MARKER).is_file());
+
+        let refused = must_fail(
+            open_encrypted_profile(&target, &probe, &key),
+            "startup admitted an interrupted bootstrap",
+        )?;
+        assert!(
+            matches!(refused, StoreError::IncompleteProfile(_)),
+            "unexpected error: {refused}"
+        );
+
+        // An entry the removal does not recognise stops it, so it can never
+        // become a recursive delete of an unknown directory.
+        fs::write(target.join("unexpected.txt"), b"x")?;
+        let stopped = must_fail(
+            cipher::remove_incomplete_encrypted_profile(&target, &probe),
+            "cleanup removed a profile holding an unrecognized entry",
+        )?;
+        assert!(
+            matches!(stopped, StoreError::InvalidProfileState { .. }),
+            "unexpected error: {stopped}"
+        );
+        assert!(target.is_dir());
+
+        fs::remove_file(target.join("unexpected.txt"))?;
+        cipher::remove_incomplete_encrypted_profile(&target, &probe)?;
+        assert!(!target.exists());
+        Ok(())
+    }
+
+    /// The `EN` fault inventory this task owns, so a row cannot be dropped
+    /// silently.
+    #[test]
+    fn encrypted_store_fault_inventory_is_exact() {
+        assert_eq!(
+            cipher::PHASE2_ENCRYPTED_STORE_FAULT_IDS,
+            ["EN01", "EN02", "EN03", "EN04", "EN05", "EN06"]
+        );
+    }
+
     /// The one owned acceptance writer opens over the encrypted profile.
     ///
     /// The `DB01`-`DB07` replay below drives the canonical insert ordering
