@@ -12,9 +12,13 @@ Backup fixes a commit watermark and ledger heads, creates a consistent encrypted
 
 Full export is documented, versioned, and vendor-neutral: original artifacts or a documented encrypted bundle, entity/claim/event/evidence records, original signed envelopes, schemas/predicate registry, and a human-readable inventory. Projection export is optional.
 
-## Implemented now
+## Implemented for the synthetic Phase 1 local core
 
-The original deterministic signed envelope is committed and verification rejects byte drift. Forward-only migration 0001 and its pre-listen admission exist; there is no backup, restore, or export implementation.
+The original deterministic signed envelope is committed and verification rejects byte drift. The current schema is built by forward-only migrations 0001–0003 and admitted before the daemon listens. The portability boundary produces deterministic open exports of the synthetic subset, takes a consistent plaintext SQLite backup with reachable vault objects and a verified manifest, and restores a verified backup only into a new empty profile before rebuilding projections from empty. Export and backup open the canonical source read-only and exclude projections; restore never activates over an occupied or daemon-owned destination.
+
+These are synthetic Phase 1 formats, not the encrypted production design registered above. ADR-012 remains Proposed: the encrypted bundle and independent recovery recipient, production key closure, RPO/RTO evidence, interrupted large-migration recovery, and the full vendor-neutral export/import round trip remain acceptance gates. The default lane remains `storage_encryption=NONE` and cannot accept production data.
+
+## Phase 0 admission evidence (historical, before the Phase 1 local core)
 
 Admission is read-only and rejects before mutation. Identity, integrity, foreign keys, complete user-object emptiness at version zero, and an exact reference-derived structural fingerprint are all checked before the FTS5 probe, journal-mode configuration, exclusive locking, or a migration transaction. That fingerprint excludes an exact enumeration of the objects SQLite creates itself — the tables `sqlite_sequence` and `sqlite_stat1` through `sqlite_stat4`, and the `sqlite_autoindex_*` indexes — and treats every other object as a user object regardless of its type or its name. The reserved `sqlite_` prefix is not evidence of ownership: only `CREATE` applies SQLite's reserved-prefix rejection, so a `sqlite_`-prefixed table, index, trigger, or view written directly into `sqlite_schema` is loaded and used like any other object, and excluding by name prefix would hide it. The projection sidecar applies the same enumeration.
 
