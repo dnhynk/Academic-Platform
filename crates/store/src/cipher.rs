@@ -267,13 +267,13 @@ pub fn open_encrypted_profile<P: PathProbe + ?Sized>(
     let database_path = root.join(STORE_DATABASE_FILE);
     require_regular_file(&database_path)?;
 
-    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
-    let connection = Connection::open_with_flags(&database_path, flags)?;
-    apply_store_key(&connection, key, &database_path)?;
-    let cipher = read_and_verify_cipher_settings(&connection, &database_path)?;
-    drop(connection);
-
+    // One keyed open, not two: the writer applies the key, admits the schema,
+    // and then answers for its own cipher settings. A separate read-back
+    // connection would pay a second 256,000-iteration key derivation to learn
+    // what this handle already knows.
     let writer = crate::connection::open_keyed_writer(&database_path, key)?;
+    let cipher = writer.cipher_settings()?;
+    verify_cipher_settings(&cipher)?;
     drop(writer);
     Ok(EncryptedProfile {
         root: root.to_path_buf(),
@@ -367,7 +367,7 @@ pub(crate) fn apply_store_key(
     // from reaching a surface that would have to interpret it.
     connection
         .pragma_update(None, "key", literal.as_str())
-        .map_err(|_| locked(database_path))
+        .map_err(|error| locked_if_undecryptable(StoreError::Sqlite(error), database_path))
 }
 
 /// Reads the SQLCipher settings from a keyed connection.
@@ -458,27 +458,41 @@ fn read_and_verify_cipher_settings(
     // a SQLite-level failure here is the cipher refusing the key, not a broken
     // pragma. A `CipherSettingMismatch` is a different fact and passes through
     // unchanged so a drifted parameter is never reported as a wrong key.
-    let settings = read_cipher_settings(connection).map_err(|error| match error {
-        StoreError::Sqlite(_) => locked(database_path),
-        other => other,
-    })?;
+    let settings = read_cipher_settings(connection)
+        .map_err(|error| locked_if_undecryptable(error, database_path))?;
     verify_cipher_settings(&settings)?;
     connection
         .query_row("SELECT count(*) FROM sqlite_schema", [], |row| {
             row.get::<_, i64>(0)
         })
-        .map_err(|_| locked(database_path))?;
+        .map_err(|error| locked_if_undecryptable(StoreError::Sqlite(error), database_path))?;
     Ok(settings)
 }
 
-/// The one fail-closed outcome for a database that did not decrypt.
+/// Translates SQLite's "file is not a database" into the fail-closed outcome.
+///
+/// SQLCipher reports a key that cannot authenticate page one as `SQLITE_NOTADB`,
+/// and it can raise it at any statement that first touches a page: installing
+/// the key, reading a cipher setting, or admitting the schema. Every keyed entry
+/// point routes its failure through here so no caller has to interpret a raw
+/// SQLite code, and so an unrelated I/O failure is not relabelled as a wrong
+/// key.
 ///
 /// The reason is deliberately the same for a wrong key and for a destroyed
 /// page one: distinguishing them would tell a caller something about the key.
-fn locked(database_path: &Path) -> StoreError {
-    StoreError::EncryptedStoreLocked {
-        path: database_path.to_path_buf(),
-        reason: "page one did not authenticate under the supplied store key",
+pub(crate) fn locked_if_undecryptable(error: StoreError, database_path: &Path) -> StoreError {
+    let undecryptable = matches!(
+        &error,
+        StoreError::Sqlite(rusqlite::Error::SqliteFailure(inner, _))
+            if inner.code == rusqlite::ErrorCode::NotADatabase
+    );
+    if undecryptable {
+        StoreError::EncryptedStoreLocked {
+            path: database_path.to_path_buf(),
+            reason: "page one did not authenticate under the supplied store key",
+        }
+    } else {
+        error
     }
 }
 

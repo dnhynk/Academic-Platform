@@ -138,6 +138,16 @@ impl WriterConnection {
         read_pragma_snapshot(&self.connection)
     }
 
+    /// Reads back the SQLCipher settings of this already-admitted handle.
+    ///
+    /// Applying a raw key costs one PBKDF2 pass over 256,000 iterations, so the
+    /// encrypted profile reads its settings from the handle it already opened
+    /// rather than opening a second one to ask.
+    #[cfg(feature = "sqlcipher-store")]
+    pub(crate) fn cipher_settings(&self) -> StoreResult<crate::cipher::CipherSettings> {
+        crate::cipher::read_cipher_settings(&self.connection)
+    }
+
     /// Returns the database path without exposing a raw SQLite handle.
     #[must_use]
     pub(crate) fn database_path(&self) -> &Path {
@@ -279,6 +289,7 @@ pub(crate) fn open_keyed_writer(
     open_writer_prepared(database_path, |connection| {
         crate::cipher::apply_store_key(connection, key, database_path)
     })
+    .map_err(|error| crate::cipher::locked_if_undecryptable(error, database_path))
 }
 
 /// The one writer-admission sequence, parameterized only by how the handle is
@@ -334,6 +345,7 @@ pub fn open_keyed_reader(
     open_reader_prepared(database_path, |connection| {
         crate::cipher::apply_store_key(connection, key, database_path)
     })
+    .map_err(|error| crate::cipher::locked_if_undecryptable(error, database_path))
 }
 
 /// The one reader-admission sequence, parameterized only by how the handle is
