@@ -50,3 +50,7 @@ State-removing `SUPERSEDES` and `RETRACTS` relations preserve their actor proven
 ## Consequences
 
 Queries require both `valid_at` and `known_at_accept_seq`; an ambiguous mutable “current claim” API is forbidden. UUIDv7 aids locality only and never establishes causality or canonical order.
+
+Both coordinates travel as one value, `TimeCoordinates`, which has no default and no single-coordinate constructor, so the requirement is structural rather than a convention. A reading whose `known_at_accept_seq` is past the canonical head is refused, never clamped.
+
+A value that moves between two readings carries one of four change origins: `EVIDENCE_CHANGE`, `ONTOLOGY_CHANGE`, `ANALYZER_UPGRADE`, or `OFFICIAL_SOURCE_CORRECTION`. Only the first means the user changed; the other three are changes in the observation system. Labelling never ranks a mixed interval: the known-time interval is split at each origin-bearing acceptance until every step carries exactly one cause, and a step that still carries two is refused. A display-scope change is not an origin, because it changes what a viewer is shown rather than what the record says.
