@@ -1,30 +1,27 @@
 //! Named acceptance evidence for migration 0004's aggregate closure tables.
 //!
-//! # Why these tests build their own base
+//! # The base these tests run on
 //!
-//! Migration 0004 layers on store schema version 2, which migration 0003
-//! establishes together with the encrypted lane and the schema-2 identity
-//! triplet. `P2-K2` owns 0003 and has not landed it, so these tests apply 0004
-//! to the schema-1 canonical core instead. That core is exactly the part of the
-//! schema-2 base 0004 depends on: 0004 reads and writes nothing in `schema_meta`,
-//! `application_id`, or `user_version`, so it needs the tables 0001 creates and
-//! no part of the identity 0003 will fix.
+//! Migration 0004 layers on store schema version 2, so these tests build that
+//! version the way a profile does: `0001` for the canonical core, then the real
+//! `0003` for the schema-2 identity, then `0004`. `P2-C2` wrote them against
+//! the schema-1 core as a stand-in while `P2-K2` was in flight, and
+//! `migration_0003_is_absent_until_p2_k2_lands` was the machine-checked link
+//! that made the substitution expire. 0003 has landed, so the substitution and
+//! its guard are both gone.
 //!
-//! This is deliberately not a stand-in schema-2 identity. Inventing one would
-//! freeze `P2-K2`'s contract from outside `P2-K2`, and the encrypted-lane policy
-//! strings it contains depend on ADR-002, ADR-004, and ADR-005 decisions that
-//! have not been made.
-//!
-//! What that leaves open is one claim: that 0004 applies to the real 0003 rather
-//! than to a core that resembles it. [`migration_0003_is_absent_until_p2_k2_lands`]
-//! is the machine-checked link. It fails the moment 0003 appears, and its message
-//! says what to do next.
+//! The identity row and the two SQLite identifiers are written here rather than
+//! through `migrate_open_connection_pre_listen`, because that runner writes the
+//! identity of whichever lane it was compiled into and these tests run in both.
+//! The values are the frozen ones, and 0003's own column `CHECK`s reject the row
+//! if any of them ever drifts, so this base cannot quietly stop being the real
+//! one.
 
 use std::{
     collections::BTreeSet,
     error::Error,
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{
         Arc,
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -38,8 +35,12 @@ use academic_domain::{
 use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior, params};
 
 use crate::{
+    SQLITE_APPLICATION_ID,
     authorizer::{CANONICAL_TABLES, install_canonical_authorizer},
-    migration::{MIGRATION_0001_SQL, MIGRATION_0004_SQL, apply_aggregate_migration_pre_listen},
+    migration::{
+        MIGRATION_0001_SQL, MIGRATION_0003_SQL, MIGRATION_0004_SQL,
+        apply_aggregate_migration_pre_listen,
+    },
     repository::ClosureWriter,
 };
 
@@ -144,9 +145,50 @@ impl Drop for MigratedDatabase {
 ///
 /// See the module comment: this is 0001's canonical core, not a schema-2
 /// identity. It creates no `schema_meta` row and stamps no `user_version`.
+/// Builds the store schema version 2 base: `0001`, then the real `0003`.
+///
+/// The identity row uses the values 0003 pins. Any drift in a pinned value
+/// makes 0003's own `CHECK` reject this insert, so the base cannot silently
+/// stop matching the migration it is supposed to reproduce.
 fn apply_schema_two_canonical_core(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute_batch(MIGRATION_0001_SQL)?;
+    connection.execute_batch(MIGRATION_0003_SQL)?;
+    connection.execute(
+        concat!(
+            "INSERT INTO schema_meta (",
+            "singleton, format_uuid, schema_version, schema_semver, ",
+            "minimum_reader_protocol_major, minimum_reader_protocol_minor, ",
+            "minimum_writer_protocol_major, minimum_writer_protocol_minor, ",
+            "storage_mode, storage_encryption, creating_build_digest, created_at_unix_ms",
+            ") VALUES (1, ?1, 2, '2.0.0', 2, 0, 2, 0, ?2, ?3, ?4, 1)"
+        ),
+        params![
+            schema_two_literal("format_uuid = x'")?
+                .as_bytes()
+                .chunks(2)
+                .map(|pair| u8::from_str_radix(std::str::from_utf8(pair)?, 16).map_err(Into::into))
+                .collect::<Result<Vec<u8>, Box<dyn Error>>>()?,
+            schema_two_literal("storage_mode = '")?,
+            schema_two_literal("storage_encryption = '")?,
+            vec![0x24_u8; 32],
+        ],
+    )?;
+    connection.pragma_update(None, "application_id", SQLITE_APPLICATION_ID)?;
+    connection.pragma_update(None, "user_version", 2_u32)?;
     Ok(())
+}
+
+/// Extracts the single-quoted value migration 0003 pins after `prefix`.
+fn schema_two_literal(prefix: &str) -> Result<String, Box<dyn Error>> {
+    let start = MIGRATION_0003_SQL
+        .find(prefix)
+        .ok_or_else(|| format!("migration 0003 does not pin {prefix}"))?
+        + prefix.len();
+    let rest = &MIGRATION_0003_SQL[start..];
+    let end = rest
+        .find('\'')
+        .ok_or_else(|| format!("migration 0003 has an unterminated literal after {prefix}"))?;
+    Ok(rest[..end].to_owned())
 }
 
 fn synthetic_id(suffix: u32) -> [u8; 16] {
@@ -712,35 +754,39 @@ fn migration_0004_is_forward_only_and_pre_listen() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// Guard required by the coordinator's approval of the schema-2 test base
-// ---------------------------------------------------------------------------
-
-/// Fails as soon as `P2-K2` lands the real migration 0003.
+/// The base above really is store schema version 2, not the schema-1 core.
 ///
-/// The tests above apply migration 0004 to the schema-1 canonical core because
-/// migration 0003 does not exist yet. That substitution is sound only while the
-/// substitution is still necessary, so this test is the machine-checked link
-/// rather than a note someone has to remember to act on.
-///
-/// The glob is `0003_phase2_*` and not `0003_*`: `0003_phase1_projections.sql`
-/// already exists and belongs to the projection sidecar, which is a different
-/// database with its own version sequence.
+/// `P2-C2` ran every test in this module against the schema-1 core while 0003
+/// was in flight. This replaces the guard that made that substitution expire:
+/// where the old test asserted 0003 was still absent, this asserts the base is
+/// now built from it, so the module cannot quietly fall back.
 #[test]
-fn migration_0003_is_absent_until_p2_k2_lands() -> Result<(), Box<dyn Error>> {
-    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../migrations/store");
-    let landed = fs::read_dir(&directory)?
-        .filter_map(Result::ok)
-        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .filter(|name| name.starts_with("0003_phase2_"))
-        .collect::<Vec<_>>();
-    assert!(
-        landed.is_empty(),
-        "migration 0003 has landed as {landed:?}. Migration 0004 and its tests were \
-         written against the schema-1 canonical core as a stand-in for the schema-2 \
-         base that 0003 establishes. Run the C2/K2 integration task now: apply 0004 \
-         on top of the real 0003, replace `apply_schema_two_canonical_core` in this \
-         module with it, re-run every test here, and delete this guard."
-    );
+fn the_test_base_is_the_real_schema_two() -> Result<(), Box<dyn Error>> {
+    let database = MigratedDatabase::new("real-base")?;
+    let connection = database.open()?;
+
+    let user_version: i64 = connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+    assert_eq!(user_version, 2, "the base is not store schema version 2");
+    let application_id: i64 =
+        connection.query_row("PRAGMA application_id", [], |row| row.get(0))?;
+    assert_eq!(application_id, i64::from(SQLITE_APPLICATION_ID));
+
+    let (schema_version, semver): (i64, String) = connection.query_row(
+        "SELECT schema_version, schema_semver FROM schema_meta WHERE singleton = 1",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    assert_eq!(schema_version, 2);
+    assert_eq!(semver, "2.0.0");
+
+    // The schema-2 singleton is the format-fact column set. A posture column
+    // here would be a claim about admission that no receipt supports.
+    let columns = column_names(&connection, "schema_meta")?;
+    for absent in ["data_policy", "production_data_allowed", "product_network"] {
+        assert!(
+            !columns.iter().any(|name| name == absent),
+            "the schema-2 singleton records {absent}"
+        );
+    }
     Ok(())
 }

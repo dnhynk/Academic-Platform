@@ -60,14 +60,18 @@ The encrypted store lane is non-default and is verified separately, because it
 cannot be linked into the same binary as the plaintext synthetic lane:
 
 ```powershell
+pnpm verify:windows-toolchain
 cargo clippy -p academic-store --no-default-features --features sqlcipher-store --all-targets --locked --offline -- -D warnings
 cargo test -p academic-store --no-default-features --features sqlcipher-store --locked --offline
 ```
 
-Building it needs a native SQLCipher and OpenSSL. That is verified on Linux; on
-Windows it stops inside `openssl-src`, and
-[the encrypted store lane](docs/contracts/encrypted-store-lane.md) records
-exactly why, what would resolve it, and what is therefore not yet proved.
+Building it needs a native SQLCipher and OpenSSL. On Windows that needs a native
+Perl, pinned and recorded in
+[the Windows toolchain](tools/sqlcipher/windows-toolchain.md); set
+`OPENSSL_SRC_PERL` to the pinned interpreter before the commands above.
+`verify:windows-toolchain` enforces the pin whenever that variable is set and
+reports and exits zero when it is not. What the lane is and is not evidence for
+is in [the encrypted store lane](docs/contracts/encrypted-store-lane.md).
 
 ## Operating a throwaway Phase 1 profile
 

@@ -71,16 +71,34 @@ carried forward unchanged.
 | `schema_semver` | `2.0.0` | `0003` `CHECK` |
 | minimum reader protocol | `2.0` | `0003` `CHECK` |
 | minimum writer protocol | `2.0` | `0003` `CHECK` |
-| `data_policy` | `REAL_PERSONAL_DATA_PERMITTED` | `0003` `CHECK` |
 | `storage_mode` | `SQLCIPHER_ENCRYPTED_PROFILE_V2` | `0003` `CHECK` |
 | `storage_encryption` | `SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000` | `0003` `CHECK` |
 | `application_id` | `1094926660` (`ACAD`) | unchanged from schema 1 |
 
-`production_data_allowed` and `product_network` are **absent** from the
-schema-2 singleton. They are the admission verifier's runtime output, not a
-stored column: an encrypted profile without a receipt still serves the synthetic
-posture, so the posture is never read from this singleton. Freezing either value
-in a `CHECK` here would state an admission decision `P2-K6` has not made.
+**The singleton records the format. It records no posture.** `data_policy`,
+`production_data_allowed`, and `product_network` are all **absent**. Section 3.1
+emits those three together and only when `AdmissionVerifier::verify()` succeeds,
+and section 6 makes an encrypted profile with no receipt serve the synthetic
+posture, so all three are `P2-K6`'s runtime output rather than facts about the
+file. Storing `data_policy = 'REAL_PERSONAL_DATA_PERMITTED'` in a `CHECK` would
+make the file itself claim that real personal data is permitted at a moment when
+no receipt exists anywhere — a false safety claim that any forensic tool or
+future reader would find by reading `schema_meta` directly.
+
+`storage_mode` and `storage_encryption` stay, because those are physical facts
+about how the bytes are stored; the posture object merely echoes them.
+
+A v2 profile's policy marker is the `PROFILE_FORMAT_V2` file, which carries the
+format UUID and schema version and is mutually exclusive with the Phase 1
+plaintext marker. Its presence or absence is the designed signal.
+
+Dropping all three columns also makes the two singletons structurally
+non-substitutable rather than merely differently valued: the schema-2 singleton
+has twelve columns and the Phase 1 one has fifteen, so neither can hold the
+other's row. `encrypted_profile_v2_is_created_only_by_cipher_lane` asserts the
+exact schema-2 column list against the live schema, and
+`phase1_profile_cannot_be_converted` asserts the three names appear nowhere in
+migration `0003`.
 
 ### No conversion from schema 1
 
@@ -156,6 +174,29 @@ every further page allocation fails at SQLite's own storage boundary with
 identically on both hosts. It does not exercise an operating-system `ENOSPC`
 return, which remains a host-level check.
 
+## Migration order
+
+The real order is `0001`, then `0003`, then `0004`. `0001` and `0003` are what
+profile creation applies, and `STORE_MIGRATION_SQL` is both what the runner
+executes and what the structural fingerprint is derived from.
+
+Migration `0004` (`P2-C2`'s aggregate closure tables) layers on the schema-2
+base through its own pre-listen entry point. It is a delta on the canonical
+core: it leaves `schema_meta`, `application_id`, and `user_version` untouched,
+so applying it cannot turn one profile format into another, and re-applying it
+fails.
+
+**`0004` is not part of profile creation yet.** A profile that has had it
+applied no longer matches the fingerprint derived from `STORE_MIGRATION_SQL`,
+so admission refuses to reopen it with
+`SchemaIdentityMismatch { component: "schema.structural_fingerprint.v1" }`.
+Nothing in the product applies `0004` to a profile today, so this is the seam
+for whoever wires the aggregates into creation, not a defect in either
+migration. `migration_0004_applies_on_a_real_encrypted_schema_two_profile`
+records the whole sequence including that refusal, because admission failing
+closed on a schema it was not admitted against is the behaviour that must not
+change when the seam is closed.
+
 ## Canary scan
 
 `sqlcipher_store_probe run <workdir>` writes the committed
@@ -169,20 +210,34 @@ plaintext canary and observing it found.
 
 ## Native Windows
 
-The encrypted lane has not been built natively on Windows. `openssl-src` runs
-`perl Configure VC-WIN64A`, and the only Perl on the evidence machine is
-Git-for-Windows' Cygwin Perl 5.42.2, which omits `Locale::Maketext::Simple`
-(reached through `Params/Check.pm` → `IPC/Cmd.pm` → `OpenSSL/config.pm` →
-`Configure`). `libsqlite3-sys` offers exactly two Windows routes — vendored
-OpenSSL, or a prebuilt OpenSSL named by `OPENSSL_DIR` — and both need software
-the machine does not have; `SQLCIPHER_CRYPTO_CC` is Apple-only, so there is no
-CNG path.
+The lane builds and passes natively on Windows with MSVC. `openssl-src` runs
+`perl Configure VC-WIN64A`, which needs a native Windows Perl; that interpreter
+is pinned, digest-verified, and recorded in
+[the Windows toolchain](../../tools/sqlcipher/windows-toolchain.md). It is
+reached only through `OPENSSL_SRC_PERL` and is never placed on `PATH`, so the
+build depends on the pin rather than on shell state.
+`pnpm verify:windows-toolchain` enforces that pin whenever the variable is set.
 
-This is **awaiting a user decision on installing a pinned Windows Perl**, not a
-closed `NOT_RUN`: a working route exists and only approval is missing. Vendoring
-the missing pure-Perl modules and pointing `PERL5LIB` at them is the ad-hoc
-workaround t068 section 8.2 rejects, and a Cygwin Perl still emits `/d/…` paths
-that `nmake` cannot consume.
+This is what the E1 spike left unresolved. E1 stopped at
+`Locale/Maketext/Simple.pm` because the only Perl on the machine was
+Git-for-Windows' trimmed Cygwin build; the pinned distribution carries that
+module and the rest of the chain `Configure` walks.
+
+The Windows OpenSSL is a `no-asm` build, because putting the distribution's
+`nasm.exe` on `PATH` would be the ad-hoc change section 8.2 rejects. The
+algorithms, key derivation, iteration count, and HMAC are unchanged by that, and
+the cipher settings are read back and asserted at every open on both hosts.
+Timing figures from the two hosts are not comparable.
+
+Both hosts observe the same cryptography: SQLCipher `4.14.0 community` over
+SQLite `3.51.3`, `cipher_page_size 4096`, `kdf_iter 256000`, `HMAC_SHA512`,
+`PBKDF2_HMAC_SHA512`, and a zero-hit canary scan over the database, its
+write-ahead log and shared-memory sidecars, an independently keyed backup, and
+crash artifacts.
+
+macOS and the two ARM64 desktop targets remain `P2-H1`, and no SQLCipher
+evidence exists for them: hosted CI exercises the default plaintext lane there,
+not this one.
 
 ## Still open
 

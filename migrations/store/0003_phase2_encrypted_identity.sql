@@ -10,15 +10,28 @@
 -- There is no conversion path from a schema-1 profile. A Phase 1 profile is
 -- plaintext, so the encrypted lane cannot open it at all, and the encrypted
 -- lane applies this migration only to an empty database. The Phase 1 CHECKs
--- pinned `schema_version = 1`, `data_policy` and `storage_mode` to their
--- plaintext synthetic values; the CHECKs below pin the schema-2 values, so
--- neither singleton can hold the other's row even if a caller tried.
+-- pinned `schema_version = 1` and `storage_mode` to their plaintext synthetic
+-- values, and the singleton carries three columns this one does not; the
+-- CHECKs below pin the schema-2 values, so neither singleton can hold the
+-- other's row even if a caller tried.
 --
--- `production_data_allowed` and `product_network` are deliberately absent.
--- They are the admission verifier's runtime output (t068 sections 3.1 and 6):
--- an encrypted profile with no receipt still serves the synthetic posture, so
--- the posture is not read from this singleton. Freezing either value in a
--- CHECK here would state an admission decision that `P2-K6` has not made.
+-- The singleton describes the FORMAT. `data_policy`,
+-- `production_data_allowed`, and `product_network` are deliberately absent:
+-- t068 section 3.1 emits all three only when `AdmissionVerifier::verify()`
+-- succeeds, and section 6 makes an encrypted profile with no receipt serve the
+-- synthetic posture. They are `P2-K6`'s runtime output, not facts about this
+-- file. Pinning `data_policy = 'REAL_PERSONAL_DATA_PERMITTED'` in a CHECK
+-- would make the file itself claim that real personal data is permitted at a
+-- moment when no receipt exists anywhere -- a false safety claim that any
+-- forensic tool or future reader would find by reading `schema_meta` directly.
+--
+-- `storage_mode` and `storage_encryption` stay. Those are physical facts about
+-- how these bytes are stored; the posture object merely echoes them.
+--
+-- The policy marker for a v2 profile is the `PROFILE_FORMAT_V2` file of
+-- section 3.2, which carries the format UUID and schema version and is
+-- mutually exclusive with the Phase 1 plaintext marker. Startup refuses a
+-- profile carrying both.
 
 DROP TABLE schema_meta;
 
@@ -35,7 +48,6 @@ CREATE TABLE schema_meta (
     minimum_reader_protocol_minor INTEGER NOT NULL CHECK (minimum_reader_protocol_minor = 0),
     minimum_writer_protocol_major INTEGER NOT NULL CHECK (minimum_writer_protocol_major = 2),
     minimum_writer_protocol_minor INTEGER NOT NULL CHECK (minimum_writer_protocol_minor = 0),
-    data_policy TEXT NOT NULL CHECK (data_policy = 'REAL_PERSONAL_DATA_PERMITTED'),
     storage_mode TEXT NOT NULL CHECK (storage_mode = 'SQLCIPHER_ENCRYPTED_PROFILE_V2'),
     storage_encryption TEXT NOT NULL CHECK (
         storage_encryption = 'SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000'

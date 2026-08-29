@@ -1,0 +1,23 @@
+{
+  "purpose": "Build toolchain for the native Windows encrypted store lane. Not a product dependency: it appears in no Cargo.lock, no package.json dependency set, and no product feature graph.",
+  "component": "Strawberry Perl (64-bit portable)",
+  "version": "5.42.2.1",
+  "perl_version_string": "v5.42.2",
+  "perl_archname": "MSWin32-x64-multi-thread",
+  "archive": {
+    "name": "strawberry-perl-5.42.2.1-64bit-portable.zip",
+    "url": "https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54221_64bit/strawberry-perl-5.42.2.1-64bit-portable.zip",
+    "size_bytes": 304301401,
+    "sha256": "32d83be90cf04b807cfb9477482bc36302cdee6f5b04cf57e81adecbd8f07898"
+  },
+  "digest_sources": [
+    "https://strawberryperl.com/releases.json (edition.portable.sha256)",
+    "https://api.github.com/repos/StrawberryPerl/Perl-Dist-Strawberry/releases/tags/SP_54221_64bit (assets[].digest)"
+  ],
+  "install_root": "D:\\toolchains\\strawberry-perl-5.42.2.1-64bit-portable",
+  "perl_relative_path": "perl\\bin\\perl.exe",
+  "referenced_only_by": "OPENSSL_SRC_PERL",
+  "path_change": false,
+  "openssl_asm": false,
+  "openssl_asm_note": "nasm.exe is deliberately not placed on PATH, so openssl-src passes `no-asm` to Configure. The distribution ships a nasm.exe in c\\bin; using it would require the ad-hoc PATH change t068 section 8.2 rejects. Algorithms, key derivation, and parameters are unchanged by this; only the assembly-optimised implementations are."
+}

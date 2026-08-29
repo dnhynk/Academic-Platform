@@ -80,17 +80,19 @@ pub struct SchemaIdentity {
     /// Minimum writer protocol `(major, minor)`.
     pub minimum_writer_protocol: (u32, u32),
     /// Synthetic-only data policy.
+    ///
+    /// Absent from the schema-2 singleton for the same reason as the two
+    /// fields below: t068 section 3.1 emits `data_policy`,
+    /// `production_data_allowed`, and `product_network` together and only
+    /// after the admission verifier succeeds, so all three are `P2-K6`'s
+    /// runtime output and none is a fact about the file.
+    #[cfg(not(feature = "sqlcipher-store"))]
     pub data_policy: String,
     /// Plaintext temporary storage mode.
     pub storage_mode: String,
     /// Encryption declaration, always `NONE` in S1.
     pub storage_encryption: String,
     /// Whether production input is permitted, always false in S1.
-    ///
-    /// Absent from the schema-2 singleton: t068 sections 3.1 and 6 make the
-    /// emitted posture the admission verifier's runtime output, not a stored
-    /// column, so the encrypted lane does not freeze an admission decision
-    /// that `P2-K6` has not made.
     #[cfg(not(feature = "sqlcipher-store"))]
     pub production_data_allowed: bool,
     /// Product network declaration, always `NONE` in S1.
@@ -310,9 +312,9 @@ fn insert_schema_identity(
              singleton, format_uuid, schema_version, schema_semver,\
              minimum_reader_protocol_major, minimum_reader_protocol_minor,\
              minimum_writer_protocol_major, minimum_writer_protocol_minor,\
-             data_policy, storage_mode, storage_encryption,\
+             storage_mode, storage_encryption,\
              creating_build_digest, created_at_unix_ms\
-         ) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+         ) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             STORE_FORMAT_UUID.as_slice(),
             i64::from(STORE_SCHEMA_VERSION),
@@ -321,7 +323,6 @@ fn insert_schema_identity(
             i64::from(STORE_MINIMUM_READER_PROTOCOL.1),
             i64::from(STORE_MINIMUM_WRITER_PROTOCOL.0),
             i64::from(STORE_MINIMUM_WRITER_PROTOCOL.1),
-            crate::cipher::ENCRYPTED_STORE_DATA_POLICY,
             crate::cipher::ENCRYPTED_STORE_STORAGE_MODE,
             crate::cipher::ENCRYPTED_STORE_STORAGE_ENCRYPTION,
             creating_build_digest.as_slice(),
@@ -393,7 +394,7 @@ pub fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdenti
             "SELECT format_uuid, schema_version, schema_semver, ",
             "minimum_reader_protocol_major, minimum_reader_protocol_minor, ",
             "minimum_writer_protocol_major, minimum_writer_protocol_minor, ",
-            "data_policy, storage_mode, storage_encryption, ",
+            "storage_mode, storage_encryption, ",
             "creating_build_digest, created_at_unix_ms ",
             "FROM schema_meta WHERE singleton = 1"
         ),
@@ -409,9 +410,8 @@ pub fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdenti
                 row.get::<_, i64>(6)?,
                 row.get::<_, String>(7)?,
                 row.get::<_, String>(8)?,
-                row.get::<_, String>(9)?,
-                row.get::<_, Vec<u8>>(10)?,
-                row.get::<_, i64>(11)?,
+                row.get::<_, Vec<u8>>(9)?,
+                row.get::<_, i64>(10)?,
             ))
         },
     )?;
@@ -427,11 +427,10 @@ pub fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdenti
             nonnegative_u32("minimum_writer_protocol_major", raw.5)?,
             nonnegative_u32("minimum_writer_protocol_minor", raw.6)?,
         ),
-        data_policy: raw.7,
-        storage_mode: raw.8,
-        storage_encryption: raw.9,
-        creating_build_digest: fixed_bytes::<32>("creating_build_digest", raw.10)?,
-        created_at_unix_ms: raw.11,
+        storage_mode: raw.7,
+        storage_encryption: raw.8,
+        creating_build_digest: fixed_bytes::<32>("creating_build_digest", raw.9)?,
+        created_at_unix_ms: raw.10,
     })
 }
 
@@ -529,13 +528,11 @@ fn verify_storage_declaration(identity: &SchemaIdentity) -> StoreResult<()> {
 }
 
 /// Verifies the storage declaration columns this lane pins in the singleton.
+///
+/// Both are physical facts about the file. The schema-2 singleton records no
+/// policy column at all, so there is nothing here to compare against a posture.
 #[cfg(feature = "sqlcipher-store")]
 fn verify_storage_declaration(identity: &SchemaIdentity) -> StoreResult<()> {
-    identity_exact(
-        "schema_meta.data_policy",
-        crate::cipher::ENCRYPTED_STORE_DATA_POLICY.to_owned(),
-        identity.data_policy.clone(),
-    )?;
     identity_exact(
         "schema_meta.storage_mode",
         crate::cipher::ENCRYPTED_STORE_STORAGE_MODE.to_owned(),
