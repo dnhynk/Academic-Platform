@@ -34,8 +34,8 @@ use academic_vault::{
 use thiserror::Error;
 
 use crate::{
-    CoreError, FixtureDocument, SYNTHETIC_ARTIFACT_BYTES, build_fixture_document,
-    fixture_device_authorization,
+    CoreError, FixtureDocument, SYNTHETIC_ARTIFACT_BYTES, fixture_device_authorization,
+    immutable_v2_fixture_document,
     service::{AcceptanceService, ServiceError},
     verify_fixture_document,
 };
@@ -342,7 +342,7 @@ struct FixtureContext {
 
 impl FixtureContext {
     fn load() -> Result<Self, LocalServiceError> {
-        let document: FixtureDocument = build_fixture_document()?;
+        let document: FixtureDocument = immutable_v2_fixture_document()?;
         if document.name != PHASE1_SYNTHETIC_FIXTURE_ID {
             return Err(LocalServiceError::UnexpectedCanonicalState(
                 "fixture identifier drifted",

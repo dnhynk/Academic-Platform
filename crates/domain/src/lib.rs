@@ -203,6 +203,29 @@ uuid_id!(DecisionId, "decision");
 uuid_id!(PermissionLineageId, "permission lineage");
 uuid_id!(ScopeId, "scope");
 
+// Event schema v3 aggregate identifiers. Each names an aggregate registered by
+// exactly one v3 arm, except `RepositoryId`, which is only ever a parent
+// reference: the eighteen arms fixed by the Phase 2 plan register no repository.
+uuid_id!(CurriculumVersionId, "curriculum version");
+uuid_id!(CourseRevisionId, "course revision");
+uuid_id!(OfferingId, "offering");
+uuid_id!(AttemptId, "attempt");
+uuid_id!(RequirementSetId, "requirement set");
+uuid_id!(AuditId, "audit");
+uuid_id!(CapturePermissionId, "capture permission");
+uuid_id!(LectureSessionId, "lecture session");
+uuid_id!(TranscriptVersionId, "transcript version");
+uuid_id!(LectureDocumentId, "lecture document");
+uuid_id!(RepositoryId, "repository");
+uuid_id!(SnapshotId, "snapshot");
+uuid_id!(FindingId, "finding");
+uuid_id!(ModelRunId, "model run");
+uuid_id!(ProposalId, "proposal");
+uuid_id!(EgressDecisionId, "egress decision");
+uuid_id!(ConsentId, "consent");
+uuid_id!(EntityIdentityChangeId, "entity identity change");
+uuid_id!(RetentionActionId, "retention action");
+
 /// A UTC instant represented as Unix epoch milliseconds.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
@@ -1444,7 +1467,160 @@ impl UserDecision {
     }
 }
 
+/// Declares one event schema v3 aggregate registration record.
+///
+/// Every v3 arm registers an aggregate at the same depth: its own identity, the
+/// domain and scope it belongs to, the parent aggregate it hangs from where one
+/// exists, an optional digest of the provenance artifact it was ingested from,
+/// and the interval over which the registration is effective or observed. The
+/// aggregate's own attributes are not part of the signed arm: disputable facts
+/// arrive as `CLAIM_ASSERTED`, and everything else becomes typed closure-table
+/// columns fixed by the task that owns that aggregate.
+macro_rules! aggregate_registration {
+    ($name:ident, $id:ty, $kind:literal $(, $parent_field:ident: $parent:ty)?) => {
+        #[doc = concat!("Canonical registration of one ", $kind, " aggregate.")]
+        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[serde(deny_unknown_fields)]
+        pub struct $name {
+            pub id: $id,
+            $(pub $parent_field: $parent,)?
+            pub domain_id: DomainId,
+            pub scope_id: ScopeId,
+            pub source_digest: Option<ContentDigest>,
+            pub valid_time: ValidInterval,
+        }
+
+        impl $name {
+            #[doc = concat!("Validates the ", $kind, " registration against its own event's domain.")]
+            pub fn validate(&self, event_domain_id: DomainId) -> Result<(), DomainError> {
+                if self.domain_id != event_domain_id {
+                    return Err(DomainError::InvalidEventPayload(concat!(
+                        $kind,
+                        " domain must match event domain"
+                    ).to_owned()));
+                }
+                Ok(())
+            }
+        }
+    };
+}
+
+aggregate_registration!(
+    CurriculumVersionRegistration,
+    CurriculumVersionId,
+    "curriculum version"
+);
+aggregate_registration!(
+    CourseRevisionRegistration,
+    CourseRevisionId,
+    "course revision",
+    curriculum_version_id: CurriculumVersionId
+);
+aggregate_registration!(
+    OfferingRegistration,
+    OfferingId,
+    "offering",
+    course_revision_id: CourseRevisionId
+);
+aggregate_registration!(AttemptRegistration, AttemptId, "attempt", offering_id: OfferingId);
+aggregate_registration!(
+    RequirementSetRegistration,
+    RequirementSetId,
+    "requirement set",
+    curriculum_version_id: CurriculumVersionId
+);
+aggregate_registration!(
+    AuditRegistration,
+    AuditId,
+    "audit",
+    requirement_set_id: RequirementSetId
+);
+aggregate_registration!(
+    CapturePermissionRegistration,
+    CapturePermissionId,
+    "capture permission",
+    offering_id: OfferingId
+);
+aggregate_registration!(
+    LectureSessionRegistration,
+    LectureSessionId,
+    "lecture session",
+    offering_id: OfferingId
+);
+aggregate_registration!(
+    TranscriptVersionRegistration,
+    TranscriptVersionId,
+    "transcript version",
+    lecture_session_id: LectureSessionId
+);
+aggregate_registration!(
+    LectureDocumentRegistration,
+    LectureDocumentId,
+    "lecture document",
+    lecture_session_id: LectureSessionId
+);
+aggregate_registration!(
+    SnapshotRegistration,
+    SnapshotId,
+    "snapshot",
+    repository_id: RepositoryId
+);
+aggregate_registration!(FindingRegistration, FindingId, "finding", snapshot_id: SnapshotId);
+aggregate_registration!(ModelRunRegistration, ModelRunId, "model run");
+aggregate_registration!(
+    ProposalDispositionRegistration,
+    ProposalId,
+    "proposal disposition",
+    model_run_id: ModelRunId
+);
+aggregate_registration!(
+    EgressDecisionRegistration,
+    EgressDecisionId,
+    "egress decision"
+);
+aggregate_registration!(ConsentRegistration, ConsentId, "consent");
+aggregate_registration!(
+    EntityIdentityChangeRegistration,
+    EntityIdentityChangeId,
+    "entity identity change",
+    entity_id: EntityId
+);
+aggregate_registration!(
+    RetentionActionRegistration,
+    RetentionActionId,
+    "retention action"
+);
+
+/// Event kind discriminants introduced by event schema v3, in Proto tag order 16..=33.
+///
+/// A payload authenticated as v1 or v2 may not carry any of these; the legacy
+/// source projections reject them so a v3 arm can never be smuggled into bytes
+/// that claim an older schema version.
+pub const V3_EVENT_KINDS: [&str; 18] = [
+    "CURRICULUM_VERSION_PUBLISHED",
+    "COURSE_REVISION_PUBLISHED",
+    "OFFERING_OBSERVED",
+    "ATTEMPT_RECORDED",
+    "REQUIREMENT_SET_PUBLISHED",
+    "AUDIT_COMPUTED",
+    "CAPTURE_PERMISSION_RECORDED",
+    "LECTURE_SESSION_RECORDED",
+    "TRANSCRIPT_VERSION_ADDED",
+    "LECTURE_DOCUMENT_PUBLISHED",
+    "SNAPSHOT_REGISTERED",
+    "FINDING_PUBLISHED",
+    "MODEL_RUN_RECORDED",
+    "PROPOSAL_DISPOSED",
+    "EGRESS_DECIDED",
+    "CONSENT_RECORDED",
+    "ENTITY_IDENTITY_CHANGED",
+    "RETENTION_ACTION_RECORDED",
+];
+
 /// Canonical event payloads admitted by the Phase 0 pure ledger.
+///
+/// Tags 10..=15 are the v1/v2 arms and never change. The v3 arms below are
+/// additive and occupy Proto tags 16..=33 in declaration order.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "value", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EventPayload {
@@ -1454,6 +1630,145 @@ pub enum EventPayload {
     ClaimAsserted(Claim),
     ClaimRelated(ClaimRelation),
     DecisionRecorded(UserDecision),
+    CurriculumVersionPublished(CurriculumVersionRegistration),
+    CourseRevisionPublished(CourseRevisionRegistration),
+    OfferingObserved(OfferingRegistration),
+    AttemptRecorded(AttemptRegistration),
+    RequirementSetPublished(RequirementSetRegistration),
+    AuditComputed(AuditRegistration),
+    CapturePermissionRecorded(CapturePermissionRegistration),
+    LectureSessionRecorded(LectureSessionRegistration),
+    TranscriptVersionAdded(TranscriptVersionRegistration),
+    LectureDocumentPublished(LectureDocumentRegistration),
+    SnapshotRegistered(SnapshotRegistration),
+    FindingPublished(FindingRegistration),
+    ModelRunRecorded(ModelRunRegistration),
+    ProposalDisposed(ProposalDispositionRegistration),
+    EgressDecided(EgressDecisionRegistration),
+    ConsentRecorded(ConsentRegistration),
+    EntityIdentityChanged(EntityIdentityChangeRegistration),
+    RetentionActionRecorded(RetentionActionRegistration),
+}
+
+/// The identity and closure fields every event schema v3 registration arm shares.
+///
+/// Consumers that only need to place an aggregate in its domain and scope read
+/// this instead of matching all eighteen arms.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AggregateRegistrationRef {
+    /// Wire discriminant of the arm that registered the aggregate.
+    pub kind: &'static str,
+    /// Opaque aggregate identifier, already constrained to an RFC-variant UUIDv7.
+    pub id: Uuid,
+    /// Domain the aggregate belongs to; equal to its event's domain.
+    pub domain_id: DomainId,
+    /// Scope the aggregate is registered under.
+    pub scope_id: ScopeId,
+}
+
+impl EventPayload {
+    /// Returns the shared registration view for a v3 arm, or `None` for a v1/v2 arm.
+    #[must_use]
+    pub fn registration(&self) -> Option<AggregateRegistrationRef> {
+        macro_rules! view {
+            ($record:expr) => {
+                Some(AggregateRegistrationRef {
+                    kind: self.kind(),
+                    id: $record.id.as_uuid(),
+                    domain_id: $record.domain_id,
+                    scope_id: $record.scope_id,
+                })
+            };
+        }
+        match self {
+            Self::ScopeRegistered(_)
+            | Self::ArtifactRegistered(_)
+            | Self::EvidenceRegistered(_)
+            | Self::ClaimAsserted(_)
+            | Self::ClaimRelated(_)
+            | Self::DecisionRecorded(_) => None,
+            Self::CurriculumVersionPublished(record) => view!(record),
+            Self::CourseRevisionPublished(record) => view!(record),
+            Self::OfferingObserved(record) => view!(record),
+            Self::AttemptRecorded(record) => view!(record),
+            Self::RequirementSetPublished(record) => view!(record),
+            Self::AuditComputed(record) => view!(record),
+            Self::CapturePermissionRecorded(record) => view!(record),
+            Self::LectureSessionRecorded(record) => view!(record),
+            Self::TranscriptVersionAdded(record) => view!(record),
+            Self::LectureDocumentPublished(record) => view!(record),
+            Self::SnapshotRegistered(record) => view!(record),
+            Self::FindingPublished(record) => view!(record),
+            Self::ModelRunRecorded(record) => view!(record),
+            Self::ProposalDisposed(record) => view!(record),
+            Self::EgressDecided(record) => view!(record),
+            Self::ConsentRecorded(record) => view!(record),
+            Self::EntityIdentityChanged(record) => view!(record),
+            Self::RetentionActionRecorded(record) => view!(record),
+        }
+    }
+
+    /// Returns the wire discriminant this payload serializes as.
+    #[must_use]
+    pub const fn kind(&self) -> &'static str {
+        match self {
+            Self::ScopeRegistered(_) => "SCOPE_REGISTERED",
+            Self::ArtifactRegistered(_) => "ARTIFACT_REGISTERED",
+            Self::EvidenceRegistered(_) => "EVIDENCE_REGISTERED",
+            Self::ClaimAsserted(_) => "CLAIM_ASSERTED",
+            Self::ClaimRelated(_) => "CLAIM_RELATED",
+            Self::DecisionRecorded(_) => "DECISION_RECORDED",
+            Self::CurriculumVersionPublished(_) => "CURRICULUM_VERSION_PUBLISHED",
+            Self::CourseRevisionPublished(_) => "COURSE_REVISION_PUBLISHED",
+            Self::OfferingObserved(_) => "OFFERING_OBSERVED",
+            Self::AttemptRecorded(_) => "ATTEMPT_RECORDED",
+            Self::RequirementSetPublished(_) => "REQUIREMENT_SET_PUBLISHED",
+            Self::AuditComputed(_) => "AUDIT_COMPUTED",
+            Self::CapturePermissionRecorded(_) => "CAPTURE_PERMISSION_RECORDED",
+            Self::LectureSessionRecorded(_) => "LECTURE_SESSION_RECORDED",
+            Self::TranscriptVersionAdded(_) => "TRANSCRIPT_VERSION_ADDED",
+            Self::LectureDocumentPublished(_) => "LECTURE_DOCUMENT_PUBLISHED",
+            Self::SnapshotRegistered(_) => "SNAPSHOT_REGISTERED",
+            Self::FindingPublished(_) => "FINDING_PUBLISHED",
+            Self::ModelRunRecorded(_) => "MODEL_RUN_RECORDED",
+            Self::ProposalDisposed(_) => "PROPOSAL_DISPOSED",
+            Self::EgressDecided(_) => "EGRESS_DECIDED",
+            Self::ConsentRecorded(_) => "CONSENT_RECORDED",
+            Self::EntityIdentityChanged(_) => "ENTITY_IDENTITY_CHANGED",
+            Self::RetentionActionRecorded(_) => "RETENTION_ACTION_RECORDED",
+        }
+    }
+
+    /// Returns the lowest event schema version whose arm table can carry this payload.
+    #[must_use]
+    pub const fn minimum_schema_version(&self) -> u16 {
+        match self {
+            Self::ScopeRegistered(_)
+            | Self::ArtifactRegistered(_)
+            | Self::EvidenceRegistered(_)
+            | Self::ClaimAsserted(_)
+            | Self::ClaimRelated(_)
+            | Self::DecisionRecorded(_) => EVENT_SCHEMA_VERSION_V1,
+            Self::CurriculumVersionPublished(_)
+            | Self::CourseRevisionPublished(_)
+            | Self::OfferingObserved(_)
+            | Self::AttemptRecorded(_)
+            | Self::RequirementSetPublished(_)
+            | Self::AuditComputed(_)
+            | Self::CapturePermissionRecorded(_)
+            | Self::LectureSessionRecorded(_)
+            | Self::TranscriptVersionAdded(_)
+            | Self::LectureDocumentPublished(_)
+            | Self::SnapshotRegistered(_)
+            | Self::FindingPublished(_)
+            | Self::ModelRunRecorded(_)
+            | Self::ProposalDisposed(_)
+            | Self::EgressDecided(_)
+            | Self::ConsentRecorded(_)
+            | Self::EntityIdentityChanged(_)
+            | Self::RetentionActionRecorded(_) => EVENT_SCHEMA_VERSION_V3,
+        }
+    }
 }
 
 /// Origin-authored event. `accepted_seq` is deliberately absent and assigned by a vault.
@@ -1506,16 +1821,36 @@ impl Event {
                     Err(DomainError::DecisionActorNotUser)
                 }
             }
+            EventPayload::CurriculumVersionPublished(record) => record.validate(self.domain_id),
+            EventPayload::CourseRevisionPublished(record) => record.validate(self.domain_id),
+            EventPayload::OfferingObserved(record) => record.validate(self.domain_id),
+            EventPayload::AttemptRecorded(record) => record.validate(self.domain_id),
+            EventPayload::RequirementSetPublished(record) => record.validate(self.domain_id),
+            EventPayload::AuditComputed(record) => record.validate(self.domain_id),
+            EventPayload::CapturePermissionRecorded(record) => record.validate(self.domain_id),
+            EventPayload::LectureSessionRecorded(record) => record.validate(self.domain_id),
+            EventPayload::TranscriptVersionAdded(record) => record.validate(self.domain_id),
+            EventPayload::LectureDocumentPublished(record) => record.validate(self.domain_id),
+            EventPayload::SnapshotRegistered(record) => record.validate(self.domain_id),
+            EventPayload::FindingPublished(record) => record.validate(self.domain_id),
+            EventPayload::ModelRunRecorded(record) => record.validate(self.domain_id),
+            EventPayload::ProposalDisposed(record) => record.validate(self.domain_id),
+            EventPayload::EgressDecided(record) => record.validate(self.domain_id),
+            EventPayload::ConsentRecorded(record) => record.validate(self.domain_id),
+            EventPayload::EntityIdentityChanged(record) => record.validate(self.domain_id),
+            EventPayload::RetentionActionRecorded(record) => record.validate(self.domain_id),
         }
     }
 }
 
 /// Legacy signed-batch semantic version accepted only through deterministic upcasting.
 pub const EVENT_SCHEMA_VERSION_V1: u16 = 1;
-/// Current signed-batch semantic version with durable user-decision applicability.
+/// Legacy signed-batch semantic version with durable user-decision applicability.
 pub const EVENT_SCHEMA_VERSION_V2: u16 = 2;
+/// Current signed-batch semantic version whose arm table carries [`V3_EVENT_KINDS`].
+pub const EVENT_SCHEMA_VERSION_V3: u16 = 3;
 /// Signed-batch semantic version emitted by current writers.
-pub const EVENT_SCHEMA_VERSION: u16 = EVENT_SCHEMA_VERSION_V2;
+pub const EVENT_SCHEMA_VERSION: u16 = EVENT_SCHEMA_VERSION_V3;
 
 /// An origin-authored batch before canonical framing and signature verification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

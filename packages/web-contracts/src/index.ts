@@ -14,7 +14,7 @@ export type FreshnessBand =
   | "HIGH"
   | "VERY_HIGH";
 
-export type FixtureVersion = 1 | 2;
+export type FixtureVersion = 1 | 2 | 3;
 
 export interface FixtureContractV1 {
   readonly envelope: "academic.signed-batch-envelope/v1 deterministic-cbor";
@@ -30,7 +30,14 @@ export interface FixtureContractV2 {
   readonly event_schema_version: 2;
 }
 
-export type FixtureContract = FixtureContractV1 | FixtureContractV2;
+export interface FixtureContractV3 {
+  readonly envelope: "academic.signed-batch-envelope/v1 deterministic-cbor";
+  readonly payload: "academic.event-batch/v3 deterministic-cbor";
+  readonly signature: "Ed25519";
+  readonly event_schema_version: 3;
+}
+
+export type FixtureContract = FixtureContractV1 | FixtureContractV2 | FixtureContractV3;
 
 export interface PredictionObservationWindow {
   readonly from: number;
@@ -683,9 +690,7 @@ function parseContract(value: unknown, fixtureVersion: FixtureVersion): FixtureC
   const envelope = requireString(value, "envelope");
   const payload = requireString(value, "payload");
   const expectedEnvelope = "academic.signed-batch-envelope/v1 deterministic-cbor";
-  const expectedPayload = fixtureVersion === 1
-    ? "academic.event-batch/v1 deterministic-cbor"
-    : "academic.event-batch/v2 deterministic-cbor";
+  const expectedPayload = `academic.event-batch/v${String(fixtureVersion)} deterministic-cbor`;
   if (
     envelope !== expectedEnvelope ||
     payload !== expectedPayload ||
@@ -702,11 +707,19 @@ function parseContract(value: unknown, fixtureVersion: FixtureVersion): FixtureC
       event_schema_version: 1,
     };
   }
+  if (fixtureVersion === 2) {
+    return {
+      envelope: "academic.signed-batch-envelope/v1 deterministic-cbor",
+      payload: "academic.event-batch/v2 deterministic-cbor",
+      signature: "Ed25519",
+      event_schema_version: 2,
+    };
+  }
   return {
     envelope: "academic.signed-batch-envelope/v1 deterministic-cbor",
-    payload: "academic.event-batch/v2 deterministic-cbor",
+    payload: "academic.event-batch/v3 deterministic-cbor",
     signature: "Ed25519",
-    event_schema_version: 2,
+    event_schema_version: 3,
   };
 }
 
@@ -805,7 +818,7 @@ function parseReplay(value: unknown, fixtureVersion: FixtureVersion): ReplaySumm
       "mastery_conflicting_claim_ids",
       "mastery_rejected_claim_ids",
       "deadline_active_claim_ids",
-      ...(fixtureVersion === 2 ? ["prediction_claims"] : []),
+      ...(fixtureVersion === 1 ? [] : ["prediction_claims"]),
       "semantic_digest",
   ];
   requireExactKeys(value, keys, "expected_replay");
@@ -827,11 +840,11 @@ function parseReplay(value: unknown, fixtureVersion: FixtureVersion): ReplaySumm
   if (!masteryLevels.has(mastery) || !freshnessBands.has(freshness)) {
     throw new TypeError("unsupported mastery or freshness vocabulary");
   }
-  const predictionClaims = fixtureVersion === 2
-    ? value.prediction_claims
-    : undefined;
-  if (fixtureVersion === 2 && (!Array.isArray(predictionClaims) || predictionClaims.length === 0)) {
-    throw new TypeError("v2 prediction_claims must be a nonempty array");
+  const predictionClaims = fixtureVersion === 1
+    ? undefined
+    : value.prediction_claims;
+  if (fixtureVersion !== 1 && (!Array.isArray(predictionClaims) || predictionClaims.length === 0)) {
+    throw new TypeError("v2 and v3 prediction_claims must be a nonempty array");
   }
   const parsedPredictionClaims = Array.isArray(predictionClaims)
     ? predictionClaims.map(parsePredictionClaimDisclosure)
@@ -882,7 +895,11 @@ export function parseFixtureDocument(value: unknown): FixtureDocument {
     ],
     "fixture",
   );
-  if (value.fixture_version !== 1 && value.fixture_version !== 2) {
+  if (
+    value.fixture_version !== 1 &&
+    value.fixture_version !== 2 &&
+    value.fixture_version !== 3
+  ) {
     throw new TypeError("unsupported fixture_version");
   }
   const fixtureVersion = value.fixture_version;

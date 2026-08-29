@@ -785,7 +785,13 @@ fn cli_restore_requires_empty_profile() -> TestResult {
         "--format",
         "json",
     ])?;
-    assert_eq!(restored.code, exit::OK, "stderr: {}", restored.stderr);
+    assert_eq!(
+        restored.code,
+        exit::OK,
+        "stdout: {} stderr: {}",
+        restored.stdout,
+        restored.stderr
+    );
     let document = restored.json()?;
     assert_eq!(document["result"]["mode"], "OFFLINE_NEW_EMPTY_PROFILE");
     assert_eq!(document["result"]["replay"]["verified_batches"], 1);

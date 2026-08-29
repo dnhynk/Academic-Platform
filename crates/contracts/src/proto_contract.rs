@@ -140,6 +140,302 @@ struct ProtoUserDecision {}
 struct ProtoScopeDescriptor {}
 
 #[derive(Clone, PartialEq, Message)]
+struct ProtoSha256Digest {
+    #[prost(bytes = "vec", tag = "1")]
+    value: Vec<u8>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoValidInterval {
+    #[prost(message, optional, tag = "1")]
+    from: Option<ProtoTimestampMillis>,
+    #[prost(message, optional, tag = "2")]
+    to: Option<ProtoTimestampMillis>,
+}
+
+// Event schema v3 registration messages. Field numbering is uniform across all
+// eighteen: 1 id, 2 parent where one exists, 3 domain_id, 4 scope_id,
+// 5 source_digest, 6 valid_time. Tag 2 is simply absent where the aggregate has
+// no parent, so no reader has to special-case one arm against another.
+#[derive(Clone, PartialEq, Message)]
+struct ProtoCurriculumVersionRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoCourseRevisionRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    curriculum_version_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoOfferingRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    course_revision_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoAttemptRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    offering_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoRequirementSetRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    curriculum_version_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoAuditRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    requirement_set_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoCapturePermissionRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    offering_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoLectureSessionRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    offering_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoTranscriptVersionRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    lecture_session_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoLectureDocumentRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    lecture_session_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoSnapshotRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    repository_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoFindingRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    snapshot_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoModelRunRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoProposalDispositionRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    model_run_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoEgressDecisionRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoConsentRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoEntityIdentityChangeRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "2")]
+    entity_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct ProtoRetentionActionRegistration {
+    #[prost(message, optional, tag = "1")]
+    id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "3")]
+    domain_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "4")]
+    scope_id: Option<ProtoUuidV7>,
+    #[prost(message, optional, tag = "5")]
+    source_digest: Option<ProtoSha256Digest>,
+    #[prost(message, optional, tag = "6")]
+    valid_time: Option<ProtoValidInterval>,
+}
+
+#[derive(Clone, PartialEq, Message)]
 struct ProtoOriginEvent {
     #[prost(message, optional, tag = "1")]
     id: Option<ProtoUuidV7>,
@@ -151,14 +447,24 @@ struct ProtoOriginEvent {
     domain_id: Option<ProtoUuidV7>,
     #[prost(message, optional, tag = "5")]
     actor: Option<ProtoActor>,
-    #[prost(oneof = "proto_origin_event::Payload", tags = "10, 11, 12, 13, 14, 15")]
+    #[prost(
+        oneof = "proto_origin_event::Payload",
+        tags = "10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33"
+    )]
     payload: Option<proto_origin_event::Payload>,
 }
 
 mod proto_origin_event {
     use super::{
-        ProtoArtifactDescriptor, ProtoClaim, ProtoClaimRelation, ProtoEvidenceItem,
-        ProtoScopeDescriptor, ProtoUserDecision,
+        ProtoArtifactDescriptor, ProtoAttemptRegistration, ProtoAuditRegistration,
+        ProtoCapturePermissionRegistration, ProtoClaim, ProtoClaimRelation,
+        ProtoConsentRegistration, ProtoCourseRevisionRegistration,
+        ProtoCurriculumVersionRegistration, ProtoEgressDecisionRegistration,
+        ProtoEntityIdentityChangeRegistration, ProtoEvidenceItem, ProtoFindingRegistration,
+        ProtoLectureDocumentRegistration, ProtoLectureSessionRegistration,
+        ProtoModelRunRegistration, ProtoOfferingRegistration, ProtoProposalDispositionRegistration,
+        ProtoRequirementSetRegistration, ProtoRetentionActionRegistration, ProtoScopeDescriptor,
+        ProtoSnapshotRegistration, ProtoTranscriptVersionRegistration, ProtoUserDecision,
     };
     use prost::Oneof;
 
@@ -176,6 +482,42 @@ mod proto_origin_event {
         ScopeRegistered(ProtoScopeDescriptor),
         #[prost(message, tag = "15")]
         ClaimRelated(ProtoClaimRelation),
+        #[prost(message, tag = "16")]
+        CurriculumVersionPublished(ProtoCurriculumVersionRegistration),
+        #[prost(message, tag = "17")]
+        CourseRevisionPublished(ProtoCourseRevisionRegistration),
+        #[prost(message, tag = "18")]
+        OfferingObserved(ProtoOfferingRegistration),
+        #[prost(message, tag = "19")]
+        AttemptRecorded(ProtoAttemptRegistration),
+        #[prost(message, tag = "20")]
+        RequirementSetPublished(ProtoRequirementSetRegistration),
+        #[prost(message, tag = "21")]
+        AuditComputed(ProtoAuditRegistration),
+        #[prost(message, tag = "22")]
+        CapturePermissionRecorded(ProtoCapturePermissionRegistration),
+        #[prost(message, tag = "23")]
+        LectureSessionRecorded(ProtoLectureSessionRegistration),
+        #[prost(message, tag = "24")]
+        TranscriptVersionAdded(ProtoTranscriptVersionRegistration),
+        #[prost(message, tag = "25")]
+        LectureDocumentPublished(ProtoLectureDocumentRegistration),
+        #[prost(message, tag = "26")]
+        SnapshotRegistered(ProtoSnapshotRegistration),
+        #[prost(message, tag = "27")]
+        FindingPublished(ProtoFindingRegistration),
+        #[prost(message, tag = "28")]
+        ModelRunRecorded(ProtoModelRunRegistration),
+        #[prost(message, tag = "29")]
+        ProposalDisposed(ProtoProposalDispositionRegistration),
+        #[prost(message, tag = "30")]
+        EgressDecided(ProtoEgressDecisionRegistration),
+        #[prost(message, tag = "31")]
+        ConsentRecorded(ProtoConsentRegistration),
+        #[prost(message, tag = "32")]
+        EntityIdentityChanged(ProtoEntityIdentityChangeRegistration),
+        #[prost(message, tag = "33")]
+        RetentionActionRecorded(ProtoRetentionActionRegistration),
     }
 }
 
@@ -357,6 +699,414 @@ mod tests {
                 Err(ProtoContractError::Domain(DomainError::InvalidId { .. }))
             ));
         }
+        Ok(())
+    }
+
+    type V3ArmGolden = (u32, &'static str, proto_origin_event::Payload, &'static str);
+
+    fn v3_registration_event(
+        payload: proto_origin_event::Payload,
+    ) -> Result<ProtoOriginEvent, Box<dyn std::error::Error>> {
+        Ok(ProtoOriginEvent {
+            id: Some(uuid(
+                "01900000-0000-7000-8000-00000000000c"
+                    .parse::<EventId>()?
+                    .as_bytes(),
+            )),
+            origin_seq: 12,
+            origin_observed_at: Some(ProtoTimestampMillis {
+                unix_epoch_millis: 112,
+            }),
+            domain_id: Some(uuid(
+                "01900000-0000-7000-8000-000000000001"
+                    .parse::<DomainId>()?
+                    .as_bytes(),
+            )),
+            actor: Some(encode_actor(&Actor::Importer {
+                name: "synthetic.official.fixture".to_owned(),
+                version: "1.0.0".to_owned(),
+            })),
+            payload: Some(payload),
+        })
+    }
+
+    // One explicit row per v3 arm. The hex strings were produced independently by
+    // protobuf.js from `schemas/proto/academic/v3/ledger.proto`, and
+    // `tools/verify-contracts.mjs` recomputes every one of them, so drift on
+    // either side fails.
+    fn v3_arm_goldens() -> Result<Vec<V3ArmGolden>, Box<dyn std::error::Error>> {
+        let id = "01900000-0000-7000-8000-000000000410".parse::<EventId>()?;
+        let parent = "01900000-0000-7000-8000-000000000411".parse::<EventId>()?;
+        let domain = "01900000-0000-7000-8000-000000000001".parse::<DomainId>()?;
+        let scope = "01900000-0000-7000-8000-000000000007".parse::<ScopeId>()?;
+        let digest =
+            hex::decode("0aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b8134")?;
+        let valid_time = ProtoValidInterval {
+            from: Some(ProtoTimestampMillis {
+                unix_epoch_millis: 100,
+            }),
+            to: None,
+        };
+        Ok(vec![
+            (
+                16,
+                "curriculum_version_published",
+                proto_origin_event::Payload::CurriculumVersionPublished(
+                    ProtoCurriculumVersionRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e308201670a120a10019000000000700080000000000004101a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                17,
+                "course_revision_published",
+                proto_origin_event::Payload::CourseRevisionPublished(
+                    ProtoCourseRevisionRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        curriculum_version_id: Some(uuid(parent.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e308a017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                18,
+                "offering_observed",
+                proto_origin_event::Payload::OfferingObserved(ProtoOfferingRegistration {
+                    id: Some(uuid(id.as_bytes())),
+                    course_revision_id: Some(uuid(parent.as_bytes())),
+                    domain_id: Some(uuid(domain.as_bytes())),
+                    scope_id: Some(uuid(scope.as_bytes())),
+                    source_digest: Some(ProtoSha256Digest {
+                        value: digest.clone(),
+                    }),
+                    valid_time: Some(valid_time.clone()),
+                }),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e3092017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                19,
+                "attempt_recorded",
+                proto_origin_event::Payload::AttemptRecorded(ProtoAttemptRegistration {
+                    id: Some(uuid(id.as_bytes())),
+                    offering_id: Some(uuid(parent.as_bytes())),
+                    domain_id: Some(uuid(domain.as_bytes())),
+                    scope_id: Some(uuid(scope.as_bytes())),
+                    source_digest: Some(ProtoSha256Digest {
+                        value: digest.clone(),
+                    }),
+                    valid_time: Some(valid_time.clone()),
+                }),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e309a017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                20,
+                "requirement_set_published",
+                proto_origin_event::Payload::RequirementSetPublished(
+                    ProtoRequirementSetRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        curriculum_version_id: Some(uuid(parent.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30a2017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                21,
+                "audit_computed",
+                proto_origin_event::Payload::AuditComputed(ProtoAuditRegistration {
+                    id: Some(uuid(id.as_bytes())),
+                    requirement_set_id: Some(uuid(parent.as_bytes())),
+                    domain_id: Some(uuid(domain.as_bytes())),
+                    scope_id: Some(uuid(scope.as_bytes())),
+                    source_digest: Some(ProtoSha256Digest {
+                        value: digest.clone(),
+                    }),
+                    valid_time: Some(valid_time.clone()),
+                }),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30aa017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                22,
+                "capture_permission_recorded",
+                proto_origin_event::Payload::CapturePermissionRecorded(
+                    ProtoCapturePermissionRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        offering_id: Some(uuid(parent.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30b2017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                23,
+                "lecture_session_recorded",
+                proto_origin_event::Payload::LectureSessionRecorded(
+                    ProtoLectureSessionRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        offering_id: Some(uuid(parent.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30ba017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                24,
+                "transcript_version_added",
+                proto_origin_event::Payload::TranscriptVersionAdded(
+                    ProtoTranscriptVersionRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        lecture_session_id: Some(uuid(parent.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30c2017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                25,
+                "lecture_document_published",
+                proto_origin_event::Payload::LectureDocumentPublished(
+                    ProtoLectureDocumentRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        lecture_session_id: Some(uuid(parent.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30ca017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                26,
+                "snapshot_registered",
+                proto_origin_event::Payload::SnapshotRegistered(ProtoSnapshotRegistration {
+                    id: Some(uuid(id.as_bytes())),
+                    repository_id: Some(uuid(parent.as_bytes())),
+                    domain_id: Some(uuid(domain.as_bytes())),
+                    scope_id: Some(uuid(scope.as_bytes())),
+                    source_digest: Some(ProtoSha256Digest {
+                        value: digest.clone(),
+                    }),
+                    valid_time: Some(valid_time.clone()),
+                }),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30d2017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                27,
+                "finding_published",
+                proto_origin_event::Payload::FindingPublished(ProtoFindingRegistration {
+                    id: Some(uuid(id.as_bytes())),
+                    snapshot_id: Some(uuid(parent.as_bytes())),
+                    domain_id: Some(uuid(domain.as_bytes())),
+                    scope_id: Some(uuid(scope.as_bytes())),
+                    source_digest: Some(ProtoSha256Digest {
+                        value: digest.clone(),
+                    }),
+                    valid_time: Some(valid_time.clone()),
+                }),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30da017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                28,
+                "model_run_recorded",
+                proto_origin_event::Payload::ModelRunRecorded(ProtoModelRunRegistration {
+                    id: Some(uuid(id.as_bytes())),
+                    domain_id: Some(uuid(domain.as_bytes())),
+                    scope_id: Some(uuid(scope.as_bytes())),
+                    source_digest: Some(ProtoSha256Digest {
+                        value: digest.clone(),
+                    }),
+                    valid_time: Some(valid_time.clone()),
+                }),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30e201670a120a10019000000000700080000000000004101a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                29,
+                "proposal_disposed",
+                proto_origin_event::Payload::ProposalDisposed(
+                    ProtoProposalDispositionRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        model_run_id: Some(uuid(parent.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30ea017b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                30,
+                "egress_decided",
+                proto_origin_event::Payload::EgressDecided(ProtoEgressDecisionRegistration {
+                    id: Some(uuid(id.as_bytes())),
+                    domain_id: Some(uuid(domain.as_bytes())),
+                    scope_id: Some(uuid(scope.as_bytes())),
+                    source_digest: Some(ProtoSha256Digest {
+                        value: digest.clone(),
+                    }),
+                    valid_time: Some(valid_time.clone()),
+                }),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30f201670a120a10019000000000700080000000000004101a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                31,
+                "consent_recorded",
+                proto_origin_event::Payload::ConsentRecorded(ProtoConsentRegistration {
+                    id: Some(uuid(id.as_bytes())),
+                    domain_id: Some(uuid(domain.as_bytes())),
+                    scope_id: Some(uuid(scope.as_bytes())),
+                    source_digest: Some(ProtoSha256Digest {
+                        value: digest.clone(),
+                    }),
+                    valid_time: Some(valid_time.clone()),
+                }),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e30fa01670a120a10019000000000700080000000000004101a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                32,
+                "entity_identity_changed",
+                proto_origin_event::Payload::EntityIdentityChanged(
+                    ProtoEntityIdentityChangeRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        entity_id: Some(uuid(parent.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e3082027b0a120a100190000000007000800000000000041012120a10019000000000700080000000000004111a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+            (
+                33,
+                "retention_action_recorded",
+                proto_origin_event::Payload::RetentionActionRecorded(
+                    ProtoRetentionActionRegistration {
+                        id: Some(uuid(id.as_bytes())),
+                        domain_id: Some(uuid(domain.as_bytes())),
+                        scope_id: Some(uuid(scope.as_bytes())),
+                        source_digest: Some(ProtoSha256Digest {
+                            value: digest.clone(),
+                        }),
+                        valid_time: Some(valid_time.clone()),
+                    },
+                ),
+                "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e308a02670a120a10019000000000700080000000000004101a120a100190000000007000800000000000000122120a10019000000000700080000000000000072a220a200aa68a055c7e14b3b3aa6730ea4e4135a3d3365c8f75249d44c73a0dbb5b813432050a0308c801",
+            ),
+        ])
+    }
+
+    /// Every event schema v3 arm occupies its own previously unused Proto tag.
+    ///
+    /// Tags 10..=15 stay bound to the v1/v2 arms and 6..=9 stay reserved, so the
+    /// eighteen v3 arms occupy 16..=33 and no emitted tag is ever reused.
+    #[test]
+    fn v3_arms_use_unreused_tags() -> Result<(), Box<dyn std::error::Error>> {
+        let mut emitted = std::collections::BTreeSet::new();
+        for (tag, name, payload, _) in v3_arm_goldens()? {
+            assert!((16..=33).contains(&tag), "{name} must occupy a v3 tag");
+            assert!(emitted.insert(tag), "{name} reuses Proto tag {tag}");
+            let encoded = v3_registration_event(payload)?.encode_to_vec();
+            let decoded = ProtoOriginEvent::decode(encoded.as_slice())?;
+            assert!(
+                decoded.payload.is_some(),
+                "{name} must decode back to its own arm"
+            );
+        }
+        assert_eq!(emitted.len(), 18, "v3 declares exactly eighteen arms");
+        assert_eq!(emitted.first().copied(), Some(16));
+        assert_eq!(emitted.last().copied(), Some(33));
+        for legacy in [6_u32, 7, 8, 9, 10, 11, 12, 13, 14, 15] {
+            assert!(!emitted.contains(&legacy), "v3 must not reuse tag {legacy}");
+        }
+        Ok(())
+    }
+
+    /// Rust encodes every v3 arm to the exact bytes protobuf.js independently produces.
+    #[test]
+    fn t093_every_v3_arm_matches_the_independent_protobufjs_golden()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for (tag, name, payload, expected) in v3_arm_goldens()? {
+            let encoded = v3_registration_event(payload)?.encode_to_vec();
+            assert_eq!(hex::encode(&encoded), expected, "{name} (tag {tag}) bytes");
+        }
+        Ok(())
+    }
+
+    /// An absent `source_digest` round-trips as absence, not as an empty digest.
+    #[test]
+    fn t093_v3_source_digest_round_trips_present_and_absent()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let id = "01900000-0000-7000-8000-000000000410".parse::<EventId>()?;
+        let domain = "01900000-0000-7000-8000-000000000001".parse::<DomainId>()?;
+        let scope = "01900000-0000-7000-8000-000000000007".parse::<ScopeId>()?;
+        let bare = ProtoCurriculumVersionRegistration {
+            id: Some(uuid(id.as_bytes())),
+            domain_id: Some(uuid(domain.as_bytes())),
+            scope_id: Some(uuid(scope.as_bytes())),
+            source_digest: None,
+            valid_time: Some(ProtoValidInterval {
+                from: Some(ProtoTimestampMillis {
+                    unix_epoch_millis: 100,
+                }),
+                to: None,
+            }),
+        };
+        let encoded = v3_registration_event(
+            proto_origin_event::Payload::CurriculumVersionPublished(bare.clone()),
+        )?
+        .encode_to_vec();
+        assert_eq!(
+            hex::encode(&encoded),
+            "0a120a100190000000007000800000000000000c100c1a0308e00122120a10019000000000700080000000000000012a2522230a1a73796e7468657469632e6f6666696369616c2e666978747572651205312e302e308201430a120a10019000000000700080000000000004101a120a100190000000007000800000000000000122120a100190000000007000800000000000000732050a0308c801"
+        );
+        let decoded = ProtoOriginEvent::decode(encoded.as_slice())?;
+        let Some(proto_origin_event::Payload::CurriculumVersionPublished(record)) = decoded.payload
+        else {
+            return Err("decoded arm must stay CurriculumVersionPublished".into());
+        };
+        assert_eq!(record.source_digest, None);
+        assert_eq!(record, bare);
         Ok(())
     }
 

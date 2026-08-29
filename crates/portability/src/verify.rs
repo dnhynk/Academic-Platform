@@ -1595,10 +1595,14 @@ pub fn replay_signed_batches(
             batch.origin_created_at_unix_ms,
             semantic.origin_created_at.value(),
         )?;
+        // The stored column is the version the batch was AUTHENTICATED as, not
+        // the version reading it upcasts to. Those coincide only while the
+        // writer version is also the newest readable source version; a v2
+        // envelope read by a v3 reader has source 2 and batch 3.
         require_u64(
             "batch schema version",
             u64::from(batch.event_schema_version),
-            u64::from(semantic.schema_version),
+            u64::from(verified.source_schema_version()),
         )?;
         require(
             "batch envelope digest",
@@ -1817,14 +1821,7 @@ pub fn read_batch_envelope(connection: &Connection, batch_id: &str) -> Portabili
 }
 
 const fn event_kind(payload: &EventPayload) -> &'static str {
-    match payload {
-        EventPayload::ScopeRegistered(_) => "SCOPE_REGISTERED",
-        EventPayload::ArtifactRegistered(_) => "ARTIFACT_REGISTERED",
-        EventPayload::EvidenceRegistered(_) => "EVIDENCE_REGISTERED",
-        EventPayload::ClaimAsserted(_) => "CLAIM_ASSERTED",
-        EventPayload::ClaimRelated(_) => "CLAIM_RELATED",
-        EventPayload::DecisionRecorded(_) => "DECISION_RECORDED",
-    }
+    payload.kind()
 }
 
 fn digest_hex(bytes: &[u8]) -> String {

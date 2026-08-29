@@ -34,7 +34,7 @@ fn read_fixture(path: &Path) -> Result<FixtureDocument, CliFailure> {
     })
 }
 
-/// Emits the deterministic v2 fixture to standard output or an explicit path.
+/// Emits the deterministic v3 fixture to standard output or an explicit path.
 pub fn emit(output: Option<&Path>) -> CommandResult {
     let document = build_fixture_document()
         .map_err(|error| CliFailure::internal("FIXTURE_BUILD_FAILED", error))?;

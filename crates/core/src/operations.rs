@@ -48,7 +48,7 @@ use academic_vault::{DomainKeyring, Vault};
 use serde::Serialize;
 
 use crate::{
-    CoreError, build_fixture_document, fixture_device_authorization,
+    CoreError, fixture_device_authorization, immutable_v2_fixture_document,
     local_service::{FIXTURE_LOCATOR_KEY, PHASE1_SYNTHETIC_FIXTURE_ID},
 };
 
@@ -254,7 +254,7 @@ struct FixtureMaterial {
 }
 
 fn fixture_material() -> Result<FixtureMaterial, OperationError> {
-    let document = build_fixture_document()?;
+    let document = immutable_v2_fixture_document()?;
     if document.name != PHASE1_SYNTHETIC_FIXTURE_ID {
         return Err(OperationError::UnexpectedState(
             "fixture identifier drifted",
