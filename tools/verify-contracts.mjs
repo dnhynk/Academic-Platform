@@ -1911,6 +1911,12 @@ const expectedCiWorkflow = {
           name: "Populate the Cargo registry from the committed lockfile",
           run: lockedCargoRegistryFetch,
         },
+        {
+          name: "Install pinned Node",
+          uses: "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          with: { "node-version-file": ".nvmrc" },
+        },
+        { name: "Install pinned pnpm", run: "npm install --global pnpm@11.22.0" },
         { name: "Check formatting", run: "cargo fmt --all -- --check" },
         {
           name: "Lint all Rust targets",
