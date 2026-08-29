@@ -1,0 +1,10 @@
+engine engine.reference.harness
+engine_version 1
+rule_set_hash sha256:5d17547794248e6221563cdfc2a50797846b48886cc480facff9473eefd3ca47
+frozen_inputs sha256:586fee77e597e7bf13dd42426e820d26ede3d4de19043bab74d5c498b4598331
+result SATISFIED
+value reference.margin=12/0
+proof
+  SATISFIED rule.reference.root [n.root]
+    SATISFIED rule.source.agreement [n.agreement] inputs=reference.source.a,reference.source.b
+    SATISFIED rule.threshold [n.threshold] inputs=reference.threshold,reference.value locators=01900000-0000-7000-8000-0000000000a1@page/1

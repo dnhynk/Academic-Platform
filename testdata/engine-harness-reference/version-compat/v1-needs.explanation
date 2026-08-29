@@ -1,0 +1,6 @@
+result NEEDS
+value reference.margin=-19/0
+proof
+  NEEDS rule.reference.root [n.root]
+    SATISFIED rule.source.agreement [n.agreement] inputs=reference.source.a,reference.source.b
+    NEEDS rule.threshold [n.threshold] inputs=reference.threshold,reference.value locators=01900000-0000-7000-8000-0000000000a1@page/1

@@ -1,0 +1,4 @@
+reference.source.a=ref:registrar.v1
+reference.source.b=ref:registrar.v1
+reference.threshold=unknown
+reference.value=int:41
