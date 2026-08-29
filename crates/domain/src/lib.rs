@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 type HmacSha256 = Hmac<Sha256>;
 
+pub mod engines;
 pub mod entity_registry;
 pub mod temporal;
 

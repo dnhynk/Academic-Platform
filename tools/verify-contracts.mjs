@@ -13,6 +13,13 @@ import {
   predicateId,
   renderRustModule,
 } from "./predicate-registry.mjs";
+import {
+  GENERATED_PATH as ENGINE_GENERATED_PATH,
+  REGISTRY_PATH as ENGINE_REGISTRY_PATH,
+  engineId,
+  renderRustModule as renderEngineModule,
+  specName,
+} from "./engine-registry.mjs";
 
 async function readRustSourceTree(root, relative = "") {
   const directory = join(root, relative);
@@ -3770,6 +3777,124 @@ const predicate_registry_matches_its_source_and_the_specification = async () => 
 };
 await predicate_registry_matches_its_source_and_the_specification();
 
+// The engine registry is the same two-file contract as the predicate registry:
+// a JSON source of truth and Rust constants rendered from it, both pinned to
+// the canonical design document whose digest is asserted above. §3.9 fixes the
+// registry at thirteen engines, and §28 fixes what each of them is, so a
+// specification edit that renames or drops an engine fails here rather than
+// reaching a caller.
+const engine_registry_matches_its_source_and_the_specification = async () => {
+  const registry = JSON.parse(await readFile(ENGINE_REGISTRY_PATH, "utf8"));
+  const generated = await readFile(ENGINE_GENERATED_PATH, "utf8");
+  assert.equal(
+    generated,
+    renderEngineModule(registry),
+    "the generated engine constants must be a fresh render of the registry file",
+  );
+
+  const specText = canonicalSpecBytes.toString("utf8");
+  const section = specText.slice(
+    specText.indexOf("## 28. Deterministic Engines"),
+    specText.indexOf("## 29. Data Ingestion"),
+  );
+  const rows = section
+    .split("\n")
+    .filter((line) => line.startsWith("| ") && !line.startsWith("| Engine "))
+    .filter((line) => !line.startsWith("|---"))
+    .map((line) =>
+      line
+        .split("|")
+        .map((cell) => cell.trim())
+        .slice(1, -1),
+    );
+  assert.equal(rows.length, 12, "§28 must still tabulate exactly twelve engines");
+  assert.equal(
+    registry.engines.length,
+    13,
+    "§3.9 fixes the registry at thirteen engines: the twelve tabulated plus the published-rule executor",
+  );
+
+  // The twelve tabulated engines, in table order and quoting their own cells.
+  for (const [index, row] of rows.entries()) {
+    const entry = registry.engines[index];
+    assert.equal(entry.name, specName(row[0]), "registry order must follow the §28 table");
+    assert.deepEqual(
+      entry.spec_row,
+      { engine: row[0], inputs: row[1], outputs: row[2], invariant: row[3] },
+      `${entry.name} must quote its §28 row verbatim`,
+    );
+    assert.equal(entry.spec_sentence, null, `${entry.name} is tabulated and quotes no sentence`);
+  }
+
+  // The thirteenth is the §28 prose engine: an approved rule executes
+  // deterministically even though a model may have proposed it.
+  const executor = registry.engines[12];
+  assert.equal(executor.name, "PUBLISHED_RULE_EXECUTOR");
+  assert.equal(executor.spec_row, null);
+  assert.ok(
+    section.includes(executor.spec_sentence),
+    "the published-rule executor must quote its §28 sentence verbatim",
+  );
+
+  const harnessDirs = new Set();
+  const engineIds = new Set();
+  for (const [index, entry] of registry.engines.entries()) {
+    assert.equal(entry.engine_id, engineId(entry.name));
+    assert.equal(entry.requirement_id, `REQ-28-${String(index + 1).padStart(3, "0")}`);
+    assert.equal(entry.since_registry_version, registry.registry_version);
+    assert.equal(entry.harness_dir, entry.name.toLowerCase());
+    assert.ok(!engineIds.has(entry.engine_id), `${entry.name} reuses an engine id`);
+    assert.ok(!harnessDirs.has(entry.harness_dir), `${entry.name} reuses a harness directory`);
+    engineIds.add(entry.engine_id);
+    harnessDirs.add(entry.harness_dir);
+    assert.ok(
+      ["PLANNED", "IMPLEMENTED"].includes(entry.lifecycle),
+      `${entry.name} has an unknown lifecycle`,
+    );
+  }
+
+  // The high-impact four §3.9 names, one engine per path and no more. Egress is
+  // decided by the permission broker: it is the only registered engine whose
+  // output governs whether data may leave the device.
+  assert.deepEqual(
+    registry.engines
+      .filter((entry) => entry.high_impact_path !== null)
+      .map((entry) => [entry.name, entry.high_impact_path]),
+    [
+      ["GPA", "GPA"],
+      ["GRADUATION_AUDIT", "GRADUATION"],
+      ["PERMISSION_BROKER", "EGRESS"],
+      ["RETENTION_DELETION", "DELETION"],
+    ],
+    "the high-impact four must stay GPA, graduation, deletion, and egress",
+  );
+  assert.deepEqual(
+    registry.high_impact_paths.toSorted(),
+    ["DELETION", "EGRESS", "GPA", "GRADUATION"],
+  );
+  assert.deepEqual(registry.adverse_paths, ["UNKNOWN", "CONFLICT", "PARTIAL_FAILURE"]);
+  assert.deepEqual(registry.artifact_classes, [
+    "GOLDEN_FIXTURES",
+    "PROPERTY_TESTS",
+    "VERSION_COMPAT_FIXTURES",
+    "EXPLANATION_SNAPSHOT",
+  ]);
+
+  // Nothing unregistered hides under the harness root, and no planned engine
+  // has quietly acquired artifacts there.
+  const planned = new Set(
+    registry.engines
+      .filter((entry) => entry.lifecycle === "PLANNED")
+      .map((entry) => entry.harness_dir),
+  );
+  const present = await readdir(registry.harness_root).catch(() => []);
+  for (const name of present) {
+    assert.ok(harnessDirs.has(name), `${name} is under the harness root and is not an engine`);
+    assert.ok(!planned.has(name), `${name} is PLANNED and has harness artifacts`);
+  }
+};
+await engine_registry_matches_its_source_and_the_specification();
+
 console.log(
-  "Immutable v1 and v2 contracts, the §7.1/§7.2 predicate registry and its generated constants, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v3-only writers, event schema v3 arm and tag discipline across three Proto versions, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
+  "Immutable v1 and v2 contracts, the §7.1/§7.2 predicate registry and the §28 engine registry with their generated constants, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v3-only writers, event schema v3 arm and tag discipline across three Proto versions, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
 );
