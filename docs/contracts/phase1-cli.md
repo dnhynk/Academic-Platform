@@ -113,6 +113,27 @@ policy object, lock state, and negotiated capability.
 `restore` is offline by contract. It targets a destination no daemon owns, and it
 refuses a destination a daemon does own.
 
+### Recorded deviation from the T009 C1 line
+
+T009 specifies that the CLI's data commands travel over IPC except restore. The
+frozen Phase 1 protocol cannot express two of them: `MutableRequest.command` has
+no export arm at all, and neither `SyntheticBackupCommand` nor
+`SyntheticRestoreCommand` carries a destination, so "export to `<path>`" and
+"back up to `<path>`" have no wire representation. This build therefore routes
+ingest — the only canonical mutation — strictly over IPC with no local fallback,
+answers `daemon status` from the IPC handshake, and runs export and backup
+locally read-only after first handshaking with any daemon that owns the profile
+and refusing when that daemon reports `LOCKED` or `REPAIR_REQUIRED`. The
+single-writer invariant of ADR-001 is intact because the deviation moves only
+reads: export and backup admit the source profile through the guarded store
+reader, then read it through a `SQLITE_OPEN_READ_ONLY` handle constrained to
+`query_only`, hold no writer handle on it, and append no event, receipt, or
+revision — so the owning daemon remains the sole canonical writer and keeps its
+veto over both commands through the handshake. This is a deliberate recorded
+deviation, not an omission; it ends when the protocol gains an export arm and a
+destination-bearing backup, which is a Proto change against the F0 frozen
+surface.
+
 ### After an abrupt daemon termination
 
 A daemon killed abruptly cannot remove its own session metadata, so stale
