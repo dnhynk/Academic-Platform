@@ -72,8 +72,12 @@ async fn desktop_client_disconnect_does_not_stop_daemon() -> Result<(), Box<dyn 
     write_envelope(&mut stream, &envelope, FrameClass::Command).await?;
     drop(stream);
 
+    // Patience for a loaded shared runner, not a latency claim: the command
+    // still has to be accepted, framed, and committed durably after the
+    // client is gone, and a 500ms budget mistook a busy host for a stalled
+    // daemon on hosted Windows.
     let mut accepted = false;
-    for _ in 0..50 {
+    for _ in 0..500 {
         let reader = daemon.readers().open()?;
         if canonical_snapshot(&reader)?.profile_revision == 1 {
             accepted = true;
@@ -81,7 +85,10 @@ async fn desktop_client_disconnect_does_not_stop_daemon() -> Result<(), Box<dyn 
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
-    assert!(accepted);
+    assert!(
+        accepted,
+        "the daemon must apply a command whose client disconnected"
+    );
     let response =
         client_exchange(daemon.endpoint(), daemon.session_nonce(), request.clone()).await?;
     assert_eq!(response.status, MutationStatus::Duplicate as i32);
