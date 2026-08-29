@@ -16,6 +16,8 @@ use uuid::Uuid;
 
 type HmacSha256 = Hmac<Sha256>;
 
+pub mod entity_registry;
+
 /// Largest integer that can cross the JSON contract without precision loss.
 pub const MAX_SAFE_JSON_INTEGER: u64 = 9_007_199_254_740_991;
 
