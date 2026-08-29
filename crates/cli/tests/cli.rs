@@ -149,17 +149,29 @@ fn text(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
+fn read_stream(path: &Path) -> TestResult<String> {
+    let mut contents = String::new();
+    fs::File::open(path)?.read_to_string(&mut contents)?;
+    Ok(contents)
+}
+
 /// A real foreground daemon, terminated when the guard is dropped.
 #[derive(Debug)]
 struct Daemon {
     child: Child,
+    stdout_path: PathBuf,
     stderr_path: PathBuf,
 }
 
 impl Daemon {
     /// Starts `academic daemon serve` and waits for its readiness line.
     fn start(lane: &Lane) -> TestResult<Self> {
+        // The refusal a daemon prints before it can serve travels on standard
+        // output, so discarding that stream turns a typed refusal into a bare
+        // readiness timeout. It is captured and reported instead.
+        let stdout_path = lane.path("daemon.stdout");
         let stderr_path = lane.path("daemon.stderr");
+        let stdout = fs::File::create(&stdout_path)?;
         let stderr = fs::File::create(&stderr_path)?;
         let child = Command::new(binary())
             .args([
@@ -172,10 +184,14 @@ impl Daemon {
                 "--format",
                 "json",
             ])
-            .stdout(Stdio::null())
+            .stdout(Stdio::from(stdout))
             .stderr(Stdio::from(stderr))
             .spawn()?;
-        let daemon = Self { child, stderr_path };
+        let daemon = Self {
+            child,
+            stdout_path,
+            stderr_path,
+        };
         daemon.wait_for_ready()?;
         Ok(daemon)
     }
@@ -189,16 +205,15 @@ impl Daemon {
             thread::sleep(Duration::from_millis(50));
         }
         Err(format!(
-            "the daemon never became ready; stderr was:\n{}",
+            "the daemon never became ready; stdout was:\n{}\nstderr was:\n{}",
+            read_stream(&self.stdout_path)?,
             self.stderr()?
         )
         .into())
     }
 
     fn stderr(&self) -> TestResult<String> {
-        let mut contents = String::new();
-        fs::File::open(&self.stderr_path)?.read_to_string(&mut contents)?;
-        Ok(contents)
+        read_stream(&self.stderr_path)
     }
 
     /// Terminates the daemon abruptly, the way a fault point would.
@@ -1092,6 +1107,7 @@ fn cli_accepts_forward_slash_paths_on_every_host() -> TestResult {
     let profile = text(&lane.profile()).replace('\\', "/");
     let runtime = text(&lane.runtime()).replace('\\', "/");
 
+    let stdout_path = lane.path("daemon.stdout");
     let stderr_path = lane.path("daemon.stderr");
     let mut child = Command::new(binary())
         .args([
@@ -1104,7 +1120,7 @@ fn cli_accepts_forward_slash_paths_on_every_host() -> TestResult {
             "--format",
             "json",
         ])
-        .stdout(Stdio::null())
+        .stdout(Stdio::from(fs::File::create(&stdout_path)?))
         .stderr(Stdio::from(fs::File::create(&stderr_path)?))
         .spawn()?;
     let deadline = Instant::now() + Duration::from_secs(60);
@@ -1118,7 +1134,8 @@ fn cli_accepts_forward_slash_paths_on_every_host() -> TestResult {
     }
     assert!(
         ready,
-        "the daemon never became ready on a forward-slash path"
+        "the daemon never became ready on a forward-slash path; stdout was: {}",
+        read_stream(&stdout_path)?
     );
 
     let accepted = run(&[
