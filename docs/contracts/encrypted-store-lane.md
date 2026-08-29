@@ -193,11 +193,10 @@ which format that profile is. The frozen identity above is what `0003` writes,
 
 **The fingerprint is exact structural equality, never a subset test.** A profile
 whose user schema is not exactly what this set produces is refused with
-`SchemaIdentityMismatch { component: "schema.structural_fingerprint.v1" }`, in
-either direction: an object the set does not create and an object the set
-creates but the profile lacks both fail. A migration that is applied to a
-profile without being added to `STORE_MIGRATION_SQL` therefore makes that
-profile unopenable. `profile_carrying_0004_is_admitted_on_reopen` runs the round
+`SchemaIdentityMismatch { component: "schema.structural_fingerprint.v1" }`. An
+extra object the set does not create is refused, and so is a missing object the
+set does create. A migration applied to a profile but left out of
+`STORE_MIGRATION_SQL` therefore makes that profile unopenable. `profile_carrying_0004_is_admitted_on_reopen` runs the round
 trip — create, close, reopen — and then adds an object outside the set to observe
 that admission still fails closed on a schema this binary was not admitted
 against.
