@@ -106,6 +106,8 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
+      - name: Install pinned pnpm
+        run: npm install --global pnpm@11.22.0
       - name: Lint the fault-injection lane
         run: cargo clippy --workspace --all-targets --locked --features academic-core/phase1-fault-injection,academic-daemon/phase1-fault-injection,academic-portability/phase1-fault-injection,academic-projections/phase1-fault-injection,academic-test-support/phase1-fault-injection,academic-vault/phase1-fault-injection -- -D warnings
       - name: Run the enumerated Phase 1 exit matrix

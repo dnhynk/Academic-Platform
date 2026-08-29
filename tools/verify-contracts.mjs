@@ -1997,6 +1997,7 @@ const expectedCiWorkflow = {
           uses: "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
           with: { "node-version-file": ".nvmrc" },
         },
+        { name: "Install pinned pnpm", run: "npm install --global pnpm@11.22.0" },
         { name: "Lint the fault-injection lane", run: phase1ExitCiCommands[0] },
         { name: "Run the enumerated Phase 1 exit matrix", run: phase1ExitCiCommands[1] },
         { name: "Assemble the Phase 1 exit receipt", run: phase1ExitCiCommands[2] },
