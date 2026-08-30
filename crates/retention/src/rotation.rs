@@ -306,8 +306,19 @@ pub struct RotationNotAccepted;
 /// caller cannot pass anything that makes it return `Ok` — selecting the
 /// feature at build time is the only thing that does, and no product binary
 /// does. Every entry point calls it on its first line, before it reads a
-/// journal or touches a file, so the states the fourth audit reached are behind
-/// it rather than beside it.
+/// journal or touches a file.
+///
+/// **What it covers is the journalled orchestration, not every write a rotation
+/// performs.** Three of the four states the fourth audit reached need a
+/// journalled rotation to exist before they can be reached, so they are behind
+/// this refusal; the fourth, a reconciliation pass that calls a shredded object
+/// corrupt, is a vault-level state and needs no rotation at all. The two
+/// irreversible writes a rotation composes stand beside it: re-sealing an object
+/// into another generation's vault, and rekeying the profile database. Neither
+/// can call this — `academic-vault` is below this crate and `academic-store` is
+/// linked by every product binary while this crate is linked by none — and
+/// neither belongs to a rotation alone. Assembled by hand they are a rotation
+/// with no journal. The contract lists them, with what each one costs.
 pub fn require_rotation_accepted() -> Result<(), RotationNotAccepted> {
     if cfg!(feature = "rotation-orchestration") {
         return Ok(());

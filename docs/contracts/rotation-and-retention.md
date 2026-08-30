@@ -56,10 +56,36 @@ decided. It takes no argument, reads no environment variable, and has no
 debug-build branch; the non-default `rotation-orchestration` feature is the only
 thing that turns it off, no product graph selects it
 (`phase1-scaffold-policy.test.mjs`), and the rows that execute a rotation and the
-rows that refuse one never link into one binary. `rotation_gate.rs` and
+rows that refuse one never link into one binary.
+`the_rotation_gate_is_one_decision_with_no_flag_variable_or_debug_path` checks
+the gate's whole text rather than a list of forbidden tokens, so an environment
+read moved into a helper it calls, or a process-wide flag with a public setter,
+is caught as well — both were built against the previous guard and neither
+tripped it. `rotation_gate.rs` and
 `encrypted_rotation_gate.rs` are the refusal, run everywhere; the
 `rotation-orchestration-lane` CI job is where the machinery — the `KY03`-`KY05`
 fault rows, the `T114` and `T116` seam closures — still runs.
+
+### What the gate covers, and what stands beside it
+
+**The gate wraps the journalled orchestration.** The seven entry points above
+are the calls that read or append the rotation journal, and each refuses before
+it does. It does not wrap the primitives a rotation composes, and it cannot:
+
+| beside the gate | what one call does | why it is not behind the gate |
+|---|---|---|
+| `EncryptedVault::reseal` (`vault/src/encrypted.rs:452`) | re-seals one object into a destination vault's keyring — the object half of a rotation, without the journal entry that records it | `academic-vault` is below `academic-retention` in the crate graph, so calling the gate from it is a cycle in a graph that is machine-checked acyclic. It is also the vault's own primitive with its own `OB09` crash contract, exercised by `vault/tests/encrypted_crash.rs` with no rotation in sight. |
+| `StoreDatabaseExecutor::rekey_store_database` (`portability/src/encrypted/rotation.rs:83`), and `cipher::rekey_encrypted_profile` (`store/src/cipher.rs:329`) behind it | rewrites every page of the profile database under the target generation's store key. The profile then opens under neither the generation the rest of it is under nor the one its backups were taken with, and the journal is empty | The irreversible write is `academic-store`'s. Every product binary links `academic-store` and none links `academic-retention`, so gating it would put this crate into the default product graph — the posture the first paragraph of this document rests on and `rotation_engine_lane_is_not_default` proves. Gating only the portability implementation would leave `rekey_encrypted_profile` reachable one step out, which is the same thing one layer down. |
+| `AcceptanceStore::record_descriptor_migration` (`store/src/accept.rs:181`) | appends the chain row that moves an artifact's canonical reference | the same crate edge as above |
+| `recipients::add_recipient`, `recipients::revoke_recipient` | key management, which is a fact whether or not a rotation follows | deliberate, and stated above |
+
+So a caller that links the encrypted portability lane and drives the executor
+directly performs **a rotation with no journal**: `rekey_store_database` returns
+`Ok`, `open_store` then fails, and the rotation journal holds nothing to replay
+or resume from. That is not a bypass of the gate; it is what
+the gate does not claim, and until `P2-P2` there is no non-test caller of either
+primitive. `the_primitives_a_rotation_composes_are_not_refused_beside_the_gate`
+in `encrypted_rotation_gate.rs` executes it rather than leaving it as a sentence.
 
 **Why.** The machinery is built and tested. What does not exist is the
 orchestrator that would hold its obligations, and the fourth `P2-A1` audit
@@ -71,16 +97,21 @@ the list below.
 
 ### Known unresolved, for whoever reopens this
 
-Each is reachable the moment the gate opens, and each was reproduced by that
-audit over the shipped API.
+Each was reproduced over the shipped API, except **P3-G10**, which is a gap in
+what a record states rather than a state to reach. **P1-F2**, **P2-F3**,
+**P2-G3**, **P3-F5** and **P3-F6** need the gate to open first. **P2-F4** is a
+vault-level state and **P3-G10** is on the deletion path, so both are reachable
+today, and their rows say so.
 
 | item | what happens | where |
 |---|---|---|
 | **P1-F2** a deletion lands inside an open rotation | `rotate_object` refuses the shredded source and writes nothing, `complete` refuses the remaining unit, the engine has no abandon, and the deletion path never reads the journal. The rotation cannot finish; `retire_generation` refuses forever; `rewrap_for_generation` leaves two generations of records and `recover_profile_keys` takes the first that opens, so **no backup of that profile restores**. | `engine.rs` `rotate_object`/`complete`, `recipients.rs` |
 | **P2-F3** `rotate_object` does not bind its descriptor to its unit | `rotate_object(unit of A, descriptor of B)` is accepted; the journal records unit A migrated to B's target locator while A never moved. After `retire_generation`, no recipient on disk opens A. The one-line comparison `retire_superseded_object` already makes (`UnitDoesNotNameSupersededObject`) is the fix. | `engine.rs:399-424` |
-| **P2-F4** `EncryptedVault::reconcile` is a fifth reader | It resolves each referenced descriptor with `validate_descriptor_locator`, so a shredded row under a rotated keyring fails the whole pass with `LocatorMismatch`. Giving it the `may_be_shredded` → `verify_shredded_object` branch backup and restore have closes it. Without a rotation the pass completes and reports the shred as `ReferencedCorruptRepairRequired` — recorded by `reconciliation_completes_over_a_profile_that_deleted_an_artifact`, and itself a state a shred and a bit-rotted object share. | `reconcile.rs:181-184`, `encrypted.rs` |
+| **P2-F4** `EncryptedVault::reconcile` is a fifth reader | Reachable **at the vault level**, with no engine, no plan and no journal, so unlike the rest of this table it is not behind the gate. It resolves each referenced descriptor with `validate_descriptor_locator`, so a shredded row under a rotated keyring fails the whole pass with `LocatorMismatch`. Giving it the `may_be_shredded` → `verify_shredded_object` branch backup and restore have closes it. Without a rotation the pass completes and reports the shred as `ReferencedCorruptRepairRequired` — recorded by `reconciliation_completes_over_a_profile_that_deleted_an_artifact`, and itself a state a shred and a bit-rotted object share. | `reconcile.rs:181-184`, `encrypted.rs` |
+| **P2-G3** a rotation unit is identified by its locator, so a profile holding the same bytes in two lineages cannot be planned | `RotationUnit::object` derives `unit_id = SHA-256(domain ‖ kind ‖ **source_locator**)` and `RotationPlan::new` refuses a plan that names one unit twice. A locator carries no permission lineage, so registering one document twice in a domain gives two artifacts one locator and therefore one unit id: `RotationPlan::new` returns `DuplicateUnit` and the rotation never starts. Nothing is lost — the refusal is before any write — but the first orchestrator meets it on the shipped API, over exactly the profile shape the tombstone rows above are built on. The fix is to identify a unit by artifact (or by the four-tuple its path is), or to state that one unit moves every artifact sharing its locator, in order, and to say which here. | `rotation.rs:110-118` `RotationUnit::object`, `rotation.rs:271-279` `derive_unit_id`, `rotation.rs:429-436` `RotationPlan::new`; fifth `P2-A1` audit §4 (`C:\Users\dongh\.claude\orchestration\run_98ccc873ba4b\t121-a1-crypto-admission-audit5.md`) |
 | **P3-F5** the database unit's *execution* order is not enforced | `RotationPlan::new` refuses a plan that orders it anywhere but last; the engine holds no state, so running it first is accepted and the store then records a chain row under a key it has moved away from. | `rotation.rs:400-405`, `engine.rs` |
 | **P3-F6** a second `begin` over an open rotation | `AppendOnlyJournal::append` does not replay before appending, so a second `RotationStarted` makes every later replay `ConcurrentRotation` — permanently, because records are append-only. | `journal.rs:413-445`, `rotation.rs:533-540` |
+| **P3-G10** the deletion path names its subject by locator everywhere except the tombstone record | `PlannedAction.locator`, `JournalEntry::RetentionPlanned.subject_locator`, and `JournalEntry::ArtifactShredded.locator` all identify one deleted object by its locator. Two registrations of the same bytes in one domain share it, so a profile that deleted both leaves two journal entries that differ only in `action_id` and `tombstone_digest` — and the obligation table in the next section tells an orchestrator to learn which artifacts are shredded by replaying `ArtifactShredded`. Nothing replays it today, and the digest does bind the artifact, so this is a gap in what the journal *states* rather than a collision: the tombstone record is the only place in the deletion path that names an artifact. Adding the artifact to these records is a journal format change and is left for whoever writes the executor. Found in `T122` while closing P1-G1, not by the fifth audit. | `plan.rs:180-216`, `entry.rs:142-160`, `engine.rs` `shred_with_tombstone` |
 | **P3-F7** the obligation table below is what a caller is still held to | Two obligations are typed refusals and the rest are prose. The table states all of them. | this document |
 
 ## What the first orchestrator is bound by
@@ -583,7 +614,7 @@ A backup holds `AEAD_CHUNKED_V2` objects byte for byte, so shredding the live
 object does not reach the copy inside one. A tombstone closes that gap:
 
 ```text
-<backup>/tombstones/<locator>.tombstone     # one JSON object, one atomic write
+<backup>/tombstones/<artifact-id>-<locator>.tombstone   # one JSON object, one write
 ```
 
 **A tombstone names its artifact, and every locator that artifact has been
@@ -611,6 +642,25 @@ carries the 16-byte artifact id, which is cleartext at a fixed header offset lik
 the locator; `apply_tombstones` matches on both; and a match does not consume the
 record, so one tombstone still reaches every name its own artifact has.
 
+**The file is named for both, for the same reason.** A backup directory is a
+flat namespace, so a name carrying only the locator makes the second of two such
+deletions replace the first record instead of joining it — and a restore of
+every backup taken before them republishes the artifact deleted first as
+readable, while the receipt lists it as a copy the deletion deliberately spared.
+Deleting two registrations of one document destroys two key slots and leaves two
+files. A second record for the *same* artifact at the *same* locator does
+replace the first, which is what re-writing a tombstone means and what `RB02`'s
+repair relies on. Both halves of the name are re-encoded from the record's own
+decoded bytes, so a record that is not 16 and 32 bytes of hex has no file name
+at all rather than a caller-spelled one.
+`two_tombstones_that_share_a_locator_are_two_files_and_two_records` is the file
+layout on its own, in the default lane on every platform;
+`two_tombstones_reach_both_deleted_artifacts_when_the_lower_lineage_goes_first`
+and its two siblings are the same two deletions over a real object tree; and
+`a_restore_keeps_both_deleted_artifacts_deleted_when_the_lower_lineage_goes_first`
+and `…_when_the_higher_lineage_goes_first` are the product backup and the
+product restore, for both deletion orders.
+
 That is why `TOMBSTONE_VERSION` is `2`. A version 1 record named a locator and no
 artifact and cannot be applied to the artifact it was written for;
 `read_from_backup` refuses one by version rather than guessing.
@@ -632,10 +682,14 @@ is a positioned write.
 
 A tombstone that matched no object in the tree — under any of its artifact's
 names — is reported, not ignored. `EncryptedRestoreReceipt` carries three sorted
-lists: `re_deleted_locators`, the locators actually re-deleted; `spared_objects`,
-the objects a record's locator reached whose artifact it does not name, which the
-restore left readable on purpose; and `absent_locators`, the tombstones that
-reached nothing. Absence is not an error: the artifact may have been registered
+lists, and **each names an artifact as well as a locator**, because a list keyed
+by locator cannot tell two registrations of the same bytes apart: it would
+report two re-deletions as one, and would let the record that found its object
+answer for the record that found nothing. They are `re_deleted_objects`, the
+artifacts actually re-deleted and the locator each was reached under;
+`spared_objects`, the objects a record's locator reached whose artifact it does
+not name, which the restore left readable on purpose; and `absent_tombstones`,
+one entry per record that reached nothing. Absence is not an error: the artifact may have been registered
 after the backup was taken, or shredded before it. `spared_objects` is not an
 error either, and it is empty for every profile that never registered the same
 bytes twice in one domain — what it says when it is not is that deleting one

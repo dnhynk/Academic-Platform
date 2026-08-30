@@ -35,7 +35,7 @@ use academic_retention::{
         shred_with_tombstone,
     },
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
-    rotation::KeyGeneration,
+    rotation::{KeyGeneration, StoreDatabaseExecutor as _},
     tombstone,
 };
 use academic_store::path_policy::NativePathProbe;
@@ -113,6 +113,85 @@ fn the_product_rotation_sequence_is_refused_at_every_step_over_the_real_store() 
     );
     // The database is where it was. A rekey is a page rewrite and cannot be
     // undone by reading a journal afterwards, so "refused" has to mean "before".
+    fixture.open_store()?;
+    Ok(())
+}
+
+/// The two irreversible writes a rotation composes are **not** refused.
+///
+/// The gate wraps the journalled orchestration: the seven entry points above
+/// are the calls that read or append the rotation journal. The primitives they
+/// drive are in crates below this one — a re-seal is `academic-vault`'s and the
+/// page rewrite is `academic-store`'s — and neither can reach the gate without
+/// inverting a machine-checked acyclic crate graph or pulling
+/// `academic-retention` into the default product graph. The contract says so;
+/// this row is that sentence executed, because the fifth `P2-A1` audit found
+/// the contract claiming the fourth audit's states were "behind the gate rather
+/// than beside it" when one call to the executor reaches half of one of them.
+///
+/// What the call costs is the point: the profile then opens under neither the
+/// generation the rest of it is under nor the one its backups were taken with,
+/// and the rotation journal holds nothing to replay from. It is undone here
+/// only because this row still has both master keys in memory.
+#[test]
+fn the_primitives_a_rotation_composes_are_not_refused_beside_the_gate() -> TestResult {
+    let fixture = EncryptedFixture::new("gate-beside-primitives")?;
+    let target_master = academic_crypto::VaultMasterKey::generate()?;
+    let probe = NativePathProbe::default();
+
+    // The object half: a re-seal into another generation's vault, which is what
+    // `rotate_object` does between its two journal entries.
+    let subject = fixture
+        .descriptors()?
+        .first()
+        .ok_or("the corpus is empty")?
+        .clone();
+    {
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&target_master)?;
+        let resealed = source_vault.reseal(&subject, &target_vault);
+        assert!(
+            resealed.is_ok(),
+            "a re-seal into another generation was refused: {resealed:?}"
+        );
+    }
+
+    // The database half: one call, and the store stops authenticating page one
+    // under the generation everything else in the profile is still under.
+    let executor = StoreDatabaseRekey::new(
+        fixture.profile_root(),
+        &probe,
+        encrypted_support::PROFILE_ID,
+        fixture.master(),
+        &target_master,
+    );
+    let rekeyed = executor.rekey_store_database();
+    assert!(
+        rekeyed.is_ok(),
+        "the store database rekey primitive was refused: {rekeyed:?}"
+    );
+    assert!(
+        fixture.open_store().is_err(),
+        "the store still opens under the generation the rekey moved it away from"
+    );
+
+    // Neither wrote a journal entry, so nothing replays or resumes.
+    let journal =
+        AppendOnlyJournal::open(&fixture.profile_root().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+    assert!(
+        journal.entries().next().is_none(),
+        "a primitive outside the gate appended to the rotation journal"
+    );
+
+    // Put the profile back, so the row leaves nothing it could not undo.
+    let back = StoreDatabaseRekey::new(
+        fixture.profile_root(),
+        &probe,
+        encrypted_support::PROFILE_ID,
+        &target_master,
+        fixture.master(),
+    );
+    back.rekey_store_database()?;
     fixture.open_store()?;
     Ok(())
 }
