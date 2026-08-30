@@ -151,6 +151,16 @@ a `StoreDatabaseExecutor`, which the encrypted portability lane binds to
 and the engine refuses one that is not the plan's pair. A rotation that reaches
 the unit with no executor run still refuses to complete, by name.
 
+**Phase 2 does not accept running a rotation.** Everything in this section is
+built and tested, and the seven entry points that would drive one — begin, move a
+unit, complete, retire a superseded object, rewrap a recipient set for a new
+generation, retire a generation — refuse on their first line unless the
+non-default `rotation-orchestration` lane is selected, which no product graph
+does. Crypto-shredding, backup tombstones, and their re-application on restore
+are outside that gate and keep working. What is not yet closed, and what an
+orchestrator has to close first, is listed in
+[rotation and retention](../contracts/rotation-and-retention.md).
+
 Revocation removes a recipient's wrapped key and stops any future generation from
 being wrapped for it. **That is the whole of it.** It does not erase plaintext
 that recipient already read, it does not reach a copy taken while the recipient

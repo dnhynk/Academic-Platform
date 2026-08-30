@@ -16,14 +16,15 @@ use std::{
     fs,
     io::{Read as _, Seek as _, SeekFrom, Write as _},
     path::Path,
+    time::SystemTime,
 };
 
 use academic_domain::{
     ArtifactDescriptor, Confidentiality, ContentDigest, MediaType, RetentionClass,
 };
 use academic_vault::{
-    ENCRYPTED_FORMAT_VERSION, EncryptedVault, SealDisposition, SealedObjectVerifier, Vault,
-    VaultError,
+    ENCRYPTED_FORMAT_VERSION, EncryptedVault, ReconcileOptions, ReconcileState, SealDisposition,
+    SealedObjectVerifier, Vault, VaultError,
     object::{self, HEADER_BYTES, ObjectFormatError, TAG_BYTES},
 };
 use encrypted_artifacts::{
@@ -99,6 +100,82 @@ fn patch(path: &Path, offset: u64, bytes: &[u8]) -> Result<(), Box<dyn Error>> {
 /// A crypto-shredded object is still resolvable under a generation that cannot
 /// derive its locator — and nothing else is.
 ///
+/// Reconciliation completes over a profile that deleted an artifact.
+///
+/// The fourth `P2-A1` audit found `EncryptedVault::reconcile` to be a fifth
+/// reader of the descriptor chain that no contract listed, and that it refuses
+/// a whole pass with `LocatorMismatch` on a *delete-then-rotate* profile: the
+/// shredded row keeps the locator of the generation it was destroyed under, the
+/// rotated keyring derives a different one, and `validate_descriptor_locator`
+/// stops before any file is inspected. Phase 2 does not accept a rotation, so
+/// there is no rotated keyring to meet that row with, and this is the shape that
+/// is left — a deletion with no rotation after it.
+///
+/// The pass completes, and what it says about the destroyed object is
+/// `ReferencedCorruptRepairRequired`: a shred and a bit-rotted object reach the
+/// same state here, which the object format itself keeps apart
+/// (`ObjectFormatError::Shredded` is not `Aead`). That is recorded rather than
+/// repaired — the encrypted lane has no product caller of `reconcile` yet, and
+/// giving it the `verify_shredded_object` branch backup and restore have is the
+/// orchestrator task's, along with the rotated-keyring refusal above it.
+#[test]
+fn reconciliation_completes_over_a_profile_that_deleted_an_artifact() -> Result<(), Box<dyn Error>>
+{
+    let root = SyntheticTestRoot::new("reconcile-after-shred")?;
+    create_private_test_root(root.path())?;
+    let (master, _record) = create_master()?;
+    let vault = open_encrypted_vault(root.path(), &master, &[DOMAIN_ID], TEST_CHUNK_SIZE)?;
+
+    let shredded = vault
+        .ingest(
+            &request_with(
+                ARTIFACT_ID,
+                DOMAIN_ID,
+                RetentionClass::UserManaged,
+                PERMISSION_LINEAGE_ID,
+            )?,
+            deterministic_bytes(200).as_slice(),
+        )?
+        .descriptor()
+        .clone();
+    let live = vault
+        .ingest(
+            &request_with(
+                SECOND_ARTIFACT_ID,
+                DOMAIN_ID,
+                RetentionClass::UserManaged,
+                PERMISSION_LINEAGE_ID,
+            )?,
+            deterministic_bytes(300).as_slice(),
+        )?
+        .descriptor()
+        .clone();
+    vault.shred_key_slot(&shredded, &[0x5a; 32])?;
+
+    let referenced = [shredded.clone(), live.clone()];
+    let report =
+        vault.reconcile(&ReconcileOptions::new(SystemTime::now()).with_referenced(&referenced))?;
+
+    let state_of = |descriptor: &ArtifactDescriptor| {
+        report
+            .records()
+            .iter()
+            .find(|record| record.artifact_id() == Some(descriptor.id))
+            .map(academic_vault::ReconcileRecord::state)
+    };
+    assert_eq!(
+        state_of(&live),
+        Some(ReconcileState::ReferencedValid),
+        "an artifact the profile never deleted stopped reconciling"
+    );
+    assert_eq!(
+        state_of(&shredded),
+        Some(ReconcileState::ReferencedCorruptRepairRequired),
+        "the state a deleted artifact reconciles to changed"
+    );
+    Ok(())
+}
+
 /// A locator is a function of `KEK_d` and a shred destroys the only copy of the
 /// object's DEK, so a shredded object can never be re-sealed and its descriptor
 /// keeps the locator of the generation it was destroyed under while every other
