@@ -102,6 +102,21 @@ pub fn backup_encrypted_profile(
         });
     }
     directory::require_absent(destination)?;
+    // `keys` and `master` must name one generation. `SKEY_p` and `KEK_d` are
+    // both functions of the Vault Master Key, so a caller that rotated the
+    // objects and kept a key set derived from the superseded master would write
+    // a database under one generation beside objects under another. That backup
+    // verifies — every file is present and digest-checked — and no recovery
+    // record restores it, because a restore recovers one master and derives
+    // both halves from it. A rotation that has not moved its `STORE_DATABASE`
+    // unit yet is caught here rather than at a restore on a fresh machine.
+    if keys.generation() != master.generation_id(keys.profile_id())? {
+        return Err(PortabilityError::mismatch(
+            "backup profile key generation",
+            encode_hex(keys.generation().as_slice()),
+            encode_hex(master.generation_id(keys.profile_id())?.as_slice()),
+        ));
+    }
 
     let database_path = profile_root.join(academic_store::STORE_DATABASE_FILE);
     let source = CanonicalDatabase::open_source(&database_path, keys.store_key())?;

@@ -126,6 +126,68 @@ pub enum RecipientError {
          would leave the profile permanently locked"
     )]
     GenerationAbsent(String),
+    /// A rotation left no record of itself for a generation retirement to check.
+    ///
+    /// Retiring a generation removes every wrapped copy of the other one from
+    /// the profile. Without a completed rotation in the journal there is
+    /// nothing that says the surviving generation opens anything, so the only
+    /// safe answer is to refuse: the reproduction is a profile whose every
+    /// object is under the generation the call would have deleted.
+    #[error(
+        "the journal records no rotation, so nothing says generation {0} opens this \
+         profile's objects; retiring the other generation would leave it permanently locked"
+    )]
+    NoRotationRecorded(String),
+    /// A generation retirement was asked to keep the superseded generation.
+    ///
+    /// A completed rotation left every reachable object under its target
+    /// generation. Keeping the source generation would write a set holding only
+    /// a key that opens nothing while deleting the one that opens everything.
+    #[error(
+        "the completed rotation left this profile under generation {target}, so the set \
+         cannot be reduced to generation {kept}: no record on disk would open a reachable object"
+    )]
+    KeptGenerationIsNotTheRotationTarget {
+        /// Generation the caller asked to keep.
+        kept: String,
+        /// Generation the completed rotation left in force.
+        target: String,
+    },
+    /// A rewrap produced a record under a different identity than it wrapped.
+    ///
+    /// A rewrap re-wraps *this* recipient's copy of the key. A produced record
+    /// with a different identity is a different recipient, and appending it
+    /// beside the survivors silently adds an unrevoked reader.
+    #[error(
+        "a rewrap of recipient {survivor} produced a record for recipient {produced}; \
+         a rewrap re-wraps the same recipient's copy and mints no new identity"
+    )]
+    RewrappedIdentityChanged {
+        /// Identity that was to be rewrapped.
+        survivor: String,
+        /// Identity the produced record carries.
+        produced: String,
+    },
+    /// The stored set already holds both generations for one recipient.
+    ///
+    /// A rotation's rewrap puts the new generation's record beside the old
+    /// one, so between the rewrap and [`retire_generation`] each identity has
+    /// exactly two. Running the rewrap again would give it three, and no key is
+    /// needed to see that: `recipients.cbor` is `P2-K1`'s frozen document and
+    /// carries no generation, so the identity count is the only thing this
+    /// crate can check. The resume after a kill between the set rename and the
+    /// journal record is [`retire_generation`], not a second rewrap.
+    #[error(
+        "the recipient set already holds {count} records for recipient {recipient}; the \
+         rewrap for this rotation has already been written and re-running it would add another"
+    )]
+    GenerationAlreadyRewrapped {
+        /// Identity that already has more than one record.
+        recipient: String,
+        /// How many records it has.
+        count: usize,
+    },
+
     /// Producing a record for one recipient failed.
     ///
     /// The wrapping itself is `academic-crypto`'s: this crate hands it the
@@ -368,12 +430,25 @@ pub fn revoked_recipient_ids(journal: &AppendOnlyJournal) -> BTreeSet<String> {
 ///    stale record, or by minting a fresh record under the same identity — is
 ///    refused rather than silently honoured.
 ///
+/// A produced record must also carry the identity it was asked to rewrap. A
+/// rewrap re-wraps one recipient's own copy of the key; a record under another
+/// identity is another recipient, and appending it beside the survivors would
+/// add a reader nothing authorized.
+///
 /// The produced records are written **beside** the ones already stored, not
 /// over them. That is what the rotation depends on: while units are still
 /// moving, some reachable objects are under the old generation and some are
 /// under the new one, so both generations have to be openable from the one
 /// document the profile holds. [`retire_generation`] is the other half, and it
 /// refuses until every unit has moved.
+///
+/// Running it twice is refused rather than obeyed. Between this call and
+/// `retire_generation` each identity has exactly two records; a third would be
+/// a rewrap of a rewrap. `recipients.cbor` is `P2-K1`'s frozen document and a
+/// record does not say which generation it wraps, so the count is what this
+/// crate can check without a key — and after a kill between the set rename and
+/// the journal record the set on disk is already the rewrapped one, so the
+/// resume is `retire_generation`, not a second rewrap.
 ///
 /// `wrap` is the caller's `academic-crypto` call: this function never holds a
 /// wrapping key, never reaches a broker, and never invents a recipient.
@@ -389,6 +464,25 @@ where
 {
     let revoked = revoked_recipient_ids(journal);
     let survivors = read_set(profile_root, profile)?;
+    // The set is `P2-K1`'s frozen document and a record does not say which
+    // generation it wraps, so "has this rewrap already run?" is answered by the
+    // one public fact a record does carry. A rotation's rewrap leaves exactly
+    // two records per identity; a third is a re-run, and appending it is the
+    // duplication `a_rewrap_re_run_is_refused_rather_than_duplicated` names.
+    for record in survivors.records() {
+        let identity = hex::encode(record.recipient_id());
+        let count = survivors
+            .records()
+            .iter()
+            .filter(|other| other.recipient_id() == record.recipient_id())
+            .count();
+        if count > 1 {
+            return Err(RecipientError::GenerationAlreadyRewrapped {
+                recipient: identity,
+                count,
+            });
+        }
+    }
     let mut rewrapped = Vec::with_capacity(survivors.records().len());
     for record in survivors.records() {
         let identity = hex::encode(record.recipient_id());
@@ -399,6 +493,12 @@ where
         let produced_identity = hex::encode(produced.recipient_id());
         if revoked.contains(&produced_identity) {
             return Err(RecipientError::RevokedRecipientRewrapped(produced_identity));
+        }
+        if produced.recipient_id() != record.recipient_id() {
+            return Err(RecipientError::RewrappedIdentityChanged {
+                survivor: identity,
+                produced: produced_identity,
+            });
         }
         rewrapped.push(produced);
     }
@@ -424,15 +524,24 @@ where
 /// Writes a recipient set holding only the generation a completed rotation left.
 ///
 /// This is the second half of [`rewrap_for_generation`] and the point at which
-/// the old generation's wrapped copies leave the profile. It refuses while any
-/// planned unit is still under the old generation, because a set holding only
-/// the new generation would then name a key that opens nothing for those units
-/// while the key that does open them is no longer on disk.
+/// the old generation's wrapped copies leave the profile. It is also the last
+/// point at which the profile can be made permanently unopenable, so what it
+/// keeps is decided by the journal rather than by the caller:
+///
+/// 1. the journal must record a rotation at all — without one, nothing says the
+///    generation being kept opens anything, and every object may be under the
+///    generation this call would delete;
+/// 2. that rotation must be complete with no unit remaining, because a set
+///    holding only the new generation would otherwise name a key that opens
+///    nothing for the units still under the old one; and
+/// 3. `kept_generation` must be the generation the rotation moved **to**. Being
+///    asked to keep the superseded one is the same destruction stated backwards.
 ///
 /// `keeps` is the caller's test of whether one stored record wraps the
 /// generation being kept. A record's generation is not readable without the
 /// key it wraps, and this crate holds no key, so the caller — which has just
-/// finished rotating to that generation — answers it.
+/// finished rotating to that generation — answers it. What the caller does not
+/// get to choose is *which* generation that is.
 ///
 /// Returns the records that were kept.
 pub fn retire_generation<F>(
@@ -445,14 +554,21 @@ pub fn retire_generation<F>(
 where
     F: FnMut(&RecipientRecord) -> bool,
 {
-    if let Some(state) = RotationState::replay(journal.entries())? {
-        let remaining = state.remaining().len();
-        if !state.is_complete() || remaining > 0 {
-            return Err(RecipientError::RotationIncomplete {
-                remaining,
-                planned: state.units().len(),
-            });
-        }
+    let Some(state) = RotationState::replay(journal.entries())? else {
+        return Err(RecipientError::NoRotationRecorded(kept_generation.to_hex()));
+    };
+    let remaining = state.remaining().len();
+    if !state.is_complete() || remaining > 0 {
+        return Err(RecipientError::RotationIncomplete {
+            remaining,
+            planned: state.units().len(),
+        });
+    }
+    if kept_generation != state.target() {
+        return Err(RecipientError::KeptGenerationIsNotTheRotationTarget {
+            kept: kept_generation.to_hex(),
+            target: state.target().to_hex(),
+        });
     }
 
     let revoked = revoked_recipient_ids(journal);

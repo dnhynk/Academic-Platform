@@ -24,7 +24,7 @@ use academic_ledger::{LedgerError, ResolverActorKind, relation_effect_is_authori
 use academic_vault::SealedObjectReceipt;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
-use crate::connection::WriterConnection;
+use crate::{connection::WriterConnection, error::StoreError};
 
 /// Current singleton counters read under `BEGIN IMMEDIATE`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1109,11 +1109,34 @@ impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt>
         load_scope(self.transaction, id)?.ok_or_else(|| LedgerError::UnknownScope(id).into())
     }
 
+    /// Returns the descriptor the store resolves one artifact to, inside the
+    /// acceptance transaction.
+    ///
+    /// The chain is walked here for the same reason the pre-transaction
+    /// preflight walks it: `artifact_descriptor` holds the locator the signed
+    /// `ARTIFACT_REGISTERED` payload carried, and a rotation appends the move
+    /// rather than editing the row. The sealed receipts this closure checks
+    /// against were taken over the resolved descriptors, so loading the signed
+    /// one here would report every rotated artifact as a mismatched receipt.
     fn artifact(&self, id: ArtifactId) -> Result<ArtifactDescriptor, RepositoryError> {
         if let Some(artifact) = self.artifacts.get(&id) {
             return Ok(artifact.clone());
         }
-        load_artifact(self.transaction, id)?.ok_or_else(|| LedgerError::UnknownArtifact(id).into())
+        let loaded =
+            load_artifact(self.transaction, id)?.ok_or(LedgerError::UnknownArtifact(id))?;
+        let mut resolved = [loaded];
+        crate::descriptor_migration::resolve_with_stored_migrations(
+            self.transaction,
+            &mut resolved,
+        )
+        .map_err(|error| match error {
+            StoreError::Sqlite(source) => RepositoryError::Sqlite(source),
+            _ => RepositoryError::Corrupt(
+                "a stored descriptor migration does not continue the artifact's reference chain",
+            ),
+        })?;
+        let [descriptor] = resolved;
+        Ok(descriptor)
     }
 
     fn evidence(&self, id: EvidenceId) -> Result<AcceptedEvidence, RepositoryError> {

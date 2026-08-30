@@ -19,7 +19,9 @@ use crate::{
     fault::{self, FaultPoint},
     journal::{AppendOnlyJournal, JournalError},
     rotation::{
-        OpeningGeneration, RotationError, RotationPlan, RotationState, RotationUnit, UnitProgress,
+        CanonicalReference, CanonicalReferenceError, OpeningGeneration, RotationError, RotationPlan,
+        RotationState, RotationUnit, StoreDatabaseError, StoreDatabaseExecutor, StoreDatabaseRekey,
+        UnitProgress, store_database_target_id,
     },
     tombstone::{BackupTombstone, TombstoneError},
 };
@@ -51,34 +53,106 @@ pub enum EngineError {
         #[source]
         source: std::io::Error,
     },
-    /// The plan holds a unit this engine cannot execute.
+    /// The plan holds a store database unit that was never rekeyed.
     ///
-    /// The store database is planned and journalled here and rekeyed by
-    /// `P2-K2`'s `PRAGMA rekey`, which cannot link into this build: the
-    /// encrypted store lane and the default lane are mutually exclusive. A
-    /// rotation that reaches this unit without a bound executor stops rather
-    /// than recording a migration that did not happen.
+    /// The store database is planned and journalled here and rekeyed through
+    /// [`StoreDatabaseExecutor`], which the encrypted portability lane binds to
+    /// `P2-K2`'s `PRAGMA rekey`. A rotation that never ran that unit's executor
+    /// stops rather than recording a migration that did not happen, and it
+    /// stops by naming the database: "the executor never ran" and "the caller
+    /// forgot a descriptor" are different facts and only one is fixable here.
     #[error(
-        "unit {0} is the store database, whose executor is the encrypted store \
-         lane's rekey; this build cannot run it and will not record it as migrated"
+        "unit {0} is the store database and this rotation never ran its \
+         executor, so it will not record it as migrated"
     )]
-    StoreDatabaseExecutorAbsent(String),
+    StoreDatabaseNotMigrated(String),
+    /// A retirement was attempted for a unit that names no object.
+    #[error("unit {0} names no object, so it has no superseded object to retire")]
+    NotAnObjectUnit(String),
+
+    /// A store database rotation was handed a unit that is not one.
+    #[error("unit {0} is not the store database, so it cannot be rekeyed")]
+    NotAStoreDatabaseUnit(String),
+    /// The bound store database executor refused.
+    #[error("unit {unit_id} could not be rekeyed: {source}")]
+    StoreDatabaseExecutor {
+        /// Unit that was being rekeyed.
+        unit_id: String,
+        /// What the executor reported.
+        #[source]
+        source: StoreDatabaseError,
+    },
+    /// The canonical reference could not be read.
+    #[error("unit {unit_id} cannot retire its superseded object: {source}")]
+    CanonicalReference {
+        /// Unit that was being retired.
+        unit_id: String,
+        /// What the reference reported.
+        #[source]
+        source: CanonicalReferenceError,
+    },
+    /// A retirement named a superseded object that is not the unit's own.
+    ///
+    /// A unit identity is derived from its source locator, so the two are
+    /// comparable without reading anything. Without this check the gates
+    /// inspect one object and the positioned write destroys another.
+    #[error(
+        "unit {unit_id} cannot retire {superseded}: the object that unit \
+         supersedes is {expected}"
+    )]
+    UnitDoesNotNameSupersededObject {
+        /// Unit that was being retired.
+        unit_id: String,
+        /// Locator the caller passed as superseded.
+        superseded: String,
+        /// Locator the unit actually supersedes.
+        expected: String,
+    },
+    /// The store resolves the artifact to something other than the migration target.
+    ///
+    /// Either the store row has not been written yet, or the reference moved
+    /// somewhere this rotation did not put it. Both are refusals: the object
+    /// the store still names must never be the one whose key slot is destroyed.
+    #[error(
+        "unit {unit_id} cannot retire its superseded object: the store resolves \
+         the artifact to {resolved}, not to the {target} this rotation migrated it to"
+    )]
+    ReferenceIsNotTheMigrationTarget {
+        /// Unit that was being retired.
+        unit_id: String,
+        /// Locator the store resolves to.
+        resolved: String,
+        /// Locator the journal recorded as this unit's migration target.
+        target: String,
+    },
+    /// The store holds no descriptor for the artifact being retired.
+    #[error(
+        "unit {unit_id} cannot retire its superseded object: the store holds no \
+         descriptor for that artifact"
+    )]
+    ArtifactAbsentFromStore {
+        /// Unit that was being retired.
+        unit_id: String,
+    },
     /// The descriptor set does not cover the plan.
     #[error("the rotation plan names unit {0}, for which no descriptor was supplied")]
     DescriptorMissing(String),
     /// A retirement was attempted before the rotation recorded its completion.
     #[error(
-        "unit {0} cannot retire its superseded object: the rotation has not recorded          its completion, so destroying it could leave an artifact no key opens"
+        "unit {0} cannot retire its superseded object: the rotation has not recorded \
+         its completion, so destroying it could leave an artifact no key opens"
     )]
     RotationNotComplete(String),
     /// A retirement was attempted for a unit whose reachability has not moved.
     #[error(
-        "unit {0} cannot retire its superseded object: the journal does not record          the unit as migrated"
+        "unit {0} cannot retire its superseded object: the journal does not record \
+         the unit as migrated"
     )]
     UnitNotMigrated(String),
     /// A retirement was attempted while the canonical reference still names it.
     #[error(
-        "unit {0} cannot retire its superseded object: the descriptor the store          resolves to is still the superseded one"
+        "unit {0} cannot retire its superseded object: the descriptor the store \
+         resolves to is still the superseded one"
     )]
     ReferenceNotMoved(String),
 }
@@ -304,6 +378,62 @@ impl<'a> RotationEngine<'a> {
         Ok(resealed)
     }
 
+    /// Rekeys the profile database unit, in the order the invariant depends on.
+    ///
+    /// `SKEY_p` and `KEK_d` are both functions of the Vault Master Key, so a
+    /// rotation that moves every object and leaves the database behind produces
+    /// a profile whose two halves are under two generations. That profile still
+    /// works locally — both keys are in the one process that holds the master —
+    /// and it is not restorable, because a restore re-derives both halves from
+    /// the single master it recovered from the backup. This unit is what stops
+    /// that, and `executor` is the store lane's `PRAGMA rekey`.
+    ///
+    /// The order differs from an object unit's for one reason: a rekey rewrites
+    /// pages in place, so there is no second file that can be durable and
+    /// verified while the first one is still reachable. What takes the place of
+    /// the read-back is the executor's own re-open under the target key, which
+    /// it performs before returning. `UnitResealed` is therefore appended after
+    /// the database has been proved to open under the target generation, and
+    /// `UnitMigrated` immediately after it.
+    ///
+    /// A kill during the rekey leaves exactly one working key — that is fault
+    /// `EN01`, executed in the `encrypted-store-lane` job — and a journal that
+    /// still says the source generation is in force. The resume re-runs this
+    /// method, the executor reports [`StoreDatabaseRekey::AlreadyAtTarget`],
+    /// and the two records catch up. A kill between the two records is the same
+    /// window an object unit has, and it is repaired the same way.
+    pub fn rotate_store_database(
+        &self,
+        journal: &mut AppendOnlyJournal,
+        unit: &RotationUnit,
+        executor: &dyn StoreDatabaseExecutor,
+    ) -> Result<StoreDatabaseRekey, EngineError> {
+        if unit.kind() != UnitKind::StoreDatabase {
+            return Err(EngineError::NotAStoreDatabaseUnit(unit.unit_id_hex()));
+        }
+        let outcome = executor.rekey_store_database().map_err(|source| {
+            EngineError::StoreDatabaseExecutor {
+                unit_id: unit.unit_id_hex(),
+                source,
+            }
+        })?;
+
+        journal.append(JournalEntry::UnitResealed {
+            rotation_id: self.plan.rotation_id().to_hex(),
+            unit_id: unit.unit_id_hex(),
+            target_locator: hex::encode(store_database_target_id(
+                self.plan.profile_id(),
+                self.plan.target(),
+            )),
+        })?;
+        journal.append(JournalEntry::UnitMigrated {
+            rotation_id: self.plan.rotation_id().to_hex(),
+            unit_id: unit.unit_id_hex(),
+        })?;
+        Ok(outcome)
+    }
+
+
     /// Records that every planned unit migrated.
     ///
     /// Refuses while any unit is still remaining, so a `RotationCompleted`
@@ -318,7 +448,7 @@ impl<'a> RotationEngine<'a> {
             // facts and only one of them is fixable here.
             return Err(match unit.unit.kind() {
                 UnitKind::StoreDatabase => {
-                    EngineError::StoreDatabaseExecutorAbsent(unit.unit.unit_id_hex())
+                    EngineError::StoreDatabaseNotMigrated(unit.unit.unit_id_hex())
                 }
                 UnitKind::Object => EngineError::DescriptorMissing(unit.unit.unit_id_hex()),
             });
@@ -371,14 +501,22 @@ pub fn retirement_digest(
 /// superseded generation's key still opens the superseded copy in the live
 /// tree, including a recipient the rotation revoked.
 ///
-/// It refuses unless the rotation recorded its completion and this unit
-/// recorded its migration, because a source object destroyed before its
-/// replacement is reachable is an artifact no key opens.
+/// Every argument is bound to something already recorded, because a retirement
+/// is a positioned write that cannot be undone and this function is, until a
+/// rotation orchestrator exists, the only collection point there is:
 ///
-/// `current` is the descriptor the *store* now resolves to. Passing it is how
-/// the caller states that the canonical reference has already moved: this crate
-/// cannot read the store, and retiring on the strength of the journal alone
-/// would destroy the only object the store could still name.
+/// 1. the rotation recorded its completion and this unit recorded its migration;
+/// 2. `superseded` is the object **this unit** supersedes — the unit identity is
+///    derived from its source locator, so the two are comparable here without
+///    reading anything;
+/// 3. the canonical reference the store resolves that artifact to is the
+///    `target_locator` this unit's `UnitResealed` record named, which is how a
+///    caller that has not yet written the store row is refused rather than
+///    believed.
+///
+/// Together those refuse the three orderings that destroy live data: retiring
+/// before the store row exists, retiring another artifact's live object under a
+/// rotated unit, and retiring the object the rotation moved *to*.
 ///
 /// A kill during the marker write is safe for the same reason a shred is: the
 /// write is positioned and idempotent, and re-running reaches the same state.
@@ -389,7 +527,7 @@ pub fn retire_superseded_object(
     vault: &EncryptedVault,
     unit: &RotationUnit,
     superseded: &ArtifactDescriptor,
-    current: &ArtifactDescriptor,
+    reference: &dyn CanonicalReference,
 ) -> Result<[u8; 32], EngineError> {
     let Some(state) = RotationState::replay(journal.entries())? else {
         return Err(EngineError::Rotation(RotationError::EmptyPlan));
@@ -397,14 +535,46 @@ pub fn retire_superseded_object(
     if !state.is_complete() {
         return Err(EngineError::RotationNotComplete(unit.unit_id_hex()));
     }
-    if !state
+    let Some(migrated) = state
         .migrated()
-        .iter()
-        .any(|migrated| migrated.unit.unit_id_hex() == unit.unit_id_hex())
-    {
+        .into_iter()
+        .find(|migrated| migrated.unit.unit_id_hex() == unit.unit_id_hex())
+    else {
         return Err(EngineError::UnitNotMigrated(unit.unit_id_hex()));
+    };
+
+    let expected_source = unit
+        .source_locator()
+        .ok_or_else(|| EngineError::NotAnObjectUnit(unit.unit_id_hex()))?;
+    if expected_source != superseded.vault_locator.as_bytes() {
+        return Err(EngineError::UnitDoesNotNameSupersededObject {
+            unit_id: unit.unit_id_hex(),
+            superseded: hex::encode(superseded.vault_locator.as_bytes()),
+            expected: hex::encode(expected_source),
+        });
     }
-    if current.vault_locator == superseded.vault_locator {
+
+    let target_locator = migrated
+        .target_locator
+        .clone()
+        .ok_or_else(|| EngineError::UnitNotMigrated(unit.unit_id_hex()))?;
+    let resolved = reference
+        .resolved_locator(superseded.id)
+        .map_err(|source| EngineError::CanonicalReference {
+            unit_id: unit.unit_id_hex(),
+            source,
+        })?
+        .ok_or_else(|| EngineError::ArtifactAbsentFromStore {
+            unit_id: unit.unit_id_hex(),
+        })?;
+    if hex::encode(resolved) != target_locator {
+        return Err(EngineError::ReferenceIsNotTheMigrationTarget {
+            unit_id: unit.unit_id_hex(),
+            resolved: hex::encode(resolved),
+            target: target_locator,
+        });
+    }
+    if resolved == *superseded.vault_locator.as_bytes() {
         return Err(EngineError::ReferenceNotMoved(unit.unit_id_hex()));
     }
 
@@ -412,7 +582,7 @@ pub fn retire_superseded_object(
         state.rotation_id(),
         &unit.unit_id_hex(),
         superseded.vault_locator.as_bytes(),
-        current.vault_locator.as_bytes(),
+        &resolved,
     );
     let path = vault.layout().object_path(superseded)?;
     shred_key_slot_at(&path, &digest)?;
@@ -462,46 +632,76 @@ pub fn shred_with_tombstone(
 /// write, so a restore onto a fresh machine re-deletes before anything is
 /// unlocked.
 ///
-/// Returns the locators it re-deleted, sorted, and the tombstones whose object
-/// was not present in the tree.
+/// A tombstone names the locator the object had when it was shredded and every
+/// locator the artifact's reference chain moved through before that. A locator
+/// is a function of the domain KEK, so a rotation gives the same artifact a new
+/// one; a backup taken before the rotation holds the object under an older
+/// name, and matching on the current locator alone would leave that copy
+/// readable. Whichever of an artifact's names a backup happens to hold, one
+/// tombstone reaches it.
+///
+/// Only the 208-byte header is read. The locator is inside it and nothing else
+/// here looks at the ciphertext, so an object of any size costs one header.
+///
+/// Returns the locators it re-deleted, sorted, and the tombstones that matched
+/// no object in the tree.
 pub fn apply_tombstones(
     objects_root: &std::path::Path,
     tombstones: &[BackupTombstone],
 ) -> Result<AppliedTombstones, EngineError> {
     let mut wanted = std::collections::BTreeMap::new();
     for tombstone in tombstones {
-        wanted.insert(tombstone.locator_bytes()?, tombstone);
+        for locator in tombstone.covered_locators()? {
+            wanted.insert(locator, tombstone);
+        }
     }
     let mut applied = Vec::new();
+    let mut reached: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     let mut objects = Vec::new();
     collect_objects(objects_root, &mut objects)?;
     for path in objects {
         let mut header = [0_u8; HEADER_BYTES];
-        let Ok(bytes) = fs::read(&path) else { continue };
-        if bytes.len() < HEADER_BYTES {
-            continue;
+        {
+            use std::io::Read as _;
+            let Ok(mut file) = fs::File::open(&path) else {
+                continue;
+            };
+            if file.read_exact(&mut header).is_err() {
+                continue;
+            }
         }
-        header.copy_from_slice(&bytes[..HEADER_BYTES]);
         let Ok(locator) = object::read_locator(&header) else {
             continue;
         };
         if let Some(tombstone) = wanted.remove(&locator) {
             shred_key_slot_at(&path, &tombstone.digest())?;
             applied.push(hex::encode(locator));
+            reached.insert(tombstone.locator.clone());
         }
     }
     applied.sort();
-    let mut absent: Vec<String> = wanted.values().map(|value| value.locator.clone()).collect();
+    let mut absent: Vec<String> = wanted
+        .values()
+        .map(|value| value.locator.clone())
+        .filter(|locator| !reached.contains(locator))
+        .collect();
     absent.sort();
+    absent.dedup();
     Ok(AppliedTombstones { applied, absent })
 }
 
 /// What a tombstone application reached, and what it did not find.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AppliedTombstones {
     /// Locators re-deleted, sorted.
     pub applied: Vec<String>,
-    /// Tombstoned locators with no object in the tree, sorted.
+    /// Tombstones that reached no object in the tree, named by the locator the
+    /// live shred destroyed, sorted.
+    ///
+    /// A tombstone that matched under one of the artifact's earlier names is
+    /// not here: it reached its object. This list is what a restore receipt
+    /// carries so a deletion that could not be re-applied is reported rather
+    /// than dropped.
     pub absent: Vec<String>,
 }
 

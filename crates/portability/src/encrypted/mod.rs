@@ -42,6 +42,7 @@
 pub mod backup;
 pub mod manifest;
 pub mod restore;
+pub mod rotation;
 
 use academic_crypto::{DomainKek, ProfileId, StoreKey, VaultMasterKey};
 use academic_domain::DomainId;
@@ -97,6 +98,7 @@ pub const FORMAT_MARKER_CONTENTS: &str = concat!(
 #[derive(Debug)]
 pub struct ProfileKeys {
     profile_id: ProfileId,
+    generation: [u8; 32],
     store_key: StoreKey,
     domains: Vec<(DomainId, DomainKek)>,
 }
@@ -108,6 +110,7 @@ impl ProfileKeys {
         profile_id: ProfileId,
         domains: &[DomainId],
     ) -> PortabilityResult<Self> {
+        let generation = master.generation_id(profile_id)?;
         let store_key = master.derive_store_key(profile_id)?;
         let mut derived = Vec::with_capacity(domains.len());
         for domain in domains {
@@ -119,6 +122,7 @@ impl ProfileKeys {
         }
         Ok(Self {
             profile_id,
+            generation,
             store_key,
             domains: derived,
         })
@@ -129,6 +133,19 @@ impl ProfileKeys {
     pub const fn profile_id(&self) -> ProfileId {
         self.profile_id
     }
+
+    /// Returns the public name of the generation these keys were derived from.
+    ///
+    /// `SKEY_p` and `KEK_d` both come from the Vault Master Key, so a key set
+    /// belongs to exactly one generation. Recording which one is what lets a
+    /// backup refuse to write a database under one generation beside objects
+    /// under another: such a backup verifies and cannot be restored, because a
+    /// restore re-derives both halves from the single master it recovered.
+    #[must_use]
+    pub const fn generation(&self) -> [u8; 32] {
+        self.generation
+    }
+
 
     /// Returns the raw SQLCipher store key.
     #[must_use]
