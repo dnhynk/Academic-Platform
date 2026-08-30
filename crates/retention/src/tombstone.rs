@@ -26,6 +26,13 @@
 //! readable. So a tombstone names its artifact, and a re-deletion matches the
 //! artifact id as well as the locator.
 //!
+//! The **file** is named for both, for the same reason. A backup directory is a
+//! flat namespace, so a name that carried only the locator would make the
+//! second of two such deletions replace the first record instead of joining it,
+//! and a restore of any backup taken before them would publish the artifact
+//! deleted first as readable — reporting it, on the receipt, as a copy it had
+//! deliberately spared.
+//!
 //! `tombstones/` is the one path in a published backup the sealed manifest does
 //! not list, because the manifest was sealed before this record existed and
 //! re-sealing needs the backup root. The backup's verifier excludes it from the
@@ -34,7 +41,7 @@
 //! ```text
 //! <backup>/
 //!   objects/<artifact-id>.aobj
-//!   tombstones/<locator>.tombstone      # one JSON object, one atomic write
+//!   tombstones/<artifact-id>-<locator>.tombstone   # one JSON object, one write
 //! ```
 
 use std::{
@@ -264,18 +271,29 @@ pub fn tombstone_dir(backup_root: &Path) -> PathBuf {
 
 /// Writes one tombstone into a backup with a single atomic write.
 ///
+/// The file is named for the artifact **and** the locator, because a locator is
+/// not an identity: one domain gives the same bytes one locator in every
+/// lineage, so deleting two of those registrations writes two records, and a
+/// file named for the locator alone would keep only the second. Two deletions
+/// are two destroyed key slots and stay two files.
+///
+/// A second record for the *same* artifact at the *same* locator does replace
+/// the first, which is what re-writing a tombstone means: one destroyed key
+/// slot is one fact, and that is the idempotence `RB02`'s repair relies on.
+///
 /// `RB02` requires a failed tombstone write to leave the deletion explicitly
 /// incomplete rather than quietly complete, so the caller treats an error here
-/// as `REPAIR_REQUIRED`. Re-writing an identical tombstone is idempotent.
+/// as `REPAIR_REQUIRED`.
 pub fn write_into_backup(
     backup_root: &Path,
     tombstone: &BackupTombstone,
 ) -> Result<PathBuf, TombstoneError> {
+    let stem = file_stem(tombstone)?;
     let directory = tombstone_dir(backup_root);
     fs::create_dir_all(&directory)
         .map_err(|source| io("create tombstone directory", &directory, source))?;
-    let path = directory.join(format!("{}.{TOMBSTONE_EXTENSION}", tombstone.locator));
-    let temp = directory.join(format!("{}.partial", tombstone.locator));
+    let path = directory.join(format!("{stem}.{TOMBSTONE_EXTENSION}"));
+    let temp = directory.join(format!("{stem}.partial"));
 
     let mut bytes = serde_json::to_vec(tombstone).map_err(|_| TombstoneError::Encode)?;
     bytes.push(b'\n');
@@ -294,7 +312,26 @@ pub fn write_into_backup(
     Ok(path)
 }
 
-/// Reads every tombstone a backup carries, sorted by locator.
+/// Returns the file stem one tombstone is stored under: artifact, then locator.
+///
+/// Both halves are re-encoded from the record's own decoded bytes rather than
+/// copied out of its strings, so the name is always 16 and 32 bytes of hex and
+/// a record whose fields are not that is refused here instead of becoming a
+/// path.
+fn file_stem(tombstone: &BackupTombstone) -> Result<String, TombstoneError> {
+    Ok(format!(
+        "{}-{}",
+        hex::encode(tombstone.artifact_id_bytes()?),
+        hex::encode(tombstone.locator_bytes()?)
+    ))
+}
+
+/// Reads every tombstone a backup carries, sorted by locator and then artifact.
+///
+/// Two records share a locator whenever one domain held the same bytes twice
+/// and both registrations were deleted, so the artifact is what orders them;
+/// without it the pair would come back in whatever order the directory walk
+/// produced.
 pub fn read_from_backup(backup_root: &Path) -> Result<Vec<BackupTombstone>, TombstoneError> {
     let directory = tombstone_dir(backup_root);
     let entries = match fs::read_dir(&directory) {
@@ -320,6 +357,10 @@ pub fn read_from_backup(backup_root: &Path) -> Result<Vec<BackupTombstone>, Tomb
         }
         tombstones.push(tombstone);
     }
-    tombstones.sort_by(|left, right| left.locator.cmp(&right.locator));
+    tombstones.sort_by(|left, right| {
+        left.locator
+            .cmp(&right.locator)
+            .then_with(|| left.artifact_id.cmp(&right.artifact_id))
+    });
     Ok(tombstones)
 }
