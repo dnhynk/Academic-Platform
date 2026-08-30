@@ -698,15 +698,38 @@ fn a_deletion_before_a_rotation_still_backs_up_and_restores() -> TestResult {
     }
     tombstone::write_into_backup(&pre_deletion_backup, &stone)?;
 
+    // A plan that names the destroyed object cannot move it: the reseal opens
+    // the source and there is no key slot left to open it with. Nothing is
+    // journalled, because the refusal is before the first record.
+    let target = VaultMasterKey::generate()?;
+    let shredded_unit = RotationUnit::object(*subject.vault_locator.as_bytes());
+    let doomed = RotationPlan::new(
+        RotationId::from_bytes([0x50; 16]),
+        PROFILE_ID,
+        KeyGeneration::of(fixture.master(), PROFILE_ID)?,
+        KeyGeneration::of(&target, PROFILE_ID)?,
+        vec![shredded_unit.clone()],
+    )?;
+    {
+        let mut journal = journal_of(&fixture)?;
+        let entries_before = journal.entries().count();
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&target)?;
+        let refused = RotationEngine::new(&doomed, &source_vault, &target_vault)
+            .rotate_object(&mut journal, &shredded_unit, &subject)
+            .err()
+            .ok_or("a rotation re-sealed a crypto-shredded object")?
+            .to_string();
+        assert!(
+            refused.contains("crypto-shredded"),
+            "the refusal did not name the destroyed key slot: {refused}"
+        );
+        assert_eq!(journal_of(&fixture)?.entries().count(), entries_before);
+    }
+
     // The plan names what is still there. The shredded artifact's row stays
     // where it is: nothing can move a reference to an object no key opens.
-    let migrated = rotate_objects(
-        &mut fixture,
-        VaultMasterKey::generate()?,
-        0x51,
-        0x0a40,
-        &live,
-    )?;
+    let migrated = rotate_objects(&mut fixture, target, 0x51, 0x0a40, &live)?;
     fixture.rewrap_recovery_recipients()?;
     let after = fixture.descriptors()?;
     assert_eq!(
