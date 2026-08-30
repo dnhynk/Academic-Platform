@@ -42,17 +42,28 @@ use crate::{
 /// still lands midway through a copy rather than before or after it.
 const BACKUP_PAGES_PER_STEP: i32 = 8;
 
-/// Reports whether a vault refusal is a destroyed key slot rather than damage.
+/// Reports whether a vault refusal may be a destroyed key slot rather than
+/// damage.
 ///
 /// The distinction matters in exactly two places — taking a backup and
 /// restoring one — and in both of them a crypto-shredded object is a state the
 /// product produced on purpose, while every other refusal is corruption.
-pub(crate) fn is_shredded(error: &academic_vault::VaultError) -> bool {
+///
+/// A shred refuses in one of two ways. `Shredded` is the read reaching the
+/// destroyed slot. `LocatorMismatch` is what a rotation leaves: a locator is a
+/// function of `KEK_d` and a destroyed slot can never be re-sealed, so that
+/// artifact's row keeps the superseded generation's locator forever while every
+/// other row moves, and the vault re-derives a different one before it reads a
+/// byte. Only the first of those is conclusive here, which is why both go to
+/// `EncryptedVault::verify_shredded_object` — it requires the marker and the
+/// full cleartext identity at the descriptor's own name, and re-raises the
+/// mismatch for a descriptor that is simply wrong.
+pub(crate) fn may_be_shredded(error: &academic_vault::VaultError) -> bool {
     matches!(
         error,
         academic_vault::VaultError::ObjectFormat(
             academic_vault::object::ObjectFormatError::Shredded
-        )
+        ) | academic_vault::VaultError::LocatorMismatch(_)
     )
 }
 
@@ -167,12 +178,14 @@ pub fn backup_encrypted_profile(
         // damaged object but a destroyed key slot. `P2-K5` destroys those on
         // purpose and the descriptor row that names them is append-only, so
         // refusing the whole backup over one would make a profile that had ever
-        // deleted an artifact permanently un-backupable. It is copied as the
-        // destroyed thing it is: the shred marker is inside the bytes, the
-        // ciphertext digest covers it, and a restore re-derives the same state.
+        // deleted an artifact permanently un-backupable — and a rotation after
+        // the shred is exactly when that row stops matching this keyring. It is
+        // copied as the destroyed thing it is: the shred marker is inside the
+        // bytes, the ciphertext digest covers it, and a restore re-derives the
+        // same state.
         let source_path = match vault.verify_sealed_object(descriptor) {
             Ok(sealed) => sealed.object_path().to_path_buf(),
-            Err(source) if is_shredded(&source) => vault.layout().object_path(descriptor)?,
+            Err(source) if may_be_shredded(&source) => vault.verify_shredded_object(descriptor)?,
             Err(source) => return Err(source.into()),
         };
         let relative = object_relative_path(&descriptor.id.to_string())?;

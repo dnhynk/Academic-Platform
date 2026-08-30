@@ -93,6 +93,113 @@ fn patch(path: &Path, offset: u64, bytes: &[u8]) -> Result<(), Box<dyn Error>> {
 }
 
 // ---------------------------------------------------------------------------
+// 0. a destroyed key slot survives the rotation its row cannot follow
+// ---------------------------------------------------------------------------
+
+/// A crypto-shredded object is still resolvable under a generation that cannot
+/// derive its locator — and nothing else is.
+///
+/// A locator is a function of `KEK_d` and a shred destroys the only copy of the
+/// object's DEK, so a shredded object can never be re-sealed and its descriptor
+/// keeps the locator of the generation it was destroyed under while every other
+/// descriptor moves. `validate_descriptor_locator` re-derives that locator and
+/// refuses before it reads a byte, which is right for a live object and would
+/// make a profile that ever deleted an artifact permanently un-backupable.
+///
+/// What stands in for the keyed check is the marker plus the whole cleartext
+/// identity, and the three refusals below are what keep that from being a way
+/// to copy anything a descriptor points at.
+#[test]
+fn a_shredded_object_resolves_under_a_generation_that_cannot_derive_its_locator()
+-> Result<(), Box<dyn Error>> {
+    let root = SyntheticTestRoot::new("shredded-across-generations")?;
+    create_private_test_root(root.path())?;
+    let (master, _record) = create_master()?;
+    let vault = open_encrypted_vault(
+        root.path(),
+        &master,
+        &[DOMAIN_ID, SECOND_DOMAIN_ID],
+        TEST_CHUNK_SIZE,
+    )?;
+
+    let receipt = vault.ingest(
+        &request_with(
+            ARTIFACT_ID,
+            DOMAIN_ID,
+            RetentionClass::UserManaged,
+            PERMISSION_LINEAGE_ID,
+        )?,
+        deterministic_bytes(200).as_slice(),
+    )?;
+    let shredded = receipt.descriptor().clone();
+    drop(receipt);
+    let live = vault
+        .ingest(
+            &request_with(
+                SECOND_ARTIFACT_ID,
+                DOMAIN_ID,
+                RetentionClass::UserManaged,
+                PERMISSION_LINEAGE_ID,
+            )?,
+            deterministic_bytes(300).as_slice(),
+        )?
+        .descriptor()
+        .clone();
+    vault.shred_key_slot(&shredded, &[0x5a; 32])?;
+
+    // A second generation over the same tree: a rotation that has moved the
+    // keyring but could not move this row.
+    let (rotated_master, _rotated_record) = create_master()?;
+    let rotated = open_encrypted_vault(
+        root.path(),
+        &rotated_master,
+        &[DOMAIN_ID, SECOND_DOMAIN_ID],
+        TEST_CHUNK_SIZE,
+    )?;
+    assert!(matches!(
+        rotated.verify_sealed_object(&shredded),
+        Err(VaultError::LocatorMismatch(_))
+    ));
+    assert_eq!(
+        rotated.verify_shredded_object(&shredded)?,
+        rotated.layout().object_path(&shredded)?
+    );
+
+    // The object that was never shredded is refused as the mismatch it is,
+    // under both vaults.
+    assert!(matches!(
+        rotated.verify_shredded_object(&live),
+        Err(VaultError::LocatorMismatch(_))
+    ));
+    assert!(matches!(
+        vault.verify_shredded_object(&live),
+        Err(VaultError::LocatorMismatch(_))
+    ));
+
+    // The path is a function of the domain, the retention class, the lineage,
+    // and the locator, so those four cannot disagree with the header of the
+    // file the path reaches. The artifact identity and the plaintext length can,
+    // and the cleartext identity check is what refuses them.
+    let mut relabelled = shredded.clone();
+    relabelled.id = live.id;
+    assert!(matches!(
+        rotated.verify_shredded_object(&relabelled),
+        Err(VaultError::ObjectFormat(
+            ObjectFormatError::IdentityMismatch("artifact_id")
+        ))
+    ));
+    let mut relengthed = shredded.clone();
+    relengthed.byte_length = shredded.byte_length + 1;
+    assert!(matches!(
+        rotated.verify_shredded_object(&relengthed),
+        Err(VaultError::ObjectFormat(
+            ObjectFormatError::IdentityMismatch("plaintext_len")
+        ))
+    ));
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // 1. object_header_tag_binds_identity_and_domain
 // ---------------------------------------------------------------------------
 

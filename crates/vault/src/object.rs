@@ -160,6 +160,60 @@ pub fn read_locator(bytes: &[u8]) -> Result<[u8; 32], ObjectFormatError> {
     Ok(locator)
 }
 
+/// Checks a crypto-shredded object's cleartext header against the descriptor
+/// that named it.
+///
+/// A shred destroys the wrapped DEK, and that wrap is what authenticates the
+/// cleartext fields, so nothing here is proved: this is the same operator-facing
+/// label `KEY_SLOT_SHRED_MARKER` is, and anyone who can write the marker can
+/// write these bytes too. What it buys is that a caller which has to copy a
+/// destroyed object it can never open still refuses one whose header names a
+/// different artifact than the descriptor asking for it — which is more than
+/// the keyed read checks for a shredded object, because a destroyed slot stops
+/// that read before `ObjectHeader::require_matches` runs.
+///
+/// Refuses a header that is not shredded, so it can never stand in for the
+/// authenticated read of a live object.
+pub fn require_shredded_identity(
+    bytes: &[u8],
+    descriptor: &ArtifactDescriptor,
+) -> Result<(), ObjectFormatError> {
+    if bytes.len() < HEADER_BYTES {
+        return Err(ObjectFormatError::Truncated);
+    }
+    if bytes[MAGIC_AT..MAGIC_AT + 4] != OBJECT_MAGIC {
+        return Err(ObjectFormatError::BadMagic);
+    }
+    let format_version = read_u16(bytes, FORMAT_VERSION_AT);
+    if format_version != OBJECT_FORMAT_VERSION {
+        return Err(ObjectFormatError::UnsupportedFormatVersion(format_version));
+    }
+    if !is_shredded_header(bytes) {
+        return Err(ObjectFormatError::MalformedHeader("wrapped_dek"));
+    }
+    if bytes[ARTIFACT_ID_AT..ARTIFACT_ID_AT + 16] != descriptor.id.as_bytes()[..] {
+        return Err(ObjectFormatError::IdentityMismatch("artifact_id"));
+    }
+    if bytes[DOMAIN_ID_AT..DOMAIN_ID_AT + 16] != descriptor.domain_id.as_bytes()[..] {
+        return Err(ObjectFormatError::IdentityMismatch("domain_id"));
+    }
+    if bytes[RETENTION_CLASS_AT] != retention_code(descriptor.retention_class) {
+        return Err(ObjectFormatError::IdentityMismatch("retention_class"));
+    }
+    if bytes[PERMISSION_LINEAGE_AT..PERMISSION_LINEAGE_AT + 16]
+        != descriptor.permission_lineage_id.as_bytes()[..]
+    {
+        return Err(ObjectFormatError::IdentityMismatch("permission_lineage_id"));
+    }
+    if bytes[LOCATOR_AT..LOCATOR_AT + 32] != descriptor.vault_locator.as_bytes()[..] {
+        return Err(ObjectFormatError::IdentityMismatch("locator"));
+    }
+    if read_u64(bytes, PLAINTEXT_LEN_AT) != descriptor.byte_length {
+        return Err(ObjectFormatError::IdentityMismatch("plaintext_len"));
+    }
+    Ok(())
+}
+
 const MAGIC_AT: usize = 0;
 const FORMAT_VERSION_AT: usize = 4;
 const HEADER_LEN_AT: usize = 6;
