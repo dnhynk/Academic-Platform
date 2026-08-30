@@ -39,7 +39,7 @@ use academic_portability::{
 use academic_recovery::{BackupRecipientKind, RecoveryProfile};
 use academic_retention::{
     AppendOnlyJournal, BackupTombstone,
-    engine::{HeaderProbe, probe_header, shred_with_tombstone},
+    engine::{HeaderProbe, SparedObject, TombstonedArtifact, probe_header, shred_with_tombstone},
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
     tombstone,
 };
@@ -602,7 +602,8 @@ fn backup_tombstone_is_present_and_re_deletes_on_restore() -> TestResult {
     assert!(written.is_file(), "the tombstone was not written");
     assert_eq!(
         written.file_name().and_then(|name| name.to_str()),
-        Some(format!("{}.tombstone", stone.locator).as_str())
+        Some(format!("{}-{}.tombstone", stone.artifact_id, stone.locator).as_str()),
+        "the tombstone file does not name the artifact it was written for"
     );
     assert_eq!(tombstone::read_from_backup(&backup)?, vec![stone.clone()]);
 
@@ -627,8 +628,11 @@ fn backup_tombstone_is_present_and_re_deletes_on_restore() -> TestResult {
         },
     )?;
     assert_eq!(
-        receipt.re_deleted_locators,
-        vec![stone.locator.clone()],
+        receipt.re_deleted_objects,
+        vec![TombstonedArtifact {
+            artifact_id: stone.artifact_id.clone(),
+            locator: stone.locator.clone(),
+        }],
         "the product restore did not re-apply the backup's tombstone"
     );
 
@@ -806,12 +810,15 @@ fn restore_after_deleting_one_of_three(label: &str, deleted: usize) -> TestResul
         }
 
         assert_eq!(
-            receipt.re_deleted_locators,
-            vec![stone.locator.clone()],
+            receipt.re_deleted_objects,
+            vec![TombstonedArtifact {
+                artifact_id: stone.artifact_id.clone(),
+                locator: stone.locator.clone(),
+            }],
             "{restored}: the receipt does not name the re-deletion"
         );
         assert!(
-            receipt.absent_locators.is_empty(),
+            receipt.absent_tombstones.is_empty(),
             "{restored}: a tombstone that reached its artifact was reported absent"
         );
         let spared: Vec<String> = receipt
@@ -844,6 +851,176 @@ fn a_restore_re_deletes_only_the_named_artifact_when_its_lineage_sorts_last() ->
 #[test]
 fn a_restore_re_deletes_only_the_named_artifact_when_its_lineage_sorts_first() -> TestResult {
     restore_after_deleting_one_of_three("cross-lineage-first", 0)
+}
+
+/// Deletes **two** of the three and restores the backup taken before both.
+///
+/// The row above deletes one registration of a document and proves the other
+/// two survive. This one deletes two, which is where the fifth `P2-A1` audit
+/// found the deletion contract broken on both platforms: the two records name
+/// their own artifacts, but they were written to one file name inside the
+/// backup, so the second replaced the first. Restoring any backup taken before
+/// them published the artifact deleted first as readable — and the receipt
+/// listed it under `spared_objects`, which says "deleting one registration left
+/// an identical copy readable under another lineage". Both registrations had
+/// been deleted, so that was a false success report, not an incomplete one.
+///
+/// `first` and `second` pick the lineages and the order, so no variant is
+/// favourable on both the directory walk order and the record write order.
+fn restore_after_deleting_two_of_three(label: &str, first: usize, second: usize) -> TestResult {
+    let mut fixture = EncryptedFixture::new(label)?;
+    let trio = same_bytes_in_three_lineages(&mut fixture)?;
+    let before_deletion = take_backup(&fixture, fixture.master(), "backup-before-deletion")?;
+    let survivor = (0..trio.len())
+        .find(|index| *index != first && *index != second)
+        .ok_or("the row deleted every lineage")?;
+
+    // The product deletions: both records come from the store's own chain.
+    let stones = {
+        let store = fixture.open_store()?;
+        let mut stones = Vec::new();
+        for (order, deleted) in [first, second].into_iter().enumerate() {
+            let order = u8::try_from(order)?;
+            stones.push(deletion_tombstone(
+                &store,
+                encrypted_support::hex_lower(&[0xc2 + order; 16]),
+                &trio[deleted],
+                1_700_000_000_062 + u64::from(order),
+            )?);
+        }
+        stones
+    };
+    {
+        let vault = fixture.open_vault()?;
+        let mut journal =
+            AppendOnlyJournal::open(&fixture.profile_root().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+        for (order, deleted) in [first, second].into_iter().enumerate() {
+            shred_with_tombstone(&mut journal, &vault, &trio[deleted], &stones[order])?;
+            tombstone::write_into_backup(&before_deletion, &stones[order])?;
+        }
+    }
+
+    // Both records are in the backup: the second deletion did not replace the
+    // first, which is what a restore of this backup depends on.
+    assert_eq!(
+        tombstone::read_from_backup(&before_deletion)?.len(),
+        2,
+        "the backup kept one record for two deletions"
+    );
+
+    // The live tree is right on its own, as it is for one deletion.
+    {
+        let vault = fixture.open_vault()?;
+        let kek = domain_kek_of(fixture.master())?;
+        for (index, descriptor) in trio.iter().enumerate() {
+            let expected = if index == survivor {
+                HeaderProbe::Opened
+            } else {
+                HeaderProbe::Shredded
+            };
+            assert_eq!(
+                probe_header(&vault.layout().object_path(descriptor)?, &kek),
+                expected,
+                "live tree, index {index}"
+            );
+        }
+    }
+
+    let after_deletion = take_backup(&fixture, fixture.master(), "backup-after-deletion")?;
+    for stone in &stones {
+        tombstone::write_into_backup(&after_deletion, stone)?;
+    }
+
+    let mut expected_re_deleted: Vec<TombstonedArtifact> = stones
+        .iter()
+        .map(|stone| TombstonedArtifact {
+            artifact_id: stone.artifact_id.clone(),
+            locator: stone.locator.clone(),
+        })
+        .collect();
+    expected_re_deleted.sort();
+
+    for (backup, restored) in [
+        (&before_deletion, "restored-before-deletion"),
+        (&after_deletion, "restored-after-deletion"),
+    ] {
+        let destination = fixture.work_path(restored);
+        let (backup_root, _) = open_backup_with_secret(
+            backup,
+            BackupRecipientKind::RecoveryPhrase,
+            &recovery_secret(),
+        )?;
+        let verified = verify_encrypted_backup_directory(backup, &backup_root)?;
+        let recovered = recover_profile_keys(&verified, &recovery_secret(), 5_000)?;
+        let receipt = restore_encrypted_profile(
+            backup,
+            &destination,
+            &NativePathProbe::default(),
+            &backup_root,
+            &recovered,
+            &EncryptedRestorePlan {
+                authorizations: &fixture.authorizations(),
+            },
+        )?;
+
+        let keys = ProfileKeys::derive(&recovered.master, recovered.profile_id, &[domain_id()?])?;
+        let vault =
+            academic_vault::EncryptedVault::open(&destination, keys.keyring(&recovered.master)?)?;
+        let kek = domain_kek_of(&recovered.master)?;
+        for (index, descriptor) in trio.iter().enumerate() {
+            let probe = probe_header(&vault.layout().object_path(descriptor)?, &kek);
+            if index == survivor {
+                assert_eq!(
+                    probe,
+                    HeaderProbe::Opened,
+                    "{restored}: the restore destroyed an artifact no tombstone names (index {index})"
+                );
+            } else {
+                assert_eq!(
+                    probe,
+                    HeaderProbe::Shredded,
+                    "{restored}: the restore published a deleted artifact readable (index {index})"
+                );
+            }
+        }
+
+        assert_eq!(
+            receipt.re_deleted_objects, expected_re_deleted,
+            "{restored}: the receipt does not name both re-deletions"
+        );
+        assert!(
+            receipt.absent_tombstones.is_empty(),
+            "{restored}: a tombstone that reached its artifact was reported absent"
+        );
+
+        // The false half of the defect: the receipt said a resurrected artifact
+        // was a copy the deletion had deliberately left readable. Only the
+        // registration nobody deleted may appear here.
+        assert_eq!(
+            receipt.spared_objects,
+            vec![SparedObject {
+                artifact_id: encrypted_support::hex_lower(trio[survivor].id.as_bytes()),
+                locator: stones[0].locator.clone(),
+            }],
+            "{restored}: the receipt reports a deleted artifact as one it spared"
+        );
+    }
+    Ok(())
+}
+
+/// The lower lineage is deleted first, so the higher one's record lands last.
+#[test]
+fn a_restore_keeps_both_deleted_artifacts_deleted_when_the_lower_lineage_goes_first() -> TestResult
+{
+    restore_after_deleting_two_of_three("two-deletions-first", 0, 2)
+}
+
+/// And the other way, so neither variant depends on which record was written
+/// last or on which lineage a directory walk reaches first.
+#[test]
+fn a_restore_keeps_both_deleted_artifacts_deleted_when_the_higher_lineage_goes_first() -> TestResult
+{
+    restore_after_deleting_two_of_three("two-deletions-last", 2, 0)
 }
 
 // ---------------------------------------------------------------------------

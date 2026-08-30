@@ -14,10 +14,11 @@ use academic_retention::{
     AppendOnlyJournal, BackupTombstone, JournalEntry, RotationId, RotationPlan, RotationState,
     RotationUnit, UnitProgress,
     engine::{
-        HeaderProbe, OpeningObservation, RotationKeys, apply_tombstones, observe_reachable_opening,
-        probe_header, shred_with_tombstone,
+        HeaderProbe, OpeningObservation, RotationKeys, SparedObject, TombstonedArtifact,
+        apply_tombstones, observe_reachable_opening, probe_header, shred_with_tombstone,
     },
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
+    tombstone,
 };
 #[cfg(feature = "rotation-orchestration")]
 use academic_retention::{
@@ -334,7 +335,7 @@ fn a_tombstone_re_deletes_the_object_it_names_and_no_other() -> TestResult {
         &materialised.path().join("vault/v2"),
         std::slice::from_ref(&stone),
     )?;
-    assert_eq!(applied.applied, vec![stone.locator.clone()]);
+    assert_eq!(applied.applied, vec![named_by(&stone)]);
     assert!(applied.absent.is_empty());
     assert_eq!(
         probe_header(&materialised_subject, &kek),
@@ -353,7 +354,7 @@ fn a_tombstone_re_deletes_the_object_it_names_and_no_other() -> TestResult {
         &materialised.path().join("vault/v2"),
         std::slice::from_ref(&stone),
     )?;
-    assert_eq!(again.applied, vec![stone.locator.clone()]);
+    assert_eq!(again.applied, vec![named_by(&stone)]);
 
     // A tombstone whose object is not in the tree is reported, not ignored.
     let orphan = BackupTombstone::new(hex::encode([0x22_u8; 16]), descriptors[1].id, [0xFE; 32], 1);
@@ -361,8 +362,16 @@ fn a_tombstone_re_deletes_the_object_it_names_and_no_other() -> TestResult {
         &materialised.path().join("vault/v2"),
         &[stone.clone(), orphan.clone()],
     )?;
-    assert_eq!(mixed.absent, vec![orphan.locator]);
+    assert_eq!(mixed.absent, vec![named_by(&orphan)]);
     Ok(())
+}
+
+/// The artifact and locator one record names, as the three reports spell them.
+fn named_by(tombstone: &BackupTombstone) -> TombstonedArtifact {
+    TombstonedArtifact {
+        artifact_id: tombstone.artifact_id.clone(),
+        locator: tombstone.locator.clone(),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -454,7 +463,7 @@ fn tombstone_over_three_lineages(label: &str, deleted: usize) -> TestResult {
     }
 
     // The report names what it destroyed and what it deliberately did not.
-    assert_eq!(applied.applied, vec![stone.locator.clone()]);
+    assert_eq!(applied.applied, vec![named_by(&stone)]);
     assert!(applied.absent.is_empty());
     let spared: Vec<String> = applied
         .spared
@@ -488,6 +497,209 @@ fn a_tombstone_reaches_its_own_artifact_when_the_deleted_lineage_sorts_last() ->
 #[test]
 fn a_tombstone_reaches_its_own_artifact_when_the_deleted_lineage_sorts_first() -> TestResult {
     tombstone_over_three_lineages("cross-lineage-first", 0)
+}
+
+/// Deletes **two** of three artifacts that share a locator, through the files a
+/// backup actually holds, and applies what that backup reads back.
+///
+/// One deletion of one of them is the pair of rows above. Two is the shape the
+/// fifth `P2-A1` audit reproduced: the records named their artifacts correctly,
+/// but they were written to one file name, so the second replaced the first and
+/// every backup taken before the deletions restored the artifact deleted first
+/// as readable — reported, on the receipt, as a copy the deletion had spared.
+/// So this row writes both records into a backup directory and applies
+/// `read_from_backup`'s answer rather than the two it still holds in memory:
+/// what a restore re-applies is what the directory kept.
+///
+/// `first` and `second` pick the two lineages and the order they are deleted
+/// in, so no variant is favourable on both the walk order and the write order.
+fn two_deletions_over_three_lineages(label: &str, first: usize, second: usize) -> TestResult {
+    let live = TestRoot::new(label)?;
+    let materialised = TestRoot::new(&format!("{label}-copy"))?;
+    let (master, _) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
+    let vault = open_vault(live.path(), &master)?;
+    let kek = domain_kek(&master)?;
+
+    let bytes = rotation_support::deterministic_bytes(778, 0x78);
+    let trio = [
+        seal_in_lineage(&vault, 0, &bytes)?,
+        seal_in_lineage(&vault, 1, &bytes)?,
+        seal_in_lineage(&vault, 2, &bytes)?,
+    ];
+    assert_eq!(trio[0].vault_locator, trio[1].vault_locator);
+    assert_eq!(trio[1].vault_locator, trio[2].vault_locator);
+    let paths = [
+        vault.layout().object_path(&trio[0])?,
+        vault.layout().object_path(&trio[1])?,
+        vault.layout().object_path(&trio[2])?,
+    ];
+
+    // The tree an already-taken backup holds, and that backup's own directory.
+    let copied = materialised.path().join("vault/v2/objects");
+    fs::create_dir_all(copied.as_path())?;
+    for (index, path) in paths.iter().enumerate() {
+        let destination = copied.join(format!("{index}.aobj"));
+        fs::copy(path, &destination)?;
+        assert_eq!(probe_header(&destination, &kek), HeaderProbe::Opened);
+    }
+    let backup = materialised.path().join("backup");
+
+    // Two product deletions, in the order this row was given, each writing its
+    // record into the backup the way a settled deletion does.
+    let mut journal = AppendOnlyJournal::open(&live.path().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+    let mut stones = Vec::new();
+    for (order, deleted) in [first, second].into_iter().enumerate() {
+        let order = u8::try_from(order)?;
+        let stone = BackupTombstone::new(
+            hex::encode([0x60 + order; 16]),
+            trio[deleted].id,
+            *trio[deleted].vault_locator.as_bytes(),
+            1_700_000_000_060 + u64::from(order),
+        );
+        shred_with_tombstone(&mut journal, &vault, &trio[deleted], &stone)?;
+        tombstone::write_into_backup(&backup, &stone)?;
+        stones.push(stone);
+    }
+
+    let records = tombstone::read_from_backup(&backup)?;
+    assert_eq!(
+        records.len(),
+        2,
+        "the second deletion replaced the first record: {records:?}"
+    );
+
+    // The live tree is right on its own: a live shred is one positioned write
+    // at one path, and it is the copies inside a backup that need the records.
+    for (index, path) in paths.iter().enumerate() {
+        let expected = if index == first || index == second {
+            HeaderProbe::Shredded
+        } else {
+            HeaderProbe::Opened
+        };
+        assert_eq!(
+            probe_header(path, &kek),
+            expected,
+            "live tree, index {index}"
+        );
+    }
+
+    let applied = apply_tombstones(&materialised.path().join("vault/v2"), &records)?;
+    for index in 0..trio.len() {
+        let probe = probe_header(&copied.join(format!("{index}.aobj")), &kek);
+        if index == first || index == second {
+            assert_eq!(
+                probe,
+                HeaderProbe::Shredded,
+                "a deleted artifact was left readable in the copy (index {index})"
+            );
+        } else {
+            assert_eq!(
+                probe,
+                HeaderProbe::Opened,
+                "an artifact no tombstone names was destroyed (index {index})"
+            );
+        }
+    }
+
+    // Two deletions are two re-deletions on the report, not one: they share a
+    // locator, and a list of locators would say the profile deleted once.
+    let mut expected: Vec<TombstonedArtifact> = stones.iter().map(named_by).collect();
+    expected.sort();
+    assert_eq!(applied.applied, expected);
+    assert!(
+        applied.absent.is_empty(),
+        "a record that reached its artifact was reported absent: {applied:?}"
+    );
+
+    // And `spared` names the one registration the deletions did not reach. A
+    // resurrected copy reported here as deliberately spared is the half of this
+    // defect that reads as success.
+    let survivor = (0..trio.len())
+        .find(|index| *index != first && *index != second)
+        .ok_or("the row deleted every lineage")?;
+    assert_eq!(
+        applied.spared,
+        vec![SparedObject {
+            artifact_id: hex::encode(trio[survivor].id.as_bytes()),
+            locator: stones[0].locator.clone(),
+        }],
+        "the report does not say which registration is still readable"
+    );
+    Ok(())
+}
+
+/// The lower lineage is deleted first, so the higher one's record lands last.
+#[test]
+fn two_tombstones_reach_both_deleted_artifacts_when_the_lower_lineage_goes_first() -> TestResult {
+    two_deletions_over_three_lineages("two-deletions-low-first", 0, 2)
+}
+
+/// And the other way, so no variant depends on which record was written last.
+#[test]
+fn two_tombstones_reach_both_deleted_artifacts_when_the_higher_lineage_goes_first() -> TestResult {
+    two_deletions_over_three_lineages("two-deletions-high-first", 2, 0)
+}
+
+/// And a pair whose survivor sorts last, so the one left readable is not always
+/// at the same point of a directory walk.
+#[test]
+fn two_tombstones_reach_both_deleted_artifacts_when_the_survivor_sorts_last() -> TestResult {
+    two_deletions_over_three_lineages("two-deletions-mid-first", 1, 0)
+}
+
+/// `absent` names each record that reached nothing, not each locator.
+///
+/// Two records, two artifacts, one locator, and a tree holding only the first
+/// artifact — the ordinary case of a backup taken before the second
+/// registration existed. Keying "reached" by the locator string let the record
+/// that found its object answer for the one that found nothing, so a deletion
+/// the backup could not carry out was reported as carried out.
+#[test]
+fn absent_names_each_tombstone_that_reached_nothing() -> TestResult {
+    let live = TestRoot::new("absent-per-record")?;
+    let materialised = TestRoot::new("absent-per-record-copy")?;
+    let (master, _) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
+    let vault = open_vault(live.path(), &master)?;
+    let kek = domain_kek(&master)?;
+
+    let bytes = rotation_support::deterministic_bytes(779, 0x79);
+    let pair = [
+        seal_in_lineage(&vault, 0, &bytes)?,
+        seal_in_lineage(&vault, 1, &bytes)?,
+    ];
+    assert_eq!(pair[0].vault_locator, pair[1].vault_locator);
+
+    let copied = materialised.path().join("vault/v2/objects");
+    fs::create_dir_all(copied.as_path())?;
+    fs::copy(vault.layout().object_path(&pair[0])?, copied.join("0.aobj"))?;
+
+    let mut stones = Vec::new();
+    for (index, descriptor) in pair.iter().enumerate() {
+        let order = u8::try_from(index)?;
+        stones.push(BackupTombstone::new(
+            hex::encode([0x70 + order; 16]),
+            descriptor.id,
+            *descriptor.vault_locator.as_bytes(),
+            1_700_000_000_070 + u64::from(order),
+        ));
+    }
+
+    let applied = apply_tombstones(&materialised.path().join("vault/v2"), &stones)?;
+    assert_eq!(applied.applied, vec![named_by(&stones[0])]);
+    assert!(
+        applied.spared.is_empty(),
+        "an object its own record named was reported as spared: {applied:?}"
+    );
+    assert_eq!(
+        applied.absent,
+        vec![named_by(&stones[1])],
+        "a record that reached nothing was answered for by the one sharing its locator"
+    );
+    assert_eq!(
+        probe_header(&copied.join("0.aobj"), &kek),
+        HeaderProbe::Shredded
+    );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

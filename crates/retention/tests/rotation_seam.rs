@@ -27,8 +27,8 @@ use academic_domain::{ArtifactDescriptor, ArtifactId};
 use academic_retention::{
     AppendOnlyJournal, BackupTombstone, RotationId, RotationPlan, RotationState, RotationUnit,
     engine::{
-        HeaderProbe, RotationEngine, apply_tombstones, probe_header, retire_superseded_object,
-        shred_with_tombstone,
+        HeaderProbe, RotationEngine, TombstonedArtifact, apply_tombstones, probe_header,
+        retire_superseded_object, shred_with_tombstone,
     },
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
     recipients::{add_recipient, read_set, retire_generation, rewrap_for_generation},
@@ -778,9 +778,10 @@ fn a_tombstone_reaches_a_copy_under_a_superseded_locator() -> TestResult {
     let objects_root = rotated.root.path().join("vault").join("v2");
     let applied = apply_tombstones(&objects_root, std::slice::from_ref(&stone))?;
     assert!(
-        applied.applied.contains(&hex::encode(
-            rotated.descriptors[0].vault_locator.as_bytes()
-        )),
+        applied.applied.contains(&TombstonedArtifact {
+            artifact_id: stone.artifact_id.clone(),
+            locator: hex::encode(rotated.descriptors[0].vault_locator.as_bytes()),
+        }),
         "the deletion did not reach the copy under the superseded locator: {applied:?}"
     );
     assert!(
@@ -801,7 +802,13 @@ fn a_tombstone_reaches_a_copy_under_a_superseded_locator() -> TestResult {
     );
     let nothing = apply_tombstones(&objects_root, &[unreachable])?;
     assert!(nothing.applied.is_empty());
-    assert_eq!(nothing.absent, vec![hex::encode([0x99_u8; 32])]);
+    assert_eq!(
+        nothing.absent,
+        vec![TombstonedArtifact {
+            artifact_id: hex::encode(rotated.resealed[0].id.as_bytes()),
+            locator: hex::encode([0x99_u8; 32]),
+        }]
+    );
     Ok(())
 }
 

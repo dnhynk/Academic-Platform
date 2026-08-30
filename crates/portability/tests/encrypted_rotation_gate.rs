@@ -30,7 +30,10 @@ use academic_portability::encrypted::{
 use academic_recovery::{BackupRecipientKind, RecoveryProfile};
 use academic_retention::{
     AppendOnlyJournal, RotationId, RotationPlan, RotationUnit,
-    engine::{EngineError, HeaderProbe, RotationEngine, probe_header, shred_with_tombstone},
+    engine::{
+        EngineError, HeaderProbe, RotationEngine, TombstonedArtifact, probe_header,
+        shred_with_tombstone,
+    },
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
     rotation::KeyGeneration,
     tombstone,
@@ -169,8 +172,11 @@ fn a_deletion_still_reaches_a_backup_while_every_rotation_entry_point_refuses() 
         },
     )?;
     assert_eq!(
-        receipt.re_deleted_locators,
-        vec![stone.locator.clone()],
+        receipt.re_deleted_objects,
+        vec![TombstonedArtifact {
+            artifact_id: stone.artifact_id.clone(),
+            locator: stone.locator.clone(),
+        }],
         "the restore did not re-apply the tombstone"
     );
 

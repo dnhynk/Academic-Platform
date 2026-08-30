@@ -49,8 +49,8 @@ Retiring the superseded object is the collection point for what a rotation super
 A backup holds `AEAD_CHUNKED_V2` objects byte for byte, so crypto-shredding the
 live object does not reach the copy inside one. `P2-K5` closes that with a
 backup tombstone: one JSON record per deleted artifact, written into
-`<backup>/tombstones/<locator>.tombstone` with a single atomic write, and applied
-to the object tree a restore materialises.
+`<backup>/tombstones/<artifact-id>-<locator>.tombstone` with a single atomic
+write, and applied to the object tree a restore materialises.
 
 A record names the **artifact** it was written for and every locator that
 artifact has been reachable under — the one the live shred destroyed and every
@@ -68,17 +68,27 @@ key slot the profile never deleted, or resurrecting the one it did — and would
 report the ordinary success either way. So a record carries the artifact id, the
 match is on both, and no match consumes a record.
 
+The **file** carries both for the same reason. A backup directory is a flat
+namespace, so a name spelling only the locator makes the second of two such
+deletions replace the first record, and a restore of every backup taken before
+them republishes the artifact deleted first — reported as a copy the deletion
+deliberately spared, which is a false success rather than an incomplete one.
+Deleting two registrations of one document leaves two records and two files.
+
 `restore_encrypted_profile` is what applies them: in the staging tree, after
 every object has been authenticated and before the rename that publishes the
 restore, so no published restore holds a key slot the profile it came from had
 destroyed. The re-deletion needs **no key** — the locator is cleartext at a
 fixed header offset and destroying a key slot is a positioned write. A tombstone
 that reached no object under any of its artifact's names is reported rather than
-ignored: `EncryptedRestoreReceipt` carries `re_deleted_locators`,
+ignored: `EncryptedRestoreReceipt` carries `re_deleted_objects`,
 `spared_objects` — the copies a record's locator reached under another artifact
-and it deliberately left readable — and `absent_locators`, three sorted lists, so
-a deletion the backup could not carry out is distinguishable from one it did and
-from one that reached its own artifact and no other. Absence is not an error —
+and it deliberately left readable — and `absent_tombstones`, three sorted lists,
+so a deletion the backup could not carry out is distinguishable from one it did
+and from one that reached its own artifact and no other. Every entry names an
+artifact as well as a locator, because a list keyed by locator reports two
+re-deletions of the same bytes as one and lets a record that found its object
+answer for a record that found nothing. Absence is not an error —
 the artifact may have been registered after the backup was taken, or shredded
 before it. A
 tombstone write that fails makes the deletion `REPAIR_REQUIRED` rather than

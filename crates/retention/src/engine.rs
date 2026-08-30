@@ -729,8 +729,10 @@ pub fn shred_with_tombstone(
 /// Only the 208-byte header is read. Both fields are inside it and nothing else
 /// here looks at the ciphertext, so an object of any size costs one header.
 ///
-/// Returns the locators it re-deleted, the objects it deliberately left intact,
-/// and the tombstones that matched no object in the tree.
+/// Returns the artifacts it re-deleted, the objects it deliberately left
+/// intact, and the tombstones that matched no object in the tree. All three
+/// name an artifact as well as a locator, because a locator does not tell two
+/// registrations of the same bytes apart.
 pub fn apply_tombstones(
     objects_root: &std::path::Path,
     tombstones: &[BackupTombstone],
@@ -751,7 +753,10 @@ pub fn apply_tombstones(
     }
     let mut applied = Vec::new();
     let mut spared = Vec::new();
-    let mut reached: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
+    // One flag per record, not per locator: two records share a locator when
+    // one domain held the same bytes twice, and keying this by the locator
+    // string would let either of them answer for both.
+    let mut reached = vec![false; wanted.len()];
     let mut objects = Vec::new();
     collect_objects(objects_root, &mut objects)?;
     for path in objects {
@@ -773,20 +778,23 @@ pub fn apply_tombstones(
         };
         let mut named_by = None;
         let mut shares_a_locator = false;
-        for candidate in &wanted {
+        for (index, candidate) in wanted.iter().enumerate() {
             if !candidate.locators.contains(&locator) {
                 continue;
             }
             if candidate.artifact == artifact {
-                named_by = Some(candidate);
+                named_by = Some((index, candidate));
                 break;
             }
             shares_a_locator = true;
         }
-        if let Some(candidate) = named_by {
+        if let Some((index, candidate)) = named_by {
             shred_key_slot_at(&path, &candidate.tombstone.digest())?;
-            applied.push(hex::encode(locator));
-            reached.insert(candidate.tombstone.locator.as_str());
+            applied.push(TombstonedArtifact {
+                artifact_id: hex::encode(artifact),
+                locator: hex::encode(locator),
+            });
+            reached[index] = true;
         } else if shares_a_locator {
             spared.push(SparedObject {
                 artifact_id: hex::encode(artifact),
@@ -798,10 +806,14 @@ pub fn apply_tombstones(
     applied.dedup();
     spared.sort();
     spared.dedup();
-    let mut absent: Vec<String> = wanted
+    let mut absent: Vec<TombstonedArtifact> = wanted
         .iter()
-        .map(|value| value.tombstone.locator.clone())
-        .filter(|locator| !reached.contains(locator.as_str()))
+        .zip(&reached)
+        .filter(|(_, reached)| !**reached)
+        .map(|(value, _)| TombstonedArtifact {
+            artifact_id: hex::encode(value.artifact),
+            locator: value.tombstone.locator.clone(),
+        })
         .collect();
     absent.sort();
     absent.dedup();
@@ -810,6 +822,22 @@ pub fn apply_tombstones(
         spared,
         absent,
     })
+}
+
+/// One artifact a tombstone named, and the locator it was named under.
+///
+/// Both halves are needed because neither is enough on its own: a locator is
+/// shared by every artifact in one domain that holds the same bytes, and one
+/// artifact is reachable under every locator its reference chain moved through.
+/// A report that carried only the locator would say "one re-deletion" when a
+/// profile deleted two registrations of the same document, and could not say
+/// which of two records reached nothing.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TombstonedArtifact {
+    /// 32 lowercase hex identity of the artifact.
+    pub artifact_id: String,
+    /// 64 lowercase hex locator it was reached, or looked for, under.
+    pub locator: String,
 }
 
 /// One object a tombstone's locator reached and its artifact did not name.
@@ -830,22 +858,30 @@ pub struct SparedObject {
 /// What a tombstone application reached, what it spared, and what it did not find.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AppliedTombstones {
-    /// Locators re-deleted, sorted.
-    pub applied: Vec<String>,
+    /// Artifacts re-deleted and the locator each was reached under, sorted.
+    ///
+    /// One entry per artifact, not per locator: deleting two registrations of
+    /// the same document destroys two key slots under one name, and a list of
+    /// locators would report that as one re-deletion.
+    pub applied: Vec<TombstonedArtifact>,
     /// Objects left intact although a tombstone's locator reached them, sorted.
     ///
     /// Empty unless the tree holds two artifacts with the same bytes in one
     /// domain and one of them was deleted.
     pub spared: Vec<SparedObject>,
-    /// Tombstones that reached no object in the tree, named by the locator the
-    /// live shred destroyed, sorted.
+    /// Tombstones that reached no object in the tree, named by their artifact
+    /// and by the locator the live shred destroyed, sorted.
+    ///
+    /// One entry per record. Two records share a locator when one domain held
+    /// the same bytes twice, and a record that reached nothing is not answered
+    /// for by the other one reaching its own artifact.
     ///
     /// A tombstone that matched under one of the artifact's earlier names is
     /// not here: it reached its object. A tombstone whose locator is on an
     /// object of another artifact *is* here, and that object is in `spared`.
     /// This list is what a restore receipt carries so a deletion that could not
     /// be re-applied is reported rather than dropped.
-    pub absent: Vec<String>,
+    pub absent: Vec<TombstonedArtifact>,
 }
 
 fn collect_objects(root: &std::path::Path, into: &mut Vec<PathBuf>) -> Result<(), EngineError> {

@@ -40,7 +40,9 @@ use academic_portability::{
 use academic_recovery::{BackupRecipientKind, RecoveryProfile};
 use academic_retention::{
     AppendOnlyJournal, RotationId, RotationPlan, RotationState, RotationUnit,
-    engine::{HeaderProbe, RotationEngine, probe_header, retire_superseded_object},
+    engine::{
+        HeaderProbe, RotationEngine, TombstonedArtifact, probe_header, retire_superseded_object,
+    },
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
     rotation::{KeyGeneration, StoreDatabaseRekey as StoreDatabaseRekeyOutcome},
     tombstone,
@@ -445,12 +447,15 @@ fn a_deletion_after_a_rotation_reaches_a_pre_rotation_backup() -> TestResult {
     )?;
 
     assert_eq!(
-        receipt.re_deleted_locators,
-        vec![hex_lower(subject_before.vault_locator.as_bytes())],
+        receipt.re_deleted_objects,
+        vec![TombstonedArtifact {
+            artifact_id: stone.artifact_id.clone(),
+            locator: hex_lower(subject_before.vault_locator.as_bytes()),
+        }],
         "the restore did not re-delete the copy under the pre-rotation locator"
     );
     assert!(
-        receipt.absent_locators.is_empty(),
+        receipt.absent_tombstones.is_empty(),
         "a tombstone that reached its object was reported absent"
     );
 
@@ -507,10 +512,13 @@ fn a_tombstone_that_reaches_nothing_is_reported_on_the_receipt() -> TestResult {
             authorizations: &fixture.authorizations(),
         },
     )?;
-    assert!(receipt.re_deleted_locators.is_empty());
+    assert!(receipt.re_deleted_objects.is_empty());
     assert_eq!(
-        receipt.absent_locators,
-        vec![hex_lower(&[0x99_u8; 32])],
+        receipt.absent_tombstones,
+        vec![TombstonedArtifact {
+            artifact_id: stone.artifact_id.clone(),
+            locator: hex_lower(&[0x99_u8; 32]),
+        }],
         "an unmatched tombstone was dropped instead of reported"
     );
     Ok(())
@@ -802,11 +810,14 @@ fn a_deletion_before_a_rotation_still_backs_up_and_restores() -> TestResult {
         },
     )?;
     assert_eq!(
-        older_receipt.re_deleted_locators,
-        vec![hex_lower(subject.vault_locator.as_bytes())],
+        older_receipt.re_deleted_objects,
+        vec![TombstonedArtifact {
+            artifact_id: stone.artifact_id.clone(),
+            locator: hex_lower(subject.vault_locator.as_bytes()),
+        }],
         "the restore did not re-delete the copy the pre-deletion backup holds"
     );
-    assert!(older_receipt.absent_locators.is_empty());
+    assert!(older_receipt.absent_tombstones.is_empty());
     let older_keys = ProfileKeys::derive(
         &older_recovered.master,
         older_recovered.profile_id,
