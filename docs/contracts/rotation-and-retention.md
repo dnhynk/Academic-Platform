@@ -24,8 +24,25 @@ below is a library sequence, executed end to end by
 `crates/portability/tests/encrypted_rotation.rs` and
 `crates/portability/tests/encrypted_rotation_seam.rs`, and by nothing a user can
 invoke. So there is no orchestrator to run the preflight the re-rotation section
-below requires, and the ordering rules here are obligations on the first one
-written. `P2-P2` is the task that writes it.
+below requires. `P2-P2` is the task that writes it.
+
+**What the first orchestrator is bound by.** Four rules, and the difference
+between them matters, because only one is left for a reader to remember:
+
+| rule | where it is enforced |
+|---|---|
+| the `STORE_DATABASE` unit is planned last | `RotationPlan::new`, `RotationError::StoreDatabaseNotLast` |
+| the executor's two generations are the plan's two | `rotate_store_database`, `EngineError::StoreDatabaseExecutorGeneration` |
+| only a unit the plan holds is moved under it | `rotate_object` / `rotate_store_database`, `EngineError::UnitNotInPlan` |
+| **a superseded object is retired before the next rotation begins** | **nothing — this one is an obligation** |
+
+The last one is the only one a type does not hold to.
+`retire_superseded_object` finds its unit in the *latest* rotation
+`RotationState::replay` returns, so after a second rotation the first rotation's
+superseded objects can no longer be retired and each stays openable under the
+first generation's key, in the live tree, for as long as the profile exists. An
+orchestrator that rotates twice without retiring in between has left them there
+and nothing will refuse it.
 
 ## What rotates, and why one rotation moves everything
 
@@ -176,7 +193,8 @@ chain.
 **Every reader that decides which object is reachable resolves this chain.**
 There are four, and all four go through
 `descriptor_migration::resolve_with_stored_migrations`: `read_artifact_descriptors`,
-which backup, restore, and export use; the store's pre-transaction sealing
+which backup and restore use; `resolved_artifact_descriptor`, which is what a
+retirement's `CanonicalReference` reads; the store's pre-transaction sealing
 closure (`preflight_artifact_closure`); and the acceptance transaction's own
 closure writer, whose sealed receipts are checked against the descriptor it
 loads. A reader that stopped at the signed row would refuse every batch whose
@@ -207,6 +225,14 @@ superseded generation's key — including a recipient the rotation revoked — o
 the superseded copy in the live tree for as long as it is merely unreferenced.
 `revocation stops this recipient from receiving any future key` is exactly that
 narrow, and retirement is the operation that closes the window.
+
+**The window closes only before the next rotation.** Gate 1 below reads the
+rotation `RotationState::replay` returns, which is the latest one in the journal,
+so once a second rotation is recorded the first one's units are no longer the
+ones a retirement can find and it refuses with "the journal does not record the
+unit as migrated". The first generation's copies then stay openable under the
+first generation's key indefinitely. This is the one ordering rule in this
+contract that no type holds the caller to.
 
 Every argument is bound to something already recorded, because the write cannot
 be undone and — until an orchestrator exists — this is the only garbage
@@ -271,7 +297,27 @@ values the journal already carries.
 
 **The database moves last.** While objects are still moving, the store key that
 opens the database has to stay in force for both the migrated and the unmigrated
-ones, so the unit is planned last and run after the last object.
+ones — `record_descriptor_migration` opens the store to write each move — so the
+unit is planned last and run after the last object. `RotationPlan::new` refuses a
+plan that orders it anywhere else (`the store database unit is planned at
+position … and a rotation moves it last`), so this is a property of the plan
+rather than a rule an orchestrator has to remember.
+
+**The executor is checked against the plan before it runs.** The records this
+unit appends are pure functions of the plan — the target is
+`store_database_target_id(profile, plan target)` — so an executor holding some
+other pair of masters would move the database out from under both generations the
+journal then names, and no later read of the journal could tell. A rekey is not
+undone by reading anything afterwards, so `StoreDatabaseExecutor::generations`
+reports the pair the executor holds, `rotate_store_database` compares it with the
+plan's, and a mismatch refuses before a page is rewritten.
+
+**A unit outside the plan is refused.** `RotationState::replay` resolves every
+journalled unit against the plan, so a record written for a unit the plan does
+not hold makes the whole journal unreplayable and the rotation impossible to
+complete — permanently, because the records are append-only, and with no kill
+anywhere in it. `rotate_object` and `rotate_store_database` both refuse such a
+unit before the first record.
 
 A kill during the rekey leaves exactly one working key, which is fault `EN01`
 (`store_rekey_kill_leaves_exactly_one_working_key`); since `P2-K5` the
@@ -283,9 +329,23 @@ pinned interpreter. The resume is the same call: a database `current` no longer
 opens but `next` does is reported as already at the target, and the journal
 records catch up.
 
+A kill between the two records is repaired the same way an object unit's is, but
+the state in that window does not read the same. `RotationState` reports
+`opening_generation = source` for a unit that is resealed and not yet migrated,
+which is true of an object — both copies are on disk — and false of the database,
+which the rekey has already moved to the target. No product code consumes that
+value, and the resume is the executor's own `AlreadyAtTarget` rather than
+anything read from it.
+
 A backup refuses a key set and a master that name two generations
-(`backup profile key generation`), so a rotation that has not run this unit is
-caught where it is cheap rather than on the fresh machine the restore was for.
+(`backup profile key generation`). That guard compares the two *arguments* a
+caller assembled, `keys.generation()` against `master.generation_id()`, so what
+it catches is a caller pairing a rotated key set with a superseded master. A
+profile whose halves are actually split on disk is refused too, but by the halves
+themselves: under the superseded generation the objects no longer derive
+(`LocatorMismatch`), and under the target one the database does not open
+(`EncryptedStoreLocked`). Both are fail-closed and neither publishes a directory;
+the named guard is not what fires.
 
 ## Re-rotation, and the locator a chain records once
 
@@ -356,12 +416,26 @@ already the rewrapped one, and the resume is `retire_generation`, not a second
 rewrap.
 
 `retire_generation` is the last point at which a profile can be made permanently
-unopenable, so what it keeps is decided by the journal rather than by the
-caller. It refuses unless the journal records a rotation, that rotation is
-complete with no unit remaining, and `kept_generation` is the generation the
-rotation moved **to**. Without the first, nothing says the generation being kept
-opens anything and every object may be under the one being removed; without the
-third, the call is that same destruction stated backwards.
+unopenable. **Which generation it keeps is decided by the journal**: it refuses
+unless the journal records a rotation, that rotation is complete with no unit
+remaining, and `kept_generation` is the generation the rotation moved **to**.
+Without the first, nothing says the generation being kept opens anything and
+every object may be under the one being removed; without the third, the call is
+that same destruction stated backwards.
+
+**Which records survive is still the caller's `keeps` predicate**, and that is
+not the same statement. `recipients.cbor` is `P2-K1`'s frozen document and a
+record does not say which generation it wraps, so no key-free check in this crate
+can read a record and answer the question; the caller — which has just finished
+rotating to that generation — answers it by opening one. A caller that names the
+right generation and then keeps the superseded records is accepted, and the
+profile it leaves opens nothing that is reachable. Recording each produced
+record's digest in `RecipientAdded` would move the choice into the journal, and
+it is not done here because every path that puts a record on `recipients.cbor` —
+profile creation included — would have to journal one first, or the selection
+would silently drop records and become the destruction it is meant to prevent.
+Until then this is an obligation on the caller, and `rewrap_for_generation`'s
+identity and count gates are the whole of what bounds it.
 
 Revoking the last remaining recipient is refused. That is not access control, it
 is data destruction.
@@ -449,12 +523,38 @@ required, present, and digest-checked. What an added tombstone can do is destroy
 a key slot on restore, and anyone who can write into the backup directory could
 delete the object outright.
 
-A crypto-shredded object does not stop a backup. Its `artifact_descriptor` row
-is append-only and stays, so refusing the profile would make one that had ever
-deleted an artifact permanently un-backupable. The object is copied as the
-destroyed thing it is — the shred marker is inside the bytes and the ciphertext
-digest covers it — and the restore digest-checks it without asking it to
-authenticate.
+A crypto-shredded object does not stop a backup, and a rotation after the shred
+does not either. Its `artifact_descriptor` row is append-only and stays, so
+refusing the profile would make one that had ever deleted an artifact permanently
+un-backupable. The object is copied as the destroyed thing it is — the shred
+marker is inside the bytes and the ciphertext digest covers it — and the restore
+digest-checks it without asking it to authenticate.
+
+**A shredded object cannot be rotated, and its reference cannot move.** A reseal
+opens the source object and a destroyed key slot opens for nobody, so a plan that
+names one cannot complete; `record_descriptor_migration` will not write a chain
+row for an object that does not exist either. The orchestrator therefore leaves
+shredded artifacts out of the plan and their rows keep the locator of the
+generation they were destroyed under while every other row moves.
+
+That is the state a backup then meets. A locator is a function of `KEK_d`, so the
+rotated keyring derives a different one for that row and `validate_descriptor_locator`
+refuses it as a `LocatorMismatch` before reading a byte — which is right for a
+live object and, left alone, would refuse every later backup of that profile.
+`EncryptedVault::verify_shredded_object` is what tells the two apart: it reads the
+header at the descriptor's own name and returns its path only if the shred marker
+is there and every cleartext identity field matches the descriptor. That is more
+than the keyed path checks for a shredded object, since a destroyed slot stops
+that read before `require_matches` runs, and none of it is authenticated — the
+wrap that authenticated those bytes is what the shred destroyed, so it is the same
+operator-facing label the marker is. Anything else stays the locator mismatch it
+was. `a_deletion_before_a_rotation_still_backs_up_and_restores` is the whole
+chain: delete, rotate what is left, back up, restore, and restore the
+pre-deletion backup the tombstone was written into.
+
+There is no encrypted export. `export_profile` is the Phase 1 plaintext lane over
+`Vault`, which has no key generations and no crypto-shred, so nothing in this
+section reaches it.
 
 
 `RB02` — a tombstone write that fails — makes the deletion `REPAIR_REQUIRED`
@@ -547,5 +647,13 @@ cargo test -p academic-portability --no-default-features --features encrypted-po
 
 `encrypted_rotation.rs` states what a rotation does; `encrypted_rotation_seam.rs`
 states what everything after one does — the acceptance, the backup, the restore,
-the deletion, the retirement, and the re-rotation. Both run in the hosted
+the deletion before a rotation and after one, the retirement, the executor's
+generations, and the re-rotation. Both run in the hosted
 `encrypted-portability-lane` job.
+
+Two of this contract's statements are held by tests outside those two files,
+because the crate that owns each gate is where a reverted gate has to bite:
+`retention/tests/rotation_seam.rs` refuses an executor outside the plan's
+generations without a store, and `retention/tests/rotation.rs` holds the plan's
+ordering rule and the unit-in-plan gate. `vault/tests/encrypted_objects.rs` holds
+what `verify_shredded_object` requires of the file it hands back.
