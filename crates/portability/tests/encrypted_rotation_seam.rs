@@ -819,6 +819,146 @@ fn a_deletion_before_a_rotation_still_backs_up_and_restores() -> TestResult {
 }
 
 // ---------------------------------------------------------------------------
+// The obligation the engine's own two vaults are, and what it costs
+// ---------------------------------------------------------------------------
+
+/// An engine built on a target vault outside the plan's generations leaves a
+/// profile no generation the plan names can back up.
+///
+/// `RotationEngine::new` takes two vaults and can check neither against the
+/// plan: a vault holds `KEK_d` and the locator key derived from it, never the
+/// Vault Master Key a generation name is a function of. So this one stays an
+/// obligation on an orchestrator while the database unit's executor is bound,
+/// and what the obligation is worth is here rather than asserted in prose.
+///
+/// The journal does not lie about the objects — an object unit records the
+/// locator the reseal actually produced and the store row is verified against
+/// the object it names. What is false is the plan: `RotationStarted` names a
+/// target generation nothing is under, and the retirement gates all compare the
+/// journal with the store rather than with a key, so they would let the copies
+/// that still open go.
+#[test]
+fn an_engine_outside_the_plans_generations_leaves_a_profile_no_backup_can_take() -> TestResult {
+    let mut fixture = EncryptedFixture::new("seam-engine-generations")?;
+    let descriptors = fixture.descriptors()?;
+    let planned = VaultMasterKey::generate()?;
+    let elsewhere = VaultMasterKey::generate()?;
+
+    let mut units: Vec<RotationUnit> = descriptors
+        .iter()
+        .map(|descriptor| RotationUnit::object(*descriptor.vault_locator.as_bytes()))
+        .collect();
+    let database_unit = RotationUnit::store_database(PROFILE_ID);
+    units.push(database_unit.clone());
+    let plan = RotationPlan::new(
+        RotationId::from_bytes([0x53; 16]),
+        PROFILE_ID,
+        KeyGeneration::of(fixture.master(), PROFILE_ID)?,
+        KeyGeneration::of(&planned, PROFILE_ID)?,
+        units.clone(),
+    )?;
+
+    let mut journal = journal_of(&fixture)?;
+    {
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&elsewhere)?;
+        RotationEngine::new(&plan, &source_vault, &target_vault).begin(&mut journal)?;
+    }
+    // Every object moves to the generation the *vault* holds, not the one the
+    // plan names, and each move is recorded truthfully.
+    let mut migrated = Vec::with_capacity(descriptors.len());
+    for (index, descriptor) in descriptors.iter().enumerate() {
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&elsewhere)?;
+        let resealed = RotationEngine::new(&plan, &source_vault, &target_vault).rotate_object(
+            &mut journal,
+            &units[index],
+            descriptor,
+        )?;
+        drop(source_vault);
+        drop(target_vault);
+        let action: academic_domain::RetentionActionId = id(0x0a60 + u64::try_from(index)?)?;
+        let sequence = fixture
+            .open_store()?
+            .next_descriptor_migration_seq(descriptor.id)?;
+        let record = DescriptorMigration::of(*action.as_bytes(), descriptor, sequence, &resealed);
+        fixture.accept_retention_action(action, record.record_digest())?;
+        let target_vault = fixture.open_vault_under(&elsewhere)?;
+        let mut store = fixture.open_store()?;
+        store.record_descriptor_migration(&record, &resealed, &target_vault)?;
+        drop(store);
+        drop(target_vault);
+        migrated.push(resealed);
+    }
+
+    // The database unit's executor *is* bound, so it moves to the plan's target
+    // and the rotation completes. The halves are now under two generations and
+    // the journal names a third state that is true of neither.
+    {
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&planned)?;
+        let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+        let probe = NativePathProbe::default();
+        engine.rotate_store_database(
+            &mut journal,
+            &database_unit,
+            &StoreDatabaseRekey::new(
+                fixture.profile_root(),
+                &probe,
+                PROFILE_ID,
+                fixture.master(),
+                &planned,
+            ),
+        )?;
+        engine.complete(&mut journal)?;
+    }
+    let state = RotationState::replay(journal.entries())?.ok_or("no rotation replayed")?;
+    assert!(state.is_complete());
+    assert_eq!(state.target(), KeyGeneration::of(&planned, PROFILE_ID)?);
+
+    // Only the generation the vault held opens the objects.
+    let elsewhere_kek = domain_kek_of(&elsewhere)?;
+    let planned_kek = domain_kek_of(&planned)?;
+    let layout_vault = fixture.open_vault_under(&elsewhere)?;
+    for descriptor in &migrated {
+        let path = layout_vault.layout().object_path(descriptor)?;
+        assert_eq!(probe_header(&path, &elsewhere_kek), HeaderProbe::Opened);
+        assert_ne!(probe_header(&path, &planned_kek), HeaderProbe::Opened);
+    }
+    drop(layout_vault);
+
+    // Neither generation backs the profile up: under the plan's target the
+    // objects no longer derive their locators, and under the objects' own the
+    // database does not open. The refusal is before anything is published.
+    let (backup_root, recipients) = backup_key_set()?;
+    for (label, master) in [("planned", &planned), ("elsewhere", &elsewhere)] {
+        let keys = ProfileKeys::derive(master, PROFILE_ID, &[domain_id()?])?;
+        let destination = fixture.work_path(&format!("split-backup-{label}"));
+        let refused = backup_encrypted_profile(
+            fixture.profile_root(),
+            &destination,
+            master,
+            &keys,
+            &BackupPlan {
+                recovery_profile: RecoveryProfile::DevicePlusPhrase,
+                backup_root: &backup_root,
+                backup_recipients: &recipients,
+                profile_recovery_recipients: &fixture.recovery_recipients_cbor()?,
+            },
+        );
+        assert!(
+            refused.is_err(),
+            "a backup of a profile the plan's generations do not describe was published"
+        );
+        assert!(
+            !destination.exists(),
+            "the refused backup left a directory behind"
+        );
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // T116 P2-N2
 // ---------------------------------------------------------------------------
 

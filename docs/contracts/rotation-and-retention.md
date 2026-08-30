@@ -26,17 +26,41 @@ below is a library sequence, executed end to end by
 invoke. So there is no orchestrator to run the preflight the re-rotation section
 below requires. `P2-P2` is the task that writes it.
 
-**What the first orchestrator is bound by.** Four rules, and the difference
-between them matters, because only one is left for a reader to remember:
+**What the first orchestrator is bound by.** Five rules, and the difference
+between them matters, because only two are left for a reader to remember:
 
 | rule | where it is enforced |
 |---|---|
 | the `STORE_DATABASE` unit is planned last | `RotationPlan::new`, `RotationError::StoreDatabaseNotLast` |
 | the executor's two generations are the plan's two | `rotate_store_database`, `EngineError::StoreDatabaseExecutorGeneration` |
 | only a unit the plan holds is moved under it | `rotate_object` / `rotate_store_database`, `EngineError::UnitNotInPlan` |
+| **the two vaults an engine is built on are the plan's two generations** | **nothing — this one is an obligation** |
 | **a superseded object is retired before the next rotation begins** | **nothing — this one is an obligation** |
 
-The last one is the only one a type does not hold to.
+The last two are the ones no type holds to.
+
+`RotationEngine::new` takes two `EncryptedVault`s and cannot check either
+against the plan: a vault holds `KEK_d` and the locator key derived from it, not
+the Vault Master Key, and a generation name is a function of that master. An
+engine built on a target vault under some third generation moves every object
+there, and the journal is *truthful* about it — an object unit records the
+locator the reseal actually produced, and the store row is verified against the
+object it names — so nothing downstream contradicts it. What is then false is the
+plan: `RotationStarted` names a target generation no object is under.
+`retire_superseded_object` still passes all four of its gates, because every one
+of them compares the journal with the store rather than with a key, and destroys
+the superseded copy; `retire_generation(kept = state.target())` keeps the
+records for the generation the plan named. The profile that leaves opens
+nothing. A backup refuses it (`LocatorMismatch` under the plan's target,
+`EncryptedStoreLocked` under the objects' actual one), so it is caught before it
+is carried anywhere — but only after the copies that would have opened it are
+gone. Binding this the way the database unit's executor is bound means giving the
+engine the two masters and giving a vault a way to prove which one it was built
+from; neither exists today.
+`an_engine_outside_the_plans_generations_leaves_a_profile_no_backup_can_take` is
+that whole sequence, so the cost of this obligation is executed rather than
+argued.
+
 `retire_superseded_object` finds its unit in the *latest* rotation
 `RotationState::replay` returns, so after a second rotation the first rotation's
 superseded objects can no longer be retired and each stays openable under the
