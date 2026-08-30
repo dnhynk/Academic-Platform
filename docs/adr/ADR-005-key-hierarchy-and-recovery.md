@@ -139,10 +139,17 @@ rows that prove each one.
 It is an invariant over the resolved object and not over every file on disk. A
 superseded object stays a readable file under the superseded key until
 `retire_superseded_object` destroys its key slot, which is the collection point
-ADR-004 leaves open. The store database is not covered at all in this build: its
-executor is `P2-K2`'s `PRAGMA rekey`, which does not link into
-`academic-retention`, so a rotation that reaches that unit stops rather than
-recording a migration that did not happen.
+ADR-004 leaves open. A crypto-shredded object is the other exception: its key
+slot is already gone, so nothing can re-seal it and its `artifact_descriptor` row
+keeps the locator of the generation it was destroyed under. Neither key opens it,
+which is the point of destroying it.
+
+The store database is covered by its own rotation unit. `academic-retention`
+plans and journals it and `RotationEngine::rotate_store_database` runs it through
+a `StoreDatabaseExecutor`, which the encrypted portability lane binds to
+`P2-K2`'s `PRAGMA rekey`; the executor reports the pair of generations it holds
+and the engine refuses one that is not the plan's pair. A rotation that reaches
+the unit with no executor run still refuses to complete, by name.
 
 Revocation removes a recipient's wrapped key and stops any future generation from
 being wrapped for it. **That is the whole of it.** It does not erase plaintext

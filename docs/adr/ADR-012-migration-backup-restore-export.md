@@ -80,7 +80,14 @@ possible without the backup root; `verify_encrypted_backup_directory` excludes i
 from the inventory comparison and still requires and digest-checks every listed
 file. And a crypto-shredded object does not stop a backup: its append-only
 descriptor row stays, so the object is copied as the destroyed thing it is and
-the restore digest-checks it without asking it to authenticate.
+the restore digest-checks it without asking it to authenticate. That holds
+across a rotation too, and it takes a second reader to make it hold: nothing can
+re-seal an object whose key slot is gone, so that row keeps the locator of the
+generation the shred happened under while every other row moves, and the rotated
+keyring derives a different one for it. `EncryptedVault::verify_shredded_object`
+is what a backup and a restore fall back to, and it requires the shred marker and
+the whole cleartext identity at the descriptor's own name before it hands back a
+path to copy.
 
 The record shape, the retention result vocabulary, and the fault rows are in
 [rotation and retention](../contracts/rotation-and-retention.md).

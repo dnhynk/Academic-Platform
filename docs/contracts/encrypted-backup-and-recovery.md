@@ -146,9 +146,22 @@ the Vault Master Key, so a caller that rotated the objects and kept a key set
 derived from the superseded master would write a database under one generation
 beside objects under another. That backup verifies — every file is present and
 digest-checked — and nothing restores it, because a restore recovers a single
-master and derives both halves from it. `backup_encrypted_profile` refuses the
-pairing when it is taken (`backup profile key generation`), which is also what
-catches a rotation that has not run its `STORE_DATABASE` unit.
+master and derives both halves from it. `backup_encrypted_profile` refuses that
+pairing when it is taken (`backup profile key generation`).
+
+That guard reads the two *arguments*: `keys.generation()` against
+`master.generation_id()`. A profile whose halves are genuinely split on disk —
+objects rotated, `STORE_DATABASE` unit not run — is refused as well, but by the
+halves rather than by that name: under the superseded generation the rotated
+objects no longer derive their locators, and under the target one the database
+does not open. Both refuse before anything is published.
+
+A crypto-shredded object does not stop a backup, and neither does a rotation
+after the shred. Its descriptor keeps the locator of the generation it was
+destroyed under, because nothing can re-seal an object whose key slot is gone;
+`EncryptedVault::verify_shredded_object` is what lets the copy still be taken,
+and what it requires of the file it copies is in
+[rotation and retention](rotation-and-retention.md).
 
 A restore does not trust its manifest. A manifest re-sealed with the real backup
 key after its counts were altered verifies and decrypts, and the restore still
