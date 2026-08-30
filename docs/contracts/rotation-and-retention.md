@@ -292,10 +292,14 @@ loads. A reader that stopped at the signed row would refuse every batch whose
 closure reaches a rotated artifact, under the new key because the row names the
 superseded object and — once that object is retired — under both.
 
-The vault's reconciliation is fed a referenced set by its caller and resolves
-nothing itself. **The encrypted lane has no product reconciliation caller**:
-`core::local_service` reconciles the plaintext `Vault`. What decides which
-object a rotated profile reaches is the chain above and the journal, not a
+`EncryptedVault::reconcile` is a fifth reader, and it does not go through that
+resolution: it is fed a referenced set by its caller and validates each
+descriptor's locator against its own keyring. That is why it is in the open list
+above — under a rotated keyring the shredded row's locator no longer derives and
+the whole pass fails, where a backup and a restore fall back to
+`verify_shredded_object`. **The encrypted lane has no product reconciliation
+caller**: `core::local_service` reconciles the plaintext `Vault`. What decides
+which object a rotated profile reaches is the chain above and the journal, not a
 reconciliation pass.
 
 The order is event first, row second. A kill between them leaves the reference

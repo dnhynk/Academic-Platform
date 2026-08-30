@@ -88,6 +88,14 @@ variant from `Aead`, so a deliberate shred and a bit-rotted object have differen
 operator reports. The marker is that label and not a security boundary: whoever
 can write it can equally overwrite the slot with noise.
 
+One reader does not keep them apart: a reconciliation pass maps both to
+`ReferencedCorruptRepairRequired`, which
+`reconciliation_completes_over_a_profile_that_deleted_an_artifact` records. The
+encrypted lane has no product reconciliation caller yet, and giving that pass the
+shred branch a backup and a restore already have is listed with the rest of the
+open rotation work in
+[rotation and retention](../contracts/rotation-and-retention.md).
+
 The details, and the `RB01` "shredded or intact" argument, are in
 [rotation and retention](../contracts/rotation-and-retention.md).
 
@@ -95,4 +103,4 @@ The details, and the `RB01` "shredded or intact" argument, are in
 
 Zero-byte/small/multi-GB/seekable-audio vectors; a trusted byte-resolving verifier capability for partial/page/time/repository evidence; wrong key, truncation, reorder, splice, and wrong-domain detection; every crash-point closure outcome; cross-policy dedupe rejection; quarantine/GC dry run; and format N/N-1 read/migration.
 
-Discharged by `P2-K3`: wrong key, truncation, reorder, splice, and wrong-domain detection; the `OB01`-`OB09` crash-point outcomes; cross-policy dedupe rejection; quarantine of an unreferenced re-sealed object; zero-byte, one-byte, sub-chunk, exact-chunk, and exact-multiple vectors; and a committed format N and N-1 corpus. Seeking is exact over a real multi-chunk object; the multi-gigabyte half of that row is the chunk arithmetic, checked at a 6 GiB header rather than against a 6 GiB file, and is recorded as such rather than as an executed multi-gigabyte write. Still open: the byte-resolving verifier capability for partial, page, time, and repository evidence; seekable-audio vectors, which need `P2-L2`'s capture format; and collection of the vault's `quarantine/` directory, which stays open and is the daemon lane's. Collecting the *superseded object a rotation leaves* is a different thing and is not open: `P2-K5`'s `retire_superseded_object` destroys its key slot, gated on the rotation being complete, the unit migrated, the superseded object being the one that unit supersedes, and the store resolving to the locator the journal recorded. [Rotation and retention](../contracts/rotation-and-retention.md) states those gates; a quarantined object is one reconciliation moved aside, and nothing here collects it yet.
+Discharged by `P2-K3`: wrong key, truncation, reorder, splice, and wrong-domain detection; the `OB01`-`OB09` crash-point outcomes; cross-policy dedupe rejection; quarantine of an unreferenced re-sealed object; zero-byte, one-byte, sub-chunk, exact-chunk, and exact-multiple vectors; and a committed format N and N-1 corpus. Seeking is exact over a real multi-chunk object; the multi-gigabyte half of that row is the chunk arithmetic, checked at a 6 GiB header rather than against a 6 GiB file, and is recorded as such rather than as an executed multi-gigabyte write. Still open: the byte-resolving verifier capability for partial, page, time, and repository evidence; seekable-audio vectors, which need `P2-L2`'s capture format; and collection of the vault's `quarantine/` directory, which stays open and is the daemon lane's. Collecting the *superseded object a rotation leaves* is a different thing and has a collection point: `P2-K5`'s `retire_superseded_object` destroys its key slot, gated on the rotation being complete, the unit migrated, the superseded object being the one that unit supersedes, and the store resolving to the locator the journal recorded. Phase 2 refuses to run it, along with every other rotation entry point, so no profile reaches the state it collects from; [rotation and retention](../contracts/rotation-and-retention.md) states those gates and what an orchestrator has to close before the refusal is lifted. A quarantined object is one reconciliation moved aside, and nothing here collects it yet.
