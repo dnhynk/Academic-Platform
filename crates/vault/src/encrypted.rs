@@ -532,6 +532,45 @@ impl EncryptedVault {
         Ok(EncryptedObjectReader::new(file, path, opened))
     }
 
+    /// Resolves the object a descriptor names when this keyring cannot re-derive
+    /// its locator, and only when what is at that name is a destroyed key slot.
+    ///
+    /// A locator is a function of `KEK_d` and a crypto-shred destroys the only
+    /// copy of the object's DEK, so a shredded object can never be re-sealed and
+    /// its `artifact_descriptor` row keeps the locator of the generation it was
+    /// destroyed under while every other row moves. After a rotation
+    /// [`Self::validate_descriptor_locator`] derives a different locator for that
+    /// row and refuses it before a byte is read, which is correct for a live
+    /// object and wrong for this one: the row is append-only, so refusing it
+    /// would make a profile that had ever deleted an artifact permanently
+    /// un-backupable — the outcome `P2-K5` copies destroyed objects to avoid.
+    ///
+    /// The identity binding it stands in for is not dropped. The header at the
+    /// descriptor's own name must carry the shred marker and must match the
+    /// descriptor in every field `require_matches` checks, which is more than
+    /// the keyed path checks for a shredded object. None of it is authenticated
+    /// — the wrap that authenticated those bytes is what the shred destroyed —
+    /// so this is an operator-facing label, exactly like the marker itself, and
+    /// it hands back a path to copy rather than anything to open. A header that
+    /// is not shredded is refused as the locator mismatch it is.
+    pub fn verify_shredded_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf> {
+        descriptor.validate()?;
+        if descriptor.format_version != ENCRYPTED_FORMAT_VERSION {
+            return Err(VaultError::LocatorMismatch(descriptor.id));
+        }
+        let path = self.layout.object_path(descriptor)?;
+        let mut file = durability::open_readonly_no_follow(&path)?;
+        let mut header = [0_u8; HEADER_BYTES];
+        file.read_exact(&mut header).map_err(|error| {
+            VaultError::io("read object header for a shredded copy", &path, error)
+        })?;
+        if !object::is_shredded_header(&header) {
+            return Err(VaultError::LocatorMismatch(descriptor.id));
+        }
+        object::require_shredded_identity(&header, descriptor).map_err(VaultError::ObjectFormat)?;
+        Ok(path)
+    }
+
     pub(crate) fn validate_descriptor_locator(
         &self,
         descriptor: &ArtifactDescriptor,

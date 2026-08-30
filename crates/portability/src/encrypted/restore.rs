@@ -463,7 +463,9 @@ fn build_restored_profile(
     for descriptor in &descriptors {
         match vault.verify_sealed_object(descriptor) {
             Ok(_) => {}
-            Err(source) if crate::encrypted::backup::is_shredded(&source) => {}
+            Err(source) if crate::encrypted::backup::may_be_shredded(&source) => {
+                vault.verify_shredded_object(descriptor)?;
+            }
             Err(source) => return Err(source.into()),
         }
     }
