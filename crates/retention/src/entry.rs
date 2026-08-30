@@ -17,8 +17,10 @@ pub enum UnitKind {
     ///
     /// Its executor is `P2-K2`'s `PRAGMA rekey`, which cannot link into this
     /// crate: the encrypted store lane and the default lane are mutually
-    /// exclusive builds. The unit is planned, journalled, and invariant-checked
-    /// here; the byte-level rekey and its kill evidence are fault `EN01`.
+    /// exclusive builds. So the unit is planned, journalled, and
+    /// invariant-checked here and executed through
+    /// [`crate::rotation::StoreDatabaseExecutor`], which the encrypted
+    /// portability lane binds. Its kill evidence is fault `EN01`.
     StoreDatabase,
 }
 
@@ -76,7 +78,13 @@ pub enum JournalEntry {
         rotation_id: String,
         /// Unit identity from the plan.
         unit_id: String,
-        /// 64 lowercase hex locator the resealed object landed on.
+        /// 64 lowercase hex naming what this unit was resealed onto.
+        ///
+        /// The locator the object landed on, for an object unit. A
+        /// `STORE_DATABASE` unit is rekeyed in place and has no locator, so it
+        /// records [`crate::rotation::store_database_target_id`]: the same
+        /// width, the same cleartext class, and a pure function of the profile
+        /// and the generation the journal already names.
         target_locator: String,
     },
     /// A unit's reachability moved to the target generation.
