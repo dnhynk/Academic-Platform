@@ -135,7 +135,8 @@ destination either absent or completely verified. The order is fixed:
 10. copy every object, check its ciphertext and plaintext digests, then
     authenticate each one through the vault;
 11. re-apply every tombstone the backup carries to the staged object tree, and
-    record on the receipt both what was re-deleted and what reached nothing.
+    record on the receipt what was re-deleted, what was deliberately left
+    readable because it only shares a locator, and what reached nothing.
     This is the restore half of a `P2-K5` deletion and it happens here, after
     every object has been authenticated and before the rename, so no published
     restore holds a key slot the profile it came from had destroyed;

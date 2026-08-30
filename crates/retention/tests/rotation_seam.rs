@@ -761,6 +761,7 @@ fn a_tombstone_reaches_a_copy_under_a_superseded_locator() -> TestResult {
     // through, which is what the store's `superseded_locators` returns.
     let stone = BackupTombstone::covering(
         hex::encode([0x31_u8; 16]),
+        rotated.resealed[0].id,
         *rotated.resealed[0].vault_locator.as_bytes(),
         &[*rotated.descriptors[0].vault_locator.as_bytes()],
         1_700_000_000_002,
@@ -787,8 +788,12 @@ fn a_tombstone_reaches_a_copy_under_a_superseded_locator() -> TestResult {
     );
 
     // A tombstone that reaches nothing is reported rather than dropped.
-    let unreachable =
-        BackupTombstone::new(hex::encode([0x32_u8; 16]), [0x99; 32], 1_700_000_000_003);
+    let unreachable = BackupTombstone::new(
+        hex::encode([0x32_u8; 16]),
+        rotated.resealed[0].id,
+        [0x99; 32],
+        1_700_000_000_003,
+    );
     let nothing = apply_tombstones(&objects_root, &[unreachable])?;
     assert!(nothing.applied.is_empty());
     assert_eq!(nothing.absent, vec![hex::encode([0x99_u8; 32])]);

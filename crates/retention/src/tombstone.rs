@@ -12,10 +12,19 @@
 //! publishes the restore, so no published restore holds a key slot the profile
 //! it came from had destroyed.
 //!
-//! The re-deletion needs **no key**: the locator lives in the clear at a fixed
-//! header offset, and destroying a key slot is a positioned write. That is what
-//! makes it work on a fresh machine, and it is why [`apply_tombstones`] takes a
-//! directory rather than a vault.
+//! The re-deletion needs **no key**: the artifact id and the locator both live
+//! in the clear at fixed header offsets, and destroying a key slot is a
+//! positioned write. That is what makes it work on a fresh machine, and it is
+//! why [`apply_tombstones`] takes a directory rather than a vault.
+//!
+//! A locator alone does not name an artifact. It derives from the domain KEK
+//! over the media type and the content digest, with no lineage and no retention
+//! class in it, so inside one domain the same bytes registered in two
+//! permission lineages get **one locator and two paths**. A record that named
+//! only a locator would reach whichever of them the directory walk saw first —
+//! destroying a key slot the profile never deleted, or leaving the deleted one
+//! readable. So a tombstone names its artifact, and a re-deletion matches the
+//! artifact id as well as the locator.
 //!
 //! `tombstones/` is the one path in a published backup the sealed manifest does
 //! not list, because the manifest was sealed before this record existed and
@@ -34,6 +43,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use academic_domain::ArtifactId;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 
@@ -49,19 +59,24 @@ pub const TOMBSTONE_DIRECTORY: &str = "tombstones";
 pub const TOMBSTONE_EXTENSION: &str = "tombstone";
 
 /// Frozen tombstone version.
-pub const TOMBSTONE_VERSION: u8 = 1;
+///
+/// Version 1 named a locator and no artifact. A locator is shared by every
+/// artifact in one domain that holds the same bytes, so such a record cannot be
+/// applied to the artifact it was written for; [`read_from_backup`] refuses one
+/// by version rather than applying it to whatever the walk reaches first.
+pub const TOMBSTONE_VERSION: u8 = 2;
 
 /// Domain separator for the tombstone digest.
 pub const TOMBSTONE_DIGEST_DOMAIN: &[u8] = b"academic-os/backup-tombstone/v1";
 
 /// One recorded fact: this object's key slot was destroyed in the live profile.
 ///
-/// It carries the locator the object had when it was shredded, every locator
-/// the artifact's reference chain moved through before that, an action
-/// identity, and a time. It carries no artifact identity, no media type, and no
+/// It carries the artifact it was written for, the locator that artifact had
+/// when it was shredded, every locator its reference chain moved through before
+/// that, an action identity, and a time. It carries no media type and no
 /// content digest, because a tombstone sits in the clear inside a backup whose
-/// whole point is that it discloses nothing — and a locator is already an
-/// on-disk filename in the tree the tombstone is written into.
+/// whole point is that it discloses nothing — and both the locator and the
+/// artifact id are already cleartext in the object headers it sits beside.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BackupTombstone {
@@ -69,6 +84,14 @@ pub struct BackupTombstone {
     pub tombstone_version: u8,
     /// 32 lowercase hex identity of the retention action that shredded it.
     pub action_id: String,
+    /// 32 lowercase hex identity of the artifact that was shredded.
+    ///
+    /// This is what makes the record name an artifact rather than a set of
+    /// bytes. It is at a fixed cleartext offset of every object header, so a
+    /// re-deletion reads it with no key, and it is what
+    /// [`apply_tombstones`](crate::engine::apply_tombstones) matches on
+    /// alongside the locator.
+    pub artifact_id: String,
     /// 64 lowercase hex locator of the shredded object.
     pub locator: String,
     /// 64 lowercase hex locators the same artifact was reachable under before.
@@ -93,16 +116,15 @@ pub struct BackupTombstone {
 }
 
 impl BackupTombstone {
-    /// Builds a tombstone for one locator.
+    /// Builds a tombstone for one artifact at one locator.
     #[must_use]
-    pub fn new(action_id: String, locator: [u8; 32], shredded_at_ms: u64) -> Self {
-        Self {
-            tombstone_version: TOMBSTONE_VERSION,
-            action_id,
-            locator: hex::encode(locator),
-            superseded_locators: Vec::new(),
-            shredded_at_ms,
-        }
+    pub fn new(
+        action_id: String,
+        artifact: ArtifactId,
+        locator: [u8; 32],
+        shredded_at_ms: u64,
+    ) -> Self {
+        Self::covering(action_id, artifact, locator, &[], shredded_at_ms)
     }
 
     /// Builds a tombstone that also names the locators the artifact moved from.
@@ -113,6 +135,7 @@ impl BackupTombstone {
     #[must_use]
     pub fn covering(
         action_id: String,
+        artifact: ArtifactId,
         locator: [u8; 32],
         superseded: &[[u8; 32]],
         shredded_at_ms: u64,
@@ -120,6 +143,7 @@ impl BackupTombstone {
         Self {
             tombstone_version: TOMBSTONE_VERSION,
             action_id,
+            artifact_id: hex::encode(artifact.as_bytes()),
             locator: hex::encode(locator),
             superseded_locators: superseded.iter().map(hex::encode).collect(),
             shredded_at_ms,
@@ -130,8 +154,8 @@ impl BackupTombstone {
     ///
     /// A shredded object therefore points at the record that explains it, and
     /// a tombstone that was altered no longer matches the slot it authorized.
-    /// The superseded names are inside it, so a record cannot be widened to
-    /// reach an object it was not written to reach.
+    /// The artifact and the superseded names are inside it, so a record cannot
+    /// be re-pointed or widened to reach an object it was not written to reach.
     #[must_use]
     pub fn digest(&self) -> [u8; 32] {
         let mut hasher = Sha256::new();
@@ -139,6 +163,8 @@ impl BackupTombstone {
         hasher.update([self.tombstone_version]);
         hasher.update([0]);
         hasher.update(self.action_id.as_bytes());
+        hasher.update([0]);
+        hasher.update(self.artifact_id.as_bytes());
         hasher.update([0]);
         hasher.update(self.locator.as_bytes());
         hasher.update([0]);
@@ -160,6 +186,14 @@ impl BackupTombstone {
     /// Returns the locator as bytes.
     pub fn locator_bytes(&self) -> Result<[u8; 32], TombstoneError> {
         decode_locator(&self.locator)
+    }
+
+    /// Returns the artifact identity as bytes.
+    pub fn artifact_id_bytes(&self) -> Result<[u8; 16], TombstoneError> {
+        let mut bytes = [0_u8; 16];
+        hex::decode_to_slice(&self.artifact_id, &mut bytes)
+            .map_err(|_| TombstoneError::Malformed(self.artifact_id.clone()))?;
+        Ok(bytes)
     }
 
     /// Returns every locator this tombstone reaches, current one first.

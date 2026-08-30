@@ -140,6 +140,10 @@ impl CanonicalReference for StoreCanonicalReference<'_> {
 /// naming only the current locator would leave that copy readable while
 /// reporting nothing.
 ///
+/// The record also names the artifact itself, which is what makes it reach that
+/// artifact's copies and no others: a locator carries no lineage, so the same
+/// bytes registered twice in one domain share one.
+///
 /// `descriptor` is the artifact as the store resolves it now — the object the
 /// live shred destroys.
 pub fn deletion_tombstone(
@@ -156,6 +160,7 @@ pub fn deletion_tombstone(
         .collect();
     Ok(BackupTombstone::covering(
         action_id,
+        descriptor.id,
         *descriptor.vault_locator.as_bytes(),
         &superseded,
         shredded_at_ms,

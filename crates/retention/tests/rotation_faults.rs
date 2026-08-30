@@ -154,6 +154,7 @@ fn run_shred_child(root: &Path, master: &VaultMasterKey) -> TestResult {
     let mut journal = AppendOnlyJournal::open(&root.join(ROTATION_JOURNAL_RELATIVE_PATH))?;
     let stone = BackupTombstone::new(
         hex::encode([0x41_u8; 16]),
+        descriptors[0].id,
         *descriptors[0].vault_locator.as_bytes(),
         1,
     );
@@ -166,6 +167,7 @@ fn run_tombstone_child(root: &Path, master: &VaultMasterKey) -> TestResult {
     let descriptors = seal_corpus(&vault, CORPUS)?;
     let stone = BackupTombstone::new(
         hex::encode([0x42_u8; 16]),
+        descriptors[0].id,
         *descriptors[0].vault_locator.as_bytes(),
         2,
     );
@@ -647,6 +649,7 @@ fn crypto_shred_kill_leaves_shredded_or_intact() -> TestResult {
     // the object is unreadable, but it is not yet labelled as shredded.
     let stone = BackupTombstone::new(
         hex::encode([0x51_u8; 16]),
+        descriptors[0].id,
         *descriptors[0].vault_locator.as_bytes(),
         3,
     );
