@@ -31,7 +31,7 @@ use academic_portability::{
             EncryptedRestorePlan, open_backup_with_secret, recover_profile_keys,
             restore_encrypted_profile,
         },
-        rotation::{StoreCanonicalReference, StoreDatabaseRekey},
+        rotation::{StoreCanonicalReference, StoreDatabaseRekey, deletion_tombstone},
     },
 };
 use academic_recovery::{BackupRecipientKind, RecoveryProfile};
@@ -495,6 +495,7 @@ fn a_backup_is_still_possible_after_a_crypto_shred() -> TestResult {
     let subject = descriptors.first().ok_or("the corpus is empty")?.clone();
     let stone = BackupTombstone::new(
         encrypted_support::hex_lower(&[0x21_u8; 16]),
+        subject.id,
         *subject.vault_locator.as_bytes(),
         1_700_000_000_001,
     );
@@ -577,6 +578,7 @@ fn backup_tombstone_is_present_and_re_deletes_on_restore() -> TestResult {
     // The deletion: shred live, then tombstone the published backup.
     let stone = BackupTombstone::new(
         encrypted_support::hex_lower(&[0x21_u8; 16]),
+        subject.id,
         *subject.vault_locator.as_bytes(),
         1_700_000_000_001,
     );
@@ -643,6 +645,195 @@ fn backup_tombstone_is_present_and_re_deletes_on_restore() -> TestResult {
     );
     assert!(subject_path.is_file(), "the object file itself was removed");
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// A locator is not an identity, over the product restore
+// ---------------------------------------------------------------------------
+
+/// Registers the fixture's first bytes twice more, in a lineage that sorts
+/// before its own and one that sorts after.
+///
+/// A locator is `HMAC(LOC_d, format || media || 0 || digest)` and carries no
+/// permission lineage, so all three artifacts share it and sit at three paths.
+fn same_bytes_in_three_lineages(
+    fixture: &mut EncryptedFixture,
+) -> TestResult<[ArtifactDescriptor; 3]> {
+    let first_digest = fixture_first_digest(fixture)?;
+    let mid = fixture
+        .descriptors()?
+        .into_iter()
+        .find(|descriptor| descriptor.content_digest == first_digest)
+        .ok_or("the fixture corpus holds no first artifact")?;
+    let low = fixture.register_artifact_in_lineage(
+        0x0290,
+        0x0300,
+        0x0490,
+        encrypted_support::FIRST_ARTIFACT_BYTES,
+    )?;
+    let high = fixture.register_artifact_in_lineage(
+        0x0299,
+        0x0399,
+        0x0499,
+        encrypted_support::FIRST_ARTIFACT_BYTES,
+    )?;
+    assert_eq!(
+        low.vault_locator, mid.vault_locator,
+        "same domain and same bytes must give one locator"
+    );
+    assert_eq!(high.vault_locator, mid.vault_locator);
+    assert!(low.permission_lineage_id < mid.permission_lineage_id);
+    assert!(mid.permission_lineage_id < high.permission_lineage_id);
+    Ok([low, mid, high])
+}
+
+fn fixture_first_digest(fixture: &EncryptedFixture) -> TestResult<academic_domain::ContentDigest> {
+    let descriptors = fixture.descriptors()?;
+    let first = descriptors
+        .iter()
+        .find(|descriptor| descriptor.byte_length == FIRST_ARTIFACT_LENGTH)
+        .ok_or("the fixture corpus holds no first artifact")?;
+    Ok(first.content_digest)
+}
+
+const FIRST_ARTIFACT_LENGTH: u64 = encrypted_support::FIRST_ARTIFACT_BYTES.len() as u64;
+
+/// Deletes one of three artifacts that hold the same bytes and restores both the
+/// backup taken before the deletion and the one taken after.
+///
+/// The product deletion writes its tombstone into every backup that still holds
+/// a copy, so both restores apply it. Only the artifact the deletion named may
+/// arrive destroyed; the other two must arrive readable, and the receipt has to
+/// say which is which. `deleted` picks the lineage, so the two callers below
+/// cannot both be favourable on any directory walk order.
+fn restore_after_deleting_one_of_three(label: &str, deleted: usize) -> TestResult {
+    let mut fixture = EncryptedFixture::new(label)?;
+    let trio = same_bytes_in_three_lineages(&mut fixture)?;
+    let before_deletion = take_backup(&fixture, fixture.master(), "backup-before-deletion")?;
+
+    // The product deletion: the record comes from the store's own chain.
+    let stone = {
+        let store = fixture.open_store()?;
+        deletion_tombstone(
+            &store,
+            encrypted_support::hex_lower(&[0xc1_u8; 16]),
+            &trio[deleted],
+            1_700_000_000_060,
+        )?
+    };
+    {
+        let vault = fixture.open_vault()?;
+        let mut journal =
+            AppendOnlyJournal::open(&fixture.profile_root().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+        shred_with_tombstone(&mut journal, &vault, &trio[deleted], &stone)?;
+    }
+    tombstone::write_into_backup(&before_deletion, &stone)?;
+
+    // The live tree is right on its own: a live shred is one positioned write
+    // at one path, and it is the copies inside a backup that need the record.
+    {
+        let vault = fixture.open_vault()?;
+        let kek = domain_kek_of(fixture.master())?;
+        for (index, descriptor) in trio.iter().enumerate() {
+            let expected = if index == deleted {
+                HeaderProbe::Shredded
+            } else {
+                HeaderProbe::Opened
+            };
+            assert_eq!(
+                probe_header(&vault.layout().object_path(descriptor)?, &kek),
+                expected,
+                "live tree, index {index}"
+            );
+        }
+    }
+
+    let after_deletion = take_backup(&fixture, fixture.master(), "backup-after-deletion")?;
+    tombstone::write_into_backup(&after_deletion, &stone)?;
+
+    for (backup, restored) in [
+        (&before_deletion, "restored-before-deletion"),
+        (&after_deletion, "restored-after-deletion"),
+    ] {
+        let destination = fixture.work_path(restored);
+        let (backup_root, _) = open_backup_with_secret(
+            backup,
+            BackupRecipientKind::RecoveryPhrase,
+            &recovery_secret(),
+        )?;
+        let verified = verify_encrypted_backup_directory(backup, &backup_root)?;
+        let recovered = recover_profile_keys(&verified, &recovery_secret(), 5_000)?;
+        let receipt = restore_encrypted_profile(
+            backup,
+            &destination,
+            &NativePathProbe::default(),
+            &backup_root,
+            &recovered,
+            &EncryptedRestorePlan {
+                authorizations: &fixture.authorizations(),
+            },
+        )?;
+
+        let keys = ProfileKeys::derive(&recovered.master, recovered.profile_id, &[domain_id()?])?;
+        let vault =
+            academic_vault::EncryptedVault::open(&destination, keys.keyring(&recovered.master)?)?;
+        let kek = domain_kek_of(&recovered.master)?;
+        for (index, descriptor) in trio.iter().enumerate() {
+            let probe = probe_header(&vault.layout().object_path(descriptor)?, &kek);
+            if index == deleted {
+                assert_eq!(
+                    probe,
+                    HeaderProbe::Shredded,
+                    "{restored}: the restore published the deleted artifact readable (index {index})"
+                );
+            } else {
+                assert_eq!(
+                    probe,
+                    HeaderProbe::Opened,
+                    "{restored}: the restore destroyed an artifact no tombstone names (index {index})"
+                );
+            }
+        }
+
+        assert_eq!(
+            receipt.re_deleted_locators,
+            vec![stone.locator.clone()],
+            "{restored}: the receipt does not name the re-deletion"
+        );
+        assert!(
+            receipt.absent_locators.is_empty(),
+            "{restored}: a tombstone that reached its artifact was reported absent"
+        );
+        let spared: Vec<String> = receipt
+            .spared_objects
+            .iter()
+            .map(|object| object.artifact_id.clone())
+            .collect();
+        let mut expected: Vec<String> = trio
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| *index != deleted)
+            .map(|(_, descriptor)| encrypted_support::hex_lower(descriptor.id.as_bytes()))
+            .collect();
+        expected.sort();
+        assert_eq!(
+            spared, expected,
+            "{restored}: the copies the deletion left readable are not on the receipt"
+        );
+    }
+    Ok(())
+}
+
+/// The deleted artifact's lineage sorts after the two that keep their bytes.
+#[test]
+fn a_restore_re_deletes_only_the_named_artifact_when_its_lineage_sorts_last() -> TestResult {
+    restore_after_deleting_one_of_three("cross-lineage-last", 2)
+}
+
+/// And before them, so neither variant depends on the directory walk order.
+#[test]
+fn a_restore_re_deletes_only_the_named_artifact_when_its_lineage_sorts_first() -> TestResult {
+    restore_after_deleting_one_of_three("cross-lineage-first", 0)
 }
 
 // ---------------------------------------------------------------------------

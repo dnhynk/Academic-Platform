@@ -629,6 +629,40 @@ impl EncryptedFixture {
         )
     }
 
+    /// Registers one more artifact holding `bytes` in the lineage `lineage_seed`
+    /// names and accepts it through the product writer.
+    ///
+    /// A locator carries no permission lineage, so calling this with the bytes
+    /// of an artifact the fixture already holds produces a second artifact of
+    /// the same domain under the same locator at a different path — the shape
+    /// a tombstone has to tell apart.
+    pub fn register_artifact_in_lineage(
+        &mut self,
+        artifact_seed: u64,
+        lineage_seed: u64,
+        evidence_seed: u64,
+        bytes: &[u8],
+    ) -> TestResult<ArtifactDescriptor> {
+        let domain = domain_id()?;
+        let vault = EncryptedVault::open(&self.profile_root, self.keyring()?)?;
+        let registered = self.register_artifact(&vault, artifact_seed, lineage_seed, bytes)?;
+        drop(vault);
+        let evidence: EvidenceId = id(evidence_seed)?;
+        self.accept(
+            importer_actor(),
+            domain,
+            vec![
+                EventPayload::ArtifactRegistered(registered.descriptor.clone()),
+                EventPayload::EvidenceRegistered(evidence_item(
+                    evidence,
+                    &registered.descriptor,
+                    registered.locator.clone(),
+                )),
+            ],
+        )?;
+        Ok(registered.descriptor)
+    }
+
     fn register_artifact(
         &self,
         vault: &EncryptedVault,

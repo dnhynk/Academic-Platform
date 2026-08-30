@@ -474,8 +474,14 @@ fn a_deletion_after_a_rotation_reaches_a_pre_rotation_backup() -> TestResult {
 fn a_tombstone_that_reaches_nothing_is_reported_on_the_receipt() -> TestResult {
     let fixture = EncryptedFixture::new("seam-tombstone-absent")?;
     let backup = take_backup(&fixture, "backup-for-absent-tombstone")?;
+    let subject = fixture
+        .descriptors()?
+        .into_iter()
+        .next()
+        .ok_or("the fixture corpus is empty")?;
     let stone = academic_retention::BackupTombstone::new(
         hex_lower(&[0x32_u8; 16]),
+        subject.id,
         [0x99; 32],
         1_700_000_000_004,
     );

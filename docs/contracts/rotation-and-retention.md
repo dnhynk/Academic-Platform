@@ -510,17 +510,40 @@ object does not reach the copy inside one. A tombstone closes that gap:
 <backup>/tombstones/<locator>.tombstone     # one JSON object, one atomic write
 ```
 
-**A tombstone names every locator its artifact has been reachable under**: the
-one the live shred destroyed, and every locator the store's
-`artifact_descriptor_migration` chain moved through before it, oldest first.
-A locator is a function of `KEK_d`, so a rotation gives an artifact a new one and
-a backup taken before that rotation holds the object under an older name; a
-record naming only the current locator would leave that copy readable while
+**A tombstone names its artifact, and every locator that artifact has been
+reachable under**: the one the live shred destroyed, and every locator the
+store's `artifact_descriptor_migration` chain moved through before it, oldest
+first. A locator is a function of `KEK_d`, so a rotation gives an artifact a new
+one and a backup taken before that rotation holds the object under an older name;
+a record naming only the current locator would leave that copy readable while
 reporting nothing. `AcceptanceStore::superseded_locators` is where the chain
 comes from and `encrypted::rotation::deletion_tombstone` is the product path
 that builds the record. An artifact that never moved produces a record with an
-empty list, which serializes to exactly the bytes this format wrote before the
-field existed.
+empty list.
+
+**A locator is not an identity.** It is
+`HMAC(LOC_d, format || media_type || 0 || content_digest)` — no permission
+lineage, no retention class — so one domain gives the same bytes the same locator
+in every lineage, while the path
+`objects/<domain>/<retention>/<lineage>/<xx>/<yy>/<locator>.aobj` keeps them
+apart. Registering one document in two lineages is two artifacts, two paths, one
+name. A re-deletion matching the locator alone therefore reaches whichever the
+directory walk sees first — NTFS gives lexical order and ext4 gives hash order —
+and it destroys a key slot the profile never deleted, or leaves the deleted
+artifact readable, and reports the ordinary success either way. So the record
+carries the 16-byte artifact id, which is cleartext at a fixed header offset like
+the locator; `apply_tombstones` matches on both; and a match does not consume the
+record, so one tombstone still reaches every name its own artifact has.
+
+That is why `TOMBSTONE_VERSION` is `2`. A version 1 record named a locator and no
+artifact and cannot be applied to the artifact it was written for;
+`read_from_backup` refuses one by version rather than guessing.
+`a_tombstone_reaches_its_own_artifact_when_the_deleted_lineage_sorts_first` and
+`…_last` are the engine half over three lineages of one domain, and
+`a_restore_re_deletes_only_the_named_artifact_when_its_lineage_sorts_first` and
+`…_last` are the same three through the product backup and the product restore,
+for both a pre-deletion and a post-deletion backup. Two orders, because one order
+cannot be unfavourable on both filesystems.
 
 `restore_encrypted_profile` applies every tombstone the backup carries to the
 objects it materialises, in the staging tree, after every object has been
@@ -532,11 +555,17 @@ fixed header offset, only the 208-byte header is read, and destroying a key slot
 is a positioned write.
 
 A tombstone that matched no object in the tree — under any of its artifact's
-names — is reported, not ignored. `EncryptedRestoreReceipt` carries two sorted
-lists: `re_deleted_locators`, the locators actually re-deleted, and
-`absent_locators`, the tombstones that reached nothing. Absence is not an error:
-the artifact may have been registered after the backup was taken, or shredded
-before it. It is a fact the caller is told rather than one the receipt drops.
+names — is reported, not ignored. `EncryptedRestoreReceipt` carries three sorted
+lists: `re_deleted_locators`, the locators actually re-deleted; `spared_objects`,
+the objects a record's locator reached whose artifact it does not name, which the
+restore left readable on purpose; and `absent_locators`, the tombstones that
+reached nothing. Absence is not an error: the artifact may have been registered
+after the backup was taken, or shredded before it. `spared_objects` is not an
+error either, and it is empty for every profile that never registered the same
+bytes twice in one domain — what it says when it is not is that deleting one
+registration of a document left an identical copy readable under another lineage,
+which is a fact about the deletion and not about the restore. All three are facts
+the caller is told rather than ones the receipt drops.
 
 `tombstones/` is the one path in a published backup the sealed manifest does not
 cover, because a tombstone is written into a backup that was published and

@@ -700,31 +700,50 @@ pub fn shred_with_tombstone(
 /// write, so a restore onto a fresh machine re-deletes before anything is
 /// unlocked.
 ///
-/// A tombstone names the locator the object had when it was shredded and every
-/// locator the artifact's reference chain moved through before that. A locator
-/// is a function of the domain KEK, so a rotation gives the same artifact a new
-/// one; a backup taken before the rotation holds the object under an older
-/// name, and matching on the current locator alone would leave that copy
-/// readable. Whichever of an artifact's names a backup happens to hold, one
-/// tombstone reaches it.
+/// A tombstone names the artifact it was written for, the locator that artifact
+/// had when it was shredded, and every locator its reference chain moved
+/// through before that. A locator is a function of the domain KEK, so a
+/// rotation gives the same artifact a new one; a backup taken before the
+/// rotation holds the object under an older name, and matching on the current
+/// locator alone would leave that copy readable. Whichever of an artifact's
+/// names a backup happens to hold, one tombstone reaches it.
 ///
-/// Only the 208-byte header is read. The locator is inside it and nothing else
+/// **A locator is not an identity.** It derives from the media type and the
+/// content digest under the domain key, with no permission lineage and no
+/// retention class in it, so one domain gives the same bytes the same locator
+/// in every lineage — three registrations of one document are three artifacts,
+/// three paths, and one locator. A match is therefore on the artifact id *and*
+/// a covered locator, both read from the cleartext header, and no match
+/// consumes a tombstone: an object carrying a covered locator under another
+/// artifact is left intact and reported in `spared`, and a tombstone that
+/// reaches two of its own artifact's names re-deletes both.
+///
+/// Only the 208-byte header is read. Both fields are inside it and nothing else
 /// here looks at the ciphertext, so an object of any size costs one header.
 ///
-/// Returns the locators it re-deleted, sorted, and the tombstones that matched
-/// no object in the tree.
+/// Returns the locators it re-deleted, the objects it deliberately left intact,
+/// and the tombstones that matched no object in the tree.
 pub fn apply_tombstones(
     objects_root: &std::path::Path,
     tombstones: &[BackupTombstone],
 ) -> Result<AppliedTombstones, EngineError> {
-    let mut wanted = std::collections::BTreeMap::new();
+    struct Wanted<'a> {
+        artifact: [u8; 16],
+        locators: Vec<[u8; 32]>,
+        tombstone: &'a BackupTombstone,
+    }
+
+    let mut wanted = Vec::with_capacity(tombstones.len());
     for tombstone in tombstones {
-        for locator in tombstone.covered_locators()? {
-            wanted.insert(locator, tombstone);
-        }
+        wanted.push(Wanted {
+            artifact: tombstone.artifact_id_bytes()?,
+            locators: tombstone.covered_locators()?,
+            tombstone,
+        });
     }
     let mut applied = Vec::new();
-    let mut reached: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut spared = Vec::new();
+    let mut reached: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
     let mut objects = Vec::new();
     collect_objects(objects_root, &mut objects)?;
     for path in objects {
@@ -738,38 +757,86 @@ pub fn apply_tombstones(
                 continue;
             }
         }
-        let Ok(locator) = object::read_locator(&header) else {
+        let (Ok(locator), Ok(artifact)) = (
+            object::read_locator(&header),
+            object::read_artifact_id(&header),
+        ) else {
             continue;
         };
-        if let Some(tombstone) = wanted.remove(&locator) {
-            shred_key_slot_at(&path, &tombstone.digest())?;
+        let mut named_by = None;
+        let mut shares_a_locator = false;
+        for candidate in &wanted {
+            if !candidate.locators.contains(&locator) {
+                continue;
+            }
+            if candidate.artifact == artifact {
+                named_by = Some(candidate);
+                break;
+            }
+            shares_a_locator = true;
+        }
+        if let Some(candidate) = named_by {
+            shred_key_slot_at(&path, &candidate.tombstone.digest())?;
             applied.push(hex::encode(locator));
-            reached.insert(tombstone.locator.clone());
+            reached.insert(candidate.tombstone.locator.as_str());
+        } else if shares_a_locator {
+            spared.push(SparedObject {
+                artifact_id: hex::encode(artifact),
+                locator: hex::encode(locator),
+            });
         }
     }
     applied.sort();
+    applied.dedup();
+    spared.sort();
+    spared.dedup();
     let mut absent: Vec<String> = wanted
-        .values()
-        .map(|value| value.locator.clone())
-        .filter(|locator| !reached.contains(locator))
+        .iter()
+        .map(|value| value.tombstone.locator.clone())
+        .filter(|locator| !reached.contains(locator.as_str()))
         .collect();
     absent.sort();
     absent.dedup();
-    Ok(AppliedTombstones { applied, absent })
+    Ok(AppliedTombstones {
+        applied,
+        spared,
+        absent,
+    })
 }
 
-/// What a tombstone application reached, and what it did not find.
+/// One object a tombstone's locator reached and its artifact did not name.
+///
+/// Two artifacts holding the same bytes in one domain share a locator, so this
+/// is the copy a locator-only re-deletion would have destroyed. It is reported
+/// rather than dropped for two reasons: it is the observable half of the
+/// identity match, and it tells an operator that deleting one registration of a
+/// document left an identical copy readable under another lineage.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct SparedObject {
+    /// 32 lowercase hex identity of the artifact that was left intact.
+    pub artifact_id: String,
+    /// 64 lowercase hex locator it shares with the tombstone.
+    pub locator: String,
+}
+
+/// What a tombstone application reached, what it spared, and what it did not find.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AppliedTombstones {
     /// Locators re-deleted, sorted.
     pub applied: Vec<String>,
+    /// Objects left intact although a tombstone's locator reached them, sorted.
+    ///
+    /// Empty unless the tree holds two artifacts with the same bytes in one
+    /// domain and one of them was deleted.
+    pub spared: Vec<SparedObject>,
     /// Tombstones that reached no object in the tree, named by the locator the
     /// live shred destroyed, sorted.
     ///
     /// A tombstone that matched under one of the artifact's earlier names is
-    /// not here: it reached its object. This list is what a restore receipt
-    /// carries so a deletion that could not be re-applied is reported rather
-    /// than dropped.
+    /// not here: it reached its object. A tombstone whose locator is on an
+    /// object of another artifact *is* here, and that object is in `spared`.
+    /// This list is what a restore receipt carries so a deletion that could not
+    /// be re-applied is reported rather than dropped.
     pub absent: Vec<String>,
 }
 

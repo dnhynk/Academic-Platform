@@ -33,7 +33,7 @@ use academic_crypto::{
 use academic_recovery::{
     BackupMasterKey, BackupRecipientKind, BackupRecipientSet, RecoveryProfile,
 };
-use academic_retention::engine::AppliedTombstones;
+use academic_retention::engine::{AppliedTombstones, SparedObject};
 use academic_store::{
     INCOMPLETE_PROFILE_MARKER, cipher::prepare_encrypted_profile, path_policy::PathProbe,
 };
@@ -77,13 +77,22 @@ pub struct EncryptedRestoreReceipt {
     /// Sorted. Empty when the backup carries no tombstone, which is the case
     /// for a backup taken from a profile that never deleted an artifact.
     pub re_deleted_locators: Vec<String>,
+    /// Objects a tombstone's locator reached whose artifact it does not name.
+    ///
+    /// Sorted, and empty for every backup whose profile never registered the
+    /// same bytes twice in one domain. A locator carries no permission lineage,
+    /// so two such registrations share one; these are the copies the deletion
+    /// deliberately left readable, and naming them is how a restore says which
+    /// artifact it destroyed and which it did not.
+    pub spared_objects: Vec<SparedObject>,
     /// Tombstoned locators that reached no object in the restored tree.
     ///
-    /// Sorted. A tombstone names the locator the live shred destroyed and every
-    /// locator the artifact's chain moved through before it, so a copy under
-    /// any of the artifact's names is reached; an entry here is a deletion this
-    /// backup could not carry out, and it is reported rather than dropped. The
-    /// ordinary cause is a backup taken before the artifact was registered.
+    /// Sorted. A tombstone names the artifact it was written for, the locator
+    /// the live shred destroyed, and every locator the artifact's chain moved
+    /// through before it, so a copy under any of the artifact's names is
+    /// reached; an entry here is a deletion this backup could not carry out,
+    /// and it is reported rather than dropped. The ordinary cause is a backup
+    /// taken before the artifact was registered.
     pub absent_locators: Vec<String>,
 }
 
@@ -215,6 +224,7 @@ pub fn restore_encrypted_profile<P: PathProbe + ?Sized>(
         canonical_semantic_digest,
         restored_object_count,
         re_deleted_locators: tombstoned.applied,
+        spared_objects: tombstoned.spared,
         absent_locators: tombstoned.absent,
     })
 }
@@ -275,11 +285,13 @@ fn require_outside_backup(
 /// fixed header offset — so what it proves is that a deletion reaches the
 /// copies a backup holds, not merely that a record of one was filed.
 ///
-/// A tombstone names the locator the live shred destroyed and every locator the
-/// artifact's reference chain moved through before it, so a backup taken before
-/// a rotation — which holds the object under an older name — is reached by the
-/// same record. Whichever of an artifact's names this backup happens to hold,
-/// one tombstone reaches it.
+/// A tombstone names the artifact it was written for, the locator the live shred
+/// destroyed, and every locator the artifact's reference chain moved through
+/// before it, so a backup taken before a rotation — which holds the object under
+/// an older name — is reached by the same record. Whichever of an artifact's
+/// names this backup happens to hold, one tombstone reaches it, and an object
+/// that merely shares a locator because it holds the same bytes under another
+/// lineage is left intact and reported.
 ///
 /// A tombstone that reached no object at all is not an error: the artifact may
 /// have been registered after the backup was taken, or shredded before it. It

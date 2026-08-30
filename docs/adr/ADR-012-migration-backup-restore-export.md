@@ -52,12 +52,21 @@ backup tombstone: one JSON record per deleted artifact, written into
 `<backup>/tombstones/<locator>.tombstone` with a single atomic write, and applied
 to the object tree a restore materialises.
 
-A record names every locator its artifact has been reachable under — the one the
-live shred destroyed and every locator the store's migration chain moved through
-before it. A locator is a function of `KEK_d`, so a rotation renames an
-artifact, and a backup taken before that rotation holds the object under the
-older name; a record naming only the current locator would leave that copy
-readable.
+A record names the **artifact** it was written for and every locator that
+artifact has been reachable under — the one the live shred destroyed and every
+locator the store's migration chain moved through before it. A locator is a
+function of `KEK_d`, so a rotation renames an artifact, and a backup taken before
+that rotation holds the object under the older name; a record naming only the
+current locator would leave that copy readable.
+
+The artifact identity is the other half, and it is not optional. A locator
+carries no permission lineage and no retention class, so one domain gives the
+same bytes one locator in every lineage: registering a document twice produces
+two artifacts, two paths, and one name. A re-deletion that matched the locator
+alone would take whichever copy the directory walk reached first — destroying a
+key slot the profile never deleted, or resurrecting the one it did — and would
+report the ordinary success either way. So a record carries the artifact id, the
+match is on both, and no match consumes a record.
 
 `restore_encrypted_profile` is what applies them: in the staging tree, after
 every object has been authenticated and before the rename that publishes the
@@ -65,10 +74,13 @@ restore, so no published restore holds a key slot the profile it came from had
 destroyed. The re-deletion needs **no key** — the locator is cleartext at a
 fixed header offset and destroying a key slot is a positioned write. A tombstone
 that reached no object under any of its artifact's names is reported rather than
-ignored: `EncryptedRestoreReceipt` carries `re_deleted_locators` and
-`absent_locators` as two sorted lists, so a deletion the backup could not carry
-out is distinguishable from one it did. Absence is not an error — the artifact
-may have been registered after the backup was taken, or shredded before it. A
+ignored: `EncryptedRestoreReceipt` carries `re_deleted_locators`,
+`spared_objects` — the copies a record's locator reached under another artifact
+and it deliberately left readable — and `absent_locators`, three sorted lists, so
+a deletion the backup could not carry out is distinguishable from one it did and
+from one that reached its own artifact and no other. Absence is not an error —
+the artifact may have been registered after the backup was taken, or shredded
+before it. A
 tombstone write that fails makes the deletion `REPAIR_REQUIRED` rather than
 `PARTIAL` — a deletion whose tombstone did not land is one that will not
 re-apply on restore.

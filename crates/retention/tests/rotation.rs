@@ -23,6 +23,7 @@ use academic_vault::object::{HEADER_BYTES, KEY_SLOT_OFFSET, KEY_SLOT_SHRED_MARKE
 use rotation_support::{
     CHUNK_SIZE, SOURCE_ENTROPY, SOURCE_RECIPIENT, TARGET_ENTROPY, TARGET_RECIPIENT, TestRoot,
     create_generation, domain_kek, generation_of, open_vault, profile_id, seal_corpus,
+    seal_in_lineage,
 };
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -153,6 +154,7 @@ fn crypto_shred_makes_ciphertext_unreadable() -> TestResult {
     let mut journal = AppendOnlyJournal::open(&root.path().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
     let stone = BackupTombstone::new(
         hex::encode([0x09_u8; 16]),
+        subject.id,
         *subject.vault_locator.as_bytes(),
         1_700_000_000_000,
     );
@@ -280,6 +282,7 @@ fn a_tombstone_re_deletes_the_object_it_names_and_no_other() -> TestResult {
     let mut journal = AppendOnlyJournal::open(&live.path().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
     let stone = BackupTombstone::new(
         hex::encode([0x21_u8; 16]),
+        subject.id,
         *subject.vault_locator.as_bytes(),
         1_700_000_000_001,
     );
@@ -345,13 +348,135 @@ fn a_tombstone_re_deletes_the_object_it_names_and_no_other() -> TestResult {
     assert_eq!(again.applied, vec![stone.locator.clone()]);
 
     // A tombstone whose object is not in the tree is reported, not ignored.
-    let orphan = BackupTombstone::new(hex::encode([0x22_u8; 16]), [0xFE; 32], 1);
+    let orphan = BackupTombstone::new(hex::encode([0x22_u8; 16]), descriptors[1].id, [0xFE; 32], 1);
     let mixed = apply_tombstones(
         &materialised.path().join("vault/v2"),
         &[stone.clone(), orphan.clone()],
     )?;
     assert_eq!(mixed.absent, vec![orphan.locator]);
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// A locator is not an identity
+// ---------------------------------------------------------------------------
+
+/// Registers the same bytes in three permission lineages of one domain, deletes
+/// the artifact at `deleted`, and applies the record to a tree that is a byte
+/// copy of the live one — which is the state every already-taken backup is in.
+///
+/// The three share one locator and sit at three paths, so a re-deletion that
+/// matched on the locator alone would reach whichever the directory walk saw
+/// first: it would destroy a key slot the profile never deleted and leave the
+/// deleted artifact readable, and the receipt would report the ordinary
+/// success. `deleted` picks the lineage, so the two callers below cannot both
+/// be favourable on any walk order.
+fn tombstone_over_three_lineages(label: &str, deleted: usize) -> TestResult {
+    let live = TestRoot::new(label)?;
+    let materialised = TestRoot::new(&format!("{label}-copy"))?;
+    let (master, _) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
+    let vault = open_vault(live.path(), &master)?;
+    let kek = domain_kek(&master)?;
+
+    let bytes = rotation_support::deterministic_bytes(777, 0x77);
+    let trio = [
+        seal_in_lineage(&vault, 0, &bytes)?,
+        seal_in_lineage(&vault, 1, &bytes)?,
+        seal_in_lineage(&vault, 2, &bytes)?,
+    ];
+    assert_eq!(trio[0].vault_locator, trio[1].vault_locator);
+    assert_eq!(trio[1].vault_locator, trio[2].vault_locator);
+    let paths = [
+        vault.layout().object_path(&trio[0])?,
+        vault.layout().object_path(&trio[1])?,
+        vault.layout().object_path(&trio[2])?,
+    ];
+    assert!(paths[0] != paths[1] && paths[1] != paths[2] && paths[0] != paths[2]);
+
+    // The tree an already-taken backup holds: every object still openable.
+    let copied = materialised.path().join("vault/v2/objects");
+    for (index, path) in paths.iter().enumerate() {
+        let destination = copied.join(format!("{index}.aobj"));
+        fs::create_dir_all(copied.as_path())?;
+        fs::copy(path, &destination)?;
+        assert_eq!(probe_header(&destination, &kek), HeaderProbe::Opened);
+    }
+
+    // The product deletion of exactly one of them.
+    let mut journal = AppendOnlyJournal::open(&live.path().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+    let stone = BackupTombstone::new(
+        hex::encode([0x51_u8; 16]),
+        trio[deleted].id,
+        *trio[deleted].vault_locator.as_bytes(),
+        1_700_000_000_051,
+    );
+    shred_with_tombstone(&mut journal, &vault, &trio[deleted], &stone)?;
+    for (index, path) in paths.iter().enumerate() {
+        let expected = if index == deleted {
+            HeaderProbe::Shredded
+        } else {
+            HeaderProbe::Opened
+        };
+        assert_eq!(
+            probe_header(path, &kek),
+            expected,
+            "live tree, index {index}"
+        );
+    }
+
+    let applied = apply_tombstones(&materialised.path().join("vault/v2"), &[stone.clone()])?;
+    for index in 0..trio.len() {
+        let probe = probe_header(&copied.join(format!("{index}.aobj")), &kek);
+        if index == deleted {
+            assert_eq!(
+                probe,
+                HeaderProbe::Shredded,
+                "the deleted artifact was left readable in the copy (index {index})"
+            );
+        } else {
+            assert_eq!(
+                probe,
+                HeaderProbe::Opened,
+                "an artifact the tombstone does not name was destroyed (index {index})"
+            );
+        }
+    }
+
+    // The report names what it destroyed and what it deliberately did not.
+    assert_eq!(applied.applied, vec![stone.locator.clone()]);
+    assert!(applied.absent.is_empty());
+    let spared: Vec<String> = applied
+        .spared
+        .iter()
+        .map(|object| object.artifact_id.clone())
+        .collect();
+    let mut expected: Vec<String> = trio
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| *index != deleted)
+        .map(|(_, descriptor)| hex::encode(descriptor.id.as_bytes()))
+        .collect();
+    expected.sort();
+    assert_eq!(
+        spared, expected,
+        "the copies left readable under another lineage are not on the report"
+    );
+    for object in &applied.spared {
+        assert_eq!(object.locator, stone.locator);
+    }
+    Ok(())
+}
+
+/// The deleted artifact's lineage sorts after the two that keep their bytes.
+#[test]
+fn a_tombstone_reaches_its_own_artifact_when_the_deleted_lineage_sorts_last() -> TestResult {
+    tombstone_over_three_lineages("cross-lineage-last", 2)
+}
+
+/// And before them, so neither variant depends on the directory walk order.
+#[test]
+fn a_tombstone_reaches_its_own_artifact_when_the_deleted_lineage_sorts_first() -> TestResult {
+    tombstone_over_three_lineages("cross-lineage-first", 0)
 }
 
 // ---------------------------------------------------------------------------
@@ -608,6 +733,7 @@ fn a_settled_deletion_really_shreds_its_derivatives() -> TestResult {
     );
     let stone = BackupTombstone::new(
         hex::encode([0x61_u8; 16]),
+        descriptors[0].id,
         *descriptors[0].vault_locator.as_bytes(),
         4,
     );

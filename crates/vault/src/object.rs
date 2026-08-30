@@ -160,6 +160,34 @@ pub fn read_locator(bytes: &[u8]) -> Result<[u8; 32], ObjectFormatError> {
     Ok(locator)
 }
 
+/// Reads the cleartext artifact identity out of a header without any key.
+///
+/// It sits at a fixed offset beside the locator, so a restore can tell two
+/// artifacts that hold the same bytes apart before anything is unlocked. A
+/// locator is `HMAC(LOC_d, format || media || 0 || digest)` and carries no
+/// lineage, so one domain gives the same bytes the same locator in every
+/// permission lineage and retention class; the artifact id is what a tombstone
+/// matches on so that it reaches the artifact it was written for and no other.
+///
+/// Like the locator, this field is authenticated by the wrap a crypto-shred
+/// destroys, so on a shredded object it is the same operator-facing label the
+/// shred marker is.
+pub fn read_artifact_id(bytes: &[u8]) -> Result<[u8; 16], ObjectFormatError> {
+    if bytes.len() < HEADER_BYTES {
+        return Err(ObjectFormatError::Truncated);
+    }
+    if bytes[MAGIC_AT..MAGIC_AT + 4] != OBJECT_MAGIC {
+        return Err(ObjectFormatError::BadMagic);
+    }
+    let format_version = read_u16(bytes, FORMAT_VERSION_AT);
+    if format_version != OBJECT_FORMAT_VERSION {
+        return Err(ObjectFormatError::UnsupportedFormatVersion(format_version));
+    }
+    let mut artifact = [0_u8; 16];
+    artifact.copy_from_slice(&bytes[ARTIFACT_ID_AT..ARTIFACT_ID_AT + 16]);
+    Ok(artifact)
+}
+
 /// Checks a crypto-shredded object's cleartext header against the descriptor
 /// that named it.
 ///

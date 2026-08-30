@@ -54,6 +54,28 @@ pub const ARTIFACT_IDS: [&str; 3] = [
     "01900000-0000-7000-8000-000000000103",
 ];
 
+/// Three permission lineages of one domain, one sorting before
+/// [`PERMISSION_LINEAGE_ID`] and one after.
+///
+/// A vault path is `<domain>/<retention>/<lineage>/<xx>/<yy>/<locator>.aobj`, so
+/// the same bytes registered in all three sit at three paths under one locator
+/// and the directory walk reaches them in the order the filesystem gives —
+/// lexical on NTFS, hash order on ext4. A suite that used one order could not
+/// tell a re-deletion that matched an artifact from one that took whichever
+/// copy it saw first.
+pub const CROSS_LINEAGE_IDS: [&str; 3] = [
+    "01900000-0000-7000-8000-000000000300",
+    PERMISSION_LINEAGE_ID,
+    "01900000-0000-7000-8000-000000000399",
+];
+
+/// Artifact identities for the three cross-lineage registrations.
+pub const CROSS_LINEAGE_ARTIFACT_IDS: [&str; 3] = [
+    "01900000-0000-7000-8000-000000000181",
+    "01900000-0000-7000-8000-000000000182",
+    "01900000-0000-7000-8000-000000000183",
+];
+
 /// Small enough that a few kilobytes span many chunks.
 pub const CHUNK_SIZE: u32 = 256;
 
@@ -256,6 +278,30 @@ pub fn deterministic_bytes(length: usize, salt: u8) -> Vec<u8> {
                 .to_le_bytes()[0]
         })
         .collect()
+}
+
+/// Seals one artifact holding `bytes` into the lineage `index` names.
+///
+/// Every other field is the fixture's, so three calls over one byte string
+/// produce three artifacts of one domain that share a locator and differ only
+/// in the path they sit at.
+pub fn seal_in_lineage(
+    vault: &EncryptedVault,
+    index: usize,
+    bytes: &[u8],
+) -> Result<ArtifactDescriptor, Box<dyn Error>> {
+    let request = ArtifactIngestRequest::new(
+        CROSS_LINEAGE_ARTIFACT_IDS[index].parse()?,
+        MediaType::parse("application/pdf")?,
+        domain()?,
+        Confidentiality::Restricted,
+        RetentionClass::UserManaged,
+        CROSS_LINEAGE_IDS[index].parse()?,
+    );
+    Ok(vault
+        .ingest(&request, Cursor::new(bytes.to_vec()))?
+        .descriptor()
+        .clone())
 }
 
 /// Seals `count` fixture artifacts into `vault` and returns their descriptors.
