@@ -33,6 +33,13 @@ type TestResult = Result<(), Box<dyn Error>>;
 /// The one place the crate decides whether a rotation is accepted.
 const GATE_SOURCE: &str = "src/rotation.rs";
 
+/// The gate, whitespace-collapsed. Nothing else may be in it.
+const WHOLE_GATE: &str = concat!(
+    "pub fn require_rotation_accepted() -> Result<(), RotationNotAccepted> { ",
+    "if cfg!(feature = \"rotation-orchestration\") { return Ok(()); } ",
+    "Err(RotationNotAccepted) }"
+);
+
 /// Every entry point the gate closes, with the file it lives in.
 const GATED_ENTRY_POINTS: [(&str, &str); 7] = [
     ("src/engine.rs", "pub fn begin("),
@@ -93,6 +100,23 @@ fn the_rotation_gate_is_one_decision_with_no_flag_variable_or_debug_path() -> Te
     assert!(
         gate.contains("pub fn require_rotation_accepted() -> Result<(), RotationNotAccepted>"),
         "the gate takes an argument, so a caller can ask to be let through"
+    );
+
+    // The whole decision, spelled out. A forbidden-token list cannot see the
+    // two shapes the fifth `P2-A1` audit built and neither guard caught: an
+    // environment read moved into a helper the gate calls, and a process-wide
+    // `AtomicBool` with a public setter. Both leave the body free of every
+    // token above. The gate is four lines, so the check that holds is that it
+    // is *these* four and nothing else.
+    let declared = gate
+        .split_once("pub fn require_rotation_accepted")
+        .and_then(|(_, rest)| rest.split_once("\n}"))
+        .map(|(body, _)| format!("pub fn require_rotation_accepted{body}\n}}"))
+        .ok_or("require_rotation_accepted is not in the gate source")?;
+    assert_eq!(
+        declared.split_whitespace().collect::<Vec<_>>().join(" "),
+        WHOLE_GATE,
+        "the gate decides on something other than the build feature"
     );
 
     for (file, signature) in GATED_ENTRY_POINTS {
