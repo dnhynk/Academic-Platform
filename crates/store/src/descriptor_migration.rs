@@ -293,8 +293,7 @@ pub(crate) fn insert_descriptor_migration<V: SealedObjectVerifier>(
                 "artifact {} has already been reachable under {}; a chain records \
                  each locator once, so a rotation back to a generation this \
                  artifact has already been under cannot be recorded",
-                migrated.id,
-                crate::descriptor_migration::hex_locator(&migration.vault_locator),
+                migrated.id, migration.vault_locator,
             ),
         });
     }
@@ -325,15 +324,6 @@ pub(crate) fn insert_descriptor_migration<V: SealedObjectVerifier>(
         ],
     )?;
     Ok(())
-}
-
-/// Renders a locator the way every other diagnostic in this lane does.
-fn hex_locator(value: &VaultLocator) -> String {
-    value
-        .as_bytes()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
 }
 
 fn migration_table_exists(connection: &Connection) -> StoreResult<bool> {
