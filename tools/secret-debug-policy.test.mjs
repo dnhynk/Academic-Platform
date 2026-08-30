@@ -82,6 +82,19 @@ const RAW_BYTE_TYPES =
   /^(Vec\s*<\s*u8\s*>|\[\s*u8\s*;[^\]]*\]|\[\s*u8\s*\]|String|str)$/;
 
 /**
+ * The subset of {@link RAW_BYTE_TYPES} a *tuple* position carries alone.
+ *
+ * A named field is judged by its name and its type together, and the name is
+ * what tells `Qualifier.key: String` from a key. A tuple position has no name,
+ * so the type has to carry the whole signal: a byte buffer does, and `String`
+ * and `str` do not — every error type in this workspace reports through one and
+ * no key in `P2-K1`'s schedule is text. `T116` found `AuditLeak(Vec<u8>)`
+ * silent.
+ */
+const RAW_BYTE_PAYLOAD_TYPES =
+  /^(Vec\s*<\s*u8\s*>|\[\s*u8\s*;[^\]]*\]|\[\s*u8\s*\])$/;
+
+/**
  * Fields the net matches on name and type whose bytes are not secret. Each
  * entry states why, because the reason is the whole content of the exception.
  */
@@ -105,6 +118,50 @@ const PUBLIC_BYTES = new Map([
   [
     "StreamingPrefix.digest",
     "SHA-256 of the object header's cleartext prefix P0, which is on disk in the clear",
+  ],
+]);
+
+/**
+ * Tuple newtypes whose whole payload is a public identifier or digest.
+ *
+ * The payload check below cannot read a field name, so every `[u8; N]` newtype
+ * reaches it and each one needs a judgement recorded here. Each entry states
+ * where those bytes already are in the clear; a new newtype is refused until
+ * someone writes that sentence, which is the point.
+ */
+const PUBLIC_TUPLE_BYTES = new Map([
+  [
+    "ProfileId",
+    "the profile identity every key derivation is salted with and every profile path spells",
+  ],
+  [
+    "DomainId",
+    "the domain identity written in the clear at a fixed offset of every object header",
+  ],
+  [
+    "ContentDigest",
+    "SHA-256 over plaintext or canonical semantic bytes, which the signed artifact_descriptor row and a backup manifest's plaintext_sha256 both carry in the clear",
+  ],
+  [
+    "VaultLocator",
+    "the domain-keyed HMAC written in the clear at a fixed header offset and spelled into the object's own path",
+  ],
+  [
+    "KeyGeneration",
+    "the public generation name from ADR-005: SHA-256 of an HKDF output, readable on a locked profile and structurally not usable as a key",
+  ],
+  ["RotationId", "the rotation identity the journal records in the clear"],
+  ["ActionId", "one retention action's identity, which the store's retention_action row carries"],
+  [
+    "BackupSetId",
+    "the backup set identity, which is the HKDF salt written into the backup's own manifest",
+  ],
+  ["GenerationId", "an opaque identifier for one disposable projection generation"],
+  ["OpaqueId", "an RPC wire identifier carried with no narrowing"],
+  ["IdempotencyKey", "an RPC retry key, which the caller supplies and the wire carries"],
+  [
+    "SessionNonce",
+    "the P1 handshake nonce, whose hex `capability_id` and `as_hex` publish into the owner-only runtime metadata the same user reads; it is not ADR-005 key material and what confines it is that directory",
   ],
 ]);
 
@@ -593,8 +650,15 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
   // that `Debug` prints. `T114` injected an impl that redacted every field but
   // one and neither this guard nor the Rust unit test noticed. A raw byte field
   // may reach the formatter only through a length.
+  //
+  // It runs over every type that holds secret bytes in a field of its own, not
+  // only the registered ones. The registration test above reads an impl only
+  // when it contains `<redacted>` or `finish_non_exhaustive`, so an impl that
+  // does not redact at all was in neither net: `T116` injected an unregistered
+  // type whose hand-written `Debug` printed `self.dek` and nothing failed.
   const leaks = [];
-  for (const name of SECRET_BEARING_TYPES.keys()) {
+  const handWritten = new Set([...SECRET_BEARING_TYPES.keys(), ...DIRECT_SECRET_BEARING]);
+  for (const name of handWritten) {
     const body = debugBodies.get(name);
     if (body === undefined) {
       continue;
@@ -603,6 +667,9 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
     for (const site of definitions.get(name) ?? []) {
       for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
         const declared = trimDeclaredType(field[2]);
+        if (PUBLIC_BYTES.has(`${name}.${field[1]}`)) {
+          continue;
+        }
         if (holdsRawBytes(declared) || SECRET_BEARING.has(normalizeFieldType(declared))) {
           rawFields.add(field[1]);
         }
@@ -625,10 +692,36 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
   assert.deepEqual(leaks.sort(), [], leaks.join("\n"));
 });
 
+test("every public tuple payload exception still names a type that has one", () => {
+  // The named exceptions are checked the same way. An entry left behind after
+  // its type changed shape is a judgement about something that no longer
+  // exists, and the next reader would take it for a live one.
+  const stale = [];
+  for (const name of PUBLIC_TUPLE_BYTES.keys()) {
+    const sites = definitions.get(name) ?? [];
+    const bears = sites.some((site) =>
+      [...site.tuple.matchAll(TUPLE_FIELD_PATTERN)].some((position) =>
+        RAW_BYTE_PAYLOAD_TYPES.test(normalizeFieldType(position[1].trim())),
+      ),
+    );
+    if (!bears) {
+      stale.push(name);
+    }
+  }
+  assert.deepEqual(
+    stale.sort(),
+    [],
+    `these are excepted as public tuple bytes but no longer declare a byte payload: ${stale.join(", ")}`,
+  );
+});
+
 test("no unregistered tuple type derives Debug over a secret payload", () => {
   // A tuple struct and a tuple enum variant have no field name, so the named
   // net never saw them. `T114` found `RecoveredSecret`, `BackupMasterKey`, and
-  // an enum variant `Dek([u8; 32])` all silent.
+  // an enum variant `Dek([u8; 32])` all silent, and `T116` found a plain
+  // `AuditLeak(Vec<u8>)` silent after them: the payload check read only
+  // `Zeroizing` and the `secret_key!` types, so a tuple that simply held the
+  // bytes was not a shape it looked for.
   const leaks = [];
   for (const [name, sites] of definitions) {
     for (const site of sites) {
@@ -642,7 +735,10 @@ test("no unregistered tuple type derives Debug over a secret payload", () => {
             continue;
           }
           const zeroizing = /(^|::)Zeroizing\s*</.test(payload);
-          if (zeroizing || macroKeyTypes.has(normalizeFieldType(payload))) {
+          const rawBytes =
+            RAW_BYTE_PAYLOAD_TYPES.test(normalizeFieldType(payload)) &&
+            !PUBLIC_TUPLE_BYTES.has(name);
+          if (zeroizing || rawBytes || macroKeyTypes.has(normalizeFieldType(payload))) {
             leaks.push(
               `${site.location}: ${site.kind} ${name} derives Debug over the tuple payload ${payload}`,
             );
