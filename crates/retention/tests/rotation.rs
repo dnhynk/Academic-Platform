@@ -707,6 +707,77 @@ fn a_rotation_will_not_complete_over_a_store_database_it_never_rekeyed() -> Test
     Ok(())
 }
 
+/// The plan refuses to move the database before an object, and the engine
+/// refuses to move a unit the plan does not hold.
+///
+/// `T116`'s two observations, stated as gates. "The database moves last" was a
+/// documented obligation on an orchestrator that does not exist yet, and a plan
+/// that ordered it first was accepted and run — after which
+/// `record_descriptor_migration` has to open the store for every object still
+/// to move and the plan names no key that does. And `rotate_object` and
+/// `rotate_store_database` took any unit at all: a record written for one
+/// outside the plan makes `RotationState::replay` refuse the whole journal,
+/// which is permanent — the records are append-only — and needs no kill.
+#[test]
+fn a_plan_orders_its_database_unit_last_and_the_engine_moves_nothing_else() -> TestResult {
+    let root = TestRoot::new("plan-gates")?;
+    let (source_master, _) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
+    let (target_master, _) = create_generation(TARGET_RECIPIENT, TARGET_ENTROPY)?;
+    let source_vault = open_vault(root.path(), &source_master)?;
+    let target_vault = open_vault(root.path(), &target_master)?;
+    let descriptors = seal_corpus(&source_vault, 2)?;
+
+    let first = RotationUnit::object(*descriptors[0].vault_locator.as_bytes());
+    let second = RotationUnit::object(*descriptors[1].vault_locator.as_bytes());
+    let database = RotationUnit::store_database(profile_id());
+
+    let refused = RotationPlan::new(
+        RotationId::from_bytes([0x69; 16]),
+        profile_id(),
+        generation_of(&source_master)?,
+        generation_of(&target_master)?,
+        vec![database.clone(), first.clone()],
+    )
+    .err()
+    .ok_or("a plan that rekeys the database before an object was accepted")?
+    .to_string();
+    assert!(
+        refused.contains("moves it last"),
+        "the refusal did not name the ordering rule: {refused}"
+    );
+
+    // The same units in the order the contract states are a plan.
+    let plan = RotationPlan::new(
+        RotationId::from_bytes([0x69; 16]),
+        profile_id(),
+        generation_of(&source_master)?,
+        generation_of(&target_master)?,
+        vec![first.clone(), database.clone()],
+    )?;
+    let mut journal = AppendOnlyJournal::open(&root.path().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+    engine.begin(&mut journal)?;
+
+    // `second` is a real unit of a real object; it is simply not in this plan.
+    let outside = engine
+        .rotate_object(&mut journal, &second, &descriptors[1])
+        .err()
+        .ok_or("a unit outside the plan was moved under it")?
+        .to_string();
+    assert!(
+        outside.contains("the rotation plan does not hold unit"),
+        "the refusal did not name the plan: {outside}"
+    );
+
+    // Nothing was written for it, so the journal still replays.
+    let state = RotationState::replay(journal.entries())?.ok_or("no rotation replayed")?;
+    assert_eq!(state.units().len(), 2);
+    assert_eq!(state.remaining().len(), 2);
+    engine.rotate_object(&mut journal, &first, &descriptors[0])?;
+    assert!(RotationState::replay(journal.entries())?.is_some());
+    Ok(())
+}
+
 /// The fault rows this crate answers for, named rather than counted.
 #[test]
 fn the_named_fault_rows_are_the_ones_t068_assigns() -> TestResult {
