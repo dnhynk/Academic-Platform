@@ -529,7 +529,6 @@ impl EncryptedFixture {
         Ok(())
     }
 
-
     /// Moves the profile's recipient records onto the generation it now holds.
     ///
     /// This is the recipient half of a rotation, through the product path:
@@ -589,7 +588,6 @@ impl EncryptedFixture {
         self.recipients = set;
         Ok(())
     }
-
 
     /// Opens the owned acceptance writer over the profile's canonical store.
     pub fn open_store(&self) -> TestResult<AcceptanceStore> {

@@ -85,7 +85,6 @@ pub struct EncryptedRestoreReceipt {
     /// backup could not carry out, and it is reported rather than dropped. The
     /// ordinary cause is a backup taken before the artifact was registered.
     pub absent_locators: Vec<String>,
-
 }
 
 /// The key material a restore recovered from a backup and one secret.

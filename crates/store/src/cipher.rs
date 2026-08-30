@@ -370,11 +370,7 @@ pub fn rekey_encrypted_profile<P: PathProbe + ?Sized>(
 /// carries lives in a zeroizing buffer and the statement built around it is
 /// overwritten before it is freed; what this cannot control is SQLite's own
 /// copy of the prepared statement text, exactly as `apply_store_key` records.
-fn apply_rekey(
-    connection: &Connection,
-    key: &StoreKey,
-    database_path: &Path,
-) -> StoreResult<()> {
+fn apply_rekey(connection: &Connection, key: &StoreKey, database_path: &Path) -> StoreResult<()> {
     let hex = key.expose_raw_hex();
     let statement = keying_statement("rekey", hex.as_str());
     let outcome = connection.execute_batch(&statement);
@@ -382,7 +378,6 @@ fn apply_rekey(
     spent.fill(0);
     outcome.map_err(|error| locked_if_undecryptable(StoreError::Sqlite(error), database_path))
 }
-
 
 /// Removes only a provably incomplete encrypted profile.
 ///
@@ -467,8 +462,7 @@ fn key_statement(hex: &str) -> String {
 ///
 /// `pragma` is one of this module's own two literals, never caller input.
 fn keying_statement(pragma: &str, hex: &str) -> String {
-    let mut rendered =
-        String::with_capacity(pragma.len() + hex.len() + KEY_STATEMENT_PUNCTUATION);
+    let mut rendered = String::with_capacity(pragma.len() + hex.len() + KEY_STATEMENT_PUNCTUATION);
     rendered.push_str("PRAGMA ");
     rendered.push_str(pragma);
     rendered.push_str("='x''");

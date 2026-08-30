@@ -239,15 +239,14 @@ impl AcceptanceStore {
         // store-level read, so the SQLite failure keeps its own type and every
         // other cause becomes the one thing it can honestly be called: the
         // stored descriptor row is not readable as a descriptor.
-        let read = preflight_artifact_descriptor(&self.writer, artifact).map_err(|error| {
-            match error {
+        let read =
+            preflight_artifact_descriptor(&self.writer, artifact).map_err(|error| match error {
                 RepositoryError::Sqlite(source) => StoreError::Sqlite(source),
                 _ => StoreError::InvalidProfileState {
                     path: self.profile_root.clone(),
                     reason: "a stored artifact descriptor row is not a readable descriptor",
                 },
-            }
-        })?;
+            })?;
         let Some(descriptor) = read else {
             return Ok(None);
         };
@@ -271,7 +270,6 @@ impl AcceptanceStore {
         })
     }
 
-
     /// Reports whether one artifact's chain has already recorded `locator`.
     ///
     /// The preflight a rotation orchestrator runs **before** it journals
@@ -289,7 +287,6 @@ impl AcceptanceStore {
             crate::descriptor_migration::locator_is_already_in_chain(connection, artifact, locator)
         })
     }
-
 
     /// Returns the next chain position for one artifact's reference.
     pub fn next_descriptor_migration_seq(&self, artifact: ArtifactId) -> StoreResult<u64> {

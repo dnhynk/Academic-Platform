@@ -146,7 +146,6 @@ impl ProfileKeys {
         self.generation
     }
 
-
     /// Returns the raw SQLCipher store key.
     #[must_use]
     pub const fn store_key(&self) -> &StoreKey {
