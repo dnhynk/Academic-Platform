@@ -11,17 +11,35 @@
 //
 // `missing_debug_implementations = "deny"` is what makes the regression easy:
 // the lint demands a `Debug`, and the one-line way to satisfy it is the derive
-// that leaks. So the rule is checked mechanically rather than by review, in two
-// halves that fail for different reasons:
+// that leaks. So the rule is checked mechanically rather than by review, in
+// five halves that fail for different reasons:
 //
 //   1. A registry of the types already known to carry secrets. Each must still
 //      exist, must not derive `Debug` or `Display`, and must have a
 //      hand-written `Debug`. This is what fails if someone adds a derive back.
-//   2. A discovery net over every other type, for the ones nobody has listed
+//   2. The registry is itself checked against the source: a type that holds
+//      secret bytes in a field of its own and hand-writes a redacting `Debug`
+//      must be in it. `T114` found that *deleting* a registration was silent —
+//      every other check iterates the registry, so a type removed from it
+//      simply stopped being covered.
+//   3. What a hand-written `Debug` prints. `T114` injected an impl that
+//      redacted every field but one; the registry said the impl existed and
+//      nothing read it. A raw byte field may reach the formatter only through
+//      a length.
+//   4. A discovery net over every other type, for the ones nobody has listed
 //      yet: a type that derives `Debug` and owns a raw byte buffer under a
 //      field name from the key-material vocabulary. Bytes that are genuinely
 //      public are named below with the reason they are public, so the net
 //      documents its own exceptions instead of hiding them.
+//   5. The same net for tuple structs and tuple enum variants, which have no
+//      field name at all. `T114` found `RecoveredSecret`, `BackupMasterKey`,
+//      and a variant `Dek([u8; 32])` invisible to a guard that read only named
+//      fields.
+//
+// The shapes the net reads are the ones `T114`'s injection matrix reached:
+// `&'a [u8]`, `Option<Vec<u8>>`, a path-qualified `zeroize::Zeroizing<...>`,
+// a `cfg_attr`-wrapped derive, a single-line struct body, and a field type
+// whose buffer is behind a comma inside its generic arguments.
 //
 // Scope is `crates/*/src`, the product surface ADR-005 governs. Test-only
 // helper types are not scanned.
@@ -50,11 +68,18 @@ const SECRET_BEARING_TYPES = new Map([
  * A name is only a signal; the exceptions below carry the judgement.
  */
 const SECRET_FIELD_NAMES =
-  /^_?(dek|kek|key|keys|key_bytes|secret|secrets|plaintext|plain|digest|seed|chunk|hex|raw|passphrase|password|opened)$/;
+  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|vmk|skey|master)$/;
 
-/** Field types that hold bytes transparently, so a derived `Debug` prints them. */
+/**
+ * Field types that hold bytes transparently, so a derived `Debug` prints them.
+ *
+ * Matched against a *normalized* spelling: `normalizeFieldType` strips a
+ * borrow, an `Option`/`Box`/`Zeroizing` wrapper, and any path qualification, so
+ * `&'a [u8]`, `Option<Vec<u8>>`, and `zeroize::Zeroizing<Vec<u8>>` reach it as
+ * the byte buffer each one is. `T114` found all three silent.
+ */
 const RAW_BYTE_TYPES =
-  /^(Vec\s*<\s*u8\s*>|\[\s*u8\s*;[^\]]*\]|String|Zeroizing\s*<[\s\S]*>|Box\s*<\s*\[\s*u8\s*\]\s*>)$/;
+  /^(Vec\s*<\s*u8\s*>|\[\s*u8\s*;[^\]]*\]|\[\s*u8\s*\]|String|str)$/;
 
 /**
  * Fields the net matches on name and type whose bytes are not secret. Each
@@ -70,6 +95,10 @@ const PUBLIC_BYTES = new Map([
     "the qualifier name a rejected assertion used, reported so the caller can fix it",
   ],
   [
+    "QualifierSchema.key",
+    "the qualifier name a predicate schema declares, which is the registry's public vocabulary",
+  ],
+  [
     "KeyMaterialState.digest",
     "SHA-256 over the recipient set's canonical CBOR, which ADR-005 puts on disk holding no key byte",
   ],
@@ -79,11 +108,80 @@ const PUBLIC_BYTES = new Map([
   ],
 ]);
 
-const DERIVE_PATTERN = /#\s*\[\s*derive\s*\(([\s\S]*?)\)\s*\]/g;
+// `#[cfg_attr(<cfg>, derive(Debug))]` derives exactly as `#[derive(Debug)]`
+// does whenever the cfg holds. `T114` found the guard silent on it.
+const DERIVE_PATTERN =
+  /#\s*\[\s*(?:cfg_attr\s*\([\s\S]*?,\s*)?derive\s*\(([\s\S]*?)\)\s*\)?\s*\]/g;
 const DEFINITION_PATTERN =
   /^\s*(?:pub(?:\s*\([^)]*\))?\s+)?(struct|enum|union)\s+([A-Za-z_][A-Za-z0-9_]*)/;
+// Anchored on the separator rather than on a line start: `struct X { key:
+// Vec<u8>, }` written on one line is the same declaration as the rustfmt
+// spelling, and `T114` found the guard reading only the second.
 const NAMED_FIELD_PATTERN =
-  /^\s*(?:pub(?:\s*\([^)]*\))?\s+)?([a-z_][a-z0-9_]*)\s*:\s*([^,\n]+),/gm;
+  /(?:^|[{,])\s*(?:pub(?:\s*\([^)]*\))?\s+)?([a-z_][a-z0-9_]*)\s*:\s*([^\n]+)/gm;
+
+/**
+ * Trims a captured declaration to the type itself.
+ *
+ * A field type is captured to the end of its line, because stopping at the
+ * first comma reads `BTreeMap<DomainId, Vec<u8>>` as `BTreeMap<DomainId` and
+ * loses the buffer -- which is how `T114`'s `DomainKeyring` injection stayed
+ * silent. The trailing separator is removed here, at the first comma that is
+ * not inside a bracket.
+ */
+function trimDeclaredType(text) {
+  let depth = 0;
+  for (let cursor = 0; cursor < text.length; cursor += 1) {
+    const character = text[cursor];
+    if (character === "<" || character === "(" || character === "[") {
+      depth += 1;
+    } else if (character === ">" || character === ")" || character === "]") {
+      depth -= 1;
+      if (depth < 0) {
+        return text.slice(0, cursor);
+      }
+    } else if (depth === 0 && character === ",") {
+      return text.slice(0, cursor);
+    }
+  }
+  return text;
+}
+
+/** Payload positions of a tuple struct, which has no field name at all. */
+const TUPLE_FIELD_PATTERN = /(?:^|[(,])\s*(?:pub(?:\s*\([^)]*\))?\s+)?([^,()]+)/g;
+
+/** Enum variants written as `Dek([u8; 32])`, whose name is the only signal. */
+const TUPLE_VARIANT_PATTERN = /(?:^|[,{])\s*([A-Z][A-Za-z0-9_]*)\s*\(([^()]*)\)/gm;
+
+/**
+ * Reduces a field type to the buffer it holds.
+ *
+ * A borrow, a path qualification, and an `Option`, `Box`, `Rc`, `Arc`,
+ * `Zeroizing`, or `Cow` wrapper all print their contents through a derived
+ * `Debug`, so none of them makes a byte buffer safe. `T114` found each one
+ * silent in turn.
+ */
+function normalizeFieldType(text) {
+  let current = text.trim().replace(/\s+/g, " ");
+  for (let round = 0; round < 8; round += 1) {
+    const before = current;
+    current = current.replace(/^&\s*(?:'[A-Za-z_][A-Za-z0-9_]*\s*)?(?:mut\s+)?/, "");
+    current = current.replace(/^(?:[A-Za-z_][A-Za-z0-9_]*\s*::\s*)+/, "");
+    const wrapped = /^(Option|Box|Rc|Arc|Zeroizing|Cow)\s*<([\s\S]*)>$/.exec(current);
+    if (wrapped !== null) {
+      current = wrapped[2].trim().replace(/^'[A-Za-z_][A-Za-z0-9_]*\s*,\s*/, "");
+    }
+    if (current === before) {
+      return current;
+    }
+  }
+  return current;
+}
+
+/** Reports whether a field type prints raw bytes through a derived `Debug`. */
+function holdsRawBytes(text) {
+  return RAW_BYTE_TYPES.test(normalizeFieldType(text));
+}
 
 async function rustSourcesUnder(directory) {
   const found = [];
@@ -145,15 +243,27 @@ function bodyAt(lines, index) {
   const text = lines.slice(index, index + 400).join("\n");
   const opener = text.search(/[{(;]/);
   if (opener === -1 || text[opener] !== "{") {
-    // A tuple struct or a unit struct has no named field for the net to read;
-    // the registry above is what covers those.
     return "";
   }
+  return matched(text, opener, "{", "}");
+}
+
+/** Returns the parenthesised body of a tuple struct starting at `index`. */
+function tupleBodyAt(lines, index) {
+  const text = lines.slice(index, index + 40).join("\n");
+  const opener = text.search(/[{(;]/);
+  if (opener === -1 || text[opener] !== "(") {
+    return "";
+  }
+  return matched(text, opener, "(", ")");
+}
+
+function matched(text, opener, open, close) {
   let depth = 0;
   for (let cursor = opener; cursor < text.length; cursor += 1) {
-    if (text[cursor] === "{") {
+    if (text[cursor] === open) {
       depth += 1;
-    } else if (text[cursor] === "}") {
+    } else if (text[cursor] === close) {
       depth -= 1;
       if (depth === 0) {
         return text.slice(opener + 1, cursor);
@@ -162,6 +272,21 @@ function bodyAt(lines, index) {
   }
   return text.slice(opener + 1);
 }
+
+/** Returns the body of a hand-written `Debug` impl, by type name. */
+function handWrittenDebugBodies(contents) {
+  const bodies = new Map();
+  const pattern =
+    /\bimpl\s+(?:core::fmt::|std::fmt::|fmt::)?Debug\s+for\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+  for (const match of contents.matchAll(pattern)) {
+    const opener = contents.indexOf("{", match.index + match[0].length);
+    if (opener !== -1) {
+      bodies.set(match[1], matched(contents, opener, "{", "}"));
+    }
+  }
+  return bodies;
+}
+
 
 function derivedTraits(attributeBlock) {
   const traits = new Set();
@@ -179,6 +304,7 @@ function derivedTraits(attributeBlock) {
 async function scan() {
   const definitions = new Map();
   const handWrittenDebug = new Set();
+  const debugBodies = new Map();
   const macroKeyTypes = new Set();
   let keysSource = "";
   for (const path of await productSources()) {
@@ -198,6 +324,9 @@ async function scan() {
     )) {
       handWrittenDebug.add(match[1]);
     }
+    for (const [name, body] of handWrittenDebugBodies(contents)) {
+      debugBodies.set(name, body);
+    }
     lines.forEach((line, index) => {
       const match = DEFINITION_PATTERN.exec(line);
       if (match === null) {
@@ -211,14 +340,19 @@ async function scan() {
         derives: derivedTraits(attributesAbove(lines, index)),
         // Comments are stripped so prose naming a type is not read as a field.
         body: bodyAt(lines, index).replace(/\/\/.*$/gm, ""),
+        // A tuple struct has no named field for the net to read, so its
+        // payload positions are collected separately; `T114` found a tuple
+        // secret invisible to a guard that only read named fields.
+        tuple: tupleBodyAt(lines, index).replace(/\/\/.*$/gm, ""),
       });
       definitions.set(match[2], sites);
     });
   }
-  return { definitions, handWrittenDebug, macroKeyTypes, keysSource };
+  return { definitions, handWrittenDebug, debugBodies, macroKeyTypes, keysSource };
 }
 
-const { definitions, handWrittenDebug, macroKeyTypes, keysSource } = await scan();
+const { definitions, handWrittenDebug, debugBodies, macroKeyTypes, keysSource } =
+  await scan();
 
 test("the secret_key! macro still declares the ADR-005 key types and redacts them", () => {
   assert.ok(
@@ -308,7 +442,7 @@ test("no unregistered type derives Debug over a raw key or plaintext buffer", ()
         const [, fieldName, fieldType] = field;
         if (
           !SECRET_FIELD_NAMES.test(fieldName) ||
-          !RAW_BYTE_TYPES.test(fieldType.trim())
+          !holdsRawBytes(trimDeclaredType(fieldType))
         ) {
           continue;
         }
@@ -321,7 +455,7 @@ test("no unregistered type derives Debug over a raw key or plaintext buffer", ()
           continue;
         }
         leaks.push(
-          `${site.location}: ${site.kind} ${site.name} derives Debug over ${qualified}: ${fieldType.trim()}. Write the impl by hand and redact, or record in PUBLIC_BYTES why these bytes are public.`,
+          `${site.location}: ${site.kind} ${site.name} derives Debug over ${qualified}: ${trimDeclaredType(fieldType).trim()}. Write the impl by hand and redact, or record in PUBLIC_BYTES why these bytes are public.`,
         );
       }
     }
@@ -336,4 +470,205 @@ test("no unregistered type derives Debug over a raw key or plaintext buffer", ()
     [],
     `these PUBLIC_BYTES exceptions match no field any more and must be deleted: ${stale.join(", ")}`,
   );
+});
+
+
+/** Reports whether a type text holds a raw byte buffer anywhere inside it. */
+function containsRawByteBuffer(text) {
+  const normalized = normalizeFieldType(text);
+  return (
+    RAW_BYTE_TYPES.test(normalized) ||
+    /(Vec\s*<\s*u8\s*>|\[\s*u8\s*(;[^\]]*)?\])/.test(normalized)
+  );
+}
+
+/** Type-name tokens a field's declared type mentions. */
+function typeTokens(text) {
+  return normalizeFieldType(text).match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? [];
+}
+
+/** Every field a definition declares, as `{ name, type }`. */
+function declaredFields(site) {
+  const fields = [...site.body.matchAll(NAMED_FIELD_PATTERN)].map((match) => ({
+    name: match[1],
+    type: trimDeclaredType(match[2]),
+  }));
+  for (const position of site.tuple.matchAll(TUPLE_FIELD_PATTERN)) {
+    const type = position[1].trim();
+    if (type !== "") {
+      fields.push({ name: null, type });
+    }
+  }
+  return fields;
+}
+
+/**
+ * Types that carry key material or plaintext, computed from the source.
+ *
+ * A field carries it when its declared type *is* one of the `secret_key!` key
+ * types, or when it holds a raw byte buffer under a name from the vocabulary,
+ * or -- for a tuple position, which has no name -- when it holds one at all.
+ * A type holding such a type is one too, iterated to a fixed point so a two-hop
+ * holder is reached: `EncryptedDomainKeyring` holds `DomainObjectKeys` holds
+ * `DomainKek`.
+ *
+ * Propagation runs over *declared field types* only. Reading the whole body
+ * would make every type that merely mentions a key type in a method secret,
+ * which is how a first attempt at this flagged `AcceptanceService`.
+ */
+function secretBearingTypeNames() {
+  const direct = new Set();
+  const bearing = new Set(macroKeyTypes);
+  for (const [name, sites] of definitions) {
+    for (const site of sites) {
+      for (const field of declaredFields(site)) {
+        const isKeyType = macroKeyTypes.has(normalizeFieldType(field.type));
+        const named =
+          field.name !== null &&
+          SECRET_FIELD_NAMES.test(field.name) &&
+          containsRawByteBuffer(field.type);
+        const positional = field.name === null && containsRawByteBuffer(field.type);
+        if (isKeyType || named || positional) {
+          bearing.add(name);
+          direct.add(name);
+        }
+      }
+    }
+  }
+  for (let round = 0; round < 8; round += 1) {
+    let grew = false;
+    for (const [name, sites] of definitions) {
+      if (bearing.has(name)) {
+        continue;
+      }
+      const reaches = sites
+        .flatMap(declaredFields)
+        .flatMap((field) => typeTokens(field.type))
+        .some((token) => token !== name && bearing.has(token));
+      if (reaches) {
+        bearing.add(name);
+        grew = true;
+      }
+    }
+    if (!grew) {
+      break;
+    }
+  }
+  return { direct, bearing };
+}
+
+
+const { direct: DIRECT_SECRET_BEARING, bearing: SECRET_BEARING } =
+  secretBearingTypeNames();
+
+test("a type whose Debug is hand-written over secret bytes is registered", () => {
+  // Deleting a registration was silent: the remaining tests all iterate the
+  // registry, so a type removed from it stopped being covered and nothing
+  // failed. The registry is now checked against the source. A type that carries
+  // secret bytes in a field of its own -- and whose author wrote `Debug` by
+  // hand rather than deriving it -- is exactly the shape the registry is for,
+  // so it must be in it. A type that only reaches a secret through another
+  // type is not required here: the inner type's own redacting `Debug` is what
+  // a derive on the outer one would print, and a type holding a secret with no
+  // `Debug` at all cannot be derived over without a compile error.
+  const unregistered = [];
+  for (const [name, body] of debugBodies) {
+    if (SECRET_BEARING_TYPES.has(name) || !DIRECT_SECRET_BEARING.has(name)) {
+      continue;
+    }
+    if (!/<redacted>|finish_non_exhaustive/.test(body)) {
+      continue;
+    }
+    unregistered.push(name);
+  }
+  assert.deepEqual(
+    unregistered.sort(),
+    [],
+    `these hand-write a redacting Debug over secret bytes and are not in SECRET_BEARING_TYPES, so removing that impl would be silent: ${unregistered.join(", ")}`,
+  );
+});
+
+test("no hand-written Debug prints a secret field it was written to hide", () => {
+  // The registry says a type has a hand-written `Debug`; it did not say what
+  // that `Debug` prints. `T114` injected an impl that redacted every field but
+  // one and neither this guard nor the Rust unit test noticed. A raw byte field
+  // may reach the formatter only through a length.
+  const leaks = [];
+  for (const name of SECRET_BEARING_TYPES.keys()) {
+    const body = debugBodies.get(name);
+    if (body === undefined) {
+      continue;
+    }
+    const rawFields = new Set();
+    for (const site of definitions.get(name) ?? []) {
+      for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
+        const declared = trimDeclaredType(field[2]);
+        if (holdsRawBytes(declared) || SECRET_BEARING.has(normalizeFieldType(declared))) {
+          rawFields.add(field[1]);
+        }
+      }
+    }
+    for (const field of rawFields) {
+      const uses = body.matchAll(
+        new RegExp(`self\\s*\\.\\s*${field}\\b([^,)]*)`, "g"),
+      );
+      for (const use of uses) {
+        if (/^\s*\.\s*(len|is_empty|count|capacity)\s*\(/.test(use[1])) {
+          continue;
+        }
+        leaks.push(
+          `${name}: its hand-written Debug reaches self.${field} without reducing it to a length, so the bytes it was written to hide are printed`,
+        );
+      }
+    }
+  }
+  assert.deepEqual(leaks.sort(), [], leaks.join("\n"));
+});
+
+test("no unregistered tuple type derives Debug over a secret payload", () => {
+  // A tuple struct and a tuple enum variant have no field name, so the named
+  // net never saw them. `T114` found `RecoveredSecret`, `BackupMasterKey`, and
+  // an enum variant `Dek([u8; 32])` all silent.
+  const leaks = [];
+  for (const [name, sites] of definitions) {
+    for (const site of sites) {
+      if (!site.derives.has("Debug") && !site.derives.has("Display")) {
+        continue;
+      }
+      if (site.tuple !== "") {
+        for (const position of site.tuple.matchAll(TUPLE_FIELD_PATTERN)) {
+          const payload = position[1].trim();
+          if (payload === "") {
+            continue;
+          }
+          const zeroizing = /(^|::)Zeroizing\s*</.test(payload);
+          if (zeroizing || macroKeyTypes.has(normalizeFieldType(payload))) {
+            leaks.push(
+              `${site.location}: ${site.kind} ${name} derives Debug over the tuple payload ${payload}`,
+            );
+          }
+        }
+      }
+      if (site.kind === "enum") {
+        for (const variant of site.body.matchAll(TUPLE_VARIANT_PATTERN)) {
+          const [, variantName, payload] = variant;
+          const snake = variantName
+            .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+            .toLowerCase();
+          if (!SECRET_FIELD_NAMES.test(snake)) {
+            continue;
+          }
+          for (const position of payload.matchAll(TUPLE_FIELD_PATTERN)) {
+            const inner = position[1].trim();
+            if (inner !== "" && (holdsRawBytes(inner) || macroKeyTypes.has(normalizeFieldType(inner)))) {
+              leaks.push(
+                `${site.location}: enum ${name} derives Debug over variant ${variantName}(${inner})`,
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.deepEqual(leaks.sort(), [], leaks.join("\n"));
 });

@@ -42,22 +42,33 @@ No new event kind and no nineteenth v3 arm: t068 section 3.8 fixes the arm list 
 
 `RETENTION_ACTION_RECORDED` is consequently the one v3 arm the encrypted lane's acceptance admits. The other seventeen have no writer yet and are still refused with `UnstorableEventKind` before any SQL runs, and the plaintext lane refuses all eighteen because it applies neither migration.
 
-Retiring the superseded object is the collection point `ADR-004` leaves open. `academic-retention`'s `retire_superseded_object` destroys its key slot once the rotation is complete, the unit is migrated, and the store resolves to a different locator. Until then the superseded copy stays readable under the superseded key, which is stated in [rotation and retention](../contracts/rotation-and-retention.md) rather than left implied.
+Retiring the superseded object is the collection point for what a rotation supersedes; `ADR-004`'s open item is the vault's `quarantine/` directory, which is a different thing and still the daemon lane's. `academic-retention`'s `retire_superseded_object` destroys the superseded object's key slot once the rotation is complete, the unit is migrated, the superseded object is the one that unit supersedes, and the store — read through `CanonicalReference`, not stated by the caller — resolves that artifact to the locator the journal recorded as the unit's target. Until then the superseded copy stays readable under the superseded key, which is stated in [rotation and retention](../contracts/rotation-and-retention.md) rather than left implied.
 
 ## Deletion reaches the copies a backup holds
 
 A backup holds `AEAD_CHUNKED_V2` objects byte for byte, so crypto-shredding the
 live object does not reach the copy inside one. `P2-K5` closes that with a
-backup tombstone: one JSON record per shredded locator, written into
+backup tombstone: one JSON record per deleted artifact, written into
 `<backup>/tombstones/<locator>.tombstone` with a single atomic write, and applied
 to the object tree a restore materialises.
+
+A record names every locator its artifact has been reachable under — the one the
+live shred destroyed and every locator the store's migration chain moved through
+before it. A locator is a function of `KEK_d`, so a rotation renames an
+artifact, and a backup taken before that rotation holds the object under the
+older name; a record naming only the current locator would leave that copy
+readable.
 
 `restore_encrypted_profile` is what applies them: in the staging tree, after
 every object has been authenticated and before the rename that publishes the
 restore, so no published restore holds a key slot the profile it came from had
 destroyed. The re-deletion needs **no key** — the locator is cleartext at a
 fixed header offset and destroying a key slot is a positioned write. A tombstone
-whose object is not in the tree is reported as absent rather than ignored, and a
+that reached no object under any of its artifact's names is reported rather than
+ignored: `EncryptedRestoreReceipt` carries `re_deleted_locators` and
+`absent_locators` as two sorted lists, so a deletion the backup could not carry
+out is distinguishable from one it did. Absence is not an error — the artifact
+may have been registered after the backup was taken, or shredded before it. A
 tombstone write that fails makes the deletion `REPAIR_REQUIRED` rather than
 `PARTIAL` — a deletion whose tombstone did not land is one that will not
 re-apply on restore.

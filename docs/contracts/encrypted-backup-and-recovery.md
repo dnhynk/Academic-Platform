@@ -114,24 +114,45 @@ Restore targets only a new empty destination and publishes with one rename, so
 every failure leaves the backup and the current profile untouched and the
 destination either absent or completely verified. The order is fixed:
 
-1. refuse a destination that is not new and empty;
-2. read the format marker and the wrapped key set;
-3. verify the manifest signature, then open it with the backup root;
-4. check the recorded digest and length of every file in the directory;
-5. stage an encrypted profile and copy the database, then prove the copy is
-   unreadable without its key;
-6. `cipher_integrity_check`, `integrity_check`, `foreign_key_check`;
-7. compare schema identity, watermark, counts, device heads, and the canonical
-   semantic digest against the manifest;
-8. replay every signed batch against **caller-supplied** trust anchors — never
-   anchors read out of the backup, which would authenticate nothing;
-9. copy every object, check its ciphertext and plaintext digests, then
-   authenticate each one through the vault;
-10. remove the incomplete markers, synchronize, publish.
+ 1. refuse a destination that is not new and empty;
+ 2. refuse a destination inside the backup being restored. A restore into the
+    backup's own tree publishes a directory the backup does not list, so the
+    backup stops verifying against its own manifest — a silent, permanent
+    deletion behind a destination that looked like a perfectly good new empty
+    directory. The comparison is over canonical paths, and because the
+    destination does not exist yet its nearest existing ancestor is what is
+    compared;
+ 3. read the format marker and the wrapped key set;
+ 4. verify the manifest signature, then open it with the backup root;
+ 5. check the recorded digest and length of every file in the directory;
+ 6. stage an encrypted profile and copy the database, then prove the copy is
+    unreadable without its key;
+ 7. `cipher_integrity_check`, `integrity_check`, `foreign_key_check`;
+ 8. compare schema identity, watermark, counts, device heads, and the canonical
+    semantic digest against the manifest;
+ 9. replay every signed batch against **caller-supplied** trust anchors — never
+    anchors read out of the backup, which would authenticate nothing;
+10. copy every object, check its ciphertext and plaintext digests, then
+    authenticate each one through the vault;
+11. re-apply every tombstone the backup carries to the staged object tree, and
+    record on the receipt both what was re-deleted and what reached nothing.
+    This is the restore half of a `P2-K5` deletion and it happens here, after
+    every object has been authenticated and before the rename, so no published
+    restore holds a key slot the profile it came from had destroyed;
+12. remove the incomplete markers, synchronize, publish.
+
+A backup is taken of **one** generation. `SKEY_p` and `KEK_d` both derive from
+the Vault Master Key, so a caller that rotated the objects and kept a key set
+derived from the superseded master would write a database under one generation
+beside objects under another. That backup verifies — every file is present and
+digest-checked — and nothing restores it, because a restore recovers a single
+master and derives both halves from it. `backup_encrypted_profile` refuses the
+pairing when it is taken (`backup profile key generation`), which is also what
+catches a rotation that has not run its `STORE_DATABASE` unit.
 
 A restore does not trust its manifest. A manifest re-sealed with the real backup
 key after its counts were altered verifies and decrypts, and the restore still
-refuses, because step 7 re-derives the counts from the restored database.
+refuses, because step 8 re-derives the counts from the restored database.
 
 Projections are not restored. They are disposable, are never backed up as truth,
 and are rebuilt by the projection engine, which the encrypted lane does not link.

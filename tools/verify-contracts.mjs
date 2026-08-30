@@ -1972,8 +1972,13 @@ const encryptedStoreMatrixLabels = ["ubuntu-latest"];
 // imitated a restore and passed while the product restore applied no
 // tombstone, and no hosted job built this lane at all. Linux only, for the
 // same `openssl-src` toolchain reason as the store lane.
+//
+// The lint selects `phase2-fault-injection` because `encrypted_crash.rs` only
+// compiles under it. `T114` found the narrower spelling here while README:103
+// and the backup contract both carried the wider one, so the file the BK and RS
+// kill rows live in was tested hosted and linted nowhere.
 const encryptedPortabilityCiCommands = [
-  "cargo clippy -p academic-portability --no-default-features --features encrypted-portability --all-targets --locked -- -D warnings",
+  "cargo clippy -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --all-targets --locked -- -D warnings",
   "cargo test -p academic-portability --no-default-features --features encrypted-portability --locked",
   "cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --test encrypted_crash",
 ];

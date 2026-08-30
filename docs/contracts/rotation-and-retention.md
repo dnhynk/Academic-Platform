@@ -21,10 +21,11 @@ cache, and replica subsystems to it.
 
 **What is not here.** No daemon or CLI command runs a rotation: the sequence
 below is a library sequence, executed end to end by
-`crates/portability/tests/encrypted_rotation.rs` and by nothing a user can
-invoke. The `STORE_DATABASE` unit still has no bound executor, so a rotation
-covers objects and leaves `SKEY_p` where it was. Both are stated again where
-they bite rather than only here.
+`crates/portability/tests/encrypted_rotation.rs` and
+`crates/portability/tests/encrypted_rotation_seam.rs`, and by nothing a user can
+invoke. So there is no orchestrator to run the preflight the re-rotation section
+below requires, and the ordering rules here are obligations on the first one
+written. `P2-P2` is the task that writes it.
 
 ## What rotates, and why one rotation moves everything
 
@@ -94,10 +95,16 @@ never a durable record. It is dropped and truncated away when the journal is
 opened, which is what makes an interrupted rotation resumable. A *complete* line
 that does not parse is still `Malformed`.
 
-Entries are a closed set: `RotationStarted`, `UnitResealed`, `UnitMigrated`,
-`UnitSourceRetired`, `RotationCompleted`, `RecipientAdded`, `RecipientRevoked`,
-`RetentionPlanned`, `ArtifactShredded`, `BackupTombstoneWritten`,
-`RetentionSettled`.
+Entries are a closed set of eleven: `RotationStarted`, `UnitResealed`,
+`UnitMigrated`, `UnitSourceRetired`, `RotationCompleted`, `RecipientAdded`,
+`RecipientRevoked`, `RetentionPlanned`, `ArtifactShredded`,
+`BackupTombstoneWritten`, `RetentionSettled`.
+
+`UnitResealed` carries a `target_locator`, which for an object unit is the
+locator the re-sealed object landed on. A `STORE_DATABASE` unit is rekeyed in
+place and has no locator, so what it records there is
+`store_database_target_id(profile, target generation)` — same width, same
+cleartext class, and a pure function of two values the journal already carries.
 
 **A journal is not encrypted, so nothing private may be in one.** Entries carry
 locators — which are already the on-disk filenames — digests of them, generation
@@ -164,9 +171,23 @@ frame carries the optional provenance digest that binds this exact move.
 identity, the artifact identity, the sequence, both locators, and the format
 version, and migration `0005`'s triggers refuse a row whose digest is not the
 `source_digest` its retention action carries, or that does not continue the
-chain. `read_artifact_descriptors` resolves the chain, so backup, restore, the
-store's own pre-commit revalidation, and reconciliation all name the object the
-current key opens.
+chain.
+
+**Every reader that decides which object is reachable resolves this chain.**
+There are four, and all four go through
+`descriptor_migration::resolve_with_stored_migrations`: `read_artifact_descriptors`,
+which backup, restore, and export use; the store's pre-transaction sealing
+closure (`preflight_artifact_closure`); and the acceptance transaction's own
+closure writer, whose sealed receipts are checked against the descriptor it
+loads. A reader that stopped at the signed row would refuse every batch whose
+closure reaches a rotated artifact, under the new key because the row names the
+superseded object and — once that object is retired — under both.
+
+The vault's reconciliation is fed a referenced set by its caller and resolves
+nothing itself. **The encrypted lane has no product reconciliation caller**:
+`core::local_service` reconciles the plaintext `Vault`. What decides which
+object a rotated profile reaches is the chain above and the journal, not a
+reconciliation pass.
 
 The order is event first, row second. A kill between them leaves the reference
 where it was, the superseded object still reachable, and the migration
@@ -187,12 +208,27 @@ the superseded copy in the live tree for as long as it is merely unreferenced.
 `revocation stops this recipient from receiving any future key` is exactly that
 narrow, and retirement is the operation that closes the window.
 
-Retirement refuses unless the journal records the rotation complete and the unit
-migrated, and unless the caller passes the descriptor the *store* now resolves
-to and it differs from the superseded one. The retention crate cannot read the
-store, so that argument is how a caller states that the canonical reference has
-already moved; retiring on the journal alone would destroy the only object the
-store could still name.
+Every argument is bound to something already recorded, because the write cannot
+be undone and — until an orchestrator exists — this is the only garbage
+collection there is. A retirement refuses unless all four hold:
+
+1. the journal records the rotation complete and this unit migrated;
+2. `superseded` is the object **this unit** supersedes. A unit identity is
+   derived from its source locator, so the two are comparable without reading
+   anything, and without this the gates inspect one object while the positioned
+   write destroys another;
+3. the canonical reference the store resolves that artifact to is the
+   `target_locator` this unit's `UnitResealed` record named. The reference is
+   *read*, through `CanonicalReference` — `academic-retention` cannot link the
+   store, so the encrypted portability lane binds
+   `StoreCanonicalReference` over the store's own resolution. A caller whose
+   store row is not written yet is refused rather than believed;
+4. the artifact is in the store at all. "Nothing says it moved" is not "it
+   moved".
+
+Those refuse the three orderings that destroyed live data before this: retiring
+before the store row exists, retiring another artifact's live object under a
+rotated unit, and retiring the object the rotation moved *to*.
 
 A retirement is not a deletion of the artifact. It leaves backup copies taken
 before the rotation untouched and writes no tombstone: the artifact still exists,
@@ -200,18 +236,79 @@ at the locator the migration chain resolves to.
 
 ## The store database unit
 
-The rotation plan carries a `STORE_DATABASE` unit. Its executor is `P2-K2`'s
-`PRAGMA rekey`, which cannot link into `academic-retention`: the encrypted store
-lane and the default lane are mutually exclusive builds. The engine therefore
-refuses to record that unit as migrated rather than pretending to have moved it.
+The rotation plan carries a `STORE_DATABASE` unit, and it is the reason a
+rotation is not "a rotation of the objects". `SKEY_p` and `KEK_d` are both
+functions of the Vault Master Key, so a rotation that moved every object and
+left the database behind produces a profile whose two halves are under two
+generations. That profile still works on the machine holding both keys, and no
+backup of it can be restored: a restore recovers one master and derives both
+halves from it.
 
-Its byte-level kill evidence is fault `EN01`
-(`store_rekey_kill_leaves_exactly_one_working_key`), and since `P2-K5` the
-`encrypted-store-lane` CI job runs that test on `ubuntu-latest` — so it is
+Its executor is `P2-K2`'s `PRAGMA rekey`, which cannot link into
+`academic-retention` — the encrypted store lane and the default lane are
+mutually exclusive builds. `RotationEngine::rotate_store_database` therefore
+takes a `StoreDatabaseExecutor`, and the encrypted portability lane binds it:
+`encrypted::rotation::StoreDatabaseRekey` derives both generations' store keys
+and calls `academic_store::cipher::rekey_encrypted_profile`. A plan that reaches
+this unit with no executor run still refuses to complete, by name.
+
+```text
+open under the source key  ->  PRAGMA rekey  ->  reopen under the target key
+UnitResealed(target = store_database_target_id(profile, target generation))
+UnitMigrated
+```
+
+The order differs from an object unit's for one reason: a rekey rewrites pages
+in place, so there is no second file that is durable and verified while the
+first is still reachable. What takes the place of the read-back is the
+executor's own reopen under the target key, which re-asserts the format marker,
+the frozen SQLCipher settings, and the schema-2 identity before it returns.
+`UnitResealed` is appended only after that. Because a rekeyed database does not
+move, the record's `target_locator` is
+`SHA-256("academic-os/rotation-store-database/v1" | 0 | profile_id | 0 | target
+generation)` — 64 hex like every other locator field, and a pure function of two
+values the journal already carries.
+
+**The database moves last.** While objects are still moving, the store key that
+opens the database has to stay in force for both the migrated and the unmigrated
+ones, so the unit is planned last and run after the last object.
+
+A kill during the rekey leaves exactly one working key, which is fault `EN01`
+(`store_rekey_kill_leaves_exactly_one_working_key`); since `P2-K5` the
+`encrypted-store-lane` CI job runs that test on `ubuntu-latest`, so it is
 executed evidence rather than a pointer. Native Windows is not in that job:
 `openssl-src` needs a Perl the hosted Windows image does not carry, which t068
 section 2.3-17 records; Windows stays the README-documented local lane with its
-pinned interpreter.
+pinned interpreter. The resume is the same call: a database `current` no longer
+opens but `next` does is reported as already at the target, and the journal
+records catch up.
+
+A backup refuses a key set and a master that name two generations
+(`backup profile key generation`), so a rotation that has not run this unit is
+caught where it is cheap rather than on the fresh machine the restore was for.
+
+## Re-rotation, and the locator a chain records once
+
+`artifact_descriptor_migration` carries `UNIQUE (artifact_id, vault_locator)`
+and `UNIQUE (artifact_id, superseded_locator)`. A locator is a deterministic
+function of the generation, so **an artifact cannot be rotated back to a
+generation its chain has already recorded.** `G1 -> G2 -> G1` is refused at the
+second rotation's store row.
+
+That constraint is what stops a chain from forking or looping, and migration
+`0005` is frozen, so the sequence is refused rather than the schema widened.
+What the refusal must not do is arrive late: the journal records `UnitResealed`
+and `UnitMigrated` before the store row is written, so a rotation discovering
+this at the insert leaves a journal that says the unit migrated and a store that
+still resolves to the superseded object — a divergence with no kill in it.
+
+**An orchestrator must ask before it journals anything.**
+`AcceptanceStore::locator_is_already_in_chain` is that question, and
+`record_descriptor_migration` refuses by name — "the artifact's reference chain
+has already recorded this locator" — rather than surfacing a raw constraint
+violation. A rollback that has to be re-advanced rotates to a *new* generation,
+which is what the key schedule makes cheap: a generation is a fresh Vault Master
+Key, not a slot.
 
 ## Recipient add and revoke
 
@@ -243,9 +340,28 @@ A rotation touches the set twice, and the order is the point.
 `rewrap_for_generation` adds the new generation's records **beside** the old
 ones, so while units are still moving both generations are openable from the one
 document the profile holds. `retire_generation` writes the set holding only the
-new generation, and refuses while any planned unit is still under the old one —
-a set holding only the new generation before then would name a key that opens
-nothing for those units while the key that does open them is no longer on disk.
+new generation.
+
+Both are narrower than "write what the caller asked for".
+
+A rewrap re-wraps *one recipient's own copy* of the key, so a produced record
+must carry the identity it was produced for; a record under another identity is
+another recipient, and appending it beside the survivors would add a reader
+nothing authorized. And a rewrap runs once: between it and `retire_generation`
+each identity has exactly two records, so a third is a rewrap of a rewrap and is
+refused. `recipients.cbor` is `P2-K1`'s frozen document and a record does not say
+which generation it wraps, so that count is what can be checked without a key.
+After a kill between the set's rename and the journal record the set on disk is
+already the rewrapped one, and the resume is `retire_generation`, not a second
+rewrap.
+
+`retire_generation` is the last point at which a profile can be made permanently
+unopenable, so what it keeps is decided by the journal rather than by the
+caller. It refuses unless the journal records a rotation, that rotation is
+complete with no unit remaining, and `kept_generation` is the generation the
+rotation moved **to**. Without the first, nothing says the generation being kept
+opens anything and every object may be under the one being removed; without the
+third, the call is that same destruction stated backwards.
 
 Revoking the last remaining recipient is refused. That is not access control, it
 is data destruction.
@@ -296,16 +412,33 @@ object does not reach the copy inside one. A tombstone closes that gap:
 <backup>/tombstones/<locator>.tombstone     # one JSON object, one atomic write
 ```
 
+**A tombstone names every locator its artifact has been reachable under**: the
+one the live shred destroyed, and every locator the store's
+`artifact_descriptor_migration` chain moved through before it, oldest first.
+A locator is a function of `KEK_d`, so a rotation gives an artifact a new one and
+a backup taken before that rotation holds the object under an older name; a
+record naming only the current locator would leave that copy readable while
+reporting nothing. `AcceptanceStore::superseded_locators` is where the chain
+comes from and `encrypted::rotation::deletion_tombstone` is the product path
+that builds the record. An artifact that never moved produces a record with an
+empty list, which serializes to exactly the bytes this format wrote before the
+field existed.
+
 `restore_encrypted_profile` applies every tombstone the backup carries to the
 objects it materialises, in the staging tree, after every object has been
 authenticated and before the rename that publishes the restore. So no published
 restore holds a key slot the profile it came from had destroyed, and a tombstone
 that cannot be applied fails the restore instead of silently resurrecting an
 artifact. **The re-deletion needs no key**: the locator lives in the clear at a
-fixed header offset and destroying a key slot is a positioned write. A tombstone
-whose object is not in the tree is reported as absent, not ignored — the
-artifact may have been registered after the backup was taken, or shredded before
-it.
+fixed header offset, only the 208-byte header is read, and destroying a key slot
+is a positioned write.
+
+A tombstone that matched no object in the tree — under any of its artifact's
+names — is reported, not ignored. `EncryptedRestoreReceipt` carries two sorted
+lists: `re_deleted_locators`, the locators actually re-deleted, and
+`absent_locators`, the tombstones that reached nothing. Absence is not an error:
+the artifact may have been registered after the backup was taken, or shredded
+before it. It is a fact the caller is told rather than one the receipt drops.
 
 `tombstones/` is the one path in a published backup the sealed manifest does not
 cover, because a tombstone is written into a backup that was published and
@@ -322,6 +455,7 @@ deleted an artifact permanently un-backupable. The object is copied as the
 destroyed thing it is — the shred marker is inside the bytes and the ciphertext
 digest covers it — and the restore digest-checks it without asking it to
 authenticate.
+
 
 `RB02` — a tombstone write that fails — makes the deletion `REPAIR_REQUIRED`
 rather than `PARTIAL`. A deletion whose tombstone did not land is not "mostly
@@ -402,3 +536,16 @@ Both are hosted CI steps on every Rust matrix label, because the key-slot write
 and the recipient-set rename are per-platform. The default-lane half — the
 journal, the plan, the vocabulary, and the revocation contract — is pure Rust and
 also runs inside `cargo test --workspace`.
+
+The half that needs the store is in the encrypted portability lane, because that
+is the only build where `academic-store`, `academic-vault`, and
+`academic-retention` link into one process:
+
+```powershell
+cargo test -p academic-portability --no-default-features --features encrypted-portability --locked --offline
+```
+
+`encrypted_rotation.rs` states what a rotation does; `encrypted_rotation_seam.rs`
+states what everything after one does — the acceptance, the backup, the restore,
+the deletion, the retirement, and the re-rotation. Both run in the hosted
+`encrypted-portability-lane` job.
