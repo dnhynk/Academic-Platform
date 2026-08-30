@@ -193,8 +193,8 @@ chain.
 **Every reader that decides which object is reachable resolves this chain.**
 There are four, and all four go through
 `descriptor_migration::resolve_with_stored_migrations`: `read_artifact_descriptors`,
-which backup and restore use; `resolved_artifact_descriptor`, which is what a
-retirement's `CanonicalReference` reads; the store's pre-transaction sealing
+which backup, restore, and export use; `resolved_artifact_descriptor`, which is
+what a retirement's `CanonicalReference` reads; the store's pre-transaction sealing
 closure (`preflight_artifact_closure`); and the acceptance transaction's own
 closure writer, whose sealed receipts are checked against the descriptor it
 loads. A reader that stopped at the signed row would refuse every batch whose
