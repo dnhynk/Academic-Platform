@@ -491,12 +491,12 @@ impl EncryptedFixture {
 
     /// Opens the profile's object vault under an arbitrary generation's key.
     ///
-    /// A rotation moves objects to a second Vault Master Key while the store
-    /// database keeps the key it was created with, because the store's rekey is
-    /// `P2-K2`'s `PRAGMA rekey` and no executor for it is bound here. Deriving
-    /// the keyring from the passed master and the store key from `keys()` is
-    /// exactly that split, and it is the split every caller after a rotation
-    /// uses.
+    /// A rotation moves objects to a second Vault Master Key one unit at a
+    /// time, so between the first `UnitMigrated` and the last one this profile
+    /// has objects under both generations and both keyrings are needed. The
+    /// store key is the one the fixture currently holds, which is correct at
+    /// every point: the `STORE_DATABASE` unit runs last, and `adopt_generation`
+    /// is what moves this fixture onto the new one afterwards.
     pub fn open_vault_under(&self, master: &VaultMasterKey) -> TestResult<EncryptedVault> {
         Ok(EncryptedVault::open(
             &self.profile_root,
@@ -508,6 +508,88 @@ impl EncryptedFixture {
     pub fn open_vault(&self) -> TestResult<EncryptedVault> {
         Ok(EncryptedVault::open(&self.profile_root, self.keyring()?)?)
     }
+
+    /// Adopts the generation a completed rotation moved this profile onto.
+    ///
+    /// The `STORE_DATABASE` unit rekeys the database to the target generation's
+    /// `SKEY_p`, so from that point a key set derived from the superseded
+    /// master opens neither half of the profile. This is the caller-side half
+    /// of a rotation, and calling it is how a test states that the rotation
+    /// finished rather than merely started.
+    pub fn adopt_generation(&mut self, master: VaultMasterKey) -> TestResult<()> {
+        let keys = ProfileKeys::derive(&master, PROFILE_ID, &[domain_id()?])?;
+        let profile = academic_store::cipher::open_encrypted_profile(
+            &self.profile_root,
+            &NativePathProbe::default(),
+            keys.store_key(),
+        )?;
+        self.profile = profile;
+        self.master = master;
+        self.keys = keys;
+        Ok(())
+    }
+
+
+    /// Moves the profile's recipient records onto the generation it now holds.
+    ///
+    /// This is the recipient half of a rotation, through the product path:
+    /// `rewrap_for_generation` re-wraps each stored record for the generation
+    /// the rotation left — same identity, new wrapped key — and
+    /// `retire_generation` then writes the set holding only that generation.
+    ///
+    /// A backup carrying the superseded generation's recovery records would
+    /// recover a master that opens neither half of the restored profile, so a
+    /// rotation that stops before this one has not finished.
+    pub fn rewrap_recovery_recipients(&mut self) -> TestResult<()> {
+        let keystore = FileKeystore::new(self.root.child(DEVICE_KEYSTORE_FILE));
+        let generation = academic_retention::rotation::KeyGeneration::of(&self.master, PROFILE_ID)?;
+        let mut journal = academic_retention::AppendOnlyJournal::open(
+            &self
+                .profile_root
+                .join(academic_retention::journal::ROTATION_JOURNAL_RELATIVE_PATH),
+        )?;
+        let rewrapped = academic_retention::recipients::rewrap_for_generation(
+            &self.profile_root,
+            PROFILE_ID,
+            &mut journal,
+            generation,
+            |record| {
+                if record.kind() == academic_crypto::RecipientKind::RecoverySecret {
+                    create_recovery_recipient(
+                        &self.master,
+                        PROFILE_ID,
+                        *record.recipient_id(),
+                        &recovery_secret(),
+                        RECOVERY_ARGON2ID_V1,
+                    )
+                    .map_err(academic_retention::recipients::RecipientError::from)
+                } else {
+                    create_device_recipient(
+                        &self.master,
+                        PROFILE_ID,
+                        *record.recipient_id(),
+                        DEVICE_LABEL,
+                        &keystore,
+                    )
+                    .map_err(academic_retention::recipients::RecipientError::from)
+                }
+            },
+        )?;
+        academic_retention::recipients::retire_generation(
+            &self.profile_root,
+            PROFILE_ID,
+            &journal,
+            generation,
+            |record| rewrapped.iter().any(|kept| kept == record),
+        )?;
+        let mut set = RecipientSet::new(PROFILE_ID);
+        for record in &rewrapped {
+            set.push(record.clone());
+        }
+        self.recipients = set;
+        Ok(())
+    }
+
 
     /// Opens the owned acceptance writer over the profile's canonical store.
     pub fn open_store(&self) -> TestResult<AcceptanceStore> {
@@ -771,7 +853,7 @@ fn evidence_item(
     }
 }
 
-fn text_claim(
+pub fn text_claim(
     claim_id: ClaimId,
     subject: EntityId,
     predicate: &str,

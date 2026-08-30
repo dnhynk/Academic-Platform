@@ -10,7 +10,7 @@ use std::{
 use academic_contracts::VerifiedBatch;
 use academic_domain::{
     ArtifactDescriptor, ArtifactId, ClaimId, DecisionAction, EventPayload, EvidenceId,
-    TimestampMillis, UnsignedBatch,
+    TimestampMillis, UnsignedBatch, VaultLocator,
 };
 use academic_ledger::LedgerError;
 use academic_vault::{SealedObjectReceipt, SealedObjectVerifier};
@@ -219,6 +219,77 @@ impl AcceptanceStore {
         self.writer
             .with_preflight_reader(crate::descriptor_migration::read_descriptor_migrations)
     }
+
+    /// Returns the descriptor the store now resolves one artifact to.
+    ///
+    /// The signed `artifact_descriptor` row walked to the end of its
+    /// `artifact_descriptor_migration` chain — the same resolution acceptance's
+    /// own preflight, a backup, and a restore use. `None` means the store holds
+    /// no descriptor for that artifact at all.
+    ///
+    /// This is the read a retirement is gated on. Destroying a superseded
+    /// object's key slot is irreversible, so "the canonical reference has
+    /// already moved" has to be a fact read out of the store rather than an
+    /// argument the caller states.
+    pub fn resolved_artifact_descriptor(
+        &self,
+        artifact: ArtifactId,
+    ) -> StoreResult<Option<ArtifactDescriptor>> {
+        // `RepositoryError` is the normalized reader's vocabulary and this is a
+        // store-level read, so the SQLite failure keeps its own type and every
+        // other cause becomes the one thing it can honestly be called: the
+        // stored descriptor row is not readable as a descriptor.
+        let read = preflight_artifact_descriptor(&self.writer, artifact).map_err(|error| {
+            match error {
+                RepositoryError::Sqlite(source) => StoreError::Sqlite(source),
+                _ => StoreError::InvalidProfileState {
+                    path: self.profile_root.clone(),
+                    reason: "a stored artifact descriptor row is not a readable descriptor",
+                },
+            }
+        })?;
+        let Some(descriptor) = read else {
+            return Ok(None);
+        };
+        let mut resolved = [descriptor];
+        self.writer.with_preflight_reader(|connection| {
+            crate::descriptor_migration::resolve_with_stored_migrations(connection, &mut resolved)
+        })?;
+        let [descriptor] = resolved;
+        Ok(Some(descriptor))
+    }
+
+    /// Returns every locator one artifact was reachable under before now.
+    ///
+    /// In chain order, oldest first. A deletion writes these into its backup
+    /// tombstone: a locator is a function of the domain KEK, so a backup taken
+    /// before a rotation holds the object under an older name and a tombstone
+    /// naming only the current one would never reach it.
+    pub fn superseded_locators(&self, artifact: ArtifactId) -> StoreResult<Vec<VaultLocator>> {
+        self.writer.with_preflight_reader(|connection| {
+            crate::descriptor_migration::superseded_locators(connection, artifact)
+        })
+    }
+
+
+    /// Reports whether one artifact's chain has already recorded `locator`.
+    ///
+    /// The preflight a rotation orchestrator runs **before** it journals
+    /// anything. A locator is a deterministic function of the generation, so
+    /// rotating back to a generation the artifact has already been under would
+    /// try to record a locator the chain holds; the row is refused, and by then
+    /// the journal has already said the unit migrated. Asking first is how the
+    /// journal and the store are kept from naming different objects.
+    pub fn locator_is_already_in_chain(
+        &self,
+        artifact: ArtifactId,
+        locator: &VaultLocator,
+    ) -> StoreResult<bool> {
+        self.writer.with_preflight_reader(|connection| {
+            crate::descriptor_migration::locator_is_already_in_chain(connection, artifact, locator)
+        })
+    }
+
 
     /// Returns the next chain position for one artifact's reference.
     pub fn next_descriptor_migration_seq(&self, artifact: ArtifactId) -> StoreResult<u64> {
@@ -610,6 +681,23 @@ fn ensure_sqlite_coordinate(value: u64) -> Result<(), AcceptError> {
         .map_err(|_| AcceptError::IntegerOverflow(value))
 }
 
+/// Resolves the complete transitive artifact-reference closure of one batch.
+///
+/// The descriptors this returns are the ones the vault is asked to
+/// authenticate, so they must name the object the *current* key opens. An
+/// `artifact_descriptor` row is inside a signed `ARTIFACT_REGISTERED` payload
+/// and is INSERT-only twice over, so a rotation cannot write the new locator
+/// over the old one; it appends the move to `artifact_descriptor_migration`
+/// instead. This resolution walks that chain, which is what
+/// `read_artifact_descriptors` does for backup and restore. Without it, every
+/// acceptance whose closure reaches a rotated artifact is refused — under the
+/// new key because the signed row names the superseded object, and after the
+/// superseded object is retired under either key.
+///
+/// Descriptors that came out of this batch's own `ARTIFACT_REGISTERED` events
+/// are resolved with the rest. An artifact registered in the batch being
+/// accepted has no chain, so the walk is a no-op for it; passing it through the
+/// same call is what keeps "resolved" from meaning two things here.
 fn preflight_artifact_closure(
     writer: &WriterConnection,
     batch: &UnsignedBatch,
@@ -730,5 +818,15 @@ fn preflight_artifact_closure(
         };
         descriptors.insert(artifact_id, descriptor);
     }
+
+    let mut resolved: Vec<ArtifactDescriptor> = descriptors.into_values().collect();
+    writer.with_preflight_reader(|connection| {
+        crate::descriptor_migration::resolve_with_stored_migrations(connection, &mut resolved)
+    })?;
+    let descriptors = resolved
+        .into_iter()
+        .map(|descriptor| (descriptor.id, descriptor))
+        .collect();
+
     Ok(descriptors)
 }

@@ -56,9 +56,12 @@ pub const TOMBSTONE_DIGEST_DOMAIN: &[u8] = b"academic-os/backup-tombstone/v1";
 
 /// One recorded fact: this object's key slot was destroyed in the live profile.
 ///
-/// It carries a locator, an action identity, and a time. It carries no artifact
-/// identity, no media type, and no content digest, because a tombstone sits in
-/// the clear inside a backup whose whole point is that it discloses nothing.
+/// It carries the locator the object had when it was shredded, every locator
+/// the artifact's reference chain moved through before that, an action
+/// identity, and a time. It carries no artifact identity, no media type, and no
+/// content digest, because a tombstone sits in the clear inside a backup whose
+/// whole point is that it discloses nothing — and a locator is already an
+/// on-disk filename in the tree the tombstone is written into.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BackupTombstone {
@@ -68,6 +71,20 @@ pub struct BackupTombstone {
     pub action_id: String,
     /// 64 lowercase hex locator of the shredded object.
     pub locator: String,
+    /// 64 lowercase hex locators the same artifact was reachable under before.
+    ///
+    /// A locator derives from the domain KEK, so a rotation moves an artifact
+    /// to a new one. A backup taken before a rotation holds the object under an
+    /// older name, and a tombstone naming only the current one would not reach
+    /// it. These are the artifact's earlier names, oldest first, read from the
+    /// store's `artifact_descriptor_migration` chain when the deletion is
+    /// planned.
+    ///
+    /// Absent from a tombstone written for an artifact that never moved, which
+    /// is why it is skipped when empty: such a record is byte-for-byte the one
+    /// this build wrote before the field existed.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub superseded_locators: Vec<String>,
     /// When the live shred was recorded, in milliseconds since the epoch.
     ///
     /// Supplied by the caller: nothing in this crate reads a clock, so a
@@ -83,6 +100,28 @@ impl BackupTombstone {
             tombstone_version: TOMBSTONE_VERSION,
             action_id,
             locator: hex::encode(locator),
+            superseded_locators: Vec::new(),
+            shredded_at_ms,
+        }
+    }
+
+    /// Builds a tombstone that also names the locators the artifact moved from.
+    ///
+    /// `superseded` is the artifact's reference chain in chain order, which is
+    /// what the store's `artifact_descriptor_migration` rows already hold. A
+    /// caller that passes an empty slice gets exactly [`BackupTombstone::new`].
+    #[must_use]
+    pub fn covering(
+        action_id: String,
+        locator: [u8; 32],
+        superseded: &[[u8; 32]],
+        shredded_at_ms: u64,
+    ) -> Self {
+        Self {
+            tombstone_version: TOMBSTONE_VERSION,
+            action_id,
+            locator: hex::encode(locator),
+            superseded_locators: superseded.iter().map(hex::encode).collect(),
             shredded_at_ms,
         }
     }
@@ -91,6 +130,8 @@ impl BackupTombstone {
     ///
     /// A shredded object therefore points at the record that explains it, and
     /// a tombstone that was altered no longer matches the slot it authorized.
+    /// The superseded names are inside it, so a record cannot be widened to
+    /// reach an object it was not written to reach.
     #[must_use]
     pub fn digest(&self) -> [u8; 32] {
         let mut hasher = Sha256::new();
@@ -100,6 +141,11 @@ impl BackupTombstone {
         hasher.update(self.action_id.as_bytes());
         hasher.update([0]);
         hasher.update(self.locator.as_bytes());
+        hasher.update([0]);
+        for superseded in &self.superseded_locators {
+            hasher.update(superseded.as_bytes());
+            hasher.update([0]);
+        }
         hasher.update([0]);
         hasher.update(self.shredded_at_ms.to_le_bytes());
         hasher.finalize().into()
@@ -113,11 +159,25 @@ impl BackupTombstone {
 
     /// Returns the locator as bytes.
     pub fn locator_bytes(&self) -> Result<[u8; 32], TombstoneError> {
-        let mut bytes = [0_u8; 32];
-        hex::decode_to_slice(&self.locator, &mut bytes)
-            .map_err(|_| TombstoneError::Malformed(self.locator.clone()))?;
-        Ok(bytes)
+        decode_locator(&self.locator)
     }
+
+    /// Returns every locator this tombstone reaches, current one first.
+    pub fn covered_locators(&self) -> Result<Vec<[u8; 32]>, TombstoneError> {
+        let mut locators = Vec::with_capacity(1 + self.superseded_locators.len());
+        locators.push(self.locator_bytes()?);
+        for superseded in &self.superseded_locators {
+            locators.push(decode_locator(superseded)?);
+        }
+        Ok(locators)
+    }
+}
+
+fn decode_locator(value: &str) -> Result<[u8; 32], TombstoneError> {
+    let mut bytes = [0_u8; 32];
+    hex::decode_to_slice(value, &mut bytes)
+        .map_err(|_| TombstoneError::Malformed(value.to_owned()))?;
+    Ok(bytes)
 }
 
 /// Why a tombstone could not be written, read, or applied.

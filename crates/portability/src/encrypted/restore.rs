@@ -33,6 +33,7 @@ use academic_crypto::{
 use academic_recovery::{
     BackupMasterKey, BackupRecipientKind, BackupRecipientSet, RecoveryProfile,
 };
+use academic_retention::engine::AppliedTombstones;
 use academic_store::{
     INCOMPLETE_PROFILE_MARKER, cipher::prepare_encrypted_profile, path_policy::PathProbe,
 };
@@ -76,6 +77,15 @@ pub struct EncryptedRestoreReceipt {
     /// Sorted. Empty when the backup carries no tombstone, which is the case
     /// for a backup taken from a profile that never deleted an artifact.
     pub re_deleted_locators: Vec<String>,
+    /// Tombstoned locators that reached no object in the restored tree.
+    ///
+    /// Sorted. A tombstone names the locator the live shred destroyed and every
+    /// locator the artifact's chain moved through before it, so a copy under
+    /// any of the artifact's names is reached; an entry here is a deletion this
+    /// backup could not carry out, and it is reported rather than dropped. The
+    /// ordinary cause is a backup taken before the artifact was registered.
+    pub absent_locators: Vec<String>,
+
 }
 
 /// The key material a restore recovered from a backup and one secret.
@@ -190,7 +200,7 @@ pub fn restore_encrypted_profile<P: PathProbe + ?Sized>(
 
     let outcome = build_restored_profile(&staging, &verified, recovered, plan);
     let (replay, canonical_semantic_digest, restored_object_count) = outcome?;
-    let re_deleted = apply_backup_tombstones(backup_root_directory, &staging)?;
+    let tombstoned = apply_backup_tombstones(backup_root_directory, &staging)?;
 
     remove_marker(&staging, RESTORE_INCOMPLETE_MARKER)?;
     remove_marker(&staging, INCOMPLETE_PROFILE_MARKER)?;
@@ -205,7 +215,8 @@ pub fn restore_encrypted_profile<P: PathProbe + ?Sized>(
         replay,
         canonical_semantic_digest,
         restored_object_count,
-        re_deleted_locators: re_deleted,
+        re_deleted_locators: tombstoned.applied,
+        absent_locators: tombstoned.absent,
     })
 }
 
@@ -265,23 +276,31 @@ fn require_outside_backup(
 /// fixed header offset — so what it proves is that a deletion reaches the
 /// copies a backup holds, not merely that a record of one was filed.
 ///
-/// A tombstone whose object is not in the tree is not an error: the artifact
-/// may have been registered after the backup was taken, or shredded before it.
-/// A tombstone that names an object that *is* present and cannot be shredded is
-/// a failed restore.
+/// A tombstone names the locator the live shred destroyed and every locator the
+/// artifact's reference chain moved through before it, so a backup taken before
+/// a rotation — which holds the object under an older name — is reached by the
+/// same record. Whichever of an artifact's names this backup happens to hold,
+/// one tombstone reaches it.
+///
+/// A tombstone that reached no object at all is not an error: the artifact may
+/// have been registered after the backup was taken, or shredded before it. It
+/// is returned in `absent` and carried on the receipt, because a deletion this
+/// backup could not carry out is a fact the caller has to be told. A tombstone
+/// that names an object that *is* present and cannot be shredded is a failed
+/// restore.
 fn apply_backup_tombstones(
     backup_root_directory: &Path,
     staging: &Path,
-) -> PortabilityResult<Vec<String>> {
+) -> PortabilityResult<AppliedTombstones> {
     let tombstones = academic_retention::tombstone::read_from_backup(backup_root_directory)
         .map_err(|source| PortabilityError::Tombstone(source.to_string()))?;
     if tombstones.is_empty() {
-        return Ok(Vec::new());
+        return Ok(AppliedTombstones::default());
     }
     let objects_root = staging.join(crate::encrypted::RESTORED_VAULT_OBJECTS_DIRECTORY);
     let applied = academic_retention::engine::apply_tombstones(&objects_root, &tombstones)
         .map_err(|source| PortabilityError::Tombstone(source.to_string()))?;
-    Ok(applied.applied)
+    Ok(applied)
 }
 
 type RestoreOutcome = (ReplayReport, String, u64);

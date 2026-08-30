@@ -198,6 +198,55 @@ pub fn resolve_with_stored_migrations(
     resolve_descriptors(descriptors, &migrations)
 }
 
+/// Returns every locator one artifact was reachable under before now.
+///
+/// In chain order, oldest first: the locator the signed row named, then each
+/// one a migration superseded. It does not include the locator the chain now
+/// resolves to.
+///
+/// A deletion writes these into its backup tombstone. A locator is a function
+/// of the domain KEK, so a rotation gives an artifact a new one and a backup
+/// taken before the rotation holds the object under an older name; a tombstone
+/// naming only the current locator would leave that copy readable.
+pub fn superseded_locators(
+    connection: &Connection,
+    artifact: ArtifactId,
+) -> StoreResult<Vec<VaultLocator>> {
+    let migrations = read_descriptor_migrations(connection)?;
+    Ok(migrations
+        .iter()
+        .filter(|migration| migration.artifact_id == *artifact.as_bytes())
+        .map(|migration| migration.superseded_locator.clone())
+        .collect())
+}
+
+/// Reports whether one artifact's chain has already recorded `locator`.
+///
+/// The chain refuses to record the same destination twice — migration `0005`
+/// carries `UNIQUE (artifact_id, vault_locator)` and `UNIQUE (artifact_id,
+/// superseded_locator)`, which is what stops a chain from forking or looping.
+/// A locator is a deterministic function of the generation, so rotating back to
+/// a generation the artifact has already been under would try to record a
+/// locator that is already in its chain.
+///
+/// A rotation orchestrator calls this **before** the journal records anything.
+/// The journal moves first and the store row second, so discovering the refusal
+/// at the insert leaves a journal that says the unit migrated and a store that
+/// still resolves to the superseded object — a divergence no kill was needed to
+/// produce. See the re-rotation section of the rotation contract.
+pub fn locator_is_already_in_chain(
+    connection: &Connection,
+    artifact: ArtifactId,
+    locator: &VaultLocator,
+) -> StoreResult<bool> {
+    let migrations = read_descriptor_migrations(connection)?;
+    Ok(migrations.iter().any(|migration| {
+        migration.artifact_id == *artifact.as_bytes()
+            && (migration.vault_locator == *locator || migration.superseded_locator == *locator)
+    }))
+}
+
+
 /// Returns the next chain position for one artifact.
 pub fn next_migration_seq(connection: &Connection, artifact: ArtifactId) -> StoreResult<u64> {
     if !migration_table_exists(connection)? {
@@ -238,6 +287,19 @@ pub(crate) fn insert_descriptor_migration<V: SealedObjectVerifier>(
             "the migrated descriptor is not the one the migration record names",
         ));
     }
+    if locator_is_already_in_chain(connection, migrated.id, &migration.vault_locator)? {
+        return Err(StoreError::DescriptorMigrationRejected {
+            reason: "the artifact's reference chain has already recorded this locator",
+            detail: format!(
+                "artifact {} has already been reachable under {}; a chain records \
+                 each locator once, so a rotation back to a generation this \
+                 artifact has already been under cannot be recorded",
+                migrated.id,
+                crate::descriptor_migration::hex_locator(&migration.vault_locator),
+            ),
+        });
+    }
+
     vault
         .verify_sealed_object(migrated)
         .map_err(
@@ -265,6 +327,16 @@ pub(crate) fn insert_descriptor_migration<V: SealedObjectVerifier>(
     )?;
     Ok(())
 }
+
+/// Renders a locator the way every other diagnostic in this lane does.
+fn hex_locator(value: &VaultLocator) -> String {
+    value
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
 
 fn migration_table_exists(connection: &Connection) -> StoreResult<bool> {
     let found: Option<String> = connection

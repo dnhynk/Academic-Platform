@@ -287,6 +287,103 @@ pub fn open_encrypted_profile<P: PathProbe + ?Sized>(
     })
 }
 
+/// What a store database rekey did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoreRekeyOutcome {
+    /// The database opened under `current` and was rekeyed to `next`.
+    Rekeyed,
+    /// The database already opened under `next` and was left alone.
+    ///
+    /// This is the resume answer. `PRAGMA rekey` leaves exactly one of the two
+    /// keys working at every point it can be killed — that is fault `EN01` —
+    /// so an interrupted rekey leaves a database only `next` opens. Running it
+    /// again reaches this arm instead of failing.
+    AlreadyAtTarget,
+}
+
+/// Rekeys a complete encrypted profile from one store key to the next.
+///
+/// This is the `STORE_DATABASE` rotation unit's executor. `SKEY_p` and `KEK_d`
+/// are both functions of the Vault Master Key, so rotating the objects without
+/// this leaves a profile whose database is under one generation and whose
+/// objects are under another — a profile that still works on the machine
+/// holding both keys and that no backup of it can be restored from, because a
+/// restore re-derives both halves from the single master it recovered.
+///
+/// The sequence is deliberately open-verify-rekey-reopen:
+///
+/// 1. open the profile under `current`, which re-asserts the format marker, the
+///    frozen SQLCipher settings, and the schema-2 identity;
+/// 2. issue `PRAGMA rekey` on a handle that has already authenticated page one;
+/// 3. reopen under `next` and re-assert all of it again.
+///
+/// Step 3 is what makes the returned outcome a fact rather than a hope: the
+/// caller records a migration only after this build has opened the rekeyed
+/// database and read its settings back.
+///
+/// It is idempotent. A caller resuming an interrupted rotation calls it again;
+/// a database that no longer opens under `current` but does open under `next`
+/// is [`StoreRekeyOutcome::AlreadyAtTarget`]. A database neither key opens is
+/// the failure `current`'s open reported, unchanged: relabelling it as a
+/// successful rekey would be the "neither opens" half of the invariant.
+pub fn rekey_encrypted_profile<P: PathProbe + ?Sized>(
+    root: &Path,
+    probe: &P,
+    current: &StoreKey,
+    next: &StoreKey,
+) -> StoreResult<StoreRekeyOutcome> {
+    // A rekey to the same key is not a rekey. Reporting one as `Rekeyed` would
+    // let a rotation journal record that the database moved generation when
+    // both generations are one key, which is the degenerate rotation
+    // `RotationPlan::new` refuses for objects.
+    if *current.expose_raw_hex() == *next.expose_raw_hex() {
+        return Err(StoreError::InvalidProfileState {
+            path: root.join(STORE_DATABASE_FILE),
+            reason: "a rekey was asked to move the database to the key it already has",
+        });
+    }
+    let opened = match open_encrypted_profile(root, probe, current) {
+        Ok(profile) => profile,
+        Err(under_current) => {
+            return match open_encrypted_profile(root, probe, next) {
+                Ok(_) => Ok(StoreRekeyOutcome::AlreadyAtTarget),
+                Err(_) => Err(under_current),
+            };
+        }
+    };
+
+    let database_path = opened.database_path().to_path_buf();
+    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let connection = Connection::open_with_flags(&database_path, flags)?;
+    apply_store_key(&connection, current, &database_path)?;
+    read_and_verify_cipher_settings(&connection, &database_path)?;
+    apply_rekey(&connection, next, &database_path)?;
+    drop(connection);
+
+    open_encrypted_profile(root, probe, next)?;
+    Ok(StoreRekeyOutcome::Rekeyed)
+}
+
+/// Issues `PRAGMA rekey` with the same buffer hygiene as `apply_store_key`.
+///
+/// SQLCipher rewrites every page under the new key. The hex the statement
+/// carries lives in a zeroizing buffer and the statement built around it is
+/// overwritten before it is freed; what this cannot control is SQLite's own
+/// copy of the prepared statement text, exactly as `apply_store_key` records.
+fn apply_rekey(
+    connection: &Connection,
+    key: &StoreKey,
+    database_path: &Path,
+) -> StoreResult<()> {
+    let hex = key.expose_raw_hex();
+    let statement = keying_statement("rekey", hex.as_str());
+    let outcome = connection.execute_batch(&statement);
+    let mut spent = statement.into_bytes();
+    spent.fill(0);
+    outcome.map_err(|error| locked_if_undecryptable(StoreError::Sqlite(error), database_path))
+}
+
+
 /// Removes only a provably incomplete encrypted profile.
 ///
 /// This never performs recursive deletion. Any unknown entry or link makes
@@ -363,15 +460,25 @@ pub fn remove_incomplete_encrypted_profile<P: PathProbe + ?Sized>(
 /// `StoreKey::expose_raw_hex`, so it structurally cannot carry a quote of its
 /// own.
 fn key_statement(hex: &str) -> String {
-    let mut rendered = String::with_capacity(hex.len() + KEY_STATEMENT_OVERHEAD);
-    rendered.push_str("PRAGMA key='x''");
+    keying_statement("key", hex)
+}
+
+/// Renders `PRAGMA <pragma>='x''<hex>'''` for `key` and for `rekey`.
+///
+/// `pragma` is one of this module's own two literals, never caller input.
+fn keying_statement(pragma: &str, hex: &str) -> String {
+    let mut rendered =
+        String::with_capacity(pragma.len() + hex.len() + KEY_STATEMENT_PUNCTUATION);
+    rendered.push_str("PRAGMA ");
+    rendered.push_str(pragma);
+    rendered.push_str("='x''");
     rendered.push_str(hex);
     rendered.push_str("'''");
     rendered
 }
 
-/// Characters `key_statement` adds around the hex.
-const KEY_STATEMENT_OVERHEAD: usize = 18;
+/// Characters `keying_statement` adds around the pragma name and the hex.
+const KEY_STATEMENT_PUNCTUATION: usize = 15;
 
 /// Applies the raw store key as the first statement issued on a fresh handle.
 ///
@@ -658,7 +765,10 @@ mod tests {
         // Byte for byte what `pragma_update(None, "key", "x'<hex>'")` emits:
         // `PRAGMA key=` with no spaces, then the value as a SQL string literal.
         assert_eq!(rendered, format!("PRAGMA key='x''{hex}'''"));
-        assert_eq!(rendered.len(), hex.len() + KEY_STATEMENT_OVERHEAD);
+        assert_eq!(
+            rendered.len(),
+            hex.len() + KEY_STATEMENT_PUNCTUATION + "key".len()
+        );
         // The literal's content — what SQLCipher sees after unescaping — is the
         // `x'...'` raw-key form, not a passphrase.
         assert!(rendered.starts_with("PRAGMA key='x''"));

@@ -31,6 +31,7 @@ use academic_portability::{
             EncryptedRestorePlan, open_backup_with_secret, recover_profile_keys,
             restore_encrypted_profile,
         },
+        rotation::{StoreCanonicalReference, StoreDatabaseRekey},
     },
 };
 use academic_recovery::{BackupRecipientKind, RecoveryProfile};
@@ -39,6 +40,7 @@ use academic_retention::{
     engine::{
         HeaderProbe, RotationEngine, probe_header, retire_superseded_object, shred_with_tombstone,
     },
+    rotation::StoreDatabaseRekey as StoreDatabaseRekeyOutcome,
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
     rotation::KeyGeneration,
     tombstone,
@@ -73,25 +75,33 @@ fn take_backup(
     Ok(destination)
 }
 
-/// Runs a complete object rotation and moves every canonical reference with it.
+/// Runs a complete rotation and moves every canonical reference with it.
 ///
 /// This is the product sequence in the order the invariant depends on: re-seal,
 /// journal, accept the `RETENTION_ACTION_RECORDED` event that authorizes the
 /// move, append the typed migration row, and only then complete the rotation.
-/// The store database is deliberately not in the plan — its executor is
-/// `P2-K2`'s `PRAGMA rekey`, which this build does not bind — so the profile
-/// keeps the store key it was created with while its objects move.
+///
+/// The plan holds the `STORE_DATABASE` unit as well as one unit per object, and
+/// it is rotated last through `StoreDatabaseRekey`, the encrypted lane's
+/// binding of `P2-K2`'s `PRAGMA rekey`. Leaving it out is what produced a
+/// profile with its database under one generation and its objects under
+/// another: still usable on the machine that holds both keys, and restorable
+/// from no backup of it, because a restore recovers one master and derives both
+/// halves from it. The fixture adopts the target generation afterwards, which
+/// is the caller-side half of the same move.
 fn rotate_every_object(
     fixture: &mut EncryptedFixture,
-    target: &VaultMasterKey,
+    target: VaultMasterKey,
 ) -> TestResult<Vec<ArtifactDescriptor>> {
     let source_generation = KeyGeneration::of(fixture.master(), encrypted_support::PROFILE_ID)?;
-    let target_generation = KeyGeneration::of(target, encrypted_support::PROFILE_ID)?;
+    let target_generation = KeyGeneration::of(&target, encrypted_support::PROFILE_ID)?;
     let descriptors = fixture.descriptors()?;
-    let units: Vec<RotationUnit> = descriptors
+    let mut units: Vec<RotationUnit> = descriptors
         .iter()
         .map(|descriptor| RotationUnit::object(*descriptor.vault_locator.as_bytes()))
         .collect();
+    let database_unit = RotationUnit::store_database(encrypted_support::PROFILE_ID);
+    units.push(database_unit.clone());
     let plan = RotationPlan::new(
         RotationId::from_bytes([0x31; 16]),
         encrypted_support::PROFILE_ID,
@@ -105,7 +115,7 @@ fn rotate_every_object(
     let mut migrated = Vec::with_capacity(descriptors.len());
     for (index, descriptor) in descriptors.iter().enumerate() {
         let source_vault = fixture.open_vault()?;
-        let target_vault = fixture.open_vault_under(target)?;
+        let target_vault = fixture.open_vault_under(&target)?;
         let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
         if index == 0 {
             engine.begin(&mut journal)?;
@@ -126,7 +136,7 @@ fn rotate_every_object(
         let record = DescriptorMigration::of(*action.as_bytes(), descriptor, sequence, &resealed);
         fixture.accept_retention_action(action, record.record_digest())?;
 
-        let target_vault = fixture.open_vault_under(target)?;
+        let target_vault = fixture.open_vault_under(&target)?;
         let mut store = fixture.open_store()?;
         store.record_descriptor_migration(&record, &resealed, &target_vault)?;
         drop(store);
@@ -138,9 +148,34 @@ fn rotate_every_object(
         descriptors.len(),
         "the rotation did not record one migration per unit"
     );
+
+    // The database moves last. While objects are still moving, the store key
+    // that opens the ones already migrated and the ones not yet migrated is the
+    // same one, and it has to stay in force until every object has landed.
     let source_vault = fixture.open_vault()?;
-    let target_vault = fixture.open_vault_under(target)?;
-    RotationEngine::new(&plan, &source_vault, &target_vault).complete(&mut journal)?;
+    let target_vault = fixture.open_vault_under(&target)?;
+    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+    let probe = NativePathProbe::default();
+    let outcome = {
+        let executor = StoreDatabaseRekey::new(
+            fixture.profile_root(),
+            &probe,
+            encrypted_support::PROFILE_ID,
+            fixture.master(),
+            &target,
+        );
+        engine.rotate_store_database(&mut journal, &database_unit, &executor)?
+    };
+    assert_eq!(outcome, StoreDatabaseRekeyOutcome::Rekeyed);
+    engine.complete(&mut journal)?;
+    drop(engine);
+    drop(source_vault);
+    drop(target_vault);
+
+    // The caller-side half: from here the profile is wholly under the target
+    // generation, so `fixture.master()` is that generation and nothing derived
+    // from the superseded one opens either half.
+    fixture.adopt_generation(target)?;
     Ok(migrated)
 }
 
@@ -161,8 +196,11 @@ fn store_descriptors_follow_a_completed_rotation() -> TestResult {
     let before = fixture.descriptors()?;
     assert_eq!(before.len(), 2, "the corpus is two artifacts");
 
-    let target = VaultMasterKey::generate()?;
-    let migrated = rotate_every_object(&mut fixture, &target)?;
+    // Held before the rotation: the superseded generation's keyring, which is
+    // what proves the old key stops opening the reachable object. Neither a
+    // master key nor a KEK is cloneable, so it is captured rather than re-derived.
+    let stale = fixture.open_vault()?;
+    let migrated = rotate_every_object(&mut fixture, VaultMasterKey::generate()?)?;
 
     let after = fixture.descriptors()?;
     assert_eq!(after.len(), before.len());
@@ -184,13 +222,12 @@ fn store_descriptors_follow_a_completed_rotation() -> TestResult {
 
     // The whole point: the new generation's vault authenticates every stored
     // descriptor. Before the migration chain existed this was `LocatorMismatch`.
-    let vault = fixture.open_vault_under(&target)?;
+    let vault = fixture.open_vault()?;
     for descriptor in &after {
         vault.verify_sealed_object(descriptor)?;
     }
 
     // And the old generation no longer opens what the store points at.
-    let stale = fixture.open_vault()?;
     for descriptor in &after {
         assert!(
             stale.verify_sealed_object(descriptor).is_err(),
@@ -208,10 +245,9 @@ fn store_descriptors_follow_a_completed_rotation() -> TestResult {
 #[test]
 fn a_backup_after_a_rotation_closes_over_the_migrated_objects() -> TestResult {
     let mut fixture = EncryptedFixture::new("rotation-backup")?;
-    let target = VaultMasterKey::generate()?;
-    let migrated = rotate_every_object(&mut fixture, &target)?;
+    let migrated = rotate_every_object(&mut fixture, VaultMasterKey::generate()?)?;
 
-    let destination = take_backup(&fixture, &target, "backup-after-rotation")?;
+    let destination = take_backup(&fixture, fixture.master(), "backup-after-rotation")?;
     let (backup_root, _) = open_backup_with_secret(
         &destination,
         BackupRecipientKind::RecoveryPhrase,
@@ -364,13 +400,16 @@ fn a_descriptor_migration_no_event_authorized_is_refused() -> TestResult {
 fn a_retired_source_object_is_opened_by_neither_generation() -> TestResult {
     let mut fixture = EncryptedFixture::new("rotation-retirement")?;
     let before = fixture.descriptors()?;
-    let target = VaultMasterKey::generate()?;
-    rotate_every_object(&mut fixture, &target)?;
+    // The superseded generation's KEK is derived before the rotation moves the
+    // profile onto the next one: a `DomainKek` is owned, a `VaultMasterKey` is
+    // not cloneable, and after `rotate_every_object` the fixture holds the
+    // generation the rotation moved to.
+    let source_kek = domain_kek_of(fixture.master())?;
+    rotate_every_object(&mut fixture, VaultMasterKey::generate()?)?;
     let after = fixture.descriptors()?;
 
-    let source_kek = domain_kek_of(fixture.master())?;
-    let target_kek = domain_kek_of(&target)?;
-    let vault = fixture.open_vault_under(&target)?;
+    let target_kek = domain_kek_of(fixture.master())?;
+    let vault = fixture.open_vault()?;
 
     // Before retirement: the superseded copy is unreferenced but intact, which
     // is exactly the state the audit found and the window `ADR-004` allows.
@@ -386,7 +425,18 @@ fn a_retired_source_object_is_opened_by_neither_generation() -> TestResult {
     let unit = RotationUnit::object(*superseded.vault_locator.as_bytes());
     let mut journal =
         AppendOnlyJournal::open(&fixture.profile_root().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
-    retire_superseded_object(&mut journal, &vault, &unit, superseded, current)?;
+    // The gate is the store's own resolution, not the caller's word for it:
+    // `StoreCanonicalReference` walks the signed row through its migration
+    // chain, exactly as a backup and a restore do.
+    let store = fixture.open_store()?;
+    retire_superseded_object(
+        &mut journal,
+        &vault,
+        &unit,
+        superseded,
+        &StoreCanonicalReference::new(&store),
+    )?;
+    drop(store);
 
     // After it: neither generation opens the superseded copy, and the current
     // one still opens under the generation the rotation moved to.
@@ -407,14 +457,25 @@ fn a_retired_source_object_is_opened_by_neither_generation() -> TestResult {
     vault.verify_sealed_object(current)?;
 
     // Retiring an object the store still resolves to is refused, because that
-    // would leave an artifact no key opens.
+    // would leave an artifact no key opens. The unit here names the object the
+    // rotation moved *to*, so the reference the store resolves is not the one
+    // that unit supersedes and the refusal is structural rather than advisory.
     let second = after.get(1).ok_or("the corpus is one artifact")?;
     let second_unit = RotationUnit::object(*second.vault_locator.as_bytes());
-    let refused = retire_superseded_object(&mut journal, &vault, &second_unit, second, second);
+    let store = fixture.open_store()?;
+    let refused = retire_superseded_object(
+        &mut journal,
+        &vault,
+        &second_unit,
+        second,
+        &StoreCanonicalReference::new(&store),
+    );
     assert!(
         refused.is_err(),
         "an object the store still names was retired"
     );
+    drop(store);
+
     Ok(())
 }
 

@@ -644,11 +644,14 @@ fn a_settled_deletion_really_shreds_its_derivatives() -> TestResult {
 // ---------------------------------------------------------------------------
 
 /// The store database is planned, journalled, and invariant-checked here; its
-/// executor is the encrypted store lane's `PRAGMA rekey`, which cannot link
-/// into this build. So a rotation that reaches it stops and says so, rather
-/// than recording a migration that did not happen.
+/// executor is bound outside this crate, in the one lane that links the
+/// encrypted store. A rotation that never ran it stops and says so, rather than
+/// recording a migration that did not happen.
+///
+/// `rotation_seam.rs::a_rotation_completes_once_its_store_database_unit_has_run`
+/// is the other half: the same plan, with the unit run.
 #[test]
-fn a_rotation_will_not_complete_over_a_store_database_it_cannot_rekey() -> TestResult {
+fn a_rotation_will_not_complete_over_a_store_database_it_never_rekeyed() -> TestResult {
     let root = TestRoot::new("store-unit")?;
     let (source_master, _) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
     let (target_master, _) = create_generation(TARGET_RECIPIENT, TARGET_ENTROPY)?;
@@ -679,7 +682,7 @@ fn a_rotation_will_not_complete_over_a_store_database_it_cannot_rekey() -> TestR
 
     // Every object has moved and the rotation still refuses to complete, and it
     // refuses by naming the database rather than by reporting a missing
-    // descriptor: "this build cannot run it" and "you forgot a descriptor" are
+    // descriptor: "its executor never ran" and "you forgot a descriptor" are
     // different facts.
     let refusal = engine
         .complete(&mut journal)
@@ -687,8 +690,8 @@ fn a_rotation_will_not_complete_over_a_store_database_it_cannot_rekey() -> TestR
         .ok_or("a rotation completed over a database it never rekeyed")?
         .to_string();
     assert!(
-        refusal.contains("store database") && refusal.contains("will not record it as migrated"),
-        "the refusal did not name the absent executor: {refusal}"
+        refusal.contains("store database") && refusal.contains("never ran its executor"),
+        "the refusal did not name the unrun executor: {refusal}"
     );
 
     // The journal still enumerates it as remaining, so the operator is told

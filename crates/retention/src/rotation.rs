@@ -37,6 +37,7 @@
 //! process decides which key is in force without holding either.
 
 use academic_crypto::{KeyScheduleError, ProfileId, VaultMasterKey};
+use academic_domain::ArtifactId;
 use sha2::{Digest as _, Sha256};
 
 use crate::{
@@ -156,6 +157,98 @@ impl RotationUnit {
         }
     }
 }
+
+/// Domain separator for the identity a rekeyed store database records.
+pub const STORE_DATABASE_TARGET_DOMAIN: &[u8] = b"academic-os/rotation-store-database/v1";
+
+/// Names the profile database as it stands once `generation` opens it.
+///
+/// A rekey rewrites pages in place, so a `STORE_DATABASE` unit has no second
+/// file the way an object unit does and no locator to record. What
+/// `UnitResealed` carries for it is this digest: a pure function of the profile
+/// identity and the generation whose `SKEY_p` now opens the database. It is 64
+/// hex like every other locator field, and it discloses nothing the journal's
+/// generation records do not already say.
+#[must_use]
+pub fn store_database_target_id(profile: ProfileId, generation: KeyGeneration) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(STORE_DATABASE_TARGET_DOMAIN);
+    hasher.update([0]);
+    hasher.update(profile.as_bytes());
+    hasher.update([0]);
+    hasher.update(generation.0);
+    hasher.finalize().into()
+}
+
+/// What one `STORE_DATABASE` executor did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoreDatabaseRekey {
+    /// The database opened under the source generation's key and was rekeyed.
+    Rekeyed,
+    /// The database already opened under the target generation's key.
+    ///
+    /// This is the resume answer. `PRAGMA rekey` leaves exactly one working key
+    /// at every point — that is fault `EN01` — so a kill during it leaves a
+    /// database the target key opens and a journal that does not say so yet.
+    /// Re-running reaches this arm and the journal records catch up.
+    AlreadyAtTarget,
+}
+
+/// The executor a `STORE_DATABASE` rotation unit needs.
+///
+/// `SKEY_p` and `KEK_d` are both functions of the Vault Master Key, so a
+/// rotation that moved every object and left the database under the superseded
+/// key produces a profile whose two halves are under two generations. A backup
+/// of one is not restorable, because a restore re-derives both halves from the
+/// single master it recovered. The unit exists so that does not happen, and
+/// this trait is how it is executed.
+///
+/// It is a trait rather than a function because `academic-retention` cannot
+/// depend on the store: the encrypted store lane and the default lane are
+/// mutually exclusive builds. The implementation ships in the encrypted
+/// portability lane, which is the one place the store, the vault, and this
+/// crate link into one process.
+pub trait StoreDatabaseExecutor {
+    /// Rekeys the profile database from the source generation to the target.
+    ///
+    /// It must be idempotent: a resume calls it again, and a database already
+    /// under the target key is [`StoreDatabaseRekey::AlreadyAtTarget`], not a
+    /// failure. It must fail closed when neither generation opens the database.
+    fn rekey_store_database(&self) -> Result<StoreDatabaseRekey, StoreDatabaseError>;
+}
+
+/// Why an executor could not rekey the profile database.
+///
+/// The string is the store lane's own message. This crate cannot name the
+/// store's error type, and inventing a taxonomy for a failure it cannot
+/// classify would be a claim it has no evidence for.
+#[derive(Debug, thiserror::Error)]
+#[error("the store database could not be rekeyed: {0}")]
+pub struct StoreDatabaseError(pub String);
+
+/// The canonical reference a retirement is checked against.
+///
+/// Retiring a superseded object destroys its key slot and cannot be undone, so
+/// the check that the reference has already moved cannot be the caller's word
+/// for it. This crate cannot read the store, so it asks one: the implementation
+/// resolves the artifact through the store's own `artifact_descriptor` row and
+/// its appended migration chain, which is the same resolution a backup and a
+/// restore use.
+pub trait CanonicalReference {
+    /// Returns the locator the store now resolves `artifact` to.
+    ///
+    /// `None` means the store holds no descriptor for that artifact at all,
+    /// which is a refusal rather than a permission.
+    fn resolved_locator(
+        &self,
+        artifact: ArtifactId,
+    ) -> Result<Option<[u8; 32]>, CanonicalReferenceError>;
+}
+
+/// Why the canonical reference could not be read.
+#[derive(Debug, thiserror::Error)]
+#[error("the canonical reference could not be read: {0}")]
+pub struct CanonicalReferenceError(pub String);
 
 fn derive_unit_id(kind: UnitKind, seed: Option<&[u8]>) -> [u8; 32] {
     let mut hasher = Sha256::new();
@@ -293,6 +386,12 @@ impl RotationPlan {
     #[must_use]
     pub const fn target(&self) -> KeyGeneration {
         self.target
+    }
+
+    /// Returns the profile every generation in this plan is salted with.
+    #[must_use]
+    pub const fn profile_id(&self) -> ProfileId {
+        self.profile_id
     }
 
     /// Returns every unit in plan order.

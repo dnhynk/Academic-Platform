@@ -1,0 +1,637 @@
+//! The seam a rotation leaves behind, over the real store (`T114`).
+//!
+//! `encrypted_rotation.rs` states what a rotation does. This file states what
+//! everything *after* one does — an acceptance whose closure reaches a rotated
+//! artifact, a backup taken once the profile has moved, a deletion that crosses
+//! a rotation, a retirement gated on the store's own resolution, and a rotation
+//! back to a generation the artifact has already been under.
+//!
+//! Every row is a `T114` reproduction. Each one failed before this repair with
+//! no kill and no tampering: the shipped API, called in a legitimate order, was
+//! enough. They are stated as properties, so a repair that regresses fails a
+//! named row.
+//!
+//! This whole file compiles only in the encrypted lane:
+//! `cargo test -p academic-portability --no-default-features --features encrypted-portability`.
+
+#![cfg(feature = "encrypted-portability")]
+
+mod encrypted_support;
+
+use std::path::PathBuf;
+
+use academic_crypto::VaultMasterKey;
+use academic_domain::{ArtifactDescriptor, EventPayload};
+use academic_portability::{
+    encrypted::{
+        ProfileKeys,
+        backup::{BackupPlan, backup_encrypted_profile, verify_encrypted_backup_directory},
+        restore::{
+            EncryptedRestorePlan, open_backup_with_secret, recover_profile_keys,
+            restore_encrypted_profile,
+        },
+        rotation::{StoreCanonicalReference, StoreDatabaseRekey, deletion_tombstone},
+    },
+    verify::read_artifact_descriptors,
+};
+use academic_recovery::{BackupRecipientKind, RecoveryProfile};
+use academic_retention::{
+    AppendOnlyJournal, RotationId, RotationPlan, RotationUnit,
+    engine::{HeaderProbe, RotationEngine, probe_header, retire_superseded_object},
+    journal::ROTATION_JOURNAL_RELATIVE_PATH,
+    rotation::{KeyGeneration, StoreDatabaseRekey as StoreDatabaseRekeyOutcome},
+    tombstone,
+};
+use academic_store::{descriptor_migration::DescriptorMigration, path_policy::NativePathProbe};
+use academic_vault::{EncryptedVault, SealedObjectVerifier as _};
+use encrypted_support::{
+    EncryptedFixture, PROFILE_ID, TestResult, backup_key_set, domain_id, hex_lower, id,
+    importer_actor, recovery_secret, text_claim,
+};
+
+/// Runs the whole product rotation sequence: every object, then the database.
+///
+/// It is `encrypted_rotation.rs::rotate_every_object` with the rotation
+/// identity a parameter, so a second rotation of the same profile is possible.
+/// Returns the re-sealed descriptors in corpus order; the fixture is left
+/// holding the generation the rotation moved to.
+fn rotate_profile(
+    fixture: &mut EncryptedFixture,
+    target: VaultMasterKey,
+    rotation_seed: u8,
+    action_base: u64,
+) -> TestResult<Vec<ArtifactDescriptor>> {
+    let source_generation = KeyGeneration::of(fixture.master(), PROFILE_ID)?;
+    let target_generation = KeyGeneration::of(&target, PROFILE_ID)?;
+    let descriptors = fixture.descriptors()?;
+    let mut units: Vec<RotationUnit> = descriptors
+        .iter()
+        .map(|descriptor| RotationUnit::object(*descriptor.vault_locator.as_bytes()))
+        .collect();
+    let database_unit = RotationUnit::store_database(PROFILE_ID);
+    units.push(database_unit.clone());
+    let plan = RotationPlan::new(
+        RotationId::from_bytes([rotation_seed; 16]),
+        PROFILE_ID,
+        source_generation,
+        target_generation,
+        units.clone(),
+    )?;
+
+    let mut journal =
+        AppendOnlyJournal::open(&fixture.profile_root().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+    let mut migrated = Vec::with_capacity(descriptors.len());
+    for (index, descriptor) in descriptors.iter().enumerate() {
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&target)?;
+        let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+        if index == 0 {
+            engine.begin(&mut journal)?;
+        }
+        let resealed = engine.rotate_object(&mut journal, &units[index], descriptor)?;
+        drop(source_vault);
+        drop(target_vault);
+
+        let action: academic_domain::RetentionActionId = id(action_base + u64::try_from(index)?)?;
+        let sequence = fixture
+            .open_store()?
+            .next_descriptor_migration_seq(descriptor.id)?;
+        let record = DescriptorMigration::of(*action.as_bytes(), descriptor, sequence, &resealed);
+        fixture.accept_retention_action(action, record.record_digest())?;
+
+        let target_vault = fixture.open_vault_under(&target)?;
+        let mut store = fixture.open_store()?;
+        store.record_descriptor_migration(&record, &resealed, &target_vault)?;
+        drop(store);
+        drop(target_vault);
+        migrated.push(resealed);
+    }
+
+    let source_vault = fixture.open_vault()?;
+    let target_vault = fixture.open_vault_under(&target)?;
+    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+    let probe = NativePathProbe::default();
+    let outcome = {
+        let executor = StoreDatabaseRekey::new(
+            fixture.profile_root(),
+            &probe,
+            PROFILE_ID,
+            fixture.master(),
+            &target,
+        );
+        engine.rotate_store_database(&mut journal, &database_unit, &executor)?
+    };
+    assert_eq!(outcome, StoreDatabaseRekeyOutcome::Rekeyed);
+    engine.complete(&mut journal)?;
+    drop(engine);
+    drop(source_vault);
+    drop(target_vault);
+
+    fixture.adopt_generation(target)?;
+    Ok(migrated)
+}
+
+/// Takes a real encrypted backup of the generation the fixture holds now.
+fn take_backup(fixture: &EncryptedFixture, label: &str) -> TestResult<PathBuf> {
+    let destination = fixture.work_path(label);
+    let (backup_root, recipients) = backup_key_set()?;
+    backup_encrypted_profile(
+        fixture.profile_root(),
+        &destination,
+        fixture.master(),
+        fixture.keys(),
+        &BackupPlan {
+            recovery_profile: RecoveryProfile::DevicePlusPhrase,
+            backup_root: &backup_root,
+            backup_recipients: &recipients,
+            profile_recovery_recipients: &fixture.recovery_recipients_cbor()?,
+        },
+    )?;
+    Ok(destination)
+}
+
+fn journal_of(fixture: &EncryptedFixture) -> TestResult<AppendOnlyJournal> {
+    Ok(AppendOnlyJournal::open(
+        &fixture.profile_root().join(ROTATION_JOURNAL_RELATIVE_PATH),
+    )?)
+}
+
+fn domain_kek_of(master: &VaultMasterKey) -> TestResult<academic_crypto::DomainKek> {
+    let domain = academic_crypto::DomainId::from_bytes(*domain_id()?.as_bytes());
+    Ok(master.derive_domain_kek(PROFILE_ID, domain)?)
+}
+
+// ---------------------------------------------------------------------------
+// T114 P1-A
+// ---------------------------------------------------------------------------
+
+/// An acceptance whose closure reaches a rotated artifact is admitted.
+///
+/// `T114`'s reproduction: the store's own pre-commit revalidation loaded the
+/// signed `artifact_descriptor` row and handed its locator straight to the
+/// vault, so after a rotation every batch referencing that artifact was refused
+/// — `SealingFailed: … has a locator that does not match its keyed descriptor`
+/// — and after the superseded object was retired it was refused under both
+/// generations. Registering evidence, a claim, or a decision about a rotated
+/// artifact was permanently impossible while the contract said the opposite.
+///
+/// The preflight now resolves the same migration chain a backup and a restore
+/// resolve.
+#[test]
+fn an_acceptance_that_references_a_rotated_artifact_is_admitted() -> TestResult {
+    let mut fixture = EncryptedFixture::new("seam-acceptance-after-rotation")?;
+    let before = fixture.descriptors()?;
+    let migrated = rotate_profile(&mut fixture, VaultMasterKey::generate()?, 0x41, 0x0a00)?;
+    let resolved = fixture.descriptors()?;
+    assert_eq!(
+        resolved[0].vault_locator, migrated[0].vault_locator,
+        "precondition: the store resolves to the migrated locator"
+    );
+
+    // A claim on the corpus evidence whose artifact the rotation moved.
+    let scope = id(0x0102)?;
+    let evidence = id(0x0401)?;
+    fixture.accept(
+        importer_actor(),
+        domain_id()?,
+        vec![EventPayload::ClaimAsserted(text_claim(
+            id(0x0f10)?,
+            id(0x0fb0)?,
+            "note.body",
+            "a claim asserted after the rotation",
+            scope,
+            evidence,
+        )?)],
+    )?;
+
+    // Retiring the superseded object does not change the answer: the closure
+    // never names it again.
+    let store = fixture.open_store()?;
+    let vault = fixture.open_vault()?;
+    let mut journal = journal_of(&fixture)?;
+    let unit = RotationUnit::object(*before[0].vault_locator.as_bytes());
+    retire_superseded_object(
+        &mut journal,
+        &vault,
+        &unit,
+        &before[0],
+        &StoreCanonicalReference::new(&store),
+    )?;
+    drop(store);
+    drop(vault);
+
+    fixture.accept(
+        importer_actor(),
+        domain_id()?,
+        vec![EventPayload::ClaimAsserted(text_claim(
+            id(0x0f11)?,
+            id(0x0fb1)?,
+            "note.body",
+            "a claim asserted after the retirement",
+            scope,
+            evidence,
+        )?)],
+    )?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// T114 P1-B
+// ---------------------------------------------------------------------------
+
+/// A backup taken after a rotation restores.
+///
+/// `T114`'s reproduction: the `STORE_DATABASE` unit had no executor, so a
+/// rotated profile's database stayed under the superseded `SKEY_p` while its
+/// objects moved. `backup_encrypted_profile` took the store key and the keyring
+/// as two separate arguments and copied that split into the backup;
+/// `restore_encrypted_profile` derives both halves from the one master it
+/// recovers, so the backup verified and no recovery record could restore it —
+/// either `file is not a database` or `locator does not match its keyed
+/// descriptor`, depending on which generation the recovery records held.
+///
+/// The unit now runs, so the profile is wholly under one generation and the
+/// restored database and objects agree.
+#[test]
+fn a_backup_taken_after_a_rotation_restores() -> TestResult {
+    let mut fixture = EncryptedFixture::new("seam-restore-after-rotation")?;
+    let migrated = rotate_profile(&mut fixture, VaultMasterKey::generate()?, 0x42, 0x0a00)?;
+
+    // The profile's recovery records move with it, which is the other half of
+    // the rotation: a backup carrying records of the superseded generation
+    // would recover a master that opens neither half.
+    fixture.rewrap_recovery_recipients()?;
+    let destination = take_backup(&fixture, "backup-after-rotation")?;
+
+    let (backup_root, _) = open_backup_with_secret(
+        &destination,
+        BackupRecipientKind::RecoveryPhrase,
+        &recovery_secret(),
+    )?;
+    let verified = verify_encrypted_backup_directory(&destination, &backup_root)?;
+    let recovered = recover_profile_keys(&verified, &recovery_secret(), 5_000)?;
+    assert_eq!(
+        KeyGeneration::of(&recovered.master, PROFILE_ID)?,
+        KeyGeneration::of(fixture.master(), PROFILE_ID)?,
+        "the recovered master is not the generation the rotation left"
+    );
+
+    let restored_root = fixture.work_path("restored-after-rotation");
+    let receipt = restore_encrypted_profile(
+        &destination,
+        &restored_root,
+        &NativePathProbe::default(),
+        &backup_root,
+        &recovered,
+        &EncryptedRestorePlan {
+            authorizations: &fixture.authorizations(),
+        },
+    )?;
+    assert_eq!(receipt.restored_object_count, migrated.len() as u64);
+
+    // The restored profile opens end to end under the recovered master: the
+    // database under its `SKEY_p`, every object under its `KEK_d`, at the
+    // locators the chain resolves to.
+    let keys = ProfileKeys::derive(&recovered.master, recovered.profile_id, &[domain_id()?])?;
+    let database = academic_portability::verify::CanonicalDatabase::open_source(
+        &restored_root.join(academic_store::STORE_DATABASE_FILE),
+        keys.store_key(),
+    )?;
+    let restored_descriptors = read_artifact_descriptors(&database)?;
+    drop(database);
+    let vault = EncryptedVault::open(&restored_root, keys.keyring(&recovered.master)?)?;
+    for descriptor in &restored_descriptors {
+        vault.verify_sealed_object(descriptor)?;
+    }
+    assert_eq!(
+        restored_descriptors
+            .iter()
+            .map(|descriptor| descriptor.vault_locator.clone())
+            .collect::<Vec<_>>(),
+        migrated
+            .iter()
+            .map(|descriptor| descriptor.vault_locator.clone())
+            .collect::<Vec<_>>(),
+        "the restored profile does not resolve to the objects the rotation left"
+    );
+    Ok(())
+}
+
+/// A backup whose key set and master name two generations is refused.
+///
+/// This is the same defect stated as a guard. Whatever a caller assembles, a
+/// backup that would pair a database under one generation with objects under
+/// another is refused when it is taken, not discovered on the fresh machine
+/// where the restore was supposed to work.
+#[test]
+fn a_backup_of_a_split_generation_profile_is_refused() -> TestResult {
+    let fixture = EncryptedFixture::new("seam-backup-split-generation")?;
+    let other = VaultMasterKey::generate()?;
+    let (backup_root, recipients) = backup_key_set()?;
+    let refused = backup_encrypted_profile(
+        fixture.profile_root(),
+        &fixture.work_path("split-backup"),
+        &other,
+        fixture.keys(),
+        &BackupPlan {
+            recovery_profile: RecoveryProfile::DevicePlusPhrase,
+            backup_root: &backup_root,
+            backup_recipients: &recipients,
+            profile_recovery_recipients: &fixture.recovery_recipients_cbor()?,
+        },
+    );
+    let message = refused
+        .err()
+        .ok_or("a backup paired a store key and a keyring of two generations")?
+        .to_string();
+    assert!(
+        message.contains("backup profile key generation"),
+        "the refusal did not name the generation mismatch: {message}"
+    );
+    assert!(
+        !fixture.work_path("split-backup").exists(),
+        "the refused backup still published a directory"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// T114 P1-C
+// ---------------------------------------------------------------------------
+
+/// A deletion after a rotation reaches the copy a pre-rotation backup holds.
+///
+/// `T114`'s reproduction: a `BackupTombstone` named one locator, a locator is a
+/// function of the domain KEK, and a backup taken before the rotation holds the
+/// object under the name it had then. The restore matched nothing, published a
+/// profile whose copy of the deleted artifact opened normally, and returned a
+/// receipt with an empty re-deletion list and no error. The contract said a
+/// deletion reaches the copies a backup holds and that an unmatched tombstone is
+/// reported as absent; both were false on this path.
+#[test]
+fn a_deletion_after_a_rotation_reaches_a_pre_rotation_backup() -> TestResult {
+    let mut fixture = EncryptedFixture::new("seam-tombstone-across-rotation")?;
+    let before = fixture.descriptors()?;
+    let subject_before = before[0].clone();
+    let backup = take_backup(&fixture, "backup-before-rotation")?;
+
+    let migrated = rotate_profile(&mut fixture, VaultMasterKey::generate()?, 0x43, 0x0a00)?;
+    let subject_after = migrated[0].clone();
+    assert_ne!(subject_after.vault_locator, subject_before.vault_locator);
+
+    // The deletion, the way the product does it: the tombstone names every
+    // locator the store's chain holds for the artifact, then the live object is
+    // shredded and the record is written into the backup.
+    let store = fixture.open_store()?;
+    let stone = deletion_tombstone(
+        &store,
+        hex_lower(&[0x31_u8; 16]),
+        &subject_after,
+        1_700_000_000_002,
+    )?;
+    drop(store);
+    assert_eq!(
+        stone.superseded_locators,
+        vec![hex_lower(subject_before.vault_locator.as_bytes())],
+        "the tombstone did not name the locator the artifact moved from"
+    );
+    {
+        let vault = fixture.open_vault()?;
+        let mut journal = journal_of(&fixture)?;
+        academic_retention::engine::shred_with_tombstone(
+            &mut journal,
+            &vault,
+            &subject_after,
+            &stone,
+        )?;
+    }
+    tombstone::write_into_backup(&backup, &stone)?;
+
+    let (backup_root, _) = open_backup_with_secret(
+        &backup,
+        BackupRecipientKind::RecoveryPhrase,
+        &recovery_secret(),
+    )?;
+    let verified = verify_encrypted_backup_directory(&backup, &backup_root)?;
+    let recovered = recover_profile_keys(&verified, &recovery_secret(), 5_000)?;
+    let destination = fixture.work_path("restored-pre-rotation");
+    let receipt = restore_encrypted_profile(
+        &backup,
+        &destination,
+        &NativePathProbe::default(),
+        &backup_root,
+        &recovered,
+        &EncryptedRestorePlan {
+            authorizations: &fixture.authorizations(),
+        },
+    )?;
+
+    assert_eq!(
+        receipt.re_deleted_locators,
+        vec![hex_lower(subject_before.vault_locator.as_bytes())],
+        "the restore did not re-delete the copy under the pre-rotation locator"
+    );
+    assert!(
+        receipt.absent_locators.is_empty(),
+        "a tombstone that reached its object was reported absent"
+    );
+
+    let restored_keys =
+        ProfileKeys::derive(&recovered.master, recovered.profile_id, &[domain_id()?])?;
+    let restored_vault =
+        EncryptedVault::open(&destination, restored_keys.keyring(&recovered.master)?)?;
+    let kek = domain_kek_of(&recovered.master)?;
+    assert_eq!(
+        probe_header(&restored_vault.layout().object_path(&subject_before)?, &kek),
+        HeaderProbe::Shredded,
+        "the restore resurrected an artifact the profile had deleted"
+    );
+    Ok(())
+}
+
+/// A tombstone that reaches nothing is carried on the receipt.
+///
+/// `T114`'s reproduction of the second half: `apply_tombstones` returned the
+/// unmatched records and `restore_encrypted_profile` dropped them, so a
+/// deletion the backup could not carry out was indistinguishable from one it
+/// did. The receipt now carries both lists.
+#[test]
+fn a_tombstone_that_reaches_nothing_is_reported_on_the_receipt() -> TestResult {
+    let fixture = EncryptedFixture::new("seam-tombstone-absent")?;
+    let backup = take_backup(&fixture, "backup-for-absent-tombstone")?;
+    let stone = academic_retention::BackupTombstone::new(
+        hex_lower(&[0x32_u8; 16]),
+        [0x99; 32],
+        1_700_000_000_004,
+    );
+    tombstone::write_into_backup(&backup, &stone)?;
+
+    let (backup_root, _) = open_backup_with_secret(
+        &backup,
+        BackupRecipientKind::RecoveryPhrase,
+        &recovery_secret(),
+    )?;
+    let verified = verify_encrypted_backup_directory(&backup, &backup_root)?;
+    let recovered = recover_profile_keys(&verified, &recovery_secret(), 5_000)?;
+    let receipt = restore_encrypted_profile(
+        &backup,
+        &fixture.work_path("restored-absent"),
+        &NativePathProbe::default(),
+        &backup_root,
+        &recovered,
+        &EncryptedRestorePlan {
+            authorizations: &fixture.authorizations(),
+        },
+    )?;
+    assert!(receipt.re_deleted_locators.is_empty());
+    assert_eq!(
+        receipt.absent_locators,
+        vec![hex_lower(&[0x99_u8; 32])],
+        "an unmatched tombstone was dropped instead of reported"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// T114 P2-A, over the real store
+// ---------------------------------------------------------------------------
+
+/// A retirement before the store row is written is refused.
+///
+/// `T114`'s reproduction: the journal recorded the unit as migrated and the
+/// caller passed the re-seal result as "the descriptor the store now resolves
+/// to", which was a statement, not a fact — the migration row had not been
+/// written. The superseded object's key slot was destroyed while the store
+/// still named it, so no key on disk opened that artifact.
+#[test]
+fn a_retirement_before_the_store_row_is_refused() -> TestResult {
+    let fixture = EncryptedFixture::new("seam-retire-before-row")?;
+    let before = fixture.descriptors()?;
+    let target = VaultMasterKey::generate()?;
+    let source_kek = domain_kek_of(fixture.master())?;
+
+    // The journal half only: reseal, `UnitResealed`, `UnitMigrated`. No
+    // retention action and no migration row, which is the documented kill point.
+    let unit = RotationUnit::object(*before[0].vault_locator.as_bytes());
+    let plan = RotationPlan::new(
+        RotationId::from_bytes([0x44; 16]),
+        PROFILE_ID,
+        KeyGeneration::of(fixture.master(), PROFILE_ID)?,
+        KeyGeneration::of(&target, PROFILE_ID)?,
+        vec![unit.clone()],
+    )?;
+    let mut journal = journal_of(&fixture)?;
+    let source_vault = fixture.open_vault()?;
+    let target_vault = fixture.open_vault_under(&target)?;
+    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+    engine.begin(&mut journal)?;
+    let resealed = engine.rotate_object(&mut journal, &unit, &before[0])?;
+    engine.complete(&mut journal)?;
+
+    let resolved = fixture.descriptors()?;
+    assert_eq!(
+        resolved[0].vault_locator, before[0].vault_locator,
+        "precondition: the store still resolves to the superseded locator"
+    );
+
+    let store = fixture.open_store()?;
+    let refused = retire_superseded_object(
+        &mut journal,
+        &target_vault,
+        &unit,
+        &before[0],
+        &StoreCanonicalReference::new(&store),
+    );
+    let message = refused
+        .err()
+        .ok_or("a retirement ran before the store moved the reference")?
+        .to_string();
+    assert!(
+        message.contains("the store resolves the artifact to"),
+        "the refusal did not name the reference: {message}"
+    );
+    assert_eq!(
+        probe_header(&target_vault.layout().object_path(&before[0])?, &source_kek),
+        HeaderProbe::Opened,
+        "the object the store still resolves to was destroyed"
+    );
+    source_vault.verify_sealed_object(&resolved[0])?;
+    drop(store);
+    let _ = resealed;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// T114 P2-C
+// ---------------------------------------------------------------------------
+
+/// Rotating back to a generation an artifact has already been under is refused.
+///
+/// `T114`'s reproduction: `artifact_descriptor_migration` carries
+/// `UNIQUE (artifact_id, vault_locator)` and a locator is a deterministic
+/// function of the generation, so the third rotation of a `G1 → G2 → G1 → G2`
+/// sequence hit the constraint *after* the journal had already recorded the
+/// unit as resealed and migrated. The rotation could not finish, and the
+/// journal and the store named different objects with no kill involved.
+///
+/// The refusal is now a named one the caller can ask for before the journal
+/// moves, which is what the rotation contract's re-rotation section requires.
+#[test]
+fn a_rotation_back_to_a_used_generation_is_refused_before_the_journal_moves() -> TestResult {
+    let mut fixture = EncryptedFixture::new("seam-re-rotation")?;
+    let original = fixture.descriptors()?;
+    let second = VaultMasterKey::generate()?;
+    rotate_profile(&mut fixture, second, 0x51, 0x0a00)?;
+
+    // The preflight a rotation orchestrator runs before it journals anything:
+    // the locator the objects would land back on is already in the chain, so
+    // the rotation is refused while the journal is still untouched.
+    let store = fixture.open_store()?;
+    let recorded = store.descriptor_migrations()?;
+    assert!(
+        recorded.iter().any(|migration| {
+            migration.artifact_id == *original[0].id.as_bytes()
+                && migration.superseded_locator == original[0].vault_locator
+        }),
+        "the chain does not hold the locator the artifact started under"
+    );
+    assert!(
+        store.locator_is_already_in_chain(original[0].id, &original[0].vault_locator)?,
+        "the preflight did not see the locator a rotation back would reuse"
+    );
+    assert!(
+        !store.locator_is_already_in_chain(
+            original[0].id,
+            &academic_domain::VaultLocator::from_bytes([0x77; 32]),
+        )?,
+        "the preflight claims a locator the chain has never held"
+    );
+    drop(store);
+
+    // Rotating back to the original generation would supersede a locator the
+    // chain has already recorded, and the store refuses that row by name rather
+    // than as a raw constraint violation.
+    let descriptors = fixture.descriptors()?;
+    let back = ArtifactDescriptor {
+        vault_locator: original[0].vault_locator.clone(),
+        ..descriptors[0].clone()
+    };
+    let action: academic_domain::RetentionActionId = id(0x0a90)?;
+    let sequence = fixture
+        .open_store()?
+        .next_descriptor_migration_seq(descriptors[0].id)?;
+    let record = DescriptorMigration::of(*action.as_bytes(), &descriptors[0], sequence, &back);
+    fixture.accept_retention_action(action, record.record_digest())?;
+    let vault = fixture.open_vault()?;
+    let mut store = fixture.open_store()?;
+    let refused = store.record_descriptor_migration(&record, &back, &vault);
+    let message = refused
+        .err()
+        .ok_or("a rotation back to a used generation recorded a second chain entry")?
+        .to_string();
+    assert!(
+        message.contains("already recorded this locator"),
+        "the refusal did not name the chain constraint: {message}"
+    );
+    Ok(())
+}

@@ -151,12 +151,17 @@ pub fn unlock_generation(
 
 /// Publishes both generations into the profile's own `keys/recipients.cbor`.
 ///
-/// This is the product path, not a test file: `add_recipient` writes the source
-/// generation's record and `rewrap_for_generation` adds the target
-/// generation's record beside it, which is exactly what a rotation does before
-/// it starts moving units. A child process therefore reopens both generations
-/// from the document the profile really holds, so a rotation that left the
+/// This is the product path, not a test file: `add_recipient` writes each
+/// record into the document the profile really holds, so a child process
+/// reopens both generations from that document and a rotation that left the
 /// profile with no key for an unmigrated object would be observable here.
+///
+/// Two *different* recipient identities stand for the two generations, which is
+/// what lets a test tell them apart without a key. That is why this is two
+/// `add_recipient` calls and not `rewrap_for_generation`: a rewrap re-wraps one
+/// recipient's own copy of the key and keeps its identity, so using it to
+/// introduce a second identity is what `a_rewrap_that_changes_identity_is_refused`
+/// now refuses.
 pub fn publish_generations(
     root: &Path,
     source_master: &VaultMasterKey,
@@ -172,12 +177,12 @@ pub fn publish_generations(
         source_record.clone(),
         generation_of(source_master)?,
     )?;
-    recipients::rewrap_for_generation(
+    recipients::add_recipient(
         root,
         profile_id(),
         &mut journal,
+        target_record.clone(),
         generation_of(target_master)?,
-        |_| Ok(target_record.clone()),
     )?;
     Ok(())
 }
