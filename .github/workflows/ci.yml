@@ -197,7 +197,7 @@ jobs:
       - name: Populate the Cargo registry from the committed lockfile
         run: cargo fetch --locked
       - name: Lint the encrypted portability lane
-        run: cargo clippy -p academic-portability --no-default-features --features encrypted-portability --all-targets --locked -- -D warnings
+        run: cargo clippy -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --all-targets --locked -- -D warnings
       - name: Test the encrypted portability lane
         run: cargo test -p academic-portability --no-default-features --features encrypted-portability --locked
       - name: Run the BK and RS kill rows under encryption
