@@ -26,8 +26,8 @@ use academic_domain::{ArtifactDescriptor, ArtifactId};
 use academic_retention::{
     BackupTombstone,
     rotation::{
-        CanonicalReference, CanonicalReferenceError, StoreDatabaseError, StoreDatabaseExecutor,
-        StoreDatabaseRekey as RekeyOutcome,
+        CanonicalReference, CanonicalReferenceError, KeyGeneration, StoreDatabaseError,
+        StoreDatabaseExecutor, StoreDatabaseRekey as RekeyOutcome,
     },
 };
 use academic_store::{accept::AcceptanceStore, cipher, path_policy::PathProbe};
@@ -38,8 +38,10 @@ use crate::{PortabilityError, PortabilityResult};
 ///
 /// It holds the two Vault Master Keys the rotation names rather than two store
 /// keys, so the pair it rekeys between is derived here from the same schedule
-/// the rest of the rotation uses and cannot be assembled out of two unrelated
-/// generations by a caller.
+/// the rest of the rotation uses. A caller can still hand it two masters that
+/// are not the ones its rotation plans, which is why it reports that pair
+/// through `StoreDatabaseExecutor::generations` and the engine refuses it
+/// against the plan before any page is rewritten.
 #[derive(Debug)]
 pub struct StoreDatabaseRekey<'a, P: PathProbe + ?Sized> {
     profile_root: &'a std::path::Path,
@@ -70,6 +72,14 @@ impl<'a, P: PathProbe + ?Sized> StoreDatabaseRekey<'a, P> {
 }
 
 impl<P: PathProbe + ?Sized> StoreDatabaseExecutor for StoreDatabaseRekey<'_, P> {
+    fn generations(&self) -> Result<(KeyGeneration, KeyGeneration), StoreDatabaseError> {
+        let source = KeyGeneration::of(self.source, self.profile_id)
+            .map_err(|error| StoreDatabaseError(error.to_string()))?;
+        let target = KeyGeneration::of(self.target, self.profile_id)
+            .map_err(|error| StoreDatabaseError(error.to_string()))?;
+        Ok((source, target))
+    }
+
     fn rekey_store_database(&self) -> Result<RekeyOutcome, StoreDatabaseError> {
         let current = self
             .source

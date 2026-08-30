@@ -73,6 +73,14 @@ pub enum EngineError {
     /// A store database rotation was handed a unit that is not one.
     #[error("unit {0} is not the store database, so it cannot be rekeyed")]
     NotAStoreDatabaseUnit(String),
+    /// A unit the plan does not hold was moved under this rotation.
+    ///
+    /// `RotationState::replay` resolves every journalled unit against the plan,
+    /// so a record for a unit outside it makes the journal unreplayable and the
+    /// rotation impossible to complete — with no kill anywhere in it. The
+    /// records are append-only, so this refuses before the first of them.
+    #[error("the rotation plan does not hold unit {0}, so it will not be moved under it")]
+    UnitNotInPlan(String),
     /// The bound store database executor refused.
     #[error("unit {unit_id} could not be rekeyed: {source}")]
     StoreDatabaseExecutor {
@@ -81,6 +89,29 @@ pub enum EngineError {
         /// What the executor reported.
         #[source]
         source: StoreDatabaseError,
+    },
+    /// The bound executor rekeys between a pair of generations the plan does not name.
+    ///
+    /// The journal record this unit writes is a pure function of the plan, so an
+    /// executor holding another pair would move the database out from under both
+    /// generations the journal names. A rekey is not undone by reading the
+    /// journal afterwards, so this refuses before the executor runs.
+    #[error(
+        "unit {unit_id} has an executor that does not hold the generations this \
+         rotation plans: the executor rekeys {executor_source} -> {executor_target} \
+         and the plan is {planned_source} -> {planned_target}"
+    )]
+    StoreDatabaseExecutorGeneration {
+        /// Unit that was being rekeyed.
+        unit_id: String,
+        /// Generation the executor opens the database under.
+        executor_source: String,
+        /// Generation the executor rekeys the database to.
+        executor_target: String,
+        /// Generation the plan rotates away from.
+        planned_source: String,
+        /// Generation the plan rotates to.
+        planned_target: String,
     },
     /// The canonical reference could not be read.
     #[error("unit {unit_id} cannot retire its superseded object: {source}")]
@@ -340,6 +371,19 @@ impl<'a> RotationEngine<'a> {
         Ok(())
     }
 
+    /// Refuses a unit this rotation's plan does not hold.
+    ///
+    /// Every record a move appends is resolved against the plan on replay, so
+    /// one written for a unit outside it leaves a journal that cannot be
+    /// replayed and a rotation that can never complete. Journal records are
+    /// append-only, so the only place to refuse it is before the first one.
+    fn require_planned(&self, unit: &RotationUnit) -> Result<(), EngineError> {
+        if self.plan.units().iter().any(|planned| planned == unit) {
+            return Ok(());
+        }
+        Err(EngineError::UnitNotInPlan(unit.unit_id_hex()))
+    }
+
     /// Moves one object unit, in the order the invariant depends on.
     ///
     /// 1. re-seal into the target namespace; the vault publishes, reads the
@@ -358,6 +402,7 @@ impl<'a> RotationEngine<'a> {
         unit: &RotationUnit,
         source_descriptor: &ArtifactDescriptor,
     ) -> Result<ArtifactDescriptor, EngineError> {
+        self.require_planned(unit)?;
         fault::trip(FaultPoint::Ky03BeforeReseal);
         let outcome = self.source.reseal(source_descriptor, self.target)?;
         let resealed = outcome.resealed.descriptor().clone();
@@ -402,6 +447,13 @@ impl<'a> RotationEngine<'a> {
     /// method, the executor reports [`StoreDatabaseRekey::AlreadyAtTarget`],
     /// and the two records catch up. A kill between the two records is the same
     /// window an object unit has, and it is repaired the same way.
+    ///
+    /// The records this appends are pure functions of the plan, so the executor
+    /// is checked against the plan before it is called: an executor whose two
+    /// generations are not the plan's two is refused by
+    /// [`EngineError::StoreDatabaseExecutorGeneration`] and the database is not
+    /// touched. Without that the journal can name a target generation the
+    /// database does not open, which no later read of the journal can detect.
     pub fn rotate_store_database(
         &self,
         journal: &mut AppendOnlyJournal,
@@ -410,6 +462,23 @@ impl<'a> RotationEngine<'a> {
     ) -> Result<StoreDatabaseRekey, EngineError> {
         if unit.kind() != UnitKind::StoreDatabase {
             return Err(EngineError::NotAStoreDatabaseUnit(unit.unit_id_hex()));
+        }
+        self.require_planned(unit)?;
+        let (executor_source, executor_target) =
+            executor
+                .generations()
+                .map_err(|source| EngineError::StoreDatabaseExecutor {
+                    unit_id: unit.unit_id_hex(),
+                    source,
+                })?;
+        if executor_source != self.plan.source() || executor_target != self.plan.target() {
+            return Err(EngineError::StoreDatabaseExecutorGeneration {
+                unit_id: unit.unit_id_hex(),
+                executor_source: executor_source.to_hex(),
+                executor_target: executor_target.to_hex(),
+                planned_source: self.plan.source().to_hex(),
+                planned_target: self.plan.target().to_hex(),
+            });
         }
         let outcome = executor.rekey_store_database().map_err(|source| {
             EngineError::StoreDatabaseExecutor {

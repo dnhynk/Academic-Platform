@@ -209,6 +209,24 @@ pub enum StoreDatabaseRekey {
 /// portability lane, which is the one place the store, the vault, and this
 /// crate link into one process.
 pub trait StoreDatabaseExecutor {
+    /// Names the pair of generations this executor rekeys between.
+    ///
+    /// The engine checks it against the plan before it calls
+    /// [`Self::rekey_store_database`], because nothing else can: the journal
+    /// record this unit writes is `store_database_target_id(profile, plan
+    /// target)`, a pure function of the plan, so an executor holding some other
+    /// pair would move the database somewhere the journal then names as the
+    /// target — a database neither generation the journal mentions can open,
+    /// with `retire_generation` cleared to remove the records that still could.
+    /// A rekey cannot be undone by reading the journal afterwards, so the check
+    /// has to be in front of it.
+    ///
+    /// It is derived from the same key schedule the plan's generations come
+    /// from, not stated: an implementation returns
+    /// `KeyGeneration::of(master, profile)` for each of the two masters it
+    /// holds.
+    fn generations(&self) -> Result<(KeyGeneration, KeyGeneration), StoreDatabaseError>;
+
     /// Rekeys the profile database from the source generation to the target.
     ///
     /// It must be idempotent: a resume calls it again, and a database already
@@ -283,6 +301,24 @@ pub enum RotationError {
     /// A journal entry names a unit the plan does not hold.
     #[error("the journal names unit {0}, which the rotation plan does not hold")]
     UnknownUnit(String),
+    /// The database unit is planned somewhere other than last.
+    ///
+    /// While objects are still moving, the store key that opens the database
+    /// has to stay in force for the migrated ones and the unmigrated ones
+    /// alike, and `record_descriptor_migration` opens the store to write each
+    /// move. A plan that rekeys the database first leaves those writes with no
+    /// key the plan names. The rule was a documented obligation on an
+    /// orchestrator that does not exist yet; it is checked here instead.
+    #[error(
+        "the store database unit is planned at position {at} of {of}, and a \
+         rotation moves it last"
+    )]
+    StoreDatabaseNotLast {
+        /// Zero-based position the database unit was planned at.
+        at: usize,
+        /// How many units the plan holds.
+        of: usize,
+    },
     /// The journal holds a second, different rotation.
     #[error("the journal already holds rotation {0}, which is not this one")]
     ConcurrentRotation(String),
@@ -338,7 +374,8 @@ pub struct RotationPlan {
 }
 
 impl RotationPlan {
-    /// Builds a plan, refusing a rotation that does not change the key.
+    /// Builds a plan, refusing a rotation that does not change the key, names a
+    /// unit twice, or moves the store database before an object.
     pub fn new(
         rotation_id: RotationId,
         profile_id: ProfileId,
@@ -359,6 +396,12 @@ impl RotationPlan {
                 .any(|other| other.unit_id == unit.unit_id)
             {
                 return Err(RotationError::DuplicateUnit(unit.unit_id_hex()));
+            }
+            if unit.kind == UnitKind::StoreDatabase && index + 1 != units.len() {
+                return Err(RotationError::StoreDatabaseNotLast {
+                    at: index,
+                    of: units.len(),
+                });
             }
         }
         Ok(Self {

@@ -36,7 +36,7 @@ use academic_portability::{
 };
 use academic_recovery::{BackupRecipientKind, RecoveryProfile};
 use academic_retention::{
-    AppendOnlyJournal, RotationId, RotationPlan, RotationUnit,
+    AppendOnlyJournal, RotationId, RotationPlan, RotationState, RotationUnit,
     engine::{HeaderProbe, RotationEngine, probe_header, retire_superseded_object},
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
     rotation::{KeyGeneration, StoreDatabaseRekey as StoreDatabaseRekeyOutcome},
@@ -61,9 +61,25 @@ fn rotate_profile(
     rotation_seed: u8,
     action_base: u64,
 ) -> TestResult<Vec<ArtifactDescriptor>> {
+    let descriptors = fixture.descriptors()?;
+    rotate_objects(fixture, target, rotation_seed, action_base, &descriptors)
+}
+
+/// The same sequence over the artifacts a plan is allowed to name.
+///
+/// A plan cannot name an artifact whose key slot was destroyed: the re-seal
+/// opens the source object and there is no key slot left to open it with. So a
+/// profile that deleted before it rotates plans the objects that are still
+/// there, which is what `rotate_profile` reduces to when nothing was deleted.
+fn rotate_objects(
+    fixture: &mut EncryptedFixture,
+    target: VaultMasterKey,
+    rotation_seed: u8,
+    action_base: u64,
+    descriptors: &[ArtifactDescriptor],
+) -> TestResult<Vec<ArtifactDescriptor>> {
     let source_generation = KeyGeneration::of(fixture.master(), PROFILE_ID)?;
     let target_generation = KeyGeneration::of(&target, PROFILE_ID)?;
-    let descriptors = fixture.descriptors()?;
     let mut units: Vec<RotationUnit> = descriptors
         .iter()
         .map(|descriptor| RotationUnit::object(*descriptor.vault_locator.as_bytes()))
@@ -80,14 +96,16 @@ fn rotate_profile(
 
     let mut journal =
         AppendOnlyJournal::open(&fixture.profile_root().join(ROTATION_JOURNAL_RELATIVE_PATH))?;
+    {
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&target)?;
+        RotationEngine::new(&plan, &source_vault, &target_vault).begin(&mut journal)?;
+    }
     let mut migrated = Vec::with_capacity(descriptors.len());
     for (index, descriptor) in descriptors.iter().enumerate() {
         let source_vault = fixture.open_vault()?;
         let target_vault = fixture.open_vault_under(&target)?;
         let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
-        if index == 0 {
-            engine.begin(&mut journal)?;
-        }
         let resealed = engine.rotate_object(&mut journal, &units[index], descriptor)?;
         drop(source_vault);
         drop(target_vault);
@@ -629,6 +647,248 @@ fn a_rotation_back_to_a_used_generation_is_refused_before_the_journal_moves() ->
     assert!(
         message.contains("already recorded this locator"),
         "the refusal did not name the chain constraint: {message}"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// T116 P1-N1
+// ---------------------------------------------------------------------------
+
+/// A profile that crypto-shredded an artifact before a rotation still backs up,
+/// and both backups restore with the deletion still in force.
+///
+/// `T116`'s reproduction: a locator is a function of `KEK_d` and a destroyed key
+/// slot can never be re-sealed, so a shredded artifact's `artifact_descriptor`
+/// row keeps the locator of the generation it was destroyed under while every
+/// other row moves. The vault re-derived that locator from the rotated keyring
+/// and refused with `LocatorMismatch` before it read a byte, so the backup's
+/// shredded-object branch was never reached and every backup of that profile
+/// was refused — permanently, since the row is append-only. The contract said a
+/// crypto-shredded object does not stop a backup.
+///
+/// The chain here is the whole one: delete, rotate the artifacts that are left,
+/// back up, restore, and restore the pre-deletion backup the tombstone was
+/// written into.
+#[test]
+fn a_deletion_before_a_rotation_still_backs_up_and_restores() -> TestResult {
+    let mut fixture = EncryptedFixture::new("seam-delete-then-rotate")?;
+    let before = fixture.descriptors()?;
+    let subject = before[0].clone();
+    let live: Vec<ArtifactDescriptor> = before[1..].to_vec();
+    let pre_deletion_backup = take_backup(&fixture, "backup-before-deletion")?;
+
+    // The deletion, the way the product does it.
+    let store = fixture.open_store()?;
+    let stone = deletion_tombstone(
+        &store,
+        hex_lower(&[0x51_u8; 16]),
+        &subject,
+        1_700_000_000_010,
+    )?;
+    drop(store);
+    assert!(
+        stone.superseded_locators.is_empty(),
+        "the artifact had not moved yet, so its chain names no superseded locator"
+    );
+    {
+        let vault = fixture.open_vault()?;
+        let mut journal = journal_of(&fixture)?;
+        academic_retention::engine::shred_with_tombstone(&mut journal, &vault, &subject, &stone)?;
+    }
+    tombstone::write_into_backup(&pre_deletion_backup, &stone)?;
+
+    // The plan names what is still there. The shredded artifact's row stays
+    // where it is: nothing can move a reference to an object no key opens.
+    let migrated = rotate_objects(
+        &mut fixture,
+        VaultMasterKey::generate()?,
+        0x51,
+        0x0a40,
+        &live,
+    )?;
+    fixture.rewrap_recovery_recipients()?;
+    let after = fixture.descriptors()?;
+    assert_eq!(
+        after[0].vault_locator, subject.vault_locator,
+        "the deleted artifact's reference could not have moved"
+    );
+    assert_eq!(after[1].vault_locator, migrated[0].vault_locator);
+
+    // This is the call T116 found refused.
+    let post_rotation_backup = take_backup(&fixture, "backup-after-rotation")?;
+    let (backup_root, _) = open_backup_with_secret(
+        &post_rotation_backup,
+        BackupRecipientKind::RecoveryPhrase,
+        &recovery_secret(),
+    )?;
+    let verified = verify_encrypted_backup_directory(&post_rotation_backup, &backup_root)?;
+    let recovered = recover_profile_keys(&verified, &recovery_secret(), 5_000)?;
+    let restored_root = fixture.work_path("restored-after-rotation");
+    let receipt = restore_encrypted_profile(
+        &post_rotation_backup,
+        &restored_root,
+        &NativePathProbe::default(),
+        &backup_root,
+        &recovered,
+        &EncryptedRestorePlan {
+            authorizations: &fixture.authorizations(),
+        },
+    )?;
+    assert_eq!(receipt.restored_object_count, after.len() as u64);
+
+    // The destroyed object arrives destroyed and the live one opens, both at
+    // the names the store resolves to on the restored profile.
+    let keys = ProfileKeys::derive(&recovered.master, recovered.profile_id, &[domain_id()?])?;
+    let restored_vault = EncryptedVault::open(&restored_root, keys.keyring(&recovered.master)?)?;
+    let kek = domain_kek_of(&recovered.master)?;
+    assert_eq!(
+        probe_header(&restored_vault.layout().object_path(&subject)?, &kek),
+        HeaderProbe::Shredded,
+        "the restore resurrected an artifact the profile had deleted"
+    );
+    restored_vault.verify_sealed_object(&migrated[0])?;
+
+    // The backup taken before the deletion carries the tombstone, and the
+    // restore re-applies it at the one name that artifact has ever had.
+    let (older_root, _) = open_backup_with_secret(
+        &pre_deletion_backup,
+        BackupRecipientKind::RecoveryPhrase,
+        &recovery_secret(),
+    )?;
+    let older_verified = verify_encrypted_backup_directory(&pre_deletion_backup, &older_root)?;
+    let older_recovered = recover_profile_keys(&older_verified, &recovery_secret(), 5_000)?;
+    let older_restored = fixture.work_path("restored-before-deletion");
+    let older_receipt = restore_encrypted_profile(
+        &pre_deletion_backup,
+        &older_restored,
+        &NativePathProbe::default(),
+        &older_root,
+        &older_recovered,
+        &EncryptedRestorePlan {
+            authorizations: &fixture.authorizations(),
+        },
+    )?;
+    assert_eq!(
+        older_receipt.re_deleted_locators,
+        vec![hex_lower(subject.vault_locator.as_bytes())],
+        "the restore did not re-delete the copy the pre-deletion backup holds"
+    );
+    assert!(older_receipt.absent_locators.is_empty());
+    let older_keys = ProfileKeys::derive(
+        &older_recovered.master,
+        older_recovered.profile_id,
+        &[domain_id()?],
+    )?;
+    let older_vault = EncryptedVault::open(
+        &older_restored,
+        older_keys.keyring(&older_recovered.master)?,
+    )?;
+    assert_eq!(
+        probe_header(
+            &older_vault.layout().object_path(&subject)?,
+            &domain_kek_of(&older_recovered.master)?
+        ),
+        HeaderProbe::Shredded,
+        "the pre-deletion backup restored an artifact the profile had deleted"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// T116 P2-N2
+// ---------------------------------------------------------------------------
+
+/// A `STORE_DATABASE` executor that does not hold the plan's generations is
+/// refused before it runs.
+///
+/// `T116`'s reproduction: `rotate_store_database` called the executor and then
+/// journalled `store_database_target_id(plan.target)` whatever it had done, and
+/// the executor reported nothing about which pair of keys it held. An executor
+/// built from the plan's source and an unrelated third master rekeyed the
+/// database to that third generation while the journal recorded the unit
+/// migrated to the plan's target with `RotationCompleted` behind it — a database
+/// neither generation the journal names can open, and `retire_generation`
+/// cleared to remove the only records that still could.
+#[test]
+fn a_store_database_executor_outside_the_plans_generations_is_refused() -> TestResult {
+    let fixture = EncryptedFixture::new("seam-executor-binding")?;
+    let descriptors = fixture.descriptors()?;
+    let target = VaultMasterKey::generate()?;
+    let stray = VaultMasterKey::generate()?;
+
+    let mut units: Vec<RotationUnit> = descriptors
+        .iter()
+        .map(|descriptor| RotationUnit::object(*descriptor.vault_locator.as_bytes()))
+        .collect();
+    let database_unit = RotationUnit::store_database(PROFILE_ID);
+    units.push(database_unit.clone());
+    let plan = RotationPlan::new(
+        RotationId::from_bytes([0x52; 16]),
+        PROFILE_ID,
+        KeyGeneration::of(fixture.master(), PROFILE_ID)?,
+        KeyGeneration::of(&target, PROFILE_ID)?,
+        units,
+    )?;
+
+    let mut journal = journal_of(&fixture)?;
+    let source_vault = fixture.open_vault()?;
+    let target_vault = fixture.open_vault_under(&target)?;
+    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+    engine.begin(&mut journal)?;
+    // Every object first, so the only unit left is the database one and the
+    // refusal below is the only thing that can stop the rotation.
+    for (unit, descriptor) in plan.units().iter().zip(descriptors.iter()) {
+        engine.rotate_object(&mut journal, unit, descriptor)?;
+    }
+
+    let probe = NativePathProbe::default();
+    let refused = engine
+        .rotate_store_database(
+            &mut journal,
+            &database_unit,
+            &StoreDatabaseRekey::new(
+                fixture.profile_root(),
+                &probe,
+                PROFILE_ID,
+                fixture.master(),
+                &stray,
+            ),
+        )
+        .err()
+        .ok_or("an executor outside the plan's generations rekeyed the database")?;
+    let message = refused.to_string();
+    assert!(
+        message.contains("does not hold the generations this rotation plans"),
+        "the refusal did not name the generations the executor holds: {message}"
+    );
+
+    // The guard runs before the rekey, so the database is where the plan left
+    // it and the journal says nothing about the unit.
+    assert!(
+        academic_store::cipher::open_encrypted_profile(
+            fixture.profile_root(),
+            &probe,
+            &fixture.master().derive_store_key(PROFILE_ID)?
+        )
+        .is_ok(),
+        "the refused executor rekeyed the database anyway"
+    );
+    let state = RotationState::replay(journal.entries())?
+        .ok_or("the journal holds no rotation after the refusal")?;
+    let database_state = state
+        .units()
+        .iter()
+        .find(|unit| unit.unit.unit_id_hex() == database_unit.unit_id_hex())
+        .ok_or("the database unit is not in the replayed plan")?;
+    assert_eq!(database_state.target_locator, None);
+    let stopped = engine
+        .complete(&mut journal)
+        .err()
+        .ok_or("a rotation completed with its database unit never run")?;
+    assert!(
+        stopped.to_string().contains("never ran its"),
+        "the completion did not name the database unit: {stopped}"
     );
     Ok(())
 }

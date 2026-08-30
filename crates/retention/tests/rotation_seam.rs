@@ -58,12 +58,35 @@ impl CanonicalReference for StatedReference {
     }
 }
 
-/// An executor that reports what a test tells it to.
-struct StatedExecutor(Result<StoreDatabaseRekey, String>);
+/// An executor that reports the generations and the outcome a test tells it to.
+///
+/// The pair is separate from the plan's on purpose: the audit's reproduction is
+/// an executor built from two masters that are not the two the plan names, which
+/// nothing but the executor's own report can tell the engine.
+struct StatedExecutor {
+    source: KeyGeneration,
+    target: KeyGeneration,
+    outcome: Result<StoreDatabaseRekey, String>,
+}
+
+impl StatedExecutor {
+    /// An executor holding exactly the pair its plan names.
+    fn planned(plan: &RotationPlan, outcome: Result<StoreDatabaseRekey, String>) -> Self {
+        Self {
+            source: plan.source(),
+            target: plan.target(),
+            outcome,
+        }
+    }
+}
 
 impl StoreDatabaseExecutor for StatedExecutor {
+    fn generations(&self) -> Result<(KeyGeneration, KeyGeneration), StoreDatabaseError> {
+        Ok((self.source, self.target))
+    }
+
     fn rekey_store_database(&self) -> Result<StoreDatabaseRekey, StoreDatabaseError> {
-        self.0
+        self.outcome
             .as_ref()
             .copied()
             .map_err(|reason| StoreDatabaseError(reason.clone()))
@@ -552,7 +575,7 @@ fn a_rotation_completes_once_its_store_database_unit_has_run() -> TestResult {
         .rotate_store_database(
             &mut journal,
             &database,
-            &StatedExecutor(Err("page one did not authenticate".to_owned())),
+            &StatedExecutor::planned(&plan, Err("page one did not authenticate".to_owned())),
         )
         .err()
         .ok_or("a refused rekey was recorded as a migration")?
@@ -577,7 +600,7 @@ fn a_rotation_completes_once_its_store_database_unit_has_run() -> TestResult {
             .rotate_store_database(
                 &mut journal,
                 &object,
-                &StatedExecutor(Ok(StoreDatabaseRekey::Rekeyed)),
+                &StatedExecutor::planned(&plan, Ok(StoreDatabaseRekey::Rekeyed)),
             )
             .is_err(),
         "an object unit was rekeyed as a database"
@@ -586,7 +609,7 @@ fn a_rotation_completes_once_its_store_database_unit_has_run() -> TestResult {
     let outcome = engine.rotate_store_database(
         &mut journal,
         &database,
-        &StatedExecutor(Ok(StoreDatabaseRekey::Rekeyed)),
+        &StatedExecutor::planned(&plan, Ok(StoreDatabaseRekey::Rekeyed)),
     )?;
     assert_eq!(outcome, StoreDatabaseRekey::Rekeyed);
     engine.complete(&mut journal)?;
@@ -608,6 +631,107 @@ fn a_rotation_completes_once_its_store_database_unit_has_run() -> TestResult {
         )),
         "the database unit recorded something other than the generation it now opens under"
     );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// T116 P2-N2 — the database unit's executor is bound to the plan
+// ---------------------------------------------------------------------------
+
+/// A store database executor that does not hold the plan's generations is
+/// refused, before it can rekey anything.
+///
+/// `T116`'s reproduction: the records this unit appends are pure functions of
+/// the plan — `store_database_target_id(profile, plan target)` — and nothing
+/// compared them against the pair the executor actually held. An executor built
+/// from the plan's source and an unrelated third master returned `Rekeyed`, the
+/// journal recorded the unit migrated to the plan's target and the rotation
+/// complete, and the database opened under neither generation the journal named.
+/// `retire_generation` would then pass its own gates and remove the records that
+/// still opened it.
+///
+/// A rekey is not undone by reading the journal afterwards, so the check is in
+/// front of the executor rather than after it.
+#[test]
+fn a_store_database_executor_outside_the_plan_is_refused_before_it_runs() -> TestResult {
+    let root = TestRoot::new("seam-store-unit-generation")?;
+    let (source_master, _) = create_generation(SOURCE_RECIPIENT, SOURCE_ENTROPY)?;
+    let (target_master, _) = create_generation(TARGET_RECIPIENT, TARGET_ENTROPY)?;
+    let source_vault = open_vault(root.path(), &source_master)?;
+    let target_vault = open_vault(root.path(), &target_master)?;
+    let descriptors = seal_corpus(&source_vault, 1)?;
+
+    let object = RotationUnit::object(*descriptors[0].vault_locator.as_bytes());
+    let database = RotationUnit::store_database(profile_id());
+    let plan = RotationPlan::new(
+        RotationId::from_bytes([0x68; 16]),
+        profile_id(),
+        generation_of(&source_master)?,
+        generation_of(&target_master)?,
+        vec![object.clone(), database.clone()],
+    )?;
+    let mut journal = journal_at(&root)?;
+    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+    engine.begin(&mut journal)?;
+    engine.rotate_object(&mut journal, &object, &descriptors[0])?;
+
+    // A third generation, which is what an orchestrator holding the wrong
+    // master produces.
+    let (stray_master, _) = create_generation(TARGET_RECIPIENT, [0x7c; 32])?;
+    let stray = generation_of(&stray_master)?;
+    assert_ne!(stray, plan.target());
+    for (source, target) in [
+        (plan.source(), stray),
+        (stray, plan.target()),
+        (stray, plan.source()),
+    ] {
+        let refusal = engine
+            .rotate_store_database(
+                &mut journal,
+                &database,
+                &StatedExecutor {
+                    source,
+                    target,
+                    outcome: Ok(StoreDatabaseRekey::Rekeyed),
+                },
+            )
+            .err()
+            .ok_or("an executor outside the plan's generations was recorded as a migration")?
+            .to_string();
+        assert!(
+            refusal.contains("does not hold the generations this rotation plans"),
+            "the refusal did not name the generations the executor holds: {refusal}"
+        );
+        assert!(
+            refusal.contains(&source.to_hex()) && refusal.contains(&target.to_hex()),
+            "the refusal did not print the executor's own pair: {refusal}"
+        );
+    }
+
+    // Nothing was journalled for the unit, so the rotation is still stopped by
+    // name and a correct executor still finishes it.
+    let state = RotationState::replay(journal.entries())?.ok_or("no rotation replayed")?;
+    let recorded = state
+        .units()
+        .iter()
+        .find(|unit| unit.unit.unit_id_hex() == database.unit_id_hex())
+        .ok_or("the database unit is not in the replayed plan")?;
+    assert_eq!(recorded.target_locator, None);
+    let incomplete = engine
+        .complete(&mut journal)
+        .err()
+        .ok_or("a rotation completed over a database unit the engine refused")?
+        .to_string();
+    assert!(
+        incomplete.contains("never ran its executor"),
+        "the refusal did not name the database unit: {incomplete}"
+    );
+    engine.rotate_store_database(
+        &mut journal,
+        &database,
+        &StatedExecutor::planned(&plan, Ok(StoreDatabaseRekey::Rekeyed)),
+    )?;
+    engine.complete(&mut journal)?;
     Ok(())
 }
 
