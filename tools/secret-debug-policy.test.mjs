@@ -207,6 +207,16 @@ function trimDeclaredType(text) {
 /** Payload positions of a tuple struct, which has no field name at all. */
 const TUPLE_FIELD_PATTERN = /(?:^|[(,])\s*(?:pub(?:\s*\([^)]*\))?\s+)?([^,()]+)/g;
 
+/**
+ * Enum variants, spelled `Type::Variant`, whose byte payload is public.
+ *
+ * Empty, and deliberately present: no enum in this workspace carries a raw byte
+ * payload today, and the check that reaches them does not read the variant's
+ * name, so the next one that appears must state here why its bytes may be
+ * printed rather than be excused by being called something bland.
+ */
+const PUBLIC_TUPLE_VARIANT_BYTES = new Map([]);
+
 /** Enum variants written as `Dek([u8; 32])`, whose name is the only signal. */
 const TUPLE_VARIANT_PATTERN = /(?:^|[,{])\s*([A-Z][A-Za-z0-9_]*)\s*\(([^()]*)\)/gm;
 
@@ -330,19 +340,63 @@ function matched(text, opener, open, close) {
   return text.slice(opener + 1);
 }
 
-/** Returns the body of a hand-written `Debug` impl, by type name. */
-function handWrittenDebugBodies(contents) {
+/**
+ * Returns the body of every hand-written `Debug` *and* `Display` impl, by type.
+ *
+ * Both, because `Display` prints too. The registry test reads derives only, and
+ * `handWrittenDebug` recorded a `Display` impl as satisfying the "has a
+ * hand-written Debug" requirement while nothing ever read what it printed —
+ * `T118` injected a `Display` on the registered `OpenedHeader` that wrote
+ * `self.dek` and every test passed. A type with both impls has them
+ * concatenated here: each one is scanned, and neither may reach the bytes.
+ */
+function handWrittenFormatterBodies(contents) {
   const bodies = new Map();
   const pattern =
-    /\bimpl\s+(?:core::fmt::|std::fmt::|fmt::)?Debug\s+for\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+    /\bimpl\s+(?:core::fmt::|std::fmt::|fmt::)?(?:Debug|Display)\s+for\s+([A-Za-z_][A-Za-z0-9_]*)/g;
   for (const match of contents.matchAll(pattern)) {
     const opener = contents.indexOf("{", match.index + match[0].length);
-    if (opener !== -1) {
-      bodies.set(match[1], matched(contents, opener, "{", "}"));
+    if (opener === -1) {
+      continue;
     }
+    const body = matched(contents, opener, "{", "}");
+    const existing = bodies.get(match[1]);
+    bodies.set(match[1], existing === undefined ? body : `${existing}\n${body}`);
   }
   return bodies;
 }
+
+/**
+ * Names a formatter body binds by destructuring `self`, mapped to the field
+ * each one stands for.
+ *
+ * `let Self { dek } = self;` and `let Self { dek: bytes, .. } = self;` both put
+ * a secret field behind a bare identifier, and a net that greps `self.dek`
+ * reads neither. `T118` injected the first and nothing failed.
+ */
+const DESTRUCTURE_PATTERN =
+  /let\s+(?:Self|[A-Z][A-Za-z0-9_]*)\s*\{([^}]*)\}\s*=\s*(?:\*?self|&\s*\*?self)\b\s*;?/g;
+
+function destructuredBindings(body) {
+  const bindings = new Map();
+  for (const match of body.matchAll(DESTRUCTURE_PATTERN)) {
+    for (const part of match[1].split(",")) {
+      const trimmed = part.trim();
+      if (trimmed === "" || trimmed === "..") {
+        continue;
+      }
+      const [field, alias] = trimmed.split(":").map((piece) => piece.trim());
+      if (field === "") {
+        continue;
+      }
+      bindings.set(alias === undefined || alias === "" ? field : alias, field);
+    }
+  }
+  return bindings;
+}
+
+/** Methods a formatter body may call on `self` without printing bytes. */
+const FORMATTER_SAFE_METHODS = /^(len|is_empty|count|capacity)$/;
 
 
 function derivedTraits(attributeBlock) {
@@ -381,8 +435,9 @@ async function scan() {
     )) {
       handWrittenDebug.add(match[1]);
     }
-    for (const [name, body] of handWrittenDebugBodies(contents)) {
-      debugBodies.set(name, body);
+    for (const [name, body] of handWrittenFormatterBodies(contents)) {
+      const existing = debugBodies.get(name);
+      debugBodies.set(name, existing === undefined ? body : `${existing}\n${body}`);
     }
     lines.forEach((line, index) => {
       const match = DEFINITION_PATTERN.exec(line);
@@ -688,6 +743,44 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
         );
       }
     }
+
+    // The same field reached through a name the body bound by destructuring.
+    // The binding statements are removed first, so what is left is uses of the
+    // name and nothing else: `{dek:?}` in a format string is a use and the
+    // `let Self { dek } = self;` that introduced it is not.
+    const afterBinding = body.replace(DESTRUCTURE_PATTERN, " ");
+    for (const [binding, field] of destructuredBindings(body)) {
+      if (!rawFields.has(field)) {
+        continue;
+      }
+      const uses = afterBinding.matchAll(
+        new RegExp(`(?<![.\\w])${binding}\\b([^,)]*)`, "gu"),
+      );
+      for (const use of uses) {
+        if (/^\s*\.\s*(len|is_empty|count|capacity)\s*\(/.test(use[1])) {
+          continue;
+        }
+        leaks.push(
+          `${name}: its hand-written Debug destructures self and reaches ${field} as ${binding}, so the bytes it was written to hide are printed`,
+        );
+      }
+    }
+
+    // A method call on `self` is the other way out. A redacting formatter has
+    // no reason to make one, and one that does hands the decision to code this
+    // net never reads: `T118` injected `self.render()` returning
+    // `hex::encode(self.dek)` and nothing failed. Reducing a buffer to a length
+    // is the exception, and it is the only one.
+    if (rawFields.size > 0) {
+      for (const call of body.matchAll(/self\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)) {
+        if (FORMATTER_SAFE_METHODS.test(call[1])) {
+          continue;
+        }
+        leaks.push(
+          `${name}: its hand-written Debug calls self.${call[1]}(), so what reaches the formatter is decided somewhere this guard cannot read`,
+        );
+      }
+    }
   }
   assert.deepEqual(leaks.sort(), [], leaks.join("\n"));
 });
@@ -751,12 +844,27 @@ test("no unregistered tuple type derives Debug over a secret payload", () => {
           const snake = variantName
             .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
             .toLowerCase();
-          if (!SECRET_FIELD_NAMES.test(snake)) {
-            continue;
-          }
+          const named = SECRET_FIELD_NAMES.test(snake);
           for (const position of payload.matchAll(TUPLE_FIELD_PATTERN)) {
             const inner = position[1].trim();
-            if (inner !== "" && (holdsRawBytes(inner) || macroKeyTypes.has(normalizeFieldType(inner)))) {
+            if (inner === "") {
+              continue;
+            }
+            const normalized = normalizeFieldType(inner);
+            // A variant name is one signal and the payload type is the other.
+            // Requiring both is what made `Payload(Vec<u8>)` and
+            // `Buffer([u8; 32])` silent while `Dek([u8; 32])` was caught —
+            // `T118` injected exactly that. A raw byte payload is enough on its
+            // own, the same way it is for a tuple struct, and no enum in this
+            // workspace declares one that is public.
+            const secretByName =
+              named && (holdsRawBytes(inner) || macroKeyTypes.has(normalized));
+            const secretByPayload =
+              (RAW_BYTE_PAYLOAD_TYPES.test(normalized) ||
+                macroKeyTypes.has(normalized) ||
+                /(^|::)Zeroizing\s*</.test(inner)) &&
+              !PUBLIC_TUPLE_VARIANT_BYTES.has(`${name}::${variantName}`);
+            if (secretByName || secretByPayload) {
               leaks.push(
                 `${site.location}: enum ${name} derives Debug over variant ${variantName}(${inner})`,
               );
