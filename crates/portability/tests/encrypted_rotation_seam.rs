@@ -11,10 +11,13 @@
 //! enough. They are stated as properties, so a repair that regresses fails a
 //! named row.
 //!
-//! This whole file compiles only in the encrypted lane:
-//! `cargo test -p academic-portability --no-default-features --features encrypted-portability`.
+//! This whole file compiles only in the encrypted lane, and only with the
+//! rotation orchestration Phase 2 does not accept selected:
+//! `cargo test -p academic-portability --no-default-features --features encrypted-portability-rotation`.
+//! What runs in its place in the plain encrypted lane is the refusal, in
+//! `encrypted_rotation_gate.rs`.
 
-#![cfg(feature = "encrypted-portability")]
+#![cfg(feature = "encrypted-portability-rotation")]
 
 mod encrypted_support;
 

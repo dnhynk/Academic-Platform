@@ -12,16 +12,23 @@ use std::{error::Error, fs};
 
 use academic_retention::{
     AppendOnlyJournal, BackupTombstone, JournalEntry, RotationId, RotationPlan, RotationState,
-    RotationUnit, UnitKind, UnitProgress,
+    RotationUnit, UnitProgress,
     engine::{
-        HeaderProbe, OpeningObservation, RotationEngine, RotationKeys, apply_tombstones,
-        observe_reachable_opening, probe_header, rebind_locator, shred_with_tombstone,
+        HeaderProbe, OpeningObservation, RotationKeys, apply_tombstones, observe_reachable_opening,
+        probe_header, shred_with_tombstone,
     },
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
 };
+#[cfg(feature = "rotation-orchestration")]
+use academic_retention::{
+    UnitKind,
+    engine::{RotationEngine, rebind_locator},
+};
 use academic_vault::object::{HEADER_BYTES, KEY_SLOT_OFFSET, KEY_SLOT_SHRED_MARKER};
+#[cfg(feature = "rotation-orchestration")]
+use rotation_support::CHUNK_SIZE;
 use rotation_support::{
-    CHUNK_SIZE, SOURCE_ENTROPY, SOURCE_RECIPIENT, TARGET_ENTROPY, TARGET_RECIPIENT, TestRoot,
+    SOURCE_ENTROPY, SOURCE_RECIPIENT, TARGET_ENTROPY, TARGET_RECIPIENT, TestRoot,
     create_generation, domain_kek, generation_of, open_vault, profile_id, seal_corpus,
     seal_in_lineage,
 };
@@ -34,6 +41,7 @@ type TestResult = Result<(), Box<dyn Error>>;
 
 /// `KY03`. After a rotation stops part way, the journal alone names exactly the
 /// objects that have not moved — by locator, not by count.
+#[cfg(feature = "rotation-orchestration")]
 #[test]
 fn rotation_journal_enumerates_remaining_objects() -> TestResult {
     let root = TestRoot::new("remaining")?;
@@ -424,7 +432,10 @@ fn tombstone_over_three_lineages(label: &str, deleted: usize) -> TestResult {
         );
     }
 
-    let applied = apply_tombstones(&materialised.path().join("vault/v2"), &[stone.clone()])?;
+    let applied = apply_tombstones(
+        &materialised.path().join("vault/v2"),
+        std::slice::from_ref(&stone),
+    )?;
     for index in 0..trio.len() {
         let probe = probe_header(&copied.join(format!("{index}.aobj")), &kek);
         if index == deleted {
@@ -485,6 +496,7 @@ fn a_tombstone_reaches_its_own_artifact_when_the_deleted_lineage_sorts_first() -
 
 /// A rotation lands the object on a new path, so the two generations are two
 /// files rather than one file rewritten in place.
+#[cfg(feature = "rotation-orchestration")]
 #[test]
 fn a_rotated_object_lands_on_a_new_locator() -> TestResult {
     let root = TestRoot::new("relocate")?;
@@ -776,6 +788,7 @@ fn a_settled_deletion_really_shreds_its_derivatives() -> TestResult {
 ///
 /// `rotation_seam.rs::a_rotation_completes_once_its_store_database_unit_has_run`
 /// is the other half: the same plan, with the unit run.
+#[cfg(feature = "rotation-orchestration")]
 #[test]
 fn a_rotation_will_not_complete_over_a_store_database_it_never_rekeyed() -> TestResult {
     let root = TestRoot::new("store-unit")?;
@@ -844,6 +857,7 @@ fn a_rotation_will_not_complete_over_a_store_database_it_never_rekeyed() -> Test
 /// `rotate_store_database` took any unit at all: a record written for one
 /// outside the plan makes `RotationState::replay` refuse the whole journal,
 /// which is permanent — the records are append-only — and needs no kill.
+#[cfg(feature = "rotation-orchestration")]
 #[test]
 fn a_plan_orders_its_database_unit_last_and_the_engine_moves_nothing_else() -> TestResult {
     let root = TestRoot::new("plan-gates")?;

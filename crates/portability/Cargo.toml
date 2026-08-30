@@ -24,6 +24,15 @@ encrypted-portability = [
   "academic-store/sqlcipher-store",
   "academic-vault/aead-objects",
 ]
+# The same encrypted lane with the rotation orchestration Phase 2 does not
+# accept selected. It exists so the machinery keeps executed acceptance rows —
+# `KY03`-`KY05`, the `T114`/`T116` seam closures — while the refusal is what the
+# plain `encrypted-portability` lane and every product graph see. No binary
+# selects it; the `rotation-orchestration-lane` CI job is what runs it.
+encrypted-portability-rotation = [
+  "encrypted-portability",
+  "academic-retention/rotation-orchestration",
+]
 phase1-fault-injection = []
 # Compiles the same BK/RS failpoints for the encrypted lane, so the Phase 1
 # fault matrix is re-run under encryption rather than restated.

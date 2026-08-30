@@ -22,6 +22,8 @@ mod encrypted_support;
 use std::fs;
 
 use academic_domain::ArtifactDescriptor;
+#[cfg(feature = "encrypted-portability-rotation")]
+use academic_portability::encrypted::rotation::{StoreCanonicalReference, StoreDatabaseRekey};
 use academic_portability::{
     PortabilityError,
     encrypted::{
@@ -31,21 +33,25 @@ use academic_portability::{
             EncryptedRestorePlan, open_backup_with_secret, recover_profile_keys,
             restore_encrypted_profile,
         },
-        rotation::{StoreCanonicalReference, StoreDatabaseRekey, deletion_tombstone},
+        rotation::deletion_tombstone,
     },
 };
 use academic_recovery::{BackupRecipientKind, RecoveryProfile};
 use academic_retention::{
-    AppendOnlyJournal, BackupTombstone, RotationId, RotationPlan, RotationUnit,
-    engine::{
-        HeaderProbe, RotationEngine, probe_header, retire_superseded_object, shred_with_tombstone,
-    },
+    AppendOnlyJournal, BackupTombstone,
+    engine::{HeaderProbe, probe_header, shred_with_tombstone},
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
-    rotation::KeyGeneration,
-    rotation::StoreDatabaseRekey as StoreDatabaseRekeyOutcome,
     tombstone,
 };
+#[cfg(feature = "encrypted-portability-rotation")]
+use academic_retention::{
+    RotationId, RotationPlan, RotationUnit,
+    engine::{RotationEngine, retire_superseded_object},
+    rotation::KeyGeneration,
+    rotation::StoreDatabaseRekey as StoreDatabaseRekeyOutcome,
+};
 use academic_store::descriptor_migration::DescriptorMigration;
+#[cfg(feature = "encrypted-portability-rotation")]
 use academic_vault::SealedObjectVerifier as _;
 use encrypted_support::{EncryptedFixture, TestResult, backup_key_set, domain_id, recovery_secret};
 
@@ -89,6 +95,7 @@ fn take_backup(
 /// from no backup of it, because a restore recovers one master and derives both
 /// halves from it. The fixture adopts the target generation afterwards, which
 /// is the caller-side half of the same move.
+#[cfg(feature = "encrypted-portability-rotation")]
 fn rotate_every_object(
     fixture: &mut EncryptedFixture,
     target: VaultMasterKey,
@@ -187,6 +194,7 @@ fn rotate_every_object(
 /// locator and nothing in the workspace could move it. It now resolves through
 /// the appended migration chain, so `read_artifact_descriptors` names the
 /// object the new key opens.
+#[cfg(feature = "encrypted-portability-rotation")]
 #[test]
 fn store_descriptors_follow_a_completed_rotation() -> TestResult {
     let mut fixture = EncryptedFixture::new("rotation-reference")?;
@@ -239,6 +247,7 @@ fn store_descriptors_follow_a_completed_rotation() -> TestResult {
 /// `T111`'s scenario for P1-1: `read_artifact_descriptors` feeds the backup's
 /// object closure, so a store that had not moved its references made every
 /// post-rotation backup fail.
+#[cfg(feature = "encrypted-portability-rotation")]
 #[test]
 fn a_backup_after_a_rotation_closes_over_the_migrated_objects() -> TestResult {
     let mut fixture = EncryptedFixture::new("rotation-backup")?;
@@ -393,6 +402,7 @@ fn a_descriptor_migration_no_event_authorized_is_refused() -> TestResult {
 /// superseded object and leaves the collection point open; this is that point.
 /// The test states both halves of the window: openable while the object is
 /// merely unreferenced, and opened by nothing once it is retired.
+#[cfg(feature = "encrypted-portability-rotation")]
 #[test]
 fn a_retired_source_object_is_opened_by_neither_generation() -> TestResult {
     let mut fixture = EncryptedFixture::new("rotation-retirement")?;

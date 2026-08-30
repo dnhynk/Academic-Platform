@@ -278,6 +278,43 @@ fn derive_unit_id(kind: UnitKind, seed: Option<&[u8]>) -> [u8; 32] {
     hasher.finalize().into()
 }
 
+/// What Phase 2 accepts of a key rotation, in one sentence.
+///
+/// The rotation journal, the plan, the invariant, the engine, and the recipient
+/// rewrap are all built and all tested. What is not accepted is *running* one:
+/// the fourth `P2-A1` audit found that an orchestrator driving these entry
+/// points can strand a rotation that a deletion landed inside, record a unit as
+/// migrated for an object that never moved, and leave a profile no backup
+/// restores — and there is no orchestrator to bind those obligations, because
+/// no daemon and no CLI command begins a rotation. So Phase 2 narrows the
+/// contract to what it can hold: the entry points refuse.
+pub const ROTATION_NOT_ACCEPTED_STATEMENT: &str = "phase 2 has not accepted a key rotation: beginning one, moving a unit under \
+     one, completing one, retiring a superseded object, rewrapping a recipient \
+     set for a new generation, and retiring a generation are all refused. \
+     Crypto-shredding, backup tombstones, and their re-application on restore \
+     are not part of this and keep working.";
+
+/// The refusal every rotation orchestration entry point returns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("{}", ROTATION_NOT_ACCEPTED_STATEMENT)]
+pub struct RotationNotAccepted;
+
+/// Refuses unless the `rotation-orchestration` lane selected the machinery.
+///
+/// This is the whole gate and the only place it is decided. It takes no
+/// argument, reads no environment variable, and has no debug-build branch, so a
+/// caller cannot pass anything that makes it return `Ok` — selecting the
+/// feature at build time is the only thing that does, and no product binary
+/// does. Every entry point calls it on its first line, before it reads a
+/// journal or touches a file, so the states the fourth audit reached are behind
+/// it rather than beside it.
+pub fn require_rotation_accepted() -> Result<(), RotationNotAccepted> {
+    if cfg!(feature = "rotation-orchestration") {
+        return Ok(());
+    }
+    Err(RotationNotAccepted)
+}
+
 /// Why a rotation could not be planned, executed, or resumed.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]

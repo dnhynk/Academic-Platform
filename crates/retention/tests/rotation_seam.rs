@@ -11,8 +11,13 @@
 //! here is the gate over a reference that states an answer; the same gate over
 //! the *real* store is in the encrypted portability suite,
 //! `a_retirement_before_the_store_row_is_refused`.
+//!
+//! Every row here drives the rotation orchestration Phase 2 does not accept, so
+//! the whole file is behind `rotation-orchestration` and runs in the
+//! `rotation-orchestration-lane` CI job. What runs in its place everywhere else
+//! is the refusal, in `rotation_gate.rs`.
 
-#![cfg(feature = "rotation-engine")]
+#![cfg(all(feature = "rotation-engine", feature = "rotation-orchestration"))]
 
 mod rotation_support;
 
