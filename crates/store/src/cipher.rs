@@ -336,7 +336,7 @@ pub fn rekey_encrypted_profile<P: PathProbe + ?Sized>(
     // let a rotation journal record that the database moved generation when
     // both generations are one key, which is the degenerate rotation
     // `RotationPlan::new` refuses for objects.
-    if *current.expose_raw_hex() == *next.expose_raw_hex() {
+    if current.expose_secret() == next.expose_secret() {
         return Err(StoreError::InvalidProfileState {
             path: root.join(STORE_DATABASE_FILE),
             reason: "a rekey was asked to move the database to the key it already has",
