@@ -157,12 +157,16 @@ halves rather than by that name: under the superseded generation the rotated
 objects no longer derive their locators, and under the target one the database
 does not open. Both refuse before anything is published.
 
-A crypto-shredded object does not stop a backup, and neither does a rotation
-after the shred. Its descriptor keeps the locator of the generation it was
-destroyed under, because nothing can re-seal an object whose key slot is gone;
-`EncryptedVault::verify_shredded_object` is what lets the copy still be taken,
-and what it requires of the file it copies is in
+A crypto-shredded object does not stop a backup. Its descriptor keeps the locator
+of the generation it was destroyed under, because nothing can re-seal an object
+whose key slot is gone; `EncryptedVault::verify_shredded_object` is what lets the
+copy still be taken, and what it requires of the file it copies is in
 [rotation and retention](rotation-and-retention.md).
+
+A rotation after the shred does not stop one either, and that half is not
+reachable in Phase 2: running a rotation is refused, and what an orchestrator
+would have to close first is listed in the same document. A deletion needs no
+rotation, so everything above and below this paragraph is.
 
 A restore does not trust its manifest. A manifest re-sealed with the real backup
 key after its counts were altered verifies and decrypts, and the restore still

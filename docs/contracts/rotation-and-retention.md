@@ -19,47 +19,114 @@ can re-apply the tombstones a backup carries — and
 `P2-P2` is the task that wires the real transcript, embedding, claim, document,
 cache, and replica subsystems to it.
 
-**What is not here.** No daemon or CLI command runs a rotation: the sequence
-below is a library sequence, executed end to end by
-`crates/portability/tests/encrypted_rotation.rs` and
-`crates/portability/tests/encrypted_rotation_seam.rs`, and by nothing a user can
-invoke. So there is no orchestrator to run the preflight the re-rotation section
-below requires. `P2-P2` is the task that writes it.
+No daemon command and no CLI command runs a rotation, and none may: the entry
+points refuse. What follows describes machinery that is built and executed under
+a lane, not behaviour a user or a product path can reach.
 
-**What the first orchestrator is bound by.** Five rules, and the difference
-between them matters, because only two are left for a reader to remember:
+## Phase 2 does not accept a rotation
+
+**Running a rotation is refused.** Seven entry points would drive one, and each
+one refuses on its first line — before a journal is read, before a file is
+opened, before a page is rewritten:
+
+| refused | error |
+|---|---|
+| `RotationEngine::begin` | `EngineError::NotAccepted` |
+| `RotationEngine::rotate_object` | `EngineError::NotAccepted` |
+| `RotationEngine::rotate_store_database` | `EngineError::NotAccepted` |
+| `RotationEngine::complete` | `EngineError::NotAccepted` |
+| `engine::retire_superseded_object` | `EngineError::NotAccepted` |
+| `recipients::rewrap_for_generation` | `RecipientError::NotAccepted` |
+| `recipients::retire_generation` | `RecipientError::NotAccepted` |
+
+**Deletion is not refused, and neither is anything a deletion needs.** These keep
+working exactly as the rest of this document describes: `shred_with_tombstone`
+and `EncryptedVault::shred_key_slot`; `BackupTombstone`,
+`encrypted::rotation::deletion_tombstone`, `tombstone::write_into_backup` and
+`read_from_backup`, and `apply_tombstones`; `backup_encrypted_profile`,
+`restore_encrypted_profile`, and `verify_shredded_object`; the deletion plan,
+`settle`, and the retention result vocabulary; `recipients::add_recipient`,
+`revoke_recipient`, and `revoked_recipient_ids`; and every reader —
+`RotationPlan::new`, `RotationState::replay`, `resume`, `probe_header`,
+`observe_reachable_opening`. A rotation *plan* is data and still builds. What is
+refused is running one.
+
+`rotation::require_rotation_accepted` is the whole gate and the only place it is
+decided. It takes no argument, reads no environment variable, and has no
+debug-build branch; the non-default `rotation-orchestration` feature is the only
+thing that turns it off, no product graph selects it
+(`phase1-scaffold-policy.test.mjs`), and the rows that execute a rotation and the
+rows that refuse one never link into one binary. `rotation_gate.rs` and
+`encrypted_rotation_gate.rs` are the refusal, run everywhere; the
+`rotation-orchestration-lane` CI job is where the machinery — the `KY03`-`KY05`
+fault rows, the `T114` and `T116` seam closures — still runs.
+
+**Why.** The machinery is built and tested. What does not exist is the
+orchestrator that would hold its obligations, and the fourth `P2-A1` audit
+(`C:\Users\dongh\.claude\orchestration\run_98ccc873ba4b\t118-a1-crypto-admission-audit4.md`)
+reached four states through the shipped API with no kill and no tampering. Phase
+2 narrows the contract to what it can hold rather than repairing each state
+under an orchestrator nobody has written; `P2-P2` selects the feature and closes
+the list below.
+
+### Known unresolved, for whoever reopens this
+
+Each is reachable the moment the gate opens, and each was reproduced by that
+audit over the shipped API.
+
+| item | what happens | where |
+|---|---|---|
+| **P1-F2** a deletion lands inside an open rotation | `rotate_object` refuses the shredded source and writes nothing, `complete` refuses the remaining unit, the engine has no abandon, and the deletion path never reads the journal. The rotation cannot finish; `retire_generation` refuses forever; `rewrap_for_generation` leaves two generations of records and `recover_profile_keys` takes the first that opens, so **no backup of that profile restores**. | `engine.rs` `rotate_object`/`complete`, `recipients.rs` |
+| **P2-F3** `rotate_object` does not bind its descriptor to its unit | `rotate_object(unit of A, descriptor of B)` is accepted; the journal records unit A migrated to B's target locator while A never moved. After `retire_generation`, no recipient on disk opens A. The one-line comparison `retire_superseded_object` already makes (`UnitDoesNotNameSupersededObject`) is the fix. | `engine.rs:399-424` |
+| **P2-F4** `EncryptedVault::reconcile` is a fifth reader | It resolves each referenced descriptor with `validate_descriptor_locator`, so a shredded row under a rotated keyring fails the whole pass with `LocatorMismatch`. Giving it the `may_be_shredded` → `verify_shredded_object` branch backup and restore have closes it. Without a rotation the pass completes and reports the shred as `ReferencedCorruptRepairRequired` — recorded by `reconciliation_completes_over_a_profile_that_deleted_an_artifact`, and itself a state a shred and a bit-rotted object share. | `reconcile.rs:181-184`, `encrypted.rs` |
+| **P3-F5** the database unit's *execution* order is not enforced | `RotationPlan::new` refuses a plan that orders it anywhere but last; the engine holds no state, so running it first is accepted and the store then records a chain row under a key it has moved away from. | `rotation.rs:400-405`, `engine.rs` |
+| **P3-F6** a second `begin` over an open rotation | `AppendOnlyJournal::append` does not replay before appending, so a second `RotationStarted` makes every later replay `ConcurrentRotation` — permanently, because records are append-only. | `journal.rs:413-445`, `rotation.rs:533-540` |
+| **P3-F7** the obligation table below is what a caller is still held to | Two obligations are typed refusals and the rest are prose. The table states all of them. | this document |
+
+## What the first orchestrator is bound by
+
+Five rules were listed here as "only two left for a reader to remember", and
+that was wrong: three more obligations were unlisted and the audit reached each
+of them. The complete list, with what enforces it:
 
 | rule | where it is enforced |
 |---|---|
 | the `STORE_DATABASE` unit is planned last | `RotationPlan::new`, `RotationError::StoreDatabaseNotLast` |
 | the executor's two generations are the plan's two | `rotate_store_database`, `EngineError::StoreDatabaseExecutorGeneration` |
 | only a unit the plan holds is moved under it | `rotate_object` / `rotate_store_database`, `EngineError::UnitNotInPlan` |
-| **the two vaults an engine is built on are the plan's two generations** | **nothing — this one is an obligation** |
-| **a superseded object is retired before the next rotation begins** | **nothing — this one is an obligation** |
-
-The last two are the ones no type holds to.
+| **the two vaults an engine is built on are the plan's two generations** | **nothing — an obligation** |
+| **a superseded object is retired before the next rotation begins** | **nothing — an obligation** |
+| **the descriptor passed to `rotate_object` is the unit's own** | **nothing — an obligation (P2-F3)** |
+| **the `STORE_DATABASE` unit is *run* after the last object** | **nothing — an obligation (P3-F5)** |
+| **no `begin` while a rotation is open** | **nothing — an obligation (P3-F6)** |
+| **no deletion settles while a rotation is open** | **nothing — an obligation (P1-F2)** |
+| **shredded artifacts are left out of the plan** | **nothing — an obligation, and the means is not stated: the store holds no "shredded" row, so an orchestrator has to replay `ArtifactShredded` from the journal or read each header** |
 
 `RotationEngine::new` takes two `EncryptedVault`s and cannot check either
-against the plan: a vault holds `KEK_d` and the locator key derived from it, not
-the Vault Master Key, and a generation name is a function of that master. An
-engine built on a target vault under some third generation moves every object
-there, and the journal is *truthful* about it — an object unit records the
-locator the reseal actually produced, and the store row is verified against the
-object it names — so nothing downstream contradicts it. What is then false is the
-plan: `RotationStarted` names a target generation no object is under.
-`retire_superseded_object` still passes all four of its gates, because every one
-of them compares the journal with the store rather than with a key, and destroys
-the superseded copy; `retire_generation(kept = state.target())` keeps the
-records for the generation the plan named. The profile that leaves opens
+against the plan *as it stands today*: a vault holds `KEK_d` and the locator key
+derived from it, not the Vault Master Key, and a generation name is a function of
+that master. An engine built on a target vault under some third generation moves
+every object there, and the journal is *truthful* about it — an object unit
+records the locator the reseal actually produced, and the store row is verified
+against the object it names — so nothing downstream contradicts it. What is then
+false is the plan: `RotationStarted` names a target generation no object is
+under. `retire_superseded_object` still passes all four of its gates, because
+every one of them compares the journal with the store rather than with a key, and
+destroys the superseded copy; `retire_generation(kept = state.target())` keeps
+the records for the generation the plan named. The profile that leaves opens
 nothing. A backup refuses it (`LocatorMismatch` under the plan's target,
 `EncryptedStoreLocked` under the objects' actual one), so it is caught before it
 is carried anywhere — but only after the copies that would have opened it are
-gone. Binding this the way the database unit's executor is bound means giving the
-engine the two masters and giving a vault a way to prove which one it was built
-from; neither exists today.
-`an_engine_outside_the_plans_generations_leaves_a_profile_no_backup_can_take` is
-that whole sequence, so the cost of this obligation is executed rather than
-argued.
+gone.
+
+A derived binding is possible and simply is not built: `ProfileKeys` already
+carries its `generation` and `ProfileKeys::keyring(master)` builds a keyring with
+the master in hand, so a vault could be given the same kind of derived proof
+`StoreDatabaseExecutor::generations` gives. What is true is that nothing carries
+it today, not that nothing could.
+`an_engine_outside_the_plans_generations_leaves_a_profile_no_backup_can_take`
+executes the two backup refusals at the end of that sequence; the retirement and
+`retire_generation` steps in the middle of it are argued here, not run.
 
 `retire_superseded_object` finds its unit in the *latest* rotation
 `RotationState::replay` returns, so after a second rotation the first rotation's
@@ -322,10 +389,15 @@ values the journal already carries.
 **The database moves last.** While objects are still moving, the store key that
 opens the database has to stay in force for both the migrated and the unmigrated
 ones — `record_descriptor_migration` opens the store to write each move — so the
-unit is planned last and run after the last object. `RotationPlan::new` refuses a
-plan that orders it anywhere else (`the store database unit is planned at
-position … and a rotation moves it last`), so this is a property of the plan
-rather than a rule an orchestrator has to remember.
+unit is planned last and must be *run* after the last object.
+
+Those are two rules and only the first is enforced. `RotationPlan::new` refuses a
+plan that orders the unit anywhere else (`the store database unit is planned at
+position … and a rotation moves it last`), so the plan's order is a property of
+the plan. The engine holds no execution state, so a caller that runs the database
+unit first is accepted, and the store then records a chain row under a key the
+database has moved away from — `page one did not authenticate`. Running it last
+is an obligation (P3-F5), not a property.
 
 **The executor is checked against the plan before it runs.** The records this
 unit appends are pure functions of the plan — the target is
@@ -586,9 +658,19 @@ digest-checks it without asking it to authenticate.
 **A shredded object cannot be rotated, and its reference cannot move.** A reseal
 opens the source object and a destroyed key slot opens for nobody, so a plan that
 names one cannot complete; `record_descriptor_migration` will not write a chain
-row for an object that does not exist either. The orchestrator therefore leaves
-shredded artifacts out of the plan and their rows keep the locator of the
-generation they were destroyed under while every other row moves.
+row for an object that does not exist either. An orchestrator therefore has to
+leave shredded artifacts out of the plan, and their rows then keep the locator of
+the generation they were destroyed under while every other row moves.
+
+That is a rule an orchestrator can only keep **before it calls `begin`**. A
+deletion that settles after it has no way to reach a plan already fixed in
+`RotationStarted`, and the deletion path does not read the journal, so the
+rotation is stranded (P1-F2 above). Nothing states how an orchestrator is
+supposed to know which artifacts are shredded either: the store holds no such
+row, and the fact lives in the journal's `ArtifactShredded` records and in each
+object's header. Both are why running a rotation is refused in Phase 2. The
+paragraphs below describe what a backup and a restore then meet, and those *are*
+reachable: a deletion needs no rotation.
 
 That is the state a backup then meets. A locator is a function of `KEK_d`, so the
 rotated keyring derives a different one for that row and `validate_descriptor_locator`
@@ -675,6 +757,12 @@ and selects no policy:
 The `KY03` selector is `KY03:<stage>` — one fault-matrix row with four
 distinguishable states, and no invented identifier.
 
+`KY03` and the `revoked_recipient_gets_no_new_key` half of `KY05` drive
+`rotate_object` and `rewrap_for_generation`, which Phase 2 refuses, so those two
+run in the `rotation-orchestration-lane` job rather than in the default graph.
+`KY04`, the rest of `KY05`, and `RB01`-`RB04` are outside the gate and run
+everywhere they did.
+
 t068 section 7 lists `RB02`–`RB04` under `P2-P2`; section 5 requires `P2-K5`'s
 acceptance to cover `RB01`–`RB04`. Both are true: the mechanism and its outcomes
 are proved here, and `P2-P2` replaces the synthetic resolver and executor with
@@ -690,7 +778,20 @@ cargo test -p academic-retention --all-targets --locked --offline --features rot
 Both are hosted CI steps on every Rust matrix label, because the key-slot write
 and the recipient-set rename are per-platform. The default-lane half — the
 journal, the plan, the vocabulary, and the revocation contract — is pure Rust and
-also runs inside `cargo test --workspace`.
+also runs inside `cargo test --workspace`. What those two commands execute of a
+rotation is the **refusal**: `rotation_gate.rs` calls all seven entry points and
+asserts each one refuses, that nothing is journalled, and that the sequences the
+fourth audit used stop at their first call.
+
+The machinery itself runs with the lane selected, which is the hosted
+`rotation-orchestration-lane` job and nothing else:
+
+```powershell
+cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection -- -D warnings
+cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection
+cargo clippy -p academic-portability --no-default-features --features encrypted-portability-rotation,phase2-fault-injection --all-targets --locked --offline -- -D warnings
+cargo test -p academic-portability --no-default-features --features encrypted-portability-rotation --locked --offline
+```
 
 The half that needs the store is in the encrypted portability lane, because that
 is the only build where `academic-store`, `academic-vault`, and
@@ -703,12 +804,17 @@ cargo test -p academic-portability --no-default-features --features encrypted-po
 `encrypted_rotation.rs` states what a rotation does; `encrypted_rotation_seam.rs`
 states what everything after one does — the acceptance, the backup, the restore,
 the deletion before a rotation and after one, the retirement, the executor's
-generations, and the re-rotation. Both run in the hosted
-`encrypted-portability-lane` job.
+generations, and the re-rotation. The rows in them that run a rotation are behind
+`encrypted-portability-rotation` and run in the `rotation-orchestration-lane`
+job; the rest — the deletion, the tombstone, the backup, the restore — stay in
+`encrypted-portability-lane`, and `encrypted_rotation_gate.rs` runs there too:
+the whole product rotation sequence refused against a real profile, and a
+deletion reaching a real backup while it is.
 
 Two of this contract's statements are held by tests outside those two files,
 because the crate that owns each gate is where a reverted gate has to bite:
 `retention/tests/rotation_seam.rs` refuses an executor outside the plan's
 generations without a store, and `retention/tests/rotation.rs` holds the plan's
 ordering rule and the unit-in-plan gate. `vault/tests/encrypted_objects.rs` holds
-what `verify_shredded_object` requires of the file it hands back.
+what `verify_shredded_object` requires of the file it hands back, and what a
+reconciliation pass says about a profile that deleted an artifact.

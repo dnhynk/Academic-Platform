@@ -43,6 +43,8 @@ cargo clippy -p academic-vault --all-targets --locked --offline --features aead-
 cargo test -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection
 cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection -- -D warnings
 cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection
+cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection -- -D warnings
+cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
@@ -79,9 +81,19 @@ portability lane below, because only that lane links the store and the backup
 boundary in one process. Its default-lane half is pure Rust and
 runs inside `cargo test --workspace`; the half that rewraps and shreds real
 `AEAD_CHUNKED_V2` objects needs the non-default `rotation-engine` feature and the
-two commands above, which are also hosted CI steps on every Rust matrix label.
+commands above, which are also hosted CI steps on every Rust matrix label.
 What a rotation and a crypto-shred do and do not claim is in
 [rotation and retention](docs/contracts/rotation-and-retention.md).
+
+**Phase 2 does not accept running a rotation.** The seven entry points that would
+drive one refuse on their first line, and the third and fourth commands above are
+the lane where the machinery under those refusals still executes — including the
+`KY03` to `KY05` fault rows and the `T114`/`T116` seam closures. No product graph
+selects that lane, which `phase1-scaffold-policy.test.mjs` checks, and the hosted
+`rotation-orchestration-lane` job is what runs it. Crypto-shredding, backup
+tombstones, and their re-application on restore are outside the gate and keep
+working; what an orchestrator has to close before the gate opens is listed in the
+same contract.
 
 The encrypted store lane and the encrypted backup lane are non-default and are
 verified separately, because neither can be linked into the same binary as the
@@ -90,7 +102,8 @@ as the `encrypted-store-lane` and `encrypted-portability-lane` jobs. The first
 is what makes `EN01` — the store-rekey kill the `P2-K5` rotation journal's
 database unit depends on — executed evidence rather than a citation. The second
 covers the seam where that rotation and its deletions meet the canonical store
-and the backup boundary, including
+and the backup boundary — including the refusal, in `encrypted_rotation_gate.rs`,
+and including
 `backup_tombstone_is_present_and_re_deletes_on_restore`, which calls the product
 backup and the product restore rather than imitating them. Native Windows is not in that job
 and stays local, because `openssl-src` needs a Perl the hosted Windows image does
