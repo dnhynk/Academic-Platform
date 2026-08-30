@@ -1983,6 +1983,16 @@ const encryptedPortabilityCiCommands = [
   "cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --test encrypted_crash",
 ];
 const encryptedPortabilityMatrixLabels = ["ubuntu-latest"];
+// The lane that selects `rotation-orchestration`. Phase 2 refuses a rotation
+// everywhere else, so this is the only hosted job that executes the machinery
+// under the refusal — `KY03`-`KY05` and the `T114`/`T116` seam closures.
+const rotationOrchestrationCiCommands = [
+  "cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,rotation-orchestration,phase2-fault-injection -- -D warnings",
+  "cargo test -p academic-retention --all-targets --locked --features rotation-engine,rotation-orchestration,phase2-fault-injection",
+  "cargo clippy -p academic-portability --no-default-features --features encrypted-portability-rotation,phase2-fault-injection --all-targets --locked -- -D warnings",
+  "cargo test -p academic-portability --no-default-features --features encrypted-portability-rotation --locked",
+];
+const rotationOrchestrationMatrixLabels = ["ubuntu-latest"];
 const parseCiWorkflow = (ci) => parsePnpmLockYaml(ci, ".github/workflows/ci.yml");
 const expectedCiWorkflow = {
   name: "ci",
@@ -2230,6 +2240,55 @@ const expectedCiWorkflow = {
         {
           name: "Run the BK and RS kill rows under encryption",
           run: encryptedPortabilityCiCommands[2],
+        },
+      ],
+    },
+    "rotation-orchestration-lane": {
+      name: "rotation-orchestration-lane-${{ matrix.os }}",
+      needs: "source-preflight",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 45,
+      strategy: {
+        "fail-fast": false,
+        matrix: { os: rotationOrchestrationMatrixLabels },
+      },
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Install pinned Rust toolchain",
+          run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        {
+          name: "Restore the Cargo registry keyed on the committed Cargo lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.cargo/registry",
+            key: "cargo-registry-rotation-orchestration-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
+          },
+        },
+        {
+          name: "Populate the Cargo registry from the committed lockfile",
+          run: lockedCargoRegistryFetch,
+        },
+        {
+          name: "Lint the rotation orchestration lane",
+          run: rotationOrchestrationCiCommands[0],
+        },
+        {
+          name: "Run the rotation rows, including KY03 to KY05",
+          run: rotationOrchestrationCiCommands[1],
+        },
+        {
+          name: "Lint the encrypted portability rotation lane",
+          run: rotationOrchestrationCiCommands[2],
+        },
+        {
+          name: "Run the rotation seam over the real store",
+          run: rotationOrchestrationCiCommands[3],
         },
       ],
     },

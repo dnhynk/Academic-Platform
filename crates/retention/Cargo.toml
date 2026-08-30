@@ -15,6 +15,17 @@ default = []
 # Only the executor that rewraps and shreds real `AEAD_CHUNKED_V2` objects
 # needs `academic-vault/aead-objects`, which is itself non-default.
 rotation-engine = ["dep:academic-vault", "academic-vault/aead-objects"]
+# Phase 2 has not accepted a key rotation. The machinery that performs one is
+# built and tested, and the seven entry points that would drive it refuse
+# unconditionally unless this feature is selected: see
+# `rotation::ROTATION_NOT_ACCEPTED_STATEMENT` and
+# `rotation::require_rotation_accepted`, which is the one place the decision is
+# made. Nothing else turns it on — no environment variable, no debug build, no
+# argument — and `phase1-scaffold-policy.test.mjs` checks that no product binary
+# selects it. Selecting it is what the orchestrator task `P2-P2` does when it
+# reopens rotation; until then the acceptance rows for the machinery run in the
+# `rotation-orchestration-lane` CI job and the refusal runs everywhere else.
+rotation-orchestration = []
 # Test-only deterministic `KY03`-`KY05` and `RB02` failpoints. `RB01`'s lives in
 # `academic-vault`, beside the key slot it destroys, so selecting this feature
 # selects that one too. A product build contains no environment lookup and no

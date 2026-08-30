@@ -17,17 +17,23 @@ use std::{
 };
 
 use academic_crypto::{
-    DeviceKeystore, IDENTIFIER_BYTES, KeystoreFailure, ProfileId, RECOVERY_ARGON2ID_V1,
-    RecoverySecret, UnlockThrottle, VaultMasterKey, create_device_recipient,
-    create_recovery_recipient, unlock_with_device, unlock_with_recovery,
+    DeviceKeystore, IDENTIFIER_BYTES, KeystoreFailure, ProfileId, VaultMasterKey,
+    create_device_recipient,
 };
+#[cfg(feature = "rotation-orchestration")]
+use academic_crypto::{
+    RECOVERY_ARGON2ID_V1, RecoverySecret, UnlockThrottle, create_recovery_recipient,
+    unlock_with_device, unlock_with_recovery,
+};
+#[cfg(feature = "rotation-orchestration")]
+use academic_retention::RotationState;
 use academic_retention::{
     ActionId, AppendOnlyJournal, ClassResolution, DERIVATIVE_CLASSES, DeletionPlan,
     DerivativeClass, DerivativeResolver, ExecutionFailure, GATE_38_026_STATEMENT, JournalEntry,
     OriginalVoiceAuthority, PlannedAction, REVOCATION_SCOPE_STATEMENT, RetentionExecutor,
-    RetentionOutcome, RetentionSubject, RotationId, RotationPlan, RotationState, RotationUnit,
-    UnresolvedReason, VoiceSpan, execute::settle, journal, journal::ROTATION_JOURNAL_RELATIVE_PATH,
-    recipients, rotation::KeyGeneration,
+    RetentionOutcome, RetentionSubject, RotationId, RotationPlan, RotationUnit, UnresolvedReason,
+    VoiceSpan, execute::settle, journal, journal::ROTATION_JOURNAL_RELATIVE_PATH, recipients,
+    rotation::KeyGeneration,
 };
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -35,6 +41,7 @@ type TestResult = Result<(), Box<dyn Error>>;
 const PROFILE_BYTES: [u8; IDENTIFIER_BYTES] = [0x5A; IDENTIFIER_BYTES];
 const DEVICE_A: [u8; IDENTIFIER_BYTES] = [0xA1; IDENTIFIER_BYTES];
 const DEVICE_B: [u8; IDENTIFIER_BYTES] = [0xB2; IDENTIFIER_BYTES];
+#[cfg(feature = "rotation-orchestration")]
 const PHRASE_RECIPIENT: [u8; IDENTIFIER_BYTES] = [0xC3; IDENTIFIER_BYTES];
 const LABEL_A: &str = "academic-os:device:a";
 const LABEL_B: &str = "academic-os:device:b";
@@ -121,11 +128,13 @@ impl DeviceKeystore for MemoryKeystore {
     }
 }
 
+#[cfg(feature = "rotation-orchestration")]
 fn phrase(byte: u8) -> RecoverySecret {
     RecoverySecret::from_entropy([byte; 32])
 }
 
 /// Opens one recovery-class record with the phrase that wrapped it.
+#[cfg(feature = "rotation-orchestration")]
 fn open_with_phrase(
     record: &academic_crypto::RecipientRecord,
     secret: &RecoverySecret,
@@ -146,6 +155,7 @@ fn open_with_phrase(
 /// retention crate holds no key, so the generation a record wraps is answered
 /// by whoever can open it. A device record is tried through the broker and a
 /// recovery record through the phrase; a record neither opens is not kept.
+#[cfg(feature = "rotation-orchestration")]
 fn opens_generation(
     record: &academic_crypto::RecipientRecord,
     secret: &RecoverySecret,
@@ -175,6 +185,14 @@ fn open_journal(root: &Path) -> Result<AppendOnlyJournal, Box<dyn Error>> {
 
 /// `KY05`. A revoked recipient is not offered the next generation's key, and
 /// the objects still under the revoked generation are enumerated exactly.
+///
+/// The withholding is what `rewrap_for_generation` does, and that is rotation
+/// orchestration Phase 2 does not accept, so this row runs in the
+/// `rotation-orchestration-lane` job rather than in the default graph. What the
+/// default graph proves in its place is the refusal, in
+/// `a_rewrap_for_a_new_generation_is_refused` — and that revocation still
+/// records what it records, in `revocation_does_not_claim_prior_plaintext_erasure`.
+#[cfg(feature = "rotation-orchestration")]
 #[test]
 fn revoked_recipient_gets_no_new_key() -> TestResult {
     let root = TestRoot::new("revoke")?;

@@ -1343,6 +1343,84 @@ test("rotation_engine_lane_is_not_default", async () => {
     );
   }
 
+  // Phase 2 has not accepted a *rotation*, only the machinery that would run
+  // one. `rotation-orchestration` is what selects the machinery's entry points;
+  // without it they refuse on their first line. Nothing in any shipping graph
+  // may select it, and the feature must stay empty — a feature that pulled a
+  // dependency in would be a second way to notice it, and a feature with an
+  // implied edge would be a second way to enable it.
+  assert.deepEqual(
+    retention.features["rotation-orchestration"],
+    [],
+    "the rotation orchestration lane grew a dependency edge",
+  );
+  assert.equal(
+    node.features.includes("rotation-orchestration"),
+    false,
+    "the workspace resolve selects the rotation orchestration lane",
+  );
+  const portability = packagesByName.get("academic-portability");
+  assert.deepEqual(
+    portability.features["encrypted-portability-rotation"],
+    ["encrypted-portability", "academic-retention/rotation-orchestration"],
+    "the encrypted rotation lane no longer selects exactly the two things it names",
+  );
+  assert.equal(
+    portability.features["encrypted-portability"].includes(
+      "academic-retention/rotation-orchestration",
+    ),
+    false,
+    "the plain encrypted portability lane turns the rotation gate off",
+  );
+  assert.equal(
+    resolveNodesById
+      .get(portability.id)
+      .features.includes("encrypted-portability-rotation"),
+    false,
+    "the workspace resolve selects the encrypted rotation lane",
+  );
+  for (const [label, tree] of [
+    ["academic-portability", shippingTree(["-p", "academic-portability"])],
+    ["academic-daemon", shippingTree(["-p", "academic-daemon"])],
+    ["academic-cli", shippingTree(["-p", "academic-cli"])],
+    ["workspace", shippingTree(["--workspace"])],
+  ]) {
+    assert.equal(
+      tree.includes("rotation-orchestration"),
+      false,
+      `the ${label} shipping graph selected the rotation orchestration lane`,
+    );
+  }
+
+  // The refusal is decided once, by the build and by nothing else. A second
+  // decision site, an environment variable, or a debug-build branch would each
+  // be the "quiet flag" t068 section 3.1 forbids, and each has been injected
+  // and observed to fail `rotation_gate.rs`.
+  const rotation = await readFile("crates/retention/src/rotation.rs", "utf8");
+  assert.equal(
+    rotation.match(/cfg!\(feature = "rotation-orchestration"\)/gu)?.length,
+    1,
+    "the rotation gate is decided in more than one place",
+  );
+  for (const source of [
+    "crates/retention/src/rotation.rs",
+    "crates/retention/src/engine.rs",
+    "crates/retention/src/recipients.rs",
+  ]) {
+    const text = await readFile(source, "utf8");
+    for (const forbidden of [
+      'cfg(feature = "rotation-orchestration")',
+      "ACADEMIC_OS_ALLOW_ROTATION",
+      "debug_assertions",
+    ]) {
+      assert.equal(
+        text.includes(forbidden),
+        false,
+        `${source} holds ${forbidden}, which is a second way past the rotation gate`,
+      );
+    }
+  }
+
   // The frozen journal and shred contracts, in the one place each is defined.
   const journal = await readFile("crates/retention/src/journal.rs", "utf8");
   assert.ok(journal.includes('pub const JOURNAL_VERSION: u8 = 1;'));

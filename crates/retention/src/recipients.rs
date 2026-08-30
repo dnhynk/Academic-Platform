@@ -44,7 +44,7 @@ use crate::{
     entry::JournalEntry,
     fault::{self, FaultPoint},
     journal::{AppendOnlyJournal, JournalError, sync_directory},
-    rotation::{KeyGeneration, RotationError, RotationState},
+    rotation::{KeyGeneration, RotationError, RotationState, require_rotation_accepted},
 };
 
 /// Relative path of the recipient set inside a profile.
@@ -62,6 +62,13 @@ pub const REVOCATION_SCOPE_STATEMENT: &str = "revocation stops this recipient fr
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum RecipientError {
+    /// Phase 2 has not accepted a rotation.
+    ///
+    /// A rewrap for a new generation and the retirement of an old one are the
+    /// recipient half of a rotation, so they are refused with it. Adding and
+    /// revoking a recipient are not, and keep working.
+    #[error(transparent)]
+    NotAccepted(#[from] crate::rotation::RotationNotAccepted),
     /// The recipient file could not be read or written.
     #[error("{operation} failed for {path}: {source}")]
     Io {
@@ -462,6 +469,7 @@ pub fn rewrap_for_generation<F>(
 where
     F: FnMut(&RecipientRecord) -> Result<RecipientRecord, RecipientError>,
 {
+    require_rotation_accepted()?;
     let revoked = revoked_recipient_ids(journal);
     let survivors = read_set(profile_root, profile)?;
     // The set is `P2-K1`'s frozen document and a record does not say which
@@ -554,6 +562,7 @@ pub fn retire_generation<F>(
 where
     F: FnMut(&RecipientRecord) -> bool,
 {
+    require_rotation_accepted()?;
     let Some(state) = RotationState::replay(journal.entries())? else {
         return Err(RecipientError::NoRotationRecorded(kept_generation.to_hex()));
     };

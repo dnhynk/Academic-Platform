@@ -21,7 +21,7 @@ use crate::{
     rotation::{
         CanonicalReference, CanonicalReferenceError, OpeningGeneration, RotationError,
         RotationPlan, RotationState, RotationUnit, StoreDatabaseError, StoreDatabaseExecutor,
-        StoreDatabaseRekey, UnitProgress, store_database_target_id,
+        StoreDatabaseRekey, UnitProgress, require_rotation_accepted, store_database_target_id,
     },
     tombstone::{BackupTombstone, TombstoneError},
 };
@@ -30,6 +30,9 @@ use crate::{
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum EngineError {
+    /// Phase 2 has not accepted a rotation.
+    #[error(transparent)]
+    NotAccepted(#[from] crate::rotation::RotationNotAccepted),
     /// The vault refused.
     #[error("the object vault refused: {0}")]
     Vault(#[from] VaultError),
@@ -367,6 +370,7 @@ impl<'a> RotationEngine<'a> {
     /// Nothing is moved here. A kill immediately after leaves a journal that
     /// enumerates every unit as remaining, which is exactly what a resume needs.
     pub fn begin(&self, journal: &mut AppendOnlyJournal) -> Result<(), EngineError> {
+        require_rotation_accepted()?;
         journal.append(self.plan.started_entry())?;
         Ok(())
     }
@@ -402,6 +406,7 @@ impl<'a> RotationEngine<'a> {
         unit: &RotationUnit,
         source_descriptor: &ArtifactDescriptor,
     ) -> Result<ArtifactDescriptor, EngineError> {
+        require_rotation_accepted()?;
         self.require_planned(unit)?;
         fault::trip(FaultPoint::Ky03BeforeReseal);
         let outcome = self.source.reseal(source_descriptor, self.target)?;
@@ -460,6 +465,7 @@ impl<'a> RotationEngine<'a> {
         unit: &RotationUnit,
         executor: &dyn StoreDatabaseExecutor,
     ) -> Result<StoreDatabaseRekey, EngineError> {
+        require_rotation_accepted()?;
         if unit.kind() != UnitKind::StoreDatabase {
             return Err(EngineError::NotAStoreDatabaseUnit(unit.unit_id_hex()));
         }
@@ -507,6 +513,7 @@ impl<'a> RotationEngine<'a> {
     /// Refuses while any unit is still remaining, so a `RotationCompleted`
     /// record can never be read as covering a unit that did not move.
     pub fn complete(&self, journal: &mut AppendOnlyJournal) -> Result<(), EngineError> {
+        require_rotation_accepted()?;
         let Some(state) = RotationState::replay(journal.entries())? else {
             return Err(EngineError::Rotation(RotationError::EmptyPlan));
         };
@@ -597,6 +604,7 @@ pub fn retire_superseded_object(
     superseded: &ArtifactDescriptor,
     reference: &dyn CanonicalReference,
 ) -> Result<[u8; 32], EngineError> {
+    require_rotation_accepted()?;
     let Some(state) = RotationState::replay(journal.entries())? else {
         return Err(EngineError::Rotation(RotationError::EmptyPlan));
     };

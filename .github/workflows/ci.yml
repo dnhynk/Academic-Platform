@@ -203,6 +203,47 @@ jobs:
       - name: Run the BK and RS kill rows under encryption
         run: cargo test -p academic-portability --no-default-features --features encrypted-portability,phase2-fault-injection --locked --test encrypted_crash
 
+  # The rotation orchestration lane. Phase 2 has not accepted a rotation and
+  # every entry point that would run one refuses, which is what the default
+  # graphs above execute. This job is what keeps the machinery under those
+  # refusals honest: it selects `rotation-orchestration`, and with it the
+  # `KY03`-`KY05` fault rows and the `T114`/`T116` seam closures, so the code
+  # `P2-P2` reopens is code that was still being run. Nothing here ships — no
+  # product graph resolves the feature, which `phase1-scaffold-policy.test.mjs`
+  # checks — and the refusing rows and these executing rows never link into one
+  # binary.
+  rotation-orchestration-lane:
+    name: rotation-orchestration-lane-${{ matrix.os }}
+    needs: source-preflight
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+      - name: Restore the Cargo registry keyed on the committed Cargo lockfile
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-rotation-orchestration-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Populate the Cargo registry from the committed lockfile
+        run: cargo fetch --locked
+      - name: Lint the rotation orchestration lane
+        run: cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,rotation-orchestration,phase2-fault-injection -- -D warnings
+      - name: Run the rotation rows, including KY03 to KY05
+        run: cargo test -p academic-retention --all-targets --locked --features rotation-engine,rotation-orchestration,phase2-fault-injection
+      - name: Lint the encrypted portability rotation lane
+        run: cargo clippy -p academic-portability --no-default-features --features encrypted-portability-rotation,phase2-fault-injection --all-targets --locked -- -D warnings
+      - name: Run the rotation seam over the real store
+        run: cargo test -p academic-portability --no-default-features --features encrypted-portability-rotation --locked
+
   contracts:
     name: pnpm-contracts
     needs: source-preflight

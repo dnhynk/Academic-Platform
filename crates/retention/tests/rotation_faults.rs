@@ -33,13 +33,14 @@ use std::{
 
 use academic_crypto::VaultMasterKey;
 use academic_domain::ArtifactDescriptor;
+#[cfg(feature = "rotation-orchestration")]
+use academic_retention::engine::{
+    OpeningObservation, RotationKeys, observe_reachable_opening, rebind_locator,
+};
 use academic_retention::{
     AppendOnlyJournal, BackupTombstone, FAULT_READY_MARKER_VARIABLE, FAULT_SELECTION_VARIABLE,
     RotationId, RotationPlan, RotationState, RotationUnit,
-    engine::{
-        HeaderProbe, OpeningObservation, RotationEngine, RotationKeys, observe_reachable_opening,
-        probe_header, rebind_locator, shred_with_tombstone,
-    },
+    engine::{HeaderProbe, RotationEngine, probe_header, shred_with_tombstone},
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
     recipients, tombstone,
 };
@@ -60,6 +61,7 @@ const CORPUS: usize = 3;
 const ROTATION: [u8; 16] = [0x5C; 16];
 
 /// Every `KY03` stage, in the order the engine reaches them.
+#[cfg(feature = "rotation-orchestration")]
 const KY03_STAGES: [&str; 4] = [
     "KY03:before-reseal",
     "KY03:after-reseal",
@@ -246,6 +248,7 @@ fn kill_at(root: &Path, fault: &str, unit_index: usize) -> TestResult {
 /// the test does not agree with the implementation by construction: a build
 /// that decided a re-sealed unit was already reachable would satisfy
 /// `agrees_with` and still fail here.
+#[cfg(feature = "rotation-orchestration")]
 fn expected_observation(stage: &str) -> OpeningObservation {
     if stage == "KY03:after-migrated-record" {
         OpeningObservation::OnlyTarget
@@ -255,6 +258,7 @@ fn expected_observation(stage: &str) -> OpeningObservation {
 }
 
 /// Asserts the rotation invariant over every unit, from the journal alone.
+#[cfg(feature = "rotation-orchestration")]
 fn assert_exactly_one_opening_key(
     root: &Path,
     source_master: &VaultMasterKey,
@@ -295,6 +299,8 @@ fn assert_exactly_one_opening_key(
 struct Prepared {
     root: TestRoot,
     source_master: VaultMasterKey,
+    /// Read only by `KY03`, which needs both generations to state the invariant.
+    #[cfg_attr(not(feature = "rotation-orchestration"), allow(dead_code))]
     target_master: VaultMasterKey,
     descriptors: Vec<ArtifactDescriptor>,
 }
@@ -328,6 +334,7 @@ fn prepare(label: &str) -> Result<Prepared, Box<dyn Error>> {
 /// `KY03`. A process killed at any of the four points a rewrap passes through
 /// leaves every object opened by exactly one of the old and new keys, and the
 /// key that opens it is the one the journal says.
+#[cfg(feature = "rotation-orchestration")]
 #[test]
 fn interrupted_rewrap_has_exactly_one_opening_key() -> TestResult {
     for (stage_index, stage) in KY03_STAGES.iter().enumerate() {
