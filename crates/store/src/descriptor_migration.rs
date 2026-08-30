@@ -246,7 +246,6 @@ pub fn locator_is_already_in_chain(
     }))
 }
 
-
 /// Returns the next chain position for one artifact.
 pub fn next_migration_seq(connection: &Connection, artifact: ArtifactId) -> StoreResult<u64> {
     if !migration_table_exists(connection)? {
@@ -336,7 +335,6 @@ fn hex_locator(value: &VaultLocator) -> String {
         .map(|byte| format!("{byte:02x}"))
         .collect()
 }
-
 
 fn migration_table_exists(connection: &Connection) -> StoreResult<bool> {
     let found: Option<String> = connection

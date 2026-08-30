@@ -40,9 +40,9 @@ use academic_retention::{
     engine::{
         HeaderProbe, RotationEngine, probe_header, retire_superseded_object, shred_with_tombstone,
     },
-    rotation::StoreDatabaseRekey as StoreDatabaseRekeyOutcome,
     journal::ROTATION_JOURNAL_RELATIVE_PATH,
     rotation::KeyGeneration,
+    rotation::StoreDatabaseRekey as StoreDatabaseRekeyOutcome,
     tombstone,
 };
 use academic_store::descriptor_migration::DescriptorMigration;
@@ -152,11 +152,11 @@ fn rotate_every_object(
     // The database moves last. While objects are still moving, the store key
     // that opens the ones already migrated and the ones not yet migrated is the
     // same one, and it has to stay in force until every object has landed.
-    let source_vault = fixture.open_vault()?;
-    let target_vault = fixture.open_vault_under(&target)?;
-    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
-    let probe = NativePathProbe::default();
-    let outcome = {
+    {
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&target)?;
+        let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+        let probe = NativePathProbe::default();
         let executor = StoreDatabaseRekey::new(
             fixture.profile_root(),
             &probe,
@@ -164,13 +164,10 @@ fn rotate_every_object(
             fixture.master(),
             &target,
         );
-        engine.rotate_store_database(&mut journal, &database_unit, &executor)?
-    };
-    assert_eq!(outcome, StoreDatabaseRekeyOutcome::Rekeyed);
-    engine.complete(&mut journal)?;
-    drop(engine);
-    drop(source_vault);
-    drop(target_vault);
+        let outcome = engine.rotate_store_database(&mut journal, &database_unit, &executor)?;
+        assert_eq!(outcome, StoreDatabaseRekeyOutcome::Rekeyed);
+        engine.complete(&mut journal)?;
+    }
 
     // The caller-side half: from here the profile is wholly under the target
     // generation, so `fixture.master()` is that generation and nothing derived

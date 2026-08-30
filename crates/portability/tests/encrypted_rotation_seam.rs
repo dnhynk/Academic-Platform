@@ -107,11 +107,11 @@ fn rotate_profile(
         migrated.push(resealed);
     }
 
-    let source_vault = fixture.open_vault()?;
-    let target_vault = fixture.open_vault_under(&target)?;
-    let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
-    let probe = NativePathProbe::default();
-    let outcome = {
+    {
+        let source_vault = fixture.open_vault()?;
+        let target_vault = fixture.open_vault_under(&target)?;
+        let engine = RotationEngine::new(&plan, &source_vault, &target_vault);
+        let probe = NativePathProbe::default();
         let executor = StoreDatabaseRekey::new(
             fixture.profile_root(),
             &probe,
@@ -119,13 +119,10 @@ fn rotate_profile(
             fixture.master(),
             &target,
         );
-        engine.rotate_store_database(&mut journal, &database_unit, &executor)?
-    };
-    assert_eq!(outcome, StoreDatabaseRekeyOutcome::Rekeyed);
-    engine.complete(&mut journal)?;
-    drop(engine);
-    drop(source_vault);
-    drop(target_vault);
+        let outcome = engine.rotate_store_database(&mut journal, &database_unit, &executor)?;
+        assert_eq!(outcome, StoreDatabaseRekeyOutcome::Rekeyed);
+        engine.complete(&mut journal)?;
+    }
 
     fixture.adopt_generation(target)?;
     Ok(migrated)

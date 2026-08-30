@@ -19,9 +19,9 @@ use crate::{
     fault::{self, FaultPoint},
     journal::{AppendOnlyJournal, JournalError},
     rotation::{
-        CanonicalReference, CanonicalReferenceError, OpeningGeneration, RotationError, RotationPlan,
-        RotationState, RotationUnit, StoreDatabaseError, StoreDatabaseExecutor, StoreDatabaseRekey,
-        UnitProgress, store_database_target_id,
+        CanonicalReference, CanonicalReferenceError, OpeningGeneration, RotationError,
+        RotationPlan, RotationState, RotationUnit, StoreDatabaseError, StoreDatabaseExecutor,
+        StoreDatabaseRekey, UnitProgress, store_database_target_id,
     },
     tombstone::{BackupTombstone, TombstoneError},
 };
@@ -432,7 +432,6 @@ impl<'a> RotationEngine<'a> {
         })?;
         Ok(outcome)
     }
-
 
     /// Records that every planned unit migrated.
     ///

@@ -34,9 +34,9 @@ use academic_retention::{
 };
 use academic_vault::SealedObjectVerifier as _;
 use rotation_support::{
-    SOURCE_ENTROPY, SOURCE_RECIPIENT, TARGET_ENTROPY, TARGET_RECIPIENT, TestRoot, create_generation,
-    domain_kek, generation_of, open_vault, profile_id, publish_generations, seal_corpus,
-    unlock_generation,
+    SOURCE_ENTROPY, SOURCE_RECIPIENT, TARGET_ENTROPY, TARGET_RECIPIENT, TestRoot,
+    create_generation, domain_kek, generation_of, open_vault, profile_id, publish_generations,
+    seal_corpus, unlock_generation,
 };
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -201,7 +201,10 @@ fn a_retirement_with_the_descriptors_swapped_destroys_nothing() -> TestResult {
     let target_vault = open_vault(rotated.root.path(), &rotated.target_master)?;
     let target_kek = domain_kek(&rotated.target_master)?;
     let current_path = target_vault.layout().object_path(&rotated.resealed[0])?;
-    assert_eq!(probe_header(&current_path, &target_kek), HeaderProbe::Opened);
+    assert_eq!(
+        probe_header(&current_path, &target_kek),
+        HeaderProbe::Opened
+    );
 
     let mut journal = journal_at(&rotated.root)?;
     let refused = retire_superseded_object(
@@ -645,9 +648,9 @@ fn a_tombstone_reaches_a_copy_under_a_superseded_locator() -> TestResult {
     let objects_root = rotated.root.path().join("vault").join("v2");
     let applied = apply_tombstones(&objects_root, std::slice::from_ref(&stone))?;
     assert!(
-        applied
-            .applied
-            .contains(&hex::encode(rotated.descriptors[0].vault_locator.as_bytes())),
+        applied.applied.contains(&hex::encode(
+            rotated.descriptors[0].vault_locator.as_bytes()
+        )),
         "the deletion did not reach the copy under the superseded locator: {applied:?}"
     );
     assert!(
