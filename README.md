@@ -92,8 +92,12 @@ the lane where the machinery under those refusals still executes — including t
 selects that lane, which `phase1-scaffold-policy.test.mjs` checks, and the hosted
 `rotation-orchestration-lane` job is what runs it. Crypto-shredding, backup
 tombstones, and their re-application on restore are outside the gate and keep
-working; what an orchestrator has to close before the gate opens is listed in the
-same contract.
+working. So are the primitives a rotation composes — re-sealing an object and
+rekeying the profile database live in crates below `academic-retention` and
+cannot reach the refusal — so what the gate covers is the journalled
+orchestration, not every write a rotation performs. That, and what an
+orchestrator has to close before the gate opens, is listed in the same
+contract.
 
 The encrypted store lane and the encrypted backup lane are non-default and are
 verified separately, because neither can be linked into the same binary as the
