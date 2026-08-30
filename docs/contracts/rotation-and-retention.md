@@ -547,10 +547,12 @@ is there and every cleartext identity field matches the descriptor. That is more
 than the keyed path checks for a shredded object, since a destroyed slot stops
 that read before `require_matches` runs, and none of it is authenticated — the
 wrap that authenticated those bytes is what the shred destroyed, so it is the same
-operator-facing label the marker is. Anything else stays the locator mismatch it
-was. `a_deletion_before_a_rotation_still_backs_up_and_restores` is the whole
-chain: delete, rotate what is left, back up, restore, and restore the
-pre-deletion backup the tombstone was written into.
+operator-facing label the marker is. A header that is not a destroyed key slot is
+refused as the same `LocatorMismatch` it was, and a name with no file behind it as
+the read that failed.
+`a_deletion_before_a_rotation_still_backs_up_and_restores` is the whole chain:
+delete, rotate what is left, back up, restore, and restore the pre-deletion
+backup the tombstone was written into.
 
 There is no encrypted export. `export_profile` is the Phase 1 plaintext lane over
 `Vault`, which has no key generations and no crypto-shred, so nothing in this
