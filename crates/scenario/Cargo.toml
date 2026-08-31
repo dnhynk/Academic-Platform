@@ -18,6 +18,7 @@ thiserror.workspace = true
 # dev-dependencies, so the domain types a projection must never become have to
 # be reachable from a `tests/compile_fail` case as well.
 academic-domain = { path = "../domain" }
+academic-admission = { path = "../admission" }
 proptest.workspace = true
 serde_json.workspace = true
 trybuild.workspace = true

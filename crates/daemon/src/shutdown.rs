@@ -2,6 +2,7 @@
 
 use std::{io, sync::Arc, time::Duration};
 
+use academic_admission::Posture;
 use tokio::{
     sync::{oneshot, watch},
     task::{JoinError, JoinSet},
@@ -53,11 +54,17 @@ fn join_listener(
     result.map_err(|error| DaemonError::ListenerTask(error.to_string()))
 }
 
+#[derive(Debug)]
+pub(crate) struct ListenerConfig {
+    pub writer: Arc<WriterQueue>,
+    pub nonce: SessionNonce,
+    pub posture: Posture,
+    pub frame_timeout: Duration,
+}
+
 pub(crate) async fn listener_loop(
     mut listener: LocalListener,
-    writer: Arc<WriterQueue>,
-    nonce: SessionNonce,
-    frame_timeout: Duration,
+    config: ListenerConfig,
     mut stop: oneshot::Receiver<()>,
     _singleton: SingletonGuard,
     runtime_paths: RuntimePaths,
@@ -99,14 +106,17 @@ pub(crate) async fn listener_loop(
             Some(result) = connections.join_next() => join_connection(result)?,
             accepted = listener.accept() => match accepted {
                 Ok(stream) => {
-                    let connection_writer = Arc::clone(&writer);
-                    let connection_nonce = nonce.clone();
+                    let connection_writer = Arc::clone(&config.writer);
+                    let connection_nonce = config.nonce.clone();
+                    let connection_posture = config.posture.clone();
                     let connection_shutdown = connection_stop.subscribe();
+                    let frame_timeout = config.frame_timeout;
                     connections.spawn(async move {
                         serve_connection(
                             stream,
                             connection_writer,
                             &connection_nonce,
+                            &connection_posture,
                             frame_timeout,
                             connection_shutdown,
                         )

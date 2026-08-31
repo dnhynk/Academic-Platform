@@ -1,11 +1,10 @@
-//! Headless Phase 1 CLI for daemon, doctor, ingest, export, backup, restore,
+//! Headless CLI for admission, daemon, doctor, ingest, export, backup, restore,
 //! crash-replay, and deterministic fixture operations.
 //!
 //! Three invariants shape this binary:
 //!
-//! 1. Every path emits the policy banner and the policy object. There is no
-//!    quiet flag, no environment override, no configuration key, and no debug
-//!    path that suppresses either or admits real data.
+//! 1. Every path emits the receipt-derived posture. The current unprovisioned
+//!    acceptance key keeps that posture synthetic.
 //! 2. It never opens the canonical writer. Ingest — the only canonical mutation
 //!    — travels over local IPC to the daemon, which is the sole writer.
 //! 3. Failures are classified, so a caller can distinguish a policy denial from
@@ -33,9 +32,9 @@ use crate::{
 #[command(
     name = "academic",
     version,
-    about = "Academic OS Phase 1 synthetic local-core CLI",
-    long_about = "Operates a synthetic, plaintext, throwaway Phase 1 profile. \
-                  Real or production data is forbidden and no flag enables it."
+    about = "Academic OS local-core CLI",
+    long_about = "Operates local profiles and verifies the compiled admission contract. \
+                  This build has no provisioned acceptance key, so production data remains denied."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -44,6 +43,11 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Verifies or shows the signed data-admission receipt posture.
+    Admission {
+        #[command(subcommand)]
+        command: AdmissionCommand,
+    },
     /// Hosts or inspects the local-core daemon.
     Daemon {
         #[command(subcommand)]
@@ -149,6 +153,28 @@ enum Commands {
 }
 
 #[derive(Debug, Subcommand)]
+enum AdmissionCommand {
+    /// Verifies the receipt and fails when admission is denied.
+    Verify {
+        /// Profile root containing `admission/receipt.cbor`.
+        #[arg(long)]
+        profile: PathBuf,
+        /// Output representation.
+        #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+        format: OutputFormat,
+    },
+    /// Shows the emitted posture and any denial reason.
+    Show {
+        /// Profile root containing `admission/receipt.cbor`.
+        #[arg(long)]
+        profile: PathBuf,
+        /// Output representation.
+        #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+        format: OutputFormat,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 enum DaemonCommand {
     /// Hosts one foreground daemon until the terminal interrupts it.
     Serve {
@@ -201,9 +227,10 @@ type Renderer = fn(&serde_json::Value) -> Vec<String>;
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let (name, format) = describe(&cli.command);
+    let posture = policy_banner::posture_for_profile(command_profile(&cli.command));
 
     // The banner precedes every result on every path, including failures.
-    if let Err(error) = write_banner(format) {
+    if let Err(error) = write_banner(format, &posture) {
         eprintln!("failed to write the mandatory policy banner: {error}");
         return ExitCode::from(u8::try_from(ExitClass::Internal.code()).unwrap_or(20));
     }
@@ -212,14 +239,14 @@ fn main() -> ExitCode {
     let class = match &outcome {
         Ok(value) => {
             let lines = render(value);
-            if let Err(error) = emit_success(name, format, value, &lines) {
+            if let Err(error) = emit_success(name, format, value, &lines, &posture) {
                 eprintln!("failed to write the command result: {error}");
                 return exit_code(ExitClass::Internal);
             }
             ExitClass::Ok
         }
         Err(failure) => {
-            if let Err(error) = emit_failure(name, format, failure) {
+            if let Err(error) = emit_failure(name, format, failure, &posture) {
                 eprintln!("failed to write the command failure: {error}");
                 return exit_code(ExitClass::Internal);
             }
@@ -235,6 +262,10 @@ fn exit_code(class: ExitClass) -> ExitCode {
 
 const fn describe(command: &Commands) -> (&'static str, OutputFormat) {
     match command {
+        Commands::Admission { command } => match command {
+            AdmissionCommand::Verify { format, .. } => ("admission verify", *format),
+            AdmissionCommand::Show { format, .. } => ("admission show", *format),
+        },
         Commands::Daemon { command } => match command {
             DaemonCommand::Serve { format, .. } => ("daemon serve", *format),
             DaemonCommand::Status { format, .. } => ("daemon status", *format),
@@ -250,6 +281,29 @@ const fn describe(command: &Commands) -> (&'static str, OutputFormat) {
     }
 }
 
+fn command_profile(command: &Commands) -> Option<&std::path::Path> {
+    match command {
+        Commands::Admission { command } => match command {
+            AdmissionCommand::Verify { profile, .. } | AdmissionCommand::Show { profile, .. } => {
+                Some(profile.as_path())
+            }
+        },
+        Commands::Daemon { command } => match command {
+            DaemonCommand::Serve { profile, .. } | DaemonCommand::Status { profile, .. } => {
+                Some(profile.as_path())
+            }
+        },
+        Commands::Doctor { profile, .. } => match profile {
+            Some(profile) => Some(profile.as_path()),
+            None => None,
+        },
+        Commands::Ingest { profile, .. }
+        | Commands::Export { profile, .. }
+        | Commands::Backup { profile, .. } => Some(profile.as_path()),
+        Commands::Restore { .. } | Commands::CrashReplay { .. } | Commands::Fixture { .. } => None,
+    }
+}
+
 fn resolve_runtime(runtime: Option<PathBuf>) -> Result<PathBuf, CliFailure> {
     let root = match runtime {
         Some(root) => root,
@@ -260,6 +314,22 @@ fn resolve_runtime(runtime: Option<PathBuf>) -> Result<PathBuf, CliFailure> {
 
 fn dispatch(command: Commands) -> (CommandResult, Renderer) {
     match command {
+        Commands::Admission { command } => match command {
+            AdmissionCommand::Verify { profile, .. } => (
+                match commands::native_path(&profile) {
+                    Ok(profile) => commands::admission::verify(&profile),
+                    Err(failure) => Err(failure),
+                },
+                commands::admission::lines,
+            ),
+            AdmissionCommand::Show { profile, .. } => (
+                match commands::native_path(&profile) {
+                    Ok(profile) => Ok(commands::admission::show(&profile)),
+                    Err(failure) => Err(failure),
+                },
+                commands::admission::lines,
+            ),
+        },
         Commands::Daemon { command } => match command {
             DaemonCommand::Serve {
                 profile, runtime, ..
@@ -407,6 +477,7 @@ mod tests {
         assert_eq!(
             names,
             [
+                "admission",
                 "backup",
                 "crash-replay",
                 "daemon",
@@ -502,5 +573,126 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn no_environment_or_flag_override_exists() -> Result<(), Box<dyn std::error::Error>> {
+        use std::fs;
+
+        let manifest = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let admission_path = manifest.join("../admission/src/lib.rs");
+        let admission = fs::read_to_string(&admission_path)?;
+        let product = admission
+            .split_once("#[cfg(test)]\nmod tests")
+            .map_or(admission.as_str(), |(source, _tests)| source);
+
+        for forbidden in [
+            "std::env",
+            "env::var(",
+            "env::var_os(",
+            "set_acceptance_key",
+            "with_acceptance_key",
+            "override_acceptance",
+            "acceptance_key_from",
+            "verify_with_test_key",
+        ] {
+            assert!(
+                !product.contains(forbidden),
+                "{} contains product key/override seam {forbidden}",
+                admission_path.display()
+            );
+        }
+        assert_eq!(
+            product
+                .matches("pub const ACCEPTANCE_PUBLIC_KEY: AcceptancePublicKey =")
+                .count(),
+            1,
+            "the product must have exactly one compiled acceptance-key constant"
+        );
+        assert_eq!(
+            product.matches("kind: PostureKind::Admitted {").count(),
+            1,
+            "the product must have exactly one admitted-posture construction site"
+        );
+        assert_eq!(
+            product.matches("Ok(VerifiedAdmission {").count(),
+            1,
+            "the product must have exactly one verified-capability construction site"
+        );
+        assert!(
+            product.contains(
+                "pub fn verify(profile_root: &Path) -> Result<VerifiedAdmission, AdmissionError>"
+            ),
+            "AdmissionVerifier::verify changed shape"
+        );
+
+        let crates_root = manifest.join("..");
+        let mut pending = Vec::new();
+        for entry in fs::read_dir(crates_root)? {
+            let entry = entry?;
+            let crate_root = entry.path();
+            if crate_root.is_dir() && entry.file_name() != "admission" {
+                let source_root = crate_root.join("src");
+                if source_root.is_dir() {
+                    pending.push(source_root);
+                }
+            }
+        }
+        while let Some(directory) = pending.pop() {
+            for entry in fs::read_dir(directory)? {
+                let path = entry?.path();
+                if path.is_dir() {
+                    pending.push(path);
+                    continue;
+                }
+                if path.extension().is_none_or(|extension| extension != "rs") {
+                    continue;
+                }
+                let source = fs::read_to_string(&path)?;
+                let product_source = source
+                    .split_once("#[cfg(test)]\nmod tests")
+                    .map_or(source.as_str(), |(source, _tests)| source);
+                for forbidden in [
+                    "AcceptancePublicKey::Provisioned",
+                    "Posture::from_verified(",
+                    "VerifiedAdmission {",
+                ] {
+                    assert!(
+                        !product_source.contains(forbidden),
+                        "{} contains a second admission-authority site {forbidden}",
+                        path.display()
+                    );
+                }
+            }
+        }
+
+        fn scan_command(command: &clap::Command) {
+            let forbidden = [
+                "acceptance-key",
+                "public-key",
+                "allow-real",
+                "production",
+                "override",
+                "unsafe",
+                "debug",
+                "quiet",
+            ];
+            for argument in command.get_arguments() {
+                let id = argument.get_id().as_str();
+                let long = argument.get_long().unwrap_or_default();
+                for token in forbidden {
+                    assert!(
+                        !id.contains(token) && !long.contains(token),
+                        "{} exposes forbidden CLI argument {id}/{long}",
+                        command.get_name()
+                    );
+                }
+            }
+            for child in command.get_subcommands() {
+                scan_command(child);
+            }
+        }
+        scan_command(&Cli::command());
+        Ok(())
     }
 }

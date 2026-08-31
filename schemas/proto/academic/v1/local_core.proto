@@ -34,13 +34,17 @@ enum ProfileLockState {
   reserved 4 to 15;
 }
 
-message SyntheticOnlyPolicy {
+message DataPosture {
   string data_policy = 1;
   string storage_mode = 2;
   string storage_encryption = 3;
   bool production_data_allowed = 4;
   string product_network = 5;
-  reserved 6 to 15;
+  string object_format = 6; // empty in the synthetic posture
+  string admission_receipt_digest = 7; // empty in the synthetic posture
+  repeated string admission_platforms = 8; // empty in the synthetic posture
+  bytes canonical_json = 9; // exact compact posture object bytes
+  reserved 10 to 15;
 }
 
 message ClientHandshake {
@@ -69,7 +73,7 @@ message ServerHandshake {
   string vault_write_format = 7;
   repeated ProjectionState projections = 8;
   ProfileLockState lock_state = 9;
-  SyntheticOnlyPolicy policy = 10;
+  DataPosture policy = 10;
   repeated string capability_ids = 11; // deterministic negotiated intersection
   ProtocolVersion negotiated_protocol_version = 12; // absent on major mismatch
   WriteDisposition write_disposition = 13;

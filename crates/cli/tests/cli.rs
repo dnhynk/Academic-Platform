@@ -707,6 +707,70 @@ fn cli_export_is_deterministic() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn posture_object_is_byte_exact_on_every_surface() -> TestResult {
+    let expected = academic_admission::Posture::synthetic().canonical_json_bytes();
+    let empty = tempfile::tempdir()?;
+    let profile = text(empty.path());
+
+    let shown = run(&[
+        "admission",
+        "show",
+        "--profile",
+        &profile,
+        "--format",
+        "json",
+    ])?;
+    assert_eq!(shown.code, exit::OK, "stderr: {}", shown.stderr);
+    let expected_text = String::from_utf8(expected.clone())?;
+    assert!(
+        shown
+            .stdout
+            .contains(&format!("\"policy\":{expected_text}")),
+        "CLI JSON did not embed the exact compact posture: {}",
+        shown.stdout
+    );
+
+    let human = run(&["admission", "show", "--profile", &profile])?;
+    assert!(
+        human
+            .stdout
+            .lines()
+            .any(|line| line == format!("posture: {expected_text}")),
+        "human output did not carry the exact compact posture: {}",
+        human.stdout
+    );
+
+    let client = academic_rpc::generated::ClientHandshake {
+        protocol_name: academic_rpc::LOCAL_CORE_PROTOCOL_NAME.to_owned(),
+        protocol_version: Some(academic_rpc::generated::ProtocolVersion { major: 1, minor: 0 }),
+        capability_ids: vec!["learning-platform.local.diagnostics.v1".to_owned()],
+    };
+    let handshake = academic_rpc::negotiate_handshake(
+        &client,
+        &academic_rpc::ServerHandshakeConfig::default(),
+    )?;
+    let ipc = handshake.policy.ok_or("IPC posture was absent")?;
+    assert_eq!(ipc.canonical_json, expected);
+
+    let lane = seeded_lane()?;
+    let destination = lane.path("posture-export");
+    let exported = run(&[
+        "export",
+        "--profile",
+        &text(&lane.profile()),
+        "--destination",
+        &text(&destination),
+        "--runtime",
+        &text(&lane.runtime()),
+        "--format",
+        "json",
+    ])?;
+    assert_eq!(exported.code, exit::OK, "stderr: {}", exported.stderr);
+    assert_eq!(fs::read(destination.join("posture.json"))?, expected);
+    Ok(())
+}
+
 /// Reads the exported manifest's file inventory as `(path, sha256)` pairs.
 fn manifest_file_hashes(export_root: &Path) -> TestResult<Vec<(String, String)>> {
     let manifest: Value = serde_json::from_slice(&fs::read(export_root.join("manifest.json"))?)?;

@@ -1,0 +1,5 @@
+error: cannot construct `VerifiedAdmission` with struct literal syntax due to private fields
+ --> tests/compile_fail/admitted_posture_requires_verified_receipt.rs:4:18
+  |
+4 |     let forged = VerifiedAdmission {};
+  |                  ^^^^^^^^^^^^^^^^^

@@ -1,0 +1,29 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-a",
+  "task": "P2-K6",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-K6 admits no external crate. academic-admission reuses ciborium, ed25519-dalek, serde, sha2, and thiserror from earlier reviewed receipts; it adds only one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-admission",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-admission",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-admission is a workspace path crate, not an external dependency. It owns the sole compiled acceptance public key, deterministic-CBOR receipt verification, opaque verified capability, and exact two-posture serializer. Keeping them together lets CLI, IPC, daemon, and export consume one restricted Posture type without placing receipt signature policy inside the store, transport, or presentation crates.",
+  "network_posture": "The crate opens no socket, reads no environment variable, spawns no process, and runs no build script. Its product host interaction is a bounded read of the fixed admission receipt and encrypted-profile marker below a caller-supplied profile root.",
+  "advisory_path": "Unchanged. Every external crate academic-admission links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

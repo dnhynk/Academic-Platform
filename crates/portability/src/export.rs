@@ -33,6 +33,8 @@ pub const EXPORT_MANIFEST_SCHEMA: &str =
 pub const MANIFEST_FILE: &str = "manifest.json";
 /// Relative path of the human-readable inventory.
 pub const INVENTORY_FILE: &str = "inventory.md";
+/// Exact receipt-derived posture object carried by every export.
+pub const POSTURE_FILE: &str = "posture.json";
 /// Relative path of the embedded manifest schema.
 pub const MANIFEST_SCHEMA_FILE: &str = "schemas/phase1-export-v1.schema.json";
 /// Relative path of the exported physical store identity.
@@ -92,6 +94,8 @@ pub fn export_profile(
 
     let staging = directory::reserve_staging_path(destination, "export-staging")?;
     directory::create_new_directory(&staging)?;
+    let posture = academic_admission::AdmissionVerifier::posture(profile_root);
+    directory::write_new_file(&staging.join(POSTURE_FILE), &posture.canonical_json_bytes())?;
     let result = write_export(
         &staging,
         &database,

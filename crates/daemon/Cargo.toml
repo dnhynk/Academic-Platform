@@ -17,6 +17,7 @@ default = []
 phase1-fault-injection = ["academic-core/phase1-fault-injection"]
 
 [dependencies]
+academic-admission = { path = "../admission" }
 academic-core = { path = "../core" }
 academic-rpc = { path = "../rpc" }
 academic-store = { path = "../store" }

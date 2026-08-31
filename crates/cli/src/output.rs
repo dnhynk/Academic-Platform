@@ -11,7 +11,7 @@ use std::io::{self, Write};
 use clap::ValueEnum;
 use serde::Serialize;
 
-use crate::policy_banner::{DataPolicy, PHASE1_POLICY_BANNER, data_policy};
+use crate::policy_banner::DataPolicy;
 
 /// Output representation selected by `--format`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -146,7 +146,7 @@ struct Envelope<'a> {
     status: &'a str,
     exit_code: i32,
     banner: &'a str,
-    policy: DataPolicy,
+    policy: &'a DataPolicy,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<&'a serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -162,23 +162,23 @@ struct ErrorBlock<'a> {
 /// Writes the banner as the first human-readable line.
 ///
 /// `json` mode sends it to standard error so standard output stays parseable.
-pub fn write_banner(format: OutputFormat) -> io::Result<()> {
+pub fn write_banner(format: OutputFormat, posture: &DataPolicy) -> io::Result<()> {
     match format {
         OutputFormat::Human => {
             let mut stdout = io::stdout().lock();
-            writeln!(stdout, "{PHASE1_POLICY_BANNER}")?;
+            writeln!(stdout, "{}", posture.banner())?;
             stdout.flush()
         }
         OutputFormat::Json => {
             let mut stderr = io::stderr().lock();
-            writeln!(stderr, "{PHASE1_POLICY_BANNER}")?;
+            writeln!(stderr, "{}", posture.banner())?;
             stderr.flush()
         }
     }
 }
 
 fn write_json(envelope: &Envelope<'_>) -> io::Result<()> {
-    let rendered = serde_json::to_string_pretty(envelope)
+    let rendered = serde_json::to_string(envelope)
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{rendered}")?;
@@ -194,6 +194,7 @@ pub fn emit_success(
     format: OutputFormat,
     value: &serde_json::Value,
     human: &[String],
+    posture: &DataPolicy,
 ) -> io::Result<()> {
     match format {
         OutputFormat::Human => {
@@ -201,11 +202,15 @@ pub fn emit_success(
             for line in human {
                 writeln!(stdout, "{line}")?;
             }
-            writeln!(stdout, "data policy: {}", data_policy().data_policy)?;
+            writeln!(
+                stdout,
+                "posture: {}",
+                String::from_utf8_lossy(&posture.canonical_json_bytes())
+            )?;
             writeln!(
                 stdout,
                 "production data allowed: {}",
-                data_policy().production_data_allowed
+                posture.production_data_allowed()
             )?;
             stdout.flush()
         }
@@ -213,8 +218,8 @@ pub fn emit_success(
             command,
             status: ExitClass::Ok.as_str(),
             exit_code: ExitClass::Ok.code(),
-            banner: PHASE1_POLICY_BANNER,
-            policy: data_policy(),
+            banner: posture.banner(),
+            policy: posture,
             result: Some(value),
             error: None,
         }),
@@ -222,7 +227,12 @@ pub fn emit_success(
 }
 
 /// Emits one classified failure in the selected representation.
-pub fn emit_failure(command: &str, format: OutputFormat, failure: &CliFailure) -> io::Result<()> {
+pub fn emit_failure(
+    command: &str,
+    format: OutputFormat,
+    failure: &CliFailure,
+    posture: &DataPolicy,
+) -> io::Result<()> {
     match format {
         OutputFormat::Human => {
             let mut stderr = io::stderr().lock();
@@ -239,8 +249,8 @@ pub fn emit_failure(command: &str, format: OutputFormat, failure: &CliFailure) -
             command,
             status: failure.class.as_str(),
             exit_code: failure.class.code(),
-            banner: PHASE1_POLICY_BANNER,
-            policy: data_policy(),
+            banner: posture.banner(),
+            policy: posture,
             result: failure.result.as_ref(),
             error: Some(ErrorBlock {
                 reason: &failure.reason,
@@ -296,12 +306,13 @@ mod tests {
     fn a_failure_envelope_always_carries_the_policy_object()
     -> Result<(), Box<dyn std::error::Error>> {
         let failure = CliFailure::new(ExitClass::PolicyDenied, "FIXTURE_NOT_ALLOWLISTED", "no");
+        let posture = crate::policy_banner::data_policy();
         let envelope = Envelope {
             command: "ingest",
             status: failure.class.as_str(),
             exit_code: failure.class.code(),
-            banner: PHASE1_POLICY_BANNER,
-            policy: data_policy(),
+            banner: posture.banner(),
+            policy: &posture,
             result: failure.result.as_ref(),
             error: Some(ErrorBlock {
                 reason: &failure.reason,

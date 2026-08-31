@@ -153,5 +153,12 @@ fn handshake_round_trip_carries_exact_synthetic_policy() -> Result<(), Box<dyn s
         policy.product_network,
         PHASE1_PROTOCOL_POLICY.product_network
     );
+    assert!(policy.object_format.is_empty());
+    assert!(policy.admission_receipt_digest.is_empty());
+    assert!(policy.admission_platforms.is_empty());
+    assert_eq!(
+        policy.canonical_json,
+        academic_admission::Posture::synthetic().canonical_json_bytes()
+    );
     Ok(())
 }
