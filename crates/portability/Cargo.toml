@@ -39,6 +39,7 @@ phase1-fault-injection = []
 phase2-fault-injection = []
 
 [dependencies]
+academic-admission = { path = "../admission" }
 academic-contracts = { path = "../contracts" }
 academic-crypto = { path = "../crypto", optional = true }
 academic-domain = { path = "../domain" }

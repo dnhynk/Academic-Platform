@@ -2,12 +2,13 @@
 
 use std::collections::BTreeSet;
 
+use academic_admission::Posture;
+
 use crate::{
-    PHASE1_PROTOCOL_POLICY,
     error::RpcError,
     generated::{
-        self, ClientHandshake, MutableRequest, ProfileLockState, ServerHandshake,
-        StorageSchemaVersion, SyntheticOnlyPolicy, WriteDisposition, mutable_request,
+        self, ClientHandshake, DataPosture, MutableRequest, ProfileLockState, ServerHandshake,
+        StorageSchemaVersion, WriteDisposition, mutable_request,
     },
     limits::{MAX_CAPABILITY_ID_BYTES, MAX_CAPABILITY_IDS, MAX_DAEMON_BUILD_BYTES},
 };
@@ -60,6 +61,8 @@ pub struct ServerHandshakeConfig {
     pub projections: Vec<generated::ProjectionState>,
     /// Current profile lock state.
     pub lock_state: ProfileLockState,
+    /// Receipt-derived posture selected before the listener accepts clients.
+    pub posture: Posture,
 }
 
 impl Default for ServerHandshakeConfig {
@@ -68,7 +71,17 @@ impl Default for ServerHandshakeConfig {
             daemon_build: format!("academicd/{}", env!("CARGO_PKG_VERSION")),
             projections: Vec::new(),
             lock_state: ProfileLockState::Unlocked,
+            posture: Posture::synthetic(),
         }
+    }
+}
+
+impl ServerHandshakeConfig {
+    /// Replaces the synthetic default with an already verified posture.
+    #[must_use]
+    pub fn with_posture(mut self, posture: Posture) -> Self {
+        self.posture = posture;
+        self
     }
 }
 
@@ -152,13 +165,20 @@ pub(crate) fn validate_client_handshake(
     protocol_version_from_proto(client.protocol_version.as_ref(), "client.protocol_version")
 }
 
-fn policy_message() -> SyntheticOnlyPolicy {
-    SyntheticOnlyPolicy {
-        data_policy: PHASE1_PROTOCOL_POLICY.data_policy.to_owned(),
-        storage_mode: PHASE1_PROTOCOL_POLICY.storage_mode.to_owned(),
-        storage_encryption: PHASE1_PROTOCOL_POLICY.storage_encryption.to_owned(),
-        production_data_allowed: PHASE1_PROTOCOL_POLICY.production_data_allowed,
-        product_network: PHASE1_PROTOCOL_POLICY.product_network.to_owned(),
+fn policy_message(posture: &Posture) -> DataPosture {
+    DataPosture {
+        data_policy: posture.data_policy().to_owned(),
+        storage_mode: posture.storage_mode().to_owned(),
+        storage_encryption: posture.storage_encryption().to_owned(),
+        production_data_allowed: posture.production_data_allowed(),
+        product_network: posture.product_network().to_owned(),
+        object_format: posture.object_format().unwrap_or_default().to_owned(),
+        admission_receipt_digest: posture
+            .admission_receipt_digest()
+            .unwrap_or_default()
+            .to_owned(),
+        admission_platforms: posture.admission_platforms().to_vec(),
+        canonical_json: posture.canonical_json_bytes(),
     }
 }
 
@@ -230,15 +250,22 @@ pub fn negotiate_handshake(
         protocol_version: Some(proto_version(LOCAL_CORE_PROTOCOL_VERSION)),
         minimum_client_version: Some(proto_version(MINIMUM_CLIENT_VERSION)),
         daemon_build: config.daemon_build.clone(),
-        storage_schema: Some(StorageSchemaVersion {
-            number: 1,
-            semantic_version: "1.0.0".to_owned(),
+        storage_schema: Some(if config.posture.production_data_allowed() {
+            StorageSchemaVersion {
+                number: 2,
+                semantic_version: "2.0.0".to_owned(),
+            }
+        } else {
+            StorageSchemaVersion {
+                number: 1,
+                semantic_version: "1.0.0".to_owned(),
+            }
         }),
         vault_read_formats: vec!["PLAINTEXT_SYNTHETIC_V1".to_owned()],
         vault_write_format: "PLAINTEXT_SYNTHETIC_V1".to_owned(),
         projections: config.projections.clone(),
         lock_state: config.lock_state as i32,
-        policy: Some(policy_message()),
+        policy: Some(policy_message(&config.posture)),
         capability_ids,
         negotiated_protocol_version,
         write_disposition: write_disposition as i32,

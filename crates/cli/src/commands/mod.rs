@@ -4,6 +4,7 @@
 //! it, so `output` can render either representation from one source and both
 //! carry the policy object.
 
+pub mod admission;
 pub mod backup;
 pub mod crash_replay;
 pub mod daemon;

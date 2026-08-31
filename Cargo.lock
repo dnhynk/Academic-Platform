@@ -3,9 +3,23 @@
 version = 4
 
 [[package]]
+name = "academic-admission"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "ed25519-dalek",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "academic-cli"
 version = "0.1.0"
 dependencies = [
+ "academic-admission",
  "academic-core",
  "academic-daemon",
  "academic-rpc",
@@ -81,6 +95,7 @@ dependencies = [
 name = "academic-daemon"
 version = "0.1.0"
 dependencies = [
+ "academic-admission",
  "academic-core",
  "academic-portability",
  "academic-projections",
@@ -137,6 +152,7 @@ dependencies = [
 name = "academic-portability"
 version = "0.1.0"
 dependencies = [
+ "academic-admission",
  "academic-contracts",
  "academic-crypto",
  "academic-domain",
@@ -198,6 +214,7 @@ dependencies = [
 name = "academic-rpc"
 version = "0.1.0"
 dependencies = [
+ "academic-admission",
  "academic-contracts",
  "academic-domain",
  "prost",
@@ -210,6 +227,7 @@ dependencies = [
 name = "academic-scenario"
 version = "0.1.0"
 dependencies = [
+ "academic-admission",
  "academic-domain",
  "proptest",
  "serde",

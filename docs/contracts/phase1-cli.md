@@ -1,12 +1,14 @@
-# Phase 1 CLI: daemon, doctor, ingest, export, backup, restore, crash-replay
+# CLI: admission, daemon, doctor, ingest, export, backup, restore, crash-replay
 
 ## Posture
 
-`academic` operates a synthetic, plaintext, throwaway Phase 1 profile. Real or
-production data is forbidden until ADR-002 is accepted, and no flag, environment
-variable, configuration key, or debug path in this binary changes that.
+The current `academic` build operates a synthetic, plaintext, throwaway Phase 1
+profile. Its acceptance public key is unprovisioned and its candidate receipt
+has two of five platform rows, so real or production data remains forbidden.
+The named source and CLI-surface scan rejects a flag, environment-variable key
+source, configuration key, or debug path that would change that result.
 
-Every command emits the frozen policy object:
+Every command emits the receipt-derived posture object. The current result is:
 
 ```json
 {
@@ -25,15 +27,17 @@ first line of standard output, before any result, on success and on failure. In
 parse it without stripping a preamble; the banner goes to standard error and is
 repeated inside the document alongside the policy object.
 
-The policy values are compile-time constants copied from the frozen protocol
-contract. `policy_banner::data_policy` takes no argument, so no runtime input can
-reach it, and a `const` assertion fails the build if `production_data_allowed`
-ever becomes true.
+The admitted alternative is constructed only from `VerifiedAdmission`; see
+[the admission receipt contract](admission-receipt.md). CLI JSON is compact so
+its `policy` object is the same canonical byte sequence carried over IPC and in
+the export `posture.json` file.
 
 ## Command surface
 
 | Command | Purpose |
 |---|---|
+| `academic admission verify --profile <p>` | Verifies the signed receipt; denial exits `POLICY_DENIED`. |
+| `academic admission show --profile <p>` | Shows the emitted posture and denial reason without treating denial as a command error. |
 | `academic daemon serve --profile <p> [--runtime <r>]` | Hosts one foreground daemon until the terminal interrupts it. Creates the throwaway profile when the root is absent. |
 | `academic daemon status --profile <p> [--runtime <r>]` | Negotiated protocol facts plus canonical and projection watermarks. |
 | `academic doctor [--profile <p>] [--deep]` | Pinned toolchain checks; with a profile, store identity and canonical watermarks; with `--deep`, integrity, foreign keys, vault residue, and projection lag. |
@@ -160,8 +164,9 @@ the F0 frozen surface.
 `ServerHandshake` has a `lock_state` field and a `projections` list, and T009
 §6.7 and ADR-001/ADR-009 require the daemon to fill them with the profile's lock
 state and its projection builders' source watermarks. This build does not: the
-daemon answers every handshake from `ServerHandshakeConfig::default()`, so
-`lock_state` is always `UNLOCKED` and `projections` is always empty.
+daemon answers every handshake with the startup admission posture plus the
+default lock and projection fields, so `lock_state` is always `UNLOCKED` and
+`projections` is always empty.
 
 That is not a stub standing in for state the daemon has. There is no runtime lock
 word and no runtime repair-required transition in Phase 1. A repair-required

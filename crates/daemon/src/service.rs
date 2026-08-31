@@ -7,6 +7,7 @@ use std::{
     time::Duration,
 };
 
+use academic_admission::{AdmissionVerifier, Posture};
 use academic_core::local_service::{LocalServiceStartup, rejection_response};
 use academic_rpc::{
     FrameClass, ServerHandshakeConfig, authorize_mutable_request,
@@ -100,6 +101,7 @@ pub struct RunningDaemon {
     pub(crate) metadata_path: PathBuf,
     startup: LocalServiceStartup,
     readers: ReaderFactory,
+    posture: Posture,
     pub(crate) writer: Arc<WriterQueue>,
     pub(crate) stop: Option<oneshot::Sender<()>>,
     pub(crate) listener_task: Option<JoinHandle<Result<(), DaemonError>>>,
@@ -111,6 +113,7 @@ impl RunningDaemon {
     /// ownership, nonce publication, and endpoint binding before returning.
     pub async fn start(config: DaemonConfig) -> Result<Self, DaemonError> {
         let profile = open_synthetic_profile(&config.profile_root, config.probe.as_ref())?;
+        let posture = AdmissionVerifier::posture(&config.profile_root);
         let readers = ReaderFactory::new(profile.clone());
         let runtime_paths = transport::prepare_runtime(&config.runtime_root, profile.root())
             .map_err(|error| match error {
@@ -155,13 +158,17 @@ impl RunningDaemon {
         let listener_writer = Arc::clone(&writer);
         let listener_nonce = nonce.clone();
         let listener_paths = runtime_paths.clone();
+        let listener_posture = posture.clone();
         let frame_timeout = config.client_frame_timeout;
         let listener_task = tokio::spawn(async move {
             shutdown::listener_loop(
                 listener,
-                listener_writer,
-                listener_nonce,
-                frame_timeout,
+                shutdown::ListenerConfig {
+                    writer: listener_writer,
+                    nonce: listener_nonce,
+                    posture: listener_posture,
+                    frame_timeout,
+                },
                 stop_receiver,
                 singleton,
                 listener_paths,
@@ -174,6 +181,7 @@ impl RunningDaemon {
             metadata_path: runtime_paths.metadata.clone(),
             startup,
             readers,
+            posture,
             writer,
             stop: Some(stop),
             listener_task: Some(listener_task),
@@ -209,6 +217,12 @@ impl RunningDaemon {
     #[must_use]
     pub const fn readers(&self) -> &ReaderFactory {
         &self.readers
+    }
+
+    /// Returns the receipt-derived posture frozen at daemon startup.
+    #[must_use]
+    pub const fn posture(&self) -> &Posture {
+        &self.posture
     }
 
     /// Returns a shared handle to the bounded writer lane for diagnostic
@@ -275,6 +289,7 @@ pub(crate) async fn serve_connection<S>(
     mut stream: S,
     writer: Arc<WriterQueue>,
     nonce: &SessionNonce,
+    posture: &Posture,
     frame_timeout: Duration,
     mut shutdown: watch::Receiver<bool>,
 ) -> Result<(), DaemonError>
@@ -300,7 +315,10 @@ where
         }
     };
     let client = runtime_meta::authenticate_session(client, nonce)?;
-    let handshake = negotiate_handshake(&client, &ServerHandshakeConfig::default())?;
+    let handshake = negotiate_handshake(
+        &client,
+        &ServerHandshakeConfig::default().with_posture(posture.clone()),
+    )?;
     let response = LocalCoreEnvelope {
         payload: Some(local_core_envelope::Payload::ServerHandshake(
             handshake.clone(),

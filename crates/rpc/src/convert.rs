@@ -414,15 +414,56 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
     let policy = server.policy.as_ref().ok_or(RpcError::MissingField {
         field: "server.policy",
     })?;
-    if policy.data_policy != PHASE1_PROTOCOL_POLICY.data_policy
-        || policy.storage_mode != PHASE1_PROTOCOL_POLICY.storage_mode
-        || policy.storage_encryption != PHASE1_PROTOCOL_POLICY.storage_encryption
-        || policy.production_data_allowed != PHASE1_PROTOCOL_POLICY.production_data_allowed
-        || policy.product_network != PHASE1_PROTOCOL_POLICY.product_network
-    {
+    let valid_posture = if policy.production_data_allowed {
+        policy.data_policy == "REAL_PERSONAL_DATA_PERMITTED"
+            && policy.storage_mode == "SQLCIPHER_ENCRYPTED_PROFILE_V2"
+            && policy.storage_encryption == "SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000"
+            && policy.product_network == "BROKERED_EGRESS_ONLY"
+            && policy.object_format == "AEAD_CHUNKED_V2"
+            && policy.admission_receipt_digest.len() == 64
+            && policy
+                .admission_receipt_digest
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+            && policy.admission_platforms
+                == academic_admission::REQUIRED_ADMISSION_PLATFORMS
+                    .iter()
+                    .map(|platform| (*platform).to_owned())
+                    .collect::<Vec<_>>()
+            && policy.canonical_json
+                == format!(
+                    concat!(
+                        "{{\"data_policy\":\"REAL_PERSONAL_DATA_PERMITTED\",",
+                        "\"storage_mode\":\"SQLCIPHER_ENCRYPTED_PROFILE_V2\",",
+                        "\"storage_encryption\":",
+                        "\"SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000\",",
+                        "\"object_format\":\"AEAD_CHUNKED_V2\",",
+                        "\"production_data_allowed\":true,",
+                        "\"product_network\":\"BROKERED_EGRESS_ONLY\",",
+                        "\"admission_receipt_digest\":\"{}\",",
+                        "\"admission_platforms\":[",
+                        "\"windows-x86_64\",\"windows-aarch64\",",
+                        "\"linux-x86_64\",\"linux-aarch64\",",
+                        "\"macos-aarch64\"]}}"
+                    ),
+                    policy.admission_receipt_digest
+                )
+                .as_bytes()
+    } else {
+        policy.data_policy == PHASE1_PROTOCOL_POLICY.data_policy
+            && policy.storage_mode == PHASE1_PROTOCOL_POLICY.storage_mode
+            && policy.storage_encryption == PHASE1_PROTOCOL_POLICY.storage_encryption
+            && policy.product_network == PHASE1_PROTOCOL_POLICY.product_network
+            && policy.object_format.is_empty()
+            && policy.admission_receipt_digest.is_empty()
+            && policy.admission_platforms.is_empty()
+            && policy.canonical_json
+                == academic_admission::Posture::synthetic().canonical_json_bytes()
+    };
+    if !valid_posture {
         return Err(RpcError::InvalidFieldValue {
             field: "server.policy",
-            reason: "synthetic-only policy bytes drifted",
+            reason: "posture fields or canonical bytes drifted",
         });
     }
 

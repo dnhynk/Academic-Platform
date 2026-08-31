@@ -11,6 +11,7 @@ name = "academic"
 path = "src/main.rs"
 
 [dependencies]
+academic-admission = { path = "../admission" }
 academic-core = { path = "../core" }
 academic-daemon = { path = "../daemon" }
 academic-rpc = { path = "../rpc" }

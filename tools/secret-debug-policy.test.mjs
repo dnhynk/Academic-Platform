@@ -210,12 +210,16 @@ const TUPLE_FIELD_PATTERN = /(?:^|[(,])\s*(?:pub(?:\s*\([^)]*\))?\s+)?([^,()]+)/
 /**
  * Enum variants, spelled `Type::Variant`, whose byte payload is public.
  *
- * Empty, and deliberately present: no enum in this workspace carries a raw byte
- * payload today, and the check that reaches them does not read the variant's
- * name, so the next one that appears must state here why its bytes may be
- * printed rather than be excused by being called something bland.
+ * The check that reaches these payloads does not read the variant's name, so
+ * each entry must state why its bytes may be printed rather than be excused by
+ * being called something bland.
  */
-const PUBLIC_TUPLE_VARIANT_BYTES = new Map([]);
+const PUBLIC_TUPLE_VARIANT_BYTES = new Map([
+  [
+    "AcceptancePublicKey::Provisioned",
+    "the user's Ed25519 public half compiled as receipt-verification authority; the private half is offline and absent",
+  ],
+]);
 
 /** Enum variants written as `Dek([u8; 32])`, whose name is the only signal. */
 const TUPLE_VARIANT_PATTERN = /(?:^|[,{])\s*([A-Z][A-Za-z0-9_]*)\s*\(([^()]*)\)/gm;

@@ -211,7 +211,13 @@ test("workspace_dependency_direction_is_acyclic", () => {
       .toSorted(([left], [right]) => left.localeCompare(right)),
   );
   assert.deepEqual(actual, {
-    "academic-cli": ["academic-core", "academic-daemon", "academic-rpc"],
+    "academic-admission": [],
+    "academic-cli": [
+      "academic-admission",
+      "academic-core",
+      "academic-daemon",
+      "academic-rpc",
+    ],
     "academic-contracts": ["academic-domain"],
     "academic-crypto": ["academic-keystore-platform"],
     "academic-core": [
@@ -224,7 +230,12 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-store",
       "academic-vault",
     ],
-    "academic-daemon": ["academic-core", "academic-rpc", "academic-store"],
+    "academic-daemon": [
+      "academic-admission",
+      "academic-core",
+      "academic-rpc",
+      "academic-store",
+    ],
     "academic-domain": [],
     "academic-ledger": ["academic-contracts", "academic-domain"],
     // `academic-crypto`, `academic-recovery`, and `academic-projections` are
@@ -235,6 +246,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // SQLCipher store lane. `cargo metadata` reports declared dependencies
     // rather than resolved ones, so all three are listed.
     "academic-portability": [
+      "academic-admission",
       "academic-contracts",
       "academic-crypto",
       "academic-domain",
@@ -257,7 +269,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `rotation_engine_lane_is_not_default` proves it stays unresolved in a
     // default build.
     "academic-retention": ["academic-crypto", "academic-domain", "academic-vault"],
-    "academic-rpc": ["academic-contracts", "academic-domain"],
+    "academic-rpc": ["academic-admission", "academic-contracts", "academic-domain"],
     "academic-scenario": ["academic-domain"],
     // `academic-crypto` is an optional edge behind `sqlcipher-store`. It is
     // listed here because `cargo metadata` reports declared dependencies, not
@@ -315,7 +327,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // them. That is a test edge only; the product edge is the optional one
     // above.
     "academic-vault": ["academic-crypto"],
-    "academic-scenario": ["academic-domain"],
+    "academic-scenario": ["academic-admission", "academic-domain"],
   });
 
   assert.deepEqual(
@@ -1764,6 +1776,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     scenarioReceiptText,
     recoveryReceiptText,
     retentionReceiptText,
+    admissionReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -1771,6 +1784,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-c7.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-k4.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-k5.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-k6.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -1778,6 +1792,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const scenarioReceipt = JSON.parse(scenarioReceiptText);
   const recoveryReceipt = JSON.parse(recoveryReceiptText);
   const retentionReceipt = JSON.parse(retentionReceiptText);
+  const admissionReceipt = JSON.parse(admissionReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -1907,6 +1922,40 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-K5 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-K6` likewise admits no external crate and adds only the receipt and
+  // posture workspace boundary.
+  const admissionAdmitted = new Set(
+    admissionReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const admissionPathPackages = new Set(
+    admissionReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(admissionAdmitted.size, 0, "P2-K6 must admit no external crate");
+  for (const claimed of [...admissionAdmitted, ...admissionPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const admissionTuples = lockTuples.filter(
+    ([name, version]) =>
+      admissionAdmitted.has(`${name}@${version}`) ||
+      admissionPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    admissionTuples.length,
+    admissionAdmitted.size + admissionPathPackages.size,
+    "a P2-K6 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -1917,7 +1966,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !recoveryAdmitted.has(`${name}@${version}`) &&
       !recoveryPathPackages.has(`${name}@${version}`) &&
       !retentionAdmitted.has(`${name}@${version}`) &&
-      !retentionPathPackages.has(`${name}@${version}`),
+      !retentionPathPackages.has(`${name}@${version}`) &&
+      !admissionAdmitted.has(`${name}@${version}`) &&
+      !admissionPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -1932,7 +1983,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       keyTuples.length +
       scenarioTuples.length +
       recoveryTuples.length +
-      retentionTuples.length,
+      retentionTuples.length +
+      admissionTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -2081,11 +2133,24 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    const k6AdmissionTestUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-admission",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : [];
     const expectedUses = [
       ...admission.uses,
       ...j1ProjectionUse,
       ...t047FormatTestUse,
       ...k4RecoveryUse,
+      ...k6AdmissionTestUse,
     ]
       .map((use) => ({ ...use, features: use.features.toSorted() }))
       .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));

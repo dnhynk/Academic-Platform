@@ -9,7 +9,7 @@ This repository is the runnable foundation for a local-first Personal Academic Â
 - Bitemporal query surface: every read takes `known_at_accept_seq` and `valid_at` as one value, the eighteen Phase 2 aggregate closure tables and the resolved claim lane are projected at those coordinates, materialized snapshots live in a separate disposable sidecar that records the projector that built them, and a transition is labelled `EVIDENCE_CHANGE`, `ONTOLOGY_CHANGE`, `ANALYZER_UPGRADE`, or `OFFICIAL_SOURCE_CORRECTION` by splitting the known-time interval rather than ranking a mixed one. See [the bitemporal time-travel contract](docs/contracts/bitemporal-time-travel.md).
 - `academic-contracts`: deterministic CBOR v3 encode/sign plus v1/v2/v3 decode/verify, semantic v3 validation of returned writer bytes, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, pure v1-to-v3 and v2-to-v3 upcasters that rewrite no historical byte, and executable Protobuf actor/relation round trips with the same RFC-variant UUIDv7 boundary.
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
-- `academic` CLI: `daemon serve|status`, `doctor` (with `--profile`/`--deep`), `ingest`, `export`, `backup`, `restore`, `crash-replay`, and `fixture emit|verify|replay`. Every path prints the synthetic-only banner before its results and repeats the policy object in JSON, and exit codes distinguish policy denial, conflict, repair-required, incompatible, unavailable, and internal failure. See [the CLI contract](docs/contracts/phase1-cli.md).
+- `academic` CLI: `admission verify|show`, `daemon serve|status`, `doctor` (with `--profile`/`--deep`), `ingest`, `export`, `backup`, `restore`, `crash-replay`, and `fixture emit|verify|replay`. Every path prints its receipt-derived posture before human results and repeats it as the JSON `policy` object; the present unprovisioned key keeps that posture synthetic. Exit codes distinguish policy denial, conflict, repair-required, incompatible, unavailable, and internal failure. See [the CLI contract](docs/contracts/phase1-cli.md) and [admission receipt contract](docs/contracts/admission-receipt.md).
 - `@academic-os/web-contracts`: exact TypeScript fixture validation kept in positive/negative parity with JSON Schema and Rust.
 - Phase 1 local-core crates: functional store, vault, RPC, daemon, projection, portability, and test-support boundaries; bundled plaintext SQLite remains the default lane. The explicit non-default SQLCipher spike supplies limited evidence only and carries no ADR-002 or production-data acceptance claim.
 
@@ -74,6 +74,15 @@ rehearsal receipt â€” is pure Rust in `academic-recovery` and runs in the block
 above, on every platform. What it is and is not evidence for is in
 [encrypted backup and recovery](docs/contracts/encrypted-backup-and-recovery.md).
 
+`P2-K6` adds the deterministic-CBOR `AdmissionVerifier`, its compiled five-row
+platform set, and one exact posture emitter for CLI, IPC, and export (there is no
+desktop surface yet). The user's offline acceptance public key has not been
+provided, so the typed compiled key state is unprovisioned; the committed
+candidate receipt also has only its Windows x86-64 and Linux x86-64 rows. Both
+conditions fail closed, `production_data_allowed` remains `false`, and ADR-002
+remains unaccepted. The exact receipt shape and provisioning boundary are in
+[the admission receipt contract](docs/contracts/admission-receipt.md).
+
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical
 object reference and where a deletion reaches a backup are in the encrypted
@@ -137,6 +146,8 @@ real data.
 
 ```powershell
 cargo run --locked --offline -p academic-cli -- daemon serve --profile <profile> --runtime <runtime>
+cargo run --locked --offline -p academic-cli -- admission show --profile <profile> --format json
+cargo run --locked --offline -p academic-cli -- admission verify --profile <profile> --format json
 cargo run --locked --offline -p academic-cli -- daemon status --profile <profile> --runtime <runtime> --format json
 cargo run --locked --offline -p academic-cli -- ingest --profile <profile> --runtime <runtime> --fixture phase0-synthetic-bitemporal-ledger-v2
 cargo run --locked --offline -p academic-cli -- doctor --profile <profile> --deep --format json
