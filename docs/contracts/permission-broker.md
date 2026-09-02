@@ -111,6 +111,16 @@ the closed §3.5 reason-code enum. Allows use a null `reason_code`, because that
 closed enum contains no allow code; the execution plan lists the column but
 does not define its allow-row nullability.
 
+P2-G1 uses individual codes in individual tests and enumerates none of them, so
+"closed" was a claim about the enum rather than a checked property of it.
+`deny_reason_codes_are_exhaustive` in
+`crates/egress-boundary/tests/egress_boundary.rs`
+is where that became executable: a compiler-checked witness `match` over
+`ReasonCode`, an index set that fails on an omission, a transcription of the
+section 3.5 sentence, and the `egress_audit` `CHECK` read out of `schema.sql`.
+Adding a variant stops that suite compiling; removing one from any of the four
+lists fails it.
+
 Audit rows contain actor identifier, typed process class and capability,
 artifact identifiers with half-open ranges and content digests, external
 destination/digest/count, created claim identifiers, and times. Range and

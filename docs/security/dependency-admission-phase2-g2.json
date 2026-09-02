@@ -1,0 +1,30 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-b",
+  "task": "P2-G2",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-G2 admits no external crate. academic-egress-boundary links academic-policy and thiserror, both covered by earlier reviewed receipts, and adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-egress-boundary is a separate package from P2-G7's academic-egress process entry point, which that task claims in dependency-admission-phase2-g7.json. P2-G7 pins the whole manifest and the whole product source of the egress process package as one fixed process-class binding, so a library target inside it would have made that pin weaker rather than exact.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-egress-boundary",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-egress-boundary",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-egress-boundary is a workspace path crate, not an external dependency. It owns the versioned DLP rulepack, structural minimization, the byte-accurate preview, and the single outbound transport seam, so no caller can reach a destination without producing a staged payload the broker has authorized over its exact digest.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. Its link closure holds nothing that can open a socket beyond libc, which reaches it through academic-policy's bundled SQLite. The outbound transport is a trait the caller supplies; no implementation ships. only_egress_crate_has_a_socket in tools/phase1-scaffold-policy.test.mjs is the executable form of that claim and pins every crate's socket allowance, this one and the egress process package included, at empty.",
+  "advisory_path": "Unchanged. Every external crate academic-egress-boundary links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}
