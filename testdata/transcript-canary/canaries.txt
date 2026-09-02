@@ -1,0 +1,13 @@
+# Synthetic high-entropy plaintext canaries for the P2-U7 transcript lane.
+# Never use personal or production data here. Every string below is a made-up
+# token that stands in for one field of an official transcript, so a scan of a
+# profile can tell "this field never reached the disk in the clear" from "no
+# scan ran". The `credits` field carries no canary: it is an exact decimal and a
+# one-digit number would match everywhere.
+U7-CANARY-STUDENT-NUMBER-9c1f4a77d0b2e5836ad14c9e07b3f2518e6d0a4b7c93f15e2d68a0b4c7e9f3128
+U7-CANARY-STUDENT-NAME-4e83b0d61f27ca95380e7b1d6f04a2c9581b3e7d0a6c42f98e15b7d3c0a92f461
+U7-CANARY-INSTITUTION-b70c952e41d8a36f0e2b95d7c184a63f97e05b2d4c81f7a396e0b5d2c48f13a76
+U7-CANARY-ISSUED-ON-38d1e0b57a2c94f6081d3b7e5c09a24f6b81d305e7c92a4f180b6d3e5c72a9401
+U7-CANARY-COURSE-CODE-5a92c07e13b8d4f60927e5a1c38b0d47f92e061b5d8c3a7f40e29b6d1c5a83f07
+U7-CANARY-TERM-c418e0a75d29b3f6081c4e7b0d35a92f6814c0e3b7d59a2f608b1c4e7d035a926
+U7-CANARY-GRADE-71b3d05e9c28a4f6031e7b5d0c94a28f6031b7e5d9c04a2f8613b0d7e5c92a481

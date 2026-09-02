@@ -1,0 +1,38 @@
+[package]
+name = "academic-transcript"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# The `P2-U7` encrypted-original lane. Everything else in this crate — the
+# format normalizer, the two-claim split, field-level reconciliation, the
+# redaction projection, and the admission gate — is pure Rust and compiles in
+# the default lane, so it runs in hosted CI on every platform. Only the half
+# that seals a transcript original needs `academic-vault/aead-objects`, which
+# is itself non-default. This crate adds no object format: it reuses ADR-004's
+# `AEAD_CHUNKED_V2` and nothing else.
+encrypted-vault = ["dep:academic-vault", "academic-vault/aead-objects"]
+# Test-only deterministic `IN04` failpoints. A product build contains no
+# environment lookup and no crash switch.
+phase2-fault-injection = []
+
+[dependencies]
+academic-admission = { path = "../admission" }
+academic-domain = { path = "../domain" }
+academic-vault = { path = "../vault", optional = true }
+sha2.workspace = true
+thiserror.workspace = true
+
+# The encrypted-lane tests build `KEK_d` through the `P2-K1` public schedule
+# rather than fabricating key bytes, exactly as `academic-vault`'s own lane
+# does. This is a dev edge only: no product edge of this crate reaches the key
+# schedule.
+[dev-dependencies]
+academic-crypto = { path = "../crypto" }
+
+[lints]
+workspace = true

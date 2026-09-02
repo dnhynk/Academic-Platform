@@ -25,6 +25,7 @@ members = [
   "crates/store",
   "crates/store-platform",
   "crates/test-support",
+  "crates/transcript",
   "crates/vault",
 ]
 resolver = "3"

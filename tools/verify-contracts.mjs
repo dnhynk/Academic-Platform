@@ -1950,6 +1950,18 @@ const rotationEngineCiCommands = [
   "cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection -- -D warnings",
   "cargo test -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection",
 ];
+// t068 section 5's `P2-U7` transcript ingestion lane, for the same reason
+// again: `encrypted-vault` is non-default, so a workspace build never reaches
+// the half that seals a transcript original as an `AEAD_CHUNKED_V2` object, and
+// `phase2-fault-injection` is selected too because `IN04` is a process kill
+// whose failpoints exist only under it — and because admission is closed, so
+// the fault lane's capability constructor is the only way to reach a gated
+// import at all. Both run on every hosted Rust label, because the import
+// session's rename and lease are per-platform.
+const transcriptCiCommands = [
+  "cargo clippy -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection -- -D warnings",
+  "cargo test -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection",
+];
 // The encrypted store lane. It is the executor of `P2-K5`'s store-database
 // rotation unit and the home of `EN01` ("kill mid store rekey; exactly one of
 // the old and new keys opens the database"), which is the byte-level half of
@@ -2081,6 +2093,14 @@ const expectedCiWorkflow = {
         {
           name: "Test the rotation and retention lane",
           run: rotationEngineCiCommands[1],
+        },
+        {
+          name: "Lint the transcript ingestion lane",
+          run: transcriptCiCommands[0],
+        },
+        {
+          name: "Test the transcript ingestion lane",
+          run: transcriptCiCommands[1],
         },
         {
           name: "Verify immutable v1 fixture and upcast",

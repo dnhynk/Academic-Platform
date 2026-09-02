@@ -1,0 +1,29 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-e",
+  "task": "P2-U7",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-U7 admits no external crate. academic-transcript reuses sha2 and thiserror from earlier reviewed receipts and links academic-admission, academic-domain, academic-vault, and (as a dev edge only) academic-crypto by path; it adds only one workspace path package. No PDF, OCR, image, or XML dependency was added: the PDF corpus is written by a deterministic builder inside the crate and read by a declared-layout parser.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-transcript",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-transcript",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-transcript is a workspace path crate, not an external dependency. It owns the canonical transcript record, the three declared import parses, the import-versus-confirmed claim split, field-level checksum reconciliation, the redaction projection, and the admission gate every profile-touching import passes. Keeping them together is what lets the redaction projection be the only route to an export and the reconciled transcript be the only route to a confirmation; splitting them across the domain, vault, and store crates would put a transcript identity value on four boundaries instead of one.",
+  "network_posture": "The crate opens no socket, reads no environment variable outside the non-default phase2-fault-injection feature, spawns no process, and runs no build script. Its product host interaction is bounded file work below a caller-supplied profile root: the admission receipt read the verifier performs, and the import session's lease, staging, and confirmed-set files.",
+  "advisory_path": "Unchanged. Every external crate academic-transcript links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}
