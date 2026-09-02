@@ -256,6 +256,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-store",
       "academic-vault",
     ],
+    "academic-policy": [],
     "academic-projections": ["academic-domain", "academic-store"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
     // rehearsal receipt. It sits above the key schedule and below the
@@ -1777,6 +1778,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     recoveryReceiptText,
     retentionReceiptText,
     admissionReceiptText,
+    policyReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -1785,6 +1787,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-k4.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-k5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-k6.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-g1.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -1793,6 +1796,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const recoveryReceipt = JSON.parse(recoveryReceiptText);
   const retentionReceipt = JSON.parse(retentionReceiptText);
   const admissionReceipt = JSON.parse(admissionReceiptText);
+  const policyReceipt = JSON.parse(policyReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -1956,6 +1960,42 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-K6 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-G1` also reuses only previously admitted crates and adds the
+  // socket-free `academic-policy` workspace boundary.
+  const policyAdmitted = new Set(
+    policyReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const policyPathPackages = new Set(
+    policyReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(policyAdmitted.size, 0, "P2-G1 must admit no external crate");
+  for (const claimed of [...policyAdmitted, ...policyPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const policyTuples = lockTuples.filter(
+    ([name, version]) =>
+      policyAdmitted.has(`${name}@${version}`) ||
+      policyPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    policyTuples.length,
+    policyAdmitted.size + policyPathPackages.size,
+    "a P2-G1 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -1968,7 +2008,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !retentionAdmitted.has(`${name}@${version}`) &&
       !retentionPathPackages.has(`${name}@${version}`) &&
       !admissionAdmitted.has(`${name}@${version}`) &&
-      !admissionPathPackages.has(`${name}@${version}`),
+      !admissionPathPackages.has(`${name}@${version}`) &&
+      !policyAdmitted.has(`${name}@${version}`) &&
+      !policyPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -1984,7 +2026,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       scenarioTuples.length +
       recoveryTuples.length +
       retentionTuples.length +
-      admissionTuples.length,
+      admissionTuples.length +
+      policyTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -2145,12 +2188,45 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    const g1PolicyUse =
+      admission.name === "rusqlite"
+        ? [
+            {
+              package: "academic-policy",
+              kind: "normal",
+              target: null,
+              default_features: false,
+              features: ["backup", "bundled", "hooks", "limits"],
+            },
+          ]
+        : ["sha2", "thiserror"].includes(admission.name)
+          ? [
+              {
+                package: "academic-policy",
+                kind: "normal",
+                target: null,
+                default_features: true,
+                features: [],
+              },
+            ]
+          : admission.name === "proptest"
+            ? [
+                {
+                  package: "academic-policy",
+                  kind: "dev",
+                  target: null,
+                  default_features: true,
+                  features: [],
+                },
+              ]
+            : [];
     const expectedUses = [
       ...admission.uses,
       ...j1ProjectionUse,
       ...t047FormatTestUse,
       ...k4RecoveryUse,
       ...k6AdmissionTestUse,
+      ...g1PolicyUse,
     ]
       .map((use) => ({ ...use, features: use.features.toSorted() }))
       .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));

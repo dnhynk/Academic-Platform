@@ -170,7 +170,6 @@ impl DeviceAuthorization {
     }
 }
 
-#[derive(Debug)]
 struct DecodedEnvelope {
     payload: Vec<u8>,
     public_key: Vec<u8>,

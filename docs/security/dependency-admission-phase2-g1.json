@@ -1,0 +1,29 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-a",
+  "task": "P2-G1",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-G1 admits no external crate. academic-policy reuses rusqlite, sha2, thiserror, and proptest from earlier reviewed receipts; it adds only one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-policy",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-policy",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-policy is a workspace path crate, not an external dependency. It owns immutable policy hashing, default-deny evaluation, minimized grants, atomic one-use consumption, and metadata-only audit persistence so no caller can skip from a request directly to a runtime tool invocation.",
+  "network_posture": "The crate opens no socket, reads no environment variable, spawns no process, and runs no build script. Its only host capability is an in-memory bundled SQLite connection; runtime payload bytes are transiently hashed and are not stored.",
+  "advisory_path": "Unchanged. Every external crate academic-policy links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

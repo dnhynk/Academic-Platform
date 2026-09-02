@@ -347,7 +347,6 @@ impl AdmissionVerifier {
     }
 }
 
-#[derive(Debug)]
 struct DecodedEnvelope {
     payload: Vec<u8>,
     public_key: [u8; 32],
