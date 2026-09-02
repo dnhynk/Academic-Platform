@@ -87,11 +87,10 @@ the test module, and anything at file scope below the test module is refused
 rather than hidden.
 
 Ten injections were applied one at a time, each reverted with its file's
-SHA-256 checked back to its recorded value. The first nine passed both guards
-before the repair and fail after it; the tenth is the `union ` hole below, which
-passed with a 16-entry list and fails with the 17-entry one. Application and
-revert were observed on Windows native; the first nine were observed again on
-WSL2 Linux with the same result.
+SHA-256 checked back to its recorded value, on Windows native and WSL2 Linux
+with the same result on both. Nine of them passed both guards before the repair
+and fail after it; the tenth is the `union ` hole below, which passed with a
+16-entry list and fails with the 17-entry one.
 
 | # | Injection | Refused by |
 |---|---|---|
