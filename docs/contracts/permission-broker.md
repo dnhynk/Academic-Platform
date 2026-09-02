@@ -83,3 +83,18 @@ P2-G1 does not reuse that number or silently renumber another owner's canonical
 migration. The operational grant/audit schema is instead embedded and applied
 by `academic-policy`; integration can assign a canonical-store migration only
 after resolving the allocation conflict.
+
+## Provider-policy registry integration
+
+P2-G3 adds versioned provider facts, explicit provider user-policy rows, and
+deletion-receipt rows to the same in-memory operational store without changing
+the fifteen grant columns, audit reason enum, opaque token, or atomic
+consumption path fixed here. Grant issuance now requires the rule's provider
+snapshot and retention pins to resolve through that registry. Provider TTL caps
+the stored grant expiry; runtime use also rejects a provider snapshot that has
+changed since issuance.
+
+Historical replay uses the original evaluation time and registry revision
+ceilings. The record schema, digest encoding, `(vendor_id, surface)` identity,
+TTL behavior, decision-storage boundary, and receipt links are fixed in
+[the provider registry contract](provider-registry.md).

@@ -17,6 +17,13 @@ use rusqlite::{Connection, OptionalExtension as _, Transaction, params};
 use sha2::{Digest as _, Sha256};
 use thiserror::Error;
 
+mod provider;
+
+pub use provider::{
+    DeletionReceiptDraft, DeletionReceiptRow, ProviderIdentity, ProviderPolicyDraft,
+    ProviderPolicySnapshot, ProviderSurface, ProviderUserPolicy,
+};
+
 /// SQL schema owned by the broker's operational store.
 pub const POLICY_SCHEMA_SQL: &str = include_str!("schema.sql");
 /// Default validity window for a minted one-use grant, in milliseconds.
@@ -523,6 +530,8 @@ pub struct DecisionReceipt {
     request: PermissionRequest,
     fingerprint: DecisionFingerprint,
     grant_id: Option<String>,
+    evaluated_at: u64,
+    provider_registry_revision: provider::ProviderRegistryRevision,
 }
 
 impl DecisionReceipt {
@@ -542,6 +551,12 @@ impl DecisionReceipt {
     #[must_use]
     pub fn grant_id(&self) -> Option<&str> {
         self.grant_id.as_deref()
+    }
+
+    /// Original evaluation time used for deterministic provider-policy replay.
+    #[must_use]
+    pub const fn evaluated_at(&self) -> u64 {
+        self.evaluated_at
     }
 }
 
@@ -656,6 +671,24 @@ pub enum BrokerError {
     /// An explicit policy rule was malformed.
     #[error("invalid policy rule")]
     InvalidRule,
+    /// Provider registration omitted one required privacy fact.
+    #[error("missing provider privacy field: {0}")]
+    MissingProviderPrivacyField(&'static str),
+    /// Provider registration supplied a contradictory or malformed fact.
+    #[error("invalid provider policy")]
+    InvalidProviderPolicy,
+    /// Provider versions or user policies attempted to rewrite registration history.
+    #[error("provider registry time is not monotonic")]
+    NonMonotonicProviderRegistration,
+    /// An explicit provider user-policy record was malformed or mislinked.
+    #[error("invalid provider user policy")]
+    InvalidProviderUserPolicy,
+    /// A deletion receipt was malformed or did not link to its transmission.
+    #[error("invalid deletion receipt")]
+    InvalidDeletionReceipt,
+    /// Provider rows in the operational store violated their canonical contract.
+    #[error("provider registry contained a corrupt record")]
+    CorruptProviderRecord,
     /// Runtime call metadata was malformed.
     #[error("invalid runtime tool call")]
     InvalidRuntimeCall,
@@ -789,6 +822,8 @@ impl PermissionBroker {
                         request,
                         fingerprint,
                         grant_id: None,
+                        evaluated_at: issued_at,
+                        provider_registry_revision: provider::ProviderRegistryRevision::empty(),
                     },
                     capability: None,
                 })
@@ -806,7 +841,34 @@ impl PermissionBroker {
         let planned = self.plan(&receipt.request)?;
         let (decision, reason, rule) = match planned {
             PlannedDecision::Deny(reason) => (Decision::Deny, Some(reason), None),
-            PlannedDecision::Allow(rule) => (Decision::Allow, None, Some(rule)),
+            PlannedDecision::Allow(rule) => {
+                let byte_count =
+                    range_byte_count(&rule.minimal_ranges).ok_or(BrokerError::InvalidRule)?;
+                let connection = self
+                    .connection
+                    .lock()
+                    .map_err(|_| BrokerError::LockPoisoned)?;
+                let provider = provider::validate_provider_for_grant(
+                    &connection,
+                    &provider::ProviderGrantFacts {
+                        destination_id: &rule.destination_id,
+                        provider_policy_snapshot_digest: rule
+                            .provider_policy_snapshot_digest
+                            .as_str(),
+                        retention_terms_hash: rule.retention_terms_hash.as_str(),
+                        training_use_allowed: rule.training_use_allowed,
+                        byte_count,
+                    },
+                    receipt.evaluated_at,
+                    Some(receipt.provider_registry_revision),
+                );
+                drop(connection);
+                match provider {
+                    Ok(_) => (Decision::Allow, None, Some(rule)),
+                    Err(BrokerError::Denied(reason)) => (Decision::Deny, Some(reason), None),
+                    Err(error) => return Err(error),
+                }
+            }
         };
         let fingerprint = decision_fingerprint(&receipt.request, decision, reason, rule.as_deref());
         let (payload_digest, byte_count) = rule.as_ref().map_or((None, 0), |allowed| {
@@ -925,6 +987,34 @@ impl PermissionBroker {
             transaction.commit()?;
             return Err(BrokerError::Denied(ReasonCode::GrantExpired));
         }
+        let provider_validation = provider::validate_provider_for_grant(
+            &transaction,
+            &provider::ProviderGrantFacts {
+                destination_id: &stored.provider_id,
+                provider_policy_snapshot_digest: &stored.provider_policy_snapshot_digest,
+                retention_terms_hash: &stored.retention_terms_hash,
+                training_use_allowed: stored.training_use_allowed,
+                byte_count: call_count,
+            },
+            now,
+            None,
+        );
+        if let Err(error) = provider_validation {
+            let BrokerError::Denied(reason) = error else {
+                return Err(error);
+            };
+            insert_runtime_audit(
+                &transaction,
+                capability,
+                Decision::Deny,
+                Some(reason),
+                Some(call_digest.as_str()),
+                call_count,
+                now,
+            )?;
+            transaction.commit()?;
+            return Err(BrokerError::Denied(reason));
+        }
         let consumed = transaction.execute(
             "UPDATE egress_grant SET consumed_at = ?1 WHERE grant_id = ?2 AND consumed_at IS NULL AND expires_at > ?1",
             params![sqlite_u64(now)?, capability.grant_id],
@@ -942,7 +1032,7 @@ impl PermissionBroker {
             transaction.commit()?;
             return Err(BrokerError::Denied(ReasonCode::GrantConsumed));
         }
-        insert_runtime_audit(
+        let consumption_audit_seq = insert_runtime_audit(
             &transaction,
             capability,
             Decision::Allow,
@@ -950,6 +1040,14 @@ impl PermissionBroker {
             Some(call_digest.as_str()),
             call_count,
             now,
+        )?;
+        transaction.execute(
+            "INSERT INTO egress_consumption (grant_id, egress_audit_seq, consumed_at) VALUES (?1, ?2, ?3)",
+            params![
+                capability.grant_id,
+                sqlite_u64(consumption_audit_seq)?,
+                sqlite_u64(now)?,
+            ],
         )?;
         transaction.commit()?;
         drop(connection);
@@ -1147,7 +1245,7 @@ impl PermissionBroker {
         issued_at: u64,
         rule: &EgressRule,
     ) -> Result<DecisionOutcome, BrokerError> {
-        let expires_at = issued_at
+        let grant_expires_at = issued_at
             .checked_add(self.grant_ttl_millis)
             .ok_or(BrokerError::TimeOutOfRange)?;
         let request_digest = request_digest(&request);
@@ -1166,6 +1264,49 @@ impl PermissionBroker {
             .lock()
             .map_err(|_| BrokerError::LockPoisoned)?;
         let transaction = connection.transaction()?;
+        let provider_registry_revision = provider::provider_registry_revision(&transaction)?;
+        let provider_expiry = provider::validate_provider_for_grant(
+            &transaction,
+            &provider::ProviderGrantFacts {
+                destination_id: complete.destination_id,
+                provider_policy_snapshot_digest: rule.provider_policy_snapshot_digest.as_str(),
+                retention_terms_hash: complete.retention_terms_hash.as_str(),
+                training_use_allowed: rule.training_use_allowed,
+                byte_count,
+            },
+            issued_at,
+            Some(provider_registry_revision),
+        );
+        let provider_expiry = match provider_expiry {
+            Ok(provider_expiry) => provider_expiry,
+            Err(BrokerError::Denied(reason)) => {
+                insert_request_audit(
+                    &transaction,
+                    &request,
+                    None,
+                    Decision::Deny,
+                    Some(reason),
+                    None,
+                    0,
+                    issued_at,
+                )?;
+                transaction.commit()?;
+                let fingerprint =
+                    decision_fingerprint(&request, Decision::Deny, Some(reason), None);
+                return Ok(DecisionOutcome {
+                    receipt: DecisionReceipt {
+                        request,
+                        fingerprint,
+                        grant_id: None,
+                        evaluated_at: issued_at,
+                        provider_registry_revision,
+                    },
+                    capability: None,
+                });
+            }
+            Err(error) => return Err(error),
+        };
+        let expires_at = grant_expires_at.min(provider_expiry);
         transaction.execute(
             concat!(
                 "INSERT INTO egress_grant (grant_id, request_digest, payload_digest, ",
@@ -1209,6 +1350,8 @@ impl PermissionBroker {
                 request,
                 fingerprint,
                 grant_id: Some(grant_id.clone()),
+                evaluated_at: issued_at,
+                provider_registry_revision,
             },
             capability: Some(CapabilityToken {
                 grant_id,
@@ -1283,6 +1426,9 @@ struct RuntimeGrant {
     byte_ranges_canonical: String,
     purpose_id: String,
     provider_id: String,
+    provider_policy_snapshot_digest: String,
+    retention_terms_hash: String,
+    training_use_allowed: bool,
     expires_at: u64,
     consumed_at: Option<u64>,
 }
@@ -1305,6 +1451,7 @@ fn load_runtime_grant(
         .query_row(
             concat!(
                 "SELECT payload_digest, byte_ranges_canonical, purpose_id, provider_id, ",
+                "provider_policy_snapshot_digest, retention_terms_hash, training_use_allowed, ",
                 "expires_at, consumed_at FROM egress_grant WHERE grant_id = ?1"
             ),
             [grant_id],
@@ -1314,19 +1461,35 @@ fn load_runtime_grant(
                     row.get::<_, String>(1)?,
                     row.get::<_, String>(2)?,
                     row.get::<_, String>(3)?,
-                    row.get::<_, i64>(4)?,
-                    row.get::<_, Option<i64>>(5)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, String>(5)?,
+                    row.get::<_, bool>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, Option<i64>>(8)?,
                 ))
             },
         )
         .optional()?
         .map(
-            |(payload_digest, ranges, purpose_id, provider_id, expires_at, consumed_at)| {
+            |(
+                payload_digest,
+                ranges,
+                purpose_id,
+                provider_id,
+                provider_policy_snapshot_digest,
+                retention_terms_hash,
+                training_use_allowed,
+                expires_at,
+                consumed_at,
+            )| {
                 Ok(RuntimeGrant {
                     payload_digest,
                     byte_ranges_canonical: ranges,
                     purpose_id,
                     provider_id,
+                    provider_policy_snapshot_digest,
+                    retention_terms_hash,
+                    training_use_allowed,
                     expires_at: nonnegative(expires_at)?,
                     consumed_at: consumed_at.map(nonnegative).transpose()?,
                 })
@@ -1363,6 +1526,7 @@ fn insert_request_audit(
         request.destination_id.as_deref().unwrap_or(MISSING_VALUE),
         at,
     )
+    .map(|_| ())
 }
 
 fn insert_runtime_audit(
@@ -1373,7 +1537,7 @@ fn insert_runtime_audit(
     payload_digest: Option<&str>,
     byte_count: u64,
     at: u64,
-) -> Result<(), BrokerError> {
+) -> Result<u64, BrokerError> {
     insert_audit(
         transaction,
         Some(&capability.grant_id),
@@ -1401,7 +1565,7 @@ fn insert_audit(
     byte_count: u64,
     destination_id: &str,
     at: u64,
-) -> Result<(), BrokerError> {
+) -> Result<u64, BrokerError> {
     transaction.execute(
         concat!(
             "INSERT INTO egress_audit (grant_id, decision, reason_code, actor_process_class, ",
@@ -1420,7 +1584,7 @@ fn insert_audit(
             sqlite_u64(at)?,
         ],
     )?;
-    Ok(())
+    u64::try_from(transaction.last_insert_rowid()).map_err(|_| BrokerError::CorruptAuditReason)
 }
 
 fn decision_fingerprint(
