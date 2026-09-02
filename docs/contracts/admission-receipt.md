@@ -76,12 +76,17 @@ and schema fields make stale rows reject independently of the outer receipt.
 2. Require the envelope key to equal the sole compiled acceptance public key,
    then verify Ed25519 over the original payload bytes. An unprovisioned,
    malformed, wrong, or all-zero key denies.
-3. Require exactly one valid signed row for every compiled platform, in this
-   order: `windows-x86_64`, `windows-aarch64`, `linux-x86_64`,
-   `linux-aarch64`, `macos-aarch64`.
+3. Require exactly one valid signed row for every compiled platform:
+   `windows-x86_64`, `windows-aarch64`, `linux-x86_64`, `linux-aarch64`,
+   `macos-aarch64`. Rows may appear in the receipt in any order; the verifier
+   matches them by name and emits the platform list in the compiled order.
 4. Require spec digest
    `4830DEBD1A9EE8BE13B10D1E72BA3D2A3943F9D63417051CC123EF51743B2E45`,
-   store schema version `2`, and the exact encrypted-profile-v2 marker.
+   store schema version `2`, the exact encrypted-profile-v2 marker, the absence
+   of the plaintext synthetic marker, and a profile store whose first sixteen
+   bytes are not the SQLite format-3 header. The marker is a text file that can
+   be copied into a plaintext profile, so it is a claim; the store header is
+   what the verifier checks about the store itself.
 5. Return an opaque `VerifiedAdmission`; every error maps the emitted posture
    to synthetic.
 
@@ -95,7 +100,9 @@ three remaining platform rows belong to `P2-H1`.
 `Posture` has private state. Its admitted constructor consumes the opaque
 `VerifiedAdmission`, and the compile-fail case in the existing
 `academic-scenario` trybuild harness proves external code cannot fabricate that
-capability. One compact canonical JSON byte sequence is emitted through:
+capability with a struct literal. The remaining routes are closed by the type
+system, and nothing executes them. One compact canonical JSON byte sequence is
+emitted through:
 
 - CLI JSON as the `policy` object and CLI human output as the `posture:` line;
 - local IPC as `DataPosture.canonical_json`, alongside typed fields;
@@ -103,12 +110,55 @@ capability. One compact canonical JSON byte sequence is emitted through:
 
 There is no desktop surface in this repository, so this contract does not claim
 one. `posture_object_is_byte_exact_on_every_surface` compares the three present
-surfaces. `no_environment_or_flag_override_exists` scans the product source for
-key/override seams, pins the sole verified-capability and admitted-posture
-construction sites, scans every other crate's product source for a second
-admission-authority site, and recursively scans the Clap command tree. During
-acceptance, an actual public arbitrary-key verifier was injected into the
-product `AdmissionVerifier`; the named scan failed on that method, and passed
-again after it was removed. The runtime tests additionally cover absent
-receipts, missing rows, stale spec bytes, forged signatures, and
-unprovisioned/empty/one-zero/all-zero acceptance keys.
+surfaces.
+
+`no_environment_or_flag_override_exists` reads every `*.rs` under every crate's
+`src`, above that file's test module and refusing any file that declares an item
+at file scope below it. In `crates/admission/src` it forbids a fixed list of
+key and override seams — `std::env`, `env!(`, `env::var`, `debug_assertions`,
+`include_bytes!`, `include_str!`, and four setter spellings. It pins the two
+places the key is obtained as whole text rather than by token: the
+`ACCEPTANCE_PUBLIC_KEY` declaration and the whole body of
+`verify_with_compiled_acceptance_key`, both whitespace-collapsed against a
+constant. Provisioning changes the declaration, so provisioning updates that
+constant in the same commit. Six admission-authority tokens are counted against
+an explicit allowance — the admission crate's exact count, every other crate
+zero — which is what pins the sole verified-capability and admitted-posture
+construction sites. It also recursively scans the Clap command tree.
+
+The scan does not read the other crates for key seams; what it requires of them
+is that they spell none of the six authority tokens.
+
+`P2-RF7` put the five substitutions the `P2-K6` audit passed back through it,
+one at a time, on Windows and Linux: a build environment variable through
+`option_env!`, the same substitution spelling no forbidden token, a runtime key
+file read inside the key check, a second module file beside `lib.rs`, product
+code below `lib.rs`'s test module, and a `debug_assertions` bypass. Each failed
+the scan and passed again after it was reverted. The runtime tests additionally
+cover absent receipts, missing rows, stale spec bytes, forged signatures,
+unprovisioned/empty/one-zero/all-zero acceptance keys, and a plaintext profile
+carrying a copied format marker.
+
+## What the receipt is not bound to
+
+The signed payload names a spec digest, a store schema version, and one evidence
+row per platform. It carries no profile identifier, store identity, nonce, or
+expiry, so one valid receipt admits any profile on the machine that passes the
+profile-format check, for as long as the compiled key stays provisioned. The
+posture's `storage_mode` and `storage_encryption` are therefore not claims the
+signature covers: what stands behind them is the format marker plus the store
+header check in step 4, and both are properties of the profile the verifier was
+pointed at, read at verification time.
+
+Binding a receipt to a profile would change the signed payload shape, which is
+frozen here and reproduced byte-for-byte by the committed fixture. `P2-H1` owns
+the signing round that could change it.
+
+`storage_schema` on the local IPC handshake is chosen by the posture through one
+function, `academic_rpc::handshake::storage_schema_for`, which both the emitter
+and the client validator call. The vault object formats are not chosen by the
+posture: this build's vault reads and writes `PLAINTEXT_SYNTHETIC_V1` whatever
+the posture says, because the vault that writes `AEAD_CHUNKED_V2` is the
+non-default `aead-objects` feature and is not what a default-lane daemon links.
+The admitted posture's `object_format` therefore describes the format admission
+would require, not the format the running daemon uses.

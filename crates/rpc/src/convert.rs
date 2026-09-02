@@ -14,8 +14,8 @@ use crate::{
     handshake::{
         LOCAL_CORE_PROTOCOL_NAME, LOCAL_CORE_PROTOCOL_VERSION, MINIMUM_CLIENT_VERSION,
         PHASE1_CAPABILITY_IDS, READ_ONLY_CAPABILITY_IDS, WRITE_CAPABILITY_IDS,
-        expected_capability_for_command, protocol_version_from_proto, validate_capability_list,
-        validate_client_handshake,
+        expected_capability_for_command, protocol_version_from_proto, storage_schema_for,
+        validate_capability_list, validate_client_handshake,
     },
     limits::{
         FrameClass, IDEMPOTENCY_KEY_BYTES, MAX_DAEMON_BUILD_BYTES, MAX_PROJECTION_STATES,
@@ -327,6 +327,35 @@ pub fn validate_mutable_response(
     })
 }
 
+/// The canonical bytes an admitted posture emits for one receipt digest.
+///
+/// This restates `academic_admission::Posture`'s admitted arm rather than
+/// calling it, because an admitted `Posture` is issued only by
+/// `AdmissionVerifier::verify` and cannot be constructed here. The two are
+/// therefore a pair that can drift, and the drift is one-sided: a client
+/// carrying the older spelling refuses every admitted handshake its own daemon
+/// sends. Nothing in this repository observes that today.
+fn admitted_canonical_json(receipt_digest: &str) -> Vec<u8> {
+    format!(
+        concat!(
+            "{{\"data_policy\":\"REAL_PERSONAL_DATA_PERMITTED\",",
+            "\"storage_mode\":\"SQLCIPHER_ENCRYPTED_PROFILE_V2\",",
+            "\"storage_encryption\":",
+            "\"SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000\",",
+            "\"object_format\":\"AEAD_CHUNKED_V2\",",
+            "\"production_data_allowed\":true,",
+            "\"product_network\":\"BROKERED_EGRESS_ONLY\",",
+            "\"admission_receipt_digest\":\"{}\",",
+            "\"admission_platforms\":[",
+            "\"windows-x86_64\",\"windows-aarch64\",",
+            "\"linux-x86_64\",\"linux-aarch64\",",
+            "\"macos-aarch64\"]}}"
+        ),
+        receipt_digest
+    )
+    .into_bytes()
+}
+
 fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
     if server.protocol_name != LOCAL_CORE_PROTOCOL_NAME {
         return Err(RpcError::ProtocolNameMismatch {
@@ -350,16 +379,23 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
         "server.daemon_build",
         MAX_DAEMON_BUILD_BYTES,
     )?;
+    let policy = server.policy.as_ref().ok_or(RpcError::MissingField {
+        field: "server.policy",
+    })?;
     let storage = server
         .storage_schema
         .as_ref()
         .ok_or(RpcError::MissingField {
             field: "server.storage_schema",
         })?;
-    if storage.number != 1 || storage.semantic_version != "1.0.0" {
+    // The posture chooses the schema, and it chooses it here through the same
+    // function the emitter announces it with. Reading the posture off the wire
+    // rather than off this process is safe because the posture itself is
+    // checked below against the exact bytes each of its two values may carry.
+    if *storage != storage_schema_for(policy.production_data_allowed) {
         return Err(RpcError::InvalidFieldValue {
             field: "server.storage_schema",
-            reason: "must be schema 1 / 1.0.0",
+            reason: "must be the schema this posture announces",
         });
     }
     if server.vault_read_formats.as_slice() != ["PLAINTEXT_SYNTHETIC_V1"]
@@ -411,9 +447,6 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
             value: server.lock_state,
         });
     }
-    let policy = server.policy.as_ref().ok_or(RpcError::MissingField {
-        field: "server.policy",
-    })?;
     let valid_posture = if policy.production_data_allowed {
         policy.data_policy == "REAL_PERSONAL_DATA_PERMITTED"
             && policy.storage_mode == "SQLCIPHER_ENCRYPTED_PROFILE_V2"
@@ -430,25 +463,7 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
                     .iter()
                     .map(|platform| (*platform).to_owned())
                     .collect::<Vec<_>>()
-            && policy.canonical_json
-                == format!(
-                    concat!(
-                        "{{\"data_policy\":\"REAL_PERSONAL_DATA_PERMITTED\",",
-                        "\"storage_mode\":\"SQLCIPHER_ENCRYPTED_PROFILE_V2\",",
-                        "\"storage_encryption\":",
-                        "\"SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000\",",
-                        "\"object_format\":\"AEAD_CHUNKED_V2\",",
-                        "\"production_data_allowed\":true,",
-                        "\"product_network\":\"BROKERED_EGRESS_ONLY\",",
-                        "\"admission_receipt_digest\":\"{}\",",
-                        "\"admission_platforms\":[",
-                        "\"windows-x86_64\",\"windows-aarch64\",",
-                        "\"linux-x86_64\",\"linux-aarch64\",",
-                        "\"macos-aarch64\"]}}"
-                    ),
-                    policy.admission_receipt_digest
-                )
-                .as_bytes()
+            && policy.canonical_json == admitted_canonical_json(&policy.admission_receipt_digest)
     } else {
         policy.data_policy == PHASE1_PROTOCOL_POLICY.data_policy
             && policy.storage_mode == PHASE1_PROTOCOL_POLICY.storage_mode
@@ -811,4 +826,96 @@ pub fn validate_closed_envelope_wire(bytes: &[u8]) -> Result<(), RpcError> {
     payload_tag
         .map(|_| ())
         .ok_or(RpcError::MissingEnvelopePayload)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        ServerHandshakeConfig,
+        generated::{ClientHandshake, DataPosture, ProtocolVersion},
+        handshake::negotiate_handshake,
+    };
+
+    /// A well-formed receipt digest. Its value carries nothing.
+    const RECEIPT_DIGEST: &str = "1f0c7d2a4b6e8091a3c5e7f90b2d4f6180a2c4e60f1d3b5978a6c4e2f0d8b6a4";
+
+    fn client() -> ClientHandshake {
+        ClientHandshake {
+            protocol_name: LOCAL_CORE_PROTOCOL_NAME.to_owned(),
+            protocol_version: Some(ProtocolVersion { major: 1, minor: 0 }),
+            capability_ids: PHASE1_CAPABILITY_IDS
+                .iter()
+                .copied()
+                .map(str::to_owned)
+                .collect(),
+        }
+    }
+
+    fn admitted_policy() -> DataPosture {
+        DataPosture {
+            data_policy: "REAL_PERSONAL_DATA_PERMITTED".to_owned(),
+            storage_mode: "SQLCIPHER_ENCRYPTED_PROFILE_V2".to_owned(),
+            storage_encryption: "SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000".to_owned(),
+            production_data_allowed: true,
+            product_network: "BROKERED_EGRESS_ONLY".to_owned(),
+            object_format: "AEAD_CHUNKED_V2".to_owned(),
+            admission_receipt_digest: RECEIPT_DIGEST.to_owned(),
+            admission_platforms: academic_admission::REQUIRED_ADMISSION_PLATFORMS
+                .iter()
+                .map(|platform| (*platform).to_owned())
+                .collect(),
+            canonical_json: admitted_canonical_json(RECEIPT_DIGEST),
+        }
+    }
+
+    /// The admitted handshake this daemon emits passes this repository's own
+    /// client validator.
+    ///
+    /// `P2-K6` moved the emitter to storage schema 2 under the admitted posture
+    /// and left the validator accepting only schema 1, so once a key was
+    /// provisioned the CLI could not have completed a handshake with its own
+    /// daemon. Nothing caught it because nothing ran the admitted branch.
+    ///
+    /// Nothing here can run it end to end either: an admitted `Posture` comes
+    /// only out of `AdmissionVerifier::verify`, the compiled acceptance key is
+    /// `Unprovisioned`, and `admitted_posture_requires_verified_receipt` is the
+    /// compile-fail case that keeps it that way. So this takes the handshake
+    /// the emitter actually produced and moves exactly the two fields the
+    /// admitted branch moves — the schema, through the emitter's own
+    /// `storage_schema_for`, and the posture. What it proves is the binding:
+    /// the pair the emitter would send is accepted, and both crossed pairs are
+    /// refused, so acceptance is not indifference.
+    #[test]
+    fn an_admitted_handshake_validates_on_the_client() -> Result<(), RpcError> {
+        let synthetic = negotiate_handshake(&client(), &ServerHandshakeConfig::default())?;
+        assert_eq!(synthetic.storage_schema, Some(storage_schema_for(false)));
+        validate_server_handshake(&synthetic)?;
+
+        let mut admitted = synthetic.clone();
+        admitted.policy = Some(admitted_policy());
+        admitted.storage_schema = Some(storage_schema_for(true));
+        validate_server_handshake(&admitted)?;
+
+        let mut admitted_with_phase1_schema = admitted.clone();
+        admitted_with_phase1_schema.storage_schema = Some(storage_schema_for(false));
+        assert!(matches!(
+            validate_server_handshake(&admitted_with_phase1_schema),
+            Err(RpcError::InvalidFieldValue {
+                field: "server.storage_schema",
+                ..
+            })
+        ));
+
+        let mut synthetic_with_admitted_schema = synthetic;
+        synthetic_with_admitted_schema.storage_schema = Some(storage_schema_for(true));
+        assert!(matches!(
+            validate_server_handshake(&synthetic_with_admitted_schema),
+            Err(RpcError::InvalidFieldValue {
+                field: "server.storage_schema",
+                ..
+            })
+        ));
+        Ok(())
+    }
 }

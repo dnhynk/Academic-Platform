@@ -165,6 +165,29 @@ pub(crate) fn validate_client_handshake(
     protocol_version_from_proto(client.protocol_version.as_ref(), "client.protocol_version")
 }
 
+/// The storage schema a handshake announces under one posture.
+///
+/// Both sides of the wire read this one function: `negotiate_handshake`
+/// announces what it returns and `validate_server_handshake` expects what it
+/// returns. `P2-K6` made the emitter announce schema 2 under the admitted
+/// posture and left the client validator accepting only schema 1, so this
+/// repository's own client refused this repository's own admitted daemon. One
+/// function is what stops the next change from splitting them again.
+#[must_use]
+pub fn storage_schema_for(production_data_allowed: bool) -> StorageSchemaVersion {
+    if production_data_allowed {
+        StorageSchemaVersion {
+            number: 2,
+            semantic_version: "2.0.0".to_owned(),
+        }
+    } else {
+        StorageSchemaVersion {
+            number: 1,
+            semantic_version: "1.0.0".to_owned(),
+        }
+    }
+}
+
 fn policy_message(posture: &Posture) -> DataPosture {
     DataPosture {
         data_policy: posture.data_policy().to_owned(),
@@ -250,17 +273,7 @@ pub fn negotiate_handshake(
         protocol_version: Some(proto_version(LOCAL_CORE_PROTOCOL_VERSION)),
         minimum_client_version: Some(proto_version(MINIMUM_CLIENT_VERSION)),
         daemon_build: config.daemon_build.clone(),
-        storage_schema: Some(if config.posture.production_data_allowed() {
-            StorageSchemaVersion {
-                number: 2,
-                semantic_version: "2.0.0".to_owned(),
-            }
-        } else {
-            StorageSchemaVersion {
-                number: 1,
-                semantic_version: "1.0.0".to_owned(),
-            }
-        }),
+        storage_schema: Some(storage_schema_for(config.posture.production_data_allowed())),
         vault_read_formats: vec!["PLAINTEXT_SYNTHETIC_V1".to_owned()],
         vault_write_format: "PLAINTEXT_SYNTHETIC_V1".to_owned(),
         projections: config.projections.clone(),

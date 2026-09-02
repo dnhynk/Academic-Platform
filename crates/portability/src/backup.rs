@@ -73,6 +73,11 @@ pub fn backup_profile(
     keyring: DomainKeyring,
 ) -> PortabilityResult<BackupReceipt> {
     directory::require_absent(destination)?;
+    // Before anything is read and before the posture is computed: this
+    // opens the database file directly instead of going through
+    // `open_synthetic_profile`, so it is outside the marker rule unless it
+    // runs the rule itself.
+    academic_store::profile::require_profile_format(profile_root)?;
     let database_path = profile_root.join(academic_store::STORE_DATABASE_FILE);
     let source = CanonicalDatabase::open_source(&database_path)?;
     let source_rows = read_canonical_rows(&source)?;

@@ -8,7 +8,7 @@
 
 use std::{
     fs,
-    io::Cursor,
+    io::{Cursor, Read as _},
     path::{Path, PathBuf},
 };
 
@@ -40,9 +40,18 @@ pub const REQUIRED_ADMISSION_PLATFORMS: [&str; 5] = [
     "macos-aarch64",
 ];
 
+/// The store file this verifier reads, spelled the way `academic_store` spells it.
+///
+/// This crate has no internal dependencies and does not take one for a file
+/// name. `the_admission_and_store_profile_database_names_agree` in
+/// `academic-portability`, which depends on both, is what keeps the two equal.
+pub const PROFILE_DATABASE_FILE: &str = "academic-platform.sqlite3";
+
 const MAX_RECEIPT_BYTES: usize = 1_048_576;
 const ENCRYPTED_PROFILE_MARKER: &str = "PROFILE_FORMAT_V2";
 const SYNTHETIC_PROFILE_MARKER: &str = "SYNTHETIC_ONLY_PLAINTEXT_DO_NOT_USE_REAL_DATA.txt";
+/// The first sixteen bytes of every unencrypted SQLite file.
+const PLAINTEXT_SQLITE_HEADER: &[u8; 16] = b"SQLite format 3\0";
 const ENCRYPTED_PROFILE_MARKER_BYTES: &[u8] = concat!(
     "ACADEMIC_PLATFORM_ENCRYPTED_PROFILE_FORMAT_V2\n",
     "format_uuid=67cb6d3ea27e4b53b1e727d46920e4f9\n",
@@ -510,7 +519,26 @@ fn require_encrypted_profile_marker(profile_root: &Path) -> Result<(), Admission
     if marker != ENCRYPTED_PROFILE_MARKER_BYTES {
         return Err(AdmissionError::InvalidProfileFormat);
     }
+    // The marker is a text file that anyone can copy, so on its own it is a
+    // claim and not evidence: the `P2-K6` audit copied it into a seeded Phase 1
+    // profile and that plaintext profile was admitted. The store answers for
+    // itself. An encrypted profile's first page is ciphertext, so only an
+    // unencrypted one begins with the SQLite format-3 header.
+    let database = profile_root.join(PROFILE_DATABASE_FILE);
+    let head = read_leading_bytes(&database)?;
+    if &head == PLAINTEXT_SQLITE_HEADER {
+        return Err(AdmissionError::PlaintextProfileDatabase { path: database });
+    }
     Ok(())
+}
+
+/// Reads the first sixteen bytes of the profile store, or denies.
+fn read_leading_bytes(path: &Path) -> Result<[u8; 16], AdmissionError> {
+    let mut file = fs::File::open(path).map_err(|_| AdmissionError::InvalidProfileFormat)?;
+    let mut head = [0_u8; 16];
+    file.read_exact(&mut head)
+        .map_err(|_| AdmissionError::InvalidProfileFormat)?;
+    Ok(head)
 }
 
 fn decode_envelope(bytes: &[u8]) -> Result<DecodedEnvelope, AdmissionError> {
@@ -786,6 +814,9 @@ pub enum AdmissionError {
     /// The profile marker is absent, malformed, or synthetic.
     #[error("profile is not the compiled encrypted schema-2 format")]
     InvalidProfileFormat,
+    /// The profile store is an unencrypted SQLite database.
+    #[error("profile store {path} is an unencrypted SQLite database")]
+    PlaintextProfileDatabase { path: PathBuf },
 }
 
 impl AdmissionError {
@@ -812,6 +843,7 @@ impl AdmissionError {
             Self::StalePlatformRow { .. } => "ADMISSION_PLATFORM_ROW_STALE",
             Self::InvalidPlatformEvidence { .. } => "ADMISSION_PLATFORM_EVIDENCE_INVALID",
             Self::InvalidProfileFormat => "ADMISSION_PROFILE_FORMAT_INVALID",
+            Self::PlaintextProfileDatabase { .. } => "ADMISSION_PROFILE_DATABASE_PLAINTEXT",
         }
     }
 }
@@ -868,12 +900,23 @@ mod tests {
         ]))
     }
 
+    /// Sixteen bytes standing in for an encrypted first page.
+    const CIPHERTEXT_HEAD: [u8; 16] = [0xa7; 16];
+
     fn profile_with_receipt(receipt: &[u8]) -> Result<TempDir, Box<dyn Error>> {
+        profile_with_receipt_and_store(receipt, &CIPHERTEXT_HEAD)
+    }
+
+    fn profile_with_receipt_and_store(
+        receipt: &[u8],
+        store_head: &[u8],
+    ) -> Result<TempDir, Box<dyn Error>> {
         let profile = tempfile::tempdir()?;
         fs::write(
             profile.path().join(ENCRYPTED_PROFILE_MARKER),
             ENCRYPTED_PROFILE_MARKER_BYTES,
         )?;
+        fs::write(profile.path().join(PROFILE_DATABASE_FILE), store_head)?;
         fs::create_dir(profile.path().join("admission"))?;
         fs::write(
             profile.path().join(ADMISSION_RECEIPT_RELATIVE_PATH),
@@ -928,6 +971,52 @@ mod tests {
         let posture = AdmissionVerifier::posture(profile.path());
         assert!(!posture.production_data_allowed());
         assert_eq!(posture, Posture::synthetic());
+        Ok(())
+    }
+
+    /// A copied marker file is a claim; the store is the evidence.
+    ///
+    /// The `P2-K6` audit took a seeded Phase 1 profile, copied
+    /// `PROFILE_FORMAT_V2` into it, removed the plaintext marker, and was
+    /// admitted: the whole profile-format check was a byte comparison against
+    /// one static text file, so a plaintext SQLite store passed as
+    /// `SQLCIPHER_ENCRYPTED_PROFILE_V2`. The store now answers for itself.
+    #[test]
+    fn a_plaintext_profile_with_a_copied_marker_is_not_admitted() -> Result<(), Box<dyn Error>> {
+        let signing = SigningKey::from_bytes(&TEST_SIGNING_SEED);
+        let receipt = signed_receipt(
+            CANONICAL_SPEC_DIGEST,
+            COMPILED_STORE_SCHEMA_VERSION,
+            &complete_rows(),
+            &signing,
+        )?;
+        let key = signing.verifying_key().to_bytes();
+
+        let encrypted = profile_with_receipt(&receipt)?;
+        verify_with_test_key(encrypted.path(), &key)?;
+
+        let plaintext = profile_with_receipt_and_store(&receipt, PLAINTEXT_SQLITE_HEADER)?;
+        let denial = verify_with_test_key(plaintext.path(), &key)
+            .err()
+            .ok_or("a plaintext store was admitted")?;
+        assert!(matches!(
+            denial,
+            AdmissionError::PlaintextProfileDatabase { .. }
+        ));
+        assert_eq!(denial.code(), "ADMISSION_PROFILE_DATABASE_PLAINTEXT");
+        assert_eq!(
+            AdmissionVerifier::posture(plaintext.path()),
+            Posture::synthetic()
+        );
+
+        // The same profile with no store at all is refused too, so the check
+        // cannot be passed by deleting the file it reads.
+        let absent = profile_with_receipt(&receipt)?;
+        fs::remove_file(absent.path().join(PROFILE_DATABASE_FILE))?;
+        assert!(matches!(
+            verify_with_test_key(absent.path(), &key),
+            Err(AdmissionError::InvalidProfileFormat)
+        ));
         Ok(())
     }
 

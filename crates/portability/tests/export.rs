@@ -8,6 +8,7 @@ use std::{collections::BTreeSet, fs};
 
 use academic_portability::{
     MAX_PORTABLE_RELATIVE_PATH_BYTES,
+    backup::backup_profile,
     export::{
         CANONICAL_FILES, INVENTORY_FILE, LEDGER_BATCH_DIRECTORY, LEDGER_EVENTS_FILE, MANIFEST_FILE,
         MANIFEST_SCHEMA_FILE, STORE_SCHEMA_FILE, export_profile, read_exported_artifacts,
@@ -368,4 +369,62 @@ fn a_canonical_read_set_does_not_straddle_a_concurrent_commit() -> TestResult {
         "the concurrent commit was never observable, so the snapshot proved nothing"
     );
     Ok(())
+}
+
+/// Export and backup enforce the marker rule that profile opening enforces.
+///
+/// `export_profile` and `backup_profile` open the store file directly instead
+/// of going through `open_synthetic_profile`, so the `P2-K6` audit copied
+/// `PROFILE_FORMAT_V2` into a seeded Phase 1 profile and both ran to
+/// completion — writing a `posture.json` claiming
+/// `SQLCIPHER_ENCRYPTED_PROFILE_V2` beside a manifest that said
+/// `"encrypted": false`. Only the daemon refused.
+#[test]
+fn export_refuses_a_profile_carrying_both_markers() -> TestResult {
+    let fixture = Fixture::new("export-both-markers")?;
+    let copied = fixture
+        .profile_root()
+        .join(academic_store::PROFILE_FORMAT_V2_MARKER);
+    fs::write(&copied, b"ACADEMIC_PLATFORM_ENCRYPTED_PROFILE_FORMAT_V2\n")?;
+
+    let destination = fixture.work_path("export");
+    assert!(
+        export_profile(fixture.profile_root(), &destination, fixture.keyring()?).is_err(),
+        "export ran on a profile carrying both format markers"
+    );
+    assert!(
+        !destination.exists(),
+        "a refused export published a destination"
+    );
+
+    let backup_destination = fixture.work_path("backup");
+    assert!(
+        backup_profile(
+            fixture.profile_root(),
+            &backup_destination,
+            fixture.keyring()?
+        )
+        .is_err(),
+        "backup ran on a profile carrying both format markers"
+    );
+    assert!(
+        !backup_destination.exists(),
+        "a refused backup published a destination"
+    );
+
+    // The same fixture without the copied marker still exports, so what was
+    // refused is the marker and not the profile.
+    fs::remove_file(&copied)?;
+    export_profile(fixture.profile_root(), &destination, fixture.keyring()?)?;
+    Ok(())
+}
+
+/// `academic-admission` names the store file itself and depends on no crate to
+/// get it, so this is what keeps its spelling equal to the store's.
+#[test]
+fn the_admission_and_store_profile_database_names_agree() {
+    assert_eq!(
+        academic_admission::PROFILE_DATABASE_FILE,
+        academic_store::STORE_DATABASE_FILE
+    );
 }

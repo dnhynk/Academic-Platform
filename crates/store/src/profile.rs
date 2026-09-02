@@ -174,7 +174,7 @@ impl IncompleteProfile {
         creating_build_digest: [u8; 32],
     ) -> StoreResult<SyntheticProfile> {
         validate_existing_profile_path(&self.root, probe)?;
-        verify_marker(&self.root)?;
+        require_profile_format(&self.root)?;
         verify_complete_incomplete_marker(&self.root)?;
         let database_path = self.root.join(STORE_DATABASE_FILE);
         let migration_status = migrate_pre_listen(&database_path, creating_build_digest)?;
@@ -287,7 +287,7 @@ pub fn open_synthetic_profile<P: PathProbe + ?Sized>(
             ));
         }
     }
-    verify_marker(root)?;
+    require_profile_format(root)?;
     let database_path = root.join(STORE_DATABASE_FILE);
     require_regular_file(&database_path)?;
     let writer = open_writer(&database_path)?;
@@ -378,11 +378,18 @@ pub(crate) fn write_new_synced_file(path: &Path, contents: &[u8]) -> StoreResult
         .map_err(|source| StoreError::io("synchronize profile marker", path, source))
 }
 
+/// Refuses a profile whose format markers are not this build's format.
+///
+/// Section 3.2: the plaintext marker and `PROFILE_FORMAT_V2` are mutually
+/// exclusive and startup refuses a profile carrying both. This is the
+/// plaintext side of that rule; `cipher::verify_format_marker` is the other.
+///
+/// It is public because `open_synthetic_profile` is not the only reader of a
+/// profile root. Export and backup open the database file directly, so until
+/// they called this the marker rule the daemon enforces did not reach them and
+/// a profile carrying the encrypted marker exported as Phase 1 plaintext.
 #[cfg(not(feature = "sqlcipher-store"))]
-fn verify_marker(root: &Path) -> StoreResult<()> {
-    // Section 3.2: the plaintext marker and `PROFILE_FORMAT_V2` are mutually
-    // exclusive and startup refuses a profile carrying both. This is the
-    // plaintext side of that rule; `cipher::verify_format_marker` is the other.
+pub fn require_profile_format(root: &Path) -> StoreResult<()> {
     let encrypted = root.join(crate::PROFILE_FORMAT_V2_MARKER);
     if fs::symlink_metadata(&encrypted).is_ok() {
         return Err(StoreError::InvalidProfileState {

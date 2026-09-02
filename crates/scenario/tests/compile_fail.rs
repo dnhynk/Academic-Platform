@@ -1,7 +1,10 @@
-//! The type half of the projected/actual isolation, proved by compilation.
+//! The type half of two isolations, proved by compilation.
 //!
-//! Every case under `tests/compile_fail` is a program that tries to carry a
-//! projected mastery, opportunity, or workload value to a canonical writer.
+//! The cases under `tests/compile_fail` are of two kinds. Most are programs
+//! that try to carry a projected mastery, opportunity, or workload value to a
+//! canonical writer. One — `admitted_posture_requires_verified_receipt` —
+//! assembles an admitted `Posture` with a struct literal instead of the
+//! `VerifiedAdmission` that `AdmissionVerifier::verify` issues.
 //! The suite passes only when each one fails to compile *and* fails with the
 //! committed diagnostic, so a case that stopped proving anything — because the
 //! seal grew an accessor, or because the case itself was mistyped into a
