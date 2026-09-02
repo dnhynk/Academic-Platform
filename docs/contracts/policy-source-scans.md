@@ -117,7 +117,7 @@ open, so each row says what makes it start mattering.
 | # | Scan | What is open | When it starts mattering |
 |---|---|---|---|
 | S-1 | `crates/retention/tests/retention.rs` | token lists at all three call sites; no whole-text pin on any decision site | A revocation, `GATE-38-026`, or journal-truncation seam spelled differently from the listed tokens passes. The rotation *gate* is separately pinned in `rotation_gate.rs`, so the exposure is the three claims those lists carry, not the gate. |
-| S-2 | `crates/store/tests/encrypted_profile.rs` | 3-token list, no floor | A profile-conversion entry point named anything other than `upgrade_profile`, `convert_profile`, or `migrate_schema_1_to_2` passes. With no floor, a walk that returns nothing also passes. Matters as soon as ADR-002 acceptance work adds a real migration path. |
+| S-2 | `crates/store/tests/encrypted_profile.rs` | 3-token list, no floor | A profile-conversion entry point named anything other than `upgrade_profile`, `convert_profile`, or `migrate_schema_1_to_2` passes. With no floor, a walk that returns nothing also passes. This list is the source half of the execution plan's "no … profile-conversion command"; the behavioural half is `academic profile convert` exiting `USAGE` in the `cli_has_no_real_data_override` flag battery. Matters as soon as ADR-002 acceptance work adds a real migration path. |
 | S-3 | `crates/daemon/tests/phase1_exit.rs` | 10-token list; `scanned > 0` is the whole floor | A socket reached through a re-export or a dependency's wrapper type names none of the ten. The paired link scan of the built binary is what actually carries this claim; the source half is the weaker of the two and should be read that way. |
 | S-4 | `tools/secret-debug-policy.test.mjs` | no floor on the file walk; `T123 P3-G6` (`I37`, `I46`) still silent | `crates/*/src` returning an empty list passes every assertion. Matters if a crate is renamed or the walk root moves. |
 | S-5 | `tools/phase1-scaffold-policy.test.mjs` | fixed paths outside `store-platform` | A file renamed or split leaves its assertions reading a path that no longer holds the code they describe. `readFile` throws on a missing path, so a rename fails loudly; a *split* does not — the assertions keep passing against the half that stayed. |
@@ -150,6 +150,17 @@ refuses every admitted handshake its own daemon emits. Nothing observes this.
 The literals are collected in one place and the comment there says so. It closes
 when acceptance-key provisioning (`P2-H1`) makes an admitted `Posture`
 constructible in a test.
+
+## Where the requirement comes from
+
+The authoritative spec (`PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md`)
+does not mention source scans, the fixture allowlist, or `--allow-real-data`, so
+nothing on this page can conflict with it. The normative source is the execution
+plan's §3.1 — "There is no quiet flag, environment variable, debug build
+shortcut, `--allow-real-data`, or profile-conversion command", and "a source scan
+proving no second construction site exists" — and its §5 `P2-K6` acceptance row,
+which names `no_environment_or_flag_override_exists` as "source scan + CLI
+surface scan". The table above is what those two sentences actually rest on.
 
 ## Posture
 
