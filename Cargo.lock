@@ -202,6 +202,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-model-run"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-policy",
+ "sha2",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-policy"
 version = "0.1.0"
 dependencies = [

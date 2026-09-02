@@ -260,6 +260,10 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-export-job": ["academic-policy"],
     "academic-indexer": ["academic-policy"],
     "academic-ledger": ["academic-contracts", "academic-domain"],
+    // `P2-M1`'s edge to `academic-policy` is the reconciliation: the audit rows
+    // it compares a recorded transmission against are the broker's, and the
+    // namespace discriminator it keys on is that crate's column.
+    "academic-model-run": ["academic-domain", "academic-policy"],
     // `academic-crypto`, `academic-recovery`, and `academic-projections` are
     // all optional edges here, and the two lane features that select them are
     // mutually exclusive: `plaintext-portability` (default) selects the
@@ -1539,6 +1543,9 @@ const SOCKET_CAPABLE_CLOSURES = {
   // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
   // rather than empty.
   "academic-untrusted-content": ["libc"],
+  // `P2-M1`. `libc` reaches it through `academic-policy`'s bundled SQLite, and
+  // nothing in this closure can open a socket.
+  "academic-model-run": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -3182,6 +3189,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     sandboxReceiptText,
     untrustedReceiptText,
     consentReceiptText,
+    modelRunReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3198,6 +3206,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-g4.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g6.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-m1.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3214,6 +3223,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const sandboxReceipt = JSON.parse(sandboxReceiptText);
   const untrustedReceipt = JSON.parse(untrustedReceiptText);
   const consentReceipt = JSON.parse(consentReceiptText);
+  const modelRunReceipt = JSON.parse(modelRunReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -3642,6 +3652,63 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-G5 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-M1` adds the model-run provenance and calibration boundary as
+  // `academic-model-run` and admits no external crate: its product edges are
+  // `academic-domain`, `academic-policy`, `sha2` and `thiserror`, and its dev
+  // edge is `trybuild`, all five already in this lock through earlier receipts.
+  assert.equal(modelRunReceipt.task, "P2-M1");
+  const modelRunAdmitted = new Set(
+    modelRunReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const modelRunPathPackages = new Set(
+    modelRunReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(modelRunAdmitted.size, 0, "P2-M1 must admit no external crate");
+  assert.deepEqual([...modelRunPathPackages], ["academic-model-run@0.1.0"]);
+  assert.deepEqual(modelRunReceipt.summary.npm_additions, []);
+  assert.equal(modelRunReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(modelRunReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-policy",
+  ]);
+  for (const claimed of [...modelRunAdmitted, ...modelRunPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        sandboxAdmitted.has(claimed) ||
+        sandboxPathPackages.has(claimed) ||
+        untrustedAdmitted.has(claimed) ||
+        untrustedPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const modelRunTuples = lockTuples.filter(
+    ([name, version]) =>
+      modelRunAdmitted.has(`${name}@${version}`) ||
+      modelRunPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    modelRunTuples.length,
+    modelRunAdmitted.size + modelRunPathPackages.size,
+    "a P2-M1 admitted package is missing from Cargo.lock",
+  );
+
   const egressTuples = lockTuples.filter(
     ([name, version]) =>
       egressAdmitted.has(`${name}@${version}`) ||
@@ -3757,7 +3824,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
         sandboxAdmitted.has(claimed) ||
         sandboxPathPackages.has(claimed) ||
         untrustedAdmitted.has(claimed) ||
-        untrustedPathPackages.has(claimed),
+        untrustedPathPackages.has(claimed) ||
+        modelRunAdmitted.has(claimed) ||
+        modelRunPathPackages.has(claimed),
       false,
       `${claimed} is claimed by two admission receipts`,
     );
@@ -3800,7 +3869,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !untrustedAdmitted.has(`${name}@${version}`) &&
       !untrustedPathPackages.has(`${name}@${version}`) &&
       !consentAdmitted.has(`${name}@${version}`) &&
-      !consentPathPackages.has(`${name}@${version}`),
+      !consentPathPackages.has(`${name}@${version}`) &&
+      !modelRunAdmitted.has(`${name}@${version}`) &&
+      !modelRunPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -3824,7 +3895,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       recordTuples.length +
       sandboxTuples.length +
       untrustedTuples.length +
-      consentTuples.length,
+      consentTuples.length +
+      modelRunTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

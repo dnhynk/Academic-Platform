@@ -641,6 +641,21 @@ pub struct GrantRow {
     pub consent_event_id: String,
 }
 
+/// One consumed grant, and the audit row that recorded its transmission.
+///
+/// The pair is what resolves `egress_audit.grant_id` for a transfer that
+/// happened: both halves are foreign keys, so a row here cannot name an audit
+/// row whose identifier belongs to the process-capability namespace.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConsumptionRow {
+    /// The `egress_grant` row this transfer spent.
+    pub grant_id: String,
+    /// The allow audit row `execute` wrote for the transmission.
+    pub egress_audit_seq: u64,
+    /// When the grant was consumed.
+    pub consumed_at: u64,
+}
+
 /// Persisted audit shape fixed by §3.5. It has digests and counts, never payload bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuditRow {
@@ -1775,6 +1790,50 @@ impl PermissionBroker {
                     })
                 },
             )
+            .collect()
+    }
+
+    /// Reads the grant consumptions in append order.
+    ///
+    /// One row per transfer that reached a transport: `execute` writes it in the
+    /// same transaction as the allow audit it names, so the `egress_audit_seq`
+    /// here is the transmission row and not the decision row that minted the
+    /// grant.
+    ///
+    /// This is the join `P2-M1`'s reconciliation keys on, and what makes the
+    /// key exact is the schema rather than this projection.
+    /// `egress_consumption.grant_id` is a foreign key to `egress_grant`, and
+    /// `(egress_audit_seq, grant_id)` is a composite foreign key to
+    /// `egress_audit(audit_seq, grant_id)`. So a row here names an audit row
+    /// whose `grant_id` is a real egress grant, and the polymorphism of that
+    /// column -- which `P2-G7` left when it removed the single foreign key --
+    /// cannot reach a reader coming through this table.
+    pub fn consumption_rows(&self) -> Result<Vec<ConsumptionRow>, BrokerError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| BrokerError::LockPoisoned)?;
+        let mut statement = connection.prepare(concat!(
+            "SELECT grant_id, egress_audit_seq, consumed_at FROM egress_consumption ",
+            "ORDER BY egress_audit_seq"
+        ))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, i64>(2)?,
+                ))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        rows.into_iter()
+            .map(|(grant_id, egress_audit_seq, consumed_at)| {
+                Ok(ConsumptionRow {
+                    grant_id,
+                    egress_audit_seq: nonnegative(egress_audit_seq)?,
+                    consumed_at: nonnegative(consumed_at)?,
+                })
+            })
             .collect()
     }
 

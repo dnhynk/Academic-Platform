@@ -9,6 +9,7 @@ This repository is the runnable foundation for a local-first Personal Academic �
 - Bitemporal query surface: every read takes `known_at_accept_seq` and `valid_at` as one value, the eighteen Phase 2 aggregate closure tables and the resolved claim lane are projected at those coordinates, materialized snapshots live in a separate disposable sidecar that records the projector that built them, and a transition is labelled `EVIDENCE_CHANGE`, `ONTOLOGY_CHANGE`, `ANALYZER_UPGRADE`, or `OFFICIAL_SOURCE_CORRECTION` by splitting the known-time interval rather than ranking a mixed one. See [the bitemporal time-travel contract](docs/contracts/bitemporal-time-travel.md).
 - `academic-contracts`: deterministic CBOR v3 encode/sign plus v1/v2/v3 decode/verify, semantic v3 validation of returned writer bytes, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, pure v1-to-v3 and v2-to-v3 upcasters that rewrite no historical byte, and executable Protobuf actor/relation round trips with the same RFC-variant UUIDv7 boundary.
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
+- `academic-model-run`: the twelve section 27.3 fields every model execution records, the per-model calibration dataset registry with its refresh metadata, and the reconciliation of a recorded transmission against the broker's `egress_audit`. A raw provider score is unorderable and undisplayable by type; only an interpreted one reaches a reader. See [model-run provenance](docs/contracts/model-run-provenance.md).
 - `academic-policy`: a socket-free, default-deny permission broker that hashes immutable policy snapshots, minimizes configured object ranges, records the fixed grant/audit shapes, and releases an exact runtime payload only after atomically consuming a one-use expiring capability. See [the permission broker contract](docs/contracts/permission-broker.md).
 - `academic-consent`: the section 3.7 `capture_permission` aggregate and the append-only consent ledger under it. A new offering has no record, `UNKNOWN` is what a missing record resolves to, and nothing is mintable from it. A user attestation and a written authority are unrelated types with no conversion between them, so a self-assessment cannot reach a permitting status; audio and transcript retention are two independent bounds and a derivative inherits the stricter of each; and an expiry cannot be applied without the deletion-impact preview it describes. `GATE-38-009` and `GATE-38-019` stay open per offering and per term. See [the consent contract](docs/contracts/consent-and-capture-permission.md).
 - Process boundaries: six separate executables bind capture client, indexer, repository analyzer, connector, egress proxy, and export job to distinct broker-owned capability sets. The egress executable has no transport yet; P2-G2 owns the sole future outbound socket.
@@ -243,6 +244,25 @@ against the Rust `as_str` spellings it mirrors. Nothing writes those rows yet:
 the recorder disabled. What the boundary does and does not claim is in
 [the consent contract](docs/contracts/consent-and-capture-permission.md). It
 runs inside `cargo test --workspace` and adds no package to `Cargo.lock`.
+
+`P2-M1` adds `academic-model-run`, the boundary every model execution is
+recorded and every displayed confidence is interpreted at. A `ModelRun` carries
+the twelve section 27.3 fields — including the transmitted byte ranges and the
+redaction-policy hash — as twelve distinct constructor arguments, so a run that
+omits one does not compile, and `model_run_requires_every_field` parses the
+spec's own YAML block rather than transcribing it. Migration `0007` fills the
+place migration `0004` left for this aggregate's typed columns; the two list
+fields get child tables, and a reanalysis appends a candidate beside the earlier
+one rather than editing it, on ADR-003's existing mechanism. A provider's raw
+score implements no ordering trait, hands back no number, and prints none, so
+ranking two providers' numbers is a compile error rather than a convention;
+`CalibrationRegistry::interpret` is the only producer of the calibrated value
+the display surface accepts. The reconciliation against `egress_audit` keys on
+`egress_consumption` rather than on that table's polymorphic `grant_id` column,
+so a process-capability token cannot be mistaken for the egress grant a run
+spent; what that establishes is in
+[model-run provenance](docs/contracts/model-run-provenance.md). It runs inside
+`cargo test --workspace` and adds no external package to `Cargo.lock`.
 
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical

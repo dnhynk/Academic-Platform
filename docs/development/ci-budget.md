@@ -149,7 +149,7 @@ on the `rust-default-*` jobs.
 `encrypted-store-lane-ubuntu-latest` is the job migration `0006` changes, and it
 is at 7.4%.
 
-## Latest run
+## The `P2-RF11` run
 
 `P2-RF11` changes five default-workspace tests and two pnpm source scans, which
 the refresh rule names as a trigger, and `rust-default-windows-latest` moved by
@@ -193,6 +193,51 @@ evidence about the *range* rather than as a replacement for the last one. The
 three tables are kept for that reason.
 
 
+## Latest run
+
+`P2-M1` adds one workspace member, `academic-model-run`, and a canonical-store
+migration, both of which the refresh rule names as triggers. Run
+[33704083224](https://github.com/dnhynk/Academic-Platform/actions/runs/33704083224)
+at `3c03e018a31efee4b416b1baa8f17c8c9642f05c` completed 17/17.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:05 | 5:00 | 1.7% |
+| `rust-default-ubuntu-latest` | 4:57 | 30:00 | 16.5% |
+| `rust-default-ubuntu-24.04-arm` | 4:15 | 30:00 | 14.2% |
+| `rust-default-windows-latest` | 15:28 | 30:00 | 51.6% |
+| `rust-default-windows-11-arm` | 11:57 | 30:00 | 39.8% |
+| `rust-default-macos-latest` | 6:19 | 30:00 | 21.1% |
+| `rust-features-ubuntu-latest` | 2:27 | 30:00 | 8.2% |
+| `rust-features-ubuntu-24.04-arm` | 2:23 | 30:00 | 7.9% |
+| `rust-features-windows-latest` | 5:42 | 30:00 | 19.0% |
+| `rust-features-windows-11-arm` | 4:57 | 30:00 | 16.5% |
+| `rust-features-macos-latest` | 1:58 | 30:00 | 6.6% |
+| `phase1-exit-ubuntu-latest` | 4:07 | 45:00 | 9.1% |
+| `phase1-exit-windows-latest` | 10:48 | 45:00 | 24.0% |
+| `encrypted-store-lane-ubuntu-latest` | 3:28 | 45:00 | 7.7% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:30 | 45:00 | 10.0% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:56 | 45:00 | 15.4% |
+| `pnpm-contracts` | 0:42 | 15:00 | 4.7% |
+
+The slowest job is `rust-default-windows-latest` at 51.6%, against 40.9% on the
+`P2-RF11` run. That is a 3:12 difference on one label, and this page has already
+recorded a 3:57 spread on the same label for the *same commit*, so the movement
+is inside the noise this repository has measured and is not attributable to the
+new member. What the table establishes is the headroom: every job is at or below
+51.6%, and nothing is near the 80% review trigger.
+
+`phase1-exit-windows-latest` is the second-largest mover, 7:59 to 10:48. It
+links the whole workspace under the fault-injection feature set, so a new member
+is compiled there twice; at 24.0% of a 45-minute limit it is recorded rather
+than acted on.
+
+`encrypted-store-lane-ubuntu-latest` is the job migration `0007` changes, and it
+is at 7.7%. That lane is also the only one that pins `STORE_MIGRATION_SQL` as a
+whole, so it is where a migration added to that set is caught: it failed on an
+earlier commit of this branch, at `len() == 5` against a six-element set, before
+the pin was extended.
+
 ## A Windows failure that is not a test result
 
 This page exists because a timeout cancellation is not a test failure. There is
@@ -225,3 +270,34 @@ Seen on runs
 [33697656939](https://github.com/dnhynk/Academic-Platform/actions/runs/33697656939)
 (failed, then 17/17 on rerun of the one job) and once locally on Windows in the
 `P2-G6` verification.
+
+### A second signature, in a different job
+
+`P2-M1` hit one that is the same kind and not the same failure, so it is
+recorded separately rather than filed under the launch error above.
+`phase1-exit-windows-latest` failed at `phase1_exit_rejects_real_data` with
+
+```text
+Error: Io { kind: BrokenPipe }
+```
+
+That test starts a real daemon and speaks the local IPC protocol to it, so a
+broken pipe is the client losing its peer rather than an assertion about what
+the daemon decided; the six rows around it passed. What makes the reading
+checkable rather than convenient is the commit it happened on: run
+[33705304808](https://github.com/dnhynk/Academic-Platform/actions/runs/33705304808)
+at `6748cd6`, whose entire delta from the 17/17 run
+[33704083224](https://github.com/dnhynk/Academic-Platform/actions/runs/33704083224)
+is 46 lines of Markdown in this file, which no test reads. The same job on the
+parent commit passed, the suite passes locally on Windows on that tree — once
+whole and three times isolated — and the same-commit rerun of that one job
+passed, taking the run to 17/17. Attempt 1's failure is kept: query
+`actions/runs/33705304808/attempts/1/jobs` rather than the run's current jobs,
+which is what the refresh rule above says to do for exactly this reason.
+
+So the rule extends to a second shape: a Windows job that fails with an I/O
+error against a process it started -- a launch error before the process runs, or
+a broken pipe after it does -- is falsified or confirmed by a same-commit rerun,
+and only a failure that survives one is a test result. Two signatures are not a
+licence to rerun anything: an assertion failure is a test result on the first
+observation, and neither of these is an assertion.

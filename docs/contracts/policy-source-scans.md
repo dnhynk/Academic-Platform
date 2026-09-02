@@ -115,6 +115,8 @@ remove.
 | `the_walk_reads_every_module_in_this_crate`, `untrusted_has_no_unwrapping_trait_impl`, `every_exposure_site_is_named_and_justified`, `the_instruction_channel_takes_only_static_text`, `the_adjudicator_receives_no_capability`, `only_reviewed_files_hold_an_unlabelled_provider_response` — `crates/untrusted-content/tests/trust_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over every `.rs` under every package in `crates/` for the `AcceptedResponse` inventory | the whole set of `impl` blocks whose header names `Untrusted<` compared against a two-entry list; the whole inventory of the crate-private accessor's call sites with a written reason for each, counted by identifier rather than by the spelling `.expose()`, and less declarations of a function named exactly `expose` — not less the spelling `fn expose`, which subtracted `pub fn expose_rendered(` too; a rule that no `pub` signature in the crate's product source takes an `Untrusted<…>` and returns a type naming `str`, `String` or `u8`; nine whole-text pins (below); occurrence counts on the two directive constructions, the one `quote` caller, the one `adjudicate` caller — all three by identifier on both halves, with `use` items dropped from the `adjudicate` count so a re-export is not read as a call — and `leak`; the manifest read for `academic-policy` as a dev edge and `academic-worker` as no edge, and four broker type names forbidden in product source; the whole set of files naming `AcceptedResponse` | `>= 8` files, a rule that no product source sits outside `src`, and a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the crate must be a file the walk read |
 | `no_public_signature_hands_out_ingested_text` — `crates/untrusted-content/tests/untrusted_boundary.rs` | recursive, **every `.rs` under every `crates/*` package** less each package's `tests`, comment lines dropped | no `pub fn` signature anywhere in the workspace takes an `Untrusted<…>` parameter and returns a type naming `str`, `String` or `u8` as a whole identifier — so a lifetime cannot hide one, and `&[u8]`, `Vec<u8>`, `Box<[u8]>` and `Cow<'_, [u8]>` are all reached | `>= 25` packages and `>= 1_200` public signatures |
 | `the_walk_reads_every_module_in_this_crate`, `the_capture_decision_is_one_binding_that_every_path_runs`, `a_status_comes_from_one_derivation_and_absence_is_unknown`, `an_attestation_has_no_route_into_an_authority`, `no_legal_conclusion_reaches_a_permission`, `retention_holds_two_independent_bounds_and_narrows_only`, `the_checklist_is_the_seven_dimensions_the_contract_names`, `an_expiry_cannot_be_applied_without_its_preview`, `the_two_derivative_vocabularies_are_the_same_list`, `the_migration_vocabularies_are_the_rust_ones`, `every_instant_this_crate_compares_is_an_argument` — `crates/consent/tests/consent_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over **every `.rs` under every package in `crates/`**, less each package's `tests`, for the two workspace-wide signature rules; plus fixed reads of `migrations/store/0006_phase2_consent_and_capture.sql`, `crates/store/src/authorizer.rs`, `crates/retention/src/plan.rs` and this crate's own `Cargo.toml` | fourteen whole-text pins (below); whole-set comparisons of the `impl` blocks naming `AuthorityGrant` and those naming `AttestationRecord`, and of the files naming `CaptureCapabilityToken` with a written reason for each; call-site counts by identifier on `bind_permission` (2), `record_capture_denial` (3), `record_capture_mint` (1), `status_of` (3), `inherit` (1) and `apply_expiry` (0), each with `fn <name>(` subtracted so `inherited` is not read as `inherit`; struct-literal counts on `CaptureCapabilityToken` (1), `BoundPermission` (1) and `ExpiryPlan` (0); a rule that no `pub` signature anywhere in the workspace takes an `AttestationRecord` and returns a type naming `AuthorityGrant`, `WrittenAuthority`, `BoundPermission`, `CaptureCapabilityToken` or `CaptureStatus`, and the same rule for a signature taking a `LegalQuestion` or an `ExternalReviewTask`; the `CaptureStatus`, `ChecklistDimension`, `ChecklistEntry` and `DerivativeClass` variant lists read out of the enums and compared whole; each of the eight migration `CHECK` lists compared against the Rust `as_str` spellings **and** against its enum's variant count; two mutations applied to the pinned retention text inside the test and each required to be caught; `#[path]` refused outright; a five-spelling clock list — the whole of `std::time`'s surface plus `chrono`, which this crate's one product edge cannot reach past | `>= 12` files in the crate walk and `>= 10` product files, plus a tripwire requiring every `mod name;` and `pub mod name;` to be a file the walk read and every product file to sit under `src`; `>= 25` packages and `>= 1_200` public signatures in the workspace walk; `>= 1` signature taking a legal question, so the legal rule cannot pass by finding nothing |
+| `the_walk_reads_every_module_in_this_crate`, `raw_score_has_no_ordering_implementation_anywhere`, `raw_score_hands_back_no_number`, `every_calibrated_value_comes_from_the_registry`, `the_calibration_and_reconciliation_decisions_are_pinned`, `the_record_constructor_takes_every_field`, `the_consumption_join_is_the_only_key_into_the_audit`, `the_migration_is_applied_and_guarded`, `the_checks_catch_the_evasions_they_are_written_against` — `crates/model-run/tests/model_run_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over every `.rs` under every package in `crates/` for the two workspace-wide rules; fixed paths for the four pins and for `crates/policy/src/schema.sql` | the whole set of `impl` headers naming `RawScore` compared against a two-entry list, and the same set required empty in every other crate; a rule that no `pub fn` signature in the workspace turns a `RawScore` into a bare number type, read as identifiers so `&'static str`-shaped evasions do not slip; the whole inventory of public signatures naming `CalibratedConfidence`, each with a written reason; four whole-text pins (below); a whole-text pin on `egress_consumption`, a rule that its one write site takes its sequence from the allow audit, and a rule that the reconciliation names no `row.grant_id`; `reconcile_egressed` declared and called exactly once; the `ModelRun` struct's fields compared with `ModelRun::record`'s parameters and with `record_digest`'s coverage; migration `0007`'s tables compared against their trigger pairs and `CANONICAL_TABLES`; and five ordering evasions plus a raw-string sample run through the checks inside the test and each required to be caught | `>= 7` files under the package and `>= 5` product files, a rule that this crate's product source sits under `src` and nowhere else, and a tripwire: every `mod name;` and `pub mod name;` must be a file the walk read, and `#[path]` may not appear at all |
+| `model_run_requires_every_field` — `crates/model-run/tests/model_run.rs` | none — three fixed paths: the authoritative spec, `crates/model-run/src/record.rs`, and `migrations/store/0007_phase2_model_run_provenance.sql` | not a transcription: the section 27.3 `ModelRun` YAML keys are parsed out of the spec, mapped to field names by camel-to-snake case, and compared with the `ModelRun` struct's own field list as whole sets in both directions; the storage map is compared with the same key set; every named storage site must exist in migration `0007`; and each key is dropped in turn with each comparison required to notice | the parsed key set must hold more than one key, so a parser that stopped reading fails rather than passing with an empty expectation |
 | `crates/consent/tests/compile_fail.rs` and `tests/compile_fail/*.rs` | n/a — `trybuild` compiles two committed programs | not a source-text scan: passing an `AttestationRecord` where a `WrittenAuthority` belongs, and constructing a `CaptureCapabilityToken` with a struct literal. Each must fail to compile *and* fail with the committed diagnostic | n/a |
 | `tools/verify-contracts.mjs` | recursive, `crates/contracts/src`; the two generated modules through `tools/{engine,predicate}-registry.mjs` | digest pins and byte-for-byte re-render; refuses any tree entry that is not a `.rs` file | n/a — an unreviewed entry fails |
 | `tools/engine-registry.mjs`, `tools/predicate-registry.mjs` | none — one fixed generated path each, named as `GENERATED_PATH` | not a scan: they render the generated module from `schemas/registry/`, and are the halves `verify-contracts.mjs` re-renders and compares against the committed file | n/a |
@@ -148,6 +150,10 @@ a silent edit is the whole risk.
 | `escape`, `impl PromptEnvelope` | `WHOLE_ESCAPE`, `WHOLE_ENVELOPE` | a change to how ingested bytes are quoted, which channel they land in, or what the untrusted span map records |
 | `resolve_span`, `adjudicate` | `WHOLE_RESOLVE_SPAN`, `WHOLE_ADJUDICATE` | a change to provenance resolution, to schema validation, or to what the adjudicator is handed — its parameter list is the claim that it holds no capability |
 | `envelope_for`, `admit` | `WHOLE_ENVELOPE_FOR`, `WHOLE_ADMIT` | the callers of the two pinned decisions, pinned for the `T141` reason: a pin on a decision says nothing about whether it runs |
+| `impl fmt::Debug for RawScore` | `WHOLE_RAW_DEBUG` | a change to what a raw score prints — the last formatting trait that could put an uninterpreted number in front of a reader |
+| `DisplayedConfidence::of` | `WHOLE_DISPLAY_OF` | a change to what the display surface accepts; its parameter list is the claim that a displayed confidence has been interpreted |
+| `reconcile_transmitted_ranges` | `WHOLE_RECONCILE_DISPATCH` | a change to which reconciliation a recorded transmission reaches; pinned beside the single call site count on `reconcile_egressed`, for the `T141` reason |
+| `egress_consumption` | `WHOLE_CONSUMPTION_TABLE` | a change to either foreign key that makes `egress_audit.grant_id` unambiguous for a consumed grant — a key edited to reference something weaker keeps its name, so a name search would miss it |
 | `div_round_half_up` | `WHOLE_DIVISION` | a change to how a published average is rounded — not a change to the scale, which is an argument the versioned grading scheme supplies |
 | `status_of`, `impl CaptureStatus` | `WHOLE_STATUS_OF`, `WHOLE_CAPTURE_STATUS` | a change to what decides a section 3.7 status, the order of the five tests, or which statuses permit at all |
 | `bind_permission`, `impl<'a> ResolvedRequest<'a>` | `WHOLE_BIND_PERMISSION`, `WHOLE_RESOLVE_REQUEST` | a change to what a capture has to agree with before a device opens, or to which absent request field denies — the two callers are pinned beside it and counted at two, for the `T141` and `P2-RF10` reasons |
@@ -568,7 +574,7 @@ enums' variant names — through a dev edge that reaches no product binary.
 
 ### The migration is compared against the Rust it mirrors
 
-Migration `0006` restates eight closed vocabularies as SQL `CHECK` lists.
+Migration `0007` restates eight closed vocabularies as SQL `CHECK` lists.
 `the_migration_vocabularies_are_the_rust_ones` compares each list against the
 `as_str` spellings of the enum it mirrors **and** against that enum's variant
 count, so a spelling that drifts fails, and so does a variant added with no
@@ -790,6 +796,94 @@ two while disabling the binding — are recorded above rather than here: the pin
 does not see them and the named behavioural tests do, which is the layering
 working, not a gap.
 
+## What the `P2-M1` scans hold
+
+`P2-M1`'s claim is a shape of the source in two places. A provider's raw score
+is unrankable because the type implements no ordering and hands back no number,
+and a displayed confidence has been interpreted because the display constructor
+takes a type only the registry issues. Neither has a run-time observation that
+would notice the day somebody adds the trait or the accessor: a new
+`impl PartialOrd for RawScore` makes the compile-fail case compile and leaves
+every behavioural test passing.
+
+Two more things are held here that are not about this crate's source at all, and
+are listed because the same injection matrix measures them: the two foreign keys
+`P2-M1`'s reconciliation keys on, and migration `0007`'s supersession guard.
+
+**None of the rules is a token list.** The `impl` set naming `RawScore` is
+compared whole against a two-entry list, so a trait nobody predicted fails as an
+extra key -- `M-I6` is a *local* trait that spells none of the nine trait names
+any list in this file holds. The number rule reads the return type as
+identifiers rather than searching for `u32`. The calibrated-value inventory is a
+whole set of public signatures with a written reason for each. And
+`egress_consumption` is pinned as whole text rather than searched for by name,
+because a foreign key edited to reference something weaker keeps its name.
+
+### What the reconciliation does not read
+
+`P2-M1` needs `egress_audit.grant_id` disambiguated. A discriminator column on
+that table would do it and is not there: `T149` measured that
+`egress_consumption` already answers the question, because `grant_id` references
+`egress_grant` and `(egress_audit_seq, grant_id)` references
+`egress_audit(audit_seq, grant_id)`. The reconciliation joins through that table
+instead, and the scan holds two things: the pin on the table, and a rule that
+the reconciliation names no `row.grant_id` at all.
+
+The control is inside the named test rather than in the matrix, and runs on
+every build: `an_audit_row_from_the_other_namespace_is_not_the_grant` executes a
+`grant_id`-only reconciliation beside the product one and **requires it to
+accept** the forged grant. If the join ever stopped being what refuses that
+grant, that assertion is what fails.
+
+### What `M-I2` found in this task's own test
+
+`crates/policy/tests/consumption_join.rs` first tried the mismatched pair with
+an unminted second grant. `grant_id`'s own foreign key refuses that case, so the
+composite key was never the thing under test: dropping it changed nothing and
+the test passed. `M-I2` is the observation. Both grants are now real
+`egress_grant` rows, the composite key is the only constraint left to refuse the
+pair, and `M-I2` fails.
+
+### The injection matrix
+
+Nineteen injections, applied one at a time, each reverted with its file's
+SHA-256 checked back to its recorded value, on Windows native and WSL2 Linux
+with the same result on both. Every one builds -- `cargo build --workspace` is
+run on the injected tree before the refusing command, because a refusal that is
+a compile error proves nothing about the guard. Every one is refused.
+
+| # | Injection | Refused by |
+|---|---|---|
+| M-I1 | `reconcile_egressed` stops filtering consumptions by the grant the run named | `transmitted_ranges_reconcile_with_egress_audit` |
+| M-I1b | the reconciliation reads `egress_audit.grant_id` directly | `the_consumption_join_is_the_only_key_into_the_audit` |
+| M-I2 | the composite foreign key on `egress_consumption` is dropped | `a_consumption_row_cannot_name_a_grant_the_audit_row_does_not` |
+| M-I2b | the same edit, against the pin | `WHOLE_CONSUMPTION_TABLE` |
+| M-I3 | the `egress_grant` foreign key on `egress_consumption` is dropped | `a_consumption_row_cannot_name_a_grant_the_audit_row_does_not` |
+| M-I3b | the same edit, against the pin | `WHOLE_CONSUMPTION_TABLE` |
+| M-I4 | the consumption names the decision row instead of the transmission | the ordering rule beside the pin |
+| M-I5 | a new module implements `PartialOrd for RawScore` | the whole `impl` set, and the `compile_fail` case that stops failing |
+| M-I6 | a local trait ranks two `RawScore`s, spelling no listed trait name | the whole `impl` set |
+| M-I7 | `RawScore` gains an accessor returning its number | `raw_score_hands_back_no_number`, and the `compile_fail` case |
+| M-I8 | `RawScore`'s hand-written `Debug` prints the number | `WHOLE_RAW_DEBUG`, and `uncalibrated_score_cannot_be_displayed` |
+| M-I9 | a second producer of `CalibratedConfidence`, one crate out | `every_calibrated_value_comes_from_the_registry` |
+| M-I10 | the pinned display constructor is edited | `WHOLE_DISPLAY_OF` |
+| M-I11 | one of the twelve fields is renamed away from its section 27.3 key | `model_run_requires_every_field`, against the spec's own YAML block |
+| M-I12 | migration `0007` drops one of the twelve storage sites | the same row's storage half |
+| M-I13 | `record_digest` stops covering the cost | `the_record_constructor_takes_every_field` |
+| M-I14 | migration `0007`'s supersession guard is deleted | `a_reanalysis_addresses_the_subject_it_supersedes` |
+| M-I15 | the candidate table's append-only `UPDATE` trigger is removed | `reanalysis_creates_new_candidate_not_mutation` |
+| M-I16 | product code outside `src`, reached by `#[path]` | the `#[path]` rule and the product-source-under-`src` rule |
+
+`M-I5` and `M-I7` are recorded as refused by the `compile_fail` suite as well as
+by a scan, because that is what happens: the injected accessor and the injected
+ordering both make a committed case compile, and `trybuild` fails on the
+diagnostic mismatch rather than on the case passing silently.
+
+`M-I11` renames the field rather than removing it, deliberately. Removing it
+breaks every caller and the refusal would be a compile error, which proves
+nothing about the guard; renaming keeps the arity and the positional call sites
+intact, so what fails is the comparison against the spec.
+
 ## Open
 
 Each row says what makes it start mattering: "it cannot happen today" is not a
@@ -815,6 +909,7 @@ closed it.
 | S-13 | `only_egress_crate_has_a_socket` — the syscall rule's file scope | The first-argument rule reads `crates/worker/src/sandbox/linux.rs` and only that file, because that is the one file whose allowance lists `libc::syscall`. This row used to add that "the rule and the allowance together do cover the workspace", which was false: an allowance is reached only by a file that *spells* something, and `use libc::*;` spells nothing, so `T149` made the same call by number in a file with an empty allowance and every scan passed. That half is **closed by `P2-RF11`** — the import ban is checked in every file, so a call anywhere spells `libc::syscall` and reaches its file's allowance. What stays open is the **future second allowance entry**: the day another file is allowed `libc::syscall`, its call will fail the allowance comparison but the first-argument rule will not run on it unless the branch is widened. | The next commit that adds a second `libc::syscall` allowance entry. Closing it means keying the rule on the spelling rather than on the file. It is written this way today because the reviewed-name list is that file's, not a workspace list, and inventing a workspace one before there is a second caller would be a guess about what the second caller needs. Severity **P3**. |
 | S-14 | `no_float_reaches_the_gpa_path`, `tools/secret-debug-policy.test.mjs`, `phase1_exit_has_no_product_network`, the two `academic-untrusted-content` walks, and the two in `crates/consent/tests/consent_scans.rs` — the `benches` tree | **Closed by `P2-RF11`.** Seven walks excluded `benches` beside `tests`; the last two arrived with `P2-G6` while this repair was in flight and are widened here for the same reason. No `benches` tree exists in this repository, but a bench target has no feature gate and `cargo clippy --workspace --all-targets` — the README verification block's third command — compiles it, which is the two-part test `T146` applied to `examples/`. `T149` measured all three halves: a `f64`, a `#[derive(Debug)]` over `key_bytes`, and a `TcpStream::connect` in a new `crates/record/benches/` file each passed its scan, and a bench that does not compile fails the clippy lane. All seven now exclude `tests` only. | n/a — closed. `tests` stays out on the reasons those walks give for it. |
 | S-15 | `the_transport_is_reached_from_no_module_but_the_proxy` — `crates/egress-boundary/tests/byte_path_pin.rs` | **Closed by `P2-RF11`.** This crate's counts read three fixed file names and its fallback inventory read six, in exactly the shape `S-5` and `S-8` record elsewhere, and no row named it. `T149` added `mod relay;` and one new file: the module reached the transport through the broker without binding a grant, wrote 178 bytes under a grant reviewed by another rulepack for a payload `transmit` refused with zero, left no journal row, and passed this crate's suite, `cargo test --workspace --all-targets` and both JS scans. The counts are now sums over a package walk, the inventory is keyed on the walk with a floor, and a module tripwire fails the day the walk is narrowed. | n/a — closed. |
+| S-16 | `egress_audit.grant_id`, for rows that are not a consumed grant | The column is polymorphic and only `egress_consumption` resolves it. Deny rows and process-capability activity rows are joined to nothing that says which namespace their identifier came from, so a reader treating the column as an `egress_grant` reference finds them dangling. `P2-M1` does not need them: its reconciliation reads only consumed grants, which `T149` measured is exactly what the join resolves. | The first reader that has to attribute a *denial* or a process activity to a namespace. Closing it means a discriminator column or a second join table; severity **P3**, because no dangling row exists today: all seven `insert_audit` call sites write an identifier that is in one of the two tables. |
 
 ## Intended, not a defect
 

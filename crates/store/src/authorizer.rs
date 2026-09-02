@@ -65,6 +65,14 @@ pub const CANONICAL_TABLES: &[&str] = &[
     "capture_permission_processing",
     "capture_permission_checklist",
     "consent_record",
+    // Migration 0007's typed columns for the MODEL_RUN_RECORDED aggregate and
+    // the candidates a run produces. They are canonical history for the same
+    // reason: what a model execution transmitted, and which earlier candidate a
+    // reanalysis supersedes, are facts a later row appends to and never edits.
+    "model_run_provenance",
+    "model_run_input_artifact",
+    "model_run_transmitted_range",
+    "model_run_candidate",
 ];
 
 /// Installs the product-writer guard after migration and identity verification.
