@@ -73,9 +73,33 @@ and all fixture commands. The five `rust-features-*` jobs retain every
 encrypted-object, rotation/retention, transcript, and native-worker clippy/test
 command on the same five labels. Both groups have a 30-minute limit.
 
-The first hosted run of this split must replace this paragraph with a 17-row
-table using the refresh method above. Until that run completes, the only
-measured projection is the pre-split subtraction: on the timeout attempt the
-default group accounted for 15:48 before cold-job effects, and in run
-33668524442 it accounted for 15:06. The feature group's cold-start duration is
-not claimed before hosted measurement.
+The first split run,
+[33675718049](https://github.com/dnhynk/Academic-Platform/actions/runs/33675718049),
+completed 17/17 at `25e6221a827eccc35fb4a9992d45235e780e2ac7`.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:10 | 5:00 | 3.3% |
+| `rust-default-ubuntu-latest` | 4:54 | 30:00 | 16.3% |
+| `rust-default-ubuntu-24.04-arm` | 3:48 | 30:00 | 12.7% |
+| `rust-default-windows-latest` | 20:18 | 30:00 | 67.7% |
+| `rust-default-windows-11-arm` | 12:54 | 30:00 | 43.0% |
+| `rust-default-macos-latest` | 4:19 | 30:00 | 14.4% |
+| `rust-features-ubuntu-latest` | 2:23 | 30:00 | 7.9% |
+| `rust-features-ubuntu-24.04-arm` | 2:24 | 30:00 | 8.0% |
+| `rust-features-windows-latest` | 5:26 | 30:00 | 18.1% |
+| `rust-features-windows-11-arm` | 4:26 | 30:00 | 14.8% |
+| `rust-features-macos-latest` | 2:51 | 30:00 | 9.5% |
+| `phase1-exit-ubuntu-latest` | 2:50 | 45:00 | 6.3% |
+| `phase1-exit-windows-latest` | 7:43 | 45:00 | 17.1% |
+| `encrypted-store-lane-ubuntu-latest` | 3:08 | 45:00 | 7.0% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:03 | 45:00 | 9.0% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:59 | 45:00 | 15.5% |
+| `pnpm-contracts` | 0:50 | 15:00 | 5.6% |
+
+The slowest job is now `rust-default-windows-latest` at 67.7%. Its 20:18
+also shows that splitting alone while retaining the old 20-minute timeout
+would still have failed on this runner. The independently completed feature
+job used 18.1% instead of extending that default job by another 5:26. Windows
+ARM is the next-highest Rust default at 43.0%; every Linux, Linux ARM, and macOS
+Rust job is at or below 16.3%.
