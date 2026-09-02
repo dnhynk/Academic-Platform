@@ -445,10 +445,38 @@ fn cpu_memory_time_output_limits_are_enforced() -> TestResult {
         &RunOutcome::KilledByLimit(LimitKind::WallTime),
         "a sleeping job outlived its wall bound: {wall:?}"
     );
-    assert!(
-        wall.wall_millis() >= 1_500,
-        "the wall measurement is below the bound it hit: {wall:?}"
-    );
+    // The measurement and the kill decision come from the same clock on one
+    // platform and from two clocks on the other, so the claim is not the same
+    // on both.
+    //
+    // Linux compares `started.elapsed()` to the deadline and then records
+    // `started.elapsed()` again, later. One `Instant`, sampled twice in order,
+    // so the recorded value cannot be below the bound.
+    //
+    // Windows waits with `WaitForSingleObject(handle, wall)`, whose timeout is
+    // counted in system timer ticks, and records `Instant`, which is the
+    // performance counter. The wait can report `WAIT_TIMEOUT` before the
+    // counter reaches the bound: measured on this repository's own x86-64 host,
+    // one wait in twelve returned at 1499 ms for a 1500 ms bound, and the
+    // `windows-11-arm` runner, whose tick is coarser, produced 1492. So what a
+    // Windows receipt carries is a measurement at the bound within one system
+    // timer tick — 15.625 ms at the default resolution — not at or past it.
+    //
+    // One tick is still far from what this assertion is for: a receipt that
+    // claims a wall-time kill while the job barely ran.
+    if cfg!(target_os = "linux") {
+        assert!(
+            wall.wall_millis() >= 1_500,
+            "the wall measurement is below the bound it hit: {wall:?}"
+        );
+    } else {
+        const TIMER_TICK_MILLIS: u64 = 16;
+        assert!(
+            wall.wall_millis() + TIMER_TICK_MILLIS >= 1_500,
+            "the wall measurement is more than one system timer tick below the \
+             bound it hit: {wall:?}"
+        );
+    }
 
     // Memory: the allocation the bound refuses comes back as an error rather
     // than as memory. Both backends refuse the mapping instead of killing, so

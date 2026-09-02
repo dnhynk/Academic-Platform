@@ -47,6 +47,18 @@ object bounds no file at all, so the directory total is measured by the parent
 after the run and turned into `KilledByLimit(OutputBytes)` there. The job is not
 killed for it; what the bound buys is that the bytes are never accepted.
 
+**The wall row measures on a different clock than it decides on, on Windows
+only.** Linux compares `started.elapsed()` to the deadline and then records
+`started.elapsed()` again, so a receipt's `wall_millis` cannot be below the
+bound it hit. Windows waits with `WaitForSingleObject`, whose timeout is counted
+in system timer ticks, and records `Instant`, which is the performance counter;
+the wait can return before the counter reaches the bound. A Windows receipt's
+`wall_millis` is therefore at the bound **within one system timer tick**
+(15.625 ms at the default resolution), not at or past it, and
+`cpu_memory_time_output_limits_are_enforced` asserts each platform's own claim
+rather than one sentence for both. The outcome is unaffected: the kill happened,
+and `KilledByLimit(WallTime)` is what the wait returned.
+
 ### Every refusal is paired with a permission
 
 A refusal on its own is not evidence. A connect to an address nothing routes
