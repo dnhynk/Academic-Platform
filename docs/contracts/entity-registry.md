@@ -96,6 +96,11 @@ A claim with no evidence is already rejected by `Claim::validate`, so an
 approval recorded against counts nobody was shown fails to verify rather than
 passing quietly.
 
+This is the registry-level preview primitive. The P2-N1
+[curator workflow](ontology-core.md) wraps these bytes with
+`TaxonomyVersionIdentity` before issuing its user-only approval token, so the
+same counts cannot be replayed against another taxonomy release.
+
 ## Equivalence classes
 
 Comparing a pre-change node to a post-change node produces exactly one class.
