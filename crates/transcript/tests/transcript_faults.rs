@@ -120,7 +120,10 @@ fn in03_row_checksum_mismatch_halts_at_the_row_and_confirms_nothing() -> TestRes
         .ok_or("the clean corpus did not reconcile")?;
     session.stage(reconciled)?;
     let published = session.publish()?;
-    assert_eq!(fs::read(&published)?, encode_confirmed_set(reconciled));
+    assert_eq!(
+        fs::read(&published)?,
+        encode_confirmed_set(version, reconciled)
+    );
     assert_eq!(
         inspect(root.path(), version)?,
         SessionState::Published { lease_held: false }
@@ -196,7 +199,7 @@ fn in04_kill_after_staging_rename_leaves_a_complete_staged_set() -> TestResult {
     let reconciled = outcome.reconciled().ok_or("the corpus did not reconcile")?;
     assert_eq!(
         fs::read(directory.join(STAGING_FILE_NAME))?,
-        encode_confirmed_set(reconciled),
+        encode_confirmed_set(version, reconciled),
         "the staged set is not the complete encoding"
     );
     resume_and_finish(root.path(), version)
@@ -227,7 +230,7 @@ fn in04_kill_after_publish_rename_leaves_a_complete_confirmed_set() -> TestResul
     let reconciled = outcome.reconciled().ok_or("the corpus did not reconcile")?;
     assert_eq!(
         fs::read(directory.join(CONFIRMED_FILE_NAME))?,
-        encode_confirmed_set(reconciled)
+        encode_confirmed_set(version, reconciled)
     );
 
     // A resumption of a published session is refused: resuming would be a
@@ -266,6 +269,47 @@ fn in04_lease_excludes_a_second_live_session() -> TestResult {
     Ok(())
 }
 
+/// A confirmed set names the transcript version it belongs to.
+///
+/// Not only the directory it sits in: a file identified solely by its location
+/// could be moved into another session's directory and read there as that
+/// session's confirmed set. Two versions of the same transcript therefore
+/// encode differently, and the version's bytes are in the file.
+#[test]
+fn confirmed_set_is_bound_to_its_transcript_version() -> TestResult {
+    let transcript = synthetic_transcript()?;
+    let reference = TranscriptChecksums::of(&transcript);
+    let outcome = reconcile(&transcript, &reference);
+    let reconciled = outcome.reconciled().ok_or("the corpus did not reconcile")?;
+
+    let first = version()?;
+    let second: TranscriptVersionId = "01900000-0000-7000-8000-0000000007e2".parse()?;
+    assert_ne!(first, second);
+
+    let left = encode_confirmed_set(first, reconciled);
+    let right = encode_confirmed_set(second, reconciled);
+    assert_ne!(left, right, "the confirmed set does not name its version");
+    assert!(
+        left.windows(16).any(|window| window == first.as_bytes()),
+        "the confirmed set does not carry its version bytes"
+    );
+
+    // Still identity-free: the durable file beside the vault is one more place
+    // the student number must not be.
+    for value in [
+        transcript.identity().student_number(),
+        transcript.identity().student_name(),
+    ] {
+        assert!(
+            !left
+                .windows(value.len())
+                .any(|window| window == value.as_bytes()),
+            "the confirmed set carries an identity value"
+        );
+    }
+    Ok(())
+}
+
 /// Re-enters the session the killed child left and drives it to publication.
 fn resume_and_finish(profile_root: &Path, version: TranscriptVersionId) -> TestResult {
     let admitted = AdmittedImport::for_fault_injection_only();
@@ -282,7 +326,10 @@ fn resume_and_finish(profile_root: &Path, version: TranscriptVersionId) -> TestR
     let reconciled = outcome.reconciled().ok_or("the corpus did not reconcile")?;
     session.stage(reconciled)?;
     let published = session.publish()?;
-    assert_eq!(fs::read(&published)?, encode_confirmed_set(reconciled));
+    assert_eq!(
+        fs::read(&published)?,
+        encode_confirmed_set(version, reconciled)
+    );
     assert_eq!(
         inspect(profile_root, version)?,
         SessionState::Published { lease_held: false }

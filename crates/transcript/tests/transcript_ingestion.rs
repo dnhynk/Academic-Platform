@@ -189,6 +189,16 @@ fn transcript_formats_normalize_equivalently() -> TestResult {
     )?;
     assert_eq!(error.code(), "MALFORMED_SOURCE");
 
+    // A row value that spells the CSV separator is refused rather than read as
+    // a five-field row. The CSV this crate emits and reads carries no quoting,
+    // and the boundary is fail-closed rather than silently misparsed.
+    let with_separator = format!("{}M1522,000900,2024-2,3,A0\n", render_csv(&expected));
+    let error = refusal(
+        parse_csv(with_separator.as_bytes()),
+        "a row value spelling the separator parsed",
+    )?;
+    assert_eq!(error.code(), "MALFORMED_SOURCE");
+
     // The canonical encoding is length-prefixed rather than delimited, so no
     // field value can spell a separator and change the parse of its neighbour:
     // two records that differ only in where a boundary falls encode
