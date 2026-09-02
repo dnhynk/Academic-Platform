@@ -5,8 +5,9 @@ use std::{
 
 use academic_policy::{
     BrokerError, ContentDigest, Decision, DeletionReceiptDraft, EgressRule, ObjectRange,
-    PermissionBroker, PermissionRequest, PolicySnapshot, ProviderIdentity, ProviderPolicyDraft,
-    ProviderPolicySnapshot, ProviderSurface, ProviderUserPolicy, ReasonCode, RuntimeToolCall,
+    PermissionBroker, PermissionRequest, PolicySnapshot, ProcessClass, ProviderIdentity,
+    ProviderPolicyDraft, ProviderPolicySnapshot, ProviderSurface, ProviderUserPolicy, ReasonCode,
+    RuntimeToolCall,
 };
 
 const PAYLOAD: &[u8] = b"minimum";
@@ -50,7 +51,8 @@ fn range() -> Result<ObjectRange, BrokerError> {
 
 fn rule(provider: &ProviderPolicySnapshot) -> Result<EgressRule, BrokerError> {
     Ok(EgressRule {
-        actor_process_class: "repo-analyzer".to_owned(),
+        actor_id: "synthetic-user".to_owned(),
+        process_class: ProcessClass::EgressProxy,
         data_class: "synthetic-private-code".to_owned(),
         operation: "classify".to_owned(),
         purpose_id: "architecture-classification".to_owned(),
@@ -73,7 +75,8 @@ fn request(
     requested_at: u64,
 ) -> Result<PermissionRequest, BrokerError> {
     Ok(PermissionRequest {
-        actor_process_class: Some("repo-analyzer".to_owned()),
+        actor_id: Some("synthetic-user".to_owned()),
+        process_class: ProcessClass::EgressProxy,
         data_class: Some("synthetic-private-code".to_owned()),
         object_range_digest_set: Some(vec![range()?]),
         operation: Some("classify".to_owned()),
@@ -95,7 +98,8 @@ fn install_rule(
 
 fn runtime(provider: &ProviderPolicySnapshot) -> Result<RuntimeToolCall<'static>, BrokerError> {
     RuntimeToolCall::new(
-        "repo-analyzer",
+        "synthetic-user",
+        ProcessClass::EgressProxy,
         "classify",
         "architecture-classification",
         provider.destination_id(),

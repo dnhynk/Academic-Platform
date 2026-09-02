@@ -9,8 +9,8 @@ use std::{
 
 use academic_policy::{
     BrokerError, ContentDigest, Decision, EgressRule, ObjectRange, PermissionBroker,
-    PermissionRequest, PolicySnapshot, PolicyVersion, ProviderIdentity, ProviderPolicyDraft,
-    ProviderPolicySnapshot, ProviderSurface, ReasonCode, RuntimeToolCall,
+    PermissionRequest, PolicySnapshot, PolicyVersion, ProcessClass, ProviderIdentity,
+    ProviderPolicyDraft, ProviderPolicySnapshot, ProviderSurface, ReasonCode, RuntimeToolCall,
 };
 use proptest::prelude::*;
 
@@ -57,7 +57,8 @@ fn provider_draft() -> Result<ProviderPolicyDraft, BrokerError> {
 
 fn rule(minimal_ranges: Vec<ObjectRange>, payload: &[u8]) -> EgressRule {
     EgressRule {
-        actor_process_class: "repo-analyzer".to_owned(),
+        actor_id: "synthetic-user".to_owned(),
+        process_class: ProcessClass::EgressProxy,
         data_class: "synthetic-private-code".to_owned(),
         operation: "classify".to_owned(),
         purpose_id: "architecture-classification".to_owned(),
@@ -76,7 +77,8 @@ fn rule(minimal_ranges: Vec<ObjectRange>, payload: &[u8]) -> EgressRule {
 
 fn request(version: PolicyVersion, ranges: Vec<ObjectRange>) -> PermissionRequest {
     PermissionRequest {
-        actor_process_class: Some("repo-analyzer".to_owned()),
+        actor_id: Some("synthetic-user".to_owned()),
+        process_class: ProcessClass::EgressProxy,
         data_class: Some("synthetic-private-code".to_owned()),
         object_range_digest_set: Some(ranges),
         operation: Some("classify".to_owned()),
@@ -133,7 +135,7 @@ proptest! {
             );
             candidate.requested_at = Some(120 + (salt % 10));
             match missing {
-                0 => candidate.actor_process_class = None,
+                0 => candidate.actor_id = None,
                 1 => candidate.data_class = None,
                 2 => candidate.object_range_digest_set = None,
                 3 => candidate.operation = None,
@@ -204,7 +206,8 @@ fn grant_is_single_use_and_expiring() -> Result<(), Box<dyn Error>> {
         let start = Arc::clone(&start);
         workers.push(thread::spawn(move || {
             let runtime = RuntimeToolCall::new(
-                "repo-analyzer",
+                "synthetic-user",
+                ProcessClass::EgressProxy,
                 "classify",
                 "architecture-classification",
                 provider_destination(),
@@ -239,7 +242,8 @@ fn grant_is_single_use_and_expiring() -> Result<(), Box<dyn Error>> {
     )?;
     let expired_capability = expired.capability.ok_or("missing capability")?;
     let runtime = RuntimeToolCall::new(
-        "repo-analyzer",
+        "synthetic-user",
+        ProcessClass::EgressProxy,
         "classify",
         "architecture-classification",
         provider_destination(),
@@ -263,7 +267,8 @@ fn token_range_overflow_is_blocked_at_runtime() -> Result<(), Box<dyn Error>> {
     let capability = outcome.capability.ok_or("missing capability")?;
     let tool_calls = AtomicUsize::new(0);
     let overflowing = RuntimeToolCall::new(
-        "repo-analyzer",
+        "synthetic-user",
+        ProcessClass::EgressProxy,
         "classify",
         "architecture-classification",
         provider_destination(),
@@ -317,7 +322,8 @@ fn audit_row_contains_no_payload_bytes() -> Result<(), Box<dyn Error>> {
     )?;
     let capability = outcome.capability.ok_or("missing capability")?;
     let runtime = RuntimeToolCall::new(
-        "repo-analyzer",
+        "synthetic-user",
+        ProcessClass::EgressProxy,
         "classify",
         "architecture-classification",
         provider_destination(),
@@ -347,7 +353,9 @@ fn audit_row_contains_no_payload_bytes() -> Result<(), Box<dyn Error>> {
             "grant_id",
             "decision",
             "reason_code",
+            "actor_id",
             "actor_process_class",
+            "capability",
             "payload_digest",
             "byte_count",
             "destination_id",
@@ -355,12 +363,14 @@ fn audit_row_contains_no_payload_bytes() -> Result<(), Box<dyn Error>> {
             "finished_at",
             "provider_response_digest",
             "deletion_receipt_id",
+            "external_transmission_digest",
+            "retention_policy_id",
         ]
     );
     assert!(
         schema
             .execute(
-                "INSERT INTO egress_audit (decision, reason_code, actor_process_class, payload_digest, payload_bytes, byte_count, destination_id, started_at, finished_at) VALUES ('DENY', 'NO_GRANT', 'repo-analyzer', NULL, ?1, 0, 'provider-y-api', 1, 1)",
+                "INSERT INTO egress_audit (decision, reason_code, actor_id, actor_process_class, capability, payload_digest, payload_bytes, byte_count, destination_id, started_at, finished_at, retention_policy_id) VALUES ('DENY', 'NO_GRANT', 'synthetic-user', 'EGRESS_PROXY', 'OPEN_OUTBOUND_SOCKET', NULL, ?1, 0, 'provider-y-api', 1, 1, 'SECURITY_AUDIT_APPEND_ONLY')",
                 [PAYLOAD],
             )
             .is_err(),

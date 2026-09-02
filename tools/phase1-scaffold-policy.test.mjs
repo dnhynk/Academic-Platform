@@ -212,6 +212,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
   );
   assert.deepEqual(actual, {
     "academic-admission": [],
+    "academic-capture-client": ["academic-policy"],
     "academic-cli": [
       "academic-admission",
       "academic-core",
@@ -219,6 +220,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-rpc",
     ],
     "academic-contracts": ["academic-domain"],
+    "academic-connector": ["academic-policy"],
     "academic-crypto": ["academic-keystore-platform"],
     "academic-core": [
       "academic-contracts",
@@ -237,6 +239,9 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-store",
     ],
     "academic-domain": [],
+    "academic-egress": ["academic-policy"],
+    "academic-export-job": ["academic-policy"],
+    "academic-indexer": ["academic-policy"],
     "academic-ledger": ["academic-contracts", "academic-domain"],
     // `academic-crypto`, `academic-recovery`, and `academic-projections` are
     // all optional edges here, and the two lane features that select them are
@@ -258,6 +263,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     ],
     "academic-policy": [],
     "academic-projections": ["academic-domain", "academic-store"],
+    "academic-repository-analyzer": ["academic-policy"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
     // rehearsal receipt. It sits above the key schedule and below the
     // portability boundary, opens no database, and reads no vault.
@@ -891,6 +897,151 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
       `${serviceRelative} uses process::Command outside its #[cfg(test)] module`,
     );
   }
+});
+
+const PROCESS_BOUNDARIES = new Map([
+  ["academic-capture-client", ["capture-client", "CaptureClient"]],
+  ["academic-indexer", ["indexer", "Indexer"]],
+  ["academic-repository-analyzer", ["repository-analyzer", "RepositoryAnalyzer"]],
+  ["academic-connector", ["connector", "Connector"]],
+  ["academic-egress", ["egress", "EgressProxy"]],
+  ["academic-export-job", ["export-job", "ExportJob"]],
+]);
+
+const PROCESS_POLICY_CLOSURE = [
+  "academic-policy",
+  "bitflags",
+  "block-buffer",
+  "cc",
+  "cfg-if",
+  "cpufeatures",
+  "crypto-common",
+  "digest",
+  "fallible-iterator",
+  "fallible-streaming-iterator",
+  "find-msvc-tools",
+  "generic-array",
+  "libc",
+  "libsqlite3-sys",
+  "pkg-config",
+  "proc-macro2",
+  "quote",
+  "rusqlite",
+  "sha2",
+  "shlex",
+  "smallvec",
+  "subtle",
+  "syn",
+  "thiserror",
+  "thiserror-impl",
+  "typenum",
+  "unicode-ident",
+  "vcpkg",
+  "version_check",
+];
+
+function resolvedShippingPackageNames(rootName) {
+  const root = packagesByName.get(rootName);
+  assert.ok(root, `${rootName} is not a workspace package`);
+  const visited = new Set();
+  const pending = [root.id];
+  while (pending.length > 0) {
+    const id = pending.shift();
+    if (visited.has(id)) {
+      continue;
+    }
+    visited.add(id);
+    const node = resolveNodesById.get(id);
+    assert.ok(node, `${id} has no resolved node`);
+    for (const dependency of node.deps) {
+      const ships = dependency.dep_kinds.some(({ kind }) => kind !== "dev");
+      if (ships) {
+        pending.push(dependency.pkg);
+      }
+    }
+  }
+  return [...visited].map((id) => packagesById.get(id).name).toSorted();
+}
+
+function expectedProcessManifest(packageName) {
+  return `[package]
+name = "${packageName}"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+academic-policy = { path = "../policy" }
+
+[lints]
+workspace = true
+`;
+}
+
+function expectedProcessSource(processClass) {
+  return `use academic_policy::ProcessClass;
+
+const PROCESS_CLASS: ProcessClass = ProcessClass::${processClass};
+
+fn main() {
+    let _capability_set = PROCESS_CLASS.capabilities();
+}
+`;
+}
+
+async function assertExactProcessBoundary(packageName) {
+  const [directory, processClass] = PROCESS_BOUNDARIES.get(packageName);
+  const pkg = packagesByName.get(packageName);
+  assert.ok(pkg, `${packageName} is absent`);
+  assert.deepEqual(productDependencyNames(pkg), ["academic-policy"]);
+  assert.deepEqual(devDependencyNames(pkg), []);
+  assert.deepEqual(Object.keys(pkg.features), []);
+  assert.deepEqual(
+    pkg.targets.map((target) => ({
+      name: target.name,
+      kind: target.kind,
+      crate_types: target.crate_types,
+    })),
+    [{ name: packageName, kind: ["bin"], crate_types: ["bin"] }],
+    `${packageName} gained another executable, library, example, or build script`,
+  );
+  assert.equal(
+    (await readFile(join("crates", directory, "Cargo.toml"), "utf8")).replaceAll("\r\n", "\n"),
+    expectedProcessManifest(packageName),
+    `${packageName}'s whole manifest changed; review the complete process boundary`,
+  );
+  const sources = await rustSources(join("crates", directory, "src"));
+  assert.deepEqual(
+    sources.map(([path, source]) => [path.split("\\").join("/"), source.replaceAll("\r\n", "\n")]),
+    [[join("crates", directory, "src", "main.rs").split("\\").join("/"), expectedProcessSource(processClass)]],
+    `${packageName}'s complete product source is no longer its one fixed process-class binding`,
+  );
+}
+
+test("six_process_entrypoints_are_exact_and_distinct", async () => {
+  for (const packageName of PROCESS_BOUNDARIES.keys()) {
+    await assertExactProcessBoundary(packageName);
+  }
+});
+
+test("indexer_cannot_open_a_socket", async () => {
+  await assertExactProcessBoundary("academic-indexer");
+  assert.deepEqual(
+    resolvedShippingPackageNames("academic-indexer"),
+    ["academic-indexer", ...PROCESS_POLICY_CLOSURE].toSorted(),
+    "the indexer feature graph changed; the entire new closure must be reviewed for socket capability",
+  );
+});
+
+test("export_job_cannot_read_keys", async () => {
+  await assertExactProcessBoundary("academic-export-job");
+  assert.deepEqual(
+    resolvedShippingPackageNames("academic-export-job"),
+    ["academic-export-job", ...PROCESS_POLICY_CLOSURE].toSorted(),
+    "the export-job feature graph changed; the entire new closure must be reviewed for key access",
+  );
 });
 
 // t068 section 3.9. A deterministic engine has no clock, no RNG, no network,
@@ -1779,6 +1930,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     retentionReceiptText,
     admissionReceiptText,
     policyReceiptText,
+    processReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -1788,6 +1940,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-k5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-k6.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-g7.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -1797,6 +1950,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const retentionReceipt = JSON.parse(retentionReceiptText);
   const admissionReceipt = JSON.parse(admissionReceiptText);
   const policyReceipt = JSON.parse(policyReceiptText);
+  const processReceipt = JSON.parse(processReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -1996,6 +2150,51 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-G1 admitted package is missing from Cargo.lock",
   );
 
+  const processAdmitted = new Set(
+    processReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const processPathPackages = new Set(
+    processReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(processAdmitted.size, 0, "P2-G7 must admit no external crate");
+  assert.deepEqual(
+    [...processPathPackages].toSorted(),
+    [
+      "academic-capture-client@0.1.0",
+      "academic-connector@0.1.0",
+      "academic-egress@0.1.0",
+      "academic-export-job@0.1.0",
+      "academic-indexer@0.1.0",
+      "academic-repository-analyzer@0.1.0",
+    ],
+  );
+  for (const claimed of processPathPackages) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const processTuples = lockTuples.filter(
+    ([name, version]) => processPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    processTuples.length,
+    processPathPackages.size,
+    "a P2-G7 process package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -2010,7 +2209,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !admissionAdmitted.has(`${name}@${version}`) &&
       !admissionPathPackages.has(`${name}@${version}`) &&
       !policyAdmitted.has(`${name}@${version}`) &&
-      !policyPathPackages.has(`${name}@${version}`),
+      !policyPathPackages.has(`${name}@${version}`) &&
+      !processPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -2027,7 +2227,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       recoveryTuples.length +
       retentionTuples.length +
       admissionTuples.length +
-      policyTuples.length,
+      policyTuples.length +
+      processTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

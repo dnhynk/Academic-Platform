@@ -7,6 +7,7 @@
 use std::{
     collections::HashMap,
     fmt,
+    path::Path,
     sync::{
         Mutex, RwLock,
         atomic::{AtomicU64, Ordering},
@@ -28,8 +29,178 @@ pub use provider::{
 pub const POLICY_SCHEMA_SQL: &str = include_str!("schema.sql");
 /// Default validity window for a minted one-use grant, in milliseconds.
 pub const DEFAULT_GRANT_TTL_MILLIS: u64 = 60_000;
+/// Audit rows are retained by the append-only security-audit policy.
+pub const AUDIT_RETENTION_POLICY_ID: &str = "SECURITY_AUDIT_APPEND_ONLY";
 
 const MISSING_VALUE: &str = "<missing>";
+
+/// The six product process boundaries fixed by P2-G7.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ProcessClass {
+    /// Device capture, isolated from indexing and analysis.
+    CaptureClient,
+    /// Disposable search/index projection builder.
+    Indexer,
+    /// Repository evidence analyzer with no shell or network authority.
+    RepositoryAnalyzer,
+    /// Provider/repository connector that may borrow a scoped credential.
+    Connector,
+    /// The only process class eligible for an outbound socket token.
+    EgressProxy,
+    /// Export assembly over staged artifact bytes, without key access.
+    ExportJob,
+}
+
+impl ProcessClass {
+    /// Exhaustive process-class order used by policy and matrix tests.
+    pub const ALL: [Self; 6] = [
+        Self::CaptureClient,
+        Self::Indexer,
+        Self::RepositoryAnalyzer,
+        Self::Connector,
+        Self::EgressProxy,
+        Self::ExportJob,
+    ];
+
+    /// Stable database and process-manifest spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::CaptureClient => "CAPTURE_CLIENT",
+            Self::Indexer => "INDEXER",
+            Self::RepositoryAnalyzer => "REPOSITORY_ANALYZER",
+            Self::Connector => "CONNECTOR",
+            Self::EgressProxy => "EGRESS_PROXY",
+            Self::ExportJob => "EXPORT_JOB",
+        }
+    }
+
+    fn parse(value: &str) -> Result<Self, BrokerError> {
+        match value {
+            "CAPTURE_CLIENT" => Ok(Self::CaptureClient),
+            "INDEXER" => Ok(Self::Indexer),
+            "REPOSITORY_ANALYZER" => Ok(Self::RepositoryAnalyzer),
+            "CONNECTOR" => Ok(Self::Connector),
+            "EGRESS_PROXY" => Ok(Self::EgressProxy),
+            "EXPORT_JOB" => Ok(Self::ExportJob),
+            _ => Err(BrokerError::CorruptProcessClass),
+        }
+    }
+
+    /// Exact capabilities granted to this class. Each class has a distinct set.
+    #[must_use]
+    pub const fn capabilities(self) -> &'static [ProcessCapability] {
+        match self {
+            Self::CaptureClient => &[
+                ProcessCapability::CaptureDevice,
+                ProcessCapability::WriteStagedArtifact,
+            ],
+            Self::Indexer => &[
+                ProcessCapability::ReadArtifactRange,
+                ProcessCapability::WriteSearchIndex,
+            ],
+            Self::RepositoryAnalyzer => &[
+                ProcessCapability::ReadArtifactRange,
+                ProcessCapability::AnalyzeRepository,
+                ProcessCapability::CreateClaim,
+            ],
+            Self::Connector => &[
+                ProcessCapability::BorrowConnectorCredential,
+                ProcessCapability::StageExternalPayload,
+            ],
+            Self::EgressProxy => &[ProcessCapability::OpenOutboundSocket],
+            Self::ExportJob => &[
+                ProcessCapability::ReadArtifactRange,
+                ProcessCapability::AssembleExport,
+            ],
+        }
+    }
+
+    /// Whether one exact cell in the default-deny matrix is allowed.
+    #[must_use]
+    pub fn allows(self, capability: ProcessCapability) -> bool {
+        self.capabilities().contains(&capability)
+    }
+}
+
+/// Closed process capability vocabulary. `ReadKeyMaterial` deliberately has no allowed cell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ProcessCapability {
+    /// Obtain a microphone/camera handle under a later capture token.
+    CaptureDevice,
+    /// Write a capture into the core-owned staging boundary.
+    WriteStagedArtifact,
+    /// Read only the named artifact ranges.
+    ReadArtifactRange,
+    /// Write a disposable search projection.
+    WriteSearchIndex,
+    /// Run repository analysis without a shell or network.
+    AnalyzeRepository,
+    /// Borrow a scoped, opaque connector credential handle.
+    BorrowConnectorCredential,
+    /// Stage an approved payload for the egress process.
+    StageExternalPayload,
+    /// Open the sole outbound product socket.
+    OpenOutboundSocket,
+    /// Submit claim identifiers and provenance to the core.
+    CreateClaim,
+    /// Assemble an export from staged bytes and metadata.
+    AssembleExport,
+    /// Read raw key material. No P2-G7 process class receives this capability.
+    ReadKeyMaterial,
+}
+
+impl ProcessCapability {
+    /// Exhaustive capability order used by the cross-capability matrix.
+    pub const ALL: [Self; 11] = [
+        Self::CaptureDevice,
+        Self::WriteStagedArtifact,
+        Self::ReadArtifactRange,
+        Self::WriteSearchIndex,
+        Self::AnalyzeRepository,
+        Self::BorrowConnectorCredential,
+        Self::StageExternalPayload,
+        Self::OpenOutboundSocket,
+        Self::CreateClaim,
+        Self::AssembleExport,
+        Self::ReadKeyMaterial,
+    ];
+
+    /// Stable database spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::CaptureDevice => "CAPTURE_DEVICE",
+            Self::WriteStagedArtifact => "WRITE_STAGED_ARTIFACT",
+            Self::ReadArtifactRange => "READ_ARTIFACT_RANGE",
+            Self::WriteSearchIndex => "WRITE_SEARCH_INDEX",
+            Self::AnalyzeRepository => "ANALYZE_REPOSITORY",
+            Self::BorrowConnectorCredential => "BORROW_CONNECTOR_CREDENTIAL",
+            Self::StageExternalPayload => "STAGE_EXTERNAL_PAYLOAD",
+            Self::OpenOutboundSocket => "OPEN_OUTBOUND_SOCKET",
+            Self::CreateClaim => "CREATE_CLAIM",
+            Self::AssembleExport => "ASSEMBLE_EXPORT",
+            Self::ReadKeyMaterial => "READ_KEY_MATERIAL",
+        }
+    }
+
+    fn parse(value: &str) -> Result<Self, BrokerError> {
+        match value {
+            "CAPTURE_DEVICE" => Ok(Self::CaptureDevice),
+            "WRITE_STAGED_ARTIFACT" => Ok(Self::WriteStagedArtifact),
+            "READ_ARTIFACT_RANGE" => Ok(Self::ReadArtifactRange),
+            "WRITE_SEARCH_INDEX" => Ok(Self::WriteSearchIndex),
+            "ANALYZE_REPOSITORY" => Ok(Self::AnalyzeRepository),
+            "BORROW_CONNECTOR_CREDENTIAL" => Ok(Self::BorrowConnectorCredential),
+            "STAGE_EXTERNAL_PAYLOAD" => Ok(Self::StageExternalPayload),
+            "OPEN_OUTBOUND_SOCKET" => Ok(Self::OpenOutboundSocket),
+            "CREATE_CLAIM" => Ok(Self::CreateClaim),
+            "ASSEMBLE_EXPORT" => Ok(Self::AssembleExport),
+            "READ_KEY_MATERIAL" => Ok(Self::ReadKeyMaterial),
+            _ => Err(BrokerError::CorruptProcessCapability),
+        }
+    }
+}
 
 /// A lowercase SHA-256 digest.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -150,8 +321,10 @@ impl PolicyVersion {
 /// One explicit per-tuple user rule.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EgressRule {
-    /// Exact process class allowed to request the capability.
-    pub actor_process_class: String,
+    /// Exact actor allowed to request the capability.
+    pub actor_id: String,
+    /// Exact process class allowed to receive the socket capability.
+    pub process_class: ProcessClass,
     /// Exact data class configured by the user.
     pub data_class: String,
     /// Exact operation.
@@ -182,7 +355,10 @@ pub struct EgressRule {
 
 impl EgressRule {
     fn is_structurally_valid(&self) -> bool {
-        !self.actor_process_class.is_empty()
+        !self.actor_id.is_empty()
+            && self
+                .process_class
+                .allows(ProcessCapability::OpenOutboundSocket)
             && !self.data_class.is_empty()
             && !self.operation.is_empty()
             && !self.purpose_id.is_empty()
@@ -194,7 +370,8 @@ impl EgressRule {
     }
 
     fn matches_tuple(&self, request: &CompleteRequest<'_>) -> bool {
-        self.actor_process_class == request.actor_process_class
+        self.actor_id == request.actor_id
+            && self.process_class == request.process_class
             && self.data_class == request.data_class
             && self.operation == request.operation
             && self.purpose_id == request.purpose_id
@@ -213,7 +390,8 @@ impl EgressRule {
 
     fn canonical_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        push_string(&mut bytes, &self.actor_process_class);
+        push_string(&mut bytes, &self.actor_id);
+        push_string(&mut bytes, self.process_class.as_str());
         push_string(&mut bytes, &self.data_class);
         push_string(&mut bytes, &self.operation);
         push_string(&mut bytes, &self.purpose_id);
@@ -282,7 +460,7 @@ impl PolicySnapshot {
     }
 
     fn canonical_bytes(&self) -> Vec<u8> {
-        let mut bytes = b"academic-policy-snapshot-v1\0".to_vec();
+        let mut bytes = b"academic-policy-snapshot-v2\0".to_vec();
         bytes.push(u8::from(self.local_processing_preferred));
         bytes.extend_from_slice(
             &u64::try_from(self.rules.len())
@@ -306,8 +484,10 @@ impl Default for PolicySnapshot {
 /// The concrete §3.5 request fields. Every `Option` must resolve before any payload read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PermissionRequest {
-    /// Process class.
-    pub actor_process_class: Option<String>,
+    /// Actor identity.
+    pub actor_id: Option<String>,
+    /// Trusted process boundary making the request.
+    pub process_class: ProcessClass,
     /// Data class.
     pub data_class: Option<String>,
     /// Requested object/range digest set.
@@ -472,8 +652,14 @@ pub struct AuditRow {
     pub decision: Decision,
     /// Denial code; allow rows use `None` because the fixed enum has no allow code.
     pub reason_code: Option<ReasonCode>,
-    /// Process class, or the missing-field marker.
-    pub actor_process_class: String,
+    /// Actor identity, or the missing-field marker.
+    pub actor_id: String,
+    /// Typed process boundary that made the attempt.
+    pub process_class: ProcessClass,
+    /// Typed capability evaluated or consumed.
+    pub capability: ProcessCapability,
+    /// Artifact ranges read or transmitted, represented only by identifiers and digests.
+    pub artifact_ranges: Vec<ObjectRange>,
     /// Payload digest when it was resolved without storing payload.
     pub payload_digest: Option<String>,
     /// Exact payload byte count, or zero before resolution.
@@ -488,12 +674,19 @@ pub struct AuditRow {
     pub provider_response_digest: Option<String>,
     /// Provider deletion receipt when a later stage records one.
     pub deletion_receipt_id: Option<String>,
+    /// Digest of bytes released for an external transmission, never the bytes.
+    pub external_transmission_digest: Option<String>,
+    /// Claim identifiers created from the named artifact ranges.
+    pub created_claim_ids: Vec<String>,
+    /// Fixed append-only retention policy.
+    pub retention_policy_id: String,
 }
 
 /// Opaque single-use runtime capability. It cannot be constructed outside this crate.
 pub struct CapabilityToken {
     grant_id: String,
-    actor_process_class: String,
+    actor_id: String,
+    process_class: ProcessClass,
     operation: String,
     purpose_id: String,
     destination_id: String,
@@ -504,6 +697,153 @@ pub struct CapabilityToken {
 impl fmt::Debug for CapabilityToken {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("CapabilityToken(<opaque>)")
+    }
+}
+
+/// Opaque, expiring, single-use token for one allowed process-matrix cell.
+pub struct ProcessCapabilityToken {
+    token_id: String,
+    actor_id: String,
+    process_class: ProcessClass,
+    capability: ProcessCapability,
+}
+
+impl fmt::Debug for ProcessCapabilityToken {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("ProcessCapabilityToken(<opaque>)")
+    }
+}
+
+/// Metadata recorded when a process token is consumed.
+pub struct ProcessActivity<'a> {
+    capability: ProcessCapability,
+    ranges: Vec<ObjectRange>,
+    destination_id: Option<String>,
+    transmitted_bytes: Option<&'a [u8]>,
+    claim_ids: Vec<String>,
+}
+
+impl<'a> ProcessActivity<'a> {
+    /// Records use of a capability that carries no artifact, transmission, or claim metadata.
+    pub fn capability_use(capability: ProcessCapability) -> Result<Self, BrokerError> {
+        Self::new(capability, Vec::new(), None, None, Vec::new())
+    }
+
+    /// Records the exact ranges read by an indexer, analyzer, or export job.
+    pub fn artifact_read(ranges: Vec<ObjectRange>) -> Result<Self, BrokerError> {
+        Self::new(
+            ProcessCapability::ReadArtifactRange,
+            ranges,
+            None,
+            None,
+            Vec::new(),
+        )
+    }
+
+    /// Records a byte-exact external transmission as ranges, digest, and count only.
+    pub fn external_transmission(
+        ranges: Vec<ObjectRange>,
+        destination_id: impl Into<String>,
+        transmitted_bytes: &'a [u8],
+    ) -> Result<Self, BrokerError> {
+        Self::new(
+            ProcessCapability::OpenOutboundSocket,
+            ranges,
+            Some(destination_id.into()),
+            Some(transmitted_bytes),
+            Vec::new(),
+        )
+    }
+
+    /// Records claim identifiers together with the ranges from which they were derived.
+    pub fn claims_created(
+        ranges: Vec<ObjectRange>,
+        claim_ids: Vec<String>,
+    ) -> Result<Self, BrokerError> {
+        Self::new(
+            ProcessCapability::CreateClaim,
+            ranges,
+            None,
+            None,
+            claim_ids,
+        )
+    }
+
+    fn new(
+        capability: ProcessCapability,
+        ranges: Vec<ObjectRange>,
+        destination_id: Option<String>,
+        transmitted_bytes: Option<&'a [u8]>,
+        claim_ids: Vec<String>,
+    ) -> Result<Self, BrokerError> {
+        let ranges_valid = canonical_ranges(&ranges).is_some();
+        let valid = match capability {
+            ProcessCapability::ReadArtifactRange => {
+                ranges_valid
+                    && destination_id.is_none()
+                    && transmitted_bytes.is_none()
+                    && claim_ids.is_empty()
+            }
+            ProcessCapability::OpenOutboundSocket => {
+                ranges_valid
+                    && destination_id
+                        .as_deref()
+                        .is_some_and(|value| !value.is_empty())
+                    && transmitted_bytes.is_some_and(|value| {
+                        u64::try_from(value.len()).ok() == range_byte_count(&ranges)
+                    })
+                    && claim_ids.is_empty()
+            }
+            ProcessCapability::CreateClaim => {
+                ranges_valid
+                    && destination_id.is_none()
+                    && transmitted_bytes.is_none()
+                    && !claim_ids.is_empty()
+                    && claim_ids.iter().all(|claim| !claim.is_empty())
+            }
+            ProcessCapability::CaptureDevice
+            | ProcessCapability::WriteStagedArtifact
+            | ProcessCapability::WriteSearchIndex
+            | ProcessCapability::AnalyzeRepository
+            | ProcessCapability::BorrowConnectorCredential
+            | ProcessCapability::StageExternalPayload
+            | ProcessCapability::AssembleExport
+            | ProcessCapability::ReadKeyMaterial => {
+                ranges.is_empty()
+                    && destination_id.is_none()
+                    && transmitted_bytes.is_none()
+                    && claim_ids.is_empty()
+            }
+        };
+        if !valid {
+            return Err(BrokerError::InvalidProcessActivity);
+        }
+        Ok(Self {
+            capability,
+            ranges,
+            destination_id,
+            transmitted_bytes,
+            claim_ids,
+        })
+    }
+}
+
+impl fmt::Debug for ProcessActivity<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ProcessActivity")
+            .field("capability", &self.capability)
+            .field("ranges", &self.ranges)
+            .field("destination_id", &self.destination_id)
+            .field(
+                "transmitted_bytes",
+                &format_args!(
+                    "<redacted:{} bytes>",
+                    self.transmitted_bytes.map_or(0, <[u8]>::len)
+                ),
+            )
+            .field("claim_ids", &self.claim_ids)
+            .finish()
     }
 }
 
@@ -571,7 +911,8 @@ pub struct DecisionOutcome {
 
 /// Runtime call metadata plus the exact payload to hash at the boundary.
 pub struct RuntimeToolCall<'a> {
-    actor_process_class: String,
+    actor_id: String,
+    process_class: ProcessClass,
     operation: String,
     purpose_id: String,
     destination_id: String,
@@ -582,7 +923,8 @@ pub struct RuntimeToolCall<'a> {
 impl<'a> RuntimeToolCall<'a> {
     /// Constructs the only runtime input accepted by [`PermissionBroker::execute`].
     pub fn new(
-        actor_process_class: impl Into<String>,
+        actor_id: impl Into<String>,
+        process_class: ProcessClass,
         operation: impl Into<String>,
         purpose_id: impl Into<String>,
         destination_id: impl Into<String>,
@@ -590,14 +932,18 @@ impl<'a> RuntimeToolCall<'a> {
         payload: &'a [u8],
     ) -> Result<Self, BrokerError> {
         let call = Self {
-            actor_process_class: actor_process_class.into(),
+            actor_id: actor_id.into(),
+            process_class,
             operation: operation.into(),
             purpose_id: purpose_id.into(),
             destination_id: destination_id.into(),
             ranges,
             payload,
         };
-        if call.actor_process_class.is_empty()
+        if call.actor_id.is_empty()
+            || !call
+                .process_class
+                .allows(ProcessCapability::OpenOutboundSocket)
             || call.operation.is_empty()
             || call.purpose_id.is_empty()
             || call.destination_id.is_empty()
@@ -613,7 +959,8 @@ impl fmt::Debug for RuntimeToolCall<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("RuntimeToolCall")
-            .field("actor_process_class", &self.actor_process_class)
+            .field("actor_id", &self.actor_id)
+            .field("process_class", &self.process_class)
             .field("operation", &self.operation)
             .field("purpose_id", &self.purpose_id)
             .field("destination_id", &self.destination_id)
@@ -692,6 +1039,9 @@ pub enum BrokerError {
     /// Runtime call metadata was malformed.
     #[error("invalid runtime tool call")]
     InvalidRuntimeCall,
+    /// Process activity did not match its closed capability shape.
+    #[error("invalid process activity")]
+    InvalidProcessActivity,
     /// A wall-clock value did not fit the SQLite integer contract.
     #[error("time value is outside the SQLite integer range")]
     TimeOutOfRange,
@@ -701,6 +1051,15 @@ pub enum BrokerError {
     /// The audit database contained a reason outside the closed enum.
     #[error("audit row contained an unknown reason code")]
     CorruptAuditReason,
+    /// The audit database contained a process class outside the closed enum.
+    #[error("audit row contained an unknown process class")]
+    CorruptProcessClass,
+    /// The audit database contained a process capability outside the closed enum.
+    #[error("audit row contained an unknown process capability")]
+    CorruptProcessCapability,
+    /// The audit store did not carry the fixed append-only retention identity.
+    #[error("audit store contained an unknown retention policy")]
+    CorruptAuditRetention,
     /// A capability decision denied the request or runtime call.
     #[error("permission denied: {0:?}")]
     Denied(ReasonCode),
@@ -716,6 +1075,7 @@ pub struct PermissionBroker {
     default_policy_version: PolicyVersion,
     grant_ttl_millis: u64,
     next_grant: AtomicU64,
+    next_process_grant: AtomicU64,
 }
 
 impl fmt::Debug for PermissionBroker {
@@ -736,12 +1096,31 @@ impl PermissionBroker {
 
     /// Creates a new profile with an explicit testable token lifetime.
     pub fn new_profile_with_ttl(grant_ttl_millis: u64) -> Result<Self, BrokerError> {
+        Self::with_connection(Connection::open_in_memory()?, grant_ttl_millis)
+    }
+
+    /// Opens or creates the append-only policy/audit store at an explicit local path.
+    pub fn open(path: &Path) -> Result<Self, BrokerError> {
+        Self::with_connection(Connection::open(path)?, DEFAULT_GRANT_TTL_MILLIS)
+    }
+
+    fn with_connection(connection: Connection, grant_ttl_millis: u64) -> Result<Self, BrokerError> {
         if grant_ttl_millis == 0 {
             return Err(BrokerError::InvalidRule);
         }
-        let connection = Connection::open_in_memory()?;
         connection.execute_batch("PRAGMA foreign_keys = ON;")?;
         connection.execute_batch(POLICY_SCHEMA_SQL)?;
+        let schema_identity = connection.query_row(
+            concat!(
+                "SELECT schema_version, audit_retention_policy_id FROM policy_schema_meta ",
+                "WHERE singleton = 1"
+            ),
+            [],
+            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
+        )?;
+        if schema_identity != (2, AUDIT_RETENTION_POLICY_ID.to_owned()) {
+            return Err(BrokerError::CorruptAuditRetention);
+        }
         let default = PolicySnapshot::local_first_default_deny();
         let default_policy_version = default.version();
         let mut policies = HashMap::new();
@@ -752,6 +1131,7 @@ impl PermissionBroker {
             default_policy_version,
             grant_ttl_millis,
             next_grant: AtomicU64::new(1),
+            next_process_grant: AtomicU64::new(1),
         })
     }
 
@@ -788,6 +1168,236 @@ impl PermissionBroker {
             policies.insert(version.clone(), snapshot);
         }
         Ok(version)
+    }
+
+    /// Mints one expiring, single-use token only for an allowed matrix cell.
+    pub fn mint_process_capability(
+        &self,
+        actor_id: impl Into<String>,
+        process_class: ProcessClass,
+        capability: ProcessCapability,
+        issued_at: u64,
+    ) -> Result<ProcessCapabilityToken, BrokerError> {
+        let actor_id = actor_id.into();
+        if actor_id.is_empty() {
+            return Err(BrokerError::InvalidProcessActivity);
+        }
+        if !process_class.allows(capability) {
+            let mut connection = self
+                .connection
+                .lock()
+                .map_err(|_| BrokerError::LockPoisoned)?;
+            let transaction = connection.transaction()?;
+            insert_audit(
+                &transaction,
+                None,
+                Decision::Deny,
+                Some(ReasonCode::NoGrant),
+                &actor_id,
+                process_class,
+                capability,
+                None,
+                0,
+                MISSING_VALUE,
+                &[],
+                None,
+                &[],
+                issued_at,
+            )?;
+            transaction.commit()?;
+            return Err(BrokerError::Denied(ReasonCode::NoGrant));
+        }
+
+        let expires_at = issued_at
+            .checked_add(self.grant_ttl_millis)
+            .ok_or(BrokerError::TimeOutOfRange)?;
+        let sequence = self.next_process_grant.fetch_add(1, Ordering::Relaxed);
+        let mut material = b"academic-process-capability-v1\0".to_vec();
+        push_string(&mut material, &actor_id);
+        push_string(&mut material, process_class.as_str());
+        push_string(&mut material, capability.as_str());
+        material.extend_from_slice(&issued_at.to_be_bytes());
+        material.extend_from_slice(&sequence.to_be_bytes());
+        let token_id = lower_hex(&Sha256::digest(material));
+
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| BrokerError::LockPoisoned)?;
+        let transaction = connection.transaction()?;
+        transaction.execute(
+            concat!(
+                "INSERT INTO process_capability_grant (token_id, actor_id, process_class, ",
+                "capability, issued_at, expires_at, max_uses, consumed_at) ",
+                "VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, NULL)"
+            ),
+            params![
+                token_id,
+                actor_id,
+                process_class.as_str(),
+                capability.as_str(),
+                sqlite_u64(issued_at)?,
+                sqlite_u64(expires_at)?,
+            ],
+        )?;
+        insert_audit(
+            &transaction,
+            Some(&token_id),
+            Decision::Allow,
+            None,
+            &actor_id,
+            process_class,
+            capability,
+            None,
+            0,
+            MISSING_VALUE,
+            &[],
+            None,
+            &[],
+            issued_at,
+        )?;
+        transaction.commit()?;
+        Ok(ProcessCapabilityToken {
+            token_id,
+            actor_id,
+            process_class,
+            capability,
+        })
+    }
+
+    /// Consumes a process token against the caller's independently supplied class and capability.
+    pub fn use_process_capability(
+        &self,
+        token: &ProcessCapabilityToken,
+        actor_id: &str,
+        process_class: ProcessClass,
+        capability: ProcessCapability,
+        activity: ProcessActivity<'_>,
+        now: u64,
+    ) -> Result<(), BrokerError> {
+        let payload_digest = activity.transmitted_bytes.map(ContentDigest::of);
+        let byte_count = activity
+            .transmitted_bytes
+            .map_or(0, |bytes| u64::try_from(bytes.len()).unwrap_or(u64::MAX));
+        let destination_id = activity.destination_id.as_deref().unwrap_or(MISSING_VALUE);
+        let exact_binding = !actor_id.is_empty()
+            && token.actor_id == actor_id
+            && token.process_class == process_class
+            && token.capability == capability
+            && activity.capability == capability
+            && process_class.allows(capability);
+
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| BrokerError::LockPoisoned)?;
+        let transaction = connection.transaction()?;
+        if !exact_binding {
+            insert_audit(
+                &transaction,
+                Some(&token.token_id),
+                Decision::Deny,
+                Some(ReasonCode::ScopeMismatch),
+                if actor_id.is_empty() {
+                    MISSING_VALUE
+                } else {
+                    actor_id
+                },
+                process_class,
+                capability,
+                payload_digest.as_ref().map(ContentDigest::as_str),
+                byte_count,
+                destination_id,
+                &activity.ranges,
+                payload_digest.as_ref().map(ContentDigest::as_str),
+                &activity.claim_ids,
+                now,
+            )?;
+            transaction.commit()?;
+            return Err(BrokerError::Denied(ReasonCode::ScopeMismatch));
+        }
+
+        let stored = load_process_grant(&transaction, &token.token_id)?;
+        let Some(stored) = stored else {
+            return deny_process_use(
+                transaction,
+                token,
+                &activity,
+                payload_digest.as_ref(),
+                byte_count,
+                now,
+                ReasonCode::NoGrant,
+            );
+        };
+        if !stored.matches_token(token) {
+            return deny_process_use(
+                transaction,
+                token,
+                &activity,
+                payload_digest.as_ref(),
+                byte_count,
+                now,
+                ReasonCode::ScopeMismatch,
+            );
+        }
+        if stored.consumed_at.is_some() {
+            return deny_process_use(
+                transaction,
+                token,
+                &activity,
+                payload_digest.as_ref(),
+                byte_count,
+                now,
+                ReasonCode::GrantConsumed,
+            );
+        }
+        if now >= stored.expires_at {
+            return deny_process_use(
+                transaction,
+                token,
+                &activity,
+                payload_digest.as_ref(),
+                byte_count,
+                now,
+                ReasonCode::GrantExpired,
+            );
+        }
+        let consumed = transaction.execute(
+            concat!(
+                "UPDATE process_capability_grant SET consumed_at = ?1 ",
+                "WHERE token_id = ?2 AND consumed_at IS NULL AND expires_at > ?1"
+            ),
+            params![sqlite_u64(now)?, token.token_id],
+        )?;
+        if consumed != 1 {
+            return deny_process_use(
+                transaction,
+                token,
+                &activity,
+                payload_digest.as_ref(),
+                byte_count,
+                now,
+                ReasonCode::GrantConsumed,
+            );
+        }
+        insert_audit(
+            &transaction,
+            Some(&token.token_id),
+            Decision::Allow,
+            None,
+            &token.actor_id,
+            token.process_class,
+            token.capability,
+            payload_digest.as_ref().map(ContentDigest::as_str),
+            byte_count,
+            destination_id,
+            &activity.ranges,
+            payload_digest.as_ref().map(ContentDigest::as_str),
+            &activity.claim_ids,
+            now,
+        )?;
+        transaction.commit()?;
+        Ok(())
     }
 
     /// Evaluates, audits, and when allowed mints one expiring capability.
@@ -907,7 +1517,11 @@ impl PermissionBroker {
         let call_digest = ContentDigest::of(call.payload);
         let call_count =
             u64::try_from(call.payload.len()).map_err(|_| BrokerError::TimeOutOfRange)?;
-        let scope_matches = capability.actor_process_class == call.actor_process_class
+        let scope_matches = capability.actor_id == call.actor_id
+            && capability.process_class == call.process_class
+            && capability
+                .process_class
+                .allows(ProcessCapability::OpenOutboundSocket)
             && capability.operation == call.operation
             && capability.purpose_id == call.purpose_id
             && capability.destination_id == call.destination_id
@@ -1064,11 +1678,12 @@ impl PermissionBroker {
             .lock()
             .map_err(|_| BrokerError::LockPoisoned)?;
         let mut statement = connection.prepare(concat!(
-            "SELECT audit_seq, grant_id, decision, reason_code, actor_process_class, ",
-            "payload_digest, byte_count, destination_id, started_at, finished_at, ",
-            "provider_response_digest, deletion_receipt_id FROM egress_audit ORDER BY audit_seq"
+            "SELECT audit_seq, grant_id, decision, reason_code, actor_id, actor_process_class, ",
+            "capability, payload_digest, byte_count, destination_id, started_at, finished_at, ",
+            "provider_response_digest, deletion_receipt_id, external_transmission_digest, ",
+            "retention_policy_id FROM egress_audit ORDER BY audit_seq"
         ))?;
-        let rows = statement
+        let base_rows = statement
             .query_map([], |row| {
                 let decision: String = row.get(2)?;
                 let reason: Option<String> = row.get(3)?;
@@ -1078,24 +1693,32 @@ impl PermissionBroker {
                     decision,
                     reason,
                     row.get::<_, String>(4)?,
-                    row.get::<_, Option<String>>(5)?,
-                    row.get::<_, i64>(6)?,
-                    row.get::<_, String>(7)?,
+                    row.get::<_, String>(5)?,
+                    row.get::<_, String>(6)?,
+                    row.get::<_, Option<String>>(7)?,
                     row.get::<_, i64>(8)?,
-                    row.get::<_, i64>(9)?,
-                    row.get::<_, Option<String>>(10)?,
-                    row.get::<_, Option<String>>(11)?,
+                    row.get::<_, String>(9)?,
+                    row.get::<_, i64>(10)?,
+                    row.get::<_, i64>(11)?,
+                    row.get::<_, Option<String>>(12)?,
+                    row.get::<_, Option<String>>(13)?,
+                    row.get::<_, Option<String>>(14)?,
+                    row.get::<_, String>(15)?,
                 ))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
-        rows.into_iter()
+        drop(statement);
+        base_rows
+            .into_iter()
             .map(
                 |(
                     audit_seq,
                     grant_id,
                     decision,
                     reason,
-                    actor_process_class,
+                    actor_id,
+                    process_class,
+                    capability,
                     payload_digest,
                     byte_count,
                     destination_id,
@@ -1103,9 +1726,17 @@ impl PermissionBroker {
                     finished_at,
                     provider_response_digest,
                     deletion_receipt_id,
+                    external_transmission_digest,
+                    retention_policy_id,
                 )| {
+                    let audit_seq = nonnegative(audit_seq)?;
+                    let artifact_ranges = load_audit_ranges(&connection, audit_seq)?;
+                    let created_claim_ids = load_audit_claims(&connection, audit_seq)?;
+                    if retention_policy_id != AUDIT_RETENTION_POLICY_ID {
+                        return Err(BrokerError::CorruptAuditRetention);
+                    }
                     Ok(AuditRow {
-                        audit_seq: nonnegative(audit_seq)?,
+                        audit_seq,
                         grant_id,
                         decision: match decision.as_str() {
                             "ALLOW" => Decision::Allow,
@@ -1113,7 +1744,10 @@ impl PermissionBroker {
                             _ => return Err(BrokerError::CorruptAuditReason),
                         },
                         reason_code: reason.as_deref().map(ReasonCode::parse).transpose()?,
-                        actor_process_class,
+                        actor_id,
+                        process_class: ProcessClass::parse(&process_class)?,
+                        capability: ProcessCapability::parse(&capability)?,
+                        artifact_ranges,
                         payload_digest,
                         byte_count: nonnegative(byte_count)?,
                         destination_id,
@@ -1121,6 +1755,9 @@ impl PermissionBroker {
                         finished_at: nonnegative(finished_at)?,
                         provider_response_digest,
                         deletion_receipt_id,
+                        external_transmission_digest,
+                        created_claim_ids,
+                        retention_policy_id,
                     })
                 },
             )
@@ -1355,7 +1992,8 @@ impl PermissionBroker {
             },
             capability: Some(CapabilityToken {
                 grant_id,
-                actor_process_class: rule.actor_process_class.clone(),
+                actor_id: rule.actor_id.clone(),
+                process_class: rule.process_class,
                 operation: rule.operation.clone(),
                 purpose_id: rule.purpose_id.clone(),
                 destination_id: rule.destination_id.clone(),
@@ -1374,7 +2012,8 @@ enum PlannedDecision {
 
 #[derive(Debug)]
 struct CompleteRequest<'a> {
-    actor_process_class: &'a str,
+    actor_id: &'a str,
+    process_class: ProcessClass,
     data_class: &'a str,
     ranges: &'a [ObjectRange],
     operation: &'a str,
@@ -1388,7 +2027,7 @@ struct CompleteRequest<'a> {
 
 impl<'a> CompleteRequest<'a> {
     fn resolve(request: &'a PermissionRequest) -> Result<Self, ReasonCode> {
-        let actor_process_class = nonempty(request.actor_process_class.as_deref())?;
+        let actor_id = nonempty(request.actor_id.as_deref())?;
         let data_class = nonempty(request.data_class.as_deref())?;
         let ranges = request
             .object_range_digest_set
@@ -1406,7 +2045,8 @@ impl<'a> CompleteRequest<'a> {
         let consent_evidence_id = nonempty(request.consent_evidence_id.as_deref())?;
         let policy_version = request.policy_version.as_ref().ok_or(ReasonCode::NoGrant)?;
         Ok(Self {
-            actor_process_class,
+            actor_id,
+            process_class: request.process_class,
             data_class,
             ranges,
             operation,
@@ -1441,6 +2081,127 @@ impl RuntimeGrant {
             && self.purpose_id == capability.purpose_id
             && self.provider_id == capability.destination_id
     }
+}
+
+#[derive(Debug)]
+struct StoredProcessGrant {
+    actor_id: String,
+    process_class: ProcessClass,
+    capability: ProcessCapability,
+    expires_at: u64,
+    consumed_at: Option<u64>,
+}
+
+impl StoredProcessGrant {
+    fn matches_token(&self, token: &ProcessCapabilityToken) -> bool {
+        self.actor_id == token.actor_id
+            && self.process_class == token.process_class
+            && self.capability == token.capability
+    }
+}
+
+fn load_process_grant(
+    transaction: &Transaction<'_>,
+    token_id: &str,
+) -> Result<Option<StoredProcessGrant>, BrokerError> {
+    transaction
+        .query_row(
+            concat!(
+                "SELECT actor_id, process_class, capability, expires_at, consumed_at ",
+                "FROM process_capability_grant WHERE token_id = ?1"
+            ),
+            [token_id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, Option<i64>>(4)?,
+                ))
+            },
+        )
+        .optional()?
+        .map(
+            |(actor_id, process_class, capability, expires_at, consumed_at)| {
+                Ok(StoredProcessGrant {
+                    actor_id,
+                    process_class: ProcessClass::parse(&process_class)?,
+                    capability: ProcessCapability::parse(&capability)?,
+                    expires_at: nonnegative(expires_at)?,
+                    consumed_at: consumed_at.map(nonnegative).transpose()?,
+                })
+            },
+        )
+        .transpose()
+}
+
+fn deny_process_use(
+    transaction: Transaction<'_>,
+    token: &ProcessCapabilityToken,
+    activity: &ProcessActivity<'_>,
+    payload_digest: Option<&ContentDigest>,
+    byte_count: u64,
+    at: u64,
+    reason: ReasonCode,
+) -> Result<(), BrokerError> {
+    insert_audit(
+        &transaction,
+        Some(&token.token_id),
+        Decision::Deny,
+        Some(reason),
+        &token.actor_id,
+        token.process_class,
+        token.capability,
+        payload_digest.map(ContentDigest::as_str),
+        byte_count,
+        activity.destination_id.as_deref().unwrap_or(MISSING_VALUE),
+        &activity.ranges,
+        payload_digest.map(ContentDigest::as_str),
+        &activity.claim_ids,
+        at,
+    )?;
+    transaction.commit()?;
+    Err(BrokerError::Denied(reason))
+}
+
+fn load_audit_ranges(
+    connection: &Connection,
+    audit_seq: u64,
+) -> Result<Vec<ObjectRange>, BrokerError> {
+    let mut statement = connection.prepare(concat!(
+        "SELECT object_id, byte_start, byte_end, content_digest FROM audit_artifact_range ",
+        "WHERE audit_seq = ?1 ORDER BY range_ordinal"
+    ))?;
+    let rows = statement
+        .query_map([sqlite_u64(audit_seq)?], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    rows.into_iter()
+        .map(|(object_id, start, end, digest)| {
+            ObjectRange::new(
+                object_id,
+                nonnegative(start)?,
+                nonnegative(end)?,
+                ContentDigest::parse(digest)?,
+            )
+        })
+        .collect()
+}
+
+fn load_audit_claims(connection: &Connection, audit_seq: u64) -> Result<Vec<String>, BrokerError> {
+    let mut statement = connection.prepare(
+        "SELECT claim_id FROM audit_created_claim WHERE audit_seq = ?1 ORDER BY claim_ordinal",
+    )?;
+    Ok(statement
+        .query_map([sqlite_u64(audit_seq)?], |row| row.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 fn load_runtime_grant(
@@ -1512,18 +2273,25 @@ fn insert_request_audit(
     byte_count: u64,
     at: u64,
 ) -> Result<(), BrokerError> {
+    let ranges = request
+        .object_range_digest_set
+        .as_deref()
+        .filter(|ranges| canonical_ranges(ranges).is_some())
+        .unwrap_or(&[]);
     insert_audit(
         transaction,
         grant_id,
         decision,
         reason,
-        request
-            .actor_process_class
-            .as_deref()
-            .unwrap_or(MISSING_VALUE),
+        request.actor_id.as_deref().unwrap_or(MISSING_VALUE),
+        request.process_class,
+        ProcessCapability::OpenOutboundSocket,
         payload_digest,
         byte_count,
         request.destination_id.as_deref().unwrap_or(MISSING_VALUE),
+        ranges,
+        None,
+        &[],
         at,
     )
     .map(|_| ())
@@ -1543,10 +2311,17 @@ fn insert_runtime_audit(
         Some(&capability.grant_id),
         decision,
         reason,
-        &capability.actor_process_class,
+        &capability.actor_id,
+        capability.process_class,
+        ProcessCapability::OpenOutboundSocket,
         payload_digest,
         byte_count,
         &capability.destination_id,
+        &capability.ranges,
+        (decision == Decision::Allow)
+            .then_some(payload_digest)
+            .flatten(),
+        &[],
         at,
     )
 }
@@ -1560,31 +2335,64 @@ fn insert_audit(
     grant_id: Option<&str>,
     decision: Decision,
     reason: Option<ReasonCode>,
-    actor_process_class: &str,
+    actor_id: &str,
+    process_class: ProcessClass,
+    capability: ProcessCapability,
     payload_digest: Option<&str>,
     byte_count: u64,
     destination_id: &str,
+    artifact_ranges: &[ObjectRange],
+    external_transmission_digest: Option<&str>,
+    created_claim_ids: &[String],
     at: u64,
 ) -> Result<u64, BrokerError> {
     transaction.execute(
         concat!(
-            "INSERT INTO egress_audit (grant_id, decision, reason_code, actor_process_class, ",
-            "payload_digest, byte_count, destination_id, started_at, finished_at, ",
-            "provider_response_digest, deletion_receipt_id) ",
-            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8, NULL, NULL)"
+            "INSERT INTO egress_audit (grant_id, decision, reason_code, actor_id, ",
+            "actor_process_class, capability, payload_digest, byte_count, destination_id, ",
+            "started_at, finished_at, provider_response_digest, deletion_receipt_id, ",
+            "external_transmission_digest, retention_policy_id) ",
+            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, NULL, NULL, ?11, ?12)"
         ),
         params![
             grant_id,
             decision.as_str(),
             reason.map(ReasonCode::as_str),
-            actor_process_class,
+            actor_id,
+            process_class.as_str(),
+            capability.as_str(),
             payload_digest,
             sqlite_u64(byte_count)?,
             destination_id,
             sqlite_u64(at)?,
+            external_transmission_digest,
+            AUDIT_RETENTION_POLICY_ID,
         ],
     )?;
-    u64::try_from(transaction.last_insert_rowid()).map_err(|_| BrokerError::CorruptAuditReason)
+    let audit_seq = transaction.last_insert_rowid();
+    for (ordinal, range) in artifact_ranges.iter().enumerate() {
+        transaction.execute(
+            concat!(
+                "INSERT INTO audit_artifact_range (audit_seq, range_ordinal, object_id, ",
+                "byte_start, byte_end, content_digest) VALUES (?1, ?2, ?3, ?4, ?5, ?6)"
+            ),
+            params![
+                audit_seq,
+                sqlite_usize(ordinal)?,
+                range.object_id,
+                sqlite_u64(range.start)?,
+                sqlite_u64(range.end)?,
+                range.content_digest.as_str(),
+            ],
+        )?;
+    }
+    for (ordinal, claim_id) in created_claim_ids.iter().enumerate() {
+        transaction.execute(
+            "INSERT INTO audit_created_claim (audit_seq, claim_ordinal, claim_id) VALUES (?1, ?2, ?3)",
+            params![audit_seq, sqlite_usize(ordinal)?, claim_id],
+        )?;
+    }
+    u64::try_from(audit_seq).map_err(|_| BrokerError::CorruptAuditReason)
 }
 
 fn decision_fingerprint(
@@ -1607,8 +2415,9 @@ fn decision_fingerprint(
 }
 
 fn request_digest(request: &PermissionRequest) -> String {
-    let mut bytes = b"academic-permission-request-v1\0".to_vec();
-    push_optional_string(&mut bytes, request.actor_process_class.as_deref());
+    let mut bytes = b"academic-permission-request-v2\0".to_vec();
+    push_optional_string(&mut bytes, request.actor_id.as_deref());
+    push_string(&mut bytes, request.process_class.as_str());
     push_optional_string(&mut bytes, request.data_class.as_deref());
     match &request.object_range_digest_set {
         Some(ranges) => {
@@ -1683,6 +2492,10 @@ fn nonempty(value: Option<&str>) -> Result<&str, ReasonCode> {
 }
 
 fn sqlite_u64(value: u64) -> Result<i64, BrokerError> {
+    i64::try_from(value).map_err(|_| BrokerError::TimeOutOfRange)
+}
+
+fn sqlite_usize(value: usize) -> Result<i64, BrokerError> {
     i64::try_from(value).map_err(|_| BrokerError::TimeOutOfRange)
 }
 
