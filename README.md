@@ -70,6 +70,12 @@ pnpm fixture:replay:v2
 git diff --exit-code -- schemas/fixtures/
 ```
 
+Hosted CI materializes **17 required jobs**: one source preflight, five
+`rust-default-*` jobs, five `rust-features-*` jobs, two Phase 1 exit jobs,
+three Linux-only encrypted/rotation jobs, and one pnpm contracts job. A green
+run is therefore reported as **17/17**, and the measured duration-to-timeout
+ratios and refresh rule live in [the CI budget record](docs/development/ci-budget.md).
+
 The encrypted object lane above is a non-default `academic-vault` feature and
 needs no native toolchain: it is pure-Rust XChaCha20-Poly1305 over the Phase 1
 publish sequence. What it is and is not evidence for is in
