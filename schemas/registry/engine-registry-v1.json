@@ -32,7 +32,7 @@
         "invariant": "동일 입력·rule hash면 동일 결과"
       },
       "high_impact_path": "GPA",
-      "lifecycle": "PLANNED",
+      "lifecycle": "IMPLEMENTED",
       "harness_dir": "gpa"
     },
     {
@@ -47,7 +47,7 @@
         "invariant": "한 학점의 중복 인정 근거 추적"
       },
       "high_impact_path": null,
-      "lifecycle": "PLANNED",
+      "lifecycle": "IMPLEMENTED",
       "harness_dir": "credit_accounting"
     },
     {

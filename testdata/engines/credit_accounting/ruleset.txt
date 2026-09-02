@@ -1,0 +1,24 @@
+academic-record-ruleset v1
+grading-scheme snu_4_3_v1
+published-scale 2
+grade A_PLUS points=43/1 earns_credit=true unresolved=false
+grade A_ZERO points=40/1 earns_credit=true unresolved=false
+grade A_MINUS points=37/1 earns_credit=true unresolved=false
+grade B_PLUS points=33/1 earns_credit=true unresolved=false
+grade B_ZERO points=30/1 earns_credit=true unresolved=false
+grade B_MINUS points=27/1 earns_credit=true unresolved=false
+grade C_PLUS points=23/1 earns_credit=true unresolved=false
+grade C_ZERO points=20/1 earns_credit=true unresolved=false
+grade C_MINUS points=17/1 earns_credit=true unresolved=false
+grade D_PLUS points=13/1 earns_credit=true unresolved=false
+grade D_ZERO points=10/1 earns_credit=true unresolved=false
+grade D_MINUS points=7/1 earns_credit=true unresolved=false
+grade F points=0/1 earns_credit=false unresolved=false
+grade S points=none earns_credit=true unresolved=false
+grade U points=none earns_credit=false unresolved=false
+grade W points=none earns_credit=false unresolved=false
+grade I points=none earns_credit=false unresolved=true
+repeat-policy repeat.no_ceiling.pre_2015 from=2000_SPRING ceiling=none recognition=LATEST_ATTEMPT
+repeat-policy repeat.ceiling.2015_spring from=2015_SPRING ceiling=A_ZERO recognition=LATEST_ATTEMPT
+external-grade-policy external.excluded.2004_spring from=2004_SPRING excluded_from_average=true
+classification-ruleset synthetic_classification_v1

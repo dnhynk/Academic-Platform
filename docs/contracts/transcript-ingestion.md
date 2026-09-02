@@ -273,6 +273,20 @@ infers one: an absent field is a refusal naming the field, a reconciliation with
 an unmatched row halts rather than assuming a side, and there is no default
 identity, term, or credit value anywhere in the crate.
 
-`P2-U4` builds the attempt model from confirmed rows. This crate publishes no
-event and appends to no ledger; it produces claim values and a durable confirmed
-row set, and the ledger boundary is `academic-ledger`'s.
+`P2-U4` builds the attempt model from confirmed rows, and has: `academic-record`'s
+`ingest::attempt_from_confirmed_row` takes a `TranscriptRow` and the
+`ConfirmedRowClaim` minted for it, refuses a claim whose ordinal or object text
+is not that row's, and refuses one that is not `UserExplicit`/`UserConfirmed` —
+so an *import* row cannot become an attempt. See
+[the GPA and attempt contract](gpa-and-attempts.md).
+
+One thing that crossing needed and this crate does not fix: a term *ordering*.
+A `TranscriptRow`'s term is whatever the document wrote, and reconciliation
+compares two readings of it without interpreting either. `P2-U4` compares a term
+against effective-dated policy rows, so it declares a mapping — `2024-1` and
+`2024-2` to 1학기 and 2학기, plus the specification's own `2024_FALL` form — and
+**refuses every other spelling** rather than guessing which session a 계절학기
+belongs to.
+
+This crate publishes no event and appends to no ledger; it produces claim values
+and a durable confirmed row set, and the ledger boundary is `academic-ledger`'s.

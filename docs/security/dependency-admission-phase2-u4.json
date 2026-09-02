@@ -1,0 +1,29 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-e",
+  "task": "P2-U4",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-U4 admits no external crate. academic-record reuses sha2 and thiserror from earlier reviewed receipts, links academic-domain and academic-transcript by path, and takes proptest as a dev edge only — all four were admitted by earlier receipts. It adds one workspace path package. No decimal, rational, or big-number crate was added: the exact arithmetic is written over academic_domain::Decimal in crates/record/src/decimal.rs, which introduces no second numeric type, and no f32 or f64 appears anywhere in the crate.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-record",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-record",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-record is a workspace path crate, not an external dependency. It owns the section 10 attempt ledger, the versioned GradingScheme and RepeatPolicy, the effective-dated policy book, the classification rule set, and the two §28 engines this task implements — engine.gpa and engine.credit.accounting. Keeping them together is what lets a published average name the exact rule book and the exact attempts it rests on: the rule-set hash the engines check is the digest of one RuleBook, and splitting the scheme, the policy rows, and the arithmetic across crates would make that hash a claim about three files instead of one value. Its edge to academic-transcript is the P2-U7 seam: a CourseAttempt built from a transcript is built from a ConfirmedRowClaim that crate minted, so the import-versus-confirmed split is reused rather than re-decided.",
+  "network_posture": "The crate opens no socket, reads no environment variable, spawns no process, runs no build script, and reads no clock or random source. Both engines are pure functions of (frozen_inputs, rule_set_hash, engine_version); crates/record/tests/record_scans.rs reads the crate's own sources to refuse a floating-point value under any spelling, and tools/phase1-scaffold-policy.test.mjs scans the same sources for clock, RNG, socket, and model APIs and pins the crate's product closure. The only host interaction anywhere in the crate's targets is the test suite and the emit_harness example reading and writing testdata/engines/.",
+  "advisory_path": "Unchanged. Every external crate academic-record links was admitted by an earlier receipt and is triaged through that receipt's advisory path. proptest is a dev edge already admitted for academic-domain's engine harness. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

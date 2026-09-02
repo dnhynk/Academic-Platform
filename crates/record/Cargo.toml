@@ -1,0 +1,22 @@
+[package]
+name = "academic-record"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-transcript = { path = "../transcript" }
+sha2.workspace = true
+thiserror.workspace = true
+
+# The property test the `GPA` harness declares bounds for. A generator is
+# outside both halves of the no-clock/no-RNG rule on purpose: it produces the
+# frozen inputs, and the engine still consumes only the ones it is handed.
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

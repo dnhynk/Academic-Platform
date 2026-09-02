@@ -1,0 +1,15 @@
+engine engine.gpa
+engine_version 1
+rule_set_hash sha256:8a09a39ca44f8b5346fa02bdda605f6bafa03374287c5b1913f521ee69fbb6d9
+frozen_inputs sha256:e8683f349aeb9aaba86c02905ded75ce661f2fd0857c5c517ef196c0a7af159b
+result SATISFIED
+value attempts.in.scope=2/0
+value attempts.pending.disposition=0/0
+value credits.earned=140/1
+value gpa=400/2
+value gpa.denominator.credits=120/1
+value gpa.quality.points=3390/2
+proof
+  SATISFIED rule.gpa.average [n.gpa] inputs=attempt.count,scope,scope.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.000] inputs=attempt.005.course,attempt.005.credits.attempted,attempt.005.credits.earned,attempt.005.grade,attempt.005.id,attempt.005.origin,attempt.005.program.stat,attempt.005.recognition,attempt.005.repeat,attempt.005.status,attempt.005.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.001] inputs=attempt.006.course,attempt.006.credits.attempted,attempt.006.credits.earned,attempt.006.grade,attempt.006.id,attempt.006.origin,attempt.006.program.cse,attempt.006.recognition,attempt.006.repeat,attempt.006.status,attempt.006.term

@@ -1,0 +1,15 @@
+cumulative.gpa.scale2=2.83
+cumulative.gpa.scale3=2.825
+cumulative.quality_points=33.9
+cumulative.denominator_credits=12
+cumulative.earned_credits=14
+cumulative.included_attempts=2,3,5,7
+term.2014_SPRING.gpa=3.3
+term.2014_FALL.gpa=0
+term.2015_SPRING.gpa=4
+term.2015_FALL.gpa=NO_GRADED_ATTEMPTS
+term.2026_FALL.gpa=NO_GRADED_ATTEMPTS
+major.cse.gpa=2.43
+major.stat.gpa=4
+ceiling_from.2016_SPRING.cumulative.gpa=2.9
+ceiling_from.2014_SPRING.cumulative.gpa=2.83

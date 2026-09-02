@@ -1,0 +1,11 @@
+engine engine.gpa
+engine_version 1
+rule_set_hash sha256:8a09a39ca44f8b5346fa02bdda605f6bafa03374287c5b1913f521ee69fbb6d9
+frozen_inputs sha256:ad1da9e7e94127935f77eb4702481cf8506d4079c8d4c6cd083aaf4c82896b33
+result CONFLICT
+value attempts.in.scope=2/0
+value attempts.pending.disposition=0/0
+proof
+  CONFLICT rule.gpa.average [n.gpa] inputs=attempt.count,scope
+    CONFLICT rule.gpa.single.record.per.course.term [n.attempt.000] inputs=attempt.000.course,attempt.000.credits.attempted,attempt.000.credits.earned,attempt.000.grade,attempt.000.id,attempt.000.origin,attempt.000.program.cse,attempt.000.program.stat,attempt.000.recognition,attempt.000.repeat,attempt.000.status,attempt.000.term
+    CONFLICT rule.gpa.single.record.per.course.term [n.attempt.001] inputs=attempt.001.course,attempt.001.credits.attempted,attempt.001.credits.earned,attempt.001.grade,attempt.001.id,attempt.001.origin,attempt.001.program.cse,attempt.001.program.stat,attempt.001.recognition,attempt.001.repeat,attempt.001.status,attempt.001.term

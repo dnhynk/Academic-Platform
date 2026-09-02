@@ -272,6 +272,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     ],
     "academic-policy": [],
     "academic-projections": ["academic-domain", "academic-store"],
+    "academic-record": ["academic-domain", "academic-transcript"],
     "academic-repository-analyzer": ["academic-policy"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
     // rehearsal receipt. It sits above the key schedule and below the
@@ -1280,6 +1281,7 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-policy": ["libc"],
   "academic-portability": ["libc", "rustix", "windows-sys"],
   "academic-projections": ["libc", "rustix", "windows-sys"],
+  "academic-record": ["libc"],
   "academic-recovery": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-retention": ["libc"],
@@ -1514,11 +1516,17 @@ test("only_egress_crate_has_a_socket", async () => {
 // reviewed set, that `getrandom` enters it through `uuid` alone, and that no
 // clock, network, or model crate is in it at all.
 //
-// The used half is the source scan. Every registered engine is `PLANNED`, so
-// the scanned set is the harness module, its generated registry, and the
-// reference engine in the harness test. An entry that flips to `IMPLEMENTED`
-// without adding its source here fails the first assertion below rather than
-// quietly leaving its implementation unscanned.
+// The used half is the source scan. Two engines are implemented -- `GPA` and
+// `CREDIT_ACCOUNTING`, both in `academic-record` -- so the scanned set is the
+// harness module, its generated registry, the reference engine in the harness
+// test, and every source file of that crate. An entry whose lifecycle changes
+// without its sources moving with it fails the lifecycle map below rather than
+// quietly leaving an implementation unscanned.
+//
+// Note that this scan matches its API spellings anywhere in a file, comments
+// included. That is stricter than the comment two paragraphs down claims, and
+// deliberately so: the right response to it is to not spell a clock API in
+// prose, not to teach the scan to skip comments.
 test("engine_source_contains_no_clock_rng_network_or_model", async () => {
   const registry = JSON.parse(
     await readFile("schemas/registry/engine-registry-v1.json", "utf8"),
@@ -1541,18 +1549,42 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     ],
     "the scan must cover exactly the engines the §28 table names",
   );
+  // Two engines are implemented. `P2-U4` built `GPA` and `CREDIT_ACCOUNTING`
+  // in `academic-record`, so that crate's sources are now engine sources and
+  // are scanned. The map is enumerated rather than counted: a third engine
+  // flipping while one of these flipped back would keep any count intact.
+  const IMPLEMENTED_ENGINES = new Map([
+    ["GPA", "academic-record"],
+    ["CREDIT_ACCOUNTING", "academic-record"],
+  ]);
+  for (const engine of registry.engines) {
+    const expected = IMPLEMENTED_ENGINES.has(engine.name) ? "IMPLEMENTED" : "PLANNED";
+    assert.equal(
+      engine.lifecycle,
+      expected,
+      `${engine.name} changed lifecycle; add or remove its source files in this scan`,
+    );
+  }
+
+  // The harness module, its generated registry, the reference engine, and
+  // every source file of the crate that implements the two live engines.
+  //
+  // The record half is a recursive walk with a floor rather than a fixed list.
+  // `docs/contracts/policy-source-scans.md` records that a fixed path set is
+  // the weakest shape a scan can have -- a file split leaves the assertions
+  // reading the half that stayed -- and an engine crate is exactly where a new
+  // module would appear.
+  const recordSources = (await rustSources(join("crates", "record", "src"))).map(([path]) => path);
+  assert.ok(
+    recordSources.length >= 12,
+    `the record engine walk found only ${recordSources.length} files; it stopped short`,
+  );
   const scanned = [
     join("crates", "domain", "src", "engines.rs"),
     join("crates", "domain", "src", "engines", "generated.rs"),
     join("crates", "domain", "tests", "engine_harness.rs"),
+    ...recordSources,
   ];
-  for (const engine of registry.engines) {
-    assert.equal(
-      engine.lifecycle,
-      "PLANNED",
-      `${engine.name} is IMPLEMENTED; add its source files to this scan`,
-    );
-  }
 
   // API spellings, not prose: a comment that says "no clock" must not trip the
   // scan and a call that reads one must.
@@ -1664,6 +1696,91 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     .map((pkg) => pkg.name)
     .toSorted();
   assert.deepEqual(getrandomOwners, ["uuid"]);
+
+  // The same two halves for the crate that implements `GPA` and
+  // `CREDIT_ACCOUNTING`. Its closure is wider than `academic-domain`'s because
+  // it depends on `academic-transcript` for the confirmed row, which depends on
+  // `academic-admission` for the import gate -- so the Ed25519 stack is in the
+  // graph. None of it is a clock, a socket, or a model, and `getrandom` still
+  // enters through `uuid` alone; the list is enumerated so that a new edge is a
+  // failure rather than a thing to notice later.
+  const recordRun = spawnSync(
+    "cargo",
+    [
+      "tree",
+      "--locked",
+      "--offline",
+      "--edges",
+      "normal",
+      "--target",
+      "all",
+      "-p",
+      "academic-record",
+    ],
+    { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
+  );
+  assert.equal(recordRun.status, 0, `locked offline cargo tree failed: ${recordRun.stderr}`);
+  const recordCrates = new Set(
+    recordRun.stdout
+      .replaceAll(/\([^)]*\)/gu, "")
+      .split("\n")
+      .map((line) => line.replace(/^[^A-Za-z]*/u, "").split(" ")[0].trim())
+      .filter((name) => name.length > 0),
+  );
+  assert.deepEqual(
+    [...recordCrates].toSorted(),
+    [
+      "academic-admission",
+      "academic-domain",
+      "academic-record",
+      "academic-transcript",
+      "block-buffer",
+      "cfg-if",
+      "ciborium",
+      "ciborium-io",
+      "ciborium-ll",
+      "cpufeatures",
+      "crunchy",
+      "crypto-common",
+      "curve25519-dalek",
+      "curve25519-dalek-derive",
+      "digest",
+      "ed25519",
+      "ed25519-dalek",
+      "fiat-crypto",
+      "generic-array",
+      "getrandom",
+      "half",
+      "hex",
+      "hmac",
+      "libc",
+      "proc-macro2",
+      "quote",
+      "r-efi",
+      "serde",
+      "serde_core",
+      "serde_derive",
+      "sha2",
+      "signature",
+      "subtle",
+      "syn",
+      "thiserror",
+      "thiserror-impl",
+      "typenum",
+      "unicode-ident",
+      "uuid",
+      "zerocopy",
+      "zerocopy-derive",
+      "zeroize",
+    ],
+    "the GPA engine crate's product closure changed; review the new capability",
+  );
+  const recordGetrandomOwners = metadata.packages
+    .filter((pkg) => recordCrates.has(pkg.name))
+    .filter((pkg) => pkg.dependencies.some((dependency) => dependency.name === "getrandom"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(recordGetrandomOwners, ["uuid"]);
 });
 
 
@@ -2579,6 +2696,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     processReceiptText,
     transcriptReceiptText,
     egressReceiptText,
+    recordReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -2591,6 +2709,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-g7.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u7.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g2.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-u4.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -2603,6 +2722,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const processReceipt = JSON.parse(processReceiptText);
   const transcriptReceipt = JSON.parse(transcriptReceiptText);
   const egressReceipt = JSON.parse(egressReceiptText);
+  const recordReceipt = JSON.parse(recordReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -2939,6 +3059,55 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-U7 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-U4` adds the attempt ledger and the two §28 engines and admits no
+  // external crate. A decimal or big-rational library would have been the
+  // obvious way to build a grade-point average and would have arrived here as
+  // an unreceipted package; the arithmetic is written over the canonical
+  // `Decimal` instead, which is why this receipt subtracts one path package and
+  // nothing else.
+  const recordAdmitted = new Set(
+    recordReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const recordPathPackages = new Set(
+    recordReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(recordAdmitted.size, 0, "P2-U4 must admit no external crate");
+  assert.deepEqual([...recordPathPackages], ["academic-record@0.1.0"]);
+  for (const claimed of [...recordAdmitted, ...recordPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processAdmitted.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const recordTuples = lockTuples.filter(
+    ([name, version]) =>
+      recordAdmitted.has(`${name}@${version}`) ||
+      recordPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    recordTuples.length,
+    recordAdmitted.size + recordPathPackages.size,
+    "a P2-U4 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -2958,7 +3127,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !transcriptAdmitted.has(`${name}@${version}`) &&
       !transcriptPathPackages.has(`${name}@${version}`) &&
       !egressAdmitted.has(`${name}@${version}`) &&
-      !egressPathPackages.has(`${name}@${version}`),
+      !egressPathPackages.has(`${name}@${version}`) &&
+      !recordAdmitted.has(`${name}@${version}`) &&
+      !recordPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -2978,7 +3149,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       policyTuples.length +
       processTuples.length +
       transcriptTuples.length +
-      egressTuples.length,
+      egressTuples.length +
+      recordTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

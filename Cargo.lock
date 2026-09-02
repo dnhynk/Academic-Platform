@@ -232,6 +232,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-record"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-transcript",
+ "proptest",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "academic-recovery"
 version = "0.1.0"
 dependencies = [
