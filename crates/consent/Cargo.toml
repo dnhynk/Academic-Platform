@@ -1,0 +1,38 @@
+[package]
+name = "academic-consent"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `academic-domain` is the only product edge, and that is a constraint rather
+# than a preference. `academic-retention` owns the closed list of things a
+# deletion has to reach, and taking it as a product edge would have been the
+# obvious reuse -- but `rotation_engine_lane_is_not_default` in
+# `tools/phase1-scaffold-policy.test.mjs` holds that exactly one crate declares
+# that edge, because linking it links a crate that can destroy a key slot. That
+# assertion is right and this crate has no business inside it, so the class list
+# is declared here and `the_two_derivative_vocabularies_are_the_same_list`
+# compares the two whole through the dev edge below.
+#
+# There is deliberately no edge to `academic-policy` either. The broker's
+# request tuple carries a `consent_evidence_id`, and a product edge in either
+# direction would make it look as though this crate validates it. It does not;
+# see the "one step out" section of
+# `docs/contracts/consent-and-capture-permission.md`.
+[dependencies]
+academic-domain = { path = "../domain" }
+thiserror.workspace = true
+
+# The compile-fail cases are compiled against this crate plus this crate's
+# dev-dependencies, so the domain type an attestation carries has to be
+# reachable from a `tests/compile_fail` case as well. `academic-scenario`
+# declares its own domain edge twice for the same reason.
+[dev-dependencies]
+academic-domain = { path = "../domain" }
+academic-retention = { path = "../retention" }
+trybuild.workspace = true
+
+[lints]
+workspace = true

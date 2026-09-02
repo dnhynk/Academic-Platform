@@ -111,6 +111,8 @@ remove.
 | `unsafe_is_confined_to_the_sandbox_backends`, `probe_targets_are_not_in_any_default_build`, `the_probe_enters_the_sandbox_before_it_reads_a_job` — `crates/worker/tests/capability.rs` | recursive, this crate's `src`, `probes` and `tests` | the set of files holding an `unsafe` item compared whole against a two-entry list; the manifest's `[[bin]]` inventory read for `required-features` and a `path` under `probes/`; a whole-text pin on the probe's `run` function plus a call-site count of one on `sandbox::enter` and an ordering check against the job read | `scanned >= 8` |
 | `the_walk_reads_every_module_in_this_crate`, `untrusted_has_no_unwrapping_trait_impl`, `every_exposure_site_is_named_and_justified`, `the_instruction_channel_takes_only_static_text`, `the_adjudicator_receives_no_capability`, `only_reviewed_files_hold_an_unlabelled_provider_response` — `crates/untrusted-content/tests/trust_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests` and `benches`) and all source; plus a second recursive walk over every `.rs` under every package in `crates/` for the `AcceptedResponse` inventory | the whole set of `impl` blocks whose header names `Untrusted<` compared against a two-entry list; the whole inventory of the crate-private accessor's call sites with a written reason for each, counted by identifier rather than by the spelling `.expose()`; a rule that no `pub` signature in the crate's product source takes an `Untrusted<…>` and returns a type naming `str`, `String` or `u8`; nine whole-text pins (below); occurrence counts on the two directive constructions, the one `quote` caller, the one `adjudicate` caller — that one also by identifier, with `use` items dropped so a re-export is not read as a call — and `leak`; the manifest read for `academic-policy` as a dev edge and `academic-worker` as no edge, and four broker type names forbidden in product source; the whole set of files naming `AcceptedResponse` | `>= 8` files, a rule that no product source sits outside `src`, and a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the crate must be a file the walk read |
 | `no_public_signature_hands_out_ingested_text` — `crates/untrusted-content/tests/untrusted_boundary.rs` | recursive, **every `.rs` under every `crates/*` package** less each package's `tests` and `benches`, comment lines dropped | no `pub fn` signature anywhere in the workspace takes an `Untrusted<…>` parameter and returns a type naming `str`, `String` or `u8` as a whole identifier — so a lifetime cannot hide one, and `&[u8]`, `Vec<u8>`, `Box<[u8]>` and `Cow<'_, [u8]>` are all reached | `>= 25` packages and `>= 1_200` public signatures |
+| `the_walk_reads_every_module_in_this_crate`, `the_capture_decision_is_one_binding_that_every_path_runs`, `a_status_comes_from_one_derivation_and_absence_is_unknown`, `an_attestation_has_no_route_into_an_authority`, `no_legal_conclusion_reaches_a_permission`, `retention_holds_two_independent_bounds_and_narrows_only`, `the_checklist_is_the_seven_dimensions_the_contract_names`, `an_expiry_cannot_be_applied_without_its_preview`, `the_two_derivative_vocabularies_are_the_same_list`, `the_migration_vocabularies_are_the_rust_ones`, `every_instant_this_crate_compares_is_an_argument` — `crates/consent/tests/consent_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests` and `benches`) and all source; plus a second recursive walk over **every `.rs` under every package in `crates/`**, less each package's `tests` and `benches`, for the two workspace-wide signature rules; plus fixed reads of `migrations/store/0006_phase2_consent_and_capture.sql`, `crates/store/src/authorizer.rs`, `crates/retention/src/plan.rs` and this crate's own `Cargo.toml` | fourteen whole-text pins (below); whole-set comparisons of the `impl` blocks naming `AuthorityGrant` and those naming `AttestationRecord`, and of the files naming `CaptureCapabilityToken` with a written reason for each; call-site counts by identifier on `bind_permission` (2), `record_capture_denial` (3), `record_capture_mint` (1), `status_of` (3), `inherit` (1) and `apply_expiry` (0), each with `fn <name>(` subtracted so `inherited` is not read as `inherit`; struct-literal counts on `CaptureCapabilityToken` (1), `BoundPermission` (1) and `ExpiryPlan` (0); a rule that no `pub` signature anywhere in the workspace takes an `AttestationRecord` and returns a type naming `AuthorityGrant`, `WrittenAuthority`, `BoundPermission`, `CaptureCapabilityToken` or `CaptureStatus`, and the same rule for a signature taking a `LegalQuestion` or an `ExternalReviewTask`; the `CaptureStatus`, `ChecklistDimension`, `ChecklistEntry` and `DerivativeClass` variant lists read out of the enums and compared whole; each of the eight migration `CHECK` lists compared against the Rust `as_str` spellings **and** against its enum's variant count; two mutations applied to the pinned retention text inside the test and each required to be caught; `#[path]` refused outright; a five-spelling clock list — the whole of `std::time`'s surface plus `chrono`, which this crate's one product edge cannot reach past | `>= 12` files in the crate walk and `>= 10` product files, plus a tripwire requiring every `mod name;` and `pub mod name;` to be a file the walk read and every product file to sit under `src`; `>= 25` packages and `>= 1_200` public signatures in the workspace walk; `>= 1` signature taking a legal question, so the legal rule cannot pass by finding nothing |
+| `crates/consent/tests/compile_fail.rs` and `tests/compile_fail/*.rs` | n/a — `trybuild` compiles two committed programs | not a source-text scan: passing an `AttestationRecord` where a `WrittenAuthority` belongs, and constructing a `CaptureCapabilityToken` with a struct literal. Each must fail to compile *and* fail with the committed diagnostic | n/a |
 | `tools/verify-contracts.mjs` | recursive, `crates/contracts/src`; the two generated modules through `tools/{engine,predicate}-registry.mjs` | digest pins and byte-for-byte re-render; refuses any tree entry that is not a `.rs` file | n/a — an unreviewed entry fails |
 | `tools/engine-registry.mjs`, `tools/predicate-registry.mjs` | none — one fixed generated path each, named as `GENERATED_PATH` | not a scan: they render the generated module from `schemas/registry/`, and are the halves `verify-contracts.mjs` re-renders and compares against the committed file | n/a |
 | `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
@@ -143,6 +145,12 @@ a silent edit is the whole risk.
 | `resolve_span`, `adjudicate` | `WHOLE_RESOLVE_SPAN`, `WHOLE_ADJUDICATE` | a change to provenance resolution, to schema validation, or to what the adjudicator is handed — its parameter list is the claim that it holds no capability |
 | `envelope_for`, `admit` | `WHOLE_ENVELOPE_FOR`, `WHOLE_ADMIT` | the callers of the two pinned decisions, pinned for the `T141` reason: a pin on a decision says nothing about whether it runs |
 | `div_round_half_up` | `WHOLE_DIVISION` | a change to how a published average is rounded — not a change to the scale, which is an argument the versioned grading scheme supplies |
+| `status_of`, `impl CaptureStatus` | `WHOLE_STATUS_OF`, `WHOLE_CAPTURE_STATUS` | a change to what decides a section 3.7 status, the order of the five tests, or which statuses permit at all |
+| `bind_permission`, `impl<'a> ResolvedRequest<'a>` | `WHOLE_BIND_PERMISSION`, `WHOLE_RESOLVE_REQUEST` | a change to what a capture has to agree with before a device opens, or to which absent request field denies — the two callers are pinned beside it and counted at two, for the `T141` and `P2-RF10` reasons |
+| `mint_capture_capability`, `continue_capture` | `WHOLE_MINT`, `WHOLE_CONTINUE` | a change to which path reaches the binding, or to whether a refusal leaves its audit row |
+| `impl RetentionTerms`, `impl RetentionBound`, `pub struct RetentionTerms` | `WHOLE_RETENTION_TERMS`, `WHOLE_RETENTION_BOUND`, `WHOLE_RETENTION_TERMS_STRUCT` | a change to the two independent axes, to the direction a derivative inherits, or to the order that makes `PROHIBITED` the strictest bound |
+| `impl AuthorityGrant`, `impl AttestationRecord` | `WHOLE_AUTHORITY_GRANT`, `WHOLE_ATTESTATION` | a change to what a written authority has to supply, or to what a user's own account of events hands back |
+| `preview_expiry`, `apply_expiry`, `impl ExpiryPlan` | `WHOLE_PREVIEW`, `WHOLE_APPLY`, `WHOLE_EXPIRY_PLAN` | a change to what a deletion preview enumerates, to the instant an expiry is compared against, or to whether a plan can exist without a preview |
 
 Comment-only lines are dropped before a pin is compared, so a pin fixes code and
 not prose. Whitespace is collapsed, so `cargo fmt` decides layout and the pin
@@ -520,6 +528,106 @@ list, and the unmodified tree passes.
 repair is not that the comparison exists — it existed before — but that removing
 it now fails a named test rather than nothing.
 
+## What the `P2-G6` scans hold
+
+`P2-G6`'s claims are of three kinds, and only one of them has a run-time
+observation that would notice the day it stopped being true.
+
+**A type separation.** A user attestation and a written authority are unrelated
+types. The compiler refuses a caller who passes one where the other belongs, and
+`tests/compile_fail/attestation_is_not_a_written_authority.rs` is that program
+with its diagnostic committed. What the compiler does not refuse is the *commit*
+that adds the conversion, so the whole set of `impl` blocks naming each type is
+compared against a one-entry list, and a workspace-wide signature rule refuses a
+free function anywhere in `crates/` that takes an attestation and returns a
+permission-shaped value. That last rule is `P2-RF10`'s
+`no_public_signature_hands_out_ingested_text` applied to the other direction of
+the same mistake, and it is workspace-wide for the same reason: the type is
+public and the harm measured in that round was one crate out.
+
+**A decision that every path has to run.** `bind_permission` is pinned as whole
+text, its two callers are pinned beside it, and its call sites are counted —
+`P2-RF10`'s shape, because that round found a second public path that skipped a
+check nothing counted. The refusing paths are counted separately, at three,
+because a refusal that returns without its audit row is the same defect in the
+audit rather than in the decision.
+
+**A restatement.** `academic-consent` declares its own copy of
+`academic-retention`'s derivative-class list, because
+`rotation_engine_lane_is_not_default` holds that exactly one crate declares a
+product edge to that crate and a consent ledger has no business inside that
+boundary. The copy is compared against the original — spellings, order, and both
+enums' variant names — through a dev edge that reaches no product binary.
+
+### The migration is compared against the Rust it mirrors
+
+Migration `0006` restates eight closed vocabularies as SQL `CHECK` lists.
+`the_migration_vocabularies_are_the_rust_ones` compares each list against the
+`as_str` spellings of the enum it mirrors **and** against that enum's variant
+count, so a spelling that drifts fails, and so does a variant added with no
+`as_str` arm to compare. It also reads every `CREATE TABLE` out of the file and
+requires each one to be in the authorizer's canonical set and to carry the
+append-only trigger pair — which is the same claim
+`authorizer_covers_every_canonical_table` makes about the two enforcement
+layers, checked here against the file that creates them.
+
+### The injection matrix
+
+Twenty-eight injections, applied one at a time, each reverted with its file's
+SHA-256 checked back to its recorded value, on Windows native and WSL2 Linux
+with the same result on both. The harness is
+`t148-injections.py` in the task report directory; it restores the original
+bytes rather than rewriting the file, because this repository's working tree is
+CRLF on Windows and a text-mode round trip would change every byte of a file the
+harness never meant to touch.
+
+`I26` and `I26b` are the same edit run under two commands. `cargo test` stops
+at the first test binary that fails, so the whole-crate command never reaches
+the scan binary and the row records what actually refused it; `I26b` runs the
+scan binary alone and is where the pin and the clock list are observed. Any row
+above naming a scan was refused by that scan under a command that reached it.
+
+`I13` is recorded as proving nothing, because that is what it is: adding an
+eighth `ChecklistDimension` variant stops the crate compiling, since `as_str` is
+an exhaustive match. `I13b` is the edit of the same shape that *does* compile —
+the variant with its `as_str` arm, absent from the registry array — and it is
+the one the scan refuses.
+
+| # | Injection | Refused by |
+|---|---|---|
+| I1 | a new module with an inherent method on `AttestationRecord` returning a `WrittenAuthority` | the whole `impl` set naming `AttestationRecord` |
+| I2 | the same reach as a free `pub fn`, in no `impl` block | the workspace-wide signature rule |
+| I3 | a `pub fn` taking an attestation and returning `CaptureStatus::Permitted` | the same rule, and the count of permitting statuses named outside `status.rs` |
+| I4 | a `pub fn` turning a `LegalQuestion` into a permitting status | `no_legal_conclusion_reaches_a_permission`, and the same count |
+| I5 | `RetentionTerms::transcript` returns the audio bound | `WHOLE_RETENTION_TERMS`, and `audio_and_transcript_retention_are_independent` |
+| I6 | `inherit` widens the audio axis instead of narrowing it | `WHOLE_RETENTION_TERMS`, and `derivative_expiry_is_equal_or_stricter` |
+| I7 | the `RetentionBound` variants are reordered, so `Prohibited` stops being strictest | `derivative_expiry_is_equal_or_stricter` — the enum declaration is not pinned, and the behavioural grid is what catches it |
+| I8 | a third minting path that never binds | the `bind_permission` call-site count, and the token construction count |
+| I9 | the continuation skips the binding when a marker file exists — `T141`'s shape | `WHOLE_CONTINUE`, and the call-site count |
+| I10 | one refusing path stops appending its audit row | the `record_capture_denial` count of three |
+| I11 | the expiry comparison is off by one, so a grant survives its own `not_after` | `WHOLE_STATUS_OF`, and `expired_permission_denies_and_queues_recheck` |
+| I12 | an absent media set resolves to every medium instead of denying | `WHOLE_RESOLVE_REQUEST`, and `new_offering_permission_defaults_unknown` |
+| I13 | an eighth checklist dimension with no `as_str` arm | **the compiler** — proves nothing about the scan |
+| I13b | the same variant with its `as_str` arm, absent from the registry array | the variant-list comparison, and the migration vocabulary comparison |
+| I14 | a third `ChecklistEntry` arm meaning nobody looked | the arm comparison |
+| I15 | `apply_expiry` stops comparing the previewed instant | `WHOLE_APPLY`, and `expiry_requires_the_preview_it_was_shown_for` |
+| I16 | a second `ExpiryPlan` constructor that takes no preview | `WHOLE_EXPIRY_PLAN` |
+| I17 | a `#[path]` module holding product code outside `src` | the `#[path]` rule and the product-source-under-`src` rule |
+| I18 | a subdirectory module with an extra `impl AuthorityGrant` | the recursive walk, and the whole `impl` set |
+| I19 | the migration collapses the two retention axes into one | the four-column rule |
+| I20 | a migration `CHECK` spelling drifts from the Rust one | the vocabulary comparison |
+| I21 | a new canonical table in `0006` with no guard triggers | the table/trigger/authorizer rule |
+| I22 | the derivative-class list is reordered on the consent side | `the_two_derivative_vocabularies_are_the_same_list` |
+| I23 | `academic-retention` becomes a product edge of `academic-consent` | `workspace_dependency_direction_is_acyclic` and `rotation_engine_lane_is_not_default` |
+| I24 | the authorizer loses one of the new canonical tables | `authorizer_covers_every_canonical_table` |
+| I25 | an eighth dimension spelling added to the migration only | the vocabulary comparison |
+| I26 | `status_of` reads the wall clock instead of its argument | the acceptance rows, which stop the whole crate suite before the scan binary runs |
+| I26b | the same edit, run against the scan binary alone | `WHOLE_STATUS_OF`, and `every_instant_this_crate_compares_is_an_argument` |
+
+`I2`, `I3`, `I4` and `I18` spell **none** of the names any list in this file
+holds, and none of them is an `impl` block of a shape anybody predicted: what
+refuses them is a whole-set comparison, a signature rule, or a count.
+
 ## Open
 
 Each row says what makes it start mattering: "it cannot happen today" is not a
@@ -539,7 +647,7 @@ closed it.
 | S-6 | `crates/portability/tests/encrypted_rotation.rs` | two fixed test-source paths, substring only | It checks that one acceptance row lives in one file. A third file could hold a third copy and nothing would see it. |
 | S-8 | `crates/crypto/tests/key_hierarchy.rs`, `crates/keystore-platform/tests/facade.rs`, `crates/domain/tests/question_graph.rs` | the last two still read one fixed path each, and `facade.rs` has a floor while `question_graph.rs` has none | A public item moved out of `keystore-platform/src/lib.rs` or `domain/src/question.rs` into a sibling module is not read. `P2-RF9` repaired the first of the three because `RecoverySecret` lives in that crate and its contract already had a repaired half to match; the other two were left as they are and are recorded here rather than fixed. |
 | S-9 | `tools/policy-source-scan-inventory.test.mjs` | six read-position markers plus one `#[path]` hop — a mechanical proxy for "reads Rust source text" | A scan that reaches source some other way — a path assembled from fragments, a walk in a language this does not search — is not found, so the page could miss it and pass. The proxy is stated in the page's own opening sentence, so what the page claims is exactly what the test checks; widening the claim means widening the markers. |
-| S-10 | `tools/secret-debug-policy.test.mjs` | `SECRET_FIELD_NAMES` holds `payload` and `payload_bytes` and not the generic names a raw buffer actually hides behind. `T146` measured four more that pass today: `text`, `escaped`, `bytes`, and `staged_text`, against the control `payload`, which fails. Adding `bytes` alone reaches four pre-existing sites — `WireField.bytes` (`crates/rpc/src/convert.rs`), `FingerprintEncoder.bytes` (`crates/store/src/schema_fingerprint.rs`), `SyntheticTranscriptPdf.bytes` (`crates/transcript/src/source.rs`), `StreamingPrefix.bytes` (`crates/vault/src/object.rs`); `text` and `escaped` reach `QuotedDocument` and `RenderedPrompt` in `crates/untrusted-content`, and `staged_text` reaches `crates/egress-boundary/src/stage.rs`. | Now, for any site that holds something private. Nothing leaks today: all four `P2-G4`/`P2-G5`/`P2-G2` types — `QuotedDocument`, `RenderedPrompt`, `StagedOutput`, `AcceptedOutput` — have hand-written `Debug` impls, and the four `bytes` sites are public buffers. What is open is the **net**, not any site. Severity **P2**, raised from the earlier reading: the vocabulary now trails the code by six names rather than one, and each new crate has added to the gap. **`P2-RF10` measured the cost of closing it rather than estimating it.** Adding `bytes`, `text`, `escaped` and `staged_text` to `SECRET_FIELD_NAMES` fires 13 sites in 8 crates: `Alias.text`, `PartialAlias.text`, `RegistryFact.text` and the tuple variant `ClaimObject::Text(String)` in `academic-domain`; `SearchHit.text` and `ExactSymbolHit.text` in `academic-projections`; `AliasSpec.text` in `academic-store`; `JsonValue::Text` in `academic-test-support`; and `CorpusFile.bytes`, `WireField.bytes`, `FingerprintEncoder.bytes`, `SyntheticTranscriptPdf.bytes`, `StreamingPrefix.bytes`. The four `untrusted-content` and `egress-boundary` types the vocabulary was widened *for* fire nothing, because all four already hand-write `Debug`. So the work is not the vocabulary line: it is a redaction decision about the eight `text` sites, which hold entity surface forms, indexed content and claim values — user content, not public buffers — spread over four crates whose contracts this row's task did not read. A `PUBLIC_BYTES` entry silences a field permanently, and writing eight of them to close one row would trade this row for a worse one. Closing it means one commit per crate from its owner, redacting rather than declaring. |
+| S-10 | `tools/secret-debug-policy.test.mjs` | `SECRET_FIELD_NAMES` holds `payload` and `payload_bytes` and not the generic names a raw buffer actually hides behind. `T146` measured four more that pass today: `text`, `escaped`, `bytes`, and `staged_text`, against the control `payload`, which fails. Adding `bytes` alone reaches four pre-existing sites — `WireField.bytes` (`crates/rpc/src/convert.rs`), `FingerprintEncoder.bytes` (`crates/store/src/schema_fingerprint.rs`), `SyntheticTranscriptPdf.bytes` (`crates/transcript/src/source.rs`), `StreamingPrefix.bytes` (`crates/vault/src/object.rs`); `text` and `escaped` reach `QuotedDocument` and `RenderedPrompt` in `crates/untrusted-content`, and `staged_text` reaches `crates/egress-boundary/src/stage.rs`. | Now, for any site that holds something private. Nothing leaks today: all four `P2-G4`/`P2-G5`/`P2-G2` types — `QuotedDocument`, `RenderedPrompt`, `StagedOutput`, `AcceptedOutput` — have hand-written `Debug` impls, and the four `bytes` sites are public buffers. What is open is the **net**, not any site. Severity **P2**, raised from the earlier reading: the vocabulary now trails the code by six names rather than one, and each new crate has added to the gap. **`P2-RF10` measured the cost of closing it rather than estimating it.** Adding `bytes`, `text`, `escaped` and `staged_text` to `SECRET_FIELD_NAMES` fires 13 sites in 8 crates: `Alias.text`, `PartialAlias.text`, `RegistryFact.text` and the tuple variant `ClaimObject::Text(String)` in `academic-domain`; `SearchHit.text` and `ExactSymbolHit.text` in `academic-projections`; `AliasSpec.text` in `academic-store`; `JsonValue::Text` in `academic-test-support`; and `CorpusFile.bytes`, `WireField.bytes`, `FingerprintEncoder.bytes`, `SyntheticTranscriptPdf.bytes`, `StreamingPrefix.bytes`. The four `untrusted-content` and `egress-boundary` types the vocabulary was widened *for* fire nothing, because all four already hand-write `Debug`. So the work is not the vocabulary line: it is a redaction decision about the eight `text` sites, which hold entity surface forms, indexed content and claim values — user content, not public buffers — spread over four crates whose contracts this row's task did not read. A `PUBLIC_BYTES` entry silences a field permanently, and writing eight of them to close one row would trade this row for a worse one. Closing it means one commit per crate from its owner, redacting rather than declaring. `P2-G6` added a crate and did not widen this row: `academic-consent` declares no `text`, `bytes`, `escaped` or `staged_text` field at all, because every evidence item it holds is a locator plus a digest plus a byte count and its one place for prose is a closed `NotApplicableReason` enum. |
 | S-11 | `only_egress_crate_has_a_socket` — the spelling half | **Closed by `P2-RF10`.** Every `libc::syscall(` call in the sandbox backend must now name a reviewed `libc::SYS_` constant as its first argument, so a bare number is refused. Why the three reasons this row gave for leaving it open were all wrong by the time it was read is in the `P2-RF10` section above. | n/a — closed. The step out from it that stays open is `S-13`. |
 | S-12 | `os_keystore_capabilities_are_available_but_unused` — `tools/phase1-scaffold-policy.test.mjs` — `tools/secret-debug-policy.test.mjs`, `no_float_reaches_the_gpa_path`, and `phase1_exit_has_no_product_network` | **Closed by `P2-RF10`.** All four walked `<crate>/src`; all four now walk the package, less `tests` and `benches`, and the eight files outside `src` that spell `process::Command` each carry the reason they are allowed. The tree this row named was not the first of its kind — `crates/record/examples/` arrived a commit earlier and has no feature gate — which is why widening only the two walks this row listed would have closed half of it. | n/a — closed. |
 | S-13 | `only_egress_crate_has_a_socket` — the syscall rule `P2-RF10` added | It reads `crates/worker/src/sandbox/linux.rs` and only that file, because that is the one file whose allowance lists `libc::syscall`. A `libc::syscall(` call in any other file is refused by the allowance itself — the spelling is not on that file's list — so the rule and the allowance together do cover the workspace. What they do not cover is a **future second allowance entry**: the day another file is allowed `libc::syscall`, the first-argument rule will not run on it unless the branch is widened with it. | The next commit that adds a second `libc::syscall` allowance entry. Closing it means keying the rule on the spelling rather than on the file. It is written this way today because the reviewed-name list is that file's, not a workspace list, and inventing a workspace one before there is a second caller would be a guess about what the second caller needs. Severity **P3**. |

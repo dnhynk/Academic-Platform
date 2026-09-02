@@ -55,6 +55,16 @@ pub const CANONICAL_TABLES: &[&str] = &[
     // is decided by the rows here, so an UPDATE or a DELETE would move an
     // object reference without an event authorizing it.
     "artifact_descriptor_migration",
+    // Migration 0006's typed columns for the CAPTURE_PERMISSION_RECORDED and
+    // CONSENT_RECORDED aggregates. They are canonical history for the same
+    // reason: whether a recorder may run at all is decided by the rows here, so
+    // an UPDATE or a DELETE would move a permission without an event
+    // authorizing it.
+    "capture_permission_terms",
+    "capture_permission_medium",
+    "capture_permission_processing",
+    "capture_permission_checklist",
+    "consent_record",
 ];
 
 /// Installs the product-writer guard after migration and identity verification.

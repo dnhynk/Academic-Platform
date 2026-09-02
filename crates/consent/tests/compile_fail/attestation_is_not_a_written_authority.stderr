@@ -1,0 +1,13 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/attestation_is_not_a_written_authority.rs:14:9
+   |
+13 |     let _grant = AuthorityGrant::record(
+   |                  ---------------------- arguments to this function are incorrect
+14 |         heard,
+   |         ^^^^^ expected `WrittenAuthority`, found `AttestationRecord`
+   |
+note: associated function defined here
+  --> src/evidence.rs
+   |
+   |     pub fn record(
+   |            ^^^^^^
