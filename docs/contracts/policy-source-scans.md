@@ -201,7 +201,7 @@ module beside `src`, a conditional call to the pinned key check, and an admitted
 posture assembled through a local binding. It put two more past `KY06`'s crypto
 half. Each is now refused by the scan that claims the property.
 
-Twenty-two injections were applied one at a time, each reverted with its file's
+Twenty-three injections were applied one at a time, each reverted with its file's
 SHA-256 checked back to its recorded value, on Windows native and WSL2 Linux
 with the same result on both. Six are `P2-RF7`'s, re-run as a regression: the
 widened walk must not have cost the guard anything it already had.
@@ -212,7 +212,8 @@ widened walk must not have cost the guard anything it already had.
 | B1 | `#[path = "../authority.rs"]` pulls in a product module beside `src` | the widened walk, and the `#[path]` tripwire |
 | B1b | the same module placed outside `crates/admission` | the `#[path]` tripwire |
 | B1c | the same module placed in the crate's own skipped `tests/` | the `#[path]` tripwire |
-| B1d | the same module, observed by `only_egress_crate_has_a_socket` | its `#[path]` target now has to be a file that scan read |
+| B1d | the same module, observed by `only_egress_crate_has_a_socket` | **nothing** — `P2-G4`'s widened walk reads `crates/admission/authority.rs`, so that scan's membership rule is satisfied truthfully |
+| B1e | the same module, naming an outbound socket in it | the widened walk, which reads the module's text |
 | B2 | the call to the pinned key check is wrapped in a marker-file condition | `WHOLE_VERIFY` |
 | B2b | the five steps all still called, unconditionally, reordered | `WHOLE_VERIFY` |
 | B3 | `Unprovisioned` becomes an associated const holding a provisioned key | **not this scan** — `admitted_posture_requires_verified_receipt` and `unprovisioned_empty_zero_byte_and_all_zero_keys_fail_closed`, which observe provisioning unconditionally |
@@ -232,6 +233,18 @@ what it is. A pin fixes an item's text and not what the names in it mean, and
 `Unprovisioned` as a provisioned key. What refuses it is that the provisioning
 is unconditional, so two behavioural tests see it. An edit of that shape that
 *was* conditional would be `B2`, which `WHOLE_VERIFY` now refuses.
+
+`B1d` is recorded as refused by nothing because it now is. `P2-G4` widened
+`only_egress_crate_has_a_socket`'s walk to every `.rs` under a workspace
+package, and `crates/admission/authority.rs` sits at a crate root, so the
+membership rule that `B1d` was written against is satisfied — not evaded. `B1e`
+is the observation that separates the two readings: the same module, this time
+naming `TcpStream::connect`, is refused, so its text is genuinely read. The rule
+still has force for a target under no package at all —
+`#[path = "../../../target/hidden.rs"]` is still refused, which is half 4 of the
+socket guard's six. `B1` itself is unaffected: what refuses it is
+`no_environment_or_flag_override_exists`, whose own walk and `#[path]` tripwire
+this widening did not touch.
 
 The `mod name;` half of the admission tripwire has no injection, and cannot have
 one while the walk reads the whole crate: any `mod name;` without its own
@@ -344,6 +357,7 @@ open, so each row says what makes it start mattering.
 | S-9 | `tools/policy-source-scan-inventory.test.mjs` | six read-position markers plus one `#[path]` hop — a mechanical proxy for "reads Rust source text" | A scan that reaches source some other way — a path assembled from fragments, a walk in a language this does not search — is not found, so the page could miss it and pass. The proxy is stated in the page's own opening sentence, so what the page claims is exactly what the test checks; widening the claim means widening the markers. |
 | S-10 | `tools/secret-debug-policy.test.mjs` | `SECRET_FIELD_NAMES` holds `payload` and `payload_bytes` but not `bytes`, which is the other generic name a raw buffer hides behind. Adding one alternation catches four pre-existing sites: `WireField.bytes` (`crates/rpc/src/convert.rs`), `FingerprintEncoder.bytes` (`crates/store/src/schema_fingerprint.rs`), `SyntheticTranscriptPdf.bytes` (`crates/transcript/src/source.rs`), and `StreamingPrefix.bytes` (`crates/vault/src/object.rs`). | Now, for any of those four that holds something private. `P2-G4` found it by naming its own staged-output field `bytes` and watching the net miss it; it hand-wrote redacting `Debug` impls rather than renaming the field, so its own buffers leak nothing whatever the vocabulary reaches. Closing the row means one `PUBLIC_BYTES` sentence or one hand-written impl per site, from each crate's owner. |
 | S-11 | `only_egress_crate_has_a_socket` — the spelling half | a syscall reached by a bare number. `libc::syscall(41, 2, 1, 0)` opens an AF_INET stream socket and spells nothing any pattern can match, because there is no name to match. | Any commit that adds a numeric syscall call. Nothing in this repository has one today; `unsafe_code = "forbid"` outside the five reviewed leaves is what keeps the reach small, and the link half bounds who can name `libc` at all. The answer to it is not a better scan — it is `P2-G4`'s sandbox, which refuses the syscall whatever spelled it. |
+| S-12 | `os_keystore_capabilities_are_available_but_unused` — `tools/phase1-scaffold-policy.test.mjs` — and `tools/secret-debug-policy.test.mjs` | both walk `<crate>/src` and nothing else, so neither reads `crates/worker/probes/` | Now. `P2-G4` added the first tree here that holds product-shaped code outside `src` — a `[[bin]]` with an explicit `path` — and put a `process::Command` allowance in that same crate. Measured: a `process::Command` in `crates/worker/probes/worker_probe.rs` passes the first scan and a `#[derive(Debug)]` over a `key_bytes` field passes the second, while both edits placed under `src` are refused. This is the shape the `P2-G4` section above calls a walk that stopped short, one scan outside the one that was repaired. The socket and `unsafe` claims are unaffected: `only_egress_crate_has_a_socket` reads that directory, and so does `crates/worker/tests/capability.rs`. Closing it means widening both walks and writing one reviewed allowance line for each of the eight files outside `src` that already spell `process::Command`. |
 
 ## Intended, not a defect
 
