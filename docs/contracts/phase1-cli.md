@@ -5,8 +5,12 @@
 The current `academic` build operates a synthetic, plaintext, throwaway Phase 1
 profile. Its acceptance public key is unprovisioned and its candidate receipt
 has two of five platform rows, so real or production data remains forbidden.
-The named source and CLI-surface scan rejects a flag, environment-variable key
-source, configuration key, or debug path that would change that result.
+The named source and CLI-surface scan rejects a flag whose name carries a
+forbidden token on any command, and — anywhere in `crates/admission/src` — an
+environment read, a build-time environment read, a `debug_assertions` branch, an
+embedded file, and any edit to either of the two whole texts that obtain the
+acceptance key. It does not read the other crates for those seams; what it
+requires of them is that they spell none of the admission-authority tokens.
 
 Every command emits the receipt-derived posture object. The current result is:
 

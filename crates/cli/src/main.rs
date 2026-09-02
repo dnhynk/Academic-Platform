@@ -575,71 +575,102 @@ mod tests {
         }
     }
 
-    #[test]
-    fn no_environment_or_flag_override_exists() -> Result<(), Box<dyn std::error::Error>> {
-        use std::fs;
+    /// Tokens only the admission crate may spell, and how many times it may
+    /// spell each one. Every other crate's `src` tree is allowed none.
+    ///
+    /// This is what replaced the walk's old `!= "admission"` skip. That skip
+    /// excused the entire admission tree from the scan, so a second key source
+    /// or a second admitted constructor placed beside `lib.rs` was invisible to
+    /// the only guard that claims to forbid one.
+    const ADMISSION_AUTHORITY_TOKENS: [(&str, usize); 7] = [
+        ("pub const ACCEPTANCE_PUBLIC_KEY", 1),
+        ("AcceptancePublicKey::Provisioned", 1),
+        ("fn verify_with_compiled_acceptance_key", 1),
+        ("kind: PostureKind::Admitted {", 1),
+        ("Posture::from_verified(", 1),
+        ("Ok(VerifiedAdmission {", 1),
+        ("VerifiedAdmission {", 3),
+    ];
 
-        let manifest = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let admission_path = manifest.join("../admission/src/lib.rs");
-        let admission = fs::read_to_string(&admission_path)?;
-        let product = admission
-            .split_once("#[cfg(test)]\nmod tests")
-            .map_or(admission.as_str(), |(source, _tests)| source);
+    /// Key and override seams forbidden anywhere in the admission crate's
+    /// product source — every `*.rs` under `crates/admission/src`, not one file.
+    const ADMISSION_FORBIDDEN_SEAMS: [&str; 12] = [
+        "std::env",
+        "env!(",
+        "env::var(",
+        "env::var_os(",
+        "debug_assertions",
+        "include_bytes!",
+        "include_str!",
+        "set_acceptance_key",
+        "with_acceptance_key",
+        "override_acceptance",
+        "acceptance_key_from",
+        "verify_with_test_key",
+    ];
 
-        for forbidden in [
-            "std::env",
-            "env::var(",
-            "env::var_os(",
-            "set_acceptance_key",
-            "with_acceptance_key",
-            "override_acceptance",
-            "acceptance_key_from",
-            "verify_with_test_key",
-        ] {
-            assert!(
-                !product.contains(forbidden),
-                "{} contains product key/override seam {forbidden}",
-                admission_path.display()
-            );
-        }
-        assert_eq!(
-            product
-                .matches("pub const ACCEPTANCE_PUBLIC_KEY: AcceptancePublicKey =")
-                .count(),
-            1,
-            "the product must have exactly one compiled acceptance-key constant"
-        );
-        assert_eq!(
-            product.matches("kind: PostureKind::Admitted {").count(),
-            1,
-            "the product must have exactly one admitted-posture construction site"
-        );
-        assert_eq!(
-            product.matches("Ok(VerifiedAdmission {").count(),
-            1,
-            "the product must have exactly one verified-capability construction site"
-        );
-        assert!(
-            product.contains(
-                "pub fn verify(profile_root: &Path) -> Result<VerifiedAdmission, AdmissionError>"
-            ),
-            "AdmissionVerifier::verify changed shape"
-        );
+    /// Line starts that declare an item at file scope.
+    const FILE_SCOPE_ITEM_STARTS: [&str; 16] = [
+        "#[",
+        "async ",
+        "const ",
+        "enum ",
+        "extern ",
+        "fn ",
+        "impl ",
+        "macro_rules!",
+        "mod ",
+        "pub ",
+        "static ",
+        "struct ",
+        "trait ",
+        "type ",
+        "unsafe ",
+        "use ",
+    ];
 
-        let crates_root = manifest.join("..");
-        let mut pending = Vec::new();
-        for entry in fs::read_dir(crates_root)? {
-            let entry = entry?;
-            let crate_root = entry.path();
-            if crate_root.is_dir() && entry.file_name() != "admission" {
-                let source_root = crate_root.join("src");
-                if source_root.is_dir() {
-                    pending.push(source_root);
-                }
-            }
-        }
+    /// The compiled acceptance key, spelled out. Nothing else may declare it.
+    ///
+    /// Provisioning replaces `Unprovisioned` with one 32-byte literal and
+    /// updates this constant in the same commit. That is why the whole
+    /// declaration is pinned instead of a token being forbidden: `option_env!`,
+    /// a `const` computed in another item, and a `match` on the build profile
+    /// all leave every token list untouched and still choose the key.
+    const WHOLE_ACCEPTANCE_KEY: &str = concat!(
+        "pub const ACCEPTANCE_PUBLIC_KEY: AcceptancePublicKey = ",
+        "AcceptancePublicKey::Unprovisioned;"
+    );
+
+    /// The whole compiled-key check, whitespace-collapsed. Nothing else may be
+    /// in it — a runtime key file read added inside this function is a key
+    /// source that no forbidden token names.
+    const WHOLE_KEY_CHECK: &str = concat!(
+        "fn verify_with_compiled_acceptance_key(decoded: &DecodedEnvelope) ",
+        "-> Result<(), AdmissionError> { ",
+        "let AcceptancePublicKey::Provisioned(expected) = ACCEPTANCE_PUBLIC_KEY else { ",
+        "return Err(AdmissionError::AcceptanceKeyUnprovisioned); }; ",
+        "if expected == [0_u8; 32] { return Err(AdmissionError::InvalidAcceptanceKey); } ",
+        "if decoded.public_key != expected { return Err(AdmissionError::SignerKeyMismatch); } ",
+        "let verifying = VerifyingKey::from_bytes(&expected)",
+        ".map_err(|_| AdmissionError::InvalidAcceptanceKey)?; ",
+        "verifying .verify_strict(&decoded.payload, ",
+        "&Signature::from_bytes(&decoded.signature)) ",
+        ".map_err(|_| AdmissionError::InvalidSignature) }"
+    );
+
+    /// Reads one `src` tree: every `*.rs` under it, product halves only.
+    ///
+    /// A file's product half is everything above its test module. Anything
+    /// declared at file scope *below* that module is product code the split
+    /// would hide, so this refuses the file rather than returning a half that
+    /// does not cover it.
+    fn product_sources(
+        root: &std::path::Path,
+    ) -> Result<Vec<(std::path::PathBuf, String)>, Box<dyn std::error::Error>> {
+        let mut pending = vec![root.to_path_buf()];
+        let mut sources = Vec::new();
         while let Some(directory) = pending.pop() {
-            for entry in fs::read_dir(directory)? {
+            for entry in std::fs::read_dir(directory)? {
                 let path = entry?.path();
                 if path.is_dir() {
                     pending.push(path);
@@ -648,23 +679,120 @@ mod tests {
                 if path.extension().is_none_or(|extension| extension != "rs") {
                     continue;
                 }
-                let source = fs::read_to_string(&path)?;
-                let product_source = source
-                    .split_once("#[cfg(test)]\nmod tests")
-                    .map_or(source.as_str(), |(source, _tests)| source);
-                for forbidden in [
-                    "AcceptancePublicKey::Provisioned",
-                    "Posture::from_verified(",
-                    "VerifiedAdmission {",
-                ] {
-                    assert!(
-                        !product_source.contains(forbidden),
-                        "{} contains a second admission-authority site {forbidden}",
-                        path.display()
-                    );
-                }
+                let source = std::fs::read_to_string(&path)?;
+                let product = match source.split_once("#[cfg(test)]\nmod tests") {
+                    None => source,
+                    Some((product, below)) => {
+                        for line in below.lines() {
+                            assert!(
+                                !FILE_SCOPE_ITEM_STARTS
+                                    .iter()
+                                    .any(|start| line.starts_with(start)),
+                                "{} declares {line} at file scope below its test module",
+                                path.display()
+                            );
+                        }
+                        product.to_owned()
+                    }
+                };
+                sources.push((path, product));
             }
         }
+        sources.sort();
+        Ok(sources)
+    }
+
+    /// No build input, no file, and no flag selects the acceptance key.
+    ///
+    /// The `P2-K6` audit put five different key substitutions past the earlier
+    /// shape of this test — a build environment variable read through
+    /// `option_env!`, a runtime key file, a second module file in
+    /// `crates/admission/src`, product code below `lib.rs`'s test module, and a
+    /// `debug_assertions` branch. Each one is a shipped-shaped change that
+    /// alters nothing observable without its trigger, so a source scan is the
+    /// only thing that can refuse it, and the scan read one file's head against
+    /// a token list while the walk skipped the admission directory.
+    ///
+    /// So this reads all of it: every `*.rs` under every crate's `src`, the
+    /// authority tokens counted against an explicit per-crate allowance, and
+    /// the two places the key is obtained pinned as whole text rather than by
+    /// the names they happen to use today.
+    #[test]
+    fn no_environment_or_flag_override_exists() -> Result<(), Box<dyn std::error::Error>> {
+        use std::fs;
+
+        let crates_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let mut admission_product = String::new();
+        let mut admission_seen = false;
+        for entry in fs::read_dir(&crates_root)? {
+            let crate_root = entry?.path();
+            let source_root = crate_root.join("src");
+            if !source_root.is_dir() {
+                continue;
+            }
+            let is_admission = crate_root
+                .file_name()
+                .is_some_and(|name| name == "admission");
+            admission_seen |= is_admission;
+            let sources = product_sources(&source_root)?;
+            if is_admission {
+                for (path, product) in &sources {
+                    for forbidden in ADMISSION_FORBIDDEN_SEAMS {
+                        assert!(
+                            !product.contains(forbidden),
+                            "{} contains product key/override seam {forbidden}",
+                            path.display()
+                        );
+                    }
+                    admission_product.push_str(product);
+                    admission_product.push('\n');
+                }
+            }
+            for (token, allowance) in ADMISSION_AUTHORITY_TOKENS {
+                let allowed = if is_admission { allowance } else { 0 };
+                let found = sources
+                    .iter()
+                    .map(|(_, product)| product.matches(token).count())
+                    .sum::<usize>();
+                assert_eq!(
+                    found,
+                    allowed,
+                    "{} spells the admission-authority token {token} {found} times, not {allowed}",
+                    source_root.display()
+                );
+            }
+        }
+        assert!(
+            admission_seen,
+            "the walk never reached crates/admission, so it proved nothing"
+        );
+
+        let declaration = admission_product
+            .lines()
+            .find(|line| line.starts_with("pub const ACCEPTANCE_PUBLIC_KEY"))
+            .ok_or("the admission crate does not declare the compiled acceptance key")?;
+        assert_eq!(
+            declaration.split_whitespace().collect::<Vec<_>>().join(" "),
+            WHOLE_ACCEPTANCE_KEY,
+            "the compiled acceptance key is chosen by something other than this declaration"
+        );
+
+        let check = admission_product
+            .split_once("fn verify_with_compiled_acceptance_key")
+            .and_then(|(_, rest)| rest.split_once("\n}"))
+            .map(|(body, _)| format!("fn verify_with_compiled_acceptance_key{body}\n}}"))
+            .ok_or("the admission crate has no compiled-key check")?;
+        assert_eq!(
+            check.split_whitespace().collect::<Vec<_>>().join(" "),
+            WHOLE_KEY_CHECK,
+            "the compiled-key check takes a key from somewhere other than the constant"
+        );
+        assert!(
+            admission_product.contains(
+                "pub fn verify(profile_root: &Path) -> Result<VerifiedAdmission, AdmissionError>"
+            ),
+            "AdmissionVerifier::verify changed shape"
+        );
 
         fn scan_command(command: &clap::Command) {
             let forbidden = [
