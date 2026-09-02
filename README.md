@@ -92,6 +92,16 @@ because the execution plan's `0005` allocation was already occupied on the
 P2-K6 baseline; the discrepancy and the concrete tuple interpretation are in
 [the permission broker contract](docs/contracts/permission-broker.md).
 
+`P2-G3` extends that same socket-free boundary with an append-only provider
+policy registry. Provider identity includes the enterprise/API versus consumer
+surface, required privacy facts produce a deterministic snapshot digest, and
+provider freshness directly caps grant expiry. Changed facts invalidate old
+snapshot pins; providers without a deletion API need an evidence-linked user
+policy rather than a synthesized default. Immutable deletion-receipt metadata
+links back to the exact grant and allow audit. `GATE-38-010` and
+`GATE-38-028` remain open; see
+[the provider registry contract](docs/contracts/provider-registry.md).
+
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical
 object reference and where a deletion reaches a backup are in the encrypted

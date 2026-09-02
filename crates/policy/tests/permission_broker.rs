@@ -9,7 +9,8 @@ use std::{
 
 use academic_policy::{
     BrokerError, ContentDigest, Decision, EgressRule, ObjectRange, PermissionBroker,
-    PermissionRequest, PolicySnapshot, PolicyVersion, ReasonCode, RuntimeToolCall,
+    PermissionRequest, PolicySnapshot, PolicyVersion, ProviderIdentity, ProviderPolicyDraft,
+    ProviderPolicySnapshot, ProviderSurface, ReasonCode, RuntimeToolCall,
 };
 use proptest::prelude::*;
 
@@ -23,13 +24,44 @@ fn range(start: u64, end: u64, label: &str) -> Result<ObjectRange, BrokerError> 
     ObjectRange::new("synthetic-object", start, end, digest(label))
 }
 
+fn provider_identity() -> Result<ProviderIdentity, BrokerError> {
+    ProviderIdentity::new("provider-y", ProviderSurface::EnterpriseApi)
+}
+
+fn provider_destination() -> String {
+    provider_identity()
+        .map(|identity| identity.destination_id())
+        .unwrap_or_else(|_| "invalid-provider-identity".to_owned())
+}
+
+fn provider_draft() -> Result<ProviderPolicyDraft, BrokerError> {
+    Ok(ProviderPolicyDraft {
+        identity: Some(provider_identity()?),
+        training_use_enabled: Some(false),
+        training_opt_out_applied: Some(false),
+        server_retention_millis: Some(0),
+        abuse_logging_enabled: Some(false),
+        residency_regions: Some(vec!["kr".to_owned()]),
+        subprocessors: Some(Vec::new()),
+        transit_encryption_declared: Some(true),
+        at_rest_encryption_declared: Some(true),
+        deletion_api_available: Some(true),
+        deletion_receipt_capable: Some(true),
+        maximum_input_bytes: Some(1_024),
+        logging_configuration: Some("content-logging-disabled".to_owned()),
+        policy_source_digest: Some(digest("provider-y-policy-source")),
+        last_verified_at: Some(0),
+        ttl_millis: Some(10_000),
+    })
+}
+
 fn rule(minimal_ranges: Vec<ObjectRange>, payload: &[u8]) -> EgressRule {
     EgressRule {
         actor_process_class: "repo-analyzer".to_owned(),
         data_class: "synthetic-private-code".to_owned(),
         operation: "classify".to_owned(),
         purpose_id: "architecture-classification".to_owned(),
-        destination_id: "provider-y-api".to_owned(),
+        destination_id: provider_destination(),
         retention_terms_hash: digest("zero-day-retention"),
         consent_evidence_id: "synthetic-consent-event".to_owned(),
         valid_from: 100,
@@ -49,7 +81,7 @@ fn request(version: PolicyVersion, ranges: Vec<ObjectRange>) -> PermissionReques
         object_range_digest_set: Some(ranges),
         operation: Some("classify".to_owned()),
         purpose_id: Some("architecture-classification".to_owned()),
-        destination_id: Some("provider-y-api".to_owned()),
+        destination_id: Some(provider_destination()),
         retention_terms_hash: Some(digest("zero-day-retention")),
         requested_at: Some(120),
         consent_evidence_id: Some("synthetic-consent-event".to_owned()),
@@ -57,11 +89,29 @@ fn request(version: PolicyVersion, ranges: Vec<ObjectRange>) -> PermissionReques
     }
 }
 
-fn configured_broker(ttl: u64) -> Result<(PermissionBroker, PolicyVersion), BrokerError> {
+fn provider_request(
+    version: PolicyVersion,
+    ranges: Vec<ObjectRange>,
+    provider: &ProviderPolicySnapshot,
+) -> PermissionRequest {
+    let mut request = request(version, ranges);
+    request.destination_id = Some(provider.destination_id().to_owned());
+    request.retention_terms_hash = Some(provider.retention_terms_hash());
+    request
+}
+
+fn configured_broker(
+    ttl: u64,
+) -> Result<(PermissionBroker, PolicyVersion, ProviderPolicySnapshot), BrokerError> {
     let broker = PermissionBroker::new_profile_with_ttl(ttl)?;
-    let snapshot = PolicySnapshot::from_rules(vec![rule(vec![range(10, 18, "slice")?], PAYLOAD)])?;
+    let provider = broker.register_provider_policy(provider_draft()?, 0)?;
+    let mut configured_rule = rule(vec![range(10, 18, "slice")?], PAYLOAD);
+    configured_rule.destination_id = provider.destination_id().to_owned();
+    configured_rule.provider_policy_snapshot_digest = provider.snapshot_digest().clone();
+    configured_rule.retention_terms_hash = provider.retention_terms_hash();
+    let snapshot = PolicySnapshot::from_rules(vec![configured_rule])?;
     let version = broker.install_policy(snapshot)?;
-    Ok((broker, version))
+    Ok((broker, version, provider))
 }
 
 proptest! {
@@ -109,8 +159,12 @@ proptest! {
 
 #[test]
 fn broad_request_is_minimized_or_rejected() -> Result<(), Box<dyn Error>> {
-    let (broker, version) = configured_broker(100)?;
-    let broad = request(version.clone(), vec![range(0, 100, "whole-object")?]);
+    let (broker, version, provider) = configured_broker(100)?;
+    let broad = provider_request(
+        version.clone(),
+        vec![range(0, 100, "whole-object")?],
+        &provider,
+    );
     let allowed = broker.evaluate(broad, 200)?;
     assert_eq!(allowed.receipt.fingerprint().decision, Decision::Allow);
     let grant = broker
@@ -121,7 +175,7 @@ fn broad_request_is_minimized_or_rejected() -> Result<(), Box<dyn Error>> {
         format!("synthetic-object:10-18@{}", digest("slice").as_str())
     );
 
-    let too_narrow = request(version, vec![range(0, 9, "wrong-slice")?]);
+    let too_narrow = provider_request(version, vec![range(0, 9, "wrong-slice")?], &provider);
     let denied = broker.evaluate(too_narrow, 201)?;
     assert_eq!(denied.receipt.fingerprint().decision, Decision::Deny);
     assert_eq!(
@@ -133,8 +187,11 @@ fn broad_request_is_minimized_or_rejected() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn grant_is_single_use_and_expiring() -> Result<(), Box<dyn Error>> {
-    let (broker, version) = configured_broker(10)?;
-    let outcome = broker.evaluate(request(version.clone(), vec![range(10, 18, "slice")?]), 200)?;
+    let (broker, version, provider) = configured_broker(10)?;
+    let outcome = broker.evaluate(
+        provider_request(version.clone(), vec![range(10, 18, "slice")?], &provider),
+        200,
+    )?;
     let capability = Arc::new(outcome.capability.ok_or("missing capability")?);
     let broker = Arc::new(broker);
     let calls = Arc::new(AtomicUsize::new(0));
@@ -150,7 +207,7 @@ fn grant_is_single_use_and_expiring() -> Result<(), Box<dyn Error>> {
                 "repo-analyzer",
                 "classify",
                 "architecture-classification",
-                "provider-y-api",
+                provider_destination(),
                 vec![range(10, 18, "slice").map_err(|error| error.to_string())?],
                 PAYLOAD,
             )
@@ -176,13 +233,16 @@ fn grant_is_single_use_and_expiring() -> Result<(), Box<dyn Error>> {
             .is_err_and(|error| error.contains("GrantConsumed"))
     }));
 
-    let expired = broker.evaluate(request(version, vec![range(10, 18, "slice")?]), 300)?;
+    let expired = broker.evaluate(
+        provider_request(version, vec![range(10, 18, "slice")?], &provider),
+        300,
+    )?;
     let expired_capability = expired.capability.ok_or("missing capability")?;
     let runtime = RuntimeToolCall::new(
         "repo-analyzer",
         "classify",
         "architecture-classification",
-        "provider-y-api",
+        provider_destination(),
         vec![range(10, 18, "slice")?],
         PAYLOAD,
     )?;
@@ -195,15 +255,18 @@ fn grant_is_single_use_and_expiring() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn token_range_overflow_is_blocked_at_runtime() -> Result<(), Box<dyn Error>> {
-    let (broker, version) = configured_broker(100)?;
-    let outcome = broker.evaluate(request(version, vec![range(0, 100, "whole-object")?]), 200)?;
+    let (broker, version, provider) = configured_broker(100)?;
+    let outcome = broker.evaluate(
+        provider_request(version, vec![range(0, 100, "whole-object")?], &provider),
+        200,
+    )?;
     let capability = outcome.capability.ok_or("missing capability")?;
     let tool_calls = AtomicUsize::new(0);
     let overflowing = RuntimeToolCall::new(
         "repo-analyzer",
         "classify",
         "architecture-classification",
-        "provider-y-api",
+        provider_destination(),
         vec![range(9, 19, "overflow")?],
         b"notallowed",
     )?;
@@ -224,8 +287,11 @@ fn token_range_overflow_is_blocked_at_runtime() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn policy_version_replay_is_deterministic() -> Result<(), Box<dyn Error>> {
-    let (broker, version) = configured_broker(100)?;
-    let outcome = broker.evaluate(request(version, vec![range(0, 100, "whole-object")?]), 200)?;
+    let (broker, version, provider) = configured_broker(100)?;
+    let outcome = broker.evaluate(
+        provider_request(version, vec![range(0, 100, "whole-object")?], &provider),
+        200,
+    )?;
     let expected = outcome.receipt.fingerprint().clone();
 
     let changed = PolicySnapshot::from_rules(vec![rule(
@@ -244,14 +310,17 @@ fn policy_version_replay_is_deterministic() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn audit_row_contains_no_payload_bytes() -> Result<(), Box<dyn Error>> {
-    let (broker, version) = configured_broker(100)?;
-    let outcome = broker.evaluate(request(version, vec![range(10, 18, "slice")?]), 200)?;
+    let (broker, version, provider) = configured_broker(100)?;
+    let outcome = broker.evaluate(
+        provider_request(version, vec![range(10, 18, "slice")?], &provider),
+        200,
+    )?;
     let capability = outcome.capability.ok_or("missing capability")?;
     let runtime = RuntimeToolCall::new(
         "repo-analyzer",
         "classify",
         "architecture-classification",
-        "provider-y-api",
+        provider_destination(),
         vec![range(10, 18, "slice")?],
         PAYLOAD,
     )?;
