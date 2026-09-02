@@ -74,6 +74,8 @@ const [
   dependencySourcePolicyText,
   cargoLockSourcePolicyText,
   restrictedYamlText,
+  readmeText,
+  ciBudgetText,
   ciText,
 ] = await Promise.all([
   readFile("schemas/fixtures/signed-batch-v1.json"),
@@ -109,6 +111,8 @@ const [
   readFile("tools/dependency-source-policy.mjs", "utf8"),
   readFile("tools/cargo-lock-source-policy.mjs", "utf8"),
   readFile("tools/restricted-yaml.mjs", "utf8"),
+  readFile("README.md", "utf8"),
+  readFile("docs/development/ci-budget.md", "utf8"),
   readFile(".github/workflows/ci.yml", "utf8"),
 ]);
 const rustContractsSources = await readRustSourceTree("crates/contracts/src");
@@ -2046,11 +2050,11 @@ const expectedCiWorkflow = {
         },
       ],
     },
-    rust: {
-      name: "rust-${{ matrix.os }}",
+    "rust-default": {
+      name: "rust-default-${{ matrix.os }}",
       needs: "source-preflight",
       "runs-on": "${{ matrix.os }}",
-      "timeout-minutes": 20,
+      "timeout-minutes": 30,
       strategy: {
         "fail-fast": false,
         matrix: { os: hostedRustMatrixLabels },
@@ -2070,7 +2074,7 @@ const expectedCiWorkflow = {
           uses: lockfileCacheActionReference,
           with: {
             path: "~/.cargo/registry",
-            key: "cargo-registry-rust-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
+            key: "cargo-registry-rust-default-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
           },
         },
         {
@@ -2089,6 +2093,53 @@ const expectedCiWorkflow = {
           run: "cargo clippy --workspace --all-targets --locked -- -D warnings",
         },
         { name: "Test Rust workspace", run: "cargo test --workspace --locked" },
+        {
+          name: "Verify immutable v1 fixture and upcast",
+          run: nativeFixtureCiCommands[0],
+        },
+        { name: "Replay immutable v1 fixture", run: nativeFixtureCiCommands[1] },
+        {
+          name: "Verify immutable v2 fixture and upcast",
+          run: nativeFixtureCiCommands[2],
+        },
+        { name: "Replay immutable v2 fixture", run: nativeFixtureCiCommands[3] },
+        { name: "Emit deterministic v3 fixture", run: nativeFixtureCiCommands[4] },
+        { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[5] },
+        { name: "Verify deterministic v3 fixture", run: nativeFixtureCiCommands[6] },
+        { name: "Replay deterministic v3 fixture", run: nativeFixtureCiCommands[7] },
+      ],
+    },
+    "rust-features": {
+      name: "rust-features-${{ matrix.os }}",
+      needs: "source-preflight",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 30,
+      strategy: {
+        "fail-fast": false,
+        matrix: { os: hostedRustMatrixLabels },
+      },
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Install pinned Rust toolchain",
+          run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        {
+          name: "Restore the Cargo registry keyed on the committed Cargo lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.cargo/registry",
+            key: "cargo-registry-rust-features-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
+          },
+        },
+        {
+          name: "Populate the Cargo registry from the committed lockfile",
+          run: lockedCargoRegistryFetch,
+        },
         {
           name: "Lint the encrypted object lane",
           run: encryptedObjectCiCommands[0],
@@ -2121,20 +2172,6 @@ const expectedCiWorkflow = {
           name: "Test the worker sandbox lane",
           run: workerSandboxCiCommands[1],
         },
-        {
-          name: "Verify immutable v1 fixture and upcast",
-          run: nativeFixtureCiCommands[0],
-        },
-        { name: "Replay immutable v1 fixture", run: nativeFixtureCiCommands[1] },
-        {
-          name: "Verify immutable v2 fixture and upcast",
-          run: nativeFixtureCiCommands[2],
-        },
-        { name: "Replay immutable v2 fixture", run: nativeFixtureCiCommands[3] },
-        { name: "Emit deterministic v3 fixture", run: nativeFixtureCiCommands[4] },
-        { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[5] },
-        { name: "Verify deterministic v3 fixture", run: nativeFixtureCiCommands[6] },
-        { name: "Replay deterministic v3 fixture", run: nativeFixtureCiCommands[7] },
       ],
     },
     // The Phase 1 crash, replay, and restore exit. Its matrix is a two-label
@@ -2392,6 +2429,38 @@ const expectedCiWorkflow = {
     },
   },
 };
+const countMaterializedCiJobs = (ci) => {
+  const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
+  const jobs = requireCiRecord(workflow.jobs, "CI jobs");
+  return Object.values(jobs).reduce(
+    (count, job) => count + (Array.isArray(job.strategy?.matrix?.os) ? job.strategy.matrix.os.length : 1),
+    0,
+  );
+};
+const expectedHostedJobCount = countMaterializedCiJobs(ciText);
+const assertCiJobCountNarrative = (readme, budget) => {
+  const readmeCount = readme.match(/Hosted CI materializes \*\*(?<count>\d+) required jobs\*\*/u);
+  const readmeGreen = readme.match(/reported as \*\*(?<count>\d+)\/(?<total>\d+)\*\*/u);
+  const budgetCount = budget.match(/workflow now materializes (?<count>\d+) required jobs/u);
+  assert.ok(readmeCount, "README must state the current materialized hosted CI job count");
+  assert.ok(readmeGreen, "README must state the current hosted green count");
+  assert.ok(budgetCount, "the CI budget record must state the current materialized job count");
+  assert.equal(Number(readmeCount.groups.count), expectedHostedJobCount);
+  assert.equal(Number(readmeGreen.groups.count), expectedHostedJobCount);
+  assert.equal(Number(readmeGreen.groups.total), expectedHostedJobCount);
+  assert.equal(Number(budgetCount.groups.count), expectedHostedJobCount);
+};
+assertCiJobCountNarrative(readmeText, ciBudgetText);
+assert.throws(
+  () => assertCiJobCountNarrative(readmeText.replace("17/17", "12/12"), ciBudgetText),
+  undefined,
+  "a stale hosted job-count narrative must fail contract verification",
+);
+assert.throws(
+  () => assertCiJobCountNarrative(readmeText, ciBudgetText.replace("17 required jobs", "12 required jobs")),
+  undefined,
+  "a stale CI budget job count must fail contract verification",
+);
 const assertExactCiExecutionPolicy = (ci) => {
   const parsed = parseCiWorkflow(ci);
   const ordinaryObjects = JSON.parse(JSON.stringify(parsed));
@@ -2405,34 +2474,38 @@ assertExactCiExecutionPolicy(ciText);
 const assertNativeFixtureCiTopology = (ci) => {
   const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
   const jobs = requireCiRecord(workflow.jobs, "CI jobs");
-  const rustJob = requireCiRecord(jobs.rust, "CI job rust");
-  assertUnconditionalRequiredExecution(rustJob, "CI job rust");
-  assert.equal(
-    rustJob["runs-on"],
-    "${{ matrix.os }}",
-    "the Rust native job must bind runs-on exactly to matrix.os",
-  );
-  const strategy = requireCiRecord(rustJob.strategy, "CI job rust.strategy");
-  assert.deepEqual(
-    Object.keys(strategy).toSorted(),
-    ["fail-fast", "matrix"],
-    "the Rust strategy must contain only the reviewed fail-fast and matrix keys",
-  );
-  const matrix = requireCiRecord(strategy.matrix, "CI job rust.strategy.matrix");
-  assert.deepEqual(
-    Object.keys(matrix),
-    ["os"],
-    "the Rust matrix must not add include, exclude, or unreviewed dimensions",
-  );
-  assert.deepEqual(
-    matrix.os,
-    hostedRustMatrixLabels,
-    "the Rust native job must use the exact hosted runner labels that carry the admission platform triples",
-  );
-  const steps = requireCiSteps(rustJob, "CI job rust");
-  for (const [index, step] of steps.entries()) {
-    assertUnconditionalRequiredExecution(step, `CI job rust.steps[${index}]`);
+  for (const jobName of ["rust-default", "rust-features"]) {
+    const rustJob = requireCiRecord(jobs[jobName], `CI job ${jobName}`);
+    assertUnconditionalRequiredExecution(rustJob, `CI job ${jobName}`);
+    assert.equal(
+      rustJob["runs-on"],
+      "${{ matrix.os }}",
+      `the ${jobName} native job must bind runs-on exactly to matrix.os`,
+    );
+    const strategy = requireCiRecord(rustJob.strategy, `CI job ${jobName}.strategy`);
+    assert.deepEqual(
+      Object.keys(strategy).toSorted(),
+      ["fail-fast", "matrix"],
+      `the ${jobName} strategy must contain only the reviewed fail-fast and matrix keys`,
+    );
+    const matrix = requireCiRecord(strategy.matrix, `CI job ${jobName}.strategy.matrix`);
+    assert.deepEqual(
+      Object.keys(matrix),
+      ["os"],
+      `the ${jobName} matrix must not add include, exclude, or unreviewed dimensions`,
+    );
+    assert.deepEqual(
+      matrix.os,
+      hostedRustMatrixLabels,
+      `the ${jobName} job must use the exact hosted runner labels that carry the admission platform triples`,
+    );
+    const steps = requireCiSteps(rustJob, `CI job ${jobName}`);
+    for (const [index, step] of steps.entries()) {
+      assertUnconditionalRequiredExecution(step, `CI job ${jobName}.steps[${index}]`);
+    }
   }
+  const rustDefaultJob = requireCiRecord(jobs["rust-default"], "CI job rust-default");
+  const steps = requireCiSteps(rustDefaultJob, "CI job rust-default");
   const independentRuns = steps
     .map((step) => step.run)
     .filter((command) => typeof command === "string")
@@ -2440,7 +2513,7 @@ const assertNativeFixtureCiTopology = (ci) => {
   assert.deepEqual(
     independentRuns,
     nativeFixtureCiCommands,
-    "every native fixture command must be an ordered independent CI step on Windows and Linux",
+    "every native fixture command must be an ordered independent rust-default CI step on all five labels",
   );
 };
 assertNativeFixtureCiTopology(ciText);
@@ -2547,7 +2620,7 @@ const assertSourcePreflightTopology = ({ bootstrap, preflightModules, ci }) => {
     1,
     "CI must execute the dependency-free source preflight exactly once",
   );
-  for (const jobName of ["rust", "contracts"]) {
+  for (const jobName of ["rust-default", "rust-features", "contracts"]) {
     const job = requireCiRecord(jobs[jobName], `CI job ${jobName}`);
     assertUnconditionalRequiredExecution(job, `CI job ${jobName}`);
     assert.equal(job.needs, "source-preflight", `CI executable job ${jobName} must depend on source-preflight`);
@@ -2692,12 +2765,25 @@ for (const [name, mutation] of [
     ciText.replace("    timeout-minutes: 5\n", ""),
   ],
   [
-    "changed Rust timeout",
-    ciText.replace("    timeout-minutes: 20", "    timeout-minutes: 21"),
+    "changed default Rust timeout",
+    ciText.replace(
+      "  rust-default:\n    name: rust-default-${{ matrix.os }}\n    needs: source-preflight\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 30",
+      "  rust-default:\n    name: rust-default-${{ matrix.os }}\n    needs: source-preflight\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 31",
+    ),
+  ],
+  [
+    "changed feature Rust timeout",
+    ciText.replace(
+      "  rust-features:\n    name: rust-features-${{ matrix.os }}\n    needs: source-preflight\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 30",
+      "  rust-features:\n    name: rust-features-${{ matrix.os }}\n    needs: source-preflight\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 31",
+    ),
   ],
   [
     "extra required job key",
-    ciText.replace("  rust:\n    name:", "  rust:\n    env: {UNREVIEWED: true}\n    name:"),
+    ciText.replace(
+      "  rust-default:\n    name:",
+      "  rust-default:\n    env: {UNREVIEWED: true}\n    name:",
+    ),
   ],
   [
     "extra required step key",
@@ -2747,11 +2833,14 @@ for (const [name, mutation] of [
   ],
   [
     "disabled Rust job",
-    ciText.replace("  rust:\n    name:", "  rust:\n    if: false\n    name:"),
+    ciText.replace("  rust-default:\n    name:", "  rust-default:\n    if: false\n    name:"),
   ],
   [
     "failure-tolerant Rust job",
-    ciText.replace("  rust:\n    name:", "  rust:\n    continue-on-error: true\n    name:"),
+    ciText.replace(
+      "  rust-features:\n    name:",
+      "  rust-features:\n    continue-on-error: true\n    name:",
+    ),
   ],
   [
     "failure-tolerant source-preflight step",
@@ -2815,7 +2904,7 @@ for (const [name, mutation] of [
     "duplicate required job identifier",
     ciText.replace(
       "\n  contracts:\n",
-      "\n  rust:\n    runs-on: ubuntu-latest\n    steps: []\n\n  contracts:\n",
+      "\n  rust-default:\n    runs-on: ubuntu-latest\n    steps: []\n\n  contracts:\n",
     ),
   ],
 ]) {

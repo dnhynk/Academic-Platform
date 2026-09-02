@@ -26,11 +26,11 @@ jobs:
       - name: Reject forbidden dependency sources before tool or dependency setup
         run: node tools/source-preflight.mjs
 
-  rust:
-    name: rust-${{ matrix.os }}
+  rust-default:
+    name: rust-default-${{ matrix.os }}
     needs: source-preflight
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -46,7 +46,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cargo/registry
-          key: cargo-registry-rust-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
+          key: cargo-registry-rust-default-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
       - name: Populate the Cargo registry from the committed lockfile
         run: cargo fetch --locked
       - name: Install pinned Node
@@ -61,22 +61,6 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test Rust workspace
         run: cargo test --workspace --locked
-      - name: Lint the encrypted object lane
-        run: cargo clippy -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection -- -D warnings
-      - name: Test the encrypted object lane
-        run: cargo test -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection
-      - name: Lint the rotation and retention lane
-        run: cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection -- -D warnings
-      - name: Test the rotation and retention lane
-        run: cargo test -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection
-      - name: Lint the transcript ingestion lane
-        run: cargo clippy -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection -- -D warnings
-      - name: Test the transcript ingestion lane
-        run: cargo test -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection
-      - name: Lint the worker sandbox lane
-        run: cargo clippy -p academic-worker --all-targets --locked --features native-sandbox -- -D warnings
-      - name: Test the worker sandbox lane
-        run: cargo test -p academic-worker --all-targets --locked --features native-sandbox
       - name: Verify immutable v1 fixture and upcast
         run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
       - name: Replay immutable v1 fixture
@@ -93,6 +77,50 @@ jobs:
         run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json
       - name: Replay deterministic v3 fixture
         run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v3.json
+
+  # Non-default feature coverage runs separately from the default workspace
+  # lane so growth in either lane cannot consume the other's timeout budget.
+  # Both matrices keep the same five native labels; this is parallelization,
+  # not a platform or command reduction.
+  rust-features:
+    name: rust-features-${{ matrix.os }}
+    needs: source-preflight
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+      - name: Restore the Cargo registry keyed on the committed Cargo lockfile
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-rust-features-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Populate the Cargo registry from the committed lockfile
+        run: cargo fetch --locked
+      - name: Lint the encrypted object lane
+        run: cargo clippy -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection -- -D warnings
+      - name: Test the encrypted object lane
+        run: cargo test -p academic-vault --all-targets --locked --features aead-objects,phase2-fault-injection
+      - name: Lint the rotation and retention lane
+        run: cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection -- -D warnings
+      - name: Test the rotation and retention lane
+        run: cargo test -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection
+      - name: Lint the transcript ingestion lane
+        run: cargo clippy -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection -- -D warnings
+      - name: Test the transcript ingestion lane
+        run: cargo test -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection
+      - name: Lint the worker sandbox lane
+        run: cargo clippy -p academic-worker --all-targets --locked --features native-sandbox -- -D warnings
+      - name: Test the worker sandbox lane
+        run: cargo test -p academic-worker --all-targets --locked --features native-sandbox
 
   # The Phase 1 crash, replay, and restore exit, on native Windows and native
   # Linux. The two are separate verdicts: Windows proves the named-pipe endpoint
