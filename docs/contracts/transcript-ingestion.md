@@ -71,7 +71,7 @@ writes one and a hand entry that writes the other a field mismatch.
 | format | what it does | claim provenance |
 |---|---|---|
 | `PdfTextLayer` | walks `BT`/`ET` blocks and reads the literal strings passed to `Tj` | `Actor::Importer`, `CODE_OBSERVED`/`DIRECT_OBSERVATION` |
-| `PdfOcr` | **no optical character recognition**; names the provenance of values a model produced, which the caller supplies | `Actor::ModelRun`, `AI_INFERRED`/`MODEL_INFERENCE`, confidence required |
+| `PdfOcr` | **no optical character recognition**; names the provenance of values a model produced, which the caller supplies | `Actor::ModelRun`, `AI_INFERRED`/`MODEL_INFERENCE`, `ModelRead` required |
 | `Csv` | reads the declared header keys then the declared row header | `Actor::Importer`, `CODE_OBSERVED`/`DIRECT_OBSERVATION` |
 | `ManualEntry` | validates typed values | `Actor::Importer`, `CODE_OBSERVED`/`DIRECT_OBSERVATION` |
 
@@ -99,9 +99,12 @@ rather than by a rule this crate adds:
 - `confirm_reconciled_rows` takes a `ReconciledTranscript`, which `reconcile`
   returns only when every row agreed. A halted import has no value to pass.
 
-Confidence is required for a model read and refused for a deterministic one: a
-model read carrying no confidence would be indistinguishable from a
-deterministic one in every projection that reads the claim.
+A model read carries a `ModelRead { run_id, confidence }` and a deterministic
+read must not. The two travel together because neither is meaningful alone: a
+confidence with no run behind it names an estimate nothing can be traced to, and
+a run with no confidence is indistinguishable from a deterministic read in every
+projection that reads the claim. The run is its own entity, not the row's
+subject — citing a run means naming the run, not what is being asserted about.
 
 The claim object carries the four reconciled fields and no identity value. A
 claim object is copied into projections, proof trees and explanation snapshots;
