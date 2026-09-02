@@ -19,6 +19,7 @@ members = [
   "crates/policy",
   "crates/projections",
   "crates/repository-analyzer",
+  "crates/record",
   "crates/recovery",
   "crates/retention",
   "crates/rpc",

@@ -1,0 +1,6 @@
+credits.tenths.low=5
+credits.tenths.high=60
+attempts.max=12
+grade=every symbol in GradeSymbol::ALL
+origin=every origin in AttemptOrigin::ALL
+status=every status in SettledStatus::ALL

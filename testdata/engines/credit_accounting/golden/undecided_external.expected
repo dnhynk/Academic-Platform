@@ -1,0 +1,12 @@
+engine engine.credit.accounting
+engine_version 1
+rule_set_hash sha256:8a09a39ca44f8b5346fa02bdda605f6bafa03374287c5b1913f521ee69fbb6d9
+frozen_inputs sha256:e3055f51a64398978840ea7bf10cf6a7be021d8f31438980baeb3966af588f07
+result UNKNOWN
+value credits.cse.MAJOR_ELECTIVE=30/1
+value credits.double.recognized.attempts=1/0
+value credits.pending.recognition=1/0
+value credits.stat.FREE_ELECTIVE=30/1
+proof
+  UNKNOWN rule.credit.category.totals [n.credit] inputs=attempt.count,scope
+    UNKNOWN rule.credit.double.recognition.traced [n.double.000] inputs=attempt.000.course,attempt.000.credits.attempted,attempt.000.credits.earned,attempt.000.grade,attempt.000.id,attempt.000.origin,attempt.000.program.cse,attempt.000.program.stat,attempt.000.recognition,attempt.000.repeat,attempt.000.status,attempt.000.term

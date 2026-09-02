@@ -44,8 +44,10 @@ tree spells today and fails on an addition anywhere.
 | `the_rotation_gate_is_one_decision_with_no_flag_variable_or_debug_path` — `crates/retention/tests/rotation_gate.rs` | none — three fixed paths | `WHOLE_GATE` whole-text pin on `require_rotation_accepted`; a 6-token list over its body; the first statement of each of 7 gated entry points | none |
 | `default_feature_tree_has_no_conversion_entry_point` — `crates/store/tests/encrypted_profile.rs` | recursive, `store/src` | 3 forbidden conversion entry points; plus fixed-path reads of `src/lib.rs` for the compile-time guard, and byte scans of the built probe binary | none |
 | `phase1_exit_has_no_product_network` — `crates/daemon/tests/phase1_exit.rs` | recursive, every crate's `src` except `test-support` | 10 networking tokens, paired with an independent link scan of the built default-feature `academicd` image for 8 symbol byte sequences | `scanned > 0` |
+| `no_float_reaches_the_gpa_path` — `crates/record/tests/record_scans.rs` | recursive, `crates/record/src` | not a token list: a float *type* under any spelling, a decimal-point literal, and an exponent literal, over code with comments and string literals removed; five evasion samples are run through the check inside the test and each must be caught | `>= 11` files, plus a tripwire that every `pub mod name;` in `lib.rs` is a file the walk read |
+| `the_published_average_is_rounded_in_one_pinned_place` — same file | the recursive walk above, for the rounding-site count; one fixed path for the pin | `WHOLE_DIVISION` whole-text pin on `div_round_half_up`; exactly one rounding site in the crate; the published scale still an argument; no type declared in the arithmetic module | the walk's floor above |
 | `tools/secret-debug-policy.test.mjs` | recursive, every `crates/*/src` | regex over derive attributes against a registry of secret-carrying types | none on the file walk; a `>= 11` floor on the macro-generated key-type registry |
-| `tools/phase1-scaffold-policy.test.mjs` | recursive, from seven roots: every workspace package's `src` except `academic-test-support`, a named crate set, `store-platform/src`, each of the six process crates' `src`, `transcript/src` twice, and — for `only_egress_crate_has_a_socket` — every workspace package's `src`, `tests`, and `benches` plus every build script; fixed paths elsewhere | `cargo metadata` dependency graph, acceptance-receipt comparison, and regex/substring assertions on named files — including a second, independent copy of the rotation-gate decision-site count | none |
+| `tools/phase1-scaffold-policy.test.mjs` | recursive, from eight roots: every workspace package's `src` except `academic-test-support`, a named crate set, `store-platform/src`, each of the six process crates' `src`, `transcript/src` twice, `record/src` (the two implemented §28 engines, with a `>= 12` floor), and — for `only_egress_crate_has_a_socket` — every workspace package's `src`, `tests`, and `benches` plus every build script; fixed paths elsewhere | `cargo metadata` dependency graph, acceptance-receipt comparison, and regex/substring assertions on named files — including a second, independent copy of the rotation-gate decision-site count | none |
 | `only_egress_crate_has_a_socket` — `tools/phase1-scaffold-policy.test.mjs` | recursive, every workspace package's `src`, `tests`, `benches`, and `build.rs`, comments and string literals stripped before matching | a per-file allowance of exact socket spellings (eight IPC files listed, every other allowance empty); a rule that a crate root or a socket module segment may be renamed only to `_`; zero foreign-function declarations anywhere; every `#[path]` target resolved under `crates/`; the one `include!` pinned whole; a pinned build-script inventory; and a per-crate link closure intersected with the socket-capable crates | `scanned.length >= 10` on the capability scan it sits beside; the allowance map is compared whole, so a file that stops being read fails as a missing key |
 | `the_byte_path_has_one_derivation`, `no_exception_path_fails_open`, `a_denial_has_no_payload_field` — `crates/egress-boundary/tests/byte_path_pin.rs` | none — six fixed paths under this crate's own `src` | seven whole-text pins (below); occurrence counts for the single construction site, the single emit helper and the two `execute` call sites; a per-file fallback inventory with a written reason for each site; six shapes that may not appear at all (`catch_unwind`, `let _ =`, `if let Ok(`, `.is_ok()`, `unwrap()`, `.expect(`); the `EgressDenial` field list read out of the struct | none on the walk — the six paths are named; a file gaining a `#[cfg(test)]` module fails, because the product half would then be smaller than the file |
 | `deny_reason_codes_are_exhaustive` — `crates/egress-boundary/tests/egress_boundary.rs` | none — one fixed path, `crates/policy/src/schema.sql` | a compiler-checked witness `match` over `ReasonCode` (a new variant stops the suite compiling), an index set over the enumerated list, a transcription of the execution plan's section 3.5 sentence, and the quoted codes in the `egress_audit` `CHECK` | n/a — the enum is read through the type system, not a walk |
@@ -72,6 +74,7 @@ a silent edit is the whole risk.
 | `staged_runtime_call`, `write_authorized_bytes`, `Preview::bytes`, `StagedPayload::preview` | `WHOLE_RUNTIME_CALL`, `WHOLE_EMIT`, `WHOLE_PREVIEW_BYTES`, `WHOLE_STAGED_PREVIEW` | a change to where the transmitted bytes come from — these four are the whole path from the preview's buffer to the transport |
 | `stage`, `deny_on_findings` | `WHOLE_STAGE`, `WHOLE_DENY_ON_FINDINGS` | a change to the staging pipeline's step order, the reason code a step denies with, or any default it takes; the fallback inventory counts sites and cannot see a default that changed direction |
 | `cloud_egress_default` | `WHOLE_CLOUD_DEFAULT` | the user closing `GATE-38-028`; it takes no argument, so no quality heuristic can reach it |
+| `div_round_half_up` | `WHOLE_DIVISION` | a change to how a published average is rounded — not a change to the scale, which is an argument the versioned grading scheme supplies |
 
 Comment-only lines are dropped before a pin is compared, so a pin fixes code and
 not prose. Whitespace is collapsed, so `cargo fmt` decides layout and the pin
@@ -129,6 +132,45 @@ both with the 17-entry one. The remaining item keywords not on the list —
 `macro`, `default`, `auto trait` — are all unstable and cannot appear in this
 repository's product source.
 
+## Why the float scan is not a token list
+
+`P2-U4` needed a scan saying no floating-point value reaches a grade-point
+average. A list of forbidden spellings — `f32`, `f64` — is the obvious shape and
+is the second empty-scan shape above: **three of the five ways a float arrives
+in Rust name neither token.**
+
+```rust
+let ratio = 33.9 / 12.0;   // f64 by inference
+let epsilon = 1e-9;        // f64, and not even a decimal point
+let one = 1.;              // f64
+```
+
+The check is therefore over *literals* rather than over names: any
+decimal-point or exponent literal in Rust code is a floating-point value,
+whatever it is called. That needs comments and string literals removed first, or
+the check would fire on this repository's own prose — the number `2.825` is
+written in four documentation comments deliberately, because it is the tie the
+corpus is built to land on.
+
+All five evasions are applied to the check inside the test itself, and each must
+be caught; six integer expressions the crate really uses are applied and must
+not be. Four of them were also injected into the crate's own sources one at a
+time, each reverted with its file's SHA-256 checked back to its recorded value,
+on Windows native and WSL2 Linux with the same result on both:
+
+| # | Injection | Names a forbidden token? |
+|---|---|---|
+| F-I1 | `views.rs` gains `let _ratio = 33.9 / 12.0;` | no |
+| F-I2 | `decimal.rs` gains `let _epsilon = 1e-9;` | no |
+| F-I3 | `grade.rs` gains `let _one = 1.;` | no |
+| F-I4 | `engine.rs` gains `const SLIP: core::primitive::f64` | yes — the token half |
+| P-I1 | `div_round_half_up` truncates instead of rounding | n/a — the pin |
+
+`P-I1` is what the pin buys and a token list could not have: the truncation
+spells nothing forbidden, leaves the function's shape intact, and changes the
+published average from `2.83` to `2.82`. It fails both the pin and
+`gpa_formula_fixture`.
+
 ## Open
 
 These are not closed. "It cannot happen today" is not a reason to leave one
@@ -141,6 +183,7 @@ open, so each row says what makes it start mattering.
 | S-3 | `crates/daemon/tests/phase1_exit.rs` | 10-token list; `scanned > 0` is the whole floor | A socket reached through a re-export or a dependency's wrapper type names none of the ten. The paired link scan of the built binary is what actually carries this claim; the source half is the weaker of the two and should be read that way. |
 | S-4 | `tools/secret-debug-policy.test.mjs` | no floor on the file walk; `T123 P3-G6` (`I37`, `I46`) still silent | `crates/*/src` returning an empty list passes every assertion. Matters if a crate is renamed or the walk root moves. |
 | S-5 | `tools/phase1-scaffold-policy.test.mjs` | fixed paths outside `store-platform` | A file renamed or split leaves its assertions reading a path that no longer holds the code they describe. `readFile` throws on a missing path, so a rename fails loudly; a *split* does not — the assertions keep passing against the half that stayed. |
+| S-7 | `crates/record/tests/record_scans.rs` | the comment/string stripper distinguishes a character literal from a lifetime by looking for a closing quote two characters on | A character literal wider than one `char` — `'\u{1F600}'` — is not stripped, so its digits would be read as code. No such literal exists in the crate and the scan errs toward reporting rather than hiding, so the failure mode is a false positive, not a miss. Matters if the crate ever needs a wide character literal. |
 | S-6 | `crates/portability/tests/encrypted_rotation.rs` | two fixed test-source paths, substring only | It checks that one acceptance row lives in one file. A third file could hold a third copy and nothing would see it. |
 
 ## Intended, not a defect

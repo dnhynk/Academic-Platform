@@ -1,0 +1,18 @@
+result SATISFIED
+value attempts.in.scope=9/0
+value attempts.pending.disposition=0/0
+value credits.earned=140/1
+value gpa=283/2
+value gpa.denominator.credits=120/1
+value gpa.quality.points=3390/2
+proof
+  SATISFIED rule.gpa.average [n.gpa] inputs=attempt.count,scope
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.000] inputs=attempt.000.course,attempt.000.credits.attempted,attempt.000.credits.earned,attempt.000.grade,attempt.000.id,attempt.000.origin,attempt.000.program.cse,attempt.000.program.stat,attempt.000.recognition,attempt.000.repeat,attempt.000.status,attempt.000.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.001] inputs=attempt.001.course,attempt.001.credits.attempted,attempt.001.credits.earned,attempt.001.grade,attempt.001.id,attempt.001.origin,attempt.001.program.cse,attempt.001.recognition,attempt.001.repeat,attempt.001.status,attempt.001.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.002] inputs=attempt.002.course,attempt.002.credits.attempted,attempt.002.credits.earned,attempt.002.grade,attempt.002.id,attempt.002.origin,attempt.002.program.cse,attempt.002.recognition,attempt.002.repeat,attempt.002.status,attempt.002.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.003] inputs=attempt.003.course,attempt.003.credits.attempted,attempt.003.credits.earned,attempt.003.grade,attempt.003.id,attempt.003.origin,attempt.003.program.cse,attempt.003.recognition,attempt.003.repeat,attempt.003.status,attempt.003.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.004] inputs=attempt.004.course,attempt.004.credits.attempted,attempt.004.credits.earned,attempt.004.grade,attempt.004.id,attempt.004.origin,attempt.004.program.cse,attempt.004.recognition,attempt.004.repeat,attempt.004.status,attempt.004.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.005] inputs=attempt.005.course,attempt.005.credits.attempted,attempt.005.credits.earned,attempt.005.grade,attempt.005.id,attempt.005.origin,attempt.005.program.stat,attempt.005.recognition,attempt.005.repeat,attempt.005.status,attempt.005.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.006] inputs=attempt.006.course,attempt.006.credits.attempted,attempt.006.credits.earned,attempt.006.grade,attempt.006.id,attempt.006.origin,attempt.006.program.cse,attempt.006.recognition,attempt.006.repeat,attempt.006.status,attempt.006.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.007] inputs=attempt.007.course,attempt.007.credits.attempted,attempt.007.credits.earned,attempt.007.grade,attempt.007.id,attempt.007.origin,attempt.007.recognition,attempt.007.repeat,attempt.007.status,attempt.007.term
+    SATISFIED rule.gpa.attempt.disposition [n.attempt.008] inputs=attempt.008.course,attempt.008.credits.attempted,attempt.008.credits.earned,attempt.008.grade,attempt.008.id,attempt.008.origin,attempt.008.recognition,attempt.008.repeat,attempt.008.status,attempt.008.term

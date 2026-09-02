@@ -119,7 +119,7 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 12] = [
         invariant: "동일 입력·rule hash면 동일 결과",
     },
         high_impact_path: Some(HighImpactPath::Gpa),
-        lifecycle: EngineLifecycle::Planned,
+        lifecycle: EngineLifecycle::Implemented,
         harness_dir: "gpa",
     },
     EngineDescriptor {
@@ -134,7 +134,7 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 12] = [
         invariant: "한 학점의 중복 인정 근거 추적",
     },
         high_impact_path: None,
-        lifecycle: EngineLifecycle::Planned,
+        lifecycle: EngineLifecycle::Implemented,
         harness_dir: "credit_accounting",
     },
     EngineDescriptor {

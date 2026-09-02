@@ -1,13 +1,19 @@
 //! Named acceptance evidence for the §3.9 deterministic engine harness.
 //!
-//! None of the twelve §28 engines is implemented yet and this task invents
-//! none. Two of the named acceptance tests nevertheless need an engine to exist:
+//! Two of the twelve §28 engines are implemented: `P2-U4` built `GPA` and
+//! `CREDIT_ACCOUNTING` in `academic-record`, and their harness directories
+//! under `testdata/engines/` are populated. This suite audits the registry and
+//! the tree against each other; it does not call either engine, because
+//! `academic-record` depends on this crate and not the other way round.
+//! `crates/record/tests/record_harness.rs` is what executes their fixtures.
+//!
+//! Two of the named acceptance tests need an engine to exist here anyway:
 //! `same_inputs_and_rule_hash_yield_byte_equal_results` has to run one twice,
-//! and the harness audit's `IMPLEMENTED` branch has to run against a complete
-//! artifact set or the guard would never be observed to bite. [`Reference`]
-//! below is that engine. It is test-only, it is deliberately not one of the
-//! twelve, `reference_engine_is_not_registered` proves it, and it ships in no
-//! product build.
+//! and the audit's `IMPLEMENTED` branch has to be exercised against a complete
+//! artifact set that is under this crate's control. [`Reference`] below is that
+//! engine. It is test-only, it is deliberately not one of the twelve,
+//! `reference_engine_is_not_registered` proves it, and it ships in no product
+//! build.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -427,13 +433,26 @@ fn engine_registry_is_complete() -> TestResult {
         );
     }
 
-    // Every registered engine is PLANNED today: this task builds the harness,
-    // the registry, and the CI enforcement, and implements no engine.
-    assert!(
-        ENGINE_REGISTRY
-            .iter()
-            .all(|descriptor| descriptor.lifecycle == EngineLifecycle::Planned),
-        "an engine became IMPLEMENTED without its harness artifacts landing here"
+    // Two engines are implemented and ten are not. `P2-U4` built `GPA` and
+    // `CREDIT_ACCOUNTING` in `academic-record`, which is why their entries are
+    // `IMPLEMENTED` and their harness directories are populated; the audit
+    // below and `planned_engine_that_gains_an_implementation_fails_ci` check
+    // both directions over the committed tree.
+    //
+    // The list is enumerated rather than counted. A count would let an engine
+    // flip to `IMPLEMENTED` and another flip back and stay silent, which is the
+    // shape `docs/contracts/engine-harness.md` warns about for the registry
+    // itself.
+    let implemented: Vec<&str> = ENGINE_REGISTRY
+        .iter()
+        .filter(|descriptor| descriptor.lifecycle == EngineLifecycle::Implemented)
+        .map(|descriptor| descriptor.name.as_str())
+        .collect();
+    assert_eq!(
+        implemented,
+        vec!["GPA", "CREDIT_ACCOUNTING"],
+        "an engine's lifecycle changed; its harness artifacts and the \
+         `engine_source_contains_no_clock_rng_network_or_model` scan must move with it"
     );
 
     // The high-impact four are exactly the §3.9 set, one engine per path.
@@ -665,6 +684,8 @@ fn planned_engine_that_gains_an_implementation_fails_ci() -> TestResult {
         "the committed registry and tree must agree"
     );
 
+    let discovered_snapshot = discovered.clone();
+
     // Inject an implementation for one planned engine and observe the bite.
     let mut injected = discovered.clone();
     injected
@@ -681,16 +702,39 @@ fn planned_engine_that_gains_an_implementation_fails_ci() -> TestResult {
     );
 
     // Inject harness artifacts for a planned engine and observe the same.
+    //
+    // `TIMETABLE` rather than `GPA`: `P2-U4` implemented `GPA`, so artifacts
+    // under its harness directory are now expected rather than a violation.
+    // The injection has to name an engine that is still planned or it would
+    // assert nothing.
     let mut injected = discovered;
     injected
-        .entry(EngineName::Gpa)
+        .entry(EngineName::Timetable)
         .or_default()
         .classes
         .insert(ArtifactClass::GoldenFixtures);
     assert_eq!(
         audit_engine_harness(&ENGINE_REGISTRY, &injected),
         vec![HarnessViolation::PlannedEngineHasArtifacts {
-            engine: EngineName::Gpa
+            engine: EngineName::Timetable
+        }],
+    );
+
+    // And the other direction, which is what an implemented engine buys: strip
+    // one artifact class from `GPA` and the audit must report it. Without this
+    // the committed-tree assertion above could pass over an engine whose
+    // directory quietly emptied.
+    let mut stripped = discovered_snapshot;
+    stripped
+        .entry(EngineName::Gpa)
+        .or_default()
+        .classes
+        .remove(&ArtifactClass::GoldenFixtures);
+    assert_eq!(
+        audit_engine_harness(&ENGINE_REGISTRY, &stripped),
+        vec![HarnessViolation::MissingArtifactClass {
+            engine: EngineName::Gpa,
+            class: ArtifactClass::GoldenFixtures,
         }],
     );
     Ok(())

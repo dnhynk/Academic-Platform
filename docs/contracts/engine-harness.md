@@ -94,8 +94,12 @@ carries no count.
 
 ## Registration is not implementation
 
-No §28 engine exists yet, and this harness invents none. Every entry is
-`PLANNED`, and the audit enforces both directions:
+Ten of the twelve entries are `PLANNED`. `GPA` and `CREDIT_ACCOUNTING` are
+`IMPLEMENTED`: `P2-U4` built both in `academic-record`, and their harness
+directories under `testdata/engines/` carry the artifacts that flip requires.
+See [the GPA and attempt contract](gpa-and-attempts.md).
+
+The audit enforces both directions:
 
 - **`PLANNED`** — the engine has no harness artifacts under `testdata/engines/`
   and no workspace source names its `engine_id`. Either one appearing is a
@@ -109,6 +113,21 @@ Flipping an entry is therefore the moment its harness obligations become due.
 A task that ships an engine and forgets its fixtures fails
 `planned_engine_that_gains_an_implementation_fails_ci`; a task that flips the
 entry without the fixtures fails the four `engine_without_*_fails_ci` tests.
+
+### What the audit cannot do, and who does it instead
+
+The audit counts artifacts. It cannot *run* a real engine's fixtures, because
+every engine crate depends on `academic-domain` and this audit lives in it, so
+a fixture that only exists would satisfy the audit and prove nothing. The
+executing half belongs to the implementing crate.
+
+For the two live engines that is `crates/record/tests/record_harness.rs`, which
+evaluates every committed `.input` against the real engine and byte-compares the
+`.expected`, requires each adverse fixture to land on the outcome its directory
+names, and re-renders the whole corpus from the deterministic builder so a
+fixture cannot be hand-edited into agreement with a broken engine. **An engine
+that flips to `IMPLEMENTED` without that second half has satisfied the audit and
+demonstrated nothing.**
 
 ## Harness layout
 
