@@ -28,6 +28,7 @@ members = [
   "crates/store-platform",
   "crates/test-support",
   "crates/transcript",
+  "crates/untrusted-content",
   "crates/vault",
   "crates/worker",
 ]

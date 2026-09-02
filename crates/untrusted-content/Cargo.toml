@@ -1,0 +1,30 @@
+[package]
+name = "academic-untrusted-content"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `academic-egress-boundary` is the one product edge. `P2-G2` already scans a
+# provider response for canaries and rulepack findings, and its `AcceptedResponse`
+# is the only value that scan produces, so taking it as the argument of the
+# provider-response ingest is what makes the reuse structural rather than a
+# promise: a response that was not scanned cannot be ingested here.
+#
+# `academic-policy` is deliberately a dev edge only. A product file in this crate
+# therefore cannot name `PermissionBroker`, `CapabilityToken`, `RuntimeToolCall`,
+# or `ProcessCapabilityToken` -- an undeclared crate is a compile error, not a
+# lint -- and the tests that need a real broker to build an `EgressProxy` still
+# have one. `WORKSPACE_EDGES` and `devEdges` in
+# `tools/phase1-scaffold-policy.test.mjs` pin both maps as wholes.
+[dependencies]
+academic-egress-boundary = { path = "../egress-boundary" }
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+academic-policy = { path = "../policy" }
+
+[lints]
+workspace = true

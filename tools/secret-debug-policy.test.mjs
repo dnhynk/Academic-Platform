@@ -135,6 +135,23 @@ const PUBLIC_BYTES = new Map([
     "StreamingPrefix.digest",
     "SHA-256 of the object header's cleartext prefix P0, which is on disk in the clear",
   ],
+  // `P2-G5`. Four SHA-256 fields over ingested or model-written bytes. A digest
+  // of untrusted content is not the content, `Untrusted::digest` returns it
+  // through the public API, and the rendered data record carries it in the
+  // clear so a model can cite a span. What the boundary hides is the bytes, and
+  // every field holding those is reduced to a length by a hand-written `Debug`.
+  [
+    "QuotedDocument.digest",
+    "SHA-256 over one ingested document, which the rendered data record carries in the clear so a model can cite a span of it",
+  ],
+  [
+    "QuarantinedOutput.digest",
+    "SHA-256 over a refused model output, which is the only identity the quarantine record keeps of bytes it deliberately does not hold",
+  ],
+  [
+    "ResolvedSpan.digest",
+    "SHA-256 truncated to 128 bits over one cited range of an already-ingested document, which is what makes the citation checkable",
+  ],
   [
     "FixtureContract.payload",
     "the public encoding label (for example academic.event-batch/v3 deterministic-cbor), not fixture payload bytes",
