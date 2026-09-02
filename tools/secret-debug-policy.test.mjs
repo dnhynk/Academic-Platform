@@ -63,6 +63,7 @@ const SECRET_BEARING_TYPES = new Map([
   ["EncryptedDomainKeyring", "per-domain KEKs and locator keys"],
   ["RuntimeToolCall", "the exact payload presented at the capability boundary"],
   ["AuthorizedToolCall", "the exact payload released after capability consumption"],
+  ["ProcessActivity", "the exact external-transmission bytes before audit hashing"],
 ]);
 
 /**
@@ -74,7 +75,7 @@ const SECRET_BEARING_TYPES = new Map([
  * A name is only a signal; the exceptions below carry the judgement.
  */
 const SECRET_FIELD_NAMES =
-  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|payload|payload_bytes|prompt|prompt_text|provider_response|provider_response_bytes|response_text|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|vmk|skey|master)$/;
+  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|payload|payload_bytes|prompt|prompt_text|provider_response|provider_response_bytes|response_text|transmitted|transmitted_bytes|transmission|transmission_bytes|source_bytes|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|vmk|skey|master)$/;
 
 /**
  * Field types that hold bytes transparently, so a derived `Debug` prints them.
@@ -725,13 +726,28 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
   // when it contains `<redacted>` or `finish_non_exhaustive`, so an impl that
   // does not redact at all was in neither net: `T116` injected an unregistered
   // type whose hand-written `Debug` printed `self.dek` and nothing failed.
+
+  // Reductions that yield a length but do not sit directly after the field.
+  // `Option<&[u8]>` has no `len()` of its own, so a redacting `Debug` over one
+  // reaches its length through `map_or`, which the scan below would otherwise
+  // read as a raw use. Each entry is one exact spelling whose result is a
+  // `usize`; a `map_or` carrying a closure is not one of them and still fails.
+  // They are rewritten to the plain spelling before the scan.
+  const LENGTH_REDUCTIONS = [
+    [/\.\s*map_or\(\s*0\s*,\s*<\[u8\]>::len\s*\)/gu, ".len()"],
+  ];
+
   const leaks = [];
   const handWritten = new Set([...SECRET_BEARING_TYPES.keys(), ...DIRECT_SECRET_BEARING]);
   for (const name of handWritten) {
-    const body = debugBodies.get(name);
-    if (body === undefined) {
+    const declaredBody = debugBodies.get(name);
+    if (declaredBody === undefined) {
       continue;
     }
+    const body = LENGTH_REDUCTIONS.reduce(
+      (reduced, [pattern, plain]) => reduced.replace(pattern, plain),
+      declaredBody,
+    );
     const rawFields = new Set();
     for (const site of definitions.get(name) ?? []) {
       for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {

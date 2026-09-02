@@ -1,8 +1,9 @@
 # Permission broker contract
 
-`academic-policy` is the P2-G1 decision and runtime-capability boundary. It has
-no network API. It owns an in-memory SQLite operational store containing the
-fixed `egress_grant` and `egress_audit` rows from execution-plan §3.5.
+`academic-policy` is the P2-G1 decision and runtime-capability boundary and the
+P2-G7 process-capability/audit boundary. It has no network API. Its embedded
+SQLite schema can be opened at an explicit local path for retention; isolated
+tests may use the in-memory constructor.
 
 ## Request and policy pin
 
@@ -19,10 +20,14 @@ The canonical design §32.3 names eight semantic fields:
 
 Execution-plan §3.5 expands data object/range into `data_class` plus
 `object_range_digest_set` and adds `policy_version`, producing ten concrete
-entries while still calling the tuple “eight-field.” P2-G1 checks all ten
-concrete entries before selecting a rule, so neither reading leaves a missing
-entry permissive. `missing_tuple_field_denies_and_audits` varies all ten and
-observes one `NO_GRANT` audit for each.
+entries while still calling the tuple “eight-field.” P2-G7 separates the actor
+identifier from the trusted, non-optional `ProcessClass` execution context.
+P2-G1 checks all ten optional request entries before selecting a rule, so
+neither reading leaves a missing entry permissive.
+`missing_tuple_field_denies_and_audits` varies all ten and observes one
+`NO_GRANT` audit for each; every resulting row also carries the typed process
+class. Policy and request hashes use v2 domain separators because this split
+changes their canonical input.
 
 A `PolicySnapshot` is encoded with a fixed domain separator, big-endian counts
 and lengths, and rules sorted by their canonical bytes. `PolicyVersion` is the
@@ -49,7 +54,7 @@ An allow inserts the fifteen §3.5 grant columns. `max_uses` has a database
 of `consumed_at` from null to a timestamp.
 
 `PermissionBroker::execute` receives the exact payload bytes and recomputes
-their SHA-256 at the boundary. Actor, operation, purpose, destination, byte
+their SHA-256 at the boundary. Actor, process class, operation, purpose, destination, byte
 ranges, payload length, and digest must equal the opaque token and its stored
 grant. The atomic SQL update requires `consumed_at IS NULL` and
 `expires_at > now`; the tool closure is invoked after that update and its allow
@@ -57,22 +62,92 @@ audit commit. The acceptance test races two threads with the same token and
 observes exactly one closure invocation. Another test supplies a wider runtime
 range and observes `SCOPE_MISMATCH`, a deny audit, and zero closure calls.
 
-## Audit contents
+## Process classes and cross-capability matrix
+
+The closed `ProcessClass` enum is `CAPTURE_CLIENT`, `INDEXER`,
+`REPOSITORY_ANALYZER`, `CONNECTOR`, `EGRESS_PROXY`, and `EXPORT_JOB`. Each has
+one exact, distinct capability set:
+
+| Process class | Allowed capabilities |
+|---|---|
+| capture client | capture device; write staged artifact |
+| indexer | read artifact range; write search index |
+| repository analyzer | read artifact range; analyze repository; create claim |
+| connector | borrow scoped connector credential; stage external payload |
+| egress proxy | open outbound socket |
+| export job | read artifact range; assemble export |
+
+`READ_KEY_MATERIAL` is a closed-enum capability with no allowed cell. A
+`ProcessCapabilityToken` is opaque, expiring, single-use, and bound to actor,
+process class, and one capability. The P2-G1 `CapabilityToken` is likewise
+bound to actor and the typed `EGRESS_PROXY` class. Runtime use supplies actor,
+class, and capability independently, so injecting either the wrong class or
+the wrong capability is denied without consuming the token.
+`cross_capability_matrix_denies_every_disallowed_cell` walks the full Cartesian
+product and then injects every other class and every other capability into each
+allowed token.
+
+The six classes also have six separate executable packages. Their complete
+manifests, Cargo targets, product source, and resolved dependency closure are
+checked as wholes. `indexer_cannot_open_a_socket` and
+`export_job_cannot_read_keys` are those whole checks on two of them: each
+package's shipping closure equals one reviewed list that contains no network or
+key-material crate, and its entire product source equals its one fixed
+process-class binding.
+
+Those two names are stronger than what the checks establish, so read them as
+scoped. The standard library puts `std::net` and a file read within reach of
+any process that links it — `std::net::TcpStream::connect` compiles inside
+`academic-indexer` today. What is executable here is availability through
+dependencies and use in source, not what the operating system permits the
+process. P2-G4 owns the sandbox that would make the unqualified reading true.
+The `academic-egress` entrypoint has the logical socket capability but still
+contains no transport; P2-G2 owns adding and testing the sole product socket.
+
+## Audit contents and retention
 
 Every evaluation, replay, and runtime use appends one audit row. Denials use
 the closed §3.5 reason-code enum. Allows use a null `reason_code`, because that
 closed enum contains no allow code; the execution plan lists the column but
 does not define its allow-row nullability.
 
-Audit rows contain identifiers, lowercase digests, byte counts, and times.
-They contain no raw payload, prompt, or provider response fields. The existing
+Audit rows contain actor identifier, typed process class and capability,
+artifact identifiers with half-open ranges and content digests, external
+destination/digest/count, created claim identifiers, and times. Range and
+claim children are append-only rows keyed to the parent audit sequence. They
+contain no raw payload, prompt, source artifact, or provider response fields. The existing
 `tools/secret-debug-policy.test.mjs` source discovery net covers raw fields
-named `payload`, `prompt`, and `provider_response`; P2-G1 does not add a second
-audit-only scanner. During acceptance, a temporary `AuditRow.payload_bytes:
+named `payload`, `prompt`, `provider_response`, and — from P2-G7 — the
+transmission byte-buffer names; P2-G1 does not add a second
+audit-only scanner. P2-G7 registers `ProcessActivity` in that net, and because
+the generic vocabulary now reaches `transmitted_bytes`, the net holds whether
+or not that registration stays. During
+P2-G1 acceptance, a temporary `AuditRow.payload_bytes:
 Vec<u8>` injection first passed the old vocabulary, then failed the extended
 generic discovery net, and passed again after the injection was removed. That
 investigation also found signed `DecodedEnvelope.payload` buffers one layer
 outside the broker; their derived `Debug` implementations were removed.
+
+Every parent row carries the fixed `SECURITY_AUDIT_APPEND_ONLY` retention
+identity. The schema identity, grants, parent audits, ranges, and created-claim
+links reject update/delete (grant consumption is the sole one-way exception).
+`PermissionBroker::open` persists the audit database at a caller-selected local
+path, and the retention test reopens it and observes the same rows after direct
+update/delete attempts fail. Profile-path placement remains an integration
+responsibility.
+
+`audit_contains_no_raw_canary` reuses the committed SQLCipher canary corpus and
+passes exact, prefixed, case-changed, and reversed variants through the real
+transmission-audit path. Only a SHA-256, range, and byte count remain. It reads
+two surfaces, because either alone has a hole. The rows the crate projects back
+are rendered and searched; then the same variants are written through an
+on-disk broker and the whole retained database file is scanned for their bytes,
+since a row the read API does not project back is still a copy. Beside those,
+the applied schema is enumerated whole — every table and every column compared
+against an exact expected set, so a new column or side table fails whatever it
+is named. A blocklist of forbidden column names was the earlier shape here and
+did not hold: a side table carrying the raw bytes passed it, the projection
+render, and the generic debug guard together.
 
 ## Schema allocation discrepancy
 
@@ -87,12 +162,12 @@ after resolving the allocation conflict.
 ## Provider-policy registry integration
 
 P2-G3 adds versioned provider facts, explicit provider user-policy rows, and
-deletion-receipt rows to the same in-memory operational store without changing
-the fifteen grant columns, audit reason enum, opaque token, or atomic
-consumption path fixed here. Grant issuance now requires the rule's provider
-snapshot and retention pins to resolve through that registry. Provider TTL caps
-the stored grant expiry; runtime use also rejects a provider snapshot that has
-changed since issuance.
+deletion-receipt rows to the same operational store without changing the
+fifteen grant columns, audit reason enum, opaque token, or atomic consumption
+path fixed here. Grant issuance now requires the rule's provider snapshot and
+retention pins to resolve through that registry. Provider TTL caps the stored
+grant expiry; runtime use also rejects a provider snapshot that has changed
+since issuance.
 
 Historical replay uses the original evaluation time and registry revision
 ceilings. The record schema, digest encoding, `(vendor_id, surface)` identity,

@@ -1,0 +1,59 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-b",
+  "task": "P2-G7",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-G7 admits no external crate. Six process binaries depend only on the already-reviewed academic-policy boundary.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 6,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-capture-client",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    },
+    {
+      "name": "academic-connector",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    },
+    {
+      "name": "academic-egress",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    },
+    {
+      "name": "academic-export-job",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    },
+    {
+      "name": "academic-indexer",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    },
+    {
+      "name": "academic-repository-analyzer",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-policy",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "Each path package is one executable with one exact ProcessClass binding and no product code beyond reading that class's broker-owned capability set. Separate packages make the indexer and export-job dependency closures independently auditable rather than relying only on runtime denial.",
+  "network_posture": "All six boundaries depend only on academic-policy. The complete indexer and export-job closures and complete entrypoint sources are pinned; the egress binary has the logical outbound-socket capability but P2-G2 still owns adding the sole actual transport.",
+  "advisory_path": "Unchanged. No external dependency is added; academic-policy's existing receipt remains authoritative for its dependency closure.",
+  "admissions": []
+}

@@ -10,6 +10,7 @@ This repository is the runnable foundation for a local-first Personal Academic Â
 - `academic-contracts`: deterministic CBOR v3 encode/sign plus v1/v2/v3 decode/verify, semantic v3 validation of returned writer bytes, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, pure v1-to-v3 and v2-to-v3 upcasters that rewrite no historical byte, and executable Protobuf actor/relation round trips with the same RFC-variant UUIDv7 boundary.
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
 - `academic-policy`: a socket-free, default-deny permission broker that hashes immutable policy snapshots, minimizes configured object ranges, records the fixed grant/audit shapes, and releases an exact runtime payload only after atomically consuming a one-use expiring capability. See [the permission broker contract](docs/contracts/permission-broker.md).
+- Process boundaries: six separate executables bind capture client, indexer, repository analyzer, connector, egress proxy, and export job to distinct broker-owned capability sets. The egress executable has no transport yet; P2-G2 owns the sole future outbound socket.
 - `academic` CLI: `admission verify|show`, `daemon serve|status`, `doctor` (with `--profile`/`--deep`), `ingest`, `export`, `backup`, `restore`, `crash-replay`, and `fixture emit|verify|replay`. Every path prints its receipt-derived posture before human results and repeats it as the JSON `policy` object; the present unprovisioned key keeps that posture synthetic. Exit codes distinguish policy denial, conflict, repair-required, incompatible, unavailable, and internal failure. See [the CLI contract](docs/contracts/phase1-cli.md) and [admission receipt contract](docs/contracts/admission-receipt.md).
 - `@academic-os/web-contracts`: exact TypeScript fixture validation kept in positive/negative parity with JSON Schema and Rust.
 - Phase 1 local-core crates: functional store, vault, RPC, daemon, projection, portability, and test-support boundaries; bundled plaintext SQLite remains the default lane. The explicit non-default SQLCipher spike supplies limited evidence only and carries no ADR-002 or production-data acceptance claim.
@@ -101,6 +102,18 @@ policy rather than a synthesized default. Immutable deletion-receipt metadata
 links back to the exact grant and allow audit. `GATE-38-010` and
 `GATE-38-028` remain open; see
 [the provider registry contract](docs/contracts/provider-registry.md).
+
+`P2-G7` replaces the broker's free-form process label with a closed enum,
+binds it into both egress and process capability tokens, and enumerates every
+allowed and denied matrix cell. Actor, artifact ranges, external transmission
+digest/count, and created claim identifiers are retained in append-only audit
+rows without source bytes. The indexer and export-job process packages have
+complete dependency-closure and whole-entrypoint guards: neither closure
+contains a network or key-material crate, and neither entrypoint reaches for
+one. The Rust standard library still puts a raw socket within reach of any
+process, so that is a bound on what these packages depend on and use, not an
+operating-system sandbox â€” `P2-G4` owns that. See
+[the permission broker contract](docs/contracts/permission-broker.md).
 
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical

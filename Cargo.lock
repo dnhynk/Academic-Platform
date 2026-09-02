@@ -16,6 +16,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-capture-client"
+version = "0.1.0"
+dependencies = [
+ "academic-policy",
+]
+
+[[package]]
 name = "academic-cli"
 version = "0.1.0"
 dependencies = [
@@ -31,6 +38,13 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "academic-connector"
+version = "0.1.0"
+dependencies = [
+ "academic-policy",
 ]
 
 [[package]]
@@ -127,6 +141,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-egress"
+version = "0.1.0"
+dependencies = [
+ "academic-policy",
+]
+
+[[package]]
+name = "academic-export-job"
+version = "0.1.0"
+dependencies = [
+ "academic-policy",
+]
+
+[[package]]
+name = "academic-indexer"
+version = "0.1.0"
+dependencies = [
+ "academic-policy",
+]
+
+[[package]]
 name = "academic-keystore-platform"
 version = "0.1.0"
 dependencies = [
@@ -203,6 +238,13 @@ dependencies = [
  "subtle",
  "thiserror",
  "zeroize",
+]
+
+[[package]]
+name = "academic-repository-analyzer"
+version = "0.1.0"
+dependencies = [
+ "academic-policy",
 ]
 
 [[package]]

@@ -1,8 +1,31 @@
--- P2-G1/P2-G3 permission and provider-policy operational store. The canonical store's migration
+-- P2-G1/P2-G3/P2-G7 permission, provider-policy, and process-capability operational store. The canonical store's migration
 -- number 0005 is already occupied by P2-K5, so this schema is owned and applied
 -- by academic-policy rather than silently taking a second store migration 0005.
 
-CREATE TABLE provider_policy_snapshot (
+CREATE TABLE IF NOT EXISTS policy_schema_meta (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    schema_version INTEGER NOT NULL CHECK (schema_version = 2),
+    audit_retention_policy_id TEXT NOT NULL
+        CHECK (audit_retention_policy_id = 'SECURITY_AUDIT_APPEND_ONLY')
+) STRICT;
+
+INSERT OR IGNORE INTO policy_schema_meta (
+    singleton, schema_version, audit_retention_policy_id
+) VALUES (1, 2, 'SECURITY_AUDIT_APPEND_ONLY');
+
+CREATE TRIGGER IF NOT EXISTS guard_policy_schema_meta_update
+BEFORE UPDATE ON policy_schema_meta
+BEGIN
+    SELECT RAISE(ABORT, 'policy schema identity is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS guard_policy_schema_meta_delete
+BEFORE DELETE ON policy_schema_meta
+BEGIN
+    SELECT RAISE(ABORT, 'policy schema identity is immutable');
+END;
+
+CREATE TABLE IF NOT EXISTS provider_policy_snapshot (
     snapshot_seq INTEGER PRIMARY KEY AUTOINCREMENT,
     snapshot_digest TEXT NOT NULL UNIQUE CHECK (length(snapshot_digest) = 64),
     destination_id TEXT NOT NULL,
@@ -30,57 +53,57 @@ CREATE TABLE provider_policy_snapshot (
     UNIQUE (snapshot_digest, destination_id)
 ) STRICT;
 
-CREATE TRIGGER guard_provider_policy_snapshot_update
+CREATE TRIGGER IF NOT EXISTS guard_provider_policy_snapshot_update
 BEFORE UPDATE ON provider_policy_snapshot
 BEGIN
     SELECT RAISE(ABORT, 'provider_policy_snapshot is append-only');
 END;
 
-CREATE TRIGGER guard_provider_policy_snapshot_delete
+CREATE TRIGGER IF NOT EXISTS guard_provider_policy_snapshot_delete
 BEFORE DELETE ON provider_policy_snapshot
 BEGIN
     SELECT RAISE(ABORT, 'provider_policy_snapshot is append-only');
 END;
 
-CREATE TABLE provider_policy_residency (
+CREATE TABLE IF NOT EXISTS provider_policy_residency (
     snapshot_digest TEXT NOT NULL
         REFERENCES provider_policy_snapshot(snapshot_digest) ON UPDATE RESTRICT ON DELETE RESTRICT,
     region TEXT NOT NULL CHECK (length(region) > 0),
     PRIMARY KEY (snapshot_digest, region)
 ) STRICT;
 
-CREATE TRIGGER guard_provider_policy_residency_update
+CREATE TRIGGER IF NOT EXISTS guard_provider_policy_residency_update
 BEFORE UPDATE ON provider_policy_residency
 BEGIN
     SELECT RAISE(ABORT, 'provider_policy_residency is append-only');
 END;
 
-CREATE TRIGGER guard_provider_policy_residency_delete
+CREATE TRIGGER IF NOT EXISTS guard_provider_policy_residency_delete
 BEFORE DELETE ON provider_policy_residency
 BEGIN
     SELECT RAISE(ABORT, 'provider_policy_residency is append-only');
 END;
 
-CREATE TABLE provider_policy_subprocessor (
+CREATE TABLE IF NOT EXISTS provider_policy_subprocessor (
     snapshot_digest TEXT NOT NULL
         REFERENCES provider_policy_snapshot(snapshot_digest) ON UPDATE RESTRICT ON DELETE RESTRICT,
     subprocessor TEXT NOT NULL CHECK (length(subprocessor) > 0),
     PRIMARY KEY (snapshot_digest, subprocessor)
 ) STRICT;
 
-CREATE TRIGGER guard_provider_policy_subprocessor_update
+CREATE TRIGGER IF NOT EXISTS guard_provider_policy_subprocessor_update
 BEFORE UPDATE ON provider_policy_subprocessor
 BEGIN
     SELECT RAISE(ABORT, 'provider_policy_subprocessor is append-only');
 END;
 
-CREATE TRIGGER guard_provider_policy_subprocessor_delete
+CREATE TRIGGER IF NOT EXISTS guard_provider_policy_subprocessor_delete
 BEFORE DELETE ON provider_policy_subprocessor
 BEGIN
     SELECT RAISE(ABORT, 'provider_policy_subprocessor is append-only');
 END;
 
-CREATE TABLE provider_user_policy (
+CREATE TABLE IF NOT EXISTS provider_user_policy (
     user_policy_seq INTEGER PRIMARY KEY AUTOINCREMENT,
     policy_id TEXT NOT NULL UNIQUE CHECK (length(policy_id) > 0),
     destination_id TEXT NOT NULL,
@@ -95,38 +118,38 @@ CREATE TABLE provider_user_policy (
         ON UPDATE RESTRICT ON DELETE RESTRICT
 ) STRICT;
 
-CREATE TRIGGER guard_provider_user_policy_update
+CREATE TRIGGER IF NOT EXISTS guard_provider_user_policy_update
 BEFORE UPDATE ON provider_user_policy
 BEGIN
     SELECT RAISE(ABORT, 'provider_user_policy is append-only');
 END;
 
-CREATE TRIGGER guard_provider_user_policy_delete
+CREATE TRIGGER IF NOT EXISTS guard_provider_user_policy_delete
 BEFORE DELETE ON provider_user_policy
 BEGIN
     SELECT RAISE(ABORT, 'provider_user_policy is append-only');
 END;
 
-CREATE TABLE provider_user_policy_residency (
+CREATE TABLE IF NOT EXISTS provider_user_policy_residency (
     policy_id TEXT NOT NULL
         REFERENCES provider_user_policy(policy_id) ON UPDATE RESTRICT ON DELETE RESTRICT,
     region TEXT NOT NULL CHECK (length(region) > 0),
     PRIMARY KEY (policy_id, region)
 ) STRICT;
 
-CREATE TRIGGER guard_provider_user_policy_residency_update
+CREATE TRIGGER IF NOT EXISTS guard_provider_user_policy_residency_update
 BEFORE UPDATE ON provider_user_policy_residency
 BEGIN
     SELECT RAISE(ABORT, 'provider_user_policy_residency is append-only');
 END;
 
-CREATE TRIGGER guard_provider_user_policy_residency_delete
+CREATE TRIGGER IF NOT EXISTS guard_provider_user_policy_residency_delete
 BEFORE DELETE ON provider_user_policy_residency
 BEGIN
     SELECT RAISE(ABORT, 'provider_user_policy_residency is append-only');
 END;
 
-CREATE TABLE egress_grant (
+CREATE TABLE IF NOT EXISTS egress_grant (
     grant_id TEXT PRIMARY KEY,
     request_digest TEXT NOT NULL CHECK (length(request_digest) = 64),
     payload_digest TEXT NOT NULL CHECK (length(payload_digest) = 64),
@@ -151,13 +174,13 @@ CREATE TABLE egress_grant (
         ON UPDATE RESTRICT ON DELETE RESTRICT
 ) STRICT;
 
-CREATE TRIGGER guard_egress_grant_delete
+CREATE TRIGGER IF NOT EXISTS guard_egress_grant_delete
 BEFORE DELETE ON egress_grant
 BEGIN
     SELECT RAISE(ABORT, 'egress_grant is append-only');
 END;
 
-CREATE TRIGGER guard_egress_grant_update
+CREATE TRIGGER IF NOT EXISTS guard_egress_grant_update
 BEFORE UPDATE ON egress_grant
 WHEN NOT (
     OLD.consumed_at IS NULL AND NEW.consumed_at IS NOT NULL
@@ -180,9 +203,9 @@ BEGIN
     SELECT RAISE(ABORT, 'only first capability consumption may update a grant');
 END;
 
-CREATE TABLE egress_audit (
+CREATE TABLE IF NOT EXISTS egress_audit (
     audit_seq INTEGER PRIMARY KEY AUTOINCREMENT,
-    grant_id TEXT REFERENCES egress_grant(grant_id) ON UPDATE RESTRICT ON DELETE RESTRICT,
+    grant_id TEXT CHECK (grant_id IS NULL OR length(grant_id) = 64),
     decision TEXT NOT NULL CHECK (decision IN ('ALLOW', 'DENY')),
     reason_code TEXT CHECK (
         (decision = 'ALLOW' AND reason_code IS NULL)
@@ -194,7 +217,17 @@ CREATE TABLE egress_audit (
             'NO_DELETION_RECEIPT'
         ))
     ),
-    actor_process_class TEXT NOT NULL,
+    actor_id TEXT NOT NULL CHECK (length(actor_id) > 0),
+    actor_process_class TEXT NOT NULL CHECK (actor_process_class IN (
+        'CAPTURE_CLIENT', 'INDEXER', 'REPOSITORY_ANALYZER', 'CONNECTOR',
+        'EGRESS_PROXY', 'EXPORT_JOB'
+    )),
+    capability TEXT NOT NULL CHECK (capability IN (
+        'CAPTURE_DEVICE', 'WRITE_STAGED_ARTIFACT', 'READ_ARTIFACT_RANGE',
+        'WRITE_SEARCH_INDEX', 'ANALYZE_REPOSITORY', 'BORROW_CONNECTOR_CREDENTIAL',
+        'STAGE_EXTERNAL_PAYLOAD', 'OPEN_OUTBOUND_SOCKET', 'CREATE_CLAIM',
+        'ASSEMBLE_EXPORT', 'READ_KEY_MATERIAL'
+    )),
     payload_digest TEXT CHECK (payload_digest IS NULL OR length(payload_digest) = 64),
     byte_count INTEGER NOT NULL CHECK (byte_count >= 0),
     destination_id TEXT NOT NULL,
@@ -203,22 +236,70 @@ CREATE TABLE egress_audit (
     provider_response_digest TEXT
         CHECK (provider_response_digest IS NULL OR length(provider_response_digest) = 64),
     deletion_receipt_id TEXT,
+    external_transmission_digest TEXT CHECK (
+        external_transmission_digest IS NULL OR length(external_transmission_digest) = 64
+    ),
+    retention_policy_id TEXT NOT NULL
+        CHECK (retention_policy_id = 'SECURITY_AUDIT_APPEND_ONLY'),
     UNIQUE (audit_seq, grant_id)
 ) STRICT;
 
-CREATE TRIGGER guard_egress_audit_update
+CREATE TABLE IF NOT EXISTS audit_artifact_range (
+    audit_seq INTEGER NOT NULL REFERENCES egress_audit(audit_seq)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    range_ordinal INTEGER NOT NULL CHECK (range_ordinal >= 0),
+    object_id TEXT NOT NULL CHECK (length(object_id) > 0),
+    byte_start INTEGER NOT NULL CHECK (byte_start >= 0),
+    byte_end INTEGER NOT NULL CHECK (byte_end > byte_start),
+    content_digest TEXT NOT NULL CHECK (length(content_digest) = 64),
+    PRIMARY KEY (audit_seq, range_ordinal)
+) WITHOUT ROWID, STRICT;
+
+CREATE TRIGGER IF NOT EXISTS guard_audit_artifact_range_update
+BEFORE UPDATE ON audit_artifact_range
+BEGIN
+    SELECT RAISE(ABORT, 'audit_artifact_range is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS guard_audit_artifact_range_delete
+BEFORE DELETE ON audit_artifact_range
+BEGIN
+    SELECT RAISE(ABORT, 'audit_artifact_range is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS audit_created_claim (
+    audit_seq INTEGER NOT NULL REFERENCES egress_audit(audit_seq)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    claim_ordinal INTEGER NOT NULL CHECK (claim_ordinal >= 0),
+    claim_id TEXT NOT NULL CHECK (length(claim_id) > 0),
+    PRIMARY KEY (audit_seq, claim_ordinal)
+) WITHOUT ROWID, STRICT;
+
+CREATE TRIGGER IF NOT EXISTS guard_audit_created_claim_update
+BEFORE UPDATE ON audit_created_claim
+BEGIN
+    SELECT RAISE(ABORT, 'audit_created_claim is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS guard_audit_created_claim_delete
+BEFORE DELETE ON audit_created_claim
+BEGIN
+    SELECT RAISE(ABORT, 'audit_created_claim is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS guard_egress_audit_update
 BEFORE UPDATE ON egress_audit
 BEGIN
     SELECT RAISE(ABORT, 'egress_audit is append-only');
 END;
 
-CREATE TRIGGER guard_egress_audit_delete
+CREATE TRIGGER IF NOT EXISTS guard_egress_audit_delete
 BEFORE DELETE ON egress_audit
 BEGIN
     SELECT RAISE(ABORT, 'egress_audit is append-only');
 END;
 
-CREATE TABLE egress_consumption (
+CREATE TABLE IF NOT EXISTS egress_consumption (
     grant_id TEXT PRIMARY KEY
         REFERENCES egress_grant(grant_id) ON UPDATE RESTRICT ON DELETE RESTRICT,
     egress_audit_seq INTEGER NOT NULL UNIQUE
@@ -230,19 +311,19 @@ CREATE TABLE egress_consumption (
         ON UPDATE RESTRICT ON DELETE RESTRICT
 ) STRICT;
 
-CREATE TRIGGER guard_egress_consumption_update
+CREATE TRIGGER IF NOT EXISTS guard_egress_consumption_update
 BEFORE UPDATE ON egress_consumption
 BEGIN
     SELECT RAISE(ABORT, 'egress_consumption is append-only');
 END;
 
-CREATE TRIGGER guard_egress_consumption_delete
+CREATE TRIGGER IF NOT EXISTS guard_egress_consumption_delete
 BEFORE DELETE ON egress_consumption
 BEGIN
     SELECT RAISE(ABORT, 'egress_consumption is append-only');
 END;
 
-CREATE TABLE provider_deletion_receipt (
+CREATE TABLE IF NOT EXISTS provider_deletion_receipt (
     receipt_seq INTEGER PRIMARY KEY AUTOINCREMENT,
     receipt_id TEXT NOT NULL UNIQUE CHECK (length(receipt_id) > 0),
     grant_id TEXT NOT NULL
@@ -262,14 +343,57 @@ CREATE TABLE provider_deletion_receipt (
         ON UPDATE RESTRICT ON DELETE RESTRICT
 ) STRICT;
 
-CREATE TRIGGER guard_provider_deletion_receipt_update
+CREATE TRIGGER IF NOT EXISTS guard_provider_deletion_receipt_update
 BEFORE UPDATE ON provider_deletion_receipt
 BEGIN
     SELECT RAISE(ABORT, 'provider_deletion_receipt is append-only');
 END;
 
-CREATE TRIGGER guard_provider_deletion_receipt_delete
+CREATE TRIGGER IF NOT EXISTS guard_provider_deletion_receipt_delete
 BEFORE DELETE ON provider_deletion_receipt
 BEGIN
     SELECT RAISE(ABORT, 'provider_deletion_receipt is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS process_capability_grant (
+    token_id TEXT PRIMARY KEY CHECK (length(token_id) = 64),
+    actor_id TEXT NOT NULL CHECK (length(actor_id) > 0),
+    process_class TEXT NOT NULL CHECK (process_class IN (
+        'CAPTURE_CLIENT', 'INDEXER', 'REPOSITORY_ANALYZER', 'CONNECTOR',
+        'EGRESS_PROXY', 'EXPORT_JOB'
+    )),
+    capability TEXT NOT NULL CHECK (capability IN (
+        'CAPTURE_DEVICE', 'WRITE_STAGED_ARTIFACT', 'READ_ARTIFACT_RANGE',
+        'WRITE_SEARCH_INDEX', 'ANALYZE_REPOSITORY', 'BORROW_CONNECTOR_CREDENTIAL',
+        'STAGE_EXTERNAL_PAYLOAD', 'OPEN_OUTBOUND_SOCKET', 'CREATE_CLAIM',
+        'ASSEMBLE_EXPORT', 'READ_KEY_MATERIAL'
+    )),
+    issued_at INTEGER NOT NULL CHECK (issued_at >= 0),
+    expires_at INTEGER NOT NULL CHECK (expires_at > issued_at),
+    max_uses INTEGER NOT NULL DEFAULT 1 CHECK (max_uses = 1),
+    consumed_at INTEGER CHECK (
+        consumed_at IS NULL OR (consumed_at >= issued_at AND consumed_at < expires_at)
+    )
+) STRICT;
+
+CREATE TRIGGER IF NOT EXISTS guard_process_capability_grant_delete
+BEFORE DELETE ON process_capability_grant
+BEGIN
+    SELECT RAISE(ABORT, 'process_capability_grant is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS guard_process_capability_grant_update
+BEFORE UPDATE ON process_capability_grant
+WHEN NOT (
+    OLD.consumed_at IS NULL AND NEW.consumed_at IS NOT NULL
+    AND NEW.token_id = OLD.token_id
+    AND NEW.actor_id = OLD.actor_id
+    AND NEW.process_class = OLD.process_class
+    AND NEW.capability = OLD.capability
+    AND NEW.issued_at = OLD.issued_at
+    AND NEW.expires_at = OLD.expires_at
+    AND NEW.max_uses = OLD.max_uses
+)
+BEGIN
+    SELECT RAISE(ABORT, 'only first capability consumption may update a process grant');
 END;
