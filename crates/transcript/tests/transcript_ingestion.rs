@@ -176,6 +176,32 @@ fn transcript_formats_normalize_equivalently() -> TestResult {
     assert_eq!(error.code(), "MALFORMED_SOURCE");
     let error = refusal(parse_pdf_text_layer(b"not a pdf"), "a non-PDF parsed")?;
     assert_eq!(error.code(), "MALFORMED_SOURCE");
+
+    // A document truncated mid-row is refused at the short row rather than
+    // yielding the rows before it. A refusal is an `Err`, so there is no
+    // partially-populated transcript to observe — which is the whole content of
+    // "a partially-read document never becomes a partially-populated one".
+    let truncated = format!("{}M1522.000900,2024-2,3\n", render_csv(&expected));
+    let error = refusal(
+        parse_csv(truncated.as_bytes()),
+        "a row with three fields parsed",
+    )?;
+    assert_eq!(error.code(), "MALFORMED_SOURCE");
+
+    // The canonical encoding is length-prefixed rather than delimited, so no
+    // field value can spell a separator and change the parse of its neighbour:
+    // two records that differ only in where a boundary falls encode
+    // differently.
+    let left = NormalizedTranscript::new(
+        TranscriptIdentity::new("AB", "C", "inst", "date")?,
+        Vec::new(),
+    )?;
+    let right = NormalizedTranscript::new(
+        TranscriptIdentity::new("A", "BC", "inst", "date")?,
+        Vec::new(),
+    )?;
+    assert_ne!(left.canonical_bytes(), right.canonical_bytes());
+    assert_ne!(left.canonical_digest(), right.canonical_digest());
     Ok(())
 }
 
@@ -473,7 +499,26 @@ fn student_number_and_name_can_be_removed_independently() -> TestResult {
     let name = canary("CANARY-STUDENT-NAME");
 
     let profiles = RedactionProfile::all();
-    assert_eq!(profiles.len(), 4, "the matrix is not the four combinations");
+    // Exhaustive by arithmetic, not by a literal: `all()` must enumerate every
+    // subset of the removable fields. A third `IdentityField` added without
+    // growing this constant fails here rather than silently narrowing the
+    // matrix below to a fraction of the combinations.
+    assert_eq!(
+        profiles.len(),
+        1_usize << IdentityField::ALL.len(),
+        "RedactionProfile::all() no longer enumerates every subset of IdentityField::ALL"
+    );
+    let mut removals: Vec<Vec<IdentityField>> = profiles
+        .iter()
+        .map(|profile| profile.removed_fields())
+        .collect();
+    removals.sort();
+    removals.dedup();
+    assert_eq!(
+        removals.len(),
+        profiles.len(),
+        "two profiles remove the same fields"
+    );
 
     let mut exports = Vec::new();
     for profile in profiles {
