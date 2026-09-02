@@ -39,7 +39,7 @@ tree spells today and fails on an addition anywhere.
 |---|---|---|---|
 | `no_environment_or_flag_override_exists` — `crates/cli/src/main.rs` | recursive, every crate's `src` | 12 forbidden key/override seams in `crates/admission/src`; a 7-token per-crate allowance table; whole-text pins on the `ACCEPTANCE_PUBLIC_KEY` declaration and on `verify_with_compiled_acceptance_key`; refuses any file declaring an item at file scope below its test module; recursive Clap command-tree scan | no count; fails if the walk never reached `crates/admission` |
 | `cli_has_no_real_data_override` — `crates/cli/tests/cli.rs` | recursive, `cli/src` + `core/src` | 10 forbidden tokens; a 5-token lane-authority allowance table; whole-text pins on `posture_for_profile`, `ALLOWLISTED_FIXTURE_IDS`, `is_allowlisted`, the daemon-side allowlist `match`, and the whole `fn main` dispatch spine; file-scope-below-test-module rule; a 12-pair environment battery, a 14-argument flag battery and a 3-path ingest battery against the built binary | `scanned >= 18` (19 today) |
-| `read_crate_sources` — `crates/recovery/tests/recovery_admission.rs` | recursive, `recovery/src` | three token lists across three named tests: 8 device-key-source tokens plus a per-line `DeviceKeystore` allowlist, 13 word-level tokens, 3 profile-default tokens | `>= 5`, plus a tripwire: every `mod name;` the crate declares must be a file the walk read |
+| `read_crate_sources` — `crates/recovery/tests/recovery_admission.rs` | recursive, `recovery/src` | three token lists across three named tests: 8 device-key-source tokens plus a per-line `DeviceKeystore` allowlist, 13 word-level tokens, 3 profile-default tokens | `>= 5`, plus a tripwire: a `mod name;` or `pub mod name;` on its own line must be a file the walk read |
 | `read_crate_sources` — `crates/retention/tests/retention.rs` | recursive, `retention/src` | token lists at three call sites (revocation claims, `GATE-38-026` decision seams, journal truncation) | `>= 8` |
 | `the_rotation_gate_is_one_decision_with_no_flag_variable_or_debug_path` — `crates/retention/tests/rotation_gate.rs` | none — three fixed paths | `WHOLE_GATE` whole-text pin on `require_rotation_accepted`; a 6-token list over its body; the first statement of each of 7 gated entry points | none |
 | `default_feature_tree_has_no_conversion_entry_point` — `crates/store/tests/encrypted_profile.rs` | recursive, `store/src` | 3 forbidden conversion entry points; plus fixed-path reads of `src/lib.rs` for the compile-time guard, and byte scans of the built probe binary | none |
@@ -86,10 +86,12 @@ posture — was never read by the test that claims to scan it. The split is now 
 the test module, and anything at file scope below the test module is refused
 rather than hidden.
 
-Nine injections were applied one at a time, each reverted with its file's
-SHA-256 checked back to its recorded value, on Windows native and WSL2 Linux.
-Before the repair all nine passed; after it all nine fail on application and
-pass again on revert.
+Ten injections were applied one at a time, each reverted with its file's
+SHA-256 checked back to its recorded value. The first nine passed both guards
+before the repair and fail after it; the tenth is the `union ` hole below, which
+passed with a 16-entry list and fails with the 17-entry one. Application and
+revert were observed on Windows native; the first nine were observed again on
+WSL2 Linux with the same result.
 
 | # | Injection | Refused by |
 |---|---|---|
@@ -102,6 +104,7 @@ pass again on revert.
 | C-I4 | `main` skips the mandatory banner when a marker file exists | `WHOLE_DISPATCH_SPINE` |
 | C-I5 | the daemon-side allowlist arm becomes a prefix match | `WHOLE_DAEMON_FIXTURE_GATE` |
 | C-I6 | a second posture source hides in the dead zone a `#[cfg(test)]` helper opens | test-module split + allowance table |
+| C-I7 | a product item is declared below the test module as a `union` | `FILE_SCOPE_ITEM_STARTS` with `union ` |
 
 Every `C-*` injection spells **none** of the ten forbidden tokens the guard
 already held; the harness refuses to apply one that does. An injection that
@@ -120,6 +123,20 @@ open, so each row says what makes it start mattering.
 | S-4 | `tools/secret-debug-policy.test.mjs` | no floor on the file walk; `T123 P3-G6` (`I37`, `I46`) still silent | `crates/*/src` returning an empty list passes every assertion. Matters if a crate is renamed or the walk root moves. |
 | S-5 | `tools/phase1-scaffold-policy.test.mjs` | fixed paths outside `store-platform` | A file renamed or split leaves its assertions reading a path that no longer holds the code they describe. `readFile` throws on a missing path, so a rename fails loudly; a *split* does not — the assertions keep passing against the half that stayed. |
 | S-6 | `crates/portability/tests/encrypted_rotation.rs` | two fixed test-source paths, substring only | It checks that one acceptance row lives in one file. A third file could hold a third copy and nothing would see it. |
+
+### One found in this repair's own shape
+
+`FILE_SCOPE_ITEM_STARTS` — the list of line starts that mean "an item is
+declared here", used by the two guards that refuse product code below a test
+module — is itself a token list, and it has to be complete or the rule it
+enforces has a hole. It omitted `union `, which is a stable item keyword. No
+`union` exists in any product source, and a `union` alone widens nothing, but
+the hole is the same shape as the two defects this page is about, so it is
+closed rather than recorded. `C-I7` is the observation: a `union` declared below
+`output.rs`'s test module passes both guards with the 16-entry list and fails
+both with the 17-entry one. The remaining item keywords not on the list —
+`macro`, `default`, `auto trait` — are all unstable and cannot appear in this
+repository's product source.
 
 ## Intended, not a defect
 
