@@ -29,6 +29,7 @@ members = [
   "crates/test-support",
   "crates/transcript",
   "crates/vault",
+  "crates/worker",
 ]
 resolver = "3"
 

@@ -1962,6 +1962,17 @@ const transcriptCiCommands = [
   "cargo clippy -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection -- -D warnings",
   "cargo test -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection",
 ];
+// t068 section 5's `P2-G4` worker sandbox lane, and section 8.1's
+// `cargo test -p academic-worker --features native-sandbox`. The feature is
+// non-default because it is the only thing that compiles a syscall: with it off
+// the crate is safe Rust and links no backend. It runs on every hosted Rust
+// label rather than one, because the two backends are different code and each
+// is a claim about the platform it runs on -- and because a label with neither
+// still has to build, which is what says the crate does not assume one.
+const workerSandboxCiCommands = [
+  "cargo clippy -p academic-worker --all-targets --locked --features native-sandbox -- -D warnings",
+  "cargo test -p academic-worker --all-targets --locked --features native-sandbox",
+];
 // The encrypted store lane. It is the executor of `P2-K5`'s store-database
 // rotation unit and the home of `EN01` ("kill mid store rekey; exactly one of
 // the old and new keys opens the database"), which is the byte-level half of
@@ -2101,6 +2112,14 @@ const expectedCiWorkflow = {
         {
           name: "Test the transcript ingestion lane",
           run: transcriptCiCommands[1],
+        },
+        {
+          name: "Lint the worker sandbox lane",
+          run: workerSandboxCiCommands[0],
+        },
+        {
+          name: "Test the worker sandbox lane",
+          run: workerSandboxCiCommands[1],
         },
         {
           name: "Verify immutable v1 fixture and upcast",

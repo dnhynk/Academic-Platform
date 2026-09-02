@@ -365,6 +365,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-worker"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "libc",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "windows-sys",
+]
+
+[[package]]
 name = "aead"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
