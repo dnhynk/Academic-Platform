@@ -109,6 +109,20 @@ Every `C-*` injection spells **none** of the ten forbidden tokens the guard
 already held; the harness refuses to apply one that does. An injection that
 names a token already on the list demonstrates only that the list works.
 
+### And one found in this repair's own shape
+
+`FILE_SCOPE_ITEM_STARTS` — the list of line starts that mean "an item is
+declared here", used by the two guards that refuse product code below a test
+module — is itself a token list, and it has to be complete or the rule it
+enforces has a hole. It omitted `union `, which is a stable item keyword. No
+`union` exists in any product source, and a `union` alone widens nothing, but
+the hole is the same shape as the two defects this page is about, so it is
+closed rather than recorded. `C-I7` is the observation: a `union` declared below
+`output.rs`'s test module passes both guards with the 16-entry list and fails
+both with the 17-entry one. The remaining item keywords not on the list —
+`macro`, `default`, `auto trait` — are all unstable and cannot appear in this
+repository's product source.
+
 ## Open
 
 These are not closed. "It cannot happen today" is not a reason to leave one
@@ -122,20 +136,6 @@ open, so each row says what makes it start mattering.
 | S-4 | `tools/secret-debug-policy.test.mjs` | no floor on the file walk; `T123 P3-G6` (`I37`, `I46`) still silent | `crates/*/src` returning an empty list passes every assertion. Matters if a crate is renamed or the walk root moves. |
 | S-5 | `tools/phase1-scaffold-policy.test.mjs` | fixed paths outside `store-platform` | A file renamed or split leaves its assertions reading a path that no longer holds the code they describe. `readFile` throws on a missing path, so a rename fails loudly; a *split* does not — the assertions keep passing against the half that stayed. |
 | S-6 | `crates/portability/tests/encrypted_rotation.rs` | two fixed test-source paths, substring only | It checks that one acceptance row lives in one file. A third file could hold a third copy and nothing would see it. |
-
-### One found in this repair's own shape
-
-`FILE_SCOPE_ITEM_STARTS` — the list of line starts that mean "an item is
-declared here", used by the two guards that refuse product code below a test
-module — is itself a token list, and it has to be complete or the rule it
-enforces has a hole. It omitted `union `, which is a stable item keyword. No
-`union` exists in any product source, and a `union` alone widens nothing, but
-the hole is the same shape as the two defects this page is about, so it is
-closed rather than recorded. `C-I7` is the observation: a `union` declared below
-`output.rs`'s test module passes both guards with the 16-entry list and fails
-both with the 17-entry one. The remaining item keywords not on the list —
-`macro`, `default`, `auto trait` — are all unstable and cannot appear in this
-repository's product source.
 
 ## Intended, not a defect
 
