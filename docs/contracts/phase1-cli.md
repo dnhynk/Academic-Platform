@@ -12,6 +12,17 @@ embedded file, and any edit to either of the two whole texts that obtain the
 acceptance key. It does not read the other crates for those seams; what it
 requires of them is that they spell none of the admission-authority tokens.
 
+`cli_has_no_real_data_override` covers the other half: the four places in
+`crates/cli/src` and `crates/core/src` that decide whether real input is
+admitted. Each is pinned as whole text, so an edit to any of them fails whether
+or not it names a token somebody thought to forbid — the sole posture source
+`posture_for_profile`, the compile-time `ALLOWLISTED_FIXTURE_IDS` and the
+predicate that reads it, the daemon-side arm of the same allowlist, and the
+`fn main` dispatch spine that binds the posture and writes the banner before
+anything else. A five-token allowance table refuses a fifth decision site. What
+each scan in this repository reads and what each still leaves open is in
+[policy source scans](policy-source-scans.md).
+
 Every command emits the receipt-derived posture object. The current result is:
 
 ```json

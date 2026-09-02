@@ -777,20 +777,82 @@ fn recovery_secret_api_has_no_word_level_entry_point() -> TestResult {
     Ok(())
 }
 
+/// Reads every `*.rs` under this crate's `src`, at any depth.
+///
+/// The walk is recursive because the flat `read_dir` it replaced read only the
+/// top level. `src` happens to be flat today, so nothing was missed today —
+/// but a device-key reach placed in `src/platform/mod.rs`, a word-level codec
+/// in `src/phrase/codec.rs`, and a `Default` for [`RecoveryProfile`] in
+/// `src/lane/mod.rs` were each invisible to all three tests that call this,
+/// and each is a shipped-shaped change that alters nothing observable.
 fn read_crate_sources() -> TestResult<Vec<(PathBuf, String)>> {
     let source_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut sources = Vec::new();
-    for entry in fs::read_dir(&source_root)? {
-        let path = entry?.path();
-        if path.extension().is_some_and(|extension| extension == "rs") {
-            let text = fs::read_to_string(&path)?;
-            sources.push((path, text));
+    let mut pending = vec![source_root];
+    while let Some(directory) = pending.pop() {
+        for entry in fs::read_dir(&directory)? {
+            let path = entry?.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let text = fs::read_to_string(&path)?;
+                sources.push((path, text));
+            }
         }
     }
+    sources.sort();
     assert!(
-        sources.len() >= 4,
+        sources.len() >= 5,
         "the source scan found only {} files",
         sources.len()
     );
+
+    // Descending is the property, so it is checked rather than assumed: every
+    // module the crate declares has to be a file the scan read. A walk that
+    // stops descending leaves a declared module unread, and this fails then
+    // rather than passing quietly the way the flat walk did.
+    let read: Vec<&Path> = sources.iter().map(|(path, _)| path.as_path()).collect();
+    for (path, text) in &sources {
+        for name in declared_modules(text) {
+            let candidates = module_files(path, &name);
+            assert!(
+                candidates
+                    .iter()
+                    .any(|candidate| read.contains(&&**candidate)),
+                "{} declares `mod {name};` but the source scan read neither {} nor {}",
+                path.display(),
+                candidates[0].display(),
+                candidates[1].display()
+            );
+        }
+    }
     Ok(sources)
+}
+
+/// Names of the out-of-line modules one source file declares.
+fn declared_modules(text: &str) -> Vec<String> {
+    text.lines()
+        .map(str::trim)
+        .filter_map(|line| line.strip_suffix(';'))
+        .filter_map(|line| {
+            line.strip_prefix("mod ")
+                .or_else(|| line.strip_prefix("pub mod "))
+        })
+        .map(str::to_owned)
+        .collect()
+}
+
+/// The two paths a `mod name;` in `declaring` may live at.
+fn module_files(declaring: &Path, name: &str) -> [PathBuf; 2] {
+    let directory = match declaring.file_stem().and_then(|stem| stem.to_str()) {
+        Some("lib" | "mod") => declaring
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_default(),
+        _ => declaring.with_extension(""),
+    };
+    [
+        directory.join(format!("{name}.rs")),
+        directory.join(name).join("mod.rs"),
+    ]
 }

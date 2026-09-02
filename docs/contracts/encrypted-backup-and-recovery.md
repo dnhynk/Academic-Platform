@@ -52,6 +52,14 @@ are closed:
   the device wrapper produces. The root is a *root*: no derivation edge from
   the VMK exists, and nothing in `academic-recovery` accepts a `VaultMasterKey`.
 
+The source half of that claim — no file under `crates/recovery/src` names a
+device key source, a word-level entry point, or a recovery-profile default —
+reads the tree recursively and fails if any module the crate declares is not a
+file it read. It used to read only the top level of `src`, which was correct for
+the flat tree that exists and blind to anything a subdirectory module would add.
+What that scan checks and what the repository's other scans still leave open is
+in [policy source scans](policy-source-scans.md).
+
 ```text
 recovery phrase ──Argon2id(pinned)──> wrap key ──XChaCha20-Poly1305──> BMK
                                                                         │

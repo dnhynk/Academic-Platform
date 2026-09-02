@@ -84,6 +84,13 @@ conditions fail closed, `production_data_allowed` remains `false`, and ADR-002
 remains unaccepted. The exact receipt shape and provisioning boundary are in
 [the admission receipt contract](docs/contracts/admission-receipt.md).
 
+Several tests keep that posture by reading this repository's own source text,
+because the changes they refuse — a second key source, a widened fixture
+allowlist, a banner suppressed behind a marker file — alter nothing observable
+without their trigger. Every such scan is enumerated, with what it reads and
+what it still leaves open, in
+[policy source scans](docs/contracts/policy-source-scans.md).
+
 `P2-G1` adds `academic-policy` without adding a product socket or a new
 external dependency. A new profile exposes `local_processing_preferred=true`
 and zero configured egress rules; a complete tuple against that empty snapshot

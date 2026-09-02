@@ -935,15 +935,148 @@ fn cli_crash_replay_all_is_machine_readable() -> TestResult {
     Ok(())
 }
 
+/// The CLI's sole posture source, whitespace-collapsed. Nothing else may be
+/// in it.
+///
+/// A forbidden-token list cannot see this function widen. It can be made to
+/// read a marker file, consult a type alias, or take its profile root from
+/// anywhere at all without spelling `allow_real_data`, `PRODUCTION_DATA_ALLOWED`
+/// or any other name a list can be written down in advance. The function is
+/// four lines, so what holds is that it is *these* four and nothing else.
+const WHOLE_POSTURE_SOURCE: &str = concat!(
+    "pub fn posture_for_profile(profile_root: Option<&Path>) -> DataPolicy { ",
+    "profile_root.map_or_else( DataPolicy::synthetic, ",
+    "academic_admission::AdmissionVerifier::posture, ) }"
+);
+
+/// The compile-time fixture allowlist, whitespace-collapsed.
+const WHOLE_FIXTURE_ALLOWLIST: &str =
+    "pub const ALLOWLISTED_FIXTURE_IDS: &[&str] = &[PHASE1_SYNTHETIC_FIXTURE_ID];";
+
+/// The predicate that reads it, whitespace-collapsed. A second entry in the
+/// constant and a prefix match in the predicate are the same widening, and
+/// neither spells a forbidden token, so both are pinned.
+const WHOLE_ALLOWLIST_PREDICATE: &str = concat!(
+    "pub fn is_allowlisted(fixture_id: &str) -> bool { ",
+    "ALLOWLISTED_FIXTURE_IDS.contains(&fixture_id) }"
+);
+
+/// The daemon-side arm of the same decision, whitespace-collapsed.
+///
+/// The allowlist is checked twice — once by the caller before a connection is
+/// opened, once by the service that accepts the batch. Widening either one
+/// admits input the other refuses, so both are pinned rather than the client
+/// half alone.
+const WHOLE_DAEMON_FIXTURE_GATE: &str = concat!(
+    "match &validated.command { ",
+    "ValidatedWriteCommand::SyntheticIngest { fixture_id } ",
+    "if fixture_id == PHASE1_SYNTHETIC_FIXTURE_ID => {} ",
+    "ValidatedWriteCommand::SyntheticIngest { .. } => { ",
+    "return self.reject(request, \"FIXTURE_NOT_ALLOWLISTED\", None); } ",
+    "ValidatedWriteCommand::SyntheticBackup => { ",
+    "return self.reject(request, \"BACKUP_NOT_AVAILABLE_UNTIL_B1\", None); } ",
+    "ValidatedWriteCommand::SyntheticRestore { .. } => { ",
+    "return self.reject(request, \"RESTORE_NOT_AVAILABLE_UNTIL_B1\", None); } }"
+);
+
+/// The whole dispatch spine, whitespace-collapsed, comment lines dropped.
+///
+/// This is where the posture is bound and where the banner is written, and the
+/// order of the two is the contract: the banner precedes every result on every
+/// path. A condition wrapped around the `write_banner` call suppresses it
+/// without spelling `--no-banner` or `suppress_banner`, and a second posture
+/// bound after this one changes what every emit path reports. Both are edits
+/// inside this function, so the function is pinned whole.
+const WHOLE_DISPATCH_SPINE: &str = concat!(
+    "fn main() -> ExitCode { let cli = Cli::parse(); ",
+    "let (name, format) = describe(&cli.command); ",
+    "let posture = policy_banner::posture_for_profile(command_profile(&cli.command)); ",
+    "if let Err(error) = write_banner(format, &posture) { ",
+    "eprintln!(\"failed to write the mandatory policy banner: {error}\"); ",
+    "return ExitCode::from(u8::try_from(ExitClass::Internal.code()).unwrap_or(20)); } ",
+    "let (outcome, render): (CommandResult, Renderer) = dispatch(cli.command); ",
+    "let class = match &outcome { Ok(value) => { let lines = render(value); ",
+    "if let Err(error) = emit_success(name, format, value, &lines, &posture) { ",
+    "eprintln!(\"failed to write the command result: {error}\"); ",
+    "return exit_code(ExitClass::Internal); } ExitClass::Ok } ",
+    "Err(failure) => { if let Err(error) = emit_failure(name, format, failure, &posture) { ",
+    "eprintln!(\"failed to write the command failure: {error}\"); ",
+    "return exit_code(ExitClass::Internal); } failure.class() } }; exit_code(class) }"
+);
+
+/// Lane authority, with the exact number of times the scanned product source
+/// may spell each token.
+///
+/// The pins above fix the decision sites that exist now. This refuses a new
+/// one: a second call that turns a profile into a posture, a third entry into
+/// the admission crate, a second allowlist, or a new place that compares
+/// against the sole fixture identifier. Each count is what the tree spells
+/// today, so an addition anywhere fails whether or not it names a token
+/// somebody thought to forbid.
+const LANE_AUTHORITY_TOKENS: [(&str, usize); 5] = [
+    ("AdmissionVerifier::posture", 1),
+    ("AdmissionVerifier::verify", 1),
+    ("posture_for_profile", 2),
+    ("ALLOWLISTED_FIXTURE_IDS", 2),
+    ("PHASE1_SYNTHETIC_FIXTURE_ID", 7),
+];
+
+/// Line starts that declare an item at file scope.
+const FILE_SCOPE_ITEM_STARTS: [&str; 16] = [
+    "#[",
+    "async ",
+    "const ",
+    "enum ",
+    "extern ",
+    "fn ",
+    "impl ",
+    "macro_rules!",
+    "mod ",
+    "pub ",
+    "static ",
+    "struct ",
+    "trait ",
+    "type ",
+    "unsafe ",
+    "use ",
+];
+
+/// Returns `signature` and everything up to the first `closer`, whitespace
+/// collapsed, with comment-only lines dropped so a pin fixes code and not
+/// prose.
+fn whole(source: &str, signature: &str, closer: &str) -> TestResult<String> {
+    let (_, rest) = source
+        .split_once(signature)
+        .ok_or_else(|| format!("the source no longer holds `{signature}`"))?;
+    let (body, _) = rest
+        .split_once(closer)
+        .ok_or_else(|| format!("`{signature}` is not terminated by {closer:?}"))?;
+    Ok(format!("{signature}{body}{closer}")
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.starts_with("//"))
+        .flat_map(str::split_whitespace)
+        .collect::<Vec<_>>()
+        .join(" "))
+}
+
 #[test]
 fn cli_has_no_real_data_override() -> TestResult {
     // 1. No source in the CLI or in the operational surface it composes may
     //    contain a switch that admits real data.
+    //
+    //    A forbidden-token list is the shape the `P2-K6` audit put five key
+    //    substitutions past, and it is the shape this test had: ten spellings
+    //    somebody guessed in advance. So the list stays — it is still the
+    //    cheapest way to refuse the obvious edit — and under it the four places
+    //    that decide whether real input is admitted are pinned as whole text,
+    //    with an allowance table that refuses a fifth.
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let mut scanned = 0_usize;
+    let mut product = String::new();
     for directory in [manifest.join("src"), manifest.join("../core/src")] {
         for file in rust_sources(&directory)? {
-            let contents = product_source(&fs::read_to_string(&file)?);
+            let contents = product_source(&file, &fs::read_to_string(&file)?)?;
             scanned += 1;
             for forbidden in [
                 "allow-real-data",
@@ -963,11 +1096,51 @@ fn cli_has_no_real_data_override() -> TestResult {
                     file.display()
                 );
             }
+            product.push_str(&contents);
+            product.push('\n');
         }
     }
     assert!(
-        scanned >= 10,
+        scanned >= 18,
         "the source scan covered only {scanned} files"
+    );
+    for (token, allowance) in LANE_AUTHORITY_TOKENS {
+        let found = product.matches(token).count();
+        assert_eq!(
+            found, allowance,
+            "the scanned product source spells the lane-authority token {token} \
+             {found} times, not {allowance}"
+        );
+    }
+
+    // 1a. The four decisions, spelled out. Each one widens the lane through an
+    //     edit that names nothing a list can hold: a second allowlist entry, a
+    //     prefix match in either allowlist check, a posture source that reads a
+    //     marker file, a condition around the mandatory banner.
+    assert_eq!(
+        whole(&product, "pub fn posture_for_profile", "\n}")?,
+        WHOLE_POSTURE_SOURCE,
+        "the CLI takes its posture from something other than the profile it was given"
+    );
+    assert_eq!(
+        whole(&product, "pub const ALLOWLISTED_FIXTURE_IDS", ";")?,
+        WHOLE_FIXTURE_ALLOWLIST,
+        "the compile-time fixture allowlist holds something other than the one fixture"
+    );
+    assert_eq!(
+        whole(&product, "pub fn is_allowlisted", "\n}")?,
+        WHOLE_ALLOWLIST_PREDICATE,
+        "the allowlist predicate admits an identifier the allowlist does not hold"
+    );
+    assert_eq!(
+        whole(&product, "match &validated.command {", "\n        }")?,
+        WHOLE_DAEMON_FIXTURE_GATE,
+        "the daemon accepts a batch the caller-side allowlist would refuse"
+    );
+    assert_eq!(
+        whole(&product, "fn main() -> ExitCode {", "\n}")?,
+        WHOLE_DISPATCH_SPINE,
+        "the dispatch spine binds a different posture or writes the banner conditionally"
     );
 
     // 2. No environment variable moves the posture. The battery covers the
@@ -1052,16 +1225,35 @@ fn cli_has_no_real_data_override() -> TestResult {
     Ok(())
 }
 
-/// Returns the source ahead of any `#[cfg(test)]` module.
+/// Returns one file's product half: everything above its test module.
 ///
 /// A test module has to spell the forbidden options in order to assert that
 /// they are rejected, so scanning it would flag exactly the code proving the
 /// property holds. Only shipped code is scanned.
-fn product_source(contents: &str) -> String {
-    match contents.find("#[cfg(test)]") {
-        Some(offset) => contents[..offset].to_owned(),
-        None => contents.to_owned(),
+///
+/// The split is on the test module and not on the first `#[cfg(test)]` of any
+/// kind, which is what it used to be. `policy_banner.rs` carries a `#[cfg(test)]`
+/// helper above its test module, so that split ended the file's product half at
+/// byte 210 of 1253 and left `posture_for_profile` — the one place the CLI turns
+/// a profile into a posture — entirely unread by the test that claims to scan it.
+///
+/// Splitting on the test module instead moves the blind spot to what sits below
+/// it, so anything declared at file scope down there is product code this half
+/// would hide, and the file is refused rather than returned.
+fn product_source(path: &Path, contents: &str) -> TestResult<String> {
+    let Some((product, below)) = contents.split_once("#[cfg(test)]\nmod tests") else {
+        return Ok(contents.to_owned());
+    };
+    for line in below.lines() {
+        assert!(
+            !FILE_SCOPE_ITEM_STARTS
+                .iter()
+                .any(|start| line.starts_with(start)),
+            "{} declares {line} at file scope below its test module",
+            path.display()
+        );
     }
+    Ok(product.to_owned())
 }
 
 fn rust_sources(directory: &Path) -> TestResult<Vec<PathBuf>> {
