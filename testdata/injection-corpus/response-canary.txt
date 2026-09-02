@@ -1,0 +1,9 @@
+# Synthetic high-entropy sentinels for the P2-G5 PJ04 lane.
+# Never use personal or production data here. Each value is the lowercase
+# SHA-256 of the domain separator academic-g5-response-canary/1, one NUL
+# byte, and the name, so the file is reproducible and holds nothing real.
+G5-CANARY-RESPONSE-VAULT-KEY-e47d5e3bc224310cdabbd443828b20a2552036e9a5a53a96763bee3aa074c55d
+G5-CANARY-RESPONSE-PROFILE-SEED-9f474aae84b06cc880444c74363b3e3047cea101622b2c49db45dbfbf9154ed1
+G5-CANARY-RESPONSE-DEVICE-WRAP-09f251e1f6e0ab4a8354da62216202fa70f27fa8bc430a89780f3b831ae753e1
+G5-CANARY-RESPONSE-BACKUP-KEY-7a16a3b9d9556efec8481bcc900ca1fccc4aab6f086caeefe801d4c4b6183359
+G5-CANARY-RESPONSE-SESSION-SECRET-b2725325ab0273e81ab712b4e24786c3ee015f775ebc4fcc9ac004edafbc6219

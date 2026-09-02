@@ -187,6 +187,24 @@ receipted in
 [dependency-admission-phase2-g4.json](docs/security/dependency-admission-phase2-g4.json).
 `product_network` stays `NONE` and nothing here moves ADR-002.
 
+`P2-G5` adds `academic-untrusted-content`, the boundary between bytes that came
+from outside and anything this system acts on. Every ingested byte — syllabus,
+README, issue, code comment, review text, provider response — is wrapped in
+`Untrusted<T>` at parse time, and the wrapper implements no `Deref`, no
+`Into<String>`, and no `Display`, so the label is propagated by the compiler
+rather than by a convention. A rendered prompt's instruction channels take
+`&'static str`; its data channel escapes what it quotes into one line of ASCII,
+so a payload cannot open a line, close the field it sits in, or spell a
+bidirectional override. A model output becomes a proposal only after schema
+validation and provenance resolution, and either refusal is a quarantine state
+with no conversion back. The 54-record synthetic injection corpus is in
+`testdata/injection-corpus/`, and the provider-response scan is `P2-G2`'s,
+reused by taking its `AcceptedResponse` as an argument rather than
+reimplemented. What the boundary does and does not claim — including that its
+link to `P2-G4`'s acceptance boundary is by composition and not by type — is in
+[the untrusted-content contract](docs/contracts/untrusted-content.md). It runs
+inside `cargo test --workspace` and adds no package to `Cargo.lock`.
+
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical
 object reference and where a deletion reaches a backup are in the encrypted

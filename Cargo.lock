@@ -351,6 +351,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-untrusted-content"
+version = "0.1.0"
+dependencies = [
+ "academic-egress-boundary",
+ "academic-policy",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "academic-vault"
 version = "0.1.0"
 dependencies = [

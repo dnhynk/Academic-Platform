@@ -109,6 +109,7 @@ remove.
 | `deny_reason_codes_are_exhaustive` — `crates/egress-boundary/tests/egress_boundary.rs` | none — one fixed path, `crates/policy/src/schema.sql` | a compiler-checked witness `match` over `ReasonCode` (a new variant stops the suite compiling), an index set over the enumerated list, a transcription of the execution plan's section 3.5 sentence, and the quoted codes in the `egress_audit` `CHECK` | n/a — the enum is read through the type system, not a walk |
 | `the_tombstone_row_calls_the_product_restore_and_lives_only_here` — `crates/portability/tests/encrypted_rotation.rs` | none — two fixed *test* source paths | substring: the acceptance row is in this file, calls the product restore, and has no second definition in `academic-retention` | none |
 | `unsafe_is_confined_to_the_sandbox_backends`, `probe_targets_are_not_in_any_default_build`, `the_probe_enters_the_sandbox_before_it_reads_a_job` — `crates/worker/tests/capability.rs` | recursive, this crate's `src`, `probes` and `tests` | the set of files holding an `unsafe` item compared whole against a two-entry list; the manifest's `[[bin]]` inventory read for `required-features` and a `path` under `probes/`; a whole-text pin on the probe's `run` function plus a call-site count of one on `sandbox::enter` and an ordering check against the job read | `scanned >= 8` |
+| `the_walk_reads_every_module_in_this_crate`, `untrusted_has_no_unwrapping_trait_impl`, `every_exposure_site_is_named_and_justified`, `the_instruction_channel_takes_only_static_text`, `the_adjudicator_receives_no_capability`, `only_reviewed_files_hold_an_unlabelled_provider_response` — `crates/untrusted-content/tests/trust_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests` and `benches`) and all source; plus a second recursive walk over every `.rs` under every package in `crates/` for the `AcceptedResponse` inventory | the whole set of `impl` blocks whose header names `Untrusted<` compared against a two-entry list; the whole inventory of `.expose()` call sites with a written reason for each; nine whole-text pins (below); occurrence counts on the two directive constructions, the one `quote` caller, the one `adjudicate` caller and `leak`; the manifest read for `academic-policy` as a dev edge and `academic-worker` as no edge, and four broker type names forbidden in product source; the whole set of files naming `AcceptedResponse` | `>= 8` files, a rule that no product source sits outside `src`, and a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the crate must be a file the walk read |
 | `tools/verify-contracts.mjs` | recursive, `crates/contracts/src`; the two generated modules through `tools/{engine,predicate}-registry.mjs` | digest pins and byte-for-byte re-render; refuses any tree entry that is not a `.rs` file | n/a — an unreviewed entry fails |
 | `tools/engine-registry.mjs`, `tools/predicate-registry.mjs` | none — one fixed generated path each, named as `GENERATED_PATH` | not a scan: they render the generated module from `schemas/registry/`, and are the halves `verify-contracts.mjs` re-renders and compares against the committed file | n/a |
 | `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
@@ -134,6 +135,11 @@ a silent edit is the whole risk.
 | `staged_runtime_call`, `write_authorized_bytes`, `Preview::bytes`, `StagedPayload::preview` | `WHOLE_RUNTIME_CALL`, `WHOLE_EMIT`, `WHOLE_PREVIEW_BYTES`, `WHOLE_STAGED_PREVIEW` | a change to where the transmitted bytes come from — these four are the whole path from the preview's buffer to the transport |
 | `stage`, `deny_on_findings` | `WHOLE_STAGE`, `WHOLE_DENY_ON_FINDINGS` | a change to the staging pipeline's step order, the reason code a step denies with, or any default it takes; the fallback inventory counts sites and cannot see a default that changed direction |
 | `cloud_egress_default` | `WHOLE_CLOUD_DEFAULT` | the user closing `GATE-38-028`; it takes no argument, so no quality heuristic can reach it |
+| `impl<T> Untrusted<T>` | `WHOLE_UNTRUSTED` | a change to what the trust wrapper hands back — the whole-set `impl` rule refuses a new trait, and this refuses a new inherent method |
+| `impl SystemDirective`, `impl ToolDirective` | `WHOLE_SYSTEM_DIRECTIVE`, `WHOLE_TOOL_DIRECTIVE` | a change to what the instruction channels accept |
+| `escape`, `impl PromptEnvelope` | `WHOLE_ESCAPE`, `WHOLE_ENVELOPE` | a change to how ingested bytes are quoted, which channel they land in, or what the untrusted span map records |
+| `resolve_span`, `adjudicate` | `WHOLE_RESOLVE_SPAN`, `WHOLE_ADJUDICATE` | a change to provenance resolution, to schema validation, or to what the adjudicator is handed — its parameter list is the claim that it holds no capability |
+| `envelope_for`, `admit` | `WHOLE_ENVELOPE_FOR`, `WHOLE_ADMIT` | the callers of the two pinned decisions, pinned for the `T141` reason: a pin on a decision says nothing about whether it runs |
 | `div_round_half_up` | `WHOLE_DIVISION` | a change to how a published average is rounded — not a change to the scale, which is an argument the versioned grading scheme supplies |
 
 Comment-only lines are dropped before a pin is compared, so a pin fixes code and
@@ -338,6 +344,72 @@ table with per-platform verdicts is in the task report. Six of them —
 guard held before this task, and `I7` through `I15` are not about spellings at
 all: they widen a manifest, reorder a function, drop a record write, or turn one
 kernel bound off.
+
+## What the `P2-G5` scans hold
+
+`P2-G5`'s claim is a shape of the source: the trust label is a type because the
+type implements nothing that would strip it, and the instruction channel is
+trusted because its constructor takes a compile-time constant. Neither has a
+run-time observation that would notice the day it stops being true.
+
+Two of the checks could have been token lists and are not. The trait rule
+compares the crate's **whole set** of `impl` blocks whose header names
+`Untrusted<` against a two-entry list, so an implementation of a trait nobody
+predicted fails as an extra key; the orphan rule refuses the same implementation
+written in another crate, which is the half nothing here needs to check. The
+exposure rule compares the **whole inventory** of `.expose()` call sites, each
+with a written reason, rather than searching for a spelling.
+
+### The walk that stopped short, found in this task's own scan
+
+The first version of `trust_scans.rs` walked `crates/untrusted-content/src`.
+`G-I13` — a `#[path = "../extra/leak.rs"]` module with an exposure site in it —
+was refused by the module tripwire and **passed the exposure inventory**, which
+is `S-12`'s shape reproduced one round later inside the scan written to avoid it.
+The walk now reads every `.rs` anywhere under the package, split into product
+source and all source, and a rule requires this crate's product source to sit
+under `src` and nowhere else. The workspace-wide `AcceptedResponse` walk was
+widened the same way in the same commit: it named `src`, `tests` and `benches`,
+which is three directory names rather than a package.
+
+`S-12` itself is unchanged. It is about `os_keystore_capabilities_are_available_but_unused`
+and `tools/secret-debug-policy.test.mjs`, which still walk `<crate>/src`, and
+closing it means one reviewed allowance line per file outside `src` in eight
+crates. `academic-untrusted-content` adds no such file, so it does not widen
+that row.
+
+### The injection matrix
+
+Fifteen injections, applied one at a time, each reverted with its file's SHA-256
+checked back to its recorded value, on Windows native and WSL2 Linux. Every one
+was refused on both, and the refusing test is the same on both except where the
+table says otherwise. `G-I1` is the only one that spells a name any list in this
+file holds; every other one is refused by a whole-set comparison, a whole-text
+pin, a type, or a behavioural assertion.
+
+| # | Injection | Refused by |
+|---|---|---|
+| G-I1 | `impl Deref for Untrusted<IngestedDocument>` in a new module | the whole `impl` set, and the exposure inventory |
+| G-I2 | a **local** trait `Reveal` handing the text back, spelling none of the nine listed trait names | the whole `impl` set, and the exposure inventory |
+| G-I3a | `SystemDirective::new` becomes non-`const` and leaks a `String` | the compiler: `E0015`, a non-`const` call in the four `const` initialisers |
+| G-I3b | a second constructor `from_owned` beside it, which compiles | `WHOLE_SYSTEM_DIRECTIVE` |
+| G-I4 | the call to `adjudicate` wrapped in a marker-file condition — `T141`'s shape | `WHOLE_ADMIT` |
+| G-I5 | the escaper stops escaping the line terminator | `WHOLE_ESCAPE`, and `taint_flow_test_keeps_untrusted_spans_in_data_channel` |
+| G-I6 | `quote` stores the raw text instead of the escaped text | `WHOLE_ENVELOPE`, and the same taint test |
+| G-I7 | `expose` becomes `pub` | `WHOLE_UNTRUSTED`, and the crate-private assertion |
+| G-I8 | a fourth exposure site in an existing file | the exposure inventory |
+| G-I9 | `academic-policy` moves to `[dependencies]` | the manifest half of `the_adjudicator_receives_no_capability`, and `workspace_dependency_direction_is_acyclic` |
+| G-I10 | a new `src` file handing out `AcceptedResponse::bytes` unlabelled | `only_reviewed_files_hold_an_unlabelled_provider_response` |
+| G-I11 | eight corpus records removed | the corpus floor, which fails all five acceptance rows |
+| G-I12 | `academic-indexer` gains an edge to this crate with no receipt row | `workspace_dependency_direction_is_acyclic`, `six_process_entrypoints_are_exact_and_distinct`, `indexer_cannot_open_a_socket` on Windows; on Linux `cargo metadata --locked --offline` refuses first, because the new edge changes `Cargo.lock` and nothing had regenerated it there |
+| G-I13 | product code outside `src`, reached by `#[path]` | the `#[path]` tripwire, the product-source-under-`src` rule, and — only after the walk was widened — the exposure inventory |
+| G-I14 | the schema stops refusing an unknown key | `model_output_failing_schema_is_quarantined`, whose eleven cases are each required to be produced |
+
+`G-I3a` is recorded as refused by the compiler rather than by the pin because
+that is what it is: `BOUNDARY_SYSTEM_DIRECTIVES` is a `const` array, so a
+non-`const` constructor cannot be reached at all, and the pin never runs.
+`G-I3b` is the edit of the same shape that does compile, and the pin is what
+refuses it.
 
 ## Open
 

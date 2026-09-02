@@ -312,6 +312,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // is listed here and `transcript_encrypted_lane_is_not_default` proves it
     // stays unresolved in a default build.
     "academic-transcript": ["academic-admission", "academic-domain", "academic-vault"],
+    // `P2-G5`'s untrusted-content boundary. Its one product edge is the egress
+    // boundary, and that is the whole reuse claim: `ingest_provider_response`
+    // takes the `AcceptedResponse` that `P2-G2`'s provider-response scan is the
+    // only producer of, so a response this crate is handed has been scanned.
+    // `academic-policy` is deliberately a dev edge below rather than here, so a
+    // product file cannot name `PermissionBroker`, `CapabilityToken`,
+    // `RuntimeToolCall`, or `ProcessCapabilityToken` at all.
+    "academic-untrusted-content": ["academic-egress-boundary"],
     // `academic-crypto` is an optional edge behind `aead-objects`, the same
     // shape the store's encrypted lane uses: `cargo metadata` reports declared
     // dependencies rather than resolved ones, and
@@ -363,6 +371,12 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // by its caller.
     "academic-transcript": ["academic-crypto"],
     "academic-scenario": ["academic-admission", "academic-domain"],
+    // `P2-G5` needs a real `PermissionBroker` to build an `EgressProxy` and a
+    // real `ProcessCapability` to enumerate what a privileged action is. Both
+    // are test-only: keeping `academic-policy` off the product edge above is
+    // what makes "the adjudicator receives no capability" a compile error
+    // rather than a source scan.
+    "academic-untrusted-content": ["academic-policy"],
   });
 
   assert.deepEqual(
@@ -1389,6 +1403,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   // default lane links no sandbox. The source half above is what says the
   // crate names those syscalls to refuse a socket rather than to open one.
   "academic-worker": ["libc"],
+  // `P2-G5`. `libc` reaches it through `academic-egress-boundary`, which
+  // reaches it through `academic-policy`'s bundled SQLite. The crate spells no
+  // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
+  // rather than empty.
+  "academic-untrusted-content": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -2857,6 +2876,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     egressReceiptText,
     recordReceiptText,
     sandboxReceiptText,
+    untrustedReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -2871,6 +2891,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-g2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u4.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g4.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-g5.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -2885,6 +2906,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const egressReceipt = JSON.parse(egressReceiptText);
   const recordReceipt = JSON.parse(recordReceiptText);
   const sandboxReceipt = JSON.parse(sandboxReceiptText);
+  const untrustedReceipt = JSON.parse(untrustedReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -3261,6 +3283,58 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-G4 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-G5` adds the untrusted-content boundary as `academic-untrusted-content`
+  // and admits no external crate: its product edges are `academic-egress-boundary`,
+  // `sha2` and `thiserror`, and its dev edge is `academic-policy`, all four
+  // already in this lock through earlier receipts.
+  assert.equal(untrustedReceipt.task, "P2-G5");
+  const untrustedAdmitted = new Set(
+    untrustedReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const untrustedPathPackages = new Set(
+    untrustedReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(untrustedAdmitted.size, 0, "P2-G5 must admit no external crate");
+  assert.deepEqual([...untrustedPathPackages], ["academic-untrusted-content@0.1.0"]);
+  assert.deepEqual(untrustedReceipt.summary.npm_additions, []);
+  assert.equal(untrustedReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(untrustedReceipt.direct_workspace_dependencies, {});
+  for (const claimed of [...untrustedAdmitted, ...untrustedPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        sandboxAdmitted.has(claimed) ||
+        sandboxPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const untrustedTuples = lockTuples.filter(
+    ([name, version]) =>
+      untrustedAdmitted.has(`${name}@${version}`) ||
+      untrustedPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    untrustedTuples.length,
+    untrustedAdmitted.size + untrustedPathPackages.size,
+    "a P2-G5 admitted package is missing from Cargo.lock",
+  );
+
   const egressTuples = lockTuples.filter(
     ([name, version]) =>
       egressAdmitted.has(`${name}@${version}`) ||
@@ -3359,7 +3433,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !recordAdmitted.has(`${name}@${version}`) &&
       !recordPathPackages.has(`${name}@${version}`) &&
       !sandboxAdmitted.has(`${name}@${version}`) &&
-      !sandboxPathPackages.has(`${name}@${version}`),
+      !sandboxPathPackages.has(`${name}@${version}`) &&
+      !untrustedAdmitted.has(`${name}@${version}`) &&
+      !untrustedPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -3381,7 +3457,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       transcriptTuples.length +
       egressTuples.length +
       recordTuples.length +
-      sandboxTuples.length,
+      sandboxTuples.length +
+      untrustedTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

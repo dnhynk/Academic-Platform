@@ -1,0 +1,30 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-b",
+  "task": "P2-G5",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-G5 admits no external crate. academic-untrusted-content links academic-egress-boundary, sha2 and thiserror as product edges and academic-policy as a dev edge, all four covered by earlier reviewed receipts, and adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-untrusted-content is the P2-G5 untrusted-content boundary. It is a separate package from P2-G2's academic-egress-boundary because it is a consumer of that crate's provider-response scan rather than part of it, and because keeping academic-policy off its product edge is what makes the adjudicator's lack of a capability a compile error rather than a source scan.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-untrusted-content",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-untrusted-content",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-untrusted-content is a workspace path crate, not an external dependency. It owns the Untrusted<T> label, parse-time tagging of every ingested byte, the three-channel prompt envelope whose instruction channels take &'static str, and the schema-plus-provenance adjudication that is the only producer of a Proposal. Its product edge to academic-egress-boundary is the reuse of P2-G2's provider-response canary and rulepack scan: ingest_provider_response takes an AcceptedResponse, which that scan is the only producer of.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. Its link closure holds nothing that can open a socket beyond libc, which reaches it through academic-egress-boundary and academic-policy's bundled SQLite. It calls no provider: every corpus in its test tree is synthetic and committed under testdata/injection-corpus/. only_egress_crate_has_a_socket in tools/phase1-scaffold-policy.test.mjs pins its socket allowance at absent.",
+  "advisory_path": "Unchanged. Every external crate academic-untrusted-content links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}
