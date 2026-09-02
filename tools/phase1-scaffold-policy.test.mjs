@@ -860,12 +860,22 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
   // capability is admitted for. `academic-test-support` is excluded on the
   // existing convention that it is test-only and ships in no product build,
   // the same exclusion the network scan already makes.
+  //
+  // The walk root is the package directory, not `<crate>/src`. `T146` measured
+  // the difference: `std::process::Command` in
+  // `crates/record/examples/emit_harness.rs` -- no feature gate, compiled by
+  // `cargo clippy --workspace --all-targets`, run by the documented
+  // `pnpm harness:emit` script -- passed this scan, and
+  // `crates/worker/probes/worker_probe.rs` had been spawning a subprocess
+  // unseen since `P2-G4`. Widening it brings the eight files outside `src` that
+  // already spell `process::Command` into the allowlist below, each with the
+  // reason it is allowed, which is the review those eight had never had.
   const scanned = workspacePackages
     .filter(
       (pkg) =>
         pkg.name !== "academic-test-support" && pkg.name !== "academic-keystore-platform",
     )
-    .map((pkg) => [pkg.name, join(dirname(pkg.manifest_path), "src")]);
+    .map((pkg) => [pkg.name, dirname(pkg.manifest_path)]);
   assert.ok(scanned.length >= 10, "the capability scan covers too few crates to be meaningful");
 
   // Matches `tokio::fs`, `tokio::process`, and the grouped `use tokio::{fs, ..}`
@@ -894,6 +904,61 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
         "feature, the child it starts is the process the sandbox contains, and " +
         "the child itself is refused `clone`, `fork`, `vfork` and `execve` by " +
         "the seccomp filter this file installs.",
+    ],
+    // The eight below are the files outside `src` that the `<crate>/src` walk
+    // never read. Seven are test targets, which ship in no product build; one
+    // is the sandbox probe, which is a `[[bin]]` with `required-features` and
+    // is reached by no crate. None of them is new -- what is new is that each
+    // now carries the reason it is allowed instead of being invisible.
+    [
+      join("crates", "worker", "probes", "worker_probe.rs"),
+      "test-only, and the process P2-G4's sandbox contains: proving the " +
+        "sandbox refuses process creation means asking for it. It is a " +
+        "`[[bin]]` with `required-features = [\"native-sandbox\"]` and a `path` " +
+        "outside `src`, and no workspace crate depends on `academic-worker`, " +
+        "both of which `only_egress_crate_has_a_socket` reads from " +
+        "`cargo metadata` rather than taking on trust.",
+    ],
+    [
+      join("crates", "worker", "tests", "containment.rs"),
+      "test-only: the P2-G4 acceptance suite launches the probe binary above, " +
+        "once outside the sandbox as its baseline and once inside it as the " +
+        "claim. Ships in no product build.",
+    ],
+    [
+      join("crates", "core", "tests", "projection_generation.rs"),
+      "test-only: re-runs this repository's own generator so a committed " +
+        "projection can be compared against a fresh one. Ships in no product " +
+        "build.",
+    ],
+    [
+      join("crates", "crypto", "tests", "key_faults.rs"),
+      "test-only, and behind the non-default `phase2-fault-injection` " +
+        "feature: spawns a child process to observe a fault that kills one. " +
+        "Ships in no product build.",
+    ],
+    [
+      join("crates", "daemon", "tests", "phase1_exit.rs"),
+      "test-only: builds the default-feature `academicd` binary in its own " +
+        "target directory so the link half of " +
+        "`phase1_exit_has_no_product_network` scans an image this repository " +
+        "produced. Behind the non-default `phase1-fault-injection` feature.",
+    ],
+    [
+      join("crates", "store", "tests", "acceptance.rs"),
+      "test-only: builds the store binary in a separate lane to read what the " +
+        "default feature set links. Ships in no product build.",
+    ],
+    [
+      join("crates", "store", "tests", "encrypted_profile.rs"),
+      "test-only: the same separate build, asserting that a default binary " +
+        "links no SQLCipher. Compiled only when `sqlcipher-store` is off. " +
+        "Ships in no product build.",
+    ],
+    [
+      join("crates", "store", "tests", "sqlcipher_spike.rs"),
+      "test-only: the native-toolchain spike lane, which builds and inspects " +
+        "its own binary. Ships in no product build.",
     ],
   ]);
   const commandUse = /\bprocess::Command\b/u;
@@ -1314,6 +1379,22 @@ const SANDBOX_PROBE = "crates/worker/probes/worker_probe.rs";
 /** The Linux backend, which names socket syscalls only to refuse them. */
 const SANDBOX_DENY_LIST = "crates/worker/src/sandbox/linux.rs";
 
+/**
+ * The syscalls the Linux backend *makes*, and why each one is not a refusal.
+ *
+ * Every other `SYS_` name in that file has to sit inside `denied_syscalls`.
+ * These four cannot: they are how the sandbox is installed. Landlock and
+ * seccomp have no libc wrapper on the glibc versions this repository builds
+ * against, so they are reached through `libc::syscall`, which is why that
+ * spelling is on the file's socket allowance at all.
+ */
+const CALLED_SYSCALLS = new Map([
+  ["SYS_landlock_create_ruleset", "creates the filesystem ruleset, and probes the ABI version"],
+  ["SYS_landlock_add_rule", "adds one path-beneath rule to that ruleset"],
+  ["SYS_landlock_restrict_self", "applies the ruleset to this process, irrevocably"],
+  ["SYS_seccomp", "installs the filter, and asks whether an action is available"],
+]);
+
 /** Path segments that lead to a socket; renaming one hides everything under it. */
 const SOCKET_MODULE_SEGMENTS = new Set(["net", "socket", "sys", "WinSock", "named_pipe"]);
 
@@ -1556,6 +1637,45 @@ test("only_egress_crate_has_a_socket", async () => {
       const whole = rustCodeOnly(source);
       for (const spelling of spellings) {
         if (spelling === "libc::syscall") {
+          // Every raw syscall this file makes has to name the syscall it makes.
+          //
+          // `libc::syscall(41, 2, 1, 0)` opens an AF_INET stream socket and
+          // spells nothing any pattern above can match. `S-11` in
+          // `docs/contracts/policy-source-scans.md` recorded that as open on the
+          // grounds that nothing in the repository had one and that P2-G4's
+          // sandbox would refuse it whatever spelled it. `T146` falsified both:
+          // it added exactly that call to this file, every scan passed, and
+          // `cargo clippy -p academic-worker --features native-sandbox
+          // -- -D warnings` compiled it -- because this file is now on the
+          // allowance for `libc::syscall`, and because it holds the parent-side
+          // `launch` as well as the child-side `enter`, so the parent runs
+          // outside the sandbox it installs.
+          //
+          // A first argument that is not a `libc::SYS_` name fails here. The
+          // split is on the first comma, so an expression is refused too, which
+          // is the safe direction: a call whose syscall number is computed is
+          // not one this rule can read.
+          const calls = [...whole.matchAll(/\blibc\s*::\s*syscall\s*\(/gu)];
+          assert.ok(
+            calls.length >= 3,
+            `${file} makes only ${calls.length} raw syscalls, so this rule read almost nothing`,
+          );
+          for (const call of calls) {
+            const first = whole
+              .slice(call.index + call[0].length)
+              .split(",")[0]
+              .trim();
+            assert.match(
+              first,
+              /^libc::SYS_[A-Za-z0-9_]+$/u,
+              `${file} calls libc::syscall with ${first} rather than a libc::SYS_ name`,
+            );
+            assert.equal(
+              CALLED_SYSCALLS.has(first.slice("libc::".length)),
+              true,
+              `${file} calls ${first}, which is not one of the reviewed syscalls it installs with`,
+            );
+          }
           continue;
         }
         // Counted, not merely present. A spelling that is inside the deny list
@@ -1568,6 +1688,34 @@ test("only_egress_crate_has_a_socket", async () => {
           inside,
           `${file} names ${spelling} ${anywhere - inside} time(s) outside its seccomp deny list`,
         );
+      }
+
+      // The other half, and the one the allowance-driven loop above cannot
+      // reach: *every* `SYS_` name in this file is either one of the four it
+      // installs the sandbox with, or it sits inside `denied_syscalls`.
+      //
+      // The loop above reads the ten socket names the allowance lists, so a
+      // non-socket one was free. `T146` put `libc::SYS_memfd_create` outside
+      // `denied_syscalls` and every scan passed. This is what the contract
+      // pages claimed and the code did not do.
+      const named = new Set(whole.match(/\bSYS_[A-Za-z0-9_]+\b/gu) ?? []);
+      assert.ok(named.size >= 20, `${file} names only ${named.size} syscalls`);
+      for (const name of named) {
+        if (CALLED_SYSCALLS.has(name)) {
+          continue;
+        }
+        const inside = denied[0].split(name).length - 1;
+        const anywhere = whole.split(name).length - 1;
+        assert.equal(
+          anywhere,
+          inside,
+          `${file} names ${name} ${anywhere - inside} time(s) outside its seccomp deny list, ` +
+            "and it is not one of the reviewed syscalls this file installs with",
+        );
+      }
+      // An entry nobody calls any more is a stale exception.
+      for (const name of CALLED_SYSCALLS.keys()) {
+        assert.equal(named.has(name), true, `${file} no longer calls ${name}`);
       }
       continue;
     }

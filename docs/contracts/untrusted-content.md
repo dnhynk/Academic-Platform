@@ -12,14 +12,26 @@ something a model wrote becomes a proposal.
 
 `Untrusted<T>` wraps a value at the moment it is parsed. It implements no
 `Deref`, `DerefMut`, `AsRef`, `AsMut`, `Borrow`, `Display`, `ToString`, `From`,
-or `Into`, and it has one accessor, `pub(crate) fn expose`, so outside this crate
-there is no function that returns the wrapped value.
+or `Into`, and it has one accessor, `pub(crate) fn expose`, which no caller
+outside this crate can name.
+
+That is a statement about what a caller can *call*. It is not, by itself, a
+statement about what a caller can *get*: this crate is free to call `expose` on
+a caller's behalf and hand back the result, and `T146` measured what one such
+function costs. With a single
+`pub fn(&Untrusted<IngestedDocument>) -> &str` added to `channel.rs`, an
+integration test outside the crate put an ingested payload verbatim into a
+`[SYSTEM]` segment -- unescaped, on its own line, recorded in no untrusted span.
+So the claim this page makes is the narrower one, and it is the one that is
+checked: **every function that takes the label off is inventoried below, and no
+public signature anywhere in the workspace takes an `Untrusted<…>` and returns
+the bytes.**
 
 A label kept as a field or a convention survives one refactor. This one is
-propagated by the compiler: a caller cannot spend an `Untrusted<IngestedDocument>`
-as a `&str` because no such conversion exists to call.
+propagated by the compiler for the traits, and by two source rules for the
+inherent surface.
 
-Three things hold that, and they hold different halves:
+Five things hold that, and they hold different halves:
 
 - **Three `compile_fail` doctests** in `crates/untrusted-content/src/label.rs`
   observe that `Deref`, `Into<String>`, and `Display` are absent today.
@@ -31,6 +43,18 @@ Three things hold that, and they hold different halves:
 - **The orphan rule** refuses the same implementation written in another crate:
   both the trait and the type would be foreign there. That is the one half
   nothing in this repository needs to check.
+- **`every_exposure_site_is_named_and_justified`** compares the whole inventory
+  of the accessor's call sites against the three named below. It counts the
+  accessor's *name*, with a non-identifier byte required on each side, not the
+  spelling `.expose()`: `Untrusted::expose(d)` is the same call written through
+  the type path and passed a count of that spelling.
+- **`no_public_signature_hands_out_ingested_text`** reads every `pub fn`
+  signature in every workspace package outside `tests` and `benches` and refuses
+  one whose parameters name `Untrusted<` and whose return type names `str`,
+  `String` or `u8`. Whole identifiers, so `&'static str` is caught along with
+  `&str`, and `Vec<u8>`, `Box<[u8]>` and `Cow<'_, [u8]>` along with `&[u8]`. The
+  same rule runs over this crate alone inside `trust_scans.rs`, where the
+  accessor is reachable.
 
 `Untrusted<T>`'s `Debug` is hand-written, prints provenance, digest and byte
 count, and is implemented for every `T` with no `T: Debug` bound — so there is no
@@ -40,8 +64,8 @@ instantiation whose payload a format string reaches.
 ### The three places the label is taken off, and why each is allowed
 
 `every_exposure_site_is_named_and_justified` compares the whole inventory of
-`.expose()` call sites against this list. A fourth fails as an extra key; a
-removed one fails as a missing key.
+the accessor's call sites against this list, counted by name. A fourth fails as
+an extra key however it is spelled; a removed one fails as a missing key.
 
 | Site | Why |
 |---|---|
@@ -109,7 +133,10 @@ analysis is right; the pin is what stops it changing quietly.
 output and nothing else — no broker, no capability token, no transport, no
 filesystem path, no ledger — and `the_adjudicator_receives_no_capability` pins
 its whole text, pins its one caller `admit`, and holds the call-site count at
-one.
+one. The count reads the identifier `adjudicate`, less its declaration and less
+`use` items so a re-export is not read as a call. It counted the argument
+spelling `adjudicate(index, output)` until `P2-RF10`, and `T146` walked past it
+with a second caller that renamed its two locals.
 
 Two checks, in order. **Schema**: the exact record below, no unknown key, no
 missing key, no trailing content; eleven `SchemaError` variants, each produced by

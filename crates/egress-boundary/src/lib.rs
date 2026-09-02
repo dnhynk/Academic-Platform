@@ -57,7 +57,7 @@ pub use transport::{
     TransmissionPlan, TransportError,
 };
 
-use academic_policy::{BrokerError, CapabilityToken, PermissionBroker, ReasonCode};
+use academic_policy::{BrokerError, CapabilityToken, GrantRow, PermissionBroker, ReasonCode};
 
 /// Where a decision sends the work.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -188,28 +188,49 @@ impl<'broker> EgressProxy<'broker> {
         stage::stage(&self.rulepack, request)
     }
 
-    /// Transmits the staged bytes under a live capability.
+    /// Reads the grant this transmission will actually spend and binds it.
     ///
-    /// The grant is read first so its recorded rulepack digest can be compared
-    /// with the pack that produced the staged bytes: a grant reviewed under one
-    /// redaction policy may not carry a payload produced by another. The broker
-    /// then re-derives the payload digest at the capability boundary, so the
-    /// bytes written are the previewed bytes on two independent grounds.
+    /// Two bindings, and neither one is a property of the caller's arguments
+    /// alone, which is why both are read from the store before any byte is
+    /// built.
+    ///
+    /// The first is that the plan and the token name the same grant. They are
+    /// separate inputs: `execute` consumes the row the *token* names, while the
+    /// journal and the audit reconciliation record the row the *plan* names. A
+    /// plan naming another grant leaves the journal pointing at a row that was
+    /// never spent, and makes the rulepack comparison below read a row that is
+    /// not the one being consumed.
+    ///
+    /// The second is that the row's recorded rulepack digest is the digest of
+    /// the pack that produced these staged bytes: a grant reviewed under one
+    /// redaction policy may not carry a payload produced by another.
+    ///
+    /// Every path to a transport calls this first. `the_byte_path_has_one_derivation`
+    /// in `byte_path_pin.rs` pins this function as whole text and counts its
+    /// call sites, because a second path that skipped it would be a send with
+    /// an unchecked grant and no test would otherwise notice.
     ///
     /// # Errors
     ///
-    /// Returns [`EgressError::Denied`] when the grant, its rulepack binding, the
-    /// capability scope, or the transport refuses, and [`EgressError::Broker`]
-    /// when the broker's own store fails.
-    pub fn transmit<T: OutboundTransport>(
+    /// [`ReasonCode::ScopeMismatch`] when the plan names a grant other than the
+    /// token's or the rulepack digests differ, [`ReasonCode::NoGrant`] when the
+    /// row is absent, and [`EgressError::Broker`] when the store itself fails.
+    fn bind_grant(
         &self,
+        plan: &TransmissionPlan<'_>,
         capability: &CapabilityToken,
         staged: &StagedPayload,
-        plan: &TransmissionPlan<'_>,
-        journal: &mut StagedGrantJournal,
-        transport: &mut T,
-        now: &dyn Fn() -> u64,
-    ) -> Result<Transmission, EgressError> {
+    ) -> Result<GrantRow, EgressError> {
+        if plan.grant_id != capability.grant_id() {
+            return Err(EgressError::Denied(EgressDenial::new(
+                ReasonCode::ScopeMismatch,
+                format!(
+                    "the plan names grant {} but the capability consumes {}",
+                    plan.grant_id,
+                    capability.grant_id()
+                ),
+            )));
+        }
         let grant = self
             .broker
             .grant_row(plan.grant_id)
@@ -230,11 +251,37 @@ impl<'broker> EgressProxy<'broker> {
                 ),
             )));
         }
+        Ok(grant)
+    }
+
+    /// Transmits the staged bytes under a live capability.
+    ///
+    /// [`EgressProxy::bind_grant`] runs first, so the grant row exists, is the
+    /// row the token will consume, and records the rulepack that produced these
+    /// bytes. The broker then re-derives the payload digest at the capability
+    /// boundary, so the bytes written are the previewed bytes on two
+    /// independent grounds.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EgressError::Denied`] when the grant, its rulepack binding, the
+    /// capability scope, or the transport refuses, and [`EgressError::Broker`]
+    /// when the broker's own store fails.
+    pub fn transmit<T: OutboundTransport>(
+        &self,
+        capability: &CapabilityToken,
+        staged: &StagedPayload,
+        plan: &TransmissionPlan<'_>,
+        journal: &mut StagedGrantJournal,
+        transport: &mut T,
+        now: &dyn Fn() -> u64,
+    ) -> Result<Transmission, EgressError> {
+        let grant = self.bind_grant(plan, capability, staged)?;
 
         let digest = staged.preview().digest().as_str().to_owned();
         let started_at = now();
         journal.append(JournalEntry::SendIntent {
-            grant_id: plan.grant_id.to_owned(),
+            grant_id: grant.grant_id.clone(),
             staged_object_id: staged.staged_object_id().to_owned(),
             payload_digest: digest.clone(),
             byte_count: staged.preview().byte_len(),
@@ -258,7 +305,7 @@ impl<'broker> EgressProxy<'broker> {
         match written {
             Err(error) => {
                 journal.append(JournalEntry::SendOutcome {
-                    grant_id: plan.grant_id.to_owned(),
+                    grant_id: grant.grant_id.clone(),
                     bytes_sent: 0,
                     complete: false,
                     at: now(),
@@ -270,7 +317,7 @@ impl<'broker> EgressProxy<'broker> {
             }
             Ok(Err(transport_error)) => {
                 journal.append(JournalEntry::SendOutcome {
-                    grant_id: plan.grant_id.to_owned(),
+                    grant_id: grant.grant_id.clone(),
                     bytes_sent: transport_error.sent(),
                     complete: false,
                     at: now(),
@@ -281,7 +328,7 @@ impl<'broker> EgressProxy<'broker> {
             }
             Ok(Ok(sent)) => {
                 journal.append(JournalEntry::SendOutcome {
-                    grant_id: plan.grant_id.to_owned(),
+                    grant_id: grant.grant_id.clone(),
                     bytes_sent: sent,
                     complete: sent == staged.preview().byte_len(),
                     at: now(),
@@ -295,8 +342,12 @@ impl<'broker> EgressProxy<'broker> {
     ///
     /// This is fault `EG05`: the process is killed after the provider send and
     /// before the audit write. It exists so the recovery path can be tested
-    /// without a real kill, and it is the only difference from
-    /// [`EgressProxy::transmit`].
+    /// without a real kill. Every refusal [`EgressProxy::transmit`] makes before
+    /// the transport is reached, this one makes too --
+    /// [`EgressProxy::bind_grant`] is the first statement of both, and
+    /// `the_byte_path_has_one_derivation` counts its call sites so that stays
+    /// true. What is missing here is the completion half of the journal, and
+    /// only that.
     ///
     /// # Errors
     ///
@@ -310,9 +361,10 @@ impl<'broker> EgressProxy<'broker> {
         transport: &mut T,
         now: &dyn Fn() -> u64,
     ) -> Result<Transmission, EgressError> {
+        let grant = self.bind_grant(plan, capability, staged)?;
         let started_at = now();
         journal.append(JournalEntry::SendIntent {
-            grant_id: plan.grant_id.to_owned(),
+            grant_id: grant.grant_id.clone(),
             staged_object_id: staged.staged_object_id().to_owned(),
             payload_digest: staged.preview().digest().as_str().to_owned(),
             byte_count: staged.preview().byte_len(),

@@ -511,8 +511,13 @@ fn the_probe_enters_the_sandbox_before_it_reads_a_job() -> TestResult {
     let probe = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("probes/worker_probe.rs");
     let source = std::fs::read_to_string(&probe)?;
     let code = code_only(&source);
+    // The identifier, not the path spelling. `sandbox::enter` is one way to
+    // write this call; `use crate::sandbox::enter; enter(..)` is another, and a
+    // count of the first sees neither a second call written the second way nor a
+    // first call moved to it. `T146` reached a guarded function by that exact
+    // substitution in `academic-untrusted-content`.
     assert_eq!(
-        code.matches("sandbox::enter").count(),
+        names_identifier(&code, "enter"),
         1,
         "the probe has more than one sandbox entry point"
     );
@@ -552,6 +557,23 @@ let _ = writeln!(report, \"\", operation.to_line()); flush(&report_dir, report);
 /// A substring test is not enough: `with_unsafe = ` contains `unsafe ` and this
 /// scan reported itself because of it. The preceding byte has to be something
 /// that cannot continue an identifier.
+/// Counts whole-identifier occurrences of `name` in already-stripped code.
+///
+/// The same boundary test as [`names_unsafe`], counting instead of answering
+/// yes or no, so a call-site count reads the function's name rather than one
+/// spelling of the path it is reached through.
+fn names_identifier(code: &str, name: &str) -> usize {
+    let bytes = code.as_bytes();
+    code.match_indices(name)
+        .filter(|(at, _)| {
+            let before_ok =
+                *at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_');
+            let after = bytes.get(at + name.len()).copied().unwrap_or(b' ');
+            before_ok && !(after.is_ascii_alphanumeric() || after == b'_')
+        })
+        .count()
+}
+
 fn names_unsafe(code: &str) -> bool {
     let bytes = code.as_bytes();
     code.match_indices("unsafe").any(|(at, _)| {

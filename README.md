@@ -153,7 +153,10 @@ process at the edge of the section 3.6 topology. It ships the versioned DLP
 rulepack whose identity every grant records as its `redaction_policy_hash`,
 structural minimization of a whole-file request to the declarations it named, a
 byte-accurate preview that is the same buffer the transport writes, and one
-outbound transport trait. It is a separate package from `P2-G7`'s
+outbound transport trait. Two functions reach that trait, and both bind the
+grant first: the plan has to name the grant the capability will consume, and
+that grant's recorded rulepack has to be the pack that produced the staged
+bytes. The two call sites are counted, so a third path cannot skip it. It is a separate package from `P2-G7`'s
 `academic-egress` process entry point because that task pins the whole manifest
 and the whole product source of the process package as one fixed process-class
 binding, and a library target inside it would have made that pin weaker rather
@@ -197,8 +200,12 @@ receipted in
 from outside and anything this system acts on. Every ingested byte — syllabus,
 README, issue, code comment, review text, provider response — is wrapped in
 `Untrusted<T>` at parse time, and the wrapper implements no `Deref`, no
-`Into<String>`, and no `Display`, so the label is propagated by the compiler
-rather than by a convention. A rendered prompt's instruction channels take
+`Into<String>`, and no `Display`, so no conversion off the label exists for a
+caller to call. What the compiler cannot refuse is a function inside the crate
+calling the crate-private accessor on a caller's behalf, so two source rules
+carry that half: the whole inventory of the accessor's call sites, counted by
+name, and a rule that no public signature in the workspace takes an
+`Untrusted<…>` and returns the bytes. A rendered prompt's instruction channels take
 `&'static str`; its data channel escapes what it quotes into one line of ASCII,
 so a payload cannot open a line, close the field it sits in, or spell a
 bidirectional override. A model output becomes a proposal only after schema

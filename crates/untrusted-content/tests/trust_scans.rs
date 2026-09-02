@@ -30,9 +30,12 @@
 //! accompanied by [`WHOLE_ADMIT`] and an occurrence count, and
 //! [`WHOLE_ENVELOPE`] by [`WHOLE_ENVELOPE_FOR`] and another.
 //!
-//! **The allowance counts a type path, not a spelling.** The `Untrusted` and
+//! **Every inventory counts a name, not a spelling.** The `Untrusted` and
 //! `AcceptedResponse` inventories count the type name, which a value of that
-//! type cannot be built or held without naming.
+//! type cannot be built or held without naming. The exposure inventory counts
+//! the accessor's name for the same reason: `T146` reached a fourth site by
+//! writing `Untrusted::expose(d)` instead of `d.expose()`, which is the same
+//! call and passed a count of the second spelling.
 
 use std::{
     collections::BTreeSet,
@@ -217,6 +220,133 @@ fn declared_item(source: &str, signature: &str) -> Result<String, Box<dyn Error>
 /// How many times `needle` appears in `code`.
 fn occurrences(code: &str, needle: &str) -> usize {
     code.split(needle).count().saturating_sub(1)
+}
+
+/// Counts whole-identifier occurrences of `name` in already-stripped code.
+///
+/// `occurrences` above counts a spelling, which is right for a fixed phrase and
+/// wrong for a function. `T146` wrote a fourth exposure site as
+/// `Untrusted::expose(document)` -- UFCS through the type path, the same call,
+/// containing no `.expose()` -- and the inventory that counted the spelling saw
+/// nothing, while the whole workspace suite, every JS scan, and
+/// `clippy -D warnings` all passed. Writing the identical function with the
+/// receiver spelling failed immediately, so what separated pass from fail was
+/// the spelling and not the behaviour.
+///
+/// A name has no such freedom: the call has to spell it, whether it is written
+/// as a method, through the type path, or taken as a function value. The
+/// boundary test is the one `names_unsafe` in `crates/worker/tests/capability.rs`
+/// and `crates/record/tests/record_scans.rs` already use.
+fn uses_of(code: &str, name: &str) -> usize {
+    let bytes = code.as_bytes();
+    code.match_indices(name)
+        .filter(|(at, _)| {
+            let before_ok =
+                *at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_');
+            let after = bytes.get(at + name.len()).copied().unwrap_or(b' ');
+            before_ok && !(after.is_ascii_alphanumeric() || after == b'_')
+        })
+        .count()
+}
+
+/// Drops every `use` item, so a re-export is not counted as a caller.
+///
+/// A re-export names a function and calls nothing. It cannot be dropped by a
+/// line filter alone: rustfmt wraps a long list over several lines and the name
+/// lands on whichever one it fits.
+fn without_use_items(code: &str) -> String {
+    let mut kept = String::with_capacity(code.len());
+    let mut inside = false;
+    for line in code.lines() {
+        let trimmed = line.trim_start();
+        let opens = trimmed.starts_with("use ")
+            || (trimmed.starts_with("pub") && trimmed.contains(" use "));
+        if inside || opens {
+            inside = !line.trim_end().ends_with(';');
+            continue;
+        }
+        kept.push_str(line);
+        kept.push('\n');
+    }
+    kept
+}
+
+/// Every `pub` function signature in `code`, from `pub` to the `{` or `;` that
+/// ends it, whitespace-collapsed.
+///
+/// The lines are joined because a signature long enough to matter is the one
+/// rustfmt wraps. The shape is `public_surface` in
+/// `crates/keystore-platform/tests/facade.rs`, which reads that leaf's public
+/// surface for the same reason: what a caller outside the crate can reach is a
+/// property of the signatures, not of the bodies.
+fn public_signatures(code: &str) -> Vec<String> {
+    let lines: Vec<&str> = code.lines().collect();
+    let mut found = Vec::new();
+    for (index, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        if ![
+            "pub fn ",
+            "pub const fn ",
+            "pub async fn ",
+            "pub unsafe fn ",
+        ]
+        .iter()
+        .any(|start| trimmed.starts_with(start))
+        {
+            continue;
+        }
+        let mut signature = String::new();
+        for follow in lines.iter().skip(index) {
+            signature.push(' ');
+            signature.push_str(follow.trim());
+            if follow.contains('{') || follow.trim_end().ends_with(';') {
+                break;
+            }
+        }
+        found.push(signature.split_whitespace().collect::<Vec<_>>().join(" "));
+    }
+    found
+}
+
+/// Splits a signature into its parameter list and its return type.
+///
+/// The split is the `->` after the parameter list closes, not the first one in
+/// the text: a parameter that is itself a function type (`now: &dyn Fn() -> u64`)
+/// spells one inside the parentheses. A signature with no return type yields an
+/// empty second half.
+fn parameters_and_return(signature: &str) -> Option<(&str, &str)> {
+    let open = signature.find('(')?;
+    let mut depth = 0_usize;
+    // Sliced from `open` rather than skipping `open` items: `char_indices`
+    // yields byte offsets, and `skip` counts characters, so the two agree only
+    // while everything before the parenthesis is ASCII.
+    for (offset, character) in signature.get(open..)?.char_indices() {
+        let at = open.saturating_add(offset);
+        match character {
+            '(' => depth = depth.saturating_add(1),
+            ')' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    let (parameters, rest) = signature.split_at(at.saturating_add(1));
+                    let returns = rest.split_once("->").map_or("", |(_, tail)| tail);
+                    return Some((parameters, returns));
+                }
+            }
+            _ => (),
+        }
+    }
+    None
+}
+
+/// Whether a return type hands back the bytes rather than a label over them.
+///
+/// The names are matched as whole identifiers so a lifetime cannot hide one:
+/// `&'static str` does not contain the substring `&str`, and `u8` covers
+/// `&[u8]`, `Vec<u8>`, `Box<[u8]>`, and `Cow<'_, [u8]>` alike.
+fn returns_raw_text(returns: &str) -> Option<&'static str> {
+    ["str", "String", "u8"]
+        .into_iter()
+        .find(|name| uses_of(returns, name) > 0)
 }
 
 /// One file of this crate, as code with comments and literals removed.
@@ -451,7 +581,8 @@ fn every_exposure_site_is_named_and_justified() -> TestResult {
     let mut sites: Vec<(String, usize)> = Vec::new();
     let mut total = 0_usize;
     for path in crate_product_sources()? {
-        let count = occurrences(&code_of(&path)?, ".expose()");
+        let code = code_of(&path)?;
+        let count = uses_of(&code, "expose").saturating_sub(occurrences(&code, "fn expose"));
         if count > 0 {
             sites.push((relative(&path), count));
             total += count;
@@ -498,6 +629,37 @@ fn every_exposure_site_is_named_and_justified() -> TestResult {
         1,
         "there is more than one accessor"
     );
+
+    // Crate-private stops a caller from calling it. It does not stop this crate
+    // from calling it on a caller's behalf. `T146`'s fourth site was one `pub fn`
+    // taking an `&Untrusted<IngestedDocument>` and returning `&str`, and with it
+    // an outside caller put ingested bytes verbatim into a System segment --
+    // unescaped, on their own line, recorded in no untrusted span. The inventory
+    // above now counts it, and this refuses the shape whatever it is named.
+    let mut surface = 0_usize;
+    for path in crate_product_sources()? {
+        let code = code_of(&path)?;
+        for signature in public_signatures(&code) {
+            surface = surface.saturating_add(1);
+            let Some((parameters, returns)) = parameters_and_return(&signature) else {
+                continue;
+            };
+            if !parameters.contains("Untrusted<") {
+                continue;
+            }
+            assert_eq!(
+                returns_raw_text(returns),
+                None,
+                "{}: a public signature takes an Untrusted and returns the bytes inside it: \
+                 {signature}",
+                relative(&path)
+            );
+        }
+    }
+    assert!(
+        surface >= 60,
+        "the public-signature scan found only {surface} signatures, so it proved nothing"
+    );
     Ok(())
 }
 
@@ -542,7 +704,7 @@ fn the_instruction_channel_takes_only_static_text() -> TestResult {
         let code = code_of(&path)?;
         system_constructions += occurrences(&code, "SystemDirective(");
         tool_constructions += occurrences(&code, "ToolDirective(");
-        quote_calls += occurrences(&code, ".quote(");
+        quote_calls += uses_of(&code, "quote").saturating_sub(occurrences(&code, "fn quote"));
         leaks += occurrences(&code, "leak");
     }
     assert_eq!(
@@ -594,9 +756,16 @@ fn the_adjudicator_receives_no_capability() -> TestResult {
 
     // The pin fixes the text; this fixes that nothing else calls it, so a
     // second, unpinned entry point cannot appear beside `admit`.
+    //
+    // The name is counted, not the argument spelling. `T146` added a second
+    // caller written `adjudicate(idx, out)` and this count, which read
+    // `adjudicate(index, output)`, saw one caller; renaming the two locals back
+    // failed it at once. Declarations are subtracted so `pub fn adjudicate(`
+    // itself is not read as a call.
     let mut calls = 0_usize;
     for path in crate_product_sources()? {
-        calls += occurrences(&code_of(&path)?, "adjudicate(index, output)");
+        let code = without_use_items(&code_of(&path)?);
+        calls += uses_of(&code, "adjudicate").saturating_sub(occurrences(&code, "fn adjudicate"));
     }
     assert_eq!(
         calls, 1,

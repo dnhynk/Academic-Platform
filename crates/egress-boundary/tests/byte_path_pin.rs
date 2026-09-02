@@ -133,6 +133,31 @@ const WHOLE_STAGE: &str = concat!(
     "Ok(StagedPayload { staged_object_id, preview, }) }",
 );
 
+/// The grant binding both transmit paths run before they build a byte.
+///
+/// `T146` measured what a second public path costs when it does not:
+/// `transmit_without_completion` skipped the grant read and the rulepack
+/// comparison and wrote 180 bytes to a transport for a payload `transmit`
+/// refused with zero. Counting the call sites below is what keeps a third path
+/// from doing it again; pinning the body is what keeps the two comparisons
+/// inside it from being deleted, which `T146` also did -- the whole workspace
+/// suite passed with them gone.
+const WHOLE_BIND_GRANT: &str = concat!(
+    "fn bind_grant( &self, plan: &TransmissionPlan<'_>, capability: &CapabilityToken, ",
+    "staged: &StagedPayload, ) -> Result<GrantRow, EgressError> { ",
+    "if plan.grant_id != capability.grant_id() { ",
+    "return Err(EgressError::Denied(EgressDenial::new( ReasonCode::ScopeMismatch, format!( ",
+    "\"the plan names grant {} but the capability consumes {}\", plan.grant_id, ",
+    "capability.grant_id() ), ))); } let grant = self .broker .grant_row(plan.grant_id) ",
+    ".map_err(EgressError::Broker)? .ok_or_else(|| { EgressError::Denied(EgressDenial::new( ",
+    "ReasonCode::NoGrant, format!(\"no grant row for {}\", plan.grant_id), )) })?; ",
+    "let recorded = staged.preview().rulepack().redaction_policy_hash().as_str(); ",
+    "if grant.redaction_policy_hash != recorded { ",
+    "return Err(EgressError::Denied(EgressDenial::new( ReasonCode::ScopeMismatch, format!( ",
+    "\"grant records redaction policy {} but the payload was produced by {recorded}\", ",
+    "grant.redaction_policy_hash ), ))); } Ok(grant) }"
+);
+
 /// `GATE-38-028`'s default, whole. It takes no argument and reads nothing.
 const WHOLE_CLOUD_DEFAULT: &str =
     "pub const fn cloud_egress_default() -> Route { Route::LocalOnlyOrStop }";
@@ -179,6 +204,11 @@ fn the_byte_path_has_one_derivation() -> TestResult {
         WHOLE_CLOUD_DEFAULT,
         "GATE-38-028's default is decided by something other than the constant"
     );
+    assert_eq!(
+        whole(&lib, "fn bind_grant(", "\n    }")?,
+        WHOLE_BIND_GRANT,
+        "the grant binding every transmit path runs first lost a comparison"
+    );
 
     // One construction site for the staged bytes, one accessor, one writer.
     let stage_code = code_only(&stage);
@@ -202,13 +232,19 @@ fn the_byte_path_has_one_derivation() -> TestResult {
         "the transport is written from somewhere besides write_authorized_bytes"
     );
     assert_eq!(
-        transport_code.matches("staged.preview().bytes()").count(),
+        identifier_uses(&transport_code, "preview"),
         1,
         "the preview buffer is read in more than one place on the transport path"
     );
 
-    // `EgressProxy::transmit` reaches the transport only through the broker's
+    // Both transmit paths reach the transport only through the broker's
     // capability boundary. A direct call would be a send with no grant.
+    //
+    // The counts read identifiers, not spellings. A count of `.execute(` sees a
+    // method call and not `PermissionBroker::execute(self.broker, ..)`, and a
+    // count of `transport::write_authorized_bytes(` sees a path-qualified call
+    // and not one made through a `use`. Both are the same call, and `T146`
+    // reached a guarded function by exactly that substitution one file over.
     for site in [
         "transport::write_authorized_bytes(",
         ".execute(capability, call, started_at, |authorized| {",
@@ -216,18 +252,51 @@ fn the_byte_path_has_one_derivation() -> TestResult {
         assert!(lib_code.contains(site), "{site} is gone from the proxy");
     }
     assert_eq!(
-        lib_code
-            .matches("transport::write_authorized_bytes(")
-            .count(),
+        identifier_uses(&lib_code, "write_authorized_bytes"),
         2,
         "the emit helper is called from an unexpected number of places"
     );
     assert_eq!(
-        lib_code.matches(".execute(").count(),
+        identifier_uses(&lib_code, "execute"),
         2,
         "a transmit path bypasses the capability boundary"
     );
+
+    // Both of those paths bind the grant first, and the count is what says
+    // "both" rather than "one of them". `T146` deleted the binding from one
+    // path and the whole workspace suite still passed, because nothing counted.
+    //
+    // The name is counted, not a spelling. `T146`'s other finding was an
+    // inventory that counted `.expose()` and never saw `Untrusted::expose(d)`,
+    // which is the same call written through the type path; a caller here could
+    // write `EgressProxy::bind_grant(self, ..)` for exactly the same reason.
+    let declarations = lib_code.matches("fn bind_grant(").count();
+    assert_eq!(declarations, 1, "bind_grant is declared more than once");
+    assert_eq!(
+        identifier_uses(&lib_code, "bind_grant") - declarations,
+        2,
+        "a transmit path reaches the transport without binding its grant first"
+    );
     Ok(())
+}
+
+/// Counts whole-identifier occurrences of `name` in already-stripped code.
+///
+/// Whole-identifier, so `bind_grant` does not match inside `bind_grant_later`,
+/// and every spelling of one call counts the same: the receiver form, the
+/// type-path form, and a bare reference taken without calling it. Copied from
+/// `names_unsafe` in `crates/worker/tests/capability.rs`, which is where this
+/// repository's identifier counter lives.
+fn identifier_uses(code: &str, name: &str) -> usize {
+    let bytes = code.as_bytes();
+    code.match_indices(name)
+        .filter(|(at, _)| {
+            let before_ok =
+                *at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_');
+            let after = bytes.get(at + name.len()).copied().unwrap_or(b' ');
+            before_ok && !(after.is_ascii_alphanumeric() || after == b'_')
+        })
+        .count()
 }
 
 /// Every fallback in the product half, counted, with the reason it is safe.

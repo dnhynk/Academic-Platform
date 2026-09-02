@@ -1377,6 +1377,17 @@ fn collect_rust_sources(root: &Path, sources: &mut Vec<(PathBuf, String)>) -> io
     Ok(())
 }
 
+/// The one file in the workspace allowed an outbound socket construct.
+///
+/// It is the process `P2-G4`'s sandbox contains: proving that the operating
+/// system refuses a socket means asking it for one. What keeps it scoped is
+/// read from `cargo metadata` rather than from this comment --
+/// `only_egress_crate_has_a_socket` in `tools/phase1-scaffold-policy.test.mjs`
+/// asserts that the target is `required-features = ["native-sandbox"]`, that it
+/// is the worker's only binary, and that no workspace crate depends on
+/// `academic-worker`, so no default build and no product crate reaches it.
+const SANDBOX_PROBE: &str = "crates/worker/probes/worker_probe.rs";
+
 /// The product binary built with default plaintext features has no product
 /// networking, proved by source scan and by link scan.
 ///
@@ -1388,7 +1399,15 @@ fn collect_rust_sources(root: &Path, sources: &mut Vec<(PathBuf, String)>) -> io
 fn phase1_exit_has_no_product_network() -> TestResult {
     let root = repository_root();
 
-    // (1) Source scan of every product crate's `src`, excluding the harness.
+    // (1) Source scan of every product crate, excluding the harness.
+    //
+    // The whole package rather than `<crate>/src`. `T146` put
+    // `std::net::TcpStream::connect` in `crates/record/examples/emit_harness.rs`
+    // and this scan read nothing: the example has no feature gate, is compiled
+    // by `cargo clippy --workspace --all-targets`, and is run by the documented
+    // `pnpm harness:emit` script, so it is product-shaped code that a walk
+    // rooted at `src` never saw. `tests` and `benches` stay out, as they always
+    // were -- this crate's own suite opens the local IPC seam on purpose.
     let prohibited = [
         "TcpListener",
         "TcpStream",
@@ -1408,20 +1427,40 @@ fn phase1_exit_has_no_product_network() -> TestResult {
         if !entry.file_type()?.is_dir() || entry.file_name() == "test-support" {
             continue;
         }
-        for (path, source) in rust_sources(&entry.path().join("src"))? {
-            scanned += 1;
-            for needle in prohibited {
-                assert!(
-                    !source.contains(needle),
-                    "product source {} names {needle}",
-                    path.display()
-                );
+        let package = entry.path();
+        for sub in fs::read_dir(&package)? {
+            let sub = sub?;
+            let name = sub.file_name();
+            if name == "tests" || name == "benches" {
+                continue;
+            }
+            let sources = if sub.file_type()?.is_dir() {
+                rust_sources(&sub.path())?
+            } else if sub.path().extension().is_some_and(|value| value == "rs") {
+                vec![(sub.path(), fs::read_to_string(sub.path())?)]
+            } else {
+                Vec::new()
+            };
+            for (path, source) in sources {
+                let relative = path.strip_prefix(&root).unwrap_or(&path);
+                let spelled = relative.to_string_lossy().replace('\\', "/");
+                if spelled == SANDBOX_PROBE {
+                    continue;
+                }
+                scanned += 1;
+                for needle in prohibited {
+                    assert!(
+                        !source.contains(needle),
+                        "product source {} names {needle}",
+                        path.display()
+                    );
+                }
             }
         }
     }
     assert!(
-        scanned > 0,
-        "the product source scan found no files, so it proved nothing"
+        scanned >= 200,
+        "the product source scan found only {scanned} files, so it proved little"
     );
 
     // (2) Link scan of the default-feature `academicd` binary itself.

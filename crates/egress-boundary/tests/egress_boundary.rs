@@ -12,10 +12,11 @@ mod common;
 use std::error::Error;
 
 use academic_egress_boundary::{
-    EgressProxy, IdentifierPolicy, OutboundTransport, Route, Rulepack, SourceDocument,
-    StagedGrantJournal, TransmissionPlan, TransportError, cloud_egress_default,
+    EgressError, EgressProxy, IdentifierPolicy, OutboundTransport, Route, Rulepack, SourceDocument,
+    StagedGrantJournal, StagedPayload, Transmission, TransmissionPlan, TransportError,
+    cloud_egress_default,
 };
-use academic_policy::{Decision, ProcessClass, ReasonCode};
+use academic_policy::{CapabilityToken, ContentDigest, Decision, ProcessClass, ReasonCode};
 
 use common::TestResult;
 
@@ -63,6 +64,42 @@ fn refused<T: std::fmt::Debug, E>(result: Result<T, E>, what: &str) -> Result<E,
 }
 
 const MAX_BYTES: u64 = 4_096;
+
+/// The two public functions that reach a transport, so a refusal can be
+/// asserted over both rather than over whichever one a test happened to pick.
+///
+/// `T146` found the second one skipping the grant read and the rulepack
+/// comparison the first one makes. A test written against `transmit` alone
+/// observes nothing about it, which is how that gap survived; the tests that
+/// say "every transmit path" iterate this table instead.
+type TransmitFn = fn(
+    &EgressProxy<'_>,
+    &CapabilityToken,
+    &StagedPayload,
+    &TransmissionPlan<'_>,
+    &mut StagedGrantJournal,
+    &mut RecordingSink,
+) -> Result<Transmission, EgressError>;
+
+struct TransmitPath {
+    name: &'static str,
+    send: TransmitFn,
+}
+
+const TRANSMIT_PATHS: [TransmitPath; 2] = [
+    TransmitPath {
+        name: "transmit",
+        send: |proxy, capability, staged, plan, journal, sink| {
+            proxy.transmit(capability, staged, plan, journal, sink, &|| 1_000)
+        },
+    },
+    TransmitPath {
+        name: "transmit_without_completion",
+        send: |proxy, capability, staged, plan, journal, sink| {
+            proxy.transmit_without_completion(capability, staged, plan, journal, sink, &|| 1_000)
+        },
+    },
+];
 
 // ---------------------------------------------------------------------------
 // The byte path
@@ -240,6 +277,174 @@ fn a_transmission_from_another_process_class_is_refused() -> TestResult {
         &|| 1_000,
     )?;
     assert_eq!(sink.written, staged.preview().bytes());
+    Ok(())
+}
+
+/// A grant reviewed under another rulepack carries nothing, on either path.
+///
+/// `EgressProxy` has two public functions that reach a transport, and `T146`
+/// measured the difference between them: with a grant whose recorded
+/// `redaction_policy_hash` was another pack's, `transmit` refused with zero
+/// bytes and `transmit_without_completion` wrote a hundred and eighty. The
+/// second one read no grant row at all.
+///
+/// So the assertion is written over both, from one table, and each path is
+/// named in the failure message. `bind_grant` is what makes them agree and
+/// `the_byte_path_has_one_derivation` counts its two call sites; this is the
+/// observation that the binding refuses rather than merely existing.
+#[test]
+fn a_grant_reviewed_under_another_rulepack_is_refused_on_every_transmit_path() -> TestResult {
+    let (broker, provider) = common::broker_with_provider(MAX_BYTES)?;
+    let proxy = EgressProxy::new(&broker);
+    let document = SourceDocument::new("synthetic-module", common::clean_document());
+    let focus = common::focus_total_weight();
+    let policy = IdentifierPolicy::none();
+    let staged = proxy.stage(&common::staging_request(
+        &document, &focus, &policy, MAX_BYTES,
+    ))?;
+
+    // The grant records another pack's digest. Everything else -- the ranges,
+    // the payload digest, the destination, the purpose -- matches, so the only
+    // thing left to refuse on is the rulepack binding.
+    let other_pack = ContentDigest::of(b"synthetic-rulepack-that-did-not-produce-these-bytes");
+    assert_ne!(
+        other_pack.as_str(),
+        proxy.rulepack_id().redaction_policy_hash().as_str(),
+        "the substitute digest is the shipped pack's own"
+    );
+    let outcome = common::capability_for(&broker, &staged, &provider, other_pack, 1_000)?;
+    let (capability, grant_id) = common::token(outcome)?;
+
+    let plan = TransmissionPlan {
+        grant_id: &grant_id,
+        actor_id: common::EGRESS_ACTOR,
+        process_class: common::EGRESS_CLASS,
+        operation: "classify",
+        purpose_id: "architecture-classification",
+        destination_id: provider.destination_id(),
+        expires_at: u64::MAX,
+        chunk_bytes: 8,
+    };
+
+    for path in TRANSMIT_PATHS {
+        let mut journal = StagedGrantJournal::new();
+        let mut sink = RecordingSink::default();
+        let error = refused(
+            (path.send)(&proxy, &capability, &staged, &plan, &mut journal, &mut sink),
+            &format!("{} under another pack's grant", path.name),
+        )?;
+        assert_eq!(
+            error.reason(),
+            Some(ReasonCode::ScopeMismatch),
+            "{} refused as {:?}",
+            path.name,
+            error.reason()
+        );
+        assert_eq!(
+            sink.written.len(),
+            0,
+            "{} wrote {} bytes under a grant reviewed by another pack",
+            path.name,
+            sink.written.len()
+        );
+    }
+
+    // The grant was never spent, on either path.
+    let grant = broker
+        .grant_row(&grant_id)?
+        .ok_or("the broker allowed without writing a grant row")?;
+    assert_eq!(
+        grant.consumed_at, None,
+        "a refused transfer consumed the grant"
+    );
+    Ok(())
+}
+
+/// A plan naming a grant other than the token's is refused, on either path.
+///
+/// The plan and the token are separate inputs. `execute` consumes the row the
+/// token names; the journal records the row the plan names. `T146` observed
+/// what that costs: token A with `plan.grant_id = B` transmitted a hundred and
+/// eighty bytes, the journal named B twice, and the row actually consumed was
+/// A -- so the record pointed at a grant nobody spent, and the rulepack
+/// comparison had read B rather than the row being consumed.
+#[test]
+fn a_plan_naming_another_grant_is_refused() -> TestResult {
+    let (broker, provider) = common::broker_with_provider(MAX_BYTES)?;
+    let proxy = EgressProxy::new(&broker);
+    let document = SourceDocument::new("synthetic-module", common::clean_document());
+    let focus = common::focus_total_weight();
+    let policy = IdentifierPolicy::none();
+    let staged = proxy.stage(&common::staging_request(
+        &document, &focus, &policy, MAX_BYTES,
+    ))?;
+    let hash = proxy.rulepack_id().redaction_policy_hash().clone();
+
+    // Two grants over the same staged payload, both live, both recording the
+    // shipped pack. Nothing but the identifier separates them, so the refusal
+    // below cannot come from any other field.
+    let (capability_a, grant_a) = common::token(common::capability_for(
+        &broker,
+        &staged,
+        &provider,
+        hash.clone(),
+        1_000,
+    )?)?;
+    let (_capability_b, grant_b) = common::token(common::capability_for(
+        &broker, &staged, &provider, hash, 1_001,
+    )?)?;
+    assert_ne!(grant_a, grant_b, "the broker minted one grant twice");
+
+    let plan = TransmissionPlan {
+        grant_id: &grant_b,
+        actor_id: common::EGRESS_ACTOR,
+        process_class: common::EGRESS_CLASS,
+        operation: "classify",
+        purpose_id: "architecture-classification",
+        destination_id: provider.destination_id(),
+        expires_at: u64::MAX,
+        chunk_bytes: 8,
+    };
+
+    for path in TRANSMIT_PATHS {
+        let mut journal = StagedGrantJournal::new();
+        let mut sink = RecordingSink::default();
+        let error = refused(
+            (path.send)(
+                &proxy,
+                &capability_a,
+                &staged,
+                &plan,
+                &mut journal,
+                &mut sink,
+            ),
+            &format!("{} with a plan naming another grant", path.name),
+        )?;
+        assert_eq!(
+            error.reason(),
+            Some(ReasonCode::ScopeMismatch),
+            "{} refused as {:?}",
+            path.name,
+            error.reason()
+        );
+        assert_eq!(sink.written.len(), 0, "{} wrote bytes", path.name);
+        assert_eq!(
+            journal.entries().len(),
+            0,
+            "{} journalled an intent for a grant it never bound",
+            path.name
+        );
+    }
+
+    for (label, id) in [("A", &grant_a), ("B", &grant_b)] {
+        let grant = broker
+            .grant_row(id)?
+            .ok_or("the broker allowed without writing a grant row")?;
+        assert_eq!(
+            grant.consumed_at, None,
+            "grant {label} was consumed by a refused transfer"
+        );
+    }
     Ok(())
 }
 
