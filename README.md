@@ -139,6 +139,30 @@ process, so that is a bound on what these packages depend on and use, not an
 operating-system sandbox — `P2-G4` owns that. See
 [the permission broker contract](docs/contracts/permission-broker.md).
 
+`P2-G2` adds `academic-egress-boundary`, which stages for the egress-proxy
+process at the edge of the section 3.6 topology. It ships the versioned DLP
+rulepack whose identity every grant records as its `redaction_policy_hash`,
+structural minimization of a whole-file request to the declarations it named, a
+byte-accurate preview that is the same buffer the transport writes, and one
+outbound transport trait. It is a separate package from `P2-G7`'s
+`academic-egress` process entry point because that task pins the whole manifest
+and the whole product source of the process package as one fixed process-class
+binding, and a library target inside it would have made that pin weaker rather
+than exact.
+
+It ships no socket: ADR-002 is unaccepted, the admission receipt is incomplete,
+and the emitted posture is still `product_network: "NONE"`, so no crate in this
+workspace names an outbound socket construct.
+`only_egress_crate_has_a_socket` in `tools/phase1-scaffold-policy.test.mjs` is
+what keeps that exception scoped by crate, and it narrows rather than replaces
+the process-closure guards above: a per-file spelling allowance read with
+comments and literals stripped, an alias rule, a foreign-function rule, a
+`#[path]` and `include!` rule, a build-script inventory, and a per-crate link
+closure. `GATE-38-028` stays open and `cloud_egress_default()` takes no
+argument, so no quality heuristic can move it off `LOCAL_ONLY_OR_STOP`. What the
+boundary does and does not claim is in
+[the egress boundary contract](docs/contracts/egress-boundary.md).
+
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical
 object reference and where a deletion reaches a backup are in the encrypted

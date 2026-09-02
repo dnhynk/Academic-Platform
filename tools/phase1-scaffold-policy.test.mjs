@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 import Ajv2020 from "ajv/dist/2020.js";
@@ -240,6 +241,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
     ],
     "academic-domain": [],
     "academic-egress": ["academic-policy"],
+    // `P2-G2`'s DLP rulepack, minimizer, byte-accurate preview, and the sole
+    // outbound transport seam. It is a separate package from `P2-G7`'s
+    // egress-proxy process entry point, whose whole manifest and whole product
+    // source that task pins as one fixed process-class binding; a library
+    // target inside it would have made that pin weaker rather than exact.
+    // Nothing depends on this one: the section 3.6 wiring from the core is
+    // `P2-G4`'s and `P2-A2`'s round, not this task's.
+    "academic-egress-boundary": ["academic-policy"],
     "academic-export-job": ["academic-policy"],
     "academic-indexer": ["academic-policy"],
     "academic-ledger": ["academic-contracts", "academic-domain"],
@@ -1054,6 +1063,444 @@ test("export_job_cannot_read_keys", async () => {
     ["academic-export-job", ...PROCESS_POLICY_CLOSURE].toSorted(),
     "the export-job feature graph changed; the entire new closure must be reviewed for key access",
   );
+});
+
+// The P2-G2 half of 2.3-14. `os_keystore_lane_expands_tokio_only_by_named_crate`
+// pins which capabilities a lane makes *available* and
+// `os_keystore_capabilities_are_available_but_unused` pins whether they are
+// used. Tokio's `net` feature is already resolved in the default graph, for the
+// named pipe and Unix-domain socket the daemon runs on, so availability is not
+// what can be refused here — use is.
+//
+// The `P2-K6` audit put five key substitutions past a guard that read one file
+// against a token list, and the shape that answered it in
+// `crates/cli/src/main.rs` is what this follows: read every file, and pin what
+// is there rather than forbid a list of names. A per-file allowance of exact
+// spellings refuses the three shapes a token list cannot see —
+// `use tokio::net as t`, a re-export of the module from a permitted file, and a
+// foreign function declaration that spells no Rust socket name at all — because
+// each of them is a spelling that is not in the allowance, or a structural rule
+// below that has nothing to do with names.
+
+/**
+ * Removes comments and, unless `keepStrings`, string and character literals.
+ *
+ * Prose must neither trip the scan nor hide from it. The socket scan reads the
+ * form with literals removed; the `#[path]` scan needs its target, so it reads
+ * the form that keeps them.
+ */
+function rustCodeOnly(source, keepStrings = false) {
+  let out = "";
+  let cursor = 0;
+  while (cursor < source.length) {
+    const two = source.slice(cursor, cursor + 2);
+    if (two === "//") {
+      const newline = source.indexOf("\n", cursor);
+      cursor = newline === -1 ? source.length : newline;
+      continue;
+    }
+    if (two === "/*") {
+      const close = source.indexOf("*/", cursor + 2);
+      cursor = close === -1 ? source.length : close + 2;
+      out += " ";
+      continue;
+    }
+    const character = source[cursor];
+    if (character === '"' && !keepStrings) {
+      let end = cursor + 1;
+      while (end < source.length) {
+        if (source[end] === "\\") {
+          end += 2;
+          continue;
+        }
+        if (source[end] === '"') {
+          end += 1;
+          break;
+        }
+        end += 1;
+      }
+      cursor = end;
+      out += '""';
+      continue;
+    }
+    if (character === "'" && !keepStrings) {
+      const literal = /^'(?:\\.|[^'\\])'/u.exec(source.slice(cursor));
+      if (literal !== null) {
+        cursor += literal[0].length;
+        out += "''";
+        continue;
+      }
+    }
+    out += character;
+    cursor += 1;
+  }
+  return out;
+}
+
+/**
+ * Every spelling that reaches a socket, outbound or local.
+ *
+ * Whitespace around `::` is normalized out of the recorded spelling, so
+ * `tokio :: net` and `tokio::net` are one entry and neither can hide from the
+ * allowance by being formatted differently.
+ */
+const SOCKET_SPELLINGS = [
+  /\b(?:std|core)\s*::\s*net\b/gu,
+  /\btokio\s*::\s*net\b/gu,
+  /\brustix\s*::\s*net\b/gu,
+  /\bmio\s*::\s*net\b/gu,
+  /\bnix\s*::\s*sys\s*::\s*socket\b/gu,
+  /\bsocket2\b/gu,
+  /\b(?:TcpStream|TcpListener|TcpSocket|UdpSocket|ToSocketAddrs)\b/gu,
+  /\b(?:SocketAddr|SocketAddrV4|SocketAddrV6|IpAddr|Ipv4Addr|Ipv6Addr)\b/gu,
+  /\b(?:lookup_host|getaddrinfo|connect_timeout)\b/gu,
+  /\bWinSock\b/gu,
+  /\bWSA[A-Za-z0-9_]*\b/gu,
+  /\blibc\s*::\s*(?:socket|connect|bind|listen|sendto|recvfrom|getaddrinfo)\b/gu,
+  /\b(?:UnixStream|UnixListener|UnixDatagram)\b/gu,
+  /\bNamedPipe[A-Za-z]*\b/gu,
+  /\bnamed_pipe\b/gu,
+];
+
+/**
+ * The local same-host transports 2.3-14 admits. Everything else is outbound.
+ *
+ * `tokio::net` is on this list because the module is where the named pipe and
+ * the Unix-domain socket live. What keeps that from being a hole is that a
+ * file's whole spelling set is pinned: a file allowed `tokio::net` is not
+ * allowed `TcpStream`, and reaching one through the other spells it.
+ */
+const LOCAL_IPC_SPELLINGS = new Set([
+  "tokio::net",
+  "UnixStream",
+  "UnixListener",
+  "NamedPipe",
+  "NamedPipeServer",
+  "NamedPipeClient",
+  "named_pipe",
+]);
+
+/**
+ * Every file that may spell a socket, and exactly which spellings.
+ *
+ * The five daemon and client files run the section 3.6 local IPC seam.
+ * `academic-egress` is the crate the section 3.6 topology allows an outbound
+ * socket in -- it is the egress-proxy process, and `P2-G7`'s `ProcessClass`
+ * matrix gives only that class the `OpenOutboundSocket` capability. Its
+ * allowance is empty: none ships. ADR-002 is unaccepted, the admission receipt
+ * is incomplete, and `product_network` is `NONE`, so there is nothing for a
+ * socket to legitimately connect to yet. `academic-egress-boundary`, which
+ * stages and previews what that process may send, is empty for the same reason
+ * and stays empty: the seam it owns is a trait the caller supplies. The day a
+ * socket is written, this table changes in the same commit, which is the
+ * review.
+ */
+const SOCKET_ALLOWANCE = new Map([
+  ["crates/cli/src/client.rs", ["NamedPipe", "UnixStream", "named_pipe", "tokio::net"]],
+  ["crates/daemon/src/transport/mod.rs", ["NamedPipe"]],
+  ["crates/daemon/src/transport/unix.rs", ["NamedPipe", "UnixListener", "UnixStream", "tokio::net"]],
+  [
+    "crates/daemon/src/transport/windows.rs",
+    ["NamedPipe", "NamedPipeServer", "named_pipe", "tokio::net"],
+  ],
+  ["crates/daemon/tests/phase1_exit.rs", ["NamedPipe", "UnixStream", "named_pipe", "tokio::net"]],
+  ["crates/daemon/tests/support/mod.rs", ["NamedPipe", "UnixStream", "named_pipe", "tokio::net"]],
+  ["crates/daemon/tests/unix_socket.rs", ["NamedPipe"]],
+  ["crates/daemon/tests/windows_pipe.rs", ["NamedPipe", "named_pipe", "tokio::net"]],
+]);
+
+/** Path segments that lead to a socket; renaming one hides everything under it. */
+const SOCKET_MODULE_SEGMENTS = new Set(["net", "socket", "sys", "WinSock", "named_pipe"]);
+
+/** Crate roots whose paths can reach a socket; an alias of one hides the rest. */
+const ALIASABLE_ROOTS = new Set([
+  "std",
+  "core",
+  "alloc",
+  "tokio",
+  "rustix",
+  "libc",
+  "windows_sys",
+  "socket2",
+  "mio",
+  "nix",
+]);
+
+/**
+ * The one `include!`, spelled out.
+ *
+ * `#[path]` sites are checked by resolving their target instead of being listed:
+ * what matters is that the file they pull in is one this scan already reads.
+ * `include!` cannot be checked that way because its argument is computed at
+ * build time, so the single site is pinned as whole text and its build script
+ * is pinned below.
+ */
+const GENERATED_SOURCE_INCLUDES = new Map([
+  [
+    "crates/rpc/src/generated.rs",
+    ['include!(concat!(env!("OUT_DIR"), "/academic.v1.rs"));'],
+  ],
+]);
+
+/** External crates that can open a socket, for the link half. */
+const SOCKET_CAPABLE_CRATES = new Set([
+  "libc",
+  "mio",
+  "nix",
+  "rustix",
+  "socket2",
+  "tokio",
+  "windows-sys",
+]);
+
+/**
+ * Which workspace crates link something that could open a socket.
+ *
+ * This is the link half. The source half proves nobody writes a socket; this
+ * proves nobody quietly acquires the ability to by adding a dependency, which
+ * is the one bypass that spells no forbidden name anywhere. `libc` reaches
+ * almost everything through `libsqlite3-sys` and is listed rather than excused.
+ */
+const SOCKET_CAPABLE_CLOSURES = {
+  "academic-admission": ["libc"],
+  "academic-capture-client": ["libc"],
+  "academic-cli": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
+  "academic-connector": ["libc"],
+  "academic-contracts": ["libc"],
+  "academic-core": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
+  "academic-crypto": ["libc"],
+  "academic-daemon": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
+  "academic-domain": ["libc"],
+  "academic-egress": ["libc"],
+  "academic-egress-boundary": ["libc"],
+  "academic-export-job": ["libc"],
+  "academic-indexer": ["libc"],
+  "academic-keystore-platform": ["windows-sys"],
+  "academic-ledger": ["libc"],
+  "academic-policy": ["libc"],
+  "academic-portability": ["libc", "rustix", "windows-sys"],
+  "academic-projections": ["libc", "rustix", "windows-sys"],
+  "academic-recovery": ["libc"],
+  "academic-repository-analyzer": ["libc"],
+  "academic-retention": ["libc"],
+  "academic-rpc": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
+  "academic-scenario": ["libc"],
+  "academic-store": ["libc", "rustix", "windows-sys"],
+  "academic-store-platform": ["libc", "rustix", "windows-sys"],
+  "academic-test-support": [],
+  "academic-transcript": ["libc"],
+  "academic-vault": ["libc", "rustix", "windows-sys"],
+};
+async function rustSourcesIfPresent(root) {
+  try {
+    return await rustSources(root);
+  } catch {
+    return [];
+  }
+}
+
+test("only_egress_crate_has_a_socket", async () => {
+  // The scan is not vacuous: every pattern matches the call it names, and the
+  // stripper does not blind it. A rule that matched nothing would be a rule
+  // that proved nothing, which is the failure this repository has hit before.
+  const sample =
+    "TcpStream::connect(); TcpListener::bind(); UdpSocket::bind(); std::net::Ipv4Addr; " +
+    "core::net::SocketAddr; tokio :: net :: TcpStream; rustix::net::socket(); mio::net::TcpStream; " +
+    "nix::sys::socket::socket(); socket2::Socket::new(); addr.to_socket_addrs(); ToSocketAddrs; " +
+    "lookup_host(); getaddrinfo(); connect_timeout(); WinSock::connect; WSAConnect(); " +
+    "libc::connect(fd); UnixStream::connect(); UnixListener::bind(); NamedPipeServer; named_pipe;";
+  for (const pattern of SOCKET_SPELLINGS) {
+    assert.match(sample, new RegExp(pattern.source, "u"), `${pattern} matches nothing`);
+  }
+  assert.equal(rustCodeOnly('let s = "TcpStream::connect";').includes("TcpStream"), false);
+  assert.equal(rustCodeOnly("// TcpStream::connect\n").includes("TcpStream"), false);
+  assert.equal(rustCodeOnly("/* TcpStream */ let x = 1;").includes("TcpStream"), false);
+  assert.equal(rustCodeOnly("let c = '\\n'; TcpStream").includes("TcpStream"), true);
+
+  const observed = new Map();
+  const aliases = [];
+  const foreign = [];
+  const generated = new Map();
+  for (const pkg of workspacePackages) {
+    const crateRoot = dirname(pkg.manifest_path);
+    const files = [
+      ...(await rustSourcesIfPresent(join(crateRoot, "src"))),
+      ...(await rustSourcesIfPresent(join(crateRoot, "tests"))),
+      ...(await rustSourcesIfPresent(join(crateRoot, "benches"))),
+    ];
+    const buildScript = join(crateRoot, "build.rs");
+    try {
+      files.push([buildScript, await readFile(buildScript, "utf8")]);
+    } catch {
+      // A crate without a build script contributes none.
+    }
+    for (const [path, raw] of files) {
+      const relative = path.slice(path.indexOf("crates")).split("\\").join("/");
+      const code = rustCodeOnly(raw);
+
+      const spellings = new Set();
+      for (const pattern of SOCKET_SPELLINGS) {
+        for (const match of code.matchAll(pattern)) {
+          spellings.add(match[0].replace(/\s+/gu, ""));
+        }
+      }
+      if (spellings.size > 0) {
+        observed.set(relative, [...spellings].toSorted());
+      }
+
+      // An alias hides every later mention of what it renames, so the two that
+      // could hide a socket may only ever be renamed to `_` -- the trait-import
+      // spelling, which cannot be written as a path.
+      //
+      // The first is a crate root: `use tokio as t;` leaves `t::net::TcpStream`
+      // spelling neither `tokio::net` nor anything else on the list. The second
+      // is a socket module inside a braced group: `use tokio::{net as n};`
+      // spells the module in a shape the `tokio::net` anchor does not match,
+      // which is why the whole statement is read and not one path.
+      //
+      // A rename of anything else -- `process::Command as ProcessCommand`,
+      // `Ordering as AtomicOrdering` -- is not on a socket path and is left
+      // alone; forbidding those would be a rule about imports, not about
+      // sockets, and this repository already has several.
+      for (const match of code.matchAll(/\buse\s+([A-Za-z0-9_]+)\b[^;]*;/gu)) {
+        if (!ALIASABLE_ROOTS.has(match[1])) {
+          continue;
+        }
+        const renames = [...match[0].matchAll(/\b([A-Za-z0-9_]+)\s+as\s+([A-Za-z0-9_]+)/gu)];
+        for (const [, renamed, alias] of renames) {
+          const hidesASocketPath =
+            renamed === match[1] || SOCKET_MODULE_SEGMENTS.has(renamed);
+          if (hidesASocketPath && alias !== "_") {
+            aliases.push(`${relative}: ${match[0]}`);
+          }
+        }
+      }
+
+      // A foreign function declaration reaches a socket without spelling one.
+      // `unsafe_code = "forbid"` refuses these in every crate but the four
+      // reviewed leaves, and none of those four declares one today.
+      for (const match of code.matchAll(/extern\s*"|#\[\s*link\s*\(|no_mangle/gu)) {
+        foreign.push(`${relative}: ${match[0]}`);
+      }
+
+      // Source pulled in from outside the scanned trees is source this scan did
+      // not read. String literals are stripped from `code`, so the targets are
+      // read from a copy that keeps them.
+      const withStrings = rustCodeOnly(raw, true);
+      for (const match of withStrings.matchAll(/#\[\s*path\s*=\s*"([^"]*)"\s*\]/gu)) {
+        const target = resolve(dirname(path), match[1]);
+        assert.equal(
+          target.startsWith(resolve("crates")),
+          true,
+          `${relative} includes ${match[1]}, which is outside crates/`,
+        );
+        assert.equal(
+          existsSync(target) && target.endsWith(".rs"),
+          true,
+          `${relative} includes ${match[1]}, which is not a Rust file in this repository`,
+        );
+      }
+      const includes = [];
+      for (const match of withStrings.matchAll(/include!\s*\([^;]*\);/gu)) {
+        includes.push(match[0].split(/\s+/u).join(" "));
+      }
+      if (includes.length > 0) {
+        generated.set(relative, includes.toSorted());
+      }
+    }
+  }
+
+  assert.deepEqual(
+    Object.fromEntries([...observed].toSorted(([left], [right]) => left.localeCompare(right))),
+    Object.fromEntries(
+      [...SOCKET_ALLOWANCE].toSorted(([left], [right]) => left.localeCompare(right)),
+    ),
+    "a file spells a socket that its allowance does not list",
+  );
+  for (const [file, spellings] of observed) {
+    for (const spelling of spellings) {
+      assert.equal(
+        LOCAL_IPC_SPELLINGS.has(spelling),
+        true,
+        `${file} spells the outbound socket construct ${spelling}; only the egress crates may`,
+      );
+      assert.equal(
+        file.startsWith("crates/cli/") || file.startsWith("crates/daemon/"),
+        true,
+        `${file} is not one of the local IPC transports`,
+      );
+    }
+  }
+  assert.deepEqual(aliases, [], "a socket-capable path is aliased to a usable name");
+  assert.deepEqual(foreign, [], "a foreign function is declared in a workspace crate");
+  assert.deepEqual(
+    Object.fromEntries([...generated].toSorted(([left], [right]) => left.localeCompare(right))),
+    Object.fromEntries(
+      [...GENERATED_SOURCE_INCLUDES].toSorted(([left], [right]) => left.localeCompare(right)),
+    ),
+    "a source file is pulled in by an include! this scan does not read",
+  );
+  assert.deepEqual(
+    workspacePackages
+      .filter((pkg) => pkg.targets.some((target) => target.kind.includes("custom-build")))
+      .map((pkg) => pkg.name)
+      .toSorted(),
+    ["academic-rpc"],
+    "a crate gained a build script, which can generate source this scan never sees",
+  );
+
+  // The link half. A crate that never spells a socket can still acquire one by
+  // linking a crate that has it, and that edit spells no forbidden name.
+  const closureOf = (id) => {
+    const seen = new Set();
+    const pending = [id];
+    while (pending.length > 0) {
+      const current = pending.pop();
+      if (current === undefined || seen.has(current)) {
+        continue;
+      }
+      seen.add(current);
+      const node = resolveNodesById.get(current);
+      if (node === undefined) {
+        continue;
+      }
+      for (const dependency of node.deps) {
+        if (dependency.dep_kinds.some((kind) => kind.kind !== "dev")) {
+          pending.push(dependency.pkg);
+        }
+      }
+    }
+    return [...seen]
+      .map((id) => packagesById.get(id).name)
+      .filter((name) => SOCKET_CAPABLE_CRATES.has(name))
+      .toSorted();
+  };
+  assert.deepEqual(
+    Object.fromEntries(
+      workspacePackages
+        .map((pkg) => [pkg.name, closureOf(pkg.id)])
+        .toSorted(([left], [right]) => left.localeCompare(right)),
+    ),
+    Object.fromEntries(
+      Object.entries(SOCKET_CAPABLE_CLOSURES).toSorted(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
+    "a workspace crate's link closure gained or lost a socket-capable crate",
+  );
+
+  // The egress-proxy process and the boundary that stages for it are the two
+  // crates the topology permits a socket in, and neither has one: no spelling,
+  // and nothing in either link closure that could open one.
+  for (const directory of ["crates/egress/", "crates/egress-boundary/"]) {
+    assert.equal(
+      [...observed.keys()].some((file) => file.startsWith(directory)),
+      false,
+      `${directory} now spells a socket; update SOCKET_ALLOWANCE in the same commit`,
+    );
+  }
+  assert.deepEqual(SOCKET_CAPABLE_CLOSURES["academic-egress"], ["libc"]);
+  assert.deepEqual(SOCKET_CAPABLE_CLOSURES["academic-egress-boundary"], ["libc"]);
 });
 
 // t068 section 3.9. A deterministic engine has no clock, no RNG, no network,
@@ -2131,6 +2578,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     policyReceiptText,
     processReceiptText,
     transcriptReceiptText,
+    egressReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -2142,6 +2590,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-g1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g7.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u7.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-g2.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -2153,6 +2602,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const policyReceipt = JSON.parse(policyReceiptText);
   const processReceipt = JSON.parse(processReceiptText);
   const transcriptReceipt = JSON.parse(transcriptReceiptText);
+  const egressReceipt = JSON.parse(egressReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -2424,6 +2874,55 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const processTuples = lockTuples.filter(
     ([name, version]) => processPathPackages.has(`${name}@${version}`),
   );
+
+  // `P2-G2` adds the DLP rulepack, the minimizer, the byte-accurate preview,
+  // and the outbound seam as `academic-egress-boundary`, and admits no external
+  // crate. It is a separate package from `P2-G7`'s `academic-egress` process
+  // entry point, whose whole manifest and whole product source that task pins.
+  assert.equal(egressReceipt.task, "P2-G2");
+  const egressAdmitted = new Set(
+    egressReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const egressPathPackages = new Set(
+    egressReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(egressAdmitted.size, 0, "P2-G2 must admit no external crate");
+  assert.deepEqual([
+    ...egressPathPackages,
+  ], ["academic-egress-boundary@0.1.0"]);
+  assert.deepEqual(egressReceipt.summary.npm_additions, []);
+  assert.equal(egressReceipt.summary.npm_install_scripts_added, false);
+  for (const claimed of [...egressAdmitted, ...egressPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const egressTuples = lockTuples.filter(
+    ([name, version]) =>
+      egressAdmitted.has(`${name}@${version}`) ||
+      egressPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    egressTuples.length,
+    egressAdmitted.size + egressPathPackages.size,
+    "a P2-G2 admitted package is missing from Cargo.lock",
+  );
   assert.equal(
     processTuples.length,
     processPathPackages.size,
@@ -2457,7 +2956,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !policyPathPackages.has(`${name}@${version}`) &&
       !processPathPackages.has(`${name}@${version}`) &&
       !transcriptAdmitted.has(`${name}@${version}`) &&
-      !transcriptPathPackages.has(`${name}@${version}`),
+      !transcriptPathPackages.has(`${name}@${version}`) &&
+      !egressAdmitted.has(`${name}@${version}`) &&
+      !egressPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -2476,7 +2977,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       admissionTuples.length +
       policyTuples.length +
       processTuples.length +
-      transcriptTuples.length,
+      transcriptTuples.length +
+      egressTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

@@ -148,6 +148,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-egress-boundary"
+version = "0.1.0"
+dependencies = [
+ "academic-policy",
+ "thiserror",
+]
+
+[[package]]
 name = "academic-export-job"
 version = "0.1.0"
 dependencies = [

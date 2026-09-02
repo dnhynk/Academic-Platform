@@ -67,6 +67,9 @@ const SECRET_BEARING_TYPES = new Map([
   ["TranscriptIdentity", "the student number and name a redacted export exists to remove"],
   ["NormalizedTranscript", "a whole official transcript, identity header included"],
   ["RedactedProjection", "the identity values one redaction profile chose to retain"],
+  ["SourceDocument", "the private document bytes an egress request selects from"],
+  ["Preview", "the exact staged bytes a transmission writes"],
+  ["AcceptedResponse", "a provider response that passed the canary scan"],
 ]);
 
 /**
@@ -132,6 +135,10 @@ const PUBLIC_BYTES = new Map([
   [
     "FixtureContract.payload",
     "the public encoding label (for example academic.event-batch/v3 deterministic-cbor), not fixture payload bytes",
+  ],
+  [
+    "AcceptedResponse.digest",
+    "SHA-256 of a provider response, which the egress_audit row carries in the clear as provider_response_digest",
   ],
 ]);
 

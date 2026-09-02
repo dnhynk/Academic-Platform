@@ -10,6 +10,7 @@ members = [
   "crates/daemon",
   "crates/domain",
   "crates/egress",
+  "crates/egress-boundary",
   "crates/export-job",
   "crates/indexer",
   "crates/keystore-platform",
