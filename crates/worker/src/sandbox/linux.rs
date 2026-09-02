@@ -128,7 +128,18 @@ const fn jump(code: u16, k: u32, jt: u8, jf: u8) -> SockFilter {
 /// purpose: this backend is measured on 64-bit and the multiplexed entry point
 /// does not exist on it.
 fn denied_syscalls() -> Vec<i64> {
-    vec![
+    // `fork` and `vfork` are separate entry points only where the architecture
+    // has them. AArch64 has neither: glibc reaches both through `clone`, which
+    // is denied below, so the refusal is the same one either way and this list
+    // is complete on both. Naming them unconditionally is a compile error on
+    // `aarch64-unknown-linux-gnu`, which is how this was found — the hosted
+    // `rust-ubuntu-24.04-arm` job refused the lint step.
+    #[cfg(target_arch = "x86_64")]
+    let legacy_process_creation = vec![libc::SYS_fork, libc::SYS_vfork];
+    #[cfg(not(target_arch = "x86_64"))]
+    let legacy_process_creation: Vec<i64> = Vec::new();
+
+    let mut denied = vec![
         // Sockets.
         libc::SYS_socket,
         libc::SYS_socketpair,
@@ -140,15 +151,13 @@ fn denied_syscalls() -> Vec<i64> {
         libc::SYS_recvfrom,
         libc::SYS_sendmsg,
         libc::SYS_recvmsg,
-        // Process creation. `fork` and `vfork` are separate entry points from
-        // `clone` on x86-64 and both have to be named: with only `clone` and
-        // `clone3` denied, `std::process::Command` still forked and the child
-        // was refused at `execve` by Landlock instead, which is a refusal one
-        // layer later than this filter intends.
+        // Process creation. With only `clone` and `clone3` denied,
+        // `std::process::Command` still forked on x86-64 and its child was
+        // refused at `execve` by Landlock instead — a refusal one layer later
+        // than this filter intends. `legacy_process_creation` above is what
+        // closes that, per architecture.
         libc::SYS_clone,
         libc::SYS_clone3,
-        libc::SYS_fork,
-        libc::SYS_vfork,
         libc::SYS_execve,
         libc::SYS_execveat,
         // Taking the sandbox back off, or reaching into another process.
@@ -162,7 +171,9 @@ fn denied_syscalls() -> Vec<i64> {
         libc::SYS_landlock_create_ruleset,
         libc::SYS_landlock_add_rule,
         libc::SYS_landlock_restrict_self,
-    ]
+    ];
+    denied.extend(legacy_process_creation);
+    denied
 }
 
 fn errno() -> i64 {
