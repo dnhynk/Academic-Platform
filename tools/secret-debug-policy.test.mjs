@@ -214,6 +214,18 @@ const PUBLIC_TUPLE_BYTES = new Map([
     "the backup set identity, which is the HKDF salt written into the backup's own manifest",
   ],
   ["GenerationId", "an opaque identifier for one disposable projection generation"],
+  [
+    "ModelRunId",
+    "one model execution's identity, which the store's model_run and model_run_provenance rows carry as a BLOB primary key",
+  ],
+  [
+    "ArtifactId",
+    "the artifact identity artifact_descriptor already carries in the clear; academic-model-run names inputs and outputs by it and holds no artifact byte",
+  ],
+  [
+    "CandidateId",
+    "one reanalysis candidate's identity, which the store's model_run_candidate row carries as a BLOB primary key; the candidate value itself is a digest and not in this newtype",
+  ],
   ["OpaqueId", "an RPC wire identifier carried with no narrowing"],
   ["IdempotencyKey", "an RPC retry key, which the caller supplies and the wire carries"],
   [

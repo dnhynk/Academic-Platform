@@ -16,6 +16,7 @@ members = [
   "crates/indexer",
   "crates/keystore-platform",
   "crates/ledger",
+  "crates/model-run",
   "crates/portability",
   "crates/policy",
   "crates/projections",

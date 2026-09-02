@@ -1,0 +1,33 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-c",
+  "task": "P2-M1",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-M1 admits no external crate. academic-model-run links academic-domain, academic-policy, sha2 and thiserror as product edges and trybuild as a dev edge, all five covered by earlier reviewed receipts, and adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-model-run is the P2-M1 model-run provenance and calibration boundary. It is a separate package from academic-store, which owns migration 0007's tables, because what it holds is the twelve-field record type, the calibration registry, and the reconciliation against egress_audit -- none of which is persistence, and one of which needs a product edge to academic-policy that the canonical store must not have.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {
+    "academic-domain": "ConfidencePermille, so a calibrated confidence is the ledger's own bounded value rather than a second scale beside it.",
+    "academic-policy": "AuditRow and GrantNamespace. The reconciliation compares a model run's recorded transmitted ranges against audit rows this crate cannot fabricate, and keys on the namespace discriminator that crate owns."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-model-run",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-model-run",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-model-run is a workspace path crate, not an external dependency. It owns the twelve section 27.3 fields a model execution records, the per-model calibration dataset registry with its refresh metadata, the RawScore type that implements no ordering trait and hands back no number, the CalibratedConfidence that only the registry issues, and the reconciliation of a recorded transmission against egress_audit. Its product edge to academic-policy is what makes that reconciliation structural rather than a promise: the audit rows it reads are the broker's, and the grant namespace it keys on is the discriminator this task added to egress_audit.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. Its link closure holds nothing that can open a socket beyond libc, which reaches it through academic-policy's bundled SQLite. It calls no provider and no model: every score, dataset and audit row in its test tree is synthetic and built in-process. only_egress_crate_has_a_socket in tools/phase1-scaffold-policy.test.mjs pins its socket allowance at absent.",
+  "advisory_path": "Unchanged. Every external crate academic-model-run links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

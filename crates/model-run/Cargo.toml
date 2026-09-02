@@ -1,0 +1,26 @@
+[package]
+name = "academic-model-run"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `academic-policy` is the one product edge, and it is what makes the
+# reconciliation structural rather than a promise: the transmitted ranges a
+# `ModelRun` records are compared against `AuditRow`s this crate cannot
+# fabricate, and the namespace discriminator it keys on is that crate's column.
+#
+# `academic-domain` supplies `ConfidencePermille`, so a calibrated confidence is
+# the ledger's own bounded value rather than a second scale beside it.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-policy = { path = "../policy" }
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+trybuild.workspace = true
+
+[lints]
+workspace = true

@@ -57,6 +57,20 @@ pub const MIGRATION_0005_SQL: &str =
 pub const MIGRATION_0006_SQL: &str =
     include_str!("../../../migrations/store/0006_phase2_consent_and_capture.sql");
 
+/// `P2-M1`'s typed columns for the `MODEL_RUN_RECORDED` aggregate.
+///
+/// The same rule again. This is that migration for the twelve section 27.3
+/// fields a model execution records, and for the candidates a reanalysis
+/// appends beside -- never over -- an earlier run's.
+///
+/// It is `0007` rather than `0006` because `P2-G6` landed first and took that
+/// number. The order below is the order the numbers give; between these two it
+/// is free, because neither references an object the other creates. What the
+/// admission fingerprint fixes is the resulting object set, read out of
+/// `sqlite_schema` sorted by type and name.
+pub const MIGRATION_0007_SQL: &str =
+    include_str!("../../../migrations/store/0007_phase2_model_run_provenance.sql");
+
 /// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
 ///
 /// It replaces the Phase 1 identity singleton with the schema-2 one. The
@@ -95,6 +109,7 @@ pub const STORE_MIGRATION_SQL: &[&str] = &[
     MIGRATION_0004_SQL,
     MIGRATION_0005_SQL,
     MIGRATION_0006_SQL,
+    MIGRATION_0007_SQL,
 ];
 
 /// Result of invoking the forward-only migration runner.
@@ -269,6 +284,7 @@ fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> Stor
     transaction.execute_batch(MIGRATION_0004_SQL)?;
     transaction.execute_batch(MIGRATION_0005_SQL)?;
     transaction.execute_batch(MIGRATION_0006_SQL)?;
+    transaction.execute_batch(MIGRATION_0007_SQL)?;
     verify_integrity(&transaction)?;
     transaction.commit()?;
     Ok(())
