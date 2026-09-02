@@ -3,6 +3,7 @@ members = [
   "crates/admission",
   "crates/capture-client",
   "crates/cli",
+  "crates/consent",
   "crates/contracts",
   "crates/connector",
   "crates/core",

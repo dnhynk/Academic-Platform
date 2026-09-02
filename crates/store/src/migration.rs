@@ -46,6 +46,17 @@ pub const MIGRATION_0004_SQL: &str =
 pub const MIGRATION_0005_SQL: &str =
     include_str!("../../../migrations/store/0005_phase2_descriptor_migration.sql");
 
+/// `P2-G6`'s typed columns for the `CAPTURE_PERMISSION_RECORDED` and
+/// `CONSENT_RECORDED` aggregates.
+///
+/// The same rule as [`MIGRATION_0005_SQL`]: migration `0004` carries the v3
+/// registration frame and each aggregate owner adds its own typed columns
+/// later. This is that migration for `P2-G6`, and it is where section 3.7's
+/// `(offering_id, permission_seq)` key, its status and authority vocabularies,
+/// its two independent retention axes, and its seven-dimension checklist live.
+pub const MIGRATION_0006_SQL: &str =
+    include_str!("../../../migrations/store/0006_phase2_consent_and_capture.sql");
+
 /// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
 ///
 /// It replaces the Phase 1 identity singleton with the schema-2 one. The
@@ -83,6 +94,7 @@ pub const STORE_MIGRATION_SQL: &[&str] = &[
     MIGRATION_0003_SQL,
     MIGRATION_0004_SQL,
     MIGRATION_0005_SQL,
+    MIGRATION_0006_SQL,
 ];
 
 /// Result of invoking the forward-only migration runner.
@@ -256,6 +268,7 @@ fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> Stor
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
     transaction.execute_batch(MIGRATION_0004_SQL)?;
     transaction.execute_batch(MIGRATION_0005_SQL)?;
+    transaction.execute_batch(MIGRATION_0006_SQL)?;
     verify_integrity(&transaction)?;
     transaction.commit()?;
     Ok(())

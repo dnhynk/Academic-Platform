@@ -10,6 +10,7 @@ This repository is the runnable foundation for a local-first Personal Academic �
 - `academic-contracts`: deterministic CBOR v3 encode/sign plus v1/v2/v3 decode/verify, semantic v3 validation of returned writer bytes, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, pure v1-to-v3 and v2-to-v3 upcasters that rewrite no historical byte, and executable Protobuf actor/relation round trips with the same RFC-variant UUIDv7 boundary.
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
 - `academic-policy`: a socket-free, default-deny permission broker that hashes immutable policy snapshots, minimizes configured object ranges, records the fixed grant/audit shapes, and releases an exact runtime payload only after atomically consuming a one-use expiring capability. See [the permission broker contract](docs/contracts/permission-broker.md).
+- `academic-consent`: the section 3.7 `capture_permission` aggregate and the append-only consent ledger under it. A new offering has no record, `UNKNOWN` is what a missing record resolves to, and nothing is mintable from it. A user attestation and a written authority are unrelated types with no conversion between them, so a self-assessment cannot reach a permitting status; audio and transcript retention are two independent bounds and a derivative inherits the stricter of each; and an expiry cannot be applied without the deletion-impact preview it describes. `GATE-38-009` and `GATE-38-019` stay open per offering and per term. See [the consent contract](docs/contracts/consent-and-capture-permission.md).
 - Process boundaries: six separate executables bind capture client, indexer, repository analyzer, connector, egress proxy, and export job to distinct broker-owned capability sets. The egress executable has no transport yet; P2-G2 owns the sole future outbound socket.
 - `academic` CLI: `admission verify|show`, `daemon serve|status`, `doctor` (with `--profile`/`--deep`), `ingest`, `export`, `backup`, `restore`, `crash-replay`, and `fixture emit|verify|replay`. Every path prints its receipt-derived posture before human results and repeats it as the JSON `policy` object; the present unprovisioned key keeps that posture synthetic. Exit codes distinguish policy denial, conflict, repair-required, incompatible, unavailable, and internal failure. See [the CLI contract](docs/contracts/phase1-cli.md) and [admission receipt contract](docs/contracts/admission-receipt.md).
 - `academic-record`: the section 10 attempt ledger and the first two §28 engines. Every attempt is preserved — `AttemptHistory` has one mutator, no removal path, and a correction is a new entry carrying ADR-003's `SUPERSEDES` — and a `CourseAttempt` exists only where a confirmed registration or `academic-transcript`'s user-confirmed row does. Requirement classification is a versioned rule-engine output with no public constructor, asserted under `DeterministicEngine` authority that ADR-003's actor matrix refuses to a user. The 2015-spring repeat ceiling and the post-2004 external-grade exclusion are effective-dated policy rows rather than constants, and the repeat-recognition rule no official source states is `UNKNOWN` rather than a default. `engine.gpa` and `engine.credit.accounting` are the two registry entries this brings to `IMPLEMENTED`; both are pure functions of `(frozen_inputs, rule_set_hash, engine_version)`, both publish a value only when it is fully determined, and their harness corpora under `testdata/engines/` are executed and byte-compared rather than merely counted. All arithmetic is exact over `academic_domain::Decimal`: no `f32`, no `f64`, and no floating-point literal appears in the crate, and the shipped corpus averages `33.9 / 12` — exactly `2.825`, a tie `f64` cannot represent — so a float would fail the fixture rather than pass it silently. Expected averages come from `tools/gpa-oracle.mjs`, an independent transcription in another language. See [the GPA and attempt contract](docs/contracts/gpa-and-attempts.md).
@@ -217,6 +218,31 @@ reimplemented. What the boundary does and does not claim — including that its
 link to `P2-G4`'s acceptance boundary is by composition and not by type — is in
 [the untrusted-content contract](docs/contracts/untrusted-content.md). It runs
 inside `cargo test --workspace` and adds no package to `Cargo.lock`.
+
+`P2-G6` adds `academic-consent`, the consent ledger and the section 3.7
+capture-permission model. The default is the absence of a record rather than a
+permissive base: a new ledger holds nothing, `CaptureStatus::Unknown` is what a
+scope with no record resolves to, and `mint_capture_capability` refuses on it.
+A user attestation and a written authority are unrelated types — there is no
+conversion between them, a `trybuild` case is the program that tries, and a
+workspace-wide signature rule refuses one written anywhere else. Audio and
+transcript retention are two bounds with no accessor returning one for the
+other, and a derivative inherits the stricter of each independently. A legal
+exception leaves the system as an `ExternalReviewTask` with no resolution API
+and comes back as nothing. An expiry is applied only through the preview it
+describes, at the instant that preview was taken.
+
+Migration `0006_phase2_consent_and_capture.sql` carries the aggregate's typed
+columns — section 3.7's `(offering_id, permission_seq)` key, its status and
+authority vocabularies, four retention columns for two independent axes, and the
+seven-dimension checklist — under the same append-only triggers and authorizer
+coverage as every other canonical table. Every `CHECK` list in it is compared
+against the Rust `as_str` spellings it mirrors. Nothing writes those rows yet:
+`P2-L1` owns the daemon evaluation and the device layer. `GATE-38-009` and
+`GATE-38-019` stay open per offering and per term, and an unfilled cell keeps
+the recorder disabled. What the boundary does and does not claim is in
+[the consent contract](docs/contracts/consent-and-capture-permission.md). It
+runs inside `cargo test --workspace` and adds no package to `Cargo.lock`.
 
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical

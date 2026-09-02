@@ -220,6 +220,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-daemon",
       "academic-rpc",
     ],
+    // `P2-G6`'s consent ledger and section 3.7 capture-permission model. The
+    // domain crate is its only product edge, and that is a constraint rather
+    // than a preference: it restates `academic-retention`'s derivative-class
+    // list instead of importing it, because `rotation_engine_lane_is_not_default`
+    // below holds that exactly one crate declares that edge. The restatement is
+    // compared against the original through a dev edge, in
+    // `the_two_derivative_vocabularies_are_the_same_list`.
+    "academic-consent": ["academic-domain"],
     "academic-contracts": ["academic-domain"],
     "academic-connector": ["academic-policy"],
     "academic-crypto": ["academic-keystore-platform"],
@@ -347,6 +355,13 @@ test("workspace_dependency_direction_is_acyclic", () => {
       .toSorted(([left], [right]) => left.localeCompare(right)),
   );
   assert.deepEqual(devEdges, {
+    // `P2-G6` restates `academic-retention`'s derivative-class list rather than
+    // importing it, and this is the edge that keeps the restatement honest:
+    // `the_two_derivative_vocabularies_are_the_same_list` compares both lists
+    // whole. A dev edge reaches no product binary, so the rotation engine stays
+    // out of every shipping graph. `academic-domain` is declared twice for the
+    // `trybuild` reason `academic-scenario` gives below.
+    "academic-consent": ["academic-domain", "academic-retention"],
     // `academic-core` owns `tests/scenario_isolation.rs`, which needs the
     // projection engine and the canonical writer in one process to prove that
     // driving the first leaves the second byte-identical. `academic-scenario`
@@ -1452,6 +1467,10 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-capture-client": ["libc"],
   "academic-cli": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   "academic-connector": ["libc"],
+  // `P2-G6`. `libc` reaches it through `academic-domain`. The crate spells no
+  // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
+  // rather than empty.
+  "academic-consent": ["libc"],
   "academic-contracts": ["libc"],
   "academic-core": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   "academic-crypto": ["libc"],
@@ -3025,6 +3044,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     recordReceiptText,
     sandboxReceiptText,
     untrustedReceiptText,
+    consentReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3040,6 +3060,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-u4.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g4.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g5.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-g6.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3055,6 +3076,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const recordReceipt = JSON.parse(recordReceiptText);
   const sandboxReceipt = JSON.parse(sandboxReceiptText);
   const untrustedReceipt = JSON.parse(untrustedReceiptText);
+  const consentReceipt = JSON.parse(consentReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -3558,6 +3580,62 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-U4 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-G6` adds the consent ledger as `academic-consent` and admits no
+  // external crate: its product edges are `academic-domain` and `thiserror`,
+  // and its dev edges are `academic-domain`, `academic-retention` and
+  // `trybuild`, all already in this lock through earlier receipts.
+  assert.equal(consentReceipt.task, "P2-G6");
+  const consentAdmitted = new Set(
+    consentReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const consentPathPackages = new Set(
+    consentReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(consentAdmitted.size, 0, "P2-G6 must admit no external crate");
+  assert.deepEqual([...consentPathPackages], ["academic-consent@0.1.0"]);
+  assert.deepEqual(consentReceipt.summary.npm_additions, []);
+  assert.equal(consentReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(consentReceipt.direct_workspace_dependencies, {});
+  for (const claimed of [...consentAdmitted, ...consentPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        recordAdmitted.has(claimed) ||
+        recordPathPackages.has(claimed) ||
+        sandboxAdmitted.has(claimed) ||
+        sandboxPathPackages.has(claimed) ||
+        untrustedAdmitted.has(claimed) ||
+        untrustedPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const consentTuples = lockTuples.filter(
+    ([name, version]) =>
+      consentAdmitted.has(`${name}@${version}`) ||
+      consentPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    consentTuples.length,
+    consentAdmitted.size + consentPathPackages.size,
+    "a P2-G6 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -3583,7 +3661,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !sandboxAdmitted.has(`${name}@${version}`) &&
       !sandboxPathPackages.has(`${name}@${version}`) &&
       !untrustedAdmitted.has(`${name}@${version}`) &&
-      !untrustedPathPackages.has(`${name}@${version}`),
+      !untrustedPathPackages.has(`${name}@${version}`) &&
+      !consentAdmitted.has(`${name}@${version}`) &&
+      !consentPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -3606,7 +3686,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       egressTuples.length +
       recordTuples.length +
       sandboxTuples.length +
-      untrustedTuples.length,
+      untrustedTuples.length +
+      consentTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

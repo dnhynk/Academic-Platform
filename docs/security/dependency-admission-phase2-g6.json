@@ -1,0 +1,30 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-b",
+  "task": "P2-G6",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-G6 admits no external crate. academic-consent links academic-domain and thiserror as product edges and academic-domain, academic-retention and trybuild as dev edges, all covered by earlier reviewed receipts, and adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-consent is the P2-G6 consent ledger and section 3.7 capture-permission model. It is a separate package rather than a module of academic-policy because the broker's request tuple carries a consent_evidence_id that nothing in this workspace validates, and an edge in either direction would make it look as though this crate did.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-consent",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-consent",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-consent is a workspace path crate, not an external dependency. It owns the section 3.7 capture_permission aggregate, the append-only consent ledger and its closed event vocabulary, the type separation that keeps a user attestation from producing a permitting status, the two independent retention axes and the inheritance rule that may only narrow them, and the deletion-impact preview an expiry cannot be applied without. academic-domain is its only product edge, for the identifier and digest types. academic-retention is deliberately a dev edge: rotation_engine_lane_is_not_default holds that exactly one crate declares a product edge to it because linking it links a crate that can destroy a key slot, so this crate restates that crate's derivative-class list and the_two_derivative_vocabularies_are_the_same_list compares the two whole through the dev edge.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. It holds no clock: every instant it compares is an argument. Its link closure holds nothing that can open a socket beyond libc, which reaches it through academic-domain. Every fixture in its test tree is synthetic and built from committed literals. only_egress_crate_has_a_socket in tools/phase1-scaffold-policy.test.mjs pins its socket allowance at absent.",
+  "advisory_path": "Unchanged. Every external crate academic-consent links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

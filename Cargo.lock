@@ -48,6 +48,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-consent"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-retention",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-contracts"
 version = "0.1.0"
 dependencies = [

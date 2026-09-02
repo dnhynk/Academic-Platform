@@ -1,0 +1,5 @@
+error: cannot construct `CaptureCapabilityToken` with struct literal syntax due to private fields
+ --> tests/compile_fail/capture_capability_has_no_public_constructor.rs:4:18
+  |
+4 |     let _token = CaptureCapabilityToken {};
+  |                  ^^^^^^^^^^^^^^^^^^^^^^
