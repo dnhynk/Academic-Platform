@@ -318,6 +318,12 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `encrypted_object_lane_is_not_default` proves the edge stays unresolved
     // in a default build.
     "academic-vault": ["academic-crypto", "academic-domain"],
+    // `P2-G4`'s sandbox. Its one product edge is the domain, for the
+    // `ModelRunId` a resource receipt is paired with. `libc` and `windows-sys`
+    // are optional target-specific edges behind the non-default
+    // `native-sandbox` feature and are not workspace packages, so they appear
+    // in `SOCKET_CAPABLE_CLOSURES` below rather than here.
+    "academic-worker": ["academic-domain"],
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
@@ -867,6 +873,14 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
       "test-only: inside `#[cfg(test)] mod tests`, spawning the IPC02 fault " +
         "child. Ships in no product build.",
     ],
+    [
+      join("crates", "worker", "src", "sandbox", "linux.rs"),
+      "product, and the point of the crate: the P2-G4 parent launches the " +
+        "sandboxed worker. It is behind the non-default `native-sandbox` " +
+        "feature, the child it starts is the process the sandbox contains, and " +
+        "the child itself is refused `clone`, `fork`, `vfork` and `execve` by " +
+        "the seccomp filter this file installs.",
+    ],
   ]);
   const commandUse = /\bprocess::Command\b/u;
   const seenCommandFiles = new Set();
@@ -893,7 +907,7 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
       assert.equal(
         commandAllowlist.has(relative),
         true,
-        `${relative} spawns a subprocess and is not one of the two reviewed sites`,
+        `${relative} spawns a subprocess and is not one of the reviewed sites`,
       );
       seenCommandFiles.add(relative);
     }
@@ -1107,6 +1121,25 @@ function rustCodeOnly(source, keepStrings = false) {
       continue;
     }
     const character = source[cursor];
+
+    // A raw string. Without this arm the quote count goes odd at the first
+    // `r#"..."#` holding a quote, and from there every literal in the file is
+    // read as code and every stretch of code as a literal -- so a socket
+    // spelling after one is invisible here. Three files in this repository
+    // contain raw strings, two of them from before `P2-G4`.
+    if (character === "r" && !keepStrings) {
+      let hashes = 0;
+      while (source[cursor + 1 + hashes] === "#") {
+        hashes += 1;
+      }
+      if (source[cursor + 1 + hashes] === '"') {
+        const closing = '"' + "#".repeat(hashes);
+        const at = source.indexOf(closing, cursor + 2 + hashes);
+        cursor = at === -1 ? source.length : at + closing.length;
+        out += '""';
+        continue;
+      }
+    }
     if (character === '"' && !keepStrings) {
       let end = cursor + 1;
       while (end < source.length) {
@@ -1159,6 +1192,14 @@ const SOCKET_SPELLINGS = [
   /\bWSA[A-Za-z0-9_]*\b/gu,
   /\blibc\s*::\s*(?:socket|connect|bind|listen|sendto|recvfrom|getaddrinfo)\b/gu,
   /\b(?:UnixStream|UnixListener|UnixDatagram)\b/gu,
+  // A socket reached by number rather than by name. `libc::syscall(SYS_socket,
+  // ...)` opens one and spells nothing else on this list; `P2-G4` used exactly
+  // that shape as an injection and it passed every rule here before these two
+  // patterns existed. A bare numeric `syscall(41, ...)` still passes, which is
+  // recorded as open in `docs/contracts/policy-source-scans.md`; the link half
+  // below is what bounds who can reach `libc` at all.
+  /\blibc\s*::\s*syscall\b/gu,
+  /\bSYS_(?:socket|socketpair|socketcall|connect|bind|listen|accept4?|sendto|recvfrom|sendmsg|recvmsg)\b/gu,
   /\bNamedPipe[A-Za-z]*\b/gu,
   /\bnamed_pipe\b/gu,
 ];
@@ -1208,7 +1249,56 @@ const SOCKET_ALLOWANCE = new Map([
   ["crates/daemon/tests/support/mod.rs", ["NamedPipe", "UnixStream", "named_pipe", "tokio::net"]],
   ["crates/daemon/tests/unix_socket.rs", ["NamedPipe"]],
   ["crates/daemon/tests/windows_pipe.rs", ["NamedPipe", "named_pipe", "tokio::net"]],
+  // `P2-G4`. These two are the first files in this repository allowed an
+  // outbound socket spelling, and they are allowed opposite halves of one.
+  //
+  // The probe is the process the sandbox contains. Proving that the operating
+  // system refuses a socket means asking it for one, so this file asks: it
+  // binds a loopback listener as its own positive control and connects to an
+  // RFC 5737 documentation address as the claim. It is a `[[bin]]` with
+  // `required-features = ["native-sandbox"]` and a `path` outside `src`, so no
+  // default build and no product crate reaches it -- the two rules below check
+  // both, and `probe_targets_are_not_in_any_default_build` in
+  // `crates/worker/tests/capability.rs` reads the manifest for the same thing.
+  //
+  // The Linux backend names the socket *syscalls*, and it names them to put
+  // them in a seccomp deny list. The rule below is what makes that structural
+  // rather than a promise: every `SYS_` spelling in that file has to appear
+  // inside its `denied_syscalls` function.
+  [
+    "crates/worker/probes/worker_probe.rs",
+    [
+      "Ipv4Addr",
+      "SocketAddr",
+      "SocketAddrV4",
+      "TcpListener",
+      "TcpStream",
+      "connect_timeout",
+    ],
+  ],
+  [
+    "crates/worker/src/sandbox/linux.rs",
+    [
+      "SYS_accept4",
+      "SYS_bind",
+      "SYS_connect",
+      "SYS_listen",
+      "SYS_recvfrom",
+      "SYS_recvmsg",
+      "SYS_sendmsg",
+      "SYS_sendto",
+      "SYS_socket",
+      "SYS_socketpair",
+      "libc::syscall",
+    ],
+  ],
 ]);
+
+/** The sandbox probe's file, which is the one binary allowed to ask for a socket. */
+const SANDBOX_PROBE = "crates/worker/probes/worker_probe.rs";
+
+/** The Linux backend, which names socket syscalls only to refuse them. */
+const SANDBOX_DENY_LIST = "crates/worker/src/sandbox/linux.rs";
 
 /** Path segments that lead to a socket; renaming one hides everything under it. */
 const SOCKET_MODULE_SEGMENTS = new Set(["net", "socket", "sys", "WinSock", "named_pipe"]);
@@ -1292,6 +1382,13 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-test-support": [],
   "academic-transcript": ["libc"],
   "academic-vault": ["libc", "rustix", "windows-sys"],
+  // `P2-G4`. `libc` and `windows-sys` are direct edges here rather than
+  // inherited ones: the sandbox backends are syscalls. Only `libc` appears,
+  // because both are optional and target-specific and this resolve is the
+  // default feature set on this host -- which is itself the claim that the
+  // default lane links no sandbox. The source half above is what says the
+  // crate names those syscalls to refuse a socket rather than to open one.
+  "academic-worker": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -1310,7 +1407,10 @@ test("only_egress_crate_has_a_socket", async () => {
     "core::net::SocketAddr; tokio :: net :: TcpStream; rustix::net::socket(); mio::net::TcpStream; " +
     "nix::sys::socket::socket(); socket2::Socket::new(); addr.to_socket_addrs(); ToSocketAddrs; " +
     "lookup_host(); getaddrinfo(); connect_timeout(); WinSock::connect; WSAConnect(); " +
-    "libc::connect(fd); UnixStream::connect(); UnixListener::bind(); NamedPipeServer; named_pipe;";
+    "libc::connect(fd); UnixStream::connect(); UnixListener::bind(); NamedPipeServer; named_pipe; " +
+    "libc::syscall(libc::SYS_socket, 2, 1, 0); SYS_socketpair; SYS_socketcall; SYS_connect; " +
+    "SYS_bind; SYS_listen; SYS_accept; SYS_accept4; SYS_sendto; SYS_recvfrom; SYS_sendmsg; " +
+    "SYS_recvmsg;";
   for (const pattern of SOCKET_SPELLINGS) {
     assert.match(sample, new RegExp(pattern.source, "u"), `${pattern} matches nothing`);
   }
@@ -1327,17 +1427,14 @@ test("only_egress_crate_has_a_socket", async () => {
   const readFiles = new Set();
   for (const pkg of workspacePackages) {
     const crateRoot = dirname(pkg.manifest_path);
-    const files = [
-      ...(await rustSourcesIfPresent(join(crateRoot, "src"))),
-      ...(await rustSourcesIfPresent(join(crateRoot, "tests"))),
-      ...(await rustSourcesIfPresent(join(crateRoot, "benches"))),
-    ];
-    const buildScript = join(crateRoot, "build.rs");
-    try {
-      files.push([buildScript, await readFile(buildScript, "utf8")]);
-    } catch {
-      // A crate without a build script contributes none.
-    }
+    // Every `.rs` anywhere under the crate, not three directory names plus a
+    // build script. `P2-G4` added `crates/worker/probes/`, a `[[bin]]` with an
+    // explicit `path` outside `src`, and the three-name walk read none of it --
+    // the first shape `docs/contracts/policy-source-scans.md` calls a scan that
+    // stops short. A recursive walk from the crate root reaches `build.rs`
+    // without naming it, so the pinned inventory below is what bounds build
+    // scripts rather than the walk.
+    const files = await rustSourcesIfPresent(crateRoot);
     for (const [path, raw] of files) {
       const relative = path.slice(path.indexOf("crates")).split("\\").join("/");
       readFiles.add(resolve(path));
@@ -1428,6 +1525,60 @@ test("only_egress_crate_has_a_socket", async () => {
     "a file spells a socket that its allowance does not list",
   );
   for (const [file, spellings] of observed) {
+    if (file === SANDBOX_DENY_LIST) {
+      // Every socket syscall this file names has to be inside the function
+      // that builds the deny list. A file that names one anywhere else is
+      // calling it, not refusing it.
+      const source = await readFile(join(...file.split("/")), "utf8");
+      const denied = rustCodeOnly(source).match(
+        /fn denied_syscalls\(\)\s*->\s*Vec<i64>\s*\{[^]*?\n\}/u,
+      );
+      assert.ok(denied, `${file} no longer has a denied_syscalls function`);
+      const whole = rustCodeOnly(source);
+      for (const spelling of spellings) {
+        if (spelling === "libc::syscall") {
+          continue;
+        }
+        // Counted, not merely present. A spelling that is inside the deny list
+        // *and also* somewhere else passes an `includes` check while naming a
+        // socket syscall the file does not refuse.
+        const inside = denied[0].split(spelling).length - 1;
+        const anywhere = whole.split(spelling).length - 1;
+        assert.equal(
+          anywhere,
+          inside,
+          `${file} names ${spelling} ${anywhere - inside} time(s) outside its seccomp deny list`,
+        );
+      }
+      continue;
+    }
+    if (file === SANDBOX_PROBE) {
+      // The probe may ask for a socket because the sandbox has to refuse one.
+      // What keeps that scoped is that no default build and no product crate
+      // can reach the target; both are read from `cargo metadata` rather than
+      // taken on trust.
+      const worker = packagesByName.get("academic-worker");
+      assert.ok(worker, "academic-worker is absent");
+      const probeTargets = worker.targets.filter((target) => target.kind.includes("bin"));
+      assert.deepEqual(
+        probeTargets.map((target) => target.name),
+        ["academic-worker-probe"],
+        "the worker gained a binary target beside the sandbox probe",
+      );
+      assert.deepEqual(
+        probeTargets.map((target) => target["required-features"] ?? []),
+        [["native-sandbox"]],
+        "the sandbox probe is buildable without the native-sandbox feature",
+      );
+      assert.deepEqual(
+        workspacePackages
+          .filter((pkg) => workspaceDependencyNames(pkg).includes("academic-worker"))
+          .map((pkg) => pkg.name),
+        [],
+        "a crate depends on academic-worker, so the probe is reachable from it",
+      );
+      continue;
+    }
     for (const spelling of spellings) {
       assert.equal(
         LOCAL_IPC_SPELLINGS.has(spelling),
@@ -2705,6 +2856,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     transcriptReceiptText,
     egressReceiptText,
     recordReceiptText,
+    sandboxReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -2718,6 +2870,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-u7.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u4.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-g4.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -2731,6 +2884,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const transcriptReceipt = JSON.parse(transcriptReceiptText);
   const egressReceipt = JSON.parse(egressReceiptText);
   const recordReceipt = JSON.parse(recordReceiptText);
+  const sandboxReceipt = JSON.parse(sandboxReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -3041,6 +3195,72 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       `${claimed} is claimed by two admission receipts`,
     );
   }
+  // `P2-G4` adds the worker sandbox as `academic-worker` and admits no
+  // external crate: `libc` and `windows-sys` are already in this lock at these
+  // versions through earlier receipts, so what is new is two direct edges,
+  // which the receipt records with their own owner, licence, feature set,
+  // advisory path and trust-boundary justification.
+  assert.equal(sandboxReceipt.task, "P2-G4");
+  const sandboxAdmitted = new Set(
+    sandboxReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const sandboxPathPackages = new Set(
+    sandboxReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(sandboxAdmitted.size, 0, "P2-G4 must admit no external crate");
+  assert.deepEqual([...sandboxPathPackages], ["academic-worker@0.1.0"]);
+  assert.deepEqual(sandboxReceipt.summary.npm_additions, []);
+  assert.equal(sandboxReceipt.summary.npm_install_scripts_added, false);
+  // Each direct edge the task adds names a version that is already in the lock,
+  // and names it exactly, so a bump cannot ride in under a receipt that says
+  // nothing changed.
+  assert.deepEqual(Object.keys(sandboxReceipt.direct_edge_review).toSorted(), [
+    "libc",
+    "windows-sys",
+  ]);
+  for (const [name, edge] of Object.entries(sandboxReceipt.direct_edge_review)) {
+    assert.equal(edge.already_in_lock, true, `${name} is claimed as new`);
+    assert.equal(
+      lockTuples.some(([lockName, version]) => lockName === name && version === edge.version),
+      true,
+      `${name}@${edge.version} is not the version in Cargo.lock`,
+    );
+    for (const field of [
+      "owner",
+      "license",
+      "features",
+      "why_this_dependency_belongs_inside_its_trust_boundary",
+      "advisory_path",
+    ]) {
+      assert.equal(
+        typeof edge[field] === "string" && edge[field].length > 0,
+        true,
+        `${name}'s admission receipt has no ${field}`,
+      );
+    }
+  }
+  for (const claimed of [...sandboxAdmitted, ...sandboxPathPackages]) {
+    assert.equal(
+      egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const sandboxTuples = lockTuples.filter(
+    ([name, version]) =>
+      sandboxAdmitted.has(`${name}@${version}`) ||
+      sandboxPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    sandboxTuples.length,
+    sandboxAdmitted.size + sandboxPathPackages.size,
+    "a P2-G4 admitted package is missing from Cargo.lock",
+  );
+
   const egressTuples = lockTuples.filter(
     ([name, version]) =>
       egressAdmitted.has(`${name}@${version}`) ||
@@ -3137,7 +3357,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !egressAdmitted.has(`${name}@${version}`) &&
       !egressPathPackages.has(`${name}@${version}`) &&
       !recordAdmitted.has(`${name}@${version}`) &&
-      !recordPathPackages.has(`${name}@${version}`),
+      !recordPathPackages.has(`${name}@${version}`) &&
+      !sandboxAdmitted.has(`${name}@${version}`) &&
+      !sandboxPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -3158,7 +3380,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       processTuples.length +
       transcriptTuples.length +
       egressTuples.length +
-      recordTuples.length,
+      recordTuples.length +
+      sandboxTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -3210,6 +3433,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     ...admittedVersions,
     ...keyReceipt.direct_workspace_dependencies,
     ...scenarioReceipt.direct_workspace_dependencies,
+    ...sandboxReceipt.direct_workspace_dependencies,
   };
   const directRegistryDependencies = workspacePackages.flatMap((pkg) =>
     pkg.dependencies.filter((dependency) => dependency.source !== null),
@@ -3365,8 +3589,46 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
           },
         ]
       : [];
+    // `P2-G4` reuses three already-admitted crates and admits none: `tempfile`
+    // for the job roots its acceptance suite builds, and `windows-sys` for the
+    // AppContainer and job-object calls, with two feature groups no other
+    // package selects. `sha2` and `thiserror` are not on this list because they
+    // are not `admissions` entries. The edge is optional and behind
+    // `native-sandbox`; `cargo metadata` reports declared dependencies, so it
+    // appears here whether or not the feature is on.
+    const g4SandboxUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-worker",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : admission.name === "windows-sys"
+          ? [
+              {
+                package: "academic-worker",
+                kind: "normal",
+                target: "cfg(windows)",
+                default_features: false,
+                features: [
+                  "Win32_Foundation",
+                  "Win32_Security",
+                  "Win32_Security_Authorization",
+                  "Win32_Security_Isolation",
+                  "Win32_Storage_FileSystem",
+                  "Win32_System_JobObjects",
+                  "Win32_System_Threading",
+                ],
+              },
+            ]
+          : [];
     const expectedUses = [
       ...admission.uses,
+      ...g4SandboxUse,
       ...j1ProjectionUse,
       ...t047FormatTestUse,
       ...k4RecoveryUse,

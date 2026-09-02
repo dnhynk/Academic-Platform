@@ -1,0 +1,59 @@
+[package]
+name = "academic-worker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# The measured operating-system backends and the probe binaries that observe
+# them. Off by default: the default lane is pure safe Rust with no syscall and
+# no probe target, so `cargo test --workspace` links neither.
+native-sandbox = ["dep:libc", "dep:windows-sys"]
+
+[dependencies]
+academic-domain = { path = "../domain" }
+sha2.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "=0.2.189", default-features = false, features = [
+  "std",
+], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, optional = true, features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Security_Isolation",
+  "Win32_Storage_FileSystem",
+  "Win32_System_JobObjects",
+  "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[[bin]]
+name = "academic-worker-probe"
+path = "probes/worker_probe.rs"
+required-features = ["native-sandbox"]
+
+# The sandbox modules are the only `unsafe` in this crate and they are the whole
+# reason it exists: a filter, a ruleset, a token, and a job object are syscalls.
+# `unsafe_in_the_sandbox_modules_only` refuses an `unsafe` anywhere else, so the
+# default lane keeps the workspace's `forbid` in practice. Every other workspace
+# Rust and Clippy deny is reproduced exactly.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"

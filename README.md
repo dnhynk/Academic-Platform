@@ -50,6 +50,8 @@ cargo clippy -p academic-retention --all-targets --locked --offline --features r
 cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection
 cargo clippy -p academic-transcript --all-targets --locked --offline --features encrypted-vault,phase2-fault-injection -- -D warnings
 cargo test -p academic-transcript --all-targets --locked --offline --features encrypted-vault,phase2-fault-injection
+cargo clippy -p academic-worker --all-targets --locked --offline --features native-sandbox -- -D warnings
+cargo test -p academic-worker --all-targets --locked --offline --features native-sandbox
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
@@ -163,6 +165,27 @@ closure. `GATE-38-028` stays open and `cloud_egress_default()` takes no
 argument, so no quality heuristic can move it off `LOCAL_ONLY_OR_STOP`. What the
 boundary does and does not claim is in
 [the egress boundary contract](docs/contracts/egress-boundary.md).
+
+`P2-G4` adds `academic-worker`, which runs a pipeline job out of process under a
+measured operating-system sandbox. The two commands above are its non-default
+lane and are the only place the backends are built: seccomp, Landlock and
+`setrlimit` on Linux, an AppContainer with no capabilities plus a job object on
+Windows. Both were measured by launching a process, attempting the operation
+inside it, and reading what the kernel answered — a home read, a vault read, a
+socket, a child process, and each of the four bounds — and each refusal is
+paired with the same probe run uncontained, so a refusal the machine would have
+given anyway fails the test rather than passing it.
+
+Two of those claims are narrower than their names. On Windows the socket
+*handle* is still created; what is refused is every address off the host, with
+`WSAEACCES`. And two of the four bounds kill the job while the other two refuse
+the operation. The per-platform table, and the six ways the acceptance boundary
+refuses a staged output, are in
+[the worker sandbox contract](docs/contracts/worker-sandbox.md). The crate adds
+no package to `Cargo.lock`; it takes two direct edges to crates already in it,
+receipted in
+[dependency-admission-phase2-g4.json](docs/security/dependency-admission-phase2-g4.json).
+`product_network` stays `NONE` and nothing here moves ADR-002.
 
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical

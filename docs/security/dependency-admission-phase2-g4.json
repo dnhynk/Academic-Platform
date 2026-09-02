@@ -1,0 +1,54 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-b",
+  "task": "P2-G4",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-G4 adds no package to Cargo.lock. The sandbox backends need libc on Unix and windows-sys on Windows; both are already resolved in this lock through earlier reviewed receipts (libc through libsqlite3-sys, windows-sys through academic-keystore-platform and academic-store-platform), at the same pinned versions. What is new is two direct edges, recorded below, and one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-worker is a seventh package and deliberately not a seventh process class. The six P2-G7 process packages are pinned whole by six_process_entrypoints_are_exact_and_distinct and this task does not touch them: the worker holds no ProcessClass, no capability from that matrix, and no outbound socket capability. Nothing in the workspace depends on academic-worker, which is what keeps its probe binary out of every other crate's graph.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {
+    "libc": "0.2.189"
+  },
+  "direct_edge_review": {
+    "libc": {
+      "version": "0.2.189",
+      "edge": "crates/worker, [target.'cfg(unix)'.dependencies], optional, behind the non-default native-sandbox feature",
+      "already_in_lock": true,
+      "owner": "academic-worker",
+      "license": "MIT OR Apache-2.0",
+      "features": "default-features = false, features = [\"std\"]. No extra_traits, no align, no rustc-dep-of-std.",
+      "why_this_dependency_belongs_inside_its_trust_boundary": "The Linux backend is four syscalls — setrlimit, prctl(PR_SET_NO_NEW_PRIVS), the three landlock_* calls, and seccomp(SECCOMP_SET_MODE_FILTER). libc is the declaration of those numbers and of the rlimit and rusage structures, nothing more; the seccomp BPF program and the two Landlock structures are defined in this crate because libc does not carry them. Writing the declarations by hand instead was considered and rejected: extern \"C\" blocks, #[link] and no_mangle are refused anywhere in a workspace crate by only_egress_crate_has_a_socket's third half, so a hand-rolled binding would have had to weaken that rule.",
+      "advisory_path": "Unchanged. libc is already triaged through the Phase 1 receipt's advisory path; this adds an edge to an existing pinned version, not a version."
+    },
+    "windows-sys": {
+      "version": "0.61.2",
+      "edge": "crates/worker, [target.'cfg(windows)'.dependencies], optional, behind the non-default native-sandbox feature",
+      "already_in_lock": true,
+      "owner": "academic-worker",
+      "license": "MIT OR Apache-2.0",
+      "features": "Win32_Foundation, Win32_Security, Win32_Security_Authorization, Win32_Security_Isolation, Win32_Storage_FileSystem, Win32_System_JobObjects, Win32_System_Threading. Win32_Security_Isolation and Win32_System_JobObjects are new to this workspace; the other five are already selected by academic-store-platform, academic-vault, academic-keystore-platform or academic-daemon. windows-sys resolves no package per feature, so the lock is unchanged.",
+      "why_this_dependency_belongs_inside_its_trust_boundary": "The Windows backend is an AppContainer profile, a DACL entry for its SID on three directories, a process-thread attribute list carrying SECURITY_CAPABILITIES, and a job object with ActiveProcessLimit, ProcessMemoryLimit and PerProcessUserTimeLimit. Every one of those is a Win32 call with no safe-Rust equivalent, and the same foreign-function rule that applies to libc applies here. Win32_Networking_WinSock is deliberately not selected: the parent never touches a socket, and only_egress_crate_has_a_socket would refuse the WSA* spellings it brings.",
+      "advisory_path": "Unchanged. windows-sys is already triaged through the Phase 1 receipt's advisory path; this adds an edge and two feature flags to an existing pinned version."
+    }
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-worker",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-worker",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-worker is a workspace path crate, not an external dependency. It owns the P2-G4 containment boundary: the per-job capability descriptor, the staged input/output pair, the core-only acceptance of a staged output, the resource receipt every model run is paired with, and the two measured operating-system backends. It is the one place in this workspace that holds unsafe code outside the four reviewed platform leaves, and unsafe_is_confined_to_the_sandbox_backends in crates/worker/tests/capability.rs is what keeps that to the two backend files.",
+  "network_posture": "The crate's product source opens no socket. Its Linux backend names the socket syscall numbers, and only to put them in a seccomp deny list, which only_egress_crate_has_a_socket checks structurally by requiring every SYS_ spelling in that file to appear inside its denied_syscalls function. The probe binary under crates/worker/probes does name TcpStream and TcpListener, because a test that proves the operating system refuses a socket has to ask for one; it is a [[bin]] with required-features = [\"native-sandbox\"] and a path outside src, no workspace crate depends on academic-worker, and both facts are read out of cargo metadata by that same scan. product_network stays NONE.",
+  "advisory_path": "Unchanged. Both external crates this task reaches were admitted by earlier receipts at these exact versions and are triaged through them. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

@@ -1,0 +1,227 @@
+# Worker sandbox contract
+
+`academic-worker` is the `P2-G4` containment boundary. It runs a pipeline job or
+a provider SDK call in a separate process, under an operating-system sandbox,
+against two staged directories, with four bounds and a receipt.
+
+It sits below `P2-G7`'s process classes rather than beside them. A worker holds
+no `ProcessClass` and no cell of that matrix: it is the unprivileged compute box
+those processes hand work to, and the six process entry points are unchanged.
+
+## What is measured, and on which platform
+
+Every row below was produced by launching a process, attempting the operation
+inside it, and reading the operating system's answer. None of it is a source
+scan. The error numbers are what the probe reported on the two platforms this
+task ran on.
+
+| Claim | Linux — seccomp, Landlock, rlimits | Windows — AppContainer, job object |
+|---|---|---|
+| home read | `EACCES` (13): the path is under no Landlock rule | `ERROR_ACCESS_DENIED` (5): no ACE for the container SID |
+| vault read | `EACCES` (13), same rule | `ERROR_ACCESS_DENIED` (5), same reason |
+| write outside the staged output | `EACCES` (13) | `ERROR_ACCESS_DENIED` (5) |
+| child process | `EPERM` (1) at `clone`/`fork`/`vfork`/`execve` | `ERROR_NOT_ENOUGH_QUOTA` (1816), `ActiveProcessLimit = 1` |
+| socket | `EPERM` (1) at `socket(2)`; no handle is created | the handle **is** created; every off-host connect is `WSAEACCES` (10013) |
+| CPU bound | `RLIMIT_CPU`, `SIGXCPU`, job killed | `PerProcessUserTimeLimit`, job killed |
+| memory bound | `RLIMIT_AS`; the allocation is refused | `ProcessMemoryLimit`; the allocation is refused |
+| wall bound | parent deadline, `SIGKILL` | parent deadline, `TerminateJobObject` |
+| output bound | `RLIMIT_FSIZE`, plus the parent's own measurement | the parent's measurement |
+
+Two rows are asymmetric and are written that way on purpose.
+
+**The socket row.** On Linux the unqualified reading of
+`worker_cannot_open_a_socket` is true: the filter refuses `socket(2)`, so the
+loopback listener the probe builds as its control is never created either. On
+Windows it is not. `\Device\Afd` grants `ALL APPLICATION PACKAGES` and no
+user-mode mechanism removes that without a filter driver or an administrator, so
+the handle exists; the platform's loopback exemption then lets an AppContainer
+connect to an endpoint it owns itself, which the probe's own listener is. What
+Windows refuses is every address off the host, with a permission code no routing
+failure produces. The acceptance test asserts exactly that per platform, and
+fails if the Windows backend ever starts refusing loopback as well, so the day
+that changes this page changes with it.
+
+**The output row.** Two of the four bounds kill the job and two refuse the
+operation. `RLIMIT_FSIZE` bounds one file rather than a directory, and a job
+object bounds no file at all, so the directory total is measured by the parent
+after the run and turned into `KilledByLimit(OutputBytes)` there. The job is not
+killed for it; what the bound buys is that the bytes are never accepted.
+
+### Every refusal is paired with a permission
+
+A refusal on its own is not evidence. A connect to an address nothing routes
+fails with or without a sandbox, and a file that does not exist is unreadable to
+everybody. So each containment test runs the same probe binary twice — once
+through its `baseline` mode with no sandbox, once inside one — and requires the
+uncontained run to have been *permitted* what the contained run is refused. The
+socket control is a loopback listener plus a connect to the port it just chose:
+a complete TCP round trip that needs no service and no network, which any
+uncontained process completes.
+
+The error number is checked too, not just the fact of a refusal. That is not
+pedantry: with the probe redirecting its streams to the null device,
+`worker_cannot_spawn_a_child` passed on Linux with `EACCES`, because Landlock
+refused the `/dev/null` open before `clone` was ever reached. The test was green
+and the claim was not measured. Inheriting the streams instead opens nothing,
+and the answer moved to `EPERM` from the filter.
+
+## The capability descriptor
+
+One job, one descriptor, one use.
+
+A descriptor names the job, the capabilities it holds, its two staged
+directories, its four bounds, and the instant after which it is worthless. It
+carries no secret and is written into the staged input directory in plain text,
+because what makes it unforgeable is the registry rather than its contents:
+`DescriptorRegistry::consume` compares the presented descriptor's SHA-256 against
+the issued one, so a re-encoded descriptor with a later expiry is a mismatch and
+not a fresh grant.
+
+Refusals are ordered. An expired descriptor is refused as expired whether or not
+it was also consumed, so a replay after expiry cannot be reported as a fresh
+descriptor that merely ran twice.
+
+`JobCapability` has two variants: read the staged input, write the staged
+output. There is no variant for creating a claim, opening a socket, or reading
+key material, and `worker_cannot_publish_a_canonical_claim` reads the enum
+through a compiler-checked witness `match`, so a third variant stops that suite
+compiling rather than widening what a job may do.
+
+## Staged input, staged output, and who may accept
+
+Three directories cross the boundary, and the sandbox grants exactly three:
+
+- **staged input**, read-only — the descriptor and the job script;
+- **staged output**, writable — where a result goes;
+- **report**, writable — the control channel the parent reads the run's
+  per-operation answers from. It is not counted against the output bound,
+  because it is not the result.
+
+A worker writes bytes. Turning bytes into something the rest of the system will
+read is a separate act in a different process. `AcceptedOutput` has private
+fields and one producer, `StagingAuthority::accept`; a `StagingAuthority` holds a
+secret the parent generates and never writes into a descriptor or either staged
+directory, so the sandboxed process has nothing to construct one from. A
+`compile_fail` case closes the other half: an `AcceptedOutput` cannot be
+assembled field by field from outside the crate either.
+
+`accept` refuses six ways, and `pj02_output_that_fails_validation_is_quarantined_not_accepted`
+walks all six and then accepts a clean one, so the boundary is not simply closed:
+a path that escapes the staged output, a staged file that is not there, a run
+that did not complete, a run past its output bound, bytes whose job is not the
+descriptor's, and a descriptor that never held the write capability.
+
+## The receipt
+
+`WorkerRun` is a `ModelRunId` and a `ResourceReceipt` in one value with one
+constructor that takes both, no `Default`, and no setter. That is the whole
+mechanism for "a resource receipt is attached to every `ModelRun`": there is no
+order of calls that produces the identity without the measurement, and the
+`compile_fail` case refuses assembling one field by field.
+
+`P2-M1` owns the twelve section 27.3 `ModelRun` fields and the event arm that
+records them. This task adds no thirteenth field and edits no signed envelope;
+what it owns is that nothing leaves this crate's seam without a receipt.
+
+A receipt records the backend, the four bounds, the CPU milliseconds and peak
+memory the operating system attributed to the run, the wall time, the staged
+output byte count, and how the run ended. A killed run has one too — `PJ01`'s row
+says a killed job records a receipt, and the receipt is the return value rather
+than something a caller may skip.
+
+## `PJ01` and `PJ02`
+
+`PJ01` — a worker over its CPU, memory, time, or output bound — is this task's
+in full: the job is killed or the operation refused, `RunOutcome::is_acceptable`
+is false for every outcome but `Completed`, and no staged byte reaches the
+acceptance boundary.
+
+`PJ02` is split, and the execution plan is inconsistent about it. Its section 7
+fault table assigns `PJ02` to `P2-G5`; its section 5 `P2-G4` row lists `PJ01` and
+`PJ02` as this task's. The reconciliation is that `P2-G5` owns schema validation
+and span provenance, which are about what the bytes say, and this task owns the
+acceptance boundary those bytes cross first. The six refusals above are that
+half. Nothing here validates a schema.
+
+## The malicious-plugin corpus
+
+The corpus is a set of *scripts*, not binaries. A job is a list of
+`JobOperation`s, the corpus is composed at run time from that enum, and
+`JobOperation::must_be_refused` says which entries are adversarial — so an
+operation added later has to be classified before the test says anything about
+it. The corpus is synthetic by construction and cannot drift from the code.
+
+`malicious_plugin_corpus_is_contained` runs all nine entries in one job and
+requires the seven adversarial ones to be refused *and* the two legitimate ones
+to be permitted, so a sandbox tight enough to refuse everything fails it as
+loudly as one that permits everything. Both canaries are re-read afterwards and
+compared to their original bytes.
+
+## Where the socket spellings are, and why
+
+Two files in this crate spell an outbound socket construct, and they are the
+first in this repository allowed to.
+
+`crates/worker/probes/worker_probe.rs` is the process being contained. A test
+that proves the operating system refuses a socket has to ask for one. It is a
+`[[bin]]` with `required-features = ["native-sandbox"]` and a `path` outside
+`src`, no workspace crate depends on `academic-worker`, and
+`only_egress_crate_has_a_socket` reads both facts out of `cargo metadata` rather
+than taking them on trust.
+
+`crates/worker/src/sandbox/linux.rs` names the socket *syscalls*, and names them
+to put them in a seccomp deny list. That is structural rather than a promise:
+the same scan requires every `SYS_` spelling in that file to appear inside its
+`denied_syscalls` function, **counted** rather than merely present, so a spelling
+that is in the deny list and also somewhere else fails.
+
+Adding those two entries widened `only_egress_crate_has_a_socket`'s allowance.
+Three things were tightened in the same commit and are described in
+[policy source scans](policy-source-scans.md): the walk now reads every `.rs`
+under a crate rather than three directory names, the lexer models raw strings,
+and `libc::syscall` and the `SYS_*` socket spellings joined the pattern list.
+`product_network` stays `NONE`.
+
+## `unsafe`
+
+This crate sets `unsafe_code = "deny"` rather than the workspace's `forbid`,
+because a filter, a ruleset, a token and a job object are syscalls. Every
+`unsafe` block carries `#[allow(unsafe_code)]` on its function, as the four
+existing platform leaves do, and `unsafe_is_confined_to_the_sandbox_backends`
+walks `src`, `probes` and `tests`, counts what it read, and compares the set of
+files holding an `unsafe` item against exactly
+`["src/sandbox/linux.rs", "src/sandbox/windows.rs"]` as a whole.
+
+## What this contract does not claim
+
+- **Nothing here is ADR-002 acceptance.** The default lane remains
+  `storage_encryption=NONE`, `production_data_allowed=false`,
+  `adr_002_accepted=false`, the acceptance public key is unprovisioned, and the
+  committed candidate receipt carries two of five platform rows.
+- **The default feature set installs no sandbox.** With `native-sandbox` off,
+  every type in this crate is bookkeeping and the operating system permits the
+  worker everything it permits any process. `BackendId::compiled()` reports
+  `NONE` and `sandbox::launch` returns `SandboxError::Unavailable`. The
+  containment claims belong to the feature, the platform, and the kernel version
+  they were measured on.
+- **The worker binary sandboxes itself on Linux.** The untrusted unit is the job
+  payload, not the probe: `sandbox::enter` is called once, at the top of the
+  contained path, before a single job byte is read, and
+  `the_probe_enters_the_sandbox_before_it_reads_a_job` pins that whole function
+  as text and checks the call site count is one. A worker binary that was itself
+  hostile is outside this boundary; that is the process-image integrity question
+  `P2-H1`'s signing work owns.
+- **The Windows environment is inherited, not minimal.** A hand-built minimal
+  block is refused `ERROR_ENVVAR_NOT_FOUND` (203) by `CreateProcessW` into an
+  AppContainer — measured, with `SystemRoot`/`windir`/`SystemDrive` alone and
+  again with `PATH`/`PATHEXT`/`COMSPEC` added. The environment is not part of the
+  boundary: the container's rights come from its token and the ACEs granted to
+  its SID.
+- **WSL2 is where the Linux rows were measured**, on kernel
+  `6.18.33.2-microsoft-standard-WSL2` with Landlock ABI 7. Section 8.4 of the
+  execution plan says WSL may exercise Linux code paths and never substitutes for
+  a Windows claim; the Windows rows above were measured on Windows natively, and
+  the two sets are recorded separately for that reason.
+- **No provider SDK is called.** `academic-egress-boundary` owns the staging and
+  the transport trait, and no implementation of it ships. What this task
+  contributes to a provider call is the process it would run in.

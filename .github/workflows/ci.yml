@@ -73,6 +73,10 @@ jobs:
         run: cargo clippy -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection -- -D warnings
       - name: Test the transcript ingestion lane
         run: cargo test -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection
+      - name: Lint the worker sandbox lane
+        run: cargo clippy -p academic-worker --all-targets --locked --features native-sandbox -- -D warnings
+      - name: Test the worker sandbox lane
+        run: cargo test -p academic-worker --all-targets --locked --features native-sandbox
       - name: Verify immutable v1 fixture and upcast
         run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
       - name: Replay immutable v1 fixture

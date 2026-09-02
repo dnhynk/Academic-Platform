@@ -70,6 +70,9 @@ const SECRET_BEARING_TYPES = new Map([
   ["SourceDocument", "the private document bytes an egress request selects from"],
   ["Preview", "the exact staged bytes a transmission writes"],
   ["AcceptedResponse", "a provider response that passed the canary scan"],
+  ["StagingAuthority", "the P2-G4 secret that decides whether a sandboxed worker's staged bytes become a result"],
+  ["StagedOutput", "the bytes a sandboxed worker wrote, before anything has accepted them"],
+  ["AcceptedOutput", "the same bytes after the core accepted them"],
 ]);
 
 /**
@@ -139,6 +142,10 @@ const PUBLIC_BYTES = new Map([
   [
     "AcceptedResponse.digest",
     "SHA-256 of a provider response, which the egress_audit row carries in the clear as provider_response_digest",
+  ],
+  [
+    "Issued.digest",
+    "SHA-256 of a P2-G4 capability descriptor, whose whole plaintext the parent writes into the job's staged input directory for the sandboxed process to read; the digest is what the registry compares, not a secret it holds",
   ],
 ]);
 
