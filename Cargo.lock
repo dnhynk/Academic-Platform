@@ -149,6 +149,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-policy"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "rusqlite",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "academic-portability"
 version = "0.1.0"
 dependencies = [

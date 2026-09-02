@@ -61,14 +61,20 @@ const SECRET_BEARING_TYPES = new Map([
   ["BackupMasterKey", "the 32-byte backup root"],
   ["DomainKeyring", "raw domain key bytes"],
   ["EncryptedDomainKeyring", "per-domain KEKs and locator keys"],
+  ["RuntimeToolCall", "the exact payload presented at the capability boundary"],
+  ["AuthorizedToolCall", "the exact payload released after capability consumption"],
 ]);
 
 /**
- * Field names that mean key material or plaintext when they hold raw bytes.
+ * Field names that mean key material, plaintext, or transient egress payload
+ * when they hold raw bytes. `T126` injected `AuditRow.payload_bytes`; the old
+ * vocabulary did not include payload/prompt/response names and the injection
+ * passed, so those names live in this generic discovery net rather than in a
+ * second audit-only scanner.
  * A name is only a signal; the exceptions below carry the judgement.
  */
 const SECRET_FIELD_NAMES =
-  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|vmk|skey|master)$/;
+  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|payload|payload_bytes|prompt|prompt_text|provider_response|provider_response_bytes|response_text|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|vmk|skey|master)$/;
 
 /**
  * Field types that hold bytes transparently, so a derived `Debug` prints them.
@@ -118,6 +124,10 @@ const PUBLIC_BYTES = new Map([
   [
     "StreamingPrefix.digest",
     "SHA-256 of the object header's cleartext prefix P0, which is on disk in the clear",
+  ],
+  [
+    "FixtureContract.payload",
+    "the public encoding label (for example academic.event-batch/v3 deterministic-cbor), not fixture payload bytes",
   ],
 ]);
 
@@ -729,7 +739,10 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
         if (PUBLIC_BYTES.has(`${name}.${field[1]}`)) {
           continue;
         }
-        if (holdsRawBytes(declared) || SECRET_BEARING.has(normalizeFieldType(declared))) {
+        if (
+          (SECRET_FIELD_NAMES.test(field[1]) && holdsRawBytes(declared)) ||
+          SECRET_BEARING.has(normalizeFieldType(declared))
+        ) {
           rawFields.add(field[1]);
         }
       }

@@ -4,7 +4,7 @@
 
 ## Registered direction
 
-The core owns a default-deny broker. A decision binds data class and exact byte/range digest, purpose, destination/provider, retention/training terms, policy version, user consent event, expiry, and one-time/replay constraints. UI, plugin, worker, and provider libraries cannot open generic network connections or broaden a grant.
+The core owns a default-deny broker. A decision binds data class and exact byte/range digest, purpose, destination/provider, retention/training terms, policy version, user consent event, expiry, and one-time/replay constraints. `academic-policy` implements the socket-free decision half; the product graph still contains no egress crate. Its runtime entrypoint compares the actual payload digest and exact ranges, atomically changes `consumed_at` from null once, writes the runtime audit, and only then invokes its supplied tool closure. UI, plugin, worker, and provider libraries are expected to use this scoped entrypoint; the later `academic-egress` integration task owns the process/topology enforcement outside this crate.
 
 Before external transmission, the broker stages the exact payload, applies allow/deny and secret/DLP rules, presents a byte-accurate preview when user approval is required, issues a narrow capability, and records allow or deny without copying sensitive content into the audit log. Scanner error, unknown binary, expired policy, or scope mismatch denies.
 
