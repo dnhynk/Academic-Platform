@@ -30,12 +30,25 @@ State-removing `SUPERSEDES` and `RETRACTS` relations preserve their actor proven
 
 `SUPERSEDED` is lifecycle-terminal and always projects as rejected. `DISPUTED` is conflict-only and never becomes a sole active truth; corroborating and contrary nonterminal evidence retain the ordinary equal-rank rules.
 
+The Phase 2 product authority layer reuses this resolver body for six explicit
+claim types rather than creating a second decision algorithm. Each type owns a
+complete authority table. Relation/prerequisite corroboration deduplicates an
+equal upstream `source_digest` and defaults to single-source rank when a digest
+is absent or source independence is not explicitly attested. The full table,
+reason codes, and the bounded limits of that attestation are recorded in
+[product authority resolution](../contracts/product-authority-resolution.md).
+
 ## Executable evidence
 
 - The ledger rejects origin gaps, parent-hash forks, batch-ID collisions, duplicate immutable IDs, and missing artifact/evidence/claim closure.
 - Actor provenance is bound to signed device/user authorization and a fail-closed actor/authority/status matrix; model, importer, and deterministic-engine events cannot assert `USER_EXPLICIT`/`USER_CONFIRMED`.
 - Equal-rank claims with different objects produce a conflict set and no false winner; same-object equal-rank claims may corroborate one active value.
 - Narrow T007/T010 regressions cover regenerated IDs, every Confirm/Reject/Replace action under all four predicate policies, known/valid interval boundaries, stronger unrelated authority, adjacent A→B handoff, decision composition, replacement-slot mismatch, relation provenance/authorization, override protection, and sole/corroborating/conflicting lifecycle cases.
+- Seven product-scale regressions permute all six claim-type tables, replay an
+  AI rerun after a decision, emit a canonical conflict card, preserve an
+  official claim beside a dispute, isolate scoped relations, fail closed on
+  duplicate or unestablished upstream sources, and keep terminal statuses out
+  of the active set.
 - Duplicate identical batches are idempotent and return the original acceptance range.
 - Fourteen named bitemporal cases cover before-known, before-valid, user rejection, user confirmation, independent freshness windows, competing official claims, and later supersession.
 - Final fixture replay keeps mastery `PRACTICED`, projects freshness `STALE`, rejects the earlier AI claim, exposes the later AI `FLUENT` claim as conflict, and selects the corrected official deadline.

@@ -102,6 +102,29 @@ pub fn resolve_snapshot(
     relations: &[ResolutionRelation],
     decisions: &[ResolutionDecision],
 ) -> ResolutionResult {
+    resolve_snapshot_with_authority_rank(
+        query,
+        claims,
+        relations,
+        decisions,
+        |claim| authority_rank(query.policy, claim.authority_class),
+        authority_rank(query.policy, AuthorityClass::UserExplicit),
+    )
+}
+
+/// Shared Phase 1 resolver body used by the product claim-type extension.
+///
+/// Decision replay, lifecycle handling, scope filtering, and equal-rank
+/// conflict behavior stay here so a product authority table cannot fork the
+/// semantics fixed by ADR-003.
+pub(super) fn resolve_snapshot_with_authority_rank(
+    query: &ResolutionQuery,
+    claims: &[ResolutionClaim],
+    relations: &[ResolutionRelation],
+    decisions: &[ResolutionDecision],
+    rank_for: impl Fn(&Claim) -> u16,
+    user_authority_rank: u16,
+) -> ResolutionResult {
     let mut candidates: Vec<(&Claim, u64)> = claims
         .iter()
         .filter_map(|record| {
@@ -224,8 +247,7 @@ pub fn resolve_snapshot(
             .map(|(claim, _)| claim.id),
     );
 
-    let user_decision_rank =
-        has_user_override.then(|| authority_rank(query.policy, AuthorityClass::UserExplicit));
+    let user_decision_rank = has_user_override.then_some(user_authority_rank);
     let eligible: Vec<(&Claim, u64, u16)> = candidates
         .into_iter()
         .filter(|(claim, _)| {
@@ -236,7 +258,7 @@ pub fn resolve_snapshot(
                 )
         })
         .map(|(claim, accepted)| {
-            let original_rank = authority_rank(query.policy, claim.authority_class);
+            let original_rank = rank_for(claim);
             let effective_rank = if chosen_object.as_ref() == Some(&claim.object) {
                 user_decision_rank.map_or(original_rank, |decision_rank| {
                     original_rank.max(decision_rank)
