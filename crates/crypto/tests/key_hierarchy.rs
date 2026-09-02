@@ -7,8 +7,12 @@
 //! `keystore_leaf_public_facade_exposes_no_raw_handle` inspects the FFI leaf
 //! and lives in that crate's own test.
 
+#[path = "../../test-support/src/word_level_entry_points.rs"]
+mod word_level_entry_points;
+
 use std::{
     collections::HashMap,
+    error::Error,
     sync::{Mutex, PoisonError},
 };
 
@@ -20,6 +24,7 @@ use academic_crypto::{
     create_device_recipient, create_recovery_recipient, unlock_with_device, unlock_with_recovery,
 };
 use ciborium::value::{Integer, Value};
+use word_level_entry_points::{WORD_LEVEL_ENTRY_POINTS, read_crate_sources};
 use zeroize::Zeroize as _;
 
 const PROFILE: ProfileId = ProfileId::from_bytes([0x51; IDENTIFIER_BYTES]);
@@ -756,20 +761,36 @@ fn no_key_bytes_in_logs_audit_or_export() {
 
 /// `KY06`'s structural half: the crate offers no word-level entry point, so no
 /// API can be asked about, or answer with, an individual word of a phrase.
+///
+/// `RecoverySecret` lives here, so this is the half that matters most, and
+/// until `T142` it was the weaker of the two. Three fixed `include_str!` paths
+/// left four of the crate's seven modules unread, nothing bounded the coverage,
+/// no tripwire said a new module had gone unscanned, and the five spellings did
+/// not include `mnemonic`, `bip39`, `to_words`, or `WORD_COUNT`. The `T141`
+/// audit put a `pub fn word_index` in `keystore.rs` and a `pub fn mnemonic_at`
+/// in `recovery.rs` past it, and past `academic-recovery`'s half as well.
+///
+/// It now reads the tree the way that half does, through the same module, so
+/// the two cannot hold different lists again.
 #[test]
-fn no_public_api_accepts_or_reports_a_single_recovery_word() {
-    let source = include_str!("../src/lib.rs");
-    let keys_source = include_str!("../src/keys.rs");
-    let recovery_source = include_str!("../src/recovery.rs");
-    for haystack in [source, keys_source, recovery_source] {
-        for forbidden in ["fn word", "word_index", "words(", "wordlist", "phrase_word"] {
+fn no_public_api_accepts_or_reports_a_single_recovery_word() -> Result<(), Box<dyn Error>> {
+    let sources = read_crate_sources(env!("CARGO_MANIFEST_DIR"), 7)?;
+    for (path, text) in &sources {
+        for forbidden in WORD_LEVEL_ENTRY_POINTS {
             assert!(
-                !haystack.contains(forbidden),
-                "a word-level entry point named {forbidden} exists"
+                !text.contains(forbidden),
+                "{} exposes a word-level entry point through {forbidden}",
+                path.display()
             );
         }
     }
-    // The only recovery input is a whole 256-bit secret.
+
+    // The only recovery input is a whole 256-bit secret, and the module that
+    // takes it says so.
+    let (_, recovery_source) = sources
+        .iter()
+        .find(|(path, _)| path.ends_with("recovery.rs"))
+        .ok_or("the scan did not read src/recovery.rs")?;
     assert!(recovery_source.contains("no word-level entry point"));
     assert_eq!(
         RecoverySecret::from_entropy([0; KEY_BYTES])
@@ -777,6 +798,7 @@ fn no_public_api_accepts_or_reports_a_single_recovery_word() {
             .len(),
         KEY_BYTES
     );
+    Ok(())
 }
 
 /// A recipient document must be the one canonical encoding.

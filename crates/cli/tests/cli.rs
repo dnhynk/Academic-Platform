@@ -1241,15 +1241,30 @@ fn cli_has_no_real_data_override() -> TestResult {
 /// Splitting on the test module instead moves the blind spot to what sits below
 /// it, so anything declared at file scope down there is product code this half
 /// would hide, and the file is refused rather than returned.
+///
+/// "At file scope" is decided by the test module's closing brace, not by a
+/// line's indentation. The rule read `line.starts_with(start)`, which is a rule
+/// about column 0: the `T141` audit indented the same item by two spaces and it
+/// passed both this guard and the one in `crates/cli/src/main.rs`. `cargo fmt
+/// --all -- --check` refused the indentation, so nothing shipped — but that
+/// made `cargo fmt` the thing carrying a contract this repository states as a
+/// property of the scan. The module's own body is skipped rather than trimmed,
+/// because every line in it is an indented item.
 fn product_source(path: &Path, contents: &str) -> TestResult<String> {
     let Some((product, below)) = contents.split_once("#[cfg(test)]\nmod tests") else {
         return Ok(contents.to_owned());
     };
-    for line in below.lines() {
+    let (_, after) = below.split_once("\n}").ok_or_else(|| {
+        format!(
+            "{}'s test module never closes at file scope",
+            path.display()
+        )
+    })?;
+    for line in after.lines() {
         assert!(
             !FILE_SCOPE_ITEM_STARTS
                 .iter()
-                .any(|start| line.starts_with(start)),
+                .any(|start| line.trim_start().starts_with(start)),
             "{} declares {line} at file scope below its test module",
             path.display()
         );

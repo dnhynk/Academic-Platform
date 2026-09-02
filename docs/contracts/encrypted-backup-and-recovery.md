@@ -57,7 +57,19 @@ device key source, a word-level entry point, or a recovery-profile default —
 reads the tree recursively and fails if any module the crate declares is not a
 file it read. It used to read only the top level of `src`, which was correct for
 the flat tree that exists and blind to anything a subdirectory module would add.
-What that scan checks and what the repository's other scans still leave open is
+
+`KY06`'s no-word-level-entry-point half is not only about this crate.
+`RecoverySecret` lives in `academic-crypto`, so
+`no_public_api_accepts_or_reports_a_single_recovery_word` there scans
+`crates/crypto/src` for the same property. The two used to hold different
+spelling lists — five on one side, thirteen on the other, neither a subset of
+the other — so `mnemonic_at` was refused in one crate and admitted in the other.
+Both now read the same sixteen spellings and the same recursive walk, floor and
+module tripwire, from
+`crates/test-support/src/word_level_entry_points.rs`. Adding a spelling there
+adds it to both halves at once.
+
+What those scans check and what the repository's other scans still leave open is
 in [policy source scans](policy-source-scans.md).
 
 ```text

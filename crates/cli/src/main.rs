@@ -575,22 +575,54 @@ mod tests {
         }
     }
 
-    /// Tokens only the admission crate may spell, and how many times it may
-    /// spell each one. Every other crate's `src` tree is allowed none.
+    /// Tokens the admission crate spells, how many times it may spell each one,
+    /// and whether any other crate's `src` tree may spell it at all.
     ///
     /// This is what replaced the walk's old `!= "admission"` skip. That skip
     /// excused the entire admission tree from the scan, so a second key source
     /// or a second admitted constructor placed beside `lib.rs` was invisible to
     /// the only guard that claims to forbid one.
-    const ADMISSION_AUTHORITY_TOKENS: [(&str, usize); 7] = [
-        ("pub const ACCEPTANCE_PUBLIC_KEY", 1),
-        ("AcceptancePublicKey::Provisioned", 1),
-        ("fn verify_with_compiled_acceptance_key", 1),
-        ("kind: PostureKind::Admitted {", 1),
-        ("Posture::from_verified(", 1),
-        ("Ok(VerifiedAdmission {", 1),
-        ("VerifiedAdmission {", 3),
+    ///
+    /// Three of the counts are *type paths* rather than field-initialiser
+    /// spellings, because the `T141` audit built an admitted posture without
+    /// writing the spelling that was counted. `kind: PostureKind::Admitted {`
+    /// only exists while the value is written directly into the struct literal;
+    /// `let admitted = PostureKind::Admitted { .. }; Posture { kind: admitted }`
+    /// is the same value, spells it zero times, and passed. A type path
+    /// survives that rewrite, so `PostureKind::Admitted`, `VerifiedAdmission`
+    /// and `Posture {` are counted, and the four narrower spellings stay under
+    /// them: a rewrite that keeps the type-path count and changes a
+    /// construction site still moves one of those four.
+    ///
+    /// `Posture {` is the one entry no other crate is forbidden: `Posture`'s
+    /// field is private, so nothing outside `academic-admission` can construct
+    /// one, and the same three characters occur there as a return type
+    /// (`-> &Posture {`) and inside `DataPosture {`. Counting it *inside* the
+    /// admission tree is what bounds the construction sites; forbidding it
+    /// outside would only refuse an unrelated spelling.
+    const ADMISSION_AUTHORITY_TOKENS: [(&str, usize, bool); 10] = [
+        ("pub const ACCEPTANCE_PUBLIC_KEY", 1, true),
+        ("AcceptancePublicKey::Provisioned", 1, true),
+        ("fn verify_with_compiled_acceptance_key", 1, true),
+        ("PostureKind::Admitted", 12, true),
+        ("VerifiedAdmission", 7, true),
+        ("Posture {", 6, false),
+        ("kind: PostureKind::Admitted {", 1, true),
+        ("Posture::from_verified(", 1, true),
+        ("Ok(VerifiedAdmission {", 1, true),
+        ("VerifiedAdmission {", 3, true),
     ];
+
+    /// Directories under a crate root that hold test targets, not product code.
+    ///
+    /// The admission walk reads the whole crate rather than only `src`, because
+    /// `#[path = "../authority.rs"]` reaches a product module that `src` does
+    /// not contain. These three are what Cargo compiles as separate test,
+    /// benchmark and example targets, so they are not product and their text
+    /// would blow every allowance above. A `#[path]` or a `mod` reaching into
+    /// one of them is refused by the tripwire instead, which is where a reach
+    /// into unread source belongs.
+    const CARGO_TEST_TARGET_DIRECTORIES: [&str; 3] = ["benches", "examples", "tests"];
 
     /// Key and override seams forbidden anywhere in the admission crate's
     /// product source — every `*.rs` under `crates/admission/src`, not one file.
@@ -659,14 +691,154 @@ mod tests {
         ".map_err(|_| AdmissionError::InvalidSignature) }"
     );
 
-    /// Reads one `src` tree: every `*.rs` under it, product halves only.
+    /// The whole receipt verifier, whitespace-collapsed.
+    ///
+    /// A pin fixes the text of the item it names and nothing about who calls
+    /// it. `WHOLE_KEY_CHECK` above holds the compiled-key check to five exact
+    /// lines, and the `T141` audit went around it without editing one
+    /// character: it wrapped the *call* in
+    /// `if !profile_root.join("admission/field-trust").is_file() { .. }`.
+    /// Signature verification was then skipped whenever a marker file existed,
+    /// and an audit probe observed a receipt signed by a key this build has
+    /// never heard of receiving an admitted posture with
+    /// `production_data_allowed()` true. Nothing else saw it: the marker does
+    /// not exist in the shipped tree, so no behaviour changed, and no forbidden
+    /// token was spelled.
+    ///
+    /// What the contract actually is, therefore, is not the check's text but
+    /// this function's: five steps, in this order, each unconditional. So the
+    /// whole of it is pinned — the same shape `rotation_gate.rs` uses when it
+    /// fixes the first statement of all seven gated entry points rather than
+    /// only the gate they call.
+    const WHOLE_VERIFY: &str = concat!(
+        "pub fn verify(profile_root: &Path) -> Result<VerifiedAdmission, AdmissionError> { ",
+        "let path = profile_root.join(ADMISSION_RECEIPT_RELATIVE_PATH); ",
+        "let bytes = match fs::read(&path) { Ok(bytes) => bytes, ",
+        "Err(source) if source.kind() == std::io::ErrorKind::NotFound => { ",
+        "return Err(AdmissionError::ReceiptAbsent { path }); } ",
+        "Err(source) => { return Err(AdmissionError::ReadReceipt { path, source }); } }; ",
+        "if bytes.len() > MAX_RECEIPT_BYTES { ",
+        "return Err(AdmissionError::ReceiptTooLarge { ",
+        "actual: bytes.len(), maximum: MAX_RECEIPT_BYTES, }); } ",
+        "let decoded = decode_envelope(&bytes)?; ",
+        "verify_with_compiled_acceptance_key(&decoded)?; ",
+        "let payload = decode_payload(&decoded.payload)?; ",
+        "let verified = validate_payload(payload, &bytes)?; ",
+        "require_encrypted_profile_marker(profile_root)?; ",
+        "Ok(verified) }"
+    );
+
+    /// Returns `signature` and everything up to the first `closer`, whitespace
+    /// collapsed, with comment-only lines dropped so a pin fixes code and not
+    /// prose.
+    fn whole(source: &str, signature: &str, closer: &str) -> Option<String> {
+        let (_, rest) = source.split_once(signature)?;
+        let (body, _) = rest.split_once(closer)?;
+        Some(
+            format!("{signature}{body}{closer}")
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.starts_with("//"))
+                .flat_map(str::split_whitespace)
+                .collect::<Vec<_>>()
+                .join(" "),
+        )
+    }
+
+    /// Names of the out-of-line modules one source file declares.
+    ///
+    /// A `mod name;` carrying its own `#[path]` is left to
+    /// [`path_attribute_targets`], which resolves what it actually names.
+    fn declared_modules(text: &str) -> Vec<String> {
+        let mut previous = "";
+        let mut names = Vec::new();
+        for line in text.lines().map(str::trim) {
+            let declared = line.strip_suffix(';').and_then(|item| {
+                item.strip_prefix("mod ")
+                    .or_else(|| item.strip_prefix("pub mod "))
+            });
+            if let Some(name) = declared.filter(|_| !previous.starts_with("#[path")) {
+                names.push(name.to_owned());
+            }
+            if !line.is_empty() {
+                previous = line;
+            }
+        }
+        names
+    }
+
+    /// The two paths a `mod name;` in `declaring` may live at.
+    fn module_files(declaring: &std::path::Path, name: &str) -> [std::path::PathBuf; 2] {
+        let directory = match declaring.file_stem().and_then(|stem| stem.to_str()) {
+            Some("lib" | "mod") => declaring
+                .parent()
+                .map(std::path::Path::to_path_buf)
+                .unwrap_or_default(),
+            _ => declaring.with_extension(""),
+        };
+        [
+            directory.join(format!("{name}.rs")),
+            directory.join(name).join("mod.rs"),
+        ]
+    }
+
+    /// Every file a `#[path = "…"]` in `declaring` pulls into the crate.
+    ///
+    /// `..` is resolved textually against the declaring file's directory rather
+    /// than through the filesystem, so a target that does not exist still
+    /// produces a path — and a path the walk did not read is what the caller
+    /// refuses. A target that climbs out of `crates/` resolves to something the
+    /// walk cannot have read either, so it fails the same way.
+    fn path_attribute_targets(declaring: &std::path::Path, text: &str) -> Vec<std::path::PathBuf> {
+        let mut targets = Vec::new();
+        for (at, _) in text.match_indices("#[path") {
+            let Some((_, rest)) = text[at..].split_once('"') else {
+                continue;
+            };
+            let Some((quoted, _)) = rest.split_once('"') else {
+                continue;
+            };
+            let mut resolved = declaring
+                .parent()
+                .map(std::path::Path::to_path_buf)
+                .unwrap_or_default();
+            for component in quoted.split(['/', '\\']) {
+                match component {
+                    "" | "." => {}
+                    ".." => {
+                        resolved.pop();
+                    }
+                    other => resolved.push(other),
+                }
+            }
+            targets.push(resolved);
+        }
+        targets
+    }
+
+    /// Reads one tree: every `*.rs` under it, product halves only.
+    ///
+    /// Directories named in `skip` are not descended into when they sit
+    /// directly under `root`; a directory of the same name deeper in the tree
+    /// is read, because only the crate root's `tests`, `benches` and `examples`
+    /// are Cargo test targets.
     ///
     /// A file's product half is everything above its test module. Anything
     /// declared at file scope *below* that module is product code the split
     /// would hide, so this refuses the file rather than returning a half that
     /// does not cover it.
+    ///
+    /// "At file scope" is decided by the test module's closing brace and not by
+    /// a line's indentation. The rule used to read `line.starts_with(start)`,
+    /// which is a rule about column 0 and not about scope: the `T141` audit
+    /// indented the same item by two spaces and it passed. `cargo fmt --check`
+    /// refused the indentation, so nothing shipped — but that made `cargo fmt`,
+    /// not this scan, the thing carrying a contract this repository states as a
+    /// property of the scan. The module's own body is skipped rather than
+    /// trimmed, because every line in it is an indented item.
     fn product_sources(
         root: &std::path::Path,
+        skip: &[&str],
     ) -> Result<Vec<(std::path::PathBuf, String)>, Box<dyn std::error::Error>> {
         let mut pending = vec![root.to_path_buf()];
         let mut sources = Vec::new();
@@ -674,7 +846,14 @@ mod tests {
             for entry in std::fs::read_dir(directory)? {
                 let path = entry?.path();
                 if path.is_dir() {
-                    pending.push(path);
+                    let skipped = path.parent() == Some(root)
+                        && path
+                            .file_name()
+                            .and_then(|name| name.to_str())
+                            .is_some_and(|name| skip.contains(&name));
+                    if !skipped {
+                        pending.push(path);
+                    }
                     continue;
                 }
                 if path.extension().is_none_or(|extension| extension != "rs") {
@@ -684,11 +863,21 @@ mod tests {
                 let product = match source.split_once("#[cfg(test)]\nmod tests") {
                     None => source,
                     Some((product, below)) => {
-                        for line in below.lines() {
+                        let after =
+                            below
+                                .split_once("\n}")
+                                .map(|(_, rest)| rest)
+                                .ok_or_else(|| {
+                                    format!(
+                                        "{}'s test module never closes at file scope",
+                                        path.display()
+                                    )
+                                })?;
+                        for line in after.lines() {
                             assert!(
                                 !FILE_SCOPE_ITEM_STARTS
                                     .iter()
-                                    .any(|start| line.starts_with(start)),
+                                    .any(|start| line.trim_start().starts_with(start)),
                                 "{} declares {line} at file scope below its test module",
                                 path.display()
                             );
@@ -714,15 +903,18 @@ mod tests {
     /// only thing that can refuse it, and the scan read one file's head against
     /// a token list while the walk skipped the admission directory.
     ///
-    /// So this reads all of it: every `*.rs` under every crate's `src`, the
-    /// authority tokens counted against an explicit per-crate allowance, and
-    /// the two places the key is obtained pinned as whole text rather than by
-    /// the names they happen to use today.
+    /// So this reads all of it: every `*.rs` under every crate's `src` and,
+    /// for `crates/admission`, every `*.rs` under the crate — with a tripwire
+    /// saying every module those files pull in is a file that was read. The
+    /// authority tokens are counted against an explicit per-crate allowance,
+    /// and the three places the key is obtained, checked, and used are pinned
+    /// as whole text rather than by the names they happen to use today.
     #[test]
     fn no_environment_or_flag_override_exists() -> Result<(), Box<dyn std::error::Error>> {
         use std::fs;
 
-        let crates_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let crates_root =
+            fs::canonicalize(std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".."))?;
         let mut admission_product = String::new();
         let mut admission_seen = false;
         for entry in fs::read_dir(&crates_root)? {
@@ -735,9 +927,48 @@ mod tests {
                 .file_name()
                 .is_some_and(|name| name == "admission");
             admission_seen |= is_admission;
-            let sources = product_sources(&source_root)?;
+            // The admission crate is read whole, not just its `src`. A
+            // `#[path = "../authority.rs"]` reaches a product module beside
+            // `src`, and a walk rooted at `src` reads neither that file's seams
+            // nor its authority tokens; the `T141` audit built an admitted
+            // posture there and no check in this repository saw it.
+            let (scanned_root, sources) = if is_admission {
+                (
+                    crate_root.clone(),
+                    product_sources(&crate_root, &CARGO_TEST_TARGET_DIRECTORIES)?,
+                )
+            } else {
+                (source_root.clone(), product_sources(&source_root, &[])?)
+            };
             if is_admission {
+                // Widening the walk is not the same as covering the crate. What
+                // makes it cover the crate is that every module the read files
+                // pull in is itself a file that was read — the tripwire `P2-RF8`
+                // put on `academic-recovery` and `academic-record`, plus the
+                // `#[path]` half neither of those needed.
+                let read: Vec<&std::path::Path> =
+                    sources.iter().map(|(path, _)| path.as_path()).collect();
                 for (path, product) in &sources {
+                    for target in path_attribute_targets(path, product) {
+                        assert!(
+                            read.contains(&target.as_path()),
+                            "{} pulls in {} through #[path], which the scan never read",
+                            path.display(),
+                            target.display()
+                        );
+                    }
+                    for name in declared_modules(product) {
+                        let candidates = module_files(path, &name);
+                        assert!(
+                            candidates
+                                .iter()
+                                .any(|candidate| read.contains(&&**candidate)),
+                            "{} declares `mod {name};` but the scan read neither {} nor {}",
+                            path.display(),
+                            candidates[0].display(),
+                            candidates[1].display()
+                        );
+                    }
                     for forbidden in ADMISSION_FORBIDDEN_SEAMS {
                         assert!(
                             !product.contains(forbidden),
@@ -749,7 +980,10 @@ mod tests {
                     admission_product.push('\n');
                 }
             }
-            for (token, allowance) in ADMISSION_AUTHORITY_TOKENS {
+            for (token, allowance, exclusive) in ADMISSION_AUTHORITY_TOKENS {
+                if !is_admission && !exclusive {
+                    continue;
+                }
                 let allowed = if is_admission { allowance } else { 0 };
                 let found = sources
                     .iter()
@@ -759,7 +993,7 @@ mod tests {
                     found,
                     allowed,
                     "{} spells the admission-authority token {token} {found} times, not {allowed}",
-                    source_root.display()
+                    scanned_root.display()
                 );
             }
         }
@@ -778,21 +1012,30 @@ mod tests {
             "the compiled acceptance key is chosen by something other than this declaration"
         );
 
-        let check = admission_product
-            .split_once("fn verify_with_compiled_acceptance_key")
-            .and_then(|(_, rest)| rest.split_once("\n}"))
-            .map(|(body, _)| format!("fn verify_with_compiled_acceptance_key{body}\n}}"))
-            .ok_or("the admission crate has no compiled-key check")?;
+        let check = whole(
+            &admission_product,
+            "fn verify_with_compiled_acceptance_key",
+            "\n}",
+        )
+        .ok_or("the admission crate has no compiled-key check")?;
         assert_eq!(
-            check.split_whitespace().collect::<Vec<_>>().join(" "),
-            WHOLE_KEY_CHECK,
+            check, WHOLE_KEY_CHECK,
             "the compiled-key check takes a key from somewhere other than the constant"
         );
-        assert!(
-            admission_product.contains(
-                "pub fn verify(profile_root: &Path) -> Result<VerifiedAdmission, AdmissionError>"
-            ),
-            "AdmissionVerifier::verify changed shape"
+
+        // The call sites, not only the item. `WHOLE_KEY_CHECK` above fixes what
+        // the compiled-key check does and says nothing about whether it runs;
+        // this fixes the five steps that run, their order, and that none of
+        // them is behind a condition.
+        let verify = whole(
+            &admission_product,
+            "pub fn verify(profile_root: &Path)",
+            "\n    }",
+        )
+        .ok_or("the admission crate has no receipt verifier")?;
+        assert_eq!(
+            verify, WHOLE_VERIFY,
+            "AdmissionVerifier::verify no longer runs its five steps unconditionally, in order"
         );
 
         fn scan_command(command: &clap::Command) {

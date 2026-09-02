@@ -6,6 +6,9 @@
 //! other four assert properties of an actual encrypted backup and restore and
 //! live in the encrypted portability lane.
 
+#[path = "../../test-support/src/word_level_entry_points.rs"]
+mod word_level_entry_points;
+
 use std::{
     collections::HashMap,
     fs,
@@ -29,6 +32,7 @@ use academic_recovery::{
     RecoveryProfile, RecoveryProfileError, RehearsalObservations, RehearsalReceipt, SealedManifest,
     SealedManifestError, admit_first_ingest, create_backup_key_set,
 };
+use word_level_entry_points::WORD_LEVEL_ENTRY_POINTS;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -723,21 +727,7 @@ fn a_tampered_backup_recipient_is_an_integrity_incident() -> TestResult {
 #[test]
 fn recovery_secret_api_has_no_word_level_entry_point() -> TestResult {
     for (path, text) in &read_crate_sources()? {
-        for forbidden in [
-            "wordlist",
-            "WORDLIST",
-            "WordList",
-            "mnemonic",
-            "Mnemonic",
-            "MNEMONIC",
-            "bip39",
-            "BIP39",
-            "Bip39",
-            "from_words",
-            "to_words",
-            "word_index",
-            "WORD_COUNT",
-        ] {
+        for forbidden in WORD_LEVEL_ENTRY_POINTS {
             assert!(
                 !text.contains(forbidden),
                 "{} exposes a word-level entry point through {forbidden}",
@@ -779,6 +769,12 @@ fn recovery_secret_api_has_no_word_level_entry_point() -> TestResult {
 
 /// Reads every `*.rs` under this crate's `src`, at any depth.
 ///
+/// The walk, the floor, and the module tripwire are the shared module's, and so
+/// is the word-level spelling list the third caller uses. `KY06`'s other half
+/// is `academic-crypto`'s `no_public_api_accepts_or_reports_a_single_recovery_word`,
+/// and the `T141` audit found the two halves scanning differently — the same
+/// contract refusing a spelling in one crate and admitting it in the other.
+///
 /// The walk is recursive because the flat `read_dir` it replaced read only the
 /// top level. `src` happens to be flat today, so nothing was missed today —
 /// but a device-key reach placed in `src/platform/mod.rs`, a word-level codec
@@ -786,77 +782,5 @@ fn recovery_secret_api_has_no_word_level_entry_point() -> TestResult {
 /// `src/lane/mod.rs` were each invisible to all three tests that call this,
 /// and each is a shipped-shaped change that alters nothing observable.
 fn read_crate_sources() -> TestResult<Vec<(PathBuf, String)>> {
-    let source_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let mut sources = Vec::new();
-    let mut pending = vec![source_root];
-    while let Some(directory) = pending.pop() {
-        for entry in fs::read_dir(&directory)? {
-            let path = entry?.path();
-            if path.is_dir() {
-                pending.push(path);
-            } else if path.extension().is_some_and(|extension| extension == "rs") {
-                let text = fs::read_to_string(&path)?;
-                sources.push((path, text));
-            }
-        }
-    }
-    sources.sort();
-    assert!(
-        sources.len() >= 5,
-        "the source scan found only {} files",
-        sources.len()
-    );
-
-    // Descending is the property, so it is checked rather than assumed: an
-    // out-of-line module declared on its own line has to be a file the scan
-    // read. A walk that stops descending leaves a declared module unread, and
-    // this fails then rather than passing quietly the way the flat walk did.
-    //
-    // It sees `mod name;` and `pub mod name;` and nothing else — not a `#[path]`
-    // attribute, and not a declaration sharing a line with an attribute. It is a
-    // tripwire on the walk above, not a second way of finding files.
-    let read: Vec<&Path> = sources.iter().map(|(path, _)| path.as_path()).collect();
-    for (path, text) in &sources {
-        for name in declared_modules(text) {
-            let candidates = module_files(path, &name);
-            assert!(
-                candidates
-                    .iter()
-                    .any(|candidate| read.contains(&&**candidate)),
-                "{} declares `mod {name};` but the source scan read neither {} nor {}",
-                path.display(),
-                candidates[0].display(),
-                candidates[1].display()
-            );
-        }
-    }
-    Ok(sources)
-}
-
-/// Names of the out-of-line modules one source file declares.
-fn declared_modules(text: &str) -> Vec<String> {
-    text.lines()
-        .map(str::trim)
-        .filter_map(|line| line.strip_suffix(';'))
-        .filter_map(|line| {
-            line.strip_prefix("mod ")
-                .or_else(|| line.strip_prefix("pub mod "))
-        })
-        .map(str::to_owned)
-        .collect()
-}
-
-/// The two paths a `mod name;` in `declaring` may live at.
-fn module_files(declaring: &Path, name: &str) -> [PathBuf; 2] {
-    let directory = match declaring.file_stem().and_then(|stem| stem.to_str()) {
-        Some("lib" | "mod") => declaring
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_default(),
-        _ => declaring.with_extension(""),
-    };
-    [
-        directory.join(format!("{name}.rs")),
-        directory.join(name).join("mod.rs"),
-    ]
+    word_level_entry_points::read_crate_sources(env!("CARGO_MANIFEST_DIR"), 5)
 }

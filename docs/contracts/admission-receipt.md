@@ -113,30 +113,56 @@ one. `posture_object_is_byte_exact_on_every_surface` compares the three present
 surfaces.
 
 `no_environment_or_flag_override_exists` reads every `*.rs` under every crate's
-`src`, above that file's test module and refusing any file that declares an item
-at file scope below it. In `crates/admission/src` it forbids a fixed list of
-key and override seams — `std::env`, `env!(`, `env::var`, `debug_assertions`,
-`include_bytes!`, `include_str!`, and four setter spellings. It pins the two
-places the key is obtained as whole text rather than by token: the
-`ACCEPTANCE_PUBLIC_KEY` declaration and the whole body of
-`verify_with_compiled_acceptance_key`, both whitespace-collapsed against a
-constant. Provisioning changes the declaration, so provisioning updates that
-constant in the same commit. Seven admission-authority tokens are counted against
-an explicit allowance — the admission crate's exact count, every other crate
-zero — which is what pins the sole verified-capability and admitted-posture
-construction sites. It also recursively scans the Clap command tree.
+`src`, and every `*.rs` under `crates/admission` other than its `tests`,
+`benches` and `examples` — a `#[path]` reaches a product module beside `src`,
+and a walk rooted at `src` does not read it. It reads each file above that
+file's test module, refusing any file that declares an item at file scope below
+that module at any indentation. A tripwire requires every `mod name;`,
+`pub mod name;` and `#[path = "…"]` target in the admission tree to be a file
+the walk read, so a module the scan did not read cannot be pulled into the
+crate. In `crates/admission` it forbids twelve key and override seams —
+`std::env`, `env!(`, `env::var(`, `env::var_os(`, `debug_assertions`,
+`include_bytes!`, `include_str!`, and five setter spellings.
 
-The scan does not read the other crates for key seams; what it requires of them
-is that they spell none of the seven authority tokens.
+It pins the three places the key is obtained, checked, and used as whole text
+rather than by token: the `ACCEPTANCE_PUBLIC_KEY` declaration, the whole body of
+`verify_with_compiled_acceptance_key`, and the whole of
+`AdmissionVerifier::verify`, each whitespace-collapsed against a constant.
+Provisioning changes the declaration, so provisioning updates that constant in
+the same commit. The third pin is what makes the second one mean anything: a pin
+fixes the text of the item it names and says nothing about whether that item
+runs, and the `T141` audit left the key check byte-identical while wrapping the
+*call* to it in a marker-file condition — after which a receipt signed by a key
+this build has never heard of was admitted. What the contract is, therefore, is
+`verify`'s five steps, in order, none of them conditional.
 
-`P2-RF7` put the five substitutions the `P2-K6` audit passed back through it,
-one at a time, on Windows and Linux — a build environment variable through
-`option_env!`, a runtime key file read inside the key check, a second module
-file beside `lib.rs`, product code below `lib.rs`'s test module, and a
+Ten admission-authority tokens are counted against an explicit allowance — the
+admission tree's exact count, and for nine of them every other crate zero. Three
+of the ten are type paths (`PostureKind::Admitted`, `VerifiedAdmission`,
+`Posture {`) rather than field-initialiser spellings, because the same value
+bound to a local before the struct literal spells `kind: PostureKind::Admitted {`
+zero times and passed. `Posture {` is the one token other crates may spell:
+`Posture`'s field is private, so no crate outside `academic-admission` can
+construct one, and the spelling occurs elsewhere as a return type. It also
+recursively scans the Clap command tree.
+
+The scan reads the other crates only for the nine exclusive authority tokens; it
+does not read them for key seams.
+
+`P2-RF7` put the five substitutions the `P2-K6` audit passed back through it, one
+at a time, on Windows and Linux — a build environment variable through
+`option_env!`, a runtime key file read inside the key check, a second module file
+beside `lib.rs`, product code below `lib.rs`'s test module, and a
 `debug_assertions` bypass — together with a sixth that spells no forbidden token
-at all, choosing the key through a type alias. Each failed the scan and passed
-again after it was reverted. The runtime tests additionally
-cover absent receipts, missing rows, stale spec bytes, forged signatures,
+at all, choosing the key through a type alias. `P2-RF9` put the four the `T141`
+audit passed back through it the same way, plus five variants: a `#[path]`
+module beside `src`, one outside the crate, one inside the crate's skipped
+`tests` directory, a conditional call to the key check, a reordering of
+`verify`'s five steps, an admitted posture assembled through a local binding,
+one assembled without naming `PostureKind::Admitted` at all, and the same
+product item indented below the test module. Each failed the scan and passed
+again after it was reverted. The runtime tests additionally cover absent
+receipts, missing rows, stale spec bytes, forged signatures,
 unprovisioned/empty/one-zero/all-zero acceptance keys, and a plaintext profile
 carrying a copied format marker.
 
@@ -144,8 +170,10 @@ carrying a copied format marker.
 
 The signed payload names a spec digest, a store schema version, and one evidence
 row per platform. It carries no profile identifier, store identity, nonce, or
-expiry, so one valid receipt admits any profile on the machine that passes the
-profile-format check, for as long as the compiled key stays provisioned. The
+expiry, so one valid receipt admits any profile that passes the profile-format
+check, on any machine running a build with the same compiled acceptance key, for
+as long as that key stays provisioned. Nothing binds a receipt to a machine or
+to a build: `build_digest` is checked non-zero and nothing else. The
 posture's `storage_mode` and `storage_encryption` are therefore not claims the
 signature covers: what stands behind them is the format marker plus the store
 header check in step 4, and both are properties of the profile the verifier was
