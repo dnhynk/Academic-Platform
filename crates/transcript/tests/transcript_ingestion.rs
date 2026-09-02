@@ -17,7 +17,7 @@ use academic_domain::{
 use academic_transcript::{
     TranscriptError,
     admission::AdmittedImport,
-    claims::{RowClaimContext, RowClaimIds, confirm_reconciled_rows, import_row_claim},
+    claims::{ModelRead, RowClaimContext, RowClaimIds, confirm_reconciled_rows, import_row_claim},
     reconcile::{HaltCause, TranscriptChecksums, reconcile},
     record::{
         IdentityField, NormalizedTranscript, TranscriptField, TranscriptIdentity, TranscriptRow,
@@ -41,6 +41,7 @@ const USER: &str = "01900000-0000-7000-8000-0000000007a3";
 const IMPORT_EVIDENCE: &str = "01900000-0000-7000-8000-0000000007a4";
 const CONFIRMATION_EVIDENCE: &str = "01900000-0000-7000-8000-0000000007a5";
 const VERSION: &str = "01900000-0000-7000-8000-0000000007a6";
+const MODEL_RUN: &str = "01900000-0000-7000-8000-0000000007a7";
 const IMPORT_CLAIM_BASE: &str = "01900000-0000-7000-8000-0000000007b";
 const CONFIRMED_CLAIM_BASE: &str = "01900000-0000-7000-8000-0000000007c";
 
@@ -226,11 +227,15 @@ fn ocr_row_and_confirmed_row_are_distinct_claims() -> TestResult {
     let context = context()?;
     let ids = claim_ids(transcript.rows().len())?;
     let confidence = ConfidencePermille::new(880)?;
+    let model_read = ModelRead {
+        run_id: MODEL_RUN.parse::<EntityId>()?,
+        confidence,
+    };
 
     let linked = confirm_reconciled_rows(
         reconciled,
         TranscriptFormat::PdfOcr,
-        Some(confidence),
+        Some(model_read),
         USER.parse::<EntityId>()?,
         &ids,
         &context,
@@ -245,7 +250,15 @@ fn ocr_row_and_confirmed_row_are_distinct_claims() -> TestResult {
         assert_eq!(import.epistemic_status, EpistemicStatus::AiInferred);
         assert_eq!(import.authority_class, AuthorityClass::ModelInference);
         assert_eq!(import.confidence, Some(confidence));
-        assert!(matches!(entry.import.actor(), Actor::ModelRun { .. }));
+        // The model run is its own entity: citing a run means naming the run,
+        // not the row's subject.
+        assert_eq!(
+            *entry.import.actor(),
+            Actor::ModelRun {
+                run_id: MODEL_RUN.parse::<EntityId>()?
+            }
+        );
+        assert_ne!(model_read.run_id, context.subject_entity_id);
 
         assert_eq!(confirmed.epistemic_status, EpistemicStatus::UserConfirmed);
         assert_eq!(confirmed.authority_class, AuthorityClass::UserExplicit);
@@ -302,18 +315,18 @@ fn ocr_row_and_confirmed_row_are_distinct_claims() -> TestResult {
             ids[0],
             &context,
         ),
-        "a model read published with no confidence",
+        "a model read published with no run or confidence",
     )?;
     assert_eq!(error.code(), "MODEL_READ_NEEDS_CONFIDENCE");
     let error = refusal(
         import_row_claim(
             &transcript.rows()[0],
             TranscriptFormat::Csv,
-            Some(confidence),
+            Some(model_read),
             ids[0],
             &context,
         ),
-        "a deterministic read published a confidence",
+        "a deterministic read published a model run",
     )?;
     assert_eq!(error.code(), "DETERMINISTIC_READ_CARRIES_CONFIDENCE");
 

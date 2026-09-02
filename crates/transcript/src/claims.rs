@@ -147,42 +147,53 @@ pub struct LinkedRowClaims {
     pub relation: ClaimRelation,
 }
 
+/// The provenance a model read carries, and a deterministic read must not.
+///
+/// The two travel together because neither is meaningful alone. A confidence
+/// with no run behind it names an estimate nothing can be traced to, and a run
+/// with no confidence is indistinguishable from a deterministic read in every
+/// projection that reads the claim. Section 27.3 puts provenance on a model
+/// run; section 30.5 puts confidence on inference and nowhere else.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ModelRead {
+    /// Identity of the model run that produced the values.
+    ///
+    /// A distinct entity from the row's subject: the run is what is being
+    /// cited, not what is being asserted about.
+    pub run_id: EntityId,
+    /// The run's confidence in the row.
+    pub confidence: ConfidencePermille,
+}
+
 /// Builds the import row claim for one row.
 ///
-/// `confidence` is required for a model read and refused for a deterministic
-/// one. A model read that carried no confidence would be indistinguishable
-/// from a deterministic read in every projection that reads the claim, and
-/// section 30.5 puts confidence on inference and nowhere else.
+/// `model_read` is required for a model read and refused for a deterministic
+/// one; see [`ModelRead`].
 pub fn import_row_claim(
     row: &TranscriptRow,
     format: TranscriptFormat,
-    confidence: Option<ConfidencePermille>,
+    model_read: Option<ModelRead>,
     ids: RowClaimIds,
     context: &RowClaimContext,
 ) -> Result<ImportRowClaim, TranscriptError> {
-    let (actor, authority_class, epistemic_status) = if format.is_model_read() {
-        if confidence.is_none() {
-            return Err(TranscriptError::ModelReadNeedsConfidence);
-        }
-        (
+    let (actor, authority_class, epistemic_status) = match (format.is_model_read(), model_read) {
+        (true, Some(read)) => (
             Actor::ModelRun {
-                run_id: context.subject_entity_id,
+                run_id: read.run_id,
             },
             AuthorityClass::ModelInference,
             EpistemicStatus::AiInferred,
-        )
-    } else {
-        if confidence.is_some() {
-            return Err(TranscriptError::DeterministicReadCarriesConfidence);
-        }
-        (
+        ),
+        (true, None) => return Err(TranscriptError::ModelReadNeedsConfidence),
+        (false, Some(_)) => return Err(TranscriptError::DeterministicReadCarriesConfidence),
+        (false, None) => (
             Actor::Importer {
                 name: DETERMINISTIC_IMPORTER_NAME.to_owned(),
                 version: DETERMINISTIC_IMPORTER_VERSION.to_owned(),
             },
             AuthorityClass::DirectObservation,
             EpistemicStatus::CodeObserved,
-        )
+        ),
     };
     let claim = Claim {
         id: ids.import_claim_id,
@@ -192,7 +203,7 @@ pub fn import_row_claim(
         scope_id: context.scope_id,
         authority_class,
         epistemic_status,
-        confidence,
+        confidence: model_read.map(|read| read.confidence),
         prediction_metadata: None,
         valid_time: context.valid_time,
         evidence_ids: context.import_evidence_ids.clone(),
@@ -213,7 +224,7 @@ pub fn import_row_claim(
 pub fn confirm_reconciled_rows(
     reconciled: &ReconciledTranscript,
     format: TranscriptFormat,
-    confidence: Option<ConfidencePermille>,
+    model_read: Option<ModelRead>,
     user_id: EntityId,
     ids: &[RowClaimIds],
     context: &RowClaimContext,
@@ -227,7 +238,7 @@ pub fn confirm_reconciled_rows(
     }
     let mut linked = Vec::with_capacity(rows.len());
     for (row, row_ids) in rows.iter().zip(ids) {
-        let import = import_row_claim(row, format, confidence, *row_ids, context)?;
+        let import = import_row_claim(row, format, model_read, *row_ids, context)?;
         let actor = Actor::User { user_id };
         let claim = Claim {
             id: row_ids.confirmed_claim_id,
