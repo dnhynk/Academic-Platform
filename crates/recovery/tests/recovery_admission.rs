@@ -807,10 +807,14 @@ fn read_crate_sources() -> TestResult<Vec<(PathBuf, String)>> {
         sources.len()
     );
 
-    // Descending is the property, so it is checked rather than assumed: every
-    // module the crate declares has to be a file the scan read. A walk that
-    // stops descending leaves a declared module unread, and this fails then
-    // rather than passing quietly the way the flat walk did.
+    // Descending is the property, so it is checked rather than assumed: an
+    // out-of-line module declared on its own line has to be a file the scan
+    // read. A walk that stops descending leaves a declared module unread, and
+    // this fails then rather than passing quietly the way the flat walk did.
+    //
+    // It sees `mod name;` and `pub mod name;` and nothing else — not a `#[path]`
+    // attribute, and not a declaration sharing a line with an attribute. It is a
+    // tripwire on the walk above, not a second way of finding files.
     let read: Vec<&Path> = sources.iter().map(|(path, _)| path.as_path()).collect();
     for (path, text) in &sources {
         for name in declared_modules(text) {

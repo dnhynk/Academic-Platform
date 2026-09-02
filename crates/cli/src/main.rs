@@ -610,7 +610,7 @@ mod tests {
     ];
 
     /// Line starts that declare an item at file scope.
-    const FILE_SCOPE_ITEM_STARTS: [&str; 16] = [
+    const FILE_SCOPE_ITEM_STARTS: [&str; 17] = [
         "#[",
         "async ",
         "const ",
@@ -625,6 +625,7 @@ mod tests {
         "struct ",
         "trait ",
         "type ",
+        "union ",
         "unsafe ",
         "use ",
     ];
