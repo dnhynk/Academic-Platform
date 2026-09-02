@@ -295,6 +295,13 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-keystore-platform": [],
     "academic-store-platform": [],
     "academic-test-support": [],
+    // `P2-U7`'s transcript ingestion boundary. `academic-vault` is an optional
+    // edge behind the non-default `encrypted-vault` feature, which is what
+    // selects the vault's own non-default `AEAD_CHUNKED_V2` lane; `cargo
+    // metadata` reports declared dependencies rather than resolved ones, so it
+    // is listed here and `transcript_encrypted_lane_is_not_default` proves it
+    // stays unresolved in a default build.
+    "academic-transcript": ["academic-admission", "academic-domain", "academic-vault"],
     // `academic-crypto` is an optional edge behind `aead-objects`, the same
     // shape the store's encrypted lane uses: `cargo metadata` reports declared
     // dependencies rather than resolved ones, and
@@ -334,6 +341,11 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // them. That is a test edge only; the product edge is the optional one
     // above.
     "academic-vault": ["academic-crypto"],
+    // `P2-U7`'s encrypted-lane suite builds `KEK_d` through the same public
+    // schedule, for the same reason. `academic-transcript` has no product edge
+    // to the key schedule at all: the vault handle it seals through is opened
+    // by its caller.
+    "academic-transcript": ["academic-crypto"],
     "academic-scenario": ["academic-admission", "academic-domain"],
   });
 
@@ -1656,6 +1668,193 @@ function shippingTree(selector) {
   return run.stdout.replaceAll(/\([^)]*\)/gu, "");
 }
 
+// t068 section 5, `P2-U7`. The transcript ingestion boundary is a workspace
+// crate nothing in the shipping graph links, its encrypted half sits behind a
+// non-default feature that selects the vault's own non-default object lane, and
+// the one way past its admission gate is compiled only by a test-only feature.
+test("transcript_lanes_are_not_default", () => {
+  const transcript = packagesByName.get("academic-transcript");
+  assert.ok(transcript, "academic-transcript is not a workspace member");
+  assert.deepEqual(transcript.features.default, []);
+  assert.deepEqual(transcript.features["encrypted-vault"], [
+    "dep:academic-vault",
+    "academic-vault/aead-objects",
+  ]);
+  assert.deepEqual(transcript.features["phase2-fault-injection"], []);
+
+  const node = resolveNodesById.get(transcript.id);
+  assert.equal(node.features.includes("encrypted-vault"), false);
+  assert.equal(node.features.includes("phase2-fault-injection"), false);
+
+  // Nothing that ships links it, so no product binary reaches an import path.
+  for (const shipping of [
+    shippingTree(["-p", "academic-daemon"]),
+    shippingTree(["-p", "academic-cli"]),
+  ]) {
+    assert.equal(
+      shipping.includes("academic-transcript"),
+      false,
+      "a default product graph selected the transcript ingestion boundary",
+    );
+  }
+
+  // The default transcript graph resolves no AEAD and no key schedule; the lane
+  // is what pulls them in.
+  const defaultTree = shippingTree(["-p", "academic-transcript"]);
+  for (const forbidden of ["chacha20poly1305", "academic-crypto", "academic-vault"]) {
+    assert.equal(
+      defaultTree.includes(forbidden),
+      false,
+      `the default transcript graph selected ${forbidden}`,
+    );
+  }
+  const encryptedTree = featureTree([
+    "-p",
+    "academic-transcript",
+    "--features",
+    "encrypted-vault",
+  ]);
+  for (const required of ["academic-vault", "chacha20poly1305"]) {
+    assert.ok(
+      encryptedTree.includes(required),
+      `the transcript encrypted lane did not select ${required}`,
+    );
+  }
+});
+
+// t068 section 5, `P2-U7`, "redaction is a projection, never a source edit".
+// The invariant is carried by the absence of a mutator, and an absence is the
+// one thing a Rust test cannot assert about itself: a suite that projected a
+// transcript and re-checked its digest would keep passing on the day someone
+// added `set_student_number`. This reads the source instead.
+test("transcript_redaction_has_no_source_edit_path", async () => {
+  const sources = await rustSources("crates/transcript/src");
+  const joined = sources.map(([, contents]) => contents).join("\n");
+
+  // No exclusive borrow of a normalized record reaches any signature, so no
+  // caller can be handed one to write through.
+  for (const owner of ["NormalizedTranscript", "TranscriptIdentity", "TranscriptRow"]) {
+    assert.equal(
+      new RegExp(`&\\s*mut\\s+${owner}\\b`, "u").test(joined),
+      false,
+      `a signature in academic-transcript takes &mut ${owner}, so a projection is no longer the only way to change one`,
+    );
+  }
+
+  // ... and none of the three has a public field, which would be an exclusive
+  // borrow by another name.
+  for (const [path, contents] of sources) {
+    for (const owner of ["NormalizedTranscript", "TranscriptIdentity", "TranscriptRow"]) {
+      const declaration = new RegExp(`struct\\s+${owner}\\s*\\{([\\s\\S]*?)\\n\\}`, "u").exec(
+        contents,
+      );
+      if (declaration === null) {
+        continue;
+      }
+      assert.equal(
+        /(^|[{,])\s*pub\s+[a-z_]/u.test(declaration[1]),
+        false,
+        `${path}: ${owner} declares a public field, which is an edit path into a source record`,
+      );
+    }
+  }
+
+  // The export is built from a projection and from nothing else. A second
+  // parameter here — the original bytes, the sealed object, the vault — is the
+  // change that would make `redacted_export_contains_no_original_bytes_or_metadata`
+  // a claim about a function that no longer exists.
+  const redaction = await readFile("crates/transcript/src/redaction.rs", "utf8");
+  assert.match(
+    redaction,
+    /pub fn redacted_export\(projection: &RedactedProjection\) -> Vec<u8>/u,
+    "redacted_export no longer takes exactly one projection",
+  );
+  assert.match(
+    redaction,
+    /pub fn project\(\s*transcript: &NormalizedTranscript,\s*profile: RedactionProfile,?\s*\) -> RedactedProjection/u,
+    "project no longer borrows its source",
+  );
+});
+
+// t068 section 5, `P2-U7`. Two things about the admission gate that a Rust test
+// cannot see: that the capability has exactly one product constructor, and that
+// the escape hatch the fault lane needs is compiled only by a test-only feature.
+test("transcript_admission_gate_has_one_product_constructor", async () => {
+  const admission = await readFile("crates/transcript/src/admission.rs", "utf8");
+  const constructors = [...admission.matchAll(/\n    pub (?:const )?fn ([a-z_]+)\(/gu)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(
+    constructors.toSorted(),
+    ["for_fault_injection_only", "open", "platforms", "receipt_digest"],
+    "the AdmittedImport surface changed; a second way to obtain one is a second way past the gate",
+  );
+  assert.match(
+    admission,
+    /#\[cfg\(feature = "phase2-fault-injection"\)\]\s*\n\s*#\[must_use\]\s*\n\s*pub fn for_fault_injection_only/u,
+    "the fault-lane capability constructor is no longer behind the test-only feature",
+  );
+  // It fabricates a capability, so it must not also be able to fabricate a
+  // plausible receipt digest a caller could log as evidence of admission.
+  assert.match(
+    admission,
+    /receipt_digest: String::from\("fault-injection-lane"\)/u,
+    "the fault-lane capability no longer names itself in its receipt digest",
+  );
+
+  // Every gated entry point still demands the capability by type.
+  const session = await readFile("crates/transcript/src/session.rs", "utf8");
+  const vault = await readFile("crates/transcript/src/vault.rs", "utf8");
+  for (const [name, contents, expected] of [
+    ["session", session, 2],
+    ["vault", vault, 1],
+  ]) {
+    assert.equal(
+      [...contents.matchAll(/_admitted: &AdmittedImport/gu)].length,
+      expected,
+      `${name}.rs no longer takes the admission capability at every gated entry point`,
+    );
+  }
+});
+
+// t068 section 5, `P2-U7`: "reuse AEAD_CHUNKED_V2, do not create a new object
+// format". The crate must therefore contain no cipher, no nonce schedule, and
+// no second format label — it composes ADR-004's through the vault's public
+// ingest and nothing else.
+test("transcript_defines_no_second_object_format", async () => {
+  const sources = await rustSources("crates/transcript/src");
+  // Deliberately unanchored. A word boundary would let `LOCAL_BASE_NONCE`
+  // through, which is exactly the spelling a second nonce schedule would
+  // arrive under; the injection that found that gap is why this matches a
+  // substring.
+  const forbidden =
+    /(chacha20|poly1305|xchacha|aead|nonce|wrapped_dek|cipher|hkdf|argon2|blake2)/iu;
+  for (const [path, contents] of sources) {
+    // The doc comments name the format they reuse, which is the point; the ban
+    // is on primitives, so comment lines are stripped before the scan.
+    const code = contents
+      .split(/\r?\n/)
+      .filter((line) => !/^\s*(\/\/|\*|\/\*)/u.test(line))
+      .join("\n");
+    const found = forbidden.exec(code);
+    assert.equal(
+      found,
+      null,
+      `${path}: academic-transcript names the cryptographic primitive ${found?.[0]}; it must compose AEAD_CHUNKED_V2 through academic-vault rather than build one`,
+    );
+  }
+
+  // The one sealing call, and the two policy labels it is fixed to.
+  const vault = await readFile("crates/transcript/src/vault.rs", "utf8");
+  assert.equal(
+    [...vault.matchAll(/vault\.ingest\(/gu)].length,
+    1,
+    "the transcript crate has more than one sealing call",
+  );
+  assert.match(vault, /TRANSCRIPT_CONFIDENTIALITY: Confidentiality = Confidentiality::Restricted/u);
+  assert.match(vault, /TRANSCRIPT_RETENTION_CLASS: RetentionClass = RetentionClass::UserManaged/u);
+});
+
 test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", async () => {
   // Exactly which crates declare the harness feature, and exactly what each
   // forwards. `academic-core` forwards to the three crates that own the named
@@ -1931,6 +2130,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     admissionReceiptText,
     policyReceiptText,
     processReceiptText,
+    transcriptReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -1941,6 +2141,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-k6.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g7.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-u7.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -1951,6 +2152,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const admissionReceipt = JSON.parse(admissionReceiptText);
   const policyReceipt = JSON.parse(policyReceiptText);
   const processReceipt = JSON.parse(processReceiptText);
+  const transcriptReceipt = JSON.parse(transcriptReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -2186,6 +2388,39 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       `${claimed} is claimed by two admission receipts`,
     );
   }
+
+  // `P2-U7` adds the transcript ingestion boundary and admits no external
+  // crate. A PDF or OCR library would have been the obvious way to build it and
+  // would have arrived here as an unreceipted package; the corpus is written by
+  // a deterministic builder inside the crate instead, which is why this receipt
+  // subtracts one path package and nothing else.
+  const transcriptAdmitted = new Set(
+    transcriptReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const transcriptPathPackages = new Set(
+    transcriptReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(transcriptAdmitted.size, 0, "P2-U7 must admit no external crate");
+  for (const claimed of [...transcriptAdmitted, ...transcriptPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processAdmitted.has(claimed) ||
+        processPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
   const processTuples = lockTuples.filter(
     ([name, version]) => processPathPackages.has(`${name}@${version}`),
   );
@@ -2193,6 +2428,16 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     processTuples.length,
     processPathPackages.size,
     "a P2-G7 process package is missing from Cargo.lock",
+  );
+  const transcriptTuples = lockTuples.filter(
+    ([name, version]) =>
+      transcriptAdmitted.has(`${name}@${version}`) ||
+      transcriptPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    transcriptTuples.length,
+    transcriptAdmitted.size + transcriptPathPackages.size,
+    "a P2-U7 admitted package is missing from Cargo.lock",
   );
 
   const incomingTuples = lockTuples.filter(
@@ -2210,7 +2455,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !admissionPathPackages.has(`${name}@${version}`) &&
       !policyAdmitted.has(`${name}@${version}`) &&
       !policyPathPackages.has(`${name}@${version}`) &&
-      !processPathPackages.has(`${name}@${version}`),
+      !processPathPackages.has(`${name}@${version}`) &&
+      !transcriptAdmitted.has(`${name}@${version}`) &&
+      !transcriptPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -2228,7 +2475,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       retentionTuples.length +
       admissionTuples.length +
       policyTuples.length +
-      processTuples.length,
+      processTuples.length +
+      transcriptTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -2421,6 +2669,20 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
                 },
               ]
             : [];
+    // `P2-U7` reuses two already-admitted crates at their default features:
+    // `sha2` for the canonical and checksum digests, `thiserror` for the error
+    // type. It adds no third.
+    const u7TranscriptUse = ["sha2", "thiserror"].includes(admission.name)
+      ? [
+          {
+            package: "academic-transcript",
+            kind: "normal",
+            target: null,
+            default_features: true,
+            features: [],
+          },
+        ]
+      : [];
     const expectedUses = [
       ...admission.uses,
       ...j1ProjectionUse,
@@ -2428,6 +2690,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       ...k4RecoveryUse,
       ...k6AdmissionTestUse,
       ...g1PolicyUse,
+      ...u7TranscriptUse,
     ]
       .map((use) => ({ ...use, features: use.features.toSorted() }))
       .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));

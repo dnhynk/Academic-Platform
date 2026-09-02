@@ -64,6 +64,9 @@ const SECRET_BEARING_TYPES = new Map([
   ["RuntimeToolCall", "the exact payload presented at the capability boundary"],
   ["AuthorizedToolCall", "the exact payload released after capability consumption"],
   ["ProcessActivity", "the exact external-transmission bytes before audit hashing"],
+  ["TranscriptIdentity", "the student number and name a redacted export exists to remove"],
+  ["NormalizedTranscript", "a whole official transcript, identity header included"],
+  ["RedactedProjection", "the identity values one redaction profile chose to retain"],
 ]);
 
 /**
@@ -75,7 +78,7 @@ const SECRET_BEARING_TYPES = new Map([
  * A name is only a signal; the exceptions below carry the judgement.
  */
 const SECRET_FIELD_NAMES =
-  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|payload|payload_bytes|prompt|prompt_text|provider_response|provider_response_bytes|response_text|transmitted|transmitted_bytes|transmission|transmission_bytes|source_bytes|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|vmk|skey|master)$/;
+  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|payload|payload_bytes|prompt|prompt_text|provider_response|provider_response_bytes|response_text|transmitted|transmitted_bytes|transmission|transmission_bytes|source_bytes|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|vmk|skey|master|student_number|student_name)$/;
 
 /**
  * Field types that hold bytes transparently, so a derived `Debug` prints them.
@@ -410,8 +413,16 @@ function destructuredBindings(body) {
   return bindings;
 }
 
-/** Methods a formatter body may call on `self` without printing bytes. */
-const FORMATTER_SAFE_METHODS = /^(len|is_empty|count|capacity)$/;
+/**
+ * Methods a formatter body may call on `self` without printing bytes.
+ *
+ * `is_some` and `is_none` are here for the same reason `is_empty` is: they
+ * reduce a value to whether it is there. `P2-U7` needs them because a
+ * redaction projection holds `Option<String>` for every field a profile may
+ * remove, and "this profile kept the student number" is what its `Debug` has
+ * to be able to say.
+ */
+const FORMATTER_SAFE_METHODS = /^(len|is_empty|count|capacity|is_some|is_none)$/;
 
 
 function derivedTraits(attributeBlock) {
@@ -768,7 +779,7 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
         new RegExp(`self\\s*\\.\\s*${field}\\b([^,)]*)`, "g"),
       );
       for (const use of uses) {
-        if (/^\s*\.\s*(len|is_empty|count|capacity)\s*\(/.test(use[1])) {
+        if (/^\s*\.\s*(len|is_empty|count|capacity|is_some|is_none)\s*\(/.test(use[1])) {
           continue;
         }
         leaks.push(
@@ -790,7 +801,7 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
         new RegExp(`(?<![.\\w])${binding}\\b([^,)]*)`, "gu"),
       );
       for (const use of uses) {
-        if (/^\s*\.\s*(len|is_empty|count|capacity)\s*\(/.test(use[1])) {
+        if (/^\s*\.\s*(len|is_empty|count|capacity|is_some|is_none)\s*\(/.test(use[1])) {
           continue;
         }
         leaks.push(

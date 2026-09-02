@@ -47,6 +47,8 @@ cargo clippy -p academic-retention --all-targets --locked --offline --features r
 cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection
 cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection -- -D warnings
 cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection
+cargo clippy -p academic-transcript --all-targets --locked --offline --features encrypted-vault,phase2-fault-injection -- -D warnings
+cargo test -p academic-transcript --all-targets --locked --offline --features encrypted-vault,phase2-fault-injection
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
@@ -91,6 +93,21 @@ allowlist, a banner suppressed behind a marker file — alter nothing observable
 without their trigger. Every such scan is enumerated, with what it reads and
 what it still leaves open, in
 [policy source scans](docs/contracts/policy-source-scans.md).
+
+`P2-U7` adds `academic-transcript`: PDF, CSV and manual-entry import of an
+official transcript, import rows kept as claims distinct from the rows the user
+confirmed, field-level checksum reconciliation that halts at the exact row, and
+redaction as a projection that never edits a source. Its default half is pure
+Rust and runs inside `cargo test --workspace`; the half that seals an original
+as an `AEAD_CHUNKED_V2` object and the half that takes the `IN04` kill matrix
+need the two non-default features in the commands above, which are also hosted
+CI steps on every Rust matrix label. The crate adds no PDF or OCR dependency and
+defines no object format: the corpus is written by a deterministic builder and
+the seal is ADR-004's. Nothing durable happens today, because `P2-K6` did not
+open admission and both gated entry points take a verified receipt by type. What
+that refusal covers, what the text-layer parser does and does not read, and why
+the identity header is not a reconciliation halt condition are in
+[transcript ingestion](docs/contracts/transcript-ingestion.md).
 
 `P2-G1` adds `academic-policy` without adding a product socket or a new
 external dependency. A new profile exposes `local_processing_preferred=true`
