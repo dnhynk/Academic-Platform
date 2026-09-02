@@ -16,8 +16,16 @@ pub use academic_domain::{EVENT_SCHEMA_VERSION, UnsignedBatch};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+mod product_authority;
 mod resolver;
 
+pub use product_authority::{
+    AuthorityRank, AuthorityTable, ClaimSourceProvenance, ConflictCard, ConflictReason,
+    CorroborationReasonCode, IndependenceBasis, NEW_EVIDENCE_CONFLICT,
+    NEW_EVIDENCE_CONFLICTS_WITH_OVERRIDE, ProductClaimType, ProductResolutionQuery,
+    ProductResolutionResult, RelationSupportAssessment, RelationSupportTier,
+    SourceIndependenceAttestation, resolve_product_snapshot,
+};
 use resolver::relation_effect_is_authorized;
 pub use resolver::{
     AuthorityPolicy, KnowledgeStateView, ResolutionClaim, ResolutionDecision, ResolutionQuery,
@@ -571,6 +579,50 @@ impl LedgerState {
             })
             .collect::<Vec<_>>();
         resolve_snapshot(query, &claims, &relations, &decisions)
+    }
+
+    /// Resolves one of the six product claim types through the same Phase 1
+    /// decision, lifecycle, scope, and conflict implementation.
+    #[must_use]
+    pub fn resolve_product(
+        &self,
+        query: &ProductResolutionQuery,
+        provenance: &[ClaimSourceProvenance],
+        independence: &[SourceIndependenceAttestation],
+    ) -> ProductResolutionResult {
+        let claims = self
+            .claims
+            .values()
+            .map(|(claim, metadata)| ResolutionClaim {
+                claim: claim.clone(),
+                accept_seq: metadata.accept_seq,
+            })
+            .collect::<Vec<_>>();
+        let relations = self
+            .relations
+            .iter()
+            .map(|(relation, metadata)| ResolutionRelation {
+                relation: relation.clone(),
+                accept_seq: metadata.accept_seq,
+                actor_kind: ResolverActorKind::from(&metadata.actor),
+            })
+            .collect::<Vec<_>>();
+        let decisions = self
+            .decisions
+            .iter()
+            .map(|(decision, metadata)| ResolutionDecision {
+                decision: decision.clone(),
+                accept_seq: metadata.accept_seq,
+            })
+            .collect::<Vec<_>>();
+        resolve_product_snapshot(
+            query,
+            &claims,
+            &relations,
+            &decisions,
+            provenance,
+            independence,
+        )
     }
 
     /// Resolves mastery and freshness as separate projections at the same coordinates.
