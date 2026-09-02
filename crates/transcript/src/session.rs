@@ -208,7 +208,7 @@ impl ImportSession {
     /// halted import has nothing to pass here. That is `IN03`'s "nothing
     /// confirmed", carried by the type.
     pub fn stage(&self, reconciled: &ReconciledTranscript) -> Result<(), TranscriptError> {
-        let bytes = encode_confirmed_set(reconciled);
+        let bytes = encode_confirmed_set(self.version_id, reconciled);
         let temporary = self.directory.join("staging.tmp");
         write_durable(&temporary, &bytes)?;
         fault::trip(FaultPoint::StagingTemporaryWritten);
@@ -252,14 +252,21 @@ impl ImportSession {
 ///
 /// Length-prefixed, so a truncated read cannot parse as a shorter valid set —
 /// and identity-free, because a durable file beside the vault is one more place
-/// the student number must not be. The set records which transcript version it
-/// belongs to and the reconciliation's reference digest, which is what ties it
-/// back to the sealed original without copying anything out of it.
+/// the student number must not be.
+///
+/// The set names its own transcript version and the reconciliation's reference
+/// digest. Both are inside the bytes rather than only in the directory path: a
+/// file that only its location identified could be moved into another session's
+/// directory and read there as that session's confirmed set.
 #[must_use]
-pub fn encode_confirmed_set(reconciled: &ReconciledTranscript) -> Vec<u8> {
+pub fn encode_confirmed_set(
+    version_id: TranscriptVersionId,
+    reconciled: &ReconciledTranscript,
+) -> Vec<u8> {
     let rows = reconciled.transcript().rows();
     let mut out = Vec::new();
     out.extend_from_slice(CONFIRMED_SET_LABEL);
+    out.extend_from_slice(version_id.as_bytes());
     out.extend_from_slice(reconciled.reference_identity_digest());
     out.extend_from_slice(&u32::try_from(rows.len()).unwrap_or(u32::MAX).to_le_bytes());
     for row in rows {

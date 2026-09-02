@@ -83,7 +83,9 @@ this parser may be pointed at it.**
 
 All four formats target one labelled line grammar. An unknown key, a missing
 key, a duplicate key, or a row without exactly four fields is refused, so a
-partially-read document never becomes a partially-populated transcript.
+partially-read document never becomes a partially-populated transcript. The CSV
+carries no quoting and reads none: a row value that spells the separator becomes
+a row with more than four fields and is refused rather than misread.
 
 ## Import row and confirmed row
 
@@ -202,8 +204,10 @@ One session lives at `<profile>/transcript/sessions/<transcript_version_id>/`.
   stated rather than papered over.
 
 The confirmed set is identity-free — a durable file beside the vault is one more
-place the student number must not be — and records the transcript version and
-the reconciliation's reference digest.
+place the student number must not be — and names its own transcript version and
+the reconciliation's reference digest inside its bytes rather than only in its
+path, so a file moved into another session's directory does not read there as
+that session's confirmed set.
 
 ## Named acceptance evidence
 

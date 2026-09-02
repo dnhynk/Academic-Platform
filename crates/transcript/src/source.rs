@@ -192,6 +192,11 @@ pub fn parse_manual_entry(
 ///
 /// This exists so the corpus builder has one place that spells the CSV, and so
 /// a round trip is executable rather than asserted.
+///
+/// It emits no quoting, and [`parse_csv`] reads none. A row value that spells
+/// the separator therefore produces a row with more than four fields, which is
+/// refused — the boundary is fail-closed rather than silently misread, and
+/// `transcript_formats_normalize_equivalently` executes that.
 #[must_use]
 pub fn render_csv(transcript: &NormalizedTranscript) -> String {
     use crate::record::TranscriptField;
