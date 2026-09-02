@@ -48,12 +48,24 @@ core (no socket) ──> broker decision ──> staged payload (in memory, TTL 
                                           academic-egress ──> OutboundTransport
 ```
 
-`EgressProxy::stage` produces a `StagedPayload`; `EgressProxy::transmit` is the
-only function that reaches a transport, and it does so inside
+`EgressProxy::stage` produces a `StagedPayload`. Two functions reach a
+transport: `EgressProxy::transmit`, and `EgressProxy::transmit_without_completion`,
+which exists so fault `EG05` -- a kill after the provider send and before the
+audit write -- can be tested without a real kill. Both reach it inside
 `PermissionBroker::execute`, which refuses a `RuntimeToolCall` whose process
-class does not hold `OpenOutboundSocket`. A caller that never calls `transmit` cannot reach a
-transport, and `transmit` cannot be called without a `StagedPayload` and a live
+class does not hold `OpenOutboundSocket`, and both call
+`EgressProxy::bind_grant` as their first statement, so the grant refusals below
+are made on both. Neither can be called without a `StagedPayload` and a live
 `CapabilityToken`.
+
+That there are exactly two, and that both bind the grant, is counted rather
+than promised: `the_byte_path_has_one_derivation` in
+`crates/egress-boundary/tests/byte_path_pin.rs` holds the `.execute(` call sites
+at two and the `bind_grant` call sites at two, reading the name rather than a
+spelling. This is `T146`'s `P1-1` finding, and the count is what the repair
+added: before it, `transmit_without_completion` read no grant row and compared
+no rulepack, and with a grant reviewed under another pack it wrote 180 bytes to
+a transport for a payload `transmit` refused with zero.
 
 ## The rulepack identifier in every grant
 
@@ -63,10 +75,30 @@ count, and each rule's identifier, reason code, and kind — so an edit to a rul
 moves the digest even if the version is not incremented.
 
 That digest is a grant's `redaction_policy_hash`. It is the existing `P2-G1`
-column, not a new one. `transmit` reads the grant row before it does anything
-else and refuses with `SCOPE_MISMATCH` when the recorded digest is not the
-digest of the pack that produced the staged bytes: a grant reviewed under one
-redaction policy may not carry a payload produced by another.
+column, not a new one. `bind_grant` runs first on both transmit paths and
+refuses with `SCOPE_MISMATCH` when the recorded digest is not the digest of the
+pack that produced the staged bytes: a grant reviewed under one redaction policy
+may not carry a payload produced by another.
+
+`bind_grant` refuses one more thing first, because the row it reads has to be
+the row the transfer spends. `TransmissionPlan.grant_id` and the capability
+token are separate inputs: `execute` consumes the grant the *token* names, while
+the journal records the grant the *plan* names. `T146` measured what that costs
+-- a token for grant A with `plan.grant_id = B` transmitted 180 bytes, journalled
+B twice, and consumed A, so the record named a grant nobody spent and the
+rulepack comparison had read a row that was not being consumed. A plan naming
+another grant is now `SCOPE_MISMATCH` with zero bytes on both paths, and both
+journal entries take their `grant_id` from the row `bind_grant` read.
+
+Three named tests observe this rather than assert it:
+`a_grant_reviewed_under_another_rulepack_is_refused_on_every_transmit_path` and
+`a_plan_naming_another_grant_is_refused` in
+`crates/egress-boundary/tests/egress_boundary.rs`, each written over a table of
+both paths, and `eg04...` below. Deleting either comparison from `bind_grant`
+fails exactly one of the first two; deleting either call site fails the count in
+`byte_path_pin.rs`. Before the repair, deleting the rulepack comparison outright
+left `cargo test --workspace --all-targets`, `pnpm test` and `pnpm security` all
+passing.
 
 ## The staging pipeline
 
@@ -163,8 +195,11 @@ tool closure, so `egress_audit.byte_count` is the count the grant authorized —
 the whole staged payload. The count actually handed to the transport is in the
 staged grant journal's `SendOutcome`, and `EgressDenial::bytes_transmitted`
 reports it to the caller. The two records name the same `grant_id` and the same
-payload digest, and `eg04_grant_expiring_mid_transfer_aborts_and_audits_the_partial_count`
-asserts both. This crate does not write a second row into `P2-G1`'s append-only
+payload digest. `eg04_grant_expiring_mid_transfer_aborts_and_audits_the_partial_count`
+asserts both halves: it reads the journalled `grant_id` out of the `SendOutcome`
+and compares it with the grant the decision minted. `T146` found that half
+discarded with a `..` pattern, so the two records agreed only because the
+fixture put the same value in both. This crate does not write a second row into `P2-G1`'s append-only
 table to reconcile them; doing so would need a new broker API, which is a
 `P2-A2` integration decision rather than this task's.
 
@@ -200,12 +235,11 @@ Both `cloud_egress_default` and the routing constant are pinned as whole text.
 
 ## What `only_egress_crate_has_a_socket` enforces
 
-Six halves, none of which is a forbidden-token list.
+Seven halves, none of which is a forbidden-token list.
 
-1. **Per-file spelling allowance.** Every `.rs` file under every crate's `src`,
-   `tests`, and `benches`, plus every build script, is read with comments and
-   string literals removed, and the exact set of socket spellings it uses must
-   equal a pinned allowance. Eight files run the local IPC seam — named pipes on
+1. **Per-file spelling allowance.** Every `.rs` file anywhere under every
+   workspace package is read with comments and string literals removed, and the
+   exact set of socket spellings it uses must equal a pinned allowance. Eight files run the local IPC seam — named pipes on
    Windows, Unix-domain sockets elsewhere — and their allowances list only local
    transports. Every other file's allowance is empty, both egress crates
    included. A file allowed `tokio::net` for a named pipe is not allowed
@@ -235,6 +269,15 @@ Six halves, none of which is a forbidden-token list.
    is pinned. This is the one bypass that spells no name anywhere: adding
    `tokio` to a manifest. Both egress crates intersect to `["libc"]`, which
    reaches them through `academic-policy`'s bundled SQLite.
+7. **The syscall half.** One file is allowed the spelling `libc::syscall`:
+   `P2-G4`'s Linux sandbox backend. Every call it makes must name a
+   `libc::SYS_` constant as its first argument, and that constant must be one of
+   the four the file installs the sandbox with; every other `SYS_` name in the
+   file must sit inside `denied_syscalls`, counted. Without the first rule
+   `libc::syscall(41, 2, 1, 0)` opens an AF_INET stream socket while changing no
+   allowance and spelling nothing on the pattern list, which `T146` measured.
+   The sandbox is not the answer to it: that file holds the parent-side
+   `launch`, and the parent runs outside the sandbox it installs.
 
 `P2-G7`'s `indexer_cannot_open_a_socket` and `export_job_cannot_read_keys` prove
 two process packages' whole dependency closures and whole entry points. This
@@ -246,9 +289,9 @@ of them is refused as well.
 Each of these was verified by injecting the bypass it names into the shipped
 source and observing the guard refuse it. All three shapes
 [policy source scans](policy-source-scans.md) names as making a scan empty are
-answered here: the walk covers `src`, `tests`, `benches`, and build scripts and
-compares the whole allowance map rather than iterating it, so a file that stops
-being read fails as a missing key; the checks that matter are whole-text pins
+answered here: the walk covers every `.rs` under a package, build scripts
+included, and compares the whole allowance map rather than iterating it, so a
+file that stops being read fails as a missing key; the checks that matter are whole-text pins
 rather than token lists; and the capability scan it sits beside carries a
 `>= 10` crate floor.
 

@@ -694,6 +694,20 @@ pub struct CapabilityToken {
     payload_digest: ContentDigest,
 }
 
+impl CapabilityToken {
+    /// The grant this token consumes when it is spent.
+    ///
+    /// `execute` reads the row named here and marks it consumed, so this is the
+    /// grant a caller's own transmission plan has to agree with. It is the
+    /// identifier and nothing else: the ranges, the payload digest, and the
+    /// destination stay inside the token, and no constructor is reachable from
+    /// outside this crate.
+    #[must_use]
+    pub fn grant_id(&self) -> &str {
+        &self.grant_id
+    }
+}
+
 impl fmt::Debug for CapabilityToken {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("CapabilityToken(<opaque>)")

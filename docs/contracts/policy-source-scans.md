@@ -99,17 +99,18 @@ remove.
 | `read_crate_sources` — `crates/retention/tests/retention.rs` | recursive, `retention/src` | token lists at three call sites (revocation claims, `GATE-38-026` decision seams, journal truncation) | `>= 8` |
 | `the_rotation_gate_is_one_decision_with_no_flag_variable_or_debug_path` — `crates/retention/tests/rotation_gate.rs` | none — three fixed paths | `WHOLE_GATE` whole-text pin on `require_rotation_accepted`; a 6-token list over its body; the first statement of each of 7 gated entry points | none |
 | `default_feature_tree_has_no_conversion_entry_point` — `crates/store/tests/encrypted_profile.rs` | recursive, `store/src` | 3 forbidden conversion entry points; plus fixed-path reads of `src/lib.rs` for the compile-time guard, and byte scans of the built probe binary | none |
-| `phase1_exit_has_no_product_network` — `crates/daemon/tests/phase1_exit.rs` | recursive, every crate's `src` except `test-support` | 10 networking tokens, paired with an independent link scan of the built default-feature `academicd` image for 8 symbol byte sequences | `scanned > 0` |
-| `no_float_reaches_the_gpa_path` — `crates/record/tests/record_scans.rs` | recursive, `crates/record/src` | not a token list: a float *type* under any spelling, a decimal-point literal, and an exponent literal, over code with comments and string literals removed; five evasion samples are run through the check inside the test and each must be caught | `>= 11` files, plus a tripwire that every `pub mod name;` in `lib.rs` is a file the walk read |
+| `phase1_exit_has_no_product_network` — `crates/daemon/tests/phase1_exit.rs` | recursive, **every `.rs` under every crate's package** except `test-support`, less each package's `tests` and `benches`, less the sandbox probe | 10 networking tokens, paired with an independent link scan of the built default-feature `academicd` image for 8 symbol byte sequences | `scanned >= 200` |
+| `no_float_reaches_the_gpa_path` — `crates/record/tests/record_scans.rs` | recursive, the whole `crates/record` package less `tests` and `benches`, so `examples/` is read | not a token list: a float *type* under any spelling, a decimal-point literal, and an exponent literal, over code with comments and string literals removed; five evasion samples are run through the check inside the test and each must be caught | `>= 11` files, plus a tripwire that every `pub mod name;` in `lib.rs` is a file the walk read |
 | `the_published_average_is_rounded_in_one_pinned_place` — same file | the recursive walk above, for the rounding-site count; one fixed path for the pin | `WHOLE_DIVISION` whole-text pin on `div_round_half_up`; exactly one rounding site in the crate; the published scale still an argument; no type declared in the arithmetic module | the walk's floor above |
-| `tools/secret-debug-policy.test.mjs` | recursive, every `crates/*/src` | regex over derive attributes against a registry of secret-carrying types | none on the file walk; a `>= 11` floor on the macro-generated key-type registry |
-| `tools/phase1-scaffold-policy.test.mjs` | recursive, from eight roots: every workspace package's `src` except `academic-test-support`, a named crate set, `store-platform/src`, each of the six process crates' `src`, `transcript/src` twice, `record/src` (the two implemented §28 engines, with a `>= 12` floor), and — for `only_egress_crate_has_a_socket` — every `.rs` anywhere under every workspace package; fixed paths elsewhere | `cargo metadata` dependency graph, acceptance-receipt comparison, and regex/substring assertions on named files — including a second, independent copy of the rotation-gate decision-site count | none |
-| `only_egress_crate_has_a_socket` — `tools/phase1-scaffold-policy.test.mjs` | recursive, **every `.rs` under every workspace package**, comments and every literal — raw strings included — stripped before matching | a per-file allowance of exact socket spellings (eight IPC files, two `P2-G4` files, every other allowance empty); a rule that a crate root or a socket module segment may be renamed only to `_`; zero foreign-function declarations anywhere; every `#[path]` target resolved and required to be one of the files this scan read; the one `include!` pinned whole; a pinned build-script inventory; a per-crate link closure intersected with the socket-capable crates; and, for the sandbox's Linux backend, a **counted** requirement that every `SYS_` spelling in the file sits inside its `denied_syscalls` function | `scanned.length >= 10` on the capability scan it sits beside; the allowance map is compared whole, so a file that stops being read fails as a missing key |
-| `the_byte_path_has_one_derivation`, `no_exception_path_fails_open`, `a_denial_has_no_payload_field` — `crates/egress-boundary/tests/byte_path_pin.rs` | none — six fixed paths under this crate's own `src` | seven whole-text pins (below); occurrence counts for the single construction site, the single emit helper and the two `execute` call sites; a per-file fallback inventory with a written reason for each site; six shapes that may not appear at all (`catch_unwind`, `let _ =`, `if let Ok(`, `.is_ok()`, `unwrap()`, `.expect(`); the `EgressDenial` field list read out of the struct | none on the walk — the six paths are named; a file gaining a `#[cfg(test)]` module fails, because the product half would then be smaller than the file |
+| `tools/secret-debug-policy.test.mjs` | recursive, **every `.rs` under every `crates/*` package** less its `tests` and `benches`, so `examples/` and `probes/` are read | regex over derive attributes against a registry of secret-carrying types | none on the file walk; a `>= 11` floor on the macro-generated key-type registry |
+| `tools/phase1-scaffold-policy.test.mjs` | recursive, from eight roots: every workspace package except `academic-test-support` (the whole package, not its `src`), a named crate set, `store-platform/src`, each of the six process crates' `src`, `transcript/src` twice, `record/src` (the two implemented §28 engines, with a `>= 12` floor), and — for `only_egress_crate_has_a_socket` — every `.rs` anywhere under every workspace package; fixed paths elsewhere | `cargo metadata` dependency graph, acceptance-receipt comparison, and regex/substring assertions on named files — including a second, independent copy of the rotation-gate decision-site count | none |
+| `only_egress_crate_has_a_socket` — `tools/phase1-scaffold-policy.test.mjs` | recursive, **every `.rs` under every workspace package**, comments and every literal — raw strings included — stripped before matching | a per-file allowance of exact socket spellings (eight IPC files, two `P2-G4` files, every other allowance empty); a rule that a crate root or a socket module segment may be renamed only to `_`; zero foreign-function declarations anywhere; every `#[path]` target resolved and required to be one of the files this scan read; the one `include!` pinned whole; a pinned build-script inventory; a per-crate link closure intersected with the socket-capable crates; and, for the sandbox's Linux backend, two rules over syscalls: every `libc::syscall(` call in the file must name a `libc::SYS_` constant as its first argument and that constant must be one of the four reviewed syscalls the file installs the sandbox with, and every other `SYS_` spelling in the file must sit inside `denied_syscalls`, **counted** | `scanned.length >= 10` on the capability scan it sits beside; the allowance map is compared whole, so a file that stops being read fails as a missing key |
+| `the_byte_path_has_one_derivation`, `no_exception_path_fails_open`, `a_denial_has_no_payload_field` — `crates/egress-boundary/tests/byte_path_pin.rs` | none — six fixed paths under this crate's own `src` | eight whole-text pins (below); occurrence counts for the single construction site, the single emit helper, the two `execute` call sites, and the two `bind_grant` call sites — the last counted by identifier rather than by spelling, so a call written `EgressProxy::bind_grant(self, ..)` counts; a per-file fallback inventory with a written reason for each site; six shapes that may not appear at all (`catch_unwind`, `let _ =`, `if let Ok(`, `.is_ok()`, `unwrap()`, `.expect(`); the `EgressDenial` field list read out of the struct | none on the walk — the six paths are named; a file gaining a `#[cfg(test)]` module fails, because the product half would then be smaller than the file |
 | `deny_reason_codes_are_exhaustive` — `crates/egress-boundary/tests/egress_boundary.rs` | none — one fixed path, `crates/policy/src/schema.sql` | a compiler-checked witness `match` over `ReasonCode` (a new variant stops the suite compiling), an index set over the enumerated list, a transcription of the execution plan's section 3.5 sentence, and the quoted codes in the `egress_audit` `CHECK` | n/a — the enum is read through the type system, not a walk |
 | `the_tombstone_row_calls_the_product_restore_and_lives_only_here` — `crates/portability/tests/encrypted_rotation.rs` | none — two fixed *test* source paths | substring: the acceptance row is in this file, calls the product restore, and has no second definition in `academic-retention` | none |
 | `unsafe_is_confined_to_the_sandbox_backends`, `probe_targets_are_not_in_any_default_build`, `the_probe_enters_the_sandbox_before_it_reads_a_job` — `crates/worker/tests/capability.rs` | recursive, this crate's `src`, `probes` and `tests` | the set of files holding an `unsafe` item compared whole against a two-entry list; the manifest's `[[bin]]` inventory read for `required-features` and a `path` under `probes/`; a whole-text pin on the probe's `run` function plus a call-site count of one on `sandbox::enter` and an ordering check against the job read | `scanned >= 8` |
-| `the_walk_reads_every_module_in_this_crate`, `untrusted_has_no_unwrapping_trait_impl`, `every_exposure_site_is_named_and_justified`, `the_instruction_channel_takes_only_static_text`, `the_adjudicator_receives_no_capability`, `only_reviewed_files_hold_an_unlabelled_provider_response` — `crates/untrusted-content/tests/trust_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests` and `benches`) and all source; plus a second recursive walk over every `.rs` under every package in `crates/` for the `AcceptedResponse` inventory | the whole set of `impl` blocks whose header names `Untrusted<` compared against a two-entry list; the whole inventory of `.expose()` call sites with a written reason for each; nine whole-text pins (below); occurrence counts on the two directive constructions, the one `quote` caller, the one `adjudicate` caller and `leak`; the manifest read for `academic-policy` as a dev edge and `academic-worker` as no edge, and four broker type names forbidden in product source; the whole set of files naming `AcceptedResponse` | `>= 8` files, a rule that no product source sits outside `src`, and a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the crate must be a file the walk read |
+| `the_walk_reads_every_module_in_this_crate`, `untrusted_has_no_unwrapping_trait_impl`, `every_exposure_site_is_named_and_justified`, `the_instruction_channel_takes_only_static_text`, `the_adjudicator_receives_no_capability`, `only_reviewed_files_hold_an_unlabelled_provider_response` — `crates/untrusted-content/tests/trust_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests` and `benches`) and all source; plus a second recursive walk over every `.rs` under every package in `crates/` for the `AcceptedResponse` inventory | the whole set of `impl` blocks whose header names `Untrusted<` compared against a two-entry list; the whole inventory of the crate-private accessor's call sites with a written reason for each, counted by identifier rather than by the spelling `.expose()`; a rule that no `pub` signature in the crate's product source takes an `Untrusted<…>` and returns a type naming `str`, `String` or `u8`; nine whole-text pins (below); occurrence counts on the two directive constructions, the one `quote` caller, the one `adjudicate` caller — that one also by identifier, with `use` items dropped so a re-export is not read as a call — and `leak`; the manifest read for `academic-policy` as a dev edge and `academic-worker` as no edge, and four broker type names forbidden in product source; the whole set of files naming `AcceptedResponse` | `>= 8` files, a rule that no product source sits outside `src`, and a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the crate must be a file the walk read |
+| `no_public_signature_hands_out_ingested_text` — `crates/untrusted-content/tests/untrusted_boundary.rs` | recursive, **every `.rs` under every `crates/*` package** less each package's `tests` and `benches`, comment lines dropped | no `pub fn` signature anywhere in the workspace takes an `Untrusted<…>` parameter and returns a type naming `str`, `String` or `u8` as a whole identifier — so a lifetime cannot hide one, and `&[u8]`, `Vec<u8>`, `Box<[u8]>` and `Cow<'_, [u8]>` are all reached | `>= 25` packages and `>= 1_200` public signatures |
 | `tools/verify-contracts.mjs` | recursive, `crates/contracts/src`; the two generated modules through `tools/{engine,predicate}-registry.mjs` | digest pins and byte-for-byte re-render; refuses any tree entry that is not a `.rs` file | n/a — an unreviewed entry fails |
 | `tools/engine-registry.mjs`, `tools/predicate-registry.mjs` | none — one fixed generated path each, named as `GENERATED_PATH` | not a scan: they render the generated module from `schemas/registry/`, and are the halves `verify-contracts.mjs` re-renders and compares against the committed file | n/a |
 | `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
@@ -133,6 +134,7 @@ a silent edit is the whole risk.
 | `posture_for_profile` | `WHOLE_POSTURE_SOURCE` | a change to where the CLI's posture comes from |
 | `ALLOWLISTED_FIXTURE_IDS`, `is_allowlisted`, the daemon-side allowlist `match`, `fn main` | `WHOLE_FIXTURE_ALLOWLIST`, `WHOLE_ALLOWLIST_PREDICATE`, `WHOLE_DAEMON_FIXTURE_GATE`, `WHOLE_DISPATCH_SPINE` | ADR-002 acceptance, or a new command |
 | `staged_runtime_call`, `write_authorized_bytes`, `Preview::bytes`, `StagedPayload::preview` | `WHOLE_RUNTIME_CALL`, `WHOLE_EMIT`, `WHOLE_PREVIEW_BYTES`, `WHOLE_STAGED_PREVIEW` | a change to where the transmitted bytes come from — these four are the whole path from the preview's buffer to the transport |
+| `bind_grant` | `WHOLE_BIND_GRANT` | a change to what a transmission has to agree with before a byte is built — the plan naming the grant the token spends, and the grant recording the rulepack that produced the payload; the two call sites are counted beside it, because a pin on a check says nothing about whether every path runs it |
 | `stage`, `deny_on_findings` | `WHOLE_STAGE`, `WHOLE_DENY_ON_FINDINGS` | a change to the staging pipeline's step order, the reason code a step denies with, or any default it takes; the fallback inventory counts sites and cannot see a default that changed direction |
 | `cloud_egress_default` | `WHOLE_CLOUD_DEFAULT` | the user closing `GATE-38-028`; it takes no argument, so no quality heuristic can reach it |
 | `impl<T> Untrusted<T>` | `WHOLE_UNTRUSTED` | a change to what the trust wrapper hands back — the whole-set `impl` rule refuses a new trait, and this refuses a new inherent method |
@@ -248,7 +250,7 @@ is the observation that separates the two readings: the same module, this time
 naming `TcpStream::connect`, is refused, so its text is genuinely read. The rule
 still has force for a target under no package at all —
 `#[path = "../../../target/hidden.rs"]` is still refused, which is half 4 of the
-socket guard's six. `B1` itself is unaffected: what refuses it is
+socket guard's seven. `B1` itself is unaffected: what refuses it is
 `no_environment_or_flag_override_exists`, whose own walk and `#[path]` tripwire
 this widening did not touch.
 
@@ -326,14 +328,17 @@ observation, injected into `crates/retention/tests/tombstone.rs`.
 opens a socket and spells none of the fifteen patterns the list held. `I1` is
 the observation. `libc::syscall` and the `SYS_*` socket names are now on the
 list, which is why the Linux backend needs an allowance — and why that allowance
-carries a structural rule rather than a promise: every `SYS_` spelling in the
-file must appear inside `denied_syscalls`, **counted**, because a spelling that
-is in the deny list *and also* somewhere else passes a presence check while
-naming a syscall the file does not refuse. `I6` is that observation.
+carries a structural rule rather than a promise: a `SYS_` spelling in the file
+must appear inside `denied_syscalls`, **counted**, because a spelling that is in
+the deny list *and also* somewhere else passes a presence check while naming a
+syscall the file does not refuse. `I6` is that observation. `P2-G4` applied that
+rule to the ten socket names on the allowance and skipped `libc::syscall`
+itself; both gaps are closed by `P2-RF10` below.
 
-A bare numeric `libc::syscall(41, …)` still passes every one of these, and is
-recorded as `S-11` below. It is also the reason this task exists: a source scan
-cannot see a syscall number, and an operating-system sandbox does not need to.
+A bare numeric `libc::syscall(41, …)` passed every one of these when `P2-G4`
+wrote them, and was recorded as `S-11`. `P2-RF10` closed that row; what the rule
+is now, and why the sandbox is not the answer to it, is in the `P2-RF10` section
+below.
 
 ### The injection matrix
 
@@ -357,8 +362,10 @@ compares the crate's **whole set** of `impl` blocks whose header names
 `Untrusted<` against a two-entry list, so an implementation of a trait nobody
 predicted fails as an extra key; the orphan rule refuses the same implementation
 written in another crate, which is the half nothing here needs to check. The
-exposure rule compares the **whole inventory** of `.expose()` call sites, each
-with a written reason, rather than searching for a spelling.
+exposure rule compares the **whole inventory** of the accessor's call sites,
+each with a written reason, rather than searching for a spelling. That last
+clause was not true when `P2-G5` wrote it — the inventory counted the spelling
+`.expose()` until `P2-RF10`; see below.
 
 ### The walk that stopped short, found in this task's own scan
 
@@ -372,11 +379,10 @@ under `src` and nowhere else. The workspace-wide `AcceptedResponse` walk was
 widened the same way in the same commit: it named `src`, `tests` and `benches`,
 which is three directory names rather than a package.
 
-`S-12` itself is unchanged. It is about `os_keystore_capabilities_are_available_but_unused`
-and `tools/secret-debug-policy.test.mjs`, which still walk `<crate>/src`, and
-closing it means one reviewed allowance line per file outside `src` in eight
-crates. `academic-untrusted-content` adds no such file, so it does not widen
-that row.
+`S-12` was left open here and is closed by `P2-RF10` below.
+`academic-untrusted-content` adds no file outside `src`, so this task did not
+widen that row; what widened it was `crates/record/examples/`, which had been
+there a commit longer than the tree `S-12` named.
 
 ### The injection matrix
 
@@ -411,25 +417,132 @@ non-`const` constructor cannot be reached at all, and the pin never runs.
 `G-I3b` is the edit of the same shape that does compile, and the pin is what
 refuses it.
 
+## What the `P2-RF10` repair holds
+
+`P2-A2`'s independent audit measured four things this page and two contract
+pages claimed and the code did not do. Two were reachable without spelling a
+single token any list here holds, which is the shape this page exists to record.
+
+**An inventory that counts a spelling is not an inventory.**
+`every_exposure_site_is_named_and_justified` counted the substring `.expose()`.
+`Untrusted::expose(document)` is the same call written through the type path, it
+contains no such substring, and a fourth exposure site written that way passed
+`trust_scans`, `cargo test --workspace --all-targets`, every JS scan, and
+`cargo clippy --workspace --all-targets -- -D warnings`. Written
+`document.expose()` it failed at once — so what separated pass from fail was the
+spelling, not the reach. With that one function present, an integration test
+*outside* the crate put an ingested payload verbatim into a `[SYSTEM]` segment,
+unescaped, on its own line, in no untrusted span. The inventory now counts the
+accessor's **name**, with a non-identifier byte required on each side, which is
+the shape `names_unsafe` in `crates/worker/tests/capability.rs` and
+`crates/record/tests/record_scans.rs` already used. The same change was made to
+the `adjudicate` caller count, which had counted the argument spelling
+`adjudicate(index, output)` and could not see a second caller that renamed its
+two locals.
+
+Counting the name is necessary and not sufficient: it says how many sites there
+are, not what they hand back. So a second rule was added beside it — no `pub`
+signature may take an `Untrusted<…>` and return a type naming `str`, `String` or
+`u8` — and a workspace-wide copy of it,
+`no_public_signature_hands_out_ingested_text`, because `Untrusted<T>` is a
+public type any crate can name and the harm measured was one crate out.
+
+**A second path that skipped the check nothing counted.**
+`EgressProxy::transmit_without_completion` is `pub`, not feature-gated, and read
+no grant row and compared no rulepack. Given the same staged payload, the same
+token, and a grant reviewed under another rulepack, `transmit` refused with zero
+bytes and it wrote 180 to the transport. `transmit`'s own comparison was not
+observed by anything either: deleting it outright left the whole workspace suite,
+`pnpm test` and `pnpm security` green. Both comparisons now live in one
+`bind_grant`, called as the first statement of both paths, pinned as whole text
+by `WHOLE_BIND_GRANT`, and its call sites counted at two. `bind_grant` also
+refuses a plan that names a grant other than the token's, which `T146` measured
+transmitting 180 bytes while journalling a grant nobody spent.
+
+**A walk rooted at `src` does not read the package.** `S-12` recorded this for
+`crates/worker/probes/`. It named that as the first tree of its kind; it was not.
+`crates/record/examples/emit_harness.rs` arrived one commit earlier in `P2-U4`,
+has no feature gate, is compiled by `cargo clippy --workspace --all-targets`, and
+is run by the documented `pnpm harness:emit` script. Four scans could not see it,
+including `no_float_reaches_the_gpa_path`, which keeps `academic-record`'s own
+README sentence. All four now walk the package.
+
+**`libc::syscall` was on an allowance and its argument was not read.** `S-11`
+said a bare-number syscall was open, that nothing in the repository had one, and
+that `P2-G4`'s sandbox rather than a better scan was the answer. All three had
+weakened. `libc::syscall` is on this file's socket allowance and the counted rule
+skipped it, so adding `libc::syscall(41, 2, 1, 0)` changed no allowance and
+passed every scan and `clippy -D warnings`. And the sandbox is not the answer,
+because `crates/worker/src/sandbox/linux.rs` holds the parent-side `launch` as
+well as the child-side `enter`, and the parent runs outside the sandbox it
+installs. Every `libc::syscall(` in that file must now name a `libc::SYS_`
+constant, and that constant must be one of the four the file installs the sandbox
+with; every other `SYS_` name in the file must sit inside `denied_syscalls`,
+counted, which closes the non-socket `SYS_` gap the previous rule left.
+
+### The injection matrix
+
+Nineteen injections, applied one at a time, each reverted with its file's
+SHA-256 checked back to its recorded value, on Windows native and WSL2 Linux.
+Every one is refused on both. Six of them are `T146`'s own probes replayed
+verbatim, marked below; each of those passed every check before this repair.
+
+| # | Injection | Refused by |
+|---|---|---|
+| E-I2 | `bind_grant` loses the plan/token equality half | `a_plan_naming_another_grant_is_refused`, and `WHOLE_BIND_GRANT` |
+| E-I3 | `bind_grant` loses the rulepack comparison (`T146`'s `E-I1`) | `a_grant_reviewed_under_another_rulepack_is_refused_on_every_transmit_path`, and `WHOLE_BIND_GRANT` |
+| E-I3-full | the same, against `cargo test --workspace --all-targets` | the same two — this is the command that passed before the repair |
+| E-I4 | `transmit_without_completion` stops calling `bind_grant` | the call-site count, and both named tests |
+| E-I5 | `transmit` stops calling `bind_grant` | the same |
+| E-I6 | the journal names a grant the transfer did not spend | `eg04_grant_expiring_mid_transfer_aborts_and_audits_the_partial_count`, whose `grant_id` half was discarded by a `..` pattern until this repair |
+| G-I1 | a fourth exposure site written `Untrusted::expose(d)` (`T146`'s `G-I1`) | the exposure inventory, and both public-signature rules |
+| G-I1c | the same function, receiver spelling — the control | the same |
+| G-I1-owned | the same reach returning `String` | the same |
+| G-I1-static | the same reach returning `&'static str`, which does not contain the substring `&str` | the same — the return type is read as identifiers |
+| G-I1-bytes | the same reach returning `Vec<u8>` | the same |
+| G-I2 | a second `adjudicate` caller with renamed arguments (`T146`'s `G-I2`) | the caller count, now by identifier |
+| S-I1 | an `f64` and a decimal literal in `crates/record/examples/` (`T146`'s `S-I1`) | `no_float_reaches_the_gpa_path`, now walking the package |
+| S-I1c | the same under `crates/record/src/` — the control | the same |
+| S-I2 | `#[derive(Debug)]` over `key_bytes` in `crates/record/examples/` (`T146`'s `S-I2`) | `tools/secret-debug-policy.test.mjs`, now walking the package |
+| S-I3 | `process::Command` in `crates/record/examples/` (`T146`'s `S-I3`) | `os_keystore_capabilities_are_available_but_unused`, now walking the package |
+| S-I4 | `#[derive(Debug)]` over `key_bytes` in `crates/worker/probes/` (`T146`'s `S-I4`) | the same widened `secret-debug` walk |
+| S-I5 | `std::net::TcpStream::connect` in `crates/record/examples/` (`T146`'s `S-I5`) | `phase1_exit_has_no_product_network`, now walking the package |
+| S-I5b | the same file, against the socket scan | `only_egress_crate_has_a_socket`, which already read that tree |
+| K-I1 | `libc::syscall(41, 2, 1, 0)` in the sandbox backend (`T146`'s `K-I1`) | the first-argument rule |
+| K-I2 | `libc::SYS_socket` spelled outside `denied_syscalls` | the counted rule, as before |
+| K-I3 | `libc::SYS_memfd_create` outside `denied_syscalls` (`T146`'s `K-I3`) | the whole-`SYS_` counted rule, which is new |
+
+The six existing `libc::syscall(libc::SYS_…)` calls in that file are the control
+for `K-I1`: they are all first-argument-named, all four names are on the reviewed
+list, and the unmodified tree passes.
+
+`E-I3-full` is worth its own row because it is the exact command `T146` ran. The
+repair is not that the comparison exists — it existed before — but that removing
+it now fails a named test rather than nothing.
+
 ## Open
 
-These are not closed. "It cannot happen today" is not a reason to leave one
-open, so each row says what makes it start mattering.
+Each row says what makes it start mattering: "it cannot happen today" is not a
+reason to leave one open. A row that has been closed keeps its identifier and
+says so, because other pages and other audits cite these by number, and because
+the reasoning that left it open is worth reading beside the reasoning that
+closed it.
 
 | # | Scan | What is open | When it starts mattering |
 |---|---|---|---|
 | S-1 | `crates/retention/tests/retention.rs` | token lists at all three call sites; no whole-text pin on any decision site | A revocation, `GATE-38-026`, or journal-truncation seam spelled differently from the listed tokens passes. The rotation *gate* is separately pinned in `rotation_gate.rs`, so the exposure is the three claims those lists carry, not the gate. |
 | S-2 | `crates/store/tests/encrypted_profile.rs` | 3-token list, no floor | A profile-conversion entry point named anything other than `upgrade_profile`, `convert_profile`, or `migrate_schema_1_to_2` passes. With no floor, a walk that returns nothing also passes. This list is the source half of the execution plan's "no … profile-conversion command"; the behavioural half is `academic profile convert` exiting `USAGE` in the `cli_has_no_real_data_override` flag battery. Matters as soon as ADR-002 acceptance work adds a real migration path. |
 | S-3 | `crates/daemon/tests/phase1_exit.rs` | 10-token list; `scanned > 0` is the whole floor | A socket reached through a re-export or a dependency's wrapper type names none of the ten. The paired link scan of the built binary is what actually carries this claim; the source half is the weaker of the two and should be read that way. |
-| S-4 | `tools/secret-debug-policy.test.mjs` | no floor on the file walk; `T123 P3-G6` (`I37`, `I46`) still silent | `crates/*/src` returning an empty list passes every assertion. Matters if a crate is renamed or the walk root moves. |
+| S-4 | `tools/secret-debug-policy.test.mjs` | no floor on the file walk; `T123 P3-G6` (`I37`, `I46`) still silent | The walk returning an empty list passes every assertion. The second half of this row — "matters if the walk root moves" — **came true and has been repaired**: `T146` observed the root standing at `crates/*/src` while product-shaped code sat in `examples/` and `probes/`, and `P2-RF10` widened it to the package. The floor half is still open and is now the whole row: a `readdir` that throws is caught and returns an empty list, so a scan that reads nothing still passes. Severity **P3** — it needs a filesystem fault or a moved `crates/` root to fire, and a `>= 200` file floor beside the macro-registry floor would close it. |
 | S-5 | `tools/phase1-scaffold-policy.test.mjs` | fixed paths outside `store-platform` | A file renamed or split leaves its assertions reading a path that no longer holds the code they describe. `readFile` throws on a missing path, so a rename fails loudly; a *split* does not — the assertions keep passing against the half that stayed. |
 | S-7 | `crates/record/tests/record_scans.rs` | the comment/string stripper distinguishes a character literal from a lifetime by looking for a closing quote two characters on | A character literal wider than one `char` — `'\u{1F600}'` — is not stripped, so its digits would be read as code. No such literal exists in the crate and the scan errs toward reporting rather than hiding, so the failure mode is a false positive, not a miss. Matters if the crate ever needs a wide character literal. |
 | S-6 | `crates/portability/tests/encrypted_rotation.rs` | two fixed test-source paths, substring only | It checks that one acceptance row lives in one file. A third file could hold a third copy and nothing would see it. |
 | S-8 | `crates/crypto/tests/key_hierarchy.rs`, `crates/keystore-platform/tests/facade.rs`, `crates/domain/tests/question_graph.rs` | the last two still read one fixed path each, and `facade.rs` has a floor while `question_graph.rs` has none | A public item moved out of `keystore-platform/src/lib.rs` or `domain/src/question.rs` into a sibling module is not read. `P2-RF9` repaired the first of the three because `RecoverySecret` lives in that crate and its contract already had a repaired half to match; the other two were left as they are and are recorded here rather than fixed. |
 | S-9 | `tools/policy-source-scan-inventory.test.mjs` | six read-position markers plus one `#[path]` hop — a mechanical proxy for "reads Rust source text" | A scan that reaches source some other way — a path assembled from fragments, a walk in a language this does not search — is not found, so the page could miss it and pass. The proxy is stated in the page's own opening sentence, so what the page claims is exactly what the test checks; widening the claim means widening the markers. |
-| S-10 | `tools/secret-debug-policy.test.mjs` | `SECRET_FIELD_NAMES` holds `payload` and `payload_bytes` but not `bytes`, which is the other generic name a raw buffer hides behind. Adding one alternation catches four pre-existing sites: `WireField.bytes` (`crates/rpc/src/convert.rs`), `FingerprintEncoder.bytes` (`crates/store/src/schema_fingerprint.rs`), `SyntheticTranscriptPdf.bytes` (`crates/transcript/src/source.rs`), and `StreamingPrefix.bytes` (`crates/vault/src/object.rs`). | Now, for any of those four that holds something private. `P2-G4` found it by naming its own staged-output field `bytes` and watching the net miss it; it hand-wrote redacting `Debug` impls rather than renaming the field, so its own buffers leak nothing whatever the vocabulary reaches. Closing the row means one `PUBLIC_BYTES` sentence or one hand-written impl per site, from each crate's owner. |
-| S-11 | `only_egress_crate_has_a_socket` — the spelling half | a syscall reached by a bare number. `libc::syscall(41, 2, 1, 0)` opens an AF_INET stream socket and spells nothing any pattern can match, because there is no name to match. | Any commit that adds a numeric syscall call. Nothing in this repository has one today; `unsafe_code = "forbid"` outside the five reviewed leaves is what keeps the reach small, and the link half bounds who can name `libc` at all. The answer to it is not a better scan — it is `P2-G4`'s sandbox, which refuses the syscall whatever spelled it. |
-| S-12 | `os_keystore_capabilities_are_available_but_unused` — `tools/phase1-scaffold-policy.test.mjs` — and `tools/secret-debug-policy.test.mjs` | both walk `<crate>/src` and nothing else, so neither reads `crates/worker/probes/` | Now. `P2-G4` added the first tree here that holds product-shaped code outside `src` — a `[[bin]]` with an explicit `path` — and put a `process::Command` allowance in that same crate. Measured: a `process::Command` in `crates/worker/probes/worker_probe.rs` passes the first scan and a `#[derive(Debug)]` over a `key_bytes` field passes the second, while both edits placed under `src` are refused. This is the shape the `P2-G4` section above calls a walk that stopped short, one scan outside the one that was repaired. The socket and `unsafe` claims are unaffected: `only_egress_crate_has_a_socket` reads that directory, and so does `crates/worker/tests/capability.rs`. Closing it means widening both walks and writing one reviewed allowance line for each of the eight files outside `src` that already spell `process::Command`. |
+| S-10 | `tools/secret-debug-policy.test.mjs` | `SECRET_FIELD_NAMES` holds `payload` and `payload_bytes` and not the generic names a raw buffer actually hides behind. `T146` measured four more that pass today: `text`, `escaped`, `bytes`, and `staged_text`, against the control `payload`, which fails. Adding `bytes` alone reaches four pre-existing sites — `WireField.bytes` (`crates/rpc/src/convert.rs`), `FingerprintEncoder.bytes` (`crates/store/src/schema_fingerprint.rs`), `SyntheticTranscriptPdf.bytes` (`crates/transcript/src/source.rs`), `StreamingPrefix.bytes` (`crates/vault/src/object.rs`); `text` and `escaped` reach `QuotedDocument` and `RenderedPrompt` in `crates/untrusted-content`, and `staged_text` reaches `crates/egress-boundary/src/stage.rs`. | Now, for any site that holds something private. Nothing leaks today: all four `P2-G4`/`P2-G5`/`P2-G2` types — `QuotedDocument`, `RenderedPrompt`, `StagedOutput`, `AcceptedOutput` — have hand-written `Debug` impls, and the four `bytes` sites are public buffers. What is open is the **net**, not any site. Severity **P2**, raised from the earlier reading: the vocabulary now trails the code by six names rather than one, and each new crate has added to the gap. **`P2-RF10` measured the cost of closing it rather than estimating it.** Adding `bytes`, `text`, `escaped` and `staged_text` to `SECRET_FIELD_NAMES` fires 13 sites in 8 crates: `Alias.text`, `PartialAlias.text`, `RegistryFact.text` and the tuple variant `ClaimObject::Text(String)` in `academic-domain`; `SearchHit.text` and `ExactSymbolHit.text` in `academic-projections`; `AliasSpec.text` in `academic-store`; `JsonValue::Text` in `academic-test-support`; and `CorpusFile.bytes`, `WireField.bytes`, `FingerprintEncoder.bytes`, `SyntheticTranscriptPdf.bytes`, `StreamingPrefix.bytes`. The four `untrusted-content` and `egress-boundary` types the vocabulary was widened *for* fire nothing, because all four already hand-write `Debug`. So the work is not the vocabulary line: it is a redaction decision about the eight `text` sites, which hold entity surface forms, indexed content and claim values — user content, not public buffers — spread over four crates whose contracts this row's task did not read. A `PUBLIC_BYTES` entry silences a field permanently, and writing eight of them to close one row would trade this row for a worse one. Closing it means one commit per crate from its owner, redacting rather than declaring. |
+| S-11 | `only_egress_crate_has_a_socket` — the spelling half | **Closed by `P2-RF10`.** Every `libc::syscall(` call in the sandbox backend must now name a reviewed `libc::SYS_` constant as its first argument, so a bare number is refused. Why the three reasons this row gave for leaving it open were all wrong by the time it was read is in the `P2-RF10` section above. | n/a — closed. The step out from it that stays open is `S-13`. |
+| S-12 | `os_keystore_capabilities_are_available_but_unused` — `tools/phase1-scaffold-policy.test.mjs` — `tools/secret-debug-policy.test.mjs`, `no_float_reaches_the_gpa_path`, and `phase1_exit_has_no_product_network` | **Closed by `P2-RF10`.** All four walked `<crate>/src`; all four now walk the package, less `tests` and `benches`, and the eight files outside `src` that spell `process::Command` each carry the reason they are allowed. The tree this row named was not the first of its kind — `crates/record/examples/` arrived a commit earlier and has no feature gate — which is why widening only the two walks this row listed would have closed half of it. | n/a — closed. |
+| S-13 | `only_egress_crate_has_a_socket` — the syscall rule `P2-RF10` added | It reads `crates/worker/src/sandbox/linux.rs` and only that file, because that is the one file whose allowance lists `libc::syscall`. A `libc::syscall(` call in any other file is refused by the allowance itself — the spelling is not on that file's list — so the rule and the allowance together do cover the workspace. What they do not cover is a **future second allowance entry**: the day another file is allowed `libc::syscall`, the first-argument rule will not run on it unless the branch is widened with it. | The next commit that adds a second `libc::syscall` allowance entry. Closing it means keying the rule on the spelling rather than on the file. It is written this way today because the reviewed-name list is that file's, not a workspace list, and inventing a workspace one before there is a second caller would be a guess about what the second caller needs. Severity **P3**. |
 
 ## Intended, not a defect
 

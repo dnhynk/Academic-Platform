@@ -41,8 +41,16 @@
 // a `cfg_attr`-wrapped derive, a single-line struct body, and a field type
 // whose buffer is behind a comma inside its generic arguments.
 //
-// Scope is `crates/*/src`, the product surface ADR-005 governs. Test-only
-// helper types are not scanned.
+// Scope is every `.rs` file in every workspace package except its `tests` and
+// `benches` trees -- the product surface ADR-005 governs. `crates/*/src` was
+// the scope until `T146` measured what it missed: a `#[derive(Debug)]` type
+// with a `key_bytes: Vec<u8>` field passed this scan in
+// `crates/record/examples/emit_harness.rs` and in
+// `crates/worker/probes/worker_probe.rs`, and failed at once when the same
+// type was written under `src`. Both trees hold product-shaped code that
+// `cargo clippy --workspace --all-targets` compiles; the example has no
+// feature gate and is run by the documented `pnpm harness:emit` script.
+// Test-only helper types are still not scanned.
 
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
@@ -318,12 +326,28 @@ async function rustSourcesUnder(directory) {
   return found;
 }
 
+/** Package subdirectories that hold no product code, and are not scanned. */
+const NON_PRODUCT_TREES = new Set(["tests", "benches"]);
+
 async function productSources() {
   const crates = await readdir(CRATES_ROOT, { withFileTypes: true });
   const sources = [];
   for (const crate of crates) {
-    if (crate.isDirectory()) {
-      sources.push(...(await rustSourcesUnder(join(CRATES_ROOT, crate.name, "src"))));
+    if (!crate.isDirectory()) {
+      continue;
+    }
+    const root = join(CRATES_ROOT, crate.name);
+    const entries = await readdir(root, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && NON_PRODUCT_TREES.has(entry.name)) {
+        continue;
+      }
+      const path = join(root, entry.name);
+      if (entry.isDirectory()) {
+        sources.push(...(await rustSourcesUnder(path)));
+      } else if (entry.isFile() && entry.name.endsWith(".rs")) {
+        sources.push(path);
+      }
     }
   }
   return sources.sort();

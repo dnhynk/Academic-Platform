@@ -182,10 +182,30 @@ that proves the operating system refuses a socket has to ask for one. It is a
 than taking them on trust.
 
 `crates/worker/src/sandbox/linux.rs` names the socket *syscalls*, and names them
-to put them in a seccomp deny list. That is structural rather than a promise:
-the same scan requires every `SYS_` spelling in that file to appear inside its
-`denied_syscalls` function, **counted** rather than merely present, so a spelling
-that is in the deny list and also somewhere else fails.
+to put them in a seccomp deny list. That is structural rather than a promise, in
+two halves the same scan checks.
+
+Every `SYS_` spelling in that file must appear inside its `denied_syscalls`
+function, **counted** rather than merely present, so a spelling that is in the
+deny list and also somewhere else fails. The exception is the four syscalls the
+file *makes* -- `SYS_landlock_create_ruleset`, `SYS_landlock_add_rule`,
+`SYS_landlock_restrict_self`, `SYS_seccomp` -- which are how the sandbox is
+installed and are enumerated in the scan with that reason. Until `P2-RF10` the
+counted rule read only the ten socket names on the file's allowance, so a
+non-socket `SYS_` name outside `denied_syscalls` passed; `T146` observed that
+with `libc::SYS_memfd_create`.
+
+And every `libc::syscall(` call in that file must name a `libc::SYS_` constant
+from that four-name list as its first argument. A number fails. This is the half
+that had been missing entirely: `libc::syscall` sits on the file's allowance, so
+`libc::syscall(41, 2, 1, 0)` -- which opens an AF_INET stream socket -- changed no
+allowance, spelled no listed pattern, passed every scan, and compiled clean under
+`cargo clippy -p academic-worker --features native-sandbox -- -D warnings`.
+
+The sandbox does not cover that call, and it is worth saying why, because
+`policy-source-scans.md` used to say it did. This file holds the parent-side
+`launch` as well as the child-side `enter`; the parent installs the sandbox and
+runs outside it. What bounds a raw syscall here is the scan, not the filter.
 
 Adding those two entries widened `only_egress_crate_has_a_socket`'s allowance.
 Three things were tightened in the same commit and are described in

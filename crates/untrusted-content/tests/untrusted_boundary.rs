@@ -6,7 +6,11 @@
 
 mod corpus;
 
-use std::error::Error;
+use std::{
+    error::Error,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use academic_egress_boundary::{CanaryCorpus, EgressProxy, HitSource, IncidentSeverity};
 use academic_policy::{
@@ -28,6 +32,180 @@ type TestResult = Result<(), Box<dyn Error>>;
 
 /// The actor every control operation in this suite runs as.
 const OPERATOR: &str = "synthetic-g5-operator";
+
+/// No public signature in the workspace takes an ingested document and hands
+/// back the bytes inside it.
+///
+/// `trust_scans.rs` asks this of `academic-untrusted-content`, where `expose`
+/// is reachable. This asks it of every workspace package, because `Untrusted<T>`
+/// is a public type any crate can name in a signature, and because the harm
+/// `T146` measured happened one crate out: with a single
+/// `pub fn(&Untrusted<IngestedDocument>) -> &str` in place, an integration test
+/// outside the crate put an ingested payload verbatim into a `[SYSTEM]` segment
+/// -- unescaped, on its own line, in no untrusted span -- which is both halves
+/// of what this crate exists to prevent.
+///
+/// What it reads is the signature text of every `pub fn` in every package's
+/// product sources, comment lines removed: a signature whose parameters name
+/// `Untrusted<` and whose return type names `str`, `String`, or `u8`. It does
+/// not read bodies, and it does not model string literals, so a `pub fn` line
+/// quoted inside a product-source literal would be read as a declaration. There
+/// is none today and the `tests` and `benches` trees, where this repository's
+/// pinned-signature constants live, are not walked.
+#[test]
+fn no_public_signature_hands_out_ingested_text() -> TestResult {
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .ok_or("the crate has no parent directory")?
+        .to_path_buf();
+
+    let mut packages = 0_usize;
+    let mut signatures = 0_usize;
+    let mut offenders: Vec<String> = Vec::new();
+    for entry in fs::read_dir(&crates)? {
+        let package = entry?.path();
+        if !package.is_dir() {
+            continue;
+        }
+        packages += 1;
+        let mut sources = Vec::new();
+        collect_rust_files(&package, &mut sources)?;
+        for path in sources {
+            let relative = path.strip_prefix(&crates).unwrap_or(&path);
+            let head = relative.components().nth(1).map(|part| part.as_os_str());
+            if head.is_some_and(|part| part == "tests" || part == "benches") {
+                continue;
+            }
+            let source = fs::read_to_string(&path)?;
+            for signature in public_signatures(&source) {
+                signatures += 1;
+                let Some((parameters, returns)) = parameters_and_return(&signature) else {
+                    continue;
+                };
+                if !parameters.contains("Untrusted<") {
+                    continue;
+                }
+                if let Some(name) = returns_raw_text(returns) {
+                    offenders.push(format!(
+                        "{}: returns {name} from {signature}",
+                        relative.display()
+                    ));
+                }
+            }
+        }
+    }
+
+    // The floors. A walk that found nothing would satisfy the assertion below
+    // without reading a line, which is the empty-scan shape
+    // `docs/contracts/policy-source-scans.md` names.
+    assert!(packages >= 25, "the walk found only {packages} packages");
+    assert!(
+        signatures >= 1_200,
+        "the walk found only {signatures} public signatures"
+    );
+    assert_eq!(
+        offenders,
+        Vec::<String>::new(),
+        "a public signature takes an Untrusted and returns the bytes inside it"
+    );
+    Ok(())
+}
+
+/// Every `.rs` file anywhere under `directory`.
+fn collect_rust_files(directory: &Path, found: &mut Vec<PathBuf>) -> Result<(), Box<dyn Error>> {
+    for entry in fs::read_dir(directory)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            collect_rust_files(&path, found)?;
+        } else if path.extension().is_some_and(|extension| extension == "rs") {
+            found.push(path);
+        }
+    }
+    Ok(())
+}
+
+/// Every `pub` function signature, from `pub` to the `{` or `;` that ends it.
+///
+/// Comment lines are dropped first, so a doc comment that quotes a signature is
+/// not read as one. The same shape as `public_surface` in
+/// `crates/keystore-platform/tests/facade.rs`.
+fn public_signatures(source: &str) -> Vec<String> {
+    let lines: Vec<&str> = source
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("//"))
+        .collect();
+    let mut found = Vec::new();
+    for (index, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        if ![
+            "pub fn ",
+            "pub const fn ",
+            "pub async fn ",
+            "pub unsafe fn ",
+        ]
+        .iter()
+        .any(|start| trimmed.starts_with(start))
+        {
+            continue;
+        }
+        let mut signature = String::new();
+        for follow in lines.iter().skip(index) {
+            signature.push(' ');
+            signature.push_str(follow.trim());
+            if follow.contains('{') || follow.trim_end().ends_with(';') {
+                break;
+            }
+        }
+        found.push(signature.split_whitespace().collect::<Vec<_>>().join(" "));
+    }
+    found
+}
+
+/// Splits a signature into its parameter list and its return type.
+///
+/// The split is the `->` after the parameter list closes, not the first one in
+/// the text: a parameter that is itself a function type (`now: &dyn Fn() -> u64`)
+/// spells one inside the parentheses.
+fn parameters_and_return(signature: &str) -> Option<(&str, &str)> {
+    let open = signature.find('(')?;
+    let mut depth = 0_usize;
+    // Sliced from `open` rather than skipping `open` items: `char_indices`
+    // yields byte offsets, and `skip` counts characters, so the two agree only
+    // while everything before the parenthesis is ASCII.
+    for (offset, character) in signature.get(open..)?.char_indices() {
+        let at = open.saturating_add(offset);
+        match character {
+            '(' => depth = depth.saturating_add(1),
+            ')' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    let (parameters, rest) = signature.split_at(at.saturating_add(1));
+                    let returns = rest.split_once("->").map_or("", |(_, tail)| tail);
+                    return Some((parameters, returns));
+                }
+            }
+            _ => (),
+        }
+    }
+    None
+}
+
+/// Whether a return type hands back the bytes rather than a label over them.
+///
+/// Whole identifiers, so a lifetime cannot hide one: `&'static str` does not
+/// contain the substring `&str`, and `u8` covers `&[u8]`, `Vec<u8>`,
+/// `Box<[u8]>`, and `Cow<'_, [u8]>` alike.
+fn returns_raw_text(returns: &str) -> Option<&'static str> {
+    let bytes = returns.as_bytes();
+    ["str", "String", "u8"].into_iter().find(|name| {
+        returns.match_indices(name).any(|(at, _)| {
+            let before_ok =
+                at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_');
+            let after = bytes.get(at + name.len()).copied().unwrap_or(b' ');
+            before_ok && !(after.is_ascii_alphanumeric() || after == b'_')
+        })
+    })
+}
 
 /// Builds the source index one corpus entry produces.
 ///

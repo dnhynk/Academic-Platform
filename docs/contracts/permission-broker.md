@@ -159,6 +159,34 @@ is named. A blocklist of forbidden column names was the earlier shape here and
 did not hold: a side table carrying the raw bytes passed it, the projection
 render, and the generic debug guard together.
 
+## `egress_audit.grant_id` is polymorphic, and nothing discriminates it
+
+`egress_audit.grant_id` carries no foreign key to `egress_grant`, and that is
+deliberate: of the seven `insert_audit` call sites, four write a **process
+capability token id** into that column and three write an **egress grant id**.
+Restoring the foreign key would make `P2-G7`'s process-activity rows fail at
+INSERT. The two identifiers are SHA-256 values under different domain separators
+(`academic-process-capability-v1 ` and `academic-egress-grant-v1 `), so a
+collision is not the risk.
+
+The risk is that a reader cannot tell which namespace a row's `grant_id` belongs
+to. `T146` measured whether the typed `(process_class, capability)` pair
+discriminates them and found it does not: `EGRESS_PROXY` x
+`OPEN_OUTBOUND_SOCKET` is the cell where the two namespaces overlap exactly, and
+it is the cell egress auditing cares most about. Three consecutive allow rows
+with identical decision, class and capability carried `grant_id` values from both
+namespaces in the same 64-hex shape, and `PermissionBroker::grant_row` returns
+`None` for the process-token ones — so to a reader treating the column as an
+`egress_grant` reference, those rows look dangling.
+
+No dangling row exists today: all seven call sites write an identifier that does
+exist in one of the two tables. What is unresolved is the discrimination, and
+the fix is a discriminator column (or two columns), **not** the foreign key.
+It starts mattering at `P2-M1`, whose acceptance evidence includes
+`transmitted_ranges_reconcile_with_egress_audit`: that reconciliation has to key
+on `egress_audit.grant_id`, and the key is polymorphic with nothing to resolve
+the polymorphism. Severity P3 until then.
+
 ## Schema allocation discrepancy
 
 The execution plan reserves canonical-store migration `0005` for P2-G1. On the

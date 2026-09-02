@@ -194,12 +194,20 @@ fn eg04_grant_expiring_mid_transfer_aborts_and_audits_the_partial_count() -> Tes
     assert_eq!(outcomes.len(), 1);
     match outcomes[0] {
         JournalEntry::SendOutcome {
+            grant_id: journalled,
             bytes_sent,
             complete,
             ..
         } => {
             assert_eq!(*bytes_sent, sent);
             assert!(!complete, "an aborted transfer was journalled as complete");
+            // The half the contract claims and `T146` found discarded. Without
+            // it the two records name the same grant only because the fixture
+            // put the same value in both, which is not what "reconciles" means.
+            assert_eq!(
+                journalled, &grant_id,
+                "the journal names a grant other than the one the transfer spent"
+            );
         }
         JournalEntry::SendIntent { .. } => return Err("the filter kept the wrong arm".into()),
     }

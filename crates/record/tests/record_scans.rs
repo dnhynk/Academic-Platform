@@ -5,10 +5,14 @@
 //! scan of this repository empty, and this file is written against all three.
 //!
 //! **The walk does not stop short.** [`crate_sources`] descends into every
-//! subdirectory of `src`, and the floor below it fails if it returns fewer
-//! files than the crate has modules. A tripwire additionally requires every
-//! `pub mod name;` in `lib.rs` to be a file the walk actually read, so adding a
-//! module without the walk reaching it is a failure rather than a silent gap.
+//! subdirectory of the package, less `tests` and `benches`, and the floor below
+//! it fails if it returns fewer files than the crate has modules. A tripwire
+//! additionally requires every `pub mod name;` in `lib.rs` to be a file the
+//! walk actually read, so adding a module without the walk reaching it is a
+//! failure rather than a silent gap. The package rather than `src`: `examples/`
+//! is product-shaped code with no feature gate that `cargo clippy
+//! --workspace --all-targets` compiles and `pnpm harness:emit` runs, and a
+//! walk rooted at `src` never read it.
 //!
 //! **The float check is not a token list.** A list of forbidden spellings
 //! refuses `f64` and `f32` and admits `let ratio = 33.9 / 12.0;`, which reaches
@@ -42,10 +46,28 @@ fn crate_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
-/// Every `.rs` file below `src`, recursively.
+/// Every `.rs` file this crate ships, recursively.
+///
+/// The whole package rather than `src`, less `tests` and `benches`. `S-12` in
+/// `docs/contracts/policy-source-scans.md` is the row about a walk that reads
+/// `<crate>/src` and stops seeing product-shaped code beside it, and this
+/// crate is where `T146` measured the cost: `crates/record/examples/emit_harness.rs`
+/// is compiled by `cargo clippy --workspace --all-targets`, is run by the
+/// documented `pnpm harness:emit` script, has no feature gate, and an `f64`
+/// added to it passed `no_float_reaches_the_gpa_path` -- this crate's own
+/// contract -- while the same `f64` in `src/harness.rs` failed at once.
+///
+/// `tests` and `benches` stay out. The README sentence this scan keeps is about
+/// what the crate computes with, and `tests/record.rs` names `f64` on purpose,
+/// to state what the integer path is being compared against.
 fn crate_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
+    let root = crate_root();
     let mut found = Vec::new();
-    walk(&crate_root().join("src"), &mut found)?;
+    walk(&root, &mut found)?;
+    found.retain(|path| {
+        let relative = path.strip_prefix(&root).unwrap_or(path);
+        !relative.starts_with("tests") && !relative.starts_with("benches")
+    });
     found.sort();
     Ok(found)
 }
