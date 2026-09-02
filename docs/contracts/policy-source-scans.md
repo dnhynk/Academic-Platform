@@ -7,8 +7,21 @@ banner behind a marker file — where there is no behaviour to assert against an
 the source is the only evidence.
 
 This page enumerates every one of them, because the same defect has been found
-in a scan one step outside the one just repaired in each of the last three
+in a scan one step outside the one just repaired in each of the last four
 rounds, and each time the next person started the survey from nothing.
+
+That sentence was false twice — `P2-G2` found the page missing its own egress
+rows, and `T141` found it missing three more scans, one of them the weaker half
+of a contract whose other half had already been repaired. So it is executed
+rather than asserted. `tools/policy-source-scan-inventory.test.mjs` finds every
+file in `crates/`, `tools/` and `packages/` that names a Rust source path in a
+position where it is read — an `include_str!`, a literal argument to a read, a
+`join`, an extension filter, a `const` or table entry holding a path, or a
+`#[path]` include of a module that does one of those — and fails if this page
+does not name that file. What it cannot decide is whether a file that reads
+source is a *policy* scan, so it does not try: a file it finds that scans
+nothing is listed below anyway, in the rows saying what it does instead. That
+is the intended outcome for a false positive — a row, not a hole.
 
 ## The three shapes that make a scan empty
 
@@ -30,6 +43,44 @@ A pin fixes the decision sites that exist. It does not forbid a *new* one, so a
 pin needs a companion: an allowance table that counts the authority tokens the
 tree spells today and fails on an addition anywhere.
 
+## Two more the `T141` audit found, in the repair for the first three
+
+The three above are about what a scan reads. These two are about what it
+concludes from what it read, and both were found in the guard that had just
+been repaired against the first three.
+
+**The pin fixes the item and not its caller.** A whole-text pin refuses every
+edit to the text it names, and says nothing about whether that text runs. The
+`T141` audit left `WHOLE_KEY_CHECK` byte-identical and wrapped the *call* to it
+in `if !profile_root.join("admission/field-trust").is_file() { … }`; signature
+verification was then skipped whenever a marker file existed, and a probe
+observed a receipt signed by a key the build had never heard of receiving an
+admitted posture. A pin on a decision needs a second pin on the sequence that
+reaches it — the first statement of each entry point, as `rotation_gate.rs`
+does, or the whole calling function, as `WHOLE_VERIFY` now does.
+
+**The allowance token is a spelling and not a structure.** An allowance entry
+counts characters, so it counts the *context* those characters appear in.
+`kind: PostureKind::Admitted {` is a field initialiser; the same value bound to
+a local first — `let admitted = PostureKind::Admitted { .. }; Posture { kind:
+admitted }` — spells it zero times and passed. Counting the type path
+`PostureKind::Admitted` instead survives the rewrite, because a value of that
+type cannot be built without naming it.
+
+Both were then looked for in every other pin and every other allowance table.
+`WHOLE_KEY_CHECK` was the only pin whose call was unconstrained. Every other one
+already fixes its callers: `WHOLE_GATE` pins the first statement of all seven
+gated entry points; `deny_on_findings`'s two call sites sit inside `WHOLE_STAGE`
+and `posture_for_profile`'s inside `WHOLE_DISPATCH_SPINE`, so those calls are
+already pinned text; `write_authorized_bytes`, `.execute(`,
+`staged.preview().bytes()` and the rounding site are each held to an exact
+occurrence count; `cloud_egress_default` and `ACCEPTANCE_PUBLIC_KEY` are not
+functions with a decision to skip. Of the allowance tables, only
+`ADMISSION_AUTHORITY_TOKENS` held a field-initialiser spelling —
+`LANE_AUTHORITY_TOKENS`, `SOCKET_ALLOWANCE` and the two word-level lists are all
+type paths or identifiers, which a rewrite of the surrounding expression cannot
+remove.
+
 ## Every scan in this repository
 
 "Walk" is how the scan reaches files. "Check" is what it does with the text.
@@ -37,9 +88,14 @@ tree spells today and fails on an addition anywhere.
 
 | Scan | Walk | Check | Floor |
 |---|---|---|---|
-| `no_environment_or_flag_override_exists` — `crates/cli/src/main.rs` | recursive, every crate's `src` | 12 forbidden key/override seams in `crates/admission/src`; a 7-token per-crate allowance table; whole-text pins on the `ACCEPTANCE_PUBLIC_KEY` declaration and on `verify_with_compiled_acceptance_key`; refuses any file declaring an item at file scope below its test module; recursive Clap command-tree scan | no count; fails if the walk never reached `crates/admission` |
+| `no_environment_or_flag_override_exists` — `crates/cli/src/main.rs` | recursive, every crate's `src`, and every `*.rs` under `crates/admission` except its `tests`, `benches` and `examples` | 12 forbidden key/override seams anywhere in the admission crate; a 10-token allowance table counting the tokens the admission tree spells and forbidding nine of the ten to every other crate; whole-text pins on the `ACCEPTANCE_PUBLIC_KEY` declaration, on `verify_with_compiled_acceptance_key`, and on the whole of `AdmissionVerifier::verify`; refuses a file that declares an item at file scope below its test module, at any indentation; recursive Clap command-tree scan | no count; fails if the walk never reached `crates/admission`, plus a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the admission tree must be a file the walk read |
 | `cli_has_no_real_data_override` — `crates/cli/tests/cli.rs` | recursive, `cli/src` + `core/src` | 10 forbidden tokens; a 5-token lane-authority allowance table; whole-text pins on `posture_for_profile`, `ALLOWLISTED_FIXTURE_IDS`, `is_allowlisted`, the daemon-side allowlist `match`, and the whole `fn main` dispatch spine; file-scope-below-test-module rule; a 12-pair environment battery, a 14-argument flag battery and a 3-path ingest battery against the built binary | `scanned >= 18` (19 today) |
-| `read_crate_sources` — `crates/recovery/tests/recovery_admission.rs` | recursive, `recovery/src` | three token lists across three named tests: 8 device-key-source tokens plus a per-line `DeviceKeystore` allowlist, 13 word-level tokens, 3 profile-default tokens | `>= 5`, plus a tripwire: a `mod name;` or `pub mod name;` on its own line must be a file the walk read |
+| `read_crate_sources` — `crates/recovery/tests/recovery_admission.rs` | recursive, `recovery/src`, through `crates/test-support/src/word_level_entry_points.rs` | three token lists across three named tests: 8 device-key-source tokens plus a per-line `DeviceKeystore` allowlist, the shared 16 word-level spellings, 3 profile-default tokens | `>= 5`, plus a tripwire: a `mod name;` or `pub mod name;` on its own line must be a file the walk read |
+| `no_public_api_accepts_or_reports_a_single_recovery_word` — `crates/crypto/tests/key_hierarchy.rs` | recursive, `crypto/src`, through the same shared module | `KY06`'s other structural half: the shared 16 word-level spellings, plus the assertion that `RecoverySecret` takes a whole 256-bit value | `>= 7`, plus the same module tripwire |
+| `read_crate_sources`, `WORD_LEVEL_ENTRY_POINTS` — `crates/test-support/src/word_level_entry_points.rs` | the recursive walk the two rows above share, `#[path]`-included by both | not a scan itself: the walk, the floor, the module tripwire, and the one spelling list `KY06`'s two halves both read | the floor its caller passes |
+| `keystore_leaf_public_facade_exposes_no_raw_handle` — `crates/keystore-platform/tests/facade.rs` | none — one fixed path, `../src/lib.rs` | no public signature in the FFI leaf names a raw handle, pointer, descriptor, key serial or D-Bus object; the three entry points are present; the two platform modules are declared private | `surface.len() >= 8` public signatures |
+| `lifecycle_transition_table_rejects_every_non_edge`, `growth_descriptors_contain_no_scalar_score` — `crates/domain/tests/question_graph.rs` | none — one fixed path, `../src/question.rs`, read twice between named markers | the `QuestionStatus` variants read out of the enum must equal the expected six; no identifier in the descriptor schema is a scalar difficulty, score, rating, rank or percentile — with the mutation applied to the schema inside the test and required to be caught | none — a missing marker fails |
+| `planned_engine_that_gains_an_implementation_fails_ci` — `crates/domain/tests/engine_harness.rs` | recursive, every `*.rs` under `crates/`, this crate's own test tree excluded | a planned §28 engine must have no implementation site: no workspace source outside `generated.rs` may name its engine id | none on the walk; the registry is compared whole, and an injected site is required to be reported |
 | `read_crate_sources` — `crates/retention/tests/retention.rs` | recursive, `retention/src` | token lists at three call sites (revocation claims, `GATE-38-026` decision seams, journal truncation) | `>= 8` |
 | `the_rotation_gate_is_one_decision_with_no_flag_variable_or_debug_path` — `crates/retention/tests/rotation_gate.rs` | none — three fixed paths | `WHOLE_GATE` whole-text pin on `require_rotation_accepted`; a 6-token list over its body; the first statement of each of 7 gated entry points | none |
 | `default_feature_tree_has_no_conversion_entry_point` — `crates/store/tests/encrypted_profile.rs` | recursive, `store/src` | 3 forbidden conversion entry points; plus fixed-path reads of `src/lib.rs` for the compile-time guard, and byte scans of the built probe binary | none |
@@ -48,14 +104,16 @@ tree spells today and fails on an addition anywhere.
 | `the_published_average_is_rounded_in_one_pinned_place` — same file | the recursive walk above, for the rounding-site count; one fixed path for the pin | `WHOLE_DIVISION` whole-text pin on `div_round_half_up`; exactly one rounding site in the crate; the published scale still an argument; no type declared in the arithmetic module | the walk's floor above |
 | `tools/secret-debug-policy.test.mjs` | recursive, every `crates/*/src` | regex over derive attributes against a registry of secret-carrying types | none on the file walk; a `>= 11` floor on the macro-generated key-type registry |
 | `tools/phase1-scaffold-policy.test.mjs` | recursive, from eight roots: every workspace package's `src` except `academic-test-support`, a named crate set, `store-platform/src`, each of the six process crates' `src`, `transcript/src` twice, `record/src` (the two implemented §28 engines, with a `>= 12` floor), and — for `only_egress_crate_has_a_socket` — every workspace package's `src`, `tests`, and `benches` plus every build script; fixed paths elsewhere | `cargo metadata` dependency graph, acceptance-receipt comparison, and regex/substring assertions on named files — including a second, independent copy of the rotation-gate decision-site count | none |
-| `only_egress_crate_has_a_socket` — `tools/phase1-scaffold-policy.test.mjs` | recursive, every workspace package's `src`, `tests`, `benches`, and `build.rs`, comments and string literals stripped before matching | a per-file allowance of exact socket spellings (eight IPC files listed, every other allowance empty); a rule that a crate root or a socket module segment may be renamed only to `_`; zero foreign-function declarations anywhere; every `#[path]` target resolved under `crates/`; the one `include!` pinned whole; a pinned build-script inventory; and a per-crate link closure intersected with the socket-capable crates | `scanned.length >= 10` on the capability scan it sits beside; the allowance map is compared whole, so a file that stops being read fails as a missing key |
+| `only_egress_crate_has_a_socket` — `tools/phase1-scaffold-policy.test.mjs` | recursive, every workspace package's `src`, `tests`, `benches`, and `build.rs`, comments and string literals stripped before matching | a per-file allowance of exact socket spellings (eight IPC files listed, every other allowance empty); a rule that a crate root or a socket module segment may be renamed only to `_`; zero foreign-function declarations anywhere; every `#[path]` target resolved and required to be one of the files this scan read; the one `include!` pinned whole; a pinned build-script inventory; and a per-crate link closure intersected with the socket-capable crates | `scanned.length >= 10` on the capability scan it sits beside; the allowance map is compared whole, so a file that stops being read fails as a missing key |
 | `the_byte_path_has_one_derivation`, `no_exception_path_fails_open`, `a_denial_has_no_payload_field` — `crates/egress-boundary/tests/byte_path_pin.rs` | none — six fixed paths under this crate's own `src` | seven whole-text pins (below); occurrence counts for the single construction site, the single emit helper and the two `execute` call sites; a per-file fallback inventory with a written reason for each site; six shapes that may not appear at all (`catch_unwind`, `let _ =`, `if let Ok(`, `.is_ok()`, `unwrap()`, `.expect(`); the `EgressDenial` field list read out of the struct | none on the walk — the six paths are named; a file gaining a `#[cfg(test)]` module fails, because the product half would then be smaller than the file |
 | `deny_reason_codes_are_exhaustive` — `crates/egress-boundary/tests/egress_boundary.rs` | none — one fixed path, `crates/policy/src/schema.sql` | a compiler-checked witness `match` over `ReasonCode` (a new variant stops the suite compiling), an index set over the enumerated list, a transcription of the execution plan's section 3.5 sentence, and the quoted codes in the `egress_audit` `CHECK` | n/a — the enum is read through the type system, not a walk |
 | `the_tombstone_row_calls_the_product_restore_and_lives_only_here` — `crates/portability/tests/encrypted_rotation.rs` | none — two fixed *test* source paths | substring: the acceptance row is in this file, calls the product restore, and has no second definition in `academic-retention` | none |
-| `tools/verify-contracts.mjs` | recursive, `crates/contracts/src` | digest pins and byte-for-byte re-render; refuses any tree entry that is not a `.rs` file | n/a — an unreviewed entry fails |
+| `tools/verify-contracts.mjs` | recursive, `crates/contracts/src`; the two generated modules through `tools/{engine,predicate}-registry.mjs` | digest pins and byte-for-byte re-render; refuses any tree entry that is not a `.rs` file | n/a — an unreviewed entry fails |
+| `tools/engine-registry.mjs`, `tools/predicate-registry.mjs` | none — one fixed generated path each, named as `GENERATED_PATH` | not a scan: they render the generated module from `schemas/registry/`, and are the halves `verify-contracts.mjs` re-renders and compares against the committed file | n/a |
+| `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
 | `tools/{source-preflight,cargo-lock-source-policy,dependency-source-policy,restricted-yaml}.mjs`, `tools/{dependency-source-policy,pnpm-source-policy-consumption}.test.mjs` | n/a | lockfile and registry parsing; not a source-text scan | n/a |
 | `tools/{phase1-exit,security-baseline}.mjs` | n/a | execution observation and committed fixture bytes | n/a |
-| `crates/store/tests/{api_boundary,sqlcipher_spike}.rs` | n/a | manifest text and scratch-crate compile-fail; not a source-text scan | n/a |
+| `crates/store/tests/api_boundary.rs`, `crates/store/tests/sqlcipher_spike.rs` | n/a | manifest text and scratch-crate compile-fail; not a source-text scan — the `.rs` paths they name are the scratch crate's own `src/main.rs`, which they write | n/a |
 
 ## What is pinned as whole text, and what changing it costs
 
@@ -68,6 +126,7 @@ a silent edit is the whole risk.
 |---|---|---|
 | `ACCEPTANCE_PUBLIC_KEY` declaration | `WHOLE_ACCEPTANCE_KEY` | acceptance-key provisioning (`P2-H1`) |
 | `verify_with_compiled_acceptance_key` body | `WHOLE_KEY_CHECK` | a change to how the compiled key is checked |
+| `AdmissionVerifier::verify` | `WHOLE_VERIFY` | a change to which steps a receipt goes through, their order, or whether any of them is conditional |
 | `require_rotation_accepted` | `WHOLE_GATE` | a change to what decides rotation acceptance — not turning the feature on, which the gate already reads |
 | `posture_for_profile` | `WHOLE_POSTURE_SOURCE` | a change to where the CLI's posture comes from |
 | `ALLOWLISTED_FIXTURE_IDS`, `is_allowlisted`, the daemon-side allowlist `match`, `fn main` | `WHOLE_FIXTURE_ALLOWLIST`, `WHOLE_ALLOWLIST_PREDICATE`, `WHOLE_DAEMON_FIXTURE_GATE`, `WHOLE_DISPATCH_SPINE` | ADR-002 acceptance, or a new command |
@@ -132,6 +191,53 @@ both with the 17-entry one. The remaining item keywords not on the list —
 `macro`, `default`, `auto trait` — are all unstable and cannot appear in this
 repository's product source.
 
+## What the `P2-RF9` repair holds
+
+The `T141` audit put three shapes past `no_environment_or_flag_override_exists`
+that spelled no forbidden token, edited neither whole-text pin, and were observed
+by nothing in the README's verification block on either platform: a `#[path]`
+module beside `src`, a conditional call to the pinned key check, and an admitted
+posture assembled through a local binding. It put two more past `KY06`'s crypto
+half. Each is now refused by the scan that claims the property.
+
+Twenty-two injections were applied one at a time, each reverted with its file's
+SHA-256 checked back to its recorded value, on Windows native and WSL2 Linux
+with the same result on both. Six are `P2-RF7`'s, re-run as a regression: the
+widened walk must not have cost the guard anything it already had.
+
+| # | Injection | Refused by |
+|---|---|---|
+| A1–A6 | `P2-RF7`'s six, re-run | unchanged |
+| B1 | `#[path = "../authority.rs"]` pulls in a product module beside `src` | the widened walk, and the `#[path]` tripwire |
+| B1b | the same module placed outside `crates/admission` | the `#[path]` tripwire |
+| B1c | the same module placed in the crate's own skipped `tests/` | the `#[path]` tripwire |
+| B1d | the same module, observed by `only_egress_crate_has_a_socket` | its `#[path]` target now has to be a file that scan read |
+| B2 | the call to the pinned key check is wrapped in a marker-file condition | `WHOLE_VERIFY` |
+| B2b | the five steps all still called, unconditionally, reordered | `WHOLE_VERIFY` |
+| B3 | `Unprovisioned` becomes an associated const holding a provisioned key | **not this scan** — `admitted_posture_requires_verified_receipt` and `unprovisioned_empty_zero_byte_and_all_zero_keys_fail_closed`, which observe provisioning unconditionally |
+| B4 | an admitted posture built through `let admitted = PostureKind::Admitted { .. }` | the `PostureKind::Admitted` count |
+| B4b | an admitted posture that never names `PostureKind::Admitted` at all | the `VerifiedAdmission` and `Posture {` counts |
+| B5 | the same product item as A5, indented two spaces below the test module | the file-scope rule — previously `cargo fmt --all -- --check` alone |
+| B5b | the same shape in `cli_has_no_real_data_override`'s tree | the same rule in that guard |
+| C1 | a `word_index` in `crates/crypto/src/keystore.rs`, which the `KY06` half never read | the recursive walk |
+| C1b | a `mnemonic_at` and a `WORD_COUNT` in a crypto file the half did read | the shared spelling list |
+| C1c | a `phrase_word` in `crates/recovery/src`, a spelling only the crypto list held | the shared spelling list, from the other side |
+| D1 | a new source-text scan this page does not name | `policy-source-scan-inventory` |
+| D1b | an existing scan's path altered on this page | `policy-source-scan-inventory` |
+
+`B3` is recorded as refused by something other than the scan because that is
+what it is. A pin fixes an item's text and not what the names in it mean, and
+`B3` leaves the pinned declaration byte-identical while redefining
+`Unprovisioned` as a provisioned key. What refuses it is that the provisioning
+is unconditional, so two behavioural tests see it. An edit of that shape that
+*was* conditional would be `B2`, which `WHOLE_VERIFY` now refuses.
+
+The `mod name;` half of the admission tripwire has no injection, and cannot have
+one while the walk reads the whole crate: any `mod name;` without its own
+`#[path]` resolves to a file beside its declarer, which is a file the walk read.
+It is a tripwire on the walk, in the same sense as `academic-recovery`'s and
+`academic-record`'s — it fails the day the walk is narrowed, not today.
+
 ## Why the float scan is not a token list
 
 `P2-U4` needed a scan saying no floating-point value reaches a grade-point
@@ -185,6 +291,8 @@ open, so each row says what makes it start mattering.
 | S-5 | `tools/phase1-scaffold-policy.test.mjs` | fixed paths outside `store-platform` | A file renamed or split leaves its assertions reading a path that no longer holds the code they describe. `readFile` throws on a missing path, so a rename fails loudly; a *split* does not — the assertions keep passing against the half that stayed. |
 | S-7 | `crates/record/tests/record_scans.rs` | the comment/string stripper distinguishes a character literal from a lifetime by looking for a closing quote two characters on | A character literal wider than one `char` — `'\u{1F600}'` — is not stripped, so its digits would be read as code. No such literal exists in the crate and the scan errs toward reporting rather than hiding, so the failure mode is a false positive, not a miss. Matters if the crate ever needs a wide character literal. |
 | S-6 | `crates/portability/tests/encrypted_rotation.rs` | two fixed test-source paths, substring only | It checks that one acceptance row lives in one file. A third file could hold a third copy and nothing would see it. |
+| S-8 | `crates/crypto/tests/key_hierarchy.rs`, `crates/keystore-platform/tests/facade.rs`, `crates/domain/tests/question_graph.rs` | the last two still read one fixed path each, and `facade.rs` has a floor while `question_graph.rs` has none | A public item moved out of `keystore-platform/src/lib.rs` or `domain/src/question.rs` into a sibling module is not read. `P2-RF9` repaired the first of the three because `RecoverySecret` lives in that crate and its contract already had a repaired half to match; the other two were left as they are and are recorded here rather than fixed. |
+| S-9 | `tools/policy-source-scan-inventory.test.mjs` | six read-position markers plus one `#[path]` hop — a mechanical proxy for "reads Rust source text" | A scan that reaches source some other way — a path assembled from fragments, a walk in a language this does not search — is not found, so the page could miss it and pass. The proxy is stated in the page's own opening sentence, so what the page claims is exactly what the test checks; widening the claim means widening the markers. |
 
 ## Intended, not a defect
 

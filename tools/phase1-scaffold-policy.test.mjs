@@ -1323,6 +1323,8 @@ test("only_egress_crate_has_a_socket", async () => {
   const aliases = [];
   const foreign = [];
   const generated = new Map();
+  const pathIncludes = [];
+  const readFiles = new Set();
   for (const pkg of workspacePackages) {
     const crateRoot = dirname(pkg.manifest_path);
     const files = [
@@ -1338,6 +1340,7 @@ test("only_egress_crate_has_a_socket", async () => {
     }
     for (const [path, raw] of files) {
       const relative = path.slice(path.indexOf("crates")).split("\\").join("/");
+      readFiles.add(resolve(path));
       const code = rustCodeOnly(raw);
 
       const spellings = new Set();
@@ -1388,19 +1391,16 @@ test("only_egress_crate_has_a_socket", async () => {
       // Source pulled in from outside the scanned trees is source this scan did
       // not read. String literals are stripped from `code`, so the targets are
       // read from a copy that keeps them.
+      //
+      // What makes that true is membership in the read set, which is only known
+      // once every package has been walked -- so the targets are collected here
+      // and checked after the loop. Requiring the target merely to exist under
+      // `crates/` and end in `.rs` is what this did, and `T141` walked through
+      // it: `crates/admission/authority.rs` sits at a crate root, in no walked
+      // tree, and satisfied both of those.
       const withStrings = rustCodeOnly(raw, true);
       for (const match of withStrings.matchAll(/#\[\s*path\s*=\s*"([^"]*)"\s*\]/gu)) {
-        const target = resolve(dirname(path), match[1]);
-        assert.equal(
-          target.startsWith(resolve("crates")),
-          true,
-          `${relative} includes ${match[1]}, which is outside crates/`,
-        );
-        assert.equal(
-          existsSync(target) && target.endsWith(".rs"),
-          true,
-          `${relative} includes ${match[1]}, which is not a Rust file in this repository`,
-        );
+        pathIncludes.push([relative, match[1], resolve(dirname(path), match[1])]);
       }
       const includes = [];
       for (const match of withStrings.matchAll(/include!\s*\([^;]*\);/gu)) {
@@ -1411,6 +1411,14 @@ test("only_egress_crate_has_a_socket", async () => {
       }
     }
   }
+
+  assert.deepEqual(
+    pathIncludes
+      .filter(([, , target]) => !readFiles.has(target))
+      .map(([relative, spelling]) => `${relative}: ${spelling}`),
+    [],
+    "a #[path] pulls in source no walked tree contains",
+  );
 
   assert.deepEqual(
     Object.fromEntries([...observed].toSorted(([left], [right]) => left.localeCompare(right))),

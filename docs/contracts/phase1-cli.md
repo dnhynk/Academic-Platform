@@ -6,11 +6,13 @@ The current `academic` build operates a synthetic, plaintext, throwaway Phase 1
 profile. Its acceptance public key is unprovisioned and its candidate receipt
 has two of five platform rows, so real or production data remains forbidden.
 The named source and CLI-surface scan rejects a flag whose name carries a
-forbidden token on any command, and — anywhere in `crates/admission/src` — an
-environment read, a build-time environment read, a `debug_assertions` branch, an
-embedded file, and any edit to either of the two whole texts that obtain the
-acceptance key. It does not read the other crates for those seams; what it
-requires of them is that they spell none of the admission-authority tokens.
+forbidden token on any command, and — anywhere under `crates/admission`, not
+only its `src` — an environment read, a build-time environment read, a
+`debug_assertions` branch, an embedded file, a module pulled in from a file the
+scan did not read, and any edit to any of the three whole texts that obtain,
+check, and use the acceptance key. It does not read the other crates for those
+seams; what it requires of them is that they spell none of the exclusive
+admission-authority tokens.
 
 `cli_has_no_real_data_override` covers the other half: the four places in
 `crates/cli/src` and `crates/core/src` that decide whether real input is
