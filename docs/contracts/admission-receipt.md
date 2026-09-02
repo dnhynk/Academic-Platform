@@ -121,20 +121,21 @@ places the key is obtained as whole text rather than by token: the
 `ACCEPTANCE_PUBLIC_KEY` declaration and the whole body of
 `verify_with_compiled_acceptance_key`, both whitespace-collapsed against a
 constant. Provisioning changes the declaration, so provisioning updates that
-constant in the same commit. Six admission-authority tokens are counted against
+constant in the same commit. Seven admission-authority tokens are counted against
 an explicit allowance — the admission crate's exact count, every other crate
 zero — which is what pins the sole verified-capability and admitted-posture
 construction sites. It also recursively scans the Clap command tree.
 
 The scan does not read the other crates for key seams; what it requires of them
-is that they spell none of the six authority tokens.
+is that they spell none of the seven authority tokens.
 
 `P2-RF7` put the five substitutions the `P2-K6` audit passed back through it,
-one at a time, on Windows and Linux: a build environment variable through
-`option_env!`, the same substitution spelling no forbidden token, a runtime key
-file read inside the key check, a second module file beside `lib.rs`, product
-code below `lib.rs`'s test module, and a `debug_assertions` bypass. Each failed
-the scan and passed again after it was reverted. The runtime tests additionally
+one at a time, on Windows and Linux — a build environment variable through
+`option_env!`, a runtime key file read inside the key check, a second module
+file beside `lib.rs`, product code below `lib.rs`'s test module, and a
+`debug_assertions` bypass — together with a sixth that spells no forbidden token
+at all, choosing the key through a type alias. Each failed the scan and passed
+again after it was reverted. The runtime tests additionally
 cover absent receipts, missing rows, stale spec bytes, forged signatures,
 unprovisioned/empty/one-zero/all-zero acceptance keys, and a plaintext profile
 carrying a copied format marker.
