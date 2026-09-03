@@ -961,6 +961,115 @@ fn the_analysis_reads_only_what_the_snapshot_froze() -> TestResult {
 }
 
 #[test]
+fn bytes_the_gate_manifested_and_did_not_ingest_are_a_gap() -> TestResult {
+    // The fourth check `AnalysisInput::of` makes, and the second coverage-gap
+    // reason, both of which nothing else in this file produces.
+    //
+    // `academic-repository` manifests a file it cannot read as bounded text by
+    // digest and does **not** ingest it, so a manifest row can exist with
+    // nothing sealed behind it. That is a real state rather than a contrived
+    // one: it is what the gate does with every binary asset in a repository.
+    let mut files: Vec<(&str, &str)> = REACHABLE_CALL_AND_CONFIG.to_vec();
+    // Invalid UTF-8, which is what makes the gate call it opaque. Written as a
+    // `&str` of lone surrogate-range bytes would not compile, so the corpus
+    // carries it as bytes through a second entry list below.
+    let opaque_path = "assets/logo.bin";
+    let opaque_bytes = vec![0xff_u8, 0xfe, 0x00, 0x01, 0x02];
+
+    let mut entries: Vec<SourceEntry> = files
+        .iter()
+        .map(|(path, body)| SourceEntry::new(*path, body.as_bytes().to_vec()))
+        .collect();
+    entries.push(SourceEntry::new(opaque_path, opaque_bytes.clone()));
+    let mut tracked: Vec<String> = files.iter().map(|(path, _)| (*path).to_owned()).collect();
+    tracked.push(opaque_path.to_owned());
+    let facts = WorkingTreeFacts::checkout(
+        CommitId::new(HEAD)?,
+        Some("main".to_owned()),
+        tracked,
+        Vec::new(),
+        Vec::new(),
+    );
+    let policy = PathPolicy::new();
+    let request = SnapshotRequest {
+        repository: RepositoryId::new("repo_A")?,
+        source: RepositorySource::LocalDirectory,
+        tree: SourceTree::Entries(&entries),
+        facts: &facts,
+        policy: &policy,
+        captured_at: CAPTURED_AT,
+        parent_snapshots: Vec::new(),
+        submodule_refs: Vec::new(),
+        analysis_policy_hash: ContentDigest::of(b"analysis-policy-v1"),
+        tool_versions: vec![ToolVersion::new(ANALYZER, ANALYZER_VERSION)?],
+    };
+    let (capture, sealed) = capture_local(&request)?;
+    let snapshot = capture.snapshot;
+
+    // The gate manifested it, so this is not the excluded-path case.
+    assert!(
+        snapshot
+            .manifest()
+            .iter()
+            .any(|entry| entry.path() == opaque_path),
+        "the opaque file is not in the manifest"
+    );
+
+    // Offering its bytes is refused: they hash to the manifest row, so the
+    // third check passes and only the sealed-index check can refuse them.
+    let unit = SourceUnit::new(opaque_path, opaque_bytes);
+    assert!(matches!(
+        AnalysisInput::of(
+            &snapshot,
+            &sealed,
+            AnalyzerIdentity::new(ANALYZER, ANALYZER_VERSION)?,
+            vec![unit],
+        ),
+        Err(AnalysisError::BytesNotSealed(path)) if path == opaque_path
+    ));
+
+    // Not offering them is not a silent skip either: the path still gets a
+    // coverage row, and every one of its seven outcomes is a gap that says the
+    // bytes never reached a reader.
+    files.push((opaque_path, ""));
+    let units: Vec<SourceUnit> = source_units(&snapshot, &files)
+        .into_iter()
+        .filter(|unit| unit.path() != opaque_path)
+        .collect();
+    let input = AnalysisInput::of(
+        &snapshot,
+        &sealed,
+        AnalyzerIdentity::new(ANALYZER, ANALYZER_VERSION)?,
+        units,
+    )?;
+    let analysis = analyze(&input)?;
+    let row = analysis
+        .coverage()
+        .iter()
+        .find(|row| row.path() == opaque_path)
+        .ok_or("the opaque path has no coverage row")?;
+    assert_eq!(row.gaps().len(), IndexKind::COUNT);
+    for kind in IndexKind::ALL {
+        assert_eq!(
+            row.outcome(kind),
+            CoverageOutcome::Gap(CoverageGapReason::BytesNotIngested),
+            "{}",
+            kind.as_str()
+        );
+    }
+    // And the two gap reasons are distinguishable rather than one value with
+    // two spellings: the unsupported-language corpus produces the other one.
+    assert_eq!(CoverageGapReason::ALL.len(), 2);
+    assert!(
+        analysis
+            .gaps()
+            .iter()
+            .all(|(_, _, reason)| *reason == CoverageGapReason::BytesNotIngested)
+    );
+    Ok(())
+}
+
+#[test]
 fn the_tier_vocabulary_is_three_values_and_the_ladder_is_five_rungs() -> TestResult {
     // `REQ-34-081` names exactly three badges; section 17.3's table has five
     // rows this task owns. The fold is stated once, in `LadderRung::tier`, and

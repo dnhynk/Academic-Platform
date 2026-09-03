@@ -33,10 +33,17 @@ claims:
 
 `the_analysis_reads_only_what_the_snapshot_froze` observes the first three
 refusing against a control that is accepted.
+`bytes_the_gate_manifested_and_did_not_ingest_are_a_gap` observes the fourth,
+over the state that actually produces it: `academic-repository` manifests a file
+it cannot read as bounded text by digest and does not ingest it, so a manifest
+row exists with nothing sealed behind it. Offering those bytes is refused —
+they hash to the manifest row, so only the sealed-index check can refuse them,
+and deleting that check makes the test fail.
 
-A manifest row with no unit offered is not skipped: it gets a coverage row whose
-every outcome is `Gap(BytesNotIngested)`. That is the case `academic-repository`
-produces for a file it manifests by digest and does not ingest.
+A manifest row with no unit offered is not skipped either: it gets a coverage
+row whose every one of the seven outcomes is `Gap(BytesNotIngested)`. That is
+the second gap reason, and the same test is what produces it — without it the
+arm would be a value nothing in the suite ever reaches.
 
 ## Five observations, three tier values
 
