@@ -1365,7 +1365,7 @@ rather than the wider sentence.
 
 ### The injection matrix
 
-Thirty-one injections, applied one at a time to shipped source and reverted.
+Thirty-two injections, applied one at a time to shipped source and reverted.
 Each is compiled first: a refusal that is a compile error proves nothing about
 the scan that was supposed to refuse it, and one row below is recorded as
 exactly that outcome rather than dropped. The unmodified tree is run before and
@@ -1392,6 +1392,7 @@ after the matrix and passes both times.
 | U-S1 | stage nine stops re-reading the terms ledger | `ingestion_stage_order_is_strict`, the stage-nine case |
 | U-S2 | stage six discards the schema error | the same, the stage-six case |
 | U-S3 | the snapshot stops comparing the observed digest | the same, the stage-three case |
+| U-S4 | stage one stops comparing the declared cadence against the clock | `the_declared_cadence_limits_a_fetch_and_not_an_import` |
 | U-U1 | `Reconciled::publishable` fabricates an effective date for the undated arm | `unscoped_official_source_cannot_publish` |
 | U-V1 | invalidation reaches every node with an edge, ignoring which rule changed | `source_change_invalidates_exact_dependents`, over-invalidation |
 | U-V2 | invalidation stops walking transitively | the same, under-invalidation |

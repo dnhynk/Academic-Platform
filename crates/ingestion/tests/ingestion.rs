@@ -157,7 +157,7 @@ fn drive(fail_at: Option<Stage>) -> Result<Driven, Box<dyn Error>> {
 
     let fetched = step!(
         Stage::DiscoverFetchImport,
-        stage::discover_fetch_import(&manifest, ledger, acquisition)
+        stage::discover_fetch_import(&manifest, ledger, RETRIEVED_AT, acquisition)
     );
     let cleared = step!(
         Stage::PolicyAndTermsCheck,
@@ -431,6 +431,7 @@ fn conditional_fetch_and_hash_diff() -> TestResult {
         stage::discover_fetch_import(
             &manifest,
             &ledger,
+            RETRIEVED_AT,
             Acquisition::Fetch {
                 transport: &source,
                 request: academic_ingestion::ConditionalRequest::anonymous(
@@ -500,6 +501,7 @@ fn one_run(
         manifest,
         ledger,
         known,
+        RETRIEVED_AT,
         acquisition,
         IngestSeq::at(1),
         Appropriateness::NotAppropriate,
@@ -519,6 +521,7 @@ fn snapshot_of(
     let fetched = stage::discover_fetch_import(
         manifest,
         ledger,
+        RETRIEVED_AT,
         Acquisition::Import {
             target: CATALOGUE,
             outcome,
@@ -1303,6 +1306,7 @@ fn an_undeclared_target_is_refused() -> TestResult {
     let fetched = stage::discover_fetch_import(
         &manifest,
         &ledger,
+        RETRIEVED_AT,
         Acquisition::Import {
             target: UNDECLARED,
             outcome: body(DocumentFixture::dated().bytes(), "\"v1\"")?,
@@ -1329,6 +1333,7 @@ fn a_complete_run_publishes_what_the_document_says() -> TestResult {
         &manifest,
         &ledger,
         &known,
+        RETRIEVED_AT,
         Acquisition::Fetch {
             transport: &source,
             request: academic_ingestion::ConditionalRequest::anonymous(
@@ -1465,6 +1470,143 @@ fn a_validator_cannot_carry_a_separator() -> TestResult {
     Ok(())
 }
 
+/// The declared cadence refuses a fetch that is too soon, and an import never.
+///
+/// A cadence nothing compares against a clock is a declaration rather than a
+/// limit, and section 29.2 asks for a *low-frequency* fetch.
+#[test]
+fn the_declared_cadence_limits_a_fetch_and_not_an_import() -> TestResult {
+    use academic_ingestion::{AllowedFrequency, LastSuccess};
+
+    let known = corpus()?;
+    let ledger = permitting_ledger(CONNECTOR)?;
+    let a_day_ago = RetrievalInstant::at(RETRIEVED_AT.seconds() - 86_400);
+    let weekly = draft(CONNECTOR)?
+        .allowed_frequency(AllowedFrequency::Weekly)
+        .last_success(LastSuccess::At(a_day_ago))
+        .build()?;
+    let source = FixtureSource::holding(DocumentFixture::dated().bytes(), "\"v1\"");
+    let fetch = |manifest: &academic_ingestion::ConnectorManifest| {
+        academic_ingestion::ConditionalRequest::anonymous(
+            manifest,
+            CATALOGUE,
+            academic_ingestion::Validators::none(),
+        )
+    };
+
+    // A day after the last success, under a weekly cadence, is too soon.
+    let record = academic_ingestion::run(
+        &weekly,
+        &ledger,
+        &known,
+        RETRIEVED_AT,
+        Acquisition::Fetch {
+            transport: &source,
+            request: fetch(&weekly)?,
+        },
+        IngestSeq::at(1),
+        Appropriateness::NotAppropriate,
+    );
+    let failure = record
+        .failure()
+        .ok_or("a weekly connector fetched after a day")?;
+    assert_eq!(failure.stage(), Stage::DiscoverFetchImport);
+    let denial = failure.denial().ok_or("the cadence produced no denial")?;
+    assert_eq!(denial.reason(), DenialReason::TooSoon);
+    assert_eq!(denial.fallbacks(), Fallback::ALL);
+    // The terms still permit the source, so the connector stays enabled.
+    assert!(!denial.connector_disabled());
+    assert!(record.published().is_none());
+
+    // A week later it is not too soon, and the same run publishes.
+    let later = RetrievalInstant::at(a_day_ago.seconds() + 8 * 86_400);
+    assert!(
+        academic_ingestion::run(
+            &weekly,
+            &ledger,
+            &known,
+            later,
+            Acquisition::Fetch {
+                transport: &source,
+                request: fetch(&weekly)?,
+            },
+            IngestSeq::at(2),
+            Appropriateness::NotAppropriate,
+        )
+        .published()
+        .is_some(),
+        "a fetch a week after the last success was still refused"
+    );
+
+    // An import is a person handing over a file, and the cadence is a rule
+    // about how often this system asks a source. It publishes at the same
+    // instant the fetch was refused at.
+    assert!(
+        academic_ingestion::run(
+            &weekly,
+            &ledger,
+            &known,
+            RETRIEVED_AT,
+            Acquisition::Import {
+                target: CATALOGUE,
+                outcome: body(DocumentFixture::dated().bytes(), "\"v1\"")?,
+            },
+            IngestSeq::at(3),
+            Appropriateness::NotAppropriate,
+        )
+        .published()
+        .is_some(),
+        "the cadence refused a file a person handed over"
+    );
+
+    // A connector that has never succeeded has nothing to count from.
+    let never = draft(CONNECTOR)?
+        .allowed_frequency(AllowedFrequency::Weekly)
+        .last_success(LastSuccess::Never)
+        .build()?;
+    assert!(
+        academic_ingestion::run(
+            &never,
+            &ledger,
+            &known,
+            RETRIEVED_AT,
+            Acquisition::Fetch {
+                transport: &source,
+                request: fetch(&never)?,
+            },
+            IngestSeq::at(4),
+            Appropriateness::NotAppropriate,
+        )
+        .published()
+        .is_some(),
+        "a connector that has never succeeded was refused as too soon"
+    );
+
+    // And one with no schedule is never early: a run is the user asking.
+    let on_request = draft(CONNECTOR)?
+        .allowed_frequency(AllowedFrequency::OnUserRequestOnly)
+        .last_success(LastSuccess::At(a_day_ago))
+        .build()?;
+    assert!(
+        academic_ingestion::run(
+            &on_request,
+            &ledger,
+            &known,
+            RETRIEVED_AT,
+            Acquisition::Fetch {
+                transport: &source,
+                request: fetch(&on_request)?,
+            },
+            IngestSeq::at(5),
+            Appropriateness::NotAppropriate,
+        )
+        .published()
+        .is_some(),
+        "a connector with no schedule was refused for being early"
+    );
+    Ok(())
+}
+
 /// The cadence is named, and the one that has no schedule says so.
 #[test]
 fn the_allowed_frequency_has_no_hidden_default() -> TestResult {
@@ -1503,6 +1645,7 @@ fn a_transport_failure_halts_at_stage_one() -> TestResult {
         &manifest,
         &ledger,
         &known,
+        RETRIEVED_AT,
         Acquisition::Fetch {
             transport: &source,
             request: academic_ingestion::ConditionalRequest::anonymous(

@@ -99,6 +99,23 @@ changed, and two whose bytes differ are different documents even when it did
 not. `RawSnapshot::has_same_content_as` is that comparison and
 `conditional_fetch_and_hash_diff` exercises both directions.
 
+### The cadence is compared against a clock
+
+Section 29.2 asks for a *low-frequency* fetch, and a cadence nothing compares
+against a clock is a declaration rather than a limit. Stage one takes the
+retrieval instant and refuses a **fetch** that is earlier than
+`AllowedFrequency::earliest_next(last success)` with `DenialReason::TooSoon`.
+Three cases permit: a connector that has never succeeded has nothing to count
+from; `OnUserRequestOnly` has no schedule to be early for, because a run *is* the
+user asking; and an **import** is never refused, because a cadence is a rule
+about how often this system asks a source and not about how often a person may
+hand over a file they already have.
+
+A `TooSoon` denial carries the same four fallbacks as every other and does **not**
+disable the connector: the terms still permit the source, the clock does not
+permit the fetch yet. `the_declared_cadence_limits_a_fetch_and_not_an_import`
+runs all five cases.
+
 A header value read out of a response and echoed back on the next request is the
 one value that crosses from a response into a request. `HeaderValue` restricts it
 to printable ASCII, at most 128 bytes, which removes the separator a header
