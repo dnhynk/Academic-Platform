@@ -272,3 +272,50 @@ files holding an `unsafe` item against exactly
 - **No provider SDK is called.** `academic-egress-boundary` owns the staging and
   the transport trait, and no implementation of it ships. What this task
   contributes to a provider call is the process it would run in.
+
+## The two names this backend shares with the machine
+
+Two of the names this boundary uses are not private to a process. Both are
+written down here because a process that assumes it owns them produces failures
+that look like the sandbox and are not.
+
+**The AppContainer profile.** `CONTAINER_NAME` is one fixed name,
+`academic-worker-p2-g4`, and `container_sid` asks for it on every
+`availability()` and every `launch()`. One name is deliberate: a name per
+process would leave a profile directory under `%LOCALAPPDATA%\Packages` behind
+on every run. What one name costs is that every process on the machine is a
+candidate concurrent creator of it, and two creators of an *absent* profile tear
+each other's directory down. Measured: with eight test threads,
+`%LOCALAPPDATA%\Packages\academic-worker-p2-g4` went absent and was recreated
+every few seconds; with one thread it was unchanged for seventy seconds across
+two full runs. Every `CreateProcessW` issued into the container while the
+directory was absent failed with `ERROR_FILE_NOT_FOUND` (2), which is how this
+suite came to fail about one run in ten with a launch error that named the probe
+binary and had nothing to do with the probe binary.
+
+So creation is serialised, twice: a process-wide `Mutex` because eight test
+threads supply two creators without a second process being involved, and an
+exclusive open — share mode zero — of a lock file beside the profile under
+`%LOCALAPPDATA%`, because two lanes on one machine supply them as well. The lock
+is a held handle rather than a marker file, so a process that dies releases it.
+A caller that cannot take it within five seconds proceeds anyway: creation
+happens once per machine and every later call answers `ERROR_ALREADY_EXISTS`
+without touching the directory, so the lock removes a race and is no part of what
+the backend refuses. It adds no `unsafe`. `academic-capture-gate`'s Windows
+device layer carries the same fixed name, the same measured churn, and the same
+repair.
+
+**The home canary.** The acceptance suite writes a canary inside the real home
+directory, because "the worker cannot read *this user's home*" is the claim; the
+vault canary, which is about an arbitrary path, is the one under a temporary
+root. A canary under the home directory is therefore a name in a directory
+shared by every process of that user, and the harness removes it on `Drop`. Its
+name carries the process id, the wall clock and a counter, and is reserved with
+`create_dir` rather than `create_dir_all` so a name that already exists is
+refused instead of joined. Before that, the name was `.academic-worker-g4-`
+plus the test's label and nothing else: two lanes running this suite at once
+wrote the same path, the first to finish deleted the other's canary, and the
+survivor reported 1 passed and 7 failed — exactly the tests that build a
+`Harness` — with `ERROR_PATH_NOT_FOUND` standing where the backend owed
+`ERROR_ACCESS_DENIED`. `two_harnesses_with_one_label_do_not_share_a_canary` is
+what holds the name apart now.
