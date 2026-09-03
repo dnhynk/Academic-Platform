@@ -1,0 +1,43 @@
+error[E0599]: no associated function or constant named `default` found for struct `BenefitContract` in the current scope
+  --> tests/compile_fail/a_benefit_contract_has_no_partial_constructor.rs:17:57
+   |
+17 |     let _by_default: BenefitContract = BenefitContract::default();
+   |                                                         ^^^^^^^ associated function or constant not found in `BenefitContract`
+   |
+note: if you're trying to build a new `BenefitContract`, consider using `BenefitContract::new` which returns `Result<BenefitContract, ClassificationError>`
+  --> $WORKSPACE/crates/repository-classification/src/benefit.rs
+   |
+   | /     pub fn new(
+   | |         concept: &SubjectId,
+   | |         triggers: Vec<Trigger>,
+   | |         state: TriggerState,
+   | |         benefit: BenefitDimension,
+   | |         tradeoffs: Vec<TradeOff>,
+   | |     ) -> Result<Self, ClassificationError> {
+   | |__________________________________________^
+
+error: cannot construct `BenefitContract` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_benefit_contract_has_no_partial_constructor.rs:18:23
+   |
+18 |     let _by_literal = BenefitContract {
+   |                       ^^^^^^^^^^^^^^^
+19 |         concept: "graphql".to_owned(),
+   |         ----------------------------- private field
+   |
+   = note: ...and other private fields `triggers`, `state`, `benefit` and `tradeoffs` that were not provided
+
+error[E0061]: this function takes 5 arguments but 1 argument was supplied
+  --> tests/compile_fail/a_benefit_contract_has_no_partial_constructor.rs:21:29
+   |
+21 |     let _by_concept_alone = BenefitContract::new(&concept());
+   |                             ^^^^^^^^^^^^^^^^^^^^------------ multiple arguments are missing
+   |
+note: associated function defined here
+  --> $WORKSPACE/crates/repository-classification/src/benefit.rs
+   |
+   |     pub fn new(
+   |            ^^^
+help: provide the arguments
+   |
+21 |     let _by_concept_alone = BenefitContract::new(&concept(), /* Vec<academic_repository_classification::Trigger> */, /* academic_repository_classification::TriggerState */, /* BenefitDimension */, /* Vec<academic_repository_classification::TradeOff> */);
+   |                                                            +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

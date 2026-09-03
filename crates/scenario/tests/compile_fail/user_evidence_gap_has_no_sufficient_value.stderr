@@ -1,0 +1,20 @@
+error[E0599]: no variant named `Sufficient` found for enum `academic_repository_classification::UserEvidenceGap`
+  --> tests/compile_fail/user_evidence_gap_has_no_sufficient_value.rs:13:40
+   |
+13 |     let _sufficient = UserEvidenceGap::Sufficient {
+   |                                        ^^^^^^^^^^
+   |
+help: there is a variant with a similar name
+   |
+13 -     let _sufficient = UserEvidenceGap::Sufficient {
+13 +     let _sufficient = UserEvidenceGap::Insufficient {
+   |
+
+error[E0599]: no variant, associated function, or constant named `None` found for enum `academic_repository_classification::UserEvidenceGap` in the current scope
+  --> tests/compile_fail/user_evidence_gap_has_no_sufficient_value.rs:16:34
+   |
+16 |     let _none = UserEvidenceGap::None;
+   |                                  ^^^^ variant, associated function, or constant not found in `academic_repository_classification::UserEvidenceGap`
+   |
+help: there is a method `ne` with a similar name
+  --> $RUST/core/src/cmp.rs

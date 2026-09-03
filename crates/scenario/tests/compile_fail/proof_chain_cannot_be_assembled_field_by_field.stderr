@@ -1,0 +1,38 @@
+error[E0599]: no associated function or constant named `default` found for struct `ProofChain` in the current scope
+  --> tests/compile_fail/proof_chain_cannot_be_assembled_field_by_field.rs:21:47
+   |
+21 |     let _by_default: ProofChain = ProofChain::default();
+   |                                               ^^^^^^^ associated function or constant not found in `ProofChain`
+   |
+note: if you're trying to build a new `ProofChain`, consider using `ProofChain::closed_by` which returns `ProofChain`
+  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+   |
+   |     pub const fn closed_by(concept: RequiredConcept, gap: UserEvidenceGap) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot construct `ProofChain` with struct literal syntax due to private fields
+  --> tests/compile_fail/proof_chain_cannot_be_assembled_field_by_field.rs:22:23
+   |
+22 |     let _by_literal = ProofChain { gap: gap() };
+   |                       ^^^^^^^^^^   ---------- private field
+   |
+   = note: ...and other private field `concept` that was not provided
+help: you might have meant to use the `closed_by` associated function
+   |
+22 -     let _by_literal = ProofChain { gap: gap() };
+22 +     let _by_literal = ProofChain::closed_by(_, _);
+   |
+
+error[E0599]: no associated function or constant named `new` found for struct `ProofChain` in the current scope
+  --> tests/compile_fail/proof_chain_cannot_be_assembled_field_by_field.rs:23:31
+   |
+23 |     let _by_new = ProofChain::new();
+   |                               ^^^ associated function or constant not found in `ProofChain`
+   |
+note: if you're trying to build a new `ProofChain`, consider using `ProofChain::closed_by` which returns `ProofChain`
+  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+   |
+   |     pub const fn closed_by(concept: RequiredConcept, gap: UserEvidenceGap) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: there is a method `ne` with a similar name, but with different arguments
+  --> $RUST/core/src/cmp.rs

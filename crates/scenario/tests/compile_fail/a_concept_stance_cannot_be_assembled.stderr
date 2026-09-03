@@ -1,0 +1,11 @@
+error[E0451]: fields `key`, `observed` and `outlook` of struct `ConceptStance` are private
+  --> tests/compile_fail/a_concept_stance_cannot_be_assembled.rs:26:9
+   |
+25 |     let _real = ConceptStance {
+   |                 ------------- in this type
+26 |         key: key(),
+   |         ^^^ private field
+27 |         observed: observed(),
+   |         ^^^^^^^^ private field
+28 |         outlook: Some(Outlook::Required(chain())),
+   |         ^^^^^^^ private field

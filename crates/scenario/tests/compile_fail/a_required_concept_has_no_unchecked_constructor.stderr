@@ -1,0 +1,43 @@
+error[E0599]: no associated function or constant named `default` found for struct `academic_repository_classification::RequiredConcept` in the current scope
+  --> tests/compile_fail/a_required_concept_has_no_unchecked_constructor.rs:11:57
+   |
+11 |     let _by_default: RequiredConcept = RequiredConcept::default();
+   |                                                         ^^^^^^^ associated function or constant not found in `academic_repository_classification::RequiredConcept`
+   |
+note: if you're trying to build a new `academic_repository_classification::RequiredConcept`, consider using `academic_repository_classification::RequiredConcept::realizing` which returns `Result<academic_repository_classification::RequiredConcept, ClassificationError>`
+  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+   |
+   | /     pub fn realizing(
+   | |         mechanism: ControllingMechanism,
+   | |         concept: &SubjectId,
+   | |         tier: EntityKind,
+   | |     ) -> Result<Self, ClassificationError> {
+   | |__________________________________________^
+
+error: cannot construct `academic_repository_classification::RequiredConcept` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_required_concept_has_no_unchecked_constructor.rs:12:23
+   |
+12 |     let _by_literal = RequiredConcept {
+   |                       ^^^^^^^^^^^^^^^
+13 |         concept: "distributed-systems".to_owned(),
+   |         ----------------------------------------- private field
+   |
+   = note: ...and other private fields `mechanism` and `tier` that were not provided
+
+error[E0599]: no associated function or constant named `new` found for struct `academic_repository_classification::RequiredConcept` in the current scope
+  --> tests/compile_fail/a_required_concept_has_no_unchecked_constructor.rs:15:36
+   |
+15 |     let _by_new = RequiredConcept::new();
+   |                                    ^^^ associated function or constant not found in `academic_repository_classification::RequiredConcept`
+   |
+note: if you're trying to build a new `academic_repository_classification::RequiredConcept`, consider using `academic_repository_classification::RequiredConcept::realizing` which returns `Result<academic_repository_classification::RequiredConcept, ClassificationError>`
+  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+   |
+   | /     pub fn realizing(
+   | |         mechanism: ControllingMechanism,
+   | |         concept: &SubjectId,
+   | |         tier: EntityKind,
+   | |     ) -> Result<Self, ClassificationError> {
+   | |__________________________________________^
+help: there is a method `ne` with a similar name, but with different arguments
+  --> $RUST/core/src/cmp.rs

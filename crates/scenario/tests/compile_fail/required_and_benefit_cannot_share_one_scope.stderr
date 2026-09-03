@@ -1,0 +1,21 @@
+error[E0599]: no variant named `RequiredAndBeneficial` found for enum `Outlook`
+  --> tests/compile_fail/required_and_benefit_cannot_share_one_scope.rs:31:14
+   |
+31 |     Outlook::RequiredAndBeneficial {
+   |              ^^^^^^^^^^^^^^^^^^^^^ variant not found in `Outlook`
+
+error[E0560]: struct `ConceptStance` has no field named `required`
+  --> tests/compile_fail/required_and_benefit_cannot_share_one_scope.rs:41:9
+   |
+41 |         required: Some(chain()),
+   |         ^^^^^^^^ `ConceptStance` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0560]: struct `ConceptStance` has no field named `beneficial`
+  --> tests/compile_fail/required_and_benefit_cannot_share_one_scope.rs:42:9
+   |
+42 |         beneficial: Some(contract()),
+   |         ^^^^^^^^^^ `ConceptStance` does not have this field
+   |
+   = note: all struct fields are already assigned
