@@ -282,6 +282,13 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-egress-boundary": ["academic-policy"],
     "academic-export-job": ["academic-policy"],
     "academic-indexer": ["academic-policy"],
+    // `P2-U6`. Section 29.1's ingestion contract. `academic-domain` supplies
+    // the content digest and the proof-tree rule identifier an invalidated
+    // requirement already cites; `academic-untrusted-content` supplies
+    // `Untrusted<T>`, which is the only public route out of a raw snapshot's
+    // bytes. There is deliberately no HTTP, TLS, browser, image or audio edge:
+    // the conditional fetch is a trait the caller implements.
+    "academic-ingestion": ["academic-domain", "academic-untrusted-content"],
     "academic-ledger": ["academic-contracts", "academic-domain"],
     // `P2-M1`'s edge to `academic-policy` is the reconciliation: the audit rows
     // it compares a recorded transmission against are the broker's, and the
@@ -2080,6 +2087,10 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-egress-boundary": ["libc"],
   "academic-export-job": ["libc"],
   "academic-indexer": ["libc"],
+  // `P2-U6`. `libc` reaches it through `academic-domain`. The crate spells no
+  // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
+  // rather than empty, and it implements `ConditionalFetch` nowhere.
+  "academic-ingestion": ["libc"],
   "academic-keystore-platform": ["windows-sys"],
   "academic-ledger": ["libc"],
   "academic-policy": ["libc"],
@@ -3834,6 +3845,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     desktopReceiptText,
     repositoryReceiptText,
     captureSubsystemReceiptText,
+    ingestionReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3856,6 +3868,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-x1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l2.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-u6.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3878,6 +3891,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const desktopReceipt = JSON.parse(desktopReceiptText);
   const repositoryReceipt = JSON.parse(repositoryReceiptText);
   const captureSubsystemReceipt = JSON.parse(captureSubsystemReceiptText);
+  const ingestionReceipt = JSON.parse(ingestionReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -4831,6 +4845,50 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     captureSubsystemAdmitted.size + captureSubsystemPathPackages.size,
     "a P2-L2 admitted package is missing from Cargo.lock",
   );
+  // `P2-U6` adds one workspace path package, `academic-ingestion`, and admits
+  // no external crate: its product edges are `academic-domain`,
+  // `academic-untrusted-content` and `thiserror` and its dev edge is
+  // `trybuild`, all four already in this lock through earlier receipts. No
+  // HTTP client, TLS stack, browser driver or media decoder is linked, and the
+  // receipt records why the conditional fetch is a caller-supplied trait.
+  assert.equal(ingestionReceipt.task, "P2-U6");
+  const ingestionAdmitted = new Set(
+    ingestionReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const ingestionPathPackages = new Set(
+    ingestionReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(ingestionAdmitted.size, 0, "P2-U6 must admit no external crate");
+  assert.deepEqual([...ingestionPathPackages], ["academic-ingestion@0.1.0"]);
+  assert.deepEqual(ingestionReceipt.summary.npm_additions, []);
+  assert.equal(ingestionReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(ingestionReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-untrusted-content",
+  ]);
+  assert.deepEqual(ingestionReceipt.vendored_data, []);
+  for (const claimed of [...ingestionAdmitted, ...ingestionPathPackages]) {
+    assert.equal(
+      desktopAdmitted.has(claimed) ||
+        desktopPathPackages.has(claimed) ||
+        repositoryAdmitted.has(claimed) ||
+        repositoryPathPackages.has(claimed) ||
+        captureSubsystemAdmitted.has(claimed) ||
+        captureSubsystemPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const ingestionTuples = lockTuples.filter(
+    ([name, version]) =>
+      ingestionAdmitted.has(`${name}@${version}`) ||
+      ingestionPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    ingestionTuples.length,
+    ingestionAdmitted.size + ingestionPathPackages.size,
+    "a P2-U6 admitted package is missing from Cargo.lock",
+  );
 
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
@@ -4871,7 +4929,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !repositoryAdmitted.has(`${name}@${version}`) &&
       !repositoryPathPackages.has(`${name}@${version}`) &&
       !captureSubsystemAdmitted.has(`${name}@${version}`) &&
-      !captureSubsystemPathPackages.has(`${name}@${version}`),
+      !captureSubsystemPathPackages.has(`${name}@${version}`) &&
+      !ingestionAdmitted.has(`${name}@${version}`) &&
+      !ingestionPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -4901,7 +4961,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       proposalTuples.length +
       desktopTuples.length +
       repositoryTuples.length +
-      captureSubsystemTuples.length,
+      captureSubsystemTuples.length +
+      ingestionTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

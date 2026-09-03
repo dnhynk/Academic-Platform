@@ -17,6 +17,7 @@ members = [
   "crates/egress-boundary",
   "crates/export-job",
   "crates/indexer",
+  "crates/ingestion",
   "crates/keystore-platform",
   "crates/ledger",
   "crates/model-run",

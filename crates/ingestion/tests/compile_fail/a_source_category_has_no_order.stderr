@@ -1,0 +1,13 @@
+error[E0369]: binary operation `<` cannot be applied to type `SourceCategory`
+  --> tests/compile_fail/a_source_category_has_no_order.rs:12:27
+   |
+12 |     let _ranked = statute < department;
+   |                   ------- ^ ---------- SourceCategory
+   |                   |
+   |                   SourceCategory
+   |
+note: `SourceCategory` does not implement `PartialOrd`
+  --> src/manifest.rs
+   |
+   | pub enum SourceCategory {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ `SourceCategory` is defined in another crate

@@ -1,0 +1,5 @@
+error: cannot construct `ConnectorManifest` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_connector_manifest_cannot_be_assembled.rs:10:19
+   |
+10 |     let _forged = ConnectorManifest {};
+   |                   ^^^^^^^^^^^^^^^^^

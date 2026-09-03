@@ -89,6 +89,8 @@ const SECRET_BEARING_TYPES = new Map([
     "CaptureBytes",
     "the P2-L2 lecture audio chunk or board photograph a capture holds, as it arrived",
   ],
+  ["RawSnapshot", "the retained bytes of one official-source retrieval, which leave it only as an Untrusted<IngestedDocument>"],
+  ["FetchOutcome", "the bytes one conditional fetch or one user-supplied import produced, before anything has stored them"],
 ]);
 
 /**

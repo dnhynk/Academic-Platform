@@ -216,6 +216,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-ingestion"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-untrusted-content",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-keystore-platform"
 version = "0.1.0"
 dependencies = [

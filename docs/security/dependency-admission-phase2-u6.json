@@ -1,0 +1,36 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-u",
+  "task": "P2-U6",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-U6 admits no external crate. academic-ingestion links academic-domain, academic-untrusted-content and thiserror as product edges and trybuild as a dev edge, all four covered by earlier reviewed receipts, and adds one workspace path package. No HTTP client, TLS stack, browser driver, image decoder, audio decoder or HTML parser is linked at any feature setting: the conditional fetch is a trait the caller implements, exactly as academic-egress-boundary takes its OutboundTransport, and this crate implements it nowhere.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-ingestion is the P2-U6 official-source ingestion contract: section 29.1's nine ordered stages as nine types, the connector manifest, the effective-date parser, the structural and textual diff with its dependency-graph invalidation, and section 8.4's five-dimension ConflictCase. It is a separate package from academic-connector because that crate is the connector *process* -- a binary whose whole product source is one ProcessClass binding that P2-G7 pins -- and a library inside it would make that pin weaker rather than exact.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-U6 adds no pnpm workspace package. Its whole surface is Rust."
+  },
+  "direct_workspace_dependencies": {
+    "academic-domain": "ContentDigest for the snapshot's content hash and every rule-text digest, and engines::RuleId for the rule identifiers a proof tree already cites, so an invalidated requirement names the same identifier the audit path does rather than a second vocabulary beside it.",
+    "academic-untrusted-content": "P2-G5's Untrusted<T>. Bytes leave a RawSnapshot as Untrusted<IngestedDocument> and by no other public route, which is what makes this crate a reuse of that trust label rather than a second one. The seal takes the caller's SourceKind, so this crate names no kind of its own and adds no variant to that enum."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-ingestion",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-ingestion",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-ingestion is a workspace path crate, not an external dependency. It owns section 29.1's ordered pipeline and holds no transport: ConditionalFetch is a trait, this crate implements it nowhere, and its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-domain. Its declared workspace closure of every edge kind is academic-domain, academic-egress-boundary and academic-untrusted-content; the egress-boundary edge is transitive through academic-untrusted-content, whose provider-response ingest takes an AcceptedResponse, and no product file in this crate names an egress item -- the whole external import set is pinned by no_captcha_or_access_control_bypass_module_exists. It has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-policy, academic-projections, academic-recovery or academic-retention: it persists nothing and adds no store migration.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. GATE-38-020 is open, so no live connector runs: a connector with no recorded terms review reads as UNREVIEWED, which denies, and every test is driven by synthetic fixtures composed in the test tree. GATE-38-027 is open, so Phase 2 ships manual import and user-provided export and contains no browser automation module. A fetch target is a DeclaredTarget built only from &'static str, so a link read out of a fetched page cannot become one; a credential binding has no public constructor and is produced only for an authentication method that declares it holds a credential.",
+  "advisory_path": "Unchanged. Every external crate academic-ingestion links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}
