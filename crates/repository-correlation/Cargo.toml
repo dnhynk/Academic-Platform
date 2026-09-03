@@ -1,0 +1,22 @@
+[package]
+name = "academic-repository-correlation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-ledger = { path = "../ledger" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+thiserror.workspace = true
+
+[dev-dependencies]
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-untrusted-content = { path = "../untrusted-content" }
+
+[lints]
+workspace = true
