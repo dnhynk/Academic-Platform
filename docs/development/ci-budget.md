@@ -315,10 +315,31 @@ from. Add the next readings of `rust-default-*` and `rust-store-*` here as a
 range rather than as a replacement, and re-read the 80% line — 24:00 — against
 the largest of them.
 
-`rust-features-windows-latest` was green on the first attempt of this run. That
-is one attempt against a measured 14.3% failure rate, so it falsifies nothing;
-it is noted only so the next reader does not count this run as a clean one for
-that signature.
+### A second reading of the same tree
+
+The docs-only follow-up,
+[33748404269](https://github.com/dnhynk/Academic-Platform/actions/runs/33748404269)
+on `2bf7cf4`, also completed **22/22** on the first attempt. Its delta from the
+run above is one Markdown file, which no test reads, so the two are readings of
+one tree and the page's own rule says to keep both as a range rather than let
+the second overwrite the first:
+
+| Label | 33746159023 | 33748404269 |
+|---|---:|---:|
+| `rust-default-windows-latest` | 11:20 | 12:43 |
+| `rust-store-windows-latest` | 5:33 | 5:13 |
+| `rust-default-windows-11-arm` | 10:01 | 11:06 |
+| `rust-store-windows-11-arm` | 6:32 | 5:06 |
+
+So after two runs the split's readings are **`rust-default-windows-latest`
+11:20–12:43 and `rust-store-windows-latest` 5:13–5:33**, and the worst job on
+either run is 42.4%. Both default readings sit below the 12:16 minimum of the 53
+pre-split readings, and the 80% line for these jobs remains 24:00.
+
+`rust-features-windows-latest` was green on the first attempt of both runs. That
+is two attempts against a measured 14.3% failure rate, so it falsifies nothing;
+it is noted only so the next reader does not count them as clean runs for that
+signature.
 
 ## The `P2-G6` run
 
