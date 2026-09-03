@@ -32,6 +32,7 @@ members = [
   "crates/repository",
   "crates/repository-analysis",
   "crates/requirement",
+  "crates/repository-classification",
   "crates/repository-correlation",
   "crates/repository-analyzer",
   "crates/recovery",
