@@ -182,11 +182,12 @@ impl CaptureSession {
     /// interval can end, and a superseding record can arrive, and only the
     /// binding sees all three.
     ///
-    /// **Order is compared first so that no instant below the mark reaches
-    /// anything that stores one.** The binding's refusal opens a
-    /// [`TimelineGap`] at `now`; a backwards `now` allowed through to it would
-    /// put the gap itself earlier than a chunk already recorded, which is the
-    /// same backwards timeline one layer over.
+    /// **Order is compared first so that no instant below the mark reaches the
+    /// chunk list or the gap.** The binding's refusal opens a [`TimelineGap`]
+    /// at `now`; a backwards `now` allowed through to it would put the gap
+    /// itself earlier than a chunk already recorded, which is the same
+    /// backwards timeline one layer over. The audit row does carry the offered
+    /// instant, because that is the evidence.
     ///
     /// **An ordering refusal is not a stop.** What a backwards reading says is
     /// that the caller's clock moved, not that the permission ended, so no gap

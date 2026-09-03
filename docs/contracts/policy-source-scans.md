@@ -155,7 +155,7 @@ a silent edit is the whole risk.
 | `P2-L2` `observe` | `WHOLE_OBSERVE` | a change to preflight signalling |
 | `P2-L2` `realign` | `WHOLE_REALIGN` | a change to two-anchor realignment |
 | `P2-L2` `open_gap` | `WHOLE_OPEN_GAP` | a change to how a timeline gap opens |
-| `P2-L2` `ChunkJournal::append` | `WHOLE_APPEND` | a change to the journal write sequence, or to the comparison that keeps a file's frames in the order one clock minted them |
+| `P2-L2` `ChunkJournal::append` | `WHOLE_APPEND` | a change to the journal write sequence, or to the comparison that keeps a file's frames in the order their instants run — it reads the instant and not the clock's sequence number, and it is scoped to one clock |
 | `P2-L2` `estimate_drift` | `WHOLE_ESTIMATE_DRIFT` | a change to what an anchor pair has to be before it is measured — the ordering refusal is in this body, so a caller that sorts the pair first fails the `estimate_drift` call-site count instead |
 | `P2-L2` `MappingLedger::append_realignment` | `WHOLE_APPEND_REALIGNMENT` | a change to the one place a `MappingVersion` is built; the struct-literal count is pinned at one beside it |
 | `P2-L2` `ChunkJournal::reopen` | `WHOLE_REOPEN` | a change to what recovery truncates |
@@ -1027,9 +1027,10 @@ recorded as closed, and the whole set of `pub` signatures that accept a
 answer the question rather than inherit the guarantee.
 
 **Sixteen injections, applied one at a time**, each reverted with its file's
-SHA-256 checked back to its recorded value. Fifteen of the sixteen compile
-clean; the one that did not was rewritten until it did, because a refusal that
-is a compile error proves nothing about a guard.
+SHA-256 checked back to its recorded value. **All sixteen in the table compile
+clean.** `T-J3`'s first form did not — it borrowed `self.records` mutably twice
+— and it was rewritten until it did, because a refusal that is a compile error
+proves nothing about a guard.
 
 | # | Injection | Compiles | Refused by |
 |---|---|---|---|
@@ -1057,9 +1058,6 @@ spelled `Self::`. It compiled, it assembled a releasable artefact from chunks no
 session had ordered, and every rule passed. This is the counting-a-spelling
 failure `P2-RF10` closed in seven guards, reappearing in a guard written after
 it.
-
-`T-J3` had to be rewritten once: the first version borrowed `self.records`
-mutably twice and did not compile.
 
 ## What the `P2-M2` scans hold
 
