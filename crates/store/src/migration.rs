@@ -116,6 +116,20 @@ pub const MIGRATION_0012_SQL: &str =
 pub const MIGRATION_0014_SQL: &str =
     include_str!("../../../migrations/store/0014_phase2_curriculum_aggregates.sql");
 
+/// `P2-U2`'s typed columns for the `REQUIREMENT_SET_PUBLISHED` aggregate.
+///
+/// Migration `0004` leaves every aggregate's typed attributes to a later
+/// migration for its owner to add. This is the `requirement_set` arm's: section
+/// 11.2's fourteen rule types, section 11.1's versioned publication, and the
+/// two-reviewer attestation that has to exist before a model-extracted
+/// candidate becomes executable.
+///
+/// It is `0015` because `0014` is `P2-U1`'s. `0008`, `0010` and `0011` stay
+/// unclaimed for the reason [`MIGRATION_0009_SQL`] gives, and `0013` is
+/// reserved for `P2-L3`.
+pub const MIGRATION_0015_SQL: &str =
+    include_str!("../../../migrations/store/0015_phase2_requirement_rules.sql");
+
 /// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
 ///
 /// It replaces the Phase 1 identity singleton with the schema-2 one. The
@@ -158,6 +172,7 @@ pub const STORE_MIGRATION_SQL: &[&str] = &[
     MIGRATION_0009_SQL,
     MIGRATION_0012_SQL,
     MIGRATION_0014_SQL,
+    MIGRATION_0015_SQL,
 ];
 
 /// Result of invoking the forward-only migration runner.
@@ -336,6 +351,7 @@ fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> Stor
     transaction.execute_batch(MIGRATION_0009_SQL)?;
     transaction.execute_batch(MIGRATION_0012_SQL)?;
     transaction.execute_batch(MIGRATION_0014_SQL)?;
+    transaction.execute_batch(MIGRATION_0015_SQL)?;
     verify_integrity(&transaction)?;
     transaction.commit()?;
     Ok(())
