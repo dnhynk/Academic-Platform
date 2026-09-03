@@ -51,29 +51,50 @@ one. An unconfigured profile blocks every remote request with
 
 `GATE-38-009` is `P2-L1`'s and is untouched.
 
-## The inputs, and why a caller cannot widen them
+## The inputs, and what stops a caller widening them
 
 Section 12.3's first line is the whole input set: *authorized audio chunks +
 captures + supplied materials*. There are three admitted kinds and no fourth,
 each a type with private fields whose one producer is a method on
 `InputManifest`.
 
-**The comparison is a journal header, not a caller's word.** An audio chunk is
-admitted out of a `JournalRecovery` whose header names the capability token and
-the policy row the capture began under. `academic_capture::begin` is the only
-thing that writes such a header, and it writes one only after
-`mint_capture_capability` returned a token — so a buffer that was never captured
-under a live section 3.7 permission is not a value this module will admit, not
-because it is inspected and rejected but because there is no journal to take it
-out of. `AuthorizationBinding::covers` is pinned whole beside a rule that it is
-the **first statement** of both admitting methods, which is `T141`'s finding
-applied in advance: a pinned comparison says nothing about whether it runs.
+**The binding comes from the capture; the journal is compared against it.**
+`AuthorizationBinding::of` takes a `CaptureRecorder`, which has no public
+constructor: holding one is proof that `academic_capture::begin` ran its five
+steps, and the first of those is `mint_capture_capability`. The lecture, the
+capability token and the policy row all come from the recorder, and a journal
+whose header disagrees is `JournalIsNotThisCapture`.
 
-`pipeline_input_authorization` builds two journals for the same lecture under the
+**That ordering is the whole of it, and the first version of this module had it
+backwards.** It read the token identifier out of the very `JournalRecovery` it
+was about to admit from, so the comparison could only catch a caller *mixing*
+two journals — and `academic_capture::ChunkJournal::replay` is public and takes
+bytes, so a synthesized recovery naming any token would have agreed with itself.
+`pipeline_input_authorization` now drives that case: a journal built by the test
+and replayed from bytes opens no binding.
+
+Three rules hold the shape rather than one. `AuthorizationBinding::of` is pinned
+whole; the set of functions in the crate that produce a binding from a journal is
+compared against a one-entry list, so a second producer that reads the journal
+instead fails as an extra key; and the construction is counted, because `U-G3`
+records that a sweep over signatures says nothing about a body that builds its
+own argument. `covers` is pinned beside a rule that it is the **first statement**
+of both admitting methods — `T141`'s finding, applied in advance, because a
+pinned comparison says nothing about whether it runs.
+
+**What is still open is inherited rather than invented.** A caller holding a real
+recorder can hand this module a journal they wrote themselves under that same
+authorization: the frame chain detects truncation and corruption and is not a
+signature, which [the capture subsystem contract](capture-subsystem.md) says in
+its own words. What this module adds is that the authorization has to be one a
+capture actually obtained.
+
+`pipeline_input_authorization` builds two captures of the same lecture under the
 same permission at two instants — `token_id` hashes the instant, so the tokens
-differ — and observes every cross admission refused, both wrong-kind refusals, a
-frame nothing recorded, a `MARK` frame that is in the journal and is not an input,
-and every automatic actor refused as a supplier of material. The positive control
+differ — and observes each recorder refusing the other's journal, a forged
+journal refused, every cross admission refused, both wrong-kind refusals, a frame
+nothing recorded, a `MARK` frame that is in the journal and is not an input, and
+every automatic actor refused as a supplier of material. The positive control
 records the exact chunk digests, so an authorized run names what it read.
 
 Supplied material is the user's own act: `admit_supplied_material` matches

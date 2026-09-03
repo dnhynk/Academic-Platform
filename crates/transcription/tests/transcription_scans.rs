@@ -467,7 +467,7 @@ const WHOLE_ARCHIVE: &str = "impl RawResponseArchive { #[must_use] pub const fn 
 const WHOLE_LINEAGE_EFFECT: &str = "impl LineageEffect { pub const ALL: [Self; 2] = [Self::AppendsVersion, Self::AppendsNothing]; #[must_use] pub const fn of(disposition: &DecisionAction) -> Self { match disposition { DecisionAction::Confirm | DecisionAction::Replace { .. } => Self::AppendsVersion, DecisionAction::Reject => Self::AppendsNothing, } } #[must_use] pub const fn as_str(self) -> &'static str { match self { Self::AppendsVersion => \"APPENDS_VERSION\", Self::AppendsNothing => \"APPENDS_NOTHING\", } } }";
 
 /// Pinned whole text. Regenerate deliberately, never by copying a diff.
-const WHOLE_BINDING: &str = "impl AuthorizationBinding { #[must_use] pub fn of(lecture: LectureSessionId, recovery: &JournalRecovery) -> Self { let header = recovery.header(); Self { lecture, token_id: *header.token_id(), policy_digest: *header.policy_digest(), } } #[must_use] pub const fn lecture(&self) -> LectureSessionId { self.lecture } #[must_use] pub const fn token_id(&self) -> &ContentDigest { &self.token_id } #[must_use] pub const fn policy_digest(&self) -> &ContentDigest { &self.policy_digest } fn covers(&self, recovery: &JournalRecovery) -> bool { let header = recovery.header(); header.token_id() == &self.token_id && header.policy_digest() == &self.policy_digest } }";
+const WHOLE_BINDING: &str = "impl AuthorizationBinding { pub fn of(recorder: &CaptureRecorder, recovery: &JournalRecovery) -> Result<Self, InputFault> { let header = recovery.header(); if header.token_id() != recorder.token_id() || header.policy_digest() != &recorder.policy().digest() { return Err(InputFault::JournalIsNotThisCapture); } Ok(Self { lecture: recorder.lecture_id(), token_id: *recorder.token_id(), policy_digest: recorder.policy().digest(), }) } #[must_use] pub const fn lecture(&self) -> LectureSessionId { self.lecture } #[must_use] pub const fn token_id(&self) -> &ContentDigest { &self.token_id } #[must_use] pub const fn policy_digest(&self) -> &ContentDigest { &self.policy_digest } fn covers(&self, recovery: &JournalRecovery) -> bool { let header = recovery.header(); header.token_id() == &self.token_id && header.policy_digest() == &self.policy_digest } }";
 
 /// Pinned whole text. Regenerate deliberately, never by copying a diff.
 const WHOLE_RECORD_MODEL_RUN: &str = "fn record_model_run( identity: &RunIdentity, route: &SttRoute, selection: &ProviderSelection, input_artifact_refs: InputArtifactRefs, ) -> Result<ModelRun, PipelineFault> { let (transmission, retention) = match route { SttRoute::Local { .. } => { if identity.transmission.is_some() { return Err(PipelineFault::LocalRunTransmitted); } let retention = RetentionDeclaration::new(LOCAL_ONLY_RETENTION) .map_err(|_| PipelineFault::NoTransmissionRecord)?; (Transmission::LocalOnly, retention) } SttRoute::ScopedRemote { admission } => { let transmission = identity .transmission .clone() .ok_or(PipelineFault::NoTransmissionRecord)?; if matches!(transmission, Transmission::LocalOnly) { return Err(PipelineFault::NoTransmissionRecord); } (transmission, admission.retention().clone()) } SttRoute::Blocked { .. } => return Err(PipelineFault::RouteMismatch), }; Ok(ModelRun::record( identity.id, identity.purpose.clone(), selection.provider().clone(), selection.model_version().clone(), identity.prompt_template_hash, input_artifact_refs, transmission, identity.redaction_policy_hash, identity.output_artifact, identity.started_at, identity.cost.clone(), retention, )) }";
@@ -1126,6 +1126,40 @@ fn the_binding_is_compared_against_the_journal_header() -> TestResult {
         WHOLE_BINDING,
         "impl AuthorizationBinding changed"
     );
+    // The binding is *produced* in one place, and that place takes the capture
+    // rather than the journal. A sweep over signatures alone would not say so:
+    // `U-G3` is the row that records a second entry point building its argument
+    // in its body, so the construction is counted too.
+    let authorize = code_of(&crate_root().join("src/authorize.rs"))?;
+    let producers: Vec<String> = public_signatures(&authorize)
+        .into_iter()
+        .filter(|signature| {
+            parameters_and_return(signature)
+                .is_some_and(|(_, returns)| uses_of(returns, "Self") > 0)
+                && uses_of(signature, "JournalRecovery") > 0
+        })
+        .collect();
+    assert_eq!(
+        producers,
+        vec![
+            "pub fn of(recorder: &CaptureRecorder, recovery: &JournalRecovery) -> Result<Self, InputFault> {"
+                .to_owned()
+        ],
+        "the set of functions producing a binding from a journal changed; the first          version of this module read the token out of the journal it was about to          admit from, and `ChunkJournal::replay` is public"
+    );
+    let mut constructions: BTreeMap<String, usize> = BTreeMap::new();
+    for path in workspace_sources()? {
+        let count = occurrences(&code_of(&path)?, "AuthorizationBinding {");
+        if count > 0 {
+            constructions.insert(relative(&path), count);
+        }
+    }
+    assert_eq!(
+        constructions,
+        BTreeMap::from([("crates/transcription/src/authorize.rs".to_owned(), 3)]),
+        "a binding is built somewhere other than `of`"
+    );
+
     // The comparison is called as the first statement of both admitting
     // methods, and there are exactly two of them.
     let code = drop_use_items(&code_of(&crate_root().join("src/authorize.rs"))?);

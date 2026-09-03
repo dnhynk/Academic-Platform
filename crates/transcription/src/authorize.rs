@@ -6,16 +6,29 @@
 //! no fourth, and each is a type with private fields whose one producer is a
 //! method on [`InputManifest`].
 //!
-//! **The comparison is a journal header, not a caller's word.** An audio chunk
-//! is admitted out of a [`JournalRecovery`] whose header names the capability
-//! token and the policy row the capture began under; `P2-L2`'s
-//! `academic_capture::begin` is the only thing that writes such a header, and
-//! it writes one only after `mint_capture_capability` returned a token. So a
-//! buffer that was never captured under a live section 3.7 permission is not a
-//! value this module will admit -- not because it is inspected and rejected,
-//! but because there is no journal to take it out of.
+//! **The binding comes from the capture, not from the journal.** An
+//! [`AuthorizationBinding`] is built from a [`CaptureRecorder`], which has no
+//! public constructor: holding one is proof that `academic_capture::begin` ran
+//! its five steps, and the first of those is `mint_capture_capability`. The
+//! journal's own header is then *compared* against it, and every admitted input
+//! must come out of a journal that agrees.
+//!
+//! That ordering is the whole point, and the first version of this module had
+//! it backwards: it read the token identifier out of the very
+//! [`JournalRecovery`] it was about to admit from, so the comparison could only
+//! catch a caller *mixing* two journals. `academic_capture::ChunkJournal::replay`
+//! is public and takes bytes, so a synthesized recovery could name any token and
+//! agree with itself.
+//!
+//! **What is still open is inherited rather than invented.** A caller holding a
+//! real recorder can hand this module a journal they wrote themselves under that
+//! same authorization: the frame chain detects truncation and corruption and is
+//! not a signature, which [the capture subsystem
+//! contract](../../../docs/contracts/capture-subsystem.md) says in its own
+//! words. What this module adds is that the authorization has to be one a
+//! capture actually obtained.
 
-use academic_capture::{JournalRecovery, RecordBody};
+use academic_capture::{CaptureRecorder, JournalRecovery, RecordBody};
 use academic_domain::{Actor, ContentDigest, LectureSessionId};
 
 use crate::fault::InputFault;
@@ -32,15 +45,30 @@ pub struct AuthorizationBinding {
 }
 
 impl AuthorizationBinding {
-    /// Reads the binding out of the journal the capture wrote.
-    #[must_use]
-    pub fn of(lecture: LectureSessionId, recovery: &JournalRecovery) -> Self {
+    /// Takes the binding from the capture and compares the journal against it.
+    ///
+    /// The lecture, the capability token and the policy row all come from the
+    /// [`CaptureRecorder`]; the journal supplies nothing but the values that are
+    /// checked. So a caller cannot label a journal with an authorization no
+    /// capture obtained, and cannot name a lecture the capture was not
+    /// authorized for.
+    ///
+    /// # Errors
+    ///
+    /// [`InputFault::JournalIsNotThisCapture`] when the journal's header names
+    /// another capability token or another policy row than the recorder holds.
+    pub fn of(recorder: &CaptureRecorder, recovery: &JournalRecovery) -> Result<Self, InputFault> {
         let header = recovery.header();
-        Self {
-            lecture,
-            token_id: *header.token_id(),
-            policy_digest: *header.policy_digest(),
+        if header.token_id() != recorder.token_id()
+            || header.policy_digest() != &recorder.policy().digest()
+        {
+            return Err(InputFault::JournalIsNotThisCapture);
         }
+        Ok(Self {
+            lecture: recorder.lecture_id(),
+            token_id: *recorder.token_id(),
+            policy_digest: recorder.policy().digest(),
+        })
     }
 
     /// The lecture session the capture was authorized for.
