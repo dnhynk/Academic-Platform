@@ -1,0 +1,73 @@
+[package]
+name = "academic-capture-gate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# The measured operating-system device rulesets and the probe binary that
+# observes them. Off by default: the default lane is pure safe Rust with no
+# syscall and no probe target, so `cargo test --workspace` links neither, and
+# every type in this crate is bookkeeping.
+native-capture = ["dep:libc", "dep:windows-sys"]
+
+[dependencies]
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+thiserror.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "=0.2.189", default-features = false, features = [
+  "std",
+], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, optional = true, features = [
+  "Win32_Devices_DeviceAndDriverInstallation",
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Security_Isolation",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+# `academic-consent` is a product edge above; it is repeated here because the
+# `compile_fail` cases are compiled against this crate plus its
+# dev-dependencies, so a case that names a token type has to reach it.
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+# The two boundaries a quarantined artefact must not reach. Both are dev edges:
+# what this crate owns is that a quarantined artefact hands out no bytes, and
+# the two suites below are where that is observed against the real staging
+# pipeline and the real prompt envelope rather than against a local imitation.
+academic-egress-boundary = { path = "../egress-boundary" }
+academic-policy = { path = "../policy" }
+academic-untrusted-content = { path = "../untrusted-content" }
+tempfile.workspace = true
+trybuild.workspace = true
+
+[[bin]]
+name = "academic-capture-probe"
+path = "probes/capture_probe.rs"
+required-features = ["native-capture"]
+
+# The device-ruleset backends are the only `unsafe` in this crate and they are
+# the whole reason the feature exists: a Landlock ruleset and an AppContainer
+# token are syscalls. `unsafe_is_confined_to_the_device_backends` refuses an
+# `unsafe` anywhere else, so the default lane keeps the workspace's `forbid` in
+# practice. Every other workspace Rust and Clippy deny is reproduced exactly.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"

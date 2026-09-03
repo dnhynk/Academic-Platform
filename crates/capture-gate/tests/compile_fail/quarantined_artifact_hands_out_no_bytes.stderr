@@ -1,0 +1,5 @@
+error[E0599]: no method named `bytes` found for reference `&QuarantinedArtifact` in the current scope
+ --> tests/compile_fail/quarantined_artifact_hands_out_no_bytes.rs:4:14
+  |
+4 |     artifact.bytes()
+  |              ^^^^^ method not found in `&QuarantinedArtifact`

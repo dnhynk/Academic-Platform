@@ -1,0 +1,30 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-f",
+  "task": "P2-L1",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-L1 admits no external crate. academic-capture-gate links academic-consent, academic-domain and thiserror as product edges; libc and windows-sys as optional target-specific edges behind the non-default native-capture feature; and academic-consent, academic-domain, academic-egress-boundary, academic-policy, academic-untrusted-content, tempfile and trybuild as dev edges. Every one is covered by an earlier reviewed receipt, and it adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-capture-gate is the P2-L1 daemon-side capture evaluation and the device layer under it. It is a separate package rather than a module of academic-capture-client because that crate is one of the six P2-G7 process entry points, whose whole manifest and whole product source are pinned as one fixed process-class binding; adding a library to it would have made that pin weaker rather than exact.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {},
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-capture-gate",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-capture-gate",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-capture-gate is a workspace path crate, not an external dependency. It owns the daemon-side evaluation that turns a live section 3.7 permission into a CaptureCapabilityToken and the device ruleset derived from it, the boundary that stops a running capture, the seal that re-binds every recorded chunk, and the PERMISSION_VIOLATION_RISK state that leaves a quarantined artefact with no byte accessor. academic-consent is its product edge because the one binding every path runs lives there and this crate adds no second comparison beside it; academic-domain is the other, for the identifier and digest types its audit rows carry. academic-egress-boundary and academic-untrusted-content are deliberately dev edges: what this crate owns is that a quarantined artefact hands out no bytes, and violation_risk_blocks_share_and_ai_processing observes that against the real staging pipeline and the real prompt envelope rather than against a local imitation. libc and windows-sys are optional and target-specific: a Landlock ruleset and an AppContainer token are syscalls, and with native-capture off the crate installs nothing and links neither.",
+  "network_posture": "The crate opens no socket and declares no foreign function. It reads no clock: every instant it compares is an argument. Its default link closure holds nothing that can open a socket beyond libc, which reaches it through academic-domain. It spells libc::syscall in exactly one file, crates/capture-gate/src/native/linux.rs, to make three Landlock calls; only_egress_crate_has_a_socket pins that file's allowance to that one spelling, requires every mention of the name to be a call, requires every call's first argument to be a libc::SYS_ path, and requires that path to be one of the three syscalls RAW_SYSCALL_FILES reviews for this file. The probe binary that opens a device is a [[bin]] with required-features = [\"native-capture\"] and a path outside src, no workspace crate depends on this package, and both facts are read from cargo metadata. Every fixture in its test tree is synthetic and built from committed literals; the native suite opens an operating-system device handle and drops it without reading a sample, and records nothing.",
+  "advisory_path": "Unchanged. Every external crate academic-capture-gate links was admitted by an earlier receipt and is triaged through that receipt's advisory path. libc and windows-sys arrive through the same pinned workspace versions academic-worker's native-sandbox lane admitted. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

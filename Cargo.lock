@@ -23,6 +23,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-capture-gate"
+version = "0.1.0"
+dependencies = [
+ "academic-consent",
+ "academic-domain",
+ "academic-egress-boundary",
+ "academic-policy",
+ "academic-untrusted-content",
+ "libc",
+ "tempfile",
+ "thiserror",
+ "trybuild",
+ "windows-sys",
+]
+
+[[package]]
 name = "academic-cli"
 version = "0.1.0"
 dependencies = [

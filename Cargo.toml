@@ -2,6 +2,7 @@
 members = [
   "crates/admission",
   "crates/capture-client",
+  "crates/capture-gate",
   "crates/cli",
   "crates/consent",
   "crates/contracts",

@@ -1977,6 +1977,12 @@ const workerSandboxCiCommands = [
   "cargo clippy -p academic-worker --all-targets --locked --features native-sandbox -- -D warnings",
   "cargo test -p academic-worker --all-targets --locked --features native-sandbox",
 ];
+
+/** `P2-L1`'s capture device lane, in the same feature job. */
+const captureDeviceCiCommands = [
+  "cargo clippy -p academic-capture-gate --all-targets --locked --features native-capture -- -D warnings",
+  "cargo test -p academic-capture-gate --all-targets --locked --features native-capture",
+];
 // The encrypted store lane. It is the executor of `P2-K5`'s store-database
 // rotation unit and the home of `EN01` ("kill mid store rekey; exactly one of
 // the old and new keys opens the database"), which is the byte-level half of
@@ -2171,6 +2177,14 @@ const expectedCiWorkflow = {
         {
           name: "Test the worker sandbox lane",
           run: workerSandboxCiCommands[1],
+        },
+        {
+          name: "Lint the capture device lane",
+          run: captureDeviceCiCommands[0],
+        },
+        {
+          name: "Test the capture device lane",
+          run: captureDeviceCiCommands[1],
         },
       ],
     },
