@@ -461,6 +461,23 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // of. There is deliberately no edge to `academic-worker` -- no workspace
     // crate may depend on that package at all -- and none to `academic-store`,
     // which is what makes "this crate persists nothing" a graph fact.
+    // `P2-L4`. Four product edges. `academic-transcription` is the versioned
+    // transcript every mapping names -- the document is built over
+    // `TranscriptSegment` and `EffectiveToken`, never over a raw type;
+    // `academic-capture` is the journal whose frames are the audio timeline and
+    // whose gap frames are the only evidence a `UNTRANSCRIBED_FAILURE` status
+    // may cite; `academic-model-run` is the calibration a low-confidence span is
+    // decided by, because a provider's raw number has no ordering; and
+    // `academic-domain` carries `P2-C5`'s deterministic engine signature. There
+    // is deliberately no `academic-store` edge, which is what makes "this crate
+    // persists nothing and adds no migration" a graph fact, and no
+    // `academic-egress-boundary` edge, because nothing here transmits.
+    "academic-lecture-document": [
+      "academic-capture",
+      "academic-domain",
+      "academic-model-run",
+      "academic-transcription",
+    ],
     "academic-transcription": [
       "academic-capture",
       "academic-domain",
@@ -584,6 +601,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `academic-consent` off it is what makes "this crate adds no second
     // section 3.7 comparison" the same. `academic-domain` is declared twice for
     // the `trybuild` reason `academic-scenario` gives above.
+    // `P2-L4`'s acceptance suite drives a real `academic_capture::begin` and a
+    // real `P2-L3` pipeline run, so the journal its gap check reads is the file
+    // the real capture surface wrote. There is no `academic-policy` and no
+    // `academic-egress-boundary` edge of either kind, which is what makes "this
+    // crate mints no grant, holds no broker and opens no egress" a compile error
+    // rather than a source scan. `academic-domain` is declared twice for the
+    // `trybuild` reason `academic-scenario` gives above.
+    "academic-lecture-document": ["academic-consent", "academic-domain"],
     "academic-transcription": [
       "academic-consent",
       "academic-domain",
@@ -2279,6 +2304,10 @@ const SOCKET_CAPABLE_CLOSURES = {
   // `P2-L3`. `libc` reaches it through `academic-policy`, which arrives with
   // `academic-model-run` and `academic-egress-boundary`. This crate names no
   // socket construct of its own and implements no `OutboundTransport`.
+  // `P2-L4`. `libc` reaches it through `academic-policy`, which arrives with
+  // `academic-model-run`. This crate names no socket construct and implements
+  // no transport.
+  "academic-lecture-document": ["libc"],
   "academic-transcription": ["libc"],
   "academic-untrusted-content": ["libc"],
   // `P2-M1`. `libc` reaches it through `academic-policy`'s bundled SQLite, and
@@ -2842,6 +2871,7 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
   const IMPLEMENTED_ENGINES = new Map([
     ["GPA", "academic-record"],
     ["CREDIT_ACCOUNTING", "academic-record"],
+    ["TRANSCRIPT_COVERAGE", "academic-lecture-document"],
   ]);
   for (const engine of registry.engines) {
     const expected = IMPLEMENTED_ENGINES.has(engine.name) ? "IMPLEMENTED" : "PLANNED";
@@ -2865,11 +2895,22 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     recordSources.length >= 12,
     `the record engine walk found only ${recordSources.length} files; it stopped short`,
   );
+  // `P2-L4` implemented `TRANSCRIPT_COVERAGE` in `academic-lecture-document`,
+  // so that crate's sources are engine sources too. Same shape as the record
+  // half: a walk with a floor rather than a fixed list.
+  const lectureSources = (await rustSources(join("crates", "lecture-document", "src"))).map(
+    ([path]) => path,
+  );
+  assert.ok(
+    lectureSources.length >= 10,
+    `the coverage engine walk found only ${lectureSources.length} files; it stopped short`,
+  );
   const scanned = [
     join("crates", "domain", "src", "engines.rs"),
     join("crates", "domain", "src", "engines", "generated.rs"),
     join("crates", "domain", "tests", "engine_harness.rs"),
     ...recordSources,
+    ...lectureSources,
   ];
 
   // API spellings, not prose: a comment that says "no clock" must not trip the
@@ -2891,7 +2932,15 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     ["network", /\bstd::net\b/u],
     ["network", /\btokio::net\b/u],
     ["network", /\breqwest\b/u],
-    ["model", /\bModelRun\b/u],
+    // `Actor::ModelRun` is `academic-domain`'s closed actor enum, and a match
+    // arm naming it is a *refusal* of an automatic actor -- the opposite of a
+    // model call. `P2-L4` refuses a model-authored coverage exclusion with an
+    // exhaustive match over that enum, so the bare-name rule read three
+    // refusals as three model calls. The lookbehind narrows the rule to what
+    // this scan's own comment already says it is -- an API spelling, not a
+    // name -- and the control below pins both directions so the narrowing
+    // cannot widen into a hole.
+    ["model", /(?<!Actor::)\bModelRun\b/u],
     ["model", /\bModelProvider\b/u],
     ["model", /\bInferenceRun\b/u],
   ];
@@ -2912,6 +2961,14 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     }[capability];
     assert.match(sample, pattern, `the ${capability} rule matches nothing`);
   }
+
+  // The one narrowing this scan carries, pinned in both directions: a model
+  // call still trips and the actor-enum variant that refuses one does not.
+  const modelRule = forbidden.find(([, pattern]) => String(pattern).includes("ModelRun"));
+  assert.ok(modelRule, "the model rule is gone");
+  assert.match("ModelRun::record();", modelRule[1]);
+  assert.match("let run: ModelRun = value;", modelRule[1]);
+  assert.doesNotMatch("Actor::ModelRun { .. } => refuse(),", modelRule[1]);
 
   // The available half. Names only: versions are pinned by the lockfile gate,
   // and what matters here is that no new capability entered the graph.
@@ -3067,6 +3124,95 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     .map((pkg) => pkg.name)
     .toSorted();
   assert.deepEqual(recordGetrandomOwners, ["uuid"]);
+
+  // The same two halves for the crate that implements `TRANSCRIPT_COVERAGE`.
+  // Its closure is wider again because the coverage validator reads a `P2-L2`
+  // capture journal and a `P2-M1` calibration, and `academic-policy` arrives
+  // with them carrying the bundled SQLite. None of it is a clock, a socket, or
+  // a model, and `getrandom` still enters through `uuid` alone.
+  const lectureRun = spawnSync(
+    "cargo",
+    [
+      "tree",
+      "--locked",
+      "--offline",
+      "--edges",
+      "normal",
+      "--target",
+      "all",
+      "-p",
+      "academic-lecture-document",
+    ],
+    { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
+  );
+  assert.equal(lectureRun.status, 0, `locked offline cargo tree failed: ${lectureRun.stderr}`);
+  const lectureCrates = new Set(
+    lectureRun.stdout
+      .replaceAll(/\([^)]*\)/gu, "")
+      .split("\n")
+      .map((line) => line.replace(/^[^A-Za-z]*/u, "").split(" ")[0].trim())
+      .filter((name) => name.length > 0),
+  );
+  assert.deepEqual(
+    [...lectureCrates].toSorted(),
+    [
+      "academic-capture",
+      "academic-consent",
+      "academic-domain",
+      "academic-egress-boundary",
+      "academic-lecture-document",
+      "academic-model-run",
+      "academic-policy",
+      "academic-proposal",
+      "academic-transcription",
+      "academic-untrusted-content",
+      "bitflags",
+      "block-buffer",
+      "cfg-if",
+      "cpufeatures",
+      "crypto-common",
+      "digest",
+      "fallible-iterator",
+      "fallible-streaming-iterator",
+      "generic-array",
+      "getrandom",
+      "hex",
+      "hmac",
+      "libc",
+      "libsqlite3-sys",
+      "proc-macro2",
+      "quote",
+      "r-efi",
+      "rusqlite",
+      "serde",
+      "serde_core",
+      "serde_derive",
+      "sha2",
+      "smallvec",
+      "subtle",
+      "syn",
+      "thiserror",
+      "thiserror-impl",
+      "typenum",
+      "unicode-ident",
+      "uuid",
+    ],
+    "the coverage engine crate's product closure changed; review the new capability",
+  );
+  // Two owners here rather than one, and the second is recorded rather than
+  // filtered out. `rusqlite` declares `getrandom` for SQLite's own randomness
+  // and arrives through `academic-policy`, which every edge to the transcript
+  // pulls in. That is a fact about the graph, not about this engine: the "used"
+  // half above scans every source file of this crate for an RNG spelling and
+  // finds none, and the engine's determinism rests on the frozen-input
+  // signature and that scan rather than on a database driver being absent from
+  // a transitive closure.
+  const lectureGetrandomOwners = metadata.packages
+    .filter((pkg) => lectureCrates.has(pkg.name))
+    .filter((pkg) => pkg.dependencies.some((dependency) => dependency.name === "getrandom"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(lectureGetrandomOwners, ["rusqlite", "uuid"]);
 });
 
 
@@ -4009,6 +4155,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     transcriptionReceiptText,
     correlationReceiptText,
     centerReceiptText,
+    lectureReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4038,6 +4185,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-l3.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r3.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-x7.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-l4.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -4067,6 +4215,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const transcriptionReceipt = JSON.parse(transcriptionReceiptText);
   const correlationReceipt = JSON.parse(correlationReceiptText);
   const centerReceipt = JSON.parse(centerReceiptText);
+  const lectureReceipt = JSON.parse(lectureReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -5375,6 +5524,62 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-X7 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-L4` adds one workspace path package, `academic-lecture-document`, and
+  // admits no external crate: its four product edges and its eight dev edges are
+  // all in this lock through earlier receipts. No PDF engine, layout engine,
+  // font or image decoder is linked, and the receipt records why a render
+  // measurement is a value the caller supplies.
+  assert.equal(lectureReceipt.task, "P2-L4");
+  const lectureAdmitted = new Set(
+    lectureReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const lecturePathPackages = new Set(
+    lectureReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(lectureAdmitted.size, 0, "P2-L4 must admit no external crate");
+  assert.deepEqual([...lecturePathPackages], ["academic-lecture-document@0.1.0"]);
+  assert.deepEqual(lectureReceipt.summary.npm_additions, []);
+  assert.equal(lectureReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(lectureReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-domain",
+    "academic-model-run",
+    "academic-transcription",
+  ]);
+  assert.deepEqual(lectureReceipt.vendored_data, []);
+  for (const claimed of [...lectureAdmitted, ...lecturePathPackages]) {
+    assert.equal(
+      analysisAdmitted.has(claimed) ||
+        analysisPathPackages.has(claimed) ||
+        curriculumAdmitted.has(claimed) ||
+        curriculumPathPackages.has(claimed) ||
+        ingestionAdmitted.has(claimed) ||
+        ingestionPathPackages.has(claimed) ||
+        captureSubsystemAdmitted.has(claimed) ||
+        captureSubsystemPathPackages.has(claimed) ||
+        requirementAdmitted.has(claimed) ||
+        requirementPathPackages.has(claimed) ||
+        transcriptionAdmitted.has(claimed) ||
+        transcriptionPathPackages.has(claimed) ||
+        correlationAdmitted.has(claimed) ||
+        correlationPathPackages.has(claimed) ||
+        centerAdmitted.has(claimed) ||
+        centerPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const lectureTuples = lockTuples.filter(
+    ([name, version]) =>
+      lectureAdmitted.has(`${name}@${version}`) ||
+      lecturePathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    lectureTuples.length,
+    lectureAdmitted.size + lecturePathPackages.size,
+    "a P2-L4 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -5428,7 +5633,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !correlationAdmitted.has(`${name}@${version}`) &&
       !correlationPathPackages.has(`${name}@${version}`) &&
       !centerAdmitted.has(`${name}@${version}`) &&
-      !centerPathPackages.has(`${name}@${version}`),
+      !centerPathPackages.has(`${name}@${version}`) &&
+      !lectureAdmitted.has(`${name}@${version}`) &&
+      !lecturePathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -5465,7 +5672,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       requirementTuples.length +
       transcriptionTuples.length +
       correlationTuples.length +
-      centerTuples.length,
+      centerTuples.length +
+      lectureTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -5796,9 +6004,25 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    // `P2-L4`. The coverage suite drives a real capture, so it writes a real
+    // journal into a temporary directory. `trybuild` is on the Phase 1 receipt
+    // rather than this one, so only `tempfile` gains an owner here.
+    const l4LectureDocumentUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-lecture-document",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : [];
     const expectedUses = [
       ...admission.uses,
       ...l3TranscriptionUse,
+      ...l4LectureDocumentUse,
       ...r1RepositoryUse,
       ...l2CaptureUse,
       ...g4SandboxUse,

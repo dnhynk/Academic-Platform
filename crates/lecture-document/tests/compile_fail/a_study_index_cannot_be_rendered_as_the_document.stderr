@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+ --> tests/compile_fail/a_study_index_cannot_be_rendered_as_the_document.rs:9:25
+  |
+9 |     PdfArtifact::render(index, report, qa, ContentDigest::sha256(b"pdf"))
+  |     ------------------- ^^^^^ expected `&LectureDocument`, found `&StudyIndex`
+  |     |
+  |     arguments to this function are incorrect
+  |
+  = note: expected reference `&LectureDocument`
+             found reference `&StudyIndex`
+note: associated function defined here
+ --> src/pdf.rs
+  |
+  |     pub fn render(
+  |            ^^^^^^

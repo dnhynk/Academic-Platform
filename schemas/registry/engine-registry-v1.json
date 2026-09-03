@@ -122,7 +122,7 @@
         "invariant": "모든 segment가 정확히 한 처리 상태"
       },
       "high_impact_path": null,
-      "lifecycle": "PLANNED",
+      "lifecycle": "IMPLEMENTED",
       "harness_dir": "transcript_coverage"
     },
     {

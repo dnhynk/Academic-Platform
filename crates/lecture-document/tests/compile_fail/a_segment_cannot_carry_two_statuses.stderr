@@ -1,0 +1,7 @@
+error[E0559]: variant `SegmentStatus::Mapped` has no field named `evidence`
+ --> tests/compile_fail/a_segment_cannot_carry_two_statuses.rs:9:9
+  |
+9 |         evidence: (),
+  |         ^^^^^^^^ `SegmentStatus::Mapped` does not have this field
+  |
+  = note: all struct fields are already assigned

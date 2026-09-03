@@ -1,0 +1,38 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-l",
+  "task": "P2-L4",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-L4 admits no external crate. academic-lecture-document links academic-capture, academic-domain, academic-model-run, academic-transcription and thiserror as product edges and academic-consent, academic-domain, tempfile and trybuild as dev edges. Every one is covered by an earlier reviewed receipt, and it adds one workspace path package. No PDF engine, layout engine, font, image decoder, HTTP client or TLS stack is linked at any feature setting: this crate renders nothing, and a render QA run reads measurements a renderer took rather than taking them.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-lecture-document is the P2-L4 lossless lecture document and coverage validator: section 12.5's machine-readable LectureDocument with its source mappings and its nine-transform allow-list, section 12.6's five deterministic checks run as P2-C5's TRANSCRIPT_COVERAGE engine, the render QA over the four defects that section names, the PDF that is INCOMPLETE unless a witness says otherwise, and the StudyIndex that carries a disclosure it cannot drop. It is a separate package from academic-transcription because that crate owns the transcript and this one is layered over it: no file here names RawToken, RawSegment or RawTranscript, which is P2-L3's workspace scope rule left unweakened.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-L4 adds no pnpm workspace package. Its whole surface is Rust."
+  },
+  "direct_workspace_dependencies": {
+    "academic-capture": "P2-L2's chunk journal. The audio timeline a gap check measures is that journal's audio frames, and a UNTRANSCRIBED_FAILURE status may cite only a Gap frame the journal actually holds, so TranscriptionFailure::citing_journal_gap takes a frame sequence and reads the cause out of the frame rather than from the caller.",
+    "academic-domain": "ContentDigest for every artifact digest, LectureSessionId for the session a document belongs to, Actor for the one class that may declare a span absent, and academic_domain::engines for P2-C5's deterministic engine signature, proof-tree node shape, frozen-input encoding and canonical byte comparison, which this crate reuses rather than restating.",
+    "academic-model-run": "P2-M1's CalibrationRegistry. A provider's raw confidence has no readable units and no ordering, so a low-confidence review span is decided by interpreting a RawScore through a named dataset and comparing the resulting permille against versioned configuration -- never by comparing two raw numbers.",
+    "academic-transcription": "P2-L3's TranscriptLineage read at one version. Every source mapping names a TranscriptSegment and the tokens it preserves are EffectiveTokens, so the document is layered over the versioned view; the InputManifest is where the authorized captures a capture check accounts for come from."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-lecture-document",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-lecture-document",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-lecture-document is a workspace path crate, not an external dependency. It owns section 12.5's document and section 12.6's validator and holds no renderer: RenderQa::inspect takes page, node and image measurements as values, every one in this crate's test tree is a committed literal, and no font, layout engine or image decoder is in its graph. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-policy under academic-model-run. It has no edge of any kind to academic-worker, because no workspace crate may depend on that package at all, and none to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-projections, academic-recovery or academic-retention: it persists nothing and adds no store migration -- 0013 and 0016 stay unclaimed and 0018 is unwritten. academic-consent is a dev edge only and there is no academic-policy or academic-egress-boundary edge of either kind, so a product file here cannot name mint_capture_capability, PermissionBroker, CapabilityToken or EgressProxy -- an undeclared crate is a compile error, not a lint -- while the acceptance suite still drives a real capture through academic_capture::begin and a real transcription through academic_transcription::run.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, reads no file, spawns no process, and runs no build script; no_wall_clock_socket_or_file_reaches_this_crate refuses each of those spellings in every product source file under the package. It reads no clock: the one instant it needs, the freshness of a calibration dataset, is an argument the caller supplies, exactly as academic-capture and academic-consent take theirs. No recording is made, no PDF is produced, and no lecture text leaves the process: every fixture in the test tree is a committed literal built in process. This task opens and closes no section 38 gate; the two thresholds section 12.6 leaves open are versioned configuration with recorded defaults.",
+  "advisory_path": "Unchanged. Every external crate academic-lecture-document links was admitted by an earlier receipt and is triaged through that receipt's advisory path. thiserror, tempfile and trybuild arrive through the same pinned workspace versions Phase 1 admitted. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

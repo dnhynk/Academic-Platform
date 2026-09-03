@@ -63,19 +63,34 @@ fn harness_corpus_matches_a_fresh_render() -> TestResult {
         );
     }
 
-    // And nothing extra hides under either directory. `oracle.expected` is the
-    // one file below the GPA harness that the builder does not render, because
-    // `tools/gpa-oracle.mjs` renders it — deliberately, so the expected GPA
-    // values do not come from this crate.
+    // And nothing extra hides under **either of this crate's two directories**.
+    // `oracle.expected` is the one file below the GPA harness that the builder
+    // does not render, because `tools/gpa-oracle.mjs` renders it — deliberately,
+    // so the expected GPA values do not come from this crate.
+    //
+    // The walk is scoped to the two directories this builder owns rather than
+    // to the whole harness root, which is what the sentence above always meant.
+    // `P2-L4` flipped `TRANSCRIPT_COVERAGE` and rendered its corpus from
+    // `academic-lecture-document`, and a root-wide walk here would have failed
+    // on files this crate cannot render and has no business asserting about.
+    // The engine-wide "nothing else sits under the root" rule belongs to the
+    // audit in `academic-domain`, which knows every registered engine's
+    // directory; this half knows two.
     let rendered_paths: BTreeSet<String> = rendered.iter().map(|file| file.path.clone()).collect();
     let allowed_outside = format!("{}/gpa/oracle.expected", harness::HARNESS_ROOT);
     let mut walked = Vec::new();
-    walk(&root.join(harness::HARNESS_ROOT), &root, &mut walked)?;
-    assert!(!walked.is_empty(), "the harness root walk returned nothing");
+    for directory in [harness::GPA_HARNESS_DIR, harness::CREDIT_HARNESS_DIR] {
+        walk(
+            &root.join(harness::HARNESS_ROOT).join(directory),
+            &root,
+            &mut walked,
+        )?;
+    }
+    assert!(!walked.is_empty(), "the harness directory walk returned nothing");
     for path in walked {
         assert!(
             rendered_paths.contains(&path) || path == allowed_outside,
-            "{path} is under the harness root and the builder does not render it"
+            "{path} is under this crate's harness directories and the builder does not render it"
         );
     }
     Ok(())

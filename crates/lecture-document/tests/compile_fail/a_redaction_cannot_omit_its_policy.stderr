@@ -1,0 +1,5 @@
+error[E0063]: missing field `policy` in initializer of `SegmentStatus`
+ --> tests/compile_fail/a_redaction_cannot_omit_its_policy.rs:7:13
+  |
+7 |     let _ = SegmentStatus::RedactedWithPolicy {};
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy`

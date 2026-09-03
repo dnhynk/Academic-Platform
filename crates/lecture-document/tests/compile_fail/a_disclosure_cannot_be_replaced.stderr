@@ -1,0 +1,11 @@
+error[E0599]: no method named `set_disclosure` found for mutable reference `&mut StudyIndex` in the current scope
+ --> tests/compile_fail/a_disclosure_cannot_be_replaced.rs:7:11
+  |
+7 |     index.set_disclosure("this is the lecture document");
+  |           ^^^^^^^^^^^^^^
+  |
+help: there is a method `disclosure` with a similar name, but with different arguments
+ --> src/study_index.rs
+  |
+  |     pub const fn disclosure(&self) -> &'static str {
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

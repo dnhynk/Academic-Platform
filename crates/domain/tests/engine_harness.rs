@@ -450,7 +450,7 @@ fn engine_registry_is_complete() -> TestResult {
         .collect();
     assert_eq!(
         implemented,
-        vec!["GPA", "CREDIT_ACCOUNTING"],
+        vec!["GPA", "CREDIT_ACCOUNTING", "TRANSCRIPT_COVERAGE"],
         "an engine's lifecycle changed; its harness artifacts and the \
          `engine_source_contains_no_clock_rng_network_or_model` scan must move with it"
     );
