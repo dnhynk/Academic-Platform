@@ -366,6 +366,24 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository",
       "academic-untrusted-content",
     ],
+    // `P2-R3`'s cross-artifact correlation and drift lanes. Five product edges
+    // and each is a boundary it reuses rather than rebuilds: `P2-R1`'s frozen
+    // snapshot, which every document path and every incident is checked
+    // against; `P2-R2`'s findings, which are the only route from repository
+    // bytes to an implementation-lane relation; `academic-ledger`, which
+    // already holds section 30.3's six authority rows and their rank tables, so
+    // this crate adds the two rows' qualifiers rather than a second resolver;
+    // and `academic-domain` for the authority vocabulary those tables are
+    // indexed by. The edges it does not have are the point: no `academic-store`
+    // -- it persists nothing and adds no migration -- and no `academic-worker`
+    // and no `academic-egress-boundary`, so nothing in its closure can launch a
+    // process or stage a payload.
+    "academic-repository-correlation": [
+      "academic-domain",
+      "academic-ledger",
+      "academic-repository",
+      "academic-repository-analysis",
+    ],
     "academic-repository-analyzer": ["academic-policy"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
     // rehearsal receipt. It sits above the key schedule and below the
@@ -548,6 +566,16 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-policy",
     ],
     "academic-untrusted-content": ["academic-policy"],
+    // `P2-R3`'s acceptance suite runs `P2-R1`'s capture and `P2-R2`'s ladder
+    // over synthetic corpora rather than fabricating a finding, so it needs the
+    // calibration registry an `OBSERVED` rung requires, the digest a snapshot
+    // request carries, and the sealed index `AnalysisInput::of` checks against.
+    // All three are test edges; the product edges above hold none of them.
+    "academic-repository-correlation": [
+      "academic-model-run",
+      "academic-policy",
+      "academic-untrusted-content",
+    ],
   });
 
   assert.deepEqual(
@@ -2190,6 +2218,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens
   // nothing at all, and takes the bytes it analyzes as an argument.
   "academic-repository-analysis": ["libc"],
+  // `P2-R3`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `P2-R1`. The crate spells no socket construct, which is why its
+  // `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens nothing at
+  // all, and every artifact that is not a `P2-R2` finding arrives as an
+  // argument naming subject identifiers.
+  "academic-repository-correlation": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-requirement": ["libc"],
   "academic-retention": ["libc"],
@@ -3942,6 +3976,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     analysisReceiptText,
     requirementReceiptText,
     transcriptionReceiptText,
+    correlationReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3969,6 +4004,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-r2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l3.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-r3.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3996,6 +4032,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const analysisReceipt = JSON.parse(analysisReceiptText);
   const requirementReceipt = JSON.parse(requirementReceiptText);
   const transcriptionReceipt = JSON.parse(transcriptionReceiptText);
+  const correlationReceipt = JSON.parse(correlationReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -4936,6 +4973,62 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-R2 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-R3` adds one workspace path package, `academic-repository-correlation`,
+  // and admits no external crate: its product edges are `academic-domain`,
+  // `academic-ledger`, `academic-repository`, `academic-repository-analysis`
+  // and `thiserror`, and its dev edges are `academic-model-run`,
+  // `academic-policy` and `academic-untrusted-content`, all already in this
+  // lock through earlier receipts. The `academic-ledger` edge is the one that
+  // needs a reason and the receipt carries it: section 30.3's six authority
+  // rows are already implemented there, and this task adds the qualifier those
+  // rows state in words rather than a second rank table.
+  assert.equal(correlationReceipt.task, "P2-R3");
+  const correlationAdmitted = new Set(
+    correlationReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const correlationPathPackages = new Set(
+    correlationReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(correlationAdmitted.size, 0, "P2-R3 must admit no external crate");
+  assert.deepEqual([...correlationPathPackages], ["academic-repository-correlation@0.1.0"]);
+  assert.deepEqual(correlationReceipt.summary.npm_additions, []);
+  assert.equal(correlationReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(correlationReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(correlationReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof correlationReceipt.no_second_resolver_note, "string");
+  assert.deepEqual(Object.keys(correlationReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-ledger",
+    "academic-repository",
+    "academic-repository-analysis",
+  ]);
+  assert.deepEqual(Object.keys(correlationReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-model-run",
+    "academic-policy",
+    "academic-untrusted-content",
+  ]);
+  for (const claimed of [...correlationAdmitted, ...correlationPathPackages]) {
+    assert.equal(
+      analysisPathPackages.has(claimed) ||
+        repositoryPathPackages.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        modelRunPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const correlationTuples = lockTuples.filter(
+    ([name, version]) =>
+      correlationAdmitted.has(`${name}@${version}`) ||
+      correlationPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    correlationTuples.length,
+    correlationAdmitted.size + correlationPathPackages.size,
+    "a P2-R3 admitted package is missing from Cargo.lock",
+  );
+
   // `P2-L2` adds one workspace path package, `academic-capture`, and admits no
   // external crate: its product edges are `academic-consent`, `academic-domain`
   // and `thiserror`, and its one dev edge is `tempfile`, all already in this
@@ -5247,7 +5340,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !requirementAdmitted.has(`${name}@${version}`) &&
       !requirementPathPackages.has(`${name}@${version}`) &&
       !transcriptionAdmitted.has(`${name}@${version}`) &&
-      !transcriptionPathPackages.has(`${name}@${version}`),
+      !transcriptionPathPackages.has(`${name}@${version}`) &&
+      !correlationAdmitted.has(`${name}@${version}`) &&
+      !correlationPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -5282,7 +5377,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       curriculumTuples.length +
       analysisTuples.length +
       requirementTuples.length +
-      transcriptionTuples.length,
+      transcriptionTuples.length +
+      correlationTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
