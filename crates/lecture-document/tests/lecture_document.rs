@@ -85,9 +85,20 @@ fn coverage_determinism() -> TestResult {
         right.canonical_bytes(TRANSCRIPT_COVERAGE_ENGINE_ID, hash, version, &inputs),
     );
 
-    // The control: a different configuration is a different answer. Without it
-    // the equality above would pass on an encoding that ignored the thresholds.
-    let other_config = academic_lecture_document::CoverageConfig::new(2, 1, 500)?;
+    // The control: a different configuration is a different answer.
+    //
+    // It varies **only** the confidence permille, which no check in the report
+    // reads -- it belongs to the review queue. The first version of this control
+    // varied the gap threshold too, and an injection that removed the whole
+    // configuration from the encoding still passed it: the two reports differed
+    // by their *gap findings*, so the assertion was true for a reason its own
+    // comment did not claim. Varying a field that changes no measurement is what
+    // makes this an assertion about the encoding.
+    let other_config = academic_lecture_document::CoverageConfig::new(
+        COVERAGE_CONFIG_V1.version(),
+        COVERAGE_CONFIG_V1.gap_threshold_nanos(),
+        500,
+    )?;
     let dispositions = DispositionLedger::new();
     let exclusions = CaptureExclusionLedger::new();
     let under_other = academic_lecture_document::CoverageValidator::validate(
@@ -107,6 +118,13 @@ fn coverage_determinism() -> TestResult {
         under_other.canonical_bytes(),
         "the report bytes do not depend on the configuration they were measured under"
     );
+    assert_eq!(
+        under_other.segment_coverage(),
+        first.segment_coverage(),
+        "the control's configuration changed a measurement, so it is not a control          over the encoding"
+    );
+    assert_eq!(under_other.gaps(), first.gaps());
+    assert_eq!(under_other.unmapped_count(), first.unmapped_count());
 
     // And a rule-set hash that is not this engine's published one is refused
     // rather than evaluated under.
@@ -809,6 +827,23 @@ fn segment_status_exhaustive() -> TestResult {
         if report.completeness_witness().is_some() {
             assert_eq!(report.unmapped_count(), 0);
             witnesses += 1;
+        }
+        // The two halves of section 12.6's completeness sentence, and how they
+        // are related. An injection that deleted the unmapped condition from
+        // `completeness_witness` passed every row of this suite unchanged, and
+        // the measurement explains why: an unmapped segment is in the coverage
+        // denominator and not in its numerator, so whole coverage already
+        // implies an empty unmapped list. The implication is asserted here
+        // rather than assumed, because it is a property of the *denominator
+        // rule* -- which is configuration-shaped -- and not of the two
+        // sentences. The unmapped condition stays in the witness because it is
+        // the specification's own, and the contract page records that it is not
+        // independently observable today.
+        if report.unmapped_count() > 0 {
+            assert!(
+                !report.segment_coverage().is_whole(),
+                "an unmapped segment left the coverage ratio whole at {pattern}"
+            );
         }
         evaluated += 1;
     }
