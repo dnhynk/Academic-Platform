@@ -129,6 +129,103 @@ ARM is the next-highest Rust default at 43.0%; every Linux, Linux ARM, and macOS
 Rust job is at or below 16.3%. The table has no `rust-store-*` row because that
 group did not exist on this run.
 
+## Latest run
+
+`P2-L3` adds one workspace member, `academic-transcription`, and it adds a
+default-workspace test: two acceptance binaries and a `trybuild` harness over
+seven programs, all compiled and run by the
+`cargo test --workspace --exclude academic-store --locked` step the five
+`rust-default-*` jobs already have. Workspace membership and a default-workspace
+test are two of the four triggers the refresh rule names. It adds no pnpm
+package, no feature lane, no migration, no system package and no change to
+`.github/workflows/ci.yml`, so **the job count is unchanged at 22**.
+
+Run
+[33776759904](https://github.com/dnhynk/Academic-Platform/actions/runs/33776759904)
+completed **22/22 on `cb83c60`**, first attempt, no rerun. That head is the
+branch as it stood before this section was written; the commit carrying this
+table is the only thing on top of it, which is the arrangement
+[the `P2-U6` run](#the-p2-u6-run) below records.
+
+The branch was cut from `main` at `750c401` and `main` had not moved when it was
+pushed, so it was never rebased: there is one head, one run, and no
+concurrency-group cancellation to separate from a real reading.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:08 | 5:00 | 2.7% |
+| `rust-default-ubuntu-latest` | 5:05 | 30:00 | 16.9% |
+| `rust-default-ubuntu-24.04-arm` | 4:35 | 30:00 | 15.3% |
+| `rust-default-windows-latest` | 14:12 | 30:00 | 47.3% |
+| `rust-default-windows-11-arm` | 11:50 | 30:00 | 39.4% |
+| `rust-default-macos-latest` | 7:26 | 30:00 | 24.8% |
+| `rust-store-ubuntu-latest` | 1:30 | 30:00 | 5.0% |
+| `rust-store-ubuntu-24.04-arm` | 1:10 | 30:00 | 3.9% |
+| `rust-store-windows-latest` | 5:29 | 30:00 | 18.3% |
+| `rust-store-windows-11-arm` | 5:53 | 30:00 | 19.6% |
+| `rust-store-macos-latest` | 1:28 | 30:00 | 4.9% |
+| `rust-features-ubuntu-latest` | 4:05 | 30:00 | 13.6% |
+| `rust-features-ubuntu-24.04-arm` | 3:13 | 30:00 | 10.7% |
+| `rust-features-windows-latest` | 6:18 | 30:00 | 21.0% |
+| `rust-features-windows-11-arm` | 6:13 | 30:00 | 20.7% |
+| `rust-features-macos-latest` | 3:29 | 30:00 | 11.6% |
+| `phase1-exit-ubuntu-latest` | 4:19 | 45:00 | 9.6% |
+| `phase1-exit-windows-latest` | 8:30 | 45:00 | 18.9% |
+| `encrypted-store-lane-ubuntu-latest` | 3:23 | 45:00 | 7.5% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:07 | 45:00 | 11.4% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:50 | 45:00 | 15.2% |
+| `pnpm-contracts` | 1:26 | 15:00 | 9.6% |
+
+### The default half moved and the store half did not
+
+This is the first post-split run on a tree with a **new workspace member**, and
+the two halves of the split answer differently. That is the reading worth
+keeping, not the utilization.
+
+| Label | split's three readings | this run | pre-split span |
+|---|---|---:|---|
+| `rust-default-windows-latest` | 11:20, 12:43, 12:25 | **14:12** | 12:16–20:18 |
+| `rust-store-windows-latest` | 5:33, 5:13, 5:43 | 5:29 | — |
+| `rust-default-windows-11-arm` | 10:01, 11:06, 10:59 | **11:50** | 13:31 median |
+| `rust-store-windows-11-arm` | 6:32, 5:06, 5:40 | 5:53 | — |
+
+**`rust-default-windows-latest` at 14:12 is the first post-split reading of that
+label that is not below the 12:16 minimum of the 53 pre-split readings.** The
+split section says all three of its readings sat under that minimum; this one
+does not, and the difference between the two trees is one workspace member with
+three test binaries in the default lane. So the honest statement is narrower than
+either "the split absorbed it" or "the split is spent": the default half's span
+is now **11:20–14:12** over four readings, it has grown into the bottom of the
+pre-split span, and it is still 9:48 below the 24:00 line.
+
+**Both store readings land inside the span the split established** — 5:29 in
+5:13–5:43, and 5:53 in 5:06–6:32 — which is what the split was built to do. The
+new member is not `academic-store`, so `--workspace --exclude academic-store`
+routes all of its cost to the remainder job with no edit to either command, and
+the numbers show exactly that rather than only asserting it.
+
+Sizing is unchanged: headroom for these labels is taken off the pre-split worst
+case of 67.7%, not off any reading here, and the 80% review trigger for a 30:00
+job is 24:00. Every Linux, Linux ARM and macOS Rust job on this run is at or
+below 24.8%, every `rust-store-*` job at or below 19.6%, and no job is within 30
+points of its trigger.
+
+**What the new member costs, and where.** One crate joins
+`cargo clippy --workspace --all-targets --locked`; three test binaries — 16
+acceptance rows, 12 source-shape rows, and one `trybuild` harness — join the
+workspace test in the same job. The harness is the expensive one of the three
+because it compiles seven programs and compares seven committed diagnostics, and
+it is why the default lane moved rather than the store or feature lane.
+`encrypted-store-lane-ubuntu-latest` is **unmoved at 7.5%**, against 7.6% on the
+split's run: this task adds no migration, so `STORE_MIGRATION_SQL` and the
+admission fingerprint that lane asserts against are unchanged.
+
+**No `CreateProcessW` launch failure occurred.** The signature this page records
+at 8 of 56 observations on `rust-features-windows-latest` did not appear, and
+that job was green on its first attempt at 21.0%. One attempt against a measured
+14.3% rate falsifies nothing; it is noted so the next reader does not count it as
+evidence about that signature.
+
 ## The store split
 
 ### What changed
@@ -261,7 +358,7 @@ and is now easier to apply, because a group whose worst reading crosses 24:00
 names the package to move next, and the guard in `verify-contracts.mjs` makes
 moving one a two-line workflow edit that cannot silently drop it.
 
-## Latest run
+## The store-split run
 
 This task changes `.github/workflows/ci.yml`, which the refresh rule names as a
 trigger, and changes nothing else a test reads: no workspace member, no test, no
@@ -705,7 +802,7 @@ passed, taking the job to green. The commit under it adds no line to
 `academic-worker`, and the identical step list passed on
 `rust-features-windows-11-arm` in the same attempt.
 
-## Latest run
+## The `T161` run
 
 `T161` adds no workspace member, no pnpm package, no feature lane, no migration
 and no system package. What it adds is **three named acceptance rows and two
