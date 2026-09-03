@@ -118,4 +118,7 @@ pub enum ConsentError {
     /// An academic year outside the representable range.
     #[error("term year is out of range")]
     TermYearOutOfRange,
+    /// A permission sequence below the first one.
+    #[error("permission sequence is below one")]
+    PermissionSequenceOutOfRange,
 }

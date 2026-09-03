@@ -432,6 +432,9 @@ impl PermissionRecord {
         verified_at: u64,
         verification_source_digest: ContentDigest,
     ) -> Result<Self, ConsentError> {
+        if permission_seq < 1 {
+            return Err(ConsentError::PermissionSequenceOutOfRange);
+        }
         if let Disposition::Granted(grant) = &disposition {
             grant.check_against(scope.valid_from(), scope.valid_to())?;
         }

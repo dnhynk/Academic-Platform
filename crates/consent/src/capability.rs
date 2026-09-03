@@ -68,7 +68,8 @@ pub enum CaptureDenialReason {
     ProcessingNotGranted,
     /// A processing step leaves the device and the grant does not allow that.
     ExternalProcessingNotGranted,
-    /// The requested token lifetime reaches past the grant or the scope.
+    /// The requested token lifetime reaches past the grant or the scope, or
+    /// is already over at the instant it was asked for.
     LifetimeExceedsGrant,
 }
 
@@ -333,7 +334,10 @@ pub fn bind_permission(
             status,
         ));
     }
-    if resolved.not_after > grant.not_after() || resolved.not_after > record.scope().valid_to() {
+    if resolved.not_after > grant.not_after()
+        || resolved.not_after > record.scope().valid_to()
+        || resolved.not_after <= now
+    {
         return Err(deny(CaptureDenialReason::LifetimeExceedsGrant, status));
     }
     Ok(BoundPermission {
