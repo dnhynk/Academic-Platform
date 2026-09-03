@@ -1025,11 +1025,21 @@ was reverted, and the suite was observed passing again.
 | `M2-I10` | `Actor::Importer` admitted as a user | `non_delegable_has_no_automatic_actor_path`, `high_risk_requires_explicit_approval`, `the_user_receipt_has_one_producer` |
 | `M2-I11` | the explicit approval's identity check removed | `high_risk_requires_explicit_approval` |
 | `M2-I12` | `decided_at` dropped from the record digest | `the_disposition_digest_covers_every_field` |
+| `M2-I13` | a door whose `&mut self` sits five lines into a wrapped signature | `every_settlement_door_is_named`, after the window it read was replaced by the whole signature |
 
 `M2-I1` and `M2-I2` are the two shapes `P2-RF10` and `P2-RF11` repaired in the
 untrusted-content inventory. They are injected here rather than assumed,
 because the repaired helpers were copied into a new file and a copy that
 silently lost a clause would pass every other rule.
+
+`M2-I13` is this task's own instance of the same class, found by asking the
+question one layer out about a rule this file had just written. The door rule
+originally decided "is this a mutating method" by looking four lines ahead for
+`&mut self`, which is a *window* and not a structure: a door whose signature
+rustfmt wrapped one line further would not have been inserted into the observed
+set at all, and a door nothing observes is not a missing key -- it is a hole no
+comparison covers. The rule now reads the whole signature, from `pub fn` to the
+`{` or `;` that ends it, and asserts it found that terminator.
 
 ### What the migration holds that the crate cannot
 

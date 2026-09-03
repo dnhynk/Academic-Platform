@@ -687,12 +687,26 @@ fn every_settlement_door_is_named() -> TestResult {
             continue;
         };
         let name = rest.split(['(', '<']).next().unwrap_or_default().to_owned();
-        // A door is a public method that can change the queue.
-        let takes_mut = lines[index..]
-            .iter()
-            .take(4)
-            .any(|candidate| candidate.contains("&mut self"));
-        if takes_mut {
+        // A door is a public method that can change the queue. The whole
+        // signature is read, from `pub fn` to the `{` or `;` that ends it,
+        // rather than a fixed number of lines: a window would silently skip a
+        // door whose signature rustfmt wrapped one line further than the window
+        // reaches, and a skipped door is a missing key nothing then compares.
+        let mut signature = String::new();
+        let mut terminated = false;
+        for candidate in &lines[index..] {
+            signature.push(' ');
+            signature.push_str(candidate.trim());
+            if candidate.contains('{') || candidate.trim_end().ends_with(';') {
+                terminated = true;
+                break;
+            }
+        }
+        assert!(
+            terminated,
+            "the signature of {name} has no terminator, so the scan read to the end of the file"
+        );
+        if signature.contains("&mut self") {
             observed.insert(name);
         }
     }
