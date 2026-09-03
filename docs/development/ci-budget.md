@@ -376,36 +376,45 @@ inside the existing feature job and the new crate compiles inside the
 `cargo test --workspace --locked` step the five `rust-default-*` jobs already
 run.
 
+The table below is run
+[33738307227](https://github.com/dnhynk/Academic-Platform/actions/runs/33738307227),
+**17/17 on `d97ecab`** — the branch rebased onto `main` after `P2-R1` merged,
+which is the head that will merge. It needed no rerun.
+
 Run
 [33730639197](https://github.com/dnhynk/Academic-Platform/actions/runs/33730639197)
-reached **17/17** on `0e0bff5`, with two jobs taken there by a same-commit
-rerun. Both reruns are the two rules this page already holds, applied, and both
-are recorded rather than quietly re-measured.
+on the pre-rebase `0e0bff5` also reached 17/17, with two jobs taken there by a
+same-commit rerun. Its numbers are not the table's, but its two attempt-1
+readings are kept below, because each is a rule this page already holds applied
+to a real observation.
 
 | Required job | Elapsed | Limit | Utilization |
 |---|---:|---:|---:|
-| `dependency-source-preflight` | 0:06 | 5:00 | 2.0% |
-| `rust-default-ubuntu-latest` | 5:44 | 30:00 | 19.1% |
-| `rust-default-ubuntu-24.04-arm` | 5:00 | 30:00 | 16.7% |
-| `rust-default-windows-latest` | 18:41 | 30:00 | 62.3% |
-| `rust-default-windows-11-arm` | 14:37 | 30:00 | 48.7% |
-| `rust-default-macos-latest` | 6:41 | 30:00 | 22.3% |
-| `rust-features-ubuntu-latest` | 3:50 | 30:00 | 12.8% |
-| `rust-features-ubuntu-24.04-arm` | 3:02 | 30:00 | 10.1% |
-| `rust-features-windows-latest` | 6:06 | 30:00 | 20.3% |
-| `rust-features-windows-11-arm` | 6:35 | 30:00 | 21.9% |
-| `rust-features-macos-latest` | 3:29 | 30:00 | 11.6% |
-| `phase1-exit-ubuntu-latest` | 4:26 | 45:00 | 9.9% |
-| `phase1-exit-windows-latest` | 11:04 | 45:00 | 24.6% |
-| `encrypted-store-lane-ubuntu-latest` | 3:12 | 45:00 | 7.1% |
-| `encrypted-portability-lane-ubuntu-latest` | 5:16 | 45:00 | 11.7% |
-| `rotation-orchestration-lane-ubuntu-latest` | 5:06 | 45:00 | 11.3% |
-| `pnpm-contracts` | 0:46 | 15:00 | 5.1% |
+| `dependency-source-preflight` | 0:11 | 5:00 | 3.7% |
+| `rust-default-ubuntu-latest` | 5:50 | 30:00 | 19.4% |
+| `rust-default-ubuntu-24.04-arm` | 4:47 | 30:00 | 15.9% |
+| `rust-default-windows-latest` | 16:35 | 30:00 | 55.3% |
+| `rust-default-windows-11-arm` | 15:55 | 30:00 | 53.1% |
+| `rust-default-macos-latest` | 5:56 | 30:00 | 19.8% |
+| `rust-features-ubuntu-latest` | 3:52 | 30:00 | 12.9% |
+| `rust-features-ubuntu-24.04-arm` | 3:14 | 30:00 | 10.8% |
+| `rust-features-windows-latest` | 5:54 | 30:00 | 19.7% |
+| `rust-features-windows-11-arm` | 6:12 | 30:00 | 20.7% |
+| `rust-features-macos-latest` | 3:33 | 30:00 | 11.8% |
+| `phase1-exit-ubuntu-latest` | 3:56 | 45:00 | 8.7% |
+| `phase1-exit-windows-latest` | 8:10 | 45:00 | 18.1% |
+| `encrypted-store-lane-ubuntu-latest` | 4:01 | 45:00 | 8.9% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:57 | 45:00 | 11.0% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:09 | 45:00 | 13.7% |
+| `pnpm-contracts` | 1:05 | 15:00 | 7.2% |
 
-Both rows above are attempt 2 for the two jobs that were rerun; attempt 1 is
-below, because the rule says to keep it.
+**No job reaches the 80% review trigger on this head**, and
+`rust-default-windows-latest` reads 55.3% — inside the range this page already
+holds for it. That is the third reading of essentially this tree on that label,
+after 30:14 and 18:41 on the pre-rebase head, and it is the strongest evidence
+that neither of those was a cost this task added.
 
-### `rust-default-windows-latest` crossed its limit on attempt 1
+### `rust-default-windows-latest` crossed its limit once, on the pre-rebase head
 
 Attempt 1 ran **30:14 against a 30:00 limit — 100.8%, the first reading over
 100% this page holds.** It was cancelled, not failed.
@@ -429,11 +438,11 @@ Splitting the step by the job log's own timestamps:
 `academic-capture` is 0.13% of the step it is accused of blowing. The dominant
 row is a pre-existing crate's unit tests.
 
-The same-commit rerun read **18:41**, inside the range this page already holds
-for that job — 12:16, 13:47, 14:08, 14:55, 15:28, 17:09, 18:03, 20:18 — and
-below its maximum. Two readings of one commit, 30:14 and 18:41, is an 11:33
-spread on identical work, which is larger than any spread this page had recorded
-before and is the reason attempt 1 is kept.
+The same-commit rerun read **18:41**, and the rebased head read **16:35**, both
+inside the range this page already holds for that job — 12:16, 13:47, 14:08,
+14:55, 15:28, 16:35, 17:09, 18:03, 18:41, 20:18. Two readings of *one* commit,
+30:14 and 18:41, is an 11:33 spread on identical work, which is larger than any
+spread this page had recorded before and is the reason attempt 1 is kept.
 
 **The 80% review trigger has now been reached once and is not discharged by the
 rerun.** What the rule asks for is a split, an admitted cache, or a measured
