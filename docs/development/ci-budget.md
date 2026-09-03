@@ -1112,3 +1112,72 @@ two test binaries plus five in-crate store tests to `cargo test --workspace`.
 is at 7.4% — unchanged from the `P2-G6` reading of the same job at the same
 percentage, which is what one more migration in the creation transaction costs
 on that lane.
+
+## The `P2-U1` run
+
+`P2-U1` adds one workspace member, `academic-curriculum`, and a canonical-store
+migration, `0014`, both of which the refresh rule names as triggers. It also
+adds a default-workspace test target — the new crate's three test binaries —
+which is a third trigger. Run
+[33777322136](https://github.com/dnhynk/Academic-Platform/actions/runs/33777322136)
+at `c4f691f` completed **22/22**.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:04 | 5:00 | 1.3% |
+| `phase1-exit-ubuntu-latest` | 4:14 | 45:00 | 9.4% |
+| `pnpm-contracts` | 1:00 | 15:00 | 6.7% |
+| `rust-store-windows-latest` | 6:09 | 30:00 | 20.5% |
+| `rust-default-windows-11-arm` | 12:34 | 30:00 | 41.9% |
+| `encrypted-store-lane-ubuntu-latest` | 3:27 | 45:00 | 7.7% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:20 | 45:00 | 11.9% |
+| `rust-default-windows-latest` | 12:55 | 30:00 | 43.1% |
+| `rust-default-ubuntu-24.04-arm` | 4:33 | 30:00 | 15.2% |
+| `rust-default-macos-latest` | 4:47 | 30:00 | 15.9% |
+| `rust-store-windows-11-arm` | 5:43 | 30:00 | 19.1% |
+| `rust-store-ubuntu-24.04-arm` | 1:12 | 30:00 | 4.0% |
+| `phase1-exit-windows-latest` | 9:28 | 45:00 | 21.0% |
+| `rust-features-macos-latest` | 3:52 | 30:00 | 12.9% |
+| `rotation-orchestration-lane-ubuntu-latest` | 7:09 | 45:00 | 15.9% |
+| `rust-store-macos-latest` | 2:01 | 30:00 | 6.7% |
+| `rust-store-ubuntu-latest` | 1:37 | 30:00 | 5.4% |
+| `rust-features-windows-latest` | 6:45 | 30:00 | 22.5% |
+| `rust-features-ubuntu-24.04-arm` | 3:00 | 30:00 | 10.0% |
+| `rust-default-ubuntu-latest` | 5:15 | 30:00 | 17.5% |
+| `rust-features-windows-11-arm` | 6:43 | 30:00 | 22.4% |
+| `rust-features-ubuntu-latest` | 4:12 | 30:00 | 14.0% |
+
+The slowest job is `rust-default-windows-latest` at 43.1%. That is the
+**fourth** post-split reading of that job: 11:20, 12:43, 12:25 and now 12:55,
+against the pre-split span the `P2-RF11` section holds. It is twelve seconds
+above the largest of the three earlier readings, so it extends the range to
+11:20–12:55 rather than sitting inside it — a range that is still under half the
+30:00 limit. The guidance is unchanged: the 80% line for this job remains 24:00
+and each further reading is evidence about the range rather than a replacement
+for it. Its other half, `rust-store-windows-latest`, reads 6:09, which likewise
+extends that job's range upward, to 5:13–6:09.
+
+`rust-default-windows-11-arm` is beside it at 41.9%, a fourth reading in a
+10:01–12:34 band. Every Linux, Linux ARM and macOS job is at or below 22.5%, and
+no job on this run is above 43.1%.
+
+The split's readings so far, as a range rather than a replacement:
+
+| Label | Readings | Smallest | Largest |
+|---|---:|---:|---:|
+| `rust-default-windows-latest` | 4 | 11:20 | 12:55 |
+| `rust-store-windows-latest` | 4 | 5:13 | 6:09 |
+| `rust-default-windows-11-arm` | 4 | 10:01 | 12:34 |
+| `rust-store-windows-11-arm` | 4 | 5:06 | 6:32 |
+
+The new member adds one crate to `cargo clippy --workspace --all-targets` and
+three test binaries — `curriculum`, `curriculum_scans` and a `trybuild` suite
+with five cases — plus five in-crate store tests to `cargo test`. The trybuild
+suite is the expensive one of the three: it compiles five programs against the
+crate and its dev-dependencies, which is a second dependency resolution inside
+the test run, and it lands on the `rust-default-*` jobs rather than the store or
+feature ones.
+
+`encrypted-store-lane-ubuntu-latest` is the job migration `0014` changes. `0014`
+is the ninth entry in that lane's `STORE_MIGRATION_SQL` and the fifteen tables
+it creates enter the creation transaction and the admission fingerprint.
