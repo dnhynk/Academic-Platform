@@ -8,6 +8,16 @@ It opens no file and no socket. The bytes it analyzes arrive as an argument,
 read by whoever ran `P2-R1`'s gate; what it produces is spans, digests and
 closed vocabularies.
 
+That is held by three whole-set comparisons over the product code rather than by
+a list of forbidden spellings: every `use` item, every two-segment path spelled
+through a crate root, and every macro invoked, each compared against a pinned
+inventory in both directions. The three together cover the ways a capability can
+be reached — through an import, through an absolute path, and through a macro —
+and each was injected separately. A token list alone did not: `std::path::Path::
+new(p).metadata()`, `include_str!` and `std::env::var` each passed an earlier
+version of the guard, and `docs/contracts/policy-source-scans.md` records that
+measurement.
+
 ## The analysis is bound to the snapshot it names
 
 `AnalysisInput::of` is the one constructor and it checks four things. Each is a
@@ -262,6 +272,17 @@ Two things close it:
   accessor is not the only way a `String` reaches a log, and a derived one would
   print every symbol name the analyzer read through the derived `Debug` of every
   public value that holds one.
+
+  It renders the *input* values too — `SourceUnit`, which is the only public
+  type here that holds the analyzed bytes, and the `AnalysisInput` that carries
+  a vector of them. Walking only the analysis outputs left the one value
+  carrying the payload unobserved, and a hand-written `Debug` printing those
+  bytes was measured passing this test before it was widened.
+  `tools/secret-debug-policy.test.mjs` refuses both shapes — a derived `Debug`
+  over a field named `source_bytes`, and a hand-written one that prints it —
+  and both refusals were observed by injection; that is another crate's net, and
+  a crate whose whole subject is untrusted repository bytes should fail in its
+  own suite as well.
 
 A path *is* text and stays text. `academic-repository`'s own manifest already
 hands paths out, and the gate classified every one of them before anything
