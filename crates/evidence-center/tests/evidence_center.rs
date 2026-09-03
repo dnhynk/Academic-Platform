@@ -521,6 +521,42 @@ fn source_change_links_impacted_rules_and_plans() -> TestResult {
 // both_conflict_classes_are_unresolved_until_user_action
 // ---------------------------------------------------------------------------
 
+/// Section 30.2's whole status vocabulary.
+///
+/// `academic-domain` exposes no `EpistemicStatus::ALL`, so the arms are written
+/// out here and [`the_status_vocabulary_is_whole`] is the witness that keeps
+/// the list total: a tenth arm stops this suite compiling.
+const EVERY_EPISTEMIC_STATUS: [EpistemicStatus; 9] = [
+    EpistemicStatus::OfficialConfirmed,
+    EpistemicStatus::UserConfirmed,
+    EpistemicStatus::CodeObserved,
+    EpistemicStatus::DeterministicDerived,
+    EpistemicStatus::AiInferred,
+    EpistemicStatus::Prediction,
+    EpistemicStatus::Disputed,
+    EpistemicStatus::Superseded,
+    EpistemicStatus::Unknown,
+];
+
+/// A total `match` over section 30.2's vocabulary.
+///
+/// Not a test: a compiler-checked witness that [`EVERY_EPISTEMIC_STATUS`] is
+/// the whole enum. Adding an arm to `academic-domain` stops this file
+/// compiling until the list above names it too.
+const fn the_status_vocabulary_is_whole(status: EpistemicStatus) -> usize {
+    match status {
+        EpistemicStatus::OfficialConfirmed => 0,
+        EpistemicStatus::UserConfirmed => 1,
+        EpistemicStatus::CodeObserved => 2,
+        EpistemicStatus::DeterministicDerived => 3,
+        EpistemicStatus::AiInferred => 4,
+        EpistemicStatus::Prediction => 5,
+        EpistemicStatus::Disputed => 6,
+        EpistemicStatus::Superseded => 7,
+        EpistemicStatus::Unknown => 8,
+    }
+}
+
 fn side(
     lane: ConflictLane,
     id: u32,
@@ -589,6 +625,16 @@ fn one_of_each_conflict() -> Result<Vec<ConflictCase>, Box<dyn Error>> {
 /// for one and not the other fails.
 #[test]
 fn both_conflict_classes_are_unresolved_until_user_action() -> TestResult {
+    // The witness and the list agree, index by index, so a status added to one
+    // and not the other fails here rather than silently shrinking the sweep.
+    for (index, status) in EVERY_EPISTEMIC_STATUS.into_iter().enumerate() {
+        assert_eq!(
+            the_status_vocabulary_is_whole(status),
+            index,
+            "the status list and its witness disagree"
+        );
+    }
+
     let cases = one_of_each_conflict()?;
     assert_eq!(
         cases
@@ -629,12 +675,44 @@ fn both_conflict_classes_are_unresolved_until_user_action() -> TestResult {
             "both sides name the same claim, so only one side is shown"
         );
 
-        // ---- All three choices are offered, for both classes --------------
-        assert_eq!(
-            case.offered().into_iter().collect::<BTreeSet<_>>(),
-            CorrectionChoice::ALL.into_iter().collect::<BTreeSet<_>>(),
-            "a class was offered fewer than section 30.4's three choices"
-        );
+        // ---- All three choices are offered, whatever either side says -----
+        //
+        // Not once, on the fixture's own two sides. `X7-I15` narrowed the
+        // offer when the incoming side was `OFFICIAL_CONFIRMED`, and the
+        // single-shape assertion that used to be here never took that branch:
+        // both fixture sides are `CODE_OBSERVED`, so the injection passed this
+        // test and was caught only by a source scan that noticed an unrelated
+        // path. The whole status vocabulary is driven on both sides now, so a
+        // narrowing keyed on any of them moves a cell here.
+        for held_status in EVERY_EPISTEMIC_STATUS {
+            for incoming_status in EVERY_EPISTEMIC_STATUS {
+                let probe = ConflictCase::open(
+                    case.class(),
+                    side(
+                        ConflictLane::Held,
+                        201,
+                        held_status,
+                        AuthorityClass::UserExplicit,
+                        None,
+                    )?,
+                    side(
+                        ConflictLane::Incoming,
+                        202,
+                        incoming_status,
+                        AuthorityClass::DirectObservation,
+                        None,
+                    )?,
+                    at(1_700_000_000_000),
+                );
+                assert_eq!(
+                    probe.offered().into_iter().collect::<BTreeSet<_>>(),
+                    CorrectionChoice::ALL.into_iter().collect::<BTreeSet<_>>(),
+                    "{:?} with held {held_status:?} and incoming {incoming_status:?} was \
+                     offered fewer than section 30.4's three choices",
+                    case.class()
+                );
+            }
+        }
 
         // ---- It is unresolved, and stays so for every automatic actor -----
         assert_eq!(
