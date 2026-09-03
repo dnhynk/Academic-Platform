@@ -278,9 +278,9 @@ things a person does; not one of them is a module that drives anything.
 **No transport.** `ConditionalFetch` is a trait the caller implements, exactly as
 `academic-egress-boundary` takes its `OutboundTransport`.
 `credentials_never_reach_a_general_crawler` requires this crate to implement it
-nowhere, and `only_egress_crate_has_a_socket` is the workspace-wide statement
-that no crate spells a socket construct outside the eight files that run the
-local IPC seam. The link half is `SOCKET_CAPABLE_CLOSURES`, where this crate's
+nowhere, and `only_egress_crate_has_a_socket` compares the whole per-file
+allowance map of socket spellings across every workspace package — this crate has
+no entry in it. The link half is `SOCKET_CAPABLE_CLOSURES`, where this crate's
 row is `["libc"]`, reaching it through `academic-domain` — that row records
 *availability*, which is why the source half is what says nothing here uses it.
 
@@ -302,14 +302,17 @@ it.
 ## What this contract does not claim
 
 - **It does not claim that no bypass of an access control can be written.** What
-  is executed is narrower and is the composite of three facts: no crate outside
-  the two egress crates may open a socket, so a module elsewhere cannot transmit;
-  no function in this crate produces a request, a target or a credential from a
-  response, and the whole set of signatures that touch any of the three is
-  pinned; and no file outside `crates/ingestion/` names this crate's request,
-  target or credential types, which is pinned as a whole map. A module that
-  spells none of those and opens no socket is not refused by anything here,
-  because it also cannot reach a source.
+  is executed is narrower and is the composite of three facts. First,
+  `only_egress_crate_has_a_socket` compares the whole per-file allowance map of
+  socket spellings across every workspace package; `academic-ingestion` has no
+  entry in it, which is what an empty allowance looks like there, and a module
+  written anywhere else has nothing to transmit with unless it is added to that
+  map in the same commit. Second, no function in this crate produces a request, a target
+  or a credential from a response, and the whole set of signatures that touch any
+  of the three is pinned. Third, no file outside `crates/ingestion/` names this
+  crate's request, target or credential types, and that inventory is a whole map.
+  A module that spells none of those and opens no socket is refused by nothing
+  here — it also reaches no source.
 - **It does not claim that the five dimensions decide anything.** They are
   recorded. Deciding between two official sources is a person's act, and this
   crate records that decision without checking who made it — `P2-M4` is where a
