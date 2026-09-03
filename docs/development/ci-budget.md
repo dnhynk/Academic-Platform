@@ -140,48 +140,49 @@ test are two of the four triggers the refresh rule names. It adds no pnpm
 package, no feature lane, no migration, no system package and no change to
 `.github/workflows/ci.yml`, so **the job count is unchanged at 22**.
 
-**Three runs, each 22/22 on the first attempt, no rerun.** The branch was brought
-onto `P2-U1` with `git rebase`, never `git merge`, so only the last of the three
-measures a tree that still exists — but the first two are kept, because the
-comparison between them is the finding.
+**Four runs, each 22/22 on the first attempt, no rerun.** The branch was rebased
+twice while `main` moved — onto `P2-U1`, then onto `P2-R2` — with `git rebase`
+and never `git merge`, so only the last measures a tree that still exists. The
+earlier three are kept, because the comparison across them is the finding.
 
 | Run | Head | Tree |
 |---|---|---|
-| [33776759904](https://github.com/dnhynk/Academic-Platform/actions/runs/33776759904) | `cb83c60` | pre-rebase, the crate as first pushed |
-| [33780711210](https://github.com/dnhynk/Academic-Platform/actions/runs/33780711210) | `5a0ba5c` | pre-rebase, plus one `fix(transcription)` commit |
-| [33784209481](https://github.com/dnhynk/Academic-Platform/actions/runs/33784209481) | `9d289ab` | **post-rebase onto `P2-U1`; the tree that merges** |
+| [33776759904](https://github.com/dnhynk/Academic-Platform/actions/runs/33776759904) | `cb83c60` | the crate as first pushed |
+| [33780711210](https://github.com/dnhynk/Academic-Platform/actions/runs/33780711210) | `5a0ba5c` | plus one `fix(transcription)` commit |
+| [33784209481](https://github.com/dnhynk/Academic-Platform/actions/runs/33784209481) | `9d289ab` | rebased onto `P2-U1` |
+| [33787226201](https://github.com/dnhynk/Academic-Platform/actions/runs/33787226201) | `7795741` | **rebased onto `P2-R2`; the current head** |
 
-A fourth, [33778983581](https://github.com/dnhynk/Academic-Platform/actions/runs/33778983581)
+A fifth, [33778983581](https://github.com/dnhynk/Academic-Platform/actions/runs/33778983581)
 on `be13b28`, also completed 22/22 between the first two; it is a Markdown-only
 commit and is not tabulated. No run on this branch was cancelled by the
 concurrency group.
 
-| Required job | 33776759904 | 33780711210 | **33784209481** | Limit | Worst |
-|---|---:|---:|---:|---:|---:|
-| `dependency-source-preflight` | 0:08 | 0:06 | 0:08 | 5:00 | 2.7% |
-| `rust-default-ubuntu-latest` | 5:05 | 5:14 | 4:39 | 30:00 | 17.4% |
-| `rust-default-ubuntu-24.04-arm` | 4:35 | 4:36 | 4:29 | 30:00 | 15.3% |
-| `rust-default-windows-latest` | 14:12 | 11:10 | 14:58 | 30:00 | 49.9% |
-| `rust-default-windows-11-arm` | 11:50 | 10:48 | 11:32 | 30:00 | 39.4% |
-| `rust-default-macos-latest` | 7:26 | 6:44 | 7:51 | 30:00 | 26.2% |
-| `rust-store-ubuntu-latest` | 1:30 | 1:26 | 2:54 | 30:00 | 9.7% |
-| `rust-store-ubuntu-24.04-arm` | 1:10 | 1:30 | 1:36 | 30:00 | 5.3% |
-| `rust-store-windows-latest` | 5:29 | 9:15 | 5:12 | 30:00 | 30.8% |
-| `rust-store-windows-11-arm` | 5:53 | 6:32 | 6:12 | 30:00 | 21.8% |
-| `rust-store-macos-latest` | 1:28 | 1:42 | 2:07 | 30:00 | 7.1% |
-| `rust-features-ubuntu-latest` | 4:05 | 3:53 | 4:02 | 30:00 | 13.6% |
-| `rust-features-ubuntu-24.04-arm` | 3:13 | 2:54 | 3:00 | 30:00 | 10.7% |
-| `rust-features-windows-latest` | 6:18 | 6:10 | 6:36 | 30:00 | 22.0% |
-| `rust-features-windows-11-arm` | 6:13 | 5:35 | 6:12 | 30:00 | 20.7% |
-| `rust-features-macos-latest` | 3:29 | 2:21 | 3:54 | 30:00 | 13.0% |
-| `phase1-exit-ubuntu-latest` | 4:19 | 5:47 | 4:24 | 45:00 | 12.9% |
-| `phase1-exit-windows-latest` | 8:30 | 9:43 | 17:18 | 45:00 | 38.4% |
-| `encrypted-store-lane-ubuntu-latest` | 3:23 | 2:40 | 3:08 | 45:00 | 7.5% |
-| `encrypted-portability-lane-ubuntu-latest` | 5:07 | 3:59 | 4:57 | 45:00 | 11.4% |
-| `rotation-orchestration-lane-ubuntu-latest` | 6:50 | 6:42 | 7:16 | 45:00 | 16.1% |
-| `pnpm-contracts` | 1:26 | 0:51 | 1:05 | 15:00 | 9.6% |
+| Required job | 33776759904 | 33780711210 | 33784209481 | **33787226201** | Limit | Worst |
+|---|---:|---:|---:|---:|---:|---:|
+| `dependency-source-preflight` | 0:08 | 0:06 | 0:08 | **0:08** | 5:00 | 2.7% |
+| `rust-default-ubuntu-latest` | 5:05 | 5:14 | 4:39 | **5:03** | 30:00 | 17.4% |
+| `rust-default-ubuntu-24.04-arm` | 4:35 | 4:36 | 4:29 | **4:45** | 30:00 | 15.8% |
+| `rust-default-windows-latest` | 14:12 | 11:10 | 14:58 | **12:13** | 30:00 | 49.9% |
+| `rust-default-windows-11-arm` | 11:50 | 10:48 | 11:32 | **11:49** | 30:00 | 39.4% |
+| `rust-default-macos-latest` | 7:26 | 6:44 | 7:51 | **7:09** | 30:00 | 26.2% |
+| `rust-store-ubuntu-latest` | 1:30 | 1:26 | 2:54 | **1:23** | 30:00 | 9.7% |
+| `rust-store-ubuntu-24.04-arm` | 1:10 | 1:30 | 1:36 | **1:13** | 30:00 | 5.3% |
+| `rust-store-windows-latest` | 5:29 | 9:15 | 5:12 | **6:46** | 30:00 | 30.8% |
+| `rust-store-windows-11-arm` | 5:53 | 6:32 | 6:12 | **5:29** | 30:00 | 21.8% |
+| `rust-store-macos-latest` | 1:28 | 1:42 | 2:07 | **2:02** | 30:00 | 7.1% |
+| `rust-features-ubuntu-latest` | 4:05 | 3:53 | 4:02 | **3:45** | 30:00 | 13.6% |
+| `rust-features-ubuntu-24.04-arm` | 3:13 | 2:54 | 3:00 | **3:25** | 30:00 | 11.4% |
+| `rust-features-windows-latest` | 6:18 | 6:10 | 6:36 | **6:15** | 30:00 | 22.0% |
+| `rust-features-windows-11-arm` | 6:13 | 5:35 | 6:12 | **6:21** | 30:00 | 21.2% |
+| `rust-features-macos-latest` | 3:29 | 2:21 | 3:54 | **4:04** | 30:00 | 13.6% |
+| `phase1-exit-ubuntu-latest` | 4:19 | 5:47 | 4:24 | **4:11** | 45:00 | 12.9% |
+| `phase1-exit-windows-latest` | 8:30 | 9:43 | 17:18 | **12:26** | 45:00 | 38.4% |
+| `encrypted-store-lane-ubuntu-latest` | 3:23 | 2:40 | 3:08 | **3:18** | 45:00 | 7.5% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:07 | 3:59 | 4:57 | **5:20** | 45:00 | 11.9% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:50 | 6:42 | 7:16 | **6:50** | 45:00 | 16.1% |
+| `pnpm-contracts` | 1:26 | 0:51 | 1:05 | **0:56** | 15:00 | 9.6% |
 
-### What three readings say that one did not
+### What four readings say that one did not
 
 Written from the first run alone, this section read
 `rust-default-windows-latest` at 14:12 as the new member's cost landing in the
@@ -193,22 +194,22 @@ The split gave this page **controls it did not set out to create**: jobs whose
 input this task does not touch, running beside the one that grew.
 
 * `rust-store-windows-latest` runs `-p academic-store`, a crate outside this
-  diff. It reads **5:29, 9:15, 5:12** — a 4:03 spread, and its *slowest* reading
-  is on the tree with the least store code in it.
+  diff. It reads **5:29, 9:15, 5:12, 6:46** — a 4:03 spread, and its *slowest*
+  reading is on the tree with the least store code in it.
 * `phase1-exit-windows-latest` is untouched by this task in every run. It reads
-  **8:30, 9:43, 17:18** — it doubled.
+  **8:30, 9:43, 17:18, 12:26** — an 8:48 spread, and it doubled once.
 
 Against controls moving by 4:03 and 8:48, `rust-default-windows-latest`'s
-11:10–14:58 says nothing about what one workspace member costs. **Neither of the
-three runs isolates it, and this page no longer claims one does.**
+11:10–14:58 says nothing about what one workspace member costs. **None of the
+four runs isolates it, and this page no longer claims one does.**
 
-The spans, as spans: `rust-default-windows-latest` **11:10–14:58** over six
-post-split readings (11:20, 12:43, 12:25, 14:12, 11:10, 14:58);
-`rust-store-windows-latest` **5:12–9:15** over six (5:33, 5:13, 5:43, 5:29, 9:15,
-5:12). Sizing is unchanged and is taken from none of them: headroom comes off the
-pre-split worst case of **67.7%** and the 80% review trigger for a 30:00 job is
-**24:00**. The worst job across all three runs is 49.9%, which is 30.1 points
-under it.
+The spans, as spans: `rust-default-windows-latest` **11:10–14:58** over seven
+post-split readings (11:20, 12:43, 12:25, 14:12, 11:10, 14:58, 12:13);
+`rust-store-windows-latest` **5:12–9:15** over seven (5:33, 5:13, 5:43, 5:29,
+9:15, 5:12, 6:46). Sizing is unchanged and is taken from none of them: headroom
+comes off the pre-split worst case of **67.7%** and the 80% review trigger for a
+30:00 job is **24:00**. The worst job across all four runs is 49.9%, which is
+30.1 points under it.
 
 **The method this leaves behind.** A task measuring its own cost on a Windows
 label should read a job the split froze — `rust-store-*` or `phase1-exit-*` —
@@ -224,13 +225,14 @@ expensive one of the three, because it compiles seven programs and compares seve
 committed diagnostics. **What that costs in seconds is not measured here**, for
 the reason above.
 
-`encrypted-store-lane-ubuntu-latest` reads 3:23, 2:40 and 3:08, against 3:25 on
-the split's run: this task adds no migration, so `STORE_MIGRATION_SQL` and the
-admission fingerprint that lane asserts against are unchanged by it. `P2-U1`'s
-`0014` is in the third run's tree and the lane is unmoved by that too.
+`encrypted-store-lane-ubuntu-latest` reads 3:23, 2:40, 3:08 and 3:18, against
+3:25 on the split's run: this task adds no migration, so `STORE_MIGRATION_SQL`
+and the admission fingerprint that lane asserts against are unchanged by it.
+`P2-U1`'s `0014` is in the last two runs' trees and the lane is unmoved by that
+too.
 
-**No `CreateProcessW` launch failure occurred on any of the three runs.**
-`rust-features-windows-latest` was green on the first attempt of each. Three
+**No `CreateProcessW` launch failure occurred on any of the four runs.**
+`rust-features-windows-latest` was green on the first attempt of each. Four
 attempts against a measured 14.3% rate falsifies nothing; it is noted so the next
 reader does not count them as evidence about that signature. This task **did**
 hit that signature locally, which is the subsection under
