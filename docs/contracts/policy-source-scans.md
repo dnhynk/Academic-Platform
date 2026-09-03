@@ -1333,7 +1333,10 @@ first.
 signatures that take or return a `CredentialBinding` is pinned, and so is that
 type's own surface. The producer is pinned as whole text, so a binding minted
 for an authentication method that holds no credential is an edit to a constant.
-The one constructor that consumes a binding is counted. The target constructor
+The one constructor that consumes a binding is counted, and the binding's whole
+`impl` set is compared with the rule that its declaration carries no attribute
+at all — a derived `Clone` is how one binding becomes two requests, and it spells
+nothing on any token list. The target constructor
 is pinned as whole text and takes `&'static str`, so a link read out of a
 fetched page is a value no target can be built from, and the identifier is
 counted so a second construction site fails. And the crate is required to
@@ -1365,7 +1368,7 @@ rather than the wider sentence.
 
 ### The injection matrix
 
-Thirty-two injections, applied one at a time to shipped source and reverted.
+Thirty-three injections, applied one at a time to shipped source and reverted.
 Each is compiled first: a refusal that is a compile error proves nothing about
 the scan that was supposed to refuse it, and one row below is recorded as
 exactly that outcome rather than dropped. The unmodified tree is run before and
@@ -1382,6 +1385,7 @@ after the matrix and passes both times.
 | U-C2 | `credential_binding` mints for every authentication method | the whole-text pin |
 | U-C3 | `DeclaredTarget` gains `discovered(String)`, leaking the allocation for a `'static` borrow | the `declared` call-site count, and the `leak` count |
 | U-C4 | the crate implements `ConditionalFetch` for a type of its own | the "implements the transport it exists not to have" rule |
+| U-C5 | `CredentialBinding` gains a derived `Clone`, so one binding can be spent on two requests | the `impl`-set comparison and the no-attribute rule on its declaration |
 | U-B1 | `fetch.rs` gains `answer(&FetchOutcome, ..) -> Result<ConditionalRequest, Denial>` | the request-signature pin, and the response-derivation rule beside it |
 | U-B2 | `AuthenticationMethod` gains `NegotiatedSession` | the access-vocabulary comparison |
 | U-B3 | `DenialRoute` gains `TryAnotherPath` | the same |

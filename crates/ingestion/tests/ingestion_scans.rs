@@ -797,6 +797,17 @@ const CREDENTIAL_SIGNATURES: [&str; 2] = [
     "crates/ingestion/src/manifest.rs: fn credential_binding(&self) -> Option<CredentialBinding>",
 ];
 
+/// The whole set of `impl` block headers naming `CredentialBinding`.
+///
+/// Two: the inherent block and the hand-written `Debug`. The type derives
+/// nothing, which is what makes "a binding cannot be spent twice" a fact rather
+/// than a habit — `ConditionalRequest::credentialed` takes it by value, and
+/// without `Clone` or `Copy` there is no second one to give a second request.
+const CREDENTIAL_IMPLS: [&str; 2] = [
+    "impl CredentialBinding",
+    "impl fmt::Debug for CredentialBinding",
+];
+
 /// The whole public surface of `CredentialBinding`.
 ///
 /// One accessor, which returns the connector the borrow belongs to. The
@@ -830,6 +841,34 @@ fn credentials_never_reach_a_general_crawler() -> TestResult {
         public_surface(&manifest_source, "impl CredentialBinding")?,
         CREDENTIAL_SURFACE.to_vec(),
         "CredentialBinding's public surface changed"
+    );
+    // The binding is moved into the one constructor that takes it, and there is
+    // no `Clone` and no `Copy` to make a second. That is a fact about the impl
+    // set, so the impl set is compared whole and the declaration is required to
+    // carry no derive at all.
+    let manifest_code = strip_non_code(&manifest_source);
+    let mut binding_impls: Vec<String> = manifest_code
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with("impl ") && line.contains("CredentialBinding"))
+        .map(|line| line.trim_end_matches(" {").trim().to_owned())
+        .collect();
+    binding_impls.sort();
+    assert_eq!(
+        binding_impls,
+        CREDENTIAL_IMPLS.to_vec(),
+        "the set of impl blocks on CredentialBinding changed; Clone is one of them"
+    );
+    let declaration_at = manifest_source
+        .find("pub struct CredentialBinding")
+        .ok_or("CredentialBinding is gone")?;
+    let preceding = manifest_source[..declaration_at]
+        .lines()
+        .next_back()
+        .ok_or("CredentialBinding has no preceding line")?;
+    assert!(
+        !preceding.trim_start().starts_with("#["),
+        "CredentialBinding gained an attribute; a derived Clone is how it is spent twice"
     );
 
     // Half two. The producer, pinned whole. A binding minted for an
