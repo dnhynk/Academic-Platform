@@ -1,0 +1,41 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-h",
+  "task": "P2-R3",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-R3 admits no external crate. academic-repository-correlation links academic-domain, academic-ledger, academic-repository, academic-repository-analysis and thiserror as product edges, and academic-model-run, academic-policy and academic-untrusted-content as dev edges, all covered by earlier reviewed receipts, and adds one workspace path package. Nothing links into a product binary that was not already there: the four workspace product edges are path packages this repository already builds, and thiserror was admitted by the phase 1 receipt. Build-time-only additions are zero -- there is no build script, no proc macro beyond thiserror's, and no code generator.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-repository-correlation is the P2-R3 boundary: section 17.3's fourth stage -- cross-artifact correlation over spec, ADR, code, config, test and runtime/incident -- section 17.5's seven typed evidence relations and its ImplementationDrift with the four scopes that qualify one, and section 19's two diff channels with ANALYSIS_CHANGED separating an analyzer change from a code change. It is a separate package from academic-repository-analysis because that crate owns what may be concluded from one snapshot's bytes and this one owns what two lanes of evidence say about each other; the direction of the edge is what keeps an analysis constructible without a correlation and a correlation impossible without an analysis.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "no_second_resolver_note": "Section 30.3's six authority rows were implemented by P2-C3 as academic_ledger::ProductClaimType with a rank table each, and docs/contracts/product-authority-resolution.md is their contract. This task does not add a second resolver and does not restate a rank. academic-ledger is a product edge precisely so the ordering, the rank table and the equal-rank conflict rule stay where they are; what this crate adds is which AuthorityClass a piece of correlation evidence may enter row four or row five as, which is the qualifier those rows state in words and no rank table can hold: same snapshot for the current-implementation row, approved and latest for the project-intent row. Full decision replay -- scope filtering, acceptance order, terminal statuses, conflict cards -- remains in academic_ledger::resolve_product_snapshot and is not reached from here.",
+  "direct_workspace_dependencies": {
+    "academic-domain": "AuthorityClass. The eight-value authority vocabulary section 30.3's tables are indexed by. A candidate is admitted at one of these and the rank is read back from academic-ledger's table, so this crate names no rank of its own.",
+    "academic-ledger": "ProductClaimType and AuthorityTable. Section 30.3's rows four and five, already implemented, with the rank table this crate reads rather than restates. See no_second_resolver_note.",
+    "academic-repository": "P2-R1's frozen RepositorySnapshot and its ManifestEntry. correlate takes the snapshot by reference, refuses an analyzer the snapshot's toolVersions does not record, refuses a document whose path is not a manifest row, and refuses an incident or a finding naming another snapshot. A correlation therefore cannot exist without a completed permission and secret gate, and cannot be about artifacts the snapshot did not freeze.",
+    "academic-repository-analysis": "P2-R2's Finding, LadderRung, EvidenceTier, ArtifactScope, Locator, FileKind, SubjectId and AnalyzerIdentity. Every relation about code is derived from a finding and from nothing else: PROJECT_CODE_USES requires EvidenceTier::Observed, which is P2-R2's own answer to whether there is evidence of use, and section 17.3's second row -- an import with no reachable use -- is held there, so an unreachable import produces no implementation-lane relation here either. The dependency diff channel is over paths FileKind::of_path calls a manifest or a lock file, so the classification is the analyzer's."
+  },
+  "dev_workspace_dependencies": {
+    "academic-model-run": "CalibrationRegistry and its dataset types, to build the fresh calibration P2-R2's OBSERVED rungs require before a finding exists to correlate.",
+    "academic-policy": "ContentDigest, for the analysis policy hash a P2-R1 snapshot request carries.",
+    "academic-untrusted-content": "SourceIndex, which P2-R1's capture_local returns and P2-R2's AnalysisInput::of checks every unit against."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-repository-correlation",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-repository-correlation",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-repository-correlation is a workspace path crate, not an external dependency. It owns section 17.5's relation vocabulary, compared against the design document in both directions rather than counted; the assignment of each relation to section 30.3's row four, row five, or neither, with PROJECT_DOC_EXPLAINS in neither because a description of behaviour approves nothing and runs nothing; ImplementationDrift as a record beside both lanes that replaces neither, which is CONTRIBUTING.md rule 2 applied to correlation; the four drift scopes as four independent qualifiers with four different payloads, because a subject can be behind a flag on an undeployed branch at once; and section 19's two channels as two types with no accessor returning their union, with a difference attributed to the one axis that moved and refused when both moved or neither did. Its dependency set is minimal and the edges it does not have are the point: no academic-store, so a correlation cannot reach the canonical writer; no academic-worker and no academic-egress-boundary, so nothing in its closure can launch a process or stage a payload.",
+  "network_posture": "The crate opens no socket, opens no file, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. It spells no std::fs name at all: every artifact that is not code arrives as an argument naming SubjectId values, the way P2-R2's runtime trace does. the_correlation_crate_touches_no_file_and_no_socket in crates/repository-correlation/tests/correlation_scans.rs compares the whole set of its use items, the whole set of the two-segment paths it reaches through a crate root, and the whole set of the macros it invokes against pinned inventories in both directions, and runs a whole-identifier pass for filesystem and transport constructs over every file of the package, tests included. Four separate injections that spell none of the forbidden tokens and add no use item -- an absolute-path environment read, its leading-:: filesystem form, its whitespace-inside-the-path form, and include_str! -- were each observed failing it. Its link closure holds nothing that can open a socket beyond libc, which reaches it through academic-policy's bundled SQLite by way of academic-repository. Every snapshot, corpus, document, incident, flag and deployment record in its test tree is synthetic and built in process; no real repository is read and no network call is made.",
+  "advisory_path": "Unchanged. Every external crate academic-repository-correlation links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}
