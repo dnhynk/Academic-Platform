@@ -1,0 +1,58 @@
+[package]
+name = "academic-lecture-document"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Four product edges, each one a boundary this crate reads from and does not
+# restate.
+#
+# `academic-transcription` is `P2-L3`. Every source mapping names a segment of
+# a `TranscriptLineage` read at one version, and the tokens a mapping preserves
+# are `EffectiveToken`s. This crate never names a raw type: the document sits
+# on the versioned view, which is what "the document is layered over the
+# transcript and does not write raw tokens" means when it is a graph fact.
+#
+# `academic-capture` is `P2-L2`. The audio timeline and its explained holes are
+# journal frames, so `audio_gap_threshold` reads a `JournalRecovery` rather
+# than a caller's account of where the recording stopped.
+#
+# `academic-model-run` is `P2-M1`. A provider's raw confidence has no readable
+# units, so a low-confidence span is decided by `CalibrationRegistry::interpret`
+# and a configured permille -- never by comparing two raw numbers.
+#
+# `academic-domain` supplies the identifier and digest types and, through
+# `academic_domain::engines`, `P2-C5`'s deterministic engine signature: the
+# coverage validator is the `TRANSCRIPT_COVERAGE` engine, so "deterministic"
+# is a byte comparison against a committed corpus rather than a sentence.
+#
+# There is deliberately no `academic-store` edge: this crate persists nothing
+# and adds no migration. There is deliberately no `academic-worker` edge,
+# because no workspace crate may depend on that package at all.
+[dependencies]
+academic-capture = { path = "../capture" }
+academic-domain = { path = "../domain" }
+academic-model-run = { path = "../model-run" }
+academic-transcription = { path = "../transcription" }
+thiserror.workspace = true
+
+# `academic-consent`, `academic-policy` and `academic-egress-boundary` are dev
+# edges only: the acceptance suite drives a real `academic_capture::begin` and a
+# real `P2-L3` pipeline run, so the journal a gap check reads is the file the
+# real capture surface wrote. Keeping them off the product edge is what makes
+# "this crate mints no grant, holds no broker and opens no egress" a compile
+# error rather than a source scan.
+[dev-dependencies]
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-egress-boundary = { path = "../egress-boundary" }
+academic-policy = { path = "../policy" }
+academic-proposal = { path = "../proposal" }
+tempfile.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

@@ -257,6 +257,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-lecture-document"
+version = "0.1.0"
+dependencies = [
+ "academic-capture",
+ "academic-consent",
+ "academic-domain",
+ "academic-egress-boundary",
+ "academic-model-run",
+ "academic-policy",
+ "academic-proposal",
+ "academic-transcription",
+ "tempfile",
+ "thiserror",
+ "trybuild",
+ "uuid",
+]
+
+[[package]]
 name = "academic-ledger"
 version = "0.1.0"
 dependencies = [
