@@ -385,6 +385,36 @@ fn parameters_and_return(signature: &str) -> Option<(&str, &str)> {
     None
 }
 
+/// The public method names of one `impl` block, in declaration order.
+///
+/// `declared_item` collapses a whole block to one line, which is what a text
+/// pin compares. This reads the same block as a **set of names**, which is what
+/// an API-surface rule needs: a method added anywhere in the block fails as an
+/// extra key whatever it is called, and a text pin over a 120-line block would
+/// fail on a reflowed doc comment as well.
+fn public_methods(source: &str, header: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    let block = declared_item(source, header)?;
+    let mut found = Vec::new();
+    let mut rest = block.as_str();
+    while let Some(at) = rest.find("fn ") {
+        let before = &rest[..at];
+        let public = before.ends_with("pub ") || before.ends_with("pub const ");
+        rest = &rest[at + 3..];
+        if !public {
+            continue;
+        }
+        let name: String = rest
+            .chars()
+            .take_while(|character| character.is_alphanumeric() || *character == '_')
+            .collect();
+        if !name.is_empty() {
+            found.push(name);
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
 /// Counts constructions of `Name { .. }`, less the declarations that spell the
 /// same three characters.
 ///
@@ -892,5 +922,71 @@ fn no_wall_clock_socket_or_file_reaches_this_crate() -> TestResult {
     // records the exception rather than leaving it silent.
     let emitter = code_of(&crate_root().join("examples/emit_harness.rs"))?;
     assert!(occurrences(&emitter, "fs::write") > 0);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// no_low_importance_deletion, the API-surface half
+// ---------------------------------------------------------------------------
+
+/// Neither the document nor the report offers a method that returns less than
+/// it holds.
+///
+/// The pins above fix what a coverage run *reads*; this fixes what the two
+/// preservation types *offer*. Without it a method taking a floor, a limit or a
+/// weight and returning a subset of the nodes would be a reduction path in the
+/// product that no other rule here sees — measured as a real hole while writing
+/// the injection matrix, and closed rather than recorded as open.
+///
+/// A whole set of names, not a list of forbidden ones: a method called anything
+/// at all fails as an extra key.
+#[test]
+fn the_preservation_types_offer_no_reducing_method() -> TestResult {
+    let document = code_of(&crate_root().join("src/document.rs"))?;
+    assert_eq!(
+        public_methods(&document, "impl LectureDocument {")?,
+        vec![
+            "digest".to_owned(),
+            "id".to_owned(),
+            "lecture".to_owned(),
+            "nodes".to_owned(),
+            "transcript_token_digest".to_owned(),
+            "version".to_owned(),
+        ],
+        "the document's public surface changed"
+    );
+
+    let coverage = code_of(&crate_root().join("src/coverage.rs"))?;
+    assert_eq!(
+        public_methods(&coverage, "impl CoverageReport {")?,
+        vec![
+            "accounts".to_owned(),
+            "canonical_bytes".to_owned(),
+            "completeness_witness".to_owned(),
+            "config".to_owned(),
+            "digest".to_owned(),
+            "document_digest".to_owned(),
+            "excluded_captures".to_owned(),
+            "gaps".to_owned(),
+            "lecture".to_owned(),
+            "ordering_exceptions".to_owned(),
+            "ordering_findings".to_owned(),
+            "placed_captures".to_owned(),
+            "reconciles".to_owned(),
+            "segment_coverage".to_owned(),
+            "token_coverage".to_owned(),
+            "transcript_token_digest".to_owned(),
+            "unaccounted_captures".to_owned(),
+            "unexplained_gaps".to_owned(),
+            "unmapped".to_owned(),
+            "unmapped_count".to_owned(),
+            "version".to_owned(),
+        ],
+        "the report's public surface changed"
+    );
+
+    // The reader is not vacuous: it finds names, and it finds none in a block
+    // whose methods are all private.
+    assert!(!public_methods(&coverage, "impl CoverageValidator {")?.is_empty());
     Ok(())
 }
