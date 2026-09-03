@@ -173,7 +173,8 @@ fn register(connection: &mut Connection) -> Result<Registered, Box<dyn Error>> {
         u64::try_from(batch.events.len())?,
     )?;
     {
-        let receipts = std::collections::BTreeMap::<_, academic_vault::SealedObjectCapability>::new();
+        let receipts =
+            std::collections::BTreeMap::<_, academic_vault::SealedObjectCapability>::new();
         let mut closure = ClosureWriter::new(&transaction, &batch, &receipts);
         for (index, event) in batch.events.iter().enumerate() {
             closure.append_event(event, u64::try_from(index)? + 1)?;
@@ -208,7 +209,9 @@ fn migration_rule_types() -> Result<Vec<String>, Box<dyn Error>> {
         .find("rule_type TEXT NOT NULL CHECK (rule_type IN (")
         .ok_or("the rule_type CHECK is not in migration 0015")?;
     let body = &MIGRATION_0015_SQL[at..];
-    let end = body.find("))").ok_or("the rule_type CHECK does not close")?;
+    let end = body
+        .find("))")
+        .ok_or("the rule_type CHECK does not close")?;
     Ok(body[..end]
         .split('\'')
         .skip(1)
@@ -396,22 +399,27 @@ fn one_reviewer_cannot_attest_twice_to_one_rule() -> TestResult {
         "CREDIT_MINIMUM",
     )?;
 
-    let attest = |reviewer: u8| {
+    // The instant is a parameter, and the second attestation by the same person
+    // uses a *different* one. Injection `U2-I17` is what made that load-bearing:
+    // it widened the key to `(rule, reviewer, attested_at)`, and a test that
+    // re-attested at the same instant still saw a refusal -- of a duplicate row,
+    // not of a duplicate reviewer. The guard passed and proved nothing.
+    let attest = |reviewer: u8, at: i64| {
         connection.execute(
             "INSERT INTO requirement_rule_review (
                 requirement_rule_id, reviewer_entity_id, attested_at
              ) VALUES (?1, ?2, ?3)",
-            params![rule.clone(), vec![reviewer; 16], 1_800_000_000_000_i64],
+            params![rule.clone(), vec![reviewer; 16], at],
         )
     };
 
-    attest(0x71)?;
+    attest(0x71, 1_800_000_000_000)?;
     assert!(
-        attest(0x71).is_err(),
-        "one reviewer attested twice to one rule, which is one review recorded twice"
+        attest(0x71, 1_800_000_000_001).is_err(),
+        "one reviewer attested twice to one rule at two instants, which is one          review recorded twice"
     );
     // Two different people is the shape that is admitted.
-    attest(0x72)?;
+    attest(0x72, 1_800_000_000_002)?;
     let reviewers: i64 = connection.query_row(
         "SELECT count(DISTINCT reviewer_entity_id) FROM requirement_rule_review
          WHERE requirement_rule_id = ?1",
@@ -435,9 +443,13 @@ fn a_published_version_is_append_only_and_the_chain_does_not_fork() -> TestResul
     publish_version(&connection, &registered, 1, None, 0x41)?;
     publish_version(&connection, &registered, 2, Some(1), 0x42)?;
 
-    // Republishing a version number is refused by the primary key.
+    // Republishing a version number is refused by the primary key, and by the
+    // primary key alone: the row below carries a fresh hash and supersedes
+    // nothing, so neither UNIQUE can be what refuses it. `U2-I17` is the reason
+    // that matters -- a case that more than one constraint refuses cannot say
+    // which one it measured, and a weakened key would keep passing it.
     assert!(
-        publish_version(&connection, &registered, 2, Some(1), 0x43).is_err(),
+        publish_version(&connection, &registered, 2, None, 0x43).is_err(),
         "the database admitted a second row for one version number"
     );
 

@@ -375,6 +375,31 @@ fn dsl_required_course_set() -> TestResult {
             ],
         ),
     )?;
+    // The strict operand lives in *this* set, beside the equivalency it must
+    // not use. Injection `U2-I22` is why: it was first written as its own
+    // one-rule set, which held no `EQUIVALENCY` rule at all, so removing the
+    // `equivalent_admitted` check changed nothing and the assertion below still
+    // passed. The guard was refusing a substitution that was never on offer.
+    set = admit(
+        set,
+        "strict_set",
+        RuleBody::AllOf {
+            operands: vec![Operand {
+                course: structures,
+                equivalent_admitted: false,
+            }],
+        },
+        (
+            &[FixtureCase::new(
+                AcademicFacts::new(AT).with_attempt(attempt(2, structures, 3)?),
+                ProofStatus::Satisfied,
+            )],
+            &[FixtureCase::new(
+                by_equivalent.clone(),
+                ProofStatus::NotSatisfied,
+            )],
+        ),
+    )?;
     let set = set.publish();
     let rule = RuleId::new("required_course_set")?;
 
@@ -409,28 +434,21 @@ fn dsl_required_course_set() -> TestResult {
     );
     assert_eq!(substituted.used_attempts, vec![entity(1)?, entity(3)?]);
 
-    // An operand that does not admit an equivalent is not discharged by one.
-    let strict = one_rule_set(
-        "strict_set",
-        RuleBody::AllOf {
-            operands: vec![Operand {
-                course: structures,
-                equivalent_admitted: false,
-            }],
-        },
-        &[FixtureCase::new(
-            AcademicFacts::new(AT).with_attempt(attempt(2, structures, 3)?),
-            ProofStatus::Satisfied,
-        )],
-        &[FixtureCase::new(
-            by_equivalent.clone(),
-            ProofStatus::NotSatisfied,
-        )],
-    )?;
+    // An operand that does not admit an equivalent is not discharged by one --
+    // over the same set, where the equivalency that would discharge it is
+    // published and live, so the flag is the only thing that can refuse it.
     assert_eq!(
-        status_of(&strict, "strict_set", &by_equivalent)?,
+        status_of(&set, "strict_set", &by_equivalent)?,
         ProofStatus::NotSatisfied,
         "an operand that does not admit an equivalent was discharged by one"
+    );
+    // The substitution really is available in this set: the operand that does
+    // admit it is discharged by the same facts. Without this half the
+    // assertion above would pass on a set that simply has no equivalency.
+    assert_eq!(
+        status_of(&set, "required_course_set", &by_equivalent)?,
+        ProofStatus::Satisfied,
+        "the equivalency is not live in this set, so the strict case proves nothing"
     );
     Ok(())
 }
