@@ -150,12 +150,17 @@ earlier three are kept, because the comparison across them is the finding.
 | [33776759904](https://github.com/dnhynk/Academic-Platform/actions/runs/33776759904) | `cb83c60` | the crate as first pushed |
 | [33780711210](https://github.com/dnhynk/Academic-Platform/actions/runs/33780711210) | `5a0ba5c` | plus one `fix(transcription)` commit |
 | [33784209481](https://github.com/dnhynk/Academic-Platform/actions/runs/33784209481) | `9d289ab` | rebased onto `P2-U1` |
-| [33787226201](https://github.com/dnhynk/Academic-Platform/actions/runs/33787226201) | `7795741` | **rebased onto `P2-R2`; the current head** |
+| [33787226201](https://github.com/dnhynk/Academic-Platform/actions/runs/33787226201) | `7795741` | **rebased onto `P2-R2`; the last tree CI compiles differently** |
 
-A fifth, [33778983581](https://github.com/dnhynk/Academic-Platform/actions/runs/33778983581)
-on `be13b28`, also completed 22/22 between the first two; it is a Markdown-only
-commit and is not tabulated. No run on this branch was cancelled by the
-concurrency group.
+A run whose head is a Markdown-only commit is not tabulated, because it compiles
+the same tree as the tabulated run below it. Two such runs were observed at
+22/22 —
+[33778983581](https://github.com/dnhynk/Academic-Platform/actions/runs/33778983581)
+on `be13b28` and
+[33788795012](https://github.com/dnhynk/Academic-Platform/actions/runs/33788795012)
+on `e5a2fb0` — and the run triggered by the commit that last edited this section
+is a third of that kind, whose result is by construction not in this file. No run
+on this branch was cancelled by the concurrency group.
 
 | Required job | 33776759904 | 33780711210 | 33784209481 | **33787226201** | Limit | Worst |
 |---|---:|---:|---:|---:|---:|---:|
