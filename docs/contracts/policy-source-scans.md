@@ -132,6 +132,9 @@ remove.
 | `the_walk_reads_every_module_in_this_package`, `the_stage_order_and_the_gate_are_pinned`, `a_secret_digest_has_exactly_two_writers_and_one_needs_a_decision`, `the_snapshot_hands_back_owned_data_and_nothing_else`, `the_credential_is_repo_scoped_read_only_and_expiring_in_source`, `the_crate_touches_the_filesystem_only_to_read_it`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory`, `every_stage_of_the_seam_is_counted`, `the_vocabularies_match_the_specification` — `crates/repository/tests/repository_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus two fixed reads, `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and this page | eight whole-text pins (below); call-site counts by identifier on `permission_and_secret_gate` (1), `inventory` (1), `freeze` (2), `index` (1), `scan_secrets` (1), `admit` (1), `run_gate` (1) and `resolve_snapshot_type` (1), each with `fn <name>(` subtracted and each with the one file it may be called from; a whole-set comparison of every method signature in `impl RepositorySnapshot` against an 18-entry list, plus no `&mut self` and no public field; whole-set comparisons of every `fs::` name the product code spells against a three-entry read-only list and of every `use` item against a 14-entry list, both in both directions; counts of the two `blob_digest` assignment sites and of the functions taking a `DisclosureDecision` by value (1); a rule that the four `SnapshotStages` methods are exactly the four counted names; and section 17.2's `sourceType` values parsed out of the specification and compared with this crate's `SnapshotType` in both directions | `>= 6` files in the package walk, `>= 4` declared modules, every product file under `src/`, and a tripwire requiring every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the package to be a file the walk read |
 | `crates/repository/tests/snapshot.rs` | n/a — the `.rs` paths it names are the synthetic repository fixtures its own deterministic builder writes into a `TempDir` | not a source-text scan: `P2-R1`'s eight named acceptance tests, driven over in-process fixtures, an in-memory `DeviceKeystore` and an in-memory `GitHubRepositoryReader` | n/a |
 | `crates/store/src/repository_snapshot_tests.rs` | n/a — the `.rs` path it names is a manifest row in a synthetic snapshot | not a source-text scan: migration `0012`'s five guards fired against a migrated database | n/a |
+| `the_forbidden_fields_are_the_specifications_own`, `no_relation_derives_another`, `nothing_infers_a_course_identity`, `the_publish_path_has_one_rewind_and_every_failure_takes_it`, `the_walk_reads_every_module_in_this_crate`, `no_file_outside_this_crate_names_a_curriculum_relation`, `the_migration_vocabularies_are_the_rust_ones`, `the_open_gates_have_no_default` — `crates/curriculum/tests/curriculum_scans.rs` | recursive, **every `.rs` anywhere under this crate's package** for the per-crate rules, less `tests` for the ones about shipped code; recursive over **every `.rs` under `crates/`**, less each package's `tests`, for the one-step-out inventory; plus two fixed reads, `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and `migrations/store/0014_phase2_curriculum_aggregates.sql` | seven whole-text pins (below); section 8.2's four yaml blocks and section 12.4's `TranscriptSegment` block parsed out of the specification and compared with the accessor mapping in order and in both directions, with the existence half read from each aggregate's own `impl` block rather than from its module; a forbidden sweep of every mapped accessor against every other aggregate's whole module; the whole `impl` set naming any of the four relation types; the whole public signature set of `relation.rs`, swept for a signature taking one relation and returning another; the whole set of signatures anywhere in the crate producing a `CourseCodeReuse`; call-site counts by identifier on `append` (1), `rewind_to` (1) and `ledger.mark()` (1), each with `fn <name>(` subtracted; the ledger vectors the appending body pushes to, enumerated from that body and each required to be one the rewind truncates; every `PublishCheckpoint` variant required to be reached through an injector call and the injector calls counted against the checkpoint names; six migration `CHECK` vocabularies compared with this crate's enums, two of them less `UNKNOWN`; and the whole set of `Default` implementations in the crate | `sources.len() >= 10` on the package walk plus a rule that the walk read this very file, which is in `tests`; `declared >= 10` on the module tripwire, with a `#[path]` target inside the package required to be a file the walk read; every product file under `src/`; `>= 60` compared pairs in the forbidden sweep; `>= 25` signatures in `relation.rs`; `>= 150` files outside the package and `>= 10` inside it on the workspace walk; every whole-set comparison is an `assert_eq!` against a pinned list, so an empty walk fails as missing keys |
+| `crates/store/src/curriculum_tests.rs` | n/a — it reads migration `0014`'s own SQL text, not Rust source | not a source-text scan: migration `0014`'s guards, its four relation tables' whole column sets, its table list against the migration's own `CREATE TABLE` lines, and the SQL half of `curriculum_publish_is_atomic_under_injected_failure`, all fired against a migrated database | n/a |
+| `crates/curriculum/tests/curriculum.rs` | n/a — the `#[path]` it names pulls in `P2-U6`'s fixture module, which the inventory follows rather than treating as a read | not a source-text scan: `P2-U1`'s five behavioural acceptance cases, driven over an in-process ledger and one real `academic-ingestion` run | n/a |
 | `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
 | `tools/{source-preflight,cargo-lock-source-policy,dependency-source-policy,restricted-yaml}.mjs`, `tools/{dependency-source-policy,pnpm-source-policy-consumption}.test.mjs` | n/a | lockfile and registry parsing; not a source-text scan | n/a |
 | `tools/{phase1-exit,security-baseline}.mjs` | n/a | execution observation and committed fixture bytes | n/a |
@@ -1502,6 +1505,130 @@ pin on the type itself, which is what sees a constructor spelling `Self`;
 `REQUEST_SIGNATURES` is backed by `REQUEST_SURFACE` for the same reason; and
 `SNAPSHOT_PUBLIC_METHODS` is a surface pin rather than a sweep to begin with. The
 publisher was the one that had a sweep and no construction count.
+
+## What the `P2-U1` scans hold
+
+Four of `P2-U1`'s claims are statements about what the source does not contain,
+and a behavioural test cannot observe an absence.
+
+**`the_forbidden_fields_are_the_specifications_own`** is five halves. Section
+8.2's four yaml blocks are parsed out of the specification and compared with the
+accessor mapping *in order and in both directions*, so a key the specification
+writes and the mapping does not fails as a missing entry and the reverse fails
+as an extra one. Every mapped accessor is then required to exist in its own
+aggregate's own `impl` block — not merely somewhere in its module, which is the
+distinction injection `U-I5` made load-bearing: renaming
+`CourseRevision::source_snapshot` left `CourseRevisionDraft::source_snapshot`
+spelling the same name one type over, and a per-file name set passed. Third, the
+forbidden sweep runs every mapped accessor against every other aggregate's whole
+module, with five shared names each carrying a written reason. Fourth, section
+12.4's `TranscriptSegment` block supplies the offering's excluded list, because
+that is where the specification writes down what 매 수업시간의 실제 발화 is; a
+vocabulary invented in the test would have been a token list. Fifth, section 9's
+three boundary rows are pinned whole and each module is required to quote its
+own exclusion cell, so a module cannot state a narrower boundary than the
+specification does.
+
+**`no_relation_derives_another`** is five halves. Section 11.4's sentence is
+pinned whole and walked forwards word by word, so a relation dropped from
+`CourseRelationKind` fails against the specification rather than against a
+number. The whole `impl` set naming any of the four relation types is compared
+with a four-entry list, so a `From`, a `TryFrom`, a `Deref` or an `AsRef`
+appears as an extra key rather than being searched for by spelling. Both that
+sweep and the signature sweep read **every product file in the crate**, not
+`relation.rs`: the type and the trait are both local, so the orphan rule refuses
+a conversion written outside the crate and refuses nothing written in a sibling
+module — `U-I24` and `U-I25` put one in `publish.rs`, and both were written
+after this task noticed its own sweeps were file-scoped. The signature sweep is
+what catches a conversion whose name spells no trait — injection `U-I7`'s
+`implied_identity`. Each of the four
+lookups is pinned as whole text and each is required to read exactly one of the
+four vectors, counted over the pinned text. And 경과조치 is required to be
+answered in `version.rs` and nowhere in `relation.rs`, because it names a cohort
+and a curriculum version and has no course end.
+
+**`nothing_infers_a_course_identity`** is three halves. The whole set of
+signatures anywhere in the crate that produce a `CourseCodeReuse` is pinned at
+three, so a heuristic added under any name fails as an extra key —
+injection `U-I13` is a `same_course_by_code` that reads two catalogue codes. The
+`Unknown` reading is counted at its two sites, the `map_or` fallback and the
+constructor's refusal, and both are pinned. And no signature anywhere in the
+crate may take two `CourseCode` values, because comparing two codes is the
+strongest available inference and section 8.2's contract is that course-code
+reuse is an explicit decision.
+
+**`the_publish_path_has_one_rewind_and_every_failure_takes_it`** is four halves.
+`publish`, `rewind_to` and `truncate_to` are pinned whole. `append`, `rewind_to`
+and `ledger.mark()` are each counted to one site, with `fn <name>(` subtracted,
+so a second public entry point that writes without taking a mark fails —
+injection `U-I16`. The ledger vectors the appending body pushes to are
+enumerated *out of that body* rather than written down, and each is required to
+be one the rewind truncates, so a fifth vector fails until the rewind reaches it.
+And every `PublishCheckpoint` variant is required to be reached through an
+injector call, with the injector calls counted against the checkpoint names, so a
+checkpoint named in a condition written inline fails.
+
+**The one-step-out inventory.** Every rule above is about
+`crates/curriculum`. `no_file_outside_this_crate_names_a_curriculum_relation`
+walks every product file in every other workspace package and requires none of
+them to name any of the four relation types, the identity verdict, the
+publisher, the ledger or the transition arrangement. It is empty today and a
+file added to it is a review rather than a silent second implementation.
+
+### The injection matrix
+
+Twenty-six injections, applied one at a time to shipped source and reverted.
+Each is compiled first, with `cargo build` rather than `cargo test`, so a
+trybuild case's *expected* diagnostic cannot be mistaken for a real build
+failure: **all twenty-four compile.** The unmodified tree is run before and after
+the matrix and passes both times.
+
+Four rows below are refusals this task found in its own guards rather than
+confirmations of them. `U-I5` passed unrefused on the first run and the
+existence check was moved from the module to the aggregate's own `impl` block.
+`U-I20` was originally a `#[path]` naming a file that does not exist, which is a
+compile error and therefore no evidence at all; it was replaced by the walk
+narrowing it was supposed to stand for, and the walk grew the rule that it must
+have read its own file — which is in `tests` — before the replacement was
+refused. `U-I24` and `U-I25` are the same question asked one module out: the
+relation sweeps read `relation.rs` only, and a conversion in `publish.rs`
+compiles exactly as well, so both sweeps were widened to every product file in
+the crate before either injection was written.
+
+| # | Injection | Refused by |
+|---|---|---|
+| U-I1 | `Course` grows an `instructors` accessor with no field behind it | `aggregate_boundaries_are_compile_errors` |
+| U-I2 | `CourseRevision` grows a `term` accessor | `aggregate_boundaries_are_compile_errors` |
+| U-I3 | `CourseOffering` grows a `verbatim_text` accessor — section 12.4's own key, on no list written in the test | `the_forbidden_fields_are_the_specifications_own` |
+| U-I4 | one key is dropped from the accessor mapping, together with its declared length | `the_forbidden_fields_are_the_specifications_own` |
+| U-I5 | `CourseRevision::source_snapshot` is renamed, leaving the draft's setter spelling it | `the_forbidden_fields_are_the_specifications_own` — **after** the check moved to the aggregate's own `impl` block |
+| U-I6 | `impl From<ReplacementRelation> for EquivalenceRelation` | `aggregate_boundaries_are_compile_errors` |
+| U-I7 | `ReplacementRelation::implied_identity` returning an `IdentityDecision`, spelling no conversion trait | `aggregate_boundaries_are_compile_errors` |
+| U-I8 | `same_course` also reads the replacement set | `replacement_does_not_imply_identity` |
+| U-I9 | `equivalent` answers both directions | `equivalence_is_directional_and_effective_dated` |
+| U-I10 | `RetirementRelation` grows a `replacement` accessor | `aggregate_boundaries_are_compile_errors` |
+| U-I11 | migration `0014` gives `course_retirement` a `replacement_course_id` column | `no_relation_table_carries_another_relations_column` |
+| U-I12 | migration `0014` admits `'UNKNOWN'` as a recorded identity verdict | `no_relation_table_carries_another_relations_column` |
+| U-I13 | the ledger grows a second identity producer that compares catalogue codes | `nothing_infers_a_course_identity` |
+| U-I14 | `IdentityDecision::record` stops refusing `UNKNOWN` | `replacement_does_not_imply_identity` |
+| U-I15 | the rewind stops truncating one vector the publication appends to | `curriculum_publish_is_atomic_under_injected_failure` |
+| U-I16 | a second public entry point calls the appending body without taking a mark | `the_publish_path_has_one_rewind_and_every_failure_takes_it` |
+| U-I17 | `publish` rewinds only for an injected fault, not for every failure | `the_publish_path_has_one_rewind_and_every_failure_takes_it` |
+| U-I18 | one checkpoint is never consulted in the appending body | `curriculum_publish_is_atomic_under_injected_failure` |
+| U-I19 | a product file outside `src`, carrying a forbidden accessor | `the_walk_reads_every_module_in_this_crate`, `the_forbidden_fields_are_the_specifications_own` |
+| U-I20 | the walk is narrowed from the package to `src` | `the_walk_reads_every_module_in_this_crate` — **after** the rule that the walk read its own file |
+| U-I20b | a `#[path]` module inside the package that the narrowed walk would miss | `the_walk_reads_every_module_in_this_crate` (tripwire) |
+| U-I21 | another crate's product file declares a type named `IdentityDecision` | `no_file_outside_this_crate_names_a_curriculum_relation` |
+| U-I22 | `relation.rs` answers the transitional measure | `no_relation_derives_another` |
+| U-I23 | `CurriculumCategory` gains a `Default` | `the_open_gates_have_no_default` |
+| U-I24 | `impl From<RetirementRelation> for ReplacementRelation` written in `publish.rs` rather than `relation.rs` | `no_relation_derives_another` — **after** the `impl` sweep widened to every product file |
+| U-I25 | a cross-returning `widen(ReplacementRelation) -> EquivalenceRelation` written in `publish.rs` | `no_relation_derives_another` — **after** the signature sweep widened to every product file |
+
+`U-I1`, `U-I2`, `U-I6`, `U-I7`, `U-I10` and `U-I24` are recorded against the
+compile-fail suite when the whole crate is tested, because that target fails
+first and Cargo stops there. Each also violates the source scan named beside it:
+`U-I24` was re-run against `--test curriculum_scans` alone and
+`no_relation_derives_another` refused it there.
 
 ## Open
 

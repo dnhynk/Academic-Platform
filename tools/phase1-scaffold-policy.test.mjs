@@ -250,6 +250,16 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-contracts": ["academic-domain"],
     "academic-connector": ["academic-policy"],
     "academic-crypto": ["academic-keystore-platform"],
+    // `P2-U1`. Section 8.2's aggregates and section 11.4's four relations.
+    // `academic-domain` supplies the v3 aggregate identifiers migration 0004's
+    // closure rows key on; `academic-ingestion` supplies `PublishedRules`, which
+    // is the only argument `CurriculumPublication::from_official_source` takes,
+    // so a curriculum version founded on an undated official source is not a
+    // value that exists. The edge it does *not* have is the point: no
+    // `academic-store`, so the canonical writer is not in the closure a
+    // curriculum aggregate compiles against and this crate cannot write the
+    // typed rows migration 0014 creates.
+    "academic-curriculum": ["academic-domain", "academic-ingestion"],
     "academic-core": [
       "academic-contracts",
       "academic-domain",
@@ -440,6 +450,11 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // dev-dependencies, and a case has to name the canonical types a projection
     // must never become.
     "academic-core": ["academic-scenario"],
+    // `P2-U1` links its own domain crate a second time as a dev edge for the
+    // `trybuild` reason `academic-scenario` gives below: a compile-fail case
+    // compiles against the crate under test plus that crate's dev-dependencies,
+    // and a case has to name the domain identifiers an aggregate is built from.
+    "academic-curriculum": ["academic-domain"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
     // The encrypted portability acceptance suite builds its keys through the
     // `P2-K1` public schedule rather than fabricating them, exactly as the
@@ -2090,6 +2105,7 @@ const SOCKET_CAPABLE_CLOSURES = {
   // `P2-U6`. `libc` reaches it through `academic-domain`. The crate spells no
   // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
   // rather than empty, and it implements `ConditionalFetch` nowhere.
+  "academic-curriculum": ["libc"],
   "academic-ingestion": ["libc"],
   "academic-keystore-platform": ["windows-sys"],
   "academic-ledger": ["libc"],
@@ -3846,6 +3862,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     repositoryReceiptText,
     captureSubsystemReceiptText,
     ingestionReceiptText,
+    curriculumReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3869,6 +3886,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-r1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u6.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-u1.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3892,6 +3910,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const repositoryReceipt = JSON.parse(repositoryReceiptText);
   const captureSubsystemReceipt = JSON.parse(captureSubsystemReceiptText);
   const ingestionReceipt = JSON.parse(ingestionReceiptText);
+  const curriculumReceipt = JSON.parse(curriculumReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -4890,6 +4909,50 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-U6 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-U1` adds one workspace path package, `academic-curriculum`, and admits
+  // no external crate: its product edges are `academic-domain`,
+  // `academic-ingestion` and `thiserror` and its dev edges are
+  // `academic-domain` and `trybuild`, all already in this lock through earlier
+  // receipts. No store, vault, crypto, policy or transport crate is linked at
+  // any feature setting, and the receipt records why the aggregate boundary
+  // sits above the ingestion pipeline rather than inside it.
+  assert.equal(curriculumReceipt.task, "P2-U1");
+  const curriculumAdmitted = new Set(
+    curriculumReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const curriculumPathPackages = new Set(
+    curriculumReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(curriculumAdmitted.size, 0, "P2-U1 must admit no external crate");
+  assert.deepEqual([...curriculumPathPackages], ["academic-curriculum@0.1.0"]);
+  assert.deepEqual(curriculumReceipt.summary.npm_additions, []);
+  assert.equal(curriculumReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(curriculumReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-ingestion",
+  ]);
+  assert.deepEqual(curriculumReceipt.vendored_data, []);
+  for (const claimed of [...curriculumAdmitted, ...curriculumPathPackages]) {
+    assert.equal(
+      ingestionAdmitted.has(claimed) ||
+        ingestionPathPackages.has(claimed) ||
+        repositoryAdmitted.has(claimed) ||
+        repositoryPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const curriculumTuples = lockTuples.filter(
+    ([name, version]) =>
+      curriculumAdmitted.has(`${name}@${version}`) ||
+      curriculumPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    curriculumTuples.length,
+    curriculumAdmitted.size + curriculumPathPackages.size,
+    "a P2-U1 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -4931,7 +4994,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !captureSubsystemAdmitted.has(`${name}@${version}`) &&
       !captureSubsystemPathPackages.has(`${name}@${version}`) &&
       !ingestionAdmitted.has(`${name}@${version}`) &&
-      !ingestionPathPackages.has(`${name}@${version}`),
+      !ingestionPathPackages.has(`${name}@${version}`) &&
+      !curriculumAdmitted.has(`${name}@${version}`) &&
+      !curriculumPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -4962,7 +5027,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       desktopTuples.length +
       repositoryTuples.length +
       captureSubsystemTuples.length +
-      ingestionTuples.length,
+      ingestionTuples.length +
+      curriculumTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

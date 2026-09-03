@@ -1,0 +1,75 @@
+error[E0277]: the trait bound `IdentityDecision: From<ReplacementRelation>` is not satisfied
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:32:68
+   |
+32 |     let _identity_from_replacement: IdentityDecision = replacement.into();
+   |                                                                    ^^^^ the trait `From<ReplacementRelation>` is not implemented for `IdentityDecision`
+   |
+   = note: required for `ReplacementRelation` to implement `Into<IdentityDecision>`
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:33:61
+   |
+33 |     let _identity_from_equivalence = IdentityDecision::from(equivalence);
+   |                                      ---------------------- ^^^^^^^^^^^ expected `IdentityDecision`, found `EquivalenceRelation`
+   |                                      |
+   |                                      arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:34:67
+   |
+34 |     let _equivalence_from_replacement = EquivalenceRelation::from(replacement);
+   |                                         ------------------------- ^^^^^^^^^^^ expected `EquivalenceRelation`, found `ReplacementRelation`
+   |                                         |
+   |                                         arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:35:62
+   |
+35 |     let _retirement_from_identity = RetirementRelation::from(identity);
+   |                                     ------------------------ ^^^^^^^^ expected `RetirementRelation`, found `IdentityDecision`
+   |                                     |
+   |                                     arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:36:66
+   |
+36 |     let _replacement_from_retirement = ReplacementRelation::from(retirement);
+   |                                        ------------------------- ^^^^^^^^^^ expected `ReplacementRelation`, found `RetirementRelation`
+   |                                        |
+   |                                        arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0599]: no method named `identity` found for struct `ReplacementRelation` in the current scope
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:39:32
+   |
+39 |     let _implied = replacement.identity();
+   |                                ^^^^^^^^ method not found in `ReplacementRelation`
+
+error[E0599]: no method named `reverse` found for struct `EquivalenceRelation` in the current scope
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:40:32
+   |
+40 |     let _reverse = equivalence.reverse();
+   |                                ^^^^^^^ method not found in `EquivalenceRelation`
+
+error[E0599]: no method named `replacement` found for struct `RetirementRelation` in the current scope
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:41:29
+   |
+41 |     let _named = retirement.replacement();
+   |                             ^^^^^^^^^^^ method not found in `RetirementRelation`
+
+error[E0599]: no method named `equivalence` found for struct `IdentityDecision` in the current scope
+  --> tests/compile_fail/a_relation_does_not_convert_into_another.rs:42:29
+   |
+42 |     let _widened = identity.equivalence();
+   |                             ^^^^^^^^^^^ method not found in `IdentityDecision`
