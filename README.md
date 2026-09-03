@@ -54,6 +54,8 @@ cargo clippy -p academic-transcript --all-targets --locked --offline --features 
 cargo test -p academic-transcript --all-targets --locked --offline --features encrypted-vault,phase2-fault-injection
 cargo clippy -p academic-worker --all-targets --locked --offline --features native-sandbox -- -D warnings
 cargo test -p academic-worker --all-targets --locked --offline --features native-sandbox
+cargo clippy -p academic-capture-gate --all-targets --locked --offline --features native-capture -- -D warnings
+cargo test -p academic-capture-gate --all-targets --locked --offline --features native-capture
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck

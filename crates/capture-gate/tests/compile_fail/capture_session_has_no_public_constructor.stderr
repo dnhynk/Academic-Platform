@@ -1,0 +1,5 @@
+error: cannot construct `CaptureSession` with struct literal syntax due to private fields
+ --> tests/compile_fail/capture_session_has_no_public_constructor.rs:4:20
+  |
+4 |     let _session = CaptureSession {};
+  |                    ^^^^^^^^^^^^^^

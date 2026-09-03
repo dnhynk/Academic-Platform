@@ -214,6 +214,18 @@ test("workspace_dependency_direction_is_acyclic", () => {
   assert.deepEqual(actual, {
     "academic-admission": [],
     "academic-capture-client": ["academic-policy"],
+    // `P2-L1`'s device gate. Its product edges are the consent decision it
+    // re-runs and the domain identifiers its audit rows carry; `libc` and
+    // `windows-sys` are optional target-specific edges behind the non-default
+    // `native-capture` feature and are not workspace packages, so they appear
+    // in `SOCKET_CAPABLE_CLOSURES` below rather than here.
+    //
+    // Nothing depends on it, for `academic-worker`'s reason: it carries a
+    // platform backend and a probe binary, and a product crate that linked it
+    // would put both in a default build's dependency graph. The capture client
+    // process crate is unchanged and still holds exactly its one process-class
+    // binding.
+    "academic-capture-gate": ["academic-consent", "academic-domain"],
     "academic-cli": [
       "academic-admission",
       "academic-core",
@@ -359,6 +371,21 @@ test("workspace_dependency_direction_is_acyclic", () => {
       .toSorted(([left], [right]) => left.localeCompare(right)),
   );
   assert.deepEqual(devEdges, {
+    // `P2-L1`. The two boundaries a quarantined capture must not reach are dev
+    // edges rather than product ones: what this crate owns is that a
+    // quarantined artefact hands out no bytes, and
+    // `violation_risk_blocks_share_and_ai_processing` observes that against the
+    // real staging pipeline and the real prompt envelope rather than against a
+    // local imitation. `academic-policy` arrives with them. `academic-consent`
+    // and `academic-domain` are declared twice for the `trybuild` reason
+    // `academic-scenario` gives below.
+    "academic-capture-gate": [
+      "academic-consent",
+      "academic-domain",
+      "academic-egress-boundary",
+      "academic-policy",
+      "academic-untrusted-content",
+    ],
     // `P2-G6` restates `academic-retention`'s derivative-class list rather than
     // importing it, and this is the edge that keeps the restatement honest:
     // `the_two_derivative_vocabularies_are_the_same_list` compares both lists
@@ -945,6 +972,23 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
         "claim. Ships in no product build.",
     ],
     [
+      join("crates", "capture-gate", "src", "native", "linux.rs"),
+      "behind the non-default `native-capture` feature: `P2-L1`'s Linux " +
+        "device layer launches the capture process with the Landlock ruleset " +
+        "installed between `fork` and `exec`, so the process that opens a " +
+        "device is never the one that decided what it may open. It ships in " +
+        "no default build -- `default = []` and the feature is the only way " +
+        "in -- and the probe it launches is a `[[bin]]` with " +
+        "`required-features` and a `path` outside `src`.",
+    ],
+    [
+      join("crates", "capture-gate", "src", "native", "windows.rs"),
+      "the same, for the Windows AppContainer, which is applied by " +
+        "`CreateProcessW` in the parent. The uncontained arm uses " +
+        "`process::Command` for the paired permission run, which is what " +
+        "makes a refusal inside the container evidence.",
+    ],
+    [
       join("crates", "core", "tests", "projection_generation.rs"),
       "test-only: re-runs this repository's own generator so a committed " +
         "projection can be compared against a fresh one. Ships in no product " +
@@ -1377,6 +1421,15 @@ const SOCKET_ALLOWANCE = new Map([
       "connect_timeout",
     ],
   ],
+  // `P2-L1`. The capture gate's Linux device layer reaches Landlock the same
+  // way and for the same reason: there is no libc wrapper for it. It names no
+  // socket syscall at all -- the three it makes are the Landlock trio -- so its
+  // allowance is `libc::syscall` and nothing else, and `RAW_SYSCALL_FILES`
+  // below carries the reviewed set that the first-argument rule reads it
+  // against. A fourth name, or a bare number, fails that rule here and
+  // `the_linux_backend_names_only_the_three_syscalls_it_installs` in
+  // `crates/capture-gate/tests/capture_scans.rs` independently.
+  ["crates/capture-gate/src/native/linux.rs", ["libc::syscall"]],
   [
     "crates/worker/src/sandbox/linux.rs",
     [
@@ -1401,6 +1454,9 @@ const SANDBOX_PROBE = "crates/worker/probes/worker_probe.rs";
 /** The Linux backend, which names socket syscalls only to refuse them. */
 const SANDBOX_DENY_LIST = "crates/worker/src/sandbox/linux.rs";
 
+/** `P2-L1`'s Linux device layer, which names Landlock and no socket at all. */
+const CAPTURE_DEVICE_LAYER = "crates/capture-gate/src/native/linux.rs";
+
 /**
  * The syscalls the Linux backend *makes*, and why each one is not a refusal.
  *
@@ -1416,6 +1472,77 @@ const CALLED_SYSCALLS = new Map([
   ["SYS_landlock_restrict_self", "applies the ruleset to this process, irrevocably"],
   ["SYS_seccomp", "installs the filter, and asks whether an action is available"],
 ]);
+
+/**
+ * Every file allowed to spell `libc::syscall`, and the syscalls it may make.
+ *
+ * `P2-G4` wrote the first-argument rule for one file and keyed it on that one
+ * file's name. `P2-L1` is the second file that has to reach a syscall with no
+ * libc wrapper, and a second allowance entry with no rule behind it is exactly
+ * the hole `docs/contracts/policy-source-scans.md` is about. So the rule is
+ * keyed on this map instead: a file on the socket allowance for
+ * `libc::syscall` that is not a key here fails, and a call whose first argument
+ * is not one of that file's own reviewed names fails.
+ *
+ * The worker's entry is `CALLED_SYSCALLS`, which keeps its extra rule -- every
+ * *other* `SYS_` name in that file must sit inside `denied_syscalls` -- because
+ * that file also builds a seccomp deny list and this one does not.
+ */
+const RAW_SYSCALL_FILES = new Map([
+  [
+    "crates/capture-gate/src/native/linux.rs",
+    new Map([
+      ["SYS_landlock_create_ruleset", "creates the device ruleset, and probes the ABI version"],
+      ["SYS_landlock_add_rule", "adds one path-beneath rule for a granted device tree"],
+      ["SYS_landlock_restrict_self", "applies the ruleset to the forked child, irrevocably"],
+    ]),
+  ],
+  ["crates/worker/src/sandbox/linux.rs", CALLED_SYSCALLS],
+]);
+
+/**
+ * The three rules that make a raw syscall readable, applied to one file.
+ *
+ * Every mention of `libc::syscall` is a call, so its arguments stay in sight;
+ * every call's first argument is a `libc::SYS_` path, so a number is refused;
+ * and every such name is one the file's own reviewed set lists.
+ */
+function assertRawSyscallsAreReviewed(file, whole, reviewed) {
+  const calls = [...whole.matchAll(/\blibc\s*::\s*syscall\s*\(/gu)];
+  assert.ok(
+    calls.length >= 3,
+    `${file} makes only ${calls.length} raw syscalls, so this rule read almost nothing`,
+  );
+  const mentions = [...whole.matchAll(/\blibc\s*::\s*syscall\b/gu)];
+  assert.equal(
+    mentions.length,
+    calls.length,
+    `${file} names libc::syscall ${mentions.length - calls.length} time(s) ` +
+      "without calling it, so its arguments are not read",
+  );
+  const seen = new Set();
+  for (const call of calls) {
+    const first = whole
+      .slice(call.index + call[0].length)
+      .split(",")[0]
+      .trim();
+    assert.match(
+      first,
+      /^libc::SYS_[A-Za-z0-9_]+$/u,
+      `${file} calls libc::syscall with ${first} rather than a libc::SYS_ name`,
+    );
+    const name = first.slice("libc::".length);
+    assert.equal(
+      reviewed.has(name),
+      true,
+      `${file} calls ${first}, which is not one of the reviewed syscalls it installs with`,
+    );
+    seen.add(name);
+  }
+  for (const name of reviewed.keys()) {
+    assert.equal(seen.has(name), true, `${file} no longer calls ${name}`);
+  }
+}
 
 /** Path segments that lead to a socket; renaming one hides everything under it. */
 const SOCKET_MODULE_SEGMENTS = new Set(["net", "socket", "sys", "WinSock", "named_pipe"]);
@@ -1500,6 +1627,13 @@ const SOCKET_CAPABLE_CRATES = new Set([
 const SOCKET_CAPABLE_CLOSURES = {
   "academic-admission": ["libc"],
   "academic-capture-client": ["libc"],
+  // `P2-L1`. `libc` reaches it through `academic-domain`. Its own `libc` and
+  // `windows-sys` edges are optional and target-specific and this resolve is
+  // the default feature set on this host, which is itself the claim that the
+  // default lane links no device backend. The source half above is what says
+  // the crate names `libc::syscall` to install a Landlock ruleset rather than
+  // to open a socket.
+  "academic-capture-gate": ["libc"],
   "academic-cli": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   "academic-connector": ["libc"],
   // `P2-G6`. `libc` reaches it through `academic-domain`. The crate spells no
@@ -1769,6 +1903,31 @@ test("only_egress_crate_has_a_socket", async () => {
     ),
     "a file spells a socket that its allowance does not list",
   );
+  // Every file allowed to spell `libc::syscall` is read against its own
+  // reviewed set, whichever file it is. This runs before the per-file branches
+  // below so a new backend cannot be added to the allowance without being added
+  // here too.
+  for (const [file, spellings] of observed) {
+    if (!spellings.includes("libc::syscall")) {
+      continue;
+    }
+    const reviewed = RAW_SYSCALL_FILES.get(file);
+    assert.ok(
+      reviewed,
+      `${file} is allowed libc::syscall and is not in RAW_SYSCALL_FILES, so nothing reads ` +
+        "which syscalls it makes",
+    );
+    const whole = rustCodeOnly(await readFile(join(...file.split("/")), "utf8"));
+    assertRawSyscallsAreReviewed(file, whole, reviewed);
+  }
+  for (const file of RAW_SYSCALL_FILES.keys()) {
+    assert.equal(
+      SOCKET_ALLOWANCE.get(file)?.includes("libc::syscall") ?? false,
+      true,
+      `${file} is reviewed for raw syscalls but no longer spells one`,
+    );
+  }
+
   for (const [file, spellings] of observed) {
     if (file === SANDBOX_DENY_LIST) {
       // Every socket syscall this file names has to be inside the function
@@ -1901,6 +2060,37 @@ test("only_egress_crate_has_a_socket", async () => {
           .map((pkg) => pkg.name),
         [],
         "a crate depends on academic-worker, so the probe is reachable from it",
+      );
+      continue;
+    }
+    if (file === CAPTURE_DEVICE_LAYER) {
+      // `P2-L1`'s device layer spells `libc::syscall` and nothing else. Its
+      // three syscalls, the rule that every mention of the name is a call, and
+      // the rule that every call's first argument is one of those three are all
+      // applied above, from `RAW_SYSCALL_FILES`, before this loop runs. What is
+      // checked here is the other half of the worker's bargain: the probe it
+      // launches is a `[[bin]]` with `required-features` and no workspace crate
+      // depends on the package, so neither reaches a default build.
+      assert.deepEqual(spellings, ["libc::syscall"], `${file} spells more than its allowance`);
+      const gate = packagesByName.get("academic-capture-gate");
+      assert.ok(gate, "academic-capture-gate is absent");
+      const probeTargets = gate.targets.filter((target) => target.kind.includes("bin"));
+      assert.deepEqual(
+        probeTargets.map((target) => target.name),
+        ["academic-capture-probe"],
+        "the capture gate gained a binary target beside the device probe",
+      );
+      assert.deepEqual(
+        probeTargets.map((target) => target["required-features"] ?? []),
+        [["native-capture"]],
+        "the device probe is buildable without the native-capture feature",
+      );
+      assert.deepEqual(
+        workspacePackages
+          .filter((pkg) => workspaceDependencyNames(pkg).includes("academic-capture-gate"))
+          .map((pkg) => pkg.name),
+        [],
+        "a crate depends on academic-capture-gate, so the probe is reachable from it",
       );
       continue;
     }
@@ -3190,6 +3380,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     untrustedReceiptText,
     consentReceiptText,
     modelRunReceiptText,
+    captureReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3207,6 +3398,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-g5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-g6.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-m1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-l1.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3224,6 +3416,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const untrustedReceipt = JSON.parse(untrustedReceiptText);
   const consentReceipt = JSON.parse(consentReceiptText);
   const modelRunReceipt = JSON.parse(modelRunReceiptText);
+  const captureReceipt = JSON.parse(captureReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -3842,6 +4035,66 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-G6 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-L1` adds the capture device gate as `academic-capture-gate` and admits
+  // no external crate: `libc` and `windows-sys` are the pinned versions
+  // `academic-worker`'s native lane already admitted, and every other edge is
+  // a workspace path crate an earlier receipt covers.
+  assert.equal(captureReceipt.task, "P2-L1");
+  const captureAdmitted = new Set(
+    captureReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const capturePathPackages = new Set(
+    captureReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(captureAdmitted.size, 0, "P2-L1 must admit no external crate");
+  assert.deepEqual([...capturePathPackages], ["academic-capture-gate@0.1.0"]);
+  assert.deepEqual(captureReceipt.summary.npm_additions, []);
+  assert.equal(captureReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(captureReceipt.direct_workspace_dependencies, {});
+  for (const claimed of [...captureAdmitted, ...capturePathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        recordAdmitted.has(claimed) ||
+        recordPathPackages.has(claimed) ||
+        sandboxAdmitted.has(claimed) ||
+        sandboxPathPackages.has(claimed) ||
+        untrustedAdmitted.has(claimed) ||
+        untrustedPathPackages.has(claimed) ||
+        consentAdmitted.has(claimed) ||
+        consentPathPackages.has(claimed) ||
+        modelRunAdmitted.has(claimed) ||
+        modelRunPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const captureTuples = lockTuples.filter(
+    ([name, version]) =>
+      captureAdmitted.has(`${name}@${version}`) ||
+      capturePathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    captureTuples.length,
+    captureAdmitted.size + capturePathPackages.size,
+    "a P2-L1 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -3871,7 +4124,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !consentAdmitted.has(`${name}@${version}`) &&
       !consentPathPackages.has(`${name}@${version}`) &&
       !modelRunAdmitted.has(`${name}@${version}`) &&
-      !modelRunPathPackages.has(`${name}@${version}`),
+      !modelRunPathPackages.has(`${name}@${version}`) &&
+      !captureAdmitted.has(`${name}@${version}`) &&
+      !capturePathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -3896,7 +4151,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       sandboxTuples.length +
       untrustedTuples.length +
       consentTuples.length +
-      modelRunTuples.length,
+      modelRunTuples.length +
+      captureTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -4141,9 +4397,48 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
               },
             ]
           : [];
+    // `P2-L1` reuses the same two and admits none: `tempfile` for the report
+    // directories its native suite launches a probe into, and `windows-sys`
+    // for the AppContainer and configuration-manager calls. Its feature group
+    // is not the sandbox's: it needs no job object and it does need
+    // `Win32_Devices_DeviceAndDriverInstallation`, which is how a device
+    // interface path is enumerated rather than compiled in. The edge is
+    // optional and behind `native-capture`; `cargo metadata` reports declared
+    // dependencies, so it appears here whether or not the feature is on.
+    const l1CaptureUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-capture-gate",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : admission.name === "windows-sys"
+          ? [
+              {
+                package: "academic-capture-gate",
+                kind: "normal",
+                target: "cfg(windows)",
+                default_features: false,
+                features: [
+                  "Win32_Devices_DeviceAndDriverInstallation",
+                  "Win32_Foundation",
+                  "Win32_Security",
+                  "Win32_Security_Authorization",
+                  "Win32_Security_Isolation",
+                  "Win32_Storage_FileSystem",
+                  "Win32_System_Threading",
+                ],
+              },
+            ]
+          : [];
     const expectedUses = [
       ...admission.uses,
       ...g4SandboxUse,
+      ...l1CaptureUse,
       ...j1ProjectionUse,
       ...t047FormatTestUse,
       ...k4RecoveryUse,
