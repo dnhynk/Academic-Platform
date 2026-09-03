@@ -1268,18 +1268,25 @@ run shows.
 | `rotation-orchestration-lane-ubuntu-latest` | 6:55 | 15.4% |
 | `pnpm-contracts` | 0:51 | 5.7% |
 
-`rust-default-windows-latest` is the slowest at 39.3%, a **sixth** reading of
-that job — 20:18, 14:08, 12:16, 16:56, 13:12 and now 11:47, which is 67.7%,
-47.1%, 40.9%, 56.4%, 44.0% and 39.3%. It is the **lowest reading so far**, so it
-extends the range's low end from 40.9% to 39.3% rather than sitting inside it.
+`rust-default-windows-latest` is the slowest at 39.3%, a **seventh** reading of
+that job — 20:18, 14:08, 12:16, 16:56, 12:55, 13:12 and now 11:47, which is
+67.7%, 47.1%, 40.9%, 56.4%, 43.1%, 44.0% and 39.3%. It is the **lowest reading
+so far**, so it extends the range's low end from 40.9% to 39.3% rather than
+sitting inside it.
 The guidance is unchanged for the reason the range exists: headroom is sized off
 the *high* end, 67.7%, and that end did not move. A low reading is evidence about
 the spread, not permission to shrink the timeout.
 
 The four commits between the two readings add one test and change the text of a
 test file, so nothing in the distribution should have moved; the 44.0% and 39.3%
-readings differing by five points on identical work is the variance this page
-records the range for.
+readings differing by five points on near-identical work is the variance this
+page records the range for.
+
+Both readings predate this branch's rebase onto `P2-U1`, so neither includes
+`academic-curriculum` in the default lane. The reading that does is `P2-U1`'s
+own, two sections above; what this branch adds on top of it is one more crate
+and nineteen more tests, and the next run on `main` is where the two appear
+together.
 
 Four runs between these two (`33776143099`, `33776572409`, `33778048462`,
 `33778918470`) were cancelled by the workflow's own `cancel-in-progress`

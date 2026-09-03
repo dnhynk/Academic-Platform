@@ -5101,7 +5101,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !ingestionAdmitted.has(`${name}@${version}`) &&
       !ingestionPathPackages.has(`${name}@${version}`) &&
       !curriculumAdmitted.has(`${name}@${version}`) &&
-      !curriculumPathPackages.has(`${name}@${version}`),
+      !curriculumPathPackages.has(`${name}@${version}`) &&
       !analysisAdmitted.has(`${name}@${version}`) &&
       !analysisPathPackages.has(`${name}@${version}`),
   );
@@ -5135,7 +5135,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       repositoryTuples.length +
       captureSubsystemTuples.length +
       ingestionTuples.length +
-      curriculumTuples.length,
+      curriculumTuples.length +
       analysisTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
