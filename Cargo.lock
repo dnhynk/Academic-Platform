@@ -319,6 +319,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-repository"
+version = "0.1.0"
+dependencies = [
+ "academic-crypto",
+ "academic-policy",
+ "academic-untrusted-content",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
 name = "academic-repository-analyzer"
 version = "0.1.0"
 dependencies = [

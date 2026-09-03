@@ -1,0 +1,39 @@
+[package]
+name = "academic-repository"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Three product edges, each of which is a boundary this crate reuses rather than
+# rebuilds.
+#
+# `academic-policy` is `P2-G1`'s broker and `P2-G7`'s process matrix. The
+# permission half of the gate mints a real `ProcessCapability::AnalyzeRepository`
+# token for `ProcessClass::RepositoryAnalyzer`, so "the analyzer holds no socket
+# and no write capability" is that crate's default-deny answer rather than a
+# sentence here, and the refusal vocabulary a secret finding records is its
+# closed `ReasonCode`.
+#
+# `academic-untrusted-content` is `P2-G5`'s trust boundary. Repository bytes are
+# ingested through its parse-time tagging point, so what this crate holds of a
+# file's content is an `Untrusted<IngestedDocument>` whose one accessor is
+# private to that crate.
+#
+# `academic-crypto` is `P2-K1`'s keystore seam. A fine-grained GitHub token's
+# material reaches the operating-system credential store through its
+# `DeviceKeystore` trait and is held nowhere else.
+[dependencies]
+academic-crypto = { path = "../crypto" }
+academic-policy = { path = "../policy" }
+academic-untrusted-content = { path = "../untrusted-content" }
+sha2.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

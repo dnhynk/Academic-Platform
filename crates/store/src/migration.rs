@@ -86,6 +86,20 @@ pub const MIGRATION_0007_SQL: &str =
 pub const MIGRATION_0009_SQL: &str =
     include_str!("../../../migrations/store/0009_phase2_proposal_review.sql");
 
+/// `P2-R1`'s typed columns for the `SNAPSHOT_REGISTERED` aggregate.
+///
+/// The same rule again: migration `0004` carries the v3 registration frame and
+/// each aggregate owner adds its own typed columns later. This is that
+/// migration for section 17.2's `RepositorySnapshot` fields, for the explicit
+/// tracked/untracked dirty manifest, and for the recorded decision without
+/// which a secret file's digest is not stored.
+///
+/// It is `0012` because `0010` and `0011` were reserved for `P2-L2` and
+/// `P2-U6`, which were in flight on the same `main`; `0008` stays unclaimed for
+/// the reason `MIGRATION_0009_SQL` gives.
+pub const MIGRATION_0012_SQL: &str =
+    include_str!("../../../migrations/store/0012_phase2_repository_snapshot.sql");
+
 /// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
 ///
 /// It replaces the Phase 1 identity singleton with the schema-2 one. The
@@ -126,6 +140,7 @@ pub const STORE_MIGRATION_SQL: &[&str] = &[
     MIGRATION_0006_SQL,
     MIGRATION_0007_SQL,
     MIGRATION_0009_SQL,
+    MIGRATION_0012_SQL,
 ];
 
 /// Result of invoking the forward-only migration runner.
@@ -302,6 +317,7 @@ fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> Stor
     transaction.execute_batch(MIGRATION_0006_SQL)?;
     transaction.execute_batch(MIGRATION_0007_SQL)?;
     transaction.execute_batch(MIGRATION_0009_SQL)?;
+    transaction.execute_batch(MIGRATION_0012_SQL)?;
     verify_integrity(&transaction)?;
     transaction.commit()?;
     Ok(())
