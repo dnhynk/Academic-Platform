@@ -193,7 +193,7 @@ evidence about the *range* rather than as a replacement for the last one. The
 three tables are kept for that reason.
 
 
-## Latest run
+## The `P2-M1` run
 
 `P2-M1` adds one workspace member, `academic-model-run`, and a canonical-store
 migration, both of which the refresh rule names as triggers. Run
@@ -237,6 +237,77 @@ is at 7.7%. That lane is also the only one that pins `STORE_MIGRATION_SQL` as a
 whole, so it is where a migration added to that set is caught: it failed on an
 earlier commit of this branch, at `len() == 5` against a six-element set, before
 the pin was extended.
+
+## Latest run
+
+`P2-L1` adds one workspace member, `academic-capture-gate`, and two commands to
+the `rust-features` job — a clippy and a test of its non-default
+`native-capture` lane. Both are triggers the refresh rule names: workspace
+membership, and one of the non-default Rust feature lanes. The job count is
+unchanged at **17**; the new lane is two steps inside a job that already exists,
+not a sixth feature job.
+
+Run
+[33710769279](https://github.com/dnhynk/Academic-Platform/actions/runs/33710769279)
+completed **17/17** on `6c02ba4`.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:05 | 5:00 | 1.7% |
+| `rust-default-ubuntu-latest` | 5:10 | 30:00 | 17.2% |
+| `rust-default-ubuntu-24.04-arm` | 4:23 | 30:00 | 14.6% |
+| `rust-default-windows-latest` | 13:47 | 30:00 | 45.9% |
+| `rust-default-windows-11-arm` | 15:26 | 30:00 | 51.4% |
+| `rust-default-macos-latest` | 6:07 | 30:00 | 20.4% |
+| `rust-features-ubuntu-latest` | 3:46 | 30:00 | 12.6% |
+| `rust-features-ubuntu-24.04-arm` | 2:43 | 30:00 | 9.1% |
+| `rust-features-windows-latest` | 6:11 | 30:00 | 20.6% |
+| `rust-features-windows-11-arm` | 6:14 | 30:00 | 20.8% |
+| `rust-features-macos-latest` | 2:25 | 30:00 | 8.1% |
+| `phase1-exit-ubuntu-latest` | 4:18 | 45:00 | 9.6% |
+| `phase1-exit-windows-latest` | 10:00 | 45:00 | 22.2% |
+| `encrypted-store-lane-ubuntu-latest` | 3:24 | 45:00 | 7.6% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:09 | 45:00 | 11.4% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:40 | 45:00 | 14.8% |
+| `pnpm-contracts` | 0:56 | 15:00 | 6.2% |
+
+**The two new steps cost about a minute.** Every `rust-features` job moved up
+against the `P2-M1` reading, the run immediately before this one —
+`ubuntu-latest` 2:27 → 3:46, `ubuntu-24.04-arm` 2:23 → 2:43, `windows-latest`
+5:42 → 6:11, `windows-11-arm` 4:57 → 6:14, `macos-latest` 1:58 → 2:25. That is
++0:20 to +1:19, and the group's worst utilization is 20.8%, up from 19.0%, with
+30 minutes of limit against it.
+
+**`rust-default-windows-11-arm` is the slowest job at 51.4%**, and the Windows
+default lane keeps the spread this page has recorded four times: 20:18, 14:08,
+12:16 and 15:28 for `windows-latest`, and 12:49, 11:57 and 15:26 for
+`windows-11-arm`. This run reads 13:47 and 15:26, both inside that range, and
+`windows-latest` is *faster* here than on the run before it. Nothing here is
+evidence of a new cost: the default lane gained one workspace member whose
+default-feature test tree is 20 tests that finish in well under a second
+locally, and the two feature-lane steps are in a different job. Size headroom
+off the worst reading on this workflow, 67.7%, rather than off any single run.
+
+The one job that failed on the first attempt of this branch is recorded in the
+section below, because it is a compilation gate rather than a budget reading.
+
+### The macOS feature lane, first attempt
+
+Run
+[33709678178](https://github.com/dnhynk/Academic-Platform/actions/runs/33709678178)
+on `927c5f5` completed **16/17**: `rust-features-macos-latest` failed on
+`Lint the capture device lane`. That is not a timeout and not a test result. The
+capture gate's native suite was gated on the `native-capture` feature alone, so
+it compiled on a target that has neither of the two backends and its
+per-platform helpers had no arm to return from. Gating it on the feature *and* a
+target with a backend — which is how `academic-worker`'s containment suite is
+gated — is `6c02ba4`, and the rerun above is green.
+
+It is recorded here because the lesson is the same one this page's Windows
+section carries in the other direction: **a lane that fails needs its cause
+named before its elapsed time means anything.** A per-platform suite that
+compiles on a third platform is a compile gate, and no rerun of the same commit
+would have changed it.
 
 ## A Windows failure that is not a test result
 
