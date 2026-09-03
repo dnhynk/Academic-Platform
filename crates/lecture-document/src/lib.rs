@@ -79,6 +79,7 @@ mod disposition;
 mod document;
 mod engine;
 mod fault;
+pub mod harness;
 mod pdf;
 mod render;
 mod review;
@@ -99,6 +100,7 @@ pub use document::{
     DocumentNode, LectureDocument, NodeDraft, NodeId, NodeKind, SourceMapping, token_spans,
 };
 pub use engine::{
+    RULESET_TEXT, ruleset_hash,
     RULE_CAPTURES, RULE_COMPLETE, RULE_GAPS, RULE_ORDERING, RULE_PARTITION, RULE_RENDER,
     RULE_SEGMENT_COVERAGE, RULE_TOKEN_COVERAGE, RULES, TRANSCRIPT_COVERAGE_ENGINE_ID,
     TRANSCRIPT_COVERAGE_ENGINE_VERSION, TranscriptCoverageEngine, freeze,
