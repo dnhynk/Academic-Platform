@@ -15,6 +15,7 @@ export * from "./capability-snapshot.js";
 export * from "./destinations.js";
 export * from "./drawer.js";
 export * from "./entities.js";
+export * from "./evidence-center.js";
 export * from "./ia.js";
 export * from "./optimistic.js";
 export * from "./palette.js";
