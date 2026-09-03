@@ -1872,6 +1872,15 @@ const hostedRustMatrixLabels = [
   "windows-11-arm",
   "macos-latest",
 ];
+// The default workspace test runs as two hosted jobs rather than one, because
+// `academic-store`'s file-backed tests are 36-46% of the lane's test execution
+// on every Windows reading and one runner's disk spread took the single job
+// past its 30-minute limit. The two commands must stay complementary: what the
+// remainder excludes is exactly what the store job runs.
+const defaultWorkspaceTestCommands = {
+  remainder: "cargo test --workspace --exclude academic-store --locked",
+  split: "cargo test -p academic-store --locked",
+};
 // v1 and v2 are both read-only compatibility goldens; only v3 is emitted. The
 // drift check covers the whole fixture directory rather than two named files,
 // so a newly frozen golden cannot be added without also being held immutable.
@@ -2112,7 +2121,10 @@ const expectedCiWorkflow = {
           name: "Lint all Rust targets",
           run: "cargo clippy --workspace --all-targets --locked -- -D warnings",
         },
-        { name: "Test Rust workspace", run: "cargo test --workspace --locked" },
+        {
+          name: "Test the Rust workspace apart from the store crate",
+          run: defaultWorkspaceTestCommands.remainder,
+        },
         {
           name: "Verify immutable v1 fixture and upcast",
           run: nativeFixtureCiCommands[0],
@@ -2127,6 +2139,40 @@ const expectedCiWorkflow = {
         { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[5] },
         { name: "Verify deterministic v3 fixture", run: nativeFixtureCiCommands[6] },
         { name: "Replay deterministic v3 fixture", run: nativeFixtureCiCommands[7] },
+      ],
+    },
+    "rust-store": {
+      name: "rust-store-${{ matrix.os }}",
+      needs: "source-preflight",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 30,
+      strategy: {
+        "fail-fast": false,
+        matrix: { os: hostedRustMatrixLabels },
+      },
+      steps: [
+        {
+          name: "Checkout without persisted credentials",
+          uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          with: { "persist-credentials": false },
+        },
+        {
+          name: "Install pinned Rust toolchain",
+          run: "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy",
+        },
+        {
+          name: "Restore the Cargo registry keyed on the committed Cargo lockfile",
+          uses: lockfileCacheActionReference,
+          with: {
+            path: "~/.cargo/registry",
+            key: "cargo-registry-rust-store-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}",
+          },
+        },
+        {
+          name: "Populate the Cargo registry from the committed lockfile",
+          run: lockedCargoRegistryFetch,
+        },
+        { name: "Test the store crate", run: defaultWorkspaceTestCommands.split },
       ],
     },
     "rust-features": {
@@ -2487,13 +2533,25 @@ const assertCiJobCountNarrative = (readme, budget) => {
   assert.equal(Number(budgetCount.groups.count), expectedHostedJobCount);
 };
 assertCiJobCountNarrative(readmeText, ciBudgetText);
+// The two mutations below are written with the count that is current. When the
+// job count changes they stop matching and stop injecting anything, so each one
+// asserts that it actually changed its document before asserting that the
+// changed document is rejected.
+const staleReadmeCount = readmeText.replace("22/22", "12/12");
+const staleBudgetCount = ciBudgetText.replace("22 required jobs", "12 required jobs");
+assert.notEqual(staleReadmeCount, readmeText, "the stale README job-count mutation must alter the README");
+assert.notEqual(
+  staleBudgetCount,
+  ciBudgetText,
+  "the stale budget job-count mutation must alter the CI budget record",
+);
 assert.throws(
-  () => assertCiJobCountNarrative(readmeText.replace("17/17", "12/12"), ciBudgetText),
+  () => assertCiJobCountNarrative(staleReadmeCount, ciBudgetText),
   undefined,
   "a stale hosted job-count narrative must fail contract verification",
 );
 assert.throws(
-  () => assertCiJobCountNarrative(readmeText, ciBudgetText.replace("17 required jobs", "12 required jobs")),
+  () => assertCiJobCountNarrative(readmeText, staleBudgetCount),
   undefined,
   "a stale CI budget job count must fail contract verification",
 );
@@ -2510,7 +2568,7 @@ assertExactCiExecutionPolicy(ciText);
 const assertNativeFixtureCiTopology = (ci) => {
   const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
   const jobs = requireCiRecord(workflow.jobs, "CI jobs");
-  for (const jobName of ["rust-default", "rust-features"]) {
+  for (const jobName of ["rust-default", "rust-store", "rust-features"]) {
     const rustJob = requireCiRecord(jobs[jobName], `CI job ${jobName}`);
     assertUnconditionalRequiredExecution(rustJob, `CI job ${jobName}`);
     assert.equal(
@@ -2553,6 +2611,114 @@ const assertNativeFixtureCiTopology = (ci) => {
   );
 };
 assertNativeFixtureCiTopology(ciText);
+// The default workspace test runs as two hosted jobs. `--workspace --exclude`
+// keeps a member added later in the remainder job with no edit, so the one way
+// this split can lose a package is an exclusion that no job runs. This reads
+// the workflow rather than the mirror above, walks every job and every step
+// rather than the two jobs it expects to find, and compares package
+// identifiers rather than the spelling of either command.
+const defaultFeatureCargoTestSelections = (ci) => {
+  const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
+  const jobs = requireCiRecord(workflow.jobs, "CI jobs");
+  const excluded = new Map();
+  const selected = new Map();
+  for (const [jobName, job] of Object.entries(requireCiRecord(jobs, "CI jobs"))) {
+    for (const step of Array.isArray(job?.steps) ? job.steps : []) {
+      const command = typeof step?.run === "string" ? step.run : "";
+      if (!/(?:^|\s)cargo test(?:\s|$)/u.test(command)) continue;
+      // A lane that names features is a different lane, not this one's half.
+      if (/(?:^|\s)--(?:features|no-default-features)(?:[\s=]|$)/u.test(command)) continue;
+      const record = (into, name) => into.set(name, (into.get(name) ?? new Set()).add(jobName));
+      if (/(?:^|\s)--workspace(?:\s|$)/u.test(command)) {
+        for (const [, name] of command.matchAll(/(?:^|\s)--exclude[\s=]+(\S+)/gu)) record(excluded, name);
+        continue;
+      }
+      for (const [, name] of command.matchAll(/(?:^|\s)-p[\s=]+(\S+)/gu)) record(selected, name);
+    }
+  }
+  return { excluded, selected, jobs };
+};
+const assertDefaultWorkspaceTestSplitIsComplementary = (ci) => {
+  const { excluded, selected, jobs } = defaultFeatureCargoTestSelections(ci);
+  assert.ok(
+    excluded.size > 0,
+    "the default workspace test must keep its split: with nothing excluded this check asserts nothing",
+  );
+  for (const [name, excludingJobs] of excluded) {
+    const running = selected.get(name);
+    assert.ok(
+      running && running.size > 0,
+      `${name} is excluded from the default workspace test by ${[...excludingJobs].join(", ")} and no job runs it`,
+    );
+    for (const jobName of running) {
+      const matrix = requireCiRecord(jobs[jobName], `CI job ${jobName}`).strategy?.matrix;
+      assert.deepEqual(
+        requireCiRecord(matrix, `CI job ${jobName}.strategy.matrix`).os,
+        hostedRustMatrixLabels,
+        `${name} is excluded from the default workspace test, so ${jobName} must run it on every hosted label`,
+      );
+    }
+  }
+};
+assertDefaultWorkspaceTestSplitIsComplementary(ciText);
+for (const [name, mutation] of [
+  [
+    "an exclusion no job runs",
+    ciText.replace(
+      defaultWorkspaceTestCommands.remainder,
+      "cargo test --workspace --exclude academic-store --exclude academic-core --locked",
+    ),
+  ],
+  [
+    "an excluded package whose job was deleted",
+    ciText.replace(`        run: ${defaultWorkspaceTestCommands.split}`, "        run: cargo --version"),
+  ],
+  [
+    "an excluded package run on fewer than every hosted label",
+    ciText.replace(
+      [
+        "  rust-store:",
+        "    name: rust-store-${{ matrix.os }}",
+        "    needs: source-preflight",
+        "    runs-on: ${{ matrix.os }}",
+        "    timeout-minutes: 30",
+        "    strategy:",
+        "      fail-fast: false",
+        "      matrix:",
+        "        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]",
+      ].join("\n"),
+      [
+        "  rust-store:",
+        "    name: rust-store-${{ matrix.os }}",
+        "    needs: source-preflight",
+        "    runs-on: ${{ matrix.os }}",
+        "    timeout-minutes: 30",
+        "    strategy:",
+        "      fail-fast: false",
+        "      matrix:",
+        "        os: [ubuntu-latest]",
+      ].join("\n"),
+    ),
+  ],
+  [
+    "an excluded package run only under a non-default feature set",
+    ciText.replace(
+      `        run: ${defaultWorkspaceTestCommands.split}`,
+      "        run: cargo test -p academic-store --locked --features sqlcipher-store",
+    ),
+  ],
+  [
+    "a reverted split whose exclusion is gone",
+    ciText.replace(defaultWorkspaceTestCommands.remainder, "cargo test --workspace --locked"),
+  ],
+]) {
+  assert.notEqual(mutation, ciText, `${name} mutation must alter the workflow`);
+  assert.throws(
+    () => assertDefaultWorkspaceTestSplitIsComplementary(mutation),
+    undefined,
+    `${name} must fail contract verification`,
+  );
+}
 const combinedNativeFixtureStep = ciText.replace(
   [
     "      - name: Verify immutable v1 fixture and upcast",

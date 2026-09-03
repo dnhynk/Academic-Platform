@@ -59,8 +59,8 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Lint all Rust targets
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: Test Rust workspace
-        run: cargo test --workspace --locked
+      - name: Test the Rust workspace apart from the store crate
+        run: cargo test --workspace --exclude academic-store --locked
       - name: Verify immutable v1 fixture and upcast
         run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v1.json
       - name: Replay immutable v1 fixture
@@ -77,6 +77,45 @@ jobs:
         run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json
       - name: Replay deterministic v3 fixture
         run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v3.json
+
+  # `academic-store`'s default tests are 36-46% of the default lane's test
+  # execution on every Windows reading, and they are file-backed: the store
+  # opens real databases under `PRAGMA journal_mode = WAL; synchronous = FULL`,
+  # which is what makes them cost 2.31 s per test on a hosted Windows runner
+  # against 0.06 s on Linux. A runner whose disk is slow multiplies that share,
+  # and on one reading it took the whole lane past 30 minutes. Running the
+  # crate beside the rest of the workspace instead of inside it splits that
+  # cost across two runner draws rather than concentrating it in one.
+  #
+  # `--workspace --exclude academic-store` above and `-p academic-store` here
+  # are complementary by construction: a member added later lands in the
+  # remainder job with no edit. `tools/verify-contracts.mjs` pins the two sets
+  # equal, so an exclusion no job runs fails contract verification.
+  rust-store:
+    name: rust-store-${{ matrix.os }}
+    needs: source-preflight
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+      - name: Restore the Cargo registry keyed on the committed Cargo lockfile
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-rust-store-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Populate the Cargo registry from the committed lockfile
+        run: cargo fetch --locked
+      - name: Test the store crate
+        run: cargo test -p academic-store --locked
 
   # Non-default feature coverage runs separately from the default workspace
   # lane so growth in either lane cannot consume the other's timeout budget.
