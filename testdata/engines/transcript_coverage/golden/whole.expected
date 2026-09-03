@@ -1,0 +1,19 @@
+engine engine.transcript.coverage
+engine_version 1
+rule_set_hash sha256:a7120cfa38d5b57d7a9a858ca196106a738c3c4ec39d485def3d1aefd02321e9
+frozen_inputs sha256:eaba323764b715eba065ab1cb076b617c3335d68b8c805970412e99fe1025237
+result SATISFIED
+value segment_coverage_denominator=4/0
+value segment_coverage_numerator=4/0
+value token_coverage_denominator=20/0
+value token_coverage_numerator=20/0
+value unmapped_segments=0/0
+proof
+  SATISFIED coverage.document-is-complete [n.complete] inputs=coverage.config.version,coverage.segments.eligible,coverage.segments.unmapped
+    SATISFIED coverage.every-capture-is-placed-or-excluded [n.captures] inputs=coverage.captures.excluded,coverage.captures.placed,coverage.captures.unaccounted
+    SATISFIED coverage.no-unexplained-hole-above-threshold [n.gaps] inputs=coverage.config.gap_threshold_nanos,coverage.gaps.total,coverage.gaps.unexplained
+    SATISFIED coverage.order-is-monotonic-or-cross-referenced [n.ordering] inputs=coverage.ordering.exceptions,coverage.ordering.findings
+    SATISFIED coverage.every-segment-has-exactly-one-status [n.partition] inputs=coverage.segment.0000.status,coverage.segment.0001.status,coverage.segment.0002.status,coverage.segment.0003.status,coverage.segments.eligible,coverage.segments.unmapped
+    SATISFIED coverage.render-has-no-defect [n.render] inputs=coverage.render.defects
+    SATISFIED coverage.segment-coverage-is-whole [n.segments] inputs=coverage.segment_coverage.denominator,coverage.segment_coverage.numerator
+    SATISFIED coverage.token-coverage-is-whole [n.tokens] inputs=coverage.token_coverage.denominator,coverage.token_coverage.numerator

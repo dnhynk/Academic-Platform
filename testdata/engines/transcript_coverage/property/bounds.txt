@@ -1,0 +1,6 @@
+property: every eligible segment lands in exactly one of the four statuses or in the unmapped list
+generator: segments 1..=24
+generator: status per segment drawn from MAPPED|EXCLUDED_NON_SPEECH|REDACTED_WITH_POLICY|UNTRANSCRIBED_FAILURE|UNMAPPED
+generator: tokens per segment 1..=8
+invariant: accounts + unmapped == eligible, and no index appears twice
+invariant: a witness exists only when unmapped == 0

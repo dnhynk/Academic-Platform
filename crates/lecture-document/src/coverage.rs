@@ -34,7 +34,7 @@
 //! count — which is half of `no_low_importance_deletion`, the half a scan
 //! cannot express.
 
-use academic_capture::{JournalRecovery, RecordBody};
+use academic_capture::{JournalRecovery, RecordBody, SessionClockDomain};
 use academic_domain::{ContentDigest, LectureSessionId};
 use academic_transcription::{InputManifest, TranscriptLineage};
 
@@ -270,12 +270,21 @@ impl UnaccountedCapture {
     }
 }
 
-/// One hole in the audio timeline above the configured threshold.
+/// One hole in the audio timeline.
+///
+/// A hole between two frames of the *same* session clock has a length, and it
+/// is a finding when that length is above the configured threshold. A hole
+/// across a clock change has **no** length: `P2-L2`'s `SessionTick::offset_from`
+/// refuses a distance between two clocks, and inventing one here would be the
+/// same error one layer up. An unmeasurable hole is always a finding, because
+/// unknown is not below a threshold — folding it into a pass would manufacture
+/// a verdict, which is the rule `InputValue::Unknown` already states for the
+/// engine harness.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GapFinding {
     from_frame_seq: u32,
     to_frame_seq: u32,
-    length_nanos: u64,
+    length_nanos: Option<u64>,
     explained: bool,
 }
 
@@ -292,9 +301,12 @@ impl GapFinding {
         self.to_frame_seq
     }
 
-    /// How long it is. Section 34.1's display wants the length.
+    /// How long it is, when the two frames share a session clock.
+    ///
+    /// Section 34.1's display wants the length; `None` is the honest answer
+    /// across a clock change and the display says so rather than showing a zero.
     #[must_use]
-    pub const fn length_nanos(self) -> u64 {
+    pub const fn length_nanos(self) -> Option<u64> {
         self.length_nanos
     }
 
@@ -713,7 +725,13 @@ impl CoverageReport {
         for gap in &self.gaps {
             material.extend_from_slice(&gap.from_frame_seq.to_be_bytes());
             material.extend_from_slice(&gap.to_frame_seq.to_be_bytes());
-            material.extend_from_slice(&gap.length_nanos.to_be_bytes());
+            match gap.length_nanos {
+                Some(length) => {
+                    material.push(1);
+                    material.extend_from_slice(&length.to_be_bytes());
+                }
+                None => material.push(0),
+            }
             material.push(u8::from(gap.explained));
         }
         material
@@ -991,12 +1009,16 @@ fn check_captures(
 /// hole is explained when a `GAP` frame sits between the two, which is the
 /// journal's own account of why the recording stopped rather than a caller's.
 fn check_gaps(journal: &JournalRecovery, threshold_nanos: u64) -> Vec<GapFinding> {
-    let mut audio: Vec<(u32, u64)> = Vec::new();
+    let mut audio: Vec<(u32, SessionClockDomain, u64)> = Vec::new();
     let mut gap_frames: Vec<u32> = Vec::new();
     for record in journal.records() {
         match record.body() {
             RecordBody::AudioChunk { .. } => {
-                audio.push((record.seq(), record.at().elapsed_nanos()));
+                audio.push((
+                    record.seq(),
+                    record.at().domain(),
+                    record.at().elapsed_nanos(),
+                ));
             }
             RecordBody::Gap { .. } => gap_frames.push(record.seq()),
             _ => {}
@@ -1004,18 +1026,23 @@ fn check_gaps(journal: &JournalRecovery, threshold_nanos: u64) -> Vec<GapFinding
     }
     let mut findings = Vec::new();
     for pair in audio.windows(2) {
-        let [(from_seq, from_nanos), (to_seq, to_nanos)] = pair else {
+        let [(from_seq, from_domain, from_nanos), (to_seq, to_domain, to_nanos)] = pair else {
             continue;
         };
-        let length = to_nanos.saturating_sub(*from_nanos);
-        if length <= threshold_nanos {
-            continue;
-        }
+        let length_nanos = if from_domain == to_domain {
+            let length = to_nanos.saturating_sub(*from_nanos);
+            if length <= threshold_nanos {
+                continue;
+            }
+            Some(length)
+        } else {
+            None
+        };
         let explained = gap_frames.iter().any(|seq| seq > from_seq && seq < to_seq);
         findings.push(GapFinding {
             from_frame_seq: *from_seq,
             to_frame_seq: *to_seq,
-            length_nanos: length,
+            length_nanos,
             explained,
         });
     }

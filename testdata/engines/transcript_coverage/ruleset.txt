@@ -1,0 +1,8 @@
+coverage.document-is-complete
+coverage.every-segment-has-exactly-one-status
+coverage.segment-coverage-is-whole
+coverage.token-coverage-is-whole
+coverage.order-is-monotonic-or-cross-referenced
+coverage.every-capture-is-placed-or-excluded
+coverage.no-unexplained-hole-above-threshold
+coverage.render-has-no-defect
