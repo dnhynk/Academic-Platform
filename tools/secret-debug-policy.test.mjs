@@ -152,6 +152,22 @@ const SECRET_BEARING_TYPES = new Map([
   ["RecipientRecord", "one wrapped copy of the Vault Master Key, and the keystore blob that opens it"],
   ["BackupRecipientRecord", "one wrapped copy of the backup root"],
   ["BackupPlan", "the canonical CBOR of the recipient records a restore recovers the Vault Master Key from"],
+  // `P2-RF15`. Eight types the repaired registration guard found: each already
+  // hand-writes a redacting `Debug`, and each was outside the registry because
+  // the guard read an impl only when it spelled a marker. Their crates each
+  // wrote the redaction deliberately -- the doc comment above every one of them
+  // says so -- and then nothing recorded that the type was covered.
+  // `AppliedCorrection` is the ninth and is not that shape: it derived `Debug`
+  // over a word of the lecture, one type away from the `CorrectionCandidate`
+  // this crate had already sealed.
+  ["SourceEntry", "one in-memory source file of a repository tree, as its bytes were read"],
+  ["SourceUnit", "the same bytes on the analysis side, after the frozen manifest admitted them"],
+  ["IngestedDocument", "one parsed document's untrusted bytes, which every quotation is a span of"],
+  ["ModelOutput", "the untrusted bytes one model wrote, before anything has accepted them"],
+  ["FineGrainedToken", "the secret half of a GitHub fine-grained token"],
+  ["SealedCredential", "the operating-system keystore blob that opens one stored credential"],
+  ["Acquisition", "the FetchOutcome bytes one conditional fetch or one user-supplied import produced"],
+  ["AppliedCorrection", "what one token of the lecture read before a correction replaced it"],
 ]);
 
 /**
@@ -559,6 +575,10 @@ const PUBLIC_TUPLE_BYTES = new Map([
   [
     "SessionNonce",
     "the P1 handshake nonce, whose hex `capability_id` and `as_hex` publish into the owner-only runtime metadata the same user reads; it is not ADR-005 key material and what confines it is that directory",
+  ],
+  [
+    "Digest32",
+    "SHA-256 over a model run's inputs or outputs, which the model_run and model_run_provenance rows carry as a BLOB and which `to_lower_hex` publishes",
   ],
 ]);
 
@@ -1210,9 +1230,88 @@ function secretBearingTypeNames() {
   return { direct, bearing };
 }
 
+/**
+ * Types the source requires a registration for.
+ *
+ * {@link secretBearingTypeNames} answers a different question -- what the
+ * *content* check must read -- and `T177` measured what happens when the
+ * registration guard reuses its answer: **21 of the 38 registrations could be
+ * deleted with the suite still at 12 pass, 0 fail**, which is `S-18`. Two
+ * mechanisms produced that, and this function exists because they are
+ * different:
+ *
+ *   * The guard skipped any impl without a `<redacted>` or
+ *     `finish_non_exhaustive` marker, and ten registered types redact by
+ *     reducing a buffer to a length and write no marker at all. The marker was
+ *     standing in for the exception maps: dropping it alone would fire on
+ *     `ContentDigest`, `GenerationId` and `VaultLocator`, which
+ *     {@link PUBLIC_TUPLE_BYTES} already declares public, and on
+ *     `QuotedDocument.digest`, which {@link PUBLIC_BYTES} does. So the
+ *     exceptions are applied here instead, and the marker is gone.
+ *   * A tuple position was read through {@link RAW_BYTE_TYPES}, which contains
+ *     `String` and `str`. The documented rule for a position with no name is
+ *     {@link RAW_BYTE_PAYLOAD_TYPES} -- bytes only, because every error type
+ *     here reports through a `String` -- and reading the wider one made
+ *     `JobId`, `KeystoreLabel` and `ExplanationSnapshot` secret-bearing.
+ *
+ * One hop is added on top of the direct evidence: a type that declares a field
+ * whose type mentions a directly secret-bearing one. `EncryptedDomainKeyring`
+ * and `NormalizedTranscript` are registered and hold their secret only that
+ * way, so without the hop their registrations stay inert. It stops at one hop
+ * because the fixed point reaches `AcceptanceService`, which this file already
+ * records as the false positive that sank a first attempt at this.
+ */
+function registrationRequiredTypes() {
+  const direct = new Set();
+  for (const [name, sites] of definitions) {
+    for (const site of sites) {
+      for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
+        const declared = trimDeclaredType(field[2]);
+        if (PUBLIC_BYTES.has(`${name}.${field[1]}`)) {
+          continue;
+        }
+        const buffer = isClassifiedByteBuffer(declared);
+        const assigned = buffer
+          ? BYTE_FIELD_CLASSES.get(`${name}.${field[1]}`)
+          : undefined;
+        if (
+          macroKeyTypes.has(normalizeFieldType(declared)) ||
+          (buffer && (assigned === undefined || SECRET_BYTE_CLASSES.has(assigned))) ||
+          (!buffer && SECRET_FIELD_NAMES.test(field[1]) && holdsRawBytes(declared))
+        ) {
+          direct.add(name);
+        }
+      }
+      if (PUBLIC_TUPLE_BYTES.has(name)) {
+        continue;
+      }
+      for (const position of site.tuple.matchAll(TUPLE_FIELD_PATTERN)) {
+        if (RAW_BYTE_PAYLOAD_TYPES.test(normalizeFieldType(position[1].trim()))) {
+          direct.add(name);
+        }
+      }
+    }
+  }
+  const required = new Set(direct);
+  const seed = new Set([...direct, ...macroKeyTypes]);
+  for (const [name, sites] of definitions) {
+    for (const site of sites) {
+      for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
+        for (const token of typeTokens(trimDeclaredType(field[2]))) {
+          if (token !== name && seed.has(token)) {
+            required.add(name);
+          }
+        }
+      }
+    }
+  }
+  return required;
+}
+
 
 const { direct: DIRECT_SECRET_BEARING, bearing: SECRET_BEARING } =
   secretBearingTypeNames();
+const REGISTRATION_REQUIRED = registrationRequiredTypes();
 
 test("a type whose Debug is hand-written over secret bytes is registered", () => {
   // Deleting a registration was silent: the remaining tests all iterate the
@@ -1225,11 +1324,8 @@ test("a type whose Debug is hand-written over secret bytes is registered", () =>
   // a derive on the outer one would print, and a type holding a secret with no
   // `Debug` at all cannot be derived over without a compile error.
   const unregistered = [];
-  for (const [name, body] of debugBodies) {
-    if (SECRET_BEARING_TYPES.has(name) || !DIRECT_SECRET_BEARING.has(name)) {
-      continue;
-    }
-    if (!/<redacted>|finish_non_exhaustive/.test(body)) {
+  for (const name of debugBodies.keys()) {
+    if (SECRET_BEARING_TYPES.has(name) || !REGISTRATION_REQUIRED.has(name)) {
       continue;
     }
     unregistered.push(name);
@@ -1264,7 +1360,11 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
   ];
 
   const leaks = [];
-  const handWritten = new Set([...SECRET_BEARING_TYPES.keys(), ...DIRECT_SECRET_BEARING]);
+  const handWritten = new Set([
+    ...SECRET_BEARING_TYPES.keys(),
+    ...DIRECT_SECRET_BEARING,
+    ...REGISTRATION_REQUIRED,
+  ]);
   for (const name of handWritten) {
     const declaredBody = debugBodies.get(name);
     if (declaredBody === undefined) {
