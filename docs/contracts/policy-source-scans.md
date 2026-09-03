@@ -170,6 +170,8 @@ remove.
 | `crates/repository/tests/snapshot.rs` | n/a — the `.rs` paths it names are the synthetic repository fixtures its own deterministic builder writes into a `TempDir` | not a source-text scan: `P2-R1`'s eight named acceptance tests, driven over in-process fixtures, an in-memory `DeviceKeystore` and an in-memory `GitHubRepositoryReader` | n/a |
 | `crates/store/src/repository_snapshot_tests.rs` | n/a — the `.rs` path it names is a manifest row in a synthetic snapshot | not a source-text scan: migration `0012`'s five guards fired against a migrated database | n/a |
 | `the_forbidden_fields_are_the_specifications_own`, `no_relation_derives_another`, `nothing_infers_a_course_identity`, `the_publish_path_has_one_rewind_and_every_failure_takes_it`, `the_walk_reads_every_module_in_this_crate`, `no_file_outside_this_crate_names_a_curriculum_relation`, `the_migration_vocabularies_are_the_rust_ones`, `the_open_gates_have_no_default` — `crates/curriculum/tests/curriculum_scans.rs` | recursive, **every `.rs` anywhere under this crate's package** for the per-crate rules, less `tests` for the ones about shipped code; recursive over **every `.rs` under `crates/`**, less each package's `tests`, for the one-step-out inventory; plus two fixed reads, `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and `migrations/store/0014_phase2_curriculum_aggregates.sql` | seven whole-text pins (below); section 8.2's four yaml blocks and section 12.4's `TranscriptSegment` block parsed out of the specification and compared with the accessor mapping in order and in both directions, with the existence half read from each aggregate's own `impl` block rather than from its module; a forbidden sweep of every mapped accessor against every other aggregate's whole module; the whole `impl` set naming any of the four relation types; the whole public signature set of `relation.rs`, swept for a signature taking one relation and returning another; the whole set of signatures anywhere in the crate producing a `CourseCodeReuse`; call-site counts by identifier on `append` (1), `rewind_to` (1) and `ledger.mark()` (1), each with `fn <name>(` subtracted; the ledger vectors the appending body pushes to, enumerated from that body and each required to be one the rewind truncates; every `PublishCheckpoint` variant required to be reached through an injector call and the injector calls counted against the checkpoint names; six migration `CHECK` vocabularies compared with this crate's enums, two of them less `UNKNOWN`; and the whole set of `Default` implementations in the crate | `sources.len() >= 10` on the package walk plus a rule that the walk read this very file, which is in `tests`; `declared >= 10` on the module tripwire, with a `#[path]` target inside the package required to be a file the walk read; every product file under `src/`; `>= 60` compared pairs in the forbidden sweep; `>= 25` signatures in `relation.rs`; `>= 150` files outside the package and `>= 10` inside it on the workspace walk; every whole-set comparison is an `assert_eq!` against a pinned list, so an empty walk fails as missing keys |
+| `the_rule_types_are_the_specifications_own`, `production_audit_no_llm`, `the_only_route_to_an_executable_rule_is_the_gate`, `the_open_gates_have_no_default`, `no_float_reaches_a_requirement_verdict`, `the_walk_reads_every_module_in_this_crate`, `no_file_outside_this_crate_names_a_requirement_rule` — `crates/requirement/tests/requirement_scans.rs` | recursive, **every `.rs` anywhere under this crate's package** for the per-crate rules, less `tests` for the ones about shipped code; recursive over **every `.rs` under `crates/`**, less each package's `tests`, for the one-step-out inventory; plus fixed reads of `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md`, this crate's `src/*.rs` for the pins, and every workspace `Cargo.toml` for the dependency closure | six whole-text pins (below); section 11.2's yaml `type:` lines and its prose sentence parsed out of the specification and compared with the rule-type tables in order and in both directions, with the nine prose spellings required to be what the derivation rule produces; the transitive product dependency closure computed from the manifests and compared whole at twelve; the whole set of `String`/`&str` fields as **owning-type/field pairs**, plus a rule that none of eight audit-path types may own one — the half that cannot be satisfied by editing the table; the six identifier newtypes read from the macro's invocation list, because the names exist only after expansion; struct-literal counts of one each on `ReviewedRule` and `ExecutableRule`; the whole `impl` set naming either; the whole set of public signatures taking a `RuleCandidate` to a gated value, compared against the gate's own signature; the whole `Default` set; and a three-shape float rule (type, decimal-point literal, exponent literal scanned by index) with five evasions and four benign shapes run through it inside the test | `sources.len() >= 10` on the package walk plus a rule that the walk read this very file, which is in `tests`; `declared >= 8` on the module tripwire; every product file under `src/`; `scanned >= 8` on the capability, float and literal sweeps; `signatures >= 40` on the signature sweep; `>= 25` packages in the manifest inventory; `>= 150` files outside the package **and `>= 8` inside it** on the workspace walk, so the exclusion cannot be what makes it empty; every whole-set comparison is an `assert_eq!` against a pinned list |
+| `crates/store/src/requirement_tests.rs` | n/a — it reads migration `0015`'s own SQL text, not Rust source | not a source-text scan: migration `0015`'s guards, each of its three tables' whole column set, the rule-type `CHECK` vocabulary compared against section 11.2's fourteen in order, and the two keys that carry the review and supersession properties, driven as SQL against a migrated store with real parent rows written by the real closure writer | n/a |
 | `crates/store/src/curriculum_tests.rs` | n/a — it reads migration `0014`'s own SQL text, not Rust source | not a source-text scan: migration `0014`'s guards, its four relation tables' whole column sets, its table list against the migration's own `CREATE TABLE` lines, and the SQL half of `curriculum_publish_is_atomic_under_injected_failure`, all fired against a migrated database | n/a |
 | `crates/curriculum/tests/curriculum.rs` | n/a — the `#[path]` it names pulls in `P2-U6`'s fixture module, which the inventory follows rather than treating as a read | not a source-text scan: `P2-U1`'s five behavioural acceptance cases, driven over an in-process ledger and one real `academic-ingestion` run | n/a |
 | `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
@@ -245,6 +247,17 @@ a silent edit is the whole risk.
 Comment-only lines are dropped before a pin is compared, so a pin fixes code and
 not prose. Whitespace is collapsed, so `cargo fmt` decides layout and the pin
 decides content.
+
+### What `P2-U2` pins
+
+| Pin | What it holds |
+|---|---|
+| `WHOLE_ADMIT` | the whole review gate: both attestations checked against the candidate, both required to be a user, the two users required to differ, the body compiled, and only then the one `ReviewedRule` this crate builds |
+| `GATE_SIGNATURE` | the gate's signature alone, as the public-signature sweep renders it, because an inventory of doors has to be able to say *which* door and a body is not what a caller sees |
+| `WHOLE_USER_ID` | the reviewer check: only `Actor::User` files an attestation |
+| `WHOLE_INCLUDE` | the one place an `ExecutableRule` is built, with the fixtures evaluated rather than counted |
+| `WHOLE_PUBLISH` | the ledger publication: a new version number and a supersession that names the head |
+| `WHOLE_IDENTIFIER_MACRO` | the identifier newtype template, because the six types it generates have no names in the source at all |
 
 ## What the two `P2-RF8` repairs hold
 
@@ -1666,6 +1679,143 @@ compile-fail suite when the whole crate is tested, because that target fails
 first and Cargo stops there. Each also violates the source scan named beside it:
 `U-I24` was re-run against `--test curriculum_scans` alone and
 `no_relation_derives_another` refused it there.
+
+## What the `P2-U2` scans hold
+
+Four of `P2-U2`'s claims are statements about what the source does not contain,
+and a behavioural test cannot observe an absence.
+
+**`the_rule_types_are_the_specifications_own`** is five halves. Section 11.2's
+prose sentence is pinned whole. Its yaml block's `type:` lines are parsed out of
+the document, deduplicated in first-appearance order, and compared with
+`SPEC_YAML_TYPES`; its prose categories are split on the comma and compared with
+`SPEC_PROSE_CATEGORIES`, in order. The union of the two readings is then
+required to be exactly `RuleType::ALL`, so a type this crate invented fails as
+an extra key and one the specification writes and this crate dropped fails as a
+missing one — **and no count is compared anywhere**, which is what injection
+`U2-I4` made load-bearing: it dropped a rule type from three places at once,
+adjusting both declared lengths, and the test failed against the document.
+Fourth, the nine prose-only spellings are required to be what the mechanical
+derivation produces, so a respelling fails (`U2-I5`). Fifth, each rule type is
+required to have its own `t001` requirement and its own `dsl_*` test, both
+injective, and every one of those tests is required to exist in the suite.
+
+**`production_audit_no_llm`** is three halves. The *available* half computes
+this crate's transitive product closure from the manifests and compares it
+whole, so a dependency of any kind is an extra key — injection `U2-I12` added
+`academic-record`, which is on no forbidden list. The *used* half is an API
+spelling scan with its samples run through the check inside the test. The
+*interpreted* half is the one a token list cannot do: the whole set of `String`
+and `&str` fields as owning-type/field pairs, plus a rule that none of eight
+audit-path types may own one. That second rule is what survives the strongest
+attack — `U2-I24` added a free-text field to `ExecutableRule` **and** added its
+row to the allowance table, and was still refused.
+
+**`the_only_route_to_an_executable_rule_is_the_gate`** is four halves. Four
+whole-text pins. Struct-literal counts of one each on the two private-field
+types, over every product file in the crate, because the orphan rule refuses a
+conversion written outside the crate and refuses nothing written in a sibling
+module — `U2-I3` put a second door in `publish.rs`. The whole `impl` set naming
+either type. And the whole set of public signatures taking a `RuleCandidate` to
+a gated value, compared against the gate's own signature: a blanket prohibition
+would have been wrong, because the gate *is* that signature and it is the route
+that must exist. What must not exist is a second one, and an inventory says that
+where a prohibition cannot.
+
+**`the_open_gates_have_no_default`** compares the whole set of `Default`
+implementations — `impl` headers and `#[derive]` lists alike — against a
+one-entry list. The one that exists is the empty ledger.
+
+**The one-step-out inventory.** `no_file_outside_this_crate_names_a_requirement_rule`
+walks every product file in every other workspace package and requires none of
+them to name the gated types, the gate, the ledger or the fixture classes. It is
+empty today. Its floor counts files **inside** the crate as well as outside, so
+the exclusion that makes it an outside-only walk cannot be what makes it empty.
+
+### The two empty guards this task found in its own suite
+
+Both were found by the injection matrix rather than by review, and both were
+this task's own tests.
+
+**`U2-I17` — the duplicate that was a duplicate of the wrong thing.** The
+injection widened `requirement_rule_review`'s key to
+`(rule, reviewer, attested_at)`, so one person can attest twice. The test still
+saw a refusal, because it attested twice at the *same* instant: what was refused
+was a duplicate row, not a duplicate reviewer. The instant is now a parameter
+and the second attestation by the same person uses a different one.
+
+**`U2-I22` — the guard that refused something that was never on offer.** The
+injection removed the `equivalent_admitted` check, so an operand that refuses
+substitution is discharged by one. The test still passed, because its strict
+operand lived in its own one-rule set that held no `EQUIVALENCY` rule at all.
+The strict rule now sits in the set beside the equivalency, and a second
+assertion requires that equivalency to be live in that set, so the case cannot
+pass on an empty one again.
+
+The same shape was then looked for one step out and found once more, in the
+store half: the "republished version number" case would also have been refused
+by the supersession `UNIQUE`, so it could not say which constraint it measured.
+It now supersedes nothing and carries a fresh hash, leaving the primary key as
+the only thing that can refuse it.
+
+### The injection matrix
+
+Twenty-four injections, applied one at a time to shipped source and reverted.
+Each is compiled first, with `cargo build --all-targets` rather than
+`cargo test`, so a trybuild case's *expected* diagnostic cannot be mistaken for
+a real build failure. The driver is
+`~/.claude/orchestration/run_98ccc873ba4b/t165-injections.py` and the measured
+results are `t165-injections.json`. The unmodified tree is run before and after
+the matrix and passes both times.
+
+**Twenty-three of the twenty-four compile.** `U2-I2` did not, twice, and is
+recorded below as what that cost rather than as evidence.
+
+| # | Injection | Refused by |
+|---|---|---|
+| U2-I1 | `ExecutableRule` grows a free-text field named nothing on any list | `production_audit_no_llm`, `the_only_route_to_an_executable_rule_is_the_gate` |
+| U2-I2 | `RuleOutcome` grows a free-text field — an audit-path type one step from the two named in the check | `production_audit_no_llm` — **after** two non-compiling attempts (below) |
+| U2-I3 | a second door from a candidate to a reviewed rule, in `publish.rs`, spelling no conversion trait | `the_only_route_to_an_executable_rule_is_the_gate` |
+| U2-I4 | one rule type dropped from `RuleType::ALL` *and* from the prose table *and* from both declared lengths, so no count moves | `the_rule_types_are_the_specifications_own` |
+| U2-I5 | a prose-spelled rule type respelled to `NONCREDIT_TRAINING` | `the_rule_types_are_the_specifications_own` |
+| U2-I6 | `Applicability` gains a `Default` | `the_open_gates_have_no_default` |
+| U2-I7 | an unresolved thesis scope answers `SATISFIED` | `dsl_thesis_research` |
+| U2-I8 | an unconfirmed double-counting ceiling is treated as one | `dsl_mutually_exclusive` |
+| U2-I9 | the gate stops comparing the two reviewers | `rule_candidate_review_gate` |
+| U2-I10 | the ledger stops refusing a republished version number | `ruleset_immutable_publish` |
+| U2-I11 | the release gate stops evaluating its fixtures and only checks that both classes exist | `new_rule_release_gate_requires_official_and_synthetic_fixtures` |
+| U2-I12 | a product dependency edge on `academic-record`, a crate on no forbidden list | `production_audit_no_llm` |
+| U2-I13 | a decimal-point literal on the verdict path | `no_float_reaches_a_requirement_verdict` |
+| U2-I14 | the walk is narrowed from the package to `src` | `the_walk_reads_every_module_in_this_crate` |
+| U2-I15 | `crates/curriculum` declares a type named `ReviewGate` | `no_file_outside_this_crate_names_a_requirement_rule` |
+| U2-I16 | migration `0015` grows an `interpretation TEXT` column, on no forbidden list | `no_requirement_table_carries_a_free_text_column` |
+| U2-I17 | the review key admits one reviewer twice | `one_reviewer_cannot_attest_twice_to_one_rule` — **after** the test stopped re-attesting at the same instant |
+| U2-I18 | the version chain is allowed to fork | `a_published_version_is_append_only_and_the_chain_does_not_fork` |
+| U2-I19 | the version primary key is widened | refused, but by *foreign key mismatch* rather than by the property — see below |
+| U2-I20 | the gate admits an attestation filed by an `Actor::ModelRun` | `rule_candidate_review_gate` |
+| U2-I21 | an `EQUIVALENCY` substitution is admitted outside its interval | `dsl_equivalency` |
+| U2-I22 | an operand that does not admit an equivalent is discharged by one | `dsl_required_course_set` — **after** the strict rule moved into the set that holds the equivalency |
+| U2-I23 | a withdrawn attempt is treated as a recognized one | `dsl_corequisite` |
+| U2-I24 | `U2-I1` again, with the allowance table updated to match | `production_audit_no_llm`, `the_only_route_to_an_executable_rule_is_the_gate` |
+
+**`U2-I2` did not compile, twice.** The first form put a `String` on a
+`RuleBody` variant and failed `E0027` — `evaluate`'s `match` is total and does
+not mention the new field. The second widened that one pattern with `..` and
+failed `E0063`, because every fixture in the suite constructs the variant. Both
+are facts about the crate rather than about the guard, and neither is evidence
+for anything: a build failure and a refusal look the same from outside. The
+shape it was meant to stand for — a sentence on an audit-path type one step from
+the two the check names by hand — was rebuilt on `RuleOutcome`, which has one
+construction site, and refused there.
+
+**`U2-I19` is refused for the wrong reason and is recorded as such.**
+`requirement_rule`'s composite foreign key needs a unique index on exactly
+`(requirement_set_id, version)`, so widening that primary key produces
+*foreign key mismatch — "requirement_rule" referencing "requirement_set_version"*
+before any row is written, and all five store tests fail on the schema rather
+than on the property. The primary key therefore cannot be widened in place at
+all. What isolates it is the test's own case, which supersedes nothing and
+carries a fresh hash so neither `UNIQUE` can be what refuses it.
 
 ## Open
 

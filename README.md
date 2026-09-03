@@ -154,6 +154,33 @@ that refusal covers, what the text-layer parser does and does not read, and why
 the identity header is not a reconciliation halt condition are in
 [transcript ingestion](docs/contracts/transcript-ingestion.md).
 
+`P2-U2` adds `academic-requirement`: section 11.2's typed rule DSL, section
+11.1's immutable versioned `RuleSet`, and the reviewer gate a model-extracted
+candidate has to pass before anything executes. The rule types are **fourteen**,
+not the thirteen `t068` says — its own parenthesis lists fourteen, its own
+acceptance evidence names fourteen `dsl_*` tests, and `t001` derives fourteen
+consecutive requirements, `REQ-11-004`–`REQ-11-017`. Nothing in the crate
+asserts a count: both of the specification's readings are parsed back out of
+`PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and compared in both
+directions.
+
+The gate is a type. `ReviewedRule` and `ExecutableRule` have private fields and
+one construction site each — `ReviewGate::admit`, which takes its two
+attestations as two parameters and requires two different people, and
+`RuleSetDraft::include`, which takes a `ReviewedRule` by value and *evaluates*
+both fixture classes against the rule before admitting it. A candidate reaching
+an audit is five compiler diagnostics, in `crates/requirement/tests/compile_fail/`.
+The crate's dependency closure contains no crate that runs, wraps or transports a
+model call, and its one free-text value sits on the one type that never reaches
+an evaluation, so `production_audit_no_llm` is a fact about the graph and the
+field inventory rather than a check inside a function. `GATE-38-011`,
+`GATE-38-012`, `GATE-38-015` and `GATE-38-016` stay open and each reads
+`UNKNOWN`. Migration `0015` holds the typed rows, with the review key and the
+supersession `UNIQUE` as the second layer. It runs inside `cargo test
+--workspace` and adds no external package to `Cargo.lock`. What it does and does
+not claim is in
+[the requirement rule DSL](docs/contracts/requirement-rule-dsl.md).
+
 `P2-G1` adds `academic-policy` without adding a product socket or a new
 external dependency. A new profile exposes `local_processing_preferred=true`
 and zero configured egress rules; a complete tuple against that empty snapshot
