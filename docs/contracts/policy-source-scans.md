@@ -55,6 +55,14 @@ path spelled through a crate root and every macro invoked, each compared in both
 directions, and the token list is kept as an explicitly weakest third layer. The
 same three injections now fail.
 
+The repair then had the same defect one layer in. The path extractor skips a
+middle segment — the `b` of `a::b::c` — so that one path yields one key, and it
+skipped a **leading** `::` for the same reason: `::std::path::Path::new(p)
+.metadata()` opens the filesystem, spells none of the eleven, adds no `use`
+item, and passed the repaired guard. A leading `::` is not a middle segment, and
+what tells them apart is the byte before the `::`. `P2-RF11`'s sentence held
+again: assume there is one more.
+
 A pin fixes the decision sites that exist. It does not forbid a *new* one, so a
 pin needs a companion: an allowance table that counts the authority tokens the
 tree spells today and fails on an addition anywhere.

@@ -973,7 +973,19 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
         if start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
             continue;
         }
-        if start >= 2 && &code[start - 2..start] == "::" {
+        // A middle segment of a longer path — the `b` of `a::b::c` — is not a
+        // crate root, and skipping it is what stops one path yielding two keys.
+        // But a **leading** `::` is not a middle segment: `::std::path::Path`
+        // is the absolute form of the same reach, and an earlier version of
+        // this function skipped it for the same reason it skips `b`. That was
+        // measured: `::std::path::Path::new(p).metadata()` opens the
+        // filesystem, spells none of the forbidden constructs, adds no `use`
+        // item, and passed. What tells the two apart is the byte before the
+        // `::`.
+        let after_segment = start >= 3
+            && &code[start - 2..start] == "::"
+            && (bytes[start - 3].is_ascii_alphanumeric() || bytes[start - 3] == b'_');
+        if after_segment {
             continue;
         }
         let root = &code[start..at];
@@ -1125,6 +1137,16 @@ fn the_helpers_are_not_vacuous() -> TestResult {
     assert_eq!(
         absolute_paths("Self::Variant and self.field"),
         BTreeSet::new()
+    );
+    // A middle segment yields no second key, and a leading `::` is not a middle
+    // segment. The second case was a measured bypass of this function.
+    assert_eq!(
+        absolute_paths("std::collections::BTreeMap"),
+        BTreeSet::from(["std::collections".to_owned()])
+    );
+    assert_eq!(
+        absolute_paths("let _ = ::std::path::Path::new(p);"),
+        BTreeSet::from(["std::path".to_owned()])
     );
     assert_eq!(
         macros_spelled("let s = include_str!(\"x\"); format!(\"y\");"),
