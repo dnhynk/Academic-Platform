@@ -402,6 +402,23 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository",
       "academic-repository-analysis",
     ],
+    // `P2-R4`'s section 18 classification. Four product edges and each is a
+    // boundary it reuses rather than rebuilds: `P2-R2`'s findings and locators,
+    // which are the only route from repository bytes to a proof chain's first
+    // step; `P2-R3`'s correlation, which is the only route to an `OBSERVED`;
+    // `academic-domain` for section 7.4's ontology tiers, which is what makes a
+    // whole field unrequirable; and `academic-policy` for the digest a
+    // requirement identity is, because a joined and truncated identity collides.
+    // The edges it does not have are the point: no `academic-store` -- it
+    // persists nothing and adds no migration -- and no `academic-worker` and no
+    // `academic-egress-boundary`, so nothing in its closure can launch a process
+    // or stage a payload.
+    "academic-repository-classification": [
+      "academic-domain",
+      "academic-policy",
+      "academic-repository-analysis",
+      "academic-repository-correlation",
+    ],
     "academic-repository-analyzer": ["academic-policy"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
     // rehearsal receipt. It sits above the key schedule and below the
@@ -623,6 +640,17 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-repository-correlation": [
       "academic-model-run",
       "academic-policy",
+      "academic-untrusted-content",
+    ],
+    // `P2-R4`'s acceptance suite runs `P2-R1`'s capture, `P2-R2`'s ladder and
+    // `P2-R3`'s correlation over synthetic corpora rather than fabricating a
+    // finding, so it needs the calibration registry an `OBSERVED` rung requires,
+    // the snapshot request builder, and the sealed index `AnalysisInput::of`
+    // checks against. `academic-policy` is a product edge here rather than a
+    // test one, so it does not appear below.
+    "academic-repository-classification": [
+      "academic-model-run",
+      "academic-repository",
       "academic-untrusted-content",
     ],
   });
@@ -2280,6 +2308,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   // all, and every artifact that is not a `P2-R2` finding arrives as an
   // argument naming subject identifiers.
   "academic-repository-correlation": ["libc"],
+  // `P2-R4`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `P2-R1` and `P2-R2`. The crate spells no socket construct, which is
+  // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens
+  // nothing at all, and takes the classification inputs as arguments.
+  "academic-repository-classification": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-requirement": ["libc"],
   "academic-retention": ["libc"],
@@ -4156,6 +4189,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     correlationReceiptText,
     centerReceiptText,
     lectureReceiptText,
+    classificationReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4186,6 +4220,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-r3.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-x7.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l4.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-r4.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -4216,6 +4251,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const correlationReceipt = JSON.parse(correlationReceiptText);
   const centerReceipt = JSON.parse(centerReceiptText);
   const lectureReceipt = JSON.parse(lectureReceiptText);
+  const classificationReceipt = JSON.parse(classificationReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -5212,6 +5248,68 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-R3 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-R4` adds one workspace path package, `academic-repository-classification`,
+  // and admits no external crate: its product edges are `academic-domain`,
+  // `academic-policy`, `academic-repository-analysis`,
+  // `academic-repository-correlation` and `thiserror`, and its dev edges are
+  // `academic-model-run`, `academic-repository`, `academic-untrusted-content`
+  // and `trybuild`, all already in this lock through earlier receipts. The
+  // `academic-policy` edge is the one that needs a reason and the receipt
+  // carries it: a materialized requirement's identity is a digest of the four
+  // facts section 18.4 binds, because those four joined and truncated to
+  // `RequirementId`'s 64 bytes collide.
+  assert.equal(classificationReceipt.task, "P2-R4");
+  const classificationAdmitted = new Set(
+    classificationReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const classificationPathPackages = new Set(
+    classificationReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(classificationAdmitted.size, 0, "P2-R4 must admit no external crate");
+  assert.deepEqual(
+    [...classificationPathPackages],
+    ["academic-repository-classification@0.1.0"],
+  );
+  assert.deepEqual(classificationReceipt.summary.npm_additions, []);
+  assert.equal(classificationReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(classificationReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(classificationReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof classificationReceipt.no_second_ladder_note, "string");
+  assert.deepEqual(Object.keys(classificationReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-policy",
+    "academic-repository-analysis",
+    "academic-repository-correlation",
+  ]);
+  assert.deepEqual(Object.keys(classificationReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-model-run",
+    "academic-repository",
+    "academic-untrusted-content",
+    "trybuild",
+  ]);
+  for (const claimed of [...classificationAdmitted, ...classificationPathPackages]) {
+    assert.equal(
+      correlationPathPackages.has(claimed) ||
+        analysisPathPackages.has(claimed) ||
+        repositoryPathPackages.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        modelRunPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const classificationTuples = lockTuples.filter(
+    ([name, version]) =>
+      classificationAdmitted.has(`${name}@${version}`) ||
+      classificationPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    classificationTuples.length,
+    classificationAdmitted.size + classificationPathPackages.size,
+    "a P2-R4 admitted package is missing from Cargo.lock",
+  );
+
   // `P2-L2` adds one workspace path package, `academic-capture`, and admits no
   // external crate: its product edges are `academic-consent`, `academic-domain`
   // and `thiserror`, and its one dev edge is `tempfile`, all already in this
@@ -5636,6 +5734,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !centerPathPackages.has(`${name}@${version}`) &&
       !lectureAdmitted.has(`${name}@${version}`) &&
       !lecturePathPackages.has(`${name}@${version}`),
+      !classificationAdmitted.has(`${name}@${version}`) &&
+      !classificationPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -5674,6 +5774,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       correlationTuples.length +
       centerTuples.length +
       lectureTuples.length,
+      classificationTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

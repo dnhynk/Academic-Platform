@@ -416,6 +416,7 @@ dependencies = [
  "academic-repository-correlation",
  "academic-untrusted-content",
  "thiserror",
+ "trybuild",
 ]
 
 [[package]]
@@ -477,7 +478,6 @@ dependencies = [
  "academic-admission",
  "academic-domain",
  "academic-repository-analysis",
- "academic-repository-classification",
  "proptest",
  "serde",
  "serde_json",
