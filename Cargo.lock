@@ -212,6 +212,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-evidence-center"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-ingestion",
+ "academic-proposal",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-export-job"
 version = "0.1.0"
 dependencies = [

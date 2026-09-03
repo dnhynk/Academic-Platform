@@ -16,6 +16,7 @@ members = [
   "crates/domain",
   "crates/egress",
   "crates/egress-boundary",
+  "crates/evidence-center",
   "crates/export-job",
   "crates/indexer",
   "crates/ingestion",
