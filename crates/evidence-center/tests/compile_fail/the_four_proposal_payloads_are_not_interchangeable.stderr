@@ -1,0 +1,60 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/the_four_proposal_payloads_are_not_interchangeable.rs:14:45
+   |
+14 |     let _mislabelled = InboxEntry::Relation(merge());
+   |                        -------------------- ^^^^^^^ expected `RelationProposal`, found `ConceptMergeProposal`
+   |                        |
+   |                        arguments to this enum variant are incorrect
+   |
+note: tuple variant defined here
+  --> src/inbox.rs
+   |
+   |     Relation(RelationProposal),
+   |     ^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/the_four_proposal_payloads_are_not_interchangeable.rs:15:42
+   |
+15 |     let _also = InboxEntry::ConceptMerge(relation());
+   |                 ------------------------ ^^^^^^^^^^ expected `ConceptMergeProposal`, found `RelationProposal`
+   |                 |
+   |                 arguments to this enum variant are incorrect
+   |
+note: tuple variant defined here
+  --> src/inbox.rs
+   |
+   |     ConceptMerge(ConceptMergeProposal),
+   |     ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/the_four_proposal_payloads_are_not_interchangeable.rs:18:42
+   |
+18 |     let _third = InboxEntry::StateUpdate(classification());
+   |                  ----------------------- ^^^^^^^^^^^^^^^^ expected `StateUpdateProposal`, found `ProjectClassificationProposal`
+   |                  |
+   |                  arguments to this enum variant are incorrect
+   |
+note: tuple variant defined here
+  --> src/inbox.rs
+   |
+   |     StateUpdate(StateUpdateProposal),
+   |     ^^^^^^^^^^^
+
+error[E0277]: the trait bound `RelationProposal: From<ConceptMergeProposal>` is not satisfied
+  --> tests/compile_fail/the_four_proposal_payloads_are_not_interchangeable.rs:21:43
+   |
+21 |     let _into: RelationProposal = merge().into();
+   |                                           ^^^^ the trait `From<ConceptMergeProposal>` is not implemented for `RelationProposal`
+   |
+   = note: required for `ConceptMergeProposal` to implement `Into<RelationProposal>`
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/the_four_proposal_payloads_are_not_interchangeable.rs:22:44
+   |
+22 |     let _from = ConceptMergeProposal::from(state_update());
+   |                 -------------------------- ^^^^^^^^^^^^^^ expected `ConceptMergeProposal`, found `StateUpdateProposal`
+   |                 |
+   |                 arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs

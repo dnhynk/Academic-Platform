@@ -1,0 +1,9 @@
+error[E0451]: fields `reference` and `proved_at` of struct `LivePermission` are private
+  --> tests/compile_fail/a_live_permission_has_no_struct_literal.rs:13:9
+   |
+12 |     let _forged = LivePermission {
+   |                   -------------- in this type
+13 |         reference: reference(),
+   |         ^^^^^^^^^ private field
+14 |         proved_at: TimestampMillis::new(0),
+   |         ^^^^^^^^^ private field

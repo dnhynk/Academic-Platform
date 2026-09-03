@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_conflict_is_not_settled_by_an_actor.rs:16:42
+   |
+16 |     case.settle(CorrectionOutcome::Keep, model, TimestampMillis::new(0));
+   |          ------                          ^^^^^ expected `UserDecision`, found `Actor`
+   |          |
+   |          arguments to this method are incorrect
+   |
+note: method defined here
+  --> src/conflict.rs
+   |
+   |     pub fn settle(
+   |            ^^^^^^
+
+error[E0615]: attempted to take value of method `resolution` on type `ConflictCase`
+  --> tests/compile_fail/a_conflict_is_not_settled_by_an_actor.rs:24:10
+   |
+24 |     case.resolution = Resolution::Settled(academic_evidence_center::CorrectionChoice::Keep);
+   |          ^^^^^^^^^^ method, not a field
+   |
+   = help: methods are immutable and cannot be assigned to

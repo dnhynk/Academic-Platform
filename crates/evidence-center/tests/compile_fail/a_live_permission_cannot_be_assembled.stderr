@@ -1,0 +1,22 @@
+error[E0599]: no associated function or constant named `new` found for struct `LivePermission` in the current scope
+  --> tests/compile_fail/a_live_permission_cannot_be_assembled.rs:18:34
+   |
+18 |     let _built = LivePermission::new(reference, TimestampMillis::new(0));
+   |                                  ^^^ associated function or constant not found in `LivePermission`
+   |
+help: there is a method `ne` with a similar name, but with different arguments
+  --> $RUST/core/src/cmp.rs
+
+error[E0277]: the trait bound `LivePermission: From<PermissionRef>` is not satisfied
+  --> tests/compile_fail/a_live_permission_cannot_be_assembled.rs:21:48
+   |
+21 |     let _converted: LivePermission = reference.into();
+   |                                                ^^^^ the trait `From<PermissionRef>` is not implemented for `LivePermission`
+   |
+   = note: required for `PermissionRef` to implement `Into<LivePermission>`
+
+error[E0599]: no method named `clone` found for struct `LivePermission` in the current scope
+  --> tests/compile_fail/a_live_permission_cannot_be_assembled.rs:25:26
+   |
+25 |     let _twice = gated().clone();
+   |                          ^^^^^ method not found in `LivePermission`
