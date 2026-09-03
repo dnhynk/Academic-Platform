@@ -315,29 +315,33 @@ from. Add the next readings of `rust-default-*` and `rust-store-*` here as a
 range rather than as a replacement, and re-read the 80% line — 24:00 — against
 the largest of them.
 
-### A second reading of the same tree
+### Three readings of the same tree
 
-The docs-only follow-up,
+Two docs-only follow-ups,
 [33748404269](https://github.com/dnhynk/Academic-Platform/actions/runs/33748404269)
-on `2bf7cf4`, also completed **22/22** on the first attempt. Its delta from the
-run above is one Markdown file, which no test reads, so the two are readings of
-one tree and the page's own rule says to keep both as a range rather than let
-the second overwrite the first:
+on `2bf7cf4` and
+[33750554768](https://github.com/dnhynk/Academic-Platform/actions/runs/33750554768)
+on `8c48867`, also completed **22/22** on the first attempt. Each differs from
+the run before it by Markdown no test reads, so all three are readings of one
+tree, and the page's own rule says to keep them as a range rather than let the
+last overwrite the others:
 
-| Label | 33746159023 | 33748404269 |
-|---|---:|---:|
-| `rust-default-windows-latest` | 11:20 | 12:43 |
-| `rust-store-windows-latest` | 5:33 | 5:13 |
-| `rust-default-windows-11-arm` | 10:01 | 11:06 |
-| `rust-store-windows-11-arm` | 6:32 | 5:06 |
+| Label | 33746159023 | 33748404269 | 33750554768 |
+|---|---:|---:|---:|
+| `rust-default-windows-latest` | 11:20 | 12:43 | 12:25 |
+| `rust-store-windows-latest` | 5:33 | 5:13 | 5:43 |
+| `rust-default-windows-11-arm` | 10:01 | 11:06 | 10:59 |
+| `rust-store-windows-11-arm` | 6:32 | 5:06 | 5:40 |
 
-So after two runs the split's readings are **`rust-default-windows-latest`
-11:20–12:43 and `rust-store-windows-latest` 5:13–5:33**, and the worst job on
-either run is 42.4%. Both default readings sit below the 12:16 minimum of the 53
-pre-split readings, and the 80% line for these jobs remains 24:00.
+So the split's readings so far are **`rust-default-windows-latest` 11:20–12:43
+and `rust-store-windows-latest` 5:13–5:43**, and the worst job on any of the
+three is 42.4%. All three default readings sit below the 12:16 minimum of the 53
+pre-split readings, and the 80% line for these jobs remains 24:00. Three
+readings are a start, not a distribution: the section above needed 53 before it
+could say anything about a tail.
 
-`rust-features-windows-latest` was green on the first attempt of both runs. That
-is two attempts against a measured 14.3% failure rate, so it falsifies nothing;
+`rust-features-windows-latest` was green on the first attempt of all three runs.
+That is three attempts against a measured 14.3% failure rate, so it falsifies nothing;
 it is noted only so the next reader does not count them as clean runs for that
 signature.
 
