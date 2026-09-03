@@ -251,10 +251,11 @@ impl<T> ReviewQueue<T> {
     ///
     /// Section 27.4's high-risk row needs an explicit approval, so this door
     /// takes an [`ExplicitApproval`] rather than a bare decision and refuses
-    /// one that names a different proposal. Approving this tier through
-    /// [`ReviewQueue::review`] is refused by the workflow comparison, and
-    /// recording `APPROVE` for it through any other door is refused by
-    /// [`WorkflowError::ApprovalMustBeExplicit`].
+    /// one that names a different proposal. It is the only door the workflow
+    /// comparison lets a `HIGH_APPROVAL` entry through, so there is no other
+    /// route by which a `CONFIRM` reaches this tier: [`ReviewQueue::review`]
+    /// and [`ReviewQueue::decide`] both refuse it with
+    /// [`WorkflowError::WrongWorkflow`] before looking at anything else.
     ///
     /// # Errors
     ///

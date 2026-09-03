@@ -238,7 +238,7 @@ whole, so it is where a migration added to that set is caught: it failed on an
 earlier commit of this branch, at `len() == 5` against a six-element set, before
 the pin was extended.
 
-## Latest run
+## The `P2-L1` run
 
 `P2-L1` adds one workspace member, `academic-capture-gate`, and two commands to
 the `rust-features` job — a clippy and a test of its non-default
@@ -309,6 +309,63 @@ named before its elapsed time means anything.** A per-platform suite that
 compiles on a third platform is a compile gate, and no rerun of the same commit
 would have changed it.
 
+## Latest run
+
+`P2-M2` adds one workspace member, `academic-proposal`, and a canonical-store
+migration, `0009`. Both are triggers the refresh rule names. The job count is
+unchanged at **17**: the new member has no non-default feature lane, so it adds
+no job and no step, only test targets inside the default lane and one more
+migration for the encrypted-store lane to apply.
+
+Run
+[33715585336](https://github.com/dnhynk/Academic-Platform/actions/runs/33715585336)
+completed **17/17** on `5dfbd46`, with `rust-features-windows-latest` green on
+its second attempt of the same commit — see the launch-error section below,
+which is what that rerun falsifies.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:09 | 5:00 | 3.0% |
+| `rust-default-ubuntu-latest` | 5:12 | 30:00 | 17.3% |
+| `rust-default-ubuntu-24.04-arm` | 4:30 | 30:00 | 15.0% |
+| `rust-default-windows-latest` | 14:55 | 30:00 | 49.7% |
+| `rust-default-windows-11-arm` | 12:29 | 30:00 | 41.6% |
+| `rust-default-macos-latest` | 6:52 | 30:00 | 22.9% |
+| `rust-features-ubuntu-latest` | 3:08 | 30:00 | 10.4% |
+| `rust-features-ubuntu-24.04-arm` | 2:58 | 30:00 | 9.9% |
+| `rust-features-windows-latest` | 6:11 | 30:00 | 20.6% |
+| `rust-features-windows-11-arm` | 5:38 | 30:00 | 18.8% |
+| `rust-features-macos-latest` | 3:46 | 30:00 | 12.6% |
+| `phase1-exit-ubuntu-latest` | 4:18 | 45:00 | 9.6% |
+| `phase1-exit-windows-latest` | 8:37 | 45:00 | 19.1% |
+| `encrypted-store-lane-ubuntu-latest` | 3:12 | 45:00 | 7.1% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:55 | 45:00 | 10.9% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:58 | 45:00 | 15.5% |
+| `pnpm-contracts` | 0:47 | 15:00 | 5.2% |
+
+**`rust-default-windows-latest` is the slowest job at 49.7%**, up from 45.9% on
+the `P2-L1` run. That label's readings on this page are now 20:18, 14:08, 12:16,
+15:28, 13:47 and 14:55 — a 8:02 spread across six runs of a workflow whose
+content changed only incrementally, and this reading sits in the middle of it.
+`windows-11-arm` moved the other way, 15:26 to 12:29, on a run that added a
+member to the same lane. Neither direction is attributable to this task: the new
+member's default test tree is 26 tests that finish in under a second locally.
+
+**No feature job moved on the new member's account**, and none could: the crate
+declares no non-default feature, so the `rust-features` group's five readings
+differ from `P2-L1`'s by -0:36 to +1:21 with no step added. The group's worst
+utilization is 20.6%.
+
+**`encrypted-store-lane-ubuntu-latest` is the job migration `0009` changes** and
+it reads 7.1%, against 7.6% on the run before. That lane is the only one that
+pins `STORE_MIGRATION_SQL` as a whole, so it is where a migration added to that
+set is caught. It was run locally under WSL2 before every push to this branch,
+which is the step `P2-M1` skipped and CI caught for it.
+
+Every job is at or below 49.7%, and nothing is near the 80% review trigger.
+Size headroom off the worst reading this page holds for a label, 67.7% on
+`rust-default-windows-latest`, rather than off any single run.
+
 ## A Windows failure that is not a test result
 
 This page exists because a timeout cancellation is not a test failure. There is
@@ -339,8 +396,21 @@ Windows filesystem right after a link, not anything the sandbox claims.
 
 Seen on runs
 [33697656939](https://github.com/dnhynk/Academic-Platform/actions/runs/33697656939)
-(failed, then 17/17 on rerun of the one job) and once locally on Windows in the
-`P2-G6` verification.
+(failed, then 17/17 on rerun of the one job), once locally on Windows in the
+`P2-G6` verification, and again on
+[33715585336](https://github.com/dnhynk/Academic-Platform/actions/runs/33715585336)
+in `P2-M2`.
+
+That third sighting is the sharpest one this page has, because the two halves of
+the rule were both executed against a tree that touches no part of
+`academic-worker`. `resource_receipt_is_recorded_per_run`,
+`cpu_memory_time_output_limits_are_enforced` and
+`malicious_plugin_corpus_is_contained` failed together with the same
+`CreateProcessW` launch error while the other five rows passed; the same suite
+passed **8/8 on a Windows developer machine on that exact commit**, and
+re-running only that job on that exact commit passed too. The commit under it
+changed one test file in `crates/proposal` and one contract page, and the
+identical job had already passed on the parent commit.
 
 ### A second signature, in a different job
 
