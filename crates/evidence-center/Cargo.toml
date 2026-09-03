@@ -1,0 +1,58 @@
+[package]
+name = "academic-evidence-center"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Three product edges and no fourth.
+#
+# `academic-domain` supplies every identifier a center entry names -- the
+# aggregate ids, `ClaimId`, `ContentDigest`, `TimestampMillis`,
+# `ConfidencePermille`, `EpistemicStatus`, `AuthorityClass`, `MasteryLevel`,
+# `ValidInterval` and `temporal::TimeCoordinates`, which is the `P2-C6`
+# bitemporal coordinate a historical view is read at. Naming those rather than
+# declaring a second vocabulary is what makes a marker in this crate point at
+# the same claim the ledger holds.
+#
+# `academic-proposal` supplies `P2-M2`'s `ProposalId`, `RiskTier`,
+# `ImpactPermille` and `UserDecision`. The last is the load-bearing one: it is
+# issued only for `Actor::User`, so "unresolved until user action" is that
+# crate's door reused rather than a second actor check written here.
+#
+# `academic-ingestion` supplies `P2-U6`'s `SourceDiff`, `DependencyGraph` and
+# `DependentNode`, which are what turn an official-source change into the exact
+# impacted rules and the exact impacted plans.
+#
+# The edges it does **not** have are the point, and they are what
+# `the_center_cannot_name_a_payload_byte` rests on:
+#
+# * no `academic-egress-boundary` and no `academic-policy`, so `StagedPayload`,
+#   `Preview` and the broker's own rows are not nameable here. The transmission
+#   log carries a digest, a range and a receipt reference because the type that
+#   owns the transmitted bytes is not in the closure this crate compiles
+#   against;
+# * no `academic-store` and no `academic-vault`, so the canonical writer is
+#   absent and this crate persists nothing. It claims no migration number;
+# * no `academic-untrusted-content` as a direct edge. It arrives transitively
+#   through `academic-ingestion`, and no product file here names an item from
+#   it -- the field-type inventory is what says so.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-ingestion = { path = "../ingestion" }
+academic-proposal = { path = "../proposal" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# The compile-fail suite compiles its cases against this crate plus this
+# crate's dev-dependencies, so the domain and proposal types a case has to name
+# must be reachable from `tests/compile_fail` as well. `academic-scenario`,
+# `academic-curriculum` and `academic-requirement` declare their own edges
+# twice for the same reason.
+academic-domain = { path = "../domain" }
+academic-proposal = { path = "../proposal" }
+trybuild.workspace = true
+
+[lints]
+workspace = true
