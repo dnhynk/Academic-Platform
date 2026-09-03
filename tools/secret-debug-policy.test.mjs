@@ -453,6 +453,40 @@ const BYTE_FIELD_CLASSES = new Map([
 ]);
 
 /**
+ * Classification keys whose type name is declared in more than one crate.
+ *
+ * `BYTE_FIELD_CLASSES` is keyed by `Type.field` and not by path, so two types
+ * that happen to share a name share one classification. `P2-L4` made that
+ * concrete rather than hypothetical: it added a second `CorpusFile` with a
+ * second `bytes`, and that field arrived already classified by a line written
+ * for a different crate's type. Both are committed corpus files and the class
+ * is right, but nobody decided it was right -- which is the shape this whole
+ * file exists to refuse.
+ *
+ * So a key that spans crates is not forbidden, it is *declared*, and the set is
+ * compared in both directions. A third `CorpusFile.bytes` in a crate where the
+ * bytes are not a committed fixture fails here until somebody says so.
+ */
+const SHARED_BYTE_FIELD_KEYS = new Map([
+  [
+    "CorpusFile.bytes",
+    "`academic-record`'s and `P2-L4`'s harnesses each declare one; both are files this repository commits in the clear as a corpus, which is the `public-fixture` class both need",
+  ],
+  [
+    "DecodedEnvelope.payload",
+    "`academic-admission` and `academic-contracts` each decode the same wire envelope; both hold the canonical encoding and neither holds a key",
+  ],
+  [
+    "DecodedEnvelope.public_key",
+    "the same two decoders, each holding the public verifying half; the private half is in neither",
+  ],
+  [
+    "DecodedEnvelope.signature",
+    "the same two decoders, each holding the signature over that envelope",
+  ],
+]);
+
+/**
  * Reports whether a declared type carries bytes the classification must cover.
  *
  * Both the buffer itself and a buffer inside a container: `Vec<[u8; 32]>` and
@@ -936,19 +970,38 @@ test("every registered secret-bearing type has a hand-written redacting Debug", 
   );
 });
 
-/** Every `Type.field` in the workspace whose declared type is a byte buffer. */
-function declaredByteFields() {
-  const found = new Set();
+/**
+ * Every `Type.field` in the workspace whose declared type is a byte buffer,
+ * mapped to the crates that declare it.
+ *
+ * The value is what tells one classification covering one type from one
+ * covering several, which the key alone cannot say.
+ */
+function declaredByteFieldCrates() {
+  const found = new Map();
   for (const sites of definitions.values()) {
     for (const site of sites) {
       for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
-        if (isClassifiedByteBuffer(trimDeclaredType(field[2]))) {
-          found.add(`${site.name}.${field[1]}`);
+        if (!isClassifiedByteBuffer(trimDeclaredType(field[2]))) {
+          continue;
+        }
+        const key = `${site.name}.${field[1]}`;
+        const crate = site.location.split("/")[1];
+        const crates = found.get(key);
+        if (crates === undefined) {
+          found.set(key, new Set([crate]));
+        } else {
+          crates.add(crate);
         }
       }
     }
   }
   return found;
+}
+
+/** Every `Type.field` in the workspace whose declared type is a byte buffer. */
+function declaredByteFields() {
+  return new Set(declaredByteFieldCrates().keys());
 }
 
 test("every named byte buffer in the workspace is classified", () => {
@@ -984,6 +1037,34 @@ test("every named byte buffer in the workspace is classified", () => {
     unknown.sort(),
     [],
     `these carry a class that BYTE_CLASSES does not declare: ${unknown.join(", ")}`,
+  );
+});
+
+test("a classification covering more than one crate says so", () => {
+  // `BYTE_FIELD_CLASSES` is keyed by name, so a new type reusing an existing
+  // one's name inherits its class without anybody deciding. `P2-L4` did
+  // exactly that with a second `CorpusFile.bytes`, and it was silent. A key
+  // that spans crates is declared here instead, in both directions.
+  const spanning = new Map(
+    [...declaredByteFieldCrates()].filter(([, crates]) => crates.size > 1),
+  );
+
+  const undeclared = [...spanning]
+    .filter(([key]) => !SHARED_BYTE_FIELD_KEYS.has(key))
+    .map(([key, crates]) => `${key} (${[...crates].sort().join(", ")})`);
+  assert.deepEqual(
+    undeclared.sort(),
+    [],
+    `these classifications cover a type name declared in more than one crate, so one crate's bytes are judged by a line written for another's: ${undeclared.join("; ")}. Say so in SHARED_BYTE_FIELD_KEYS, after checking the class is right for both.`,
+  );
+
+  const stale = [...SHARED_BYTE_FIELD_KEYS.keys()].filter(
+    (key) => !spanning.has(key),
+  );
+  assert.deepEqual(
+    stale.sort(),
+    [],
+    `these SHARED_BYTE_FIELD_KEYS entries no longer span two crates and must be deleted: ${stale.join(", ")}`,
   );
 });
 
