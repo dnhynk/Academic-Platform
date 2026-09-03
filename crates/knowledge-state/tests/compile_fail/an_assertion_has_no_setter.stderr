@@ -1,0 +1,17 @@
+error[E0616]: field `mastery_level` of struct `KnowledgeStateAssertion` is private
+  --> tests/compile_fail/an_assertion_has_no_setter.rs:11:15
+   |
+11 |     assertion.mastery_level = MasteryLevel::Fluent;
+   |               ^^^^^^^^^^^^^ private field
+
+error[E0599]: no method named `set_mastery_level` found for mutable reference `&mut KnowledgeStateAssertion` in the current scope
+  --> tests/compile_fail/an_assertion_has_no_setter.rs:12:15
+   |
+12 |     assertion.set_mastery_level(MasteryLevel::Fluent);
+   |               ^^^^^^^^^^^^^^^^^
+   |
+help: there is a method `mastery_level` with a similar name, but with different arguments
+  --> src/assertion.rs
+   |
+   |     pub const fn mastery_level(&self) -> MasteryLevel {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,5 @@
+error[E0599]: no variant, associated function, or constant named `Fluent` found for enum `AutomaticLevel` in the current scope
+  --> tests/compile_fail/an_automatic_projection_cannot_name_fluent.rs:10:35
+   |
+10 |     let _fluent = AutomaticLevel::Fluent;
+   |                                   ^^^^^^ variant, associated function, or constant not found in `AutomaticLevel`
