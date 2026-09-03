@@ -7,6 +7,7 @@
 //! objects — and that the manifest is sealed under a key the device wrapper
 //! cannot produce.
 
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 use academic_crypto::{StoreKey, VaultMasterKey};
@@ -68,7 +69,6 @@ pub(crate) fn may_be_shredded(error: &academic_vault::VaultError) -> bool {
 }
 
 /// Everything one backup needs that is not in the profile.
-#[derive(Debug)]
 pub struct BackupPlan<'a> {
     /// The recovery profile in force. `DEVICE_ONLY` is refused here.
     pub recovery_profile: RecoveryProfile,
@@ -81,6 +81,28 @@ pub struct BackupPlan<'a> {
     /// A restore on a fresh machine recovers the Vault Master Key from these,
     /// so a backup without them is not restorable and is refused.
     pub profile_recovery_recipients: &'a [u8],
+}
+
+impl fmt::Debug for BackupPlan<'_> {
+    /// Redacting: `profile_recovery_recipients` reaches the formatter only as
+    /// a length. It is the canonical CBOR of this profile's recovery-class
+    /// recipient records, and each of those is one wrapped copy of the Vault
+    /// Master Key -- the restore path recovers the key from exactly these
+    /// bytes, so being an encoding of wrapped material does not make them
+    /// printable.
+    /// `backup_root` is left out rather than printed: it is a registered
+    /// secret-bearing type, and a formatter over secret bytes reaches one only
+    /// through a length.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("BackupPlan")
+            .field("recovery_profile", &self.recovery_profile)
+            .field(
+                "profile_recovery_recipients_len",
+                &self.profile_recovery_recipients.len(),
+            )
+            .finish_non_exhaustive()
+    }
 }
 
 /// Receipt returned by a completed backup.

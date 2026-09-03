@@ -12,7 +12,7 @@
 // `missing_debug_implementations = "deny"` is what makes the regression easy:
 // the lint demands a `Debug`, and the one-line way to satisfy it is the derive
 // that leaks. So the rule is checked mechanically rather than by review, in
-// five halves that fail for different reasons:
+// six halves that fail for different reasons:
 //
 //   1. A registry of the types already known to carry secrets. Each must still
 //      exist, must not derive `Debug` or `Display`, and must have a
@@ -26,15 +26,40 @@
 //      redacted every field but one; the registry said the impl existed and
 //      nothing read it. A raw byte field may reach the formatter only through
 //      a length.
-//   4. A discovery net over every other type, for the ones nobody has listed
-//      yet: a type that derives `Debug` and owns a raw byte buffer under a
-//      field name from the key-material vocabulary. Bytes that are genuinely
-//      public are named below with the reason they are public, so the net
-//      documents its own exceptions instead of hiding them.
-//   5. The same net for tuple structs and tuple enum variants, which have no
-//      field name at all. `T114` found `RecoveredSecret`, `BackupMasterKey`,
-//      and a variant `Dek([u8; 32])` invisible to a guard that read only named
-//      fields.
+//   4. A whole-set classification of every named byte-buffer field in the
+//      workspace: `BYTE_FIELD_CLASSES` names each one and says what it holds,
+//      compared against the source in both directions. This is the discovery
+//      net for the types nobody has listed yet.
+//   5. The same whole set for tuple structs and tuple enum variants, which
+//      have no field name at all. `T114` found `RecoveredSecret`,
+//      `BackupMasterKey`, and a variant `Dek([u8; 32])` invisible to a guard
+//      that read only named fields.
+//   6. Last and weakest, the `SECRET_FIELD_NAMES` alternation, which now
+//      reaches only `String` and `str` fields.
+//
+// Half 4 used to be that alternation applied to byte buffers too, and that is
+// the empty guard `T166` measured: it decided whether a `Vec<u8>` leaked by
+// matching the *field name* against a closed list, so a field the list did not
+// name was silently safe. `Vec<u8>` called `excerpt` passed. The list of names
+// a byte buffer can hide behind is open and the list of fields that exist is
+// not, so the question is asked the other way round now: every byte buffer in
+// the workspace is enumerated and classified, and a new one fails until
+// somebody classifies it. `S-10` on `docs/contracts/policy-source-scans.md`
+// records the five previous attempts to close this by adding names, and what
+// each one cost.
+//
+// The three layers are ordered by what carries the judgement, strongest first:
+//
+//   * The *type* decides, for a byte buffer. `Vec<u8>`, `[u8; N]` and `[u8]`
+//     are read as bytes whatever the field is called, which is the rule this
+//     file already applied to tuple positions and now applies to named fields.
+//   * The *classification* decides whether those bytes may be printed, and it
+//     is a closed vocabulary rather than free prose, so a widening is visible
+//     as a new class and not as one more plausible sentence.
+//   * The *name* decides only where the type cannot: `String` and `str`, where
+//     `Qualifier.key` is a qualifier name and `OpenedHeader.dek` would be a
+//     key. This layer is a token list and is known to be the weakest of the
+//     three; nothing may be closed by adding a name to it alone.
 //
 // The shapes the net reads are the ones `T114`'s injection matrix reached:
 // `&'a [u8]`, `Option<Vec<u8>>`, a path-qualified `zeroize::Zeroizing<...>`,
@@ -116,6 +141,17 @@ const SECRET_BEARING_TYPES = new Map([
   ["LectureDocument", "the whole lossless rendering of one lecture"],
   ["StudyIndexEntry", "a heading a summary wrote over a span of the lecture"],
   ["StudyIndex", "every heading of one summary over one lecture"],
+  // `P2-RF13`. Five types the whole-set classification of byte fields found
+  // deriving `Debug` over bytes the name alternation did not read. The two
+  // capture-gate types hold the lecture itself, one crate away from the
+  // `CaptureBytes` `P2-L2` sealed; the three key-wrapping types hold a wrapped
+  // root or Vault Master Key, which is one broker call or one passphrase from
+  // the key.
+  ["CaptureSession", "every chunk of lecture audio or board photography this session has accepted"],
+  ["ReleasableArtifact", "the same capture after every chunk re-bound against its permission"],
+  ["RecipientRecord", "one wrapped copy of the Vault Master Key, and the keystore blob that opens it"],
+  ["BackupRecipientRecord", "one wrapped copy of the backup root"],
+  ["BackupPlan", "the canonical CBOR of the recipient records a restore recovers the Vault Master Key from"],
 ]);
 
 /**
@@ -134,6 +170,16 @@ const SECRET_BEARING_TYPES = new Map([
  * that row measures are not added here; their cost is on the row.
  *
  * A name is only a signal; the exceptions below carry the judgement.
+ *
+ * `P2-RF13` demoted this list to the **weakest of the three layers** and to
+ * `String` and `str` fields alone. It used to decide byte buffers too, and
+ * `T166` measured what that cost: `excerpt: Vec<u8>` under a derived `Debug`
+ * passed, because the list does not name `excerpt` and nothing else looked. A
+ * byte buffer is now judged by its type and its entry in
+ * {@link BYTE_FIELD_CLASSES}, whatever it is called. Adding a name here closes
+ * nothing on its own and must not be offered as a repair for a byte buffer
+ * that leaked -- `S-10` on `docs/contracts/policy-source-scans.md` records
+ * five rounds of that.
  */
 const SECRET_FIELD_NAMES =
   /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|payload|payload_bytes|prompt|prompt_text|provider_response|provider_response_bytes|response_text|transmitted|transmitted_bytes|transmission|transmission_bytes|source_bytes|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|blob|vmk|skey|master|student_number|student_name)$/;
@@ -163,8 +209,15 @@ const RAW_BYTE_PAYLOAD_TYPES =
   /^(Vec\s*<\s*u8\s*>|\[\s*u8\s*;[^\]]*\]|\[\s*u8\s*\])$/;
 
 /**
- * Fields the net matches on name and type whose bytes are not secret. Each
- * entry states why, because the reason is the whole content of the exception.
+ * Fields the *name* layer matches whose text is not secret. Each entry states
+ * why, because the reason is the whole content of the exception.
+ *
+ * Byte buffers are not excepted here any more: their judgement is the class in
+ * {@link BYTE_FIELD_CLASSES}, which every one of them must carry. What is left
+ * is `String` and `str` -- the fields whose type cannot say what they hold, so
+ * that a `Qualifier.key` is told from a key by its name and nothing else.
+ * `KeyMaterialState.digest` and `StreamingPrefix.digest` moved out of this map
+ * and into that classification when `P2-RF13` made the type decide.
  */
 const PUBLIC_BYTES = new Map([
   [
@@ -178,14 +231,6 @@ const PUBLIC_BYTES = new Map([
   [
     "QualifierSchema.key",
     "the qualifier name a predicate schema declares, which is the registry's public vocabulary",
-  ],
-  [
-    "KeyMaterialState.digest",
-    "SHA-256 over the recipient set's canonical CBOR, which ADR-005 puts on disk holding no key byte",
-  ],
-  [
-    "StreamingPrefix.digest",
-    "SHA-256 of the object header's cleartext prefix P0, which is on disk in the clear",
   ],
   // `P2-G5`. Four SHA-256 fields over ingested or model-written bytes. A digest
   // of untrusted content is not the content, `Untrusted::digest` returns it
@@ -217,6 +262,195 @@ const PUBLIC_BYTES = new Map([
     "SHA-256 of a P2-G4 capability descriptor, whose whole plaintext the parent writes into the job's staged input directory for the sandboxed process to read; the digest is what the registry compares, not a secret it holds",
   ],
 ]);
+
+/**
+ * What every named byte-buffer field in the workspace holds.
+ *
+ * This is the whole set half 4 compares against, in both directions: a field
+ * whose declared type normalizes to `Vec<u8>`, `[u8; N]` or `[u8]` must be
+ * here, and an entry naming a field that no longer exists must go. A new byte
+ * buffer therefore fails this file until somebody says what it holds --
+ * whatever it is called. `T166` measured the alternation this replaces
+ * admitting `excerpt: Vec<u8>` under a derived `Debug`.
+ *
+ * The second column is one of {@link BYTE_CLASSES} and nothing else, so it is
+ * a classification and not a sentence somebody can make fit. Two classes --
+ * `key-material` and `content` -- forbid a derived `Debug`; the other nine say
+ * where the bytes already are in the clear. `String` and `str` fields are not
+ * here: their type does not say what they hold, so they stay with the name
+ * alternation, which is the weakest layer and is documented as such.
+ */
+const BYTE_CLASSES = new Map([
+  ["identifier", "an opaque identity a row, a header or a path already carries in the clear"],
+  ["digest", "a cryptographic hash; the bytes it was taken over are not recoverable from it"],
+  ["nonce", "public per-encryption randomness, which is not a key and is stored beside the ciphertext"],
+  ["salt", "a public KDF input, which is not a key and is stored beside the record it derives"],
+  ["signature", "a signature, or the public verifying half of a signing key; the private half is elsewhere"],
+  ["mac", "an authentication tag over a record whose own fields are classified here"],
+  ["locator", "an address into already-stored data, not the data: the domain-keyed header HMAC, or a span into a stored row"],
+  ["ciphertext", "bytes under an AEAD whose key is not in the same value"],
+  ["canonical-encoding", "the deterministic encoding of a structure whose fields are themselves classified here"],
+  ["mask", "a bitmask over a closed vocabulary"],
+  ["public-fixture", "bytes this repository commits in the clear as a test corpus"],
+  ["key-material", "key bytes, raw or wrapped -- a derived Debug is forbidden"],
+  ["content", "document, capture, transcript, prompt or provider bytes -- a derived Debug is forbidden"],
+]);
+
+/** The two classes whose bytes a derived `Debug` may not reach. */
+const SECRET_BYTE_CLASSES = new Set(["key-material", "content"]);
+
+const BYTE_FIELD_CLASSES = new Map([
+  ["AcceptanceCommand.client_instance_id", "identifier"],
+  ["AcceptanceCommand.envelope_bytes", "canonical-encoding"],
+  ["AcceptanceCommand.idempotency_key", "identifier"],
+  ["AcceptanceCommand.request_id", "identifier"],
+  ["AcceptedOutput.bytes", "content"],
+  ["AcceptedResponse.payload", "content"],
+  ["AggregateClosureRow.aggregate_id", "identifier"],
+  ["AggregateTimelineRow.aggregate_id", "identifier"],
+  ["AggregateTimelineRow.registered_event_id", "identifier"],
+  ["AuthorizedCapture.chunk_bytes", "content"],
+  ["AuthorizedChunk.chunk_bytes", "content"],
+  ["AuthorizedToolCall.payload", "content"],
+  // `P2-RF13`. Canonical CBOR of this profile's recovery-class recipient
+  // records, and a recipient record is one wrapped copy of the Vault Master
+  // Key. Reached through `&[u8]`, so the wrapping does not make it printable.
+  ["BackupPlan.profile_recovery_recipients", "key-material"],
+  ["BackupRecipientRecord.recipient_id", "identifier"],
+  ["BackupRecipientRecord.record_mac", "mac"],
+  ["BackupRecipientRecord.salt", "salt"],
+  ["BackupRecipientRecord.wrap_nonce", "nonce"],
+  ["BackupRecipientRecord.wrapped_root", "key-material"],
+  ["CaptureBytes.chunk_bytes", "content"],
+  // `P2-RF13`. The same lecture audio and board photographs `P2-L2` sealed in
+  // `academic-capture`, held one crate away under a name the alternation did
+  // not read. `ReleasableArtifact.bytes` below is the released half of it.
+  ["CaptureSession.bytes", "content"],
+  ["CorpusFile.bytes", "public-fixture"],
+  ["Cursor.body", "canonical-encoding"],
+  ["DbFaultState.receipt", "canonical-encoding"],
+  ["DecodedEnvelope.payload", "canonical-encoding"],
+  ["DecodedEnvelope.public_key", "signature"],
+  ["DecodedEnvelope.signature", "signature"],
+  ["DecodedPayload.spec_digest", "digest"],
+  ["DescriptorMigration.artifact_id", "identifier"],
+  ["DescriptorMigration.retention_action_id", "identifier"],
+  ["DesktopCommand.backup_receipt_id", "identifier"],
+  ["DispositionRecord.record_digest", "digest"],
+  ["DurableAcceptanceReceipt.response_bytes", "canonical-encoding"],
+  ["EncryptedObjectReader.chunk", "content"],
+  ["ExactLocator.locator_payload", "locator"],
+  ["FetchOutcome.source_bytes", "content"],
+  ["FileIdentity.file_id", "identifier"],
+  ["FineGrainedToken.secret", "key-material"],
+  ["FingerprintEncoder.bytes", "canonical-encoding"],
+  ["FixtureContext.envelope", "canonical-encoding"],
+  ["KeyMaterialState.digest", "digest"],
+  ["MaterializedSnapshot.snapshot_id", "identifier"],
+  ["ObjectHeader.artifact_id", "identifier"],
+  ["ObjectHeader.base_nonce", "nonce"],
+  ["ObjectHeader.domain_id", "identifier"],
+  ["ObjectHeader.locator", "locator"],
+  ["ObjectHeader.permission_lineage_id", "identifier"],
+  ["ObjectHeader.streaming_prefix_digest", "digest"],
+  ["OpenedHeader.dek", "key-material"],
+  ["OpenedHeader.plaintext_digest", "digest"],
+  ["OutboxEntry.event_kind_mask", "mask"],
+  ["PlannedAction.locator", "locator"],
+  ["PlatformRow.build_digest", "digest"],
+  ["PlatformRow.fault_matrix_digest", "digest"],
+  ["PlatformRow.independent_restore_digest", "digest"],
+  ["PlatformRow.spec_digest", "digest"],
+  ["Preview.payload", "content"],
+  ["ProcessActivity.transmitted_bytes", "content"],
+  // ADR-005's public generation name: SHA-256 of an HKDF output, readable on a
+  // locked profile and structurally not usable as a key. `KeyGeneration` in
+  // PUBLIC_TUPLE_BYTES is the same bytes as a newtype.
+  ["ProfileKeys.generation", "identifier"],
+  ["ProjectionEvidenceLocator.locator_payload", "locator"],
+  ["ProtoSha256Digest.value", "digest"],
+  ["ProtoUuidV7.value", "identifier"],
+  ["ProviderResponse.provider_response_bytes", "content"],
+  ["RawActive.active_policy_hash", "digest"],
+  ["RawActive.active_source_digest", "digest"],
+  ["RawActive.checksum", "digest"],
+  ["RawActive.cursor_policy_hash", "digest"],
+  ["RawActive.cursor_source_digest", "digest"],
+  ["RawActive.generation_id", "identifier"],
+  ["RawActive.generation_policy_hash", "digest"],
+  ["RawActive.generation_source_digest", "digest"],
+  ["RawGeneration.builder_digest", "digest"],
+  ["RawGeneration.checksum", "digest"],
+  ["RawGeneration.config_hash", "digest"],
+  ["RawGeneration.domain", "identifier"],
+  ["RawGeneration.policy_registry_hash", "digest"],
+  ["RawGeneration.source_ledger_digest", "digest"],
+  ["RawSnapshot.source_bytes", "content"],
+  ["RecipientParameters.salt", "salt"],
+  // `P2-RF13`. `RecipientRecord` is "one wrapped copy of the Vault Master
+  // Key". `keystore_blob` is what an operating-system key broker returns,
+  // which is the thing `P2-R1` put `blob` in the vocabulary for -- and the
+  // alternation missed this one because of the four characters in front of it.
+  ["RecipientRecord.keystore_blob", "key-material"],
+  ["RecipientRecord.recipient_id", "identifier"],
+  ["RecipientRecord.record_mac", "mac"],
+  ["RecipientRecord.wrap_nonce", "nonce"],
+  ["RecipientRecord.wrapped_vmk", "key-material"],
+  ["ReconciledTranscript.reference_identity_digest", "digest"],
+  ["RedactedProjection.source_digest", "digest"],
+  ["Redaction.payload", "content"],
+  ["Registered.version_event", "identifier"],
+  ["RehearsalObservations.restored_canonical_semantic_digest", "digest"],
+  ["RehearsalReceipt.key_material_digest", "digest"],
+  ["RehearsalReceipt.receipt_mac", "mac"],
+  ["RehearsalReceipt.restored_canonical_semantic_digest", "digest"],
+  ["ReleasableArtifact.bytes", "content"],
+  ["RetentionSubject.locator", "locator"],
+  ["RotationUnit.source_locator", "locator"],
+  ["RotationUnit.unit_id", "identifier"],
+  ["RuntimeToolCall.payload", "content"],
+  ["SchemaFingerprint.canonical_bytes", "canonical-encoding"],
+  ["SchemaIdentity.creating_build_digest", "digest"],
+  ["SchemaIdentity.format_uuid", "identifier"],
+  ["SealedCredential.blob", "key-material"],
+  ["SealedManifest.ciphertext", "ciphertext"],
+  ["SealedManifest.nonce", "nonce"],
+  ["SealedManifest.signature", "signature"],
+  ["SealedManifest.verifying_key", "signature"],
+  ["ShredReceipt.locator", "locator"],
+  ["SnapshotAggregateRow.aggregate_id", "identifier"],
+  ["SnapshotAggregateRow.registered_event_id", "identifier"],
+  ["SourceDocument.payload", "content"],
+  ["SourceEntry.source_bytes", "content"],
+  ["SourceUnit.source_bytes", "content"],
+  ["StagedOutput.bytes", "content"],
+  ["StagingAuthority.secret", "key-material"],
+  ["StoredBatchMaterial.deterministic_payload", "canonical-encoding"],
+  ["StoredBatchMaterial.signature", "signature"],
+  ["StoredBatchMaterial.signed_envelope", "canonical-encoding"],
+  ["StoredBatchMaterial.signing_public_key", "signature"],
+  ["StoredEvent.canonical_payload", "canonical-encoding"],
+  ["StoredEvent.event_id", "identifier"],
+  ["StoredEvent.payload_hash", "digest"],
+  ["StreamingPrefix.bytes", "canonical-encoding"],
+  ["StreamingPrefix.digest", "digest"],
+  ["SubmittedRequest.client_instance_id", "identifier"],
+  ["SubmittedRequest.idempotency_key", "identifier"],
+  ["SubmittedRequest.request_digest", "digest"],
+  ["SubmittedRequest.request_id", "identifier"],
+  ["SyntheticTranscriptPdf.bytes", "public-fixture"],
+  ["TranscriptChecksums.identity_digest", "digest"],
+  ["VerifiedBatch.signature", "signature"],
+  ["VerifiedBatch.source_envelope", "canonical-encoding"],
+  ["VerifiedBatch.source_payload", "canonical-encoding"],
+  ["Wanted.artifact", "identifier"],
+  ["WireField.bytes", "canonical-encoding"],
+]);
+
+/** Reports whether a declared type is a byte buffer the classification covers. */
+function isClassifiedByteBuffer(text) {
+  return RAW_BYTE_PAYLOAD_TYPES.test(normalizeFieldType(text));
+}
 
 /**
  * Tuple newtypes whose whole payload is a public identifier or digest.
@@ -682,6 +916,57 @@ test("every registered secret-bearing type has a hand-written redacting Debug", 
   );
 });
 
+/** Every `Type.field` in the workspace whose declared type is a byte buffer. */
+function declaredByteFields() {
+  const found = new Set();
+  for (const sites of definitions.values()) {
+    for (const site of sites) {
+      for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
+        if (isClassifiedByteBuffer(trimDeclaredType(field[2]))) {
+          found.add(`${site.name}.${field[1]}`);
+        }
+      }
+    }
+  }
+  return found;
+}
+
+test("every named byte buffer in the workspace is classified", () => {
+  // The whole set, in both directions. `T166` measured the alternation this
+  // replaces admitting a `Vec<u8>` called `excerpt`, because the question used
+  // to be "is this name on the list" and the list of names bytes can hide
+  // behind has no end. The list of fields that exist does, so it is asked the
+  // other way round: every byte buffer is named here, and a new one fails
+  // until somebody says what it holds.
+  const found = declaredByteFields();
+  const unclassified = [...found].filter((entry) => !BYTE_FIELD_CLASSES.has(entry));
+  assert.deepEqual(
+    unclassified.sort(),
+    [],
+    `these hold raw bytes and BYTE_FIELD_CLASSES does not say what: ${unclassified.join(", ")}. Add each one with a class from BYTE_CLASSES; do not add a name to SECRET_FIELD_NAMES instead.`,
+  );
+
+  // An entry naming a field that no longer exists is a judgement about
+  // something gone, and the next reader would take it for a live one.
+  const stale = [...BYTE_FIELD_CLASSES.keys()].filter((entry) => !found.has(entry));
+  assert.deepEqual(
+    stale.sort(),
+    [],
+    `these BYTE_FIELD_CLASSES entries name no byte field any more and must be deleted: ${stale.join(", ")}`,
+  );
+
+  // The class column is a closed vocabulary. Free prose would let a widening
+  // pass as one more plausible sentence; a new class has to be declared.
+  const unknown = [...BYTE_FIELD_CLASSES]
+    .filter(([, assigned]) => !BYTE_CLASSES.has(assigned))
+    .map(([entry, assigned]) => `${entry}: ${assigned}`);
+  assert.deepEqual(
+    unknown.sort(),
+    [],
+    `these carry a class that BYTE_CLASSES does not declare: ${unknown.join(", ")}`,
+  );
+});
+
 test("no unregistered type derives Debug over a raw key or plaintext buffer", () => {
   const leaks = [];
   const exercised = new Set();
@@ -689,13 +974,24 @@ test("no unregistered type derives Debug over a raw key or plaintext buffer", ()
     for (const site of sites) {
       for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
         const [, fieldName, fieldType] = field;
-        if (
-          !SECRET_FIELD_NAMES.test(fieldName) ||
-          !holdsRawBytes(trimDeclaredType(fieldType))
-        ) {
+        const declared = trimDeclaredType(fieldType);
+        const qualified = `${site.name}.${fieldName}`;
+        let secret;
+        if (isClassifiedByteBuffer(declared)) {
+          // Layer 1. The type says these are bytes and the class says whether
+          // they may be printed; the field's name is not read at all. An
+          // unclassified buffer counts as secret, so the test above naming it
+          // and this one refusing it are the same failure and not a race.
+          const assigned = BYTE_FIELD_CLASSES.get(qualified);
+          secret = assigned === undefined || SECRET_BYTE_CLASSES.has(assigned);
+        } else {
+          // Layer 3, and the weakest: `String` and `str`, where the type
+          // cannot decide and the name is the only signal there is.
+          secret = SECRET_FIELD_NAMES.test(fieldName) && holdsRawBytes(declared);
+        }
+        if (!secret) {
           continue;
         }
-        const qualified = `${site.name}.${fieldName}`;
         if (PUBLIC_BYTES.has(qualified)) {
           exercised.add(qualified);
           continue;
@@ -704,7 +1000,7 @@ test("no unregistered type derives Debug over a raw key or plaintext buffer", ()
           continue;
         }
         leaks.push(
-          `${site.location}: ${site.kind} ${site.name} derives Debug over ${qualified}: ${trimDeclaredType(fieldType).trim()}. Write the impl by hand and redact, or record in PUBLIC_BYTES why these bytes are public.`,
+          `${site.location}: ${site.kind} ${site.name} derives Debug over ${qualified}: ${declared.trim()}. Write the impl by hand and redact, or -- for text -- record in PUBLIC_BYTES why these bytes are public.`,
         );
       }
     }
@@ -772,12 +1068,19 @@ function secretBearingTypeNames() {
     for (const site of sites) {
       for (const field of declaredFields(site)) {
         const isKeyType = macroKeyTypes.has(normalizeFieldType(field.type));
+        const buffer = field.name !== null && isClassifiedByteBuffer(field.type);
+        const assigned = buffer
+          ? BYTE_FIELD_CLASSES.get(`${name}.${field.name}`)
+          : undefined;
+        const classified =
+          buffer && (assigned === undefined || SECRET_BYTE_CLASSES.has(assigned));
         const named =
           field.name !== null &&
+          !buffer &&
           SECRET_FIELD_NAMES.test(field.name) &&
           containsRawByteBuffer(field.type);
         const positional = field.name === null && containsRawByteBuffer(field.type);
-        if (isKeyType || named || positional) {
+        if (isKeyType || classified || named || positional) {
           bearing.add(name);
           direct.add(name);
         }
@@ -877,8 +1180,13 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
         if (PUBLIC_BYTES.has(`${name}.${field[1]}`)) {
           continue;
         }
+        const buffer = isClassifiedByteBuffer(declared);
+        const assigned = buffer
+          ? BYTE_FIELD_CLASSES.get(`${name}.${field[1]}`)
+          : undefined;
         if (
-          (SECRET_FIELD_NAMES.test(field[1]) && holdsRawBytes(declared)) ||
+          (buffer && (assigned === undefined || SECRET_BYTE_CLASSES.has(assigned))) ||
+          (!buffer && SECRET_FIELD_NAMES.test(field[1]) && holdsRawBytes(declared)) ||
           SECRET_BEARING.has(normalizeFieldType(declared))
         ) {
           rawFields.add(field[1]);
