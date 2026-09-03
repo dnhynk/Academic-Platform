@@ -233,9 +233,10 @@ canonical write, a key, a model run or a process are each required to be absent.
    `(owner, name, declared type)` triple, enum struct-variants as
    `Enum::Variant` and enum tuple positions as `Enum::Variant#n`, and the whole
    set of *type constructors* those declarations use is compared in both
-   directions against a reviewed allowlist. `String`, `str`, `u8`, `Box`, `Cow`
-   and `Untrusted` are absent from it, and their absence is the claim. The crate
-   declares no tuple struct, because a tuple field has no name to inventory.
+   directions against a reviewed seventy-seven-entry allowlist. `String`, `str`,
+   `u8`, `Box`, `Cow` and `Untrusted` are absent from it, and their absence is
+   the claim. The crate declares no tuple struct, because a tuple field has no
+   name to inventory.
 3. **The public surface.** The same extraction over every public signature, with
    argument names excluded, so bytes cannot cross the boundary in a value nothing
    stores. Beside it, the eight functions returning a `&'static str` are
