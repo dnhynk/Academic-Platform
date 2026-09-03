@@ -125,6 +125,10 @@ jobs:
         run: cargo clippy -p academic-capture-gate --all-targets --locked --features native-capture -- -D warnings
       - name: Test the capture device lane
         run: cargo test -p academic-capture-gate --all-targets --locked --features native-capture
+      - name: Lint the capture subsystem fault lane
+        run: cargo clippy -p academic-capture --all-targets --locked --features phase2-fault-injection -- -D warnings
+      - name: Test the capture subsystem fault lane
+        run: cargo test -p academic-capture --all-targets --locked --features phase2-fault-injection
 
   # The Phase 1 crash, replay, and restore exit, on native Windows and native
   # Linux. The two are separate verdicts: Windows proves the named-pipe endpoint

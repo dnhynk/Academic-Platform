@@ -1983,6 +1983,20 @@ const captureDeviceCiCommands = [
   "cargo clippy -p academic-capture-gate --all-targets --locked --features native-capture -- -D warnings",
   "cargo test -p academic-capture-gate --all-targets --locked --features native-capture",
 ];
+
+/**
+ * `P2-L2`'s capture subsystem fault lane, in the same feature job.
+ *
+ * The feature is non-default for `academic-vault`'s reason: with it off the
+ * crate compiles no environment lookup and no crash switch, and the `CP05` kill
+ * child cannot be selected. It runs on every hosted Rust label because a
+ * process abort and what a filesystem leaves behind after one are the platform's
+ * behaviour, not the crate's.
+ */
+const captureSubsystemCiCommands = [
+  "cargo clippy -p academic-capture --all-targets --locked --features phase2-fault-injection -- -D warnings",
+  "cargo test -p academic-capture --all-targets --locked --features phase2-fault-injection",
+];
 // The encrypted store lane. It is the executor of `P2-K5`'s store-database
 // rotation unit and the home of `EN01` ("kill mid store rekey; exactly one of
 // the old and new keys opens the database"), which is the byte-level half of
@@ -2185,6 +2199,14 @@ const expectedCiWorkflow = {
         {
           name: "Test the capture device lane",
           run: captureDeviceCiCommands[1],
+        },
+        {
+          name: "Lint the capture subsystem fault lane",
+          run: captureSubsystemCiCommands[0],
+        },
+        {
+          name: "Test the capture subsystem fault lane",
+          run: captureSubsystemCiCommands[1],
         },
       ],
     },

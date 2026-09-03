@@ -225,6 +225,13 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // would put both in a default build's dependency graph. The capture client
     // process crate is unchanged and still holds exactly its one process-class
     // binding.
+    // `P2-L2`. The capture subsystem's two product edges: the crate that owns
+    // the one section 3.7 binding, and the crate that owns the identifier and
+    // digest types its journal frames carry. It deliberately has **no** edge to
+    // `academic-capture-gate` — the rule in `only_egress_crate_has_a_socket`
+    // forbids one — so the two crates are siblings over one binding rather than
+    // a stack.
+    "academic-capture": ["academic-consent", "academic-domain"],
     "academic-capture-gate": ["academic-consent", "academic-domain"],
     "academic-cli": [
       "academic-admission",
@@ -2048,6 +2055,10 @@ const SOCKET_CAPABLE_CLOSURES = {
   // default lane links no device backend. The source half above is what says
   // the crate names `libc::syscall` to install a Landlock ruleset rather than
   // to open a socket.
+  // `P2-L2`. `libc` reaches it through `academic-domain`. The crate spells no
+  // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
+  // rather than empty, and it declares no binary target at all.
+  "academic-capture": ["libc"],
   "academic-capture-gate": ["libc"],
   "academic-cli": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   "academic-connector": ["libc"],
@@ -3822,6 +3833,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     proposalReceiptText,
     desktopReceiptText,
     repositoryReceiptText,
+    captureSubsystemReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3843,6 +3855,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-m2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-x1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-l2.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3864,6 +3877,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const proposalReceipt = JSON.parse(proposalReceiptText);
   const desktopReceipt = JSON.parse(desktopReceiptText);
   const repositoryReceipt = JSON.parse(repositoryReceiptText);
+  const captureSubsystemReceipt = JSON.parse(captureSubsystemReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -4742,6 +4756,82 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-R1 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-L2` adds one workspace path package, `academic-capture`, and admits no
+  // external crate: its product edges are `academic-consent`, `academic-domain`
+  // and `thiserror`, and its one dev edge is `tempfile`, all already in this
+  // lock through earlier receipts. It declares no binary target, and it has no
+  // edge of any kind to `academic-capture-gate`.
+  assert.equal(captureSubsystemReceipt.task, "P2-L2");
+  const captureSubsystemAdmitted = new Set(
+    captureSubsystemReceipt.admissions.map(
+      (admission) => `${admission.name}@${admission.version}`,
+    ),
+  );
+  const captureSubsystemPathPackages = new Set(
+    captureSubsystemReceipt.added_workspace_path_packages.map(
+      (pkg) => `${pkg.name}@${pkg.version}`,
+    ),
+  );
+  assert.equal(captureSubsystemAdmitted.size, 0, "P2-L2 must admit no external crate");
+  assert.deepEqual([...captureSubsystemPathPackages], ["academic-capture@0.1.0"]);
+  assert.deepEqual(captureSubsystemReceipt.summary.npm_additions, []);
+  assert.equal(captureSubsystemReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(
+    Object.keys(captureSubsystemReceipt.direct_workspace_dependencies).toSorted(),
+    ["academic-consent", "academic-domain"],
+  );
+  for (const claimed of [...captureSubsystemAdmitted, ...captureSubsystemPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        recordAdmitted.has(claimed) ||
+        recordPathPackages.has(claimed) ||
+        sandboxAdmitted.has(claimed) ||
+        sandboxPathPackages.has(claimed) ||
+        untrustedAdmitted.has(claimed) ||
+        untrustedPathPackages.has(claimed) ||
+        consentAdmitted.has(claimed) ||
+        consentPathPackages.has(claimed) ||
+        modelRunAdmitted.has(claimed) ||
+        modelRunPathPackages.has(claimed) ||
+        captureAdmitted.has(claimed) ||
+        capturePathPackages.has(claimed) ||
+        proposalAdmitted.has(claimed) ||
+        proposalPathPackages.has(claimed) ||
+        desktopAdmitted.has(claimed) ||
+        desktopPathPackages.has(claimed) ||
+        repositoryAdmitted.has(claimed) ||
+        repositoryPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const captureSubsystemTuples = lockTuples.filter(
+    ([name, version]) =>
+      captureSubsystemAdmitted.has(`${name}@${version}`) ||
+      captureSubsystemPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    captureSubsystemTuples.length,
+    captureSubsystemAdmitted.size + captureSubsystemPathPackages.size,
+    "a P2-L2 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -4779,7 +4869,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !desktopAdmitted.has(`${name}@${version}`) &&
       !desktopPathPackages.has(`${name}@${version}`) &&
       !repositoryAdmitted.has(`${name}@${version}`) &&
-      !repositoryPathPackages.has(`${name}@${version}`),
+      !repositoryPathPackages.has(`${name}@${version}`) &&
+      !captureSubsystemAdmitted.has(`${name}@${version}`) &&
+      !captureSubsystemPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -4808,7 +4900,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       captureTuples.length +
       proposalTuples.length +
       desktopTuples.length +
-      repositoryTuples.length,
+      repositoryTuples.length +
+      captureSubsystemTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -5107,9 +5200,25 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    // `P2-L2`. The capture subsystem's one external edge is `tempfile`, and it
+    // is a dev edge: the acceptance suite writes its journals into a temporary
+    // directory and the product crate takes the journal path as an argument.
+    const l2CaptureUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-capture",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : [];
     const expectedUses = [
       ...admission.uses,
       ...r1RepositoryUse,
+      ...l2CaptureUse,
       ...g4SandboxUse,
       ...l1CaptureUse,
       ...j1ProjectionUse,
