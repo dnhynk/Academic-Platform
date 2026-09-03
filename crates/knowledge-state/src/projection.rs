@@ -447,7 +447,10 @@ pub fn project(
         },
         unseen_basis,
         supporting: supporting.iter().map(|item| item.evidence_id()).collect(),
-        contradicting: contradicting.iter().map(|item| item.evidence_id()).collect(),
+        contradicting: contradicting
+            .iter()
+            .map(|item| item.evidence_id())
+            .collect(),
         sufficiency: EvidenceSufficiency::assess(&supporting, &blocked_refs, &contradicting)?,
         fluency_contexts: None,
     })

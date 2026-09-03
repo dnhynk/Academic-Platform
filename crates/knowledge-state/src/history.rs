@@ -431,12 +431,8 @@ impl KnowledgeStateHistory {
                 AdjustmentDirection::between(previous.mastery_level(), proposal.proposed());
             let outcome = match direction {
                 AdjustmentDirection::Raise | AdjustmentDirection::Lower => {
-                    let card = KnowledgeStateConflict::seal(
-                        self.concept,
-                        direction,
-                        previous,
-                        proposal,
-                    );
+                    let card =
+                        KnowledgeStateConflict::seal(self.concept, direction, previous, proposal);
                     self.entries.push(HistoryEntry::Conflicted(card.clone()));
                     ProposalOutcome::Conflict(Box::new(card))
                 }

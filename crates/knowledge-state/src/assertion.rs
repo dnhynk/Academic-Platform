@@ -261,7 +261,10 @@ impl KnowledgeStateAssertion {
             &mut preimage,
             &self.estimate_confidence.permille().value().to_be_bytes(),
         );
-        push_field(&mut preimage, &self.freshness_confidence.value().to_be_bytes());
+        push_field(
+            &mut preimage,
+            &self.freshness_confidence.value().to_be_bytes(),
+        );
         for id in &self.evidence {
             push_field(&mut preimage, id.to_string().as_bytes());
         }

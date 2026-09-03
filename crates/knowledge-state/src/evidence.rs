@@ -243,7 +243,10 @@ impl TeachingSite {
     /// [`KnowledgeStateError::TeachingSiteNotInDocument`] when `document` holds
     /// no node with that identifier. A caller holding only a name has nothing
     /// to pass here.
-    pub fn in_document(document: &LectureDocument, node: &NodeId) -> Result<Self, KnowledgeStateError> {
+    pub fn in_document(
+        document: &LectureDocument,
+        node: &NodeId,
+    ) -> Result<Self, KnowledgeStateError> {
         if !document.nodes().iter().any(|held| held.id() == node) {
             return Err(KnowledgeStateError::TeachingSiteNotInDocument {
                 document: document.id().as_str().to_owned(),
