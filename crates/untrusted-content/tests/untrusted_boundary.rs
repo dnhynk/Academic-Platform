@@ -50,8 +50,11 @@ const OPERATOR: &str = "synthetic-g5-operator";
 /// `Untrusted<` and whose return type names `str`, `String`, or `u8`. It does
 /// not read bodies, and it does not model string literals, so a `pub fn` line
 /// quoted inside a product-source literal would be read as a declaration. There
-/// is none today and the `tests` and `benches` trees, where this repository's
-/// pinned-signature constants live, are not walked.
+/// is none today and the `tests` tree, where this repository's pinned-signature
+/// constants live, is not walked. `benches` was excluded beside it until `T149`
+/// observed that a bench target is compiled by
+/// `cargo clippy --workspace --all-targets` with no feature gate -- the test
+/// `T146` applied to `examples/` -- so it is walked.
 #[test]
 fn no_public_signature_hands_out_ingested_text() -> TestResult {
     let crates = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -73,7 +76,7 @@ fn no_public_signature_hands_out_ingested_text() -> TestResult {
         for path in sources {
             let relative = path.strip_prefix(&crates).unwrap_or(&path);
             let head = relative.components().nth(1).map(|part| part.as_os_str());
-            if head.is_some_and(|part| part == "tests" || part == "benches") {
+            if head.is_some_and(|part| part == "tests") {
                 continue;
             }
             let source = fs::read_to_string(&path)?;

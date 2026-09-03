@@ -202,10 +202,25 @@ that had been missing entirely: `libc::syscall` sits on the file's allowance, so
 allowance, spelled no listed pattern, passed every scan, and compiled clean under
 `cargo clippy -p academic-worker --features native-sandbox -- -D warnings`.
 
+That rule reads a *call* written as a path, so it holds only while a call has to
+be written that way. `P2-RF11` added the half that makes that true: no file in
+the workspace may import `libc::syscall` -- not `use libc::syscall;`, not
+`use libc::syscall as raw;`, not a braced list naming it, not `use libc::*;`,
+not `extern crate libc as raw;`, and not `use libc::{self as l};` -- so a call
+to it spells `libc::syscall(` and reaches the first-argument rule. Beside that,
+every mention of `libc::syscall` in this file must *be* a call, because taking
+the function as a value moves its arguments out of the rule's sight. `T149`
+reached the same socket by number through three of those imports and `P2-RF11`
+reached it through the other two and through a function value; every one of them
+compiled clean and passed every scan before its rule existed.
+
 The sandbox does not cover that call, and it is worth saying why, because
 `policy-source-scans.md` used to say it did. This file holds the parent-side
 `launch` as well as the child-side `enter`; the parent installs the sandbox and
-runs outside it. What bounds a raw syscall here is the scan, not the filter.
+runs outside it. What bounds a raw syscall here are the three source rules
+together, not the filter: the import ban and the rename ban make the call spell
+the path, the every-mention-is-a-call rule keeps its arguments in view, and the
+first-argument rule reads them.
 
 Adding those two entries widened `only_egress_crate_has_a_socket`'s allowance.
 Three things were tightened in the same commit and are described in

@@ -66,24 +66,31 @@ fn crate_all_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
     Ok(found)
 }
 
-/// Every `.rs` file that ships: everything outside `tests` and `benches`.
+/// Every `.rs` file that ships: everything outside `tests`.
+///
+/// `benches` was excluded beside `tests` when this file was written. `S-14`
+/// closed that for the five walks that existed then, on the measurement that a
+/// bench target has no feature gate and `cargo clippy --workspace
+/// --all-targets` compiles it — the test `T146` applied to `examples/`. This
+/// walk arrived in the same window and is widened for the same reason. No
+/// `benches` tree exists in this repository.
 fn crate_product_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
     let root = crate_root();
     Ok(crate_all_sources()?
         .into_iter()
         .filter(|path| {
             let relative = path.strip_prefix(&root).unwrap_or(path);
-            !relative.starts_with("tests") && !relative.starts_with("benches")
+            !relative.starts_with("tests")
         })
         .collect())
 }
 
-/// Every `.rs` file under every workspace package, less each package's `tests`
-/// and `benches`.
+/// Every `.rs` file under every workspace package, less each package's `tests`.
 ///
 /// The package rather than its `src`, for `S-12`'s reason: `crates/record`
 /// ships an `examples/` tree and `crates/worker` a `probes/` tree, and both are
-/// product-shaped code a walk rooted at `src` never reads.
+/// product-shaped code a walk rooted at `src` never reads. `benches` is walked
+/// for `S-14`'s reason, which is the same one a layer out.
 fn workspace_product_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
     let crates = workspace_root().join("crates");
     let mut found = Vec::new();
@@ -96,7 +103,7 @@ fn workspace_product_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
         walk(&package, &mut inside)?;
         for path in inside {
             let relative = path.strip_prefix(&package).unwrap_or(&path).to_path_buf();
-            if relative.starts_with("tests") || relative.starts_with("benches") {
+            if relative.starts_with("tests") {
                 continue;
             }
             found.push(path);

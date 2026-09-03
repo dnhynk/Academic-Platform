@@ -23,9 +23,20 @@ function costs. With a single
 integration test outside the crate put an ingested payload verbatim into a
 `[SYSTEM]` segment -- unescaped, on its own line, recorded in no untrusted span.
 So the claim this page makes is the narrower one, and it is the one that is
-checked: **every function that takes the label off is inventoried below, and no
-public signature anywhere in the workspace takes an `Untrusted<…>` and returns
-the bytes.**
+checked: **every call to `expose` in this crate's product source is counted and
+inventoried below, and no public signature anywhere in the workspace takes an
+`Untrusted<…>` and returns the bytes.** `expose` is the only accessor the
+wrapper has -- the whole `impl<T> Untrusted<T>` block is pinned as text, and
+`untrusted_has_no_unwrapping_trait_impl` is what says there is no second block
+-- so counting its calls is what makes the first half a statement about taking
+the label off rather than about one spelling.
+
+The count reads whole identifiers on both sides. `T149` walked past an earlier
+version that read a name on the use side and a spelling on the declaration side:
+`pub fn expose_rendered(…)` was not counted as a use of `expose` and *was*
+counted as a declaration of it, so one function cancelled its own call, and an
+integration test outside the crate then put an ingested payload verbatim into a
+`[SYSTEM]` segment.
 
 A label kept as a field or a convention survives one refactor. This one is
 propagated by the compiler for the traits, and by two source rules for the
@@ -133,10 +144,14 @@ analysis is right; the pin is what stops it changing quietly.
 output and nothing else — no broker, no capability token, no transport, no
 filesystem path, no ledger — and `the_adjudicator_receives_no_capability` pins
 its whole text, pins its one caller `admit`, and holds the call-site count at
-one. The count reads the identifier `adjudicate`, less its declaration and less
-`use` items so a re-export is not read as a call. It counted the argument
-spelling `adjudicate(index, output)` until `P2-RF10`, and `T146` walked past it
-with a second caller that renamed its two locals.
+one. The count reads the identifier `adjudicate`, less declarations of a
+function named exactly `adjudicate`, and less `use` items so a re-export is not
+read as a call. It counted the argument spelling `adjudicate(index, output)`
+until `P2-RF10`, and `T146` walked past it with a second caller that renamed its
+two locals; it then subtracted the *spelling* `fn adjudicate` until `P2-RF11`,
+and `T149` walked past that with `pub fn adjudicate_into(…)`, whose declaration
+cancelled its own call. The `quote` caller count carried the same hole and was
+repaired in the same commit.
 
 Two checks, in order. **Schema**: the exact record below, no unknown key, no
 missing key, no trailing content; eleven `SchemaError` variants, each produced by

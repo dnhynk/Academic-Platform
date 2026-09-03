@@ -75,15 +75,19 @@ fn crate_all_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
     Ok(found)
 }
 
-/// Every `.rs` file that ships, which is every one outside `tests` and
-/// `benches`.
+/// Every `.rs` file that ships, which is every one outside `tests`.
+///
+/// `benches` was excluded beside `tests` until `T149` observed that a bench
+/// target has no feature gate and is compiled by
+/// `cargo clippy --workspace --all-targets`, which is the test `T146` applied
+/// to `examples/`. No `benches` tree exists in this repository today.
 fn crate_product_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
     let root = crate_root();
     Ok(crate_all_sources()?
         .into_iter()
         .filter(|path| {
             let relative = path.strip_prefix(&root).unwrap_or(path);
-            !relative.starts_with("tests") && !relative.starts_with("benches")
+            !relative.starts_with("tests")
         })
         .collect())
 }
@@ -247,6 +251,48 @@ fn uses_of(code: &str, name: &str) -> usize {
             before_ok && !(after.is_ascii_alphanumeric() || after == b'_')
         })
         .count()
+}
+
+/// Counts declarations of a function whose name is exactly `name`.
+///
+/// Each count below subtracts a declaration from a use count, and reading the
+/// declaration as a *spelling* is what `T149` walked through: `occurrences(code,
+/// "fn expose")` counts `pub fn expose_rendered(`, which `uses_of` does not
+/// count as a use of `expose` -- so one function whose name merely starts with
+/// the guarded one cancels its own call. With that injection applied, an
+/// integration test outside this crate put an ingested payload verbatim into a
+/// `[SYSTEM]` segment while this file, the workspace suite and both JS scans
+/// passed. The same hole was open on `quote` and on `adjudicate`.
+///
+/// What follows the name has to open a parameter list or a generic list and
+/// nothing else, so `fn expose_rendered(` is not `expose` and
+/// `fn quote<'a>(` still is.
+fn declarations_of(code: &str, name: &str) -> usize {
+    let needle = format!("fn {name}");
+    let bytes = code.as_bytes();
+    code.match_indices(&needle)
+        .filter(|(at, _)| {
+            let before_ok =
+                *at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_');
+            let after = bytes.get(at + needle.len()).copied().unwrap_or(b' ');
+            before_ok && (after == b'(' || after == b'<')
+        })
+        .count()
+}
+
+/// The use count of `name` less its declarations, which cannot go negative.
+///
+/// `saturating_sub` was here, and it folded an underflow to zero silently: a
+/// count that read more declarations than uses would have reported "no call
+/// sites" rather than reporting that the two halves disagree.
+fn calls_of(code: &str, name: &str) -> usize {
+    let uses = uses_of(code, name);
+    let declarations = declarations_of(code, name);
+    assert!(
+        uses >= declarations,
+        "{name} is declared {declarations} times and named {uses}; the two counts disagree"
+    );
+    uses - declarations
 }
 
 /// Drops every `use` item, so a re-export is not counted as a caller.
@@ -582,7 +628,7 @@ fn every_exposure_site_is_named_and_justified() -> TestResult {
     let mut total = 0_usize;
     for path in crate_product_sources()? {
         let code = code_of(&path)?;
-        let count = uses_of(&code, "expose").saturating_sub(occurrences(&code, "fn expose"));
+        let count = calls_of(&code, "expose");
         if count > 0 {
             sites.push((relative(&path), count));
             total += count;
@@ -704,7 +750,7 @@ fn the_instruction_channel_takes_only_static_text() -> TestResult {
         let code = code_of(&path)?;
         system_constructions += occurrences(&code, "SystemDirective(");
         tool_constructions += occurrences(&code, "ToolDirective(");
-        quote_calls += uses_of(&code, "quote").saturating_sub(occurrences(&code, "fn quote"));
+        quote_calls += calls_of(&code, "quote");
         leaks += occurrences(&code, "leak");
     }
     assert_eq!(
@@ -765,7 +811,7 @@ fn the_adjudicator_receives_no_capability() -> TestResult {
     let mut calls = 0_usize;
     for path in crate_product_sources()? {
         let code = without_use_items(&code_of(&path)?);
-        calls += uses_of(&code, "adjudicate").saturating_sub(occurrences(&code, "fn adjudicate"));
+        calls += calls_of(&code, "adjudicate");
     }
     assert_eq!(
         calls, 1,

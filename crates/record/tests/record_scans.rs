@@ -5,7 +5,7 @@
 //! scan of this repository empty, and this file is written against all three.
 //!
 //! **The walk does not stop short.** [`crate_sources`] descends into every
-//! subdirectory of the package, less `tests` and `benches`, and the floor below
+//! subdirectory of the package, less `tests`, and the floor below
 //! it fails if it returns fewer files than the crate has modules. A tripwire
 //! additionally requires every `pub mod name;` in `lib.rs` to be a file the
 //! walk actually read, so adding a module without the walk reaching it is a
@@ -48,7 +48,7 @@ fn crate_root() -> PathBuf {
 
 /// Every `.rs` file this crate ships, recursively.
 ///
-/// The whole package rather than `src`, less `tests` and `benches`. `S-12` in
+/// The whole package rather than `src`, less `tests`. `S-12` in
 /// `docs/contracts/policy-source-scans.md` is the row about a walk that reads
 /// `<crate>/src` and stops seeing product-shaped code beside it, and this
 /// crate is where `T146` measured the cost: `crates/record/examples/emit_harness.rs`
@@ -57,16 +57,25 @@ fn crate_root() -> PathBuf {
 /// added to it passed `no_float_reaches_the_gpa_path` -- this crate's own
 /// contract -- while the same `f64` in `src/harness.rs` failed at once.
 ///
-/// `tests` and `benches` stay out. The README sentence this scan keeps is about
-/// what the crate computes with, and `tests/record.rs` names `f64` on purpose,
-/// to state what the integer path is being compared against.
+/// `tests` stays out. The README sentence this scan keeps is about what the
+/// crate computes with, and `tests/record.rs` names `f64` on purpose, to state
+/// what the integer path is being compared against.
+///
+/// `benches` used to stay out beside it, on that same reason -- which was a
+/// reason about `tests` and never about `benches`. A bench target meets the
+/// test `T146` applied to `examples/`: no feature gate, and
+/// `cargo clippy --workspace --all-targets` compiles it. `T149` measured that
+/// directly, with a `crates/record/benches/` file that failed to compile and
+/// took the clippy lane down with it. No `benches` tree exists today, so
+/// widening this reaches nothing; it is what stops the first one from being a
+/// tree no scan reads.
 fn crate_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
     let root = crate_root();
     let mut found = Vec::new();
     walk(&root, &mut found)?;
     found.retain(|path| {
         let relative = path.strip_prefix(&root).unwrap_or(path);
-        !relative.starts_with("tests") && !relative.starts_with("benches")
+        !relative.starts_with("tests")
     });
     found.sort();
     Ok(found)

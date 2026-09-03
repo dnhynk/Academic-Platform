@@ -41,8 +41,8 @@
 // a `cfg_attr`-wrapped derive, a single-line struct body, and a field type
 // whose buffer is behind a comma inside its generic arguments.
 //
-// Scope is every `.rs` file in every workspace package except its `tests` and
-// `benches` trees -- the product surface ADR-005 governs. `crates/*/src` was
+// Scope is every `.rs` file in every workspace package except its `tests`
+// tree -- the product surface ADR-005 governs. `crates/*/src` was
 // the scope until `T146` measured what it missed: a `#[derive(Debug)]` type
 // with a `key_bytes: Vec<u8>` field passed this scan in
 // `crates/record/examples/emit_harness.rs` and in
@@ -50,7 +50,11 @@
 // type was written under `src`. Both trees hold product-shaped code that
 // `cargo clippy --workspace --all-targets` compiles; the example has no
 // feature gate and is run by the documented `pnpm harness:emit` script.
-// Test-only helper types are still not scanned.
+// Test-only helper types are still not scanned. `benches` was excluded beside
+// `tests` until `T149` observed that the reason given was a reason about
+// `tests`: a bench target is compiled by `cargo clippy --workspace
+// --all-targets` with no feature gate, which is the test `T146` applied to
+// `examples/`.
 
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
@@ -327,7 +331,7 @@ async function rustSourcesUnder(directory) {
 }
 
 /** Package subdirectories that hold no product code, and are not scanned. */
-const NON_PRODUCT_TREES = new Set(["tests", "benches"]);
+const NON_PRODUCT_TREES = new Set(["tests"]);
 
 async function productSources() {
   const crates = await readdir(CRATES_ROOT, { withFileTypes: true });

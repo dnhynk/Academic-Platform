@@ -1289,9 +1289,12 @@ const SOCKET_SPELLINGS = [
   // A socket reached by number rather than by name. `libc::syscall(SYS_socket,
   // ...)` opens one and spells nothing else on this list; `P2-G4` used exactly
   // that shape as an injection and it passed every rule here before these two
-  // patterns existed. A bare numeric `syscall(41, ...)` still passes, which is
-  // recorded as open in `docs/contracts/policy-source-scans.md`; the link half
-  // below is what bounds who can reach `libc` at all.
+  // patterns existed. A bare numeric `libc::syscall(41, ...)` is refused by the
+  // first-argument rule below, and a call that avoids the path spelling by
+  // importing the function is refused by `LIBC_SYSCALL_IMPORTS` above -- that
+  // second half is what `S-11` in `docs/contracts/policy-source-scans.md`
+  // recorded as open until `P2-RF11`. The link half below is what bounds who
+  // can reach `libc` at all.
   /\blibc\s*::\s*syscall\b/gu,
   /\bSYS_(?:socket|socketpair|socketcall|connect|bind|listen|accept4?|sendto|recvfrom|sendmsg|recvmsg)\b/gu,
   /\bNamedPipe[A-Za-z]*\b/gu,
@@ -1413,6 +1416,34 @@ const CALLED_SYSCALLS = new Map([
 /** Path segments that lead to a socket; renaming one hides everything under it. */
 const SOCKET_MODULE_SEGMENTS = new Set(["net", "socket", "sys", "WinSock", "named_pipe"]);
 
+/**
+ * Import shapes that bring `libc::syscall` into scope under a bare name.
+ *
+ * The first-argument rule below reads the *call* spelling `libc::syscall(`, so
+ * it only ever sees a call written as a path. `T149` wrote three that are not:
+ * `use libc::syscall;` then `syscall(41, 2, 1, 0)`, the same through
+ * `use libc::syscall as raw;`, and `use libc::*;` in a file whose allowance
+ * lists no socket spelling at all. All three open an AF_INET stream socket by
+ * number, all three passed every scan here, and all three compiled clean under
+ * `cargo clippy -p academic-worker --all-targets --features native-sandbox
+ * -- -D warnings`. The `use` item itself carries the spelling `libc::syscall`,
+ * so it satisfied the allowance while the call matched nothing.
+ *
+ * Forbidding the import is what makes the call spell `libc::syscall(`, which is
+ * what the first-argument rule reads. It is checked in every file rather than
+ * only in the ones with an allowance, because a glob import spells no path and
+ * therefore reaches no allowance: that is `S-13`'s real content, not the
+ * future-second-entry case the row used to describe.
+ *
+ * Renaming the crate root rather than the function -- `use libc as l;`,
+ * `use libc::{self as l};`, `extern crate libc as raw;` -- is refused by
+ * `socketPathAliases` instead, because `libc` is an aliasable root.
+ */
+const LIBC_SYSCALL_IMPORTS = [
+  /\buse\s+(?:::\s*)?libc\s*::\s*(?:\{[^;]*?\b)?syscall\b/gu,
+  /\buse\s+(?:::\s*)?libc\s*::\s*(?:\{[^;]*?)?\*/gu,
+];
+
 /** Crate roots whose paths can reach a socket; an alias of one hides the rest. */
 const ALIASABLE_ROOTS = new Set([
   "std",
@@ -1517,6 +1548,69 @@ async function rustSourcesIfPresent(root) {
   }
 }
 
+/**
+ * The `use` and `extern crate` statements in `code` that rename a socket path.
+ *
+ * An alias hides every later mention of what it renames, so the two things that
+ * could hide a socket may only ever be renamed to `_` -- the trait-import
+ * spelling, which cannot be written as a path.
+ *
+ * The first is a crate root: `use tokio as t;` leaves `t::net::TcpStream`
+ * spelling neither `tokio::net` nor anything else on the list. The second is a
+ * socket module inside a braced group: `use tokio::{net as n};` spells the
+ * module in a shape the `tokio::net` anchor does not match, which is why the
+ * whole statement is read and not one path.
+ *
+ * `self` is a third: it renames whatever path the brace hangs off, which is a
+ * segment that appears nowhere in the rename itself. It is resolved to that
+ * segment and then judged by the same two questions, so `use libc::{self as l};`
+ * is refused -- it renames the crate root -- and `use rustix::fs::{self as rfs};`
+ * is not, because `fs` is neither the root nor a socket module. The owner is
+ * read as the innermost `name::{` before the `self`, so a nested group like
+ * `use rustix::{fs::{self as rfs}, io::Errno};` resolves to `fs` and not
+ * `rustix`.
+ *
+ * `extern crate` is read beside `use` because it renames the same thing.
+ *
+ * A rename of anything else -- `process::Command as ProcessCommand`,
+ * `Ordering as AtomicOrdering` -- is not on a socket path and is left alone;
+ * forbidding those would be a rule about imports, not about sockets, and this
+ * repository already has several.
+ *
+ * `T151` reached a numeric socket through `extern crate libc as raw;` and again
+ * through `use libc::{self as l};` after the `use libc::syscall` shapes were
+ * closed; both are refused here.
+ */
+function socketPathAliases(code) {
+  const found = [];
+  for (const match of code.matchAll(/\b(?:use|extern\s+crate)\s+([A-Za-z0-9_]+)\b[^;]*;/gu)) {
+    if (!ALIASABLE_ROOTS.has(match[1])) {
+      continue;
+    }
+    for (const [, renamed, alias] of match[0].matchAll(
+      /\b([A-Za-z0-9_]+)\s+as\s+([A-Za-z0-9_]+)/gu,
+    )) {
+      if (renamed === "self") {
+        continue;
+      }
+      const hidesASocketPath =
+        renamed === match[1] || SOCKET_MODULE_SEGMENTS.has(renamed);
+      if (hidesASocketPath && alias !== "_") {
+        found.push(match[0]);
+      }
+    }
+    for (const [, owner, alias] of match[0].matchAll(
+      /([A-Za-z0-9_]+)\s*::\s*\{[^{}]*\bself\s+as\s+([A-Za-z0-9_]+)/gu,
+    )) {
+      const hidesASocketPath = owner === match[1] || SOCKET_MODULE_SEGMENTS.has(owner);
+      if (hidesASocketPath && alias !== "_") {
+        found.push(match[0]);
+      }
+    }
+  }
+  return found;
+}
+
 test("only_egress_crate_has_a_socket", async () => {
   // The scan is not vacuous: every pattern matches the call it names, and the
   // stripper does not blind it. A rule that matched nothing would be a rule
@@ -1538,8 +1632,46 @@ test("only_egress_crate_has_a_socket", async () => {
   assert.equal(rustCodeOnly("/* TcpStream */ let x = 1;").includes("TcpStream"), false);
   assert.equal(rustCodeOnly("let c = '\\n'; TcpStream").includes("TcpStream"), true);
 
+  // The two import shapes are not vacuous either: each matches the statement it
+  // names, and neither matches the spelling the first-argument rule reads.
+  for (const [sample, expected] of [
+    ["use libc::syscall;", true],
+    ["use libc::syscall as raw;", true],
+    ["use libc::{c_int, syscall};", true],
+    ["use libc :: { sys :: socket :: bind , syscall } ;", true],
+    ["pub use libc::syscall;", true],
+    ["use libc::*;", true],
+    ["use libc::{self, *};", true],
+    ["use libc::{c_int, syscall_thing};", false],
+    ["unsafe { libc::syscall(libc::SYS_socket, 2, 1, 0) }", false],
+  ]) {
+    // `use libc::{self as l};` is refused by the alias rule below, not here.
+    const hit = LIBC_SYSCALL_IMPORTS.some((pattern) =>
+      new RegExp(pattern.source, "u").test(sample),
+    );
+    assert.equal(hit, expected, `the libc import rule reads ${sample} as ${hit}`);
+  }
+
+  // And the alias rule reads both spellings of a rename.
+  for (const [sample, expected] of [
+    ["use tokio as t;", true],
+    ["extern crate tokio as t;", true],
+    ["extern crate libc as raw;", true],
+    ["use tokio::{net as n};", true],
+    ["use libc::{self as l};", true],
+    ["use tokio::net::{self as n};", true],
+    ["use tokio as _;", false],
+    ["use rustix::fs::{self as rfs, Mode, OFlags};", false],
+    ["use rustix::{fs::{self as rfs, Mode}, io::Errno};", false],
+    ["use std::process::Command as ProcessCommand;", false],
+  ]) {
+    const found = socketPathAliases(sample);
+    assert.equal(found.length > 0, expected, `the alias rule reads ${sample} wrongly`);
+  }
+
   const observed = new Map();
   const aliases = [];
+  const syscallImports = [];
   const foreign = [];
   const generated = new Map();
   const pathIncludes = [];
@@ -1569,31 +1701,18 @@ test("only_egress_crate_has_a_socket", async () => {
         observed.set(relative, [...spellings].toSorted());
       }
 
-      // An alias hides every later mention of what it renames, so the two that
-      // could hide a socket may only ever be renamed to `_` -- the trait-import
-      // spelling, which cannot be written as a path.
-      //
-      // The first is a crate root: `use tokio as t;` leaves `t::net::TcpStream`
-      // spelling neither `tokio::net` nor anything else on the list. The second
-      // is a socket module inside a braced group: `use tokio::{net as n};`
-      // spells the module in a shape the `tokio::net` anchor does not match,
-      // which is why the whole statement is read and not one path.
-      //
-      // A rename of anything else -- `process::Command as ProcessCommand`,
-      // `Ordering as AtomicOrdering` -- is not on a socket path and is left
-      // alone; forbidding those would be a rule about imports, not about
-      // sockets, and this repository already has several.
-      for (const match of code.matchAll(/\buse\s+([A-Za-z0-9_]+)\b[^;]*;/gu)) {
-        if (!ALIASABLE_ROOTS.has(match[1])) {
-          continue;
-        }
-        const renames = [...match[0].matchAll(/\b([A-Za-z0-9_]+)\s+as\s+([A-Za-z0-9_]+)/gu)];
-        for (const [, renamed, alias] of renames) {
-          const hidesASocketPath =
-            renamed === match[1] || SOCKET_MODULE_SEGMENTS.has(renamed);
-          if (hidesASocketPath && alias !== "_") {
-            aliases.push(`${relative}: ${match[0]}`);
-          }
+      // Renames that hide a socket path, in one definition shared with the
+      // vacuity samples above so the two cannot drift apart.
+      for (const statement of socketPathAliases(code)) {
+        aliases.push(`${relative}: ${statement}`);
+      }
+
+      // `libc::syscall` may not be imported, in any file. The rule that bounds
+      // it reads the call spelling `libc::syscall(`, and an import is what lets
+      // the call be written without it.
+      for (const pattern of LIBC_SYSCALL_IMPORTS) {
+        for (const match of code.matchAll(pattern)) {
+          syscallImports.push(`${relative}: ${match[0].replace(/\s+/gu, " ")}`);
         }
       }
 
@@ -1678,6 +1797,19 @@ test("only_egress_crate_has_a_socket", async () => {
           assert.ok(
             calls.length >= 3,
             `${file} makes only ${calls.length} raw syscalls, so this rule read almost nothing`,
+          );
+          // Every mention of the name is a call. The rule below reads the first
+          // argument of a call, so a mention that is not one is a mention it
+          // never reads: `T151` wrote `let raw = libc::syscall;` and then
+          // `raw(41, 2, 1, 0)`, which satisfies this file's allowance -- the
+          // spelling is on it -- and passed. Taking the function as a value is
+          // the same reach with the arguments moved out of the rule's sight.
+          const mentions = [...whole.matchAll(/\blibc\s*::\s*syscall\b/gu)];
+          assert.equal(
+            mentions.length,
+            calls.length,
+            `${file} names libc::syscall ${mentions.length - calls.length} time(s) ` +
+              "without calling it, so its arguments are not read",
           );
           for (const call of calls) {
             const first = whole
@@ -1779,6 +1911,11 @@ test("only_egress_crate_has_a_socket", async () => {
     }
   }
   assert.deepEqual(aliases, [], "a socket-capable path is aliased to a usable name");
+  assert.deepEqual(
+    syscallImports,
+    [],
+    "libc::syscall is imported, so a call to it need not spell the path the syscall rule reads",
+  );
   assert.deepEqual(foreign, [], "a foreign function is declared in a workspace crate");
   assert.deepEqual(
     Object.fromEntries([...generated].toSorted(([left], [right]) => left.localeCompare(right))),

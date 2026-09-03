@@ -1406,8 +1406,11 @@ fn phase1_exit_has_no_product_network() -> TestResult {
     // and this scan read nothing: the example has no feature gate, is compiled
     // by `cargo clippy --workspace --all-targets`, and is run by the documented
     // `pnpm harness:emit` script, so it is product-shaped code that a walk
-    // rooted at `src` never saw. `tests` and `benches` stay out, as they always
-    // were -- this crate's own suite opens the local IPC seam on purpose.
+    // rooted at `src` never saw. `tests` stays out -- this crate's own suite
+    // opens the local IPC seam on purpose. `benches` used to stay out beside
+    // it on that same reason, which was a reason about `tests`: a bench target
+    // has no feature gate and `cargo clippy --workspace --all-targets`
+    // compiles it, so `T149` read it as the next `examples/`.
     let prohibited = [
         "TcpListener",
         "TcpStream",
@@ -1431,7 +1434,7 @@ fn phase1_exit_has_no_product_network() -> TestResult {
         for sub in fs::read_dir(&package)? {
             let sub = sub?;
             let name = sub.file_name();
-            if name == "tests" || name == "benches" {
+            if name == "tests" {
                 continue;
             }
             let sources = if sub.file_type()?.is_dir() {
