@@ -1,7 +1,10 @@
 //! What the operating system actually refuses.
 //!
-//! Every test here launches a real process, attempts a real syscall inside it,
-//! and reads what the kernel answered. Nothing in this file is a source scan.
+//! Every containment test here launches a real process, attempts a real
+//! syscall inside it, and reads what the kernel answered. Nothing in this file
+//! is a source scan. The one test that launches nothing is
+//! `two_harnesses_with_one_label_do_not_share_a_canary`, which is about the
+//! harness rather than the sandbox and says so.
 //!
 //! # Every refusal is paired with a permission
 //!
@@ -26,7 +29,11 @@
 // sandbox, so it is also what decides whether this file has anything to say.
 #![cfg(all(feature = "native-sandbox", any(target_os = "linux", windows)))]
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use academic_worker::{
     DescriptorRegistry, JobCapability, JobCapabilitySet, JobId, JobOperation, JobPlan, JobRequest,
@@ -42,6 +49,9 @@ const SECRET: [u8; 32] = [0x5a; 32];
 const HOME_CANARY_BYTES: &[u8] = b"SYNTHETIC-HOME-CANARY-P2-G4-0123456789";
 const VAULT_CANARY_BYTES: &[u8] = b"SYNTHETIC-VAULT-CANARY-P2-G4-0123456789";
 
+/// Separates two canary directories reserved by one process.
+static NEXT_CANARY: AtomicU64 = AtomicU64::new(0);
+
 /// One job's world: a staged pair, a report directory, and the two canaries.
 struct Harness {
     root: tempfile::TempDir,
@@ -53,9 +63,7 @@ struct Harness {
 impl Harness {
     fn new(label: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let root = tempfile::tempdir()?;
-        let home = home_directory()?;
-        let home_canary_dir = home.join(format!(".academic-worker-g4-{label}"));
-        std::fs::create_dir_all(&home_canary_dir)?;
+        let home_canary_dir = reserve_canary_directory(&home_directory()?, label)?;
         let home_canary = home_canary_dir.join("home-canary.bin");
         std::fs::write(&home_canary, HOME_CANARY_BYTES)?;
         let vault_dir = root.path().join("vault");
@@ -136,6 +144,43 @@ impl Drop for Harness {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.home_canary_dir);
     }
+}
+
+/// Reserves this run's canary directory inside the home directory.
+///
+/// The canary stays under the real home directory because that is the claim:
+/// the sandbox refuses a read of *this user's home*, and a canary anywhere else
+/// would be refused for a reason this file does not name. The vault canary,
+/// which is about an arbitrary path, is the one under the temporary root.
+///
+/// What the name must not be is one another process can predict, because
+/// `Drop` removes the directory. A fixed `.academic-worker-g4-<label>` is the
+/// same path in every process on the machine, so two lanes running this suite
+/// at once wrote it, and the first to finish deleted the other's canary: the
+/// survivor then measured `ERROR_PATH_NOT_FOUND` where the backend owed
+/// `ERROR_ACCESS_DENIED`, and every test that builds a `Harness` failed for a
+/// reason no sandbox produced. Process id, wall clock and a counter are what
+/// `recovery_admission.rs`, `transcript/tests/support` and `sqlcipher_spike.rs`
+/// already use for the same purpose, and `create_dir` is the reservation: it
+/// refuses a name that exists instead of joining whoever holds it.
+fn reserve_canary_directory(
+    home: &Path,
+    label: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    for _ in 0..64 {
+        let sequence = NEXT_CANARY.fetch_add(1, Ordering::Relaxed);
+        let nanos = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+        let path = home.join(format!(
+            ".academic-worker-g4-{label}-{}-{nanos}-{sequence}",
+            std::process::id()
+        ));
+        match std::fs::create_dir(&path) {
+            Ok(()) => return Ok(path),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Err("could not reserve a home canary directory".into())
 }
 
 fn home_directory() -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -637,5 +682,41 @@ fn malicious_plugin_corpus_is_contained() -> TestResult {
     assert!(!escape_root.join("escaped.bin").exists());
     assert_eq!(std::fs::read(&harness.home_canary)?, HOME_CANARY_BYTES);
     assert_eq!(std::fs::read(&harness.vault_canary)?, VAULT_CANARY_BYTES);
+    Ok(())
+}
+
+/// Two harnesses that were given the same label hold two canary directories,
+/// and dropping one leaves the other's canary where it was.
+///
+/// This is the only test in the file that launches nothing: what it is about is
+/// the harness, not the sandbox. The defect it fixes was real. The canary
+/// directory was `<home>/.academic-worker-g4-<label>` with nothing in it about
+/// the process, `Drop` removes that directory, and two lanes of this repository
+/// running this suite on one machine therefore shared it:
+/// the lane that finished first deleted the other's canary, and the other
+/// reported 1 passed and 7 failed — exactly the seven tests that build a
+/// `Harness` — with `ERROR_PATH_NOT_FOUND` standing where the backend owed
+/// `ERROR_ACCESS_DENIED`.
+///
+/// A test cannot observe another process's `Drop` from inside this one. It can
+/// observe the property whose absence made that collision possible, which is
+/// that the label is not the whole name.
+#[test]
+fn two_harnesses_with_one_label_do_not_share_a_canary() -> TestResult {
+    let first = Harness::new("shared-label")?;
+    let second = Harness::new("shared-label")?;
+    assert_ne!(
+        first.home_canary_dir, second.home_canary_dir,
+        "two harnesses with one label reserved one directory, so whichever is \
+         dropped first removes the other's canary"
+    );
+
+    let kept = second.home_canary.clone();
+    drop(first);
+    assert_eq!(
+        std::fs::read(&kept)?,
+        HOME_CANARY_BYTES,
+        "dropping one harness removed another's canary"
+    );
     Ok(())
 }
