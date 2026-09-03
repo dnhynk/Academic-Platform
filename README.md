@@ -392,6 +392,36 @@ with no browser automation module. What it does and does not claim is in
 [official source ingestion](docs/contracts/official-source-ingestion.md). It runs
 inside `cargo test --workspace` and adds no external package to `Cargo.lock`.
 
+`P2-L3` adds `academic-transcription`, section 12.3's provider-neutral pipeline.
+A job's inputs are only authorized chunks, captures and explicitly supplied
+materials, and the check is a **journal header** rather than a caller's word: a
+chunk is admitted out of the file `academic_capture::begin` wrote, whose header
+names the capability token and the policy row the capture began under. A
+provider declares eight technical facts before it may be used — the four privacy
+ones stay in `P2-G3`'s registry — and an omitted declaration is refused while a
+declared *absence* travels with the contract and blocks the feature that depends
+on it. The route has three arms and no fourth: **local is the default for raw
+audio, remote needs all three of `REQ-32-040`'s facets for that exact provider
+and model version, and everything else is blocked**; a new profile approves
+nothing, so an unconfigured request never falls through to remote. Every raw
+provider response is retained under `P2-G5`'s `Untrusted<T>` and leaves the
+archive in no other form, and its bytes have one crate-private accessor whose two
+call sites are inventoried. **Nothing writes a raw token**: every field of the
+three raw types is private, so a struct literal for one is a compile error
+outside the decoder's module, and a correction is a new version over an
+annotation layer that leaves the raw token digest identical. A correction is one
+of `P2-M2`'s three dispositions — a rejection has no constructor at all — and two
+providers' results are diffed with a digest that does not depend on which was
+passed first, because `P2-M1` forbids ordering them. Every run records `P2-M1`'s
+twelve section 27.3 fields and this crate adds no provenance of its own.
+**Nothing here records or transcribes anything**: no `SttProvider` implementation
+ships, every fixture is a committed literal, and the crate opens no socket, reads
+no clock and touches no file. `GATE-38-019` stays open and this task invents no
+default for it. What it does and does not claim is in
+[the transcription pipeline contract](docs/contracts/transcription-pipeline.md).
+It adds one workspace member, no external package to `Cargo.lock`, and no
+migration, and it runs inside `cargo test --workspace`.
+
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical
 object reference and where a deletion reaches a backup are in the encrypted
