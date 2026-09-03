@@ -2046,9 +2046,27 @@ cannot see it. `ConflictCase::offered` is therefore pinned as whole text beside
 the sweep: the pin refuses a narrowing keyed on anything at all, and the sweep is
 what says the constant is actually returned.
 
+### The `P2-U6` guard this task had to widen
+
+`no_captcha_or_access_control_bypass_module_exists` required that **no file**
+outside `crates/ingestion/` names `CredentialBinding`, `DeclaredTarget` or
+`ConditionalRequest`. `P2-X7`'s acceptance suite names `DeclaredTarget`, because
+`source_change_links_impacted_rules_and_plans` drives that crate's stages one to
+five to build the two official documents it diffs, and there is no other producer
+of an `OfficialDocument`. A locally imitated diff would have made that test
+evidence about the imitation.
+
+The prefix test is now a **whole-set comparison** against a one-entry list, in
+both directions, and every entry is separately required to be a test rather than
+product source. `X7-I28` and `X7-I29` are what say the repair is not a hole: a
+product file naming one of the three still fails whatever list it is added to,
+and a *second* test file naming one fails as an extra key. The
+[official source ingestion](official-source-ingestion.md) contract carries the
+corrected sentence.
+
 ### The injection matrix
 
-Twenty-seven injections, applied one at a time to shipped source and reverted
+Twenty-nine injections, applied one at a time to shipped source and reverted
 with `git checkout --`. Each is compiled first, with
 `cargo build -p academic-evidence-center --all-targets`, so a trybuild case's
 *expected* diagnostic cannot be mistaken for a real build failure. The driver is
@@ -2056,14 +2074,14 @@ with `git checkout --`. Each is compiled first, with
 results are `t168-injection-results.json`. The unmodified tree is run before and
 after the matrix and passes both times.
 
-**All twenty-seven compile, all twenty-seven are caught, and after the `X7-I15`
+**All twenty-nine compile, all twenty-nine are caught, and after the `X7-I15`
 repair every one is caught by the guard it was aimed at.** Two — `X7-I1` and
 `X7-I3` — did not compile in their first form, because a field added to a struct
 has to be initialised by the constructor that builds it; each is a two-edit
 injection for that reason, and neither non-compiling attempt is recorded as
 evidence.
 
-**Seven of the twenty-seven spell nothing on any forbidden list** — `X7-I1`
+**Seven of the twenty-nine spell nothing on any forbidden list** — `X7-I1`
 through `X7-I7` — which is what makes the whole-set layers load-bearing rather
 than decorative.
 
@@ -2096,6 +2114,8 @@ than decorative.
 | X7-I25 | a section is respelled away from the specification | `the_six_sections_are_section_25_13s_own` |
 | X7-I26 | a provider surface token drifts from the broker's | `the_provider_and_receipt_vocabularies_are_the_brokers_own` |
 | X7-I27 | the offer is narrowed on the authority class, which the sweep holds fixed | `nothing_but_a_user_settles_a_conflict_or_extends_an_expiry` |
+| X7-I28 | a **product** file outside `crates/ingestion/` names `DeclaredTarget` | `P2-U6`'s `no_captcha_or_access_control_bypass_module_exists` |
+| X7-I29 | a **second test** file outside `crates/ingestion/` names `DeclaredTarget` | same, as an extra key |
 
 ## Open
 
