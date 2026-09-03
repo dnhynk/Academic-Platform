@@ -43,7 +43,7 @@ use crate::{
     document::{OfficialDocument, ParseError, SchemaError, parse, validate},
     fetch::{ConditionalFetch, ConditionalRequest, FetchOutcome},
     identifier::{ConnectorId, ProgramKey},
-    manifest::{ConnectorManifest, DeclaredTarget, RetrievalInstant},
+    manifest::{ConnectorManifest, DeclaredTarget, LastSuccess, RetrievalInstant},
     publish::{Publication, PublishableRules, QueueReason, ReviewQueued, publish},
     snapshot::{RawSnapshot, SnapshotError, store},
     terms::{Denial, DenialReason, TermsLedger, deny},
@@ -459,17 +459,25 @@ impl Reconciled {
 
 /// Stage one. Acquires the bytes.
 ///
-/// A fetch is refused when the ledger does not permit one over this connector.
-/// An import is not: a person handing over a file they already have is what the
-/// fallbacks are, and refusing it would refuse the remedy along with the fetch.
+/// A fetch is refused when the ledger does not permit one over this connector,
+/// and again when the declared cadence does not permit one yet: section 29.2
+/// asks for a *low-frequency* conditional fetch, and a cadence nothing compares
+/// against a clock is a declaration rather than a limit.
+///
+/// An import is refused by neither. A person handing over a file they already
+/// have is what the four fallbacks are, and a cadence is a rule about how often
+/// this system asks a source — not about how often a person may hand over a
+/// file.
 ///
 /// # Errors
 ///
 /// [`StageFailure`] at [`Stage::DiscoverFetchImport`] when the terms do not
-/// permit a fetch, or when the caller's transport produced nothing.
+/// permit a fetch, when the declared cadence does not permit one at `now`, or
+/// when the caller's transport produced nothing.
 pub fn discover_fetch_import(
     manifest: &ConnectorManifest,
     ledger: &TermsLedger,
+    now: RetrievalInstant,
     acquisition: Acquisition<'_>,
 ) -> Result<Fetched, StageFailure> {
     let connector = manifest.connector().clone();
@@ -480,6 +488,18 @@ pub fn discover_fetch_import(
                 return Err(StageFailure {
                     stage: Stage::DiscoverFetchImport,
                     reason: FailureReason::Refused(deny(connector, reason_for(status))),
+                });
+            }
+            // The cadence. `LastSuccess::Never` has nothing to count from, and
+            // `AllowedFrequency::OnUserRequestOnly` has no schedule to be early
+            // for -- a run *is* the user asking. Both permit.
+            if let LastSuccess::At(last) = manifest.last_success()
+                && let Some(earliest) = manifest.allowed_frequency().earliest_next(last)
+                && now.seconds() < earliest.seconds()
+            {
+                return Err(StageFailure {
+                    stage: Stage::DiscoverFetchImport,
+                    reason: FailureReason::Refused(deny(connector, DenialReason::TooSoon)),
                 });
             }
             let target = request.target();
@@ -807,6 +827,7 @@ pub fn run(
     manifest: &ConnectorManifest,
     ledger: &TermsLedger,
     corpus: &Corpus,
+    now: RetrievalInstant,
     acquisition: Acquisition<'_>,
     ingest_seq: IngestSeq,
     appropriateness: Appropriateness,
@@ -830,7 +851,7 @@ pub fn run(
 
     let fetched = step!(
         Stage::DiscoverFetchImport,
-        discover_fetch_import(manifest, ledger, acquisition)
+        discover_fetch_import(manifest, ledger, now, acquisition)
     );
     let cleared = step!(
         Stage::PolicyAndTermsCheck,
