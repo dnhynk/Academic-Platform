@@ -10,6 +10,7 @@ members = [
   "crates/connector",
   "crates/core",
   "crates/crypto",
+  "crates/curriculum",
   "crates/daemon",
   "crates/desktop",
   "crates/domain",

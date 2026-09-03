@@ -212,9 +212,13 @@ uuid_id!(PermissionLineageId, "permission lineage");
 uuid_id!(ScopeId, "scope");
 
 // Event schema v3 aggregate identifiers. Each names an aggregate registered by
-// exactly one v3 arm, except `RepositoryId`, which is only ever a parent
-// reference: the eighteen arms fixed by the Phase 2 plan register no repository.
+// exactly one v3 arm, except `RepositoryId` and `CourseId`, which are only ever
+// parent references: the eighteen arms fixed by the Phase 2 plan register
+// neither a repository nor a course. `CourseId` is section 8.2's durable course
+// identity, which outlives every `CourseRevision` that names it; `P2-U1` owns
+// its typed row in migration 0014.
 uuid_id!(CurriculumVersionId, "curriculum version");
+uuid_id!(CourseId, "course");
 uuid_id!(CourseRevisionId, "course revision");
 uuid_id!(OfferingId, "offering");
 uuid_id!(AttemptId, "attempt");

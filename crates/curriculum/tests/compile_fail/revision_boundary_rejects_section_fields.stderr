@@ -1,0 +1,101 @@
+error[E0599]: no method named `term` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:29:31
+   |
+29 |     let _term = draft.clone().term("2026_FALL");
+   |                               ^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `section` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:30:34
+   |
+30 |     let _section = draft.clone().section("001");
+   |                                  ^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `instructor` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:31:38
+   |
+31 |     let _instructors = draft.clone().instructor("Instructor");
+   |                                      ^^^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `meeting` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:32:35
+   |
+32 |     let _meetings = draft.clone().meeting(1_u16);
+   |                                   ^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `capacity` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:33:35
+   |
+33 |     let _capacity = draft.clone().capacity(40);
+   |                                   ^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `grading_mode` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:34:39
+   |
+34 |     let _grading_mode = draft.clone().grading_mode("LETTER");
+   |                                       ^^^^^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `syllabus_artifact` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:35:35
+   |
+35 |     let _syllabus = draft.clone().syllabus_artifact(artifact);
+   |                                   ^^^^^^^^^^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `lecture_ref` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:36:39
+   |
+36 |     let _lecture_refs = draft.clone().lecture_ref(course);
+   |                                       ^^^^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `assessment_ref` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:37:42
+   |
+37 |     let _assessment_refs = draft.clone().assessment_ref(course);
+   |                                          ^^^^^^^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `review_ref` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:38:38
+   |
+38 |     let _review_refs = draft.clone().review_ref(course);
+   |                                      ^^^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `official_status` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:39:33
+   |
+39 |     let _status = draft.clone().official_status("CONFIRMED");
+   |                                 ^^^^^^^^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `observed_at` found for struct `CourseRevisionDraft` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:40:35
+   |
+40 |     let _observed = draft.clone().observed_at(TimestampMillis::new(0));
+   |                                   ^^^^^^^^^^^ method not found in `CourseRevisionDraft`
+
+error[E0599]: no method named `term` found for struct `academic_curriculum::CourseRevision` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:43:28
+   |
+43 |     let _read_term = built.term();
+   |                            ^^^^ method not found in `academic_curriculum::CourseRevision`
+
+error[E0599]: no method named `section` found for struct `academic_curriculum::CourseRevision` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:44:31
+   |
+44 |     let _read_section = built.section();
+   |                               ^^^^^^^ method not found in `academic_curriculum::CourseRevision`
+
+error[E0599]: no method named `instructors` found for struct `academic_curriculum::CourseRevision` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:45:35
+   |
+45 |     let _read_instructors = built.instructors();
+   |                                   ^^^^^^^^^^^ method not found in `academic_curriculum::CourseRevision`
+
+error[E0599]: no method named `capacity` found for struct `academic_curriculum::CourseRevision` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:46:32
+   |
+46 |     let _read_capacity = built.capacity();
+   |                                ^^^^^^^^ method not found in `academic_curriculum::CourseRevision`
+
+error[E0599]: no method named `official_status` found for struct `academic_curriculum::CourseRevision` in the current scope
+  --> tests/compile_fail/revision_boundary_rejects_section_fields.rs:47:30
+   |
+47 |     let _read_status = built.official_status();
+   |                              ^^^^^^^^^^^^^^^ method not found in `academic_curriculum::CourseRevision`

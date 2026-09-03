@@ -1,0 +1,36 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-u",
+  "task": "P2-U1",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-U1 admits no external crate. academic-curriculum links academic-domain, academic-ingestion and thiserror as product edges and academic-domain and trybuild as dev edges, all four covered by earlier reviewed receipts, and adds one workspace path package. It links no store, vault, crypto, policy or transport crate at any feature setting: it persists nothing, and migration 0014's typed rows are written by academic-store.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-curriculum is the P2-U1 aggregate boundary: section 8.2's CurriculumVersion, Course, CourseRevision and CourseOffering with section 9's exclusions absent rather than refused, and section 11.4's independent identity, equivalence, replacement and retirement relations. It is a separate package from academic-ingestion because that crate is P2-U6's pipeline over untrusted official bytes and this one holds the values a completed run publishes; the direction of the edge is what makes an undated official source unable to found a curriculum version.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-U1 adds no pnpm workspace package. Its whole surface is Rust and SQL."
+  },
+  "direct_workspace_dependencies": {
+    "academic-domain": "The event schema v3 aggregate identifiers migration 0004's closure rows already key on -- CurriculumVersionId, CourseRevisionId, OfferingId -- plus EntityId, ArtifactId, DecisionId, ContentDigest, TimestampMillis and ValidInterval. CourseId is added to that crate by this task as a parent-only reference, the position RepositoryId already holds, because the eighteen v3 arms register no course.",
+    "academic-ingestion": "P2-U6's PublishedRules. CurriculumPublication::from_official_source takes one, and that type has private fields whose only producer is that crate's stage nine, which takes a PublishableRules that Reconciled::publishable returns None for on an undated document. A curriculum version founded on an UNSCOPED_OFFICIAL_SOURCE is therefore not a value that exists."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-curriculum",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-curriculum",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-curriculum is a workspace path crate, not an external dependency. It owns section 8.2's aggregates and holds no writer: it has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-policy, academic-projections, academic-recovery or academic-retention, so the canonical writer is not in the closure a curriculum aggregate compiles against and a partial publication is undone by a rewind inside this crate rather than by a transaction it could reach. Its declared workspace closure of every edge kind is academic-domain, academic-egress-boundary, academic-ingestion and academic-untrusted-content; the last two edges are transitive through academic-ingestion, and no product file here names an egress or untrusted-content item. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-domain.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. It contains no transport and no parser: the official bytes stay behind academic_ingestion::RawSnapshot's sealed route and what arrives here is a PublishedRules carrying identifiers, dates and a parser version. GATE-38-013, GATE-38-014 and GATE-38-018 are open, so the recognition list, the substitution rules and the official-versus-recommended prerequisite difference are represented as UNKNOWN and no default is invented; every test is driven by synthetic fixtures composed in the test tree or by academic-ingestion's own synthetic document fixtures.",
+  "advisory_path": "Unchanged. Every external crate academic-curriculum links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

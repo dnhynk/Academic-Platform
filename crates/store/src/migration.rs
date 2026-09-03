@@ -100,6 +100,22 @@ pub const MIGRATION_0009_SQL: &str =
 pub const MIGRATION_0012_SQL: &str =
     include_str!("../../../migrations/store/0012_phase2_repository_snapshot.sql");
 
+/// `P2-U1`'s typed columns for the `CURRICULUM_VERSION_PUBLISHED`,
+/// `COURSE_REVISION_PUBLISHED` and `OFFERING_OBSERVED` aggregates.
+///
+/// The same rule again: migration `0004` carries the v3 registration frame and
+/// each aggregate owner adds its own typed columns later. This is that
+/// migration for section 8.2's three blocks, for the durable `Course` identity
+/// they hang from -- which has no registration arm, exactly as `repository_id`
+/// has none -- and for section 11.4's four independent relations, which are
+/// four tables rather than one table with a discriminator.
+///
+/// It is `0014` because `0013` is reserved for `P2-L3`, which was in flight on
+/// the same `main` when this branch was written. `0008`, `0010` and `0011`
+/// stay unclaimed for the reason [`MIGRATION_0009_SQL`] gives.
+pub const MIGRATION_0014_SQL: &str =
+    include_str!("../../../migrations/store/0014_phase2_curriculum_aggregates.sql");
+
 /// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
 ///
 /// It replaces the Phase 1 identity singleton with the schema-2 one. The
@@ -141,6 +157,7 @@ pub const STORE_MIGRATION_SQL: &[&str] = &[
     MIGRATION_0007_SQL,
     MIGRATION_0009_SQL,
     MIGRATION_0012_SQL,
+    MIGRATION_0014_SQL,
 ];
 
 /// Result of invoking the forward-only migration runner.
@@ -318,6 +335,7 @@ fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> Stor
     transaction.execute_batch(MIGRATION_0007_SQL)?;
     transaction.execute_batch(MIGRATION_0009_SQL)?;
     transaction.execute_batch(MIGRATION_0012_SQL)?;
+    transaction.execute_batch(MIGRATION_0014_SQL)?;
     verify_integrity(&transaction)?;
     transaction.commit()?;
     Ok(())

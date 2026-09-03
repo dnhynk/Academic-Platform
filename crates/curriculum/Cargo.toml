@@ -1,0 +1,41 @@
+[package]
+name = "academic-curriculum"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Two product edges and no third.
+#
+# `academic-domain` supplies the typed aggregate identifiers the event schema
+# v3 registration arms already carry -- `CourseId`, `CurriculumVersionId`,
+# `CourseRevisionId`, `OfferingId`, `EntityId`, `ValidInterval` -- so a course
+# this crate publishes is the same identity the closure tables key on.
+#
+# `academic-ingestion` supplies `PublishedRules`, which is what `P2-U6`'s stage
+# nine produces. `CurriculumPublication` takes one, and `PublishedRules` is
+# produced only by `publish` on a `PublishableRules`, which `Reconciled::
+# publishable` returns `None` for on an undated document. So a curriculum
+# version founded on an undated official source is not a value that exists.
+#
+# There is deliberately no `academic-store` edge. The canonical writer is not
+# in the closure these aggregates compile against, which is what makes "a
+# curriculum aggregate cannot write itself" a fact about the dependency graph
+# rather than a rule inside a function. The typed rows are migration 0014's and
+# the store owns them.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-ingestion = { path = "../ingestion" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# The compile-fail suite compiles its cases against this crate plus this crate's
+# dev-dependencies, so the domain identifiers an aggregate is built from have to
+# be reachable from a `tests/compile_fail` case as well. `academic-scenario` and
+# `academic-proposal` declare their own domain edge twice for the same reason.
+academic-domain = { path = "../domain" }
+trybuild.workspace = true
+
+[lints]
+workspace = true

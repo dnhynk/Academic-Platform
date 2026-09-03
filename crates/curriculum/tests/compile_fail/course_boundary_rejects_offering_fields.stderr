@@ -1,0 +1,65 @@
+error[E0599]: no method named `instructors` found for struct `CourseDraft` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:27:38
+   |
+27 |     let _instructors = draft.clone().instructors(Vec::new());
+   |                                      ^^^^^^^^^^^ method not found in `CourseDraft`
+
+error[E0599]: no method named `term` found for struct `CourseDraft` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:28:31
+   |
+28 |     let _term = draft.clone().term("2026_FALL");
+   |                               ^^^^ method not found in `CourseDraft`
+
+error[E0599]: no method named `section` found for struct `CourseDraft` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:29:34
+   |
+29 |     let _section = draft.clone().section("001");
+   |                                  ^^^^^^^ method not found in `CourseDraft`
+
+error[E0599]: no method named `meetings` found for struct `CourseDraft` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:30:35
+   |
+30 |     let _meetings = draft.clone().meetings(Vec::new());
+   |                                   ^^^^^^^^ method not found in `CourseDraft`
+
+error[E0599]: no method named `capacity` found for struct `CourseDraft` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:31:35
+   |
+31 |     let _capacity = draft.clone().capacity(40);
+   |                                   ^^^^^^^^ method not found in `CourseDraft`
+
+error[E0599]: no method named `grading_mode` found for struct `CourseDraft` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:32:39
+   |
+32 |     let _grading_mode = draft.clone().grading_mode("LETTER");
+   |                                       ^^^^^^^^^^^^ method not found in `CourseDraft`
+
+error[E0599]: no method named `syllabus_artifact` found for struct `CourseDraft` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:33:35
+   |
+33 |     let _syllabus = draft.clone().syllabus_artifact(entity);
+   |                                   ^^^^^^^^^^^^^^^^^ method not found in `CourseDraft`
+
+error[E0599]: no method named `instructors` found for struct `academic_curriculum::Course` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:36:36
+   |
+36 |     let _read_instructors = course.instructors();
+   |                                    ^^^^^^^^^^^ method not found in `academic_curriculum::Course`
+
+error[E0599]: no method named `term` found for struct `academic_curriculum::Course` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:37:29
+   |
+37 |     let _read_term = course.term();
+   |                             ^^^^ method not found in `academic_curriculum::Course`
+
+error[E0599]: no method named `meetings` found for struct `academic_curriculum::Course` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:38:33
+   |
+38 |     let _read_meetings = course.meetings();
+   |                                 ^^^^^^^^ method not found in `academic_curriculum::Course`
+
+error[E0599]: no method named `capacity` found for struct `academic_curriculum::Course` in the current scope
+  --> tests/compile_fail/course_boundary_rejects_offering_fields.rs:39:33
+   |
+39 |     let _read_capacity = course.capacity();
+   |                                 ^^^^^^^^ method not found in `academic_curriculum::Course`

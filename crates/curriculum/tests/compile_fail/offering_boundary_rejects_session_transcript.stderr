@@ -1,0 +1,59 @@
+error[E0599]: no method named `transcript` found for struct `CourseOfferingDraft` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:30:37
+   |
+30 |     let _transcript = draft.clone().transcript("what the instructor said");
+   |                                     ^^^^^^^^^^ method not found in `CourseOfferingDraft`
+
+error[E0599]: no method named `transcript_segments` found for struct `CourseOfferingDraft` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:31:35
+   |
+31 |     let _segments = draft.clone().transcript_segments(Vec::new());
+   |                                   ^^^^^^^^^^^^^^^^^^^ method not found in `CourseOfferingDraft`
+
+error[E0599]: no method named `utterances` found for struct `CourseOfferingDraft` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:32:37
+   |
+32 |     let _utterances = draft.clone().utterances(Vec::new());
+   |                                     ^^^^^^^^^^ method not found in `CourseOfferingDraft`
+
+error[E0599]: no method named `audio_locator` found for struct `CourseOfferingDraft` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:33:32
+   |
+33 |     let _audio = draft.clone().audio_locator(lecture);
+   |                                ^^^^^^^^^^^^^ method not found in `CourseOfferingDraft`
+
+error[E0599]: no method named `speakers` found for struct `CourseOfferingDraft` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:34:35
+   |
+34 |     let _speakers = draft.clone().speakers(Vec::new());
+   |                                   ^^^^^^^^ method not found in `CourseOfferingDraft`
+
+error[E0599]: no method named `captions` found for struct `CourseOfferingDraft` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:35:35
+   |
+35 |     let _captions = draft.clone().captions(Vec::new());
+   |                                   ^^^^^^^^ method not found in `CourseOfferingDraft`
+
+error[E0599]: no method named `transcript` found for struct `academic_curriculum::CourseOffering` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:38:34
+   |
+38 |     let _read_transcript = built.transcript();
+   |                                  ^^^^^^^^^^ method not found in `academic_curriculum::CourseOffering`
+
+error[E0599]: no method named `transcript_segments` found for struct `academic_curriculum::CourseOffering` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:39:32
+   |
+39 |     let _read_segments = built.transcript_segments();
+   |                                ^^^^^^^^^^^^^^^^^^^ method not found in `academic_curriculum::CourseOffering`
+
+error[E0599]: no method named `utterances` found for struct `academic_curriculum::CourseOffering` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:40:34
+   |
+40 |     let _read_utterances = built.utterances();
+   |                                  ^^^^^^^^^^ method not found in `academic_curriculum::CourseOffering`
+
+error[E0599]: no method named `speakers` found for struct `academic_curriculum::CourseOffering` in the current scope
+  --> tests/compile_fail/offering_boundary_rejects_session_transcript.rs:41:32
+   |
+41 |     let _read_speakers = built.speakers();
+   |                                ^^^^^^^^ method not found in `academic_curriculum::CourseOffering`

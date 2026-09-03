@@ -177,6 +177,8 @@ mod aggregate_closure_tests;
 #[cfg(test)]
 mod aggregate_timeline_tests;
 #[cfg(test)]
+mod curriculum_tests;
+#[cfg(test)]
 mod entity_registry_tests;
 #[cfg(test)]
 mod model_run_closure_tests;

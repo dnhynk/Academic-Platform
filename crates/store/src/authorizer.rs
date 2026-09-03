@@ -100,6 +100,30 @@ pub const CANONICAL_TABLES: &[&str] = &[
     "repository_snapshot_excluded_path",
     "repository_hash_disclosure_decision",
     "repository_secret_finding",
+    // Migration 0014's typed columns for the CURRICULUM_VERSION_PUBLISHED,
+    // COURSE_REVISION_PUBLISHED and OFFERING_OBSERVED aggregates, the durable
+    // `course` identity they hang from, and section 11.4's four relations.
+    // They are canonical history for the same reason: which courses a degree
+    // audit may count, which of them stand in for which, and which were
+    // retired are facts a later audit replays against, so an UPDATE or a
+    // DELETE would move a graduation answer without an event authorizing it.
+    // The four relation tables are here individually rather than as one
+    // discriminated table, because that is how the migration writes them.
+    "curriculum_version_detail",
+    "curriculum_transition_arrangement",
+    "course",
+    "course_revision_detail",
+    "course_revision_official_prerequisite",
+    "course_revision_recommended_prerequisite",
+    "course_revision_designed_coverage",
+    "offering_detail",
+    "offering_instructor",
+    "offering_meeting",
+    "offering_reference",
+    "course_identity_decision",
+    "course_equivalence",
+    "course_replacement",
+    "course_retirement",
 ];
 
 /// Installs the product-writer guard after migration and identity verification.
