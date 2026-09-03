@@ -180,3 +180,5 @@ mod aggregate_timeline_tests;
 mod entity_registry_tests;
 #[cfg(test)]
 mod model_run_closure_tests;
+#[cfg(test)]
+mod proposal_closure_tests;

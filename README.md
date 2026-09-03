@@ -10,6 +10,7 @@ This repository is the runnable foundation for a local-first Personal Academic �
 - `academic-contracts`: deterministic CBOR v3 encode/sign plus v1/v2/v3 decode/verify, semantic v3 validation of returned writer bytes, Ed25519 verification over original bytes, source-aware typed byte equality, device/key/user identity binding, pure v1-to-v3 and v2-to-v3 upcasters that rewrite no historical byte, and executable Protobuf actor/relation round trips with the same RFC-variant UUIDv7 boundary.
 - `academic-core`: the signed-envelope acceptance boundary; fixture verification and replay use an independent trust anchor rather than wrapper-supplied keys.
 - `academic-model-run`: the twelve section 27.3 fields every model execution records, the per-model calibration dataset registry with its refresh metadata, and the reconciliation of a recorded transmission against the broker's `egress_audit`. A raw provider score is unorderable and undisplayable by type; only an interpreted one reaches a reader. See [model-run provenance](docs/contracts/model-run-provenance.md).
+- `academic-proposal`: the `Proposed<T>` boundary, the four section 27.4 risk tiers with the workflow each requires, the review queue with section 29.7's confidence/impact batching under a versioned configuration, and the append-only disposition history an undo extends rather than edits. See [the proposal review queue](docs/contracts/proposal-review-queue.md).
 - `academic-policy`: a socket-free, default-deny permission broker that hashes immutable policy snapshots, minimizes configured object ranges, records the fixed grant/audit shapes, and releases an exact runtime payload only after atomically consuming a one-use expiring capability. See [the permission broker contract](docs/contracts/permission-broker.md).
 - `academic-consent`: the section 3.7 `capture_permission` aggregate and the append-only consent ledger under it. A new offering has no record, `UNKNOWN` is what a missing record resolves to, and nothing is mintable from it. A user attestation and a written authority are unrelated types with no conversion between them, so a self-assessment cannot reach a permitting status; audio and transcript retention are two independent bounds and a derivative inherits the stricter of each; and an expiry cannot be applied without the deletion-impact preview it describes. `GATE-38-009` and `GATE-38-019` stay open per offering and per term. See [the consent contract](docs/contracts/consent-and-capture-permission.md).
 - Process boundaries: six separate executables bind capture client, indexer, repository analyzer, connector, egress proxy, and export job to distinct broker-owned capability sets. The egress executable has no transport yet; P2-G2 owns the sole future outbound socket.
@@ -265,6 +266,29 @@ so a process-capability token cannot be mistaken for the egress grant a run
 spent; what that establishes is in
 [model-run provenance](docs/contracts/model-run-provenance.md). It runs inside
 `cargo test --workspace` and adds no external package to `Cargo.lock`.
+
+`P2-M2` adds `academic-proposal`, the boundary between what a model proposed and
+what this system will record. A `Proposed<T>` implements no unwrapping trait and
+has one crate-private accessor, whose three call sites are inventoried by name
+with a written reason for each; the crate declares no edge to `academic-store`,
+so naming the canonical writer from a case compiled against it is a compile
+error. Section 27.4's four risk tiers each map to one workflow and one queue
+door, and a proposal handed to another tier's door is refused by the single
+comparison all four doors call — the sixteen-cell permutation is run and exactly
+the four on the diagonal are accepted. An autosaved record's epistemic status is
+a constant equal to `AI_INFERRED` rather than a field, a high-risk approval takes
+a receipt carrying the proposal's identity, and a non-delegable proposal is
+reachable only through a receipt that `academic-domain`'s closed `Actor` enum
+issues for a user and nobody else. Dispositions are that crate's frozen
+`DecisionAction` and not a second vocabulary: **three, not the four the execution
+plan's test name claims** — section 3 of the spec names approve, modify and
+reject and no fourth, and pending is a queue state with no conversion into a
+decision. An undo appends a record naming the one it reverses, so a rejection and
+its reversal both stay. Migration `0009` holds the same rules in SQL for a writer
+that skips the Rust boundary. What the boundary does and does not claim, and
+where the execution plan's section references do not resolve, is in
+[the proposal review queue](docs/contracts/proposal-review-queue.md). It runs
+inside `cargo test --workspace` and adds no external package to `Cargo.lock`.
 
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical

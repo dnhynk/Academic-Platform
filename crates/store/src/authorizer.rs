@@ -73,6 +73,19 @@ pub const CANONICAL_TABLES: &[&str] = &[
     "model_run_input_artifact",
     "model_run_transmitted_range",
     "model_run_candidate",
+    // Migration 0009's typed columns for the PROPOSAL_DISPOSED aggregate.
+    // They are canonical history for the same reason: which tier a proposal
+    // was classified into, what a user decided about it, and which band
+    // configuration it was queued under are all decided by the rows here, so
+    // an UPDATE or a DELETE would move a decision without an event
+    // authorizing it. The batching policy is here too because a proposal row
+    // references the version it was banded under: editing the cuts after the
+    // fact would rewrite what the reviewer was shown.
+    "proposal_batching_policy",
+    "proposal_batching_cut",
+    "proposal_review",
+    "proposal_disposition_record",
+    "proposal_outcome",
 ];
 
 /// Installs the product-writer guard after migration and identity verification.
