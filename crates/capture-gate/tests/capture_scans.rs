@@ -317,7 +317,12 @@ fn parameters_and_return(signature: &str) -> Option<(&str, &str)> {
     None
 }
 
-/// The variant names an enum declares, in declaration order.
+/// The lines a braced item declares, in declaration order.
+///
+/// For an `enum` those are its variants and for a `struct` they are its
+/// fields, so the same reader serves both: what a variant list keeps whole is
+/// the vocabulary, and what a field list keeps whole is the visibility --
+/// a `pub` on a private field opens the type to a literal written anywhere.
 fn enum_variants(source: &str, header: &str) -> Vec<String> {
     source
         .lines()
@@ -333,6 +338,41 @@ fn enum_variants(source: &str, header: &str) -> Vec<String> {
         })
         .map(|line| line.trim_end_matches(',').to_owned())
         .collect()
+}
+
+/// Every function `code` declares, at any visibility, whitespace-collapsed.
+///
+/// [`public_signatures`] reads only `pub` items, and a second path into a
+/// private field does not have to be `pub` to reach one: Rust's field privacy
+/// is per module, so any function in the same file can touch it. This reads
+/// every one, so a whole-set comparison over a file fails on a function nobody
+/// reviewed whatever its visibility is.
+fn declared_functions(code: &str) -> Vec<String> {
+    const MODIFIERS: [&str; 5] = ["pub", "const", "async", "unsafe", "extern"];
+    let lines: Vec<&str> = code.lines().collect();
+    let mut found = Vec::new();
+    for (index, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        let Some(before) = trimmed.split_once("fn ").map(|(head, _)| head) else {
+            continue;
+        };
+        if !before
+            .split_whitespace()
+            .all(|word| MODIFIERS.iter().any(|modifier| word.starts_with(modifier)))
+        {
+            continue;
+        }
+        let mut signature = String::new();
+        for follow in lines.iter().skip(index) {
+            signature.push(' ');
+            signature.push_str(follow.trim());
+            if follow.contains('{') || follow.trim_end().ends_with(';') {
+                break;
+            }
+        }
+        found.push(signature.split_whitespace().collect::<Vec<_>>().join(" "));
+    }
+    found
 }
 
 /// Every `impl` block header in `code` that names `type_name`.
@@ -381,9 +421,9 @@ fn relative_to_crate(path: &Path) -> String {
 
 const WHOLE_AUTHORIZE: &str = "pub fn authorize( ledger: &mut ConsentLedger, audit: &mut CaptureAudit, request: &CaptureRequest, now: u64, ) -> Result<CaptureAuthorization, CaptureRefusal> { let subject = AuditSubject { offering_id: request.offering_id, lecture_id: request.lecture_id, digest: None, }; let token = match mint_capture_capability(ledger, request, now) { Ok(token) => token, Err(denial) => { return Err(audit.record_refusal( CaptureRefusal::from_denial(denial, None), subject, now, )); } }; let ruleset = DeviceRuleset::for_token(&token); Ok(CaptureAuthorization { token, ruleset }) }";
 
-const WHOLE_OPEN_DEVICE: &str = "pub fn open_device( ledger: &mut ConsentLedger, audit: &mut CaptureAudit, authorization: CaptureAuthorization, class: DeviceClass, layer: DeviceLayer, now: u64, ) -> Result<CaptureSession, CaptureRefusal> { let token = authorization.token(); let subject = AuditSubject { offering_id: Some(token.bound().offering_id()), lecture_id: Some(token.bound().lecture_id()), digest: Some(*token.token_id()), }; if layer == DeviceLayer::Unavailable { return Err(audit.record_refusal( CaptureRefusal::of(CaptureRefusalReason::DeviceLayerUnavailable, Some(class)), subject, now, )); } if !authorization.ruleset().permits(class) { return Err(audit.record_refusal( CaptureRefusal::of(CaptureRefusalReason::MediumNotOnToken, Some(class)), subject, now, )); } if let Err(denial) = continue_capture(ledger, token, now) { return Err(audit.record_refusal( CaptureRefusal::from_denial(denial, Some(class)), subject, now, )); } let offering_id = token.bound().offering_id(); let lecture_id = token.bound().lecture_id(); let retention = token.bound().retention(); Ok(CaptureSession { token: authorization.into_token(), class, layer, offering_id, lecture_id, retention, chunks: Vec::new(), bytes: Vec::new(), gap: None, }) }";
+const WHOLE_OPEN_DEVICE: &str = "pub fn open_device( ledger: &mut ConsentLedger, audit: &mut CaptureAudit, authorization: CaptureAuthorization, class: DeviceClass, layer: DeviceLayer, now: u64, ) -> Result<CaptureSession, CaptureRefusal> { let token = authorization.token(); let subject = AuditSubject { offering_id: Some(token.bound().offering_id()), lecture_id: Some(token.bound().lecture_id()), digest: Some(*token.token_id()), }; if layer == DeviceLayer::Unavailable { return Err(audit.record_refusal( CaptureRefusal::of(CaptureRefusalReason::DeviceLayerUnavailable, Some(class)), subject, now, )); } if !authorization.ruleset().permits(class) { return Err(audit.record_refusal( CaptureRefusal::of(CaptureRefusalReason::MediumNotOnToken, Some(class)), subject, now, )); } if let Err(denial) = continue_capture(ledger, token, now) { return Err(audit.record_refusal( CaptureRefusal::from_denial(denial, Some(class)), subject, now, )); } let offering_id = token.bound().offering_id(); let lecture_id = token.bound().lecture_id(); let retention = token.bound().retention(); Ok(CaptureSession { token: authorization.into_token(), class, layer, offering_id, lecture_id, retention, accepted_at: now, chunks: Vec::new(), bytes: Vec::new(), gap: None, }) }";
 
-const WHOLE_RECORD_CHUNK: &str = "pub fn record_chunk( &mut self, ledger: &mut ConsentLedger, audit: &mut CaptureAudit, bytes: &[u8], now: u64, ) -> Result<(), CaptureRefusal> { let subject = self.subject(); if self.gap.is_some() { return Err(audit.record_refusal( CaptureRefusal::of( CaptureRefusalReason::SessionAlreadyStopped, Some(self.class), ), subject, now, )); } if let Err(denial) = continue_capture(ledger, &self.token, now) { self.gap = Some(TimelineGap::opened( now, CaptureRefusalReason::PermissionRefused, Some(denial.reason()), )); return Err(audit.record_refusal( CaptureRefusal::from_denial(denial, Some(self.class)), subject, now, )); } let seq = u32::try_from(self.chunks.len()).unwrap_or(u32::MAX); self.chunks.push(ChunkRecord::build( seq, now, bytes.len(), ContentDigest::sha256(bytes), )); self.bytes.extend_from_slice(bytes); Ok(()) } pub fn seal( self, ledger: &ConsentLedger, audit: &mut CaptureAudit, now: u64, ) -> CaptureArtifact { let digest = ContentDigest::sha256(&self.bytes); let byte_len = self.bytes.len(); let subject = AuditSubject { offering_id: Some(self.offering_id), lecture_id: Some(self.lecture_id), digest: Some(digest), }; let violation = self.first_unbound_chunk(ledger); let class = self.class; let manifest = CaptureArtifact::manifest_of(self.chunks, byte_len, digest, self.retention, self.gap); match violation { Some((risk, denial)) => { let _ = audit.record_refusal( CaptureRefusal::from_denial(denial, Some(class)), subject, now, ); CaptureArtifact::quarantined(manifest, risk) } None => CaptureArtifact::releasable(manifest, self.bytes), } } fn first_unbound_chunk( &self, ledger: &ConsentLedger, ) -> Option<(ViolationRisk, CaptureDenial)> { for chunk in &self.chunks { if let Err(denial) = bind_permission(ledger, self.token.request(), chunk.started_at()) { return Some(( ViolationRisk::raised( chunk.seq(), chunk.started_at(), denial.reason(), denial.status(), ), denial, )); } } None } fn subject(&self) -> AuditSubject { AuditSubject { offering_id: Some(self.offering_id), lecture_id: Some(self.lecture_id), digest: Some(*self.token.token_id()), } } }";
+const WHOLE_RECORD_CHUNK: &str = "pub fn record_chunk( &mut self, ledger: &mut ConsentLedger, audit: &mut CaptureAudit, bytes: &[u8], now: u64, ) -> Result<(), CaptureRefusal> { let subject = self.subject(); if self.gap.is_some() { return Err(audit.record_refusal( CaptureRefusal::of( CaptureRefusalReason::SessionAlreadyStopped, Some(self.class), ), subject, now, )); } if now < self.accepted_at { return Err(audit.record_refusal( CaptureRefusal::of(CaptureRefusalReason::ChunkOutOfOrder, Some(self.class)), subject, now, )); } if let Err(denial) = continue_capture(ledger, &self.token, now) { self.gap = Some(TimelineGap::opened( now, CaptureRefusalReason::PermissionRefused, Some(denial.reason()), )); return Err(audit.record_refusal( CaptureRefusal::from_denial(denial, Some(self.class)), subject, now, )); } let seq = u32::try_from(self.chunks.len()).unwrap_or(u32::MAX); self.chunks.push(ChunkRecord::build( seq, now, bytes.len(), ContentDigest::sha256(bytes), )); self.bytes.extend_from_slice(bytes); self.accepted_at = now; Ok(()) } pub fn seal( self, ledger: &ConsentLedger, audit: &mut CaptureAudit, now: u64, ) -> CaptureArtifact { let digest = ContentDigest::sha256(&self.bytes); let byte_len = self.bytes.len(); let subject = AuditSubject { offering_id: Some(self.offering_id), lecture_id: Some(self.lecture_id), digest: Some(digest), }; let violation = self.first_unbound_chunk(ledger); let class = self.class; let manifest = CaptureArtifact::manifest_of(self.chunks, byte_len, digest, self.retention, self.gap); match violation { Some((risk, denial)) => { let _ = audit.record_refusal( CaptureRefusal::from_denial(denial, Some(class)), subject, now, ); CaptureArtifact::quarantined(manifest, risk) } None => CaptureArtifact::releasable(manifest, self.bytes), } } fn first_unbound_chunk( &self, ledger: &ConsentLedger, ) -> Option<(ViolationRisk, CaptureDenial)> { for chunk in &self.chunks { if let Err(denial) = bind_permission(ledger, self.token.request(), chunk.started_at()) { return Some(( ViolationRisk::raised( chunk.seq(), chunk.started_at(), denial.reason(), denial.status(), ), denial, )); } } None } fn subject(&self) -> AuditSubject { AuditSubject { offering_id: Some(self.offering_id), lecture_id: Some(self.lecture_id), digest: Some(*self.token.token_id()), } } }";
 
 const WHOLE_SEAL: &str = "pub fn seal( self, ledger: &ConsentLedger, audit: &mut CaptureAudit, now: u64, ) -> CaptureArtifact { let digest = ContentDigest::sha256(&self.bytes); let byte_len = self.bytes.len(); let subject = AuditSubject { offering_id: Some(self.offering_id), lecture_id: Some(self.lecture_id), digest: Some(digest), }; let violation = self.first_unbound_chunk(ledger); let class = self.class; let manifest = CaptureArtifact::manifest_of(self.chunks, byte_len, digest, self.retention, self.gap); match violation { Some((risk, denial)) => { let _ = audit.record_refusal( CaptureRefusal::from_denial(denial, Some(class)), subject, now, ); CaptureArtifact::quarantined(manifest, risk) } None => CaptureArtifact::releasable(manifest, self.bytes), } } fn first_unbound_chunk( &self, ledger: &ConsentLedger, ) -> Option<(ViolationRisk, CaptureDenial)> { for chunk in &self.chunks { if let Err(denial) = bind_permission(ledger, self.token.request(), chunk.started_at()) { return Some(( ViolationRisk::raised( chunk.seq(), chunk.started_at(), denial.reason(), denial.status(), ), denial, )); } } None } fn subject(&self) -> AuditSubject { AuditSubject { offering_id: Some(self.offering_id), lecture_id: Some(self.lecture_id), digest: Some(*self.token.token_id()), } } }";
 
@@ -406,6 +446,102 @@ const WHOLE_PROBE_ATTEMPT: &str = "fn attempt(target: &str) -> String { match fs
 /// written in another crate is refused by the orphan rule instead, because both
 /// the trait and the type would be foreign there.
 const QUARANTINED_IMPL_BLOCKS: [&str; 1] = ["impl QuarantinedArtifact {"];
+
+/// The whole set of functions `src/session.rs` declares, at any visibility.
+///
+/// A chunk is appended by exactly one of them, and the comparison that keeps
+/// the manifest timeline forwards is inside that one's pinned text. **A pin
+/// fixes a body, not the set of bodies.** `WHOLE_RECORD_CHUNK` runs from
+/// `record_chunk` to the end of its `impl` block, so a second function written
+/// *above* it in the same block sits outside every pin in this file -- and a
+/// function in this file can reach `CaptureSession`'s private fields, because
+/// Rust's field privacy is per module. This set is what fails then: an extra
+/// key, whatever it is called and whether or not it is `pub`.
+///
+/// `C-11` is why the rule exists. The defect it records was the comparison
+/// being absent; the shape that would bring it back is a path that appends
+/// without it.
+const SESSION_FUNCTIONS: [&str; 12] = [
+    "pub fn open_device( ledger: &mut ConsentLedger, audit: &mut CaptureAudit, authorization: CaptureAuthorization, class: DeviceClass, layer: DeviceLayer, now: u64, ) -> Result<CaptureSession, CaptureRefusal> {",
+    "pub const fn class(&self) -> DeviceClass {",
+    "pub const fn layer(&self) -> DeviceLayer {",
+    "pub const fn token_id(&self) -> &ContentDigest {",
+    "pub const fn not_after(&self) -> u64 {",
+    "pub fn chunk_count(&self) -> usize {",
+    "pub const fn gap(&self) -> Option<TimelineGap> {",
+    "pub fn record_chunk( &mut self, ledger: &mut ConsentLedger, audit: &mut CaptureAudit, bytes: &[u8], now: u64, ) -> Result<(), CaptureRefusal> {",
+    "pub fn seal( self, ledger: &ConsentLedger, audit: &mut CaptureAudit, now: u64, ) -> CaptureArtifact {",
+    "fn first_unbound_chunk( &self, ledger: &ConsentLedger, ) -> Option<(ViolationRisk, CaptureDenial)> {",
+    "fn subject(&self) -> AuditSubject {",
+    "pub fn releasable_bytes<'artifact>( artifact: &'artifact CaptureArtifact, audit: &mut CaptureAudit, now: u64, ) -> Result<&'artifact [u8], CaptureRefusal> {",
+];
+
+/// `CaptureSession`'s fields, and every one of them is private.
+///
+/// `accepted_at` is the highest instant the session has accepted and it is what
+/// the ordering comparison reads. A `pub` on it would let a caller in any crate
+/// lower it back, and a `pub` on all of them would write the struct literal
+/// `tests/compile_fail/capture_session_has_no_public_constructor.rs` refuses.
+/// Neither is a new function, so neither is something `SESSION_FUNCTIONS` can
+/// see.
+const SESSION_FIELDS: [&str; 10] = [
+    "token: CaptureCapabilityToken",
+    "class: DeviceClass",
+    "layer: DeviceLayer",
+    "offering_id: OfferingId",
+    "lecture_id: LectureSessionId",
+    "retention: RetentionTerms",
+    "accepted_at: u64",
+    "chunks: Vec<ChunkRecord>",
+    "bytes: Vec<u8>",
+    "gap: Option<TimelineGap>",
+];
+
+/// Which of `the_capture_gate_appends_a_chunk_from_one_place`'s rules an
+/// evasion sample is written against.
+///
+/// Naming it is the difference between "something caught this" and "the rule
+/// this sample exists to test caught it". Three of the four rules could do
+/// nothing at all and a sample that trips any one of them would still pass an
+/// `any`-shaped assertion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Caught {
+    /// The whole set of functions `src/session.rs` declares.
+    ExtraFunction,
+    /// `CaptureSession`'s field list, and that none of them is `pub`.
+    PublicField,
+    /// The call-site counts on the constructors a chunk reaches a manifest by.
+    ExtraSite,
+    /// The rule that none of those types is renamed on a `use`.
+    Aliased,
+}
+
+/// The crate-private constructors a chunk passes through on its way to a
+/// manifest, each of which must be reached from exactly one site.
+///
+/// `record_chunk` is the only place that compares an instant, and it is only
+/// the only place a chunk is recorded while these are reached from it alone.
+/// Each is `pub(crate)`, so the set of modules that could call one is the whole
+/// crate rather than the file that declares it -- and `CaptureManifest`'s
+/// fields are private, so a second path has to go through `manifest_of` to
+/// assemble one at all.
+const CHUNK_CONSTRUCTORS: [(&str, &str); 4] = [
+    ("ChunkRecord", "build"),
+    ("CaptureArtifact", "manifest_of"),
+    ("CaptureArtifact", "releasable"),
+    ("CaptureArtifact", "quarantined"),
+];
+
+/// The types a `use` may not rename in this crate's product source.
+///
+/// Every count above is on a path, and `Row::build(..)` after
+/// `use ChunkRecord as Row` spells none of them. `academic-capture`'s
+/// `SessionClock as ` rule is the precedent.
+const UNALIASED_TYPES: [&str; 3] = [
+    "ChunkRecord as ",
+    "CaptureArtifact as ",
+    "CaptureSession as ",
+];
 
 /// The whole set of signatures in this crate whose return type names a byte.
 ///
@@ -627,6 +763,162 @@ fn the_capture_gate_re_runs_the_binding_on_every_path() -> TestResult {
         "there are {continues} boundary re-checks, not two"
     );
     assert_eq!(binds, 1, "there are {binds} reconciliation sites, not one");
+    Ok(())
+}
+
+/// A chunk reaches a manifest from one place, and that place compares its
+/// instant.
+///
+/// `C-11` was that comparison missing. It is now inside `record_chunk`'s pinned
+/// text, and a pin says nothing about whether a *second* path exists beside the
+/// pinned one -- which is the lesson `T141` and `P2-RF10` both left. So the two
+/// whole sets and the four counts here are about the set of paths rather than
+/// about any one body:
+///
+/// | Rule | The path it refuses |
+/// |---|---|
+/// | the function set of `src/session.rs` | a second appender in the one file that can reach a session's private fields |
+/// | the field set of `CaptureSession` | a `pub` field that lets a caller lower the mark, or write the literal |
+/// | `ChunkRecord::build` at one site | a chunk record built anywhere else in the crate |
+/// | `CaptureArtifact::manifest_of`, `::releasable`, `::quarantined` at one site each | a manifest assembled from chunks no session ordered |
+/// | no `use` alias on the three types | a rename that spells none of the counted identifiers |
+#[test]
+fn the_capture_gate_appends_a_chunk_from_one_place() -> TestResult {
+    let session = code_of(&crate_root().join("src/session.rs"))?;
+    assert_eq!(
+        declared_functions(&session),
+        SESSION_FUNCTIONS,
+        "the set of functions declared beside the one that appends a chunk changed"
+    );
+    let fields = enum_variants(&session, "pub struct CaptureSession {");
+    assert_eq!(
+        fields, SESSION_FIELDS,
+        "the session's field list changed; the ordering mark is one of them"
+    );
+    for field in &fields {
+        assert!(
+            !field.starts_with("pub"),
+            "{field} is public; the session's state is reachable from outside the crate"
+        );
+    }
+
+    // The counts. Each is a whole-identifier count with `fn <name>(`
+    // subtracted, for `P2-RF10`'s reason: a spelling count is defeated by a
+    // spelling nobody listed. **Both spellings of the path are counted**: a
+    // constructor called from inside its own `impl` block writes `Self::`, and
+    // injection `L-I18` is the second assembly path that walked past the first
+    // version of this rule by doing exactly that.
+    let mut counted = [0_usize; CHUNK_CONSTRUCTORS.len()];
+    let mut building_files = BTreeSet::new();
+    let mut scanned = 0_usize;
+    for path in crate_product_sources()? {
+        let code = without_use_items(&code_of(&path)?);
+        scanned = scanned.saturating_add(1);
+        for (index, (owner, name)) in CHUNK_CONSTRUCTORS.iter().enumerate() {
+            let here = calls_of(&code, &format!("{owner}::{name}"))
+                + calls_of(&code, &format!("Self::{name}"));
+            if here > 0 {
+                building_files.insert(relative_to_crate(&path));
+            }
+            counted[index] = counted[index].saturating_add(here);
+        }
+    }
+    assert!(scanned >= 8, "only {scanned} product files were read");
+    for (index, (owner, name)) in CHUNK_CONSTRUCTORS.iter().enumerate() {
+        assert_eq!(
+            counted[index], 1,
+            "{owner}::{name} is reached from {} sites, not one",
+            counted[index]
+        );
+    }
+    assert_eq!(
+        building_files,
+        ["src/session.rs".to_owned()].into_iter().collect(),
+        "a chunk reaches a manifest from a file other than the one holding the comparison"
+    );
+
+    // The imports, read with the `use` items kept: a rename is the way to call
+    // a counted identifier without spelling it. A `type` alias is the other,
+    // and it is not a `use` item, so it is read in the same pass.
+    for path in crate_product_sources()? {
+        let code = code_of(&path)?;
+        for alias in UNALIASED_TYPES {
+            assert_eq!(
+                occurrences(&code, alias),
+                0,
+                "{}: `{alias}` renames a type the counts above read",
+                relative_to_crate(&path)
+            );
+        }
+        for (owner, _) in CHUNK_CONSTRUCTORS {
+            assert_eq!(
+                occurrences(&code, &format!("= {owner};")),
+                0,
+                "{}: a type alias renames {owner}",
+                relative_to_crate(&path)
+            );
+        }
+    }
+
+    // The evasions, each run through the rules above, and each naming the rule
+    // that has to be the one that catches it. Asserting only that *something*
+    // caught a sample would pass while three of the four rules did nothing.
+    let evasions: [(&str, &str, Caught); 4] = [
+        (
+            "a second appender above the pinned one, taking a record somebody else built",
+            "impl CaptureSession {\n    \
+             fn note(&mut self, row: ChunkRecord) {\n        self.chunks.push(row);\n    }\n}",
+            Caught::ExtraFunction,
+        ),
+        (
+            "a public field that lets a caller lower the mark",
+            "pub struct CaptureSession {\n    token: CaptureCapabilityToken,\n    \
+             pub accepted_at: u64,\n}",
+            Caught::PublicField,
+        ),
+        (
+            "a manifest assembled from chunks no session ordered, inside the type's own impl \
+             block, so it spells `Self` and none of the counted paths",
+            "pub(crate) fn rebuilt(rows: Vec<ChunkRecord>, bytes: Vec<u8>) -> Self {\n    \
+             Self::releasable(Self::manifest_of(rows, 0, digest, terms, None), bytes)\n}",
+            Caught::ExtraSite,
+        ),
+        (
+            "the same build reached through a use alias, which spells no counted identifier",
+            "use crate::artifact::ChunkRecord as Row;\n\
+             fn subject(&self) -> AuditSubject {\n    \
+             self.chunks.push(Row::build(0, 0, 0, digest));\n}",
+            Caught::Aliased,
+        ),
+    ];
+    for (name, sample, expected) in evasions {
+        let code = strip_non_code(sample);
+        let without_uses = without_use_items(&code);
+        let fires = |rule: Caught| match rule {
+            Caught::ExtraFunction => declared_functions(&code)
+                .iter()
+                .any(|signature| !SESSION_FUNCTIONS.contains(&signature.as_str())),
+            Caught::PublicField => enum_variants(&code, "pub struct CaptureSession {")
+                .iter()
+                .any(|field| field.starts_with("pub")),
+            Caught::ExtraSite => CHUNK_CONSTRUCTORS.iter().any(|(owner, name)| {
+                calls_of(&without_uses, &format!("{owner}::{name}"))
+                    + calls_of(&without_uses, &format!("Self::{name}"))
+                    > 0
+            }),
+            Caught::Aliased => UNALIASED_TYPES
+                .iter()
+                .any(|alias| occurrences(&code, alias) > 0),
+        };
+        assert!(
+            fires(expected),
+            "the evasion `{name}` was not caught by {expected:?}, the rule it was written against"
+        );
+    }
+
+    // And the rules are not vacuous against the real file.
+    assert!(session.contains("ChunkRecord::build("));
+    assert!(session.contains("self.accepted_at"));
     Ok(())
 }
 

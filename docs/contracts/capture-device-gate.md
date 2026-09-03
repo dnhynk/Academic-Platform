@@ -143,21 +143,50 @@ runner has no capture device, so the Windows device rows are `NOT_RUN` there and
 
 ## Termination at the boundary
 
-Three checks, and each asks a different question.
+Four checks, and each asks a different question.
 
-`open_device` asks whether this token opens this class. `record_chunk` asks, for
-every chunk, whether the section 3.7 permission still holds — by re-running the
+`open_device` asks whether this token opens this class, and the instant it is
+asked at becomes the session's first accepted one. `record_chunk` asks two.
+
+The first is order: `now` against `accepted_at`, the highest instant this
+session has accepted, and a lower one is refused as `CHUNK_OUT_OF_ORDER`.
+`accepted_at` starts at the instant the device opened, so the first chunk is
+compared against something rather than exempted — a rule whose first case is
+skipped is a rule with a hole in it. Equal instants are accepted and take their
+own sequence number, for the reason `academic-capture`'s `SessionClock::tick`
+accepts equal readings: two events can share a nanosecond and still need an
+order.
+
+The second is permission: whether section 3.7 still holds, by re-running the
 whole binding through `continue_capture`, not by comparing the token's own
 `not_after`, because a token minted at one instant says nothing about a later
-one: the grant can expire, the scope interval can end, and a superseding record
+one — the grant can expire, the scope interval can end, and a superseding record
 can arrive, and only the binding sees all three.
 
-A refusal stops the capture. The `TimelineGap` opens at that instant and every
-later chunk is refused as `SESSION_ALREADY_STOPPED`, so a caller that ignores
-the error does not resume across the boundary. The gap is open-ended: the system
-knows when it stopped and does not know when the lecture ended, and writing an
-end it inferred would be the silent re-timestamping section 34.1 forbids one row
-above.
+**Order is compared first, and that ordering is load-bearing.** A binding
+refusal opens a `TimelineGap` at `now`; a backwards `now` allowed through to it
+would put the gap itself earlier than a chunk already recorded, which is the
+same backwards timeline one layer over. Refusing first means no instant below
+the mark reaches anything this session stores. It is not a way past the
+boundary: a chunk the order check refuses is not recorded at all, so nothing
+crosses, and `seal` re-binds whatever was recorded regardless.
+
+**An ordering refusal is not a stop and not a quarantine.** What a backwards
+reading says is that the caller's clock moved, not that the permission ended, so
+no gap opens, the mark stays where it was, and a later chunk at or above it is
+accepted. It is not `PERMISSION_VIOLATION_RISK` either: that state is section
+34.1's *unpermitted recording*, and an out-of-order chunk is no evidence about
+permission — a row spelling it would tell a reviewer an authority was involved
+when none was. Quarantine is also a seal-time verdict, so reaching for it here
+would mean letting the backwards instant into the manifest first and reporting
+it afterwards. The defect is prevented rather than recorded.
+
+A **binding** refusal stops the capture. The `TimelineGap` opens at that instant
+and every later chunk is refused as `SESSION_ALREADY_STOPPED`, so a caller that
+ignores the error does not resume across the boundary. The gap is open-ended:
+the system knows when it stopped and does not know when the lecture ended, and
+writing an end it inferred would be the silent re-timestamping section 34.1
+forbids one row above.
 
 `seal` asks the question neither of the first two can: whether every chunk that
 *was* recorded re-binds at its own instant. That is what makes the second
@@ -243,6 +272,7 @@ them:
 | `SESSION_ALREADY_STOPPED` | a chunk offered after the boundary |
 | `ARTIFACT_QUARANTINED` | `releasable_bytes` on a quarantined artefact |
 | `DEVICE_LAYER_UNAVAILABLE` | a backend that was asked to install and could not |
+| `CHUNK_OUT_OF_ORDER` | a chunk whose instant is below the session's highest accepted one |
 
 and, under the first of those, every arm of `CaptureDenialReason` with the
 scenario that produces it. Eight of the nine are reachable.
@@ -370,7 +400,12 @@ There is no constant holding a "usual" device set, no `Default` on
 | C-4 | `CaptureDenialReason::ScopeMismatch` is unreachable through `bind_permission`, so a scope that does not answer is audited as `PERMISSION_UNKNOWN`. Both readings fail closed; what is lost is which comparison a reviewer sees in the row. Closing it means editing `bind_permission`, which is pinned as whole text by `P2-G6`'s scans, or removing the arm. | A review of capture audit rows that needs to tell "nobody answered" from "somebody answered for another term". `scope_mismatch_is_refused_as_unknown_and_the_scope_arm_is_unreachable` fails the day either becomes reachable, so this row cannot go stale silently. |
 | C-5 | Nothing writes migration `0006`'s rows. This is `C-2` from the consent contract, restated because that page names `P2-L1` as when it starts mattering and this task did not close it: the evaluation reads an in-memory ledger. | **`P2-L2` has landed and did not close it either.** Its chunk journal does survive a daemon restart, but the permission behind it does not: `begin` and `resume` both read an in-memory `ConsentLedger`. The row moves on to a resume that outlives the process that held one, and is `C-7` on [the capture subsystem contract](capture-subsystem.md). |
 | C-6 | The Windows backend cannot widen by class, so a Windows capture reaches its device through the unrestricted parent rather than through a container the token opened. The media split on Windows is this crate's comparison, not the kernel's. | A Windows capture surface. **`P2-L2` is not one**: it opens no device, holds no handle, and takes every byte it journals as an argument, so it decided no process shape. Closing this means handle inheritance from the parent, or a packaged application with device capability declarations, and the task that first opens a device on Windows is the one that has to choose. |
-| C-11 | **A chunk's instant is compared against the section 3.7 binding and against nothing else.** `record_chunk` does not compare `now` with the previous chunk's `started_at`, so a caller that hands over a wall clock that stepped back appends a chunk earlier than the one before it, and `seal` returns a **releasable** artefact whose manifest timeline goes backwards. Measured by `P2-L2` rather than reasoned: two chunks at `INSIDE + 100` and `INSIDE + 1` were recorded, the second call returned `Ok(())`, `is_quarantined()` was `false`, and the manifest's instants were `[1500100, 1500001]`. Section 34.1 forbids silent re-timestamping one row above, and this is a path to it. Closing it means a comparison inside `record_chunk`, whose whole text is pinned by `WHOLE_RECORD_CHUNK`, so it is a change to this crate's contract rather than a caller's fix. `academic-capture` refuses the same reading at [its own clock](capture-subsystem.md) and the two crates share no code, for the reason `C-9` there gives. | A capture whose host clock steps back — a resynchronization mid-lecture is the ordinary case. Nothing today writes a `now` from a wall clock, because every caller is a test with committed literals; the first real recorder is when it starts mattering. |
+
+### Closed
+
+| # | How it was closed |
+|---|---|
+| C-11 | **`record_chunk` compares the chunk's instant against the session's highest accepted one and refuses a lower one as `CHUNK_OUT_OF_ORDER`.** The mark starts at the instant `open_device` was called, so the first chunk is compared too. `out_of_order_chunk_is_refused` runs `P2-L2`'s exact measurement — `INSIDE + 100` then `INSIDE + 1`, which gave `Ok(())`, `is_quarantined() == false` and instants `[1500100, 1500001]` — and now observes the refusal, the chunk count unchanged at one, no gap opened, and a manifest that runs forwards. Its three boundaries are exercised: one tick below is refused, equal is accepted, one tick above is accepted. It is a refusal rather than a quarantine for the reason in *Termination at the boundary*, and `the_capture_gate_appends_a_chunk_from_one_place` is what keeps a second appender from existing beside the compared one. |
 
 ## Posture
 

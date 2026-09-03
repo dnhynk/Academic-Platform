@@ -1,21 +1,31 @@
 //! The running capture, the boundary it stops at, and the seal that decides
 //! which artefact it becomes.
 //!
-//! # Three checks, and each one is a different question
+//! # Four checks, and each one is a different question
 //!
-//! [`open_device`] asks whether this token opens this device class.
-//! [`CaptureSession::record_chunk`] asks, for every chunk, whether the section
-//! 3.7 permission still holds -- by re-running the whole binding through
+//! [`open_device`] asks whether this token opens this device class, and the
+//! instant it is asked at becomes the session's first accepted one.
+//! [`CaptureSession::record_chunk`] asks two: whether the chunk's instant is at
+//! or above the highest this session has accepted, and whether the section 3.7
+//! permission still holds -- the second by re-running the whole binding through
 //! `continue_capture`, not by comparing the token's own `not_after`, because a
 //! token minted at one instant says nothing about a later one.
-//! [`CaptureSession::seal`] asks the question neither of the first two can:
-//! whether every chunk that *was* recorded re-binds at its own instant.
+//! [`CaptureSession::seal`] asks the question none of the others can: whether
+//! every chunk that *was* recorded re-binds at its own instant.
 //!
-//! The third is what makes the second falsifiable. Delete the
+//! The last is what makes the binding check falsifiable. Delete the
 //! `continue_capture` call from `record_chunk` and chunks keep being appended
 //! past the boundary; `seal` then finds the first one that does not re-bind and
 //! quarantines the artefact, so the injection is observed twice by two
 //! independent mechanisms rather than once by the check that was removed.
+//!
+//! The ordering check has no such second observer, because a chunk it refuses
+//! is never recorded and there is nothing left for the seal to reconcile. What
+//! stands in for one is that `record_chunk` is the only path that appends a
+//! chunk at all: `out_of_order_chunk_is_refused` observes the refusal and
+//! `the_capture_gate_appends_a_chunk_from_one_place` compares the whole set of
+//! functions declared in this file against a committed list, so a second
+//! appender fails as an extra key rather than passing beside the pinned one.
 //!
 //! # The session holds no operating-system handle in the default lane
 //!
@@ -51,6 +61,7 @@ pub struct CaptureSession {
     offering_id: OfferingId,
     lecture_id: LectureSessionId,
     retention: RetentionTerms,
+    accepted_at: u64,
     chunks: Vec<ChunkRecord>,
     bytes: Vec<u8>,
     gap: Option<TimelineGap>,
@@ -64,6 +75,11 @@ pub struct CaptureSession {
 /// `audio_only_permission_denies_camera`: a grant listing `AUDIO` derives a
 /// ruleset holding `MICROPHONE`, and `CAMERA` is refused here rather than
 /// wherever a camera would have been opened.
+///
+/// `now` is also where the session's timeline starts. It is the first value of
+/// `accepted_at`, so the first chunk is compared against the instant the device
+/// opened rather than against nothing -- a rule whose first case is exempt is a
+/// rule with a hole in it.
 pub fn open_device(
     ledger: &mut ConsentLedger,
     audit: &mut CaptureAudit,
@@ -109,6 +125,7 @@ pub fn open_device(
         offering_id,
         lecture_id,
         retention,
+        accepted_at: now,
         chunks: Vec::new(),
         bytes: Vec::new(),
         gap: None,
@@ -152,15 +169,37 @@ impl CaptureSession {
         self.gap
     }
 
-    /// Records one chunk, if the permission still holds at `now`.
+    /// Records one chunk, if it is in order and the permission still holds at
+    /// `now`.
     ///
-    /// The first statement re-runs the whole section 3.7 binding. It is not a
-    /// comparison against the token's own `not_after`: the grant can expire,
-    /// the scope interval can end, and a superseding record can arrive, and
-    /// only the binding sees all three.
+    /// **Two comparisons, and they are about different things.** `now` is
+    /// compared against `accepted_at`, the highest instant this session has
+    /// accepted -- the device open's own instant until a chunk raises it -- and
+    /// a lower one is refused as
+    /// [`CaptureRefusalReason::ChunkOutOfOrder`]. Then the whole section 3.7
+    /// binding is re-run through `continue_capture`, which is not a comparison
+    /// against the token's own `not_after`: the grant can expire, the scope
+    /// interval can end, and a superseding record can arrive, and only the
+    /// binding sees all three.
     ///
-    /// A refusal stops the capture. The gap is opened at `now`, the row is
-    /// appended, and every later chunk is refused as
+    /// **Order is compared first so that no instant below the mark reaches
+    /// anything that stores one.** The binding's refusal opens a
+    /// [`TimelineGap`] at `now`; a backwards `now` allowed through to it would
+    /// put the gap itself earlier than a chunk already recorded, which is the
+    /// same backwards timeline one layer over.
+    ///
+    /// **An ordering refusal is not a stop.** What a backwards reading says is
+    /// that the caller's clock moved, not that the permission ended, so no gap
+    /// opens, the mark stays where it was, and a later chunk at or above it is
+    /// accepted. Equal instants are accepted and get their own sequence number.
+    /// `academic-capture`'s `SessionClock::tick` answers a backwards reading the
+    /// same way -- refuse, do not clamp, do not stop -- and the two crates hold
+    /// the rule separately for the reason `C-9` on
+    /// [the capture subsystem contract](../../../docs/contracts/capture-subsystem.md)
+    /// gives: no workspace crate may depend on this one.
+    ///
+    /// A binding refusal *does* stop the capture. The gap is opened at `now`,
+    /// the row is appended, and every later chunk is refused as
     /// [`CaptureRefusalReason::SessionAlreadyStopped`], so a caller that
     /// ignores the error does not resume across the boundary.
     pub fn record_chunk(
@@ -177,6 +216,13 @@ impl CaptureSession {
                     CaptureRefusalReason::SessionAlreadyStopped,
                     Some(self.class),
                 ),
+                subject,
+                now,
+            ));
+        }
+        if now < self.accepted_at {
+            return Err(audit.record_refusal(
+                CaptureRefusal::of(CaptureRefusalReason::ChunkOutOfOrder, Some(self.class)),
                 subject,
                 now,
             ));
@@ -201,6 +247,7 @@ impl CaptureSession {
             ContentDigest::sha256(bytes),
         ));
         self.bytes.extend_from_slice(bytes);
+        self.accepted_at = now;
         Ok(())
     }
 
