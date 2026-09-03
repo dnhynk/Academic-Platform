@@ -103,3 +103,47 @@ would still have failed on this runner. The independently completed feature
 job used 18.1% instead of extending that default job by another 5:26. Windows
 ARM is the next-highest Rust default at 43.0%; every Linux, Linux ARM, and macOS
 Rust job is at or below 16.3%.
+
+## Latest run
+
+`P2-G6` adds one workspace member, `academic-consent`, which the refresh rule
+above names as a trigger. Run
+[33696263675](https://github.com/dnhynk/Academic-Platform/actions/runs/33696263675)
+at `f0a4ddef28beaab00c20a360a5adb1a255855135` completed 17/17.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:03 | 5:00 | 1.0% |
+| `rust-default-ubuntu-latest` | 4:11 | 30:00 | 13.9% |
+| `rust-default-ubuntu-24.04-arm` | 4:08 | 30:00 | 13.8% |
+| `rust-default-windows-latest` | 14:08 | 30:00 | 47.1% |
+| `rust-default-windows-11-arm` | 13:32 | 30:00 | 45.1% |
+| `rust-default-macos-latest` | 5:17 | 30:00 | 17.6% |
+| `rust-features-ubuntu-latest` | 2:36 | 30:00 | 8.7% |
+| `rust-features-ubuntu-24.04-arm` | 2:15 | 30:00 | 7.5% |
+| `rust-features-windows-latest` | 5:10 | 30:00 | 17.2% |
+| `rust-features-windows-11-arm` | 4:42 | 30:00 | 15.7% |
+| `rust-features-macos-latest` | 1:54 | 30:00 | 6.3% |
+| `phase1-exit-ubuntu-latest` | 4:31 | 45:00 | 10.0% |
+| `phase1-exit-windows-latest` | 7:59 | 45:00 | 17.7% |
+| `encrypted-store-lane-ubuntu-latest` | 3:21 | 45:00 | 7.4% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:49 | 45:00 | 10.7% |
+| `rotation-orchestration-lane-ubuntu-latest` | 5:12 | 45:00 | 11.6% |
+| `pnpm-contracts` | 0:51 | 15:00 | 5.7% |
+
+The slowest job is still `rust-default-windows-latest`, at 47.1% against the
+67.7% the post-split table recorded — a 6:10 difference on the same workflow with
+one more workspace member, which is runner spread rather than an effect of this
+change. That is the 3:57 spread the pre-split section already recorded on the
+same label, and it is why this table is refreshed rather than compared: the
+number that matters is the headroom, and every job on this run is at or below
+47.1%.
+
+The new member adds one crate to `cargo clippy --workspace --all-targets` and
+one test binary plus a `trybuild` case to `cargo test --workspace`. The
+`trybuild` case compiles two small programs and is the one addition that costs
+more than a compile of the crate itself; it sits inside the workspace test step
+on the `rust-default-*` jobs.
+
+`encrypted-store-lane-ubuntu-latest` is the job migration `0006` changes, and it
+is at 7.4%.

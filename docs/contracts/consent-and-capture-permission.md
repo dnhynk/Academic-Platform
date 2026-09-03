@@ -80,7 +80,9 @@ filing an attestation is a recorded act, and it is not the act of granting.
 ## The section 3.7 aggregate
 
 `PermissionRecord` carries the aggregate identifier, the `permission_seq` that
-completes section 3.7's `(offering_id, permission_seq)` key, a
+completes section 3.7's `(offering_id, permission_seq)` key — refused below one
+by the constructor and by the migration's `CHECK`, so a record the database
+would reject is not representable in memory either — a
 `PermissionScope`, a `Disposition`, the seven-dimension `Checklist`,
 `verified_at`, and `verification_source_digest`. `Disposition` has two arms —
 `Prohibited(RefusalRecord)` and `Granted(AuthorityGrant)` — and no third: the
@@ -190,9 +192,12 @@ rather than on a case somebody remembered to write.
 
 `bind_permission` is where every comparison section 3.7 asks for happens: the
 request is whole, a record answers the scope, the status permits, the interval
-contains the instant, every requested medium and processing step is on the
-grant, external processing has its own flag, and the requested lifetime reaches
-past neither the grant nor the scope.
+contains the instant, at least one medium is requested and every requested
+medium and processing step is on the grant, external processing has its own
+flag, and the requested lifetime reaches past neither the grant nor the scope
+and is not already over. That last clause is why
+`mint_capture_capability` cannot return a token `continue_capture` would refuse
+on its first call.
 
 Two functions call it, both as their first statement:
 `mint_capture_capability`, and `continue_capture` — which re-runs the whole

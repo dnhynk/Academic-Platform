@@ -850,6 +850,32 @@ fn grant_carries_every_section_37_field() -> TestResult {
         denial.reason(),
         CaptureDenialReason::ExternalProcessingNotGranted
     );
+    // A token whose lifetime is already over at the instant it is asked for is
+    // refused rather than minted dead, so `mint_capture_capability` and
+    // `continue_capture` agree about what a live token is.
+    let mut already_over = request()?;
+    already_over.not_after = Some(INSIDE);
+    let denial = bind_permission(&ledger_with_grant()?, &already_over, INSIDE)
+        .err()
+        .ok_or("a token whose lifetime is already over must be refused")?;
+    assert_eq!(denial.reason(), CaptureDenialReason::LifetimeExceedsGrant);
+
+    // The section 3.7 key starts at one on both sides. Migration 0006 CHECKs it
+    // and so does the constructor, so a record the database would refuse is not
+    // representable here either.
+    assert!(
+        PermissionRecord::record(
+            permission_id()?,
+            0,
+            whole_term_scope(offering_a()?, term()?)?,
+            Disposition::Granted(grant(Vec::new())?),
+            complete_checklist()?,
+            TERM_FROM,
+            ContentDigest::sha256(b"verification"),
+        )
+        .is_err()
+    );
+
     let _ = audio_local_use();
     Ok(())
 }
