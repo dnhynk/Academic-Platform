@@ -5662,7 +5662,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
         correlationAdmitted.has(claimed) ||
         correlationPathPackages.has(claimed) ||
         centerAdmitted.has(claimed) ||
-        centerPathPackages.has(claimed),
+        centerPathPackages.has(claimed) ||
+        classificationAdmitted.has(claimed) ||
+        classificationPathPackages.has(claimed),
       false,
       `${claimed} is claimed by two admission receipts`,
     );
