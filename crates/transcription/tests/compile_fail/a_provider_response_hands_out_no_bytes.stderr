@@ -1,0 +1,33 @@
+error[E0624]: method `response_bytes` is private
+  --> tests/compile_fail/a_provider_response_hands_out_no_bytes.rs:10:14
+   |
+10 |     response.response_bytes()
+   |              ^^^^^^^^^^^^^^ private method
+   |
+  ::: src/response.rs
+   |
+   |     pub(crate) fn response_bytes(&self) -> &[u8] {
+   |     -------------------------------------------- private method defined here
+
+error[E0616]: field `provider_response_bytes` of struct `ProviderResponse` is private
+  --> tests/compile_fail/a_provider_response_hands_out_no_bytes.rs:14:15
+   |
+14 |     &response.provider_response_bytes
+   |               ^^^^^^^^^^^^^^^^^^^^^^^ private field
+
+error[E0599]: the method `to_string` exists for reference `&academic_untrusted_content::label::Untrusted<academic_untrusted_content::ingest::IngestedDocument>`, but its trait bounds were not satisfied
+  --> tests/compile_fail/a_provider_response_hands_out_no_bytes.rs:18:22
+   |
+18 |     entry.labelled().to_string()
+   |                      ^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+   |
+  ::: $WORKSPACE/crates/untrusted-content/src/label.rs
+   |
+   | pub struct Untrusted<T> {
+   | ----------------------- doesn't satisfy `_: Display` or `_: ToString`
+   |
+   = note: the following trait bounds were not satisfied:
+           `academic_untrusted_content::label::Untrusted<academic_untrusted_content::ingest::IngestedDocument>: std::fmt::Display`
+           which is required by `academic_untrusted_content::label::Untrusted<academic_untrusted_content::ingest::IngestedDocument>: ToString`
+           `&academic_untrusted_content::label::Untrusted<academic_untrusted_content::ingest::IngestedDocument>: std::fmt::Display`
+           which is required by `&academic_untrusted_content::label::Untrusted<academic_untrusted_content::ingest::IngestedDocument>: ToString`

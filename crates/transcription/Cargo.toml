@@ -1,0 +1,64 @@
+[package]
+name = "academic-transcription"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Five product edges, each one a boundary this crate refuses to restate.
+#
+# `academic-capture` is `P2-L2`. A pipeline input is a frame out of a chunk
+# journal whose header names the capability token the capture began under, so
+# `pipeline_input_authorization` compares a journal header rather than trusting
+# a caller's word about what an audio buffer was.
+#
+# `academic-egress-boundary` is `P2-G2`. The scoped-remote route takes an
+# `&AcceptedResponse`, whose one producer is `EgressProxy::accept_response`, so
+# a response that reached no canary scan and spent no grant is a value the
+# remote route cannot be handed. This crate holds no socket and no transport
+# implementation.
+#
+# `academic-untrusted-content` is `P2-G5`. Every raw provider response is
+# sealed as an `Untrusted<IngestedDocument>` and leaves the archive as nothing
+# else, so this crate adds no second trust label.
+#
+# `academic-model-run` is `P2-M1`. Every model execution here records that
+# crate's twelve section 27.3 fields; there is no provenance record of this
+# crate's own. Its `RawScore` is also why a provider confidence has no ordering.
+#
+# `academic-proposal` is `P2-M2`. A user correction is one of that crate's
+# three `DecisionAction` dispositions through its `ReviewQueue`; this crate
+# mints no fourth.
+#
+# `academic-domain` supplies the identifier, digest and confidence types.
+#
+# There is deliberately no edge to `academic-worker`: no workspace crate may
+# depend on that package at all, because its sandbox probe would then be
+# reachable from a default build. See the contract page.
+[dependencies]
+academic-capture = { path = "../capture" }
+academic-domain = { path = "../domain" }
+academic-egress-boundary = { path = "../egress-boundary" }
+academic-model-run = { path = "../model-run" }
+academic-proposal = { path = "../proposal" }
+academic-untrusted-content = { path = "../untrusted-content" }
+sha2.workspace = true
+thiserror.workspace = true
+
+# `academic-consent` and `academic-policy` are dev edges only. A product file
+# here therefore cannot name `mint_capture_capability`, `PermissionBroker`,
+# `CapabilityToken` or `RuntimeToolCall` -- an undeclared crate is a compile
+# error, not a lint -- while the acceptance suite still drives a real capture
+# through `academic_capture::begin` and a real transmission through
+# `EgressProxy`.
+[dev-dependencies]
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-policy = { path = "../policy" }
+tempfile.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

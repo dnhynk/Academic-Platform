@@ -487,9 +487,20 @@ const EXPOSURE_SITES: [(&str, &str, &str); 3] = [
 /// crate's boundary is exactly the shape this crate exists to stop being
 /// spendable. What keeps that scoped is that the set of files that can hold one
 /// is small and reviewed; a fourth file naming the type fails here.
-const ACCEPTED_RESPONSE_FILES: [&str; 4] = [
+const ACCEPTED_RESPONSE_FILES: [&str; 5] = [
     "crates/egress-boundary/src/lib.rs",
     "crates/egress-boundary/src/response.rs",
+    // `P2-L3`. `ProviderResponse::from_remote` is the fifth file and the only
+    // one outside these two crates. It takes the accepted response beside the
+    // `RemoteAdmission` that the scoped-remote route produced, copies the bytes
+    // into a value whose one accessor is crate-private, and hands the archive
+    // an `Untrusted<IngestedDocument>` -- so the unlabelled form lives for the
+    // length of one constructor. `the_accepted_response_is_sealed_immediately`
+    // in `crates/transcription/tests/transcription_scans.rs` holds the other
+    // half: that constructor is the only function in that crate taking one, and
+    // no product file there names `EgressProxy`, so a second one cannot be
+    // produced locally either.
+    "crates/transcription/src/response.rs",
     "crates/untrusted-content/src/ingest.rs",
     "crates/untrusted-content/src/proposal.rs",
 ];

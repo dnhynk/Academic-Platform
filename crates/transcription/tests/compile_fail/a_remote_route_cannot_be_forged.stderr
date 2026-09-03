@@ -1,0 +1,11 @@
+error[E0451]: fields `provider`, `model_version` and `retention` of struct `RemoteAdmission` are private
+  --> tests/compile_fail/a_remote_route_cannot_be_forged.rs:16:9
+   |
+15 |     RemoteAdmission {
+   |     --------------- in this type
+16 |         provider,
+   |         ^^^^^^^^ private field
+17 |         model_version,
+   |         ^^^^^^^^^^^^^ private field
+18 |         retention,
+   |         ^^^^^^^^^ private field

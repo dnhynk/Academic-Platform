@@ -475,6 +475,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-transcription"
+version = "0.1.0"
+dependencies = [
+ "academic-capture",
+ "academic-consent",
+ "academic-domain",
+ "academic-egress-boundary",
+ "academic-model-run",
+ "academic-policy",
+ "academic-proposal",
+ "academic-untrusted-content",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "trybuild",
+ "uuid",
+]
+
+[[package]]
 name = "academic-untrusted-content"
 version = "0.1.0"
 dependencies = [
