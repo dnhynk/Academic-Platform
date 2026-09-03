@@ -177,7 +177,14 @@ fn the_refusal_names_what_still_works() -> TestResult {
 #[cfg(not(feature = "rotation-orchestration"))]
 #[test]
 fn the_recipient_half_of_a_rotation_is_refused() -> TestResult {
-    let root = std::env::temp_dir().join("academic-rotation-gate-recipients");
+    // The name carries this process, because the next line removes whatever is
+    // at it. A fixed name is the same path in every process on the machine, so
+    // two lanes running this suite at once would delete each other's journal
+    // mid-test and read the resulting `NotFound` as the gate's refusal.
+    let root = std::env::temp_dir().join(format!(
+        "academic-rotation-gate-recipients-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&root);
     let profile = academic_crypto::ProfileId::from_bytes([0x5A; academic_crypto::IDENTIFIER_BYTES]);
     let generation = academic_retention::rotation::KeyGeneration::parse(&"ab".repeat(32))?;
