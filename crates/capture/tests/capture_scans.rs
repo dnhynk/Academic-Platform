@@ -1,12 +1,14 @@
 //! Source scans for the `P2-L2` capture subsystem.
 //!
-//! Seven of this crate's claims are shapes of the source rather than
+//! Eight of this crate's claims are shapes of the source rather than
 //! behaviours, so nothing at run time would notice the day they stopped being
 //! true: that every instant comes from one clock, that no wall clock is read,
-//! that no path moves a mark, that the journal only ever extends, that the four
-//! thresholds are rows rather than constants, that every closed vocabulary is
-//! the list its own enum declares, and that no environment read or abort sits
-//! outside the one gated failpoint. The eighth test below is the walk itself.
+//! that no path moves a mark, that the journal only ever extends, that a
+//! mapping version is built in one place from a pair `estimate_drift` has
+//! ordered, that the four thresholds are rows rather than constants, that every
+//! closed vocabulary is the list its own enum declares, and that no environment
+//! read or abort sits outside the one gated failpoint. The ninth test below is
+//! the walk itself.
 //! `docs/contracts/policy-source-scans.md` is the page these scans are
 //! enumerated on, and this file is written against all five of the empty-scan
 //! shapes it names.
