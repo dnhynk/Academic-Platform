@@ -5733,7 +5733,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !centerAdmitted.has(`${name}@${version}`) &&
       !centerPathPackages.has(`${name}@${version}`) &&
       !lectureAdmitted.has(`${name}@${version}`) &&
-      !lecturePathPackages.has(`${name}@${version}`),
+      !lecturePathPackages.has(`${name}@${version}`) &&
       !classificationAdmitted.has(`${name}@${version}`) &&
       !classificationPathPackages.has(`${name}@${version}`),
   );
@@ -5773,7 +5773,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       transcriptionTuples.length +
       correlationTuples.length +
       centerTuples.length +
-      lectureTuples.length,
+      lectureTuples.length +
       classificationTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
