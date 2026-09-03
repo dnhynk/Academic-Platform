@@ -151,8 +151,9 @@ the workflow are asserted to fail it.
 
 ### What it was sized against
 
-53 completed readings of `rust-default-windows-latest` on the post-split
-workflow, from the Actions jobs API rather than from this page's own tables:
+Every completed reading of every post-split Rust label, enumerated from the
+workflow's own run history rather than from this page's tables — 57 runs, every
+attempt of each:
 
 | Label | n | min | median | p90 | max | max/median |
 |---|---:|---:|---:|---:|---:|---:|
@@ -205,8 +206,8 @@ under the connection policy `crates/store/src/connection.rs` pins,
 `PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL`, in the runner's
 temporary directory.
 
-**The runner that was cancelled was not a slow runner. It was a runner with a
-slow disk**, and the three observations separate the two:
+**What was slow on the cancelled attempt was not compilation**, and three
+observations of essentially one tree separate the two:
 
 | | cancelled attempt | same commit, rerun | rebased head |
 |---|---:|---:|---:|
@@ -217,17 +218,21 @@ slow disk**, and the three observations separate the two:
 
 Both compilation steps were the *fastest* of the three on the attempt that was
 cancelled; only file-backed test execution scaled, by 2.02× against the same
-commit. That is what decided between the options below.
+commit. Whatever the runner-side cause is, it is not one a faster build would
+have answered. That is what decided between the options below.
 
 ### The options
 
-**A cache was rejected on that table.** Compilation on the cancelled attempt was
-2:51 of 30:14 — 9.4% — and it was already the fastest compilation of the three.
-A `target/` cache can only act on the part that was not slow, so no cache
-setting would have saved that run. The Cargo *registry* is already cached by
-`actions/cache`, and a new caching action would additionally need the
-`CONTRIBUTING.md` admission procedure and a `docs/security/` receipt for a
-benefit this measurement bounds at under a tenth of the job.
+**A cache was rejected on a number rather than a principle.** Compilation on the
+cancelled attempt was 2:51 of 30:14 — 9.4% — and it was already the fastest
+compilation of the three. A `target/` cache that removed *all* of it would have
+landed that attempt at about 27:20: inside the limit, by 2:40, on a label whose
+measured spread is 1.36× of a 14:55 median. That is less margin than one draw of
+the spread this page has measured, bought on the part that did not scale, and it
+is not free — restoring and saving a Windows `target/` directory is minutes of
+its own charged to every job. The Cargo *registry* is already cached by
+`actions/cache`; a new caching action would additionally need the
+`CONTRIBUTING.md` admission procedure and a `docs/security/` receipt.
 
 **Raising the limit was rejected as the load-bearing change.** To absorb the
 observed 2.03× draw at the label's current median of 16:35 the limit would have
@@ -255,6 +260,65 @@ the split changed is which reading is at risk — this page's rule is unchanged
 and is now easier to apply, because a group whose worst reading crosses 24:00
 names the package to move next, and the guard in `verify-contracts.mjs` makes
 moving one a two-line workflow edit that cannot silently drop it.
+
+## Latest run
+
+This task changes `.github/workflows/ci.yml`, which the refresh rule names as a
+trigger, and changes nothing else a test reads: no workspace member, no test, no
+feature lane. So the readings below are the same tree as the run before them,
+and the difference between the two is the split rather than growth.
+
+Run
+[33746159023](https://github.com/dnhynk/Academic-Platform/actions/runs/33746159023)
+completed **22/22** on `2503fe8`, first attempt, no rerun.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:04 | 5:00 | 1.3% |
+| `rust-default-ubuntu-latest` | 4:51 | 30:00 | 16.2% |
+| `rust-default-ubuntu-24.04-arm` | 4:06 | 30:00 | 13.7% |
+| `rust-default-windows-latest` | 11:20 | 30:00 | 37.8% |
+| `rust-default-windows-11-arm` | 10:01 | 30:00 | 33.4% |
+| `rust-default-macos-latest` | 5:37 | 30:00 | 18.7% |
+| `rust-store-ubuntu-latest` | 1:38 | 30:00 | 5.4% |
+| `rust-store-ubuntu-24.04-arm` | 1:15 | 30:00 | 4.2% |
+| `rust-store-windows-latest` | 5:33 | 30:00 | 18.5% |
+| `rust-store-windows-11-arm` | 6:32 | 30:00 | 21.8% |
+| `rust-store-macos-latest` | 1:34 | 30:00 | 5.2% |
+| `rust-features-ubuntu-latest` | 3:57 | 30:00 | 13.2% |
+| `rust-features-ubuntu-24.04-arm` | 3:03 | 30:00 | 10.2% |
+| `rust-features-windows-latest` | 5:00 | 30:00 | 16.7% |
+| `rust-features-windows-11-arm` | 5:35 | 30:00 | 18.6% |
+| `rust-features-macos-latest` | 3:22 | 30:00 | 11.2% |
+| `phase1-exit-ubuntu-latest` | 4:08 | 45:00 | 9.2% |
+| `phase1-exit-windows-latest` | 9:49 | 45:00 | 21.8% |
+| `encrypted-store-lane-ubuntu-latest` | 3:25 | 45:00 | 7.6% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:08 | 45:00 | 11.4% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:51 | 45:00 | 15.2% |
+| `pnpm-contracts` | 0:57 | 15:00 | 6.3% |
+
+**`rust-default-windows-latest` reads 11:20, below the *smallest* of the 53
+readings tabulated above** — 12:16 — and 3:35 under their median. Its other half,
+`rust-store-windows-latest`, reads 5:33. The two together are 16:53 of runner
+time against a 14:55 median for the one job they replace: about two minutes more
+spent in total, to take 3:35 off the lane's critical path.
+
+**The store group's worst label is `windows-11-arm` at 6:32, not
+`windows-latest`**, and `rust-default-windows-11-arm` fell further than
+`windows-latest` did — 13:31 median to 10:01. The worst job anywhere on this run
+is 37.8%.
+
+**One run is one reading, which is the thing this page keeps saying.** It does
+not retire the 12:16–20:18 span plus one cancellation that the section above
+holds for the pre-split job; what it establishes is where the two halves start
+from. Add the next readings of `rust-default-*` and `rust-store-*` here as a
+range rather than as a replacement, and re-read the 80% line — 24:00 — against
+the largest of them.
+
+`rust-features-windows-latest` was green on the first attempt of this run. That
+is one attempt against a measured 14.3% failure rate, so it falsifies nothing;
+it is noted only so the next reader does not count this run as a clean one for
+that signature.
 
 ## The `P2-G6` run
 
