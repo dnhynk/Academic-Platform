@@ -1440,14 +1440,17 @@ at `5ac62b3` completed 22/22.
 | `rotation-orchestration-lane-ubuntu-latest` | 7:06 | 45:00 | 15.8% |
 | `pnpm-contracts` | 1:01 | 15:00 | 6.8% |
 
-The slowest job is `rust-default-windows-latest` at 44.0%. That is a **sixth**
-reading of the job the `P2-RF11` section says has no single-reading budget:
-20:18, 14:08, 12:16, 16:56, `P2-U1`'s 12:55 and now 13:12 — 67.7%, 47.1%, 40.9%,
-56.4%, 43.1% and 44.0%. This branch was cut before `P2-U1` merged and rebased
-onto it afterwards, so that reading is the one immediately above and this is the
-next. It sits inside the range those five established rather than extending it,
-so the guidance is unchanged: size headroom off 67.7% and treat each further
-reading as evidence about the range. `phase1-exit-windows-latest` is the second
+The slowest job is `rust-default-windows-latest` at 44.0%. It sits inside the
+range this job has already shown rather than extending it, so the guidance is
+unchanged: size headroom off 67.7% and treat each further reading as evidence
+about the range. This paragraph called that a **sixth** reading, following only
+the chain the `P2-RF11` section opened — 20:18, 14:08, 12:16, then `P2-R1`'s
+16:56, `P2-U1`'s 12:55 and this 13:12. That count was wrong and `P2-RF13`
+withdrew it by enumerating the page: every section that records one run's table
+is a reading, and there were twenty of them before this one. The conclusion the
+count was used for is unaffected, which is why it stood unchallenged for two
+tasks. This branch was cut before `P2-U1` merged and rebased onto it
+afterwards, so that reading is the one immediately above and this is the next. `phase1-exit-windows-latest` is the second
 slowest at 26.3%, and every Linux, Linux ARM and macOS job is at or below 20.8%.
 
 The new member adds one crate to `cargo clippy --workspace --all-targets` and
@@ -1518,3 +1521,88 @@ Four runs between these two (`33776143099`, `33776572409`, `33778048462`,
 `33778918470`) were cancelled by the workflow's own `cancel-in-progress`
 concurrency group when the next commit superseded them. Per the refresh rule
 those are not readings of anything and are excluded from both tables.
+
+## The `P2-X7` run
+
+`P2-X7` adds one workspace member, `academic-evidence-center`, plus content
+under `packages/ui`, which the refresh rule names as a trigger. It adds no
+migration, so the encrypted-store lane is unaffected by anything but the member
+itself. Run
+[33803955481](https://github.com/dnhynk/Academic-Platform/actions/runs/33803955481)
+at `c6d28b9` completed 22/22 on its first attempt, so nothing here is
+right-censored and no `cancel-in-progress` cancellation is being read as a
+duration.
+
+This table is written by `P2-RF13` rather than by `P2-X7`. That task's turn
+ended before hosted CI finished and it said so in its report; the run completed
+and was merged on its numbers, and the record is filled in here rather than
+left as a hole in the page the refresh rule points at.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:05 | 5:00 | 1.7% |
+| `rust-default-ubuntu-latest` | 5:04 | 30:00 | 16.9% |
+| `rust-default-ubuntu-24.04-arm` | 4:25 | 30:00 | 14.7% |
+| `rust-default-windows-latest` | 13:44 | 30:00 | 45.8% |
+| `rust-default-windows-11-arm` | 12:00 | 30:00 | 40.0% |
+| `rust-default-macos-latest` | 7:11 | 30:00 | 23.9% |
+| `rust-store-ubuntu-latest` | 1:36 | 30:00 | 5.3% |
+| `rust-store-ubuntu-24.04-arm` | 1:15 | 30:00 | 4.2% |
+| `rust-store-windows-latest` | 5:38 | 30:00 | 18.8% |
+| `rust-store-windows-11-arm` | 6:26 | 30:00 | 21.4% |
+| `rust-store-macos-latest` | 1:42 | 30:00 | 5.7% |
+| `rust-features-ubuntu-latest` | 3:58 | 30:00 | 13.2% |
+| `rust-features-ubuntu-24.04-arm` | 3:06 | 30:00 | 10.3% |
+| `rust-features-windows-latest` | 6:43 | 30:00 | 22.4% |
+| `rust-features-windows-11-arm` | 6:06 | 30:00 | 20.3% |
+| `rust-features-macos-latest` | 3:41 | 30:00 | 12.3% |
+| `phase1-exit-ubuntu-latest` | 4:20 | 45:00 | 9.6% |
+| `phase1-exit-windows-latest` | 11:39 | 45:00 | 25.9% |
+| `encrypted-store-lane-ubuntu-latest` | 3:22 | 45:00 | 7.5% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:44 | 45:00 | 10.5% |
+| `rotation-orchestration-lane-ubuntu-latest` | 7:11 | 45:00 | 16.0% |
+| `pnpm-contracts` | 1:02 | 15:00 | 6.9% |
+
+The slowest job is `rust-default-windows-latest` at 45.8%, with
+`rust-default-windows-11-arm` beside it at 40.0%. **No row reaches 80%**, so
+this run is not a review trigger, and nothing here is grounds for removing a
+verification command. `phase1-exit-windows-latest` is the third slowest at
+25.9%; every Linux, Linux ARM and macOS job is at or below 23.9%.
+
+### The range, enumerated rather than counted from the last paragraph
+
+`P2-RF11` established that `rust-default-windows-latest` has no single-reading
+budget, and every section since has added a reading. The page's own sections
+were enumerated to write this rather than the previous paragraph's count
+extended, because that count was wrong: it followed one chain of six and the
+page holds twenty-one readings of this job before this run, one per section
+that records a run's table.
+
+| Readings | Smallest | Median | Largest |
+|---:|---:|---:|---:|
+| 22 | 11:10 (37.2%) | 13:57 (46.5%) | 20:18 (67.7%) |
+
+Twenty-one of those are prior sections; the twenty-second is this run. This
+reading, 13:44, is the thirteenth largest of the twenty-two and sits just below
+the median. **The guidance is unchanged and this run is not a reason to change
+it**: size headroom off the largest reading, 67.7%, not off the median and not
+off this one. A low reading is evidence about the spread of a job that varies
+by roughly 40% between runs with no repository change explaining it; it is not
+evidence that the timeout can come down.
+
+### What the new member adds
+
+`academic-evidence-center` is the **first reading with that crate in the default
+lane**. It adds one crate to `cargo clippy --workspace --all-targets` and its
+test binaries to `cargo test --workspace --exclude academic-store`, which is
+where the `rust-default-*` jobs carry it; the store split routes nothing new to
+`rust-store-*`, and the crate has no non-default feature lane, so
+`rust-features-*` is unchanged by it. `packages/ui` content lands in
+`pnpm-contracts`, which came in at 1:02 against a 15:00 limit.
+
+No timing claim is attributed to the member on the strength of this one run.
+The `rust-default-windows-latest` reading moved from `P2-R2`'s 13:12 to 13:44,
+which is 32 seconds inside a job whose observed spread is over nine minutes, so
+the honest statement is that the member's cost is not separable from runner
+variance at one reading. `ci.yml` is untouched and the workflow still
+materializes 22 required jobs.
