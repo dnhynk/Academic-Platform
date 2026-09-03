@@ -380,7 +380,10 @@ const REACHED_PATHS: [(&str, &str); 4] = [
         "academic_repository::ManifestEntry",
         "the frozen manifest's path, to check a document is in the snapshot",
     ),
-    ("core::fmt", "the hand-written Display impl for AuthorityLane"),
+    (
+        "core::fmt",
+        "the hand-written Display impl for AuthorityLane",
+    ),
     ("thiserror::Error", "the error enumeration's derive"),
 ];
 
@@ -408,10 +411,7 @@ const MACROS_SPELLED: [(&str, &str); 1] = [(
 /// Both are test files and both are named on
 /// `docs/contracts/policy-source-scans.md`. No product file is here, which is
 /// what makes *this crate opens nothing* a statement about the crate.
-const READERS: [&str; 2] = [
-    "tests/correlation_scans.rs",
-    "tests/correlation_lanes.rs",
-];
+const READERS: [&str; 2] = ["tests/correlation_scans.rs", "tests/correlation_lanes.rs"];
 
 /// This is the **third** net and the weakest of the three.
 const FORBIDDEN_CONSTRUCTS: [&str; 11] = [
@@ -442,106 +442,496 @@ const FORBIDDEN_CONSTRUCTS: [&str; 11] = [
 /// identifier, a closed vocabulary value, or a value of another reviewed crate.
 const FIELDS: [(&str, &str, &str, &str); 44] = [
     // artifact.rs
-    ("DocumentId", "identifier", "String", "caller-supplied identifier"),
-    ("IncidentId", "identifier", "String", "caller-supplied identifier"),
-    ("FlagKey", "identifier", "String", "caller-supplied identifier"),
-    ("DeploymentTarget", "identifier", "String", "caller-supplied identifier"),
-    ("IntentDocument", "id", "DocumentId", "caller-supplied identifier"),
-    ("IntentDocument", "kind", "IntentDocumentKind", "closed vocabulary"),
-    ("IntentDocument", "status", "ApprovalStatus", "closed vocabulary"),
-    ("IntentDocument", "revision", "u64", "caller-supplied ordinal"),
-    ("IntentDocument", "branch", "Option<String>", "a branch name, which the snapshot already hands out"),
+    (
+        "DocumentId",
+        "identifier",
+        "String",
+        "caller-supplied identifier",
+    ),
+    (
+        "IncidentId",
+        "identifier",
+        "String",
+        "caller-supplied identifier",
+    ),
+    (
+        "FlagKey",
+        "identifier",
+        "String",
+        "caller-supplied identifier",
+    ),
+    (
+        "DeploymentTarget",
+        "identifier",
+        "String",
+        "caller-supplied identifier",
+    ),
+    (
+        "IntentDocument",
+        "id",
+        "DocumentId",
+        "caller-supplied identifier",
+    ),
+    (
+        "IntentDocument",
+        "kind",
+        "IntentDocumentKind",
+        "closed vocabulary",
+    ),
+    (
+        "IntentDocument",
+        "status",
+        "ApprovalStatus",
+        "closed vocabulary",
+    ),
+    (
+        "IntentDocument",
+        "revision",
+        "u64",
+        "caller-supplied ordinal",
+    ),
+    (
+        "IntentDocument",
+        "branch",
+        "Option<String>",
+        "a branch name, which the snapshot already hands out",
+    ),
     ("IntentDocument", "path", "String", "a manifest path"),
-    ("IntentDocument", "mentions", "Vec<SubjectId>", "P2-R2's caller-chosen subject identifiers"),
-    ("BehaviorDocument", "id", "DocumentId", "caller-supplied identifier"),
+    (
+        "IntentDocument",
+        "mentions",
+        "Vec<SubjectId>",
+        "P2-R2's caller-chosen subject identifiers",
+    ),
+    (
+        "BehaviorDocument",
+        "id",
+        "DocumentId",
+        "caller-supplied identifier",
+    ),
     ("BehaviorDocument", "path", "String", "a manifest path"),
-    ("BehaviorDocument", "explains", "Vec<SubjectId>", "P2-R2's caller-chosen subject identifiers"),
-    ("IncidentRecord", "id", "IncidentId", "caller-supplied identifier"),
-    ("IncidentRecord", "snapshot_id", "String", "a system-derived snapshot identifier"),
+    (
+        "BehaviorDocument",
+        "explains",
+        "Vec<SubjectId>",
+        "P2-R2's caller-chosen subject identifiers",
+    ),
+    (
+        "IncidentRecord",
+        "id",
+        "IncidentId",
+        "caller-supplied identifier",
+    ),
+    (
+        "IncidentRecord",
+        "snapshot_id",
+        "String",
+        "a system-derived snapshot identifier",
+    ),
     ("IncidentRecord", "occurred_at", "u64", "a timestamp"),
-    ("IncidentRecord", "exposed", "Vec<SubjectId>", "P2-R2's caller-chosen subject identifiers"),
-    ("FeatureFlagRecord", "key", "FlagKey", "caller-supplied identifier"),
-    ("FeatureFlagRecord", "state", "FlagState", "closed vocabulary"),
-    ("FeatureFlagRecord", "gates", "Vec<SubjectId>", "P2-R2's caller-chosen subject identifiers"),
-    ("DeploymentRecord", "target", "DeploymentTarget", "caller-supplied identifier"),
-    ("DeploymentRecord", "deployed_snapshot", "String", "a system-derived snapshot identifier"),
+    (
+        "IncidentRecord",
+        "exposed",
+        "Vec<SubjectId>",
+        "P2-R2's caller-chosen subject identifiers",
+    ),
+    (
+        "FeatureFlagRecord",
+        "key",
+        "FlagKey",
+        "caller-supplied identifier",
+    ),
+    (
+        "FeatureFlagRecord",
+        "state",
+        "FlagState",
+        "closed vocabulary",
+    ),
+    (
+        "FeatureFlagRecord",
+        "gates",
+        "Vec<SubjectId>",
+        "P2-R2's caller-chosen subject identifiers",
+    ),
+    (
+        "DeploymentRecord",
+        "target",
+        "DeploymentTarget",
+        "caller-supplied identifier",
+    ),
+    (
+        "DeploymentRecord",
+        "deployed_snapshot",
+        "String",
+        "a system-derived snapshot identifier",
+    ),
     // authority.rs
-    ("AnswerSource::DirectEvidence", "snapshot_id", "String", "a system-derived snapshot identifier"),
-    ("AnswerSource::IntentDocument", "document", "DocumentId", "caller-supplied identifier"),
-    ("AnswerSource::IntentDocument", "kind", "IntentDocumentKind", "closed vocabulary"),
-    ("AnswerSource::IntentDocument", "status", "ApprovalStatus", "closed vocabulary"),
-    ("AnswerSource::IntentDocument", "revision", "u64", "caller-supplied ordinal"),
+    (
+        "AnswerSource::DirectEvidence",
+        "snapshot_id",
+        "String",
+        "a system-derived snapshot identifier",
+    ),
+    (
+        "AnswerSource::IntentDocument",
+        "document",
+        "DocumentId",
+        "caller-supplied identifier",
+    ),
+    (
+        "AnswerSource::IntentDocument",
+        "kind",
+        "IntentDocumentKind",
+        "closed vocabulary",
+    ),
+    (
+        "AnswerSource::IntentDocument",
+        "status",
+        "ApprovalStatus",
+        "closed vocabulary",
+    ),
+    (
+        "AnswerSource::IntentDocument",
+        "revision",
+        "u64",
+        "caller-supplied ordinal",
+    ),
     ("Candidate", "id", "String", "caller-supplied identifier"),
     ("Candidate", "source", "AnswerSource", "closed vocabulary"),
-    ("RankedCandidate", "id", "String", "caller-supplied identifier"),
-    ("RankedCandidate", "authority", "AuthorityClass", "academic-domain's closed vocabulary"),
-    ("RankedCandidate", "rank", "u16", "academic-ledger's stable comparison value"),
+    (
+        "RankedCandidate",
+        "id",
+        "String",
+        "caller-supplied identifier",
+    ),
+    (
+        "RankedCandidate",
+        "authority",
+        "AuthorityClass",
+        "academic-domain's closed vocabulary",
+    ),
+    (
+        "RankedCandidate",
+        "rank",
+        "u16",
+        "academic-ledger's stable comparison value",
+    ),
     ("LaneAnswer", "lane", "AuthorityLane", "closed vocabulary"),
-    ("LaneAnswer", "table", "AuthorityTable", "academic-ledger's section 30.3 table"),
-    ("LaneAnswer", "ranked", "Vec<RankedCandidate>", "the candidates above"),
+    (
+        "LaneAnswer",
+        "table",
+        "AuthorityTable",
+        "academic-ledger's section 30.3 table",
+    ),
+    (
+        "LaneAnswer",
+        "ranked",
+        "Vec<RankedCandidate>",
+        "the candidates above",
+    ),
     // compare.rs
-    ("DependencyChange", "subject", "String", "P2-R2's caller-chosen subject identifier"),
-    ("DependencyChange", "direction", "PresenceChange", "closed vocabulary"),
-    ("DependencyChange", "cause", "ChangeCause", "closed vocabulary"),
-    ("SemanticChange", "subject", "String", "P2-R2's caller-chosen subject identifier"),
-    ("SemanticChange", "transition", "SemanticTransition", "closed vocabulary"),
-    ("SemanticChange", "cause", "ChangeCause", "closed vocabulary"),
-    ("SemanticChange", "before", "Vec<EvidenceRelation>", "closed vocabulary"),
-    ("SemanticChange", "after", "Vec<EvidenceRelation>", "closed vocabulary"),
+    (
+        "DependencyChange",
+        "subject",
+        "String",
+        "P2-R2's caller-chosen subject identifier",
+    ),
+    (
+        "DependencyChange",
+        "direction",
+        "PresenceChange",
+        "closed vocabulary",
+    ),
+    (
+        "DependencyChange",
+        "cause",
+        "ChangeCause",
+        "closed vocabulary",
+    ),
+    (
+        "SemanticChange",
+        "subject",
+        "String",
+        "P2-R2's caller-chosen subject identifier",
+    ),
+    (
+        "SemanticChange",
+        "transition",
+        "SemanticTransition",
+        "closed vocabulary",
+    ),
+    (
+        "SemanticChange",
+        "cause",
+        "ChangeCause",
+        "closed vocabulary",
+    ),
+    (
+        "SemanticChange",
+        "before",
+        "Vec<EvidenceRelation>",
+        "closed vocabulary",
+    ),
+    (
+        "SemanticChange",
+        "after",
+        "Vec<EvidenceRelation>",
+        "closed vocabulary",
+    ),
 ];
 
 /// The rest of [`FIELDS`], split only because one array literal of this width
 /// is unreadable. The two are concatenated before the comparison.
 const MORE_FIELDS: [(&str, &str, &str, &str); 30] = [
-    ("SemanticChange", "drift", "Option<DriftKind>", "closed vocabulary"),
-    ("SnapshotComparison", "cause", "ChangeCause", "closed vocabulary"),
-    ("SnapshotComparison", "dependency", "Vec<DependencyChange>", "the first channel above"),
-    ("SnapshotComparison", "semantic", "Vec<SemanticChange>", "the second channel above"),
+    (
+        "SemanticChange",
+        "drift",
+        "Option<DriftKind>",
+        "closed vocabulary",
+    ),
+    (
+        "SnapshotComparison",
+        "cause",
+        "ChangeCause",
+        "closed vocabulary",
+    ),
+    (
+        "SnapshotComparison",
+        "dependency",
+        "Vec<DependencyChange>",
+        "the first channel above",
+    ),
+    (
+        "SnapshotComparison",
+        "semantic",
+        "Vec<SemanticChange>",
+        "the second channel above",
+    ),
     // drift.rs
-    ("DeprecatedSpec", "document", "DocumentId", "caller-supplied identifier"),
-    ("DeprecatedSpec", "revision", "u64", "caller-supplied ordinal"),
+    (
+        "DeprecatedSpec",
+        "document",
+        "DocumentId",
+        "caller-supplied identifier",
+    ),
+    (
+        "DeprecatedSpec",
+        "revision",
+        "u64",
+        "caller-supplied ordinal",
+    ),
     ("GatingFlag", "key", "FlagKey", "caller-supplied identifier"),
     ("GatingFlag", "state", "FlagState", "closed vocabulary"),
-    ("UndeployedCode", "target", "DeploymentTarget", "caller-supplied identifier"),
-    ("UndeployedCode", "deployed_snapshot", "String", "a system-derived snapshot identifier"),
-    ("BranchDifference", "intent_branch", "String", "a branch name"),
-    ("BranchDifference", "snapshot_branch", "Option<String>", "a branch name the snapshot hands out"),
-    ("DriftScopes", "deprecated_spec", "Option<DeprecatedSpec>", "the scope above"),
-    ("DriftScopes", "feature_flag", "Option<GatingFlag>", "the scope above"),
-    ("DriftScopes", "undeployed_code", "Option<UndeployedCode>", "the scope above"),
-    ("DriftScopes", "branch_difference", "Option<BranchDifference>", "the scope above"),
-    ("ImplementationDrift", "kind", "DriftKind", "closed vocabulary"),
-    ("ImplementationDrift", "subject", "String", "P2-R2's caller-chosen subject identifier"),
-    ("ImplementationDrift", "snapshot_id", "String", "a system-derived snapshot identifier"),
-    ("ImplementationDrift", "intent_side", "Vec<RelationEdge>", "the edges below"),
-    ("ImplementationDrift", "implementation_side", "Vec<RelationEdge>", "the edges below"),
-    ("ImplementationDrift", "description_side", "Vec<RelationEdge>", "the edges below"),
-    ("ImplementationDrift", "scopes", "DriftScopes", "the scopes above"),
+    (
+        "UndeployedCode",
+        "target",
+        "DeploymentTarget",
+        "caller-supplied identifier",
+    ),
+    (
+        "UndeployedCode",
+        "deployed_snapshot",
+        "String",
+        "a system-derived snapshot identifier",
+    ),
+    (
+        "BranchDifference",
+        "intent_branch",
+        "String",
+        "a branch name",
+    ),
+    (
+        "BranchDifference",
+        "snapshot_branch",
+        "Option<String>",
+        "a branch name the snapshot hands out",
+    ),
+    (
+        "DriftScopes",
+        "deprecated_spec",
+        "Option<DeprecatedSpec>",
+        "the scope above",
+    ),
+    (
+        "DriftScopes",
+        "feature_flag",
+        "Option<GatingFlag>",
+        "the scope above",
+    ),
+    (
+        "DriftScopes",
+        "undeployed_code",
+        "Option<UndeployedCode>",
+        "the scope above",
+    ),
+    (
+        "DriftScopes",
+        "branch_difference",
+        "Option<BranchDifference>",
+        "the scope above",
+    ),
+    (
+        "ImplementationDrift",
+        "kind",
+        "DriftKind",
+        "closed vocabulary",
+    ),
+    (
+        "ImplementationDrift",
+        "subject",
+        "String",
+        "P2-R2's caller-chosen subject identifier",
+    ),
+    (
+        "ImplementationDrift",
+        "snapshot_id",
+        "String",
+        "a system-derived snapshot identifier",
+    ),
+    (
+        "ImplementationDrift",
+        "intent_side",
+        "Vec<RelationEdge>",
+        "the edges below",
+    ),
+    (
+        "ImplementationDrift",
+        "implementation_side",
+        "Vec<RelationEdge>",
+        "the edges below",
+    ),
+    (
+        "ImplementationDrift",
+        "description_side",
+        "Vec<RelationEdge>",
+        "the edges below",
+    ),
+    (
+        "ImplementationDrift",
+        "scopes",
+        "DriftScopes",
+        "the scopes above",
+    ),
     // edge.rs
-    ("EdgeEvidence::Analysis", "rung", "LadderRung", "P2-R2's closed vocabulary"),
-    ("EdgeEvidence::Analysis", "tier", "EvidenceTier", "P2-R2's closed vocabulary"),
-    ("EdgeEvidence::Analysis", "artifact_scope", "ArtifactScope", "P2-R2's closed vocabulary"),
-    ("EdgeEvidence::Analysis", "locators", "Vec<Locator>", "P2-R2's locator, which holds a path, a digest, a span and a fingerprint"),
-    ("EdgeEvidence::Document", "document", "DocumentId", "caller-supplied identifier"),
-    ("EdgeEvidence::Document", "status", "ApprovalStatus", "closed vocabulary"),
-    ("EdgeEvidence::Document", "revision", "u64", "caller-supplied ordinal"),
+    (
+        "EdgeEvidence::Analysis",
+        "rung",
+        "LadderRung",
+        "P2-R2's closed vocabulary",
+    ),
+    (
+        "EdgeEvidence::Analysis",
+        "tier",
+        "EvidenceTier",
+        "P2-R2's closed vocabulary",
+    ),
+    (
+        "EdgeEvidence::Analysis",
+        "artifact_scope",
+        "ArtifactScope",
+        "P2-R2's closed vocabulary",
+    ),
+    (
+        "EdgeEvidence::Analysis",
+        "locators",
+        "Vec<Locator>",
+        "P2-R2's locator, which holds a path, a digest, a span and a fingerprint",
+    ),
+    (
+        "EdgeEvidence::Document",
+        "document",
+        "DocumentId",
+        "caller-supplied identifier",
+    ),
+    (
+        "EdgeEvidence::Document",
+        "status",
+        "ApprovalStatus",
+        "closed vocabulary",
+    ),
+    (
+        "EdgeEvidence::Document",
+        "revision",
+        "u64",
+        "caller-supplied ordinal",
+    ),
 ];
 
 /// The last of [`FIELDS`].
 const LAST_FIELDS: [(&str, &str, &str, &str); 12] = [
-    ("EdgeEvidence::Document", "path", "String", "a manifest path"),
-    ("EdgeEvidence::Incident", "incident", "IncidentId", "caller-supplied identifier"),
-    ("EdgeEvidence::Incident", "occurred_at", "u64", "a timestamp"),
-    ("RelationEdge", "relation", "EvidenceRelation", "closed vocabulary"),
-    ("RelationEdge", "subject", "String", "P2-R2's caller-chosen subject identifier"),
-    ("RelationEdge", "snapshot_id", "String", "a system-derived snapshot identifier"),
-    ("RelationEdge", "evidence", "EdgeEvidence", "the evidence above"),
+    (
+        "EdgeEvidence::Document",
+        "path",
+        "String",
+        "a manifest path",
+    ),
+    (
+        "EdgeEvidence::Incident",
+        "incident",
+        "IncidentId",
+        "caller-supplied identifier",
+    ),
+    (
+        "EdgeEvidence::Incident",
+        "occurred_at",
+        "u64",
+        "a timestamp",
+    ),
+    (
+        "RelationEdge",
+        "relation",
+        "EvidenceRelation",
+        "closed vocabulary",
+    ),
+    (
+        "RelationEdge",
+        "subject",
+        "String",
+        "P2-R2's caller-chosen subject identifier",
+    ),
+    (
+        "RelationEdge",
+        "snapshot_id",
+        "String",
+        "a system-derived snapshot identifier",
+    ),
+    (
+        "RelationEdge",
+        "evidence",
+        "EdgeEvidence",
+        "the evidence above",
+    ),
     // lib.rs
-    ("Correlation", "snapshot_id", "String", "a system-derived snapshot identifier"),
-    ("Correlation", "analyzer_tool", "String", "the analyzer's own name"),
-    ("Correlation", "analyzer_version", "String", "the analyzer's own version"),
-    ("Correlation", "edges", "Vec<RelationEdge>", "the edges above"),
-    ("Correlation", "drifts", "Vec<ImplementationDrift>", "the drifts above"),
+    (
+        "Correlation",
+        "snapshot_id",
+        "String",
+        "a system-derived snapshot identifier",
+    ),
+    (
+        "Correlation",
+        "analyzer_tool",
+        "String",
+        "the analyzer's own name",
+    ),
+    (
+        "Correlation",
+        "analyzer_version",
+        "String",
+        "the analyzer's own version",
+    ),
+    (
+        "Correlation",
+        "edges",
+        "Vec<RelationEdge>",
+        "the edges above",
+    ),
+    (
+        "Correlation",
+        "drifts",
+        "Vec<ImplementationDrift>",
+        "the drifts above",
+    ),
 ];
 
 /// The last field of the last type, and the request's own borrowed fields.
@@ -1362,11 +1752,7 @@ fn the_helpers_are_not_vacuous() -> TestResult {
     // extractor does not consult a list of names.
     assert_eq!(
         type_fields("struct A {\n    innocuous: Vec<u8>,\n}\n"),
-        vec![(
-            "A".to_owned(),
-            "innocuous".to_owned(),
-            "Vec<u8>".to_owned()
-        )]
+        vec![("A".to_owned(), "innocuous".to_owned(), "Vec<u8>".to_owned())]
     );
     // A function's parameter list is not a declaration body.
     assert_eq!(
