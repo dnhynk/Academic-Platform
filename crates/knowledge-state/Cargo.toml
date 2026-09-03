@@ -1,0 +1,68 @@
+[package]
+name = "academic-knowledge-state"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Four product edges. Each one is a boundary this crate reads a fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-domain` is `P2-C1` and `P2-N1`. `MasteryLevel` and `FreshnessBand`
+# already exist there and this crate declares neither: section 13.1's ladder is
+# measured against that enum, not copied beside it. `EntityKind` is section
+# 7.4's tier, so "a field is not a thing a person has mastery of" is the
+# ontology's own answer.
+#
+# `academic-ledger` is `P2-M3`. Section 13.4's `사용자 확인과 새 evidence가
+# 충돌` is the same conflict section 30.3 already resolved, so the card this
+# crate opens carries `ConflictReason::NewEvidenceConflict` and the mastery row
+# of `ProductClaimType::MasteryQuestionResolution`'s table. There is no second
+# conflict token and no second authority order here.
+#
+# `academic-lecture-document` is `P2-L4`. Section 13.2's first row is
+# `transcript에서 meaningful teaching`, and a teaching site is a node of a real
+# `LectureDocument` rather than a caller's string -- the discipline `P2-R4`
+# states as `CurrentBasis` cannot be built from a label.
+#
+# `academic-repository-classification` is `P2-R4`. Section 13.2's fourth and
+# seventh rows are the same repository read two ways, and the difference is
+# `ConceptStance::observed`: an `ObservedProof` exists only for a `P2-R2`
+# finding at `EvidenceTier::Observed`, so `dependency/install/import만 존재`
+# is the absence of that value rather than a heuristic in this crate.
+#
+# The edges it does not have are the point: no `academic-store`, so no
+# assertion of this crate can reach the canonical writer and no migration is
+# added; no `academic-worker` and no `academic-egress-boundary`, so nothing in
+# its closure can launch a process or stage a payload.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-ledger = { path = "../ledger" }
+academic-lecture-document = { path = "../lecture-document" }
+academic-repository-classification = { path = "../repository-classification" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite builds its lecture evidence by running a real `P2-L2`
+# capture and a real `P2-L3` pipeline, and its project evidence by running
+# `P2-R1`'s capture, `P2-R2`'s ladder and `P2-R3`'s correlation, rather than
+# fabricating a document node or a relation edge. `academic-domain` is declared
+# twice for the `trybuild` reason `academic-scenario` gives: a compile-fail case
+# compiles against this crate plus its dev-dependencies.
+[dev-dependencies]
+academic-capture = { path = "../capture" }
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-model-run = { path = "../model-run" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-correlation = { path = "../repository-correlation" }
+academic-transcription = { path = "../transcription" }
+academic-untrusted-content = { path = "../untrusted-content" }
+serde_json.workspace = true
+tempfile.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true
