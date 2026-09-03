@@ -1,0 +1,37 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-j",
+  "task": "P2-X7",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-X7 admits no external crate. academic-evidence-center links academic-domain, academic-ingestion, academic-proposal and thiserror as product edges and academic-domain, academic-proposal and trybuild as dev edges, all five covered by earlier reviewed receipts, and adds one workspace path package. It links no store, vault, crypto, keystore, projection or transport crate at any feature setting: it persists nothing and claims no migration number.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-evidence-center is the P2-X7 evidence and correction centre: section 25.13's six sections as typed records. It is a separate package from academic-proposal because that crate holds the risk tiers and the disposition history of one proposal and this one holds the consolidated screen those proposals appear on beside official-source changes, unresolved conflicts, low-confidence spans, expiring permissions and the transmission log; the edge runs one way, from the centre to the queue, so a change to the screen cannot change what a disposition means.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-X7 adds no pnpm workspace package. Its whole surface is Rust."
+  },
+  "direct_workspace_dependencies": {
+    "academic-domain": "Every identifier a centre entry names: EntityId, ClaimId, SnapshotId, FindingId, ModelRunId, EgressDecisionId, ConsentId, CapturePermissionId, PermissionLineageId, LectureSessionId, LectureDocumentId, TranscriptVersionId, ContentDigest, TimestampMillis, ValidInterval, ConfidencePermille, PredicateId, EpistemicStatus, AuthorityClass, MasteryLevel, engines::RuleId, and temporal::TimeCoordinates -- which is the P2-C6 bitemporal coordinate a historical view is read at. Naming those rather than declaring a second vocabulary is what makes a correction marker in this crate point at the same claim the ledger holds.",
+    "academic-ingestion": "P2-U6's SourceDiff, DependencyGraph, DependentNode, DependentKind, DocumentChange and ConnectorId. SourceChangeEntry::from_diff computes neither half itself: the impacted rules are SourceDiff::impacted_rules and the impacted plans are DependencyGraph::invalidate, so the centre cannot give an answer that disagrees with the pipeline's.",
+    "academic-proposal": "P2-M2's ProposalId, RiskTier, ImpactPermille, UserDecision and WorkflowError. UserDecision is the load-bearing one: UserDecision::by issues it only for Actor::User, so \"unresolved until user action\" is that crate's door reused rather than a second actor match written here that could drift from it."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-evidence-center",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-evidence-center",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-evidence-center is a workspace path crate, not an external dependency. It owns section 25.13's trust screen and holds no writer: it has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-rpc, academic-projections, academic-recovery, academic-retention, academic-record, academic-model-run or academic-worker, so the canonical writer, every key and every model run are outside the closure a centre entry compiles against, and this task adds no migration. Its declared workspace closure of every edge kind is academic-domain, academic-egress-boundary, academic-ingestion, academic-policy, academic-proposal and academic-untrusted-content; the last three of those six arrive transitively -- academic-untrusted-content declares a product edge to academic-egress-boundary, which declares one to academic-policy, so every crate that links P2-G5's trust label carries the same closure, as academic-ingestion, academic-curriculum, academic-requirement and academic-repository already do. That is recorded rather than glossed: the centre's \"no payload byte\" claim is therefore not an edge claim about StagedPayload. What refuses it is a whole-set closed world over the crate roots this crate's product source spells a :: after, compared in both directions and read on paths rather than on imports, in which academic_untrusted_content, academic_egress_boundary and academic_policy do not appear. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-policy's bundled SQLite.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, invokes no macro, and runs no build script. It holds no free text at all: the whole set of declared field types across its product source is compared in both directions against a reviewed allowlist, and String, str, u8, Box, Cow and Untrusted are absent from it, so a field carrying a payload byte fails as an unreviewed type whatever it is named -- which is the shape T166 measured passing tools/secret-debug-policy.test.mjs, because that tool matches field names. The transmission log exposes purpose, payload digest, ranges, provider, time and receipt and nothing else; the provider is named by the digest academic-policy's ProviderIdentity::destination_id derives rather than by a vendor string. GATE-38-028 is open, so cloud egress still routes to LOCAL_ONLY_OR_STOP, and no test here transmits anything: every value is synthetic and built in process, and the official-source fixtures are driven through academic-ingestion's own stages one to five as imports.",
+  "advisory_path": "Unchanged. Every external crate academic-evidence-center links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

@@ -290,6 +290,24 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // Nothing depends on this one: the section 3.6 wiring from the core is
     // `P2-G4`'s and `P2-A2`'s round, not this task's.
     "academic-egress-boundary": ["academic-policy"],
+    // `P2-X7`. Section 25.13's evidence and correction centre. Three product
+    // edges, each a boundary it reuses rather than rebuilds: `academic-domain`
+    // for every identifier a centre entry names and for the `P2-C6` bitemporal
+    // coordinate a historical view is read at, `academic-proposal` for `P2-M2`'s
+    // risk tier and its user-only receipt, and `academic-ingestion` for `P2-U6`'s
+    // source diff and dependency graph. The edges it does *not* have are the
+    // point: no `academic-store` and no `academic-vault`, so the canonical
+    // writer is absent and this crate claims no migration number; no
+    // `academic-policy` and no `academic-egress-boundary` as *declared* edges,
+    // though both are reachable transitively through
+    // `academic-untrusted-content` -- `the_center_cannot_name_a_payload_byte`
+    // says so in its own words and closes the gap with a whole-set path-root
+    // allowlist rather than pretending the closure does it.
+    "academic-evidence-center": [
+      "academic-domain",
+      "academic-ingestion",
+      "academic-proposal",
+    ],
     "academic-export-job": ["academic-policy"],
     "academic-indexer": ["academic-policy"],
     // `P2-U6`. Section 29.1's ingestion contract. `academic-domain` supplies
@@ -514,6 +532,12 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // compiles against the crate under test plus that crate's dev-dependencies,
     // and a case has to name the domain identifiers an aggregate is built from.
     "academic-curriculum": ["academic-domain"],
+    // `P2-X7` links its own domain and proposal crates a second time as dev
+    // edges for the `trybuild` reason `academic-scenario` gives below: a
+    // compile-fail case compiles against the crate under test plus that
+    // crate's dev-dependencies, and a case has to name the identifiers and the
+    // `UserDecision` a centre entry is built from.
+    "academic-evidence-center": ["academic-domain", "academic-proposal"],
     "academic-requirement": ["academic-domain"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
     // The encrypted portability acceptance suite builds its keys through the
@@ -2194,6 +2218,13 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-domain": ["libc"],
   "academic-egress": ["libc"],
   "academic-egress-boundary": ["libc"],
+  // `P2-X7`. `libc` reaches it through `academic-policy`'s bundled SQLite,
+  // which arrives transitively through `academic-ingestion` ->
+  // `academic-untrusted-content` -> `academic-egress-boundary`. Availability is
+  // what this row records; the crate spells no socket construct, which is why
+  // its `SOCKET_ALLOWANCE` entry is absent rather than empty, and its own
+  // path-root allowlist refuses every one of those three crate roots by name.
+  "academic-evidence-center": ["libc"],
   "academic-export-job": ["libc"],
   "academic-indexer": ["libc"],
   // `P2-U6`. `libc` reaches it through `academic-domain`. The crate spells no
@@ -3977,6 +4008,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     requirementReceiptText,
     transcriptionReceiptText,
     correlationReceiptText,
+    centerReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4005,6 +4037,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-u2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l3.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r3.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-x7.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -4033,6 +4066,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const requirementReceipt = JSON.parse(requirementReceiptText);
   const transcriptionReceipt = JSON.parse(transcriptionReceiptText);
   const correlationReceipt = JSON.parse(correlationReceiptText);
+  const centerReceipt = JSON.parse(centerReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -5291,6 +5325,56 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-L3 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-X7` adds `academic-evidence-center` and no external crate. The evidence
+  // and correction centre sits above the proposal queue, the ingestion pipeline
+  // and the domain vocabulary and links no writer, so it claims no migration
+  // number and persists nothing.
+  assert.equal(centerReceipt.task, "P2-X7");
+  const centerAdmitted = new Set(
+    centerReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const centerPathPackages = new Set(
+    centerReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(centerAdmitted.size, 0, "P2-X7 must admit no external crate");
+  assert.deepEqual([...centerPathPackages], ["academic-evidence-center@0.1.0"]);
+  assert.deepEqual(centerReceipt.summary.npm_additions, []);
+  assert.equal(centerReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(centerReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-ingestion",
+    "academic-proposal",
+  ]);
+  assert.deepEqual(centerReceipt.vendored_data, []);
+  for (const claimed of [...centerAdmitted, ...centerPathPackages]) {
+    assert.equal(
+      requirementAdmitted.has(claimed) ||
+        requirementPathPackages.has(claimed) ||
+        curriculumAdmitted.has(claimed) ||
+        curriculumPathPackages.has(claimed) ||
+        ingestionAdmitted.has(claimed) ||
+        ingestionPathPackages.has(claimed) ||
+        proposalAdmitted.has(claimed) ||
+        proposalPathPackages.has(claimed) ||
+        transcriptionAdmitted.has(claimed) ||
+        transcriptionPathPackages.has(claimed) ||
+        correlationAdmitted.has(claimed) ||
+        correlationPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const centerTuples = lockTuples.filter(
+    ([name, version]) =>
+      centerAdmitted.has(`${name}@${version}`) ||
+      centerPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    centerTuples.length,
+    centerAdmitted.size + centerPathPackages.size,
+    "a P2-X7 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -5342,7 +5426,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !transcriptionAdmitted.has(`${name}@${version}`) &&
       !transcriptionPathPackages.has(`${name}@${version}`) &&
       !correlationAdmitted.has(`${name}@${version}`) &&
-      !correlationPathPackages.has(`${name}@${version}`),
+      !correlationPathPackages.has(`${name}@${version}`) &&
+      !centerAdmitted.has(`${name}@${version}`) &&
+      !centerPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -5378,7 +5464,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       analysisTuples.length +
       requirementTuples.length +
       transcriptionTuples.length +
-      correlationTuples.length,
+      correlationTuples.length +
+      centerTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
