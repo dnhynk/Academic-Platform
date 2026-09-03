@@ -129,15 +129,21 @@ const fn shortfall(attained: u32, required: u32) -> ProofStatus {
     }
 }
 
+/// The recorded admission year, or the `UNKNOWN` outcome that stands for its
+/// absence.
+///
+/// The error half is boxed because a `RuleOutcome` is the larger of the two and
+/// an unboxed one would make every `Result` in this module the size of a
+/// verdict. `GATE-38-011` is what the outcome carries.
 fn admission_year_or_unknown(
     facts: &AcademicFacts,
     rule: &RuleId,
     rule_type: RuleType,
     gate: OpenGate,
-) -> Result<AdmissionYear, RuleOutcome> {
+) -> Result<AdmissionYear, Box<RuleOutcome>> {
     facts
         .admission_year()
-        .ok_or_else(|| RuleOutcome::unknown(rule, rule_type, gate))
+        .ok_or_else(|| Box::new(RuleOutcome::unknown(rule, rule_type, gate)))
 }
 
 fn applies_to(applicability: Applicability, year: AdmissionYear) -> bool {
@@ -270,8 +276,7 @@ pub fn evaluate(
                 }
             }
             let required = u32::from(threshold.get());
-            let mut outcome =
-                RuleOutcome::bare(rule, rule_type, shortfall(attained, required));
+            let mut outcome = RuleOutcome::bare(rule, rule_type, shortfall(attained, required));
             outcome.measure = Some(Measure::Credits { attained, required });
             outcome.used_attempts = used;
             outcome
@@ -327,8 +332,7 @@ pub fn evaluate(
                 }
             }
             let required = u32::from(*n);
-            let mut outcome =
-                RuleOutcome::bare(rule, rule_type, shortfall(satisfied, required));
+            let mut outcome = RuleOutcome::bare(rule, rule_type, shortfall(satisfied, required));
             outcome.measure = Some(Measure::Count {
                 attained: satisfied,
                 required,
@@ -347,9 +351,12 @@ pub fn evaluate(
             // exclusion cannot be evaluated without one. That is `GATE-38-011`
             // and it is answered UNKNOWN rather than by counting as though the
             // exclusion did not apply.
-            let has_year_scoped_exclusion = constraints
-                .iter()
-                .any(|constraint| matches!(constraint, CountConstraint::ExcludedFromAdmissionYear { .. }));
+            let has_year_scoped_exclusion = constraints.iter().any(|constraint| {
+                matches!(
+                    constraint,
+                    CountConstraint::ExcludedFromAdmissionYear { .. }
+                )
+            });
             let year = if has_year_scoped_exclusion {
                 match admission_year_or_unknown(
                     facts,
@@ -358,7 +365,7 @@ pub fn evaluate(
                     OpenGate::CohortApplicability,
                 ) {
                     Ok(year) => Some(year),
-                    Err(unknown) => return Ok(unknown),
+                    Err(unknown) => return Ok(*unknown),
                 }
             } else {
                 facts.admission_year()
@@ -607,7 +614,7 @@ pub fn evaluate(
                 OpenGate::CohortApplicability,
             ) {
                 Ok(year) => year,
-                Err(unknown) => return Ok(unknown),
+                Err(unknown) => return Ok(*unknown),
             };
             if !applies_to(*applicability, year) {
                 // Not applicable is not satisfied and not failed. Section 11.3's
@@ -642,7 +649,10 @@ pub fn evaluate(
             exclusions,
         } => {
             let has_year_scoped_exclusion = exclusions.iter().any(|constraint| {
-                matches!(constraint, CountConstraint::ExcludedFromAdmissionYear { .. })
+                matches!(
+                    constraint,
+                    CountConstraint::ExcludedFromAdmissionYear { .. }
+                )
             });
             let year = if has_year_scoped_exclusion {
                 match admission_year_or_unknown(
@@ -652,7 +662,7 @@ pub fn evaluate(
                     OpenGate::CohortApplicability,
                 ) {
                     Ok(year) => Some(year),
-                    Err(unknown) => return Ok(unknown),
+                    Err(unknown) => return Ok(*unknown),
                 }
             } else {
                 facts.admission_year()
@@ -674,8 +684,7 @@ pub fn evaluate(
                 }
             }
             let required = u32::from(*minimum);
-            let mut outcome =
-                RuleOutcome::bare(rule, rule_type, shortfall(attained, required));
+            let mut outcome = RuleOutcome::bare(rule, rule_type, shortfall(attained, required));
             outcome.measure = Some(Measure::Count { attained, required });
             outcome.used_attempts = used;
             outcome
@@ -691,7 +700,11 @@ pub fn evaluate(
                 // transitional arrangement need a departmental notice and an
                 // administrative confirmation. `GATE-38-012` is open, so this
                 // is UNKNOWN and never a pass or a fail.
-                return Ok(RuleOutcome::unknown(rule, rule_type, OpenGate::ThesisRuleScope));
+                return Ok(RuleOutcome::unknown(
+                    rule,
+                    rule_type,
+                    OpenGate::ThesisRuleScope,
+                ));
             }
             let year = match admission_year_or_unknown(
                 facts,
@@ -700,7 +713,7 @@ pub fn evaluate(
                 OpenGate::CohortApplicability,
             ) {
                 Ok(year) => year,
-                Err(unknown) => return Ok(unknown),
+                Err(unknown) => return Ok(*unknown),
             };
             if !applies_to(*applicability, year) {
                 let mut outcome = RuleOutcome::bare(rule, rule_type, ProofStatus::Satisfied);

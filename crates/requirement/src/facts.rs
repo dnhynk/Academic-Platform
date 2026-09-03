@@ -22,7 +22,7 @@ use std::collections::BTreeMap;
 use academic_domain::{CourseId, Decimal, EntityId, TimestampMillis};
 
 use crate::dsl::{
-    AdmissionYear, AreaId, ApprovalAuthority, CreditAmount, CreditCategory, InstructionLanguage,
+    AdmissionYear, ApprovalAuthority, AreaId, CreditAmount, CreditCategory, InstructionLanguage,
     ProgramId, RuleId,
 };
 

@@ -40,7 +40,9 @@ use academic_requirement::{
     RuleBody, RuleCandidate, RuleId, RuleSet, RuleSetDraft, RuleSetLedger, RuleSetVersion,
     RuleType, SyntheticTranscriptFixtures, TermOrdinal, ThesisGrading, TrainingFact,
 };
-use support::{CATALOGUE, DocumentFixture, RETRIEVED_AT, body, corpus, manifest, permitting_ledger};
+use support::{
+    CATALOGUE, DocumentFixture, RETRIEVED_AT, body, corpus, manifest, permitting_ledger,
+};
 
 type TestResult = Result<(), Box<dyn Error>>;
 
@@ -216,7 +218,11 @@ fn attempt(id: u32, course_id: CourseId, credits: u16) -> Result<AttemptFact, Bo
     })
 }
 
-fn status_of(set: &RuleSet, id: &str, facts: &AcademicFacts) -> Result<ProofStatus, Box<dyn Error>> {
+fn status_of(
+    set: &RuleSet,
+    id: &str,
+    facts: &AcademicFacts,
+) -> Result<ProofStatus, Box<dyn Error>> {
     Ok(set.evaluate(&RuleId::new(id)?, facts)?.status)
 }
 
@@ -273,8 +279,14 @@ fn dsl_credit_minimum() -> TestResult {
     assert_eq!(outcome.rule_type, RuleType::CreditMinimum);
     assert_eq!(outcome.used_attempts, vec![entity(1)?]);
 
-    assert_eq!(status_of(&set, "cse_major_total", &equal)?, ProofStatus::Satisfied);
-    assert_eq!(status_of(&set, "cse_major_total", &above)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "cse_major_total", &equal)?,
+        ProofStatus::Satisfied
+    );
+    assert_eq!(
+        status_of(&set, "cse_major_total", &above)?,
+        ProofStatus::Satisfied
+    );
 
     // The category is load-bearing, not decoration: twelve credits outside it
     // leave the numerator exactly where it was.
@@ -353,7 +365,10 @@ fn dsl_required_course_set() -> TestResult {
         "required_course_set",
         body,
         (
-            &[FixtureCase::new(both_direct.clone(), ProofStatus::Satisfied)],
+            &[FixtureCase::new(
+                both_direct.clone(),
+                ProofStatus::Satisfied,
+            )],
             &[
                 FixtureCase::new(one_missing.clone(), ProofStatus::NotSatisfied),
                 FixtureCase::new(by_equivalent.clone(), ProofStatus::Satisfied),
@@ -465,7 +480,10 @@ fn dsl_at_least_n() -> TestResult {
             required: 2
         })
     );
-    assert_eq!(status_of(&set, "seminar_choice", &two)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "seminar_choice", &two)?,
+        ProofStatus::Satisfied
+    );
 
     let over = set.evaluate(&rule, &three)?;
     assert_eq!(over.status, ProofStatus::Satisfied);
@@ -486,12 +504,11 @@ fn dsl_at_least_n() -> TestResult {
             n: 4,
             operands: Vec::new()
         }
-        .compile(&rule)
-        .unwrap_err(),
-        RequirementError::MalformedRule {
+        .compile(&rule),
+        Err(RequirementError::MalformedRule {
             rule: "seminar_choice".to_owned(),
             reason: "AT_LEAST_N_OF asks for more than it offers",
-        }
+        })
     );
     Ok(())
 }
@@ -582,7 +599,10 @@ fn dsl_count_constraints() -> TestResult {
     );
 
     // Three courses and no major course is a shortfall the total does not show.
-    assert_eq!(status_of(&set, "foreign_language_lectures", &no_major)?, ProofStatus::Needs);
+    assert_eq!(
+        status_of(&set, "foreign_language_lectures", &no_major)?,
+        ProofStatus::Needs
+    );
 
     // No recorded cohort is GATE-38-011, not a cohort the exclusion misses.
     let unknown = set.evaluate(&rule, &no_cohort)?;
@@ -644,13 +664,25 @@ fn dsl_gpa_minimum() -> TestResult {
 
     // Exactly at the threshold passes. The comparison is a cross-multiplication
     // and never a division, so 200/10 versus 2.0 is an integer identity.
-    assert_eq!(status_of(&set, "overall_gpa", &equal)?, ProofStatus::Satisfied);
-    assert_eq!(status_of(&set, "overall_gpa", &above)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "overall_gpa", &equal)?,
+        ProofStatus::Satisfied
+    );
+    assert_eq!(
+        status_of(&set, "overall_gpa", &above)?,
+        ProofStatus::Satisfied
+    );
 
     // No reading, and a reading over no credits, are both UNKNOWN. An average
     // over an empty denominator is not zero and is not a failure.
-    assert_eq!(status_of(&set, "overall_gpa", &absent)?, ProofStatus::Unknown);
-    assert_eq!(status_of(&set, "overall_gpa", &empty)?, ProofStatus::Unknown);
+    assert_eq!(
+        status_of(&set, "overall_gpa", &absent)?,
+        ProofStatus::Unknown
+    );
+    assert_eq!(
+        status_of(&set, "overall_gpa", &empty)?,
+        ProofStatus::Unknown
+    );
 
     // The threshold's scale does not change the verdict: 2.0 and 2.00 are the
     // same requirement, which a float comparison would not guarantee.
@@ -663,8 +695,14 @@ fn dsl_gpa_minimum() -> TestResult {
         &[FixtureCase::new(equal.clone(), ProofStatus::Satisfied)],
         &[FixtureCase::new(below.clone(), ProofStatus::Needs)],
     )?;
-    assert_eq!(status_of(&wider, "overall_gpa_wide", &equal)?, ProofStatus::Satisfied);
-    assert_eq!(status_of(&wider, "overall_gpa_wide", &below)?, ProofStatus::Needs);
+    assert_eq!(
+        status_of(&wider, "overall_gpa_wide", &equal)?,
+        ProofStatus::Satisfied
+    );
+    assert_eq!(
+        status_of(&wider, "overall_gpa_wide", &below)?,
+        ProofStatus::Needs
+    );
     Ok(())
 }
 
@@ -701,7 +739,11 @@ fn dsl_area_distribution() -> TestResult {
             if Some(index) == skip {
                 continue;
             }
-            let mut fact = attempt(400 + u32::try_from(index)?, course(400 + u32::try_from(index)?)?, *credits)?;
+            let mut fact = attempt(
+                400 + u32::try_from(index)?,
+                course(400 + u32::try_from(index)?)?,
+                *credits,
+            )?;
             fact.area = Some(area.clone());
             facts = facts.with_attempt(fact);
         }
@@ -719,7 +761,10 @@ fn dsl_area_distribution() -> TestResult {
     )?;
     let rule = RuleId::new("general_education_areas")?;
 
-    assert_eq!(status_of(&set, "general_education_areas", &complete)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "general_education_areas", &complete)?,
+        ProofStatus::Satisfied
+    );
 
     // Omit each area in turn. A total that is met says nothing about the
     // distribution, which is the whole reason this rule type exists.
@@ -764,18 +809,19 @@ fn dsl_corequisite() -> TestResult {
     let lecture = course(501)?;
     let lab = course(502)?;
 
-    let pair = |lab_term: Option<u32>, status: AttemptStatus| -> Result<AcademicFacts, Box<dyn Error>> {
-        let mut subject = attempt(1, lecture, 3)?;
-        subject.term = TermOrdinal::new(2);
-        let mut facts = AcademicFacts::new(AT).with_attempt(subject);
-        if let Some(term) = lab_term {
-            let mut companion = attempt(2, lab, 1)?;
-            companion.term = TermOrdinal::new(term);
-            companion.status = status;
-            facts = facts.with_attempt(companion);
-        }
-        Ok(facts)
-    };
+    let pair =
+        |lab_term: Option<u32>, status: AttemptStatus| -> Result<AcademicFacts, Box<dyn Error>> {
+            let mut subject = attempt(1, lecture, 3)?;
+            subject.term = TermOrdinal::new(2);
+            let mut facts = AcademicFacts::new(AT).with_attempt(subject);
+            if let Some(term) = lab_term {
+                let mut companion = attempt(2, lab, 1)?;
+                companion.term = TermOrdinal::new(term);
+                companion.status = status;
+                facts = facts.with_attempt(companion);
+            }
+            Ok(facts)
+        };
 
     let same_term = pair(Some(2), AttemptStatus::Completed)?;
     let earlier = pair(Some(1), AttemptStatus::Completed)?;
@@ -797,13 +843,19 @@ fn dsl_corequisite() -> TestResult {
         ],
     )?;
 
-    assert_eq!(status_of(&strict, "lab_corequisite", &same_term)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&strict, "lab_corequisite", &same_term)?,
+        ProofStatus::Satisfied
+    );
     assert_eq!(
         status_of(&strict, "lab_corequisite", &earlier)?,
         ProofStatus::NotSatisfied,
         "SameTerm admitted an earlier term"
     );
-    assert_eq!(status_of(&strict, "lab_corequisite", &absent)?, ProofStatus::NotSatisfied);
+    assert_eq!(
+        status_of(&strict, "lab_corequisite", &absent)?,
+        ProofStatus::NotSatisfied
+    );
     assert_eq!(
         status_of(&strict, "lab_corequisite", &withdrawn)?,
         ProofStatus::NotSatisfied,
@@ -824,8 +876,14 @@ fn dsl_corequisite() -> TestResult {
         &[FixtureCase::new(earlier.clone(), ProofStatus::Satisfied)],
         &[FixtureCase::new(absent.clone(), ProofStatus::NotSatisfied)],
     )?;
-    assert_eq!(status_of(&loose, "lab_corequisite_loose", &earlier)?, ProofStatus::Satisfied);
-    assert_eq!(status_of(&loose, "lab_corequisite_loose", &same_term)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&loose, "lab_corequisite_loose", &earlier)?,
+        ProofStatus::Satisfied
+    );
+    assert_eq!(
+        status_of(&loose, "lab_corequisite_loose", &same_term)?,
+        ProofStatus::Satisfied
+    );
 
     // A course is not its own co-requisite.
     assert!(matches!(
@@ -866,7 +924,10 @@ fn dsl_mutually_exclusive() -> TestResult {
     )?;
     let rule = RuleId::new("geometry_exclusion")?;
 
-    assert_eq!(status_of(&set, "geometry_exclusion", &one)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "geometry_exclusion", &one)?,
+        ProofStatus::Satisfied
+    );
     let conflict = set.evaluate(&rule, &both)?;
     assert_eq!(
         conflict.status,
@@ -966,7 +1027,10 @@ fn dsl_equivalency() -> TestResult {
         },
         (
             &[FixtureCase::new(took_old.clone(), ProofStatus::Satisfied)],
-            &[FixtureCase::new(took_new.clone(), ProofStatus::NotSatisfied)],
+            &[FixtureCase::new(
+                took_new.clone(),
+                ProofStatus::NotSatisfied,
+            )],
         ),
     )?;
     let set = set.publish();
@@ -999,14 +1063,20 @@ fn dsl_equivalency() -> TestResult {
     // Both edges of the interval, on the equivalency rule's own verdict.
     let rule = RuleId::new("modelling_replaced_by_graphics")?;
     assert_eq!(
-        set.evaluate(&rule, &AcademicFacts::new(BEFORE).with_attempt(attempt(1, old, 3)?))?
-            .status,
+        set.evaluate(
+            &rule,
+            &AcademicFacts::new(BEFORE).with_attempt(attempt(1, old, 3)?)
+        )?
+        .status,
         ProofStatus::Satisfied,
         "the interval is closed at its lower bound"
     );
     assert_eq!(
-        set.evaluate(&rule, &AcademicFacts::new(AFTER).with_attempt(attempt(1, old, 3)?))?
-            .status,
+        set.evaluate(
+            &rule,
+            &AcademicFacts::new(AFTER).with_attempt(attempt(1, old, 3)?)
+        )?
+        .status,
         ProofStatus::NotSatisfied,
         "the interval is open at its upper bound"
     );
@@ -1134,7 +1204,10 @@ fn dsl_noncredit_training() -> TestResult {
         ],
     )?;
 
-    assert_eq!(status_of(&set, "life_respect_education", &completed)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "life_respect_education", &completed)?,
+        ProofStatus::Satisfied
+    );
     assert_eq!(
         status_of(&set, "life_respect_education", &missing)?,
         ProofStatus::NotSatisfied
@@ -1188,7 +1261,10 @@ fn dsl_language_instruction() -> TestResult {
         }],
     };
 
-    let taught_in = |id: u32, course_id: CourseId, evidence: LanguageEvidence| -> Result<AttemptFact, Box<dyn Error>> {
+    let taught_in = |id: u32,
+                     course_id: CourseId,
+                     evidence: LanguageEvidence|
+     -> Result<AttemptFact, Box<dyn Error>> {
         let mut fact = attempt(id, course_id, 3)?;
         fact.language = evidence;
         Ok(fact)
@@ -1241,7 +1317,10 @@ fn dsl_language_instruction() -> TestResult {
     )?;
     let rule = RuleId::new("foreign_language_instruction")?;
 
-    assert_eq!(status_of(&set, "foreign_language_instruction", &before)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "foreign_language_instruction", &before)?,
+        ProofStatus::Satisfied
+    );
     assert_eq!(
         set.evaluate(&rule, &after)?.measure,
         Some(Measure::Count {
@@ -1298,12 +1377,18 @@ fn dsl_thesis_research() -> TestResult {
             FixtureCase::new(earlier.clone(), ProofStatus::Satisfied),
         ],
     )?;
-    assert_eq!(status_of(&set, "thesis_research", &completed)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "thesis_research", &completed)?,
+        ProofStatus::Satisfied
+    );
     assert_eq!(
         status_of(&set, "thesis_research", &not_done)?,
         ProofStatus::NotSatisfied
     );
-    assert_eq!(status_of(&set, "thesis_research", &earlier)?, ProofStatus::Satisfied);
+    assert_eq!(
+        status_of(&set, "thesis_research", &earlier)?,
+        ProofStatus::Satisfied
+    );
 
     // The scope the specification actually leaves open. Section 8.1: the exact
     // applicability and the transitional arrangement need a departmental notice
@@ -1355,7 +1440,9 @@ fn dsl_exception_approval() -> TestResult {
     let other_authority = ApprovalAuthority::new("STUDENT_UNION")?;
     let category = CreditCategory::new("CSE_MAJOR")?;
 
-    let approval = |rule: &RuleId, authority: &ApprovalAuthority, expires: Option<TimestampMillis>| ApprovalFact {
+    let approval = |rule: &RuleId,
+                    authority: &ApprovalAuthority,
+                    expires: Option<TimestampMillis>| ApprovalFact {
         rule: rule.clone(),
         authority: authority.clone(),
         issued_at: AT,
@@ -1410,7 +1497,10 @@ fn dsl_exception_approval() -> TestResult {
     let set = set.publish();
     let exception = RuleId::new("major_total_exception")?;
 
-    assert_eq!(set.evaluate(&exception, &valid)?.status, ProofStatus::Satisfied);
+    assert_eq!(
+        set.evaluate(&exception, &valid)?.status,
+        ProofStatus::Satisfied
+    );
     for (label, facts) in [
         ("no approval", &none),
         ("an expired approval", &expired),
@@ -1454,27 +1544,26 @@ fn rule_candidate_review_gate() -> TestResult {
         category: CreditCategory::new("ALL_RECOGNIZED")?,
         threshold: CreditAmount::new(130)?,
     };
-    let candidate = || {
-        RuleCandidate::extracted(
+    let candidate = || -> Result<RuleCandidate, Box<dyn Error>> {
+        Ok(RuleCandidate::extracted(
             rule.clone(),
             body.clone(),
             Actor::ModelRun {
-                run_id: entity(7_001).expect("a fixture identifier parses"),
+                run_id: entity(7_001)?,
             },
             "the page says at least 130 credits".to_owned(),
             digest(),
-        )
+        ))
     };
 
     // One person twice is one review recorded twice.
     assert_eq!(
         ReviewGate::admit(
-            candidate(),
+            candidate()?,
             ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
             ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
-        )
-        .unwrap_err(),
-        RequirementError::OneReviewerTwice
+        ),
+        Err(RequirementError::OneReviewerTwice)
     );
 
     // A model attesting to a model's candidate is the gate reviewing itself.
@@ -1494,7 +1583,7 @@ fn rule_candidate_review_gate() -> TestResult {
         assert!(
             matches!(
                 ReviewGate::admit(
-                    candidate(),
+                    candidate()?,
                     ReviewAttestation::file(actor.clone(), rule.clone(), AT),
                     ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
                 ),
@@ -1508,7 +1597,7 @@ fn rule_candidate_review_gate() -> TestResult {
     // An attestation filed against another candidate does not carry over.
     assert!(matches!(
         ReviewGate::admit(
-            candidate(),
+            candidate()?,
             ReviewAttestation::file(reviewer(11)?, RuleId::new("other_rule")?, AT),
             ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
         ),
@@ -1540,7 +1629,7 @@ fn rule_candidate_review_gate() -> TestResult {
     // Two different people, both users, both naming this candidate: admitted,
     // and the reviewed rule carries both attestations.
     let reviewed = ReviewGate::admit(
-        candidate(),
+        candidate()?,
         ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
         ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
     )?;
@@ -1587,7 +1676,10 @@ fn ruleset_immutable_publish() -> TestResult {
     let facts = AcademicFacts::new(AT);
     let published = official_source()?;
 
-    let build = |threshold: u16, version: RuleSetVersion, supersedes: Option<RuleSetVersion>| -> Result<RuleSet, Box<dyn Error>> {
+    let build = |threshold: u16,
+                 version: RuleSetVersion,
+                 supersedes: Option<RuleSetVersion>|
+     -> Result<RuleSet, Box<dyn Error>> {
         let draft = RuleSetDraft::from_official_source(
             &published,
             set_id()?,
@@ -1625,7 +1717,10 @@ fn ruleset_immutable_publish() -> TestResult {
     let stored = ledger
         .version(RuleSetVersion::FIRST)
         .ok_or("the first version left the ledger")?;
-    assert_eq!(stored, &first, "publishing a successor changed the predecessor");
+    assert_eq!(
+        stored, &first,
+        "publishing a successor changed the predecessor"
+    );
     assert_eq!(stored.rule_set_hash(), first_hash);
     assert_eq!(stored.canonical_text(), first_text);
     assert_eq!(
@@ -1640,7 +1735,10 @@ fn ruleset_immutable_publish() -> TestResult {
         first_hash, second_hash,
         "two versions with different thresholds hashed alike"
     );
-    assert_eq!(ledger.current().map(RuleSet::version), Some(RuleSetVersion::new(2)));
+    assert_eq!(
+        ledger.current().map(RuleSet::version),
+        Some(RuleSetVersion::new(2))
+    );
     assert_eq!(
         ledger.current().and_then(RuleSet::supersedes),
         Some(RuleSetVersion::FIRST),
@@ -1656,7 +1754,11 @@ fn ruleset_immutable_publish() -> TestResult {
     // So is superseding anything but the head, which would fork the history a
     // replay walks.
     assert!(matches!(
-        ledger.publish(build(140, RuleSetVersion::new(3), Some(RuleSetVersion::FIRST))?),
+        ledger.publish(build(
+            140,
+            RuleSetVersion::new(3),
+            Some(RuleSetVersion::FIRST)
+        )?),
         Err(RequirementError::SupersedesTheWrongVersion { .. })
     ));
 

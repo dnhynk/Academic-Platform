@@ -37,13 +37,11 @@
 
 use std::collections::BTreeMap;
 
-use academic_domain::{
-    ContentDigest, CurriculumVersionId, RequirementSetId, engines::ProofStatus,
-};
+use academic_domain::{ContentDigest, CurriculumVersionId, RequirementSetId, engines::ProofStatus};
 use academic_ingestion::{
-    manifest::{ParserVersion, RetrievalInstant},
     dating::EffectiveDate,
     identifier::ConnectorId,
+    manifest::{ParserVersion, RetrievalInstant},
     publish::PublishedRules,
 };
 
@@ -291,27 +289,26 @@ impl RuleSetDraft {
             source_digest: reviewed.source_digest(),
         };
         rule.body.compile(&rule.id)?;
-        self.rules.push(rule);
 
         // Evaluate against the set as it stands, which is what the rule will
         // see once published: an `ALL_OF` with a `COURSE_OR_EQUIVALENT` operand
         // resolves through the `EQUIVALENCY` rules already admitted.
+        //
+        // The rule under test is evaluated by body rather than through the
+        // staged set, and is pushed only after every case agrees. A rule that
+        // was pushed first and popped on failure would leave the draft's state
+        // depending on where the loop stopped.
         let staged = self.as_evaluable();
-        let admitted = self
-            .rules
-            .last()
-            .expect("a rule was pushed on the line above");
         for case in official.cases().iter().chain(synthetic.cases()) {
-            let outcome = evaluate(&staged, admitted.id(), admitted.body(), &case.facts)?;
+            let outcome = evaluate(&staged, &rule.id, &rule.body, &case.facts)?;
             if outcome.status != case.expected {
-                let failed = admitted.id().as_str().to_owned();
-                self.rules.pop();
                 return Err(RequirementError::ReleaseFixturesMissing {
-                    rule: failed,
+                    rule: rule.id.as_str().to_owned(),
                     missing: "a regression fixture disagrees with the rule",
                 });
             }
         }
+        self.rules.push(rule);
         Ok(self)
     }
 
@@ -407,10 +404,12 @@ impl RuleSet {
         id: &RuleId,
         facts: &AcademicFacts,
     ) -> Result<RuleOutcome, RequirementError> {
-        let rule = self.rule(id).ok_or_else(|| RequirementError::UndeclaredFact {
-            rule: id.as_str().to_owned(),
-            fact: "the rule is not published in this set".to_owned(),
-        })?;
+        let rule = self
+            .rule(id)
+            .ok_or_else(|| RequirementError::UndeclaredFact {
+                rule: id.as_str().to_owned(),
+                fact: "the rule is not published in this set".to_owned(),
+            })?;
         evaluate(self, rule.id(), rule.body(), facts)
     }
 
@@ -486,7 +485,7 @@ impl RuleSetLedger {
     /// republishing an existing number is the edit that section 11.4 forbids,
     /// and superseding a version that is not current would fork the history a
     /// replay walks.
-    pub fn publish(&mut self, set: RuleSet) -> Result<&RuleSet, RequirementError> {
+    pub fn publish(&mut self, set: RuleSet) -> Result<(), RequirementError> {
         if self
             .versions
             .iter()
@@ -506,10 +505,7 @@ impl RuleSetLedger {
             });
         }
         self.versions.push(set);
-        Ok(self
-            .versions
-            .last()
-            .expect("a version was pushed on the line above"))
+        Ok(())
     }
 
     /// The version currently in force, when one has been published.
@@ -547,11 +543,7 @@ impl RuleSetLedger {
     /// rather than over the source documents: a rule whose body differs, one
     /// only the later version has, and one only the earlier version had.
     #[must_use]
-    pub fn changed_rules(
-        &self,
-        earlier: RuleSetVersion,
-        later: RuleSetVersion,
-    ) -> Vec<RuleId> {
+    pub fn changed_rules(&self, earlier: RuleSetVersion, later: RuleSetVersion) -> Vec<RuleId> {
         let (Some(earlier), Some(later)) = (self.version(earlier), self.version(later)) else {
             return Vec::new();
         };
