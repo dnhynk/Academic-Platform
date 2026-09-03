@@ -463,7 +463,12 @@ const QUARANTINED_IMPL_BLOCKS: [&str; 1] = ["impl QuarantinedArtifact {"];
 /// `C-11` is why the rule exists. The defect it records was the comparison
 /// being absent; the shape that would bring it back is a path that appends
 /// without it.
-const SESSION_FUNCTIONS: [&str; 12] = [
+const SESSION_FUNCTIONS: [&str; 13] = [
+    // `P2-RF13`. The redacting `Debug` this file's session got when the
+    // workspace byte-field classification found `CaptureSession.bytes`
+    // deriving one. It is here because the pin is the whole set of functions
+    // in the file, and it takes no argument a caller controls.
+    "fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {",
     "pub fn open_device( ledger: &mut ConsentLedger, audit: &mut CaptureAudit, authorization: CaptureAuthorization, class: DeviceClass, layer: DeviceLayer, now: u64, ) -> Result<CaptureSession, CaptureRefusal> {",
     "pub const fn class(&self) -> DeviceClass {",
     "pub const fn layer(&self) -> DeviceLayer {",
