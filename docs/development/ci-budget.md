@@ -366,7 +366,7 @@ Every job is at or below 49.7%, and nothing is near the 80% review trigger.
 Size headroom off the worst reading this page holds for a label, 67.7% on
 `rust-default-windows-latest`, rather than off any single run.
 
-## Latest run
+## The `P2-L2` run
 
 `P2-L2` adds one workspace member, `academic-capture`, two steps to the
 `rust-features` matrix, and no pnpm package. Workspace membership,
@@ -440,7 +440,7 @@ row is a pre-existing crate's unit tests.
 
 The same-commit rerun read **18:41**, and the rebased head read **16:35**, both
 inside the range this page already holds for that job — 12:16, 13:47, 14:08,
-14:55, 15:28, 16:35, 17:09, 18:03, 18:41, 20:18. Two readings of *one* commit,
+14:55, 15:28, 16:35, 16:56, 17:09, 18:03, 18:41, 20:18. Two readings of *one* commit,
 30:14 and 18:41, is an 11:33 spread on identical work, which is larger than any
 spread this page had recorded before and is the reason attempt 1 is kept.
 
@@ -464,6 +464,102 @@ occurrence of the signature the section below names, and the same-commit rerun
 passed, taking the job to green. The commit under it adds no line to
 `academic-worker`, and the identical step list passed on
 `rust-features-windows-11-arm` in the same attempt.
+
+## Latest run
+
+`P2-U6` adds one workspace member, `academic-ingestion`, and no pnpm workspace
+package. Workspace membership and a default-workspace test are both triggers the
+refresh rule names. The job count is unchanged at **17**: the new crate compiles
+inside the `cargo test --workspace --locked` step the five `rust-default-*` jobs
+already run, its `compile_fail` suite is one of that step's targets, and the two
+`tools/*.test.mjs` files it edits already run inside `pnpm-contracts`. No new
+job, no new step, no new feature lane, no system package.
+
+The table is the head that merges. This branch was rebased twice — onto `P2-R1`,
+and then onto `P2-L2`, which merged while the first of those runs was still
+going — so the readings it took on its earlier heads sit on commits that are no
+longer reachable and are not carried here. The reading immediately before this
+one is [the `P2-L2` run](#the-p2-l2-run) above.
+
+Run
+[33744760718](https://github.com/dnhynk/Academic-Platform/actions/runs/33744760718)
+completed **17/17 on `d8b58c5`**, first attempt, no rerun.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:05 | 5:00 | 1.7% |
+| `rust-default-ubuntu-latest` | 6:35 | 30:00 | 21.9% |
+| `rust-default-ubuntu-24.04-arm` | 5:05 | 30:00 | 16.9% |
+| `rust-default-windows-latest` | 18:12 | 30:00 | 60.7% |
+| `rust-default-windows-11-arm` | 14:30 | 30:00 | 48.3% |
+| `rust-default-macos-latest` | 6:27 | 30:00 | 21.5% |
+| `rust-features-ubuntu-latest` | 3:40 | 30:00 | 12.2% |
+| `rust-features-ubuntu-24.04-arm` | 3:09 | 30:00 | 10.5% |
+| `rust-features-windows-latest` | 5:15 | 30:00 | 17.5% |
+| `rust-features-windows-11-arm` | 5:50 | 30:00 | 19.4% |
+| `rust-features-macos-latest` | 3:48 | 30:00 | 12.7% |
+| `phase1-exit-ubuntu-latest` | 4:14 | 45:00 | 9.4% |
+| `phase1-exit-windows-latest` | 10:35 | 45:00 | 23.5% |
+| `encrypted-store-lane-ubuntu-latest` | 3:29 | 45:00 | 7.7% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:22 | 45:00 | 11.9% |
+| `rotation-orchestration-lane-ubuntu-latest` | 7:15 | 45:00 | 16.1% |
+| `pnpm-contracts` | 0:50 | 15:00 | 5.6% |
+
+**`rust-default-windows-latest` is the slowest job at 60.7%.** With `P2-R1`'s
+16:56 restored to the list in the section above, this page now holds twelve
+readings of that job: 12:16, 13:47, 14:08, 14:55, 15:28, 16:35, 16:56, 17:09,
+18:03, 18:12, 18:41 and 20:18. This one is the third highest and sits inside the
+band rather than extending it, so the guidance the `P2-L2` section gives is
+unchanged: size headroom off 20:18, and read each further reading as evidence
+about a range that is now 8:02 wide across trees that barely differ.
+
+`phase1-exit-windows-latest` at 10:35 is the highest reading this page holds for
+that job, against 8:10, 9:13 and 9:52 on the three runs before it. Its limit is
+45:00, so 23.5% is not a budget question; it is recorded because it is the same
+Windows-runner spread the row above shows, on a job whose readings had been
+stable.
+
+`pnpm-contracts` is the number that isolates this task's JavaScript cost, and it
+went **down**: 0:50, against `P2-L2`'s 1:05 and `P2-R1`'s 0:58. `P2-U6` adds no
+pnpm package and edits two files that job already runs — the same two files this
+branch's conflicts were in, both times.
+
+`encrypted-store-lane-ubuntu-latest` reads 7.7%. That lane is the one that pins
+`STORE_MIGRATION_SQL` whole, so it is where a migration added to that set is
+caught. `P2-U6` claims no migration and adds none, and `P2-R1`'s `0012` is
+already inside the set this reading covers. The lane was run locally under WSL2
+before every push to this branch.
+
+**No job reaches the 80% review trigger on this head.** For the 30-minute Rust
+jobs that line is 24:00. `P2-L2` recorded one crossing on a pre-rebase head;
+that trigger stands where that section records it, and nothing here discharges
+it.
+
+### The `pull_request` event this branch's CI never received
+
+The run in the table above was created by the pull request normally. An earlier
+run on this branch was not, and that is worth recording because it is a second
+thing on this repository's CI that is not a test result.
+
+The branch's first two pushes each produced a `pull_request` run within about
+twenty-five seconds. The third push, `bce9e47`, produced none: no run object was
+created for that head at all, and `gh pr checks` reported *no checks reported on
+the branch*. Closing and reopening the pull request — which emits `reopened`,
+one of the `pull_request` trigger's default types — produced none either, twice,
+over roughly ten minutes, while runs on `main` and on two other branches were
+being created normally in the same window. `workflow_dispatch` on the same ref
+produced a run immediately, on the same head SHA, materializing the same
+seventeen jobs.
+
+So the distinguishing observation is that the *event* was dropped, not that the
+workflow failed: the same commit, the same workflow file and the same seventeen
+jobs run green when the run is created by another trigger. A run that a webhook
+never asked for is not a property of the change, exactly as a timeout
+cancellation is not a test failure. If a branch shows no checks and the head SHA
+has no run object, dispatch the workflow on that ref before looking for a cause
+in the diff. `bce9e47` was rewritten by the later rebases and is no longer
+reachable; the observation is kept because the rule it exercises is, and the two
+runs are.
 
 ## The `P2-X1` run
 
@@ -583,6 +679,17 @@ passed **8/8 on a Windows developer machine on that exact commit**, and
 re-running only that job on that exact commit passed too. The commit under it
 changed one test file in `crates/proposal` and one contract page, and the
 identical job had already passed on the parent commit.
+
+The **fourth** is `P2-L2`'s, recorded in [its own section](#the-p2-l2-run)
+above. The **fifth** is `T159`'s, at `malicious_plugin_corpus_is_contained`
+again, on run
+[33739674269](https://github.com/dnhynk/Academic-Platform/actions/runs/33739674269)
+— the first of that branch's two rebased heads, which a later rebase rewrote, so
+the run is reachable and the commit is not. Both halves of the rule
+were executed there too: the same-commit rerun of that one job passed, the
+branch's delta touches no file under `crates/worker`, and that same test passes
+on a Windows machine on that tree. Five hosted sightings, one job, one lane,
+none surviving a rerun.
 
 ### A second signature, in a different job
 
