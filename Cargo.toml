@@ -21,6 +21,7 @@ members = [
   "crates/portability",
   "crates/policy",
   "crates/projections",
+  "crates/proposal",
   "crates/repository-analyzer",
   "crates/record",
   "crates/recovery",

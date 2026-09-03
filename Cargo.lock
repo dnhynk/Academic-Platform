@@ -269,6 +269,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-proposal"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "trybuild",
+ "uuid",
+]
+
+[[package]]
 name = "academic-record"
 version = "0.1.0"
 dependencies = [

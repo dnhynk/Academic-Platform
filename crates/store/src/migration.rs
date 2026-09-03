@@ -71,6 +71,21 @@ pub const MIGRATION_0006_SQL: &str =
 pub const MIGRATION_0007_SQL: &str =
     include_str!("../../../migrations/store/0007_phase2_model_run_provenance.sql");
 
+/// `P2-M2`'s typed columns for the `PROPOSAL_DISPOSED` aggregate.
+///
+/// The same rule again: migration `0004` carries the v3 registration frame and
+/// each aggregate owner adds its own typed columns later. This is that
+/// migration for the risk tier a proposal was classified into, the append-only
+/// record of what a user did with it, and the versioned batching configuration
+/// the review queue banded it under.
+///
+/// It is `0009` rather than `0008`. This branch was written while `P2-L1` might
+/// have taken `0008`; it landed with no migration, so `0008` is unclaimed and
+/// stays that way. A migration number decides the order and nothing else rests
+/// on it: what the admission fingerprint fixes is the resulting object set.
+pub const MIGRATION_0009_SQL: &str =
+    include_str!("../../../migrations/store/0009_phase2_proposal_review.sql");
+
 /// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
 ///
 /// It replaces the Phase 1 identity singleton with the schema-2 one. The
@@ -110,6 +125,7 @@ pub const STORE_MIGRATION_SQL: &[&str] = &[
     MIGRATION_0005_SQL,
     MIGRATION_0006_SQL,
     MIGRATION_0007_SQL,
+    MIGRATION_0009_SQL,
 ];
 
 /// Result of invoking the forward-only migration runner.
@@ -285,6 +301,7 @@ fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> Stor
     transaction.execute_batch(MIGRATION_0005_SQL)?;
     transaction.execute_batch(MIGRATION_0006_SQL)?;
     transaction.execute_batch(MIGRATION_0007_SQL)?;
+    transaction.execute_batch(MIGRATION_0009_SQL)?;
     verify_integrity(&transaction)?;
     transaction.commit()?;
     Ok(())

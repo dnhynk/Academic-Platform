@@ -116,6 +116,7 @@ remove.
 | `no_public_signature_hands_out_ingested_text` — `crates/untrusted-content/tests/untrusted_boundary.rs` | recursive, **every `.rs` under every `crates/*` package** less each package's `tests`, comment lines dropped | no `pub fn` signature anywhere in the workspace takes an `Untrusted<…>` parameter and returns a type naming `str`, `String` or `u8` as a whole identifier — so a lifetime cannot hide one, and `&[u8]`, `Vec<u8>`, `Box<[u8]>` and `Cow<'_, [u8]>` are all reached | `>= 25` packages and `>= 1_200` public signatures |
 | `the_walk_reads_every_module_in_this_crate`, `the_capture_decision_is_one_binding_that_every_path_runs`, `a_status_comes_from_one_derivation_and_absence_is_unknown`, `an_attestation_has_no_route_into_an_authority`, `no_legal_conclusion_reaches_a_permission`, `retention_holds_two_independent_bounds_and_narrows_only`, `the_checklist_is_the_seven_dimensions_the_contract_names`, `an_expiry_cannot_be_applied_without_its_preview`, `the_two_derivative_vocabularies_are_the_same_list`, `the_migration_vocabularies_are_the_rust_ones`, `every_instant_this_crate_compares_is_an_argument` — `crates/consent/tests/consent_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over **every `.rs` under every package in `crates/`**, less each package's `tests`, for the two workspace-wide signature rules; plus fixed reads of `migrations/store/0006_phase2_consent_and_capture.sql`, `crates/store/src/authorizer.rs`, `crates/retention/src/plan.rs` and this crate's own `Cargo.toml` | fourteen whole-text pins (below); whole-set comparisons of the `impl` blocks naming `AuthorityGrant` and those naming `AttestationRecord`, and of the files naming `CaptureCapabilityToken` with a written reason for each; call-site counts by identifier on `bind_permission` (2), `record_capture_denial` (3), `record_capture_mint` (1), `status_of` (3), `inherit` (1) and `apply_expiry` (0), each with `fn <name>(` subtracted so `inherited` is not read as `inherit`; struct-literal counts on `CaptureCapabilityToken` (1), `BoundPermission` (1) and `ExpiryPlan` (0); a rule that no `pub` signature anywhere in the workspace takes an `AttestationRecord` and returns a type naming `AuthorityGrant`, `WrittenAuthority`, `BoundPermission`, `CaptureCapabilityToken` or `CaptureStatus`, and the same rule for a signature taking a `LegalQuestion` or an `ExternalReviewTask`; the `CaptureStatus`, `ChecklistDimension`, `ChecklistEntry` and `DerivativeClass` variant lists read out of the enums and compared whole; each of the eight migration `CHECK` lists compared against the Rust `as_str` spellings **and** against its enum's variant count; two mutations applied to the pinned retention text inside the test and each required to be caught; `#[path]` refused outright; a five-spelling clock list — the whole of `std::time`'s surface plus `chrono`, which this crate's one product edge cannot reach past | `>= 12` files in the crate walk and `>= 10` product files, plus a tripwire requiring every `mod name;` and `pub mod name;` to be a file the walk read and every product file to sit under `src`; `>= 25` packages and `>= 1_200` public signatures in the workspace walk; `>= 1` signature taking a legal question, so the legal rule cannot pass by finding nothing |
 | `the_walk_reads_every_module_in_this_crate`, `raw_score_has_no_ordering_implementation_anywhere`, `raw_score_hands_back_no_number`, `every_calibrated_value_comes_from_the_registry`, `the_calibration_and_reconciliation_decisions_are_pinned`, `the_record_constructor_takes_every_field`, `the_consumption_join_is_the_only_key_into_the_audit`, `the_migration_is_applied_and_guarded`, `the_checks_catch_the_evasions_they_are_written_against` — `crates/model-run/tests/model_run_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over every `.rs` under every package in `crates/` for the two workspace-wide rules; fixed paths for the four pins and for `crates/policy/src/schema.sql` | the whole set of `impl` headers naming `RawScore` compared against a two-entry list, and the same set required empty in every other crate; a rule that no `pub fn` signature in the workspace turns a `RawScore` into a bare number type, read as identifiers so `&'static str`-shaped evasions do not slip; the whole inventory of public signatures naming `CalibratedConfidence`, each with a written reason; four whole-text pins (below); a whole-text pin on `egress_consumption`, a rule that its one write site takes its sequence from the allow audit, and a rule that the reconciliation names no `row.grant_id`; `reconcile_egressed` declared and called exactly once; the `ModelRun` struct's fields compared with `ModelRun::record`'s parameters and with `record_digest`'s coverage; migration `0007`'s tables compared against their trigger pairs and `CANONICAL_TABLES`; and five ordering evasions plus a raw-string sample run through the checks inside the test and each required to be caught | `>= 7` files under the package and `>= 5` product files, a rule that this crate's product source sits under `src` and nowhere else, and a tripwire: every `mod name;` and `pub mod name;` must be a file the walk read, and `#[path]` may not appear at all |
+| `the_walk_reads_every_module_in_this_crate`, `every_release_site_is_named_and_justified`, `no_public_signature_hands_out_a_proposed_payload`, `the_boundary_has_no_unwrapping_trait_impl`, `every_door_reaches_the_workflow_comparison`, `every_settlement_door_is_named`, `the_user_receipt_has_one_producer`, `the_crate_has_no_writer_dependency` — `crates/proposal/tests/proposal_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus fixed paths for `src/queue.rs`, `src/disposition.rs`, `src/proposed.rs` and the crate manifest | the whole set of `impl` headers naming `Proposed<` compared against a two-entry list; the whole inventory of the crate-private payload accessor's call sites with a written reason for each, counted by identifier rather than by the spelling `.release()` and less declarations of a function named exactly `release` — not less the spelling `fn release`, which would subtract `fn release_now(` too; a rule that no `pub fn` in the crate's product source takes a `Proposed<…>` and returns its payload; two whole-text pins (below), each with the callers that reach it pinned beside it; a call-site count of four on the workflow comparison and a pinned first statement for each of the four doors; the whole set of the queue's public `&mut self` methods compared against a seven-row table naming why an automatic actor cannot use each; and the manifest read for four forbidden writer edges with comment lines dropped first, plus the whole product dependency set pinned at three | `>= 8` files under the package, a rule that this crate's product source sits under `src` and nowhere else, and a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the crate must be a file the walk read; `>= 5` modules declared |
 | `model_run_requires_every_field` — `crates/model-run/tests/model_run.rs` | none — three fixed paths: the authoritative spec, `crates/model-run/src/record.rs`, and `migrations/store/0007_phase2_model_run_provenance.sql` | not a transcription: the section 27.3 `ModelRun` YAML keys are parsed out of the spec, mapped to field names by camel-to-snake case, and compared with the `ModelRun` struct's own field list as whole sets in both directions; the storage map is compared with the same key set; every named storage site must exist in migration `0007`; and each key is dropped in turn with each comparison required to notice | the parsed key set must hold more than one key, so a parser that stopped reading fails rather than passing with an empty expectation |
 | `crates/consent/tests/compile_fail.rs` and `tests/compile_fail/*.rs` | n/a — `trybuild` compiles two committed programs | not a source-text scan: passing an `AttestationRecord` where a `WrittenAuthority` belongs, and constructing a `CaptureCapabilityToken` with a struct literal. Each must fail to compile *and* fail with the committed diagnostic | n/a |
 | `the_walk_reads_every_module_in_this_crate`, `the_capture_gate_records_every_refusal_it_returns`, `the_capture_gate_re_runs_the_binding_on_every_path`, `no_public_signature_hands_out_a_quarantined_capture`, `every_capture_medium_is_classified`, `unsafe_is_confined_to_the_device_backends`, `the_linux_backend_names_only_the_three_syscalls_it_installs`, `the_probe_opens_a_handle_and_reads_no_sample` — `crates/capture-gate/tests/capture_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source — `probes/` is product source here, because it is the one file that opens a device and it is exactly what a walk rooted at `src` would miss; plus a second recursive walk over **every `.rs` under every package in `crates/`**, less each package's `tests`, for the workspace-wide signature rule; plus fixed reads of `crates/consent/src/permission.rs` and this crate's own `Cargo.toml` | ten whole-text pins (below); a whole-set comparison of the `impl` blocks naming `QuarantinedArtifact` against a one-entry list, so a `Deref`, an `AsRef<[u8]>` or any other trait that hands the bytes back fails as an extra key; a whole-set comparison of every signature in the crate whose return type names `u8` against a two-entry list; a rule that no `pub` signature anywhere in the workspace takes a `QuarantinedArtifact` and returns a type naming `u8`, `str` or `String`; an equality between the number of `CaptureRefusal` constructions and the number of `record_refusal` calls, which is how "every refusing path appends its row" is checked rather than asserted; call-site counts by identifier on `mint_capture_capability` (1), `continue_capture` (2) and `bind_permission` (1), each with `fn <name>(` subtracted; the `CaptureMedium` variant list read out of `academic-consent`'s source and compared against the four `DeviceClass::of` classifies, plus a rule that its wildcard arm is `None` and not a device; the set of files holding an `unsafe` item compared whole against a two-entry list; for the Linux backend, the same two syscall rules `only_egress_crate_has_a_socket` applies to the worker's, read against this file's own three-name list; five read shapes forbidden in the probe; and the manifest read for `default = []`, `required-features` and a `path` outside `src` | `>= 8` files in the crate walk and `>= 8` product files, plus a tripwire requiring every `mod name;` and `pub mod name;` to be a file the walk read, `#[path]` refused outright, `>= 6` declared modules, and every product file under `src/` or `probes/`; `>= 25` packages and `>= 1_200` public signatures in the workspace walk |
@@ -971,6 +972,76 @@ entry from a `[RecordCase; 5]` is a type error, which is a stronger refusal than
 any test. It is listed anyway, with `L-I15b` beside it as the shape that does
 compile, because a matrix that quietly dropped the case that the compiler
 catches would be claiming the test caught it.
+
+## What the `P2-M2` scans hold
+
+`P2-M2`'s claim is a shape of the source in three places. The payload of a
+`Proposed<T>` comes out at three named sites and nowhere else; the tier of a
+queued proposal is compared against the workflow a caller reached for at every
+door; and the receipt that separates a user from an automatic actor has one
+producer. None has a run-time observation that would notice the day it stops
+being true: a fourth release site, a door that stopped comparing, or a second
+way to mint a user receipt each leaves every behavioural test passing.
+
+**None of the rules is a token list.** The `impl` set naming `Proposed<` is
+compared whole against a two-entry list, so a trait nobody predicted fails as an
+extra key. The release inventory counts the accessor's *name*, so
+`Proposed::release(taken)` is the same call as `taken.release()`; it subtracts
+declarations of a function named exactly `release`, so `fn release_now(` cannot
+cancel its own call. The door table is the whole set of the queue's public
+`&mut self` methods, so a fifth door fails as an extra key however it is named.
+
+### The pins fix their callers
+
+`WHOLE_REQUIRE` pins the one place a tier is compared against a workflow.
+`T141`'s lesson is that a pin on a decision says nothing about whether the
+decision runs, so `DOOR_GUARDS` pins the **first statement** of each of the four
+doors beside it, and a call-site count holds the comparison at four reachers.
+A door that stopped calling it, or that called it behind an `if`, fails on the
+first-statement pin rather than on the count alone.
+
+`WHOLE_USER_DECISION` pins the whole inherent surface of the user receipt, for
+the reason `WHOLE_UNTRUSTED` pins the untrusted wrapper's: an inherent
+`pub fn forge` would name no trait and would pass a rule that only read trait
+implementations. A companion rule requires the set of `impl` blocks naming
+`UserDecision` to be that one block.
+
+### The twelve injections, and what each one measured
+
+Each was applied to the working tree, the suite was observed failing, the change
+was reverted, and the suite was observed passing again.
+
+| Injection | What it is | What caught it |
+|---|---|---|
+| `M2-I1` | a fourth release site written `Proposed::release(taken)` through the type path | `every_release_site_is_named_and_justified` (extra key), `every_settlement_door_is_named` |
+| `M2-I2` | a fourth release site named `release_now`, whose declaration a spelling-subtracting count would let cancel its own call | the same two |
+| `M2-I3` | a release site in a `#[path = "../extra/side.rs"]` module outside `src` | `the_walk_reads_every_module_in_this_crate` (product source outside `src`) and the release inventory |
+| `M2-I4` | `impl Deref for Proposed<T>` | the `proposed_has_no_unwrapping_trait` compile-fail case, and the pinned `impl` set |
+| `M2-I5` | two rows of the tier-to-workflow mapping swapped | `every_tier_reaches_only_its_own_workflow` |
+| `M2-I6` | `Autosaved::EPISTEMIC_STATUS` changed to `USER_CONFIRMED` | `low_risk_autosave_is_marked_ai_inferred` |
+| `M2-I7` | a batcher that drops the last member of every group | `high_volume_proposals_are_batched_without_loss` (set equality) |
+| `M2-I8` | an undo that removes the record it reverses instead of appending | `medium_risk_requires_queue_and_undo`, `rejected_proposal_is_retained` |
+| `M2-I9` | a rejection that removes the queue entry | the same two, plus the batching partition |
+| `M2-I10` | `Actor::Importer` admitted as a user | `non_delegable_has_no_automatic_actor_path`, `high_risk_requires_explicit_approval`, `the_user_receipt_has_one_producer` |
+| `M2-I11` | the explicit approval's identity check removed | `high_risk_requires_explicit_approval` |
+| `M2-I12` | `decided_at` dropped from the record digest | `the_disposition_digest_covers_every_field` |
+
+`M2-I1` and `M2-I2` are the two shapes `P2-RF10` and `P2-RF11` repaired in the
+untrusted-content inventory. They are injected here rather than assumed,
+because the repaired helpers were copied into a new file and a copy that
+silently lost a clause would pass every other rule.
+
+### What the migration holds that the crate cannot
+
+The Rust boundary refuses these shapes in memory. Migration `0009`'s triggers
+refuse them again against rows a process outside this repository could insert:
+`guard_proposal_disposition_actor` refuses a non-user actor,
+`guard_proposal_low_risk_is_not_disposed` refuses a user decision on an
+autosaved proposal, `guard_proposal_high_approval_is_explicit` requires the
+explicit-approval flag on that tier and refuses it on the others, and
+`guard_proposal_outcome_matches_tier` refuses an outcome whose epistemic status
+or disposition does not match the tier. Each is observed refusing in
+`crates/store/src/proposal_closure_tests.rs` against a control that is accepted.
 
 ## Open
 

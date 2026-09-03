@@ -1,0 +1,16 @@
+error[E0624]: method `release` is private
+  --> tests/compile_fail/proposed_payload_is_not_readable.rs:18:41
+   |
+18 |     let _by_accessor: String = proposed.release();
+   |                                         ^^^^^^^ private method
+   |
+  ::: src/proposed.rs
+   |
+   |     pub(crate) fn release(self) -> T {
+   |     -------------------------------- private method defined here
+
+error[E0616]: field `value` of struct `Proposed` is private
+  --> tests/compile_fail/proposed_payload_is_not_readable.rs:19:38
+   |
+19 |     let _by_field: String = proposed.value;
+   |                                      ^^^^^ private field

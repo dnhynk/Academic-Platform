@@ -296,6 +296,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
     ],
     "academic-policy": [],
     "academic-projections": ["academic-domain", "academic-store"],
+    // `P2-M2`'s proposal boundary, risk tiers and review queue. Its one product
+    // edge is the domain crate, and the edges it does *not* have are the point:
+    // no `academic-store`, so the canonical writer is not in the closure a
+    // `Proposed<T>` compiles against and
+    // `proposed_type_cannot_reach_canonical_writer` is a compile error rather
+    // than a source scan; and no `academic-policy`, so no capability-bearing
+    // value is nameable from a product file here.
+    "academic-proposal": ["academic-domain"],
     "academic-record": ["academic-domain", "academic-transcript"],
     "academic-repository-analyzer": ["academic-policy"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
@@ -417,6 +425,11 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // by its caller.
     "academic-transcript": ["academic-crypto"],
     "academic-scenario": ["academic-admission", "academic-domain"],
+    // `P2-M2` links its own domain crate a second time as a dev edge for the
+    // `trybuild` reason `academic-scenario` gives above: a compile-fail case
+    // compiles against the crate under test plus that crate's dev-dependencies,
+    // and a case has to name the domain types a `Proposed<T>` is built from.
+    "academic-proposal": ["academic-domain"],
     // `P2-G5` needs a real `PermissionBroker` to build an `EgressProxy` and a
     // real `ProcessCapability` to enumerate what a privileged action is. Both
     // are test-only: keeping `academic-policy` off the product edge above is
@@ -1680,6 +1693,9 @@ const SOCKET_CAPABLE_CLOSURES = {
   // `P2-M1`. `libc` reaches it through `academic-policy`'s bundled SQLite, and
   // nothing in this closure can open a socket.
   "academic-model-run": ["libc"],
+  // `P2-M2`. `libc` reaches it through the domain crate's own closure; this
+  // crate has no edge to the policy, store, egress or worker packages at all.
+  "academic-proposal": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -3381,6 +3397,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     consentReceiptText,
     modelRunReceiptText,
     captureReceiptText,
+    proposalReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3399,6 +3416,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-g6.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-m1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-m2.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3417,6 +3435,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const consentReceipt = JSON.parse(consentReceiptText);
   const modelRunReceipt = JSON.parse(modelRunReceiptText);
   const captureReceipt = JSON.parse(captureReceiptText);
+  const proposalReceipt = JSON.parse(proposalReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -3891,6 +3910,66 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       `${claimed} is claimed by two admission receipts`,
     );
   }
+
+  // `P2-M2` adds the proposal boundary, risk tiers and review queue as
+  // `academic-proposal` and admits no external crate: its product edges are
+  // `academic-domain`, `sha2` and `thiserror`, and its dev edges are
+  // `academic-domain`, `serde_json`, `trybuild` and `uuid`, all already in this
+  // lock through earlier receipts.
+  assert.equal(proposalReceipt.task, "P2-M2");
+  const proposalAdmitted = new Set(
+    proposalReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const proposalPathPackages = new Set(
+    proposalReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(proposalAdmitted.size, 0, "P2-M2 must admit no external crate");
+  assert.deepEqual([...proposalPathPackages], ["academic-proposal@0.1.0"]);
+  assert.deepEqual(proposalReceipt.summary.npm_additions, []);
+  assert.equal(proposalReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(proposalReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+  ]);
+  for (const claimed of [...proposalAdmitted, ...proposalPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        sandboxAdmitted.has(claimed) ||
+        sandboxPathPackages.has(claimed) ||
+        untrustedAdmitted.has(claimed) ||
+        untrustedPathPackages.has(claimed) ||
+        modelRunAdmitted.has(claimed) ||
+        modelRunPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const proposalTuples = lockTuples.filter(
+    ([name, version]) =>
+      proposalAdmitted.has(`${name}@${version}`) ||
+      proposalPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    proposalTuples.length,
+    proposalAdmitted.size + proposalPathPackages.size,
+    "a P2-M2 admitted package is missing from Cargo.lock",
+  );
+
   const modelRunTuples = lockTuples.filter(
     ([name, version]) =>
       modelRunAdmitted.has(`${name}@${version}`) ||
@@ -4079,7 +4158,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
         consentAdmitted.has(claimed) ||
         consentPathPackages.has(claimed) ||
         modelRunAdmitted.has(claimed) ||
-        modelRunPathPackages.has(claimed),
+        modelRunPathPackages.has(claimed) ||
+        proposalAdmitted.has(claimed) ||
+        proposalPathPackages.has(claimed),
       false,
       `${claimed} is claimed by two admission receipts`,
     );
@@ -4126,7 +4207,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !modelRunAdmitted.has(`${name}@${version}`) &&
       !modelRunPathPackages.has(`${name}@${version}`) &&
       !captureAdmitted.has(`${name}@${version}`) &&
-      !capturePathPackages.has(`${name}@${version}`),
+      !capturePathPackages.has(`${name}@${version}`) &&
+      !proposalAdmitted.has(`${name}@${version}`) &&
+      !proposalPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -4152,7 +4235,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       untrustedTuples.length +
       consentTuples.length +
       modelRunTuples.length +
-      captureTuples.length,
+      captureTuples.length +
+      proposalTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

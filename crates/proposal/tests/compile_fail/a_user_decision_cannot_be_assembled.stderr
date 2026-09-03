@@ -1,0 +1,15 @@
+error[E0451]: field `user_id` of struct `UserDecision` is private
+  --> tests/compile_fail/a_user_decision_cannot_be_assembled.rs:10:33
+   |
+10 |     let forged = UserDecision { user_id: 1 };
+   |                                 ^^^^^^^ private field
+
+error[E0451]: fields `proposal_id` and `decision` of struct `academic_proposal::ExplicitApproval` are private
+  --> tests/compile_fail/a_user_decision_cannot_be_assembled.rs:12:9
+   |
+11 |     let _approval = ExplicitApproval {
+   |                     ---------------- in this type
+12 |         proposal_id: ProposalId::new(1),
+   |         ^^^^^^^^^^^ private field
+13 |         decision: forged,
+   |         ^^^^^^^^ private field

@@ -1,0 +1,32 @@
+[package]
+name = "academic-proposal"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `academic-domain` is the one product edge, and it is what makes the actor rule
+# structural rather than a restatement: the four actor classes a disposition is
+# judged against are that crate's closed `Actor` enum, matched exhaustively, so
+# a fifth variant stops this crate compiling until it is classified here too.
+#
+# There is deliberately no edge to `academic-store`. The canonical writer is
+# therefore not in the dependency closure a `Proposed<T>` is compiled against,
+# which is what `proposed_type_cannot_reach_canonical_writer` observes.
+[dependencies]
+academic-domain = { path = "../domain" }
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+# The compile-fail cases compile against this crate plus this crate's
+# dev-dependencies, so the domain types a case has to name must be reachable
+# from `tests/compile_fail` as well. `academic-scenario` gives the same reason.
+academic-domain = { path = "../domain" }
+serde_json.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

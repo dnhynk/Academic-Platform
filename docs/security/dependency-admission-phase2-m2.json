@@ -1,0 +1,32 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-c",
+  "task": "P2-M2",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-M2 admits no external crate. academic-proposal links academic-domain, sha2 and thiserror as product edges and academic-domain, serde_json, trybuild and uuid as dev edges, all covered by earlier reviewed receipts, and adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-proposal is the P2-M2 proposal boundary, risk-tier mapping and review queue. It is a separate package from academic-store, which owns migration 0009's tables, because what it holds is the Proposed<T> boundary, the four section 27.4 rows and the append-only disposition history -- none of which is persistence, and the absence of any edge to the canonical writer is what makes proposed_type_cannot_reach_canonical_writer a compile error rather than a source scan.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {
+    "academic-domain": "Actor, DecisionAction, ConfidencePermille and EpistemicStatus. The three dispositions are that crate's frozen DecisionAction rather than a second vocabulary beside it, and the automatic-actor refusal is an exhaustive match over its closed Actor enum, so a fifth actor variant stops this crate compiling until it is classified."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-proposal",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-proposal",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-proposal is a workspace path crate, not an external dependency. It owns the Proposed<T> boundary, whose payload has one crate-private accessor and three inventoried release sites; the four risk tiers of spec section 27.4 and the total mapping from each to the workflow it requires; the review queue's four doors, one per workflow; the append-only disposition history over academic-domain's DecisionAction, which an undo extends and never edits; and section 29.7's confidence/impact batching under a versioned configuration. Its dependency set is deliberately minimal -- the domain crate plus two leaf libraries -- and the_crate_has_no_writer_dependency in crates/proposal/tests/proposal_scans.rs pins that set whole.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. It has no edge to academic-policy, academic-store, academic-egress-boundary or academic-worker, so its link closure holds nothing that can open a socket beyond libc, which reaches it through the domain crate's transitive closure. Every proposal, decision and threshold in its test tree is synthetic and built in-process. only_egress_crate_has_a_socket in tools/phase1-scaffold-policy.test.mjs pins its socket allowance at absent.",
+  "advisory_path": "Unchanged. Every external crate academic-proposal links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}
