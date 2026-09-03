@@ -1740,3 +1740,74 @@ fn risky_span_review_context() -> TestResult {
     assert_eq!(none_low.of(RiskClass::Equation).len(), 1);
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// The recorded defaults
+// ---------------------------------------------------------------------------
+
+/// The plan's `P2-L4` row: the confidence and gap thresholds are versioned
+/// configuration **with recorded defaults**.
+///
+/// A constant in code and nothing in the contract is the shape the row exists
+/// to prevent, so the table is read out of the contract page and compared
+/// against the constants rather than transcribed here.
+#[test]
+fn the_recorded_defaults_are_the_documented_ones() -> TestResult {
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("docs")
+        .join("contracts")
+        .join("lecture-document.md");
+    let page = std::fs::read_to_string(path)?;
+    let mut documented: Vec<(String, String)> = Vec::new();
+    for line in page.lines() {
+        let mut cells = line.split('|').map(str::trim);
+        if cells.next() != Some("") {
+            continue;
+        }
+        let (Some(field), Some(value)) = (cells.next(), cells.next()) else {
+            continue;
+        };
+        let field = field.trim_matches('`');
+        if [
+            "version",
+            "gap_threshold_nanos",
+            "low_confidence_at_or_below_permille",
+        ]
+        .contains(&field)
+        {
+            documented.push((field.to_owned(), value.to_owned()));
+        }
+    }
+    assert_eq!(
+        documented,
+        vec![
+            (
+                "version".to_owned(),
+                COVERAGE_CONFIG_V1.version().to_string()
+            ),
+            (
+                "gap_threshold_nanos".to_owned(),
+                COVERAGE_CONFIG_V1.gap_threshold_nanos().to_string()
+            ),
+            (
+                "low_confidence_at_or_below_permille".to_owned(),
+                COVERAGE_CONFIG_V1
+                    .low_confidence_at_or_below_permille()
+                    .to_string()
+            ),
+        ],
+        "the contract page's defaults table and COVERAGE_CONFIG_V1 disagree"
+    );
+
+    // The reader is not vacuous: it found three rows, and it finds none in a
+    // page that has no such table.
+    assert_eq!(documented.len(), 3);
+
+    // And the configuration refuses what it says it refuses.
+    assert!(academic_lecture_document::CoverageConfig::new(0, 1, 1).is_err());
+    assert!(academic_lecture_document::CoverageConfig::new(1, 1, 1001).is_err());
+    assert!(academic_lecture_document::CoverageConfig::new(1, 0, 1000).is_ok());
+    Ok(())
+}

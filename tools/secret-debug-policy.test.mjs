@@ -104,6 +104,18 @@ const SECRET_BEARING_TYPES = new Map([
   ["RawSegment", "one span of the lecture, its verbatim text and its tokens"],
   ["CorrectionCandidate", "the word somebody proposes one token should read instead"],
   ["EffectiveToken", "one word of the lecture as a transcript version reads it"],
+  // `P2-L4`. Five types that hold the lecture in words on the document side:
+  // what a caller offers the builder, what the builder admits, the document
+  // itself, and the two study-index types whose headings are written over the
+  // lecture and can quote it. `S-10`'s decision for that crate is made in the
+  // same strengthening direction `P2-L3` chose -- every one hand-writes a
+  // redacting `Debug` that reaches its text through a length only -- so a later
+  // widening of the field-name vocabulary costs nothing here.
+  ["NodeDraft", "the rendered lecture text a caller offers the document builder"],
+  ["DocumentNode", "one rendered span of the lecture, as the document holds it"],
+  ["LectureDocument", "the whole lossless rendering of one lecture"],
+  ["StudyIndexEntry", "a heading a summary wrote over a span of the lecture"],
+  ["StudyIndex", "every heading of one summary over one lecture"],
 ]);
 
 /**

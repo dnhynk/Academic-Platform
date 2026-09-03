@@ -426,6 +426,32 @@ default for it. What it does and does not claim is in
 It adds one workspace member, no external package to `Cargo.lock`, and no
 migration, and it runs inside `cargo test --workspace`.
 
+`P2-L4` adds `academic-lecture-document`, section 12.5's lossless document and
+section 12.6's deterministic coverage validator. **Exactly one status per
+segment is held by the type**: `SegmentStatus` has four variants, a
+`SegmentAccount` has one field of it, each non-mapped variant carries its
+evidence by value, and there is no `mapped` constructor at all — `MAPPED` is
+derived from the document, so a coverage number cannot be asserted rather than
+measured. The one property that is genuinely about two inputs is a total `match`
+whose fourth arm refuses, so a report that exists partitions its segments.
+**`INCOMPLETE` is the only value with no measurement behind it**: the rendering
+starts there and is replaced only by a `CompletenessWitness` whose one producer
+is the report, and there is no completeness parameter and no setter. The nine
+preservation transforms are the specification's own sentence read out of it, and
+the rule that catches a deletion or a paraphrase does not read the transform's
+name at all — **every token a mapping covers has to still occur, in order, in
+the rendered text**, under all nine. Nothing here can shrink the coverage
+denominator: the eligible set is walked off the transcript rather than taken as
+an argument, neither preservation type offers a method that returns less than it
+holds, and `Salience` lives only in the `StudyIndex`, which is a distinct type
+carrying a disclosure it has no setter for. `TRANSCRIPT_COVERAGE` flips from
+`PLANNED` to `IMPLEMENTED` with a corpus that is executed and byte-compared, not
+merely counted. **This crate names no raw type**, so `P2-L3`'s workspace scope
+rule holds unweakened. What it does and does not claim is in
+[the lecture document contract](docs/contracts/lecture-document.md). It adds one
+workspace member, no external package to `Cargo.lock`, and no migration, and it
+runs inside `cargo test --workspace`.
+
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical
 object reference and where a deletion reaches a backup are in the encrypted

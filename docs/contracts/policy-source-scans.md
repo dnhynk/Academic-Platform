@@ -179,6 +179,7 @@ remove.
 | `crates/store/src/curriculum_tests.rs` | n/a — it reads migration `0014`'s own SQL text, not Rust source | not a source-text scan: migration `0014`'s guards, its four relation tables' whole column sets, its table list against the migration's own `CREATE TABLE` lines, and the SQL half of `curriculum_publish_is_atomic_under_injected_failure`, all fired against a migrated database | n/a |
 | `crates/curriculum/tests/curriculum.rs` | n/a — the `#[path]` it names pulls in `P2-U6`'s fixture module, which the inventory follows rather than treating as a read | not a source-text scan: `P2-U1`'s five behavioural acceptance cases, driven over an in-process ledger and one real `academic-ingestion` run | n/a |
 | `the_walk_reads_every_module_in_this_crate`, `every_raw_byte_site_is_named_and_justified`, `the_accepted_response_is_sealed_immediately`, `raw_token_write_protection`, `the_lineage_has_no_raw_mutation`, `no_default_reaches_the_remote_arm`, `the_archive_appends_and_nothing_removes`, `no_fourth_disposition_is_declared`, `the_transmission_is_decided_by_the_route`, `the_binding_is_compared_against_the_journal_header`, `two_runs_carry_no_order`, `no_wall_clock_socket_or_file_reaches_this_crate` — `crates/transcription/tests/transcription_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over **every package in `crates/`** for the four workspace-wide rules; plus five fixed reads of this crate's own modules for the whole-text pins and one of its `Cargo.toml` | ten whole-text pins (below); a whole-inventory comparison of `response_bytes`'s call sites counted by identifier with `fn response_bytes(` subtracted, each with a written reason; call-site counts by identifier on `route_for` (1), `covers` (2), `decode` (1), `record_model_run` (1) and `ModelRun::record(` (1), each with the one file it may be called from; whole-set comparisons of every `impl` header naming a raw type (6 entries) and every one naming a comparison type (4), each with a forbidden-trait list beside it as the weaker half; three pinned derive lists on the comparison types; a rule that each raw declaration carries exactly one `pub`, which is the condition the language rule about struct literals rests on; a whole-set comparison of the lineage's `&mut self` surface (3 entries); workspace-wide public-signature sweeps refusing a `ProviderResponse`/`ArchivedResponse` that returns `str`, `String` or `u8` and a raw value that is mutable, both reading whole identifiers; a workspace-wide rule that no file outside `crates/transcription/` names a raw type; a rule that the binding comparison is the **first statement** of both admitting methods; a 15-token absence list over the product source for clocks, sockets, processes and files; and a manifest rule that this crate declares no `academic-worker` and no `academic-store` edge, with comment lines stripped first | `>= 13` files in the package walk, `>= 400` in the workspace walk, `>= 10` declared modules, `>= 1000` signatures in each of the two workspace sweeps, every product file under `src/`, and a tripwire requiring every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the package to be a file the walk read |
+| `the_walk_reads_every_module_in_this_crate`, `the_mapped_status_has_one_producer`, `incomplete_is_the_only_value_with_no_measurement_behind_it`, `no_signature_reads_a_rendering_back_into_a_record`, `a_ranking_cannot_reach_the_preservation_path`, `the_preservation_types_offer_no_reducing_method`, `the_transform_set_is_closed_and_the_mapping_has_one_producer`, `the_document_names_no_raw_type`, `no_wall_clock_socket_or_file_reaches_this_crate` — `crates/lecture-document/tests/lecture_document_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over **every package in `crates/`** for the two workspace-wide rules; plus six fixed reads of this crate's own modules for the whole-text pins | six whole-text pins — the account, the coverage inputs, the witness, the three declaring constructors, the transform set and the whole rendering `impl`; file-to-count maps over the producers of an account (1 file, 2 sites), a witness (1, 1), a `COMPLETE` (1, 2 — one construction and one match arm, which a count cannot separate) and a source mapping (1, 1), each counted with declarations subtracted; whole-set comparisons of the public method names of `LectureDocument` (6) and `CoverageReport` (21), of every `impl` header naming a document type (5), of the files that may name `Salience` (1) and of the files that may name `PdfArtifact` (5); a workspace-wide public-signature sweep refusing a `PdfArtifact` parameter beside any of six record return types, with a control signature that the rule matches; a workspace-wide rule that no package outside this one names an account or a witness; a rule that neither preservation module names a study-index type; and a 14-spelling absence list over `src/` for clocks, sockets, files, processes and environment reads, each spelling checked against a sample that contains it | `>= 16` files in the package walk, `>= 12` in the product walk, and a `#[path]` tripwire over every product file |
 | `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
 | `tools/{source-preflight,cargo-lock-source-policy,dependency-source-policy,restricted-yaml}.mjs`, `tools/{dependency-source-policy,pnpm-source-policy-consumption}.test.mjs` | n/a | lockfile and registry parsing; not a source-text scan | n/a |
 | `tools/{phase1-exit,security-baseline}.mjs` | n/a | execution observation and committed fixture bytes | n/a |
@@ -1806,6 +1807,142 @@ by a scan. They are kept because what they measure is real — the private-field
 rule is the first of the four things holding the raw layer — and each is paired
 with the variant written where the field is reachable, which compiles and is
 refused by the scan the pair was aimed at.
+
+## What the `P2-L4` scans hold
+
+Four of `P2-L4`'s claims are statements about what the source does not contain:
+no path reduces a document because a span was ranked low, the rendering is a
+sink, `MAPPED` has one producer, and the completeness witness has one producer.
+
+**Every rule is a whole set, and that is a response to a measurement rather
+than a preference.** `P2-R2` recorded five guards in this run failing in a row
+because each asked whether a name was on a list of forbidden spellings, and a
+bypass that spells nothing on the list walks past all five. So: the producers of
+an account, of a witness, of a `COMPLETE` and of a source mapping are compared
+as file-to-count maps; the fields a coverage run reads and the public method
+names of the two preservation types are compared as complete sets, so a
+parameter or a method added under any name at all fails as an extra key; and the
+rendering rule is over a **pair of types** — a public signature anywhere in
+`crates/` that takes a `PdfArtifact` and returns a record type — rather than
+over function names nobody may write.
+
+**Two counting shapes had to be repaired while writing them.** A bare `Name {`
+count reads a struct declaration and two `impl` headers as constructions, which
+is `declarations_of`'s relationship to `uses_of` one level up; `constructions_of`
+subtracts them. And a fieldless enum variant's construction and its match arm
+are the same three tokens, so the `DocumentCompleteness::Complete` count in
+`pdf.rs` is two and cannot be one — the whole-`impl` pin is what fixes which of
+the two is the upgrade, and the map's job is that no other file spells it at all.
+That is recorded rather than filed as a passing count.
+
+**`P2-L3`'s tripwire did not fire, and this task asserts that from its own
+side.** That task's workspace rule — no file outside `crates/transcription/`
+names `RawToken`, `RawSegment` or `RawTranscript` — was recorded as "a tripwire
+for `P2-L4`, the first task that will". It is not: the document is built over
+`TranscriptSegment` and `EffectiveToken` at one version, which is what "the
+document is layered over the transcript and does not write raw tokens" means
+when it is a graph fact. `the_document_names_no_raw_type` holds that here too,
+with a control that this crate does read a transcript, so the assertion is not
+passing because it reads none.
+
+### What this task found in a neighbouring guard
+
+`engine_source_contains_no_clock_rng_network_or_model` forbade the bare name
+`ModelRun` in every engine source. This crate refuses a model-authored coverage
+exclusion with an exhaustive `match` over `academic-domain`'s closed `Actor`, so
+the rule read three **refusals** of a model as three model calls. The rule is now
+`/(?<!Actor::)\bModelRun\b/u`, which is what that scan's own comment already
+says it checks — "API spellings, not prose" — and a control pins both directions
+so the narrowing cannot widen into a hole: `ModelRun::record()` and
+`let run: ModelRun` still trip, `Actor::ModelRun { .. } => refuse()` does not.
+
+`record_harness`'s "nothing extra hides under either directory" walked the whole
+of `testdata/engines`, which is wider than the sentence it carries and wider
+than the two directories that builder can render. Flipping `TRANSCRIPT_COVERAGE`
+to `IMPLEMENTED` put a third directory under that root and the walk failed on
+files `academic-record` cannot render. It is now scoped to its own two, and the
+root-wide rule stays where it belongs — `engine_registry_is_complete` in
+`academic-domain`, which knows every registered engine's directory.
+
+### The two guards this task measured empty in its own suite
+
+`coverage_determinism`'s control varied the gap threshold as well as the
+confidence permille. An injection that removed the **whole** configuration from
+the report's canonical encoding still passed it, because the two reports
+differed by their *gap findings* — the assertion was true for a reason its own
+comment did not claim. The control now varies only the permille, which no check
+in the report reads, and asserts that the varied configuration changed no
+measurement.
+
+`completeness_witness`'s unmapped condition is implied by its coverage
+condition. An unmapped segment is in the coverage denominator and not in its
+numerator, so whole segment coverage already implies an empty unmapped list, and
+deleting the condition changes no row of the suite. The condition **stays** — it
+is section 12.6's own sentence, and the implication is a property of the
+denominator rule, which is configuration-shaped rather than fixed — and the
+implication is now asserted over all 2101 shapes of the partition sweep instead
+of being assumed. It is recorded here as a condition that is not independently
+observable today rather than as a guard that bites.
+
+### The injection matrix
+
+Twenty injections, applied one at a time to shipped source and reverted after
+each. Each is compiled first: a refusal that is a compile error proves nothing
+about the scan it was aimed at, and two rows below are recorded as exactly that
+outcome with the variant that does compile beside them. The unmodified tree is
+run before and after the matrix and passes both times.
+
+Five rows spell **no** forbidden name at all — `L4-I4`, `L4-I5`, `L4-I6r`,
+`L4-I7` and `L4-I8` — which is the shape `P2-R2` measured walking past a token
+list five times.
+
+| # | Injection | Refused by |
+|---|---|---|
+| L4-I1 | the classification picks the disposition instead of refusing a double status | `segment_status_exhaustive` |
+| L4-I2 | the disposition ledger accepts a second declaration for one segment | the same |
+| L4-I3 | the witness stops reading the unmapped list | **nothing**: implied by the coverage condition, recorded above |
+| L4-I4 | a second witness producer called `attest`, naming nothing on any list | the witness producer map |
+| L4-I5 | `pub fn restore(&PdfArtifact, &LectureDocument) -> LectureDocument`, naming nothing on any list | the workspace pair-of-types sweep |
+| L4-I6 | a `floor` field on `CoverageInputs`, naming nothing on any list | **the compiler**: every construction site loses a field |
+| L4-I6r | the same field with its construction sites updated, which compiles | `WHOLE_COVERAGE_INPUTS` |
+| L4-I7 | a second source-mapping producer called `echo`, naming nothing on any list | the mapping producer map |
+| L4-I8 | `LectureDocument::above(floor)` returning a subset of the nodes, naming nothing on any list | `the_preservation_types_offer_no_reducing_method` |
+| L4-I9 | a tenth preservation transform | **the compiler**: `ALL` is `[Self; 9]` and the `match`es are total |
+| L4-I9r | the same arm with `ALL` and both `match`es widened, which compiles | `WHOLE_TRANSFORM_ENUM` |
+| L4-I10 | the crate names `RawSegment` | `the_document_names_no_raw_type` |
+| L4-I11 | the token-preservation rule stops reading the rendered text | `lossless_transform_allowlist` |
+| L4-I12 | render QA reports clean over a partial measurement | `lecture_render_qa` |
+| L4-I13 | the study index carries an empty disclosure | `study_index_disclosure` |
+| L4-I14 | two of the three configuration fields leave the report's encoding | **nothing**: a partial injection, remade below |
+| L4-I14r | all three leave it | `coverage_determinism`, after its control was repaired |
+| L4-I15 | a cross-reference excuses any node whatever segment it names | `ordering_check` |
+| L4-I16 | the gap threshold becomes exclusive at the boundary | `audio_gap_threshold` |
+| L4-I17 | a committed golden expectation is edited by hand | `harness_corpus_matches_a_fresh_render` |
+
+`L4-I6` and `L4-I9` are the two rows refused by the compiler rather than by a
+scan. Both are kept, because what they measure is real — a coverage input is
+constructed at five sites and a transform set is `[Self; 9]` with total
+`match`es — and each is paired with the variant that compiles.
+
+### The `S-10` decision this crate had to make
+
+Five types hold the lecture in words on the document side: what a caller offers
+the builder, what the builder admits, the document itself, and the two
+study-index types whose headings are written over the lecture and can quote it.
+The decision is `P2-L3`'s, made in the same strengthening direction — every one
+is registered in `SECRET_BEARING_TYPES` and hand-writes a redacting `Debug`.
+
+The cost is stated rather than discovered later: a registered type's
+hand-written `Debug` may reach a field only through a length, and the field set
+includes the identifier newtypes, so `DocumentId`, `NodeId` and `StudyIndexId`
+print as byte lengths in every `Debug` output of a type that holds one. They
+gained a `len` accessor for that reason, because the length reduction the policy
+accepts sits directly on the field and `self.id.as_str().len()` is not it. The
+alternative — widening `LENGTH_REDUCTIONS` with `.as_str().len()` — would have
+loosened a guard every crate shares to save one crate three accessors, so it was
+not taken.
+
+There is no `PUBLIC_BYTES` entry.
 
 ## What the `P2-U2` scans hold
 
