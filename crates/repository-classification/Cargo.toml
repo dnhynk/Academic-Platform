@@ -8,13 +8,13 @@ publish.workspace = true
 
 [dependencies]
 academic-domain = { path = "../domain" }
+academic-policy = { path = "../policy" }
 academic-repository-analysis = { path = "../repository-analysis" }
 academic-repository-correlation = { path = "../repository-correlation" }
 thiserror.workspace = true
 
 [dev-dependencies]
 academic-model-run = { path = "../model-run" }
-academic-policy = { path = "../policy" }
 academic-repository = { path = "../repository" }
 academic-untrusted-content = { path = "../untrusted-content" }
 
