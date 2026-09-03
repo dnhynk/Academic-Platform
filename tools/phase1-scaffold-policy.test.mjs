@@ -309,6 +309,19 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // value is nameable from a product file here.
     "academic-proposal": ["academic-domain"],
     "academic-record": ["academic-domain", "academic-transcript"],
+    // `P2-R1`'s repository snapshot boundary. Three product edges, each a
+    // boundary it reuses rather than rebuilds: `P2-K1`'s `DeviceKeystore` seam
+    // for the GitHub credential, `P2-G1`/`P2-G7`'s broker and process matrix
+    // for the permission half of the gate, and `P2-G5`'s trust boundary for the
+    // repository bytes themselves. The edges it does *not* have are the point:
+    // no `academic-store`, so a snapshot cannot reach the canonical writer; no
+    // `academic-egress-boundary` and no `academic-worker`, so nothing in its
+    // closure can stage a payload or launch a process.
+    "academic-repository": [
+      "academic-crypto",
+      "academic-policy",
+      "academic-untrusted-content",
+    ],
     "academic-repository-analyzer": ["academic-policy"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
     // rehearsal receipt. It sits above the key schedule and below the
@@ -2063,6 +2076,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-projections": ["libc", "rustix", "windows-sys"],
   "academic-record": ["libc"],
   "academic-recovery": ["libc"],
+  // `P2-R1`. `libc` reaches it through `academic-policy`'s bundled SQLite. The
+  // crate spells no socket construct, which is why its `SOCKET_ALLOWANCE` entry
+  // is absent rather than empty; `GitHubRepositoryReader` is a trait with no
+  // shipped implementation, the way `academic-egress-boundary`'s transport is.
+  "academic-repository": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-retention": ["libc"],
   "academic-rpc": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
@@ -2964,9 +2982,19 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
     .filter((pkg) => productDependencyNames(pkg).includes("academic-crypto"))
     .map((pkg) => pkg.name)
     .toSorted();
+  // `academic-repository` is the sixth, and it is here for a different reason
+  // than the five above: it needs `DeviceKeystore`, which is the seam between a
+  // secret and the operating-system broker, to hold `P2-R1`'s GitHub token. It
+  // is not an encrypted-lane crate. What keeps that edge from widening this
+  // lane is that `academic-crypto`'s default feature set is empty, so the
+  // `os-keystore` FFI leaf is not in this closure, and that nothing depends on
+  // `academic-repository` -- the two conditions
+  // `encrypted_portability_lane_is_not_default` and
+  // `rotation_engine_lane_is_not_default` check for the others.
   assert.deepEqual(storeCryptoDependents, [
     "academic-portability",
     "academic-recovery",
+    "academic-repository",
     "academic-retention",
     "academic-store",
     "academic-vault",
@@ -3793,6 +3821,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     captureReceiptText,
     proposalReceiptText,
     desktopReceiptText,
+    repositoryReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3813,6 +3842,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-l1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-m2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-x1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-r1.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3833,6 +3863,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const captureReceipt = JSON.parse(captureReceiptText);
   const proposalReceipt = JSON.parse(proposalReceiptText);
   const desktopReceipt = JSON.parse(desktopReceiptText);
+  const repositoryReceipt = JSON.parse(repositoryReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -4656,6 +4687,61 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-X1 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-R1` adds one workspace path package, `academic-repository`, and admits
+  // no external crate: its product edges are `academic-crypto`,
+  // `academic-policy`, `academic-untrusted-content`, `sha2`, `thiserror` and
+  // `zeroize`, and its dev edge is `tempfile`, all already in this lock through
+  // earlier receipts.
+  assert.equal(repositoryReceipt.task, "P2-R1");
+  const repositoryAdmitted = new Set(
+    repositoryReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const repositoryPathPackages = new Set(
+    repositoryReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(repositoryAdmitted.size, 0, "P2-R1 must admit no external crate");
+  assert.deepEqual([...repositoryPathPackages], ["academic-repository@0.1.0"]);
+  assert.deepEqual(repositoryReceipt.summary.npm_additions, []);
+  assert.equal(repositoryReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(repositoryReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-crypto",
+    "academic-policy",
+    "academic-untrusted-content",
+  ]);
+  for (const claimed of [...repositoryAdmitted, ...repositoryPathPackages]) {
+    assert.equal(
+      keyPathPackages.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        recordPathPackages.has(claimed) ||
+        sandboxPathPackages.has(claimed) ||
+        untrustedPathPackages.has(claimed) ||
+        consentPathPackages.has(claimed) ||
+        modelRunPathPackages.has(claimed) ||
+        capturePathPackages.has(claimed) ||
+        proposalPathPackages.has(claimed) ||
+        desktopPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const repositoryTuples = lockTuples.filter(
+    ([name, version]) =>
+      repositoryAdmitted.has(`${name}@${version}`) ||
+      repositoryPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    repositoryTuples.length,
+    repositoryAdmitted.size + repositoryPathPackages.size,
+    "a P2-R1 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -4691,7 +4777,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !proposalAdmitted.has(`${name}@${version}`) &&
       !proposalPathPackages.has(`${name}@${version}`) &&
       !desktopAdmitted.has(`${name}@${version}`) &&
-      !desktopPathPackages.has(`${name}@${version}`),
+      !desktopPathPackages.has(`${name}@${version}`) &&
+      !repositoryAdmitted.has(`${name}@${version}`) &&
+      !repositoryPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -4719,7 +4807,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       modelRunTuples.length +
       captureTuples.length +
       proposalTuples.length +
-      desktopTuples.length,
+      desktopTuples.length +
+      repositoryTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -5002,8 +5091,25 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
               },
             ]
           : [];
+    // `P2-R1` reuses `tempfile` for the synthetic repository trees its
+    // acceptance suite builds in-process, and admits none. Its other edges --
+    // `sha2`, `thiserror`, `zeroize` -- are `normal` edges on crates that are
+    // not `admissions` entries of this receipt, so they are not on this list.
+    const r1RepositoryUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-repository",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : [];
     const expectedUses = [
       ...admission.uses,
+      ...r1RepositoryUse,
       ...g4SandboxUse,
       ...l1CaptureUse,
       ...j1ProjectionUse,

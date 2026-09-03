@@ -182,3 +182,5 @@ mod entity_registry_tests;
 mod model_run_closure_tests;
 #[cfg(test)]
 mod proposal_closure_tests;
+#[cfg(test)]
+mod repository_snapshot_tests;

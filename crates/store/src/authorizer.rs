@@ -86,6 +86,20 @@ pub const CANONICAL_TABLES: &[&str] = &[
     "proposal_review",
     "proposal_disposition_record",
     "proposal_outcome",
+    // Migration 0012's typed columns for the SNAPSHOT_REGISTERED aggregate.
+    // They are canonical history for the same reason: which commit a snapshot
+    // was taken at, whether the tree was dirty and which paths differed, and
+    // which paths the gate removed are facts an analysis is later read against,
+    // so an UPDATE or a DELETE would move what a finding was found in. The
+    // disclosure decision is here for a second reason as well: it is what
+    // permits a secret file's digest to exist at all, and an edit to it would
+    // retroactively authorize a digest nobody decided on.
+    "repository_snapshot",
+    "repository_snapshot_manifest_entry",
+    "repository_snapshot_tool_version",
+    "repository_snapshot_excluded_path",
+    "repository_hash_disclosure_decision",
+    "repository_secret_finding",
 ];
 
 /// Installs the product-writer guard after migration and identity verification.

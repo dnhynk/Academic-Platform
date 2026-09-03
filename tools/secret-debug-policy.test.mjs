@@ -93,10 +93,19 @@ const SECRET_BEARING_TYPES = new Map([
  * vocabulary did not include payload/prompt/response names and the injection
  * passed, so those names live in this generic discovery net rather than in a
  * second audit-only scanner.
+ * `blob` was added by `P2-R1`, which is the first task to hold one in a struct
+ * field: what an operating-system key broker returns is half of recovering the
+ * secret it holds. It is on the `S-10` list of names this net trailed the code
+ * by, and it is the only one of them whose measured cost is a single site --
+ * `SealedCredential.blob` in `crates/repository/src/github.rs`, which
+ * hand-writes a redacting `Debug` -- so widening by it needed no redaction work
+ * in another crate's contract and no `PUBLIC_BYTES` entry. The other five names
+ * that row measures are not added here; their cost is on the row.
+ *
  * A name is only a signal; the exceptions below carry the judgement.
  */
 const SECRET_FIELD_NAMES =
-  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|payload|payload_bytes|prompt|prompt_text|provider_response|provider_response_bytes|response_text|transmitted|transmitted_bytes|transmission|transmission_bytes|source_bytes|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|vmk|skey|master|student_number|student_name)$/;
+  /^_?(dek|kek|key|keys|key_bytes|key_material|material|secret|secrets|secret_bytes|plaintext|plaintext_bytes|plain|payload|payload_bytes|prompt|prompt_text|provider_response|provider_response_bytes|response_text|transmitted|transmitted_bytes|transmission|transmission_bytes|source_bytes|digest|seed|chunk|chunk_bytes|hex|raw|passphrase|password|phrase|mnemonic|entropy|opened|blob|vmk|skey|master|student_number|student_name)$/;
 
 /**
  * Field types that hold bytes transparently, so a derived `Debug` prints them.

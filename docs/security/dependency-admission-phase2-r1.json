@@ -1,0 +1,34 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-h",
+  "task": "P2-R1",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-R1 admits no external crate. academic-repository links academic-crypto, academic-policy, academic-untrusted-content, sha2, thiserror and zeroize as product edges and tempfile as a dev edge, all covered by earlier reviewed receipts, and adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-repository is the P2-R1 repository snapshot boundary: section 17.1's eight inputs, section 17.2's RepositorySnapshot, section 17.3's gate-before-inventory ordering, and the repo-scoped read-only expiring GitHub credential. It is a separate package from academic-store, which owns migration 0012's tables, because what it holds is the gate and the frozen value rather than persistence -- and the absence of any edge to the canonical writer is what keeps a snapshot from being able to write one.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {
+    "academic-crypto": "The DeviceKeystore trait, which is the P2-K1 seam between a secret and the operating-system broker. A fine-grained GitHub token's material reaches the OS credential store through it and is held nowhere else; CredentialStore is generic over that trait rather than over a keystore this crate defines, so the reviewed native broker and the in-memory test double are the same two things every other crate here uses. The edge is non-optional and the default feature set of academic-crypto is empty, so no os-keystore FFI leaf and no encrypted lane enters this closure.",
+    "academic-policy": "ProcessClass, ProcessCapability, ContentDigest, Decision and ReasonCode. The permission half of the gate mints a real ProcessCapability::AnalyzeRepository token for ProcessClass::RepositoryAnalyzer, so 'the analyzer holds no socket and no write capability' is P2-G1's default-deny answer observed through its own audit rows rather than a sentence restated here, and a secret finding records section 3.5's closed ReasonCode rather than a second vocabulary beside it.",
+    "academic-untrusted-content": "The P2-G5 trust boundary. Repository bytes are ingested through that crate's parse-time tagging point, so what this crate holds of a file's content is an Untrusted<IngestedDocument> in its SourceIndex, whose one accessor is private to that crate. No seventh SourceKind arm is added: a source file is tagged CODE_COMMENT, which is the arm P2-G5 fixed for bytes lifted out of source code."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-repository",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-repository",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-repository is a workspace path crate, not an external dependency. It owns section 17.1's eight input kinds and their total mapping onto section 17.2's four sourceType values; the permission and secret gate that section 17.3 places above inventory and indexing, whose ordering is held by three independent things -- AdmittedPaths and Inventory have crate-private constructors so no outside implementation of SnapshotStages can skip a stage, an admission carries the digest of the request it was decided for so it cannot be carried into a second capture, and repository_scans.rs pins capture whole and counts every stage's call sites over the package; the frozen RepositorySnapshot, whose whole method set is pinned and holds no path back to the tree it was taken from; the explicit tracked/untracked dirty manifest; and the default-deny disclosure without which a secret file's digest is never computed. Its dependency set is deliberately minimal, and the edges it does not have are the point: no academic-store, so a snapshot cannot reach the canonical writer; no academic-egress-boundary and no academic-worker, so nothing in its closure can stage a payload or launch a process.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. GitHubRepositoryReader is a trait and no implementation of it ships, the way academic-egress-boundary ships no transport; every test supplies its own in-memory reader over synthetic bytes. Its link closure holds nothing that can open a socket beyond libc, which reaches it through academic-policy's bundled SQLite. only_egress_crate_has_a_socket in tools/phase1-scaffold-policy.test.mjs pins its socket allowance at absent, and the_crate_touches_the_filesystem_only_to_read_it in crates/repository/tests/repository_scans.rs compares the whole set of fs:: names and the whole set of use items against pinned inventories, so a write or a transport import appears as an extra key. Every repository, token, keystore and commit in its test tree is synthetic and built in-process by a deterministic builder.",
+  "advisory_path": "Unchanged. Every external crate academic-repository links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}
