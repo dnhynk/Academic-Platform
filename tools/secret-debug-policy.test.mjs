@@ -307,6 +307,7 @@ const BYTE_FIELD_CLASSES = new Map([
   ["AcceptedOutput.bytes", "content"],
   ["AcceptedResponse.payload", "content"],
   ["AggregateClosureRow.aggregate_id", "identifier"],
+  ["AggregateClosureRow.parent", "identifier"],
   ["AggregateTimelineRow.aggregate_id", "identifier"],
   ["AggregateTimelineRow.registered_event_id", "identifier"],
   ["AuthorizedCapture.chunk_bytes", "content"],
@@ -337,6 +338,7 @@ const BYTE_FIELD_CLASSES = new Map([
   ["DescriptorMigration.retention_action_id", "identifier"],
   ["DesktopCommand.backup_receipt_id", "identifier"],
   ["DispositionRecord.record_digest", "digest"],
+  ["DomainKeyring.keys", "key-material"],
   ["DurableAcceptanceReceipt.response_bytes", "canonical-encoding"],
   ["EncryptedObjectReader.chunk", "content"],
   ["ExactLocator.locator_payload", "locator"],
@@ -346,6 +348,7 @@ const BYTE_FIELD_CLASSES = new Map([
   ["FingerprintEncoder.bytes", "canonical-encoding"],
   ["FixtureContext.envelope", "canonical-encoding"],
   ["KeyMaterialState.digest", "digest"],
+  ["LedgerState.registrations", "identifier"],
   ["MaterializedSnapshot.snapshot_id", "identifier"],
   ["ObjectHeader.artifact_id", "identifier"],
   ["ObjectHeader.base_nonce", "nonce"],
@@ -440,16 +443,33 @@ const BYTE_FIELD_CLASSES = new Map([
   ["SubmittedRequest.request_id", "identifier"],
   ["SyntheticTranscriptPdf.bytes", "public-fixture"],
   ["TranscriptChecksums.identity_digest", "digest"],
+  ["TranscriptChecksums.rows", "digest"],
   ["VerifiedBatch.signature", "signature"],
   ["VerifiedBatch.source_envelope", "canonical-encoding"],
   ["VerifiedBatch.source_payload", "canonical-encoding"],
   ["Wanted.artifact", "identifier"],
+  ["Wanted.locators", "locator"],
   ["WireField.bytes", "canonical-encoding"],
 ]);
 
-/** Reports whether a declared type is a byte buffer the classification covers. */
+/**
+ * Reports whether a declared type carries bytes the classification must cover.
+ *
+ * Both the buffer itself and a buffer inside a container: `Vec<[u8; 32]>` and
+ * `BTreeMap<DomainId, Vec<u8>>` print their contents through a derived `Debug`
+ * exactly as a bare `Vec<u8>` does, and an exact type match reaches neither.
+ * `P2-RF13` measured five such fields in the workspace, two of them under a
+ * derived `Debug`; they are classified below like every other buffer.
+ *
+ * `String` and `str` are deliberately not here. Their type does not say what
+ * they hold, so they stay with the name alternation -- the weakest layer.
+ */
 function isClassifiedByteBuffer(text) {
-  return RAW_BYTE_PAYLOAD_TYPES.test(normalizeFieldType(text));
+  const normalized = normalizeFieldType(text);
+  return (
+    RAW_BYTE_PAYLOAD_TYPES.test(normalized) ||
+    /(Vec\s*<\s*u8\s*>|\[\s*u8\s*(;[^\]]*)?\])/.test(normalized)
+  );
 }
 
 /**
