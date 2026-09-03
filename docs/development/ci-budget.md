@@ -147,3 +147,36 @@ on the `rust-default-*` jobs.
 
 `encrypted-store-lane-ubuntu-latest` is the job migration `0006` changes, and it
 is at 7.4%.
+
+## A Windows failure that is not a test result
+
+This page exists because a timeout cancellation is not a test failure. There is
+a second thing on this repository's Windows jobs that is not one either, and it
+is not a timeout.
+
+`rust-features-windows-latest` failed once at
+`resource_receipt_is_recorded_per_run` in the worker sandbox lane, with
+
+```text
+Error: Launch { path: "…\target\debug\academic-worker-probe.exe",
+        detail: "CreateProcessW returned 0 (last error 2)" }
+```
+
+`last error 2` is `ERROR_FILE_NOT_FOUND` for a probe binary the same job had
+just linked; seven of that suite's eight rows passed around it. Re-running that
+job on the same commit passed 8/8. The same failure appeared once on a Windows
+developer machine in the same lane, on a tree that touched no part of
+`academic-worker`, and re-running that exact command on the unchanged tree
+passed there too.
+
+So the rule is the same as the timeout rule: a Windows job that fails inside
+`Test the worker sandbox lane` with a `CreateProcessW` launch error is
+falsified or confirmed by re-running that job on the same commit, and only a
+failure that survives the rerun is a test result. It is recorded here rather
+than in the worker sandbox contract because what is unreliable is the hosted
+Windows filesystem right after a link, not anything the sandbox claims.
+
+Seen on runs
+[33697656939](https://github.com/dnhynk/Academic-Platform/actions/runs/33697656939)
+(failed, then 17/17 on rerun of the one job) and once locally on Windows in the
+`P2-G6` verification.
