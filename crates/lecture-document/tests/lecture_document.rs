@@ -17,17 +17,17 @@ use academic_lecture_document::{
     CoverageFault, DispositionLedger, DocumentAnnotation, DocumentBuilder, DocumentCompleteness,
     DocumentFault, NodeDraft, NodeKind, NonSpeechEvidence, NonSpeechReason, PdfArtifact,
     PreservationTransform, RedactionBasis, RedactionPolicyRef, RenderDefect, RenderQa,
-    RenderedImage, RenderedNode, RenderedPage, ReviewQueue, RiskClass, Salience, SegmentDisposition,
-    SegmentStatus, StudyIndexBuilder, StudyIndexId, TRANSCRIPT_COVERAGE_ENGINE_ID,
-    TRANSCRIPT_COVERAGE_ENGINE_VERSION, TranscriptCoverageEngine, TranscriptionFailure, freeze,
-    ruleset_hash,
+    RenderedImage, RenderedNode, RenderedPage, ReviewQueue, RiskClass, Salience,
+    SegmentDisposition, SegmentStatus, StudyIndexBuilder, StudyIndexId,
+    TRANSCRIPT_COVERAGE_ENGINE_ID, TRANSCRIPT_COVERAGE_ENGINE_VERSION, TranscriptCoverageEngine,
+    TranscriptionFailure, freeze, ruleset_hash,
 };
 
 use common::{
-    SEGMENTS, TOTAL_TOKENS, TestResult, calibration, capture_frame_seq, capture_with_hole,
-    capture_with_explained_gap, clean_capture, clean_render, cross_reference, document_id,
-    engine_actor, full_manifest, importer_actor, model_actor, no_calibration, node_id, purpose,
-    transcribe, user, validate, validate_with, whole_document, whole_segment_node, INSIDE,
+    INSIDE, SEGMENTS, TOTAL_TOKENS, TestResult, calibration, capture_frame_seq,
+    capture_with_explained_gap, capture_with_hole, clean_capture, clean_render, cross_reference,
+    document_id, engine_actor, full_manifest, importer_actor, model_actor, no_calibration, node_id,
+    purpose, transcribe, user, validate, validate_with, whole_document, whole_segment_node,
 };
 
 /// The specification, read for the phrases the closed sets are compared to.
@@ -329,7 +329,10 @@ fn ordering_check() -> TestResult {
         .filter_map(|index| lineage.segment_at(1, index))
         .map(|segment| segment.id().to_owned())
         .collect();
-    assert_eq!(before, after, "declaring a cross-reference reordered the source");
+    assert_eq!(
+        before, after,
+        "declaring a cross-reference reordered the source"
+    );
 
     // A cross-reference that names a different segment than the node maps is
     // not an exception. Without this the check would be a boolean that turns
@@ -430,18 +433,14 @@ fn capture_coverage() -> TestResult {
         &dispositions,
         &exclusions,
     );
-    assert_eq!(
-        report.unwrap_err(),
-        CoverageFault::CaptureIsPlacedAndExcluded(seq)
-    );
+    assert_eq!(report, Err(CoverageFault::CaptureIsPlacedAndExcluded(seq)));
 
     // Only a person excludes a capture, and only an authorized one can be
     // excluded at all.
     for actor in [model_actor()?, engine_actor(), importer_actor()] {
         assert_eq!(
-            CaptureExclusion::declared(seq, CaptureExclusionReason::UnreadableImage, actor)
-                .unwrap_err(),
-            CoverageFault::AutomaticActorCannotExclude
+            CaptureExclusion::declared(seq, CaptureExclusionReason::UnreadableImage, actor),
+            Err(CoverageFault::AutomaticActorCannotExclude)
         );
     }
     let mut stray = CaptureExclusionLedger::new();
@@ -458,9 +457,8 @@ fn capture_coverage() -> TestResult {
             &capture.recovery,
             &dispositions,
             &stray,
-        )
-        .unwrap_err(),
-        CoverageFault::ExclusionForNoSuchCapture(seq + 900)
+        ),
+        Err(CoverageFault::ExclusionForNoSuchCapture(seq + 900))
     );
     Ok(())
 }
@@ -578,13 +576,13 @@ fn audio_gap_threshold() -> TestResult {
     let failure = TranscriptionFailure::citing_journal_gap(&resumed.recovery, gap_seq)?;
     assert_eq!(failure.frame_seq(), gap_seq);
     assert_eq!(
-        TranscriptionFailure::citing_journal_gap(&resumed.recovery, 0).unwrap_err(),
-        CoverageFault::NoSuchGapFrame(0),
+        TranscriptionFailure::citing_journal_gap(&resumed.recovery, 0),
+        Err(CoverageFault::NoSuchGapFrame(0)),
         "an audio frame was accepted as evidence of a recording failure"
     );
     assert_eq!(
-        TranscriptionFailure::citing_journal_gap(&resumed.recovery, 9_999).unwrap_err(),
-        CoverageFault::NoSuchGapFrame(9_999)
+        TranscriptionFailure::citing_journal_gap(&resumed.recovery, 9_999),
+        Err(CoverageFault::NoSuchGapFrame(9_999))
     );
     Ok(())
 }
@@ -693,9 +691,8 @@ fn segment_status_exhaustive() -> TestResult {
             &capture.recovery,
             &both,
             &exclusions,
-        )
-        .unwrap_err(),
-        CoverageFault::SegmentHasTwoStatuses { segment_index: 0 }
+        ),
+        Err(CoverageFault::SegmentHasTwoStatuses { segment_index: 0 })
     );
 
     // A second declaration for one segment is refused by the ledger.
@@ -705,17 +702,15 @@ fn segment_status_exhaustive() -> TestResult {
         NonSpeechEvidence::declared(NonSpeechReason::Silence, user()?)?,
     ))?;
     assert_eq!(
-        twice
-            .record(SegmentDisposition::redacted_with_policy(
-                4,
-                RedactionPolicyRef::citing(
-                    ContentDigest::sha256(b"other"),
-                    RedactionBasis::InstitutionalPolicy,
-                    user()?,
-                )?,
-            ))
-            .unwrap_err(),
-        CoverageFault::DuplicateDisposition(4)
+        twice.record(SegmentDisposition::redacted_with_policy(
+            4,
+            RedactionPolicyRef::citing(
+                ContentDigest::sha256(b"other"),
+                RedactionBasis::InstitutionalPolicy,
+                user()?,
+            )?,
+        )),
+        Err(CoverageFault::DuplicateDisposition(4))
     );
 
     // A declaration for a segment that does not exist is refused.
@@ -732,9 +727,8 @@ fn segment_status_exhaustive() -> TestResult {
             &capture.recovery,
             &absent,
             &exclusions,
-        )
-        .unwrap_err(),
-        CoverageFault::DispositionForNoSuchSegment(99)
+        ),
+        Err(CoverageFault::DispositionForNoSuchSegment(99))
     );
 
     // The partition, over every shape five segments can take. Five outcomes per
@@ -762,8 +756,7 @@ fn segment_status_exhaustive() -> TestResult {
         if !choice.contains(&0) {
             continue;
         }
-        let mut builder =
-            DocumentBuilder::over(document_id("sweep")?, lineage, 1, &manifest)?;
+        let mut builder = DocumentBuilder::over(document_id("sweep")?, lineage, 1, &manifest)?;
         let mut ledger = DispositionLedger::new();
         for (index, slot) in choice.iter().enumerate() {
             match slot {
@@ -801,7 +794,10 @@ fn segment_status_exhaustive() -> TestResult {
             &ledger,
             &sweep_exclusions,
         )?;
-        assert!(report.reconciles(), "the partition did not reconcile at {pattern}");
+        assert!(
+            report.reconciles(),
+            "the partition did not reconcile at {pattern}"
+        );
         assert_eq!(
             report.accounts().len() + report.unmapped().len(),
             5,
@@ -816,7 +812,10 @@ fn segment_status_exhaustive() -> TestResult {
         }
         evaluated += 1;
     }
-    assert_eq!(evaluated, 2101, "the sweep did not cover the shapes it claims");
+    assert_eq!(
+        evaluated, 2101,
+        "the sweep did not cover the shapes it claims"
+    );
     assert!(
         witnesses > 0,
         "no shape in the sweep produced a witness, so the witness assertion is vacuous"
@@ -825,17 +824,16 @@ fn segment_status_exhaustive() -> TestResult {
     // Only a person may declare a span absent.
     for actor in [model_actor()?, engine_actor(), importer_actor()] {
         assert_eq!(
-            NonSpeechEvidence::declared(NonSpeechReason::Silence, actor.clone()).unwrap_err(),
-            CoverageFault::AutomaticActorCannotExclude
+            NonSpeechEvidence::declared(NonSpeechReason::Silence, actor.clone()),
+            Err(CoverageFault::AutomaticActorCannotExclude)
         );
         assert_eq!(
             RedactionPolicyRef::citing(
                 ContentDigest::sha256(b"p"),
                 RedactionBasis::RightsRequest,
                 actor,
-            )
-            .unwrap_err(),
-            CoverageFault::AutomaticActorCannotExclude
+            ),
+            Err(CoverageFault::AutomaticActorCannotExclude)
         );
     }
     Ok(())
@@ -976,13 +974,13 @@ fn lossless_transform_allowlist() -> TestResult {
             cross_reference: None,
         });
         assert_eq!(
-            refusal.unwrap_err(),
-            DocumentFault::TokenNotPreserved {
+            refusal,
+            Err(DocumentFault::TokenNotPreserved {
                 node: "d-0".to_owned(),
                 segment_index: 0,
                 // "the" is token two of "serializability is the goal".
                 token_position: 2,
-            },
+            }),
             "{} admitted a rendering with a word deleted",
             transform.as_str()
         );
@@ -1000,10 +998,7 @@ fn lossless_transform_allowlist() -> TestResult {
             cross_reference: None,
         });
         assert!(
-            matches!(
-                refusal.unwrap_err(),
-                DocumentFault::TokenNotPreserved { .. }
-            ),
+            matches!(refusal, Err(DocumentFault::TokenNotPreserved { .. })),
             "{} admitted a paraphrase",
             transform.as_str()
         );
@@ -1020,10 +1015,7 @@ fn lossless_transform_allowlist() -> TestResult {
             cross_reference: None,
         });
         assert!(
-            matches!(
-                refusal.unwrap_err(),
-                DocumentFault::TokenNotPreserved { .. }
-            ),
+            matches!(refusal, Err(DocumentFault::TokenNotPreserved { .. })),
             "{} admitted a reordering",
             transform.as_str()
         );
@@ -1074,7 +1066,11 @@ fn no_low_importance_deletion() -> TestResult {
             })
         })
         .collect();
-    assert_eq!(annotated.len(), 2, "the fixture stopped annotating low-value spans");
+    assert_eq!(
+        annotated.len(),
+        2,
+        "the fixture stopped annotating low-value spans"
+    );
     for node in &annotated {
         assert!(!node.rendered_text().is_empty());
         assert!(!node.mappings().is_empty());
@@ -1244,12 +1240,7 @@ fn lecture_render_qa() -> TestResult {
     // Every one of them denies completeness.
     for defective in [&overflow, &clipped, &missing, &unmentioned, &broken] {
         assert!(!defective.is_clean());
-        let pdf = PdfArtifact::render(
-            &document,
-            &report,
-            defective,
-            ContentDigest::sha256(b"pdf"),
-        );
+        let pdf = PdfArtifact::render(&document, &report, defective, ContentDigest::sha256(b"pdf"));
         assert!(
             !pdf.completeness().is_complete(),
             "a render defect did not deny completeness"
@@ -1332,7 +1323,12 @@ fn study_index_disclosure() -> TestResult {
     // Two indexes over the same document carry the same disclosure, because it
     // is a constant rather than a value either of them was given.
     let mut second = StudyIndexBuilder::over(StudyIndexId::new("study-07")?, &document);
-    second.add("only", "a heading", document.nodes()[0].id().clone(), Salience::Low)?;
+    second.add(
+        "only",
+        "a heading",
+        document.nodes()[0].id().clone(),
+        Salience::Low,
+    )?;
     let second = second.finish()?;
     assert_eq!(second.disclosure(), index.disclosure());
     assert_ne!(second.id(), index.id());
@@ -1387,7 +1383,10 @@ fn pdf_non_authority() -> TestResult {
     // A rendering of *other* bytes is a different artifact and still changes
     // nothing about the record.
     let altered = PdfArtifact::render(&document, &report, &qa, ContentDigest::sha256(b"tampered"));
-    assert_ne!(altered.rendered_bytes_digest(), again.rendered_bytes_digest());
+    assert_ne!(
+        altered.rendered_bytes_digest(),
+        again.rendered_bytes_digest()
+    );
     assert_ne!(altered.canonical_bytes(), bytes);
     assert_eq!(document.digest(), document_digest);
     assert_eq!(report.canonical_bytes(), report_bytes);
@@ -1470,21 +1469,19 @@ fn paragraph_mapping_integrity() -> TestResult {
     // A dangling segment.
     let mut builder = DocumentBuilder::over(document_id("dangling")?, lineage, 1, &manifest)?;
     assert_eq!(
-        builder
-            .push(NodeDraft {
-                id: node_id("g-0")?,
-                kind: NodeKind::Paragraph,
-                rendered_text: "anything".to_owned(),
-                mappings: vec![(99, 0, 3, PreservationTransform::Punctuation)],
-                nearby_captures: Vec::new(),
-                annotations: Vec::new(),
-                cross_reference: None,
-            })
-            .unwrap_err(),
-        DocumentFault::DanglingSegment {
+        builder.push(NodeDraft {
+            id: node_id("g-0")?,
+            kind: NodeKind::Paragraph,
+            rendered_text: "anything".to_owned(),
+            mappings: vec![(99, 0, 3, PreservationTransform::Punctuation)],
+            nearby_captures: Vec::new(),
+            annotations: Vec::new(),
+            cross_reference: None,
+        }),
+        Err(DocumentFault::DanglingSegment {
             node: "g-0".to_owned(),
             segment_index: 99,
-        }
+        })
     );
 
     // A range past the end of the verbatim text, and an empty range.
@@ -1499,8 +1496,8 @@ fn paragraph_mapping_integrity() -> TestResult {
             cross_reference: None,
         });
         assert!(matches!(
-            refusal.unwrap_err(),
-            DocumentFault::CharRangeOutOfBounds { .. }
+            refusal,
+            Err(DocumentFault::CharRangeOutOfBounds { .. })
         ));
     }
 
@@ -1516,11 +1513,11 @@ fn paragraph_mapping_integrity() -> TestResult {
         cross_reference: None,
     });
     assert_eq!(
-        refusal.unwrap_err(),
-        DocumentFault::MappingCoversNoToken {
+        refusal,
+        Err(DocumentFault::MappingCoversNoToken {
             node: "g-2".to_owned(),
             segment_index: 0,
-        }
+        })
     );
 
     // A dangling capture.
@@ -1534,56 +1531,50 @@ fn paragraph_mapping_integrity() -> TestResult {
         cross_reference: None,
     });
     assert_eq!(
-        refusal.unwrap_err(),
-        DocumentFault::DanglingCapture {
+        refusal,
+        Err(DocumentFault::DanglingCapture {
             node: "g-3".to_owned(),
             frame_seq: seq + 700,
-        }
+        })
     );
 
     // A node that maps nothing, a duplicate identifier, unreadable text, and a
     // capture placement naming no capture.
     assert!(matches!(
-        builder
-            .push(NodeDraft {
-                id: node_id("g-4")?,
-                kind: NodeKind::Paragraph,
-                rendered_text: "text".to_owned(),
-                mappings: Vec::new(),
-                nearby_captures: Vec::new(),
-                annotations: Vec::new(),
-                cross_reference: None,
-            })
-            .unwrap_err(),
-        DocumentFault::NodeMapsNothing(_)
+        builder.push(NodeDraft {
+            id: node_id("g-4")?,
+            kind: NodeKind::Paragraph,
+            rendered_text: "text".to_owned(),
+            mappings: Vec::new(),
+            nearby_captures: Vec::new(),
+            annotations: Vec::new(),
+            cross_reference: None,
+        }),
+        Err(DocumentFault::NodeMapsNothing(_))
     ));
     assert!(matches!(
-        builder
-            .push(NodeDraft {
-                id: node_id("g-5")?,
-                kind: NodeKind::Paragraph,
-                rendered_text: "bad\ntext".to_owned(),
-                mappings: vec![(0, 0, chars, PreservationTransform::Punctuation)],
-                nearby_captures: Vec::new(),
-                annotations: Vec::new(),
-                cross_reference: None,
-            })
-            .unwrap_err(),
-        DocumentFault::MalformedRenderedText(_)
+        builder.push(NodeDraft {
+            id: node_id("g-5")?,
+            kind: NodeKind::Paragraph,
+            rendered_text: "bad\ntext".to_owned(),
+            mappings: vec![(0, 0, chars, PreservationTransform::Punctuation)],
+            nearby_captures: Vec::new(),
+            annotations: Vec::new(),
+            cross_reference: None,
+        }),
+        Err(DocumentFault::MalformedRenderedText(_))
     ));
     assert!(matches!(
-        builder
-            .push(NodeDraft {
-                id: node_id("g-6")?,
-                kind: NodeKind::CapturePlacement,
-                rendered_text: format!("Instructor: {verbatim}."),
-                mappings: vec![(0, 0, chars, PreservationTransform::CapturePlacement)],
-                nearby_captures: Vec::new(),
-                annotations: Vec::new(),
-                cross_reference: None,
-            })
-            .unwrap_err(),
-        DocumentFault::CapturePlacementNamesNoCapture(_)
+        builder.push(NodeDraft {
+            id: node_id("g-6")?,
+            kind: NodeKind::CapturePlacement,
+            rendered_text: format!("Instructor: {verbatim}."),
+            mappings: vec![(0, 0, chars, PreservationTransform::CapturePlacement)],
+            nearby_captures: Vec::new(),
+            annotations: Vec::new(),
+            cross_reference: None,
+        }),
+        Err(DocumentFault::CapturePlacementNamesNoCapture(_))
     ));
     builder.push(whole_segment_node(
         "g-7",
@@ -1592,22 +1583,20 @@ fn paragraph_mapping_integrity() -> TestResult {
         PreservationTransform::Punctuation,
     )?)?;
     assert!(matches!(
-        builder
-            .push(whole_segment_node(
-                "g-7",
-                NodeKind::Paragraph,
-                1,
-                PreservationTransform::Punctuation,
-            )?)
-            .unwrap_err(),
-        DocumentFault::DuplicateNodeId(_)
+        builder.push(whole_segment_node(
+            "g-7",
+            NodeKind::Paragraph,
+            1,
+            PreservationTransform::Punctuation,
+        )?),
+        Err(DocumentFault::DuplicateNodeId(_))
     ));
 
     // A document built over another version, and one built over another
     // lecture's manifest, cannot be validated against this transcript.
     assert!(matches!(
-        DocumentBuilder::over(document_id("v9")?, lineage, 9, &manifest).unwrap_err(),
-        DocumentFault::NoSuchVersion(9)
+        DocumentBuilder::over(document_id("v9")?, lineage, 9, &manifest),
+        Err(DocumentFault::NoSuchVersion(9))
     ));
     Ok(())
 }

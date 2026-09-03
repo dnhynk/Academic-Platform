@@ -246,7 +246,9 @@ pub fn case_input(case: &Case) -> Result<FrozenInputs, EngineError> {
             "coverage.segment.{index:04}.id=ref:raw_segment_{:04}\n",
             index + 1
         ));
-        lines.push_str(&format!("coverage.segment.{index:04}.status=ref:{status}\n"));
+        lines.push_str(&format!(
+            "coverage.segment.{index:04}.status=ref:{status}\n"
+        ));
         push_into(
             &mut lines,
             &format!("coverage.segment.{index:04}.tokens"),

@@ -1026,7 +1026,11 @@ fn check_gaps(journal: &JournalRecovery, threshold_nanos: u64) -> Vec<GapFinding
     }
     let mut findings = Vec::new();
     for pair in audio.windows(2) {
-        let [(from_seq, from_domain, from_nanos), (to_seq, to_domain, to_nanos)] = pair else {
+        let [
+            (from_seq, from_domain, from_nanos),
+            (to_seq, to_domain, to_nanos),
+        ] = pair
+        else {
             continue;
         };
         let length_nanos = if from_domain == to_domain {
