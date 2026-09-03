@@ -13,11 +13,17 @@
  * per-surface content of those sections is `P2-X2` through `P2-X7`; what this
  * task fixes is that every destination in the section 25.1 tree has a frame to
  * put content into, and that the frame carries the drawer.
+ *
+ * `P2-X7` has since filled the `Evidence & Settings` branch: its four routes
+ * take their sections from `evidence-center.ts`, whose six identifiers are
+ * compared against `academic_evidence_center::CenterSection`. The rest of the
+ * tree is still framed.
  */
 
 import { breadcrumb, routeOf, type Destination } from "./destinations.js";
 import { renderDrawer, type DrawerPanel, type DrawerState } from "./drawer.js";
 import { entityFor, type EntityRef } from "./entities.js";
+import { EVIDENCE_CENTER_SECTIONS, sectionsForRoute } from "./evidence-center.js";
 import { backlinksOf } from "./backlinks.js";
 import { ROUTE_MANIFEST, type RouteDefinition } from "./routes.js";
 
@@ -97,6 +103,46 @@ function framed(heading: string, filledBy: string): ViewBuilder {
 }
 
 /**
+ * The sections `P2-X7` supplies for one `Evidence & Settings` child.
+ *
+ * The heading and the identifier are `evidence-center.ts`'s, which
+ * `the_shell_sections_are_the_crates_own` compares against
+ * `academic_evidence_center::CenterSection`. A route with no section of its own
+ * would render an empty frame, so this raises instead: `every_destination_opens`
+ * is what observes it.
+ */
+function centerSections(routeId: string): ViewBuilder {
+  return () => {
+    const sections = sectionsForRoute(routeId);
+    if (sections.length === 0) {
+      throw new Error(`no evidence-centre section is assigned to ${routeId}`);
+    }
+    return sections.map((section) => frame(section.id, section.heading, "P2-X7"));
+  };
+}
+
+/**
+ * The `Evidence & Settings` index: all six sections, each pointing at the child
+ * route that shows it.
+ *
+ * Section 25.13 calls this one screen, so the index enumerates the whole of it
+ * rather than the three children that happen to have content. A section whose
+ * route is missing from the manifest fails here.
+ */
+function centerIndex(): ViewBuilder {
+  return (route) => {
+    const children = ROUTE_MANIFEST.filter((candidate) => candidate.parentId === route.id);
+    const known = new Set(children.map((child) => child.id));
+    return EVIDENCE_CENTER_SECTIONS.map((section) => {
+      if (!known.has(section.routeId)) {
+        throw new Error(`${section.id} points at ${section.routeId}, which is not a child route`);
+      }
+      return frame(`${route.id}.${section.id}`, section.heading, "P2-X7");
+    });
+  };
+}
+
+/**
  * One view builder per route in the section 25.1 tree.
  *
  * This map is the second enumeration `every_destination_opens` compares against
@@ -122,11 +168,18 @@ export const VIEW_BUILDERS: ReadonlyMap<string, ViewBuilder> = new Map<string, V
   ["explore.career", framed("Career", "P2-Y4")],
   ["explore.critical-paths", framed("Critical paths", "P2-X5")],
   ["explore.blind-spots", framed("Blind spots", "P2-X5")],
-  ["evidence", framed("Evidence and settings", "P2-X7")],
-  ["evidence.source-claim-review", framed("Source and claim review", "P2-X7")],
-  ["evidence.permissions-consent", framed("Permissions and consent", "P2-X7")],
-  ["evidence.privacy-providers", framed("Privacy and providers", "P2-X7")],
-  ["evidence.export-backup-audit", framed("Export, backup and audit", "P2-X7")],
+  ["evidence", centerIndex()],
+  ["evidence.source-claim-review", centerSections("evidence.source-claim-review")],
+  ["evidence.permissions-consent", centerSections("evidence.permissions-consent")],
+  ["evidence.privacy-providers", centerSections("evidence.privacy-providers")],
+  // Not `P2-X7`. Section 25.13 names six sections and none of them is export,
+  // backup or audit: those are section 32.10's, and the plan gives them to
+  // `P2-P1` (export and vendor-free restore) and `P2-P2` (the deletion and
+  // retention flow). `P2-X1` assigned this route to `P2-X7` before either was
+  // written; `P2-X7` cannot fill it, and says so here rather than leaving a
+  // promise nobody owns. The deletion *receipt* half that is `P2-X7`'s is on
+  // `Privacy / Providers` above, where the transmission it belongs to is.
+  ["evidence.export-backup-audit", framed("Export, backup and audit", "P2-P1")],
 ]);
 
 /** The title of one destination's view. */

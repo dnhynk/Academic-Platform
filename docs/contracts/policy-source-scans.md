@@ -173,6 +173,8 @@ remove.
 | `crates/store/src/repository_snapshot_tests.rs` | n/a — the `.rs` path it names is a manifest row in a synthetic snapshot | not a source-text scan: migration `0012`'s five guards fired against a migrated database | n/a |
 | `the_forbidden_fields_are_the_specifications_own`, `no_relation_derives_another`, `nothing_infers_a_course_identity`, `the_publish_path_has_one_rewind_and_every_failure_takes_it`, `the_walk_reads_every_module_in_this_crate`, `no_file_outside_this_crate_names_a_curriculum_relation`, `the_migration_vocabularies_are_the_rust_ones`, `the_open_gates_have_no_default` — `crates/curriculum/tests/curriculum_scans.rs` | recursive, **every `.rs` anywhere under this crate's package** for the per-crate rules, less `tests` for the ones about shipped code; recursive over **every `.rs` under `crates/`**, less each package's `tests`, for the one-step-out inventory; plus two fixed reads, `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and `migrations/store/0014_phase2_curriculum_aggregates.sql` | seven whole-text pins (below); section 8.2's four yaml blocks and section 12.4's `TranscriptSegment` block parsed out of the specification and compared with the accessor mapping in order and in both directions, with the existence half read from each aggregate's own `impl` block rather than from its module; a forbidden sweep of every mapped accessor against every other aggregate's whole module; the whole `impl` set naming any of the four relation types; the whole public signature set of `relation.rs`, swept for a signature taking one relation and returning another; the whole set of signatures anywhere in the crate producing a `CourseCodeReuse`; call-site counts by identifier on `append` (1), `rewind_to` (1) and `ledger.mark()` (1), each with `fn <name>(` subtracted; the ledger vectors the appending body pushes to, enumerated from that body and each required to be one the rewind truncates; every `PublishCheckpoint` variant required to be reached through an injector call and the injector calls counted against the checkpoint names; six migration `CHECK` vocabularies compared with this crate's enums, two of them less `UNKNOWN`; and the whole set of `Default` implementations in the crate | `sources.len() >= 10` on the package walk plus a rule that the walk read this very file, which is in `tests`; `declared >= 10` on the module tripwire, with a `#[path]` target inside the package required to be a file the walk read; every product file under `src/`; `>= 60` compared pairs in the forbidden sweep; `>= 25` signatures in `relation.rs`; `>= 150` files outside the package and `>= 10` inside it on the workspace walk; every whole-set comparison is an `assert_eq!` against a pinned list, so an empty walk fails as missing keys |
 | `the_rule_types_are_the_specifications_own`, `production_audit_no_llm`, `the_only_route_to_an_executable_rule_is_the_gate`, `the_open_gates_have_no_default`, `no_float_reaches_a_requirement_verdict`, `the_walk_reads_every_module_in_this_crate`, `no_file_outside_this_crate_names_a_requirement_rule` — `crates/requirement/tests/requirement_scans.rs` | recursive, **every `.rs` anywhere under this crate's package** for the per-crate rules, less `tests` for the ones about shipped code; recursive over **every `.rs` under `crates/`**, less each package's `tests`, for the one-step-out inventory; plus fixed reads of `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md`, this crate's `src/*.rs` for the pins, and every workspace `Cargo.toml` for the dependency closure | six whole-text pins (below); section 11.2's yaml `type:` lines and its prose sentence parsed out of the specification and compared with the rule-type tables in order and in both directions, with the nine prose spellings required to be what the derivation rule produces; the transitive product dependency closure computed from the manifests and compared whole at twelve; the whole set of `String`/`&str` fields as **owning-type/field pairs**, plus a rule that none of eight audit-path types may own one — the half that cannot be satisfied by editing the table; the six identifier newtypes read from the macro's invocation list, because the names exist only after expansion; struct-literal counts of one each on `ReviewedRule` and `ExecutableRule`; the whole `impl` set naming either; the whole set of public signatures taking a `RuleCandidate` to a gated value, compared against the gate's own signature; the whole `Default` set; and a three-shape float rule (type, decimal-point literal, exponent literal scanned by index) with five evasions and four benign shapes run through it inside the test | `sources.len() >= 10` on the package walk plus a rule that the walk read this very file, which is in `tests`; `declared >= 8` on the module tripwire; every product file under `src/`; `scanned >= 8` on the capability, float and literal sweeps; `signatures >= 40` on the signature sweep; `>= 25` packages in the manifest inventory; `>= 150` files outside the package **and `>= 8` inside it** on the workspace walk, so the exclusion cannot be what makes it empty; every whole-set comparison is an `assert_eq!` against a pinned list |
+| `the_center_cannot_name_a_payload_byte`, `the_class_of_an_entry_is_its_payloads_type`, `nothing_but_a_user_settles_a_conflict_or_extends_an_expiry`, `the_provider_and_receipt_vocabularies_are_the_brokers_own`, `the_six_sections_are_section_25_13s_own`, `the_walk_reads_every_module_in_this_crate` — `crates/evidence-center/tests/evidence_center_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, less `tests` for the rules about shipped code; plus fixed reads of `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md`, of `crates/policy/src/provider.rs` for the broker vocabulary, and of every workspace `Cargo.toml` for the dependency closure | the whole set of **field positions** as `(owner, name, declared type)` triples, compared in both directions, with enum struct-variants reported as `Enum::Variant` and enum tuple positions as `Enum::Variant#n`, so a tuple position has a key too; the whole set of **declared type constructors** those fields use, compared in both directions against a reviewed allowlist from which `String`, `str`, `u8`, `Box`, `Cow` and `Untrusted` are absent — this is the half a field name cannot evade; the same extraction over every public signature, argument names excluded; a closed world over the **path roots** the crate spells a `::` after, both directions, with `P2-R2`'s leading-`::`, whitespace and middle-segment repairs each exercised against the reader inside the test; a closed world over **macros invoked**, which is empty; whole-text pins on `InboxEntry::class`, `user_receipt`, `ConflictCase::settle`, `ConflictCase::offered` and `ExpiringPermission::has_lapsed`; the whole `impl` set naming `ProposalClass` and the one naming `LivePermission`; a construction count of one on `LivePermission`; a rule that the crate declares no tuple struct; and a ten-spelling forbidden-token list kept as the **explicitly weakest** layer | `sources.len() >= 10` on the package walk plus a rule that the walk read this very file, which is in `tests`; `declared >= 8` on the module tripwire; `positions.len() >= 100` on the field reader; `signatures >= 60` on the signature reader; `scanned >= 9` on the spelling sweep; `>= 25` packages in the manifest inventory; a `broker.len() > 10_000` floor on the cross-crate read; every whole-set comparison is an `assert_eq!` against a pinned list |
+| `the_shell_sections_are_the_crates_own` — `packages/ui/src/evidence-center.test.ts` | none — one fixed path, `crates/evidence-center/src/lib.rs` | the arms of `CenterSection::spec_words` are parsed out of that function's body — the match rather than the enum, so an arm renamed with a stale specification string fails on the string — and compared with `EVIDENCE_CENTER_SECTIONS` as maps in both directions, plus an equality on each section's words. It is the one place the TypeScript shell and the Rust model are held to the same six names, and there is no runtime across which they could otherwise be compared | `fromCrate.size > 0`, a raise if the function or its closing brace is not found, and a negative control: an arm the crate does not have reads as absent |
 | `crates/store/src/requirement_tests.rs` | n/a — it reads migration `0015`'s own SQL text, not Rust source | not a source-text scan: migration `0015`'s guards, each of its three tables' whole column set, the rule-type `CHECK` vocabulary compared against section 11.2's fourteen in order, and the two keys that carry the review and supersession properties, driven as SQL against a migrated store with real parent rows written by the real closure writer | n/a |
 | `crates/store/src/curriculum_tests.rs` | n/a — it reads migration `0014`'s own SQL text, not Rust source | not a source-text scan: migration `0014`'s guards, its four relation tables' whole column sets, its table list against the migration's own `CREATE TABLE` lines, and the SQL half of `curriculum_publish_is_atomic_under_injected_failure`, all fired against a migrated database | n/a |
 | `crates/curriculum/tests/curriculum.rs` | n/a — the `#[path]` it names pulls in `P2-U6`'s fixture module, which the inventory follows rather than treating as a read | not a source-text scan: `P2-U1`'s five behavioural acceptance cases, driven over an in-process ledger and one real `academic-ingestion` run | n/a |
@@ -1941,6 +1943,159 @@ before any row is written, and all five store tests fail on the schema rather
 than on the property. The primary key therefore cannot be widened in place at
 all. What isolates it is the test's own case, which supersedes nothing and
 carries a fresh hash so neither `UNIQUE` can be what refuses it.
+
+## What the `P2-X7` scans hold
+
+Four of `P2-X7`'s claims are statements about what the source does not contain,
+and a behavioural test cannot observe an absence.
+
+**`the_center_cannot_name_a_payload_byte`** is four layers, and writing them
+found that the strongest one as first drafted was **false**.
+
+The first draft asserted that `academic-egress-boundary` — which owns
+`StagedPayload` and `Preview`, the only values in this workspace that hold bytes
+on their way to a provider — is absent from this crate's closure. It is not.
+`academic-untrusted-content` declares a product edge to it, so every crate that
+links `P2-G5`'s trust label carries the same closure: `academic-ingestion`,
+`academic-curriculum`, `academic-requirement`, `academic-repository`, and this
+one. `P2-U2`'s admission receipt already records it. **The edge therefore cannot
+say that type is unreachable, and this page does not say so either.**
+
+What the closure comparison still carries is narrower and is checked: the whole
+declared closure is compared at thirteen, and twelve crates that own a canonical
+write, a key, a model run or a process — `academic-store`, `academic-vault`,
+`academic-crypto`, `academic-keystore-platform`, `academic-projections`,
+`academic-transcript`, `academic-record`, `academic-model-run`,
+`academic-worker`, `academic-core`, `academic-rpc`, `academic-store-platform` —
+are each required to be absent.
+
+What replaces the edge claim is a **closed world over path roots**: every
+identifier the crate's product source writes a `::` after, compared in both
+directions against a forty-entry allowlist in which `academic_untrusted_content`,
+`academic_egress_boundary`, `academic_policy`, `std`, `alloc`, `libc` and
+`rusqlite` do not appear. It is read on paths rather than on `use` items, so a
+fully qualified `academic_egress_boundary::Preview` is refused even though the
+crate is reachable. `P2-R2`'s three repairs are each exercised against the reader
+inside the test — a leading `::`, whitespace inside a path, and a middle segment
+— and `X7-I5` and `X7-I6` are the injections that made them load-bearing.
+
+The layer that answers `T166`'s finding is the **declared-type set**. Every field
+position in the crate is read as an `(owner, name, declared type)` triple; the
+type constructors those declarations use are collected across the whole crate and
+compared with a reviewed allowlist in both directions. `String`, `str`, `u8`,
+`Box`, `Cow` and `Untrusted` are absent from it, and their absence is the claim.
+`tools/secret-debug-policy.test.mjs` decides the same question by matching a
+field's **name** against a fixed alternation, and `T166` measured a `Vec<u8>`
+called `excerpt` passing it. Here `excerpt: [u8; 64]` fails as an unreviewed
+type (`X7-I1`), a private struct holding `[u8; 32]` fails as an unreviewed type
+(`X7-I2`), and a `String` field on a type whose constructor is edited to match
+fails the same way (`X7-I3`). None of the three spells anything on the
+forbidden-token list. **That list is kept as the explicitly weakest layer** and
+is listed last, for the reason `P2-R2` records.
+
+The **public-signature** layer is the same extraction over every `pub fn`, with
+argument names excluded. `X7-I4` adds a public accessor returning `[u8; 32]`
+backed by no field at all, which the field inventory is blind to by construction.
+Beside it, the eight functions that return a `&'static str` are enumerated as a
+whole set, because a `&'static str` is the one shape by which text leaves this
+crate at all.
+
+**`the_class_of_an_entry_is_its_payloads_type`** compares the whole `impl` set
+naming `ProposalClass` against a one-entry list, requires `inbox.rs` to name no
+route from text into a class, pins `InboxEntry::class` whole, and compares the
+whole set of fields whose declared type is `ProposalClass` against the two that
+may hold one — the index reference and the refusal. The compile-fail cases are
+the other half.
+
+**`nothing_but_a_user_settles_a_conflict_or_extends_an_expiry`** pins
+`user_receipt`, `ConflictCase::settle`, `ConflictCase::offered` and
+`ExpiringPermission::has_lapsed` as whole text; counts `UserDecision::by` at one
+call site and `self.history.push` at one; compares the whole `impl` set naming
+`LivePermission`; counts its construction sites at one, subtracting only the
+declaration and the `impl` header, both of which the header comparison already
+pins; and requires no permission signature to mutate anything but the two
+recording doors.
+
+**`the_provider_and_receipt_vocabularies_are_the_brokers_own`** reads
+`crates/policy/src/provider.rs` as text, because this crate deliberately does not
+link `academic-policy` as a declared edge. Both surface tokens must appear there,
+the broker's own enum must have exactly two arms, the four receipt columns this
+crate mirrors must exist, and the two columns it deliberately does not carry —
+`receipt_id` and `grant_id`, both `String` — must still exist there and appear
+nowhere here.
+
+### The empty guard this task found in its own suite
+
+**`X7-I15` — the assertion that ran on one shape.** Section 30.4's three choices
+were asserted once, against a two-conflict corpus whose sides both carry
+`CODE_OBSERVED`. An injection that narrowed the offer when the incoming side is
+`OFFICIAL_CONFIRMED` never reached that branch, passed
+`both_conflict_classes_are_unresolved_until_user_action`, and was caught only by
+`the_center_cannot_name_a_payload_byte` — which noticed the unrelated
+`EpistemicStatus` path root the injection introduced. **A guard that refuses
+something is not evidence that it refuses what you meant.**
+
+The repair drives the whole nine-value status vocabulary on both sides of both
+classes, with a compiler-checked witness so a tenth arm in `academic-domain`
+stops the suite compiling.
+
+**And the same shape is one step out, found by looking for it.** A sweep is
+bounded by what it varies, and the repaired sweep holds the authority class
+fixed. `X7-I27` narrows the offer on `AuthorityClass::Curated` and the sweep
+cannot see it. `ConflictCase::offered` is therefore pinned as whole text beside
+the sweep: the pin refuses a narrowing keyed on anything at all, and the sweep is
+what says the constant is actually returned.
+
+### The injection matrix
+
+Twenty-seven injections, applied one at a time to shipped source and reverted
+with `git checkout --`. Each is compiled first, with
+`cargo build -p academic-evidence-center --all-targets`, so a trybuild case's
+*expected* diagnostic cannot be mistaken for a real build failure. The driver is
+`~/.claude/orchestration/run_98ccc873ba4b/t168-injections.py` and the measured
+results are `t168-injection-results.json`. The unmodified tree is run before and
+after the matrix and passes both times.
+
+**All twenty-seven compile, all twenty-seven are caught, and after the `X7-I15`
+repair every one is caught by the guard it was aimed at.** Two — `X7-I1` and
+`X7-I3` — did not compile in their first form, because a field added to a struct
+has to be initialised by the constructor that builds it; each is a two-edit
+injection for that reason, and neither non-compiling attempt is recorded as
+evidence.
+
+**Seven of the twenty-seven spell nothing on any forbidden list** — `X7-I1`
+through `X7-I7` — which is what makes the whole-set layers load-bearing rather
+than decorative.
+
+| # | Injection | Refused by |
+|---|---|---|
+| X7-I1 | `TransmissionRecord` grows `excerpt: [u8; 64]`, initialised in its constructor | `the_center_cannot_name_a_payload_byte` |
+| X7-I2 | a private struct holding `[u8; 32]`, reachable from no field yet | same |
+| X7-I3 | `HistoricalView` grows a `String`, initialised in `view_at` | same |
+| X7-I4 | a public accessor returning `[u8; 32]`, backed by no field | same |
+| X7-I5 | `::std::mem::size_of` — a leading `::`, spelling no forbidden token and adding no `use` | same, and `nothing_but_a_user_settles_a_conflict_or_extends_an_expiry` |
+| X7-I6 | the same path with whitespace inside it | same |
+| X7-I7 | `include_str!` reading a sibling module at compile time | `the_center_cannot_name_a_payload_byte` |
+| X7-I8 | the walk is narrowed from the package to `src` | `the_walk_reads_every_module_in_this_crate` |
+| X7-I9 | two arms of `InboxEntry::class` are rewired | `proposal_inbox_holds_four_typed_classes` |
+| X7-I10 | `of_class` stops narrowing and returns every entry | same |
+| X7-I11 | the impacted rules are dropped | `source_change_links_impacted_rules_and_plans` |
+| X7-I12 | every node in the graph is reported as an impacted plan | same |
+| X7-I13 | an undecided conflict reads as settled | `both_conflict_classes_are_unresolved_until_user_action` |
+| X7-I14 | settling replaces the history instead of appending | same |
+| X7-I15 | the offer is narrowed when the incoming side is `OFFICIAL_CONFIRMED` | same — **after** the sweep replaced a one-shape assertion |
+| X7-I16 | the user-only door promotes a model run to a user | same |
+| X7-I17 | the code arm reports the math kind | `low_confidence_queue_has_three_span_kinds_with_context` |
+| X7-I18 | two kinds share one uncertainty marker | same |
+| X7-I19 | the expiry comparison fails open at the expiry instant | `expiring_permission_is_queued_and_blocks_dependents` |
+| X7-I20 | an unrecorded permission is treated as unrestricted | same |
+| X7-I21 | markers are filtered by the view's own known-at coordinate | `correction_marker_appears_in_historical_views` |
+| X7-I22 | the corrected claim is dropped from the past view | same |
+| X7-I23 | a requested deletion reads as a receipt | `transmission_log_and_deletion_receipts_are_discoverable` |
+| X7-I24 | an empty section is dropped from the index | same |
+| X7-I25 | a section is respelled away from the specification | `the_six_sections_are_section_25_13s_own` |
+| X7-I26 | a provider surface token drifts from the broker's | `the_provider_and_receipt_vocabularies_are_the_brokers_own` |
+| X7-I27 | the offer is narrowed on the authority class, which the sweep holds fixed | `nothing_but_a_user_settles_a_conflict_or_extends_an_expiry` |
 
 ## Open
 
