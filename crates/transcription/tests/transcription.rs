@@ -27,9 +27,10 @@ use academic_transcription::{
 
 use common::{
     DEFAULT_WORDS, FailingProvider, INSIDE, INSIDE_LATER, ImpersonatingProvider, MockLocalProvider,
-    RawBytesProvider, SECOND, TestResult, full_manifest, lecture, local_provider, local_selection,
-    model_actor, registry_with_local, remote_provider, response_body, run_identity, user,
-    version_one, version_two, whole_contract, whole_draft, write_journal,
+    RawBytesProvider, SECOND, TestResult, forged_journal_bytes, full_manifest, lecture,
+    local_provider, local_selection, model_actor, registry_with_local, remote_provider,
+    response_body, run_identity, user, version_one, version_two, whole_contract, whole_draft,
+    write_journal,
 };
 
 /// A synthetic replacement claim identifier, for a `Replace` disposition.
@@ -83,8 +84,8 @@ fn complete_run() -> Result<
     Box<dyn Error>,
 > {
     let directory = tempfile::tempdir()?;
-    let recovery = write_journal(&directory, "lecture", INSIDE)?;
-    let manifest = full_manifest(&recovery)?;
+    let capture = write_journal(&directory, "lecture", INSIDE)?;
+    let manifest = full_manifest(&capture)?;
     let registry = registry_with_local()?;
     let policy = SttPolicy::new();
     let provider = MockLocalProvider::answering(
@@ -125,10 +126,39 @@ fn pipeline_input_authorization() -> TestResult {
     // only the lecture would admit.
     let foreign = write_journal(&directory, "foreign", INSIDE_LATER)?;
     assert_ne!(
-        mine.header().token_id(),
-        foreign.header().token_id(),
+        mine.recovery.header().token_id(),
+        foreign.recovery.header().token_id(),
         "the two fixture journals carry the same token, so the row below proves nothing"
     );
+
+    // The binding comes from the capture and the journal is compared against
+    // it, not the other way round. `ChunkJournal::replay` is public and takes
+    // bytes, so a binding read out of the journal it was about to admit from
+    // would agree with any synthesized recovery -- which is what the first
+    // version of this module did.
+    assert_eq!(
+        AuthorizationBinding::of(&mine.recorder, &foreign.recovery).err(),
+        Some(InputFault::JournalIsNotThisCapture),
+        "a journal another capture wrote opened a binding"
+    );
+    assert_eq!(
+        AuthorizationBinding::of(&foreign.recorder, &mine.recovery).err(),
+        Some(InputFault::JournalIsNotThisCapture),
+        "the comparison is one-directional"
+    );
+    // A synthesized recovery, replayed from bytes this test wrote, names a
+    // token nothing minted and opens no binding either.
+    let forged = academic_capture::ChunkJournal::replay(&forged_journal_bytes())?;
+    assert_eq!(
+        AuthorizationBinding::of(&mine.recorder, &forged).err(),
+        Some(InputFault::JournalIsNotThisCapture),
+        "a journal nothing captured opened a binding"
+    );
+    // The control: the capture's own journal opens one, and the binding carries
+    // the recorder's lecture rather than a caller-supplied label.
+    let bound = AuthorizationBinding::of(&mine.recorder, &mine.recovery)?;
+    assert_eq!(bound.lecture(), lecture()?);
+    assert_eq!(bound.token_id(), mine.recorder.token_id());
 
     // The positive control.
     let manifest = full_manifest(&mine)?;
@@ -147,6 +177,7 @@ fn pipeline_input_authorization() -> TestResult {
     // The exact input digests are recorded, so a later run cannot claim to
     // have read something else.
     let expected: Vec<ContentDigest> = mine
+        .recovery
         .records()
         .iter()
         .filter_map(|record| match record.body() {
@@ -162,14 +193,15 @@ fn pipeline_input_authorization() -> TestResult {
     assert_eq!(recorded, expected, "the manifest recorded other digests");
 
     // A frame from another authorization is refused, whichever kind it is.
-    let mut mixed = InputManifest::for_binding(AuthorizationBinding::of(lecture()?, &mine));
+    let mut mixed =
+        InputManifest::for_binding(AuthorizationBinding::of(&mine.recorder, &mine.recovery)?);
     assert_eq!(
-        mixed.admit_audio_chunk(&foreign, 0),
+        mixed.admit_audio_chunk(&foreign.recovery, 0),
         Err(InputFault::ForeignJournal),
         "a chunk from another authorization was admitted"
     );
     assert_eq!(
-        mixed.admit_capture(&foreign, 2),
+        mixed.admit_capture(&foreign.recovery, 2),
         Err(InputFault::ForeignJournal),
         "a capture from another authorization was admitted"
     );
@@ -180,24 +212,24 @@ fn pipeline_input_authorization() -> TestResult {
 
     // A frame that exists and is the wrong kind, and one that does not exist.
     assert_eq!(
-        mixed.admit_audio_chunk(&mine, 2),
+        mixed.admit_audio_chunk(&mine.recovery, 2),
         Err(InputFault::WrongFrameKind { frame_seq: 2 }),
         "an image frame was admitted as audio"
     );
     assert_eq!(
-        mixed.admit_capture(&mine, 0),
+        mixed.admit_capture(&mine.recovery, 0),
         Err(InputFault::WrongFrameKind { frame_seq: 0 }),
         "an audio frame was admitted as a capture"
     );
     assert_eq!(
-        mixed.admit_audio_chunk(&mine, 99),
+        mixed.admit_audio_chunk(&mine.recovery, 99),
         Err(InputFault::NoSuchFrame { frame_seq: 99 }),
         "a frame nothing recorded was admitted"
     );
 
     // A mark frame is in the journal and is not an input either.
     assert_eq!(
-        mixed.admit_audio_chunk(&mine, 3),
+        mixed.admit_audio_chunk(&mine.recovery, 3),
         Err(InputFault::WrongFrameKind { frame_seq: 3 }),
         "a mark frame was admitted as audio"
     );
@@ -237,7 +269,8 @@ fn pipeline_input_authorization() -> TestResult {
 
     // An empty manifest halts the run at its first stage, before a provider is
     // asked anything.
-    let empty = InputManifest::for_binding(AuthorizationBinding::of(lecture()?, &mine));
+    let empty =
+        InputManifest::for_binding(AuthorizationBinding::of(&mine.recorder, &mine.recovery)?);
     let mut archive = RawResponseArchive::new();
     let record = run(
         &empty,
@@ -369,8 +402,8 @@ fn stt_provider_policy() -> TestResult {
     // A blocked route halts the run at the routing stage: nothing is asked and
     // nothing is retained.
     let directory = tempfile::tempdir()?;
-    let recovery = write_journal(&directory, "lecture", INSIDE)?;
-    let manifest = full_manifest(&recovery)?;
+    let capture = write_journal(&directory, "lecture", INSIDE)?;
+    let manifest = full_manifest(&capture)?;
     let mut registry = ContractRegistry::new();
     registry.declare(whole_contract(
         remote_provider()?,
@@ -465,8 +498,8 @@ fn a_remote_response_comes_through_the_egress_boundary() -> TestResult {
         }
     }
     let directory = tempfile::tempdir()?;
-    let recovery = write_journal(&directory, "lecture", INSIDE)?;
-    let manifest = full_manifest(&recovery)?;
+    let capture = write_journal(&directory, "lecture", INSIDE)?;
+    let manifest = full_manifest(&capture)?;
     let mut registry = ContractRegistry::new();
     registry.declare(remote)?;
     let mut identity = run_identity()?;
@@ -624,8 +657,8 @@ fn stt_capability_contract() -> TestResult {
     }
 
     let directory = tempfile::tempdir()?;
-    let recovery = write_journal(&directory, "lecture", INSIDE)?;
-    let manifest = full_manifest(&recovery)?;
+    let capture = write_journal(&directory, "lecture", INSIDE)?;
+    let manifest = full_manifest(&capture)?;
     let mut registry = ContractRegistry::new();
     registry.declare(unsupported)?;
     for claim in FeatureClaim::ALL {
@@ -752,8 +785,8 @@ fn the_capability_fields_are_section_12_3s_own() -> TestResult {
 #[test]
 fn raw_stt_response_immutable() -> TestResult {
     let directory = tempfile::tempdir()?;
-    let recovery = write_journal(&directory, "lecture", INSIDE)?;
-    let manifest = full_manifest(&recovery)?;
+    let capture = write_journal(&directory, "lecture", INSIDE)?;
+    let manifest = full_manifest(&capture)?;
     let mut registry = registry_with_local()?;
     registry.declare(whole_contract(
         local_provider()?,
@@ -1245,8 +1278,8 @@ fn raw_token_write_protection() -> TestResult {
 #[test]
 fn provider_retranscription_compare() -> TestResult {
     let directory = tempfile::tempdir()?;
-    let recovery = write_journal(&directory, "lecture", INSIDE)?;
-    let manifest = full_manifest(&recovery)?;
+    let capture = write_journal(&directory, "lecture", INSIDE)?;
+    let manifest = full_manifest(&capture)?;
     let mut registry = registry_with_local()?;
     registry.declare(whole_contract(
         ProviderId::new("mock-other-local")?,
@@ -1383,8 +1416,8 @@ fn provider_retranscription_compare() -> TestResult {
     // Two runs that read different inputs, and a run against itself.
     assert_eq!(compare(left, left).err(), Some(CompareFault::SameRun));
     let other_directory = tempfile::tempdir()?;
-    let other_recovery = write_journal(&other_directory, "other", INSIDE_LATER)?;
-    let other_manifest = full_manifest(&other_recovery)?;
+    let other_capture = write_journal(&other_directory, "other", INSIDE_LATER)?;
+    let other_manifest = full_manifest(&other_capture)?;
     let mut other_archive = RawResponseArchive::new();
     let elsewhere = run(
         &other_manifest,
@@ -1718,9 +1751,12 @@ const INFALLIBLE_STAGES: [(Stage, &str); 1] = [(
 /// Arranges exactly one stage to fail and runs the pipeline.
 fn drive_failing(stage: Stage) -> Result<academic_transcription::RunRecord, Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
-    let recovery = write_journal(&directory, "lecture", INSIDE)?;
-    let good = full_manifest(&recovery)?;
-    let empty = InputManifest::for_binding(AuthorizationBinding::of(lecture()?, &recovery));
+    let capture = write_journal(&directory, "lecture", INSIDE)?;
+    let good = full_manifest(&capture)?;
+    let empty = InputManifest::for_binding(AuthorizationBinding::of(
+        &capture.recorder,
+        &capture.recovery,
+    )?);
     let mut archive = RawResponseArchive::new();
     let identity = run_identity()?;
     let mut transmitting = run_identity()?;

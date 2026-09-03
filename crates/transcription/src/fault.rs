@@ -5,6 +5,10 @@ use crate::{provider::CapabilityField, route::RouteDenial};
 /// Why an input was refused before anything read it.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum InputFault {
+    /// The journal's header names another capability token or another policy
+    /// row than the capture that is opening the binding holds.
+    #[error("that journal was not written by this capture")]
+    JournalIsNotThisCapture,
     /// The journal was opened under a different capability token or a
     /// different policy row than the manifest binds to.
     #[error("the journal was recorded under another authorization")]

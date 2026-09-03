@@ -1714,6 +1714,17 @@ rule of its own — it must be the **first statement** of both admitting methods
 because a count says nothing about ordering, and `L3-I18` moves it below the
 frame lookup while keeping the count at two.
 
+**A binding read out of the thing it validates is not a binding.** The first
+version of `AuthorizationBinding::of` took the capability token out of the very
+`JournalRecovery` it was about to admit inputs from, so `covers` could only catch
+a caller *mixing* two journals — and `academic_capture::ChunkJournal::replay` is
+public and takes bytes, so a synthesized recovery naming any token agreed with
+itself. It now takes a `CaptureRecorder`, which has no public constructor.
+Three rules hold that: the whole text of `impl AuthorizationBinding`, a one-entry
+comparison of the functions that produce a binding from a journal, and a count of
+the construction — the last because `U-G3` records that a signature sweep says
+nothing about a body that builds its own argument. `L3-I25` is the observation.
+
 **The `use`-item filter reads whole items.** The first version of the decoder's
 call count dropped only lines beginning `use ` and read three callers where there
 is one: a `use crate::{ … }` block spans several lines and a `pub use`
@@ -1747,7 +1758,7 @@ every property of what it produced.
 
 ### The injection matrix
 
-Twenty-four injections, applied one at a time to shipped source and reverted
+Twenty-five injections, applied one at a time to shipped source and reverted
 with each file's SHA-256 checked back to its recorded value. Each is compiled
 first: a refusal that is a compile error proves nothing about the scan that was
 supposed to refuse it, and two rows below are recorded as exactly that outcome
@@ -1784,6 +1795,7 @@ already fires on. They are left out rather than padded in.
 | L3-I22 | a second function taking an `&AcceptedResponse` | `the_accepted_response_is_sealed_immediately` |
 | L3-I23 | a second caller of the decoder | the `decode` call-site count |
 | L3-I24 | `parse_token` stops refusing a response that contradicts its contract's timestamp declaration | `WHOLE_PARSE_TOKEN`, and `a_malformed_provider_response_is_refused` |
+| L3-I25 | `AuthorizationBinding::of` goes back to reading the token out of the journal it is about to admit from | `WHOLE_BINDING`, the producer comparison, and `pipeline_input_authorization`'s forged-journal row |
 
 `L3-I5` and `L3-I6` are the two rows that are refused by the compiler rather than
 by a scan. They are kept because what they measure is real — the private-field

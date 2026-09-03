@@ -394,9 +394,12 @@ inside `cargo test --workspace` and adds no external package to `Cargo.lock`.
 
 `P2-L3` adds `academic-transcription`, section 12.3's provider-neutral pipeline.
 A job's inputs are only authorized chunks, captures and explicitly supplied
-materials, and the check is a **journal header** rather than a caller's word: a
-chunk is admitted out of the file `academic_capture::begin` wrote, whose header
-names the capability token and the policy row the capture began under. A
+materials, and **the binding comes from the capture rather than from the
+journal**: `AuthorizationBinding::of` takes the `CaptureRecorder` that
+`academic_capture::begin` returned — a value with no public constructor — and
+refuses a journal whose header names another capability token or policy row.
+Reading the token out of the journal instead would have compared a synthesized
+recovery with itself, because `ChunkJournal::replay` is public. A
 provider declares eight technical facts before it may be used — the four privacy
 ones stay in `P2-G3`'s registry — and an omitted declaration is refused while a
 declared *absence* travels with the contract and blocks the feature that depends

@@ -208,7 +208,7 @@ pub fn write_journal(
     directory: &tempfile::TempDir,
     tag: &str,
     now: u64,
-) -> Result<JournalRecovery, Box<dyn Error>> {
+) -> Result<Capture, Box<dyn Error>> {
     let mut ledger = ledger_permitting()?;
     let path = journal_path(directory, tag);
     let book = CapturePolicyBook::published();
@@ -230,13 +230,52 @@ pub fn write_journal(
         now,
     )?;
     recorder.mark(&mut ledger, 7 * SECOND, now)?;
-    Ok(recorder.verify_on_disk()?)
+    let recovery = recorder.verify_on_disk()?;
+    Ok(Capture { recorder, recovery })
+}
+
+/// One finished capture: the recorder that made it, and what is on disk.
+///
+/// The pair travels together because `AuthorizationBinding::of` takes both. The
+/// recorder is what carries the authorization -- it has no public constructor,
+/// so holding one is proof that `academic_capture::begin` minted a capability
+/// token -- and the journal is what is compared against it.
+#[derive(Debug)]
+pub struct Capture {
+    /// The recorder `begin` returned.
+    pub recorder: academic_capture::CaptureRecorder,
+    /// What it wrote, read back off disk.
+    pub recovery: JournalRecovery,
+}
+
+/// A journal nothing captured, built by this file and replayed from bytes.
+///
+/// `ChunkJournal::replay` is public and takes bytes, so this is a
+/// `JournalRecovery` whose header names a capability token no
+/// `mint_capture_capability` ever returned. It is what makes the binding rule a
+/// comparison against the capture rather than a comparison of the journal with
+/// itself. Every byte is a literal computed here; nothing was recorded.
+pub fn forged_journal_bytes() -> Vec<u8> {
+    let mut bytes = Vec::new();
+    bytes.extend_from_slice(b"ACJRNL01");
+    // The three header digests: a clock domain, a policy row and a capability
+    // token, all invented.
+    for tag in [
+        b"forged-domain".as_slice(),
+        b"forged-policy",
+        b"forged-token",
+    ] {
+        bytes.extend_from_slice(ContentDigest::sha256(tag).as_bytes());
+    }
+    bytes
 }
 
 /// A manifest holding both audio frames, the capture, and one supplied
 /// material.
-pub fn full_manifest(recovery: &JournalRecovery) -> Result<InputManifest, Box<dyn Error>> {
-    let mut manifest = InputManifest::for_binding(AuthorizationBinding::of(lecture()?, recovery));
+pub fn full_manifest(capture: &Capture) -> Result<InputManifest, Box<dyn Error>> {
+    let recovery = &capture.recovery;
+    let mut manifest =
+        InputManifest::for_binding(AuthorizationBinding::of(&capture.recorder, recovery)?);
     for record in recovery.records() {
         if matches!(
             record.body(),
