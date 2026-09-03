@@ -1,0 +1,48 @@
+[package]
+name = "academic-requirement"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Two product edges and no third.
+#
+# `academic-domain` supplies the identifiers the event schema v3
+# `REQUIREMENT_SET_PUBLISHED` arm already carries -- `RequirementSetId`,
+# `CurriculumVersionId`, `CourseId`, `EntityId`, `ValidInterval`,
+# `ContentDigest`, `Decimal`, `Actor` -- so a rule set published here is the
+# same identity migration `0004`'s `requirement_set` table keys on.
+#
+# `academic-ingestion` supplies `PublishedRules`, which `P2-U6`'s stage nine
+# produces. `RuleSetPublication::from_official_source` takes one, and
+# `PublishedRules` is produced only by `publish` on a `PublishableRules`, which
+# `Reconciled::publishable` returns `None` for on an undated document. A rule
+# set founded on an `UNSCOPED_OFFICIAL_SOURCE` is therefore not a value that
+# exists. `P2-U1` binds a curriculum version the same way.
+#
+# There is deliberately no model edge and no `academic-store` edge.
+#
+# The model absence is what `production_audit_no_llm` rests on: no crate that
+# runs, wraps, or carries the output of a model is in this crate's dependency
+# closure, so the audit path cannot reach one. A runtime check could be skipped;
+# an edge that does not exist cannot be.
+#
+# The store absence is `P2-U1`'s: the canonical writer is not in the closure
+# these rules compile against, so a rule set cannot write itself. Migration
+# `0015` holds the typed rows and `crates/store` owns them.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-ingestion = { path = "../ingestion" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# The compile-fail suite compiles its cases against this crate plus this crate's
+# dev-dependencies, so the domain identifiers a rule is built from have to be
+# reachable from a `tests/compile_fail` case as well. `academic-curriculum` and
+# `academic-scenario` declare their own domain edge twice for the same reason.
+academic-domain = { path = "../domain" }
+trybuild.workspace = true
+
+[lints]
+workspace = true

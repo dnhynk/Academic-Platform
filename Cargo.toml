@@ -29,6 +29,7 @@ members = [
   "crates/record",
   "crates/repository",
   "crates/repository-analysis",
+  "crates/requirement",
   "crates/repository-analyzer",
   "crates/recovery",
   "crates/retention",
