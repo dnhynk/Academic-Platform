@@ -1172,6 +1172,33 @@ and only a failure that survives one is a test result. Two signatures are not a
 licence to rerun anything: an assertion failure is a test result on the first
 observation, and neither of these is an assertion.
 
+### The same signature on a developer machine, at a higher rate
+
+`P2-L3` hit it outside hosted CI. Running
+`cargo test -p academic-worker --all-targets --locked --offline --features native-sandbox`
+on **Windows native**, on one commit, with no edit between attempts: **3 of 11
+attempts failed**, and the two whose output was kept carry the signature
+verbatim —
+
+```text
+Error: Launch { path: "...\target\debug\academic-worker-probe.exe",
+                detail: "CreateProcessW returned 0 (last error 2)" }
+```
+
+— on seven of the eight `containment` rows at once, with `capability`'s thirteen
+rows passing in the same run. The third failure is recorded as an exit code only:
+the loop that found it reused one log file and the output was overwritten, which
+is why the count above separates the two.
+
+Two things this adds to the rows above. **`last error 2` is
+`ERROR_FILE_NOT_FOUND`** against a path `cargo` had just built, which is what a
+launch error rather than a sandbox refusal looks like, and it is the same reading
+the hosted rows take. And **the rate is not a hosted-runner property**: 3 of 11
+locally is higher than the 8 of 56 measured on `rust-features-windows-latest`,
+on a machine with no runner contention. Neither number is a distribution; what
+the pair establishes is that a same-commit rerun is the right response on either
+side, and that a developer seeing it locally is not seeing something new.
+
 ## The `P2-R1` run
 
 `P2-R1` adds one workspace member, `academic-repository`, and a canonical-store
