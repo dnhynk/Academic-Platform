@@ -6,10 +6,19 @@ capture derive every instant from, the append-only chunk journal underneath
 them, the preflight that stops a capture before it loses one, and the Mark
 Moment whose instant no later label can move.
 
-It reads no clock and opens no device. Every elapsed reading and every
-permission instant arrives as an argument, which is why the acceptance rows can
-name the instants they assert against, and there is no code path in it that
-could open a microphone, a camera or a screen.
+It reads no clock. Every elapsed reading and every permission instant arrives
+as an argument, which is why the acceptance rows can name the instants they
+assert against, and `no_wall_clock_reaches_the_session_clock` refuses the whole
+of `std::time` plus `chrono` and `Uuid::now_v7` in its product source.
+
+**It opens no device, and three things hold that rather than one sentence.** Its
+declared product closure is pinned whole in
+`tools/phase1-scaffold-policy.test.mjs` at `academic-consent` and
+`academic-domain`, neither of which opens anything; the workspace's
+`unsafe_code = "forbid"` applies to it, because it declares `[lints] workspace = true`;
+and `only_egress_crate_has_a_socket` refuses a foreign-function declaration
+anywhere in the workspace. Opening a device needs one of those three, so this is
+an *edge and language* claim rather than an inspection of every line.
 
 ## Which device is an authorized recorder is still open
 
@@ -192,9 +201,11 @@ the chain, and nothing here claims otherwise.
 timestamp and its audio-clock offset. All four are separate fields and the bytes
 are never touched.
 
-- **Original bytes.** No function in this crate rotates, re-encodes, strips or
-  re-compresses a capture. `capture_metadata_integrity` compares the stored
-  digest with the digest of what the caller handed in.
+- **Original bytes.** `capture_metadata_integrity` compares the stored digest
+  with the digest of what the caller handed in, for each of the eight
+  orientations in turn, so a transform on any of those paths fails. The one
+  accessor is `CaptureBytes::as_slice` and it returns the whole buffer; there is
+  no partial one to return a re-encoded prefix through.
 - **Orientation.** One of the eight EXIF values, stated by the caller and stored
   beside the bytes rather than read out of them. The fixture carries no EXIF
   block at all, which is what "EXIF-independent" means: a capture whose bytes
