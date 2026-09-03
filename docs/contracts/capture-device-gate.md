@@ -420,3 +420,33 @@ Nothing here is ADR-002 acceptance. The default lane remains
 fixture in this crate's test tree is synthetic and built from committed
 literals. No recording is made, no sample is read, and no permission in this
 repository refers to a real offering.
+
+## The AppContainer profile name is shared, so its creation is serialised
+
+`CONTAINER_NAME` is one fixed name, `academic-capture-gate-probe`, and
+`container_sid` asks Windows for it on every contained run. One name is
+deliberate — a name per process would leave a profile directory under
+`%LOCALAPPDATA%\Packages` behind on every run — and what it costs is that every
+process on the machine is a candidate concurrent creator of it. Two creators of
+an *absent* profile tear each other's directory down. Measured while this suite
+ran under eight test threads:
+`%LOCALAPPDATA%\Packages\academic-capture-gate-probe` was recreated four times in
+three seconds and went absent once inside that window.
+
+`academic-worker`'s identical backend turns that window into a
+`CreateProcessW` failure with `ERROR_FILE_NOT_FOUND` in about one run in ten.
+**This suite has not been observed to fail from it** — 12 solo runs and 12
+overlapped ones, zero failures — which says the window is narrower here, not that
+it is closed. The repair is therefore the same one and made for the same reason:
+creation is serialised once per process by a `Mutex`, and once per machine by an
+exclusive open — share mode zero — of a lock file beside the profile under
+`%LOCALAPPDATA%`. A caller that cannot take the lock within five seconds proceeds
+anyway; creation happens once per machine and every later call answers
+`ERROR_ALREADY_EXISTS` without touching the directory, so the lock removes a race
+and is no part of what this backend refuses. It adds no `unsafe`, and it changes
+no token, capability set, device ACL or refusal. After it, the profile's creation
+time did not move across 6 solo runs and 6 overlapped pairs.
+
+`tools/shared-name-isolation.test.mjs` pins the two guard statements as the first
+two of `container_sid`, in this crate and in `academic-worker`, so a later edit
+that reorders or removes them fails rather than reintroducing the window.
