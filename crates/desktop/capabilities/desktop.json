@@ -1,0 +1,11 @@
+{
+  "identifier": "desktop",
+  "description": "The single main-window capability. It carries core permissions only; filesystem, HTTP and shell authority in Tauri v2 arrive through the tauri-plugin-fs, tauri-plugin-http and tauri-plugin-shell crates, and crates/desktop declares no plugin dependency of any kind.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default"
+  ]
+}

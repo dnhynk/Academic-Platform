@@ -106,7 +106,7 @@ remove.
 | `no_float_reaches_the_gpa_path` — `crates/record/tests/record_scans.rs` | recursive, the whole `crates/record` package less `tests`, so `examples/` and any `benches/` are read | not a token list: a float *type* under any spelling, a decimal-point literal, and an exponent literal, over code with comments and string literals removed; five evasion samples are run through the check inside the test and each must be caught | `>= 11` files, plus a tripwire that every `pub mod name;` in `lib.rs` is a file the walk read |
 | `the_published_average_is_rounded_in_one_pinned_place` — same file | the recursive walk above, for the rounding-site count; one fixed path for the pin | `WHOLE_DIVISION` whole-text pin on `div_round_half_up`; exactly one rounding site in the crate; the published scale still an argument; no type declared in the arithmetic module | the walk's floor above |
 | `tools/secret-debug-policy.test.mjs` | recursive, **every `.rs` under every `crates/*` package** less its `tests`, so `examples/`, `probes/` and any `benches/` are read | regex over derive attributes against a registry of secret-carrying types | none on the file walk; a `>= 11` floor on the macro-generated key-type registry |
-| `tools/phase1-scaffold-policy.test.mjs` | recursive, from eight roots: every workspace package except `academic-test-support` (the whole package, not its `src`), a named crate set, `store-platform/src`, each of the six process crates' `src`, `transcript/src` twice, `record/src` (the two implemented §28 engines, with a `>= 12` floor), and — for `only_egress_crate_has_a_socket` — every `.rs` anywhere under every workspace package; fixed paths elsewhere | `cargo metadata` dependency graph, acceptance-receipt comparison, and regex/substring assertions on named files — including a second, independent copy of the rotation-gate decision-site count | none |
+| `tools/phase1-scaffold-policy.test.mjs` | recursive, from nine roots: every workspace package except `academic-test-support` (the whole package, not its `src`), a named crate set, `store-platform/src`, each of the six process crates' `src`, `transcript/src` twice, `record/src` (the two implemented §28 engines, with a `>= 12` floor), the whole `crates/desktop` package (not its `src`, with a `>= 9` floor), and — for `only_egress_crate_has_a_socket` — every `.rs` anywhere under every workspace package; fixed paths elsewhere | `cargo metadata` dependency graph, acceptance-receipt comparison, and regex/substring assertions on named files — including a second, independent copy of the rotation-gate decision-site count | none |
 | `only_egress_crate_has_a_socket` — `tools/phase1-scaffold-policy.test.mjs` | recursive, **every `.rs` under every workspace package**, comments and every literal — raw strings included — stripped before matching | a per-file allowance of exact socket spellings (eight IPC files, two `P2-G4` files, every other allowance empty); a rule that a crate root or a socket module segment may be renamed only to `_`, read on `use` and on `extern crate` alike; a rule that no file in the workspace may import `libc::syscall` — by name, under an alias, inside a braced list, or through `use libc::*` — so a call to it has to spell `libc::syscall(`; zero foreign-function declarations anywhere; every `#[path]` target resolved and required to be one of the files this scan read; the one `include!` pinned whole; a pinned build-script inventory; a per-crate link closure intersected with the socket-capable crates; and, for the sandbox's Linux backend, two rules over syscalls: every `libc::syscall(` call in the file must name a `libc::SYS_` constant as its first argument and that constant must be one of the four reviewed syscalls the file installs the sandbox with, and every other `SYS_` spelling in the file must sit inside `denied_syscalls`, **counted** | `scanned.length >= 10` on the capability scan it sits beside; the allowance map is compared whole, so a file that stops being read fails as a missing key |
 | `the_byte_path_has_one_derivation`, `no_exception_path_fails_open`, `the_transport_is_reached_from_no_module_but_the_proxy`, `a_denial_has_no_payload_field` — `crates/egress-boundary/tests/byte_path_pin.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; the whole-text pins still read their own file by name, so a rename fails the read | nine whole-text pins (below), including the whole `OutboundTransport` trait, so a second way to write bytes cannot be added without editing the pin; call-site counts summed over the product walk — `execute`, `bind_grant` and `write_authorized_bytes` at two each and `send_chunk` at one — each counted by identifier, less declarations of a function named exactly that, so `EgressProxy::bind_grant(self, ..)` counts and `fn bind_grant_later(` is not subtracted; a per-file rule that only `lib.rs` may call the first three and only `transport.rs` may call `send_chunk`; the single construction site and the single redaction pass; a per-file fallback inventory with a written reason for each site; six shapes that may not appear at all (`catch_unwind`, `let _ =`, `if let Ok(`, `.is_ok()`, `unwrap()`, `.expect(`); the `EgressDenial` field list read out of the struct | `>= 6` files on both walks, a rule that no product source sits outside `src`, and a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the crate must be a file the walk read, with a floor of five declared modules; a file gaining a `#[cfg(test)]` module fails, because the product half would then be smaller than the file |
 | `deny_reason_codes_are_exhaustive` — `crates/egress-boundary/tests/egress_boundary.rs` | none — one fixed path, `crates/policy/src/schema.sql` | a compiler-checked witness `match` over `ReasonCode` (a new variant stops the suite compiling), an index set over the enumerated list, a transcription of the execution plan's section 3.5 sentence, and the quoted codes in the `egress_audit` `CHECK` | n/a — the enum is read through the type system, not a walk |
@@ -123,6 +123,10 @@ remove.
 | `crates/capture-gate/tests/compile_fail.rs` and `tests/compile_fail/*.rs` | n/a — `trybuild` compiles two committed programs | not a source-text scan: constructing a `CaptureSession` with a struct literal, and reading a `QuarantinedArtifact`'s bytes. Each must fail to compile *and* fail with the committed diagnostic | n/a |
 | `tools/verify-contracts.mjs` | recursive, `crates/contracts/src`; the two generated modules through `tools/{engine,predicate}-registry.mjs` | digest pins and byte-for-byte re-render; refuses any tree entry that is not a `.rs` file | n/a — an unreviewed entry fails |
 | `tools/engine-registry.mjs`, `tools/predicate-registry.mjs` | none — one fixed generated path each, named as `GENERATED_PATH` | not a scan: they render the generated module from `schemas/registry/`, and are the halves `verify-contracts.mjs` re-renders and compares against the committed file | n/a |
+| `desktop_cannot_open_the_database_or_read_keys` — `tools/phase1-scaffold-policy.test.mjs` | recursive, **every `.rs` anywhere under `crates/desktop`**, comments and literals stripped before matching | three halves, following `only_egress_crate_has_a_socket`. Graph: the declared workspace closure of every edge kind compared whole against a four-entry list, and the resolved closure checked against ten workspace crates that own the database or a key. Link: the resolved shipping closure pinned entire, plus intersections against thirteen database-capable and seventeen key-custody crates. Source: a closed world over path roots — every identifier the crate writes a `::` after must be one of twenty-five reviewed roots, read on paths rather than on `use`, so a fully qualified `rusqlite::Connection::open` is refused; plus no foreign function, no `unsafe`, no environment read and no embedded file. The root allowlist is compared in both directions, so a dead entry fails | `>= 9` files, plus a tripwire: every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the package must be a file the walk read |
+| `desktop_names_only_the_core_fixture_allowlist` — same file | none — two fixed paths, `crates/core/src/local_service.rs` and `crates/desktop/src/command.rs` | the one fixture identifier `academic-core` defines, compared against the `as_str` arms of the desktop's `SyntheticFixtureId`, sliced to that `impl` block so the capability arms are not read as fixtures. A source scan because the desktop must have no dependency edge to `academic-core`, which opens the store: the two constants can only be compared as text | none — a missing `impl` block or an unclosed one fails |
+| `capability_snapshot_has_no_wildcard` — `packages/ui/src/capability-snapshot.test.ts`, over `packages/ui/src/capability-snapshot.ts` | none — four fixed paths: the two committed snapshot documents and the two vendored Tauri schemas | not a source-text scan; the text it reads is JSON. Three layers: SHA-256 whole-file pins on all four; validation of both snapshot documents against Tauri's own schemas, with negative controls including one showing the schema accepts `$HOME/**` and so is not the guard; and `scanSnapshot`, whose deciding rule is a closed world over reviewed strings, keys and values separately, with the named wildcard forms used only for the failure message | none — a missing file fails the read; the enumeration of forms is compared against its own sample table in both directions so a form that stopped matching fails |
+| `route_manifest_matches_ia_exactly` — `packages/ui/src/route-manifest.test.ts`, over `packages/ui/src/ia.ts` | none — one fixed path, `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` | not a source-text scan; the text it reads is the specification. Section 25.1's drawn tree is parsed into labelled nodes with parents and compared with the route manifest as sets in both directions, plus a parent map and the reading order. A line the parser cannot account for raises rather than being skipped | none — an empty parse raises, and a second root or an unaccountable line raises |
 | `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
 | `tools/{source-preflight,cargo-lock-source-policy,dependency-source-policy,restricted-yaml}.mjs`, `tools/{dependency-source-policy,pnpm-source-policy-consumption}.test.mjs` | n/a | lockfile and registry parsing; not a source-text scan | n/a |
 | `tools/{phase1-exit,security-baseline}.mjs` | n/a | execution observation and committed fixture bytes | n/a |
@@ -1052,6 +1056,119 @@ explicit-approval flag on that tier and refuses it on the others, and
 `guard_proposal_outcome_matches_tier` refuses an outcome whose epistemic status
 or disposition does not match the tier. Each is observed refusing in
 `crates/store/src/proposal_closure_tests.rs` against a control that is accepted.
+## What the `P2-X1` scans hold
+
+`P2-X1`'s claim is a boundary and a snapshot, and neither has a run-time
+observation that would notice the day it stops holding. A desktop crate that
+gained a dependency on the store would keep every behavioural test passing until
+somebody wrote the call; a capability file that gained a filesystem scope would
+keep validating against Tauri's own schema, which accepts one.
+
+**No Tauri runtime is linked.** `crates/desktop/tauri.conf.json` and
+`crates/desktop/capabilities/desktop.json` are committed configuration, checked
+against Tauri's own published config schema and against the schema generated
+from `tauri_utils::acl::capability::Capability`. No window opens, and no
+assertion here says one does. What the snapshot is evidence for is its own
+content: `P2-A2` left the desktop capability diff `NOT_RUN` because there was
+nothing to diff, and there is now.
+
+**The deciding rule for the snapshot is not a list of wildcard shapes.**
+`WILDCARD_FORMS` enumerates ten and is used for the failure message. What
+decides is `closedValueWorld`: every string in either document, keys and values
+in separate closed sets, must be one that was reviewed. That is why `X-I38`
+through `X-I41` are refused — a fullwidth asterisk, a bare drive root, a
+protocol-relative source, a `data:` scheme, a plugin permission namespace and a
+plugin declaration with an empty body carry no form the enumeration names.
+
+**The boundary is judged three ways, because each is blind to a different
+bypass.** The declared-edge closure misses an optional dependency a feature
+turns on; the resolved closure misses a crate that links a capability and has
+not used it yet; the source scan misses everything that spells no forbidden name,
+which is the whole of "add a dependency". `X-I3` is the optional edge behind a
+feature nobody enables, and the resolved closure is what refuses it.
+
+**The source half is a closed world over path roots, not a token list.** Every
+identifier the crate writes a `::` after must be one of twenty-five reviewed
+roots. A `use`-root allowlist would not see `rusqlite::Connection::open` written
+in full, which is `X-I5`.
+
+### What `X-I28` found in this task's own tests
+
+`backlinks_resolve_for_four_entity_types` first compared the rendered view's
+backlink list against `backlinksOf`, which is the function that produced it.
+`X-I28` — `backlinksOf` filtering the wrong end of each edge — passed, because
+both sides of the comparison moved together. The expectation is now derived in
+the test from the relation table, and `X-I28` fails. The same round also found
+the test reading one representative entity per kind rather than every entity;
+it now walks the whole corpus.
+
+### The injection matrix
+
+Forty-four injections, applied one at a time and reverted, plus two more
+recorded below as not violations. Each dependency
+injection refreshes `Cargo.lock` before the refusing command is run, because a
+refusal that is `--locked` complaining about a stale lockfile proves nothing
+about the guard; each source injection is compiled first, for the same reason.
+Every one is refused, except the two rows marked as not violations.
+
+| # | Injection | Refused by |
+|---|---|---|
+| X-I1 | the desktop takes a product edge to `academic-store` | `desktop_cannot_open_the_database_or_read_keys`, declared and resolved halves |
+| X-I2 | the desktop takes a dev edge to `academic-vault` | the same, declared half — a dev edge is still a compiled edge |
+| X-I3 | the desktop takes an optional edge to `academic-crypto` behind a feature nobody enables | the same, resolved half |
+| X-I4 | the desktop takes a direct `rusqlite` edge | the same, link half and the closure pin |
+| X-I5 | a fully qualified `rusqlite::Connection` path with no `use` | the same, source half — the closed world over path roots |
+| X-I6 | product code outside the package's `src`, reached by `#[path = "../extra/leak.rs"]` | the `#[path]` tripwire |
+| X-I7 | an `option_env!` read of a database path | the environment rule |
+| X-I8 | the desktop's fixture identifier drifts from `academic-core`'s | `desktop_names_only_the_core_fixture_allowlist` |
+| X-I9 | the desktop names a capability the daemon does not negotiate | `desktop_command_allowlist_equals_the_negotiated_capabilities` |
+| X-I10 | a read-only command grows a write arm | `every_write_command_binds_the_capability_the_daemon_expects` |
+| X-I11 | a variant is dropped from `DesktopCommand::ALL` | `desktop_command_allowlist_equals_the_negotiated_capabilities` |
+| X-I12 | `Optimistic<T>` gains an accessor | `optimistic_update_has_no_exit_but_a_receipt`, whose committed diagnostic stops matching |
+| X-I13 | `confirm` stops comparing one of the four bound fields | `a_receipt_that_differs_in_any_bound_field_promotes_nothing` |
+| X-I14 | `Debug` stops redacting the unaccepted value | `debug_does_not_print_the_unaccepted_value` |
+| X-I15 | the TypeScript optimistic wrapper carries its value on the object | `optimistic_update_is_not_canonical_before_receipt` |
+| X-I16 | a route is removed from the manifest | `route_manifest_matches_ia_exactly`, specification-to-manifest direction |
+| X-I17 | a route is added to the manifest | the same, manifest-to-specification direction |
+| X-I18 | a line is removed from section 25.1 | the same |
+| X-I19 | a line is added to section 25.1 | the same |
+| X-I20 | a line in section 25.1 is renamed | the same |
+| X-I21 | a route loses its registered view | `every_destination_opens`, registry-to-manifest equality |
+| X-I22 | one view renders no sections | the same |
+| X-I23 | navigation drops the drawer for index destinations | `evidence_drawer_persists_across_views` |
+| X-I24 | navigation rebuilds the drawer instead of carrying it | the same |
+| X-I25 | the drawer moves to the left | the same, and `every_destination_opens` |
+| X-I26 | the palette stops offering one entity kind | `palette_reaches_four_entity_types_from_every_route` |
+| X-I27 | the palette targets the wrong route for one entity kind | the same, and `backlinks_resolve_for_four_entity_types` |
+| X-I28 | `backlinksOf` filters the wrong end of each edge | `backlinks_resolve_for_four_entity_types` — see above; it did not, before this round |
+| X-I29 | every relation into `Project` is removed | the same, four-kind coverage half |
+| X-I30 | a relation names an entity the corpus does not hold | the same, corpus-integrity half |
+| X-I31 | a backlink opens the index form instead of the entity | the same, and the palette matrix |
+| X-I32 | a `$HOME/**` asset-protocol scope | the scope rule, the closed value world, and the named form |
+| X-I33 | a wildcard CSP source | the CSP directive rule and the closed value world |
+| X-I34 | an `http://**` CSP source | the same |
+| X-I35 | a scheme-less host in a remote capability origin | the `remote` rule and the closed value world |
+| X-I36 | a `fs:` plugin permission in the capability | the permission allowlist and the closed value world |
+| X-I37 | a `shell` plugin declared with an empty configuration | the empty-`plugins` rule and the closed key world |
+| X-I38 | a filesystem scope written as a fullwidth asterisk | the closed value world |
+| X-I39 | a filesystem scope written as a bare drive root, no metacharacter | the closed value world |
+| X-I40 | a protocol-relative CSP source | the closed value world |
+| X-I41 | a `data:` CSP source, which names no host | the closed value world |
+| X-I42 | the CSP drops a directive instead of widening one | the CSP directive rule |
+| X-I43 | the committed snapshot file is edited at all | the SHA-256 whole-file pin |
+| X-I44 | a vendored Tauri schema is swapped for a permissive one | the schema pin, and the validation losing its negative controls |
+
+`X-I38` through `X-I41` are the point of the closed value world: each is a
+breadth grant written in a shape `WILDCARD_FORMS` does not name, and each is
+refused anyway. `X-I32` through `X-I37` are refused twice over, once by a named
+rule and once by the closed world, which is what a layered guard should do.
+
+Two injections are recorded as **not** violations, because the record is more
+useful than the omission. Removing one relation edge from the synthetic corpus
+leaves every one of the four entity kinds with a resolvable backlink, so nothing
+should refuse it and nothing does; and `resolveBacklinks` filtering a dangling
+edge instead of raising changes nothing on a corpus that has none. The dangling
+case itself is `X-I30`, and the corpus-integrity loop is what refuses it.
 
 ## Open
 
@@ -1079,6 +1196,7 @@ closed it.
 | S-14 | `no_float_reaches_the_gpa_path`, `tools/secret-debug-policy.test.mjs`, `phase1_exit_has_no_product_network`, the two `academic-untrusted-content` walks, and the two in `crates/consent/tests/consent_scans.rs` — the `benches` tree | **Closed by `P2-RF11`.** Seven walks excluded `benches` beside `tests`; the last two arrived with `P2-G6` while this repair was in flight and are widened here for the same reason. No `benches` tree exists in this repository, but a bench target has no feature gate and `cargo clippy --workspace --all-targets` — the README verification block's third command — compiles it, which is the two-part test `T146` applied to `examples/`. `T149` measured all three halves: a `f64`, a `#[derive(Debug)]` over `key_bytes`, and a `TcpStream::connect` in a new `crates/record/benches/` file each passed its scan, and a bench that does not compile fails the clippy lane. All seven now exclude `tests` only. | n/a — closed. `tests` stays out on the reasons those walks give for it. |
 | S-15 | `the_transport_is_reached_from_no_module_but_the_proxy` — `crates/egress-boundary/tests/byte_path_pin.rs` | **Closed by `P2-RF11`.** This crate's counts read three fixed file names and its fallback inventory read six, in exactly the shape `S-5` and `S-8` record elsewhere, and no row named it. `T149` added `mod relay;` and one new file: the module reached the transport through the broker without binding a grant, wrote 178 bytes under a grant reviewed by another rulepack for a payload `transmit` refused with zero, left no journal row, and passed this crate's suite, `cargo test --workspace --all-targets` and both JS scans. The counts are now sums over a package walk, the inventory is keyed on the walk with a floor, and a module tripwire fails the day the walk is narrowed. | n/a — closed. |
 | S-16 | `egress_audit.grant_id`, for rows that are not a consumed grant | The column is polymorphic and only `egress_consumption` resolves it. Deny rows and process-capability activity rows are joined to nothing that says which namespace their identifier came from, so a reader treating the column as an `egress_grant` reference finds them dangling. `P2-M1` does not need them: its reconciliation reads only consumed grants, which `T149` measured is exactly what the join resolves. | The first reader that has to attribute a *denial* or a process activity to a namespace. Closing it means a discriminator column or a second join table; severity **P3**, because no dangling row exists today: all seven `insert_audit` call sites write an identifier that is in one of the two tables. |
+| S-17 | `packages/web-contracts/src/index.ts` — the four closed vocabulary sets | `masteryLevels`, `freshnessBands`, `confidentialityValues` and `retentionClassValues` restate `academic_domain`'s `MasteryLevel`, `FreshnessBand`, `Confidentiality` and `RetentionClass`, and **nothing compares the two sides**. This is the defect class `route_manifest_matches_ia_exactly` closes one step away: a list written from an authoritative enumeration with no bidirectional check. `P2-X1` found it while looking for its own kind one step out and did not fix it: the file is `P2-C7`'s contract surface, and a cross-language parity scan is its own reviewed piece of work. All four sets agree with the Rust enums today, measured at this commit, so the row is latent rather than broken. | The first commit that adds a variant to one of the four Rust enums. The TypeScript validator would then reject a fixture the Rust side accepts, and would do so silently until a fixture happened to carry the new variant — the fixture suites pin specific bytes and would not notice a set that had merely stopped being complete. Severity **P3**. Closing it means reading the four variant lists out of `crates/domain/src/lib.rs` and comparing them with the four sets in both directions, the way `model_run_requires_every_field` compares a struct against the specification's own YAML. |
 
 ## Intended, not a defect
 

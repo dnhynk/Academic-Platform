@@ -1,0 +1,52 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-j",
+  "task": "P2-X1",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-X1 admits no external crate. academic-desktop links academic-rpc and thiserror as product edges and serde_json and trybuild as dev edges, all four covered by earlier reviewed receipts, and adds one workspace path package. The Tauri runtime is deliberately not linked: cargo metadata on tauri 2.11.5 resolves 388 new packages into the default product closure, six of which (http, http-body, hyper, hyper-util, reqwest, tower-http) are on the forbidden list that phase1_default_features_have_no_product_network enforces, at every feature setting including default-features = false. Linking it is a separate decision with its own receipt.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-desktop is the P2-X1 desktop surface boundary. It holds the typed local-core command allowlist and the sealed optimistic-update type, and nothing else; it is a separate package from academic-cli and academic-daemon because ADR-001's surface table forbids this surface the database and key authority both of those hold.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [
+      "@academic-os/ui"
+    ],
+    "npm_workspace_package_note": "packages/ui is a new pnpm workspace package with an empty dependency set. It builds with the root tsc and tests with node --test, exactly as packages/web-contracts does, and it imports ajv, which the Phase 1 receipt already admitted. pnpm-lock.yaml gains an importer entry and no package."
+  },
+  "direct_workspace_dependencies": {
+    "academic-rpc": "The local-core contract. The desktop's typed command allowlist is compared against academic_rpc's PHASE1_CAPABILITY_IDS, READ_ONLY_CAPABILITY_IDS and WRITE_CAPABILITY_IDS rather than restating them, and the receipt an optimistic update is promoted by is that crate's ImmutableReceipt. This is the surface's only door to the core."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-desktop",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-desktop",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-desktop is a workspace path crate, not an external dependency. It owns two things: the closed DesktopCommand enum, which has no constructor from a string and whose capability set is compared against the daemon's negotiated tables in both directions, and Optimistic<T>, a sealed wrapper whose only exit is a matching ImmutableReceipt. Its single product edge is to academic-rpc, and its declared workspace closure of every edge kind is exactly academic-admission, academic-contracts, academic-domain and academic-rpc. It has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-policy, academic-projections, academic-recovery or academic-retention, which is what ADR-001's surface table requires of this surface and what desktop_cannot_open_the_database_or_read_keys judges from the declared graph, the resolved link closure and the source text together.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. Its link closure holds tokio, mio, socket2, rustix, libc and windows-sys, all through academic-rpc, which needs them for the named pipe and Unix-domain socket the daemon listens on; availability is recorded in only_egress_crate_has_a_socket's SOCKET_CAPABLE_CLOSURES row for this crate, and the crate spells no socket construct, which is why its SOCKET_ALLOWANCE entry is absent rather than empty. Its closure holds no SQLite driver and no embedded database of any kind, and no KDF, AEAD, keyring or TLS stack. ed25519-dalek, sha2, hmac and zeroize are present through academic-admission's receipt signature verification and academic-domain's digests; verifying a signature over public evidence is not key custody.",
+  "advisory_path": "Unchanged. Every external crate academic-desktop links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [
+    {
+      "path": "schemas/tauri/config-2.11.5.schema.json",
+      "kind": "JSON Schema, draft-07",
+      "provenance": "Fetched once from https://schema.tauri.app/config/2, which served $id https://schema.tauri.app/config/2.11.5. It is Tauri's own published configuration schema and is committed as data so that the capability snapshot is validated against the format the runtime reads rather than against a hand-written description of it.",
+      "sha256": "6928b54f49574a13d8c597effa0f429853d19ddf3f6da5329751cff3848510de",
+      "is_a_dependency": false
+    },
+    {
+      "path": "schemas/tauri/capability-2.9.3.schema.json",
+      "kind": "JSON Schema, draft-07",
+      "provenance": "Generated once, outside this repository, from tauri-utils 2.9.3 with `schemars::schema_for!(tauri_utils::acl::capability::Capability)`. tauri-utils is the crate that parses capability files at build time and is the version tauri 2.11.5 resolves; it is not a dependency of this repository and the generating crate lived in a throwaway build-lane directory.",
+      "sha256": "594f80302568a21ac0e54ee11716e1f68911bf114df9e9f70c9d444b415489b6",
+      "is_a_dependency": false
+    }
+  ],
+  "admissions": []
+}
