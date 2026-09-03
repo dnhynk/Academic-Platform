@@ -79,11 +79,20 @@ pnpm fixture:replay:v2
 git diff --exit-code -- schemas/fixtures/
 ```
 
-Hosted CI materializes **17 required jobs**: one source preflight, five
-`rust-default-*` jobs, five `rust-features-*` jobs, two Phase 1 exit jobs,
-three Linux-only encrypted/rotation jobs, and one pnpm contracts job. A green
-run is therefore reported as **17/17**, and the measured duration-to-timeout
-ratios and refresh rule live in [the CI budget record](docs/development/ci-budget.md).
+Hosted CI materializes **22 required jobs**: one source preflight, five
+`rust-default-*` jobs, five `rust-store-*` jobs, five `rust-features-*` jobs,
+two Phase 1 exit jobs, three Linux-only encrypted/rotation jobs, and one pnpm
+contracts job. A green run is therefore reported as **22/22**, and the measured
+duration-to-timeout ratios and refresh rule live in
+[the CI budget record](docs/development/ci-budget.md).
+
+The block above runs the whole workspace in one `cargo test`; hosted CI runs the
+same default-feature coverage as two jobs, `--workspace --exclude academic-store`
+beside `-p academic-store`. That is a timeout split and not a coverage
+difference — `academic-store`'s file-backed tests are the largest single share
+of that lane's runtime on Windows — and `pnpm verify:contracts` fails if the two
+package sets stop being complementary or if the store job stops running on all
+five labels.
 
 The encrypted object lane above is a non-default `academic-vault` feature and
 needs no native toolchain: it is pure-Rust XChaCha20-Poly1305 over the Phase 1

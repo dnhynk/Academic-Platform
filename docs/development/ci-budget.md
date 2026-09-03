@@ -15,6 +15,24 @@ recorded elapsed time. A row at or above 80% is a review trigger for another
 split, an admitted cache, or a measured timeout change; it is not permission to
 remove a verification command.
 
+A refreshed table is one reading of a distribution, not the distribution. Where
+this page states headroom for a label it states the **range** — how many
+readings, the smallest, the median and the largest — because the readings that
+decide a timeout are the ones no single run shows. Enumerate the workflow's own
+history rather than this page's tables to rebuild one:
+
+```text
+gh api repos/dnhynk/Academic-Platform/actions/workflows/ci.yml/runs?per_page=100
+gh api repos/dnhynk/Academic-Platform/actions/runs/<run-id>/attempts/<n>/jobs?per_page=100
+```
+
+and keep every attempt, because the attempts that were cancelled are the ones
+worth reading. Separate the two kinds of cancellation before counting: the
+workflow's `cancel-in-progress` concurrency group cancels a superseded push at
+whatever time it had reached, which is not a reading of anything, while a
+cancellation at the limit is a right-censored reading — the job's real cost is
+at least that, and how much more is unknown.
+
 Use `gh api repos/dnhynk/Academic-Platform/actions/runs/<run-id>/jobs?per_page=100`
 and retain, for every job, `name`, `conclusion`, `started_at`, and
 `completed_at`. For reruns, query
@@ -67,43 +85,176 @@ lasted 20:03; rerunning that same commit lasted 16:06, a 3:57 runner spread.
 
 ## Post-split budget
 
-The workflow now materializes 17 required jobs. The five `rust-default-*` jobs
-retain formatting, default clippy, the workspace test (including doc tests),
-and all fixture commands. The five `rust-features-*` jobs retain every
-encrypted-object, rotation/retention, transcript, and native-worker clippy/test
-command on the same five labels. Both groups have a 30-minute limit.
+The workflow now materializes 22 required jobs. The five `rust-default-*` jobs
+retain formatting, default clippy, the workspace test apart from
+`academic-store` (including doc tests), and all fixture commands. The five
+`rust-store-*` jobs run `academic-store`'s default-feature tests on the same
+five labels — the second half of that workspace test, split off for the reason
+[the store split](#the-store-split) records. The five `rust-features-*` jobs
+retain every encrypted-object, rotation/retention, transcript, native-worker and
+capture clippy/test command on the same five labels. All three groups have a
+30-minute limit.
 
-The latest run,
-[33698230519](https://github.com/dnhynk/Academic-Platform/actions/runs/33698230519),
-completed 17/17 at `8ac8f17` — `P2-RF11`, which changed five default-workspace
-tests and two pnpm source scans.
+The first run on the split workflow,
+[33675718049](https://github.com/dnhynk/Academic-Platform/actions/runs/33675718049),
+completed at `25e6221`. It is the reading the paragraph below is about, and it
+is the highest this page holds for `rust-default-windows-latest` outside the
+cancellation recorded further down.
 
 | Required job | Elapsed | Limit | Utilization |
 |---|---:|---:|---:|
-| `dependency-source-preflight` | 0:04 | 5:00 | 1.3% |
-| `rust-default-ubuntu-latest` | 4:36 | 30:00 | 15.3% |
-| `rust-default-ubuntu-24.04-arm` | 3:51 | 30:00 | 12.8% |
-| `rust-default-windows-latest` | 12:16 | 30:00 | 40.9% |
-| `rust-default-windows-11-arm` | 12:49 | 30:00 | 42.7% |
-| `rust-default-macos-latest` | 4:13 | 30:00 | 14.1% |
-| `rust-features-ubuntu-latest` | 2:40 | 30:00 | 8.9% |
-| `rust-features-ubuntu-24.04-arm` | 2:20 | 30:00 | 7.8% |
-| `rust-features-windows-latest` | 5:20 | 30:00 | 17.8% |
-| `rust-features-windows-11-arm` | 4:41 | 30:00 | 15.6% |
-| `rust-features-macos-latest` | 2:13 | 30:00 | 7.4% |
-| `phase1-exit-ubuntu-latest` | 4:05 | 45:00 | 9.1% |
-| `phase1-exit-windows-latest` | 7:58 | 45:00 | 17.7% |
-| `encrypted-store-lane-ubuntu-latest` | 3:06 | 45:00 | 6.9% |
-| `encrypted-portability-lane-ubuntu-latest` | 5:07 | 45:00 | 11.4% |
-| `rotation-orchestration-lane-ubuntu-latest` | 6:50 | 45:00 | 15.2% |
-| `pnpm-contracts` | 0:52 | 15:00 | 5.8% |
+| `dependency-source-preflight` | 0:10 | 5:00 | 3.3% |
+| `rust-default-ubuntu-latest` | 4:54 | 30:00 | 16.3% |
+| `rust-default-ubuntu-24.04-arm` | 3:48 | 30:00 | 12.7% |
+| `rust-default-windows-latest` | 20:18 | 30:00 | 67.7% |
+| `rust-default-windows-11-arm` | 12:54 | 30:00 | 43.0% |
+| `rust-default-macos-latest` | 4:19 | 30:00 | 14.4% |
+| `rust-features-ubuntu-latest` | 2:23 | 30:00 | 7.9% |
+| `rust-features-ubuntu-24.04-arm` | 2:24 | 30:00 | 8.0% |
+| `rust-features-windows-latest` | 5:26 | 30:00 | 18.1% |
+| `rust-features-windows-11-arm` | 4:26 | 30:00 | 14.8% |
+| `rust-features-macos-latest` | 2:51 | 30:00 | 9.5% |
+| `phase1-exit-ubuntu-latest` | 2:50 | 45:00 | 6.3% |
+| `phase1-exit-windows-latest` | 7:43 | 45:00 | 17.1% |
+| `encrypted-store-lane-ubuntu-latest` | 3:08 | 45:00 | 7.0% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:03 | 45:00 | 9.0% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:59 | 45:00 | 15.5% |
+| `pnpm-contracts` | 0:50 | 15:00 | 5.6% |
 
-The slowest job is now `rust-default-windows-latest` at 67.7%. Its 20:18
+The slowest job is `rust-default-windows-latest` at 67.7%. Its 20:18
 also shows that splitting alone while retaining the old 20-minute timeout
 would still have failed on this runner. The independently completed feature
 job used 18.1% instead of extending that default job by another 5:26. Windows
 ARM is the next-highest Rust default at 43.0%; every Linux, Linux ARM, and macOS
-Rust job is at or below 16.3%.
+Rust job is at or below 16.3%. The table has no `rust-store-*` row because that
+group did not exist on this run.
+
+## The store split
+
+### What changed
+
+`rust-default-*` runs `cargo test --workspace --exclude academic-store --locked`
+and a new `rust-store-*` group runs `cargo test -p academic-store --locked` on
+the same five labels. The job count goes 17 → 22.
+
+No command and no label was dropped. `academic-store` is still linted by the
+unchanged `cargo clippy --workspace --all-targets --locked` in `rust-default-*`,
+still tested under `sqlcipher-store` by `encrypted-store-lane-ubuntu-latest`,
+and the README's local block still runs the whole workspace in one `cargo test`.
+`--workspace --exclude` also means a member added later lands in the remainder
+job with no edit to either command.
+
+`tools/verify-contracts.mjs` reads the workflow and fails if a package excluded
+from the workspace test is run by no job, is run only under a non-default
+feature set, or is run on fewer than the five hosted labels; five mutations of
+the workflow are asserted to fail it.
+
+### What it was sized against
+
+53 completed readings of `rust-default-windows-latest` on the post-split
+workflow, from the Actions jobs API rather than from this page's own tables:
+
+| Label | n | min | median | p90 | max | max/median |
+|---|---:|---:|---:|---:|---:|---:|
+| `rust-default-ubuntu-latest` | 57 | 3:28 | 5:10 | 5:46 | 5:53 | 1.14 |
+| `rust-default-ubuntu-24.04-arm` | 57 | 3:42 | 4:33 | 4:57 | 5:14 | 1.15 |
+| `rust-default-windows-latest` | 53 | 12:16 | 14:55 | 17:09 | 20:18 | 1.36 |
+| `rust-default-windows-11-arm` | 54 | 10:46 | 13:31 | 15:26 | 16:15 | 1.20 |
+| `rust-default-macos-latest` | 57 | 3:53 | 5:50 | 7:25 | 10:37 | 1.82 |
+| `rust-features-ubuntu-latest` | 59 | 1:49 | 3:23 | 3:50 | 4:05 | 1.21 |
+| `rust-features-ubuntu-24.04-arm` | 60 | 2:12 | 2:50 | 3:02 | 3:14 | 1.14 |
+| `rust-features-windows-latest` | 48 | 4:08 | 5:52 | 6:27 | 7:02 | 1.20 |
+| `rust-features-windows-11-arm` | 57 | 4:12 | 5:29 | 6:06 | 6:35 | 1.20 |
+| `rust-features-macos-latest` | 60 | 1:54 | 2:59 | 3:41 | 3:51 | 1.29 |
+
+**Not one of those 53 readings reached 24:00, the 80% line.** The trigger was
+reached by a 54th observation that is not in the table because it did not
+complete: the 30:14 cancellation recorded below, which is 2.03× that label's
+median and 1.49× the largest reading beside it. Two readings of *one* commit,
+30:14 and 18:41, are 1.62× apart.
+
+So the 80% row was not the tail of the spread the other nine labels show. Those
+nine sit at 1.14×–1.82× of their own medians, and the 30:14 sits outside every
+one of them. **A single reading is not a budget for this label and neither is a
+single percentile: what the table above is for is the range.**
+
+The other seven `rust-default-windows-latest` records that are not in the table
+were cancelled by the workflow's own `cancel-in-progress` concurrency group when
+a newer push superseded them, at 1:35 to 12:39. A concurrency cancellation is
+not a timeout and not a reading.
+
+### Where the time goes, and what that ruled out
+
+`Test Rust workspace` on the cancelled attempt was 26:27: **2:03 compiling and
+24:18 running 143 test binaries.** By package, on that attempt against the same
+step on the rebased head that read 12:39:
+
+| Package | cancelled attempt | rebased head | share |
+|---|---:|---:|---:|
+| `academic-store` | 11:05 | 3:29 | 45.6% / 36.7% |
+| `academic-core` | 5:13 | 1:18 | 21.5% / 13.7% |
+| `academic-portability` | 2:25 | 1:03 | 9.9% / 11.1% |
+| `academic-vault` | 2:11 | 0:24 | 8.9% / 4.3% |
+| every other package together | 3:25 | 3:15 | 14.1% / 34.2% |
+
+The single largest row is `academic_store`'s `unittests src/lib.rs`: 52 tests in
+494 s on the cancelled attempt, 57 tests in 132 s on the rebased head, and 56
+tests in **3.4 s on `ubuntu-latest` in the same run** — 2.31 s per test on a
+hosted Windows runner against 0.06 s on Linux. Those tests open real databases
+under the connection policy `crates/store/src/connection.rs` pins,
+`PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL`, in the runner's
+temporary directory.
+
+**The runner that was cancelled was not a slow runner. It was a runner with a
+slow disk**, and the three observations separate the two:
+
+| | cancelled attempt | same commit, rerun | rebased head |
+|---|---:|---:|---:|
+| job elapsed | 30:14 | 18:41 | 16:35 |
+| `cargo clippy --workspace --all-targets` step | **0:51** | 0:53 | 1:07 |
+| compile inside the test step | **2:03** | 2:15 | 3:02 |
+| test binaries: 143, 143, 145 | **24:18** | 12:02 | 9:31 |
+
+Both compilation steps were the *fastest* of the three on the attempt that was
+cancelled; only file-backed test execution scaled, by 2.02× against the same
+commit. That is what decided between the options below.
+
+### The options
+
+**A cache was rejected on that table.** Compilation on the cancelled attempt was
+2:51 of 30:14 — 9.4% — and it was already the fastest compilation of the three.
+A `target/` cache can only act on the part that was not slow, so no cache
+setting would have saved that run. The Cargo *registry* is already cached by
+`actions/cache`, and a new caching action would additionally need the
+`CONTRIBUTING.md` admission procedure and a `docs/security/` receipt for a
+benefit this measurement bounds at under a tenth of the job.
+
+**Raising the limit was rejected as the load-bearing change.** To absorb the
+observed 2.03× draw at the label's current median of 16:35 the limit would have
+to be about 34:00, and at 45:00 it would bind again once the median reaches
+22:12. That median has moved 14:24 → 16:35 across the 7 workspace members added
+during these 53 readings, which is **+19 s per member**, so 45 minutes buys
+about 18 more members and then asks the same question with a larger denominator
+— and with every percentage on this page reset so a growing base reads as
+headroom. The limit stays at 30:00.
+
+**Removing tests was not considered.** The README verification block is a
+contract; buying time by shrinking it is not available.
+
+**The split acts on the row the measurement names.** It moves 37%–46% of the
+lane's test execution into a second runner draw, so a slow disk is charged to
+half the work rather than all of it, and it lowers the median critical path of
+the default lane on every ordinary run rather than only on the tail.
+
+### When this is due again
+
+The split does nothing about growth: +19 s per member still accrues, now divided
+between two jobs. The number to watch is the same 80% line, 24:00, and the
+measured run below is the first reading of where the two halves start from. What
+the split changed is which reading is at risk — this page's rule is unchanged
+and is now easier to apply, because a group whose worst reading crosses 24:00
+names the package to move next, and the guard in `verify-contracts.mjs` makes
+moving one a two-line workflow edit that cannot silently drop it.
 
 ## The `P2-G6` run
 
@@ -366,7 +517,7 @@ Every job is at or below 49.7%, and nothing is near the 80% review trigger.
 Size headroom off the worst reading this page holds for a label, 67.7% on
 `rust-default-windows-latest`, rather than off any single run.
 
-## Latest run
+## The `P2-L2` run
 
 `P2-L2` adds one workspace member, `academic-capture`, two steps to the
 `rust-features` matrix, and no pnpm package. Workspace membership,
@@ -432,7 +583,7 @@ Splitting the step by the job log's own timestamps:
 | whole-workspace compilation, to `Finished \`test\` profile` | 2:03 |
 | running 143 test binaries | 24:18 |
 | — of which `academic_store`'s `unittests src/lib.rs` | 8:14 |
-| — of which `academic-transcript`'s `tests/projection_format.rs` | 2:51 |
+| — of which `academic-core`'s `tests/projection_format.rs` | 2:51 |
 | — of which **all five `academic-capture` binaries together** | **1.84 s** |
 
 `academic-capture` is 0.13% of the step it is accused of blowing. The dominant
@@ -562,19 +713,64 @@ the observation is kept because the rule it exercises is, and the run is.
 So the rule is the same as the timeout rule: a Windows job that fails inside
 `Test the worker sandbox lane` with a `CreateProcessW` launch error is
 falsified or confirmed by re-running that job on the same commit, and only a
-failure that survives the rerun is a test result. It is recorded here rather
-than in the worker sandbox contract because what is unreliable is the hosted
-Windows filesystem right after a link, not anything the sandbox claims.
+failure that survives the rerun is a test result.
+
+### How often, and what the eight occurrences have in common
+
+Counting it is what the sightings below could not do one at a time. Across the
+57 runs of the split workflow, `rust-features-windows-latest` completed 56
+attempts: **48 succeeded and 8 failed, and all 8 are this signature in this
+step** — 14.3%, about one attempt in seven. No other post-split label has more
+than one failure of any kind, and the one `rust-features-macos-latest` failure
+was a compile gate, recorded above.
+
+The eight logs agree on more than the signature:
+
+- The failing test is **the second result `tests/containment.rs` reports**, at
+  +0.44 s to +1.10 s, in all eight. The first is always
+  `the_compiled_backend_is_the_one_this_platform_names`, which launches nothing.
+- **Which** test it is varies with libtest's scheduling —
+  `malicious_plugin_corpus_is_contained` five times,
+  `resource_receipt_is_recorded_per_run` twice,
+  `cpu_memory_time_output_limits_are_enforced` once, and on one occurrence the
+  whole first wave of three failed together.
+- Every later launch in the same binary succeeds, from the same absolute path,
+  within seconds. Three of the eight tests call `Harness::baseline()` first,
+  which launches that same image with `std::process::Command`; none of those
+  three has ever been the failure.
+
+**So it is the process's first sandboxed launch that fails, not a test and not a
+missing file.** A binary that a plain `Command` starts, and that the same
+process starts again 0.5 s later, is present and executable.
+
+That is as far as the logs go, and it is less than a cause. What is one-time and
+process-wide in `crates/worker/src/sandbox/windows.rs` is the AppContainer
+setup: `container_sid` creates or derives one profile under a constant name, and
+`grant` then read-modify-writes a DACL on the probe and on its parent directory
+to add an allow ACE for that SID — shared state that concurrently scheduled
+tests reach at the same moment, and an AppContainer that cannot open its image
+is one documented way for `CreateProcessW` to answer `ERROR_FILE_NOT_FOUND`.
+**That names a place to look, not a defect**; nothing here has reproduced it on
+demand, and the experiment that would decide it is to serialize the first launch
+and see whether the rate goes to zero. Until something does, do not change the
+sandbox to make the symptom go away.
 
 Seen on runs
+[33696320874](https://github.com/dnhynk/Academic-Platform/actions/runs/33696320874),
 [33697656939](https://github.com/dnhynk/Academic-Platform/actions/runs/33697656939)
-(failed, then 17/17 on rerun of the one job), once locally on Windows in the
-`P2-G6` verification, and again on
+(failed, then 17/17 on rerun of the one job),
 [33715585336](https://github.com/dnhynk/Academic-Platform/actions/runs/33715585336)
-in `P2-M2`.
+in `P2-M2`,
+[33716669384](https://github.com/dnhynk/Academic-Platform/actions/runs/33716669384),
+[33718465338](https://github.com/dnhynk/Academic-Platform/actions/runs/33718465338),
+[33730639197](https://github.com/dnhynk/Academic-Platform/actions/runs/33730639197),
+[33739674269](https://github.com/dnhynk/Academic-Platform/actions/runs/33739674269)
+and
+[33740005635](https://github.com/dnhynk/Academic-Platform/actions/runs/33740005635),
+and once locally on Windows in the `P2-G6` verification.
 
-That third sighting is the sharpest one this page has, because the two halves of
-the rule were both executed against a tree that touches no part of
+Run 33715585336 is the sighting where both halves of the rule were executed
+against a tree that touches no part of
 `academic-worker`. `resource_receipt_is_recorded_per_run`,
 `cpu_memory_time_output_limits_are_enforced` and
 `malicious_plugin_corpus_is_contained` failed together with the same
