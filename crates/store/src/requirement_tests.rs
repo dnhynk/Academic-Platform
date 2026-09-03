@@ -504,9 +504,7 @@ fn every_requirement_table_is_guarded_and_canonical() -> TestResult {
             );
         }
         assert!(
-            crate::authorizer::CANONICAL_TABLES
-                .iter()
-                .any(|canonical| *canonical == table),
+            crate::authorizer::CANONICAL_TABLES.contains(&table),
             "{table} is not in CANONICAL_TABLES, so the authorizer would admit a DROP"
         );
     }
