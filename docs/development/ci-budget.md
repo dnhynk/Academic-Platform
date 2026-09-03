@@ -515,3 +515,46 @@ a broken pipe after it does -- is falsified or confirmed by a same-commit rerun,
 and only a failure that survives one is a test result. Two signatures are not a
 licence to rerun anything: an assertion failure is a test result on the first
 observation, and neither of these is an assertion.
+
+## The `P2-R1` run
+
+`P2-R1` adds one workspace member, `academic-repository`, and a canonical-store
+migration, `0012`, both of which the refresh rule names as triggers. Run
+[33729501242](https://github.com/dnhynk/Academic-Platform/actions/runs/33729501242)
+at `4509864` completed 17/17.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:04 | 5:00 | 1.3% |
+| `rust-default-ubuntu-latest` | 5:40 | 30:00 | 18.9% |
+| `rust-default-ubuntu-24.04-arm` | 4:52 | 30:00 | 16.2% |
+| `rust-default-windows-latest` | 16:56 | 30:00 | 56.4% |
+| `rust-default-windows-11-arm` | 14:26 | 30:00 | 48.1% |
+| `rust-default-macos-latest` | 7:16 | 30:00 | 24.2% |
+| `rust-features-ubuntu-latest` | 3:43 | 30:00 | 12.4% |
+| `rust-features-ubuntu-24.04-arm` | 2:52 | 30:00 | 9.6% |
+| `rust-features-windows-latest` | 5:58 | 30:00 | 19.9% |
+| `rust-features-windows-11-arm` | 5:30 | 30:00 | 18.3% |
+| `rust-features-macos-latest` | 2:58 | 30:00 | 9.9% |
+| `phase1-exit-ubuntu-latest` | 4:19 | 45:00 | 9.6% |
+| `phase1-exit-windows-latest` | 9:52 | 45:00 | 21.9% |
+| `encrypted-store-lane-ubuntu-latest` | 3:21 | 45:00 | 7.4% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:11 | 45:00 | 11.5% |
+| `rotation-orchestration-lane-ubuntu-latest` | 7:06 | 45:00 | 15.8% |
+| `pnpm-contracts` | 0:58 | 15:00 | 6.4% |
+
+The slowest job is `rust-default-windows-latest` at 56.4%. That is a **fourth**
+reading of the job the `P2-RF11` section says has no single-reading budget:
+20:18, 14:08, 12:16 and now 16:56 on one workflow — 67.7%, 47.1%, 40.9% and
+56.4%. The new reading sits inside the range those three established rather than
+extending it, so the guidance is unchanged: size headroom off 67.7% and treat
+each further reading as evidence about the range. `rust-default-windows-11-arm`
+is beside it at 48.1%, its own third reading in a 42.7%–48.1% band. Every Linux,
+Linux ARM and macOS Rust job is at or below 24.2%.
+
+The new member adds one crate to `cargo clippy --workspace --all-targets` and
+two test binaries plus five in-crate store tests to `cargo test --workspace`.
+`encrypted-store-lane-ubuntu-latest` is the job migration `0012` changes, and it
+is at 7.4% — unchanged from the `P2-G6` reading of the same job at the same
+percentage, which is what one more migration in the creation transaction costs
+on that lane.
