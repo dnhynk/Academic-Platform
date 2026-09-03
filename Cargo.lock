@@ -263,15 +263,11 @@ dependencies = [
  "academic-capture",
  "academic-consent",
  "academic-domain",
- "academic-egress-boundary",
  "academic-model-run",
- "academic-policy",
- "academic-proposal",
  "academic-transcription",
  "tempfile",
  "thiserror",
  "trybuild",
- "uuid",
 ]
 
 [[package]]

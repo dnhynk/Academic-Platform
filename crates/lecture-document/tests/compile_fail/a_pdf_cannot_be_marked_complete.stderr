@@ -1,0 +1,11 @@
+error[E0599]: no method named `set_completeness` found for mutable reference `&mut PdfArtifact` in the current scope
+ --> tests/compile_fail/a_pdf_cannot_be_marked_complete.rs:8:9
+  |
+8 |     pdf.set_completeness(DocumentCompleteness::Complete);
+  |         ^^^^^^^^^^^^^^^^
+  |
+help: there is a method `completeness` with a similar name, but with different arguments
+ --> src/pdf.rs
+  |
+  |     pub const fn completeness(&self) -> DocumentCompleteness {
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,23 @@
+error[E0599]: no associated function or constant named `mapped` found for struct `SegmentDisposition` in the current scope
+  --> tests/compile_fail/a_segment_cannot_be_declared_mapped.rs:10:33
+   |
+10 |     let _ = SegmentDisposition::mapped(0);
+   |                                 ^^^^^^ associated function or constant not found in `SegmentDisposition`
+   |
+note: if you're trying to build a new `SegmentDisposition` consider using one of the following associated functions:
+      SegmentDisposition::excluded_non_speech
+      SegmentDisposition::redacted_with_policy
+      SegmentDisposition::untranscribed_failure
+  --> src/coverage.rs
+   |
+   |       pub const fn excluded_non_speech(segment_index: usize, evidence: NonSpeechEvidence) -> Self {
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+   |       pub const fn redacted_with_policy(segment_index: usize, policy: RedactionPolicyRef) -> Self {
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+   | /     pub const fn untranscribed_failure(
+   | |         segment_index: usize,
+   | |         failure: TranscriptionFailure,
+   | |     ) -> Self {
+   | |_____________^

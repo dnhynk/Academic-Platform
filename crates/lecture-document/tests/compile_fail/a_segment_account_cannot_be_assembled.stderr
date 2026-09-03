@@ -1,0 +1,13 @@
+error[E0451]: fields `segment_index`, `segment_id`, `token_count` and `status` of struct `SegmentAccount` are private
+  --> tests/compile_fail/a_segment_account_cannot_be_assembled.rs:15:9
+   |
+14 |     let _ = SegmentAccount {
+   |             -------------- in this type
+15 |         segment_index: 0,
+   |         ^^^^^^^^^^^^^ private field
+16 |         segment_id: String::new(),
+   |         ^^^^^^^^^^ private field
+17 |         token_count: 0,
+   |         ^^^^^^^^^^^ private field
+18 |         status,
+   |         ^^^^^^ private field

@@ -38,21 +38,19 @@ academic-model-run = { path = "../model-run" }
 academic-transcription = { path = "../transcription" }
 thiserror.workspace = true
 
-# `academic-consent`, `academic-policy` and `academic-egress-boundary` are dev
-# edges only: the acceptance suite drives a real `academic_capture::begin` and a
-# real `P2-L3` pipeline run, so the journal a gap check reads is the file the
-# real capture surface wrote. Keeping them off the product edge is what makes
-# "this crate mints no grant, holds no broker and opens no egress" a compile
-# error rather than a source scan.
+# `academic-consent` is a dev edge only: the acceptance suite drives a real
+# `academic_capture::begin`, so the journal its gap check reads is the file the
+# real capture surface wrote and the manifest it validates is bound to a real
+# capability token. Keeping it off the product edge is what makes "this crate
+# adds no second section 3.7 comparison" a compile error rather than a source
+# scan, and there is deliberately no `academic-policy` or
+# `academic-egress-boundary` edge of either kind: nothing here holds a broker or
+# opens an egress, and an undeclared crate cannot be named at all.
 [dev-dependencies]
 academic-consent = { path = "../consent" }
 academic-domain = { path = "../domain" }
-academic-egress-boundary = { path = "../egress-boundary" }
-academic-policy = { path = "../policy" }
-academic-proposal = { path = "../proposal" }
 tempfile.workspace = true
 trybuild.workspace = true
-uuid.workspace = true
 
 [lints]
 workspace = true

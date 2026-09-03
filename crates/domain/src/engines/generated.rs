@@ -209,7 +209,7 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 12] = [
         invariant: "모든 segment가 정확히 한 처리 상태",
     },
         high_impact_path: None,
-        lifecycle: EngineLifecycle::Planned,
+        lifecycle: EngineLifecycle::Implemented,
         harness_dir: "transcript_coverage",
     },
     EngineDescriptor {
