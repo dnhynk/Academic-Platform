@@ -532,6 +532,54 @@ const TEXT_ACCESSORS: [(&str, &str, &str); 14] = [
     ),
 ];
 
+/// Every path this crate's product code spells through a crate root, as a
+/// whole set.
+///
+/// This is the repair for a hole an injection found. The forbidden-token pass
+/// below is a blocklist, and a blocklist is pierced by a name that is not on
+/// it: `std::path::Path::new(p).metadata()` opens the filesystem,
+/// `include_str!` reads a file at compile time, and `std::env::var` reads the
+/// environment — and all three spell none of the eleven constructs, add no
+/// `use` item, and were each observed **passing** this file's guard before this
+/// inventory existed.
+///
+/// So the primary net is an allowlist and not a blocklist. Every two-segment
+/// path whose first segment is a crate root — `std`, `core`, `alloc`,
+/// `thiserror`, or a workspace crate — is compared against this list in both
+/// directions, over the product code with `use` items removed. A capability
+/// reached by writing its absolute path appears here as an extra key whatever
+/// it is called, which is what the token list could not do.
+///
+/// It is deliberately two segments and not one: `std::path` and `std::fs` are
+/// different capabilities and collapsing them to `std` would admit both.
+const REACHED_PATHS: [(&str, &str); 4] = [
+    (
+        "academic_repository::sealed_documents",
+        "P2-G5's sealed index, read through P2-R1's accessor so this crate names \
+         no Untrusted type at all",
+    ),
+    ("core::fmt", "the hand-written Debug impls"),
+    ("core::str", "from_utf8 on bytes the caller handed in"),
+    ("thiserror::Error", "the error enumeration's derive"),
+];
+
+/// Every macro this crate's product code invokes, as a whole set.
+///
+/// A macro is not a path, so `REACHED_PATHS` cannot see one. `include_str!` and
+/// `include_bytes!` read a file at compile time while spelling no `std` path
+/// and needing no `use`; the first was observed passing this file's guard
+/// before this inventory existed. Compared in both directions, so a macro
+/// nobody predicted appears as an extra key.
+const MACROS_SPELLED: [(&str, &str); 4] = [
+    ("format", "building an owned identifier for a lookup"),
+    (
+        "format_args",
+        "the hand-written Debug impls, which allocate nothing",
+    ),
+    ("matches", "total matches over closed enumerations"),
+    ("vec", "building the fact lists"),
+];
+
 /// The constructs the forbidden-token pass refuses anywhere in the package.
 ///
 /// Assembled from halves rather than written whole, and that is not obfuscation:
@@ -544,10 +592,13 @@ const TEXT_ACCESSORS: [(&str, &str, &str); 14] = [
 /// this one readable. The `concat!` is evaluated at compile time, so the value
 /// compared against the source is the whole spelling either way.
 ///
-/// This pass is the second net and not the first: [`USE_ITEMS`] is the whole
-/// set, and this catches the shape that adds no `use` item at all — a call
-/// written through an absolute path. Both were injected and both were observed
-/// refusing what the other admits.
+/// This pass is the **third** net and the weakest of the three, kept because it
+/// names the shapes a reader most expects to see refused. [`USE_ITEMS`] is the
+/// whole set of imports, [`REACHED_PATHS`] and [`MACROS_SPELLED`] are the whole
+/// sets of everything reached without one, and those three together are what
+/// makes "this crate opens nothing" a statement about the crate rather than
+/// about eleven spellings. Each was injected separately and each was observed
+/// refusing what the others admit.
 const FORBIDDEN_CONSTRUCTS: [&str; 11] = [
     concat!("fs", "::"),
     concat!("File", "::"),
@@ -729,6 +780,33 @@ fn the_analysis_crate_touches_no_file_and_no_socket() -> TestResult {
         "this crate's `use` set changed; a filesystem or transport import is an extra key here"
     );
 
+    // The whole set of paths reached through a crate root, both directions.
+    // This is the net the token list below could not be: a capability written
+    // as an absolute path adds a key here whatever it is named.
+    let mut reached: BTreeSet<String> = BTreeSet::new();
+    let mut macros: BTreeSet<String> = BTreeSet::new();
+    for (_, code) in product_code()? {
+        let body = without_use_items(&code);
+        reached.extend(absolute_paths(&body));
+        macros.extend(macros_spelled(&body));
+    }
+    assert_eq!(
+        reached,
+        REACHED_PATHS
+            .iter()
+            .map(|(path, _)| (*path).to_owned())
+            .collect::<BTreeSet<_>>(),
+        "this crate reaches a path outside its inventory; every entry needs a reason"
+    );
+    assert_eq!(
+        macros,
+        MACROS_SPELLED
+            .iter()
+            .map(|(name, _)| (*name).to_owned())
+            .collect::<BTreeSet<_>>(),
+        "this crate invokes a macro outside its inventory; an include_ macro reads a file"
+    );
+
     // And no `fs::`, no `Command`, no socket construct, anywhere in the package
     // — tests included, because a test that opened a file would make the crate
     // documentation's claim about the whole package false.
@@ -872,6 +950,74 @@ fn no_public_accessor_hands_out_analyzed_text() -> TestResult {
     Ok(())
 }
 
+/// Every two-segment path `code` spells through a crate root.
+///
+/// The first segment has to be a crate root this package can name, so a field
+/// access such as `self.path` is not a path and `Self::Variant` is not one
+/// either. What it catches is the absolute form — `std::env::var`,
+/// `std::path::Path` — which is the shape that needs no `use` item.
+fn absolute_paths(code: &str) -> BTreeSet<String> {
+    let roots = ["std", "core", "alloc", "thiserror"];
+    let bytes = code.as_bytes();
+    let mut found = BTreeSet::new();
+    for (at, _) in code.match_indices("::") {
+        let mut start = at;
+        while start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+            start -= 1;
+        }
+        if start == at {
+            continue;
+        }
+        // A whole identifier: the byte before it cannot continue one, which is
+        // what stops `a::b::c` being read as a second root at `b`.
+        if start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+            continue;
+        }
+        if start >= 2 && &code[start - 2..start] == "::" {
+            continue;
+        }
+        let root = &code[start..at];
+        if !roots.contains(&root) && !root.starts_with("academic_") {
+            continue;
+        }
+        let mut end = at + 2;
+        while end < bytes.len() && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'_') {
+            end += 1;
+        }
+        if end > at + 2 {
+            found.insert(code[start..end].to_owned());
+        }
+    }
+    found
+}
+
+/// Every macro `code` invokes, by name.
+fn macros_spelled(code: &str) -> BTreeSet<String> {
+    let bytes = code.as_bytes();
+    let mut found = BTreeSet::new();
+    for (at, _) in code.match_indices('!') {
+        let opens = bytes
+            .get(at + 1)
+            .is_some_and(|byte| matches!(byte, b'(' | b'[' | b'{'));
+        if !opens {
+            continue;
+        }
+        let mut start = at;
+        while start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+            start -= 1;
+        }
+        if start == at {
+            continue;
+        }
+        // `a != b` and `x !(y)` are not macro calls; a macro name starts with a
+        // lower-case letter or an underscore in every one this crate uses.
+        if bytes[start].is_ascii_lowercase() || bytes[start] == b'_' {
+            found.insert(code[start..at].to_owned());
+        }
+    }
+    found
+}
+
 /// Every `pub fn` in `code`, as its name and its signature up to the body.
 fn public_signatures(code: &str) -> Vec<(String, String)> {
     let mut found = Vec::new();
@@ -960,6 +1106,33 @@ fn the_helpers_are_not_vacuous() -> TestResult {
     // pass fire on its own description.
     assert_eq!(uses_of("fn a_name_with_no_socket() {}", "socket"), 0);
     assert_eq!(uses_of("Stream::connect(x)", "connect"), 1);
+    // The two whole-set extractors. Each case is a shape an injection used.
+    assert_eq!(
+        absolute_paths("let _ = std::path::Path::new(p).metadata();"),
+        BTreeSet::from(["std::path".to_owned()])
+    );
+    assert_eq!(
+        absolute_paths("let _ = std::env::var(k);"),
+        BTreeSet::from(["std::env".to_owned()])
+    );
+    // Two segments, not one: the root alone would admit every capability under
+    // it, and the second segment is what separates `std::fs` from `std::path`.
+    assert_eq!(
+        absolute_paths("core::fmt::Formatter and core::str::from_utf8"),
+        BTreeSet::from(["core::fmt".to_owned(), "core::str".to_owned()])
+    );
+    // A field access and an associated path are not crate-root paths.
+    assert_eq!(
+        absolute_paths("Self::Variant and self.field"),
+        BTreeSet::new()
+    );
+    assert_eq!(
+        macros_spelled("let s = include_str!(\"x\"); format!(\"y\");"),
+        BTreeSet::from(["include_str".to_owned(), "format".to_owned()])
+    );
+    assert_eq!(macros_spelled("if a != b { }"), BTreeSet::new());
+    assert_eq!(REACHED_PATHS.len(), 4);
+    assert_eq!(MACROS_SPELLED.len(), 4);
     assert_eq!(FORBIDDEN_CONSTRUCTS.len(), 11);
     assert!(
         FORBIDDEN_CONSTRUCTS

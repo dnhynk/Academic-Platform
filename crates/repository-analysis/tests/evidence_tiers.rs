@@ -24,6 +24,7 @@ use academic_repository_analysis::{
     ExclusionReason, FileKind, Finding, FindingScope, IndexKind, LadderRung, PathClass,
     RepositoryAnalysis, RuntimeTrace, SourceUnit, Subject, SubjectId, Support, analyze, support,
 };
+use academic_untrusted_content::SourceIndex;
 
 type TestResult = Result<(), Box<dyn Error>>;
 
@@ -46,6 +47,15 @@ const NOW: u64 = 5_000;
 fn analyzed(
     files: &[(&str, &str)],
 ) -> Result<(RepositorySnapshot, RepositoryAnalysis), Box<dyn Error>> {
+    let (snapshot, sealed) = captured(files)?;
+    let identity = AnalyzerIdentity::new(ANALYZER, ANALYZER_VERSION)?;
+    let input = AnalysisInput::of(&snapshot, &sealed, identity, source_units(&snapshot, files))?;
+    let analysis = analyze(&input)?;
+    Ok((snapshot, analysis))
+}
+
+/// Captures a synthetic tree through `P2-R1` and hands back what it froze.
+fn captured(files: &[(&str, &str)]) -> Result<(RepositorySnapshot, SourceIndex), Box<dyn Error>> {
     let entries: Vec<SourceEntry> = files
         .iter()
         .map(|(path, body)| SourceEntry::new(*path, body.as_bytes().to_vec()))
@@ -70,18 +80,19 @@ fn analyzed(
         analysis_policy_hash: ContentDigest::of(b"analysis-policy-v1"),
         tool_versions: vec![ToolVersion::new(ANALYZER, ANALYZER_VERSION)?],
     };
-    let (captured, sealed) = capture_local(&request)?;
-    let bodies: BTreeMap<&str, &str> = files.iter().map(|(path, body)| (*path, *body)).collect();
-    let units: Vec<SourceUnit> = captured
-        .snapshot
+    let (capture, sealed) = capture_local(&request)?;
+    Ok((capture.snapshot, sealed))
+}
+
+/// One unit per frozen manifest row, so a path the gate excluded is never
+/// offered to the analyzer at all.
+fn source_units(snapshot: &RepositorySnapshot, files: &[(&str, &str)]) -> Vec<SourceUnit> {
+    let bodies: BTreeMap<&str, &str> = files.iter().copied().collect();
+    snapshot
         .manifest()
         .iter()
         .map(|entry| SourceUnit::new(entry.path(), bodies[entry.path()].as_bytes().to_vec()))
-        .collect();
-    let identity = AnalyzerIdentity::new(ANALYZER, ANALYZER_VERSION)?;
-    let input = AnalysisInput::of(&captured.snapshot, &sealed, identity, units)?;
-    let analysis = analyze(&input)?;
-    Ok((captured.snapshot, analysis))
+        .collect()
 }
 
 /// A registry holding one fresh dataset for this analyzer.
@@ -1059,6 +1070,30 @@ fn no_analyzed_byte_reaches_a_text_accessor() -> TestResult {
     let mut rendered = String::new();
     // Every public accessor that returns text, plus the `Debug` of every public
     // value — because an accessor is not the only way a `String` reaches a log.
+    //
+    // The input values come first, and they are the ones this test was missing.
+    // `SourceUnit` is the only public type in this crate that *holds* the
+    // analyzed bytes, and `AnalysisInput` holds a vector of them; walking only
+    // the analysis outputs left the one value carrying the payload unobserved.
+    // `tools/secret-debug-policy.test.mjs` refuses a derived `Debug` over a
+    // field named `source_bytes` and refuses a hand-written one that prints it,
+    // and both refusals were observed by injection — but that is another
+    // crate's net, and a crate whose whole subject is untrusted repository
+    // bytes should fail in its own suite too.
+    let (snapshot, sealed) = captured(&files)?;
+    let units: Vec<SourceUnit> = source_units(&snapshot, &files);
+    for unit in &units {
+        rendered.push_str(&format!("{unit:?}"));
+        rendered.push_str(unit.path());
+    }
+    let input = AnalysisInput::of(
+        &snapshot,
+        &sealed,
+        AnalyzerIdentity::new(ANALYZER, ANALYZER_VERSION)?,
+        source_units(&snapshot, &files),
+    )?;
+    rendered.push_str(&format!("{input:?}"));
+
     rendered.push_str(&format!("{analysis:?}"));
     rendered.push_str(analysis.snapshot_id());
     for row in analysis.coverage() {
