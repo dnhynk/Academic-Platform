@@ -364,6 +364,28 @@ fn literals_of(code: &str, name: &str) -> usize {
     occurrences(code, &format!("{name} {{")).saturating_sub(declarations)
 }
 
+/// Drops every `use` item, so a re-export is not counted as a caller.
+///
+/// `crates/capture-gate/tests/capture_scans.rs` holds the same reader for the
+/// same reason: `pub use align::{.., estimate_drift}` in `lib.rs` names the
+/// function without calling it, and a call-site count that reads it counts two.
+fn without_use_items(code: &str) -> String {
+    let mut kept = String::with_capacity(code.len());
+    let mut inside = false;
+    for line in code.lines() {
+        let trimmed = line.trim_start();
+        let opens = trimmed.starts_with("use ")
+            || (trimmed.starts_with("pub") && trimmed.contains(" use "));
+        if inside || opens {
+            inside = !line.trim_end().ends_with(';');
+            continue;
+        }
+        kept.push_str(line);
+        kept.push('\n');
+    }
+    kept
+}
+
 /// Every `impl` block header in `code` that names `needle` as an identifier.
 fn impl_headers_naming(code: &str, needle: &str) -> Vec<String> {
     code.lines()
@@ -457,6 +479,40 @@ fn the_walk_reads_every_module_in_this_crate() -> TestResult {
 /// is an *accessor*: it hands back a tick that already exists.
 /// `SessionClock::tick` mints one and `SessionClock::admit` returns the tick it
 /// was handed after comparing its domain.
+/// The whole set of public signatures that take an instant from outside, with
+/// what orders the instant each one accepts.
+///
+/// This is the companion of the inventory below and it is a different question.
+/// `SessionClock::tick` refuses a reading below one it accepted, which orders
+/// the instants a clock *mints*. It says nothing about the order a seam handed
+/// an already-minted tick receives them in, and `T161` measured both of these
+/// accepting an instant below the one before it: `append` held frames
+/// `[9000, 1000]` with the chain still verifying, and `estimate_drift` took a
+/// reversed anchor pair and produced the same badge and ± range off a different
+/// base offset.
+///
+/// A third seam that accepts an instant has to answer the same question, and
+/// this set is what makes it answer rather than inherit the clock's guarantee
+/// by association.
+const TICK_ACCEPTING_SIGNATURES: [(&str, &str); 3] = [
+    (
+        "src/clock.rs:admit",
+        "SessionClock::admit -- the domain gate rather than an ordering seam: it hands the tick \
+         back or refuses it and stores nothing, so there is no order for it to decide",
+    ),
+    (
+        "src/align.rs:at",
+        "Anchor::at -- ordered by `estimate_drift`, which refuses a pair whose second anchor \
+         sits below its first, and by `SessionClock::admit` for the domain",
+    ),
+    (
+        "src/journal.rs:append",
+        "ChunkJournal::append -- ordered against the last frame from the same clock; across \
+         domains a resume's origin is below every frame the dead clock wrote, and the `GAP` \
+         frame beside it is what records that",
+    ),
+];
+
 const TICK_RETURNING_SIGNATURES: [(&str, &str); 10] = [
     ("clock.rs SessionClock::tick", "mints; the one producer"),
     (
@@ -603,6 +659,41 @@ fn the_only_instant_type_comes_from_one_clock() -> TestResult {
         returning_count,
         TICK_RETURNING_SIGNATURES.len(),
         "the number of tick-returning signatures and the reviewed inventory disagree"
+    );
+
+    // The other direction, and it is a different claim. `SessionClock::tick`
+    // orders the instants a clock *mints*; a seam that takes an instant from
+    // outside is handed one already minted and decides for itself what order it
+    // arrives in. `T161` found two such seams and both were unordered. This is
+    // the whole set of public signatures that accept one, so a third fails as a
+    // key nobody wrote a reason for.
+    let mut accepting: BTreeSet<String> = BTreeSet::new();
+    for path in crate_product_sources()? {
+        let code = code_of(&path)?;
+        let file = relative(&path);
+        for signature in public_signatures(&code) {
+            let Some((parameters, _)) = parameters_and_return(&signature) else {
+                continue;
+            };
+            if uses_of(parameters, "SessionTick") == 0 {
+                continue;
+            }
+            let name = signature
+                .split_once("fn ")
+                .and_then(|(_, tail)| tail.split('(').next())
+                .unwrap_or("?")
+                .to_owned();
+            accepting.insert(format!("{file}:{name}"));
+        }
+    }
+    assert_eq!(
+        accepting,
+        TICK_ACCEPTING_SIGNATURES
+            .iter()
+            .map(|(signature, _)| (*signature).to_owned())
+            .collect::<BTreeSet<_>>(),
+        "the set of public signatures that accept an instant from outside changed; \
+         the reviewed inventory is {TICK_ACCEPTING_SIGNATURES:?}"
     );
 
     // And there is exactly one clock. `SessionClock::start` is called once in
@@ -1047,6 +1138,135 @@ fn the_journal_appends_and_never_rewrites() -> TestResult {
 }
 
 // ---------------------------------------------------------------------------
+// A mapping version's anchors are ordered where the version is built
+// ---------------------------------------------------------------------------
+
+/// The whole set of struct literals and call sites that could produce a
+/// `MappingVersion` whose `first` anchor is not the earlier one.
+///
+/// The ordering comparison is in `estimate_drift`, and `estimate_drift` is
+/// pinned. A pin fixes a body and not the set of bodies, so what this table
+/// holds is that the version is assembled in one place and that the place runs
+/// the comparison: `MappingVersion`'s fields are private to `align.rs`, so the
+/// literal is the only way to build one, and `estimate_drift` is called once in
+/// the whole product tree.
+const ALIGNMENT_SITES: [(&str, usize); 2] = [("MappingVersion", 1), ("estimate_drift", 1)];
+
+/// Which of `a_mapping_version_is_built_from_an_ordered_pair`'s rules an
+/// evasion sample is written against.
+#[derive(Debug, Clone, Copy)]
+enum AlignmentRule {
+    /// The struct-literal count on `MappingVersion`.
+    ExtraLiteral,
+    /// The product-tree call-site count on `estimate_drift`.
+    ExtraEstimate,
+    /// The whole-text pin on `estimate_drift`.
+    UnpinnedBody,
+}
+
+#[test]
+fn a_mapping_version_is_built_from_an_ordered_pair() -> TestResult {
+    let source = fs::read_to_string(crate_root().join("src/align.rs"))?;
+    let code = strip_non_code(&source);
+
+    assert_eq!(
+        declared_method(&source, "pub fn estimate_drift(")?,
+        WHOLE_ESTIMATE_DRIFT,
+        "the anchor comparison changed"
+    );
+    assert_eq!(
+        declared_method(&source, "pub(crate) fn append_realignment(")?,
+        WHOLE_APPEND_REALIGNMENT,
+        "the one place a mapping version is built changed"
+    );
+
+    // One struct literal, counted as a literal rather than as a spelling: a
+    // return type, an `impl` header and the declaration all spell
+    // `MappingVersion {` and each is subtracted.
+    assert_eq!(
+        literals_of(&code, ALIGNMENT_SITES[0].0),
+        ALIGNMENT_SITES[0].1,
+        "a mapping version is built somewhere beside the one realignment"
+    );
+
+    // And one call site for the comparison, over the whole product tree, so a
+    // second builder in another module fails the count even though it could not
+    // touch the private fields.
+    let mut estimates = 0_usize;
+    let mut scanned = 0_usize;
+    for path in crate_product_sources()? {
+        let file = without_use_items(&code_of(&path)?);
+        scanned = scanned.saturating_add(1);
+        estimates = estimates.saturating_add(calls_of(&file, ALIGNMENT_SITES[1].0));
+        assert_eq!(
+            occurrences(&file, "MappingVersion as "),
+            0,
+            "{}: the mapping version is aliased",
+            relative(&path)
+        );
+    }
+    assert!(scanned >= 9, "only {scanned} product files were read");
+    assert_eq!(
+        estimates, ALIGNMENT_SITES[1].1,
+        "the drift estimate is reached from {estimates} sites, not one"
+    );
+
+    // The evasions, each named with the rule it is written against. The
+    // third's rule is the pin, so the sample is collapsed the way a pin is
+    // built and asked whether the pinned text still holds it -- and the real
+    // comparison is run through the same check below as the positive control,
+    // because a rule that answers "caught" to everything catches nothing.
+    let collapse = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
+    for (name, sample, rule) in [
+        (
+            "a second builder in this module, which the pins do not cover",
+            "impl MappingLedger {\n    pub fn adopt(&mut self, v: u32, a: Anchor, b: Anchor) {\n        \
+             self.versions.push(MappingVersion { version: v, first: a, second: b, estimate: e, \
+             policy_id: p });\n    }\n}",
+            AlignmentRule::ExtraLiteral,
+        ),
+        (
+            "a caller that sorts the pair before handing it over, so the refusal never fires",
+            "pub fn realign_either_way(&mut self, a: Anchor, b: Anchor) -> Result<MappingVersion, \
+             AlignmentFault> {\n    let (first, second) = if a.session_tick().elapsed_nanos() <= \
+             b.session_tick().elapsed_nanos() { (a, b) } else { (b, a) };\n    \
+             estimate_drift(first, second, self.policy)\n}",
+            AlignmentRule::ExtraEstimate,
+        ),
+        (
+            "the comparison made conditional on something the caller controls",
+            "if second.session_tick().elapsed_nanos() < first.session_tick().elapsed_nanos()\n    \
+             && first.session_tick().seq() > 4\n{\n    \
+             return Err(AlignmentFault::AnchorsOutOfOrder);\n}",
+            AlignmentRule::UnpinnedBody,
+        ),
+    ] {
+        let sample_code = strip_non_code(sample);
+        let fires = match rule {
+            AlignmentRule::ExtraLiteral => literals_of(&sample_code, ALIGNMENT_SITES[0].0) > 0,
+            AlignmentRule::ExtraEstimate => calls_of(&sample_code, ALIGNMENT_SITES[1].0) > 0,
+            AlignmentRule::UnpinnedBody => !WHOLE_ESTIMATE_DRIFT.contains(&collapse(&sample_code)),
+        };
+        assert!(
+            fires,
+            "the evasion `{name}` was not caught by {rule:?}, the rule it was written against"
+        );
+    }
+    // The positive control for the pin rule: the comparison as it is actually
+    // written is inside the pinned text, so `UnpinnedBody` can answer "no".
+    assert!(
+        WHOLE_ESTIMATE_DRIFT.contains(&collapse(
+            "if second.session_tick().elapsed_nanos() < first.session_tick().elapsed_nanos() {\n    \
+             return Err(AlignmentFault::AnchorsOutOfOrder);\n}"
+        )),
+        "the pin no longer holds the comparison, so the rule above answers yes to everything"
+    );
+    // And the rules are not vacuous against the real file.
+    assert!(code.contains("AnchorsOutOfOrder"));
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // The thresholds are rows
 // ---------------------------------------------------------------------------
 
@@ -1334,8 +1554,10 @@ const WHOLE_LABEL_MARK: &str = "pub fn label_mark( &mut self, ledger: &mut Conse
 const WHOLE_OBSERVE: &str = "pub fn observe( &mut self, reading: PreflightReading, observed_at_nanos: u64, elapsed_nanos: u64, ) -> Result<Vec<FailureSignal>, CaptureFault> { self.still_running()?; let failures = reading.failures(self.policy); if failures.is_empty() { return Ok(Vec::new()); } let mut raised = Vec::with_capacity(failures.len()); for kind in failures { let at = self.clock.tick(elapsed_nanos)?; let signal = FailureSignal::raised(kind, at, observed_at_nanos); self.journal.append( at, RecordBody::FailureSignal { kind, delivery: signal.delivery(), observed_at_nanos, }, )?; self.signals.push(signal); raised.push(signal); } self.open_gap(GapCause::ResourceFailure, elapsed_nanos)?; Ok(raised) }";
 const WHOLE_REALIGN: &str = "pub fn realign( &mut self, first: Anchor, second: Anchor, elapsed_nanos: u64, ) -> Result<MappingVersion, CaptureFault> { let version = self .mapping .append_realignment(&self.clock, first, second, self.policy)?; let at = self.clock.tick(elapsed_nanos)?; self.journal.append(at, mapping_version_body(version))?; Ok(version) }";
 const WHOLE_REOPEN: &str = "pub fn reopen(path: &Path) -> Result<(Self, JournalRecovery), JournalFault> { let recovery = Self::recover(path)?; let file = OpenOptions::new().read(true).write(true).open(path)?; let complete = path .metadata()? .len() .saturating_sub(recovery.partial_tail_bytes); if recovery.partial_tail_bytes > 0 { file.set_len(complete)?; file.sync_all()?; } let mut file = file; file.seek(SeekFrom::End(0))?; let tail = recovery .records .last() .map_or_else(genesis, |record| *record.digest()); Ok(( Self { path: path.to_path_buf(), file, header: recovery.header, records: recovery.records.clone(), tail, }, recovery, )) }";
-const WHOLE_APPEND: &str = "pub fn append( &mut self, at: SessionTick, body: RecordBody, ) -> Result<&JournalRecord, JournalFault> { let encoded = body.encode(); if encoded.len() > MAX_BODY_BYTES { return Err(JournalFault::BodyTooLarge { len: encoded.len() }); } let seq = u32::try_from(self.records.len()).unwrap_or(u32::MAX); let body_len = u32::try_from(encoded.len()).unwrap_or(u32::MAX); let mut frame_header = Vec::with_capacity(FRAME_HEADER_LEN); frame_header.extend_from_slice(&seq.to_be_bytes()); frame_header.push(body.kind_code()); frame_header.extend_from_slice(&at.seq().to_be_bytes()); frame_header.extend_from_slice(&at.elapsed_nanos().to_be_bytes()); frame_header.extend_from_slice(&body_len.to_be_bytes()); frame_header.extend_from_slice(self.tail.as_bytes()); let digest = frame_digest(&frame_header, &encoded); let mut frame = Vec::with_capacity( FRAME_HEADER_LEN .saturating_add(encoded.len()) .saturating_add(32), ); frame.extend_from_slice(&frame_header); frame.extend_from_slice(&encoded); frame.extend_from_slice(digest.as_bytes()); fault::trip(FaultPoint::BeforeFrameWrite, seq); let split = frame.len().saturating_sub(32); self.file.write_all(frame.get(..split).unwrap_or(&frame))?; fault::trip(FaultPoint::AfterBodyBeforeTrailer, seq); self.file.write_all(frame.get(split..).unwrap_or(&[]))?; self.file.sync_all()?; fault::trip(FaultPoint::AfterFrameSynced, seq); self.tail = digest; self.records.push(JournalRecord { seq, at, body, parent: ContentDigest::from_sha256_bytes( frame_header .get(FRAME_HEADER_LEN.saturating_sub(32)..) .and_then(|slice| slice.try_into().ok()) .unwrap_or([0_u8; 32]), ), digest, }); self.records.last().ok_or(JournalFault::HeaderIncomplete) }";
+const WHOLE_APPEND: &str = "pub fn append( &mut self, at: SessionTick, body: RecordBody, ) -> Result<&JournalRecord, JournalFault> { if let Some(previous) = self.records.last() { let recorded = previous.at(); if at.domain() == recorded.domain() && at.elapsed_nanos() < recorded.elapsed_nanos() { return Err(JournalFault::FrameOutOfOrder { offered: at.elapsed_nanos(), recorded: recorded.elapsed_nanos(), }); } } let encoded = body.encode(); if encoded.len() > MAX_BODY_BYTES { return Err(JournalFault::BodyTooLarge { len: encoded.len() }); } let seq = u32::try_from(self.records.len()).unwrap_or(u32::MAX); let body_len = u32::try_from(encoded.len()).unwrap_or(u32::MAX); let mut frame_header = Vec::with_capacity(FRAME_HEADER_LEN); frame_header.extend_from_slice(&seq.to_be_bytes()); frame_header.push(body.kind_code()); frame_header.extend_from_slice(&at.seq().to_be_bytes()); frame_header.extend_from_slice(&at.elapsed_nanos().to_be_bytes()); frame_header.extend_from_slice(&body_len.to_be_bytes()); frame_header.extend_from_slice(self.tail.as_bytes()); let digest = frame_digest(&frame_header, &encoded); let mut frame = Vec::with_capacity( FRAME_HEADER_LEN .saturating_add(encoded.len()) .saturating_add(32), ); frame.extend_from_slice(&frame_header); frame.extend_from_slice(&encoded); frame.extend_from_slice(digest.as_bytes()); fault::trip(FaultPoint::BeforeFrameWrite, seq); let split = frame.len().saturating_sub(32); self.file.write_all(frame.get(..split).unwrap_or(&frame))?; fault::trip(FaultPoint::AfterBodyBeforeTrailer, seq); self.file.write_all(frame.get(split..).unwrap_or(&[]))?; self.file.sync_all()?; fault::trip(FaultPoint::AfterFrameSynced, seq); self.tail = digest; self.records.push(JournalRecord { seq, at, body, parent: ContentDigest::from_sha256_bytes( frame_header .get(FRAME_HEADER_LEN.saturating_sub(32)..) .and_then(|slice| slice.try_into().ok()) .unwrap_or([0_u8; 32]), ), digest, }); self.records.last().ok_or(JournalFault::HeaderIncomplete) }";
 const WHOLE_PUBLISHED: &str = "pub fn published() -> Self { Self::of(vec![CapturePolicyRow::declare( \"capture.thresholds.2026_first\", PUBLISHED_EFFECTIVE_FROM, 2_000_000_000, 67_108_864, 5, 2_000_000_000, )]) }";
 const WHOLE_EFFECTIVE_AT: &str = "pub fn effective_at(&self, at: u64) -> Option<CapturePolicyRow> { self.rows .iter() .rev() .find(|row| row.effective_from <= at) .copied() }";
 const WHOLE_TRIP: &str = "pub(crate) fn trip(point: FaultPoint, frame_seq: u32) { use std::{env, fs::OpenOptions, io::Write as _, path::PathBuf}; if env::var(FAULT_SELECTION_VARIABLE).ok().as_deref() != Some(point.as_str()) { return; } if let Ok(selected) = env::var(FAULT_FRAME_VARIABLE) && selected.parse::<u32>().ok() != Some(frame_seq) { return; } if let Some(path) = env::var_os(FAULT_READY_MARKER_VARIABLE).map(PathBuf::from) && let Ok(mut marker) = OpenOptions::new().create_new(true).write(true).open(path) { let _ = marker.write_all(point.as_str().as_bytes()); let _ = marker.sync_all(); } std::process::abort(); }";
+const WHOLE_ESTIMATE_DRIFT: &str = "pub fn estimate_drift( first: Anchor, second: Anchor, policy: CapturePolicyRow, ) -> Result<DriftEstimate, AlignmentFault> { if first.session_tick().elapsed_nanos() == second.session_tick().elapsed_nanos() { return Err(AlignmentFault::AnchorsCoincide); } if second.session_tick().elapsed_nanos() < first.session_tick().elapsed_nanos() { return Err(AlignmentFault::AnchorsOutOfOrder); } let first_offset = first .offset_nanos() .ok_or(AlignmentFault::IntervalOutOfRange)?; let second_offset = second .offset_nanos() .ok_or(AlignmentFault::IntervalOutOfRange)?; let drift_nanos = second_offset .checked_sub(first_offset) .ok_or(AlignmentFault::IntervalOutOfRange)?; let magnitude = drift_nanos.unsigned_abs(); let confidence = if magnitude > policy.drift_tolerance_nanos() { AlignmentConfidence::Low { plus_minus_nanos: magnitude, } } else { AlignmentConfidence::Normal }; Ok(DriftEstimate { offset_nanos: first_offset, drift_nanos, confidence, }) }";
+const WHOLE_APPEND_REALIGNMENT: &str = "pub(crate) fn append_realignment( &mut self, clock: &SessionClock, first: Anchor, second: Anchor, policy: CapturePolicyRow, ) -> Result<MappingVersion, AlignmentFault> { clock.admit(first.session_tick())?; clock.admit(second.session_tick())?; let estimate = estimate_drift(first, second, policy)?; let version = MappingVersion { version: u32::try_from(self.versions.len()) .unwrap_or(u32::MAX) .saturating_add(1), first, second, estimate, policy_id: policy.id(), }; self.versions.push(version); Ok(version) }";
 const WHOLE_OPEN_GAP: &str = "fn open_gap(&mut self, cause: GapCause, elapsed_nanos: u64) -> Result<(), CaptureFault> { let at = self.clock.tick(elapsed_nanos)?; self.journal.append( at, RecordBody::Gap { cause, resumed_domain: None, }, )?; self.stopped = Some(cause); Ok(()) }";

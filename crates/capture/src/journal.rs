@@ -117,6 +117,21 @@ pub enum JournalFault {
         /// How large.
         len: usize,
     },
+    /// The frame's instant is below the instant of the frame before it, on the
+    /// same clock.
+    ///
+    /// [`SessionClock::tick`](crate::clock::SessionClock::tick) refuses a
+    /// reading below one it accepted, which orders the ticks a clock *mints*.
+    /// It says nothing about the order they are *appended* in, and
+    /// [`ChunkJournal::append`] is public and takes a tick rather than a
+    /// reading. This is the second half.
+    #[error("frame instant {offered} is below the recorded {recorded}")]
+    FrameOutOfOrder {
+        /// The instant the frame offered.
+        offered: u64,
+        /// The instant of the last frame from the same clock.
+        recorded: u64,
+    },
 }
 
 /// Why a gap opened in the timeline.
@@ -805,11 +820,35 @@ impl ChunkJournal {
     /// process killed during it leaves a prefix that no digest covers and that
     /// recovery drops. The three `CP05` failpoints sit around this write and
     /// are compiled only by `phase2-fault-injection`.
+    ///
+    /// **A frame below the one before it is refused, and the comparison is
+    /// inside one clock.** `SessionClock::tick` orders the instants a clock
+    /// mints; this is public, takes a tick rather than a reading, and is what
+    /// orders the instants a file *holds*. The two are different claims and the
+    /// second does not follow from the first: a caller holding two ticks from
+    /// one clock can offer them in either order.
+    ///
+    /// Across domains there is nothing to compare. A resumed session starts a
+    /// new clock at its own origin, so its first frame's instant is below every
+    /// frame the killed clock wrote, and that discontinuity is what the
+    /// [`RecordBody::Gap`] frame beside it records rather than something to
+    /// refuse. It is the same reading as
+    /// [`SessionTick::offset_from`](crate::clock::SessionTick::offset_from)
+    /// returning `None` across domains: two clocks have no defined distance.
     pub fn append(
         &mut self,
         at: SessionTick,
         body: RecordBody,
     ) -> Result<&JournalRecord, JournalFault> {
+        if let Some(previous) = self.records.last() {
+            let recorded = previous.at();
+            if at.domain() == recorded.domain() && at.elapsed_nanos() < recorded.elapsed_nanos() {
+                return Err(JournalFault::FrameOutOfOrder {
+                    offered: at.elapsed_nanos(),
+                    recorded: recorded.elapsed_nanos(),
+                });
+            }
+        }
         let encoded = body.encode();
         if encoded.len() > MAX_BODY_BYTES {
             return Err(JournalFault::BodyTooLarge { len: encoded.len() });

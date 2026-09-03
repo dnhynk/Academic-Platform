@@ -166,6 +166,14 @@ pub enum AlignmentFault {
     /// to measure drift over.
     #[error("the two anchors sit at the same session instant")]
     AnchorsCoincide,
+    /// The second anchor sits earlier on the session clock than the first.
+    ///
+    /// Refused rather than reordered. The pair is what the user asserted, a
+    /// [`MappingVersion`] is the append-only record of that assertion, and a
+    /// system that swaps two of a user's inputs to make them fit records
+    /// something the user did not say.
+    #[error("the second anchor sits earlier on the session clock than the first")]
+    AnchorsOutOfOrder,
     /// The arithmetic left the range a signed nanosecond count can hold.
     #[error("the anchor interval does not fit a signed nanosecond count")]
     IntervalOutOfRange,
@@ -177,6 +185,15 @@ pub enum AlignmentFault {
 /// magnitude is *greater than* the tolerance is low confidence; a drift exactly
 /// at it is not, which is the boundary
 /// `drift_beyond_tolerance_is_alignment_low_confidence` tests from both sides.
+///
+/// **`second` must sit later on the session clock than `first`, and the other
+/// order is refused rather than swapped.** Both are user assertions and a
+/// [`MappingVersion`] is the append-only record of them, so reordering would
+/// record a pair the user did not give: `offset_nanos` is the offset the
+/// *first* anchor fixes and `drift_nanos` is signed, and both change meaning
+/// when the pair is turned around. The magnitude does not, which is why the
+/// confidence badge alone cannot see the difference and why the comparison has
+/// to be here rather than left to a caller reading the verdict.
 pub fn estimate_drift(
     first: Anchor,
     second: Anchor,
@@ -184,6 +201,9 @@ pub fn estimate_drift(
 ) -> Result<DriftEstimate, AlignmentFault> {
     if first.session_tick().elapsed_nanos() == second.session_tick().elapsed_nanos() {
         return Err(AlignmentFault::AnchorsCoincide);
+    }
+    if second.session_tick().elapsed_nanos() < first.session_tick().elapsed_nanos() {
+        return Err(AlignmentFault::AnchorsOutOfOrder);
     }
     let first_offset = first
         .offset_nanos()
@@ -227,12 +247,16 @@ impl MappingVersion {
     }
 
     /// The earlier anchor.
+    ///
+    /// Earlier is a fact rather than a naming convention: `estimate_drift`
+    /// refuses a pair whose second anchor sits below its first, and it is the
+    /// only path a version is built through.
     #[must_use]
     pub const fn first(self) -> Anchor {
         self.first
     }
 
-    /// The later anchor.
+    /// The later anchor, for the same reason.
     #[must_use]
     pub const fn second(self) -> Anchor {
         self.second

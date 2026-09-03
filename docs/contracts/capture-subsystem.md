@@ -117,13 +117,38 @@ write different journals and a journal's header names its own.
 accepted and **refuses one below it**. Equal readings get their own sequence
 number, because two events can share a nanosecond and still need an order.
 
-The refusal is the whole of the guarantee, and it is written to that width: this
-crate reads no clock, so it cannot promise the host's source is monotonic. What
-it promises is that no tick it minted is below one it already minted, so no
-frame in a journal carries an instant earlier than the frame before it. A
-reading that went backwards is refused rather than clamped — clamping would put
-two different real instants on one tick, which is the silent re-timestamping
-section 34.1 forbids one row above.
+This crate reads no clock, so it cannot promise the host's source is monotonic.
+What the clock promises is that no tick it minted is below one it already
+minted. A reading that went backwards is refused rather than clamped — clamping
+would put two different real instants on one tick, which is the silent
+re-timestamping section 34.1 forbids one row above.
+
+**Mint order is not append order, and they are two claims.** A seam handed an
+already-minted tick decides for itself what order it accepts them in, and the
+clock's refusal says nothing about that. Three public signatures in this crate
+accept a tick; the two that keep one compare it first, and the third keeps none:
+
+| Seam | What orders the instant it accepts |
+|---|---|
+| `ChunkJournal::append` | the last frame from the *same* clock; a lower one is `FrameOutOfOrder` |
+| `estimate_drift`, behind `Anchor` | the pair's own order; a second anchor below the first is `AnchorsOutOfOrder` |
+| `SessionClock::admit` | nothing to order — it hands the tick back or refuses its domain, and stores none |
+
+`the_only_instant_type_comes_from_one_clock` holds that as the **whole set** of
+public signatures that accept a `SessionTick`, each with the reason above, so a
+third seam has to answer the question rather than inherit the clock's guarantee
+by association. So: **no frame in a journal carries an instant earlier than the
+frame before it from the same clock**, and that is now a comparison rather than a
+consequence.
+
+**Across clocks there is nothing to compare, and a resume is that case.** The
+resumed session starts a new clock at its own origin, so its first frame's
+instant is below every frame the killed clock wrote. That is the discontinuity
+the `GAP` frame beside it records, not something to refuse — the same reading
+`SessionTick::offset_from` takes when it returns `None` across domains.
+`out_of_order_frame_is_refused` observes both halves: a backwards frame on one
+clock refused, and a resume's origin at zero accepted after a frame at thirty
+seconds.
 
 `no_wall_clock_reaches_the_session_clock` is the source half: `SystemTime`,
 `Instant`, `UNIX_EPOCH`, `std::time`, `chrono`, `Uuid::now_v7` and a bare
@@ -136,6 +161,18 @@ Two `Anchor`s — a session instant the user says lines up with a known instant 
 a reference timeline — produce a `DriftEstimate`: the offset the first anchor
 fixes, how far it moved by the second, and the confidence that magnitude
 produces against the effective tolerance.
+
+**The pair has to arrive in order, and the other order is refused rather than
+swapped.** The badge cannot see the difference — it reads the magnitude, so a
+reversed pair gives the same `ALIGNMENT_LOW_CONFIDENCE` and the same ± range —
+while `offset_nanos` becomes the offset the *other* anchor fixes and the sign of
+`drift_nanos` flips. Reordering would have been the easier answer and it is the
+wrong one: both anchors are what the user asserted and a `MappingVersion` is the
+append-only record of that assertion, so a system that turns the pair around
+records something the user did not say. `anchors_out_of_order_are_refused` is
+the row, and it exercises the two boundaries beside it — anchors at the same
+instant measure nothing over no interval and stay their own refusal, and one
+nanosecond apart is an interval in one direction only.
 
 A drift **greater than** the tolerance is `AlignmentConfidence::Low` carrying
 the ± range; a drift exactly at it is `Normal`.
@@ -184,7 +221,8 @@ required to be distinct and non-zero:
 | `MAPPING_VERSION` | the version number, both anchors, the offset, the drift and the ± range |
 
 **Append-only, and what recovery removes.** `ChunkJournal::append` is the one
-public `&mut self` method and it only extends. Recovery removes exactly one
+public `&mut self` method, it only extends, and it refuses a frame whose instant
+is below the last frame from the same clock. Recovery removes exactly one
 thing: a trailing partial frame — bytes no frame digest ever covered, left by a
 process that died between `write` and `sync`. `ChunkJournal::reopen` is the only
 place in the crate that shortens a file and it is pinned whole beside `append`.
@@ -307,6 +345,14 @@ order, and checks each cites the policy row whose tolerance decided its
 confidence. Two anchors at the same session instant measure nothing over no
 interval and are refused rather than divided.
 
+`MappingVersion::first` is documented as the earlier anchor and that is a fact
+rather than a naming convention: `estimate_drift` refuses the other order and is
+the only path a version is built through.
+`a_mapping_version_is_built_from_an_ordered_pair` is what holds the second half
+— the struct literal at one site, `estimate_drift` at one call site over the
+whole product tree, both whole texts pinned, and no `use` alias on the type —
+because a pin fixes a body and not the set of bodies.
+
 ## The fault matrix rows
 
 | ID | Injection | Observed |
@@ -341,9 +387,15 @@ the frames already written stay whole.
 |---|---|---|
 | C-7 | Nothing writes migration `0006`'s rows. This is the consent contract's `C-2`, restated a second time because `P2-L1`'s `C-5` named "`P2-L2`'s chunk journal" as when it starts mattering. The journal does survive a restart — but the permission behind it does not: `begin` and `resume` both read an in-memory `ConsentLedger`. **This task did not close it either.** | A capture that has to re-bind after the daemon restarts, which is a resume that outlives the process that held the ledger. |
 | C-8 | The journal frames are plaintext on disk. The chain detects truncation and corruption; it is not a signature and it is not encryption. Sealing them under `AEAD_CHUNKED_V2` would put `academic-crypto` and the `aead-objects` lane in this crate's graph, which is a dependency admission this task does not make. | The first capture of a real recording, which admission has not opened: `production_data_allowed` is `false`. |
-| C-9 | The per-chunk re-binding is written twice — here and in `academic-capture-gate` — because no workspace crate may depend on that package. Both call `academic-consent`'s one binding and neither adds a comparison, so what is duplicated is the *call sequence* rather than the decision; but a change to the sequence has to be made in two places, and only each crate's own pins would notice. | A third capture surface, or a change to when a capture re-binds. Closing it means a fourth crate holding the sequence that both depend on. |
-| C-11 (`academic-capture-gate`'s) | The same class of defect, one step outside this crate: `CaptureSession::record_chunk` compares a chunk's instant against the section 3.7 binding and against nothing else, so a backwards reading appends a chunk earlier than the one before it and the artefact is still releasable. It was measured, not reasoned — the numbers are on [the capture device gate contract](capture-device-gate.md), where the row lives, because closing it edits that crate's pinned text. | A capture whose host clock steps back. `academic-capture` refuses the same reading at its own clock; the two crates share no code, for the reason `C-9` gives. |
+| C-9 | The per-chunk re-binding is written twice — here and in `academic-capture-gate` — because no workspace crate may depend on that package. So is the rule that a recorded instant may not go backwards: this crate compares frames against the last one from the same clock and that crate compares a chunk against the session's highest accepted instant, and the two comparisons share no code. Both call `academic-consent`'s one binding and neither adds a comparison, so what is duplicated is the *call sequence* rather than the decision; but a change to the sequence has to be made in two places, and only each crate's own pins would notice. | A third capture surface, or a change to when a capture re-binds. Closing it means a fourth crate holding the sequence that both depend on. |
 | C-10 | Two independent processes that each start a *first* session clock for the same lecture under the same capability token derive the same `SessionClockDomain`. Within a process the ordinal separates them and across a resume the predecessor digest does; this is the case neither covers. | Two capture processes writing one journal, which no code here does — a journal is created by one `begin` and refuses to overwrite an existing file. |
+
+### Closed
+
+| # | How it was closed |
+|---|---|
+| C-11 (`academic-capture-gate`'s) | **Closed in that crate by `T161`.** `CaptureSession::record_chunk` now compares a chunk's instant against the session's highest accepted one — the device open's own instant until a chunk raises it — and refuses a lower one as `CHUNK_OUT_OF_ORDER`. It is a refusal rather than a quarantine, and [the capture device gate contract](capture-device-gate.md) says why. |
+| C-12 | **The same class of defect in this crate, found and closed by `T161`.** `ChunkJournal::append` is public and takes a `SessionTick` rather than a reading, so `SessionClock::tick`'s guarantee about *minted* order did not reach it: two ticks from one clock appended in reverse gave `Ok`, frame instants `[9000, 1000]`, and a chain that still verified. `estimate_drift` took a reversed anchor pair the same way. Both now compare, `out_of_order_frame_is_refused` and `anchors_out_of_order_are_refused` are the rows, and the Monotonicity section above says what the pair of claims is rather than treating one as implying the other. |
 
 ## Posture
 
