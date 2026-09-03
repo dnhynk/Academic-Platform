@@ -467,6 +467,69 @@ passed, taking the job to green. The commit under it adds no line to
 
 ## Latest run
 
+`T161` adds no workspace member, no pnpm package, no feature lane, no migration
+and no system package. What it adds is **three named acceptance rows and two
+source scans inside two crates that the `cargo test --workspace --locked` step
+already compiles**, which is the refresh rule's default-workspace-test trigger
+and nothing else. The job count is unchanged at **17**.
+
+Run
+[33750252558](https://github.com/dnhynk/Academic-Platform/actions/runs/33750252558)
+completed **17/17 on `3ff5681`**, first attempt, no rerun. That head is the
+branch as it stood before this section was written; the commit carrying this
+table is the only thing on top of it, which is the same arrangement
+[the `P2-U6` run](#the-p2-u6-run) below records.
+
+The branch was rebased once, onto `P2-U6` after it merged, with `git rebase`.
+The readings its pre-rebase heads took are not carried here: two of those runs
+were **cancelled by the concurrency group** when the next push superseded them,
+which is not a test result and is not evidence either way.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:04 | 5:00 | 1.3% |
+| `rust-default-ubuntu-latest` | 6:01 | 30:00 | 20.1% |
+| `rust-default-ubuntu-24.04-arm` | 4:49 | 30:00 | 16.1% |
+| `rust-default-windows-latest` | 16:19 | 30:00 | 54.4% |
+| `rust-default-windows-11-arm` | 16:18 | 30:00 | 54.3% |
+| `rust-default-macos-latest` | 5:03 | 30:00 | 16.8% |
+| `rust-features-ubuntu-latest` | 3:11 | 30:00 | 10.6% |
+| `rust-features-ubuntu-24.04-arm` | 2:57 | 30:00 | 9.8% |
+| `rust-features-windows-latest` | 5:19 | 30:00 | 17.7% |
+| `rust-features-windows-11-arm` | 6:00 | 30:00 | 20.0% |
+| `rust-features-macos-latest` | 4:04 | 30:00 | 13.6% |
+| `phase1-exit-ubuntu-latest` | 4:19 | 45:00 | 9.6% |
+| `phase1-exit-windows-latest` | 10:18 | 45:00 | 22.9% |
+| `encrypted-store-lane-ubuntu-latest` | 3:44 | 45:00 | 8.3% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:00 | 45:00 | 11.1% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:45 | 45:00 | 15.0% |
+| `pnpm-contracts` | 0:47 | 15:00 | 5.2% |
+
+**`rust-default-windows-latest` reads 16:19, or 54.4%** — down from `P2-U6`'s
+18:12 on a tree that is larger, and the fourth lowest of the thirteen readings
+this page now holds for that job: 12:16, 13:47, 14:08, 14:55, 15:28, 16:19,
+16:35, 16:56, 17:09, 18:03, 18:12, 18:41 and 20:18. It sits inside the band
+rather than extending it, so the guidance the `P2-L2` section gives stands
+unchanged: size headroom off 20:18.
+
+**`rust-default-windows-11-arm` at 16:18 is the highest reading this page holds
+for that job**, against 14:30, 15:55 and lower before it, and it is the first
+run on which the two Windows default lanes read within one second of each other.
+Both are well inside 30:00 and neither is near the 24:00 review line. It is
+recorded because the ARM lane's readings had been consistently below the x64
+lane's and this run is where that stopped being true.
+
+`pnpm-contracts` is the number that isolates this task's JavaScript cost: 0:47,
+against `P2-U6`'s 0:50. `T161` adds no pnpm package and edits no `tools/*.mjs`
+file; it edits three contract documents, which that job reads only through
+`tools/policy-source-scan-inventory.test.mjs`'s inventory check.
+
+**No job reaches the 80% review trigger on this head.** For the 30-minute Rust
+jobs that line is 24:00. The crossing `P2-L2` recorded on a pre-rebase head
+stands where that section records it, and nothing here discharges it.
+
+## The `P2-U6` run
+
 `P2-U6` adds one workspace member, `academic-ingestion`, and no pnpm workspace
 package. Workspace membership and a default-workspace test are both triggers the
 refresh rule names. The job count is unchanged at **17**: the new crate compiles
