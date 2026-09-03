@@ -264,10 +264,24 @@ impl SettledCorrection {
 }
 
 /// One correction as a version records it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct AppliedCorrection {
     settled: SettledCorrection,
     previous_text: String,
+}
+
+// `previous_text` is what the token read before this correction, which is a
+// word the lecturer said. It is redacted for the reason `CorrectionCandidate`'s
+// `replacement_text` is, and the derive this type carried printed it: the same
+// content sealed on one side of the crate and open on the other.
+impl core::fmt::Debug for AppliedCorrection {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("AppliedCorrection")
+            .field("settled", &self.settled)
+            .field("previous_byte_len", &self.previous_text.len())
+            .finish()
+    }
 }
 
 impl AppliedCorrection {
