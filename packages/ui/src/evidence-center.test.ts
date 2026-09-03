@@ -117,7 +117,10 @@ void test("the_evidence_branch_opens_with_content_rather_than_a_frame", () => {
   const opened = allDestinations()
     .filter((destination) => routeOf(destination).id.startsWith("evidence"))
     .map((destination) => openDestination(destination, EMPTY_DRAWER));
-  assert.ok(opened.length >= 5, `the evidence branch opened ${opened.length} destinations`);
+  assert.ok(
+    opened.length >= 5,
+    `the evidence branch opened ${String(opened.length)} destinations`,
+  );
 
   const byRoute = new Map(
     opened.map((view) => [routeOf(view.destination).id, view] as const),

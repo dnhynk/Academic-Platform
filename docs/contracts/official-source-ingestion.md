@@ -309,8 +309,15 @@ it.
   written anywhere else has nothing to transmit with unless it is added to that
   map in the same commit. Second, no function in this crate produces a request, a target
   or a credential from a response, and the whole set of signatures that touch any
-  of the three is pinned. Third, no file outside `crates/ingestion/` names this
-  crate's request, target or credential types, and that inventory is a whole map.
+  of the three is pinned. Third, the whole set of files outside
+  `crates/ingestion/` that name this crate's request, target or credential types
+  is compared in both directions against a one-entry list, and every entry in it
+  is separately required to be a test rather than product source. The one entry
+  is `P2-X7`'s acceptance suite, which drives stages one to five to build the two
+  official documents its source-change test diffs, because there is no other
+  producer of an `OfficialDocument`; it names `DeclaredTarget` alone, builds no
+  request and holds no credential. A product file naming any of the three fails
+  whatever list it is added to.
   A module that spells none of those and opens no socket is refused by nothing
   here — it also reaches no source.
 - **It does not claim that the five dimensions decide anything.** They are

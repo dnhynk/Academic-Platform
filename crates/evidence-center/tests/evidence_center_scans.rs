@@ -239,9 +239,9 @@ fn uses_of(code: &str, name: &str) -> usize {
 
 /// The authoritative specification.
 fn specification() -> Result<String, Box<dyn Error>> {
-    Ok(fs::read_to_string(
-        workspace_root().join("PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md"),
-    )?)
+    Ok(fs::read_to_string(workspace_root().join(
+        "PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md",
+    ))?)
 }
 
 /// The declared closure of every edge kind, read out of the manifests.
@@ -564,7 +564,9 @@ fn path_roots(code: &str) -> BTreeSet<String> {
 /// A keyword is not a name a macro may have, which is what stops `if !(x)`
 /// being read as a macro called `if`.
 fn macros_invoked(code: &str) -> BTreeSet<String> {
-    const KEYWORDS: [&str; 8] = ["if", "while", "match", "return", "let", "else", "for", "loop"];
+    const KEYWORDS: [&str; 8] = [
+        "if", "while", "match", "return", "let", "else", "for", "loop",
+    ];
     let bytes = code.as_bytes();
     let mut found = BTreeSet::new();
     let mut index = 0;
@@ -649,18 +651,18 @@ const FIELD_INVENTORY: [(&str, &str, &str); 88] = [
         "#0",
         "academic_domain::EgressDecisionId",
     ),
-    (
-        "CenterItem::LowConfidenceSpan",
-        "#0",
-        "SpanKind",
-    ),
+    ("CenterItem::LowConfidenceSpan", "#0", "SpanKind"),
     (
         "CenterItem::LowConfidenceSpan",
         "#1",
         "academic_domain::LectureSessionId",
     ),
     ("CenterItem::Permission", "#0", "PermissionRef"),
-    ("CenterItem::Proposal", "#0", "academic_proposal::ProposalId"),
+    (
+        "CenterItem::Proposal",
+        "#0",
+        "academic_proposal::ProposalId",
+    ),
     ("CenterItem::Proposal", "#1", "ProposalClass"),
     (
         "CenterItem::SourceChange",
@@ -686,10 +688,26 @@ const FIELD_INVENTORY: [(&str, &str, &str); 88] = [
     ("CenterError::NoSuchConflict", "claim", "ClaimId"),
     ("CenterError::NoSuchConflict", "class", "ConflictClass"),
     ("CenterError::NotTheUser", "refusal", "WorkflowError"),
-    ("CenterError::PermissionAbsent", "permission", "PermissionRef"),
-    ("CenterError::PermissionExpired", "expires_at", "TimestampMillis"),
-    ("CenterError::PermissionExpired", "permission", "PermissionRef"),
-    ("CenterError::ProposalAlreadyAdmitted", "proposal", "ProposalId"),
+    (
+        "CenterError::PermissionAbsent",
+        "permission",
+        "PermissionRef",
+    ),
+    (
+        "CenterError::PermissionExpired",
+        "expires_at",
+        "TimestampMillis",
+    ),
+    (
+        "CenterError::PermissionExpired",
+        "permission",
+        "PermissionRef",
+    ),
+    (
+        "CenterError::ProposalAlreadyAdmitted",
+        "proposal",
+        "ProposalId",
+    ),
     // --- inbox.rs ----------------------------------------------------------
     ("ConceptMergeProposal", "absorbed", "EntityId"),
     ("ConceptMergeProposal", "evidence_before_merge", "u32"),
@@ -703,7 +721,11 @@ const FIELD_INVENTORY: [(&str, &str, &str); 88] = [
     ),
     ("InboxEntry::Relation", "#0", "RelationProposal"),
     ("InboxEntry::StateUpdate", "#0", "StateUpdateProposal"),
-    ("ProjectClassificationProposal", "classification", "FindingClassification"),
+    (
+        "ProjectClassificationProposal",
+        "classification",
+        "FindingClassification",
+    ),
     ("ProjectClassificationProposal", "finding", "FindingId"),
     ("ProjectClassificationProposal", "header", "ProposalHeader"),
     ("ProjectClassificationProposal", "project", "EntityId"),
@@ -769,10 +791,26 @@ const FIELD_INVENTORY_TAIL: [(&str, &str, &str); 40] = [
     ("DocumentRegionLocator", "session", "LectureSessionId"),
     ("DocumentRegionLocator", "source_image", "ContentDigest"),
     ("LowConfidenceQueue", "spans", "Vec<LowConfidenceSpan>"),
-    ("LowConfidenceSpan::Code", "confidence", "ConfidencePermille"),
-    ("LowConfidenceSpan::Code", "locator", "DocumentRegionLocator"),
-    ("LowConfidenceSpan::Math", "confidence", "ConfidencePermille"),
-    ("LowConfidenceSpan::Math", "locator", "DocumentRegionLocator"),
+    (
+        "LowConfidenceSpan::Code",
+        "confidence",
+        "ConfidencePermille",
+    ),
+    (
+        "LowConfidenceSpan::Code",
+        "locator",
+        "DocumentRegionLocator",
+    ),
+    (
+        "LowConfidenceSpan::Math",
+        "confidence",
+        "ConfidencePermille",
+    ),
+    (
+        "LowConfidenceSpan::Math",
+        "locator",
+        "DocumentRegionLocator",
+    ),
     (
         "LowConfidenceSpan::Transcript",
         "confidence",
@@ -804,14 +842,22 @@ const FIELD_INVENTORY_TAIL: [(&str, &str, &str); 40] = [
     // --- source_change.rs --------------------------------------------------
     ("SourceChangeEntry", "connector", "ConnectorId"),
     ("SourceChangeEntry", "current_content", "ContentDigest"),
-    ("SourceChangeEntry", "document_changes", "Vec<DocumentChange>"),
+    (
+        "SourceChangeEntry",
+        "document_changes",
+        "Vec<DocumentChange>",
+    ),
     ("SourceChangeEntry", "impacted_plans", "Vec<DependentNode>"),
     ("SourceChangeEntry", "impacted_rules", "Vec<RuleId>"),
     ("SourceChangeEntry", "observed_at", "TimestampMillis"),
     ("SourceChangeEntry", "previous_content", "ContentDigest"),
     ("SourceChangeLog", "entries", "Vec<SourceChangeEntry>"),
     // --- transmission.rs ---------------------------------------------------
-    ("DeletionReceiptRef", "provider_policy_snapshot", "ContentDigest"),
+    (
+        "DeletionReceiptRef",
+        "provider_policy_snapshot",
+        "ContentDigest",
+    ),
     ("DeletionReceiptRef", "receipt_digest", "ContentDigest"),
     ("DeletionReceiptRef", "received_at", "TimestampMillis"),
     ("DeletionReceiptRef", "requested_at", "TimestampMillis"),
@@ -1536,9 +1582,7 @@ fn the_center_cannot_name_a_payload_byte() -> TestResult {
             {
                 let name: String = rest
                     .chars()
-                    .take_while(|character| {
-                        character.is_ascii_alphanumeric() || *character == '_'
-                    })
+                    .take_while(|character| character.is_ascii_alphanumeric() || *character == '_')
                     .collect();
                 let owner = current_impl.clone().unwrap_or_default();
                 static_returns.insert(format!("{owner}::{name}"));
@@ -1844,11 +1888,7 @@ fn nothing_but_a_user_settles_a_conflict_or_extends_an_expiry() -> TestResult {
         "drain",
         "expire",
     ] {
-        assert_eq!(
-            uses_of(&conflict, absent),
-            0,
-            "conflict.rs names {absent}"
-        );
+        assert_eq!(uses_of(&conflict, absent), 0, "conflict.rs names {absent}");
     }
     // `Resolution` is computed rather than stored, so there is no field to set.
     for position in field_positions()? {
@@ -1916,8 +1956,7 @@ fn nothing_but_a_user_settles_a_conflict_or_extends_an_expiry() -> TestResult {
     for signature in public_signatures(&permission) {
         if signature.contains("&mut self") {
             assert!(
-                signature.contains("fn record(")
-                    || signature.contains("fn register_dependent("),
+                signature.contains("fn record(") || signature.contains("fn register_dependent("),
                 "a permission has a mutating door beside recording: {signature}"
             );
         }

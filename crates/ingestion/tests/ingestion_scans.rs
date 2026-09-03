@@ -1190,15 +1190,27 @@ fn no_captcha_or_access_control_bypass_module_exists() -> TestResult {
             naming.insert(relative(&path), found);
         }
     }
-    let outside: Vec<&String> = naming
+    let outside: BTreeSet<&str> = naming
         .keys()
         .filter(|path| !path.starts_with("crates/ingestion/"))
+        .map(String::as_str)
         .collect();
     assert_eq!(
         outside,
-        Vec::<&String>::new(),
-        "a crate outside academic-ingestion names its request, target or credential types"
+        NAMED_OUTSIDE.into_iter().collect::<BTreeSet<_>>(),
+        "a file outside academic-ingestion names its request, target or credential types"
     );
+    // The half that stays absolute. A *module* built on these types is what
+    // this guard is for, and the allowance above admits a caller's test and
+    // nothing else: a product file naming one fails here whatever list it is
+    // added to, because the condition is the path shape rather than the entry.
+    for path in &outside {
+        assert!(
+            path.contains("/tests/"),
+            "{path} is product source outside academic-ingestion and names its target, \
+             request or credential types"
+        );
+    }
     assert!(
         naming.len() >= 5,
         "the workspace walk found only {} files naming these types; it stopped short",
@@ -1206,6 +1218,21 @@ fn no_captcha_or_access_control_bypass_module_exists() -> TestResult {
     );
     Ok(())
 }
+
+/// Every file outside this crate that names one of the three types.
+///
+/// The list is compared as a whole set in both directions, so a new one fails
+/// as an extra key and a removed one fails as a missing key, and every entry is
+/// separately required to be a test rather than product source.
+///
+/// `P2-X7`'s acceptance suite drives this crate's stages one to five to build
+/// the two official documents its source-change test diffs. It does that
+/// because there is no other producer of an `OfficialDocument`, and a locally
+/// imitated diff would make `source_change_links_impacted_rules_and_plans`
+/// evidence about the imitation rather than about this pipeline. It names
+/// `DeclaredTarget` and nothing else of the three: it builds no request and
+/// holds no credential.
+const NAMED_OUTSIDE: [&str; 1] = ["crates/evidence-center/tests/evidence_center.rs"];
 
 /// Every `.rs` file under `crates/`, recursively.
 fn workspace_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {

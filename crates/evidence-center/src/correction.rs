@@ -291,7 +291,11 @@ impl CorrectionLedger {
         let markers: Vec<CorrectionMarker> = self
             .markers
             .iter()
-            .filter(|marker| shown.iter().any(|claim| claim.claim() == marker.corrected()))
+            .filter(|marker| {
+                shown
+                    .iter()
+                    .any(|claim| claim.claim() == marker.corrected())
+            })
             .copied()
             .collect();
         HistoricalView {
