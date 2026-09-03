@@ -27,13 +27,30 @@
 //! a filter driver or an administrator. `socket()` therefore succeeds inside the
 //! container and every attempt to use it is refused. That is what the
 //! acceptance suite asserts and what the contract says; neither claims more.
+//!
+//! # The profile name is shared, so its creation is serialised
+//!
+//! [`CONTAINER_NAME`] is one fixed name for the whole machine, and every
+//! [`availability`] and every [`launch`] asks for it. Two of those calls running
+//! at the same time for a profile that is *absent* tear each other's directory
+//! down: `%LOCALAPPDATA%\Packages\<name>` was measured going absent and being
+//! recreated every few seconds under eight test threads, stable for seventy
+//! seconds under one, and every `CreateProcessW` issued into the container while
+//! the directory was absent failed with `ERROR_FILE_NOT_FOUND`. So the creation
+//! is serialised: once per process by a mutex, and once per machine by an
+//! exclusive open of a lock file beside the profile. Nothing else changes —
+//! the token, the capability set, the ACEs and the job object are what they
+//! were, and the serialisation adds no `unsafe`.
 
 use std::{
     ffi::c_void,
+    fs::OpenOptions,
     mem::{size_of, zeroed},
-    path::Path,
+    os::windows::fs::OpenOptionsExt as _,
+    path::{Path, PathBuf},
     ptr::{null, null_mut},
-    time::Instant,
+    sync::{Mutex, PoisonError},
+    time::{Duration, Instant},
 };
 
 use windows_sys::Win32::{
@@ -66,7 +83,32 @@ use crate::{
 /// The container the worker runs in. One profile, reused: creating it is
 /// idempotent and deriving the SID from the name gives the same value whether
 /// the profile was created by this run or an earlier one.
+///
+/// One name is deliberate — a name per process leaves a profile directory
+/// behind on every run — and it is why [`container_sid`] is serialised.
 const CONTAINER_NAME: &str = "academic-worker-p2-g4";
+
+/// The file whose exclusive open serialises profile creation across processes.
+const PROFILE_LOCK_FILE: &str = "academic-worker-p2-g4.profile-lock";
+
+/// `ERROR_SHARING_VIOLATION`: another process holds the profile lock.
+const SHARING_VIOLATION: i32 = 32;
+
+/// How long a caller waits for another process to finish creating the profile.
+///
+/// Creation happens once per machine; every later call answers
+/// `ERROR_ALREADY_EXISTS` without touching the directory, so the lock is
+/// contended only on the first run. A caller that still cannot take the lock
+/// after this long proceeds without it: the lock removes a race, it is not part
+/// of the containment boundary, and blocking forever would turn a busy machine
+/// into an unavailable backend.
+const PROFILE_LOCK_WAIT: Duration = Duration::from_secs(5);
+
+/// Serialises profile creation inside this process.
+///
+/// The measured tear-down needs two creators at once; eight test threads
+/// supplied them without a second process being involved.
+static PROFILE_CREATION: Mutex<()> = Mutex::new(());
 
 /// `FILE_GENERIC_READ | FILE_GENERIC_EXECUTE`.
 const RIGHTS_READ_EXECUTE: u32 = 0x0012_00a9;
@@ -87,9 +129,85 @@ fn last_error() -> i64 {
     i64::from(unsafe { GetLastError() })
 }
 
+/// Where the cross-process profile lock lives.
+///
+/// Beside the thing it protects: the profile directory is under
+/// `%LOCALAPPDATA%\Packages`, so `%LOCALAPPDATA%` is the one location every
+/// process of this user resolves to the same way, whatever each lane set `TEMP`
+/// to. `USERPROFILE` is the fallback for a host that names neither, and a host
+/// that names neither could not have told `CreateAppContainerProfile` where to
+/// put the profile either.
+fn profile_lock_path() -> Option<PathBuf> {
+    for variable in ["LOCALAPPDATA", "USERPROFILE"] {
+        if let Some(value) = std::env::var_os(variable)
+            && !value.is_empty()
+        {
+            return Some(PathBuf::from(value).join(PROFILE_LOCK_FILE));
+        }
+    }
+    None
+}
+
+/// Holds the machine-wide profile lock, and releases it when dropped.
+///
+/// The exclusion is the kernel's, not a convention: the file is opened with a
+/// share mode of zero, so a second opener is refused with
+/// `ERROR_SHARING_VIOLATION` until the first handle closes. A process that dies
+/// holding it releases it, because the handle dies with the process — the same
+/// property the daemon's singleton guard relies on, and the reason this is a
+/// file handle rather than a marker file somebody has to remember to delete.
+#[derive(Debug)]
+struct ProfileLock {
+    /// The exclusion is the open handle itself, so nothing reads this field.
+    _held: Option<std::fs::File>,
+}
+
+impl ProfileLock {
+    /// Takes the lock, or gives up after [`PROFILE_LOCK_WAIT`] and says so by
+    /// holding nothing. Either way the caller proceeds.
+    fn acquire() -> Self {
+        let Some(path) = profile_lock_path() else {
+            return Self { _held: None };
+        };
+        let deadline = Instant::now() + PROFILE_LOCK_WAIT;
+        loop {
+            // The file is a handle to hold, not a file to write: `truncate` is
+            // false so two openers never disagree about its contents, and it is
+            // never read.
+            match OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(false)
+                .share_mode(0)
+                .open(&path)
+            {
+                Ok(file) => return Self { _held: Some(file) },
+                Err(error) if error.raw_os_error() == Some(SHARING_VIOLATION) => {
+                    if Instant::now() >= deadline {
+                        return Self { _held: None };
+                    }
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                Err(_) => return Self { _held: None },
+            }
+        }
+    }
+}
+
 /// Creates the container profile if it is absent, then returns its SID.
+///
+/// The two guards above the call are the whole repair for the launch failure
+/// this backend used to produce roughly one run in ten: they make sure no two
+/// creators of this one profile name overlap, inside this process or on this
+/// machine. They are taken in that order and released together when this
+/// function returns.
 #[allow(unsafe_code)]
 fn container_sid() -> Result<PSID, SandboxError> {
+    let _serialised = PROFILE_CREATION
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    let _machine_wide = ProfileLock::acquire();
     let name = wide(CONTAINER_NAME);
     let mut sid: PSID = null_mut();
     // SAFETY: all four string pointers are live NUL-terminated wide strings for
