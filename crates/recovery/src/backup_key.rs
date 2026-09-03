@@ -22,6 +22,8 @@
 //!
 //! [`VaultMasterKey`]: academic_crypto::VaultMasterKey
 
+use core::fmt;
+
 use academic_crypto::{
     Argon2idProfile, IDENTIFIER_BYTES, KEY_BYTES, RECOVERY_ARGON2ID_V1, RandomnessUnavailable,
     RecoverySecret,
@@ -206,7 +208,7 @@ impl BackupRecipientKind {
 }
 
 /// One wrapped copy of the backup root.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BackupRecipientRecord {
     set_id: BackupSetId,
     recipient_id: [u8; IDENTIFIER_BYTES],
@@ -216,6 +218,20 @@ pub struct BackupRecipientRecord {
     wrap_nonce: [u8; WRAP_NONCE_BYTES],
     wrapped_root: Vec<u8>,
     record_mac: Vec<u8>,
+}
+
+impl fmt::Debug for BackupRecipientRecord {
+    /// Redacting: the wrapped backup root reaches the formatter only as a
+    /// length. It is the backup's half of `BackupMasterKey`, which this crate
+    /// already registers and hand-writes a redacting `Debug` for.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("BackupRecipientRecord")
+            .field("recipient_id", &self.recipient_id)
+            .field("kind", &self.kind)
+            .field("wrapped_root_len", &self.wrapped_root.len())
+            .finish_non_exhaustive()
+    }
 }
 
 impl BackupRecipientRecord {

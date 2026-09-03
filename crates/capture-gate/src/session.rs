@@ -38,6 +38,8 @@ use academic_consent::{
     CaptureCapabilityToken, CaptureDenial, ConsentLedger, RetentionTerms, bind_permission,
     continue_capture,
 };
+use std::fmt;
+
 use academic_domain::{ContentDigest, LectureSessionId, OfferingId};
 
 use crate::{
@@ -53,7 +55,6 @@ use crate::{
 /// built, so holding one is proof that a token opened this class. There is no
 /// public constructor and `tests/compile_fail/` holds the program that shows
 /// there is none.
-#[derive(Debug)]
 pub struct CaptureSession {
     token: CaptureCapabilityToken,
     class: DeviceClass,
@@ -65,6 +66,26 @@ pub struct CaptureSession {
     chunks: Vec<ChunkRecord>,
     bytes: Vec<u8>,
     gap: Option<TimelineGap>,
+}
+
+impl fmt::Debug for CaptureSession {
+    /// Redacting: the accumulated capture reaches the formatter only as a
+    /// length. `bytes` is every chunk this session has accepted -- the lecture
+    /// audio or the board photograph -- which is what `academic-capture` seals
+    /// in `CaptureBytes` one crate away.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("CaptureSession")
+            .field("class", &self.class)
+            .field("layer", &self.layer)
+            .field("offering_id", &self.offering_id)
+            .field("lecture_id", &self.lecture_id)
+            .field("accepted_at", &self.accepted_at)
+            .field("chunks", &self.chunks.len())
+            .field("len", &self.bytes.len())
+            .field("gap", &self.gap)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Opens one device class under one authorization.

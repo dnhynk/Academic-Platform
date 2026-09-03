@@ -31,6 +31,8 @@
 //! recorded chunk's own instant.
 
 use academic_consent::{CaptureDenialReason, CaptureStatus, RetentionTerms};
+use std::fmt;
+
 use academic_domain::ContentDigest;
 
 use crate::audit::CaptureRefusalReason;
@@ -234,10 +236,24 @@ impl CaptureManifest {
 /// A capture whose every chunk re-bound against the permission that covered it.
 ///
 /// The only type in this crate with a byte accessor.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ReleasableArtifact {
     manifest: CaptureManifest,
     bytes: Vec<u8>,
+}
+
+impl fmt::Debug for ReleasableArtifact {
+    /// Redacting: the released capture reaches the formatter only as a length.
+    /// The manifest is left out rather than printed: it carries a
+    /// `ContentDigest` over these bytes, and this file's own
+    /// `no_hand_written_debug_prints_a_secret_field` rule is that a formatter
+    /// over secret bytes reaches a secret-bearing field only through a length.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ReleasableArtifact")
+            .field("len", &self.bytes.len())
+            .finish_non_exhaustive()
+    }
 }
 
 impl ReleasableArtifact {

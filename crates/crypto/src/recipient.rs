@@ -15,6 +15,8 @@
 //!
 //! The VMK itself is never encoded. `wrapped_vmk` is always ciphertext.
 
+use core::fmt;
+
 use chacha20poly1305::{
     KeyInit as _, XChaCha20Poly1305, XNonce,
     aead::{Aead as _, Payload},
@@ -168,7 +170,7 @@ impl RecipientParameters {
 }
 
 /// One wrapped copy of the Vault Master Key.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct RecipientRecord {
     profile_id: ProfileId,
     recipient_id: [u8; IDENTIFIER_BYTES],
@@ -177,6 +179,21 @@ pub struct RecipientRecord {
     wrapped_vmk: Vec<u8>,
     keystore_blob: Vec<u8>,
     record_mac: Vec<u8>,
+}
+
+impl fmt::Debug for RecipientRecord {
+    /// Redacting: the wrapped Vault Master Key and the keystore blob reach the
+    /// formatter only as lengths. Unwrapping either one is one broker call or
+    /// one passphrase away from the key itself, which is the reason `P2-R1`
+    /// gave for `SealedCredential.blob`; this record holds the same shape.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("RecipientRecord")
+            .field("recipient_id", &self.recipient_id)
+            .field("wrapped_vmk_len", &self.wrapped_vmk.len())
+            .field("keystore_blob_len", &self.keystore_blob.len())
+            .finish_non_exhaustive()
+    }
 }
 
 /// Failure while encoding, decoding, or verifying a recipient record.
