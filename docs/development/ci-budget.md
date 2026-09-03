@@ -1181,3 +1181,52 @@ feature ones.
 `encrypted-store-lane-ubuntu-latest` is the job migration `0014` changes. `0014`
 is the ninth entry in that lane's `STORE_MIGRATION_SQL` and the fifteen tables
 it creates enter the creation transaction and the admission fingerprint.
+## The `P2-R2` run
+
+`P2-R2` adds one workspace member, `academic-repository-analysis`, which the
+refresh rule names as a trigger. It adds no migration, so the encrypted-store
+lane is unaffected by anything but the member itself. Run
+[33760048834](https://github.com/dnhynk/Academic-Platform/actions/runs/33760048834)
+at `5ac62b3` completed 22/22.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:05 | 5:00 | 1.7% |
+| `rust-default-ubuntu-latest` | 4:52 | 30:00 | 16.2% |
+| `rust-default-ubuntu-24.04-arm` | 4:07 | 30:00 | 13.7% |
+| `rust-default-windows-latest` | 13:12 | 30:00 | 44.0% |
+| `rust-default-windows-11-arm` | 10:50 | 30:00 | 36.1% |
+| `rust-default-macos-latest` | 6:14 | 30:00 | 20.8% |
+| `rust-store-ubuntu-latest` | 1:33 | 30:00 | 5.2% |
+| `rust-store-ubuntu-24.04-arm` | 1:14 | 30:00 | 4.1% |
+| `rust-store-windows-latest` | 5:22 | 30:00 | 17.9% |
+| `rust-store-windows-11-arm` | 5:10 | 30:00 | 17.2% |
+| `rust-store-macos-latest` | 1:46 | 30:00 | 5.9% |
+| `rust-features-ubuntu-latest` | 3:34 | 30:00 | 11.9% |
+| `rust-features-ubuntu-24.04-arm` | 3:12 | 30:00 | 10.7% |
+| `rust-features-windows-latest` | 6:26 | 30:00 | 21.4% |
+| `rust-features-windows-11-arm` | 5:49 | 30:00 | 19.4% |
+| `rust-features-macos-latest` | 4:06 | 30:00 | 13.7% |
+| `phase1-exit-ubuntu-latest` | 4:06 | 45:00 | 9.1% |
+| `phase1-exit-windows-latest` | 11:50 | 45:00 | 26.3% |
+| `encrypted-store-lane-ubuntu-latest` | 3:24 | 45:00 | 7.6% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:45 | 45:00 | 10.6% |
+| `rotation-orchestration-lane-ubuntu-latest` | 7:06 | 45:00 | 15.8% |
+| `pnpm-contracts` | 1:01 | 15:00 | 6.8% |
+
+The slowest job is `rust-default-windows-latest` at 44.0%. That is a **sixth**
+reading of the job the `P2-RF11` section says has no single-reading budget:
+20:18, 14:08, 12:16, 16:56, `P2-U1`'s 12:55 and now 13:12 — 67.7%, 47.1%, 40.9%,
+56.4%, 43.1% and 44.0%. This branch was cut before `P2-U1` merged and rebased
+onto it afterwards, so that reading is the one immediately above and this is the
+next. It sits inside the range those five established rather than extending it,
+so the guidance is unchanged: size headroom off 67.7% and treat each further
+reading as evidence about the range. `phase1-exit-windows-latest` is the second
+slowest at 26.3%, and every Linux, Linux ARM and macOS job is at or below 20.8%.
+
+The new member adds one crate to `cargo clippy --workspace --all-targets` and
+two test binaries — nineteen tests — to `cargo test --workspace`. It adds three
+`compile_fail` cases to `academic-scenario`'s existing suite rather than a
+fourth `compile_fail` target, so the two `rust-default-*` commands the README
+lists are unchanged in number and `ci.yml` is untouched: the workflow still
+materializes 22 required jobs.
