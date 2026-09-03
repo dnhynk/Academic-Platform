@@ -73,7 +73,7 @@ impl ImpactPermille {
 /// Private fields, and no way to read the payload back out. It implements no
 /// `Deref`, `DerefMut`, `AsRef`, `AsMut`, `Borrow`, `Display`, `ToString`,
 /// `From` or `Into`, and its one accessor for the payload,
-/// [`Proposed::release`], is `pub(crate)` and so cannot be named outside this
+/// `release`, is `pub(crate)` and so cannot be named outside this
 /// crate.
 ///
 /// What that buys is narrow and exact, on the terms
