@@ -368,7 +368,97 @@ Size headroom off the worst reading this page holds for a label, 67.7% on
 
 ## Latest run
 
-`P2-X1` adds one workspace member, `academic-desktop`, one pnpm workspace
+`P2-L2` adds one workspace member, `academic-capture`, two steps to the
+`rust-features` matrix, and no pnpm package. Workspace membership,
+`.github/workflows/ci.yml` and a non-default feature lane are three triggers the
+refresh rule names. The job count is unchanged at **17**: the new steps sit
+inside the existing feature job and the new crate compiles inside the
+`cargo test --workspace --locked` step the five `rust-default-*` jobs already
+run.
+
+Run
+[33730639197](https://github.com/dnhynk/Academic-Platform/actions/runs/33730639197)
+reached **17/17** on `0e0bff5`, with two jobs taken there by a same-commit
+rerun. Both reruns are the two rules this page already holds, applied, and both
+are recorded rather than quietly re-measured.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:06 | 5:00 | 2.0% |
+| `rust-default-ubuntu-latest` | 5:44 | 30:00 | 19.1% |
+| `rust-default-ubuntu-24.04-arm` | 5:00 | 30:00 | 16.7% |
+| `rust-default-windows-latest` | 18:41 | 30:00 | 62.3% |
+| `rust-default-windows-11-arm` | 14:37 | 30:00 | 48.7% |
+| `rust-default-macos-latest` | 6:41 | 30:00 | 22.3% |
+| `rust-features-ubuntu-latest` | 3:50 | 30:00 | 12.8% |
+| `rust-features-ubuntu-24.04-arm` | 3:02 | 30:00 | 10.1% |
+| `rust-features-windows-latest` | 6:06 | 30:00 | 20.3% |
+| `rust-features-windows-11-arm` | 6:35 | 30:00 | 21.9% |
+| `rust-features-macos-latest` | 3:29 | 30:00 | 11.6% |
+| `phase1-exit-ubuntu-latest` | 4:26 | 45:00 | 9.9% |
+| `phase1-exit-windows-latest` | 11:04 | 45:00 | 24.6% |
+| `encrypted-store-lane-ubuntu-latest` | 3:12 | 45:00 | 7.1% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:16 | 45:00 | 11.7% |
+| `rotation-orchestration-lane-ubuntu-latest` | 5:06 | 45:00 | 11.3% |
+| `pnpm-contracts` | 0:46 | 15:00 | 5.1% |
+
+Both rows above are attempt 2 for the two jobs that were rerun; attempt 1 is
+below, because the rule says to keep it.
+
+### `rust-default-windows-latest` crossed its limit on attempt 1
+
+Attempt 1 ran **30:14 against a 30:00 limit — 100.8%, the first reading over
+100% this page holds.** It was cancelled, not failed.
+
+`Test Rust workspace` **succeeded** inside it, at 26:27; the cancellation landed
+on the next step, `Verify immutable v1 fixture and upcast`. So attempt 1 is a
+timeout cancellation and not a test result, which is the rule this page opens
+with.
+
+**The 26:27 is not this task's cost, and that is measured rather than argued.**
+Splitting the step by the job log's own timestamps:
+
+| Part | Time |
+|---|---:|
+| whole-workspace compilation, to `Finished \`test\` profile` | 2:03 |
+| running 143 test binaries | 24:18 |
+| — of which `academic_store`'s `unittests src/lib.rs` | 8:14 |
+| — of which `academic-transcript`'s `tests/projection_format.rs` | 2:51 |
+| — of which **all five `academic-capture` binaries together** | **1.84 s** |
+
+`academic-capture` is 0.13% of the step it is accused of blowing. The dominant
+row is a pre-existing crate's unit tests.
+
+The same-commit rerun read **18:41**, inside the range this page already holds
+for that job — 12:16, 13:47, 14:08, 14:55, 15:28, 17:09, 18:03, 20:18 — and
+below its maximum. Two readings of one commit, 30:14 and 18:41, is an 11:33
+spread on identical work, which is larger than any spread this page had recorded
+before and is the reason attempt 1 is kept.
+
+**The 80% review trigger has now been reached once and is not discharged by the
+rerun.** What the rule asks for is a split, an admitted cache, or a measured
+timeout change; none is made here, because none of them is this task's to make
+and the cost that crossed the line is not this task's either. The trigger is
+recorded so the next person meets it as a number.
+
+### `rust-features-windows-latest` hit the launch error again
+
+Attempt 1 failed at `cpu_memory_time_output_limits_are_enforced` with
+
+```text
+Error: Launch { path: "D:\a\Academic-Platform\Academic-Platform\target\debug\academic-worker-probe.exe",
+        detail: "CreateProcessW returned 0 (last error 2)" }
+```
+
+7 passed, 1 failed, and the four steps after it were skipped. This is the fourth
+occurrence of the signature the section below names, and the same-commit rerun
+passed, taking the job to green. The commit under it adds no line to
+`academic-worker`, and the identical step list passed on
+`rust-features-windows-11-arm` in the same attempt.
+
+## The `P2-X1` run
+
+`P2-X1` added one workspace member, `academic-desktop`, one pnpm workspace
 package, `@academic-os/ui`, and two scans to `tools/phase1-scaffold-policy.test.mjs`.
 Workspace membership and a default-workspace test are both triggers the refresh
 rule names. The job count is unchanged at **17**: the new crate compiles inside
