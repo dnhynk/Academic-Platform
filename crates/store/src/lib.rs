@@ -185,6 +185,6 @@ mod model_run_closure_tests;
 #[cfg(test)]
 mod proposal_closure_tests;
 #[cfg(test)]
-mod requirement_tests;
-#[cfg(test)]
 mod repository_snapshot_tests;
+#[cfg(test)]
+mod requirement_tests;
