@@ -1,0 +1,44 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_candidate_cannot_be_published.rs:33:38
+   |
+33 |     let _published = draft().include(candidate.clone(), fixtures().0, fixtures().1);
+   |                              ------- ^^^^^^^^^^^^^^^^^ expected `ReviewedRule`, found `RuleCandidate`
+   |                              |
+   |                              arguments to this method are incorrect
+   |
+note: method defined here
+  --> src/publish.rs
+   |
+   |     pub fn include(
+   |            ^^^^^^^
+
+error[E0599]: no associated function or constant named `new` found for struct `ReviewedRule` in the current scope
+  --> tests/compile_fail/a_candidate_cannot_be_published.rs:37:55
+   |
+37 |     let _forged = academic_requirement::ReviewedRule::new(candidate.clone());
+   |                                                       ^^^ associated function or constant not found in `ReviewedRule`
+   |
+help: there is a method `ne` with a similar name
+   |
+37 -     let _forged = academic_requirement::ReviewedRule::new(candidate.clone());
+37 +     let _forged = academic_requirement::ReviewedRule::ne(candidate.clone());
+   |
+
+error[E0277]: the trait bound `ReviewedRule: From<RuleCandidate>` is not satisfied
+  --> tests/compile_fail/a_candidate_cannot_be_published.rs:40:71
+   |
+40 |     let _into: academic_requirement::ReviewedRule = candidate.clone().into();
+   |                                                                       ^^^^ the trait `From<RuleCandidate>` is not implemented for `ReviewedRule`
+   |
+   = note: required for `RuleCandidate` to implement `Into<ReviewedRule>`
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_candidate_cannot_be_published.rs:41:58
+   |
+41 |     let _from = academic_requirement::ReviewedRule::from(candidate);
+   |                 ---------------------------------------- ^^^^^^^^^ expected `ReviewedRule`, found `RuleCandidate`
+   |                 |
+   |                 arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
