@@ -333,6 +333,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // value is nameable from a product file here.
     "academic-proposal": ["academic-domain"],
     "academic-record": ["academic-domain", "academic-transcript"],
+    "academic-requirement": ["academic-domain", "academic-ingestion"],
     // `P2-R1`'s repository snapshot boundary. Three product edges, each a
     // boundary it reuses rather than rebuilds: `P2-K1`'s `DeviceKeystore` seam
     // for the GitHub credential, `P2-G1`/`P2-G7`'s broker and process matrix
@@ -474,6 +475,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // compiles against the crate under test plus that crate's dev-dependencies,
     // and a case has to name the domain identifiers an aggregate is built from.
     "academic-curriculum": ["academic-domain"],
+    "academic-requirement": ["academic-domain"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
     // The encrypted portability acceptance suite builds its keys through the
     // `P2-K1` public schedule rather than fabricating them, exactly as the
@@ -2155,6 +2157,7 @@ const SOCKET_CAPABLE_CLOSURES = {
   // nothing at all, and takes the bytes it analyzes as an argument.
   "academic-repository-analysis": ["libc"],
   "academic-repository-analyzer": ["libc"],
+  "academic-requirement": ["libc"],
   "academic-retention": ["libc"],
   "academic-rpc": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   "academic-scenario": ["libc"],
@@ -3899,6 +3902,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     ingestionReceiptText,
     curriculumReceiptText,
     analysisReceiptText,
+    requirementReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3924,6 +3928,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-u6.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r2.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-u2.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3949,6 +3954,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const ingestionReceipt = JSON.parse(ingestionReceiptText);
   const curriculumReceipt = JSON.parse(curriculumReceiptText);
   const analysisReceipt = JSON.parse(analysisReceiptText);
+  const requirementReceipt = JSON.parse(requirementReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -5058,6 +5064,47 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-U1 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-U2` adds `academic-requirement` and no external crate. The rule DSL is
+  // a boundary above the ingestion pipeline and beside the curriculum
+  // aggregates: it links neither a writer nor a model, which is what
+  // `production_audit_no_llm` rests on.
+  assert.equal(requirementReceipt.task, "P2-U2");
+  const requirementAdmitted = new Set(
+    requirementReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const requirementPathPackages = new Set(
+    requirementReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(requirementAdmitted.size, 0, "P2-U2 must admit no external crate");
+  assert.deepEqual([...requirementPathPackages], ["academic-requirement@0.1.0"]);
+  assert.deepEqual(requirementReceipt.summary.npm_additions, []);
+  assert.equal(requirementReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(requirementReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-ingestion",
+  ]);
+  assert.deepEqual(requirementReceipt.vendored_data, []);
+  for (const claimed of [...requirementAdmitted, ...requirementPathPackages]) {
+    assert.equal(
+      curriculumAdmitted.has(claimed) ||
+        curriculumPathPackages.has(claimed) ||
+        ingestionAdmitted.has(claimed) ||
+        ingestionPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const requirementTuples = lockTuples.filter(
+    ([name, version]) =>
+      requirementAdmitted.has(`${name}@${version}`) ||
+      requirementPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    requirementTuples.length,
+    requirementAdmitted.size + requirementPathPackages.size,
+    "a P2-U2 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -5103,7 +5150,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !curriculumAdmitted.has(`${name}@${version}`) &&
       !curriculumPathPackages.has(`${name}@${version}`) &&
       !analysisAdmitted.has(`${name}@${version}`) &&
-      !analysisPathPackages.has(`${name}@${version}`),
+      !analysisPathPackages.has(`${name}@${version}`) &&
+      !requirementAdmitted.has(`${name}@${version}`) &&
+      !requirementPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -5136,7 +5185,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       captureSubsystemTuples.length +
       ingestionTuples.length +
       curriculumTuples.length +
-      analysisTuples.length,
+      analysisTuples.length +
+      requirementTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

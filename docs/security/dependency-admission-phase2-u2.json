@@ -1,0 +1,36 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-u",
+  "task": "P2-U2",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-U2 admits no external crate. academic-requirement links academic-domain, academic-ingestion and thiserror as product edges and academic-domain and trybuild as dev edges, all four covered by earlier reviewed receipts, and adds one workspace path package. It links no store, vault, crypto, keystore or transport crate at any feature setting: it persists nothing, and migration 0015's typed rows are written by academic-store.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-requirement is the P2-U2 rule boundary: section 11.2's fourteen typed rule types, section 11.1's immutable versioned DegreeRequirementSet, and the two-attestation review gate a model-extracted candidate must pass before anything executes. It is a separate package from academic-curriculum because that crate holds section 8.2's catalogue aggregates and this one holds the rules a requirement set publishes over them; the two have no edge in either direction, which is what keeps a published rule set from changing meaning when the catalogue does.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-U2 adds no pnpm workspace package. Its whole surface is Rust and SQL."
+  },
+  "direct_workspace_dependencies": {
+    "academic-domain": "The RequirementSetId migration 0004's requirement_set arm already keys on, plus CurriculumVersionId, CourseId, EntityId, ContentDigest, TimestampMillis, ValidInterval, the exact Decimal every threshold is compared over, the Actor a review attestation is filed by, and engines::ProofStatus -- the five-value verdict set the deterministic engine harness fixes, spoken here rather than mapped from a parallel vocabulary.",
+    "academic-ingestion": "P2-U6's PublishedRules. RuleSetDraft::from_official_source takes one, and that type has private fields whose only producer is that crate's stage nine, which takes a PublishableRules that Reconciled::publishable returns None for on an undated document. A requirement set founded on an UNSCOPED_OFFICIAL_SOURCE is therefore not a value that exists, exactly as it is not for P2-U1's curriculum version."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-requirement",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-requirement",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-requirement is a workspace path crate, not an external dependency. It owns section 11.2's rule DSL and holds no writer: it has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-projections, academic-recovery or academic-retention, so the canonical writer is not in the closure a rule compiles against and migration 0015's typed rows are academic-store's. Its declared workspace closure of every edge kind is academic-domain, academic-egress-boundary, academic-ingestion, academic-policy and academic-untrusted-content; the last three are transitive through academic-ingestion, and no product file here names an egress, policy or untrusted-content item. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-domain.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. It reaches no model: academic-model-run -- section 27.3's provenance aggregate, which is where a model execution is recorded -- is absent from its closure, as is every HTTP client, and production_audit_no_llm compares that closure whole so an addition of any kind is a review rather than something that had to be predicted. Its one free-text value is the official sentence a model quoted, and it sits on RuleCandidate, the one type that never reaches an evaluation. GATE-38-011, GATE-38-012, GATE-38-015 and GATE-38-016 are open, so cohort applicability, thesis-rule scope, multi-major double counting and external-credit recognition each evaluate to UNKNOWN and no default is invented; every test is driven by synthetic fixtures composed in the test tree or by academic-ingestion's own synthetic document fixtures.",
+  "advisory_path": "Unchanged. Every external crate academic-requirement links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}
