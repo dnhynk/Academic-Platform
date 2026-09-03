@@ -2349,7 +2349,9 @@ Each was applied to the working tree, the suite was observed failing, the
 change was reverted, and the suite was observed passing again. `RF13-I1` is
 `T166`'s measured bypass reproduced exactly. `RF13-I2` through `RF13-I4` spell
 **no name from `SECRET_FIELD_NAMES` at all**, because injecting a name the list
-already contains would measure nothing.
+already contains would measure nothing about the layer that replaced it.
+`RF13-I10` is the one case that deliberately does spell such a name, and it is
+there to measure the demoted layer rather than the new one.
 
 | Injection | What it is | What caught it |
 |---|---|---|
@@ -2362,11 +2364,16 @@ already contains would measure nothing.
 | `RF13-I7` | `ObjectHeader.locator` deleted from `BYTE_FIELD_CLASSES` while the field still exists | the classification's **missing** half, then the leak net |
 | `RF13-I8` | `GoneAway.bytes` added to `BYTE_FIELD_CLASSES` naming no live field | the classification's **stale** half |
 | `RF13-I9` | `RecipientRecord.wrapped_vmk` reclassified as the prose `"probably fine, it is wrapped"` | the closed-vocabulary half, which is what stops a widening from being written as a sentence |
+| `RF13-I10` | `#[derive(Debug)] struct { plaintext: String }` -- a listed name on a type the classification does not cover | the demoted **name** layer, which this repair's own risk is that it silently stopped reading |
 
 `RF13-I5` and `RF13-I6` are controls rather than new coverage: they were
 already caught before this repair, and they are here because a matrix that only
 exercises the layer just added does not show that the layers beside it still
-hold.
+hold. `RF13-I10` is the specific risk this repair introduces rather than one it
+removes: demoting `SECRET_FIELD_NAMES` to `String` and `str` could have
+disconnected it instead of narrowing it, and nothing else in the matrix would
+have shown that, because every other case is a byte buffer the classification
+reaches.
 
 ## Open
 
