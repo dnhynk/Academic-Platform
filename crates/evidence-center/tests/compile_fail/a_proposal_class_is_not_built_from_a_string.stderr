@@ -1,0 +1,79 @@
+error[E0599]: no variant, associated function, or constant named `from_str` found for enum `ProposalClass` in the current scope
+  --> tests/compile_fail/a_proposal_class_is_not_built_from_a_string.rs:13:34
+   |
+13 |     let _parsed = ProposalClass::from_str("RELATION");
+   |                                  ^^^^^^^^ variant, associated function, or constant not found in `ProposalClass`
+   |
+help: there is an associated function `from` with a similar name
+   |
+13 -     let _parsed = ProposalClass::from_str("RELATION");
+13 +     let _parsed = ProposalClass::from("RELATION");
+   |
+
+error[E0277]: the trait bound `ProposalClass: FromStr` is not satisfied
+  --> tests/compile_fail/a_proposal_class_is_not_built_from_a_string.rs:16:40
+   |
+16 |     let _turbofished = "CONCEPT_MERGE".parse::<ProposalClass>();
+   |                                        ^^^^^ the trait `FromStr` is not implemented for `ProposalClass`
+   |
+   = help: the following other types implement trait `FromStr`:
+             ByteString
+             CString
+             IpAddr
+             Ipv4Addr
+             Ipv6Addr
+             NonZero<i128>
+             NonZero<i16>
+             NonZero<i32>
+           and $N others
+
+error[E0277]: the trait bound `ProposalClass: TryFrom<&str>` is not satisfied
+  --> tests/compile_fail/a_proposal_class_is_not_built_from_a_string.rs:19:18
+   |
+19 |     let _tried = ProposalClass::try_from("PROJECT_CLASSIFICATION");
+   |                  ^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `ProposalClass`
+   |
+   = note: required for `&str` to implement `Into<ProposalClass>`
+   = note: required for `ProposalClass` to implement `TryFrom<&str>`
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_proposal_class_is_not_built_from_a_string.rs:22:42
+   |
+22 |     let _converted = ProposalClass::from("STATE_UPDATE");
+   |                      ------------------- ^^^^^^^^^^^^^^ expected `ProposalClass`, found `&str`
+   |                      |
+   |                      arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_proposal_class_is_not_built_from_a_string.rs:26:63
+   |
+26 |     let _backwards: ProposalClass = ProposalClass::spec_words("relation");
+   |                                     ------------------------- ^^^^^^^^^^ expected `ProposalClass`, found `&str`
+   |                                     |
+   |                                     arguments to this function are incorrect
+   |
+note: method defined here
+  --> src/inbox.rs
+   |
+   |     pub const fn spec_words(self) -> &'static str {
+   |                  ^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_proposal_class_is_not_built_from_a_string.rs:26:37
+   |
+26 |     let _backwards: ProposalClass = ProposalClass::spec_words("relation");
+   |                     -------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `ProposalClass`, found `&str`
+   |                     |
+   |                     expected due to this
+
+error[E0277]: the trait bound `ProposalClass: From<&str>` is not satisfied
+  --> tests/compile_fail/a_proposal_class_is_not_built_from_a_string.rs:19:18
+   |
+19 |     let _tried = ProposalClass::try_from("PROJECT_CLASSIFICATION");
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `ProposalClass`
+   |
+   = note: required for `&str` to implement `Into<ProposalClass>`
+   = note: required for `ProposalClass` to implement `TryFrom<&str>`
