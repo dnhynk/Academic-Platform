@@ -443,9 +443,8 @@ const SEVEN: [(&str, &str); 8] = [
 
 /// The same corpus with the test tree removed, so `distributed-lock` has
 /// nothing but its manifest entry left.
-const SEVEN_WITHOUT_TESTS: [(&str, &str); 6] = [
-    SEVEN[0], SEVEN[1], SEVEN[2], SEVEN[5], SEVEN[6], SEVEN[7],
-];
+const SEVEN_WITHOUT_TESTS: [(&str, &str); 6] =
+    [SEVEN[0], SEVEN[1], SEVEN[2], SEVEN[5], SEVEN[6], SEVEN[7]];
 
 /// The same corpus with `redis` imported and never reached, and no
 /// configuration for it, so section 17.3's second row applies.
@@ -640,7 +639,10 @@ fn seven_relation_types_are_distinct() -> TestResult {
         incidents: artifacts.incidents.clone(),
         ..Artifacts::default()
     };
-    assert_missing(&all_seven(&without_behaviour)?, EvidenceRelation::DocExplains)?;
+    assert_missing(
+        &all_seven(&without_behaviour)?,
+        EvidenceRelation::DocExplains,
+    )?;
 
     let without_incident = Artifacts {
         intent: artifacts.intent.clone(),
@@ -666,7 +668,9 @@ fn seven_relation_types_are_distinct() -> TestResult {
     let no_tests = traced_run(&SEVEN_WITHOUT_TESTS, &artifacts, true)?;
     assert_missing(&no_tests, EvidenceRelation::TestExercises)?;
     assert!(
-        no_tests.declared_dependencies().contains("distributed-lock"),
+        no_tests
+            .declared_dependencies()
+            .contains("distributed-lock"),
         "the manifest entry went away too, so this injection proves nothing"
     );
 
@@ -703,7 +707,8 @@ fn assert_missing(correlation: &Correlation, relation: EvidenceRelation) -> Test
         .filter(|other| *other != relation)
         .collect();
     assert_eq!(
-        found, rest,
+        found,
+        rest,
         "removing the producer of {} changed another relation too",
         relation.as_str()
     );
@@ -923,7 +928,9 @@ fn current_execution_prefers_same_snapshot_evidence() -> TestResult {
     ];
     let answer = active_view(AuthorityLane::Implementation, here, &candidates)?;
     assert_eq!(
-        answer.winner().map(academic_repository_correlation::RankedCandidate::id),
+        answer
+            .winner()
+            .map(academic_repository_correlation::RankedCandidate::id),
         Some("same-snapshot")
     );
 
@@ -932,7 +939,10 @@ fn current_execution_prefers_same_snapshot_evidence() -> TestResult {
             .ranked()
             .iter()
             .find(|candidate| candidate.id() == id)
-            .map_or(u16::MAX, academic_repository_correlation::RankedCandidate::rank)
+            .map_or(
+                u16::MAX,
+                academic_repository_correlation::RankedCandidate::rank,
+            )
     };
     // The whole order of row four, as `academic-ledger`'s table ranks it.
     assert!(rank("same-snapshot") > rank("clarification"));
@@ -952,7 +962,9 @@ fn current_execution_prefers_same_snapshot_evidence() -> TestResult {
         .collect();
     let narrowed = active_view(AuthorityLane::Implementation, here, &without_here)?;
     assert_eq!(
-        narrowed.winner().map(academic_repository_correlation::RankedCandidate::id),
+        narrowed
+            .winner()
+            .map(academic_repository_correlation::RankedCandidate::id),
         Some("clarification")
     );
 
@@ -972,7 +984,9 @@ fn current_execution_prefers_same_snapshot_evidence() -> TestResult {
     ];
     let mixed = active_view(AuthorityLane::Implementation, here, &with_spec)?;
     assert_eq!(
-        mixed.winner().map(academic_repository_correlation::RankedCandidate::id),
+        mixed
+            .winner()
+            .map(academic_repository_correlation::RankedCandidate::id),
         Some("clarification"),
         "a specification answered the implementation question"
     );
@@ -1019,7 +1033,9 @@ fn approved_intent_prefers_valid_spec_or_adr() -> TestResult {
     ];
     let answer = active_view(AuthorityLane::Intent, here, &candidates)?;
     assert_eq!(
-        answer.winner().map(academic_repository_correlation::RankedCandidate::id),
+        answer
+            .winner()
+            .map(academic_repository_correlation::RankedCandidate::id),
         Some("spec-current")
     );
     let rank = |answer: &academic_repository_correlation::LaneAnswer, id: &str| -> u16 {
@@ -1027,7 +1043,10 @@ fn approved_intent_prefers_valid_spec_or_adr() -> TestResult {
             .ranked()
             .iter()
             .find(|candidate| candidate.id() == id)
-            .map_or(u16::MAX, academic_repository_correlation::RankedCandidate::rank)
+            .map_or(
+                u16::MAX,
+                academic_repository_correlation::RankedCandidate::rank,
+            )
     };
     assert!(rank(&answer, "spec-current") > rank(&answer, "clarification"));
     assert!(rank(&answer, "clarification") > rank(&answer, "model"));
@@ -1064,7 +1083,9 @@ fn approved_intent_prefers_valid_spec_or_adr() -> TestResult {
         ];
         let answer = active_view(AuthorityLane::Intent, here, &weakened)?;
         assert_eq!(
-            answer.winner().map(academic_repository_correlation::RankedCandidate::id),
+            answer
+                .winner()
+                .map(academic_repository_correlation::RankedCandidate::id),
             Some("clarification"),
             "a {name} specification answered the intent question"
         );
@@ -1090,7 +1111,9 @@ fn approved_intent_prefers_valid_spec_or_adr() -> TestResult {
     ];
     let answer = active_view(AuthorityLane::Intent, here, &superseded)?;
     assert_eq!(
-        answer.winner().map(academic_repository_correlation::RankedCandidate::id),
+        answer
+            .winner()
+            .map(academic_repository_correlation::RankedCandidate::id),
         Some("spec-new")
     );
     assert!(rank(&answer, "spec-old") < rank(&answer, "clarification"));
@@ -1108,7 +1131,9 @@ fn approved_intent_prefers_valid_spec_or_adr() -> TestResult {
     ];
     let mixed = active_view(AuthorityLane::Intent, here, &with_code)?;
     assert_eq!(
-        mixed.winner().map(academic_repository_correlation::RankedCandidate::id),
+        mixed
+            .winner()
+            .map(academic_repository_correlation::RankedCandidate::id),
         Some("clarification"),
         "a code observation answered the intent question"
     );
@@ -1303,7 +1328,9 @@ fn conflict_creates_drift_without_overwrite() -> TestResult {
         ],
     )?;
     assert_eq!(
-        implementation.winner().map(academic_repository_correlation::RankedCandidate::id),
+        implementation
+            .winner()
+            .map(academic_repository_correlation::RankedCandidate::id),
         Some("code")
     );
     let intent = active_view(
@@ -1325,7 +1352,9 @@ fn conflict_creates_drift_without_overwrite() -> TestResult {
         ],
     )?;
     assert_eq!(
-        intent.winner().map(academic_repository_correlation::RankedCandidate::id),
+        intent
+            .winner()
+            .map(academic_repository_correlation::RankedCandidate::id),
         Some("spec-1")
     );
 
@@ -1526,7 +1555,10 @@ fn deprecated_flagged_undeployed_branch_scopes_are_distinct() -> TestResult {
         ..Artifacts::default()
     };
     let correlation = correlated(&MANIFEST_ONLY, "release/2", V1, None, &[], &everything)?;
-    assert_eq!(correlation.snapshot_id(), other_branch_snapshot.snapshot_id());
+    assert_eq!(
+        correlation.snapshot_id(),
+        other_branch_snapshot.snapshot_id()
+    );
     let drift = correlation
         .drifts()
         .iter()
@@ -1545,7 +1577,9 @@ fn deprecated_flagged_undeployed_branch_scopes_are_distinct() -> TestResult {
         Some("spec-1".to_owned())
     );
     assert_eq!(
-        scopes.feature_flag().map(academic_repository_correlation::GatingFlag::state),
+        scopes
+            .feature_flag()
+            .map(academic_repository_correlation::GatingFlag::state),
         Some(FlagState::Off)
     );
     assert_eq!(
@@ -1555,9 +1589,10 @@ fn deprecated_flagged_undeployed_branch_scopes_are_distinct() -> TestResult {
         Some("snap_something_else".to_owned())
     );
     assert_eq!(
-        scopes
-            .branch_difference()
-            .map(|scope| (scope.intent_branch().to_owned(), scope.snapshot_branch().map(str::to_owned))),
+        scopes.branch_difference().map(|scope| (
+            scope.intent_branch().to_owned(),
+            scope.snapshot_branch().map(str::to_owned)
+        )),
         Some(("feature/lock".to_owned(), Some("release/2".to_owned())))
     );
 
@@ -1635,8 +1670,7 @@ fn deprecated_flagged_undeployed_branch_scopes_are_distinct() -> TestResult {
             .filter(|kind| *kind != cleared)
             .collect();
         assert_eq!(
-            present,
-            expected,
+            present, expected,
             "removing the {name} input changed another scope too"
         );
     }
