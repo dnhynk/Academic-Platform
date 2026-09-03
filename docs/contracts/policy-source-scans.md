@@ -2363,16 +2363,10 @@ hand-written over secret bytes is registered`; deleting `LectureDocument` or
 this repair -- it reproduces on unmodified `main`, where removing
 `LectureDocument`'s registration leaves the suite at 10 pass, 0 fail.
 
-The cause is this page's own `S-10`. A registration is only enforced for a type
-the source independently shows to be secret-bearing, and that computation reads
-byte buffers by type and text by name. `P2-L4`'s five hold the lecture in
-`rendered_text` and `heading`, which are `String` under names the alternation
-does not contain, so nothing requires their registration and nothing reads what
-their `Debug` prints. `P2-RF13` closes the byte half of that gap and does not
-close the text half; these five are the text half arriving in a new crate. It
-is recorded as `S-18` rather than repaired here, because repairing it is the
-cross-crate redaction decision `S-10` costs and not a vocabulary line -- the
-measurement that says so is in `S-18`.
+`P2-RF15` deleted all thirty-eight one at a time rather than five, and the
+count is **21 inert, not ten**: the sampled five were the text half, and sixteen
+more came from a second mechanism this section did not reach. Both are on the
+`S-18` row and the repair is in the section below.
 
 ### The hole this rebase found in `P2-RF13`'s own shape
 
@@ -2421,6 +2415,43 @@ disconnected it instead of narrowing it, and nothing else in the matrix would
 have shown that, because every other case is a byte buffer the classification
 reaches.
 
+### What closing `S-18` measured
+
+Deleting each of the thirty-eight registrations in turn and running the suite is
+the whole-set form of the sample the rebase section above took. The count is on
+the `S-18` row; what the repair found is here.
+
+The widened guard demanded **eight registrations that did not exist**, and seven
+are types whose own crate wrote the redaction deliberately -- every one carries a
+doc comment naming the rule of this file it was written for -- and then nothing
+recorded that the type was covered: `SourceEntry`, `SourceUnit`,
+`IngestedDocument`, `ModelOutput`, `FineGrainedToken`, `SealedCredential` and
+`Acquisition`. `Digest32` was the one false positive the marker had been
+absorbing; it is a public tuple newtype, so it is declared in
+`PUBLIC_TUPLE_BYTES` beside the other fifteen rather than registered.
+
+The eighth is a leak. **`AppliedCorrection` derived `Debug` over
+`previous_text`**, which is what one token of the lecture read before a
+correction replaced it, in the same file as the `CorrectionCandidate` whose
+`replacement_text` `P2-L3` had already sealed --
+`crates/transcription/src/version.rs`. It is `P2-RF13`'s finding repeated: the
+same content class, sealed on one side of a seam and open on the other, missed
+because the field name is not in the vocabulary. It now hand-writes the same
+redacting `Debug` its sibling does.
+
+| Injection | What it is | Pre-repair guard | Repaired guard |
+|---|---|---|---|
+| `RF15-I1` | `Ledger { tally: Vec<u8> }`, classified `content`, hand-written `Debug` reducing to a length, spelling no marker, unregistered | 12 pass, 0 fail | `a type whose Debug is hand-written over secret bytes is registered` |
+| `RF15-I2` | `struct Tally([u8; 32]);` whose hand-written `Debug` hex-encodes it, in neither `PUBLIC_TUPLE_BYTES` nor the registry | 12 pass, 0 fail | the same |
+| `RF15-I3` | `Roster { entry: CaptureSession }` -- one hop from a registered type, hand-written `Debug`, unregistered | 12 pass, 0 fail | the same, and the leak net beside it |
+| `RF15-I4` | `ProviderResponse`'s registration deleted -- one of the 21 measured inert | 12 pass, 0 fail | the same |
+
+None of the four spells a name from `SECRET_FIELD_NAMES`. Each was applied to a
+clean tree on its own, run against both guards, reverted, and the repaired guard
+observed back at 12 pass, 0 fail. The pre-repair column is the point: a
+registration that is merely present is what `S-18` was about, so the evidence has
+to be a bypass the old guard admitted and the new one does not.
+
 ## Open
 
 Each row says what makes it start mattering: "it cannot happen today" is not a
@@ -2447,7 +2478,7 @@ closed it.
 | S-14 | `no_float_reaches_the_gpa_path`, `tools/secret-debug-policy.test.mjs`, `phase1_exit_has_no_product_network`, the two `academic-untrusted-content` walks, and the two in `crates/consent/tests/consent_scans.rs` — the `benches` tree | **Closed by `P2-RF11`.** Seven walks excluded `benches` beside `tests`; the last two arrived with `P2-G6` while this repair was in flight and are widened here for the same reason. No `benches` tree exists in this repository, but a bench target has no feature gate and `cargo clippy --workspace --all-targets` — the README verification block's third command — compiles it, which is the two-part test `T146` applied to `examples/`. `T149` measured all three halves: a `f64`, a `#[derive(Debug)]` over `key_bytes`, and a `TcpStream::connect` in a new `crates/record/benches/` file each passed its scan, and a bench that does not compile fails the clippy lane. All seven now exclude `tests` only. | n/a — closed. `tests` stays out on the reasons those walks give for it. |
 | S-15 | `the_transport_is_reached_from_no_module_but_the_proxy` — `crates/egress-boundary/tests/byte_path_pin.rs` | **Closed by `P2-RF11`.** This crate's counts read three fixed file names and its fallback inventory read six, in exactly the shape `S-5` and `S-8` record elsewhere, and no row named it. `T149` added `mod relay;` and one new file: the module reached the transport through the broker without binding a grant, wrote 178 bytes under a grant reviewed by another rulepack for a payload `transmit` refused with zero, left no journal row, and passed this crate's suite, `cargo test --workspace --all-targets` and both JS scans. The counts are now sums over a package walk, the inventory is keyed on the walk with a floor, and a module tripwire fails the day the walk is narrowed. | n/a — closed. |
 | S-16 | `egress_audit.grant_id`, for rows that are not a consumed grant | The column is polymorphic and only `egress_consumption` resolves it. Deny rows and process-capability activity rows are joined to nothing that says which namespace their identifier came from, so a reader treating the column as an `egress_grant` reference finds them dangling. `P2-M1` does not need them: its reconciliation reads only consumed grants, which `T149` measured is exactly what the join resolves. | The first reader that has to attribute a *denial* or a process activity to a namespace. Closing it means a discriminator column or a second join table; severity **P3**, because no dangling row exists today: all seven `insert_audit` call sites write an identifier that is in one of the two tables. |
-| S-18 | `tools/secret-debug-policy.test.mjs` | A registration in `SECRET_BEARING_TYPES` is not load-bearing for a type whose secret is **text** under a field name outside `SECRET_FIELD_NAMES`: deleting the registration is silent, and nothing reads what that type's hand-written `Debug` prints. Measured by `P2-RF13` on unmodified `main`: removing `LectureDocument` leaves the suite at 10 pass, 0 fail. Five of `P2-L4`'s types are in this position -- `NodeDraft`, `DocumentNode`, `LectureDocument`, `StudyIndexEntry`, `StudyIndex` -- because they hold the lecture in `rendered_text` and `heading`. This is `T114`'s original finding ("deleting a registration was silent") recurring for the half of the vocabulary `P2-RF13` did not close. | Now, for any registered type whose secret is text. Nothing leaks today: all five hand-write a `Debug` that reaches text through a length, which is what `P2-L4` says it did. What is open is that nothing **checks** it, so a later edit to one of those impls is silent in both directions. **The cost of closing it is measured rather than estimated, and it is not a vocabulary line.** Requiring a redaction marker in every registered type's `Debug` -- the cheapest mechanical half -- fires on **19 of the 38 registered types**, enumerated: `AcceptedResponse`, `AuthorizedCapture`, `AuthorizedChunk`, `AuthorizedToolCall`, `CorrectionCandidate`, `DocumentNode`, `EffectiveToken`, `FetchOutcome`, `LectureDocument`, `NodeDraft`, `ProcessActivity`, `ProviderResponse`, `RawSegment`, `RawSnapshot`, `RawToken`, `RuntimeToolCall`, `SourceDocument`, `StudyIndex`, `StudyIndexEntry`. Those nineteen span nine crates, and a marker is not a redaction: some of them reduce to a length without writing one. So closing this means one commit per crate from its owner, the same shape `S-10` records, and widening `SECRET_FIELD_NAMES` by `rendered_text` and `heading` is **not** it -- that reaches these five and leaves the next crate's spelling open, which is the mistake this whole row descends from. Severity **P2**. |
+| S-18 | `tools/secret-debug-policy.test.mjs` | **Mostly closed by `P2-RF15`; the text half is what is left.** What was open was measured by deleting each registration in turn and running the suite: **21 of the 38 were inert** -- deleting them left 12 pass, 0 fail -- from two mechanisms, and only one of them is the `S-10` text gap this row was first written for. The other sixteen came from the guard's own shape: it read a hand-written `Debug` only when the impl spelled `<redacted>` or `finish_non_exhaustive`, and ten registered types redact by reducing a buffer to a length and spell neither; and it read a tuple position through `RAW_BYTE_TYPES`, which contains `String`, rather than through the `RAW_BYTE_PAYLOAD_TYPES` this file documents for a position with no name. The marker was standing in for the exception maps, so `P2-RF15` applies `PUBLIC_BYTES` and `PUBLIC_TUPLE_BYTES` in the registration guard and drops the marker, judges a tuple position as bytes only, and adds **one** hop -- not the fixed point, which reaches `AcceptanceService`. **21 inert became 10**, and the guard biting is measured by `RF15-I1` through `RF15-I4` rather than by the registrations being present. What is left is ten registrations whose secret is text under a field name outside `SECRET_FIELD_NAMES`, enumerated: `AppliedCorrection`, `CorrectionCandidate`, `DocumentNode`, `EffectiveToken`, `LectureDocument`, `NodeDraft`, `RawSegment`, `RawToken`, `StudyIndex`, `StudyIndexEntry`. | Now, for text. Nothing leaks in those ten: every one hand-writes a `Debug` that reaches its text through a length, checked field by field. What is open is that nothing **requires** the registration, so deleting one is silent in both directions. **The cost of closing it is measured rather than estimated.** It is the whole-set classification `P2-RF13` gave byte buffers, applied to text: **805 named `String`/`str` fields** in workspace product source against the **137** byte fields that one classified, and a class per field is a judgement its crate's owner makes, not a line this file can write. Widening `SECRET_FIELD_NAMES` by `rendered_text` and `heading` is **not** it, for the reason `S-10` records five times over. A name-shaped sweep is not that guard, but `P2-RF15` ran one to bound what the gap is hiding: of 32 content-shaped `String` fields under a derived `Debug`, ten hold content rather than a digest, an identifier or an error message -- `Alias.text`, `PartialAlias.text`, `RegistryFact.text`, `Question.canonical_text` and `QuestionRevision.{previous,replacement}_text` in `crates/domain`; `SearchHit.text` and `ExactSymbolHit.text` in `crates/projections`; `RuleCandidate.quoted_source` in `crates/requirement`; `ClaimRow.object_text` in `crates/portability`. `crates/projections` and `crates/requirement` hand-write no redaction anywhere, so whether an indexed claim is content is those crates' contract question and not this guard's. Severity **P2**. |
 | S-17 | `packages/web-contracts/src/index.ts` — the four closed vocabulary sets | `masteryLevels`, `freshnessBands`, `confidentialityValues` and `retentionClassValues` restate `academic_domain`'s `MasteryLevel`, `FreshnessBand`, `Confidentiality` and `RetentionClass`, and **nothing compares the two sides**. This is the defect class `route_manifest_matches_ia_exactly` closes one step away: a list written from an authoritative enumeration with no bidirectional check. `P2-X1` found it while looking for its own kind one step out and did not fix it: the file is `P2-C7`'s contract surface, and a cross-language parity scan is its own reviewed piece of work. All four sets agree with the Rust enums today, measured at this commit, so the row is latent rather than broken. | The first commit that adds a variant to one of the four Rust enums. The TypeScript validator would then reject a fixture the Rust side accepts, and would do so silently until a fixture happened to carry the new variant — the fixture suites pin specific bytes and would not notice a set that had merely stopped being complete. Severity **P3**. Closing it means reading the four variant lists out of `crates/domain/src/lib.rs` and comparing them with the four sets in both directions, the way `model_run_requires_every_field` compares a struct against the specification's own YAML. |
 | S-18 | `crates/daemon/tests/phase1_exit.rs::default_build_lane` — `%TEMP%/academic-x1-default-features` | The nested default-feature build writes to one `CARGO_TARGET_DIR` shared by every process on the machine, on purpose, so the build is cached across runs instead of repeated. Cargo takes its own exclusive lock on a target directory, so two processes serialise rather than corrupt each other, and `T175` left it as it is with a `SHARED_NAME_SITES` row saying so rather than making each process build its own copy. | When two processes on one machine run this test with the same `TEMP` and one is killed mid-build. That is not hypothetical: `T169`'s `pkill -9 -f cargo` killed `T162`'s build in this Run. Severity **P3** — the surviving process sees a stale lock or a half-written fingerprint and rebuilds, so the cost is time rather than a wrong answer. Closing it means a per-process lane and a full rebuild per run, which is the trade this row records. |
 
