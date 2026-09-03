@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `DesktopCommand: TryFrom<&str>` is not satisfied
+  --> tests/compile_fail/desktop_command_is_not_built_from_a_string.rs:12:24
+   |
+12 |     let _by_try_from = DesktopCommand::try_from("learning-platform.local.diagnostics.v1");
+   |                        ^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `DesktopCommand`
+   |
+   = note: required for `&str` to implement `Into<DesktopCommand>`
+   = note: required for `DesktopCommand` to implement `TryFrom<&str>`
+
+error[E0599]: no variant, associated function, or constant named `from_str` found for enum `DesktopCommand` in the current scope
+  --> tests/compile_fail/desktop_command_is_not_built_from_a_string.rs:13:40
+   |
+13 |     let _by_from_str = DesktopCommand::from_str("learning-platform.local.diagnostics.v1");
+   |                                        ^^^^^^^^ variant, associated function, or constant not found in `DesktopCommand`
+   |
+help: there is an associated function `from` with a similar name
+   |
+13 -     let _by_from_str = DesktopCommand::from_str("learning-platform.local.diagnostics.v1");
+13 +     let _by_from_str = DesktopCommand::from("learning-platform.local.diagnostics.v1");
+   |
+
+error[E0599]: no variant, associated function, or constant named `Raw` found for enum `DesktopCommand` in the current scope
+  --> tests/compile_fail/desktop_command_is_not_built_from_a_string.rs:14:39
+   |
+14 |     let _by_variant = DesktopCommand::Raw("anything at all".to_owned());
+   |                                       ^^^ variant, associated function, or constant not found in `DesktopCommand`
+
+error[E0277]: the trait bound `DesktopCommand: From<&str>` is not satisfied
+  --> tests/compile_fail/desktop_command_is_not_built_from_a_string.rs:12:24
+   |
+12 |     let _by_try_from = DesktopCommand::try_from("learning-platform.local.diagnostics.v1");
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `DesktopCommand`
+   |
+   = note: required for `&str` to implement `Into<DesktopCommand>`
+   = note: required for `DesktopCommand` to implement `TryFrom<&str>`

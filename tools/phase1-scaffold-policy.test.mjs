@@ -259,6 +259,10 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-rpc",
       "academic-store",
     ],
+    // `P2-X1`. The desktop surface's one workspace edge is the local-core
+    // contract. `desktop_cannot_open_the_database_or_read_keys` is what says
+    // this row cannot grow a store, vault or key crate.
+    "academic-desktop": ["academic-rpc"],
     "academic-domain": [],
     "academic-egress": ["academic-policy"],
     // `P2-G2`'s DLP rulepack, minimizer, byte-accurate preview, and the sole
@@ -1235,6 +1239,391 @@ test("export_job_cannot_read_keys", async () => {
   );
 });
 
+// `P2-X1`. The desktop surface's blocking boundary, judged the way
+// `only_egress_crate_has_a_socket` judges the socket one: from the declared
+// dependency graph, from the resolved link closure, and from the source text,
+// because each of the three is blind to a different way of acquiring the
+// capability. A declared-edge check misses an optional dependency a feature
+// turns on; a resolved-closure check misses a crate that links the capability
+// and does not use it yet; and a source scan misses everything that spells no
+// forbidden name, which is the whole of "add a dependency".
+//
+// ADR-001's surface table is what is being enforced: the desktop must not
+// "open DB directly, hold provider/root keys, unrestricted filesystem/network".
+
+/** The desktop package directory, walked whole rather than by `src`. */
+const DESKTOP_PACKAGE = "crates/desktop";
+
+/**
+ * Workspace crates the desktop must not reach by any edge of any kind.
+ *
+ * The first of them own the canonical database or a key: the store and its FFI
+ * leaf, the embedded policy database, the object vault, and the key hierarchy.
+ * The rest hold key material of their own -- the OS keystore binding, the
+ * backup key, and the rotation engine -- or open the store on the desktop's
+ * behalf, which is the same authority one call away.
+ */
+const DESKTOP_FORBIDDEN_WORKSPACE_CRATES = [
+  "academic-core",
+  "academic-crypto",
+  "academic-keystore-platform",
+  "academic-policy",
+  "academic-projections",
+  "academic-recovery",
+  "academic-retention",
+  "academic-store",
+  "academic-store-platform",
+  "academic-vault",
+];
+
+/** External crates that can open a database. */
+const DATABASE_CAPABLE_CRATES = [
+  "diesel",
+  "duckdb",
+  "heed",
+  "libsqlite3-sys",
+  "native_db",
+  "redb",
+  "rocksdb",
+  "rusqlite",
+  "sea-orm",
+  "sled",
+  "sqlite",
+  "sqlite3-src",
+  "sqlx",
+];
+
+/**
+ * External crates that derive, wrap, store or unwrap key material.
+ *
+ * `ed25519-dalek`, `sha2`, `hmac` and `zeroize` are deliberately absent: they
+ * are in the desktop's closure, through `academic-admission`'s receipt
+ * signature verification and `academic-domain`'s digests, and verifying a
+ * signature over public evidence is not holding a key. What is refused here is
+ * custody -- a KDF, an AEAD, a keyring, or a TLS stack that would carry one.
+ */
+const KEY_CUSTODY_CRATES = [
+  "aead",
+  "aes-gcm",
+  "argon2",
+  "chacha20",
+  "chacha20poly1305",
+  "hkdf",
+  "keyring",
+  "openssl",
+  "p256",
+  "pbkdf2",
+  "poly1305",
+  "ring",
+  "rustls",
+  "scrypt",
+  "secret-service",
+  "security-framework",
+  "zbus",
+];
+
+/**
+ * The desktop's whole resolved shipping closure.
+ *
+ * Pinned entire, as `PROCESS_POLICY_CLOSURE` is, so that a dependency added
+ * anywhere below the surface is a review of the whole new closure rather than a
+ * silent widening that the two capability tables above happen not to name.
+ * Duplicated names are two major versions of one crate and are kept, because
+ * the comparison is against `resolvedShippingPackageNames`'s own output.
+ */
+const DESKTOP_SHIPPING_CLOSURE = [
+  "academic-admission",
+  "academic-contracts",
+  "academic-desktop",
+  "academic-domain",
+  "academic-rpc",
+  "aho-corasick",
+  "anyhow",
+  "base64ct",
+  "bitflags",
+  "block-buffer",
+  "bumpalo",
+  "bytes",
+  "cfg-if",
+  "ciborium",
+  "ciborium-io",
+  "ciborium-ll",
+  "const-oid",
+  "cpufeatures",
+  "crunchy",
+  "crypto-common",
+  "curve25519-dalek",
+  "curve25519-dalek-derive",
+  "der",
+  "digest",
+  "ed25519",
+  "ed25519-dalek",
+  "either",
+  "equivalent",
+  "errno",
+  "fastrand",
+  "fiat-crypto",
+  "fixedbitset",
+  "futures-core",
+  "futures-task",
+  "futures-util",
+  "generic-array",
+  "getrandom",
+  "getrandom",
+  "half",
+  "hashbrown",
+  "heck",
+  "hex",
+  "hmac",
+  "indexmap",
+  "itertools",
+  "itoa",
+  "js-sys",
+  "libc",
+  "linux-raw-sys",
+  "log",
+  "memchr",
+  "mio",
+  "multimap",
+  "once_cell",
+  "petgraph",
+  "pin-project-lite",
+  "pkcs8",
+  "proc-macro2",
+  "prost",
+  "prost-build",
+  "prost-derive",
+  "prost-types",
+  "protoc-bin-vendored",
+  "protoc-bin-vendored-linux-aarch_64",
+  "protoc-bin-vendored-linux-ppcle_64",
+  "protoc-bin-vendored-linux-s390_64",
+  "protoc-bin-vendored-linux-x86_32",
+  "protoc-bin-vendored-linux-x86_64",
+  "protoc-bin-vendored-macos-aarch_64",
+  "protoc-bin-vendored-macos-x86_64",
+  "protoc-bin-vendored-win32",
+  "quote",
+  "r-efi",
+  "rand_core",
+  "regex",
+  "regex-automata",
+  "regex-syntax",
+  "rustc_version",
+  "rustix",
+  "rustversion",
+  "semver",
+  "serde",
+  "serde_core",
+  "serde_derive",
+  "serde_json",
+  "sha2",
+  "signal-hook-registry",
+  "signature",
+  "slab",
+  "socket2",
+  "spki",
+  "subtle",
+  "syn",
+  "syn",
+  "tempfile",
+  "thiserror",
+  "thiserror-impl",
+  "tokio",
+  "tokio-macros",
+  "typenum",
+  "unicode-ident",
+  "uuid",
+  "version_check",
+  "wasi",
+  "wasm-bindgen",
+  "wasm-bindgen-macro",
+  "wasm-bindgen-macro-support",
+  "wasm-bindgen-shared",
+  "windows-link",
+  "windows-sys",
+  "zerocopy",
+  "zerocopy-derive",
+  "zeroize",
+  "zeroize_derive",
+  "zmij",
+];
+
+/**
+ * Every identifier the desktop's source may write a `::` after.
+ *
+ * A closed world over path roots rather than a list of forbidden names. A
+ * fully qualified `rusqlite::Connection::open` writes no `use`, so a `use`-root
+ * allowlist would not see it; this does, because `rusqlite` is not on the list.
+ * Local types and modules are here for the same reason -- the rule is "every
+ * root was reviewed", and a rule with exceptions is not that rule.
+ */
+const DESKTOP_PATH_ROOTS = [
+  "Borrow",
+  "Command",
+  "DesktopCommand",
+  "NotCanonical",
+  "Optimistic",
+  "Self",
+  "SyntheticFixtureId",
+  "TestCases",
+  "academic_desktop",
+  "academic_rpc",
+  "borrow",
+  "bytes",
+  "collections",
+  "command",
+  "core",
+  "fmt",
+  "generated",
+  "mutable_request",
+  "optimistic",
+  "serde_json",
+  "std",
+  "str",
+  "thiserror",
+  "trybuild",
+  "u64",
+];
+
+/**
+ * A floor under the walk.
+ *
+ * `S-12` in `docs/contracts/policy-source-scans.md` is the walk that reads
+ * fewer files than it thinks. A walk that returned nothing would satisfy every
+ * "no file contains X" assertion below.
+ */
+const DESKTOP_SOURCE_FLOOR = 9;
+
+test("desktop_cannot_open_the_database_or_read_keys", async () => {
+  const desktop = packagesByName.get("academic-desktop");
+  assert.ok(desktop, "academic-desktop is not a workspace package");
+
+  // The graph half, from declared edges of every kind. A dev edge is still a
+  // compiled edge: a desktop that dev-depended on the store could name it in a
+  // test, and a test is a place a key can be printed.
+  assert.deepEqual(
+    [...workspaceClosureOfEveryKind("academic-desktop", workspacePackages)].toSorted(),
+    ["academic-admission", "academic-contracts", "academic-domain", "academic-rpc"],
+    "the desktop's declared workspace closure changed; review the whole new closure",
+  );
+
+  // The same half from the resolved graph, which sees a renamed dependency and
+  // a feature-activated optional edge that the declared walk above does not.
+  const resolved = resolvedClosureNames(desktop.id, resolveNodesById, packagesById);
+  for (const forbidden of DESKTOP_FORBIDDEN_WORKSPACE_CRATES) {
+    assert.equal(
+      resolved.has(forbidden),
+      false,
+      `the desktop reaches ${forbidden}, which owns the database or a key`,
+    );
+  }
+
+  // The link half. The capability tables say which crates could open a store or
+  // hold key material; the closure pin says nothing else arrived either.
+  for (const forbidden of [...DATABASE_CAPABLE_CRATES, ...KEY_CUSTODY_CRATES]) {
+    assert.equal(resolved.has(forbidden), false, `the desktop links ${forbidden}`);
+  }
+  assert.deepEqual(
+    resolvedShippingPackageNames("academic-desktop"),
+    DESKTOP_SHIPPING_CLOSURE.toSorted(),
+    "the desktop feature graph changed; the entire new closure must be reviewed for database and key access",
+  );
+
+  // The source half, over the whole package rather than `src`.
+  const sources = await rustSources(DESKTOP_PACKAGE);
+  assert.ok(
+    sources.length >= DESKTOP_SOURCE_FLOOR,
+    `the desktop walk read ${sources.length} files, below its floor of ${DESKTOP_SOURCE_FLOOR}`,
+  );
+
+  const walked = new Set(sources.map(([path]) => resolve(path)));
+  const roots = new Set();
+  for (const [path, source] of sources) {
+    const code = rustCodeOnly(source);
+
+    // Every path root is one that was reviewed. A fully qualified call spells
+    // no `use`, so this reads the roots rather than the imports.
+    for (const [, root] of code.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*::/gu)) {
+      roots.add(root);
+      assert.ok(
+        DESKTOP_PATH_ROOTS.includes(root),
+        `${path} names the unreviewed path root ${root}`,
+      );
+    }
+    for (const [, root] of code.matchAll(/\bextern\s+crate\s+([A-Za-z_][A-Za-z0-9_]*)/gu)) {
+      assert.ok(DESKTOP_PATH_ROOTS.includes(root), `${path} links the unreviewed crate ${root}`);
+    }
+
+    // No foreign function, no environment, no process, no unsafe block. Each is
+    // a way to reach a file, a key or a database without naming a crate.
+    assert.doesNotMatch(code, /\bextern\s+"/u, `${path} declares a foreign function`);
+    assert.doesNotMatch(code, /\bunsafe\b/u, `${path} contains an unsafe block`);
+    assert.doesNotMatch(
+      code,
+      /\b(?:env|option_env|include_bytes|include_str|include)\s*!/u,
+      `${path} reads the environment or embeds a file`,
+    );
+
+    // The tripwire: every module this file pulls in is a file the walk read.
+    for (const [, target] of source.matchAll(/#\[\s*path\s*=\s*"([^"]*)"\s*\]/gu)) {
+      assert.ok(
+        walked.has(resolve(dirname(path), target)),
+        `${path} pulls in ${target}, which this walk did not read`,
+      );
+    }
+    for (const [, name] of code.matchAll(/^\s*(?:pub\s+)?mod\s+([a-z_][a-z0-9_]*)\s*;/gmu)) {
+      const directory = dirname(path);
+      const flat = resolve(directory, `${name}.rs`);
+      const nested = resolve(directory, name, "mod.rs");
+      assert.ok(
+        walked.has(flat) || walked.has(nested),
+        `${path} declares module ${name}, which this walk did not read`,
+      );
+    }
+  }
+
+  // The root allowlist has no dead entry, so it cannot quietly accumulate a
+  // permission for something the crate stopped doing.
+  assert.deepEqual(
+    DESKTOP_PATH_ROOTS.filter((root) => !roots.has(root)),
+    [],
+    "the desktop path-root allowlist names roots the crate no longer writes",
+  );
+});
+
+// `P2-X1`. The desktop names one synthetic fixture and `academic-core` defines
+// which fixture that is. The comparison is a source scan because the desktop
+// must not have a dependency edge to `academic-core`, which opens the store:
+// the two constants can only be compared as text.
+test("desktop_names_only_the_core_fixture_allowlist", async () => {
+  const coreSource = await readFile("crates/core/src/local_service.rs", "utf8");
+  const coreMatch = /pub const PHASE1_SYNTHETIC_FIXTURE_ID: &str = "([^"]+)";/u.exec(coreSource);
+  assert.ok(coreMatch, "academic-core no longer defines PHASE1_SYNTHETIC_FIXTURE_ID as one literal");
+
+  const desktopSource = rustCodeOnly(
+    await readFile("crates/desktop/src/command.rs", "utf8"),
+    true,
+  );
+  // The `as_str` arms of `SyntheticFixtureId` and nothing else. Reading the
+  // whole file would also collect `DesktopCommand::capability_id`'s arms, which
+  // are capability identifiers rather than fixtures.
+  const implStart = desktopSource.indexOf("impl SyntheticFixtureId {");
+  assert.ok(implStart >= 0, "academic-desktop no longer has an `impl SyntheticFixtureId` block");
+  const implEnd = desktopSource.indexOf("\n}", implStart);
+  assert.ok(implEnd > implStart, "the `impl SyntheticFixtureId` block is not closed at column zero");
+  const desktopFixtures = [
+    ...desktopSource
+      .slice(implStart, implEnd)
+      .matchAll(/Self::[A-Za-z0-9_]+\s*=>\s*"([^"]+)"/gu),
+  ].map(([, id]) => id);
+  assert.deepEqual(
+    desktopFixtures.toSorted(),
+    [coreMatch[1]],
+    "the desktop's fixture allowlist and academic-core's fixture identifier have diverged",
+  );
+});
+
 // The P2-G2 half of 2.3-14. `os_keystore_lane_expands_tokio_only_by_named_crate`
 // pins which capabilities a lane makes *available* and
 // `os_keystore_capabilities_are_available_but_unused` pins whether they are
@@ -1657,6 +2046,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-core": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   "academic-crypto": ["libc"],
   "academic-daemon": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
+  // `P2-X1`. The desktop links the local-core RPC contract, which links tokio
+  // for the named pipe and Unix-domain socket the daemon runs on. Availability
+  // is what this row records; the crate spells no socket construct, which is
+  // why its `SOCKET_ALLOWANCE` entry is absent rather than empty.
+  "academic-desktop": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   "academic-domain": ["libc"],
   "academic-egress": ["libc"],
   "academic-egress-boundary": ["libc"],
@@ -3398,6 +3792,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     modelRunReceiptText,
     captureReceiptText,
     proposalReceiptText,
+    desktopReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3417,6 +3812,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-m1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-m2.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-x1.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3436,6 +3832,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const modelRunReceipt = JSON.parse(modelRunReceiptText);
   const captureReceipt = JSON.parse(captureReceiptText);
   const proposalReceipt = JSON.parse(proposalReceiptText);
+  const desktopReceipt = JSON.parse(desktopReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -4176,6 +4573,89 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-L1 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-X1` adds one workspace path package, `academic-desktop`, and admits no
+  // external crate: its product edges are `academic-rpc` and `thiserror` and
+  // its dev edges are `serde_json` and `trybuild`, all four already in this
+  // lock through earlier receipts. The Tauri runtime is not linked, and the
+  // receipt records the measurement that decided it.
+  assert.equal(desktopReceipt.task, "P2-X1");
+  const desktopAdmitted = new Set(
+    desktopReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const desktopPathPackages = new Set(
+    desktopReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(desktopAdmitted.size, 0, "P2-X1 must admit no external crate");
+  assert.deepEqual([...desktopPathPackages], ["academic-desktop@0.1.0"]);
+  assert.deepEqual(desktopReceipt.summary.npm_additions, []);
+  assert.equal(desktopReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(desktopReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-rpc",
+  ]);
+  // The two vendored Tauri schemas are data, not dependencies, and the receipt
+  // says so with the digests `capability-snapshot.test.ts` pins.
+  assert.deepEqual(
+    desktopReceipt.vendored_data.map((entry) => [entry.path, entry.is_a_dependency]),
+    [
+      ["schemas/tauri/config-2.11.5.schema.json", false],
+      ["schemas/tauri/capability-2.9.3.schema.json", false],
+    ],
+  );
+  for (const entry of desktopReceipt.vendored_data) {
+    assert.equal(
+      createHash("sha256").update(await readFile(entry.path)).digest("hex"),
+      entry.sha256,
+      `${entry.path} does not match the digest its admission receipt records`,
+    );
+  }
+  for (const claimed of [...desktopAdmitted, ...desktopPathPackages]) {
+    assert.equal(
+      keyAdmitted.has(claimed) ||
+        keyPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryAdmitted.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionAdmitted.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionAdmitted.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyAdmitted.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptAdmitted.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressAdmitted.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        recordAdmitted.has(claimed) ||
+        recordPathPackages.has(claimed) ||
+        sandboxAdmitted.has(claimed) ||
+        sandboxPathPackages.has(claimed) ||
+        untrustedAdmitted.has(claimed) ||
+        untrustedPathPackages.has(claimed) ||
+        consentAdmitted.has(claimed) ||
+        consentPathPackages.has(claimed) ||
+        modelRunAdmitted.has(claimed) ||
+        modelRunPathPackages.has(claimed) ||
+        captureAdmitted.has(claimed) ||
+        capturePathPackages.has(claimed) ||
+        proposalAdmitted.has(claimed) ||
+        proposalPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const desktopTuples = lockTuples.filter(
+    ([name, version]) =>
+      desktopAdmitted.has(`${name}@${version}`) ||
+      desktopPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    desktopTuples.length,
+    desktopAdmitted.size + desktopPathPackages.size,
+    "a P2-X1 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -4209,7 +4689,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !captureAdmitted.has(`${name}@${version}`) &&
       !capturePathPackages.has(`${name}@${version}`) &&
       !proposalAdmitted.has(`${name}@${version}`) &&
-      !proposalPathPackages.has(`${name}@${version}`),
+      !proposalPathPackages.has(`${name}@${version}`) &&
+      !desktopAdmitted.has(`${name}@${version}`) &&
+      !desktopPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -4236,7 +4718,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       consentTuples.length +
       modelRunTuples.length +
       captureTuples.length +
-      proposalTuples.length,
+      proposalTuples.length +
+      desktopTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

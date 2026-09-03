@@ -1,0 +1,20 @@
+[package]
+name = "academic-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+academic-rpc = { path = "../rpc" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# `serde_json` is one of the compile-fail cases: serialising a sealed optimistic
+# value must not compile, and the case needs a serialiser to try it with.
+serde_json.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true

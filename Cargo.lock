@@ -153,6 +153,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-desktop"
+version = "0.1.0"
+dependencies = [
+ "academic-rpc",
+ "serde_json",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-domain"
 version = "0.1.0"
 dependencies = [

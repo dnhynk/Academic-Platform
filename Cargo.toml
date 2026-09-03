@@ -10,6 +10,7 @@ members = [
   "crates/core",
   "crates/crypto",
   "crates/daemon",
+  "crates/desktop",
   "crates/domain",
   "crates/egress",
   "crates/egress-boundary",

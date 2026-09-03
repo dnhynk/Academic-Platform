@@ -1,0 +1,23 @@
+error[E0599]: no method named `into_inner` found for struct `Optimistic<T>` in the current scope
+  --> tests/compile_fail/optimistic_value_is_not_readable.rs:25:38
+   |
+25 |     let _by_into_inner: u32 = update.into_inner();
+   |                                      ^^^^^^^^^^ method not found in `Optimistic<u32>`
+
+error[E0599]: no method named `value` found for struct `Optimistic<T>` in the current scope
+  --> tests/compile_fail/optimistic_value_is_not_readable.rs:26:33
+   |
+26 |     let _by_value: u32 = update.value();
+   |                                 ^^^^^ private field, not a method
+
+error[E0599]: no method named `get` found for struct `Optimistic<T>` in the current scope
+  --> tests/compile_fail/optimistic_value_is_not_readable.rs:27:31
+   |
+27 |     let _by_get: u32 = update.get();
+   |                               ^^^ method not found in `Optimistic<u32>`
+
+error[E0616]: field `value` of struct `Optimistic` is private
+  --> tests/compile_fail/optimistic_value_is_not_readable.rs:28:33
+   |
+28 |     let _by_field: u32 = update.value;
+   |                                 ^^^^^ private field

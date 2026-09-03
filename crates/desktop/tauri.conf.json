@@ -1,0 +1,77 @@
+{
+  "$schema": "../../schemas/tauri/config-2.11.5.schema.json",
+  "productName": "Academic OS",
+  "identifier": "dev.academic-os.desktop",
+  "version": "0.1.0",
+  "build": {
+    "frontendDist": "../../packages/ui/dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "security": {
+      "freezePrototype": true,
+      "dangerousDisableAssetCspModification": false,
+      "assetProtocol": {
+        "enable": false,
+        "scope": []
+      },
+      "capabilities": [
+        "desktop"
+      ],
+      "csp": {
+        "default-src": [
+          "'self'"
+        ],
+        "script-src": [
+          "'self'"
+        ],
+        "style-src": [
+          "'self'"
+        ],
+        "img-src": [
+          "'self'"
+        ],
+        "font-src": [
+          "'self'"
+        ],
+        "connect-src": [
+          "'self'",
+          "ipc:"
+        ],
+        "media-src": [
+          "'none'"
+        ],
+        "object-src": [
+          "'none'"
+        ],
+        "worker-src": [
+          "'none'"
+        ],
+        "child-src": [
+          "'none'"
+        ],
+        "frame-src": [
+          "'none'"
+        ],
+        "frame-ancestors": [
+          "'none'"
+        ],
+        "form-action": [
+          "'none'"
+        ],
+        "base-uri": [
+          "'none'"
+        ]
+      }
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Academic OS",
+        "width": 1280,
+        "height": 800
+      }
+    ]
+  },
+  "plugins": {}
+}

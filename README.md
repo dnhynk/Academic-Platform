@@ -45,6 +45,7 @@ cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 cargo test --workspace --all-targets --locked --offline
 cargo test --workspace --doc --locked --offline
 cargo test -p academic-scenario --test compile_fail --locked --offline
+cargo test -p academic-desktop --test compile_fail --locked --offline
 cargo clippy -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection -- -D warnings
 cargo test -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection
 cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection -- -D warnings
@@ -93,13 +94,30 @@ above, on every platform. What it is and is not evidence for is in
 [encrypted backup and recovery](docs/contracts/encrypted-backup-and-recovery.md).
 
 `P2-K6` adds the deterministic-CBOR `AdmissionVerifier`, its compiled five-row
-platform set, and one exact posture emitter for CLI, IPC, and export (there is no
-desktop surface yet). The user's offline acceptance public key has not been
+platform set, and one exact posture emitter for CLI, IPC, and export. The user's offline acceptance public key has not been
 provided, so the typed compiled key state is unprovisioned; the committed
 candidate receipt also has only its Windows x86-64 and Linux x86-64 rows. Both
 conditions fail closed, `production_data_allowed` remains `false`, and ADR-002
 remains unaccepted. The exact receipt shape and provisioning boundary are in
 [the admission receipt contract](docs/contracts/admission-receipt.md).
+
+`P2-X1` adds the desktop shell's contracts: `packages/ui` holds the route
+manifest, the command palette, backlink traversal, the persistent right-hand
+evidence drawer and the optimistic-update typing; `crates/desktop` holds the
+typed local-core command allowlist and the sealed `Optimistic<T>`; and
+`crates/desktop/tauri.conf.json` with `crates/desktop/capabilities/` is the
+committed Tauri capability and CSP snapshot, validated against Tauri's own
+published config schema and against the schema generated from
+`tauri_utils::acl::capability::Capability`, both vendored under `schemas/tauri/`.
+`route_manifest_matches_ia_exactly` parses section 25.1's tree out of the
+specification and compares it with the manifest in both directions.
+**No Tauri runtime is linked and no window opens**: `cargo metadata` measures 388
+new packages in the default product closure for `tauri 2.11.5`, six of them on
+the list `phase1_default_features_have_no_product_network` forbids, at every
+feature setting. That measurement, what the snapshot is and is not evidence for,
+and the three-way graph/link/source boundary that keeps this surface away from
+the database and the keys are in
+[the desktop shell contract](docs/contracts/desktop-shell.md).
 
 Several tests keep that posture by reading this repository's own source text,
 because the changes they refuse — a second key source, a widened fixture
