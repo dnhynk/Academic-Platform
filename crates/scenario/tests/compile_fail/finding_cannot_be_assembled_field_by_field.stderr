@@ -1,0 +1,31 @@
+error[E0599]: no associated function or constant named `default` found for struct `Finding` in the current scope
+  --> tests/compile_fail/finding_cannot_be_assembled_field_by_field.rs:17:41
+   |
+17 |     let _by_default: Finding = Finding::default();
+   |                                         ^^^^^^^ associated function or constant not found in `Finding`
+
+error: cannot construct `Finding` with struct literal syntax due to private fields
+  --> tests/compile_fail/finding_cannot_be_assembled_field_by_field.rs:18:23
+   |
+18 |     let _by_literal = Finding {
+   |                       ^^^^^^^
+19 |         snapshot_id: "snap_a".to_owned(),
+   |         -------------------------------- private field
+   |
+   = note: ...and other private fields that were not provided
+help: you might have meant to use the `seal` associated function
+   |
+18 -     let _by_literal = Finding {
+19 -         snapshot_id: "snap_a".to_owned(),
+20 -     };
+18 +     let _by_literal = Finding::seal(_, _, _, _, _, _, _, _, _, _);
+   |
+
+error[E0599]: no associated function or constant named `new` found for struct `Finding` in the current scope
+  --> tests/compile_fail/finding_cannot_be_assembled_field_by_field.rs:21:28
+   |
+21 |     let _by_new = Finding::new();
+   |                            ^^^ associated function or constant not found in `Finding`
+   |
+help: there is a method `ne` with a similar name, but with different arguments
+  --> $RUST/core/src/cmp.rs

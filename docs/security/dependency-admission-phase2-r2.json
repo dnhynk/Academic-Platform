@@ -1,0 +1,36 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-h",
+  "task": "P2-R2",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-R2 admits no external crate. academic-repository-analysis links academic-model-run, academic-policy, academic-repository, academic-untrusted-content and thiserror as product edges and declares no dev edge, all covered by earlier reviewed receipts, and adds one workspace path package. Nothing links into a product binary that was not already there: the four workspace edges are path packages this repository already builds, and thiserror was admitted by the phase 1 receipt. Build-time-only additions are zero -- there is no build script, no proc macro beyond thiserror's, and no code generator.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-repository-analysis is the P2-R2 static-analysis boundary: section 17.3's third stage -- AST, symbol, call and data flow, schema, config and IaC indexing -- section 17.3's five-row evidence table folded onto the PRESENT_ONLY/POSSIBLE/OBSERVED vocabulary, section 18.1's five-value artifact scope, the vendored/generated/example/monorepo path classification, and the coverage gap that stands wherever a file kind has no reader. It is a separate package from academic-repository because that crate owns the gate and the frozen value and this one owns what an analysis may conclude from it; the direction of the edge is what keeps a snapshot constructible without an analyzer and an analysis impossible without a snapshot.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "no_parser_dependency_note": "Section 17.3 names AST indexing, which is where a parser generator or a language-server grammar would normally enter. None is admitted. The readers in crates/repository-analysis/src/extract.rs are hand-written and total over their input, in the same shape as this repository's own .gitignore parser and its data-record escaper, and what they do not model is reported as a typed coverage gap rather than left implicit. The trade is deliberate: a grammar suite would be several crates inside the boundary that reads untrusted repository bytes, it would still not cover section 17.1's manifest, lock, schema, container and pipeline formats, and 'the analyzer has no reader for this' is a contract this task has to state either way.",
+  "direct_workspace_dependencies": {
+    "academic-model-run": "CalibrationRegistry, RawScore, CalibratedConfidence and DisplayedConfidence. Section 17.3's third row requires a confidence to be shown beside an OBSERVED finding, and P2-M1's contract is that only CalibrationRegistry::interpret issues a CalibratedConfidence and only a CalibratedConfidence reaches DisplayedConfidence::of. The OBSERVED arm of this crate's private tier value holds a DisplayedConfidence, so an observed finding without a calibrated number has no representation; a rung that would be observed without a fresh dataset is refused rather than shown with a bare score.",
+    "academic-policy": "ContentDigest. A locator carries the blob digest the snapshot froze and a symbol fingerprint is a digest over path, kind and name, so the digest type is the one every other crate here uses rather than a second one.",
+    "academic-repository": "P2-R1's frozen RepositorySnapshot and its ManifestEntry. AnalysisInput::of takes the snapshot by reference and refuses a unit whose path is not a manifest row, whose bytes do not hash to that row's blobHash, or whose analyzer the snapshot's toolVersions does not record. An analysis therefore cannot exist without a completed permission and secret gate, and cannot be about bytes the snapshot did not freeze.",
+    "academic-untrusted-content": "P2-G5's SourceIndex. AnalysisInput::of refuses a unit whose byte digest is not sealed in it, so the analyzer reads exactly what was ingested as untrusted content. This crate cannot construct an Untrusted<T> -- the seal is private to that crate -- which is why it holds digests, spans and closed vocabularies rather than any text lifted out of a repository."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-repository-analysis",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-repository-analysis",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-repository-analysis is a workspace path crate, not an external dependency. It owns section 17.3's third stage and the tier table over its result: the fold from five observations onto three tier values, held in one total function and pinned as whole text; section 18.1's five artifact scopes with no unscoped value; the promotion axis, where exactly one of four path classes may raise a tier; and a coverage report that is total by construction, one outcome per index kind per manifest path, so a file the analyzer has no reader for produces a typed gap rather than silence. A finding has no public constructor, no Default and no repository-wide scope variant, and the one producer derives the scope from the evidence and emits one finding per component; four compile-fail cases in crates/scenario hold that by compilation. Its dependency set is minimal and the edges it does not have are the point: no academic-store, so a finding cannot reach the canonical writer; no academic-worker and no academic-egress-boundary, so nothing in its closure can launch a process or stage a payload.",
+  "network_posture": "The crate opens no socket, opens no file, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. It spells no std::fs name at all: the bytes it analyzes arrive as an argument, read by whoever ran P2-R1's gate. the_analysis_crate_touches_no_file_and_no_socket in crates/repository-analysis/tests/analysis_scans.rs compares the whole set of its use items against a pinned 20-entry inventory in both directions and runs a whole-identifier pass for filesystem and transport constructs over every file of the package, tests included; three separate injections -- a renamed use item, an absolute-path filesystem call with no use item, and an absolute-path transport type -- were each observed failing it. Its link closure holds nothing that can open a socket beyond libc, which reaches it through academic-policy's bundled SQLite, and only_egress_crate_has_a_socket in tools/phase1-scaffold-policy.test.mjs pins its socket allowance at absent. Every repository, snapshot, dependency name and runtime trace in its test tree is synthetic and built in process by a deterministic builder; no real repository is read and no network call is made.",
+  "advisory_path": "Unchanged. Every external crate academic-repository-analysis links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

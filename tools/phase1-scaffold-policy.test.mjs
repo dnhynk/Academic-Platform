@@ -346,6 +346,25 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-policy",
       "academic-untrusted-content",
     ],
+    // `P2-R2`'s static analysis and evidence ladder. Four product edges and
+    // each is a boundary it reuses rather than rebuilds: `P2-R1`'s frozen
+    // snapshot, which its input type takes by reference and which is what says
+    // an analysis cannot exist without a completed gate; `P2-G5`'s sealed
+    // index, which every analyzed unit's digest has to appear in; `P2-M1`'s
+    // calibration registry, which is the only producer of a displayable
+    // confidence; and `academic-policy` for `ContentDigest`. The edges it does
+    // not have are the point: no `academic-store`, so a finding cannot reach
+    // the canonical writer; no `academic-worker` and no
+    // `academic-egress-boundary`, so nothing in its closure can launch a
+    // process or stage a payload; and no `std::fs` at all, which
+    // `the_analysis_crate_touches_no_file_and_no_socket` holds as a whole-set
+    // comparison of its `use` items.
+    "academic-repository-analysis": [
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-untrusted-content",
+    ],
     "academic-repository-analyzer": ["academic-policy"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
     // rehearsal receipt. It sits above the key schedule and below the
@@ -470,7 +489,18 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // to the key schedule at all: the vault handle it seals through is opened
     // by its caller.
     "academic-transcript": ["academic-crypto"],
-    "academic-scenario": ["academic-admission", "academic-domain"],
+    // `P2-R2`'s `Finding` is the third type in this workspace whose
+    // construction is closed by compilation rather than by a check, beside
+    // `Proposed<T>` and `VerifiedAdmission`. Its four `compile_fail` cases live
+    // in this suite rather than in a fourth `compile_fail` target, so the
+    // README's verification block gains no command; a case compiles against the
+    // crate under test plus that crate's dev-dependencies, which is why the
+    // edge is here.
+    "academic-scenario": [
+      "academic-admission",
+      "academic-domain",
+      "academic-repository-analysis",
+    ],
     // `P2-M2` links its own domain crate a second time as a dev edge for the
     // `trybuild` reason `academic-scenario` gives above: a compile-fail case
     // compiles against the crate under test plus that crate's dev-dependencies,
@@ -2119,6 +2149,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   // is absent rather than empty; `GitHubRepositoryReader` is a trait with no
   // shipped implementation, the way `academic-egress-boundary`'s transport is.
   "academic-repository": ["libc"],
+  // `P2-R2`. `libc` reaches it through `academic-policy`'s bundled SQLite, the
+  // same way it reaches `P2-R1`. The crate spells no socket construct, which is
+  // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens
+  // nothing at all, and takes the bytes it analyzes as an argument.
+  "academic-repository-analysis": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-retention": ["libc"],
   "academic-rpc": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
@@ -3863,6 +3898,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     captureSubsystemReceiptText,
     ingestionReceiptText,
     curriculumReceiptText,
+    analysisReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3887,6 +3923,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-l2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u6.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-r2.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3911,6 +3948,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const captureSubsystemReceipt = JSON.parse(captureSubsystemReceiptText);
   const ingestionReceipt = JSON.parse(ingestionReceiptText);
   const curriculumReceipt = JSON.parse(curriculumReceiptText);
+  const analysisReceipt = JSON.parse(analysisReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -4789,6 +4827,68 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-R1 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-R2` adds one workspace path package, `academic-repository-analysis`,
+  // and admits no external crate: its product edges are `academic-model-run`,
+  // `academic-policy`, `academic-repository`, `academic-untrusted-content` and
+  // `thiserror`, all already in this lock through earlier receipts, and it
+  // declares no dev edge. Section 17.3 names AST indexing, which is where a
+  // parser generator would normally enter; none is admitted, and the receipt
+  // says why in `no_parser_dependency_note`.
+  assert.equal(analysisReceipt.task, "P2-R2");
+  const analysisAdmitted = new Set(
+    analysisReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const analysisPathPackages = new Set(
+    analysisReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(analysisAdmitted.size, 0, "P2-R2 must admit no external crate");
+  assert.deepEqual([...analysisPathPackages], ["academic-repository-analysis@0.1.0"]);
+  assert.deepEqual(analysisReceipt.summary.npm_additions, []);
+  assert.equal(analysisReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(analysisReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(analysisReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof analysisReceipt.no_parser_dependency_note, "string");
+  assert.deepEqual(Object.keys(analysisReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-model-run",
+    "academic-policy",
+    "academic-repository",
+    "academic-untrusted-content",
+  ]);
+  for (const claimed of [...analysisAdmitted, ...analysisPathPackages]) {
+    assert.equal(
+      keyPathPackages.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        recoveryPathPackages.has(claimed) ||
+        retentionPathPackages.has(claimed) ||
+        admissionPathPackages.has(claimed) ||
+        policyPathPackages.has(claimed) ||
+        processPathPackages.has(claimed) ||
+        transcriptPathPackages.has(claimed) ||
+        egressPathPackages.has(claimed) ||
+        recordPathPackages.has(claimed) ||
+        sandboxPathPackages.has(claimed) ||
+        untrustedPathPackages.has(claimed) ||
+        consentPathPackages.has(claimed) ||
+        modelRunPathPackages.has(claimed) ||
+        capturePathPackages.has(claimed) ||
+        proposalPathPackages.has(claimed) ||
+        desktopPathPackages.has(claimed) ||
+        repositoryPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const analysisTuples = lockTuples.filter(
+    ([name, version]) =>
+      analysisAdmitted.has(`${name}@${version}`) ||
+      analysisPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    analysisTuples.length,
+    analysisAdmitted.size + analysisPathPackages.size,
+    "a P2-R2 admitted package is missing from Cargo.lock",
+  );
+
   // `P2-L2` adds one workspace path package, `academic-capture`, and admits no
   // external crate: its product edges are `academic-consent`, `academic-domain`
   // and `thiserror`, and its one dev edge is `tempfile`, all already in this
@@ -4937,7 +5037,12 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       ingestionAdmitted.has(claimed) ||
         ingestionPathPackages.has(claimed) ||
         repositoryAdmitted.has(claimed) ||
-        repositoryPathPackages.has(claimed),
+        repositoryPathPackages.has(claimed) ||
+        // `P2-R2` landed beside `P2-U1`. The pair is checked here rather than
+        // in both blocks because this one is evaluated second: `analysisAdmitted`
+        // exists by now and `curriculumAdmitted` does not yet exist up there.
+        analysisAdmitted.has(claimed) ||
+        analysisPathPackages.has(claimed),
       false,
       `${claimed} is claimed by two admission receipts`,
     );
@@ -4997,6 +5102,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !ingestionPathPackages.has(`${name}@${version}`) &&
       !curriculumAdmitted.has(`${name}@${version}`) &&
       !curriculumPathPackages.has(`${name}@${version}`),
+      !analysisAdmitted.has(`${name}@${version}`) &&
+      !analysisPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -5029,6 +5136,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       captureSubsystemTuples.length +
       ingestionTuples.length +
       curriculumTuples.length,
+      analysisTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

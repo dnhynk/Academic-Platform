@@ -362,6 +362,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-repository-analysis"
+version = "0.1.0"
+dependencies = [
+ "academic-model-run",
+ "academic-policy",
+ "academic-repository",
+ "academic-untrusted-content",
+ "thiserror",
+]
+
+[[package]]
 name = "academic-repository-analyzer"
 version = "0.1.0"
 dependencies = [
@@ -402,6 +413,7 @@ version = "0.1.0"
 dependencies = [
  "academic-admission",
  "academic-domain",
+ "academic-repository-analysis",
  "proptest",
  "serde",
  "serde_json",
