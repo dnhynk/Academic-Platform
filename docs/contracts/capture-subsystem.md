@@ -139,7 +139,9 @@ public signatures that accept a `SessionTick`, each with the reason above, so a
 third seam has to answer the question rather than inherit the clock's guarantee
 by association. So: **no frame in a journal carries an instant earlier than the
 frame before it from the same clock**, and that is now a comparison rather than a
-consequence.
+consequence. What it compares is the instant and not the clock's sequence
+number: two ticks can share an instant and a caller can have a reason to record
+the later-minted one first, and the timeline is the same either way.
 
 **Across clocks there is nothing to compare, and a resume is that case.** The
 resumed session starts a new clock at its own origin, so its first frame's
@@ -387,7 +389,7 @@ the frames already written stay whole.
 |---|---|---|
 | C-7 | Nothing writes migration `0006`'s rows. This is the consent contract's `C-2`, restated a second time because `P2-L1`'s `C-5` named "`P2-L2`'s chunk journal" as when it starts mattering. The journal does survive a restart — but the permission behind it does not: `begin` and `resume` both read an in-memory `ConsentLedger`. **This task did not close it either.** | A capture that has to re-bind after the daemon restarts, which is a resume that outlives the process that held the ledger. |
 | C-8 | The journal frames are plaintext on disk. The chain detects truncation and corruption; it is not a signature and it is not encryption. Sealing them under `AEAD_CHUNKED_V2` would put `academic-crypto` and the `aead-objects` lane in this crate's graph, which is a dependency admission this task does not make. | The first capture of a real recording, which admission has not opened: `production_data_allowed` is `false`. |
-| C-9 | The per-chunk re-binding is written twice — here and in `academic-capture-gate` — because no workspace crate may depend on that package. So is the rule that a recorded instant may not go backwards: this crate compares frames against the last one from the same clock and that crate compares a chunk against the session's highest accepted instant, and the two comparisons share no code. Both call `academic-consent`'s one binding and neither adds a comparison, so what is duplicated is the *call sequence* rather than the decision; but a change to the sequence has to be made in two places, and only each crate's own pins would notice. | A third capture surface, or a change to when a capture re-binds. Closing it means a fourth crate holding the sequence that both depend on. |
+| C-9 | The per-chunk re-binding is written twice — here and in `academic-capture-gate` — because no workspace crate may depend on that package. Both call `academic-consent`'s one binding and neither adds a comparison, so what is duplicated is the *call sequence* rather than the decision; but a change to the sequence has to be made in two places, and only each crate's own pins would notice. **`T161` made that two rules rather than one**: the rule that a recorded instant may not go backwards is held here by a frame comparison against the last frame from the same clock and there by a chunk comparison against the session's highest accepted instant, and those two share no code either. | A third capture surface, or a change to when a capture re-binds. Closing it means a fourth crate holding the sequence that both depend on. |
 | C-10 | Two independent processes that each start a *first* session clock for the same lecture under the same capability token derive the same `SessionClockDomain`. Within a process the ordinal separates them and across a resume the predecessor digest does; this is the case neither covers. | Two capture processes writing one journal, which no code here does — a journal is created by one `begin` and refuses to overwrite an existing file. |
 
 ### Closed

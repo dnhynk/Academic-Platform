@@ -167,9 +167,11 @@ can arrive, and only the binding sees all three.
 refusal opens a `TimelineGap` at `now`; a backwards `now` allowed through to it
 would put the gap itself earlier than a chunk already recorded, which is the
 same backwards timeline one layer over. Refusing first means no instant below
-the mark reaches anything this session stores. It is not a way past the
-boundary: a chunk the order check refuses is not recorded at all, so nothing
-crosses, and `seal` re-binds whatever was recorded regardless.
+the mark reaches the chunk list or the gap. It does reach the **audit row**,
+whose `recorded_at` is the instant that was offered — that is the evidence, and
+it is the one place a backwards instant belongs. It is not a way past the
+boundary either: a chunk the order check refuses is not recorded at all, so
+nothing crosses, and `seal` re-binds whatever was recorded regardless.
 
 **An ordering refusal is not a stop and not a quarantine.** What a backwards
 reading says is that the caller's clock moved, not that the permission ended, so
@@ -188,11 +190,14 @@ the system knows when it stopped and does not know when the lecture ended, and
 writing an end it inferred would be the silent re-timestamping section 34.1
 forbids one row above.
 
-`seal` asks the question neither of the first two can: whether every chunk that
-*was* recorded re-binds at its own instant. That is what makes the second
+`seal` asks the question none of the others can: whether every chunk that *was*
+recorded re-binds at its own instant. That is what makes the binding check
 falsifiable — delete the `continue_capture` call from `record_chunk` and chunks
 keep being appended past the boundary, and the seal then finds the first one
-that does not re-bind. Injection `L-I1` is that observation, and it is caught by
+that does not re-bind. The ordering check has no such second observer, because a
+chunk it refuses is never recorded and there is nothing left to reconcile; what
+stands in for one is `the_capture_gate_appends_a_chunk_from_one_place`, which
+holds that `record_chunk` is the only path that appends a chunk at all. Injection `L-I1` is that observation, and it is caught by
 two independent mechanisms rather than by the check it deleted.
 
 Fault `CP01` is the clean case: a permission that expires mid-lecture stops the
