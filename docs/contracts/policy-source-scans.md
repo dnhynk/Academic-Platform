@@ -60,8 +60,22 @@ middle segment — the `b` of `a::b::c` — so that one path yields one key, and
 skipped a **leading** `::` for the same reason: `::std::path::Path::new(p)
 .metadata()` opens the filesystem, spells none of the eleven, adds no `use`
 item, and passed the repaired guard. A leading `::` is not a middle segment, and
-what tells them apart is the byte before the `::`. `P2-RF11`'s sentence held
-again: assume there is one more.
+what tells them apart is the byte before the `::`.
+
+And then twice more, both about whitespace, because Rust allows it inside a path
+and around a macro's `!`: `std :: path :: Path::new(p).metadata()` and
+`include_str! ("x")` each compiled and each passed. The extractors now read a
+view with exactly that whitespace removed. Deleting **all** whitespace was tried
+first and is wrong in the one direction that matters — it joins unrelated
+tokens, so `… Formatter and core::str …` becomes `…Formatterandcore::str…`,
+`core` stops being a whole identifier, and the key **disappears**; a
+normalisation that can hide a key is worse than the hole it closes. Tightening
+the left side of a `!` then read `if !(x)` as a macro named `if`, which a
+keyword filter answers: a keyword is not a name a macro may have.
+
+Six vacuous passes in one guard, each found by injecting the shape the previous
+repair did not cover. `P2-RF11`'s sentence held every time: assume there is one
+more.
 
 A pin fixes the decision sites that exist. It does not forbid a *new* one, so a
 pin needs a companion: an allowance table that counts the authority tokens the

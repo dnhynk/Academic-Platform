@@ -950,6 +950,47 @@ fn no_public_accessor_hands_out_analyzed_text() -> TestResult {
     Ok(())
 }
 
+/// `code` with the whitespace that sits inside a path or a macro call removed.
+///
+/// Rust allows whitespace inside a path and between a macro's `!` and its
+/// delimiter, and both were measured slipping past the two extractors below:
+/// `std :: path :: Path::new(p).metadata()` opens the filesystem and
+/// `include_str! ("x")` reads a file, and each compiled and passed.
+///
+/// It closes exactly those two gaps and nothing wider. Deleting **all**
+/// whitespace was tried first and is wrong in the one direction that matters:
+/// it joins unrelated tokens, and `… Formatter and core::str …` becomes
+/// `…Formatterandcore::str…`, where `core` is no longer a whole identifier and
+/// the key **disappears**. A transform that can hide a key is worse than the
+/// hole it closes. `the_helpers_are_not_vacuous` carries that case.
+fn tighten(code: &str) -> String {
+    let mut out = String::with_capacity(code.len());
+    let mut rest = code;
+    while let Some(at) = rest.find(char::is_whitespace) {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        let stop = tail
+            .find(|character: char| !character.is_whitespace())
+            .unwrap_or(tail.len());
+        let after = &tail[stop..];
+        // The run is inside a path or a macro call exactly when a `::` or a `!`
+        // ends what came before it, or a `::` or a `!` starts what follows.
+        // `foo ! (x)` and `foo! (x)` are both macro calls, so both sides of the
+        // `!` are tightened; `a != b` and `if !flag` survive it, because the
+        // extractor still requires a delimiter immediately after the `!`.
+        let joins = out.ends_with("::")
+            || out.ends_with('!')
+            || after.starts_with("::")
+            || after.starts_with('!');
+        if !joins {
+            out.push(' ');
+        }
+        rest = after;
+    }
+    out.push_str(rest);
+    out
+}
+
 /// Every two-segment path `code` spells through a crate root.
 ///
 /// The first segment has to be a crate root this package can name, so a field
@@ -958,6 +999,7 @@ fn no_public_accessor_hands_out_analyzed_text() -> TestResult {
 /// `std::path::Path` — which is the shape that needs no `use` item.
 fn absolute_paths(code: &str) -> BTreeSet<String> {
     let roots = ["std", "core", "alloc", "thiserror"];
+    let code = &tighten(code);
     let bytes = code.as_bytes();
     let mut found = BTreeSet::new();
     for (at, _) in code.match_indices("::") {
@@ -1005,6 +1047,7 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
 
 /// Every macro `code` invokes, by name.
 fn macros_spelled(code: &str) -> BTreeSet<String> {
+    let code = &tighten(code);
     let bytes = code.as_bytes();
     let mut found = BTreeSet::new();
     for (at, _) in code.match_indices('!') {
@@ -1021,10 +1064,17 @@ fn macros_spelled(code: &str) -> BTreeSet<String> {
         if start == at {
             continue;
         }
-        // `a != b` and `x !(y)` are not macro calls; a macro name starts with a
-        // lower-case letter or an underscore in every one this crate uses.
-        if bytes[start].is_ascii_lowercase() || bytes[start] == b'_' {
-            found.insert(code[start..at].to_owned());
+        // A macro name is an identifier, and a keyword is not one — `if !(x)`
+        // tightens to `if!(x)` and would otherwise read as a macro called `if`.
+        // Excluding keywords cannot hide a real macro, because none of these is
+        // a name a macro may have.
+        let name = &code[start..at];
+        let keyword = matches!(
+            name,
+            "if" | "while" | "for" | "match" | "return" | "else" | "let" | "in"
+        );
+        if !keyword && (bytes[start].is_ascii_lowercase() || bytes[start] == b'_') {
+            found.insert(name.to_owned());
         }
     }
     found
@@ -1148,11 +1198,34 @@ fn the_helpers_are_not_vacuous() -> TestResult {
         absolute_paths("let _ = ::std::path::Path::new(p);"),
         BTreeSet::from(["std::path".to_owned()])
     );
+    // Whitespace inside a path and between a macro's `!` and its delimiter.
+    // Both compiled and both passed before `without_whitespace` existed.
+    assert_eq!(
+        absolute_paths("let _ = std :: path :: Path::new(p);"),
+        BTreeSet::from(["std::path".to_owned()])
+    );
+    assert_eq!(
+        macros_spelled("include_str! (\"x\")"),
+        BTreeSet::from(["include_str".to_owned()])
+    );
+    assert_eq!(tighten("a :: b !\n("), "a::b!(");
+    // The case that rules out deleting all whitespace: joining `and` onto
+    // `core` would stop `core` being a whole identifier and the key would
+    // vanish, which is the one direction a normalisation must not fail in.
+    assert_eq!(
+        tighten("Formatter and core::str::from_utf8"),
+        "Formatter and core::str::from_utf8"
+    );
+    assert_eq!(
+        macros_spelled("return format!(x); if !flag { }"),
+        BTreeSet::from(["format".to_owned()])
+    );
     assert_eq!(
         macros_spelled("let s = include_str!(\"x\"); format!(\"y\");"),
         BTreeSet::from(["include_str".to_owned(), "format".to_owned()])
     );
     assert_eq!(macros_spelled("if a != b { }"), BTreeSet::new());
+    assert_eq!(macros_spelled("if !(a || b) { }"), BTreeSet::new());
     assert_eq!(REACHED_PATHS.len(), 4);
     assert_eq!(MACROS_SPELLED.len(), 4);
     assert_eq!(FORBIDDEN_CONSTRUCTS.len(), 11);
