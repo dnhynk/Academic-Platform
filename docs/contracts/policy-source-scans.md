@@ -1971,7 +1971,7 @@ are each required to be absent.
 
 What replaces the edge claim is a **closed world over path roots**: every
 identifier the crate's product source writes a `::` after, compared in both
-directions against a forty-entry allowlist in which `academic_untrusted_content`,
+directions against a thirty-four-entry allowlist in which `academic_untrusted_content`,
 `academic_egress_boundary`, `academic_policy`, `std`, `alloc`, `libc` and
 `rusqlite` do not appear. It is read on paths rather than on `use` items, so a
 fully qualified `academic_egress_boundary::Preview` is refused even though the
