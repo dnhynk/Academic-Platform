@@ -5606,7 +5606,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
         transcriptionAdmitted.has(claimed) ||
         transcriptionPathPackages.has(claimed) ||
         correlationAdmitted.has(claimed) ||
-        correlationPathPackages.has(claimed),
+        correlationPathPackages.has(claimed) ||
+        classificationAdmitted.has(claimed) ||
+        classificationPathPackages.has(claimed),
       false,
       `${claimed} is claimed by two admission receipts`,
     );
@@ -6281,4 +6283,54 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     workspacePackages.every((pkg) => workspaceIds.has(pkg.id)),
     "workspace package identity mismatch",
   );
+});
+
+test("no two admission receipts claim the same package", async () => {
+  // `T174` reported that `P2-R4` and `P2-X7` cross-check each other in neither
+  // direction. Enumerating the whole pair set says they are one of **161** pairs
+  // no cascading clause above reaches: those clauses cover 217 of the 378
+  // ordered pairs twenty-eight receipts make, and a block can only ever name the
+  // ones declared before it, so the coverage is a function of declaration order
+  // rather than of anything anybody decided. `T173` and `T174` each closed one
+  // pair by hand; a hundred and sixty-one is not that shape.
+  //
+  // So the pairs are not written out here. Every receipt in `docs/security` is
+  // read off disk, every package each one claims is collected, and a package
+  // two of them claim is reported by name with both tasks. That is the property
+  // the clauses approximate, and a receipt added after this line is in it
+  // without anybody editing this test -- including one nobody wires into
+  // `dependency_license_and_source_receipt_is_complete` at all.
+  //
+  // The tuple-sum assertion in that test is a backstop and not this: a real
+  // double claim leaves the sum short by one and it reports `259 !== 260`,
+  // naming neither the package nor either task.
+  const directory = "docs/security";
+  const files = (await readdir(directory))
+    .filter((name) => name.startsWith("dependency-admission-") && name.endsWith(".json"))
+    .toSorted();
+  assert.ok(
+    files.length >= 28,
+    `expected every admission receipt to be read, found ${files.length}: ${files.join(", ")}`,
+  );
+  const claimants = new Map();
+  const collisions = [];
+  for (const file of files) {
+    const receipt = JSON.parse(await readFile(join(directory, file), "utf8"));
+    const task = typeof receipt.task === "string" ? receipt.task : file;
+    const claimed = [
+      ...(receipt.admissions ?? []).map((entry) => `${entry.name}@${entry.version}`),
+      ...(receipt.added_workspace_path_packages ?? []).map(
+        (entry) => `${entry.name}@${entry.version}`,
+      ),
+    ];
+    for (const one of new Set(claimed)) {
+      const first = claimants.get(one);
+      if (first === undefined) {
+        claimants.set(one, task);
+      } else {
+        collisions.push(`${one} is claimed by two admission receipts: ${first} and ${task}`);
+      }
+    }
+  }
+  assert.deepEqual(collisions.toSorted(), [], collisions.join("\n"));
 });
