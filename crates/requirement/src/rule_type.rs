@@ -286,7 +286,10 @@ pub const SPEC_PROSE_CATEGORIES: [(&str, &[RuleType]); 12] = [
     ("maximum recognition", &[RuleType::MaximumRecognition]),
     ("GPA", &[RuleType::GpaMinimum]),
     ("non-credit training", &[RuleType::NonCreditTraining]),
-    ("language-of-instruction", &[RuleType::LanguageOfInstruction]),
+    (
+        "language-of-instruction",
+        &[RuleType::LanguageOfInstruction],
+    ),
     ("thesis/research", &[RuleType::ThesisResearch]),
     ("exception approval", &[RuleType::ExceptionApproval]),
 ];

@@ -463,7 +463,9 @@ impl RuleBody {
                 minimum, counted, ..
             } => {
                 if *minimum == 0 {
-                    return Err(malformed("COUNT_WITH_CONSTRAINTS with minimum 0 requires nothing"));
+                    return Err(malformed(
+                        "COUNT_WITH_CONSTRAINTS with minimum 0 requires nothing",
+                    ));
                 }
                 if counted.is_empty() {
                     return Err(malformed("COUNT_WITH_CONSTRAINTS ranges over no course"));
@@ -471,7 +473,9 @@ impl RuleBody {
             }
             Self::AreaDistribution { areas } => {
                 if areas.is_empty() {
-                    return Err(malformed("AREA_DISTRIBUTION over no area is a total, not a distribution"));
+                    return Err(malformed(
+                        "AREA_DISTRIBUTION over no area is a total, not a distribution",
+                    ));
                 }
             }
             Self::CoRequisite {
@@ -497,7 +501,9 @@ impl RuleBody {
             }
             Self::LanguageOfInstruction { minimum, .. } => {
                 if *minimum == 0 {
-                    return Err(malformed("LANGUAGE_OF_INSTRUCTION with minimum 0 requires nothing"));
+                    return Err(malformed(
+                        "LANGUAGE_OF_INSTRUCTION with minimum 0 requires nothing",
+                    ));
                 }
             }
             Self::GpaMinimum { threshold, .. } => {
