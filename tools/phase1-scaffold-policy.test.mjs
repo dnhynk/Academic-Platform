@@ -515,6 +515,26 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // are optional target-specific edges behind the non-default
     // `native-sandbox` feature and are not workspace packages, so they appear
     // in `SOCKET_CAPABLE_CLOSURES` below rather than here.
+    // `P2-N2`'s section 13 knowledge state. Four product edges and each is a
+    // boundary it reads a fact out of rather than a vocabulary it restates:
+    // `academic-domain` for section 13.1's `MasteryLevel`, section 13.3's
+    // `FreshnessBand` and ADR-003's actor matrix, which is what makes a user
+    // confirmation unmintable by a model run; `academic-ledger` for `P2-M3`'s
+    // `ConflictReason`, so the review card carries the conflict token section
+    // 30.3 already fixed rather than a second one; `academic-lecture-document`
+    // so a teaching site is a node of a real `P2-L4` document rather than a
+    // string; and `academic-repository-classification` so the difference between
+    // section 13.2's fourth and seventh rows is `P2-R4`'s `ObservedProof`
+    // rather than a heuristic. The edges it does not have are the point: no
+    // `academic-store` -- it persists nothing and adds no migration -- and no
+    // `academic-worker` and no `academic-egress-boundary`, so nothing in its
+    // closure can launch a process or stage a payload.
+    "academic-knowledge-state": [
+      "academic-domain",
+      "academic-lecture-document",
+      "academic-ledger",
+      "academic-repository-classification",
+    ],
     "academic-worker": ["academic-domain"],
   });
   const graph = new Map(Object.entries(actual));
@@ -651,6 +671,25 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-repository-classification": [
       "academic-model-run",
       "academic-repository",
+      "academic-untrusted-content",
+    ],
+    // `P2-N2`'s acceptance suite builds its lecture evidence by driving a real
+    // `P2-L2` capture and a real `P2-L3` run, and its project evidence by
+    // driving `P2-R1`'s capture, `P2-R2`'s ladder and `P2-R3`'s correlation,
+    // rather than fabricating a document node or a relation edge. Every edge
+    // here is one of those two chains. `academic-policy` is a test edge rather
+    // than a product one, which is what makes "this crate mints no grant and
+    // holds no broker" a compile error rather than a source scan.
+    "academic-knowledge-state": [
+      "academic-capture",
+      "academic-consent",
+      "academic-domain",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-repository-analysis",
+      "academic-repository-correlation",
+      "academic-transcription",
       "academic-untrusted-content",
     ],
   });
@@ -2349,6 +2388,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   // `P2-M2`. `libc` reaches it through the domain crate's own closure; this
   // crate has no edge to the policy, store, egress or worker packages at all.
   "academic-proposal": ["libc"],
+  // `P2-N2`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `P2-R1` and `P2-R4`. The crate spells no socket construct, which is
+  // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens
+  // nothing at all, reads no clock, and takes every evidence input as an
+  // argument.
+  "academic-knowledge-state": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -4190,6 +4235,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     centerReceiptText,
     lectureReceiptText,
     classificationReceiptText,
+    knowledgeStateReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4221,6 +4267,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-x7.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l4.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r4.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-n2.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -4252,6 +4299,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const centerReceipt = JSON.parse(centerReceiptText);
   const lectureReceipt = JSON.parse(lectureReceiptText);
   const classificationReceipt = JSON.parse(classificationReceiptText);
+  const knowledgeStateReceipt = JSON.parse(knowledgeStateReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -5682,6 +5730,98 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-L4 admitted package is missing from Cargo.lock",
   );
 
+
+  // `P2-N2` adds one workspace path package, `academic-knowledge-state`, and
+  // admits no external crate: its product edges are `academic-domain`,
+  // `academic-ledger`, `academic-lecture-document`,
+  // `academic-repository-classification`, `serde` and `thiserror`, and its dev
+  // edges are the two fixture chains plus `serde_json`, `tempfile`, `trybuild`
+  // and `uuid`, all already in this lock through earlier receipts. The
+  // `academic-ledger` edge is the one that needs a reason and the receipt
+  // carries it: section 13.4's conflict is the one section 30.3 already
+  // resolved, so the card this crate opens carries `P2-M3`'s
+  // `NEW_EVIDENCE_CONFLICT` rather than a second token.
+  assert.equal(knowledgeStateReceipt.task, "P2-N2");
+  const knowledgeStateAdmitted = new Set(
+    knowledgeStateReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const knowledgeStatePathPackages = new Set(
+    knowledgeStateReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(knowledgeStateAdmitted.size, 0, "P2-N2 must admit no external crate");
+  assert.deepEqual([...knowledgeStatePathPackages], ["academic-knowledge-state@0.1.0"]);
+  assert.deepEqual(knowledgeStateReceipt.summary.npm_additions, []);
+  assert.equal(knowledgeStateReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(knowledgeStateReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(knowledgeStateReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof knowledgeStateReceipt.no_second_ladder_note, "string");
+  assert.deepEqual(Object.keys(knowledgeStateReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-lecture-document",
+    "academic-ledger",
+    "academic-repository-classification",
+  ]);
+  assert.deepEqual(Object.keys(knowledgeStateReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-consent",
+    "academic-model-run",
+    "academic-policy",
+    "academic-repository",
+    "academic-repository-analysis",
+    "academic-repository-correlation",
+    "academic-transcription",
+    "academic-untrusted-content",
+    "serde_json",
+    "tempfile",
+    "trybuild",
+    "uuid",
+  ]);
+  // This block reads last, so it is the only one that can name every earlier
+  // receipt's sets. `3f8859f` measured why the direction matters: a block that
+  // names a set declared below it fails with a temporal-dead-zone
+  // `ReferenceError` rather than with a duplicate-claim message.
+  for (const claimed of [...knowledgeStateAdmitted, ...knowledgeStatePathPackages]) {
+    assert.equal(
+      analysisAdmitted.has(claimed) ||
+        analysisPathPackages.has(claimed) ||
+        curriculumAdmitted.has(claimed) ||
+        curriculumPathPackages.has(claimed) ||
+        ingestionAdmitted.has(claimed) ||
+        ingestionPathPackages.has(claimed) ||
+        captureSubsystemAdmitted.has(claimed) ||
+        captureSubsystemPathPackages.has(claimed) ||
+        requirementAdmitted.has(claimed) ||
+        requirementPathPackages.has(claimed) ||
+        transcriptionAdmitted.has(claimed) ||
+        transcriptionPathPackages.has(claimed) ||
+        correlationAdmitted.has(claimed) ||
+        correlationPathPackages.has(claimed) ||
+        centerAdmitted.has(claimed) ||
+        centerPathPackages.has(claimed) ||
+        classificationAdmitted.has(claimed) ||
+        classificationPathPackages.has(claimed) ||
+        lectureAdmitted.has(claimed) ||
+        lecturePathPackages.has(claimed) ||
+        repositoryAdmitted.has(claimed) ||
+        repositoryPathPackages.has(claimed) ||
+        scenarioAdmitted.has(claimed) ||
+        scenarioPathPackages.has(claimed) ||
+        modelRunAdmitted.has(claimed) ||
+        modelRunPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const knowledgeStateTuples = lockTuples.filter(
+    ([name, version]) =>
+      knowledgeStateAdmitted.has(`${name}@${version}`) ||
+      knowledgeStatePathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    knowledgeStateTuples.length,
+    knowledgeStateAdmitted.size + knowledgeStatePathPackages.size,
+    "a P2-N2 admitted package is missing from Cargo.lock",
+  );
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -5739,7 +5879,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !lectureAdmitted.has(`${name}@${version}`) &&
       !lecturePathPackages.has(`${name}@${version}`) &&
       !classificationAdmitted.has(`${name}@${version}`) &&
-      !classificationPathPackages.has(`${name}@${version}`),
+      !classificationPathPackages.has(`${name}@${version}`) &&
+      !knowledgeStateAdmitted.has(`${name}@${version}`) &&
+      !knowledgeStatePathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -5778,7 +5920,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       correlationTuples.length +
       centerTuples.length +
       lectureTuples.length +
-      classificationTuples.length,
+      classificationTuples.length +
+      knowledgeStateTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -6124,10 +6267,27 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    // `P2-N2`. Its acceptance suite drives the same real capture `P2-L4`'s does,
+    // so it writes a real journal into a temporary directory. `serde_json`,
+    // `trybuild` and `uuid` are on the Phase 1 receipt rather than this one, so
+    // only `tempfile` gains an owner here.
+    const n2KnowledgeStateUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-knowledge-state",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : [];
     const expectedUses = [
       ...admission.uses,
       ...l3TranscriptionUse,
       ...l4LectureDocumentUse,
+      ...n2KnowledgeStateUse,
       ...r1RepositoryUse,
       ...l2CaptureUse,
       ...g4SandboxUse,
