@@ -1,0 +1,63 @@
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+  --> tests/compile_fail/a_chain_step_cannot_be_skipped.rs:34:17
+   |
+34 |     let _need = ConcreteNeed::shown_by(NeedKind::FailureScenario, &name(), sites());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ ------------------------- argument #1 of type `academic_repository_classification::CurrentBasis` is missing
+   |
+note: associated function defined here
+  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+   |
+   |     pub fn shown_by(
+   |            ^^^^^^^^
+help: provide the argument
+   |
+34 |     let _need = ConcreteNeed::shown_by(/* academic_repository_classification::CurrentBasis */, NeedKind::FailureScenario, &name(), sites());
+   |                                        +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> tests/compile_fail/a_chain_step_cannot_be_skipped.rs:36:22
+   |
+36 |     let _mechanism = ControllingMechanism::controlling(&name());
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ------- argument #1 of type `academic_repository_classification::ConcreteNeed` is missing
+   |
+note: associated function defined here
+  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+   |
+   |     pub fn controlling(need: ConcreteNeed, name: &SubjectId) -> Self {
+   |            ^^^^^^^^^^^
+help: provide the argument
+   |
+36 |     let _mechanism = ControllingMechanism::controlling(/* academic_repository_classification::ConcreteNeed */, &name());
+   |                                                        +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> tests/compile_fail/a_chain_step_cannot_be_skipped.rs:38:20
+   |
+38 |     let _concept = RequiredConcept::realizing(&name(), EntityKind::Concept);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ ------- argument #1 of type `academic_repository_classification::ControllingMechanism` is missing
+   |
+note: associated function defined here
+  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+   |
+   |     pub fn realizing(
+   |            ^^^^^^^^^
+help: provide the argument
+   |
+38 |     let _concept = RequiredConcept::realizing(/* academic_repository_classification::ControllingMechanism */, &name(), EntityKind::Concept);
+   |                                               +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> tests/compile_fail/a_chain_step_cannot_be_skipped.rs:40:18
+   |
+40 |     let _chain = ProofChain::closed_by(gap());
+   |                  ^^^^^^^^^^^^^^^^^^^^^ ----- argument #1 of type `academic_repository_classification::RequiredConcept` is missing
+   |
+note: associated function defined here
+  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+   |
+   |     pub const fn closed_by(concept: RequiredConcept, gap: UserEvidenceGap) -> Self {
+   |                  ^^^^^^^^^
+help: provide the argument
+   |
+40 |     let _chain = ProofChain::closed_by(/* academic_repository_classification::RequiredConcept */, gap());
+   |                                        ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

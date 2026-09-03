@@ -24,6 +24,10 @@ academic-admission = { path = "../admission" }
 # `VerifiedAdmission`. Its cases live in this suite rather than in a fourth
 # `compile_fail` target so the README's verification block gains no command.
 academic-repository-analysis = { path = "../repository-analysis" }
+# `P2-R4`'s five-step proof chain is the fourth. Its cases join this suite for
+# the same reason `P2-R2`'s did: a fifth `compile_fail` target would add a
+# command to the README's verification block.
+academic-repository-classification = { path = "../repository-classification" }
 proptest.workspace = true
 serde_json.workspace = true
 trybuild.workspace = true
