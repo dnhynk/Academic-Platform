@@ -1,0 +1,12 @@
+error[E0597]: `discovered` does not live long enough
+  --> tests/compile_fail/a_fetch_target_cannot_be_built_at_run_time.rs:11:44
+   |
+10 |     let discovered: String = String::from("official/cse/found-in-the-page");
+   |         ---------- binding `discovered` declared here
+11 |     let _target = DeclaredTarget::declared(&discovered);
+   |                   -------------------------^^^^^^^^^^^-
+   |                   |                        |
+   |                   |                        borrowed value does not live long enough
+   |                   argument requires that `discovered` is borrowed for `'static`
+12 | }
+   | - `discovered` dropped here while still borrowed

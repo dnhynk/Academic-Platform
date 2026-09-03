@@ -1,0 +1,35 @@
+[package]
+name = "academic-ingestion"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Three product edges and no fourth.
+#
+# `academic-domain` supplies `ContentDigest` and the proof-tree `RuleId` an
+# invalidated requirement already cites, so a rule this crate reads out of an
+# official document is the same identifier the audit path names.
+#
+# `academic-untrusted-content` supplies `Untrusted<T>`. `P2-G5` owns the trust
+# label; this crate reuses it rather than declaring a second one, which is why
+# the only public route from a snapshot to its bytes returns
+# `Untrusted<IngestedDocument>`.
+#
+# There is deliberately no HTTP, TLS, browser, image, or audio edge. The fetch
+# is a caller-supplied trait, exactly as `academic-egress-boundary` takes its
+# `OutboundTransport`, so this crate contains no transport at all.
+# `this_crate_links_no_transport_and_no_decoder` pins the whole resolved
+# closure, and `WORKSPACE_EDGES` in `tools/phase1-scaffold-policy.test.mjs`
+# pins the declared map.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-untrusted-content = { path = "../untrusted-content" }
+thiserror.workspace = true
+
+[dev-dependencies]
+trybuild.workspace = true
+
+[lints]
+workspace = true

@@ -335,6 +335,26 @@ where the execution plan's section references do not resolve, is in
 [the proposal review queue](docs/contracts/proposal-review-queue.md). It runs
 inside `cargo test --workspace` and adds no external package to `Cargo.lock`.
 
+`P2-U6`'s official-source ingestion lives in `academic-ingestion`. Section
+29.1's nine stages are nine types whose argument chain makes the order a compile
+error to break, and each stage's failure is exercised on its own so that a run
+that failed publishes nothing. A connector declares section 29.1's nine fields
+and `build` refuses each one dropped in turn; a fetch target is `&'static` and a
+credential binding has no public constructor, so a link found inside a fetched
+page can become neither. A document whose effective date is missing is
+`UNSCOPED_OFFICIAL_SOURCE` and cannot be published, because the publisher's
+argument type has no value for it. Competing sources are compared on section
+8.4's five dimensions — legal hierarchy, issuance date, effective date, target
+scope, transitional measures — and **no function anywhere reduces those five to a
+winner**: a `ConflictCase` stays `INDETERMINATE` until a person decides. Every
+denial offers the same four fallbacks and routes nowhere else. The crate holds no
+transport, persists nothing, adds no migration, and reuses `P2-G5`'s
+`Untrusted<T>` as the one public route to a snapshot's bytes. `GATE-38-020` and
+`GATE-38-027` stay open, and Phase 2 ships manual import and user-provided export
+with no browser automation module. What it does and does not claim is in
+[official source ingestion](docs/contracts/official-source-ingestion.md). It runs
+inside `cargo test --workspace` and adds no external package to `Cargo.lock`.
+
 `P2-K5`'s rotation journal, recipient revocation, crypto-shred, and retention
 vocabulary live in `academic-retention`. Where a rotation moves the canonical
 object reference and where a deletion reaches a backup are in the encrypted

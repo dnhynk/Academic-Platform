@@ -105,6 +105,7 @@ remove.
 | `phase1_exit_has_no_product_network` — `crates/daemon/tests/phase1_exit.rs` | recursive, **every `.rs` under every crate's package** except `test-support`, less each package's `tests`, less the sandbox probe | 10 networking tokens, paired with an independent link scan of the built default-feature `academicd` image for 8 symbol byte sequences | `scanned >= 200` |
 | `no_float_reaches_the_gpa_path` — `crates/record/tests/record_scans.rs` | recursive, the whole `crates/record` package less `tests`, so `examples/` and any `benches/` are read | not a token list: a float *type* under any spelling, a decimal-point literal, and an exponent literal, over code with comments and string literals removed; five evasion samples are run through the check inside the test and each must be caught | `>= 11` files, plus a tripwire that every `pub mod name;` in `lib.rs` is a file the walk read |
 | `the_published_average_is_rounded_in_one_pinned_place` — same file | the recursive walk above, for the rounding-site count; one fixed path for the pin | `WHOLE_DIVISION` whole-text pin on `div_round_half_up`; exactly one rounding site in the crate; the published scale still an argument; no type declared in the arithmetic module | the walk's floor above |
+| `no_numeric_source_winner`, `credentials_never_reach_a_general_crawler`, `no_captcha_or_access_control_bypass_module_exists`, `the_only_public_route_to_snapshot_bytes_is_the_untrusted_seal`, `the_walk_reads_every_module_in_this_crate`, `this_crate_declares_three_product_edges` — `crates/ingestion/tests/ingestion_scans.rs` | recursive, **every `.rs` under the whole `crates/ingestion` package** for the per-crate rules, less `tests` for the ones about shipped code; recursive over **every `.rs` under `crates/`** for the workspace-wide inventory; fixed paths for the pins | whole-set comparisons rather than token lists: the item set of `conflict.rs` at file scope, the signature set of every function anywhere in the crate that touches a conflict value, a credential binding or a request, the public surfaces of `ConflictCase`, `ContendingSource`, `CredentialBinding`, `ConditionalRequest` and `RawSnapshot`, the whole external import set, the whole `Cargo.toml` edge set, four access vocabularies compared variant by variant, whole-text pins on `credential_binding`, `DeclaredTarget::declared` and `deny`, call-site counts for `credentialed`, `declared`, `source_bytes()` and the two `Denial` initialiser fields, and a three-shape numeric rule over `conflict.rs` — a numeric type under any spelling, a numeric literal under any spelling, and a counting/positioning vocabulary — with five evasions and four benign shapes run through it inside the test | `sources.len() >= 17` on the package walk, `declared >= 13` on the module tripwire, `naming.len() >= 5` on the workspace walk; every whole-set comparison is an `assert_eq!` against a pinned list, so an empty walk fails as missing keys |
 | `tools/secret-debug-policy.test.mjs` | recursive, **every `.rs` under every `crates/*` package** less its `tests`, so `examples/`, `probes/` and any `benches/` are read | regex over derive attributes against a registry of secret-carrying types | none on the file walk; a `>= 11` floor on the macro-generated key-type registry |
 | `tools/phase1-scaffold-policy.test.mjs` | recursive, from nine roots: every workspace package except `academic-test-support` (the whole package, not its `src`), a named crate set, `store-platform/src`, each of the six process crates' `src`, `transcript/src` twice, `record/src` (the two implemented §28 engines, with a `>= 12` floor), the whole `crates/desktop` package (not its `src`, with a `>= 9` floor), and — for `only_egress_crate_has_a_socket` — every `.rs` anywhere under every workspace package; fixed paths elsewhere | `cargo metadata` dependency graph, acceptance-receipt comparison, and regex/substring assertions on named files — including a second, independent copy of the rotation-gate decision-site count | none |
 | `only_egress_crate_has_a_socket` — `tools/phase1-scaffold-policy.test.mjs` | recursive, **every `.rs` under every workspace package**, comments and every literal — raw strings included — stripped before matching | a per-file allowance of exact socket spellings (eight IPC files, two `P2-G4` files, every other allowance empty); a rule that a crate root or a socket module segment may be renamed only to `_`, read on `use` and on `extern crate` alike; a rule that no file in the workspace may import `libc::syscall` — by name, under an alias, inside a braced list, or through `use libc::*` — so a call to it has to spell `libc::syscall(`; zero foreign-function declarations anywhere; every `#[path]` target resolved and required to be one of the files this scan read; the one `include!` pinned whole; a pinned build-script inventory; a per-crate link closure intersected with the socket-capable crates; and, for the sandbox's Linux backend, two rules over syscalls: every `libc::syscall(` call in the file must name a `libc::SYS_` constant as its first argument and that constant must be one of the four reviewed syscalls the file installs the sandbox with, and every other `SYS_` spelling in the file must sit inside `denied_syscalls`, **counted** | `scanned.length >= 10` on the capability scan it sits beside; the allowance map is compared whole, so a file that stops being read fails as a missing key |
@@ -1301,6 +1302,144 @@ component.
 `R-I2`, `R-I4`, `R-I5` and `R-I6` are the four that spell nothing any list
 holds. Each is caught by a whole-set or a count rather than by a search, which
 is the property this page asks a new guard to have.
+
+## What the `P2-U6` scans hold
+
+Three of `P2-U6`'s named acceptance cases are statements about what the source
+does not contain, and a behavioural test cannot observe an absence.
+
+**`no_numeric_source_winner`** is five halves. The item set of `conflict.rs` at
+file scope is pinned whole, so a function added there fails whatever it is
+called. The module is then required to reach no number under any spelling: a
+numeric type, a numeric literal, or an operation that turns a collection into a
+position, a count or an order. The first two rules have no vocabulary and are
+the same shape as `no_float_reaches_the_gpa_path`'s; the third is a vocabulary
+and is the weakest of the three, which is why it does not stand alone. Third,
+the whole set of signatures *anywhere in the crate* that touches a conflict
+value is pinned, so a winner written in another module fails as an extra key.
+Fourth, `ConflictCase`'s and `ContendingSource`'s public surfaces are pinned,
+because a method spelling `Self` is invisible to a signature sweep. Fifth,
+`SourceCategory` — section 8.4's numbered list of collection targets — has one
+`impl` block, a pinned derive list with no ordering in it, and a compile-fail
+case observing that two values cannot be compared.
+
+Dates are compared, because two of the five dimensions *are* dates, and each
+comparison is a named relation computed by the module that owns the value. What
+the rule refuses is the step after that: a number saying how many dimensions
+favoured a side, a rank read out of a list, or a source picked because it came
+first.
+
+**`credentials_never_reach_a_general_crawler`** is five halves. The whole set of
+signatures that take or return a `CredentialBinding` is pinned, and so is that
+type's own surface. The producer is pinned as whole text, so a binding minted
+for an authentication method that holds no credential is an edit to a constant.
+The one constructor that consumes a binding is counted. The target constructor
+is pinned as whole text and takes `&'static str`, so a link read out of a
+fetched page is a value no target can be built from, and the identifier is
+counted so a second construction site fails. And the crate is required to
+implement `ConditionalFetch` nowhere: it holds no transport, which is what makes
+"not a crawler" a fact about the package rather than about its intentions.
+
+**`no_captcha_or_access_control_bypass_module_exists`** is six halves. The whole
+set of signatures that produce or consume a request is pinned and each is
+required to name no response type, because a bypass of an access control is a
+function from a challenge to an answer. Four access vocabularies —
+`AuthenticationMethod`, `TermsStatus`, `Fallback`, `DenialRoute` — are compared
+variant by variant, so a variant meaning "obtained some other way" fails as an
+extra key. `deny` is pinned whole and the two fields no other expression sets
+are counted, so a denial that routes to a retry or offers a shorter list fails.
+`Denial`'s fields are private to `terms.rs`, so a second construction site
+outside that module is a compile error rather than a scan finding. The whole
+external import set is pinned, so a decoder, a driver or an HTTP client cannot
+be reached without a line that is not on the list. And a workspace-wide walk
+requires that no file outside `crates/ingestion/` names this crate's request,
+target or credential types.
+
+What that composite does **not** say is that no bypass can be written. It says
+three things together: a module elsewhere cannot transmit, because
+`only_egress_crate_has_a_socket` refuses a socket outside the two egress crates;
+it cannot obtain a target or a credential, because the producers are here and
+pinned; and it cannot be built on these types unnoticed, because the inventory
+is a whole map. `docs/contracts/official-source-ingestion.md` states that width
+rather than the wider sentence.
+
+### The injection matrix
+
+Thirty-one injections, applied one at a time to shipped source and reverted.
+Each is compiled first: a refusal that is a compile error proves nothing about
+the scan that was supposed to refuse it, and one row below is recorded as
+exactly that outcome rather than dropped. The unmodified tree is run before and
+after the matrix and passes both times.
+
+| # | Injection | Refused by |
+|---|---|---|
+| U-N1 | `ConflictCase` gains `winner(&self) -> Side`, reading the hierarchy relation and spelling no number | `no_numeric_source_winner`, the `ConflictCase` surface pin |
+| U-N2 | `SourceCategory` gains a hand-written `PartialOrd` that orders by its stable spelling | the `SourceCategory` `impl`-set pin |
+| U-N3 | `ConflictCase::open` counts its findings with `fold`, which is on no vocabulary list | the numeric-literal rule |
+| U-N4 | `conflict.rs` gains a private `fn weight(..) -> u8` | the numeric-type and numeric-literal rules, and the item-set pin |
+| U-N5 | `publish.rs` gains `preferred(&ConflictCase) -> &ContendingSource` | the crate-wide conflict-signature sweep |
+| U-C1 | `manifest.rs` gains `lend(from, to) -> Option<CredentialBinding>`, minting one connector's binding for another | the credential-signature sweep |
+| U-C2 | `credential_binding` mints for every authentication method | the whole-text pin |
+| U-C3 | `DeclaredTarget` gains `discovered(String)`, leaking the allocation for a `'static` borrow | the `declared` call-site count, and the `leak` count |
+| U-C4 | the crate implements `ConditionalFetch` for a type of its own | the "implements the transport it exists not to have" rule |
+| U-B1 | `fetch.rs` gains `answer(&FetchOutcome, ..) -> Result<ConditionalRequest, Denial>` | the request-signature pin, and the response-derivation rule beside it |
+| U-B2 | `AuthenticationMethod` gains `NegotiatedSession` | the access-vocabulary comparison |
+| U-B3 | `DenialRoute` gains `TryAnotherPath` | the same |
+| U-B4 | `document.rs` gains `use std::process::Command;` | the external-import set |
+| U-B5 | `terms.rs` gains a second `Denial` initialiser offering one fallback four times | the `route:` initialiser count |
+| U-B6 | `crates/connector/src/main.rs` declares a type named `ConditionalRequest` | the workspace-wide inventory |
+| U-B7 | the crate gains an `examples/` tree pulled in by `#[path]` | `the_walk_reads_every_module_in_this_crate`, the product-source-outside-`src` rule |
+| U-S1 | stage nine stops re-reading the terms ledger | `ingestion_stage_order_is_strict`, the stage-nine case |
+| U-S2 | stage six discards the schema error | the same, the stage-six case |
+| U-S3 | the snapshot stops comparing the observed digest | the same, the stage-three case |
+| U-U1 | `Reconciled::publishable` fabricates an effective date for the undated arm | `unscoped_official_source_cannot_publish` |
+| U-V1 | invalidation reaches every node with an edge, ignoring which rule changed | `source_change_invalidates_exact_dependents`, over-invalidation |
+| U-V2 | invalidation stops walking transitively | the same, under-invalidation |
+| U-R1 | the diff reports only rule-level changes, so a header change moves nothing | `rule_change_impact_identifies_exact_rules`, under-reporting |
+| U-R2 | every rule present in both readings is reported as text-changed | the same, over-reporting |
+| U-M1 | `build` defaults `completeness` instead of refusing | `connector_manifest_requires_every_field`, that field's case |
+| U-F1 | `Fallback::ALL` repeats one entry instead of listing four | `manual_and_export_fallbacks_are_offered_when_denied` |
+| U-D1 | `ConflictDimension::ALL` drops the transitional-measures dimension | `conflict_case_dimensions` |
+| U-P1 | the snapshot stores empty HTTP metadata | `rule_source_snapshot_metadata` |
+| U-G1 | `RawSnapshot` gains `pub fn retained(&self) -> &[u8]` | `the_only_public_route_to_snapshot_bytes_is_the_untrusted_seal` |
+| U-G2 | `ParsedRule` gains `pub fn text(&self) -> String` | `no_document_text_leaves_the_parser`, the surface pin |
+| U-G3 | `publish.rs` gains `publish_anyway(document, connector, effective, retrieved_at) -> PublishedRules` | `the_publisher_has_one_argument_type_and_one_producer`, the construction count — **which it did not, before this round** |
+
+One injection is recorded as proving nothing about a scan, because the record is
+more useful than the omission. Adding a `precedence: u8` field to
+`ContendingSource` does not compile: the field is required by the one
+initialiser and the initialiser does not set it. That is the type refusing it,
+not the scan, so the injection was rewritten as `U-N4` — a private function
+carrying the same number — which does compile and is refused by the numeric
+rules.
+
+### The empty guard this task found in its own suite
+
+`U-G3` passed the first time it was run, and the guard it was aimed at was one
+of this task's own.
+
+`the_publisher_has_one_argument_type_and_one_producer` pinned the whole set of
+*signatures* naming `PublishableRules`. A second public entry point into
+publication does not have to name it: `publish_anyway(document, connector,
+effective, retrieved_at) -> PublishedRules` builds the argument **in its body**,
+names the type nowhere in its signature, and passed. That is
+[the pin fixes the item and not its caller](#two-more-the-t141-audit-found-in-the-repair-for-the-first-three)
+one layer in — a sweep over signatures is a claim about what functions *declare*,
+and what makes publication reachable is a *construction*.
+
+The repair is the construction count beside the sweep: `PublishableRules::new(`
+appears exactly once and in `stage.rs`, the named struct literal appears nowhere,
+and the one assembly — inside the constructor — is pinned as whole text. Anything
+routed through `Reconciled::publishable` inherits that function's `None` for the
+undated arm; anything not routed through it has to build the value, and building
+it is what is counted.
+
+The same question was then asked of every other signature sweep in this file.
+`CONFLICT_SIGNATURES` and `CREDENTIAL_SIGNATURES` are each backed by a surface
+pin on the type itself, which is what sees a constructor spelling `Self`;
+`REQUEST_SIGNATURES` is backed by `REQUEST_SURFACE` for the same reason; and
+`SNAPSHOT_PUBLIC_METHODS` is a surface pin rather than a sweep to begin with. The
+publisher was the one that had a sweep and no construction count.
 
 ## Open
 
