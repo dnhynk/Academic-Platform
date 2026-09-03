@@ -21,6 +21,7 @@ members = [
   "crates/indexer",
   "crates/ingestion",
   "crates/keystore-platform",
+  "crates/knowledge-state",
   "crates/lecture-document",
   "crates/ledger",
   "crates/model-run",
