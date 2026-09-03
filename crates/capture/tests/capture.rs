@@ -9,11 +9,12 @@ mod common;
 use std::path::Path;
 
 use academic_capture::{
-    ALIGNMENT_LOW_CONFIDENCE, AlignmentConfidence, AlignmentFault, Anchor, CaptureFault,
-    CapturePolicyBook, CapturePolicyRow, ChunkJournal, FailureKind, GapCause, JournalRecord,
-    MarkLabelKind, MicrophoneState, Orientation, PreflightReading, RecordBody, SessionClock, begin,
-    estimate_drift,
+    ALIGNMENT_LOW_CONFIDENCE, AlignmentConfidence, AlignmentFault, Anchor, CaptureBytes,
+    CaptureFault, CapturePolicyBook, CapturePolicyRow, ChunkJournal, FailureKind, GapCause,
+    JournalRecord, MarkLabelKind, MicrophoneState, Orientation, PreflightReading, RecordBody,
+    SessionClock, begin, estimate_drift,
 };
+use academic_domain::ContentDigest;
 
 use common::{
     INSIDE, SECOND, TestResult, append_refusal, chunk, healthy_reading, image, journal_path,
@@ -880,4 +881,203 @@ fn check_no_frame_went_backwards(path: &Path) -> Result<bool, Box<dyn std::error
             }
             _ => true,
         }))
+}
+
+/// A frame whose instant is below the frame before it, on the same clock, is
+/// refused -- and a resumed clock's first frame is not.
+///
+/// `SessionClock::tick` orders the instants a clock *mints*.
+/// `the_clock_refuses_a_reading_that_went_backwards` is that half, and it is
+/// the whole of what the clock can promise. `ChunkJournal::append` is public,
+/// takes a tick rather than a reading, and orders the instants the *file*
+/// holds: a caller holding two ticks from one clock can offer them in either
+/// order, and before this row it could. Measured before the repair: the second
+/// append returned `Ok`, the frame instants were `[9000, 1000]`, and the chain
+/// still verified over both frames.
+///
+/// | Offered against the last frame, same clock | Outcome |
+/// |---|---|
+/// | one tick below | refused, `FrameOutOfOrder` |
+/// | equal | accepted |
+/// | one tick above | accepted |
+/// | below, but minted by another clock | accepted -- see below |
+#[test]
+fn out_of_order_frame_is_refused() -> TestResult {
+    let directory = tempfile::tempdir()?;
+    let path = journal_path(&directory, "ordered");
+    let token = ContentDigest::sha256(b"t161-token");
+    let mut clock = SessionClock::start(common::lecture()?, &token, None);
+    let early = clock.tick(1_000)?;
+    let same = clock.tick(9_000)?;
+    let late = clock.tick(9_000)?;
+    let later = clock.tick(9_001)?;
+    let mut journal = ChunkJournal::create(
+        &path,
+        clock.domain(),
+        ContentDigest::sha256(b"t161-policy"),
+        token,
+    )?;
+    journal.append(
+        late,
+        RecordBody::AudioChunk {
+            bytes: CaptureBytes::of(chunk("late")),
+        },
+    )?;
+
+    let backwards = journal.append(
+        early,
+        RecordBody::AudioChunk {
+            bytes: CaptureBytes::of(chunk("early")),
+        },
+    );
+    assert!(
+        matches!(
+            backwards,
+            Err(academic_capture::JournalFault::FrameOutOfOrder {
+                offered: 1_000,
+                recorded: 9_000
+            })
+        ),
+        "a frame earlier than the one before it was appended: {backwards:?}"
+    );
+    assert_eq!(journal.records().len(), 1, "the refused frame was kept");
+
+    // Equal, then one nanosecond above. Both are accepted, for the reason equal
+    // readings are: two events can share a nanosecond and still need an order.
+    journal.append(
+        same,
+        RecordBody::AudioChunk {
+            bytes: CaptureBytes::of(chunk("same")),
+        },
+    )?;
+    journal.append(
+        later,
+        RecordBody::AudioChunk {
+            bytes: CaptureBytes::of(chunk("later")),
+        },
+    )?;
+    assert_eq!(journal.records().len(), 3);
+
+    // Nothing about the refused frame is on disk, and the chain over what is
+    // there still verifies -- the refusal happens before the first write.
+    let recovered = ChunkJournal::recover(&path)?;
+    assert_eq!(recovered.records().len(), 3);
+    assert_eq!(recovered.partial_tail_bytes(), 0);
+    let instants: Vec<u64> = recovered
+        .records()
+        .iter()
+        .map(|record| record.at().elapsed_nanos())
+        .collect();
+    assert_eq!(instants, vec![9_000, 9_000, 9_001]);
+    assert!(check_no_frame_went_backwards(&path)?);
+
+    // A resume is the case the comparison must not catch. The new clock starts
+    // at its own origin, so its first frame's instant is below every frame the
+    // previous clock wrote -- and that discontinuity is what the `GAP` frame
+    // records rather than something to refuse. Across domains there is no
+    // defined distance, which is the same reading `SessionTick::offset_from`
+    // takes.
+    let mut ledger = ledger_permitting()?;
+    let book = CapturePolicyBook::published();
+    let resumed_path = journal_path(&directory, "resumed");
+    let mut first = begin(
+        &mut ledger,
+        &request()?,
+        &resumed_path,
+        &book,
+        healthy_reading(),
+        INSIDE,
+    )?;
+    first.record_audio_chunk(&mut ledger, chunk("before"), 30 * SECOND, INSIDE)?;
+    drop(first);
+    let (mut second, _) = academic_capture::resume(
+        &mut ledger,
+        &request()?,
+        &resumed_path,
+        &book,
+        healthy_reading(),
+        INSIDE,
+    )?;
+    second.record_audio_chunk(&mut ledger, chunk("after"), SECOND, INSIDE)?;
+    let after = ChunkJournal::recover(&resumed_path)?;
+    let kinds: Vec<&'static str> = after
+        .records()
+        .iter()
+        .map(|record| record.body().kind_str())
+        .collect();
+    assert_eq!(kinds, vec!["AUDIO_CHUNK", "GAP", "AUDIO_CHUNK"]);
+    let across: Vec<u64> = after
+        .records()
+        .iter()
+        .map(|record| record.at().elapsed_nanos())
+        .collect();
+    assert_eq!(
+        across,
+        vec![30 * SECOND, 0, SECOND],
+        "the resumed frames were forced onto the dead clock's numbering"
+    );
+    let domains: Vec<_> = after
+        .records()
+        .iter()
+        .map(|record| record.at().domain())
+        .collect();
+    assert_ne!(
+        domains.first(),
+        domains.get(1),
+        "the resumed frame claims the domain of the clock that died"
+    );
+    assert_eq!(domains.get(1), domains.get(2));
+    Ok(())
+}
+
+/// Two anchors whose second sits earlier than their first are refused, not
+/// reordered.
+///
+/// The confidence badge cannot see the difference -- it reads the magnitude, so
+/// a swapped pair produces the same `ALIGNMENT_LOW_CONFIDENCE` and the same ±
+/// range. What changes is `offset_nanos`, which becomes the offset the *other*
+/// anchor fixes, and the sign of `drift_nanos`. Measured before the repair:
+/// `forwards` gave `offset_nanos: 0, drift_nanos: 9000000000` and `backwards`
+/// gave `offset_nanos: 9000000000, drift_nanos: -9000000000`, both
+/// `Low { plus_minus_nanos: 9000000000 }`.
+///
+/// It is refused rather than swapped because a `MappingVersion` is the
+/// append-only record of what the user asserted, and reordering a user's two
+/// inputs records a pair they did not give.
+#[test]
+fn anchors_out_of_order_are_refused() -> TestResult {
+    let token = ContentDigest::sha256(b"t161-anchor-token");
+    let mut clock = SessionClock::start(common::lecture()?, &token, None);
+    let earlier = clock.tick(10 * SECOND)?;
+    let just_after = clock.tick(10 * SECOND + 1)?;
+    let later = clock.tick(40 * SECOND)?;
+    let policy = shipped_row()?;
+    let first = Anchor::at(earlier, 10 * SECOND);
+    let second = Anchor::at(later, 31 * SECOND);
+
+    let forwards = estimate_drift(first, second, policy)?;
+    assert_eq!(forwards.offset_nanos(), 0);
+    assert_eq!(forwards.drift_nanos(), 9 * SECOND as i64);
+
+    let backwards = estimate_drift(second, first, policy);
+    assert_eq!(
+        backwards,
+        Err(AlignmentFault::AnchorsOutOfOrder),
+        "a pair whose second anchor sits earlier was accepted: {backwards:?}"
+    );
+
+    // The boundary on the other side is the one that was already there: equal
+    // instants measure nothing over no interval, and that is its own refusal.
+    let coincide = estimate_drift(first, Anchor::at(earlier, 20 * SECOND), policy);
+    assert_eq!(coincide, Err(AlignmentFault::AnchorsCoincide));
+
+    // One nanosecond apart is an interval, and it is accepted in the forward
+    // direction and refused in the other.
+    let narrow = Anchor::at(just_after, 10 * SECOND + 1);
+    assert!(estimate_drift(first, narrow, policy).is_ok());
+    assert_eq!(
+        estimate_drift(narrow, first, policy),
+        Err(AlignmentFault::AnchorsOutOfOrder)
+    );
+    Ok(())
 }
