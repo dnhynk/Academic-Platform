@@ -1,0 +1,11 @@
+error[E0451]: fields `text`, `start_nanos` and `confidence` of struct `RawToken` are private
+  --> tests/compile_fail/a_raw_token_cannot_be_built.rs:12:9
+   |
+11 |     RawToken {
+   |     -------- in this type
+12 |         text: String::new(),
+   |         ^^^^ private field
+13 |         start_nanos: None,
+   |         ^^^^^^^^^^^ private field
+14 |         confidence: None,
+   |         ^^^^^^^^^^ private field

@@ -1,0 +1,66 @@
+error[E0369]: binary operation `<` cannot be applied to type `&ProviderRun`
+  --> tests/compile_fail/two_provider_runs_are_not_ordered.rs:14:10
+   |
+14 |     left < right
+   |     ---- ^ ----- &ProviderRun
+   |     |
+   |     &ProviderRun
+   |
+note: `ProviderRun` does not implement `PartialOrd`
+  --> src/compare.rs
+   |
+   | pub struct ProviderRun {
+   | ^^^^^^^^^^^^^^^^^^^^^^ `ProviderRun` is defined in another crate
+
+error[E0277]: the trait bound `ProviderRun: Ord` is not satisfied
+  --> tests/compile_fail/two_provider_runs_are_not_ordered.rs:18:10
+   |
+18 |     runs.sort();
+   |          ^^^^ the trait `Ord` is not implemented for `ProviderRun`
+   |
+note: required by a bound in `slice::<impl [T]>::sort`
+  --> $RUST/alloc/src/slice.rs
+
+error[E0277]: the trait bound `ProviderRun: Ord` is not satisfied
+  --> tests/compile_fail/two_provider_runs_are_not_ordered.rs:22:22
+   |
+22 |     runs.into_iter().max()
+   |                      ^^^ the trait `Ord` is not implemented for `ProviderRun`
+   |
+note: the method call chain might not have had the expected associated types
+  --> tests/compile_fail/two_provider_runs_are_not_ordered.rs:22:10
+   |
+22 |     runs.into_iter().max()
+   |     ---- ^^^^^^^^^^^ `Iterator::Item` is `ProviderRun` here
+   |     |
+   |     this expression has type `Vec<ProviderRun>`
+note: required by a bound in `std::iter::Iterator::max`
+  --> $RUST/core/src/iter/traits/iterator.rs
+
+error[E0277]: the trait bound `ProviderRun: Ord` is not satisfied
+  --> tests/compile_fail/two_provider_runs_are_not_ordered.rs:26:22
+   |
+26 |     runs.into_iter().collect()
+   |                      ^^^^^^^ the trait `Ord` is not implemented for `ProviderRun`
+   |
+help: the trait `FromIterator<T>` is conditionally implemented for `BTreeSet<T>`
+  --> $RUST/alloc/src/collections/btree/set.rs
+   |
+   = note: unsatisfied requirement introduced here: `ProviderRun: Ord`
+   = note: required for `BTreeSet<ProviderRun>` to implement `FromIterator<ProviderRun>`
+note: required by a bound in `collect`
+  --> $RUST/core/src/iter/traits/iterator.rs
+
+error[E0369]: binary operation `>` cannot be applied to type `&RetranscriptionComparison`
+  --> tests/compile_fail/two_provider_runs_are_not_ordered.rs:30:7
+   |
+30 |     a > b
+   |     - ^ - &RetranscriptionComparison
+   |     |
+   |     &RetranscriptionComparison
+   |
+note: `RetranscriptionComparison` does not implement `PartialOrd`
+  --> src/compare.rs
+   |
+   | pub struct RetranscriptionComparison {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `RetranscriptionComparison` is defined in another crate

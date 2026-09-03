@@ -1,0 +1,35 @@
+error[E0599]: no method named `tokens_mut` found for mutable reference `&mut RawSegment` in the current scope
+  --> tests/compile_fail/a_raw_token_cannot_be_written.rs:11:13
+   |
+11 |     segment.tokens_mut();
+   |             ^^^^^^^^^^
+   |
+help: there is a method `tokens` with a similar name
+   |
+11 -     segment.tokens_mut();
+11 +     segment.tokens();
+   |
+
+error[E0616]: field `tokens` of struct `RawSegment` is private
+  --> tests/compile_fail/a_raw_token_cannot_be_written.rs:12:13
+   |
+12 |     segment.tokens = Vec::new();
+   |             ^^^^^^ private field
+
+error[E0599]: no method named `segments_mut` found for mutable reference `&mut RawTranscript` in the current scope
+  --> tests/compile_fail/a_raw_token_cannot_be_written.rs:16:16
+   |
+16 |     transcript.segments_mut();
+   |                ^^^^^^^^^^^^
+   |
+help: there is a method `segments` with a similar name
+   |
+16 -     transcript.segments_mut();
+16 +     transcript.segments();
+   |
+
+error[E0616]: field `segments` of struct `RawTranscript` is private
+  --> tests/compile_fail/a_raw_token_cannot_be_written.rs:17:16
+   |
+17 |     transcript.segments = Vec::new();
+   |                ^^^^^^^^ private field

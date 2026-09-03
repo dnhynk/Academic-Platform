@@ -1,0 +1,9 @@
+error: cannot construct `RawTranscript` with struct literal syntax due to private fields
+ --> tests/compile_fail/a_raw_transcript_cannot_be_built.rs:7:5
+  |
+7 |     RawTranscript {
+  |     ^^^^^^^^^^^^^
+8 |         segments: Vec::new(),
+  |         -------------------- private field
+  |
+  = note: ...and other private fields `lecture`, `provider`, `model_version`, `raw_response` and `input_digest` that were not provided

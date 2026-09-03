@@ -1,0 +1,40 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-l",
+  "task": "P2-L3",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-L3 admits no external crate. academic-transcription links academic-capture, academic-domain, academic-egress-boundary, academic-model-run, academic-proposal, academic-untrusted-content, sha2 and thiserror as product edges and academic-consent, academic-domain, academic-policy, tempfile, trybuild and uuid as dev edges. Every one is covered by an earlier reviewed receipt, and it adds one workspace path package. No speech engine, audio decoder, HTTP client or TLS stack is linked at any feature setting: a provider is a trait the caller implements, exactly as academic-egress-boundary takes its OutboundTransport, and this crate implements it nowhere.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-transcription is the P2-L3 provider-neutral transcription pipeline: section 12.3's stages, the input manifest that admits only authorized chunks, captures and explicitly supplied materials, the eight technical declarations a provider contract carries, the default-local/scoped-remote/blocked route, the append-only raw-response archive, and section 12.4's TranscriptSegment over a raw layer nothing writes. It is a separate package from academic-capture because that crate is the recording surface and this one reads a journal it never writes, and a separate package from academic-transcript, which is P2-U7's official academic-record import and shares nothing with it but a prefix.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-L3 adds no pnpm workspace package. Its whole surface is Rust."
+  },
+  "direct_workspace_dependencies": {
+    "academic-capture": "P2-L2's chunk journal. An audio chunk or an image capture is admitted out of a JournalRecovery whose header names the capability token and the policy row the capture began under, so pipeline_input_authorization compares a journal header rather than trusting a caller's word about what a buffer was.",
+    "academic-domain": "ContentDigest for every input and job digest, LectureSessionId for the session a transcript belongs to, Actor for the one class that may supply material or settle a correction, and DecisionAction, which is the frozen three-arm disposition vocabulary this crate matches exhaustively rather than restating.",
+    "academic-egress-boundary": "P2-G2's AcceptedResponse. ProviderResponse::from_remote takes one, and EgressProxy::accept_response is its only producer, so a remote response that spent no grant, compared no rulepack and reached no canary scan is a value the scoped-remote route cannot be handed. This crate holds no socket, implements no OutboundTransport, and no product file in it names EgressProxy.",
+    "academic-model-run": "P2-M1's twelve section 27.3 fields, recorded for every model execution rather than a provenance record of this crate's own; and RawScore, which implements neither PartialOrd nor Ord, so a provider's token confidence cannot be ranked against another's.",
+    "academic-proposal": "P2-M2's Proposed<T>, ReviewQueue and the three dispositions. A user correction is a Confirm, a Reject or a Replace; SettledCorrection has exactly two producers, one per disposition that appends a version, and Reject has none.",
+    "academic-untrusted-content": "P2-G5's Untrusted<T>. Every raw provider response is sealed at the moment it is retained and leaves the archive as Untrusted<IngestedDocument> and in no other form, which is what makes this crate a reuse of that trust label rather than a second one beside it."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-transcription",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-transcription",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-transcription is a workspace path crate, not an external dependency. It owns section 12.3's pipeline and holds no transport and no engine: SttProvider is a trait, this crate implements it nowhere, and its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-policy under academic-model-run and academic-egress-boundary. It has no edge of any kind to academic-worker, because no workspace crate may depend on that package at all -- its sandbox probe would then be reachable from a default build, which only_egress_crate_has_a_socket refuses -- and none to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-projections, academic-recovery or academic-retention: it persists nothing and adds no store migration. academic-consent and academic-policy are dev edges only, so a product file here cannot name mint_capture_capability, PermissionBroker, CapabilityToken or RuntimeToolCall -- an undeclared crate is a compile error, not a lint -- while the acceptance suite still drives a real capture through academic_capture::begin and a real transmission acceptance through EgressProxy.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, reads no file, spawns no process, and runs no build script; no_wall_clock_socket_or_file_reaches_this_crate refuses each of those spellings in every product source file under the package. No recording is made and no speech-to-text provider is called: every audio chunk, image and provider response in the test tree is a committed literal built in process. GATE-38-019 stays open, so no cloud transcription runs: SttPolicy::new approves no remote provider, the remote arm reads an approval by exact provider and model version, and there is no configuration file, environment variable or fallback that could supply one -- an unconfigured profile blocks every remote request with PROVIDER_NOT_APPROVED.",
+  "advisory_path": "Unchanged. Every external crate academic-transcription links was admitted by an earlier receipt and is triaged through that receipt's advisory path. sha2, thiserror, tempfile, trybuild and uuid arrive through the same pinned workspace versions Phase 1 admitted. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

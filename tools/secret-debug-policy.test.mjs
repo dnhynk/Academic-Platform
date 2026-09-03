@@ -91,6 +91,19 @@ const SECRET_BEARING_TYPES = new Map([
   ],
   ["RawSnapshot", "the retained bytes of one official-source retrieval, which leave it only as an Untrusted<IngestedDocument>"],
   ["FetchOutcome", "the bytes one conditional fetch or one user-supplied import produced, before anything has stored them"],
+  // `P2-L3`. Five types that hold the lecture itself: the two admitted capture
+  // buffers, the raw provider response, and the two decoded records whose text
+  // is what the lecturer said. `S-10`'s decision for that crate is made in the
+  // strengthening direction -- every one hand-writes a redacting `Debug` and
+  // none of them writes a `PUBLIC_BYTES` entry -- so widening the vocabulary
+  // later costs nothing here.
+  ["AuthorizedChunk", "the P2-L2 lecture audio chunk a transcription job was authorized to read"],
+  ["AuthorizedCapture", "the P2-L2 board photograph a transcription job was authorized to read"],
+  ["ProviderResponse", "a speech-to-text provider's answer, which is the lecture in words"],
+  ["RawToken", "one word the lecturer said, exactly as the provider returned it"],
+  ["RawSegment", "one span of the lecture, its verbatim text and its tokens"],
+  ["CorrectionCandidate", "the word somebody proposes one token should read instead"],
+  ["EffectiveToken", "one word of the lecture as a transcript version reads it"],
 ]);
 
 /**

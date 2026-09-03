@@ -412,6 +412,27 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `academic-policy` is deliberately a dev edge below rather than here, so a
     // product file cannot name `PermissionBroker`, `CapabilityToken`,
     // `RuntimeToolCall`, or `ProcessCapabilityToken` at all.
+    // `P2-L3`. Five product edges, each one a boundary this crate refuses to
+    // restate. `academic-capture` is where a chunk journal's header carries the
+    // section 3.7 capability token an input is admitted against, and where the
+    // `CaptureRecorder` that opens a binding comes from;
+    // `academic-egress-boundary` is where an `AcceptedResponse` comes from, so
+    // the scoped-remote route cannot be handed a response that spent no grant;
+    // `academic-untrusted-content` is the one trust label a raw provider
+    // response leaves the archive under; `academic-model-run` is the twelve
+    // section 27.3 fields and the `RawScore` that cannot be ordered; and
+    // `academic-proposal` is the three dispositions a user correction is one
+    // of. There is deliberately no edge to `academic-worker` -- no workspace
+    // crate may depend on that package at all -- and none to `academic-store`,
+    // which is what makes "this crate persists nothing" a graph fact.
+    "academic-transcription": [
+      "academic-capture",
+      "academic-domain",
+      "academic-egress-boundary",
+      "academic-model-run",
+      "academic-proposal",
+      "academic-untrusted-content",
+    ],
     "academic-untrusted-content": ["academic-egress-boundary"],
     // `academic-crypto` is an optional edge behind `aead-objects`, the same
     // shape the store's encrypted lane uses: `cargo metadata` reports declared
@@ -513,6 +534,19 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // are test-only: keeping `academic-policy` off the product edge above is
     // what makes "the adjudicator receives no capability" a compile error
     // rather than a source scan.
+    // `P2-L3` drives a real capture through `academic_capture::begin` and a
+    // real `EgressProxy` over a real `PermissionBroker`, so `academic-consent`
+    // and `academic-policy` are test edges. Keeping `academic-policy` off the
+    // product edge above is what makes "this crate mints no grant and holds no
+    // broker" a compile error rather than a source scan, and keeping
+    // `academic-consent` off it is what makes "this crate adds no second
+    // section 3.7 comparison" the same. `academic-domain` is declared twice for
+    // the `trybuild` reason `academic-scenario` gives above.
+    "academic-transcription": [
+      "academic-consent",
+      "academic-domain",
+      "academic-policy",
+    ],
     "academic-untrusted-content": ["academic-policy"],
   });
 
@@ -2177,6 +2211,10 @@ const SOCKET_CAPABLE_CLOSURES = {
   // reaches it through `academic-policy`'s bundled SQLite. The crate spells no
   // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
   // rather than empty.
+  // `P2-L3`. `libc` reaches it through `academic-policy`, which arrives with
+  // `academic-model-run` and `academic-egress-boundary`. This crate names no
+  // socket construct of its own and implements no `OutboundTransport`.
+  "academic-transcription": ["libc"],
   "academic-untrusted-content": ["libc"],
   // `P2-M1`. `libc` reaches it through `academic-policy`'s bundled SQLite, and
   // nothing in this closure can open a socket.
@@ -3903,6 +3941,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     curriculumReceiptText,
     analysisReceiptText,
     requirementReceiptText,
+    transcriptionReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -3929,6 +3968,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-u1.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u2.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-l3.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -3955,6 +3995,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const curriculumReceipt = JSON.parse(curriculumReceiptText);
   const analysisReceipt = JSON.parse(analysisReceiptText);
   const requirementReceipt = JSON.parse(requirementReceiptText);
+  const transcriptionReceipt = JSON.parse(transcriptionReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -5105,6 +5146,58 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-U2 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-L3` adds one workspace path package, `academic-transcription`, and
+  // admits no external crate: its six product edges and its six dev edges are
+  // all in this lock through earlier receipts. No speech engine, audio decoder,
+  // HTTP client or TLS stack is linked, and the receipt records why a provider
+  // is a caller-supplied trait.
+  assert.equal(transcriptionReceipt.task, "P2-L3");
+  const transcriptionAdmitted = new Set(
+    transcriptionReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const transcriptionPathPackages = new Set(
+    transcriptionReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(transcriptionAdmitted.size, 0, "P2-L3 must admit no external crate");
+  assert.deepEqual([...transcriptionPathPackages], ["academic-transcription@0.1.0"]);
+  assert.deepEqual(transcriptionReceipt.summary.npm_additions, []);
+  assert.equal(transcriptionReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(transcriptionReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-domain",
+    "academic-egress-boundary",
+    "academic-model-run",
+    "academic-proposal",
+    "academic-untrusted-content",
+  ]);
+  assert.deepEqual(transcriptionReceipt.vendored_data, []);
+  for (const claimed of [...transcriptionAdmitted, ...transcriptionPathPackages]) {
+    assert.equal(
+      analysisAdmitted.has(claimed) ||
+        analysisPathPackages.has(claimed) ||
+        curriculumAdmitted.has(claimed) ||
+        curriculumPathPackages.has(claimed) ||
+        ingestionAdmitted.has(claimed) ||
+        ingestionPathPackages.has(claimed) ||
+        captureSubsystemAdmitted.has(claimed) ||
+        captureSubsystemPathPackages.has(claimed) ||
+        requirementAdmitted.has(claimed) ||
+        requirementPathPackages.has(claimed),
+      false,
+      `${claimed} is claimed by two admission receipts`,
+    );
+  }
+  const transcriptionTuples = lockTuples.filter(
+    ([name, version]) =>
+      transcriptionAdmitted.has(`${name}@${version}`) ||
+      transcriptionPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    transcriptionTuples.length,
+    transcriptionAdmitted.size + transcriptionPathPackages.size,
+    "a P2-L3 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -5152,7 +5245,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !analysisAdmitted.has(`${name}@${version}`) &&
       !analysisPathPackages.has(`${name}@${version}`) &&
       !requirementAdmitted.has(`${name}@${version}`) &&
-      !requirementPathPackages.has(`${name}@${version}`),
+      !requirementPathPackages.has(`${name}@${version}`) &&
+      !transcriptionAdmitted.has(`${name}@${version}`) &&
+      !transcriptionPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -5186,7 +5281,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       ingestionTuples.length +
       curriculumTuples.length +
       analysisTuples.length +
-      requirementTuples.length,
+      requirementTuples.length +
+      transcriptionTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -5500,8 +5596,26 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    // `P2-L3`. The transcription pipeline's one external edge on this receipt
+    // is `tempfile`, and it is a dev edge: the acceptance suite drives a real
+    // `academic_capture::begin` into a temporary directory so the recorder its
+    // input manifests bind to, and the journal headers compared against it, are
+    // written by the real capture surface rather than fabricated.
+    const l3TranscriptionUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-transcription",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : [];
     const expectedUses = [
       ...admission.uses,
+      ...l3TranscriptionUse,
       ...r1RepositoryUse,
       ...l2CaptureUse,
       ...g4SandboxUse,
