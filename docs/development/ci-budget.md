@@ -1230,3 +1230,58 @@ two test binaries — nineteen tests — to `cargo test --workspace`. It adds th
 fourth `compile_fail` target, so the two `rust-default-*` commands the README
 lists are unchanged in number and `ci.yml` is untouched: the workflow still
 materializes 22 required jobs.
+
+### A second reading, at the branch head
+
+The section above measures `5ac62b3`, the commit that adds the member. Four more
+commits followed it — three repairs to this task's own source scan and one test
+— so the default lane changed after that reading and the refresh rule names a
+default-workspace test as a trigger. Run
+[33779385348](https://github.com/dnhynk/Academic-Platform/actions/runs/33779385348)
+at `c29a0a5` is the branch head, and it also completed 22/22. Both readings are
+kept, for the reason this page gives everywhere else: a table is one reading of
+a distribution, and the readings that decide a timeout are the ones no single
+run shows.
+
+| Required job | Elapsed | Utilization |
+|---|---:|---:|
+| `dependency-source-preflight` | 0:05 | 1.7% |
+| `rust-default-ubuntu-latest` | 4:42 | 15.7% |
+| `rust-default-ubuntu-24.04-arm` | 4:28 | 14.9% |
+| `rust-default-windows-latest` | 11:48 | 39.3% |
+| `rust-default-windows-11-arm` | 10:28 | 34.9% |
+| `rust-default-macos-latest` | 5:26 | 18.1% |
+| `rust-store-ubuntu-latest` | 1:24 | 4.7% |
+| `rust-store-ubuntu-24.04-arm` | 1:23 | 4.6% |
+| `rust-store-windows-latest` | 5:28 | 18.2% |
+| `rust-store-windows-11-arm` | 5:19 | 17.7% |
+| `rust-store-macos-latest` | 1:41 | 5.6% |
+| `rust-features-ubuntu-latest` | 3:47 | 12.6% |
+| `rust-features-ubuntu-24.04-arm` | 3:01 | 10.1% |
+| `rust-features-windows-latest` | 7:50 | 26.1% |
+| `rust-features-windows-11-arm` | 6:12 | 20.7% |
+| `rust-features-macos-latest` | 4:02 | 13.4% |
+| `phase1-exit-ubuntu-latest` | 3:48 | 8.4% |
+| `phase1-exit-windows-latest` | 12:23 | 27.5% |
+| `encrypted-store-lane-ubuntu-latest` | 3:08 | 7.0% |
+| `encrypted-portability-lane-ubuntu-latest` | 4:57 | 11.0% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:55 | 15.4% |
+| `pnpm-contracts` | 0:51 | 5.7% |
+
+`rust-default-windows-latest` is the slowest at 39.3%, a **sixth** reading of
+that job — 20:18, 14:08, 12:16, 16:56, 13:12 and now 11:47, which is 67.7%,
+47.1%, 40.9%, 56.4%, 44.0% and 39.3%. It is the **lowest reading so far**, so it
+extends the range's low end from 40.9% to 39.3% rather than sitting inside it.
+The guidance is unchanged for the reason the range exists: headroom is sized off
+the *high* end, 67.7%, and that end did not move. A low reading is evidence about
+the spread, not permission to shrink the timeout.
+
+The four commits between the two readings add one test and change the text of a
+test file, so nothing in the distribution should have moved; the 44.0% and 39.3%
+readings differing by five points on identical work is the variance this page
+records the range for.
+
+Four runs between these two (`33776143099`, `33776572409`, `33778048462`,
+`33778918470`) were cancelled by the workflow's own `cancel-in-progress`
+concurrency group when the next commit superseded them. Per the refresh rule
+those are not readings of anything and are excluded from both tables.
