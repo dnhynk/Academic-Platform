@@ -12,10 +12,10 @@ mod common;
 use std::{error::Error, fs, path::PathBuf};
 
 use academic_domain::{
-    Actor, AuthorityClass, Claim, ClaimId, ClaimObject, ConfidencePermille, ContentDigest, EntityId,
-    EpistemicStatus, EvidenceId, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength,
-    FreshnessBand, MasteryLevel, ModelRunId, PredicateId, ScopeId, TimestampMillis, ValidInterval,
-    entity_registry::EntityKind,
+    Actor, AuthorityClass, Claim, ClaimId, ClaimObject, ConfidencePermille, ContentDigest,
+    EntityId, EpistemicStatus, EvidenceId, EvidenceItem, EvidenceLocator, EvidenceRole,
+    EvidenceStrength, FreshnessBand, MasteryLevel, ModelRunId, PredicateId, ScopeId,
+    TimestampMillis, ValidInterval, entity_registry::EntityKind,
 };
 use academic_knowledge_state::{
     AdjustmentDirection, AiProposal, AutomaticLevel, BroadSignal, CEILINGS, ConceptEvidence,
@@ -25,8 +25,8 @@ use academic_knowledge_state::{
     FreshnessInput, HistoryEntry, IncidentRepair, KnowledgeStateAssertion, KnowledgeStateError,
     KnowledgeStateHistory, LADDER, MasteryFacet, Outcome, Participation, ProjectUse,
     ProposalOutcome, SelfExplanation, SourceIntegrity, SufficiencyGap, TeachingSite,
-    TransferContext, TransferRepetition, UNSEEN_MEANING, UnseenBasis, UserConfirmation, level_token,
-    project, rung,
+    TransferContext, TransferRepetition, UNSEEN_MEANING, UnseenBasis, UserConfirmation,
+    automatic_contribution, level_token, project, rung,
 };
 use academic_lecture_document::{LectureDocument, NodeId};
 
@@ -47,9 +47,9 @@ fn workspace_root() -> PathBuf {
 }
 
 fn specification() -> Result<String, Box<dyn Error>> {
-    Ok(fs::read_to_string(
-        workspace_root().join("PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md"),
-    )?)
+    Ok(fs::read_to_string(workspace_root().join(
+        "PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md",
+    ))?)
 }
 
 /// The rows of the one markdown table that follows `heading`.
@@ -76,7 +76,10 @@ fn table_after(page: &str, heading: &str) -> Result<Vec<Vec<String>>, Box<dyn Er
             seen_header = true;
             continue;
         }
-        if cells.iter().all(|cell| cell.chars().all(|c| c == '-' || c == ':')) {
+        if cells
+            .iter()
+            .all(|cell| cell.chars().all(|c| c == '-' || c == ':'))
+        {
             continue;
         }
         rows.push(cells);
@@ -240,7 +243,10 @@ fn confirmation_claim(
     })
 }
 
-fn confirmation(concept: EntityId, level: MasteryLevel) -> Result<UserConfirmation, Box<dyn Error>> {
+fn confirmation(
+    concept: EntityId,
+    level: MasteryLevel,
+) -> Result<UserConfirmation, Box<dyn Error>> {
     let evidence = evidence_item("confirmation");
     let claim = confirmation_claim(
         concept,
@@ -514,8 +520,14 @@ fn evidence_ceilings_are_never_exceeded() -> TestResult {
         .iter()
         .map(|cells| -> Result<(String, String), Box<dyn Error>> {
             Ok((
-                cells.get(1).ok_or("a 13.2 row has no meaning cell")?.clone(),
-                cells.get(2).ok_or("a 13.2 row has no ceiling cell")?.clone(),
+                cells
+                    .get(1)
+                    .ok_or("a 13.2 row has no meaning cell")?
+                    .clone(),
+                cells
+                    .get(2)
+                    .ok_or("a 13.2 row has no ceiling cell")?
+                    .clone(),
             ))
         })
         .collect::<Result<_, _>>()?;
@@ -763,6 +775,31 @@ fn grade_creates_no_concept_promotion() -> TestResult {
     assert!(!kinds.contains(&EvidenceKind::CourseGrade));
     assert_eq!(kinds.len() + 1, EvidenceKind::ALL.len());
 
+    // And the row itself promotes nothing, read directly rather than through a
+    // variant that does not exist: a grade contributes `UNSEEN` and licenses no
+    // ceiling. If a later task ever gives the row a variant, this is the rule
+    // that variant would have to break.
+    assert_eq!(
+        automatic_contribution(EvidenceKind::CourseGrade),
+        AutomaticLevel::Unseen
+    );
+    assert_eq!(
+        EvidenceKind::CourseGrade.ceiling(),
+        EvidenceCeiling::NoPromotion
+    );
+    assert!(
+        !EvidenceCeiling::NoPromotion.admits(MasteryLevel::Exposed),
+        "no promotion means no level above UNSEEN"
+    );
+    assert!(EvidenceCeiling::NoPromotion.admits(MasteryLevel::Unseen));
+
+    // The control: a row that does license a level answers differently, so the
+    // three assertions above are about this row and not about the function.
+    assert_eq!(
+        automatic_contribution(EvidenceKind::MeaningfulTeaching),
+        AutomaticLevel::Exposed
+    );
+
     // An assertion carries the grade and still projects `UNSEEN`, so the signal
     // is visible and inert at the same time.
     let projection = project(&[], &[])?;
@@ -807,7 +844,10 @@ fn unseen_is_not_a_failed_test() -> TestResult {
     );
 
     // The distinction is readable rather than implicit.
-    assert_eq!(nothing.unseen_basis(), Some(UnseenBasis::NoEvidenceRecorded));
+    assert_eq!(
+        nothing.unseen_basis(),
+        Some(UnseenBasis::NoEvidenceRecorded)
+    );
     assert_eq!(
         attempted.unseen_basis(),
         Some(UnseenBasis::EvidenceRecordedWithoutPromotion)
@@ -924,7 +964,10 @@ fn eligibility_four_checks_block_with_reason_codes() -> TestResult {
         assert_eq!(blocked.failed_checks(), vec![*check]);
         assert_eq!(code.check(), *check);
         // The evidence itself is not discarded.
-        assert_eq!(blocked.evidence().kind(), EvidenceKind::ConceptSpecificExercise);
+        assert_eq!(
+            blocked.evidence().kind(),
+            EvidenceKind::ConceptSpecificExercise
+        );
         // And it cannot reach a projection.
         assert!(outcome.admitted().is_none());
     }
@@ -937,7 +980,9 @@ fn eligibility_four_checks_block_with_reason_codes() -> TestResult {
         SourceIntegrity::Unknown,
     );
     let blocked = EligibilityOutcome::admit(evidence.clone(), evidence_id("item"), &all_wrong);
-    let blocked = blocked.blocked().ok_or("a fully wrong dossier was admitted")?;
+    let blocked = blocked
+        .blocked()
+        .ok_or("a fully wrong dossier was admitted")?;
     assert_eq!(blocked.reasons().len(), EligibilityCheck::ALL.len());
     assert_eq!(blocked.failed_checks(), EligibilityCheck::ALL.to_vec());
 
@@ -982,11 +1027,18 @@ fn fluent_requires_repetition_and_user_confirmation() -> TestResult {
     let dossier = full_dossier(concept);
 
     // The automatic path cannot express `FLUENT` at all.
-    assert!(!AutomaticLevel::ALL.iter().any(|level| level.level() == MasteryLevel::Fluent));
+    assert!(
+        !AutomaticLevel::ALL
+            .iter()
+            .any(|level| level.level() == MasteryLevel::Fluent)
+    );
     assert_eq!(AutomaticLevel::of(MasteryLevel::Fluent), None);
     for level in LADDER {
         if level != MasteryLevel::Fluent {
-            assert!(AutomaticLevel::of(level).is_some(), "{level:?} is automatic");
+            assert!(
+                AutomaticLevel::of(level).is_some(),
+                "{level:?} is automatic"
+            );
         }
     }
 
@@ -1102,8 +1154,11 @@ fn fluent_requires_repetition_and_user_confirmation() -> TestResult {
     ));
 
     // Both halves together, and only then, reach `FLUENT`.
-    let authorization =
-        FluentAuthorization::granted(repetition, confirmation(concept, MasteryLevel::Fluent)?, concept)?;
+    let authorization = FluentAuthorization::granted(
+        repetition,
+        confirmation(concept, MasteryLevel::Fluent)?,
+        concept,
+    )?;
     assert_eq!(authorization.distinct_contexts(), 2);
     let fluent = projection.with_fluency(authorization, concept)?;
     assert_eq!(fluent.level(), MasteryLevel::Fluent);
@@ -1152,7 +1207,8 @@ fn fluent_requires_repetition_and_user_confirmation() -> TestResult {
         "the promoted assertion carries no fluency record"
     );
     assert!(
-        serde_json::from_str::<KnowledgeStateAssertion>(&serde_json::to_string(&stripped)?).is_err(),
+        serde_json::from_str::<KnowledgeStateAssertion>(&serde_json::to_string(&stripped)?)
+            .is_err(),
         "a FLUENT assertion deserialized without its record"
     );
 
@@ -1177,7 +1233,8 @@ fn fluent_requires_repetition_and_user_confirmation() -> TestResult {
         .ok_or("the wire form is not an object")?
         .insert("fluency".to_owned(), record);
     assert!(
-        serde_json::from_str::<KnowledgeStateAssertion>(&serde_json::to_string(&smuggled)?).is_err(),
+        serde_json::from_str::<KnowledgeStateAssertion>(&serde_json::to_string(&smuggled)?)
+            .is_err(),
         "an UNSEEN assertion carried a fluency record"
     );
     Ok(())
@@ -1260,7 +1317,11 @@ fn assertion_is_never_mutated_in_place() -> TestResult {
         ConfidencePermille::new(920)?,
         Vec::new(),
     )?;
-    assert_ne!(third.id(), two.id(), "a later version binds its predecessor");
+    assert_ne!(
+        third.id(),
+        two.id(),
+        "a later version binds its predecessor"
+    );
 
     // A tampered wire value does not come back: the identity is recomputed.
     let json = serde_json::to_string(&two)?;
@@ -1407,12 +1468,7 @@ fn confirmed_state_rejects_ai_adjustment() -> TestResult {
     // assertion exactly as it was.
     for proposed in [MasteryLevel::Fluent, MasteryLevel::Practiced] {
         let applied = confirmed.clone().propose(
-            AiProposal::of(
-                model_run_id("run"),
-                concept,
-                proposed,
-                Vec::new(),
-            ),
+            AiProposal::of(model_run_id("run"), concept, proposed, Vec::new()),
             Vec::new(),
             Vec::new(),
             freshness()?,
@@ -1469,10 +1525,7 @@ fn confirmed_state_rejects_ai_adjustment() -> TestResult {
         freshness()?,
         TimestampMillis::new(i64::try_from(LATER)?),
     )?;
-    assert!(matches!(
-        applied.outcome(),
-        ProposalOutcome::Superseded(_)
-    ));
+    assert!(matches!(applied.outcome(), ProposalOutcome::Superseded(_)));
     assert_eq!(
         applied
             .history()
@@ -1677,11 +1730,13 @@ fn estimate_confidence_is_evidence_sufficiency_and_not_a_score() -> TestResult {
     // Sufficient evidence with nothing unresolved reads 1000, so the number
     // above is the gaps' doing and not a constant.
     let clean = project(&supporting, &[])?;
-    assert_eq!(clean.sufficiency().permille(), ConfidencePermille::new(1000)?);
+    assert_eq!(
+        clean.sufficiency().permille(),
+        ConfidencePermille::new(1000)?
+    );
     assert!(clean.sufficiency().gaps().is_empty());
 
     // And the level did not move: sufficiency and mastery are two fields.
     assert_eq!(clean.level(), projection.level());
     Ok(())
 }
-

@@ -177,7 +177,12 @@ fn findings_of(analysis: &RepositoryAnalysis) -> Result<Vec<Finding>, Box<dyn Er
         // otherwise reach this suite as an empty corpus, and an empty corpus is
         // the shape in which a fixture agrees with everything.
         found.extend(EvidenceLadder::classify(
-            analysis, &subject, &registry, &purpose, &[], NOW,
+            analysis,
+            &subject,
+            &registry,
+            &purpose,
+            &[],
+            NOW,
         )?);
     }
     Ok(found)
@@ -274,4 +279,3 @@ pub fn stance_of(set: &ClassificationSet) -> Result<ConceptStance, Box<dyn Error
         other => Err(format!("{SUBJECT} has {} stances, not one", other.len()).into()),
     }
 }
-
