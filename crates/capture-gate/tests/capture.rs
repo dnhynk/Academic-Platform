@@ -387,6 +387,136 @@ fn token_expiry_stops_capture_at_the_boundary() -> TestResult {
     Ok(())
 }
 
+/// A chunk whose instant is below the session's last accepted one is refused,
+/// and nothing about it reaches the manifest.
+///
+/// `C-11` is the measurement this closes: two chunks at `INSIDE + 100` and
+/// `INSIDE + 1` were both accepted, `is_quarantined()` was `false`, and the
+/// manifest's instants were `[1500100, 1500001]`. Section 34.1 forbids silent
+/// re-timestamping one row above, so a backwards reading is refused here rather
+/// than recorded and reconciled later.
+///
+/// The three boundaries are each exercised, because the interesting part of a
+/// comparison is where it changes answer:
+///
+/// | Offered against the last accepted | Outcome |
+/// |---|---|
+/// | one tick below | refused, `CHUNK_OUT_OF_ORDER` |
+/// | equal | accepted, and it gets its own sequence number |
+/// | one tick above | accepted |
+///
+/// Equal is accepted for `SessionClock::tick`'s reason in `academic-capture`:
+/// two events can share a nanosecond and still need an order. The two crates
+/// share no code -- `C-9` says why -- so this row is where that agreement is
+/// observed rather than assumed.
+#[test]
+fn out_of_order_chunk_is_refused() -> TestResult {
+    let mut ledger = ledger_audio_only()?;
+    let mut audit = CaptureAudit::new();
+    let authorization = authorize(&mut ledger, &mut audit, &audio_request()?, INSIDE)?;
+    let mut session = open_device(
+        &mut ledger,
+        &mut audit,
+        authorization,
+        DeviceClass::Microphone,
+        DeviceLayer::Bookkeeping,
+        INSIDE,
+    )?;
+
+    // `C-11`'s exact reproduction.
+    session.record_chunk(&mut ledger, &mut audit, &chunk("one"), INSIDE + 100)?;
+    let refusal = session
+        .record_chunk(&mut ledger, &mut audit, &chunk("two"), INSIDE + 1)
+        .err()
+        .ok_or("a chunk earlier than the one before it was accepted")?;
+    assert_eq!(refusal.reason(), CaptureRefusalReason::ChunkOutOfOrder);
+    assert_eq!(
+        refusal.denial(),
+        None,
+        "an ordering refusal is not a denial"
+    );
+    assert_eq!(audit.count_of(CaptureRefusalReason::ChunkOutOfOrder), 1);
+    assert_eq!(session.chunk_count(), 1, "the backwards chunk was appended");
+
+    // It is a refusal and not a stop: the capture keeps running, because what
+    // moved is the caller's clock and not the permission. `SessionAlreadyStopped`
+    // would say the boundary had been reached, and it has not been.
+    assert!(
+        session.gap().is_none(),
+        "an ordering refusal stopped the capture"
+    );
+
+    // One tick below the last accepted instant is the other side of the same
+    // comparison, and it is refused for the same reason.
+    let one_below = session
+        .record_chunk(&mut ledger, &mut audit, &chunk("below"), INSIDE + 99)
+        .err()
+        .ok_or("a chunk one tick early was accepted")?;
+    assert_eq!(one_below.reason(), CaptureRefusalReason::ChunkOutOfOrder);
+    assert_eq!(session.chunk_count(), 1);
+
+    // Equal, then one tick above. Both are accepted and both get their own
+    // sequence number.
+    session.record_chunk(&mut ledger, &mut audit, &chunk("same"), INSIDE + 100)?;
+    session.record_chunk(&mut ledger, &mut audit, &chunk("next"), INSIDE + 101)?;
+    assert_eq!(session.chunk_count(), 3);
+
+    // The session's own opening instant is the floor the first chunk is
+    // compared against, so chunk zero is not the one case the rule skips.
+    let mut fresh = CaptureAudit::new();
+    let second = authorize(&mut ledger, &mut fresh, &audio_request()?, INSIDE)?;
+    let mut before_open = open_device(
+        &mut ledger,
+        &mut fresh,
+        second,
+        DeviceClass::Microphone,
+        DeviceLayer::Bookkeeping,
+        INSIDE,
+    )?;
+    let earlier_than_open = before_open
+        .record_chunk(&mut ledger, &mut fresh, &chunk("pre"), INSIDE - 1)
+        .err()
+        .ok_or("a chunk earlier than the device open was accepted")?;
+    assert_eq!(
+        earlier_than_open.reason(),
+        CaptureRefusalReason::ChunkOutOfOrder
+    );
+    assert_eq!(before_open.chunk_count(), 0);
+
+    // The manifest the seal produces is what `C-11` measured, and it now runs
+    // forwards. Nothing about a refused chunk is in it -- not its instant, not
+    // its bytes, not a sequence number it consumed.
+    let artifact = session.seal(&ledger, &mut audit, INSIDE + 200);
+    let releasable = artifact
+        .as_releasable()
+        .ok_or("an ordering refusal quarantined the artefact")?;
+    let instants: Vec<u64> = releasable
+        .manifest()
+        .chunks()
+        .iter()
+        .map(academic_capture_gate::ChunkRecord::started_at)
+        .collect();
+    assert_eq!(instants, vec![INSIDE + 100, INSIDE + 100, INSIDE + 101]);
+    assert!(
+        instants.windows(2).all(|pair| pair[0] <= pair[1]),
+        "the manifest timeline goes backwards"
+    );
+    let seqs: Vec<u32> = releasable
+        .manifest()
+        .chunks()
+        .iter()
+        .map(academic_capture_gate::ChunkRecord::seq)
+        .collect();
+    assert_eq!(seqs, vec![0, 1, 2], "a refused chunk consumed a sequence");
+    assert_eq!(
+        releasable.bytes(),
+        [chunk("one"), chunk("same"), chunk("next")]
+            .concat()
+            .as_slice()
+    );
+    Ok(())
+}
+
 /// The seal catches a chunk recorded past the boundary even if nothing stopped
 /// it there.
 ///
@@ -549,6 +679,7 @@ const fn refusal_witness(reason: CaptureRefusalReason) -> usize {
         CaptureRefusalReason::SessionAlreadyStopped => 2,
         CaptureRefusalReason::ArtifactQuarantined => 3,
         CaptureRefusalReason::DeviceLayerUnavailable => 4,
+        CaptureRefusalReason::ChunkOutOfOrder => 5,
         _ => usize::MAX,
     }
 }
@@ -756,6 +887,21 @@ fn produce(reason: CaptureRefusalReason, audit: &mut CaptureAudit) -> TestResult
                 DeviceLayer::Unavailable,
                 INSIDE,
             );
+        }
+        CaptureRefusalReason::ChunkOutOfOrder => {
+            let mut ledger = ledger_audio_only()?;
+            let mut quiet = CaptureAudit::new();
+            let authorization = authorize(&mut ledger, &mut quiet, &audio_request()?, INSIDE)?;
+            let mut session = open_device(
+                &mut ledger,
+                &mut quiet,
+                authorization,
+                DeviceClass::Microphone,
+                DeviceLayer::Bookkeeping,
+                INSIDE,
+            )?;
+            session.record_chunk(&mut ledger, &mut quiet, &chunk("ahead"), INSIDE + 100)?;
+            let _ = session.record_chunk(&mut ledger, audit, &chunk("behind"), INSIDE + 1);
         }
         _ => return Err("an unlisted refusal reason".into()),
     }

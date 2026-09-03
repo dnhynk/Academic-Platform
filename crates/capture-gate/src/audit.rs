@@ -42,15 +42,23 @@ pub enum CaptureRefusalReason {
     /// The platform backend could not install the ruleset, so there was no
     /// device layer in force to open a device behind.
     DeviceLayerUnavailable,
+    /// The chunk's instant is below one this session already accepted.
+    ///
+    /// It is its own reason rather than a `PermissionRefused` because nothing
+    /// about the permission changed: what moved is the caller's clock. A row
+    /// spelling `PERMISSION_REFUSED` for it would tell a reviewer an authority
+    /// was involved when none was.
+    ChunkOutOfOrder,
 }
 
 /// Every refusal reason, in declaration order.
-pub const REFUSAL_REASONS: [CaptureRefusalReason; 5] = [
+pub const REFUSAL_REASONS: [CaptureRefusalReason; 6] = [
     CaptureRefusalReason::PermissionRefused,
     CaptureRefusalReason::MediumNotOnToken,
     CaptureRefusalReason::SessionAlreadyStopped,
     CaptureRefusalReason::ArtifactQuarantined,
     CaptureRefusalReason::DeviceLayerUnavailable,
+    CaptureRefusalReason::ChunkOutOfOrder,
 ];
 
 impl CaptureRefusalReason {
@@ -63,6 +71,7 @@ impl CaptureRefusalReason {
             Self::SessionAlreadyStopped => "SESSION_ALREADY_STOPPED",
             Self::ArtifactQuarantined => "ARTIFACT_QUARANTINED",
             Self::DeviceLayerUnavailable => "DEVICE_LAYER_UNAVAILABLE",
+            Self::ChunkOutOfOrder => "CHUNK_OUT_OF_ORDER",
         }
     }
 }
