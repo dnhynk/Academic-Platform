@@ -260,8 +260,9 @@ impl ReleasableArtifact {
     /// What was captured.
     ///
     /// The one byte accessor in this crate.
-    /// `the_only_byte_accessor_is_on_the_releasable_arm` compares the whole set
-    /// of signatures that return bytes against this one.
+    /// `no_public_signature_hands_out_a_quarantined_capture` compares the whole
+    /// set of signatures that return bytes against `BYTE_RETURNING_SIGNATURES`,
+    /// which names this one and `releasable_bytes` and nothing else.
     #[must_use]
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
