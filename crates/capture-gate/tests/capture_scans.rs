@@ -1,7 +1,9 @@
 //! Source scans for the `P2-L1` capture device gate.
 //!
-//! Four of this crate's claims are shapes of the source rather than behaviours,
-//! so nothing at run time would notice the day they stopped being true.
+//! Five of this crate's claims are shapes of the source rather than behaviours,
+//! so nothing at run time would notice the day they stopped being true. The
+//! fifth is `T161`'s: a chunk reaches a manifest from one place, and that place
+//! is the one that compares its instant.
 //! `docs/contracts/policy-source-scans.md` is the page those scans are
 //! enumerated on, and this file is written against all five of the empty-scan
 //! shapes it names.
@@ -806,7 +808,7 @@ fn the_capture_gate_appends_a_chunk_from_one_place() -> TestResult {
     // subtracted, for `P2-RF10`'s reason: a spelling count is defeated by a
     // spelling nobody listed. **Both spellings of the path are counted**: a
     // constructor called from inside its own `impl` block writes `Self::`, and
-    // injection `L-I18` is the second assembly path that walked past the first
+    // injection `T-I5` is the second assembly path that walked past the first
     // version of this rule by doing exactly that.
     let mut counted = [0_usize; CHUNK_CONSTRUCTORS.len()];
     let mut building_files = BTreeSet::new();
