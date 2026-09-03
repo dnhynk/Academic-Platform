@@ -346,7 +346,7 @@ mod encrypted {
         migration::{
             MIGRATION_0001_SQL, MIGRATION_0003_SQL, MIGRATION_0004_SQL, MIGRATION_0005_SQL,
             MIGRATION_0006_SQL, MIGRATION_0007_SQL, MIGRATION_0009_SQL, MIGRATION_0012_SQL,
-            MIGRATION_0014_SQL, STORE_MIGRATION_SQL,
+            MIGRATION_0014_SQL, MIGRATION_0015_SQL, STORE_MIGRATION_SQL,
         },
         path_policy::{
             PathEvidence, PathProbe, PathProbeFailure, ProfileAccess, ProfileRootState,
@@ -444,7 +444,7 @@ mod encrypted {
         // The lane runs the Phase 1 migration and the aggregate migration as
         // well: the canonical tables and their append-only triggers are present
         // and still bite.
-        assert_eq!(STORE_MIGRATION_SQL.len(), 9);
+        assert_eq!(STORE_MIGRATION_SQL.len(), 10);
         assert_eq!(STORE_MIGRATION_SQL[0], MIGRATION_0001_SQL);
         assert_eq!(STORE_MIGRATION_SQL[1], MIGRATION_0003_SQL);
         assert_eq!(STORE_MIGRATION_SQL[2], MIGRATION_0004_SQL);
@@ -454,6 +454,7 @@ mod encrypted {
         assert_eq!(STORE_MIGRATION_SQL[6], MIGRATION_0009_SQL);
         assert_eq!(STORE_MIGRATION_SQL[7], MIGRATION_0012_SQL);
         assert_eq!(STORE_MIGRATION_SQL[8], MIGRATION_0014_SQL);
+        assert_eq!(STORE_MIGRATION_SQL[9], MIGRATION_0015_SQL);
         let append_only = must_fail(
             connection.execute(
                 "UPDATE schema_meta SET schema_semver = '2.0.1' WHERE singleton = 1",

@@ -124,6 +124,13 @@ pub const CANONICAL_TABLES: &[&str] = &[
     "course_equivalence",
     "course_replacement",
     "course_retirement",
+    // Migration 0015's typed columns for the REQUIREMENT_SET_PUBLISHED
+    // aggregate. They are canonical history for the same reason: which rules a
+    // published version holds, and which two people attested to each, are facts
+    // a later version appends to and never edits.
+    "requirement_set_version",
+    "requirement_rule",
+    "requirement_rule_review",
 ];
 
 /// Installs the product-writer guard after migration and identity verification.

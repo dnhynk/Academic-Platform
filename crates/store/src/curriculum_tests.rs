@@ -149,7 +149,9 @@ fn record_digest(label: &str) -> [u8; 32] {
         .to_owned()
 }
 
-fn seed_batch(
+/// `crates/store/src/requirement_tests.rs` seeds its own registration batch
+/// through this rather than copying it: one batch-row shape, one place.
+pub(crate) fn seed_batch(
     transaction: &Transaction<'_>,
     batch_id: &[u8; 16],
     event_count: u64,
