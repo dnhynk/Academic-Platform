@@ -1,0 +1,16 @@
+error[E0451]: fields `id`, `body`, `first`, `second` and `source_digest` of struct `ReviewedRule` are private
+  --> tests/compile_fail/a_reviewed_rule_has_no_struct_literal.rs:27:9
+   |
+26 |     let _literal = ReviewedRule {
+   |                    ------------ in this type
+27 |         id: rule.clone(),
+   |         ^^ private field
+28 |         body: RuleBody::CreditMinimum {
+   |         ^^^^ private field
+...
+32 |         first: ReviewAttestation::file(Actor::User { user_id: first }, rule.clone(), at),
+   |         ^^^^^ private field
+33 |         second: ReviewAttestation::file(Actor::User { user_id: second }, rule, at),
+   |         ^^^^^^ private field
+34 |         source_digest: ContentDigest::sha256(b"official"),
+   |         ^^^^^^^^^^^^^ private field

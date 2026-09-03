@@ -1,0 +1,33 @@
+error[E0425]: cannot find function `evaluate_text` in crate `academic_requirement`
+  --> tests/compile_fail/a_candidate_cannot_be_evaluated.rs:53:46
+   |
+53 |     let _interpreted = academic_requirement::evaluate_text(candidate.quoted_source(), &facts);
+   |                                              ^^^^^^^^^^^^^ not found in `academic_requirement`
+
+error[E0599]: no method named `evaluate` found for struct `RuleCandidate` in the current scope
+  --> tests/compile_fail/a_candidate_cannot_be_evaluated.rs:36:29
+   |
+36 |     let _direct = candidate.evaluate(&facts);
+   |                             ^^^^^^^^ method not found in `RuleCandidate`
+
+error[E0599]: no method named `evaluate` found for reference `&RuleBody` in the current scope
+  --> tests/compile_fail/a_candidate_cannot_be_evaluated.rs:40:43
+   |
+40 |     let _body = candidate.proposed_body().evaluate(&facts);
+   |                                           ^^^^^^^^ method not found in `&RuleBody`
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_candidate_cannot_be_evaluated.rs:45:9
+   |
+44 |     let _free = academic_requirement::evaluate(
+   |                 ------------------------------ arguments to this function are incorrect
+45 |         &candidate,
+   |         ^^^^^^^^^^ expected `&RuleSet`, found `&RuleCandidate`
+   |
+   = note: expected reference `&RuleSet`
+              found reference `&RuleCandidate`
+note: function defined here
+  --> src/evaluate.rs
+   |
+   | pub fn evaluate(
+   |        ^^^^^^^^

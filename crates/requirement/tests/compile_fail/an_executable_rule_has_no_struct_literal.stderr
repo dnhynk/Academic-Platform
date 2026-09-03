@@ -1,0 +1,12 @@
+error[E0451]: fields `id`, `body` and `source_digest` of struct `ExecutableRule` are private
+  --> tests/compile_fail/an_executable_rule_has_no_struct_literal.rs:21:9
+   |
+20 |     let _literal = ExecutableRule {
+   |                    -------------- in this type
+21 |         id: RuleId::new("total_credits").unwrap(),
+   |         ^^ private field
+22 |         body: RuleBody::CreditMinimum {
+   |         ^^^^ private field
+...
+26 |         source_digest: ContentDigest::sha256(b"official"),
+   |         ^^^^^^^^^^^^^ private field
