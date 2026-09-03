@@ -538,24 +538,39 @@ fn evidence_ceilings_are_never_exceeded() -> TestResult {
     assert_eq!(designed, held, "section 13.2's rows and CEILINGS disagree");
     assert_eq!(CEILINGS.len(), EvidenceKind::ALL.len());
 
-    // Every row's own ceiling is the one the enumeration answers with.
+    // The **typed** ceiling is read out of the same cell, not out of the value
+    // it is supposed to check. An injection that raised
+    // `MeaningfulTeaching`'s ceiling in `CEILINGS` and in `EvidenceKind::ceiling`
+    // together, leaving the design's own cell text alone, passed the two
+    // comparisons above: they tied the typed value to itself.
     for row in &CEILINGS {
+        let expected = ceiling_of_cell(row.ceiling_cell)?;
+        assert_eq!(
+            row.ceiling, expected,
+            "the ceiling of {:?} is not the one its cell {} names",
+            row.kind, row.ceiling_cell
+        );
         assert_eq!(row.kind.ceiling(), row.ceiling);
     }
 
-    // And no projection over any single row's evidence exceeds that row's
-    // ceiling. The two rows this crate has no `ConceptEvidence` variant for are
-    // covered below and by `grade_creates_no_concept_promotion`.
+    // And no projection over any single row's evidence exceeds the ceiling the
+    // **document** names. The two rows this crate has no `ConceptEvidence`
+    // variant for are covered below and by `grade_creates_no_concept_promotion`.
     let concept = entity("transaction");
     let dossier = full_dossier(concept);
     let lecture = lecture_document("ceilings")?;
     for (kind, evidence) in sample_evidence(&lecture, concept)? {
         let item = admitted(evidence, kind.as_str(), &dossier)?;
         let projection = project(std::slice::from_ref(&item), &[])?;
-        let ceiling = kind.ceiling();
+        let cell = CEILINGS
+            .iter()
+            .find(|row| row.kind == kind)
+            .ok_or("a kind with no row")?
+            .ceiling_cell;
+        let ceiling = ceiling_of_cell(cell)?;
         assert!(
             ceiling.admits(projection.level()),
-            "{kind:?} projected {:?}, above {ceiling:?}",
+            "{kind:?} projected {:?}, above the {cell} its row names",
             projection.level()
         );
         assert_eq!(projection.ceiling().ceiling(), ceiling);
@@ -572,6 +587,28 @@ fn evidence_ceilings_are_never_exceeded() -> TestResult {
         EvidenceCeiling::NoPromotion
     );
     Ok(())
+}
+
+/// The ceiling one of section 13.2's `자동 상한` cells names.
+///
+/// The mapping is the document's own and not a table here: a cell names one of
+/// section 13.1's six level names or it names none, and naming none is
+/// [`EvidenceCeiling::NoPromotion`]. `Applied, transfer facet 강화` names
+/// `Applied`; `mastery 승격 없음` and `concept별 직접 승격 없음` name nothing.
+fn ceiling_of_cell(cell: &str) -> Result<EvidenceCeiling, Box<dyn Error>> {
+    let named: Vec<MasteryLevel> = LADDER
+        .into_iter()
+        .filter(|level| {
+            let token = level_token(*level);
+            let capitalized = format!("{}{}", &token[..1], token[1..].to_lowercase());
+            cell.contains(&capitalized)
+        })
+        .collect();
+    match named.as_slice() {
+        [] => Ok(EvidenceCeiling::NoPromotion),
+        [one] => Ok(EvidenceCeiling::UpTo(*one)),
+        many => Err(format!("the cell {cell} names {} levels", many.len()).into()),
+    }
 }
 
 /// One `ConceptEvidence` for each of the seven rows that has a variant.
