@@ -19,6 +19,11 @@ thiserror.workspace = true
 # be reachable from a `tests/compile_fail` case as well.
 academic-domain = { path = "../domain" }
 academic-admission = { path = "../admission" }
+# `P2-R2`'s finding type is the third thing whose construction is closed by
+# compilation rather than by a check, beside `Proposed<T>` and
+# `VerifiedAdmission`. Its cases live in this suite rather than in a fourth
+# `compile_fail` target so the README's verification block gains no command.
+academic-repository-analysis = { path = "../repository-analysis" }
 proptest.workspace = true
 serde_json.workspace = true
 trybuild.workspace = true

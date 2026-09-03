@@ -1,0 +1,17 @@
+[package]
+name = "academic-repository-analysis"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-repository = { path = "../repository" }
+academic-untrusted-content = { path = "../untrusted-content" }
+thiserror.workspace = true
+
+[lints]
+workspace = true
