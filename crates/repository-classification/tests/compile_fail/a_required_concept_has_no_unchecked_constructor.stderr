@@ -5,7 +5,7 @@ error[E0599]: no associated function or constant named `default` found for struc
    |                                                         ^^^^^^^ associated function or constant not found in `academic_repository_classification::RequiredConcept`
    |
 note: if you're trying to build a new `academic_repository_classification::RequiredConcept`, consider using `academic_repository_classification::RequiredConcept::realizing` which returns `Result<academic_repository_classification::RequiredConcept, ClassificationError>`
-  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+  --> src/chain.rs
    |
    | /     pub fn realizing(
    | |         mechanism: ControllingMechanism,
@@ -31,7 +31,7 @@ error[E0599]: no associated function or constant named `new` found for struct `a
    |                                    ^^^ associated function or constant not found in `academic_repository_classification::RequiredConcept`
    |
 note: if you're trying to build a new `academic_repository_classification::RequiredConcept`, consider using `academic_repository_classification::RequiredConcept::realizing` which returns `Result<academic_repository_classification::RequiredConcept, ClassificationError>`
-  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+  --> src/chain.rs
    |
    | /     pub fn realizing(
    | |         mechanism: ControllingMechanism,

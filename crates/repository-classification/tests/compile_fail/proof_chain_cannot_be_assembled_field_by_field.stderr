@@ -5,7 +5,7 @@ error[E0599]: no associated function or constant named `default` found for struc
    |                                               ^^^^^^^ associated function or constant not found in `ProofChain`
    |
 note: if you're trying to build a new `ProofChain`, consider using `ProofChain::closed_by` which returns `ProofChain`
-  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+  --> src/chain.rs
    |
    |     pub const fn closed_by(concept: RequiredConcept, gap: UserEvidenceGap) -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ error[E0599]: no associated function or constant named `new` found for struct `P
    |                               ^^^ associated function or constant not found in `ProofChain`
    |
 note: if you're trying to build a new `ProofChain`, consider using `ProofChain::closed_by` which returns `ProofChain`
-  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+  --> src/chain.rs
    |
    |     pub const fn closed_by(concept: RequiredConcept, gap: UserEvidenceGap) -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

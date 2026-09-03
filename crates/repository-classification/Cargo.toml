@@ -17,6 +17,7 @@ thiserror.workspace = true
 academic-model-run = { path = "../model-run" }
 academic-repository = { path = "../repository" }
 academic-untrusted-content = { path = "../untrusted-content" }
+trybuild.workspace = true
 
 [lints]
 workspace = true

@@ -5,7 +5,7 @@ error[E0061]: this function takes 4 arguments but 3 arguments were supplied
    |                 ^^^^^^^^^^^^^^^^^^^^^^ ------------------------- argument #1 of type `academic_repository_classification::CurrentBasis` is missing
    |
 note: associated function defined here
-  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+  --> src/chain.rs
    |
    |     pub fn shown_by(
    |            ^^^^^^^^
@@ -21,7 +21,7 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ------- argument #1 of type `academic_repository_classification::ConcreteNeed` is missing
    |
 note: associated function defined here
-  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+  --> src/chain.rs
    |
    |     pub fn controlling(need: ConcreteNeed, name: &SubjectId) -> Self {
    |            ^^^^^^^^^^^
@@ -37,7 +37,7 @@ error[E0061]: this function takes 3 arguments but 2 arguments were supplied
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ ------- argument #1 of type `academic_repository_classification::ControllingMechanism` is missing
    |
 note: associated function defined here
-  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+  --> src/chain.rs
    |
    |     pub fn realizing(
    |            ^^^^^^^^^
@@ -53,7 +53,7 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
    |                  ^^^^^^^^^^^^^^^^^^^^^ ----- argument #1 of type `academic_repository_classification::RequiredConcept` is missing
    |
 note: associated function defined here
-  --> $WORKSPACE/crates/repository-classification/src/chain.rs
+  --> src/chain.rs
    |
    |     pub const fn closed_by(concept: RequiredConcept, gap: UserEvidenceGap) -> Self {
    |                  ^^^^^^^^^
