@@ -28,10 +28,13 @@
 //!
 //! # What this crate is not
 //!
-//! **It records nothing.** No device is opened anywhere in it, no sample is
-//! read, and every chunk in every fixture in its test tree is a committed
-//! literal. Which device is an authorized recorder is an open product question
-//! under section 12; Phase 2 ships the desktop host only.
+//! **It records nothing.** No sample is read and every chunk in every fixture
+//! in its test tree is a committed literal. No device is opened: its product
+//! closure is `academic-consent` and `academic-domain` and is pinned whole, the
+//! workspace's `unsafe_code = "forbid"` applies here, and no foreign function is
+//! declared anywhere in the workspace -- opening one needs one of those three.
+//! Which device is an authorized recorder is an open product question under
+//! section 12; Phase 2 ships the desktop host only.
 //!
 //! **It reads no clock.** Every elapsed reading arrives as an argument, as in
 //! `academic-consent` and `academic-capture-gate`, so the acceptance rows can
