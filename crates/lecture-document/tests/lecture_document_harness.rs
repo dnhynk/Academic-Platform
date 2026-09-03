@@ -57,8 +57,7 @@ fn harness_corpus_matches_a_fresh_render() -> TestResult {
         let path = root.join(&file.path);
         let committed = fs::read(&path).map_err(|error| format!("{}: {error}", file.path))?;
         assert_eq!(
-            committed,
-            file.bytes,
+            committed, file.bytes,
             "{} differs from a fresh render; re-run `cargo run -p academic-lecture-document \
              --example emit_harness` and explain the semantic change",
             file.path
@@ -73,7 +72,10 @@ fn harness_corpus_matches_a_fresh_render() -> TestResult {
         &root,
         &mut walked,
     )?;
-    assert!(!walked.is_empty(), "the harness directory walk returned nothing");
+    assert!(
+        !walked.is_empty(),
+        "the harness directory walk returned nothing"
+    );
     for path in walked {
         assert!(
             rendered_paths.contains(&path),
@@ -108,9 +110,14 @@ fn golden_cases_evaluate_to_their_committed_bytes() -> TestResult {
     let version = EngineVersion::new(TRANSCRIPT_COVERAGE_ENGINE_VERSION)?;
     assert!(!GOLDEN.is_empty(), "the golden corpus is empty");
     for case in &GOLDEN {
-        let input_path = root.join(format!("{HARNESS_ROOT}/{HARNESS_DIR}/golden/{}.input", case.name));
-        let expected_path =
-            root.join(format!("{HARNESS_ROOT}/{HARNESS_DIR}/golden/{}.expected", case.name));
+        let input_path = root.join(format!(
+            "{HARNESS_ROOT}/{HARNESS_DIR}/golden/{}.input",
+            case.name
+        ));
+        let expected_path = root.join(format!(
+            "{HARNESS_ROOT}/{HARNESS_DIR}/golden/{}.expected",
+            case.name
+        ));
         let text = fs::read_to_string(&input_path)?;
         let inputs = FrozenInputs::parse(&text)?;
 
@@ -157,7 +164,11 @@ fn golden_cases_evaluate_to_their_committed_bytes() -> TestResult {
     let mut verdicts: Vec<ProofStatus> = Vec::new();
     for case in &GOLDEN {
         let inputs = case_input(case)?;
-        verdicts.push(TranscriptCoverageEngine::evaluate_coverage(&inputs, hash)?.result.status);
+        verdicts.push(
+            TranscriptCoverageEngine::evaluate_coverage(&inputs, hash)?
+                .result
+                .status,
+        );
     }
     let mut distinct = verdicts.clone();
     distinct.sort();
@@ -207,7 +218,11 @@ fn version_compat_and_snapshot_replay() -> TestResult {
     let text = snapshot_outcome.explanation_snapshot.as_str();
     assert!(!text.contains('\r'));
     for line in text.lines() {
-        assert_eq!(line.trim_end(), line, "the explanation has trailing whitespace");
+        assert_eq!(
+            line.trim_end(),
+            line,
+            "the explanation has trailing whitespace"
+        );
     }
 
     // The two cases are different, so the assertions above are not comparing
@@ -223,13 +238,17 @@ fn version_compat_and_snapshot_replay() -> TestResult {
 #[test]
 fn the_committed_ruleset_is_the_one_the_engine_evaluates_under() -> TestResult {
     let root = repository_root();
-    let committed = fs::read_to_string(root.join(format!("{HARNESS_ROOT}/{HARNESS_DIR}/ruleset.txt")))?;
+    let committed =
+        fs::read_to_string(root.join(format!("{HARNESS_ROOT}/{HARNESS_DIR}/ruleset.txt")))?;
     assert_eq!(committed, RULESET_TEXT);
     let mut lines: Vec<&str> = committed.lines().collect();
     lines.sort_unstable();
     let mut rules: Vec<&str> = RULES.to_vec();
     rules.sort_unstable();
-    assert_eq!(lines, rules, "the published rule set is not the engine's rules");
+    assert_eq!(
+        lines, rules,
+        "the published rule set is not the engine's rules"
+    );
 
     // A hash over anything else is refused rather than evaluated under.
     let inputs = case_input(&GOLDEN[0])?;
@@ -277,7 +296,9 @@ fn the_partition_property_holds_over_the_declared_bounds() -> TestResult {
                     "coverage.segment.{index:04}.id=ref:raw_segment_{:04}\n",
                     index + 1
                 ));
-                lines.push_str(&format!("coverage.segment.{index:04}.status=ref:{status}\n"));
+                lines.push_str(&format!(
+                    "coverage.segment.{index:04}.status=ref:{status}\n"
+                ));
                 lines.push_str(&format!("coverage.segment.{index:04}.tokens=int:4\n"));
             }
             let eligible = i64::try_from(count)?;
@@ -298,7 +319,9 @@ fn the_partition_property_holds_over_the_declared_bounds() -> TestResult {
             text.push_str(&format!(
                 "coverage.segment_coverage.denominator=int:{denominator}\n"
             ));
-            text.push_str(&format!("coverage.segment_coverage.numerator=int:{mapped}\n"));
+            text.push_str(&format!(
+                "coverage.segment_coverage.numerator=int:{mapped}\n"
+            ));
             text.push_str(&format!("coverage.segments.eligible=int:{eligible}\n"));
             text.push_str(&format!("coverage.segments.unmapped=int:{unmapped}\n"));
             text.push_str(&format!(
@@ -338,7 +361,10 @@ fn the_partition_property_holds_over_the_declared_bounds() -> TestResult {
             }
         }
     }
-    assert!(satisfied > 0 && refused > 0, "the property test saw only one arm");
+    assert!(
+        satisfied > 0 && refused > 0,
+        "the property test saw only one arm"
+    );
 
     // A status the engine does not recognise is a `CONFLICT`, and a
     // `SATISFIED` result over a conflict is refused by the harness itself.

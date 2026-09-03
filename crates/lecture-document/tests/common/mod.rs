@@ -668,7 +668,10 @@ pub fn whole_document(
         2,
         PreservationTransform::RepetitionAndEmphasisAnnotation,
     )?;
-    repetition.annotations = vec![DocumentAnnotation::Repetition, DocumentAnnotation::Digression];
+    repetition.annotations = vec![
+        DocumentAnnotation::Repetition,
+        DocumentAnnotation::Digression,
+    ];
     builder.push(repetition)?;
     let mut equation = whole_segment_node(
         "n-04",

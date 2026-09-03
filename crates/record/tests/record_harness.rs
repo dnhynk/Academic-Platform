@@ -86,7 +86,10 @@ fn harness_corpus_matches_a_fresh_render() -> TestResult {
             &mut walked,
         )?;
     }
-    assert!(!walked.is_empty(), "the harness directory walk returned nothing");
+    assert!(
+        !walked.is_empty(),
+        "the harness directory walk returned nothing"
+    );
     for path in walked {
         assert!(
             rendered_paths.contains(&path) || path == allowed_outside,
