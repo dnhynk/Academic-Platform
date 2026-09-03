@@ -380,6 +380,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-requirement"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-ingestion",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-retention"
 version = "0.1.0"
 dependencies = [
