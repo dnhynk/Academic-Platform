@@ -650,8 +650,43 @@ fn beneficial_trigger_contract() -> TestResult {
     assert_eq!(contract.benefit(), BenefitDimension::Scale);
     assert_eq!(contract.tradeoffs().len(), 3);
 
-    // Each of the four parts is required, and each refusal names its own part.
+    // The contract's **own** constructor refuses an empty trigger list and an
+    // empty trade-off list. Asserting only through `BenefitDraft::seal` would
+    // leave these two unmeasured: the draft raises its own refusal first, so an
+    // injection that removed the constructor's check passed a test that only
+    // went through the door. That injection is recorded in the task report.
     let concept = subject_id("replication")?;
+    assert_eq!(
+        BenefitContract::new(
+            &concept,
+            Vec::new(),
+            TriggerState::NotMet,
+            BenefitDimension::Scale,
+            vec![TradeOff::new("consistency")?],
+        )
+        .err(),
+        Some(ClassificationError::BenefitPartMissing {
+            concept: "replication".to_owned(),
+            part: BenefitPart::Trigger,
+        })
+    );
+    assert_eq!(
+        BenefitContract::new(
+            &concept,
+            vec![Trigger::new("read-load-above-capacity")?],
+            TriggerState::NotMet,
+            BenefitDimension::Scale,
+            Vec::new(),
+        )
+        .err(),
+        Some(ClassificationError::BenefitPartMissing {
+            concept: "replication".to_owned(),
+            part: BenefitPart::TradeOff,
+        })
+    );
+
+    // Each of the four parts is required at the draft door too, and each
+    // refusal names its own part.
     let full = || -> Result<BenefitDraft, Box<dyn Error>> {
         Ok(BenefitDraft::new()
             .with_concept(&concept)
