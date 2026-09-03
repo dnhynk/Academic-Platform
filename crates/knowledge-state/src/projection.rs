@@ -51,7 +51,7 @@ use crate::{
 ///
 /// Carried as the projection's copy so the sentence a user is shown is the
 /// design document's own and not a paraphrase that could drift into a verdict.
-pub const UNSEEN_MEANING: &str = "evidence 없음이지 \"모른다\"는 시험 결과가 아님";
+pub const UNSEEN_MEANING: &str = "evidence 없음이지 “모른다”는 시험 결과가 아님";
 
 /// Why a projection is `UNSEEN`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
