@@ -55,6 +55,7 @@ academic-capture = { path = "../capture" }
 academic-consent = { path = "../consent" }
 academic-domain = { path = "../domain" }
 academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
 academic-repository = { path = "../repository" }
 academic-repository-analysis = { path = "../repository-analysis" }
 academic-repository-correlation = { path = "../repository-correlation" }
@@ -63,6 +64,7 @@ academic-untrusted-content = { path = "../untrusted-content" }
 serde_json.workspace = true
 tempfile.workspace = true
 trybuild.workspace = true
+uuid.workspace = true
 
 [lints]
 workspace = true
