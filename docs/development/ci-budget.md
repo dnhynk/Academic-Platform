@@ -140,91 +140,96 @@ test are two of the four triggers the refresh rule names. It adds no pnpm
 package, no feature lane, no migration, no system package and no change to
 `.github/workflows/ci.yml`, so **the job count is unchanged at 22**.
 
-Run
-[33776759904](https://github.com/dnhynk/Academic-Platform/actions/runs/33776759904)
-completed **22/22 on `cb83c60`**, first attempt, no rerun. That head is the
-branch as it stood before this section was written; the commit carrying this
-table is the only thing on top of it, which is the arrangement
-[the `P2-U6` run](#the-p2-u6-run) below records.
+**Two runs, both 22/22 on the first attempt, no rerun.**
 
-The branch was cut from `main` at `750c401` and `main` had not moved when it was
-pushed, so it was never rebased: there is one head, one run, and no
-concurrency-group cancellation to separate from a real reading.
+| Run | Head | What it measures |
+|---|---|---|
+| [33776759904](https://github.com/dnhynk/Academic-Platform/actions/runs/33776759904) | `cb83c60` | the crate as first pushed |
+| [33780711210](https://github.com/dnhynk/Academic-Platform/actions/runs/33780711210) | `5a0ba5c` | the same tree plus one `fix(transcription)` commit and this page's first draft |
 
-| Required job | Elapsed | Limit | Utilization |
-|---|---:|---:|---:|
-| `dependency-source-preflight` | 0:08 | 5:00 | 2.7% |
-| `rust-default-ubuntu-latest` | 5:05 | 30:00 | 16.9% |
-| `rust-default-ubuntu-24.04-arm` | 4:35 | 30:00 | 15.3% |
-| `rust-default-windows-latest` | 14:12 | 30:00 | 47.3% |
-| `rust-default-windows-11-arm` | 11:50 | 30:00 | 39.4% |
-| `rust-default-macos-latest` | 7:26 | 30:00 | 24.8% |
-| `rust-store-ubuntu-latest` | 1:30 | 30:00 | 5.0% |
-| `rust-store-ubuntu-24.04-arm` | 1:10 | 30:00 | 3.9% |
-| `rust-store-windows-latest` | 5:29 | 30:00 | 18.3% |
-| `rust-store-windows-11-arm` | 5:53 | 30:00 | 19.6% |
-| `rust-store-macos-latest` | 1:28 | 30:00 | 4.9% |
-| `rust-features-ubuntu-latest` | 4:05 | 30:00 | 13.6% |
-| `rust-features-ubuntu-24.04-arm` | 3:13 | 30:00 | 10.7% |
-| `rust-features-windows-latest` | 6:18 | 30:00 | 21.0% |
-| `rust-features-windows-11-arm` | 6:13 | 30:00 | 20.7% |
-| `rust-features-macos-latest` | 3:29 | 30:00 | 11.6% |
-| `phase1-exit-ubuntu-latest` | 4:19 | 45:00 | 9.6% |
-| `phase1-exit-windows-latest` | 8:30 | 45:00 | 18.9% |
-| `encrypted-store-lane-ubuntu-latest` | 3:23 | 45:00 | 7.5% |
-| `encrypted-portability-lane-ubuntu-latest` | 5:07 | 45:00 | 11.4% |
-| `rotation-orchestration-lane-ubuntu-latest` | 6:50 | 45:00 | 15.2% |
-| `pnpm-contracts` | 1:26 | 15:00 | 9.6% |
+The branch was cut from `main` at `750c401` and `main` had not moved, so it was
+never rebased and neither run was cancelled by the concurrency group. A third
+run, [33778983581](https://github.com/dnhynk/Academic-Platform/actions/runs/33778983581)
+on `be13b28`, also completed 22/22; it is a Markdown-only commit between the two
+above and its numbers are not tabulated separately.
 
-### The default half moved and the store half did not
+| Required job | 33776759904 | 33780711210 | Limit | Worst utilization |
+|---|---:|---:|---:|---:|
+| `dependency-source-preflight` | 0:08 | 0:06 | 5:00 | 2.7% |
+| `rust-default-ubuntu-latest` | 5:05 | 5:14 | 30:00 | 17.4% |
+| `rust-default-ubuntu-24.04-arm` | 4:35 | 4:36 | 30:00 | 15.3% |
+| `rust-default-windows-latest` | 14:12 | 11:10 | 30:00 | 47.3% |
+| `rust-default-windows-11-arm` | 11:50 | 10:48 | 30:00 | 39.4% |
+| `rust-default-macos-latest` | 7:26 | 6:44 | 30:00 | 24.8% |
+| `rust-store-ubuntu-latest` | 1:30 | 1:26 | 30:00 | 5.0% |
+| `rust-store-ubuntu-24.04-arm` | 1:10 | 1:30 | 30:00 | 5.0% |
+| `rust-store-windows-latest` | 5:29 | 9:15 | 30:00 | 30.8% |
+| `rust-store-windows-11-arm` | 5:53 | 6:32 | 30:00 | 21.8% |
+| `rust-store-macos-latest` | 1:28 | 1:42 | 30:00 | 5.7% |
+| `rust-features-ubuntu-latest` | 4:05 | 3:53 | 30:00 | 13.6% |
+| `rust-features-ubuntu-24.04-arm` | 3:13 | 2:54 | 30:00 | 10.7% |
+| `rust-features-windows-latest` | 6:18 | 6:10 | 30:00 | 21.0% |
+| `rust-features-windows-11-arm` | 6:13 | 5:35 | 30:00 | 20.7% |
+| `rust-features-macos-latest` | 3:29 | 2:21 | 30:00 | 11.6% |
+| `phase1-exit-ubuntu-latest` | 4:19 | 5:47 | 45:00 | 12.9% |
+| `phase1-exit-windows-latest` | 8:30 | 9:43 | 45:00 | 21.6% |
+| `encrypted-store-lane-ubuntu-latest` | 3:23 | 2:40 | 45:00 | 7.5% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:07 | 3:59 | 45:00 | 11.4% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:50 | 6:42 | 45:00 | 15.2% |
+| `pnpm-contracts` | 1:26 | 0:51 | 15:00 | 9.6% |
 
-This is the first post-split run on a tree with a **new workspace member**, and
-the two halves of the split answer differently. That is the reading worth
-keeping, not the utilization.
+### The second reading falsified what the first one looked like
 
-| Label | split's three readings | this run | pre-split span |
-|---|---|---:|---|
-| `rust-default-windows-latest` | 11:20, 12:43, 12:25 | **14:12** | 12:16–20:18 |
-| `rust-store-windows-latest` | 5:33, 5:13, 5:43 | 5:29 | — |
-| `rust-default-windows-11-arm` | 10:01, 11:06, 10:59 | **11:50** | 13:31 median |
-| `rust-store-windows-11-arm` | 6:32, 5:06, 5:40 | 5:53 | — |
+Written from run 33776759904 alone, this section said that
+`rust-default-windows-latest` at **14:12** was the first post-split reading of
+that label not below the 12:16 minimum of the 53 pre-split readings, and read
+that as the new member's cost landing in the remainder job exactly where
+`--workspace --exclude academic-store` routes it. **The second run falsifies
+that**, and the sentence is replaced rather than left standing beside its
+correction.
 
-**`rust-default-windows-latest` at 14:12 is the first post-split reading of that
-label that is not below the 12:16 minimum of the 53 pre-split readings.** The
-split section says all three of its readings sat under that minimum; this one
-does not, and the difference between the two trees is one workspace member with
-three test binaries in the default lane. So the honest statement is narrower than
-either "the split absorbed it" or "the split is spent": the default half's span
-is now **11:20–14:12** over four readings, it has grown into the bottom of the
-pre-split span, and it is still 9:48 below the 24:00 line.
+`rust-default-windows-latest` reads **11:10** on the second run — *below* the
+split's own 11:20 minimum and well below 12:16 — on a tree that has strictly more
+code in that job than the first. And `rust-store-windows-latest`, whose command is
+`cargo test -p academic-store --locked` and whose crate **this task does not
+touch at all**, moved **5:29 → 9:15**, a 3:46 swing on an unchanged input.
 
-**Both store readings land inside the span the split established** — 5:29 in
-5:13–5:43, and 5:53 in 5:06–6:32 — which is what the split was built to do. The
-new member is not `academic-store`, so `--workspace --exclude academic-store`
-routes all of its cost to the remainder job with no edit to either command, and
-the numbers show exactly that rather than only asserting it.
+So the honest reading of the pair is:
 
-Sizing is unchanged: headroom for these labels is taken off the pre-split worst
-case of 67.7%, not off any reading here, and the 80% review trigger for a 30:00
-job is 24:00. Every Linux, Linux ARM and macOS Rust job on this run is at or
-below 24.8%, every `rust-store-*` job at or below 19.6%, and no job is within 30
-points of its trigger.
+* **Neither run isolates what the new member costs.** The store job is the
+  control — same command, same crate, same lockfile — and it moved by more than
+  the default job did. Runner variance on these two Windows labels is at least
+  3:46, which is larger than any difference this task could have produced.
+* The default half's post-split span is now **11:10–14:12** over five readings
+  (11:20, 12:43, 12:25, 14:12, 11:10) and the store half's is **5:13–9:15** over
+  five (5:33, 5:13, 5:43, 5:29, 9:15). Both are spans, not budgets.
+* Sizing is unchanged and is not taken from any reading here: headroom comes off
+  the pre-split worst case of **67.7%**, and the 80% review trigger for a 30:00
+  job is **24:00**. The worst job across both runs is 47.3%, 32.7 points under it.
 
-**What the new member costs, and where.** One crate joins
-`cargo clippy --workspace --all-targets --locked`; three test binaries — 16
-acceptance rows, 12 source-shape rows, and one `trybuild` harness — join the
-workspace test in the same job. The harness is the expensive one of the three
-because it compiles seven programs and compares seven committed diagnostics, and
-it is why the default lane moved rather than the store or feature lane.
-`encrypted-store-lane-ubuntu-latest` is **unmoved at 7.5%**, against 7.6% on the
+The general rule this page already states is what applied: one run is one
+reading. What is new is that it now has a **control** — a job whose input is
+frozen by the split — and the control is what says the variance is the runner
+rather than the tree. A future task measuring its own cost on a Windows label
+should read `rust-store-*` beside `rust-default-*` for the same reason.
+
+### What the new member adds, stated without a timing claim
+
+One crate joins `cargo clippy --workspace --all-targets --locked`; three test
+binaries — 16 acceptance rows, 12 source-shape rows, and one `trybuild` harness
+over seven programs — join the workspace test in the same job. The harness is the
+expensive one of the three, because it compiles seven programs and compares seven
+committed diagnostics. **What that costs in seconds is not measured here**, for
+the reason above.
+
+`encrypted-store-lane-ubuntu-latest` reads 3:23 and 2:40, against 3:25 on the
 split's run: this task adds no migration, so `STORE_MIGRATION_SQL` and the
 admission fingerprint that lane asserts against are unchanged.
 
-**No `CreateProcessW` launch failure occurred.** The signature this page records
-at 8 of 56 observations on `rust-features-windows-latest` did not appear, and
-that job was green on its first attempt at 21.0%. One attempt against a measured
-14.3% rate falsifies nothing; it is noted so the next reader does not count it as
-evidence about that signature.
+**No `CreateProcessW` launch failure occurred on either run.**
+`rust-features-windows-latest` was green on the first attempt of both. Two
+attempts against a measured 14.3% rate falsifies nothing; it is noted so the next
+reader does not count them as evidence about that signature.
 
 ## The store split
 
