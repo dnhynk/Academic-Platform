@@ -828,6 +828,10 @@ impl ChunkJournal {
     /// second does not follow from the first: a caller holding two ticks from
     /// one clock can offer them in either order.
     ///
+    /// What is compared is the instant and not the clock's sequence number. Two
+    /// ticks can share an instant, and a caller can have a reason to record the
+    /// later-minted one first; the timeline is the same either way.
+    ///
     /// Across domains there is nothing to compare. A resumed session starts a
     /// new clock at its own origin, so its first frame's instant is below every
     /// frame the killed clock wrote, and that discontinuity is what the
