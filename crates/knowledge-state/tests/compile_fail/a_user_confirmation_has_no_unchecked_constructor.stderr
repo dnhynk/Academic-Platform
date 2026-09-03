@@ -1,0 +1,15 @@
+error[E0451]: fields `user_id`, `concept`, `scope_id`, `level` and `confirmed_at` of struct `UserConfirmation` are private
+  --> tests/compile_fail/a_user_confirmation_has_no_unchecked_constructor.rs:12:9
+   |
+11 |     UserConfirmation {
+   |     ---------------- in this type
+12 |         user_id: user,
+   |         ^^^^^^^ private field
+13 |         concept,
+   |         ^^^^^^^ private field
+14 |         scope_id: scope,
+   |         ^^^^^^^^ private field
+15 |         level: MasteryLevel::Fluent,
+   |         ^^^^^ private field
+16 |         confirmed_at: TimestampMillis::new(0),
+   |         ^^^^^^^^^^^^ private field

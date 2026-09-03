@@ -1,0 +1,15 @@
+error[E0382]: borrow of moved value: `history`
+  --> tests/compile_fail/a_history_is_not_mutated_in_place.rs:17:18
+   |
+12 |     history: KnowledgeStateHistory,
+   |     ------- move occurs because `history` has type `KnowledgeStateHistory`, which does not implement the `Copy` trait
+...
+16 |     let _next = history.retract(retraction, freshness, TimestampMillis::new(0));
+   |                 ------- value moved here
+17 |     let _stale = history.current();
+   |                  ^^^^^^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+16 |     let _next = history.clone().retract(retraction, freshness, TimestampMillis::new(0));
+   |                        ++++++++

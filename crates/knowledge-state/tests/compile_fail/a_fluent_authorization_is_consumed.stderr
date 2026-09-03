@@ -1,0 +1,10 @@
+error[E0382]: use of moved value: `authorization`
+  --> tests/compile_fail/a_fluent_authorization_is_consumed.rs:17:40
+   |
+12 |     authorization: FluentAuthorization,
+   |     ------------- move occurs because `authorization` has type `FluentAuthorization`, which does not implement the `Copy` trait
+...
+16 |     let _one = projection.with_fluency(authorization, first);
+   |                                        ------------- value moved here
+17 |     let _two = projection.with_fluency(authorization, second);
+   |                                        ^^^^^^^^^^^^^ value used here after move

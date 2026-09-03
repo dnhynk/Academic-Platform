@@ -1,0 +1,27 @@
+error[E0369]: binary operation `<` cannot be applied to type `&EvidenceSufficiency`
+  --> tests/compile_fail/evidence_sufficiency_is_not_a_skill_score.rs:11:7
+   |
+11 |     a < b
+   |     - ^ - &EvidenceSufficiency
+   |     |
+   |     &EvidenceSufficiency
+   |
+note: `EvidenceSufficiency` does not implement `PartialOrd`
+  --> src/projection.rs
+   |
+   | pub struct EvidenceSufficiency {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `EvidenceSufficiency` is defined in another crate
+
+error[E0277]: the trait bound `MasteryLevel: From<EvidenceSufficiency>` is not satisfied
+  --> tests/compile_fail/evidence_sufficiency_is_not_a_skill_score.rs:15:5
+   |
+15 |     MasteryLevel::from(sufficiency)
+   |     ^^^^^^^^^^^^ the trait `From<EvidenceSufficiency>` is not implemented for `MasteryLevel`
+   |
+help: the trait `From<EvidenceSufficiency>` is not implemented for `MasteryLevel`
+      but trait `From<AutomaticLevel>` is implemented for it
+  --> src/ladder.rs
+   |
+   | impl From<AutomaticLevel> for MasteryLevel {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `AutomaticLevel`, found `EvidenceSufficiency`
