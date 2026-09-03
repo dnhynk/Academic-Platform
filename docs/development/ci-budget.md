@@ -153,14 +153,17 @@ earlier three are kept, because the comparison across them is the finding.
 | [33787226201](https://github.com/dnhynk/Academic-Platform/actions/runs/33787226201) | `7795741` | **rebased onto `P2-R2`; the last tree CI compiles differently** |
 
 A run whose head is a Markdown-only commit is not tabulated, because it compiles
-the same tree as the tabulated run below it. Two such runs were observed at
-22/22 —
+the same tree as the tabulated run below it. Three such runs happened here:
 [33778983581](https://github.com/dnhynk/Academic-Platform/actions/runs/33778983581)
 on `be13b28` and
 [33788795012](https://github.com/dnhynk/Academic-Platform/actions/runs/33788795012)
-on `e5a2fb0` — and the run triggered by the commit that last edited this section
-is a third of that kind, whose result is by construction not in this file. No run
-on this branch was cancelled by the concurrency group.
+on `e5a2fb0`, both 22/22 on the first attempt, and
+[33790626568](https://github.com/dnhynk/Academic-Platform/actions/runs/33790626568)
+on `9c8b023`, **the only run on this branch that needed a rerun** — two Windows
+jobs failed on attempt 1 and both passed on attempt 2, taking it to 22/22. That
+pair is read below, because neither failure was a test result and one of them is
+a shape this page did not yet have. No run on this branch was cancelled by the
+concurrency group.
 
 | Required job | 33776759904 | 33780711210 | 33784209481 | **33787226201** | Limit | Worst |
 |---|---:|---:|---:|---:|---:|---:|
@@ -236,12 +239,19 @@ and the admission fingerprint that lane asserts against are unchanged by it.
 `P2-U1`'s `0014` is in the last two runs' trees and the lane is unmoved by that
 too.
 
-**No `CreateProcessW` launch failure occurred on any of the four runs.**
-`rust-features-windows-latest` was green on the first attempt of each. Four
-attempts against a measured 14.3% rate falsifies nothing; it is noted so the next
-reader does not count them as evidence about that signature. This task **did**
-hit that signature locally, which is the subsection under
-[a Windows failure that is not a test result](#a-windows-failure-that-is-not-a-test-result).
+`rust-features-windows-latest` was green on the first attempt of all four
+tabulated runs, and then **hit the `CreateProcessW` launch signature on the
+fifth**, run 33790626568 — a Markdown-only head. It is the ninth hosted sighting
+and it is counted in
+[how often](#how-often-and-what-the-nine-occurrences-have-in-common); the
+same-commit rerun passed. This task also hit that signature **locally**, at a
+higher rate, which is
+[its own subsection](#the-same-signature-on-a-developer-machine-at-a-higher-rate).
+
+`rust-default-windows-latest` failed on that same attempt, on an unrelated
+assertion in `academic-daemon`. That one is **not** the launch signature and not
+covered by the rule those two shapes share, so it is written up as
+[a third shape](#a-third-shape-a-deadline-assertion-not-a-launch-error).
 
 ## The store split
 
@@ -455,7 +465,8 @@ readings are a start, not a distribution: the section above needed 53 before it
 could say anything about a tail.
 
 `rust-features-windows-latest` was green on the first attempt of all three runs.
-That is three attempts against a measured 14.3% failure rate, so it falsifies nothing;
+That is three attempts against the 14.3% failure rate measured at the time, so it
+falsifies nothing;
 it is noted only so the next reader does not count them as clean runs for that
 signature.
 
@@ -1077,23 +1088,34 @@ So the rule is the same as the timeout rule: a Windows job that fails inside
 falsified or confirmed by re-running that job on the same commit, and only a
 failure that survives the rerun is a test result.
 
-### How often, and what the eight occurrences have in common
+### How often, and what the nine occurrences have in common
 
-Counting it is what the sightings below could not do one at a time. Across the
-57 runs of the split workflow, `rust-features-windows-latest` completed 56
-attempts: **48 succeeded and 8 failed, and all 8 are this signature in this
-step** — 14.3%, about one attempt in seven. No other post-split label has more
-than one failure of any kind, and the one `rust-features-macos-latest` failure
-was a compile gate, recorded above.
+Counting it is what the sightings below could not do one at a time. Over the
+whole history of that job — every attempt of every `ci.yml` run, `filter=all`,
+254 runs — `rust-features-windows-latest` has **100 attempt records: 76
+succeeded, 9 failed, 13 were cancelled by the concurrency group and 2 were still
+running when this was measured.** Cancellations are not readings, so the rate is
+over the 85 that concluded: **9 of 85, 10.6%.** All 9 are this signature in this
+step, and **all 9 are `attempt=1` — there is no failing attempt 2 anywhere in the
+history, so every same-commit rerun ever run against it has passed.** No other
+post-split label has more than one failure of any kind, and the one
+`rust-features-macos-latest` failure was a compile gate, recorded above.
 
-The eight logs agree on more than the signature:
+This extends an earlier reading rather than contradicting it. That reading was
+**8 of 56, 14.3%**, and the two reconcile exactly: 28 more successes and 1 more
+failure have accumulated since, 48+28 = 76 and 8+1 = 9. **The rate estimate is
+drifting down as the sample grows**, which is the thing to carry forward — 14.3%
+was not wrong, it was 56 attempts' worth of confidence, and a single number from
+either window is not the distribution.
+
+The nine logs agree on more than the signature:
 
 - The failing test is **the second result `tests/containment.rs` reports**, at
-  +0.44 s to +1.10 s, in all eight. The first is always
+  +0.44 s to +1.10 s, in all nine. The first is always
   `the_compiled_backend_is_the_one_this_platform_names`, which launches nothing.
 - **Which** test it is varies with libtest's scheduling —
   `malicious_plugin_corpus_is_contained` five times,
-  `resource_receipt_is_recorded_per_run` twice,
+  `resource_receipt_is_recorded_per_run` three times,
   `cpu_memory_time_output_limits_are_enforced` once, and on one occurrence the
   whole first wave of three failed together.
 - Every later launch in the same binary succeeds, from the same absolute path,
@@ -1128,8 +1150,10 @@ in `P2-M2`,
 [33730639197](https://github.com/dnhynk/Academic-Platform/actions/runs/33730639197),
 [33739674269](https://github.com/dnhynk/Academic-Platform/actions/runs/33739674269)
 and
-[33740005635](https://github.com/dnhynk/Academic-Platform/actions/runs/33740005635),
-and once locally on Windows in the `P2-G6` verification.
+[33740005635](https://github.com/dnhynk/Academic-Platform/actions/runs/33740005635)
+and
+[33790626568](https://github.com/dnhynk/Academic-Platform/actions/runs/33790626568)
+in `P2-L3`, and once locally on Windows in the `P2-G6` verification.
 
 Run 33715585336 is the sighting where both halves of the rule were executed
 against a tree that touches no part of
@@ -1184,6 +1208,67 @@ and only a failure that survives one is a test result. Two signatures are not a
 licence to rerun anything: an assertion failure is a test result on the first
 observation, and neither of these is an assertion.
 
+### A third shape: a deadline assertion, not a launch error
+
+The two shapes above share a property that makes the rerun rule safe: neither is
+an assertion. `P2-L3` hit one that **is**, so the rule above does not cover it
+and it is written separately rather than filed under them.
+
+On run
+[33790626568](https://github.com/dnhynk/Academic-Platform/actions/runs/33790626568)
+`rust-default-windows-latest` failed in `academic-daemon`:
+
+```text
+thread 'desktop_client_disconnect_does_not_stop_daemon' panicked at
+crates\daemon\tests\multiclient.rs:88:5:
+the daemon must apply a command whose client disconnected
+```
+
+That line is `assert!(accepted, ...)`, and by the rule above an assertion failure
+is a test result on the first observation. What it asserts, though, is not what
+the daemon decided but **how long it took to decide**: the test writes a command,
+drops the client, then polls the canonical snapshot up to 500 times at 10 ms for
+`profile_revision == 1`. Failing it means the commit did not land inside **5
+seconds**. So its two possible causes are a daemon that never applies the
+command — a real defect — and a host slower than the budget.
+
+Four observations separate them, and all four were made:
+
+- The branch's diff contains **no file under `crates/daemon`**, and
+  `academic-daemon` has no dependency edge to the crate this task adds.
+- The commit under it is **one Markdown file** on top of `e5a2fb0`, whose
+  identical Rust tree passed this same job on runs 33787226201 and 33788795012.
+  A compiler reads none of the delta.
+- The **same-commit rerun passed**, taking the run to 22/22.
+- The test's budget was **already widened once for this exact symptom**: commit
+  `3bc36d0` took it from 500 ms to 5 s, recording that hosted windows-latest
+  failed the old budget on one attempt and passed the next on the identical
+  commit, while the test ran in 0.27 s locally over eight consecutive runs. The
+  5 s budget is 18x that local time and this run still exceeded it.
+
+The two failures on that attempt are worth reading together rather than as two
+findings: `rust-features-windows-latest` and `rust-default-windows-latest` failed
+**in the same run, minutes apart, on the same runner label**, one unable to launch
+a process it had just built and the other unable to commit within 5 s. That
+co-occurrence is the reason this is recorded as a property of the host rather
+than of either crate.
+
+**Widening the budget again is not the fix**, for the same reason the launch
+error is not fixed by changing the sandbox: a budget raised until it stops
+failing measures nothing, and the next reader inherits a test that cannot fail
+for a real stall either. What would decide it is measuring the commit latency's
+actual distribution on hosted Windows -- the test knows the number, it just does
+not report it -- so that the budget is set from a distribution rather than from
+the largest number seen so far.
+
+**The narrow rule this adds, and its limit.** A *deadline* assertion -- one whose
+predicate is `did X happen within N` rather than `was X correct` -- is falsified
+or confirmed by a same-commit rerun the way the two I/O shapes are, and only a
+failure that survives one is a test result. This does **not** loosen the rule
+above. An assertion about a value, an ordering, a digest or a refusal is a test
+result on the first observation, no matter which platform reported it; a rerun is
+never the response to one.
+
 ### The same signature on a developer machine, at a higher rate
 
 `P2-L3` hit it outside hosted CI. Running
@@ -1206,8 +1291,8 @@ Two things this adds to the rows above. **`last error 2` is
 `ERROR_FILE_NOT_FOUND`** against a path `cargo` had just built, which is what a
 launch error rather than a sandbox refusal looks like, and it is the same reading
 the hosted rows take. And **the rate is not a hosted-runner property**: 3 of 11
-locally is higher than the 8 of 56 measured on `rust-features-windows-latest`,
-on a machine with no runner contention. Neither number is a distribution; what
+locally is well above the 9 of 85 measured on `rust-features-windows-latest`
+over that job's whole history, on a machine with no runner contention. Neither number is a distribution; what
 the pair establishes is that a same-commit rerun is the right response on either
 side, and that a developer seeing it locally is not seeing something new.
 
