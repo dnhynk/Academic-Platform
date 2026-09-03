@@ -13,7 +13,7 @@
     "doctor": "cargo run --locked --offline --quiet -p academic-cli -- doctor --format json",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test && node --test tools/phase1-scaffold-policy.test.mjs tools/secret-debug-policy.test.mjs tools/gpa-oracle.test.mjs tools/policy-source-scan-inventory.test.mjs",
+    "test": "pnpm -r --if-present test && node --test tools/phase1-scaffold-policy.test.mjs tools/secret-debug-policy.test.mjs tools/gpa-oracle.test.mjs tools/policy-source-scan-inventory.test.mjs tools/shared-name-isolation.test.mjs",
     "build": "pnpm -r --if-present build",
     "fixture:emit": "cargo run --locked --offline --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v3.json",
     "fixture:verify": "cargo run --locked --offline --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json",
