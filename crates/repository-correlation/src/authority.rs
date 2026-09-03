@@ -189,10 +189,10 @@ pub fn active_view(
     snapshot_id: &str,
     candidates: &[Candidate],
 ) -> Result<LaneAnswer, CorrelationError> {
-    let claim_type = lane
+    let row = lane
         .claim_type()
         .ok_or(CorrelationError::LaneHasNoAuthorityRow(lane))?;
-    let table = claim_type.authority_table();
+    let table = row.authority_table();
 
     // Row five's `최신`: among the candidates, the highest revision that is
     // also `승인된`. A document below it has been superseded, and a superseded
