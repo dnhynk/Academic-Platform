@@ -159,7 +159,7 @@ is named. A blocklist of forbidden column names was the earlier shape here and
 did not hold: a side table carrying the raw bytes passed it, the projection
 render, and the generic debug guard together.
 
-## `egress_audit.grant_id` is polymorphic, and nothing discriminates it
+## `egress_audit.grant_id` is polymorphic, and only a join discriminates it
 
 `egress_audit.grant_id` carries no foreign key to `egress_grant`, and that is
 deliberate: of the seven `insert_audit` call sites, four write a **process
@@ -180,12 +180,27 @@ namespaces in the same 64-hex shape, and `PermissionBroker::grant_row` returns
 `egress_grant` reference, those rows look dangling.
 
 No dangling row exists today: all seven call sites write an identifier that does
-exist in one of the two tables. What is unresolved is the discrimination, and
-the fix is a discriminator column (or two columns), **not** the foreign key.
-It starts mattering at `P2-M1`, whose acceptance evidence includes
-`transmitted_ranges_reconcile_with_egress_audit`: that reconciliation has to key
-on `egress_audit.grant_id`, and the key is polymorphic with nothing to resolve
-the polymorphism. Severity P3 until then.
+exist in one of the two tables.
+
+What is unresolved is the discrimination *within the column*. It is not
+unresolved for a transmission, because a transmission leaves an
+`egress_consumption` row -- `PermissionBroker::execute` consumes the grant
+atomically -- and that table carries two foreign keys: `grant_id` references
+`egress_grant`, and the composite
+`(egress_audit_seq, grant_id)` references `egress_audit(audit_seq, grant_id)`,
+which `egress_audit`'s trailing `UNIQUE (audit_seq, grant_id)` makes
+enforceable. `PRAGMA foreign_keys = ON` is set in
+`crates/policy/src/lib.rs`. `T149` measured both: a consumption row naming
+grant B against an audit row naming A, and one naming a grant with no
+`egress_grant` row, are each refused with SQLite `787`.
+
+So `P2-M1`'s `transmitted_ranges_reconcile_with_egress_audit` can key on the
+audit row through `egress_consumption` with no new column: every row reachable
+that way names a grant that exists. What stays polymorphic are the rows a
+consumption never covers -- DENY rows and process-capability rows -- and for a
+reader of the column alone the fix is a discriminator column (or two columns),
+**not** the foreign key, which would make `P2-G7`'s process-activity rows fail
+at INSERT. Severity P3.
 
 ## Schema allocation discrepancy
 

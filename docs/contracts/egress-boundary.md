@@ -59,13 +59,26 @@ are made on both. Neither can be called without a `StagedPayload` and a live
 `CapabilityToken`.
 
 That there are exactly two, and that both bind the grant, is counted rather
-than promised: `the_byte_path_has_one_derivation` in
-`crates/egress-boundary/tests/byte_path_pin.rs` holds the `.execute(` call sites
-at two and the `bind_grant` call sites at two, reading the name rather than a
-spelling. This is `T146`'s `P1-1` finding, and the count is what the repair
-added: before it, `transmit_without_completion` read no grant row and compared
-no rulepack, and with a grant reviewed under another pack it wrote 180 bytes to
-a transport for a payload `transmit` refused with zero.
+than promised. `the_byte_path_has_one_derivation` in
+`crates/egress-boundary/tests/byte_path_pin.rs` holds `execute`, `bind_grant`
+and `write_authorized_bytes` at two call sites each and `send_chunk` at one,
+reading each name rather than a spelling, and subtracting only a declaration
+whose name is exactly that one. `OutboundTransport` is pinned whole beside them,
+one method wide, because a count of `send_chunk` call sites says nothing about a
+second method that writes bytes some other way. The counts are sums over a walk
+of the whole package, and `the_transport_is_reached_from_no_module_but_the_proxy`
+is what makes the walk mean the crate: it holds a floor on the files found, refuses
+product source outside `src`, requires every `mod name;` and `#[path]` target to
+be a file the walk read, and allows only `lib.rs` to call the first three and
+only `transport.rs` to call `send_chunk`.
+
+Both halves are `T146`'s and `T149`'s findings in turn. Before the count,
+`transmit_without_completion` read no grant row and compared no rulepack, and
+with a grant reviewed under another pack it wrote 180 bytes to a transport for a
+payload `transmit` refused with zero. Before the walk, the counts read `lib.rs`,
+so `mod relay;` and one new file added a third path that wrote 178 bytes under
+the same mismatch, left no journal row, and passed this crate's suite, the
+workspace suite and both source scans.
 
 ## The rulepack identifier in every grant
 
@@ -99,6 +112,14 @@ fails exactly one of the first two; deleting either call site fails the count in
 `byte_path_pin.rs`. Before the repair, deleting the rulepack comparison outright
 left `cargo test --workspace --all-targets`, `pnpm test` and `pnpm security` all
 passing.
+
+The count and the named tests carry different halves, and the count carries the
+smaller one. `T149` kept the call site and disabled the binding three ways --
+swallowing its refusal in an `Err(_)` arm, moving the call into a branch no
+caller reaches, and deleting the call while adding a dead-code decoy that holds
+the number at two. The count is silent on all three; the two named tests above
+refuse all three. So what the count says is that a path exists, and what says
+the path decides anything is a test that runs it.
 
 ## The staging pipeline
 

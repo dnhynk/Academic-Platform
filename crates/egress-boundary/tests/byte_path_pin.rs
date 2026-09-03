@@ -20,15 +20,91 @@
 //! sites are safe. A new fallback fails the count, which is the point: the
 //! judgement about whether it fails open has to be written down.
 
-use std::error::Error;
+use std::{
+    collections::BTreeSet,
+    error::Error,
+    fs,
+    path::{Path, PathBuf},
+};
 
 type TestResult = Result<(), Box<dyn Error>>;
 
+/// The crate root.
+fn crate_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
+/// Reads one named file under this crate's `src`.
+///
+/// The whole-text pins below name the item they pin, so they name the file that
+/// holds it; a rename fails here loudly because the read fails. What a named
+/// read cannot see is a file that was *added*, which is what the walk is for.
 fn source(relative: &str) -> Result<String, Box<dyn Error>> {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join(relative);
-    Ok(std::fs::read_to_string(path)?)
+    Ok(fs::read_to_string(crate_root().join("src").join(relative))?)
+}
+
+/// Every `.rs` file anywhere under this crate's package directory.
+///
+/// The package rather than a list of names. `T149` added `mod relay;` and one
+/// new file to this crate: it reached the transport through the broker without
+/// binding a grant, wrote 178 bytes for a payload `transmit` refused with zero,
+/// left no journal row, and passed this file, the egress suite,
+/// `cargo test --workspace --all-targets` and both JS scans -- because the
+/// three counts read `lib.rs` and the fallback inventory read six names, and
+/// nothing in this crate had ever asked what files existed. Copied from
+/// `crate_all_sources` in `crates/untrusted-content/tests/trust_scans.rs`,
+/// which is where this repository's package walk lives.
+fn crate_all_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
+    let mut found = Vec::new();
+    walk(&crate_root(), &mut found)?;
+    found.sort();
+    Ok(found)
+}
+
+/// Every `.rs` file that ships, which is every one outside `tests`.
+fn crate_product_sources() -> Result<Vec<PathBuf>, Box<dyn Error>> {
+    let root = crate_root();
+    Ok(crate_all_sources()?
+        .into_iter()
+        .filter(|path| {
+            !path
+                .strip_prefix(&root)
+                .unwrap_or(path)
+                .starts_with("tests")
+        })
+        .collect())
+}
+
+fn walk(directory: &Path, found: &mut Vec<PathBuf>) -> Result<(), Box<dyn Error>> {
+    for entry in fs::read_dir(directory)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            walk(&path, found)?;
+        } else if path.extension().is_some_and(|extension| extension == "rs") {
+            found.push(path);
+        }
+    }
+    Ok(())
+}
+
+/// The path of `path` under this crate's `src`, with forward slashes.
+///
+/// The fallback inventory is keyed on this rather than on a file stem, so a
+/// module added as `sub/mod.rs` cannot be mistaken for a `mod.rs` elsewhere.
+fn under_src(path: &Path) -> String {
+    path.strip_prefix(crate_root().join("src"))
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
+/// The comment-stripped code of every product file, in walk order.
+fn product_code() -> Result<Vec<(String, String)>, Box<dyn Error>> {
+    let mut read = Vec::new();
+    for path in crate_product_sources()? {
+        read.push((under_src(&path), code_only(&fs::read_to_string(&path)?)));
+    }
+    Ok(read)
 }
 
 /// Drops every comment line, so a count reads code and not prose.
@@ -43,7 +119,15 @@ fn code_only(text: &str) -> String {
         .join("\n")
 }
 
-/// Reads one item out of a source file, whitespace-collapsed.
+/// Reads one item out of a source file, comment lines dropped and whitespace
+/// collapsed.
+///
+/// Comment lines are dropped so a pin fixes code and not prose, which is what
+/// `docs/contracts/policy-source-scans.md` says every pin in this repository
+/// does and what `declared_item` in
+/// `crates/untrusted-content/tests/trust_scans.rs` already did. It was untested
+/// here until `WHOLE_TRANSPORT_TRAIT`: none of the other eight items has a
+/// comment inside it, so none of them ever asked.
 fn whole(text: &str, signature: &str, terminator: &str) -> Result<String, Box<dyn Error>> {
     let (_, rest) = text
         .split_once(signature)
@@ -52,7 +136,10 @@ fn whole(text: &str, signature: &str, terminator: &str) -> Result<String, Box<dy
         .split_once(terminator)
         .ok_or_else(|| format!("{signature} has no terminator"))?;
     let joined = format!("{signature}{body}{terminator}");
-    Ok(joined.split_whitespace().collect::<Vec<_>>().join(" "))
+    Ok(code_only(&joined)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" "))
 }
 
 /// The only place a payload argument is built. It reads the preview.
@@ -73,6 +160,20 @@ const WHOLE_EMIT: &str = concat!(
     "for chunk in bytes.chunks(chunk_bytes.max(1)) { if now() >= expires_at { ",
     "return Err(TransportError::GrantExpiredMidTransfer { sent }); } ",
     "transport.send_chunk(chunk)?; sent = sent.saturating_add(chunk.len()); } Ok(sent) }"
+);
+
+/// The whole transport trait. One method, so there is one way to write bytes.
+///
+/// The call-site counts below read `send_chunk`, which is worth counting only
+/// while it is the only writer. `T151` added a second *required* method to this
+/// trait and reached it from a new module: no count moved, because the new name
+/// is not one of the counted ones and a required method has no body to call
+/// anything from. A second method with a default body is caught by the
+/// `send_chunk` count, because its body calls it; one without a body was caught
+/// by nothing until this pin.
+const WHOLE_TRANSPORT_TRAIT: &str = concat!(
+    "pub trait OutboundTransport { ",
+    "fn send_chunk(&mut self, chunk: &[u8]) -> Result<(), TransportError>; }"
 );
 
 /// The preview's byte accessor. It returns the field and computes nothing.
@@ -180,6 +281,11 @@ fn the_byte_path_has_one_derivation() -> TestResult {
         "the transport is written from something other than the authorized buffer"
     );
     assert_eq!(
+        whole(&transport, "pub trait OutboundTransport", "\n}")?,
+        WHOLE_TRANSPORT_TRAIT,
+        "the transport trait gained a second way to write bytes"
+    );
+    assert_eq!(
         whole(&stage, "pub fn bytes(&self)", "\n    }")?,
         WHOLE_PREVIEW_BYTES,
         "the preview computes its bytes instead of holding them"
@@ -227,11 +333,6 @@ fn the_byte_path_has_one_derivation() -> TestResult {
         "the redaction pass has more than one definition"
     );
     assert_eq!(
-        transport_code.matches("send_chunk(").count(),
-        2,
-        "the transport is written from somewhere besides write_authorized_bytes"
-    );
-    assert_eq!(
         identifier_uses(&transport_code, "preview"),
         1,
         "the preview buffer is read in more than one place on the transport path"
@@ -251,34 +352,70 @@ fn the_byte_path_has_one_derivation() -> TestResult {
     ] {
         assert!(lib_code.contains(site), "{site} is gone from the proxy");
     }
-    assert_eq!(
-        identifier_uses(&lib_code, "write_authorized_bytes"),
-        2,
-        "the emit helper is called from an unexpected number of places"
-    );
-    assert_eq!(
-        identifier_uses(&lib_code, "execute"),
-        2,
-        "a transmit path bypasses the capability boundary"
-    );
 
-    // Both of those paths bind the grant first, and the count is what says
-    // "both" rather than "one of them". `T146` deleted the binding from one
-    // path and the whole workspace suite still passed, because nothing counted.
+    // And they are counted over every file the walk read, not over `lib.rs`.
+    // `T149` put the third path in a new module: the counts here were `lib.rs`
+    // counts, so `mod relay;` -- which adds no call site to `lib.rs` -- moved
+    // none of them, and 178 bytes reached a transport under a grant reviewed
+    // by another rulepack. `the_transport_is_reached_from_no_module_but_the_proxy`
+    // is what says the walk saw every module; these are what it counts.
     //
-    // The name is counted, not a spelling. `T146`'s other finding was an
-    // inventory that counted `.expose()` and never saw `Untrusted::expose(d)`,
-    // which is the same call written through the type path; a caller here could
-    // write `EgressProxy::bind_grant(self, ..)` for exactly the same reason.
-    let declarations = lib_code.matches("fn bind_grant(").count();
-    assert_eq!(declarations, 1, "bind_grant is declared more than once");
-    assert_eq!(
-        identifier_uses(&lib_code, "bind_grant") - declarations,
-        2,
-        "a transmit path reaches the transport without binding its grant first"
-    );
+    // Each declaration is subtracted from its own use count, and a declaration
+    // is read as a whole name rather than as a spelling: `fn bind_grant_later(`
+    // is not `fn bind_grant`. `T149`'s other finding was a count one crate over
+    // that subtracted the spelling, where `pub fn expose_rendered(` cancelled
+    // its own call to `expose`.
+    let product = product_code()?;
+    for (name, sites, _, why) in CALL_SITE_COUNTS {
+        let mut uses = 0_usize;
+        let mut declarations = 0_usize;
+        for (_, code) in &product {
+            uses += identifier_uses(code, name);
+            declarations += declarations_of(code, name);
+        }
+        assert!(
+            uses >= declarations,
+            "{name} is declared {declarations} times and named {uses}, which cannot happen"
+        );
+        assert_eq!(uses - declarations, sites, "{why}");
+    }
     Ok(())
 }
+
+/// Call-site counts over every product file the walk reads, and the one file
+/// each name may be called from.
+///
+/// A count is a claim that the crate has exactly this many ways to do the thing
+/// named, and the walk is what makes "the crate" mean the package rather than
+/// one file. The caller column is the second half: a count of two is still two
+/// if one of them moves into a new module, and a module that reaches the
+/// transport directly is the shape `T149` used.
+const CALL_SITE_COUNTS: [(&str, usize, &str, &str); 4] = [
+    (
+        "execute",
+        2,
+        "lib.rs",
+        "a transmit path bypasses the capability boundary",
+    ),
+    (
+        "write_authorized_bytes",
+        2,
+        "lib.rs",
+        "the emit helper is called from an unexpected number of places",
+    ),
+    (
+        "bind_grant",
+        2,
+        "lib.rs",
+        "a transmit path reaches the transport without binding its grant first",
+    ),
+    (
+        "send_chunk",
+        1,
+        "transport.rs",
+        "the transport is written from somewhere besides write_authorized_bytes",
+    ),
+];
 
 /// Counts whole-identifier occurrences of `name` in already-stripped code.
 ///
@@ -295,6 +432,28 @@ fn identifier_uses(code: &str, name: &str) -> usize {
                 *at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_');
             let after = bytes.get(at + name.len()).copied().unwrap_or(b' ');
             before_ok && !(after.is_ascii_alphanumeric() || after == b'_')
+        })
+        .count()
+}
+
+/// Counts declarations of a function whose name is exactly `name`.
+///
+/// A declaration is subtracted from a use count, so reading it as a spelling
+/// lets a longer name cancel its own call: `T149` walked past the inventory one
+/// crate over with `pub fn expose_rendered(`, which `occurrences(code, "fn
+/// expose")` counted as a declaration of `expose` while `uses_of` did not count
+/// it as a use. What follows the name here has to open a parameter list or a
+/// generic list and nothing else, so `fn bind_grant_later(` is not `bind_grant`
+/// and `fn write_authorized_bytes<T: OutboundTransport>(` still is.
+fn declarations_of(code: &str, name: &str) -> usize {
+    let needle = format!("fn {name}");
+    let bytes = code.as_bytes();
+    code.match_indices(&needle)
+        .filter(|(at, _)| {
+            let before_ok =
+                *at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_');
+            let after = bytes.get(at + needle.len()).copied().unwrap_or(b' ');
+            before_ok && (after == b'(' || after == b'<')
         })
         .count()
 }
@@ -371,17 +530,18 @@ const FORBIDDEN_SHAPES: [(&str, &str); 6] = [
 /// No path in this crate turns a failed decision into a permitted one.
 #[test]
 fn no_exception_path_fails_open() -> TestResult {
-    let files = [
-        "lib.rs",
-        "minimize.rs",
-        "response.rs",
-        "rulepack.rs",
-        "stage.rs",
-        "transport.rs",
-    ];
-    let mut inventory = Vec::new();
-    for name in files {
-        let text = source(name)?;
+    // The walk, not a list of six names. A name list says nothing about a
+    // seventh file, and `T149` added one.
+    let sources = crate_product_sources()?;
+    assert!(
+        sources.len() >= 6,
+        "the walk found only {} product files under the package",
+        sources.len()
+    );
+    let mut inventory: Vec<(String, &str, usize)> = Vec::new();
+    for path in &sources {
+        let name = under_src(path);
+        let text = fs::read_to_string(path)?;
         assert!(
             !text.contains("#[cfg(test)]"),
             "{name} gained a test module, so the product half is no longer the whole file"
@@ -399,7 +559,7 @@ fn no_exception_path_fails_open() -> TestResult {
                     0
                 };
             if count > 0 {
-                inventory.push((name, token, count));
+                inventory.push((name.clone(), token, count));
             }
         }
         // `unwrap_or_default` and `unwrap_or_else` are counted separately so a
@@ -417,10 +577,10 @@ fn no_exception_path_fails_open() -> TestResult {
         );
     }
 
-    let declared: Vec<(&str, &str, usize)> = FALLBACK_INVENTORY
+    let declared: Vec<(String, &str, usize)> = FALLBACK_INVENTORY
         .iter()
         .filter(|(_, _, count, _)| *count > 0)
-        .map(|(file, token, count, _)| (*file, *token, *count))
+        .map(|(file, token, count, _)| ((*file).to_owned(), *token, *count))
         .collect();
     inventory.sort_unstable();
     let mut declared = declared;
@@ -434,6 +594,121 @@ fn no_exception_path_fails_open() -> TestResult {
     // say the byte path itself has no fallback.
     for (file, token, _, why) in FALLBACK_INVENTORY {
         assert!(why.len() >= 40, "{file}/{token} has no written reason");
+    }
+    Ok(())
+}
+
+/// The walk reads every module, and only the proxy reaches the transport.
+///
+/// The counts in `the_byte_path_has_one_derivation` are sums over the files
+/// this walk returns, so they are worth exactly what the walk is worth. `T149`
+/// wrote `mod relay;` into `lib.rs` and a new `src/relay.rs` beside it: the
+/// module reached `broker.execute` and `write_authorized_bytes` directly, sent
+/// 178 bytes under a grant reviewed by a different rulepack, wrote no journal
+/// row, and passed every check this crate had -- because this crate had no walk
+/// and no module inventory, and every count read `lib.rs`.
+///
+/// Two halves, and each catches what the other cannot. The tripwire fails if a
+/// module is declared that the walk never read, so the walk cannot be narrowed
+/// out from under the counts. The per-file rule fails if any file but `lib.rs`
+/// names one of the three, so a new module that *is* walked still cannot reach
+/// a transport: it would have to route through the proxy, where the grant is
+/// bound. `transport.rs` declares two of the three and calls neither.
+#[test]
+fn the_transport_is_reached_from_no_module_but_the_proxy() -> TestResult {
+    let sources = crate_all_sources()?;
+    // The floor. A walk that returned nothing would satisfy every count above.
+    assert!(
+        sources.len() >= 6,
+        "the walk found only {} files under the package",
+        sources.len()
+    );
+
+    // Product source lives under `src` and nowhere else, which is what makes
+    // "the files the walk read, less `tests`" mean "everything that ships".
+    // `S-12` in `docs/contracts/policy-source-scans.md` is the shape this
+    // refuses: `P2-G4` put a `[[bin]]` with an explicit `path` outside `src`,
+    // and two scans stopped seeing that crate's product code.
+    let root = crate_root();
+    let outside: Vec<String> = crate_product_sources()?
+        .iter()
+        .filter(|path| !path.strip_prefix(&root).unwrap_or(path).starts_with("src"))
+        .map(|path| under_src(path))
+        .collect();
+    assert_eq!(
+        outside,
+        Vec::<String>::new(),
+        "this crate has product source outside src; every count that reads it has to widen"
+    );
+
+    // A module is either `<name>.rs` or `<name>/mod.rs`, so both spellings are
+    // collected: a tripwire that only knew the first would fire on every
+    // directory module and be turned off rather than fixed.
+    let mut read: BTreeSet<String> = BTreeSet::new();
+    for path in &sources {
+        if let Some(stem) = path.file_stem() {
+            let stem = stem.to_string_lossy().into_owned();
+            if stem == "mod" {
+                if let Some(parent) = path.parent().and_then(Path::file_name) {
+                    read.insert(parent.to_string_lossy().into_owned());
+                }
+            } else {
+                read.insert(stem);
+            }
+        }
+    }
+
+    // The tripwire. Every `mod name;` and every `#[path = "…"]` in the crate
+    // has to name a file the walk read. It fails the day the walk is narrowed,
+    // and the day a module is added somewhere the walk does not descend into.
+    let mut declared = 0_usize;
+    for path in &sources {
+        let text = fs::read_to_string(path)?;
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if let Some(name) = trimmed
+                .strip_prefix("pub mod ")
+                .or_else(|| trimmed.strip_prefix("mod "))
+                .and_then(|rest| rest.strip_suffix(';'))
+            {
+                declared += 1;
+                assert!(
+                    read.contains(name),
+                    "`{name}` is declared in {} and the walk never read it",
+                    under_src(path)
+                );
+            }
+            if let Some(rest) = trimmed.strip_prefix("#[path = \"") {
+                let target = rest.split('"').next().unwrap_or_default();
+                let resolved = path
+                    .parent()
+                    .map_or_else(|| PathBuf::from(target), |parent| parent.join(target));
+                assert!(
+                    sources.iter().any(|read_path| read_path == &resolved),
+                    "{} includes {target}, which the walk never read",
+                    under_src(path)
+                );
+            }
+        }
+    }
+    assert!(declared >= 5, "the crate declares only {declared} modules");
+
+    // Each of the four names may be called only from the file that owns it:
+    // the proxy for the three that reach the broker and the emit helper, and
+    // `transport.rs` for the trait method the emit helper writes through. A
+    // declaration is not a call, so `transport.rs` declaring the emit helper
+    // does not count as calling it. Every other file must name none of them.
+    for (file, code) in product_code()? {
+        for (name, _, caller, _) in CALL_SITE_COUNTS {
+            if file == caller {
+                continue;
+            }
+            let calls = identifier_uses(&code, name) - declarations_of(&code, name);
+            assert_eq!(
+                calls, 0,
+                "{file} calls {name} {calls} time(s); only {caller} may call it"
+            );
+        }
     }
     Ok(())
 }
