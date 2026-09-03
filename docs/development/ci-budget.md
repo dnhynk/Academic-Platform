@@ -73,29 +73,30 @@ and all fixture commands. The five `rust-features-*` jobs retain every
 encrypted-object, rotation/retention, transcript, and native-worker clippy/test
 command on the same five labels. Both groups have a 30-minute limit.
 
-The first split run,
-[33675718049](https://github.com/dnhynk/Academic-Platform/actions/runs/33675718049),
-completed 17/17 at `25e6221a827eccc35fb4a9992d45235e780e2ac7`.
+The latest run,
+[33698230519](https://github.com/dnhynk/Academic-Platform/actions/runs/33698230519),
+completed 17/17 at `8ac8f17` — `P2-RF11`, which changed five default-workspace
+tests and two pnpm source scans.
 
 | Required job | Elapsed | Limit | Utilization |
 |---|---:|---:|---:|
-| `dependency-source-preflight` | 0:10 | 5:00 | 3.3% |
-| `rust-default-ubuntu-latest` | 4:54 | 30:00 | 16.3% |
-| `rust-default-ubuntu-24.04-arm` | 3:48 | 30:00 | 12.7% |
-| `rust-default-windows-latest` | 20:18 | 30:00 | 67.7% |
-| `rust-default-windows-11-arm` | 12:54 | 30:00 | 43.0% |
-| `rust-default-macos-latest` | 4:19 | 30:00 | 14.4% |
-| `rust-features-ubuntu-latest` | 2:23 | 30:00 | 7.9% |
-| `rust-features-ubuntu-24.04-arm` | 2:24 | 30:00 | 8.0% |
-| `rust-features-windows-latest` | 5:26 | 30:00 | 18.1% |
-| `rust-features-windows-11-arm` | 4:26 | 30:00 | 14.8% |
-| `rust-features-macos-latest` | 2:51 | 30:00 | 9.5% |
-| `phase1-exit-ubuntu-latest` | 2:50 | 45:00 | 6.3% |
-| `phase1-exit-windows-latest` | 7:43 | 45:00 | 17.1% |
-| `encrypted-store-lane-ubuntu-latest` | 3:08 | 45:00 | 7.0% |
-| `encrypted-portability-lane-ubuntu-latest` | 4:03 | 45:00 | 9.0% |
-| `rotation-orchestration-lane-ubuntu-latest` | 6:59 | 45:00 | 15.5% |
-| `pnpm-contracts` | 0:50 | 15:00 | 5.6% |
+| `dependency-source-preflight` | 0:04 | 5:00 | 1.3% |
+| `rust-default-ubuntu-latest` | 4:36 | 30:00 | 15.3% |
+| `rust-default-ubuntu-24.04-arm` | 3:51 | 30:00 | 12.8% |
+| `rust-default-windows-latest` | 12:16 | 30:00 | 40.9% |
+| `rust-default-windows-11-arm` | 12:49 | 30:00 | 42.7% |
+| `rust-default-macos-latest` | 4:13 | 30:00 | 14.1% |
+| `rust-features-ubuntu-latest` | 2:40 | 30:00 | 8.9% |
+| `rust-features-ubuntu-24.04-arm` | 2:20 | 30:00 | 7.8% |
+| `rust-features-windows-latest` | 5:20 | 30:00 | 17.8% |
+| `rust-features-windows-11-arm` | 4:41 | 30:00 | 15.6% |
+| `rust-features-macos-latest` | 2:13 | 30:00 | 7.4% |
+| `phase1-exit-ubuntu-latest` | 4:05 | 45:00 | 9.1% |
+| `phase1-exit-windows-latest` | 7:58 | 45:00 | 17.7% |
+| `encrypted-store-lane-ubuntu-latest` | 3:06 | 45:00 | 6.9% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:07 | 45:00 | 11.4% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:50 | 45:00 | 15.2% |
+| `pnpm-contracts` | 0:52 | 15:00 | 5.8% |
 
 The slowest job is now `rust-default-windows-latest` at 67.7%. Its 20:18
 also shows that splitting alone while retaining the old 20-minute timeout
@@ -104,7 +105,7 @@ job used 18.1% instead of extending that default job by another 5:26. Windows
 ARM is the next-highest Rust default at 43.0%; every Linux, Linux ARM, and macOS
 Rust job is at or below 16.3%.
 
-## Latest run
+## The `P2-G6` run
 
 `P2-G6` adds one workspace member, `academic-consent`, which the refresh rule
 above names as a trigger. Run
@@ -147,6 +148,50 @@ on the `rust-default-*` jobs.
 
 `encrypted-store-lane-ubuntu-latest` is the job migration `0006` changes, and it
 is at 7.4%.
+
+## Latest run
+
+`P2-RF11` changes five default-workspace tests and two pnpm source scans, which
+the refresh rule names as a trigger, and `rust-default-windows-latest` moved by
+more than the 20% the rule names as a second one. Run
+[33698230519](https://github.com/dnhynk/Academic-Platform/actions/runs/33698230519)
+completed 17/17; the docs-only follow-up
+[33700472647](https://github.com/dnhynk/Academic-Platform/actions/runs/33700472647)
+did too.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:04 | 5:00 | 1.3% |
+| `rust-default-ubuntu-latest` | 4:36 | 30:00 | 15.3% |
+| `rust-default-ubuntu-24.04-arm` | 3:51 | 30:00 | 12.8% |
+| `rust-default-windows-latest` | 12:16 | 30:00 | 40.9% |
+| `rust-default-windows-11-arm` | 12:49 | 30:00 | 42.7% |
+| `rust-default-macos-latest` | 4:13 | 30:00 | 14.1% |
+| `rust-features-ubuntu-latest` | 2:40 | 30:00 | 8.9% |
+| `rust-features-ubuntu-24.04-arm` | 2:20 | 30:00 | 7.8% |
+| `rust-features-windows-latest` | 5:20 | 30:00 | 17.8% |
+| `rust-features-windows-11-arm` | 4:41 | 30:00 | 15.6% |
+| `rust-features-macos-latest` | 2:13 | 30:00 | 7.4% |
+| `phase1-exit-ubuntu-latest` | 4:05 | 45:00 | 9.1% |
+| `phase1-exit-windows-latest` | 7:58 | 45:00 | 17.7% |
+| `encrypted-store-lane-ubuntu-latest` | 3:06 | 45:00 | 6.9% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:07 | 45:00 | 11.4% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:50 | 45:00 | 15.2% |
+| `pnpm-contracts` | 0:52 | 15:00 | 5.8% |
+
+The slowest job on this run is `rust-default-windows-11-arm` at 42.7%, with
+`rust-default-windows-latest` beside it at 40.9%. Every other job is at or below
+17.8%, and every Linux, Linux ARM and macOS Rust job is at or below 15.3%.
+
+**`rust-default-windows-latest` now has three readings on one workflow: 20:18,
+14:08 and 12:16 — 67.7%, 47.1% and 40.9%.** The section above already read the
+second against the first as runner spread. The third confirms it and settles the
+shape: this job's elapsed time varies by about 40% between runs with no
+repository change that explains it, so no single reading of it is a budget. Size
+headroom off the worst of the three, 67.7%, and treat a fourth reading as
+evidence about the *range* rather than as a replacement for the last one. The
+three tables are kept for that reason.
+
 
 ## A Windows failure that is not a test result
 
