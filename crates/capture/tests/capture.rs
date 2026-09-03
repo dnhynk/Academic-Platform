@@ -908,8 +908,8 @@ fn out_of_order_frame_is_refused() -> TestResult {
     let token = ContentDigest::sha256(b"t161-token");
     let mut clock = SessionClock::start(common::lecture()?, &token, None);
     let early = clock.tick(1_000)?;
-    let same = clock.tick(9_000)?;
     let late = clock.tick(9_000)?;
+    let same = clock.tick(9_000)?;
     let later = clock.tick(9_001)?;
     let mut journal = ChunkJournal::create(
         &path,
@@ -970,6 +970,16 @@ fn out_of_order_frame_is_refused() -> TestResult {
         .collect();
     assert_eq!(instants, vec![9_000, 9_000, 9_001]);
     assert!(check_no_frame_went_backwards(&path)?);
+    // What is compared is the instant, not the clock's sequence number. Two
+    // ticks can share an instant and a caller can have a reason to record the
+    // later-minted one first; the timeline is the same either way, so the file
+    // holds the frames in instant order and claims nothing about mint order.
+    let sequences: Vec<u32> = recovered
+        .records()
+        .iter()
+        .map(|record| record.at().seq())
+        .collect();
+    assert_eq!(sequences, vec![1, 2, 3]);
 
     // A resume is the case the comparison must not catch. The new clock starts
     // at its own origin, so its first frame's instant is below every frame the
