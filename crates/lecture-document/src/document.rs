@@ -73,6 +73,24 @@ macro_rules! identifier {
             pub fn as_str(&self) -> &str {
                 &self.0
             }
+
+            /// How many bytes the identifier is.
+            ///
+            /// `S-10` registers the types that hold this one, and a registered
+            /// type's hand-written `Debug` may reach a field only through a
+            /// length. This is that length: without it the identifier would
+            /// have to be dropped from the formatter entirely, which is a
+            /// worse trade than printing how long it is.
+            #[must_use]
+            pub fn len(&self) -> usize {
+                self.0.len()
+            }
+
+            /// Whether the identifier is empty, which it never is.
+            #[must_use]
+            pub fn is_empty(&self) -> bool {
+                self.0.is_empty()
+            }
         }
 
         impl fmt::Debug for $name {
@@ -322,7 +340,7 @@ impl fmt::Debug for SourceMapping {
 ///
 /// The builder is what turns one of these into a [`DocumentNode`]; there is no
 /// other producer, which is why a node that exists has a checked mapping.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct NodeDraft {
     /// The node's identifier.
     pub id: NodeId,
@@ -338,6 +356,24 @@ pub struct NodeDraft {
     pub annotations: Vec<DocumentAnnotation>,
     /// The explicit exception to the ordering check, if this node is one.
     pub cross_reference: Option<CrossReference>,
+}
+
+// A draft holds the lecture before the builder has looked at it, which is the
+// same bytes a node holds afterwards. `S-10`'s decision for this crate is the
+// strengthening one: nothing that reaches a formatter is lecture text.
+impl fmt::Debug for NodeDraft {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("NodeDraft")
+            .field("id_byte_len", &self.id.len())
+            .field("kind", &self.kind)
+            .field("rendered_byte_len", &self.rendered_text.len())
+            .field("mapping_count", &self.mappings.len())
+            .field("nearby_captures", &self.nearby_captures)
+            .field("annotations", &self.annotations)
+            .field("cross_reference", &self.cross_reference)
+            .finish()
+    }
 }
 
 /// One node of a lecture document.
@@ -408,7 +444,7 @@ impl fmt::Debug for DocumentNode {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("DocumentNode")
-            .field("id", &self.id)
+            .field("id_byte_len", &self.id.len())
             .field("kind", &self.kind)
             .field("rendered_byte_len", &self.rendered_text.len())
             .field("mappings", &self.mappings)
@@ -523,7 +559,7 @@ impl fmt::Debug for LectureDocument {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("LectureDocument")
-            .field("id", &self.id)
+            .field("id_byte_len", &self.id.len())
             .field("lecture", &self.lecture)
             .field("version", &self.version)
             .field("node_count", &self.nodes.len())

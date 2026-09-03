@@ -104,10 +104,22 @@ impl StudyIndexId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// How many bytes the identifier is. See `DocumentId::len`.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether the identifier is empty, which it never is.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 /// One entry of a study index.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct StudyIndexEntry {
     id: String,
     heading: String,
@@ -144,11 +156,25 @@ impl StudyIndexEntry {
     }
 }
 
+// A heading is written over a span of the lecture and can quote it. Same
+// decision as the document's own nodes.
+impl core::fmt::Debug for StudyIndexEntry {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("StudyIndexEntry")
+            .field("id_byte_len", &self.id.len())
+            .field("heading_byte_len", &self.heading.len())
+            .field("node_byte_len", &self.node.len())
+            .field("salience", &self.salience)
+            .finish()
+    }
+}
+
 /// A navigation index over one lecture document.
 ///
 /// It has no completeness, no coverage, and no route back to the document as an
 /// artifact. What it has is a link per entry and one disclosure.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct StudyIndex {
     id: StudyIndexId,
     document: DocumentId,
@@ -223,6 +249,18 @@ impl StudyIndex {
             push_str(&mut material, entry.salience.as_str());
         }
         material
+    }
+}
+
+// The entries hold headings written over the lecture.
+impl core::fmt::Debug for StudyIndex {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("StudyIndex")
+            .field("id_byte_len", &self.id.len())
+            .field("document_byte_len", &self.document.len())
+            .field("entry_count", &self.entries.len())
+            .finish()
     }
 }
 
