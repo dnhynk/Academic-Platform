@@ -365,6 +365,7 @@ which is the step `P2-M1` skipped and CI caught for it.
 Every job is at or below 49.7%, and nothing is near the 80% review trigger.
 Size headroom off the worst reading this page holds for a label, 67.7% on
 `rust-default-windows-latest`, rather than off any single run.
+
 ## Latest run
 
 `P2-X1` adds one workspace member, `academic-desktop`, one pnpm workspace
@@ -449,6 +450,13 @@ job on the same commit passed 8/8. The same failure appeared once on a Windows
 developer machine in the same lane, on a tree that touched no part of
 `academic-worker`, and re-running that exact command on the unchanged tree
 passed there too.
+
+`P2-X1` hit it a third time, at `malicious_plugin_corpus_is_contained`, and that
+occurrence is the cleanest falsification this page has: run
+[33716669384](https://github.com/dnhynk/Academic-Platform/actions/runs/33716669384)
+was a commit of **three Markdown files and nothing else**, on a parent whose own
+run was 17/17, and the rerun of that one job took it to 17/17. A signature that
+appears on a commit no compiler reads is not a property of the change.
 
 So the rule is the same as the timeout rule: a Windows job that fails inside
 `Test the worker sandbox lane` with a `CreateProcessW` launch error is
