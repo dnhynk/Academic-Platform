@@ -62,6 +62,7 @@ pub mod stance;
 use std::collections::{BTreeMap, BTreeSet};
 
 use academic_domain::entity_registry::EntityKind;
+use academic_policy::ContentDigest;
 use academic_repository_analysis::{EvidenceTier, Finding, SubjectId};
 use academic_repository_correlation::{Correlation, IntentDocument, RelationEdge};
 
@@ -394,16 +395,26 @@ fn observed_by_concept(correlation: &Correlation) -> BTreeMap<String, ObservedPr
 /// this run already fixed — the snapshot, the goal, its version and the concept
 /// — so re-running the same classification over the same evidence produces the
 /// same identity rather than a second entity for one requirement.
+///
+/// A **digest**, and deliberately not a joined string. `RequirementId` admits
+/// 64 bytes, a snapshot identifier is most of that on its own, and a joined
+/// identity truncated to fit would drop the goal version and the concept —
+/// making two requirements that differ only there one identity. That is this
+/// Run's `P2-A1` P1 defect in a second place: content standing in for identity,
+/// with the collision silent. `classification_is_snapshot_and_goal_scoped`
+/// measures it, and measured it failing before this function was a digest.
+///
+/// The separator argument holds because no part can contain a zero byte: a goal
+/// identifier and a concept are `[A-Za-z0-9._-]`, a snapshot identifier is
+/// `academic-repository`'s own `snap_`-prefixed text, and the version is
+/// rendered as decimal digits rather than as its little-endian bytes.
 fn requirement_identity(snapshot_id: &str, goal: &str, version: u64, concept: &str) -> String {
-    let mut identity = String::new();
+    let mut preimage = b"academic-repository-classification-requirement-v1\0".to_vec();
     for part in [snapshot_id, goal, &version.to_string(), concept] {
-        if !identity.is_empty() {
-            identity.push('.');
-        }
-        identity.push_str(part);
+        preimage.extend_from_slice(part.as_bytes());
+        preimage.push(0);
     }
-    identity.truncate(64);
-    identity
+    ContentDigest::of(&preimage).as_str().to_owned()
 }
 
 /// Reads the `OBSERVED` half of a stance without classifying anything else.
