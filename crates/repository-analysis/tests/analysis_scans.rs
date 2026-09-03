@@ -749,7 +749,11 @@ fn the_analysis_crate_touches_no_file_and_no_socket() -> TestResult {
             // how it reaches them. Nothing else in the package is allowed one.
             let permitted =
                 relative(&path).ends_with("tests/analysis_scans.rs") && forbidden == "fs::";
-            assert!(permitted || !named, "{} spells {forbidden}", relative(&path));
+            assert!(
+                permitted || !named,
+                "{} spells {forbidden}",
+                relative(&path)
+            );
         }
     }
     Ok(())
@@ -957,7 +961,11 @@ fn the_helpers_are_not_vacuous() -> TestResult {
     assert_eq!(uses_of("fn a_name_with_no_socket() {}", "socket"), 0);
     assert_eq!(uses_of("Stream::connect(x)", "connect"), 1);
     assert_eq!(FORBIDDEN_CONSTRUCTS.len(), 11);
-    assert!(FORBIDDEN_CONSTRUCTS.iter().any(|item| item.ends_with("::Command")));
+    assert!(
+        FORBIDDEN_CONSTRUCTS
+            .iter()
+            .any(|item| item.ends_with("::Command"))
+    );
     let names: HashSet<&str> = CALL_SITE_COUNTS.iter().map(|(name, ..)| *name).collect();
     assert_eq!(names.len(), CALL_SITE_COUNTS.len());
     Ok(())
