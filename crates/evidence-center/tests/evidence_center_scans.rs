@@ -44,6 +44,14 @@ use academic_evidence_center::{
 
 type TestResult = Result<(), Box<dyn Error>>;
 
+/// The closing brace of an `impl` member, at its own indentation.
+///
+/// A member's own terminator, so `declared_member` stops at the end of the
+/// function rather than at the end of a `match` arm inside it.
+const TAIL_BRACE: &str = "
+    }
+";
+
 // ---------------------------------------------------------------------------
 // the walk
 // ---------------------------------------------------------------------------
@@ -1805,6 +1813,22 @@ fn nothing_but_a_user_settles_a_conflict_or_extends_an_expiry() -> TestResult {
         declared_member(&conflict, "pub fn settle(", "\n    }\n")?,
         WHOLE_SETTLE,
         "ConflictCase::settle changed"
+    );
+
+    // The three choices are a constant, pinned whole.
+    //
+    // The behavioural half drives the whole status vocabulary on both sides,
+    // and `X7-I15` is why: the assertion that used to be there ran on one
+    // shape, and a narrowing keyed on another passed it. A sweep is bounded by
+    // what it varies, though -- `X7-I27` narrows on the authority class, which
+    // the sweep holds fixed -- so the pin is what refuses a narrowing keyed on
+    // anything at all.
+    const WHOLE_OFFERED: &str =
+        "pub const fn offered(&self) -> [CorrectionChoice; 3] { CorrectionChoice::ALL }";
+    assert_eq!(
+        declared_member(&conflict, "pub const fn offered(", TAIL_BRACE)?,
+        WHOLE_OFFERED,
+        "ConflictCase::offered changed"
     );
 
     // Nothing removes, truncates or clears a history, and nothing resolves one
