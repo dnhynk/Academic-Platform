@@ -1,0 +1,33 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-f",
+  "task": "P2-L2",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-L2 admits no external crate. academic-capture links academic-consent, academic-domain and thiserror as product edges and tempfile as its only dev edge. Every one is covered by an earlier reviewed receipt, and it adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-capture is the P2-L2 one-action Record/Capture/Mark surface: the single monotonic session clock, the append-only chunk journal, the preflight and its non-intrusive failure signals, the capture metadata, Mark Moment, and two-anchor realignment. It is a separate package rather than a module of academic-capture-gate because no workspace crate may depend on that package at all -- it carries a platform backend and a probe binary, and only_egress_crate_has_a_socket reads cargo metadata and fails the day any crate depends on it, because the probe would then be reachable from a default build. P2-G2's precedent is to split rather than to weaken a guard, so the two crates are siblings over academic-consent's one section 3.7 binding.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {
+    "academic-consent": "the one section 3.7 binding every capture path runs. This crate calls mint_capture_capability once at begin and continue_capture once per recording seam, and adds no comparison of its own.",
+    "academic-domain": "the identifier and digest types the journal frames and the session-clock domain are built from."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-capture",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-capture",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-capture is a workspace path crate, not an external dependency. It owns the desktop host's capture surface: SessionClock and the unforgeable SessionTick every instant in a session is derived from, the chain-digested ChunkJournal that survives a lost connection and a killed process, the effective-dated CapturePolicyBook that holds the drift tolerance and the three preflight floors, the Mark Moment whose instant no later label can move, and the append-only MappingLedger a two-anchor realignment adds a version to. academic-consent is its product edge because the one binding every path runs lives there; academic-domain is the other, for ContentDigest, LectureSessionId and OfferingId. tempfile is a dev edge only: the acceptance suite writes its journals into a temporary directory and the product crate takes the journal path as an argument. No crate in the workspace depends on this one yet; P2-L3 is the first that will.",
+  "network_posture": "The crate opens no socket, declares no foreign function, and contains no unsafe. It reads no clock: every elapsed reading and every permission instant is an argument, and no_wall_clock_reaches_the_session_clock refuses SystemTime, Instant, UNIX_EPOCH, std::time, chrono, Uuid::now_v7 and a bare .elapsed() anywhere in its product source. Its default link closure holds nothing that can open a socket beyond libc, which reaches it through academic-domain, and it spells no socket construct, which is why its SOCKET_ALLOWANCE entry is absent rather than empty. It declares no binary target: the CP05 kill child is the fault suite's own test binary re-invoked at a named entry point, which is academic-transcript's IN04 arrangement, so the failpoints reach no default build and the phase2-fault-injection feature compiles no environment lookup and no crash switch into a product build. Every fixture in its test tree is synthetic and built from committed literals; nothing in this crate opens a device, and no recording is made anywhere in this repository.",
+  "advisory_path": "Unchanged. Every external crate academic-capture links was admitted by an earlier receipt and is triaged through that receipt's advisory path. thiserror and tempfile arrive through the same pinned workspace versions Phase 1 admitted. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}

@@ -16,6 +16,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-capture"
+version = "0.1.0"
+dependencies = [
+ "academic-consent",
+ "academic-domain",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "academic-capture-client"
 version = "0.1.0"
 dependencies = [

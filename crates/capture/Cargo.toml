@@ -1,0 +1,28 @@
+[package]
+name = "academic-capture"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Deterministic `CP05` failpoints. Off by default: a product build contains no
+# environment lookup and no crash switch. The kill child is the fault suite's
+# own test binary re-invoked at a named entry point, which is
+# `academic-transcript`'s `IN04` arrangement, so this package declares no
+# binary target and the injection runs through the real `begin` and
+# `record_audio_chunk` rather than through an imitation of them.
+phase2-fault-injection = []
+
+[dependencies]
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

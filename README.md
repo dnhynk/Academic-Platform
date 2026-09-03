@@ -59,6 +59,8 @@ cargo clippy -p academic-worker --all-targets --locked --offline --features nati
 cargo test -p academic-worker --all-targets --locked --offline --features native-sandbox
 cargo clippy -p academic-capture-gate --all-targets --locked --offline --features native-capture -- -D warnings
 cargo test -p academic-capture-gate --all-targets --locked --offline --features native-capture
+cargo clippy -p academic-capture --all-targets --locked --offline --features phase2-fault-injection -- -D warnings
+cargo test -p academic-capture --all-targets --locked --offline --features phase2-fault-injection
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
@@ -266,6 +268,30 @@ against the Rust `as_str` spellings it mirrors. Nothing writes those rows yet:
 the recorder disabled. What the boundary does and does not claim is in
 [the consent contract](docs/contracts/consent-and-capture-permission.md). It
 runs inside `cargo test --workspace` and adds no package to `Cargo.lock`.
+
+`P2-L2` adds `academic-capture`, the desktop host's one-action
+Record/Capture/Mark surface. `begin` is the whole of starting a capture —
+permission, effective policy row, preflight, clock, journal — and a refusal at
+any of them leaves nothing on disk. **One monotonic session clock is shared by
+audio and image capture, and the sharing is a type**: `SessionTick` has no
+public constructor, carries the domain of the clock that minted it, and an
+anchor offered from outside is admitted through that clock and refused if it
+came from another. An image's audio-clock offset is therefore a subtraction
+inside one domain rather than an estimate between two, and the instant and the
+offset agree exactly. The chunk journal is one append-only file of chain-
+digested frames that survives a lost connection and a killed process; a Mark
+Moment stores a bare instant and a label appended later never moves it; a drift
+past the effective tolerance is `ALIGNMENT_LOW_CONFIDENCE` with ±seconds rather
+than a refusal; and a two-anchor realignment appends a mapping version and edits
+none. The four thresholds are fields of an effective-dated policy row, not
+constants. **Nothing here records anything**: no device is opened, no clock is
+read, every chunk is a committed literal, and the journal frames are plaintext
+under the current posture. Which device is an authorized recorder is section
+12's open product question and Phase 2 ships the desktop host only. The frame
+layout, the fault-matrix rows and the four open items are in
+[the capture subsystem contract](docs/contracts/capture-subsystem.md). It adds
+one workspace member and no package to `Cargo.lock`; its `CP05` failpoints are
+behind the non-default `phase2-fault-injection` feature in the block above.
 
 `P2-M1` adds `academic-model-run`, the boundary every model execution is
 recorded and every displayed confidence is interpreted at. A `ModelRun` carries

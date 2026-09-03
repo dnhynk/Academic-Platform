@@ -85,6 +85,10 @@ const SECRET_BEARING_TYPES = new Map([
   ["StagingAuthority", "the P2-G4 secret that decides whether a sandboxed worker's staged bytes become a result"],
   ["StagedOutput", "the bytes a sandboxed worker wrote, before anything has accepted them"],
   ["AcceptedOutput", "the same bytes after the core accepted them"],
+  [
+    "CaptureBytes",
+    "the P2-L2 lecture audio chunk or board photograph a capture holds, as it arrived",
+  ],
 ]);
 
 /**
