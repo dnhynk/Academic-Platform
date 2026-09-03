@@ -815,15 +815,15 @@ fn a_ruleset_comes_only_from_a_token() -> TestResult {
     Ok(())
 }
 
-#[cfg(not(feature = "native-capture"))]
-/// The default lane records that nothing but this crate's comparisons is in
+#[cfg(not(all(feature = "native-capture", any(target_os = "linux", windows))))]
+/// A lane with no backend compiled records that nothing but this crate's comparisons is in
 /// force, rather than claiming an enforcement it does not have.
 #[test]
-fn the_default_lane_reports_bookkeeping() {
+fn a_lane_with_no_backend_reports_bookkeeping() {
     assert_eq!(
         academic_capture_gate::native::availability(),
         DeviceLayer::Bookkeeping,
-        "the default lane must not claim an enforced device layer"
+        "a lane with no backend must not claim an enforced device layer"
     );
     assert!(!DeviceLayer::Bookkeeping.is_enforced());
     assert_eq!(

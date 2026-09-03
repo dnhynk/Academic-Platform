@@ -22,7 +22,12 @@
 //! DACL is not the caller's to widen. Each assertion below is guarded on its
 //! own platform and the contract page carries both rows.
 
-#![cfg(feature = "native-capture")]
+// There is a backend for two targets. On any other, this crate compiles to
+// bookkeeping whether or not the feature is on, and there is nothing here to
+// ask an operating system -- `a_lane_with_no_backend_reports_bookkeeping` in
+// `tests/capture.rs` is what runs there instead. `academic-worker`s
+// containment suite is gated the same way and for the same reason.
+#![cfg(all(feature = "native-capture", any(target_os = "linux", windows)))]
 
 mod common;
 
