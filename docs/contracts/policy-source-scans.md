@@ -2449,6 +2449,7 @@ closed it.
 | S-16 | `egress_audit.grant_id`, for rows that are not a consumed grant | The column is polymorphic and only `egress_consumption` resolves it. Deny rows and process-capability activity rows are joined to nothing that says which namespace their identifier came from, so a reader treating the column as an `egress_grant` reference finds them dangling. `P2-M1` does not need them: its reconciliation reads only consumed grants, which `T149` measured is exactly what the join resolves. | The first reader that has to attribute a *denial* or a process activity to a namespace. Closing it means a discriminator column or a second join table; severity **P3**, because no dangling row exists today: all seven `insert_audit` call sites write an identifier that is in one of the two tables. |
 | S-18 | `tools/secret-debug-policy.test.mjs` | A registration in `SECRET_BEARING_TYPES` is not load-bearing for a type whose secret is **text** under a field name outside `SECRET_FIELD_NAMES`: deleting the registration is silent, and nothing reads what that type's hand-written `Debug` prints. Measured by `P2-RF13` on unmodified `main`: removing `LectureDocument` leaves the suite at 10 pass, 0 fail. Five of `P2-L4`'s types are in this position -- `NodeDraft`, `DocumentNode`, `LectureDocument`, `StudyIndexEntry`, `StudyIndex` -- because they hold the lecture in `rendered_text` and `heading`. This is `T114`'s original finding ("deleting a registration was silent") recurring for the half of the vocabulary `P2-RF13` did not close. | Now, for any registered type whose secret is text. Nothing leaks today: all five hand-write a `Debug` that reaches text through a length, which is what `P2-L4` says it did. What is open is that nothing **checks** it, so a later edit to one of those impls is silent in both directions. **The cost of closing it is measured rather than estimated, and it is not a vocabulary line.** Requiring a redaction marker in every registered type's `Debug` -- the cheapest mechanical half -- fires on **19 of the 38 registered types**, enumerated: `AcceptedResponse`, `AuthorizedCapture`, `AuthorizedChunk`, `AuthorizedToolCall`, `CorrectionCandidate`, `DocumentNode`, `EffectiveToken`, `FetchOutcome`, `LectureDocument`, `NodeDraft`, `ProcessActivity`, `ProviderResponse`, `RawSegment`, `RawSnapshot`, `RawToken`, `RuntimeToolCall`, `SourceDocument`, `StudyIndex`, `StudyIndexEntry`. Those nineteen span nine crates, and a marker is not a redaction: some of them reduce to a length without writing one. So closing this means one commit per crate from its owner, the same shape `S-10` records, and widening `SECRET_FIELD_NAMES` by `rendered_text` and `heading` is **not** it -- that reaches these five and leaves the next crate's spelling open, which is the mistake this whole row descends from. Severity **P2**. |
 | S-17 | `packages/web-contracts/src/index.ts` — the four closed vocabulary sets | `masteryLevels`, `freshnessBands`, `confidentialityValues` and `retentionClassValues` restate `academic_domain`'s `MasteryLevel`, `FreshnessBand`, `Confidentiality` and `RetentionClass`, and **nothing compares the two sides**. This is the defect class `route_manifest_matches_ia_exactly` closes one step away: a list written from an authoritative enumeration with no bidirectional check. `P2-X1` found it while looking for its own kind one step out and did not fix it: the file is `P2-C7`'s contract surface, and a cross-language parity scan is its own reviewed piece of work. All four sets agree with the Rust enums today, measured at this commit, so the row is latent rather than broken. | The first commit that adds a variant to one of the four Rust enums. The TypeScript validator would then reject a fixture the Rust side accepts, and would do so silently until a fixture happened to carry the new variant — the fixture suites pin specific bytes and would not notice a set that had merely stopped being complete. Severity **P3**. Closing it means reading the four variant lists out of `crates/domain/src/lib.rs` and comparing them with the four sets in both directions, the way `model_run_requires_every_field` compares a struct against the specification's own YAML. |
+| S-18 | `crates/daemon/tests/phase1_exit.rs::default_build_lane` — `%TEMP%/academic-x1-default-features` | The nested default-feature build writes to one `CARGO_TARGET_DIR` shared by every process on the machine, on purpose, so the build is cached across runs instead of repeated. Cargo takes its own exclusive lock on a target directory, so two processes serialise rather than corrupt each other, and `T175` left it as it is with a `SHARED_NAME_SITES` row saying so rather than making each process build its own copy. | When two processes on one machine run this test with the same `TEMP` and one is killed mid-build. That is not hypothetical: `T169`'s `pkill -9 -f cargo` killed `T162`'s build in this Run. Severity **P3** — the surviving process sees a stale lock or a half-written fingerprint and rebuilds, so the cost is time rather than a wrong answer. Closing it means a per-process lane and a full rebuild per run, which is the trade this row records. |
 
 ## Intended, not a defect
 
@@ -2481,3 +2482,86 @@ Nothing on this page is ADR-002 acceptance. The default lane remains
 `storage_encryption=NONE`, `production_data_allowed=false`,
 `adr_002_accepted=false`, the acceptance public key is unprovisioned, and the
 committed candidate receipt carries two of five platform rows.
+
+## What the `T175` scan holds
+
+`tools/shared-name-isolation.test.mjs` is a source scan, and it is on this page
+for the ordinary reason: it reads every `.rs` file under `crates/` and refuses a
+shape. What it refuses is not a policy shape but a *naming* one — a name this
+repository puts in a namespace it does not own, without a row saying somebody
+looked at it.
+
+The defect is the one the three shapes above describe, in a different material.
+It has occurred three times. `crates/worker/tests/containment.rs` wrote its home
+canary to `<home>/.academic-worker-g4-<label>` and removed it on `Drop`, so two
+lanes running that suite at once deleted each other's canary: the survivor
+reported 1 passed and 7 failed — exactly the tests that build a `Harness` — with
+`ERROR_PATH_NOT_FOUND` standing where the backend owed `ERROR_ACCESS_DENIED`.
+`crates/worker/src/sandbox/windows.rs` and
+`crates/capture-gate/src/native/windows.rs` ask Windows for one fixed
+AppContainer profile name on every launch, and two concurrent asks for an absent
+profile tear its directory down; every `CreateProcessW` into the container while
+it was absent failed `ERROR_FILE_NOT_FOUND`, at about one run in ten.
+`crates/retention/tests/rotation_gate.rs` built
+`%TEMP%/academic-rotation-gate-recipients` and removed it at both ends of a test.
+
+Five whole sets, each compared with a committed table in **both** directions, and
+no forbidden-spelling list anywhere:
+
+| Set | What is extracted | What an addition costs |
+|---|---|---|
+| `ENV_VOCABULARY` | Every `env::<item>` two-segment path, whitespace-collapsed and leading-`::` tolerant | A new way to reach outside the process fails until it is classified |
+| `ENVIRONMENT_NAMES` | Every variable name a `var`/`var_os` reads, resolved through crate-scoped `const`s and literal `for` arrays, minus every name this repository sets on a child | A read of a name the machine set fails until it has a row; an argument that cannot be resolved fails rather than passing quietly |
+| `ROOT_PRODUCERS` | Every function that reads a machine-owned root, or calls one that does, and returns a path — iterated to a fixed point so the set is closed under wrapping | A new wrapper fails |
+| `SHARED_NAME_SITES` | Every name built on a producer call, on a local holding the root, or on a parameter one was handed | A new name fails; a name recorded `UNIQUE` that spells none of the eight discriminators fails |
+| `PROFILE_GATE_SITES` | Every `CreateAppContainerProfile` call site, and the whole text of the two guard statements its function must open with | A new call site fails; removing the serialisation fails |
+
+The width is stated in the file and repeated here. The scan does not decide
+whether a name is *safe*; it decides that no name reaches a shared namespace
+without a row. It does not follow a root through a constructor either: the two
+`PathBuf::from(value).join(PROFILE_LOCK_FILE)` sites are enumerated as
+`profile_lock_path` in `ROOT_PRODUCERS` and written down in
+[the worker sandbox contract](worker-sandbox.md) instead.
+
+### The injection matrix
+
+Six injections, one at a time, each its own edit and its own build, and **none of
+them spells a name any table forbids** -- because no table forbids a name. Each
+was compiled before it was scanned: an injection that does not build is not
+evidence. The build is
+`cargo clippy -p <crate> --all-targets --locked --offline [--features ...] -- -D warnings`
+and the scan is `node --test tools/shared-name-isolation.test.mjs`.
+
+| # | Injection | Compiles | Scan |
+|---|---|---|---|
+| N-I1 | `crates/store/tests/migration.rs`: `::std :: env :: vars_os().count()` -- a reach spelled with a leading `::` and interior whitespace | yes | fails: `env::vars_os` is not in `ENV_VOCABULARY` |
+| N-I2 | `crates/store/tests/migration.rs`: `std::env::var("APPDATA")` | yes | fails: `APPDATA` is read, never set, and not in `ENVIRONMENT_NAMES` |
+| N-I3 | `crates/store/tests/migration.rs`: `fn scratch_root() -> PathBuf { std::env::temp_dir() }`, called once | yes | fails: a new function hands out an ambient root and is not in `ROOT_PRODUCERS` |
+| N-I4 | `crates/store/tests/migration.rs`: `std::env::temp_dir().join("academic-store-scratch")` | yes | fails: an unlisted `SHARED_NAME_SITES` entry |
+| N-I5 | `crates/worker/tests/containment.rs`: the canary name reduced to `.academic-worker-g4-{label}` | yes | fails: an unlisted site, and it spells none of the eight discriminators |
+| N-I6 | `crates/capture-gate/src/native/windows.rs`: the two serialisation guards **swapped** | yes | fails: `container_sid` no longer opens with `PROFILE_GATE` |
+
+`N-I5` and `N-I6` are the two regressions this task exists to prevent, injected
+back. `N-I1` through `N-I4` are the same defect one step out, in a crate the
+repair did not touch.
+
+**`N-I1` passed on its first run, and that is why it is first in the table.**
+The whitespace normalisation collapsed `::` and padded the removed characters
+back with spaces so that every offset kept pointing at the same character. That
+is what defeated it: `::std :: env :: vars_os` became `::std::  env::  vars_os`,
+with the gap moved rather than removed, so the path read as two paths and matched
+neither. The repair is a real collapse plus a map from each collapsed offset back
+to the original, which is what the string-literal check needs and the only thing
+the padding was there for. This is the third time on this page that a
+normalisation, not a rule, was where a guard was empty.
+
+**`N-I5` and `N-I6` did not compile in their first form**, and the rule on this
+page is that an injection which does not build is not evidence. Deleting the
+discriminators from the canary name left `sequence` and `nanos` unused, and
+deleting the two guards from `container_sid` left `PROFILE_CREATION`,
+`ProfileLock`, `profile_lock_path` and three constants unused; `-D warnings`
+refuses both. The compiling forms are the ones in the table, and the second is
+the stronger injection anyway: swapping the two guards uses every item, compiles
+cleanly, and looks like a harmless reordering. It is not -- the pin is on the
+*sequence that reaches* the creation call, and a whole-text pin that admitted a
+reordering would be the `S-5` shape one layer in.
