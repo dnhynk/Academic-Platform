@@ -377,58 +377,58 @@ already run, and everything JavaScript runs inside `pnpm-contracts`. No new job,
 no new step, no system package, no frontend bundler.
 
 Run
-[33715429071](https://github.com/dnhynk/Academic-Platform/actions/runs/33715429071)
-completed **17/17** on `918ade1`.
+[33720001800](https://github.com/dnhynk/Academic-Platform/actions/runs/33720001800)
+completed **17/17** on `b35ae58`.
 
 | Required job | Elapsed | Limit | Utilization |
 |---|---:|---:|---:|
-| `dependency-source-preflight` | 0:06 | 5:00 | 2.0% |
-| `rust-default-ubuntu-latest` | 5:32 | 30:00 | 18.4% |
-| `rust-default-ubuntu-24.04-arm` | 4:43 | 30:00 | 15.7% |
-| `rust-default-windows-latest` | 18:03 | 30:00 | 60.2% |
-| `rust-default-windows-11-arm` | 13:11 | 30:00 | 43.9% |
-| `rust-default-macos-latest` | 6:50 | 30:00 | 22.8% |
-| `rust-features-ubuntu-latest` | 3:05 | 30:00 | 10.3% |
-| `rust-features-ubuntu-24.04-arm` | 2:53 | 30:00 | 9.6% |
-| `rust-features-windows-latest` | 6:08 | 30:00 | 20.4% |
-| `rust-features-windows-11-arm` | 5:59 | 30:00 | 19.9% |
-| `rust-features-macos-latest` | 3:20 | 30:00 | 11.1% |
-| `phase1-exit-ubuntu-latest` | 4:21 | 45:00 | 9.7% |
-| `phase1-exit-windows-latest` | 11:45 | 45:00 | 26.1% |
-| `encrypted-store-lane-ubuntu-latest` | 2:36 | 45:00 | 5.8% |
-| `encrypted-portability-lane-ubuntu-latest` | 3:25 | 45:00 | 7.6% |
-| `rotation-orchestration-lane-ubuntu-latest` | 7:04 | 45:00 | 15.7% |
+| `dependency-source-preflight` | 0:05 | 5:00 | 1.7% |
+| `rust-default-ubuntu-latest` | 5:50 | 30:00 | 19.4% |
+| `rust-default-ubuntu-24.04-arm` | 4:49 | 30:00 | 16.1% |
+| `rust-default-windows-latest` | 17:09 | 30:00 | 57.2% |
+| `rust-default-windows-11-arm` | 16:06 | 30:00 | 53.7% |
+| `rust-default-macos-latest` | 4:43 | 30:00 | 15.7% |
+| `rust-features-ubuntu-latest` | 3:44 | 30:00 | 12.4% |
+| `rust-features-ubuntu-24.04-arm` | 2:51 | 30:00 | 9.5% |
+| `rust-features-windows-latest` | 6:36 | 30:00 | 22.0% |
+| `rust-features-windows-11-arm` | 5:54 | 30:00 | 19.7% |
+| `rust-features-macos-latest` | 3:49 | 30:00 | 12.7% |
+| `phase1-exit-ubuntu-latest` | 4:06 | 45:00 | 9.1% |
+| `phase1-exit-windows-latest` | 10:31 | 45:00 | 23.4% |
+| `encrypted-store-lane-ubuntu-latest` | 3:22 | 45:00 | 7.5% |
+| `encrypted-portability-lane-ubuntu-latest` | 5:02 | 45:00 | 11.2% |
+| `rotation-orchestration-lane-ubuntu-latest` | 7:06 | 45:00 | 15.8% |
 | `pnpm-contracts` | 0:57 | 15:00 | 6.3% |
 
-**`pnpm-contracts` moved +0:01, from 0:56 to 0:57.** That job is where every
+**`pnpm-contracts` moved +0:10, from 0:47 to 0:57.** That job is where every
 line of this task's JavaScript runs — a new package's lint, typecheck, build and
 17 tests, and two new scans inside the root `pnpm test` — so it is the one
-number that isolates this change's cost, and it is one second against a
-15-minute limit at 6.3%.
+number that isolates this change's cost. Ten seconds, at 6.3% of a 15-minute
+limit. A measurement of the same tree on the run before the rebase read 0:57 as
+well, so the figure is stable across two runs rather than one.
 
-**`rust-default-windows-latest` is the slowest job at 60.2%**, up 4:16 from the
-`P2-L1` reading of 13:47. That is not read here as a new cost, for three
-reasons, and the reasons are checkable rather than convenient. This page has now
-recorded that job at 20:18, 14:08, 12:16, 15:28, 13:47 and 18:03; the new
-reading is inside that range and below its maximum. Its ARM twin moved the other
-way on the same run, 15:26 → 13:11, which is the signature of runner spread
-rather than of work added to both. And the work actually added to the default
-lane is one workspace member whose whole test tree is nine files that finish in
-well under a second locally on both hosts.
+**`rust-default-windows-latest` is the slowest job at 57.2%**, up 2:14 from the
+`P2-M2` reading of 14:55. That is not read here as a new cost, and the reasons
+are checkable rather than convenient. This page has now recorded that one job at
+20:18, 14:08, 12:16, 15:28, 13:47, 14:55, 18:03 and 17:09 — the new reading sits
+inside that range and below its maximum, and the two readings of *this same
+tree*, on the pre-rebase and post-rebase runs, were 18:03 and 17:09, which is a
+0:54 spread on identical work. The default lane gained one workspace member
+whose whole test tree is nine files finishing in well under a second locally on
+both hosts.
 
-What the reading does say is that this job's spread is wide enough to matter:
-60.2% off a 30-minute limit still leaves 11:57 of headroom, but the 80% trigger
-sits at 24:00 and the recorded maximum for this job is 20:18. Size headroom off
-that maximum, 67.7% of the current limit, rather than off any single run. No job
-in this run reaches 80%, and no split, cache or timeout change is indicated.
+`rust-default-windows-11-arm` is the second slowest at 53.7%, up 3:37, and moved
+the *opposite* way between this task's own two runs — 13:11 then 16:06 — which
+is the same spread seen from the other side.
 
-Every other movement against `P2-L1` is under a minute in either direction:
-`rust-default-ubuntu-latest` +0:22, `ubuntu-24.04-arm` +0:20, `macos-latest`
-+0:43, `rust-features-macos-latest` +0:55, `rotation-orchestration-lane` +0:24,
-and four jobs down — `rust-features-ubuntu-latest` −0:41,
-`encrypted-store-lane` −0:48, `encrypted-portability-lane` −1:44,
-`rust-features-windows-11-arm` −0:15. `phase1-exit-windows-latest` is +1:45 at
-26.1%, a job this task does not touch at all.
+Every other movement against `P2-M2` is about a minute or less in either
+direction, four of them downward: `rust-default-macos-latest` −2:09,
+`rust-features-ubuntu-24.04-arm` −0:07, `dependency-source-preflight` −0:04, and
+`rust-default-ubuntu-latest` +0:38, `phase1-exit-windows-latest` +1:54.
+
+**No job reaches the 80% review trigger.** For the 30-minute Rust jobs that line
+is 24:00, and the worst reading this page holds for any label is 20:18. Size
+headroom off that maximum — 67.7% — rather than off any single run.
 
 ## A Windows failure that is not a test result
 
@@ -456,7 +456,9 @@ occurrence is the cleanest falsification this page has: run
 [33716669384](https://github.com/dnhynk/Academic-Platform/actions/runs/33716669384)
 was a commit of **three Markdown files and nothing else**, on a parent whose own
 run was 17/17, and the rerun of that one job took it to 17/17. A signature that
-appears on a commit no compiler reads is not a property of the change.
+appears on a commit no compiler reads is not a property of the change. That
+branch was later rebased, so the commit that run names is no longer reachable;
+the observation is kept because the rule it exercises is, and the run is.
 
 So the rule is the same as the timeout rule: a Windows job that fails inside
 `Test the worker sandbox lane` with a `CreateProcessW` launch error is
