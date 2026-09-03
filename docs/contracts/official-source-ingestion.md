@@ -84,8 +84,11 @@ unless the declared authentication method is one that holds a credential —
 purpose: the user authenticated, not this system, and what arrives is a file.
 
 `ConditionalRequest::credentialed` consumes the binding, so it cannot be spent
-twice, and refuses a target the manifest does not declare or a binding from
-another connector.
+twice: the type derives nothing — no `Clone`, no `Copy` — and
+`credentials_never_reach_a_general_crawler` compares its whole `impl` set and
+requires its declaration to carry no attribute, so a derived `Clone` fails rather
+than quietly making a second binding. The same constructor refuses a target the
+manifest does not declare, and a binding from another connector.
 
 ## The conditional fetch, and the hash diff beside it
 
