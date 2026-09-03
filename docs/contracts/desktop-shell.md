@@ -21,7 +21,9 @@ The measurement that decided it is in
 closures contain `http`; the first two also contain `http-body`, `hyper`,
 `hyper-util`, `reqwest` and `tower-http`. Those six are exactly what
 `phase1_default_features_have_no_product_network` forbids in the workspace
-default product graph, at every feature setting. Linking the runtime is
+default product graph, at every feature setting — `default-features = false`
+is the minimum set and Cargo features only add, so a closure that already holds
+all six at the minimum holds them at every superset. Linking the runtime is
 therefore a separate decision with its own dependency admission, and this task
 does not make it.
 
@@ -101,13 +103,14 @@ restating them:
 A capability list restated here would drift from the daemon's silently. One
 compared against the daemon's cannot.
 
-`SyntheticFixtureId` is closed for the same reason: the surface cannot ask the
-core to ingest a path, a URL, or anything a user typed. Its one identifier is
+`SyntheticFixtureId` is closed for the same reason: no `DesktopCommand` names a
+path, a URL, or anything a user typed, because the only ingest variant takes
+this enum. Its one identifier is
 compared against `academic-core`'s `PHASE1_SYNTHETIC_FIXTURE_ID` as *text*, by
 `desktop_names_only_the_core_fixture_allowlist`, because the desktop must have
 no dependency edge to `academic-core`.
 
-## The desktop opens no database and holds no key
+## The desktop has no edge to the database or to a key
 
 ADR-001's surface table forbids this surface the database, provider and root
 keys, and unrestricted filesystem or network authority.
@@ -125,6 +128,12 @@ anywhere below the surface is a review of the whole new closure. On top of that
 it is intersected with thirteen database-capable crates and seventeen
 key-custody crates, and holds none of either. Notably it holds **no SQLite
 driver of any kind**.
+
+What that adds up to is an *edge* claim, and the heading is written to it: the
+desktop links nothing that can open a store and nothing that can derive, wrap or
+unwrap a key. It is not a claim that no byte a caller hands this crate could be
+key material — nothing here would notice that, and no assertion below pretends
+to.
 
 `ed25519-dalek`, `sha2`, `hmac` and `zeroize` *are* in the closure, through
 `academic-admission`'s receipt signature verification and `academic-domain`'s

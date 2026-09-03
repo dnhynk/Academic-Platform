@@ -309,7 +309,7 @@ named before its elapsed time means anything.** A per-platform suite that
 compiles on a third platform is a compile gate, and no rerun of the same commit
 would have changed it.
 
-## Latest run
+## The `P2-M2` run
 
 `P2-M2` adds one workspace member, `academic-proposal`, and a canonical-store
 migration, `0009`. Both are triggers the refresh rule names. The job count is
@@ -365,6 +365,69 @@ which is the step `P2-M1` skipped and CI caught for it.
 Every job is at or below 49.7%, and nothing is near the 80% review trigger.
 Size headroom off the worst reading this page holds for a label, 67.7% on
 `rust-default-windows-latest`, rather than off any single run.
+## Latest run
+
+`P2-X1` adds one workspace member, `academic-desktop`, one pnpm workspace
+package, `@academic-os/ui`, and two scans to `tools/phase1-scaffold-policy.test.mjs`.
+Workspace membership and a default-workspace test are both triggers the refresh
+rule names. The job count is unchanged at **17**: the new crate compiles inside
+the `cargo test --workspace --locked` step the five `rust-default-*` jobs
+already run, and everything JavaScript runs inside `pnpm-contracts`. No new job,
+no new step, no system package, no frontend bundler.
+
+Run
+[33715429071](https://github.com/dnhynk/Academic-Platform/actions/runs/33715429071)
+completed **17/17** on `918ade1`.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:06 | 5:00 | 2.0% |
+| `rust-default-ubuntu-latest` | 5:32 | 30:00 | 18.4% |
+| `rust-default-ubuntu-24.04-arm` | 4:43 | 30:00 | 15.7% |
+| `rust-default-windows-latest` | 18:03 | 30:00 | 60.2% |
+| `rust-default-windows-11-arm` | 13:11 | 30:00 | 43.9% |
+| `rust-default-macos-latest` | 6:50 | 30:00 | 22.8% |
+| `rust-features-ubuntu-latest` | 3:05 | 30:00 | 10.3% |
+| `rust-features-ubuntu-24.04-arm` | 2:53 | 30:00 | 9.6% |
+| `rust-features-windows-latest` | 6:08 | 30:00 | 20.4% |
+| `rust-features-windows-11-arm` | 5:59 | 30:00 | 19.9% |
+| `rust-features-macos-latest` | 3:20 | 30:00 | 11.1% |
+| `phase1-exit-ubuntu-latest` | 4:21 | 45:00 | 9.7% |
+| `phase1-exit-windows-latest` | 11:45 | 45:00 | 26.1% |
+| `encrypted-store-lane-ubuntu-latest` | 2:36 | 45:00 | 5.8% |
+| `encrypted-portability-lane-ubuntu-latest` | 3:25 | 45:00 | 7.6% |
+| `rotation-orchestration-lane-ubuntu-latest` | 7:04 | 45:00 | 15.7% |
+| `pnpm-contracts` | 0:57 | 15:00 | 6.3% |
+
+**`pnpm-contracts` moved +0:01, from 0:56 to 0:57.** That job is where every
+line of this task's JavaScript runs — a new package's lint, typecheck, build and
+17 tests, and two new scans inside the root `pnpm test` — so it is the one
+number that isolates this change's cost, and it is one second against a
+15-minute limit at 6.3%.
+
+**`rust-default-windows-latest` is the slowest job at 60.2%**, up 4:16 from the
+`P2-L1` reading of 13:47. That is not read here as a new cost, for three
+reasons, and the reasons are checkable rather than convenient. This page has now
+recorded that job at 20:18, 14:08, 12:16, 15:28, 13:47 and 18:03; the new
+reading is inside that range and below its maximum. Its ARM twin moved the other
+way on the same run, 15:26 → 13:11, which is the signature of runner spread
+rather than of work added to both. And the work actually added to the default
+lane is one workspace member whose whole test tree is nine files that finish in
+well under a second locally on both hosts.
+
+What the reading does say is that this job's spread is wide enough to matter:
+60.2% off a 30-minute limit still leaves 11:57 of headroom, but the 80% trigger
+sits at 24:00 and the recorded maximum for this job is 20:18. Size headroom off
+that maximum, 67.7% of the current limit, rather than off any single run. No job
+in this run reaches 80%, and no split, cache or timeout change is indicated.
+
+Every other movement against `P2-L1` is under a minute in either direction:
+`rust-default-ubuntu-latest` +0:22, `ubuntu-24.04-arm` +0:20, `macos-latest`
++0:43, `rust-features-macos-latest` +0:55, `rotation-orchestration-lane` +0:24,
+and four jobs down — `rust-features-ubuntu-latest` −0:41,
+`encrypted-store-lane` −0:48, `encrypted-portability-lane` −1:44,
+`rust-features-windows-11-arm` −0:15. `phase1-exit-windows-latest` is +1:45 at
+26.1%, a job this task does not touch at all.
 
 ## A Windows failure that is not a test result
 
