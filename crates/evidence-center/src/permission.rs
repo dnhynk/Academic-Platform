@@ -205,7 +205,11 @@ pub struct DependentAction {
 impl DependentAction {
     /// An action that depends on a permission.
     #[must_use]
-    pub const fn new(subject: EntityId, kind: DependentActionKind, requires: PermissionRef) -> Self {
+    pub const fn new(
+        subject: EntityId,
+        kind: DependentActionKind,
+        requires: PermissionRef,
+    ) -> Self {
         Self {
             subject,
             kind,

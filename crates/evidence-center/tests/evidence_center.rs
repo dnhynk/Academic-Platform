@@ -16,17 +16,19 @@ use academic_domain::{
     Actor, AuthorityClass, CapturePermissionId, ClaimId, ConfidencePermille, ConsentId,
     ContentDigest, EgressDecisionId, EntityId, EpistemicStatus, FindingId, LectureDocumentId,
     LectureSessionId, MasteryLevel, ModelRunId, PermissionLineageId, PredicateId, SnapshotId,
-    TimestampMillis, TranscriptVersionId, ValidInterval, engines::RuleId, temporal::TimeCoordinates,
+    TimestampMillis, TranscriptVersionId, ValidInterval, engines::RuleId,
+    temporal::TimeCoordinates,
 };
 use academic_evidence_center::{
     CenterError, CenterItem, CenterSection, ConceptMergeProposal, ConflictBoard, ConflictCase,
-    ConflictClass, ConflictLane, ConflictSide, CorrectionChoice, CorrectionLedger, CorrectionMarker,
-    CorrectionOrigin, CorrectionOutcome, DeletionReceiptRef, DependentAction, DependentActionKind,
-    DocumentRegionLocator, EvidenceCenter, ExpiringPermission, FindingClassification, InboxEntry,
-    LowConfidenceSpan, ObjectRange, PermissionQueue, PermissionRef, ProjectClassificationProposal,
-    ProposalClass, ProposalHeader, ProposalInbox, ProviderRef, ProviderSurface, ReceiptState,
-    RelationProposal, Resolution, SourceChangeEntry, SpanKind, StateUpdateProposal,
-    TranscriptLocator, TransmissionLog, TransmissionPurpose, TransmissionRecord, user_receipt,
+    ConflictClass, ConflictLane, ConflictSide, CorrectionChoice, CorrectionLedger,
+    CorrectionMarker, CorrectionOrigin, CorrectionOutcome, DeletionReceiptRef, DependentAction,
+    DependentActionKind, DocumentRegionLocator, EvidenceCenter, ExpiringPermission,
+    FindingClassification, InboxEntry, LowConfidenceSpan, ObjectRange, PermissionQueue,
+    PermissionRef, ProjectClassificationProposal, ProposalClass, ProposalHeader, ProposalInbox,
+    ProviderRef, ProviderSurface, ReceiptState, RelationProposal, Resolution, SourceChangeEntry,
+    SpanKind, StateUpdateProposal, TranscriptLocator, TransmissionLog, TransmissionPurpose,
+    TransmissionRecord, user_receipt,
 };
 use academic_ingestion::{
     Acquisition, AllowedFrequency, AuthenticationMethod, Completeness, ConnectorId, DeclaredTarget,
@@ -364,7 +366,9 @@ fn official_document(
     let snapshotted = stage::immutable_raw_snapshot(cleared, &manifest)?;
     let described =
         stage::source_metadata_and_retrieval_time(snapshotted, &manifest, IngestSeq::at(1))?;
-    Ok(academic_ingestion::document::parse(&described.into_snapshot())?)
+    Ok(academic_ingestion::document::parse(
+        &described.into_snapshot(),
+    )?)
 }
 
 /// An official-source change names exactly the rules `P2-U6`'s diff named and
@@ -387,7 +391,11 @@ fn source_change_links_impacted_rules_and_plans() -> TestResult {
     let current = official_document(
         "2026-03-01",
         &[
-            ("art-12", "r-12-1", "major electives require thirty-six credits"),
+            (
+                "art-12",
+                "r-12-1",
+                "major electives require thirty-six credits",
+            ),
             ("art-13", "r-13-1", "a thesis substitutes for the capstone"),
         ],
     )?;
@@ -399,7 +407,10 @@ fn source_change_links_impacted_rules_and_plans() -> TestResult {
     let scenario = DependentNode::new(DependentKind::Scenario, DependentId::new("s1")?);
     let mapping = DependentNode::new(DependentKind::CourseMapping, DependentId::new("m1")?);
     let mut graph = DependencyGraph::new();
-    graph.record(requirement.clone(), Dependency::Rule(RuleId::new("r-12-1")?));
+    graph.record(
+        requirement.clone(),
+        Dependency::Rule(RuleId::new("r-12-1")?),
+    );
     graph.record(scenario.clone(), Dependency::Node(requirement.clone()));
     graph.record(mapping.clone(), Dependency::Rule(RuleId::new("r-13-1")?));
 
@@ -461,7 +472,11 @@ fn source_change_links_impacted_rules_and_plans() -> TestResult {
         "2026-03-01",
         &[
             ("art-12", "r-12-1", "major electives require thirty credits"),
-            ("art-13", "r-13-1", "a dissertation substitutes for the capstone"),
+            (
+                "art-13",
+                "r-13-1",
+                "a dissertation substitutes for the capstone",
+            ),
         ],
     )?;
     let other_entry = SourceChangeEntry::from_diff(
@@ -885,7 +900,10 @@ fn one_span_of_each_kind() -> Result<Vec<LowConfidenceSpan>, Box<dyn Error>> {
 fn low_confidence_queue_has_three_span_kinds_with_context() -> TestResult {
     let spans = one_span_of_each_kind()?;
     assert_eq!(
-        spans.iter().map(LowConfidenceSpan::kind).collect::<BTreeSet<_>>(),
+        spans
+            .iter()
+            .map(LowConfidenceSpan::kind)
+            .collect::<BTreeSet<_>>(),
         SpanKind::ALL.into_iter().collect::<BTreeSet<_>>(),
         "the corpus does not carry one span per kind"
     );
@@ -932,8 +950,14 @@ fn low_confidence_queue_has_three_span_kinds_with_context() -> TestResult {
                     locator.session(),
                     "the span reaches a different session than its locator"
                 );
-                assert!(confidence.value() < 500, "the fixture is not low confidence");
-                assert_eq!(SpanKind::Transcript.marker_token(), "SEGMENT_CONFIDENCE_LOW");
+                assert!(
+                    confidence.value() < 500,
+                    "the fixture is not low confidence"
+                );
+                assert_eq!(
+                    SpanKind::Transcript.marker_token(),
+                    "SEGMENT_CONFIDENCE_LOW"
+                );
             }
             LowConfidenceSpan::Math {
                 locator,
@@ -949,7 +973,10 @@ fn low_confidence_queue_has_three_span_kinds_with_context() -> TestResult {
                     locator.session(),
                     "the span reaches a different session than its locator"
                 );
-                assert!(confidence.value() < 500, "the fixture is not low confidence");
+                assert!(
+                    confidence.value() < 500,
+                    "the fixture is not low confidence"
+                );
                 assert_ne!(
                     locator.source_image(),
                     digest(0),
@@ -1275,7 +1302,10 @@ fn transmission_log_and_deletion_receipts_are_discoverable() -> TestResult {
 
     // ---- A range is two integers and reveals no byte -------------------------
     let total: u64 = first.ranges().iter().map(ObjectRange::length).sum();
-    assert_eq!(total, 640, "the recorded ranges do not sum to the sent length");
+    assert_eq!(
+        total, 640,
+        "the recorded ranges do not sum to the sent length"
+    );
 
     // ---- The control: an empty log yields an empty section, not a missing one
     let empty = EvidenceCenter::new();
