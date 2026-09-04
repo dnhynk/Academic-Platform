@@ -574,6 +574,21 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository-classification",
     ],
     "academic-worker": ["academic-domain"],
+    // `academic-domain` for section 13.3's `FreshnessBand`, `ClaimObject::Freshness`
+    // as the wire shape of a claim about one, section 7.2's `PredicateName` for
+    // the four edges a spillover may be cited on, and ADR-003's actor matrix,
+    // which is what makes a recall confirmation unmintable by a model run; and
+    // `academic-knowledge-state` for `EligibleEvidence`, so freshness reads only
+    // evidence that passed section 13.4's four checks, and for `FreshnessInput`,
+    // which is the one value it hands back. The edge it does **not** have is the
+    // point: `academic-knowledge-state` re-exports `LADDER`, `rung`,
+    // `AutomaticLevel` and `MasteryProjection` and this crate imports none of
+    // them, so `시간 decay는 freshness projection에만 적용한다` is a fact about
+    // the import graph rather than a rule inside one signature. No
+    // `academic-store` -- it persists nothing and adds no migration -- and no
+    // `academic-worker` and no `academic-egress-boundary`, so nothing in its
+    // closure can launch a process or stage a payload.
+    "academic-freshness": ["academic-domain", "academic-knowledge-state"],
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
@@ -751,6 +766,26 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-repository-competency": [
       "academic-model-run",
       "academic-repository",
+      "academic-untrusted-content",
+    ],
+    // `P2-N3`'s acceptance suite dates real `EligibleEvidence`, and section
+    // 13.2's first row -- the exposure side of section 13.3's persistence
+    // sentence -- is a node of a document `P2-L4` produced. It reaches that
+    // through `P2-N2`'s own fixture module by `#[path]` rather than restating
+    // it, the way `academic-curriculum` includes `academic-ingestion`'s, so
+    // every edge here is one that module's two chains need.
+    "academic-freshness": [
+      "academic-capture",
+      "academic-consent",
+      "academic-domain",
+      "academic-lecture-document",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-repository-analysis",
+      "academic-repository-classification",
+      "academic-repository-correlation",
+      "academic-transcription",
       "academic-untrusted-content",
     ],
   });
@@ -2466,6 +2501,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   // nothing at all, reads no clock, and takes every evidence input as an
   // argument.
   "academic-knowledge-state": ["libc"],
+  // `P2-N3` reaches `libc` the same way and for the same reason: through
+  // `academic-policy`'s bundled SQLite by way of `academic-knowledge-state`. The
+  // crate spells no socket construct, opens nothing at all, reads no clock, and
+  // takes every instant as a `TimestampMillis` argument.
+  "academic-freshness": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -4436,6 +4476,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     knowledgeStateReceiptText,
     competencyReceiptText,
     auditReceiptText,
+    freshnessReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4470,6 +4511,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-n2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u3.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-n3.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -4504,6 +4546,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const knowledgeStateReceipt = JSON.parse(knowledgeStateReceiptText);
   const competencyReceipt = JSON.parse(competencyReceiptText);
   const auditReceipt = JSON.parse(auditReceiptText);
+  const freshnessReceipt = JSON.parse(freshnessReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -6115,6 +6158,63 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-U3 admitted package is missing from Cargo.lock",
   );
 
+
+  // `P2-N3` adds one workspace path package, `academic-freshness`, and admits no
+  // external crate: its product edges are `academic-domain`,
+  // `academic-knowledge-state`, `serde` and `thiserror`, and its dev edges are
+  // `P2-N2`'s two fixture chains -- reached through that crate's own fixture
+  // module by `#[path]` -- plus `tempfile`, `trybuild` and `uuid`, all already
+  // in this lock through earlier receipts. The `academic-knowledge-state` edge
+  // is the one that needs a reason and the receipt carries it: section 13.3's
+  // first input is the last strong evidence, and the evidence it means is the
+  // evidence that already passed section 13.4's four checks. The edge it does
+  // **not** carry is the point -- that crate hands out `LADDER`, `rung` and
+  // `AutomaticLevel`, and `academic-freshness` imports none of them.
+  assert.equal(freshnessReceipt.task, "P2-N3");
+  const freshnessAdmitted = new Set(
+    freshnessReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const freshnessPathPackages = new Set(
+    freshnessReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(freshnessAdmitted.size, 0, "P2-N3 must admit no external crate");
+  assert.deepEqual([...freshnessPathPackages], ["academic-freshness@0.1.0"]);
+  assert.deepEqual(freshnessReceipt.summary.npm_additions, []);
+  assert.equal(freshnessReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(freshnessReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(freshnessReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof freshnessReceipt.no_second_ladder_note, "string");
+  assert.deepEqual(Object.keys(freshnessReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-knowledge-state",
+  ]);
+  assert.deepEqual(Object.keys(freshnessReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-consent",
+    "academic-lecture-document",
+    "academic-model-run",
+    "academic-policy",
+    "academic-repository",
+    "academic-repository-analysis",
+    "academic-repository-classification",
+    "academic-repository-correlation",
+    "academic-transcription",
+    "academic-untrusted-content",
+    "tempfile",
+    "trybuild",
+    "uuid",
+  ]);
+  const freshnessTuples = lockTuples.filter(
+    ([name, version]) =>
+      freshnessAdmitted.has(`${name}@${version}`) ||
+      freshnessPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    freshnessTuples.length,
+    freshnessAdmitted.size + freshnessPathPackages.size,
+    "a P2-N3 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -6178,7 +6278,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !competencyAdmitted.has(`${name}@${version}`) &&
       !competencyPathPackages.has(`${name}@${version}`) &&
       !auditAdmitted.has(`${name}@${version}`) &&
-      !auditPathPackages.has(`${name}@${version}`),
+      !auditPathPackages.has(`${name}@${version}`) &&
+      !freshnessAdmitted.has(`${name}@${version}`) &&
+      !freshnessPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -6220,7 +6322,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       classificationTuples.length +
       knowledgeStateTuples.length +
       competencyTuples.length +
-      auditTuples.length,
+      auditTuples.length +
+      freshnessTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -6582,8 +6685,25 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    // `P2-N3`. Its acceptance suite reaches `P2-N2`'s fixture module by
+    // `#[path]`, so it drives the same real capture and writes a real journal
+    // into a temporary directory. `trybuild` and `uuid` are on the Phase 1
+    // receipt rather than this one, so only `tempfile` gains an owner here.
+    const n3FreshnessUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-freshness",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : [];
     const expectedUses = [
       ...admission.uses,
+      ...n3FreshnessUse,
       ...l3TranscriptionUse,
       ...l4LectureDocumentUse,
       ...n2KnowledgeStateUse,
