@@ -1,0 +1,31 @@
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `CodeOrigin::Generated`
+  --> tests/compile_fail/a_code_origin_cannot_be_generated_without_a_warrant.rs:19:41
+   |
+19 |     let _reads_as_bare = matches!(unit, CodeOrigin::Generated);
+   |                                         ^^^^^^^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `CodeOrigin::Generated(_)`
+   |
+  ::: src/generated.rs
+   |
+   |     Generated(GeneratedCodeWarrant),
+   |     --------- `CodeOrigin::Generated` defined here
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_code_origin_cannot_be_generated_without_a_warrant.rs:16:29
+   |
+16 |     let _bare: CodeOrigin = CodeOrigin::Generated;
+   |                ----------   ^^^^^^^^^^^^^^^^^^^^^ expected `CodeOrigin`, found enum constructor
+   |                |
+   |                expected due to this
+   |
+   = note:          expected enum `CodeOrigin`
+           found enum constructor `fn(academic_repository_competency::GeneratedCodeWarrant) -> CodeOrigin {academic_repository_competency::CodeOrigin::Generated}`
+help: use parentheses to construct this tuple variant
+   |
+16 |     let _bare: CodeOrigin = CodeOrigin::Generated(/* academic_repository_competency::GeneratedCodeWarrant */);
+   |                                                  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0063]: missing field `0` in initializer of `CodeOrigin`
+  --> tests/compile_fail/a_code_origin_cannot_be_generated_without_a_warrant.rs:17:19
+   |
+17 |     let _record = CodeOrigin::Generated {};
+   |                   ^^^^^^^^^^^^^^^^^^^^^ missing `0`

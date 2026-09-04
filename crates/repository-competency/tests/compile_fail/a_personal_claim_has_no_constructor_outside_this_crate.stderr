@@ -1,0 +1,38 @@
+error[E0599]: no associated function or constant named `default` found for struct `PersonalApplicationClaim` in the current scope
+  --> tests/compile_fail/a_personal_claim_has_no_constructor_outside_this_crate.rs:11:46
+   |
+11 |     let _default = PersonalApplicationClaim::default();
+   |                                              ^^^^^^^ associated function or constant not found in `PersonalApplicationClaim`
+
+error[E0624]: associated function `seal` is private
+  --> tests/compile_fail/a_personal_claim_has_no_constructor_outside_this_crate.rs:12:45
+   |
+12 |       let _sealed = PersonalApplicationClaim::seal();
+   |                                               ^^^^ private associated function
+   |
+  ::: src/claim.rs
+   |
+   | /     pub(crate) fn seal(
+   | |         id: ClaimId,
+   | |         key: ClassificationKey,
+   | |         work: &AuthoredWork,
+   | |         outcomes: &[&OutcomeArtifact],
+   | |         observed_by: ClaimId,
+   | |     ) -> Self {
+   | |_____________- private associated function defined here
+
+error[E0061]: this function takes 5 arguments but 0 arguments were supplied
+  --> tests/compile_fail/a_personal_claim_has_no_constructor_outside_this_crate.rs:12:19
+   |
+12 |     let _sealed = PersonalApplicationClaim::seal();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- multiple arguments are missing
+   |
+note: associated function defined here
+  --> src/claim.rs
+   |
+   |     pub(crate) fn seal(
+   |                   ^^^^
+help: provide the arguments
+   |
+12 |     let _sealed = PersonalApplicationClaim::seal(/* ClaimId */, /* academic_repository_classification::scope::ClassificationKey */, /* &AuthoredWork */, /* &[&OutcomeArtifact] */, /* ClaimId */);
+   |                                                  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

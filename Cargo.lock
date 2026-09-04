@@ -445,6 +445,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-repository-competency"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-model-run",
+ "academic-policy",
+ "academic-repository",
+ "academic-repository-analysis",
+ "academic-repository-classification",
+ "academic-repository-correlation",
+ "academic-untrusted-content",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-repository-correlation"
 version = "0.1.0"
 dependencies = [

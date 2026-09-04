@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_contribution_kind_is_not_an_authorship_mode.rs:14:18
+   |
+14 |     takes_a_mode(ContributionKind::Reviewed);
+   |     ------------ ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `AuthorshipMode`, found `ContributionKind`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> tests/compile_fail/a_contribution_kind_is_not_an_authorship_mode.rs:11:4
+   |
+11 | fn takes_a_mode(_mode: AuthorshipMode) {}
+   |    ^^^^^^^^^^^^ ---------------------
+
+error[E0277]: the trait bound `AuthorshipMode: From<ContributionKind>` is not satisfied
+  --> tests/compile_fail/a_contribution_kind_is_not_an_authorship_mode.rs:15:65
+   |
+15 |     let _converted: AuthorshipMode = ContributionKind::Authored.into();
+   |                                                                 ^^^^ the trait `From<ContributionKind>` is not implemented for `AuthorshipMode`
+   |
+   = note: required for `ContributionKind` to implement `Into<AuthorshipMode>`

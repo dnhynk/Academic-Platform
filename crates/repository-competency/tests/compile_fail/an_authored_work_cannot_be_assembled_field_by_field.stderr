@@ -1,0 +1,30 @@
+error: cannot construct `AuthoredWork` with struct literal syntax due to private fields
+  --> tests/compile_fail/an_authored_work_cannot_be_assembled_field_by_field.rs:11:20
+   |
+11 |     let _literal = AuthoredWork {
+   |                    ^^^^^^^^^^^^
+12 |         change: ChangeId::new("c-1").unwrap(),
+   |         ------------------------------------- private field
+13 |         snapshot_id: String::new(),
+   |         -------------------------- private field
+14 |         user: UserId::new("user-1").unwrap(),
+   |         ------------------------------------ private field
+15 |         mode: AuthorshipMode::Authored,
+   |         ------------------------------ private field
+   |
+   = note: ...and other private fields `author`, `mapping_version`, `origin`, `verdict` and `recorded_at` that were not provided
+
+error[E0599]: no associated function or constant named `default` found for struct `AuthoredWork` in the current scope
+  --> tests/compile_fail/an_authored_work_cannot_be_assembled_field_by_field.rs:17:34
+   |
+17 |     let _default = AuthoredWork::default();
+   |                                  ^^^^^^^ associated function or constant not found in `AuthoredWork`
+
+error[E0599]: no associated function or constant named `new` found for struct `AuthoredWork` in the current scope
+  --> tests/compile_fail/an_authored_work_cannot_be_assembled_field_by_field.rs:18:30
+   |
+18 |     let _new = AuthoredWork::new();
+   |                              ^^^ associated function or constant not found in `AuthoredWork`
+   |
+help: there is a method `ne` with a similar name, but with different arguments
+  --> $RUST/core/src/cmp.rs

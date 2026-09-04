@@ -1,0 +1,11 @@
+error[E0599]: no variant, associated function, or constant named `Reviewed` found for enum `AuthorshipMode` in the current scope
+  --> tests/compile_fail/a_review_is_never_an_authorship_mode.rs:12:37
+   |
+12 |     let _reviewed = AuthorshipMode::Reviewed;
+   |                                     ^^^^^^^^ variant, associated function, or constant not found in `AuthorshipMode`
+
+error[E0599]: no variant, associated function, or constant named `Read` found for enum `AuthorshipMode` in the current scope
+  --> tests/compile_fail/a_review_is_never_an_authorship_mode.rs:13:33
+   |
+13 |     let _read = AuthorshipMode::Read;
+   |                                 ^^^^ variant, associated function, or constant not found in `AuthorshipMode`
