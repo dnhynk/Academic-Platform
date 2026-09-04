@@ -337,6 +337,23 @@ or a hex identity, and an unmeasured basis as `unknown` rather than a zero.
 and one child per §16.3 constraint, and an `ExplanationSnapshot` rendered from
 the result rather than accepted alongside it.
 
+**The frozen inputs carry everything that can change the answer**: the goal, the
+whole hypergraph's shape, every axis interval and its basis, the slider's whole
+order, every acquisition option with its credits, its offering standing and its
+occasions, and every one of §16.3's constraint inputs with its own count so an
+empty list is distinguishable from an absent one. That completeness *is* the
+contract, not a convenience: an input the encoding omits makes the engine **not
+a function of its frozen inputs**, and two runs that differ only in it then share
+a digest while their canonical bytes differ.
+
+`the_frozen_inputs_are_the_runs_identity` asserts exactly that, in two forms — no
+two corpus cases may share a digest, and changing any one constraint input, any
+edge standing or any acquisition option must move it. The first version of this
+bridge failed the first form: it rendered the goal, the intervals and the slider
+and nothing else, so `two_routes` and `sole_route` had byte-identical `.input`
+files and different `.expected` files, and the determinism suite passed anyway
+because it only ever compared a case with itself.
+
 `same_inputs_and_rule_hash_yield_byte_equal_results` asserts both halves: equal
 bytes under one rule-set hash, and **different** bytes under another and under a
 different engine version. Without the second half the first would pass on an

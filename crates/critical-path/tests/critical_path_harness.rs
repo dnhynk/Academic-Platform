@@ -37,14 +37,23 @@
 #[path = "corpus/mod.rs"]
 mod corpus;
 
-use std::{collections::BTreeSet, error::Error, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    fs,
+    path::PathBuf,
+};
 
 use academic_critical_path::{
     BENEFIT_COMPONENTS, CONSTRAINTS, COST_COMPONENTS, CRITICAL_PATH_CORPUS_ROOT, ConceptEstimate,
-    CostComponent, DISCLOSURE_GROUPS, STAGE_RULES, frozen_inputs, outcome, plan,
+    ConstraintInputs, CostComponent, DISCLOSURE_GROUPS, STAGE_RULES, frozen_inputs, outcome, plan,
 };
-use academic_domain::engines::{
-    ENGINE_REGISTRY, EngineVersion, FrozenInputs, HARNESS_ROOT, ProofStatus, RuleSetHash,
+use academic_curriculum::{Meeting, OfferingStatus, Weekday};
+use academic_domain::{
+    FreshnessBand,
+    engines::{
+        ENGINE_REGISTRY, EngineVersion, FrozenInputs, HARNESS_ROOT, ProofStatus, RuleSetHash,
+    },
 };
 
 use corpus::{
@@ -52,8 +61,10 @@ use corpus::{
 };
 
 use corpus::common::{
-    Scenario, TestResult, cost_except, disk_page, flat_benefit, flat_estimates, other_rule_set,
-    permissive_constraints, reading_for, rule_set, section_36_4_gap, unmeasured, with_estimate,
+    Scenario, TestResult, all_concepts, buffer_pool, cost_except, course_for, database_offering,
+    disk_page, evidence_id, flat_benefit, flat_cost, flat_estimates, other_rule_set,
+    permissive_constraints, reading_for, rule_set, section_16_1_graph, section_36_4_gap,
+    storage_hierarchy, unmeasured, with_estimate,
 };
 
 fn workspace_root() -> PathBuf {
@@ -434,5 +445,168 @@ fn the_rule_set_names_every_stage_and_constraint() -> TestResult {
     assert!(bounds.contains(&format!("benefit_axes={}", BENEFIT_COMPONENTS.len())));
     assert!(bounds.contains(&format!("constraints={}", CONSTRAINTS.len())));
     assert!(bounds.contains(&format!("disclosure_groups={}", DISCLOSURE_GROUPS.len())));
+    Ok(())
+}
+
+/// The frozen inputs **are** the run's identity.
+///
+/// `P2-C5`'s signature is `(frozen_inputs, rule_set_hash, engine_version) ->
+/// (result, proof_tree, explanation_snapshot)`, so two runs that agree on all
+/// three must agree on the output. This asserts the contrapositive over the
+/// corpus: two cases whose canonical bytes differ must differ in their frozen
+/// inputs.
+///
+/// **The first version of this crate's bridge failed this.** It rendered the
+/// goal, the axis intervals and the slider and nothing else, so
+/// `two_routes` and `sole_route` -- which differ only in one excluded concept --
+/// had **byte-identical** `.input` files and different `.expected` files. The
+/// determinism suite passed anyway, because it only ever compared a case with
+/// itself. Nothing was wrong with `EngineOutcome::canonical_bytes`; what was
+/// wrong was that the engine was not a function of what the corpus called its
+/// inputs.
+#[test]
+fn the_frozen_inputs_are_the_runs_identity() -> TestResult {
+    let gap_case = section_36_4_gap()?;
+    let hash = RuleSetHash::new(rule_set());
+    let version = EngineVersion::new(ENGINE_VERSION)?;
+
+    let mut by_digest: BTreeMap<String, (&'static str, Vec<u8>)> = BTreeMap::new();
+    for case in cases()? {
+        let evaluated = evaluate(&gap_case, &case, hash, version)?;
+        let digest = evaluated.inputs.digest().to_string();
+        if let Some((earlier, bytes)) = by_digest.get(&digest) {
+            assert_eq!(
+                *bytes, evaluated.bytes,
+                "{} and {earlier} share a frozen-input digest and produce different \
+                 bytes, so this engine is not a function of its frozen inputs",
+                case.name
+            );
+        }
+        by_digest.insert(digest, (case.name, evaluated.bytes));
+    }
+    assert_eq!(
+        by_digest.len(),
+        cases()?.len(),
+        "two corpus cases share a frozen-input digest"
+    );
+
+    // And the direct form, over one input at a time: changing any constraint
+    // input changes the digest. A field this bridge forgot would show up here
+    // as two identical digests rather than as a corpus that happens to differ.
+    let scenario = Scenario::new()?;
+    let baseline = frozen_inputs(&scenario.request())?.digest();
+    let variants: Vec<(&str, ConstraintInputs)> = vec![
+        ("excluded concept", {
+            let mut inputs = permissive_constraints();
+            inputs.user_excluded_concepts = vec![storage_hierarchy()];
+            inputs
+        }),
+        ("excluded offering", {
+            let mut inputs = permissive_constraints();
+            inputs.user_excluded_offerings = vec![database_offering()];
+            inputs
+        }),
+        ("privacy-excluded source", {
+            let mut inputs = permissive_constraints();
+            inputs.privacy_excluded_sources = vec![evidence_id("flat-chapter")];
+            inputs
+        }),
+        ("horizon", {
+            let mut inputs = permissive_constraints();
+            inputs.horizon_days = 7;
+            inputs
+        }),
+        ("credit limit", {
+            let mut inputs = permissive_constraints();
+            inputs.credit_limit = 18;
+            inputs
+        }),
+        ("committed credits", {
+            let mut inputs = permissive_constraints();
+            inputs.committed_credits = 6;
+            inputs
+        }),
+        ("committed meeting", {
+            let mut inputs = permissive_constraints();
+            inputs.committed_meetings = vec![Meeting::new(Weekday::Monday, 540, 630)?];
+            inputs
+        }),
+        ("offering meeting", {
+            let mut inputs = permissive_constraints();
+            inputs.offering_meetings = vec![(
+                database_offering(),
+                vec![Meeting::new(Weekday::Tuesday, 600, 690)?],
+            )];
+            inputs
+        }),
+        ("official prerequisite", {
+            let mut inputs = permissive_constraints();
+            inputs.official_prerequisites = vec![(
+                database_offering(),
+                academic_critical_path::OfficialPrerequisiteStanding::Unmet,
+            )];
+            inputs
+        }),
+        ("hard prerequisite met", {
+            let mut inputs = permissive_constraints();
+            inputs.hard_prerequisites_met = Vec::new();
+            inputs
+        }),
+        ("band", {
+            let mut inputs = permissive_constraints();
+            inputs.bands = all_concepts()
+                .into_iter()
+                .map(|concept| (concept, FreshnessBand::Stale))
+                .collect();
+            inputs
+        }),
+    ];
+    for (name, constraints) in &variants {
+        let moved = frozen_inputs(&academic_critical_path::PlanRequest {
+            constraints,
+            ..scenario.request()
+        })?
+        .digest();
+        assert_ne!(
+            moved, baseline,
+            "changing the {name} left the frozen-input digest unchanged"
+        );
+    }
+
+    // The hypergraph's own shape, and the acquisition options, likewise.
+    let uncertain = section_16_1_graph(&[(buffer_pool(), disk_page())])?;
+    assert_ne!(
+        frozen_inputs(&academic_critical_path::PlanRequest {
+            graph: &uncertain,
+            ..scenario.request()
+        })?
+        .digest(),
+        baseline,
+        "changing an edge's standing left the frozen-input digest unchanged"
+    );
+    let with_course = with_estimate(
+        flat_estimates()?,
+        ConceptEstimate {
+            concept: disk_page(),
+            cost: flat_cost(10)?,
+            benefit: flat_benefit(10)?,
+            options: vec![course_for(
+                disk_page(),
+                database_offering(),
+                OfferingStatus::Confirmed,
+                3,
+                "db",
+            )?],
+        },
+    );
+    assert_ne!(
+        frozen_inputs(&academic_critical_path::PlanRequest {
+            estimates: &with_course,
+            ..scenario.request()
+        })?
+        .digest(),
+        baseline,
+        "changing an acquisition option left the frozen-input digest unchanged"
+    );
     Ok(())
 }
