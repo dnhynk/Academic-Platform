@@ -2853,6 +2853,20 @@ rest on; and one compares the whole `Default` set.
 
 ### What this task found in its own suite
 
+**Section 8.3's `HISTORICALLY_LIKELY` cell is a conjunction and only one half
+was implemented.** The row requires *여러 과거 학기의 재현 가능한 패턴, 미래 공식
+공지 없음*. The pattern half was structural from the start; the second half was
+not representable at all — `OfficialTermReading` had `Confirmed` and `Cancelled`
+and no value for an official notice that the course *will* run without a
+verified listing, so such a notice left the standing at `HISTORICALLY_LIKELY`,
+which the row forbids. Found by reading the requirement cell against the
+resolver rather than by any test failing. `U5-I24` is the observation.
+
+**`announcement_claim`'s first draft took the announcement and did nothing with
+it** — the exact defect `offering_feature_contract` refuses one level down, in
+the function written to close the gap above. The notice now bounds the claim's
+validity, and `U5-I25` is the observation.
+
 **Two guards would not have bitten, and both were repaired before the matrix was
 run.**
 
@@ -2939,7 +2953,7 @@ thirty-odd other tasks' blocks.
 
 ### The injection matrix
 
-Twenty-three injections, one at a time, each its own edit and its own build.
+Twenty-five injections, one at a time, each its own edit and its own build.
 **None of them spells a name any table forbids** — the tables here forbid no
 name; they compare whole sets and derive identifiers from positions. Every
 paraphrase substitutes another phrase the specification itself writes, and every
@@ -2973,6 +2987,8 @@ the observation is `cargo test -p academic-offering --offline --no-fail-fast`.
 | U5-I21 | `forecast.rs`: the recorded likely floor is not a frozen input | yes | fails `same_inputs_and_rule_hash_yield_byte_equal_results` — and passed both of that test's original halves, which is why it gained a third |
 | U5-I22 | `corpus.rs`: a helper that reads the machine's clock | yes | fails `no_product_file_reaches_a_clock_rng_socket_or_model` |
 | U5-I23 | `forecast.rs`: the engine identifier claims the §28 registry's namespace | yes | fails `this_crate_persists_nothing_and_registers_no_engine` |
+| U5-I24 | `standing.rs`: an official notice that the course will run does not defeat the pattern, so the row keeps its standing without its second conjunct | yes | fails `historical_likely_limits` |
+| U5-I25 | `claims.rs`: the announcement argument reaches no part of the output, so an official claim may be backdated past the notice that made it | yes | fails `prediction_official_parallel` |
 
 **`U5-I12` did not compile in its first form.** Replacing the `NoConfirmedSeat`
 arm with an empty one leaves a `match` whose second arm does nothing, which

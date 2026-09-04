@@ -250,6 +250,16 @@ rule: `ConfirmedStanding::seat` is the only producer of a `ConfirmedSeat` and a
 determinate plan takes seats by value, so a `HISTORICALLY_LIKELY` offering has
 nothing to enter as. Seven compile-fail cases are those absences.
 
+**`HISTORICALLY_LIKELY` is a conjunction and both halves are implemented.** The
+row requires *여러 과거 학기의 재현 가능한 패턴, 미래 공식 공지 없음*: a
+reproducible pattern **and** no future official notice. An official notice that
+the course will run, from a source that is not the registration system, reaches
+no confirmation -- that row requires a listing that was recently verified -- and
+lands the offering on `UNCERTAIN` naming the notice, with the probability it
+overrode kept on the record. §8.3's *별도 official Claim을 활성화한다* is
+`announcement_claim`, and the notice bounds it: a claim backdated past its own
+source is refused.
+
 **Section 8.3's sentence names six features and the plan names seven families.**
 The seventh is the sample window the same sentence requires be recorded, and the
 divergence is executed rather than described: the six units are split out of the

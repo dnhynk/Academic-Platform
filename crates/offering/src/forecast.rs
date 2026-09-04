@@ -120,8 +120,10 @@ pub const RULE_OFFERING_FORECAST: &str = "offering.forecast.next_term";
 /// *표본 부족·불규칙·교수 변동* -- and [`Self::spec_phrase`] carries which of
 /// the three each one is, compared against the document by
 /// `the_abstention_reasons_are_section_8_3s_own`. The last three are the
-/// recorded criteria this repository has no number for; they carry no phrase
-/// because the specification writes none.
+/// last four are not grounds the row names: three are recorded criteria this
+/// repository has no number for, and the fourth is section 8.3's
+/// `HISTORICALLY_LIKELY` row losing its second conjunct. None of them carries a
+/// phrase, because the specification writes none for them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AbstentionReason {
     /// The window holds no term this course was observed running in.
@@ -141,11 +143,15 @@ pub enum AbstentionReason {
     NoFreshCalibrationDataset,
     /// A calibrated probability below the recorded floor.
     BelowRecordedLikelyFloor,
+    /// An official notice says the course will run and no listing has been
+    /// verified, so the pattern no longer decides and the timetable is not
+    /// known.
+    AnnouncedButNotVerified,
 }
 
 impl AbstentionReason {
     /// Every reason.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::NeverObserved,
         Self::WindowBelowRecordedMinimum,
         Self::IrregularOnly,
@@ -153,6 +159,7 @@ impl AbstentionReason {
         Self::ForecastPolicyAbsent,
         Self::NoFreshCalibrationDataset,
         Self::BelowRecordedLikelyFloor,
+        Self::AnnouncedButNotVerified,
     ];
 
     /// Stable spelling.
@@ -166,6 +173,7 @@ impl AbstentionReason {
             Self::ForecastPolicyAbsent => "FORECAST_POLICY_ABSENT",
             Self::NoFreshCalibrationDataset => "NO_FRESH_CALIBRATION_DATASET",
             Self::BelowRecordedLikelyFloor => "BELOW_RECORDED_LIKELY_FLOOR",
+            Self::AnnouncedButNotVerified => "ANNOUNCED_BUT_NOT_VERIFIED",
         }
     }
 
@@ -178,7 +186,8 @@ impl AbstentionReason {
             Self::InstructorVolatile => Some("교수 변동"),
             Self::ForecastPolicyAbsent
             | Self::NoFreshCalibrationDataset
-            | Self::BelowRecordedLikelyFloor => None,
+            | Self::BelowRecordedLikelyFloor
+            | Self::AnnouncedButNotVerified => None,
         }
     }
 }

@@ -55,7 +55,7 @@ use crate::{
     forecast::{AbstentionReason, Forecast, ForecastVerdict, ScoredForecast, forecast},
     observation::CourseHistory,
     policy::ForecastPolicy,
-    source::{CancellationNotice, ConfirmationEvidence, OfficialTermReading},
+    source::{CancellationNotice, ConfirmationEvidence, OfferingAnnouncement, OfficialTermReading},
 };
 
 /// Section 8.3's `CONFIRMED`.
@@ -193,6 +193,7 @@ impl HistoricallyLikelyStanding {
 pub struct UncertainStanding {
     reason: AbstentionReason,
     scored: Option<ScoredForecast>,
+    announced: Option<AnnouncedStanding>,
 }
 
 impl UncertainStanding {
@@ -212,6 +213,33 @@ impl UncertainStanding {
     #[must_use]
     pub const fn scored(&self) -> Option<&ScoredForecast> {
         self.scored.as_ref()
+    }
+
+    /// The official notice that took the decision away from the pattern, when
+    /// one exists.
+    #[must_use]
+    pub const fn announced(&self) -> Option<&AnnouncedStanding> {
+        self.announced.as_ref()
+    }
+}
+
+/// Section 8.3's `HISTORICALLY_LIKELY` row's **second** conjunct, as a value.
+///
+/// The row requires *여러 과거 학기의 재현 가능한 패턴, 미래 공식 공지 없음* --
+/// a reproducible pattern **and** no future official notice. An announcement is
+/// the notice, and it is carried on the `UNCERTAIN` standing so a reader is
+/// told which official source said what, rather than only that the evidence is
+/// insufficient.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnnouncedStanding {
+    announcement: OfferingAnnouncement,
+}
+
+impl AnnouncedStanding {
+    /// The official notice.
+    #[must_use]
+    pub const fn announcement(&self) -> &OfferingAnnouncement {
+        &self.announcement
     }
 }
 
@@ -364,16 +392,38 @@ pub fn resolve(
                 evidence: evidence.clone(),
             })
         }
+        // Section 8.3's `HISTORICALLY_LIKELY` requires 미래 공식 공지 없음, and
+        // this is the notice. It does not reach `CONFIRMED` either: that row
+        // requires a listing that was recently verified, and an announcement is
+        // neither. The forecast beside it is kept, so the probability the
+        // notice overrode stays on the record and next term's calibration can
+        // read it.
+        Some(OfficialTermReading::Announced(announcement)) => {
+            OfferingStanding::Uncertain(UncertainStanding {
+                reason: AbstentionReason::AnnouncedButNotVerified,
+                scored: prediction
+                    .as_ref()
+                    .and_then(|forecast| match forecast.verdict() {
+                        ForecastVerdict::Scored(scored) => Some(scored.clone()),
+                        ForecastVerdict::Abstained(_) => None,
+                    }),
+                announced: Some(AnnouncedStanding {
+                    announcement: announcement.clone(),
+                }),
+            })
+        }
         None => match (&prediction, policy) {
             (None, _) | (_, None) => OfferingStanding::Uncertain(UncertainStanding {
                 reason: AbstentionReason::ForecastPolicyAbsent,
                 scored: None,
+                announced: None,
             }),
             (Some(prediction), Some(policy)) => match prediction.verdict() {
                 ForecastVerdict::Abstained(reason) => {
                     OfferingStanding::Uncertain(UncertainStanding {
                         reason: *reason,
                         scored: None,
+                        announced: None,
                     })
                 }
                 ForecastVerdict::Scored(scored)
@@ -386,6 +436,7 @@ pub fn resolve(
                 ForecastVerdict::Scored(scored) => OfferingStanding::Uncertain(UncertainStanding {
                     reason: AbstentionReason::BelowRecordedLikelyFloor,
                     scored: Some(scored.clone()),
+                    announced: None,
                 }),
             },
         },

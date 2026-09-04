@@ -40,6 +40,9 @@ pub enum OfferingError {
     /// The registration system was read for this term and listed no section.
     #[error("the registration reading lists no section, so it confirms nothing")]
     BasisListsNoSection,
+    /// An official claim would apply before the notice that made it.
+    #[error("an official claim cannot apply before the notice that announced it")]
+    ClaimPredatesItsNotice,
     /// An evaluation set had no entries at all.
     #[error("a term evaluation covers at least one course")]
     EmptyEvaluation,
