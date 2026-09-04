@@ -607,8 +607,10 @@ fn the_cs_map_crate_touches_no_file_and_no_socket() -> TestResult {
 
     // The whole package, tests included: nothing here opens a file, a socket, a
     // process or a clock.
+    let mut read = 0_usize;
     for path in crate_all_sources()? {
         let code = strip_non_code(&fs::read_to_string(&path)?);
+        read += 1;
         for construct in FORBIDDEN_CONSTRUCTS {
             assert_eq!(
                 uses_of(&code, construct),
@@ -617,6 +619,37 @@ fn the_cs_map_crate_touches_no_file_and_no_socket() -> TestResult {
                 relative(&path)
             );
         }
+    }
+    assert!(
+        read >= 12,
+        "the forbidden-construct pass read only {read} files"
+    );
+
+    // **The control.** A reader that always answers zero would satisfy every
+    // assertion above. Each of the nineteen constructs is required to be found
+    // by the same reader, through the same stripper, in a sample that does spell
+    // it -- and to be found in *code* rather than only in a literal, because
+    // `strip_non_code` removes literals and a construct that only ever appeared
+    // inside one would have been invisible either way.
+    for construct in FORBIDDEN_CONSTRUCTS {
+        let sample = format!(
+            "let value = {construct}(path);
+"
+        );
+        assert_eq!(
+            uses_of(&strip_non_code(&sample), construct),
+            1,
+            "the reader cannot find {construct} in a sample that spells it"
+        );
+        let quoted = format!(
+            "let value = \"{construct}\";
+"
+        );
+        assert_eq!(
+            uses_of(&strip_non_code(&quoted), construct),
+            0,
+            "the stripper does not remove {construct} from a string literal"
+        );
     }
     Ok(())
 }
