@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `RoleProfileRef: TryFrom<String>` is not satisfied
+  --> tests/compile_fail/a_rendered_name_is_not_an_identity.rs:11:13
+   |
+11 |     let _ = RoleProfileRef::try_from("backend_engineer_profile_v4".to_owned());
+   |             ^^^^^^^^^^^^^^ the trait `From<String>` is not implemented for `RoleProfileRef`
+   |
+   = note: required for `String` to implement `Into<RoleProfileRef>`
+   = note: required for `RoleProfileRef` to implement `TryFrom<String>`
+
+error[E0277]: the trait bound `RoleProfileRef: From<String>` is not satisfied
+  --> tests/compile_fail/a_rendered_name_is_not_an_identity.rs:11:13
+   |
+11 |     let _ = RoleProfileRef::try_from("backend_engineer_profile_v4".to_owned());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<String>` is not implemented for `RoleProfileRef`
+   |
+   = note: required for `String` to implement `Into<RoleProfileRef>`
+   = note: required for `RoleProfileRef` to implement `TryFrom<String>`

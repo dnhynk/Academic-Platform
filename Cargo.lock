@@ -657,6 +657,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-role-profile"
+version = "0.1.0"
+dependencies = [
+ "academic-competency",
+ "academic-domain",
+ "academic-ingestion",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-rpc"
 version = "0.1.0"
 dependencies = [
