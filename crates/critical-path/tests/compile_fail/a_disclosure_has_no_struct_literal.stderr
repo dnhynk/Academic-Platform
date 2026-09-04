@@ -1,0 +1,19 @@
+error: cannot construct `Disclosure` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_disclosure_has_no_struct_literal.rs:9:5
+   |
+ 9 |     Disclosure {
+   |     ^^^^^^^^^^
+10 |         snapshot,
+   |         -------- private field
+11 |         cost_assumptions: assumptions,
+   |         ----------------------------- private field
+   |
+   = note: ...and other private fields `exclusions`, `uncertain_edges` and `alternatives` that were not provided
+help: you might have meant to use the `of` associated function
+   |
+ 9 -     Disclosure {
+10 -         snapshot,
+11 -         cost_assumptions: assumptions,
+12 -     }
+ 9 +     Disclosure::of(_, _, _, _, _)
+   |

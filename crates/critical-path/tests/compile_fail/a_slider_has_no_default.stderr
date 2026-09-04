@@ -1,0 +1,11 @@
+error[E0599]: no associated function or constant named `default` found for struct `PreferenceSlider` in the current scope
+ --> tests/compile_fail/a_slider_has_no_default.rs:8:23
+  |
+8 |     PreferenceSlider::default()
+  |                       ^^^^^^^ associated function or constant not found in `PreferenceSlider`
+  |
+note: if you're trying to build a new `PreferenceSlider`, consider using `PreferenceSlider::of` which returns `Result<PreferenceSlider, CriticalPathError>`
+ --> src/preference.rs
+  |
+  |     pub fn of(order: Vec<VectorAxis>) -> Result<Self, CriticalPathError> {
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
