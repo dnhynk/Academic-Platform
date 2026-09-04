@@ -63,6 +63,21 @@ fn specification() -> Result<String, Box<dyn Error>> {
     ))?)
 }
 
+/// The whole of section 15, from its `## ` heading to the next one.
+fn section_15(page: &str) -> Result<String, Box<dyn Error>> {
+    let start = page
+        .find("## 15. Gap & Prerequisite Engine")
+        .ok_or("the design document has no section 15")?;
+    let rest = &page[start..];
+    let end = rest[1..]
+        .find(
+            "
+## ",
+        )
+        .map_or(rest.len(), |offset| offset + 1);
+    Ok(rest[..end].to_owned())
+}
+
 /// The body of a `### ` section, from its heading to the next one.
 fn section(page: &str, heading: &str) -> Result<String, Box<dyn Error>> {
     let start = page
@@ -1257,6 +1272,59 @@ fn the_step_six_prose_names_one_fewer_than_the_table() -> TestResult {
         !step_six.contains("context") && !step_six.contains("선택"),
         "step 6 now names the context kind: {step_six}"
     );
+
+    // And step 6 is not the only prose in section 15. The record this crate
+    // carries is that `CONTEXT_GAP` appears in the table and **in no prose
+    // sentence at all**, which step 6 alone cannot say. Section 15's prose is
+    // every line of 15.1, 15.2 and 15.3 that is not a table row, and each of
+    // the five identifiers is looked for in both halves.
+    let whole = section_15(&page)?;
+    let (prose, table): (Vec<&str>, Vec<&str>) = whole
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .partition(|line| !line.starts_with('|'));
+    let prose = prose.join(
+        "
+",
+    );
+    let table = table.join(
+        "
+",
+    );
+    let mut in_prose = Vec::new();
+    for kind in GAP_KINDS {
+        assert!(
+            table.contains(kind.as_str()),
+            "section 15's table no longer names {}",
+            kind.as_str()
+        );
+        if prose.contains(kind.as_str()) {
+            in_prose.push(kind.as_str());
+        }
+    }
+    assert_eq!(
+        in_prose,
+        Vec::<&str>::new(),
+        "section 15's prose now spells a gap identifier; the table was the only place any of them appeared: {in_prose:?}"
+    );
+    assert!(
+        !prose.contains("맥락") && !prose.contains("context"),
+        "section 15's prose now names the context kind, so step 6's four and the table's five may no longer be the mismatch this crate records"
+    );
+
+    // The four informal names live in the prose and nowhere in the table, which
+    // is the other half of the same statement.
+    for name in STEP_SIX_INFORMAL_NAMES {
+        assert!(
+            prose.contains(name),
+            "section 15's prose no longer says {name}"
+        );
+        assert!(
+            !table.contains(name),
+            "section 15's table now says {name}, so the two halves have stopped being separate"
+        );
+    }
     Ok(())
 }
 

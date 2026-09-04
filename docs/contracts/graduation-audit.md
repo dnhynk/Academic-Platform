@@ -201,6 +201,16 @@ and every mapped token to be printed, and asserts both of the two directions the
 tables disagree in — so a specification edit that introduces a sixth reading
 fails here rather than being folded into the nearest status.
 
+The two-credit-row reading is executed too, since it is what the `PASS_PARTIAL`
+row of the mapping rests on. The test finds every `X / Y` line in the tree,
+requires there to be exactly two, requires each to be short of its threshold,
+requires their two labels to **differ**, and requires the mapping to send both to
+`NEEDS`. If the document ever makes the two rows agree, or adds a third, the
+justification above is stale rather than wrong and fails here instead of being
+carried forward unread. Three injections, each its own build: relabelling the
+first row `NEEDS 37`, making it `130 / 130`, and adding a third credit row. All
+three fail.
+
 `mixed_proof_tree` produces every one of the harness's five statuses in one
 tree, over one transcript and one published set.
 

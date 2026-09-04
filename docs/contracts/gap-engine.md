@@ -62,6 +62,16 @@ the discrepancy is a measured value with
 `the_step_six_prose_names_one_fewer_than_the_table` on it rather than something a
 later reader rediscovers. Nothing was invented to reconcile them.
 
+`P2-RF17` widened that test from step 6 to the whole of section 15, because *no
+prose sentence of section 15* is what this page claims and step 6 alone cannot
+say it. Section 15's lines are split into prose and table rows, and both halves
+are checked in both directions: no gap identifier appears in the prose, every one
+appears in the table, each of step 6's four informal names appears in the prose
+and in no table row, and the prose names neither `context` nor `맥락`. Four
+injections, each its own build: a `CONTEXT_GAP` sentence added to 15.3, a context
+sentence added to 15.1, one informal name moved into a table row, and one dropped
+from step 6. All four fail.
+
 ## The four dimensions, and what each one decides
 
 Section 15.2 step 3: `사용자 mastery, freshness, confidence와 contradicting

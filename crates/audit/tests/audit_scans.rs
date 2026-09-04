@@ -466,6 +466,66 @@ fn the_proof_statuses_cover_section_11_3s_own_tree() -> TestResult {
         !statuses.contains("PASS_PARTIAL"),
         "the harness now has a PASS_PARTIAL; the mapping above must move"
     );
+
+    // The reading the `PASS_PARTIAL` row of the mapping rests on: section 11.3
+    // labels two structurally identical credit rows differently. Both are a
+    // count short of a threshold -- `93 / 130` and `51 / 63` -- and one reads
+    // `PASS_PARTIAL` while the other reads `NEEDS 12`. That is why both render
+    // as `NEEDS` here, and if the document ever makes the two rows agree the
+    // justification is stale rather than wrong, so it fails here instead of
+    // being carried forward unread.
+    let credit_rows: Vec<(u32, u32, String)> = tree
+        .lines()
+        .filter_map(|line| {
+            let (before, after) = line.split_once(" / ")?;
+            let have: u32 = before
+                .rsplit(' ')
+                .next()
+                .and_then(|word| word.parse().ok())?;
+            let mut rest = after.split_whitespace();
+            let threshold: u32 = rest.next().and_then(|word| word.parse().ok())?;
+            let token = rest.next()?.to_owned();
+            Some((have, threshold, token))
+        })
+        .collect();
+    assert_eq!(
+        credit_rows.len(),
+        2,
+        "section 11.3 prints {} credit rows, not the two this mapping was written against: {credit_rows:?}",
+        credit_rows.len()
+    );
+    for (have, threshold, _) in &credit_rows {
+        assert!(
+            have < threshold,
+            "section 11.3's credit row {have} / {threshold} is no longer short of its threshold"
+        );
+    }
+    let labels: Vec<&str> = credit_rows
+        .iter()
+        .map(|(_, _, token)| token.as_str())
+        .collect();
+    assert_ne!(
+        labels.first(),
+        labels.last(),
+        "section 11.3 now labels its two credit rows the same way ({labels:?}); the mapping's PASS_PARTIAL note is stale"
+    );
+
+    // Both labels are in the mapping, and both send to the same status. That
+    // is the whole of the resolution, checked rather than described.
+    let rendered: Vec<Option<ProofStatus>> = labels
+        .iter()
+        .map(|label| {
+            mapping
+                .iter()
+                .find(|(token, _)| token == label)
+                .and_then(|(_, status)| *status)
+        })
+        .collect();
+    assert_eq!(
+        rendered,
+        vec![Some(ProofStatus::Needs), Some(ProofStatus::Needs)],
+        "section 11.3's two credit rows no longer render as one status: {labels:?}"
+    );
     Ok(())
 }
 
