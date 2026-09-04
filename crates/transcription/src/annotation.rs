@@ -69,13 +69,32 @@ impl AnnotationKind {
 }
 
 /// One annotation over a half-open range of raw tokens.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Annotation {
     kind: AnnotationKind,
     segment: usize,
     first_token: usize,
     token_count: usize,
     rendering: String,
+}
+
+// A rendering is written over a range of raw tokens, and section 12.4's
+// `MathFormatting` kind renders notation the lecturer wrote. One
+// caller-supplied `String` carries all four kinds and the type is public, so
+// `S-10`'s decision here is the strengthening one this crate already made for
+// `RawToken` and `AppliedCorrection`: the text reaches the formatter through a
+// length only.
+impl core::fmt::Debug for Annotation {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("Annotation")
+            .field("kind", &self.kind)
+            .field("segment", &self.segment)
+            .field("first_token", &self.first_token)
+            .field("token_count", &self.token_count)
+            .field("rendering_byte_len", &self.rendering.len())
+            .finish()
+    }
 }
 
 impl Annotation {
