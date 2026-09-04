@@ -587,6 +587,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-non-delegable"
+version = "0.1.0"
+dependencies = [
+ "academic-audit",
+ "academic-consent",
+ "academic-deletion",
+ "academic-domain",
+ "academic-knowledge-state",
+ "academic-policy",
+ "academic-proposal",
+ "academic-record",
+ "academic-retention",
+ "academic-student-voice",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-offering"
 version = "0.1.0"
 dependencies = [

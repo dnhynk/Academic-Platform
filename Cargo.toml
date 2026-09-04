@@ -38,6 +38,7 @@ members = [
   "crates/ledger",
   "crates/model-run",
   "crates/next-lecture",
+  "crates/non-delegable",
   "crates/offering",
   "crates/portability",
   "crates/policy",

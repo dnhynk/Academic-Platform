@@ -1,0 +1,23 @@
+warning: unreachable expression
+  --> tests/compile_fail/a_decision_event_has_no_struct_literal.rs:15:18
+   |
+14 |         decision: unimplemented!(),
+   |                   ---------------- any code following this expression is unreachable
+15 |         subject: unimplemented!(),
+   |                  ^^^^^^^^^^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: fields `action`, `decision`, `subject` and `decided_at` of struct `DecisionEvent` are private
+  --> tests/compile_fail/a_decision_event_has_no_struct_literal.rs:13:9
+   |
+12 |     let _forged = DecisionEvent {
+   |                   ------------- in this type
+13 |         action: NonDelegableAction::ApproveEgress,
+   |         ^^^^^^ private field
+14 |         decision: unimplemented!(),
+   |         ^^^^^^^^ private field
+15 |         subject: unimplemented!(),
+   |         ^^^^^^^ private field
+16 |         decided_at: TimestampMillis::new(0),
+   |         ^^^^^^^^^^ private field
