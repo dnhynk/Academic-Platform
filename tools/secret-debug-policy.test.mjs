@@ -170,6 +170,10 @@ const SECRET_BEARING_TYPES = new Map([
   ["SealedCredential", "the operating-system keystore blob that opens one stored credential"],
   ["Acquisition", "the FetchOutcome bytes one conditional fetch or one user-supplied import produced"],
   ["AppliedCorrection", "what one token of the lecture read before a correction replaced it"],
+  // `P2-RF17`. The whole-set text classification's own finding: section 12.4's
+  // annotation layer derived `Debug` over a rendering written across a range of
+  // raw tokens, in the crate that had already sealed the tokens themselves.
+  ["Annotation", "the rendering section 12.4's annotation layer writes over a range of raw tokens"],
 ]);
 
 /**
@@ -522,6 +526,121 @@ function isClassifiedByteBuffer(text) {
     RAW_BYTE_PAYLOAD_TYPES.test(normalized) ||
     /(Vec\s*<\s*u8\s*>|\[\s*u8\s*(;[^\]]*)?\])/.test(normalized)
   );
+}
+
+/**
+ * What a `String`/`str` field holds, for the crates that classify text.
+ *
+ * The same closed vocabulary {@link BYTE_CLASSES} is, for the layer that has no
+ * type to read. One class -- `content` -- forbids a derived `Debug`; the rest
+ * say why the text is already in the clear.
+ */
+const TEXT_CLASSES = new Map([
+  ["identifier", "an opaque identity a row, a path or a header already carries in the clear"],
+  ["vocabulary", "a value from a closed set this workspace declares, or the spelling of one"],
+  ["provenance", "who or what produced a record: a provider name, a model name, a version, a tool label"],
+  ["diagnostic", "an error, a reason or a refusal, whose whole purpose is to be read"],
+  ["reference", "a name for something outside this value: a locale, a mime type, a file name, a heading key"],
+  ["content", "document, capture, transcript or provider text -- a derived Debug is forbidden"],
+]);
+
+/** The class whose text a derived `Debug` may not reach. */
+const SECRET_TEXT_CLASSES = new Set(["content"]);
+
+/**
+ * The crates whose every named `String`/`str` field carries a class.
+ *
+ * `S-18` on `docs/contracts/policy-source-scans.md` is the text half of the
+ * gap `P2-RF13` closed for bytes, and its cost is why this is a *set of crates*
+ * rather than the workspace: 805 named text fields against the 137 byte fields
+ * `P2-RF13` classified, and what a text field holds is a judgement its crate's
+ * owner makes. A crate joins this map when its owner has made those judgements
+ * for all of its fields; until then the crate stays on the
+ * {@link SECRET_FIELD_NAMES} alternation, which is documented as the weakest
+ * layer and is the reason `S-18` exists.
+ *
+ * `P2-RF17` enters the two crates that hold the ten registrations `T177`
+ * measured inert. Their secret is text under a field name the alternation does
+ * not carry, so nothing required their registration and deleting one was
+ * silent in both directions.
+ */
+const TEXT_CLASSIFIED_CRATES = new Map([
+  [
+    "transcription",
+    "`P2-L3`: every raw token, segment, correction and effective token is a word the lecturer said",
+  ],
+]);
+
+const TEXT_FIELD_CLASSES = new Map([
+  // `crates/transcription` -- `P2-L3`. A token, a segment's verbatim text, a
+  // proposed replacement and what it replaced are all words the lecturer said.
+  // `Annotation.rendering` is `content` in the strengthening direction this
+  // crate already chose twice: three of section 12.4's four kinds render a
+  // mark, a boundary or a closed speaker shape, but `MathFormatting` renders
+  // notation written over a token range, the field is one caller-supplied
+  // `String` shared by all four kinds, and the type is public. Nothing in the
+  // crate needs to print it, so sealing it costs nothing and leaving it open
+  // would be a judgement made by omission.
+  ["Annotation.rendering", "content"],
+  ["AppliedCorrection.previous_text", "content"],
+  ["AudioFormat.container", "reference"],
+  ["CorrectionCandidate.replacement_text", "content"],
+  ["EffectiveToken.effective_text", "content"],
+  ["OpenSegment.id", "identifier"],
+  ["OpenSegment.verbatim_text", "content"],
+  ["RawSegment.id", "identifier"],
+  ["RawSegment.verbatim_text", "content"],
+  ["RawToken.text", "content"],
+  ["SuppliedMaterial.identifier", "identifier"],
+]);
+
+/**
+ * Reports whether a declared type carries text the classification must cover.
+ *
+ * Both the bare field and one inside a container: `Vec<String>` and
+ * `BTreeMap<String, Span>` print their contents through a derived `Debug`
+ * exactly as a bare `String` does, which is the rule
+ * {@link isClassifiedByteBuffer} applies to bytes.
+ */
+function isClassifiedText(text) {
+  return /\b(String|str)\b/.test(normalizeFieldType(text));
+}
+
+/** The crate one definition site is declared in. */
+function crateOf(site) {
+  return site.location.split("/")[1];
+}
+
+/**
+ * Reports whether a named field is one a derived `Debug` may not print.
+ *
+ * Bytes are judged by {@link BYTE_FIELD_CLASSES} whatever they are called. Text
+ * is judged by {@link TEXT_FIELD_CLASSES} in a crate that classifies text, and
+ * by the {@link SECRET_FIELD_NAMES} alternation everywhere else.
+ */
+function fieldIsSecret(site, name, field, declared) {
+  return (
+    !PUBLIC_BYTES.has(`${name}.${field}`) &&
+    fieldIsSecretBeforeExceptions(site, name, field, declared)
+  );
+}
+
+/**
+ * The same judgement without the {@link PUBLIC_BYTES} exception applied.
+ *
+ * The derived-`Debug` guard needs the un-excepted answer so it can record which
+ * exceptions were exercised and delete the ones that match nothing.
+ */
+function fieldIsSecretBeforeExceptions(site, name, field, declared) {
+  if (isClassifiedByteBuffer(declared)) {
+    const assigned = BYTE_FIELD_CLASSES.get(`${name}.${field}`);
+    return assigned === undefined || SECRET_BYTE_CLASSES.has(assigned);
+  }
+  if (TEXT_CLASSIFIED_CRATES.has(crateOf(site)) && isClassifiedText(declared)) {
+    const assigned = TEXT_FIELD_CLASSES.get(`${name}.${field}`);
+    return assigned === undefined || SECRET_TEXT_CLASSES.has(assigned);
+  }
+  return SECRET_FIELD_NAMES.test(field) && holdsRawBytes(declared);
 }
 
 /**
@@ -1062,6 +1181,112 @@ test("every named byte buffer in the workspace is classified", () => {
   );
 });
 
+function declaredTextFields() {
+  const found = new Set();
+  for (const sites of definitions.values()) {
+    for (const site of sites) {
+      if (!TEXT_CLASSIFIED_CRATES.has(crateOf(site))) {
+        continue;
+      }
+      for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
+        if (isClassifiedText(trimDeclaredType(field[2]))) {
+          found.add(`${site.name}.${field[1]}`);
+        }
+      }
+    }
+  }
+  return found;
+}
+
+test("every named text field in a text-classifying crate is classified", () => {
+  // `S-18`: ten registrations were inert because their secret is text under a
+  // field name `SECRET_FIELD_NAMES` does not carry, so nothing required the
+  // registration and deleting one was silent. Widening that alternation is what
+  // `S-10` records five rounds of; the answer is the whole set, asked the other
+  // way round. In a crate that classifies text, every `String`/`str` field is
+  // named here and a new one fails until somebody says what it holds.
+  const found = declaredTextFields();
+  const unclassified = [...found].filter((entry) => !TEXT_FIELD_CLASSES.has(entry));
+  assert.deepEqual(
+    unclassified.sort(),
+    [],
+    `these hold text in a crate that classifies text and TEXT_FIELD_CLASSES does not say what: ${unclassified.join(", ")}. Add each one with a class from TEXT_CLASSES; do not add a name to SECRET_FIELD_NAMES instead.`,
+  );
+
+  const stale = [...TEXT_FIELD_CLASSES.keys()].filter((entry) => !found.has(entry));
+  assert.deepEqual(
+    stale.sort(),
+    [],
+    `these TEXT_FIELD_CLASSES entries name no text field any more and must be deleted: ${stale.join(", ")}`,
+  );
+
+  const unknown = [...TEXT_FIELD_CLASSES]
+    .filter(([, assigned]) => !TEXT_CLASSES.has(assigned))
+    .map(([entry, assigned]) => `${entry}: ${assigned}`);
+  assert.deepEqual(
+    unknown.sort(),
+    [],
+    `these carry a class that TEXT_CLASSES does not declare: ${unknown.join(", ")}`,
+  );
+
+  // A crate listed here that declares no text field at all would make the
+  // whole check vacuous for it, which is the empty-guard shape this file is
+  // written against.
+  const empty = [...TEXT_CLASSIFIED_CRATES.keys()].filter(
+    (crate) =>
+      ![...definitions.values()]
+        .flat()
+        .some(
+          (site) =>
+            crateOf(site) === crate &&
+            [...site.body.matchAll(NAMED_FIELD_PATTERN)].some((field) =>
+              isClassifiedText(trimDeclaredType(field[2])),
+            ),
+        ),
+  );
+  assert.deepEqual(
+    empty.sort(),
+    [],
+    `these crates classify text and declare no text field, so the check is vacuous for them: ${empty.join(", ")}`,
+  );
+});
+
+test("a text classification covering more than one crate says so", () => {
+  // The same hazard `SHARED_BYTE_FIELD_KEYS` records: `TEXT_FIELD_CLASSES` is
+  // keyed by `Type.field` and not by path, so a second type of the same name in
+  // another text-classifying crate would arrive already classified by a line
+  // written for the first. `P2-L4` did exactly that with a second
+  // `CorpusFile.bytes` and it was silent.
+  const crates = new Map();
+  for (const sites of definitions.values()) {
+    for (const site of sites) {
+      if (!TEXT_CLASSIFIED_CRATES.has(crateOf(site))) {
+        continue;
+      }
+      for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
+        if (!isClassifiedText(trimDeclaredType(field[2]))) {
+          continue;
+        }
+        const key = `${site.name}.${field[1]}`;
+        const seen = crates.get(key);
+        if (seen === undefined) {
+          crates.set(key, new Set([crateOf(site)]));
+        } else {
+          seen.add(crateOf(site));
+        }
+      }
+    }
+  }
+  const spanning = [...crates]
+    .filter(([, seen]) => seen.size > 1)
+    .map(([key, seen]) => `${key} (${[...seen].sort().join(", ")})`);
+  assert.deepEqual(
+    spanning.sort(),
+    [],
+    `these text classifications cover a type name declared in more than one text-classifying crate, so one crate's text is judged by a line written for another's: ${spanning.join("; ")}`,
+  );
+});
+
 test("a classification covering more than one crate says so", () => {
   // `BYTE_FIELD_CLASSES` is keyed by name, so a new type reusing an existing
   // one's name inherits its class without anybody deciding. `P2-L4` did
@@ -1099,19 +1324,17 @@ test("no unregistered type derives Debug over a raw key or plaintext buffer", ()
         const [, fieldName, fieldType] = field;
         const declared = trimDeclaredType(fieldType);
         const qualified = `${site.name}.${fieldName}`;
-        let secret;
-        if (isClassifiedByteBuffer(declared)) {
-          // Layer 1. The type says these are bytes and the class says whether
-          // they may be printed; the field's name is not read at all. An
-          // unclassified buffer counts as secret, so the test above naming it
-          // and this one refusing it are the same failure and not a race.
-          const assigned = BYTE_FIELD_CLASSES.get(qualified);
-          secret = assigned === undefined || SECRET_BYTE_CLASSES.has(assigned);
-        } else {
-          // Layer 3, and the weakest: `String` and `str`, where the type
-          // cannot decide and the name is the only signal there is.
-          secret = SECRET_FIELD_NAMES.test(fieldName) && holdsRawBytes(declared);
-        }
+        // Layer 1 is the byte class, layer 2 the text class in a crate that
+        // classifies text, layer 3 the name alternation everywhere else. An
+        // unclassified field counts as secret in the first two, so the test
+        // above naming it and this one refusing it are the same failure and
+        // not a race.
+        const secret = fieldIsSecretBeforeExceptions(
+          site,
+          site.name,
+          fieldName,
+          declared,
+        );
         if (!secret) {
           continue;
         }
@@ -1122,8 +1345,13 @@ test("no unregistered type derives Debug over a raw key or plaintext buffer", ()
         if (!site.derives.has("Debug") && !site.derives.has("Display")) {
           continue;
         }
+        const repair = isClassifiedByteBuffer(declared)
+          ? "Write the impl by hand and redact, or classify it in BYTE_FIELD_CLASSES."
+          : TEXT_CLASSIFIED_CRATES.has(crateOf(site))
+            ? "Write the impl by hand and redact, or give it a non-secret class in TEXT_FIELD_CLASSES."
+            : "Write the impl by hand and redact, or record in PUBLIC_BYTES why these bytes are public.";
         leaks.push(
-          `${site.location}: ${site.kind} ${site.name} derives Debug over ${qualified}: ${declared.trim()}. Write the impl by hand and redact, or -- for text -- record in PUBLIC_BYTES why these bytes are public.`,
+          `${site.location}: ${site.kind} ${site.name} derives Debug over ${qualified}: ${declared.trim()}. ${repair}`,
         );
       }
     }
@@ -1269,17 +1497,9 @@ function registrationRequiredTypes() {
     for (const site of sites) {
       for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
         const declared = trimDeclaredType(field[2]);
-        if (PUBLIC_BYTES.has(`${name}.${field[1]}`)) {
-          continue;
-        }
-        const buffer = isClassifiedByteBuffer(declared);
-        const assigned = buffer
-          ? BYTE_FIELD_CLASSES.get(`${name}.${field[1]}`)
-          : undefined;
         if (
           macroKeyTypes.has(normalizeFieldType(declared)) ||
-          (buffer && (assigned === undefined || SECRET_BYTE_CLASSES.has(assigned))) ||
-          (!buffer && SECRET_FIELD_NAMES.test(field[1]) && holdsRawBytes(declared))
+          fieldIsSecret(site, name, field[1], declared)
         ) {
           direct.add(name);
         }
@@ -1380,17 +1600,10 @@ test("no hand-written Debug prints a secret field it was written to hide", () =>
     for (const site of definitions.get(name) ?? []) {
       for (const field of site.body.matchAll(NAMED_FIELD_PATTERN)) {
         const declared = trimDeclaredType(field[2]);
-        if (PUBLIC_BYTES.has(`${name}.${field[1]}`)) {
-          continue;
-        }
-        const buffer = isClassifiedByteBuffer(declared);
-        const assigned = buffer
-          ? BYTE_FIELD_CLASSES.get(`${name}.${field[1]}`)
-          : undefined;
         if (
-          (buffer && (assigned === undefined || SECRET_BYTE_CLASSES.has(assigned))) ||
-          (!buffer && SECRET_FIELD_NAMES.test(field[1]) && holdsRawBytes(declared)) ||
-          SECRET_BEARING.has(normalizeFieldType(declared))
+          fieldIsSecret(site, name, field[1], declared) ||
+          (!PUBLIC_BYTES.has(`${name}.${field[1]}`) &&
+            SECRET_BEARING.has(normalizeFieldType(declared)))
         ) {
           rawFields.add(field[1]);
         }
