@@ -1,0 +1,6 @@
+rules.max=16
+attempts.max=24
+credit.threshold.max=200
+profile.fields=every field in ProfileField::ALL, recorded or not
+status=every status in ProofStatus::ALL
+gate=every cell in OpenGate::ALL

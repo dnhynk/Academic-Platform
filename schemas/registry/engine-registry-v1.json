@@ -62,7 +62,7 @@
         "invariant": "unknown을 pass/fail로 강제하지 않음"
       },
       "high_impact_path": "GRADUATION",
-      "lifecycle": "PLANNED",
+      "lifecycle": "IMPLEMENTED",
       "harness_dir": "graduation_audit"
     },
     {

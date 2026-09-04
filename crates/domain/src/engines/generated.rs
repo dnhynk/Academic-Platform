@@ -149,7 +149,7 @@ pub const ENGINE_REGISTRY: [EngineDescriptor; 12] = [
         invariant: "unknown을 pass/fail로 강제하지 않음",
     },
         high_impact_path: Some(HighImpactPath::Graduation),
-        lifecycle: EngineLifecycle::Planned,
+        lifecycle: EngineLifecycle::Implemented,
         harness_dir: "graduation_audit",
     },
     EngineDescriptor {

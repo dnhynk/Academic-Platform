@@ -1,0 +1,44 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-u",
+  "task": "P2-U3",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-U3 admits no external crate. academic-audit links academic-domain, academic-ingestion, academic-record, academic-requirement and thiserror as product edges and academic-domain, academic-record, academic-requirement, academic-scenario and trybuild as dev edges, all covered by earlier reviewed receipts, and adds one workspace path package. It links no store, vault, crypto, keystore or transport crate at any feature setting: it persists nothing, and migration 0004's audit aggregate row is written by academic-store.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-audit is the P2-U3 graduation boundary: section 11.1's fail-closed RuleSet selector, section 11.3's explainable proof tree with a per-leaf rule identifier, source page and paragraph, used attempt and equivalency decision, and section 11.4's three-gate DETERMINATE rule. It is a separate package from academic-requirement because that crate holds one rule's verdict and this one composes verdicts into a tree over a bound profile and transcript; it is a separate package from academic-record because that crate owns the attempt ledger and the grade-point engine and this one computes no average.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-U3 adds no pnpm workspace package. It adds two Node scripts under tools/ -- an independent oracle and its committed-and-re-derivable test -- and both run under the existing node --test entry point."
+  },
+  "direct_workspace_dependencies": {
+    "academic-domain": "The section 3.9 proof-tree vocabulary this engine speaks -- ProofNode, ProofStatus, FrozenInputs, EngineOutcome, SourceLocator, EvidenceLocator -- plus the AuditId that migration 0004's AUDIT_COMPUTED arm keys on, the ContentDigest every bound input is hashed with, and the exact Decimal a grade-point floor is compared over.",
+    "academic-ingestion": "P2-U6's ConflictCase and its AuditDisposition. Section 8.4 already decides whether two official sources really disagree, by comparing the five dimensions it names; this crate reads the disposition that work produced and refuses DETERMINATE while it is Indeterminate, rather than re-deciding it.",
+    "academic-record": "P2-U4's attempt ledger, classification rule set and grade-point views. An attempt reaches a rule only through CourseAttempt, whose two constructors take a confirmed registration or a confirmed transcript row and neither of which accepts a PlanScenarioChoice; whether a credit counts is RecordViews's CreditContribution, not a second decision here; and the grade-point reading a GPA_MINIMUM rule is handed is the one that crate published.",
+    "academic-requirement": "P2-U2's published RuleSet and its per-rule verdict. Every rule this engine evaluates went through that crate's two-attestation review gate and its release-fixture admission, and this crate holds no second copy of section 11.2's DSL."
+  },
+  "dev_workspace_dependencies": {
+    "academic-domain": "The trybuild cases compile against this crate plus this crate's dev-dependencies, so the domain identifiers a proof leaf is built from have to be reachable from tests/compile_fail.",
+    "academic-record": "The same trybuild reason, for the plan types a case has to name.",
+    "academic-requirement": "The same trybuild reason, for the rule identifiers and rule types a leaf carries.",
+    "academic-scenario": "P2-C7's Proposed<T>, named by exactly one compile-fail case: the one that proves a projected value has no route into an audit input. It is a test edge only. No product file of this crate names academic_scenario, Proposed or ProjectedEvidenceOpportunity, and no_product_file_names_a_projection_and_only_one_names_a_plan sweeps every product file for all three."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-audit",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-audit",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-audit is a workspace path crate, not an external dependency. It owns the section 28 GRADUATION_AUDIT engine and holds no writer: it has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-projections, academic-recovery or academic-retention, so the canonical writer is not in the closure an audit compiles against. Its declared workspace closure of every product edge kind is academic-admission, academic-domain, academic-egress-boundary, academic-ingestion, academic-policy, academic-record, academic-requirement, academic-transcript and academic-untrusted-content; the egress-boundary, policy and untrusted-content edges are transitive through academic-ingestion and academic-record, and no product file here names an egress, policy or untrusted-content item. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-policy's bundled SQLite.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. It reaches no model: academic-model-run -- section 27.3's provenance aggregate, which is where a model execution is recorded -- is absent from its closure, as is every HTTP client, and engine_source_contains_no_clock_rng_network_or_model compares that closure whole so an addition of any kind is a review rather than something that had to be predicted. It reads no clock: the instant an audit is anchored to is a frozen input. GATE-38-001 through GATE-38-004, GATE-38-006, GATE-38-011 and GATE-38-012 are open, so the admission year, the selected graduation standard, the degree mode, any additional major, the transferred-credit recognition decisions, a rule's cohort applicability and the 2027-1 thesis scope each read as an exact missing check and no default is invented; every fixture is synthetic, composed from academic-record's own synthetic corpus and academic-ingestion's own synthetic document fixtures.",
+  "advisory_path": "Unchanged. Every external crate academic-audit links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

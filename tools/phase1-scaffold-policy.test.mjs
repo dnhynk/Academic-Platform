@@ -233,6 +233,23 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // a stack.
     "academic-capture": ["academic-consent", "academic-domain"],
     "academic-capture-gate": ["academic-consent", "academic-domain"],
+    // `P2-U3`. The graduation audit. Four product edges, each a boundary it
+    // reuses rather than rebuilds: `academic-domain` for the §3.9 proof-tree
+    // vocabulary and the `AuditId` migration 0004's `audit` arm keys on,
+    // `academic-requirement` for `P2-U2`'s published rule set and per-rule
+    // verdict, `academic-record` for `P2-U4`'s attempt ledger, classification
+    // and grade-point reading, and `academic-ingestion` for `P2-U6`'s
+    // `ConflictCase` disposition. The edges it does *not* have are the point:
+    // no `academic-store`, so an audit cannot write itself; no model crate, so
+    // a graduation verdict cannot reach an interpreted sentence; and no
+    // `academic-scenario`, so `P2-C7`'s projected values are not nameable from
+    // a product file here.
+    "academic-audit": [
+      "academic-domain",
+      "academic-ingestion",
+      "academic-record",
+      "academic-requirement",
+    ],
     "academic-cli": [
       "academic-admission",
       "academic-core",
@@ -602,6 +619,19 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // dev-dependencies, and a case has to name the canonical types a projection
     // must never become.
     "academic-core": ["academic-scenario"],
+    // `P2-U3` links its own domain, record and requirement crates a second
+    // time as dev edges for the `trybuild` reason `academic-scenario` gives
+    // below, and links `academic-scenario` itself for one reason: a
+    // compile-fail case has to name the `Proposed<T>` it proves cannot enter an
+    // audit. That is a test edge only -- `no_product_file_names_a_projection_and_only_one_names_a_plan`
+    // sweeps every product file of the crate for the same name and requires it
+    // to be absent.
+    "academic-audit": [
+      "academic-domain",
+      "academic-record",
+      "academic-requirement",
+      "academic-scenario",
+    ],
     // `P2-U1` links its own domain crate a second time as a dev edge for the
     // `trybuild` reason `academic-scenario` gives below: a compile-fail case
     // compiles against the crate under test plus that crate's dev-dependencies,
@@ -2347,6 +2377,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   // what this row records; the crate spells no socket construct, which is why
   // its `SOCKET_ALLOWANCE` entry is absent rather than empty, and its own
   // path-root allowlist refuses every one of those three crate roots by name.
+  // `P2-U3`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `academic-ingestion`. The crate spells no socket construct, which is
+  // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens
+  // nothing at all and takes every fact it reads as a frozen input.
+  "academic-audit": ["libc"],
   "academic-evidence-center": ["libc"],
   "academic-export-job": ["libc"],
   "academic-indexer": ["libc"],
@@ -2979,13 +3014,16 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     ],
     "the scan must cover exactly the engines the §28 table names",
   );
-  // Two engines are implemented. `P2-U4` built `GPA` and `CREDIT_ACCOUNTING`
-  // in `academic-record`, so that crate's sources are now engine sources and
-  // are scanned. The map is enumerated rather than counted: a third engine
-  // flipping while one of these flipped back would keep any count intact.
+  // `P2-U4` built `GPA` and `CREDIT_ACCOUNTING` in `academic-record`, `P2-L4`
+  // built `TRANSCRIPT_COVERAGE` in `academic-lecture-document`, and `P2-U3`
+  // built `GRADUATION_AUDIT` in `academic-audit`, so those crates' sources are
+  // engine sources and are scanned. The map is enumerated rather than counted:
+  // a fifth engine flipping while one of these flipped back would keep any
+  // count intact.
   const IMPLEMENTED_ENGINES = new Map([
     ["GPA", "academic-record"],
     ["CREDIT_ACCOUNTING", "academic-record"],
+    ["GRADUATION_AUDIT", "academic-audit"],
     ["TRANSCRIPT_COVERAGE", "academic-lecture-document"],
   ]);
   for (const engine of registry.engines) {
@@ -3020,12 +3058,21 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     lectureSources.length >= 10,
     `the coverage engine walk found only ${lectureSources.length} files; it stopped short`,
   );
+  // `P2-U3` implemented `GRADUATION_AUDIT` in `academic-audit`, so that
+  // crate's sources are engine sources too. Same shape again: a walk with a
+  // floor rather than a fixed list.
+  const auditSources = (await rustSources(join("crates", "audit", "src"))).map(([path]) => path);
+  assert.ok(
+    auditSources.length >= 12,
+    `the graduation engine walk found only ${auditSources.length} files; it stopped short`,
+  );
   const scanned = [
     join("crates", "domain", "src", "engines.rs"),
     join("crates", "domain", "src", "engines", "generated.rs"),
     join("crates", "domain", "tests", "engine_harness.rs"),
     ...recordSources,
     ...lectureSources,
+    ...auditSources,
   ];
 
   // API spellings, not prose: a comment that says "no clock" must not trip the
@@ -3239,6 +3286,120 @@ test("engine_source_contains_no_clock_rng_network_or_model", async () => {
     .map((pkg) => pkg.name)
     .toSorted();
   assert.deepEqual(recordGetrandomOwners, ["uuid"]);
+
+  // The same two halves for the crate that implements `GRADUATION_AUDIT`. Its
+  // closure is the union of `academic-record`'s and `academic-ingestion`'s,
+  // because a graduation audit reads `P2-U4`'s attempts and `P2-U6`'s conflict
+  // dispositions; `academic-policy` arrives with the second carrying the
+  // bundled SQLite. **No model crate is in it** -- `academic-model-run` is
+  // §27.3's provenance aggregate, which is where a model execution is recorded,
+  // and it is absent, as is every HTTP client. That absence is what keeps a
+  // graduation verdict off any interpreted-text path, and comparing the closure
+  // *whole* is what makes an addition of any kind a review rather than
+  // something that had to be predicted.
+  const auditRun = spawnSync(
+    "cargo",
+    [
+      "tree",
+      "--locked",
+      "--offline",
+      "--edges",
+      "normal",
+      "--target",
+      "all",
+      "-p",
+      "academic-audit",
+    ],
+    { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES },
+  );
+  assert.equal(auditRun.status, 0, `locked offline cargo tree failed: ${auditRun.stderr}`);
+  const auditCrates = new Set(
+    auditRun.stdout
+      .replaceAll(/\([^)]*\)/gu, "")
+      .split("\n")
+      .map((line) => line.replace(/^[^A-Za-z]*/u, "").split(" ")[0].trim())
+      .filter((name) => name.length > 0),
+  );
+  assert.deepEqual(
+    [...auditCrates].toSorted(),
+    [
+      "academic-admission",
+      "academic-audit",
+      "academic-domain",
+      "academic-egress-boundary",
+      "academic-ingestion",
+      "academic-policy",
+      "academic-record",
+      "academic-requirement",
+      "academic-transcript",
+      "academic-untrusted-content",
+      "bitflags",
+      "block-buffer",
+      "cfg-if",
+      "ciborium",
+      "ciborium-io",
+      "ciborium-ll",
+      "cpufeatures",
+      "crunchy",
+      "crypto-common",
+      "curve25519-dalek",
+      "curve25519-dalek-derive",
+      "digest",
+      "ed25519",
+      "ed25519-dalek",
+      "fallible-iterator",
+      "fallible-streaming-iterator",
+      "fiat-crypto",
+      "generic-array",
+      "getrandom",
+      "half",
+      "hex",
+      "hmac",
+      "libc",
+      "libsqlite3-sys",
+      "proc-macro2",
+      "quote",
+      "r-efi",
+      "rusqlite",
+      "serde",
+      "serde_core",
+      "serde_derive",
+      "sha2",
+      "signature",
+      "smallvec",
+      "subtle",
+      "syn",
+      "thiserror",
+      "thiserror-impl",
+      "typenum",
+      "unicode-ident",
+      "uuid",
+      "zerocopy",
+      "zerocopy-derive",
+      "zeroize",
+    ],
+    "the graduation engine crate's product closure changed; review the new capability",
+  );
+  for (const absent of ["academic-model-run", "academic-scenario", "academic-store", "reqwest"]) {
+    assert.ok(
+      !auditCrates.has(absent),
+      `${absent} entered the graduation audit's product closure`,
+    );
+  }
+  // Two owners here rather than one, for the reason the coverage engine's
+  // closure records: `rusqlite` declares `getrandom` for SQLite's own
+  // randomness and arrives through `academic-policy`, which `academic-ingestion`
+  // pulls in. That is a fact about the graph, not about this engine -- the
+  // "used" half above scans every source file of this crate for an RNG spelling
+  // and finds none, and the audit's determinism rests on the frozen-input
+  // signature and that scan rather than on a database driver being absent from
+  // a transitive closure.
+  const auditGetrandomOwners = metadata.packages
+    .filter((pkg) => auditCrates.has(pkg.name))
+    .filter((pkg) => pkg.dependencies.some((dependency) => dependency.name === "getrandom"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(auditGetrandomOwners, ["rusqlite", "uuid"]);
 
   // The same two halves for the crate that implements `TRANSCRIPT_COVERAGE`.
   // Its closure is wider again because the coverage validator reads a `P2-L2`
@@ -4274,6 +4435,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     classificationReceiptText,
     knowledgeStateReceiptText,
     competencyReceiptText,
+    auditReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4307,6 +4469,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-r4.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-n2.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-r5.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-u3.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -4340,6 +4503,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const classificationReceipt = JSON.parse(classificationReceiptText);
   const knowledgeStateReceipt = JSON.parse(knowledgeStateReceiptText);
   const competencyReceipt = JSON.parse(competencyReceiptText);
+  const auditReceipt = JSON.parse(auditReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -5910,6 +6074,47 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-R5 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-U3` adds `academic-audit` and no external crate. The graduation audit
+  // is a boundary above `P2-U2`'s rule set and `P2-U4`'s attempt ledger: it
+  // links neither a writer nor a model, which is what keeps a graduation
+  // verdict off any interpreted-text path, and its one projection edge is a dev
+  // edge that exists so a compile-fail case can name what cannot enter.
+  assert.equal(auditReceipt.task, "P2-U3");
+  const auditAdmitted = new Set(
+    auditReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const auditPathPackages = new Set(
+    auditReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(auditAdmitted.size, 0, "P2-U3 must admit no external crate");
+  assert.deepEqual([...auditPathPackages], ["academic-audit@0.1.0"]);
+  assert.deepEqual(auditReceipt.summary.npm_additions, []);
+  assert.equal(auditReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(auditReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(auditReceipt.summary.build_time_only_count, 0);
+  assert.deepEqual(Object.keys(auditReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-ingestion",
+    "academic-record",
+    "academic-requirement",
+  ]);
+  assert.deepEqual(Object.keys(auditReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-record",
+    "academic-requirement",
+    "academic-scenario",
+  ]);
+  assert.deepEqual(auditReceipt.vendored_data, []);
+  const auditTuples = lockTuples.filter(
+    ([name, version]) =>
+      auditAdmitted.has(`${name}@${version}`) || auditPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    auditTuples.length,
+    auditAdmitted.size + auditPathPackages.size,
+    "a P2-U3 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -5971,7 +6176,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !knowledgeStateAdmitted.has(`${name}@${version}`) &&
       !knowledgeStatePathPackages.has(`${name}@${version}`) &&
       !competencyAdmitted.has(`${name}@${version}`) &&
-      !competencyPathPackages.has(`${name}@${version}`),
+      !competencyPathPackages.has(`${name}@${version}`) &&
+      !auditAdmitted.has(`${name}@${version}`) &&
+      !auditPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -6012,7 +6219,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       lectureTuples.length +
       classificationTuples.length +
       knowledgeStateTuples.length +
-      competencyTuples.length,
+      competencyTuples.length +
+      auditTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

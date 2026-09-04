@@ -1,0 +1,64 @@
+error[E0061]: this function takes 9 arguments but 8 arguments were supplied
+  --> tests/compile_fail/a_proof_leaf_has_no_shorter_form.rs:15:18
+   |
+15 |     let _short = ProofLeaf::new(
+   |                  ^^^^^^^^^^^^^^
+16 |         rule.clone(),
+17 |         AttemptUsage::NoneUsed(NoAttemptReason::NoMatchingAttempt),
+   |         ---------------------------------------------------------- argument #2 of type `RuleSourceSpan` is missing
+   |
+note: associated function defined here
+  --> src/leaf.rs
+   |
+   |     pub const fn new(
+   |                  ^^^
+help: provide the argument
+   |
+15 |     let _short = ProofLeaf::new(
+16 |         rule.clone(),
+17 ~         /* RuleSourceSpan */,
+18 ~         AttemptUsage::NoneUsed(NoAttemptReason::NoMatchingAttempt),
+   |
+
+warning: unreachable statement
+  --> tests/compile_fail/a_proof_leaf_has_no_shorter_form.rs:29:5
+   |
+26 |     let leaf: ProofLeaf = unimplemented!();
+   |                           ---------------- any code following this expression is unreachable
+...
+29 |     let _mutated = leaf.with_source(unimplemented!());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0599]: no method named `with_source` found for struct `ProofLeaf` in the current scope
+  --> tests/compile_fail/a_proof_leaf_has_no_shorter_form.rs:29:25
+   |
+29 |     let _mutated = leaf.with_source(unimplemented!());
+   |                         ^^^^^^^^^^^
+   |
+help: there is a method `source` with a similar name, but with different arguments
+  --> src/leaf.rs
+   |
+   |     pub const fn source(&self) -> &RuleSourceSpan {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unreachable call
+  --> tests/compile_fail/a_proof_leaf_has_no_shorter_form.rs:29:25
+   |
+29 |     let _mutated = leaf.with_source(unimplemented!());
+   |                         ^^^^^^^^^^^ ---------------- any code following this expression is unreachable
+   |                         |
+   |                         unreachable call
+
+error[E0599]: no method named `set_attempts` found for struct `ProofLeaf` in the current scope
+  --> tests/compile_fail/a_proof_leaf_has_no_shorter_form.rs:30:22
+   |
+30 |     let _also = leaf.set_attempts(AttemptUsage::NoneUsed(NoAttemptReason::RuleNotEvaluated));
+   |                      ^^^^^^^^^^^^
+   |
+help: there is a method `attempts` with a similar name, but with different arguments
+  --> src/leaf.rs
+   |
+   |     pub const fn attempts(&self) -> &AttemptUsage {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

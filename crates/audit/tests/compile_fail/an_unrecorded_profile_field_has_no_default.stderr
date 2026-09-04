@@ -1,0 +1,23 @@
+error[E0599]: no method named `unwrap_or` found for enum `Recorded<T>` in the current scope
+  --> tests/compile_fail/an_unrecorded_profile_field_has_no_default.rs:14:27
+   |
+14 |     let _stood_in = field.unwrap_or(InstitutionId::new("SNU").unwrap());
+   |                           ^^^^^^^^^ method not found in `Recorded<InstitutionId>`
+
+error[E0599]: no method named `unwrap_or_default` found for enum `Recorded<T>` in the current scope
+  --> tests/compile_fail/an_unrecorded_profile_field_has_no_default.rs:15:28
+   |
+15 |     let _defaulted = field.unwrap_or_default();
+   |                            ^^^^^^^^^^^^^^^^^ method not found in `Recorded<InstitutionId>`
+
+error[E0599]: no associated function or constant named `default` found for struct `StudentProfile` in the current scope
+  --> tests/compile_fail/an_unrecorded_profile_field_has_no_default.rs:17:36
+   |
+17 |     let _profile = StudentProfile::default();
+   |                                    ^^^^^^^ associated function or constant not found in `StudentProfile`
+   |
+note: if you're trying to build a new `StudentProfile`, consider using `StudentProfile::unrecorded` which returns `StudentProfile`
+  --> src/profile.rs
+   |
+   |     pub const fn unrecorded() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

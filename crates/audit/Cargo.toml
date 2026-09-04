@@ -1,0 +1,59 @@
+[package]
+name = "academic-audit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Four product edges and no fifth.
+#
+# `academic-domain` supplies the §3.9 proof-tree vocabulary this engine speaks
+# -- `ProofNode`, `ProofStatus`, `FrozenInputs`, `EngineOutcome` -- plus the
+# `AuditId` migration `0004`'s `AUDIT_COMPUTED` arm keys on and the
+# `SourceLocator` a proof leaf carries.
+#
+# `academic-requirement` supplies `P2-U2`'s published `RuleSet` and the
+# per-rule verdict. This crate composes those verdicts into a tree; it does not
+# re-decide what one rule concludes and holds no second copy of the DSL.
+#
+# `academic-record` supplies `P2-U4`'s attempt ledger, its classification
+# engine, and the grade-point reading. The audit computes no average and holds
+# no second attempt model: an attempt reaches a rule only through
+# `CourseAttempt`, whose two constructors take a confirmed registration or a
+# confirmed transcript row and neither of which accepts a plan choice.
+#
+# `academic-ingestion` supplies `P2-U6`'s `ConflictCase` and its
+# `AuditDisposition`. §8.4 already says a dangerous determination stays
+# `INDETERMINATE` while a case is unresolved, and that judgement is made there;
+# what is here is the refusal that follows from it.
+#
+# There is deliberately no model edge, no `academic-store` edge, and no
+# `academic-scenario` edge. The model absence is what keeps a graduation
+# verdict off any interpreted-text path. The store absence is `P2-U1`'s and
+# `P2-U2`'s: an audit cannot write itself. The scenario absence is `P2-C7`'s: a
+# projected value is not nameable from a product file here, which is why
+# `academic-scenario` appears below as a dev edge only -- the compile-fail
+# suite has to name the type it proves cannot enter.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-ingestion = { path = "../ingestion" }
+academic-record = { path = "../record" }
+academic-requirement = { path = "../requirement" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# The compile-fail suite compiles its cases against this crate plus this
+# crate's dev-dependencies, so every type a case must name has to be reachable
+# from `tests/compile_fail`. `academic-scenario` is there for exactly one
+# reason: a case has to try to route a `Proposed<T>` into an audit input and
+# fail to compile. `academic-curriculum` and `academic-requirement` declare
+# their own domain edge twice for the same `trybuild` reason.
+academic-domain = { path = "../domain" }
+academic-record = { path = "../record" }
+academic-requirement = { path = "../requirement" }
+academic-scenario = { path = "../scenario" }
+trybuild.workspace = true
+
+[lints]
+workspace = true

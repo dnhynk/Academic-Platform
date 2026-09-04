@@ -1,0 +1,31 @@
+warning: unreachable statement
+  --> tests/compile_fail/a_projected_value_cannot_enter_an_audit.rs:17:5
+   |
+16 |     let facts: CourseRequirementFacts = unimplemented!();
+   |                                         ---------------- any code following this expression is unreachable
+17 |     let provenance: ProposalProvenance = unimplemented!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0599]: no method named `into_inner` found for struct `Proposed<T>` in the current scope
+  --> tests/compile_fail/a_projected_value_cannot_enter_an_audit.rs:21:31
+   |
+21 |     let _unsealed = projected.into_inner();
+   |                               ^^^^^^^^^^ method not found in `Proposed<CourseRequirementFacts>`
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_projected_value_cannot_enter_an_audit.rs:24:59
+   |
+24 |     let _index = CourseFactsIndex::new().with("4190.101", projected);
+   |                                          ----             ^^^^^^^^^ expected `CourseRequirementFacts`, found `Proposed<CourseRequirementFacts>`
+   |                                          |
+   |                                          arguments to this method are incorrect
+   |
+   = note: expected struct `CourseRequirementFacts`
+              found struct `Proposed<CourseRequirementFacts>`
+note: method defined here
+  --> src/transcript.rs
+   |
+   |     pub fn with(mut self, course_code: impl Into<String>, facts: CourseRequirementFacts) -> Self {
+   |            ^^^^
