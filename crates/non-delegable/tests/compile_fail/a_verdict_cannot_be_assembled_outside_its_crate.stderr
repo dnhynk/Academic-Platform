@@ -1,0 +1,25 @@
+error[E0624]: associated function `new` is private
+  --> tests/compile_fail/a_verdict_cannot_be_assembled_outside_its_crate.rs:14:39
+   |
+14 |       let _forged = DeterminateVerdict::new(
+   |                                         ^^^ private associated function
+   |
+  ::: $WORKSPACE/crates/audit/src/verdict.rs
+   |
+   | /     pub(crate) const fn new(
+   | |         outcome: GraduationOutcome,
+   | |         coverage: CoverageWitness,
+   | |         conflict_free: ConflictFreeWitness,
+   | |         freshness: FreshnessWitness,
+   | |     ) -> Self {
+   | |_____________- private associated function defined here
+
+warning: unreachable expression
+  --> tests/compile_fail/a_verdict_cannot_be_assembled_outside_its_crate.rs:17:9
+   |
+16 |         unimplemented!(),
+   |         ---------------- any code following this expression is unreachable
+17 |         unimplemented!(),
+   |         ^^^^^^^^^^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default

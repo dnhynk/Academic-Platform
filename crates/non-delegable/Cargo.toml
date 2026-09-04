@@ -1,0 +1,80 @@
+[package]
+name = "academic-non-delegable"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Two product edges, and the smallness is the contract.
+#
+# `academic-domain` is `P2-C1`. `Actor` is the closed four-variant enum the
+# whole run refuses automatic actors against, and `ContentDigest` and
+# `TimestampMillis` are the subject and the instant a decision event names.
+# This crate declares no identifier of its own.
+#
+# `academic-proposal` is `P2-M2`. `UserDecision` is issued only for
+# `Actor::User` and `RiskTier` is section 27.4's own four rows, so the actor
+# check and the tier vocabulary are that crate's doors reused rather than a
+# second copy written here. `P2-P2` reused the same door for its deletion
+# confirmation; this crate reusing it is what makes the two one fact.
+#
+# The edges it does **not** have are the point. No `academic-store` and no
+# `academic-store-platform`: this crate persists nothing and claims no
+# migration number, so a refusal is a value the caller records rather than a
+# row this task invents. No `academic-audit`, `academic-knowledge-state`,
+# `academic-deletion`, `academic-record`, `academic-consent` or
+# `academic-policy` on the product edge: the six doors this crate's constant
+# has to agree with are driven by the acceptance suite through dev edges, so
+# no product file here can name a verdict, a mastery level, a broker or a
+# staged payload.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-proposal = { path = "../proposal" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# Six dev edges, one per non-delegable action, because the claim this crate
+# makes is that its compiled constant **agrees with the doors that already
+# exist**. Each of these is driven for real by the acceptance suite:
+#
+# * `academic-domain` — `P2-C1`'s question resolution, which already refuses an
+#   automatic actor. Declared a second time for the `trybuild` reason
+#   `academic-scenario` gives: a compile-fail case compiles against the crate
+#   under test plus that crate's dev-dependencies.
+# * `academic-knowledge-state` — `P2-N2`'s `UserConfirmation` and the
+#   `AutomaticLevel` that has no `Fluent` variant.
+# * `academic-deletion` — `P2-P2`'s `DeletionConfirmation`, the one action this
+#   task must not implement twice.
+# * `academic-audit` — `P2-U3`'s `DegreeVerdict`, whose determinate arm has a
+#   `pub(crate)` constructor. `tests/compile_fail` names it from outside.
+# * `academic-record` — `P2-U4`'s `RegistrationConfirmation`, which takes **no**
+#   actor. Driving it is how the enrollment measurement is made rather than
+#   asserted.
+# * `academic-consent` — `P2-G6`'s `AuthorityGrant`, same shape and same
+#   measurement for permission attestation.
+# * `academic-policy` — `P2-G1`'s broker, whose request tuple carries
+#   `actor_id` as an untyped string. Driving two requests that differ only in
+#   that string is how "the broker cannot tell a user from a model run" is
+#   measured instead of claimed.
+academic-audit = { path = "../audit" }
+academic-consent = { path = "../consent" }
+academic-deletion = { path = "../deletion" }
+academic-domain = { path = "../domain" }
+academic-knowledge-state = { path = "../knowledge-state" }
+academic-policy = { path = "../policy" }
+academic-proposal = { path = "../proposal" }
+academic-record = { path = "../record" }
+# `academic-retention` is `P2-K5`, reached for `DerivativeClass` alone: the
+# `DerivativeIndex` this suite implements to build a real dry run has that type
+# in its signature, and `academic-deletion` does not re-export it.
+academic-retention = { path = "../retention" }
+# `academic-student-voice` is `P2-L5`, reached for one argument and nothing
+# else: `academic_deletion::DeletionImpactPreview::of` takes its `EvidenceIndex`,
+# and building `P2-P2`'s real preview is what lets the deletion door be driven
+# rather than described.
+academic-student-voice = { path = "../student-voice" }
+trybuild.workspace = true
+
+[lints]
+workspace = true

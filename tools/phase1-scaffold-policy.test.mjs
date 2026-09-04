@@ -450,6 +450,20 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-lecture-document",
       "academic-untrusted-content",
     ],
+    // `P2-M4`. The non-delegable action set and the command layer that refuses an
+    // automatic actor for it. Two product edges, and the smallness is the
+    // contract: `academic-domain` for the closed `Actor` enum, the subject
+    // digest and the instant, and `academic-proposal` for `P2-M2`'s
+    // `UserDecision` and its four section 27.4 tiers -- so the actor check and
+    // the tier vocabulary are that crate's doors reused rather than a second
+    // copy, which is what makes this task's compiled constant and `P2-P2`'s
+    // deletion confirmation one fact. The edges it does *not* have are the
+    // point: no `academic-store` and no `academic-store-platform`, so it
+    // persists nothing and claims no migration; and none of the six crates that
+    // own the six actions, so no product file here can name a verdict, a
+    // mastery level, a broker or a staged payload. Those six are dev edges, and
+    // the acceptance suite drives each of them for real.
+    "academic-non-delegable": ["academic-domain", "academic-proposal"],
     // `P2-U5`. Section 8.3's four offering statuses and the calibrated forecast
     // behind them. Five product edges, each a boundary it reuses rather than
     // rebuilds: `academic-curriculum` for `P2-U1`'s `OfferingStatus`, which is
@@ -1045,6 +1059,36 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // identities from a digest of a tag rather than from a clock.
     "academic-cs-map": ["academic-domain"],
     "academic-curriculum": ["academic-domain"],
+    // `P2-M4`'s acceptance suite drives the real doors rather than describing
+    // them, and each dev edge is one of the six actions its compiled constant
+    // has to agree with: `academic-domain` for the question resolution that
+    // already refuses an automatic actor, `academic-knowledge-state` for
+    // `P2-N2`'s `UserConfirmation` and the `AutomaticLevel` with no `Fluent`
+    // variant, `academic-deletion` for `P2-P2`'s `DeletionConfirmation` --
+    // the one action this task must not implement twice --
+    // `academic-record` and `academic-consent` for the two constructors that
+    // take **no** actor, which is how "the record and consent layers cannot
+    // refuse this" is measured rather than assumed, and `academic-policy` for
+    // the broker whose two rules differing only in `actor_id` both allow.
+    // `academic-audit` is named by the `trybuild` case that observes
+    // `DeterminateVerdict::new` is `pub(crate)`. `academic-retention` and
+    // `academic-student-voice` are two arguments and nothing else: the
+    // `DerivativeClass` in the `DerivativeIndex` signature and the
+    // `EvidenceIndex` the real preview takes. `academic-domain` and
+    // `academic-proposal` are declared a second time for the `trybuild` reason
+    // `academic-scenario` gives below.
+    "academic-non-delegable": [
+      "academic-audit",
+      "academic-consent",
+      "academic-deletion",
+      "academic-domain",
+      "academic-knowledge-state",
+      "academic-policy",
+      "academic-proposal",
+      "academic-record",
+      "academic-retention",
+      "academic-student-voice",
+    ],
     // `P2-U5` links four of its own product crates a second time as dev edges
     // for the `trybuild` reason `academic-scenario` gives below: a compile-fail
     // case compiles against the crate under test plus that crate's
@@ -3202,6 +3246,13 @@ const SOCKET_CAPABLE_CLOSURES = {
   // rather than empty; it opens nothing at all, reads no clock, and takes every
   // matrix, placement, weight and band as an argument.
   "academic-deletion": ["libc"],
+  // `P2-M4`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of the six dev edges its acceptance suite drives. The crate spells no
+  // socket construct, it opens nothing at all, reads no clock and reads no
+  // environment -- `this_crate_reads_no_clock_and_no_environment` in
+  // `crates/non-delegable/tests/non_delegable_scans.rs` is its own whole-file
+  // sweep for those.
+  "academic-non-delegable": ["libc"],
   "academic-readiness": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-requirement": ["libc"],
@@ -4854,16 +4905,32 @@ test("deletion_lane_is_not_default", () => {
     );
   }
 
-  // Nothing links it. It is a leaf, like every other view crate in this stage,
-  // and `P2-Z1` is what will drive it.
-  const deletionDependents = workspacePackages
-    .filter((pkg) => workspaceDependencyNames(pkg).includes("academic-deletion"))
+  // Nothing in the shipping graph links it. It is a leaf, like every other view
+  // crate in this stage, and `P2-Z1` is what will drive it.
+  const deletionProductDependents = workspacePackages
+    .filter((pkg) => productDependencyNames(pkg).includes("academic-deletion"))
     .map((pkg) => pkg.name)
     .toSorted();
   assert.deepEqual(
-    deletionDependents,
+    deletionProductDependents,
     [],
     "a crate links the deletion flow before P2-Z1 drives it",
+  );
+  // One crate links it while a test target is compiling, and only one.
+  // `P2-M4`'s `ai_cannot_confirm_deletion` drives this crate's real preview and
+  // real confirmation, because the claim that task makes is that its compiled
+  // non-delegable set **agrees with the doors that already exist** rather than
+  // checking them a second time. A dev edge is not in the shipping graph, so
+  // the leaf property above is unchanged; this assertion is what stops the dev
+  // edge from becoming a second, unexamined dependent.
+  const deletionDevDependents = workspacePackages
+    .filter((pkg) => devDependencyNames(pkg).includes("academic-deletion"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(
+    deletionDevDependents,
+    ["academic-non-delegable"],
+    "the crates that drive the deletion flow from a test target changed",
   );
 
   // It persists nothing: no store edge of any kind, so it claims no migration
@@ -6350,6 +6417,46 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "serde_json",
     "trybuild",
   ]);
+  // `P2-M4` adds one workspace path package, `academic-non-delegable`, and
+  // admits no external crate: its product edges are `academic-domain`,
+  // `academic-proposal` and `thiserror`, and its eleven dev edges are the six
+  // crates that own the six non-delegable actions plus the two argument types
+  // and `trybuild`, all already in this lock through earlier receipts. The
+  // `academic-deletion` edge is the one that needs a reason and the receipt
+  // carries it: it is a **dev** edge, because `deletion_lane_is_not_default`
+  // holds that no crate in the shipping graph links that flow, and the test
+  // that says this task's compiled constant agrees with `P2-P2`'s type has to
+  // drive that type.
+  const {
+    receipt: nonDelegableReceipt,
+    admitted: nonDelegableAdmitted,
+    pathPackages: nonDelegablePathPackages,
+  } = receiptFor("P2-M4");
+  assert.equal(nonDelegableAdmitted.size, 0, "P2-M4 must admit no external crate");
+  assert.deepEqual([...nonDelegablePathPackages], ["academic-non-delegable@0.1.0"]);
+  assert.deepEqual(nonDelegableReceipt.summary.npm_additions, []);
+  assert.equal(nonDelegableReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(nonDelegableReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(nonDelegableReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof nonDelegableReceipt.no_second_actor_check_note, "string");
+  assert.deepEqual(Object.keys(nonDelegableReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-proposal",
+  ]);
+  assert.deepEqual(Object.keys(nonDelegableReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-audit",
+    "academic-consent",
+    "academic-deletion",
+    "academic-domain",
+    "academic-knowledge-state",
+    "academic-policy",
+    "academic-proposal",
+    "academic-record",
+    "academic-retention",
+    "academic-student-voice",
+    "trybuild",
+  ]);
+
   // `P2-L5` adds one workspace path package, `academic-student-voice`, and
   // admits no external crate: its product edges are `academic-capture`,
   // `academic-consent`, `academic-domain`, `academic-lecture-document`,

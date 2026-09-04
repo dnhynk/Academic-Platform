@@ -1,0 +1,23 @@
+warning: unreachable expression
+  --> tests/compile_fail/an_authorised_proposal_has_no_struct_literal.rs:15:18
+   |
+14 |         actor: unimplemented!(),
+   |                ---------------- any code following this expression is unreachable
+15 |         subject: unimplemented!(),
+   |                  ^^^^^^^^^^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: fields `generation`, `actor`, `subject` and `submitted_at` of struct `AuthorizedProposal` are private
+  --> tests/compile_fail/an_authorised_proposal_has_no_struct_literal.rs:13:9
+   |
+12 |     let _forged = AuthorizedProposal {
+   |                   ------------------ in this type
+13 |         generation: CandidateGeneration::CareerMapping,
+   |         ^^^^^^^^^^ private field
+14 |         actor: unimplemented!(),
+   |         ^^^^^ private field
+15 |         subject: unimplemented!(),
+   |         ^^^^^^^ private field
+16 |         submitted_at: TimestampMillis::new(0),
+   |         ^^^^^^^^^^^^ private field

@@ -503,6 +503,36 @@ where the execution plan's section references do not resolve, is in
 [the proposal review queue](docs/contracts/proposal-review-queue.md). It runs
 inside `cargo test --workspace` and adds no external package to `Cargo.lock`.
 
+`P2-M4` adds `academic-non-delegable`, the compiled set of actions no automatic
+actor may perform and the command layer that refuses one. It closes
+`INV-C-010`. **The plan's six is not section 27.4's `non-delegable` row**: that
+row names three, its `high risk` row names three more of which two are in this
+set, section 3's `사용자가 소유하는 결정` names a different six again, and
+deletion confirmation is in none of them — section 27 does not contain the word
+`삭제`, `deletion` or `delete` at all, measured over the whole section. Each
+action reports which section 27.4 row places it and two report none, and the
+phrases are compared against the document's own four rows in both directions.
+What unifies all six is the claim the layer actually enforces: **every entry
+needs an authenticated user actor and an explicit decision event**, and the
+receipt behind that event is `P2-M2`'s `UserDecision`, so this task writes no
+second actor check and `P2-P2`'s deletion confirmation is not implemented twice.
+Three of the six were already refused by a type and the acceptance suite drives
+each of those doors for real; **three were refused nowhere**, and that is
+measured rather than assumed —
+`academic_record::RegistrationConfirmation::new` and
+`academic_consent::AuthorityGrant::record` take no actor, and the broker's two
+rules differing only in `actor_id` both allow. **A graduation result is a
+different axis**: the six refuse `DETERMINISTIC_ENGINE`, and a deterministic
+engine is section 28's own author of a graduation audit, so what section 27.2
+forbids is a *generation* deciding it — held instead by section 27.1 having no
+graduation row, by a sentence being unable to become a frozen engine input, and
+by `DeterminateVerdict::new` being `pub(crate)`. The daemon's own command
+surface is still Phase 1 and synthetic and **no arm of it carries an actor**, so
+what this crate is and is not evidence for, and which callers still bypass it,
+are in [non-delegable actions](docs/contracts/non-delegable-actions.md). It
+persists nothing, adds no migration, runs inside `cargo test --workspace` and
+adds no external package to `Cargo.lock`.
+
 `P2-U6`'s official-source ingestion lives in `academic-ingestion`. Section
 29.1's nine stages are nine types whose argument chain makes the order a compile
 error to break, and each stage's failure is exercised on its own so that a run
