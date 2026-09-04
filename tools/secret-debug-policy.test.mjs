@@ -152,14 +152,16 @@ const SECRET_BEARING_TYPES = new Map([
   ["RecipientRecord", "one wrapped copy of the Vault Master Key, and the keystore blob that opens it"],
   ["BackupRecipientRecord", "one wrapped copy of the backup root"],
   ["BackupPlan", "the canonical CBOR of the recipient records a restore recovers the Vault Master Key from"],
-  // `P2-RF15`. Eight types the repaired registration guard found: each already
-  // hand-writes a redacting `Debug`, and each was outside the registry because
-  // the guard read an impl only when it spelled a marker. Their crates each
-  // wrote the redaction deliberately -- the doc comment above every one of them
-  // says so -- and then nothing recorded that the type was covered.
-  // `AppliedCorrection` is the ninth and is not that shape: it derived `Debug`
-  // over a word of the lecture, one type away from the `CorrectionCandidate`
-  // this crate had already sealed.
+  // `P2-RF15`. Seven of the eight registrations the repaired guard demanded:
+  // each already hand-writes a redacting `Debug`, and each was outside the
+  // registry because the guard read an impl only when it spelled a marker.
+  // Their crates each wrote the redaction deliberately -- the doc comment above
+  // every one of them says so -- and then nothing recorded that the type was
+  // covered. The eighth was `Digest32`, which is a public tuple newtype and is
+  // declared in `PUBLIC_TUPLE_BYTES` rather than registered.
+  // `AppliedCorrection` is not one the guard demanded, because its secret is
+  // text: it derived `Debug` over a word of the lecture, one type away from the
+  // `CorrectionCandidate` this crate had already sealed.
   ["SourceEntry", "one in-memory source file of a repository tree, as its bytes were read"],
   ["SourceUnit", "the same bytes on the analysis side, after the frozen manifest admitted them"],
   ["IngestedDocument", "one parsed document's untrusted bytes, which every quotation is a span of"],
