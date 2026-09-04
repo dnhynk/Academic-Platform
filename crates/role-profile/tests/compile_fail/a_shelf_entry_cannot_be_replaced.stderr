@@ -1,0 +1,5 @@
+error[E0599]: no method named `insert` found for mutable reference `&mut BundleShelf` in the current scope
+  --> tests/compile_fail/a_shelf_entry_cannot_be_replaced.rs:10:11
+   |
+10 |     shelf.insert(profile);
+   |           ^^^^^^ method not found in `&mut BundleShelf`

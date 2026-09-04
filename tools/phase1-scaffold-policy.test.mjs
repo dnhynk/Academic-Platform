@@ -509,6 +509,26 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `rotation_engine_lane_is_not_default` proves it stays unresolved in a
     // default build.
     "academic-retention": ["academic-crypto", "academic-domain", "academic-vault"],
+    // `P2-Y2`'s section 24.2 role bundle. Three product edges and each one is a
+    // boundary it reads a fact out of rather than a vocabulary it rebuilds:
+    // `academic-competency` for `P2-Y1`'s competency identity, which is the only
+    // thing a bundle entry may name in that position; `academic-domain` for
+    // section 7.1's `RoleProfile` node type and section 7.2's `RELEVANT_TO_ROLE`
+    // descriptor, whose one required qualifier -- `role_profile_version`, of
+    // kind `PositiveInteger` -- is where the version's shape comes from; and
+    // `academic-ingestion` for `dating::Date` alone, because section 24.2's
+    // `validAt` is the document's own date and that module already owns the
+    // separation of valid time from the wall clock. The edges it does *not*
+    // have are the point: no `academic-store` -- it persists nothing and adds no
+    // migration -- no `academic-worker` and no `academic-egress-boundary`, so
+    // nothing in its closure can launch a process or stage a payload, and no
+    // HTTP or feed edge of any kind, which is what `GATE-38-029` staying open
+    // looks like in the dependency graph.
+    "academic-role-profile": [
+      "academic-competency",
+      "academic-domain",
+      "academic-ingestion",
+    ],
     // `P2-U8`'s course-review boundary. Five product edges and not one of them a
     // transport, a store or a serializer: section 29.5 keeps somebody else's
     // writing private and never redistributes it, and a crate with no way to
@@ -951,6 +971,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository",
       "academic-untrusted-content",
     ],
+    // `P2-Y2`'s acceptance suite builds its bundle entries by running `P2-Y1`'s
+    // own `CompetencyId::new` rather than fabricating a member, so
+    // `academic-competency` is declared twice for the `trybuild` reason
+    // `academic-scenario` gives below: a compile-fail case compiles against this
+    // crate plus its dev-dependencies. It needs no second test edge -- the
+    // remaining inputs of a bundle are the user's own words and a date, and a
+    // date is `academic-ingestion`'s, which is already a product edge.
+    "academic-role-profile": ["academic-competency"],
     // `P2-N3`'s acceptance suite dates real `EligibleEvidence`, and section
     // 13.2's first row -- the exposure side of section 13.3's persistence
     // sentence -- is a node of a document `P2-L4` produced. It reaches that
@@ -2732,6 +2760,13 @@ const SOCKET_CAPABLE_CLOSURES = {
   // empty; it opens nothing at all, reads no clock, and takes every competency,
   // criterion, rubric and record as an argument.
   "academic-competency": ["libc"],
+  // `P2-Y2`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `P2-R1`, `P2-R2`, `P2-R4`, `P2-R5` and `P2-Y1`. The crate spells no
+  // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
+  // rather than empty; it opens nothing at all, reads no clock, and takes every
+  // bundle, entry, adjustment and date as an argument. There is no feed edge of
+  // any kind, which is `GATE-38-029` in this table.
+  "academic-role-profile": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-requirement": ["libc"],
   "academic-retention": ["libc"],
@@ -5473,6 +5508,40 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "serde_json",
     "trybuild",
     "uuid",
+  ]);
+
+  // `P2-Y2` adds one workspace path package, `academic-role-profile`, and
+  // admits no external crate: its product edges are `academic-competency`,
+  // `academic-domain`, `academic-ingestion`, `serde` and `thiserror`, and its
+  // dev edges are `academic-competency` again -- for `trybuild` -- plus
+  // `serde_json` and `trybuild`, all already in this lock through earlier
+  // receipts. The `academic-ingestion` edge is the one that needs a reason and
+  // the receipt carries it: section 24.2's `validAt` is the document's own date
+  // rather than the clock, and `P2-U6`'s `dating` module already owns that
+  // separation with a `Date` that has no constructor taking an instant, so
+  // reusing it is what keeps *this crate cannot ask what time it is* true after
+  // a dated field arrives.
+  const {
+    receipt: roleBundleReceipt,
+    admitted: roleBundleAdmitted,
+    pathPackages: roleBundlePathPackages,
+  } = receiptFor("P2-Y2");
+  assert.equal(roleBundleAdmitted.size, 0, "P2-Y2 must admit no external crate");
+  assert.deepEqual([...roleBundlePathPackages], ["academic-role-profile@0.1.0"]);
+  assert.deepEqual(roleBundleReceipt.summary.npm_additions, []);
+  assert.equal(roleBundleReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(roleBundleReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(roleBundleReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof roleBundleReceipt.no_second_vocabulary_note, "string");
+  assert.deepEqual(Object.keys(roleBundleReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-competency",
+    "academic-domain",
+    "academic-ingestion",
+  ]);
+  assert.deepEqual(Object.keys(roleBundleReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-competency",
+    "serde_json",
+    "trybuild",
   ]);
   // `P2-L5` adds one workspace path package, `academic-student-voice`, and
   // admits no external crate: its product edges are `academic-capture`,

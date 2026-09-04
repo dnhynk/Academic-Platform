@@ -1,0 +1,5 @@
+error[E0599]: no method named `set_importance` found for mutable reference `&mut RoleProfile` in the current scope
+  --> tests/compile_fail/a_bundle_cannot_be_edited_in_place.rs:11:13
+   |
+11 |     profile.set_importance(BundleImportance::Core);
+   |             ^^^^^^^^^^^^^^ method not found in `&mut RoleProfile`

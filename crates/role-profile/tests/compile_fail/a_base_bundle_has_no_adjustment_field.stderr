@@ -1,0 +1,5 @@
+error[E0599]: no method named `user_adjustments` found for reference `&RoleProfile` in the current scope
+  --> tests/compile_fail/a_base_bundle_has_no_adjustment_field.rs:11:21
+   |
+11 |     let _ = profile.user_adjustments();
+   |                     ^^^^^^^^^^^^^^^^ method not found in `&RoleProfile`

@@ -1,0 +1,5 @@
+error[E0599]: no variant, associated function, or constant named `Chosen` found for enum `InterestStanding` in the current scope
+  --> tests/compile_fail/an_interest_has_no_chosen_standing.rs:10:31
+   |
+10 |     let _ = InterestStanding::Chosen;
+   |                               ^^^^^^ variant, associated function, or constant not found in `InterestStanding`

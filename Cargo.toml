@@ -47,6 +47,7 @@ members = [
   "crates/review",
   "crates/recovery",
   "crates/retention",
+  "crates/role-profile",
   "crates/rpc",
   "crates/scenario",
   "crates/store",

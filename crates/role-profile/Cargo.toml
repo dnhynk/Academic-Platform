@@ -1,0 +1,57 @@
+[package]
+name = "academic-role-profile"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Three product edges, and each one is a boundary this crate reads a fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-competency` is `P2-Y1`. A bundle entry names a competency by the
+# identity that crate issues, so a bundle cannot name a concept, a label or a
+# job title in that position: `CompetencyId` and `ConceptRef` already have no
+# conversion in either direction and this crate adds none.
+#
+# `academic-domain` is `P2-C1`. Section 7.1 already places `RoleProfile` in the
+# node hierarchy and section 7.2 already fixes `RELEVANT_TO_ROLE`'s direction,
+# cardinality and closed qualifier schema. That schema is where the version's
+# shape comes from: its one required qualifier is `role_profile_version`, of
+# kind `PositiveInteger`, so `RoleProfileVersion` is measured against the
+# registry's own descriptor rather than declared beside it — and the same
+# measurement is what fails if a later registry adds an importance qualifier,
+# because section 24.2's `importance` is deliberately *not* one of the
+# registry's and this crate says so in both directions.
+#
+# `academic-ingestion` is `P2-U6`, for `dating::Date` alone. Section 24.2's
+# `validAt` and a source's consultation date are **valid time**: the document's
+# own dates, not the wall clock. That module already owns the three-axis
+# separation and its `Date` has no constructor that takes an instant, so
+# reusing it is what makes *this crate cannot ask what time it is* survive the
+# arrival of a dated field.
+#
+# The edges it does not have are the point: no `academic-store`, so nothing here
+# reaches the canonical writer and no migration is added; no `academic-worker`
+# and no `academic-egress-boundary`, so nothing in its closure can launch a
+# process or stage a payload; and no HTTP or feed edge of any kind, which is
+# what `GATE-38-029` staying open looks like in the dependency graph.
+[dependencies]
+academic-competency = { path = "../competency" }
+academic-domain = { path = "../domain" }
+academic-ingestion = { path = "../ingestion" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite builds its competencies by running `P2-Y1`'s own
+# `declare` over `P2-N1`'s own entity identities rather than fabricating a
+# bundle member. `academic-competency` is declared twice for the `trybuild`
+# reason `academic-scenario` gives: a compile-fail case compiles against this
+# crate plus its dev-dependencies.
+[dev-dependencies]
+academic-competency = { path = "../competency" }
+serde_json.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true
