@@ -1,0 +1,5 @@
+error[E0616]: field `band` of struct `FreshnessProjection` is private
+  --> tests/compile_fail/a_projection_has_no_setter.rs:11:16
+   |
+11 |     projection.band = FreshnessBand::VeryHigh;
+   |                ^^^^ private field

@@ -1,0 +1,15 @@
+error[E0451]: fields `user_id`, `concept`, `scope_id`, `statement` and `stated_at` of struct `RecallStatement` are private
+  --> tests/compile_fail/a_recall_statement_has_no_unchecked_constructor.rs:12:9
+   |
+11 |     RecallStatement {
+   |     --------------- in this type
+12 |         user_id: user,
+   |         ^^^^^^^ private field
+13 |         concept,
+   |         ^^^^^^^ private field
+14 |         scope_id: scope,
+   |         ^^^^^^^^ private field
+15 |         statement: UserRecall::CanUseNow,
+   |         ^^^^^^^^^ private field
+16 |         stated_at: TimestampMillis::new(0),
+   |         ^^^^^^^^^ private field

@@ -1,0 +1,69 @@
+[package]
+name = "academic-freshness"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Two product edges, and both of them are boundaries this crate reads a fact out
+# of rather than a vocabulary it restates.
+#
+# `academic-domain` is `P2-C1`. `FreshnessBand` already exists there, so section
+# 13.3's six bands are measured against that enumeration rather than copied
+# beside it, and `ClaimObject::Freshness` is already the wire shape of a claim
+# about a band. ADR-003's actor matrix is what makes a user's recall statement
+# unmintable by a model run, exactly as `P2-N2` made a mastery confirmation
+# unmintable.
+#
+# `academic-knowledge-state` is `P2-N2`. Section 13.3's first input is `마지막
+# strong evidence의 시점과 종류`, and the evidence it means is the evidence that
+# passed section 13.4's four checks -- so this crate dates an `EligibleEvidence`
+# and has no constructor that dates anything else. `FreshnessInput` is that
+# crate's own two-field carrier and is the **only** value this crate hands back
+# to it.
+#
+# The edge it does not have is the point. Nothing here can name a
+# `MasteryLevel`: `academic-knowledge-state` re-exports `LADDER`, `rung`,
+# `AutomaticLevel` and `MasteryProjection`, this crate imports none of them, and
+# `the_freshness_crate_cannot_name_a_mastery` compares the whole set of its
+# `use` items and reached paths against a pinned inventory in both directions.
+# A decay function that could take a mastery value would need a name for one.
+#
+# No `academic-store`, so nothing here reaches the canonical writer and no
+# migration is added; no `academic-worker` and no `academic-egress-boundary`, so
+# nothing in its closure can launch a process or stage a payload.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-knowledge-state = { path = "../knowledge-state" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite dates real `EligibleEvidence`, and an `EligibleEvidence`
+# carrying section 13.2's first row is a node of a document `P2-L4` produced.
+# `crates/knowledge-state/tests/common/mod.rs` already builds one by driving a
+# real `P2-L2` capture and a real `P2-L3` run, and this suite includes that
+# module by `#[path]` rather than restating it, the way `academic-curriculum`
+# includes `academic-ingestion`'s. Every dev edge below is one that module's
+# two chains need. `academic-domain` is declared twice for the `trybuild` reason
+# `academic-scenario` gives: a compile-fail case compiles against this crate
+# plus its dev-dependencies.
+[dev-dependencies]
+academic-capture = { path = "../capture" }
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-lecture-document = { path = "../lecture-document" }
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-classification = { path = "../repository-classification" }
+academic-repository-correlation = { path = "../repository-correlation" }
+academic-transcription = { path = "../transcription" }
+academic-untrusted-content = { path = "../untrusted-content" }
+tempfile.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true
