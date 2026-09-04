@@ -415,13 +415,15 @@ pub fn project(
             (EvidenceCeiling::UpTo(held), EvidenceCeiling::UpTo(offered)) => offered > held,
             (_, EvidenceCeiling::NoPromotion) => false,
         };
-        if raises || ceiling_from.is_none() {
-            if raises {
-                ceiling = row;
-            }
-            if ceiling_from.is_none() || raises {
-                ceiling_from = Some(kind);
-            }
+        if raises {
+            ceiling = row;
+            ceiling_from = Some(kind);
+        } else if ceiling_from.is_none() {
+            // The first row still names the ceiling in force, even when that
+            // ceiling licenses nothing: a projection over an installed
+            // dependency alone has to disclose `mastery 승격 없음` and which row
+            // said so, not an empty cell.
+            ceiling_from = Some(kind);
         }
     }
 
