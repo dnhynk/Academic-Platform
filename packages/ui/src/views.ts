@@ -26,6 +26,7 @@ import { breadcrumb, routeOf, type Destination } from "./destinations.js";
 import { renderDrawer, type DrawerPanel, type DrawerState } from "./drawer.js";
 import { entityFor, type EntityRef } from "./entities.js";
 import { EVIDENCE_CENTER_SECTIONS, sectionsForRoute } from "./evidence-center.js";
+import { csMapRegions } from "./cs-map.js";
 import { homeSections } from "./home.js";
 import { backlinksOf } from "./backlinks.js";
 import { ROUTE_MANIFEST, type RouteDefinition } from "./routes.js";
@@ -144,6 +145,25 @@ function todaySections(): ViewBuilder {
 }
 
 /**
+ * The five regions `P2-X5` supplies for `Concepts / CS Map`.
+ *
+ * The heading and the identifier are `cs-map.ts`'s, whose lens rail
+ * `the_cs_map_lenses_are_the_crates_own` compares against
+ * `academic_cs_map::MapLens` and whose region order
+ * `the_cs_map_regions_are_the_specifications` compares against section 25.3's
+ * own bullets.
+ */
+function csMapSections(): ViewBuilder {
+  return () => {
+    const regions = csMapRegions();
+    if (regions.length === 0) {
+      throw new Error("no region is assigned to the Concepts / CS Map route");
+    }
+    return regions.map((region) => frame(region.id, region.heading, "P2-X5"));
+  };
+}
+
+/**
  * The `Evidence & Settings` index: all six sections, each pointing at the child
  * route that shows it.
  *
@@ -180,7 +200,7 @@ export const VIEW_BUILDERS: ReadonlyMap<string, ViewBuilder> = new Map<string, V
   ["academic.graduation-audit", framed("Graduation audit", "P2-X3")],
   ["learn", framed("Learn", "P2-X4")],
   ["learn.lectures", framed("Lectures", "P2-X4")],
-  ["learn.concepts", framed("Concepts and CS map", "P2-X5")],
+  ["learn.concepts", csMapSections()],
   ["learn.questions", framed("Questions", "P2-X4")],
   ["build", framed("Build", "P2-X4")],
   ["build.projects", framed("Projects", "P2-X4")],

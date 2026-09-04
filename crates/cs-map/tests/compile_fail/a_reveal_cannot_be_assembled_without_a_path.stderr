@@ -1,0 +1,11 @@
+error[E0451]: fields `cluster`, `path` and `node` of struct `SearchReveal` are private
+  --> tests/compile_fail/a_reveal_cannot_be_assembled_without_a_path.rs:12:9
+   |
+11 |     SearchReveal {
+   |     ------------ in this type
+12 |         cluster,
+   |         ^^^^^^^ private field
+13 |         path: Vec::new(),
+   |         ^^^^ private field
+14 |         node,
+   |         ^^^^ private field

@@ -1,0 +1,60 @@
+[package]
+name = "academic-cs-map"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# One product edge, and the ones it does not have are the task.
+#
+# `academic-domain` supplies every vocabulary this crate draws with rather than
+# a second one: `EntityId` for what a placement is *of*; section 7.1's
+# `NodeType` for what a node is; section 7.2's twenty `PredicateName`s for what
+# an edge is; `EpistemicStatus` for whether a stroke is dashed or solid;
+# `MasteryLevel` for the node fill; `FreshnessBand` for the outer ring;
+# `ConfidencePermille` for the border pattern and the uncertainty threshold; and
+# `temporal::{ChangeOrigin, TimeCoordinates}` for the scrubber. `P2-C6` fixed
+# the four change origins and recorded that the visualization section's third
+# transition -- `user scope change` -- is deliberately **not** one of them,
+# because changing which scope is displayed changes what a viewer is shown and
+# not what the record says. This crate is the view that owns the scope filter,
+# so `MapTransition::UserScopeChange` lives here and carries no `ChangeOrigin`.
+#
+# The edges it does **not** have:
+#
+# * no `academic-knowledge-state` and no `academic-freshness`, so no mastery
+#   ladder, no rung and no projection is in the closure. A fill band is a
+#   display of `MasteryLevel` and nothing here computes one;
+# * no `academic-critical-path` and no `academic-blind-spot`, so the halo and
+#   the gap glyph are read off a caller-supplied reading rather than recomputed.
+#   Drawing a path is not deciding one;
+# * no `academic-store`, `academic-vault` or `academic-projections`, so nothing
+#   here reaches the canonical writer or a snapshot sidecar. It claims no
+#   migration number: an atlas is a derivation over values handed to it;
+# * no `academic-worker` and no `academic-egress-boundary`, so nothing in its
+#   closure can launch a process or stage a payload.
+#
+# It opens no file, opens no socket, reads no clock and runs no build script.
+# Every graph, reading, lens, coordinate and instant arrives as an argument.
+[dependencies]
+academic-domain = { path = "../domain" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite builds its own graphs. `uuid` derives deterministic
+# UUIDv7-shaped fixture identities from a digest of a fixture name rather than
+# from a clock -- the same helper `P2-N2`'s, `P2-Y1`'s and `P2-Y3`'s suites use
+# -- and `serde_json` is how a frame's channel key set is compared as a whole
+# set rather than field by field. `academic-domain` is declared a second time
+# for the `trybuild` reason `academic-scenario` gives: a compile-fail case
+# compiles against this crate plus its dev-dependencies, and eight of the cases
+# name a domain value.
+[dev-dependencies]
+academic-domain = { path = "../domain" }
+serde_json.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

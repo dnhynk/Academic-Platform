@@ -12,6 +12,7 @@
 
 export * from "./backlinks.js";
 export * from "./capability-snapshot.js";
+export * from "./cs-map.js";
 export * from "./destinations.js";
 export * from "./drawer.js";
 export * from "./entities.js";

@@ -223,6 +223,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-cs-map"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "trybuild",
+ "uuid",
+]
+
+[[package]]
 name = "academic-curriculum"
 version = "0.1.0"
 dependencies = [

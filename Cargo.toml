@@ -14,6 +14,7 @@ members = [
   "crates/core",
   "crates/critical-path",
   "crates/crypto",
+  "crates/cs-map",
   "crates/curriculum",
   "crates/daemon",
   "crates/desktop",

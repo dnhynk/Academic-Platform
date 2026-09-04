@@ -1,0 +1,7 @@
+error[E0277]: the trait bound `ChangeOrigin: From<MapTransition>` is not satisfied
+  --> tests/compile_fail/a_transition_is_not_a_change_origin.rs:13:16
+   |
+13 |     transition.into()
+   |                ^^^^ the trait `From<MapTransition>` is not implemented for `ChangeOrigin`
+   |
+   = note: required for `MapTransition` to implement `Into<ChangeOrigin>`
