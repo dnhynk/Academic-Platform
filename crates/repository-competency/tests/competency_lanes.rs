@@ -240,6 +240,23 @@ impl Corpus {
             .ok_or_else(|| format!("the redis finding names no locator at {path}").into())
     }
 
+    /// The first locator of the `redis` finding at `path` that sits **inside a
+    /// declaration**, so it carries a `P2-R2` symbol fingerprint.
+    ///
+    /// `site` takes the first locator at a path, and for `src/cache.ts` that is
+    /// the module-level import, which has no symbol — so a work built on it is
+    /// joined to an observation by path. This one is how the fingerprint branch
+    /// is reached.
+    fn symbol_site(&self, path: &str) -> Result<Locator, Box<dyn Error>> {
+        let finding = self.finding("redis")?;
+        finding
+            .locators()
+            .iter()
+            .find(|locator| locator.path() == path && locator.symbol().is_some())
+            .cloned()
+            .ok_or_else(|| format!("no locator at {path} sits inside a declaration").into())
+    }
+
     fn snapshot_id(&self) -> &str {
         self.snapshot.snapshot_id()
     }
@@ -418,6 +435,46 @@ const OBSERVED_REDIS: [(&str, &str); 4] = [
     (
         "docker-compose.yml",
         "services:\n  cache:\n    image: redis\n",
+    ),
+    SPEC_PAGE,
+];
+
+/// The same path and the same call, inside a differently named declaration.
+///
+/// `warm` becomes `heat`, so `P2-R2`'s symbol fingerprint — a digest of path,
+/// symbol kind and name — differs while the path does not. That is what
+/// separates the two branches of `AuthoredWork::touches`.
+const OBSERVED_REDIS_RENAMED: [(&str, &str); 4] = [
+    (
+        "package.json",
+        "{
+  \"name\": \"orders\",
+  \"dependencies\": {
+    \"redis\": \"4.6.0\"
+  }
+}
+",
+    ),
+    (
+        "src/cache.ts",
+        "import redis from \"redis\";
+
+function heat() {
+  redis.createClient();
+  return redis.connect();
+}
+
+export function handle() {
+  return heat();
+}
+",
+    ),
+    (
+        "docker-compose.yml",
+        "services:
+  cache:
+    image: redis
+",
     ),
     SPEC_PAGE,
 ];
@@ -1314,5 +1371,78 @@ fn a_rubric_that_requires_nothing_is_not_a_rubric() -> TestResult {
         refused,
         Err(CompetencyError::RubricAdmitsNothing(_, 1))
     ));
+    Ok(())
+}
+
+/// The work-to-observation join reads `P2-R2`'s fingerprint when both sides
+/// have one, and the path only when they do not.
+///
+/// Both branches, and the second half is what makes the claim measurable: a
+/// changed site at the **same path** inside a **different declaration** does not
+/// meet an observation, which a path comparison would have admitted. Without
+/// this the fingerprint branch would never run in this suite, because `site`
+/// returns `src/cache.ts`'s module-level import, which carries no symbol.
+#[test]
+fn a_work_meets_an_observation_by_fingerprint_before_by_path() -> TestResult {
+    let corpus = built(&OBSERVED_REDIS)?;
+    let classification = classified(&corpus, &order_goal()?)?;
+    let map = mapping()?;
+    let rubric = rubric()?;
+
+    // The corpus really does carry both shapes, so neither half is vacuous.
+    let inside = corpus.symbol_site("src/cache.ts")?;
+    let outside = corpus.site("src/cache.ts")?;
+    assert!(inside.symbol().is_some());
+    assert!(outside.symbol().is_none());
+
+    // A work inside the declaration the observation names meets it.
+    let record = ContributionRecord {
+        change: change("c-inside")?,
+        snapshot_id: corpus.snapshot_id().to_owned(),
+        author: own_identity()?,
+        kind: ContributionKind::Authored,
+        origin: OriginReport::HandWritten,
+        sites: vec![ChangedSite::new(inside.clone(), ChangeKind::ControlFlow)],
+        recorded_at: 1_756_100_000_000,
+    };
+    let work = ContributionDraft::over(&record, &map, &rubric).seal()?;
+    let set = promoted(&classification, std::slice::from_ref(&work), &[])?;
+    assert!(
+        set.personal_claim("redis").is_some(),
+        "a change inside the declaration the observation names did not meet it"
+    );
+
+    // A work at the same path inside a *different* declaration does not.
+    let renamed = built(&OBSERVED_REDIS_RENAMED)?;
+    let elsewhere = renamed.symbol_site("src/cache.ts")?;
+    assert_eq!(
+        elsewhere.path(),
+        inside.path(),
+        "the two paths must be equal"
+    );
+    assert_ne!(
+        elsewhere.symbol(),
+        inside.symbol(),
+        "the two declarations must have different fingerprints"
+    );
+    let record = ContributionRecord {
+        change: change("c-renamed")?,
+        snapshot_id: corpus.snapshot_id().to_owned(),
+        author: own_identity()?,
+        kind: ContributionKind::Authored,
+        origin: OriginReport::HandWritten,
+        sites: vec![ChangedSite::new(elsewhere, ChangeKind::ControlFlow)],
+        recorded_at: 1_756_100_000_000,
+    };
+    let other = ContributionDraft::over(&record, &map, &rubric).seal()?;
+    let set = promoted(&classification, std::slice::from_ref(&other), &[])?;
+    assert!(
+        !set.project_claims().is_empty(),
+        "the observation disappeared, so this half would be vacuous"
+    );
+    assert!(
+        set.personal_claim("redis").is_none(),
+        "a change in another declaration at the same path met the observation"
+    );
     Ok(())
 }
