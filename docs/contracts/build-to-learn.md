@@ -251,3 +251,29 @@ steps, the motivation display and the channel comparison, and
 `goal_schema_separates_four_groups` and
 `motivation_edges_are_shown_in_parallel` compare their key sets as whole sets in
 both directions.
+
+## Two empty guards were measured in this suite, and repaired
+
+Both were the same shape: a scan that reads a signature's **text** cannot see
+what `&self` is.
+
+* **`no_signature_folds_the_motivation_edges` passed with a fold present.**
+  Injecting `pub fn emphasis(&self) -> u32` into `impl MotivationDisplay` — a
+  weighted sum of the three rows, spelling none of the names any list here holds
+  — was measured passing that test, because the signature text names no
+  motivation type. Only `every_public_signature_is_in_the_inventory` caught it.
+* **`the_only_producer_of_a_technology_slate_takes_a_goal` filtered on the
+  producer's own name.** A second producer called anything else and returning
+  `-> Self` matched neither of its filters. Only the signature inventory caught
+  that too.
+
+The repair is `public_signatures_with_owner`, which carries the enclosing `impl`
+header beside each signature and attributes a method to the type it is on. Both
+tests now read `owner | signature`, and both were re-run against their injections
+and observed failing. `no_signature_folds_the_motivation_edges` additionally
+requires the set of signatures attributed to a motivation type **by owner alone**
+to be non-empty, so the owner column cannot go quiet without the test noticing.
+
+The lesson generalises past this crate: a whole-set signature inventory catches
+what a targeted, name-filtered guard misses, which is why the inventory is the
+primary guard and the targeted tests pin *what* the surviving producer takes.
