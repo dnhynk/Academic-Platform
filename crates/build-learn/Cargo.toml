@@ -1,0 +1,90 @@
+[package]
+name = "academic-build-learn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Six product edges. Each is a boundary this crate reads a decided fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-domain` is `P2-C1` and `P2-C3`. A concept requirement names an
+# `EntityId` at an `EntityKind` the shared registry holds, and section 20's
+# readiness comparison reads `MasteryLevel` and `FreshnessBand` from there, so
+# no ladder and no band is declared again here.
+#
+# `academic-gap` is `P2-N5`. A hyperedge member is that crate's admitted
+# `PrerequisiteEdge`, and the four-dimension `ConceptState` overlay is what the
+# readiness comparison reads. Section 20's `ready / refresh / direct need /
+# conditional / later-scale` is a function of that overlay and of where a
+# requirement came from; it is not a second state model.
+#
+# `academic-critical-path` is `P2-N6`. Section 20's AND/OR concept requirements
+# **are** section 16.1's hypergraph, so this crate builds `Hyperedge` values and
+# solves them with that crate's `satisfying_sets`. Satisfaction, not a shortest
+# path, and no second solver.
+#
+# `academic-repository-classification` is `P2-R4`. Section 20's `규모/조건이
+# 바뀌면` row is `trigger 기반 benefit`, which is that crate's `BenefitContract`
+# with its trigger and its trade-off; and the in-progress-repository input kind
+# reads a `ClassificationSet` rather than repository bytes. No fourth
+# classification is declared here.
+#
+# `academic-curriculum` is `P2-U1`. Section 21's whole content is that a course
+# is not its title: `CourseRevision` canonical coverage and a specific
+# `Offering`'s actual coverage are that crate's two values, and the six mapping
+# statuses are read off them.
+#
+# `academic-knowledge-state` is `P2-N2`. Section 20's `충분하고 최근인 evidence`
+# is that crate's `EvidenceSufficiency`, reached through `academic-gap`'s
+# overlay; `MasteryProjection` is how an acquisition opportunity is known not to
+# be a mastery.
+#
+# The edges it does not have are the point. No `academic-store`, so nothing
+# reaches the canonical writer and no migration is added; no `academic-worker`,
+# no `academic-egress-boundary` and no `academic-model-run` as direct edges, so
+# no product file here can launch a process, stage a payload or call a model.
+[dependencies]
+academic-critical-path = { path = "../critical-path" }
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+academic-gap = { path = "../gap" }
+academic-knowledge-state = { path = "../knowledge-state" }
+academic-repository-classification = { path = "../repository-classification" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite plans over a real `ConceptState` overlay, and a real
+# overlay needs a real `EligibleEvidence` and a real `FreshnessProjection`.
+# `crates/knowledge-state/tests/common/mod.rs` builds those by driving a real
+# `P2-L2` capture and a real `P2-L3` run, and this suite includes that module by
+# `#[path]` rather than restating it, the way `academic-gap`,
+# `academic-freshness` and `academic-critical-path` do. Every dev edge below is
+# one that module's two chains need. `academic-domain`, `academic-gap` and
+# `academic-critical-path` are declared twice for the `trybuild` reason
+# `academic-scenario` gives: a compile-fail case compiles against this crate
+# plus its dev-dependencies.
+[dev-dependencies]
+academic-capture = { path = "../capture" }
+academic-consent = { path = "../consent" }
+academic-critical-path = { path = "../critical-path" }
+academic-domain = { path = "../domain" }
+academic-freshness = { path = "../freshness" }
+academic-gap = { path = "../gap" }
+academic-knowledge-state = { path = "../knowledge-state" }
+academic-lecture-document = { path = "../lecture-document" }
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-correlation = { path = "../repository-correlation" }
+academic-transcription = { path = "../transcription" }
+academic-untrusted-content = { path = "../untrusted-content" }
+serde_json.workspace = true
+tempfile.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

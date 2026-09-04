@@ -75,6 +75,7 @@ cargo test -p academic-home --test compile_fail --locked --offline
 cargo test -p academic-cs-map --test compile_fail --locked --offline
 cargo test -p academic-what-if --test compile_fail --locked --offline
 cargo test -p academic-integrations --test compile_fail --locked --offline
+cargo test -p academic-build-learn --test compile_fail --locked --offline
 cargo clippy -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection -- -D warnings
 cargo test -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection
 cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection -- -D warnings
