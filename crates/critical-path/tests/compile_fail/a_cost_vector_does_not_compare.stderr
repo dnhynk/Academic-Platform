@@ -1,0 +1,13 @@
+error[E0369]: binary operation `<` cannot be applied to type `&CostVector`
+ --> tests/compile_fail/a_cost_vector_does_not_compare.rs:8:10
+  |
+8 |     left < right
+  |     ---- ^ ----- &CostVector
+  |     |
+  |     &CostVector
+  |
+note: `CostVector` does not implement `PartialOrd`
+ --> src/vector.rs
+  |
+  | pub struct CostVector {
+  | ^^^^^^^^^^^^^^^^^^^^^ `CostVector` is defined in another crate

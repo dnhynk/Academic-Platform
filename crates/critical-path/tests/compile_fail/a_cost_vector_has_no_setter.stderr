@@ -1,0 +1,11 @@
+error[E0599]: no method named `set_component` found for mutable reference `&mut CostVector` in the current scope
+ --> tests/compile_fail/a_cost_vector_has_no_setter.rs:8:12
+  |
+8 |     vector.set_component(CostComponent::LearningEffort, replacement);
+  |            ^^^^^^^^^^^^^
+  |
+help: there is a method `component` with a similar name, but with different arguments
+ --> src/vector.rs
+  |
+  |     pub const fn component(&self, component: CostComponent) -> &CostEstimate {
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

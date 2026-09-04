@@ -1,0 +1,8 @@
+benefit_axes=5
+constraints=8
+cost_axes=7
+disclosure_groups=5
+max_satisfying_sets=256
+named_strategies=4
+path_roles=4
+uncertain_edge_threshold_permille=300

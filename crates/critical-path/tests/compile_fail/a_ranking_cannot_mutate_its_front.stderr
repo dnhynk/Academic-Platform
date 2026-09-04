@@ -1,0 +1,11 @@
+error[E0599]: no method named `front_mut` found for mutable reference `&mut Ranking<'_>` in the current scope
+ --> tests/compile_fail/a_ranking_cannot_mutate_its_front.rs:9:13
+  |
+9 |     ranking.front_mut();
+  |             ^^^^^^^^^
+  |
+help: there is a method `front` with a similar name
+  |
+9 -     ranking.front_mut();
+9 +     ranking.front();
+  |

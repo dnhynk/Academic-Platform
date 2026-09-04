@@ -672,6 +672,32 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-domain",
       "academic-requirement",
     ],
+    // `P2-N6` reads four boundaries and computes none of them.
+    // `academic-gap` is the input: this engine plans around a `GapCase` rather
+    // than around a concept and a state, so section 15.1's restraint carries
+    // forward as a graph fact -- there is no other producer of one and no way
+    // to call this engine without it -- and a hyperedge member is that crate's
+    // admitted `PrerequisiteEdge`, so `P2-C4`'s prerequisite column is what
+    // admits an edge and there is no allowlist here.
+    // `academic-domain` is `P2-C1` and `P2-C5`: the identifiers, the six
+    // freshness bands section 16.3's seventh constraint matches over, and the
+    // whole engine-harness module that makes determinism a byte comparison.
+    // **No registry row is added**: section 28 tabulates twelve engines and
+    // none of them is a critical path engine.
+    // `academic-curriculum` is `P2-U1`, for section 8.3's four offering
+    // standings and for the meetings and credits section 16.3's third
+    // constraint reads. `academic-freshness` is `P2-N3`, because which concept
+    // is stale is that crate's band and not a threshold here.
+    // No `academic-store` -- it persists nothing and adds no migration -- and
+    // no `academic-worker`, `academic-egress-boundary` or `academic-model-run`,
+    // so no product file here can launch a process, stage a payload or call a
+    // model.
+    "academic-critical-path": [
+      "academic-curriculum",
+      "academic-domain",
+      "academic-freshness",
+      "academic-gap",
+    ],
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
@@ -935,6 +961,31 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-record",
       "academic-store",
       "academic-vault",
+    ],
+    // `P2-N6`'s acceptance suite plans around a real `P2-N5` `GapCase`, and a
+    // real one needs a real overlay over a real `EligibleEvidence` and a real
+    // `FreshnessProjection`. It reaches that through `P2-N5`'s own fixture
+    // module by `#[path]`, which reaches `P2-N2`'s the same way, so every
+    // workspace edge here is one those two chains need.
+    // `academic-knowledge-state` is a dev edge and **not** a product one: this
+    // engine reads a decided `GapCase` and never a knowledge state, which is
+    // what makes "taking a course changes no mastery" a compile-time fact
+    // rather than a rule somebody remembers.
+    "academic-critical-path": [
+      "academic-capture",
+      "academic-consent",
+      "academic-domain",
+      "academic-gap",
+      "academic-knowledge-state",
+      "academic-lecture-document",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-repository-analysis",
+      "academic-repository-classification",
+      "academic-repository-correlation",
+      "academic-transcription",
+      "academic-untrusted-content",
     ],
   });
 
@@ -2676,6 +2727,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   // nothing at all, and its own whole-set path-root, `std`-module and macro
   // sweeps refuse an addition of any kind at its boundary.
   "academic-export": ["libc"],
+  // `P2-N6` reaches `libc` the same way and for the same reason: through
+  // `academic-policy`'s bundled SQLite by way of `academic-gap` and
+  // `academic-knowledge-state`. The crate spells no socket construct, opens
+  // nothing at all, reads no clock, and every instant it holds arrived as a
+  // caller-supplied day count or inside a `P2-N3` value.
+  "academic-critical-path": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -4651,6 +4708,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     studentVoiceReceiptText,
     offeringReceiptText,
     exportReceiptText,
+    criticalPathReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4690,6 +4748,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-l5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-p1.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-n6.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const exportReceipt = JSON.parse(exportReceiptText);
@@ -4729,6 +4788,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const gapReceipt = JSON.parse(gapReceiptText);
   const studentVoiceReceipt = JSON.parse(studentVoiceReceiptText);
   const offeringReceipt = JSON.parse(offeringReceiptText);
+  const criticalPathReceipt = JSON.parse(criticalPathReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -6348,6 +6408,73 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-L5 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-N6` adds one workspace path package, `academic-critical-path`, and
+  // admits no external crate: its product edges are `academic-curriculum`,
+  // `academic-domain`, `academic-freshness`, `academic-gap`, `serde` and
+  // `thiserror`, and its dev edges are `P2-N5`'s fixture chain -- reached
+  // through that crate's own fixture module by `#[path]`, which reaches
+  // `P2-N2`'s the same way -- plus `serde_json`, `tempfile`, `trybuild` and
+  // `uuid`, all already in this lock through earlier receipts.
+  // The `academic-gap` edge is the one that needs a reason and the receipt
+  // carries it: this engine plans around a decided `GapCase` rather than around
+  // a concept and a state, so section 15.1's restraint carries forward as a
+  // graph fact and a hyperedge member is that crate's admitted
+  // `PrerequisiteEdge` rather than a second allowlist here.
+  // `academic-knowledge-state` is a **dev** edge and not a product one, which is
+  // what makes "taking a course changes no mastery" a compile-time fact. The
+  // edge it does **not** carry is the point: no `academic-store`, so no plan
+  // reaches the canonical writer and no migration is added, and no
+  // `academic-model-run` on the product edge, so nothing in the product path
+  // can call a model.
+  assert.equal(criticalPathReceipt.task, "P2-N6");
+  const criticalPathAdmitted = new Set(
+    criticalPathReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const criticalPathPathPackages = new Set(
+    criticalPathReceipt.added_workspace_path_packages.map(
+      (pkg) => `${pkg.name}@${pkg.version}`,
+    ),
+  );
+  assert.equal(criticalPathAdmitted.size, 0, "P2-N6 must admit no external crate");
+  assert.deepEqual([...criticalPathPathPackages], ["academic-critical-path@0.1.0"]);
+  assert.deepEqual(criticalPathReceipt.summary.npm_additions, []);
+  assert.equal(criticalPathReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(criticalPathReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(criticalPathReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof criticalPathReceipt.no_second_ladder_note, "string");
+  assert.deepEqual(
+    Object.keys(criticalPathReceipt.direct_workspace_dependencies).toSorted(),
+    ["academic-curriculum", "academic-domain", "academic-freshness", "academic-gap"],
+  );
+  assert.deepEqual(Object.keys(criticalPathReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-consent",
+    "academic-knowledge-state",
+    "academic-lecture-document",
+    "academic-model-run",
+    "academic-policy",
+    "academic-repository",
+    "academic-repository-analysis",
+    "academic-repository-classification",
+    "academic-repository-correlation",
+    "academic-transcription",
+    "academic-untrusted-content",
+    "serde_json",
+    "tempfile",
+    "trybuild",
+    "uuid",
+  ]);
+  const criticalPathTuples = lockTuples.filter(
+    ([name, version]) =>
+      criticalPathAdmitted.has(`${name}@${version}`) ||
+      criticalPathPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    criticalPathTuples.length,
+    criticalPathAdmitted.size + criticalPathPathPackages.size,
+    "a P2-N6 admitted package is missing from Cargo.lock",
+  );
+
   // `P2-U3` adds `academic-audit` and no external crate. The graduation audit
   // is a boundary above `P2-U2`'s rule set and `P2-U4`'s attempt ledger: it
   // links neither a writer nor a model, which is what keeps a graduation
@@ -6668,7 +6795,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !offeringAdmitted.has(`${name}@${version}`) &&
       !offeringPathPackages.has(`${name}@${version}`) &&
       !exportAdmitted.has(`${name}@${version}`) &&
-      !exportPathPackages.has(`${name}@${version}`),
+      !exportPathPackages.has(`${name}@${version}`) &&
+      !criticalPathAdmitted.has(`${name}@${version}`) &&
+      !criticalPathPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -6715,7 +6844,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       studentVoiceTuples.length +
       gapTuples.length +
       offeringTuples.length +
-      exportTuples.length,
+      exportTuples.length +
+      criticalPathTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -7128,9 +7258,29 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
           },
         ]
       : [];
+    // `P2-N6` gains the same two owners and for the same two reasons, because
+    // its fixture chain is `P2-N5`'s reached by `#[path]`: `tempfile` is the
+    // directory a real `P2-L2` journal is written into on the way to the
+    // `GapCase` this engine plans around, and `serde_json` drives an
+    // `Opportunity` through a real encoder so `course_is_an_acquisition_option`
+    // can compare its field set against the three an occasion has rather than
+    // against a list this suite wrote. `trybuild` and `uuid` are on the Phase 1
+    // receipt rather than this one.
+    const n6CriticalPathUse = ["tempfile", "serde_json"].includes(admission.name)
+      ? [
+          {
+            package: "academic-critical-path",
+            kind: "dev",
+            target: null,
+            default_features: true,
+            features: [],
+          },
+        ]
+      : [];
     const expectedUses = [
       ...admission.uses,
       ...n5GapUse,
+      ...n6CriticalPathUse,
       ...n3FreshnessUse,
       ...l5StudentVoiceUse,
       ...l3TranscriptionUse,

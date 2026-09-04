@@ -1,0 +1,9 @@
+error[E0451]: fields `candidates` and `dominated` of struct `ParetoFront` are private
+  --> tests/compile_fail/a_pareto_front_has_no_bare_constructor.rs:9:9
+   |
+ 8 |     ParetoFront {
+   |     ----------- in this type
+ 9 |         candidates,
+   |         ^^^^^^^^^^ private field
+10 |         dominated: Vec::new(),
+   |         ^^^^^^^^^ private field

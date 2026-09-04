@@ -1,0 +1,81 @@
+[package]
+name = "academic-critical-path"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Four product edges. Each is a boundary this crate reads a decided fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-domain` is `P2-C1` and `P2-C5`. Section 7.2's twenty predicates and
+# the `prerequisite` column that says which two a path engine may traverse are
+# that crate's, so a hyperedge member is admitted by `prerequisite_descriptor`
+# and this crate holds no second allowlist. `engines::{FrozenInputs, ProofNode,
+# EngineOutcome, ExplanationSnapshot}` is `P2-C5`'s harness, which is how
+# `(frozen_inputs, rule_set_hash, engine_version) -> (result, proof_tree,
+# explanation_snapshot)` is a byte comparison here rather than an absence of
+# errors. This crate registers **no** thirteenth engine: the `P2-C5` registry is
+# pinned to the twelve rows of section 28's table and section 16 is not one of
+# them. `docs/contracts/critical-path.md` records that reading.
+#
+# `academic-gap` is `P2-N5`. A gap is the input this engine plans around, and
+# taking `GapCase` rather than a concept and a state is what keeps section
+# 15.1's restraint: nothing here can plan around a low knowledge state that no
+# active goal reaches, because there is no such value to pass. The
+# `PrerequisiteGraph` and `PrerequisiteEdge` a hyperedge is built over are that
+# crate's admitted values, so the two engines descend the same edges.
+#
+# `academic-curriculum` is `P2-U1`. Section 16.3's second and third constraints
+# are about a `CourseOffering`'s confirmation standing, its official
+# prerequisites, its meetings and its credits, and all four are that crate's
+# types. Section 8.3's four `OfferingStatus` values are read and never restated.
+#
+# `academic-freshness` is `P2-N3`. Section 16.3's seventh constraint is the
+# minimum refresh a stale concept needs, and which concept is stale is that
+# crate's band rather than a threshold here.
+#
+# The edges it does not have are the point. No `academic-store`, so nothing
+# reaches the canonical writer and no migration is added; no `academic-worker`
+# and no `academic-egress-boundary` and no `academic-model-run` as direct edges,
+# so no product file here can launch a process, stage a payload or call a model.
+[dependencies]
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+academic-freshness = { path = "../freshness" }
+academic-gap = { path = "../gap" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite plans around a real `GapCase`, and a real `GapCase` needs
+# a real overlay over a real `EligibleEvidence` and a real `FreshnessProjection`.
+# `crates/knowledge-state/tests/common/mod.rs` builds those by driving a real
+# `P2-L2` capture and a real `P2-L3` run, and this suite includes that module by
+# `#[path]` rather than restating it, the way `academic-gap` and
+# `academic-freshness` do. Every dev edge below is one that module's two chains
+# need. `academic-domain` and `academic-gap` are declared twice for the
+# `trybuild` reason `academic-scenario` gives: a compile-fail case compiles
+# against this crate plus its dev-dependencies.
+[dev-dependencies]
+academic-capture = { path = "../capture" }
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-gap = { path = "../gap" }
+academic-knowledge-state = { path = "../knowledge-state" }
+academic-lecture-document = { path = "../lecture-document" }
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-classification = { path = "../repository-classification" }
+academic-repository-correlation = { path = "../repository-correlation" }
+academic-transcription = { path = "../transcription" }
+academic-untrusted-content = { path = "../untrusted-content" }
+serde_json.workspace = true
+tempfile.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

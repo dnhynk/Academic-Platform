@@ -1,0 +1,5 @@
+error[E0599]: no method named `mastery` found for reference `&AcquisitionOption` in the current scope
+  --> tests/compile_fail/an_acquisition_option_yields_no_mastery.rs:10:12
+   |
+10 |     option.mastery()
+   |            ^^^^^^^ method not found in `&AcquisitionOption`
