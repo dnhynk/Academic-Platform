@@ -1,0 +1,24 @@
+[package]
+name = "academic-repository-competency"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-policy = { path = "../policy" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-classification = { path = "../repository-classification" }
+academic-repository-correlation = { path = "../repository-correlation" }
+thiserror.workspace = true
+
+[dev-dependencies]
+academic-model-run = { path = "../model-run" }
+academic-repository = { path = "../repository" }
+academic-untrusted-content = { path = "../untrusted-content" }
+trybuild.workspace = true
+
+[lints]
+workspace = true
