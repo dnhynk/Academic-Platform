@@ -1,0 +1,11 @@
+error: cannot construct `AggregationClaim` with struct literal syntax due to private fields
+  --> tests/compile_fail/an_aggregation_claim_cannot_be_assembled.rs:10:19
+   |
+10 |     let _forged = AggregationClaim {};
+   |                   ^^^^^^^^^^^^^^^^
+   |
+help: you might have meant to use the `asserting` associated function
+   |
+10 -     let _forged = AggregationClaim {};
+10 +     let _forged = AggregationClaim::asserting(_, _, _);
+   |

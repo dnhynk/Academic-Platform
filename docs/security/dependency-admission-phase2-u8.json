@@ -1,0 +1,43 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-u",
+  "task": "P2-U8",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-U8 admits no external crate. academic-review links academic-curriculum, academic-domain, academic-ingestion, academic-proposal and academic-untrusted-content as product edges and academic-untrusted-content and trybuild as dev edges, all seven covered by earlier reviewed receipts, and adds one workspace path package. No HTTP client, TLS stack, browser driver, headless runtime, image decoder, audio decoder, HTML parser, cookie store or serialization crate is linked at any feature setting: the crate has nothing to fetch with, nothing to persist to, and no derive that could turn somebody else's writing into a bundle row.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-review is the P2-U8 course-review ingestion contract: section 29.5's ReviewRecord scoped to CourseOffering + Instructor + Term + Source, the three access modes and the four fallbacks a refused source is offered, the retained raw artifact and its provenance spans, the six bias disclosures every aggregate carries, the word-trigram duplicate similarity, and the named aggregation claim a course-level value cannot exist without. It is a separate package from academic-ingestion because that crate is P2-U6's official-source pipeline -- nine stages as nine types, with a conditional-fetch trait and a credential binding in its surface -- and putting somebody else's writing inside that package would put the raw text in the same crate as the values a fetch is composed from.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-U8 adds no pnpm workspace package and no Node script. Its scans are Rust test targets in the crate they scan."
+  },
+  "direct_workspace_dependencies": {
+    "academic-curriculum": "P2-U1's InstructorName and TermCode, which two of section 29.5's four scope dimensions are, and the Course this crate never writes to. There is no edge in the other direction: academic-curriculum does not depend on this crate, which is what makes \"a review reading is not a Course property\" a fact about the dependency graph rather than a rule inside a function.",
+    "academic-domain": "OfferingId and CourseId, the identifiers a review scope and a course aggregation name, and EpistemicStatus, which the record's AI_INFERRED extraction status is a value of.",
+    "academic-ingestion": "P2-U6's ConnectorId, TermsStatus, Denial, DenialReason and Fallback::ALL, plus RetrievalInstant for section 29.5's collectedAt. The four fallbacks section 29.5 names and the single ManualOrStop route are that crate's and are reused rather than restated, so denied_source_exposes_only_the_four_fallbacks is a claim about the shipped constructor and not about a copy.",
+    "academic-proposal": "P2-M2's Autosaved<T>, whose EPISTEMIC_STATUS is AI_INFERRED. Section 29.5 writes extractionStatus as a literal rather than a union, so it is not a field here: ReviewRecord's one producer takes an Autosaved value and the status is that constant. Section 27.4's low-risk row is save it and mark it AI_INFERRED, and ReviewQueue::autosave is the one door that produces one.",
+    "academic-untrusted-content": "P2-G5's Untrusted<T> and its SourceKind::ReviewText variant, which that crate already carries for exactly this. Retained review text leaves this crate as Untrusted<IngestedDocument> and by no other public route, which is what makes this crate a reuse of that trust label rather than a second one."
+  },
+  "dev_workspace_dependencies": {
+    "trybuild": "The five compile-fail cases: an aggregation claim assembled from outside, a promotion offered aggregates instead of a claim, a scope asked for a course, the retained text read through its crate-private accessor, and the retained text formatted into a String.",
+    "academic-untrusted-content": "P2-G5's SourceId and SourceKind, so the acceptance suite can seal a retained review through that boundary and read the provenance that comes back. It is already a product edge; it is declared again here for the reason academic-curriculum and academic-proposal declare theirs twice -- a test target compiles against the dev section."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-review",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-review",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-review is a workspace path crate, not an external dependency. It owns section 29.5's review record and bias disclosure and holds no transport and no writer: its declared workspace closure of every edge kind is academic-curriculum, academic-domain, academic-egress-boundary, academic-ingestion, academic-proposal and academic-untrusted-content, where the egress-boundary edge is transitive through academic-untrusted-content, whose provider-response ingest takes an AcceptedResponse, and no product file here names an egress item. It has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-policy, academic-projections, academic-recovery, academic-retention, academic-worker or academic-export: it persists nothing, adds no store migration, and is outside the closure of the bundle P2-P1 writes. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-domain.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. no_login_bypass_or_evasion_module_exists compares five whole sets in both directions rather than searching for forbidden spellings: every use statement in the crate, every function declaration in its product source as a visibility and a signature, every workspace file whose code names a value an outbound request is composed from (OutboundTransport, ConditionalFetch, ConditionalRequest, CredentialBinding, DeclaredTarget, StagingRequest -- this crate is in none of them), every workspace file outside this crate that names one of its types or its crate path, and its declared manifest edges. GATE-38-021 is open, so no live connector runs: a source and access mode nobody recorded reads as UNREVIEWED, which denies with the whole of Fallback::ALL, and every test is driven by synthetic reviews composed in the test tree. SourceAccessMode has three arms -- PUBLIC, USER_PROVIDED_EXPORT, MANUAL_PASTE -- read out of section 29.5's own record, and presents_a_credential is false for all three as a total match rather than a constant.",
+  "advisory_path": "Unchanged. Every external crate academic-review links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

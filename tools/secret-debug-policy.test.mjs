@@ -170,6 +170,11 @@ const SECRET_BEARING_TYPES = new Map([
   ["SealedCredential", "the operating-system keystore blob that opens one stored credential"],
   ["Acquisition", "the FetchOutcome bytes one conditional fetch or one user-supplied import produced"],
   ["AppliedCorrection", "what one token of the lecture read before a correction replaced it"],
+  // `P2-U8`. Section 29.5 keeps the review somebody else wrote for provenance
+  // and never redistributes it. The type hand-writes a `Debug` that reaches the
+  // text through a length; the registration is what makes deleting that impl
+  // fail rather than pass quietly.
+  ["RawReviewText", "one course review as its author wrote it, retained for provenance and never redistributed"],
   // `P2-RF17`. The whole-set text classification's own finding: section 12.4's
   // annotation layer derived `Debug` over a rendering written across a range of
   // raw tokens, in the crate that had already sealed the tokens themselves.
@@ -282,6 +287,20 @@ const PUBLIC_BYTES = new Map([
   [
     "Issued.digest",
     "SHA-256 of a P2-G4 capability descriptor, whose whole plaintext the parent writes into the job's staged input directory for the sandboxed process to read; the digest is what the registry compares, not a secret it holds",
+  ],
+  // `P2-U8`. Two digest fields over a retained course review. A digest of the
+  // review is not the review, `RawReviewText::digest` and
+  // `ProvenanceSpan::digest` return them through the public API, and they are
+  // what makes a provenance span checkable without the text having to be handed
+  // to whoever checks it. What that crate hides is the bytes, and the one field
+  // holding those is reduced to a length by a hand-written `Debug`.
+  [
+    "RawReviewText.digest",
+    "FNV-128 over one retained review, which is the identity a later reader compares a span against",
+  ],
+  [
+    "ProvenanceSpan.digest",
+    "FNV-128 over one cited range of an already-retained review, which is what makes the citation checkable without handing over the range",
   ],
 ]);
 
