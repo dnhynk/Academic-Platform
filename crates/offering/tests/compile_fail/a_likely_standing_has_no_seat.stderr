@@ -1,0 +1,17 @@
+error[E0599]: no method named `seat` found for reference `&HistoricallyLikelyStanding` in the current scope
+  --> tests/compile_fail/a_likely_standing_has_no_seat.rs:15:31
+   |
+15 |     let _from_likely = likely.seat();
+   |                               ^^^^ method not found in `&HistoricallyLikelyStanding`
+
+error[E0599]: no method named `seat` found for reference `&UncertainStanding` in the current scope
+  --> tests/compile_fail/a_likely_standing_has_no_seat.rs:16:37
+   |
+16 |     let _from_uncertain = uncertain.seat();
+   |                                     ^^^^ method not found in `&UncertainStanding`
+
+error[E0599]: no method named `seat` found for reference `&CancelledStanding` in the current scope
+  --> tests/compile_fail/a_likely_standing_has_no_seat.rs:17:37
+   |
+17 |     let _from_cancelled = cancelled.seat();
+   |                                     ^^^^ method not found in `&CancelledStanding`

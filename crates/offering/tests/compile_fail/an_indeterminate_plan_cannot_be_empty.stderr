@@ -1,0 +1,15 @@
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> tests/compile_fail/an_indeterminate_plan_cannot_be_empty.rs:12:24
+   |
+12 |     let _outstanding = IndeterminatePlan::new(Vec::new());
+   |                        ^^^^^^^^^^^^^^^^^^^^^^ ---------- argument #1 of type `PlanRefusal` is missing
+   |
+note: associated function defined here
+  --> src/plan.rs
+   |
+   |     pub fn new(first: PlanRefusal, rest: Vec<PlanRefusal>) -> Self {
+   |            ^^^
+help: provide the argument
+   |
+12 |     let _outstanding = IndeterminatePlan::new(/* PlanRefusal */, Vec::new());
+   |                                               ++++++++++++++++++

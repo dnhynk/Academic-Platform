@@ -1,0 +1,15 @@
+error[E0451]: fields `course`, `term`, `verified_at`, `capacity` and `meetings` of struct `ConfirmedSeat` are private
+  --> tests/compile_fail/a_confirmed_seat_cannot_be_assembled.rs:20:9
+   |
+19 |     let _literal = ConfirmedSeat {
+   |                    ------------- in this type
+20 |         course,
+   |         ^^^^^^ private field
+21 |         term,
+   |         ^^^^ private field
+22 |         verified_at: TimestampMillis::new(0),
+   |         ^^^^^^^^^^^ private field
+23 |         capacity: None,
+   |         ^^^^^^^^ private field
+24 |         meetings: Vec::new(),
+   |         ^^^^^^^^ private field

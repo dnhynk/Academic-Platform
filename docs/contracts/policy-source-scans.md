@@ -2490,6 +2490,7 @@ closed it.
 | S-17 | `packages/web-contracts/src/index.ts` — the four closed vocabulary sets | `masteryLevels`, `freshnessBands`, `confidentialityValues` and `retentionClassValues` restate `academic_domain`'s `MasteryLevel`, `FreshnessBand`, `Confidentiality` and `RetentionClass`, and **nothing compares the two sides**. This is the defect class `route_manifest_matches_ia_exactly` closes one step away: a list written from an authoritative enumeration with no bidirectional check. `P2-X1` found it while looking for its own kind one step out and did not fix it: the file is `P2-C7`'s contract surface, and a cross-language parity scan is its own reviewed piece of work. All four sets agree with the Rust enums today, measured at this commit, so the row is latent rather than broken. | The first commit that adds a variant to one of the four Rust enums. The TypeScript validator would then reject a fixture the Rust side accepts, and would do so silently until a fixture happened to carry the new variant — the fixture suites pin specific bytes and would not notice a set that had merely stopped being complete. Severity **P3**. Closing it means reading the four variant lists out of `crates/domain/src/lib.rs` and comparing them with the four sets in both directions, the way `model_run_requires_every_field` compares a struct against the specification's own YAML. |
 | S-19 | `crates/daemon/tests/phase1_exit.rs::default_build_lane` — `%TEMP%/academic-x1-default-features` | The nested default-feature build writes to one `CARGO_TARGET_DIR` shared by every process on the machine, on purpose, so the build is cached across runs instead of repeated. Cargo takes its own exclusive lock on a target directory, so two processes serialise rather than corrupt each other, and `T175` left it as it is with a `SHARED_NAME_SITES` row saying so rather than making each process build its own copy. | When two processes on one machine run this test with the same `TEMP` and one is killed mid-build. That is not hypothetical: `T169`'s `pkill -9 -f cargo` killed `T162`'s build in this Run. Severity **P3** — the surviving process sees a stale lock or a half-written fingerprint and rebuilds, so the cost is time rather than a wrong answer. Closing it means a per-process lane and a full rebuild per run, which is the trade this row records. |
 | S-20 | The five `OpenGate::identifier` arms outside `crates/audit` — `crates/consent/src/gate.rs` (2), `crates/curriculum/src/gate.rs` (3), `crates/ingestion/src/gate.rs` (2), `crates/requirement/src/gate.rs` (4) | Eleven `GATE-38-xxx` identifiers are hand-written strings, and the tests that read them compare against a **hand-written list in the same test** — `crates/requirement/tests/requirement_scans.rs:1339` and `crates/curriculum/tests/curriculum_scans.rs:1455` are both a `BTreeSet::from([...])` of the identifiers the crate declares. Nothing compares any of them against section 38's own list. This is the class `S-17` records one step away: a list written twice with no bidirectional check against the authority. `P2-U3` found it while looking for its own kind one step out, closed it for the **seven** cells it declares — `the_open_gates_are_section_38s_own` derives each identifier from its line's position in section 38.1's block and section 38.2's bullet list, so `GATE-38-{:03}` is computed rather than typed — and did not fix the other four crates, because each is another task's contract surface. Measured on the tree this row describes: 25 distinct `GATE-38-xxx` identifiers appear in workspace product source; 18 of them are `identifier()` arms across five crates -- `audit` 7, `requirement` 4, `curriculum` 3, `consent` 2, `ingestion` 2 -- and the other seven are cited in prose or in a comment rather than declared. 7 of the 18 are position-derived and 11 are not. | The first edit to section 38 that inserts, removes or reorders a line. Section 38.1 has ten lines and section 38.2 has eleven bullets, and an insertion into either renumbers every cell after it — silently, because every crate but this one asserts its identifiers against its own copy. Severity **P3**: no identifier is wrong today, checked line by line against both blocks while writing the position derivation. Closing it costs one test per crate, and the derivation is already written: parse the two blocks, take the position, format `GATE-38-{:03}`. |
+| S-21 | `academic_domain::Claim::validate_for_actor` — ADR-003's actor matrix, for a `PREDICTION` claim | `AuthorityClass::Prediction` is permitted to `Actor::ModelRun` alone, and `Actor::DeterministicEngine` carries `AuthorityClass::DeterministicEngine` and nothing else. So a **deterministic** historical forecaster cannot sign its own prediction claim as the engine it is, while §30.1's own example of a `PREDICTION` claim is *status PREDICTION · historical pattern · confidence .72* — a pattern, not a model. `P2-U5` found it while looking for its own kind one step out and did not fix it: the matrix is `academic-domain`'s contract surface and ADR-003's, and widening it is a claim about who may assert what rather than a line this task can write. `a_forecast_claim_is_not_signable_by_a_deterministic_engine` executes the divergence in both directions, so a later widening is a deliberate change rather than a silent one. | The first `PREDICTION` claim this repository actually signs. `academic-offering` builds one and validates it; nothing writes one to the ledger yet, because the crate has no store edge. Severity **P3** — today the cost is that a forecast recorded through ADR-003 would be attributed to a model run that did not happen. Closing it means either a `Prediction` row for `Actor::DeterministicEngine` in the matrix, with the reason written down, or a decision that a forecast is a model run and a `ModelRun` record minted for it. |
 
 ## Intended, not a defect
 
@@ -2829,3 +2830,123 @@ scan finding: both are rules `GapCase` enforces that no test drove, because the
 engine always supplies a non-blank reason and always supplies the diagnostic
 shape itself. Both are now observed directly through the public constructors,
 which is where a caller other than `search` would reach them.
+
+## What the `P2-U5` scans hold
+
+`crates/offering/tests/offering_scans.rs` holds ten scans. Four read the design
+document and compare a vocabulary against it in both directions; four sweep the
+crate's own product source as a whole set; one is the tripwire the other nine
+rest on; and one compares the whole `Default` set.
+
+| Scan | What it compares | What an addition costs |
+|---|---|---|
+| `the_walk_reads_every_module_in_this_crate` | every `pub mod` in `lib.rs` against the files the walk read, in both directions | a module with no file fails; a file no module declares fails; a walk that shrank below twelve fails |
+| `the_four_standings_are_section_8_3s_own` | section 8.3's four table rows -- status, UI 문구 and Planner 취급 cells -- against the four standing types, cell for cell, in both directions | a fifth row in the document fails rather than being folded into the nearest type; a paraphrased UI cell fails; the one row whose document name is longer than the enumeration's must be exactly `CANCELLED/WITHDRAWN` |
+| `the_feature_families_are_section_8_3s_own` | section 8.3's feature sentence split at *를 feature로 사용하고*, its six units against the first six families in order, and the seventh's phrase required to be after the split and not before | a seventh unit appearing in the sentence fails; a paraphrase on either side fails; two families sharing one frozen-input key fails |
+| `the_abstention_reasons_are_section_8_3s_own` | the `UNCERTAIN` row's `·`-delimited grounds against the reasons that quote one, as two whole sets | a reason that quotes the wrong one of the row's own three fails; a reason that invents a ground fails; the three that quote nothing are enumerated by name |
+| `the_open_gate_is_section_38s_own` | the quoted line against the document, then the identifier against the bullet's **position** in section 38.2's eleven bullets after section 38.1's ten lines | a paraphrase fails; a different real `GATE-38-xxx` fails; a renumbered section fails |
+| `no_product_file_reaches_a_clock_rng_socket_or_model` | fourteen API spellings against every product file, with comments and string literals stripped | the rule is run against five evasions inside the test, so a rule that matches nothing fails |
+| `no_floating_point_reaches_a_forecast` | six floating-point spellings against every product file | run against four evasions inside the test; a Brier score in binary floating point would depend on the machine that computed it |
+| `no_product_file_promotes_a_prediction` | every `fn` signature and every `impl` header in the crate as two whole sets: none may name a prediction-side type and a confirmation-side type together, and the one that legitimately does is named | a promotion called anything at all fails; a `From` between the two sides fails; the single `ConfirmedSeat` construction site is counted with a type-name-boundary rule that tells it apart from `NoConfirmedSeat` |
+| `nothing_in_this_crate_has_a_default` | the whole `#[derive(...)]` set and every `impl Default` header | a `Default` on a recorded criterion fails -- which the behavioural test beside it would not have caught |
+| `this_crate_persists_nothing_and_registers_no_engine` | three store spellings against every product file; the engine identifier against the §28 registry and against its namespace; the registry's twelve entries; the harness root's directories | an identifier claiming `engine.` fails; a directory under `testdata/engines/` fails; a registry that stopped holding twelve fails |
+
+### What this task found in its own suite
+
+**Two guards would not have bitten, and both were repaired before the matrix was
+run.**
+
+`the_recorded_criteria_have_no_default` checked that `ForecastPolicy::new`
+refuses an out-of-range floor and a zero window. It says *no default* in its
+name and an `impl Default for ForecastPolicy` returning the corpus's own numbers
+passes it unchanged — the constructor's refusals are still true. The absence of
+a `Default` is a source property, so it is now
+`nothing_in_this_crate_has_a_default`, a sweep over the whole derive set and
+every `impl Default` header with a floor. `U5-I20` is the observation.
+
+`same_inputs_and_rule_hash_yield_byte_equal_results` compared two evaluations
+and one hand-built encoding under another rule-set hash. Neither half reads the
+frozen inputs, so **dropping a recorded criterion from them passes both**: two
+forecasts answering different questions would then have equal canonical bytes.
+The test now also evaluates the same history under a second recorded floor and
+requires the bytes to differ. `U5-I21` is the observation.
+
+### What this task found one step out
+
+`S-21`. ADR-003's actor matrix in `academic_domain::Claim::validate_for_actor`
+gives `AuthorityClass::Prediction` to `Actor::ModelRun` alone, while §30.1's own
+example of a `PREDICTION` claim is *status PREDICTION · historical pattern ·
+confidence .72* — a pattern, not a model. A deterministic historical forecaster
+therefore cannot sign its own prediction claim as a deterministic engine. This
+task did not widen the matrix, because the matrix is `academic-domain`'s
+contract surface and ADR-003's; it recorded the divergence and executed it.
+
+### The privacy pass runs after type checking
+
+Two of this task's first five compile-fail cases proved less than they claimed.
+Rust checks privacy **after** type checking, so a case that bundled a private
+struct literal with a wrong-arity call never reached the privacy pass: it failed
+to compile, passed the suite, and its committed `.stderr` carried no `E0451` at
+all. The two literal cases now hold nothing but the literal, and the seven cases
+are:
+
+| Case | Diagnostic | What it proves |
+|---|---|---|
+| `a_likely_standing_has_no_seat` | `E0599` × 3 | the three standings that are not `CONFIRMED` have no `seat` method |
+| `a_confirmed_seat_cannot_be_assembled` | `E0451` | all five fields of `ConfirmedSeat` are private |
+| `a_confirmed_seat_has_no_default_and_no_setter` | `E0599`, `E0616` | no `Default`, and no field write on a seat obtained legitimately |
+| `a_scored_forecast_cannot_be_assembled` | `E0451` × 2 | a calibrated probability and a disclosed window cannot be assembled by hand, and neither can the standing that holds them |
+| `a_determinate_plan_cannot_be_assembled` | `E0451` | the plan's seat list is private |
+| `an_indeterminate_plan_cannot_be_empty` | `E0061` | the first refusal is a parameter |
+| `a_forecast_does_not_become_confirmation_evidence` | `E0308`, `E0277`, `E0615` | a forecast is not a listing, there is no `From` between the two sides, and the standing has no status setter |
+
+### The injection matrix
+
+Twenty-three injections, one at a time, each its own edit and its own build.
+**None of them spells a name any table forbids** — the tables here forbid no
+name; they compare whole sets and derive identifiers from positions. Every
+paraphrase substitutes another phrase the specification itself writes, and every
+identifier substitution is another real §38 cell. Each was compiled before it
+was scanned: an injection that does not build is not evidence. The build is
+`cargo clippy -p academic-offering --all-targets --offline -- -D warnings` and
+the observation is `cargo test -p academic-offering --offline --no-fail-fast`.
+
+| # | Injection | Compiles | Observation |
+|---|---|---|---|
+| U5-I1 | `source.rs`: the recorded verification bound is read as four times itself | yes | fails `offering_confirmed_contract`: a two-day-old registration reading confirms under a one-day bound |
+| U5-I2 | `standing.rs`: the `HISTORICALLY_LIKELY` UI cell gains one syllable — a paraphrase, one character | yes | fails `historical_likely_limits` and `the_four_standings_are_section_8_3s_own`: section 8.3 does not write that cell |
+| U5-I3 | `forecast.rs`: the 불규칙 abstention is unreachable — the guard requires no offered term | yes | fails `uncertain_offering_flow`, the oracle comparison and `term_forecast_metrics` |
+| U5-I4 | `source.rs`: a history-derived reading may issue an official cancellation notice | yes | fails `cancelled_offering_contract`: a prediction cancels an offering |
+| U5-I5 | `source.rs`: a cross source is a disagreement when it is *newer* rather than when it disagrees | yes | fails `offering_source_authority`: an agreeing cross source is reported as a disagreement |
+| U5-I6 | `feature.rs`: 미개설 gap is still measured and its contribution is a constant | yes | fails `offering_feature_contract`, the oracle comparison, `offering_epistemic_split` and `term_forecast_metrics` |
+| U5-I7 | `forecast.rs`: the disclosed window ends one millisecond past the last reading | yes | fails `course_forecast_metadata`: the window is pinned to the readings that happened |
+| U5-I8 | `claims.rs`: a prediction stays active for decision after an official claim arrives | yes | fails `prediction_official_parallel` |
+| U5-I9 | `feature.rs`: a term that was *read* counts as a term the course ran in | yes | fails `zero_observation_semantics`, `offering_feature_contract`, the oracle comparison and `term_forecast_metrics` |
+| U5-I10 | `metrics.rs`: coverage is the complement of abstention | yes | fails `term_forecast_metrics`: 500 where the oracle says 400 |
+| U5-I11 | `standing.rs`: the `UNCERTAIN` UI cell becomes the `CANCELLED` one — both are section 8.3's own | yes | fails `offering_epistemic_split`, `uncertain_offering_flow` and `the_four_standings_are_section_8_3s_own` |
+| U5-I12 | `plan.rs`: a choice with no confirmed seat is skipped instead of refused | yes, on the **second** form | fails `historically_likely_cannot_enter_determinate_plan`, `historical_likely_limits`, `uncertain_offering_flow` and `cancelled_offering_contract` |
+| U5-I13 | `corpus.rs`: the irregular case's empty spring becomes a fourth special run | yes | fails the oracle comparison: the Rust answer moves and the JavaScript transcription still says the old one |
+| U5-I14 | `corpus.rs`: one calibration bin reads a higher permille | yes | fails the oracle comparison, for the same reason |
+| U5-I15 | `gate.rs`: the identifier becomes another real section 38 cell | yes | fails `the_open_gate_is_section_38s_own` and `the_open_gate_holds_every_term`: the bullet's position says `017` |
+| U5-I16 | `feature.rs`: two families swap the phrases they quote, and both phrases are still section 8.3's | yes | fails `the_feature_families_are_section_8_3s_own`: the order is the sentence's |
+| U5-I17 | `standing.rs`: a signature naming a forecast and a confirmation, called neither `promote` nor `upgrade` | yes | fails `no_product_file_promotes_a_prediction` |
+| U5-I18 | `feature.rs`: the seasonal rate is computed in binary floating point | yes | fails `no_floating_point_reaches_a_forecast` |
+| U5-I19 | `forecast.rs`: the 불규칙 ground quotes 표본 부족 instead, which is still one of the row's own three | yes | fails `the_abstention_reasons_are_section_8_3s_own`: the two sets differ |
+| U5-I20 | `policy.rs`: the forecast policy gains a `Default` with the corpus's own numbers | yes | fails `nothing_in_this_crate_has_a_default` — and passes `the_recorded_criteria_have_no_default`, which is why that guard was repaired |
+| U5-I21 | `forecast.rs`: the recorded likely floor is not a frozen input | yes | fails `same_inputs_and_rule_hash_yield_byte_equal_results` — and passed both of that test's original halves, which is why it gained a third |
+| U5-I22 | `corpus.rs`: a helper that reads the machine's clock | yes | fails `no_product_file_reaches_a_clock_rng_socket_or_model` |
+| U5-I23 | `forecast.rs`: the engine identifier claims the §28 registry's namespace | yes | fails `this_crate_persists_nothing_and_registers_no_engine` |
+
+**`U5-I12` did not compile in its first form.** Replacing the `NoConfirmedSeat`
+arm with an empty one leaves a `match` whose second arm does nothing, which
+`clippy::single_match` refuses under `-D warnings`, so the first form was a lint
+error rather than a hole. The compiling form is the `if let` a well-meaning edit
+that wanted to "only report the interesting case" would actually write, and it
+is the stronger injection: it drops the refusal a plan is built on while leaving
+the other one in place.
+
+**`U5-I13` and `U5-I14` are the oracle's own evidence.** Neither touches the
+engine: one moves a term's reading and one moves a calibration bin, both on the
+fixture side, and each moves the Rust answer while the JavaScript transcription
+still says the old one. Without a second transcription somewhere else, both
+edits would have re-rendered the expected values and passed.

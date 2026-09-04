@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_forecast_does_not_become_confirmation_evidence.rs:17:9
+   |
+16 |     let _evidence = ConfirmationEvidence::from_registration_system(
+   |                     ---------------------------------------------- arguments to this function are incorrect
+17 |         forecast,
+   |         ^^^^^^^^ expected `OfficialListing`, found `&Forecast`
+   |
+note: associated function defined here
+  --> src/source.rs
+   |
+   |     pub fn from_registration_system(
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `ConfirmationEvidence: From<ScoredForecast>` is not satisfied
+  --> tests/compile_fail/a_forecast_does_not_become_confirmation_evidence.rs:26:46
+   |
+26 |     let _into: ConfirmationEvidence = scored.into();
+   |                                              ^^^^ the trait `From<ScoredForecast>` is not implemented for `ConfirmationEvidence`
+   |
+   = note: required for `ScoredForecast` to implement `Into<ConfirmationEvidence>`
+
+error[E0615]: attempted to take value of method `status` on type `OfferingStanding`
+  --> tests/compile_fail/a_forecast_does_not_become_confirmation_evidence.rs:31:14
+   |
+31 |     standing.status = academic_curriculum::OfferingStatus::Confirmed;
+   |              ^^^^^^ method, not a field
+   |
+   = help: methods are immutable and cannot be assigned to

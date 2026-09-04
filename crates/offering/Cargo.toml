@@ -1,0 +1,57 @@
+[package]
+name = "academic-offering"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Five product edges and no sixth.
+#
+# `academic-domain` supplies §3.9's proof-tree vocabulary this engine speaks --
+# `ProofNode`, `ProofStatus`, `FrozenInputs`, `EngineOutcome` -- plus the
+# `Claim` shape §2.3-4's epistemic split is written in and the
+# `PredictionMetadata` §2.3-15 pins at version 1, which this crate reuses
+# rather than replacing.
+#
+# `academic-curriculum` supplies `P2-U1`'s `OfferingStatus`, which is §8.3's
+# four values. This crate decides which one an offering carries; it does not
+# declare a second copy of the vocabulary.
+#
+# `academic-ingestion` supplies `P2-U6`'s `SourceCategory`, which is §8.4's six
+# collection levels. Offering confirmation is a question about which level a
+# reading came from, and the answer is that crate's enumeration.
+#
+# `academic-model-run` supplies `P2-M1`'s calibration registry, which is the
+# only producer of a displayable confidence in this workspace. A forecast whose
+# probability has no fresh dataset abstains instead of showing an uncalibrated
+# number.
+#
+# `academic-record` supplies `P2-U4`'s ordered `TermKey` and its
+# `PlanScenario`. A history window, a seasonality feature and a forecast
+# horizon all need terms to be ordered, and the plan a confirmed seat enters is
+# that crate's, not a second plan model here.
+#
+# There is deliberately no `academic-store` edge -- this crate persists nothing
+# and claims no migration number -- and no `academic-audit` edge: a forecast
+# must not be able to name the graduation verdict, in either direction.
+[dependencies]
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+academic-ingestion = { path = "../ingestion" }
+academic-model-run = { path = "../model-run" }
+academic-record = { path = "../record" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# The compile-fail suite compiles its cases against this crate plus this
+# crate's dev-dependencies, so every type a case must name has to be reachable
+# from `tests/compile_fail`.
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+academic-model-run = { path = "../model-run" }
+academic-record = { path = "../record" }
+trybuild.workspace = true
+
+[lints]
+workspace = true
