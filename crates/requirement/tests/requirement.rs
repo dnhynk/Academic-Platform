@@ -2549,6 +2549,7 @@ struct SetShape {
     parser: u16,
     retrieved_at: u64,
     rule: &'static str,
+    source_rule: &'static str,
     digest: &'static [u8],
     threshold: u16,
     second_rule: bool,
@@ -2566,6 +2567,7 @@ impl SetShape {
             parser: 1,
             retrieved_at: RETRIEVED_AT.seconds(),
             rule: "total_credits",
+            source_rule: "r-12-1",
             digest: b"official/cse/degree-requirements",
             threshold: 130,
             second_rule: false,
@@ -2621,7 +2623,7 @@ fn shaped_set(shape: &SetShape) -> Result<RuleSet, Box<dyn Error>> {
         let rule = RuleId::new(id)?;
         let candidate = RuleCandidate::extracted(
             rule.clone(),
-            source_rule(rule.as_str())?,
+            academic_domain::engines::RuleId::new(shape.source_rule)?,
             RuleBody::CreditMinimum {
                 category: CreditCategory::new("ALL_RECOGNIZED")?,
                 threshold: CreditAmount::new(shape.threshold)?,
@@ -2692,6 +2694,9 @@ fn every_rule_set_field_moves_the_hash() -> TestResult {
     });
     vary("source.parser_version", |shape| shape.parser = 2);
     vary("rule.id", |shape| shape.rule = "credit_floor");
+    // The document's own identifier for the rule is a field of its own: the
+    // set-local name is unchanged here and only the crossing moves.
+    vary("rule.source_rule", |shape| shape.source_rule = "r-12-2");
     vary("rule.source_digest", |shape| {
         shape.digest = b"official/cse/degree-requirements-2027";
     });
@@ -2701,6 +2706,7 @@ fn every_rule_set_field_moves_the_hash() -> TestResult {
     // `version` and `supersedes` move together in the fourth entry, so the
     // pair is distinguished separately: a rendering that dropped `supersedes`
     // would still separate that entry from the baseline on the version alone.
+    assert_eq!(shapes[4].0, "supersedes", "the supersedes entry moved");
     let mut without = SetShape::baseline();
     without.version = RuleSetVersion::new(2);
     assert_ne!(
@@ -2711,7 +2717,7 @@ fn every_rule_set_field_moves_the_hash() -> TestResult {
 
     assert_eq!(
         shapes.len(),
-        13,
+        14,
         "the baseline plus one entry per movable position"
     );
     let mut seen: BTreeMap<ContentDigest, &str> = BTreeMap::new();
