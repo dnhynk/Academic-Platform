@@ -164,6 +164,16 @@ never carries evidence itself.
 slice of those, so evidence that failed a check is not evidence a later layer
 must remember to filter.
 
+The first check's answer has to be **read** where the evidence is used, not only
+where it is asked. `EligibleEvidence` records which concept an item is linked
+to, and `KnowledgeStateHistory::open` and `propose` refuse an item linked to any
+other concept — without that, an `APPLIED` state for one concept could be
+projected out of another concept's admitted evidence, which is the
+misattribution the first check exists to prevent, one layer up from where it is
+asked. That gap was in this crate's first version and none of the thirteen named
+tests would have caught it; it is closed by `require_about` on both entry points
+and by an acceptance case carrying its positive control.
+
 ## Assertions, retraction, and the review card
 
 An assertion's identity is a SHA-256 over a **length-prefixed** preimage that
@@ -217,7 +227,7 @@ Two are left open and this task fills in neither.
 | `dependency_only_creates_no_promotion` | the two stance constructors complementary over one input, an installed dependency admitted and promoting nothing, and the same concept observed reaching `APPLIED` |
 | `grade_creates_no_concept_promotion` | no `ConceptEvidence` variant for the row, the row contributing `UNSEEN` and licensing no ceiling, and an assertion carrying the grade while projecting `UNSEEN` |
 | `unseen_is_not_a_failed_test` | two `UNSEEN` projections that are not equal, their two bases, the retained contradiction, and the copy that is the design document's own sentence |
-| `eligibility_four_checks_block_with_reason_codes` | the four questions measured against the design document, one check false at a time with its own code, all four false reporting all four, the `FIELD` tier refused, and a known failure passing |
+| `eligibility_four_checks_block_with_reason_codes` | the four questions measured against the design document, one check false at a time with its own code, all four false reporting all four, the `FIELD` tier refused, a known failure passing, and another concept's evidence refused by a history with its positive control |
 | `fluent_requires_repetition_and_user_confirmation` | no automatic level for `FLUENT`, a repetition refused for one context and for dependent work, a model actor refused at ADR-003's matrix in both pairings, and a wire `FLUENT` refused without its record and with a record on another level |
 | `assertion_is_never_mutated_in_place` | the old version byte-identical after a revision, the chain binding its predecessor, and a renumbered version failing to deserialize |
 | `retraction_is_append_only_and_recomputes_projection` | the retraction row and both versions in the history, the earlier projection still readable at its own identity, the current one recomputed, and an unknown retraction refused |
