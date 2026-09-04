@@ -1452,3 +1452,156 @@ fn the_recorded_criteria_have_no_default() -> TestResult {
     assert!(academic_offering::VerificationRecency::new(0).is_err());
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// The guards no test drove
+// ---------------------------------------------------------------------------
+
+/// Both official notices admit exactly the two levels that publish offering
+/// changes, and both refuse the other four by name.
+///
+/// `cancelled_offering_contract` drives [`OfferingError::NotTheRegistrationSystem`]
+/// on `CancellationNotice::official` by handing it one name off the
+/// enumeration. Nothing drove the identical guard on
+/// `OfferingAnnouncement::official`, so deleting that guard left this crate --
+/// the crate that exists to refuse the promotion -- passing while a
+/// `HISTORICAL_PREDICTION` reading became an official notice that the course
+/// will run. Both constructors are run over the whole set here rather than over
+/// a chosen name, so a level added to `SourceCategory::ALL` arrives refused
+/// rather than unconsidered, and the two cannot drift apart.
+#[test]
+fn an_official_notice_comes_from_a_level_that_publishes_one() -> TestResult {
+    let mut cancellations = Vec::new();
+    let mut announcements = Vec::new();
+    for source in SourceCategory::ALL {
+        let cancellation = academic_offering::CancellationNotice::official(
+            source,
+            support::connector("connector")?,
+            support::now(),
+            support::spring_2026()?,
+            support::course_code("M9001.000100")?,
+        );
+        match cancellation {
+            Ok(notice) => {
+                assert_eq!(notice.source(), source);
+                cancellations.push(source);
+            }
+            Err(OfferingError::NotTheRegistrationSystem(named)) => {
+                assert_eq!(named, source.as_str());
+            }
+            Err(other) => {
+                return Err(format!("{source:?} was refused a cancellation for: {other}").into());
+            }
+        }
+
+        let announcement = academic_offering::OfferingAnnouncement::official(
+            source,
+            support::connector("connector")?,
+            support::now(),
+            support::spring_2026()?,
+            support::course_code("M9001.000100")?,
+        );
+        match announcement {
+            Ok(notice) => {
+                assert_eq!(notice.source(), source);
+                announcements.push(source);
+            }
+            Err(OfferingError::NotTheRegistrationSystem(named)) => {
+                assert_eq!(named, source.as_str());
+            }
+            Err(other) => {
+                return Err(format!("{source:?} was refused an announcement for: {other}").into());
+            }
+        }
+    }
+
+    let publishes_offering_changes = vec![
+        SourceCategory::DepartmentPage,
+        SourceCategory::RegistrationSystem,
+    ];
+    assert_eq!(cancellations, publishes_offering_changes);
+    assert_eq!(announcements, publishes_offering_changes);
+    Ok(())
+}
+
+/// A registration reading retrieved *after* the instant it is said to have
+/// verified is stale, not fresh.
+///
+/// `offering_confirmed_contract` drives the far end of the recency bound -- a
+/// reading older than [`academic_offering::VerificationRecency`]. Nothing drove
+/// the near end, and the age is a signed subtraction: a listing whose
+/// `retrieved_at` is later than `verified_at` yields a negative age, which is
+/// below every bound. Deleting the `age < 0` arm therefore left a reading from
+/// the future confirming an offering, with every test still passing.
+#[test]
+fn a_reading_from_after_the_confirmation_confirms_nothing() -> TestResult {
+    let verified_at = support::now();
+    let retrieved_later = TimestampMillis::new(corpus::CORPUS_NOW_MILLIS.saturating_add(3_600_000));
+    assert!(retrieved_later > verified_at);
+    let built = academic_offering::ConfirmationEvidence::from_registration_system(
+        support::registration_listing("M9001.000100", retrieved_later)?,
+        Vec::new(),
+        corpus::verification_recency()?,
+        verified_at,
+    );
+    assert!(matches!(built, Err(OfferingError::VerificationStale)));
+
+    // The same listing retrieved before the confirmation is admitted, so the
+    // refusal above is the direction of the subtraction and not the listing.
+    let retrieved_earlier =
+        TimestampMillis::new(corpus::CORPUS_NOW_MILLIS.saturating_sub(3_600_000));
+    assert!(
+        academic_offering::ConfirmationEvidence::from_registration_system(
+            support::registration_listing("M9001.000100", retrieved_earlier)?,
+            Vec::new(),
+            corpus::verification_recency()?,
+            verified_at,
+        )
+        .is_ok()
+    );
+    Ok(())
+}
+
+/// One term is read once. A second reading of the same term is refused, naming
+/// the course and the term.
+///
+/// `CourseHistory::observe` keeps its observations in a map, so without the
+/// guard a second reading silently replaces the first: the history a forecast
+/// runs over stops being the readings that happened. No test drove the refusal,
+/// so deleting it changed nothing anybody could see.
+#[test]
+fn one_term_is_read_once() -> TestResult {
+    let term = TermKey::new(2024, Semester::Spring)?;
+    let mut history = CourseHistory::new(support::course_code("M9001.000100")?);
+    history.observe(TermObservation::offered(
+        term,
+        TimestampMillis::new(corpus::CORPUS_NOW_MILLIS - 63_072_000_000),
+        Vec::new(),
+        false,
+    ))?;
+
+    // A second reading of the same term, disagreeing with the first.
+    let second = history.observe(TermObservation::not_offered(
+        term,
+        TimestampMillis::new(corpus::CORPUS_NOW_MILLIS - 62_000_000_000),
+    ));
+    match second {
+        Err(OfferingError::DuplicateObservation {
+            course,
+            term: named,
+        }) => {
+            assert_eq!(course, "M9001.000100");
+            assert_eq!(named, term.canonical_text());
+        }
+        Err(other) => return Err(format!("refused for the wrong reason: {other}").into()),
+        Ok(()) => return Err("a second reading of one term was recorded".into()),
+    }
+
+    // And the first reading is the one that stands.
+    let standing: Vec<Offered> = history
+        .observations()
+        .map(TermObservation::outcome)
+        .collect();
+    assert_eq!(standing, vec![Offered::Yes]);
+    Ok(())
+}
