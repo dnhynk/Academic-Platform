@@ -1,0 +1,80 @@
+[package]
+name = "academic-readiness"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Four product edges, and each one is a boundary this crate reads a fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-competency` is `P2-Y1`. A matrix row names a competency by the
+# identity that crate issues and a terminus names one of its
+# `PerformanceCriterion`s, so section 24.4's `수행 criterion` is that crate's own
+# value rather than a string this one invented. Its six `EvidenceStage`s are the
+# depth an evidence locator was recorded at, and they are *not* this crate's six
+# axes: `an_axis_and_a_stage_are_two_vocabularies` requires the two name sets to
+# be disjoint and no conversion to exist in either direction.
+#
+# `academic-role-profile` is `P2-Y2`. A readiness matrix is taken of a bundle at
+# an exact `RoleProfileRef`, which is the lineage-and-version pair, so the row
+# set is the bundle's own membership and the importance beside each row is the
+# bundle's own `BundleImportance`.
+#
+# `academic-domain` is `P2-C1` and `P2-N3`. `FreshnessBand` already holds
+# section 13.3's six bands, so the freshness column carries that enumeration and
+# declares no second one -- which is what keeps section 34.5's
+# `missing/unknown과 freshness를 별도 표시` a fact about three types rather than a
+# rule written here.
+#
+# `academic-knowledge-state` is `P2-N2`. `UNSEEN_MEANING` is section 13.1's own
+# sentence that no evidence is not a failed examination, and the unknown cell
+# carries it rather than paraphrasing it.
+#
+# The edges it does not have are the point: no `academic-store`, so nothing here
+# reaches the canonical writer and no migration is added; no `academic-worker`
+# and no `academic-egress-boundary`, so nothing in its closure can launch a
+# process or stage a payload; and no `academic-export`, because a view that
+# linked the exporter could carry a notice the exporter minted -- the notice
+# travels inside the document instead.
+[dependencies]
+academic-competency = { path = "../competency" }
+academic-domain = { path = "../domain" }
+academic-knowledge-state = { path = "../knowledge-state" }
+academic-role-profile = { path = "../role-profile" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite builds its competencies through `P2-Y1`'s own `declare`
+# and its bundles through `P2-Y2`'s own `declare`, and it writes a real
+# `P2-P1` graduation bundle and reads it back with no key and no vendor.
+# `academic-export`'s reader needs `P2-U3`'s corpus to have something to re-run,
+# which is what `academic-audit`, `academic-ingestion`, `academic-record` and
+# `academic-requirement` are here for: that fixture module is included by
+# `#[path]` the way `academic-export`'s own suite includes it.
+# `academic-competency` is declared twice for the `trybuild` reason
+# `academic-scenario` gives: a compile-fail case compiles against this crate
+# plus its dev-dependencies.
+[dev-dependencies]
+academic-audit = { path = "../audit" }
+academic-competency = { path = "../competency" }
+academic-export = { path = "../export" }
+academic-ingestion = { path = "../ingestion" }
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-record = { path = "../record" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-classification = { path = "../repository-classification" }
+academic-repository-competency = { path = "../repository-competency" }
+academic-repository-correlation = { path = "../repository-correlation" }
+academic-requirement = { path = "../requirement" }
+academic-role-profile = { path = "../role-profile" }
+academic-untrusted-content = { path = "../untrusted-content" }
+serde_json.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

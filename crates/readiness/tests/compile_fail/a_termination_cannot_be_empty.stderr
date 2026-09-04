@@ -1,0 +1,13 @@
+error: cannot construct `academic_readiness::Termination` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_termination_cannot_be_empty.rs:11:5
+   |
+11 |     Termination {
+   |     ^^^^^^^^^^^
+12 |         direction,
+   |         --------- private field
+13 |         start,
+   |         ----- private field
+14 |         rest: Vec::new(),
+   |         ---------------- private field
+   |
+   = note: ...and other private field `first` that was not provided

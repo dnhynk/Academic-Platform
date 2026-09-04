@@ -37,6 +37,7 @@ members = [
   "crates/policy",
   "crates/projections",
   "crates/proposal",
+  "crates/readiness",
   "crates/record",
   "crates/repository",
   "crates/repository-analysis",

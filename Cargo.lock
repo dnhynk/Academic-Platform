@@ -525,6 +525,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-readiness"
+version = "0.1.0"
+dependencies = [
+ "academic-audit",
+ "academic-competency",
+ "academic-domain",
+ "academic-export",
+ "academic-ingestion",
+ "academic-knowledge-state",
+ "academic-model-run",
+ "academic-policy",
+ "academic-record",
+ "academic-repository",
+ "academic-repository-analysis",
+ "academic-repository-classification",
+ "academic-repository-competency",
+ "academic-repository-correlation",
+ "academic-requirement",
+ "academic-role-profile",
+ "academic-untrusted-content",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "trybuild",
+ "uuid",
+]
+
+[[package]]
 name = "academic-record"
 version = "0.1.0"
 dependencies = [

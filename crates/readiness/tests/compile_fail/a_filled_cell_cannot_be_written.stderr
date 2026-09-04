@@ -1,0 +1,13 @@
+error[E0603]: tuple variant `Evidenced` is private
+  --> tests/compile_fail/a_filled_cell_cannot_be_written.rs:12:15
+   |
+12 |     AxisCell::Evidenced(Vec::new())
+   |               ^^^^^^^^^ private tuple variant
+   |
+note: the tuple variant `Evidenced` is defined here
+  --> src/cell.rs
+   |
+   |     #[non_exhaustive]
+   |     ----------------- cannot be constructed because it is `#[non_exhaustive]`
+   |     Evidenced(Vec<AxisEvidence>),
+   |     ^^^^^^^^^
