@@ -142,6 +142,9 @@ pub enum KnowledgeStateError {
     /// A proposal was about another concept.
     #[error("proposal names another concept")]
     ProposalNamesAnotherConcept,
+    /// Admitted evidence was linked to some other concept.
+    #[error("evidence is linked to another concept")]
+    EvidenceNamesAnotherConcept,
     /// ADR-003's actor/authority/status matrix rejected a claim.
     #[error(transparent)]
     Domain(#[from] academic_domain::DomainError),

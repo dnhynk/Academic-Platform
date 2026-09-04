@@ -41,6 +41,23 @@ use crate::{
     projection::{MasteryProjection, project},
 };
 
+/// Refuses evidence that is about some other concept.
+///
+/// Section 13.4's first check answers *which* concept an item is linked to, and
+/// `EligibleEvidence` carries that answer. Nothing below this line re-reads it,
+/// so without this a history for one concept could be projected out of another
+/// concept's admitted evidence — the exact misattribution the first check
+/// exists to prevent, one layer up from where it is asked.
+fn require_about(
+    concept: EntityId,
+    evidence: &[EligibleEvidence],
+) -> Result<(), KnowledgeStateError> {
+    if evidence.iter().any(|item| item.concept() != concept) {
+        return Err(KnowledgeStateError::EvidenceNamesAnotherConcept);
+    }
+    Ok(())
+}
+
 /// One evidence item withdrawn, and which check it failed on review.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EvidenceRetraction {
@@ -179,7 +196,9 @@ impl KnowledgeStateHistory {
     ///
     /// # Errors
     ///
-    /// Whatever [`project`] and [`KnowledgeStateAssertion::open`] refuse.
+    /// [`KnowledgeStateError::EvidenceNamesAnotherConcept`] when an admitted
+    /// item is linked to some other concept, and whatever [`project`] and
+    /// [`KnowledgeStateAssertion::open`] refuse.
     pub fn open(
         concept: EntityId,
         admitted: Vec<EligibleEvidence>,
@@ -189,6 +208,7 @@ impl KnowledgeStateHistory {
         freshness: FreshnessInput,
         as_of: TimestampMillis,
     ) -> Result<Self, KnowledgeStateError> {
+        require_about(concept, &admitted)?;
         let projection = project(&admitted, &blocked)?;
         let assertion = KnowledgeStateAssertion::open(
             concept,
@@ -411,7 +431,9 @@ impl KnowledgeStateHistory {
     ///
     /// [`KnowledgeStateError::HistoryHasNoAssertion`] when there is no version,
     /// [`KnowledgeStateError::ProposalNamesAnotherConcept`] when the proposal is
-    /// about a different concept, and whatever [`project`] refuses.
+    /// about a different concept,
+    /// [`KnowledgeStateError::EvidenceNamesAnotherConcept`] when one of its
+    /// admitted items is, and whatever [`project`] refuses.
     pub fn propose(
         mut self,
         proposal: AiProposal,
@@ -423,6 +445,7 @@ impl KnowledgeStateHistory {
         if proposal.concept() != self.concept {
             return Err(KnowledgeStateError::ProposalNamesAnotherConcept);
         }
+        require_about(self.concept, &admitted)?;
         let Some(previous) = self.current().cloned() else {
             return Err(KnowledgeStateError::HistoryHasNoAssertion);
         };

@@ -1039,8 +1039,65 @@ fn eligibility_four_checks_block_with_reason_codes() -> TestResult {
 
     // The control: all four answered admits, so the refusals above are the
     // answers and not the fixture.
-    let admitted = EligibilityOutcome::admit(evidence, evidence_id("item"), &full_dossier(concept));
+    let admitted = EligibilityOutcome::admit(
+        evidence.clone(),
+        evidence_id("item"),
+        &full_dossier(concept),
+    );
     assert!(admitted.admitted().is_some());
+
+    // The first check answers *which* concept, and the layer above has to read
+    // that answer or the check buys nothing there: a history for one concept
+    // must refuse another concept's admitted evidence.
+    let elsewhere = entity("another-concept");
+    let foreign = self::admitted(evidence.clone(), "foreign", &full_dossier(elsewhere))?;
+    assert_eq!(foreign.concept(), elsewhere);
+    assert!(matches!(
+        KnowledgeStateHistory::open(
+            concept,
+            vec![foreign.clone()],
+            Vec::new(),
+            Vec::new(),
+            facets(),
+            freshness()?,
+            TimestampMillis::new(i64::try_from(NOW)?),
+        ),
+        Err(KnowledgeStateError::EvidenceNamesAnotherConcept)
+    ));
+
+    // And the same item admitted for *this* concept opens a history, so the
+    // refusal is about the link and not about the item.
+    let own = self::admitted(evidence, "own", &full_dossier(concept))?;
+    let history = KnowledgeStateHistory::open(
+        concept,
+        vec![own],
+        Vec::new(),
+        Vec::new(),
+        facets(),
+        freshness()?,
+        TimestampMillis::new(i64::try_from(NOW)?),
+    )?;
+    assert_eq!(
+        history.current().ok_or("no version")?.mastery_level(),
+        MasteryLevel::Practiced
+    );
+
+    // The same refusal on the proposal path, which is the one a model reaches.
+    assert!(matches!(
+        history.propose(
+            AiProposal::of(
+                model_run_id("run"),
+                concept,
+                MasteryLevel::Applied,
+                Vec::new()
+            ),
+            vec![foreign],
+            Vec::new(),
+            freshness()?,
+            TimestampMillis::new(i64::try_from(LATER)?),
+        ),
+        Err(KnowledgeStateError::EvidenceNamesAnotherConcept)
+    ));
 
     // A known failure is a known outcome: section 13.4 asks whether the outcome
     // is known, not whether it succeeded.
