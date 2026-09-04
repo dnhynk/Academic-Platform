@@ -16,14 +16,17 @@
  *
  * `P2-X7` has since filled the `Evidence & Settings` branch: its four routes
  * take their sections from `evidence-center.ts`, whose six identifiers are
- * compared against `academic_evidence_center::CenterSection`. The rest of the
- * tree is still framed.
+ * compared against `academic_evidence_center::CenterSection`. `P2-X2` has
+ * filled `Home / Today` the same way, from `home.ts`, whose eight identifiers
+ * are compared against `academic_home::HomeGroup`. The rest of the tree is
+ * still framed.
  */
 
 import { breadcrumb, routeOf, type Destination } from "./destinations.js";
 import { renderDrawer, type DrawerPanel, type DrawerState } from "./drawer.js";
 import { entityFor, type EntityRef } from "./entities.js";
 import { EVIDENCE_CENTER_SECTIONS, sectionsForRoute } from "./evidence-center.js";
+import { homeSections } from "./home.js";
 import { backlinksOf } from "./backlinks.js";
 import { ROUTE_MANIFEST, type RouteDefinition } from "./routes.js";
 
@@ -122,6 +125,25 @@ function centerSections(routeId: string): ViewBuilder {
 }
 
 /**
+ * The eight sections `P2-X2` supplies for `Home / Today`.
+ *
+ * The heading and the identifier are `home.ts`'s, which
+ * `the_home_sections_are_the_crates_own` compares against
+ * `academic_home::HomeGroup`. Section 25.2 numbers its eight priorities, and
+ * the order they are returned in is that numbering: nothing is inserted before
+ * the first, which is the shell half of `no_gpa_or_streak_hero_component`.
+ */
+function todaySections(): ViewBuilder {
+  return () => {
+    const sections = homeSections();
+    if (sections.length === 0) {
+      throw new Error("no home section is assigned to the Home / Today route");
+    }
+    return sections.map((section) => frame(section.id, section.heading, "P2-X2"));
+  };
+}
+
+/**
  * The `Evidence & Settings` index: all six sections, each pointing at the child
  * route that shows it.
  *
@@ -150,7 +172,7 @@ function centerIndex(): ViewBuilder {
  * without adding a route fails.
  */
 export const VIEW_BUILDERS: ReadonlyMap<string, ViewBuilder> = new Map<string, ViewBuilder>([
-  ["home", framed("Today", "P2-X2")],
+  ["home", todaySections()],
   ["academic", framed("Academic", "P2-X3")],
   ["academic.dashboard", framed("Academic dashboard", "P2-X3")],
   ["academic.semester-planner", framed("Semester planner", "P2-X3")],
