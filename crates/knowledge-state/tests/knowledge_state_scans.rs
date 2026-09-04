@@ -589,7 +589,7 @@ fn top_level_items(body: &str) -> Vec<String> {
 /// Compared in both directions. A filesystem, clock, process or transport
 /// import appears here as an **extra key** whatever it is called, and a listed
 /// import that is removed appears as a missing one.
-const USE_ITEMS: [(&str, &str); 96] = [
+const USE_ITEMS: [(&str, &str); 94] = [
     ("academic_domain::Actor", "confirmation.rs"),
     ("academic_domain::Claim", "confirmation.rs"),
     ("academic_domain::ClaimObject", "confirmation.rs"),
@@ -603,7 +603,6 @@ const USE_ITEMS: [(&str, &str); 96] = [
     ("academic_domain::EntityId", "confirmation.rs"),
     ("academic_domain::EntityId", "conflict.rs"),
     ("academic_domain::EntityId", "eligibility.rs"),
-    ("academic_domain::EntityId", "evidence.rs"),
     ("academic_domain::EntityId", "history.rs"),
     ("academic_domain::EpistemicStatus", "confirmation.rs"),
     ("academic_domain::EvidenceId", "assertion.rs"),
@@ -631,7 +630,6 @@ const USE_ITEMS: [(&str, &str); 96] = [
         "academic_domain::entity_registry::EntityKind",
         "eligibility.rs",
     ),
-    ("academic_lecture_document::DocumentId", "evidence.rs"),
     ("academic_lecture_document::LectureDocument", "evidence.rs"),
     ("academic_lecture_document::NodeId", "evidence.rs"),
     ("academic_ledger::ConflictReason", "conflict.rs"),
@@ -765,7 +763,7 @@ const FORBIDDEN_CONSTRUCTS: [&str; 14] = [
 ];
 
 /// Every field of every type this crate declares, and what it holds.
-const FIELDS: [(&str, &str, &str, &str); 68] = [
+const FIELDS: [(&str, &str, &str, &str); 67] = [
     ("AiProposal", "concept", "EntityId", "system identifier"),
     (
         "AiProposal",
@@ -932,7 +930,6 @@ const FIELDS: [(&str, &str, &str, &str); 68] = [
         "EvidenceKind",
         "closed vocabulary value",
     ),
-    ("ConceptRef", "id", "EntityId", "system identifier"),
     (
         "ConfirmationRecord",
         "confirmed_at",
@@ -1146,7 +1143,7 @@ const FIELDS: [(&str, &str, &str, &str); 68] = [
     ),
 ];
 
-/// The rest of the same inventory, split only because one array of 135 rows
+/// The rest of the same inventory, split only because one array of 134 rows
 /// is harder to read than two.
 const MORE_FIELDS: [(&str, &str, &str, &str); 67] = [
     (

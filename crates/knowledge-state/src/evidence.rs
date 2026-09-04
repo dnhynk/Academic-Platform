@@ -55,8 +55,8 @@
 //! has only a name has no teaching evidence — the discipline `P2-R4` states as
 //! *`CurrentBasis` cannot be built from a label*.
 
-use academic_domain::{ContentDigest, EntityId, EvidenceId, MasteryLevel, TimestampMillis};
-use academic_lecture_document::{DocumentId, LectureDocument, NodeId};
+use academic_domain::{ContentDigest, EvidenceId, MasteryLevel, TimestampMillis};
+use academic_lecture_document::{LectureDocument, NodeId};
 use academic_repository_classification::{ConceptStance, GoalScope, ObservedProof};
 use serde::{Deserialize, Serialize};
 
@@ -665,30 +665,4 @@ impl BroadSignal {
     pub const fn grade(&self) -> &CourseGradeSignal {
         &self.signal
     }
-}
-
-/// The concept a piece of evidence is about, as the ontology answered it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ConceptRef {
-    id: EntityId,
-}
-
-impl ConceptRef {
-    /// Names a concept.
-    #[must_use]
-    pub const fn new(id: EntityId) -> Self {
-        Self { id }
-    }
-
-    /// The stable identity.
-    #[must_use]
-    pub const fn id(&self) -> EntityId {
-        self.id
-    }
-}
-
-/// A document identifier carried for disclosure, as `P2-L4` spells it.
-#[must_use]
-pub fn document_name(id: &DocumentId) -> String {
-    id.as_str().to_owned()
 }
