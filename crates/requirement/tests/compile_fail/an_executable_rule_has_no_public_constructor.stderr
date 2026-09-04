@@ -1,25 +1,25 @@
 error[E0599]: no associated function or constant named `new` found for struct `ExecutableRule` in the current scope
-  --> tests/compile_fail/an_executable_rule_has_no_public_constructor.rs:35:34
+  --> tests/compile_fail/an_executable_rule_has_no_public_constructor.rs:36:34
    |
-35 |     let _built = ExecutableRule::new(
+36 |     let _built = ExecutableRule::new(
    |                                  ^^^ associated function or constant not found in `ExecutableRule`
    |
 help: there is a method `ne` with a similar name, but with different arguments
   --> $RUST/core/src/cmp.rs
 
 error[E0599]: no method named `push_rule` found for struct `RuleSet` in the current scope
-  --> tests/compile_fail/an_executable_rule_has_no_public_constructor.rs:48:9
+  --> tests/compile_fail/an_executable_rule_has_no_public_constructor.rs:49:9
    |
-48 |     set.push_rule(_built);
+49 |     set.push_rule(_built);
    |         ^^^^^^^^^ method not found in `RuleSet`
 
 error[E0616]: field `rules` of struct `RuleSet` is private
-  --> tests/compile_fail/an_executable_rule_has_no_public_constructor.rs:49:9
+  --> tests/compile_fail/an_executable_rule_has_no_public_constructor.rs:50:9
    |
-49 |     set.rules.push(rule());
+50 |     set.rules.push(rule());
    |         ^^^^^ private field
    |
 help: a method `rules` also exists, call it with parentheses
    |
-49 |     set.rules().push(rule());
+50 |     set.rules().push(rule());
    |              ++

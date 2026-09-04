@@ -794,3 +794,619 @@ fn the_only_defaults_are_empty_collections() -> TestResult {
     assert!(academic_audit::PlannedCoursework::none().is_empty());
     Ok(())
 }
+
+/// The floor the inventory walk must reach, so an empty walk fails as a walk.
+const INVENTORY_FILE_FLOOR: usize = 14;
+
+/// Every function this package declares, as `<file> [vis] <signature>`.
+const DECLARATIONS: &[&str] = &[
+    "examples/emit_harness.rs [priv] fn main() -> Result<(), Box<dyn Error>>",
+    "src/engine.rs [priv] fn academic_facts(facts: &AuditFacts) -> Result<academic_requirement::AcademicFacts, AuditError>",
+    "src/engine.rs [priv] fn assemble( engine: &GraduationAuditEngine, facts: AuditFacts, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<Self, AuditError>",
+    "src/engine.rs [priv] fn build_node( rule: &RuleId, body: &RuleBody, outcome: &RuleOutcome, span: &RuleSourceSpan, transcript: &TranscriptSnapshot, set: &RuleSet, academic: &academic_requirement::AcademicFacts, ) -> Result<AuditNode, AuditError>",
+    "src/engine.rs [priv] fn collect_missing(outcome: &RuleOutcome, missing: &mut Vec<MissingCheck>)",
+    "src/engine.rs [priv] fn engine_id(&self) -> &'static str",
+    "src/engine.rs [priv] fn engine_version(&self) -> EngineVersion",
+    "src/engine.rs [priv] fn evaluate( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, engine_version: EngineVersion, ) -> Result<EngineOutcome, EngineError>",
+    "src/engine.rs [priv] fn fold(leaves: &[ProofLeaf]) -> ProofStatus",
+    "src/engine.rs [priv] fn no_attempt_reason(rule_type: RuleType) -> NoAttemptReason",
+    "src/engine.rs [priv] fn not_fresh(engine: &GraduationAuditEngine, facts: &AuditFacts) -> MissingCheck",
+    "src/engine.rs [priv] fn operand_children( rule: &RuleId, operands: &[Operand], span: &RuleSourceSpan, transcript: &TranscriptSnapshot, set: &RuleSet, academic: &academic_requirement::AcademicFacts, ) -> Result<Vec<AuditNode>, AuditError>",
+    "src/engine.rs [priv] fn outcome_of(status: ProofStatus) -> GraduationOutcome",
+    "src/engine.rs [priv] fn proof_tree( nodes: &[AuditNode], facts: &AuditFacts, inputs: &FrozenInputs, ) -> Result<ProofNode, AuditError>",
+    "src/engine.rs [priv] fn published_values( status: ProofStatus, leaves: &[ProofLeaf], verdict: &DegreeVerdict, ) -> BTreeMap<String, Decimal>",
+    "src/engine.rs [priv] fn render(node: &AuditNode, facts: &AuditFacts) -> Result<ProofNode, AuditError>",
+    "src/engine.rs [priv] fn root_inputs(inputs: &FrozenInputs) -> Result<Vec<InputKey>, AuditError>",
+    "src/engine.rs [priv] fn source_index_digest(facts: &AuditFacts) -> ContentDigest",
+    "src/engine.rs [priv] fn substitution( set: &RuleSet, transcript: &TranscriptSnapshot, academic: &academic_requirement::AcademicFacts, operand: &Operand, ) -> Option<(academic_domain::AttemptId, RuleId)>",
+    "src/engine.rs [pub] fn audit_id(&self) -> Option<AuditId>",
+    "src/engine.rs [pub] fn binding(&self) -> AuditInputBinding",
+    "src/engine.rs [pub] fn canonical_text(self) -> String",
+    "src/engine.rs [pub] fn children(&self) -> &[AuditNode]",
+    "src/engine.rs [pub] fn credit_explanation(&self, rule: &RuleId) -> Option<&CreditExplanation>",
+    "src/engine.rs [pub] fn credit_explanations(&self) -> &[CreditExplanation]",
+    "src/engine.rs [pub] fn digest(self) -> ContentDigest",
+    "src/engine.rs [pub] fn evaluate( engine: &GraduationAuditEngine, inputs: &FrozenInputs, ) -> Result<Self, AuditError>",
+    "src/engine.rs [pub] fn evaluate_audit( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<DegreeAudit, AuditError>",
+    "src/engine.rs [pub] fn frozen_inputs_digest(self) -> ContentDigest",
+    "src/engine.rs [pub] fn leaf(&self) -> &ProofLeaf",
+    "src/engine.rs [pub] fn new(selected: SelectedRuleSet, version: EngineVersion) -> Self",
+    "src/engine.rs [pub] fn node_id(&self) -> &NodeId",
+    "src/engine.rs [pub] fn nodes(&self) -> &[AuditNode]",
+    "src/engine.rs [pub] fn outcome(&self) -> &EngineOutcome",
+    "src/engine.rs [pub] fn profile_digest(self) -> ContentDigest",
+    "src/engine.rs [pub] fn root_status(&self) -> ProofStatus",
+    "src/engine.rs [pub] fn rule_set_hash(&self) -> RuleSetHash",
+    "src/engine.rs [pub] fn rule_set_hash(self) -> RuleSetHash",
+    "src/engine.rs [pub] fn selected(&self) -> &SelectedRuleSet",
+    "src/engine.rs [pub] fn source_index_digest(self) -> ContentDigest",
+    "src/engine.rs [pub] fn transcript(&self) -> &TranscriptSnapshot",
+    "src/engine.rs [pub] fn transcript_digest(self) -> ContentDigest",
+    "src/engine.rs [pub] fn unevaluated(&self) -> &[RuleId]",
+    "src/engine.rs [pub] fn verdict(&self) -> &DegreeVerdict",
+    "src/engine.rs [pub] fn walk(&self) -> Vec<&AuditNode>",
+    "src/engine.rs [pub] fn walk(&self) -> Vec<&Self>",
+    "src/engine.rs [pub] fn with_audit_id(mut self, audit_id: AuditId) -> Self",
+    "src/explain.rs [pub] fn attempt(&self) -> AttemptId",
+    "src/explain.rs [pub] fn build( rule: RuleId, category: CreditCategory, source: RuleSourceSpan, transcript: &TranscriptSnapshot, ) -> Self",
+    "src/explain.rs [pub] fn category(&self) -> &CreditCategory",
+    "src/explain.rs [pub] fn course_code(&self) -> &str",
+    "src/explain.rs [pub] fn included_credits(&self) -> u32",
+    "src/explain.rs [pub] fn is_included(self) -> bool",
+    "src/explain.rs [pub] fn kind(self) -> &'static str",
+    "src/explain.rs [pub] fn lines(&self) -> &[CreditLine]",
+    "src/explain.rs [pub] fn reason_text(self) -> String",
+    "src/explain.rs [pub] fn rule(&self) -> &RuleId",
+    "src/explain.rs [pub] fn source(&self) -> &RuleSourceSpan",
+    "src/explain.rs [pub] fn verdict(&self) -> CreditVerdict",
+    "src/facts.rs [priv] fn count(value: usize) -> Result<i64, AuditError>",
+    "src/facts.rs [priv] fn decode_conflicts(inputs: &FrozenInputs) -> Result<Option<Vec<ConflictReference>>, AuditError>",
+    "src/facts.rs [priv] fn decode_language(token: &str) -> Result<LanguageEvidence, AuditError>",
+    "src/facts.rs [priv] fn decode_profile(inputs: &FrozenInputs) -> Result<StudentProfile, AuditError>",
+    "src/facts.rs [priv] fn decode_reason(token: &str) -> Result<DispositionReason, AuditError>",
+    "src/facts.rs [priv] fn decode_sources(inputs: &FrozenInputs) -> Result<RuleSourceIndex, AuditError>",
+    "src/facts.rs [priv] fn decode_transcript(inputs: &FrozenInputs) -> Result<TranscriptSnapshot, AuditError>",
+    "src/facts.rs [priv] fn digest_from_reference(value: &str) -> Result<ContentDigest, AuditError>",
+    "src/facts.rs [priv] fn digest_reference(digest: ContentDigest) -> String",
+    "src/facts.rs [priv] fn encode_conflicts( conflicts: Option<&[ConflictReference]>, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError>",
+    "src/facts.rs [priv] fn encode_profile( profile: &StudentProfile, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError>",
+    "src/facts.rs [priv] fn encode_sources( sources: &RuleSourceIndex, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError>",
+    "src/facts.rs [priv] fn encode_transcript( transcript: &TranscriptSnapshot, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError>",
+    "src/facts.rs [priv] fn index_count(value: i64) -> Result<usize, AuditError>",
+    "src/facts.rs [priv] fn optional_integer(inputs: &FrozenInputs, key: &str) -> Result<Option<i64>, AuditError>",
+    "src/facts.rs [priv] fn optional_reference(inputs: &FrozenInputs, key: &str) -> Result<Option<String>, AuditError>",
+    "src/facts.rs [priv] fn reference(value: Option<&str>) -> InputValue",
+    "src/facts.rs [priv] fn required_decimal(inputs: &FrozenInputs, key: &str) -> Result<Decimal, AuditError>",
+    "src/facts.rs [priv] fn required_integer(inputs: &FrozenInputs, key: &str) -> Result<i64, AuditError>",
+    "src/facts.rs [priv] fn required_reference(inputs: &FrozenInputs, key: &str) -> Result<String, AuditError>",
+    "src/facts.rs [priv] fn value_of<'inputs>( inputs: &'inputs FrozenInputs, key: &str, ) -> Result<&'inputs InputValue, AuditError>",
+    "src/facts.rs [pub] fn decode(inputs: &FrozenInputs) -> Result<AuditFacts, AuditError>",
+    "src/facts.rs [pub] fn encode(facts: &AuditFacts) -> Result<FrozenInputs, AuditError>",
+    "src/facts.rs [pub] fn entry_keys(index: usize) -> Vec<String>",
+    "src/gate.rs [pub] fn from_rule_gate(gate: RuleGate) -> Option<Self>",
+    "src/gate.rs [pub] fn identifier(self) -> &'static str",
+    "src/gate.rs [pub] fn spec_line(self) -> &'static str",
+    "src/gate.rs [pub] fn statement(self) -> &'static str",
+    "src/leaf.rs [pub] fn as_str(self) -> &'static str",
+    "src/leaf.rs [pub] fn attempts(&self) -> &AttemptUsage",
+    "src/leaf.rs [pub] fn attempts(&self) -> &[AttemptId]",
+    "src/leaf.rs [pub] fn canonical_text(&self) -> String",
+    "src/leaf.rs [pub] fn canonical_text(&self) -> String",
+    "src/leaf.rs [pub] fn equivalency(&self) -> &EquivalencyDecision",
+    "src/leaf.rs [pub] fn is_complete(&self) -> bool",
+    "src/leaf.rs [pub] fn measure(&self) -> Option<Measure>",
+    "src/leaf.rs [pub] fn new( rule: RuleId, source: RuleSourceSpan, attempts: AttemptUsage, equivalency: EquivalencyDecision, rule_type: RuleType, status: ProofStatus, measure: Option<Measure>, open_gate: Option<OpenGate>, rule_gate: Option<RuleGate>, ) -> Self",
+    "src/leaf.rs [pub] fn of(attempts: Vec<AttemptId>, when_empty: NoAttemptReason) -> Self",
+    "src/leaf.rs [pub] fn of(rules: Vec<RuleId>) -> Self",
+    "src/leaf.rs [pub] fn open_gate(&self) -> Option<OpenGate>",
+    "src/leaf.rs [pub] fn rule(&self) -> &RuleId",
+    "src/leaf.rs [pub] fn rule_gate(&self) -> Option<RuleGate>",
+    "src/leaf.rs [pub] fn rule_type(&self) -> RuleType",
+    "src/leaf.rs [pub] fn rules(&self) -> &[RuleId]",
+    "src/leaf.rs [pub] fn source(&self) -> &RuleSourceSpan",
+    "src/leaf.rs [pub] fn status(&self) -> ProofStatus",
+    "src/plan.rs [pub] fn as_str(self) -> &'static str",
+    "src/plan.rs [pub] fn course_codes(&self) -> impl Iterator<Item = &str>",
+    "src/plan.rs [pub] fn from_scenario(scenario: &PlanScenario) -> Self",
+    "src/plan.rs [pub] fn intended_term(&self, course_code: &str) -> Option<TermKey>",
+    "src/plan.rs [pub] fn is_empty(&self) -> bool",
+    "src/plan.rs [pub] fn new( audit: &'audit crate::engine::DegreeAudit, plan: &'audit PlannedCoursework, ) -> Self",
+    "src/plan.rs [pub] fn none() -> Self",
+    "src/plan.rs [pub] fn note_for(&self, course_code: &str) -> PlanNote",
+    "src/plan.rs [pub] fn planned_only(&self) -> Vec<&'audit str>",
+    "src/profile.rs [priv] fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result",
+    "src/profile.rs [priv] fn is_identifier(value: &str) -> bool",
+    "src/profile.rs [priv] fn render<T>(value: Option<&T>, accessor: fn(&T) -> &str) -> String",
+    "src/profile.rs [priv] fn rendered_field(&self, field: ProfileField) -> String",
+    "src/profile.rs [priv] fn unknown() -> String",
+    "src/profile.rs [pub] fn action(self) -> &'static str",
+    "src/profile.rs [pub] fn additional_majors(&self) -> &Recorded<Vec<ProgrammeId>>",
+    "src/profile.rs [pub] fn admission_year(&self) -> &Recorded<AdmissionYear>",
+    "src/profile.rs [pub] fn as_str(&self) -> &str",
+    "src/profile.rs [pub] fn as_str(self) -> &'static str",
+    "src/profile.rs [pub] fn as_str(self) -> &'static str",
+    "src/profile.rs [pub] fn canonical_text(&self) -> String",
+    "src/profile.rs [pub] fn college(&self) -> &Recorded<InstitutionId>",
+    "src/profile.rs [pub] fn degree_mode(&self) -> &Recorded<DegreeMode>",
+    "src/profile.rs [pub] fn department(&self) -> &Recorded<InstitutionId>",
+    "src/profile.rs [pub] fn digest(&self) -> ContentDigest",
+    "src/profile.rs [pub] fn dimension(self) -> SelectorDimension",
+    "src/profile.rs [pub] fn exception_approvals(&self) -> &Recorded<Vec<ApprovalFact>>",
+    "src/profile.rs [pub] fn exchange_or_transfer(&self) -> &Recorded<ExchangeOrTransfer>",
+    "src/profile.rs [pub] fn gate(self) -> Option<OpenGate>",
+    "src/profile.rs [pub] fn graduation_standard(&self) -> &Recorded<GraduationStandard>",
+    "src/profile.rs [pub] fn is_known(&self) -> bool",
+    "src/profile.rs [pub] fn is_recorded(&self, field: ProfileField) -> bool",
+    "src/profile.rs [pub] fn known(&self) -> Option<&T>",
+    "src/profile.rs [pub] fn narrows_the_catalogue(self) -> bool",
+    "src/profile.rs [pub] fn new(value: &str) -> Result<Self, AuditError>",
+    "src/profile.rs [pub] fn spec_key(self) -> Option<&'static str>",
+    "src/profile.rs [pub] fn spec_word(self) -> &'static str",
+    "src/profile.rs [pub] fn spec_words(self) -> &'static str",
+    "src/profile.rs [pub] fn university(&self) -> &Recorded<InstitutionId>",
+    "src/profile.rs [pub] fn unrecorded() -> Self",
+    "src/profile.rs [pub] fn with_additional_majors(mut self, value: Vec<ProgrammeId>) -> Self",
+    "src/profile.rs [pub] fn with_admission_year(mut self, value: AdmissionYear) -> Self",
+    "src/profile.rs [pub] fn with_college(mut self, value: InstitutionId) -> Self",
+    "src/profile.rs [pub] fn with_degree_mode(mut self, value: DegreeMode) -> Self",
+    "src/profile.rs [pub] fn with_department(mut self, value: InstitutionId) -> Self",
+    "src/profile.rs [pub] fn with_exception_approvals(mut self, value: Vec<ApprovalFact>) -> Self",
+    "src/profile.rs [pub] fn with_exchange_or_transfer(mut self, value: ExchangeOrTransfer) -> Self",
+    "src/profile.rs [pub] fn with_graduation_standard(mut self, value: GraduationStandard) -> Self",
+    "src/profile.rs [pub] fn with_university(mut self, value: InstitutionId) -> Self",
+    "src/select.rs [priv] fn render(value: Option<&InstitutionId>) -> String",
+    "src/select.rs [priv] fn rendered_profile(profile: &StudentProfile) -> String",
+    "src/select.rs [pub] fn admission_year(&self) -> AdmissionYear",
+    "src/select.rs [pub] fn canonical_text(&self) -> String",
+    "src/select.rs [pub] fn category(&self) -> &CreditCategory",
+    "src/select.rs [pub] fn college(&self) -> &InstitutionId",
+    "src/select.rs [pub] fn covers(&self, profile: &StudentProfile) -> Option<bool>",
+    "src/select.rs [pub] fn department(&self) -> &InstitutionId",
+    "src/select.rs [pub] fn entries(&self) -> &[CatalogEntry]",
+    "src/select.rs [pub] fn floors(&self) -> &[CommonRuleExample]",
+    "src/select.rs [pub] fn major_mode(&self) -> DegreeMode",
+    "src/select.rs [pub] fn missing(&self) -> &[MissingCheck]",
+    "src/select.rs [pub] fn new( university: InstitutionId, college: InstitutionId, department: InstitutionId, admission_year: AdmissionYear, standard_from: GraduationStandard, standard_to: GraduationStandard, major_mode: DegreeMode, ) -> Result<Self, AuditError>",
+    "src/select.rs [pub] fn new() -> Self",
+    "src/select.rs [pub] fn new(scope: RuleSetScope, rules: RuleSet) -> Self",
+    "src/select.rs [pub] fn of(rules: &RuleSet) -> Result<Self, AuditError>",
+    "src/select.rs [pub] fn rule(&self) -> &RuleId",
+    "src/select.rs [pub] fn rules(&self) -> &RuleSet",
+    "src/select.rs [pub] fn rules(&self) -> &RuleSet",
+    "src/select.rs [pub] fn scope(&self) -> &RuleSetScope",
+    "src/select.rs [pub] fn scope(&self) -> &RuleSetScope",
+    "src/select.rs [pub] fn select(profile: &StudentProfile, catalog: &RuleSetCatalog) -> Selection",
+    "src/select.rs [pub] fn selected(&self) -> Option<&SelectedRuleSet>",
+    "src/select.rs [pub] fn standard_range(&self) -> (&GraduationStandard, &GraduationStandard)",
+    "src/select.rs [pub] fn threshold(&self) -> u16",
+    "src/select.rs [pub] fn university(&self) -> &InstitutionId",
+    "src/select.rs [pub] fn version(&self) -> RuleSetVersion",
+    "src/select.rs [pub] fn with(mut self, entry: CatalogEntry) -> Self",
+    "src/source.rs [pub] fn artifact(&self) -> ArtifactId",
+    "src/source.rs [pub] fn canonical_text(&self) -> String",
+    "src/source.rs [pub] fn entries(&self) -> impl Iterator<Item = (&RuleId, &RuleSourceSpan)>",
+    "src/source.rs [pub] fn locators(&self) -> Vec<SourceLocator>",
+    "src/source.rs [pub] fn new( artifact: ArtifactId, source_digest: ContentDigest, page: u32, paragraph_start: u64, paragraph_end: u64, ) -> Result<Self, AuditError>",
+    "src/source.rs [pub] fn new() -> Self",
+    "src/source.rs [pub] fn page(&self) -> u32",
+    "src/source.rs [pub] fn paragraph(&self) -> (u64, u64)",
+    "src/source.rs [pub] fn source_digest(&self) -> ContentDigest",
+    "src/source.rs [pub] fn span(&self, rule: &RuleId) -> Option<&RuleSourceSpan>",
+    "src/source.rs [pub] fn with(mut self, rule: RuleId, span: RuleSourceSpan) -> Self",
+    "src/transcript.rs [priv] fn admission_text(&self) -> String",
+    "src/transcript.rs [priv] fn as_attempt(entity: EntityId) -> Option<AttemptId>",
+    "src/transcript.rs [priv] fn as_entity(attempt: AttemptId) -> Result<EntityId, AuditError>",
+    "src/transcript.rs [priv] fn canonical_text(&self) -> String",
+    "src/transcript.rs [priv] fn category_text(&self) -> String",
+    "src/transcript.rs [priv] fn decoded( attempt: AttemptId, course_code: String, course: CourseId, term: TermKey, record_status: RecordAttemptStatus, admission: EntryAdmission, categories: Vec<CreditCategory>, area: Option<AreaId>, is_major: bool, language: LanguageEvidence, ) -> Self",
+    "src/transcript.rs [priv] fn decoded( entries: Vec<TranscriptEntry>, readings: BTreeMap<String, GpaReading>, ) -> Self",
+    "src/transcript.rs [priv] fn language_token(language: LanguageEvidence) -> &'static str",
+    "src/transcript.rs [priv] fn reading_over<'a>( dispositions: impl Iterator<Item = &'a AttemptDisposition>, ) -> Result<Option<GpaReading>, AuditError>",
+    "src/transcript.rs [priv] fn reason_token(reason: DispositionReason) -> &'static str",
+    "src/transcript.rs [priv] fn rendered(value: Decimal) -> String",
+    "src/transcript.rs [priv] fn term_ordinal(term: TermKey) -> TermOrdinal",
+    "src/transcript.rs [priv] fn whole_credits(credits: Decimal, attempt: AttemptId) -> Result<CreditAmount, AuditError>",
+    "src/transcript.rs [priv] fn whole_denominator(credits: Decimal) -> Result<u32, AuditError>",
+    "src/transcript.rs [priv] fn whole_units(value: Decimal) -> Option<i128>",
+    "src/transcript.rs [pub] fn admission(&self) -> EntryAdmission",
+    "src/transcript.rs [pub] fn area(&self) -> Option<&AreaId>",
+    "src/transcript.rs [pub] fn as_rule_fact(&self) -> Result<AttemptFact, AuditError>",
+    "src/transcript.rs [pub] fn as_str(self) -> &'static str",
+    "src/transcript.rs [pub] fn attempt(&self) -> AttemptId",
+    "src/transcript.rs [pub] fn canonical_text(&self) -> String",
+    "src/transcript.rs [pub] fn categories(&self) -> &[CreditCategory]",
+    "src/transcript.rs [pub] fn course(&self) -> CourseId",
+    "src/transcript.rs [pub] fn course_code(&self) -> &str",
+    "src/transcript.rs [pub] fn digest(&self) -> ContentDigest",
+    "src/transcript.rs [pub] fn entries(&self) -> &[TranscriptEntry]",
+    "src/transcript.rs [pub] fn facts(&self, course_code: &str) -> Option<&CourseRequirementFacts>",
+    "src/transcript.rs [pub] fn from_record( history: &AttemptHistory, classification: &ClassificationRuleSet, rules: &RuleBook, primary_program: &RecordProgramId, courses: &CourseFactsIndex, ) -> Result<Self, AuditError>",
+    "src/transcript.rs [pub] fn is_major(&self) -> bool",
+    "src/transcript.rs [pub] fn language(&self) -> LanguageEvidence",
+    "src/transcript.rs [pub] fn new() -> Self",
+    "src/transcript.rs [pub] fn pending(&self) -> Vec<&TranscriptEntry>",
+    "src/transcript.rs [pub] fn reading(&self, scope: &GpaScope) -> Option<GpaReading>",
+    "src/transcript.rs [pub] fn readings(&self) -> impl Iterator<Item = (&String, &GpaReading)>",
+    "src/transcript.rs [pub] fn reason(self) -> DispositionReason",
+    "src/transcript.rs [pub] fn record_status(&self) -> RecordAttemptStatus",
+    "src/transcript.rs [pub] fn rule_status(&self) -> RuleAttemptStatus",
+    "src/transcript.rs [pub] fn term(&self) -> TermKey",
+    "src/transcript.rs [pub] fn with(mut self, course_code: impl Into<String>, facts: CourseRequirementFacts) -> Self",
+    "src/verdict.rs [priv] fn coverage_refuses_an_empty_leaf_set()",
+    "src/verdict.rs [priv] fn decoded( rule: String, left_connector: String, right_connector: String, resolved: bool, ) -> Self",
+    "src/verdict.rs [priv] fn establish( leaves: &[ProofLeaf], cases: Option<&[&ConflictReference]>, ) -> Option<Self>",
+    "src/verdict.rs [priv] fn establish( policy: Option<SourceFreshnessPolicy>, retrieved_at: RetrievalInstant, as_of: TimestampMillis, ) -> Option<Self>",
+    "src/verdict.rs [priv] fn establish(leaves: &[ProofLeaf], unevaluated: &[RuleId]) -> Option<Self>",
+    "src/verdict.rs [priv] fn freshness_refuses_a_retrieval_after_the_audit_instant()",
+    "src/verdict.rs [priv] fn from_checks(missing: Vec<MissingCheck>) -> Option<Self>",
+    "src/verdict.rs [priv] fn new( outcome: GraduationOutcome, coverage: CoverageWitness, conflict_free: ConflictFreeWitness, freshness: FreshnessWitness, ) -> Self",
+    "src/verdict.rs [priv] fn new(first: MissingCheck, rest: Vec<MissingCheck>) -> Self",
+    "src/verdict.rs [priv] fn the_conflict_gate_separates_an_unread_store_from_an_empty_one()",
+    "src/verdict.rs [pub] fn action(&self) -> String",
+    "src/verdict.rs [pub] fn age_seconds(self) -> u64",
+    "src/verdict.rs [pub] fn as_str(&self) -> &'static str",
+    "src/verdict.rs [pub] fn as_str(self) -> &'static str",
+    "src/verdict.rs [pub] fn canonical_text(&self) -> String",
+    "src/verdict.rs [pub] fn cases_examined(self) -> usize",
+    "src/verdict.rs [pub] fn conflict_free(self) -> ConflictFreeWitness",
+    "src/verdict.rs [pub] fn coverage(self) -> CoverageWitness",
+    "src/verdict.rs [pub] fn determinate(&self) -> Option<DeterminateVerdict>",
+    "src/verdict.rs [pub] fn dimension(&self) -> Option<SelectorDimension>",
+    "src/verdict.rs [pub] fn freshness(self) -> FreshnessWitness",
+    "src/verdict.rs [pub] fn is_resolved(&self) -> bool",
+    "src/verdict.rs [pub] fn kind(&self) -> &'static str",
+    "src/verdict.rs [pub] fn left_connector(&self) -> &str",
+    "src/verdict.rs [pub] fn limit_seconds(self) -> u64",
+    "src/verdict.rs [pub] fn max_age_seconds(max_age_seconds: u64) -> Self",
+    "src/verdict.rs [pub] fn missing(&self) -> &[MissingCheck]",
+    "src/verdict.rs [pub] fn missing(&self) -> &[MissingCheck]",
+    "src/verdict.rs [pub] fn of(case: &ConflictCase) -> Self",
+    "src/verdict.rs [pub] fn outcome(self) -> GraduationOutcome",
+    "src/verdict.rs [pub] fn right_connector(&self) -> &str",
+    "src/verdict.rs [pub] fn rule(&self) -> &str",
+    "src/verdict.rs [pub] fn rules_covered(self) -> usize",
+];
+
+/// Every `impl` block header this package ships, as `<file>: <header>`.
+const IMPL_HEADERS: &[&str] = &[
+    "src/engine.rs: impl AuditInputBinding",
+    "src/engine.rs: impl AuditNode",
+    "src/engine.rs: impl DegreeAudit",
+    "src/engine.rs: impl DeterministicEngine for GraduationAuditEngine",
+    "src/engine.rs: impl GraduationAuditEngine",
+    "src/explain.rs: impl CreditExplanation",
+    "src/explain.rs: impl CreditLine",
+    "src/explain.rs: impl CreditVerdict",
+    "src/facts.rs: impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError>",
+    "src/facts.rs: impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError>",
+    "src/facts.rs: impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError>",
+    "src/facts.rs: impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError>",
+    "src/gate.rs: impl OpenGate",
+    "src/leaf.rs: impl AttemptUsage",
+    "src/leaf.rs: impl EquivalencyDecision",
+    "src/leaf.rs: impl NoAttemptReason",
+    "src/leaf.rs: impl ProofLeaf",
+    "src/plan.rs: impl Iterator<Item = &str>",
+    "src/plan.rs: impl PlanNote",
+    "src/plan.rs: impl PlannedCoursework",
+    "src/plan.rs: impl<'audit> PlanAnnotatedView<'audit>",
+    "src/profile.rs: impl $name",
+    "src/profile.rs: impl DegreeMode",
+    "src/profile.rs: impl ProfileField",
+    "src/profile.rs: impl SelectorDimension",
+    "src/profile.rs: impl StudentProfile",
+    "src/profile.rs: impl core::fmt::Display for $name",
+    "src/profile.rs: impl<T> Recorded<T>",
+    "src/select.rs: impl CatalogEntry",
+    "src/select.rs: impl CommonRuleExample",
+    "src/select.rs: impl CommonRuleExamples",
+    "src/select.rs: impl RuleSetCatalog",
+    "src/select.rs: impl RuleSetScope",
+    "src/select.rs: impl SelectedRuleSet",
+    "src/select.rs: impl Selection",
+    "src/source.rs: impl Iterator<Item = (&RuleId, &RuleSourceSpan)>",
+    "src/source.rs: impl RuleSourceIndex",
+    "src/source.rs: impl RuleSourceSpan",
+    "src/transcript.rs: impl CourseFactsIndex",
+    "src/transcript.rs: impl EntryAdmission",
+    "src/transcript.rs: impl Into<String>, facts: CourseRequirementFacts) -> Self",
+    "src/transcript.rs: impl Iterator<Item = &'a AttemptDisposition>, ) -> Result<Option<GpaReading>, AuditError>",
+    "src/transcript.rs: impl Iterator<Item = (&String, &GpaReading)>",
+    "src/transcript.rs: impl TranscriptEntry",
+    "src/transcript.rs: impl TranscriptSnapshot",
+    "src/verdict.rs: impl ConflictFreeWitness",
+    "src/verdict.rs: impl ConflictReference",
+    "src/verdict.rs: impl CoverageWitness",
+    "src/verdict.rs: impl DegreeVerdict",
+    "src/verdict.rs: impl DeterminateVerdict",
+    "src/verdict.rs: impl FreshnessWitness",
+    "src/verdict.rs: impl GraduationOutcome",
+    "src/verdict.rs: impl IndeterminateVerdict",
+    "src/verdict.rs: impl MissingCheck",
+    "src/verdict.rs: impl SourceFreshnessPolicy",
+];
+
+// ---------------------------------------------------------------------------
+// every_declaration_and_impl_in_this_crate_is_pinned
+// ---------------------------------------------------------------------------
+//
+// `P2-A3` measured this crate's blind spot directly: four `impl From<..>` blocks
+// appended to a product file gave an external crate a route to a value the
+// crate's own doc says has one construction site, and every acceptance test in
+// this crate stayed green. A `trait impl` declares no `pub fn`, so a scan built
+// on public signatures does not see it, and no scan here counted `impl` blocks
+// at all.
+//
+// `P2-X5` measured the same class as six invisible injections out of nineteen,
+// and `P2-Y3` closed it in `crates/cs-map` by pinning the whole set of `impl`
+// headers. `academic-review` and `academic-ingestion` were the only two U crates
+// carrying that defence. This is it, ported: two whole sets, compared in both
+// directions, over every `.rs` file this package ships.
+//
+// It is deliberately not a list of forbidden spellings. A new function, a new
+// method, a new inherent `impl`, a new trait `impl` and a new file all fail as
+// an entry nobody wrote down, whatever they are called.
+
+/// Every `.rs` file this package ships: everything outside `tests`.
+///
+/// The whole package rather than `src`, because `S-12` in
+/// `docs/contracts/policy-source-scans.md` is the row about a walk that reads
+/// `<crate>/src` and stops seeing product-shaped code beside it --
+/// `examples/`, `benches/` and `probes/` are all compiled by
+/// `cargo clippy --workspace --all-targets`.
+fn inventory_sources() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
+    let base = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mut found = Vec::new();
+    let mut pending = vec![base.clone()];
+    while let Some(directory) = pending.pop() {
+        for entry in std::fs::read_dir(&directory)? {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
+                if path
+                    .file_name()
+                    .is_some_and(|name| name == "tests" || name == "target")
+                {
+                    continue;
+                }
+                pending.push(path);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let name = path
+                    .strip_prefix(&base)?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                found.push((name, std::fs::read_to_string(&path)?));
+            }
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// Removes comments, string literals and character literals.
+///
+/// The raw-string-aware reader from `crates/record/tests/record_scans.rs`,
+/// copied deliberately: `P2-G4` found that a lexer without raw strings
+/// desynchronizes and reads every literal after one as code.
+fn inventory_strip(source: &str) -> String {
+    let bytes: Vec<char> = source.chars().collect();
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let current = bytes[index];
+        let next = bytes.get(index + 1).copied();
+
+        if current == '/' && next == Some('/') {
+            while index < bytes.len() && bytes[index] != '\n' {
+                index += 1;
+            }
+            out.push('\n');
+            continue;
+        }
+        if current == '/' && next == Some('*') {
+            let mut depth = 1_usize;
+            index += 2;
+            while index < bytes.len() && depth > 0 {
+                if bytes[index] == '/' && bytes.get(index + 1) == Some(&'*') {
+                    depth += 1;
+                    index += 2;
+                } else if bytes[index] == '*' && bytes.get(index + 1) == Some(&'/') {
+                    depth -= 1;
+                    index += 2;
+                } else {
+                    index += 1;
+                }
+            }
+            out.push(' ');
+            continue;
+        }
+        if current == 'r' && matches!(next, Some('"') | Some('#')) {
+            let mut probe = index + 1;
+            let mut hashes = 0_usize;
+            while bytes.get(probe) == Some(&'#') {
+                hashes += 1;
+                probe += 1;
+            }
+            if bytes.get(probe) == Some(&'"') {
+                let terminator: String = core::iter::once('"')
+                    .chain(core::iter::repeat_n('#', hashes))
+                    .collect();
+                let rest: String = bytes[probe + 1..].iter().collect();
+                let end = rest.find(&terminator).map_or(bytes.len(), |offset| {
+                    probe + 1 + rest[..offset].chars().count() + terminator.chars().count()
+                });
+                index = end;
+                out.push(' ');
+                continue;
+            }
+        }
+        if current == '"' {
+            index += 1;
+            while index < bytes.len() {
+                if bytes[index] == '\\' {
+                    index += 2;
+                    continue;
+                }
+                if bytes[index] == '"' {
+                    index += 1;
+                    break;
+                }
+                index += 1;
+            }
+            out.push(' ');
+            continue;
+        }
+        if current == '\'' {
+            let closes = if next == Some('\\') {
+                bytes
+                    .iter()
+                    .skip(index + 2)
+                    .position(|character| *character == '\'')
+                    .map(|offset| index + 2 + offset)
+            } else {
+                (bytes.get(index + 2) == Some(&'\'')).then_some(index + 2)
+            };
+            if let Some(end) = closes {
+                index = end + 1;
+                out.push(' ');
+                continue;
+            }
+        }
+        out.push(current);
+        index += 1;
+    }
+    out
+}
+
+/// Collapses whitespace runs to single spaces.
+fn inventory_collapse(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Every function declaration in `code`, as a public flag and a signature.
+///
+/// Visibility is read off the text before `fn` on the same line: `pub(` is
+/// crate-private however it continues, a bare `pub` is public, anything else is
+/// private. Reading **signatures** rather than names is what makes the pin a
+/// statement about what a function takes and returns, so a widened parameter
+/// fails as loudly as a new function.
+///
+/// The `>` of a `->` is skipped: `crates/review`'s copy of this reader records
+/// that treating it as a closing bracket truncated `fn counts(self) -> [u32; 5]`
+/// to `fn counts(self) -> [u32`, and a pin on a truncated signature is a pin two
+/// different signatures satisfy.
+fn inventory_declarations(code: &str) -> Vec<(bool, String)> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("fn ") {
+        if !(at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_')) {
+            continue;
+        }
+        let line_start = code[..at].rfind('\n').map_or(0, |index| index + 1);
+        let prefix = &code[line_start..at];
+        let public = prefix.contains("pub") && !prefix.contains("pub(");
+        let mut depth = 0_i32;
+        let mut end = None;
+        let region = &code[at..];
+        let region_bytes = region.as_bytes();
+        for (offset, character) in region.char_indices() {
+            match character {
+                '(' | '<' | '[' => depth += 1,
+                '>' if offset > 0 && region_bytes[offset - 1] == b'-' => {}
+                ')' | '>' | ']' => depth -= 1,
+                '{' | ';' if depth <= 0 => {
+                    end = Some(at + offset);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if let Some(end) = end {
+            found.push((public, inventory_collapse(&code[at..end])));
+        }
+    }
+    found
+}
+
+/// Every `impl` block header in `code`, whole.
+///
+/// The header is everything from `impl` to the opening brace, so
+/// `impl From<usize> for CoverageWitness` and `impl CoverageWitness` are
+/// different entries and a trait implementation cannot arrive as an edit to an
+/// inherent one.
+fn inventory_impl_headers(code: &str) -> Vec<String> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("impl") {
+        if at > 0 && (bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_') {
+            continue;
+        }
+        if code[at + 4..]
+            .starts_with(|character: char| character.is_alphanumeric() || character == '_')
+        {
+            continue;
+        }
+        let Some(end) = code[at..].find(['{', ';']) else {
+            continue;
+        };
+        found.push(inventory_collapse(&code[at..at + end]));
+    }
+    found
+}
+
+/// Nothing this crate declares is outside the two pinned sets.
+///
+/// Two whole sets, each compared in both directions:
+///
+/// 1. every function declaration this package ships, as a file, a visibility
+///    and a full signature;
+/// 2. every `impl` block header this package ships, as a file and a header.
+///
+/// The second is the one `P2-A3` walked through. Its injection was four
+/// `impl From<..>` blocks in a product file -- no `pub fn`, no new name on any
+/// forbidden list, no change to any other file -- and it handed an external
+/// crate a value the crate's own documentation says it cannot construct. There
+/// is no spelling of that injection that this test does not see, because it does
+/// not look for spellings: it compares the set.
+#[test]
+fn every_declaration_and_impl_in_this_crate_is_pinned() -> TestResult {
+    let sources = inventory_sources()?;
+    assert!(
+        sources.len() >= INVENTORY_FILE_FLOOR,
+        "the inventory walk read only {} files",
+        sources.len()
+    );
+
+    let mut declared = Vec::new();
+    let mut headers = Vec::new();
+    for (name, text) in &sources {
+        let code = inventory_strip(text);
+        for (public, signature) in inventory_declarations(&code) {
+            let visibility = if public { "pub" } else { "priv" };
+            declared.push(format!("{name} [{visibility}] {signature}"));
+        }
+        for header in inventory_impl_headers(&code) {
+            headers.push(format!("{name}: {header}"));
+        }
+    }
+    declared.sort();
+    headers.sort();
+
+    assert_eq!(
+        declared,
+        DECLARATIONS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's declaration set changed"
+    );
+    assert_eq!(
+        headers,
+        IMPL_HEADERS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's impl inventory changed"
+    );
+    Ok(())
+}

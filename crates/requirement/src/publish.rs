@@ -37,7 +37,10 @@
 
 use std::collections::BTreeMap;
 
-use academic_domain::{ContentDigest, CurriculumVersionId, RequirementSetId, engines::ProofStatus};
+use academic_domain::{
+    ContentDigest, CurriculumVersionId, RequirementSetId,
+    engines::{ProofStatus, RuleId as SourceRuleId},
+};
 use academic_ingestion::{
     dating::EffectiveDate,
     identifier::ConnectorId,
@@ -135,6 +138,7 @@ impl OfficialSourceBinding {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutableRule {
     id: RuleId,
+    source_rule: SourceRuleId,
     body: RuleBody,
     source_digest: ContentDigest,
 }
@@ -144,6 +148,19 @@ impl ExecutableRule {
     #[must_use]
     pub const fn id(&self) -> &RuleId {
         &self.id
+    }
+
+    /// The identifier the official document this rule was read from gives it.
+    ///
+    /// Not the same namespace as [`ExecutableRule::id`], which is the
+    /// identifier the reviewer chose inside the set. `RuleSetDraft::include`
+    /// refuses a rule whose `source_rule` the official source did not publish,
+    /// so this is a value bound to the document rather than a second spelling
+    /// somebody typed -- which is what `academic-audit`'s conflict gate needs
+    /// in order to say whether a conflict case is about this set at all.
+    #[must_use]
+    pub const fn source_rule(&self) -> &SourceRuleId {
+        &self.source_rule
     }
 
     /// The compiled body.
@@ -233,6 +250,11 @@ pub struct RuleSetDraft {
     version: RuleSetVersion,
     supersedes: Option<RuleSetVersion>,
     source: OfficialSourceBinding,
+    /// The rule identifiers the official source published, kept for the whole
+    /// life of the draft so `include` can bind each admitted rule to one. It
+    /// does not travel onto [`RuleSet`]: what the published set needs is the
+    /// binding on each rule, not the document's index.
+    source_rules: Vec<SourceRuleId>,
     rules: Vec<ExecutableRule>,
 }
 
@@ -257,6 +279,7 @@ impl RuleSetDraft {
                 retrieved_at: published.retrieved_at(),
                 parser_version: published.parser_version(),
             },
+            source_rules: published.rules().to_vec(),
             rules: Vec::new(),
         }
     }
@@ -283,8 +306,19 @@ impl RuleSetDraft {
                 rule: reviewed.id().as_str().to_owned(),
             });
         }
+        if !self
+            .source_rules
+            .iter()
+            .any(|published| published == reviewed.source_rule())
+        {
+            return Err(RequirementError::SourceRuleNotPublished {
+                rule: reviewed.id().as_str().to_owned(),
+                source_rule: reviewed.source_rule().as_str().to_owned(),
+            });
+        }
         let rule = ExecutableRule {
             id: reviewed.id().clone(),
+            source_rule: reviewed.source_rule().clone(),
             body: reviewed.body().clone(),
             source_digest: reviewed.source_digest(),
         };
@@ -325,16 +359,38 @@ impl RuleSetDraft {
     }
 
     /// Freezes the draft into an immutable rule set.
-    #[must_use]
-    pub fn publish(self) -> RuleSet {
-        RuleSet {
+    ///
+    /// # A set with no rule is refused
+    ///
+    /// Section 11.4 makes `DETERMINATE` conditional on *rule coverage 100%*,
+    /// and coverage over no rule is the vacuous witness
+    /// `academic_audit::CoverageWitness::establish` refuses eleven lines above
+    /// its own conflict counterpart. A published set with no rule was
+    /// accepted here, selected by `academic-audit`, and audited: the tree had
+    /// no leaf, so the coverage gate refused, and the audit had **no
+    /// outstanding check to name** -- it reported
+    /// `SOURCE_FRESHNESS_POLICY_ABSENT` to a user who had recorded the
+    /// freshness criterion, telling them to record what they had already
+    /// recorded. Deleting the two guards that stop the same set answering
+    /// 졸업 가능 outright left the whole `academic-audit` suite green.
+    ///
+    /// The reason code was the symptom. This is the state: a requirement set
+    /// that requires nothing is not a lenient set, it is not a set.
+    pub fn publish(self) -> Result<RuleSet, RequirementError> {
+        if self.rules.is_empty() {
+            return Err(RequirementError::EmptyRuleSet {
+                set: self.set_id.to_string(),
+                version: self.version.to_string(),
+            });
+        }
+        Ok(RuleSet {
             set_id: self.set_id,
             curriculum_version: self.curriculum_version,
             version: self.version,
             supersedes: self.supersedes,
             source: self.source,
             rules: self.rules,
-        }
+        })
     }
 }
 
@@ -388,6 +444,15 @@ impl RuleSet {
         self.rules.iter().map(|rule| (rule.id(), rule.body()))
     }
 
+    /// Every rule whole, including the document identifier it is bound to.
+    ///
+    /// [`RuleSet::rules`] is the pair an evaluation needs; this is what a
+    /// caller needs in order to ask whether something said about the official
+    /// document is about a rule in this set.
+    pub fn executable_rules(&self) -> impl Iterator<Item = &ExecutableRule> {
+        self.rules.iter()
+    }
+
     /// One rule by identifier.
     #[must_use]
     pub fn rule(&self, id: &RuleId) -> Option<&ExecutableRule> {
@@ -418,6 +483,34 @@ impl RuleSet {
     /// A total function of the set's content, in a fixed order, with no clock
     /// and no host in it, so two independently constructed sets with the same
     /// content have the same hash.
+    ///
+    /// # It is every field, not the ones that look like identity
+    ///
+    /// This rendering used to carry the set's identifiers, each rule's
+    /// identifier, rule type and source digest, and the source's effective
+    /// date -- and nothing else. Two things a verdict depends on were outside
+    /// it, and both were measured:
+    ///
+    /// * **The rule bodies.** Two sets differing only in `CREDIT_MINIMUM`'s
+    ///   threshold hashed the same and answered 졸업 불가 and 졸업 가능. The
+    ///   stricter audit's recorded hash replayed against the laxer bodies and
+    ///   was accepted.
+    /// * **The rest of the source binding.** `retrieved_at` is what
+    ///   `academic-audit`'s freshness gate reads. Two sets differing only in it
+    ///   hashed the same and answered `DETERMINATE POSSIBLE` and
+    ///   `INDETERMINATE [SOURCE_NOT_FRESH]`, and the fresh audit's recorded
+    ///   hash replayed against the stale source and was accepted.
+    ///
+    /// So the rule is not "the fields that decide a verdict today" -- that is a
+    /// judgement a later reader has to make again, and it was made wrongly
+    /// twice here. The rule is **every field of [`RuleSet`]**: its six own
+    /// fields, all four of [`OfficialSourceBinding`]'s, and all three of
+    /// [`ExecutableRule`]'s including the body, which
+    /// [`RuleBody::canonical_text`] renders totally.
+    /// `every_rule_set_field_moves_the_hash` moves each of them in turn, and
+    /// `the_canonical_text_covers_every_field_of_the_rule_set` compares the
+    /// field sets themselves so a field added to any of the three types has to
+    /// arrive here.
     #[must_use]
     pub fn canonical_text(&self) -> String {
         let mut rendered = String::new();
@@ -436,16 +529,39 @@ impl RuleSet {
             None => rendered.push_str("none"),
         }
         rendered.push('\n');
+        let OfficialSourceBinding {
+            connector,
+            effective,
+            retrieved_at,
+            parser_version,
+        } = &self.source;
+        rendered.push_str("connector ");
+        rendered.push_str(connector.as_str());
+        rendered.push('\n');
         rendered.push_str("effective ");
-        rendered.push_str(&self.source.effective.to_string());
+        rendered.push_str(&effective.to_string());
+        rendered.push('\n');
+        rendered.push_str("retrieved_at ");
+        rendered.push_str(&retrieved_at.seconds().to_string());
+        rendered.push('\n');
+        rendered.push_str("parser_version ");
+        rendered.push_str(&parser_version.get().to_string());
         rendered.push('\n');
         for rule in &self.rules {
+            let ExecutableRule {
+                id,
+                source_rule,
+                body,
+                source_digest,
+            } = rule;
             rendered.push_str("rule ");
-            rendered.push_str(rule.id().as_str());
+            rendered.push_str(id.as_str());
             rendered.push(' ');
-            rendered.push_str(rule.body().rule_type().as_str());
+            rendered.push_str(source_rule.as_str());
             rendered.push(' ');
-            rendered.push_str(&rule.source_digest().to_string());
+            rendered.push_str(&source_digest.to_string());
+            rendered.push(' ');
+            rendered.push_str(&body.canonical_text());
             rendered.push('\n');
         }
         rendered

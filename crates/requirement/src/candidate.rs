@@ -55,7 +55,9 @@
 //! in, so the production audit path has no sentence in it at all --
 //! `production_audit_no_llm`'s structural half.
 
-use academic_domain::{Actor, ContentDigest, EntityId, TimestampMillis};
+use academic_domain::{
+    Actor, ContentDigest, EntityId, TimestampMillis, engines::RuleId as SourceRuleId,
+};
 
 use crate::{
     dsl::{RuleBody, RuleId},
@@ -72,6 +74,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleCandidate {
     id: RuleId,
+    source_rule: SourceRuleId,
     body: RuleBody,
     extracted_by: Actor,
     quoted_source: String,
@@ -84,9 +87,19 @@ impl RuleCandidate {
     /// `extracted_by` is the actor that produced it. It is not validated to be
     /// a model: a candidate a person typed is still a candidate and still needs
     /// two reviewers. What is validated is the reviewer side, at the gate.
+    ///
+    /// `source_rule` is the identifier the **official document** gives the rule
+    /// this was extracted from, and `id` is the identifier the reviewer chooses
+    /// for it inside the set. They are two different namespaces and this is
+    /// where the crossing is recorded. Until it was, the graduation audit's
+    /// conflict gate compared the reviewer's spelling with the document's and
+    /// concluded from a coincidence: the same unresolved conflict blocked a set
+    /// that happened to spell the rule the document's way and did not block one
+    /// that did not.
     #[must_use]
     pub fn extracted(
         id: RuleId,
+        source_rule: SourceRuleId,
         body: RuleBody,
         extracted_by: Actor,
         quoted_source: String,
@@ -94,11 +107,18 @@ impl RuleCandidate {
     ) -> Self {
         Self {
             id,
+            source_rule,
             body,
             extracted_by,
             quoted_source,
             source_digest,
         }
+    }
+
+    /// The identifier the official document gives this rule.
+    #[must_use]
+    pub const fn source_rule(&self) -> &SourceRuleId {
+        &self.source_rule
     }
 
     /// The identifier the candidate proposes for the rule.
@@ -201,6 +221,7 @@ impl ReviewAttestation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReviewedRule {
     id: RuleId,
+    source_rule: SourceRuleId,
     body: RuleBody,
     first: ReviewAttestation,
     second: ReviewAttestation,
@@ -212,6 +233,12 @@ impl ReviewedRule {
     #[must_use]
     pub const fn id(&self) -> &RuleId {
         &self.id
+    }
+
+    /// The identifier the official document gives this rule.
+    #[must_use]
+    pub const fn source_rule(&self) -> &SourceRuleId {
+        &self.source_rule
     }
 
     /// The reviewed body.
@@ -268,6 +295,7 @@ impl ReviewGate {
         candidate.body.compile(&candidate.id)?;
         Ok(ReviewedRule {
             id: candidate.id,
+            source_rule: candidate.source_rule,
             body: candidate.body,
             first,
             second,

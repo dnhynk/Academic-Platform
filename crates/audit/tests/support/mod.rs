@@ -99,6 +99,28 @@ pub const CONNECTOR: &str = "snu.cse.official";
 /// A second connector, so a conflict case has two sides that are really two.
 pub const RIVAL_CONNECTOR: &str = "snu.registrar.official";
 
+/// The rule identifiers the fixture official document itself carries.
+///
+/// `RuleSetDraft::include` refuses a rule whose `source_rule` the published
+/// document does not name, so a fixture set can only bind to identifiers this
+/// document really has. `CONTESTED_RULE` is one of them, which is what makes
+/// `conflict_case`'s case a case about a rule these sets publish rather than a
+/// string that happens to match.
+pub const DOCUMENT_RULES: [&str; 12] = [
+    "cse_major_total",
+    "credit_floor",
+    "equivalency_shared",
+    "external_recognition_cap",
+    "foreign_language_lectures",
+    "life_respect_training",
+    "major_exclusive",
+    "overall_gpa",
+    "required_course_set",
+    "seminar_choice",
+    "thesis_research",
+    "total_credits",
+];
+
 /// The instant every evaluation is anchored to.
 ///
 /// A hundred thousand seconds after `RETRIEVED_AT`, so the source has a
@@ -424,6 +446,10 @@ pub fn official_source() -> Result<PublishedRules, Box<dyn Error>> {
     let manifest = manifest(CONNECTOR)?;
     let ledger = permitting_ledger(CONNECTOR)?;
     let known = ingestion_corpus()?;
+    let mut fixture = DocumentFixture::dated();
+    for rule in DOCUMENT_RULES {
+        fixture = fixture.with_extra_rule("art-12", rule);
+    }
     let record = academic_ingestion::run(
         &manifest,
         &ledger,
@@ -431,7 +457,7 @@ pub fn official_source() -> Result<PublishedRules, Box<dyn Error>> {
         RETRIEVED_AT,
         Acquisition::Import {
             target: CATALOGUE,
-            outcome: body(DocumentFixture::dated().bytes(), "\"v1\"")?,
+            outcome: body(fixture.bytes(), "\"v1\"")?,
         },
         IngestSeq::at(1),
         Appropriateness::NotAppropriate,
@@ -470,9 +496,29 @@ fn admit(
     official: Vec<FixtureCase>,
     synthetic: Vec<FixtureCase>,
 ) -> Result<RuleSetDraft, Box<dyn Error>> {
+    admit_as(draft, id, id, body, official, synthetic)
+}
+
+/// The same, with the identifier the official document gives the rule stated
+/// separately from the identifier the reviewer chose inside the set.
+///
+/// The two are different namespaces. Every fixture above happens to spell them
+/// alike, which is exactly the coincidence the conflict gate used to read as a
+/// binding, so `a_source_conflict_is_applicable_by_the_document_identifier`
+/// uses this to publish the same requirement under a different set identifier
+/// and requires the conflict to still apply.
+pub fn admit_as(
+    draft: RuleSetDraft,
+    id: &str,
+    source_rule: &str,
+    body: RuleBody,
+    official: Vec<FixtureCase>,
+    synthetic: Vec<FixtureCase>,
+) -> Result<RuleSetDraft, Box<dyn Error>> {
     let rule = RuleId::new(id)?;
     let candidate = RuleCandidate::extracted(
         rule.clone(),
+        academic_domain::engines::RuleId::new(source_rule)?,
         body,
         academic_domain::Actor::ModelRun {
             run_id: entity(7_001)?,
@@ -528,7 +574,7 @@ fn effective() -> ValidInterval {
 /// equivalencies already in the set.
 pub fn baseline_rules() -> Result<RuleSet, Box<dyn Error>> {
     let published = official_source()?;
-    Ok(add_baseline(draft(&published, RuleSetVersion::FIRST, None)?)?.publish())
+    Ok(add_baseline(draft(&published, RuleSetVersion::FIRST, None)?)?.publish()?)
 }
 
 /// The baseline eight, plus the three whose official fact is unconfirmed.
@@ -539,7 +585,7 @@ pub fn baseline_rules() -> Result<RuleSet, Box<dyn Error>> {
 pub fn mixed_rules() -> Result<RuleSet, Box<dyn Error>> {
     let published = official_source()?;
     let draft = add_baseline(draft(&published, RuleSetVersion::FIRST, None)?)?;
-    Ok(add_open_gate(draft)?.publish())
+    Ok(add_open_gate(draft)?.publish()?)
 }
 
 fn add_baseline(mut draft: RuleSetDraft) -> Result<RuleSetDraft, Box<dyn Error>> {
@@ -751,7 +797,59 @@ pub fn revised_rules() -> Result<RuleSet, Box<dyn Error>> {
             ProofStatus::Needs,
         )],
     )?;
-    Ok(draft.publish())
+    Ok(draft.publish()?)
+}
+
+/// One `total_credits` floor at `threshold`, and nothing else.
+///
+/// Every other argument -- set id, curriculum version, version, supersession,
+/// official source, rule identifier, rule type, source digest and both fixture
+/// classes -- is the same for every threshold, so two sets built here differ in
+/// the credit threshold and in nothing else. That is the pair
+/// `historic_audit_replay` needs: its own `baseline_rules`/`revised_rules` pair
+/// differs in the version number, the supersession and the rule list as well,
+/// so an `assert_ne!` over their hashes is satisfied without the threshold
+/// moving a byte -- which is how a `rule_set_hash` that did not cover any rule
+/// body passed that assertion.
+pub fn credit_floor_rules(threshold: u16) -> Result<RuleSet, Box<dyn Error>> {
+    let published = official_source()?;
+    let draft = admit(
+        draft(&published, RuleSetVersion::FIRST, None)?,
+        "total_credits",
+        RuleBody::CreditMinimum {
+            category: all_recognized()?,
+            threshold: CreditAmount::new(threshold)?,
+        },
+        vec![FixtureCase::new(empty_facts()?, ProofStatus::Needs)],
+        vec![FixtureCase::new(empty_facts()?, ProofStatus::Needs)],
+    )?;
+    Ok(draft.publish()?)
+}
+
+/// One credit floor, with the set-local identifier and the document identifier
+/// stated separately.
+///
+/// The pair `a_source_conflict_is_applicable_by_the_document_identifier` needs:
+/// the same requirement, read from the same document rule, published under two
+/// different names inside the set.
+pub fn credit_floor_named(
+    id: &str,
+    source_rule: &str,
+    threshold: u16,
+) -> Result<RuleSet, Box<dyn Error>> {
+    let published = official_source()?;
+    let draft = admit_as(
+        draft(&published, RuleSetVersion::FIRST, None)?,
+        id,
+        source_rule,
+        RuleBody::CreditMinimum {
+            category: all_recognized()?,
+            threshold: CreditAmount::new(threshold)?,
+        },
+        vec![FixtureCase::new(empty_facts()?, ProofStatus::Needs)],
+        vec![FixtureCase::new(empty_facts()?, ProofStatus::Needs)],
+    )?;
+    Ok(draft.publish()?)
 }
 
 /// The rules whose applicability or ceiling no confirmed source states.
@@ -760,7 +858,7 @@ pub fn revised_rules() -> Result<RuleSet, Box<dyn Error>> {
 /// `DETERMINATE`, so the baseline would never show the gate's other side.
 pub fn open_gate_rules() -> Result<RuleSet, Box<dyn Error>> {
     let published = official_source()?;
-    Ok(add_open_gate(draft(&published, RuleSetVersion::FIRST, None)?)?.publish())
+    Ok(add_open_gate(draft(&published, RuleSetVersion::FIRST, None)?)?.publish()?)
 }
 
 fn add_open_gate(mut draft: RuleSetDraft) -> Result<RuleSetDraft, Box<dyn Error>> {
@@ -852,7 +950,7 @@ pub fn satisfiable_rules() -> Result<RuleSet, Box<dyn Error>> {
             ProofStatus::Needs,
         )],
     )?;
-    Ok(draft.publish())
+    Ok(draft.publish()?)
 }
 
 // ---------------------------------------------------------------------------
@@ -964,6 +1062,20 @@ pub fn audit_facts(
     transcript: TranscriptSnapshot,
     sources: RuleSourceIndex,
     conflicts: Vec<ConflictReference>,
+    freshness: Option<SourceFreshnessPolicy>,
+) -> Result<AuditFacts, Box<dyn Error>> {
+    surveyed_facts(transcript, sources, Some(conflicts), freshness)
+}
+
+/// The same, with the conflict survey itself optional.
+///
+/// `None` is an audit whose conflict store nobody read, which is a different
+/// fact from a store that was read and held nothing -- and the one the bare
+/// `Vec` above could not spell.
+pub fn surveyed_facts(
+    transcript: TranscriptSnapshot,
+    sources: RuleSourceIndex,
+    conflicts: Option<Vec<ConflictReference>>,
     freshness: Option<SourceFreshnessPolicy>,
 ) -> Result<AuditFacts, Box<dyn Error>> {
     Ok(AuditFacts {

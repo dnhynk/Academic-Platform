@@ -348,12 +348,25 @@ impl DegreeAudit {
             });
         }
 
-        let applicable: Vec<&ConflictReference> = facts
-            .conflicts
-            .iter()
-            .filter(|case| set.rules().any(|(rule, _)| rule.as_str() == case.rule()))
-            .collect();
-        for case in &applicable {
+        // Applicability is a **bound** identifier comparison, not a spelling
+        // coincidence. `case.rule()` is the identifier the official document
+        // gives the rule in dispute; `rule.source_rule()` is the identifier the
+        // official document gave the rule this set publishes, checked against
+        // that document's own rule list by `RuleSetDraft::include`. Comparing
+        // `case.rule()` with the identifier the *reviewer* typed -- which is
+        // what stood here -- made the same unresolved conflict block a set
+        // spelled the document's way and not block one spelled any other, with
+        // `conflict cases examined = 0` on the determination.
+        let applicable: Option<Vec<&ConflictReference>> = facts.conflicts.as_ref().map(|cases| {
+            cases
+                .iter()
+                .filter(|case| {
+                    set.executable_rules()
+                        .any(|rule| rule.source_rule().as_str() == case.rule())
+                })
+                .collect()
+        });
+        for case in applicable.iter().flatten() {
             if !case.is_resolved() {
                 missing.push(MissingCheck::UnresolvedSourceConflict {
                     rule: case.rule().to_owned(),
@@ -361,6 +374,9 @@ impl DegreeAudit {
                     right_connector: case.right_connector().to_owned(),
                 });
             }
+        }
+        if facts.conflicts.is_none() {
+            missing.push(MissingCheck::SourceConflictSurveyAbsent);
         }
 
         let leaves: Vec<ProofLeaf> = nodes
@@ -371,7 +387,7 @@ impl DegreeAudit {
         let root_status = fold(&leaves);
 
         let coverage = CoverageWitness::establish(&leaves, &unevaluated);
-        let conflict_free = ConflictFreeWitness::establish(&leaves, &applicable);
+        let conflict_free = ConflictFreeWitness::establish(&leaves, applicable.as_deref());
         let freshness = FreshnessWitness::establish(
             facts.freshness,
             engine.selected.rules().source().retrieved_at(),
@@ -392,16 +408,13 @@ impl DegreeAudit {
                     freshness,
                 ))
             }
+            // Reached only when a gate refused and produced no check. That is
+            // a defect in this function rather than a state of the record, and
+            // it is returned as one -- not papered over with the nearest
+            // `MissingCheck`, which is what stood here and what told a user who
+            // had recorded the freshness criterion to record it.
             _ => DegreeVerdict::Indeterminate(
-                IndeterminateVerdict::from_checks(missing).unwrap_or_else(|| {
-                    // Reached only when a gate refused and produced no check.
-                    // That is a defect in this function rather than a state of
-                    // the record, and it is reported as one rather than
-                    // panicked on: `clippy::panic` is denied and a panic on the
-                    // graduation path is the one failure this crate cannot
-                    // have.
-                    IndeterminateVerdict::new(MissingCheck::SourceFreshnessPolicyAbsent, Vec::new())
-                }),
+                IndeterminateVerdict::from_checks(missing).ok_or(AuditError::RefusedWithNoCheck)?,
             ),
         };
 

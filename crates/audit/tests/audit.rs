@@ -20,11 +20,11 @@ use academic_record::views::DispositionReason;
 use academic_requirement::{Measure, OpenGate as RuleGate, RuleId, RuleSet, RuleSetLedger};
 
 use academic_audit::{
-    AttemptUsage, CommonRuleExamples, CourseFactsIndex, CreditVerdict, DegreeAudit, DegreeVerdict,
-    EntryAdmission, EquivalencyDecision, GraduationAuditEngine, GraduationOutcome, MissingCheck,
-    OpenGate, PlanAnnotatedView, PlannedCoursework, ProfileField, RuleSourceIndex, Selection,
-    SourceFreshnessPolicy, StudentProfile, TranscriptSnapshot, encode, select,
-    verdict::ConflictReference,
+    AttemptUsage, AuditError, CommonRuleExamples, CourseFactsIndex, CreditVerdict, DegreeAudit,
+    DegreeVerdict, EntryAdmission, EquivalencyDecision, GraduationAuditEngine, GraduationOutcome,
+    MissingCheck, OpenGate, PlanAnnotatedView, PlannedCoursework, ProfileField, RuleSetScope,
+    RuleSourceIndex, Selection, SourceFreshnessPolicy, StudentProfile, TranscriptSnapshot, encode,
+    select, verdict::ConflictReference,
 };
 use support::{
     FRESHNESS, STALE_FRESHNESS, TestResult, audit_facts, catalog, course, profile, scope, sources,
@@ -931,7 +931,103 @@ fn historic_audit_replay() -> TestResult {
     assert_ne!(
         latest.binding().rule_set_hash(),
         recorded_hash,
-        "two versions with different thresholds hashed the same"
+        "the published version did not move the hash"
+    );
+
+    // The assertion above is **not** the one its old message named. `first` and
+    // `second` differ in the version number, the supersession and the rule list
+    // as well as in the threshold, so it passed for years against a
+    // `rule_set_hash` that rendered no rule body at all: two sets differing
+    // only in a credit threshold hashed identically, produced a byte-identical
+    // `AuditInputBinding`, and answered 졸업 불가 and 졸업 가능.
+    //
+    // So the threshold is varied on its own here, and what the hash is *for* is
+    // driven with it: a replay presenting the strict set's recorded hash
+    // against the lax set's rules is refused rather than answered.
+    let strict = support::credit_floor_rules(130)?;
+    let lax = support::credit_floor_rules(12)?;
+    assert_eq!(strict.version(), lax.version());
+    assert_eq!(strict.supersedes(), lax.supersedes());
+    assert_eq!(strict.rules().count(), lax.rules().count());
+    assert_eq!(
+        strict
+            .rules()
+            .map(|(rule, _)| rule.clone())
+            .collect::<Vec<_>>(),
+        lax.rules()
+            .map(|(rule, _)| rule.clone())
+            .collect::<Vec<_>>(),
+        "the two sets must differ in the threshold and in nothing else"
+    );
+    assert_ne!(
+        strict.rule_set_hash(),
+        lax.rule_set_hash(),
+        "two sets differing only in a credit threshold hashed the same"
+    );
+
+    let strict_audit = audit(
+        &strict,
+        support::transcript()?,
+        sources(&strict)?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?;
+    let lax_audit = audit(
+        &lax,
+        support::transcript()?,
+        sources(&lax)?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?;
+    // The conclusions really are opposite, so the refusal below is
+    // load-bearing rather than a formality about two digests.
+    assert_eq!(
+        strict_audit
+            .verdict()
+            .determinate()
+            .map(|verdict| verdict.outcome()),
+        Some(GraduationOutcome::NotPossible)
+    );
+    assert_eq!(
+        lax_audit
+            .verdict()
+            .determinate()
+            .map(|verdict| verdict.outcome()),
+        Some(GraduationOutcome::Possible)
+    );
+    assert_ne!(
+        strict_audit.binding(),
+        lax_audit.binding(),
+        "two audits reaching opposite verdicts shared an input binding"
+    );
+
+    let selection = select(&profile()?, &catalog(&lax)?);
+    let lax_engine = GraduationAuditEngine::new(
+        selection
+            .selected()
+            .ok_or("the lax set was not selected")?
+            .clone(),
+        EngineVersion::MIN,
+    );
+    let lax_inputs = encode(&audit_facts(
+        support::transcript()?,
+        sources(&lax)?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?)?;
+    assert!(
+        matches!(
+            lax_engine.evaluate_audit(&lax_inputs, strict_audit.binding().rule_set_hash()),
+            Err(AuditError::RuleSetHashMismatch)
+        ),
+        "a replay under a foreign rule-set hash was answered instead of refused"
+    );
+    // And the same engine under its own hash is answered, so the refusal is
+    // about the hash rather than about the inputs.
+    assert!(
+        lax_engine
+            .evaluate_audit(&lax_inputs, lax_engine.rule_set_hash())
+            .is_ok()
     );
     assert_ne!(
         latest.outcome().explanation_snapshot,
@@ -1196,6 +1292,48 @@ fn degree_audit_input_binding() -> TestResult {
     assert_ne!(base.rule_set_hash(), other_rules.rule_set_hash());
     assert_eq!(base.transcript_digest(), other_rules.transcript_digest());
 
+    // `revised` differs from `rules` in its version, its supersession and its
+    // rule list, so the assertion above holds even when the rendering behind
+    // `rule_set_hash` reaches no rule body -- which is what it did. The pair
+    // below differs in a credit threshold and in nothing else, so the binding
+    // has to separate them on the rules alone.
+    let strict = support::credit_floor_rules(130)?;
+    let lax = support::credit_floor_rules(12)?;
+    let strict_binding = audit(
+        &strict,
+        support::transcript()?,
+        sources(&strict)?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?
+    .binding();
+    let lax_binding = audit(
+        &lax,
+        support::transcript()?,
+        sources(&lax)?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?
+    .binding();
+    assert_ne!(
+        strict_binding.rule_set_hash(),
+        lax_binding.rule_set_hash(),
+        "two sets differing only in a credit threshold bound the same hash"
+    );
+    assert_ne!(
+        strict_binding.digest(),
+        lax_binding.digest(),
+        "two sets differing only in a credit threshold bound the same digest"
+    );
+    assert_eq!(
+        strict_binding.transcript_digest(),
+        lax_binding.transcript_digest()
+    );
+    assert_eq!(
+        strict_binding.profile_digest(),
+        lax_binding.profile_digest()
+    );
+
     // The source placements move.
     let moved_sources = audit(
         &rules,
@@ -1317,6 +1455,441 @@ fn a_transcript_the_curriculum_has_not_placed_is_refused() -> TestResult {
     assert!(
         refused.is_err(),
         "an empty course index produced a transcript"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// a_gate_that_refuses_always_names_a_check -- REQ-11-024
+// ---------------------------------------------------------------------------
+
+/// Every route to a refused gate names the thing that is actually outstanding.
+///
+/// `DegreeAudit::assemble` used to end its `INDETERMINATE` arm with
+/// `from_checks(missing).unwrap_or_else(|| … SourceFreshnessPolicyAbsent …)`,
+/// and a published set with **no rule** reached it: the tree had no leaf, the
+/// coverage gate refused, and there was no rule for a check to be about. The
+/// audit then told a user who had recorded the source-freshness criterion to
+/// record the source-freshness criterion. `verdict.rs`'s own contract is that
+/// "every arm names the exact cell, rule, attempt or dimension that is
+/// outstanding", and that arm named a different one.
+///
+/// Two things close it, and this drives both. `RuleSetDraft::publish` refuses
+/// a set with no rule, so the state does not exist; and the fallback is now
+/// `AuditError::RefusedWithNoCheck` rather than an invented check, so if the
+/// state ever does exist the audit refuses instead of lying. What is left to
+/// observe is the property the fallback was hiding: on every route that
+/// refuses a gate, the check list is non-empty **and** does not name freshness
+/// unless freshness is what is wrong.
+#[test]
+fn a_gate_that_refuses_always_names_a_check() -> TestResult {
+    let baseline = support::baseline_rules()?;
+    let open_gate = support::open_gate_rules()?;
+
+    // Each row refuses a gate a different way. The freshness criterion is
+    // supplied in every row but the fifth.
+    let rows: Vec<(&str, DegreeAudit, &str)> = vec![
+        (
+            "a rule with no recorded page",
+            audit(
+                &baseline,
+                support::transcript()?,
+                sources_missing(&baseline, "total_credits")?,
+                Vec::new(),
+                Some(FRESHNESS),
+            )?,
+            "RULE_SOURCE_SPAN_ABSENT",
+        ),
+        (
+            "a rule whose official fact is unconfirmed",
+            audit(
+                &open_gate,
+                support::transcript()?,
+                sources(&open_gate)?,
+                Vec::new(),
+                Some(FRESHNESS),
+            )?,
+            "OPEN_OFFICIAL_FACT",
+        ),
+        (
+            "an unresolved conflict between two official sources",
+            audit(
+                &baseline,
+                support::transcript()?,
+                sources(&baseline)?,
+                vec![support::unresolved_conflict()?],
+                Some(FRESHNESS),
+            )?,
+            "UNRESOLVED_SOURCE_CONFLICT",
+        ),
+        (
+            "a source older than the recorded criterion",
+            audit(
+                &baseline,
+                support::transcript()?,
+                sources(&baseline)?,
+                Vec::new(),
+                Some(STALE_FRESHNESS),
+            )?,
+            "SOURCE_NOT_FRESH",
+        ),
+        (
+            "no recorded freshness criterion",
+            audit(
+                &baseline,
+                support::transcript()?,
+                sources(&baseline)?,
+                Vec::new(),
+                None,
+            )?,
+            "SOURCE_FRESHNESS_POLICY_ABSENT",
+        ),
+    ];
+
+    for (route, audited, expected) in &rows {
+        let checks: Vec<&'static str> = audited
+            .verdict()
+            .missing()
+            .iter()
+            .map(MissingCheck::kind)
+            .collect();
+        assert!(
+            matches!(audited.verdict(), DegreeVerdict::Indeterminate(_)),
+            "{route} reached a determination"
+        );
+        assert!(
+            !checks.is_empty(),
+            "{route} refused a gate and named nothing"
+        );
+        assert!(
+            checks.contains(expected),
+            "{route} named {checks:?} and not {expected}"
+        );
+        // The lie the fallback told: freshness reported absent by an audit
+        // that was handed a criterion.
+        if *expected != "SOURCE_FRESHNESS_POLICY_ABSENT" {
+            assert!(
+                !checks.contains(&"SOURCE_FRESHNESS_POLICY_ABSENT"),
+                "{route} reported the freshness criterion absent; it was supplied"
+            );
+        }
+        // And every check names a subject, so `action()` is something a person
+        // can do rather than a sentence about missing information.
+        for check in audited.verdict().missing() {
+            assert!(
+                !check.action().is_empty(),
+                "{route}: {} carries no action",
+                check.kind()
+            );
+        }
+    }
+
+    // Each row's own reason really is its own: the five check lists are not
+    // the same list five times.
+    let rendered: BTreeSet<Vec<&'static str>> = rows
+        .iter()
+        .map(|(_, audited, _)| {
+            audited
+                .verdict()
+                .missing()
+                .iter()
+                .map(MissingCheck::kind)
+                .collect()
+        })
+        .collect();
+    assert_eq!(rendered.len(), rows.len(), "two routes reported alike");
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// a_source_conflict_is_applicable_by_the_document_identifier -- REQ-08-014
+// ---------------------------------------------------------------------------
+
+/// The same unresolved conflict blocks the same requirement under any set-local
+/// spelling, and does not block a set the document rule is not in.
+///
+/// Applicability used to be `rule.as_str() == case.rule()` -- the identifier a
+/// **reviewer typed** into a `RuleCandidate` against the identifier the
+/// **official document** carries. Nothing bound the two, so one unresolved
+/// conflict over `total_credits` made a set that happened to publish the rule
+/// under that name `INDETERMINATE` and left an identical set published under
+/// `credit_floor` `DETERMINATE POSSIBLE`, with `conflict cases examined = 0` on
+/// the determination.
+///
+/// `RuleSetDraft::include` now refuses a rule whose `source_rule` the published
+/// document does not carry, and the gate compares that bound identifier. Both
+/// halves are here: the same conflict applies across two set-local spellings,
+/// and a conflict about a document rule this set publishes nothing from does
+/// not.
+#[test]
+fn a_source_conflict_is_applicable_by_the_document_identifier() -> TestResult {
+    let case = support::conflict_case()?;
+    assert_eq!(
+        case.disposition(),
+        academic_ingestion::AuditDisposition::Indeterminate,
+        "the fixture case has to be unresolved for this to say anything"
+    );
+    let reference = ConflictReference::of(&case);
+    assert_eq!(
+        reference.rule(),
+        support::CONTESTED_RULE,
+        "the case is about the document rule these sets are published from"
+    );
+
+    // The same requirement, published under two different set-local
+    // identifiers, both read from the document rule the conflict is about.
+    let named_alike = support::credit_floor_rules(12)?;
+    let named_apart = support::credit_floor_named("credit_floor", support::CONTESTED_RULE, 12)?;
+    assert_ne!(
+        named_alike
+            .rules()
+            .map(|(rule, _)| rule.as_str().to_owned())
+            .collect::<Vec<_>>(),
+        named_apart
+            .rules()
+            .map(|(rule, _)| rule.as_str().to_owned())
+            .collect::<Vec<_>>(),
+        "the two sets must differ in the set-local spelling"
+    );
+
+    for (label, rules) in [
+        ("as the document spells it", &named_alike),
+        ("under another name", &named_apart),
+    ] {
+        let audited = audit(
+            rules,
+            support::transcript()?,
+            sources(rules)?,
+            vec![reference.clone()],
+            Some(FRESHNESS),
+        )?;
+        assert!(
+            audited
+                .verdict()
+                .missing()
+                .iter()
+                .any(|check| matches!(check, MissingCheck::UnresolvedSourceConflict { .. })),
+            "{label}: the unresolved conflict did not block the determination"
+        );
+    }
+
+    // And it still narrows: a set published from a different document rule is
+    // not blocked by this case, so the gate is a binding rather than a refusal
+    // to conclude at all.
+    let elsewhere = support::credit_floor_named("total_credits", "seminar_choice", 12)?;
+    let unaffected = audit(
+        &elsewhere,
+        support::transcript()?,
+        sources(&elsewhere)?,
+        vec![reference],
+        Some(FRESHNESS),
+    )?;
+    assert!(
+        !unaffected
+            .verdict()
+            .missing()
+            .iter()
+            .any(|check| matches!(check, MissingCheck::UnresolvedSourceConflict { .. })),
+        "a conflict about a document rule this set publishes nothing from blocked it"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// an_unread_conflict_store_is_not_an_absence_of_conflict -- REQ-08-014
+// ---------------------------------------------------------------------------
+
+/// Nobody having read the conflict store is not the same as no conflict.
+///
+/// `ConflictFreeWitness::establish` took a bare slice and issued a witness over
+/// an empty one -- the vacuous witness `CoverageWitness::establish` refuses
+/// eleven lines above it, in the same file, in a comment naming this exact
+/// failure mode. A caller who simply passed no cases got `DETERMINATE POSSIBLE`
+/// with `conflict cases examined = 0`.
+#[test]
+fn an_unread_conflict_store_is_not_an_absence_of_conflict() -> TestResult {
+    let rules = support::satisfiable_rules()?;
+
+    // The store was read and held nothing. A real observation, and the witness
+    // records that it examined none.
+    let read = audit(
+        &rules,
+        support::transcript()?,
+        sources(&rules)?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?;
+    let determinate = read
+        .verdict()
+        .determinate()
+        .ok_or("a read-and-empty store did not reach a determination")?;
+    assert_eq!(determinate.conflict_free().cases_examined(), 0);
+
+    // Nobody read it. Same everything else.
+    let selection = select(&profile()?, &catalog(&rules)?);
+    let engine = GraduationAuditEngine::new(
+        selection.selected().ok_or("no rule set selected")?.clone(),
+        EngineVersion::MIN,
+    );
+    let unread_facts = support::surveyed_facts(
+        support::transcript()?,
+        sources(&rules)?,
+        None,
+        Some(FRESHNESS),
+    )?;
+    let unread = DegreeAudit::evaluate(&engine, &encode(&unread_facts)?)?;
+    assert!(
+        matches!(unread.verdict(), DegreeVerdict::Indeterminate(_)),
+        "an audit whose conflict store nobody read reached a determination"
+    );
+    assert!(
+        unread
+            .verdict()
+            .missing()
+            .contains(&MissingCheck::SourceConflictSurveyAbsent),
+        "it did not name the survey it never had: {:?}",
+        unread
+            .verdict()
+            .missing()
+            .iter()
+            .map(MissingCheck::kind)
+            .collect::<Vec<_>>()
+    );
+
+    // The two are different audits by their frozen inputs as well as by their
+    // verdicts, so the distinction survives into the recorded binding.
+    assert_ne!(
+        read.binding().frozen_inputs_digest(),
+        unread.binding().frozen_inputs_digest(),
+        "a read-and-empty store and an unread one froze the same inputs"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// the_scope_range_refuses_a_range_it_cannot_compare -- REQ-11-021
+// ---------------------------------------------------------------------------
+
+/// A graduation-standard range that no lexicographic comparison can read.
+///
+/// `RuleSetScope::new` refuses two shapes: a range whose ends differ in width,
+/// because `"9" > "10"` lexicographically and a ragged range therefore covers
+/// the wrong set; and a reversed range, which covers nothing while looking like
+/// a scope. `P2-A3` deleted each of them in turn and the whole `academic-audit`
+/// suite passed both times -- the selector's own matrix never builds a
+/// malformed range, so nothing drove either refusal.
+#[test]
+fn the_scope_range_refuses_a_range_it_cannot_compare() -> TestResult {
+    // The result of `RuleSetScope::new` itself, so an accepted range is
+    // observable as `Ok`. Written as a closure returning `Err` on the accepting
+    // path once, it passed with **both** refusals deleted -- an empty guard of
+    // exactly the shape this repair exists to remove.
+    let build = |from: &str,
+                 to: &str|
+     -> Result<Result<RuleSetScope, AuditError>, Box<dyn std::error::Error>> {
+        Ok(RuleSetScope::new(
+            support::university()?,
+            support::college()?,
+            support::department()?,
+            support::admission_year()?,
+            academic_audit::GraduationStandard::new(from)?,
+            academic_audit::GraduationStandard::new(to)?,
+            academic_audit::DegreeMode::SingleMajor,
+        ))
+    };
+
+    // The well-formed range this is measured against. Without it, a
+    // `RuleSetScope::new` that refused everything would satisfy the three
+    // refusals below.
+    assert!(
+        build("2020", "2026")?.is_ok(),
+        "a range with equal-width ends in order was refused"
+    );
+
+    // Ragged: `"9"` and `"2026"` cannot be compared as text -- `"9" > "2026"`
+    // lexicographically -- so the range covers the complement of what it says.
+    assert!(
+        matches!(
+            build("9", "2026")?,
+            Err(AuditError::InvalidIdentifier { .. })
+        ),
+        "a range whose ends differ in width was accepted"
+    );
+    assert!(
+        matches!(
+            build("2020", "20260")?,
+            Err(AuditError::InvalidIdentifier { .. })
+        ),
+        "a range whose ends differ in width was accepted"
+    );
+
+    // Reversed: equal width, wrong order, covers nothing while looking like a
+    // scope.
+    assert!(
+        matches!(
+            build("2026", "2020")?,
+            Err(AuditError::InvalidIdentifier { .. })
+        ),
+        "a reversed range was accepted"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// an_audit_with_no_evaluated_rule_folds_to_unknown -- REQ-11-016
+// ---------------------------------------------------------------------------
+
+/// A tree with no leaf reads `UNKNOWN`, never `SATISFIED`.
+///
+/// `fold` returns `UNKNOWN` for an empty leaf list before it looks for any
+/// status, and `P2-A3` deleted that arm with the whole suite still green: every
+/// corpus in the crate produces at least one leaf, so nothing drove it. Removed
+/// together with the coverage gate's empty-leaf refusal, a rule set with no
+/// evaluated rule answered `DETERMINATE POSSIBLE` from an empty tree.
+///
+/// A published set now always has a rule, so the way to an empty tree is that
+/// **every** rule's source page is unrecorded -- which section 11.3 refuses to
+/// evaluate on rather than evaluating into a leaf with no citation.
+#[test]
+fn an_audit_with_no_evaluated_rule_folds_to_unknown() -> TestResult {
+    let rules = support::baseline_rules()?;
+    assert!(rules.rules().count() >= 8);
+    let audited = audit(
+        &rules,
+        support::transcript()?,
+        RuleSourceIndex::new(),
+        Vec::new(),
+        Some(FRESHNESS),
+    )?;
+
+    assert_eq!(
+        audited.nodes().len(),
+        0,
+        "the tree is not empty; this drives nothing"
+    );
+    assert_eq!(
+        audited.root_status(),
+        ProofStatus::Unknown,
+        "an empty tree folded to something other than UNKNOWN"
+    );
+    assert!(
+        matches!(audited.verdict(), DegreeVerdict::Indeterminate(_)),
+        "an audit that evaluated no rule reached a determination"
+    );
+    // And it says why, once per rule, rather than reporting one thing.
+    let unplaced: Vec<&RuleId> = audited
+        .verdict()
+        .missing()
+        .iter()
+        .filter_map(|check| match check {
+            MissingCheck::RuleSourceSpanAbsent { rule } => Some(rule),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        unplaced.len(),
+        rules.rules().count(),
+        "the audit did not name every rule it could not place"
     );
     Ok(())
 }

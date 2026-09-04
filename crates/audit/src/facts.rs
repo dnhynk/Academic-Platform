@@ -68,8 +68,17 @@ pub struct AuditFacts {
     pub transcript: TranscriptSnapshot,
     /// Where each published rule was read from.
     pub sources: RuleSourceIndex,
-    /// The conflict cases `P2-U6` opened over this rule set.
-    pub conflicts: Vec<ConflictReference>,
+    /// The conflict cases `P2-U6` opened over this rule set, when the conflict
+    /// store was read at all.
+    ///
+    /// `None` is *nobody looked*; `Some(vec![])` is *the store was read and
+    /// held nothing*. They are different facts and they reach different
+    /// verdicts, exactly as `freshness` below does. A bare `Vec` spelled both
+    /// as an empty list, and `ConflictFreeWitness::establish` then issued a
+    /// witness over zero cases and called the audit `DETERMINATE` -- the same
+    /// vacuous witness `CoverageWitness::establish` refuses eleven lines above
+    /// it, in the same file, in a comment naming this failure mode.
+    pub conflicts: Option<Vec<ConflictReference>>,
     /// The recorded source-freshness criterion, when one is recorded.
     pub freshness: Option<SourceFreshnessPolicy>,
 }
@@ -102,7 +111,7 @@ pub fn encode(facts: &AuditFacts) -> Result<FrozenInputs, AuditError> {
     encode_profile(&facts.profile, &mut push)?;
     encode_transcript(&facts.transcript, &mut push)?;
     encode_sources(&facts.sources, &mut push)?;
-    encode_conflicts(&facts.conflicts, &mut push)?;
+    encode_conflicts(facts.conflicts.as_deref(), &mut push)?;
 
     entries.sort_by(|left, right| left.0.as_str().cmp(right.0.as_str()));
     Ok(FrozenInputs::new(entries)?)
@@ -155,9 +164,15 @@ fn encode_sources(
 
 /// Encodes the conflict cases `P2-U6` opened over this rule set.
 fn encode_conflicts(
-    conflicts: &[ConflictReference],
+    conflicts: Option<&[ConflictReference]>,
     push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>,
 ) -> Result<(), AuditError> {
+    let Some(conflicts) = conflicts else {
+        // Not an empty list: `Unknown` is what the frozen encoding spells for
+        // a value that is declared and not known, and an audit whose conflict
+        // store nobody read is that.
+        return push("conflicts.count".to_owned(), InputValue::Unknown);
+    };
     let mut ordered: Vec<&ConflictReference> = conflicts.iter().collect();
     ordered.sort_by(|left, right| {
         left.rule()
@@ -475,8 +490,11 @@ fn decode_sources(inputs: &FrozenInputs) -> Result<RuleSourceIndex, AuditError> 
     Ok(sources)
 }
 
-fn decode_conflicts(inputs: &FrozenInputs) -> Result<Vec<ConflictReference>, AuditError> {
-    let total = index_count(required_integer(inputs, "conflicts.count")?)?;
+fn decode_conflicts(inputs: &FrozenInputs) -> Result<Option<Vec<ConflictReference>>, AuditError> {
+    let Some(total) = optional_integer(inputs, "conflicts.count")? else {
+        return Ok(None);
+    };
+    let total = index_count(total)?;
     let mut conflicts = Vec::with_capacity(total);
     for index in 0..total {
         let prefix = format!("conflicts.{index:03}");
@@ -487,7 +505,7 @@ fn decode_conflicts(inputs: &FrozenInputs) -> Result<Vec<ConflictReference>, Aud
             required_integer(inputs, &format!("{prefix}.resolved"))? != 0,
         ));
     }
-    Ok(conflicts)
+    Ok(Some(conflicts))
 }
 
 fn decode_profile(inputs: &FrozenInputs) -> Result<StudentProfile, AuditError> {

@@ -22,7 +22,10 @@
 #[allow(dead_code)]
 mod support;
 
-use std::error::Error;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+};
 
 use academic_domain::{
     Actor, ContentDigest, CourseId, CurriculumVersionId, Decimal, EntityId, RequirementSetId,
@@ -30,6 +33,8 @@ use academic_domain::{
 };
 use academic_ingestion::{
     Acquisition, Appropriateness, IngestSeq, Publication, PublishedRules, RunOutcome,
+    fetch::FetchOutcome,
+    manifest::{ParserVersion, RetrievalInstant},
 };
 use academic_requirement::{
     AcademicFacts, AdmissionYear, Applicability, ApprovalAuthority, ApprovalFact,
@@ -116,6 +121,20 @@ fn reviewer(suffix: u32) -> Result<Actor, Box<dyn Error>> {
     })
 }
 
+/// The identifier the fixture official document gives every rule below.
+///
+/// `DocumentFixture::dated()` carries `r-12-1`, `r-12-2` and `r-13-1`, and
+/// `RuleSetDraft::include` refuses a rule naming a document rule the published
+/// source does not have. One document rule can state several requirements --
+/// `art-12`'s first rule is the one these are read out of -- so every set below
+/// binds to it, and `a_rule_naming_an_unpublished_source_rule_is_refused` is
+/// where the refusal itself is driven. `crates/audit`'s fixtures bind each rule
+/// to its own document identifier, because there the binding is what is under
+/// test.
+fn source_rule(_id: &str) -> Result<academic_domain::engines::RuleId, Box<dyn Error>> {
+    Ok(academic_domain::engines::RuleId::new("r-12-1")?)
+}
+
 fn digest() -> ContentDigest {
     ContentDigest::sha256(b"official/cse/degree-requirements")
 }
@@ -175,6 +194,7 @@ fn admit(
     let rule = RuleId::new(id)?;
     let candidate = RuleCandidate::extracted(
         rule.clone(),
+        source_rule(rule.as_str())?,
         body,
         Actor::ModelRun {
             run_id: entity(7_001)?,
@@ -201,7 +221,7 @@ fn one_rule_set(
 ) -> Result<RuleSet, Box<dyn Error>> {
     let published = official_source()?;
     let draft = admit(draft(&published)?, id, body, (official, synthetic))?;
-    Ok(draft.publish())
+    Ok(draft.publish()?)
 }
 
 fn attempt(id: u32, course_id: CourseId, credits: u16) -> Result<AttemptFact, Box<dyn Error>> {
@@ -400,7 +420,7 @@ fn dsl_required_course_set() -> TestResult {
             )],
         ),
     )?;
-    let set = set.publish();
+    let set = set.publish()?;
     let rule = RuleId::new("required_course_set")?;
 
     let direct = set.evaluate(&rule, &both_direct)?;
@@ -1051,7 +1071,7 @@ fn dsl_equivalency() -> TestResult {
             )],
         ),
     )?;
-    let set = set.publish();
+    let set = set.publish()?;
 
     // Forward: the old course is presented for the new one, inside the interval.
     let forward = set.evaluate(&RuleId::new("requires_new")?, &took_old)?;
@@ -1512,7 +1532,7 @@ fn dsl_exception_approval() -> TestResult {
             ],
         ),
     )?;
-    let set = set.publish();
+    let set = set.publish()?;
     let exception = RuleId::new("major_total_exception")?;
 
     assert_eq!(
@@ -1565,6 +1585,7 @@ fn rule_candidate_review_gate() -> TestResult {
     let candidate = || -> Result<RuleCandidate, Box<dyn Error>> {
         Ok(RuleCandidate::extracted(
             rule.clone(),
+            source_rule(rule.as_str())?,
             body.clone(),
             Actor::ModelRun {
                 run_id: entity(7_001)?,
@@ -1629,6 +1650,7 @@ fn rule_candidate_review_gate() -> TestResult {
         ReviewGate::admit(
             RuleCandidate::extracted(
                 rule.clone(),
+                source_rule(rule.as_str())?,
                 RuleBody::AllOf {
                     operands: Vec::new()
                 },
@@ -1676,7 +1698,7 @@ fn rule_candidate_review_gate() -> TestResult {
                 &rule,
             )?,
         )?
-        .publish();
+        .publish()?;
     assert_eq!(set.evaluate(&rule, &facts)?.status, ProofStatus::Needs);
     Ok(())
 }
@@ -1717,7 +1739,7 @@ fn ruleset_immutable_publish() -> TestResult {
                 &[FixtureCase::new(facts.clone(), ProofStatus::Needs)],
             ),
         )?
-        .publish())
+        .publish()?)
     };
 
     let first = build(130, RuleSetVersion::FIRST, None)?;
@@ -1819,6 +1841,7 @@ fn new_rule_release_gate_requires_official_and_synthetic_fixtures() -> TestResul
         Ok(ReviewGate::admit(
             RuleCandidate::extracted(
                 rule.clone(),
+                source_rule(rule.as_str())?,
                 body.clone(),
                 Actor::ModelRun {
                     run_id: entity(7_001)?,
@@ -1891,7 +1914,948 @@ fn new_rule_release_gate_requires_official_and_synthetic_fixtures() -> TestResul
             &OfficialExampleFixtures::new(vec![agreeing.clone()], &rule)?,
             &SyntheticTranscriptFixtures::new(vec![agreeing], &rule)?,
         )?
-        .publish();
+        .publish()?;
     assert_eq!(set.evaluate(&rule, &facts)?.status, ProofStatus::Needs);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// every_rule_body_field_moves_the_canonical_text
+// ---------------------------------------------------------------------------
+
+/// Every field of every rule body reaches the canonical text.
+///
+/// `RuleBody::canonical_text`'s `match` is total over the fourteen arms and
+/// binds every field by name, so the compiler catches a variant or a field
+/// nobody rendered. What it cannot catch is a field that is bound and then not
+/// written, which is exactly how `rule_set_hash` came to ignore every
+/// threshold in the crate. So each entry below is one field moved and nothing
+/// else, and the whole list is required to be **pairwise distinct** -- a field
+/// that does not reach the text collides with its own baseline, and two arms
+/// that render alike collide with each other.
+///
+/// `the_canonical_renderings_bind_every_field` in `requirement_scans.rs` is the
+/// other half: it reads the field names out of `dsl.rs` and requires each one
+/// to be destructured here, so an arm gaining a fifteenth field fails there
+/// even before it fails here.
+#[test]
+fn every_rule_body_field_moves_the_canonical_text() -> TestResult {
+    let one = course(4_001)?;
+    let two = course(4_002)?;
+    let alpha = CreditCategory::new("ALL_RECOGNIZED")?;
+    let beta = CreditCategory::new("CSE_MAJOR")?;
+    let area_one = AreaId::new("WRITING_AND_SPEAKING")?;
+    let area_two = AreaId::new("QUANTITATIVE_ANALYSIS")?;
+    let scope_one = GpaScope::new("ALL_GPA_ELIGIBLE")?;
+    let scope_two = GpaScope::new("CSE_MAJOR_GPA")?;
+    let program_one = ProgramId::new("LIFE_RESPECT")?;
+    let program_two = ProgramId::new("SAFETY_TRAINING")?;
+    let office_one = ApprovalAuthority::new("DEPARTMENT_OFFICE")?;
+    let office_two = ApprovalAuthority::new("COLLEGE_OFFICE")?;
+    let rule_one = RuleId::new("total_credits")?;
+    let rule_two = RuleId::new("cse_major_total")?;
+    let year_one = AdmissionYear::new(2008)?;
+    let year_two = AdmissionYear::new(2012)?;
+    let bounded = ValidInterval::new(BEFORE, Some(AFTER))?;
+    let open = ValidInterval::open_ended(BEFORE);
+    let later = ValidInterval::new(AT, Some(AFTER))?;
+
+    let operand = |course_id: CourseId, equivalent: bool| Operand {
+        course: course_id,
+        equivalent_admitted: equivalent,
+    };
+    let area = |id: &AreaId, credits: u16| -> Result<AreaRequirement, Box<dyn Error>> {
+        Ok(AreaRequirement {
+            area: id.clone(),
+            credits: CreditAmount::new(credits)?,
+        })
+    };
+
+    // Each group is one arm: the first entry is that arm's baseline and every
+    // later entry moves exactly one field of it.
+    let bodies: Vec<(&str, RuleBody)> = vec![
+        // CREDIT_MINIMUM
+        (
+            "credit_minimum/baseline",
+            RuleBody::CreditMinimum {
+                category: alpha.clone(),
+                threshold: CreditAmount::new(130)?,
+            },
+        ),
+        (
+            "credit_minimum/category",
+            RuleBody::CreditMinimum {
+                category: beta.clone(),
+                threshold: CreditAmount::new(130)?,
+            },
+        ),
+        (
+            "credit_minimum/threshold",
+            RuleBody::CreditMinimum {
+                category: alpha.clone(),
+                threshold: CreditAmount::new(12)?,
+            },
+        ),
+        // ALL_OF
+        (
+            "all_of/baseline",
+            RuleBody::AllOf {
+                operands: vec![operand(one, false)],
+            },
+        ),
+        (
+            "all_of/operand.course",
+            RuleBody::AllOf {
+                operands: vec![operand(two, false)],
+            },
+        ),
+        (
+            "all_of/operand.equivalent_admitted",
+            RuleBody::AllOf {
+                operands: vec![operand(one, true)],
+            },
+        ),
+        (
+            "all_of/operands.len",
+            RuleBody::AllOf {
+                operands: vec![operand(one, false), operand(two, false)],
+            },
+        ),
+        // AT_LEAST_N_OF
+        (
+            "at_least_n_of/baseline",
+            RuleBody::AtLeastNOf {
+                n: 1,
+                operands: vec![operand(one, false), operand(two, false)],
+            },
+        ),
+        (
+            "at_least_n_of/n",
+            RuleBody::AtLeastNOf {
+                n: 2,
+                operands: vec![operand(one, false), operand(two, false)],
+            },
+        ),
+        (
+            "at_least_n_of/operand.course",
+            RuleBody::AtLeastNOf {
+                n: 1,
+                operands: vec![operand(two, false), operand(two, false)],
+            },
+        ),
+        (
+            "at_least_n_of/operand.equivalent_admitted",
+            RuleBody::AtLeastNOf {
+                n: 1,
+                operands: vec![operand(one, true), operand(two, false)],
+            },
+        ),
+        (
+            "at_least_n_of/operands.order",
+            RuleBody::AtLeastNOf {
+                n: 1,
+                operands: vec![operand(two, false), operand(one, false)],
+            },
+        ),
+        // COUNT_WITH_CONSTRAINTS
+        (
+            "count_with_constraints/baseline",
+            RuleBody::CountWithConstraints {
+                minimum: 3,
+                constraints: vec![CountConstraint::AtLeastMajorCourses(1)],
+                counted: vec![one],
+            },
+        ),
+        (
+            "count_with_constraints/minimum",
+            RuleBody::CountWithConstraints {
+                minimum: 4,
+                constraints: vec![CountConstraint::AtLeastMajorCourses(1)],
+                counted: vec![one],
+            },
+        ),
+        (
+            "count_with_constraints/constraint.minimum",
+            RuleBody::CountWithConstraints {
+                minimum: 3,
+                constraints: vec![CountConstraint::AtLeastMajorCourses(2)],
+                counted: vec![one],
+            },
+        ),
+        (
+            "count_with_constraints/constraint.kind",
+            RuleBody::CountWithConstraints {
+                minimum: 3,
+                constraints: vec![CountConstraint::ExcludedFromAdmissionYear {
+                    course: one,
+                    from: year_one,
+                }],
+                counted: vec![one],
+            },
+        ),
+        (
+            "count_with_constraints/constraint.course",
+            RuleBody::CountWithConstraints {
+                minimum: 3,
+                constraints: vec![CountConstraint::ExcludedFromAdmissionYear {
+                    course: two,
+                    from: year_one,
+                }],
+                counted: vec![one],
+            },
+        ),
+        (
+            "count_with_constraints/constraint.from",
+            RuleBody::CountWithConstraints {
+                minimum: 3,
+                constraints: vec![CountConstraint::ExcludedFromAdmissionYear {
+                    course: one,
+                    from: year_two,
+                }],
+                counted: vec![one],
+            },
+        ),
+        (
+            "count_with_constraints/counted",
+            RuleBody::CountWithConstraints {
+                minimum: 3,
+                constraints: vec![CountConstraint::AtLeastMajorCourses(1)],
+                counted: vec![two],
+            },
+        ),
+        (
+            "count_with_constraints/counted.len",
+            RuleBody::CountWithConstraints {
+                minimum: 3,
+                constraints: vec![CountConstraint::AtLeastMajorCourses(1)],
+                counted: vec![one, two],
+            },
+        ),
+        // GPA_MINIMUM
+        (
+            "gpa_minimum/baseline",
+            RuleBody::GpaMinimum {
+                scope: scope_one.clone(),
+                threshold: Decimal::new(20, 1)?,
+            },
+        ),
+        (
+            "gpa_minimum/scope",
+            RuleBody::GpaMinimum {
+                scope: scope_two.clone(),
+                threshold: Decimal::new(20, 1)?,
+            },
+        ),
+        (
+            "gpa_minimum/threshold.coefficient",
+            RuleBody::GpaMinimum {
+                scope: scope_one.clone(),
+                threshold: Decimal::new(25, 1)?,
+            },
+        ),
+        (
+            "gpa_minimum/threshold.scale",
+            RuleBody::GpaMinimum {
+                scope: scope_one.clone(),
+                threshold: Decimal::new(20, 2)?,
+            },
+        ),
+        // AREA_DISTRIBUTION
+        (
+            "area_distribution/baseline",
+            RuleBody::AreaDistribution {
+                areas: vec![area(&area_one, 6)?],
+            },
+        ),
+        (
+            "area_distribution/area.area",
+            RuleBody::AreaDistribution {
+                areas: vec![area(&area_two, 6)?],
+            },
+        ),
+        (
+            "area_distribution/area.credits",
+            RuleBody::AreaDistribution {
+                areas: vec![area(&area_one, 9)?],
+            },
+        ),
+        (
+            "area_distribution/areas.len",
+            RuleBody::AreaDistribution {
+                areas: vec![area(&area_one, 6)?, area(&area_two, 6)?],
+            },
+        ),
+        // CO_REQUISITE
+        (
+            "co_requisite/baseline",
+            RuleBody::CoRequisite {
+                subject: one,
+                companion: two,
+                timing: CoRequisiteTiming::SameTerm,
+            },
+        ),
+        (
+            "co_requisite/subject",
+            RuleBody::CoRequisite {
+                subject: two,
+                companion: one,
+                timing: CoRequisiteTiming::SameTerm,
+            },
+        ),
+        (
+            "co_requisite/timing",
+            RuleBody::CoRequisite {
+                subject: one,
+                companion: two,
+                timing: CoRequisiteTiming::SameTermOrEarlier,
+            },
+        ),
+        // MUTUALLY_EXCLUSIVE
+        (
+            "mutually_exclusive/baseline",
+            RuleBody::MutuallyExclusive {
+                members: vec![one, two],
+                policy: DoubleCountingPolicy::AtMost(1),
+            },
+        ),
+        (
+            "mutually_exclusive/members.order",
+            RuleBody::MutuallyExclusive {
+                members: vec![two, one],
+                policy: DoubleCountingPolicy::AtMost(1),
+            },
+        ),
+        (
+            "mutually_exclusive/policy.at_most",
+            RuleBody::MutuallyExclusive {
+                members: vec![one, two],
+                policy: DoubleCountingPolicy::AtMost(2),
+            },
+        ),
+        (
+            "mutually_exclusive/policy.unknown",
+            RuleBody::MutuallyExclusive {
+                members: vec![one, two],
+                policy: DoubleCountingPolicy::Unknown,
+            },
+        ),
+        // EQUIVALENCY
+        (
+            "equivalency/baseline",
+            RuleBody::Equivalency {
+                presented: one,
+                counts_for: two,
+                effective: bounded,
+            },
+        ),
+        (
+            "equivalency/presented",
+            RuleBody::Equivalency {
+                presented: two,
+                counts_for: two,
+                effective: bounded,
+            },
+        ),
+        (
+            "equivalency/counts_for",
+            RuleBody::Equivalency {
+                presented: one,
+                counts_for: one,
+                effective: bounded,
+            },
+        ),
+        (
+            "equivalency/effective.from",
+            RuleBody::Equivalency {
+                presented: one,
+                counts_for: two,
+                effective: later,
+            },
+        ),
+        (
+            "equivalency/effective.to",
+            RuleBody::Equivalency {
+                presented: one,
+                counts_for: two,
+                effective: open,
+            },
+        ),
+        // MAXIMUM_RECOGNITION
+        (
+            "maximum_recognition/baseline",
+            RuleBody::MaximumRecognition {
+                category: alpha.clone(),
+                policy: RecognitionPolicy::CappedAt(CreditAmount::new(30)?),
+            },
+        ),
+        (
+            "maximum_recognition/category",
+            RuleBody::MaximumRecognition {
+                category: beta.clone(),
+                policy: RecognitionPolicy::CappedAt(CreditAmount::new(30)?),
+            },
+        ),
+        (
+            "maximum_recognition/policy.capped_at",
+            RuleBody::MaximumRecognition {
+                category: alpha.clone(),
+                policy: RecognitionPolicy::CappedAt(CreditAmount::new(45)?),
+            },
+        ),
+        (
+            "maximum_recognition/policy.unknown",
+            RuleBody::MaximumRecognition {
+                category: alpha.clone(),
+                policy: RecognitionPolicy::Unknown,
+            },
+        ),
+        // NON_CREDIT_TRAINING
+        (
+            "non_credit_training/baseline",
+            RuleBody::NonCreditTraining {
+                program: program_one.clone(),
+                applicability: Applicability::FromAdmissionYear(year_one),
+            },
+        ),
+        (
+            "non_credit_training/program",
+            RuleBody::NonCreditTraining {
+                program: program_two.clone(),
+                applicability: Applicability::FromAdmissionYear(year_one),
+            },
+        ),
+        (
+            "non_credit_training/applicability.year",
+            RuleBody::NonCreditTraining {
+                program: program_one.clone(),
+                applicability: Applicability::FromAdmissionYear(year_two),
+            },
+        ),
+        (
+            "non_credit_training/applicability.before",
+            RuleBody::NonCreditTraining {
+                program: program_one.clone(),
+                applicability: Applicability::BeforeAdmissionYear(year_one),
+            },
+        ),
+        (
+            "non_credit_training/applicability.unknown",
+            RuleBody::NonCreditTraining {
+                program: program_one.clone(),
+                applicability: Applicability::Unknown,
+            },
+        ),
+        // LANGUAGE_OF_INSTRUCTION
+        (
+            "language_of_instruction/baseline",
+            RuleBody::LanguageOfInstruction {
+                minimum: 3,
+                language: InstructionLanguage::Foreign,
+                exclusions: vec![CountConstraint::ExcludedFromAdmissionYear {
+                    course: one,
+                    from: year_two,
+                }],
+            },
+        ),
+        (
+            "language_of_instruction/minimum",
+            RuleBody::LanguageOfInstruction {
+                minimum: 4,
+                language: InstructionLanguage::Foreign,
+                exclusions: vec![CountConstraint::ExcludedFromAdmissionYear {
+                    course: one,
+                    from: year_two,
+                }],
+            },
+        ),
+        (
+            "language_of_instruction/language",
+            RuleBody::LanguageOfInstruction {
+                minimum: 3,
+                language: InstructionLanguage::Korean,
+                exclusions: vec![CountConstraint::ExcludedFromAdmissionYear {
+                    course: one,
+                    from: year_two,
+                }],
+            },
+        ),
+        (
+            "language_of_instruction/exclusions",
+            RuleBody::LanguageOfInstruction {
+                minimum: 3,
+                language: InstructionLanguage::Foreign,
+                exclusions: vec![CountConstraint::AtLeastMajorCourses(1)],
+            },
+        ),
+        (
+            "language_of_instruction/exclusions.len",
+            RuleBody::LanguageOfInstruction {
+                minimum: 3,
+                language: InstructionLanguage::Foreign,
+                exclusions: Vec::new(),
+            },
+        ),
+        // THESIS_RESEARCH
+        (
+            "thesis_research/baseline",
+            RuleBody::ThesisResearch {
+                course: one,
+                credits: CreditAmount::new(3)?,
+                grading: ThesisGrading::SatisfactoryUnsatisfactory,
+                applicability: Applicability::FromAdmissionYear(year_one),
+            },
+        ),
+        (
+            "thesis_research/course",
+            RuleBody::ThesisResearch {
+                course: two,
+                credits: CreditAmount::new(3)?,
+                grading: ThesisGrading::SatisfactoryUnsatisfactory,
+                applicability: Applicability::FromAdmissionYear(year_one),
+            },
+        ),
+        (
+            "thesis_research/credits",
+            RuleBody::ThesisResearch {
+                course: one,
+                credits: CreditAmount::new(6)?,
+                grading: ThesisGrading::SatisfactoryUnsatisfactory,
+                applicability: Applicability::FromAdmissionYear(year_one),
+            },
+        ),
+        (
+            "thesis_research/grading",
+            RuleBody::ThesisResearch {
+                course: one,
+                credits: CreditAmount::new(3)?,
+                grading: ThesisGrading::Graded,
+                applicability: Applicability::FromAdmissionYear(year_one),
+            },
+        ),
+        (
+            "thesis_research/applicability",
+            RuleBody::ThesisResearch {
+                course: one,
+                credits: CreditAmount::new(3)?,
+                grading: ThesisGrading::SatisfactoryUnsatisfactory,
+                applicability: Applicability::Unknown,
+            },
+        ),
+        // EXCEPTION_APPROVAL
+        (
+            "exception_approval/baseline",
+            RuleBody::ExceptionApproval {
+                target: rule_one.clone(),
+                approval: ApprovalRequirement {
+                    authority: office_one.clone(),
+                    valid_within: bounded,
+                },
+            },
+        ),
+        (
+            "exception_approval/target",
+            RuleBody::ExceptionApproval {
+                target: rule_two.clone(),
+                approval: ApprovalRequirement {
+                    authority: office_one.clone(),
+                    valid_within: bounded,
+                },
+            },
+        ),
+        (
+            "exception_approval/approval.authority",
+            RuleBody::ExceptionApproval {
+                target: rule_one.clone(),
+                approval: ApprovalRequirement {
+                    authority: office_two.clone(),
+                    valid_within: bounded,
+                },
+            },
+        ),
+        (
+            "exception_approval/approval.valid_within.from",
+            RuleBody::ExceptionApproval {
+                target: rule_one.clone(),
+                approval: ApprovalRequirement {
+                    authority: office_one.clone(),
+                    valid_within: later,
+                },
+            },
+        ),
+        (
+            "exception_approval/approval.valid_within.to",
+            RuleBody::ExceptionApproval {
+                target: rule_one.clone(),
+                approval: ApprovalRequirement {
+                    authority: office_one.clone(),
+                    valid_within: open,
+                },
+            },
+        ),
+    ];
+
+    // Every arm is exercised, and the fourteen are named rather than counted.
+    let arms: BTreeSet<RuleType> = bodies.iter().map(|(_, body)| body.rule_type()).collect();
+    assert_eq!(
+        arms,
+        RuleType::ALL.iter().copied().collect::<BTreeSet<_>>(),
+        "a rule type has no entry in the distinguisher above"
+    );
+
+    let mut seen: BTreeMap<String, &str> = BTreeMap::new();
+    for (label, body) in &bodies {
+        let text = body.canonical_text();
+        assert!(
+            text.starts_with(body.rule_type().as_str()),
+            "{label} does not begin with its rule type"
+        );
+        assert!(
+            seen.insert(text.clone(), label).is_none(),
+            "{label} renders the same canonical text as {:?}: {text}",
+            seen.get(&text)
+        );
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// every_rule_set_field_moves_the_hash
+// ---------------------------------------------------------------------------
+
+/// One shape of a published set. Each test case below moves one field of it.
+#[derive(Debug, Clone)]
+struct SetShape {
+    set: u32,
+    curriculum: u32,
+    version: RuleSetVersion,
+    supersedes: Option<RuleSetVersion>,
+    connector: &'static str,
+    effective: &'static str,
+    parser: u16,
+    retrieved_at: u64,
+    rule: &'static str,
+    digest: &'static [u8],
+    threshold: u16,
+    second_rule: bool,
+}
+
+impl SetShape {
+    const fn baseline() -> Self {
+        Self {
+            set: 900,
+            curriculum: 901,
+            version: RuleSetVersion::FIRST,
+            supersedes: None,
+            connector: CONNECTOR,
+            effective: "2026-03-01",
+            parser: 1,
+            retrieved_at: RETRIEVED_AT.seconds(),
+            rule: "total_credits",
+            digest: b"official/cse/degree-requirements",
+            threshold: 130,
+            second_rule: false,
+        }
+    }
+}
+
+/// Publishes one shape through the real publication path.
+fn shaped_set(shape: &SetShape) -> Result<RuleSet, Box<dyn Error>> {
+    let manifest = support::draft(shape.connector)?
+        .parser_version(ParserVersion::new(shape.parser))
+        .build()?;
+    let ledger = permitting_ledger(shape.connector)?;
+    let known = corpus()?;
+    let bytes = DocumentFixture::dated()
+        .effective_on(shape.effective)
+        .bytes();
+    let observed = ContentDigest::sha256(&bytes);
+    let record = academic_ingestion::run(
+        &manifest,
+        &ledger,
+        &known,
+        RetrievalInstant::at(shape.retrieved_at),
+        Acquisition::Import {
+            target: CATALOGUE,
+            outcome: FetchOutcome::Body {
+                at: RetrievalInstant::at(shape.retrieved_at),
+                http: support::metadata("\"v1\"")?,
+                source_bytes: bytes,
+                observed,
+            },
+        },
+        IngestSeq::at(1),
+        Appropriateness::NotAppropriate,
+    );
+    let published = match record.outcome() {
+        RunOutcome::Completed(Publication::Published(rules)) => rules.clone(),
+        RunOutcome::Completed(Publication::Queued(queued)) => {
+            return Err(format!("the fixture document was queued: {:?}", queued.reason()).into());
+        }
+        RunOutcome::Halted(failure) => return Err(Box::new(failure.clone())),
+    };
+
+    let mut draft = RuleSetDraft::from_official_source(
+        &published,
+        parse_id!(RequirementSetId, shape.set)?,
+        parse_id!(CurriculumVersionId, shape.curriculum)?,
+        shape.version,
+        shape.supersedes,
+    );
+    let facts = AcademicFacts::new(AT);
+    let include = |draft: RuleSetDraft, id: &str| -> Result<RuleSetDraft, Box<dyn Error>> {
+        let rule = RuleId::new(id)?;
+        let candidate = RuleCandidate::extracted(
+            rule.clone(),
+            source_rule(rule.as_str())?,
+            RuleBody::CreditMinimum {
+                category: CreditCategory::new("ALL_RECOGNIZED")?,
+                threshold: CreditAmount::new(shape.threshold)?,
+            },
+            Actor::ModelRun {
+                run_id: entity(7_001)?,
+            },
+            "the official page states this requirement in a sentence".to_owned(),
+            ContentDigest::sha256(shape.digest),
+        );
+        let reviewed = ReviewGate::admit(
+            candidate,
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
+            ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
+        )?;
+        let official = OfficialExampleFixtures::new(
+            vec![FixtureCase::new(facts.clone(), ProofStatus::Needs)],
+            &rule,
+        )?;
+        let synthetic = SyntheticTranscriptFixtures::new(
+            vec![FixtureCase::new(facts.clone(), ProofStatus::Needs)],
+            &rule,
+        )?;
+        Ok(draft.include(reviewed, &official, &synthetic)?)
+    };
+    draft = include(draft, shape.rule)?;
+    if shape.second_rule {
+        draft = include(draft, "cse_major_total")?;
+    }
+    Ok(draft.publish()?)
+}
+
+/// Every field of a published rule set moves its hash.
+///
+/// `rule_set_hash` is what a historical audit replays against, so any two sets
+/// that can answer differently have to hash differently. Two whole classes of
+/// field were outside the rendering and both were measured on this tree: the
+/// rule bodies, and three of the four fields of the official source binding --
+/// one of which, `retrieved_at`, is what the graduation audit's freshness gate
+/// reads.
+///
+/// So this does not test the fields that look like identity. It names **all
+/// twelve** movable positions of the six fields `RuleSet` declares, and
+/// requires the twelve hashes and the baseline to be pairwise distinct.
+#[test]
+fn every_rule_set_field_moves_the_hash() -> TestResult {
+    let base = SetShape::baseline();
+    let mut shapes: Vec<(&str, SetShape)> = vec![("baseline", base.clone())];
+
+    let mut vary = |label: &'static str, edit: fn(&mut SetShape)| {
+        let mut shape = SetShape::baseline();
+        edit(&mut shape);
+        shapes.push((label, shape));
+    };
+    vary("set_id", |shape| shape.set = 902);
+    vary("curriculum_version", |shape| shape.curriculum = 903);
+    vary("version", |shape| shape.version = RuleSetVersion::new(2));
+    vary("supersedes", |shape| {
+        shape.version = RuleSetVersion::new(2);
+        shape.supersedes = Some(RuleSetVersion::FIRST);
+    });
+    vary("source.connector", |shape| {
+        shape.connector = "snu.registrar.official";
+    });
+    vary("source.effective", |shape| shape.effective = "2026-09-01");
+    vary("source.retrieved_at", |shape| {
+        shape.retrieved_at = RETRIEVED_AT.seconds() - 4_000;
+    });
+    vary("source.parser_version", |shape| shape.parser = 2);
+    vary("rule.id", |shape| shape.rule = "credit_floor");
+    vary("rule.source_digest", |shape| {
+        shape.digest = b"official/cse/degree-requirements-2027";
+    });
+    vary("rule.body", |shape| shape.threshold = 12);
+    vary("rules.len", |shape| shape.second_rule = true);
+
+    // `version` and `supersedes` move together in the fourth entry, so the
+    // pair is distinguished separately: a rendering that dropped `supersedes`
+    // would still separate that entry from the baseline on the version alone.
+    let mut without = SetShape::baseline();
+    without.version = RuleSetVersion::new(2);
+    assert_ne!(
+        shaped_set(&without)?.rule_set_hash(),
+        shaped_set(&shapes[4].1)?.rule_set_hash(),
+        "two sets differing only in `supersedes` hashed alike"
+    );
+
+    assert_eq!(
+        shapes.len(),
+        13,
+        "the baseline plus one entry per movable position"
+    );
+    let mut seen: BTreeMap<ContentDigest, &str> = BTreeMap::new();
+    for (label, shape) in &shapes {
+        let set = shaped_set(shape)?;
+        let hash = set.rule_set_hash();
+        assert_eq!(
+            hash,
+            ContentDigest::sha256(set.canonical_text().as_bytes()),
+            "{label}: the hash is not the digest of the canonical text"
+        );
+        assert!(
+            seen.insert(hash, label).is_none(),
+            "{label} hashed the same as {:?}:\n{}",
+            seen.get(&hash),
+            set.canonical_text()
+        );
+    }
+
+    // And the hash is a function of the value, not of the order a draft was
+    // filled in: the same shape built twice hashes the same.
+    assert_eq!(
+        shaped_set(&base)?.rule_set_hash(),
+        shaped_set(&base)?.rule_set_hash()
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// a_rule_set_with_no_rule_is_not_published
+// ---------------------------------------------------------------------------
+
+/// A draft with no rule in it is refused at publication.
+///
+/// Section 11.4 makes `DETERMINATE` conditional on *rule coverage 100%*, and
+/// coverage over no rule is the vacuous witness `academic-audit`'s
+/// `CoverageWitness::establish` refuses. This was accepted, selected and
+/// audited: the audit reported `SOURCE_FRESHNESS_POLICY_ABSENT` to a record
+/// that had supplied the criterion, and with that crate's two empty-tree
+/// guards removed the same set answered 졸업 가능 from nothing.
+#[test]
+fn a_rule_set_with_no_rule_is_not_published() -> TestResult {
+    let published = official_source()?;
+    let empty = draft(&published)?;
+    assert!(
+        matches!(empty.publish(), Err(RequirementError::EmptyRuleSet { .. })),
+        "a rule set with no rule was published"
+    );
+
+    // One rule is enough, so the refusal is about emptiness and not about the
+    // publication path.
+    let facts = AcademicFacts::new(AT);
+    let one = admit(
+        draft(&published)?,
+        "total_credits",
+        RuleBody::CreditMinimum {
+            category: CreditCategory::new("ALL_RECOGNIZED")?,
+            threshold: CreditAmount::new(130)?,
+        },
+        (
+            &[FixtureCase::new(facts.clone(), ProofStatus::Needs)],
+            &[FixtureCase::new(facts, ProofStatus::Needs)],
+        ),
+    )?;
+    assert_eq!(one.publish()?.rules().count(), 1);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// a_rule_naming_an_unpublished_source_rule_is_refused
+// ---------------------------------------------------------------------------
+
+/// A rule may only claim a document identifier the official source published.
+///
+/// The identifier a reviewer chooses inside the set and the identifier the
+/// official document gives a rule are two namespaces, and `ExecutableRule`
+/// carries both so a caller can ask whether something said about the document
+/// is about a rule in this set. That question is only answerable if the
+/// document half is bound to the document: an unchecked second string would be
+/// a spelling somebody typed, which is what `academic-audit`'s conflict gate
+/// was reading when it compared the *reviewer's* identifier with the
+/// document's.
+#[test]
+fn a_rule_naming_an_unpublished_source_rule_is_refused() -> TestResult {
+    let published = official_source()?;
+    let document: Vec<String> = published
+        .rules()
+        .iter()
+        .map(|rule| rule.as_str().to_owned())
+        .collect();
+    assert!(
+        document.contains(&"r-12-1".to_owned()),
+        "the fixture document carries {document:?}"
+    );
+    assert!(
+        !document.contains(&"total_credits".to_owned()),
+        "the fixture document must not carry the identifier the refusal is tested with"
+    );
+
+    let facts = AcademicFacts::new(AT);
+    let fixtures = || {
+        (
+            vec![FixtureCase::new(facts.clone(), ProofStatus::Needs)],
+            vec![FixtureCase::new(facts.clone(), ProofStatus::Needs)],
+        )
+    };
+    let body = || -> Result<RuleBody, Box<dyn Error>> {
+        Ok(RuleBody::CreditMinimum {
+            category: CreditCategory::new("ALL_RECOGNIZED")?,
+            threshold: CreditAmount::new(130)?,
+        })
+    };
+    let review = |source: &str| -> Result<_, Box<dyn Error>> {
+        let rule = RuleId::new("total_credits")?;
+        let candidate = RuleCandidate::extracted(
+            rule.clone(),
+            academic_domain::engines::RuleId::new(source)?,
+            body()?,
+            Actor::ModelRun {
+                run_id: entity(7_001)?,
+            },
+            "the official page states this requirement in a sentence".to_owned(),
+            digest(),
+        );
+        Ok(ReviewGate::admit(
+            candidate,
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
+            ReviewAttestation::file(reviewer(12)?, rule, AT),
+        )?)
+    };
+
+    // The set-local identifier is not the document's business: this one is
+    // admitted, and it is the same identifier the refused call below uses.
+    let rule = RuleId::new("total_credits")?;
+    let (official, synthetic) = fixtures();
+    assert!(
+        draft(&published)?
+            .include(
+                review("r-12-1")?,
+                &OfficialExampleFixtures::new(official, &rule)?,
+                &SyntheticTranscriptFixtures::new(synthetic, &rule)?,
+            )
+            .is_ok(),
+        "a rule naming a document rule the source published was refused"
+    );
+
+    // The document identifier is. `total_credits` is a name the document does
+    // not carry, so the crossing it claims does not exist.
+    let (official, synthetic) = fixtures();
+    assert!(
+        matches!(
+            draft(&published)?.include(
+                review("total_credits")?,
+                &OfficialExampleFixtures::new(official, &rule)?,
+                &SyntheticTranscriptFixtures::new(synthetic, &rule)?,
+            ),
+            Err(RequirementError::SourceRuleNotPublished { .. })
+        ),
+        "a rule naming a document rule the source never published was admitted"
+    );
     Ok(())
 }

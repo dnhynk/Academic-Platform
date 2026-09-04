@@ -450,3 +450,572 @@ fn the_published_average_is_rounded_in_one_pinned_place() -> TestResult {
     }
     Ok(())
 }
+
+/// The floor the inventory walk must reach, so an empty walk fails as a walk.
+const INVENTORY_FILE_FLOOR: usize = 15;
+
+/// Every function this package declares, as `<file> [vis] <signature>`.
+const DECLARATIONS: &[&str] = &[
+    "examples/emit_harness.rs [priv] fn main() -> Result<(), Box<dyn std::error::Error>>",
+    "src/attempt.rs [priv] fn push( &mut self, attempt: CourseAttempt, supersedes: Option<AttemptId>, relation: Option<ClaimRelation>, ) -> Result<(), RecordError>",
+    "src/attempt.rs [pub] fn all(&self) -> &[AttemptEntry]",
+    "src/attempt.rs [pub] fn append(&mut self, attempt: CourseAttempt) -> Result<(), RecordError>",
+    "src/attempt.rs [pub] fn append_correction( &mut self, attempt: CourseAttempt, supersedes: AttemptId, scope_id: ScopeId, source_claim_id: academic_domain::ClaimId, target_claim_id: academic_domain::ClaimId, ) -> Result<(), RecordError>",
+    "src/attempt.rs [pub] fn as_original(mut self) -> Self",
+    "src/attempt.rs [pub] fn as_repeat_of(mut self, earlier: AttemptId) -> Self",
+    "src/attempt.rs [pub] fn as_str(self) -> &'static str",
+    "src/attempt.rs [pub] fn as_str(self) -> &'static str",
+    "src/attempt.rs [pub] fn attempt(&self) -> &CourseAttempt",
+    "src/attempt.rs [pub] fn contains(&self, id: AttemptId) -> bool",
+    "src/attempt.rs [pub] fn course_code(&self) -> &str",
+    "src/attempt.rs [pub] fn course_code(&self) -> &str",
+    "src/attempt.rs [pub] fn credits_attempted(&self) -> Decimal",
+    "src/attempt.rs [pub] fn credits_attempted(&self) -> Decimal",
+    "src/attempt.rs [pub] fn credits_earned(&self) -> Decimal",
+    "src/attempt.rs [pub] fn current(&self) -> Vec<&CourseAttempt>",
+    "src/attempt.rs [pub] fn evidence_ids(&self) -> &[EvidenceId]",
+    "src/attempt.rs [pub] fn evidence_ids(&self) -> &[EvidenceId]",
+    "src/attempt.rs [pub] fn from_confirmed_registration( id: AttemptId, confirmation: &RegistrationConfirmation, grading_scheme_id: impl Into<String>, ) -> Result<Self, RecordError>",
+    "src/attempt.rs [pub] fn from_confirmed_row( id: AttemptId, course_code: impl Into<String>, term: TermKey, status: SettledStatus, origin: AttemptOrigin, credits_attempted: Decimal, credits_earned: Decimal, grade: Option<GradeSymbol>, grading_scheme_id: impl Into<String>, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, RecordError>",
+    "src/attempt.rs [pub] fn get(&self, id: AttemptId) -> Option<&CourseAttempt>",
+    "src/attempt.rs [pub] fn grade(&self) -> Option<GradeSymbol>",
+    "src/attempt.rs [pub] fn grading_scheme_id(&self) -> &str",
+    "src/attempt.rs [pub] fn id(&self) -> AttemptId",
+    "src/attempt.rs [pub] fn into_status(self) -> AttemptStatus",
+    "src/attempt.rs [pub] fn is_settled(self) -> bool",
+    "src/attempt.rs [pub] fn new( course_code: impl Into<String>, term: TermKey, credits_attempted: Decimal, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, RecordError>",
+    "src/attempt.rs [pub] fn new() -> Self",
+    "src/attempt.rs [pub] fn origin(&self) -> AttemptOrigin",
+    "src/attempt.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/attempt.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/attempt.rs [pub] fn recognition(&self) -> RecognitionDecision",
+    "src/attempt.rs [pub] fn relation(&self) -> Option<&ClaimRelation>",
+    "src/attempt.rs [pub] fn repeat_of(&self) -> Option<AttemptId>",
+    "src/attempt.rs [pub] fn repeat_status(&self) -> RepeatStatus",
+    "src/attempt.rs [pub] fn status(&self) -> AttemptStatus",
+    "src/attempt.rs [pub] fn supersedes(&self) -> Option<AttemptId>",
+    "src/attempt.rs [pub] fn term(&self) -> TermKey",
+    "src/attempt.rs [pub] fn term(&self) -> TermKey",
+    "src/attempt.rs [pub] fn with_recognition(mut self, decision: RecognitionDecision) -> Self",
+    "src/classify.rs [pub] fn as_str(&self) -> &str",
+    "src/classify.rs [pub] fn as_str(self) -> &'static str",
+    "src/classify.rs [pub] fn category(&self) -> RequirementCategory",
+    "src/classify.rs [pub] fn classification_claim( classification: &RequirementClassification, claim_id: ClaimId, subject_entity_id: EntityId, scope_id: ScopeId, valid_time: ValidInterval, evidence_ids: Vec<EvidenceId>, ) -> Result<(Claim, Actor), RecordError>",
+    "src/classify.rs [pub] fn classify(&self, attempt: &CourseAttempt) -> Vec<RequirementClassification>",
+    "src/classify.rs [pub] fn id(&self) -> &str",
+    "src/classify.rs [pub] fn is_major(self) -> bool",
+    "src/classify.rs [pub] fn new(value: impl Into<String>) -> Result<Self, RecordError>",
+    "src/classify.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/classify.rs [pub] fn program(&self) -> &ProgramId",
+    "src/classify.rs [pub] fn programs(&self) -> Vec<ProgramId>",
+    "src/classify.rs [pub] fn publish( id: impl Into<String>, rules: Vec<ClassificationRule>, ) -> Result<Self, RecordError>",
+    "src/classify.rs [pub] fn rule_id(&self) -> &str",
+    "src/classify.rs [pub] fn rules(&self) -> &[ClassificationRule]",
+    "src/classify.rs [pub] fn ruleset_id(&self) -> &str",
+    "src/corpus.rs [priv] fn credits(whole: i128) -> Result<Decimal, RecordError>",
+    "src/corpus.rs [priv] fn settled( index: u8, course_code: &str, term: &str, status: SettledStatus, origin: AttemptOrigin, grade: Option<GradeSymbol>, attempted: i128, earned: i128, ) -> Result<CourseAttempt, RecordError>",
+    "src/corpus.rs [pub] fn baseline_history() -> Result<AttemptHistory, RecordError>",
+    "src/corpus.rs [pub] fn baseline_rules() -> Result<RuleBook, RecordError>",
+    "src/corpus.rs [pub] fn baseline_rules_scale3() -> Result<RuleBook, RecordError>",
+    "src/corpus.rs [pub] fn classification_v1() -> Result<ClassificationRuleSet, RecordError>",
+    "src/corpus.rs [pub] fn confirmed_policy_ceiling_from(term: &str) -> Result<PolicyBook, RecordError>",
+    "src/corpus.rs [pub] fn confirmed_policy_v1() -> Result<PolicyBook, RecordError>",
+    "src/corpus.rs [pub] fn history_with_conflicting_records() -> Result<AttemptHistory, RecordError>",
+    "src/corpus.rs [pub] fn history_with_undated_external() -> Result<AttemptHistory, RecordError>",
+    "src/corpus.rs [pub] fn published_rules() -> Result<RuleBook, RecordError>",
+    "src/corpus.rs [pub] fn single_grade_history(grade: GradeSymbol) -> Result<AttemptHistory, RecordError>",
+    "src/corpus.rs [pub] fn synthetic_attempt_id(index: u8) -> Result<AttemptId, RecordError>",
+    "src/corpus.rs [pub] fn synthetic_evidence_id(index: u8) -> Result<EvidenceId, RecordError>",
+    "src/decimal.rs [priv] fn align(left: Decimal, right: Decimal) -> Result<(i128, i128, u8), RecordError>",
+    "src/decimal.rs [priv] fn pow10(exponent: u32) -> Result<i128, RecordError>",
+    "src/decimal.rs [pub] fn add(left: Decimal, right: Decimal) -> Result<Decimal, RecordError>",
+    "src/decimal.rs [pub] fn compare(left: Decimal, right: Decimal) -> Result<Ordering, RecordError>",
+    "src/decimal.rs [pub] fn div_round_half_up( numerator: Decimal, denominator: Decimal, scale: u8, ) -> Result<Decimal, RecordError>",
+    "src/decimal.rs [pub] fn integer(value: i128) -> Result<Decimal, RecordError>",
+    "src/decimal.rs [pub] fn is_zero(value: Decimal) -> bool",
+    "src/decimal.rs [pub] fn mul(left: Decimal, right: Decimal) -> Result<Decimal, RecordError>",
+    "src/decimal.rs [pub] fn parse(text: &str) -> Result<Decimal, RecordError>",
+    "src/decimal.rs [pub] fn render(value: Decimal) -> String",
+    "src/decimal.rs [pub] fn rescale(value: Decimal, target: u8) -> Result<Decimal, RecordError>",
+    "src/decimal.rs [pub] fn sub(left: Decimal, right: Decimal) -> Result<Decimal, RecordError>",
+    "src/decimal.rs [pub] fn zero() -> Result<Decimal, RecordError>",
+    "src/engine.rs [priv] fn attempt_input_keys( inputs: &FrozenInputs, attempt: &AttemptFacts, ) -> Result<Vec<InputKey>, RecordError>",
+    "src/engine.rs [priv] fn duplicate_records(facts: &[AttemptFacts]) -> BTreeSet<academic_domain::AttemptId>",
+    "src/engine.rs [priv] fn engine_id(&self) -> &'static str",
+    "src/engine.rs [priv] fn engine_id(&self) -> &'static str",
+    "src/engine.rs [priv] fn engine_version(&self) -> EngineVersion",
+    "src/engine.rs [priv] fn engine_version(&self) -> EngineVersion",
+    "src/engine.rs [priv] fn evaluate( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, _engine_version: EngineVersion, ) -> Result<EngineOutcome, EngineError>",
+    "src/engine.rs [priv] fn evaluate( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, _engine_version: EngineVersion, ) -> Result<EngineOutcome, EngineError>",
+    "src/engine.rs [priv] fn rank(status: ProofStatus) -> u8",
+    "src/engine.rs [priv] fn scope_input_keys(inputs: &FrozenInputs) -> Result<Vec<InputKey>, RecordError>",
+    "src/engine.rs [priv] fn worsen(current: ProofStatus, candidate: ProofStatus) -> ProofStatus",
+    "src/engine.rs [pub] fn evaluate_record( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<EngineOutcome, RecordError>",
+    "src/engine.rs [pub] fn evaluate_record( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<EngineOutcome, RecordError>",
+    "src/engine.rs [pub] fn new(rules: RuleBook, version: EngineVersion) -> Self",
+    "src/engine.rs [pub] fn new(rules: RuleBook, version: EngineVersion) -> Self",
+    "src/engine.rs [pub] fn rule_set_hash(&self) -> RuleSetHash",
+    "src/engine.rs [pub] fn rule_set_hash(&self) -> RuleSetHash",
+    "src/engine.rs [pub] fn rules(&self) -> &RuleBook",
+    "src/facts.rs [priv] fn integer(inputs: &FrozenInputs, key: &str) -> Result<Option<i64>, RecordError>",
+    "src/facts.rs [priv] fn required_decimal(inputs: &FrozenInputs, key: &str) -> Result<Decimal, RecordError>",
+    "src/facts.rs [priv] fn required_reference(inputs: &FrozenInputs, key: &str) -> Result<String, RecordError>",
+    "src/facts.rs [pub] fn decode(inputs: &FrozenInputs) -> Result<(Vec<AttemptFacts>, GpaScope), RecordError>",
+    "src/facts.rs [pub] fn encode(facts: &[AttemptFacts], scope: &GpaScope) -> Result<FrozenInputs, RecordError>",
+    "src/facts.rs [pub] fn from_attempt(attempt: &CourseAttempt, classification: &ClassificationRuleSet) -> Self",
+    "src/facts.rs [pub] fn is_major_for(&self, program: &ProgramId) -> bool",
+    "src/facts.rs [pub] fn tag(&self) -> &'static str",
+    "src/grade.rs [priv] fn snu_table(id: &str, published_scale: u8) -> Result<Self, RecordError>",
+    "src/grade.rs [pub] fn as_str(self) -> &'static str",
+    "src/grade.rs [pub] fn as_token(self) -> &'static str",
+    "src/grade.rs [pub] fn canonical_text(&self) -> String",
+    "src/grade.rs [pub] fn citation(&self) -> &str",
+    "src/grade.rs [pub] fn earned_not_graded() -> Self",
+    "src/grade.rs [pub] fn earns_credit(&self) -> bool",
+    "src/grade.rs [pub] fn grade_points(&self) -> Option<Decimal>",
+    "src/grade.rs [pub] fn graded(grade_points: Decimal, earns_credit: bool) -> Self",
+    "src/grade.rs [pub] fn id(&self) -> &str",
+    "src/grade.rs [pub] fn is_unresolved(&self) -> bool",
+    "src/grade.rs [pub] fn new( id: impl Into<String>, treatments: BTreeMap<GradeSymbol, GradeTreatment>, published_scale: u8, citation: impl Into<String>, ) -> Result<Self, RecordError>",
+    "src/grade.rs [pub] fn not_earned_not_graded() -> Self",
+    "src/grade.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/grade.rs [pub] fn parse_token(text: &str) -> Option<Self>",
+    "src/grade.rs [pub] fn participates_in_average(&self) -> bool",
+    "src/grade.rs [pub] fn published_scale(&self) -> u8",
+    "src/grade.rs [pub] fn snu_4_3_v1() -> Result<Self, RecordError>",
+    "src/grade.rs [pub] fn snu_4_3_v2_scale3() -> Result<Self, RecordError>",
+    "src/grade.rs [pub] fn treatment(&self, symbol: GradeSymbol) -> GradeTreatment",
+    "src/grade.rs [pub] fn unresolved() -> Self",
+    "src/harness.rs [priv] fn bounds_text() -> String",
+    "src/harness.rs [priv] fn credit_cases() -> Result<Vec<(String, FrozenInputs)>, RecordError>",
+    "src/harness.rs [priv] fn gpa_cases() -> Result<Vec<(String, FrozenInputs)>, RecordError>",
+    "src/harness.rs [priv] fn inputs_for(history: &AttemptHistory, scope: &GpaScope) -> Result<FrozenInputs, RecordError>",
+    "src/harness.rs [pub] fn corpus_files() -> Result<Vec<CorpusFile>, RecordError>",
+    "src/ingest.rs [priv] fn claim_object_text(claim: &academic_domain::Claim) -> Option<String>",
+    "src/ingest.rs [priv] fn row_object_text(row: &TranscriptRow) -> String",
+    "src/ingest.rs [pub] fn attempt_from_confirmed_row( id: AttemptId, row: &TranscriptRow, confirmed: &ConfirmedRowClaim, status: SettledStatus, origin: AttemptOrigin, grading_scheme_id: impl Into<String>, evidence_ids: Vec<EvidenceId>, ) -> Result<CourseAttempt, RecordError>",
+    "src/lib.rs [priv] fn check_identifier(value: &str) -> bool",
+    "src/lib.rs [pub] fn into_engine_error(self) -> EngineError",
+    "src/plan.rs [pub] fn choices(&self) -> &[PlanScenarioChoice]",
+    "src/plan.rs [pub] fn course_code(&self) -> &str",
+    "src/plan.rs [pub] fn delete_scenario( store: &mut PlanStore, history: &AttemptHistory, scenario_id: EntityId, ) -> Result<PlanDeletion, RecordError>",
+    "src/plan.rs [pub] fn get(&self, id: EntityId) -> Option<&PlanScenario>",
+    "src/plan.rs [pub] fn id(&self) -> EntityId",
+    "src/plan.rs [pub] fn insert(&mut self, scenario: PlanScenario) -> Result<(), RecordError>",
+    "src/plan.rs [pub] fn intended_term(&self) -> TermKey",
+    "src/plan.rs [pub] fn is_empty(&self) -> bool",
+    "src/plan.rs [pub] fn label(&self) -> &str",
+    "src/plan.rs [pub] fn len(&self) -> usize",
+    "src/plan.rs [pub] fn new( course_code: impl Into<String>, intended_term: TermKey, ) -> Result<Self, RecordError>",
+    "src/plan.rs [pub] fn new( id: EntityId, label: impl Into<String>, choices: Vec<PlanScenarioChoice>, ) -> Result<Self, RecordError>",
+    "src/plan.rs [pub] fn new() -> Self",
+    "src/policy.rs [pub] fn as_str(self) -> &'static str",
+    "src/policy.rs [pub] fn as_str(self) -> &'static str",
+    "src/policy.rs [pub] fn as_str(self) -> &'static str",
+    "src/policy.rs [pub] fn canonical_text(&self) -> String",
+    "src/policy.rs [pub] fn canonical_text(&self) -> String",
+    "src/policy.rs [pub] fn classification_ruleset_id(&self) -> &str",
+    "src/policy.rs [pub] fn digest(&self) -> ContentDigest",
+    "src/policy.rs [pub] fn external_row_at(&self, term: TermKey) -> Option<&ExternalGradePolicyRow>",
+    "src/policy.rs [pub] fn external_rows(&self) -> &[ExternalGradePolicyRow]",
+    "src/policy.rs [pub] fn is_external(self) -> bool",
+    "src/policy.rs [pub] fn new( mut repeat_rows: Vec<RepeatPolicyRow>, mut external_rows: Vec<ExternalGradePolicyRow>, ) -> Result<Self, RecordError>",
+    "src/policy.rs [pub] fn new( scheme: GradingScheme, policies: PolicyBook, classification_ruleset_id: impl Into<String>, ) -> Self",
+    "src/policy.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/policy.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/policy.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/policy.rs [pub] fn policies(&self) -> &PolicyBook",
+    "src/policy.rs [pub] fn published_v1() -> Result<Self, RecordError>",
+    "src/policy.rs [pub] fn repeat_row_at(&self, term: TermKey) -> Option<&RepeatPolicyRow>",
+    "src/policy.rs [pub] fn repeat_rows(&self) -> &[RepeatPolicyRow]",
+    "src/policy.rs [pub] fn scheme(&self) -> &GradingScheme",
+    "src/term.rs [priv] fn cmp(&self, other: &Self) -> Ordering",
+    "src/term.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
+    "src/term.rs [priv] fn partial_cmp(&self, other: &Self) -> Option<Ordering>",
+    "src/term.rs [pub] fn as_str(self) -> &'static str",
+    "src/term.rs [pub] fn canonical_text(self) -> String",
+    "src/term.rs [pub] fn new(year: u16, semester: Semester) -> Result<Self, RecordError>",
+    "src/term.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/term.rs [pub] fn parse(text: &str) -> Result<Self, RecordError>",
+    "src/term.rs [pub] fn parse_transcript_term(text: &str) -> Result<Self, RecordError>",
+    "src/term.rs [pub] fn semester(self) -> Semester",
+    "src/term.rs [pub] fn year(self) -> u16",
+    "src/views.rs [priv] fn average_contribution( attempt: &AttemptFacts, grade: GradeSymbol, treatment: GradeTreatment, ceilinged: &BTreeMap<AttemptId, GradeSymbol>, rules: &RuleBook, ) -> Result<AverageContribution, RecordError>",
+    "src/views.rs [priv] fn average_over<'a>( &self, dispositions: impl Iterator<Item = &'a AttemptDisposition>, ) -> Result<GpaValue, RecordError>",
+    "src/views.rs [priv] fn disposition_for( attempt: &AttemptFacts, rules: &RuleBook, undecided_groups: &BTreeSet<AttemptId>, displaced: &BTreeSet<AttemptId>, ceilinged: &BTreeMap<AttemptId, GradeSymbol>, ) -> Result<AttemptDisposition, RecordError>",
+    "src/views.rs [priv] fn exceeds_ceiling(grade: GradeSymbol, ceiling: GradeSymbol, rules: &RuleBook) -> bool",
+    "src/views.rs [priv] fn highest_graded<'a>( group: &[&'a AttemptFacts], rules: &RuleBook, ) -> Result<Option<&'a AttemptFacts>, RecordError>",
+    "src/views.rs [priv] fn resolve_repeat_groups( facts: &[AttemptFacts], rules: &RuleBook, ) -> Result<Vec<RepeatProof>, RecordError>",
+    "src/views.rs [pub] fn as_str(self) -> &'static str",
+    "src/views.rs [pub] fn attempt_id(&self) -> AttemptId",
+    "src/views.rs [pub] fn average(&self) -> AverageContribution",
+    "src/views.rs [pub] fn categories( &self, attempt_id: AttemptId, ) -> Option<&BTreeMap<ProgramId, RequirementCategory>>",
+    "src/views.rs [pub] fn complete(&self) -> Option<Decimal>",
+    "src/views.rs [pub] fn compute( history: &AttemptHistory, rules: &RuleBook, classification: &ClassificationRuleSet, ) -> Result<Self, RecordError>",
+    "src/views.rs [pub] fn contributes_to_actual_progress(status: AttemptStatus) -> bool",
+    "src/views.rs [pub] fn course_code(&self) -> &str",
+    "src/views.rs [pub] fn credit(&self) -> CreditContribution",
+    "src/views.rs [pub] fn cumulative_gpa(&self) -> Result<GpaValue, RecordError>",
+    "src/views.rs [pub] fn cumulative_included(&self) -> Vec<AttemptId>",
+    "src/views.rs [pub] fn dispositions(&self) -> &[AttemptDisposition]",
+    "src/views.rs [pub] fn earned_credits(&self) -> Result<CreditTotal, RecordError>",
+    "src/views.rs [pub] fn from_facts(facts: &[AttemptFacts], rules: &RuleBook) -> Result<Self, RecordError>",
+    "src/views.rs [pub] fn gpa_denominator(&self) -> Result<CreditTotal, RecordError>",
+    "src/views.rs [pub] fn is_unknown(self) -> bool",
+    "src/views.rs [pub] fn known(&self) -> Option<Decimal>",
+    "src/views.rs [pub] fn major_gpa(&self, program: &ProgramId) -> Result<GpaValue, RecordError>",
+    "src/views.rs [pub] fn parse(text: &str) -> Option<Self>",
+    "src/views.rs [pub] fn partial(&self) -> Decimal",
+    "src/views.rs [pub] fn policy_row_id(&self) -> Option<&str>",
+    "src/views.rs [pub] fn programs(&self) -> Vec<ProgramId>",
+    "src/views.rs [pub] fn published_scale(&self) -> u8",
+    "src/views.rs [pub] fn quality_points(&self) -> Result<Decimal, RecordError>",
+    "src/views.rs [pub] fn reason(&self) -> DispositionReason",
+    "src/views.rs [pub] fn recorded_grade(&self) -> Option<GradeSymbol>",
+    "src/views.rs [pub] fn repeat_proofs(&self) -> &[RepeatProof]",
+    "src/views.rs [pub] fn term(&self) -> TermKey",
+    "src/views.rs [pub] fn term_gpa(&self, term: TermKey) -> Result<GpaValue, RecordError>",
+    "src/views.rs [pub] fn terms(&self) -> Vec<TermKey>",
+    "src/views.rs [pub] fn unknown(&self) -> &[AttemptId]",
+];
+
+/// Every `impl` block header this package ships, as `<file>: <header>`.
+const IMPL_HEADERS: &[&str] = &[
+    "src/attempt.rs: impl AttemptEntry",
+    "src/attempt.rs: impl AttemptHistory",
+    "src/attempt.rs: impl AttemptStatus",
+    "src/attempt.rs: impl CourseAttempt",
+    "src/attempt.rs: impl Into<String>, ) -> Result<Self, RecordError>",
+    "src/attempt.rs: impl Into<String>, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, RecordError>",
+    "src/attempt.rs: impl Into<String>, term: TermKey, credits_attempted: Decimal, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, RecordError>",
+    "src/attempt.rs: impl Into<String>, term: TermKey, status: SettledStatus, origin: AttemptOrigin, credits_attempted: Decimal, credits_earned: Decimal, grade: Option<GradeSymbol>, grading_scheme_id: impl Into<String>, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, RecordError>",
+    "src/attempt.rs: impl RegistrationConfirmation",
+    "src/attempt.rs: impl RepeatStatus",
+    "src/attempt.rs: impl SettledStatus",
+    "src/classify.rs: impl ClassificationRuleSet",
+    "src/classify.rs: impl Into<String>) -> Result<Self, RecordError>",
+    "src/classify.rs: impl Into<String>, rules: Vec<ClassificationRule>, ) -> Result<Self, RecordError>",
+    "src/classify.rs: impl ProgramId",
+    "src/classify.rs: impl RequirementCategory",
+    "src/classify.rs: impl RequirementClassification",
+    "src/engine.rs: impl CreditAccountingEngine",
+    "src/engine.rs: impl DeterministicEngine for CreditAccountingEngine",
+    "src/engine.rs: impl DeterministicEngine for GpaEngine",
+    "src/engine.rs: impl GpaEngine",
+    "src/facts.rs: impl AttemptFacts",
+    "src/facts.rs: impl GpaScope",
+    "src/grade.rs: impl GradeSymbol",
+    "src/grade.rs: impl GradeTreatment",
+    "src/grade.rs: impl GradingScheme",
+    "src/grade.rs: impl Into<String>, ) -> Result<Self, RecordError>",
+    "src/grade.rs: impl Into<String>, treatments: BTreeMap<GradeSymbol, GradeTreatment>, published_scale: u8, citation: impl Into<String>, ) -> Result<Self, RecordError>",
+    "src/ingest.rs: impl Into<String>, evidence_ids: Vec<EvidenceId>, ) -> Result<CourseAttempt, RecordError>",
+    "src/lib.rs: impl RecordError",
+    "src/plan.rs: impl Into<String>, choices: Vec<PlanScenarioChoice>, ) -> Result<Self, RecordError>",
+    "src/plan.rs: impl Into<String>, intended_term: TermKey, ) -> Result<Self, RecordError>",
+    "src/plan.rs: impl PlanScenario",
+    "src/plan.rs: impl PlanScenarioChoice",
+    "src/plan.rs: impl PlanStore",
+    "src/policy.rs: impl AttemptOrigin",
+    "src/policy.rs: impl Into<String>, ) -> Self",
+    "src/policy.rs: impl PolicyBook",
+    "src/policy.rs: impl RecognitionDecision",
+    "src/policy.rs: impl RepeatRecognition",
+    "src/policy.rs: impl RuleBook",
+    "src/term.rs: impl Ord for TermKey",
+    "src/term.rs: impl PartialOrd for TermKey",
+    "src/term.rs: impl Semester",
+    "src/term.rs: impl TermKey",
+    "src/term.rs: impl fmt::Display for TermKey",
+    "src/views.rs: impl AttemptDisposition",
+    "src/views.rs: impl CreditTotal",
+    "src/views.rs: impl DispositionReason",
+    "src/views.rs: impl GpaValue",
+    "src/views.rs: impl Iterator<Item = &'a AttemptDisposition>, ) -> Result<GpaValue, RecordError>",
+    "src/views.rs: impl RecordViews",
+];
+
+// ---------------------------------------------------------------------------
+// every_declaration_and_impl_in_this_crate_is_pinned
+// ---------------------------------------------------------------------------
+//
+// `P2-A3` measured this crate's blind spot directly: four `impl From<..>` blocks
+// appended to a product file gave an external crate a route to a value the
+// crate's own doc says has one construction site, and every acceptance test in
+// this crate stayed green. A `trait impl` declares no `pub fn`, so a scan built
+// on public signatures does not see it, and no scan here counted `impl` blocks
+// at all.
+//
+// `P2-X5` measured the same class as six invisible injections out of nineteen,
+// and `P2-Y3` closed it in `crates/cs-map` by pinning the whole set of `impl`
+// headers. `academic-review` and `academic-ingestion` were the only two U crates
+// carrying that defence. This is it, ported: two whole sets, compared in both
+// directions, over every `.rs` file this package ships.
+//
+// It is deliberately not a list of forbidden spellings. A new function, a new
+// method, a new inherent `impl`, a new trait `impl` and a new file all fail as
+// an entry nobody wrote down, whatever they are called.
+
+/// Every `.rs` file this package ships: everything outside `tests`.
+///
+/// The whole package rather than `src`, because `S-12` in
+/// `docs/contracts/policy-source-scans.md` is the row about a walk that reads
+/// `<crate>/src` and stops seeing product-shaped code beside it --
+/// `examples/`, `benches/` and `probes/` are all compiled by
+/// `cargo clippy --workspace --all-targets`.
+fn inventory_sources() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
+    let base = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mut found = Vec::new();
+    let mut pending = vec![base.clone()];
+    while let Some(directory) = pending.pop() {
+        for entry in std::fs::read_dir(&directory)? {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
+                if path
+                    .file_name()
+                    .is_some_and(|name| name == "tests" || name == "target")
+                {
+                    continue;
+                }
+                pending.push(path);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let name = path
+                    .strip_prefix(&base)?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                found.push((name, std::fs::read_to_string(&path)?));
+            }
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// Removes comments, string literals and character literals.
+///
+/// The raw-string-aware reader from `crates/record/tests/record_scans.rs`,
+/// copied deliberately: `P2-G4` found that a lexer without raw strings
+/// desynchronizes and reads every literal after one as code.
+fn inventory_strip(source: &str) -> String {
+    let bytes: Vec<char> = source.chars().collect();
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let current = bytes[index];
+        let next = bytes.get(index + 1).copied();
+
+        if current == '/' && next == Some('/') {
+            while index < bytes.len() && bytes[index] != '\n' {
+                index += 1;
+            }
+            out.push('\n');
+            continue;
+        }
+        if current == '/' && next == Some('*') {
+            let mut depth = 1_usize;
+            index += 2;
+            while index < bytes.len() && depth > 0 {
+                if bytes[index] == '/' && bytes.get(index + 1) == Some(&'*') {
+                    depth += 1;
+                    index += 2;
+                } else if bytes[index] == '*' && bytes.get(index + 1) == Some(&'/') {
+                    depth -= 1;
+                    index += 2;
+                } else {
+                    index += 1;
+                }
+            }
+            out.push(' ');
+            continue;
+        }
+        if current == 'r' && matches!(next, Some('"') | Some('#')) {
+            let mut probe = index + 1;
+            let mut hashes = 0_usize;
+            while bytes.get(probe) == Some(&'#') {
+                hashes += 1;
+                probe += 1;
+            }
+            if bytes.get(probe) == Some(&'"') {
+                let terminator: String = core::iter::once('"')
+                    .chain(core::iter::repeat_n('#', hashes))
+                    .collect();
+                let rest: String = bytes[probe + 1..].iter().collect();
+                let end = rest.find(&terminator).map_or(bytes.len(), |offset| {
+                    probe + 1 + rest[..offset].chars().count() + terminator.chars().count()
+                });
+                index = end;
+                out.push(' ');
+                continue;
+            }
+        }
+        if current == '"' {
+            index += 1;
+            while index < bytes.len() {
+                if bytes[index] == '\\' {
+                    index += 2;
+                    continue;
+                }
+                if bytes[index] == '"' {
+                    index += 1;
+                    break;
+                }
+                index += 1;
+            }
+            out.push(' ');
+            continue;
+        }
+        if current == '\'' {
+            let closes = if next == Some('\\') {
+                bytes
+                    .iter()
+                    .skip(index + 2)
+                    .position(|character| *character == '\'')
+                    .map(|offset| index + 2 + offset)
+            } else {
+                (bytes.get(index + 2) == Some(&'\'')).then_some(index + 2)
+            };
+            if let Some(end) = closes {
+                index = end + 1;
+                out.push(' ');
+                continue;
+            }
+        }
+        out.push(current);
+        index += 1;
+    }
+    out
+}
+
+/// Collapses whitespace runs to single spaces.
+fn inventory_collapse(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Every function declaration in `code`, as a public flag and a signature.
+///
+/// Visibility is read off the text before `fn` on the same line: `pub(` is
+/// crate-private however it continues, a bare `pub` is public, anything else is
+/// private. Reading **signatures** rather than names is what makes the pin a
+/// statement about what a function takes and returns, so a widened parameter
+/// fails as loudly as a new function.
+///
+/// The `>` of a `->` is skipped: `crates/review`'s copy of this reader records
+/// that treating it as a closing bracket truncated `fn counts(self) -> [u32; 5]`
+/// to `fn counts(self) -> [u32`, and a pin on a truncated signature is a pin two
+/// different signatures satisfy.
+fn inventory_declarations(code: &str) -> Vec<(bool, String)> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("fn ") {
+        if !(at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_')) {
+            continue;
+        }
+        let line_start = code[..at].rfind('\n').map_or(0, |index| index + 1);
+        let prefix = &code[line_start..at];
+        let public = prefix.contains("pub") && !prefix.contains("pub(");
+        let mut depth = 0_i32;
+        let mut end = None;
+        let region = &code[at..];
+        let region_bytes = region.as_bytes();
+        for (offset, character) in region.char_indices() {
+            match character {
+                '(' | '<' | '[' => depth += 1,
+                '>' if offset > 0 && region_bytes[offset - 1] == b'-' => {}
+                ')' | '>' | ']' => depth -= 1,
+                '{' | ';' if depth <= 0 => {
+                    end = Some(at + offset);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if let Some(end) = end {
+            found.push((public, inventory_collapse(&code[at..end])));
+        }
+    }
+    found
+}
+
+/// Every `impl` block header in `code`, whole.
+///
+/// The header is everything from `impl` to the opening brace, so
+/// `impl From<usize> for CoverageWitness` and `impl CoverageWitness` are
+/// different entries and a trait implementation cannot arrive as an edit to an
+/// inherent one.
+fn inventory_impl_headers(code: &str) -> Vec<String> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("impl") {
+        if at > 0 && (bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_') {
+            continue;
+        }
+        if code[at + 4..]
+            .starts_with(|character: char| character.is_alphanumeric() || character == '_')
+        {
+            continue;
+        }
+        let Some(end) = code[at..].find(['{', ';']) else {
+            continue;
+        };
+        found.push(inventory_collapse(&code[at..at + end]));
+    }
+    found
+}
+
+/// Nothing this crate declares is outside the two pinned sets.
+///
+/// Two whole sets, each compared in both directions:
+///
+/// 1. every function declaration this package ships, as a file, a visibility
+///    and a full signature;
+/// 2. every `impl` block header this package ships, as a file and a header.
+///
+/// The second is the one `P2-A3` walked through. Its injection was four
+/// `impl From<..>` blocks in a product file -- no `pub fn`, no new name on any
+/// forbidden list, no change to any other file -- and it handed an external
+/// crate a value the crate's own documentation says it cannot construct. There
+/// is no spelling of that injection that this test does not see, because it does
+/// not look for spellings: it compares the set.
+#[test]
+fn every_declaration_and_impl_in_this_crate_is_pinned() -> TestResult {
+    let sources = inventory_sources()?;
+    assert!(
+        sources.len() >= INVENTORY_FILE_FLOOR,
+        "the inventory walk read only {} files",
+        sources.len()
+    );
+
+    let mut declared = Vec::new();
+    let mut headers = Vec::new();
+    for (name, text) in &sources {
+        let code = inventory_strip(text);
+        for (public, signature) in inventory_declarations(&code) {
+            let visibility = if public { "pub" } else { "priv" };
+            declared.push(format!("{name} [{visibility}] {signature}"));
+        }
+        for header in inventory_impl_headers(&code) {
+            headers.push(format!("{name}: {header}"));
+        }
+    }
+    declared.sort();
+    headers.sort();
+
+    assert_eq!(
+        declared,
+        DECLARATIONS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's declaration set changed"
+    );
+    assert_eq!(
+        headers,
+        IMPL_HEADERS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's impl inventory changed"
+    );
+    Ok(())
+}

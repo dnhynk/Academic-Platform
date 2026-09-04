@@ -1740,3 +1740,51 @@ fn no_document_gives_a_prediction_to_one_actor() -> TestResult {
     );
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// a_notice_outside_the_window_is_not_a_recent_notice -- REQ-08-016
+// ---------------------------------------------------------------------------
+
+/// 최근 공지 is the notices inside the observation window, and only those.
+///
+/// `recent_notices` skips a notice the window does not contain. `P2-A3` deleted
+/// that skip and the whole `academic-offering` suite passed: every notice in
+/// every corpus history is already inside the window, so nothing drove it. With
+/// it gone, a suspension announced years before the window opens feeds the
+/// 최근 공지 family, and the family's own name stops describing what it counts.
+#[test]
+fn a_notice_outside_the_window_is_not_a_recent_notice() -> TestResult {
+    let window = corpus::window("every_spring")?;
+    let baseline = corpus::history("every_spring")?;
+    let control = FeatureVector::extract(&baseline, window);
+
+    // A notice the window does contain moves the family, so the comparison
+    // below is not passing because no notice ever moves it.
+    let mut inside = corpus::history("every_spring")?;
+    let within = TermKey::new(2024, Semester::Fall)?;
+    assert!(
+        window.contains(within),
+        "the fixture term is not in the window"
+    );
+    inside.notice(RecentNotice::new(within, NoticeEffect::OfferingSuspended));
+    assert_ne!(
+        FeatureVector::extract(&inside, window).raw_units(),
+        control.raw_units(),
+        "a notice inside the window did not move the score"
+    );
+
+    // The same notice, issued before the window opens.
+    let mut outside = corpus::history("every_spring")?;
+    let before = TermKey::new(2015, Semester::Fall)?;
+    assert!(
+        !window.contains(before),
+        "the fixture term is inside the window; this drives nothing"
+    );
+    outside.notice(RecentNotice::new(before, NoticeEffect::OfferingSuspended));
+    assert_eq!(
+        FeatureVector::extract(&outside, window).raw_units(),
+        control.raw_units(),
+        "a notice issued before the window opened fed 최근 공지"
+    );
+    Ok(())
+}
