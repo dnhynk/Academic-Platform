@@ -20,6 +20,7 @@ members = [
   "crates/evidence-center",
   "crates/export-job",
   "crates/freshness",
+  "crates/gap",
   "crates/indexer",
   "crates/ingestion",
   "crates/keystore-platform",

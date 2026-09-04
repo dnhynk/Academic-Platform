@@ -1,0 +1,11 @@
+error[E0599]: no associated function or constant named `default` found for struct `GoalCriteria` in the current scope
+  --> tests/compile_fail/a_goal_has_no_default_criteria.rs:20:23
+   |
+20 |         GoalCriteria::default(),
+   |                       ^^^^^^^ associated function or constant not found in `GoalCriteria`
+   |
+note: if you're trying to build a new `GoalCriteria`, consider using `GoalCriteria::of` which returns `Option<GoalCriteria>`
+  --> src/goal.rs
+   |
+   |     pub fn of(criteria: Vec<SuccessCriterion>) -> Option<Self> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
