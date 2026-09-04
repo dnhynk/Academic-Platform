@@ -1,0 +1,11 @@
+error[E0599]: no associated function or constant named `default` found for struct `PersonalizationSpeed` in the current scope
+  --> tests/compile_fail/a_personalization_speed_has_no_default.rs:10:40
+   |
+10 |     let _speed = PersonalizationSpeed::default();
+   |                                        ^^^^^^^ associated function or constant not found in `PersonalizationSpeed`
+   |
+note: if you're trying to build a new `PersonalizationSpeed`, consider using `PersonalizationSpeed::of` which returns `Option<PersonalizationSpeed>`
+  --> src/persistence.rs
+   |
+   |     pub const fn of(minimum_samples: u32, step_days: u32) -> Option<Self> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

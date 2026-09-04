@@ -1,0 +1,13 @@
+error[E0451]: fields `predicate`, `subject`, `object` and `evidence` of struct `CitedEdge` are private
+  --> tests/compile_fail/a_cited_edge_has_no_unchecked_constructor.rs:12:9
+   |
+11 |     CitedEdge {
+   |     --------- in this type
+12 |         predicate: PredicateName::TaughtIn,
+   |         ^^^^^^^^^ private field
+13 |         subject,
+   |         ^^^^^^^ private field
+14 |         object,
+   |         ^^^^^^ private field
+15 |         evidence,
+   |         ^^^^^^^^ private field

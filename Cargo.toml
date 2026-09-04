@@ -19,6 +19,7 @@ members = [
   "crates/egress-boundary",
   "crates/evidence-center",
   "crates/export-job",
+  "crates/freshness",
   "crates/indexer",
   "crates/ingestion",
   "crates/keystore-platform",
