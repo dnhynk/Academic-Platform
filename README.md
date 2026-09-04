@@ -72,6 +72,7 @@ cargo test -p academic-role-profile --test compile_fail --locked --offline
 cargo test -p academic-readiness --test compile_fail --locked --offline
 cargo test -p academic-home --test compile_fail --locked --offline
 cargo test -p academic-what-if --test compile_fail --locked --offline
+cargo test -p academic-integrations --test compile_fail --locked --offline
 cargo clippy -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection -- -D warnings
 cargo test -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection
 cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection -- -D warnings
@@ -700,6 +701,43 @@ names where they do live.
 does and does not claim, and the two readings of the design document it records
 rather than reconciles, are in
 [the what-if simulator contract](docs/contracts/what-if-simulator.md).
+
+`P2-P3` adds `academic-integrations`, every place this product touches
+something outside itself. Section 33's table is a closed `ConnectorKind`
+vocabulary parsed back out of the design document and compared in both
+directions, so nothing here asserts how many rows there are. What ships is the
+read-only repository-scoped GitHub connector and its webhook admission point,
+the `ExternalIdentity` mapping, the IDE adapter, the coding-assistant handoff,
+the generated-code provenance record and the calendar payload. **No transport** —
+the core graph, the connector fleet, the editor workspace and the outbound
+socket are all traits the caller supplies, and every fixture in the crate's test
+tree is synthetic and built in-process.
+
+Four of its ten acceptance rows are absence claims, and each is a whole-set
+comparison in both directions rather than a list of forbidden names.
+`github_connector_is_read_only_and_scoped` walks every `GitHubOperation`, reads
+`HttpMethod`'s variants out of the enum, and compares `ReadRequest`'s whole
+field set and the whole method set of every trait the crate declares.
+`calendar_payload_contains_no_grade_or_state` pins the payload's `(name, type)`
+set **and** classifies every field's type against a four-type admitted set, then
+scans the encoded bytes for every grade symbol and mastery level read out of
+`crates/record/src/grade.rs` and `crates/domain/src/lib.rs` — with a control
+buffer the same scanner must find them in. `assistant_use_is_not_competency`
+reads the crate's transitive product closure out of the workspace manifests,
+with a control over `crates/role-profile` that must find its competency edge.
+`external_id_is_never_canonical` classifies every public signature: one that
+returns a `CanonicalRef` has to have received one, or be an accessor on a type
+that holds one, and the holder set is itself read out of the declarations.
+
+`core_graph_opens_with_every_connector_down` opens a real `academic-ledger`
+state through the crate's core seam with every connector unreachable, compares
+the bytes of every view against the all-up run, and observes the connector
+fleet's call count at zero. `academic-ledger` is a **dev** edge for exactly that
+reason. **The crate adds no migration**: nothing in the ten rows is a durable
+claim, and a migration number would be a table nothing writes.
+`GATE-38-020` stays open for LMS and registration terms. What the boundary is
+and is not evidence for is in
+[the integrations boundary contract](docs/contracts/integrations-boundary.md).
 
 
 ## Operating a throwaway Phase 1 profile

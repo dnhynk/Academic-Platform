@@ -345,6 +345,28 @@ test("workspace_dependency_direction_is_acyclic", () => {
     ],
     "academic-export-job": ["academic-policy"],
     "academic-indexer": ["academic-policy"],
+    // `P2-P3`. Six product edges, each a boundary it reuses rather than
+    // rebuilds: `academic-domain` for the UUIDv7 identifiers an
+    // `ExternalIdentity` maps *onto*, `academic-policy` for the second grant a
+    // private blob requires, `academic-egress-boundary` for the staging and
+    // preview every assistant handoff runs through, `academic-repository` for
+    // `P2-R1`'s repo-scoped read-only token, `academic-untrusted-content` for the
+    // webhook body a remote server chose, and `academic-model-run` for the run
+    // digest generated code records.
+    //
+    // It has **no** edge to `academic-competency` or
+    // `academic-repository-competency`, which is what
+    // `assistant_use_is_not_competency` reads rather than asserts, and no edge
+    // to `academic-ledger`, so the core read path does not run through this
+    // boundary at all.
+    "academic-integrations": [
+      "academic-domain",
+      "academic-egress-boundary",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-untrusted-content",
+    ],
     // `P2-U6`. Section 29.1's ingestion contract. `academic-domain` supplies
     // the content digest and the proof-tree rule identifier an invalidated
     // requirement already cites; `academic-untrusted-content` supplies
@@ -966,6 +988,28 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-requirement",
       "academic-role-profile",
       "academic-untrusted-content",
+    ],
+    // `P2-P3`. Six dev edges and no seventh. `academic-ledger` is the real
+    // `LedgerState` `core_graph_opens_with_every_connector_down` opens while
+    // every connector is down, with `academic-contracts` and `ed25519-dalek`
+    // signing the batch it accepts, so the core the test reads is one that went
+    // through the real acceptance path. It is a **dev** edge on purpose: the
+    // claim is that the core read path does not run through this boundary, and a
+    // product edge would put the ledger inside the closure of the crate that is
+    // supposed to be irrelevant to it. `academic-crypto` is the in-memory
+    // `DeviceKeystore` double the GitHub credential fixture uses. `academic-domain`,
+    // `academic-model-run` and `academic-repository` are declared a second time
+    // for the `trybuild` reason `academic-scenario` gives below: a compile-fail
+    // case compiles against the crate under test plus that crate's
+    // dev-dependencies, and the three cases have to name a `ModelRunId`, a
+    // `Digest32` and a `TimestampMillis`.
+    "academic-integrations": [
+      "academic-contracts",
+      "academic-crypto",
+      "academic-domain",
+      "academic-ledger",
+      "academic-model-run",
+      "academic-repository",
     ],
     "academic-requirement": ["academic-domain"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
@@ -2884,6 +2928,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-evidence-center": ["libc"],
   "academic-export-job": ["libc"],
   "academic-indexer": ["libc"],
+  // `P2-P3`. `libc` reaches it through `academic-policy`'s bundled SQLite. The
+  // crate spells no socket construct, which is why its `SOCKET_ALLOWANCE` entry
+  // is absent rather than empty; it ships no transport and every seam it names
+  // -- the core graph, the connector fleet, the editor workspace -- is a trait
+  // the caller supplies.
+  "academic-integrations": ["libc"],
   // `P2-U6`. `libc` reaches it through `academic-domain`. The crate spells no
   // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
   // rather than empty, and it implements `ConditionalFetch` nowhere.
@@ -6113,6 +6163,46 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "uuid",
   ]);
 
+  // `P2-P3` adds `academic-integrations` and no external crate. It is the
+  // section 33 boundary: six product edges, each one a boundary it reuses
+  // rather than rebuilds, and six dev edges of which `academic-ledger` is the
+  // real core `core_graph_opens_with_every_connector_down` opens while every
+  // connector is down. There is deliberately no `academic-competency` edge of
+  // any kind, which is what `assistant_use_is_not_competency` reads out of the
+  // manifests rather than asserts.
+  const {
+    receipt: integrationsReceipt,
+    admitted: integrationsAdmitted,
+    pathPackages: integrationsPathPackages,
+  } = receiptFor("P2-P3");
+  assert.equal(integrationsAdmitted.size, 0, "P2-P3 must admit no external crate");
+  assert.deepEqual([...integrationsPathPackages], ["academic-integrations@0.1.0"]);
+  assert.deepEqual(integrationsReceipt.summary.npm_additions, []);
+  assert.equal(integrationsReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(integrationsReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(integrationsReceipt.summary.build_time_only_count, 0);
+  assert.deepEqual(
+    Object.keys(integrationsReceipt.direct_workspace_dependencies).toSorted(),
+    [
+      "academic-domain",
+      "academic-egress-boundary",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-untrusted-content",
+      "sha2",
+      "thiserror",
+    ],
+  );
+  assert.deepEqual(Object.keys(integrationsReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-contracts",
+    "academic-crypto",
+    "academic-ledger",
+    "ed25519-dalek",
+    "trybuild",
+    "zeroize",
+  ]);
+  assert.deepEqual(integrationsReceipt.vendored_data, []);
 
   // `P2-U5` adds `academic-offering` and no external crate. The offering
   // forecast is a boundary above `P2-U1`'s aggregates and `P2-U6`'s source

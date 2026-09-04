@@ -407,6 +407,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-integrations"
+version = "0.1.0"
+dependencies = [
+ "academic-contracts",
+ "academic-crypto",
+ "academic-domain",
+ "academic-egress-boundary",
+ "academic-ledger",
+ "academic-model-run",
+ "academic-policy",
+ "academic-repository",
+ "academic-untrusted-content",
+ "ed25519-dalek",
+ "sha2",
+ "thiserror",
+ "trybuild",
+ "zeroize",
+]
+
+[[package]]
 name = "academic-keystore-platform"
 version = "0.1.0"
 dependencies = [
