@@ -75,6 +75,26 @@ const DOMAIN_NOTICE: &str = "Synthetic career material. Held under the fixture's
 
 static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);
 
+/// The temporary directory, resolved.
+///
+/// **Canonicalized on unix.** `academic_export::directory` walks every ancestor
+/// of a bundle destination and refuses one that is not a directory, and on
+/// macOS `env::temp_dir()` sits under `/var`, which is a symlink to
+/// `private/var` -- so `write_bundle` refuses the path with
+/// `Malformed { item: "bundle directory", value: "/var" }`. That is that
+/// crate's contract and not a fault to work around here, so the base is
+/// resolved before a name is built on it, exactly as
+/// `crates/export/tests/support/mod.rs` does for the same reason.
+#[cfg(unix)]
+fn temporary_base() -> io::Result<PathBuf> {
+    fs::canonicalize(std::env::temp_dir())
+}
+
+#[cfg(windows)]
+fn temporary_base() -> io::Result<PathBuf> {
+    Ok(std::env::temp_dir())
+}
+
 /// A scratch directory under the build lane, removed when the test ends.
 ///
 /// The name carries the process id, the wall clock and a counter, and the
@@ -95,7 +115,7 @@ impl Scratch {
                 .duration_since(UNIX_EPOCH)
                 .map_err(|_| "system clock is before the Unix epoch")?
                 .as_nanos();
-            let root = std::env::temp_dir().join(format!(
+            let root = temporary_base()?.join(format!(
                 "acad-y3-{label}-{}-{nanos}-{sequence}",
                 std::process::id()
             ));

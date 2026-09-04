@@ -471,6 +471,10 @@ const ROOT_PRODUCERS = new Map([
     "The same, for the capture device layer's profile.",
   ],
   ["crates/export/tests/support/mod.rs::temporary_base", "The temporary directory."],
+  [
+    "crates/readiness/tests/readiness_export.rs::temporary_base",
+    "The same, canonicalized on unix because the export writer refuses a destination whose ancestor is a symlink and macOS puts the temporary directory under /var.",
+  ],
 ]);
 
 /** The variables that name a directory the machine owns. */
@@ -682,7 +686,7 @@ const SHARED_NAME_SITES = new Map([
     "UNIQUE: process id, wall clock and a counter, reserved with `create_dir`.",
   ],
   [
-    'crates/readiness/tests/readiness_export.rs :: std::env::temp_dir().join(format!("acad-y3-{label}-{}-{nanos}-{sequence}",std::process::id()))',
+    'crates/readiness/tests/readiness_export.rs :: temporary_base()?.join(format!("acad-y3-{label}-{}-{nanos}-{sequence}",std::process::id()))',
     "UNIQUE: process id, wall clock and a counter, reserved with `create_dir`. `P2-Y3` writes a real `P2-P1` bundle here to measure that the non-guarantee notice survives export; `Drop` removes the tree, so a shared name would have had two lanes deleting each other's bundle.",
   ],
 ]);
