@@ -613,6 +613,51 @@ pub fn enum_variants(source: &str, header: &str) -> Result<Vec<String>, Box<dyn 
     Ok(found)
 }
 
+/// The `Self::` entries of one type's `pub const ALL` array, in order.
+///
+/// `None` when the type declares no `ALL`, which is what tells the caller to
+/// skip it rather than to fail.
+pub fn all_array(source: &str, type_name: &str) -> Option<Vec<String>> {
+    // The search is bounded to this type's own `impl` block. An earlier version
+    // searched forward from the header to the end of the file, so a type with
+    // no `ALL` picked up the next type's -- `ConnectorError` reported
+    // `HttpMethod`'s, and the scan reported a disagreement that was its own.
+    let header = format!("impl {type_name} {{");
+    let start = source.find(&header)?;
+    let block = balanced(&source[start + header.len() - 1..])?;
+    let at = block.find("pub const ALL:")?;
+    // The declaration is `[Self; N] = [ ... ];`; the entries are in the second
+    // bracket group, so the first is skipped.
+    let after_type = block[at..].find(']')? + at + 1;
+    let entries_open = block[after_type..].find('[')? + after_type;
+    let entries_close = block[entries_open..].find(']')? + entries_open;
+    Some(
+        block[entries_open + 1..entries_close]
+            .split(',')
+            .map(str::trim)
+            .filter(|entry| !entry.is_empty())
+            .map(|entry| entry.trim_start_matches("Self::").to_owned())
+            .collect(),
+    )
+}
+
+/// Every `pub enum` this code declares, by name, in declaration order.
+pub fn public_enums(code: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut rest = code;
+    while let Some(at) = rest.find("pub enum ") {
+        let name: String = rest[at + 9..]
+            .chars()
+            .take_while(|character| character.is_alphanumeric() || *character == '_')
+            .collect();
+        if !name.is_empty() {
+            found.push(name);
+        }
+        rest = &rest[at + 9..];
+    }
+    found
+}
+
 /// The method names one `trait` block declares, in declaration order.
 pub fn trait_methods(source: &str, header: &str) -> Result<Vec<String>, Box<dyn Error>> {
     let block = whole_block(source, header)?;

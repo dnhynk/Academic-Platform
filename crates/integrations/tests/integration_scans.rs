@@ -25,9 +25,10 @@ mod support;
 use std::{collections::BTreeSet, fs};
 
 use support::{
-    TestResult, absolute_paths, collapse, crate_product_sources, crate_root, macros_spelled,
-    product_code, public_signatures, public_signatures_with_owner, read_module, relative,
-    strip_non_code, use_items, uses_of, whole_block, workspace_root,
+    TestResult, absolute_paths, all_array, collapse, crate_product_sources, crate_root,
+    enum_variants, macros_spelled, product_code, public_enums, public_signatures,
+    public_signatures_with_owner, read_module, relative, strip_non_code, use_items, uses_of,
+    whole_block, workspace_root,
 };
 
 /// Every module of this package, relative to the workspace root.
@@ -452,6 +453,120 @@ fn every_public_signature_is_in_the_inventory() -> TestResult {
     assert!(
         found.iter().any(|entry| entry.ends_with("-> u8")),
         "the reader reports no numeric return type at all"
+    );
+    Ok(())
+}
+
+/// Every `pub enum` in this crate that declares a `pub const ALL`, with the
+/// variant list its `ALL` names.
+///
+/// The comparison is against the variant list read out of the **enum body**, so
+/// a variant added without an `ALL` entry fails here rather than passing every
+/// walk in the suite that iterates the array. `P2-N6` measured what an
+/// incomplete frozen input costs: an engine that is not a function of the
+/// inputs it declares. An `ALL` that is not the enum is the same shape.
+///
+/// The set of enums *with* an `ALL` is pinned too, so removing an `ALL` to
+/// escape the comparison is an extra key rather than a silent exemption.
+const VOCABULARIES_WITH_ALL: [&str; 14] = [
+    "AssistantUse",
+    "BlobVisibility",
+    "CalendarEventKind",
+    "CanonicalKind",
+    "ConflictBasis",
+    "ConnectorHealth",
+    "ConnectorKind",
+    "CoreView",
+    "EvidenceEligibility",
+    "GitHubOperation",
+    "HttpMethod",
+    "SourceAuthority",
+    "WatchMode",
+    "WebhookEventKind",
+];
+
+#[test]
+fn every_all_array_is_the_enum_it_names() -> TestResult {
+    let mut declared: Vec<String> = Vec::new();
+    for (path, code) in product_code()? {
+        for name in public_enums(&code) {
+            let Some(entries) = all_array(&code, &name) else {
+                continue;
+            };
+            let variants = enum_variants(&code, &format!("pub enum {name}"))?;
+            assert_eq!(
+                entries, variants,
+                "{path}: {name}::ALL and {name}'s variants disagree"
+            );
+            declared.push(name);
+        }
+    }
+    declared.sort();
+    assert_eq!(
+        declared,
+        VOCABULARIES_WITH_ALL
+            .iter()
+            .map(|item| (*item).to_owned())
+            .collect::<Vec<_>>(),
+        "the set of vocabularies declaring an ALL changed"
+    );
+
+    // The control: the reader is required to see a disagreement it is being
+    // asked to notice, so an extractor that always answered the empty list
+    // would not pass.
+    let sample = concat!(
+        "pub enum Sample {\n",
+        "    One,\n",
+        "    Two,\n",
+        "}\n",
+        "\n",
+        "impl Sample {\n",
+        "    pub const ALL: [Self; 1] = [Self::One];\n",
+        "}\n",
+    );
+    assert_eq!(
+        all_array(sample, "Sample"),
+        Some(vec!["One".to_owned()]),
+        "the ALL reader did not read the array"
+    );
+    assert_eq!(
+        enum_variants(sample, "pub enum Sample")?,
+        vec!["One".to_owned(), "Two".to_owned()],
+        "the variant reader did not read the enum"
+    );
+    assert_ne!(
+        all_array(sample, "Sample"),
+        Some(enum_variants(sample, "pub enum Sample")?),
+        "the two readers agree on a sample where they must not"
+    );
+    assert_eq!(all_array(sample, "Absent"), None);
+
+    // And the reader must not reach past the block it was pointed at. `Bare`
+    // declares no `ALL`; an unbounded reader reported the next type's, which is
+    // how this scan first failed on `ConnectorError`.
+    let neighbours = concat!(
+        "pub enum Bare {\n",
+        "    Only,\n",
+        "}\n",
+        "\n",
+        "impl Bare {\n",
+        "    pub const fn as_str(self) -> &'static str {\n",
+        "        ONLY\n",
+        "    }\n",
+        "}\n",
+        "\n",
+        "pub enum Beside {\n",
+        "    First,\n",
+        "}\n",
+        "\n",
+        "impl Beside {\n",
+        "    pub const ALL: [Self; 1] = [Self::First];\n",
+        "}\n",
+    );
+    assert_eq!(all_array(neighbours, "Bare"), None);
+    assert_eq!(
+        all_array(neighbours, "Beside"),
+        Some(vec!["First".to_owned()])
     );
     Ok(())
 }
