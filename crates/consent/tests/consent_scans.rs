@@ -40,7 +40,7 @@ use std::{
 
 use academic_consent::{
     CHECKLIST_DIMENSIONS, CaptureMedium, CaptureProcessing, CaptureStatus, ConsentEventKind,
-    DERIVATIVE_CLASSES, GrantAuthority, NotApplicableReason, WrittenEvidenceKind,
+    DERIVATIVE_CLASSES, GrantAuthority, NotApplicableReason, OpenGate, WrittenEvidenceKind,
 };
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -1447,6 +1447,155 @@ fn every_instant_this_crate_compares_is_an_argument() -> TestResult {
     assert!(
         declared_item(&status, "pub fn status_of(")?.contains("at: u64"),
         "the status derivation no longer takes its instant as an argument"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// `S-20`
+// ---------------------------------------------------------------------------
+
+/// Section 38's cells, in the order the document writes them.
+///
+/// Section 38.1's ten lines, then section 38.2's eleven bullets, then section
+/// 38.3's ten numbered questions. `GATE-38-{:03}` is one-based over that
+/// concatenation, so a cell's identifier is a fact about where the document
+/// puts it and not a string anybody chose.
+fn section_38_cells() -> Result<Vec<String>, Box<dyn Error>> {
+    let specification = fs::read_to_string(
+        workspace_root().join("PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md"),
+    )?;
+    let block = specification
+        .split_once("Admission Year")
+        .map(|(_, rest)| format!("Admission Year{rest}"))
+        .and_then(|rest| rest.split_once("```").map(|(block, _)| block.to_owned()))
+        .ok_or("section 38.1's block is not in the document")?;
+    let mut cells: Vec<String> = block
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect();
+    assert_eq!(cells.len(), 10, "section 38.1 lists {} lines", cells.len());
+
+    let bullets = specification
+        .split_once("### 38.2 공식적으로 추가 확인할 항목")
+        .map(|(_, rest)| rest)
+        .and_then(|rest| rest.split_once("### 38.3").map(|(block, _)| block))
+        .ok_or("section 38.2's list is not in the document")?;
+    let bullets: Vec<String> = bullets
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("- ").map(str::to_owned))
+        .collect();
+    assert_eq!(
+        bullets.len(),
+        11,
+        "section 38.2 lists {} bullets",
+        bullets.len()
+    );
+
+    let questions = specification
+        .split_once("### 38.3 아직 결정할 제품·아키텍처 질문")
+        .map(|(_, rest)| rest)
+        .and_then(|rest| rest.split_once("\n---").map(|(block, _)| block))
+        .ok_or("section 38.3's list is not in the document")?;
+    let questions: Vec<String> = questions
+        .lines()
+        .map(str::trim)
+        .filter_map(|line| {
+            line.split_once(". ")
+                .and_then(|(number, text)| number.parse::<usize>().ok().map(|_| text.to_owned()))
+        })
+        .collect();
+    assert_eq!(
+        questions.len(),
+        10,
+        "section 38.3 lists {} questions",
+        questions.len()
+    );
+
+    cells.extend(bullets);
+    cells.extend(questions);
+    Ok(cells)
+}
+
+/// Where section 38 writes one cell, one-based.
+///
+/// The identifier is never compared against a list somebody typed: it is
+/// rebuilt from the position and the two have to agree.
+fn section_38_position(
+    cells: &[String],
+    identifier: &str,
+    spec_line: &str,
+) -> Result<usize, Box<dyn Error>> {
+    Ok(cells
+        .iter()
+        .position(|cell| cell.starts_with(spec_line))
+        .ok_or_else(|| {
+            format!("{identifier} quotes a line section 38 does not write: {spec_line}")
+        })?
+        .saturating_add(1))
+}
+
+/// The `GATE-38-xxx` identifiers are section 38's own numbering, derived from
+/// each cell's position in the document rather than compared against a list
+/// written twice.
+///
+/// `S-20`: eleven of this workspace's eighteen `OpenGate::identifier` arms were
+/// hand-written strings whose only check was a hand-written list in the same
+/// test, so the first edit to section 38 that inserts, removes or reorders a
+/// cell renumbered the ones after it silently. `P2-U3` closed it for `academic-audit`'s seven cells; these are this
+/// crate's two.
+#[test]
+fn the_open_gates_are_section_38s_own() -> TestResult {
+    let cells = section_38_cells()?;
+    let mut derived: Vec<&'static str> = Vec::new();
+    for (gate, spec_line) in [
+        (
+            OpenGate::RecordingPermissionPerOffering,
+            "Recording Permission per Offering",
+        ),
+        (
+            OpenGate::CaptureAndTranscriptionConditions,
+            "해당 Offering의 녹음·촬영·local/cloud transcription 허용 조건.",
+        ),
+    ] {
+        let position = section_38_position(&cells, gate.identifier(), spec_line)?;
+        assert_eq!(
+            gate.identifier(),
+            format!("GATE-38-{position:03}"),
+            "{} is section 38's cell {position}, so its identifier does not follow its position",
+            gate.identifier()
+        );
+        derived.push(gate.identifier());
+    }
+
+    // `OpenGate` is `#[non_exhaustive]` and declares no `ALL`, so no list here
+    // can be exhaustive over it by construction. The whole set comes out of the
+    // declaration instead: every `GATE-38-` literal the `identifier` arms hold,
+    // compared against the derived list in both directions, so a variant added
+    // there without a section 38 cell above is a missing key.
+    let gate_source = fs::read_to_string(crate_root().join("src/gate.rs"))?;
+    let identifier_fn = gate_source
+        .split_once("pub const fn identifier(self) -> &'static str {")
+        .map(|(_, rest)| rest)
+        .and_then(|rest| rest.split_once("\n    }").map(|(body, _)| body))
+        .ok_or("src/gate.rs no longer declares `identifier`")?;
+    let declared: BTreeSet<String> = identifier_fn
+        .match_indices("\"GATE-38-")
+        .filter_map(|(at, _)| {
+            identifier_fn[at + 1..]
+                .split_once('"')
+                .map(|(id, _)| id.to_owned())
+        })
+        .collect();
+    assert_eq!(
+        declared,
+        derived
+            .iter()
+            .map(|id| (*id).to_owned())
+            .collect::<BTreeSet<String>>(),
+        "the derived cells are not the ones `identifier` declares"
     );
     Ok(())
 }
