@@ -1,0 +1,11 @@
+error[E0599]: no method named `set_source` found for mutable reference `&mut MaterialReference` in the current scope
+ --> tests/compile_fail/a_material_reference_cannot_be_relabelled.rs:9:15
+  |
+9 |     reference.set_source(ExpectedConceptSource::Syllabus);
+  |               ^^^^^^^^^^
+  |
+help: there is a method `source` with a similar name, but with different arguments
+ --> src/source.rs
+  |
+  |     pub const fn source(&self) -> ExpectedConceptSource {
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

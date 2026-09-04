@@ -1,0 +1,87 @@
+[package]
+name = "academic-next-lecture"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Five product edges, and each is a boundary this crate reads a fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-untrusted-content` is `P2-G5`. Section 12.7's seven places are all
+# text somebody outside this system wrote, so an `ExpectedConceptClaim` is built
+# from a `Proposal` -- the value only `adjudicate` produces -- and its citations
+# are that crate's `ResolvedSpan`. `Untrusted::expose` is `pub(crate)` there, so
+# no product file here can read one ingested byte: what a claim carries is a
+# source identity, a digest and a span, never the material's words.
+#
+# `academic-gap` is `P2-N5`. The comparison section 12.7 asks for is that
+# crate's descent, so nothing here computes a deficit: `propose` takes a
+# `GapCase` and reads `RootCandidate::is_strong_deficit`, and the minimality
+# validator reads `PrerequisiteGraph` for the direction of an edge. A
+# preparation candidate this crate could produce without a `GapCase` would be
+# section 12.7's `full lecture preview`.
+#
+# `academic-lecture-document` is `P2-L4`. Section 12.7's seventh place is
+# `직전 강의 말미`, and it is a `NodeId` of a lossless document rather than a
+# quotation, so the one source that comes from inside this system cites the
+# artifact that preserved it. `MaterialReference::of` requires that node for
+# that source and refuses it for the other six.
+#
+# `academic-ingestion` is `P2-U6`. Section 27.1's confirmation condition for
+# this row is `자료 날짜·state·edge 불확실성 노출`, so every material carries a
+# validated calendar `Date` rather than a string, and `2026-02-30` is a value
+# that does not exist.
+#
+# `academic-domain` is `P2-C1` and `P2-C3`. `EpistemicStatus::AiInferred` is
+# that crate's own §27.4 spelling, `ConfidencePermille` is its permille scale,
+# and `EntityKind` carries `no independent prerequisite of its own`.
+#
+# The edges it does not have are the point. No `academic-store`, so nothing
+# reaches the canonical writer and no migration is added; no `academic-worker`
+# and no `academic-egress-boundary` as a declared edge, so nothing here can
+# launch a process or stage a payload; no `academic-knowledge-state`, so no
+# function here can produce the evidence a mastery promotion is read from.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-gap = { path = "../gap" }
+academic-ingestion = { path = "../ingestion" }
+academic-lecture-document = { path = "../lecture-document" }
+academic-untrusted-content = { path = "../untrusted-content" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite drives the real `P2-N5` descent, and a real descent needs
+# an `EligibleEvidence` and a `FreshnessProjection` over one concept.
+# `crates/knowledge-state/tests/common/mod.rs` already builds those by driving a
+# real `P2-L2` capture and a real `P2-L3` run, and this suite includes that
+# module by `#[path]` rather than restating it, the way `academic-gap` includes
+# it. Every dev edge below is one that module's two chains need, plus the two
+# this suite adds: `academic-home` is `P2-X2`, whose `LOWEST_BRIEF` and
+# `HIGHEST_BRIEF` `morning_home_contract` compares its own bound against, and
+# `academic-freshness` is `P2-N3`, whose projection a `ConceptReading` carries.
+# `academic-domain` is declared twice for the `trybuild` reason
+# `academic-scenario` gives: a compile-fail case compiles against this crate
+# plus its dev-dependencies.
+[dev-dependencies]
+academic-capture = { path = "../capture" }
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-freshness = { path = "../freshness" }
+academic-home = { path = "../home" }
+academic-knowledge-state = { path = "../knowledge-state" }
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-classification = { path = "../repository-classification" }
+academic-repository-correlation = { path = "../repository-correlation" }
+academic-transcription = { path = "../transcription" }
+serde_json.workspace = true
+tempfile.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

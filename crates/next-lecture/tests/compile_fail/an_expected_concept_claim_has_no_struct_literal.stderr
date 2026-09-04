@@ -1,0 +1,25 @@
+warning: unreachable expression
+  --> tests/compile_fail/an_expected_concept_claim_has_no_struct_literal.rs:11:23
+   |
+10 |         concept: todo!(),
+   |                  ------- any code following this expression is unreachable
+11 |         concept_kind: todo!(),
+   |                       ^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: fields `concept`, `concept_kind`, `material`, `citations` and `confidence` of struct `ExpectedConceptClaim` are private
+  --> tests/compile_fail/an_expected_concept_claim_has_no_struct_literal.rs:10:9
+   |
+ 9 |     ExpectedConceptClaim {
+   |     -------------------- in this type
+10 |         concept: todo!(),
+   |         ^^^^^^^ private field
+11 |         concept_kind: todo!(),
+   |         ^^^^^^^^^^^^ private field
+12 |         material: todo!(),
+   |         ^^^^^^^^ private field
+13 |         citations: todo!(),
+   |         ^^^^^^^^^ private field
+14 |         confidence: todo!(),
+   |         ^^^^^^^^^^ private field

@@ -1,0 +1,5 @@
+error[E0599]: no method named `confidence` found for reference `&PrepUncertainty` in the current scope
+  --> tests/compile_fail/a_prep_uncertainty_has_no_single_confidence.rs:10:17
+   |
+10 |     uncertainty.confidence()
+   |                 ^^^^^^^^^^ method not found in `&PrepUncertainty`
