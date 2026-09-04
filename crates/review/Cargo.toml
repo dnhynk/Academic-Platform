@@ -1,0 +1,45 @@
+[package]
+name = "academic-review"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The `P2-U8` boundary, and the reason its edge list is this short.
+#
+# Section 29.5 says two things about somebody else's writing: the raw text is
+# kept privately for provenance and never redistributed, and login bypass,
+# account sharing and anti-bot evasion are not features. Both are edge facts
+# before they are code facts. This crate links no transport, no HTTP client, no
+# browser driver, no decoder, no store, no vault and no crypto: it has nothing
+# to fetch with and nothing to persist to, and a redistribution would need a
+# serializer this crate does not derive.
+#
+# `academic-ingestion` is `P2-U6`. The four fallbacks section 29.5 names, the
+# single denial route, the terms status whose default is `UNREVIEWED`, and the
+# connector identifier are that crate's and are reused rather than restated.
+# `academic-untrusted-content` is `P2-G5`: raw review bytes leave this crate as
+# `Untrusted<IngestedDocument>` and by no other public route.
+# `academic-proposal` is `P2-M2`: `Autosaved::EPISTEMIC_STATUS` is `AI_INFERRED`,
+# so section 29.5's `extractionStatus` is a type rather than a field somebody
+# sets. `academic-curriculum` is `P2-U1`, for the instructor name and term code
+# a review is scoped by, and for the `Course` this crate never writes to.
+[dependencies]
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+academic-ingestion = { path = "../ingestion" }
+academic-proposal = { path = "../proposal" }
+academic-untrusted-content = { path = "../untrusted-content" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# The acceptance suite seals a retained review through `P2-G5`'s boundary and
+# reads the provenance that comes back, so the label crate is reachable from a
+# test as well as from the product source. `academic-curriculum` and
+# `academic-proposal` declare their own domain edge twice for the same reason.
+academic-untrusted-content = { path = "../untrusted-content" }
+trybuild.workspace = true
+
+[lints]
+workspace = true

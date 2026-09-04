@@ -644,6 +644,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-review"
+version = "0.1.0"
+dependencies = [
+ "academic-curriculum",
+ "academic-domain",
+ "academic-ingestion",
+ "academic-proposal",
+ "academic-untrusted-content",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-rpc"
 version = "0.1.0"
 dependencies = [

@@ -509,6 +509,25 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `rotation_engine_lane_is_not_default` proves it stays unresolved in a
     // default build.
     "academic-retention": ["academic-crypto", "academic-domain", "academic-vault"],
+    // `P2-U8`'s course-review boundary. Five product edges and not one of them a
+    // transport, a store or a serializer: section 29.5 keeps somebody else's
+    // writing private and never redistributes it, and a crate with no way to
+    // fetch and no way to serialise is where that starts. `academic-curriculum`
+    // supplies the instructor name and term code two of the four scope
+    // dimensions are, `academic-domain` the offering and course identifiers,
+    // `academic-ingestion` `P2-U6`'s four fallbacks and single denial route,
+    // `academic-proposal` the `AI_INFERRED` constant section 29.5 writes as a
+    // literal, and `academic-untrusted-content` `P2-G5`'s trust label. The edge
+    // that is deliberately absent in the other direction is
+    // `academic-curriculum` -> `academic-review`: a `Course` that could name a
+    // review reading is section 34's *Course와 Offering 혼동* row.
+    "academic-review": [
+      "academic-curriculum",
+      "academic-domain",
+      "academic-ingestion",
+      "academic-proposal",
+      "academic-untrusted-content",
+    ],
     "academic-rpc": ["academic-admission", "academic-contracts", "academic-domain"],
     "academic-scenario": ["academic-domain"],
     // `academic-crypto` is an optional edge behind `sqlcipher-store`. It is
@@ -819,6 +838,13 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // README's verification block gains no command; a case compiles against the
     // crate under test plus that crate's dev-dependencies, which is why the
     // edge is here.
+    // `P2-U8` links its own trust-label crate a second time as a dev edge, for
+    // the `trybuild` reason above and for one more: the acceptance suite seals a
+    // retained review through `P2-G5`'s boundary and reads the provenance that
+    // comes back, so a test target has to name `SourceId` and `SourceKind`. It
+    // is the crate's only dev workspace edge -- there is no store, no vault and
+    // no export crate in its test closure either.
+    "academic-review": ["academic-untrusted-content"],
     "academic-scenario": [
       "academic-admission",
       "academic-domain",
@@ -2709,6 +2735,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-repository-analyzer": ["libc"],
   "academic-requirement": ["libc"],
   "academic-retention": ["libc"],
+  // `P2-U8`. `libc` reaches it through `academic-domain`, the same way `P2-U6`
+  // does. The crate spells no socket construct, which is why its
+  // `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens nothing at
+  // all, and its own whole-set use-statement, signature and field sweeps refuse
+  // an addition of any kind at its boundary.
+  "academic-review": ["libc"],
   "academic-rpc": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   "academic-scenario": ["libc"],
   "academic-store": ["libc", "rustix", "windows-sys"],
@@ -5722,6 +5754,39 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-vault",
     "ed25519-dalek",
   ]);
+
+  // `P2-U8` adds `academic-review` and no external crate. It is a separate
+  // package from `academic-ingestion` for the reason section 29.5 is about:
+  // that crate is `P2-U6`'s official-source pipeline, and its surface holds the
+  // conditional-fetch trait, the declared target and the credential binding a
+  // request is composed from. Somebody else's writing does not belong in the
+  // same package as those. What this crate links is the curriculum's instructor
+  // and term names, the domain identifiers, `P2-U6`'s four fallbacks, `P2-M2`'s
+  // `AI_INFERRED` constant and `P2-G5`'s trust label -- and nothing that could
+  // open a socket, persist a row, or serialise a review into a bundle.
+  const {
+    receipt: reviewReceipt,
+    admitted: reviewAdmitted,
+    pathPackages: reviewPathPackages,
+  } = receiptFor("P2-U8");
+  assert.equal(reviewAdmitted.size, 0, "P2-U8 must admit no external crate");
+  assert.deepEqual([...reviewPathPackages], ["academic-review@0.1.0"]);
+  assert.deepEqual(reviewReceipt.summary.npm_additions, []);
+  assert.equal(reviewReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(reviewReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(reviewReceipt.summary.build_time_only_count, 0);
+  assert.deepEqual(Object.keys(reviewReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-curriculum",
+    "academic-domain",
+    "academic-ingestion",
+    "academic-proposal",
+    "academic-untrusted-content",
+  ]);
+  assert.deepEqual(Object.keys(reviewReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-untrusted-content",
+    "trybuild",
+  ]);
+  assert.deepEqual(reviewReceipt.vendored_data, []);
 
   // Everything in the lock that no phase 2 receipt claims. The conjunction this
   // replaces missed `processAdmitted`, which is inert only because `P2-G7` admits

@@ -1,0 +1,9 @@
+error[E0277]: `RawReviewText` doesn't implement `std::fmt::Display`
+  --> tests/compile_fail/retained_text_is_not_a_string.rs:10:14
+   |
+10 |     format!("{text}")
+   |              ^^^^^^ `RawReviewText` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `RawReviewText`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: required for `&RawReviewText` to implement `std::fmt::Display`

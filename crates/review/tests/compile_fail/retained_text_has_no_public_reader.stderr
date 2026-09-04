@@ -1,0 +1,10 @@
+error[E0624]: method `content` is private
+ --> tests/compile_fail/retained_text_has_no_public_reader.rs:9:10
+  |
+9 |     text.content()
+  |          ^^^^^^^ private method
+  |
+ ::: src/text.rs
+  |
+  |     pub(crate) fn content(&self) -> &str {
+  |     ------------------------------------ private method defined here

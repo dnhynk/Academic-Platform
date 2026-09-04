@@ -44,6 +44,7 @@ members = [
   "crates/repository-competency",
   "crates/repository-correlation",
   "crates/repository-analyzer",
+  "crates/review",
   "crates/recovery",
   "crates/retention",
   "crates/rpc",

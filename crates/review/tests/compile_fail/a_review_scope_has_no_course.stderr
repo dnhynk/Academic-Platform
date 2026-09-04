@@ -1,0 +1,11 @@
+error[E0599]: no method named `course` found for reference `&ReviewScope` in the current scope
+  --> tests/compile_fail/a_review_scope_has_no_course.rs:10:19
+   |
+10 |     let _ = scope.course();
+   |                   ^^^^^^
+   |
+help: there is a method `source` with a similar name
+   |
+10 -     let _ = scope.course();
+10 +     let _ = scope.source();
+   |
