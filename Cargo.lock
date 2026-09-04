@@ -80,6 +80,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-competency"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-knowledge-state",
+ "academic-model-run",
+ "academic-policy",
+ "academic-repository",
+ "academic-repository-analysis",
+ "academic-repository-classification",
+ "academic-repository-competency",
+ "academic-repository-correlation",
+ "academic-untrusted-content",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "trybuild",
+ "uuid",
+]
+
+[[package]]
 name = "academic-connector"
 version = "0.1.0"
 dependencies = [

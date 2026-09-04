@@ -6,6 +6,7 @@ members = [
   "crates/capture-client",
   "crates/capture-gate",
   "crates/cli",
+  "crates/competency",
   "crates/consent",
   "crates/contracts",
   "crates/connector",

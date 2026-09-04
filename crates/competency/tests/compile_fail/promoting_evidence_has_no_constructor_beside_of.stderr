@@ -1,0 +1,5 @@
+error[E0451]: field `inner` of struct `PromotingEvidence` is private
+  --> tests/compile_fail/promoting_evidence_has_no_constructor_beside_of.rs:11:33
+   |
+11 |     let _ = PromotingEvidence { inner: admitted };
+   |                                 ^^^^^ private field

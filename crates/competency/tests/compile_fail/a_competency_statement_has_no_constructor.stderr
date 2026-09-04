@@ -1,0 +1,20 @@
+error[E0061]: this function takes 5 arguments but 6 arguments were supplied
+  --> tests/compile_fail/a_competency_statement_has_no_constructor.rs:22:13
+   |
+22 |     let _ = declare(
+   |             ^^^^^^^
+...
+38 |         "B+ Tree를 안다",
+   |         ---------------- unexpected argument #6 of type `&'static str`
+   |
+note: function defined here
+  --> src/lib.rs
+   |
+   | pub fn declare(
+   |        ^^^^^^^
+help: remove the extra argument
+   |
+37 -         ]),
+38 -         "B+ Tree를 안다",
+37 +         ]),
+   |
