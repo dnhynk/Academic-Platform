@@ -335,14 +335,31 @@ inputs rather than engine configuration, because an engine that read a value the
 digest does not cover would not be the pure function of `(frozen_inputs,
 rule_set_hash, engine_version)` the harness fixes — two evaluations could then
 agree on the declared signature and disagree on the answer. The published rule
-set is the exception, and it is covered by `rule_set_hash`, which is the other
-half of the signature and the half a historical replay walks.
+set is the exception, and it is covered by `rule_set_hash`.
+
+**What that hash covers is every field of the set**, and it has to be, because
+the exception above is the whole of the rule set's contribution to the
+signature. `RuleSet::canonical_text` renders `RuleSet`'s six fields, all four of
+`OfficialSourceBinding`'s and all three of `ExecutableRule`'s, the compiled body
+included. It used to render the rule's identifier, its type and its source
+digest and nothing the rule said, and two of the fields it dropped decided
+verdicts here: a credit threshold, and `retrieved_at`, which is what
+`FreshnessWitness::establish` reads two paragraphs below. Both produced two rule
+sets with one hash, one `AuditInputBinding` and opposite answers, with the
+recorded hash replaying against the other set and being accepted.
+`AuditError::RuleSetHashMismatch` refuses that replay now, and
+`historic_audit_replay` drives the refusal.
 
 `historic_audit_replay` records an audit, publishes a second version beside the
 first, looks the recorded hash up in the ledger, re-runs, and requires the
 canonical bytes to be identical. The second half is that the latest audit under
 the new version reaches a *different conclusion* on the same transcript —
-without it the first would pass on two audits that merely differ.
+without it the first would pass on two audits that merely differ. The third is a
+pair that differs **only** in a credit threshold: same version, same
+supersession, same source, same rule identifier. Its two audits reach opposite
+determinations, and the lax engine presented the strict audit's recorded hash is
+refused while the same engine under its own hash is answered — so the refusal is
+about the hash rather than about the inputs.
 
 ## A source conflict is `P2-U6`'s finding and this engine's refusal
 
@@ -352,6 +369,28 @@ here. `ConflictReference::of` reads the case's rule, both connectors and its
 `AuditDisposition`, and the engine refuses the conflict-free witness while any
 applicable case is unresolved, reporting the rule and both connectors as the
 actionable reference.
+
+**Applicable is a bound identifier, not a spelling.** `case.rule()` is the
+identifier the *official document* gives the rule in dispute;
+`ExecutableRule::source_rule` is the identifier that document gave the rule this
+set publishes, checked against the document's own rule list by
+`RuleSetDraft::include`, which refuses a rule naming one the source never
+published. Comparing `case.rule()` with the identifier the **reviewer** typed —
+which is what stood here — decided applicability from a coincidence: one
+unresolved conflict made a set that spelled the rule the document's way
+`INDETERMINATE` and left an identical set spelled any other way
+`DETERMINATE POSSIBLE`, with `conflict cases examined = 0` on the determination.
+
+**And an unread conflict store is not an empty one.** `AuditFacts::conflicts` is
+`Option<Vec<ConflictReference>>`, encoded as `InputValue::Unknown` when absent —
+the shape `freshness` has one field above it, and the shape
+`InputValue::Unknown`'s own contract is for. `None` is
+`MissingCheck::SourceConflictSurveyAbsent` and reaches no determination;
+`Some(vec![])` is a store that was read and held nothing, and
+`ConflictFreeWitness::cases_examined` records that it was zero. A bare `Vec`
+spelled both as an empty list, and the witness was then issued over an empty
+slice — the vacuous witness `CoverageWitness::establish` refuses eleven lines
+above it in the same file, in a comment naming this failure mode.
 
 `graduation_conflict_fail_closed` blocks a determination with a real detected
 case, checks the reference names the rule and two different connectors, then

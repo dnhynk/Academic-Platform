@@ -1769,11 +1769,26 @@ fn ruleset_immutable_publish() -> TestResult {
         "a historical audit could not replay by rule hash"
     );
 
-    // A changed rule is a changed hash. Without this the first assertion would
-    // pass on a hash that ignored the rules.
+    // A changed version is a changed hash.
     assert_ne!(
         first_hash, second_hash,
-        "two versions with different thresholds hashed alike"
+        "two published versions hashed alike"
+    );
+
+    // The message that assertion used to carry named the threshold, and the
+    // pair above differs in the version number and the supersession as well --
+    // so it passed for years against a `rule_set_hash` that rendered no rule
+    // body at all. The threshold is varied on its own here: same version, same
+    // supersession, same source, same rule identifier, same source digest.
+    let strict = build(130, RuleSetVersion::new(9), None)?;
+    let lax = build(12, RuleSetVersion::new(9), None)?;
+    assert_eq!(strict.version(), lax.version());
+    assert_eq!(strict.supersedes(), lax.supersedes());
+    assert_eq!(strict.rules().count(), lax.rules().count());
+    assert_ne!(
+        strict.rule_set_hash(),
+        lax.rule_set_hash(),
+        "two sets differing only in a credit threshold hashed alike"
     );
     assert_eq!(
         ledger.current().map(RuleSet::version),

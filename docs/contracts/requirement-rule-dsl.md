@@ -190,10 +190,35 @@ one value immutable. What makes the *history* immutable is `RuleSetLedger`:
 supersession that names anything but the head. Both versions stay addressable by
 their own `rule_set_hash`, which is what a historical replay walks.
 
+**`rule_set_hash` is taken over every field of the set**, not over the fields
+that look like identity: `RuleSet`'s six, all four of `OfficialSourceBinding`'s,
+and all three of `ExecutableRule`'s — including the compiled body, which
+`RuleBody::canonical_text` renders totally over the fourteen rule types. That
+sentence is the repair for a hash that carried a rule's identifier, its type and
+its source digest and nothing the rule *said*: two sets differing only in
+`CREDIT_MINIMUM`'s threshold hashed alike, produced a byte-identical
+`AuditInputBinding`, and answered 졸업 불가 and 졸업 가능, with the stricter
+audit's recorded hash replaying against the laxer bodies and being accepted.
+The same rendering dropped three of the four fields of the source binding, one
+of which — `retrieved_at` — is what `academic-audit`'s freshness gate reads, so
+a fresh set and a stale one hashed alike too.
+
+Three tests hold it, and none of them is a count.
+`the_canonical_renderings_bind_every_field` compares the field set each type
+**declares** against the field set each renderer **destructures**, in both
+directions, and refuses a `..` in either renderer.
+`every_rule_body_field_moves_the_canonical_text` walks the fourteen arms moving
+one field at a time and requires every rendering to be distinct.
+`every_rule_set_field_moves_the_hash` does the same for the twelve movable
+positions of a published set. The first says the field is bound; the other two
+say the binding reaches the bytes.
+
 `ruleset_immutable_publish` asserts that publishing a successor leaves the
-predecessor byte-identical *and* that two versions with different thresholds
-hash differently — without that second half the first would pass on a hash that
-ignored the rules.
+predecessor byte-identical, that two published versions hash differently, *and*
+— separately, because the first pair differs in its version number and its
+supersession too — that two sets differing **only** in a credit threshold hash
+differently. The audit that found the hole found the old assertion passing on
+its version number while its message named the threshold.
 
 Migration `0015` is the second layer: `requirement_set_version` makes
 `supersedes_version` and `rule_set_hash` `UNIQUE`, so the chain cannot fork and
