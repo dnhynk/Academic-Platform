@@ -689,10 +689,19 @@ fn dominated_paths_are_removed_before_ranking() -> TestResult {
     Ok(())
 }
 
+/// The crossing fixture as a whole result, so its ranked paths can be borrowed.
+fn crossing_result() -> Result<academic_critical_path::CriticalPathResult, Box<dyn Error>> {
+    let scenario = Scenario::new()?;
+    let estimates = crossing_estimates()?;
+    Ok(plan(&academic_critical_path::PlanRequest {
+        estimates: &estimates,
+        ..scenario.request()
+    })?)
+}
+
 /// A front of two candidates whose learning-effort intervals overlap without
 /// either containing the other.
-fn crossing_front() -> Result<ParetoFront, Box<dyn Error>> {
-    let scenario = Scenario::new()?;
+fn crossing_estimates() -> Result<Vec<ConceptEstimate>, Box<dyn Error>> {
     let mut estimates = flat_estimates()?;
     estimates = with_estimate(
         estimates,
@@ -740,11 +749,12 @@ fn crossing_front() -> Result<ParetoFront, Box<dyn Error>> {
             options: vec![reading_for(page_layout(), "pl")?],
         },
     );
-    let request = academic_critical_path::PlanRequest {
-        estimates: &estimates,
-        ..scenario.request()
-    };
-    Ok(plan(&request)?.front().clone())
+    Ok(estimates)
+}
+
+/// That fixture's front.
+fn crossing_front() -> Result<ParetoFront, Box<dyn Error>> {
+    Ok(crossing_result()?.front().clone())
 }
 
 // ---------------------------------------------------------------------------
@@ -2260,5 +2270,188 @@ fn an_unknown_constraint_input_is_not_a_pass() -> TestResult {
             }),
         "an unevaluated registrar prerequisite was not disclosed as unknown"
     );
+    Ok(())
+}
+
+/// Every refusal a caller other than the engine could reach.
+///
+/// `plan` always builds well-formed values, so several constructor checks are
+/// unreachable through it and no test above drives them. That is the shape
+/// `P2-N5` recorded as `N5-I17` and `N5-I18`: a rule the type enforces that
+/// nothing observes is a rule an edit can delete silently. Each is driven here
+/// through the public constructor, which is where a caller other than this
+/// engine would reach it.
+#[test]
+fn every_reachable_refusal_is_driven() -> TestResult {
+    // An interval whose upper end is below its lower one.
+    assert!(matches!(
+        CostEstimate::of(
+            40,
+            10,
+            Unit::Minutes,
+            CostBasis::measured(&[BasisFamily::PastLearningSpeed])?
+        ),
+        Err(academic_critical_path::CriticalPathError::InvertedEstimate)
+    ));
+
+    // Two intervals in different units cannot be added.
+    let minutes = measured(CostComponent::LearningEffort, 10, 10)?;
+    let days = measured(CostComponent::CalendarDelay, 10, 10)?;
+    assert!(matches!(
+        minutes.plus(&days),
+        Err(academic_critical_path::CriticalPathError::UnitMismatch)
+    ));
+
+    // An estimate offered on the wrong axis is refused by the vector, so the
+    // seven units cannot be shuffled.
+    let mut wrong = Vec::new();
+    for component in academic_critical_path::COST_COMPONENTS {
+        wrong.push(measured(
+            if component == CostComponent::LearningEffort {
+                CostComponent::CalendarDelay
+            } else {
+                component
+            },
+            10,
+            10,
+        )?);
+    }
+    let wrong: [CostEstimate; 7] = wrong
+        .try_into()
+        .map_err(|_| "the fixture is not seven axes")?;
+    assert!(matches!(
+        academic_critical_path::CostVector::of(wrong),
+        Err(academic_critical_path::CriticalPathError::AxisUnitMismatch { axis })
+            if axis == CostComponent::LearningEffort.spec_token()
+    ));
+
+    // A hyperedge with no members, and an option supplying no occasion.
+    assert!(matches!(
+        Hyperedge::requires_all(buffer_pool(), Vec::new()),
+        Err(academic_critical_path::CriticalPathError::EmptyHyperedge)
+    ));
+    assert!(matches!(
+        Hyperedge::requires_one_of(
+            buffer_pool(),
+            vec![
+                vec![member(
+                    buffer_pool(),
+                    disk_page(),
+                    EdgeStanding::Settled,
+                    "a"
+                )?],
+                Vec::new(),
+            ],
+        ),
+        Err(academic_critical_path::CriticalPathError::EmptyHyperedge)
+    ));
+    assert!(matches!(
+        academic_critical_path::AcquisitionOption::self_study(Vec::new()),
+        Err(academic_critical_path::CriticalPathError::OptionSuppliesNoOpportunity)
+    ));
+    assert!(matches!(
+        academic_critical_path::AcquisitionOption::project_work(entity("project-a"), Vec::new()),
+        Err(academic_critical_path::CriticalPathError::OptionSuppliesNoOpportunity)
+    ));
+
+    // A disclosure group that must carry entries cannot be empty.
+    assert!(matches!(
+        academic_critical_path::CostAssumptions::of(Vec::new()),
+        Err(academic_critical_path::CriticalPathError::DisclosureGroupIsEmpty { .. })
+    ));
+
+    // A ranked path that is not on the front. A `RankedPath` has no public
+    // constructor -- `CriticalPathResult::ranked_path` is crate-private -- so
+    // the only way a caller reaches one at all is out of another result, and
+    // the crossing fixture's routes carry different vectors from the baseline's.
+    let scenario = Scenario::new()?;
+    let base = plan(&scenario.request())?;
+    let elsewhere = crossing_result()?;
+    let strangers = elsewhere.ranked().to_vec();
+    assert!(
+        !strangers.is_empty(),
+        "the second run produced no ranked path"
+    );
+    assert!(
+        !strangers.iter().any(|path| {
+            base.front()
+                .candidates()
+                .iter()
+                .any(|candidate| candidate == path.candidate())
+        }),
+        "a stranger route is on this front, so the refusal below is vacuous"
+    );
+    assert!(matches!(
+        academic_critical_path::CriticalPathResult::of(
+            base.goal(),
+            base.front().clone(),
+            strangers,
+            base.roles().to_vec(),
+            base.slider().clone(),
+            base.disclosure().clone(),
+        ),
+        Err(academic_critical_path::CriticalPathError::RankedPathIsNotOnTheFront)
+    ));
+
+    // An edit whose recomputation is for a different goal. `CriticalPathResult`
+    // takes its goal directly, so this is a value a caller can build and the
+    // refusal is one it can reach.
+    let moved = academic_critical_path::CriticalPathResult::of(
+        entity("goal-somewhere-else"),
+        base.front().clone(),
+        Vec::new(),
+        base.roles().to_vec(),
+        base.slider().clone(),
+        base.disclosure().clone(),
+    )?;
+    assert_ne!(moved.goal(), base.goal());
+    let removed = scenario
+        .graph
+        .all_members()
+        .into_iter()
+        .find(|held| held.concept() == random_io())
+        .cloned()
+        .ok_or("the fixture graph has no Random I/O member")?;
+    assert!(matches!(
+        EditedPlan::of(
+            base.clone(),
+            scenario.graph.clone(),
+            RelationEdit::Remove { member: removed },
+            moved,
+            scenario.graph.clone(),
+        ),
+        Err(academic_critical_path::CriticalPathError::EditChangesTheGoal)
+    ));
+
+    // The satisfying-set solver refuses a graph too wide to assemble rather
+    // than returning some of the answers and calling them the answer.
+    let mut wide = PrerequisiteHypergraph::new();
+    let mut previous = buffer_pool();
+    for step in 0..9 {
+        let left = entity(&format!("wide-left-{step}"));
+        let right = entity(&format!("wide-right-{step}"));
+        let next = entity(&format!("wide-next-{step}"));
+        wide = wide
+            .with(Hyperedge::requires_one_of(
+                previous,
+                vec![
+                    vec![member(previous, left, EdgeStanding::Settled, "wl")?],
+                    vec![member(previous, right, EdgeStanding::Settled, "wr")?],
+                ],
+            )?)
+            .with(Hyperedge::requires_all(
+                left,
+                vec![member(left, next, EdgeStanding::Settled, "wn")?],
+            )?)
+            .with(Hyperedge::requires_all(
+                right,
+                vec![member(right, next, EdgeStanding::Settled, "wn")?],
+            )?);
+        previous = next;
+    }
+    assert!(matches!(
+        satisfying_sets(&wide, buffer_pool()),
+        Err(academic_critical_path::CriticalPathError::HypergraphIsTooWide)
+    ));
     Ok(())
 }
