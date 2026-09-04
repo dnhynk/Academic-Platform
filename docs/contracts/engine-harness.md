@@ -94,10 +94,21 @@ carries no count.
 
 ## Registration is not implementation
 
-Ten of the twelve entries are `PLANNED`. `GPA` and `CREDIT_ACCOUNTING` are
-`IMPLEMENTED`: `P2-U4` built both in `academic-record`, and their harness
-directories under `testdata/engines/` carry the artifacts that flip requires.
-See [the GPA and attempt contract](gpa-and-attempts.md).
+Four entries are `IMPLEMENTED` and the rest are `PLANNED`. The four are
+enumerated rather than counted, because a count would let one flip forward while
+another flipped back and stay silent -- which is the shape this page warns about
+for the registry itself:
+
+| Engine | Task | Crate | Contract |
+|---|---|---|---|
+| `GPA` | `P2-U4` | `academic-record` | [GPA and attempts](gpa-and-attempts.md) |
+| `CREDIT_ACCOUNTING` | `P2-U4` | `academic-record` | [GPA and attempts](gpa-and-attempts.md) |
+| `GRADUATION_AUDIT` | `P2-U3` | `academic-audit` | [the graduation audit](graduation-audit.md) |
+| `TRANSCRIPT_COVERAGE` | `P2-L4` | `academic-lecture-document` | [the lecture document](lecture-document.md) |
+
+Each carries the artifacts under `testdata/engines/` that flipping requires, and
+`GPA` and `GRADUATION_AUDIT` -- the two that decide a high-impact path -- carry
+all three adverse fixture sets beside them.
 
 The audit enforces both directions:
 
@@ -121,13 +132,23 @@ every engine crate depends on `academic-domain` and this audit lives in it, so
 a fixture that only exists would satisfy the audit and prove nothing. The
 executing half belongs to the implementing crate.
 
-For the two live engines that is `crates/record/tests/record_harness.rs`, which
-evaluates every committed `.input` against the real engine and byte-compares the
+Each live engine's implementing crate carries that half:
+`crates/record/tests/record_harness.rs`,
+`crates/audit/tests/audit_harness.rs`, and
+`crates/lecture-document/tests/lecture_document_harness.rs`. Each evaluates
+every committed `.input` against the real engine and byte-compares the
 `.expected`, requires each adverse fixture to land on the outcome its directory
 names, and re-renders the whole corpus from the deterministic builder so a
 fixture cannot be hand-edited into agreement with a broken engine. **An engine
 that flips to `IMPLEMENTED` without that second half has satisfied the audit and
 demonstrated nothing.**
+
+`GPA` and `GRADUATION_AUDIT` each carry a third half as well: an independent
+oracle in another language, rendering the expected values from a second
+transcription of the corpus, so that what a golden fixture is compared against
+did not come from the engine it checks. `tools/gpa-oracle.mjs` and
+`tools/graduation-audit-oracle.mjs` are those, and each is committed and
+re-derivable.
 
 ## Harness layout
 
@@ -254,6 +275,9 @@ a real engine's harness directory copies.
 
 - `cargo test -p academic-domain --test engine_harness` — the named acceptance
   evidence, on every supported platform.
+- `cargo test -p academic-record --test record_harness`,
+  `cargo test -p academic-audit --test audit_harness` — the executing half for
+  the live engines, inside `cargo test --workspace`.
 - `pnpm test` — `engine_source_contains_no_clock_rng_network_or_model`, the
   source and dependency scan.
 - `pnpm verify:contracts` — the byte comparison against a fresh render and the

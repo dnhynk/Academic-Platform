@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/admission",
+  "crates/audit",
   "crates/capture",
   "crates/capture-client",
   "crates/capture-gate",

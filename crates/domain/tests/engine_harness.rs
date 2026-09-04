@@ -433,11 +433,13 @@ fn engine_registry_is_complete() -> TestResult {
         );
     }
 
-    // Two engines are implemented and ten are not. `P2-U4` built `GPA` and
-    // `CREDIT_ACCOUNTING` in `academic-record`, which is why their entries are
-    // `IMPLEMENTED` and their harness directories are populated; the audit
-    // below and `planned_engine_that_gains_an_implementation_fails_ci` check
-    // both directions over the committed tree.
+    // `P2-U4` built `GPA` and `CREDIT_ACCOUNTING` in `academic-record`,
+    // `P2-L4` built `TRANSCRIPT_COVERAGE` in `academic-lecture-document`, and
+    // `P2-U3` built `GRADUATION_AUDIT` in `academic-audit`, which is why those
+    // entries are `IMPLEMENTED` and their harness directories are populated;
+    // the audit below and
+    // `planned_engine_that_gains_an_implementation_fails_ci` check both
+    // directions over the committed tree.
     //
     // The list is enumerated rather than counted. A count would let an engine
     // flip to `IMPLEMENTED` and another flip back and stay silent, which is the
@@ -450,7 +452,12 @@ fn engine_registry_is_complete() -> TestResult {
         .collect();
     assert_eq!(
         implemented,
-        vec!["GPA", "CREDIT_ACCOUNTING", "TRANSCRIPT_COVERAGE"],
+        vec![
+            "GPA",
+            "CREDIT_ACCOUNTING",
+            "GRADUATION_AUDIT",
+            "TRANSCRIPT_COVERAGE"
+        ],
         "an engine's lifecycle changed; its harness artifacts and the \
          `engine_source_contains_no_clock_rng_network_or_model` scan must move with it"
     );
@@ -687,16 +694,21 @@ fn planned_engine_that_gains_an_implementation_fails_ci() -> TestResult {
     let discovered_snapshot = discovered.clone();
 
     // Inject an implementation for one planned engine and observe the bite.
+    //
+    // `OFFICIAL_PREREQUISITE` rather than `GRADUATION_AUDIT`: `P2-U3`
+    // implemented the latter, so a source naming its engine id is now expected
+    // rather than a violation. The injection has to name an engine that is
+    // still planned or it would assert nothing.
     let mut injected = discovered.clone();
     injected
-        .entry(EngineName::GraduationAudit)
+        .entry(EngineName::OfficialPrerequisite)
         .or_default()
         .implementation_sites
         .push("crates/domain/src/injected.rs".to_owned());
     assert_eq!(
         audit_engine_harness(&ENGINE_REGISTRY, &injected),
         vec![HarnessViolation::PlannedEngineHasImplementation {
-            engine: EngineName::GraduationAudit,
+            engine: EngineName::OfficialPrerequisite,
             site: "crates/domain/src/injected.rs".to_owned(),
         }],
     );

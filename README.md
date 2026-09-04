@@ -187,6 +187,53 @@ supersession `UNIQUE` as the second layer. It runs inside `cargo test
 not claim is in
 [the requirement rule DSL](docs/contracts/requirement-rule-dsl.md).
 
+`P2-U3` adds `academic-audit`: section 11.1's fail-closed `RuleSet` selector,
+section 11.3's explainable proof tree, and section 11.4's three-gate
+`DETERMINATE` rule. It is the engine that tells a user whether they can
+graduate, so every contract in it is fail-closed.
+
+`DETERMINATE` is three values rather than three checks. `DeterminateVerdict` has
+private fields and one constructor, and that constructor takes a
+`CoverageWitness`, a `ConflictFreeWitness` and a `FreshnessWitness` **by
+value**; each has private fields and a crate-private `establish` that returns
+`Option<Self>` from the evidence its gate is about. A caller holding two of them
+has no expression that produces a determination. No source states a
+source-freshness number, so `SourceFreshnessPolicy` has no `Default` and no
+constant, and an audit with none recorded is `INDETERMINATE` naming that. An
+`INDETERMINATE` verdict takes its first missing check as a **parameter**, so an
+empty outstanding list is not a value that can be written, and every arm names
+the exact field, rule, attempt or source that is outstanding.
+
+Section 11.3's four leaf parts — the rule identifier, the source page and
+paragraph, the attempts used, and the equivalency decision — are four
+constructor parameters on a type with private fields, no `Default` and no
+setter, and the two that could be empty are enums whose other arm states the
+reason. A published rule the source index does not place therefore cannot become
+a leaf: it is left unevaluated, which is a partial failure, rather than
+evaluated into a verdict with no citation. A plan reaches none of this —
+`DegreeAudit::evaluate` has no plan parameter, and the annotated view produces
+labels and never a verdict. Eight compile-fail cases are those absences.
+
+**Section 11.3's five rendered leaf tokens are not the harness's five.** The
+tree in the specification writes `PASS_PARTIAL`, which the harness has no value
+for, prints no `CONFLICT`, which the harness has, and labels two structurally
+identical credit rows differently — `93 / 130 PASS_PARTIAL` beside
+`51 / 63 NEEDS 12`. The mapping is written down and compared against the
+document in both directions rather than assumed.
+
+`GRADUATION_AUDIT` flips to `IMPLEMENTED` with this task and its harness
+directory carries all three adverse fixture sets, each reached under the
+baseline rule set from the inputs. What a golden fixture is compared against did
+not come from the engine it checks: `tools/graduation-audit-oracle.mjs` is a
+second transcription of the transcript, the grade table, the repeat ceiling and
+the rules, in another language with fixed-point `BigInt` units.
+`GATE-38-001`–`GATE-38-004`, `GATE-38-006`, `GATE-38-011` and `GATE-38-012` stay
+open, and each identifier is derived from its line's position in section 38
+rather than typed. The crate runs inside `cargo test --workspace`, adds no
+external package to `Cargo.lock`, and adds no migration. What it does and does
+not claim is in
+[the graduation audit](docs/contracts/graduation-audit.md).
+
 `P2-G1` adds `academic-policy` without adding a product socket or a new
 external dependency. A new profile exposes `local_processing_preferred=true`
 and zero configured egress rules; a complete tuple against that empty snapshot

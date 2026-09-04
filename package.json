@@ -13,7 +13,7 @@
     "doctor": "cargo run --locked --offline --quiet -p academic-cli -- doctor --format json",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test && node --test tools/phase1-scaffold-policy.test.mjs tools/secret-debug-policy.test.mjs tools/gpa-oracle.test.mjs tools/policy-source-scan-inventory.test.mjs tools/shared-name-isolation.test.mjs",
+    "test": "pnpm -r --if-present test && node --test tools/phase1-scaffold-policy.test.mjs tools/secret-debug-policy.test.mjs tools/gpa-oracle.test.mjs tools/graduation-audit-oracle.test.mjs tools/policy-source-scan-inventory.test.mjs tools/shared-name-isolation.test.mjs",
     "build": "pnpm -r --if-present build",
     "fixture:emit": "cargo run --locked --offline --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v3.json",
     "fixture:verify": "cargo run --locked --offline --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json",
@@ -25,6 +25,8 @@
     "verify:contracts": "node tools/verify-contracts.mjs",
     "gpa:oracle": "node tools/gpa-oracle.mjs --check",
     "harness:emit": "cargo run --locked --offline --quiet -p academic-record --example emit_harness",
+    "harness:emit:graduation": "cargo run --locked --offline --quiet -p academic-audit --example emit_harness",
+    "graduation:oracle": "node tools/graduation-audit-oracle.mjs --check",
     "verify:windows-toolchain": "node tools/sqlcipher/verify-windows-toolchain.mjs",
     "security:source-probes": "node tools/dependency-source-policy.test.mjs && node tools/pnpm-source-policy-consumption.test.mjs",
     "security": "node tools/security-baseline.mjs && pnpm security:source-probes"

@@ -1,0 +1,26 @@
+engine engine.graduation.audit
+engine_version 1
+rule_set_hash sha256:f031d022ab85bdff1bcaa4bb861cc56a4a35b693313dc1d120fe478118bf3935
+frozen_inputs sha256:c44d183cd607c27fedef3e0c6aeb62763f8c54c1ce96e85cdef6986419f5cfea
+result NOT_SATISFIED
+value checks.missing=1/0
+value rules.evaluated=13/0
+value rules.needs=3/0
+value rules.not_satisfied=3/0
+value rules.satisfied=7/0
+value rules.unknown=0/0
+proof
+  NOT_SATISFIED rule.degree.audit [audit] inputs=audit.as_of,profile.additional_majors.count,profile.admission_year,profile.college,profile.degree_mode,profile.department,profile.exception_approvals.count,profile.exchange_or_transfer,profile.graduation_standard,profile.university
+    NEEDS cse_major_total [cse_major_total] inputs=transcript.000.admission,transcript.000.attempt,transcript.000.course,transcript.000.credits,transcript.006.admission,transcript.006.attempt,transcript.006.course,transcript.006.credits locators=01900000-0000-7000-8000-0000000002bc@page/3,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/3000-3400
+    SATISFIED equivalency_shared [equivalency_shared] inputs=transcript.005.admission,transcript.005.attempt,transcript.005.course,transcript.005.credits locators=01900000-0000-7000-8000-0000000002bc@page/1,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/1000-1400
+    NEEDS foreign_language_lectures [foreign_language_lectures] inputs=transcript.000.admission,transcript.000.attempt,transcript.000.course,transcript.000.credits,transcript.005.admission,transcript.005.attempt,transcript.005.course,transcript.005.credits locators=01900000-0000-7000-8000-0000000002bc@page/6,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/6000-6400
+    SATISFIED major_exclusive [major_exclusive] inputs=transcript.000.admission,transcript.000.attempt,transcript.000.course,transcript.000.credits locators=01900000-0000-7000-8000-0000000002bc@page/8,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/8000-8400
+    SATISFIED overall_gpa [overall_gpa] locators=01900000-0000-7000-8000-0000000002bc@page/7,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/7000-7400
+    NOT_SATISFIED required_course_set [required_course_set] inputs=transcript.000.admission,transcript.000.attempt,transcript.000.course,transcript.000.credits,transcript.005.admission,transcript.005.attempt,transcript.005.course,transcript.005.credits locators=01900000-0000-7000-8000-0000000002bc@page/4,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/4000-4400
+      SATISFIED required_course_set [required_course_set.op.000] inputs=transcript.000.admission,transcript.000.attempt,transcript.000.course,transcript.000.credits locators=01900000-0000-7000-8000-0000000002bc@page/4,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/4000-4400
+      NOT_SATISFIED required_course_set [required_course_set.op.001] locators=01900000-0000-7000-8000-0000000002bc@page/4,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/4000-4400
+      SATISFIED required_course_set [required_course_set.op.002] inputs=transcript.005.admission,transcript.005.attempt,transcript.005.course,transcript.005.credits locators=01900000-0000-7000-8000-0000000002bc@page/4,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/4000-4400
+    SATISFIED seminar_choice [seminar_choice] inputs=transcript.005.admission,transcript.005.attempt,transcript.005.course,transcript.005.credits locators=01900000-0000-7000-8000-0000000002bc@page/5,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/5000-5400
+      NOT_SATISFIED seminar_choice [seminar_choice.op.000] locators=01900000-0000-7000-8000-0000000002bc@page/5,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/5000-5400
+      SATISFIED seminar_choice [seminar_choice.op.001] inputs=transcript.005.admission,transcript.005.attempt,transcript.005.course,transcript.005.credits locators=01900000-0000-7000-8000-0000000002bc@page/5,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/5000-5400
+    NEEDS total_credits [total_credits] inputs=transcript.000.admission,transcript.000.attempt,transcript.000.course,transcript.000.credits,transcript.001.admission,transcript.001.attempt,transcript.001.course,transcript.001.credits,transcript.005.admission,transcript.005.attempt,transcript.005.course,transcript.005.credits,transcript.006.admission,transcript.006.attempt,transcript.006.course,transcript.006.credits,transcript.007.admission,transcript.007.attempt,transcript.007.course,transcript.007.credits locators=01900000-0000-7000-8000-0000000002bc@page/2,01900000-0000-7000-8000-0000000002bc@text/sha256:870995c2d65da8ee3384985727cfe9b93972a41b0960c3200f1eb7784c61a642/2000-2400

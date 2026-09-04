@@ -1,0 +1,736 @@
+//! What a behavioural test cannot observe: that this crate's vocabularies are
+//! the specification's, and that its product source reaches nothing it must not.
+//!
+//! Each scan below reads a file's text. `docs/contracts/policy-source-scans.md`
+//! enumerates every such scan in this repository, and
+//! `tools/policy-source-scan-inventory.test.mjs` executes that sentence, so a
+//! new one has a row on that page or the inventory fails.
+//!
+//! The three that read the design document are the halves this task could most
+//! easily have got wrong by writing a list twice: section 11.1's eight selector
+//! inputs, section 3's profile keys, and section 38's open cells. Each is
+//! compared **in both directions**, so a name dropped from the Rust side fails
+//! against the document and a name the document does not carry fails against
+//! the Rust side.
+
+mod support;
+
+use std::{collections::BTreeSet, fs, path::PathBuf};
+
+use academic_audit::{DegreeMode, OpenGate, ProfileField, SelectorDimension};
+use academic_domain::engines::ProofStatus;
+use support::TestResult;
+
+fn repository_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+}
+
+fn specification() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(fs::read_to_string(repository_root().join(
+        "PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md",
+    ))?)
+}
+
+/// Every product file of this crate, recursively.
+fn product_sources() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
+    let base = repository_root().join("crates").join("audit").join("src");
+    let mut found = Vec::new();
+    let mut pending = vec![base.clone()];
+    while let Some(directory) = pending.pop() {
+        for entry in fs::read_dir(&directory)? {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
+                pending.push(path);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let name = path
+                    .strip_prefix(&base)?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                found.push((name, fs::read_to_string(&path)?));
+            }
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// Strips `//` comments and string literals, so a scan does not match prose.
+fn stripped(source: &str) -> String {
+    let mut out = String::with_capacity(source.len());
+    for line in source.lines() {
+        let code = line.split("//").next().unwrap_or_default();
+        let mut in_string = false;
+        let mut escaped = false;
+        for character in code.chars() {
+            match (in_string, escaped, character) {
+                (_, true, _) => escaped = false,
+                (true, false, '\\') => escaped = true,
+                (_, false, '"') => in_string = !in_string,
+                (false, false, _) => out.push(character),
+                (true, false, _) => {}
+            }
+        }
+        out.push('\n');
+    }
+    out
+}
+
+// ---------------------------------------------------------------------------
+// The walk reaches every module
+// ---------------------------------------------------------------------------
+
+/// Every `pub mod` this crate declares is a file the sweeps below read.
+///
+/// The tripwire the other scans rest on: a module added without a file the walk
+/// reaches would make every sweep below quietly narrower.
+#[test]
+fn the_walk_reads_every_module_in_this_crate() -> TestResult {
+    let sources = product_sources()?;
+    let names: BTreeSet<&str> = sources.iter().map(|(name, _)| name.as_str()).collect();
+    let lib = sources
+        .iter()
+        .find(|(name, _)| name == "lib.rs")
+        .map(|(_, text)| text.clone())
+        .ok_or("the walk did not reach lib.rs")?;
+
+    let mut declared = 0_usize;
+    for line in lib.lines() {
+        let trimmed = line.trim();
+        let Some(rest) = trimmed.strip_prefix("pub mod ") else {
+            continue;
+        };
+        let module = rest.trim_end_matches(';');
+        assert!(
+            names.contains(format!("{module}.rs").as_str()),
+            "{module} is declared and the walk does not read it"
+        );
+        declared += 1;
+    }
+    assert!(declared >= 12, "only {declared} modules were declared");
+    assert_eq!(
+        declared + 1,
+        sources.len(),
+        "the walk read a file no module declares, or missed one"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Section 11.1's eight selector inputs
+// ---------------------------------------------------------------------------
+
+/// The selector's dimensions are the specification's own words.
+///
+/// Section 11.1 writes them as one `·`-delimited list. This splits that list
+/// out of the document and compares it with [`SelectorDimension::ALL`] in both
+/// directions, in order. **Nothing here asserts how many there are**: dropping
+/// a dimension *and* its declared length together still fails, because the
+/// document still writes the unit.
+#[test]
+fn the_selector_dimensions_are_the_specifications_own() -> TestResult {
+    let specification = specification()?;
+    let sentence = specification
+        .lines()
+        .find(|line| line.starts_with("selector는 "))
+        .ok_or("section 11.1's selector sentence is not in the document")?;
+    let listed = sentence
+        .strip_prefix("selector는 ")
+        .and_then(|rest| rest.split_once("을 함께 사용한다"))
+        .map(|(list, _)| list)
+        .ok_or("the selector sentence no longer ends the way it did")?;
+
+    let from_specification: Vec<&str> = listed.split('·').collect();
+    let from_crate: Vec<&str> = SelectorDimension::ALL
+        .into_iter()
+        .map(SelectorDimension::spec_words)
+        .collect();
+    assert_eq!(
+        from_specification, from_crate,
+        "the selector's dimensions are not section 11.1's, in section 11.1's order"
+    );
+
+    // The sixth unit's `/`-separated alternatives are the degree modes, in the
+    // same order. One is the yaml's own identifier; the other four are derived
+    // by upper-casing the English name, and the derivation is what this pins.
+    let sixth = from_specification
+        .get(5)
+        .ok_or("section 11.1's sixth unit is gone")?;
+    let alternatives: Vec<&str> = sixth.split('/').collect();
+    let modes: Vec<&str> = DegreeMode::ALL
+        .into_iter()
+        .map(DegreeMode::spec_word)
+        .collect();
+    assert_eq!(
+        alternatives, modes,
+        "the degree modes are not the sixth unit's alternatives"
+    );
+
+    // `SINGLE_MAJOR` is the yaml's own spelling and is compared against it.
+    assert!(
+        specification.contains("majorMode: SINGLE_MAJOR"),
+        "section 11.1's yaml no longer spells SINGLE_MAJOR"
+    );
+    assert_eq!(DegreeMode::SingleMajor.as_str(), "SINGLE_MAJOR");
+
+    // The split between the dimensions a published scope narrows and the two it
+    // does not is the yaml's, so the yaml is required to declare exactly the
+    // four fields that split rests on and no field for the other two.
+    for field in [
+        "institutionPath",
+        "admissionYear",
+        "selectedGraduationStandardRange",
+        "majorMode",
+    ] {
+        assert!(
+            specification.contains(&format!("{field}:")),
+            "section 11.1's yaml no longer declares {field}"
+        );
+    }
+    for absent in ["exchangeOrTransferScope", "exceptionApprovalScope"] {
+        assert!(
+            !specification.contains(absent),
+            "the specification now declares {absent}; the narrowing split must move with it"
+        );
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Section 3's profile keys
+// ---------------------------------------------------------------------------
+
+/// The profile's fields are section 3's own keys, and the three it leaves out
+/// are left out on purpose.
+#[test]
+fn the_profile_fields_are_the_specifications_own() -> TestResult {
+    let specification = specification()?;
+    let block = specification
+        .split_once("StudentProfile:")
+        .map(|(_, rest)| rest)
+        .and_then(|rest| rest.split_once("```"))
+        .map(|(block, _)| block)
+        .ok_or("section 3's StudentProfile block is not in the document")?;
+
+    let keys: Vec<&str> = block
+        .lines()
+        .filter_map(|line| line.trim().split_once(':').map(|(key, _)| key.trim()))
+        .filter(|key| !key.is_empty())
+        .collect();
+    assert!(keys.len() >= 11, "the profile block shrank to {keys:?}");
+
+    // Every field that claims a section 3 key has one.
+    let mut claimed = BTreeSet::new();
+    for field in ProfileField::ALL {
+        if let Some(key) = field.spec_key() {
+            assert!(
+                keys.contains(&key),
+                "{field:?} claims section 3's {key} and section 3 does not write it"
+            );
+            assert!(claimed.insert(key), "{key} is claimed by two fields");
+        }
+    }
+
+    // And every section 3 key is either claimed or deliberately not a selector
+    // input. The three below select no rule: `gradingContext` is the versioned
+    // `GradingScheme` bound to the grade-point reading, and `interests` and
+    // `privacyPolicy` bear on no requirement set. A field that selects nothing
+    // and was hashed into the audit identity would make an audit change when a
+    // privacy preference did.
+    let not_selector_inputs = ["gradingContext", "interests", "privacyPolicy"];
+    for key in &keys {
+        assert!(
+            claimed.contains(key) || not_selector_inputs.contains(key),
+            "section 3 writes {key} and nothing here claims it or excludes it"
+        );
+    }
+
+    // One field has no section 3 key, and it is section 11.1's sentence that
+    // names it. Recording the difference here is what stops this comparison
+    // from needing an exception.
+    let unkeyed: Vec<ProfileField> = ProfileField::ALL
+        .into_iter()
+        .filter(|field| field.spec_key().is_none())
+        .collect();
+    assert_eq!(unkeyed, vec![ProfileField::ExceptionApprovals]);
+    assert_eq!(
+        ProfileField::ExceptionApprovals.dimension(),
+        SelectorDimension::ExceptionApproval
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Section 38's open cells
+// ---------------------------------------------------------------------------
+
+/// Every cell this crate leaves open is a line section 38 really writes.
+#[test]
+fn the_open_gates_are_section_38s_own() -> TestResult {
+    let specification = specification()?;
+    for gate in OpenGate::ALL {
+        assert!(
+            specification.contains(gate.spec_line()),
+            "{} quotes a line section 38 does not write: {}",
+            gate.identifier(),
+            gate.spec_line()
+        );
+        assert!(gate.identifier().starts_with("GATE-38-"));
+        assert!(!gate.statement().is_empty());
+    }
+
+    // Section 38.1's ten lines are numbered by position, and this crate's five
+    // profile cells are its first four and its sixth. Reading the position back
+    // out of the block is what makes the identifiers derived rather than
+    // asserted.
+    let block = specification
+        .split_once("Admission Year")
+        .map(|(_, rest)| format!("Admission Year{rest}"))
+        .and_then(|rest| rest.split_once("```").map(|(block, _)| block.to_owned()))
+        .ok_or("section 38.1's block is not in the document")?;
+    let lines: Vec<&str> = block
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    assert_eq!(lines.len(), 10, "section 38.1 lists {} lines", lines.len());
+
+    for (position, gate) in [
+        (0_usize, OpenGate::ProfileAdmissionYear),
+        (1, OpenGate::ProfileGraduationStandard),
+        (2, OpenGate::ProfileDegreeMode),
+        (3, OpenGate::ProfileAdditionalMajor),
+        (5, OpenGate::ProfileExchangeOrTransfer),
+    ] {
+        let line = lines
+            .get(position)
+            .ok_or_else(|| format!("section 38.1 has no line {position}"))?;
+        assert!(
+            line.starts_with(gate.spec_line()),
+            "{} is section 38.1's line {} and that line reads {line}",
+            gate.identifier(),
+            position + 1
+        );
+        let expected = format!("GATE-38-{:03}", position + 1);
+        assert_eq!(
+            gate.identifier(),
+            expected,
+            "the identifier does not follow the line's position"
+        );
+    }
+
+    // Section 38.2's bullets are numbered from eleven, continuing section
+    // 38.1's ten. The two rule cells this crate forwards are its first two, and
+    // the identifier is derived from the position here rather than compared
+    // against a list written twice.
+    let bullets_block = specification
+        .split_once("### 38.2 공식적으로 추가 확인할 항목")
+        .map(|(_, rest)| rest)
+        .and_then(|rest| rest.split_once("### 38.3").map(|(block, _)| block))
+        .ok_or("section 38.2's list is not in the document")?;
+    let bullets: Vec<&str> = bullets_block
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("- "))
+        .collect();
+    assert_eq!(
+        bullets.len(),
+        11,
+        "section 38.2 lists {} bullets",
+        bullets.len()
+    );
+    for (position, gate) in [
+        (0_usize, OpenGate::RuleCohortApplicability),
+        (1, OpenGate::RuleThesisScope),
+    ] {
+        let bullet = bullets
+            .get(position)
+            .ok_or_else(|| format!("section 38.2 has no bullet {position}"))?;
+        assert_eq!(
+            *bullet,
+            gate.spec_line(),
+            "{} is section 38.2's bullet {}",
+            gate.identifier(),
+            position + 1
+        );
+        // Ten section 38.1 lines come first, so section 38.2's first bullet is
+        // the eleventh cell.
+        assert_eq!(gate.identifier(), format!("GATE-38-{:03}", position + 11));
+    }
+
+    // The two rule cells are `academic-requirement`'s own -- forwarded, not
+    // restated.
+    assert_eq!(
+        OpenGate::from_rule_gate(academic_requirement::OpenGate::CohortApplicability),
+        Some(OpenGate::RuleCohortApplicability)
+    );
+    assert_eq!(
+        OpenGate::from_rule_gate(academic_requirement::OpenGate::ThesisRuleScope),
+        Some(OpenGate::RuleThesisScope)
+    );
+    // And the two that stay that crate's map to no cell here.
+    assert_eq!(
+        OpenGate::from_rule_gate(academic_requirement::OpenGate::MultiMajorDoubleCounting),
+        None
+    );
+    assert_eq!(
+        OpenGate::from_rule_gate(academic_requirement::OpenGate::ExternalCreditRecognition),
+        None
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Section 11.3's rendered vocabulary
+// ---------------------------------------------------------------------------
+
+/// Section 11.3's tree writes five leaf tokens, and each maps to exactly one
+/// harness status.
+///
+/// The two lists are **not** the same five. `PASS_PARTIAL` is section 11.3's
+/// and the harness has no such value; `CONFLICT` is the harness's and section
+/// 11.3's example does not print one. The mapping below is where that is
+/// written down, and the test refuses a token the mapping does not cover -- so
+/// a specification edit that introduces a sixth reading fails here rather than
+/// being folded into the nearest status.
+#[test]
+fn the_proof_statuses_cover_section_11_3s_own_tree() -> TestResult {
+    let specification = specification()?;
+    let tree = specification
+        .split_once("DegreeAudit: INDETERMINATE")
+        .map(|(_, rest)| format!("DegreeAudit: INDETERMINATE{rest}"))
+        .and_then(|rest| rest.split_once("```").map(|(block, _)| block.to_owned()))
+        .ok_or("section 11.3's tree is not in the document")?;
+
+    // Every SCREAMING_SNAKE token the tree prints.
+    let mut tokens: BTreeSet<String> = BTreeSet::new();
+    let mut current = String::new();
+    for character in tree.chars() {
+        if character.is_ascii_uppercase() || character == '_' {
+            current.push(character);
+        } else {
+            if current.len() >= 4 {
+                tokens.insert(current.clone());
+            }
+            current.clear();
+        }
+    }
+    if current.len() >= 4 {
+        tokens.insert(current);
+    }
+
+    // The mapping, written down rather than derived.
+    let mapping: Vec<(&str, Option<ProofStatus>)> = vec![
+        // The root reading. Not a leaf status at all: it is the audit's
+        // verdict, and `DegreeVerdict` is where it lives.
+        ("INDETERMINATE", None),
+        ("PASS", Some(ProofStatus::Satisfied)),
+        // Section 11.3 labels two structurally identical credit rows
+        // differently -- `93 / 130 PASS_PARTIAL` and `51 / 63 NEEDS 12`. They
+        // are one reading: a floor short of its threshold, with the shortfall
+        // quantified. The harness spells it `NEEDS` and `Measure` carries the
+        // quantity, so both rows render as `NEEDS` here.
+        ("PASS_PARTIAL", Some(ProofStatus::Needs)),
+        ("NEEDS", Some(ProofStatus::Needs)),
+        ("NOT_SATISFIED", Some(ProofStatus::NotSatisfied)),
+        ("UNKNOWN", Some(ProofStatus::Unknown)),
+    ];
+    let covered: BTreeSet<&str> = mapping.iter().map(|(token, _)| *token).collect();
+    for token in &tokens {
+        assert!(
+            covered.contains(token.as_str()),
+            "section 11.3's tree prints {token} and the mapping does not cover it"
+        );
+    }
+    for (token, _) in &mapping {
+        assert!(
+            tokens.contains(*token),
+            "the mapping covers {token} and section 11.3's tree does not print it"
+        );
+    }
+
+    // `CONFLICT` is the harness's fifth and section 11.3's example prints none.
+    // Section 11.4 requires it anyway -- *unresolved conflict 0* -- and the
+    // audit produces one, which `mixed_proof_tree` observes.
+    assert!(
+        !tokens.contains("CONFLICT"),
+        "section 11.3's tree now prints CONFLICT; this note is stale"
+    );
+    let statuses: BTreeSet<&str> = ProofStatus::ALL
+        .into_iter()
+        .map(ProofStatus::as_str)
+        .collect();
+    assert!(statuses.contains("CONFLICT"));
+    assert!(
+        !statuses.contains("PASS_PARTIAL"),
+        "the harness now has a PASS_PARTIAL; the mapping above must move"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// No clock, RNG, socket or model on the graduation path
+// ---------------------------------------------------------------------------
+
+/// The product source reaches no clock, RNG, socket or model.
+///
+/// The samples are run through the same check inside the test, so a rule that
+/// matched nothing fails rather than passing over a source it cannot see.
+#[test]
+fn no_product_file_reaches_a_clock_rng_socket_or_model() -> TestResult {
+    const FORBIDDEN: [&str; 14] = [
+        "SystemTime",
+        "Instant::now",
+        "Utc::now",
+        "Local::now",
+        "chrono",
+        "rand::",
+        "thread_rng",
+        "getrandom",
+        "Uuid::now_v7",
+        "Uuid::new_v4",
+        "TcpStream",
+        "UdpSocket",
+        "reqwest",
+        "ModelRun",
+    ];
+
+    let sources = product_sources()?;
+    assert!(sources.len() >= 12, "the walk read {} files", sources.len());
+    for (name, text) in &sources {
+        let code = stripped(text);
+        for spelling in FORBIDDEN {
+            assert!(
+                !code.contains(spelling),
+                "{name} reaches {spelling} on the graduation path"
+            );
+        }
+    }
+
+    // The check bites. Each evasion below is a spelling the rule must catch,
+    // run through the same predicate the sweep uses.
+    for evasion in [
+        "let now = std::time::SystemTime::now();",
+        "let seed = rand::random::<u64>();",
+        "let id = Uuid::new_v4();",
+        "let socket = std::net::TcpStream::connect(host)?;",
+        "let run: ModelRun = provider.execute(prompt)?;",
+    ] {
+        let code = stripped(evasion);
+        assert!(
+            FORBIDDEN.iter().any(|spelling| code.contains(spelling)),
+            "the rule does not catch {evasion}"
+        );
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The isolations this crate rests on
+// ---------------------------------------------------------------------------
+
+/// No product file names a projection, and only one names a plan.
+///
+/// `P2-C7`'s seal works here by absence: there is no `academic-scenario` edge,
+/// so a `Proposed<T>` is not a value a product file can hold. The plan types
+/// are nameable -- `academic-record` is a product edge -- so the second half is
+/// where they may be named, which is the module that turns one into labels and
+/// nowhere else.
+#[test]
+fn no_product_file_names_a_projection_and_only_one_names_a_plan() -> TestResult {
+    let sources = product_sources()?;
+    let mut plan_sites = BTreeSet::new();
+    for (name, text) in &sources {
+        let code = stripped(text);
+        for projection in [
+            "academic_scenario",
+            "Proposed<",
+            "ProjectedEvidenceOpportunity",
+        ] {
+            assert!(
+                !code.contains(projection),
+                "{name} names {projection}; this crate has no projection edge"
+            );
+        }
+        if code.contains("PlanScenario") || code.contains("PlannedCoursework") {
+            plan_sites.insert(name.clone());
+        }
+    }
+    assert_eq!(
+        plan_sites,
+        BTreeSet::from(["lib.rs".to_owned(), "plan.rs".to_owned()]),
+        "a plan type is named outside the module that turns one into labels"
+    );
+
+    // `lib.rs` is in that set because it re-exports the type, and a re-export
+    // is not a use. It is required to name it in exactly one place, and that
+    // place is required to be the `pub use` line.
+    let lib = sources
+        .iter()
+        .find(|(name, _)| name == "lib.rs")
+        .map(|(_, text)| stripped(text))
+        .ok_or("the walk did not reach lib.rs")?;
+    let naming: Vec<&str> = lib
+        .lines()
+        .filter(|line| line.contains("PlannedCoursework") || line.contains("PlanScenario"))
+        .collect();
+    assert_eq!(naming.len(), 1, "lib.rs names a plan type more than once");
+    assert!(
+        naming
+            .first()
+            .is_some_and(|line| line.contains("PlanAnnotatedView, PlanNote, PlannedCoursework")),
+        "lib.rs names a plan type outside its re-export"
+    );
+
+    // And the audit function itself has no plan parameter. Read off the source
+    // rather than asserted, because the compile-fail case proves the absence
+    // and this proves the case is still about the right function.
+    let engine = sources
+        .iter()
+        .find(|(name, _)| name == "engine.rs")
+        .map(|(_, text)| stripped(text))
+        .ok_or("the walk did not reach engine.rs")?;
+    let signature = engine
+        .split_once("pub fn evaluate(")
+        .and_then(|(_, rest)| rest.split_once(')').map(|(args, _)| args.to_owned()))
+        .ok_or("DegreeAudit::evaluate is gone")?;
+    for plan in ["plan", "Plan"] {
+        assert!(
+            !signature.contains(plan),
+            "DegreeAudit::evaluate now takes a plan: {signature}"
+        );
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The three witnesses, and the one route to a determination
+// ---------------------------------------------------------------------------
+
+/// Each gate has exactly one construction site, and the verdict has one route.
+#[test]
+fn the_three_witnesses_have_one_construction_site_each() -> TestResult {
+    let sources = product_sources()?;
+    let verdict = sources
+        .iter()
+        .find(|(name, _)| name == "verdict.rs")
+        .map(|(_, text)| stripped(text))
+        .ok_or("the walk did not reach verdict.rs")?;
+
+    // One `Some(Self {` per witness, and each is inside its own `establish`.
+    for witness in ["CoverageWitness", "ConflictFreeWitness", "FreshnessWitness"] {
+        let declarations = verdict.matches(&format!("pub struct {witness}")).count();
+        assert_eq!(
+            declarations, 1,
+            "{witness} is declared {declarations} times"
+        );
+    }
+    let establishes = verdict.matches("pub(crate) fn establish").count();
+    assert_eq!(establishes, 3, "there are {establishes} establish sites");
+
+    // No `pub fn establish` anywhere: a public one would be a witness a caller
+    // could mint.
+    assert!(
+        !verdict.contains("pub fn establish"),
+        "a witness can be established from outside this crate"
+    );
+
+    // The verdict's constructor takes all three by value, and is crate-private.
+    let constructor = verdict
+        .split_once("pub(crate) const fn new(\n        outcome: GraduationOutcome,")
+        .and_then(|(_, rest)| {
+            rest.split_once(") -> Self")
+                .map(|(args, _)| args.to_owned())
+        })
+        .ok_or("DeterminateVerdict::new no longer has the pinned shape")?;
+    for witness in [
+        "coverage: CoverageWitness",
+        "conflict_free: ConflictFreeWitness",
+        "freshness: FreshnessWitness",
+    ] {
+        assert!(
+            constructor.contains(witness),
+            "DeterminateVerdict::new no longer takes {witness}"
+        );
+    }
+
+    // The engine reaches a determination in exactly one expression, and that
+    // expression is the three-witness match.
+    let engine = sources
+        .iter()
+        .find(|(name, _)| name == "engine.rs")
+        .map(|(_, text)| stripped(text))
+        .ok_or("the walk did not reach engine.rs")?;
+    assert_eq!(
+        engine.matches("DegreeVerdict::Determinate").count(),
+        1,
+        "there is more than one route to a determination"
+    );
+    assert!(
+        engine.contains("(Some(coverage), Some(conflict_free), Some(freshness))"),
+        "the determination is no longer gated on all three witnesses"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// No default stands in for a value
+// ---------------------------------------------------------------------------
+
+/// Every `Default` in this crate is emptiness, never a value.
+#[test]
+fn the_only_defaults_are_empty_collections() -> TestResult {
+    let sources = product_sources()?;
+    let mut derived = BTreeSet::new();
+    for (name, text) in &sources {
+        let code = stripped(text);
+        assert!(
+            !code.contains("impl Default for"),
+            "{name} hand-writes a Default; a hand-written one can carry a value"
+        );
+        for (index, line) in code.lines().enumerate() {
+            if line.contains("#[derive(") && line.contains("Default") {
+                // The type declared on the next non-attribute line.
+                let declared = code
+                    .lines()
+                    .skip(index + 1)
+                    .find(|following| {
+                        following.trim_start().starts_with("pub struct")
+                            || following.trim_start().starts_with("pub enum")
+                    })
+                    .and_then(|following| following.split_whitespace().nth(2))
+                    .map(|word| word.trim_end_matches('{').trim_end_matches('<').to_owned())
+                    .unwrap_or_else(|| format!("{name}:{index}"));
+                derived.insert(declared);
+            }
+        }
+    }
+    assert_eq!(
+        derived,
+        BTreeSet::from([
+            "CourseFactsIndex".to_owned(),
+            "PlannedCoursework".to_owned(),
+            "RuleSetCatalog".to_owned(),
+            "RuleSourceIndex".to_owned(),
+        ]),
+        "a type gained a Default; every one here must be an empty collection"
+    );
+
+    // And each of the four defaults to a value that answers nothing rather than
+    // to a value that answers something.
+    assert!(
+        academic_audit::RuleSourceIndex::new()
+            .entries()
+            .next()
+            .is_none()
+    );
+    assert!(
+        academic_audit::CourseFactsIndex::new()
+            .facts("4190.101")
+            .is_none()
+    );
+    assert!(academic_audit::RuleSetCatalog::new().entries().is_empty());
+    assert!(academic_audit::PlannedCoursework::none().is_empty());
+    Ok(())
+}

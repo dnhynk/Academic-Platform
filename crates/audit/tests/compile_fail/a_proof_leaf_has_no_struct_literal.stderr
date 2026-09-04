@@ -1,0 +1,33 @@
+warning: unreachable expression
+  --> tests/compile_fail/a_proof_leaf_has_no_struct_literal.rs:14:19
+   |
+13 |         source: unimplemented!(),
+   |                 ---------------- any code following this expression is unreachable
+14 |         attempts: AttemptUsage::NoneUsed(NoAttemptReason::NoMatchingAttempt),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: fields `rule`, `source`, `attempts`, `equivalency`, `rule_type`, `status`, `measure`, `open_gate` and `rule_gate` of struct `ProofLeaf` are private
+  --> tests/compile_fail/a_proof_leaf_has_no_struct_literal.rs:12:9
+   |
+11 |     let _literal = ProofLeaf {
+   |                    --------- in this type
+12 |         rule: RuleId::new("total_credits").unwrap(),
+   |         ^^^^ private field
+13 |         source: unimplemented!(),
+   |         ^^^^^^ private field
+14 |         attempts: AttemptUsage::NoneUsed(NoAttemptReason::NoMatchingAttempt),
+   |         ^^^^^^^^ private field
+15 |         equivalency: EquivalencyDecision::NoneApplied,
+   |         ^^^^^^^^^^^ private field
+16 |         rule_type: RuleType::CreditMinimum,
+   |         ^^^^^^^^^ private field
+17 |         status: ProofStatus::Needs,
+   |         ^^^^^^ private field
+18 |         measure: None,
+   |         ^^^^^^^ private field
+19 |         open_gate: None,
+   |         ^^^^^^^^^ private field
+20 |         rule_gate: None,
+   |         ^^^^^^^^^ private field

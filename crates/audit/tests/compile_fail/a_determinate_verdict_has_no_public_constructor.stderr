@@ -1,0 +1,107 @@
+error[E0624]: associated function `establish` is private
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:14:37
+   |
+14 |     let coverage = CoverageWitness::establish(&[], &[]);
+   |                                     ^^^^^^^^^ private associated function
+   |
+  ::: src/verdict.rs
+   |
+   |     pub(crate) fn establish(leaves: &[ProofLeaf], unevaluated: &[RuleId]) -> Option<Self> {
+   |     ------------------------------------------------------------------------------------- private associated function defined here
+
+error[E0624]: associated function `establish` is private
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:15:46
+   |
+15 |     let conflict_free = ConflictFreeWitness::establish(&[], &[]);
+   |                                              ^^^^^^^^^ private associated function
+   |
+  ::: src/verdict.rs
+   |
+   |     pub(crate) fn establish(leaves: &[ProofLeaf], cases: &[&ConflictReference]) -> Option<Self> {
+   |     ------------------------------------------------------------------------------------------- private associated function defined here
+
+error[E0624]: associated function `establish` is private
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:16:39
+   |
+16 |       let freshness = FreshnessWitness::establish(None, unimplemented!(), unimplemented!());
+   |                                         ^^^^^^^^^ private associated function
+   |
+  ::: src/verdict.rs
+   |
+   | /     pub(crate) fn establish(
+   | |         policy: Option<SourceFreshnessPolicy>,
+   | |         retrieved_at: RetrievalInstant,
+   | |         as_of: TimestampMillis,
+   | |     ) -> Option<Self> {
+   | |_____________________- private associated function defined here
+
+warning: unreachable expression
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:16:73
+   |
+16 |     let freshness = FreshnessWitness::establish(None, unimplemented!(), unimplemented!());
+   |                                                       ----------------  ^^^^^^^^^^^^^^^^ unreachable expression
+   |                                                       |
+   |                                                       any code following this expression is unreachable
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0624]: associated function `new` is private
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:19:40
+   |
+19 |       let _verdict = DeterminateVerdict::new(
+   |                                          ^^^ private associated function
+   |
+  ::: src/verdict.rs
+   |
+   | /     pub(crate) const fn new(
+   | |         outcome: GraduationOutcome,
+   | |         coverage: CoverageWitness,
+   | |         conflict_free: ConflictFreeWitness,
+   | |         freshness: FreshnessWitness,
+   | |     ) -> Self {
+   | |_____________- private associated function defined here
+
+error[E0308]: arguments to this function are incorrect
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:19:20
+   |
+19 |     let _verdict = DeterminateVerdict::new(
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: expected `CoverageWitness`, found `Option<CoverageWitness>`
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:21:9
+   |
+21 |         coverage,
+   |         ^^^^^^^^
+   = note: expected struct `CoverageWitness`
+                found enum `Option<CoverageWitness>`
+note: expected `ConflictFreeWitness`, found `Option<ConflictFreeWitness>`
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:22:9
+   |
+22 |         conflict_free,
+   |         ^^^^^^^^^^^^^
+   = note: expected struct `ConflictFreeWitness`
+                found enum `Option<ConflictFreeWitness>`
+note: expected `FreshnessWitness`, found `Option<FreshnessWitness>`
+  --> tests/compile_fail/a_determinate_verdict_has_no_public_constructor.rs:23:9
+   |
+23 |         freshness,
+   |         ^^^^^^^^^
+   = note: expected struct `FreshnessWitness`
+                found enum `Option<FreshnessWitness>`
+note: associated function defined here
+  --> src/verdict.rs
+   |
+   |     pub(crate) const fn new(
+   |                         ^^^
+help: consider using `Option::expect` to unwrap the `Option<CoverageWitness>` value, panicking if the value is an `Option::None`
+   |
+21 |         coverage.expect("REASON"),
+   |                 +++++++++++++++++
+help: consider using `Option::expect` to unwrap the `Option<ConflictFreeWitness>` value, panicking if the value is an `Option::None`
+   |
+22 |         conflict_free.expect("REASON"),
+   |                      +++++++++++++++++
+help: consider using `Option::expect` to unwrap the `Option<FreshnessWitness>` value, panicking if the value is an `Option::None`
+   |
+23 |         freshness.expect("REASON"),
+   |                  +++++++++++++++++

@@ -16,6 +16,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-audit"
+version = "0.1.0"
+dependencies = [
+ "academic-domain",
+ "academic-ingestion",
+ "academic-record",
+ "academic-requirement",
+ "academic-scenario",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-capture"
 version = "0.1.0"
 dependencies = [
