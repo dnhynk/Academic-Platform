@@ -1,0 +1,36 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-j",
+  "task": "P2-X2",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-X2 admits no external crate. academic-home links academic-consent, academic-domain and thiserror as product edges and academic-consent, academic-domain and trybuild as dev edges, all four covered by earlier reviewed receipts, and adds one workspace path package. It links no store, vault, crypto, keystore, projection, policy or transport crate at any feature setting: it persists nothing and claims no migration number.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-home is the P2-X2 Home / Today surface: section 25.2's eight priority groups as a closed enumeration read out of the design document, the four permission words as the total image of P2-G6's five capture statuses, the one-to-three prerequisite brief whose items cannot exist without a reason and a time, the Today/Soon/No deadline grouping that has no parameter a limit could be, and the freshness alert that cannot be raised without an upcoming use. It is a separate package from academic-evidence-center because that crate holds the trust screen's typed records and this one holds the first screen's composition; neither depends on the other, and the shell shows them on two different routes.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-X2 adds no pnpm workspace package. Its shell half is two files inside the existing @academic-os/ui package, packages/ui/src/home.ts and packages/ui/src/home.test.ts."
+  },
+  "direct_workspace_dependencies": {
+    "academic-consent": "P2-G6's CaptureStatus. Section 25.2's third line shows four words for a five-valued status, and RecordingPermission::of names all five rather than declaring a second status vocabulary. CaptureStatus is #[non_exhaustive], so a match on it from outside that crate must carry a wildcard arm and the compiler says nothing about a sixth status; permission_status_is_exactly_four_values reads the arms of CaptureStatus::as_str out of crates/consent/src/status.rs and compares them in both directions against the five this crate names, and the wildcard answers 확인 필요, which is the default-deny reading and not permission to record.",
+    "academic-domain": "Every identifier a home card names -- EntityId for the concept, project, question, path, step, condition and source a card points at -- plus TimestampMillis for every instant and FreshnessBand for the band section 25.2's eighth line is about. Naming those rather than declaring a second vocabulary is what makes a card point at the same entity the registry holds."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-home",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-home",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-home is a workspace path crate, not an external dependency. It owns section 25.2's first screen and holds no writer: it has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-rpc, academic-projections, academic-recovery, academic-retention, academic-record, academic-model-run, academic-worker, academic-policy or academic-egress-boundary, so the canonical writer, every key, every model run and every staged payload are outside the closure a home card compiles against, and this task adds no migration. Its declared workspace closure of every edge kind is exactly academic-consent and academic-domain, compared whole by workspace_dependency_direction_is_acyclic. Two absences carry their own claims. The first is the mastery ladder: academic-knowledge-state and academic-freshness are not in the closure, so P2-N3's rule that time decay reaches a freshness projection and never a mastery is held here by the same means it is held there -- the surface has no name for a mastery level -- and the_home_surface_cannot_name_a_mastery measures it over every product file with a control that requires the same reader to find those names in P2-N2's own ladder.rs. The second is authority: this crate holds a recording permission *status* and no grant, no token and no capability, so nothing in it can be mistaken for authority to record, and P2-G6's bind_permission remains the only thing that turns a recorded permission into a capture capability. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-domain.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, invokes no macro, and runs no build script. It reads no clock: every instant it compares arrives as an argument, which is why its acceptance suite can name the instants it asserts against. It holds no free text at all -- the whole set of declared field positions across its product source is compared in both directions against a reviewed inventory by no_gpa_or_streak_hero_component, and String, str, u8, Vec<u8>, Box and Cow are absent from it, so a field carrying a caller's bytes fails as an unreviewed position whatever it is named. That inventory is also the exhaustive net behind section 25.2's GPA나 streak를 hero metric으로 두지 않는다: there is no list of forbidden names in the suite, and a headline quantity added anywhere in the crate fails as an extra entry in a module nobody predicted. Every value in every test is synthetic and built in process, and the identifiers are version-seven UUID text parsed back through academic-domain's own validator.",
+  "advisory_path": "Unchanged. Every external crate academic-home links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

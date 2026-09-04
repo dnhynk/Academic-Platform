@@ -711,6 +711,21 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-freshness",
       "academic-knowledge-state",
     ],
+    // `P2-X2`. Section 25.2's `Home / Today`. Two product edges and no third.
+    // `academic-domain` supplies every identifier a card names and the
+    // `FreshnessBand` its eighth line is about; `academic-consent` supplies
+    // `P2-G6`'s `CaptureStatus`, which the four permission words are the total
+    // image of rather than a second status vocabulary. The edges it does not
+    // have are the point: no `academic-knowledge-state` and no
+    // `academic-freshness`, so no mastery ladder is in the closure this
+    // surface compiles against -- `P2-N3`'s rule that decay reaches a freshness
+    // projection and never a mastery is held here the way it is held there,
+    // and `the_home_surface_cannot_name_a_mastery` is the measurement; no
+    // `academic-store` and no `academic-vault`, so it persists nothing and
+    // claims no migration number; and no `academic-policy` and no
+    // `academic-egress-boundary` of any edge kind, so it holds a permission
+    // *status* and can name no grant, token or staged payload at all.
+    "academic-home": ["academic-consent", "academic-domain"],
     // `P2-P1`'s section 37 graduation export. Three product edges, and the
     // edges it does not have are the whole point: `INV-C-015` is the claim that
     // a user can read their own record when this product and their school
@@ -835,6 +850,13 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // crate's dev-dependencies, and a case has to name the identifiers and the
     // `UserDecision` a centre entry is built from.
     "academic-evidence-center": ["academic-domain", "academic-proposal"],
+    // `P2-X2` links its own consent and domain crates a second time as dev
+    // edges for the same `trybuild` reason: a compile-fail case compiles
+    // against the crate under test plus that crate's dev-dependencies, and the
+    // four cases have to name an `EntityId`, a `TimestampMillis` and a
+    // `FreshnessBand`. `academic-consent` is declared twice so that a case can
+    // reach the `CaptureStatus` the four permission words are the image of.
+    "academic-home": ["academic-consent", "academic-domain"],
     "academic-requirement": ["academic-domain"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
     // The encrypted portability acceptance suite builds its keys through the
@@ -2831,6 +2853,13 @@ const SOCKET_CAPABLE_CLOSURES = {
   // crate spells no socket construct, opens nothing at all, reads no clock, and
   // every instant it holds arrived inside a `P2-N3` value.
   "academic-gap": ["libc"],
+  // `P2-X2`. `libc` reaches it through `academic-domain`, which is the whole of
+  // how it arrives: this crate's other product edge, `academic-consent`, adds
+  // nothing socket-capable. The crate spells no socket construct, which is why
+  // its `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens nothing
+  // at all, reads no clock, and every instant it compares arrived as an
+  // argument.
+  "academic-home": ["libc"],
   // `P2-P1`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
   // way of `P2-U3` and `P2-U6`. The crate spells no socket construct, which is
   // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens
@@ -5363,6 +5392,26 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-proposal",
   ]);
   assert.deepEqual(centerReceipt.vendored_data, []);
+
+  // `P2-X2` adds one workspace path package, `academic-home`, and admits no
+  // external crate: its two product edges and its three dev edges are all in
+  // this lock through earlier receipts. No knowledge-state and no freshness
+  // edge, which is the mastery claim; no policy and no egress-boundary edge,
+  // which is the difference between a permission status and a permission.
+  const {
+    receipt: homeReceipt,
+    admitted: homeAdmitted,
+    pathPackages: homePathPackages,
+  } = receiptFor("P2-X2");
+  assert.equal(homeAdmitted.size, 0, "P2-X2 must admit no external crate");
+  assert.deepEqual([...homePathPackages], ["academic-home@0.1.0"]);
+  assert.deepEqual(homeReceipt.summary.npm_additions, []);
+  assert.equal(homeReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(homeReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-consent",
+    "academic-domain",
+  ]);
+  assert.deepEqual(homeReceipt.vendored_data, []);
 
   // `P2-L4` adds one workspace path package, `academic-lecture-document`, and
   // admits no external crate: its four product edges and its eight dev edges are
