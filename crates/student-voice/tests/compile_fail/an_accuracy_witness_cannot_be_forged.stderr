@@ -1,0 +1,14 @@
+error[E0599]: no associated function or constant named `default` found for struct `AccuracyWitness` in the current scope
+  --> tests/compile_fail/an_accuracy_witness_cannot_be_forged.rs:10:42
+   |
+10 |     let _from_default = AccuracyWitness::default();
+   |                                          ^^^^^^^ associated function or constant not found in `AccuracyWitness`
+
+error[E0599]: no associated function or constant named `new` found for struct `AccuracyWitness` in the current scope
+  --> tests/compile_fail/an_accuracy_witness_cannot_be_forged.rs:11:38
+   |
+11 |     let _from_new = AccuracyWitness::new(
+   |                                      ^^^ associated function or constant not found in `AccuracyWitness`
+   |
+help: there is a method `ne` with a similar name, but with different arguments
+  --> $RUST/core/src/cmp.rs

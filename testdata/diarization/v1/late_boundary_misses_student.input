@@ -1,0 +1,7 @@
+diarization-case/1 late_boundary_misses_student
+reference 0 40000 instructor
+reference 40000 52000 student_unknown_1
+reference 52000 100000 instructor
+hypothesis 0 42000 instructor
+hypothesis 42000 52000 student_unknown_1
+hypothesis 52000 100000 instructor

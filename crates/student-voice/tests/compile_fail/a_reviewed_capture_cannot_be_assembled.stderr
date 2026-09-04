@@ -1,0 +1,11 @@
+error[E0451]: fields `digest`, `kind` and `bytes` of struct `ReviewedCapture` are private
+  --> tests/compile_fail/a_reviewed_capture_cannot_be_assembled.rs:14:9
+   |
+13 |     let _admitted = ReviewedCapture {
+   |                     --------------- in this type
+14 |         digest: ContentDigest::sha256(b"anything"),
+   |         ^^^^^^ private field
+15 |         kind: IngestionJobKind::OcrIngestion,
+   |         ^^^^ private field
+16 |         bytes: &bytes,
+   |         ^^^^^ private field

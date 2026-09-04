@@ -586,6 +586,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-student-voice"
+version = "0.1.0"
+dependencies = [
+ "academic-capture",
+ "academic-consent",
+ "academic-domain",
+ "academic-lecture-document",
+ "academic-model-run",
+ "academic-retention",
+ "academic-transcription",
+ "tempfile",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-test-support"
 version = "0.1.0"
 dependencies = [

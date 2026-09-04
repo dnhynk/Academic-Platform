@@ -44,6 +44,7 @@ members = [
   "crates/rpc",
   "crates/scenario",
   "crates/store",
+  "crates/student-voice",
   "crates/store-platform",
   "crates/test-support",
   "crates/transcript",

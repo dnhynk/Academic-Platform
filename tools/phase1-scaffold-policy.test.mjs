@@ -589,6 +589,28 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `academic-worker` and no `academic-egress-boundary`, so nothing in its
     // closure can launch a process or stage a payload.
     "academic-freshness": ["academic-domain", "academic-knowledge-state"],
+    // `P2-L5`'s student voice, diarization measurement and capture PII hold.
+    // Five product edges and each is a boundary it resolves rather than
+    // restates: `P2-L4`'s `RedactionPolicyRef`, whose digest that crate's
+    // contract page leaves for this task to resolve; `P2-L3`'s `Speaker`, which
+    // is section 12.4's own three shapes and not a second vocabulary; `P2-G6`'s
+    // `RetentionTerms` and deletion preview, so the inheritance rule is called
+    // rather than copied; `P2-L2`'s `CaptureBytes`, which a hold holds and
+    // hands out to nobody; and `academic-domain` for the actor and digest
+    // types. The edges it does not have are the point: no `academic-retention`,
+    // because `rotation_engine_lane_is_not_default` holds that exactly one
+    // crate declares it and a redaction has no business inside a boundary that
+    // can destroy a key slot; no `academic-store`, so it persists nothing and
+    // adds no migration; and no `academic-policy`, `academic-egress-boundary`
+    // or `academic-worker`, so no product file here can name a broker, an
+    // egress or a job.
+    "academic-student-voice": [
+      "academic-capture",
+      "academic-consent",
+      "academic-domain",
+      "academic-lecture-document",
+      "academic-transcription",
+    ],
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
@@ -787,6 +809,21 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository-correlation",
       "academic-transcription",
       "academic-untrusted-content",
+    ],
+    // `P2-L5`. `academic-retention` is a dev edge for the reason
+    // `academic-consent` takes it as one: `GATE-38-026`'s statement and the
+    // derivative-class vocabulary are compared against `P2-K5`'s own rather
+    // than trusted to stay in step, and the scan that refuses an
+    // `OriginalVoiceAuthority` has to name the type it refuses. The other two
+    // are so the acceptance suite can drive a real `academic_transcription::run`
+    // end to end rather than fabricating utterances; keeping them off the
+    // product edge is what makes "this crate mints no provenance record and
+    // holds no broker" a compile error rather than a source scan.
+    "academic-student-voice": [
+      "academic-consent",
+      "academic-domain",
+      "academic-model-run",
+      "academic-retention",
     ],
   });
 
@@ -2506,6 +2543,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   // crate spells no socket construct, opens nothing at all, reads no clock, and
   // takes every instant as a `TimestampMillis` argument.
   "academic-freshness": ["libc"],
+  // `P2-L5`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `P2-M1` and `P2-G2`, which arrive with `P2-L3`. The crate spells no
+  // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
+  // rather than empty; it opens nothing at all, reads no clock, and takes every
+  // corpus, transcript, capture and instant as an argument.
+  "academic-student-voice": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -4477,6 +4520,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     competencyReceiptText,
     auditReceiptText,
     freshnessReceiptText,
+    studentVoiceReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4512,6 +4556,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-r5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u3.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-n3.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-l5.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -4547,6 +4592,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const competencyReceipt = JSON.parse(competencyReceiptText);
   const auditReceipt = JSON.parse(auditReceiptText);
   const freshnessReceipt = JSON.parse(freshnessReceiptText);
+  const studentVoiceReceipt = JSON.parse(studentVoiceReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -6116,6 +6162,55 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     competencyAdmitted.size + competencyPathPackages.size,
     "a P2-R5 admitted package is missing from Cargo.lock",
   );
+  // `P2-L5` adds one workspace path package, `academic-student-voice`, and
+  // admits no external crate: its product edges are `academic-capture`,
+  // `academic-consent`, `academic-domain`, `academic-lecture-document`,
+  // `academic-transcription` and `thiserror`, and its dev edges are
+  // `academic-model-run`, `academic-retention`, `tempfile` and `trybuild`, all
+  // already in this lock through earlier receipts. The `academic-retention`
+  // edge is the one that needs a reason and the receipt carries it: it is a
+  // **dev** edge, because `rotation_engine_lane_is_not_default` holds that
+  // exactly one crate declares that product edge, and the scan that refuses an
+  // `OriginalVoiceAuthority` still has to name the type it refuses.
+  assert.equal(studentVoiceReceipt.task, "P2-L5");
+  const studentVoiceAdmitted = new Set(
+    studentVoiceReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const studentVoicePathPackages = new Set(
+    studentVoiceReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(studentVoiceAdmitted.size, 0, "P2-L5 must admit no external crate");
+  assert.deepEqual([...studentVoicePathPackages], ["academic-student-voice@0.1.0"]);
+  assert.deepEqual(studentVoiceReceipt.summary.npm_additions, []);
+  assert.equal(studentVoiceReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(studentVoiceReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(studentVoiceReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof studentVoiceReceipt.no_second_retention_rule_note, "string");
+  assert.deepEqual(Object.keys(studentVoiceReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-consent",
+    "academic-domain",
+    "academic-lecture-document",
+    "academic-transcription",
+  ]);
+  assert.deepEqual(Object.keys(studentVoiceReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-consent",
+    "academic-domain",
+    "academic-model-run",
+    "academic-retention",
+    "tempfile",
+    "trybuild",
+  ]);
+  const studentVoiceTuples = lockTuples.filter(
+    ([name, version]) =>
+      studentVoiceAdmitted.has(`${name}@${version}`) ||
+      studentVoicePathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    studentVoiceTuples.length,
+    studentVoiceAdmitted.size + studentVoicePathPackages.size,
+    "a P2-L5 admitted package is missing from Cargo.lock",
+  );
 
   // `P2-U3` adds `academic-audit` and no external crate. The graduation audit
   // is a boundary above `P2-U2`'s rule set and `P2-U4`'s attempt ledger: it
@@ -6280,7 +6375,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !auditAdmitted.has(`${name}@${version}`) &&
       !auditPathPackages.has(`${name}@${version}`) &&
       !freshnessAdmitted.has(`${name}@${version}`) &&
-      !freshnessPathPackages.has(`${name}@${version}`),
+      !freshnessPathPackages.has(`${name}@${version}`) &&
+      !studentVoiceAdmitted.has(`${name}@${version}`) &&
+      !studentVoicePathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -6323,7 +6420,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       knowledgeStateTuples.length +
       competencyTuples.length +
       auditTuples.length +
-      freshnessTuples.length,
+      freshnessTuples.length +
+      studentVoiceTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -6701,9 +6799,26 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    // `P2-L5`. Its acceptance suite drives the same real capture `P2-L4`'s
+    // does, so it writes a real journal into a temporary directory. `trybuild`
+    // is on the Phase 1 receipt rather than this one, so only `tempfile` gains
+    // an owner here.
+    const l5StudentVoiceUse =
+      admission.name === "tempfile"
+        ? [
+            {
+              package: "academic-student-voice",
+              kind: "dev",
+              target: null,
+              default_features: true,
+              features: [],
+            },
+          ]
+        : [];
     const expectedUses = [
       ...admission.uses,
       ...n3FreshnessUse,
+      ...l5StudentVoiceUse,
       ...l3TranscriptionUse,
       ...l4LectureDocumentUse,
       ...n2KnowledgeStateUse,

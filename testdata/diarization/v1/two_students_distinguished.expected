@@ -1,0 +1,9 @@
+diarization-measurement/1 two_students_distinguished
+scored_ms=90000
+agreed_ms=90000
+student_as_instructor_ms=0
+instructor_as_student_ms=0
+unattributed_ms=0
+uncovered_ms=0
+reference_student_ms=14000
+student_agreed_ms=14000

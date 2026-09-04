@@ -1,0 +1,17 @@
+error[E0616]: field `terms` of struct `RedactedDerivative` is private
+  --> tests/compile_fail/a_derivative_cannot_be_given_wider_terms.rs:12:16
+   |
+12 |     derivative.terms = RetentionTerms::new(
+   |                ^^^^^ private field
+
+error[E0599]: no method named `set_terms` found for mutable reference `&mut RedactedDerivative` in the current scope
+  --> tests/compile_fail/a_derivative_cannot_be_given_wider_terms.rs:16:16
+   |
+16 |     derivative.set_terms(RetentionTerms::new(
+   |     -----------^^^^^^^^^
+   |
+help: there is a method `terms` with a similar name, but with different arguments
+  --> src/derivative.rs
+   |
+   |     pub const fn terms(&self) -> RetentionTerms {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

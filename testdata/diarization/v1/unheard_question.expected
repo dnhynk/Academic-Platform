@@ -1,0 +1,9 @@
+diarization-measurement/1 unheard_question
+scored_ms=70000
+agreed_ms=64000
+student_as_instructor_ms=0
+instructor_as_student_ms=0
+unattributed_ms=0
+uncovered_ms=6000
+reference_student_ms=6000
+student_agreed_ms=0

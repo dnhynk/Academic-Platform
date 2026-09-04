@@ -1,0 +1,7 @@
+diarization-case/1 early_boundary_over_redacts
+reference 0 40000 instructor
+reference 40000 50000 student_unknown_1
+reference 50000 80000 instructor
+hypothesis 0 36000 instructor
+hypothesis 36000 50000 student_unknown_1
+hypothesis 50000 80000 instructor

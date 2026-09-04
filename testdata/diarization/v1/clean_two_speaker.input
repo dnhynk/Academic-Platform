@@ -1,0 +1,7 @@
+diarization-case/1 clean_two_speaker
+reference 0 60000 instructor
+reference 60000 72000 student_unknown_1
+reference 72000 150000 instructor
+hypothesis 0 60000 instructor
+hypothesis 60000 72000 student_unknown_1
+hypothesis 72000 150000 instructor

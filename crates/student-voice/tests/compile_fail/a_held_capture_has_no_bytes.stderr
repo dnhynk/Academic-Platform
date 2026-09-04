@@ -1,0 +1,5 @@
+error[E0599]: no method named `bytes` found for struct `CaptureUnderReview` in the current scope
+  --> tests/compile_fail/a_held_capture_has_no_bytes.rs:13:26
+   |
+13 |     let _bytes = capture.bytes();
+   |                          ^^^^^ private field, not a method

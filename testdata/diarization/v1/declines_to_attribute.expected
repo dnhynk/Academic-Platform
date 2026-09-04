@@ -1,0 +1,9 @@
+diarization-measurement/1 declines_to_attribute
+scored_ms=60000
+agreed_ms=54000
+student_as_instructor_ms=0
+instructor_as_student_ms=0
+unattributed_ms=6000
+uncovered_ms=0
+reference_student_ms=6000
+student_agreed_ms=0
