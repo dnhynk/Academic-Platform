@@ -668,6 +668,69 @@ fn no_product_file_names_a_projection_and_only_one_names_a_plan() -> TestResult 
 // The three witnesses, and the one route to a determination
 // ---------------------------------------------------------------------------
 
+/// The three gates and the determination they assemble into.
+const WITNESS_VALUES: [&str; 4] = [
+    "CoverageWitness",
+    "ConflictFreeWitness",
+    "FreshnessWitness",
+    "DeterminateVerdict",
+];
+
+/// Every expression in this crate that builds one of them.
+///
+/// One per value, each inside that value's own crate-private constructor. The
+/// `impl From<..>` injection `P2-A3` used adds four entries here.
+const WITNESS_CONSTRUCTIONS: [&str; 4] = [
+    "ConflictFreeWitness verdict.rs Self",
+    "CoverageWitness verdict.rs Self",
+    "DeterminateVerdict verdict.rs Self",
+    "FreshnessWitness verdict.rs Self",
+];
+
+/// The `impl` blocks in `code`, as a self type and the block's body.
+///
+/// The self type is the last path segment before the opening brace, so
+/// `impl CoverageWitness`, `impl From<usize> for CoverageWitness` and
+/// `impl core::fmt::Debug for CoverageWitness` all report the same one.
+fn impl_blocks(code: &str) -> Vec<(String, String)> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("impl") {
+        if at > 0 && (bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_') {
+            continue;
+        }
+        if code[at + 4..]
+            .starts_with(|character: char| character.is_alphanumeric() || character == '_')
+        {
+            continue;
+        }
+        let Some(open) = code[at..].find('{').map(|offset| at + offset) else {
+            continue;
+        };
+        let header = &code[at + 4..open];
+        let subject = header.rsplit(" for ").next().unwrap_or(header);
+        let name: String = subject
+            .chars()
+            .filter(|character| character.is_alphanumeric() || *character == '_')
+            .collect();
+        let mut depth = 0_i32;
+        let mut end = open + 1;
+        for (offset, character) in code[open + 1..].char_indices() {
+            match character {
+                '{' => depth += 1,
+                '}' if depth == 0 => {
+                    end = open + 1 + offset;
+                    break;
+                }
+                '}' => depth -= 1,
+                _ => {}
+            }
+        }
+        found.push((name, code[open + 1..end].to_owned()));
+    }
+    found
+}
+
 /// Each gate has exactly one construction site, and the verdict has one route.
 #[test]
 fn the_three_witnesses_have_one_construction_site_each() -> TestResult {
@@ -678,7 +741,6 @@ fn the_three_witnesses_have_one_construction_site_each() -> TestResult {
         .map(|(_, text)| stripped(text))
         .ok_or("the walk did not reach verdict.rs")?;
 
-    // One `Some(Self {` per witness, and each is inside its own `establish`.
     for witness in ["CoverageWitness", "ConflictFreeWitness", "FreshnessWitness"] {
         let declarations = verdict.matches(&format!("pub struct {witness}")).count();
         assert_eq!(
@@ -688,6 +750,65 @@ fn the_three_witnesses_have_one_construction_site_each() -> TestResult {
     }
     let establishes = verdict.matches("pub(crate) fn establish").count();
     assert_eq!(establishes, 3, "there are {establishes} establish sites");
+
+    // And the number of expressions that **build** a witness value, which is
+    // the count the comment above this block used to claim and nothing
+    // checked. `P2-A3` walked through exactly that gap: four `impl From<..>`
+    // blocks added a construction site for each of the three witnesses and for
+    // the verdict itself, and every assertion in this test still passed —
+    // none of them counts a construction.
+    //
+    // A construction is a `Self {` inside an `impl` block whose self type is
+    // the value, or a literal naming the type outside its declaration. `Self`
+    // cannot be renamed and an `impl` block cannot hide its self type, so this
+    // does not depend on how the site is spelled.
+    let mut built: Vec<String> = Vec::new();
+    for (name, text) in &sources {
+        let code = stripped(text);
+        for (subject, body) in impl_blocks(&code) {
+            for value in WITNESS_VALUES {
+                if subject != value {
+                    continue;
+                }
+                for (at, _) in body.match_indices("Self {") {
+                    // `-> Self {` is a return type and the brace that opens the
+                    // function, not a construction.
+                    if body[..at].trim_end().ends_with("->") {
+                        continue;
+                    }
+                    built.push(format!("{value} {name} Self"));
+                }
+            }
+        }
+        for line in code.lines() {
+            for value in WITNESS_VALUES {
+                let trimmed = line.trim();
+                let Some(at) = trimmed.find(&format!("{value} {{")) else {
+                    continue;
+                };
+                let before = trimmed[..at].trim_end();
+                // A declaration, an `impl` header, a trait's `for` clause and a
+                // return type are all the type's *name*, not a value of it.
+                if before.ends_with("struct")
+                    || before.ends_with("impl")
+                    || before.ends_with("for")
+                    || before.ends_with("->")
+                {
+                    continue;
+                }
+                built.push(format!("{value} {name} literal"));
+            }
+        }
+    }
+    built.sort();
+    assert_eq!(
+        built,
+        WITNESS_CONSTRUCTIONS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "the set of expressions that build a witness or a determination changed"
+    );
 
     // No `pub fn establish` anywhere: a public one would be a witness a caller
     // could mint.
