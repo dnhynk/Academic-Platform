@@ -99,6 +99,15 @@ pub enum CorrelationError {
     /// Neither the snapshot nor the analyzer moved, so there is no axis.
     #[error("both runs are snapshot {0} under one analyzer; there is no axis to attribute along")]
     NoComparisonAxis(String),
+    /// A declared dependency names a path the frozen manifest does not hold.
+    #[error(
+        "the declared dependency {1:?} names path {0}, which is not in the snapshot's manifest"
+    )]
+    DependencyNotInSnapshot(String, String),
+    /// A declared dependency names a path that is not a manifest or a lock
+    /// file, so it is not a declaration.
+    #[error("the declared dependency {1:?} names path {0}, which declares no dependency")]
+    DependencyNotFromAManifest(String, String),
 }
 
 impl core::fmt::Display for AuthorityLane {
@@ -132,6 +141,54 @@ pub struct CorrelationInput<'a> {
     pub feature_flags: &'a [FeatureFlagRecord],
     /// Which snapshot each deployment target is running.
     pub deployments: &'a [DeploymentRecord],
+    /// What the snapshot's manifests and lock files declare.
+    ///
+    /// Section 19's `단순 dependency diff` is over this. It is an input rather
+    /// than something read back out of `findings`, and that is the whole
+    /// distinction the section draws: the simple channel is the one that does
+    /// not depend on semantic analysis, so a dependency added to a manifest
+    /// that no [`Subject`] names has to appear in it. Deriving the population
+    /// from the findings made the cheap channel inherit the expensive one's
+    /// coverage, which `P2-A5` measured as zero diff entries for a dependency
+    /// genuinely added to `package.json`.
+    ///
+    /// [`Subject`]: academic_repository_analysis::Subject
+    pub declared_dependencies: &'a [DeclaredDependency],
+}
+
+/// One dependency a manifest or a lock file declares.
+///
+/// The path is checked against the frozen manifest and against `P2-R2`'s own
+/// [`FileKind::of_path`], so a caller cannot widen the simple channel with a
+/// name it read somewhere else: [`correlate`] refuses a row whose path the
+/// snapshot does not hold and a row whose path declares no dependency.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DeclaredDependency {
+    path: String,
+    name: String,
+}
+
+impl DeclaredDependency {
+    /// Names one dependency and the file that declares it.
+    #[must_use]
+    pub fn new(path: impl Into<String>, name: impl Into<String>) -> Self {
+        Self {
+            path: path.into(),
+            name: name.into(),
+        }
+    }
+
+    /// Which manifest or lock file declares it.
+    #[must_use]
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    /// What it is called there.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 /// What one correlation run produced.
@@ -194,12 +251,14 @@ impl Correlation {
             .collect()
     }
 
-    /// The subjects a dependency manifest or a lock file declares.
+    /// The names a dependency manifest or a lock file declares.
     ///
-    /// Section 19's `단순 dependency diff` is over this and nothing else. A
-    /// site counts when `P2-R2`'s own [`FileKind::of_path`] calls its path a
-    /// manifest or a lock file, so the classification is the analyzer's rather
-    /// than a second one written here.
+    /// Section 19's `단순 dependency diff` is over this and nothing else. It is
+    /// [`CorrelationInput::declared_dependencies`] after [`correlate`] has
+    /// checked each row's path against the frozen manifest and against
+    /// `P2-R2`'s own [`FileKind::of_path`], so the file classification is the
+    /// analyzer's rather than a second one written here, and the population is
+    /// the manifest rather than the findings.
     #[must_use]
     pub const fn declared_dependencies(&self) -> &BTreeSet<String> {
         &self.dependencies
@@ -234,21 +293,30 @@ pub fn correlate(input: &CorrelationInput<'_>) -> Result<Correlation, Correlatio
         .map(academic_repository::ManifestEntry::path)
         .collect();
 
-    let mut edges = Vec::new();
     let mut dependencies = BTreeSet::new();
+    for declared in input.declared_dependencies {
+        if !manifest.contains(declared.path()) {
+            return Err(CorrelationError::DependencyNotInSnapshot(
+                declared.path().to_owned(),
+                declared.name().to_owned(),
+            ));
+        }
+        if !declares_dependency(FileKind::of_path(declared.path())) {
+            return Err(CorrelationError::DependencyNotFromAManifest(
+                declared.path().to_owned(),
+                declared.name().to_owned(),
+            ));
+        }
+        dependencies.insert(declared.name().to_owned());
+    }
+
+    let mut edges = Vec::new();
     for finding in input.findings {
         if finding.snapshot_id() != snapshot_id {
             return Err(CorrelationError::FindingIsAboutAnotherSnapshot(
                 finding.subject().to_owned(),
                 finding.snapshot_id().to_owned(),
             ));
-        }
-        if finding
-            .locators()
-            .iter()
-            .any(|locator| declares_dependency(FileKind::of_path(locator.path())))
-        {
-            dependencies.insert(finding.subject().to_owned());
         }
         for relation in code_relations(finding) {
             edges.push(RelationEdge::seal(

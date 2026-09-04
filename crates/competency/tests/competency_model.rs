@@ -437,6 +437,7 @@ fn built(files: &[(&str, &str)]) -> Result<Corpus, Box<dyn Error>> {
         incidents: &[],
         feature_flags: &[],
         deployments: &[],
+        declared_dependencies: &[],
     })?;
     Ok(Corpus {
         snapshot,

@@ -31,10 +31,11 @@ use academic_repository_analysis::{
 };
 use academic_repository_correlation::{
     AnswerSource, ApprovalStatus, AuthorityLane, BehaviorDocument, Candidate, ChangeCause,
-    Correlation, CorrelationError, CorrelationInput, DeploymentRecord, DeploymentTarget,
-    DocumentId, DriftKind, DriftScopeKind, EdgeEvidence, EvidenceRelation, FeatureFlagRecord,
-    FlagKey, FlagState, IncidentId, IncidentRecord, IntentDocument, IntentDocumentKind,
-    PresenceChange, RelationEdge, SemanticTransition, active_view, compare, correlate,
+    Correlation, CorrelationError, CorrelationInput, DeclaredDependency, DeploymentRecord,
+    DeploymentTarget, DocumentId, DriftKind, DriftScopeKind, EdgeEvidence, EvidenceRelation,
+    FeatureFlagRecord, FlagKey, FlagState, IncidentId, IncidentRecord, IntentDocument,
+    IntentDocumentKind, PresenceChange, RelationEdge, SemanticTransition, active_view, compare,
+    correlate,
 };
 use academic_untrusted_content::SourceIndex;
 
@@ -199,6 +200,37 @@ fn findings_of(
     Ok(found)
 }
 
+/// The dependencies a corpus's manifests declare, read here rather than taken
+/// from the analyzer.
+///
+/// A deliberately separate reader. Section 19's simple channel is the one whose
+/// population is the manifest, so a fixture that took that population from the
+/// findings would write the defect `P2-A5` measured into the test itself:
+/// every declared dependency would also be a classified subject and the two
+/// populations could not be told apart. `the_dependency_channel_is_over_the_
+/// manifest_and_not_over_the_findings` is where they are.
+fn declared_in(files: &[(&str, &str)]) -> Vec<DeclaredDependency> {
+    let mut found = Vec::new();
+    for (path, body) in files {
+        if !path.ends_with("package.json") {
+            continue;
+        }
+        let mut inside = false;
+        for line in body.lines() {
+            let trimmed = line.trim();
+            if trimmed.ends_with('{') {
+                inside = trimmed.starts_with("\"dependencies\"")
+                    || trimmed.starts_with("\"devDependencies\"");
+            } else if trimmed.starts_with('}') {
+                inside = false;
+            } else if inside && let Some(name) = trimmed.split('"').nth(1) {
+                found.push(DeclaredDependency::new(*path, name));
+            }
+        }
+    }
+    found
+}
+
 /// Everything a correlation takes beside the findings.
 #[derive(Default)]
 struct Artifacts {
@@ -225,6 +257,7 @@ fn correlated(
         .collect();
     let findings = findings_of(&analysis, &traces)?;
     let identity = AnalyzerIdentity::new(ANALYZER, version)?;
+    let declared = declared_in(files);
     let input = CorrelationInput {
         snapshot: &snapshot,
         analyzer: &identity,
@@ -234,6 +267,7 @@ fn correlated(
         incidents: &artifacts.incidents,
         feature_flags: &artifacts.flags,
         deployments: &artifacts.deployments,
+        declared_dependencies: &declared,
     };
     Ok(correlate(&input)?)
 }
@@ -538,6 +572,7 @@ fn traced_run(
     let findings = findings_of(&analysis, &traces)?;
     let identity = AnalyzerIdentity::new(ANALYZER, V1)?;
     let incidents = bound_incidents(artifacts, snapshot.snapshot_id())?;
+    let declared = declared_in(files);
     let input = CorrelationInput {
         snapshot: &snapshot,
         analyzer: &identity,
@@ -547,6 +582,7 @@ fn traced_run(
         incidents: &incidents,
         feature_flags: &artifacts.flags,
         deployments: &artifacts.deployments,
+        declared_dependencies: &declared,
     };
     Ok(correlate(&input)?)
 }
@@ -668,9 +704,7 @@ fn seven_relation_types_are_distinct() -> TestResult {
     let no_tests = traced_run(&SEVEN_WITHOUT_TESTS, &artifacts, true)?;
     assert_missing(&no_tests, EvidenceRelation::TestExercises)?;
     assert!(
-        no_tests
-            .declared_dependencies()
-            .contains("distributed-lock"),
+        no_tests.declared_dependencies().contains("distlock"),
         "the manifest entry went away too, so this injection proves nothing"
     );
 
@@ -1826,7 +1860,7 @@ fn dependency_diff_and_semantic_diff_are_separate() -> TestResult {
             .iter()
             .map(|change| (change.subject(), change.direction()))
             .collect::<Vec<_>>(),
-        vec![("distributed-lock", PresenceChange::Added)]
+        vec![("distlock", PresenceChange::Added)]
     );
     assert!(
         first.semantic_diff().is_empty(),
@@ -1881,7 +1915,7 @@ fn dependency_diff_and_semantic_diff_are_separate() -> TestResult {
             .iter()
             .map(|change| (change.subject(), change.direction()))
             .collect::<Vec<_>>(),
-        vec![("distributed-lock", PresenceChange::Removed)]
+        vec![("distlock", PresenceChange::Removed)]
     );
     assert!(
         both.semantic_diff()
@@ -1895,5 +1929,137 @@ fn dependency_diff_and_semantic_diff_are_separate() -> TestResult {
             .any(|change| change.subject() == "distributed-lock"),
         "a dependency-only subject reached the semantic channel"
     );
+    Ok(())
+}
+
+/// `MANIFEST_ONLY` with one more dependency that no [`Subject`] here names.
+///
+/// `subjects()` enumerates `redis` and `distributed-lock` and nothing else, so
+/// `kafka` is declared and never classified. That is the corpus the fixtures
+/// above could not build: every dependency they declared was also a subject,
+/// so the manifest population and the finding population were the same set and
+/// could not be told apart.
+const MANIFEST_PLUS_UNCLASSIFIED: [(&str, &str); 4] = [
+    (
+        "package.json",
+        "{\n  \"name\": \"orders\",\n  \"dependencies\": {\n    \"redis\": \"4.6.0\",\n    \"kafka\": \"2.2.4\"\n  }\n}\n",
+    ),
+    (
+        "src/orders.ts",
+        "export function place() {\n  return 1;\n}\n",
+    ),
+    SPEC_PAGE,
+    ADR_PAGE,
+];
+
+#[test]
+fn the_dependency_channel_is_over_the_manifest_and_not_over_the_findings() -> TestResult {
+    // The reader is not vacuous and the corpus is what it says: `kafka` is in
+    // the manifest and is not a subject, so nothing semantic will ever name it.
+    let rows = declared_in(&MANIFEST_PLUS_UNCLASSIFIED);
+    assert_eq!(
+        rows.iter()
+            .map(DeclaredDependency::name)
+            .collect::<Vec<_>>(),
+        vec!["redis", "kafka"],
+        "the manifest reader is vacuous or read the wrong file"
+    );
+    assert!(rows.iter().all(|row| row.path() == "package.json"));
+    assert!(
+        !subjects()?
+            .iter()
+            .any(|subject| subject.id().as_str() == "kafka"),
+        "kafka became a subject, so this corpus no longer separates the two populations"
+    );
+
+    let base = simple(&MANIFEST_ONLY, &Artifacts::default())?;
+    let added = simple(&MANIFEST_PLUS_UNCLASSIFIED, &Artifacts::default())?;
+    assert!(
+        added.declared_dependencies().contains("kafka"),
+        "a dependency added to package.json is absent from section 19's simple channel: {:?}",
+        added.declared_dependencies()
+    );
+    assert!(
+        !added
+            .relations()
+            .iter()
+            .any(|edge| edge.subject() == "kafka"),
+        "kafka reached the semantic channel, so the two channels are not separate here"
+    );
+
+    let diff = compare(&base, &added)?;
+    assert_eq!(
+        diff.dependency_diff()
+            .iter()
+            .map(|change| (change.subject(), change.direction()))
+            .collect::<Vec<_>>(),
+        vec![("kafka", PresenceChange::Added)],
+        "the simple channel inherited the semantic channel's coverage"
+    );
+    assert!(
+        diff.semantic_diff().is_empty(),
+        "a dependency nothing uses produced a semantic finding change"
+    );
+
+    // The other direction, which is what says the population is the input and
+    // not the findings: over the same corpus, with nothing declared, the
+    // channel is empty even though `redis` has a finding whose locator is the
+    // manifest itself. That locator is what the old population was read from.
+    let (snapshot, analysis) = analyzed_with(&MANIFEST_ONLY, BRANCH, V1, None)?;
+    let findings = findings_of(&analysis, &[])?;
+    assert!(
+        findings.iter().any(|finding| finding
+            .locators()
+            .iter()
+            .any(|locator| locator.path() == "package.json")),
+        "no finding carries a manifest locator, so this half proves nothing"
+    );
+    let identity = AnalyzerIdentity::new(ANALYZER, V1)?;
+    let bare = correlate(&CorrelationInput {
+        snapshot: &snapshot,
+        analyzer: &identity,
+        findings: &findings,
+        intent_documents: &[],
+        behavior_documents: &[],
+        incidents: &[],
+        feature_flags: &[],
+        deployments: &[],
+        declared_dependencies: &[],
+    })?;
+    assert!(
+        bare.declared_dependencies().is_empty(),
+        "the channel was populated from the findings: {:?}",
+        bare.declared_dependencies()
+    );
+
+    // A caller cannot widen the channel with a name it read somewhere else.
+    // Both refusals are about the path, because the path is what makes a name
+    // a declaration.
+    let refused = |path: &str| {
+        let rows = vec![DeclaredDependency::new(path, "kafka")];
+        correlate(&CorrelationInput {
+            snapshot: &snapshot,
+            analyzer: &identity,
+            findings: &findings,
+            intent_documents: &[],
+            behavior_documents: &[],
+            incidents: &[],
+            feature_flags: &[],
+            deployments: &[],
+            declared_dependencies: &rows,
+        })
+        .err()
+    };
+    assert!(matches!(
+        refused("other/package.json"),
+        Some(CorrelationError::DependencyNotInSnapshot(path, name))
+            if path == "other/package.json" && name == "kafka"
+    ));
+    assert!(matches!(
+        refused("src/orders.ts"),
+        Some(CorrelationError::DependencyNotFromAManifest(path, name))
+            if path == "src/orders.ts" && name == "kafka"
+    ));
+    assert!(refused("package.json").is_none());
     Ok(())
 }

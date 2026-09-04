@@ -7,7 +7,10 @@
 //! and the bytes were sealed as `P2-G5` untrusted content before anything here
 //! read them.
 
-use std::{collections::BTreeMap, error::Error};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+};
 
 use academic_model_run::{
     CalibrationBin, CalibrationDataset, CalibrationDatasetId, CalibrationRegistry, Digest32,
@@ -867,6 +870,493 @@ fn each_promotion_needs_its_own_ingredient() -> TestResult {
         only(classify_with(&REACHABLE_CALL_AND_CONFIG, &[trace])?)?.strength(),
         EvidenceStrength::Strong
     );
+    Ok(())
+}
+
+/// Every subject identifier this crate takes is the shape it says it admits.
+///
+/// A whole-set classification rather than a list of rejected spellings: every
+/// ASCII byte is offered inside an otherwise legal identifier and required to
+/// be admitted **exactly** when this test's own independent predicate says it
+/// belongs, in both directions, and the length bound is asserted on both sides.
+///
+/// It is here because `P2-Y2` measured the gap and `P2-A5` measured it again
+/// and wider: adding `+` to the character class, and moving the length bound
+/// from 64 to 65, each left this crate's whole suite green. A rule that is
+/// declared and unmeasured is a rule the next edit may widen for free. The
+/// shape is the one `P2-R4`'s `every_identifier_is_the_shape_this_crate_admits`
+/// already measures, and the crates that share the shape now share the check.
+#[test]
+fn every_subject_identifier_is_the_shape_this_crate_admits() -> TestResult {
+    // Written here rather than read from the crate, so the two are independent.
+    let belongs =
+        |byte: u8| byte.is_ascii_alphanumeric() || byte == b'.' || byte == b'_' || byte == b'-';
+
+    for byte in 0_u8..=127 {
+        let candidate = format!("a{}b", char::from(byte));
+        let taken = SubjectId::new(candidate.clone()).is_ok();
+        assert_eq!(
+            taken,
+            belongs(byte),
+            "byte {byte} in {candidate:?} is admitted {taken} and belongs {}",
+            belongs(byte)
+        );
+    }
+
+    // Beyond ASCII, where a byte-wise reader and a character-wise one disagree.
+    for outside in ["개념", "a개념b", "a\u{00e9}b", "a\u{1f600}b"] {
+        assert!(
+            matches!(
+                SubjectId::new(outside),
+                Err(AnalysisError::InvalidSubject(_))
+            ),
+            "{outside:?} was admitted as a subject identifier"
+        );
+    }
+
+    // The length boundary, on both sides of it, and the empty value.
+    assert!(SubjectId::new("a".repeat(64)).is_ok());
+    for refused in [String::new(), "a".repeat(65)] {
+        let length = refused.len();
+        assert!(
+            matches!(
+                SubjectId::new(refused),
+                Err(AnalysisError::InvalidSubject(_))
+            ),
+            "a {length}-byte identifier was admitted"
+        );
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The whole ladder, over every input combination section 17.3 separates.
+// ---------------------------------------------------------------------------
+
+/// Where in the tree a corpus puts one of its files.
+///
+/// The two placements are the two [`ArtifactScope`]s section 17.3's fourth row
+/// turns on: a path under `tests/` is `TEST` and anything else here is
+/// `PRODUCTION`. For the manifest it selects the spelling instead —
+/// `dependencies` against `devDependencies` — because a development-only
+/// dependency row is scoped `TEST` wherever the manifest sits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Placement {
+    Production,
+    Test,
+}
+
+/// What the corpus's one code file says about the subject.
+///
+/// Three of the four bodies are byte-identical to a corpus that already has a
+/// named acceptance test above, so what each shape *is* is adjudicated there
+/// and this enumeration only varies where it sits and what sits beside it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Code {
+    /// No file names the subject at all.
+    Absent,
+    /// A bare module import, and no call.
+    Import,
+    /// An import and a call inside a function no entry point reaches.
+    DeadCall,
+    /// An import and a call inside a function an exported entry point reaches.
+    LiveCall,
+}
+
+/// A module import with nothing else in the file.
+///
+/// The one body here that is not lifted from a corpus above, because no corpus
+/// above holds an import with no call beside it.
+const BARE_IMPORT: &str = "import redis from \"redis\";\n";
+
+/// The configuration key both existing corpora spell, at either placement.
+const CONFIG_BODY: &str = "cache:\n  redis: enabled\n";
+
+/// Builds one corpus of the enumeration.
+fn matrix_corpus(
+    dependency: Placement,
+    code: Code,
+    code_at: Placement,
+    config: Option<Placement>,
+) -> Vec<(&'static str, &'static str)> {
+    let mut files = vec![
+        (
+            MANIFEST_ONLY[0].0,
+            match dependency {
+                Placement::Production => MANIFEST_ONLY[0].1,
+                Placement::Test => TEST_ONLY_USE[0].1,
+            },
+        ),
+        MANIFEST_ONLY[1],
+    ];
+    let body = match code {
+        Code::Absent => None,
+        Code::Import => Some(BARE_IMPORT),
+        Code::DeadCall => Some(UNREACHABLE_IMPORT[1].1),
+        Code::LiveCall => Some(REACHABLE_CALL_AND_CONFIG[1].1),
+    };
+    if let Some(body) = body {
+        files.push((
+            match code_at {
+                Placement::Production => UNREACHABLE_IMPORT[1].0,
+                Placement::Test => TEST_ONLY_USE[1].0,
+            },
+            body,
+        ));
+    }
+    if let Some(at) = config {
+        files.push((
+            match at {
+                Placement::Production => REACHABLE_CALL_AND_CONFIG[2].0,
+                Placement::Test => TEST_ONLY_USE[2].0,
+            },
+            CONFIG_BODY,
+        ));
+    }
+    files
+}
+
+/// The row section 17.3 names for every combination of the three axes.
+///
+/// Written out of the section's table rather than read back out of the
+/// analyzer, which is the point: an expectation the analyzer produced would
+/// agree with the analyzer whatever the analyzer did. Each entry is the code
+/// shape, where it sits, where the configuration sits, then the rung with no
+/// runtime trace and the rung with one that matches this snapshot and this
+/// subject.
+///
+/// The reading it encodes is the one this module's own prose states twice:
+/// section 17.3's fourth row is the third row narrowed to test scope, not
+/// anything that happens to sit at test scope. `Code::Absent` carries
+/// `Placement::Production` as a filler because a file that does not exist has
+/// no placement, and the completeness check below skips that duplicate rather
+/// than inventing it.
+const LADDER_TABLE: [(Code, Placement, Option<Placement>, LadderRung, LadderRung); 21] = [
+    // Nothing but the manifest row, then the manifest row beside a
+    // configuration key. Section 17.3's first row is `불가`: a manifest entry
+    // is installation intent, and a configuration key beside it is still not a
+    // use.
+    (
+        Code::Absent,
+        Placement::Production,
+        None,
+        LadderRung::ManifestPresence,
+        LadderRung::ManifestPresence,
+    ),
+    (
+        Code::Absent,
+        Placement::Production,
+        Some(Placement::Production),
+        LadderRung::UnreachableImport,
+        LadderRung::RuntimeAndProductionConfig,
+    ),
+    (
+        Code::Absent,
+        Placement::Production,
+        Some(Placement::Test),
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    // An import with no call is section 17.3's second row wherever it sits and
+    // whatever sits beside it: `import만 있고 reachable use 없음` is `보류`.
+    (
+        Code::Import,
+        Placement::Production,
+        None,
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    (
+        Code::Import,
+        Placement::Production,
+        Some(Placement::Production),
+        LadderRung::UnreachableImport,
+        LadderRung::RuntimeAndProductionConfig,
+    ),
+    (
+        Code::Import,
+        Placement::Production,
+        Some(Placement::Test),
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    (
+        Code::Import,
+        Placement::Test,
+        None,
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    (
+        Code::Import,
+        Placement::Test,
+        Some(Placement::Production),
+        LadderRung::UnreachableImport,
+        LadderRung::RuntimeAndProductionConfig,
+    ),
+    (
+        Code::Import,
+        Placement::Test,
+        Some(Placement::Test),
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    // A call nothing reaches is the same second row. Reachability is what
+    // section 17.3's third row asks for and a dead call does not supply it.
+    (
+        Code::DeadCall,
+        Placement::Production,
+        None,
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    (
+        Code::DeadCall,
+        Placement::Production,
+        Some(Placement::Production),
+        LadderRung::UnreachableImport,
+        LadderRung::RuntimeAndProductionConfig,
+    ),
+    (
+        Code::DeadCall,
+        Placement::Production,
+        Some(Placement::Test),
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    (
+        Code::DeadCall,
+        Placement::Test,
+        None,
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    (
+        Code::DeadCall,
+        Placement::Test,
+        Some(Placement::Production),
+        LadderRung::UnreachableImport,
+        LadderRung::RuntimeAndProductionConfig,
+    ),
+    (
+        Code::DeadCall,
+        Placement::Test,
+        Some(Placement::Test),
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    // A reachable call is row three's first ingredient. Its second is a
+    // configuration, and without one the corpus stays at row two — which is
+    // what the `+ config` conjunct means and the only place it is observable.
+    (
+        Code::LiveCall,
+        Placement::Production,
+        None,
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    (
+        Code::LiveCall,
+        Placement::Production,
+        Some(Placement::Production),
+        LadderRung::ReachableCallWithConfig,
+        LadderRung::RuntimeAndProductionConfig,
+    ),
+    (
+        Code::LiveCall,
+        Placement::Production,
+        Some(Placement::Test),
+        LadderRung::ReachableCallWithConfig,
+        LadderRung::ReachableCallWithConfig,
+    ),
+    (
+        Code::LiveCall,
+        Placement::Test,
+        None,
+        LadderRung::UnreachableImport,
+        LadderRung::UnreachableImport,
+    ),
+    (
+        Code::LiveCall,
+        Placement::Test,
+        Some(Placement::Production),
+        LadderRung::ReachableCallWithConfig,
+        LadderRung::RuntimeAndProductionConfig,
+    ),
+    // Row four, and only here: row three's two ingredients with nothing
+    // outside tests naming the subject.
+    (
+        Code::LiveCall,
+        Placement::Test,
+        Some(Placement::Test),
+        LadderRung::TestScopedUse,
+        LadderRung::TestScopedUse,
+    ),
+];
+
+#[test]
+fn every_ladder_input_combination_lands_on_the_row_section_17_3_names() -> TestResult {
+    let mut covered: Vec<(Code, Placement, Option<Placement>)> = Vec::new();
+    for (code, code_at, config, untraced, traced) in LADDER_TABLE {
+        covered.push((code, code_at, config));
+        for dependency in [Placement::Production, Placement::Test] {
+            let files = matrix_corpus(dependency, code, code_at, config);
+            let at =
+                format!("{code:?} at {code_at:?}, config {config:?}, dependency {dependency:?}");
+            let finding = only(classify(&files)?)?;
+            assert_eq!(finding.rung(), untraced, "{at}, no trace");
+
+            let trace = RuntimeTrace::new(classify_snapshot_id(&files)?, SubjectId::new("redis")?);
+            assert_eq!(
+                only(classify_with(&files, &[trace])?)?.rung(),
+                traced,
+                "{at}, traced"
+            );
+
+            // The corpus really carries the sites the row is about. Every file
+            // that names the subject is a locator on the finding and the filler
+            // that names nothing is not, so a row that agrees with the table
+            // because its evidence never arrived fails here instead.
+            let on_finding: BTreeSet<&str> = finding
+                .locators()
+                .iter()
+                .map(academic_repository_analysis::Locator::path)
+                .collect();
+            let naming: BTreeSet<&str> = files
+                .iter()
+                .map(|(path, _)| *path)
+                .filter(|path| *path != MANIFEST_ONLY[1].0)
+                .collect();
+            assert_eq!(on_finding, naming, "{at}: sites");
+        }
+    }
+
+    // The enumeration is whole in both directions: every combination of the
+    // three axes is a row, and every row is a combination.
+    let mut axes: Vec<(Code, Placement, Option<Placement>)> = Vec::new();
+    for code in [Code::Absent, Code::Import, Code::DeadCall, Code::LiveCall] {
+        for code_at in [Placement::Production, Placement::Test] {
+            if code == Code::Absent && code_at == Placement::Test {
+                continue;
+            }
+            for config in [None, Some(Placement::Production), Some(Placement::Test)] {
+                axes.push((code, code_at, config));
+            }
+        }
+    }
+    covered.sort_unstable();
+    axes.sort_unstable();
+    assert_eq!(covered, axes, "the table and the axes disagree");
+    Ok(())
+}
+
+/// Every section 18.1 scope, with a code path and a configuration path that
+/// carry it.
+///
+/// The five are `ArtifactScope`'s whole vocabulary, which is what makes the
+/// cross below a whole-set statement rather than a sample: row four narrows to
+/// `TEST` and to no other scope, so a predicate widened from "is `TEST`" to
+/// "is not `PRODUCTION`" fails here on `Migration`, `Build` and `Development`.
+const SCOPED_PATHS: [(ArtifactScope, &str, &str); 5] = [
+    (
+        ArtifactScope::Production,
+        "src/cache.ts",
+        "src/app.config.yaml",
+    ),
+    (
+        ArtifactScope::Migration,
+        "migrations/cache.ts",
+        "migrations/app.config.yaml",
+    ),
+    (
+        ArtifactScope::Test,
+        "tests/cache.test.ts",
+        "tests/harness.config.yaml",
+    ),
+    (ArtifactScope::Build, "ci/cache.ts", "ci/app.config.yaml"),
+    (
+        ArtifactScope::Development,
+        "tools/cache.ts",
+        "tools/app.config.yaml",
+    ),
+];
+
+#[test]
+fn row_four_narrows_to_test_scope_and_to_no_other_scope() -> TestResult {
+    for (code_scope, code_path, _) in SCOPED_PATHS {
+        for (config_scope, _, config_path) in SCOPED_PATHS {
+            let files = [
+                MANIFEST_ONLY[0],
+                MANIFEST_ONLY[1],
+                (code_path, REACHABLE_CALL_AND_CONFIG[1].1),
+                (config_path, CONFIG_BODY),
+            ];
+            let finding = only(classify(&files)?)?;
+            let narrowed = code_scope == ArtifactScope::Test && config_scope == ArtifactScope::Test;
+            let at = format!("code {code_scope:?} at {code_path}, config {config_scope:?}");
+            if narrowed {
+                assert_eq!(finding.rung(), LadderRung::TestScopedUse, "{at}");
+                assert_eq!(finding.artifact_scope(), ArtifactScope::Test, "{at}");
+            } else {
+                assert_eq!(finding.rung(), LadderRung::ReachableCallWithConfig, "{at}");
+            }
+            // Both files really reached the finding: a corpus whose evidence
+            // the path policy dropped would agree with the expectation above
+            // for the wrong reason.
+            let on_finding: BTreeSet<&str> = finding
+                .locators()
+                .iter()
+                .map(academic_repository_analysis::Locator::path)
+                .collect();
+            assert!(on_finding.contains(code_path), "{at}: {on_finding:?}");
+            assert!(on_finding.contains(config_path), "{at}: {on_finding:?}");
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn no_observed_rests_on_manifest_presence() -> TestResult {
+    // `INV-C-006` in its own words, over the same enumeration and independent
+    // of which rung the table names. Section 17.3 gives `OBSERVED` for two
+    // reasons and no third: a reachable call — rows three and four — or a
+    // runtime trace agreeing with a production configuration, row five. A
+    // manifest row, an import, a dead call and a configuration key are the
+    // whole of what is left, and no combination of them is a use.
+    //
+    // This is deliberately not the table above. The table says which row; this
+    // says which tier, so re-baselining the table when a sixth row is added
+    // still leaves `OBSERVED` refused to evidence that has never run.
+    for (code, code_at, config, _, _) in LADDER_TABLE {
+        for dependency in [Placement::Production, Placement::Test] {
+            let files = matrix_corpus(dependency, code, code_at, config);
+            let trace = RuntimeTrace::new(classify_snapshot_id(&files)?, SubjectId::new("redis")?);
+            for traced in [false, true] {
+                let findings = if traced {
+                    classify_with(&files, std::slice::from_ref(&trace))?
+                } else {
+                    classify(&files)?
+                };
+                let finding = only(findings)?;
+                if finding.tier() != EvidenceTier::Observed {
+                    continue;
+                }
+                let reachable_call = code == Code::LiveCall;
+                let runtime_trace = traced && config == Some(Placement::Production);
+                assert!(
+                    reachable_call || runtime_trace,
+                    "{code:?} at {code_at:?}, config {config:?}, dependency {dependency:?}, \
+                     traced {traced} is {:?} on {:?}",
+                    finding.tier(),
+                    finding
+                        .locators()
+                        .iter()
+                        .map(academic_repository_analysis::Locator::path)
+                        .collect::<Vec<_>>()
+                );
+            }
+        }
+    }
     Ok(())
 }
 

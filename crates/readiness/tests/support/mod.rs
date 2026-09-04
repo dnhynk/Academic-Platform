@@ -457,6 +457,7 @@ pub fn built(files: &[(&str, &str)]) -> TestResult<Corpus> {
         incidents: &[],
         feature_flags: &[],
         deployments: &[],
+        declared_dependencies: &[],
     })?;
     Ok(Corpus {
         snapshot,

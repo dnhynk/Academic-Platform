@@ -457,7 +457,15 @@ fn seal_finding(
     let production_config = counted.iter().any(|site| {
         site.kind == SiteKind::Config && site.locator.scope() == ArtifactScope::Production
     });
-    let test_only = !uses.is_empty()
+    // Section 17.3's fourth row is its third row narrowed to test scope, not
+    // anything that happens to sit at test scope. It therefore asks for row
+    // three's two ingredients as well: without them a manifest row plus a test
+    // configuration key, or a bare import under `tests/`, would be `OBSERVED`
+    // with a displayed confidence and nothing would ever have run. That is
+    // `INV-C-006`, and `no_observed_rests_on_manifest_presence` is where it is
+    // observed over every combination of inputs rather than over one corpus.
+    let test_only = has(SiteKind::ReachableCall)
+        && has(SiteKind::Config)
         && uses
             .iter()
             .all(|site| site.locator.scope() == ArtifactScope::Test);
