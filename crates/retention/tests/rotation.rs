@@ -920,7 +920,11 @@ fn a_settled_deletion_really_shreds_its_derivatives() -> TestResult {
     }
 
     impl RetentionExecutor for ShreddingExecutor<'_> {
-        fn execute(&mut self, action: &PlannedAction) -> Result<(), ExecutionFailure> {
+        fn execute(
+            &mut self,
+            _journal: &mut AppendOnlyJournal,
+            action: &PlannedAction,
+        ) -> Result<(), ExecutionFailure> {
             let Some(descriptor) = self
                 .descriptors
                 .iter()

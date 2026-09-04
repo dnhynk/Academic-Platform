@@ -39,9 +39,10 @@ nothing here whose value would survive a restart that is not already durable one
 layer down.
 
 **No key destruction.** `academic-retention` is a **dev** dependency only.
-`rotation_engine_lane_is_not_default` holds that exactly one crate declares that
-product edge, because linking it links a crate that can destroy a key slot, and
-a redaction has no business inside that boundary. `apply_deletion` records an
+`rotation_engine_lane_is_not_default` holds that exactly two crates declare that
+product edge — `academic-portability`'s encrypted restore and `P2-P2`'s deletion
+flow, which is the layer that decides when a key slot is destroyed — and a
+redaction has no business inside that boundary. `apply_deletion` records an
 expiry through `academic-consent`'s ledger and reaches no key.
 
 **No broker, no egress, no worker.** `academic-policy`,
@@ -368,7 +369,7 @@ as the source of truth for what they should contain.
 | `P2-L5` closes `REQ-32-037` | that is a `apps/mobile-capture` accessibility snapshot asserting an explicit non-instructor-voice warning before recording | not here. This crate produces the values such a warning would read — the hold state, the classes found, the targeting a policy carries — and renders none of them. There is no capture UI in this repository. |
 | `P2-L5` closes `REQ-32-043` | audio and transcript retention independently configurable | that is `P2-G6`'s two bounds, and this task adds no second retention model. What is added is that a **redaction's** two products carry different terms on the two axes, and that a derivative chain narrows on each axis independently. |
 | `P2-L5` closes `REQ-32-045` | "before deletion, UI previews impact on concept/evidence projections" | the values are here and the UI is not. `packages/ui` renders no preview yet. |
-| `P2-L5` closes `REQ-37-030` | school lecture works keep obeying original conditions after graduation | the inheritance half is here and is the whole of `derivative_expiry_is_equal_or_stricter`; the lifecycle half — advancing time and re-deciding an export — is `P2-P2`'s product flow. |
+| `P2-L5` closes `REQ-37-030` | school lecture works keep obeying original conditions after graduation | the inheritance half is here and is the whole of `derivative_expiry_is_equal_or_stricter`; the lifecycle half — advancing time and re-deciding an export — is `P2-P2`'s product flow, which reaches this crate's projection walk through [the deletion flow](deletion-and-retention-flow.md). |
 
 The specification is authoritative in every row.
 

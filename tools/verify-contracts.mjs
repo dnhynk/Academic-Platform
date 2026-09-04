@@ -1963,6 +1963,19 @@ const rotationEngineCiCommands = [
   "cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection -- -D warnings",
   "cargo test -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection",
 ];
+// t068 section 5's `P2-P2` deletion and retention product flow, for the same
+// reason: `deletion-engine` is non-default because it selects
+// `academic-retention`'s own non-default object lane, so a workspace build
+// never reaches the half that crypto-shreds a real object.
+// `phase2-fault-injection` is selected too because `RB01` is a process kill
+// whose failpoint exists only under it -- and this lane is where that kill is
+// driven through the product deletion flow rather than through `P2-K5`'s own
+// fixture. Both run on every hosted Rust label, because the key-slot write, the
+// replica purge and the tombstone rename are per-platform.
+const deletionFlowCiCommands = [
+  "cargo clippy -p academic-deletion --all-targets --locked --features deletion-engine,phase2-fault-injection -- -D warnings",
+  "cargo test -p academic-deletion --all-targets --locked --features deletion-engine,phase2-fault-injection",
+];
 // t068 section 5's `P2-U7` transcript ingestion lane, for the same reason
 // again: `encrypted-vault` is non-default, so a workspace build never reaches
 // the half that seals a transcript original as an `AEAD_CHUNKED_V2` object, and
@@ -2221,6 +2234,14 @@ const expectedCiWorkflow = {
         {
           name: "Test the rotation and retention lane",
           run: rotationEngineCiCommands[1],
+        },
+        {
+          name: "Lint the deletion and retention product flow lane",
+          run: deletionFlowCiCommands[0],
+        },
+        {
+          name: "Test the deletion and retention product flow lane",
+          run: deletionFlowCiCommands[1],
         },
         {
           name: "Lint the transcript ingestion lane",

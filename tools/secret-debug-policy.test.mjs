@@ -382,6 +382,7 @@ const BYTE_FIELD_CLASSES = new Map([
   ["DomainKeyring.keys", "key-material"],
   ["DurableAcceptanceReceipt.response_bytes", "canonical-encoding"],
   ["EncryptedObjectReader.chunk", "content"],
+  ["DeletionTarget.locator", "locator"],
   ["ExactLocator.locator_payload", "locator"],
   ["FetchOutcome.source_bytes", "content"],
   ["FileIdentity.file_id", "identifier"],

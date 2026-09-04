@@ -727,7 +727,11 @@ struct RefusingExecutor {
 }
 
 impl RetentionExecutor for RefusingExecutor {
-    fn execute(&mut self, _action: &PlannedAction) -> Result<(), ExecutionFailure> {
+    fn execute(
+        &mut self,
+        _journal: &mut AppendOnlyJournal,
+        _action: &PlannedAction,
+    ) -> Result<(), ExecutionFailure> {
         self.executed += 1;
         Ok(())
     }
@@ -745,7 +749,11 @@ struct PartialExecutor {
 }
 
 impl RetentionExecutor for PartialExecutor {
-    fn execute(&mut self, action: &PlannedAction) -> Result<(), ExecutionFailure> {
+    fn execute(
+        &mut self,
+        _journal: &mut AppendOnlyJournal,
+        action: &PlannedAction,
+    ) -> Result<(), ExecutionFailure> {
         if self.failing.contains(&action.locator) {
             return Err(ExecutionFailure {
                 reason: UnresolvedReason::PurgeFailed,

@@ -17,6 +17,7 @@ members = [
   "crates/cs-map",
   "crates/curriculum",
   "crates/daemon",
+  "crates/deletion",
   "crates/desktop",
   "crates/domain",
   "crates/egress",
