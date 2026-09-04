@@ -1,0 +1,84 @@
+error[E0599]: no variant, associated function, or constant named `from_str` found for enum `RecordingPermission` in the current scope
+  --> tests/compile_fail/a_recording_permission_is_not_built_from_a_string.rs:12:40
+   |
+12 |     let _parsed = RecordingPermission::from_str("허용");
+   |                                        ^^^^^^^^ variant, associated function, or constant not found in `RecordingPermission`
+   |
+note: if you're trying to build a new `RecordingPermission`, consider using `RecordingPermission::of` which returns `RecordingPermission`
+  --> src/permission.rs
+   |
+   |     pub const fn of(status: CaptureStatus) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: there is an associated function `from` with a similar name
+   |
+12 -     let _parsed = RecordingPermission::from_str("허용");
+12 +     let _parsed = RecordingPermission::from("허용");
+   |
+
+error[E0277]: the trait bound `RecordingPermission: FromStr` is not satisfied
+  --> tests/compile_fail/a_recording_permission_is_not_built_from_a_string.rs:15:30
+   |
+15 |     let _turbofished = "조건부".parse::<RecordingPermission>();
+   |                                 ^^^^^ the trait `FromStr` is not implemented for `RecordingPermission`
+   |
+   = help: the following other types implement trait `FromStr`:
+             ByteString
+             CString
+             IpAddr
+             Ipv4Addr
+             Ipv6Addr
+             NonZero<i128>
+             NonZero<i16>
+             NonZero<i32>
+           and $N others
+
+error[E0277]: the trait bound `RecordingPermission: TryFrom<&str>` is not satisfied
+  --> tests/compile_fail/a_recording_permission_is_not_built_from_a_string.rs:18:18
+   |
+18 |     let _tried = RecordingPermission::try_from("확인 필요");
+   |                  ^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `RecordingPermission`
+   |
+   = note: required for `&str` to implement `Into<RecordingPermission>`
+   = note: required for `RecordingPermission` to implement `TryFrom<&str>`
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_recording_permission_is_not_built_from_a_string.rs:21:48
+   |
+21 |     let _converted = RecordingPermission::from("금지");
+   |                      ------------------------- ^^^^^^ expected `RecordingPermission`, found `&str`
+   |                      |
+   |                      arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_recording_permission_is_not_built_from_a_string.rs:25:75
+   |
+25 |     let _backwards: RecordingPermission = RecordingPermission::spec_words("보류");
+   |                                           ------------------------------- ^^^^^^ expected `RecordingPermission`, found `&str`
+   |                                           |
+   |                                           arguments to this function are incorrect
+   |
+note: method defined here
+  --> src/permission.rs
+   |
+   |     pub const fn spec_words(self) -> &'static str {
+   |                  ^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_recording_permission_is_not_built_from_a_string.rs:25:43
+   |
+25 |     let _backwards: RecordingPermission = RecordingPermission::spec_words("보류");
+   |                     -------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `RecordingPermission`, found `&str`
+   |                     |
+   |                     expected due to this
+
+error[E0277]: the trait bound `RecordingPermission: From<&str>` is not satisfied
+  --> tests/compile_fail/a_recording_permission_is_not_built_from_a_string.rs:18:18
+   |
+18 |     let _tried = RecordingPermission::try_from("확인 필요");
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `RecordingPermission`
+   |
+   = note: required for `&str` to implement `Into<RecordingPermission>`
+   = note: required for `RecordingPermission` to implement `TryFrom<&str>`

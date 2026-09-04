@@ -1,0 +1,35 @@
+error[E0599]: no method named `truncate` found for reference `&[HomeCard]` in the current scope
+  --> tests/compile_fail/a_grouped_bucket_cannot_be_shortened.rs:18:40
+   |
+18 |     grouped.bucket(AlertBucket::Today).truncate(0);
+   |                                        ^^^^^^^^ method not found in `&[HomeCard]`
+
+error[E0599]: no method named `bucket_mut` found for struct `GroupedAlerts` in the current scope
+  --> tests/compile_fail/a_grouped_bucket_cannot_be_shortened.rs:21:13
+   |
+21 |     grouped.bucket_mut(AlertBucket::Soon).clear();
+   |             ^^^^^^^^^^
+   |
+help: there is a method `bucket` with a similar name
+   |
+21 -     grouped.bucket_mut(AlertBucket::Soon).clear();
+21 +     grouped.bucket(AlertBucket::Soon).clear();
+   |
+
+error[E0616]: field `today` of struct `GroupedAlerts` is private
+  --> tests/compile_fail/a_grouped_bucket_cannot_be_shortened.rs:24:26
+   |
+24 |     let _lists = grouped.today;
+   |                          ^^^^^ private field
+
+error[E0599]: no method named `set_total` found for struct `GroupedAlerts` in the current scope
+  --> tests/compile_fail/a_grouped_bucket_cannot_be_shortened.rs:28:13
+   |
+28 |     grouped.set_total(0);
+   |             ^^^^^^^^^
+   |
+help: there is a method `total` with a similar name, but with different arguments
+  --> src/alert.rs
+   |
+   |     pub fn total(&self) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,59 @@
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> tests/compile_fail/a_freshness_alert_needs_an_upcoming_use.rs:16:24
+   |
+16 |     let _unjustified = FreshnessAlert::raise(concept, FreshnessBand::Stale);
+   |                        ^^^^^^^^^^^^^^^^^^^^^------------------------------- argument #3 of type `UpcomingUse` is missing
+   |
+note: associated function defined here
+  --> src/freshness.rs
+   |
+   |     pub const fn raise(concept: EntityId, band: FreshnessBand, upcoming: UpcomingUse) -> Self {
+   |                  ^^^^^
+help: provide the argument
+   |
+16 |     let _unjustified = FreshnessAlert::raise(concept, FreshnessBand::Stale, /* UpcomingUse */);
+   |                                                                           +++++++++++++++++++
+
+error: cannot construct `FreshnessAlert` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_freshness_alert_needs_an_upcoming_use.rs:19:22
+   |
+19 |     let _assembled = FreshnessAlert {
+   |                      ^^^^^^^^^^^^^^
+20 |         concept,
+   |         ------- private field
+21 |         band: FreshnessBand::Stale,
+   |         -------------------------- private field
+   |
+   = note: ...and other private field `upcoming` that was not provided
+help: you might have meant to use the `raise` associated function
+   |
+19 -     let _assembled = FreshnessAlert {
+20 -         concept,
+21 -         band: FreshnessBand::Stale,
+22 -     };
+19 +     let _assembled = FreshnessAlert::raise(_, _, _);
+   |
+
+error[E0599]: no associated function or constant named `default` found for struct `FreshnessAlert` in the current scope
+  --> tests/compile_fail/a_freshness_alert_needs_an_upcoming_use.rs:25:54
+   |
+25 |     let _defaulted: FreshnessAlert = FreshnessAlert::default();
+   |                                                      ^^^^^^^ associated function or constant not found in `FreshnessAlert`
+   |
+note: if you're trying to build a new `FreshnessAlert`, consider using `FreshnessAlert::raise` which returns `FreshnessAlert`
+  --> src/freshness.rs
+   |
+   |     pub const fn raise(concept: EntityId, band: FreshnessBand, upcoming: UpcomingUse) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot construct `UpcomingUse` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_freshness_alert_needs_an_upcoming_use.rs:29:19
+   |
+29 |     let _forged = UpcomingUse {
+   |                   ^^^^^^^^^^^
+30 |         occasion: ScheduledOccasion::Class,
+   |         ---------------------------------- private field
+31 |         at: TimestampMillis::new(0),
+   |         --------------------------- private field
+   |
+   = note: ...and other private field `subject` that was not provided
