@@ -1605,3 +1605,138 @@ fn one_term_is_read_once() -> TestResult {
     assert_eq!(standing, vec![Offered::Yes]);
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// `S-21`
+// ---------------------------------------------------------------------------
+
+/// The matrix that refuses this crate's own prediction claim is
+/// `academic-domain`'s line, and ADR-003 does not write it.
+///
+/// `P2-U5` recorded the divergence as *ADR-003's actor matrix gives
+/// `AuthorityClass::Prediction` to `Actor::ModelRun` alone*.
+/// `a_forecast_claim_is_not_signable_by_a_deterministic_engine` executes that
+/// against the code. This one executes it against the two documents, because
+/// the attribution was wrong and only reading them says so:
+///
+/// * ADR-003 constrains actors in **three** places and none of them reaches
+///   `Prediction`. Two are about curated authority and about state-removing
+///   relations; the third is the only actor-to-authority rule it states and it
+///   is negative -- automated actors may not assert `USER_EXPLICIT` or
+///   `USER_CONFIRMED`. The three are pinned as a whole set, so a fourth actor
+///   sentence -- including one that would settle this -- fails here rather than
+///   silently making the record above stale.
+/// * Section 30.2 defines `PREDICTION` with no actor in it at all, and reserves
+///   the model for `AI_INFERRED`. Section 30.1's own example of a `PREDICTION`
+///   claim sources it from a historical pattern.
+///
+/// So the specification permits a deterministic forecaster's prediction, ADR-003
+/// is silent, and the restriction lives only in
+/// `Claim::validate_for_actor`. Widening it is a decision about who may assert
+/// what and is not made here; what is made here is that the decision cannot be
+/// taken by drift.
+#[test]
+fn no_document_gives_a_prediction_to_one_actor() -> TestResult {
+    let specification = fs::read_to_string(
+        repository_root().join("PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md"),
+    )?;
+    let adr = fs::read_to_string(
+        repository_root()
+            .join("docs")
+            .join("adr")
+            .join("ADR-003-ledger-and-bitemporal-semantics.md"),
+    )?;
+
+    // Section 30.2's own definition, and the one beside it that does name a
+    // model. Read out of the document rather than paraphrased.
+    let prediction = "- `PREDICTION`: 미래에 대한 확률적 claim.";
+    let ai_inferred = "- `AI_INFERRED`: model이 source로부터 제안한 해석.";
+    assert!(
+        specification.contains(prediction),
+        "section 30.2 no longer defines PREDICTION as it did"
+    );
+    assert!(
+        specification.contains(ai_inferred),
+        "section 30.2 no longer defines AI_INFERRED as it did"
+    );
+    for model_word in ["model", "Model", "ModelRun", "MODEL"] {
+        assert!(
+            !prediction.contains(model_word),
+            "section 30.2's PREDICTION now names a model ({model_word}), so the divergence this test records has changed"
+        );
+    }
+    assert!(
+        ai_inferred.contains("model"),
+        "section 30.2 no longer reserves the model for AI_INFERRED"
+    );
+
+    // Section 30.1's example sources its PREDICTION claim from a pattern.
+    assert!(
+        specification.contains("status PREDICTION · historical pattern · confidence .72"),
+        "section 30.1's PREDICTION example is no longer a historical pattern"
+    );
+
+    // ADR-003's actor sentences, as a whole set. A fourth one is a change to
+    // who may assert what and has to be read against this record.
+    let actor_lines: Vec<&str> = adr
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && line.to_lowercase().contains("actor"))
+        .collect();
+    assert_eq!(
+        actor_lines.len(),
+        3,
+        "ADR-003 constrains actors in {} places, not the three this record was written against: {actor_lines:#?}",
+        actor_lines.len()
+    );
+    for fragment in [
+        "a deterministic-engine actor cannot self-assign curated authority",
+        "State-removing `SUPERSEDES` and `RETRACTS` relations preserve their actor provenance",
+        "Actor provenance is bound to signed device/user authorization",
+    ] {
+        assert_eq!(
+            actor_lines
+                .iter()
+                .filter(|line| line.contains(fragment))
+                .count(),
+            1,
+            "ADR-003 no longer says: {fragment}"
+        );
+    }
+
+    // The one actor-to-authority rule ADR-003 states is negative, and it names
+    // the two statuses it forbids and no authority class.
+    let rule = actor_lines
+        .iter()
+        .find(|line| line.contains("Actor provenance is bound to signed device/user authorization"))
+        .ok_or("ADR-003's actor/authority sentence is gone")?;
+    assert!(rule.contains("cannot assert `USER_EXPLICIT`/`USER_CONFIRMED`"));
+    assert!(
+        !rule.contains("PREDICTION") && !rule.contains("Prediction"),
+        "ADR-003's actor/authority sentence now reaches Prediction: {rule}"
+    );
+
+    // And the code is narrower than either document, in both directions.
+    let resolution = support::resolve_case("every_spring")?;
+    let ForecastVerdict::Scored(scored) = resolution.forecast().ok_or("no forecast")?.verdict()
+    else {
+        return Err("the baseline produced no probability".into());
+    };
+    let claim = forecast_claim(
+        support::claim(6013)?,
+        &support::subject()?,
+        scored,
+        vec![support::evidence(6113)?],
+    )?;
+    assert_eq!(claim.authority_class, AuthorityClass::Prediction);
+    assert!(
+        claim
+            .validate_for_actor(&Actor::DeterministicEngine {
+                name: academic_offering::OFFERING_FORECAST_ENGINE_ID.to_owned(),
+                version: academic_offering::OFFERING_FORECAST_ENGINE_VERSION.to_string(),
+            })
+            .is_err(),
+        "the matrix admits a deterministic engine now; S-21 is closed and this record is stale"
+    );
+    Ok(())
+}
