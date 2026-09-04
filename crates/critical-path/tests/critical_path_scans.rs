@@ -562,7 +562,7 @@ fn flatten(item: &str, prefix: String, found: &mut Vec<String>) {
 /// and this list does not hold is an **extra key** rather than a token nobody
 /// listed, which is what makes the comparison a whole set rather than a
 /// denylist.
-const USE_ITEMS: [&str; 75] = [
+const USE_ITEMS: [&str; 76] = [
     "academic_curriculum::Credits",
     "academic_curriculum::Meeting",
     "academic_curriculum::OfferingStatus",
@@ -592,6 +592,7 @@ const USE_ITEMS: [&str; 75] = [
     "crate::constraint::ConstraintFinding",
     "crate::constraint::ConstraintInputs",
     "crate::constraint::ConstraintVerdict",
+    "crate::constraint::OfficialPrerequisiteStanding",
     "crate::constraint::RequiredInsertion",
     "crate::constraint::evaluate",
     "crate::counterfactual::sensitivity_of",
@@ -658,12 +659,13 @@ const RE_EXPORT_MODULES: [&str; 13] = [
 ];
 
 /// Every two-segment path reached through a crate root, in both directions.
-const REACHED_PATHS: [&str; 16] = [
+const REACHED_PATHS: [&str; 17] = [
     "academic_domain::Decimal",
     "academic_domain::DomainError",
     "academic_domain::EntityId",
     "academic_domain::EvidenceId",
     "academic_domain::engines",
+    "academic_freshness::band_token",
     "academic_gap::GapError",
     "crate::constraint",
     "crate::counterfactual",

@@ -48,15 +48,20 @@
 //! key below is built from a position -- an axis's own token, a candidate's
 //! index -- and every value is a count, an interval end, or a hex identity.
 
-use academic_domain::engines::{
-    EngineError, EngineOutcome, EngineResult, FrozenInputs, InputKey, InputValue, NodeId,
-    ProofNode, ProofStatus, RuleId,
+use academic_curriculum::{Meeting, Weekday};
+use academic_domain::{
+    FreshnessBand,
+    engines::{
+        EngineError, EngineOutcome, EngineResult, FrozenInputs, InputKey, InputValue, NodeId,
+        ProofNode, ProofStatus, RuleId,
+    },
 };
 
 use crate::{
     CriticalPathError,
-    constraint::CONSTRAINTS,
+    constraint::{CONSTRAINTS, OfficialPrerequisiteStanding},
     engine::PlanRequest,
+    hypergraph::EdgeStanding,
     plan::CriticalPathResult,
     vector::{BENEFIT_COMPONENTS, COST_COMPONENTS},
 };
@@ -178,7 +183,252 @@ pub fn frozen_inputs(request: &PlanRequest<'_>) -> Result<FrozenInputs, Critical
             ));
         }
     }
+
+    // Section 16.1's hypergraph. A run's answer depends on its shape, so the
+    // shape is part of its identity: every member's two ends, its predicate and
+    // its standing, in the graph's own order.
+    for (position, member) in request.graph.all_members().iter().enumerate() {
+        entries.push((
+            key(&format!("graph.{position:02}.dependent"))?,
+            InputValue::Reference(hex(member.dependent().as_bytes())),
+        ));
+        entries.push((
+            key(&format!("graph.{position:02}.prerequisite"))?,
+            InputValue::Reference(hex(member.concept().as_bytes())),
+        ));
+        entries.push((
+            key(&format!("graph.{position:02}.predicate"))?,
+            InputValue::Reference(member.edge().predicate().as_str().to_owned()),
+        ));
+        entries.push((
+            key(&format!("graph.{position:02}.standing"))?,
+            InputValue::Reference(standing_token(member.standing()).to_owned()),
+        ));
+    }
+
+    // Section 16.3's inputs, all of them, each with its own count so an empty
+    // list is distinguishable from an absent one.
+    //
+    // Leaving any of them out is not a cosmetic omission: two runs that differ
+    // only in an excluded concept reach different answers, so frozen inputs
+    // that did not carry the exclusion would make the engine **not a function
+    // of them**, which is the whole property `P2-C5`'s contract is about. The
+    // first version of this file omitted every one, and two corpus cases shared
+    // a digest while their canonical bytes differed.
+    // `the_frozen_inputs_are_the_runs_identity` is the assertion that says so.
+    let constraints = request.constraints;
+    for (position, concept) in constraints.hard_prerequisites_met.iter().enumerate() {
+        entries.push((
+            key(&format!("constraint.hard_met.{position:02}"))?,
+            InputValue::Reference(hex(concept.as_bytes())),
+        ));
+    }
+    entries.push((
+        key("constraint.hard_met.count")?,
+        InputValue::Integer(count(constraints.hard_prerequisites_met.len())),
+    ));
+    for (position, (offering, standing)) in constraints.official_prerequisites.iter().enumerate() {
+        entries.push((
+            key(&format!("constraint.official.{position:02}.offering"))?,
+            InputValue::Reference(hex(offering.as_uuid().as_bytes())),
+        ));
+        entries.push((
+            key(&format!("constraint.official.{position:02}.standing"))?,
+            InputValue::Reference(official_token(*standing).to_owned()),
+        ));
+    }
+    entries.push((
+        key("constraint.official.count")?,
+        InputValue::Integer(count(constraints.official_prerequisites.len())),
+    ));
+    for (position, meeting) in constraints.committed_meetings.iter().enumerate() {
+        push_meeting(
+            &mut entries,
+            &format!("constraint.committed_meeting.{position:02}"),
+            *meeting,
+        )?;
+    }
+    entries.push((
+        key("constraint.committed_meeting.count")?,
+        InputValue::Integer(count(constraints.committed_meetings.len())),
+    ));
+    for (position, (offering, meetings)) in constraints.offering_meetings.iter().enumerate() {
+        entries.push((
+            key(&format!(
+                "constraint.offering_meeting.{position:02}.offering"
+            ))?,
+            InputValue::Reference(hex(offering.as_uuid().as_bytes())),
+        ));
+        for (slot, meeting) in meetings.iter().enumerate() {
+            push_meeting(
+                &mut entries,
+                &format!("constraint.offering_meeting.{position:02}.{slot:02}"),
+                *meeting,
+            )?;
+        }
+        entries.push((
+            key(&format!("constraint.offering_meeting.{position:02}.count"))?,
+            InputValue::Integer(count(meetings.len())),
+        ));
+    }
+    entries.push((
+        key("constraint.offering_meeting.count")?,
+        InputValue::Integer(count(constraints.offering_meetings.len())),
+    ));
+    entries.push((
+        key("constraint.committed_credits")?,
+        InputValue::Integer(i64::from(constraints.committed_credits)),
+    ));
+    for (position, source) in constraints.privacy_excluded_sources.iter().enumerate() {
+        entries.push((
+            key(&format!("constraint.privacy_excluded.{position:02}"))?,
+            InputValue::Reference(hex(source.as_bytes())),
+        ));
+    }
+    entries.push((
+        key("constraint.privacy_excluded.count")?,
+        InputValue::Integer(count(constraints.privacy_excluded_sources.len())),
+    ));
+    for (position, concept) in constraints.user_excluded_concepts.iter().enumerate() {
+        entries.push((
+            key(&format!("constraint.excluded_concept.{position:02}"))?,
+            InputValue::Reference(hex(concept.as_bytes())),
+        ));
+    }
+    entries.push((
+        key("constraint.excluded_concept.count")?,
+        InputValue::Integer(count(constraints.user_excluded_concepts.len())),
+    ));
+    for (position, offering) in constraints.user_excluded_offerings.iter().enumerate() {
+        entries.push((
+            key(&format!("constraint.excluded_offering.{position:02}"))?,
+            InputValue::Reference(hex(offering.as_uuid().as_bytes())),
+        ));
+    }
+    entries.push((
+        key("constraint.excluded_offering.count")?,
+        InputValue::Integer(count(constraints.user_excluded_offerings.len())),
+    ));
+    for (position, (concept, band)) in constraints.bands.iter().enumerate() {
+        entries.push((
+            key(&format!("constraint.band.{position:02}.concept"))?,
+            InputValue::Reference(hex(concept.as_bytes())),
+        ));
+        entries.push((
+            key(&format!("constraint.band.{position:02}.band"))?,
+            InputValue::Reference(band_token(*band).to_owned()),
+        ));
+    }
+    entries.push((
+        key("constraint.band.count")?,
+        InputValue::Integer(count(constraints.bands.len())),
+    ));
+
+    // Every acquisition option a route could take. An option decides credits,
+    // meetings, offering standing and which sources privacy has to allow, so
+    // two runs that differ only in their options are two different runs.
+    for (position, estimate) in request.estimates.iter().enumerate() {
+        for (slot, option) in estimate.options.iter().enumerate() {
+            entries.push((
+                key(&format!("estimate.{position:02}.option.{slot:02}.kind"))?,
+                InputValue::Reference(option.as_str().to_owned()),
+            ));
+            entries.push((
+                key(&format!("estimate.{position:02}.option.{slot:02}.credits"))?,
+                InputValue::Integer(i64::from(option.credits())),
+            ));
+            entries.push((
+                key(&format!("estimate.{position:02}.option.{slot:02}.offering"))?,
+                option.offering().map_or(InputValue::Unknown, |offering| {
+                    InputValue::Reference(hex(offering.as_uuid().as_bytes()))
+                }),
+            ));
+            entries.push((
+                key(&format!("estimate.{position:02}.option.{slot:02}.status"))?,
+                option
+                    .offering_status()
+                    .map_or(InputValue::Unknown, |status| {
+                        InputValue::Reference(status.as_str().to_owned())
+                    }),
+            ));
+            for (occasion, opportunity) in option.supplies().iter().enumerate() {
+                entries.push((
+                    key(&format!(
+                        "estimate.{position:02}.option.{slot:02}.occasion.{occasion:02}.concept"
+                    ))?,
+                    InputValue::Reference(hex(opportunity.concept().as_bytes())),
+                ));
+                entries.push((
+                    key(&format!(
+                        "estimate.{position:02}.option.{slot:02}.occasion.{occasion:02}.kind"
+                    ))?,
+                    InputValue::Reference(opportunity.kind().as_str().to_owned()),
+                ));
+                entries.push((
+                    key(&format!(
+                        "estimate.{position:02}.option.{slot:02}.occasion.{occasion:02}.source"
+                    ))?,
+                    InputValue::Reference(hex(opportunity.source().as_bytes())),
+                ));
+            }
+        }
+        entries.push((
+            key(&format!("estimate.{position:02}.option.count"))?,
+            InputValue::Integer(count(estimate.options.len())),
+        ));
+    }
+
     FrozenInputs::new(entries).map_err(CriticalPathError::Engine)
+}
+
+/// One meeting, as a weekday index and its two minutes.
+///
+/// The weekday is its position in `P2-U1`'s own `Weekday::ALL`, so a day added
+/// there changes this encoding rather than colliding with an existing one.
+fn push_meeting(
+    entries: &mut Vec<(InputKey, InputValue)>,
+    prefix: &str,
+    meeting: Meeting,
+) -> Result<(), CriticalPathError> {
+    let weekday = Weekday::ALL
+        .iter()
+        .position(|day| *day == meeting.weekday())
+        .unwrap_or(Weekday::ALL.len());
+    entries.push((
+        key(&format!("{prefix}.weekday"))?,
+        InputValue::Integer(count(weekday)),
+    ));
+    entries.push((
+        key(&format!("{prefix}.from"))?,
+        InputValue::Integer(i64::from(meeting.from_minute())),
+    ));
+    entries.push((
+        key(&format!("{prefix}.to"))?,
+        InputValue::Integer(i64::from(meeting.to_minute())),
+    ));
+    Ok(())
+}
+
+/// `P2-N3`'s band spelling, through that crate's own function.
+fn band_token(band: FreshnessBand) -> &'static str {
+    academic_freshness::band_token(band)
+}
+
+/// The standing of one hyperedge member. Total with no wildcard arm.
+const fn standing_token(standing: EdgeStanding) -> &'static str {
+    match standing {
+        EdgeStanding::Settled => "SETTLED",
+        EdgeStanding::Uncertain => "UNCERTAIN",
+    }
+}
+
+/// The registrar's answer for one offering. Total with no wildcard arm.
+const fn official_token(standing: OfficialPrerequisiteStanding) -> &'static str {
+    match standing {
+        OfficialPrerequisiteStanding::Met => "MET",
+        OfficialPrerequisiteStanding::Unmet => "UNMET",
+        OfficialPrerequisiteStanding::Unknown => "UNKNOWN",
+    }
 }
 
 /// Renders one answer into `P2-C5`'s proof tree and normalized explanation.
