@@ -1290,10 +1290,21 @@ fn many_to_many_enabling_edges_query_both_ways() -> TestResult {
             1,
             "the inverse view does not hold this edge exactly once"
         );
-        assert_eq!(edge.importance(), edge.importance());
+        // And the row carries the qualifiers the competency wrote, so the view
+        // is the declaration read back rather than a pair of ends.
+        let declared = competencies
+            .iter()
+            .find(|competency| competency.id() == edge.competency())
+            .and_then(|competency| {
+                competency
+                    .enabled_by()
+                    .iter()
+                    .find(|entry| entry.concept() == edge.concept())
+            })
+            .ok_or("the graph holds an edge no competency declared")?;
+        assert_eq!(edge.importance(), declared.importance());
+        assert_eq!(edge.necessity(), declared.necessity());
     }
-    let forward_total: usize = pairs.iter().map(|_| 1_usize).sum::<usize>();
-    assert_eq!(forward_total, graph.edges().len());
 
     // A concept nothing declares reaches nothing, and so does a competency that
     // is not in the set, so neither query answers with a default.
