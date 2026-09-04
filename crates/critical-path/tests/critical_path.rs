@@ -652,6 +652,40 @@ fn dominated_paths_are_removed_before_ranking() -> TestResult {
     let crossing = crossing_front()?;
     assert_eq!(crossing.candidates().len(), 2, "an overlap was eliminated");
     assert!(crossing.dominated().is_empty());
+
+    // The two routes must be **identical** on every other axis, or they would be
+    // incomparable for a reason that has nothing to do with the crossing and
+    // this assertion would prove nothing.
+    let (left, right) = (&crossing.candidates()[0], &crossing.candidates()[1]);
+    for component in academic_critical_path::COST_COMPONENTS {
+        if component == CostComponent::LearningEffort {
+            continue;
+        }
+        assert_eq!(
+            left.cost().component(component),
+            right.cost().component(component),
+            "the crossing fixture's routes also differ on {}",
+            component.spec_token()
+        );
+    }
+    for component in BENEFIT_COMPONENTS {
+        assert_eq!(
+            left.benefit().component(component),
+            right.benefit().component(component),
+            "the crossing fixture's routes also differ on {}",
+            component.spec_token()
+        );
+    }
+    let (a, b) = (
+        left.cost().component(CostComponent::LearningEffort),
+        right.cost().component(CostComponent::LearningEffort),
+    );
+    assert!(
+        (a.low() < b.low() && b.high() < a.high()) || (b.low() < a.low() && a.high() < b.high()),
+        "the crossing fixture's intervals do not cross: {:?} against {:?}",
+        (a.low(), a.high()),
+        (b.low(), b.high())
+    );
     Ok(())
 }
 
@@ -686,16 +720,23 @@ fn crossing_front() -> Result<ParetoFront, Box<dyn Error>> {
             options: vec![reading_for(fan_out(), "fo")?],
         },
     );
+    // The larger branch's second concept contributes **zero** on every axis, so
+    // the two routes agree on all eleven other axes and differ only where the
+    // intervals cross. Without that, the two routes would differ on every flat
+    // axis simply because one has more concepts, each route would beat the
+    // other somewhere, and the pair would be incomparable for a reason that has
+    // nothing to do with the crossing -- which is how this fixture would pass an
+    // engine that had collapsed the interval to one end.
     estimates = with_estimate(
         estimates,
         ConceptEstimate {
             concept: page_layout(),
             cost: cost_except(
-                10,
+                0,
                 CostComponent::LearningEffort,
                 measured(CostComponent::LearningEffort, 0, 0)?,
             )?,
-            benefit: flat_benefit(10)?,
+            benefit: flat_benefit(0)?,
             options: vec![reading_for(page_layout(), "pl")?],
         },
     );
