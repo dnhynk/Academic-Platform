@@ -1,0 +1,70 @@
+[package]
+name = "academic-student-voice"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Five product edges, each one a boundary this crate resolves rather than
+# restates.
+#
+# `academic-lecture-document` is `P2-L4`. Its contract page leaves `D-3` open:
+# a `RedactionPolicyRef` holds a digest that crate does not resolve, and "what
+# the digest names, and whether the redaction it authorises actually happened,
+# is `P2-L5`'s". Taking the edge is what lets `RedactionPolicy::resolves` take
+# that reference by value instead of a second policy vocabulary being invented
+# here.
+#
+# `academic-transcription` is `P2-L3`. `Speaker` is section 12.4's own three
+# shapes and that crate already holds them; a targeting rule written over a
+# second speaker enum would be two vocabularies for one fact. This crate names
+# no raw type, so `P2-L3`'s workspace scope rule stays intact.
+#
+# `academic-consent` is `P2-G6`. Audio and transcript retention are two bounds
+# there and a derivative inherits the stricter of each through one function;
+# this crate calls that function and declares no inheritance rule of its own.
+# The deletion preview is that crate's too, and the projection layer here wraps
+# it rather than forking it.
+#
+# `academic-capture` is `P2-L2`. The subject of a hold is a `CaptureBytes`, and
+# holding one privately with no accessor is what makes the hold the absence of
+# a method rather than a flag a downstream reader has to remember to consult.
+#
+# `academic-domain` supplies the identifier, digest and actor types.
+#
+# There is deliberately no `academic-retention` product edge:
+# `rotation_engine_lane_is_not_default` holds that exactly one crate declares
+# it, because linking it links a crate that can destroy a key slot, and a
+# redaction has no business inside that boundary. There is deliberately no
+# `academic-store` edge, so this crate persists nothing and adds no migration,
+# and no `academic-policy`, `academic-egress-boundary` or `academic-worker`
+# edge, so no product file here can name a broker, an egress or a job.
+[dependencies]
+academic-capture = { path = "../capture" }
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-lecture-document = { path = "../lecture-document" }
+academic-transcription = { path = "../transcription" }
+thiserror.workspace = true
+
+# `academic-retention` is a dev edge only, for the same reason
+# `academic-consent` takes it as one: the derivative-class vocabulary and the
+# `GATE-38-026` statement are compared against `P2-K5`'s own, whole, rather
+# than trusted to stay in step, and `no_original_voice_authority_is_produced_here`
+# needs to name the type it refuses to produce.
+#
+# `academic-model-run` and `academic-policy` are dev edges so the acceptance
+# suite can drive a real `academic_transcription::run` end to end; keeping them
+# off the product edge is what makes "this crate mints no provenance record and
+# holds no broker" a compile error rather than a source scan.
+[dev-dependencies]
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-model-run = { path = "../model-run" }
+academic-retention = { path = "../retention" }
+tempfile.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true

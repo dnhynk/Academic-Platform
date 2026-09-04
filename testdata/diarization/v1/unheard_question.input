@@ -1,0 +1,6 @@
+diarization-case/1 unheard_question
+reference 0 25000 instructor
+reference 25000 31000 student_unknown_1
+reference 31000 70000 instructor
+hypothesis 0 25000 instructor
+hypothesis 31000 70000 instructor

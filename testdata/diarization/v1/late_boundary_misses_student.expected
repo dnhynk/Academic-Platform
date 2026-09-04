@@ -1,0 +1,9 @@
+diarization-measurement/1 late_boundary_misses_student
+scored_ms=100000
+agreed_ms=98000
+student_as_instructor_ms=2000
+instructor_as_student_ms=0
+unattributed_ms=0
+uncovered_ms=0
+reference_student_ms=12000
+student_agreed_ms=10000

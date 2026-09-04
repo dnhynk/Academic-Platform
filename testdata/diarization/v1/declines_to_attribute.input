@@ -1,0 +1,7 @@
+diarization-case/1 declines_to_attribute
+reference 0 20000 instructor
+reference 20000 26000 student_unknown_1
+reference 26000 60000 instructor
+hypothesis 0 20000 instructor
+hypothesis 20000 26000 unresolved
+hypothesis 26000 60000 instructor

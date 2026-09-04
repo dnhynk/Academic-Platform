@@ -1,0 +1,9 @@
+diarization-case/1 two_students_distinguished
+reference 0 30000 instructor
+reference 30000 38000 student_unknown_1
+reference 38000 44000 student_unknown_2
+reference 44000 90000 instructor
+hypothesis 0 30000 instructor
+hypothesis 30000 38000 student_unknown_2
+hypothesis 38000 44000 student_unknown_1
+hypothesis 44000 90000 instructor

@@ -1,0 +1,9 @@
+error[E0382]: use of moved value: `grant`
+  --> tests/compile_fail/an_access_grant_is_spent_by_being_used.rs:12:33
+   |
+10 | fn twice(original: &RestrictedOriginal, grant: RawAccessGrant, log: &mut RawAccessLog) {
+   |                                         ----- move occurs because `grant` has type `RawAccessGrant`, which does not implement the `Copy` trait
+11 |     let _first = original.open(grant, log);
+   |                                ----- value moved here
+12 |     let _second = original.open(grant, log);
+   |                                 ^^^^^ value used here after move

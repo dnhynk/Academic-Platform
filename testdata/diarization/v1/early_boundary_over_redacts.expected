@@ -1,0 +1,9 @@
+diarization-measurement/1 early_boundary_over_redacts
+scored_ms=80000
+agreed_ms=76000
+student_as_instructor_ms=0
+instructor_as_student_ms=4000
+unattributed_ms=0
+uncovered_ms=0
+reference_student_ms=10000
+student_agreed_ms=10000

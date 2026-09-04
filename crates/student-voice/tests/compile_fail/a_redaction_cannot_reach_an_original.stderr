@@ -1,0 +1,11 @@
+error[E0599]: no variant, associated function, or constant named `Original` found for enum `RedactionScope` in the current scope
+  --> tests/compile_fail/a_redaction_cannot_reach_an_original.rs:11:37
+   |
+11 |     let _original = RedactionScope::Original;
+   |                                     ^^^^^^^^ variant, associated function, or constant not found in `RedactionScope`
+
+error[E0599]: no variant, associated function, or constant named `OriginalAndDerivative` found for enum `RedactionScope` in the current scope
+  --> tests/compile_fail/a_redaction_cannot_reach_an_original.rs:12:33
+   |
+12 |     let _both = RedactionScope::OriginalAndDerivative;
+   |                                 ^^^^^^^^^^^^^^^^^^^^^ variant, associated function, or constant not found in `RedactionScope`

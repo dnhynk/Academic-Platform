@@ -1,0 +1,66 @@
+diarization-measurement-set/1 student-voice-diarization 1 sha256:783a492e5336507a6d4a68ea3c666c19f3d36788e6a276d38a9a84cd3319a5fe 1
+diarization-measurement/1 clean_two_speaker
+scored_ms=150000
+agreed_ms=150000
+student_as_instructor_ms=0
+instructor_as_student_ms=0
+unattributed_ms=0
+uncovered_ms=0
+reference_student_ms=12000
+student_agreed_ms=12000
+diarization-measurement/1 two_students_distinguished
+scored_ms=90000
+agreed_ms=90000
+student_as_instructor_ms=0
+instructor_as_student_ms=0
+unattributed_ms=0
+uncovered_ms=0
+reference_student_ms=14000
+student_agreed_ms=14000
+diarization-measurement/1 late_boundary_misses_student
+scored_ms=100000
+agreed_ms=98000
+student_as_instructor_ms=2000
+instructor_as_student_ms=0
+unattributed_ms=0
+uncovered_ms=0
+reference_student_ms=12000
+student_agreed_ms=10000
+diarization-measurement/1 early_boundary_over_redacts
+scored_ms=80000
+agreed_ms=76000
+student_as_instructor_ms=0
+instructor_as_student_ms=4000
+unattributed_ms=0
+uncovered_ms=0
+reference_student_ms=10000
+student_agreed_ms=10000
+diarization-measurement/1 declines_to_attribute
+scored_ms=60000
+agreed_ms=54000
+student_as_instructor_ms=0
+instructor_as_student_ms=0
+unattributed_ms=6000
+uncovered_ms=0
+reference_student_ms=6000
+student_agreed_ms=0
+diarization-measurement/1 unheard_question
+scored_ms=70000
+agreed_ms=64000
+student_as_instructor_ms=0
+instructor_as_student_ms=0
+unattributed_ms=0
+uncovered_ms=6000
+reference_student_ms=6000
+student_agreed_ms=0
+total_scored_ms=550000
+total_agreed_ms=532000
+total_student_as_instructor_ms=2000
+total_instructor_as_student_ms=4000
+total_unattributed_ms=6000
+total_uncovered_ms=6000
+total_reference_student_ms=60000
+total_student_agreed_ms=46000
+accuracy_permille=967
+missed_student_permille=33
+student_recall_permille=766
