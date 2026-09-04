@@ -33,6 +33,13 @@ whatever time it had reached, which is not a reading of anything, while a
 cancellation at the limit is a right-censored reading — the job's real cost is
 at least that, and how much more is unknown.
 
+**This page is structurally one task behind, and that is not a backlog.** A
+task whose change triggers this rule cannot record its own run: writing the
+table moves the head, and the run the table describes was measured at the head
+before it. So each task records the run of the task before it, and the last
+section here is always one task older than `main`. A task's own numbers live in
+its report until the next task copies them in.
+
 Use `gh api repos/dnhynk/Academic-Platform/actions/runs/<run-id>/jobs?per_page=100`
 and retain, for every job, `name`, `conclusion`, `started_at`, and
 `completed_at`. For reruns, query
@@ -1606,3 +1613,83 @@ which is 32 seconds inside a job whose observed spread is over nine minutes, so
 the honest statement is that the member's cost is not separable from runner
 variance at one reading. `ci.yml` is untouched and the workflow still
 materializes 22 required jobs.
+
+## The `P2-RF13` run
+
+`P2-RF13` changes `crates/capture-gate/tests/capture_scans.rs` and four other
+default-workspace tests, which the refresh rule names as a trigger. It adds no
+workspace member, touches no `.github/workflows/ci.yml`, and adds no migration,
+so the encrypted-store lane and the feature lanes carry only the hand-written
+`Debug` impls it added to five crates. Run
+[33816561226](https://github.com/dnhynk/Academic-Platform/actions/runs/33816561226)
+at `97d5601` completed 22/22 on its first and only attempt, all twenty-two jobs
+`success`, so nothing here is right-censored and no `cancel-in-progress`
+cancellation is being read as a duration.
+
+`P2-RF15` writes this table rather than `P2-RF13`. That task's turn ended with
+the run green and the record deliberately untouched, for the reason the refresh
+rule now states: `capture_scans.rs` is a default-workspace test, so writing the
+table would have moved the head off the commit the table describes.
+
+| Required job | Elapsed | Limit | Utilization |
+|---|---:|---:|---:|
+| `dependency-source-preflight` | 0:07 | 5:00 | 2.3% |
+| `rust-default-ubuntu-latest` | 5:23 | 30:00 | 17.9% |
+| `rust-default-ubuntu-24.04-arm` | 4:53 | 30:00 | 16.3% |
+| `rust-default-windows-latest` | 12:57 | 30:00 | 43.2% |
+| `rust-default-windows-11-arm` | 10:48 | 30:00 | 36.0% |
+| `rust-default-macos-latest` | 6:20 | 30:00 | 21.1% |
+| `rust-store-ubuntu-latest` | 1:35 | 30:00 | 5.3% |
+| `rust-store-ubuntu-24.04-arm` | 1:08 | 30:00 | 3.8% |
+| `rust-store-windows-latest` | 6:54 | 30:00 | 23.0% |
+| `rust-store-windows-11-arm` | 6:42 | 30:00 | 22.3% |
+| `rust-store-macos-latest` | 1:43 | 30:00 | 5.7% |
+| `rust-features-ubuntu-latest` | 4:04 | 30:00 | 13.6% |
+| `rust-features-ubuntu-24.04-arm` | 3:00 | 30:00 | 10.0% |
+| `rust-features-windows-latest` | 5:52 | 30:00 | 19.6% |
+| `rust-features-windows-11-arm` | 5:42 | 30:00 | 19.0% |
+| `rust-features-macos-latest` | 2:54 | 30:00 | 9.7% |
+| `phase1-exit-ubuntu-latest` | 4:12 | 45:00 | 9.3% |
+| `phase1-exit-windows-latest` | 8:15 | 45:00 | 18.3% |
+| `encrypted-store-lane-ubuntu-latest` | 3:42 | 45:00 | 8.2% |
+| `encrypted-portability-lane-ubuntu-latest` | 3:39 | 45:00 | 8.1% |
+| `rotation-orchestration-lane-ubuntu-latest` | 6:44 | 45:00 | 15.0% |
+| `pnpm-contracts` | 1:01 | 15:00 | 6.8% |
+
+The slowest job is `rust-default-windows-latest` at 43.2%, with
+`rust-default-windows-11-arm` beside it at 36.0%. **No row reaches 80%**, so
+this run is not a review trigger, and nothing here is grounds for removing a
+verification command. `rust-store-windows-latest` is the third slowest at 23.0%;
+every Linux, Linux ARM and macOS job is at or below 21.1%.
+
+### The range, enumerated
+
+The readings were enumerated by line rather than taken from the previous
+section's count, and the enumeration reproduces that section's range exactly --
+22 readings, 11:10 to 20:18, median 13:57 -- which is what makes it usable. They
+are the four in `Latest run`, the three of one tree in the store-split section,
+the second reading `P2-R2` kept beside its own, and one per run section from
+`Post-split budget` through `P2-X7`.
+
+| Readings | Smallest | Median | Largest |
+|---:|---:|---:|---:|
+| 23 | 11:10 (37.2%) | 13:47 (45.9%) | 20:18 (67.7%) |
+
+This reading, 12:57, is the **ninth smallest of the twenty-three**, and it pulls
+the median down by ten seconds. It is not evidence that the timeout can come
+down: **size headroom off the largest, 67.7%**, and off the one reading this
+range excludes -- the 30:14 attempt in the `P2-L2` section, which was cancelled
+at the limit and is right-censored, so the job's real cost there is at least
+100.8% and how much more is unknown.
+
+### What this run is and is not evidence for
+
+`P2-RF13` adds no crate and no CI step, so no job's shape changed. What it adds
+is five hand-written `Debug` impls and a whole-set classification of 137 byte
+fields in a Node test, and neither compiles into the Rust lanes' test binaries
+in a way one reading could separate from runner variance: the
+`rust-default-windows-latest` reading moved from `P2-X7`'s 13:44 to 12:57, which
+is 47 seconds **down** inside a job whose observed spread is over nine minutes.
+The honest statement is that this task's cost is not measurable at one reading.
+`pnpm-contracts`, which is where the Node scan actually runs, came in at 1:01
+against 15:00 -- the same second as `P2-X7`'s 1:02.
