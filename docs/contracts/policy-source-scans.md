@@ -2850,7 +2850,11 @@ Enumerating rather than counting is what surfaced that.
 both rows render as `NEEDS`, and
 `the_proof_statuses_cover_section_11_3s_own_tree` compares the document's tokens
 against that mapping in both directions, so the divergence is executed rather
-than described. This is the sixth count divergence found in this plan, after
+than described. `P2-RF17` added the two-credit-row reading itself: exactly two
+`X / Y` rows, each short of its threshold, carrying **different** labels that the
+mapping sends to one status. The sentence *labels two structurally identical
+credit rows differently* now fails when the document stops being true rather than
+staying on the page after it. This is the sixth count divergence found in this plan, after
 `§28`'s twelve engines called thirteen, `§31.3`'s fifteen dimensions called
 thirteen, `§14.2`'s six states called seven, `P2-U1`'s "five names, four
 relations", and `§11.2`'s fourteen rule types called thirteen.
@@ -2926,8 +2930,11 @@ The table is normative because it is the half that fixes the identifiers, and
 `GapKind` has five variants and `STEP_SIX_INFORMAL_NAMES` keeps step 6's four.
 `the_step_six_prose_names_one_fewer_than_the_table` compares both against the
 document and asserts that step 6 still names neither `context` nor `선택`, so a
-later edit that adds a fifth informal name is visible. Nothing was invented to
-reconcile them; `docs/contracts/gap-engine.md` records the reading.
+later edit that adds a fifth informal name is visible. `P2-RF17` widened it from
+step 6 to the whole of section 15, because *no prose sentence of section 15* is
+the claim and step 6 alone cannot carry it: section 15's lines are split into
+prose and table rows and both halves are checked in both directions. Nothing was
+invented to reconcile them; `docs/contracts/gap-engine.md` records the reading.
 
 ### The misattribution route this task found
 
