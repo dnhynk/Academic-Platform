@@ -32,10 +32,9 @@ use academic_domain::{EntityId, FreshnessBand};
 use common::{
     Scenario, TestResult, all_concepts, benefit, benefit_except, buffer_pool, cost_except,
     course_for, database_offering, disk_page, entity, evidence_id, experiment_for, fan_out,
-    flat_benefit,
-    flat_cost, flat_estimates, measured, member, page_layout, permissive_constraints, random_io,
-    reading_for, rule_set, section_16_1_graph, section_36_4_gap, slider_led_by, spec_order_slider,
-    storage_hierarchy, unmeasured, with_estimate,
+    flat_benefit, flat_cost, flat_estimates, measured, member, page_layout, permissive_constraints,
+    random_io, reading_for, rule_set, section_16_1_graph, section_36_4_gap, slider_led_by,
+    spec_order_slider, storage_hierarchy, unmeasured, with_estimate,
 };
 
 // ---------------------------------------------------------------------------
@@ -425,6 +424,40 @@ fn slider_changes_order_not_facts() -> TestResult {
         under_reversed.front().candidates().len()
     );
 
+    // A preference reads **both** ends of an interval. Two routes that share a
+    // low end and differ on the high one are separated by the high one, and a
+    // ranker that read the low end alone would call them equal and fall through
+    // to the identifier tie-break. Without this case, ordering by half an
+    // interval is invisible to every behavioural test here.
+    let straddling = straddling_estimates()?;
+    let led = slider_led_by(VectorAxis::Cost {
+        component: CostComponent::LearningEffort,
+    })?;
+    let straddled = plan(&academic_critical_path::PlanRequest {
+        estimates: &straddling,
+        slider: &led,
+        ..scenario.request()
+    })?;
+    let ordered = straddled.ranked();
+    assert_eq!(ordered.len(), 2, "both routes must survive to be ordered");
+    let tighter = ordered[0]
+        .candidate()
+        .cost()
+        .component(CostComponent::LearningEffort);
+    let looser = ordered[1]
+        .candidate()
+        .cost()
+        .component(CostComponent::LearningEffort);
+    assert_eq!(
+        tighter.low(),
+        looser.low(),
+        "the fixture routes do not share a low end, so this proves nothing"
+    );
+    assert!(
+        tighter.high() < looser.high(),
+        "the tighter interval did not rank first, so the high end is not read"
+    );
+
     // A preference that drops an axis is refused rather than treated as
     // indifference.
     let mut short = all_axes();
@@ -440,6 +473,55 @@ fn slider_changes_order_not_facts() -> TestResult {
         Err(academic_critical_path::CriticalPathError::SliderIsNotAPermutation)
     ));
     Ok(())
+}
+
+/// Two routes whose learning-effort intervals share a low end and differ on the
+/// high one, so only the high end can separate them.
+///
+/// The smaller branch's concept carries `[20, 20]` and the larger branch's two
+/// carry `[10, 10]` and `[10, 30]`, which sum to `[20, 40]`: the same low end,
+/// a wider high one. Neither dominates -- the benefit axes are equal and the
+/// cost axes agree on the low end -- so both survive elimination and the
+/// preference is what orders them.
+fn straddling_estimates() -> Result<Vec<ConceptEstimate>, Box<dyn Error>> {
+    let mut estimates = flat_estimates()?;
+    for (concept, low, high) in [
+        (storage_hierarchy(), 20, 20),
+        (fan_out(), 10, 10),
+        (page_layout(), 10, 30),
+    ] {
+        estimates = with_estimate(
+            estimates,
+            ConceptEstimate {
+                concept,
+                cost: cost_except(
+                    0,
+                    CostComponent::LearningEffort,
+                    measured(CostComponent::LearningEffort, low, high)?,
+                )?,
+                benefit: flat_benefit(10)?,
+                options: vec![reading_for(concept, "straddle")?],
+            },
+        );
+    }
+    // The two mandatory concepts contribute equally to both routes, so the only
+    // difference between the sums is the branch.
+    for concept in [buffer_pool(), disk_page(), random_io()] {
+        estimates = with_estimate(
+            estimates,
+            ConceptEstimate {
+                concept,
+                cost: cost_except(
+                    0,
+                    CostComponent::LearningEffort,
+                    measured(CostComponent::LearningEffort, 0, 0)?,
+                )?,
+                benefit: flat_benefit(10)?,
+                options: vec![reading_for(concept, "straddle")?],
+            },
+        );
+    }
+    Ok(estimates)
 }
 
 /// Two routes that differ in opposite directions on two axes, so neither
@@ -2001,5 +2083,141 @@ fn a_candidate_and_its_satisfying_set_must_agree() -> TestResult {
         ),
         Err(academic_critical_path::CriticalPathError::CandidateStepMissing)
     ));
+    Ok(())
+}
+
+/// An `Unknown` constraint input is neither a pass nor a fail.
+///
+/// §28's graduation-audit invariant is `unknown을 pass/fail로 강제하지 않음`,
+/// and this is the same refusal in this engine. The fixture is section 36.7's
+/// own shape: an offering the registrar admits, whose *standing* is
+/// `HISTORICALLY_LIKELY` rather than `CONFIRMED`. Every other constraint says
+/// `SATISFIED`, so the route is refused for exactly one reason and the
+/// disclosure names it.
+///
+/// Without this case, folding an unknown into whatever the other input said
+/// would be invisible to every behavioural test: the `CANCELLED` fixture
+/// already reaches `VIOLATED` through the other half of the same function.
+#[test]
+fn an_unknown_constraint_input_is_not_a_pass() -> TestResult {
+    for (status, expected) in [
+        (OfferingStatus::Confirmed, ConstraintVerdict::Satisfied),
+        (
+            OfferingStatus::HistoricallyLikely,
+            ConstraintVerdict::Unknown,
+        ),
+        (OfferingStatus::Uncertain, ConstraintVerdict::Unknown),
+        (OfferingStatus::Cancelled, ConstraintVerdict::Violated),
+    ] {
+        let gap_case = section_36_4_gap()?;
+        let graph = section_16_1_graph(&[])?;
+        let estimates = with_estimate(
+            flat_estimates()?,
+            ConceptEstimate {
+                concept: disk_page(),
+                cost: flat_cost(10)?,
+                benefit: flat_benefit(10)?,
+                options: vec![course_for(
+                    disk_page(),
+                    database_offering(),
+                    status,
+                    3,
+                    "db",
+                )?],
+            },
+        );
+        let constraints = permissive_constraints();
+        let slider = spec_order_slider()?;
+        let result = plan(&academic_critical_path::PlanRequest {
+            gap_case: &gap_case,
+            graph: &graph,
+            estimates: &estimates,
+            constraints: &constraints,
+            slider: &slider,
+            rule_set_hash: rule_set(),
+            engine_version: 1,
+        })?;
+
+        if expected.admits() {
+            let first = result.ranked().first().ok_or("no route survived")?;
+            assert_eq!(
+                first
+                    .candidate()
+                    .verdict_of(Constraint::OfferingStandingAndOfficialPrerequisite),
+                expected,
+                "{status:?} reached the wrong verdict"
+            );
+        } else {
+            // Both non-admitting verdicts take the route off the front, and the
+            // disclosure is where they are told apart: an `Unknown` route is
+            // `CONSTRAINT_UNKNOWN` and a refused one is `CONSTRAINT_VIOLATED`.
+            let excluded = result.disclosure().exclusions().routes();
+            assert!(!excluded.is_empty(), "{status:?} disclosed no exclusion");
+            let reason = if expected == ConstraintVerdict::Unknown {
+                academic_critical_path::ExclusionReason::ConstraintUnknown
+            } else {
+                academic_critical_path::ExclusionReason::ConstraintViolated
+            };
+            assert!(
+                excluded.iter().any(|route| {
+                    route.reason == reason
+                        && route.constraint
+                            == Some(Constraint::OfferingStandingAndOfficialPrerequisite)
+                }),
+                "{status:?} was disclosed as {:?} rather than {reason:?}",
+                excluded
+                    .iter()
+                    .map(|route| route.reason)
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    // The registrar's own answer is the other input, and its `Unknown` is a
+    // value too: §28's `OFFICIAL_PREREQUISITE` engine is `PLANNED`.
+    let gap_case = section_36_4_gap()?;
+    let graph = section_16_1_graph(&[])?;
+    let estimates = with_estimate(
+        flat_estimates()?,
+        ConceptEstimate {
+            concept: disk_page(),
+            cost: flat_cost(10)?,
+            benefit: flat_benefit(10)?,
+            options: vec![course_for(
+                disk_page(),
+                database_offering(),
+                OfferingStatus::Confirmed,
+                3,
+                "db",
+            )?],
+        },
+    );
+    let mut constraints = permissive_constraints();
+    constraints.official_prerequisites = Vec::new();
+    let slider = spec_order_slider()?;
+    let result = plan(&academic_critical_path::PlanRequest {
+        gap_case: &gap_case,
+        graph: &graph,
+        estimates: &estimates,
+        constraints: &constraints,
+        slider: &slider,
+        rule_set_hash: rule_set(),
+        engine_version: 1,
+    })?;
+    assert!(
+        result.ranked().is_empty(),
+        "a course whose registrar prerequisites nobody evaluated was recommended"
+    );
+    assert!(
+        result
+            .disclosure()
+            .exclusions()
+            .routes()
+            .iter()
+            .any(|route| {
+                route.reason == academic_critical_path::ExclusionReason::ConstraintUnknown
+            }),
+        "an unevaluated registrar prerequisite was not disclosed as unknown"
+    );
     Ok(())
 }
