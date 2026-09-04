@@ -1,0 +1,49 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-k",
+  "task": "P2-P1",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-P1 admits no external crate. academic-export links academic-audit, academic-domain, academic-requirement, serde, serde_json and sha2 as product edges and academic-contracts, academic-ingestion, academic-portability, academic-record, academic-store, academic-vault and ed25519-dalek as dev edges, all covered by earlier reviewed receipts, and adds one workspace path package. Its product closure deliberately contains no store, vault, crypto, keystore, recovery, retention, projection or transport crate: INV-C-015 is the claim that a user can read their own record when this product and their school account are both gone, and a writer that needed the database engine or a reader that needed the key hierarchy would make that claim about software the user no longer has.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-export is the P2-P1 graduation-export boundary: export schema v2, the six parts section 37 names, section 32.10's per-file sensitivity label, sharing restriction and source copyright notice, user-selected inclusion of originals, and the clean-room reader that re-runs P2-U3's graduation audit from the directory alone. It is a separate package from academic-portability because that crate owns the Phase 1 open export, the plaintext backup and the P2-K4 encrypted lane, all three of which link academic-store; a v2 bundle written from that crate would have put the database engine inside the closure of the artefact a user keeps after the product is gone.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-P1 adds no pnpm workspace package and no Node script. Its scans are Rust test targets in the crate they scan."
+  },
+  "direct_workspace_dependencies": {
+    "academic-audit": "P2-U3's GRADUATION_AUDIT engine and section 11.1's selector. The clean-room reader re-performs the selection from the recorded catalogue scope and the profile decoded out of the frozen inputs, then evaluates the engine and byte-compares the outcome. SelectedRuleSet has private fields and one producer, inside academic_audit::select, so the decision about which published rules apply is genuinely taken again rather than restored.",
+    "academic-domain": "The identifiers a bundle addresses records by, the ContentDigest every file and every object is verified against, and section 3.9's engine vocabulary -- FrozenInputs, EngineOutcome, EngineVersion, ProofNode, RuleSetHash -- the recorded audit is expressed in.",
+    "academic-requirement": "P2-U2's published RuleSet. The bundle carries the rule set's canonical text, whose SHA-256 is the rule_set_hash section 37 says a historical audit is replayed against; the RuleSet itself is supplied by the caller and never minted from the bundle, because a bundle that could publish rules would be a way around P2-U2's two-attestation review gate.",
+    "serde": "The manifest, the part records and the JSON-LD documents are typed values whose fields serialise in declaration order, which is what makes two bundles of one watermark byte-identical.",
+    "serde_json": "The manifest and the JSON-LD renderings. Every list is a Vec rather than a map, so byte order is a property of this crate rather than of a map implementation and its feature flags.",
+    "sha2": "The streaming digest of every file copied into a bundle, and the manifest's own semantic digest."
+  },
+  "dev_workspace_dependencies": {
+    "academic-contracts": "The fixture signs and verifies the batches it accepts, so the envelopes a bundle copies byte-for-byte are envelopes the ledger really accepted.",
+    "academic-ingestion": "Reached through P2-U3's own fixture module, which this crate's fixture includes by path rather than transcribing. A second transcription of a rule set, a transcript and a profile would drift.",
+    "academic-portability": "The Phase 1 open export, and the canonical rows read back out of the profile. The round trip compares the bundle against the store's own rows rather than against the value the bundle was written from, and this is the crate that reads them.",
+    "academic-record": "The same path include: P2-U4's attempt ledger is what P2-U3's transcript snapshot is built from.",
+    "academic-store": "The fixture creates a synthetic profile and accepts signed batches into it through the store's own acceptance path, so the watermark a bundle is taken of is a committed one.",
+    "academic-vault": "The fixture seals its artifacts through the vault's own ingest, which is what makes two artifacts with identical bytes share one vault locator -- the P2-A1 shape original_inclusion_is_user_selected_with_no_dangling_locator measures.",
+    "ed25519-dalek": "The fixed synthetic signing key the fixture's device holds."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-export",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-export",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-export is a workspace path crate, not an external dependency. It owns export schema v2 and the vendor-free reader, and it holds no writer and no key: it has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-projections, academic-recovery, academic-retention, academic-rpc or academic-connector, so neither the canonical writer nor the key hierarchy is in the closure a bundle is read against. Its declared product closure of every edge kind is academic-audit, academic-domain, academic-egress-boundary, academic-ingestion, academic-policy, academic-record, academic-requirement, academic-transcript and academic-untrusted-content; the egress-boundary, policy, transcript and untrusted-content edges are transitive through academic-audit, and no product file here names an egress, policy or untrusted-content item. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-policy's bundled SQLite by way of academic-audit.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. the_product_source_reaches_only_the_declared_vocabulary compares four whole sets in both directions -- every snake_case path root, every crate brought into scope, every std module reached including the ones hidden inside a braced use group, and every macro invoked -- plus per-item sets for the two std modules that are admitted but sharp, so std::net, std::env and std::process::exit each fail as an addition rather than as something an author had to predict. The one clock read in the crate is std::process-free and names a staging directory the publish rename removes; the generation instant a manifest records is a parameter of the request. read_bundle takes a path and no key, passphrase, device authorization, token, host, account, session or provider, and rerun_audit takes a bundle and the rule sets the caller already holds: there is no argument to pass a vendor endpoint as. Every fixture is synthetic, built from a Phase 1 synthetic profile and P2-U3's own synthetic corpus.",
+  "advisory_path": "Unchanged. Every external crate academic-export links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

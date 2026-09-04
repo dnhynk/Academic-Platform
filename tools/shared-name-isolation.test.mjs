@@ -470,6 +470,7 @@ const ROOT_PRODUCERS = new Map([
     "crates/capture-gate/src/native/windows.rs::profile_lock_path",
     "The same, for the capture device layer's profile.",
   ],
+  ["crates/export/tests/support/mod.rs::temporary_base", "The temporary directory."],
 ]);
 
 /** The variables that name a directory the machine owns. */
@@ -675,6 +676,10 @@ const SHARED_NAME_SITES = new Map([
   [
     'crates/worker/tests/containment.rs :: home.join(format!(".academic-worker-g4-{label}-{}-{nanos}-{sequence}",std::process::id()))',
     "UNIQUE: process id, wall clock and a counter, reserved with `create_dir`. This is the name that had none. `Drop` removes the directory, so two lanes deleted each other's canary and the survivor measured ERROR_PATH_NOT_FOUND where the backend owed ERROR_ACCESS_DENIED.",
+  ],
+  [
+    'crates/export/tests/support/mod.rs :: temporary_base()?.join(format!("acad-p1-{label}-{}-{nanos}-{sequence}",std::process::id()))',
+    "UNIQUE: process id, wall clock and a counter, reserved with `create_dir`.",
   ],
 ]);
 

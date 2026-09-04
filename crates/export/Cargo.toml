@@ -1,0 +1,49 @@
+[package]
+name = "academic-export"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The `P2-P1` boundary, and the reason its edge list is this short.
+#
+# `INV-C-015` is the claim that a user keeps their own record when this product
+# and their school account are both gone. A bundle writer that needed the
+# product's database engine to run, or a reader that needed its key hierarchy,
+# would make that claim about software the user no longer has. So this crate
+# links no store, no vault, no crypto, no keystore, no recovery, no retention,
+# no projection, no transport and no model: the writer's input is a value the
+# caller already holds, and the reader's input is a directory of bytes.
+#
+# `academic-domain` supplies the identifiers, the content digest, and the §3.9
+# engine vocabulary -- `FrozenInputs`, `EngineOutcome`, `EngineVersion` -- the
+# recorded audit is expressed in.
+#
+# `academic-audit` and `academic-requirement` are what makes
+# `clean_offline_restore_reruns_deterministic_audit` a re-run rather than a
+# re-read: the reader re-performs `P2-U3`'s selection and evaluation from the
+# bundle, and `SelectedRuleSet` has exactly one producer.
+[dependencies]
+academic-audit = { path = "../audit" }
+academic-domain = { path = "../domain" }
+academic-requirement = { path = "../requirement" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+# The round trip needs a real committed watermark rather than a value a test
+# typed, so the fixture builds a Phase 1 synthetic profile, accepts signed
+# batches into it, and reads the canonical rows back through the crate that
+# owns them. None of these is a product edge of this crate.
+academic-contracts = { path = "../contracts" }
+academic-ingestion = { path = "../ingestion" }
+academic-portability = { path = "../portability" }
+academic-record = { path = "../record" }
+academic-store = { path = "../store" }
+academic-vault = { path = "../vault" }
+ed25519-dalek.workspace = true
+
+[lints]
+workspace = true

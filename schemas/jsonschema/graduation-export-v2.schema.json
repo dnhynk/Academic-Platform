@@ -1,0 +1,382 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://learning-platform.local/schemas/graduation-export-v2.schema.json",
+  "title": "Graduation export bundle manifest, schema v2",
+  "description": "Provenance manifest of the section 37 graduation export. The bundle is a directory, not an archive. Every value under `semantic` is hashed into `semantic_digest`; `volatile` carries the generation instant the caller recorded and is deliberately outside that digest. Every file carries section 32.10's three attributes: a sensitivity label, a sharing restriction derived from it, and the source copyright notice of the security domain whose terms cover it. Projections are never bundle content. Original artifact bytes travel only when the user chose that, and a withheld original records its identity and no path, so nothing in a published bundle points at a file the bundle does not carry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["semantic", "semantic_digest", "volatile"],
+  "properties": {
+    "semantic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "manifest_version",
+        "generator",
+        "policy",
+        "encrypted",
+        "projections_included",
+        "originals_included",
+        "store",
+        "watermark",
+        "device_heads",
+        "canonical_semantic_digest",
+        "counts",
+        "parts",
+        "objects",
+        "git_refs",
+        "audit",
+        "manifest_attributes",
+        "files"
+      ],
+      "properties": {
+        "format": { "const": "academic-graduation-export-v2" },
+        "manifest_version": { "const": 2 },
+        "generator": { "const": "academic-os.graduation-export.v2" },
+        "policy": { "$ref": "#/$defs/posture" },
+        "encrypted": {
+          "const": false,
+          "description": "Export schema v2 is the open interchange format. Confidentiality of a backup at rest belongs to the encrypted backup of P2-K4, which is a different artefact with a different manifest."
+        },
+        "projections_included": {
+          "const": false,
+          "description": "A projection is a disposable generation rebuilt from the ledger and is never export content."
+        },
+        "originals_included": {
+          "type": "boolean",
+          "description": "The user's choice. True exactly when every object record carries a path."
+        },
+        "store": { "$ref": "#/$defs/store" },
+        "watermark": { "$ref": "#/$defs/watermark" },
+        "device_heads": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/deviceHead" }
+        },
+        "canonical_semantic_digest": { "$ref": "#/$defs/hex64" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "parts": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/part" },
+          "description": "The six parts section 37 names, in the order that section lists them."
+        },
+        "objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/object" }
+        },
+        "git_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/gitRef" }
+        },
+        "audit": { "$ref": "#/$defs/audit" },
+        "manifest_attributes": { "$ref": "#/$defs/manifestAttributes" },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/file" },
+          "description": "Every file in the bundle except `manifest.json`, which cannot carry its own digest and whose three attributes are in `manifest_attributes`."
+        }
+      }
+    },
+    "semantic_digest": { "$ref": "#/$defs/hex64" },
+    "volatile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generated_at_unix_ms"],
+      "properties": {
+        "generated_at_unix_ms": {
+          "type": "integer",
+          "description": "The instant the caller recorded. Not read from a clock: two bundles of one watermark written with one recorded instant are byte-identical whole-file."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hex64": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sensitivity": {
+      "enum": ["PUBLIC", "PERSONAL", "RESTRICTED", "SECRET"]
+    },
+    "sharingRestriction": {
+      "enum": [
+        "REDISTRIBUTION_PERMITTED",
+        "PERSONAL_USE_ONLY",
+        "NO_REDISTRIBUTION_WITHOUT_SOURCE_PERMISSION",
+        "NO_DISCLOSURE"
+      ]
+    },
+    "posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_policy",
+        "storage_mode",
+        "storage_encryption",
+        "production_data_allowed",
+        "product_network"
+      ],
+      "properties": {
+        "data_policy": { "type": "string", "minLength": 1 },
+        "storage_mode": { "type": "string", "minLength": 1 },
+        "storage_encryption": { "type": "string", "minLength": 1 },
+        "production_data_allowed": { "const": false },
+        "product_network": { "type": "string", "minLength": 1 }
+      }
+    },
+    "store": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format_uuid", "schema_version", "schema_semver"],
+      "properties": {
+        "format_uuid": { "type": "string", "minLength": 1 },
+        "schema_version": { "type": "integer", "minimum": 0 },
+        "schema_semver": { "type": "string", "minLength": 1 }
+      }
+    },
+    "watermark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "next_accept_seq",
+        "profile_revision",
+        "accept_seq_head",
+        "outbox_head"
+      ],
+      "properties": {
+        "next_accept_seq": { "type": "integer", "minimum": 0 },
+        "profile_revision": { "type": "integer", "minimum": 0 },
+        "accept_seq_head": { "type": "integer", "minimum": 0 },
+        "outbox_head": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "deviceHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_id", "next_origin_seq", "head_envelope_sha256"],
+      "properties": {
+        "device_id": { "type": "string", "minLength": 1 },
+        "next_origin_seq": { "type": "integer", "minimum": 0 },
+        "head_envelope_sha256": { "$ref": "#/$defs/hex64" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "batches",
+        "events",
+        "scopes",
+        "artifacts",
+        "evidence",
+        "claims",
+        "relations",
+        "decisions"
+      ],
+      "properties": {
+        "batches": { "type": "integer", "minimum": 0 },
+        "events": { "type": "integer", "minimum": 0 },
+        "scopes": { "type": "integer", "minimum": 0 },
+        "artifacts": { "type": "integer", "minimum": 0 },
+        "evidence": { "type": "integer", "minimum": 0 },
+        "claims": { "type": "integer", "minimum": 0 },
+        "relations": { "type": "integer", "minimum": 0 },
+        "decisions": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["part", "directory", "specification_sentence", "files"],
+      "properties": {
+        "part": {
+          "enum": [
+            "OFFICIAL_RECORD_AND_PROOF",
+            "LECTURE_AND_QUESTION_ARCHIVE",
+            "CONCEPT_AND_COMPETENCY_EVIDENCE",
+            "REPOSITORY_SNAPSHOT_AND_EVOLUTION",
+            "ROLE_INTEREST_AND_ALTERNATIVE_PATHS",
+            "MACHINE_READABLE_GRAPH"
+          ]
+        },
+        "directory": { "type": "string", "minLength": 1 },
+        "specification_sentence": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Section 37's own bullet for this part, verbatim."
+        },
+        "files": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "domain_id",
+        "media_type",
+        "plaintext_sha256",
+        "byte_length",
+        "vault_locator",
+        "sensitivity",
+        "path",
+        "withheld"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The artifact's own identifier, which is its only address in a bundle."
+        },
+        "domain_id": { "type": "string", "minLength": 1 },
+        "media_type": { "type": "string", "minLength": 1 },
+        "plaintext_sha256": { "$ref": "#/$defs/hex64" },
+        "byte_length": { "type": "integer", "minimum": 0 },
+        "vault_locator": {
+          "type": "string",
+          "description": "Recorded as an attribute and used as nothing. Two artifacts with identical bytes in one security domain share a locator, so a bundle keyed by it would publish one file for both."
+        },
+        "sensitivity": { "$ref": "#/$defs/sensitivity" },
+        "path": {
+          "type": ["string", "null"],
+          "description": "Present exactly when the original bytes travel."
+        },
+        "withheld": {
+          "type": ["string", "null"],
+          "enum": ["USER_EXCLUDED_ORIGINALS", null]
+        }
+      }
+    },
+    "gitRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository_id",
+        "snapshot_id",
+        "domain_id",
+        "branch",
+        "commit",
+        "parent_snapshots",
+        "submodules"
+      ],
+      "properties": {
+        "repository_id": { "type": "string", "minLength": 1 },
+        "snapshot_id": { "type": "string", "minLength": 1 },
+        "domain_id": { "type": "string", "minLength": 1 },
+        "branch": { "type": ["string", "null"] },
+        "commit": { "type": ["string", "null"], "pattern": "^[0-9a-f]*$" },
+        "parent_snapshots": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "submodules": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine_id",
+        "engine_version",
+        "rule_set_hash",
+        "rule_set_version",
+        "frozen_inputs_sha256",
+        "outcome_sha256",
+        "selected_scope",
+        "frozen_inputs_path",
+        "rule_set_path",
+        "outcome_path",
+        "proof_tree_path"
+      ],
+      "properties": {
+        "engine_id": { "const": "engine.graduation.audit" },
+        "engine_version": { "type": "integer", "minimum": 1 },
+        "rule_set_hash": {
+          "$ref": "#/$defs/hex64",
+          "description": "SHA-256 of the published rule set's canonical text, which is the hash section 37 says a historical audit is replayed against."
+        },
+        "rule_set_version": { "type": "integer", "minimum": 1 },
+        "frozen_inputs_sha256": { "$ref": "#/$defs/hex64" },
+        "outcome_sha256": { "$ref": "#/$defs/hex64" },
+        "selected_scope": { "$ref": "#/$defs/catalogScope" },
+        "frozen_inputs_path": { "type": "string", "minLength": 1 },
+        "rule_set_path": { "type": "string", "minLength": 1 },
+        "outcome_path": { "type": "string", "minLength": 1 },
+        "proof_tree_path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "catalogScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "university",
+        "college",
+        "department",
+        "admission_year",
+        "standard_from",
+        "standard_to",
+        "major_mode"
+      ],
+      "properties": {
+        "university": { "type": "string", "minLength": 1 },
+        "college": { "type": "string", "minLength": 1 },
+        "department": { "type": "string", "minLength": 1 },
+        "admission_year": { "type": "integer", "minimum": 1900, "maximum": 2200 },
+        "standard_from": { "type": "string", "minLength": 1 },
+        "standard_to": { "type": "string", "minLength": 1 },
+        "major_mode": {
+          "enum": [
+            "SINGLE_MAJOR",
+            "DOUBLE_MAJOR",
+            "MINOR",
+            "UNITED_MAJOR",
+            "LINKED_MAJOR"
+          ]
+        }
+      }
+    },
+    "manifestAttributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sensitivity", "sharing_restriction", "copyright_notice"],
+      "properties": {
+        "sensitivity": { "$ref": "#/$defs/sensitivity" },
+        "sharing_restriction": { "$ref": "#/$defs/sharingRestriction" },
+        "copyright_notice": { "type": "string", "minLength": 1 }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "byte_length",
+        "sha256",
+        "sensitivity",
+        "sharing_restriction",
+        "copyright_notice"
+      ],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "byte_length": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/hex64" },
+        "sensitivity": { "$ref": "#/$defs/sensitivity" },
+        "sharing_restriction": { "$ref": "#/$defs/sharingRestriction" },
+        "copyright_notice": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

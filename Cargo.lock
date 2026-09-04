@@ -236,6 +236,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-export"
+version = "0.1.0"
+dependencies = [
+ "academic-audit",
+ "academic-contracts",
+ "academic-domain",
+ "academic-ingestion",
+ "academic-portability",
+ "academic-record",
+ "academic-requirement",
+ "academic-store",
+ "academic-vault",
+ "ed25519-dalek",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "academic-export-job"
 version = "0.1.0"
 dependencies = [
