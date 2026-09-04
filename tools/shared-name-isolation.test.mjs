@@ -681,6 +681,10 @@ const SHARED_NAME_SITES = new Map([
     'crates/export/tests/support/mod.rs :: temporary_base()?.join(format!("acad-p1-{label}-{}-{nanos}-{sequence}",std::process::id()))',
     "UNIQUE: process id, wall clock and a counter, reserved with `create_dir`.",
   ],
+  [
+    'crates/readiness/tests/readiness_export.rs :: std::env::temp_dir().join(format!("acad-y3-{label}-{}-{nanos}-{sequence}",std::process::id()))',
+    "UNIQUE: process id, wall clock and a counter, reserved with `create_dir`. `P2-Y3` writes a real `P2-P1` bundle here to measure that the non-guarantee notice survives export; `Drop` removes the tree, so a shared name would have had two lanes deleting each other's bundle.",
+  ],
 ]);
 
 /**

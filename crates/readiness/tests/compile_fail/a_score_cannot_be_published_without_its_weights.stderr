@@ -1,0 +1,15 @@
+error[E0061]: this function takes 6 arguments but 5 arguments were supplied
+  --> tests/compile_fail/a_score_cannot_be_published_without_its_weights.rs:20:5
+   |
+20 |     disclose(matrix, competencies, rubric, sources, missing)
+   |     ^^^^^^^^------------------------------------------------ argument #6 of type `WeightDisclosure` is missing
+   |
+note: function defined here
+  --> src/score.rs
+   |
+   | pub fn disclose(
+   |        ^^^^^^^^
+help: provide the argument
+   |
+20 |     disclose(matrix, competencies, rubric, sources, missing, /* WeightDisclosure */)
+   |                                                            ++++++++++++++++++++++++

@@ -1,0 +1,11 @@
+error[E0599]: no method named `set_freshness` found for mutable reference `&mut ReadinessRow` in the current scope
+  --> tests/compile_fail/a_row_cannot_be_edited_in_place.rs:11:9
+   |
+11 |     row.set_freshness(FreshnessBand::VeryHigh);
+   |         ^^^^^^^^^^^^^
+   |
+help: there is a method `freshness` with a similar name, but with different arguments
+  --> src/matrix.rs
+   |
+   |     pub const fn freshness(&self) -> FreshnessCell {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,7 @@
+error: cannot construct `academic_readiness::AuxiliaryScore` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_score_cannot_be_assembled_field_by_field.rs:10:5
+   |
+10 |     AuxiliaryScore { value }
+   |     ^^^^^^^^^^^^^^   ----- private field
+   |
+   = note: ...and other private fields `rubric`, `sources`, `missing_data` and `weights` that were not provided

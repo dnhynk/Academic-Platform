@@ -406,6 +406,30 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // than a source scan; and no `academic-policy`, so no capability-bearing
     // value is nameable from a product file here.
     "academic-proposal": ["academic-domain"],
+    // `P2-Y3`'s section 24.3 readiness view. Four product edges and each one is
+    // a boundary it reads a fact out of rather than a vocabulary it rebuilds:
+    // `academic-competency` for `P2-Y1`'s competency, criterion and stage
+    // values -- a matrix row names the first, a walk ends at the second, and a
+    // placement carries the third read off the record rather than asserted;
+    // `academic-role-profile` for `P2-Y2`'s lineage-and-version pair, which is
+    // what a matrix is *of*, and its three importance words; `academic-domain`
+    // for section 13.3's `FreshnessBand`, so the sixth column carries `P2-N3`'s
+    // enumeration and declares no second one; and `academic-knowledge-state`
+    // for section 13.1's own sentence that no evidence is not a failed
+    // examination. The edges it does *not* have are the point: no
+    // `academic-store` -- it persists nothing and adds no migration -- no
+    // `academic-worker` and no `academic-egress-boundary`, so nothing in its
+    // closure can launch a process or stage a payload, and **no
+    // `academic-export`**, because a view that linked the exporter could carry
+    // a notice the exporter minted. The notice travels inside the document
+    // instead, and `academic-export` is a dev edge so the export path is
+    // measured rather than assumed.
+    "academic-readiness": [
+      "academic-competency",
+      "academic-domain",
+      "academic-knowledge-state",
+      "academic-role-profile",
+    ],
     "academic-record": ["academic-domain", "academic-transcript"],
     "academic-requirement": ["academic-domain", "academic-ingestion"],
     // `P2-R1`'s repository snapshot boundary. Three product edges, each a
@@ -878,6 +902,37 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `FreshnessBand`. `academic-consent` is declared twice so that a case can
     // reach the `CaptureStatus` the four permission words are the image of.
     "academic-home": ["academic-consent", "academic-domain"],
+    // `P2-Y3`'s acceptance suite runs the chains rather than fabricating their
+    // outputs: `P2-R1`'s capture, `P2-R2`'s ladder, `P2-R3`'s correlation,
+    // `P2-R4`'s classification and `P2-R5`'s promotion for the one personal
+    // application claim a `FROM_PROJECT` walk starts from, and `P2-Y1`'s and
+    // `P2-Y2`'s own `declare` for every competency and bundle.
+    // `academic-competency` and `academic-role-profile` are declared a second
+    // time for the `trybuild` reason `academic-scenario` gives below.
+    // `academic-export` is the edge that carries the task: it is a **dev** edge,
+    // so `non_guarantee_disclaimer_survives_export` writes a real `P2-P1`
+    // bundle and reads it back with no key and no vendor, and the product
+    // closure above still holds no exporter. `academic-audit`,
+    // `academic-ingestion`, `academic-record` and `academic-requirement` are
+    // what `P2-U3`'s fixture module needs, reached by `#[path]` the way
+    // `academic-export`'s own suite reaches it.
+    "academic-readiness": [
+      "academic-audit",
+      "academic-competency",
+      "academic-export",
+      "academic-ingestion",
+      "academic-model-run",
+      "academic-policy",
+      "academic-record",
+      "academic-repository",
+      "academic-repository-analysis",
+      "academic-repository-classification",
+      "academic-repository-competency",
+      "academic-repository-correlation",
+      "academic-requirement",
+      "academic-role-profile",
+      "academic-untrusted-content",
+    ],
     "academic-requirement": ["academic-domain"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
     // The encrypted portability acceptance suite builds its keys through the
@@ -2831,6 +2886,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   // bundle, entry, adjustment and date as an argument. There is no feed edge of
   // any kind, which is `GATE-38-029` in this table.
   "academic-role-profile": ["libc"],
+  // `P2-Y3`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `P2-R1`, `P2-R2`, `P2-R4`, `P2-R5` and `P2-Y1`. The crate spells no
+  // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
+  // rather than empty; it opens nothing at all, reads no clock, and takes every
+  // matrix, placement, weight and band as an argument.
+  "academic-readiness": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-requirement": ["libc"],
   "academic-retention": ["libc"],
@@ -5638,6 +5699,57 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-competency",
     "serde_json",
     "trybuild",
+  ]);
+
+  // `P2-Y3` adds one workspace path package, `academic-readiness`, and admits
+  // no external crate: its product edges are `academic-competency`,
+  // `academic-domain`, `academic-knowledge-state`, `academic-role-profile`,
+  // `serde` and `thiserror`, and its dev edges are the `P2-R1`--`P2-R5` chain,
+  // `P2-U3`'s fixture module and `P2-P1`'s exporter, all already in this lock
+  // through earlier receipts. The `academic-export` edge is the one that needs
+  // a reason and the receipt carries it: `non_guarantee_disclaimer_survives_export`
+  // is a claim about the bundle a user keeps when this product is gone, so it
+  // is measured against that crate's own writer and reader rather than against
+  // a copy of them -- and it stays a **dev** edge, because a readiness view
+  // whose product closure held the exporter could carry a notice the exporter
+  // minted instead of one the document carries.
+  const {
+    receipt: readinessReceipt,
+    admitted: readinessAdmitted,
+    pathPackages: readinessPathPackages,
+  } = receiptFor("P2-Y3");
+  assert.equal(readinessAdmitted.size, 0, "P2-Y3 must admit no external crate");
+  assert.deepEqual([...readinessPathPackages], ["academic-readiness@0.1.0"]);
+  assert.deepEqual(readinessReceipt.summary.npm_additions, []);
+  assert.equal(readinessReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(readinessReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(readinessReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof readinessReceipt.no_second_vocabulary_note, "string");
+  assert.deepEqual(Object.keys(readinessReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-competency",
+    "academic-domain",
+    "academic-knowledge-state",
+    "academic-role-profile",
+  ]);
+  assert.deepEqual(Object.keys(readinessReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-audit",
+    "academic-competency",
+    "academic-export",
+    "academic-ingestion",
+    "academic-model-run",
+    "academic-policy",
+    "academic-record",
+    "academic-repository",
+    "academic-repository-analysis",
+    "academic-repository-classification",
+    "academic-repository-competency",
+    "academic-repository-correlation",
+    "academic-requirement",
+    "academic-role-profile",
+    "academic-untrusted-content",
+    "serde_json",
+    "trybuild",
+    "uuid",
   ]);
   // `P2-L5` adds one workspace path package, `academic-student-voice`, and
   // admits no external crate: its product edges are `academic-capture`,
