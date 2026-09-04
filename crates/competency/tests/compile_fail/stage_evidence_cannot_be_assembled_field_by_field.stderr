@@ -1,0 +1,13 @@
+error[E0451]: fields `id`, `stage`, `concept` and `source` of struct `StageEvidence` are private
+  --> tests/compile_fail/stage_evidence_cannot_be_assembled_field_by_field.rs:13:9
+   |
+12 |     let _ = StageEvidence {
+   |             ------------- in this type
+13 |         id: RecordId::new("r-1").unwrap_or_else(|_| unreachable!()),
+   |         ^^ private field
+14 |         stage: EvidenceStage::DebuggedIncident,
+   |         ^^^^^ private field
+15 |         concept: ConceptRef::classification("express").unwrap_or_else(|_| unreachable!()),
+   |         ^^^^^^^ private field
+16 |         source: EvidenceSource::KnowledgeState(
+   |         ^^^^^^ private field

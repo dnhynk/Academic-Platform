@@ -1,0 +1,62 @@
+[package]
+name = "academic-competency"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Three product edges, and each one is a boundary this crate reads a fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-domain` is `P2-C1` and `P2-N1`. Section 7.1 already places
+# `Competency` in the node hierarchy and section 7.2 already fixes
+# `ENABLES_COMPETENCY`'s direction, cardinality and closed qualifier schema, so
+# `EnablingEdge` is measured against `PredicateName::EnablesCompetency`'s
+# descriptor rather than declared beside it. `EntityId` is the ontology's own
+# concept identity, so a criterion naming a concept names the registry's value.
+#
+# `academic-knowledge-state` is `P2-N2`. Section 13.2's `dependency/install/
+# import만 존재` row already carries `EvidenceCeiling::NoPromotion`, so section
+# 24.3's `dependency를 사용했다는 이유만으로 competency를 채우지 않는다` is that
+# table's own answer read through `PromotingEvidence`, not a second rule here.
+#
+# `academic-repository-competency` is `P2-R5`. It already separated
+# `ProjectSnapshot OBSERVES Concept` from `User APPLIED Concept` into two
+# identities and two provenances, and this crate takes the second and has no
+# constructor at all for the first: `EvidenceFoundation` enumerates two doors
+# and neither of them is a `ProjectObservationClaim`.
+#
+# The edges it does not have are the point: no `academic-store`, so nothing here
+# reaches the canonical writer and no migration is added; no `academic-worker`
+# and no `academic-egress-boundary`, so nothing in its closure can launch a
+# process or stage a payload.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-knowledge-state = { path = "../knowledge-state" }
+academic-repository-competency = { path = "../repository-competency" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite builds its repository evidence by running `P2-R1`'s own
+# capture, `P2-R2`'s own ladder, `P2-R3`'s own correlation, `P2-R4`'s own
+# classification and `P2-R5`'s own promotion over synthetic corpora, and its
+# knowledge-state evidence through `P2-N2`'s own four eligibility checks, rather
+# than fabricating a finding or an admitted item. `academic-domain` is declared
+# twice for the `trybuild` reason `academic-scenario` gives: a compile-fail case
+# compiles against this crate plus its dev-dependencies.
+[dev-dependencies]
+academic-domain = { path = "../domain" }
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-classification = { path = "../repository-classification" }
+academic-repository-correlation = { path = "../repository-correlation" }
+academic-untrusted-content = { path = "../untrusted-content" }
+serde_json.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

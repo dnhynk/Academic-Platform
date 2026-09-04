@@ -265,6 +265,24 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `the_two_derivative_vocabularies_are_the_same_list`.
     "academic-consent": ["academic-domain"],
     "academic-contracts": ["academic-domain"],
+    // `P2-Y1`'s section 24.1 competency. Three product edges and each one is a
+    // boundary it reads a fact out of rather than a vocabulary it rebuilds:
+    // `academic-domain` for section 7.1's node hierarchy, section 7.2's
+    // `ENABLES_COMPETENCY` descriptor and `P2-N1`'s entity identity;
+    // `academic-knowledge-state` for section 13.2's own ceiling, which is what
+    // refuses a dependency-presence item rather than a rule written here; and
+    // `academic-repository-competency` for `P2-R5`'s `User APPLIED Concept`,
+    // which is one of the two doors a rubric cell may be founded on. The edges
+    // it does not have are the point: no `academic-policy`, because it mints no
+    // identity of its own; no `academic-store` -- it persists nothing and adds
+    // no migration -- and no `academic-worker` and no
+    // `academic-egress-boundary`, so nothing in its closure can launch a
+    // process or stage a payload.
+    "academic-competency": [
+      "academic-domain",
+      "academic-knowledge-state",
+      "academic-repository-competency",
+    ],
     "academic-connector": ["academic-policy"],
     "academic-crypto": ["academic-keystore-platform"],
     // `P2-U1`. Section 8.2's aggregates and section 11.4's four relations.
@@ -876,6 +894,25 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository-analysis",
       "academic-repository-correlation",
       "academic-transcription",
+      "academic-untrusted-content",
+    ],
+    // `P2-Y1`'s acceptance suite runs the whole repository chain below it --
+    // `P2-R1`'s capture, `P2-R2`'s ladder, `P2-R3`'s correlation, `P2-R4`'s
+    // classification and `P2-R5`'s promotion -- over synthetic corpora, and
+    // admits its knowledge-state items through `P2-N2`'s own four eligibility
+    // checks, rather than fabricating a finding or an admitted item.
+    // `academic-policy` is a test edge rather than a product one, which is what
+    // makes "this crate mints no identity of its own" a compile error rather
+    // than a source scan. `academic-domain` is declared twice for the
+    // `trybuild` reason `academic-scenario` gives below.
+    "academic-competency": [
+      "academic-domain",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-repository-analysis",
+      "academic-repository-classification",
+      "academic-repository-correlation",
       "academic-untrusted-content",
     ],
     // `P2-R5`'s acceptance suite runs the whole chain below it over synthetic
@@ -2663,6 +2700,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   // opens nothing at all, and takes every contribution, mapping, rubric and
   // outcome as an argument.
   "academic-repository-competency": ["libc"],
+  // `P2-Y1`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `P2-R1`, `P2-R2`, `P2-R4` and `P2-R5`. The crate spells no socket
+  // construct, which is why its `SOCKET_ALLOWANCE` entry is absent rather than
+  // empty; it opens nothing at all, reads no clock, and takes every competency,
+  // criterion, rubric and record as an argument.
+  "academic-competency": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-requirement": ["libc"],
   "academic-retention": ["libc"],
@@ -5358,6 +5401,46 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-repository",
     "academic-untrusted-content",
     "trybuild",
+  ]);
+
+  // `P2-Y1` adds one workspace path package, `academic-competency`, and admits
+  // no external crate: its product edges are `academic-domain`,
+  // `academic-knowledge-state`, `academic-repository-competency`, `serde` and
+  // `thiserror`, and its dev edges are `P2-R5`'s own corpus chain plus
+  // `academic-policy`, `serde_json`, `trybuild` and `uuid`, all already in this
+  // lock through earlier receipts. The `academic-knowledge-state` edge is the
+  // one that needs a reason and the receipt carries it: section 24.3's
+  // `dependency를 사용했다는 이유만으로 competency를 채우지 않는다` is section
+  // 13.2's own ceiling read through `EvidenceKind::ceiling`, so the refusal is
+  // that table's answer rather than a second rule in this crate.
+  const {
+    receipt: competencyModelReceipt,
+    admitted: competencyModelAdmitted,
+    pathPackages: competencyModelPathPackages,
+  } = receiptFor("P2-Y1");
+  assert.equal(competencyModelAdmitted.size, 0, "P2-Y1 must admit no external crate");
+  assert.deepEqual([...competencyModelPathPackages], ["academic-competency@0.1.0"]);
+  assert.deepEqual(competencyModelReceipt.summary.npm_additions, []);
+  assert.equal(competencyModelReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(competencyModelReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(competencyModelReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof competencyModelReceipt.no_second_vocabulary_note, "string");
+  assert.deepEqual(Object.keys(competencyModelReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-knowledge-state",
+    "academic-repository-competency",
+  ]);
+  assert.deepEqual(Object.keys(competencyModelReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-model-run",
+    "academic-policy",
+    "academic-repository",
+    "academic-repository-analysis",
+    "academic-repository-classification",
+    "academic-repository-correlation",
+    "academic-untrusted-content",
+    "serde_json",
+    "trybuild",
+    "uuid",
   ]);
   // `P2-L5` adds one workspace path package, `academic-student-voice`, and
   // admits no external crate: its product edges are `academic-capture`,
