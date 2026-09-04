@@ -230,6 +230,13 @@ passed *its* whole suite too. It is repaired there rather than recorded: see
 * **Freshness.** `P2-N3` owns the bands. There is no time input to any function
   here, and no field of this crate is declared `u64`.
 * **Concept identity resolution.** Named above: the entity registry owns it.
+* **Which stage an artifact is.** A record's stage is recorded by whoever
+  produced it, not inferred from the artifact. Section 24.3 asks for the six to
+  be *separated*, not derived, and deriving one would be a judgement this crate
+  does not make: section 13.2's rows do not map onto them, as above. What is
+  guarded instead is that a stage settles only a cell the competency's author
+  declared it could — a record at a stage the rubric never admits for that
+  criterion settles nothing and appears in `RubricSheet::unmatched`.
 * **§38.** This task leaves no gate open and closes none.
 
 ## Where the design document and the plan diverge
