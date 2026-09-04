@@ -2900,6 +2900,43 @@ are:
 | `an_indeterminate_plan_cannot_be_empty` | `E0061` | the first refusal is a parameter |
 | `a_forecast_does_not_become_confirmation_evidence` | `E0308`, `E0277`, `E0615` | a forecast is not a listing, there is no `From` between the two sides, and the standing has no status setter |
 
+### What the rebase onto `P2-N3` and `P2-L5` found
+
+`main` gained `academic-freshness` and `academic-student-voice` while this task
+was in flight, and both added their own rows to
+`dependency_license_and_source_receipt_is_complete`. Six merge points in
+`tools/phase1-scaffold-policy.test.mjs` conflicted, and **`node --check` is not
+what settled any of them**: it passed on the concatenation of three of the six —
+the destructured names, the `readFile` list and the `JSON.parse` lines, whose
+items are already terminated — and refused the other three, where `main`'s side
+ends mid-expression. Those three needed a real edit rather than a paste: an
+assertion left open by a `);` that had moved, a filter term ending in `,` where
+`&&` was now needed, and a summand ending the sum.
+
+Then each merge point was **broken one at a time and the guard was run**, in
+both directions — this task's contribution deleted, and `main`'s. Fourteen
+breaks, and `node --check` returned zero on **every one of them**:
+
+| Break | `node --check` | `node --test` | Observed |
+|---|---|---|---|
+| point 1, either side: a receipt text is not destructured | 0 | fails | `dependency_license_and_source_receipt_is_complete` |
+| point 2, either side: a receipt is not read, so every later position shifts | 0 | fails | same |
+| point 3, either side: a receipt is never parsed | 0 | fails | same |
+| point 4, either side: `assert.equal(<receipt>.task, …)` alone is deleted | 0 | **passes** | nothing |
+| point 4, either side: the whole per-task block is deleted | 0 | fails | same |
+| point 5, either side: a package is not excluded from the incoming set | 0 | fails | same |
+| point 6, either side: a tuple count is not in the sum | 0 | fails | same |
+
+**The `task` identity line carries no load on its own.** Deleting
+`assert.equal(offeringReceipt.task, "P2-U5")` — or `main`'s equivalent — is
+caught by nothing: the rest of the block still runs, still builds its two sets
+and still computes its tuple filter, so the sum in point 6 is unchanged. It is a
+second layer over a positional one, and the positional one is what points 1
+through 3 measure. Recorded rather than repaired: making the identity line
+load-bearing means keying each block on the receipt it reads rather than on a
+destructuring position, which is a change to the whole test's shape and to
+thirty-odd other tasks' blocks.
+
 ### The injection matrix
 
 Twenty-three injections, one at a time, each its own edit and its own build.
