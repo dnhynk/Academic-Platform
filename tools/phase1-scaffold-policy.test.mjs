@@ -284,6 +284,23 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository-competency",
     ],
     "academic-connector": ["academic-policy"],
+    // `P2-X5`'s CS map. **One** product edge, and the ones it does not have are
+    // the task. `academic-domain` supplies every vocabulary the atlas draws
+    // with rather than a second one: section 7.1's `NodeType`, section 7.2's
+    // twenty `PredicateName`s, `MasteryLevel`, `FreshnessBand`,
+    // `EpistemicStatus`, `ConfidencePermille` and `P2-C6`'s
+    // `temporal::{ChangeOrigin, TimeCoordinates}`. The edges it does *not* have
+    // are what keeps the picture from saying more than the record: no
+    // `academic-knowledge-state` and no `academic-freshness`, so no mastery
+    // ladder and no decay is in the closure and a fill is a display rather than
+    // a computation; no `academic-critical-path` and no `academic-blind-spot`,
+    // so the halo and the gap glyph are read off a caller-supplied reading
+    // rather than recomputed -- drawing a path is not deciding one; no
+    // `academic-store`, `academic-vault` or `academic-projections`, so nothing
+    // here reaches the canonical writer or a snapshot sidecar and it claims no
+    // migration; and no `academic-worker` and no `academic-egress-boundary`, so
+    // nothing in its closure can launch a process or stage a payload.
+    "academic-cs-map": ["academic-domain"],
     "academic-crypto": ["academic-keystore-platform"],
     // `P2-U1`. Section 8.2's aggregates and section 11.4's four relations.
     // `academic-domain` supplies the v3 aggregate identifiers migration 0004's
@@ -933,6 +950,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `trybuild` reason `academic-scenario` gives below: a compile-fail case
     // compiles against the crate under test plus that crate's dev-dependencies,
     // and a case has to name the domain identifiers an aggregate is built from.
+    // `P2-X5`'s suite builds every graph in process. `academic-domain` is
+    // declared a second time for the `trybuild` reason `academic-scenario`
+    // gives below: a compile-fail case compiles against the crate under test
+    // plus that crate's dev-dependencies, and six of the eight cases name a
+    // domain value. `serde_json` is how a frame's channel key set is compared
+    // as a whole set rather than field by field, and `uuid` derives the fixture
+    // identities from a digest of a tag rather than from a clock.
+    "academic-cs-map": ["academic-domain"],
     "academic-curriculum": ["academic-domain"],
     // `P2-U5` links four of its own product crates a second time as dev edges
     // for the `trybuild` reason `academic-scenario` gives below: a compile-fail
@@ -2904,6 +2929,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-consent": ["libc"],
   "academic-contracts": ["libc"],
   "academic-core": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
+  // `P2-X5`. `libc` reaches it through `academic-domain`, the same way it
+  // reaches `P2-U8` and every other pure crate whose only edge is that one. The
+  // crate spells no socket construct, which is why its `SOCKET_ALLOWANCE` entry
+  // is absent rather than empty; it opens nothing at all, reads no clock, and
+  // takes every graph, reading, lens, coordinate and instant as an argument.
+  "academic-cs-map": ["libc"],
   "academic-crypto": ["libc"],
   "academic-daemon": ["libc", "mio", "rustix", "socket2", "tokio", "windows-sys"],
   // `P2-X1`. The desktop links the local-core RPC contract, which links tokio
@@ -5857,6 +5888,36 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "trybuild",
   ]);
 
+  // `P2-X5` adds one workspace path package, `academic-cs-map`, and admits no
+  // external crate: its product edges are `academic-domain`, `serde` and
+  // `thiserror`, and its dev edges are `academic-domain`, `serde_json`,
+  // `trybuild` and `uuid`, all already in this lock through earlier receipts.
+  // The edge that needs a reason is the one it does **not** have: no
+  // `academic-knowledge-state`, no `academic-critical-path` and no
+  // `academic-blind-spot`, so a fill, a halo and a gap glyph are displays of
+  // values a caller supplies rather than computations this surface could do
+  // differently from the crate that owns them.
+  const {
+    receipt: csMapReceipt,
+    admitted: csMapAdmitted,
+    pathPackages: csMapPathPackages,
+  } = receiptFor("P2-X5");
+  assert.equal(csMapAdmitted.size, 0, "P2-X5 must admit no external crate");
+  assert.deepEqual([...csMapPathPackages], ["academic-cs-map@0.1.0"]);
+  assert.deepEqual(csMapReceipt.summary.npm_additions, []);
+  assert.equal(csMapReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(csMapReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(csMapReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof csMapReceipt.no_second_vocabulary_note, "string");
+  assert.deepEqual(Object.keys(csMapReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+  ]);
+  assert.deepEqual(Object.keys(csMapReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "serde_json",
+    "trybuild",
+    "uuid",
+  ]);
   // `P2-Y3` adds one workspace path package, `academic-readiness`, and admits
   // no external crate: its product edges are `academic-competency`,
   // `academic-domain`, `academic-knowledge-state`, `academic-role-profile`,

@@ -1,0 +1,7 @@
+error[E0277]: the trait bound `LensRelevance: From<MasteryFill>` is not satisfied
+  --> tests/compile_fail/an_opacity_is_not_a_mastery.rs:12:10
+   |
+12 |     fill.into()
+   |          ^^^^ the trait `From<MasteryFill>` is not implemented for `LensRelevance`
+   |
+   = note: required for `MasteryFill` to implement `Into<LensRelevance>`

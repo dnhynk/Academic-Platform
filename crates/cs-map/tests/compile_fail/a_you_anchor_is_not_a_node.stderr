@@ -1,0 +1,13 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_you_anchor_is_not_a_node.rs:12:22
+   |
+12 |     MapNode::declare(anchor, NodeType::Concept, "YOU", cluster)
+   |     ---------------- ^^^^^^ expected `EntityId`, found `YouAnchor`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> src/graph.rs
+   |
+   |     pub fn declare(
+   |            ^^^^^^^

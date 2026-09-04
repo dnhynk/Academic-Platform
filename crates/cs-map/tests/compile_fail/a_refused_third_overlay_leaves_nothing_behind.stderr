@@ -1,0 +1,20 @@
+error[E0382]: use of moved value: `full`
+  --> tests/compile_fail/a_refused_third_overlay_leaves_nothing_behind.rs:16:18
+   |
+11 |     let full = LensComposition::base(MapLens::Knowledge)
+   |         ---- move occurs because `full` has type `LensComposition`, which does not implement the `Copy` trait
+...
+15 |     let _refused = full.overlay(MapLens::BlindSpot);
+   |                         --------------------------- `full` moved due to this method call
+16 |     let _retry = full.overlay(MapLens::Graduation);
+   |                  ^^^^ value used here after move
+   |
+note: `LensComposition::overlay` takes ownership of the receiver `self`, which moves `full`
+  --> src/lens.rs
+   |
+   |     pub fn overlay(self, lens: MapLens) -> Result<Self, CsMapError> {
+   |                    ^^^^
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+15 |     let _refused = full.clone().overlay(MapLens::BlindSpot);
+   |                        ++++++++

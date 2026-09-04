@@ -1,0 +1,5 @@
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> tests/compile_fail/a_graph_cannot_be_edited_after_it_is_declared.rs:12:5
+   |
+12 |     graph.edges().insert(MapEdge {
+   |     ^^^^^^^^^^^^^ cannot borrow as mutable
