@@ -719,6 +719,22 @@ const OUTBOUND_COMPOSITION_FILES: &[&str] = &[
     "crates/ingestion/tests/compile_fail/a_fetch_target_cannot_be_built_at_run_time.rs",
     "crates/ingestion/tests/ingestion.rs",
     "crates/ingestion/tests/support/mod.rs",
+    // `P2-P3`. Four files name `StagingRequest` or `OutboundTransport`, and
+    // each one is a caller of `academic-egress-boundary` rather than a second
+    // composer: `assistant.rs` builds that crate's `StagingRequest` and hands
+    // it straight to `EgressProxy::stage`, `github.rs` takes an
+    // `OutboundTransport` by generic parameter and passes it to
+    // `EgressProxy::transmit` without touching it, and the two test files
+    // supply the synthetic transport and the staged fixtures. No
+    // implementation of `OutboundTransport` ships in the product source of
+    // `academic-integrations`, and that crate declares no request type of its
+    // own -- `the_disclosure_is_bound_once` counts its one byte path and
+    // `the_crate_reaches_only_the_declared_vocabulary` compares its whole import
+    // set.
+    "crates/integrations/src/assistant.rs",
+    "crates/integrations/src/github.rs",
+    "crates/integrations/tests/integrations.rs",
+    "crates/integrations/tests/support/mod.rs",
 ];
 
 /// How this crate is spelled when another package reaches it.

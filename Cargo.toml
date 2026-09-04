@@ -27,6 +27,7 @@ members = [
   "crates/gap",
   "crates/home",
   "crates/indexer",
+  "crates/integrations",
   "crates/ingestion",
   "crates/keystore-platform",
   "crates/knowledge-state",

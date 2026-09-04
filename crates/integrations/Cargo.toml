@@ -1,0 +1,75 @@
+[package]
+name = "academic-integrations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Five product edges, each a boundary this crate reuses rather than rebuilds.
+#
+# `academic-domain` supplies the canonical identifiers an `ExternalIdentity`
+# maps *onto* — `EntityId`, `CourseId`, `OfferingId`, `ArtifactId`,
+# `RepositoryId` — plus `ContentDigest` and `TimestampMillis`. They are
+# UUIDv7-backed opaque values, so the canonical half of a mapping is a value the
+# core minted and never one this crate derived from a provider's string.
+#
+# `academic-policy` supplies `P2-G1`'s broker, capability token, grant row and
+# closed `ReasonCode`. A private blob's second grant is a second row in that
+# crate's append-only store rather than a flag this crate invented.
+#
+# `academic-egress-boundary` is `P2-G2`. Every byte that leaves for a provider
+# is staged, minimized, scanned and previewed there; this crate adds the
+# decision about *which* grants must exist before that path may be entered, and
+# owns no transport of its own.
+#
+# `academic-repository` is `P2-R1`'s GitHub credential: `TokenScope` is one
+# repository by exact equality, `TokenPermission` has no write variant, and
+# `FineGrainedToken::authorize` is the three-property check this crate calls
+# before it builds a request.
+#
+# `academic-untrusted-content` is `P2-G5`. A webhook body is bytes a remote
+# server chose, so what this crate holds of one is an `Untrusted<IngestedDocument>`
+# whose one accessor is private to that crate.
+#
+# `academic-model-run` is `P2-M1`. Generated code carries that crate's `ModelRun`
+# record digest, so provenance is the run the broker already reconciled rather
+# than a second provenance vocabulary beside it.
+#
+# The edges it does **not** have are the point:
+#
+# * no `academic-competency` and no `academic-repository-competency` of any edge
+#   kind, so assistant use has nothing in its closure to become a competency
+#   with. `assistant_use_is_not_competency` reads that closure rather than
+#   asserting it;
+# * no `academic-store` and no `academic-vault`, so this crate persists nothing
+#   and claims no migration number;
+# * no `academic-ledger` product edge, so the core read path does not run
+#   through this boundary. `core_graph_opens_with_every_connector_down` uses a
+#   real `LedgerState` as a **dev** edge for exactly that reason.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-egress-boundary = { path = "../egress-boundary" }
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-repository = { path = "../repository" }
+academic-untrusted-content = { path = "../untrusted-content" }
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+# The compile-fail suite compiles its cases against this crate plus this crate's
+# dev-dependencies, so a case that has to name a domain identifier or a model
+# run must be able to reach them from `tests/compile_fail` as well.
+academic-contracts = { path = "../contracts" }
+academic-crypto = { path = "../crypto" }
+academic-domain = { path = "../domain" }
+academic-ledger = { path = "../ledger" }
+academic-model-run = { path = "../model-run" }
+academic-repository = { path = "../repository" }
+ed25519-dalek.workspace = true
+trybuild.workspace = true
+zeroize.workspace = true
+
+[lints]
+workspace = true

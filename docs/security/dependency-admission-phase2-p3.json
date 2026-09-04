@@ -1,0 +1,50 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-k",
+  "task": "P2-P3",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-P3 admits no external crate. academic-integrations links academic-domain, academic-egress-boundary, academic-model-run, academic-policy, academic-repository, academic-untrusted-content, sha2 and thiserror as product edges and academic-contracts, academic-crypto, academic-ledger, ed25519-dalek, trybuild and zeroize as dev edges, all covered by earlier reviewed receipts, and adds one workspace path package.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-integrations is the P2-P3 integrations boundary: section 33's ten external tools as a closed ConnectorKind vocabulary, the read-only repository-scoped GitHub connector and its webhook admission point, the ExternalIdentity mapping and the sync-conflict resolution that preserves both sides, the IDE adapter with its opt-in watcher and confirmed changed scope, the coding-assistant handoff and its generated-code provenance record, the calendar payload, and the surface that reads the core while every connector is down. It is a separate package from academic-connector, which is P2-G7's connector process identity and whose whole product source that task pins as one fixed process-class binding; a library target inside it would have made six_process_entrypoints_are_exact_and_distinct weaker rather than exact, which is the same division P2-G2 made between academic-egress and academic-egress-boundary.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-P3 adds no pnpm workspace package and no Node script. Its scans are Rust test targets in the crate they scan."
+  },
+  "direct_workspace_dependencies": {
+    "academic-domain": "The canonical identifiers an ExternalIdentity maps onto -- EntityId, CourseId, OfferingId, ArtifactId, RepositoryId -- plus ContentDigest and TimestampMillis. They are UUIDv7-backed opaque values whose own constructors refuse anything else, so the canonical half of a mapping is a value the core minted rather than one derived from a provider's string. That is the type half of external_id_is_never_canonical; the whole-signature classification is the other half.",
+    "academic-policy": "P2-G1's broker, capability token, grant row and closed ReasonCode. A private blob's second grant is a second row in that crate's append-only store, minted from its own complete request tuple with its own purpose and consumed through PermissionBroker::execute, rather than a flag this crate invented. The refusal vocabulary a blob denial records is that crate's closed enum.",
+    "academic-egress-boundary": "P2-G2. Every byte that leaves for a provider is staged, minimized, scanned twice, redacted and previewed there. assistant_receives_only_selected_ranges observes that crate's own structural minimization rather than a second implementation of it, and PrivateBlobEgress adds only the decision about which grants must exist before that path may be entered. This crate owns no transport.",
+    "academic-repository": "P2-R1's GitHub credential. TokenScope names one repository by exact equality, TokenPermission has three variants and no write variant, and FineGrainedToken::authorize checks expiry, scope and permission in a fixed order. GitHubConnector::read calls that check before it builds a request, so the three credential properties are that crate's answer observed here rather than restated.",
+    "academic-untrusted-content": "P2-G5's trust boundary. A webhook body is bytes a remote server chose, so what this crate holds of one is an Untrusted<IngestedDocument> whose one accessor is private to that crate. No seventh SourceKind arm is added: a push body is tagged README and an issue or pull-request body is tagged ISSUE, which are the arms P2-G5 already fixed.",
+    "academic-model-run": "P2-M1's ModelRun. GeneratedCode::record takes a run by reference and stores its record_digest, so provenance is the run the broker already reconciles against its own audit rows rather than a second provenance vocabulary beside it.",
+    "sha2": "The changed-scope digest and the calendar payload digest, both length-prefixed over a domain separator so two readings of one value are byte-identical.",
+    "thiserror": "The five refusal enums, each carrying a closed reason rather than a formatted string."
+  },
+  "dev_workspace_dependencies": {
+    "academic-ledger": "The real LedgerState core_graph_opens_with_every_connector_down reads. It is a dev edge and not a product one on purpose: the claim is that the core read path does not run through this boundary, and a product edge would put the ledger inside the closure of the crate that is supposed to be irrelevant to it.",
+    "academic-contracts": "The fixture signs and verifies the batch it accepts, so the ledger the core-read test opens is one that went through the real signature and acceptance path rather than a hand-built value.",
+    "academic-crypto": "The DeviceKeystore trait, so the in-memory keystore double the GitHub credential fixture uses is the same seam every other crate in this repository uses.",
+    "ed25519-dalek": "The fixed synthetic signing key the fixture device holds.",
+    "zeroize": "The Zeroizing buffer P2-K1's DeviceKeystore::open returns, which the in-memory double has to produce.",
+    "trybuild": "The three compile-fail cases: a canonical reference built from an external identifier, a scope confirmation built without a scope, and a generated-code record built without a run."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-integrations",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-integrations",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-integrations is a workspace path crate, not an external dependency. It owns section 33's table as a closed vocabulary and the four boundary rules that table's last column fixes. Its dependency set is deliberately minimal and the edges it does not have are the point: no academic-competency and no academic-repository-competency of any edge kind, so assistant use has nothing in its closure to become a competency with -- assistant_use_is_not_competency reads that closure out of the workspace manifests and compares it whole, with a control run over crates/role-profile that must find its competency edge; no academic-store and no academic-vault, so this crate persists nothing and claims no migration number; and no academic-ledger product edge, so a connector failure has nothing to fail through. Its declared product closure of every edge kind is academic-crypto, academic-domain, academic-egress-boundary, academic-keystore-platform, academic-model-run, academic-policy, academic-repository and academic-untrusted-content; the crypto and keystore-platform edges are transitive through academic-repository. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-policy's bundled SQLite.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, reads no clock and runs no build script. the_crate_reaches_only_the_declared_vocabulary compares three whole sets in both directions -- every absolute path root, every name brought into scope, and every macro invoked -- and additionally refuses std::time, std::net, std::fs, std::env, std::process, std::io and std::thread by prefix on both the path set and the import set, so a clock or a socket fails as an addition rather than as something an author had to predict. No transport ships: GitHubRepositoryReader belongs to academic-repository and no implementation of it exists, OutboundTransport belongs to academic-egress-boundary and no implementation of it exists, and the three seams this crate declares -- CoreGraph, ConnectorFleet and IdeWorkspace -- are traits whose whole method sets are pinned and whose only implementations are the synthetic doubles in its own test tree. Every repository, token, keystore, webhook body, ledger batch, calendar event and source document in that tree is built in-process from fixed values.",
+  "advisory_path": "Unchanged. Every external crate academic-integrations links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

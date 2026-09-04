@@ -1,0 +1,25 @@
+error[E0308]: arguments to this function are incorrect
+  --> tests/compile_fail/generated_code_cannot_omit_its_run.rs:25:20
+   |
+25 |     let _from_id = GeneratedCode::record(
+   |                    ^^^^^^^^^^^^^^^^^^^^^
+26 |         &ModelRunId::from_bytes([0; 16]),
+   |         -------------------------------- expected `&ModelRun`, found `&ModelRunId`
+27 |         b"context",
+   |         ---------- expected `&AssistantContext`, found `&[u8; 7]`
+   |
+   = note: expected reference `&academic_model_run::ModelRun`
+              found reference `&academic_model_run::ModelRunId`
+   = note: expected reference `&AssistantContext`
+              found reference `&'static [u8; 7]`
+note: associated function defined here
+  --> src/assistant.rs
+   |
+   |     pub fn record(
+   |            ^^^^^^
+
+error[E0616]: field `model_run` of struct `academic_integrations::GeneratedCode` is private
+  --> tests/compile_fail/generated_code_cannot_omit_its_run.rs:36:12
+   |
+36 |     record.model_run = ModelRunId::from_bytes([1; 16]);
+   |            ^^^^^^^^^ private field
