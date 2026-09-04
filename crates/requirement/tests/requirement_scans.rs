@@ -294,7 +294,7 @@ fn specification() -> Result<String, Box<dyn Error>> {
 /// The whole review gate. Two attestations, both naming this candidate, both
 /// filed by a user, the two users different, and the body compiled -- then and
 /// only then the one `ReviewedRule` this crate builds.
-const WHOLE_ADMIT: &str = "pub fn admit( candidate: RuleCandidate, first: ReviewAttestation, second: ReviewAttestation, ) -> Result<ReviewedRule, RequirementError> { for attestation in [&first, &second] { if attestation.candidate() != candidate.id() { return Err(RequirementError::AttestationNamesAnotherCandidate { named: attestation.candidate().as_str().to_owned(), under_review: candidate.id().as_str().to_owned(), }); } } let first_user = first.user_id()?; let second_user = second.user_id()?; if first_user == second_user { return Err(RequirementError::OneReviewerTwice); } candidate.body.compile(&candidate.id)?; Ok(ReviewedRule { id: candidate.id, body: candidate.body, first, second, source_digest: candidate.source_digest, }) }";
+const WHOLE_ADMIT: &str = "pub fn admit( candidate: RuleCandidate, first: ReviewAttestation, second: ReviewAttestation, ) -> Result<ReviewedRule, RequirementError> { for attestation in [&first, &second] { if attestation.candidate() != candidate.id() { return Err(RequirementError::AttestationNamesAnotherCandidate { named: attestation.candidate().as_str().to_owned(), under_review: candidate.id().as_str().to_owned(), }); } } let first_user = first.user_id()?; let second_user = second.user_id()?; if first_user == second_user { return Err(RequirementError::OneReviewerTwice); } candidate.body.compile(&candidate.id)?; Ok(ReviewedRule { id: candidate.id, source_rule: candidate.source_rule, body: candidate.body, first, second, source_digest: candidate.source_digest, }) }";
 
 /// The gate's signature alone, as the public-signature sweep renders it.
 ///
@@ -309,7 +309,7 @@ const WHOLE_USER_ID: &str = "fn user_id(&self) -> Result<EntityId, RequirementEr
 /// The whole admission of a reviewed rule into a draft: the one place an
 /// `ExecutableRule` is built, and the fixtures are evaluated rather than
 /// counted.
-const WHOLE_INCLUDE: &str = "pub fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError> { if self .rules .iter() .any(|existing| existing.id() == reviewed.id()) { return Err(RequirementError::DuplicateRule { rule: reviewed.id().as_str().to_owned(), }); } let rule = ExecutableRule { id: reviewed.id().clone(), body: reviewed.body().clone(), source_digest: reviewed.source_digest(), }; rule.body.compile(&rule.id)?; let staged = self.as_evaluable(); for case in official.cases().iter().chain(synthetic.cases()) { let outcome = evaluate(&staged, &rule.id, &rule.body, &case.facts)?; if outcome.status != case.expected { return Err(RequirementError::ReleaseFixturesMissing { rule: rule.id.as_str().to_owned(), missing: \"a regression fixture disagrees with the rule\", }); } } self.rules.push(rule); Ok(self) }";
+const WHOLE_INCLUDE: &str = "pub fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError> { if self .rules .iter() .any(|existing| existing.id() == reviewed.id()) { return Err(RequirementError::DuplicateRule { rule: reviewed.id().as_str().to_owned(), }); } if !self .source_rules .iter() .any(|published| published == reviewed.source_rule()) { return Err(RequirementError::SourceRuleNotPublished { rule: reviewed.id().as_str().to_owned(), source_rule: reviewed.source_rule().as_str().to_owned(), }); } let rule = ExecutableRule { id: reviewed.id().clone(), source_rule: reviewed.source_rule().clone(), body: reviewed.body().clone(), source_digest: reviewed.source_digest(), }; rule.body.compile(&rule.id)?; let staged = self.as_evaluable(); for case in official.cases().iter().chain(synthetic.cases()) { let outcome = evaluate(&staged, &rule.id, &rule.body, &case.facts)?; if outcome.status != case.expected { return Err(RequirementError::ReleaseFixturesMissing { rule: rule.id.as_str().to_owned(), missing: \"a regression fixture disagrees with the rule\", }); } } self.rules.push(rule); Ok(self) }";
 
 /// The whole ledger publication: the version must be new and the supersession
 /// must name the head.
@@ -382,7 +382,7 @@ const PRODUCT_CLOSURE: [&str; 12] = [
 /// not exempt: they hold a `String`, and each is caught by the same sweep and
 /// justified in [`IDENTIFIER_NEWTYPES`] instead, because what makes them safe
 /// is the validator rather than the field.
-const FREE_TEXT_FIELDS: [(&str, &str); 14] = [
+const FREE_TEXT_FIELDS: [(&str, &str); 16] = [
     ("RuleCandidate", "quoted_source"),
     ("RequirementError", "actor"),
     ("RequirementError", "actual"),
@@ -394,6 +394,8 @@ const FREE_TEXT_FIELDS: [(&str, &str); 14] = [
     ("RequirementError", "named"),
     ("RequirementError", "reason"),
     ("RequirementError", "rule"),
+    ("RequirementError", "set"),
+    ("RequirementError", "source_rule"),
     ("RequirementError", "under_review"),
     ("RequirementError", "value"),
     ("RequirementError", "version"),
@@ -1155,9 +1157,15 @@ fn the_only_route_to_an_executable_rule_is_the_gate() -> TestResult {
             *literals.entry(type_name).or_default() += code
                 .match_indices(&format!("{type_name} {{"))
                 .filter(|(at, _)| {
-                    // A struct literal, not a `struct`/`impl` declaration.
+                    // A struct literal, not a `struct`/`impl` declaration and
+                    // not a destructuring pattern. `let ExecutableRule {` takes
+                    // a value apart; a construction always binds a name first
+                    // (`let rule = ExecutableRule {`), so the two are separated
+                    // by whether `let` is the token immediately before the type.
                     let before = code[..*at].trim_end();
-                    !before.ends_with("struct") && !before.ends_with("impl")
+                    !before.ends_with("struct")
+                        && !before.ends_with("impl")
+                        && !before.ends_with("let")
                 })
                 .count();
         }
@@ -1647,6 +1655,790 @@ fn the_open_gates_are_section_38s_own() -> TestResult {
     assert_eq!(
         derived, declared,
         "the derived cells are not the ones this crate declares"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// the_canonical_renderings_bind_every_field
+// ---------------------------------------------------------------------------
+
+/// What each rule type contributes to `rule_set_hash`, pinned.
+///
+/// One row per section 11.2 rule type: the `RuleBody` variant, the spelling
+/// `RuleType::as_str` gives it, and every field of that variant, sorted. The
+/// table is compared three ways in
+/// [`the_canonical_renderings_bind_every_field`] -- against the variants
+/// `dsl.rs` declares, against the arms `RuleBody::rule_type` maps, and against
+/// the names `RuleBody::canonical_text` destructures -- so it is a measurement
+/// of the crate rather than a second list to keep in step by hand.
+///
+/// Nothing here says "fourteen". The comparison is against
+/// `RuleType::ALL`-shaped whole sets in both directions, so a fifteenth rule
+/// type fails as a row nobody wrote and a deleted one fails as a row nothing
+/// declares.
+const RULE_BODY_FIELDS: &[(&str, &str, &str)] = &[
+    ("AllOf", "ALL_OF", "operands"),
+    ("AreaDistribution", "AREA_DISTRIBUTION", "areas"),
+    ("AtLeastNOf", "AT_LEAST_N_OF", "n operands"),
+    ("CoRequisite", "CO_REQUISITE", "companion subject timing"),
+    (
+        "CountWithConstraints",
+        "COUNT_WITH_CONSTRAINTS",
+        "constraints counted minimum",
+    ),
+    ("CreditMinimum", "CREDIT_MINIMUM", "category threshold"),
+    (
+        "Equivalency",
+        "EQUIVALENCY",
+        "counts_for effective presented",
+    ),
+    ("ExceptionApproval", "EXCEPTION_APPROVAL", "approval target"),
+    ("GpaMinimum", "GPA_MINIMUM", "scope threshold"),
+    (
+        "LanguageOfInstruction",
+        "LANGUAGE_OF_INSTRUCTION",
+        "exclusions language minimum",
+    ),
+    (
+        "MaximumRecognition",
+        "MAXIMUM_RECOGNITION",
+        "category policy",
+    ),
+    ("MutuallyExclusive", "MUTUALLY_EXCLUSIVE", "members policy"),
+    (
+        "NonCreditTraining",
+        "NON_CREDIT_TRAINING",
+        "applicability program",
+    ),
+    (
+        "ThesisResearch",
+        "THESIS_RESEARCH",
+        "applicability course credits grading",
+    ),
+];
+
+/// The types a rule body's fields are made of, and their own fields.
+///
+/// A body field whose type is one of these carries the fields below it, so the
+/// rendering has to reach them too. `CountConstraint`'s two arms are named as
+/// `CountConstraint::<Arm>` because the tag is part of the rendering.
+const NESTED_FIELDS: &[(&str, &str, &str)] = &[
+    (
+        "pub struct Operand",
+        "let Operand {",
+        "course equivalent_admitted",
+    ),
+    (
+        "pub struct AreaRequirement",
+        "let AreaRequirement {",
+        "area credits",
+    ),
+    (
+        "pub struct ApprovalRequirement",
+        "let ApprovalRequirement {",
+        "authority valid_within",
+    ),
+    (
+        "ExcludedFromAdmissionYear {",
+        "CountConstraint::ExcludedFromAdmissionYear {",
+        "course from",
+    ),
+];
+
+/// What a published set contributes to its own hash, pinned.
+const RULE_SET_FIELDS: &[(&str, &str)] = &[
+    (
+        "RuleSet",
+        "curriculum_version rules set_id source supersedes version",
+    ),
+    (
+        "OfficialSourceBinding",
+        "connector effective parser_version retrieved_at",
+    ),
+    ("ExecutableRule", "body id source_digest source_rule"),
+];
+
+/// The body of `<keyword> <name>` at file scope, brace to matching brace.
+fn item_body<'a>(code: &'a str, keyword: &str, name: &str) -> Option<&'a str> {
+    let needle = format!("{keyword} {name}");
+    let at = code.match_indices(&needle).find(|(at, _)| {
+        let before = code[..*at].chars().next_back();
+        let after = code[at + needle.len()..].chars().next();
+        before.is_none_or(|character| !(character.is_alphanumeric() || character == '_'))
+            && after.is_none_or(|character| !(character.is_alphanumeric() || character == '_'))
+    })?;
+    let open = at.0 + code[at.0..].find('{')?;
+    Some(&code[open + 1..open + 1 + matching_brace(&code[open + 1..])?])
+}
+
+/// The offset of the `}` closing a block whose `{` has already been consumed.
+fn matching_brace(code: &str) -> Option<usize> {
+    let mut depth = 0_i32;
+    for (offset, character) in code.char_indices() {
+        match character {
+            '{' => depth += 1,
+            '}' if depth == 0 => return Some(offset),
+            '}' => depth -= 1,
+            _ => {}
+        }
+    }
+    None
+}
+
+/// The `name:` fields declared at depth zero of an item body.
+fn fields_at_top_level(body: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut depth = 0_i32;
+    let mut token = String::new();
+    let bytes: Vec<char> = body.chars().collect();
+    for (index, character) in bytes.iter().copied().enumerate() {
+        match character {
+            '{' | '(' | '[' | '<' => depth += 1,
+            '}' | ')' | ']' | '>' => depth -= 1,
+            ':' if depth == 0 && bytes.get(index + 1) != Some(&':') => {
+                // The last word before the colon: `pub course: CourseId` is the
+                // field `course`, and a visibility is not part of the name.
+                let name = token
+                    .split_whitespace()
+                    .last()
+                    .unwrap_or_default()
+                    .to_owned();
+                if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                    found.insert(name);
+                }
+                token.clear();
+            }
+            ',' | ';' if depth == 0 => token.clear(),
+            _ => token.push(character),
+        }
+        if matches!(character, '{' | '(' | '[' | '<' | '}' | ')' | ']' | '>') {
+            token.clear();
+        }
+    }
+    found
+}
+
+/// The field names a `head { ... }` pattern or expression destructures.
+///
+/// `applicability: scope` contributes `applicability`, because the field is
+/// what has to be covered and the local name it is bound to is free.
+fn destructured(code: &str, head: &str) -> Option<BTreeSet<String>> {
+    let at = code.find(head)?;
+    let open = at + code[at..].find('{')?;
+    let inner = &code[open + 1..open + 1 + matching_brace(&code[open + 1..])?];
+    let mut found = BTreeSet::new();
+    for piece in inner.split(',') {
+        let name = piece
+            .split(':')
+            .next()
+            .unwrap_or_default()
+            .split_whitespace()
+            .last()
+            .unwrap_or_default()
+            .to_owned();
+        if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            found.insert(name);
+        }
+    }
+    Some(found)
+}
+
+/// Every field of everything `rule_set_hash` is taken over reaches the text.
+///
+/// `RuleSet::rule_set_hash` is what a historical audit replays against. Two
+/// classes of field were outside its rendering, and each was observed to
+/// produce two sets that hash alike and answer differently:
+///
+/// * every rule **body** -- 130 credits and 12 credits hashed the same, and the
+///   stricter audit's recorded hash replayed against the laxer bodies and was
+///   accepted;
+/// * three of the four fields of the official source binding, including
+///   `retrieved_at`, which is the value `academic-audit`'s freshness gate reads.
+///
+/// Both were fields somebody had to think of. This scan replaces that judgement
+/// with a comparison: the field set each type **declares** in this crate's own
+/// source, against the field set each renderer **destructures**, in both
+/// directions. A field added to any of these types fails here until it is
+/// rendered, whatever it is called and whatever it means.
+///
+/// `every_rule_body_field_moves_the_canonical_text` and
+/// `every_rule_set_field_moves_the_hash` are the other half: this one says the
+/// field is bound, those say the binding reaches the bytes.
+#[test]
+fn the_canonical_renderings_bind_every_field() -> TestResult {
+    let dsl = strip_non_code(&fs::read_to_string(
+        crate_root().join("src").join("dsl.rs"),
+    )?);
+    let publish = strip_non_code(&fs::read_to_string(
+        crate_root().join("src").join("publish.rs"),
+    )?);
+    // Raw, not stripped: the spellings this reads back are string literals and
+    // `strip_non_code` deletes them.
+    let rule_type_source = fs::read_to_string(crate_root().join("src").join("rule_type.rs"))?;
+
+    // 1. The variants `RuleBody` declares, with the fields each carries.
+    let body_enum = item_body(&dsl, "pub enum", "RuleBody").ok_or("RuleBody is not declared")?;
+    let mut declared: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut depth = 0_i32;
+    let mut token = String::new();
+    let characters: Vec<char> = body_enum.chars().collect();
+    let mut index = 0_usize;
+    while index < characters.len() {
+        match characters[index] {
+            '{' if depth == 0 => {
+                let variant = token.trim().to_owned();
+                let rest: String = characters[index + 1..].iter().collect();
+                let end = matching_brace(&rest).ok_or("an unterminated variant")?;
+                declared.insert(variant, fields_at_top_level(&rest[..end]));
+                index += 1 + rest[..end].chars().count() + 1;
+                token.clear();
+                continue;
+            }
+            '{' | '(' | '[' | '<' => depth += 1,
+            '}' | ')' | ']' | '>' => depth -= 1,
+            ',' if depth == 0 => token.clear(),
+            character => token.push(character),
+        }
+        index += 1;
+    }
+
+    let pinned: BTreeMap<String, BTreeSet<String>> = RULE_BODY_FIELDS
+        .iter()
+        .map(|(variant, _, fields)| {
+            (
+                (*variant).to_owned(),
+                fields.split_whitespace().map(ToOwned::to_owned).collect(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        declared, pinned,
+        "the rule bodies this crate declares are not the table above"
+    );
+
+    // 2. The spelling each variant carries, read out of `rule_type` and
+    //    `RuleType::as_str` rather than restated.
+    let mapping = item_body(&dsl, "pub const fn", "rule_type").ok_or("rule_type is not here")?;
+    let spellings = item_body(&rule_type_source, "pub const fn", "as_str")
+        .ok_or("RuleType::as_str is not here")?;
+    for (variant, spelling, _) in RULE_BODY_FIELDS {
+        let arm = format!("Self::{variant} {{ .. }} => RuleType::");
+        let at = mapping
+            .find(&arm)
+            .ok_or_else(|| format!("{variant} has no `rule_type` arm"))?;
+        let named: String = mapping[at + arm.len()..]
+            .chars()
+            .take_while(|character| character.is_alphanumeric() || *character == '_')
+            .collect();
+        let cell = format!("Self::{named} => \"");
+        let at = spellings
+            .find(&cell)
+            .ok_or_else(|| format!("RuleType::{named} has no spelling"))?;
+        let rendered: String = spellings[at + cell.len()..]
+            .chars()
+            .take_while(|character| *character != '"')
+            .collect();
+        assert_eq!(
+            &rendered, spelling,
+            "{variant} is spelled {rendered} and the table says {spelling}"
+        );
+    }
+
+    // 3. What `RuleBody::canonical_text` destructures, arm by arm.
+    let renderer = item_body(&dsl, "pub fn", "canonical_text").ok_or("no body renderer")?;
+    assert!(
+        !renderer.contains(".."),
+        "the body renderer uses `..`, which drops a field silently"
+    );
+    for (variant, _, _) in RULE_BODY_FIELDS {
+        let bound = destructured(renderer, &format!("Self::{variant} "))
+            .ok_or_else(|| format!("{variant} is not destructured by the renderer"))?;
+        assert_eq!(
+            &bound,
+            declared.get(*variant).ok_or("a variant vanished")?,
+            "{variant}: the renderer binds a different field set than the type declares"
+        );
+    }
+
+    // 4. The nested types a body field is made of.
+    for (declaration, pattern, fields) in NESTED_FIELDS {
+        let expected: BTreeSet<String> = fields.split_whitespace().map(ToOwned::to_owned).collect();
+        let declared_here = destructured(&dsl, declaration)
+            .ok_or_else(|| format!("{declaration} declares nothing"))?;
+        assert_eq!(
+            declared_here, expected,
+            "{declaration} declares a different field set than the table above"
+        );
+        let bound =
+            destructured(&dsl, pattern).ok_or_else(|| format!("{pattern} never appears"))?;
+        assert_eq!(
+            bound, expected,
+            "{pattern} binds a different field set than {declaration} declares"
+        );
+    }
+
+    // 5. And the set-level rendering, over all three of its types.
+    let set_renderer = item_body(&publish, "pub fn", "canonical_text").ok_or("no set renderer")?;
+    assert!(
+        !set_renderer.contains(".."),
+        "the set renderer uses `..`, which drops a field silently"
+    );
+    for (name, fields) in RULE_SET_FIELDS {
+        let expected: BTreeSet<String> = fields.split_whitespace().map(ToOwned::to_owned).collect();
+        let body = item_body(&publish, "pub struct", name)
+            .ok_or_else(|| format!("{name} is not declared"))?;
+        assert_eq!(
+            fields_at_top_level(body),
+            expected,
+            "{name} declares a different field set than the table above"
+        );
+        let reached: BTreeSet<String> = expected
+            .iter()
+            .filter(|field| {
+                set_renderer.contains(&format!("self.{field}"))
+                    || destructured(set_renderer, &format!("{name} {{"))
+                        .is_some_and(|bound| bound.contains(*field))
+            })
+            .cloned()
+            .collect();
+        assert_eq!(
+            reached, expected,
+            "{name}: the set renderer does not reach every field"
+        );
+    }
+    Ok(())
+}
+
+/// The floor the inventory walk must reach, so an empty walk fails as a walk.
+const INVENTORY_FILE_FLOOR: usize = 9;
+
+/// Every function this package declares, as `<file> [vis] <signature>`.
+const DECLARATIONS: &[&str] = &[
+    "src/candidate.rs [priv] fn user_id(&self) -> Result<EntityId, RequirementError>",
+    "src/candidate.rs [pub] fn admit( candidate: RuleCandidate, first: ReviewAttestation, second: ReviewAttestation, ) -> Result<ReviewedRule, RequirementError>",
+    "src/candidate.rs [pub] fn attestations(&self) -> (&ReviewAttestation, &ReviewAttestation)",
+    "src/candidate.rs [pub] fn attested_at(&self) -> TimestampMillis",
+    "src/candidate.rs [pub] fn body(&self) -> &RuleBody",
+    "src/candidate.rs [pub] fn candidate(&self) -> &RuleId",
+    "src/candidate.rs [pub] fn extracted( id: RuleId, source_rule: SourceRuleId, body: RuleBody, extracted_by: Actor, quoted_source: String, source_digest: ContentDigest, ) -> Self",
+    "src/candidate.rs [pub] fn extracted_by(&self) -> &Actor",
+    "src/candidate.rs [pub] fn file(reviewer: Actor, candidate: RuleId, attested_at: TimestampMillis) -> Self",
+    "src/candidate.rs [pub] fn id(&self) -> &RuleId",
+    "src/candidate.rs [pub] fn id(&self) -> &RuleId",
+    "src/candidate.rs [pub] fn proposed_body(&self) -> &RuleBody",
+    "src/candidate.rs [pub] fn quoted_source(&self) -> &str",
+    "src/candidate.rs [pub] fn reviewer(&self) -> &Actor",
+    "src/candidate.rs [pub] fn source_digest(&self) -> ContentDigest",
+    "src/candidate.rs [pub] fn source_digest(&self) -> ContentDigest",
+    "src/candidate.rs [pub] fn source_rule(&self) -> &SourceRuleId",
+    "src/candidate.rs [pub] fn source_rule(&self) -> &SourceRuleId",
+    "src/dsl.rs [priv] fn applicability(value: Applicability) -> String",
+    "src/dsl.rs [priv] fn count_constraint(rendered: &mut String, prefix: &str, value: &CountConstraint)",
+    "src/dsl.rs [priv] fn field(rendered: &mut String, key: &str, value: &str)",
+    "src/dsl.rs [priv] fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result",
+    "src/dsl.rs [priv] fn interval(rendered: &mut String, prefix: &str, value: ValidInterval)",
+    "src/dsl.rs [priv] fn is_identifier(value: &str) -> bool",
+    "src/dsl.rs [priv] fn operands_text(rendered: &mut String, operands: &[Operand])",
+    "src/dsl.rs [pub] fn as_str(&self) -> &str",
+    "src/dsl.rs [pub] fn as_str(self) -> &'static str",
+    "src/dsl.rs [pub] fn canonical_text(&self) -> String",
+    "src/dsl.rs [pub] fn compile(&self, rule: &RuleId) -> Result<(), RequirementError>",
+    "src/dsl.rs [pub] fn get(self) -> u16",
+    "src/dsl.rs [pub] fn get(self) -> u16",
+    "src/dsl.rs [pub] fn new(value: &str) -> Result<Self, RequirementError>",
+    "src/dsl.rs [pub] fn new(value: u16) -> Result<Self, RequirementError>",
+    "src/dsl.rs [pub] fn new(value: u16) -> Result<Self, RequirementError>",
+    "src/dsl.rs [pub] fn rule_type(&self) -> crate::rule_type::RuleType",
+    "src/evaluate.rs [priv] fn admission_year_or_unknown( facts: &AcademicFacts, rule: &RuleId, rule_type: RuleType, gate: OpenGate, ) -> Result<AdmissionYear, Box<RuleOutcome>>",
+    "src/evaluate.rs [priv] fn applies_to(applicability: Applicability, year: AdmissionYear) -> bool",
+    "src/evaluate.rs [priv] fn bare(rule: &RuleId, rule_type: RuleType, status: ProofStatus) -> Self",
+    "src/evaluate.rs [priv] fn counts_after_exclusions( attempt: &AttemptFact, constraints: &[CountConstraint], year: Option<AdmissionYear>, ) -> bool",
+    "src/evaluate.rs [priv] fn discharge( set: &RuleSet, facts: &AcademicFacts, course: &academic_domain::CourseId, equivalent_admitted: bool, ) -> Option<(EntityId, Option<RuleId>)>",
+    "src/evaluate.rs [priv] fn grade_point_meets( weighted_points: Decimal, denominator_credits: u32, threshold: Decimal, rule: &RuleId, ) -> Result<bool, RequirementError>",
+    "src/evaluate.rs [priv] fn shortfall(attained: u32, required: u32) -> ProofStatus",
+    "src/evaluate.rs [priv] fn unknown(rule: &RuleId, rule_type: RuleType, gate: OpenGate) -> Self",
+    "src/evaluate.rs [pub] fn evaluate( set: &RuleSet, rule: &RuleId, body: &RuleBody, facts: &AcademicFacts, ) -> Result<RuleOutcome, RequirementError>",
+    "src/facts.rs [pub] fn admission_year(&self) -> Option<AdmissionYear>",
+    "src/facts.rs [pub] fn approvals(&self) -> &[ApprovalFact]",
+    "src/facts.rs [pub] fn as_of(&self) -> TimestampMillis",
+    "src/facts.rs [pub] fn attempts(&self) -> &[AttemptFact]",
+    "src/facts.rs [pub] fn get(self) -> u32",
+    "src/facts.rs [pub] fn gpa(&self, scope: &crate::dsl::GpaScope) -> Option<GpaReading>",
+    "src/facts.rs [pub] fn is_recognized(self) -> bool",
+    "src/facts.rs [pub] fn new(as_of: TimestampMillis) -> Self",
+    "src/facts.rs [pub] fn new(value: u32) -> Self",
+    "src/facts.rs [pub] fn trainings(&self) -> &[TrainingFact]",
+    "src/facts.rs [pub] fn with_admission_year(mut self, year: AdmissionYear) -> Self",
+    "src/facts.rs [pub] fn with_approval(mut self, approval: ApprovalFact) -> Self",
+    "src/facts.rs [pub] fn with_attempt(mut self, attempt: AttemptFact) -> Self",
+    "src/facts.rs [pub] fn with_gpa(mut self, scope: &crate::dsl::GpaScope, reading: GpaReading) -> Self",
+    "src/facts.rs [pub] fn with_training(mut self, training: TrainingFact) -> Self",
+    "src/gate.rs [priv] fn applicability_unknown() -> &'static str",
+    "src/gate.rs [priv] fn double_counting_unknown() -> &'static str",
+    "src/gate.rs [priv] fn recognition_unknown() -> &'static str",
+    "src/gate.rs [pub] fn identifier(self) -> &'static str",
+    "src/gate.rs [pub] fn statement(self) -> &'static str",
+    "src/gate.rs [pub] fn unknown_readings() -> [(&'static str, &'static str); 3]",
+    "src/publish.rs [priv] fn as_evaluable(&self) -> RuleSet",
+    "src/publish.rs [priv] fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result",
+    "src/publish.rs [pub] fn body(&self) -> &RuleBody",
+    "src/publish.rs [pub] fn by_hash(&self, hash: ContentDigest) -> Option<&RuleSet>",
+    "src/publish.rs [pub] fn canonical_text(&self) -> String",
+    "src/publish.rs [pub] fn cases(&self) -> &[FixtureCase]",
+    "src/publish.rs [pub] fn changed_rules(&self, earlier: RuleSetVersion, later: RuleSetVersion) -> Vec<RuleId>",
+    "src/publish.rs [pub] fn connector(&self) -> &ConnectorId",
+    "src/publish.rs [pub] fn current(&self) -> Option<&RuleSet>",
+    "src/publish.rs [pub] fn curriculum_version(&self) -> CurriculumVersionId",
+    "src/publish.rs [pub] fn effective(&self) -> EffectiveDate",
+    "src/publish.rs [pub] fn evaluate( &self, id: &RuleId, facts: &AcademicFacts, ) -> Result<RuleOutcome, RequirementError>",
+    "src/publish.rs [pub] fn executable_rules(&self) -> impl Iterator<Item = &ExecutableRule>",
+    "src/publish.rs [pub] fn from_official_source( published: &PublishedRules, set_id: RequirementSetId, curriculum_version: CurriculumVersionId, version: RuleSetVersion, supersedes: Option<RuleSetVersion>, ) -> Self",
+    "src/publish.rs [pub] fn get(self) -> u32",
+    "src/publish.rs [pub] fn id(&self) -> &RuleId",
+    "src/publish.rs [pub] fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError>",
+    "src/publish.rs [pub] fn new( cases: impl IntoIterator<Item = FixtureCase>, rule: &RuleId, ) -> Result<Self, RequirementError>",
+    "src/publish.rs [pub] fn new() -> Self",
+    "src/publish.rs [pub] fn new(facts: AcademicFacts, expected: ProofStatus) -> Self",
+    "src/publish.rs [pub] fn new(value: u32) -> Self",
+    "src/publish.rs [pub] fn next(self) -> Self",
+    "src/publish.rs [pub] fn parser_version(&self) -> ParserVersion",
+    "src/publish.rs [pub] fn publish(&mut self, set: RuleSet) -> Result<(), RequirementError>",
+    "src/publish.rs [pub] fn publish(self) -> Result<RuleSet, RequirementError>",
+    "src/publish.rs [pub] fn retrieved_at(&self) -> RetrievalInstant",
+    "src/publish.rs [pub] fn rule(&self, id: &RuleId) -> Option<&ExecutableRule>",
+    "src/publish.rs [pub] fn rule_set_hash(&self) -> ContentDigest",
+    "src/publish.rs [pub] fn rules(&self) -> impl Iterator<Item = (&RuleId, &RuleBody)>",
+    "src/publish.rs [pub] fn set_id(&self) -> RequirementSetId",
+    "src/publish.rs [pub] fn source(&self) -> &OfficialSourceBinding",
+    "src/publish.rs [pub] fn source_digest(&self) -> ContentDigest",
+    "src/publish.rs [pub] fn source_rule(&self) -> &SourceRuleId",
+    "src/publish.rs [pub] fn supersedes(&self) -> Option<RuleSetVersion>",
+    "src/publish.rs [pub] fn version(&self) -> RuleSetVersion",
+    "src/publish.rs [pub] fn version(&self, version: RuleSetVersion) -> Option<&RuleSet>",
+    "src/publish.rs [pub] fn versions(&self) -> &[RuleSet]",
+    "src/rule_type.rs [pub] fn acceptance_test(self) -> &'static str",
+    "src/rule_type.rs [pub] fn as_str(self) -> &'static str",
+    "src/rule_type.rs [pub] fn parse(identifier: &str) -> Option<Self>",
+    "src/rule_type.rs [pub] fn require(identifier: &str) -> Result<Self, RequirementError>",
+    "src/rule_type.rs [pub] fn requirement(self) -> &'static str",
+    "src/rule_type.rs [pub] fn spelling_source(self) -> SpellingSource",
+];
+
+/// Every `impl` block header this package ships, as `<file>: <header>`.
+const IMPL_HEADERS: &[&str] = &[
+    "src/candidate.rs: impl ReviewAttestation",
+    "src/candidate.rs: impl ReviewGate",
+    "src/candidate.rs: impl ReviewedRule",
+    "src/candidate.rs: impl RuleCandidate",
+    "src/dsl.rs: impl $name",
+    "src/dsl.rs: impl AdmissionYear",
+    "src/dsl.rs: impl CreditAmount",
+    "src/dsl.rs: impl InstructionLanguage",
+    "src/dsl.rs: impl RuleBody",
+    "src/dsl.rs: impl RuleBody",
+    "src/dsl.rs: impl core::fmt::Display for $name",
+    "src/evaluate.rs: impl RuleOutcome",
+    "src/facts.rs: impl AcademicFacts",
+    "src/facts.rs: impl AttemptStatus",
+    "src/facts.rs: impl TermOrdinal",
+    "src/gate.rs: impl OpenGate",
+    "src/publish.rs: impl $name",
+    "src/publish.rs: impl ExecutableRule",
+    "src/publish.rs: impl FixtureCase",
+    "src/publish.rs: impl IntoIterator<Item = FixtureCase>, rule: &RuleId, ) -> Result<Self, RequirementError>",
+    "src/publish.rs: impl Iterator<Item = &ExecutableRule>",
+    "src/publish.rs: impl Iterator<Item = (&RuleId, &RuleBody)>",
+    "src/publish.rs: impl OfficialSourceBinding",
+    "src/publish.rs: impl RuleSet",
+    "src/publish.rs: impl RuleSetDraft",
+    "src/publish.rs: impl RuleSetLedger",
+    "src/publish.rs: impl RuleSetVersion",
+    "src/publish.rs: impl core::fmt::Display for RuleSetVersion",
+    "src/rule_type.rs: impl RuleType",
+];
+
+// ---------------------------------------------------------------------------
+// every_declaration_and_impl_in_this_crate_is_pinned
+// ---------------------------------------------------------------------------
+//
+// `P2-A3` measured this crate's blind spot directly: four `impl From<..>` blocks
+// appended to a product file gave an external crate a route to a value the
+// crate's own doc says has one construction site, and every acceptance test in
+// this crate stayed green. A `trait impl` declares no `pub fn`, so a scan built
+// on public signatures does not see it, and no scan here counted `impl` blocks
+// at all.
+//
+// `P2-X5` measured the same class as six invisible injections out of nineteen,
+// and `P2-Y3` closed it in `crates/cs-map` by pinning the whole set of `impl`
+// headers. `academic-review` and `academic-ingestion` were the only two U crates
+// carrying that defence. This is it, ported: two whole sets, compared in both
+// directions, over every `.rs` file this package ships.
+//
+// It is deliberately not a list of forbidden spellings. A new function, a new
+// method, a new inherent `impl`, a new trait `impl` and a new file all fail as
+// an entry nobody wrote down, whatever they are called.
+
+/// Every `.rs` file this package ships: everything outside `tests`.
+///
+/// The whole package rather than `src`, because `S-12` in
+/// `docs/contracts/policy-source-scans.md` is the row about a walk that reads
+/// `<crate>/src` and stops seeing product-shaped code beside it --
+/// `examples/`, `benches/` and `probes/` are all compiled by
+/// `cargo clippy --workspace --all-targets`.
+fn inventory_sources() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
+    let base = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mut found = Vec::new();
+    let mut pending = vec![base.clone()];
+    while let Some(directory) = pending.pop() {
+        for entry in std::fs::read_dir(&directory)? {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
+                if path
+                    .file_name()
+                    .is_some_and(|name| name == "tests" || name == "target")
+                {
+                    continue;
+                }
+                pending.push(path);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let name = path
+                    .strip_prefix(&base)?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                found.push((name, std::fs::read_to_string(&path)?));
+            }
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// Removes comments, string literals and character literals.
+///
+/// The raw-string-aware reader from `crates/record/tests/record_scans.rs`,
+/// copied deliberately: `P2-G4` found that a lexer without raw strings
+/// desynchronizes and reads every literal after one as code.
+fn inventory_strip(source: &str) -> String {
+    let bytes: Vec<char> = source.chars().collect();
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let current = bytes[index];
+        let next = bytes.get(index + 1).copied();
+
+        if current == '/' && next == Some('/') {
+            while index < bytes.len() && bytes[index] != '\n' {
+                index += 1;
+            }
+            out.push('\n');
+            continue;
+        }
+        if current == '/' && next == Some('*') {
+            let mut depth = 1_usize;
+            index += 2;
+            while index < bytes.len() && depth > 0 {
+                if bytes[index] == '/' && bytes.get(index + 1) == Some(&'*') {
+                    depth += 1;
+                    index += 2;
+                } else if bytes[index] == '*' && bytes.get(index + 1) == Some(&'/') {
+                    depth -= 1;
+                    index += 2;
+                } else {
+                    index += 1;
+                }
+            }
+            out.push(' ');
+            continue;
+        }
+        if current == 'r' && matches!(next, Some('"') | Some('#')) {
+            let mut probe = index + 1;
+            let mut hashes = 0_usize;
+            while bytes.get(probe) == Some(&'#') {
+                hashes += 1;
+                probe += 1;
+            }
+            if bytes.get(probe) == Some(&'"') {
+                let terminator: String = core::iter::once('"')
+                    .chain(core::iter::repeat_n('#', hashes))
+                    .collect();
+                let rest: String = bytes[probe + 1..].iter().collect();
+                let end = rest.find(&terminator).map_or(bytes.len(), |offset| {
+                    probe + 1 + rest[..offset].chars().count() + terminator.chars().count()
+                });
+                index = end;
+                out.push(' ');
+                continue;
+            }
+        }
+        if current == '"' {
+            index += 1;
+            while index < bytes.len() {
+                if bytes[index] == '\\' {
+                    index += 2;
+                    continue;
+                }
+                if bytes[index] == '"' {
+                    index += 1;
+                    break;
+                }
+                index += 1;
+            }
+            out.push(' ');
+            continue;
+        }
+        if current == '\'' {
+            let closes = if next == Some('\\') {
+                bytes
+                    .iter()
+                    .skip(index + 2)
+                    .position(|character| *character == '\'')
+                    .map(|offset| index + 2 + offset)
+            } else {
+                (bytes.get(index + 2) == Some(&'\'')).then_some(index + 2)
+            };
+            if let Some(end) = closes {
+                index = end + 1;
+                out.push(' ');
+                continue;
+            }
+        }
+        out.push(current);
+        index += 1;
+    }
+    out
+}
+
+/// Collapses whitespace runs to single spaces.
+fn inventory_collapse(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Every function declaration in `code`, as a public flag and a signature.
+///
+/// Visibility is read off the text before `fn` on the same line: `pub(` is
+/// crate-private however it continues, a bare `pub` is public, anything else is
+/// private. Reading **signatures** rather than names is what makes the pin a
+/// statement about what a function takes and returns, so a widened parameter
+/// fails as loudly as a new function.
+///
+/// The `>` of a `->` is skipped: `crates/review`'s copy of this reader records
+/// that treating it as a closing bracket truncated `fn counts(self) -> [u32; 5]`
+/// to `fn counts(self) -> [u32`, and a pin on a truncated signature is a pin two
+/// different signatures satisfy.
+fn inventory_declarations(code: &str) -> Vec<(bool, String)> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("fn ") {
+        if !(at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_')) {
+            continue;
+        }
+        let line_start = code[..at].rfind('\n').map_or(0, |index| index + 1);
+        let prefix = &code[line_start..at];
+        let public = prefix.contains("pub") && !prefix.contains("pub(");
+        let mut depth = 0_i32;
+        let mut end = None;
+        let region = &code[at..];
+        let region_bytes = region.as_bytes();
+        for (offset, character) in region.char_indices() {
+            match character {
+                '(' | '<' | '[' => depth += 1,
+                '>' if offset > 0 && region_bytes[offset - 1] == b'-' => {}
+                ')' | '>' | ']' => depth -= 1,
+                '{' | ';' if depth <= 0 => {
+                    end = Some(at + offset);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if let Some(end) = end {
+            found.push((public, inventory_collapse(&code[at..end])));
+        }
+    }
+    found
+}
+
+/// Every `impl` block header in `code`, whole.
+///
+/// The header is everything from `impl` to the opening brace, so
+/// `impl From<usize> for CoverageWitness` and `impl CoverageWitness` are
+/// different entries and a trait implementation cannot arrive as an edit to an
+/// inherent one.
+fn inventory_impl_headers(code: &str) -> Vec<String> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("impl") {
+        if at > 0 && (bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_') {
+            continue;
+        }
+        if code[at + 4..]
+            .starts_with(|character: char| character.is_alphanumeric() || character == '_')
+        {
+            continue;
+        }
+        let Some(end) = code[at..].find(['{', ';']) else {
+            continue;
+        };
+        found.push(inventory_collapse(&code[at..at + end]));
+    }
+    found
+}
+
+/// Nothing this crate declares is outside the two pinned sets.
+///
+/// Two whole sets, each compared in both directions:
+///
+/// 1. every function declaration this package ships, as a file, a visibility
+///    and a full signature;
+/// 2. every `impl` block header this package ships, as a file and a header.
+///
+/// The second is the one `P2-A3` walked through. Its injection was four
+/// `impl From<..>` blocks in a product file -- no `pub fn`, no new name on any
+/// forbidden list, no change to any other file -- and it handed an external
+/// crate a value the crate's own documentation says it cannot construct. There
+/// is no spelling of that injection that this test does not see, because it does
+/// not look for spellings: it compares the set.
+#[test]
+fn every_declaration_and_impl_in_this_crate_is_pinned() -> TestResult {
+    let sources = inventory_sources()?;
+    assert!(
+        sources.len() >= INVENTORY_FILE_FLOOR,
+        "the inventory walk read only {} files",
+        sources.len()
+    );
+
+    let mut declared = Vec::new();
+    let mut headers = Vec::new();
+    for (name, text) in &sources {
+        let code = inventory_strip(text);
+        for (public, signature) in inventory_declarations(&code) {
+            let visibility = if public { "pub" } else { "priv" };
+            declared.push(format!("{name} [{visibility}] {signature}"));
+        }
+        for header in inventory_impl_headers(&code) {
+            headers.push(format!("{name}: {header}"));
+        }
+    }
+    declared.sort();
+    headers.sort();
+
+    assert_eq!(
+        declared,
+        DECLARATIONS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's declaration set changed"
+    );
+    assert_eq!(
+        headers,
+        IMPL_HEADERS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's impl inventory changed"
     );
     Ok(())
 }

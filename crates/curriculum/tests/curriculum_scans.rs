@@ -1690,3 +1690,518 @@ fn the_open_gates_are_section_38s_own() -> TestResult {
     );
     Ok(())
 }
+
+/// The floor the inventory walk must reach, so an empty walk fails as a walk.
+const INVENTORY_FILE_FLOOR: usize = 11;
+
+/// Every function this package declares, as `<file> [vis] <signature>`.
+const DECLARATIONS: &[&str] = &[
+    "src/course.rs [pub] fn build(self) -> Result<Course, CurriculumError>",
+    "src/course.rs [pub] fn canonical_identity(&self) -> EntityId",
+    "src/course.rs [pub] fn canonical_identity(mut self, entity: EntityId) -> Self",
+    "src/course.rs [pub] fn code(&self) -> &CourseCode",
+    "src/course.rs [pub] fn id(&self) -> CourseId",
+    "src/course.rs [pub] fn new(id: CourseId, code: CourseCode) -> Self",
+    "src/fault.rs [priv] fn hit(&self, _point: PublishCheckpoint) -> Result<(), CurriculumError>",
+    "src/fault.rs [priv] fn hit(&self, point: PublishCheckpoint) -> Result<(), CurriculumError>",
+    "src/fault.rs [pub] fn as_str(self) -> &'static str",
+    "src/gate.rs [pub] fn identifier(self) -> &'static str",
+    "src/gate.rs [pub] fn statement(self) -> &'static str",
+    "src/gate.rs [pub] fn unknown_readings() -> [(&'static str, &'static str); 5]",
+    "src/offering.rs [pub] fn as_str(self) -> &'static str",
+    "src/offering.rs [pub] fn as_str(self) -> &'static str",
+    "src/offering.rs [pub] fn assessment_ref(mut self, reference: EntityId) -> Self",
+    "src/offering.rs [pub] fn assessment_refs(&self) -> &[EntityId]",
+    "src/offering.rs [pub] fn build(self) -> CourseOffering",
+    "src/offering.rs [pub] fn capacity(&self) -> Option<Capacity>",
+    "src/offering.rs [pub] fn capacity(mut self, capacity: Capacity) -> Self",
+    "src/offering.rs [pub] fn course_revision(&self) -> CourseRevisionId",
+    "src/offering.rs [pub] fn from_minute(self) -> u16",
+    "src/offering.rs [pub] fn grading_mode(&self) -> GradingMode",
+    "src/offering.rs [pub] fn grading_mode(mut self, mode: GradingMode) -> Self",
+    "src/offering.rs [pub] fn id(&self) -> OfferingId",
+    "src/offering.rs [pub] fn instructor(mut self, name: InstructorName) -> Self",
+    "src/offering.rs [pub] fn instructors(&self) -> &[InstructorName]",
+    "src/offering.rs [pub] fn lecture_ref(mut self, reference: EntityId) -> Self",
+    "src/offering.rs [pub] fn lecture_refs(&self) -> &[EntityId]",
+    "src/offering.rs [pub] fn material_ref(mut self, reference: EntityId) -> Self",
+    "src/offering.rs [pub] fn material_refs(&self) -> &[EntityId]",
+    "src/offering.rs [pub] fn meeting(mut self, meeting: Meeting) -> Self",
+    "src/offering.rs [pub] fn meetings(&self) -> &[Meeting]",
+    "src/offering.rs [pub] fn new( id: OfferingId, course_revision: CourseRevisionId, term: TermCode, section: SectionCode, official_status: OfferingStatus, observed_at: TimestampMillis, ) -> Self",
+    "src/offering.rs [pub] fn new( weekday: Weekday, from_minute: u16, to_minute: u16, ) -> Result<Self, CurriculumError>",
+    "src/offering.rs [pub] fn new(seats: u16) -> Self",
+    "src/offering.rs [pub] fn observed_at(&self) -> TimestampMillis",
+    "src/offering.rs [pub] fn official_status(&self) -> OfferingStatus",
+    "src/offering.rs [pub] fn review_ref(mut self, reference: EntityId) -> Self",
+    "src/offering.rs [pub] fn review_refs(&self) -> &[EntityId]",
+    "src/offering.rs [pub] fn seats(self) -> u16",
+    "src/offering.rs [pub] fn section(&self) -> &SectionCode",
+    "src/offering.rs [pub] fn syllabus_artifact(&self) -> Option<ArtifactId>",
+    "src/offering.rs [pub] fn syllabus_artifact(mut self, artifact: ArtifactId) -> Self",
+    "src/offering.rs [pub] fn term(&self) -> &TermCode",
+    "src/offering.rs [pub] fn to_minute(self) -> u16",
+    "src/offering.rs [pub] fn weekday(self) -> Weekday",
+    "src/publish.rs [priv] fn append( &self, ledger: &mut CurriculumLedger, publication: CurriculumPublication, ) -> Result<PublishReceipt, CurriculumError>",
+    "src/publish.rs [priv] fn default() -> Self",
+    "src/publish.rs [priv] fn mark(&self) -> LedgerMark",
+    "src/publish.rs [priv] fn rewind_to(&mut self, mark: LedgerMark)",
+    "src/publish.rs [priv] fn validate( ledger: &CurriculumLedger, publication: &CurriculumPublication, ) -> Result<(), CurriculumError>",
+    "src/publish.rs [pub] fn connector(&self) -> &ConnectorId",
+    "src/publish.rs [pub] fn course(&self, id: CourseId) -> Option<&Course>",
+    "src/publish.rs [pub] fn courses(&self) -> &[CourseId]",
+    "src/publish.rs [pub] fn courses(&self) -> &[Course]",
+    "src/publish.rs [pub] fn effective(&self) -> EffectiveDate",
+    "src/publish.rs [pub] fn equivalent(&self, source: CourseId, target: CourseId, instant: TimestampMillis) -> bool",
+    "src/publish.rs [pub] fn from_official_source(published: &PublishedRules, version: CurriculumVersion) -> Self",
+    "src/publish.rs [pub] fn new() -> Self",
+    "src/publish.rs [pub] fn new() -> Self",
+    "src/publish.rs [pub] fn offering(&self, id: OfferingId) -> Option<&CourseOffering>",
+    "src/publish.rs [pub] fn offerings(&self) -> &[CourseOffering]",
+    "src/publish.rs [pub] fn offerings(&self) -> &[OfferingId]",
+    "src/publish.rs [pub] fn offerings_for_course(&self, course: CourseId) -> Vec<&CourseOffering>",
+    "src/publish.rs [pub] fn offerings_of(&self, revision: CourseRevisionId) -> Vec<&CourseOffering>",
+    "src/publish.rs [pub] fn parser_version(&self) -> ParserVersion",
+    "src/publish.rs [pub] fn publish( &self, ledger: &mut CurriculumLedger, publication: CurriculumPublication, ) -> Result<PublishReceipt, CurriculumError>",
+    "src/publish.rs [pub] fn relations(&self) -> &CourseRelations",
+    "src/publish.rs [pub] fn replacements_for( &self, retired: CourseId, instant: TimestampMillis, ) -> std::collections::BTreeSet<CourseId>",
+    "src/publish.rs [pub] fn retired(&self, course: CourseId, instant: TimestampMillis) -> bool",
+    "src/publish.rs [pub] fn retrieved_at(&self) -> RetrievalInstant",
+    "src/publish.rs [pub] fn revision(&self, id: CourseRevisionId) -> Option<&CourseRevision>",
+    "src/publish.rs [pub] fn revisions(&self) -> &[CourseRevisionId]",
+    "src/publish.rs [pub] fn revisions(&self) -> &[CourseRevision]",
+    "src/publish.rs [pub] fn revisions_of(&self, course: CourseId) -> Vec<&CourseRevision>",
+    "src/publish.rs [pub] fn same_course( &self, earlier: CourseId, later: CourseId, instant: TimestampMillis, ) -> crate::relation::CourseCodeReuse",
+    "src/publish.rs [pub] fn source(&self) -> &OfficialSourceBinding",
+    "src/publish.rs [pub] fn sources(&self) -> &[OfficialSourceBinding]",
+    "src/publish.rs [pub] fn version(&self) -> &CurriculumVersion",
+    "src/publish.rs [pub] fn version(&self) -> CurriculumVersionId",
+    "src/publish.rs [pub] fn version(&self, id: CurriculumVersionId) -> Option<&CurriculumVersion>",
+    "src/publish.rs [pub] fn versions(&self) -> &[CurriculumVersion]",
+    "src/publish.rs [pub] fn with_course(mut self, course: Course) -> Self",
+    "src/publish.rs [pub] fn with_equivalence(mut self, relation: EquivalenceRelation) -> Self",
+    "src/publish.rs [pub] fn with_faults(faults: &'injector dyn PublishFaultInjector) -> Self",
+    "src/publish.rs [pub] fn with_identity(mut self, decision: IdentityDecision) -> Self",
+    "src/publish.rs [pub] fn with_offering(mut self, offering: CourseOffering) -> Self",
+    "src/publish.rs [pub] fn with_replacement(mut self, relation: ReplacementRelation) -> Self",
+    "src/publish.rs [pub] fn with_retirement(mut self, relation: RetirementRelation) -> Self",
+    "src/publish.rs [pub] fn with_revision(mut self, revision: CourseRevision) -> Self",
+    "src/relation.rs [priv] fn truncate_to( &mut self, identities: usize, equivalences: usize, replacements: usize, retirements: usize, )",
+    "src/relation.rs [pub] fn as_str(self) -> &'static str",
+    "src/relation.rs [pub] fn as_str(self) -> &'static str",
+    "src/relation.rs [pub] fn course(self) -> CourseId",
+    "src/relation.rs [pub] fn decision(self) -> DecisionId",
+    "src/relation.rs [pub] fn earlier(self) -> CourseId",
+    "src/relation.rs [pub] fn equivalences(&self) -> &[EquivalenceRelation]",
+    "src/relation.rs [pub] fn equivalent(&self, source: CourseId, target: CourseId, instant: TimestampMillis) -> bool",
+    "src/relation.rs [pub] fn identities(&self) -> &[IdentityDecision]",
+    "src/relation.rs [pub] fn later(self) -> CourseId",
+    "src/relation.rs [pub] fn new() -> Self",
+    "src/relation.rs [pub] fn record( earlier: CourseId, later: CourseId, verdict: CourseCodeReuse, decision: DecisionId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError>",
+    "src/relation.rs [pub] fn record( retired: CourseId, replacement: CourseId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError>",
+    "src/relation.rs [pub] fn record( source: CourseId, target: CourseId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError>",
+    "src/relation.rs [pub] fn record(course: CourseId, valid_time: ValidInterval) -> Self",
+    "src/relation.rs [pub] fn record_equivalence(&mut self, relation: EquivalenceRelation)",
+    "src/relation.rs [pub] fn record_identity(&mut self, decision: IdentityDecision)",
+    "src/relation.rs [pub] fn record_replacement(&mut self, relation: ReplacementRelation)",
+    "src/relation.rs [pub] fn record_retirement(&mut self, relation: RetirementRelation)",
+    "src/relation.rs [pub] fn replacement(self) -> CourseId",
+    "src/relation.rs [pub] fn replacements(&self) -> &[ReplacementRelation]",
+    "src/relation.rs [pub] fn replacements_for( &self, retired: CourseId, instant: TimestampMillis, ) -> BTreeSet<CourseId>",
+    "src/relation.rs [pub] fn retired(&self, course: CourseId, instant: TimestampMillis) -> bool",
+    "src/relation.rs [pub] fn retired(self) -> CourseId",
+    "src/relation.rs [pub] fn retirements(&self) -> &[RetirementRelation]",
+    "src/relation.rs [pub] fn same_course( &self, earlier: CourseId, later: CourseId, instant: TimestampMillis, ) -> CourseCodeReuse",
+    "src/relation.rs [pub] fn source(self) -> CourseId",
+    "src/relation.rs [pub] fn specification_word(self) -> &'static str",
+    "src/relation.rs [pub] fn target(self) -> CourseId",
+    "src/relation.rs [pub] fn valid_time(self) -> ValidInterval",
+    "src/relation.rs [pub] fn valid_time(self) -> ValidInterval",
+    "src/relation.rs [pub] fn valid_time(self) -> ValidInterval",
+    "src/relation.rs [pub] fn valid_time(self) -> ValidInterval",
+    "src/relation.rs [pub] fn verdict(self) -> CourseCodeReuse",
+    "src/revision.rs [pub] fn as_str(self) -> &'static str",
+    "src/revision.rs [pub] fn build(self) -> Result<CourseRevision, CurriculumError>",
+    "src/revision.rs [pub] fn code(&self) -> &CourseCode",
+    "src/revision.rs [pub] fn course(&self) -> CourseId",
+    "src/revision.rs [pub] fn course(self) -> CourseId",
+    "src/revision.rs [pub] fn course(self) -> CourseId",
+    "src/revision.rs [pub] fn credits(&self) -> Credits",
+    "src/revision.rs [pub] fn credits(mut self, credits: Credits) -> Self",
+    "src/revision.rs [pub] fn curriculum_category(&self) -> CurriculumCategory",
+    "src/revision.rs [pub] fn curriculum_category(mut self, category: CurriculumCategory) -> Self",
+    "src/revision.rs [pub] fn curriculum_version(&self) -> CurriculumVersionId",
+    "src/revision.rs [pub] fn designed_competency(mut self, competency: EntityId) -> Self",
+    "src/revision.rs [pub] fn designed_competency_coverage(&self) -> &[EntityId]",
+    "src/revision.rs [pub] fn designed_concept(mut self, concept: EntityId) -> Self",
+    "src/revision.rs [pub] fn designed_concept_coverage(&self) -> &[EntityId]",
+    "src/revision.rs [pub] fn id(&self) -> CourseRevisionId",
+    "src/revision.rs [pub] fn is_known(self) -> bool",
+    "src/revision.rs [pub] fn new( id: CourseRevisionId, course: CourseId, curriculum_version: CurriculumVersionId, code: CourseCode, valid_time: ValidInterval, ) -> Self",
+    "src/revision.rs [pub] fn new(value: u8) -> Result<Self, CurriculumError>",
+    "src/revision.rs [pub] fn official_prerequisite(mut self, entry: OfficialPrerequisite) -> Self",
+    "src/revision.rs [pub] fn official_prerequisites(&self) -> &[OfficialPrerequisite]",
+    "src/revision.rs [pub] fn on(course: CourseId) -> Self",
+    "src/revision.rs [pub] fn on(course: CourseId) -> Self",
+    "src/revision.rs [pub] fn recommended_prerequisite(mut self, entry: RecommendedPrerequisite) -> Self",
+    "src/revision.rs [pub] fn recommended_prerequisites(&self) -> &[RecommendedPrerequisite]",
+    "src/revision.rs [pub] fn source_snapshot(&self) -> Option<&ContentDigest>",
+    "src/revision.rs [pub] fn source_snapshot(mut self, digest: ContentDigest) -> Self",
+    "src/revision.rs [pub] fn title(&self) -> &CourseTitle",
+    "src/revision.rs [pub] fn title(mut self, title: CourseTitle) -> Self",
+    "src/revision.rs [pub] fn valid_time(&self) -> ValidInterval",
+    "src/revision.rs [pub] fn value(self) -> u8",
+    "src/text.rs [priv] fn bounded(field: &'static str, value: &str) -> Result<(), CurriculumError>",
+    "src/text.rs [pub] fn as_str(&self) -> &str",
+    "src/text.rs [pub] fn parse(value: &str) -> Result<Self, CurriculumError>",
+    "src/version.rs [pub] fn admission_year_range(&self) -> (&AdmissionCohort, &AdmissionCohort)",
+    "src/version.rs [pub] fn as_str(self) -> &'static str",
+    "src/version.rs [pub] fn as_str(self) -> &'static str",
+    "src/version.rs [pub] fn build(self) -> Result<CurriculumVersion, CurriculumError>",
+    "src/version.rs [pub] fn cohort(&self) -> &AdmissionCohort",
+    "src/version.rs [pub] fn disposition(&self) -> CohortTransition",
+    "src/version.rs [pub] fn id(&self) -> CurriculumVersionId",
+    "src/version.rs [pub] fn institution_path(&self) -> &[String]",
+    "src/version.rs [pub] fn institution_segment(mut self, segment: &str) -> Self",
+    "src/version.rs [pub] fn new( id: CurriculumVersionId, admission_year_range: (AdmissionCohort, AdmissionCohort), valid_time: ValidInterval, ) -> Self",
+    "src/version.rs [pub] fn record( cohort: AdmissionCohort, disposition: CohortTransition, valid_time: ValidInterval, ) -> Result<Self, CurriculumError>",
+    "src/version.rs [pub] fn source_snapshot(&self) -> Option<&ContentDigest>",
+    "src/version.rs [pub] fn source_snapshot(mut self, digest: ContentDigest) -> Self",
+    "src/version.rs [pub] fn status(&self) -> PublicationStatus",
+    "src/version.rs [pub] fn status(mut self, status: PublicationStatus) -> Self",
+    "src/version.rs [pub] fn supersedes(&self) -> Option<CurriculumVersionId>",
+    "src/version.rs [pub] fn supersedes(mut self, earlier: CurriculumVersionId) -> Self",
+    "src/version.rs [pub] fn transition(mut self, arrangement: TransitionArrangement) -> Self",
+    "src/version.rs [pub] fn transition_for(&self, cohort: &AdmissionCohort) -> CohortTransition",
+    "src/version.rs [pub] fn transitions(&self) -> &[TransitionArrangement]",
+    "src/version.rs [pub] fn valid_time(&self) -> ValidInterval",
+    "src/version.rs [pub] fn valid_time(&self) -> ValidInterval",
+];
+
+/// Every `impl` block header this package ships, as `<file>: <header>`.
+const IMPL_HEADERS: &[&str] = &[
+    "src/course.rs: impl Course",
+    "src/course.rs: impl CourseDraft",
+    "src/fault.rs: impl PublishCheckpoint",
+    "src/fault.rs: impl PublishFaultInjector for NoFault",
+    "src/gate.rs: impl OpenGate",
+    "src/offering.rs: impl Capacity",
+    "src/offering.rs: impl CourseOffering",
+    "src/offering.rs: impl CourseOfferingDraft",
+    "src/offering.rs: impl GradingMode",
+    "src/offering.rs: impl Meeting",
+    "src/offering.rs: impl OfferingStatus",
+    "src/offering.rs: impl Weekday",
+    "src/publish.rs: impl CurriculumLedger",
+    "src/publish.rs: impl CurriculumLedger",
+    "src/publish.rs: impl CurriculumPublication",
+    "src/publish.rs: impl CurriculumPublisher<'static>",
+    "src/publish.rs: impl Default for CurriculumPublisher<'static>",
+    "src/publish.rs: impl OfficialSourceBinding",
+    "src/publish.rs: impl PublishReceipt",
+    "src/publish.rs: impl<'injector> CurriculumPublisher<'injector>",
+    "src/relation.rs: impl CourseCodeReuse",
+    "src/relation.rs: impl CourseRelationKind",
+    "src/relation.rs: impl CourseRelations",
+    "src/relation.rs: impl EquivalenceRelation",
+    "src/relation.rs: impl IdentityDecision",
+    "src/relation.rs: impl ReplacementRelation",
+    "src/relation.rs: impl RetirementRelation",
+    "src/revision.rs: impl CourseRevision",
+    "src/revision.rs: impl CourseRevisionDraft",
+    "src/revision.rs: impl Credits",
+    "src/revision.rs: impl CurriculumCategory",
+    "src/revision.rs: impl OfficialPrerequisite",
+    "src/revision.rs: impl RecommendedPrerequisite",
+    "src/text.rs: impl $name",
+    "src/version.rs: impl CohortTransition",
+    "src/version.rs: impl CurriculumVersion",
+    "src/version.rs: impl CurriculumVersionDraft",
+    "src/version.rs: impl PublicationStatus",
+    "src/version.rs: impl TransitionArrangement",
+];
+
+// ---------------------------------------------------------------------------
+// every_declaration_and_impl_in_this_crate_is_pinned
+// ---------------------------------------------------------------------------
+//
+// `P2-A3` measured this crate's blind spot directly: four `impl From<..>` blocks
+// appended to a product file gave an external crate a route to a value the
+// crate's own doc says has one construction site, and every acceptance test in
+// this crate stayed green. A `trait impl` declares no `pub fn`, so a scan built
+// on public signatures does not see it, and no scan here counted `impl` blocks
+// at all.
+//
+// `P2-X5` measured the same class as six invisible injections out of nineteen,
+// and `P2-Y3` closed it in `crates/cs-map` by pinning the whole set of `impl`
+// headers. `academic-review` and `academic-ingestion` were the only two U crates
+// carrying that defence. This is it, ported: two whole sets, compared in both
+// directions, over every `.rs` file this package ships.
+//
+// It is deliberately not a list of forbidden spellings. A new function, a new
+// method, a new inherent `impl`, a new trait `impl` and a new file all fail as
+// an entry nobody wrote down, whatever they are called.
+
+/// Every `.rs` file this package ships: everything outside `tests`.
+///
+/// The whole package rather than `src`, because `S-12` in
+/// `docs/contracts/policy-source-scans.md` is the row about a walk that reads
+/// `<crate>/src` and stops seeing product-shaped code beside it --
+/// `examples/`, `benches/` and `probes/` are all compiled by
+/// `cargo clippy --workspace --all-targets`.
+fn inventory_sources() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
+    let base = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mut found = Vec::new();
+    let mut pending = vec![base.clone()];
+    while let Some(directory) = pending.pop() {
+        for entry in std::fs::read_dir(&directory)? {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
+                if path
+                    .file_name()
+                    .is_some_and(|name| name == "tests" || name == "target")
+                {
+                    continue;
+                }
+                pending.push(path);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let name = path
+                    .strip_prefix(&base)?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                found.push((name, std::fs::read_to_string(&path)?));
+            }
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// Removes comments, string literals and character literals.
+///
+/// The raw-string-aware reader from `crates/record/tests/record_scans.rs`,
+/// copied deliberately: `P2-G4` found that a lexer without raw strings
+/// desynchronizes and reads every literal after one as code.
+fn inventory_strip(source: &str) -> String {
+    let bytes: Vec<char> = source.chars().collect();
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let current = bytes[index];
+        let next = bytes.get(index + 1).copied();
+
+        if current == '/' && next == Some('/') {
+            while index < bytes.len() && bytes[index] != '\n' {
+                index += 1;
+            }
+            out.push('\n');
+            continue;
+        }
+        if current == '/' && next == Some('*') {
+            let mut depth = 1_usize;
+            index += 2;
+            while index < bytes.len() && depth > 0 {
+                if bytes[index] == '/' && bytes.get(index + 1) == Some(&'*') {
+                    depth += 1;
+                    index += 2;
+                } else if bytes[index] == '*' && bytes.get(index + 1) == Some(&'/') {
+                    depth -= 1;
+                    index += 2;
+                } else {
+                    index += 1;
+                }
+            }
+            out.push(' ');
+            continue;
+        }
+        if current == 'r' && matches!(next, Some('"') | Some('#')) {
+            let mut probe = index + 1;
+            let mut hashes = 0_usize;
+            while bytes.get(probe) == Some(&'#') {
+                hashes += 1;
+                probe += 1;
+            }
+            if bytes.get(probe) == Some(&'"') {
+                let terminator: String = core::iter::once('"')
+                    .chain(core::iter::repeat_n('#', hashes))
+                    .collect();
+                let rest: String = bytes[probe + 1..].iter().collect();
+                let end = rest.find(&terminator).map_or(bytes.len(), |offset| {
+                    probe + 1 + rest[..offset].chars().count() + terminator.chars().count()
+                });
+                index = end;
+                out.push(' ');
+                continue;
+            }
+        }
+        if current == '"' {
+            index += 1;
+            while index < bytes.len() {
+                if bytes[index] == '\\' {
+                    index += 2;
+                    continue;
+                }
+                if bytes[index] == '"' {
+                    index += 1;
+                    break;
+                }
+                index += 1;
+            }
+            out.push(' ');
+            continue;
+        }
+        if current == '\'' {
+            let closes = if next == Some('\\') {
+                bytes
+                    .iter()
+                    .skip(index + 2)
+                    .position(|character| *character == '\'')
+                    .map(|offset| index + 2 + offset)
+            } else {
+                (bytes.get(index + 2) == Some(&'\'')).then_some(index + 2)
+            };
+            if let Some(end) = closes {
+                index = end + 1;
+                out.push(' ');
+                continue;
+            }
+        }
+        out.push(current);
+        index += 1;
+    }
+    out
+}
+
+/// Collapses whitespace runs to single spaces.
+fn inventory_collapse(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Every function declaration in `code`, as a public flag and a signature.
+///
+/// Visibility is read off the text before `fn` on the same line: `pub(` is
+/// crate-private however it continues, a bare `pub` is public, anything else is
+/// private. Reading **signatures** rather than names is what makes the pin a
+/// statement about what a function takes and returns, so a widened parameter
+/// fails as loudly as a new function.
+///
+/// The `>` of a `->` is skipped: `crates/review`'s copy of this reader records
+/// that treating it as a closing bracket truncated `fn counts(self) -> [u32; 5]`
+/// to `fn counts(self) -> [u32`, and a pin on a truncated signature is a pin two
+/// different signatures satisfy.
+fn inventory_declarations(code: &str) -> Vec<(bool, String)> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("fn ") {
+        if !(at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_')) {
+            continue;
+        }
+        let line_start = code[..at].rfind('\n').map_or(0, |index| index + 1);
+        let prefix = &code[line_start..at];
+        let public = prefix.contains("pub") && !prefix.contains("pub(");
+        let mut depth = 0_i32;
+        let mut end = None;
+        let region = &code[at..];
+        let region_bytes = region.as_bytes();
+        for (offset, character) in region.char_indices() {
+            match character {
+                '(' | '<' | '[' => depth += 1,
+                '>' if offset > 0 && region_bytes[offset - 1] == b'-' => {}
+                ')' | '>' | ']' => depth -= 1,
+                '{' | ';' if depth <= 0 => {
+                    end = Some(at + offset);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if let Some(end) = end {
+            found.push((public, inventory_collapse(&code[at..end])));
+        }
+    }
+    found
+}
+
+/// Every `impl` block header in `code`, whole.
+///
+/// The header is everything from `impl` to the opening brace, so
+/// `impl From<usize> for CoverageWitness` and `impl CoverageWitness` are
+/// different entries and a trait implementation cannot arrive as an edit to an
+/// inherent one.
+fn inventory_impl_headers(code: &str) -> Vec<String> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("impl") {
+        if at > 0 && (bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_') {
+            continue;
+        }
+        if code[at + 4..]
+            .starts_with(|character: char| character.is_alphanumeric() || character == '_')
+        {
+            continue;
+        }
+        let Some(end) = code[at..].find(['{', ';']) else {
+            continue;
+        };
+        found.push(inventory_collapse(&code[at..at + end]));
+    }
+    found
+}
+
+/// Nothing this crate declares is outside the two pinned sets.
+///
+/// Two whole sets, each compared in both directions:
+///
+/// 1. every function declaration this package ships, as a file, a visibility
+///    and a full signature;
+/// 2. every `impl` block header this package ships, as a file and a header.
+///
+/// The second is the one `P2-A3` walked through. Its injection was four
+/// `impl From<..>` blocks in a product file -- no `pub fn`, no new name on any
+/// forbidden list, no change to any other file -- and it handed an external
+/// crate a value the crate's own documentation says it cannot construct. There
+/// is no spelling of that injection that this test does not see, because it does
+/// not look for spellings: it compares the set.
+#[test]
+fn every_declaration_and_impl_in_this_crate_is_pinned() -> TestResult {
+    let sources = inventory_sources()?;
+    assert!(
+        sources.len() >= INVENTORY_FILE_FLOOR,
+        "the inventory walk read only {} files",
+        sources.len()
+    );
+
+    let mut declared = Vec::new();
+    let mut headers = Vec::new();
+    for (name, text) in &sources {
+        let code = inventory_strip(text);
+        for (public, signature) in inventory_declarations(&code) {
+            let visibility = if public { "pub" } else { "priv" };
+            declared.push(format!("{name} [{visibility}] {signature}"));
+        }
+        for header in inventory_impl_headers(&code) {
+            headers.push(format!("{name}: {header}"));
+        }
+    }
+    declared.sort();
+    headers.sort();
+
+    assert_eq!(
+        declared,
+        DECLARATIONS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's declaration set changed"
+    );
+    assert_eq!(
+        headers,
+        IMPL_HEADERS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's impl inventory changed"
+    );
+    Ok(())
+}

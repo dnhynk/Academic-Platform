@@ -1211,3 +1211,67 @@ fn every_public_accessor_hands_back_what_it_names() -> TestResult {
     assert_eq!(offerings[0].distributions(), aggregate.distributions());
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// the_retained_text_bound_and_the_short_review_arm -- REQ-24-012
+// ---------------------------------------------------------------------------
+
+/// The two guards `P2-A3` found undriven in this crate.
+///
+/// Both were removed one at a time and the whole `academic-review` suite passed
+/// each time: nothing in any corpus is longer than `MAX_REVIEW_BYTES`, and no
+/// two reviews in any corpus are shorter than three words.
+///
+/// * `RawReviewText::retain`'s length bound is what makes the boundary's own
+///   `MAX_SOURCE_BYTES` a fact about every value of this type rather than about
+///   the values somebody happened to build, so `seal` can always hand one over.
+/// * `shingles`' short-review arm yields one shingle holding all the words, so
+///   two short reviews compare against **each other**. Without it, `windows(3)`
+///   over fewer than three words yields nothing, every short review is the
+///   empty set, and two identical short reviews read as 0 permille similar --
+///   duplicate detection silently stops seeing exactly the reviews a person is
+///   most likely to paste twice.
+#[test]
+fn the_retained_text_bound_and_the_short_review_arm() -> TestResult {
+    // 1. The length bound. One byte under and one byte over.
+    let inside = "x".repeat(academic_review::MAX_REVIEW_BYTES);
+    assert!(
+        academic_review::RawReviewText::retain(&inside, &[]).is_ok(),
+        "a text exactly at the bound was refused"
+    );
+    let over = "x".repeat(academic_review::MAX_REVIEW_BYTES + 1);
+    assert_eq!(
+        academic_review::RawReviewText::retain(&over, &[]).err(),
+        Some(ReviewError::TextTooLong(
+            academic_review::MAX_REVIEW_BYTES + 1
+        )),
+        "a text over the bound was retained"
+    );
+
+    // 2. The short-review arm. Two identical two-word reviews are duplicates of
+    //    each other, and two different ones are not.
+    let short = |suffix: u64, text: &str| {
+        review(
+            suffix,
+            scope(SOURCE, 1, "Kim", "2026_1")?,
+            text,
+            SourceAccessMode::ManualPaste,
+            extraction_at(DimensionBand::Moderate)?,
+        )
+    };
+    let one = short(61, "workload heavy")?;
+    let same = short(62, "workload heavy")?;
+    let other = short(63, "grading arbitrary")?;
+
+    assert_eq!(
+        similarity(&one, &same).value(),
+        1000,
+        "two identical two-word reviews did not read as duplicates"
+    );
+    assert_eq!(
+        similarity(&one, &other).value(),
+        0,
+        "two different two-word reviews read as duplicates"
+    );
+    Ok(())
+}

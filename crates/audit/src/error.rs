@@ -67,6 +67,27 @@ pub enum AuditError {
     #[error("the presented rule-set hash is not this audit's rule set")]
     RuleSetHashMismatch,
 
+    /// A gate refused and the audit collected no outstanding check.
+    ///
+    /// This is a defect in `DegreeAudit::assemble`, not a state of the record,
+    /// and it is returned as one. The arm exists because
+    /// `IndeterminateVerdict::from_checks` answers `Option` and a `match` has
+    /// to be total; what used to stand here was
+    /// `MissingCheck::SourceFreshnessPolicyAbsent`, which told a user who had
+    /// recorded the freshness criterion to record it. An audit that cannot say
+    /// what it is waiting for is not a verdict, and inventing the nearest check
+    /// to fill the hole is exactly the vague *정보 부족* section 11.1 forbids --
+    /// with a false reason attached.
+    ///
+    /// It is unreachable on a published rule set: `RuleSetDraft::publish`
+    /// refuses a set with no rule, every rule with no recorded span pushes
+    /// `RuleSourceSpanAbsent`, every `UNKNOWN` and `CONFLICT` leaf pushes its
+    /// own check, and both freshness arms push theirs -- so a refusing gate
+    /// always leaves at least one check behind. `a_gate_that_refuses_always_
+    /// names_a_check` walks the four refusals and observes that.
+    #[error("a gate refused and the audit collected no outstanding check")]
+    RefusedWithNoCheck,
+
     /// A frozen input the decoder requires is absent.
     #[error("the frozen inputs declare no {0}")]
     MissingEngineInput(&'static str),

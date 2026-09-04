@@ -16,6 +16,7 @@ fn candidate() -> RuleCandidate {
     let run_id: EntityId = "01900000-0000-7000-8000-000000000002".parse().unwrap();
     RuleCandidate::extracted(
         RuleId::new("total_credits").unwrap(),
+        academic_domain::engines::RuleId::new("r-12-1").unwrap(),
         RuleBody::CreditMinimum {
             category: CreditCategory::new("ALL_RECOGNIZED").unwrap(),
             threshold: CreditAmount::new(130).unwrap(),

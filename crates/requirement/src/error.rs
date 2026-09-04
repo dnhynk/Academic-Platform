@@ -43,6 +43,42 @@ pub enum RequirementError {
         rule: String,
     },
 
+    /// A reviewed rule named a document rule the official source did not
+    /// publish.
+    ///
+    /// The identifier a reviewer chooses inside a set and the identifier the
+    /// official document gives a rule are two namespaces. A rule set is bound
+    /// to one published document, so the document identifier a rule claims has
+    /// to be one that document really carries; otherwise the crossing is a
+    /// string somebody typed, and anything downstream that compares the two --
+    /// `academic-audit`'s source-conflict gate does -- is reading a
+    /// coincidence.
+    #[error(
+        "rule `{rule}` names source rule `{source_rule}`, which this official source did not publish"
+    )]
+    SourceRuleNotPublished {
+        /// The rule inside the set.
+        rule: String,
+        /// The document identifier it claimed.
+        source_rule: String,
+    },
+
+    /// A draft with no rule in it was offered for publication.
+    ///
+    /// Section 11.4 makes a graduation determination conditional on *rule
+    /// coverage 100%*, and coverage over no rule is the vacuous witness
+    /// `academic_audit::CoverageWitness` refuses. A set that requires nothing
+    /// is not a lenient requirement set; it is the shape that answers 졸업
+    /// 가능 from an empty tree, and it was also the one state in which an audit
+    /// could reach `INDETERMINATE` with no outstanding check to name.
+    #[error("requirement set `{set}` version {version} publishes no rule")]
+    EmptyRuleSet {
+        /// The set that would have been published.
+        set: String,
+        /// The version that would have been published.
+        version: String,
+    },
+
     /// A review gate call whose two attestations came from one reviewer.
     ///
     /// Two attestations by one person is one review recorded twice. The gate

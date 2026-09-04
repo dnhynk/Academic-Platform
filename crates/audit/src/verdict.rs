@@ -127,6 +127,13 @@ pub enum MissingCheck {
     },
     /// No source-freshness criterion has been recorded.
     SourceFreshnessPolicyAbsent,
+    /// The open-conflict store was never read for this audit.
+    ///
+    /// Not the same as reading it and finding nothing. Section 8.4 keeps a
+    /// dangerous determination `INDETERMINATE` while a case is unresolved, and
+    /// an audit that never asked whether a case is open cannot say that none
+    /// is -- so it says this instead of counting zero cases and concluding.
+    SourceConflictSurveyAbsent,
     /// The rule set's source is older than the recorded criterion admits.
     SourceNotFresh {
         /// How old the source is, in seconds.
@@ -201,6 +208,12 @@ impl MissingCheck {
                  no source states one and none is assumed"
                     .to_owned()
             }
+            Self::SourceConflictSurveyAbsent => {
+                "read the open-conflict store for the sources this rule set was published from; \
+                 this audit was given no reading of it, and no reading is not the same as none \
+                 open"
+                    .to_owned()
+            }
             Self::SourceNotFresh {
                 age_seconds,
                 limit_seconds,
@@ -225,6 +238,7 @@ impl MissingCheck {
             Self::UnresolvedSourceConflict { .. } => "UNRESOLVED_SOURCE_CONFLICT",
             Self::RecognitionUndecided { .. } => "RECOGNITION_UNDECIDED",
             Self::SourceFreshnessPolicyAbsent => "SOURCE_FRESHNESS_POLICY_ABSENT",
+            Self::SourceConflictSurveyAbsent => "SOURCE_CONFLICT_SURVEY_ABSENT",
             Self::SourceNotFresh { .. } => "SOURCE_NOT_FRESH",
         }
     }
@@ -381,13 +395,29 @@ pub struct ConflictFreeWitness {
 
 impl ConflictFreeWitness {
     /// Establishes the absence of conflict, or does not.
-    pub(crate) fn establish(leaves: &[ProofLeaf], cases: &[&ConflictReference]) -> Option<Self> {
+    ///
+    /// `cases` is `None` when the conflict store was not read for this audit.
+    /// That is refused, and it is refused for the reason
+    /// [`CoverageWitness::establish`] refuses an empty leaf set eleven lines
+    /// above: a witness that examined nothing witnesses nothing. The two
+    /// halves used to be asymmetric -- coverage refused the vacuous case in a
+    /// comment naming it as the failure mode this repository keeps finding,
+    /// and the conflict gate next to it issued a witness over an empty slice
+    /// and let the audit answer 졸업 가능 with `cases examined = 0`.
+    ///
+    /// `Some(&[])` is admitted: a store that was read and held nothing is a
+    /// real observation, and `cases_examined` records that it was zero.
+    pub(crate) fn establish(
+        leaves: &[ProofLeaf],
+        cases: Option<&[&ConflictReference]>,
+    ) -> Option<Self> {
         if leaves
             .iter()
             .any(|leaf| leaf.status() == ProofStatus::Conflict)
         {
             return None;
         }
+        let cases = cases?;
         if cases.iter().any(|case| !case.is_resolved()) {
             return None;
         }
@@ -582,5 +612,89 @@ impl DegreeVerdict {
             Self::Determinate(verdict) => Some(*verdict),
             Self::Indeterminate(_) => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! The three gates' refusals, driven directly.
+    //!
+    //! `establish` is crate-private on all three, so these live here rather
+    //! than in `tests/`. `P2-A3`'s guard-deletion sweep found each of the
+    //! refusals below still passing the whole `academic-audit` suite when it
+    //! was deleted: nothing drove them.
+
+    use super::{
+        ConflictFreeWitness, CoverageWitness, FreshnessWitness, RetrievalInstant,
+        SourceFreshnessPolicy, TimestampMillis,
+    };
+
+    const AS_OF: TimestampMillis = TimestampMillis::new(1_772_100_000_000);
+    const AS_OF_SECONDS: u64 = 1_772_100_000;
+    const POLICY: SourceFreshnessPolicy = SourceFreshnessPolicy::max_age_seconds(200_000);
+
+    /// A tree with no leaf covers every rule vacuously.
+    ///
+    /// `RuleSetDraft::publish` refuses a set with no rule, so this is the
+    /// refusal that documents the invariant at the point that depends on it
+    /// rather than a reachable state. Nothing else drives it: the sweep deleted
+    /// it and all twenty-nine tests passed.
+    #[test]
+    fn coverage_refuses_an_empty_leaf_set() {
+        assert!(CoverageWitness::establish(&[], &[]).is_none());
+    }
+
+    /// A conflict survey nobody made is not a survey that found nothing.
+    #[test]
+    fn the_conflict_gate_separates_an_unread_store_from_an_empty_one() {
+        assert!(ConflictFreeWitness::establish(&[], None).is_none());
+        assert_eq!(
+            ConflictFreeWitness::establish(&[], Some(&[])).map(ConflictFreeWitness::cases_examined),
+            Some(0),
+            "a store that was read and held nothing is a real observation"
+        );
+    }
+
+    /// A reading from the future is not a fresh reading.
+    ///
+    /// Without the `checked_sub`, a source retrieved after the instant the
+    /// audit is anchored to reads as age zero -- maximally fresh, from a clock
+    /// that disagrees with the record. The three cases below are one second
+    /// after the anchor, the anchor itself, and one second before it.
+    #[test]
+    fn freshness_refuses_a_retrieval_after_the_audit_instant() {
+        assert!(
+            FreshnessWitness::establish(
+                Some(POLICY),
+                RetrievalInstant::at(AS_OF_SECONDS + 1),
+                AS_OF,
+            )
+            .is_none(),
+            "a source retrieved after the audit instant established freshness"
+        );
+        assert_eq!(
+            FreshnessWitness::establish(Some(POLICY), RetrievalInstant::at(AS_OF_SECONDS), AS_OF)
+                .map(FreshnessWitness::age_seconds),
+            Some(0)
+        );
+        assert_eq!(
+            FreshnessWitness::establish(
+                Some(POLICY),
+                RetrievalInstant::at(AS_OF_SECONDS - 1),
+                AS_OF,
+            )
+            .map(FreshnessWitness::age_seconds),
+            Some(1)
+        );
+        // And the bound itself still refuses, so the future case above is not
+        // passing because every reading refuses.
+        assert!(
+            FreshnessWitness::establish(
+                Some(POLICY),
+                RetrievalInstant::at(AS_OF_SECONDS - POLICY.limit_seconds() - 1),
+                AS_OF,
+            )
+            .is_none()
+        );
     }
 }

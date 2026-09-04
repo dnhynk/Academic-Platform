@@ -25,6 +25,7 @@ fn main() {
     // for itself.
     let _literal = ReviewedRule {
         id: rule.clone(),
+        source_rule: academic_domain::engines::RuleId::new("r-12-1").unwrap(),
         body: RuleBody::CreditMinimum {
             category: CreditCategory::new("ALL_RECOGNIZED").unwrap(),
             threshold: CreditAmount::new(130).unwrap(),

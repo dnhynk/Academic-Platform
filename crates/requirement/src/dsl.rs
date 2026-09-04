@@ -520,3 +520,283 @@ impl RuleBody {
         Ok(())
     }
 }
+
+/// One `key=value` token, appended with a leading space.
+fn field(rendered: &mut String, key: &str, value: &str) {
+    rendered.push(' ');
+    rendered.push_str(key);
+    rendered.push('=');
+    rendered.push_str(value);
+}
+
+/// A [`ValidInterval`] as two tokens under `prefix`.
+///
+/// The absent upper bound is the token `none` rather than an omitted field: a
+/// rendering that dropped the key would spell an open-ended interval and a
+/// bounded one the same whenever the bound happened to be the last token.
+fn interval(rendered: &mut String, prefix: &str, value: ValidInterval) {
+    field(
+        rendered,
+        &format!("{prefix}.from"),
+        &value.from().value().to_string(),
+    );
+    field(
+        rendered,
+        &format!("{prefix}.to"),
+        &value
+            .to()
+            .map_or_else(|| "none".to_owned(), |end| end.value().to_string()),
+    );
+}
+
+/// One [`CountConstraint`] under `prefix`, tagged by its arm.
+///
+/// The arm is a field of its own, so two constraints of different shapes cannot
+/// render the same tokens: the tag is read before any payload.
+fn count_constraint(rendered: &mut String, prefix: &str, value: &CountConstraint) {
+    match value {
+        CountConstraint::AtLeastMajorCourses(minimum) => {
+            field(
+                rendered,
+                &format!("{prefix}.kind"),
+                "AT_LEAST_MAJOR_COURSES",
+            );
+            field(rendered, &format!("{prefix}.minimum"), &minimum.to_string());
+        }
+        CountConstraint::ExcludedFromAdmissionYear { course, from } => {
+            field(
+                rendered,
+                &format!("{prefix}.kind"),
+                "EXCLUDED_FROM_ADMISSION_YEAR",
+            );
+            field(rendered, &format!("{prefix}.course"), &course.to_string());
+            field(rendered, &format!("{prefix}.from"), &from.get().to_string());
+        }
+    }
+}
+
+/// One [`Applicability`] as a single token.
+fn applicability(value: Applicability) -> String {
+    match value {
+        Applicability::FromAdmissionYear(year) => format!("FROM_ADMISSION_YEAR:{}", year.get()),
+        Applicability::BeforeAdmissionYear(year) => format!("BEFORE_ADMISSION_YEAR:{}", year.get()),
+        Applicability::Unknown => "UNKNOWN".to_owned(),
+    }
+}
+
+/// The operand list of `ALL_OF` and `AT_LEAST_N_OF`.
+fn operands_text(rendered: &mut String, operands: &[Operand]) {
+    field(rendered, "operands", &operands.len().to_string());
+    for (index, operand) in operands.iter().enumerate() {
+        let Operand {
+            course,
+            equivalent_admitted,
+        } = operand;
+        field(
+            rendered,
+            &format!("operand.{index}.course"),
+            &course.to_string(),
+        );
+        field(
+            rendered,
+            &format!("operand.{index}.equivalent_admitted"),
+            &equivalent_admitted.to_string(),
+        );
+    }
+}
+
+impl RuleBody {
+    /// The canonical rendering of everything this body says.
+    ///
+    /// # Why every field is here
+    ///
+    /// [`crate::publish::RuleSet::rule_set_hash`] is what a historical audit
+    /// replays against, so it has to separate any two rule sets that can reach
+    /// different verdicts. A rendering carrying a rule's identifier and type
+    /// but not its **parameters** does not: two sets differing only in a credit
+    /// threshold hashed the same, produced a byte-identical
+    /// `AuditInputBinding`, and answered 졸업 불가 and 졸업 가능 respectively --
+    /// and the stricter set's recorded hash replayed against the laxer set's
+    /// bodies and was accepted.
+    ///
+    /// The match below is therefore total in both directions: every arm is
+    /// listed, and inside every arm every field is bound **by name** with no
+    /// `..` anywhere, so a variant added without a rendering and a field added
+    /// to an existing variant both stop this crate compiling. Binding a field
+    /// and then not writing it is the one mistake the compiler cannot see, and
+    /// `every_rule_body_field_moves_the_hash` moves each of them in turn.
+    ///
+    /// # The grammar
+    ///
+    /// The rule type token, then space-separated `key=value` tokens. A list is
+    /// a `key=<count>` token followed by one index-qualified group per element,
+    /// so no separator is ambiguous and no two different structures render the
+    /// same bytes. Every value is a validated identifier, a UUID, a decimal
+    /// integer or a fixed token, and [`is_identifier`] admits neither a space,
+    /// an `=` nor a `:` -- which is what `academic_domain::engines` relies on
+    /// for the same reason.
+    #[must_use]
+    pub fn canonical_text(&self) -> String {
+        let mut rendered = String::new();
+        rendered.push_str(self.rule_type().as_str());
+        match self {
+            Self::CreditMinimum {
+                category,
+                threshold,
+            } => {
+                field(&mut rendered, "category", category.as_str());
+                field(&mut rendered, "threshold", &threshold.get().to_string());
+            }
+            Self::AllOf { operands } => operands_text(&mut rendered, operands),
+            Self::AtLeastNOf { n, operands } => {
+                field(&mut rendered, "n", &n.to_string());
+                operands_text(&mut rendered, operands);
+            }
+            Self::CountWithConstraints {
+                minimum,
+                constraints,
+                counted,
+            } => {
+                field(&mut rendered, "minimum", &minimum.to_string());
+                field(&mut rendered, "constraints", &constraints.len().to_string());
+                for (index, constraint) in constraints.iter().enumerate() {
+                    count_constraint(&mut rendered, &format!("constraint.{index}"), constraint);
+                }
+                field(&mut rendered, "counted", &counted.len().to_string());
+                for (index, course) in counted.iter().enumerate() {
+                    field(
+                        &mut rendered,
+                        &format!("counted.{index}"),
+                        &course.to_string(),
+                    );
+                }
+            }
+            Self::GpaMinimum { scope, threshold } => {
+                field(&mut rendered, "scope", scope.as_str());
+                field(
+                    &mut rendered,
+                    "threshold.coefficient",
+                    &threshold.coefficient().to_string(),
+                );
+                field(
+                    &mut rendered,
+                    "threshold.scale",
+                    &threshold.scale().to_string(),
+                );
+            }
+            Self::AreaDistribution { areas } => {
+                field(&mut rendered, "areas", &areas.len().to_string());
+                for (index, requirement) in areas.iter().enumerate() {
+                    let AreaRequirement { area, credits } = requirement;
+                    field(&mut rendered, &format!("area.{index}.area"), area.as_str());
+                    field(
+                        &mut rendered,
+                        &format!("area.{index}.credits"),
+                        &credits.get().to_string(),
+                    );
+                }
+            }
+            Self::CoRequisite {
+                subject,
+                companion,
+                timing,
+            } => {
+                field(&mut rendered, "subject", &subject.to_string());
+                field(&mut rendered, "companion", &companion.to_string());
+                field(
+                    &mut rendered,
+                    "timing",
+                    match timing {
+                        CoRequisiteTiming::SameTerm => "SAME_TERM",
+                        CoRequisiteTiming::SameTermOrEarlier => "SAME_TERM_OR_EARLIER",
+                    },
+                );
+            }
+            Self::MutuallyExclusive { members, policy } => {
+                field(&mut rendered, "members", &members.len().to_string());
+                for (index, course) in members.iter().enumerate() {
+                    field(
+                        &mut rendered,
+                        &format!("member.{index}"),
+                        &course.to_string(),
+                    );
+                }
+                field(
+                    &mut rendered,
+                    "policy",
+                    &match policy {
+                        DoubleCountingPolicy::AtMost(most) => format!("AT_MOST:{most}"),
+                        DoubleCountingPolicy::Unknown => "UNKNOWN".to_owned(),
+                    },
+                );
+            }
+            Self::Equivalency {
+                presented,
+                counts_for,
+                effective,
+            } => {
+                field(&mut rendered, "presented", &presented.to_string());
+                field(&mut rendered, "counts_for", &counts_for.to_string());
+                interval(&mut rendered, "effective", *effective);
+            }
+            Self::MaximumRecognition { category, policy } => {
+                field(&mut rendered, "category", category.as_str());
+                field(
+                    &mut rendered,
+                    "policy",
+                    &match policy {
+                        RecognitionPolicy::CappedAt(cap) => format!("CAPPED_AT:{}", cap.get()),
+                        RecognitionPolicy::Unknown => "UNKNOWN".to_owned(),
+                    },
+                );
+            }
+            Self::NonCreditTraining {
+                program,
+                applicability: scope,
+            } => {
+                field(&mut rendered, "program", program.as_str());
+                field(&mut rendered, "applicability", &applicability(*scope));
+            }
+            Self::LanguageOfInstruction {
+                minimum,
+                language,
+                exclusions,
+            } => {
+                field(&mut rendered, "minimum", &minimum.to_string());
+                field(&mut rendered, "language", language.as_str());
+                field(&mut rendered, "exclusions", &exclusions.len().to_string());
+                for (index, exclusion) in exclusions.iter().enumerate() {
+                    count_constraint(&mut rendered, &format!("exclusion.{index}"), exclusion);
+                }
+            }
+            Self::ThesisResearch {
+                course,
+                credits,
+                grading,
+                applicability: scope,
+            } => {
+                field(&mut rendered, "course", &course.to_string());
+                field(&mut rendered, "credits", &credits.get().to_string());
+                field(
+                    &mut rendered,
+                    "grading",
+                    match grading {
+                        ThesisGrading::Graded => "GRADED",
+                        ThesisGrading::SatisfactoryUnsatisfactory => "SATISFACTORY_UNSATISFACTORY",
+                    },
+                );
+                field(&mut rendered, "applicability", &applicability(*scope));
+            }
+            Self::ExceptionApproval { target, approval } => {
+                field(&mut rendered, "target", target.as_str());
+                let ApprovalRequirement {
+                    authority,
+                    valid_within,
+                } = approval;
+                field(&mut rendered, "approval.authority", authority.as_str());
+                interval(&mut rendered, "approval.valid_within", *valid_within);
+            }
+        }
+        rendered
+    }
+}
