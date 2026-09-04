@@ -328,6 +328,16 @@ that are sometimes empty. That is `P2-N5`'s `AlternativePath::None { reason }`
 applied to §16.5, and it is what stops `제외된 목표: []` from being ambiguous
 between *nothing was excluded* and *nobody checked*.
 
+**Group two is about the answer's own route.** `CostAssumptions` carries one
+entry per §16.2 cost axis of the **ranked-first** route, not of every surviving
+route: §16.5 asks for the assumptions the answer rests on, and the answer's
+route is the one it is offering. Group five names the alternatives by their
+concepts, rank, strategy and sources but **not** by their vectors, so a surface
+that wants to show a user two routes' costs side by side reads them off
+`CriticalPathResult::front()` rather than off the disclosure. That is a scope
+line rather than an omission, and it is stated here so a later reader does not
+take an alternative's absent cost for a missing measurement.
+
 ## Determinism
 
 `frozen_inputs` renders a run's identity into `P2-C5`'s canonical `key=value`
