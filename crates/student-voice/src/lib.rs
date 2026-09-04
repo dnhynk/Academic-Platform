@@ -128,5 +128,5 @@ pub use policy::{GATE_38_026_OPEN, RedactionPolicy, RedactionScope, SpeakerTarge
 pub use preview::{
     AffectedProjection, AffectedProjectionKind, DeletionOutcome, EvidenceIndex,
     LectureDeletionPlan, LectureDeletionPreview, ProjectionEffect, ProjectionRecord,
-    apply_deletion, preview_deletion,
+    affected_projections, apply_deletion, preview_deletion, unreferenced_objects,
 };

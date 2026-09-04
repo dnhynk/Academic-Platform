@@ -152,6 +152,10 @@ jobs:
         run: cargo clippy -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection -- -D warnings
       - name: Test the rotation and retention lane
         run: cargo test -p academic-retention --all-targets --locked --features rotation-engine,phase2-fault-injection
+      - name: Lint the deletion and retention product flow lane
+        run: cargo clippy -p academic-deletion --all-targets --locked --features deletion-engine,phase2-fault-injection -- -D warnings
+      - name: Test the deletion and retention product flow lane
+        run: cargo test -p academic-deletion --all-targets --locked --features deletion-engine,phase2-fault-injection
       - name: Lint the transcript ingestion lane
         run: cargo clippy -p academic-transcript --all-targets --locked --features encrypted-vault,phase2-fault-injection -- -D warnings
       - name: Test the transcript ingestion lane

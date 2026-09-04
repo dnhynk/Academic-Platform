@@ -322,7 +322,11 @@ and none of them is export, backup or audit: those are section 32.10's, and the
 plan gives them to `P2-P1` and `P2-P2`. `P2-X1` assigned that route to `P2-X7`
 before either was written; the assignment is corrected here rather than left as a
 promise nobody owns. The deletion-*receipt* half that is `P2-X7`'s sits on
-`Privacy / Providers`, beside the transmission it belongs to.
+`Privacy / Providers`, beside the transmission it belongs to, and `P2-P2` reads
+it from here: `DeletionReceiptRef` and `ReceiptState` are what
+[the deletion flow](deletion-and-retention-flow.md) links to the artifact
+deletion that caused the erasure request, rather than declaring a second receipt
+shape.
 
 ## No migration, and why
 

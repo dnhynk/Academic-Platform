@@ -266,6 +266,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-deletion"
+version = "0.1.0"
+dependencies = [
+ "academic-consent",
+ "academic-crypto",
+ "academic-domain",
+ "academic-evidence-center",
+ "academic-policy",
+ "academic-proposal",
+ "academic-retention",
+ "academic-student-voice",
+ "academic-vault",
+ "serde_json",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-desktop"
 version = "0.1.0"
 dependencies = [

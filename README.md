@@ -81,6 +81,8 @@ cargo clippy -p academic-retention --all-targets --locked --offline --features r
 cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection
 cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection -- -D warnings
 cargo test -p academic-retention --all-targets --locked --offline --features rotation-engine,rotation-orchestration,phase2-fault-injection
+cargo clippy -p academic-deletion --all-targets --locked --offline --features deletion-engine,phase2-fault-injection -- -D warnings
+cargo test -p academic-deletion --all-targets --locked --offline --features deletion-engine,phase2-fault-injection
 cargo clippy -p academic-transcript --all-targets --locked --offline --features encrypted-vault,phase2-fault-injection -- -D warnings
 cargo test -p academic-transcript --all-targets --locked --offline --features encrypted-vault,phase2-fault-injection
 cargo clippy -p academic-worker --all-targets --locked --offline --features native-sandbox -- -D warnings

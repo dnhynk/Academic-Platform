@@ -11,13 +11,19 @@ production_data_allowed=false
 default storage_encryption=NONE
 ```
 
-`academic-retention` is a workspace crate no product binary links. One crate
-declares a product edge to it — `academic-portability`, optional and selected
-only by the non-default `encrypted-portability` lane, so the encrypted restore
-can re-apply the tombstones a backup carries — and
-`rotation_engine_lane_is_not_default` proves no default graph resolves it.
-`P2-P2` is the task that wires the real transcript, embedding, claim, document,
-cache, and replica subsystems to it.
+`academic-retention` is a workspace crate no product binary links. Two crates
+declare a product edge to it and no third may. `academic-portability`'s is
+optional and selected only by the non-default `encrypted-portability` lane, so
+the encrypted restore can re-apply the tombstones a backup carries.
+`academic-deletion` is `P2-P2` — the product deletion flow that supplies the
+real resolver and the real executor the seams below name — and its edge is not
+optional, because the plan, the four-word vocabulary, the journal and the
+tombstone are pure Rust in this crate's default lane and the flow is built on
+them on every platform. What `rotation_engine_lane_is_not_default` proves is
+unchanged and is what mattered: no default graph resolves the encrypted object
+namespace that can destroy a key slot, and no product binary links this crate at
+all. `deletion_lane_is_not_default` holds the same claim for the new edge, in
+both directions.
 
 No daemon command and no CLI command runs a rotation, and none may: the entry
 points refuse. What follows describes machinery that is built and executed under
@@ -83,7 +89,8 @@ So a caller that links the encrypted portability lane and drives the executor
 directly performs **a rotation with no journal**: `rekey_store_database` returns
 `Ok`, `open_store` then fails, and the rotation journal holds nothing to replay
 or resume from. That is not a bypass of the gate; it is what
-the gate does not claim, and until `P2-P2` there is no non-test caller of either
+the gate does not claim, and `P2-P2` is a caller of neither: its executor
+reaches `shred_with_tombstone` and `write_into_backup`, and no rotation
 primitive. `the_primitives_a_rotation_composes_are_not_refused_beside_the_gate`
 in `encrypted_rotation_gate.rs` executes it rather than leaving it as a sentence.
 
@@ -92,8 +99,11 @@ orchestrator that would hold its obligations, and the fourth `P2-A1` audit
 (`C:\Users\dongh\.claude\orchestration\run_98ccc873ba4b\t118-a1-crypto-admission-audit4.md`)
 reached four states through the shipped API with no kill and no tampering. Phase
 2 narrows the contract to what it can hold rather than repairing each state
-under an orchestrator nobody has written; `P2-P2` selects the feature and closes
-the list below.
+under an orchestrator nobody has written. `P2-P2` did **not** select the feature
+and did not close the list below: it is the deletion half of this contract and
+runs with the rotation gate shut, which is what the gate table above already
+says is allowed. The list below is still open, and still for whoever reopens
+rotation.
 
 ### Known unresolved, for whoever reopens this
 
@@ -111,7 +121,7 @@ today, and their rows say so.
 | **P2-G3** a rotation unit is identified by its locator, so a profile holding the same bytes in two lineages cannot be planned | `RotationUnit::object` derives `unit_id = SHA-256(domain ‖ kind ‖ **source_locator**)` and `RotationPlan::new` refuses a plan that names one unit twice. A locator carries no permission lineage, so registering one document twice in a domain gives two artifacts one locator and therefore one unit id: `RotationPlan::new` returns `DuplicateUnit` and the rotation never starts. Nothing is lost — the refusal is before any write — but the first orchestrator meets it on the shipped API, over exactly the profile shape the tombstone rows above are built on. The fix is to identify a unit by artifact (or by the four-tuple its path is), or to state that one unit moves every artifact sharing its locator, in order, and to say which here. | `rotation.rs:110-118` `RotationUnit::object`, `rotation.rs:271-279` `derive_unit_id`, `rotation.rs:429-436` `RotationPlan::new`; fifth `P2-A1` audit §4 (`C:\Users\dongh\.claude\orchestration\run_98ccc873ba4b\t121-a1-crypto-admission-audit5.md`) |
 | **P3-F5** the database unit's *execution* order is not enforced | `RotationPlan::new` refuses a plan that orders it anywhere but last; the engine holds no state, so running it first is accepted and the store then records a chain row under a key it has moved away from. | `rotation.rs:400-405`, `engine.rs` |
 | **P3-F6** a second `begin` over an open rotation | `AppendOnlyJournal::append` does not replay before appending, so a second `RotationStarted` makes every later replay `ConcurrentRotation` — permanently, because records are append-only. | `journal.rs:413-445`, `rotation.rs:533-540` |
-| **P3-G10** the deletion path names its subject by locator everywhere except the tombstone record | `PlannedAction.locator`, `JournalEntry::RetentionPlanned.subject_locator`, and `JournalEntry::ArtifactShredded.locator` all identify one deleted object by its locator. Two registrations of the same bytes in one domain share it, so a profile that deleted both leaves two journal entries that differ only in `action_id` and `tombstone_digest` — and the obligation table in the next section tells an orchestrator to learn which artifacts are shredded by replaying `ArtifactShredded`. Nothing replays it today, and the digest does bind the artifact, so this is a gap in what the journal *states* rather than a collision: the tombstone record is the only place in the deletion path that names an artifact. Adding the artifact to these records is a journal format change and is left for whoever writes the executor. Found in `T122` while closing P1-G1, not by the fifth audit. | `plan.rs:180-216`, `entry.rs:142-160`, `engine.rs` `shred_with_tombstone` |
+| ~~**P3-G10** the deletion path names its subject by locator everywhere except the tombstone record~~ **Closed by `P2-P2`.** | `PlannedAction.locator`, `RetentionPlanned.subject_locator` and `ArtifactShredded.locator` still carry a locator, because that is what this crate's seam takes. What changed is that the layer above no longer *looks anything up* by one: `academic_deletion::DeletionTarget` is the artifact and the locator, every map there is keyed by the pair, and `TargetAdapter` walks the plan and the dry run positionally and compares each action against the target it is about to run rather than resolving a descriptor by locator. The obligation "learn which artifacts are shredded by replaying `ArtifactShredded`" is therefore still stated in locators and is still a gap for an orchestrator that replays the journal; nothing replays it today. | [the deletion flow](deletion-and-retention-flow.md), `plan.rs:180-216`, `entry.rs:142-160` |
 | **P3-F7** the obligation table below is what a caller is still held to | Two obligations are typed refusals and the rest are prose. The table states all of them. | this document |
 
 ## What the first orchestrator is bound by
@@ -756,6 +766,24 @@ section reaches it.
 rather than `PARTIAL`. A deletion whose tombstone did not land is not "mostly
 done"; it is one that will not re-apply on restore.
 
+## The executor seam takes the journal
+
+```rust
+fn execute(
+    &mut self,
+    journal: &mut AppendOnlyJournal,
+    action: &PlannedAction,
+) -> Result<(), ExecutionFailure>;
+```
+
+`P2-P2`'s real executor is what found the reason. `shred_with_tombstone` appends
+`ArtifactShredded` after the slot is destroyed, and that record has to land
+between the action it describes and the `RetentionSettled` that closes the run.
+With the journal borrowed for the whole of `settle`, the only place a shred could
+be recorded was *after* the settlement, which leaves a kill window in which a
+settled action has no record of what it destroyed. `settle` passes the journal
+through; an executor with nothing of its own to record ignores the argument.
+
 ## Deletion plan and the four-word result
 
 Seven derivative classes, closed and in this order:
@@ -823,8 +851,9 @@ everywhere they did.
 
 t068 section 7 lists `RB02`–`RB04` under `P2-P2`; section 5 requires `P2-K5`'s
 acceptance to cover `RB01`–`RB04`. Both are true: the mechanism and its outcomes
-are proved here, and `P2-P2` replaces the synthetic resolver and executor with
-real ones.
+are proved here, and `P2-P2` replaced the synthetic resolver and executor with
+real ones and runs all four again over the product flow —
+[the deletion flow](deletion-and-retention-flow.md) has that table.
 
 ## Running it
 

@@ -332,20 +332,19 @@ impl LectureDeletionPreview {
     }
 }
 
-/// Computes what a deletion at `at` would reach, in objects and in projections.
+/// Every projection that cites at least one deleted object, in index order.
 ///
-/// The object half is `academic_consent::preview_expiry`, called rather than
-/// restated, so the ledger row that records "the preview was shown" is the same
-/// row `P2-G6` writes and the derivative-class walk is the same walk.
+/// The projection half of [`preview_deletion`], reachable on its own because
+/// `P2-P2`'s artifact deletion asks section 32.5's question about an object
+/// that is not always a lecture and so has no `P2-G6` expiry beneath it. It is
+/// called by [`preview_deletion`] rather than copied there: two walks over one
+/// index would be two answers to one question, which is the defect this module
+/// was written to avoid one layer up.
 #[must_use]
-pub fn preview_deletion(
-    ledger: &mut ConsentLedger,
-    subject: &SubjectInventory,
+pub fn affected_projections(
     index: &EvidenceIndex,
     deleted: &[ContentDigest],
-    at: u64,
-) -> LectureDeletionPreview {
-    let impact = preview_expiry(ledger, subject, at);
+) -> Vec<AffectedProjection> {
     let mut projections = Vec::new();
     for record in &index.projections {
         let cited_deleted = record
@@ -369,7 +368,19 @@ pub fn preview_deletion(
             effect,
         });
     }
-    let unreferenced: Vec<ContentDigest> = deleted
+    projections
+}
+
+/// The deleted objects no projection in `index` cites, in deletion order.
+///
+/// The other half of the partition [`LectureDeletionPreview::partition_reconciles`]
+/// states, extracted for the same reason as [`affected_projections`].
+#[must_use]
+pub fn unreferenced_objects(
+    index: &EvidenceIndex,
+    deleted: &[ContentDigest],
+) -> Vec<ContentDigest> {
+    deleted
         .iter()
         .filter(|object| {
             !index
@@ -378,7 +389,25 @@ pub fn preview_deletion(
                 .any(|record| record.cites.contains(object))
         })
         .copied()
-        .collect();
+        .collect()
+}
+
+/// Computes what a deletion at `at` would reach, in objects and in projections.
+///
+/// The object half is `academic_consent::preview_expiry`, called rather than
+/// restated, so the ledger row that records "the preview was shown" is the same
+/// row `P2-G6` writes and the derivative-class walk is the same walk.
+#[must_use]
+pub fn preview_deletion(
+    ledger: &mut ConsentLedger,
+    subject: &SubjectInventory,
+    index: &EvidenceIndex,
+    deleted: &[ContentDigest],
+    at: u64,
+) -> LectureDeletionPreview {
+    let impact = preview_expiry(ledger, subject, at);
+    let projections = affected_projections(index, deleted);
+    let unreferenced = unreferenced_objects(index, deleted);
     let deleted = deleted.to_vec();
     let mut preview = LectureDeletionPreview {
         impact,

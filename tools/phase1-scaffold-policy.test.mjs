@@ -331,6 +331,36 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `P2-X1`. The desktop surface's one workspace edge is the local-core
     // contract. `desktop_cannot_open_the_database_or_read_keys` is what says
     // this row cannot grow a store, vault or key crate.
+    // `P2-P2`'s deletion and retention product flow. Six product edges, each a
+    // boundary it drives rather than restates: `academic-retention` for `P2-K5`'s
+    // seven derivative classes, four-word vocabulary, append-only journal,
+    // backup tombstone and its two seams -- this crate is the task that supplies
+    // the real implementations behind them; `academic-student-voice` for
+    // `P2-L5`'s section 32.5 projection walk, called rather than forked;
+    // `academic-evidence-center` for `P2-X7`'s deletion receipt reference and
+    // for the correction outcome a leak incident must *not* be closed by;
+    // `academic-proposal` for `P2-M2`'s `UserDecision`, so a non-delegable
+    // confirmation reuses that door instead of writing a second actor check;
+    // and `academic-consent` and `academic-domain` for the retention terms and
+    // the identifiers. `academic-vault` is optional and only the non-default
+    // `deletion-engine` lane selects it, so the default graph here resolves the
+    // plan and the vocabulary and **not** the object namespace that can destroy
+    // a key slot -- `deletion_lane_is_not_default` proves that in both
+    // directions. The edges it does *not* have are the point: no
+    // `academic-store` and no `academic-store-platform`, so it persists nothing
+    // and claims no migration; and no `academic-policy` and no
+    // `academic-egress-boundary`, so no product file here can name a broker, a
+    // capability or a staged payload -- the provider deletion receipt it links
+    // is `P2-G3`'s persisted row, compared through a dev edge.
+    "academic-deletion": [
+      "academic-consent",
+      "academic-domain",
+      "academic-evidence-center",
+      "academic-proposal",
+      "academic-retention",
+      "academic-student-voice",
+      "academic-vault",
+    ],
     "academic-desktop": ["academic-rpc"],
     "academic-domain": [],
     "academic-egress": ["academic-policy"],
@@ -969,6 +999,25 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-domain",
       "academic-model-run",
       "academic-record",
+    ],
+    // `P2-P2`'s acceptance suite drives the real things rather than fabricating
+    // them: `academic-policy`'s broker really registers a provider policy,
+    // issues a grant, executes a capability and stores the deletion receipt
+    // against its allow-audit row, so the link this crate adds is to a row that
+    // exists; `academic-crypto` builds the profile the `RB01` child reopens
+    // from its own recipient record; and `serde_json` hands that child the
+    // descriptor the parent sealed. `academic-domain`, `academic-proposal` and
+    // `academic-retention` are declared a second time for the `trybuild` reason
+    // `academic-scenario` gives below. `academic-policy` stays a **dev** edge:
+    // a deletion flow whose product closure held the broker could name a type
+    // that owns a transmitted byte, and `every_field_type_in_this_crate_is_reviewed`
+    // rests on that closure not holding one.
+    "academic-deletion": [
+      "academic-crypto",
+      "academic-domain",
+      "academic-policy",
+      "academic-proposal",
+      "academic-retention",
     ],
     // `P2-X7` links its own domain and proposal crates a second time as dev
     // edges for the `trybuild` reason `academic-scenario` gives below: a
@@ -3027,6 +3076,7 @@ const SOCKET_CAPABLE_CLOSURES = {
   // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
   // rather than empty; it opens nothing at all, reads no clock, and takes every
   // matrix, placement, weight and band as an argument.
+  "academic-deletion": ["libc"],
   "academic-readiness": ["libc"],
   "academic-repository-analyzer": ["libc"],
   "academic-requirement": ["libc"],
@@ -4419,22 +4469,30 @@ test("rotation_engine_lane_is_not_default", async () => {
     "the retention crate turned the encrypted object lane on for the whole workspace",
   );
 
-  // One workspace crate declares a product edge to it, and it is optional:
-  // `academic-portability`'s encrypted restore re-applies the tombstones a
-  // backup carries, which is `P2-K5`'s keyless positioned write and cannot be
-  // imitated on the portability side without duplicating a deletion mechanism.
-  // Every other crate must not declare the edge at all, and no default graph
-  // may resolve it: `P2-P2` is the task that wires the real derivative
-  // subsystems, and until then no product binary links a crate that can
-  // destroy a key slot.
+  // Two workspace crates declare a product edge to it and no third may.
+  //
+  // `academic-portability`'s edge is optional: its encrypted restore re-applies
+  // the tombstones a backup carries, which is `P2-K5`'s keyless positioned
+  // write and cannot be imitated on the portability side without duplicating a
+  // deletion mechanism.
+  //
+  // `academic-deletion` is `P2-P2`, the task this comment used to point
+  // forward to: the product deletion flow that supplies the real resolver and
+  // the real executor `P2-K5` left seams for. Its edge is **not** optional,
+  // because the plan, the four-word vocabulary, the journal and the tombstone
+  // are pure Rust in the default retention lane and the flow is built on them
+  // on every platform. What stays true is the claim this test was written to
+  // make: no crate resolves the object namespace that can destroy a key slot in
+  // a default graph. `deletion_lane_is_not_default` holds that for the new
+  // edge, and the four shipping graphs below still hold it for the binaries.
   const retentionDependents = workspacePackages
     .filter((pkg) => productDependencyNames(pkg).includes("academic-retention"))
     .map((pkg) => pkg.name)
     .toSorted();
   assert.deepEqual(
     retentionDependents,
-    ["academic-portability"],
-    "a crate other than the encrypted restore links the rotation engine",
+    ["academic-deletion", "academic-portability"],
+    "a crate other than the deletion flow and the encrypted restore links the rotation engine",
   );
   const portabilityRetentionEdge = packagesByName
     .get("academic-portability")
@@ -4456,6 +4514,29 @@ test("rotation_engine_lane_is_not_default", async () => {
       "a default graph selected the rotation engine",
     );
   }
+  // `academic-deletion` does resolve it, and that is the edge above. What it
+  // must not resolve is the half that opens an object: the object namespace and
+  // the AEAD stay behind `academic-retention`'s own non-default feature, which
+  // this crate's non-default `deletion-engine` lane is the only thing that
+  // selects.
+  const deletionShipping = shippingTree(["-p", "academic-deletion"]);
+  assert.ok(
+    deletionShipping.includes("academic-retention"),
+    "the deletion flow lost its edge to the retention crate",
+  );
+  assert.equal(
+    deletionShipping.includes("academic-vault"),
+    false,
+    "the default deletion graph selected the object vault",
+  );
+  // The key schedule is still there and deliberately: `academic-retention`'s
+  // own default lane carries it, because the journal names key generations and
+  // the revocation contract reads recipient records. Neither opens an object,
+  // and this crate names neither.
+  assert.ok(
+    deletionShipping.includes("academic-crypto"),
+    "the retention crate stopped bringing the key schedule with it",
+  );
 
   // Phase 2 has not accepted a *rotation*, only the machinery that would run
   // one. `rotation-orchestration` is what selects the machinery's entry points;
@@ -4605,6 +4686,75 @@ function shippingTree(selector) {
   assert.equal(run.status, 0, `locked offline cargo tree failed: ${run.stderr}`);
   return run.stdout.replaceAll(/\([^)]*\)/gu, "");
 }
+
+// t068 section 5, `P2-P2`. The deletion and retention product flow is a
+// workspace crate nothing in the shipping graph links, and the half of it that
+// reaches real `AEAD_CHUNKED_V2` objects — the shredder and the object-tree
+// index — sits behind a non-default feature that selects `academic-retention`'s
+// own non-default object lane. So a default product build resolves neither an
+// AEAD nor the key schedule through it, exactly as the encrypted store, object,
+// portability and rotation lanes do.
+test("deletion_lane_is_not_default", () => {
+  const deletion = packagesByName.get("academic-deletion");
+  assert.ok(deletion, "academic-deletion is not a workspace member");
+  assert.deepEqual(deletion.features.default, []);
+  assert.deepEqual(deletion.features["deletion-engine"], [
+    "dep:academic-vault",
+    "academic-vault/aead-objects",
+    "academic-retention/rotation-engine",
+  ]);
+  assert.deepEqual(deletion.features["phase2-fault-injection"], [
+    "academic-retention/phase2-fault-injection",
+    "academic-vault?/phase2-fault-injection",
+  ]);
+
+  const node = resolveNodesById.get(deletion.id);
+  assert.equal(node.features.includes("deletion-engine"), false);
+  assert.equal(node.features.includes("phase2-fault-injection"), false);
+
+  // Selecting the lane is what pulls the encrypted object namespace in.
+  const engineTree = featureTree(["-p", "academic-deletion", "--features", "deletion-engine"]);
+  for (const required of ["academic-vault", "chacha20poly1305", "academic-crypto"]) {
+    assert.ok(
+      engineTree.includes(required),
+      `the deletion engine lane did not select ${required}`,
+    );
+  }
+
+  // Nothing links it. It is a leaf, like every other view crate in this stage,
+  // and `P2-Z1` is what will drive it.
+  const deletionDependents = workspacePackages
+    .filter((pkg) => workspaceDependencyNames(pkg).includes("academic-deletion"))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(
+    deletionDependents,
+    [],
+    "a crate links the deletion flow before P2-Z1 drives it",
+  );
+
+  // It persists nothing: no store edge of any kind, so it claims no migration
+  // number and adds no canonical table.
+  for (const forbidden of ["academic-store", "academic-store-platform"]) {
+    assert.equal(
+      workspaceDependencyNames(deletion).includes(forbidden),
+      false,
+      `the deletion flow declared a ${forbidden} edge`,
+    );
+  }
+  // And no product edge to the broker: the provider deletion receipt it links
+  // is `P2-G3`'s row, compared through a dev edge, so no product file here can
+  // name a type that owns a transmitted byte.
+  assert.equal(
+    productDependencyNames(deletion).includes("academic-policy"),
+    false,
+    "the deletion flow declared a product edge to the permission broker",
+  );
+  assert.ok(
+    devDependencyNames(deletion).includes("academic-policy"),
+    "the deletion flow lost the dev edge that compares the broker's own receipt row",
+  );
+});
 
 // t068 section 5, `P2-U7`. The transcript ingestion boundary is a workspace
 // crate nothing in the shipping graph links, its encrypted half sits behind a
@@ -5967,6 +6117,54 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "serde_json",
     "trybuild",
     "uuid",
+  ]);
+  // `P2-P2` adds one workspace path package, `academic-deletion`, and admits no
+  // external crate: its product edges are `academic-consent`, `academic-domain`,
+  // `academic-evidence-center`, `academic-proposal`, `academic-retention`,
+  // `academic-student-voice`, `academic-vault` and `thiserror`, and its dev
+  // edges are `academic-crypto`, `academic-domain`, `academic-policy`,
+  // `academic-proposal`, `academic-retention`, `serde_json` and `trybuild`, all
+  // already in this lock through earlier receipts.
+  //
+  // Two edges need a reason and the receipt carries both. `academic-retention`
+  // is the **second** product edge to that crate, and the first that is not
+  // optional: `rotation_engine_lane_is_not_default` used to hold that exactly
+  // one crate declared it, with a comment saying `P2-P2` is the task that would
+  // wire the real derivative subsystems. This is that task, and the claim the
+  // rule protects — that no default graph resolves the object namespace that
+  // can destroy a key slot — is now held by `deletion_lane_is_not_default`
+  // instead of by the count. `academic-policy` stays a **dev** edge, because a
+  // deletion flow whose product closure held the broker could name a type that
+  // owns a transmitted byte.
+  const {
+    receipt: deletionReceipt,
+    admitted: deletionAdmitted,
+    pathPackages: deletionPathPackages,
+  } = receiptFor("P2-P2");
+  assert.equal(deletionAdmitted.size, 0, "P2-P2 must admit no external crate");
+  assert.deepEqual([...deletionPathPackages], ["academic-deletion@0.1.0"]);
+  assert.deepEqual(deletionReceipt.summary.npm_additions, []);
+  assert.equal(deletionReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(deletionReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(deletionReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof deletionReceipt.no_second_vocabulary_note, "string");
+  assert.deepEqual(Object.keys(deletionReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-consent",
+    "academic-domain",
+    "academic-evidence-center",
+    "academic-proposal",
+    "academic-retention",
+    "academic-student-voice",
+    "academic-vault",
+  ]);
+  assert.deepEqual(Object.keys(deletionReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-crypto",
+    "academic-domain",
+    "academic-policy",
+    "academic-proposal",
+    "academic-retention",
+    "serde_json",
+    "trybuild",
   ]);
   // `P2-L5` adds one workspace path package, `academic-student-voice`, and
   // admits no external crate: its product edges are `academic-capture`,

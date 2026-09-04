@@ -326,10 +326,11 @@ locator points at, and `P2-G5` owns them there.
 
 `academic-retention` owns the closed list of things a deletion has to reach.
 Importing it would mean a product edge to that crate, and
-`rotation_engine_lane_is_not_default` holds that exactly one crate declares that
-edge, because linking it links a crate that can destroy a key slot. A consent
-ledger has no business inside that boundary, so the list is declared here and
-`academic-retention` is a **dev** dependency.
+`rotation_engine_lane_is_not_default` holds that exactly two crates declare that
+edge — `academic-portability`'s encrypted restore and `P2-P2`'s deletion flow,
+which is the layer that decides when a key slot is destroyed. A consent ledger
+is neither, so the list is declared here and `academic-retention` is a **dev**
+dependency.
 
 `the_two_derivative_vocabularies_are_the_same_list` compares both lists whole —
 the spellings, their order, and the two enums' variant names — so the day either

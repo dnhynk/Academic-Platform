@@ -23,9 +23,25 @@ pub struct ExecutionFailure {
 }
 
 /// Performs one planned deletion action.
+///
+/// The journal is passed in rather than held by [`settle`] alone, because an
+/// executor that destroys a key slot has its own fact to record —
+/// `ArtifactShredded` — and it has to land between the action it describes and
+/// the `RetentionSettled` that closes the run. `P2-P2`'s real executor is what
+/// found that: with the journal borrowed for the whole of `settle`, the only
+/// way to record a shred was after the settlement, which leaves a kill window
+/// in which a settled action has no record of what it destroyed.
 pub trait RetentionExecutor {
     /// Deletes exactly what `action` names, or says why it did not.
-    fn execute(&mut self, action: &PlannedAction) -> Result<(), ExecutionFailure>;
+    ///
+    /// Appending to `journal` is optional and is for facts this action created.
+    /// The plan record and the settlement record are [`settle`]'s and are
+    /// already written around this call.
+    fn execute(
+        &mut self,
+        journal: &mut AppendOnlyJournal,
+        action: &PlannedAction,
+    ) -> Result<(), ExecutionFailure>;
 }
 
 /// One retention action's identity.
@@ -85,7 +101,7 @@ pub fn settle<E: RetentionExecutor + ?Sized>(
 
     let mut unresolved = Vec::new();
     for action in plan.actions() {
-        if let Err(failure) = executor.execute(&action) {
+        if let Err(failure) = executor.execute(journal, &action) {
             unresolved.push(UnresolvedLocator {
                 class: action.class,
                 locator: action.locator_hex(),

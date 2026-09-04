@@ -1,0 +1,23 @@
+warning: unreachable expression
+  --> tests/compile_fail/a_deletion_confirmation_has_no_struct_literal.rs:14:19
+   |
+13 |         preview: unimplemented!(),
+   |                  ---------------- any code following this expression is unreachable
+14 |         decision: unimplemented!(),
+   |                   ^^^^^^^^^^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: fields `preview`, `decision`, `shown_digest` and `confirmed_at` of struct `DeletionConfirmation` are private
+  --> tests/compile_fail/a_deletion_confirmation_has_no_struct_literal.rs:13:9
+   |
+12 |     let _forged = DeletionConfirmation {
+   |                   -------------------- in this type
+13 |         preview: unimplemented!(),
+   |         ^^^^^^^ private field
+14 |         decision: unimplemented!(),
+   |         ^^^^^^^^ private field
+15 |         shown_digest: unimplemented!(),
+   |         ^^^^^^^^^^^^ private field
+16 |         confirmed_at: TimestampMillis::new(0),
+   |         ^^^^^^^^^^^^ private field

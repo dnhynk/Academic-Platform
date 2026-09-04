@@ -1,0 +1,21 @@
+warning: unreachable expression
+  --> tests/compile_fail/an_incident_closure_has_no_struct_literal.rs:14:16
+   |
+13 |         steps: unimplemented!(),
+   |                ---------------- any code following this expression is unreachable
+14 |         scope: unimplemented!(),
+   |                ^^^^^^^^^^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: fields `steps`, `scope` and `closed_at` of struct `IncidentClosure` are private
+  --> tests/compile_fail/an_incident_closure_has_no_struct_literal.rs:13:9
+   |
+12 |     let _forged = IncidentClosure {
+   |                   --------------- in this type
+13 |         steps: unimplemented!(),
+   |         ^^^^^ private field
+14 |         scope: unimplemented!(),
+   |         ^^^^^ private field
+15 |         closed_at: TimestampMillis::new(0),
+   |         ^^^^^^^^^ private field

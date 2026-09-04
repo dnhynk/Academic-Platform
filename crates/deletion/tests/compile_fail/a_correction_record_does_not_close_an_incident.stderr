@@ -1,0 +1,31 @@
+warning: unreachable statement
+  --> tests/compile_fail/a_correction_record_does_not_close_an_incident.rs:17:5
+   |
+16 |     let record: CorrectionRecord = unimplemented!();
+   |                                    ---------------- any code following this expression is unreachable
+17 |     let _closure: IncidentClosure = IncidentClosure::from(record.clone());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_correction_record_does_not_close_an_incident.rs:17:59
+   |
+17 |     let _closure: IncidentClosure = IncidentClosure::from(record.clone());
+   |                                     --------------------- ^^^^^^^^^^^^^^ expected `IncidentClosure`, found `CorrectionRecord`
+   |                                     |
+   |                                     arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_correction_record_does_not_close_an_incident.rs:18:62
+   |
+18 |     let _closed: LeakIncidentState = LeakIncidentState::from(record);
+   |                                      ----------------------- ^^^^^^ expected `LeakIncidentState`, found `CorrectionRecord`
+   |                                      |
+   |                                      arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs

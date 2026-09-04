@@ -1,0 +1,95 @@
+[package]
+name = "academic-deletion"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Six product edges, each one a boundary this crate drives rather than
+# restates.
+#
+# `academic-retention` is `P2-K5`. It owns the seven derivative classes, the
+# four-word result vocabulary, the append-only journal, the backup tombstone
+# and the `DerivativeResolver`/`RetentionExecutor` seams; this task is the one
+# that supplies the real implementations behind those two traits, which is what
+# its contract page says `P2-P2` is for. The edge names no `rotation-engine`
+# feature, so the default graph here resolves the plan, the journal and the
+# vocabulary and **not** the encrypted object namespace that can destroy a key
+# slot. `deletion_lane_is_not_default` in `phase1-scaffold-policy.test.mjs`
+# proves that in both directions.
+#
+# `academic-student-voice` is `P2-L5`. Section 32.5's "어느 하나의 삭제가
+# concept/evidence projection에 미치는 영향을 미리 보여준다" is already answered
+# there, over `P2-G6`'s own expiry preview; the impact preview here calls that
+# layer instead of declaring a second projection vocabulary.
+#
+# `academic-evidence-center` is `P2-X7`. The provider deletion receipt and the
+# transmission it belongs to are that crate's records, and the correction
+# outcome an ordinary claim correction ends in is too — which is what makes
+# "a leak incident is not closed by a claim supersession" a statement about two
+# types that are both in scope rather than about one this crate invented.
+#
+# `academic-proposal` is `P2-M2`. `UserDecision` is issued only for
+# `Actor::User`, so a non-delegable confirmation is that crate's door reused
+# rather than a second actor check written here.
+#
+# `academic-consent` is `P2-G6`, reached for the retention terms a protected
+# artifact's policy reason cites, and `academic-domain` supplies every
+# identifier, digest and instant.
+#
+# The edges it does **not** have are the point. No `academic-store` and no
+# `academic-store-platform`: this crate persists nothing and claims no
+# migration number. No `academic-policy` and no `academic-egress-boundary` on
+# the product edge, so no product file here can name a broker, a capability or
+# a staged payload — the provider half carries digests and identifiers only,
+# and the broker's own columns are compared through a dev edge.
+[dependencies]
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-evidence-center = { path = "../evidence-center" }
+academic-proposal = { path = "../proposal" }
+academic-retention = { path = "../retention" }
+academic-student-voice = { path = "../student-voice" }
+thiserror.workspace = true
+
+academic-vault = { path = "../vault", optional = true }
+
+[features]
+default = []
+# The half of this crate that reaches real `AEAD_CHUNKED_V2` objects: the
+# resolver that reads a real object tree and the executor that crypto-shreds,
+# purges and writes backup tombstones. It selects `academic-retention`'s own
+# non-default object lane, exactly as `academic-portability`'s encrypted lane
+# does, so a default build resolves neither an AEAD nor the key schedule
+# through this crate.
+deletion-engine = [
+  "dep:academic-vault",
+  "academic-vault/aead-objects",
+  "academic-retention/rotation-engine",
+]
+# Test-only deterministic failpoints. `RB01`'s lives in `academic-vault` beside
+# the key slot it destroys and `RB02`'s in `academic-retention` beside the
+# tombstone write, so selecting this feature selects both of theirs and adds
+# none of its own. A product build contains no environment lookup and no crash
+# switch.
+phase2-fault-injection = [
+  "academic-retention/phase2-fault-injection",
+  "academic-vault?/phase2-fault-injection",
+]
+
+[dev-dependencies]
+# `academic-policy` is a dev edge and not a product one. The deletion receipt
+# this crate links is `P2-G3`'s persisted row, and the acceptance suite drives
+# the real broker to prove the two are the same fact — while the product
+# closure stays free of a type that can hold a transmitted byte.
+academic-policy = { path = "../policy" }
+academic-crypto = { path = "../crypto" }
+academic-domain = { path = "../domain" }
+academic-proposal = { path = "../proposal" }
+academic-retention = { path = "../retention" }
+serde_json.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true
