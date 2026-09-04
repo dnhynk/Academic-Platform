@@ -16,15 +16,28 @@ closing that left the function taken as a value. Assume there is one more.
 That sentence was false twice — `P2-G2` found the page missing its own egress
 rows, and `T141` found it missing three more scans, one of them the weaker half
 of a contract whose other half had already been repaired. So it is executed
-rather than asserted. `tools/policy-source-scan-inventory.test.mjs` finds every
-file in `crates/`, `tools/` and `packages/` that names a Rust source path in a
-position where it is read — an `include_str!`, a literal argument to a read, a
-`join`, an extension filter, a `const` or table entry holding a path, or a
-`#[path]` include of a module that does one of those — and fails if this page
-does not name that file. What it cannot decide is whether a file that reads
-source is a *policy* scan, so it does not try: a file it finds that scans
-nothing is listed below anyway, in the rows saying what it does instead. That
-is the intended outcome for a false positive — a row, not a hole.
+rather than asserted, in both directions.
+`tools/policy-source-scan-inventory.test.mjs` finds every file in `crates/`,
+`tools/` and `packages/` that names a Rust source path in a position where it is
+read — an `include_str!`, a literal argument to a read, a `join`, an extension
+filter, a `const` or table entry holding a path, or a `#[path]` include of a
+module that does one of those — and fails unless the table below holds a **row**
+for that file. It then reads the table back: every repository path a row names
+must be a file this repository holds. What it cannot decide is whether a file
+that reads source is a *policy* scan, so it does not try: a file it finds that
+scans nothing is listed below anyway, in the rows saying what it does instead.
+That is the intended outcome for a false positive — a row, not a hole.
+
+A row rather than a mention, because a mention is what the check used to accept
+and two scans had only that. `crates/offering/tests/offering_scans.rs` and
+`tools/shared-name-isolation.test.mjs` each had a section of their own further
+down this page and no line in the table, so the survey the table exists for
+skipped both. The reverse pass reads the registration table only: the injection
+matrices and the open ledger name files on purpose that do not exist —
+`crates/admission/authority.rs` is an edit `P2-G4` considered and did not make,
+and `crates/record/benches/` is a tree this page says outright is absent — and
+requiring those to exist would turn a record of what was rejected into a demand
+that it be built.
 
 ## The three shapes that make a scan empty
 
@@ -183,6 +196,7 @@ remove.
 | `the_walk_reads_every_module_in_this_crate`, `every_raw_byte_site_is_named_and_justified`, `the_accepted_response_is_sealed_immediately`, `raw_token_write_protection`, `the_lineage_has_no_raw_mutation`, `no_default_reaches_the_remote_arm`, `the_archive_appends_and_nothing_removes`, `no_fourth_disposition_is_declared`, `the_transmission_is_decided_by_the_route`, `the_binding_is_compared_against_the_journal_header`, `two_runs_carry_no_order`, `no_wall_clock_socket_or_file_reaches_this_crate` — `crates/transcription/tests/transcription_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over **every package in `crates/`** for the four workspace-wide rules; plus five fixed reads of this crate's own modules for the whole-text pins and one of its `Cargo.toml` | ten whole-text pins (below); a whole-inventory comparison of `response_bytes`'s call sites counted by identifier with `fn response_bytes(` subtracted, each with a written reason; call-site counts by identifier on `route_for` (1), `covers` (2), `decode` (1), `record_model_run` (1) and `ModelRun::record(` (1), each with the one file it may be called from; whole-set comparisons of every `impl` header naming a raw type (6 entries) and every one naming a comparison type (4), each with a forbidden-trait list beside it as the weaker half; three pinned derive lists on the comparison types; a rule that each raw declaration carries exactly one `pub`, which is the condition the language rule about struct literals rests on; a whole-set comparison of the lineage's `&mut self` surface (3 entries); workspace-wide public-signature sweeps refusing a `ProviderResponse`/`ArchivedResponse` that returns `str`, `String` or `u8` and a raw value that is mutable, both reading whole identifiers; a workspace-wide rule that no file outside `crates/transcription/` names a raw type; a rule that the binding comparison is the **first statement** of both admitting methods; a 15-token absence list over the product source for clocks, sockets, processes and files; and a manifest rule that this crate declares no `academic-worker` and no `academic-store` edge, with comment lines stripped first | `>= 13` files in the package walk, `>= 400` in the workspace walk, `>= 10` declared modules, `>= 1000` signatures in each of the two workspace sweeps, every product file under `src/`, and a tripwire requiring every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the package to be a file the walk read |
 | `the_walk_reads_every_module_in_this_crate`, `the_mapped_status_has_one_producer`, `incomplete_is_the_only_value_with_no_measurement_behind_it`, `no_signature_reads_a_rendering_back_into_a_record`, `a_ranking_cannot_reach_the_preservation_path`, `the_preservation_types_offer_no_reducing_method`, `the_transform_set_is_closed_and_the_mapping_has_one_producer`, `the_document_names_no_raw_type`, `no_wall_clock_socket_or_file_reaches_this_crate` — `crates/lecture-document/tests/lecture_document_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over **every package in `crates/`** for the two workspace-wide rules; plus six fixed reads of this crate's own modules for the whole-text pins | six whole-text pins — the account, the coverage inputs, the witness, the three declaring constructors, the transform set and the whole rendering `impl`; file-to-count maps over the producers of an account (1 file, 2 sites), a witness (1, 1), a `COMPLETE` (1, 2 — one construction and one match arm, which a count cannot separate) and a source mapping (1, 1), each counted with declarations subtracted; whole-set comparisons of the public method names of `LectureDocument` (6) and `CoverageReport` (21), of every `impl` header naming a document type (5), of the files that may name `Salience` (1) and of the files that may name `PdfArtifact` (5); a workspace-wide public-signature sweep refusing a `PdfArtifact` parameter beside any of six record return types, with a control signature that the rule matches; a workspace-wide rule that no package outside this one names an account or a witness; a rule that neither preservation module names a study-index type; and a 14-spelling absence list over `src/` for clocks, sockets, files, processes and environment reads, each spelling checked against a sample that contains it | `>= 16` files in the package walk, `>= 12` in the product walk, and a `#[path]` tripwire over every product file |
 | `tools/policy-source-scan-inventory.test.mjs` | recursive, `crates/`, `tools/`, `packages/` | this page names every file that reads Rust source text: six read-position markers plus one hop through a `#[path]` include, each marker checked against a sample inside the test | `>= 20` files found |
+| `tools/shared-name-isolation.test.mjs` | recursive, every `.rs` under `crates/`, lexed so a string literal is told from code | five whole sets compared with a committed table in **both** directions and no forbidden-spelling list anywhere: every `env::<item>` path, every variable name a `var`/`var_os` reads with its argument resolved through crate-scoped `const`s and literal `for` arrays, every function that hands out a machine-owned root iterated to a fixed point, every shared name built on one, and every `CreateAppContainerProfile` call site with the whole text of the two guard statements its function must open with | `> 200` files scanned and `> 200` holding a string literal, so a lexer that stopped reading Rust fails rather than emptying every set below it |
 | `tools/{source-preflight,cargo-lock-source-policy,dependency-source-policy,restricted-yaml}.mjs`, `tools/{dependency-source-policy,pnpm-source-policy-consumption}.test.mjs` | n/a | lockfile and registry parsing; not a source-text scan | n/a |
 | `tools/{phase1-exit,security-baseline}.mjs` | n/a | execution observation and committed fixture bytes | n/a |
 | `crates/store/tests/api_boundary.rs`, `crates/store/tests/sqlcipher_spike.rs` | n/a | manifest text and scratch-crate compile-fail; not a source-text scan — the `.rs` paths they name are the scratch crate's own `src/main.rs`, which they write | n/a |
@@ -194,6 +208,8 @@ remove.
 | `the_walk_reads_every_module_in_this_crate`, `the_selector_dimensions_are_the_specifications_own`, `the_profile_fields_are_the_specifications_own`, `the_open_gates_are_section_38s_own`, `the_proof_statuses_cover_section_11_3s_own_tree`, `no_product_file_reaches_a_clock_rng_socket_or_model`, `no_product_file_names_a_projection_and_only_one_names_a_plan`, `the_three_witnesses_have_one_construction_site_each`, `the_only_defaults_are_empty_collections` — `crates/audit/tests/audit_scans.rs` | recursive, every `.rs` under `crates/audit/src` | section 11.1's selector sentence, section 3's profile block, section 38.1's ten lines and section 38.2's eleven bullets and section 11.3's tree, each parsed out of the design document and compared in both directions; a fourteen-spelling clock/RNG/socket/model sweep with its evasions run through the same predicate inside the test; a whole-set sweep for a projection name and a two-file allowance for a plan name; three witness declarations, three crate-private `establish` sites, a pinned constructor and one determination expression; and the whole `#[derive(Default)]` set against a four-entry list | a `pub mod` tripwire — every module `lib.rs` declares must be a file the walk read, and the walk must read no file no module declares — plus `declared >= 12` and `sources.len() >= 12` |
 | `the_walk_reads_every_module_in_this_package`, `the_freshness_crate_cannot_name_a_mastery`, `no_clock_socket_or_file_reaches_this_crate`, `only_the_named_test_files_read_anything`, `the_freshness_decisions_are_pinned`, `no_public_function_takes_a_mastery_or_mutates_in_place`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory` — `crates/freshness/tests/freshness_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus four fixed reads of this crate's own modules for the whole-text pins, one of its `Cargo.toml`, and one of `crates/knowledge-state/src/ladder.rs` as the control | **four whole-set comparisons of what the product code can reach, all in both directions** — every `use` item against a 39-entry list, every two-segment path spelled through a crate root against a 4-entry list, every macro invoked against a 2-entry list, and the eight modules `lib.rs` re-exports from; then the rule those four exist to hold, an **eight-name refusal of every workspace spelling that means a mastery level** — `MasteryLevel`, `AutomaticLevel`, `MasteryProjection`, `MasteryFacet`, `LADDER`, `rung`, `level_token`, `automatic_contribution` — over every product file and again over every public signature, because `academic-knowledge-state` is a product edge that hands all of them out and `time_decay_touches_freshness_only` can only observe the paths it exercised; four whole-text pins (`decay`, `Spillover::toward`, the shipped `UNCALIBRATED_PRIOR_V1`, and the statement that makes a recall failure a cap — read through `collapse`, because it spans lines and a line-spanning pin is a pin on the platform's newline as much as on the rule) plus three substring guards inside `NeighborUse::direct` and four inside `require_about`, which is the misattribution `P2-N2` found one layer up; a refusal of any `pub fn` taking `&mut self`; a rule that no product file names `Default`, which is the half of `GATE-38-024` a caller cannot skip; a manifest rule with comment lines stripped first, refusing an `academic-store`, `academic-worker`, `academic-egress-boundary` or `academic-vault` edge; and, as a third and weakest layer, a forbidden-token pass over every product file for fifteen filesystem, clock, process and transport spellings — `std::time` and a bare `now` among them, which is what makes *this engine cannot ask what time it is* a property of the whole crate | `>= 8` files in the package walk against `lib.rs`'s own `pub mod` list in both directions, `>= 40` public signatures, a two-entry pinned set of the files of this package permitted to read anything, and **a control on the mastery rule**: the same reader is required to find at least five of the eight names in `P2-N2`'s own `ladder.rs`, so the zero it reports here is a measurement rather than a reader that always answers zero; beside it every extractor is re-exercised against a sample it must match, each whole-text pin is required to extract more than 100 characters, and a signature the extractor cannot find is required to be an error |
 | `the_walk_reads_every_module_in_this_crate`, `the_construction_counter_reads_a_literal_and_not_a_return_type`, `an_accuracy_witness_has_one_producer`, `a_reviewed_capture_has_one_producer`, `derivative_terms_have_one_producer`, `no_original_voice_authority_is_produced_here`, `no_disclosure_reaches_a_derivative`, `no_floating_point_reaches_this_crate`, `no_wall_clock_socket_or_file_reaches_this_crate` — `crates/student-voice/tests/student_voice_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over **every package in `crates/`** for the three workspace-wide pair rules; plus four fixed reads of this crate's own modules for the whole-text pins | a whole-set comparison of the package's 23 files in both directions; four whole-text pins — the `witness` function, the `dispatch` function, `inherit_terms`, and the `RedactionScope` enum's variant list, which is the whole of "a redaction cannot reach an original"; construction counts over the whole package for an `AccuracyWitness` (1), a `DiarizationMeasurement` (1) and a `ReviewedCapture` (1), each with the `-> Name {` return-type form subtracted and the subtraction itself tested in both directions; a call count of `RetentionTerms::inherit` (1) and of `inherit_terms` (3) with `use` items dropped so a re-export is not a caller; whole-set comparisons of the public method names of `AccuracyWitness` (7), `CaptureUnderReview` (7) and `ReviewedCapture` (3); three workspace-wide public-signature pair rules — no signature takes a `CaptureUnderReview` and returns bytes, none takes a `P2-L5` value and returns an `OriginalVoiceAuthority`, and none takes a `DisclosedOriginal` or a `RestrictedOriginal` and returns a derivative type — the last with a count that the rule read at least one signature; a whole-package refusal of `f32`, `f64` and every digit-dot-digit literal, with the reader checked against a sample that has one and two that do not; and a 14-spelling absence list over `src/` for clocks, sockets, files, processes and environment reads, each spelling checked against a sample that contains it | 23 files in the package walk compared as a whole set, 10 in the product walk, a non-vacuity assertion on each workspace pair rule, and the emitter exception recorded as an assertion that `examples/emit_corpus.rs` *does* write files |
+| `the_walk_reads_every_module_in_this_crate`, `the_four_standings_are_section_8_3s_own`, `the_feature_families_are_section_8_3s_own`, `the_abstention_reasons_are_section_8_3s_own`, `the_open_gate_is_section_38s_own`, `no_product_file_reaches_a_clock_rng_socket_or_model`, `no_floating_point_reaches_a_forecast`, `no_product_file_promotes_a_prediction`, `nothing_in_this_crate_has_a_default`, `this_crate_persists_nothing_and_registers_no_engine` — `crates/offering/tests/offering_scans.rs` | recursive, every `.rs` under this crate's package, split into product source and all source; plus four fixed reads of the design document for the vocabulary comparisons | four whole-set comparisons against section 8.3 and section 38 in both directions — the four standings cell for cell, the six feature families by their position in the document's own sentence, the abstention grounds as two whole sets, and the open gate's identifier derived from its bullet's position rather than typed; fourteen API spellings and six floating-point spellings over every product file with comments and literals stripped, each rule run against evasions inside the test; every `fn` signature and every `impl` header as two whole sets, so a promotion called anything at all fails; the whole `#[derive(...)]` set and every `impl Default` header | `>= 12` modules declared, `>= 12` files read by the walk, and `>= 12` impls read by the signature sweep |
+| `the_walk_reads_every_module_in_this_crate`, `the_product_closure_is_exactly_the_declared_edges`, `the_product_source_reaches_only_the_declared_vocabulary`, `no_type_in_this_crate_holds_an_unclassified_byte_buffer`, `the_only_clock_read_names_a_staging_directory`, `the_portable_path_rules_match_the_phase_1_export` — `crates/export/tests/export_scans.rs` | recursive, `crates/export/src`, plus `lib.rs`'s `pub mod` lines, `crates/export/Cargo.toml`'s `[dependencies]` and `crates/portability/src/lib.rs`'s reserved-name list | the six product edges as a whole set, and by name a store, vault, crypto, keystore, recovery, retention, projection, transport, connector or model edge; four whole sets and two per-item sets over every product file, so a new path root, crate, `std` module, `std::process`/`std::os` item or macro fails; every `struct` and `enum` body against the byte classification table in both directions; a second `SystemTime::now`, or the one call leaving the staging-path reservation; and the repeated portable path rules against the ones they repeat | `>= 9` modules declared, `>= 9` files in each of the two walks, and `>= 22` reserved names read |
 | `the_walk_reads_every_module_in_this_package`, `the_package_has_no_unscanned_directory`, `the_vectors_cannot_be_folded`, `the_preference_layer_cannot_reach_a_vector`, `no_clock_socket_or_file_reaches_this_crate`, `only_the_named_test_files_read_anything`, `the_critical_path_decisions_are_pinned`, `no_public_function_mutates_in_place`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory` — `crates/critical-path/tests/critical_path_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests` and `examples`) and all source; plus seven fixed reads of this crate's own modules for the whole-text pins, one of its `lib.rs` as the control, one of `crates/gap/src/kind.rs` as the counter-control, and one non-recursive listing of the package root | **three whole-set comparisons of what the product code can reach, all in both directions** — every `use` item against a 75-entry list, every two-segment path spelled through a crate root against a 16-entry list, and every macro invoked against a 3-entry list, plus the thirteen modules `lib.rs` re-exports from against its own `pub mod` declarations; then the two rules those exist to hold. First, **a vector cannot be folded into a number**: twelve folding spellings — `sum`, `product`, `fold`, `reduce`, `total`, `score`, `weight`, `weighted`, `midpoint`, `average`, `mean`, `scalar` — are refused over every product file as whole identifiers, `CostVector` and `BenefitVector` are required to derive neither `PartialOrd` nor `Ord` (read out of the `#[derive(..)]` attribute immediately above each declaration), and `impl CostEstimate` is required to name none of `midpoint`, `point`, `expected`, `value`, because `cost_vector_has_seven_separate_components` can only observe the axes it moved. Second, **a preference cannot rewrite a fact**: `preference.rs` is required to name none of `CostVector`, `BenefitVector`, `CostEstimate`, `CostBasis`, eight interior-mutability spellings — `Cell`, `RefCell`, `UnsafeCell`, `Mutex`, `RwLock`, `AtomicUsize`, `AtomicU32`, `unsafe` — are refused everywhere so the shared borrow `rank` takes is a real guarantee, and the set of modules naming `Ranking` or `compare_under` is compared in both directions against a two-entry pin, so an order produced anywhere but the preference module is an extra key; then eleven whole-text pins and one substring pin on the decisions a later edit could move without any behavioural test noticing (`CheckpointDecision::for_ratio` and the threshold constant beside it, `is_stale`, `worse`, `evaluate`, `dominance`, `ParetoFront::eliminate`, `rank`'s signature, `compare_under`, `PreferenceSlider::of`, `CostEstimate::of`, `Disclosure::of`, and the whole `plan` stage order); a refusal of any `pub fn` taking `&mut self`; a package-root listing compared in both directions against the two directories the product walk excludes, so a `build.rs` or a `benches/` added later is a failure rather than unscanned source; and, as a third and weakest layer, a forbidden-token pass over every product file for fifteen filesystem, clock, process and transport spellings | `>= 13` modules in the package walk against `lib.rs`'s own `pub mod` list in both directions, `>= 90` public signatures, a three-entry pinned set of the files of this package permitted to read anything, and **a two-sided control on the name reader**: the same reader is required to find at least six of eight critical-path type names in this crate's own `lib.rs` and none of them in `P2-N5`'s `kind.rs`, so what it reports elsewhere is a measurement rather than a reader that always answers nothing; beside it every extractor is re-exercised against a sample it must match, each of the twelve folding spellings and eight mutability spellings is required to be found in a sample that does spell it, each whole-text pin is required to extract more than 100 characters, and a signature the extractor cannot find is required to be an error |
 | `crates/critical-path/tests/critical_path.rs` | one fixed read of `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md`, for section 16.2's two `NAME(P) = <` blocks and its four strategy names, section 16.3's bullet list, section 16.4's four path roles, and section 16.5's `항상 노출된다` sentence | not a source-text scan: `P2-N6`'s thirteen named acceptance tests plus five more, over in-process synthetic state whose `GapCase` is produced by driving `P2-N5`'s real `search` over a `P2-L4` document that a real `P2-L2` capture and a real `P2-L3` run produced. It reads the design document so that seven cost axes, five benefit axes, eight constraints, five disclosure groups and four path roles are **measured** in both directions rather than restated as numbers, and so that section 16.2's `같은` hedge on the four strategy names and the identity of section 16.3's eighth bullet with the checkpoint rule are each recorded with a test that fails when the document stops saying so | `>= 5` disclosure-group tokens found in section 16.5's own sentence, exactly 8 bullets in section 16.3, and the naive node-count walk required to be a strict subset of exactly one satisfying set, so the comparison against it is not vacuous |
 | `crates/critical-path/tests/critical_path_harness.rs` | one fixed read of `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` for section 28's engine table, one recursive listing of `testdata/critical-path/`, one non-recursive listing of `testdata/engines/`, and one read per committed corpus file | not a source-text scan: `P2-C5`'s determinism contract over this crate's own corpus. It reads section 28 because this crate's premise is that section 16 is **not** one of the twelve registered engines, so an edit that adds a critical path row to that table fails here rather than leaving the premise silently false; it lists the registry's harness root because nothing unregistered may hide there; and it byte-compares every committed corpus file against a fresh render from the single deterministic builder `examples/emit_corpus.rs` also uses | exactly 12 rows in section 28's table and 12 entries in `ENGINE_REGISTRY`, `>= 11` files rendered by the builder, 4 distinct canonical byte strings across the 4 corpus cases and `>= 3` distinct route counts among them |
@@ -2463,6 +2479,186 @@ observed back at 12 pass, 0 fail. The pre-repair column is the point: a
 registration that is merely present is what `S-18` was about, so the evidence has
 to be a bypass the old guard admitted and the new one does not.
 
+## What the `P2-RF16` repair holds
+
+Six rebase races in this run collided on the same two files, and every one of
+them collided on a *registration*: a line written once per crate, at the same
+place in the same list, by two tasks at once. The cost is not the merge tool. It
+is that a list with one entry per crate has exactly one insertion point, and
+`node --check` returns zero on the broken join of two such lists — measured four
+times, and the four shapes are in the `P2-U5` rebase section below.
+
+So the registrations that had a source elsewhere are read from that source.
+`T177` did this once already, for the receipt **pairs**; this does it for the
+receipt bindings themselves.
+
+### What was derived, and from what
+
+`dependency_license_and_source_receipt_is_complete` used to name every admission
+receipt nine times over. Enumerated in the file before the change:
+
+| Written once per crate | Count | Now derived from |
+|---|---|---|
+| a destructured `…ReceiptText` name | 37 | `readdir("docs/security")` |
+| a `readFile("docs/security/…json")` | 38 | the same walk |
+| a `const …Receipt = JSON.parse(…)` | 37 | the same walk |
+| a `…Admitted` and a `…PathPackages` set | 74 | each receipt's own `admissions` and `added_workspace_path_packages` |
+| a `…Tuples = lockTuples.filter(…)` and its length assertion | 37 + 37 | one loop over the receipts on disk |
+| two clauses of the `incomingTuples` conjunction | 73 | the whole-set difference of the lock and every receipt's claims |
+| a summand of the lock-tuple sum | 37 | a `reduce` over the same map |
+| an `assert.equal(<receipt>.task, "P2-XX")` | 28 | the key each block is looked up by |
+| a cascading duplicate-claim loop | 28 loops, 577 lines, 407 clauses | `no two admission receipts claim the same package`, which `T177` added and which reaches every one of the 1406 ordered pairs 38 receipts make, against the 462 those 407 clauses reach |
+
+**The derived values are the same values.** The incoming set is the same 173
+tuples in the same order, `sha256 4f370a5d…`, which is the digest
+`dependency-admission-phase1.json` already pins; the receipted tuple count is 94;
+and `268 = 173 + 1 + 94` holds as before. Nothing in the receipts, the lock or the
+digest moved.
+
+**One clause was missing and nobody could have seen it.** The conjunction had 73
+of the 74 clauses the thirty-seven receipts call for: `processAdmitted` was
+absent. It is inert only because `P2-G7` admits no external crate, so the
+omission has no effect today and would have had one the day that changed. A
+whole-set difference cannot omit a term.
+
+**Two assertions are stronger than what they replace.** `P2-G7`'s tuple check
+compared against its path packages alone and now compares against its admitted
+set as well; and the file name of every receipt must agree with the task it
+names, which is the binding the identity lines made for 28 of the 37 and which
+`T186` measured as carrying no load in any of them.
+
+### What was not derived, and why
+
+**The receipts' dependency maps.** `direct_workspace_dependencies` and
+`dev_workspace_dependencies` look like they mirror `cargo metadata`, and they do
+not. Measured against the workspace edges of each receipt's owner crate: **12 of
+the 37** direct maps disagree — `P2-K1`'s names six external crates (`argon2`,
+`chacha20poly1305`, `hkdf`, `subtle`, `zbus`, `zeroize`), `P2-P1`'s names `serde`,
+`serde_json` and `sha2`, `P2-C7`'s names `trybuild`, and eight name nothing where
+the crate has edges — and **4 of the 11** dev maps omit a workspace edge the
+manifest declares: `P2-N2`, `P2-N3` and `P2-N5` omit `academic-domain`, and
+`P2-N6` omits `academic-domain` and `academic-gap`. `P2-G7` is not counted in
+either column, because it adds six path packages and has no single owner crate to
+measure against. They are a reviewer's account of which edges a task is
+answering for, and the account is the only copy. A list that is the only source
+of its information is a specification, not a registration, and it stays written
+down.
+
+**The frozen graphs.** `workspace_dependency_direction_is_acyclic`'s product and
+dev expectations, `SOCKET_CAPABLE_CLOSURES`, `DESKTOP_SHIPPING_CLOSURE` and
+`PROCESS_POLICY_CLOSURE` each hold one entry per crate and each is compared
+against `cargo metadata`. Deriving them from metadata would compare metadata with
+itself. They stay, and they are still the merge points `T186` numbered `MP1`
+through `MP3`.
+
+**The `Walk`, `Check` and `Floor` columns of the table above.** They say what a
+scan does, and this page is the only place that is written. What is derived from
+the first column is the file half, in both directions.
+
+### The injection matrix
+
+Thirteen injections, one at a time, each its own edit and its own run of the
+guard it is aimed at, reverted and re-observed passing before the next. **None
+spells a forbidden token, because neither guard holds a token list**: one
+compares the receipts on disk against the receipts the test binds, the other
+compares the files that read Rust source against the rows of one table.
+`node --check` returned **0 on every one of them**.
+
+| # | Injection | Guard | Observed |
+|---|---|---|---|
+| `RF16-I1` | a receipt arrives for a crate nobody binds and claims a package the lock does not hold | scaffold | fails: `a P2-Z9 admitted package is missing from Cargo.lock`, `0 !== 1` |
+| `RF16-I2` | `P2-U5`'s receipt is deleted from `docs/security` | scaffold | fails: `docs/security holds no admission receipt naming P2-U5` |
+| `RF16-I3` | `P2-N5`'s receipt also claims `academic-offering`, which `P2-U5` claims | scaffold | two tests fail; the pair test names `academic-offering@0.1.0` with both `P2-N5` and `P2-U5` |
+| `RF16-I4` | `P2-U5`'s receipt is re-tasked in place | scaffold | fails: `dependency-admission-phase2-u5.json is filed under a name that is not P2-Z9's` |
+| `RF16-I5` | `P2-U5` stops claiming `academic-offering` | scaffold | fails on that task's own path-package pin, before the arithmetic |
+| `RF16-I6` | a new scan reads Rust source text and has no row in the table | inventory | fails naming `crates/gap/tests/rf16_probe.rs (include_str)` |
+| `RF16-I7` | a row names a scan file this repository does not hold | inventory | both directions fail; the reverse names `crates/gap/tests/gap_scan.rs` |
+| `RF16-I8` | `crates/offering/tests/offering_scans.rs` keeps its prose section and loses its row | inventory | fails naming the file — this is the case `page.includes` accepted |
+| `RF16-I9` | the receipt keeps its task and is filed under another task's file name | scaffold | fails: `dependency-admission-phase2-z9.json is filed under a name that is not P2-U5's` |
+| `RF16-I10` | a row for a file the walk never demands names a path this repository does not hold | inventory | fails naming `tools/security-baselines.mjs` |
+| `RF16-I11` | `P2-U5`'s receipt is re-tasked, file name and `task` field together | scaffold | fails: `docs/security holds no admission receipt naming P2-U5` |
+| `RF16-I12` | one crate `P2-K1` admitted is receipted at a version the lock does not hold | scaffold | fails: `a P2-K1 admitted package is missing from Cargo.lock`, `44 !== 45` |
+| `RF16-I13` | a merge drops the last two per-receipt blocks while their receipts stay on disk | scaffold | fails: `an admission receipt in docs/security is read but named by no block here`, naming `P2-P1` and `P2-U5` |
+
+`RF16-I13` is the injection that changed the shape of the repair. Deriving the
+sum takes away the coupling that used to make a dropped block noisy: each block
+held its own tuple filter, so deleting one left the sum referring to a name that
+no longer existed. Measured on the first derivation, dropping the whole `P2-U5`
+block was **silent** — `node --check` 0, twenty-seven of twenty-seven passing.
+The repair is not to put the coupling back but to say the thing it stood for:
+every receipt read off disk must be named by a block, and one that is not is
+reported by task.
+
+### What deleting each new check measures
+
+A guard hidden behind another guard can be deleted without any test failing,
+which is the shape `P2-N5` found in its own suite. Each check added here was
+deleted, and the injection it is aimed at re-run.
+
+| # | Deleted | Injection re-run | Observed |
+|---|---|---|---|
+| `RF16-S1` | the file-name/task rule | `RF16-I9` | **passes** — nothing else catches it |
+| `RF16-S2` | `no two admission receipts claim the same package` | `RF16-I3` | still fails, on `P2-N5`'s own `must admit no external crate` pin, `1 !== 0`; with that pin gone too, on the lock-tuple arithmetic, `268 !== 269`. Neither names the package or either task — the backstop `T177` described, reached through whichever per-receipt pin the claim trips first |
+| `RF16-S3` | the reverse table pass | `RF16-I10` | **passes** — nothing else catches it |
+| `RF16-S4` | the row rule, relaxed back to `page.includes` | `RF16-I8` | **passes** — which is what that check accepted before |
+| `RF16-S5` | the bound-receipt completeness rule | `RF16-I13` | **passes** — nothing else catches it |
+
+`RF16-S2` is the one that is not sole custody, and it is recorded rather than
+repaired: a per-receipt pin, the arithmetic and the pair test each refuse a
+double claim, and only the pair test says which package and which two tasks.
+
+### How this repair is rebased
+
+A derived registration cannot collide, but the derivation is itself a patch on
+two files and `main` moves under it. Twice now: `P2-P1` landed `academic-export`
+while the branch was open, and `P2-N6` landed `academic-critical-path` after
+that. `P2-N6` conflicted on both files and on nothing else. Neither rebase was a
+hunk merge, and neither was merged by hand.
+
+**The branch is reset onto the new `main` and the transformation re-applied to
+`main`'s own text**, by a script that recognises the nine per-receipt shapes by
+their syntax rather than by line position — so a receipt written in the old
+hand-registered shape is derived by the same rules that derived the others.
+The script is checked twice before its output is used, because `node --check`
+decides neither and returned 0 on a re-derivation that had silently dropped
+three lines:
+
+- re-emitting every segment it parsed reproduces its input **byte for byte**; and
+- applying the transformation to the commit this repair was first written
+  against reproduces this repair's own committed bytes.
+
+The second check is what makes the output the same file the derivation would
+have produced had the new receipt been there from the start. Its counts are the
+audit: 36 set constructions, 27 identity lines, 28 cascade loops and 36 tuple
+filters on that commit, one more of each but the loops on `main`.
+
+What is **not** automatic is the row. `P2-P1` gave
+`crates/export/tests/export_scans.rs` a prose section and no line in the
+registration table, so the strengthened inventory check failed until the row was
+written — the third scan on this page with a section and no row, which is the
+case this repair exists to make visible. `P2-N6` wrote rows for all three of its
+scans, so its rebase needed no edit there; both sides had appended to the end of
+the same table, and the resolution keeps every row from both.
+
+One anchor had to be widened for `P2-P1`: it put its `readFile` at one position
+in the destructured list and its `JSON.parse` at another, so a parse run
+reconstructed from the destructured names no longer matched the file; the run is
+now taken as the literal text that follows the destructuring. That is the same
+defect in miniature as the one being repaired — two lists that must agree, kept
+in step by hand.
+
+### What is left at a merge point
+
+Three registrations still take one edit per crate in
+`tools/phase1-scaffold-policy.test.mjs`, and all three are frozen expectations
+rather than lists: the product edge and the dev edge in
+`workspace_dependency_direction_is_acyclic`, and the entry in
+`SOCKET_CAPABLE_CLOSURES`. `T186` measured all three as caught, and they still
+are. A fourth, the per-receipt block, is now caught by name rather than by
+arithmetic. In this page a new crate adds a row to the table above, and the row
+is now required in both directions; its prose section is not, and dropping one is
+still silent — which is `MP11` in `T186`'s measurement and is not closed here.
+
 ## Open
 
 Each row says what makes it start mattering: "it cannot happen today" is not a
@@ -2944,15 +3140,14 @@ breaks, and `node --check` returned zero on **every one of them**:
 | point 5, either side: a package is not excluded from the incoming set | 0 | fails | same |
 | point 6, either side: a tuple count is not in the sum | 0 | fails | same |
 
-**The `task` identity line carries no load on its own.** Deleting
-`assert.equal(offeringReceipt.task, "P2-U5")` — or `main`'s equivalent — is
-caught by nothing: the rest of the block still runs, still builds its two sets
-and still computes its tuple filter, so the sum in point 6 is unchanged. It is a
+**The `task` identity line carried no load on its own.** Deleting
+`assert.equal(offeringReceipt.task, "P2-U5")` — or `main`'s equivalent — was
+caught by nothing: the rest of the block still ran, still built its two sets and
+still computed its tuple filter, so the sum in point 6 was unchanged. It was a
 second layer over a positional one, and the positional one is what points 1
-through 3 measure. Recorded rather than repaired: making the identity line
-load-bearing means keying each block on the receipt it reads rather than on a
-destructuring position, which is a change to the whole test's shape and to
-thirty-odd other tasks' blocks.
+through 3 measure. All six points are gone — `P2-RF16` derives them from
+`docs/security` — and the task is now the key each block is looked up by, which
+is what this measurement said closing it would take.
 
 ### The injection matrix
 

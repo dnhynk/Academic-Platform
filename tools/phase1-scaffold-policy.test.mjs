@@ -4670,125 +4670,35 @@ function normalizeDependencyUse(dependency, packageName) {
 }
 
 test("dependency_license_and_source_receipt_is_complete", async () => {
-  const [
-    receiptText,
-    keyReceiptText,
-    scenarioReceiptText,
-    recoveryReceiptText,
-    retentionReceiptText,
-    admissionReceiptText,
-    policyReceiptText,
-    processReceiptText,
-    transcriptReceiptText,
-    egressReceiptText,
-    recordReceiptText,
-    sandboxReceiptText,
-    untrustedReceiptText,
-    consentReceiptText,
-    modelRunReceiptText,
-    captureReceiptText,
-    proposalReceiptText,
-    desktopReceiptText,
-    repositoryReceiptText,
-    captureSubsystemReceiptText,
-    ingestionReceiptText,
-    curriculumReceiptText,
-    analysisReceiptText,
-    requirementReceiptText,
-    transcriptionReceiptText,
-    correlationReceiptText,
-    centerReceiptText,
-    lectureReceiptText,
-    classificationReceiptText,
-    knowledgeStateReceiptText,
-    competencyReceiptText,
-    auditReceiptText,
-    freshnessReceiptText,
-    gapReceiptText,
-    studentVoiceReceiptText,
-    offeringReceiptText,
-    exportReceiptText,
-    criticalPathReceiptText,
-    cargoLock,
-  ] = await Promise.all([
-    readFile("docs/security/dependency-admission-phase1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-k1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-c7.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-k4.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-k5.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-k6.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-g1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-g7.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-u7.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-g2.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-u4.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-g4.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-g5.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-g6.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-m1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-l1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-m2.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-x1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-r1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-l2.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-u6.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-u1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-r2.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-u2.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-l3.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-r3.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-x7.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-l4.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-r4.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-n2.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-r5.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-u3.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-n3.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-n5.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-l5.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-u5.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-p1.json", "utf8"),
-    readFile("docs/security/dependency-admission-phase2-n6.json", "utf8"),
+  // Every admission receipt in `docs/security` is read off disk and keyed on the
+  // task it names. `T177` did this for the duplicate-claim check; what used to be
+  // written out here was nine edits at one place per crate -- a destructured name,
+  // a read, a parse, two set constructions, a tuple filter, its length assertion,
+  // two clauses of the incoming conjunction and one summand -- and six rebase races
+  // in this run collided on exactly them. A receipt added later is bound by
+  // `receiptFor` without anybody editing a list, and one nobody binds at all is
+  // still read, still subtracted from the incoming set and still counted in the sum.
+  const RECEIPT_DIRECTORY = "docs/security";
+  const PHASE1_RECEIPT = "dependency-admission-phase1.json";
+  const receiptFiles = (await readdir(RECEIPT_DIRECTORY))
+    .filter((name) => name.startsWith("dependency-admission-") && name.endsWith(".json"))
+    .toSorted();
+  assert.ok(
+    receiptFiles.includes(PHASE1_RECEIPT),
+    `${RECEIPT_DIRECTORY} holds no phase 1 admission receipt`,
+  );
+  // The floor is what fails if the walk stops finding receipts: an empty read
+  // would satisfy every assertion made over its result, which is the third of
+  // this repository's three empty-scan shapes.
+  assert.ok(
+    receiptFiles.length >= 36,
+    `expected every admission receipt to be read, found ${receiptFiles.length}`,
+  );
+  const [cargoLock, ...receiptTexts] = await Promise.all([
     readFile("Cargo.lock", "utf8"),
+    ...receiptFiles.map((name) => readFile(join(RECEIPT_DIRECTORY, name), "utf8")),
   ]);
-  const exportReceipt = JSON.parse(exportReceiptText);
-  const receipt = JSON.parse(receiptText);
-  const keyReceipt = JSON.parse(keyReceiptText);
-  const scenarioReceipt = JSON.parse(scenarioReceiptText);
-  const recoveryReceipt = JSON.parse(recoveryReceiptText);
-  const retentionReceipt = JSON.parse(retentionReceiptText);
-  const admissionReceipt = JSON.parse(admissionReceiptText);
-  const policyReceipt = JSON.parse(policyReceiptText);
-  const processReceipt = JSON.parse(processReceiptText);
-  const transcriptReceipt = JSON.parse(transcriptReceiptText);
-  const egressReceipt = JSON.parse(egressReceiptText);
-  const recordReceipt = JSON.parse(recordReceiptText);
-  const sandboxReceipt = JSON.parse(sandboxReceiptText);
-  const untrustedReceipt = JSON.parse(untrustedReceiptText);
-  const consentReceipt = JSON.parse(consentReceiptText);
-  const modelRunReceipt = JSON.parse(modelRunReceiptText);
-  const captureReceipt = JSON.parse(captureReceiptText);
-  const proposalReceipt = JSON.parse(proposalReceiptText);
-  const desktopReceipt = JSON.parse(desktopReceiptText);
-  const repositoryReceipt = JSON.parse(repositoryReceiptText);
-  const captureSubsystemReceipt = JSON.parse(captureSubsystemReceiptText);
-  const ingestionReceipt = JSON.parse(ingestionReceiptText);
-  const curriculumReceipt = JSON.parse(curriculumReceiptText);
-  const analysisReceipt = JSON.parse(analysisReceiptText);
-  const requirementReceipt = JSON.parse(requirementReceiptText);
-  const transcriptionReceipt = JSON.parse(transcriptionReceiptText);
-  const correlationReceipt = JSON.parse(correlationReceiptText);
-  const centerReceipt = JSON.parse(centerReceiptText);
-  const lectureReceipt = JSON.parse(lectureReceiptText);
-  const classificationReceipt = JSON.parse(classificationReceiptText);
-  const knowledgeStateReceipt = JSON.parse(knowledgeStateReceiptText);
-  const competencyReceipt = JSON.parse(competencyReceiptText);
-  const auditReceipt = JSON.parse(auditReceiptText);
-  const freshnessReceipt = JSON.parse(freshnessReceiptText);
-  const gapReceipt = JSON.parse(gapReceiptText);
-  const studentVoiceReceipt = JSON.parse(studentVoiceReceiptText);
-  const offeringReceipt = JSON.parse(offeringReceiptText);
-  const criticalPathReceipt = JSON.parse(criticalPathReceiptText);
+  const receipt = JSON.parse(receiptTexts[receiptFiles.indexOf(PHASE1_RECEIPT)]);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -4808,192 +4718,92 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const platformTuples = lockTuples.filter(([name]) => name === "academic-store-platform");
   assert.deepEqual(platformTuples, [["academic-store-platform", "0.1.0", null, null]]);
 
+  // Each phase 2 receipt's admitted set, path packages and lock tuples, derived
+  // once. The file name has to agree with the task the receipt names, so a
+  // receipt cannot be filed under another task's name -- that is the binding the
+  // `assert.equal(<receipt>.task, …)` lines used to make for some of the receipts
+  // and not others, and `T186` measured every one of those lines as carrying no
+  // load: deleting one left its block reading the receipt by destructuring
+  // position.
+  const phase2Receipts = new Map();
+  for (const [index, file] of receiptFiles.entries()) {
+    if (file === PHASE1_RECEIPT) {
+      continue;
+    }
+    const parsed = JSON.parse(receiptTexts[index]);
+    assert.equal(typeof parsed.task, "string", `${file} names no task`);
+    assert.equal(
+      file,
+      `dependency-admission-${parsed.task.toLowerCase().replace("p2-", "phase2-")}.json`,
+      `${file} is filed under a name that is not ${parsed.task}'s`,
+    );
+    const admitted = new Set(
+      parsed.admissions.map((admission) => `${admission.name}@${admission.version}`),
+    );
+    const pathPackages = new Set(
+      parsed.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+    );
+    const tuples = lockTuples.filter(
+      ([name, version]) =>
+        admitted.has(`${name}@${version}`) || pathPackages.has(`${name}@${version}`),
+    );
+    assert.equal(
+      tuples.length,
+      admitted.size + pathPackages.size,
+      `a ${parsed.task} admitted package is missing from Cargo.lock`,
+    );
+    assert.equal(
+      phase2Receipts.has(parsed.task),
+      false,
+      `${parsed.task} is named by two admission receipts`,
+    );
+    phase2Receipts.set(parsed.task, { receipt: parsed, admitted, pathPackages, tuples });
+  }
+  const bound = new Set();
+  const receiptFor = (task) => {
+    const found = phase2Receipts.get(task);
+    assert.ok(found, `${RECEIPT_DIRECTORY} holds no admission receipt naming ${task}`);
+    bound.add(task);
+    return found;
+  };
+
   // Every package `P2-K1` added is enumerated in its own receipt. Subtracting
   // exactly that set and re-checking the frozen Phase 1 digest proves two
   // things at once: no Phase 1 dependency moved, and nothing entered the lock
   // that is not covered by a reviewed admission receipt.
-  const keyAdmitted = new Set(
-    keyReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const keyPathPackages = new Set(
-    keyReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
-  const keyTuples = lockTuples.filter(([name, version]) =>
-    keyAdmitted.has(`${name}@${version}`) || keyPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    keyTuples.length,
-    keyAdmitted.size + keyPathPackages.size,
-    "a P2-K1 admitted package is missing from Cargo.lock",
-  );
+  const { receipt: keyReceipt } = receiptFor("P2-K1");
 
   // `P2-C7` is subtracted the same way and for the same reason. The two
   // receipts must not overlap: a package claimed by both would be subtracted
   // twice and the arithmetic below would hide a third, unreceipted arrival.
-  const scenarioAdmitted = new Set(
-    scenarioReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const scenarioPathPackages = new Set(
-    scenarioReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
-  for (const claimed of [...scenarioAdmitted, ...scenarioPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) || keyPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const scenarioTuples = lockTuples.filter(
-    ([name, version]) =>
-      scenarioAdmitted.has(`${name}@${version}`) ||
-      scenarioPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    scenarioTuples.length,
-    scenarioAdmitted.size + scenarioPathPackages.size,
-    "a P2-C7 admitted package is missing from Cargo.lock",
-  );
+  const { receipt: scenarioReceipt } = receiptFor("P2-C7");
 
   // `P2-K4` admits no external crate at all; its receipt covers exactly one
   // workspace path package. It is subtracted here for the same reason as the
   // other two: a path package with no receipt would otherwise be counted as an
   // unreviewed arrival, and one with a receipt must not be counted twice.
-  const recoveryAdmitted = new Set(
-    recoveryReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const recoveryPathPackages = new Set(
-    recoveryReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const { admitted: recoveryAdmitted } = receiptFor("P2-K4");
   assert.equal(recoveryAdmitted.size, 0, "P2-K4 must admit no external crate");
-  for (const claimed of [...recoveryAdmitted, ...recoveryPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const recoveryTuples = lockTuples.filter(
-    ([name, version]) =>
-      recoveryAdmitted.has(`${name}@${version}`) ||
-      recoveryPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    recoveryTuples.length,
-    recoveryAdmitted.size + recoveryPathPackages.size,
-    "a P2-K4 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-K5` admits no external crate either; its receipt covers exactly the one
   // workspace path package `academic-retention`, subtracted for the same reason.
-  const retentionAdmitted = new Set(
-    retentionReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const retentionPathPackages = new Set(
-    retentionReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const { admitted: retentionAdmitted } = receiptFor("P2-K5");
   assert.equal(retentionAdmitted.size, 0, "P2-K5 must admit no external crate");
-  for (const claimed of [...retentionAdmitted, ...retentionPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const retentionTuples = lockTuples.filter(
-    ([name, version]) =>
-      retentionAdmitted.has(`${name}@${version}`) ||
-      retentionPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    retentionTuples.length,
-    retentionAdmitted.size + retentionPathPackages.size,
-    "a P2-K5 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-K6` likewise admits no external crate and adds only the receipt and
   // posture workspace boundary.
-  const admissionAdmitted = new Set(
-    admissionReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const admissionPathPackages = new Set(
-    admissionReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const { admitted: admissionAdmitted } = receiptFor("P2-K6");
   assert.equal(admissionAdmitted.size, 0, "P2-K6 must admit no external crate");
-  for (const claimed of [...admissionAdmitted, ...admissionPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const admissionTuples = lockTuples.filter(
-    ([name, version]) =>
-      admissionAdmitted.has(`${name}@${version}`) ||
-      admissionPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    admissionTuples.length,
-    admissionAdmitted.size + admissionPathPackages.size,
-    "a P2-K6 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-G1` also reuses only previously admitted crates and adds the
   // socket-free `academic-policy` workspace boundary.
-  const policyAdmitted = new Set(
-    policyReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const policyPathPackages = new Set(
-    policyReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const { admitted: policyAdmitted } = receiptFor("P2-G1");
   assert.equal(policyAdmitted.size, 0, "P2-G1 must admit no external crate");
-  for (const claimed of [...policyAdmitted, ...policyPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const policyTuples = lockTuples.filter(
-    ([name, version]) =>
-      policyAdmitted.has(`${name}@${version}`) ||
-      policyPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    policyTuples.length,
-    policyAdmitted.size + policyPathPackages.size,
-    "a P2-G1 admitted package is missing from Cargo.lock",
-  );
 
-  const processAdmitted = new Set(
-    processReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const processPathPackages = new Set(
-    processReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    admitted: processAdmitted,
+    pathPackages: processPathPackages,
+  } = receiptFor("P2-G7");
   assert.equal(processAdmitted.size, 0, "P2-G7 must admit no external crate");
   assert.deepEqual(
     [...processPathPackages].toSorted(),
@@ -5006,111 +4816,40 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       "academic-repository-analyzer@0.1.0",
     ],
   );
-  for (const claimed of processPathPackages) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
 
   // `P2-U7` adds the transcript ingestion boundary and admits no external
   // crate. A PDF or OCR library would have been the obvious way to build it and
   // would have arrived here as an unreceipted package; the corpus is written by
   // a deterministic builder inside the crate instead, which is why this receipt
   // subtracts one path package and nothing else.
-  const transcriptAdmitted = new Set(
-    transcriptReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const transcriptPathPackages = new Set(
-    transcriptReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const { admitted: transcriptAdmitted } = receiptFor("P2-U7");
   assert.equal(transcriptAdmitted.size, 0, "P2-U7 must admit no external crate");
-  for (const claimed of [...transcriptAdmitted, ...transcriptPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processAdmitted.has(claimed) ||
-        processPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const processTuples = lockTuples.filter(
-    ([name, version]) => processPathPackages.has(`${name}@${version}`),
-  );
 
   // `P2-G2` adds the DLP rulepack, the minimizer, the byte-accurate preview,
   // and the outbound seam as `academic-egress-boundary`, and admits no external
   // crate. It is a separate package from `P2-G7`'s `academic-egress` process
   // entry point, whose whole manifest and whole product source that task pins.
-  assert.equal(egressReceipt.task, "P2-G2");
-  const egressAdmitted = new Set(
-    egressReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const egressPathPackages = new Set(
-    egressReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: egressReceipt,
+    admitted: egressAdmitted,
+    pathPackages: egressPathPackages,
+  } = receiptFor("P2-G2");
   assert.equal(egressAdmitted.size, 0, "P2-G2 must admit no external crate");
   assert.deepEqual([
     ...egressPathPackages,
   ], ["academic-egress-boundary@0.1.0"]);
   assert.deepEqual(egressReceipt.summary.npm_additions, []);
   assert.equal(egressReceipt.summary.npm_install_scripts_added, false);
-  for (const claimed of [...egressAdmitted, ...egressPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
   // `P2-G4` adds the worker sandbox as `academic-worker` and admits no
   // external crate: `libc` and `windows-sys` are already in this lock at these
   // versions through earlier receipts, so what is new is two direct edges,
   // which the receipt records with their own owner, licence, feature set,
   // advisory path and trust-boundary justification.
-  assert.equal(sandboxReceipt.task, "P2-G4");
-  const sandboxAdmitted = new Set(
-    sandboxReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const sandboxPathPackages = new Set(
-    sandboxReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: sandboxReceipt,
+    admitted: sandboxAdmitted,
+    pathPackages: sandboxPathPackages,
+  } = receiptFor("P2-G4");
   assert.equal(sandboxAdmitted.size, 0, "P2-G4 must admit no external crate");
   assert.deepEqual([...sandboxPathPackages], ["academic-worker@0.1.0"]);
   assert.deepEqual(sandboxReceipt.summary.npm_additions, []);
@@ -5143,91 +4882,31 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       );
     }
   }
-  for (const claimed of [...sandboxAdmitted, ...sandboxPathPackages]) {
-    assert.equal(
-      egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const sandboxTuples = lockTuples.filter(
-    ([name, version]) =>
-      sandboxAdmitted.has(`${name}@${version}`) ||
-      sandboxPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    sandboxTuples.length,
-    sandboxAdmitted.size + sandboxPathPackages.size,
-    "a P2-G4 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-G5` adds the untrusted-content boundary as `academic-untrusted-content`
   // and admits no external crate: its product edges are `academic-egress-boundary`,
   // `sha2` and `thiserror`, and its dev edge is `academic-policy`, all four
   // already in this lock through earlier receipts.
-  assert.equal(untrustedReceipt.task, "P2-G5");
-  const untrustedAdmitted = new Set(
-    untrustedReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const untrustedPathPackages = new Set(
-    untrustedReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: untrustedReceipt,
+    admitted: untrustedAdmitted,
+    pathPackages: untrustedPathPackages,
+  } = receiptFor("P2-G5");
   assert.equal(untrustedAdmitted.size, 0, "P2-G5 must admit no external crate");
   assert.deepEqual([...untrustedPathPackages], ["academic-untrusted-content@0.1.0"]);
   assert.deepEqual(untrustedReceipt.summary.npm_additions, []);
   assert.equal(untrustedReceipt.summary.npm_install_scripts_added, false);
   assert.deepEqual(untrustedReceipt.direct_workspace_dependencies, {});
-  for (const claimed of [...untrustedAdmitted, ...untrustedPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        sandboxAdmitted.has(claimed) ||
-        sandboxPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const untrustedTuples = lockTuples.filter(
-    ([name, version]) =>
-      untrustedAdmitted.has(`${name}@${version}`) ||
-      untrustedPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    untrustedTuples.length,
-    untrustedAdmitted.size + untrustedPathPackages.size,
-    "a P2-G5 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-M1` adds the model-run provenance and calibration boundary as
   // `academic-model-run` and admits no external crate: its product edges are
   // `academic-domain`, `academic-policy`, `sha2` and `thiserror`, and its dev
   // edge is `trybuild`, all five already in this lock through earlier receipts.
-  assert.equal(modelRunReceipt.task, "P2-M1");
-  const modelRunAdmitted = new Set(
-    modelRunReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const modelRunPathPackages = new Set(
-    modelRunReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: modelRunReceipt,
+    admitted: modelRunAdmitted,
+    pathPackages: modelRunPathPackages,
+  } = receiptFor("P2-M1");
   assert.equal(modelRunAdmitted.size, 0, "P2-M1 must admit no external crate");
   assert.deepEqual([...modelRunPathPackages], ["academic-model-run@0.1.0"]);
   assert.deepEqual(modelRunReceipt.summary.npm_additions, []);
@@ -5236,46 +4915,17 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-domain",
     "academic-policy",
   ]);
-  for (const claimed of [...modelRunAdmitted, ...modelRunPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        sandboxAdmitted.has(claimed) ||
-        sandboxPathPackages.has(claimed) ||
-        untrustedAdmitted.has(claimed) ||
-        untrustedPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
 
   // `P2-M2` adds the proposal boundary, risk tiers and review queue as
   // `academic-proposal` and admits no external crate: its product edges are
   // `academic-domain`, `sha2` and `thiserror`, and its dev edges are
   // `academic-domain`, `serde_json`, `trybuild` and `uuid`, all already in this
   // lock through earlier receipts.
-  assert.equal(proposalReceipt.task, "P2-M2");
-  const proposalAdmitted = new Set(
-    proposalReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const proposalPathPackages = new Set(
-    proposalReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: proposalReceipt,
+    admitted: proposalAdmitted,
+    pathPackages: proposalPathPackages,
+  } = receiptFor("P2-M2");
   assert.equal(proposalAdmitted.size, 0, "P2-M2 must admit no external crate");
   assert.deepEqual([...proposalPathPackages], ["academic-proposal@0.1.0"]);
   assert.deepEqual(proposalReceipt.summary.npm_additions, []);
@@ -5283,82 +4933,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   assert.deepEqual(Object.keys(proposalReceipt.direct_workspace_dependencies).toSorted(), [
     "academic-domain",
   ]);
-  for (const claimed of [...proposalAdmitted, ...proposalPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        sandboxAdmitted.has(claimed) ||
-        sandboxPathPackages.has(claimed) ||
-        untrustedAdmitted.has(claimed) ||
-        untrustedPathPackages.has(claimed) ||
-        modelRunAdmitted.has(claimed) ||
-        modelRunPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const proposalTuples = lockTuples.filter(
-    ([name, version]) =>
-      proposalAdmitted.has(`${name}@${version}`) ||
-      proposalPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    proposalTuples.length,
-    proposalAdmitted.size + proposalPathPackages.size,
-    "a P2-M2 admitted package is missing from Cargo.lock",
-  );
 
-  const modelRunTuples = lockTuples.filter(
-    ([name, version]) =>
-      modelRunAdmitted.has(`${name}@${version}`) ||
-      modelRunPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    modelRunTuples.length,
-    modelRunAdmitted.size + modelRunPathPackages.size,
-    "a P2-M1 admitted package is missing from Cargo.lock",
-  );
 
-  const egressTuples = lockTuples.filter(
-    ([name, version]) =>
-      egressAdmitted.has(`${name}@${version}`) ||
-      egressPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    egressTuples.length,
-    egressAdmitted.size + egressPathPackages.size,
-    "a P2-G2 admitted package is missing from Cargo.lock",
-  );
-  assert.equal(
-    processTuples.length,
-    processPathPackages.size,
-    "a P2-G7 process package is missing from Cargo.lock",
-  );
-  const transcriptTuples = lockTuples.filter(
-    ([name, version]) =>
-      transcriptAdmitted.has(`${name}@${version}`) ||
-      transcriptPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    transcriptTuples.length,
-    transcriptAdmitted.size + transcriptPathPackages.size,
-    "a P2-U7 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-U4` adds the attempt ledger and the two §28 engines and admits no
   // external crate. A decimal or big-rational library would have been the
@@ -5366,181 +4942,53 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // an unreceipted package; the arithmetic is written over the canonical
   // `Decimal` instead, which is why this receipt subtracts one path package and
   // nothing else.
-  const recordAdmitted = new Set(
-    recordReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const recordPathPackages = new Set(
-    recordReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    admitted: recordAdmitted,
+    pathPackages: recordPathPackages,
+  } = receiptFor("P2-U4");
   assert.equal(recordAdmitted.size, 0, "P2-U4 must admit no external crate");
   assert.deepEqual([...recordPathPackages], ["academic-record@0.1.0"]);
-  for (const claimed of [...recordAdmitted, ...recordPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processAdmitted.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const recordTuples = lockTuples.filter(
-    ([name, version]) =>
-      recordAdmitted.has(`${name}@${version}`) ||
-      recordPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    recordTuples.length,
-    recordAdmitted.size + recordPathPackages.size,
-    "a P2-U4 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-G6` adds the consent ledger as `academic-consent` and admits no
   // external crate: its product edges are `academic-domain` and `thiserror`,
   // and its dev edges are `academic-domain`, `academic-retention` and
   // `trybuild`, all already in this lock through earlier receipts.
-  assert.equal(consentReceipt.task, "P2-G6");
-  const consentAdmitted = new Set(
-    consentReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const consentPathPackages = new Set(
-    consentReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: consentReceipt,
+    admitted: consentAdmitted,
+    pathPackages: consentPathPackages,
+  } = receiptFor("P2-G6");
   assert.equal(consentAdmitted.size, 0, "P2-G6 must admit no external crate");
   assert.deepEqual([...consentPathPackages], ["academic-consent@0.1.0"]);
   assert.deepEqual(consentReceipt.summary.npm_additions, []);
   assert.equal(consentReceipt.summary.npm_install_scripts_added, false);
   assert.deepEqual(consentReceipt.direct_workspace_dependencies, {});
-  for (const claimed of [...consentAdmitted, ...consentPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        recordAdmitted.has(claimed) ||
-        recordPathPackages.has(claimed) ||
-        sandboxAdmitted.has(claimed) ||
-        sandboxPathPackages.has(claimed) ||
-        untrustedAdmitted.has(claimed) ||
-        untrustedPathPackages.has(claimed) ||
-        modelRunAdmitted.has(claimed) ||
-        modelRunPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const consentTuples = lockTuples.filter(
-    ([name, version]) =>
-      consentAdmitted.has(`${name}@${version}`) ||
-      consentPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    consentTuples.length,
-    consentAdmitted.size + consentPathPackages.size,
-    "a P2-G6 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-L1` adds the capture device gate as `academic-capture-gate` and admits
   // no external crate: `libc` and `windows-sys` are the pinned versions
   // `academic-worker`'s native lane already admitted, and every other edge is
   // a workspace path crate an earlier receipt covers.
-  assert.equal(captureReceipt.task, "P2-L1");
-  const captureAdmitted = new Set(
-    captureReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const capturePathPackages = new Set(
-    captureReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: captureReceipt,
+    admitted: captureAdmitted,
+    pathPackages: capturePathPackages,
+  } = receiptFor("P2-L1");
   assert.equal(captureAdmitted.size, 0, "P2-L1 must admit no external crate");
   assert.deepEqual([...capturePathPackages], ["academic-capture-gate@0.1.0"]);
   assert.deepEqual(captureReceipt.summary.npm_additions, []);
   assert.equal(captureReceipt.summary.npm_install_scripts_added, false);
   assert.deepEqual(captureReceipt.direct_workspace_dependencies, {});
-  for (const claimed of [...captureAdmitted, ...capturePathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        recordAdmitted.has(claimed) ||
-        recordPathPackages.has(claimed) ||
-        sandboxAdmitted.has(claimed) ||
-        sandboxPathPackages.has(claimed) ||
-        untrustedAdmitted.has(claimed) ||
-        untrustedPathPackages.has(claimed) ||
-        consentAdmitted.has(claimed) ||
-        consentPathPackages.has(claimed) ||
-        modelRunAdmitted.has(claimed) ||
-        modelRunPathPackages.has(claimed) ||
-        proposalAdmitted.has(claimed) ||
-        proposalPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const captureTuples = lockTuples.filter(
-    ([name, version]) =>
-      captureAdmitted.has(`${name}@${version}`) ||
-      capturePathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    captureTuples.length,
-    captureAdmitted.size + capturePathPackages.size,
-    "a P2-L1 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-X1` adds one workspace path package, `academic-desktop`, and admits no
   // external crate: its product edges are `academic-rpc` and `thiserror` and
   // its dev edges are `serde_json` and `trybuild`, all four already in this
   // lock through earlier receipts. The Tauri runtime is not linked, and the
   // receipt records the measurement that decided it.
-  assert.equal(desktopReceipt.task, "P2-X1");
-  const desktopAdmitted = new Set(
-    desktopReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const desktopPathPackages = new Set(
-    desktopReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: desktopReceipt,
+    admitted: desktopAdmitted,
+    pathPackages: desktopPathPackages,
+  } = receiptFor("P2-X1");
   assert.equal(desktopAdmitted.size, 0, "P2-X1 must admit no external crate");
   assert.deepEqual([...desktopPathPackages], ["academic-desktop@0.1.0"]);
   assert.deepEqual(desktopReceipt.summary.npm_additions, []);
@@ -5564,66 +5012,17 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       `${entry.path} does not match the digest its admission receipt records`,
     );
   }
-  for (const claimed of [...desktopAdmitted, ...desktopPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        recordAdmitted.has(claimed) ||
-        recordPathPackages.has(claimed) ||
-        sandboxAdmitted.has(claimed) ||
-        sandboxPathPackages.has(claimed) ||
-        untrustedAdmitted.has(claimed) ||
-        untrustedPathPackages.has(claimed) ||
-        consentAdmitted.has(claimed) ||
-        consentPathPackages.has(claimed) ||
-        modelRunAdmitted.has(claimed) ||
-        modelRunPathPackages.has(claimed) ||
-        captureAdmitted.has(claimed) ||
-        capturePathPackages.has(claimed) ||
-        proposalAdmitted.has(claimed) ||
-        proposalPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const desktopTuples = lockTuples.filter(
-    ([name, version]) =>
-      desktopAdmitted.has(`${name}@${version}`) ||
-      desktopPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    desktopTuples.length,
-    desktopAdmitted.size + desktopPathPackages.size,
-    "a P2-X1 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-R1` adds one workspace path package, `academic-repository`, and admits
   // no external crate: its product edges are `academic-crypto`,
   // `academic-policy`, `academic-untrusted-content`, `sha2`, `thiserror` and
   // `zeroize`, and its dev edge is `tempfile`, all already in this lock through
   // earlier receipts.
-  assert.equal(repositoryReceipt.task, "P2-R1");
-  const repositoryAdmitted = new Set(
-    repositoryReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const repositoryPathPackages = new Set(
-    repositoryReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: repositoryReceipt,
+    admitted: repositoryAdmitted,
+    pathPackages: repositoryPathPackages,
+  } = receiptFor("P2-R1");
   assert.equal(repositoryAdmitted.size, 0, "P2-R1 must admit no external crate");
   assert.deepEqual([...repositoryPathPackages], ["academic-repository@0.1.0"]);
   assert.deepEqual(repositoryReceipt.summary.npm_additions, []);
@@ -5633,39 +5032,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-policy",
     "academic-untrusted-content",
   ]);
-  for (const claimed of [...repositoryAdmitted, ...repositoryPathPackages]) {
-    assert.equal(
-      keyPathPackages.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        recordPathPackages.has(claimed) ||
-        sandboxPathPackages.has(claimed) ||
-        untrustedPathPackages.has(claimed) ||
-        consentPathPackages.has(claimed) ||
-        modelRunPathPackages.has(claimed) ||
-        capturePathPackages.has(claimed) ||
-        proposalPathPackages.has(claimed) ||
-        desktopPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const repositoryTuples = lockTuples.filter(
-    ([name, version]) =>
-      repositoryAdmitted.has(`${name}@${version}`) ||
-      repositoryPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    repositoryTuples.length,
-    repositoryAdmitted.size + repositoryPathPackages.size,
-    "a P2-R1 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-R2` adds one workspace path package, `academic-repository-analysis`,
   // and admits no external crate: its product edges are `academic-model-run`,
@@ -5674,13 +5040,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // declares no dev edge. Section 17.3 names AST indexing, which is where a
   // parser generator would normally enter; none is admitted, and the receipt
   // says why in `no_parser_dependency_note`.
-  assert.equal(analysisReceipt.task, "P2-R2");
-  const analysisAdmitted = new Set(
-    analysisReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const analysisPathPackages = new Set(
-    analysisReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: analysisReceipt,
+    admitted: analysisAdmitted,
+    pathPackages: analysisPathPackages,
+  } = receiptFor("P2-R2");
   assert.equal(analysisAdmitted.size, 0, "P2-R2 must admit no external crate");
   assert.deepEqual([...analysisPathPackages], ["academic-repository-analysis@0.1.0"]);
   assert.deepEqual(analysisReceipt.summary.npm_additions, []);
@@ -5694,40 +5058,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-repository",
     "academic-untrusted-content",
   ]);
-  for (const claimed of [...analysisAdmitted, ...analysisPathPackages]) {
-    assert.equal(
-      keyPathPackages.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        recordPathPackages.has(claimed) ||
-        sandboxPathPackages.has(claimed) ||
-        untrustedPathPackages.has(claimed) ||
-        consentPathPackages.has(claimed) ||
-        modelRunPathPackages.has(claimed) ||
-        capturePathPackages.has(claimed) ||
-        proposalPathPackages.has(claimed) ||
-        desktopPathPackages.has(claimed) ||
-        repositoryPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const analysisTuples = lockTuples.filter(
-    ([name, version]) =>
-      analysisAdmitted.has(`${name}@${version}`) ||
-      analysisPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    analysisTuples.length,
-    analysisAdmitted.size + analysisPathPackages.size,
-    "a P2-R2 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-R3` adds one workspace path package, `academic-repository-correlation`,
   // and admits no external crate: its product edges are `academic-domain`,
@@ -5738,13 +5068,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // needs a reason and the receipt carries it: section 30.3's six authority
   // rows are already implemented there, and this task adds the qualifier those
   // rows state in words rather than a second rank table.
-  assert.equal(correlationReceipt.task, "P2-R3");
-  const correlationAdmitted = new Set(
-    correlationReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const correlationPathPackages = new Set(
-    correlationReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: correlationReceipt,
+    admitted: correlationAdmitted,
+    pathPackages: correlationPathPackages,
+  } = receiptFor("P2-R3");
   assert.equal(correlationAdmitted.size, 0, "P2-R3 must admit no external crate");
   assert.deepEqual([...correlationPathPackages], ["academic-repository-correlation@0.1.0"]);
   assert.deepEqual(correlationReceipt.summary.npm_additions, []);
@@ -5763,27 +5091,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-policy",
     "academic-untrusted-content",
   ]);
-  for (const claimed of [...correlationAdmitted, ...correlationPathPackages]) {
-    assert.equal(
-      analysisPathPackages.has(claimed) ||
-        repositoryPathPackages.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        modelRunPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const correlationTuples = lockTuples.filter(
-    ([name, version]) =>
-      correlationAdmitted.has(`${name}@${version}`) ||
-      correlationPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    correlationTuples.length,
-    correlationAdmitted.size + correlationPathPackages.size,
-    "a P2-R3 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-R4` adds one workspace path package, `academic-repository-classification`,
   // and admits no external crate: its product edges are `academic-domain`,
@@ -5795,13 +5102,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // carries it: a materialized requirement's identity is a digest of the four
   // facts section 18.4 binds, because those four joined and truncated to
   // `RequirementId`'s 64 bytes collide.
-  assert.equal(classificationReceipt.task, "P2-R4");
-  const classificationAdmitted = new Set(
-    classificationReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const classificationPathPackages = new Set(
-    classificationReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: classificationReceipt,
+    admitted: classificationAdmitted,
+    pathPackages: classificationPathPackages,
+  } = receiptFor("P2-R4");
   assert.equal(classificationAdmitted.size, 0, "P2-R4 must admit no external crate");
   assert.deepEqual(
     [...classificationPathPackages],
@@ -5824,45 +5129,17 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-untrusted-content",
     "trybuild",
   ]);
-  for (const claimed of [...classificationAdmitted, ...classificationPathPackages]) {
-    assert.equal(
-      correlationPathPackages.has(claimed) ||
-        analysisPathPackages.has(claimed) ||
-        repositoryPathPackages.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        modelRunPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const classificationTuples = lockTuples.filter(
-    ([name, version]) =>
-      classificationAdmitted.has(`${name}@${version}`) ||
-      classificationPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    classificationTuples.length,
-    classificationAdmitted.size + classificationPathPackages.size,
-    "a P2-R4 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-L2` adds one workspace path package, `academic-capture`, and admits no
   // external crate: its product edges are `academic-consent`, `academic-domain`
   // and `thiserror`, and its one dev edge is `tempfile`, all already in this
   // lock through earlier receipts. It declares no binary target, and it has no
   // edge of any kind to `academic-capture-gate`.
-  assert.equal(captureSubsystemReceipt.task, "P2-L2");
-  const captureSubsystemAdmitted = new Set(
-    captureSubsystemReceipt.admissions.map(
-      (admission) => `${admission.name}@${admission.version}`,
-    ),
-  );
-  const captureSubsystemPathPackages = new Set(
-    captureSubsystemReceipt.added_workspace_path_packages.map(
-      (pkg) => `${pkg.name}@${pkg.version}`,
-    ),
-  );
+  const {
+    receipt: captureSubsystemReceipt,
+    admitted: captureSubsystemAdmitted,
+    pathPackages: captureSubsystemPathPackages,
+  } = receiptFor("P2-L2");
   assert.equal(captureSubsystemAdmitted.size, 0, "P2-L2 must admit no external crate");
   assert.deepEqual([...captureSubsystemPathPackages], ["academic-capture@0.1.0"]);
   assert.deepEqual(captureSubsystemReceipt.summary.npm_additions, []);
@@ -5871,70 +5148,17 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     Object.keys(captureSubsystemReceipt.direct_workspace_dependencies).toSorted(),
     ["academic-consent", "academic-domain"],
   );
-  for (const claimed of [...captureSubsystemAdmitted, ...captureSubsystemPathPackages]) {
-    assert.equal(
-      keyAdmitted.has(claimed) ||
-        keyPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        recoveryAdmitted.has(claimed) ||
-        recoveryPathPackages.has(claimed) ||
-        retentionAdmitted.has(claimed) ||
-        retentionPathPackages.has(claimed) ||
-        admissionAdmitted.has(claimed) ||
-        admissionPathPackages.has(claimed) ||
-        policyAdmitted.has(claimed) ||
-        policyPathPackages.has(claimed) ||
-        processPathPackages.has(claimed) ||
-        transcriptAdmitted.has(claimed) ||
-        transcriptPathPackages.has(claimed) ||
-        egressAdmitted.has(claimed) ||
-        egressPathPackages.has(claimed) ||
-        recordAdmitted.has(claimed) ||
-        recordPathPackages.has(claimed) ||
-        sandboxAdmitted.has(claimed) ||
-        sandboxPathPackages.has(claimed) ||
-        untrustedAdmitted.has(claimed) ||
-        untrustedPathPackages.has(claimed) ||
-        consentAdmitted.has(claimed) ||
-        consentPathPackages.has(claimed) ||
-        modelRunAdmitted.has(claimed) ||
-        modelRunPathPackages.has(claimed) ||
-        captureAdmitted.has(claimed) ||
-        capturePathPackages.has(claimed) ||
-        proposalAdmitted.has(claimed) ||
-        proposalPathPackages.has(claimed) ||
-        desktopAdmitted.has(claimed) ||
-        desktopPathPackages.has(claimed) ||
-        repositoryAdmitted.has(claimed) ||
-        repositoryPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const captureSubsystemTuples = lockTuples.filter(
-    ([name, version]) =>
-      captureSubsystemAdmitted.has(`${name}@${version}`) ||
-      captureSubsystemPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    captureSubsystemTuples.length,
-    captureSubsystemAdmitted.size + captureSubsystemPathPackages.size,
-    "a P2-L2 admitted package is missing from Cargo.lock",
-  );
   // `P2-U6` adds one workspace path package, `academic-ingestion`, and admits
   // no external crate: its product edges are `academic-domain`,
   // `academic-untrusted-content` and `thiserror` and its dev edge is
   // `trybuild`, all four already in this lock through earlier receipts. No
   // HTTP client, TLS stack, browser driver or media decoder is linked, and the
   // receipt records why the conditional fetch is a caller-supplied trait.
-  assert.equal(ingestionReceipt.task, "P2-U6");
-  const ingestionAdmitted = new Set(
-    ingestionReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const ingestionPathPackages = new Set(
-    ingestionReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: ingestionReceipt,
+    admitted: ingestionAdmitted,
+    pathPackages: ingestionPathPackages,
+  } = receiptFor("P2-U6");
   assert.equal(ingestionAdmitted.size, 0, "P2-U6 must admit no external crate");
   assert.deepEqual([...ingestionPathPackages], ["academic-ingestion@0.1.0"]);
   assert.deepEqual(ingestionReceipt.summary.npm_additions, []);
@@ -5944,28 +5168,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-untrusted-content",
   ]);
   assert.deepEqual(ingestionReceipt.vendored_data, []);
-  for (const claimed of [...ingestionAdmitted, ...ingestionPathPackages]) {
-    assert.equal(
-      desktopAdmitted.has(claimed) ||
-        desktopPathPackages.has(claimed) ||
-        repositoryAdmitted.has(claimed) ||
-        repositoryPathPackages.has(claimed) ||
-        captureSubsystemAdmitted.has(claimed) ||
-        captureSubsystemPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const ingestionTuples = lockTuples.filter(
-    ([name, version]) =>
-      ingestionAdmitted.has(`${name}@${version}`) ||
-      ingestionPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    ingestionTuples.length,
-    ingestionAdmitted.size + ingestionPathPackages.size,
-    "a P2-U6 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-U1` adds one workspace path package, `academic-curriculum`, and admits
   // no external crate: its product edges are `academic-domain`,
@@ -5974,13 +5176,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // receipts. No store, vault, crypto, policy or transport crate is linked at
   // any feature setting, and the receipt records why the aggregate boundary
   // sits above the ingestion pipeline rather than inside it.
-  assert.equal(curriculumReceipt.task, "P2-U1");
-  const curriculumAdmitted = new Set(
-    curriculumReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const curriculumPathPackages = new Set(
-    curriculumReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: curriculumReceipt,
+    admitted: curriculumAdmitted,
+    pathPackages: curriculumPathPackages,
+  } = receiptFor("P2-U1");
   assert.equal(curriculumAdmitted.size, 0, "P2-U1 must admit no external crate");
   assert.deepEqual([...curriculumPathPackages], ["academic-curriculum@0.1.0"]);
   assert.deepEqual(curriculumReceipt.summary.npm_additions, []);
@@ -5990,43 +5190,16 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-ingestion",
   ]);
   assert.deepEqual(curriculumReceipt.vendored_data, []);
-  for (const claimed of [...curriculumAdmitted, ...curriculumPathPackages]) {
-    assert.equal(
-      ingestionAdmitted.has(claimed) ||
-        ingestionPathPackages.has(claimed) ||
-        repositoryAdmitted.has(claimed) ||
-        repositoryPathPackages.has(claimed) ||
-        // `P2-R2` landed beside `P2-U1`. The pair is checked here rather than
-        // in both blocks because this one is evaluated second: `analysisAdmitted`
-        // exists by now and `curriculumAdmitted` does not yet exist up there.
-        analysisAdmitted.has(claimed) ||
-        analysisPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const curriculumTuples = lockTuples.filter(
-    ([name, version]) =>
-      curriculumAdmitted.has(`${name}@${version}`) ||
-      curriculumPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    curriculumTuples.length,
-    curriculumAdmitted.size + curriculumPathPackages.size,
-    "a P2-U1 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-U2` adds `academic-requirement` and no external crate. The rule DSL is
   // a boundary above the ingestion pipeline and beside the curriculum
   // aggregates: it links neither a writer nor a model, which is what
   // `production_audit_no_llm` rests on.
-  assert.equal(requirementReceipt.task, "P2-U2");
-  const requirementAdmitted = new Set(
-    requirementReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const requirementPathPackages = new Set(
-    requirementReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: requirementReceipt,
+    admitted: requirementAdmitted,
+    pathPackages: requirementPathPackages,
+  } = receiptFor("P2-U2");
   assert.equal(requirementAdmitted.size, 0, "P2-U2 must admit no external crate");
   assert.deepEqual([...requirementPathPackages], ["academic-requirement@0.1.0"]);
   assert.deepEqual(requirementReceipt.summary.npm_additions, []);
@@ -6036,39 +5209,17 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-ingestion",
   ]);
   assert.deepEqual(requirementReceipt.vendored_data, []);
-  for (const claimed of [...requirementAdmitted, ...requirementPathPackages]) {
-    assert.equal(
-      curriculumAdmitted.has(claimed) ||
-        curriculumPathPackages.has(claimed) ||
-        ingestionAdmitted.has(claimed) ||
-        ingestionPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const requirementTuples = lockTuples.filter(
-    ([name, version]) =>
-      requirementAdmitted.has(`${name}@${version}`) ||
-      requirementPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    requirementTuples.length,
-    requirementAdmitted.size + requirementPathPackages.size,
-    "a P2-U2 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-L3` adds one workspace path package, `academic-transcription`, and
   // admits no external crate: its six product edges and its six dev edges are
   // all in this lock through earlier receipts. No speech engine, audio decoder,
   // HTTP client or TLS stack is linked, and the receipt records why a provider
   // is a caller-supplied trait.
-  assert.equal(transcriptionReceipt.task, "P2-L3");
-  const transcriptionAdmitted = new Set(
-    transcriptionReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const transcriptionPathPackages = new Set(
-    transcriptionReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: transcriptionReceipt,
+    admitted: transcriptionAdmitted,
+    pathPackages: transcriptionPathPackages,
+  } = receiptFor("P2-L3");
   assert.equal(transcriptionAdmitted.size, 0, "P2-L3 must admit no external crate");
   assert.deepEqual([...transcriptionPathPackages], ["academic-transcription@0.1.0"]);
   assert.deepEqual(transcriptionReceipt.summary.npm_additions, []);
@@ -6082,44 +5233,16 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-untrusted-content",
   ]);
   assert.deepEqual(transcriptionReceipt.vendored_data, []);
-  for (const claimed of [...transcriptionAdmitted, ...transcriptionPathPackages]) {
-    assert.equal(
-      analysisAdmitted.has(claimed) ||
-        analysisPathPackages.has(claimed) ||
-        curriculumAdmitted.has(claimed) ||
-        curriculumPathPackages.has(claimed) ||
-        ingestionAdmitted.has(claimed) ||
-        ingestionPathPackages.has(claimed) ||
-        captureSubsystemAdmitted.has(claimed) ||
-        captureSubsystemPathPackages.has(claimed) ||
-        requirementAdmitted.has(claimed) ||
-        requirementPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const transcriptionTuples = lockTuples.filter(
-    ([name, version]) =>
-      transcriptionAdmitted.has(`${name}@${version}`) ||
-      transcriptionPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    transcriptionTuples.length,
-    transcriptionAdmitted.size + transcriptionPathPackages.size,
-    "a P2-L3 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-X7` adds `academic-evidence-center` and no external crate. The evidence
   // and correction centre sits above the proposal queue, the ingestion pipeline
   // and the domain vocabulary and links no writer, so it claims no migration
   // number and persists nothing.
-  assert.equal(centerReceipt.task, "P2-X7");
-  const centerAdmitted = new Set(
-    centerReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const centerPathPackages = new Set(
-    centerReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: centerReceipt,
+    admitted: centerAdmitted,
+    pathPackages: centerPathPackages,
+  } = receiptFor("P2-X7");
   assert.equal(centerAdmitted.size, 0, "P2-X7 must admit no external crate");
   assert.deepEqual([...centerPathPackages], ["academic-evidence-center@0.1.0"]);
   assert.deepEqual(centerReceipt.summary.npm_additions, []);
@@ -6130,49 +5253,17 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-proposal",
   ]);
   assert.deepEqual(centerReceipt.vendored_data, []);
-  for (const claimed of [...centerAdmitted, ...centerPathPackages]) {
-    assert.equal(
-      requirementAdmitted.has(claimed) ||
-        requirementPathPackages.has(claimed) ||
-        curriculumAdmitted.has(claimed) ||
-        curriculumPathPackages.has(claimed) ||
-        ingestionAdmitted.has(claimed) ||
-        ingestionPathPackages.has(claimed) ||
-        proposalAdmitted.has(claimed) ||
-        proposalPathPackages.has(claimed) ||
-        transcriptionAdmitted.has(claimed) ||
-        transcriptionPathPackages.has(claimed) ||
-        correlationAdmitted.has(claimed) ||
-        correlationPathPackages.has(claimed) ||
-        classificationAdmitted.has(claimed) ||
-        classificationPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const centerTuples = lockTuples.filter(
-    ([name, version]) =>
-      centerAdmitted.has(`${name}@${version}`) ||
-      centerPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    centerTuples.length,
-    centerAdmitted.size + centerPathPackages.size,
-    "a P2-X7 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-L4` adds one workspace path package, `academic-lecture-document`, and
   // admits no external crate: its four product edges and its eight dev edges are
   // all in this lock through earlier receipts. No PDF engine, layout engine,
   // font or image decoder is linked, and the receipt records why a render
   // measurement is a value the caller supplies.
-  assert.equal(lectureReceipt.task, "P2-L4");
-  const lectureAdmitted = new Set(
-    lectureReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const lecturePathPackages = new Set(
-    lectureReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: lectureReceipt,
+    admitted: lectureAdmitted,
+    pathPackages: lecturePathPackages,
+  } = receiptFor("P2-L4");
   assert.equal(lectureAdmitted.size, 0, "P2-L4 must admit no external crate");
   assert.deepEqual([...lecturePathPackages], ["academic-lecture-document@0.1.0"]);
   assert.deepEqual(lectureReceipt.summary.npm_additions, []);
@@ -6184,40 +5275,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-transcription",
   ]);
   assert.deepEqual(lectureReceipt.vendored_data, []);
-  for (const claimed of [...lectureAdmitted, ...lecturePathPackages]) {
-    assert.equal(
-      analysisAdmitted.has(claimed) ||
-        analysisPathPackages.has(claimed) ||
-        curriculumAdmitted.has(claimed) ||
-        curriculumPathPackages.has(claimed) ||
-        ingestionAdmitted.has(claimed) ||
-        ingestionPathPackages.has(claimed) ||
-        captureSubsystemAdmitted.has(claimed) ||
-        captureSubsystemPathPackages.has(claimed) ||
-        requirementAdmitted.has(claimed) ||
-        requirementPathPackages.has(claimed) ||
-        transcriptionAdmitted.has(claimed) ||
-        transcriptionPathPackages.has(claimed) ||
-        correlationAdmitted.has(claimed) ||
-        correlationPathPackages.has(claimed) ||
-        centerAdmitted.has(claimed) ||
-        centerPathPackages.has(claimed) ||
-        classificationAdmitted.has(claimed) ||
-        classificationPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const lectureTuples = lockTuples.filter(
-    ([name, version]) =>
-      lectureAdmitted.has(`${name}@${version}`) ||
-      lecturePathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    lectureTuples.length,
-    lectureAdmitted.size + lecturePathPackages.size,
-    "a P2-L4 admitted package is missing from Cargo.lock",
-  );
 
 
   // `P2-N2` adds one workspace path package, `academic-knowledge-state`, and
@@ -6230,13 +5287,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // carries it: section 13.4's conflict is the one section 30.3 already
   // resolved, so the card this crate opens carries `P2-M3`'s
   // `NEW_EVIDENCE_CONFLICT` rather than a second token.
-  assert.equal(knowledgeStateReceipt.task, "P2-N2");
-  const knowledgeStateAdmitted = new Set(
-    knowledgeStateReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const knowledgeStatePathPackages = new Set(
-    knowledgeStateReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: knowledgeStateReceipt,
+    admitted: knowledgeStateAdmitted,
+    pathPackages: knowledgeStatePathPackages,
+  } = receiptFor("P2-N2");
   assert.equal(knowledgeStateAdmitted.size, 0, "P2-N2 must admit no external crate");
   assert.deepEqual([...knowledgeStatePathPackages], ["academic-knowledge-state@0.1.0"]);
   assert.deepEqual(knowledgeStateReceipt.summary.npm_additions, []);
@@ -6269,48 +5324,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // receipt's sets. `3f8859f` measured why the direction matters: a block that
   // names a set declared below it fails with a temporal-dead-zone
   // `ReferenceError` rather than with a duplicate-claim message.
-  for (const claimed of [...knowledgeStateAdmitted, ...knowledgeStatePathPackages]) {
-    assert.equal(
-      analysisAdmitted.has(claimed) ||
-        analysisPathPackages.has(claimed) ||
-        curriculumAdmitted.has(claimed) ||
-        curriculumPathPackages.has(claimed) ||
-        ingestionAdmitted.has(claimed) ||
-        ingestionPathPackages.has(claimed) ||
-        captureSubsystemAdmitted.has(claimed) ||
-        captureSubsystemPathPackages.has(claimed) ||
-        requirementAdmitted.has(claimed) ||
-        requirementPathPackages.has(claimed) ||
-        transcriptionAdmitted.has(claimed) ||
-        transcriptionPathPackages.has(claimed) ||
-        correlationAdmitted.has(claimed) ||
-        correlationPathPackages.has(claimed) ||
-        centerAdmitted.has(claimed) ||
-        centerPathPackages.has(claimed) ||
-        classificationAdmitted.has(claimed) ||
-        classificationPathPackages.has(claimed) ||
-        lectureAdmitted.has(claimed) ||
-        lecturePathPackages.has(claimed) ||
-        repositoryAdmitted.has(claimed) ||
-        repositoryPathPackages.has(claimed) ||
-        scenarioAdmitted.has(claimed) ||
-        scenarioPathPackages.has(claimed) ||
-        modelRunAdmitted.has(claimed) ||
-        modelRunPathPackages.has(claimed),
-      false,
-      `${claimed} is claimed by two admission receipts`,
-    );
-  }
-  const knowledgeStateTuples = lockTuples.filter(
-    ([name, version]) =>
-      knowledgeStateAdmitted.has(`${name}@${version}`) ||
-      knowledgeStatePathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    knowledgeStateTuples.length,
-    knowledgeStateAdmitted.size + knowledgeStatePathPackages.size,
-    "a P2-N2 admitted package is missing from Cargo.lock",
-  );
   // `P2-R5` adds one workspace path package, `academic-repository-competency`,
   // and admits no external crate: its product edges are `academic-domain`,
   // `academic-policy`, `academic-repository-analysis`,
@@ -6321,13 +5334,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // the one that needs a reason and the receipt carries it: each of the two
   // claims carries a domain-separated digest identity, because the facts they
   // bind joined and truncated to `ClaimId`'s 64 bytes collide.
-  assert.equal(competencyReceipt.task, "P2-R5");
-  const competencyAdmitted = new Set(
-    competencyReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const competencyPathPackages = new Set(
-    competencyReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: competencyReceipt,
+    admitted: competencyAdmitted,
+    pathPackages: competencyPathPackages,
+  } = receiptFor("P2-R5");
   assert.equal(competencyAdmitted.size, 0, "P2-R5 must admit no external crate");
   assert.deepEqual([...competencyPathPackages], ["academic-repository-competency@0.1.0"]);
   assert.deepEqual(competencyReceipt.summary.npm_additions, []);
@@ -6348,16 +5359,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-untrusted-content",
     "trybuild",
   ]);
-  const competencyTuples = lockTuples.filter(
-    ([name, version]) =>
-      competencyAdmitted.has(`${name}@${version}`) ||
-      competencyPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    competencyTuples.length,
-    competencyAdmitted.size + competencyPathPackages.size,
-    "a P2-R5 admitted package is missing from Cargo.lock",
-  );
   // `P2-L5` adds one workspace path package, `academic-student-voice`, and
   // admits no external crate: its product edges are `academic-capture`,
   // `academic-consent`, `academic-domain`, `academic-lecture-document`,
@@ -6368,13 +5369,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // **dev** edge, because `rotation_engine_lane_is_not_default` holds that
   // exactly one crate declares that product edge, and the scan that refuses an
   // `OriginalVoiceAuthority` still has to name the type it refuses.
-  assert.equal(studentVoiceReceipt.task, "P2-L5");
-  const studentVoiceAdmitted = new Set(
-    studentVoiceReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const studentVoicePathPackages = new Set(
-    studentVoiceReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: studentVoiceReceipt,
+    admitted: studentVoiceAdmitted,
+    pathPackages: studentVoicePathPackages,
+  } = receiptFor("P2-L5");
   assert.equal(studentVoiceAdmitted.size, 0, "P2-L5 must admit no external crate");
   assert.deepEqual([...studentVoicePathPackages], ["academic-student-voice@0.1.0"]);
   assert.deepEqual(studentVoiceReceipt.summary.npm_additions, []);
@@ -6397,16 +5396,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "tempfile",
     "trybuild",
   ]);
-  const studentVoiceTuples = lockTuples.filter(
-    ([name, version]) =>
-      studentVoiceAdmitted.has(`${name}@${version}`) ||
-      studentVoicePathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    studentVoiceTuples.length,
-    studentVoiceAdmitted.size + studentVoicePathPackages.size,
-    "a P2-L5 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-N6` adds one workspace path package, `academic-critical-path`, and
   // admits no external crate: its product edges are `academic-curriculum`,
@@ -6426,15 +5415,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // reaches the canonical writer and no migration is added, and no
   // `academic-model-run` on the product edge, so nothing in the product path
   // can call a model.
-  assert.equal(criticalPathReceipt.task, "P2-N6");
-  const criticalPathAdmitted = new Set(
-    criticalPathReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const criticalPathPathPackages = new Set(
-    criticalPathReceipt.added_workspace_path_packages.map(
-      (pkg) => `${pkg.name}@${pkg.version}`,
-    ),
-  );
+  const {
+    receipt: criticalPathReceipt,
+    admitted: criticalPathAdmitted,
+    pathPackages: criticalPathPathPackages,
+  } = receiptFor("P2-N6");
   assert.equal(criticalPathAdmitted.size, 0, "P2-N6 must admit no external crate");
   assert.deepEqual([...criticalPathPathPackages], ["academic-critical-path@0.1.0"]);
   assert.deepEqual(criticalPathReceipt.summary.npm_additions, []);
@@ -6464,29 +5449,17 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "trybuild",
     "uuid",
   ]);
-  const criticalPathTuples = lockTuples.filter(
-    ([name, version]) =>
-      criticalPathAdmitted.has(`${name}@${version}`) ||
-      criticalPathPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    criticalPathTuples.length,
-    criticalPathAdmitted.size + criticalPathPathPackages.size,
-    "a P2-N6 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-U3` adds `academic-audit` and no external crate. The graduation audit
   // is a boundary above `P2-U2`'s rule set and `P2-U4`'s attempt ledger: it
   // links neither a writer nor a model, which is what keeps a graduation
   // verdict off any interpreted-text path, and its one projection edge is a dev
   // edge that exists so a compile-fail case can name what cannot enter.
-  assert.equal(auditReceipt.task, "P2-U3");
-  const auditAdmitted = new Set(
-    auditReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const auditPathPackages = new Set(
-    auditReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: auditReceipt,
+    admitted: auditAdmitted,
+    pathPackages: auditPathPackages,
+  } = receiptFor("P2-U3");
   assert.equal(auditAdmitted.size, 0, "P2-U3 must admit no external crate");
   assert.deepEqual([...auditPathPackages], ["academic-audit@0.1.0"]);
   assert.deepEqual(auditReceipt.summary.npm_additions, []);
@@ -6506,15 +5479,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-scenario",
   ]);
   assert.deepEqual(auditReceipt.vendored_data, []);
-  const auditTuples = lockTuples.filter(
-    ([name, version]) =>
-      auditAdmitted.has(`${name}@${version}`) || auditPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    auditTuples.length,
-    auditAdmitted.size + auditPathPackages.size,
-    "a P2-U3 admitted package is missing from Cargo.lock",
-  );
 
 
   // `P2-N3` adds one workspace path package, `academic-freshness`, and admits no
@@ -6528,13 +5492,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // evidence that already passed section 13.4's four checks. The edge it does
   // **not** carry is the point -- that crate hands out `LADDER`, `rung` and
   // `AutomaticLevel`, and `academic-freshness` imports none of them.
-  assert.equal(freshnessReceipt.task, "P2-N3");
-  const freshnessAdmitted = new Set(
-    freshnessReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const freshnessPathPackages = new Set(
-    freshnessReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: freshnessReceipt,
+    admitted: freshnessAdmitted,
+    pathPackages: freshnessPathPackages,
+  } = receiptFor("P2-N3");
   assert.equal(freshnessAdmitted.size, 0, "P2-N3 must admit no external crate");
   assert.deepEqual([...freshnessPathPackages], ["academic-freshness@0.1.0"]);
   assert.deepEqual(freshnessReceipt.summary.npm_additions, []);
@@ -6575,13 +5537,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // raised is the surface concept's evidence deciding its own prerequisite's
   // deficit. The edge it does **not** carry is the point: no `academic-store`,
   // so no gap reaches the canonical writer and no migration is added.
-  assert.equal(gapReceipt.task, "P2-N5");
-  const gapAdmitted = new Set(
-    gapReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const gapPathPackages = new Set(
-    gapReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: gapReceipt,
+    admitted: gapAdmitted,
+    pathPackages: gapPathPackages,
+  } = receiptFor("P2-N5");
   assert.equal(gapAdmitted.size, 0, "P2-N5 must admit no external crate");
   assert.deepEqual([...gapPathPackages], ["academic-gap@0.1.0"]);
   assert.deepEqual(gapReceipt.summary.npm_additions, []);
@@ -6611,38 +5571,17 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "trybuild",
     "uuid",
   ]);
-  const gapTuples = lockTuples.filter(
-    ([name, version]) =>
-      gapAdmitted.has(`${name}@${version}`) || gapPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    gapTuples.length,
-    gapAdmitted.size + gapPathPackages.size,
-    "a P2-N5 admitted package is missing from Cargo.lock",
-  );
 
-  const freshnessTuples = lockTuples.filter(
-    ([name, version]) =>
-      freshnessAdmitted.has(`${name}@${version}`) ||
-      freshnessPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    freshnessTuples.length,
-    freshnessAdmitted.size + freshnessPathPackages.size,
-    "a P2-N3 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-U5` adds `academic-offering` and no external crate. The offering
   // forecast is a boundary above `P2-U1`'s aggregates and `P2-U6`'s source
   // levels: it links no writer, and its one model edge is `P2-M1`'s calibration
   // registry, which is what turns a raw score into a number a reader may see.
-  assert.equal(offeringReceipt.task, "P2-U5");
-  const offeringAdmitted = new Set(
-    offeringReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const offeringPathPackages = new Set(
-    offeringReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: offeringReceipt,
+    admitted: offeringAdmitted,
+    pathPackages: offeringPathPackages,
+  } = receiptFor("P2-U5");
   assert.equal(offeringAdmitted.size, 0, "P2-U5 must admit no external crate");
   assert.deepEqual([...offeringPathPackages], ["academic-offering@0.1.0"]);
   assert.deepEqual(offeringReceipt.summary.npm_additions, []);
@@ -6664,15 +5603,6 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "trybuild",
   ]);
   assert.deepEqual(offeringReceipt.vendored_data, []);
-  const offeringTuples = lockTuples.filter(
-    ([name, version]) =>
-      offeringAdmitted.has(`${name}@${version}`) || offeringPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    offeringTuples.length,
-    offeringAdmitted.size + offeringPathPackages.size,
-    "a P2-U5 admitted package is missing from Cargo.lock",
-  );
 
   // `P2-P1` adds `academic-export` and no external crate. It is a separate
   // package from `academic-portability` for the reason `INV-C-015` is about:
@@ -6681,13 +5611,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // artefact a user keeps after this product is gone. What this crate links is
   // `P2-U3`'s engine, `P2-U2`'s published rule set and the domain, and nothing
   // that could open a store, unwrap a key or reach a host.
-  assert.equal(exportReceipt.task, "P2-P1");
-  const exportAdmitted = new Set(
-    exportReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
-  );
-  const exportPathPackages = new Set(
-    exportReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
-  );
+  const {
+    receipt: exportReceipt,
+    admitted: exportAdmitted,
+    pathPackages: exportPathPackages,
+  } = receiptFor("P2-P1");
   assert.equal(exportAdmitted.size, 0, "P2-P1 must admit no external crate");
   assert.deepEqual([...exportPathPackages], ["academic-export@0.1.0"]);
   assert.deepEqual(exportReceipt.summary.npm_additions, []);
@@ -6711,93 +5639,19 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-vault",
     "ed25519-dalek",
   ]);
-  const exportTuples = lockTuples.filter(
-    ([name, version]) =>
-      exportAdmitted.has(`${name}@${version}`) ||
-      exportPathPackages.has(`${name}@${version}`),
-  );
-  assert.equal(
-    exportTuples.length,
-    exportAdmitted.size + exportPathPackages.size,
-    "a P2-P1 admitted package is missing from Cargo.lock",
-  );
 
+  // Everything in the lock that no phase 2 receipt claims. The conjunction this
+  // replaces missed `processAdmitted`, which is inert only because `P2-G7` admits
+  // no external crate; a whole-set difference cannot miss one.
+  const claimedByPhase2 = new Set(
+    [...phase2Receipts.values()].flatMap(({ admitted, pathPackages }) => [
+      ...admitted,
+      ...pathPackages,
+    ]),
+  );
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
-      name !== "academic-store-platform" &&
-      !keyAdmitted.has(`${name}@${version}`) &&
-      !keyPathPackages.has(`${name}@${version}`) &&
-      !scenarioAdmitted.has(`${name}@${version}`) &&
-      !scenarioPathPackages.has(`${name}@${version}`) &&
-      !recoveryAdmitted.has(`${name}@${version}`) &&
-      !recoveryPathPackages.has(`${name}@${version}`) &&
-      !retentionAdmitted.has(`${name}@${version}`) &&
-      !retentionPathPackages.has(`${name}@${version}`) &&
-      !admissionAdmitted.has(`${name}@${version}`) &&
-      !admissionPathPackages.has(`${name}@${version}`) &&
-      !policyAdmitted.has(`${name}@${version}`) &&
-      !policyPathPackages.has(`${name}@${version}`) &&
-      !processPathPackages.has(`${name}@${version}`) &&
-      !transcriptAdmitted.has(`${name}@${version}`) &&
-      !transcriptPathPackages.has(`${name}@${version}`) &&
-      !egressAdmitted.has(`${name}@${version}`) &&
-      !egressPathPackages.has(`${name}@${version}`) &&
-      !recordAdmitted.has(`${name}@${version}`) &&
-      !recordPathPackages.has(`${name}@${version}`) &&
-      !sandboxAdmitted.has(`${name}@${version}`) &&
-      !sandboxPathPackages.has(`${name}@${version}`) &&
-      !untrustedAdmitted.has(`${name}@${version}`) &&
-      !untrustedPathPackages.has(`${name}@${version}`) &&
-      !consentAdmitted.has(`${name}@${version}`) &&
-      !consentPathPackages.has(`${name}@${version}`) &&
-      !modelRunAdmitted.has(`${name}@${version}`) &&
-      !modelRunPathPackages.has(`${name}@${version}`) &&
-      !captureAdmitted.has(`${name}@${version}`) &&
-      !capturePathPackages.has(`${name}@${version}`) &&
-      !proposalAdmitted.has(`${name}@${version}`) &&
-      !proposalPathPackages.has(`${name}@${version}`) &&
-      !desktopAdmitted.has(`${name}@${version}`) &&
-      !desktopPathPackages.has(`${name}@${version}`) &&
-      !repositoryAdmitted.has(`${name}@${version}`) &&
-      !repositoryPathPackages.has(`${name}@${version}`) &&
-      !captureSubsystemAdmitted.has(`${name}@${version}`) &&
-      !captureSubsystemPathPackages.has(`${name}@${version}`) &&
-      !ingestionAdmitted.has(`${name}@${version}`) &&
-      !ingestionPathPackages.has(`${name}@${version}`) &&
-      !curriculumAdmitted.has(`${name}@${version}`) &&
-      !curriculumPathPackages.has(`${name}@${version}`) &&
-      !analysisAdmitted.has(`${name}@${version}`) &&
-      !analysisPathPackages.has(`${name}@${version}`) &&
-      !requirementAdmitted.has(`${name}@${version}`) &&
-      !requirementPathPackages.has(`${name}@${version}`) &&
-      !transcriptionAdmitted.has(`${name}@${version}`) &&
-      !transcriptionPathPackages.has(`${name}@${version}`) &&
-      !correlationAdmitted.has(`${name}@${version}`) &&
-      !correlationPathPackages.has(`${name}@${version}`) &&
-      !centerAdmitted.has(`${name}@${version}`) &&
-      !centerPathPackages.has(`${name}@${version}`) &&
-      !lectureAdmitted.has(`${name}@${version}`) &&
-      !lecturePathPackages.has(`${name}@${version}`) &&
-      !classificationAdmitted.has(`${name}@${version}`) &&
-      !classificationPathPackages.has(`${name}@${version}`) &&
-      !knowledgeStateAdmitted.has(`${name}@${version}`) &&
-      !knowledgeStatePathPackages.has(`${name}@${version}`) &&
-      !competencyAdmitted.has(`${name}@${version}`) &&
-      !competencyPathPackages.has(`${name}@${version}`) &&
-      !auditAdmitted.has(`${name}@${version}`) &&
-      !auditPathPackages.has(`${name}@${version}`) &&
-      !freshnessAdmitted.has(`${name}@${version}`) &&
-      !freshnessPathPackages.has(`${name}@${version}`) &&
-      !studentVoiceAdmitted.has(`${name}@${version}`) &&
-      !studentVoicePathPackages.has(`${name}@${version}`) &&
-      !gapAdmitted.has(`${name}@${version}`) &&
-      !gapPathPackages.has(`${name}@${version}`) &&
-      !offeringAdmitted.has(`${name}@${version}`) &&
-      !offeringPathPackages.has(`${name}@${version}`) &&
-      !exportAdmitted.has(`${name}@${version}`) &&
-      !exportPathPackages.has(`${name}@${version}`) &&
-      !criticalPathAdmitted.has(`${name}@${version}`) &&
-      !criticalPathPathPackages.has(`${name}@${version}`),
+      name !== "academic-store-platform" && !claimedByPhase2.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -6809,44 +5663,20 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     lockTuples.length,
     receipt.lock_delta.incoming_package_tuple_count +
       1 +
-      keyTuples.length +
-      scenarioTuples.length +
-      recoveryTuples.length +
-      retentionTuples.length +
-      admissionTuples.length +
-      policyTuples.length +
-      processTuples.length +
-      transcriptTuples.length +
-      egressTuples.length +
-      recordTuples.length +
-      sandboxTuples.length +
-      untrustedTuples.length +
-      consentTuples.length +
-      modelRunTuples.length +
-      captureTuples.length +
-      proposalTuples.length +
-      desktopTuples.length +
-      repositoryTuples.length +
-      captureSubsystemTuples.length +
-      ingestionTuples.length +
-      curriculumTuples.length +
-      analysisTuples.length +
-      requirementTuples.length +
-      transcriptionTuples.length +
-      correlationTuples.length +
-      centerTuples.length +
-      lectureTuples.length +
-      classificationTuples.length +
-      knowledgeStateTuples.length +
-      competencyTuples.length +
-      auditTuples.length +
-      freshnessTuples.length +
-      studentVoiceTuples.length +
-      gapTuples.length +
-      offeringTuples.length +
-      exportTuples.length +
-      criticalPathTuples.length,
+      [...phase2Receipts.values()].reduce((total, { tuples }) => total + tuples.length, 0),
   );
+  // Every receipt the arithmetic above counts also has a block below it saying
+  // what that task's edges are. Without this the arithmetic is complete on its
+  // own and a dropped block is silent -- the sum used to break because each
+  // block held its own tuple filter, and deriving the sum is what takes that
+  // coupling away. `T186` measured the block-shaped merge break as caught; it
+  // stays caught, and now by something that names the receipt.
+  assert.deepEqual(
+    [...phase2Receipts.keys()].filter((task) => !bound.has(task)).toSorted(),
+    [],
+    `an admission receipt in ${RECEIPT_DIRECTORY} is read but named by no block here`,
+  );
+
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
     node: "24.19.0",

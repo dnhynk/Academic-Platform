@@ -20,7 +20,7 @@
 // intended outcome for a false positive: the page gets a row, not a hole.
 
 import assert from "node:assert/strict";
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -107,6 +107,53 @@ function includedModules(path, text) {
   );
 }
 
+/** The heading over the page's one row-per-scan table. */
+const TABLE_HEADING = "## Every scan in this repository";
+
+/**
+ * The rows of that table, first column first.
+ *
+ * The page holds other tables -- injection matrices, pin inventories, the open
+ * defect ledger -- and they are prose about edits that were never made and
+ * files that do not exist. This one is the registration: a row per scan, and
+ * the row is what says the scan is on the page rather than merely mentioned
+ * somewhere in three thousand lines of it.
+ */
+function inventoryRows(page) {
+  const lines = page.split("\n");
+  const start = lines.indexOf(TABLE_HEADING);
+  assert.notEqual(start, -1, `${INVENTORY} has no "${TABLE_HEADING}" section`);
+  const rows = [];
+  for (const line of lines.slice(start + 1)) {
+    if (line.startsWith("## ")) {
+      break;
+    }
+    if (line.startsWith("|") && !/^\|\s*-+/u.test(line)) {
+      rows.push(line.split("|")[1] ?? "");
+    }
+  }
+  return rows.slice(1);
+}
+
+/**
+ * The repository paths a row names.
+ *
+ * `tools/{a,b}.mjs` is how the page writes two files that share a sentence; it
+ * is expanded rather than skipped, because skipping it is how a row stops being
+ * checked without anybody deciding that. A token holding a `*` is a tree and
+ * not a file and is left to the walk above.
+ */
+function rowPaths(cell) {
+  return [...cell.matchAll(/`([^`\n]+)`/gu)]
+    .flatMap(([, token]) => {
+      const braces = /^(?<head>.*)\{(?<items>[^}]*)\}(?<tail>.*)$/u.exec(token);
+      return braces === null
+        ? [token]
+        : braces.groups.items.split(",").map((item) => braces.groups.head + item + braces.groups.tail);
+    })
+    .filter((token) => /^(?:crates|tools|packages)\/[^*]*\.(?:rs|mjs|ts)$/u.test(token));
+}
+
 test("the markers are not vacuous", () => {
   // A marker list that matched nothing would make the assertion below pass over
   // an empty set, which is the empty-scan shape the inventory page is about.
@@ -168,12 +215,63 @@ test("every file that reads Rust source text is named in the inventory", async (
     `the walk found only ${readers.length} files that read Rust source text`,
   );
 
+  // A row, not a mention. `page.includes` was satisfied by a scan named only in
+  // its own prose section, and two were: `crates/offering/tests/offering_scans.rs`
+  // and `tools/shared-name-isolation.test.mjs` each had a section of their own
+  // and no line in the table this page opens with. That is the half of the page
+  // a reader surveys, so it is the half the claim is executed against.
+  const registered = new Set(inventoryRows(page).flatMap((cell) => rowPaths(cell)));
   const missing = readers
-    .filter(([relativePath]) => !page.includes(relativePath))
+    .filter(([relativePath]) => !registered.has(relativePath))
     .map(([relativePath, marker]) => `${relativePath} (${marker})`);
   assert.deepEqual(
     missing,
     [],
-    `${INVENTORY} does not name every file that reads this repository's Rust source text`,
+    `${INVENTORY}'s "${TABLE_HEADING}" table has no row for every file that reads this repository's Rust source text`,
+  );
+});
+
+test("every scan the inventory names is a file that exists", async () => {
+  // The other direction. The walk above can only report a file it finds, so a
+  // row whose file was renamed, moved or deleted keeps its place and reads as
+  // an enumeration of something -- `T186` measured two rows of the open ledger
+  // carrying no load at a merge point for exactly that reason: nothing reads
+  // them. This reads them.
+  //
+  // Only the registration table. The page's other tables are injection matrices
+  // and defect rows, and those name files on purpose that do not exist:
+  // `crates/admission/authority.rs` is an edit `P2-G4` considered and did not
+  // make, and `crates/record/benches/` is a tree the page says outright is
+  // absent. Requiring those to exist would turn a record of what was rejected
+  // into a demand that it be built.
+  const page = await readFile(join(REPOSITORY_ROOT, INVENTORY), "utf8");
+  const rows = inventoryRows(page);
+
+  // The floor is the same shape as the walk's: a table parsed down to nothing
+  // would satisfy this assertion and the one above it at the same time.
+  assert.equal(
+    rows.length >= 60,
+    true,
+    `the "${TABLE_HEADING}" table parsed to only ${rows.length} rows`,
+  );
+
+  const named = [...new Set(rows.flatMap((cell) => rowPaths(cell)))].toSorted();
+  assert.equal(
+    named.length >= 60,
+    true,
+    `the "${TABLE_HEADING}" table's rows name only ${named.length} files`,
+  );
+  const absent = [];
+  for (const path of named) {
+    try {
+      await access(join(REPOSITORY_ROOT, path));
+    } catch {
+      absent.push(path);
+    }
+  }
+  assert.deepEqual(
+    absent,
+    [],
+    `${INVENTORY} has a row for a scan file this repository does not hold`,
   );
 });
