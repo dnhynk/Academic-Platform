@@ -1,0 +1,10 @@
+error[E0624]: associated function `under` is private
+  --> tests/compile_fail/a_rule_contribution_has_no_unconditional_form.rs:11:43
+   |
+11 |     let _contribution = RuleContribution::under(&[], HypotheticalCompletion);
+   |                                           ^^^^^ private associated function
+   |
+  ::: src/deterministic.rs
+   |
+   |     pub(crate) fn under(choices: &[PlanChoice], completion: HypotheticalCompletion) -> Self {
+   |     --------------------------------------------------------------------------------------- private associated function defined here

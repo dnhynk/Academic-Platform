@@ -1,0 +1,5 @@
+error[E0599]: no method named `midpoint` found for reference `&ProjectedWorkload` in the current scope
+  --> tests/compile_fail/a_projected_workload_has_no_point_accessor.rs:10:14
+   |
+10 |     workload.midpoint()
+   |              ^^^^^^^^ method not found in `&ProjectedWorkload`

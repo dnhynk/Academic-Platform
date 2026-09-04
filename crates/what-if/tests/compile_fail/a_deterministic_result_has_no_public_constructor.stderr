@@ -1,0 +1,26 @@
+error[E0624]: associated function `of` is private
+  --> tests/compile_fail/a_deterministic_result_has_no_public_constructor.rs:10:42
+   |
+10 |       let _results = DeterministicResults::of(
+   |                                            ^^ private associated function
+   |
+  ::: src/deterministic.rs
+   |
+   | /     pub(crate) const fn of(
+   | |         credits: CreditLoad,
+   | |         schedule: ScheduleConflicts,
+   | |         prerequisites: Vec<PrerequisiteStanding>,
+...  |
+   | |         gpa: Option<GpaScenario>,
+   | |     ) -> Self {
+   | |_____________- private associated function defined here
+
+warning: unreachable expression
+  --> tests/compile_fail/a_deterministic_result_has_no_public_constructor.rs:12:9
+   |
+11 |         todo!(),
+   |         ------- any code following this expression is unreachable
+12 |         todo!(),
+   |         ^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default

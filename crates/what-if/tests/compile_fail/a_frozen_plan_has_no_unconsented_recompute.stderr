@@ -1,0 +1,15 @@
+error[E0061]: this method takes 2 arguments but 1 argument was supplied
+  --> tests/compile_fail/a_frozen_plan_has_no_unconsented_recompute.rs:10:20
+   |
+10 |     let _ = frozen.recompute(inputs);
+   |                    ^^^^^^^^^ ------ argument #1 of type `&RecomputeConsent` is missing
+   |
+note: method defined here
+  --> src/stale.rs
+   |
+   |     pub fn recompute(
+   |            ^^^^^^^^^
+help: provide the argument
+   |
+10 |     let _ = frozen.recompute(/* &RecomputeConsent */, inputs);
+   |                              ++++++++++++++++++++++++

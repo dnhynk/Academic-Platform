@@ -1,0 +1,57 @@
+[package]
+name = "academic-what-if"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# `P2-N6`. `PathRole` and `CriticalPathResult`, so the path-coverage projection
+# is about the path that engine computed rather than a second notion of one.
+academic-critical-path = { path = "../critical-path" }
+# `P2-U1`. `Meeting`, `Weekday`, `Credits`, `CurriculumCategory` and
+# `OfficialPrerequisite` — section 22.2's deterministic vocabulary, none of it
+# restated here.
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+# `P2-U5`. `ConfirmedSeat` is the only value that carries a real timetable, so
+# an official schedule conflict cannot be computed over a predicted offering.
+academic-offering = { path = "../offering" }
+# `P2-M2`. `UserDecision` is the proof that a human, and not an automatic actor,
+# consented to a recomputation.
+academic-proposal = { path = "../proposal" }
+# `P2-U4`. `GradingScheme` and the fixed-point `Decimal`, so the grade table a
+# GPA assumption is read through is the versioned one.
+academic-record = { path = "../record" }
+# `P2-U8`. `BiasDisclosure`, so workload bias is section 29.5's six dimensions
+# rather than a second bias vocabulary.
+academic-review = { path = "../review" }
+# `P2-C7`. The projected lane in its entirety.
+academic-scenario = { path = "../scenario" }
+serde.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+# Declared a second time for the `trybuild` reason `academic-scenario` gives: a
+# compile-fail case compiles against this crate plus this crate's
+# dev-dependencies, so the types a case has to name have to be reachable here.
+academic-critical-path = { path = "../critical-path" }
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+academic-offering = { path = "../offering" }
+academic-proposal = { path = "../proposal" }
+academic-record = { path = "../record" }
+academic-review = { path = "../review" }
+academic-scenario = { path = "../scenario" }
+# `P2-U6`'s `SourceCategory`, which a `P2-U5` cancellation notice is built from.
+academic-ingestion = { path = "../ingestion" }
+# `P2-M1`'s calibration registry, which a `P2-U5` scored forecast needs before a
+# `HISTORICALLY_LIKELY` standing exists.
+academic-model-run = { path = "../model-run" }
+serde_json.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true

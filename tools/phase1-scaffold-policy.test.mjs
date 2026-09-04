@@ -675,6 +675,40 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-ledger",
       "academic-repository-classification",
     ],
+    // `P2-N8`. Section 22's what-if semester simulator, and the one task in the
+    // knowledge slice whose job is to put four other engines side by side. Each
+    // edge is a boundary it reads rather than a vocabulary it restates:
+    // `academic-scenario` for `P2-C7`'s whole projected lane, which supplies
+    // section 22.3's first three bullets unmodified and the sealed wrapper the
+    // workload proposal lives in; `academic-critical-path` for `P2-N6`'s
+    // `CriticalPathResult::roles`, so the coverage projection is an overlap
+    // with that engine's answer and not a second path; `academic-offering` for
+    // `P2-U5`'s `ConfirmedSeat`, whose one producer is `ConfirmedStanding::seat`
+    // — a `HISTORICALLY_LIKELY` offering has no seat, so the deterministic lane
+    // cannot be computed over a predicted one; `academic-record` for `P2-U4`'s
+    // versioned `GradingScheme`, so a stated-grade GPA reads section 10's table
+    // rather than a copy of it; `academic-review` for `P2-U8`'s
+    // `BiasDisclosure`, taken by value so a workload has no form without its
+    // bias; `academic-proposal` for `P2-M2`'s `UserDecision`, which is what
+    // makes section 22.5's recomputation consent a human's; and
+    // `academic-curriculum` and `academic-domain` for the catalogue and
+    // identifier vocabularies. The edges it does not have carry the claim: no
+    // `academic-store` and no `academic-store-platform`, which is `INV-C-009`
+    // as a graph fact and the reason this task adds no migration; and no
+    // `academic-audit` of any edge kind, so the hypothetical graduation mode
+    // has no route to `P2-U3`'s three-gate `DETERMINATE` rule and
+    // `a_plan_cannot_name_the_graduation_verdict` is an unresolved module
+    // rather than a refused call.
+    "academic-what-if": [
+      "academic-critical-path",
+      "academic-curriculum",
+      "academic-domain",
+      "academic-offering",
+      "academic-proposal",
+      "academic-record",
+      "academic-review",
+      "academic-scenario",
+    ],
     "academic-worker": ["academic-domain"],
     // `academic-domain` for section 13.3's `FreshnessBand`, `ClaimObject::Freshness`
     // as the wire shape of a claim about one, section 7.2's `PredicateName` for
@@ -973,6 +1007,27 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // compiles against the crate under test plus that crate's dev-dependencies,
     // and a case has to name the domain types a `Proposed<T>` is built from.
     "academic-proposal": ["academic-domain"],
+    // `P2-N8` links its own eight product crates a second time as dev edges for
+    // the `trybuild` reason `academic-scenario` gives above, and adds two the
+    // product path does not need: `academic-ingestion` for the `SourceCategory`
+    // a `P2-U5` official listing is built from, and `academic-model-run` for the
+    // `CalibrationRegistry` that crate's `resolve` takes by reference. The
+    // acceptance suite drives that `resolve` rather than assembling a seat,
+    // because `ConfirmedStanding::seat` is the only producer of a
+    // `ConfirmedSeat` in this workspace. There is no store, no vault, no audit
+    // and no export crate in its test closure either.
+    "academic-what-if": [
+      "academic-critical-path",
+      "academic-curriculum",
+      "academic-domain",
+      "academic-ingestion",
+      "academic-model-run",
+      "academic-offering",
+      "academic-proposal",
+      "academic-record",
+      "academic-review",
+      "academic-scenario",
+    ],
     // `P2-G5` needs a real `PermissionBroker` to build an `EgressProxy` and a
     // real `ProcessCapability` to enumerate what a privileged action is. Both
     // are test-only: keeping `academic-policy` off the product edge above is
@@ -2908,6 +2963,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-test-support": [],
   "academic-transcript": ["libc"],
   "academic-vault": ["libc", "rustix", "windows-sys"],
+  // `P2-N8`. `libc` reaches it through `academic-domain` and through
+  // `academic-policy` by way of `academic-offering`'s forecast edge. The crate
+  // spells no socket construct, which is why its `SOCKET_ALLOWANCE` entry is
+  // absent rather than empty; it opens nothing at all, reads no clock, and
+  // every instant it compares arrived inside a caller-supplied value.
+  "academic-what-if": ["libc"],
   // `P2-G4`. `libc` and `windows-sys` are direct edges here rather than
   // inherited ones: the sandbox backends are syscalls. Only `libc` appears,
   // because both are optional and target-specific and this resolve is the
@@ -5520,6 +5581,51 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-domain",
   ]);
   assert.deepEqual(homeReceipt.vendored_data, []);
+
+  // `P2-N8` adds one workspace path package, `academic-what-if`, and admits no
+  // external crate: its eight product edges and its ten dev edges are all in
+  // this lock through earlier receipts. It is the composition task of the
+  // knowledge slice, so its product edge set is the widest in that slice, and
+  // the two absences that carry claims are named rather than left to be
+  // inferred: no store or store-platform edge of any kind, which is `INV-C-009`
+  // as a graph fact, and no audit edge of any kind, which is what keeps the
+  // hypothetical graduation mode away from `P2-U3`'s three-gate rule.
+  const {
+    receipt: whatIfReceipt,
+    admitted: whatIfAdmitted,
+    pathPackages: whatIfPathPackages,
+  } = receiptFor("P2-N8");
+  assert.equal(whatIfAdmitted.size, 0, "P2-N8 must admit no external crate");
+  assert.deepEqual([...whatIfPathPackages], ["academic-what-if@0.1.0"]);
+  assert.deepEqual(whatIfReceipt.summary.npm_additions, []);
+  assert.equal(whatIfReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(whatIfReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-critical-path",
+    "academic-curriculum",
+    "academic-domain",
+    "academic-offering",
+    "academic-proposal",
+    "academic-record",
+    "academic-review",
+    "academic-scenario",
+  ]);
+  for (const forbidden of [
+    "academic-store",
+    "academic-store-platform",
+    "academic-audit",
+  ]) {
+    assert.equal(
+      Object.hasOwn(whatIfReceipt.direct_workspace_dependencies, forbidden),
+      false,
+      `P2-N8 must not claim ${forbidden} as a product edge`,
+    );
+    assert.equal(
+      Object.hasOwn(whatIfReceipt.dev_workspace_dependencies, forbidden),
+      false,
+      `P2-N8 must not claim ${forbidden} as a dev edge`,
+    );
+  }
+  assert.deepEqual(whatIfReceipt.vendored_data, []);
 
   // `P2-L4` adds one workspace path package, `academic-lecture-document`, and
   // admits no external crate: its four product edges and its eight dev edges are

@@ -1,0 +1,7 @@
+error[E0594]: cannot assign to data in an index of `Vec<&PlanScenario>`
+  --> tests/compile_fail/a_comparison_cannot_rewrite_a_plan.rs:11:5
+   |
+11 |     *view.ranked()[0] = replacement;
+   |     ^^^^^^^^^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `Vec<&PlanScenario>`

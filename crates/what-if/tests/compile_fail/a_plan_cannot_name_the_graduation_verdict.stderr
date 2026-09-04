@@ -1,0 +1,7 @@
+error[E0432]: unresolved import `academic_audit`
+ --> tests/compile_fail/a_plan_cannot_name_the_graduation_verdict.rs:7:5
+  |
+7 | use academic_audit::DeterminateVerdict;
+  |     ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `academic_audit`
+  |
+  = help: if you wanted to use a crate named `academic_audit`, use `cargo add academic_audit` to add it to your `Cargo.toml`
