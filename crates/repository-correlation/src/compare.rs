@@ -105,7 +105,14 @@ pub struct DependencyChange {
 }
 
 impl DependencyChange {
-    /// Which subject.
+    /// What the manifest or the lock file calls it.
+    ///
+    /// The name as declared, not a [`Subject`] identifier: this channel's
+    /// population is the manifest, so a dependency no `Subject` names appears
+    /// here under its own spelling. The semantic channel is the one keyed on
+    /// subjects, and the two disagreeing on a name is the split doing its job.
+    ///
+    /// [`Subject`]: academic_repository_analysis::Subject
     #[must_use]
     pub fn subject(&self) -> &str {
         &self.subject

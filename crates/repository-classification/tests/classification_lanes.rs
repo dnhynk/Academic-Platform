@@ -12,7 +12,12 @@
 //! steps against the enumerations: a list restated in a test is a list that can
 //! be restated wrongly.
 
-use std::{collections::BTreeMap, error::Error, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    fs,
+    path::PathBuf,
+};
 
 use academic_domain::{EpistemicStatus, FreshnessBand, MasteryLevel, entity_registry::EntityKind};
 use academic_model_run::{
@@ -30,11 +35,11 @@ use academic_repository_analysis::{
 };
 use academic_repository_classification::{
     BenefitContract, BenefitDimension, BenefitDraft, BenefitPart, ChainDraft, ChainStep,
-    ClassificationError, ClassificationInput, ClassificationLabel, ClassificationSet, ConcreteNeed,
-    ControllingMechanism, CurrentBasis, GoalId, GoalScope, MigrationOutcome, NeedKind, Outlook,
-    OverrideDecision, ProjectConceptRequirement, ProofChain, RequiredConcept, RequirementId,
-    ResolutionStatus, RetirementReason, TradeOff, Trigger, TriggerState, UnmatchedReason,
-    UserEvidenceGap, UserOverride, classify, migrate_locators,
+    ClassificationError, ClassificationInput, ClassificationLabel, ClassificationSet,
+    ConceptStance, ConcreteNeed, ControllingMechanism, CurrentBasis, GoalId, GoalScope,
+    MigrationOutcome, NeedKind, Outlook, OverrideDecision, ProjectConceptRequirement, ProofChain,
+    RequiredConcept, RequirementId, ResolutionStatus, RetirementReason, TradeOff, Trigger,
+    TriggerState, UnmatchedReason, UserEvidenceGap, UserOverride, classify, migrate_locators,
 };
 use academic_repository_correlation::{
     ApprovalStatus, BehaviorDocument, Correlation, CorrelationInput, DocumentId, IntentDocument,
@@ -200,6 +205,7 @@ fn built(files: &[(&str, &str)], artifacts: &Artifacts) -> Result<Corpus, Box<dy
         incidents: &[],
         feature_flags: &[],
         deployments: &[],
+        declared_dependencies: &[],
     })?;
     let _ = &traces;
     Ok(Corpus {
@@ -1561,5 +1567,206 @@ fn a_need_without_a_site_is_not_concrete() -> TestResult {
         .err(),
         Some(ClassificationError::NeedHasNoSite("lost-update".to_owned()))
     );
+    Ok(())
+}
+
+/// Every identifier this crate takes is the shape it says it admits.
+///
+/// A whole-set classification rather than a list of rejected spellings: every
+/// ASCII byte is offered inside an otherwise legal identifier and required to
+/// be admitted **exactly** when this test's own independent predicate says it
+/// belongs, in both directions, for all five constructors that reach
+/// `scope::validated`, and the length bound is asserted on both sides.
+///
+/// It is here because `P2-Y2` measured the gap and `P2-A5` measured it again
+/// and wider: adding `+` to the character class, and moving the length bound
+/// from 64 to 65, each left this crate's whole suite green. A rule that is
+/// declared and unmeasured is a rule the next edit may widen for free. It is
+/// the port of `P2-R5`'s `every_identifier_is_the_shape_this_crate_admits`,
+/// which is where the same shape was first measured this way.
+#[test]
+fn every_identifier_is_the_shape_this_crate_admits() -> TestResult {
+    // Written here rather than read from the crate, so the two are independent.
+    let belongs =
+        |byte: u8| byte.is_ascii_alphanumeric() || byte == b'.' || byte == b'_' || byte == b'-';
+    let scope = GoalScope::at(GoalId::new("g")?, 1);
+
+    for byte in 0_u8..=127 {
+        let candidate = format!("a{}b", char::from(byte));
+        for taken in [
+            GoalId::new(candidate.clone()).is_ok(),
+            RequirementId::new(candidate.clone()).is_ok(),
+            Trigger::new(candidate.clone()).is_ok(),
+            TradeOff::new(candidate.clone()).is_ok(),
+            UserOverride::new(
+                scope.clone(),
+                candidate.clone(),
+                OverrideDecision::NotRequired,
+                "snap_shape",
+                NOW,
+            )
+            .is_ok(),
+        ] {
+            assert_eq!(
+                taken,
+                belongs(byte),
+                "byte {byte} in {candidate:?} is admitted {taken} and belongs {}",
+                belongs(byte)
+            );
+        }
+    }
+
+    // Beyond ASCII, where a byte-wise reader and a character-wise one disagree.
+    for outside in ["개념", "a개념b", "a\u{00e9}b", "a\u{1f600}b"] {
+        assert!(
+            matches!(
+                GoalId::new(outside),
+                Err(ClassificationError::InvalidIdentifier("goal", _))
+            ),
+            "{outside:?} was admitted as a goal identifier"
+        );
+    }
+
+    // The length boundary, on both sides of it, and the empty value.
+    let longest = "a".repeat(64);
+    assert!(GoalId::new(longest.as_str()).is_ok());
+    assert!(RequirementId::new(longest.as_str()).is_ok());
+    assert!(Trigger::new(longest.as_str()).is_ok());
+    assert!(TradeOff::new(longest.as_str()).is_ok());
+    for refused in [String::new(), "a".repeat(65)] {
+        let length = refused.len();
+        for outcome in [
+            GoalId::new(refused.as_str()).err(),
+            RequirementId::new(refused.as_str()).err(),
+            Trigger::new(refused.as_str()).err(),
+            TradeOff::new(refused.as_str()).err(),
+            UserOverride::new(
+                scope.clone(),
+                refused.as_str(),
+                OverrideDecision::NotRequired,
+                "snap_shape",
+                NOW,
+            )
+            .err(),
+        ] {
+            assert!(
+                matches!(outcome, Some(ClassificationError::InvalidIdentifier(_, _))),
+                "a {length}-byte identifier was admitted"
+            );
+        }
+    }
+
+    // Each constructor names itself in its refusal, so a reader is told which
+    // identifier was wrong rather than that one of five was.
+    let named: BTreeSet<&'static str> = [
+        GoalId::new("").err(),
+        RequirementId::new("").err(),
+        Trigger::new("").err(),
+        TradeOff::new("").err(),
+        UserOverride::new(scope, "", OverrideDecision::NotRequired, "snap_shape", NOW).err(),
+    ]
+    .into_iter()
+    .filter_map(|error| match error {
+        Some(ClassificationError::InvalidIdentifier(what, _)) => Some(what),
+        _ => None,
+    })
+    .collect();
+    assert_eq!(
+        named,
+        BTreeSet::from(["concept", "goal", "requirement", "tradeoff", "trigger"]),
+        "two identifiers share a name in their refusal, or one does not name itself"
+    );
+    Ok(())
+}
+
+/// Section 18.2's chain, but about `redis` itself.
+///
+/// The same shape as [`isolation_chain`] with the realized concept changed, so
+/// one concept arrives at `classify` through both routes at once: the
+/// correlation observes `redis` and this chain requires it.
+fn redis_chain(corpus: &Corpus) -> Result<ProofChain, Box<dyn Error>> {
+    let finding = corpus.finding("redis")?;
+    let basis = CurrentBasis::of_current_code(finding)?;
+    let need = ConcreteNeed::shown_by(
+        basis,
+        NeedKind::FailureScenario,
+        &subject_id("lost-update")?,
+        finding.locators().to_vec(),
+    )?;
+    let mechanism = ControllingMechanism::controlling(need, &subject_id("atomicity")?);
+    let concept =
+        RequiredConcept::realizing(mechanism, &subject_id("redis")?, EntityKind::Concept)?;
+    Ok(ProofChain::closed_by(
+        concept,
+        UserEvidenceGap::of(
+            MasteryLevel::Understood,
+            FreshnessBand::High,
+            EpistemicStatus::UserConfirmed,
+        )
+        .ok_or("an unapplied concept has an evidence gap")?,
+    ))
+}
+
+#[test]
+fn one_concept_is_one_stance_however_many_routes_reach_it() -> TestResult {
+    // What `P2-R5`'s `promote` rests on. It walks the stances and keeps one
+    // work per concept; a second refusal keyed on the concept would be one
+    // nothing can reach, because this crate emits one stance per concept
+    // whatever combination of routes named it. `P2-A5` measured such a refusal
+    // sitting there undriven, and this is the fact that made it undriven,
+    // stated where it is true rather than defended where it is not.
+    let corpus = built(&OBSERVED_REDIS, &Artifacts::default())?;
+    let goal = order_goal()?;
+
+    // Both routes at once: the correlation observes `redis` and the chain
+    // requires it.
+    let set = classified(&corpus, &goal, &[redis_chain(&corpus)?], &[], &[])?;
+    let redis: Vec<&ConceptStance> = set
+        .stances()
+        .iter()
+        .filter(|stance| stance.key().concept() == "redis")
+        .collect();
+    assert_eq!(
+        redis.len(),
+        1,
+        "one concept produced {} stances",
+        redis.len()
+    );
+    let only = redis.first().ok_or("no stance for redis")?;
+    assert!(
+        only.observed().is_some(),
+        "the observation route was dropped, so the two routes did not meet here"
+    );
+    assert!(
+        matches!(only.outlook(), Some(Outlook::Required(_))),
+        "the requirement route was dropped, so the two routes did not meet here"
+    );
+
+    // And as a property of the whole set rather than of `redis`: no concept
+    // appears twice, over every combination of routes this suite can build.
+    for required in [
+        Vec::new(),
+        vec![redis_chain(&corpus)?],
+        vec![isolation_chain(&corpus)?],
+    ] {
+        for beneficial in [Vec::new(), vec![replication_contract()?]] {
+            let set = classified(&corpus, &goal, &required, &beneficial, &[])?;
+            let concepts: Vec<&str> = set
+                .stances()
+                .iter()
+                .map(|stance| stance.key().concept())
+                .collect();
+            let distinct: BTreeSet<&str> = concepts.iter().copied().collect();
+            assert_eq!(
+                concepts.len(),
+                distinct.len(),
+                "a concept has two stances: {concepts:?}"
+            );
+            assert!(
+                !concepts.is_empty(),
+                "the set is empty, so the property above says nothing"
+            );
+        }
+    }
     Ok(())
 }

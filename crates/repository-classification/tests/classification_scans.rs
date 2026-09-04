@@ -2009,3 +2009,180 @@ fn the_helpers_are_not_vacuous() -> TestResult {
     assert_eq!(inventory().len(), 105);
     Ok(())
 }
+
+/// Every `impl` header this crate declares, as a whole set.
+///
+/// Read out of this crate's own source by the reader below and compared
+/// whole in both directions, so an `impl` added anywhere is an entry here or
+/// a failure. `P2-A5` measured that nothing else in the repository can see one.
+const IMPL_HEADERS: [&str; 38] = [
+    "impl BenefitContract",
+    "impl BenefitDimension",
+    "impl BenefitDraft",
+    "impl BenefitPart",
+    "impl ChainDraft",
+    "impl ChainStep",
+    "impl ClassificationConflict",
+    "impl ClassificationKey",
+    "impl ClassificationLabel",
+    "impl ClassificationSet",
+    "impl ConceptStance",
+    "impl ConcreteNeed",
+    "impl ControllingMechanism",
+    "impl CurrentBasis",
+    "impl From<academic_repository_analysis::AnalysisError> for ClassificationError",
+    "impl GoalId",
+    "impl GoalScope",
+    "impl LifecycleRow",
+    "impl LocatorMigration",
+    "impl MigratedFinding",
+    "impl MigratedSite",
+    "impl MigrationOutcome",
+    "impl NeedKind",
+    "impl ObservedProof",
+    "impl Outlook",
+    "impl OverrideDecision",
+    "impl ProjectConceptRequirement",
+    "impl ProofChain",
+    "impl RequiredConcept",
+    "impl RequirementId",
+    "impl ResolutionStatus",
+    "impl RetirementReason",
+    "impl TradeOff",
+    "impl Trigger",
+    "impl TriggerState",
+    "impl UnmatchedReason",
+    "impl UserEvidenceGap",
+    "impl UserOverride",
+];
+
+// ---------------------------------------------------------------------------
+// The `impl` header inventory.
+// ---------------------------------------------------------------------------
+
+/// Every `impl` header of `code`, from `impl` to the brace that opens it.
+///
+/// A header may be wrapped across lines, so reading continues until the block
+/// opens. An `impl Trait` in argument position never begins a line — a
+/// parameter list always puts a name and a colon in front of it — so the line
+/// anchor is what separates the two.
+fn impl_headers(code: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut lines = code.lines().peekable();
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim_start();
+        if !(trimmed == "impl" || trimmed.starts_with("impl ") || trimmed.starts_with("impl<")) {
+            continue;
+        }
+        let mut header = trimmed.to_owned();
+        while !header.contains('{') {
+            let Some(next) = lines.next() else {
+                break;
+            };
+            header.push(' ');
+            header.push_str(next.trim());
+        }
+        let end = header.find('{').unwrap_or(header.len());
+        found.insert(tighten(&header[..end]).trim().to_owned());
+    }
+    found
+}
+
+/// Traits whose whole purpose is to fold one value into another.
+///
+/// A conversion, an addition or a dereference from one of this crate's types
+/// hands a caller a second reading of the same value, and nothing in a `pub fn`
+/// inventory can see one. The list is refused as a property of the whole
+/// header inventory rather than of named type pairs, so a fold between two
+/// types nobody thought of is refused too.
+const FOLDING_TRAITS: [&str; 15] = [
+    "Add",
+    "AddAssign",
+    "Sum",
+    "Product",
+    "Mul",
+    "MulAssign",
+    "Deref",
+    "DerefMut",
+    "AsRef<",
+    "AsMut<",
+    "Borrow<",
+    "BorrowMut<",
+    "FromIterator<",
+    "IntoIterator",
+    "Index",
+];
+
+/// Scalar types a conversion out of one of this crate's types must not reach.
+const SCALAR_TARGETS: [&str; 14] = [
+    "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32",
+    "f64",
+];
+
+/// Every `impl` header this crate declares is in the inventory, both ways.
+///
+/// `P2-A5` measured this bypass class open across R1 to R5. It injected
+///
+/// ```text
+/// impl From<&PromotionSet> for u32 {
+///     fn from(set: &PromotionSet) -> Self { … }
+/// }
+/// ```
+///
+/// into `academic-repository-competency` — a conversion that folds section
+/// 17.6's project half and personal half into one number, which is exactly the
+/// separation the crate exists to keep — and it passed 1543 tests over 265
+/// binaries with nothing in the repository seeing it. A trait `impl` declares
+/// no `pub fn`, so a signature inventory that looks for `pub fn ` and
+/// `pub const fn ` is blind to one by construction.
+///
+/// This is `P2-R6`'s `every_impl_header_in_this_crate_is_in_the_inventory`
+/// ported here, which is where the class was first closed.
+#[test]
+fn every_impl_header_in_this_crate_is_in_the_inventory() -> TestResult {
+    let mut found: BTreeSet<String> = BTreeSet::new();
+    for (_, code) in product_code()? {
+        found.extend(impl_headers(&code));
+    }
+    assert_eq!(
+        found,
+        IMPL_HEADERS.iter().map(|item| (*item).to_owned()).collect(),
+        "the impl-header inventory and the source disagree"
+    );
+
+    for header in &found {
+        for folding in FOLDING_TRAITS {
+            assert!(
+                uses_of(header, folding) == 0,
+                "{header} implements {folding}, which this crate does not admit"
+            );
+        }
+        if !(header.contains("From<") || header.contains("Into<")) {
+            continue;
+        }
+        for scalar in SCALAR_TARGETS {
+            assert!(
+                uses_of(header, scalar) == 0,
+                "{header} converts to or from {scalar}"
+            );
+        }
+    }
+
+    // The reader is not vacuous, in both directions: it finds a header in a
+    // fragment that has one — the exact shape `P2-A5` injected — and this
+    // crate really declares some, so the property above is a statement about
+    // something rather than about an empty set.
+    let fragment = "impl From<&PromotionSet> for u32 {\n    fn from(_: &PromotionSet) -> Self {\n        0\n    }\n}\n";
+    assert_eq!(
+        impl_headers(fragment),
+        ["impl From<&PromotionSet> for u32"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    );
+    assert!(
+        !found.is_empty(),
+        "this crate declares no impl header, so the refusals above say nothing"
+    );
+    Ok(())
+}

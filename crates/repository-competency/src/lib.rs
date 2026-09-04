@@ -64,8 +64,6 @@ pub mod identity;
 pub mod outcome;
 pub mod rubric;
 
-use std::collections::BTreeMap;
-
 use academic_repository_classification::{ClassificationSet, ConceptStance};
 
 pub use claim::{
@@ -313,7 +311,6 @@ pub fn promote(input: &PromotionInput<'_>) -> Result<PromotionSet, CompetencyErr
 
     let mut project = Vec::new();
     let mut personal = Vec::new();
-    let mut promoted: BTreeMap<String, &AuthoredWork> = BTreeMap::new();
 
     for stance in input.classification.stances() {
         // The project claim is read from the observed half and from nothing
@@ -339,6 +336,13 @@ pub fn promote(input: &PromotionInput<'_>) -> Result<PromotionSet, CompetencyErr
         // The personal claim needs a work whose own sites meet this
         // observation's. Authoring something else in a repository that observes
         // a concept is not authoring that concept's use.
+        // One refusal and not two. A second one, keyed on the concept, would
+        // refuse two proofs for one concept — and `P2-R4` cannot produce them:
+        // `ClassificationSet` has one construction site and it iterates a
+        // `BTreeSet` of concept names, so a concept is one stance. `P2-A5`
+        // measured a check of that shape here as one nothing could reach, and
+        // `one_concept_is_one_stance_however_many_routes_reach_it` in `P2-R4`'s
+        // own suite is where the fact it rested on is now observed instead.
         let mut touching = input
             .works
             .iter()
@@ -347,13 +351,6 @@ pub fn promote(input: &PromotionInput<'_>) -> Result<PromotionSet, CompetencyErr
             continue;
         };
         if touching.next().is_some() {
-            return Err(CompetencyError::DuplicatePromotion(
-                concept.to_owned(),
-                goal_name,
-                version,
-            ));
-        }
-        if promoted.insert(concept.to_owned(), work).is_some() {
             return Err(CompetencyError::DuplicatePromotion(
                 concept.to_owned(),
                 goal_name,

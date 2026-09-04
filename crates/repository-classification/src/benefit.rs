@@ -365,9 +365,13 @@ impl BenefitDraft {
         }
         let state = self.state.ok_or_else(|| named(BenefitPart::TriggerState))?;
         let benefit = self.benefit.ok_or_else(|| named(BenefitPart::Benefit))?;
-        if self.tradeoffs.is_empty() {
-            return Err(named(BenefitPart::TradeOff));
-        }
+        // The trade-off list is not checked here. `BenefitContract::new` below
+        // makes the identical check and raises the identical value, and it is
+        // the last thing this function does, so a second check would be one
+        // that cannot fail — `P2-A5` measured deleting it changing nothing.
+        // The trigger check above is different: it precedes the two
+        // extractions, so it decides *which* `BenefitPart` a caller is told
+        // about, and `beneficial_trigger_contract` pins that order.
         BenefitContract::new(
             &SubjectId::new(concept)?,
             self.triggers,

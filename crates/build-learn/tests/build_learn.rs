@@ -24,11 +24,11 @@ use academic_build_learn::{
     ConceptRequirement, CourseProjectMapping, CoverageEvidenceKind, DesignedCoverage,
     EnrolmentStanding, EvidenceTask, GoalInput, INPUT_KINDS, InputKind, LearningItem,
     MAPPING_STATUSES, MOTIVATIONS, MappingEvidence, MappingStatus, Motivation, MotivationDisplay,
-    ObservableCriterion, PersonalEvidenceStanding, PlanDefect, PlanDraft, PlanStep, ProjectGoal,
-    READINESS_CATEGORIES, RESOLUTION_ORDER, ROW_WITHOUT_A_SHORT_NAME, ReadinessCategory,
-    ReadinessFinding, RequirementCondition, RequirementOrigin, ResponsibilityDecomposition,
-    SHORT_NAMES, SuccessCriteria, TechnologySlate, UnresolvedDecisions, categorize, normalize,
-    validate,
+    NonEmptyText, ObservableCriterion, PartId, PersonalEvidenceStanding, PlanDefect, PlanDraft,
+    PlanStep, ProjectGoal, READINESS_CATEGORIES, RESOLUTION_ORDER, ROW_WITHOUT_A_SHORT_NAME,
+    ReadinessCategory, ReadinessFinding, RequirementCondition, RequirementOrigin,
+    ResponsibilityDecomposition, SHORT_NAMES, SuccessCriteria, TechnologySlate,
+    UnresolvedDecisions, categorize, normalize, validate,
 };
 use academic_domain::entity_registry::EntityKind;
 
@@ -1479,5 +1479,70 @@ fn the_two_channel_effects_are_kept_apart() -> TestResult {
             .collect::<BTreeSet<&str>>(),
         "the comparison's serialized key set changed"
     );
+    Ok(())
+}
+
+/// Every part identifier this crate takes is the shape it says it admits.
+///
+/// A whole-set classification rather than a list of rejected spellings: every
+/// ASCII byte is offered inside an otherwise legal identifier and required to
+/// be admitted **exactly** when this test's own independent predicate says it
+/// belongs, in both directions, and the length bound is asserted on both sides.
+///
+/// It is here because `P2-A5` measured the gap: adding `+` to the character
+/// class left this crate's whole suite green, and the length bound was never
+/// measured at all. `PartId` is the name a criterion, a decision, an
+/// alternative and a responsibility are joined back by across a serialized
+/// document, so what it admits is what that join has to survive. It is the
+/// port of `P2-R5`'s `every_identifier_is_the_shape_this_crate_admits`.
+#[test]
+fn every_part_identifier_is_the_shape_this_crate_admits() -> TestResult {
+    // Written here rather than read from the crate, so the two are independent.
+    let belongs =
+        |byte: u8| byte.is_ascii_alphanumeric() || byte == b'.' || byte == b'_' || byte == b'-';
+
+    for byte in 0_u8..=127 {
+        let candidate = format!("a{}b", char::from(byte));
+        let taken = PartId::new(candidate.clone()).is_ok();
+        assert_eq!(
+            taken,
+            belongs(byte),
+            "byte {byte} in {candidate:?} is admitted {taken} and belongs {}",
+            belongs(byte)
+        );
+    }
+
+    // Beyond ASCII, where a byte-wise reader and a character-wise one disagree.
+    for outside in ["개념", "a개념b", "a\u{00e9}b", "a\u{1f600}b"] {
+        assert!(
+            matches!(
+                PartId::new(outside),
+                Err(academic_build_learn::BuildLearnError::InvalidIdentifier(_))
+            ),
+            "{outside:?} was admitted as a part identifier"
+        );
+    }
+
+    // The length boundary, on both sides of it, and the empty value.
+    assert!(PartId::new("a".repeat(64)).is_ok());
+    for refused in [String::new(), "a".repeat(65)] {
+        let length = refused.len();
+        assert!(
+            matches!(
+                PartId::new(refused),
+                Err(academic_build_learn::BuildLearnError::InvalidIdentifier(_))
+            ),
+            "a {length}-byte identifier was admitted"
+        );
+    }
+
+    // The other text wrapper is a different rule and stays one: `NonEmptyText`
+    // refuses blankness and admits everything else, so a byte this test refuses
+    // for `PartId` is not thereby refused for a sentence.
+    assert!(NonEmptyText::new("a+b").is_ok());
+    assert!(matches!(
+        NonEmptyText::new("   "),
+        Err(academic_build_learn::BuildLearnError::EmptyText)
+    ));
     Ok(())
 }

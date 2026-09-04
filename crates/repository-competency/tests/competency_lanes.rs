@@ -39,11 +39,11 @@ use academic_repository_classification::{
 };
 use academic_repository_competency::{
     AuthoredWork, AuthorshipMap, AuthorshipMode, CandidateSupport, ChangeId, ChangeKind,
-    ChangedSite, ClaimStanding, CodeOrigin, CompetencyError, ContributionDraft, ContributionKind,
-    ContributionRecord, ExplainedByUser, ExternalAuthorId, GeneratedCodeWarrant, IdentitySource,
-    ModifiedByUser, OriginReport, OutcomeArtifact, OutcomeKind, PromotionCheck, PromotionInput,
-    PromotionSet, RejectionReason, RubricId, ScaffoldRubric, UserId, VerifiedByUser,
-    observation_alone_promotes, promote,
+    ChangeVerdict, ChangedSite, ClaimStanding, CodeOrigin, CompetencyError, ContributionDraft,
+    ContributionKind, ContributionRecord, ExplainedByUser, ExternalAuthorId, GeneratedCodeWarrant,
+    IdentitySource, ModifiedByUser, OriginReport, OutcomeArtifact, OutcomeKind, PromotionCheck,
+    PromotionInput, PromotionSet, RejectionReason, RubricId, ScaffoldRubric, UserId,
+    VerifiedByUser, observation_alone_promotes, promote,
 };
 use academic_repository_correlation::{Correlation, CorrelationInput, correlate};
 use academic_untrusted_content::SourceIndex;
@@ -205,6 +205,7 @@ fn built(files: &[(&str, &str)]) -> Result<Corpus, Box<dyn Error>> {
         incidents: &[],
         feature_flags: &[],
         deployments: &[],
+        declared_dependencies: &[],
     })?;
     Ok(Corpus {
         snapshot,
@@ -238,6 +239,21 @@ impl Corpus {
             .find(|locator| locator.path() == path)
             .cloned()
             .ok_or_else(|| format!("the redis finding names no locator at {path}").into())
+    }
+
+    /// One **excluded** locator of the `redis` finding, by path.
+    ///
+    /// A vendored, generated or example site is recorded on the finding and
+    /// never counted, so it is this suite's only route to a locator whose
+    /// `PathClass` is not `FIRST_PARTY`.
+    fn excluded_site(&self, path: &str) -> Result<Locator, Box<dyn Error>> {
+        let finding = self.finding("redis")?;
+        finding
+            .excluded_sites()
+            .iter()
+            .find(|site| site.locator().path() == path)
+            .map(|site| site.locator().clone())
+            .ok_or_else(|| format!("the redis finding excludes no site at {path}").into())
     }
 
     /// The first locator of the `redis` finding at `path` that sits **inside a
@@ -1542,4 +1558,145 @@ fn every_identifier_is_the_shape_this_crate_admits() -> TestResult {
 /// name. A locator's own constructor is crate-private to that crate.
 fn shape_site() -> Result<Locator, Box<dyn Error>> {
     built(&OBSERVED_REDIS)?.site("src/cache.ts")
+}
+
+/// `OBSERVED_REDIS` with a vendored copy of the cache module beside it.
+///
+/// The vendored site is recorded on the finding and never counted, which makes
+/// it the only route in this suite to a `P2-R2` locator whose path class is
+/// `VENDORED` — and therefore the only way to drive the path-class half of
+/// `ScaffoldRubric::bears_understanding`.
+const OBSERVED_REDIS_WITH_VENDOR: [(&str, &str); 5] = [
+    OBSERVED_REDIS[0],
+    OBSERVED_REDIS[1],
+    OBSERVED_REDIS[2],
+    OBSERVED_REDIS[3],
+    (
+        "vendor/upstream/cache.ts",
+        "import redis from \"redis\";\n\nfunction warm() {\n  return redis.createClient();\n}\n\nexport function handle() {\n  return warm();\n}\n",
+    ),
+];
+
+#[test]
+fn a_control_flow_edit_inside_vendored_source_bears_no_understanding() -> TestResult {
+    // `P2-A5` measured this half of `bears_understanding` undriven: deleting
+    // `!self.scaffold_path_classes.contains(...)` left the whole crate green.
+    // `rubric.rs` says "a `CONTROL_FLOW` edit inside vendored source is somebody
+    // else's control flow", and until now nothing said it back.
+    let corpus = built(&OBSERVED_REDIS_WITH_VENDOR)?;
+    let vendored = corpus.excluded_site("vendor/upstream/cache.ts")?;
+    assert_eq!(vendored.class(), PathClass::Vendored);
+    let rubric = rubric()?;
+
+    // The change kind is one the rubric counts, so the kind half says yes and
+    // only the path-class half is left to refuse.
+    assert!(
+        !rubric
+            .scaffold_change_kinds()
+            .contains(&ChangeKind::ControlFlow),
+        "the kind half already refuses, so this fixture would not reach the path half"
+    );
+    assert!(
+        rubric
+            .scaffold_path_classes()
+            .contains(&PathClass::Vendored)
+    );
+    let site = ChangedSite::new(vendored, ChangeKind::ControlFlow);
+    assert!(!rubric.bears_understanding(&site));
+    assert!(matches!(
+        rubric.judge(std::slice::from_ref(&site)),
+        ChangeVerdict::ScaffoldOnly { .. }
+    ));
+
+    // And through the one producer of an `AuthoredWork`, so what is refused is
+    // the path a claim would actually take.
+    let record = report(
+        &corpus,
+        "c-vendored",
+        own_identity()?,
+        ContributionKind::Authored,
+        OriginReport::HandWritten,
+        vec![site],
+    )?;
+    assert!(matches!(
+        ContributionDraft::over(&record, &mapping()?, &rubric).seal(),
+        Err(CompetencyError::ChangeIsScaffoldOnly { .. })
+    ));
+
+    // The control: the same change kind at a first-party path is meaningful and
+    // seals, so what refused above is the path class and not the kind.
+    let first_party = ChangedSite::new(corpus.site("src/cache.ts")?, ChangeKind::ControlFlow);
+    assert!(rubric.bears_understanding(&first_party));
+    let sealed = report(
+        &corpus,
+        "c-first-party",
+        own_identity()?,
+        ContributionKind::Authored,
+        OriginReport::HandWritten,
+        vec![first_party],
+    )?;
+    assert!(
+        ContributionDraft::over(&sealed, &mapping()?, &rubric)
+            .seal()
+            .is_ok()
+    );
+    Ok(())
+}
+
+#[test]
+fn two_works_touching_one_observation_are_refused_rather_than_chosen_between() -> TestResult {
+    // `P2-A5` measured this refusal undriven: deleting `touching.next()
+    // .is_some()` left the whole crate green, and the crate then silently
+    // promoted whichever work came first in iteration order. `lib.rs` says
+    // "picking between two pieces of evidence about the same subject is a
+    // judgement, and this crate does not make it", and until now nothing said
+    // it back.
+    let corpus = built(&OBSERVED_REDIS)?;
+    let classification = classified(&corpus, &order_goal()?)?;
+
+    let one = own_work(&corpus)?;
+    let two = ContributionDraft::over(
+        &report(
+            &corpus,
+            "c-second",
+            own_identity()?,
+            ContributionKind::Authored,
+            OriginReport::HandWritten,
+            meaningful_sites(&corpus)?,
+        )?,
+        &mapping()?,
+        &rubric()?,
+    )
+    .seal()?;
+    assert_ne!(
+        one.change(),
+        two.change(),
+        "the two works are one work, so this fixture proves nothing"
+    );
+
+    // Each on its own promotes, so what refuses below is the pair and not
+    // either work.
+    for single in [&one, &two] {
+        let set = promoted(&classification, std::slice::from_ref(single), &[])?;
+        assert!(
+            set.personal_claim("redis").is_some(),
+            "one work alone did not promote, so the pair proves nothing"
+        );
+    }
+
+    let refused = promote(&PromotionInput {
+        classification: &classification,
+        user: &user()?,
+        works: &[one, two],
+        outcomes: &[],
+    });
+    assert!(
+        matches!(
+            refused,
+            Err(CompetencyError::DuplicatePromotion(ref concept, ref goal, version))
+                if concept == "redis" && goal == "no-duplicate-retryable-orders" && version == 1
+        ),
+        "two works touching one observation were not refused: {refused:?}"
+    );
+    Ok(())
 }
