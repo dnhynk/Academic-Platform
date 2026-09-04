@@ -42,8 +42,14 @@
 //! shows the one producer behaves, and this shows there is no second.
 //!
 //! `the_only_producer_of_a_learning_item_takes_both` does the same for
-//! `LearningItem`, and additionally requires the producer's parameter list to
-//! name both `EvidenceTask` and `ReturnCheckpoint`.
+//! `LearningItem`, and additionally requires the producer to take an
+//! `EvidenceTask` by value together with a `ReturnCheckpoint`.
+//!
+//! Both read the signature **with its `impl` owner**, because two empty guards
+//! were measured here without it: a producer called anything other than the
+//! pinned name and returning `-> Self`, and a fold declared as a method on a
+//! motivation type whose own signature text names no motivation type. See
+//! [`public_signatures_with_owner`].
 //!
 //! `the_build_learn_crate_holds_no_phrase_list` observes that the product
 //! sources hold no string literal long enough to be a phrase to match against,
@@ -390,6 +396,85 @@ fn public_signatures(code: &str) -> Vec<(String, String)> {
     }
     found.sort();
     found.dedup();
+    found
+}
+
+/// Every `pub fn` of `code`, as `owner | signature`.
+///
+/// **Why the owner is carried.** A signature inventory that reads the signature
+/// text alone cannot see what `&self` is: `pub fn emphasis(&self) -> u32`
+/// declared inside `impl MotivationDisplay` folds three motivation rows into one
+/// number and names no motivation type in its own text. That was measured as an
+/// **empty guard in this suite** — `no_signature_folds_the_motivation_edges`
+/// passed with exactly that method injected, while
+/// `every_public_signature_is_in_the_inventory` caught it. The repair is this
+/// reader: the fold predicate is applied to `owner | signature`, so a method on
+/// a motivation type names one whatever its parameter list says.
+///
+/// A free function's owner is the empty string.
+fn public_signatures_with_owner(code: &str) -> Vec<(String, String)> {
+    let spans = impl_spans(code);
+    let mut found = Vec::new();
+    for marker in ["pub fn ", "pub const fn "] {
+        let mut cursor = 0;
+        while let Some(at) = code[cursor..].find(marker).map(|at| at + cursor) {
+            let after = at + marker.len();
+            let end = code[at..]
+                .find(" {\n")
+                .or_else(|| code[at..].find(";\n"))
+                .map_or(code.len(), |offset| at + offset);
+            let owner = spans
+                .iter()
+                .find(|(start, stop, _)| at >= *start && at < *stop)
+                .map_or_else(String::new, |(_, _, owner)| owner.clone());
+            found.push((owner, tighten(&code[at..end])));
+            cursor = after;
+        }
+    }
+    found.sort();
+    found.dedup();
+    found
+}
+
+/// Every `impl` block of `code`, as `(body start, body end, header)`.
+///
+/// The body is brace-matched from the header's own opening brace, so a nested
+/// block inside one `impl` is still attributed to that `impl`.
+fn impl_spans(code: &str) -> Vec<(usize, usize, String)> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    let mut cursor = 0;
+    while let Some(at) = code[cursor..].find("impl").map(|at| at + cursor) {
+        cursor = at + 4;
+        let before_ok =
+            at == 0 || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_');
+        let starts_line = code[..at]
+            .rfind('\n')
+            .is_none_or(|newline| code[newline + 1..at].trim().is_empty());
+        if !before_ok || !starts_line {
+            continue;
+        }
+        let Some(open) = code[at..].find('{').map(|offset| at + offset) else {
+            break;
+        };
+        let header = tighten(&code[at..open]);
+        let mut depth = 0_usize;
+        let mut index = open;
+        while index < bytes.len() {
+            match bytes[index] {
+                b'{' => depth += 1,
+                b'}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            index += 1;
+        }
+        found.push((open, index, header));
+    }
     found
 }
 
@@ -1024,9 +1109,17 @@ fn every_public_signature_is_in_the_inventory() -> TestResult {
 /// Section 20.3's `UI는 이를 합산 점수로 숨기지 않고`. Compared as the whole set
 /// of public signatures naming a motivation type **and** returning a numeric
 /// type, with each half shown separately non-empty.
+///
+/// **The signature is read together with its `impl` owner**, and that is a
+/// repair rather than a nicety. Injecting `pub fn emphasis(&self) -> u32` into
+/// `impl MotivationDisplay` — a weighted sum of the three rows, spelling none of
+/// the names any list here holds — was measured passing this test when it read
+/// the signature text alone, because `&self` names no type. Only
+/// `every_public_signature_is_in_the_inventory` caught it. With the owner
+/// carried, both do.
 #[test]
 fn no_signature_folds_the_motivation_edges() -> TestResult {
-    let found = all_public_signatures()?;
+    let found = all_owned_signatures()?;
     let numeric = [
         "-> u8",
         "-> u16",
@@ -1042,7 +1135,7 @@ fn no_signature_folds_the_motivation_edges() -> TestResult {
         "-> f64",
         "-> Ordering",
     ];
-    let names_motivation = |signature: &str| {
+    let names_motivation = |owner: &str, signature: &str| {
         [
             "Motivation",
             "MotivationEdge",
@@ -1050,13 +1143,15 @@ fn no_signature_folds_the_motivation_edges() -> TestResult {
             "MotivationDisplay",
         ]
         .iter()
-        .any(|name| signature.contains(name))
+        .any(|name| owner.contains(name) || signature.contains(name))
     };
     let returns_number = |signature: &str| numeric.iter().any(|suffix| signature.contains(suffix));
 
     let folding: Vec<&(String, String)> = found
         .iter()
-        .filter(|(_, signature)| names_motivation(signature) && returns_number(signature))
+        .filter(|(owner, signature)| {
+            names_motivation(owner, signature) && returns_number(signature)
+        })
         .collect();
     assert!(
         folding.is_empty(),
@@ -1064,12 +1159,21 @@ fn no_signature_folds_the_motivation_edges() -> TestResult {
     );
 
     // Each half is separately non-empty, so the emptiness above is an
-    // intersection and not a predicate that matches nothing.
+    // intersection and not a predicate that matches nothing. The first half is
+    // additionally required to be non-empty *through the owner alone* — a
+    // signature whose own text names no motivation type — because that is the
+    // half the reader used to miss.
     assert!(
         found
             .iter()
-            .any(|(_, signature)| names_motivation(signature)),
+            .any(|(owner, signature)| names_motivation(owner, signature)),
         "no public signature names a motivation type at all"
+    );
+    assert!(
+        found.iter().any(|(owner, signature)| {
+            names_motivation(owner, "") && !names_motivation("", signature)
+        }),
+        "no public signature is attributed to a motivation type by its owner alone"
     );
     assert!(
         found.iter().any(|(_, signature)| returns_number(signature)),
@@ -1077,16 +1181,30 @@ fn no_signature_folds_the_motivation_edges() -> TestResult {
     );
 
     // And the predicate bites on a fragment that does fold, read by the same
-    // signature reader.
+    // owner-aware reader — with the fold spelling no motivation name of its own.
     let fragment = "impl MotivationDisplay {
-    pub fn score(&self) -> u32 {
-        self.rows.len() as u32
+    pub fn emphasis(&self) -> u32 {
+        0
     }
-}";
-    let folded = public_signatures(fragment);
-    assert_eq!(folded.len(), 1);
-    assert!(names_motivation(&folded[0].1) || folded[0].1.contains("score"));
+}
+";
+    let folded = public_signatures_with_owner(fragment);
+    assert_eq!(folded.len(), 1, "the owner-aware reader found {folded:?}");
+    assert_eq!(folded[0].0, "impl MotivationDisplay");
+    assert!(
+        !names_motivation("", &folded[0].1),
+        "the fragment's own signature text names a motivation type, so it is the wrong control"
+    );
+    assert!(names_motivation(&folded[0].0, &folded[0].1));
     assert!(returns_number(&folded[0].1));
+
+    // A free function is attributed to no owner, so the owner column cannot
+    // silently attribute everything to the last `impl` it saw.
+    let free = public_signatures_with_owner("pub fn loose(value: u8) -> u8 {\n    value\n}\n");
+    assert_eq!(
+        free,
+        vec![(String::new(), "pub fn loose(value: u8) -> u8".to_owned())]
+    );
 
     // The type carries no numeric payload either: no field of any declared type
     // in this crate is a floating-point number, and the one integral field is a
@@ -1120,95 +1238,102 @@ fn no_signature_folds_the_motivation_edges() -> TestResult {
     Ok(())
 }
 
+/// Every public signature of the product tree, with the `impl` it sits in.
+fn all_owned_signatures() -> Result<Vec<(String, String)>, Box<dyn Error>> {
+    let mut found = Vec::new();
+    for (_, code) in product_code()? {
+        found.extend(public_signatures_with_owner(&code));
+    }
+    found.sort();
+    found.dedup();
+    Ok(found)
+}
+
 /// One producer of a technology slate, and it takes a goal.
+///
+/// The whole set of public functions **inside `impl TechnologySlate`** that
+/// return `Self`, plus the whole set anywhere that return the type by name.
+/// Owner-aware, and that is a repair: filtering on the producer's own name was
+/// measured letting a second producer through, because a function called
+/// anything else returning `-> Self` names neither.
 #[test]
 fn the_only_producer_of_a_technology_slate_takes_a_goal() -> TestResult {
-    let producers: Vec<(String, String)> = all_public_signatures()?
+    let producers: Vec<(String, String)> = all_owned_signatures()?
         .into_iter()
-        .filter(|(_, signature)| {
-            signature.contains("-> Self") || signature.contains("TechnologySlate")
+        .filter(|(owner, signature)| {
+            (owner == "impl TechnologySlate" && signature.contains("-> Self"))
+                || signature.contains("-> TechnologySlate")
         })
-        .filter(|(_, signature)| signature.contains("under"))
         .collect();
     assert_eq!(
         producers,
         vec![(
-            "under".to_owned(),
+            "impl TechnologySlate".to_owned(),
             "pub fn under(goal: &ProjectGoal) -> Self".to_owned()
         )],
         "the set of technology-slate producers changed"
     );
-
-    // And nothing else in the crate returns one. Stated over the whole set of
-    // signatures rather than over the `impl TechnologySlate` block, so a free
-    // function returning one is caught too.
-    let returning: Vec<(String, String)> = all_public_signatures()?
-        .into_iter()
-        .filter(|(_, signature)| signature.contains("-> TechnologySlate"))
-        .collect();
+    // The owner half is non-empty on its own, so the filter above is an
+    // intersection rather than a predicate matching nothing.
     assert!(
-        returning.is_empty(),
-        "a function outside the impl block returns a TechnologySlate: {returning:?}"
+        all_owned_signatures()?
+            .iter()
+            .any(|(owner, _)| owner == "impl TechnologySlate"),
+        "no signature is attributed to impl TechnologySlate at all"
     );
     Ok(())
 }
 
 /// One producer of a learning item, and it takes both required parts.
 ///
-/// The whole set of public signatures naming an `EvidenceTask` — which is every
-/// function that could be handed one or hand one back, whatever it is called —
-/// compared against two: the producer, which takes one **by value** together
-/// with a `ReturnCheckpoint`, and the accessor, which returns a reference.
+/// The whole set of public functions **inside `impl LearningItem`** returning
+/// `Self` in any wrapper, plus the whole set anywhere naming an `EvidenceTask`
+/// or returning the type by name — so a second producer under any name, with any
+/// return wrapper, is in this set.
 #[test]
 fn the_only_producer_of_a_learning_item_takes_both() -> TestResult {
-    let naming: Vec<(String, String)> = all_public_signatures()?
-        .into_iter()
+    let owned = all_owned_signatures()?;
+    let producers: Vec<&(String, String)> = owned
+        .iter()
+        .filter(|(owner, signature)| {
+            (owner == "impl LearningItem" && signature.contains("Self"))
+                || signature.contains("-> LearningItem")
+        })
+        .collect();
+    assert_eq!(
+        producers,
+        vec![&(
+            "impl LearningItem".to_owned(),
+            "pub const fn plan( id: PartId, concept: EntityId, evidence_task: EvidenceTask, \
+             checkpoint: ReturnCheckpoint, ) -> Self"
+                .to_owned()
+        )],
+        "the set of learning-item producers changed"
+    );
+
+    // The one producer takes an `EvidenceTask` **by value** and names a
+    // `ReturnCheckpoint` in the same parameter list.
+    assert!(producers[0].1.contains(": EvidenceTask"));
+    assert!(producers[0].1.contains(": ReturnCheckpoint"));
+
+    // And the whole set of signatures naming an `EvidenceTask` at all is that
+    // producer and the accessor that hands one back — nothing else.
+    let naming: Vec<&(String, String)> = owned
+        .iter()
         .filter(|(_, signature)| signature.contains("EvidenceTask"))
         .collect();
     assert_eq!(
-        naming,
+        naming
+            .iter()
+            .map(|(owner, signature)| format!("{owner} | {signature}"))
+            .collect::<Vec<String>>(),
         vec![
-            (
-                "evidence_task".to_owned(),
-                "pub const fn evidence_task(&self) -> &EvidenceTask".to_owned()
-            ),
-            (
-                "plan".to_owned(),
-                "pub const fn plan( id: PartId, concept: EntityId, evidence_task: EvidenceTask, \
-                 checkpoint: ReturnCheckpoint, ) -> Self"
-                    .to_owned()
-            ),
+            "impl LearningItem | pub const fn evidence_task(&self) -> &EvidenceTask".to_owned(),
+            "impl LearningItem | pub const fn plan( id: PartId, concept: EntityId, evidence_task: \
+             EvidenceTask, checkpoint: ReturnCheckpoint, ) -> Self"
+                .to_owned(),
         ],
         "the set of signatures naming an EvidenceTask changed"
-    );
-
-    // Exactly one of the two takes an `EvidenceTask` by value, and it names a
-    // `ReturnCheckpoint` in the same parameter list. So there is one way to
-    // build a learning item and it needs both.
-    let taking: Vec<&(String, String)> = naming
-        .iter()
-        .filter(|(_, signature)| signature.contains(": EvidenceTask"))
-        .collect();
-    assert_eq!(
-        taking.len(),
-        1,
-        "more than one function takes an EvidenceTask"
-    );
-    assert!(
-        taking[0].1.contains(": ReturnCheckpoint"),
-        "the producer does not take a ReturnCheckpoint: {}",
-        taking[0].1
-    );
-
-    // And nothing outside the `impl LearningItem` block returns one, so the
-    // producer above is the only route to the type.
-    let returning: Vec<(String, String)> = all_public_signatures()?
-        .into_iter()
-        .filter(|(_, signature)| signature.contains("-> LearningItem"))
-        .collect();
-    assert!(
-        returning.is_empty(),
-        "a function outside the impl block returns a LearningItem: {returning:?}"
     );
     Ok(())
 }
