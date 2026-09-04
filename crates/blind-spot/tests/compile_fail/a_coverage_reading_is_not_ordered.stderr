@@ -1,0 +1,13 @@
+error[E0369]: binary operation `<` cannot be applied to type `&FieldCoverage`
+  --> tests/compile_fail/a_coverage_reading_is_not_ordered.rs:10:7
+   |
+10 |     a < b
+   |     - ^ - &FieldCoverage
+   |     |
+   |     &FieldCoverage
+   |
+note: `FieldCoverage` does not implement `PartialOrd`
+  --> src/coverage.rs
+   |
+   | pub struct FieldCoverage {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ `FieldCoverage` is defined in another crate

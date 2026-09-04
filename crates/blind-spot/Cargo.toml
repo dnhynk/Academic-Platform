@@ -1,0 +1,72 @@
+[package]
+name = "academic-blind-spot"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Two product edges, and both of them are boundaries this crate reads a fact out
+# of rather than a vocabulary it restates.
+#
+# `academic-domain` is `P2-C1` and `P2-N1`. Section 7.4's three primary node
+# types -- `Field`, `Concept`, `Operation` -- are that crate's ontology module,
+# so the granularity the user selects is one of those tiers rather than a fourth
+# spelling here, and a concept resolves to its field through a
+# `VersionedTaxonomyImport` whose identity binds the exact taxonomy release the
+# scope names. ADR-003's actor matrix is what makes a disposition unmintable by a
+# model run, exactly as `P2-N2` made a mastery confirmation and `P2-N3` a recall
+# statement unmintable.
+#
+# `academic-knowledge-state` is `P2-N2`. Section 23's coverage counts exposure,
+# and the evidence it counts is the evidence that passed section 13.4's four
+# checks -- so an `ExposureItem` wraps an `EligibleEvidence` and has no other
+# constructor, and `WEAK` is `Outcome::Failed` on one of those rather than a
+# second reading of difficulty.
+#
+# The edge it does not have is the point. Nothing here can name a mastery:
+# `academic-knowledge-state` re-exports `LADDER`, `rung`, `level_token`,
+# `AutomaticLevel` and `MasteryProjection`, this crate imports none of them, and
+# `coverage_never_becomes_mastery` compares the whole set of its `use` items and
+# reached paths against a pinned inventory in both directions. A coverage
+# reading that could become a mastery score would need a name for one.
+#
+# There is no `academic-gap` edge either, and that is what holds `모든 분야를
+# 균등하게 채우라는 목표를 만들지 않는다`: `ActiveGoal`, `GoalCriteria` and
+# `SuccessCriterion` are that crate's types, and a goal this engine could emit
+# would first have to be a goal it could name.
+#
+# No `academic-store`, so nothing here reaches the canonical writer and no
+# migration is added; no `academic-worker` and no `academic-egress-boundary`, so
+# nothing in its closure can launch a process or stage a payload.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-knowledge-state = { path = "../knowledge-state" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite counts real `EligibleEvidence`, and section 23's first
+# exposure source is a lecture, so the item carrying it is a node of a document
+# `P2-L4` produced. `crates/knowledge-state/tests/common/lecture.rs` already
+# builds one by driving a real `P2-L2` capture and a real `P2-L3` run, and this
+# suite includes that file by `#[path]` rather than restating it, the way
+# `academic-freshness` and `academic-gap` include the module above it. It is the
+# `lecture` half only: this suite needs no `P2-R4` stance, so the repository
+# chain that module's other half reaches is not a dev edge here. `academic-domain`
+# is declared twice for the `trybuild` reason `academic-scenario` gives: a
+# compile-fail case compiles against this crate plus its dev-dependencies.
+[dev-dependencies]
+academic-capture = { path = "../capture" }
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-lecture-document = { path = "../lecture-document" }
+academic-knowledge-state = { path = "../knowledge-state" }
+academic-model-run = { path = "../model-run" }
+academic-transcription = { path = "../transcription" }
+serde_json.workspace = true
+tempfile.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

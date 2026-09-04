@@ -1,0 +1,9 @@
+error[E0451]: fields `observed` and `minimum` of struct `BelowMinimum` are private
+  --> tests/compile_fail/a_below_minimum_has_no_public_field.rs:11:9
+   |
+10 |     BelowMinimum {
+   |     ------------ in this type
+11 |         observed: 9,
+   |         ^^^^^^^^ private field
+12 |         minimum: 2,
+   |         ^^^^^^^ private field

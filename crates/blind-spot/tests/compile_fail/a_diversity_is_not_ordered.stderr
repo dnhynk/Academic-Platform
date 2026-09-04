@@ -1,0 +1,13 @@
+error[E0369]: binary operation `<` cannot be applied to type `EvidenceDiversity`
+ --> tests/compile_fail/a_diversity_is_not_ordered.rs:9:7
+  |
+9 |     a < b
+  |     - ^ - EvidenceDiversity
+  |     |
+  |     EvidenceDiversity
+  |
+note: `EvidenceDiversity` does not implement `PartialOrd`
+ --> src/coverage.rs
+  |
+  | pub enum EvidenceDiversity {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `EvidenceDiversity` is defined in another crate

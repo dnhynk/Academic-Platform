@@ -1,0 +1,8 @@
+error[E0026]: variant `Neutral` does not have a field named `path`
+  --> tests/compile_fail/a_neutral_presentation_has_no_action.rs:10:40
+   |
+10 |         FindingPresentation::Neutral { path, .. } => path,
+   |                                        ^^^^
+   |                                        |
+   |                                        variant `Neutral` does not have this field
+   |                                        help: `Neutral` has a field named `presentation`

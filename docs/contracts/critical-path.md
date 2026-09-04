@@ -92,6 +92,16 @@ conversion anywhere. `the_vectors_cannot_be_folded` is a whole-crate statement:
 no product file may name any of twelve folding spellings, and neither vector
 type may derive an order.
 
+**The twelve spellings were not enough, and `P2-N7` measured it.** A public
+`CostVector` method summing all seven axes and named `as_one_number` spells none
+of the twelve, none of `impl CostEstimate`'s four narrowing names, adds no `use`
+item and reaches no new path — and it passed this whole suite and `clippy` alike.
+What closes it is a whole-set comparison rather than a longer list: every public
+function of this crate whose return type is a bare number is compared against
+`NUMERIC_RETURNS` in both directions, so a scalar the API hands out is an extra
+key whatever it is called. The ten it holds are each an ordinal, a count, or one
+end of a declared interval, and the same injection now fails.
+
 ### Units are declared, because §16.2 declares none
 
 §16.2 fixes the axes and no unit for any of them. An interval with no unit

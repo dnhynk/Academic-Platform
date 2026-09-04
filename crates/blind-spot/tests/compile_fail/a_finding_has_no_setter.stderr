@@ -1,0 +1,7 @@
+error[E0615]: attempted to take value of method `classification` on type `&mut BlindSpotFinding`
+  --> tests/compile_fail/a_finding_has_no_setter.rs:10:13
+   |
+10 |     finding.classification = BlindSpotState::Gap;
+   |             ^^^^^^^^^^^^^^ method, not a field
+   |
+   = help: methods are immutable and cannot be assigned to

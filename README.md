@@ -63,6 +63,7 @@ cargo test -p academic-repository-classification --test compile_fail --locked --
 cargo test -p academic-knowledge-state --test compile_fail --locked --offline
 cargo test -p academic-freshness --test compile_fail --locked --offline
 cargo test -p academic-gap --test compile_fail --locked --offline
+cargo test -p academic-blind-spot --test compile_fail --locked --offline
 cargo test -p academic-critical-path --test compile_fail --locked --offline
 cargo test -p academic-repository-competency --test compile_fail --locked --offline
 cargo test -p academic-competency --test compile_fail --locked --offline

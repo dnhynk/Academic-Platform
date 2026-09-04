@@ -867,6 +867,32 @@ fn the_package_has_no_unscanned_directory() -> TestResult {
     Ok(())
 }
 
+/// Every public function of this crate that hands out a bare number.
+///
+/// Compared in both directions, which is the closure the twelve folding
+/// spellings above cannot give. `P2-N7` measured the gap: a method summing all
+/// seven axes of a `CostVector` and named `as_one_number` spells none of those
+/// twelve, none of `impl CostEstimate`'s four, adds no `use` item and reaches no
+/// new path, and it passed this whole suite and `clippy` alike. A scalar the API
+/// hands out now appears here as an **extra key** whatever it is called, which
+/// is the shape `docs/contracts/policy-source-scans.md` records seven spellings
+/// defeating a list.
+///
+/// The ten below are each an ordinal, a count or one end of a declared interval.
+/// None of them combines two axes.
+const NUMERIC_RETURNS: [&str; 10] = [
+    "checkpoint.rs uncertain_edge_ratio_permille -> u16",
+    "counterfactual.rs routes_after -> usize",
+    "counterfactual.rs routes_before -> usize",
+    "hypergraph.rs uncertain_member_count -> usize",
+    "option.rs credits -> u8",
+    "pareto.rs dominated_by -> usize",
+    "pareto.rs len -> usize",
+    "plan.rs rank -> usize",
+    "vector.rs high -> u32",
+    "vector.rs low -> u32",
+];
+
 #[test]
 fn the_vectors_cannot_be_folded() -> TestResult {
     // The whole `use` inventory, in both directions.
@@ -935,6 +961,59 @@ fn the_vectors_cannot_be_folded() -> TestResult {
             "CostEstimate names {narrowing}, so a range can collapse to a point"
         );
     }
+
+    // The whole set of public functions that hand out a bare number, in both
+    // directions. The twelve spellings above are a list and a list refuses the
+    // edits somebody predicted; this refuses every scalar the API could hand
+    // out, whatever it is called. See NUMERIC_RETURNS for how the gap was found.
+    let mut numeric: Vec<String> = Vec::new();
+    for (path, code) in product_code()? {
+        let module = path.rsplit('/').next().unwrap_or(&path).to_owned();
+        for (name, signature) in public_signatures(&code) {
+            let tail = signature
+                .split_once("->")
+                .map_or("()", |(_, rest)| rest)
+                .trim();
+            let tail = tail.split_whitespace().collect::<Vec<_>>().join(" ");
+            if matches!(
+                tail.as_str(),
+                "u8" | "u16"
+                    | "u32"
+                    | "u64"
+                    | "usize"
+                    | "i8"
+                    | "i16"
+                    | "i32"
+                    | "i64"
+                    | "isize"
+                    | "f32"
+                    | "f64"
+            ) {
+                numeric.push(format!("{module} {name} -> {tail}"));
+            }
+        }
+    }
+    numeric.sort();
+    assert_eq!(
+        numeric,
+        NUMERIC_RETURNS
+            .iter()
+            .map(|item| (*item).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's public numeric returns and NUMERIC_RETURNS disagree"
+    );
+    // The control: the reader is required to see the two ends of an interval, so
+    // an extractor that always answered the empty set would not pass here.
+    assert!(
+        numeric
+            .iter()
+            .any(|entry| entry.starts_with("vector.rs high"))
+    );
+    assert!(
+        numeric
+            .iter()
+            .any(|entry| entry.starts_with("vector.rs low"))
+    );
     Ok(())
 }
 

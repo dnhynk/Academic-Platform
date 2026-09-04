@@ -29,6 +29,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-blind-spot"
+version = "0.1.0"
+dependencies = [
+ "academic-capture",
+ "academic-consent",
+ "academic-domain",
+ "academic-knowledge-state",
+ "academic-lecture-document",
+ "academic-model-run",
+ "academic-transcription",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "trybuild",
+ "uuid",
+]
+
+[[package]]
 name = "academic-capture"
 version = "0.1.0"
 dependencies = [

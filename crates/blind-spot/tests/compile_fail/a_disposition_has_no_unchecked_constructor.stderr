@@ -1,0 +1,17 @@
+error[E0451]: fields `user_id`, `field`, `scope_id`, `disposition`, `hidden_until` and `chosen_at` of struct `UserDispositionChoice` are private
+  --> tests/compile_fail/a_disposition_has_no_unchecked_constructor.rs:17:9
+   |
+16 |     UserDispositionChoice {
+   |     --------------------- in this type
+17 |         user_id,
+   |         ^^^^^^^ private field
+18 |         field,
+   |         ^^^^^ private field
+19 |         scope_id,
+   |         ^^^^^^^^ private field
+20 |         disposition: UserDisposition::NotRelevant,
+   |         ^^^^^^^^^^^ private field
+21 |         hidden_until: None,
+   |         ^^^^^^^^^^^^ private field
+22 |         chosen_at,
+   |         ^^^^^^^^^ private field
