@@ -1,0 +1,54 @@
+[package]
+name = "academic-home"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Two product edges and no third.
+#
+# `academic-domain` supplies every identifier a home card names --
+# `CourseOfferingId`, `LectureSessionId`, `AssessmentId`, `ProjectId`,
+# `ConceptId`, `QuestionId`, `CapturePermissionId`, `CriticalPathId`,
+# `RequirementId`, `ContentDigest` and `TimestampMillis` -- plus
+# `FreshnessBand`, which section 25.2's eighth line is about. Naming those
+# rather than declaring a second vocabulary is what makes a card point at the
+# same entity the ledger holds.
+#
+# `academic-consent` supplies `P2-G6`'s `CaptureStatus`. Section 25.2's third
+# line is four display words, and they are the total image of that crate's five
+# statuses rather than a second status vocabulary: `RecordingPermission::of` is
+# a total `match`, so a sixth `CaptureStatus` stops this crate compiling and has
+# to be given a word rather than silently reading as one.
+#
+# The edges it does **not** have are the point:
+#
+# * no `academic-knowledge-state` and no `academic-freshness`, so no mastery
+#   ladder, no rung and no projection is in the closure this crate compiles
+#   against. `P2-N3`'s rule -- time decay reaches freshness and never a mastery
+#   -- is held here by the same means it is held there: the surface has no name
+#   for a mastery level. `academic_domain::MasteryLevel` is one `use` away and
+#   `the_home_surface_cannot_name_a_mastery` is what says it is not written;
+# * no `academic-store` and no `academic-vault`, so the canonical writer is
+#   absent and this crate persists nothing. It claims no migration number;
+# * no `academic-policy` and no `academic-egress-boundary` of any edge kind, so
+#   no grant, no staged payload and no provider row is nameable here. A home
+#   card carries a permission *status* and never a permission.
+[dependencies]
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# The compile-fail suite compiles its cases against this crate plus this crate's
+# dev-dependencies, so the domain identifiers and the `CaptureStatus` a case has
+# to name must be reachable from `tests/compile_fail` as well.
+# `academic-evidence-center`, `academic-scenario` and `academic-consent` declare
+# their own edges twice for the same reason.
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+trybuild.workspace = true
+
+[lints]
+workspace = true

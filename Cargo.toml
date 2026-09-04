@@ -24,6 +24,7 @@ members = [
   "crates/export-job",
   "crates/freshness",
   "crates/gap",
+  "crates/home",
   "crates/indexer",
   "crates/ingestion",
   "crates/keystore-platform",
