@@ -1,0 +1,13 @@
+error[E0369]: cannot add `Motivation` to `Motivation`
+  --> tests/compile_fail/a_motivation_display_does_not_add_up.rs:11:24
+   |
+11 |     Motivation::School + Motivation::Role
+   |     ------------------ ^ ---------------- Motivation
+   |     |
+   |     Motivation
+   |
+note: `Motivation` does not implement `Add`
+  --> src/motivation.rs
+   |
+   | pub enum Motivation {
+   | ^^^^^^^^^^^^^^^^^^^ `Motivation` is defined in another crate

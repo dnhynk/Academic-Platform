@@ -48,6 +48,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-build-learn"
+version = "0.1.0"
+dependencies = [
+ "academic-capture",
+ "academic-consent",
+ "academic-critical-path",
+ "academic-curriculum",
+ "academic-domain",
+ "academic-freshness",
+ "academic-gap",
+ "academic-knowledge-state",
+ "academic-lecture-document",
+ "academic-model-run",
+ "academic-policy",
+ "academic-repository",
+ "academic-repository-analysis",
+ "academic-repository-classification",
+ "academic-repository-correlation",
+ "academic-transcription",
+ "academic-untrusted-content",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "trybuild",
+ "uuid",
+]
+
+[[package]]
 name = "academic-capture"
 version = "0.1.0"
 dependencies = [

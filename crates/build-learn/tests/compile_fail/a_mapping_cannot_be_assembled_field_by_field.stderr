@@ -1,0 +1,15 @@
+error[E0451]: fields `subject`, `designed`, `actual`, `status` and `reason` of struct `CourseProjectMapping` are private
+  --> tests/compile_fail/a_mapping_cannot_be_assembled_field_by_field.rs:12:9
+   |
+11 |     CourseProjectMapping {
+   |     -------------------- in this type
+12 |         subject,
+   |         ^^^^^^^ private field
+13 |         designed: None,
+   |         ^^^^^^^^ private field
+14 |         actual: None,
+   |         ^^^^^^ private field
+15 |         status: MappingStatus::CanBeSupportedByCurrentCourse,
+   |         ^^^^^^ private field
+16 |         reason,
+   |         ^^^^^^ private field

@@ -815,6 +815,38 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `academic-egress-boundary`, so nothing in its closure can launch a process
     // or stage a payload.
     "academic-blind-spot": ["academic-domain", "academic-knowledge-state"],
+    // `P2-R6`. Section 20's Build -> Learn mode and section 21's course-to-project
+    // mapping. Six product edges and each is a boundary it reads a decided fact
+    // out of: `academic-critical-path` for section 16.1's AND/OR hypergraph and
+    // its satisfaction answer, so section 20.2's `concept requirements with
+    // AND/OR branches` is that crate's structure and that crate's solver and no
+    // path length exists here; `academic-gap` for the admitted
+    // `PrerequisiteEdge` a hyperedge member is built over, for `gap_bearing`,
+    // which refuses a whole-field requirement, and for the four-dimension
+    // `ConceptState` overlay the readiness comparison reads;
+    // `academic-knowledge-state` for `SufficiencyGap`, which is what `충분하고
+    // 최근인 evidence` means; `academic-repository-classification` for `P2-R4`'s
+    // `BenefitContract`, carried whole so the `trigger 기반 benefit` row shows
+    // the trigger and the trade-off that crate published; `academic-curriculum`
+    // for `CourseRevision`, `CourseOffering` and section 8.3's four standings,
+    // so a course's canonical coverage and an offering's actual coverage are
+    // that crate's values rather than a title read here; and `academic-domain`
+    // for the identities and the two readings a finding carries. The edges it
+    // does not have are the point: no `academic-freshness` as a product edge, so
+    // which concept is stale arrives as `P2-N3`'s band through `P2-N6`'s own
+    // predicate rather than as a threshold here; no `academic-store`, so a plan
+    // cannot reach the canonical writer and it adds no migration; and no
+    // `academic-worker`, no `academic-egress-boundary` and no
+    // `academic-model-run`, so nothing in its closure can launch a process,
+    // stage a payload or call a model.
+    "academic-build-learn": [
+      "academic-critical-path",
+      "academic-curriculum",
+      "academic-domain",
+      "academic-gap",
+      "academic-knowledge-state",
+      "academic-repository-classification",
+    ],
     // `P2-L5`'s student voice, diarization measurement and capture PII hold.
     // Five product edges and each is a boundary it resolves rather than
     // restates: `P2-L4`'s `RedactionPolicyRef`, whose digest that crate's
@@ -1290,6 +1322,39 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-lecture-document",
       "academic-model-run",
       "academic-transcription",
+    ],
+    // `P2-R6`. The acceptance suite plans over a real `P2-N5` `ConceptState`
+    // overlay, and a real overlay needs a real `P2-N2` eligibility and a real
+    // `P2-N3` band, so `crates/gap/tests/common/mod.rs` is included by `#[path]`
+    // and every edge that module's two chains need is a dev edge here — the same
+    // set `academic-critical-path` declares for the same reason.
+    // `academic-critical-path`, `academic-domain`, `academic-gap` and
+    // `academic-knowledge-state` are declared a second time for the `trybuild`
+    // reason `academic-scenario` gives below: a compile-fail case compiles
+    // against the crate under test plus that crate's dev-dependencies, and six
+    // of the eight cases name a domain value. `academic-repository-analysis`
+    // supplies the `SubjectId` `P2-R4`'s `BenefitDraft` takes, so the
+    // `LATER_SCALE` fixture's contract is built through that crate's own
+    // builder. `serde_json` is how the goal's, the constraint's, the decision's
+    // and the motivation display's key sets are compared as whole sets rather
+    // than field by field, and `uuid` derives the fixture identities from a
+    // digest of a tag rather than from a clock.
+    "academic-build-learn": [
+      "academic-capture",
+      "academic-consent",
+      "academic-critical-path",
+      "academic-domain",
+      "academic-freshness",
+      "academic-gap",
+      "academic-knowledge-state",
+      "academic-lecture-document",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-repository-analysis",
+      "academic-repository-correlation",
+      "academic-transcription",
+      "academic-untrusted-content",
     ],
     // `P2-L5`. `academic-retention` is a dev edge for the reason
     // `academic-consent` takes it as one: `GATE-38-026`'s statement and the
@@ -3142,6 +3207,14 @@ const SOCKET_CAPABLE_CLOSURES = {
   // crate spells no socket construct, opens nothing at all, reads no clock, and
   // every instant it holds arrived as a `TimestampMillis` argument.
   "academic-blind-spot": ["libc"],
+  // `P2-R6`. `libc` reaches it through `academic-domain` and through
+  // `academic-policy`'s bundled SQLite by way of `academic-curriculum` and
+  // `academic-repository-classification`, the same way it reaches every crate
+  // above those. The crate spells no socket construct, which is why its
+  // `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens nothing at
+  // all, reads no clock, and takes every goal, overlay, revision and offering as
+  // an argument.
+  "academic-build-learn": ["libc"],
   // `P2-L5`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
   // way of `P2-M1` and `P2-G2`, which arrive with `P2-L3`. The crate spells no
   // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
@@ -6118,6 +6191,57 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "trybuild",
     "uuid",
   ]);
+  // `P2-R6` adds one workspace path package, `academic-build-learn`, and admits
+  // no external crate: its product edges are `academic-critical-path`,
+  // `academic-curriculum`, `academic-domain`, `academic-gap`,
+  // `academic-knowledge-state`, `academic-repository-classification`, `serde`
+  // and `thiserror`, and its dev edges are the `P2-N5` fixture chain plus
+  // `serde_json`, `tempfile`, `trybuild` and `uuid`, all already in this lock
+  // through earlier receipts. The edge that needs a reason is the one it does
+  // **not** have: no `academic-store`, so a build-to-learn plan cannot reach the
+  // canonical writer and this task adds no migration -- a plan is recomputed
+  // from a goal, an overlay and a snapshot rather than stored beside them.
+  const {
+    receipt: buildLearnReceipt,
+    admitted: buildLearnAdmitted,
+    pathPackages: buildLearnPathPackages,
+  } = receiptFor("P2-R6");
+  assert.equal(buildLearnAdmitted.size, 0, "P2-R6 must admit no external crate");
+  assert.deepEqual([...buildLearnPathPackages], ["academic-build-learn@0.1.0"]);
+  assert.deepEqual(buildLearnReceipt.summary.npm_additions, []);
+  assert.equal(buildLearnReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(buildLearnReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(buildLearnReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof buildLearnReceipt.no_second_vocabulary_note, "string");
+  assert.deepEqual(Object.keys(buildLearnReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-critical-path",
+    "academic-curriculum",
+    "academic-domain",
+    "academic-gap",
+    "academic-knowledge-state",
+    "academic-repository-classification",
+  ]);
+  assert.deepEqual(Object.keys(buildLearnReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-consent",
+    "academic-critical-path",
+    "academic-domain",
+    "academic-freshness",
+    "academic-gap",
+    "academic-knowledge-state",
+    "academic-lecture-document",
+    "academic-model-run",
+    "academic-policy",
+    "academic-repository",
+    "academic-repository-analysis",
+    "academic-repository-correlation",
+    "academic-transcription",
+    "academic-untrusted-content",
+    "serde_json",
+    "tempfile",
+    "trybuild",
+    "uuid",
+  ]);
   // `P2-P2` adds one workspace path package, `academic-deletion`, and admits no
   // external crate: its product edges are `academic-consent`, `academic-domain`,
   // `academic-evidence-center`, `academic-proposal`, `academic-retention`,
@@ -7047,10 +7171,29 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
           },
         ]
       : [];
+    // `P2-R6` gains the same two owners and for the same reasons, because its
+    // fixture chain is `P2-N5`'s reached by `#[path]` the way `P2-N6`'s is:
+    // `tempfile` is the directory a real `P2-L2` journal is written into on the
+    // way to the `ConceptState` overlay the readiness comparison reads, and
+    // `serde_json` compares the goal's, the constraint's, the decision's and the
+    // motivation display's key sets as whole sets rather than field by field.
+    // `trybuild` and `uuid` are on the Phase 1 receipt rather than this one.
+    const r6BuildLearnUse = ["tempfile", "serde_json"].includes(admission.name)
+      ? [
+          {
+            package: "academic-build-learn",
+            kind: "dev",
+            target: null,
+            default_features: true,
+            features: [],
+          },
+        ]
+      : [];
     const expectedUses = [
       ...admission.uses,
       ...n5GapUse,
       ...n6CriticalPathUse,
+      ...r6BuildLearnUse,
       ...n3FreshnessUse,
       ...n7BlindSpotUse,
       ...l5StudentVoiceUse,

@@ -1,0 +1,13 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_selection_cannot_be_approved_before_the_simulation.rs:15:30
+   |
+15 |     SelectionApproved::after(explained, decision, alternative)
+   |     ------------------------ ^^^^^^^^^ expected `SimulationPassed`, found `ExplainedByHand`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> src/learning.rs
+   |
+   |     pub const fn after(
+   |                  ^^^^^

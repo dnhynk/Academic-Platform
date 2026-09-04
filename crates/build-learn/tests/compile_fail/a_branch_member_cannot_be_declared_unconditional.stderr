@@ -1,0 +1,16 @@
+error[E0061]: this function takes 3 arguments but 4 arguments were supplied
+  --> tests/compile_fail/a_branch_member_cannot_be_declared_unconditional.rs:15:5
+   |
+15 |     ConceptRequirement::always(concept, kind, serves, RequirementCondition::Unconditional)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^                        ----------------------------------- unexpected argument #4 of type `RequirementCondition`
+   |
+note: associated function defined here
+  --> src/branch.rs
+   |
+   |     pub fn always(
+   |            ^^^^^^
+help: remove the extra argument
+   |
+15 -     ConceptRequirement::always(concept, kind, serves, RequirementCondition::Unconditional)
+15 +     ConceptRequirement::always(concept, kind, serves)
+   |

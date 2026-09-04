@@ -1,0 +1,15 @@
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+  --> tests/compile_fail/a_learning_item_has_no_evidenceless_constructor.rs:12:5
+   |
+12 |     LearningItem::plan(id, concept, checkpoint)
+   |     ^^^^^^^^^^^^^^^^^^              ---------- argument #3 of type `EvidenceTask` is missing
+   |
+note: associated function defined here
+  --> src/learning.rs
+   |
+   |     pub const fn plan(
+   |                  ^^^^
+help: provide the argument
+   |
+12 |     LearningItem::plan(id, concept, /* EvidenceTask */, checkpoint)
+   |                                     +++++++++++++++++++

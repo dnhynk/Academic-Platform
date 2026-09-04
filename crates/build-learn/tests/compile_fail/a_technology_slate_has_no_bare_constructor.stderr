@@ -1,0 +1,11 @@
+error[E0599]: no associated function or constant named `of` found for struct `TechnologySlate` in the current scope
+  --> tests/compile_fail/a_technology_slate_has_no_bare_constructor.rs:10:22
+   |
+10 |     TechnologySlate::of(vec!["OT".to_owned(), "CRDT".to_owned()])
+   |                      ^^ associated function or constant not found in `TechnologySlate`
+   |
+note: if you're trying to build a new `TechnologySlate`, consider using `TechnologySlate::under` which returns `TechnologySlate`
+  --> src/technology.rs
+   |
+   |     pub fn under(goal: &ProjectGoal) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
