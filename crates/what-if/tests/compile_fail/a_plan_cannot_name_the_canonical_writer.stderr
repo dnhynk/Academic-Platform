@@ -1,0 +1,11 @@
+error[E0433]: cannot find module or crate `academic_store` in this scope
+ --> tests/compile_fail/a_plan_cannot_name_the_canonical_writer.rs:9:5
+  |
+9 | use academic_store::accept::AcceptanceStore;
+  |     ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `academic_store`
+  |
+help: there is a crate or module with a similar name
+  |
+9 - use academic_store::accept::AcceptanceStore;
+9 + use academic_record::accept::AcceptanceStore;
+  |

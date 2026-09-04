@@ -727,10 +727,20 @@ const CRATE_PATH_NAME: &str = "academic_review";
 /// Every file outside `crates/review/` whose code names one of this crate's
 /// public types.
 ///
-/// Empty: no other package depends on `academic-review` by any edge kind, so a
-/// file elsewhere that wired these types into a fetcher would fail here as an
-/// extra key before it failed anywhere else.
-const FOREIGN_USERS: &[&str] = &[];
+/// `P2-N8` is the first package to depend on `academic-review`, and it names
+/// exactly one of these types plus the error: section 22.4 requires a projected
+/// workload to be displayed with its sample count, its recency, its selection
+/// bias and its instructor and term mix, and `BiasDisclosure` is the value that
+/// carries all six of section 29.5's dimensions. A file elsewhere that wired
+/// any of these types into a fetcher still fails here as an extra key before it
+/// fails anywhere else.
+const FOREIGN_USERS: &[&str] = &[
+    "crates/what-if/src/error.rs",
+    "crates/what-if/src/inputs.rs",
+    "crates/what-if/src/projected.rs",
+    "crates/what-if/tests/support/mod.rs",
+    "crates/what-if/tests/what_if.rs",
+];
 
 /// This crate's public type names, for the reverse search.
 ///

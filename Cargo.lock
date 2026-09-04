@@ -856,6 +856,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-what-if"
+version = "0.1.0"
+dependencies = [
+ "academic-critical-path",
+ "academic-curriculum",
+ "academic-domain",
+ "academic-ingestion",
+ "academic-model-run",
+ "academic-offering",
+ "academic-proposal",
+ "academic-record",
+ "academic-review",
+ "academic-scenario",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-worker"
 version = "0.1.0"
 dependencies = [

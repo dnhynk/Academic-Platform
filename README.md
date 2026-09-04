@@ -71,6 +71,7 @@ cargo test -p academic-competency --test compile_fail --locked --offline
 cargo test -p academic-role-profile --test compile_fail --locked --offline
 cargo test -p academic-readiness --test compile_fail --locked --offline
 cargo test -p academic-home --test compile_fail --locked --offline
+cargo test -p academic-what-if --test compile_fail --locked --offline
 cargo clippy -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection -- -D warnings
 cargo test -p academic-vault --all-targets --locked --offline --features aead-objects,phase2-fault-injection
 cargo clippy -p academic-retention --all-targets --locked --offline --features rotation-engine,phase2-fault-injection -- -D warnings
@@ -655,6 +656,50 @@ requires the re-run to refuse when one integer of the frozen inputs is moved.
 What that pair of observations closes, what the six parts are, and what section
 32.10 names that this build does not write are in
 [the graduation export contract](docs/contracts/graduation-export.md).
+
+`P2-N8` adds `academic-what-if`, section 22's what-if semester simulator. It is
+the screen a user asks *what happens if I take this*, so the contract behind
+every type in it is one sentence: **an assumption must not leak into the
+record.**
+
+The two lanes are separate in the data type and in the UI section, which is what
+section 22.1 asks for. `DeterministicResults` and `ProjectedResults` share no
+field, no constructor and no conversion, and `SectionView`'s two arms borrow
+*different types*, so a renderer that put a projection under the deterministic
+heading would have to hand the deterministic arm a value it has no field for.
+Section 22.2's seven bullets and section 22.3's seven are read back out of
+`PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and compared against the
+two lane enumerations in both directions, in the document's own order.
+
+The prohibitions are absences rather than checks. There is no edge of any kind
+to `academic-store` or `academic-store-platform`, so the canonical writer is not
+nameable here at all. There is no edge of any kind to `academic-audit`, so the
+hypothetical graduation mode has no route to `P2-U3`'s three-gate `DETERMINATE`
+rule — `a_plan_cannot_name_the_graduation_verdict` is an unresolved module, not a
+refused call. The deterministic lane takes `P2-U5`'s `ConfirmedSeat`, whose one
+producer is `ConfirmedStanding::seat`, so an official schedule conflict cannot be
+computed over a predicted offering. `RuleContribution::under` takes the
+completion assumption **by value** and `GpaScenario::under` refuses a stated-grade
+set that leaves any choice unstated, so section 22.2's two conditions are
+arguments rather than flags. And the crate spells no mastery word at all, which
+is how `P2-N3` held section 1's fifth invariant and how it is held here.
+
+The three absence claims are proved by exhaustion, with no forbidden-name list of
+this crate's own invention anywhere in the suite: the whole set of 153 declared
+field positions, the whole set of 49 external import leaves, and the whole set of
+24 functions section 22.4's module declares, each compared against a reviewed
+inventory in both directions. The mastery vocabulary those are compared against is
+**derived from `P2-N2`'s own `ladder.rs`** and `academic-domain`'s own
+`MasteryLevel`, and `P2-U3`'s verdict vocabulary from that crate's own
+`verdict.rs`, so a rung or a witness added there extends the guard without anybody
+editing this suite; each has a control that requires the same reader to find those
+names where they do live.
+
+`INV-C-009` closes with this task. The crate adds no external package to
+`Cargo.lock`, adds no migration, and opens and closes no section 38 gate. What it
+does and does not claim, and the two readings of the design document it records
+rather than reconciles, are in
+[the what-if simulator contract](docs/contracts/what-if-simulator.md).
 
 
 ## Operating a throwaway Phase 1 profile

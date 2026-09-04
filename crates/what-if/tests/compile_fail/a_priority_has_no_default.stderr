@@ -1,0 +1,11 @@
+error[E0599]: no associated function or constant named `default` found for struct `DimensionPriority` in the current scope
+  --> tests/compile_fail/a_priority_has_no_default.rs:10:40
+   |
+10 |     let _priority = DimensionPriority::default();
+   |                                        ^^^^^^^ associated function or constant not found in `DimensionPriority`
+   |
+note: if you're trying to build a new `DimensionPriority`, consider using `DimensionPriority::of` which returns `Result<DimensionPriority, WhatIfError>`
+  --> src/comparison.rs
+   |
+   |     pub fn of(order: Vec<ComparisonDimension>) -> Result<Self, WhatIfError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

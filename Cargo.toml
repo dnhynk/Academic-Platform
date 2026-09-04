@@ -61,6 +61,7 @@ members = [
   "crates/transcription",
   "crates/untrusted-content",
   "crates/vault",
+  "crates/what-if",
   "crates/worker",
 ]
 resolver = "3"

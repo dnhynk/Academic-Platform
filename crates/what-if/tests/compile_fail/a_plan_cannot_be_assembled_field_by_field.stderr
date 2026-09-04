@@ -1,0 +1,29 @@
+warning: unreachable expression
+  --> tests/compile_fail/a_plan_cannot_be_assembled_field_by_field.rs:12:16
+   |
+11 |         id: todo!(),
+   |             ------- any code following this expression is unreachable
+12 |         basis: todo!(),
+   |                ^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: fields `id`, `basis`, `choices`, `assumptions`, `deterministic`, `projections` and `inputs_digest` of struct `PlanScenario` are private
+  --> tests/compile_fail/a_plan_cannot_be_assembled_field_by_field.rs:11:9
+   |
+10 |     let _plan = PlanScenario {
+   |                 ------------ in this type
+11 |         id: todo!(),
+   |         ^^ private field
+12 |         basis: todo!(),
+   |         ^^^^^ private field
+13 |         choices: todo!(),
+   |         ^^^^^^^ private field
+14 |         assumptions: todo!(),
+   |         ^^^^^^^^^^^ private field
+15 |         deterministic: todo!(),
+   |         ^^^^^^^^^^^^^ private field
+16 |         projections: todo!(),
+   |         ^^^^^^^^^^^ private field
+17 |         inputs_digest: todo!(),
+   |         ^^^^^^^^^^^^^ private field
