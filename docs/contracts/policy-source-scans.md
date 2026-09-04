@@ -2415,7 +2415,7 @@ disconnected it instead of narrowing it, and nothing else in the matrix would
 have shown that, because every other case is a byte buffer the classification
 reaches.
 
-### What closing `S-18` measured
+## What the `P2-RF15` repair holds
 
 Deleting each of the thirty-eight registrations in turn and running the suite is
 the whole-set form of the sample the rebase section above took. The count is on
