@@ -361,6 +361,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-home"
+version = "0.1.0"
+dependencies = [
+ "academic-consent",
+ "academic-domain",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-indexer"
 version = "0.1.0"
 dependencies = [
