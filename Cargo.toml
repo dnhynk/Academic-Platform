@@ -37,6 +37,7 @@ members = [
   "crates/lecture-document",
   "crates/ledger",
   "crates/model-run",
+  "crates/next-lecture",
   "crates/offering",
   "crates/portability",
   "crates/policy",

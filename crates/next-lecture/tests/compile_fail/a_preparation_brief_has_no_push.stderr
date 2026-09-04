@@ -1,0 +1,5 @@
+error[E0599]: no method named `push` found for mutable reference `&mut PreparationBrief` in the current scope
+ --> tests/compile_fail/a_preparation_brief_has_no_push.rs:9:11
+  |
+9 |     brief.push(extra);
+  |           ^^^^ method not found in `&mut PreparationBrief`

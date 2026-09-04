@@ -426,6 +426,30 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // it compares a recorded transmission against are the broker's, and the
     // namespace discriminator it keys on is that crate's column.
     "academic-model-run": ["academic-domain", "academic-policy"],
+    // `P2-L6`. Section 12.7's next-lecture preparation. Five product edges, each
+    // a boundary it reads a fact out of rather than a vocabulary it restates:
+    // `academic-untrusted-content` for the `P2-G5` `Proposal` every extracted
+    // claim is built from, `academic-gap` for the `P2-N5` descent the comparison
+    // against the prerequisite graph *is*, `academic-lecture-document` for the
+    // `P2-L4` node section 12.7's seventh place cites, `academic-ingestion` for
+    // `P2-U6`'s validated calendar date section 27.1 requires beside each
+    // material, and `academic-domain` for the `AI_INFERRED` standing and the
+    // tier that carries no prerequisite of its own.
+    //
+    // It has **no** edge to `academic-knowledge-state`, which is what
+    // `an_extracted_claim_is_never_confirmed` reads out of the public signatures
+    // rather than asserts: no function here can return the evidence a mastery
+    // promotion is read from. No `academic-store`, so no preparation reaches the
+    // canonical writer and no migration is added; no `academic-worker` and no
+    // `academic-egress-boundary` as a declared edge, so nothing here can launch
+    // a process or stage a payload.
+    "academic-next-lecture": [
+      "academic-domain",
+      "academic-gap",
+      "academic-ingestion",
+      "academic-lecture-document",
+      "academic-untrusted-content",
+    ],
     // `P2-U5`. Section 8.3's four offering statuses and the calibrated forecast
     // behind them. Five product edges, each a boundary it reuses rather than
     // rebuilds: `academic-curriculum` for `P2-U1`'s `OfferingStatus`, which is
@@ -1116,6 +1140,34 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-ledger",
       "academic-model-run",
       "academic-repository",
+    ],
+    // `P2-L6`. Thirteen dev edges and no fourteenth. Eleven of them are what
+    // `crates/knowledge-state/tests/common/mod.rs` needs, included here by
+    // `#[path]` through `P2-N5`'s own fixture module rather than restated, so
+    // the lecture a claim's exposure evidence rests on is a `P2-L4` document
+    // that a real `P2-L2` capture and a real `P2-L3` run produced. The two this
+    // suite adds are `academic-freshness`, whose `project` builds the band a
+    // `ConceptReading` carries, and `academic-home`, whose `LOWEST_BRIEF` and
+    // `HIGHEST_BRIEF` `morning_home_contract` compares its own bound against.
+    // `academic-home` is a **dev** edge on purpose: the claim is that two crates
+    // offering the same card cannot drift apart, and a product edge would make
+    // one crate's bound the other's by construction rather than by comparison.
+    // `academic-domain` is declared a second time for the `trybuild` reason
+    // `academic-scenario` gives below.
+    "academic-next-lecture": [
+      "academic-capture",
+      "academic-consent",
+      "academic-domain",
+      "academic-freshness",
+      "academic-home",
+      "academic-knowledge-state",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-repository-analysis",
+      "academic-repository-classification",
+      "academic-repository-correlation",
+      "academic-transcription",
     ],
     "academic-requirement": ["academic-domain"],
     "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
@@ -3090,6 +3142,14 @@ const SOCKET_CAPABLE_CLOSURES = {
   // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it runs no
   // connector and takes every official reading as a value.
   "academic-offering": ["libc"],
+  // `P2-L6`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `academic-untrusted-content` and again by way of `academic-gap`. The
+  // crate spells no socket construct, which is why its `SOCKET_ALLOWANCE` entry
+  // is absent rather than empty; it ships no transport, opens no file and reads
+  // no clock, and `no_clock_socket_or_file_reaches_this_crate` in
+  // `crates/next-lecture/tests/next_lecture_scans.rs` compares its whole `use`,
+  // path and macro inventories against pinned sets in both directions.
+  "academic-next-lecture": ["libc"],
   "academic-ledger": ["libc"],
   "academic-policy": ["libc"],
   "academic-portability": ["libc", "rustix", "windows-sys"],
@@ -6328,6 +6388,58 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "trybuild",
   ]);
 
+  // `P2-L6` adds one workspace path package, `academic-next-lecture`, and
+  // admits no external crate. It is section 12.7's next-lecture preparation:
+  // five product edges, each a boundary it reads a fact out of rather than a
+  // vocabulary it restates, and thirteen dev edges of which eleven are the
+  // fixture chain it reaches through `P2-N5`'s own module by `#[path]`.
+  // `academic-home` is the dev edge that needs a reason and the receipt carries
+  // it: `P2-X2` offers the same morning card, so the `1-3` bound is compared
+  // between two crates after being parsed out of two design-document sentences,
+  // and a product edge would make one crate's bound the other's by construction
+  // rather than by comparison. There is deliberately no `academic-knowledge-state`
+  // product edge, which is what `an_extracted_claim_is_never_confirmed` reads out
+  // of the public signatures rather than asserts.
+  const {
+    receipt: nextLectureReceipt,
+    admitted: nextLectureAdmitted,
+    pathPackages: nextLecturePathPackages,
+  } = receiptFor("P2-L6");
+  assert.equal(nextLectureAdmitted.size, 0, "P2-L6 must admit no external crate");
+  assert.deepEqual([...nextLecturePathPackages], ["academic-next-lecture@0.1.0"]);
+  assert.deepEqual(nextLectureReceipt.summary.npm_additions, []);
+  assert.equal(nextLectureReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(nextLectureReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(nextLectureReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof nextLectureReceipt.no_second_ladder_note, "string");
+  assert.deepEqual(Object.keys(nextLectureReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-gap",
+    "academic-ingestion",
+    "academic-lecture-document",
+    "academic-untrusted-content",
+  ]);
+  assert.deepEqual(Object.keys(nextLectureReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-consent",
+    "academic-domain",
+    "academic-freshness",
+    "academic-home",
+    "academic-knowledge-state",
+    "academic-model-run",
+    "academic-policy",
+    "academic-repository",
+    "academic-repository-analysis",
+    "academic-repository-classification",
+    "academic-repository-correlation",
+    "academic-transcription",
+    "serde_json",
+    "tempfile",
+    "trybuild",
+    "uuid",
+  ]);
+  assert.deepEqual(nextLectureReceipt.vendored_data, []);
+
   // `P2-N6` adds one workspace path package, `academic-critical-path`, and
   // admits no external crate: its product edges are `academic-curriculum`,
   // `academic-domain`, `academic-freshness`, `academic-gap`, `serde` and
@@ -7141,6 +7253,23 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     // constructor's checks. `trybuild` and `uuid` are on the Phase 1 receipt
     // rather than this one, so only `tempfile` and `serde_json` gain an owner
     // here.
+    // `P2-L6`. Its acceptance suite reaches `P2-N5`'s fixture module by
+    // `#[path]`, which reaches `P2-N2`'s the same way, so it drives the same
+    // real capture and writes a real journal into a temporary directory.
+    // `serde_json` is a declared dev edge of the package and gains an owner
+    // here for that reason; `trybuild` and `uuid` are on the Phase 1 receipt
+    // rather than this one.
+    const l6NextLectureUse = ["tempfile", "serde_json"].includes(admission.name)
+      ? [
+          {
+            package: "academic-next-lecture",
+            kind: "dev",
+            target: null,
+            default_features: true,
+            features: [],
+          },
+        ]
+      : [];
     const n5GapUse = ["tempfile", "serde_json"].includes(admission.name)
       ? [
           {
@@ -7192,6 +7321,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     const expectedUses = [
       ...admission.uses,
       ...n5GapUse,
+      ...l6NextLectureUse,
       ...n6CriticalPathUse,
       ...r6BuildLearnUse,
       ...n3FreshnessUse,
