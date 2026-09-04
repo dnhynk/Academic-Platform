@@ -21,8 +21,8 @@ use academic_offering::{
     AbstentionReason, CourseHistory, CourseLifecycle, DecisionStanding, DeterminatePlan,
     FeatureFamily, FeatureVector, ForecastPolicy, ForecastVerdict, NoticeEffect, ObservationWindow,
     Offered, OfferingClaimSet, OfferingError, OfferingStanding, OfficialTermReading, PlanOutcome,
-    PlanRefusal, RecentNotice, TermEvaluation, TermObservation, confirmation_claim, corpus,
-    forecast, forecast_claim, metrics::EvaluationEntry, resolve,
+    PlanRefusal, RecentNotice, TermEvaluation, TermObservation, announcement_claim,
+    confirmation_claim, corpus, forecast, forecast_claim, metrics::EvaluationEntry, resolve,
 };
 use academic_record::term::{Semester, TermKey};
 use support::TestResult;
@@ -309,11 +309,41 @@ fn historical_likely_limits() -> TestResult {
     );
 
     // And an official future reading takes the standing away from the
-    // forecast, which is section 8.3's *미래 공식 공지 없음* requirement.
+    // forecast, which is section 8.3's *미래 공식 공지 없음* requirement. The
+    // row has **two** conjuncts and this is the second: a reproducible pattern
+    // is not enough on its own.
     let official =
         OfficialTermReading::Confirmed(support::confirmation("M9001.000100", Vec::new())?);
     let with_official = support::resolve_case_with("every_spring", &official)?;
     assert_eq!(with_official.standing().status(), OfferingStatus::Confirmed);
+
+    // A notice that the course *will* run, published where the department
+    // publishes offering changes rather than in the registration system, is
+    // also a 미래 공식 공지 -- and it does not reach `CONFIRMED`, because that
+    // row requires a listing that was recently verified and an announcement is
+    // neither. So the same pattern that read `HISTORICALLY_LIKELY` above now
+    // reads `UNCERTAIN`, and says which notice took the decision.
+    let announced = OfficialTermReading::Announced(support::announcement("M9001.000100")?);
+    let with_notice = support::resolve_case_with("every_spring", &announced)?;
+    assert_eq!(with_notice.standing().status(), OfferingStatus::Uncertain);
+    let OfferingStanding::Uncertain(uncertain) = with_notice.standing() else {
+        return Err("an announced offering is not UNCERTAIN".into());
+    };
+    assert_eq!(
+        uncertain.reason(),
+        AbstentionReason::AnnouncedButNotVerified
+    );
+    assert_eq!(
+        uncertain
+            .announced()
+            .map(|found| found.announcement().source()),
+        Some(SourceCategory::DepartmentPage)
+    );
+    // The probability the notice overrode stays on the record.
+    assert!(uncertain.scored().is_some());
+    // And no seat, so the plan still refuses it: an announcement is not a
+    // timetable.
+    assert!(with_notice.standing().seat().is_none());
     Ok(())
 }
 
@@ -950,6 +980,47 @@ fn prediction_official_parallel() -> TestResult {
         after.prediction_standing().map(DecisionStanding::as_str),
         Some("SUPERSEDED_FOR_DECISION")
     );
+
+    // Section 8.3's *별도 official Claim을 활성화한다* holds for an
+    // announcement too: the notice mints its own official claim, the
+    // prediction is unchanged, and the claim cannot be backdated past the
+    // notice that made it.
+    let notice = support::announcement("M9001.000100")?;
+    let announced = announcement_claim(
+        support::claim(6005)?,
+        &subject,
+        &notice,
+        vec![support::evidence(6104)?],
+    )?;
+    assert_eq!(
+        announced.epistemic_status,
+        EpistemicStatus::OfficialConfirmed
+    );
+    assert!(announced.confidence.is_none());
+    let after_notice =
+        OfferingClaimSet::predicted(prediction.clone()).official_arrived(announced.clone());
+    assert_eq!(after_notice.prediction(), Some(&prediction));
+    assert_eq!(
+        after_notice.prediction_standing(),
+        Some(DecisionStanding::SupersededForDecision { by: announced.id })
+    );
+    let backdated = academic_offering::ClaimSubject {
+        subject_entity_id: subject.subject_entity_id,
+        scope_id: subject.scope_id,
+        valid_time: academic_domain::ValidInterval::new(
+            TimestampMillis::new(corpus::CORPUS_NOW_MILLIS - 3_600_000),
+            None,
+        )?,
+    };
+    assert!(matches!(
+        announcement_claim(
+            support::claim(6006)?,
+            &backdated,
+            &notice,
+            vec![support::evidence(6105)?],
+        ),
+        Err(OfferingError::ClaimPredatesItsNotice)
+    ));
 
     // And the forecast itself is byte-identical with and without the official
     // reading beside it: the standing moved, the prediction did not.

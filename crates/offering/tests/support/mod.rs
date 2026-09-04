@@ -18,8 +18,8 @@ use academic_ingestion::{ConnectorId, SourceCategory};
 use academic_model_run::CalibrationRegistry;
 use academic_offering::{
     CancellationNotice, ClaimSubject, ConfirmationEvidence, CourseHistory, ForecastPolicy,
-    ObservationWindow, OfferingError, OfficialListing, OfficialTermReading, Resolution, corpus,
-    resolve,
+    ObservationWindow, OfferingAnnouncement, OfferingError, OfficialListing, OfficialTermReading,
+    Resolution, corpus, resolve,
 };
 use academic_record::{
     plan::{PlanScenario, PlanScenarioChoice},
@@ -182,6 +182,19 @@ pub fn cancellation(course: &str) -> Result<CancellationNotice, Box<dyn Error>> 
         SourceCategory::RegistrationSystem,
         connector("sugang.snu.ac.kr")?,
         TimestampMillis::new(corpus::CORPUS_NOW_MILLIS - 1_800_000),
+        spring_2026()?,
+        course_code(course)?,
+    )?)
+}
+
+/// An official notice that one course will run in 2026 spring, published where
+/// the department publishes offering changes rather than in the registration
+/// system.
+pub fn announcement(course: &str) -> Result<OfferingAnnouncement, Box<dyn Error>> {
+    Ok(OfferingAnnouncement::official(
+        SourceCategory::DepartmentPage,
+        connector("cse.snu.ac.kr")?,
+        TimestampMillis::new(corpus::CORPUS_NOW_MILLIS - 2_700_000),
         spring_2026()?,
         course_code(course)?,
     )?)

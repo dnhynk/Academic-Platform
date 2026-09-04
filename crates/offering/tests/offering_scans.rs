@@ -248,6 +248,14 @@ fn the_four_standings_are_section_8_3s_own() -> TestResult {
         assert_eq!(row.ui_copy, *ui_copy, "row {}'s UI copy", index + 1);
         assert_eq!(row.planner, *planner, "row {}'s planner cell", index + 1);
         assert!(!row.requirement.is_empty());
+        // The likely row's requirement is a conjunction and both halves are
+        // implemented: a reproducible pattern, **and** no future official
+        // notice. The second is `OfficialTermReading::Announced`, and a row
+        // that stopped writing it would fail here.
+        if *status == OfferingStatus::HistoricallyLikely {
+            assert!(row.requirement.contains("재현 가능한 패턴"));
+            assert!(row.requirement.contains("미래 공식 공지 없음"));
+        }
     }
 
     // The other direction: nothing this crate writes is absent from the table.
@@ -393,7 +401,12 @@ fn the_abstention_reasons_are_section_8_3s_own() -> TestResult {
         vec![
             "FORECAST_POLICY_ABSENT",
             "NO_FRESH_CALIBRATION_DATASET",
-            "BELOW_RECORDED_LIKELY_FLOOR"
+            "BELOW_RECORDED_LIKELY_FLOOR",
+            // Not a ground the `UNCERTAIN` row names: it is the
+            // `HISTORICALLY_LIKELY` row losing its second conjunct, 미래 공식
+            // 공지 없음, which lands the offering here because no listing has
+            // been verified.
+            "ANNOUNCED_BUT_NOT_VERIFIED"
         ]
     );
 

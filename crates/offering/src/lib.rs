@@ -89,7 +89,7 @@ pub mod standing;
 
 pub use claims::{
     ClaimSubject, DecisionStanding, OFFERING_STATUS_PREDICATE, OfferingAssertion, OfferingClaimSet,
-    confirmation_claim, forecast_claim,
+    announcement_claim, confirmation_claim, forecast_claim,
 };
 pub use error::OfferingError;
 pub use feature::{
@@ -108,10 +108,10 @@ pub use observation::{
 pub use plan::{DeterminatePlan, IndeterminatePlan, PlanOutcome, PlanRefusal};
 pub use policy::{ForecastPolicy, VerificationRecency};
 pub use source::{
-    CancellationNotice, ConfirmationEvidence, CrossSourceDisagreement, OfficialListing,
-    OfficialTermReading,
+    CancellationNotice, ConfirmationEvidence, CrossSourceDisagreement, OfferingAnnouncement,
+    OfficialListing, OfficialTermReading,
 };
 pub use standing::{
-    CancelledStanding, ConfirmedSeat, ConfirmedStanding, HistoricallyLikelyStanding,
-    OfferingStanding, Resolution, UncertainStanding, resolve,
+    AnnouncedStanding, CancelledStanding, ConfirmedSeat, ConfirmedStanding,
+    HistoricallyLikelyStanding, OfferingStanding, Resolution, UncertainStanding, resolve,
 };

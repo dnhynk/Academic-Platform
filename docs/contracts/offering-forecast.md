@@ -68,6 +68,51 @@ That is `P2-N2`'s *`AutomaticLevel` has no `Fluent`*, `P2-R5`'s
 witness is `INCOMPLETE`* and `P2-U2`'s *two-attestation gate is a type*, applied
 to a fourth thing.
 
+## `HISTORICALLY_LIKELY` is a conjunction, and both halves are implemented
+
+The row's 요건 cell is *여러 과거 학기의 재현 가능한 패턴, **미래 공식 공지
+없음***. Two conditions, not one.
+
+The first is the forecast: a seasonal window at or over the recorded minimum,
+scored, and calibrated at or above the recorded floor. The second is
+`OfficialTermReading::Announced` — an official notice that the course **will**
+run in the forecast term, from a source that publishes offering changes.
+
+It does not reach `CONFIRMED`. That row requires the offering to *exist* in the
+term's listing **and** to have been *recently verified*, and an announcement is
+neither: there is no timetable, no capacity and no verification instant. So the
+standing is `UNCERTAIN` — whose planner cell, 경고와 대체 경로 요구, is exactly
+what a course nobody can timetable yet needs — with
+`AbstentionReason::AnnouncedButNotVerified` naming why and
+`UncertainStanding::announced` carrying which official source said what. The
+calibrated probability the notice overrode is kept on the standing, so next
+term's calibration can still read it.
+
+§8.3's own sentence says what the notice does instead of promoting the
+prediction: *공식 향후 공지가 생기면 예측을 사실로 "승격"하지 않고 별도 official
+Claim을 활성화한다*. `announcement_claim` is that separate claim, and the notice
+bounds it: an official claim that applied before the notice announcing it would
+be an official fact backdated past its own source, and
+`OfferingError::ClaimPredatesItsNotice` refuses one. That is also why the
+announcement is a parameter at all — a parameter that reached no part of the
+output would be the defect `offering_feature_contract` refuses one level down,
+and the first draft of that function had exactly it.
+
+### Why the 수강편람 does not confirm
+
+The `CONFIRMED` row's own words admit two sources: *해당 학기 공식
+수강편람/수강신청 시스템에 존재하고 최근 확인*. The paragraph under the table is
+narrower and more specific — *공식 개설 확인은 수강신청 시스템의 최신 강좌
+상세를 기준으로 하고, CSE 홈페이지·수강편람은 교차 출처로 사용한다* — and adds
+that the bulletin can change after its own compilation date, so the registration
+system must be re-checked.
+
+**The two sentences are in tension and this crate follows the narrower one**,
+which is the fail-closed direction: a bulletin entry is an announcement, not a
+confirmation. It produces an official claim and produces no seat. Recorded here
+rather than resolved silently, because the requirement cell does name 수강편람
+and a later reader will notice.
+
 ## Seven feature families, and each one measured
 
 Section 8.3: *역사 기반 예측은 최근 N개 학기의 단순 다수결이 아니다. 계절성(1/2학기),
@@ -382,13 +427,13 @@ three halves they rest on:
 | Test | Requirement | What it holds |
 |---|---|---|
 | `offering_confirmed_contract` | `REQ-08-024` | only a fresh registration reading listing a section confirms; the seat carries the real timetable and capacity; a stale reading and an empty reading are each refused by name |
-| `historical_likely_limits` | `REQ-08-025` | a six-term seasonal pattern is `HISTORICALLY_LIKELY` in §8.3's words, the number shown names its dataset, there is no seat, the plan refuses it, and an official reading takes the standing away |
+| `historical_likely_limits` | `REQ-08-025` | a six-term seasonal pattern is `HISTORICALLY_LIKELY` in §8.3's words, the number shown names its dataset, there is no seat, the plan refuses it, and **both** of the row's conjuncts hold: a confirmation takes the standing away, and so does an announcement that reaches no confirmation |
 | `uncertain_offering_flow` | `REQ-08-026` | §8.3's three grounds each reach `UNCERTAIN` and name themselves; the refusal carries the alternative path; an absent policy and a stale dataset each abstain by name |
 | `cancelled_offering_contract` | `REQ-08-027` | a cancellation makes a new plan impossible and leaves the already-committed one byte-identical; a notice from a level that publishes no offering changes is refused |
 | `offering_source_authority` | `REQ-08-028` | every `SourceCategory` through the one constructor; a stale *and* a newer cross source each disclosed and neither promoted |
 | `offering_feature_contract` | `REQ-08-029` | seven families, one pair each, each moving the score and only its own contribution; the majority-vote refutation |
 | `course_forecast_metadata` | `REQ-08-030` | course, calibrated probability with its dataset, and `prediction_metadata` v1 with the exact disclosed instants |
-| `prediction_official_parallel` | `REQ-08-031`, `REQ-30-002` | two claims, two statuses, prediction bytes unchanged, forecast bytes unchanged, `SUPERSEDED_FOR_DECISION` |
+| `prediction_official_parallel` | `REQ-08-031`, `REQ-30-002` | two claims, two statuses, prediction bytes unchanged, forecast bytes unchanged, `SUPERSEDED_FOR_DECISION`; an announcement mints its own official claim and cannot be backdated past its notice |
 | `zero_observation_semantics` | `REQ-08-032` | two never-observed cases abstain; the metadata cannot be built at all; an unread term and an empty term are different values |
 | `term_forecast_metrics` | `REQ-08-033` | three metrics against the oracle, missing outcomes reported, no Brier over an empty denominator, empty evaluation refused |
 | `offering_epistemic_split` | `REQ-04-011`, `REQ-APA-011` | four distinct statuses, four distinct UI strings, four distinct planner cells, one seat among them |

@@ -70,7 +70,11 @@ use academic_domain::{
     EvidenceId, PredicateId, ScopeId, ValidInterval,
 };
 
-use crate::{error::OfferingError, forecast::ScoredForecast, source::ConfirmationEvidence};
+use crate::{
+    error::OfferingError,
+    forecast::ScoredForecast,
+    source::{ConfirmationEvidence, OfferingAnnouncement},
+};
 
 /// The predicate an offering-status claim is asserted under.
 pub const OFFERING_STATUS_PREDICATE: &str = "academic.offering.status";
@@ -176,6 +180,54 @@ pub fn confirmation_claim(
         subject_entity_id: subject.subject_entity_id,
         predicate_id: PredicateId::parse(OFFERING_STATUS_PREDICATE)?,
         object: ClaimObject::Text(assertion.as_str().to_owned()),
+        scope_id: subject.scope_id,
+        authority_class: AuthorityClass::Official,
+        epistemic_status: EpistemicStatus::OfficialConfirmed,
+        confidence: None,
+        prediction_metadata: None,
+        valid_time: subject.valid_time,
+        evidence_ids,
+    };
+    claim.validate()?;
+    Ok(claim)
+}
+
+/// Builds the `OFFICIAL_CONFIRMED` claim an announcement activates.
+///
+/// Section 8.3: *공식 향후 공지가 생기면 예측을 사실로 "승격"하지 않고 별도
+/// official Claim을 활성화한다.* This is that separate claim. It is official
+/// because a department announcing its own offering is an official fact, and it
+/// is **not** a confirmation of the offering aggregate: no listing has been
+/// verified, so no seat exists and the standing is `UNCERTAIN`. Section 2.3-4
+/// is what makes those two answers compatible -- offering status is an
+/// aggregate field, not a claim status.
+///
+/// The notice bounds the claim: an official claim that applied before the
+/// notice announcing it would be an official fact backdated past its own
+/// source, so [`OfferingError::ClaimPredatesItsNotice`] refuses one. That is
+/// the whole of what the announcement argument does, and it is the reason the
+/// argument is here -- a parameter that reached no part of the output would be
+/// the defect `offering_feature_contract` refuses one level down.
+///
+/// # Errors
+///
+/// [`OfferingError::ClaimPredatesItsNotice`] when the claim's validity starts
+/// before the notice was issued, and [`OfferingError`] when the predicate or
+/// the assembled claim is refused by the domain layer.
+pub fn announcement_claim(
+    id: ClaimId,
+    subject: &ClaimSubject,
+    announcement: &OfferingAnnouncement,
+    evidence_ids: Vec<EvidenceId>,
+) -> Result<Claim, OfferingError> {
+    if subject.valid_time.from() < announcement.issued_at() {
+        return Err(OfferingError::ClaimPredatesItsNotice);
+    }
+    let claim = Claim {
+        id,
+        subject_entity_id: subject.subject_entity_id,
+        predicate_id: PredicateId::parse(OFFERING_STATUS_PREDICATE)?,
+        object: ClaimObject::Text(OfferingAssertion::Runs.as_str().to_owned()),
         scope_id: subject.scope_id,
         authority_class: AuthorityClass::Official,
         epistemic_status: EpistemicStatus::OfficialConfirmed,

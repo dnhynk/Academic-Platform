@@ -376,6 +376,98 @@ impl CancellationNotice {
     }
 }
 
+/// An official notice that a term's offering **will** happen.
+///
+/// Section 8.3's `HISTORICALLY_LIKELY` row requires 미래 공식 공지 없음, so a
+/// future official notice has to be a value the resolver can be handed. It is
+/// not a [`ConfirmationEvidence`]: that row requires the offering to *exist* in
+/// the term's listing and to have been *recently verified*, and an
+/// announcement is neither. Section 8.3's own sentence says what it does
+/// instead -- *공식 향후 공지가 생기면 예측을 사실로 "승격"하지 않고 별도
+/// official Claim을 활성화한다* -- and
+/// [`crate::claims::announcement_claim`] is that separate claim.
+///
+/// # Why the 수강편람 does not confirm
+///
+/// The `CONFIRMED` row's own words admit two sources: *해당 학기 공식
+/// 수강편람/수강신청 시스템에 존재하고 최근 확인*. The paragraph under the
+/// table is narrower and more specific -- *공식 개설 확인은 수강신청 시스템의
+/// 최신 강좌 상세를 기준으로 하고, CSE 홈페이지·수강편람은 교차 출처로
+/// 사용한다* -- and adds that the bulletin can change after its own compilation
+/// date. The two sentences are in tension and this crate follows the narrower
+/// one, which is the fail-closed direction: a bulletin entry is an
+/// announcement, not a confirmation, and it produces an official claim without
+/// producing a seat.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OfferingAnnouncement {
+    source: SourceCategory,
+    connector: ConnectorId,
+    issued_at: TimestampMillis,
+    term: TermKey,
+    course: CourseCode,
+}
+
+impl OfferingAnnouncement {
+    /// Records one official notice that the course will run.
+    ///
+    /// # Errors
+    ///
+    /// [`OfferingError::NotTheRegistrationSystem`] when the notice came from a
+    /// level that publishes no offering changes. The two that do are the
+    /// registration system and the department page.
+    pub fn official(
+        source: SourceCategory,
+        connector: ConnectorId,
+        issued_at: TimestampMillis,
+        term: TermKey,
+        course: CourseCode,
+    ) -> Result<Self, OfferingError> {
+        if !matches!(
+            source,
+            SourceCategory::RegistrationSystem | SourceCategory::DepartmentPage
+        ) {
+            return Err(OfferingError::NotTheRegistrationSystem(source.as_str()));
+        }
+        Ok(Self {
+            source,
+            connector,
+            issued_at,
+            term,
+            course,
+        })
+    }
+
+    /// Which level issued it.
+    #[must_use]
+    pub const fn source(&self) -> SourceCategory {
+        self.source
+    }
+
+    /// The connector that retrieved it.
+    #[must_use]
+    pub const fn connector(&self) -> &ConnectorId {
+        &self.connector
+    }
+
+    /// When it was issued.
+    #[must_use]
+    pub const fn issued_at(&self) -> TimestampMillis {
+        self.issued_at
+    }
+
+    /// The term announced.
+    #[must_use]
+    pub const fn term(&self) -> TermKey {
+        self.term
+    }
+
+    /// The course announced.
+    #[must_use]
+    pub const fn course(&self) -> &CourseCode {
+        &self.course
+    }
+}
+
 /// What an official source says about the term being forecast.
 ///
 /// The forecast runs whether or not one of these exists. That is section
@@ -386,6 +478,12 @@ impl CancellationNotice {
 pub enum OfficialTermReading {
     /// A registration-system reading, fresh, listing a section.
     Confirmed(ConfirmationEvidence),
+    /// An official notice that the course will run, without a verified listing.
+    ///
+    /// Section 8.3's 미래 공식 공지. It defeats `HISTORICALLY_LIKELY`, whose
+    /// row requires the absence of one, and it does not reach `CONFIRMED`,
+    /// whose row requires a listing that was recently verified.
+    Announced(OfferingAnnouncement),
     /// An official cancellation or change notice.
     Cancelled(CancellationNotice),
 }
