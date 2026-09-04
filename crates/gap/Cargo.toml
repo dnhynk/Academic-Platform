@@ -1,0 +1,71 @@
+[package]
+name = "academic-gap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Three product edges, and each is a boundary this crate reads a fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-domain` is `P2-C1`. Section 7.2's twenty predicates and the
+# `prerequisite` column that says which two a path engine may traverse are that
+# crate's, so `REQUIRES와 강한 BUILDS_ON` is `prerequisite_descriptor` refusing
+# the other eighteen rather than a second allowlist here. `EntityKind` is
+# `P2-C3`'s tier vocabulary, and `EntityKind::Field` carries `no independent
+# prerequisite of its own` in that crate's own words, which is what makes
+# section 15.3's `데이터베이스를 더 공부하세요` a structural refusal instead of a
+# banned phrase. `EquivalenceClass::SplitAmbiguous` is `P2-C3`'s `state cannot
+# be attributed to any one successor`, which is section 15.2's `ONTOLOGY_GAP`.
+# `question::QuestionId` is `P2-N4`: the diagnostic a tie proposes is a question
+# this crate references and never resolves.
+#
+# `academic-knowledge-state` is `P2-N2` and `academic-freshness` is `P2-N3`.
+# Two of section 15.2 step 3's four overlay dimensions are the first crate's
+# (`MasteryLevel` and `EvidenceSufficiency`, plus the contradicting items it
+# keeps) and one is the second's (`FreshnessBand`). This crate computes none of
+# them: `ConceptState::overlay` takes `EligibleEvidence` and a
+# `FreshnessProjection` and refuses every input naming another concept, which is
+# the guard `KnowledgeStateHistory` has and bare `project` does not.
+#
+# The edges it does not have are the point. No `academic-store`, so nothing
+# reaches the canonical writer and no migration is added; no `academic-worker`
+# and no `academic-egress-boundary`, so nothing in its closure can launch a
+# process or stage a payload.
+[dependencies]
+academic-domain = { path = "../domain" }
+academic-freshness = { path = "../freshness" }
+academic-knowledge-state = { path = "../knowledge-state" }
+serde.workspace = true
+thiserror.workspace = true
+
+# The acceptance suite overlays real state, and a real overlay needs an
+# `EligibleEvidence` and a `FreshnessProjection` over one.
+# `crates/knowledge-state/tests/common/mod.rs` already builds those by driving a
+# real `P2-L2` capture and a real `P2-L3` run, and this suite includes that
+# module by `#[path]` rather than restating it, the way `academic-freshness`
+# includes it. Every dev edge below is one that module's two chains need.
+# `academic-domain` is declared twice for the `trybuild` reason
+# `academic-scenario` gives: a compile-fail case compiles against this crate
+# plus its dev-dependencies.
+[dev-dependencies]
+academic-capture = { path = "../capture" }
+academic-consent = { path = "../consent" }
+academic-domain = { path = "../domain" }
+academic-lecture-document = { path = "../lecture-document" }
+academic-model-run = { path = "../model-run" }
+academic-policy = { path = "../policy" }
+academic-repository = { path = "../repository" }
+academic-repository-analysis = { path = "../repository-analysis" }
+academic-repository-classification = { path = "../repository-classification" }
+academic-repository-correlation = { path = "../repository-correlation" }
+academic-transcription = { path = "../transcription" }
+academic-untrusted-content = { path = "../untrusted-content" }
+serde_json.workspace = true
+tempfile.workspace = true
+trybuild.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

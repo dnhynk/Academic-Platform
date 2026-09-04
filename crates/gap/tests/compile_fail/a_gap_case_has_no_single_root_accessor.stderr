@@ -1,0 +1,5 @@
+error[E0599]: no method named `primary_root` found for reference `&GapCase` in the current scope
+ --> tests/compile_fail/a_gap_case_has_no_single_root_accessor.rs:9:10
+  |
+9 |     case.primary_root()
+  |          ^^^^^^^^^^^^ method not found in `&GapCase`

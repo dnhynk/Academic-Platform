@@ -189,6 +189,8 @@ remove.
 | `the_walk_reads_every_module_in_this_package`, `the_state_crate_reads_no_clock_and_opens_nothing`, `only_the_named_test_files_read_anything`, `every_field_of_this_crate_is_in_the_inventory`, `no_public_function_mutates_in_place`, `the_state_decisions_are_pinned`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory` — `crates/knowledge-state/tests/knowledge_state_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus three fixed reads of this crate's own modules for the whole-text pins | **three whole-set comparisons of what the product code can reach, all in both directions** — every `use` item against a 94-entry list, every two-segment path spelled through a crate root against a 9-entry list, and every macro invoked against a 3-entry list — plus a fourth over the eight modules `lib.rs` re-exports from, because `pub use` hands a name out rather than reaching for one; **a whole-set comparison of all 134 fields of every type this crate declares** against a justified inventory, in both directions, each entry classified into one of seven admitted things a field may hold and each checked for a `u8` in its declared type, beside a separate rule requiring the crate's one tuple struct to be `AssertionId`, because a whole-set claim over *named* fields would otherwise miss an unnamed one; two whole-text pins (`EvidenceKind::ceiling`, `automatic_contribution`) and one over `AutomaticLevel`'s variant list, which is the whole of "an automatic projection cannot reach `FLUENT`"; a refusal of any `pub fn` taking `&mut self`, with a control signature the extractor does match; and, as a third and weakest layer, a forbidden-token pass over every product file for fourteen filesystem, clock, process and transport spellings — `std::time` among them, which is what makes "time never demotes mastery" a property of the whole crate rather than a rule inside one function | `>= 8` files in the package walk against `lib.rs`'s own `pub mod` list in both directions, a three-entry pinned set of the files of this package permitted to read anything, an exact `1` on the tuple-struct count, and a control on the `Fluent` absence pin — the same extractor is required to find `Fluent` once in `rung`, so the zero above is a measurement rather than an extractor that always answers zero |
 | `the_walk_reads_every_module_in_this_package`, `the_competency_crate_touches_no_file_and_no_socket`, `every_field_of_this_crate_is_in_the_inventory`, `no_public_function_mutates_in_place`, `the_rubric_is_configuration_and_not_a_constant`, `each_guarded_name_has_exactly_its_call_sites`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory` — `crates/repository-competency/tests/competency_scans.rs` | recursive, **every `.rs` anywhere under the package**; the `use`/path/macro comparison reads `src` only, the forbidden-construct pass reads `tests` too | three whole-set comparisons in both directions — every `use` item, every two-segment path reached through a crate root, every macro invoked — plus an 11-token forbidden-construct pass as the third and weakest layer; a whole-set field inventory over all 100 declared fields in both directions, each carrying which of eight things it holds; a `&mut self` scan; the rubric-is-configuration scan, which reads `docs/contracts/repository-competency.md` as well as the source; and four counted call sites each pinned to its one file | `>= 9` files, `>= 6` module declarations each read by the walk, `>= 6` product files |
 | `crates/repository-competency/tests/competency_lanes.rs` | one fixed read of `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md`, for section 17.6's five bullets and section 13.2's ceiling table | not a source-text scan: `P2-R5`'s seven named acceptance tests over in-process synthetic corpora captured through `P2-R1`'s own `capture_local`, analyzed through `P2-R2`'s own ladder, correlated through `P2-R3`'s own `correlate` and classified through `P2-R4`'s own `classify`. It reads the design document so that section 17.6's bullet count and section 13.2's `mastery 승격 없음` ceiling are measured rather than restated | n/a |
+| `the_walk_reads_every_module_in_this_package`, `the_gap_crate_holds_no_phrase_list`, `no_clock_socket_or_file_reaches_this_crate`, `only_the_named_test_files_read_anything`, `the_gap_decisions_are_pinned`, `no_public_function_mutates_in_place`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory` — `crates/gap/tests/gap_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus five fixed reads of this crate's own modules for the whole-text pins, one of its `lib.rs` as the control, and one of `crates/freshness/src/decay.rs` as the counter-control | **four whole-set comparisons of what the product code can reach, all in both directions** — every `use` item against a 59-entry list, every two-segment path spelled through a crate root against a 7-entry list, every macro invoked against a 2-entry list, and the ten modules `lib.rs` re-exports from against its own `pub mod` declarations; then the rule those four exist to hold, which is that **the specificity validator cannot be lexical**: `GapExplanation::defects`'s whole text is pinned and is required to name none of ten ways of reading text — `contains`, `starts_with`, `ends_with`, `find`, `split`, `chars`, `trim`, `to_lowercase`, `eq_ignore_ascii_case`, `description` — because `generic_advice_fails_validation` can only observe the three sentences it drove; five more whole-text pins on the decisions a later edit could move without any behavioural test noticing (`blocking_floor`, `RETRIEVAL_FLOOR`, `GapKind::is_strong_deficit`, the whole `route` order, and `require_band_is_not_from_the_path`) plus two substring pins inside `ConceptState::overlay` and `require_trace_declares`, which are the misattribution `P2-N2` found two layers up; a refusal of any `pub fn` taking `&mut self`; and, as a third and weakest layer, a forbidden-token pass over every product file for fifteen filesystem, clock, process and transport spellings | `>= 9` modules in the package walk against `lib.rs`'s own `pub mod` list in both directions, `>= 60` public signatures, a three-entry pinned set of the files of this package permitted to read anything, and **a two-sided control on the name reader**: the same reader is required to find at least six of eight gap names in this crate's own `lib.rs` and none of them in `P2-N3`'s `decay.rs`, so what it reports elsewhere is a measurement rather than a reader that always answers nothing; beside it every extractor is re-exercised against a sample it must match, each whole-text pin is required to extract more than 100 characters, and a signature the extractor cannot find is required to be an error |
+| `crates/gap/tests/gap.rs` | one fixed read of `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md`, for section 15.2's five-row table, its numbered steps 1, 3 and 6, and section 15.3's eight-field sentence; plus a read of this crate's own `src` for the three rules that are statements about the public surface rather than about one call | not a source-text scan: `P2-N5`'s ten named acceptance tests plus seven more, over in-process synthetic state whose lecture evidence is a node of a document `P2-L4` produced and whose bands are produced by `P2-N3`'s own `project`. It reads the design document so that five gap kinds, four state dimensions and eight explanation fields are **measured** in both directions rather than restated as numbers, and so that section 15.2 step 6's four informal names are recorded as one fewer than the table's five rows. It reads this crate's own source for three claims a call cannot make: that every producer of a `GapCase` names an `ActiveGoal`, that every entry point takes one, and that every non-ASCII string literal in the package is a cell the design document writes | `>= 18` design-document cells found by the literal reader, `>= 2` entry points, and exactly one public constructor on `ActiveGoal` |
 | `the_walk_reads_every_module_in_this_crate`, `the_selector_dimensions_are_the_specifications_own`, `the_profile_fields_are_the_specifications_own`, `the_open_gates_are_section_38s_own`, `the_proof_statuses_cover_section_11_3s_own_tree`, `no_product_file_reaches_a_clock_rng_socket_or_model`, `no_product_file_names_a_projection_and_only_one_names_a_plan`, `the_three_witnesses_have_one_construction_site_each`, `the_only_defaults_are_empty_collections` — `crates/audit/tests/audit_scans.rs` | recursive, every `.rs` under `crates/audit/src` | section 11.1's selector sentence, section 3's profile block, section 38.1's ten lines and section 38.2's eleven bullets and section 11.3's tree, each parsed out of the design document and compared in both directions; a fourteen-spelling clock/RNG/socket/model sweep with its evasions run through the same predicate inside the test; a whole-set sweep for a projection name and a two-file allowance for a plan name; three witness declarations, three crate-private `establish` sites, a pinned constructor and one determination expression; and the whole `#[derive(Default)]` set against a four-entry list | a `pub mod` tripwire — every module `lib.rs` declares must be a file the walk read, and the walk must read no file no module declares — plus `declared >= 12` and `sources.len() >= 12` |
 | `the_walk_reads_every_module_in_this_package`, `the_freshness_crate_cannot_name_a_mastery`, `no_clock_socket_or_file_reaches_this_crate`, `only_the_named_test_files_read_anything`, `the_freshness_decisions_are_pinned`, `no_public_function_takes_a_mastery_or_mutates_in_place`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory` — `crates/freshness/tests/freshness_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus four fixed reads of this crate's own modules for the whole-text pins, one of its `Cargo.toml`, and one of `crates/knowledge-state/src/ladder.rs` as the control | **four whole-set comparisons of what the product code can reach, all in both directions** — every `use` item against a 39-entry list, every two-segment path spelled through a crate root against a 4-entry list, every macro invoked against a 2-entry list, and the eight modules `lib.rs` re-exports from; then the rule those four exist to hold, an **eight-name refusal of every workspace spelling that means a mastery level** — `MasteryLevel`, `AutomaticLevel`, `MasteryProjection`, `MasteryFacet`, `LADDER`, `rung`, `level_token`, `automatic_contribution` — over every product file and again over every public signature, because `academic-knowledge-state` is a product edge that hands all of them out and `time_decay_touches_freshness_only` can only observe the paths it exercised; four whole-text pins (`decay`, `Spillover::toward`, the shipped `UNCALIBRATED_PRIOR_V1`, and the statement that makes a recall failure a cap — read through `collapse`, because it spans lines and a line-spanning pin is a pin on the platform's newline as much as on the rule) plus three substring guards inside `NeighborUse::direct` and four inside `require_about`, which is the misattribution `P2-N2` found one layer up; a refusal of any `pub fn` taking `&mut self`; a rule that no product file names `Default`, which is the half of `GATE-38-024` a caller cannot skip; a manifest rule with comment lines stripped first, refusing an `academic-store`, `academic-worker`, `academic-egress-boundary` or `academic-vault` edge; and, as a third and weakest layer, a forbidden-token pass over every product file for fifteen filesystem, clock, process and transport spellings — `std::time` and a bare `now` among them, which is what makes *this engine cannot ask what time it is* a property of the whole crate | `>= 8` files in the package walk against `lib.rs`'s own `pub mod` list in both directions, `>= 40` public signatures, a two-entry pinned set of the files of this package permitted to read anything, and **a control on the mastery rule**: the same reader is required to find at least five of the eight names in `P2-N2`'s own `ladder.rs`, so the zero it reports here is a measurement rather than a reader that always answers zero; beside it every extractor is re-exercised against a sample it must match, each whole-text pin is required to extract more than 100 characters, and a signature the extractor cannot find is required to be an error |
 | `the_walk_reads_every_module_in_this_crate`, `the_construction_counter_reads_a_literal_and_not_a_return_type`, `an_accuracy_witness_has_one_producer`, `a_reviewed_capture_has_one_producer`, `derivative_terms_have_one_producer`, `no_original_voice_authority_is_produced_here`, `no_disclosure_reaches_a_derivative`, `no_floating_point_reaches_this_crate`, `no_wall_clock_socket_or_file_reaches_this_crate` — `crates/student-voice/tests/student_voice_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus a second recursive walk over **every package in `crates/`** for the three workspace-wide pair rules; plus four fixed reads of this crate's own modules for the whole-text pins | a whole-set comparison of the package's 23 files in both directions; four whole-text pins — the `witness` function, the `dispatch` function, `inherit_terms`, and the `RedactionScope` enum's variant list, which is the whole of "a redaction cannot reach an original"; construction counts over the whole package for an `AccuracyWitness` (1), a `DiarizationMeasurement` (1) and a `ReviewedCapture` (1), each with the `-> Name {` return-type form subtracted and the subtraction itself tested in both directions; a call count of `RetentionTerms::inherit` (1) and of `inherit_terms` (3) with `use` items dropped so a re-export is not a caller; whole-set comparisons of the public method names of `AccuracyWitness` (7), `CaptureUnderReview` (7) and `ReviewedCapture` (3); three workspace-wide public-signature pair rules — no signature takes a `CaptureUnderReview` and returns bytes, none takes a `P2-L5` value and returns an `OriginalVoiceAuthority`, and none takes a `DisclosedOriginal` or a `RestrictedOriginal` and returns a derivative type — the last with a count that the rule read at least one signature; a whole-package refusal of `f32`, `f64` and every digit-dot-digit literal, with the reader checked against a sample that has one and two that do not; and a 14-spelling absence list over `src/` for clocks, sockets, files, processes and environment reads, each spelling checked against a sample that contains it | 23 files in the package walk compared as a whole set, 10 in the product walk, a non-vacuity assertion on each workspace pair rule, and the emitter exception recorded as an assertion that `examples/emit_corpus.rs` *does* write files |
@@ -2691,3 +2693,139 @@ engine: one moves a course's category and one moves a threshold, both on the
 fixture side, and each moves the Rust answer while the JavaScript transcription
 still says the old one. Without a second transcription somewhere else, both
 edits would have re-rendered the expected bytes and passed.
+
+## What the `P2-N5` scans hold
+
+`academic-gap` is section 15's gap engine. Three of its ten acceptance rows are
+counts — five gap kinds, four state dimensions, eight explanation fields — and
+all three are read back out of the design document and compared in both
+directions, so none of them is a number a test restates.
+
+The rule the scan exists for is the fourth: `generic_advice_fails_validation`
+drives three fluent, plausible recommendations and observes the same seven
+structural defects each time. That is a statement about three sentences. The
+statement the crate actually makes is that the validator **cannot** be lexical,
+and `the_gap_crate_holds_no_phrase_list` makes it: `GapExplanation::defects`'s
+whole text is pinned and required to name none of ten ways of reading text
+(`contains`, `starts_with`, `ends_with`, `find`, `split`, `chars`, `trim`,
+`to_lowercase`, `eq_ignore_ascii_case`, `description`), and every non-ASCII
+string literal in the package is compared against the design document's own
+cells — section 15.2's five `뜻` and five `예시 대응` cells and section 15.3's
+eight field names. A phrase list would appear there as an extra entry.
+
+### The section 15.2 discrepancy this task recorded rather than resolved
+
+Section 15.2's sixth step reads `hard gap, refresh gap, evidence gap, terminology
+mismatch를 구분한다` — **four** informal names. The table immediately below it has
+**five** rows, and the fifth, `CONTEXT_GAP`, appears in no prose sentence of
+section 15.
+
+The table is normative because it is the half that fixes the identifiers, and
+`t068`'s acceptance evidence is named `five_gap_types_route_correctly`. So
+`GapKind` has five variants and `STEP_SIX_INFORMAL_NAMES` keeps step 6's four.
+`the_step_six_prose_names_one_fewer_than_the_table` compares both against the
+document and asserts that step 6 still names neither `context` nor `선택`, so a
+later edit that adds a fifth informal name is visible. Nothing was invented to
+reconcile them; `docs/contracts/gap-engine.md` records the reading.
+
+### The misattribution route this task found
+
+`P2-N2` closed one concept's evidence reaching another's history. `P2-N3` closed
+the one-hop form and reported that the route surviving every other limit is one
+concept's evidence crossing a real edge into a neighbour's reading.
+**This engine descends exactly those edges**, so both arrive here and a third
+with them.
+
+Section 13.3 licenses a spillover on `REQUIRES`, `BUILDS_ON`, `RELATED_TO` and
+`SPECIAL_CASE_OF`, and **two of those four are the edges section 15.2 step 2
+descends**. Section 36.4's own worked example is the case: `Buffer Pool` is the
+surface concept of an active goal, so it is the concept the user is using now;
+`Disk Page` is one `REQUIRES` hop below it; a spillover from `Buffer Pool` across
+that very edge puts `Disk Page` at `MODERATE` with no evidence of its own; and
+section 36.4's answer is that `Disk Page` **is** the root gap.
+`a_band_raised_by_a_concept_on_the_blocking_path_is_refused` observes the
+contamination before the refusal — the contaminated band clears
+`RETRIEVAL_FLOOR`, and the same concept reads `UNKNOWN` without the contribution
+— then observes `search` refusing it by name, then observes that a contribution
+from a concept **off** the path is untouched.
+
+It is a traversal-time refusal rather than a type, because whether the neighbour
+lies on the blocking path is not known until the descent knows the path. It does
+not silently lower the band: the caller re-projects with `P2-N3`'s own function
+and without that contribution, which keeps the concept's own evidence.
+
+### The shadowed guard this task found in its own crate
+
+`ConceptState::overlay`'s first shape ran one concept check over every offered
+item before admission and a second over each admitted one. **`N5-I2` deleted the
+second and every test still passed**, because the first already refused
+everything the second would have: `EligibilityOutcome::admit` derives an admitted
+item's concept from the same dossier link the first check reads.
+
+The repair is not to delete the redundant half but to make the two halves
+disjoint. An **admitted** item carries `EligibleEvidence::concept`, which is the
+resolved answer; a **blocked** one does not — `BlockedEvidence` keeps the failing
+codes and drops the link, so only the dossier still holds it. The two checks now
+sit in the two match arms, cover different items, and neither can stand in for
+the other. `N5-I1` and `N5-I2` remove one each and each fails.
+
+### The shadowed fixture this task found in its own suite
+
+`four_state_dimensions_are_overlaid`'s third case blocked **every** offered item
+to move the confidence dimension. That empties the admitted set, so `P2-N2`
+reports `NO_EVIDENCE_RECORDED` and the first clause of the evidence-gap rule
+fires — dimension one answering for dimension three. `N5-I16` deleted the
+confidence clause outright and only the whole-text pin noticed.
+
+The repair keeps the mastery-gap case's own admitted item and adds one item that
+could not be admitted, so the level, the band and the contradicting set are
+identical across the two readings and the only difference is a sufficiency gap.
+The fixture now asserts `unseen_basis() == None` before it routes, which is the
+assertion that stops the shadow returning. `N5-I16` is caught behaviourally after
+the repair.
+
+### The injection matrix
+
+Twenty injections, one at a time, each its own edit and its own build, each
+applied to a clean tree and reverted before the next. **None of them spells a
+name any table forbids** — the tables here forbid no name; they compare whole
+sets, pin whole texts, and derive identifiers from positions. Each was compiled
+before it was scanned: an injection that does not build is not evidence. The
+build is `cargo clippy -p academic-gap --all-targets --offline -- -D warnings`
+and the observation is `cargo test -p academic-gap --offline`.
+
+| # | Injection | Compiles | Observation |
+|---|---|---|---|
+| N5-I1 | `state.rs`: drop the **blocked**-half concept guard, keeping the accessor call so nothing is unused | yes | fails `one_concepts_evidence_cannot_reach_another_concepts_deficit`: a blocked item linked to another concept enters this concept's sufficiency |
+| N5-I2 | `state.rs`: drop the **admitted**-half concept guard, leaving the blocked-half one | yes | fails the same test: an admitted item about another concept enters this concept's mastery. Before the repair above, this injection passed |
+| N5-I3 | `engine.rs`: neutralise the path-spillover guard with `&& false` rather than deleting it | yes | fails `a_band_raised_by_a_concept_on_the_blocking_path_is_refused`: section 36.4's own shape reaches a determination |
+| N5-I4 | `state.rs`: drop the trace/declaration comparison | yes | fails `a_projection_cannot_hide_a_contribution_it_used`: a projection built from a contribution the caller did not declare is accepted |
+| N5-I5 | `graph.rs`: give `HELPFUL` a rung, so the descent crosses a weak `BUILDS_ON` | yes | fails `weak_builds_on_is_excluded_or_conditional` and `five_gap_types_route_correctly` |
+| N5-I6 | `routing.rs`: make `EVIDENCE_GAP` a strong deficit too | yes | fails `five_gap_types_route_correctly` and `first_strong_deficit_is_root_with_ancestor_impact`: a root rests on absent evidence |
+| N5-I7 | `routing.rs`: lower `RETRIEVAL_FLOOR` one band | yes | fails `four_state_dimensions_are_overlaid`: a `LOW` band stops reporting a freshness gap |
+| N5-I8 | `case.rs`: `.take(1)` on the tied roots, which is the auto-selection this repository refuses | yes | fails `equal_candidates_are_both_retained_with_diagnostic` |
+| N5-I9 | `explanation.rs`: let a described-but-undated remediation through, which is what broad advice looks like | yes | fails `the_gap_crate_holds_no_phrase_list`: `defects` names `description`, so the validator reads text |
+| N5-I10 | `explanation.rs`: admit a `FIELD` subject while still refusing an `ALIAS`, keeping `gap_bearing` in the expression | yes | fails `generic_advice_fails_validation`: `데이터베이스` passes the validator |
+| N5-I11 | `node.rs`: the same tier admitted at its source rather than at the validator | yes | fails three tests, including `goal_criteria_required_before_expansion`: a `FIELD` becomes a declarable goal surface |
+| N5-I12 | `graph.rs`: keep calling `prerequisite_descriptor` and discard its answer, reading the descriptor directly | yes | fails `weak_builds_on_is_excluded_or_conditional`: `RELATED_TO` becomes traversable |
+| N5-I13 | `engine.rs`: `!options.is_empty()` rather than `>= 2`, so one helpful edge is a branch | yes | fails `weak_builds_on_is_excluded_or_conditional`: a useful ordering becomes a `CONTEXT_GAP` |
+| N5-I14 | `engine.rs`: keep the set mutated with a value no path can name, so an unsettled identity stops blocking the descent | yes | fails `an_unsettled_identity_stops_the_descent`: a concept below a split identity is judged |
+| N5-I15 | `routing.rs`: `len() > 1`, so one recorded failure is ignored while the dimension stays named | yes | fails `four_state_dimensions_are_overlaid` |
+| N5-I16 | `routing.rs`: drop the confidence half of the evidence-gap rule, keeping `is_admission_gap` reached under a count no state can hit | yes | fails `four_state_dimensions_are_overlaid`. Before the fixture repair above, only the whole-text pin caught it |
+| N5-I17 | `case.rs`: admit a blank `reason` cell while keeping a length rule | yes | fails `gap_case_round_trip`. Before this campaign, nothing observed section 15.1's `reason` at all |
+| N5-I18 | `case.rs`: admit any activity shape as a tie diagnostic, under a count no tie can hit | yes | fails `equal_candidates_are_both_retained_with_diagnostic`. Before this campaign, nothing observed the shape |
+| N5-I19 | `explanation.rs`: admit a zero-hop path, so the surface concept can explain itself | yes | fails `the_gap_crate_holds_no_phrase_list`: the pinned `defects` text moved |
+| N5-I20 | `engine.rs`: report the **strongest** hop as an ancestor's link rather than the weakest | yes | fails `first_strong_deficit_is_root_with_ancestor_impact`: a `STRONG` chain is reported as `HARD` |
+
+**Six injections did not compile in their first form**, and each first form was a
+lint rather than a hole: deleting a branch left an import, a helper or a
+`mut` unused, and `-D warnings` refused it. Each was reshaped to keep the deleted
+guard's names reached — a discarded call, an `is_empty` in place of a length
+comparison, a count no input can reach — which is also the stronger injection,
+because it is what an edit that meant to keep the code compiling would look like.
+
+**`N5-I17` and `N5-I18` were not caught in the first campaign.** Neither is a
+scan finding: both are rules `GapCase` enforces that no test drove, because the
+engine always supplies a non-blank reason and always supplies the diagnostic
+shape itself. Both are now observed directly through the public constructors,
+which is where a caller other than `search` would reach them.

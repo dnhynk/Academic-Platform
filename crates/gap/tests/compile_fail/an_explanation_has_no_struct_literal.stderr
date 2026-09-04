@@ -1,0 +1,9 @@
+error: cannot construct `GapExplanation` with struct literal syntax due to private fields
+ --> tests/compile_fail/an_explanation_has_no_struct_literal.rs:8:13
+  |
+8 |     let _ = GapExplanation {
+  |             ^^^^^^^^^^^^^^
+9 |         evidence: Vec::new(),
+  |         -------------------- private field
+  |
+  = note: ...and other private fields that were not provided

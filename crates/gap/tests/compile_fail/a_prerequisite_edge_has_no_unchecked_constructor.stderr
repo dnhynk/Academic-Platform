@@ -1,0 +1,15 @@
+error[E0451]: fields `predicate`, `strength`, `advanced`, `prerequisite` and `evidence` of struct `PrerequisiteEdge` are private
+  --> tests/compile_fail/a_prerequisite_edge_has_no_unchecked_constructor.rs:13:9
+   |
+12 |     let _ = PrerequisiteEdge {
+   |             ---------------- in this type
+13 |         predicate: PredicateName::RelatedTo,
+   |         ^^^^^^^^^ private field
+14 |         strength: PrerequisiteStrength::Hard,
+   |         ^^^^^^^^ private field
+15 |         advanced,
+   |         ^^^^^^^^ private field
+16 |         prerequisite,
+   |         ^^^^^^^^^^^^ private field
+17 |         evidence: Vec::new(),
+   |         ^^^^^^^^ private field

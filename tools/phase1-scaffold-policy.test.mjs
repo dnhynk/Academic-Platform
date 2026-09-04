@@ -611,6 +611,28 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-lecture-document",
       "academic-transcription",
     ],
+    // `P2-N5` reads three boundaries and computes none of them.
+    // `academic-domain` for section 7.2's predicate registry -- its
+    // `prerequisite` column is what admits a traversal edge, so `REQUIRES와
+    // 강한 BUILDS_ON` is eighteen rows refused there rather than an allowlist
+    // here -- and for `EntityKind`, whose `FIELD` tier `carries no independent
+    // prerequisite of its own` and is therefore what refuses section 15.3's
+    // `데이터베이스를 더 공부하세요` without this crate holding a phrase.
+    // `academic-knowledge-state` for two of section 15.2 step 3's four overlay
+    // dimensions and for the admission decision behind them, and
+    // `academic-freshness` for the third. The `academic-freshness` edge is the
+    // one that needs a reason: section 13.3 licenses a spillover on four
+    // section 7.2 edges and **two of those four are the edges this engine
+    // descends**, so a band raised by a neighbour on the node's own blocking
+    // path is refused by name. No `academic-store` -- it persists nothing and
+    // adds no migration -- and no `academic-worker` and no
+    // `academic-egress-boundary`, so nothing in its closure can launch a
+    // process or stage a payload.
+    "academic-gap": [
+      "academic-domain",
+      "academic-freshness",
+      "academic-knowledge-state",
+    ],
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
@@ -824,6 +846,26 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-domain",
       "academic-model-run",
       "academic-retention",
+    ],
+    // `P2-N5`'s acceptance suite overlays real state, and a real overlay needs
+    // an `EligibleEvidence` whose section 13.2 row is a node of a document
+    // `P2-L4` produced. It reaches that through `P2-N2`'s own fixture module by
+    // `#[path]`, the way `academic-freshness` does, so every workspace edge here
+    // is one that module's two chains need. `serde_json` is `gap_case_round_trip`
+    // driving section 15.1's schema through a real encoder.
+    "academic-gap": [
+      "academic-capture",
+      "academic-consent",
+      "academic-domain",
+      "academic-lecture-document",
+      "academic-model-run",
+      "academic-policy",
+      "academic-repository",
+      "academic-repository-analysis",
+      "academic-repository-classification",
+      "academic-repository-correlation",
+      "academic-transcription",
+      "academic-untrusted-content",
     ],
   });
 
@@ -2549,6 +2591,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   // rather than empty; it opens nothing at all, reads no clock, and takes every
   // corpus, transcript, capture and instant as an argument.
   "academic-student-voice": ["libc"],
+  // `P2-N5` reaches `libc` the same way and for the same reason: through
+  // `academic-policy`'s bundled SQLite by way of `academic-knowledge-state`. The
+  // crate spells no socket construct, opens nothing at all, reads no clock, and
+  // every instant it holds arrived inside a `P2-N3` value.
+  "academic-gap": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -4520,6 +4567,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     competencyReceiptText,
     auditReceiptText,
     freshnessReceiptText,
+    gapReceiptText,
     studentVoiceReceiptText,
     cargoLock,
   ] = await Promise.all([
@@ -4556,6 +4604,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-r5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u3.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-n3.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-n5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l5.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
@@ -4592,6 +4641,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const competencyReceipt = JSON.parse(competencyReceiptText);
   const auditReceipt = JSON.parse(auditReceiptText);
   const freshnessReceipt = JSON.parse(freshnessReceiptText);
+  const gapReceipt = JSON.parse(gapReceiptText);
   const studentVoiceReceipt = JSON.parse(studentVoiceReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
@@ -6299,6 +6349,65 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "trybuild",
     "uuid",
   ]);
+  // `P2-N5` adds one workspace path package, `academic-gap`, and admits no
+  // external crate: its product edges are `academic-domain`,
+  // `academic-freshness`, `academic-knowledge-state`, `serde` and `thiserror`,
+  // and its dev edges are `P2-N2`'s two fixture chains -- reached through that
+  // crate's own fixture module by `#[path]` -- plus `serde_json`, `tempfile`,
+  // `trybuild` and `uuid`, all already in this lock through earlier receipts.
+  // The `academic-freshness` edge is the one that needs a reason and the receipt
+  // carries it: section 13.3 licenses a spillover on `REQUIRES`, `BUILDS_ON`,
+  // `RELATED_TO` and `SPECIAL_CASE_OF`, and **two of those four are the edges
+  // section 15.2 step 2 descends**, so a band a neighbour on the blocking path
+  // raised is the surface concept's evidence deciding its own prerequisite's
+  // deficit. The edge it does **not** carry is the point: no `academic-store`,
+  // so no gap reaches the canonical writer and no migration is added.
+  assert.equal(gapReceipt.task, "P2-N5");
+  const gapAdmitted = new Set(
+    gapReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const gapPathPackages = new Set(
+    gapReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(gapAdmitted.size, 0, "P2-N5 must admit no external crate");
+  assert.deepEqual([...gapPathPackages], ["academic-gap@0.1.0"]);
+  assert.deepEqual(gapReceipt.summary.npm_additions, []);
+  assert.equal(gapReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(gapReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(gapReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof gapReceipt.no_second_ladder_note, "string");
+  assert.deepEqual(Object.keys(gapReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-freshness",
+    "academic-knowledge-state",
+  ]);
+  assert.deepEqual(Object.keys(gapReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-consent",
+    "academic-lecture-document",
+    "academic-model-run",
+    "academic-policy",
+    "academic-repository",
+    "academic-repository-analysis",
+    "academic-repository-classification",
+    "academic-repository-correlation",
+    "academic-transcription",
+    "academic-untrusted-content",
+    "serde_json",
+    "tempfile",
+    "trybuild",
+    "uuid",
+  ]);
+  const gapTuples = lockTuples.filter(
+    ([name, version]) =>
+      gapAdmitted.has(`${name}@${version}`) || gapPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    gapTuples.length,
+    gapAdmitted.size + gapPathPackages.size,
+    "a P2-N5 admitted package is missing from Cargo.lock",
+  );
+
   const freshnessTuples = lockTuples.filter(
     ([name, version]) =>
       freshnessAdmitted.has(`${name}@${version}`) ||
@@ -6377,7 +6486,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !freshnessAdmitted.has(`${name}@${version}`) &&
       !freshnessPathPackages.has(`${name}@${version}`) &&
       !studentVoiceAdmitted.has(`${name}@${version}`) &&
-      !studentVoicePathPackages.has(`${name}@${version}`),
+      !studentVoicePathPackages.has(`${name}@${version}`) &&
+      !gapAdmitted.has(`${name}@${version}`) &&
+      !gapPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -6421,7 +6532,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       competencyTuples.length +
       auditTuples.length +
       freshnessTuples.length +
-      studentVoiceTuples.length,
+      studentVoiceTuples.length +
+      gapTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",
@@ -6815,8 +6927,28 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    // `P2-N5`. Its acceptance suite reaches `P2-N2`'s fixture module by
+    // `#[path]` for the same reason `P2-N3`'s does, so it drives the same real
+    // capture and writes a real journal into a temporary directory; and it
+    // drives section 15.1's `GapCase` through a real encoder, which is the only
+    // way a round trip can observe that deserialization re-runs the
+    // constructor's checks. `trybuild` and `uuid` are on the Phase 1 receipt
+    // rather than this one, so only `tempfile` and `serde_json` gain an owner
+    // here.
+    const n5GapUse = ["tempfile", "serde_json"].includes(admission.name)
+      ? [
+          {
+            package: "academic-gap",
+            kind: "dev",
+            target: null,
+            default_features: true,
+            features: [],
+          },
+        ]
+      : [];
     const expectedUses = [
       ...admission.uses,
+      ...n5GapUse,
       ...n3FreshnessUse,
       ...l5StudentVoiceUse,
       ...l3TranscriptionUse,

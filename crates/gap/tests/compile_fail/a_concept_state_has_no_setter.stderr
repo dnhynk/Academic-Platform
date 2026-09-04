@@ -1,0 +1,11 @@
+error[E0599]: no method named `set_freshness` found for mutable reference `&mut ConceptState` in the current scope
+  --> tests/compile_fail/a_concept_state_has_no_setter.rs:10:11
+   |
+10 |     state.set_freshness(FreshnessBand::VeryHigh);
+   |           ^^^^^^^^^^^^^
+   |
+help: there is a method `freshness` with a similar name, but with different arguments
+  --> src/state.rs
+   |
+   |     pub const fn freshness(&self) -> FreshnessBand {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
