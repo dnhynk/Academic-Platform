@@ -17,12 +17,21 @@ of them — a staged assistant payload — is produced by `P2-G2` rather than he
 rows there are: a row added to the design document without a variant fails, and
 a variant with no row fails too.
 
-The same shape holds `GitHubOperation`, `HttpMethod`, `BlobVisibility`,
-`AssistantUse`, `EvidenceEligibility`, `CalendarEventKind`, `SourceAuthority`,
-`ConflictBasis`, `CanonicalKind`, `CoreView`, `WatchMode`, `ConnectorHealth` and
-`WebhookEventKind`: each `ALL` array is compared against the variant list read
-out of its own enum, so an arm added without an entry fails rather than passing
-every walk that iterates the array.
+Every other closed vocabulary in this crate is held the same way, and by one
+scan rather than by a rule per enum. `every_all_array_is_the_enum_it_names`
+walks the whole product source, finds every `pub enum` that declares a
+`pub const ALL`, and compares that array's entries against the variant list read
+out of the enum body — so an arm added without an entry fails rather than
+passing every walk that iterates the array. The set of types declaring an `ALL`
+is pinned beside it, so removing one to escape the comparison is an extra key
+rather than a silent exemption.
+
+That scan found its own defect on its first run: the `ALL` reader searched
+forward from an `impl` header to the end of the file, so `ConnectorError` — which
+declares no `ALL` — reported `HttpMethod`'s and the scan failed on a
+disagreement it had invented. The reader is now bounded to the `impl` block, and
+`the_helpers_are_not_vacuous` holds a two-type sample the unbounded version gets
+wrong.
 
 ## The core opens when every connector is down
 
