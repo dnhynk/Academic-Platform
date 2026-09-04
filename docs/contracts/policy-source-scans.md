@@ -3003,3 +3003,132 @@ engine: one moves a term's reading and one moves a calibration bin, both on the
 fixture side, and each moves the Rust answer while the JavaScript transcription
 still says the old one. Without a second transcription somewhere else, both
 edits would have re-rendered the expected values and passed.
+
+## What the `P2-P1` scans hold
+
+`crates/export/tests/export_scans.rs`. `INV-C-015` is the claim that a user can
+read their own record when this product and their school account are both gone,
+and `restore_without_vendor_or_school_account_succeeds` runs the reader with no
+credential and no profile. That is the behaviour. It cannot see a dependency
+that would reach a network inside a call that test happens not to make, and it
+cannot see a byte buffer added to a type next year, so both halves are here and
+each catches what the other cannot.
+
+| Scan | What it reads | What it refuses |
+|---|---|---|
+| `the_walk_reads_every_module_in_this_crate` | `crates/export/src` recursively, and `lib.rs`'s `pub mod` lines | a module declared without a file the walk reaches, and a file no module declares |
+| `the_product_closure_is_exactly_the_declared_edges` | `crates/export/Cargo.toml`'s `[dependencies]` | any addition to the six product edges, and by name a store, vault, crypto, keystore, recovery, retention, projection, transport, connector or model edge |
+| `the_product_source_reaches_only_the_declared_vocabulary` | every product file, as four whole sets and two per-item sets | a new `snake_case` path root, a new crate brought into scope, a new `std` module, a new item under `std::process` or `std::os`, or a new macro |
+| `no_type_in_this_crate_holds_an_unclassified_byte_buffer` | every `struct` and `enum` body in the crate | a byte-typed field or tuple position that the classification table does not name, in both directions |
+| `the_only_clock_read_names_a_staging_directory` | every product file | a second `SystemTime::now`, or the one call moving out of the staging-path reservation |
+| `the_portable_path_rules_match_the_phase_1_export` | `crates/portability/src/lib.rs`'s reserved-name list | the repeated path rules forking from the ones they repeat |
+
+### What this task found in its own guard
+
+The `std`-module sweep was written as "every second segment of a `std::` path"
+and it was blind to the shape this crate actually uses. `use std::{fs, io,
+sync::atomic::Ordering}` reaches `std::sync` and spells `std::` **once**, so the
+sweep saw `fs` and nothing else: `sync` and `time` were invisible, and
+`std::net::TcpStream` written the same way would have been invisible for exactly
+the same reason. The repair is `expanded_uses`, which rewrites every `use`
+statement into one full path per line before the sweep reads it. `P1-I15` is
+the injection that reaches the sweep **only** through that expansion — a
+transport module inside a braced group, spelling `std::` once — and `P1-I16` is
+the direct form the group form was hiding behind.
+
+Then the same guard had the defect one layer in. Admitting a module is not
+admitting everything in it: `std::process::id` names the staging directory and
+`std::process`'s process launcher starts a program, and once the first was
+needed the module-level set admitted the second. The two admitted-but-sharp
+modules now carry their own whole item sets, so `std::process::exit` and
+`std::process::abort` each fail as an addition. `P2-RF11`'s sentence held again:
+assume there is one more.
+
+### The byte-buffer table is empty, and that is the point
+
+`P2-RF13` and `P2-RF15` found seven `Debug` leaks, four of them in `crypto`,
+`recovery` and `portability`. That the workspace-wide net in
+`tools/secret-debug-policy.test.mjs` passes is not evidence for a crate it has
+not been re-measured against, so the same question is asked at this crate's own
+boundary. The answer today is that no type here holds bytes: they stream through
+a fixed buffer inside `directory::copy_new_file` and are never held in a value.
+The table is therefore empty, and a byte-typed field added to any type of this
+crate fails until somebody records what it holds.
+
+### The injection matrix
+
+Twenty injections, one at a time, each its own edit and its own build, each
+reverted before the next with `git status --porcelain` read to prove the tree
+came back clean. **None of them spells a name any table forbids** — the tables
+here compare whole sets and derive identifiers from positions. Every one was
+compiled before it was observed: an injection that does not build is not
+evidence, and four had to be reshaped after their first form failed to compile.
+The builds are
+`cargo clippy -p academic-export --all-targets --offline -- -D warnings` and
+`cargo test -p academic-export --offline`.
+
+| # | Injection | Compiles | Observation |
+|---|---|---|---|
+| P1-I1 | `write.rs`: an original is written at a path derived from its **vault locator** rather than its artifact identifier | yes | fails: two artifacts with identical bytes share one locator, so the second copy hits an existing file |
+| P1-I2 | `write.rs`: a withheld original records the path its bytes would have had | yes, on the **second** form | fails: `original_inclusion_is_user_selected_with_no_dangling_locator`, and `restore_without_vendor_or_school_account_succeeds` |
+| P1-I3 | `write.rs`: a topical part's claims are labelled `PUBLIC` instead of their domain's label | yes, on the **second** form | fails: `export_carries_labels_restrictions_and_notices` |
+| P1-I4 | `write.rs`: every file carries the bundle notice instead of its domain's | yes | fails: the same test, on the notice rather than the label |
+| P1-I5 | `source.rs`: the security-domain list is a hash set rather than a sorted vector | yes | fails: `domains_are_sorted_and_deduplicated` — **and nothing else**; see below |
+| P1-I6 | `part.rs`: one section 37 bullet is paraphrased by one character | yes | fails: the specification's own list disagrees |
+| P1-I7 | `part.rs`: one part is dropped from `ALL` **and** the declared length shrinks with it, so no count moves | yes | fails: the same comparison, in the other direction |
+| P1-I8 | `audit.rs`: the re-run compares outcome **lengths** instead of outcome bytes | yes | fails: `clean_offline_restore_reruns_deterministic_audit` — after two repairs; see below |
+| P1-I9 | `read.rs`: a bundle holding a file the manifest does not list is accepted | yes | fails: the stray-file case |
+| P1-I10 | `read.rs`: one of the audit's four referenced paths is left unchecked | yes | fails: the dangling-locator case — after a repair; see below |
+| P1-I11 | `write.rs`: a recorded domain label weaker than the ledger is admitted | yes | fails: the understated-register case |
+| P1-I12 | `graph.rs`: the JSON-LD graph addresses an artifact node by its vault locator | yes | fails: the graph holds three artifact nodes where the ledger holds four |
+| P1-I13 | `bundle.rs`: every file record claims its content may be redistributed | yes | fails: the restriction no longer follows the label |
+| P1-I14 | `bundle.rs`: the semantic digest drops its length prefix | yes | **passes**; see below |
+| P1-I15 | `directory.rs`: a transport module reached through a braced `use` group | yes, on the **second** form | fails: `std::net` is not in the module set, and the expansion is what sees it |
+| P1-I16 | `write.rs`: the writer reads an ambient variable | yes | fails: `std::env` is not in the module set |
+| P1-I17 | `directory.rs`: a sharp item under an **admitted** `std` module | yes | fails: `std::process::exit` is not in that module's item set |
+| P1-I18 | `bundle.rs`: a byte buffer on a new type of this crate | yes, on the **second** form | fails: nothing classifies it |
+| P1-I19 | `directory.rs`: a second clock read | yes | fails: the crate reads a clock twice |
+| P1-I20 | `directory.rs`: one reserved Windows device name dropped | yes | fails: the repeated rule set forked from the one it repeats |
+
+**Four did not compile in their first form.** `P1-I2` and `P1-I3` left an import
+and a binding unused; `P1-I15` imported a trait it never called; `P1-I18` added
+a `Vec<u8>` to a `Copy` type and broke every initializer. Each was reshaped
+until it built, because the discipline is that an injection which does not
+compile has measured nothing.
+
+**Three passed, and each was a different empty guard.** They were found by the
+campaign rather than by review, and two are repaired:
+
+- `P1-I5` replaced the sorted domain list with a hash set and every acceptance
+  test still passed. The obvious explanation — one domain in the corpus, and one
+  element is in order whatever holds it — was wrong: a second security domain
+  was added to the fixture and the injection still passed. The domain order
+  reaches **no byte** of a bundle, because every file list is sorted by path
+  before it is written and every label is a maximum. What holds it is the
+  function's own contract test, and the fixture's second domain stayed anyway,
+  because it is what makes the label, restriction and notice checks compare two
+  different values instead of one repeated one.
+- `P1-I10` deleted one of the four audit-path checks and the dangling-locator
+  case still passed. That case edited `manifest.json` in place, and the reader
+  refuses on the recorded semantic digest long before it reaches the locator
+  rule — so the case had been measuring the digest and nothing else, for its
+  whole life. It now **re-seals** the manifest after breaking it, over four
+  sites: the audit's first path, its last, a part record's file list, and an
+  included original's path.
+- `P1-I8` weakened the re-run's byte comparison to a length comparison and
+  passed **twice more** after the first repair. Matching the refusal's arm did
+  not help, because the mismatched-audit case's two outcomes differ in length as
+  well as in content and the weakened check still reached the right arm. What
+  closes it is a bundle whose recorded audit is correct, whose outcome file is
+  edited by one byte and no more, whose file digest is corrected and whose
+  manifest is re-sealed: every other check in the re-run then agrees, and the
+  byte comparison is the only thing that can refuse.
+
+**`P1-I14` still passes, and that is recorded rather than repaired.** It removes
+the semantic digest's length prefix, and no test can see it because the sentence
+beside it was false. The digest is one hash over one JSON document; every field
+is bound because the structure is in those bytes, and the length only keeps the
+domain separator from running into the body. Making it observable would need a
+`semantic` block whose JSON begins with the separator's tail. The claim was
+corrected instead — a sentence nothing executes is the defect, not the missing
+test.

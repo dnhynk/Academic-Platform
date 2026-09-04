@@ -654,6 +654,24 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-freshness",
       "academic-knowledge-state",
     ],
+    // `P2-P1`'s section 37 graduation export. Three product edges, and the
+    // edges it does not have are the whole point: `INV-C-015` is the claim that
+    // a user can read their own record when this product and their school
+    // account are both gone, so a bundle writer that needed the database engine
+    // and a reader that needed the key hierarchy would make that claim about
+    // software the user no longer has. There is no `academic-store`, no
+    // `academic-vault`, no `academic-crypto`, no `academic-keystore-platform`,
+    // no `academic-recovery`, no `academic-retention`, no `academic-projections`
+    // and no `academic-rpc`. `academic-domain` carries the identifiers, the
+    // content digest and the section 3.9 engine vocabulary the recorded audit
+    // is expressed in; `academic-audit` and `academic-requirement` are what make
+    // the clean-room restore re-run `P2-U3`'s selection and evaluation rather
+    // than re-read a verdict.
+    "academic-export": [
+      "academic-audit",
+      "academic-domain",
+      "academic-requirement",
+    ],
   });
   const graph = new Map(Object.entries(actual));
   assertAcyclic(graph);
@@ -898,6 +916,25 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository-correlation",
       "academic-transcription",
       "academic-untrusted-content",
+    ],
+    // `P2-P1`. Six dev edges and not one of them a product edge, which is the
+    // claim rather than an accident: the round trip needs a real committed
+    // watermark, so the fixture creates a synthetic profile through
+    // `academic-store`, seals artifacts through `academic-vault`, signs and
+    // verifies batches through `academic-contracts`, and reads the canonical
+    // rows back through `academic-portability` -- and the bundle is then
+    // compared against those rows rather than against the value it was written
+    // from. `academic-ingestion` and `academic-record` arrive with `P2-U3`'s
+    // fixture module, which this crate's fixture includes by path rather than
+    // transcribing. Keeping all six off the product edge is what makes "a
+    // bundle is readable without this product" a graph fact.
+    "academic-export": [
+      "academic-contracts",
+      "academic-ingestion",
+      "academic-portability",
+      "academic-record",
+      "academic-store",
+      "academic-vault",
     ],
   });
 
@@ -2633,6 +2670,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   // crate spells no socket construct, opens nothing at all, reads no clock, and
   // every instant it holds arrived inside a `P2-N3` value.
   "academic-gap": ["libc"],
+  // `P2-P1`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `P2-U3` and `P2-U6`. The crate spells no socket construct, which is
+  // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it opens
+  // nothing at all, and its own whole-set path-root, `std`-module and macro
+  // sweeps refuse an addition of any kind at its boundary.
+  "academic-export": ["libc"],
 };
 async function rustSourcesIfPresent(root) {
   try {
@@ -4607,6 +4650,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     gapReceiptText,
     studentVoiceReceiptText,
     offeringReceiptText,
+    exportReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4645,8 +4689,10 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-n5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-u5.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-p1.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
+  const exportReceipt = JSON.parse(exportReceiptText);
   const receipt = JSON.parse(receiptText);
   const keyReceipt = JSON.parse(keyReceiptText);
   const scenarioReceipt = JSON.parse(scenarioReceiptText);
@@ -6501,6 +6547,54 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-U5 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-P1` adds `academic-export` and no external crate. It is a separate
+  // package from `academic-portability` for the reason `INV-C-015` is about:
+  // that crate's three lanes all link `academic-store`, and a bundle written
+  // from it would have put the database engine inside the closure of the
+  // artefact a user keeps after this product is gone. What this crate links is
+  // `P2-U3`'s engine, `P2-U2`'s published rule set and the domain, and nothing
+  // that could open a store, unwrap a key or reach a host.
+  assert.equal(exportReceipt.task, "P2-P1");
+  const exportAdmitted = new Set(
+    exportReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const exportPathPackages = new Set(
+    exportReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(exportAdmitted.size, 0, "P2-P1 must admit no external crate");
+  assert.deepEqual([...exportPathPackages], ["academic-export@0.1.0"]);
+  assert.deepEqual(exportReceipt.summary.npm_additions, []);
+  assert.equal(exportReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(exportReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(exportReceipt.summary.build_time_only_count, 0);
+  assert.deepEqual(Object.keys(exportReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-audit",
+    "academic-domain",
+    "academic-requirement",
+    "serde",
+    "serde_json",
+    "sha2",
+  ]);
+  assert.deepEqual(Object.keys(exportReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-contracts",
+    "academic-ingestion",
+    "academic-portability",
+    "academic-record",
+    "academic-store",
+    "academic-vault",
+    "ed25519-dalek",
+  ]);
+  const exportTuples = lockTuples.filter(
+    ([name, version]) =>
+      exportAdmitted.has(`${name}@${version}`) ||
+      exportPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    exportTuples.length,
+    exportAdmitted.size + exportPathPackages.size,
+    "a P2-P1 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -6572,7 +6666,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !gapAdmitted.has(`${name}@${version}`) &&
       !gapPathPackages.has(`${name}@${version}`) &&
       !offeringAdmitted.has(`${name}@${version}`) &&
-      !offeringPathPackages.has(`${name}@${version}`),
+      !offeringPathPackages.has(`${name}@${version}`) &&
+      !exportAdmitted.has(`${name}@${version}`) &&
+      !exportPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -6618,7 +6714,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       freshnessTuples.length +
       studentVoiceTuples.length +
       gapTuples.length +
-      offeringTuples.length,
+      offeringTuples.length +
+      exportTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

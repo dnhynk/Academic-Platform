@@ -18,6 +18,7 @@ members = [
   "crates/egress",
   "crates/egress-boundary",
   "crates/evidence-center",
+  "crates/export",
   "crates/export-job",
   "crates/freshness",
   "crates/gap",
