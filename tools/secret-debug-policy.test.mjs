@@ -569,6 +569,10 @@ const TEXT_CLASSIFIED_CRATES = new Map([
     "transcription",
     "`P2-L3`: every raw token, segment, correction and effective token is a word the lecturer said",
   ],
+  [
+    "lecture-document",
+    "`P2-L4`: every node, draft and study-index heading is written over the lecture and can quote it",
+  ],
 ]);
 
 const TEXT_FIELD_CLASSES = new Map([
@@ -592,6 +596,29 @@ const TEXT_FIELD_CLASSES = new Map([
   ["RawSegment.verbatim_text", "content"],
   ["RawToken.text", "content"],
   ["SuppliedMaterial.identifier", "identifier"],
+  // `crates/lecture-document` -- `P2-L4`. A node's rendered text is the lecture
+  // and a study-index heading is written over it. The fault enums are
+  // `diagnostic` and `identifier` by their own module's claim -- *nothing here
+  // carries lecture text: a fault names an index, an identifier or a frame
+  // sequence* -- which this classification now holds them to.
+  ["Case.name", "identifier"],
+  ["CorpusFile.path", "reference"],
+  ["DocumentFault.kind", "diagnostic"],
+  ["DocumentFault.node", "identifier"],
+  ["DocumentFault.segment_id", "identifier"],
+  ["DocumentFault.value", "diagnostic"],
+  ["DocumentNode.rendered_text", "content"],
+  ["NodeDraft.rendered_text", "content"],
+  ["SegmentAccount.segment_id", "identifier"],
+  ["SourceMapping.segment_id", "identifier"],
+  ["StudyIndex.disclosure", "vocabulary"],
+  ["StudyIndexEntry.heading", "content"],
+  ["StudyIndexEntry.id", "identifier"],
+  ["StudyIndexFault.entry", "identifier"],
+  ["StudyIndexFault.kind", "diagnostic"],
+  ["StudyIndexFault.node", "identifier"],
+  ["StudyIndexFault.value", "diagnostic"],
+  ["UnmappedSegment.segment_id", "identifier"],
 ]);
 
 /**
