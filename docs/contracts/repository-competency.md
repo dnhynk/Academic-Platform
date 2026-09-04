@@ -50,12 +50,29 @@ back out of the design document and required to say `mastery 승격 없음`, so 
 claim the test makes is the specification's rather than the test's.
 
 A work also has to have touched **the place the observation names**.
-`AuthoredWork::touches` compares `P2-R2` `SymbolFingerprint`s when both sides
-carry one and paths otherwise — the same span-independent match `P2-R4`'s
-locator migration uses, and for the same reason: an edit above a declaration
-moves its span and leaves its fingerprint alone. Authoring anything at all in a
-repository that observes a concept is not authoring that concept's use, and
-`a_change_elsewhere_promotes_no_concept` measures both halves.
+`AuthoredWork::touches` requires the path to be equal and then the two to be at
+the same **granularity**: a site inside a declaration meets a locator inside the
+same declaration, by `P2-R2` `SymbolFingerprint`, and a site outside every
+declaration — a manifest row, a configuration key, a module-level import — meets
+a locator outside every declaration. It is span-independent for `P2-R4`'s
+locator-migration reason: an edit above a declaration moves its span and leaves
+its fingerprint alone.
+
+The mixed pair is refused rather than falling back to the path, and that is a
+correction the injection pass produced. The first version compared fingerprints
+when both sides had one and the path otherwise, which meant a symbol-bearing
+edit met the symbol-less locator recorded at a file's import line — so editing
+*any* declaration in a file that happens to import a library would have credited
+the user with that library's use, which is the failure this whole task is
+against. `a_work_meets_an_observation_by_fingerprint_before_by_path` measured it
+and is what holds the repair: it asserts the corpus really carries both a
+symbol-bearing and a symbol-less locator at one path, admits an edit inside the
+declaration the observation names, and refuses an edit at the same path inside a
+differently named one.
+
+Authoring anything at all in a repository that observes a concept is not
+authoring that concept's use, and `a_change_elsewhere_promotes_no_concept`
+measures the coarser half in both directions.
 
 ## The authorship identity mapping
 
@@ -286,6 +303,7 @@ than restated. Both are named in `docs/contracts/policy-source-scans.md`.
 Beside them: `the_promotion_checks_are_section_17_6_s`,
 `each_of_section_17_6_s_checks_changes_the_outcome`,
 `a_change_elsewhere_promotes_no_concept`,
+`a_work_meets_an_observation_by_fingerprint_before_by_path`,
 `a_work_is_bound_to_its_snapshot_and_its_user`,
 `a_rubric_that_requires_nothing_is_not_a_rubric`, the eight source scans, and the
 seven `compile_fail` cases.

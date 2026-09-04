@@ -372,11 +372,11 @@ impl AuthoredWork {
     /// authoring that concept's use, which is the whole of
     /// `repo_use_alone_creates_no_personal_claim` one level in.
     ///
-    /// The comparison is `P2-R2`'s own: when both sides carry a
-    /// [`academic_repository_analysis::SymbolFingerprint`] the fingerprints
-    /// must be equal, and otherwise the paths must be. That is the same
-    /// span-independent match `P2-R4`'s locator migration uses, for the same
-    /// reason — an edit above a declaration moves its span and leaves its
+    /// The comparison is `P2-R2`'s own: the paths must be equal, and then the
+    /// two must be at the same granularity — both inside the same declaration,
+    /// by [`academic_repository_analysis::SymbolFingerprint`], or both outside
+    /// every declaration. It is span-independent for `P2-R4`'s locator-migration
+    /// reason: an edit above a declaration moves its span and leaves its
     /// fingerprint alone.
     #[must_use]
     pub fn touches(&self, observed: &[Locator]) -> bool {
@@ -389,9 +389,28 @@ impl AuthoredWork {
 }
 
 /// Whether a changed site and an observed locator are the same place.
+///
+/// The path has to be equal, and then the two have to be at the same
+/// **granularity**: a site inside a declaration meets a locator inside the same
+/// declaration, and a site outside every declaration — a manifest row, a
+/// configuration key, a module-level import — meets a locator outside every
+/// declaration.
+///
+/// The last arm is why the pair is compared rather than the path alone. A
+/// symbol-bearing change matched against a symbol-less locator at the same path
+/// would make *any* edit inside *any* declaration of a file meet a use recorded
+/// at that file's import line, so editing an unrelated function in a file that
+/// happens to import a library would credit the user with that library's use.
+/// `a_work_meets_an_observation_by_fingerprint_before_by_path` measured exactly
+/// that: an edit inside a differently named declaration at the same path met
+/// the observation while this function read the path in that case.
 fn sites_meet(changed: &Locator, observed: &Locator) -> bool {
+    if changed.path() != observed.path() {
+        return false;
+    }
     match (changed.symbol(), observed.symbol()) {
         (Some(left), Some(right)) => left == right,
-        _ => changed.path() == observed.path(),
+        (None, None) => true,
+        (Some(_), None) | (None, Some(_)) => false,
     }
 }
