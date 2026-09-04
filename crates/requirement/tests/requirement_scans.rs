@@ -1514,3 +1514,139 @@ fn no_file_outside_this_crate_names_a_requirement_rule() -> TestResult {
     );
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// `S-20`
+// ---------------------------------------------------------------------------
+
+/// Section 38's cells, in the order the document writes them.
+///
+/// Section 38.1's ten lines, then section 38.2's eleven bullets, then section
+/// 38.3's ten numbered questions. `GATE-38-{:03}` is one-based over that
+/// concatenation, so a cell's identifier is a fact about where the document
+/// puts it and not a string anybody chose.
+fn section_38_cells() -> Result<Vec<String>, Box<dyn Error>> {
+    let specification = specification()?;
+    let block = specification
+        .split_once("Admission Year")
+        .map(|(_, rest)| format!("Admission Year{rest}"))
+        .and_then(|rest| rest.split_once("```").map(|(block, _)| block.to_owned()))
+        .ok_or("section 38.1's block is not in the document")?;
+    let mut cells: Vec<String> = block
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect();
+    assert_eq!(cells.len(), 10, "section 38.1 lists {} lines", cells.len());
+
+    let bullets = specification
+        .split_once("### 38.2 공식적으로 추가 확인할 항목")
+        .map(|(_, rest)| rest)
+        .and_then(|rest| rest.split_once("### 38.3").map(|(block, _)| block))
+        .ok_or("section 38.2's list is not in the document")?;
+    let bullets: Vec<String> = bullets
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("- ").map(str::to_owned))
+        .collect();
+    assert_eq!(
+        bullets.len(),
+        11,
+        "section 38.2 lists {} bullets",
+        bullets.len()
+    );
+
+    let questions = specification
+        .split_once("### 38.3 아직 결정할 제품·아키텍처 질문")
+        .map(|(_, rest)| rest)
+        .and_then(|rest| rest.split_once("\n---").map(|(block, _)| block))
+        .ok_or("section 38.3's list is not in the document")?;
+    let questions: Vec<String> = questions
+        .lines()
+        .map(str::trim)
+        .filter_map(|line| {
+            line.split_once(". ")
+                .and_then(|(number, text)| number.parse::<usize>().ok().map(|_| text.to_owned()))
+        })
+        .collect();
+    assert_eq!(
+        questions.len(),
+        10,
+        "section 38.3 lists {} questions",
+        questions.len()
+    );
+
+    cells.extend(bullets);
+    cells.extend(questions);
+    Ok(cells)
+}
+
+/// Where section 38 writes one cell, one-based.
+///
+/// The identifier is never compared against a list somebody typed: it is
+/// rebuilt from the position and the two have to agree.
+fn section_38_position(
+    cells: &[String],
+    identifier: &str,
+    spec_line: &str,
+) -> Result<usize, Box<dyn Error>> {
+    Ok(cells
+        .iter()
+        .position(|cell| cell.starts_with(spec_line))
+        .ok_or_else(|| {
+            format!("{identifier} quotes a line section 38 does not write: {spec_line}")
+        })?
+        .saturating_add(1))
+}
+
+/// The `GATE-38-xxx` identifiers are section 38's own numbering, derived from
+/// each cell's position in the document rather than compared against a list
+/// written twice.
+///
+/// `S-20`: eleven of this workspace's eighteen `OpenGate::identifier` arms were
+/// hand-written strings whose only check was a hand-written list in the same
+/// test, so the first edit to section 38 that inserts, removes or reorders a
+/// cell renumbered the ones after it silently. `P2-U3` closed it for `academic-audit`'s seven cells; these are this
+/// crate's four.
+#[test]
+fn the_open_gates_are_section_38s_own() -> TestResult {
+    let cells = section_38_cells()?;
+    let mut derived: Vec<&'static str> = Vec::new();
+    for (gate, spec_line) in [
+        (
+            OpenGate::CohortApplicability,
+            "사용 학번과 선택 가능한 졸업기준의 정확한 적용 규칙·경과조치.",
+        ),
+        (
+            OpenGate::ThesisRuleScope,
+            "2027-1 `컴퓨터공학 학사논문연구` 필수의 적용 대상과 기존 학번 경과조치.",
+        ),
+        (
+            OpenGate::MultiMajorDoubleCounting,
+            "복수·부·연합·연계전공 간 중복인정과 2026-03-01 시행 규정 적용.",
+        ),
+        (
+            OpenGate::ExternalCreditRecognition,
+            "교환·편입·군복무·학점교류·대학원 교과목의 학점/GPA/전공 인정.",
+        ),
+    ] {
+        let position = section_38_position(&cells, gate.identifier(), spec_line)?;
+        assert_eq!(
+            gate.identifier(),
+            format!("GATE-38-{position:03}"),
+            "{} is section 38's cell {position}, so its identifier does not follow its position",
+            gate.identifier()
+        );
+        derived.push(gate.identifier());
+    }
+
+    // Both directions: a variant added to `ALL` without a section 38 cell above
+    // is a missing key here, and a cell derived for a variant `ALL` dropped is
+    // an extra one.
+    let declared: Vec<&'static str> = OpenGate::ALL.iter().map(|gate| gate.identifier()).collect();
+    assert_eq!(
+        derived, declared,
+        "the derived cells are not the ones this crate declares"
+    );
+    Ok(())
+}
