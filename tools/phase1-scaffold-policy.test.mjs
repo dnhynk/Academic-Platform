@@ -667,6 +667,27 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // `academic-worker` and no `academic-egress-boundary`, so nothing in its
     // closure can launch a process or stage a payload.
     "academic-freshness": ["academic-domain", "academic-knowledge-state"],
+    // `P2-N7` reads two boundaries and computes neither.
+    // `academic-domain` is `P2-C1` and `P2-N1`: section 7.4's three primary node
+    // types, so the granularity the user selects is one of that crate's tiers
+    // and a concept resolves to its field through a `VersionedTaxonomyImport`
+    // whose identity binds the release the scope names; `FreshnessBand`, which
+    // this crate carries and never computes; and ADR-003's actor matrix, which
+    // is what makes a disposition unmintable by a model run and therefore what
+    // makes `새로운 AI run이 경고를 되살리지 않는다` a property of the type.
+    // `academic-knowledge-state` is `P2-N2` for `EligibleEvidence`, so coverage
+    // counts evidence that passed section 13.4's four checks rather than
+    // anything a caller calls evidence, and for `Outcome`, so `WEAK` is that
+    // crate's own record of an attempt that did not succeed. The edges it does
+    // **not** have are the point: no `academic-gap`, so `모든 분야를 균등하게
+    // 채우라는 목표를 만들지 않는다` is a graph fact -- a goal this engine could
+    // emit would first have to be a goal it could name -- and no
+    // `academic-freshness`, so which concept is stale arrives as `P2-N3`'s band
+    // rather than as a threshold here. No `academic-store` -- it persists
+    // nothing and adds no migration -- and no `academic-worker` and no
+    // `academic-egress-boundary`, so nothing in its closure can launch a process
+    // or stage a payload.
+    "academic-blind-spot": ["academic-domain", "academic-knowledge-state"],
     // `P2-L5`'s student voice, diarization measurement and capture PII hold.
     // Five product edges and each is a boundary it resolves rather than
     // restates: `P2-L4`'s `RedactionPolicyRef`, whose digest that crate's
@@ -1020,6 +1041,27 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository-correlation",
       "academic-transcription",
       "academic-untrusted-content",
+    ],
+    // `P2-N7`'s acceptance suite counts real `EligibleEvidence`, and section
+    // 23's first exposure source -- `강의` -- is a node of a document `P2-L4`
+    // produced. It reaches that through `P2-N2`'s own fixture file by `#[path]`,
+    // the way `academic-freshness` and `academic-gap` reach the module above it,
+    // and it takes the **lecture half only**: this suite needs no `P2-R4`
+    // stance, so the repository chain those two carry is absent here.
+    // `academic-knowledge-state` is a dev edge as well as a product one for the
+    // `trybuild` reason `academic-scenario` gives: a compile-fail case compiles
+    // against this crate plus its dev-dependencies, and
+    // `an_exposure_item_takes_only_admitted_evidence` names that crate's
+    // `BlockedEvidence` to show inadmissible evidence cannot be counted as
+    // exposure.
+    "academic-blind-spot": [
+      "academic-capture",
+      "academic-consent",
+      "academic-domain",
+      "academic-knowledge-state",
+      "academic-lecture-document",
+      "academic-model-run",
+      "academic-transcription",
     ],
     // `P2-L5`. `academic-retention` is a dev edge for the reason
     // `academic-consent` takes it as one: `GATE-38-026`'s statement and the
@@ -2842,6 +2884,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   // crate spells no socket construct, opens nothing at all, reads no clock, and
   // takes every instant as a `TimestampMillis` argument.
   "academic-freshness": ["libc"],
+  // `P2-N7` reaches `libc` the same way and for the same reason: through
+  // `academic-policy`'s bundled SQLite by way of `academic-knowledge-state`. The
+  // crate spells no socket construct, opens nothing at all, reads no clock, and
+  // every instant it holds arrived as a `TimestampMillis` argument.
+  "academic-blind-spot": ["libc"],
   // `P2-L5`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
   // way of `P2-M1` and `P2-G2`, which arrive with `P2-L3`. The crate spells no
   // socket construct, which is why its `SOCKET_ALLOWANCE` entry is absent
@@ -5805,6 +5852,49 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "uuid",
   ]);
 
+  // `P2-N7` adds one workspace path package, `academic-blind-spot`, and admits
+  // no external crate: its product edges are `academic-domain`,
+  // `academic-knowledge-state`, `serde` and `thiserror`, and its dev edges are
+  // `P2-N2`'s lecture fixture chain -- reached through that crate's own
+  // `tests/common/lecture.rs` by `#[path]` -- plus `academic-knowledge-state`
+  // again for `trybuild`, `serde_json`, `tempfile`, `trybuild` and `uuid`, all
+  // already in this lock through earlier receipts. It takes the `lecture` half
+  // of that fixture module only, so the repository chain `P2-N5` and `P2-N6`
+  // reach is absent here. The edges it does **not** carry are the point: no
+  // `academic-gap`, which is what makes `모든 분야를 균등하게 채우라는 목표를
+  // 만들지 않는다` a graph fact rather than a rule in a function; no
+  // `academic-freshness`, so a band is carried and never computed; and no
+  // `academic-store`, so no finding reaches the canonical writer and no
+  // migration is added.
+  const {
+    receipt: blindSpotReceipt,
+    admitted: blindSpotAdmitted,
+    pathPackages: blindSpotPathPackages,
+  } = receiptFor("P2-N7");
+  assert.equal(blindSpotAdmitted.size, 0, "P2-N7 must admit no external crate");
+  assert.deepEqual([...blindSpotPathPackages], ["academic-blind-spot@0.1.0"]);
+  assert.deepEqual(blindSpotReceipt.summary.npm_additions, []);
+  assert.equal(blindSpotReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(blindSpotReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(blindSpotReceipt.summary.build_time_only_count, 0);
+  assert.equal(typeof blindSpotReceipt.no_second_ladder_note, "string");
+  assert.deepEqual(Object.keys(blindSpotReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-domain",
+    "academic-knowledge-state",
+  ]);
+  assert.deepEqual(Object.keys(blindSpotReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-capture",
+    "academic-consent",
+    "academic-knowledge-state",
+    "academic-lecture-document",
+    "academic-model-run",
+    "academic-transcription",
+    "serde_json",
+    "tempfile",
+    "trybuild",
+    "uuid",
+  ]);
+
 
   // `P2-U5` adds `academic-offering` and no external crate. The offering
   // forecast is a boundary above `P2-U1`'s aggregates and `P2-U6`'s source
@@ -6319,6 +6409,23 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
             },
           ]
         : [];
+    // `P2-N7`. Its acceptance suite reaches `P2-N2`'s lecture fixture file by
+    // `#[path]`, so it drives the same real capture and writes a real journal
+    // into a temporary directory, and `serde_json` is the wire round-trip of
+    // section 23's schema plus the whole-set key comparison that makes a goal
+    // added to a finding an extra key. `trybuild` and `uuid` are on the Phase 1
+    // receipt rather than this one.
+    const n7BlindSpotUse = ["tempfile", "serde_json"].includes(admission.name)
+      ? [
+          {
+            package: "academic-blind-spot",
+            kind: "dev",
+            target: null,
+            default_features: true,
+            features: [],
+          },
+        ]
+      : [];
     // `P2-L5`. Its acceptance suite drives the same real capture `P2-L4`'s
     // does, so it writes a real journal into a temporary directory. `trybuild`
     // is on the Phase 1 receipt rather than this one, so only `tempfile` gains
@@ -6378,6 +6485,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       ...n5GapUse,
       ...n6CriticalPathUse,
       ...n3FreshnessUse,
+      ...n7BlindSpotUse,
       ...l5StudentVoiceUse,
       ...l3TranscriptionUse,
       ...l4LectureDocumentUse,

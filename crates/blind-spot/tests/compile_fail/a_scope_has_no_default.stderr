@@ -1,0 +1,16 @@
+error[E0599]: no associated function or constant named `default` found for struct `BlindSpotScope` in the current scope
+ --> tests/compile_fail/a_scope_has_no_default.rs:9:21
+  |
+9 |     BlindSpotScope::default()
+  |                     ^^^^^^^ associated function or constant not found in `BlindSpotScope`
+  |
+note: if you're trying to build a new `BlindSpotScope`, consider using `BlindSpotScope::select` which returns `Result<BlindSpotScope, BlindSpotError>`
+ --> src/scope.rs
+  |
+  | /     pub fn select(
+  | |         taxonomy: TaxonomyVersionIdentity,
+  | |         granularity: TaxonomyGranularity,
+  | |         window: ObservationWindow,
+  | |         minimum_exposure: u32,
+  | |     ) -> Result<Self, BlindSpotError> {
+  | |_____________________________________^

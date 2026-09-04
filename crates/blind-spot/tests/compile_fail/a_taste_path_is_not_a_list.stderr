@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_taste_path_is_not_a_list.rs:14:41
+   |
+14 |     TastePath::for_explore(choice, key, vec![TasteStep::OneLecture, TasteStep::OneChapter])
+   |     ----------------------              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `TasteStep`, found `Vec<TasteStep>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected enum `TasteStep`
+            found struct `Vec<TasteStep>`
+note: associated function defined here
+  --> src/taste.rs
+   |
+   |     pub fn for_explore(
+   |            ^^^^^^^^^^^
