@@ -1446,3 +1446,100 @@ fn a_work_meets_an_observation_by_fingerprint_before_by_path() -> TestResult {
     );
     Ok(())
 }
+
+/// Every identifier this crate takes is the shape it says it admits.
+///
+/// A whole-set classification rather than a list of rejected spellings: every
+/// ASCII byte is offered inside an otherwise legal identifier and required to
+/// be admitted **exactly** when this test's own independent predicate says it
+/// belongs, in both directions, for all four constructors.
+///
+/// It is here because `P2-Y1`'s injection campaign measured the gap: reducing
+/// `identity::validated` to a non-empty check — keeping the `matches!` macro, so
+/// `competency_scans.rs`'s macro inventory is unchanged — passed this crate's
+/// whole suite, so the rule was declared and unmeasured.
+#[test]
+fn every_identifier_is_the_shape_this_crate_admits() -> TestResult {
+    // Written here rather than read from the crate, so the two are independent.
+    let belongs =
+        |byte: u8| byte.is_ascii_alphanumeric() || byte == b'.' || byte == b'_' || byte == b'-';
+
+    for byte in 0_u8..=127 {
+        let candidate = format!("a{}b", char::from(byte));
+        for taken in [
+            UserId::new(candidate.clone()).is_ok(),
+            ChangeId::new(candidate.clone()).is_ok(),
+            RubricId::new(candidate.clone()).is_ok(),
+            OutcomeArtifact::new(
+                OutcomeKind::Test,
+                candidate.clone(),
+                change("c-shape")?,
+                shape_site()?,
+                1,
+            )
+            .is_ok(),
+        ] {
+            assert_eq!(
+                taken,
+                belongs(byte),
+                "byte {byte} in {candidate:?} is admitted {taken} and belongs {}",
+                belongs(byte)
+            );
+        }
+    }
+
+    // Beyond ASCII, where a byte-wise reader and a character-wise one disagree.
+    for outside in ["개념", "a개념b", "a\u{00e9}b", "a\u{1f600}b"] {
+        assert!(
+            matches!(
+                UserId::new(outside),
+                Err(CompetencyError::InvalidIdentifier("user", _))
+            ),
+            "{outside:?} was admitted as a user identity"
+        );
+    }
+
+    // The length boundary, on both sides of it, and the empty value.
+    let longest = "a".repeat(64);
+    assert!(UserId::new(longest.as_str()).is_ok());
+    assert!(ChangeId::new(longest.as_str()).is_ok());
+    assert!(RubricId::new(longest.as_str()).is_ok());
+    let overlong = "a".repeat(65);
+    for outcome in [
+        UserId::new(overlong.as_str()).err(),
+        ChangeId::new(overlong.as_str()).err(),
+        RubricId::new(overlong.as_str()).err(),
+    ] {
+        assert!(
+            matches!(outcome, Some(CompetencyError::InvalidIdentifier(_, _))),
+            "a 65-byte identifier was admitted"
+        );
+    }
+
+    // Each constructor names itself in its refusal, so a reader is told which
+    // identifier was wrong rather than that one of four was.
+    let named: BTreeSet<&'static str> = [
+        UserId::new("").err(),
+        ChangeId::new("").err(),
+        RubricId::new("").err(),
+        OutcomeArtifact::new(OutcomeKind::Test, "", change("c-shape")?, shape_site()?, 1).err(),
+    ]
+    .into_iter()
+    .filter_map(|error| match error {
+        Some(CompetencyError::InvalidIdentifier(what, _)) => Some(what),
+        _ => None,
+    })
+    .collect();
+    assert_eq!(
+        named,
+        BTreeSet::from(["change", "concept", "rubric", "user"]),
+        "the four constructors do not name themselves apart"
+    );
+    Ok(())
+}
+
+/// One `P2-R2` locator, so the outcome constructor above has a real place to
+/// name. A locator's own constructor is crate-private to that crate.
+fn shape_site() -> Result<Locator, Box<dyn Error>> {
+    built(&OBSERVED_REDIS)?.site("src/cache.ts")
+}

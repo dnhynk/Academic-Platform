@@ -305,8 +305,21 @@ Beside them: `the_promotion_checks_are_section_17_6_s`,
 `a_change_elsewhere_promotes_no_concept`,
 `a_work_meets_an_observation_by_fingerprint_before_by_path`,
 `a_work_is_bound_to_its_snapshot_and_its_user`,
-`a_rubric_that_requires_nothing_is_not_a_rubric`, the eight source scans, and the
-seven `compile_fail` cases.
+`a_rubric_that_requires_nothing_is_not_a_rubric`,
+`every_identifier_is_the_shape_this_crate_admits`, the eight source scans, and
+the seven `compile_fail` cases.
+
+`every_identifier_is_the_shape_this_crate_admits` was added by `P2-Y1`, which
+found the hole rather than reasoning about it: reducing `identity::validated` to
+a non-empty check — keeping the `matches!` invocation, so `competency_scans.rs`'s
+macro inventory is unchanged and only the shape rule is gone — passed this
+crate's whole suite. The rule was declared and unmeasured. What closes it is a
+**whole-set classification** rather than a list of rejected spellings: every
+ASCII byte is offered inside an otherwise legal identifier and required to be
+admitted exactly when the test's own independent predicate says it belongs, in
+both directions, across `UserId`, `ChangeId`, `RubricId` and
+`OutcomeArtifact`'s concept, beside the length boundary on both sides and the
+four refusals naming themselves apart.
 
 All fixtures are synthetic, built in process, and captured through `P2-R1`'s own
 `capture_local`; every operation is local and deterministic. A `ChangedSite` can
