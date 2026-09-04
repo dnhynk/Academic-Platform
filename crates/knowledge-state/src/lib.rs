@@ -80,9 +80,9 @@ pub use eligibility::{
     EligibleEvidence, EvidenceDossier, Outcome, Participation, SourceIntegrity,
 };
 pub use evidence::{
-    BroadSignal, CEILINGS, CeilingRow, ConceptEvidence, ConceptRef, CourseGradeSignal,
-    DependencyOnly, EvidenceCeiling, EvidenceKind, ExerciseOutcome, IncidentRepair, ProjectUse,
-    SelfExplanation, TeachingSite,
+    BroadSignal, CEILINGS, CeilingRow, ConceptEvidence, CourseGradeSignal, DependencyOnly,
+    EvidenceCeiling, EvidenceKind, ExerciseOutcome, IncidentRepair, ProjectUse, SelfExplanation,
+    TeachingSite,
 };
 pub use history::{
     EvidenceRetraction, FreshnessInput, HistoryEntry, KnowledgeStateHistory, ProposalApplication,
