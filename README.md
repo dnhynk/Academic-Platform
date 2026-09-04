@@ -239,6 +239,48 @@ external package to `Cargo.lock`, and adds no migration. What it does and does
 not claim is in
 [the graduation audit](docs/contracts/graduation-audit.md).
 
+`P2-U5` adds `academic-offering`: section 8.3's four offering statuses and the
+calibrated forecast that decides which one an unconfirmed offering carries.
+**The four statuses are four types, and the prohibition on promoting a
+prediction is an absence rather than a check** — `ConfirmedStanding` holds a
+registration-system reading inside a recorded verification bound, which a
+forecast does not hold and cannot produce, so there is no expression anywhere
+that turns a prediction into a confirmation. The same absence carries the plan
+rule: `ConfirmedStanding::seat` is the only producer of a `ConfirmedSeat` and a
+determinate plan takes seats by value, so a `HISTORICALLY_LIKELY` offering has
+nothing to enter as. Seven compile-fail cases are those absences.
+
+**Section 8.3's sentence names six features and the plan names seven families.**
+The seventh is the sample window the same sentence requires be recorded, and the
+divergence is executed rather than described: the six units are split out of the
+document and compared in order and in both directions, and the seventh's phrase
+is required to be after the split. Every family is measured rather than
+declared — each gets a control and a variant differing in that family alone, and
+the raw score has to move while every other family's contribution stays equal.
+The window a spring forecast reads is the **spring** terms of the history, which
+is what refuses the majority vote §8.3 forbids: two histories with the same
+seasonal rate, window depth and instructor set, differing only in where in the
+window the offerings sit, land on different statuses.
+
+A never-observed course abstains twice over — an explicit reason, and a
+`PredictionMetadata` that refuses a zero sample count, so there is no scored
+forecast for it to become. A probability with no fresh calibration dataset is
+refused rather than shown, through `P2-M1`'s registry. An official reading
+arriving activates a second claim and leaves the prediction byte-identical;
+`SUPERSEDED_FOR_DECISION` is a property of the claim set, not a value written
+onto an append-only row. Per-term Brier score, coverage and abstention rate are
+exact integers with no `f32`, `f64` or floating-point literal anywhere in the
+crate, and what the expected values are compared against did not come from the
+engine that produced them: `tools/offering-forecast-oracle.mjs` is a second
+transcription of the corpus, the rule set, the calibration curve and the
+arithmetic, in another language. **Nothing flips in the §28 registry**, because
+§28's table names twelve engines and none of them is an offering forecast.
+`GATE-38-017` stays open every term, and its identifier is derived from the
+bullet's position in section 38 rather than typed. The crate runs inside
+`cargo test --workspace`, adds no external package to `Cargo.lock`, and adds no
+migration. What it does and does not claim is in
+[offering status and the calibrated forecast](docs/contracts/offering-forecast.md).
+
 `P2-G1` adds `academic-policy` without adding a product socket or a new
 external dependency. A new profile exposes `local_processing_preferred=true`
 and zero configured egress rules; a complete tuple against that empty snapshot

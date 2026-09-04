@@ -1,0 +1,46 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-u",
+  "task": "P2-U5",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-U5 admits no external crate. academic-offering links academic-curriculum, academic-domain, academic-ingestion, academic-model-run, academic-record and thiserror as product edges and academic-curriculum, academic-domain, academic-model-run, academic-record and trybuild as dev edges, all covered by earlier reviewed receipts, and adds one workspace path package. It links no store, vault, crypto, keystore or transport crate at any feature setting: it persists nothing, and migration 0014's offering_detail.official_status column and migration 0001's prediction_metadata_version column are both written by academic-store.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-offering is the P2-U5 forecast boundary: section 8.3's four offering statuses as four types, the seven feature families it names, the calibrated probability and sample window it requires per course, and the per-term Brier/coverage/abstention evaluation. It is a separate package from academic-curriculum because that crate owns section 8.2's aggregates and states in its own module documentation that it computes no probability and holds no observation window; it is a separate package from academic-model-run because that crate owns the calibration registry and this one is a consumer of it.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false,
+    "npm_workspace_package_additions": [],
+    "npm_workspace_package_note": "P2-U5 adds no pnpm workspace package. It adds two Node scripts under tools/ -- an independent oracle and its committed-and-re-derivable test -- and both run under the existing node --test entry point."
+  },
+  "direct_workspace_dependencies": {
+    "academic-curriculum": "P2-U1's OfferingStatus, which is section 8.3's four values and migration 0014's CHECK vocabulary, plus the bounded CourseCode, InstructorName, Capacity and Meeting a listing carries. This crate declares no second copy of that vocabulary; it decides which of the four an offering carries.",
+    "academic-domain": "The section 3.9 proof-tree vocabulary this engine speaks -- ProofNode, ProofStatus, FrozenInputs, EngineOutcome, EngineVersion, RuleSetHash -- plus the Claim shape section 2.3-4's epistemic split is written in, the ConfidencePermille a prediction carries, and the PredictionMetadata that t068 section 2.3-15 pins at version 1 and requires be reused rather than replaced.",
+    "academic-ingestion": "P2-U6's SourceCategory, which is section 8.4's six collection levels. Offering confirmation is a question about which level a reading came from, and the answer is that crate's enumeration; the ConnectorId a reading names is that crate's too.",
+    "academic-model-run": "P2-M1's CalibrationRegistry, which is the only producer of a CalibratedConfidence in this workspace and therefore the only route to a displayed confidence. A forecast whose probability has no fresh dataset abstains rather than showing an uncalibrated number. The same edge exists in academic-repository-analysis for the same reason and under the same receipt.",
+    "academic-record": "P2-U4's ordered TermKey, which is what a seasonality feature, a history window and a forecast horizon are all measured on, and its PlanScenario, which is the plan a confirmed seat is committed into. This crate holds no second term model and no second plan model."
+  },
+  "dev_workspace_dependencies": {
+    "academic-curriculum": "The trybuild cases compile against this crate plus this crate's dev-dependencies, so the CourseCode and OfferingStatus a case has to name are reachable from tests/compile_fail.",
+    "academic-domain": "The same trybuild reason, for the TimestampMillis and PredictionMetadata a case has to name.",
+    "academic-model-run": "The same trybuild reason, for the CalibratedConfidence a case has to name when it tries to assemble a ScoredForecast by hand.",
+    "academic-record": "The same trybuild reason, for the TermKey a seat carries.",
+    "trybuild": "The compile-fail harness. Seven cases, each a different route to a ConfirmedSeat or to a confirmation, each required to fail with its committed diagnostic."
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-offering",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-offering",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-offering is a workspace path crate, not an external dependency. It owns section 8.3's offering statuses and the calibrated forecast behind them, and it holds no writer: it has no edge of any kind to academic-store, academic-store-platform, academic-vault, academic-crypto, academic-keystore-platform, academic-core, academic-projections, academic-recovery or academic-retention, so the canonical writer is not in the closure a forecast compiles against. It also has no academic-audit edge in either direction, which is what keeps a prediction off the graduation verdict: the audit's DegreeAudit::evaluate has no plan parameter, and nothing here can name it. Its resolved link closure intersected with the socket-capable crates is exactly [libc], which reaches it through academic-policy's bundled SQLite by way of academic-model-run.",
+  "network_posture": "The crate opens no socket, declares no foreign function, reads no environment variable, spawns no process, and runs no build script. It runs no connector: every official reading arrives as a value, and the registration system this crate names as the basis for a confirmation is named in a SourceCategory enumeration rather than fetched. It reaches no model: academic-model-run is in the closure for its calibration registry alone, and no product file here names ModelRun -- no_product_file_reaches_a_clock_rng_socket_or_model sweeps every product file for that spelling along with thirteen others. It reads no clock: the instant a calibration dataset's freshness is measured against is a caller's value, and the corpus's instants are literals. GATE-38-017 stays open every term, so with no recorded registration reading nothing is CONFIRMED, no capacity, timetable or instructor is carried over from a term that has passed, and every standing falls to the forecast or to UNCERTAIN. Every fixture is synthetic and built by the crate's own deterministic corpus module; no course code in it names a real catalogue entry.",
+  "advisory_path": "Unchanged. Every external crate academic-offering links was admitted by an earlier receipt and is triaged through that receipt's advisory path. .github/dependabot.yml opens no version-update pull request.",
+  "vendored_data": [],
+  "admissions": []
+}

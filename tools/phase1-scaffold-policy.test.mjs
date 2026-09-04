@@ -339,6 +339,27 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // it compares a recorded transmission against are the broker's, and the
     // namespace discriminator it keys on is that crate's column.
     "academic-model-run": ["academic-domain", "academic-policy"],
+    // `P2-U5`. Section 8.3's four offering statuses and the calibrated forecast
+    // behind them. Five product edges, each a boundary it reuses rather than
+    // rebuilds: `academic-curriculum` for `P2-U1`'s `OfferingStatus`, which is
+    // the four-value vocabulary and migration 0014's `CHECK`;
+    // `academic-domain` for the proof-tree vocabulary and the
+    // `PredictionMetadata` §2.3-15 pins at version 1; `academic-ingestion` for
+    // §8.4's six source levels; `academic-model-run` for `P2-M1`'s calibration
+    // registry, which is the only producer of a displayable confidence, so a
+    // forecast with no fresh dataset abstains rather than showing an
+    // uninterpreted number; and `academic-record` for `P2-U4`'s ordered
+    // `TermKey` and its `PlanScenario`. The edges it does *not* have are the
+    // point: no `academic-store`, so a forecast cannot write itself, and no
+    // `academic-audit`, so a prediction is not nameable from the graduation
+    // verdict's crate and the verdict is not nameable from here.
+    "academic-offering": [
+      "academic-curriculum",
+      "academic-domain",
+      "academic-ingestion",
+      "academic-model-run",
+      "academic-record",
+    ],
     // `academic-crypto`, `academic-recovery`, and `academic-projections` are
     // all optional edges here, and the two lane features that select them are
     // mutually exclusive: `plaintext-portability` (default) selects the
@@ -696,6 +717,17 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // compiles against the crate under test plus that crate's dev-dependencies,
     // and a case has to name the domain identifiers an aggregate is built from.
     "academic-curriculum": ["academic-domain"],
+    // `P2-U5` links four of its own product crates a second time as dev edges
+    // for the `trybuild` reason `academic-scenario` gives below: a compile-fail
+    // case compiles against the crate under test plus that crate's
+    // dev-dependencies, and the seven cases have to name a `CourseCode`, a
+    // `TermKey`, a `TimestampMillis` and a `CalibratedConfidence` between them.
+    "academic-offering": [
+      "academic-curriculum",
+      "academic-domain",
+      "academic-model-run",
+      "academic-record",
+    ],
     // `P2-X7` links its own domain and proposal crates a second time as dev
     // edges for the `trybuild` reason `academic-scenario` gives below: a
     // compile-fail case compiles against the crate under test plus that
@@ -2505,6 +2537,11 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-curriculum": ["libc"],
   "academic-ingestion": ["libc"],
   "academic-keystore-platform": ["windows-sys"],
+  // `P2-U5`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
+  // way of `academic-model-run`. The crate spells no socket construct, which is
+  // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it runs no
+  // connector and takes every official reading as a value.
+  "academic-offering": ["libc"],
   "academic-ledger": ["libc"],
   "academic-policy": ["libc"],
   "academic-portability": ["libc", "rustix", "windows-sys"],
@@ -4569,6 +4606,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     freshnessReceiptText,
     gapReceiptText,
     studentVoiceReceiptText,
+    offeringReceiptText,
     cargoLock,
   ] = await Promise.all([
     readFile("docs/security/dependency-admission-phase1.json", "utf8"),
@@ -4606,6 +4644,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     readFile("docs/security/dependency-admission-phase2-n3.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-n5.json", "utf8"),
     readFile("docs/security/dependency-admission-phase2-l5.json", "utf8"),
+    readFile("docs/security/dependency-admission-phase2-u5.json", "utf8"),
     readFile("Cargo.lock", "utf8"),
   ]);
   const receipt = JSON.parse(receiptText);
@@ -4643,6 +4682,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   const freshnessReceipt = JSON.parse(freshnessReceiptText);
   const gapReceipt = JSON.parse(gapReceiptText);
   const studentVoiceReceipt = JSON.parse(studentVoiceReceiptText);
+  const offeringReceipt = JSON.parse(offeringReceiptText);
   assert.equal(receipt.receipt_version, 1);
   assert.equal(receipt.resolution_budget, 1);
   assert.deepEqual(receipt.lock_delta, {
@@ -6419,6 +6459,48 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "a P2-N3 admitted package is missing from Cargo.lock",
   );
 
+  // `P2-U5` adds `academic-offering` and no external crate. The offering
+  // forecast is a boundary above `P2-U1`'s aggregates and `P2-U6`'s source
+  // levels: it links no writer, and its one model edge is `P2-M1`'s calibration
+  // registry, which is what turns a raw score into a number a reader may see.
+  assert.equal(offeringReceipt.task, "P2-U5");
+  const offeringAdmitted = new Set(
+    offeringReceipt.admissions.map((admission) => `${admission.name}@${admission.version}`),
+  );
+  const offeringPathPackages = new Set(
+    offeringReceipt.added_workspace_path_packages.map((pkg) => `${pkg.name}@${pkg.version}`),
+  );
+  assert.equal(offeringAdmitted.size, 0, "P2-U5 must admit no external crate");
+  assert.deepEqual([...offeringPathPackages], ["academic-offering@0.1.0"]);
+  assert.deepEqual(offeringReceipt.summary.npm_additions, []);
+  assert.equal(offeringReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(offeringReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(offeringReceipt.summary.build_time_only_count, 0);
+  assert.deepEqual(Object.keys(offeringReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-curriculum",
+    "academic-domain",
+    "academic-ingestion",
+    "academic-model-run",
+    "academic-record",
+  ]);
+  assert.deepEqual(Object.keys(offeringReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-curriculum",
+    "academic-domain",
+    "academic-model-run",
+    "academic-record",
+    "trybuild",
+  ]);
+  assert.deepEqual(offeringReceipt.vendored_data, []);
+  const offeringTuples = lockTuples.filter(
+    ([name, version]) =>
+      offeringAdmitted.has(`${name}@${version}`) || offeringPathPackages.has(`${name}@${version}`),
+  );
+  assert.equal(
+    offeringTuples.length,
+    offeringAdmitted.size + offeringPathPackages.size,
+    "a P2-U5 admitted package is missing from Cargo.lock",
+  );
+
   const incomingTuples = lockTuples.filter(
     ([name, version]) =>
       name !== "academic-store-platform" &&
@@ -6488,7 +6570,9 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       !studentVoiceAdmitted.has(`${name}@${version}`) &&
       !studentVoicePathPackages.has(`${name}@${version}`) &&
       !gapAdmitted.has(`${name}@${version}`) &&
-      !gapPathPackages.has(`${name}@${version}`),
+      !gapPathPackages.has(`${name}@${version}`) &&
+      !offeringAdmitted.has(`${name}@${version}`) &&
+      !offeringPathPackages.has(`${name}@${version}`),
   );
   assert.equal(incomingTuples.length, receipt.lock_delta.incoming_package_tuple_count);
   assert.equal(
@@ -6533,7 +6617,8 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
       auditTuples.length +
       freshnessTuples.length +
       studentVoiceTuples.length +
-      gapTuples.length,
+      gapTuples.length +
+      offeringTuples.length,
   );
   assert.deepEqual(receipt.toolchain, {
     rust: "1.98.0",

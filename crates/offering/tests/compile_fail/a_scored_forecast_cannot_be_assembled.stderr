@@ -1,0 +1,15 @@
+error[E0451]: fields `calibrated` and `metadata` of struct `ScoredForecast` are private
+  --> tests/compile_fail/a_scored_forecast_cannot_be_assembled.rs:21:9
+   |
+20 |     let _scored = ScoredForecast {
+   |                   -------------- in this type
+21 |         calibrated,
+   |         ^^^^^^^^^^ private field
+22 |         metadata,
+   |         ^^^^^^^^ private field
+
+error[E0451]: field `scored` of struct `HistoricallyLikelyStanding` is private
+  --> tests/compile_fail/a_scored_forecast_cannot_be_assembled.rs:28:48
+   |
+28 |     let _likely = HistoricallyLikelyStanding { scored };
+   |                                                ^^^^^^ private field

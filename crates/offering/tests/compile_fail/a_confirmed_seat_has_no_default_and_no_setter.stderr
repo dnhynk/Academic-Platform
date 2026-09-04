@@ -1,0 +1,11 @@
+error[E0599]: no associated function or constant named `default` found for struct `ConfirmedSeat` in the current scope
+  --> tests/compile_fail/a_confirmed_seat_has_no_default_and_no_setter.rs:11:32
+   |
+11 |     let _seat = ConfirmedSeat::default();
+   |                                ^^^^^^^ associated function or constant not found in `ConfirmedSeat`
+
+error[E0616]: field `verified_at` of struct `ConfirmedSeat` is private
+  --> tests/compile_fail/a_confirmed_seat_has_no_default_and_no_setter.rs:15:10
+   |
+15 |     seat.verified_at = TimestampMillis::new(0);
+   |          ^^^^^^^^^^^ private field

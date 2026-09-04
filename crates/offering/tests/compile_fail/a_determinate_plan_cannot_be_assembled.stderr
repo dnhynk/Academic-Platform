@@ -1,0 +1,5 @@
+error[E0451]: field `seats` of struct `DeterminatePlan` is private
+  --> tests/compile_fail/a_determinate_plan_cannot_be_assembled.rs:14:35
+   |
+14 |     let _plan = DeterminatePlan { seats };
+   |                                   ^^^^^ private field

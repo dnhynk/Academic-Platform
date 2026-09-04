@@ -382,6 +382,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-offering"
+version = "0.1.0"
+dependencies = [
+ "academic-curriculum",
+ "academic-domain",
+ "academic-ingestion",
+ "academic-model-run",
+ "academic-record",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-policy"
 version = "0.1.0"
 dependencies = [

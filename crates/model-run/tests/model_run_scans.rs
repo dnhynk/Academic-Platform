@@ -405,7 +405,7 @@ fn raw_score_hands_back_no_number() -> Result<(), Box<dyn Error>> {
 /// claim is about the whole path from a raw number to a reader: a second
 /// producer means the display no longer goes through the registry, and a second
 /// consumer is a second display surface.
-const CALIBRATED_SITES: [(&str, &str); 2] = [
+const CALIBRATED_SITES: [(&str, &str); 4] = [
     (
         "crates/model-run/src/calibration.rs: pub fn interpret",
         "the registry: the only producer, reading a raw score through the dataset registered for that exact provider, model version and purpose",
@@ -413,6 +413,14 @@ const CALIBRATED_SITES: [(&str, &str); 2] = [
     (
         "crates/model-run/src/calibration.rs: pub fn of",
         "the display constructor: the only consumer, taking a calibrated value and returning a displayable one, so nothing uninterpreted reaches a reader",
+    ),
+    (
+        "crates/offering/src/forecast.rs: pub fn calibrated",
+        "P2-U5's accessor on ScoredForecast: it borrows the value `interpret` issued and produces no second one, and the type it returns is the calibrated type rather than a number, so the only thing a caller can do with it is hand it to `of`",
+    ),
+    (
+        "crates/offering/src/standing.rs: pub fn calibrated",
+        "P2-U5's accessor on HistoricallyLikelyStanding: the same borrow one level out, so section 8.3's 과거 패턴상 가능성 row can show its probability through the display constructor and by no other route",
     ),
 ];
 
