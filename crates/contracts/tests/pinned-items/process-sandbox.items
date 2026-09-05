@@ -33,7 +33,7 @@ crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] fn refus
 crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] fn verification(&self) -> &str |4cc0efd2f8267895
 crates/process-sandbox/src/lib.rs [pub] impl EnforcementBasis :: #[must_use] const fn as_str(self) -> &'static str |d6db0248f16a8c89
 crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn landlock_abi() -> i64 |d0a03ce5de7f89d8
-crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn refuse_every_socket() -> Result<(), EnforcementError> |1dee7ad91cb72260
+crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn refuse_every_socket() -> Result<(), EnforcementError> |39fe3651c2afab5e
 crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn refuse_every_write(abi: i64) -> Result<(), EnforcementError> |557d697d48952d54
 crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn seccomp_errno_available() -> i64 |c8d38ed9465abb92
 crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "aarch64")] const AUDIT_ARCH: u32 |ae194e49cc64c2a2
@@ -75,11 +75,14 @@ crates/process-sandbox/src/linux.rs [priv] const fn jump(code: u16, k: u32, jt: 
 crates/process-sandbox/src/linux.rs [priv] const fn stmt(code: u16, k: u32) -> SockFilter |7c84347b7220902c
 crates/process-sandbox/src/linux.rs [priv] fn denied_syscalls() -> Vec<i64> |265cb854d4783c7d
 crates/process-sandbox/src/linux.rs [priv] fn errno() -> i64 |bd55e5475235cdf9
+crates/process-sandbox/src/linux.rs [priv] fn socket_filter_program() -> Result<Vec<SockFilter>, EnforcementError> |9e6715a73af5ac42
 crates/process-sandbox/src/linux.rs [priv] fn status_field(status: &str, name: &str) -> Option<String> |038e3c78af5a891b
 crates/process-sandbox/src/linux.rs [priv] fn verify(refused_write: bool, refused_socket: bool) -> Result<String, EnforcementError> |9701937f766c6237
+crates/process-sandbox/src/linux.rs [priv] mod tests :: #[cfg(target_arch = "x86_64")] #[test] fn the_x32_floor_is_pinned_as_the_bytes_the_kernel_reads() -> Result<(), EnforcementError> |aaa52eec21f28e7d
 crates/process-sandbox/src/linux.rs [priv] mod tests :: #[test] fn a_status_field_is_read_by_exact_key() |74d3c583390cedf8
 crates/process-sandbox/src/linux.rs [priv] mod tests :: #[test] fn the_deny_list_has_no_duplicate_and_no_negative_number() |48b33374e6aa4158
-crates/process-sandbox/src/linux.rs [priv] mod tests :: use super::{denied_syscalls, status_field} |2c4892f3d7e91237
+crates/process-sandbox/src/linux.rs [priv] mod tests :: fn encoded(instruction: &SockFilter) -> [u8; 8] |047b36615a18d494
+crates/process-sandbox/src/linux.rs [priv] mod tests :: use super::{ EnforcementError, SockFilter, denied_syscalls, socket_filter_program, status_field, } |88d4481f6411c662
 crates/process-sandbox/src/linux.rs [priv] use academic_policy::ProcessCapability |869d84bab4e36872
 crates/process-sandbox/src/linux.rs [priv] use crate::EnforcementError |db6820ffcfa0d584
 crates/process-sandbox/src/linux.rs [priv] use std::{fs, io} |12eccb0c90678941
