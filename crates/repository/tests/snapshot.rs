@@ -1195,3 +1195,71 @@ fn github_token_is_repo_scoped_read_only_and_expiring() -> TestResult {
     reader.read_tree(&borrowed, &owned, &head()?, CAPTURED_AT)?;
     Ok(())
 }
+
+/// Every byte, against the class the doc comments state.
+///
+/// `P2-A5`'s F6 measured this gap: widening the admitted character class by
+/// exactly one byte in `src/snapshot.rs` and `src/github.rs` left this crate at 0 failed, and the workspace
+/// byte-identical to its baseline. `P2-R4` had the measurement already; this is
+/// that test, ported. It walks the whole byte range and compares admitted
+/// against belongs, so it is a measurement rather than three examples, and the
+/// class it compares against is **written here** rather than read from the
+/// crate -- an oracle that asked the code what it admits would agree with the
+/// code whatever the code says.
+#[test]
+fn every_identifier_is_the_shape_this_crate_admits() -> TestResult {
+    // `[A-Za-z0-9._/-]` for a repository identity; the same without `/` for
+    // each half of a GitHub coordinate.
+    let repository_class =
+        |byte: u8| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-' | b'/');
+    let github_class =
+        |byte: u8| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-');
+
+    for byte in 0_u8..=127 {
+        let candidate = format!("a{}b", char::from(byte));
+        let taken = RepositoryId::new(candidate.clone()).is_ok();
+        assert_eq!(
+            taken,
+            repository_class(byte),
+            "byte {byte} in {candidate:?} is admitted {taken} by RepositoryId and belongs {}",
+            repository_class(byte)
+        );
+        for (owner, name) in [(candidate.as_str(), "n"), ("o", candidate.as_str())] {
+            let taken = GitHubRepository::new(owner, name).is_ok();
+            assert_eq!(
+                taken,
+                github_class(byte),
+                "byte {byte} in {candidate:?} is admitted {taken} by GitHubRepository and belongs {}",
+                github_class(byte)
+            );
+        }
+    }
+
+    // Beyond ASCII, where a byte-wise reader and a character-wise one disagree.
+    for outside in [
+        "\u{ac1c}\u{b150}",
+        "a\u{ac1c}b",
+        "a\u{00e9}b",
+        "a\u{1f600}b",
+    ] {
+        assert!(
+            RepositoryId::new(outside).is_err(),
+            "{outside:?} was admitted as a repository identity"
+        );
+        assert!(
+            GitHubRepository::new(outside, "n").is_err(),
+            "{outside:?} was admitted as a GitHub owner"
+        );
+    }
+
+    // The length boundaries the doc comments state, on both sides, and empty.
+    assert!(RepositoryId::new("a".repeat(128)).is_ok());
+    assert!(RepositoryId::new("a".repeat(129)).is_err());
+    assert!(RepositoryId::new(String::new()).is_err());
+    assert!(GitHubRepository::new("a".repeat(100), "n").is_ok());
+    assert!(GitHubRepository::new("a".repeat(101), "n").is_err());
+    assert!(GitHubRepository::new("o", "a".repeat(101)).is_err());
+    assert!(GitHubRepository::new(String::new(), "n").is_err());
+    assert!(GitHubRepository::new("o", String::new()).is_err());
+    Ok(())
+}
