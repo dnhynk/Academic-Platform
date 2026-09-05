@@ -1,0 +1,233 @@
+crates/readiness/src/axis.rs [priv] impl ReadinessAxis
+crates/readiness/src/axis.rs [priv] use serde::{Deserialize, Serialize}
+crates/readiness/src/axis.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ReadinessAxis
+crates/readiness/src/axis.rs [pub] impl ReadinessAxis :: #[must_use] const fn as_str(self) -> &'static str
+crates/readiness/src/axis.rs [pub] impl ReadinessAxis :: #[must_use] const fn is_freshness(self) -> bool
+crates/readiness/src/axis.rs [pub] impl ReadinessAxis :: #[must_use] const fn scenario_key(self) -> &'static str
+crates/readiness/src/axis.rs [pub] impl ReadinessAxis :: #[must_use] const fn table_heading(self) -> &'static str
+crates/readiness/src/axis.rs [pub] impl ReadinessAxis :: #[must_use] fn evidence_axes() -> Vec<Self>
+crates/readiness/src/axis.rs [pub] impl ReadinessAxis :: const ALL: [Self; 6]
+crates/readiness/src/cell.rs [priv] impl AxisCell
+crates/readiness/src/cell.rs [priv] impl AxisEvidence
+crates/readiness/src/cell.rs [priv] impl FreshnessCell
+crates/readiness/src/cell.rs [priv] impl RefusedPlacement
+crates/readiness/src/cell.rs [priv] impl UnknownBasis
+crates/readiness/src/cell.rs [priv] use academic_competency::{Competency, CriterionId, EvidenceStage, StageEvidence}
+crates/readiness/src/cell.rs [priv] use academic_domain::FreshnessBand
+crates/readiness/src/cell.rs [priv] use crate::{ReadinessError, axis::ReadinessAxis, identity::EvidenceLocatorId}
+crates/readiness/src/cell.rs [priv] use serde::Serialize
+crates/readiness/src/cell.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UnknownBasis
+crates/readiness/src/cell.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct FreshnessCell
+crates/readiness/src/cell.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde( tag = "reading", content = "detail", rename_all = "SCREAMING_SNAKE_CASE" )] enum AxisCell
+crates/readiness/src/cell.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct AxisEvidence
+crates/readiness/src/cell.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct RefusedPlacement
+crates/readiness/src/cell.rs [pub] const MISSING_CELL_MARK: &str
+crates/readiness/src/cell.rs [pub] impl AxisCell :: #[must_use] const fn reading(&self) -> &'static str
+crates/readiness/src/cell.rs [pub] impl AxisCell :: #[must_use] fn read(axis: ReadinessAxis, competency: &Competency, placed: &[AxisEvidence]) -> Self
+crates/readiness/src/cell.rs [pub] impl AxisCell :: #[must_use] fn refused(&self) -> &[RefusedPlacement]
+crates/readiness/src/cell.rs [pub] impl AxisCell :: #[must_use] fn settled_by(&self) -> &[AxisEvidence]
+crates/readiness/src/cell.rs [pub] impl AxisCell :: const READINGS: [&'static str; 3]
+crates/readiness/src/cell.rs [pub] impl AxisEvidence :: #[must_use] const fn axis(&self) -> ReadinessAxis
+crates/readiness/src/cell.rs [pub] impl AxisEvidence :: #[must_use] const fn criterion(&self) -> &CriterionId
+crates/readiness/src/cell.rs [pub] impl AxisEvidence :: #[must_use] const fn locator(&self) -> &EvidenceLocatorId
+crates/readiness/src/cell.rs [pub] impl AxisEvidence :: #[must_use] const fn record(&self) -> &StageEvidence
+crates/readiness/src/cell.rs [pub] impl AxisEvidence :: #[must_use] const fn stage(&self) -> EvidenceStage
+crates/readiness/src/cell.rs [pub] impl AxisEvidence :: fn place( axis: ReadinessAxis, criterion: CriterionId, locator: EvidenceLocatorId, record: &StageEvidence, ) -> Result<Self, ReadinessError>
+crates/readiness/src/cell.rs [pub] impl FreshnessCell :: #[must_use] const fn band(&self) -> FreshnessBand
+crates/readiness/src/cell.rs [pub] impl FreshnessCell :: #[must_use] const fn of(band: FreshnessBand) -> Self
+crates/readiness/src/cell.rs [pub] impl RefusedPlacement :: #[must_use] const fn basis(&self) -> UnknownBasis
+crates/readiness/src/cell.rs [pub] impl RefusedPlacement :: #[must_use] const fn evidence(&self) -> &AxisEvidence
+crates/readiness/src/cell.rs [pub] impl UnknownBasis :: #[must_use] const fn as_str(self) -> &'static str
+crates/readiness/src/cell.rs [pub] impl UnknownBasis :: const ALL: [Self; 2]
+crates/readiness/src/history.rs [priv] impl ReadinessEvent
+crates/readiness/src/history.rs [priv] use crate::score::{ScoreValue, WeightDisclosure}
+crates/readiness/src/history.rs [priv] use serde::Serialize
+crates/readiness/src/history.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "event", rename_all = "SCREAMING_SNAKE_CASE")] enum ReadinessEvent
+crates/readiness/src/history.rs [pub] impl ReadinessEvent :: #[must_use] const fn as_str(&self) -> &'static str
+crates/readiness/src/history.rs [pub] impl ReadinessEvent :: const KINDS: [&'static str; 3]
+crates/readiness/src/identity.rs [priv] impl EvidenceLocatorId
+crates/readiness/src/identity.rs [priv] impl From<EvidenceLocatorId> for String
+crates/readiness/src/identity.rs [priv] impl From<EvidenceLocatorId> for String :: fn from(value: EvidenceLocatorId) -> Self
+crates/readiness/src/identity.rs [priv] impl From<StartingPointId> for String
+crates/readiness/src/identity.rs [priv] impl From<StartingPointId> for String :: fn from(value: StartingPointId) -> Self
+crates/readiness/src/identity.rs [priv] impl StartingPointId
+crates/readiness/src/identity.rs [priv] impl TryFrom<String> for EvidenceLocatorId
+crates/readiness/src/identity.rs [priv] impl TryFrom<String> for EvidenceLocatorId :: fn try_from(value: String) -> Result<Self, Self::Error>
+crates/readiness/src/identity.rs [priv] impl TryFrom<String> for EvidenceLocatorId :: type Error = ReadinessError
+crates/readiness/src/identity.rs [priv] impl TryFrom<String> for StartingPointId
+crates/readiness/src/identity.rs [priv] impl TryFrom<String> for StartingPointId :: fn try_from(value: String) -> Result<Self, Self::Error>
+crates/readiness/src/identity.rs [priv] impl TryFrom<String> for StartingPointId :: type Error = ReadinessError
+crates/readiness/src/identity.rs [priv] impl fmt::Display for EvidenceLocatorId
+crates/readiness/src/identity.rs [priv] impl fmt::Display for EvidenceLocatorId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/readiness/src/identity.rs [priv] impl fmt::Display for StartingPointId
+crates/readiness/src/identity.rs [priv] impl fmt::Display for StartingPointId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/readiness/src/identity.rs [priv] use core::fmt
+crates/readiness/src/identity.rs [priv] use crate::ReadinessError
+crates/readiness/src/identity.rs [priv] use serde::{Deserialize, Serialize}
+crates/readiness/src/identity.rs [pub(crate)] fn non_empty(value: String, what: &'static str) -> Result<String, ReadinessError>
+crates/readiness/src/identity.rs [pub(crate)] fn validated(value: String, what: &'static str) -> Result<String, ReadinessError>
+crates/readiness/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct EvidenceLocatorId(String)
+crates/readiness/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct StartingPointId(String)
+crates/readiness/src/identity.rs [pub] const MAX_IDENTIFIER: usize
+crates/readiness/src/identity.rs [pub] impl EvidenceLocatorId :: #[must_use] fn as_str(&self) -> &str
+crates/readiness/src/identity.rs [pub] impl EvidenceLocatorId :: fn new(value: impl Into<String>) -> Result<Self, ReadinessError>
+crates/readiness/src/identity.rs [pub] impl StartingPointId :: #[must_use] fn as_str(&self) -> &str
+crates/readiness/src/identity.rs [pub] impl StartingPointId :: fn new(value: impl Into<String>) -> Result<Self, ReadinessError>
+crates/readiness/src/lib.rs [priv] impl RowSubject
+crates/readiness/src/lib.rs [priv] use serde::{Deserialize, Serialize}
+crates/readiness/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] #[non_exhaustive] enum RowSubject
+crates/readiness/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum ReadinessError
+crates/readiness/src/lib.rs [pub] impl RowSubject :: #[must_use] const fn node_type() -> academic_domain::predicates::NodeType
+crates/readiness/src/lib.rs [pub] mod axis
+crates/readiness/src/lib.rs [pub] mod cell
+crates/readiness/src/lib.rs [pub] mod history
+crates/readiness/src/lib.rs [pub] mod identity
+crates/readiness/src/lib.rs [pub] mod matrix
+crates/readiness/src/lib.rs [pub] mod navigate
+crates/readiness/src/lib.rs [pub] mod notice
+crates/readiness/src/lib.rs [pub] mod score
+crates/readiness/src/lib.rs [pub] mod view
+crates/readiness/src/lib.rs [pub] use axis::ReadinessAxis
+crates/readiness/src/lib.rs [pub] use cell::{ AxisCell, AxisEvidence, FreshnessCell, MISSING_CELL_MARK, RefusedPlacement, UnknownBasis, }
+crates/readiness/src/lib.rs [pub] use history::ReadinessEvent
+crates/readiness/src/lib.rs [pub] use identity::{EvidenceLocatorId, MAX_IDENTIFIER, StartingPointId}
+crates/readiness/src/lib.rs [pub] use matrix::{ColumnReading, CompetencyInput, ReadinessMatrix, ReadinessRow, take}
+crates/readiness/src/lib.rs [pub] use navigate::{ AbsenceState, NavigationDirection, StartingPoint, Termination, Terminus, traverse, }
+crates/readiness/src/lib.rs [pub] use notice::{ ALLOWED_INSTEAD, NonGuaranteeNotice, REFUSAL_REASON, REFUSED_PRODUCT, SPECIFICATION_PHRASE, }
+crates/readiness/src/lib.rs [pub] use score::{ AuxiliaryScore, AxisWeight, MissingDataDisclosure, MissingDatum, RubricDisclosure, RubricLines, ScoreValue, SourceDisclosure, WeightDisclosure, disclose, }
+crates/readiness/src/lib.rs [pub] use view::{NOTICE_KEY, ReadinessView, ViewBlock, published_notice}
+crates/readiness/src/matrix.rs [priv] impl ReadinessMatrix
+crates/readiness/src/matrix.rs [priv] impl ReadinessRow
+crates/readiness/src/matrix.rs [priv] impl<'a> CompetencyInput<'a>
+crates/readiness/src/matrix.rs [priv] use academic_competency::{Competency, CompetencyId}
+crates/readiness/src/matrix.rs [priv] use academic_domain::FreshnessBand
+crates/readiness/src/matrix.rs [priv] use academic_role_profile::{BundleImportance, RoleProfile, RoleProfileRef}
+crates/readiness/src/matrix.rs [priv] use crate::{ axis::ReadinessAxis, cell::{AxisCell, AxisEvidence, FreshnessCell}, }
+crates/readiness/src/matrix.rs [priv] use serde::Serialize
+crates/readiness/src/matrix.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] #[serde(tag = "column", content = "value", rename_all = "SCREAMING_SNAKE_CASE")] enum ColumnReading<'row>
+crates/readiness/src/matrix.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CompetencyInput<'a>
+crates/readiness/src/matrix.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ReadinessMatrix
+crates/readiness/src/matrix.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ReadinessRow
+crates/readiness/src/matrix.rs [pub] #[must_use] fn take(bundle: &RoleProfile, inputs: &[CompetencyInput<'_>]) -> ReadinessMatrix
+crates/readiness/src/matrix.rs [pub] impl ReadinessMatrix :: #[must_use] const fn bundle(&self) -> &RoleProfileRef
+crates/readiness/src/matrix.rs [pub] impl ReadinessMatrix :: #[must_use] fn row(&self, competency: &CompetencyId) -> Option<&ReadinessRow>
+crates/readiness/src/matrix.rs [pub] impl ReadinessMatrix :: #[must_use] fn rows(&self) -> &[ReadinessRow]
+crates/readiness/src/matrix.rs [pub] impl ReadinessRow :: #[must_use] const fn competency(&self) -> &CompetencyId
+crates/readiness/src/matrix.rs [pub] impl ReadinessRow :: #[must_use] const fn evidence_cell(&self, axis: ReadinessAxis) -> Option<&AxisCell>
+crates/readiness/src/matrix.rs [pub] impl ReadinessRow :: #[must_use] const fn freshness(&self) -> FreshnessCell
+crates/readiness/src/matrix.rs [pub] impl ReadinessRow :: #[must_use] const fn importance(&self) -> BundleImportance
+crates/readiness/src/matrix.rs [pub] impl ReadinessRow :: #[must_use] fn cells(&self) -> Vec<(ReadinessAxis, ColumnReading<'_>)>
+crates/readiness/src/matrix.rs [pub] impl<'a> CompetencyInput<'a> :: #[must_use] const fn competency(&self) -> &'a Competency
+crates/readiness/src/matrix.rs [pub] impl<'a> CompetencyInput<'a> :: #[must_use] const fn of( competency: &'a Competency, placements: &'a [AxisEvidence], freshness: FreshnessBand, ) -> Self
+crates/readiness/src/navigate.rs [priv] impl NavigationDirection
+crates/readiness/src/navigate.rs [priv] impl StartingPoint
+crates/readiness/src/navigate.rs [priv] impl StartingPoint :: fn reaches(&self, evidence: &AxisEvidence) -> bool
+crates/readiness/src/navigate.rs [priv] impl Termination
+crates/readiness/src/navigate.rs [priv] impl Terminus
+crates/readiness/src/navigate.rs [priv] use academic_competency::{CompetencyId, ConceptRef, CriterionId, EvidenceSource}
+crates/readiness/src/navigate.rs [priv] use academic_role_profile::RoleProfileRef
+crates/readiness/src/navigate.rs [priv] use crate::{ axis::ReadinessAxis, cell::{AxisCell, AxisEvidence, UnknownBasis}, identity::{EvidenceLocatorId, StartingPointId}, view::ReadinessView, }
+crates/readiness/src/navigate.rs [priv] use serde::Serialize
+crates/readiness/src/navigate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum NavigationDirection
+crates/readiness/src/navigate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "absence", rename_all = "SCREAMING_SNAKE_CASE")] enum AbsenceState
+crates/readiness/src/navigate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "start", content = "id", rename_all = "SCREAMING_SNAKE_CASE")] enum StartingPoint
+crates/readiness/src/navigate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "terminus", rename_all = "SCREAMING_SNAKE_CASE")] enum Terminus
+crates/readiness/src/navigate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Termination
+crates/readiness/src/navigate.rs [pub] #[must_use] fn traverse(view: &ReadinessView, start: &StartingPoint) -> Termination
+crates/readiness/src/navigate.rs [pub] impl NavigationDirection :: #[must_use] const fn as_str(self) -> &'static str
+crates/readiness/src/navigate.rs [pub] impl NavigationDirection :: #[must_use] const fn specification_bullet(self) -> &'static str
+crates/readiness/src/navigate.rs [pub] impl NavigationDirection :: const ALL: [Self; 4]
+crates/readiness/src/navigate.rs [pub] impl StartingPoint :: #[must_use] const fn direction(&self) -> NavigationDirection
+crates/readiness/src/navigate.rs [pub] impl Termination :: #[must_use] const fn direction(&self) -> NavigationDirection
+crates/readiness/src/navigate.rs [pub] impl Termination :: #[must_use] const fn start(&self) -> &StartingPoint
+crates/readiness/src/navigate.rs [pub] impl Termination :: #[must_use] fn termini(&self) -> Vec<&Terminus>
+crates/readiness/src/navigate.rs [pub] impl Terminus :: #[must_use] const fn criterion(&self) -> Option<&CriterionId>
+crates/readiness/src/navigate.rs [pub] impl Terminus :: #[must_use] const fn kind(&self) -> &'static str
+crates/readiness/src/navigate.rs [pub] impl Terminus :: const KINDS: [&'static str; 2]
+crates/readiness/src/notice.rs [priv] impl From<NonGuaranteeNotice> for String
+crates/readiness/src/notice.rs [priv] impl From<NonGuaranteeNotice> for String :: fn from(value: NonGuaranteeNotice) -> Self
+crates/readiness/src/notice.rs [priv] impl NonGuaranteeNotice
+crates/readiness/src/notice.rs [priv] impl fmt::Display for NonGuaranteeNotice
+crates/readiness/src/notice.rs [priv] impl fmt::Display for NonGuaranteeNotice :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/readiness/src/notice.rs [priv] use core::fmt
+crates/readiness/src/notice.rs [priv] use serde::Serialize
+crates/readiness/src/notice.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] #[serde(into = "String")] struct NonGuaranteeNotice
+crates/readiness/src/notice.rs [pub] const ALLOWED_INSTEAD: &str
+crates/readiness/src/notice.rs [pub] const REFUSAL_REASON: &str
+crates/readiness/src/notice.rs [pub] const REFUSED_PRODUCT: &str
+crates/readiness/src/notice.rs [pub] const SPECIFICATION_PHRASE: &str
+crates/readiness/src/notice.rs [pub] impl NonGuaranteeNotice :: #[must_use] const fn rendered() -> Self
+crates/readiness/src/notice.rs [pub] impl NonGuaranteeNotice :: #[must_use] fn text(self) -> String
+crates/readiness/src/score.rs [priv] impl AuxiliaryScore
+crates/readiness/src/score.rs [priv] impl AxisWeight
+crates/readiness/src/score.rs [priv] impl MissingDataDisclosure
+crates/readiness/src/score.rs [priv] impl MissingDatum
+crates/readiness/src/score.rs [priv] impl RubricDisclosure
+crates/readiness/src/score.rs [priv] impl RubricLines
+crates/readiness/src/score.rs [priv] impl ScoreValue
+crates/readiness/src/score.rs [priv] impl SourceDisclosure
+crates/readiness/src/score.rs [priv] impl WeightDisclosure
+crates/readiness/src/score.rs [priv] use academic_competency::{Competency, CompetencyId}
+crates/readiness/src/score.rs [priv] use crate::{ ReadinessError, axis::ReadinessAxis, cell::AxisCell, identity::{EvidenceLocatorId, non_empty}, matrix::ReadinessMatrix, }
+crates/readiness/src/score.rs [priv] use serde::Serialize
+crates/readiness/src/score.rs [priv] use std::collections::BTreeSet
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct ScoreValue
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct AuxiliaryScore
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct AxisWeight
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct MissingDataDisclosure
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct MissingDatum
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct RubricDisclosure
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct RubricLines
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct SourceDisclosure
+crates/readiness/src/score.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct WeightDisclosure
+crates/readiness/src/score.rs [pub] fn disclose( matrix: &ReadinessMatrix, competencies: &[&Competency], rubric: RubricDisclosure, sources: SourceDisclosure, missing_data: MissingDataDisclosure, weights: WeightDisclosure, ) -> Result<AuxiliaryScore, ReadinessError>
+crates/readiness/src/score.rs [pub] impl AuxiliaryScore :: #[must_use] const fn missing_data(&self) -> &MissingDataDisclosure
+crates/readiness/src/score.rs [pub] impl AuxiliaryScore :: #[must_use] const fn rubric(&self) -> &RubricDisclosure
+crates/readiness/src/score.rs [pub] impl AuxiliaryScore :: #[must_use] const fn sources(&self) -> &SourceDisclosure
+crates/readiness/src/score.rs [pub] impl AuxiliaryScore :: #[must_use] const fn value(&self) -> ScoreValue
+crates/readiness/src/score.rs [pub] impl AuxiliaryScore :: #[must_use] const fn weights(&self) -> &WeightDisclosure
+crates/readiness/src/score.rs [pub] impl AxisWeight :: #[must_use] const fn axis(&self) -> ReadinessAxis
+crates/readiness/src/score.rs [pub] impl AxisWeight :: #[must_use] const fn weight(&self) -> u32
+crates/readiness/src/score.rs [pub] impl AxisWeight :: #[must_use] fn reason(&self) -> &str
+crates/readiness/src/score.rs [pub] impl AxisWeight :: fn of( axis: ReadinessAxis, weight: u32, reason: impl Into<String>, ) -> Result<Self, ReadinessError>
+crates/readiness/src/score.rs [pub] impl MissingDataDisclosure :: #[must_use] fn entries(&self) -> &[MissingDatum]
+crates/readiness/src/score.rs [pub] impl MissingDataDisclosure :: #[must_use] fn missing_count(&self) -> usize
+crates/readiness/src/score.rs [pub] impl MissingDataDisclosure :: #[must_use] fn of(matrix: &ReadinessMatrix) -> Self
+crates/readiness/src/score.rs [pub] impl MissingDataDisclosure :: #[must_use] fn unknown_count(&self) -> usize
+crates/readiness/src/score.rs [pub] impl MissingDatum :: #[must_use] const fn axis(&self) -> ReadinessAxis
+crates/readiness/src/score.rs [pub] impl MissingDatum :: #[must_use] const fn competency(&self) -> &CompetencyId
+crates/readiness/src/score.rs [pub] impl MissingDatum :: #[must_use] const fn reading(&self) -> &'static str
+crates/readiness/src/score.rs [pub] impl RubricDisclosure :: #[must_use] fn entries(&self) -> &[RubricLines]
+crates/readiness/src/score.rs [pub] impl RubricDisclosure :: fn of( matrix: &ReadinessMatrix, competencies: &[&Competency], ) -> Result<Self, ReadinessError>
+crates/readiness/src/score.rs [pub] impl RubricLines :: #[must_use] const fn competency(&self) -> &CompetencyId
+crates/readiness/src/score.rs [pub] impl RubricLines :: #[must_use] fn lines(&self) -> &[String]
+crates/readiness/src/score.rs [pub] impl ScoreValue :: #[must_use] const fn evidenced_units(self) -> u32
+crates/readiness/src/score.rs [pub] impl ScoreValue :: #[must_use] const fn weighted_units(self) -> u32
+crates/readiness/src/score.rs [pub] impl SourceDisclosure :: #[must_use] fn locators(&self) -> &[EvidenceLocatorId]
+crates/readiness/src/score.rs [pub] impl SourceDisclosure :: #[must_use] fn of(matrix: &ReadinessMatrix) -> Self
+crates/readiness/src/score.rs [pub] impl WeightDisclosure :: #[must_use] fn weight_of(&self, axis: ReadinessAxis) -> Option<u32>
+crates/readiness/src/score.rs [pub] impl WeightDisclosure :: #[must_use] fn weights(&self) -> &[AxisWeight]
+crates/readiness/src/score.rs [pub] impl WeightDisclosure :: fn of(weights: Vec<AxisWeight>) -> Result<Self, ReadinessError>
+crates/readiness/src/view.rs [priv] impl ReadinessView
+crates/readiness/src/view.rs [priv] impl ViewBlock<'_>
+crates/readiness/src/view.rs [priv] use academic_competency::{Competency, CompetencyId, CriterionId, PerformanceCriterion}
+crates/readiness/src/view.rs [priv] use crate::{ ReadinessError, history::ReadinessEvent, matrix::ReadinessMatrix, notice::NonGuaranteeNotice, score::{ AuxiliaryScore, MissingDataDisclosure, RubricDisclosure, SourceDisclosure, WeightDisclosure, disclose, }, }
+crates/readiness/src/view.rs [priv] use serde::Serialize
+crates/readiness/src/view.rs [priv] use std::collections::BTreeMap
+crates/readiness/src/view.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] #[serde(tag = "block", content = "body", rename_all = "SCREAMING_SNAKE_CASE")] enum ViewBlock<'view>
+crates/readiness/src/view.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(rename_all = "camelCase")] struct ReadinessView
+crates/readiness/src/view.rs [pub] #[must_use] fn criteria_of(competency: &Competency) -> Vec<&PerformanceCriterion>
+crates/readiness/src/view.rs [pub] const NOTICE_KEY: &str
+crates/readiness/src/view.rs [pub] fn published_notice(document: &str) -> Result<NonGuaranteeNotice, ReadinessError>
+crates/readiness/src/view.rs [pub] impl ReadinessView :: #[must_use] const fn matrix(&self) -> &ReadinessMatrix
+crates/readiness/src/view.rs [pub] impl ReadinessView :: #[must_use] const fn notice(&self) -> NonGuaranteeNotice
+crates/readiness/src/view.rs [pub] impl ReadinessView :: #[must_use] const fn score(&self) -> Option<&AuxiliaryScore>
+crates/readiness/src/view.rs [pub] impl ReadinessView :: #[must_use] fn criteria_of(&self, competency: &CompetencyId) -> &[CriterionId]
+crates/readiness/src/view.rs [pub] impl ReadinessView :: #[must_use] fn history(&self) -> &[ReadinessEvent]
+crates/readiness/src/view.rs [pub] impl ReadinessView :: #[must_use] fn render(&self) -> Vec<ViewBlock<'_>>
+crates/readiness/src/view.rs [pub] impl ReadinessView :: fn hide_score(&self) -> Result<Self, ReadinessError>
+crates/readiness/src/view.rs [pub] impl ReadinessView :: fn of( matrix: ReadinessMatrix, competencies: &[&Competency], ) -> Result<Self, ReadinessError>
+crates/readiness/src/view.rs [pub] impl ReadinessView :: fn publish_score( &self, competencies: &[&Competency], rubric: RubricDisclosure, sources: SourceDisclosure, missing_data: MissingDataDisclosure, weights: WeightDisclosure, ) -> Result<Self, ReadinessError>
+crates/readiness/src/view.rs [pub] impl ReadinessView :: fn reset_weights( &self, competencies: &[&Competency], weights: WeightDisclosure, ) -> Result<Self, ReadinessError>
+crates/readiness/src/view.rs [pub] impl ViewBlock<'_> :: #[must_use] const fn kind(&self) -> &'static str
+crates/readiness/src/view.rs [pub] impl ViewBlock<'_> :: const KINDS: [&'static str; 4]

@@ -1,0 +1,376 @@
+crates/student-voice/src/corpus.rs [priv] fn check_timeline( case: &str, timeline: &'static str, spans: &[VoiceSpan], ) -> Result<(), CorpusFault>
+crates/student-voice/src/corpus.rs [priv] fn push_span(text: &mut String, timeline: &str, span: VoiceSpan)
+crates/student-voice/src/corpus.rs [priv] impl DiarizationCase
+crates/student-voice/src/corpus.rs [priv] impl DiarizationCorpus
+crates/student-voice/src/corpus.rs [priv] impl VoiceClass
+crates/student-voice/src/corpus.rs [priv] impl VoiceSpan
+crates/student-voice/src/corpus.rs [priv] use academic_domain::ContentDigest
+crates/student-voice/src/corpus.rs [priv] use academic_transcription::Speaker
+crates/student-voice/src/corpus.rs [priv] use crate::fault::CorpusFault
+crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum VoiceClass
+crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct VoiceSpan
+crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DiarizationCase
+crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DiarizationCorpus
+crates/student-voice/src/corpus.rs [pub] const CORPUS_ID: &str
+crates/student-voice/src/corpus.rs [pub] const CORPUS_ROOT: &str
+crates/student-voice/src/corpus.rs [pub] const CORPUS_VERSION: u32
+crates/student-voice/src/corpus.rs [pub] fn corpus_v1() -> Result<DiarizationCorpus, CorpusFault>
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn hypothesis(&self) -> &[VoiceSpan]
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn name(&self) -> &str
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference(&self) -> &[VoiceSpan]
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference_ms(&self) -> u64
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference_student_ms(&self) -> u64
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: fn new( name: &str, reference: Vec<VoiceSpan>, hypothesis: Vec<VoiceSpan>, ) -> Result<Self, CorpusFault>
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] const fn version(&self) -> u32
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn cases(&self) -> &[DiarizationCase]
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn digest(&self) -> ContentDigest
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn id(&self) -> &str
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: fn new(id: &str, version: u32, cases: Vec<DiarizationCase>) -> Result<Self, CorpusFault>
+crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: #[must_use] const fn as_str(self) -> &'static str
+crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: #[must_use] const fn of(speaker: Speaker) -> Self
+crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: const ALL: [Self; 3]
+crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn duration_ms(self) -> u64
+crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn end_ms(self) -> u64
+crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn new(start_ms: u64, end_ms: u64, speaker: Speaker) -> Self
+crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn overlap_ms(self, other: Self) -> u64
+crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn speaker(self) -> Speaker
+crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn start_ms(self) -> u64
+crates/student-voice/src/derivative.rs [priv] fn excluded_indices( plan: &RedactionPlan, source: &LectureSource<'_>, ) -> Result<Vec<usize>, RedactionFault>
+crates/student-voice/src/derivative.rs [priv] fn original_digest(source: &LectureSource<'_>) -> ContentDigest
+crates/student-voice/src/derivative.rs [priv] impl DerivedArtifact
+crates/student-voice/src/derivative.rs [priv] impl DisclosedOriginal<'_>
+crates/student-voice/src/derivative.rs [priv] impl ExclusionRecord
+crates/student-voice/src/derivative.rs [priv] impl KeptUtterance
+crates/student-voice/src/derivative.rs [priv] impl ManualExclusion
+crates/student-voice/src/derivative.rs [priv] impl RawAccessGrant
+crates/student-voice/src/derivative.rs [priv] impl RawAccessLog
+crates/student-voice/src/derivative.rs [priv] impl RawAccessRecord
+crates/student-voice/src/derivative.rs [priv] impl RedactedDerivative
+crates/student-voice/src/derivative.rs [priv] impl Redaction
+crates/student-voice/src/derivative.rs [priv] impl RedactionMode
+crates/student-voice/src/derivative.rs [priv] impl RedactionPlan
+crates/student-voice/src/derivative.rs [priv] impl RestrictedOriginal
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for KeptUtterance
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for KeptUtterance :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for RemovedUtterance
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for RemovedUtterance :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for SourceUtterance<'_>
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for SourceUtterance<'_> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/student-voice/src/derivative.rs [priv] impl<'a> LectureSource<'a>
+crates/student-voice/src/derivative.rs [priv] impl<'a> SourceUtterance<'a>
+crates/student-voice/src/derivative.rs [priv] use academic_consent::{DerivativeClass, RetentionTerms}
+crates/student-voice/src/derivative.rs [priv] use academic_domain::{Actor, ContentDigest, LectureSessionId}
+crates/student-voice/src/derivative.rs [priv] use academic_lecture_document::RedactionPolicyRef
+crates/student-voice/src/derivative.rs [priv] use academic_transcription::{Speaker, TranscriptLineage}
+crates/student-voice/src/derivative.rs [priv] use crate::{ fault::{AccessRefusal, RedactionFault}, measure::AccuracyWitness, policy::RedactionPolicy, }
+crates/student-voice/src/derivative.rs [priv] use std::fmt
+crates/student-voice/src/derivative.rs [pub] #[derive(Clone, Copy, PartialEq, Eq)] struct SourceUtterance<'a>
+crates/student-voice/src/derivative.rs [pub] #[derive(Clone, PartialEq, Eq)] struct KeptUtterance
+crates/student-voice/src/derivative.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RemovedUtterance
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ExclusionRecord
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct RawAccessLog
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RedactionMode
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DerivedArtifact
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LectureSource<'a>
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ManualExclusion
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RawAccessRecord
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RedactedDerivative
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Redaction
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RedactionPlan
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RestrictedOriginal
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, PartialEq, Eq)] struct DisclosedOriginal<'a>
+crates/student-voice/src/derivative.rs [pub] #[derive(Debug, PartialEq, Eq)] struct RawAccessGrant
+crates/student-voice/src/derivative.rs [pub] #[must_use] fn inherit_terms(parent: RetentionTerms, requested: RetentionTerms) -> RetentionTerms
+crates/student-voice/src/derivative.rs [pub] const ORIGINAL_CLASSIFICATION: &str
+crates/student-voice/src/derivative.rs [pub] fn redact( plan: &RedactionPlan, reference: &RedactionPolicyRef, source: &LectureSource<'_>, requested: RetentionTerms, ) -> Result<Redaction, RedactionFault>
+crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn class(&self) -> DerivativeClass
+crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn parent_digest(&self) -> &ContentDigest
+crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn terms(&self) -> RetentionTerms
+crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn digest(&self) -> ContentDigest
+crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn of_artifact(parent: &Self, class: DerivativeClass, requested: RetentionTerms) -> Self
+crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn of_derivative( parent: &RedactedDerivative, class: DerivativeClass, requested: RetentionTerms, ) -> Self
+crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] const fn is_empty(&self) -> bool
+crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] const fn len(&self) -> usize
+crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] fn source_index(&self, position: usize) -> Option<usize>
+crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] fn speaker(&self, position: usize) -> Option<Speaker>
+crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] fn verbatim(&self, position: usize) -> Option<&str>
+crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn duration_nanos(&self) -> u64
+crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn end_nanos(&self) -> u64
+crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn index(&self) -> usize
+crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn speaker(&self) -> Speaker
+crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn start_nanos(&self) -> u64
+crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] const fn end_nanos(&self) -> u64
+crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] const fn index(&self) -> usize
+crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] const fn speaker(&self) -> Speaker
+crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] const fn start_nanos(&self) -> u64
+crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] fn text(&self) -> &str
+crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: #[must_use] const fn decided_by(&self) -> &Actor
+crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: #[must_use] const fn index(&self) -> usize
+crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: fn decided(index: usize, decided_by: Actor) -> Result<Self, RedactionFault>
+crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] const fn original_digest(&self) -> &ContentDigest
+crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] const fn requested_by(&self) -> &Actor
+crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] fn purpose(&self) -> &str
+crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: fn issued( original: &RestrictedOriginal, requested_by: Actor, purpose: &str, at: u64, ) -> Result<Self, AccessRefusal>
+crates/student-voice/src/derivative.rs [pub] impl RawAccessLog :: #[must_use] const fn new() -> Self
+crates/student-voice/src/derivative.rs [pub] impl RawAccessLog :: #[must_use] fn entries(&self) -> &[RawAccessRecord]
+crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn at(&self) -> u64
+crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn opened_by(&self) -> &Actor
+crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn original_digest(&self) -> &ContentDigest
+crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn utterances_disclosed(&self) -> usize
+crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] fn purpose(&self) -> &str
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn lecture(&self) -> LectureSessionId
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn mode(&self) -> &RedactionMode
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn policy_digest(&self) -> &ContentDigest
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn source_version(&self) -> u32
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn terms(&self) -> RetentionTerms
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn digest(&self) -> ContentDigest
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn excluded(&self) -> &[ExclusionRecord]
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn inherit_for_child(&self, requested: RetentionTerms) -> RetentionTerms
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn keeps_a_targeted_speaker(&self, policy: &RedactionPolicy) -> bool
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn kept(&self) -> &[KeptUtterance]
+crates/student-voice/src/derivative.rs [pub] impl Redaction :: #[must_use] const fn derivative(&self) -> &RedactedDerivative
+crates/student-voice/src/derivative.rs [pub] impl Redaction :: #[must_use] const fn original(&self) -> &RestrictedOriginal
+crates/student-voice/src/derivative.rs [pub] impl RedactionMode :: #[must_use] const fn as_str(&self) -> &'static str
+crates/student-voice/src/derivative.rs [pub] impl RedactionMode :: #[must_use] const fn witness(&self) -> Option<&AccuracyWitness>
+crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] const fn mode(&self) -> &RedactionMode
+crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] const fn policy(&self) -> &RedactionPolicy
+crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] fn automatic(policy: RedactionPolicy, witness: AccuracyWitness) -> Self
+crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] fn manual_exclusions(&self) -> &[ManualExclusion]
+crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: fn manual( policy: RedactionPolicy, exclusions: Vec<ManualExclusion>, ) -> Result<Self, RedactionFault>
+crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn classification(&self) -> &'static str
+crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn digest(&self) -> &ContentDigest
+crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn lecture(&self) -> LectureSessionId
+crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn source_version(&self) -> u32
+crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn terms(&self) -> RetentionTerms
+crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] fn removed_count(&self) -> usize
+crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: fn open( &self, grant: RawAccessGrant, log: &mut RawAccessLog, ) -> Result<DisclosedOriginal<'_>, AccessRefusal>
+crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: #[must_use] const fn lecture(&self) -> LectureSessionId
+crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: #[must_use] const fn terms(&self) -> RetentionTerms
+crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: #[must_use] const fn version(&self) -> u32
+crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: #[must_use] fn utterances(&self) -> &[SourceUtterance<'a>]
+crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: fn of( lineage: &'a TranscriptLineage, version: u32, terms: RetentionTerms, ) -> Result<Self, RedactionFault>
+crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn end_nanos(&self) -> u64
+crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn index(&self) -> usize
+crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn speaker(&self) -> Speaker
+crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn start_nanos(&self) -> u64
+crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn verbatim(&self) -> &'a str
+crates/student-voice/src/fault.rs [priv] use academic_domain::ContentDigest
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AccessRefusal
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AccuracyRefusal
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum DeletionFault
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum ThresholdFault
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CorpusFault
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum HoldRefusal
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RedactionFault
+crates/student-voice/src/harness.rs [priv] use crate::{ corpus::{CORPUS_ROOT, DiarizationCorpus, corpus_v1}, fault::CorpusFault, measure::{measure, measure_case}, }
+crates/student-voice/src/harness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CorpusFile
+crates/student-voice/src/harness.rs [pub] #[must_use] fn corpus_dir(corpus: &DiarizationCorpus) -> String
+crates/student-voice/src/harness.rs [pub] fn corpus_files() -> Result<Vec<CorpusFile>, CorpusFault>
+crates/student-voice/src/hold.rs [priv] impl CaptureUnderReview
+crates/student-voice/src/hold.rs [priv] impl HoldState
+crates/student-voice/src/hold.rs [priv] impl IngestionJobKind
+crates/student-voice/src/hold.rs [priv] impl IngestionReceipt
+crates/student-voice/src/hold.rs [priv] impl PiiClass
+crates/student-voice/src/hold.rs [priv] impl PiiFinding
+crates/student-voice/src/hold.rs [priv] impl ReviewDecision
+crates/student-voice/src/hold.rs [priv] impl ReviewOutcome
+crates/student-voice/src/hold.rs [priv] impl ReviewedCapture<'_>
+crates/student-voice/src/hold.rs [priv] trait IngestionStage :: fn ingest(&mut self, capture: &ReviewedCapture<'_>)
+crates/student-voice/src/hold.rs [priv] use academic_capture::CaptureBytes
+crates/student-voice/src/hold.rs [priv] use academic_domain::{Actor, ContentDigest}
+crates/student-voice/src/hold.rs [priv] use crate::fault::HoldRefusal
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct IngestionReceipt
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum IngestionJobKind
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PiiClass
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ReviewOutcome
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum HoldState
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaptureUnderReview
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PiiFinding
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReviewDecision
+crates/student-voice/src/hold.rs [pub] #[derive(Debug, PartialEq, Eq)] struct ReviewedCapture<'a>
+crates/student-voice/src/hold.rs [pub] fn dispatch<S: IngestionStage + ?Sized>( stage: &mut S, kind: IngestionJobKind, capture: &CaptureUnderReview, ) -> Result<IngestionReceipt, HoldRefusal>
+crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] const fn byte_len(&self) -> usize
+crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] const fn digest(&self) -> &ContentDigest
+crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] const fn review(&self) -> Option<&ReviewDecision>
+crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] fn findings(&self) -> &[PiiFinding]
+crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] fn hold_state(&self) -> HoldState
+crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] fn screened(bytes: CaptureBytes, findings: Vec<PiiFinding>) -> Self
+crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: fn record_review(&mut self, decision: ReviewDecision) -> Result<(), HoldRefusal>
+crates/student-voice/src/hold.rs [pub] impl HoldState :: #[must_use] const fn is_held(&self) -> bool
+crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: #[must_use] const fn spec_word(self) -> &'static str
+crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: const ALL: [Self; 2]
+crates/student-voice/src/hold.rs [pub] impl IngestionReceipt :: #[must_use] const fn digest(&self) -> &ContentDigest
+crates/student-voice/src/hold.rs [pub] impl IngestionReceipt :: #[must_use] const fn kind(&self) -> IngestionJobKind
+crates/student-voice/src/hold.rs [pub] impl PiiClass :: #[must_use] const fn as_str(self) -> &'static str
+crates/student-voice/src/hold.rs [pub] impl PiiClass :: #[must_use] const fn spec_phrase(self) -> &'static str
+crates/student-voice/src/hold.rs [pub] impl PiiClass :: const ALL: [Self; 3]
+crates/student-voice/src/hold.rs [pub] impl PiiFinding :: #[must_use] const fn class(&self) -> PiiClass
+crates/student-voice/src/hold.rs [pub] impl PiiFinding :: #[must_use] const fn detected_by(&self) -> &Actor
+crates/student-voice/src/hold.rs [pub] impl PiiFinding :: #[must_use] const fn found(class: PiiClass, detected_by: Actor) -> Self
+crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn at(&self) -> u64
+crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn capture_digest(&self) -> &ContentDigest
+crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn outcome(&self) -> ReviewOutcome
+crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn reviewed_by(&self) -> &Actor
+crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] fn addressed(&self) -> &[PiiClass]
+crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: fn recorded( capture_digest: ContentDigest, addressed: Vec<PiiClass>, outcome: ReviewOutcome, reviewed_by: Actor, at: u64, ) -> Result<Self, HoldRefusal>
+crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: #[must_use] const fn as_str(self) -> &'static str
+crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: const ALL: [Self; 2]
+crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] const fn digest(&self) -> &ContentDigest
+crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] const fn kind(&self) -> IngestionJobKind
+crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] fn bytes(&self) -> &[u8]
+crates/student-voice/src/hold.rs [pub] trait IngestionStage
+crates/student-voice/src/lib.rs [priv] mod corpus
+crates/student-voice/src/lib.rs [priv] mod derivative
+crates/student-voice/src/lib.rs [priv] mod fault
+crates/student-voice/src/lib.rs [priv] mod hold
+crates/student-voice/src/lib.rs [priv] mod measure
+crates/student-voice/src/lib.rs [priv] mod policy
+crates/student-voice/src/lib.rs [priv] mod preview
+crates/student-voice/src/lib.rs [pub] mod harness
+crates/student-voice/src/lib.rs [pub] use corpus::{ CORPUS_ID, CORPUS_ROOT, CORPUS_VERSION, DiarizationCase, DiarizationCorpus, VoiceClass, VoiceSpan, corpus_v1, }
+crates/student-voice/src/lib.rs [pub] use derivative::{ DerivedArtifact, DisclosedOriginal, ExclusionRecord, KeptUtterance, LectureSource, ManualExclusion, ORIGINAL_CLASSIFICATION, RawAccessGrant, RawAccessLog, RawAccessRecord, RedactedDerivative, Redaction, RedactionMode, RedactionPlan, RestrictedOriginal, SourceUtterance, inherit_terms, redact, }
+crates/student-voice/src/lib.rs [pub] use fault::{ AccessRefusal, AccuracyRefusal, CorpusFault, DeletionFault, HoldRefusal, RedactionFault, ThresholdFault, }
+crates/student-voice/src/lib.rs [pub] use hold::{ CaptureUnderReview, HoldState, IngestionJobKind, IngestionReceipt, IngestionStage, PiiClass, PiiFinding, ReviewDecision, ReviewOutcome, ReviewedCapture, dispatch, }
+crates/student-voice/src/lib.rs [pub] use measure::{ ABSOLUTE_ACCURACY_FLOOR, ABSOLUTE_MISSED_STUDENT_CEILING, AccuracyWitness, CaseMeasurement, DIARIZATION_THRESHOLD_V1, DiarizationMeasurement, DiarizationThreshold, SCORER_VERSION, measure, measure_case, }
+crates/student-voice/src/lib.rs [pub] use policy::{GATE_38_026_OPEN, RedactionPolicy, RedactionScope, SpeakerTargeting}
+crates/student-voice/src/lib.rs [pub] use preview::{ AffectedProjection, AffectedProjectionKind, DeletionOutcome, EvidenceIndex, LectureDeletionPlan, LectureDeletionPreview, ProjectionEffect, ProjectionRecord, affected_projections, apply_deletion, preview_deletion, unreferenced_objects, }
+crates/student-voice/src/measure.rs [priv] const fn permille(numerator: u64, denominator: u64) -> u64
+crates/student-voice/src/measure.rs [priv] fn attribute( measured: &mut CaseMeasurement, reference_class: VoiceClass, hypothesis: VoiceSpan, overlap: u64, )
+crates/student-voice/src/measure.rs [priv] impl AccuracyWitness
+crates/student-voice/src/measure.rs [priv] impl CaseMeasurement
+crates/student-voice/src/measure.rs [priv] impl DiarizationMeasurement
+crates/student-voice/src/measure.rs [priv] impl DiarizationThreshold
+crates/student-voice/src/measure.rs [priv] use academic_domain::ContentDigest
+crates/student-voice/src/measure.rs [priv] use crate::{ corpus::{DiarizationCase, DiarizationCorpus, VoiceClass, VoiceSpan}, fault::{AccuracyRefusal, ThresholdFault}, }
+crates/student-voice/src/measure.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DiarizationThreshold
+crates/student-voice/src/measure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AccuracyWitness
+crates/student-voice/src/measure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaseMeasurement
+crates/student-voice/src/measure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DiarizationMeasurement
+crates/student-voice/src/measure.rs [pub] #[must_use] fn measure(corpus: &DiarizationCorpus) -> DiarizationMeasurement
+crates/student-voice/src/measure.rs [pub] #[must_use] fn measure_case(case: &DiarizationCase) -> CaseMeasurement
+crates/student-voice/src/measure.rs [pub] const ABSOLUTE_ACCURACY_FLOOR: u64
+crates/student-voice/src/measure.rs [pub] const ABSOLUTE_MISSED_STUDENT_CEILING: u64
+crates/student-voice/src/measure.rs [pub] const DIARIZATION_THRESHOLD_V1: DiarizationThreshold
+crates/student-voice/src/measure.rs [pub] const SCORER_VERSION: u32
+crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn accuracy_permille(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn corpus_digest(&self) -> &ContentDigest
+crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn corpus_version(&self) -> u32
+crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn missed_student_permille(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn scorer_version(&self) -> u32
+crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn threshold(&self) -> DiarizationThreshold
+crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] fn corpus_id(&self) -> &str
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn agreed_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn instructor_as_student_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn partition_reconciles(&self) -> bool
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn reference_student_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn scored_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn student_agreed_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn student_as_instructor_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn unattributed_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn uncovered_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] fn case(&self) -> &str
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn accuracy_permille(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn agreed_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn corpus_digest(&self) -> &ContentDigest
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn corpus_version(&self) -> u32
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn instructor_as_student_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn missed_student_permille(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn partition_reconciles(&self) -> bool
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn reference_student_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn scored_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn scorer_version(&self) -> u32
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn student_agreed_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn student_as_instructor_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn student_recall_permille(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn unattributed_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn uncovered_ms(&self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn cases(&self) -> &[CaseMeasurement]
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn corpus_id(&self) -> &str
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: fn witness( &self, threshold: DiarizationThreshold, ) -> Result<AccuracyWitness, AccuracyRefusal>
+crates/student-voice/src/measure.rs [pub] impl DiarizationThreshold :: #[must_use] const fn max_missed_student_permille(self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationThreshold :: #[must_use] const fn min_accuracy_permille(self) -> u64
+crates/student-voice/src/measure.rs [pub] impl DiarizationThreshold :: #[must_use] const fn version(self) -> u32
+crates/student-voice/src/measure.rs [pub] impl DiarizationThreshold :: const fn new( version: u32, min_accuracy_permille: u64, max_missed_student_permille: u64, ) -> Result<Self, ThresholdFault>
+crates/student-voice/src/policy.rs [priv] impl RedactionPolicy
+crates/student-voice/src/policy.rs [priv] impl RedactionScope
+crates/student-voice/src/policy.rs [priv] impl SpeakerTargeting
+crates/student-voice/src/policy.rs [priv] use academic_domain::{Actor, ContentDigest}
+crates/student-voice/src/policy.rs [priv] use academic_lecture_document::{RedactionBasis, RedactionPolicyRef}
+crates/student-voice/src/policy.rs [priv] use academic_transcription::Speaker
+crates/student-voice/src/policy.rs [priv] use crate::{corpus::VoiceClass, fault::RedactionFault}
+crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RedactionScope
+crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum SpeakerTargeting
+crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RedactionPolicy
+crates/student-voice/src/policy.rs [pub] const GATE_38_026_OPEN: &str
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn basis(&self) -> RedactionBasis
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn decided_by(&self) -> &Actor
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn scope(&self) -> RedactionScope
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn targeting(&self) -> &SpeakerTargeting
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn version(&self) -> u32
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn digest(&self) -> ContentDigest
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn resolves(&self, reference: &RedactionPolicyRef) -> bool
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn targets(&self, speaker: Speaker) -> bool
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn published( version: u32, basis: RedactionBasis, targeting: SpeakerTargeting, scope: RedactionScope, decided_by: Actor, ) -> Result<Self, RedactionFault>
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn resolve(&self, reference: &RedactionPolicyRef) -> Result<(), RedactionFault>
+crates/student-voice/src/policy.rs [pub] impl RedactionScope :: #[must_use] const fn as_str(self) -> &'static str
+crates/student-voice/src/policy.rs [pub] impl RedactionScope :: const ALL: [Self; 1]
+crates/student-voice/src/policy.rs [pub] impl SpeakerTargeting :: #[must_use] const fn kind_str(&self) -> &'static str
+crates/student-voice/src/policy.rs [pub] impl SpeakerTargeting :: #[must_use] fn targets(&self, speaker: Speaker) -> bool
+crates/student-voice/src/preview.rs [priv] impl AffectedProjection
+crates/student-voice/src/preview.rs [priv] impl AffectedProjectionKind
+crates/student-voice/src/preview.rs [priv] impl DeletionOutcome
+crates/student-voice/src/preview.rs [priv] impl EvidenceIndex
+crates/student-voice/src/preview.rs [priv] impl LectureDeletionPlan
+crates/student-voice/src/preview.rs [priv] impl LectureDeletionPreview
+crates/student-voice/src/preview.rs [priv] impl ProjectionEffect
+crates/student-voice/src/preview.rs [priv] impl ProjectionRecord
+crates/student-voice/src/preview.rs [priv] use academic_consent::{ ConsentLedger, DeletionImpact, ExpiryPlan, ExpiryRefusal, SubjectInventory, apply_expiry, preview_expiry, }
+crates/student-voice/src/preview.rs [priv] use academic_domain::ContentDigest
+crates/student-voice/src/preview.rs [priv] use crate::fault::DeletionFault
+crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DeletionOutcome
+crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AffectedProjectionKind
+crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProjectionEffect
+crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct EvidenceIndex
+crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AffectedProjection
+crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LectureDeletionPlan
+crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LectureDeletionPreview
+crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionRecord
+crates/student-voice/src/preview.rs [pub] #[must_use] fn affected_projections( index: &EvidenceIndex, deleted: &[ContentDigest], ) -> Vec<AffectedProjection>
+crates/student-voice/src/preview.rs [pub] #[must_use] fn preview_deletion( ledger: &mut ConsentLedger, subject: &SubjectInventory, index: &EvidenceIndex, deleted: &[ContentDigest], at: u64, ) -> LectureDeletionPreview
+crates/student-voice/src/preview.rs [pub] #[must_use] fn unreferenced_objects( index: &EvidenceIndex, deleted: &[ContentDigest], ) -> Vec<ContentDigest>
+crates/student-voice/src/preview.rs [pub] fn apply_deletion( ledger: &mut ConsentLedger, plan: &LectureDeletionPlan, shown: &ContentDigest, at: u64, ) -> Result<DeletionOutcome, DeletionFault>
+crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn cited_deleted(&self) -> usize
+crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn cited_total(&self) -> usize
+crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn effect(&self) -> ProjectionEffect
+crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn kind(&self) -> AffectedProjectionKind
+crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] fn id(&self) -> &str
+crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: #[must_use] const fn spec_word(self) -> &'static str
+crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: const ALL: [Self; 2]
+crates/student-voice/src/preview.rs [pub] impl DeletionOutcome :: #[must_use] const fn objects_reached(&self) -> u64
+crates/student-voice/src/preview.rs [pub] impl DeletionOutcome :: #[must_use] const fn projections_affected(&self) -> usize
+crates/student-voice/src/preview.rs [pub] impl EvidenceIndex :: #[must_use] fn projections(&self) -> &[ProjectionRecord]
+crates/student-voice/src/preview.rs [pub] impl EvidenceIndex :: fn of(projections: Vec<ProjectionRecord>) -> Result<Self, DeletionFault>
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPlan :: #[must_use] const fn from_preview(preview: LectureDeletionPreview) -> Self
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPlan :: #[must_use] const fn preview(&self) -> &LectureDeletionPreview
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn digest(&self) -> &ContentDigest
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn impact(&self) -> &DeletionImpact
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn previewed_at(&self) -> u64
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn deleted(&self) -> &[ContentDigest]
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn partition_reconciles(&self, index: &EvidenceIndex) -> bool
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn projections(&self) -> &[AffectedProjection]
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn unreferenced(&self) -> &[ContentDigest]
+crates/student-voice/src/preview.rs [pub] impl ProjectionEffect :: #[must_use] const fn as_str(self) -> &'static str
+crates/student-voice/src/preview.rs [pub] impl ProjectionEffect :: const ALL: [Self; 2]
+crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: #[must_use] const fn kind(&self) -> AffectedProjectionKind
+crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: #[must_use] fn cites(&self) -> &[ContentDigest]
+crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: #[must_use] fn id(&self) -> &str
+crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: fn citing( kind: AffectedProjectionKind, id: &str, cites: Vec<ContentDigest>, ) -> Result<Self, DeletionFault>

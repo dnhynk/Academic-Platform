@@ -53,9 +53,12 @@
 //! Two rules, and the first is the backstop under the second.
 //!
 //! * [`every_item_in_these_packages_is_pinned`] — the **whole item set** of
-//!   `academic-student-voice` (376) and `academic-capture-gate` (223). Keyed
-//!   on nothing: an item added anywhere in either package fails whatever it is
-//!   called and whatever kind it is.
+//!   every package that keys an inventory on a line prefix: 23 packages,
+//!   6131 items, derived from
+//!   [`the_inventories_still_keyed_on_a_line_prefix_are_named`] rather than
+//!   written down. Keyed on nothing: an item added anywhere in one of them
+//!   fails whatever it is called and whatever kind it is. The pins are in
+//!   `pinned-items/<package>.items`, one key to a line.
 //! * [`every_item_that_reaches_a_closed_type_is_pinned`] — for each type in
 //!   [`CLOSED_TYPES`], the set of items whose own text names it *or* that sit
 //!   inside something that does. This is the rule that fails **by name**: an
@@ -78,11 +81,14 @@
 //!
 //! # What this does not claim
 //!
-//! The two pinned packages are the two whose contract sentences the audit
-//! measured broken. The other twenty-two packages that key an inventory on a
-//! line prefix are enumerated by
-//! [`the_inventories_still_keyed_on_a_line_prefix_are_named`], so what is left
-//! open is a list somebody has to edit rather than a silence.
+//! The pin reaches the 23 packages whose own inventories are keyed on a line
+//! prefix. **It does not reach the other 45 crates of the workspace**, which
+//! have no such inventory and no item pin either;
+//! `docs/contracts/policy-source-scans.md` names them and says when that
+//! starts to matter. What does reach all 68 is
+//! [`every_item_that_reaches_a_closed_type_is_pinned`], which is workspace-wide
+//! per closed type, and [`the_items_tile_every_file_the_workspace_compiles`],
+//! which is workspace-wide over files.
 //!
 //! And [`every_item_in_these_packages_is_pinned`] is over **declarations**: an
 //! item nested inside a function body of those two packages is not in it. What
@@ -97,7 +103,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     error::Error,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use support::{
@@ -118,7 +124,17 @@ struct ClosedType {
 }
 
 /// The types this file holds a whole item set for.
-const CLOSED_TYPES: [ClosedType; 4] = [
+///
+/// Four came from `P2-A4`'s second audit, which measured three routes out of
+/// `student-voice` that two whole-set inventories over spellings could not
+/// see. The last two came from `P2-A5`'s fourth, which measured the same class
+/// one crate over in each direction: `pub const STANDING_TOTAL: fn(&PromotionSet)
+/// -> u32` folded section 17.6's project half and its personal half into one
+/// number, and `pub const EMPHASIS: fn(&MotivationDisplay) -> u32` folded
+/// section 20.3's three motivation edges into one, and each passed the whole
+/// workspace. A type is here when a contract sentence says what may and may
+/// not come out of it.
+const CLOSED_TYPES: [ClosedType; 6] = [
     ClosedType {
         package: "student-voice",
         name: "RestrictedOriginal",
@@ -146,12 +162,23 @@ const CLOSED_TYPES: [ClosedType; 4] = [
         items: &RELEASABLE_ARTIFACT_ITEMS,
         contract: "`ReleasableArtifact::bytes` is the one accessor in this crate",
     },
-];
-
-/// The packages whose whole item set is pinned, with the pin.
-const PINNED_PACKAGES: [(&str, &[&str]); 2] = [
-    ("student-voice", &STUDENT_VOICE_ITEMS),
-    ("capture-gate", &CAPTURE_GATE_ITEMS),
+    ClosedType {
+        package: "repository-competency",
+        name: "PromotionSet",
+        items: &PROMOTION_SET_ITEMS,
+        contract: "a project observation and a personal application are two claims and \
+                   nothing folds them into one number: a reader of the number could not tell \
+                   three repository observations from one observation and two applications, \
+                   which is section 17.6's whole point",
+    },
+    ClosedType {
+        package: "build-learn",
+        name: "MotivationDisplay",
+        items: &MOTIVATION_DISPLAY_ITEMS,
+        contract: "the three motivation edges come out as rows in `MOTIVATIONS`' order and no \
+                   signature folds them into a number, because a number ranks one motivation \
+                   above another and section 20.3 says none is",
+    },
 ];
 
 /// The floor under the workspace walk.
@@ -325,6 +352,9 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
         "impl Named for Unit { const TAG: u8 = 1; type Out = u8; fn call(&self) -> u8 { 1 } }\n",
         "unsafe extern \"C\" { fn abroad(value: u8) -> u8; }\n",
         "macro_rules! shout { () => {}; }\n",
+        "macro_rules! whisper ( () => {}; );\n",
+        "macro_rules! yell [ () => {}; ];\n",
+        "unsafe extern \"C\" { pub safe fn nearby(value: u8) -> u8; }\n",
         "pub macro twice() {}\n",
         "shout!();\n",
         "pub const POINTER: fn(&Unit) -> u8 = |_| 1;\n",
@@ -348,6 +378,13 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
         "sample.rs [priv] #[allow(unused)] impl From<&Unit> for u8",
         "sample.rs [priv] macro_rules! shout",
         "sample.rs [priv] shout!()",
+        // The three forms `P2-A5` measured this reader refusing while
+        // `rustc --edition 2024` compiled them. Only the brace form of
+        // `macro_rules` omits the terminating `;`, and `safe` on a foreign
+        // function is stable in this workspace's own edition.
+        "sample.rs [priv] macro_rules! whisper",
+        "sample.rs [priv] macro_rules! yell",
+        "sample.rs [pub] unsafe extern \"C\" :: safe fn nearby(value: u8) -> u8",
     ] {
         assert!(
             keys.iter().any(|key| key == wanted),
@@ -363,10 +400,19 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
     );
 
     // Default-deny. None of these is an item, and each stops the reader.
+    //
+    // The last two are the control on the repair above: `P2-A5` asked which
+    // of the forms this reader refuses are legal Rust, and these two are the
+    // ones that are **not**. `rustc` answers `error: expected item, found ';'`
+    // for the first, and `gen` is unstable while this workspace builds on
+    // stable, so admitting either to make the reader more permissive would be
+    // the wrong direction.
     for refused in [
         "pub struct Held;\nHeld;\n",
         "pub oddity Thing { }\n",
         "pub fn ready() {}\n7\n",
+        "pub struct Held {};\n",
+        "pub gen fn later() {}\n",
     ] {
         let outcome = items_of("refused.rs", refused);
         assert!(
@@ -381,29 +427,95 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
 // The pins
 // ---------------------------------------------------------------------------
 
-/// Nothing these two packages compile is outside the pinned item set.
+/// Nothing a scanned package compiles is outside the pinned item set.
 ///
 /// The backstop. It is keyed on nothing at all: not a visibility, not a
-/// keyword, not a type name. An item added anywhere in either package is an
-/// extra entry whatever it is, which is the statement `P2-A4`'s second audit
-/// found three counterexamples to in one afternoon.
+/// keyword, not a type name. An item added anywhere in one of these packages
+/// is an extra entry whatever it is, which is the statement `P2-A4`'s second
+/// audit found three counterexamples to in one afternoon and `P2-A5`'s fourth
+/// found two more, in `repository-competency` and `build-learn`, through the
+/// `pub const NAME: fn(&T) -> u32` form.
+///
+/// **Which packages.** Derived, not written down: every package that holds a
+/// file [`the_inventories_still_keyed_on_a_line_prefix_are_named`] reports,
+/// which is exactly the set whose contract rests on a reader that cannot see
+/// an item form. A package that grows such a collector has to grow a pin file
+/// with it, and the failure names the package.
+///
+/// **Where the pins live.** `crates/contracts/tests/pinned-items/<package>.items`,
+/// one [`Item::key`] to a line, sorted. Six thousand keys are a table rather
+/// than a source file: a product edit shows up in `git diff` as the lines it
+/// added, which is the review this pin exists to force.
 #[test]
 fn every_item_in_these_packages_is_pinned() -> TestResult {
-    for (package, pinned) in PINNED_PACKAGES {
+    let repository = repository_root()?;
+    let packages = packages_keyed_on_a_line_prefix(&repository)?;
+    assert!(
+        packages.len() >= PINNED_PACKAGE_FLOOR,
+        "the derivation found only {} packages to pin",
+        packages.len()
+    );
+    let empty: [&str; 0] = [];
+    let mut total = 0_usize;
+    for package in &packages {
         let items = product_items(package)?;
         let mut keys: Vec<String> = items.iter().map(Item::key).collect();
         keys.sort();
+        total = total.saturating_add(keys.len());
+        let pinned = pinned_items(&repository, package)?;
+        let held: BTreeSet<&str> = pinned.iter().map(String::as_str).collect();
+        let read: BTreeSet<&str> = keys.iter().map(String::as_str).collect();
+        let extra: Vec<&str> = read.difference(&held).copied().collect();
+        let gone: Vec<&str> = held.difference(&read).copied().collect();
         assert_eq!(
-            keys,
-            pinned
-                .iter()
-                .map(|entry| (*entry).to_owned())
-                .collect::<Vec<_>>(),
-            "the item set of `academic-{package}` changed"
+            extra, empty,
+            "`academic-{package}` compiles items nobody wrote down"
         );
+        assert_eq!(
+            gone, empty,
+            "`academic-{package}` no longer compiles items that are pinned"
+        );
+        assert_eq!(keys, pinned, "the item set of `academic-{package}` changed");
     }
+    assert!(
+        total >= PINNED_ITEM_FLOOR,
+        "the pinned packages hold only {total} items"
+    );
     Ok(())
 }
+
+/// The file holding one package's pinned item set.
+fn pin_path(repository: &Path, package: &str) -> PathBuf {
+    repository
+        .join("crates/contracts/tests/pinned-items")
+        .join(format!("{package}.items"))
+}
+
+/// The keys pinned for one package, one to a line, in file order.
+///
+/// A missing file is an error naming the path rather than an empty set: a pin
+/// that reads as empty would make every assertion above vacuous, which is this
+/// Run's dominant defect.
+fn pinned_items(repository: &Path, package: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    let path = pin_path(repository, package);
+    let text = fs::read_to_string(&path)
+        .map_err(|why| format!("{}: {why}", relative(repository, &path)))?;
+    let held: Vec<String> = text
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(str::to_owned)
+        .collect();
+    if held.is_empty() {
+        return Err(format!("{} pins nothing", relative(repository, &path)).into());
+    }
+    Ok(held)
+}
+
+/// The floor under the derivation, so an empty walk cannot satisfy the pin.
+const PINNED_PACKAGE_FLOOR: usize = 23;
+
+/// The floor under the pinned item count, measured at `4ac7701`: 6131.
+const PINNED_ITEM_FLOOR: usize = 6_000;
 
 /// Every route to a closed type is one somebody wrote down.
 ///
@@ -415,12 +527,32 @@ fn every_item_in_these_packages_is_pinned() -> TestResult {
 fn every_item_that_reaches_a_closed_type_is_pinned() -> TestResult {
     let workspace = workspace_items()?;
     for closed in &CLOSED_TYPES {
+        // The names the type is reachable under, closed over aliasing. A rule
+        // keyed on one name is a rule about a spelling until this runs: an item
+        // written against `type Removed = RestrictedOriginal;` names `Removed`
+        // and not the closed type. `P2-A5`'s F4 recorded this closure as
+        // documented and called by nothing.
+        let mut names: BTreeSet<String> = BTreeSet::from([closed.name.to_owned()]);
+        loop {
+            let grown: BTreeSet<String> = workspace
+                .iter()
+                .filter(|item| names.iter().any(|name| item.reaches(name)))
+                .flat_map(Item::introduced_type_names)
+                .filter(|name| !name.is_empty())
+                .collect();
+            let before = names.len();
+            names.extend(grown);
+            if names.len() == before {
+                break;
+            }
+        }
         let mut keys: Vec<String> = workspace
             .iter()
-            .filter(|item| item.reaches(closed.name))
+            .filter(|item| names.iter().any(|name| item.reaches(name)))
             .map(Item::sealed_key)
             .collect();
         keys.sort();
+        keys.dedup();
         assert_eq!(
             keys,
             closed
@@ -437,23 +569,19 @@ fn every_item_that_reaches_a_closed_type_is_pinned() -> TestResult {
     Ok(())
 }
 
-/// What is still keyed on a line prefix, enumerated.
+/// Every `crates/*/tests/**.rs` file that keys a collector on a line prefix.
 ///
-/// `P2-A4`'s F2 records that the gap this file closes is in all six `P2-L`
-/// packages by construction, and reading for the collector's own shape says it
-/// is in seventeen more. Two are closed here. The rest are a list rather than a
-/// silence: a package that grows such a collector fails as an extra key, and
-/// one rewritten onto the item reader fails as a missing one.
-#[test]
-fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
-    let repository = repository_root()?;
+/// Derived from the code of each file -- comments blanked and string bodies
+/// restored -- rather than written down, so a file that grows such a collector
+/// arrives here and one rewritten off the shape leaves.
+fn files_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box<dyn Error>> {
     let markers = [
         format!("starts_with({}pub fn {})", '"', '"'),
         format!("starts_with({}pub const fn {})", '"', '"'),
         format!("starts_with({}impl {})", '"', '"'),
     ];
     let mut found: Vec<String> = Vec::new();
-    for directory in crate_directories(&repository)? {
+    for directory in crate_directories(repository)? {
         let mut pending = vec![directory.join("tests")];
         while let Some(current) = pending.pop() {
             let Ok(entries) = fs::read_dir(&current) else {
@@ -475,12 +603,42 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
                 // why the markers above are assembled rather than written.
                 let code: String = restored_literals(&source).into_iter().collect();
                 if markers.iter().any(|marker| code.contains(marker.as_str())) {
-                    found.push(relative(&repository, &path));
+                    found.push(relative(repository, &path));
                 }
             }
         }
     }
     found.sort();
+    Ok(found)
+}
+
+/// The packages those files belong to, deduplicated.
+fn packages_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box<dyn Error>> {
+    let mut found: BTreeSet<String> = BTreeSet::new();
+    for file in files_keyed_on_a_line_prefix(repository)? {
+        let package = file
+            .strip_prefix("crates/")
+            .and_then(|rest| rest.split('/').next())
+            .ok_or_else(|| format!("{file} is not under crates/"))?;
+        found.insert(package.to_owned());
+    }
+    Ok(found.into_iter().collect())
+}
+
+/// What is still keyed on a line prefix, enumerated.
+///
+/// `P2-A4`'s F2 records that the gap the item reader closes is in all six
+/// `P2-L` packages by construction, and reading for the collector's own shape
+/// says it is in seventeen more. Every one of them now carries a whole-set
+/// item pin as well ([`every_item_in_these_packages_is_pinned`] derives its
+/// package list from this one), so the list is no longer the remainder -- it
+/// is the derivation. What it still records is that these files read a line:
+/// the two readers are complementary, because a line-anchored `impl_headers`
+/// sees inside a function body and an item key does not.
+#[test]
+fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
+    let repository = repository_root()?;
+    let found = files_keyed_on_a_line_prefix(&repository)?;
     assert_eq!(
         found,
         INVENTORIES_KEYED_ON_A_LINE_PREFIX
@@ -489,642 +647,177 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
             .collect::<Vec<_>>(),
         "the set of inventories keyed on a line prefix changed"
     );
-    // Neither of the two packages this file pins is off the hook by having
-    // been listed: both are still on it, because their own scan files still
-    // carry those collectors beside the rules this file adds.
-    for package in PINNED_PACKAGES.map(|(package, _)| package) {
+    // Every one of them has a pin file, and every pin file names a package
+    // that is on this list. The second direction is what stops a pin being
+    // added for a package nobody scans and counted as coverage.
+    let packages = packages_keyed_on_a_line_prefix(&repository)?;
+    for package in &packages {
+        let path = pin_path(&repository, package);
         assert!(
-            found
-                .iter()
-                .any(|entry| entry.starts_with(&format!("crates/{package}/"))),
-            "the pin claims {package} was rewritten off the line-prefix shape"
+            path.is_file(),
+            "{} keys an inventory on a line prefix and has no item pin at {}",
+            package,
+            relative(&repository, &path)
         );
     }
+    let mut pinned: Vec<String> = Vec::new();
+    for entry in fs::read_dir(repository.join("crates/contracts/tests/pinned-items"))? {
+        let path = entry?.path();
+        let name = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .unwrap_or_default()
+            .to_owned();
+        pinned.push(name);
+    }
+    pinned.sort();
+    assert_eq!(
+        pinned, packages,
+        "a pin file names a package that keys no inventory on a line prefix"
+    );
+    Ok(())
+}
+
+/// One reader, copied sixteen times, and the copies are held to being one.
+///
+/// `P2-R2` repaired a reach guard that a token list walked past; `P2-A5`
+/// measured the repaired one walked past by
+/// `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)`, which resolves
+/// a name. The helper it repaired is copied into every crate that scans its own
+/// reaches, and the audit counted fourteen with `crates/*/tests/*.rs`; there are
+/// **sixteen**, because `academic-integrations` and `academic-next-lecture` keep
+/// theirs one directory further down in `tests/support/mod.rs`.
+///
+/// **Why they are not one function.** They could be: a dev-dependency crate
+/// holding the helpers would give one copy. It would also add an edge to the
+/// dependency closure of sixteen crates, and that closure is the subject of
+/// `tools/phase1-scaffold-policy.test.mjs`'s dependency map, its acyclic graph
+/// and each crate's own `USE_ITEMS` inventory -- scans whose whole point is
+/// that the closure does not move. Paying in the thing being protected to
+/// deduplicate the thing protecting it is the wrong trade, and the copy is
+/// deliberate for a second reason the crates state: `P2-G4` found that a lexer
+/// without raw strings desynchronizes, so each crate carries a lexer it can
+/// read rather than one it imports.
+///
+/// **What replaces one copy.** This: the bodies are compared against each
+/// other, so sixteen copies are one text, and every carrier crate is required
+/// to hold the driving control. One driven copy plus textual identity is the
+/// same guarantee as one function, and a seventeenth copy that arrives with the
+/// old body fails here by name instead of waiting for an audit.
+#[test]
+fn the_reach_readers_are_one_reader() -> TestResult {
+    let repository = repository_root()?;
+    // Assembled, and read from the blanked view, so this file's own mention of
+    // the name is neither a carrier nor a match.
+    let declaration = format!("fn absolute{}paths(code: &str)", '_');
+    let control = format!(
+        "{}::net::ToSocketAddrs>::to{}socket{}addrs",
+        "std", '_', '_'
+    );
+    let mut carriers: Vec<String> = Vec::new();
+    let mut bodies: Vec<(String, String)> = Vec::new();
+    let mut crates_with_a_control: BTreeSet<String> = BTreeSet::new();
+    for directory in crate_directories(&repository)? {
+        let package = directory
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default()
+            .to_owned();
+        let mut pending = vec![directory.join("tests")];
+        while let Some(current) = pending.pop() {
+            let Ok(entries) = fs::read_dir(&current) else {
+                continue;
+            };
+            for entry in entries {
+                let path = entry?.path();
+                if path.is_dir() {
+                    pending.push(path);
+                    continue;
+                }
+                if !path.extension().is_some_and(|value| value == "rs") {
+                    continue;
+                }
+                let source = fs::read_to_string(&path)?;
+                let code: String = lex(&source).code.into_iter().collect();
+                // The control is an argument, so it lives in a literal and the
+                // blanked view has erased it; the declaration is code, so the
+                // blanked view is what keeps this file from matching itself.
+                let text: String = restored_literals(&source).into_iter().collect();
+                if text.contains(control.as_str()) {
+                    crates_with_a_control.insert(package.clone());
+                }
+                let Some(at) = code.find(declaration.as_str()) else {
+                    continue;
+                };
+                let name = relative(&repository, &path);
+                carriers.push(name.clone());
+                let tail = &code[at..];
+                let end = tail
+                    .find("\n}\n")
+                    .ok_or_else(|| format!("{name}: the reader has no closing brace"))?;
+                // Two lines legitimately differ and neither is the rule: the
+                // crate root list, and whatever a blanked comment leaves behind
+                // -- `lex` blanks in place, so a longer comment is a longer run
+                // of spaces. Comparing trimmed non-empty lines is therefore a
+                // comparison of the code and nothing else.
+                let body: String = tail[..end]
+                    .lines()
+                    .map(str::trim)
+                    .filter(|line| !line.is_empty() && !line.starts_with("let roots = ["))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                bodies.push((name, body));
+            }
+        }
+    }
+    carriers.sort();
+    assert_eq!(
+        carriers,
+        REACH_READERS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "the set of files holding a reach reader changed"
+    );
+    let (first, canonical) = bodies
+        .first()
+        .cloned()
+        .ok_or("no reach reader was read at all")?;
+    let differing: Vec<&str> = bodies
+        .iter()
+        .filter(|(_, body)| *body != canonical)
+        .map(|(name, _)| name.as_str())
+        .collect();
+    let empty: [&str; 0] = [];
+    assert_eq!(
+        differing, empty,
+        "these reach readers are not the same text as {first}"
+    );
+    assert!(
+        canonical.contains("if start < taken {"),
+        "the canonical reach reader decides a middle segment on a byte offset again"
+    );
+    let carrier_crates: BTreeSet<String> = carriers
+        .iter()
+        .filter_map(|file| file.strip_prefix("crates/"))
+        .filter_map(|rest| rest.split('/').next())
+        .map(str::to_owned)
+        .collect();
+    let undriven: Vec<&str> = carrier_crates
+        .iter()
+        .filter(|package| !crates_with_a_control.contains(*package))
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        undriven, empty,
+        "these crates copy the reach reader and drive nothing through the form that bypassed it"
+    );
     Ok(())
 }
 
 // ---------------------------------------------------------------------------
 // The pinned sets
 // ---------------------------------------------------------------------------
-
-/// Every item `academic-student-voice`'s product targets compile.
-///
-/// The backstop under the four sets below. They are keyed on a type's name and
-/// this is not keyed on anything: an item added anywhere in this package fails
-/// here whatever it is called, whatever kind it is and whatever it names. That
-/// is the property `P2-A4`'s second audit found missing three times, once per
-/// spelling.
-const STUDENT_VOICE_ITEMS: [&str; 376] = [
-    "crates/student-voice/src/corpus.rs [priv] fn check_timeline( case: &str, timeline: &'static str, spans: &[VoiceSpan], ) -> Result<(), CorpusFault>",
-    "crates/student-voice/src/corpus.rs [priv] fn push_span(text: &mut String, timeline: &str, span: VoiceSpan)",
-    "crates/student-voice/src/corpus.rs [priv] impl DiarizationCase",
-    "crates/student-voice/src/corpus.rs [priv] impl DiarizationCorpus",
-    "crates/student-voice/src/corpus.rs [priv] impl VoiceClass",
-    "crates/student-voice/src/corpus.rs [priv] impl VoiceSpan",
-    "crates/student-voice/src/corpus.rs [priv] use academic_domain::ContentDigest",
-    "crates/student-voice/src/corpus.rs [priv] use academic_transcription::Speaker",
-    "crates/student-voice/src/corpus.rs [priv] use crate::fault::CorpusFault",
-    "crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum VoiceClass",
-    "crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct VoiceSpan",
-    "crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DiarizationCase",
-    "crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DiarizationCorpus",
-    "crates/student-voice/src/corpus.rs [pub] const CORPUS_ID: &str",
-    "crates/student-voice/src/corpus.rs [pub] const CORPUS_ROOT: &str",
-    "crates/student-voice/src/corpus.rs [pub] const CORPUS_VERSION: u32",
-    "crates/student-voice/src/corpus.rs [pub] fn corpus_v1() -> Result<DiarizationCorpus, CorpusFault>",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn hypothesis(&self) -> &[VoiceSpan]",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn name(&self) -> &str",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference(&self) -> &[VoiceSpan]",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference_ms(&self) -> u64",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference_student_ms(&self) -> u64",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: fn new( name: &str, reference: Vec<VoiceSpan>, hypothesis: Vec<VoiceSpan>, ) -> Result<Self, CorpusFault>",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] const fn version(&self) -> u32",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn cases(&self) -> &[DiarizationCase]",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn digest(&self) -> ContentDigest",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn id(&self) -> &str",
-    "crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: fn new(id: &str, version: u32, cases: Vec<DiarizationCase>) -> Result<Self, CorpusFault>",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: #[must_use] const fn of(speaker: Speaker) -> Self",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: const ALL: [Self; 3]",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn duration_ms(self) -> u64",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn end_ms(self) -> u64",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn new(start_ms: u64, end_ms: u64, speaker: Speaker) -> Self",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn overlap_ms(self, other: Self) -> u64",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn speaker(self) -> Speaker",
-    "crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn start_ms(self) -> u64",
-    "crates/student-voice/src/derivative.rs [priv] fn excluded_indices( plan: &RedactionPlan, source: &LectureSource<'_>, ) -> Result<Vec<usize>, RedactionFault>",
-    "crates/student-voice/src/derivative.rs [priv] fn original_digest(source: &LectureSource<'_>) -> ContentDigest",
-    "crates/student-voice/src/derivative.rs [priv] impl DerivedArtifact",
-    "crates/student-voice/src/derivative.rs [priv] impl DisclosedOriginal<'_>",
-    "crates/student-voice/src/derivative.rs [priv] impl ExclusionRecord",
-    "crates/student-voice/src/derivative.rs [priv] impl KeptUtterance",
-    "crates/student-voice/src/derivative.rs [priv] impl ManualExclusion",
-    "crates/student-voice/src/derivative.rs [priv] impl RawAccessGrant",
-    "crates/student-voice/src/derivative.rs [priv] impl RawAccessLog",
-    "crates/student-voice/src/derivative.rs [priv] impl RawAccessRecord",
-    "crates/student-voice/src/derivative.rs [priv] impl RedactedDerivative",
-    "crates/student-voice/src/derivative.rs [priv] impl Redaction",
-    "crates/student-voice/src/derivative.rs [priv] impl RedactionMode",
-    "crates/student-voice/src/derivative.rs [priv] impl RedactionPlan",
-    "crates/student-voice/src/derivative.rs [priv] impl RestrictedOriginal",
-    "crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for KeptUtterance",
-    "crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for KeptUtterance :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
-    "crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for RemovedUtterance",
-    "crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for RemovedUtterance :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
-    "crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for SourceUtterance<'_>",
-    "crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for SourceUtterance<'_> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
-    "crates/student-voice/src/derivative.rs [priv] impl<'a> LectureSource<'a>",
-    "crates/student-voice/src/derivative.rs [priv] impl<'a> SourceUtterance<'a>",
-    "crates/student-voice/src/derivative.rs [priv] use academic_consent::{DerivativeClass, RetentionTerms}",
-    "crates/student-voice/src/derivative.rs [priv] use academic_domain::{Actor, ContentDigest, LectureSessionId}",
-    "crates/student-voice/src/derivative.rs [priv] use academic_lecture_document::RedactionPolicyRef",
-    "crates/student-voice/src/derivative.rs [priv] use academic_transcription::{Speaker, TranscriptLineage}",
-    "crates/student-voice/src/derivative.rs [priv] use crate::{ fault::{AccessRefusal, RedactionFault}, measure::AccuracyWitness, policy::RedactionPolicy, }",
-    "crates/student-voice/src/derivative.rs [priv] use std::fmt",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Clone, Copy, PartialEq, Eq)] struct SourceUtterance<'a>",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Clone, PartialEq, Eq)] struct KeptUtterance",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RemovedUtterance",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ExclusionRecord",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct RawAccessLog",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RedactionMode",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DerivedArtifact",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LectureSource<'a>",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ManualExclusion",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RawAccessRecord",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RedactedDerivative",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Redaction",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RedactionPlan",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RestrictedOriginal",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, PartialEq, Eq)] struct DisclosedOriginal<'a>",
-    "crates/student-voice/src/derivative.rs [pub] #[derive(Debug, PartialEq, Eq)] struct RawAccessGrant",
-    "crates/student-voice/src/derivative.rs [pub] #[must_use] fn inherit_terms(parent: RetentionTerms, requested: RetentionTerms) -> RetentionTerms",
-    "crates/student-voice/src/derivative.rs [pub] const ORIGINAL_CLASSIFICATION: &str",
-    "crates/student-voice/src/derivative.rs [pub] fn redact( plan: &RedactionPlan, reference: &RedactionPolicyRef, source: &LectureSource<'_>, requested: RetentionTerms, ) -> Result<Redaction, RedactionFault>",
-    "crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn class(&self) -> DerivativeClass",
-    "crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn parent_digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn terms(&self) -> RetentionTerms",
-    "crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn digest(&self) -> ContentDigest",
-    "crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn of_artifact(parent: &Self, class: DerivativeClass, requested: RetentionTerms) -> Self",
-    "crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn of_derivative( parent: &RedactedDerivative, class: DerivativeClass, requested: RetentionTerms, ) -> Self",
-    "crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] const fn is_empty(&self) -> bool",
-    "crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] const fn len(&self) -> usize",
-    "crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] fn source_index(&self, position: usize) -> Option<usize>",
-    "crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] fn speaker(&self, position: usize) -> Option<Speaker>",
-    "crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] fn verbatim(&self, position: usize) -> Option<&str>",
-    "crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn duration_nanos(&self) -> u64",
-    "crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn end_nanos(&self) -> u64",
-    "crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn index(&self) -> usize",
-    "crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn speaker(&self) -> Speaker",
-    "crates/student-voice/src/derivative.rs [pub] impl ExclusionRecord :: #[must_use] const fn start_nanos(&self) -> u64",
-    "crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] const fn end_nanos(&self) -> u64",
-    "crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] const fn index(&self) -> usize",
-    "crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] const fn speaker(&self) -> Speaker",
-    "crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] const fn start_nanos(&self) -> u64",
-    "crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] fn text(&self) -> &str",
-    "crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: #[must_use] const fn decided_by(&self) -> &Actor",
-    "crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: #[must_use] const fn index(&self) -> usize",
-    "crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: fn decided(index: usize, decided_by: Actor) -> Result<Self, RedactionFault>",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] const fn original_digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] const fn requested_by(&self) -> &Actor",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] fn purpose(&self) -> &str",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: fn issued( original: &RestrictedOriginal, requested_by: Actor, purpose: &str, at: u64, ) -> Result<Self, AccessRefusal>",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessLog :: #[must_use] const fn new() -> Self",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessLog :: #[must_use] fn entries(&self) -> &[RawAccessRecord]",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn at(&self) -> u64",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn opened_by(&self) -> &Actor",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn original_digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn utterances_disclosed(&self) -> usize",
-    "crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] fn purpose(&self) -> &str",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn lecture(&self) -> LectureSessionId",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn mode(&self) -> &RedactionMode",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn policy_digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn source_version(&self) -> u32",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn terms(&self) -> RetentionTerms",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn digest(&self) -> ContentDigest",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn excluded(&self) -> &[ExclusionRecord]",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn inherit_for_child(&self, requested: RetentionTerms) -> RetentionTerms",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn keeps_a_targeted_speaker(&self, policy: &RedactionPolicy) -> bool",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn kept(&self) -> &[KeptUtterance]",
-    "crates/student-voice/src/derivative.rs [pub] impl Redaction :: #[must_use] const fn derivative(&self) -> &RedactedDerivative",
-    "crates/student-voice/src/derivative.rs [pub] impl Redaction :: #[must_use] const fn original(&self) -> &RestrictedOriginal",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactionMode :: #[must_use] const fn as_str(&self) -> &'static str",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactionMode :: #[must_use] const fn witness(&self) -> Option<&AccuracyWitness>",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] const fn mode(&self) -> &RedactionMode",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] const fn policy(&self) -> &RedactionPolicy",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] fn automatic(policy: RedactionPolicy, witness: AccuracyWitness) -> Self",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] fn manual_exclusions(&self) -> &[ManualExclusion]",
-    "crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: fn manual( policy: RedactionPolicy, exclusions: Vec<ManualExclusion>, ) -> Result<Self, RedactionFault>",
-    "crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn classification(&self) -> &'static str",
-    "crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn lecture(&self) -> LectureSessionId",
-    "crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn source_version(&self) -> u32",
-    "crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] const fn terms(&self) -> RetentionTerms",
-    "crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: #[must_use] fn removed_count(&self) -> usize",
-    "crates/student-voice/src/derivative.rs [pub] impl RestrictedOriginal :: fn open( &self, grant: RawAccessGrant, log: &mut RawAccessLog, ) -> Result<DisclosedOriginal<'_>, AccessRefusal>",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: #[must_use] const fn lecture(&self) -> LectureSessionId",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: #[must_use] const fn terms(&self) -> RetentionTerms",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: #[must_use] const fn version(&self) -> u32",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: #[must_use] fn utterances(&self) -> &[SourceUtterance<'a>]",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> LectureSource<'a> :: fn of( lineage: &'a TranscriptLineage, version: u32, terms: RetentionTerms, ) -> Result<Self, RedactionFault>",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn end_nanos(&self) -> u64",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn index(&self) -> usize",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn speaker(&self) -> Speaker",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn start_nanos(&self) -> u64",
-    "crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn verbatim(&self) -> &'a str",
-    "crates/student-voice/src/fault.rs [priv] use academic_domain::ContentDigest",
-    "crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AccessRefusal",
-    "crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AccuracyRefusal",
-    "crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum DeletionFault",
-    "crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum ThresholdFault",
-    "crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CorpusFault",
-    "crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum HoldRefusal",
-    "crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RedactionFault",
-    "crates/student-voice/src/harness.rs [priv] use crate::{ corpus::{CORPUS_ROOT, DiarizationCorpus, corpus_v1}, fault::CorpusFault, measure::{measure, measure_case}, }",
-    "crates/student-voice/src/harness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CorpusFile",
-    "crates/student-voice/src/harness.rs [pub] #[must_use] fn corpus_dir(corpus: &DiarizationCorpus) -> String",
-    "crates/student-voice/src/harness.rs [pub] fn corpus_files() -> Result<Vec<CorpusFile>, CorpusFault>",
-    "crates/student-voice/src/hold.rs [priv] impl CaptureUnderReview",
-    "crates/student-voice/src/hold.rs [priv] impl HoldState",
-    "crates/student-voice/src/hold.rs [priv] impl IngestionJobKind",
-    "crates/student-voice/src/hold.rs [priv] impl IngestionReceipt",
-    "crates/student-voice/src/hold.rs [priv] impl PiiClass",
-    "crates/student-voice/src/hold.rs [priv] impl PiiFinding",
-    "crates/student-voice/src/hold.rs [priv] impl ReviewDecision",
-    "crates/student-voice/src/hold.rs [priv] impl ReviewOutcome",
-    "crates/student-voice/src/hold.rs [priv] impl ReviewedCapture<'_>",
-    "crates/student-voice/src/hold.rs [priv] trait IngestionStage :: fn ingest(&mut self, capture: &ReviewedCapture<'_>)",
-    "crates/student-voice/src/hold.rs [priv] use academic_capture::CaptureBytes",
-    "crates/student-voice/src/hold.rs [priv] use academic_domain::{Actor, ContentDigest}",
-    "crates/student-voice/src/hold.rs [priv] use crate::fault::HoldRefusal",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct IngestionReceipt",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum IngestionJobKind",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PiiClass",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ReviewOutcome",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum HoldState",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaptureUnderReview",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PiiFinding",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReviewDecision",
-    "crates/student-voice/src/hold.rs [pub] #[derive(Debug, PartialEq, Eq)] struct ReviewedCapture<'a>",
-    "crates/student-voice/src/hold.rs [pub] fn dispatch<S: IngestionStage + ?Sized>( stage: &mut S, kind: IngestionJobKind, capture: &CaptureUnderReview, ) -> Result<IngestionReceipt, HoldRefusal>",
-    "crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] const fn byte_len(&self) -> usize",
-    "crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] const fn digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] const fn review(&self) -> Option<&ReviewDecision>",
-    "crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] fn findings(&self) -> &[PiiFinding]",
-    "crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] fn hold_state(&self) -> HoldState",
-    "crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] fn screened(bytes: CaptureBytes, findings: Vec<PiiFinding>) -> Self",
-    "crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: fn record_review(&mut self, decision: ReviewDecision) -> Result<(), HoldRefusal>",
-    "crates/student-voice/src/hold.rs [pub] impl HoldState :: #[must_use] const fn is_held(&self) -> bool",
-    "crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: #[must_use] const fn spec_word(self) -> &'static str",
-    "crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: const ALL: [Self; 2]",
-    "crates/student-voice/src/hold.rs [pub] impl IngestionReceipt :: #[must_use] const fn digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/hold.rs [pub] impl IngestionReceipt :: #[must_use] const fn kind(&self) -> IngestionJobKind",
-    "crates/student-voice/src/hold.rs [pub] impl PiiClass :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/student-voice/src/hold.rs [pub] impl PiiClass :: #[must_use] const fn spec_phrase(self) -> &'static str",
-    "crates/student-voice/src/hold.rs [pub] impl PiiClass :: const ALL: [Self; 3]",
-    "crates/student-voice/src/hold.rs [pub] impl PiiFinding :: #[must_use] const fn class(&self) -> PiiClass",
-    "crates/student-voice/src/hold.rs [pub] impl PiiFinding :: #[must_use] const fn detected_by(&self) -> &Actor",
-    "crates/student-voice/src/hold.rs [pub] impl PiiFinding :: #[must_use] const fn found(class: PiiClass, detected_by: Actor) -> Self",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn at(&self) -> u64",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn capture_digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn outcome(&self) -> ReviewOutcome",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn reviewed_by(&self) -> &Actor",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] fn addressed(&self) -> &[PiiClass]",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: fn recorded( capture_digest: ContentDigest, addressed: Vec<PiiClass>, outcome: ReviewOutcome, reviewed_by: Actor, at: u64, ) -> Result<Self, HoldRefusal>",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: const ALL: [Self; 2]",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] const fn digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] const fn kind(&self) -> IngestionJobKind",
-    "crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] fn bytes(&self) -> &[u8]",
-    "crates/student-voice/src/hold.rs [pub] trait IngestionStage",
-    "crates/student-voice/src/lib.rs [priv] mod corpus",
-    "crates/student-voice/src/lib.rs [priv] mod derivative",
-    "crates/student-voice/src/lib.rs [priv] mod fault",
-    "crates/student-voice/src/lib.rs [priv] mod hold",
-    "crates/student-voice/src/lib.rs [priv] mod measure",
-    "crates/student-voice/src/lib.rs [priv] mod policy",
-    "crates/student-voice/src/lib.rs [priv] mod preview",
-    "crates/student-voice/src/lib.rs [pub] mod harness",
-    "crates/student-voice/src/lib.rs [pub] use corpus::{ CORPUS_ID, CORPUS_ROOT, CORPUS_VERSION, DiarizationCase, DiarizationCorpus, VoiceClass, VoiceSpan, corpus_v1, }",
-    "crates/student-voice/src/lib.rs [pub] use derivative::{ DerivedArtifact, DisclosedOriginal, ExclusionRecord, KeptUtterance, LectureSource, ManualExclusion, ORIGINAL_CLASSIFICATION, RawAccessGrant, RawAccessLog, RawAccessRecord, RedactedDerivative, Redaction, RedactionMode, RedactionPlan, RestrictedOriginal, SourceUtterance, inherit_terms, redact, }",
-    "crates/student-voice/src/lib.rs [pub] use fault::{ AccessRefusal, AccuracyRefusal, CorpusFault, DeletionFault, HoldRefusal, RedactionFault, ThresholdFault, }",
-    "crates/student-voice/src/lib.rs [pub] use hold::{ CaptureUnderReview, HoldState, IngestionJobKind, IngestionReceipt, IngestionStage, PiiClass, PiiFinding, ReviewDecision, ReviewOutcome, ReviewedCapture, dispatch, }",
-    "crates/student-voice/src/lib.rs [pub] use measure::{ ABSOLUTE_ACCURACY_FLOOR, ABSOLUTE_MISSED_STUDENT_CEILING, AccuracyWitness, CaseMeasurement, DIARIZATION_THRESHOLD_V1, DiarizationMeasurement, DiarizationThreshold, SCORER_VERSION, measure, measure_case, }",
-    "crates/student-voice/src/lib.rs [pub] use policy::{GATE_38_026_OPEN, RedactionPolicy, RedactionScope, SpeakerTargeting}",
-    "crates/student-voice/src/lib.rs [pub] use preview::{ AffectedProjection, AffectedProjectionKind, DeletionOutcome, EvidenceIndex, LectureDeletionPlan, LectureDeletionPreview, ProjectionEffect, ProjectionRecord, affected_projections, apply_deletion, preview_deletion, unreferenced_objects, }",
-    "crates/student-voice/src/measure.rs [priv] const fn permille(numerator: u64, denominator: u64) -> u64",
-    "crates/student-voice/src/measure.rs [priv] fn attribute( measured: &mut CaseMeasurement, reference_class: VoiceClass, hypothesis: VoiceSpan, overlap: u64, )",
-    "crates/student-voice/src/measure.rs [priv] impl AccuracyWitness",
-    "crates/student-voice/src/measure.rs [priv] impl CaseMeasurement",
-    "crates/student-voice/src/measure.rs [priv] impl DiarizationMeasurement",
-    "crates/student-voice/src/measure.rs [priv] impl DiarizationThreshold",
-    "crates/student-voice/src/measure.rs [priv] use academic_domain::ContentDigest",
-    "crates/student-voice/src/measure.rs [priv] use crate::{ corpus::{DiarizationCase, DiarizationCorpus, VoiceClass, VoiceSpan}, fault::{AccuracyRefusal, ThresholdFault}, }",
-    "crates/student-voice/src/measure.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DiarizationThreshold",
-    "crates/student-voice/src/measure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AccuracyWitness",
-    "crates/student-voice/src/measure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaseMeasurement",
-    "crates/student-voice/src/measure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DiarizationMeasurement",
-    "crates/student-voice/src/measure.rs [pub] #[must_use] fn measure(corpus: &DiarizationCorpus) -> DiarizationMeasurement",
-    "crates/student-voice/src/measure.rs [pub] #[must_use] fn measure_case(case: &DiarizationCase) -> CaseMeasurement",
-    "crates/student-voice/src/measure.rs [pub] const ABSOLUTE_ACCURACY_FLOOR: u64",
-    "crates/student-voice/src/measure.rs [pub] const ABSOLUTE_MISSED_STUDENT_CEILING: u64",
-    "crates/student-voice/src/measure.rs [pub] const DIARIZATION_THRESHOLD_V1: DiarizationThreshold",
-    "crates/student-voice/src/measure.rs [pub] const SCORER_VERSION: u32",
-    "crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn accuracy_permille(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn corpus_digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn corpus_version(&self) -> u32",
-    "crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn missed_student_permille(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn scorer_version(&self) -> u32",
-    "crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] const fn threshold(&self) -> DiarizationThreshold",
-    "crates/student-voice/src/measure.rs [pub] impl AccuracyWitness :: #[must_use] fn corpus_id(&self) -> &str",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn agreed_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn instructor_as_student_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn partition_reconciles(&self) -> bool",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn reference_student_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn scored_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn student_agreed_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn student_as_instructor_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn unattributed_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn uncovered_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>",
-    "crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] fn case(&self) -> &str",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn accuracy_permille(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn agreed_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn corpus_digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn corpus_version(&self) -> u32",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn instructor_as_student_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn missed_student_permille(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn partition_reconciles(&self) -> bool",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn reference_student_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn scored_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn scorer_version(&self) -> u32",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn student_agreed_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn student_as_instructor_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn student_recall_permille(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn unattributed_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn uncovered_ms(&self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn cases(&self) -> &[CaseMeasurement]",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn corpus_id(&self) -> &str",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: fn witness( &self, threshold: DiarizationThreshold, ) -> Result<AccuracyWitness, AccuracyRefusal>",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationThreshold :: #[must_use] const fn max_missed_student_permille(self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationThreshold :: #[must_use] const fn min_accuracy_permille(self) -> u64",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationThreshold :: #[must_use] const fn version(self) -> u32",
-    "crates/student-voice/src/measure.rs [pub] impl DiarizationThreshold :: const fn new( version: u32, min_accuracy_permille: u64, max_missed_student_permille: u64, ) -> Result<Self, ThresholdFault>",
-    "crates/student-voice/src/policy.rs [priv] impl RedactionPolicy",
-    "crates/student-voice/src/policy.rs [priv] impl RedactionScope",
-    "crates/student-voice/src/policy.rs [priv] impl SpeakerTargeting",
-    "crates/student-voice/src/policy.rs [priv] use academic_domain::{Actor, ContentDigest}",
-    "crates/student-voice/src/policy.rs [priv] use academic_lecture_document::{RedactionBasis, RedactionPolicyRef}",
-    "crates/student-voice/src/policy.rs [priv] use academic_transcription::Speaker",
-    "crates/student-voice/src/policy.rs [priv] use crate::{corpus::VoiceClass, fault::RedactionFault}",
-    "crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RedactionScope",
-    "crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum SpeakerTargeting",
-    "crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RedactionPolicy",
-    "crates/student-voice/src/policy.rs [pub] const GATE_38_026_OPEN: &str",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn basis(&self) -> RedactionBasis",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn decided_by(&self) -> &Actor",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn scope(&self) -> RedactionScope",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn targeting(&self) -> &SpeakerTargeting",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn version(&self) -> u32",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn digest(&self) -> ContentDigest",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn resolves(&self, reference: &RedactionPolicyRef) -> bool",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn targets(&self, speaker: Speaker) -> bool",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn published( version: u32, basis: RedactionBasis, targeting: SpeakerTargeting, scope: RedactionScope, decided_by: Actor, ) -> Result<Self, RedactionFault>",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn resolve(&self, reference: &RedactionPolicyRef) -> Result<(), RedactionFault>",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionScope :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/student-voice/src/policy.rs [pub] impl RedactionScope :: const ALL: [Self; 1]",
-    "crates/student-voice/src/policy.rs [pub] impl SpeakerTargeting :: #[must_use] const fn kind_str(&self) -> &'static str",
-    "crates/student-voice/src/policy.rs [pub] impl SpeakerTargeting :: #[must_use] fn targets(&self, speaker: Speaker) -> bool",
-    "crates/student-voice/src/preview.rs [priv] impl AffectedProjection",
-    "crates/student-voice/src/preview.rs [priv] impl AffectedProjectionKind",
-    "crates/student-voice/src/preview.rs [priv] impl DeletionOutcome",
-    "crates/student-voice/src/preview.rs [priv] impl EvidenceIndex",
-    "crates/student-voice/src/preview.rs [priv] impl LectureDeletionPlan",
-    "crates/student-voice/src/preview.rs [priv] impl LectureDeletionPreview",
-    "crates/student-voice/src/preview.rs [priv] impl ProjectionEffect",
-    "crates/student-voice/src/preview.rs [priv] impl ProjectionRecord",
-    "crates/student-voice/src/preview.rs [priv] use academic_consent::{ ConsentLedger, DeletionImpact, ExpiryPlan, ExpiryRefusal, SubjectInventory, apply_expiry, preview_expiry, }",
-    "crates/student-voice/src/preview.rs [priv] use academic_domain::ContentDigest",
-    "crates/student-voice/src/preview.rs [priv] use crate::fault::DeletionFault",
-    "crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DeletionOutcome",
-    "crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AffectedProjectionKind",
-    "crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProjectionEffect",
-    "crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct EvidenceIndex",
-    "crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AffectedProjection",
-    "crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LectureDeletionPlan",
-    "crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LectureDeletionPreview",
-    "crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionRecord",
-    "crates/student-voice/src/preview.rs [pub] #[must_use] fn affected_projections( index: &EvidenceIndex, deleted: &[ContentDigest], ) -> Vec<AffectedProjection>",
-    "crates/student-voice/src/preview.rs [pub] #[must_use] fn preview_deletion( ledger: &mut ConsentLedger, subject: &SubjectInventory, index: &EvidenceIndex, deleted: &[ContentDigest], at: u64, ) -> LectureDeletionPreview",
-    "crates/student-voice/src/preview.rs [pub] #[must_use] fn unreferenced_objects( index: &EvidenceIndex, deleted: &[ContentDigest], ) -> Vec<ContentDigest>",
-    "crates/student-voice/src/preview.rs [pub] fn apply_deletion( ledger: &mut ConsentLedger, plan: &LectureDeletionPlan, shown: &ContentDigest, at: u64, ) -> Result<DeletionOutcome, DeletionFault>",
-    "crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn cited_deleted(&self) -> usize",
-    "crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn cited_total(&self) -> usize",
-    "crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn effect(&self) -> ProjectionEffect",
-    "crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn kind(&self) -> AffectedProjectionKind",
-    "crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] fn id(&self) -> &str",
-    "crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: #[must_use] const fn spec_word(self) -> &'static str",
-    "crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: const ALL: [Self; 2]",
-    "crates/student-voice/src/preview.rs [pub] impl DeletionOutcome :: #[must_use] const fn objects_reached(&self) -> u64",
-    "crates/student-voice/src/preview.rs [pub] impl DeletionOutcome :: #[must_use] const fn projections_affected(&self) -> usize",
-    "crates/student-voice/src/preview.rs [pub] impl EvidenceIndex :: #[must_use] fn projections(&self) -> &[ProjectionRecord]",
-    "crates/student-voice/src/preview.rs [pub] impl EvidenceIndex :: fn of(projections: Vec<ProjectionRecord>) -> Result<Self, DeletionFault>",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPlan :: #[must_use] const fn from_preview(preview: LectureDeletionPreview) -> Self",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPlan :: #[must_use] const fn preview(&self) -> &LectureDeletionPreview",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn digest(&self) -> &ContentDigest",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn impact(&self) -> &DeletionImpact",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn previewed_at(&self) -> u64",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn deleted(&self) -> &[ContentDigest]",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn partition_reconciles(&self, index: &EvidenceIndex) -> bool",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn projections(&self) -> &[AffectedProjection]",
-    "crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn unreferenced(&self) -> &[ContentDigest]",
-    "crates/student-voice/src/preview.rs [pub] impl ProjectionEffect :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/student-voice/src/preview.rs [pub] impl ProjectionEffect :: const ALL: [Self; 2]",
-    "crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: #[must_use] const fn kind(&self) -> AffectedProjectionKind",
-    "crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: #[must_use] fn cites(&self) -> &[ContentDigest]",
-    "crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: #[must_use] fn id(&self) -> &str",
-    "crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: fn citing( kind: AffectedProjectionKind, id: &str, cites: Vec<ContentDigest>, ) -> Result<Self, DeletionFault>",
-];
-
-/// Every item `academic-capture-gate`'s product targets compile.
-///
-/// `crates/capture-gate/src/lib.rs` says "`ReleasableArtifact::bytes` is the
-/// one accessor in this crate, and a workspace-wide signature rule refuses a
-/// second one written anywhere else". `P2-A4`'s second audit wrote a second one
-/// as a `pub const` function pointer and measured 27 passed, 0 failed on both
-/// hosts. The sentence is true of this set.
-const CAPTURE_GATE_ITEMS: [&str; 223] = [
-    "crates/capture-gate/probes/capture_probe.rs [priv] fn attempt(target: &str) -> String",
-    "crates/capture-gate/probes/capture_probe.rs [priv] fn main()",
-    "crates/capture-gate/probes/capture_probe.rs [priv] use academic_capture_gate::native::{REPORT_DIR_VAR, REPORT_FILE}",
-    "crates/capture-gate/probes/capture_probe.rs [priv] use std::{fmt::Write as _, fs, path::Path}",
-    "crates/capture-gate/src/artifact.rs [priv] impl CaptureArtifact",
-    "crates/capture-gate/src/artifact.rs [priv] impl CaptureManifest",
-    "crates/capture-gate/src/artifact.rs [priv] impl ChunkRecord",
-    "crates/capture-gate/src/artifact.rs [priv] impl QuarantinedArtifact",
-    "crates/capture-gate/src/artifact.rs [priv] impl ReleasableArtifact",
-    "crates/capture-gate/src/artifact.rs [priv] impl TimelineGap",
-    "crates/capture-gate/src/artifact.rs [priv] impl ViolationRisk",
-    "crates/capture-gate/src/artifact.rs [priv] impl fmt::Debug for ReleasableArtifact",
-    "crates/capture-gate/src/artifact.rs [priv] impl fmt::Debug for ReleasableArtifact :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
-    "crates/capture-gate/src/artifact.rs [priv] use academic_consent::{CaptureDenialReason, CaptureStatus, RetentionTerms}",
-    "crates/capture-gate/src/artifact.rs [priv] use academic_domain::ContentDigest",
-    "crates/capture-gate/src/artifact.rs [priv] use crate::audit::CaptureRefusalReason",
-    "crates/capture-gate/src/artifact.rs [priv] use std::fmt",
-    "crates/capture-gate/src/artifact.rs [pub(crate)] impl CaptureArtifact :: const fn quarantined(manifest: CaptureManifest, risk: ViolationRisk) -> Self",
-    "crates/capture-gate/src/artifact.rs [pub(crate)] impl CaptureArtifact :: const fn releasable(manifest: CaptureManifest, bytes: Vec<u8>) -> Self",
-    "crates/capture-gate/src/artifact.rs [pub(crate)] impl CaptureArtifact :: fn manifest_of( chunks: Vec<ChunkRecord>, byte_len: usize, digest: ContentDigest, retention: RetentionTerms, gap: Option<TimelineGap>, ) -> CaptureManifest",
-    "crates/capture-gate/src/artifact.rs [pub(crate)] impl ChunkRecord :: const fn build( seq: u32, started_at: u64, byte_len: usize, digest: ContentDigest, ) -> Self",
-    "crates/capture-gate/src/artifact.rs [pub(crate)] impl TimelineGap :: const fn opened( from: u64, cause: CaptureRefusalReason, denial: Option<CaptureDenialReason>, ) -> Self",
-    "crates/capture-gate/src/artifact.rs [pub(crate)] impl ViolationRisk :: const fn raised( chunk_seq: u32, chunk_at: u64, denial: CaptureDenialReason, status: CaptureStatus, ) -> Self",
-    "crates/capture-gate/src/artifact.rs [pub] #[derive(Clone, PartialEq, Eq)] struct ReleasableArtifact",
-    "crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct TimelineGap",
-    "crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ViolationRisk",
-    "crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum CaptureArtifact",
-    "crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaptureManifest",
-    "crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ChunkRecord",
-    "crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct QuarantinedArtifact",
-    "crates/capture-gate/src/artifact.rs [pub] const PERMISSION_VIOLATION_RISK: &str",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureArtifact :: #[must_use] const fn as_quarantined(&self) -> Option<&QuarantinedArtifact>",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureArtifact :: #[must_use] const fn as_releasable(&self) -> Option<&ReleasableArtifact>",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureArtifact :: #[must_use] const fn is_quarantined(&self) -> bool",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureArtifact :: #[must_use] const fn manifest(&self) -> &CaptureManifest",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureManifest :: #[must_use] const fn byte_len(&self) -> usize",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureManifest :: #[must_use] const fn digest(&self) -> &ContentDigest",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureManifest :: #[must_use] const fn gap(&self) -> Option<TimelineGap>",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureManifest :: #[must_use] const fn retention(&self) -> RetentionTerms",
-    "crates/capture-gate/src/artifact.rs [pub] impl CaptureManifest :: #[must_use] fn chunks(&self) -> &[ChunkRecord]",
-    "crates/capture-gate/src/artifact.rs [pub] impl ChunkRecord :: #[must_use] const fn byte_len(&self) -> usize",
-    "crates/capture-gate/src/artifact.rs [pub] impl ChunkRecord :: #[must_use] const fn digest(&self) -> &ContentDigest",
-    "crates/capture-gate/src/artifact.rs [pub] impl ChunkRecord :: #[must_use] const fn seq(&self) -> u32",
-    "crates/capture-gate/src/artifact.rs [pub] impl ChunkRecord :: #[must_use] const fn started_at(&self) -> u64",
-    "crates/capture-gate/src/artifact.rs [pub] impl QuarantinedArtifact :: #[must_use] const fn manifest(&self) -> &CaptureManifest",
-    "crates/capture-gate/src/artifact.rs [pub] impl QuarantinedArtifact :: #[must_use] const fn risk(&self) -> ViolationRisk",
-    "crates/capture-gate/src/artifact.rs [pub] impl QuarantinedArtifact :: #[must_use] const fn state(&self) -> &'static str",
-    "crates/capture-gate/src/artifact.rs [pub] impl ReleasableArtifact :: #[must_use] const fn manifest(&self) -> &CaptureManifest",
-    "crates/capture-gate/src/artifact.rs [pub] impl ReleasableArtifact :: #[must_use] fn bytes(&self) -> &[u8]",
-    "crates/capture-gate/src/artifact.rs [pub] impl TimelineGap :: #[must_use] const fn cause(&self) -> CaptureRefusalReason",
-    "crates/capture-gate/src/artifact.rs [pub] impl TimelineGap :: #[must_use] const fn denial(&self) -> Option<CaptureDenialReason>",
-    "crates/capture-gate/src/artifact.rs [pub] impl TimelineGap :: #[must_use] const fn from(&self) -> u64",
-    "crates/capture-gate/src/artifact.rs [pub] impl ViolationRisk :: #[must_use] const fn chunk_at(&self) -> u64",
-    "crates/capture-gate/src/artifact.rs [pub] impl ViolationRisk :: #[must_use] const fn chunk_seq(&self) -> u32",
-    "crates/capture-gate/src/artifact.rs [pub] impl ViolationRisk :: #[must_use] const fn denial(&self) -> CaptureDenialReason",
-    "crates/capture-gate/src/artifact.rs [pub] impl ViolationRisk :: #[must_use] const fn state(&self) -> &'static str",
-    "crates/capture-gate/src/artifact.rs [pub] impl ViolationRisk :: #[must_use] const fn status(&self) -> CaptureStatus",
-    "crates/capture-gate/src/audit.rs [priv] impl CaptureAudit",
-    "crates/capture-gate/src/audit.rs [priv] impl CaptureAuditRow",
-    "crates/capture-gate/src/audit.rs [priv] impl CaptureRefusal",
-    "crates/capture-gate/src/audit.rs [priv] impl CaptureRefusalReason",
-    "crates/capture-gate/src/audit.rs [priv] use academic_consent::{CaptureDenial, CaptureDenialReason, CaptureStatus}",
-    "crates/capture-gate/src/audit.rs [priv] use academic_domain::{ContentDigest, LectureSessionId, OfferingId}",
-    "crates/capture-gate/src/audit.rs [priv] use crate::device::DeviceClass",
-    "crates/capture-gate/src/audit.rs [pub(crate)] #[derive(Debug, Clone, Copy, Default)] struct AuditSubject",
-    "crates/capture-gate/src/audit.rs [pub(crate)] impl CaptureAudit :: fn record_refusal( &mut self, refusal: CaptureRefusal, subject: AuditSubject, now: u64, ) -> CaptureRefusal",
-    "crates/capture-gate/src/audit.rs [pub(crate)] impl CaptureRefusal :: const fn from_denial(denial: CaptureDenial, class: Option<DeviceClass>) -> Self",
-    "crates/capture-gate/src/audit.rs [pub(crate)] impl CaptureRefusal :: const fn of(reason: CaptureRefusalReason, class: Option<DeviceClass>) -> Self",
-    "crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum CaptureRefusalReason",
-    "crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error(\"capture refused at the device layer: {reason:?}\")] struct CaptureRefusal",
-    "crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, Default)] struct CaptureAudit",
-    "crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaptureAuditRow",
-    "crates/capture-gate/src/audit.rs [pub] const REFUSAL_REASONS: [CaptureRefusalReason; 6]",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAudit :: #[must_use] const fn new() -> Self",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAudit :: #[must_use] fn count_of(&self, reason: CaptureRefusalReason) -> usize",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAudit :: #[must_use] fn rows(&self) -> &[CaptureAuditRow]",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAuditRow :: #[must_use] const fn class(&self) -> Option<DeviceClass>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAuditRow :: #[must_use] const fn denial_reason(&self) -> Option<CaptureDenialReason>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAuditRow :: #[must_use] const fn lecture_id(&self) -> Option<LectureSessionId>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAuditRow :: #[must_use] const fn offering_id(&self) -> Option<OfferingId>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAuditRow :: #[must_use] const fn reason(&self) -> CaptureRefusalReason",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAuditRow :: #[must_use] const fn recorded_at(&self) -> u64",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAuditRow :: #[must_use] const fn status(&self) -> Option<CaptureStatus>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureAuditRow :: #[must_use] const fn subject_digest(&self) -> Option<&ContentDigest>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] const fn class(&self) -> Option<DeviceClass>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] const fn denial(&self) -> Option<CaptureDenial>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] const fn reason(&self) -> CaptureRefusalReason",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] fn denial_reason(&self) -> Option<CaptureDenialReason>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] fn status(&self) -> Option<CaptureStatus>",
-    "crates/capture-gate/src/audit.rs [pub] impl CaptureRefusalReason :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/capture-gate/src/daemon.rs [priv] impl CaptureAuthorization",
-    "crates/capture-gate/src/daemon.rs [priv] use academic_consent::{CaptureRequest, ConsentLedger, mint_capture_capability}",
-    "crates/capture-gate/src/daemon.rs [priv] use crate::{ audit::{AuditSubject, CaptureAudit, CaptureRefusal}, device::DeviceRuleset, }",
-    "crates/capture-gate/src/daemon.rs [pub(crate)] impl CaptureAuthorization :: fn into_token(self) -> academic_consent::CaptureCapabilityToken",
-    "crates/capture-gate/src/daemon.rs [pub] #[derive(Debug)] struct CaptureAuthorization",
-    "crates/capture-gate/src/daemon.rs [pub] fn authorize( ledger: &mut ConsentLedger, audit: &mut CaptureAudit, request: &CaptureRequest, now: u64, ) -> Result<CaptureAuthorization, CaptureRefusal>",
-    "crates/capture-gate/src/daemon.rs [pub] impl CaptureAuthorization :: #[must_use] const fn ruleset(&self) -> &DeviceRuleset",
-    "crates/capture-gate/src/daemon.rs [pub] impl CaptureAuthorization :: #[must_use] const fn token(&self) -> &academic_consent::CaptureCapabilityToken",
-    "crates/capture-gate/src/device.rs [priv] impl BackendId",
-    "crates/capture-gate/src/device.rs [priv] impl DeviceClass",
-    "crates/capture-gate/src/device.rs [priv] impl DeviceLayer",
-    "crates/capture-gate/src/device.rs [priv] impl DeviceRuleset",
-    "crates/capture-gate/src/device.rs [priv] use academic_consent::{CaptureCapabilityToken, CaptureMedium}",
-    "crates/capture-gate/src/device.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum DeviceLayer",
-    "crates/capture-gate/src/device.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum BackendId",
-    "crates/capture-gate/src/device.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum DeviceClass",
-    "crates/capture-gate/src/device.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeviceRuleset",
-    "crates/capture-gate/src/device.rs [pub] const DEVICE_CLASSES: [DeviceClass; 3]",
-    "crates/capture-gate/src/device.rs [pub] impl BackendId :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceClass :: #[must_use] const fn as_str(self) -> &'static str",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceClass :: #[must_use] const fn of(medium: CaptureMedium) -> Option<Self>",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceLayer :: #[must_use] const fn backend(self) -> BackendId",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceLayer :: #[must_use] const fn is_enforced(self) -> bool",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceRuleset :: #[must_use] fn classes(&self) -> &[DeviceClass]",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceRuleset :: #[must_use] fn for_token(token: &CaptureCapabilityToken) -> Self",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceRuleset :: #[must_use] fn is_empty(&self) -> bool",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceRuleset :: #[must_use] fn permits(&self, class: DeviceClass) -> bool",
-    "crates/capture-gate/src/device.rs [pub] impl DeviceRuleset :: #[must_use] fn unclassified(&self) -> &[CaptureMedium]",
-    "crates/capture-gate/src/lib.rs [pub] mod artifact",
-    "crates/capture-gate/src/lib.rs [pub] mod audit",
-    "crates/capture-gate/src/lib.rs [pub] mod daemon",
-    "crates/capture-gate/src/lib.rs [pub] mod device",
-    "crates/capture-gate/src/lib.rs [pub] mod native",
-    "crates/capture-gate/src/lib.rs [pub] mod session",
-    "crates/capture-gate/src/lib.rs [pub] use artifact::{ CaptureArtifact, CaptureManifest, ChunkRecord, PERMISSION_VIOLATION_RISK, QuarantinedArtifact, ReleasableArtifact, TimelineGap, ViolationRisk, }",
-    "crates/capture-gate/src/lib.rs [pub] use audit::{ CaptureAudit, CaptureAuditRow, CaptureRefusal, CaptureRefusalReason, REFUSAL_REASONS, }",
-    "crates/capture-gate/src/lib.rs [pub] use daemon::{CaptureAuthorization, authorize}",
-    "crates/capture-gate/src/lib.rs [pub] use device::{BackendId, DEVICE_CLASSES, DeviceClass, DeviceLayer, DeviceRuleset}",
-    "crates/capture-gate/src/lib.rs [pub] use session::{CaptureSession, open_device, releasable_bytes}",
-    "crates/capture-gate/src/native/linux.rs [priv] #[allow(unsafe_code)] fn enter(rules: &[RuleFd], handled: u64) -> Result<(), NativeError>",
-    "crates/capture-gate/src/native/linux.rs [priv] #[allow(unsafe_code)] fn landlock_abi() -> i64",
-    "crates/capture-gate/src/native/linux.rs [priv] #[allow(unsafe_code)] fn resolve(path: &Path, abi: i64, writable: bool, executable: bool) -> Result<RuleFd, NativeError>",
-    "crates/capture-gate/src/native/linux.rs [priv] #[derive(Debug, Clone, Copy)] struct RuleFd",
-    "crates/capture-gate/src/native/linux.rs [priv] #[repr(C)] #[derive(Debug, Default)] struct LandlockRulesetAttr",
-    "crates/capture-gate/src/native/linux.rs [priv] #[repr(C, packed)] #[derive(Debug, Clone, Copy)] struct LandlockPathBeneathAttr",
-    "crates/capture-gate/src/native/linux.rs [priv] const ABI1_HANDLED: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const ACCESS_EXECUTE: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const ACCESS_IOCTL_DEV: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const ACCESS_MAKE_REG: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const ACCESS_READ_DIR: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const ACCESS_READ_FILE: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const ACCESS_REFER: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const ACCESS_TRUNCATE: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const ACCESS_WRITE_FILE: u64",
-    "crates/capture-gate/src/native/linux.rs [priv] const LANDLOCK_CREATE_RULESET_VERSION: u32",
-    "crates/capture-gate/src/native/linux.rs [priv] const LANDLOCK_RULE_PATH_BENEATH: u32",
-    "crates/capture-gate/src/native/linux.rs [priv] const RUNTIME_IMAGE_DIRECTORIES: [&str; 4]",
-    "crates/capture-gate/src/native/linux.rs [priv] fn errno() -> i64",
-    "crates/capture-gate/src/native/linux.rs [priv] fn handled_mask(abi: i64) -> u64",
-    "crates/capture-gate/src/native/linux.rs [priv] use crate::device::{BackendId, DeviceLayer}",
-    "crates/capture-gate/src/native/linux.rs [priv] use std::{ ffi::CString, io, os::unix::{ffi::OsStrExt as _, process::CommandExt as _}, path::Path, process::Command, }",
-    "crates/capture-gate/src/native/linux.rs [priv] use super::{LaunchSpec, NativeError, REPORT_DIR_VAR, REPORT_FILE}",
-    "crates/capture-gate/src/native/linux.rs [pub(super)] #[allow(unsafe_code)] fn launch(spec: &LaunchSpec) -> Result<String, NativeError>",
-    "crates/capture-gate/src/native/linux.rs [pub(super)] fn availability() -> DeviceLayer",
-    "crates/capture-gate/src/native/mod.rs [priv] #[cfg(all(feature = \"native-capture\", target_os = \"linux\"))] mod linux",
-    "crates/capture-gate/src/native/mod.rs [priv] #[cfg(all(feature = \"native-capture\", target_os = \"windows\"))] mod windows",
-    "crates/capture-gate/src/native/mod.rs [priv] impl DeviceTree",
-    "crates/capture-gate/src/native/mod.rs [priv] impl LaunchSpec",
-    "crates/capture-gate/src/native/mod.rs [priv] use crate::device::{DeviceClass, DeviceLayer, DeviceRuleset}",
-    "crates/capture-gate/src/native/mod.rs [priv] use std::path::PathBuf",
-    "crates/capture-gate/src/native/mod.rs [pub] #[derive(Debug, Clone)] struct LaunchSpec",
-    "crates/capture-gate/src/native/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeviceTree",
-    "crates/capture-gate/src/native/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum NativeError",
-    "crates/capture-gate/src/native/mod.rs [pub] #[must_use] fn availability() -> DeviceLayer",
-    "crates/capture-gate/src/native/mod.rs [pub] #[must_use] fn device_paths(class: DeviceClass) -> Vec<String>",
-    "crates/capture-gate/src/native/mod.rs [pub] const REPORT_DIR_VAR: &str",
-    "crates/capture-gate/src/native/mod.rs [pub] const REPORT_FILE: &str",
-    "crates/capture-gate/src/native/mod.rs [pub] fn launch(spec: &LaunchSpec) -> Result<String, NativeError>",
-    "crates/capture-gate/src/native/mod.rs [pub] impl DeviceTree :: #[must_use] const fn class(&self) -> DeviceClass",
-    "crates/capture-gate/src/native/mod.rs [pub] impl DeviceTree :: #[must_use] const fn new(class: DeviceClass, path: PathBuf) -> Self",
-    "crates/capture-gate/src/native/mod.rs [pub] impl DeviceTree :: #[must_use] fn path(&self) -> &std::path::Path",
-    "crates/capture-gate/src/native/mod.rs [pub] impl LaunchSpec :: #[must_use] fn permits(&self, class: DeviceClass) -> bool",
-    "crates/capture-gate/src/native/windows.rs [priv] #[allow(unsafe_code)] fn container_sid() -> Result<PSID, NativeError>",
-    "crates/capture-gate/src/native/windows.rs [priv] #[allow(unsafe_code)] fn grant(path: &Path, sid: PSID, rights: u32, inherit: u32) -> Result<(), NativeError>",
-    "crates/capture-gate/src/native/windows.rs [priv] #[allow(unsafe_code)] fn last_error() -> i64",
-    "crates/capture-gate/src/native/windows.rs [priv] #[derive(Debug)] struct ProfileLock",
-    "crates/capture-gate/src/native/windows.rs [priv] const CONTAINER_NAME: &str",
-    "crates/capture-gate/src/native/windows.rs [priv] const INHERIT_ALL: u32",
-    "crates/capture-gate/src/native/windows.rs [priv] const KSCATEGORY_CAPTURE: GUID",
-    "crates/capture-gate/src/native/windows.rs [priv] const KSCATEGORY_VIDEO_CAMERA: GUID",
-    "crates/capture-gate/src/native/windows.rs [priv] const PROFILE_LOCK_FILE: &str",
-    "crates/capture-gate/src/native/windows.rs [priv] const PROFILE_LOCK_WAIT: Duration",
-    "crates/capture-gate/src/native/windows.rs [priv] const RIGHTS_READ_EXECUTE: u32",
-    "crates/capture-gate/src/native/windows.rs [priv] const RIGHTS_READ_WRITE: u32",
-    "crates/capture-gate/src/native/windows.rs [priv] const SHARING_VIOLATION: i32",
-    "crates/capture-gate/src/native/windows.rs [priv] fn environment_block(report_dir: &Path) -> Vec<u16>",
-    "crates/capture-gate/src/native/windows.rs [priv] fn profile_lock_path() -> Option<PathBuf>",
-    "crates/capture-gate/src/native/windows.rs [priv] fn read_report(report_dir: &Path) -> Result<String, NativeError>",
-    "crates/capture-gate/src/native/windows.rs [priv] fn wide(value: &str) -> Vec<u16>",
-    "crates/capture-gate/src/native/windows.rs [priv] impl Drop for OwnedHandle",
-    "crates/capture-gate/src/native/windows.rs [priv] impl Drop for OwnedHandle :: #[allow(unsafe_code)] fn drop(&mut self)",
-    "crates/capture-gate/src/native/windows.rs [priv] impl ProfileLock",
-    "crates/capture-gate/src/native/windows.rs [priv] impl ProfileLock :: fn acquire() -> Self",
-    "crates/capture-gate/src/native/windows.rs [priv] static PROFILE_CREATION: Mutex<()>",
-    "crates/capture-gate/src/native/windows.rs [priv] struct OwnedHandle(HANDLE)",
-    "crates/capture-gate/src/native/windows.rs [priv] use crate::device::{BackendId, DeviceClass, DeviceLayer}",
-    "crates/capture-gate/src/native/windows.rs [priv] use std::{ ffi::c_void, fs::OpenOptions, mem::{size_of, zeroed}, os::windows::fs::OpenOptionsExt as _, path::{Path, PathBuf}, ptr::{null, null_mut}, sync::{Mutex, PoisonError}, time::{Duration, Instant}, }",
-    "crates/capture-gate/src/native/windows.rs [priv] use super::{LaunchSpec, NativeError, REPORT_DIR_VAR, REPORT_FILE}",
-    "crates/capture-gate/src/native/windows.rs [priv] use windows_sys::{ Win32::{ Devices::DeviceAndDriverInstallation::{ CM_GET_DEVICE_INTERFACE_LIST_PRESENT, CM_Get_Device_Interface_List_SizeW, CM_Get_Device_Interface_ListW, }, Foundation::{CloseHandle, GetLastError, HANDLE, WAIT_TIMEOUT}, Security::{ ACL, Authorization::{ EXPLICIT_ACCESS_W, GRANT_ACCESS, GetNamedSecurityInfoW, SE_FILE_OBJECT, SetEntriesInAclW, SetNamedSecurityInfoW, TRUSTEE_IS_SID, TRUSTEE_IS_WELL_KNOWN_GROUP, }, DACL_SECURITY_INFORMATION, Isolation::{CreateAppContainerProfile, DeriveAppContainerSidFromAppContainerName}, PSID, SECURITY_CAPABILITIES, }, System::Threading::{ CREATE_SUSPENDED, CreateProcessW, DeleteProcThreadAttributeList, EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess, INFINITE, InitializeProcThreadAttributeList, LPPROC_THREAD_ATTRIBUTE_LIST, PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES, PROCESS_INFORMATION, ResumeThread, STARTUPINFOEXW, UpdateProcThreadAttribute, WaitForSingleObject, }, }, core::GUID, }",
-    "crates/capture-gate/src/native/windows.rs [pub(super)] #[allow(dead_code)] fn enter() -> Result<BackendId, NativeError>",
-    "crates/capture-gate/src/native/windows.rs [pub(super)] #[allow(unsafe_code)] fn device_interface_paths(class: DeviceClass) -> Vec<String>",
-    "crates/capture-gate/src/native/windows.rs [pub(super)] #[allow(unsafe_code)] fn launch(spec: &LaunchSpec) -> Result<String, NativeError>",
-    "crates/capture-gate/src/native/windows.rs [pub(super)] fn availability() -> DeviceLayer",
-    "crates/capture-gate/src/session.rs [priv] impl CaptureSession",
-    "crates/capture-gate/src/session.rs [priv] impl CaptureSession :: fn first_unbound_chunk( &self, ledger: &ConsentLedger, ) -> Option<(ViolationRisk, CaptureDenial)>",
-    "crates/capture-gate/src/session.rs [priv] impl CaptureSession :: fn subject(&self) -> AuditSubject",
-    "crates/capture-gate/src/session.rs [priv] impl fmt::Debug for CaptureSession",
-    "crates/capture-gate/src/session.rs [priv] impl fmt::Debug for CaptureSession :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
-    "crates/capture-gate/src/session.rs [priv] use academic_consent::{ CaptureCapabilityToken, CaptureDenial, ConsentLedger, RetentionTerms, bind_permission, continue_capture, }",
-    "crates/capture-gate/src/session.rs [priv] use academic_domain::{ContentDigest, LectureSessionId, OfferingId}",
-    "crates/capture-gate/src/session.rs [priv] use crate::{ artifact::{CaptureArtifact, ChunkRecord, TimelineGap, ViolationRisk}, audit::{AuditSubject, CaptureAudit, CaptureRefusal, CaptureRefusalReason}, daemon::CaptureAuthorization, device::{DeviceClass, DeviceLayer}, }",
-    "crates/capture-gate/src/session.rs [priv] use std::fmt",
-    "crates/capture-gate/src/session.rs [pub] fn open_device( ledger: &mut ConsentLedger, audit: &mut CaptureAudit, authorization: CaptureAuthorization, class: DeviceClass, layer: DeviceLayer, now: u64, ) -> Result<CaptureSession, CaptureRefusal>",
-    "crates/capture-gate/src/session.rs [pub] fn releasable_bytes<'artifact>( artifact: &'artifact CaptureArtifact, audit: &mut CaptureAudit, now: u64, ) -> Result<&'artifact [u8], CaptureRefusal>",
-    "crates/capture-gate/src/session.rs [pub] impl CaptureSession :: #[must_use] const fn class(&self) -> DeviceClass",
-    "crates/capture-gate/src/session.rs [pub] impl CaptureSession :: #[must_use] const fn gap(&self) -> Option<TimelineGap>",
-    "crates/capture-gate/src/session.rs [pub] impl CaptureSession :: #[must_use] const fn layer(&self) -> DeviceLayer",
-    "crates/capture-gate/src/session.rs [pub] impl CaptureSession :: #[must_use] const fn not_after(&self) -> u64",
-    "crates/capture-gate/src/session.rs [pub] impl CaptureSession :: #[must_use] const fn token_id(&self) -> &ContentDigest",
-    "crates/capture-gate/src/session.rs [pub] impl CaptureSession :: #[must_use] fn chunk_count(&self) -> usize",
-    "crates/capture-gate/src/session.rs [pub] impl CaptureSession :: fn record_chunk( &mut self, ledger: &mut ConsentLedger, audit: &mut CaptureAudit, bytes: &[u8], now: u64, ) -> Result<(), CaptureRefusal>",
-    "crates/capture-gate/src/session.rs [pub] impl CaptureSession :: fn seal( self, ledger: &ConsentLedger, audit: &mut CaptureAudit, now: u64, ) -> CaptureArtifact",
-    "crates/capture-gate/src/session.rs [pub] struct CaptureSession",
-];
 
 /// Every item that reaches a `RestrictedOriginal`.
 ///
@@ -1219,6 +912,71 @@ const RELEASABLE_ARTIFACT_ITEMS: [&str; 11] = [
     "crates/capture-gate/src/artifact.rs [pub] impl ReleasableArtifact :: #[must_use] const fn manifest(&self) -> &CaptureManifest |5048569a0c02e48a",
     "crates/capture-gate/src/artifact.rs [pub] impl ReleasableArtifact :: #[must_use] fn bytes(&self) -> &[u8] |a3abc5b93da5a4c9",
     "crates/capture-gate/src/lib.rs [pub] use artifact::{ CaptureArtifact, CaptureManifest, ChunkRecord, PERMISSION_VIOLATION_RISK, QuarantinedArtifact, ReleasableArtifact, TimelineGap, ViolationRisk, } |5f1c50d32a5909a1",
+];
+
+/// Every file holding a copy of the reach reader.
+///
+/// Sixteen, not the fourteen `P2-A5` counted: `crates/*/tests/*.rs` does not
+/// reach `tests/support/mod.rs`, and two crates keep theirs there.
+const REACH_READERS: [&str; 16] = [
+    "crates/blind-spot/tests/blind_spot_scans.rs",
+    "crates/build-learn/tests/build_learn_scans.rs",
+    "crates/competency/tests/competency_scans.rs",
+    "crates/critical-path/tests/critical_path_scans.rs",
+    "crates/cs-map/tests/cs_map_scans.rs",
+    "crates/freshness/tests/freshness_scans.rs",
+    "crates/gap/tests/gap_scans.rs",
+    "crates/integrations/tests/support/mod.rs",
+    "crates/knowledge-state/tests/knowledge_state_scans.rs",
+    "crates/next-lecture/tests/support/mod.rs",
+    "crates/readiness/tests/readiness_scans.rs",
+    "crates/repository-analysis/tests/analysis_scans.rs",
+    "crates/repository-classification/tests/classification_scans.rs",
+    "crates/repository-competency/tests/competency_scans.rs",
+    "crates/repository-correlation/tests/correlation_scans.rs",
+    "crates/role-profile/tests/role_scans.rs",
+];
+
+/// Every item of the workspace that reaches `PromotionSet`.
+///
+/// Section 17.6's two claim kinds live behind this type, and the contract on
+/// it is that they stay two. `P2-A5` measured `pub const STANDING_TOTAL:
+/// fn(&PromotionSet) -> u32` counting the project claims and the personal
+/// claims into one number and passing the whole workspace: `impl_headers`
+/// keeps a line beginning `impl` and `public_signatures` keeps `pub fn ` and
+/// `pub const fn `, and a `pub const NAME: fn(...) -> ...` is neither. It is
+/// an item, so it is here.
+const PROMOTION_SET_ITEMS: [&str; 8] = [
+    "crates/repository-competency/src/lib.rs [priv] impl PromotionSet",
+    "crates/repository-competency/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PromotionSet |6212f72bcfffdb3f",
+    "crates/repository-competency/src/lib.rs [pub] fn promote(input: &PromotionInput<'_>) -> Result<PromotionSet, CompetencyError> |bbfd7ea14f2aec1d",
+    "crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn personal_claim(&self, concept: &str) -> Option<&PersonalApplicationClaim> |b1f69778b0d1b76d",
+    "crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn personal_claims(&self) -> &[PersonalApplicationClaim] |42ca5bebcb9604c2",
+    "crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn project_claim(&self, concept: &str) -> Option<&ProjectObservationClaim> |93bbe3e16bc440b0",
+    "crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn project_claims(&self) -> &[ProjectObservationClaim] |91559c5182a212d1",
+    "crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn snapshot_id(&self) -> &str |f3d2b3f8490921f9",
+];
+
+/// Every item of the workspace that reaches `MotivationDisplay`.
+///
+/// `no_signature_folds_the_motivation_edges` compares the whole set of public
+/// signatures that name a motivation type and return a number against the
+/// empty set, and that set is whole over the same line reader's output.
+/// `P2-A5` measured `pub const EMPHASIS: fn(&MotivationDisplay) -> u32`
+/// adding no key to it, because the reader never emits one for a `const`.
+/// This set is over items, so the form is in it whatever it is called.
+const MOTIVATION_DISPLAY_ITEMS: [&str; 11] = [
+    "crates/build-learn/src/lib.rs [pub] use motivation::{MOTIVATIONS, Motivation, MotivationDisplay, MotivationEdge, MotivationRow} |a53ab0bdd3111e1a",
+    "crates/build-learn/src/motivation.rs [priv] impl MotivationDisplay",
+    "crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct MotivationDisplay |acf73a31544c9eed",
+    "crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b",
+    "crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] fn carries(&self, motivation: Motivation) -> bool |5476beea5e5903d7",
+    "crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] fn rows(&self) -> &[MotivationRow] |dd0ea27f50a8481e",
+    "crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: fn of(concept: EntityId, edges: &[MotivationEdge]) -> Result<Self, BuildLearnError> |fa217152b4d514c9",
+    "crates/build-learn/src/plan.rs [priv] impl PlanDraft<'_>",
+    "crates/build-learn/src/plan.rs [priv] use crate::{ branch::ArchitectureBranch, learning::LearningItem, motivation::MotivationDisplay, readiness::ReadinessFinding, text::{NonEmptyText, PartId}, } |eeca5926216b9579",
+    "crates/build-learn/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanDraft<'a> |2f0b8d43d196542a",
+    "crates/build-learn/src/plan.rs [pub] impl PlanDraft<'_> :: #[must_use] fn motivation(&self, concept: EntityId) -> Option<&MotivationDisplay> |bf9b3c0c6c1b148a",
 ];
 
 /// Every scan file that still keys an inventory on a line prefix.

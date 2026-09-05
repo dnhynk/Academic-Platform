@@ -1,0 +1,518 @@
+crates/ingestion/src/conflict.rs [priv] fn compare_optional_dates<T: HasDate>(left: Option<T>, right: Option<T>) -> DateComparison
+crates/ingestion/src/conflict.rs [priv] impl AuditDisposition
+crates/ingestion/src/conflict.rs [priv] impl ConflictCase
+crates/ingestion/src/conflict.rs [priv] impl ConflictDimension
+crates/ingestion/src/conflict.rs [priv] impl ContendingSource
+crates/ingestion/src/conflict.rs [priv] impl DateComparison
+crates/ingestion/src/conflict.rs [priv] impl DimensionFinding
+crates/ingestion/src/conflict.rs [priv] impl DimensionOutcome
+crates/ingestion/src/conflict.rs [priv] impl HasDate for IssuanceDate
+crates/ingestion/src/conflict.rs [priv] impl HasDate for IssuanceDate :: fn date(&self) -> crate::dating::Date
+crates/ingestion/src/conflict.rs [priv] impl HasDate for crate::dating::EffectiveDate
+crates/ingestion/src/conflict.rs [priv] impl HasDate for crate::dating::EffectiveDate :: fn date(&self) -> crate::dating::Date
+crates/ingestion/src/conflict.rs [priv] impl Side
+crates/ingestion/src/conflict.rs [priv] impl UserResolution
+crates/ingestion/src/conflict.rs [priv] trait HasDate :: fn date(&self) -> crate::dating::Date
+crates/ingestion/src/conflict.rs [priv] use academic_domain::{ContentDigest, engines::RuleId}
+crates/ingestion/src/conflict.rs [priv] use crate::{ dating::{DateRelation, Dating, IssuanceDate}, document::{ HierarchyRelation, LegalAuthority, OfficialDocument, ScopeRelation, TargetScope, TransitionRelation, TransitionalMeasures, }, identifier::{ConnectorId, DependentId}, manifest::DeclaredTarget, }
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum AuditDisposition
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum ConflictDimension
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum DateComparison
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum DimensionOutcome
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum Side
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct DimensionFinding
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Resolution
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConflictCase
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ContendingSource
+crates/ingestion/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UserResolution
+crates/ingestion/src/conflict.rs [pub] #[must_use] fn detect(left: ContendingSource, right: ContendingSource) -> Option<ConflictCase>
+crates/ingestion/src/conflict.rs [pub] impl AuditDisposition :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn disposition(&self) -> AuditDisposition
+crates/ingestion/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn left(&self) -> &ContendingSource
+crates/ingestion/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn resolution(&self) -> &Resolution
+crates/ingestion/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn right(&self) -> &ContendingSource
+crates/ingestion/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn finding(&self, dimension: ConflictDimension) -> Option<&DimensionFinding>
+crates/ingestion/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn findings(&self) -> &[DimensionFinding]
+crates/ingestion/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn open(left: ContendingSource, right: ContendingSource) -> Self
+crates/ingestion/src/conflict.rs [pub] impl ConflictCase :: fn resolve(&mut self, resolution: UserResolution)
+crates/ingestion/src/conflict.rs [pub] impl ConflictDimension :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/conflict.rs [pub] impl ConflictDimension :: const ALL: &'static [Self]
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn authority(&self) -> LegalAuthority
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn dating(&self) -> Dating
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn issued(&self) -> Option<IssuanceDate>
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn rule(&self) -> &RuleId
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn scope(&self) -> &TargetScope
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn target(&self) -> DeclaredTarget
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn text_digest(&self) -> &ContentDigest
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] const fn transitional_measures(&self) -> TransitionalMeasures
+crates/ingestion/src/conflict.rs [pub] impl ContendingSource :: #[must_use] fn from_document( connector: ConnectorId, target: DeclaredTarget, document: &OfficialDocument, rule: &RuleId, ) -> Option<Self>
+crates/ingestion/src/conflict.rs [pub] impl DateComparison :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/conflict.rs [pub] impl DimensionFinding :: #[must_use] const fn dimension(&self) -> ConflictDimension
+crates/ingestion/src/conflict.rs [pub] impl DimensionFinding :: #[must_use] const fn outcome(&self) -> DimensionOutcome
+crates/ingestion/src/conflict.rs [pub] impl DimensionOutcome :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/conflict.rs [pub] impl Side :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/conflict.rs [pub] impl Side :: const ALL: &'static [Self]
+crates/ingestion/src/conflict.rs [pub] impl UserResolution :: #[must_use] const fn actor(&self) -> &DependentId
+crates/ingestion/src/conflict.rs [pub] impl UserResolution :: #[must_use] const fn chose(&self) -> Side
+crates/ingestion/src/conflict.rs [pub] impl UserResolution :: #[must_use] const fn recorded(chose: Side, actor: DependentId) -> Self
+crates/ingestion/src/conflict.rs [pub] trait HasDate
+crates/ingestion/src/dating.rs [priv] const COMMON_YEAR_MONTH_LENGTHS: [u8; 12]
+crates/ingestion/src/dating.rs [priv] const fn is_leap_year(year: u16) -> bool
+crates/ingestion/src/dating.rs [priv] impl Date
+crates/ingestion/src/dating.rs [priv] impl DateRelation
+crates/ingestion/src/dating.rs [priv] impl Dating
+crates/ingestion/src/dating.rs [priv] impl EffectiveDate
+crates/ingestion/src/dating.rs [priv] impl IssuanceDate
+crates/ingestion/src/dating.rs [priv] impl fmt::Display for Date
+crates/ingestion/src/dating.rs [priv] impl fmt::Display for Date :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/ingestion/src/dating.rs [priv] impl fmt::Display for EffectiveDate
+crates/ingestion/src/dating.rs [priv] impl fmt::Display for EffectiveDate :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/ingestion/src/dating.rs [priv] impl fmt::Display for IssuanceDate
+crates/ingestion/src/dating.rs [priv] impl fmt::Display for IssuanceDate :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/ingestion/src/dating.rs [priv] use core::fmt
+crates/ingestion/src/dating.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum DateRelation
+crates/ingestion/src/dating.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum Dating
+crates/ingestion/src/dating.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct Date
+crates/ingestion/src/dating.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct EffectiveDate
+crates/ingestion/src/dating.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct IssuanceDate
+crates/ingestion/src/dating.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum DateError
+crates/ingestion/src/dating.rs [pub] const UNSCOPED_OFFICIAL_SOURCE: &str
+crates/ingestion/src/dating.rs [pub] impl Date :: #[must_use] const fn day(self) -> u8
+crates/ingestion/src/dating.rs [pub] impl Date :: #[must_use] const fn month(self) -> u8
+crates/ingestion/src/dating.rs [pub] impl Date :: #[must_use] const fn year(self) -> u16
+crates/ingestion/src/dating.rs [pub] impl Date :: #[must_use] fn relation_to(self, other: Self) -> DateRelation
+crates/ingestion/src/dating.rs [pub] impl Date :: fn new(year: u16, month: u8, day: u8) -> Result<Self, DateError>
+crates/ingestion/src/dating.rs [pub] impl DateRelation :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/dating.rs [pub] impl DateRelation :: const ALL: [Self; 3]
+crates/ingestion/src/dating.rs [pub] impl Dating :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/dating.rs [pub] impl Dating :: #[must_use] const fn effective_date(self) -> Option<EffectiveDate>
+crates/ingestion/src/dating.rs [pub] impl Dating :: #[must_use] const fn is_publishable(self) -> bool
+crates/ingestion/src/dating.rs [pub] impl EffectiveDate :: #[must_use] const fn date(self) -> Date
+crates/ingestion/src/dating.rs [pub] impl EffectiveDate :: #[must_use] const fn on(date: Date) -> Self
+crates/ingestion/src/dating.rs [pub] impl IssuanceDate :: #[must_use] const fn date(self) -> Date
+crates/ingestion/src/dating.rs [pub] impl IssuanceDate :: #[must_use] const fn on(date: Date) -> Self
+crates/ingestion/src/diff.rs [priv] impl DocumentChange
+crates/ingestion/src/diff.rs [priv] impl RuleChange
+crates/ingestion/src/diff.rs [priv] impl SourceDiff
+crates/ingestion/src/diff.rs [priv] use academic_domain::{ContentDigest, engines::RuleId}
+crates/ingestion/src/diff.rs [priv] use crate::{document::OfficialDocument, identifier::SectionPath}
+crates/ingestion/src/diff.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum DocumentChange
+crates/ingestion/src/diff.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RuleChange
+crates/ingestion/src/diff.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SourceDiff
+crates/ingestion/src/diff.rs [pub] impl DocumentChange :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/diff.rs [pub] impl DocumentChange :: const ALL: [Self; 4]
+crates/ingestion/src/diff.rs [pub] impl RuleChange :: #[must_use] const fn rule(&self) -> &RuleId
+crates/ingestion/src/diff.rs [pub] impl SourceDiff :: #[must_use] fn between(previous: &OfficialDocument, current: &OfficialDocument) -> Self
+crates/ingestion/src/diff.rs [pub] impl SourceDiff :: #[must_use] fn document_changes(&self) -> &[DocumentChange]
+crates/ingestion/src/diff.rs [pub] impl SourceDiff :: #[must_use] fn impacted_rules(&self) -> Vec<RuleId>
+crates/ingestion/src/diff.rs [pub] impl SourceDiff :: #[must_use] fn is_empty(&self) -> bool
+crates/ingestion/src/diff.rs [pub] impl SourceDiff :: #[must_use] fn rule_changes(&self) -> &[RuleChange]
+crates/ingestion/src/document.rs [priv] const EFFECTIVE_DIRECTIVE: &str
+crates/ingestion/src/document.rs [priv] fn parse_cohorts(value: &str) -> Option<CohortRange>
+crates/ingestion/src/document.rs [priv] fn parse_date(value: &str) -> Option<Date>
+crates/ingestion/src/document.rs [priv] impl AdmissionYear
+crates/ingestion/src/document.rs [priv] impl CohortRange
+crates/ingestion/src/document.rs [priv] impl HierarchyRelation
+crates/ingestion/src/document.rs [priv] impl LegalAuthority
+crates/ingestion/src/document.rs [priv] impl OfficialDocument
+crates/ingestion/src/document.rs [priv] impl ParsedRule
+crates/ingestion/src/document.rs [priv] impl ScopeRelation
+crates/ingestion/src/document.rs [priv] impl TargetScope
+crates/ingestion/src/document.rs [priv] impl TransitionRelation
+crates/ingestion/src/document.rs [priv] impl TransitionalMeasures
+crates/ingestion/src/document.rs [priv] use academic_domain::{ContentDigest, engines::RuleId}
+crates/ingestion/src/document.rs [priv] use crate::{ dating::{Date, DateRelation, Dating, EffectiveDate, IssuanceDate}, identifier::{ProgramKey, SectionPath}, manifest::ParserVersion, snapshot::RawSnapshot, }
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum HierarchyRelation
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum LegalAuthority
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum ScopeRelation
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum TransitionRelation
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum TransitionalMeasures
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct CohortRange
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct AdmissionYear
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OfficialDocument
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ParsedRule
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Hash)] struct TargetScope
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ParseError
+crates/ingestion/src/document.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum SchemaError
+crates/ingestion/src/document.rs [pub] #[must_use] fn rule_text_digest(text: &str) -> ContentDigest
+crates/ingestion/src/document.rs [pub] const SUPERIOR_PAIRS: &[(LegalAuthority, LegalAuthority)]
+crates/ingestion/src/document.rs [pub] fn parse(snapshot: &RawSnapshot) -> Result<OfficialDocument, ParseError>
+crates/ingestion/src/document.rs [pub] fn validate(document: &OfficialDocument) -> Result<(), SchemaError>
+crates/ingestion/src/document.rs [pub] impl AdmissionYear :: #[must_use] const fn get(self) -> u16
+crates/ingestion/src/document.rs [pub] impl AdmissionYear :: #[must_use] const fn new(year: u16) -> Self
+crates/ingestion/src/document.rs [pub] impl CohortRange :: #[must_use] const fn between(first: AdmissionYear, last: AdmissionYear) -> Self
+crates/ingestion/src/document.rs [pub] impl CohortRange :: #[must_use] const fn every() -> Self
+crates/ingestion/src/document.rs [pub] impl CohortRange :: #[must_use] const fn from(year: AdmissionYear) -> Self
+crates/ingestion/src/document.rs [pub] impl CohortRange :: #[must_use] fn covers(self, year: AdmissionYear) -> bool
+crates/ingestion/src/document.rs [pub] impl CohortRange :: #[must_use] fn intersects(self, other: Self) -> bool
+crates/ingestion/src/document.rs [pub] impl CohortRange :: #[must_use] fn is_within(self, other: Self) -> bool
+crates/ingestion/src/document.rs [pub] impl HierarchyRelation :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/document.rs [pub] impl HierarchyRelation :: const ALL: [Self; 4]
+crates/ingestion/src/document.rs [pub] impl LegalAuthority :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/document.rs [pub] impl LegalAuthority :: #[must_use] fn hierarchy_relation(self, other: Self) -> HierarchyRelation
+crates/ingestion/src/document.rs [pub] impl LegalAuthority :: #[must_use] fn parse(value: &str) -> Option<Self>
+crates/ingestion/src/document.rs [pub] impl LegalAuthority :: const ALL: [Self; 6]
+crates/ingestion/src/document.rs [pub] impl OfficialDocument :: #[must_use] const fn authority(&self) -> LegalAuthority
+crates/ingestion/src/document.rs [pub] impl OfficialDocument :: #[must_use] const fn dating(&self) -> Dating
+crates/ingestion/src/document.rs [pub] impl OfficialDocument :: #[must_use] const fn issued(&self) -> Option<IssuanceDate>
+crates/ingestion/src/document.rs [pub] impl OfficialDocument :: #[must_use] const fn parser_version(&self) -> ParserVersion
+crates/ingestion/src/document.rs [pub] impl OfficialDocument :: #[must_use] const fn scope(&self) -> &TargetScope
+crates/ingestion/src/document.rs [pub] impl OfficialDocument :: #[must_use] const fn transitional_measures(&self) -> TransitionalMeasures
+crates/ingestion/src/document.rs [pub] impl OfficialDocument :: #[must_use] fn rule(&self, id: &RuleId) -> Option<&ParsedRule>
+crates/ingestion/src/document.rs [pub] impl OfficialDocument :: #[must_use] fn rules(&self) -> &[ParsedRule]
+crates/ingestion/src/document.rs [pub] impl ParsedRule :: #[must_use] const fn id(&self) -> &RuleId
+crates/ingestion/src/document.rs [pub] impl ParsedRule :: #[must_use] const fn section(&self) -> &SectionPath
+crates/ingestion/src/document.rs [pub] impl ParsedRule :: #[must_use] const fn text_digest(&self) -> &ContentDigest
+crates/ingestion/src/document.rs [pub] impl ScopeRelation :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/document.rs [pub] impl ScopeRelation :: const ALL: [Self; 5]
+crates/ingestion/src/document.rs [pub] impl TargetScope :: #[must_use] const fn cohorts(&self) -> CohortRange
+crates/ingestion/src/document.rs [pub] impl TargetScope :: #[must_use] const fn new(program: ProgramKey, cohorts: CohortRange) -> Self
+crates/ingestion/src/document.rs [pub] impl TargetScope :: #[must_use] const fn program(&self) -> &ProgramKey
+crates/ingestion/src/document.rs [pub] impl TargetScope :: #[must_use] fn relation_to(&self, other: &Self) -> ScopeRelation
+crates/ingestion/src/document.rs [pub] impl TransitionRelation :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/document.rs [pub] impl TransitionRelation :: const ALL: [Self; 4]
+crates/ingestion/src/document.rs [pub] impl TransitionalMeasures :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/document.rs [pub] impl TransitionalMeasures :: #[must_use] const fn provides_for_a_transition(self) -> bool
+crates/ingestion/src/document.rs [pub] impl TransitionalMeasures :: #[must_use] const fn relation_to(self, other: Self) -> TransitionRelation
+crates/ingestion/src/document.rs [pub] impl TransitionalMeasures :: #[must_use] fn parse(value: &str) -> Option<Self>
+crates/ingestion/src/document.rs [pub] impl TransitionalMeasures :: const ALL: [Self; 4]
+crates/ingestion/src/fetch.rs [priv] impl ConditionalRequest
+crates/ingestion/src/fetch.rs [priv] impl HeaderValue
+crates/ingestion/src/fetch.rs [priv] impl HttpMetadata
+crates/ingestion/src/fetch.rs [priv] impl Validators
+crates/ingestion/src/fetch.rs [priv] impl core::fmt::Debug for FetchOutcome
+crates/ingestion/src/fetch.rs [priv] impl core::fmt::Debug for FetchOutcome :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/ingestion/src/fetch.rs [priv] trait ConditionalFetch :: fn fetch(&self, request: &ConditionalRequest) -> Result<FetchOutcome, String>
+crates/ingestion/src/fetch.rs [priv] use academic_domain::ContentDigest
+crates/ingestion/src/fetch.rs [priv] use crate::{ identifier::ConnectorId, manifest::{ConnectorManifest, CredentialBinding, DeclaredTarget, RetrievalInstant}, terms::{Denial, DenialReason, deny}, }
+crates/ingestion/src/fetch.rs [pub] #[derive(Clone, PartialEq, Eq)] enum FetchOutcome
+crates/ingestion/src/fetch.rs [pub] #[derive(Debug)] struct ConditionalRequest
+crates/ingestion/src/fetch.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum HeaderError
+crates/ingestion/src/fetch.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct Validators
+crates/ingestion/src/fetch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct HttpMetadata
+crates/ingestion/src/fetch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct HeaderValue
+crates/ingestion/src/fetch.rs [pub] const MAX_HEADER_BYTES: usize
+crates/ingestion/src/fetch.rs [pub] impl ConditionalRequest :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/ingestion/src/fetch.rs [pub] impl ConditionalRequest :: #[must_use] const fn presents_a_credential(&self) -> bool
+crates/ingestion/src/fetch.rs [pub] impl ConditionalRequest :: #[must_use] const fn target(&self) -> DeclaredTarget
+crates/ingestion/src/fetch.rs [pub] impl ConditionalRequest :: #[must_use] const fn validators(&self) -> &Validators
+crates/ingestion/src/fetch.rs [pub] impl ConditionalRequest :: fn anonymous( manifest: &ConnectorManifest, target: DeclaredTarget, validators: Validators, ) -> Result<Self, Denial>
+crates/ingestion/src/fetch.rs [pub] impl ConditionalRequest :: fn credentialed( manifest: &ConnectorManifest, binding: CredentialBinding, target: DeclaredTarget, validators: Validators, ) -> Result<Self, Denial>
+crates/ingestion/src/fetch.rs [pub] impl HeaderValue :: #[must_use] fn as_str(&self) -> &str
+crates/ingestion/src/fetch.rs [pub] impl HeaderValue :: fn new(value: impl Into<String>) -> Result<Self, HeaderError>
+crates/ingestion/src/fetch.rs [pub] impl HttpMetadata :: #[must_use] const fn content_type(&self) -> Option<&HeaderValue>
+crates/ingestion/src/fetch.rs [pub] impl HttpMetadata :: #[must_use] const fn entity_tag(&self) -> Option<&HeaderValue>
+crates/ingestion/src/fetch.rs [pub] impl HttpMetadata :: #[must_use] const fn last_modified(&self) -> Option<&HeaderValue>
+crates/ingestion/src/fetch.rs [pub] impl HttpMetadata :: #[must_use] const fn new( status: Option<u16>, entity_tag: Option<HeaderValue>, last_modified: Option<HeaderValue>, content_type: Option<HeaderValue>, ) -> Self
+crates/ingestion/src/fetch.rs [pub] impl HttpMetadata :: #[must_use] const fn status(&self) -> Option<u16>
+crates/ingestion/src/fetch.rs [pub] impl HttpMetadata :: #[must_use] fn next_validators(&self) -> Validators
+crates/ingestion/src/fetch.rs [pub] impl Validators :: #[must_use] const fn entity_tag(&self) -> Option<&HeaderValue>
+crates/ingestion/src/fetch.rs [pub] impl Validators :: #[must_use] const fn is_conditional(&self) -> bool
+crates/ingestion/src/fetch.rs [pub] impl Validators :: #[must_use] const fn last_modified(&self) -> Option<&HeaderValue>
+crates/ingestion/src/fetch.rs [pub] impl Validators :: #[must_use] const fn none() -> Self
+crates/ingestion/src/fetch.rs [pub] impl Validators :: #[must_use] fn with_entity_tag(mut self, value: HeaderValue) -> Self
+crates/ingestion/src/fetch.rs [pub] impl Validators :: #[must_use] fn with_last_modified(mut self, value: HeaderValue) -> Self
+crates/ingestion/src/fetch.rs [pub] trait ConditionalFetch
+crates/ingestion/src/gate.rs [priv] impl OpenGate
+crates/ingestion/src/gate.rs [priv] use crate::terms::{Fallback, TermsStatus}
+crates/ingestion/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate
+crates/ingestion/src/gate.rs [pub] #[must_use] const fn phase2_shipped_fallbacks() -> [Fallback; 4]
+crates/ingestion/src/gate.rs [pub] #[must_use] const fn unreviewed_status() -> TermsStatus
+crates/ingestion/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str
+crates/ingestion/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str
+crates/ingestion/src/gate.rs [pub] impl OpenGate :: const ALL: [Self; 2]
+crates/ingestion/src/graph.rs [priv] impl DependencyGraph
+crates/ingestion/src/graph.rs [priv] impl DependentKind
+crates/ingestion/src/graph.rs [priv] impl DependentNode
+crates/ingestion/src/graph.rs [priv] impl Invalidation
+crates/ingestion/src/graph.rs [priv] use academic_domain::engines::RuleId
+crates/ingestion/src/graph.rs [priv] use crate::identifier::DependentId
+crates/ingestion/src/graph.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DependentKind
+crates/ingestion/src/graph.rs [pub] #[derive(Debug, Clone, Default)] struct DependencyGraph
+crates/ingestion/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Dependency
+crates/ingestion/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Invalidation
+crates/ingestion/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DependentNode
+crates/ingestion/src/graph.rs [pub] impl DependencyGraph :: #[must_use] const fn new() -> Self
+crates/ingestion/src/graph.rs [pub] impl DependencyGraph :: #[must_use] fn edges(&self) -> &[(DependentNode, Dependency)]
+crates/ingestion/src/graph.rs [pub] impl DependencyGraph :: #[must_use] fn invalidate(&self, impacted: &[RuleId]) -> Invalidation
+crates/ingestion/src/graph.rs [pub] impl DependencyGraph :: fn record(&mut self, dependent: DependentNode, dependency: Dependency)
+crates/ingestion/src/graph.rs [pub] impl DependentKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/graph.rs [pub] impl DependentKind :: const ALL: [Self; 3]
+crates/ingestion/src/graph.rs [pub] impl DependentNode :: #[must_use] const fn id(&self) -> &DependentId
+crates/ingestion/src/graph.rs [pub] impl DependentNode :: #[must_use] const fn kind(&self) -> DependentKind
+crates/ingestion/src/graph.rs [pub] impl DependentNode :: #[must_use] const fn new(kind: DependentKind, id: DependentId) -> Self
+crates/ingestion/src/graph.rs [pub] impl Invalidation :: #[must_use] fn is_empty(&self) -> bool
+crates/ingestion/src/graph.rs [pub] impl Invalidation :: #[must_use] fn nodes(&self) -> &[DependentNode]
+crates/ingestion/src/graph.rs [pub] impl Invalidation :: #[must_use] fn of_kind(&self, kind: DependentKind) -> Vec<&DependentNode>
+crates/ingestion/src/identifier.rs [priv] fn is_name(value: &str) -> bool
+crates/ingestion/src/identifier.rs [priv] macro_rules! restricted_name
+crates/ingestion/src/identifier.rs [priv] restricted_name!(ConnectorId, "connector identifier")
+crates/ingestion/src/identifier.rs [priv] restricted_name!(DependentId, "dependent-node identifier")
+crates/ingestion/src/identifier.rs [priv] restricted_name!(ProgramKey, "programme key")
+crates/ingestion/src/identifier.rs [priv] restricted_name!(SectionPath, "document section path")
+crates/ingestion/src/identifier.rs [priv] use core::fmt
+crates/ingestion/src/identifier.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum NameError
+crates/ingestion/src/identifier.rs [pub] const MAX_NAME_BYTES: usize
+crates/ingestion/src/lib.rs [pub] mod conflict
+crates/ingestion/src/lib.rs [pub] mod dating
+crates/ingestion/src/lib.rs [pub] mod diff
+crates/ingestion/src/lib.rs [pub] mod document
+crates/ingestion/src/lib.rs [pub] mod fetch
+crates/ingestion/src/lib.rs [pub] mod gate
+crates/ingestion/src/lib.rs [pub] mod graph
+crates/ingestion/src/lib.rs [pub] mod identifier
+crates/ingestion/src/lib.rs [pub] mod manifest
+crates/ingestion/src/lib.rs [pub] mod publish
+crates/ingestion/src/lib.rs [pub] mod snapshot
+crates/ingestion/src/lib.rs [pub] mod stage
+crates/ingestion/src/lib.rs [pub] mod terms
+crates/ingestion/src/lib.rs [pub] use conflict::{ AuditDisposition, ConflictCase, ConflictDimension, ContendingSource, DateComparison, DimensionFinding, DimensionOutcome, Resolution, Side, UserResolution, detect, }
+crates/ingestion/src/lib.rs [pub] use dating::{ Date, DateRelation, Dating, EffectiveDate, IssuanceDate, UNSCOPED_OFFICIAL_SOURCE, }
+crates/ingestion/src/lib.rs [pub] use diff::{DocumentChange, RuleChange, SourceDiff}
+crates/ingestion/src/lib.rs [pub] use document::{ AdmissionYear, CohortRange, HierarchyRelation, LegalAuthority, OfficialDocument, ParseError, ParsedRule, SUPERIOR_PAIRS, SchemaError, ScopeRelation, TargetScope, TransitionRelation, TransitionalMeasures, rule_text_digest, }
+crates/ingestion/src/lib.rs [pub] use fetch::{ ConditionalFetch, ConditionalRequest, FetchOutcome, HeaderValue, HttpMetadata, Validators, }
+crates/ingestion/src/lib.rs [pub] use gate::{OpenGate, phase2_shipped_fallbacks, unreviewed_status}
+crates/ingestion/src/lib.rs [pub] use graph::{Dependency, DependencyGraph, DependentKind, DependentNode, Invalidation}
+crates/ingestion/src/lib.rs [pub] use identifier::{ConnectorId, DependentId, NameError, ProgramKey, SectionPath}
+crates/ingestion/src/lib.rs [pub] use manifest::{ AllowedFrequency, AuthenticationMethod, Completeness, ConnectorManifest, CredentialBinding, DeclaredTarget, LastSuccess, ManifestDraft, ManifestError, ManifestField, NextVerification, ParserVersion, PersonalDataClass, RetrievalInstant, SourceCategory, SourceOwnership, }
+crates/ingestion/src/lib.rs [pub] use publish::{ Publication, PublishableRules, PublishedRule, PublishedRules, QueueReason, ReviewQueued, publish, }
+crates/ingestion/src/lib.rs [pub] use snapshot::{RawSnapshot, SnapshotError}
+crates/ingestion/src/lib.rs [pub] use stage::{ Acquisition, Appropriateness, Corpus, FailureReason, IngestSeq, RunOutcome, RunRecord, Stage, StageFailure, run, }
+crates/ingestion/src/lib.rs [pub] use terms::{Denial, DenialReason, DenialRoute, Fallback, TermsLedger, TermsStatus}
+crates/ingestion/src/manifest.rs [priv] const SECONDS_PER_DAY: u64
+crates/ingestion/src/manifest.rs [priv] impl AllowedFrequency
+crates/ingestion/src/manifest.rs [priv] impl AuthenticationMethod
+crates/ingestion/src/manifest.rs [priv] impl ConnectorManifest
+crates/ingestion/src/manifest.rs [priv] impl CredentialBinding
+crates/ingestion/src/manifest.rs [priv] impl DeclaredTarget
+crates/ingestion/src/manifest.rs [priv] impl ManifestDraft
+crates/ingestion/src/manifest.rs [priv] impl ManifestField
+crates/ingestion/src/manifest.rs [priv] impl NextVerification
+crates/ingestion/src/manifest.rs [priv] impl ParserVersion
+crates/ingestion/src/manifest.rs [priv] impl RetrievalInstant
+crates/ingestion/src/manifest.rs [priv] impl SourceCategory
+crates/ingestion/src/manifest.rs [priv] impl fmt::Debug for CredentialBinding
+crates/ingestion/src/manifest.rs [priv] impl fmt::Debug for CredentialBinding :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/ingestion/src/manifest.rs [priv] impl fmt::Display for DeclaredTarget
+crates/ingestion/src/manifest.rs [priv] impl fmt::Display for DeclaredTarget :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/ingestion/src/manifest.rs [priv] use core::fmt
+crates/ingestion/src/manifest.rs [priv] use crate::{ identifier::{ConnectorId, NameError}, terms::TermsStatus, }
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone)] struct ConnectorManifest
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone)] struct ManifestDraft
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum AllowedFrequency
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum AuthenticationMethod
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum Completeness
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum LastSuccess
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum PersonalDataClass
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum SourceCategory
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum SourceOwnership
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct NextVerification
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ManifestField
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DeclaredTarget
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ParserVersion
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RetrievalInstant
+crates/ingestion/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum ManifestError
+crates/ingestion/src/manifest.rs [pub] fn connector_id(value: &str) -> Result<ConnectorId, NameError>
+crates/ingestion/src/manifest.rs [pub] impl AllowedFrequency :: #[must_use] const fn earliest_next(self, last: RetrievalInstant) -> Option<RetrievalInstant>
+crates/ingestion/src/manifest.rs [pub] impl AllowedFrequency :: const ALL: [Self; 4]
+crates/ingestion/src/manifest.rs [pub] impl AuthenticationMethod :: #[must_use] const fn holds_a_credential(self) -> bool
+crates/ingestion/src/manifest.rs [pub] impl AuthenticationMethod :: const ALL: [Self; 3]
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn allowed_frequency(&self) -> AllowedFrequency
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn authentication_method(&self) -> AuthenticationMethod
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn category(&self) -> SourceCategory
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn completeness(&self) -> Completeness
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn last_success(&self) -> LastSuccess
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn next_verification(&self) -> NextVerification
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn parser_version(&self) -> ParserVersion
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn personal_data_class(&self) -> PersonalDataClass
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn source_ownership(&self) -> SourceOwnership
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] const fn terms_status(&self) -> TermsStatus
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] fn credential_binding(&self) -> Option<CredentialBinding>
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] fn declared_targets(&self) -> &[DeclaredTarget]
+crates/ingestion/src/manifest.rs [pub] impl ConnectorManifest :: #[must_use] fn declares(&self, target: DeclaredTarget) -> bool
+crates/ingestion/src/manifest.rs [pub] impl CredentialBinding :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/ingestion/src/manifest.rs [pub] impl DeclaredTarget :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/manifest.rs [pub] impl DeclaredTarget :: #[must_use] const fn declared(value: &'static str) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn allowed_frequency(mut self, value: AllowedFrequency) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn authentication_method(mut self, value: AuthenticationMethod) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn completeness(mut self, value: Completeness) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn for_connector(connector: ConnectorId, category: SourceCategory) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn last_success(mut self, value: LastSuccess) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn next_verification(mut self, value: NextVerification) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn parser_version(mut self, value: ParserVersion) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn personal_data_class(mut self, value: PersonalDataClass) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn source_ownership(mut self, value: SourceOwnership) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] const fn terms_status(mut self, value: TermsStatus) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: #[must_use] fn declaring(mut self, target: DeclaredTarget) -> Self
+crates/ingestion/src/manifest.rs [pub] impl ManifestDraft :: fn build(self) -> Result<ConnectorManifest, ManifestError>
+crates/ingestion/src/manifest.rs [pub] impl ManifestField :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/manifest.rs [pub] impl ManifestField :: const ALL: [Self; 9]
+crates/ingestion/src/manifest.rs [pub] impl NextVerification :: #[must_use] const fn due_at(instant: RetrievalInstant) -> Self
+crates/ingestion/src/manifest.rs [pub] impl NextVerification :: #[must_use] const fn instant(self) -> RetrievalInstant
+crates/ingestion/src/manifest.rs [pub] impl NextVerification :: #[must_use] const fn is_overdue(self, now: RetrievalInstant) -> bool
+crates/ingestion/src/manifest.rs [pub] impl ParserVersion :: #[must_use] const fn get(self) -> u16
+crates/ingestion/src/manifest.rs [pub] impl ParserVersion :: #[must_use] const fn new(version: u16) -> Self
+crates/ingestion/src/manifest.rs [pub] impl RetrievalInstant :: #[must_use] const fn at(seconds_since_epoch: u64) -> Self
+crates/ingestion/src/manifest.rs [pub] impl RetrievalInstant :: #[must_use] const fn seconds(self) -> u64
+crates/ingestion/src/manifest.rs [pub] impl SourceCategory :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/manifest.rs [pub] impl SourceCategory :: const ALL: [Self; 6]
+crates/ingestion/src/manifest.rs [pub] struct CredentialBinding
+crates/ingestion/src/publish.rs [priv] impl Publication
+crates/ingestion/src/publish.rs [priv] impl PublishedRule
+crates/ingestion/src/publish.rs [priv] impl PublishedRules
+crates/ingestion/src/publish.rs [priv] impl QueueReason
+crates/ingestion/src/publish.rs [priv] impl ReviewQueued
+crates/ingestion/src/publish.rs [priv] impl<'run> PublishableRules<'run>
+crates/ingestion/src/publish.rs [priv] use academic_domain::{ContentDigest, engines::RuleId}
+crates/ingestion/src/publish.rs [priv] use crate::{ conflict::ConflictCase, dating::EffectiveDate, document::{OfficialDocument, TargetScope}, identifier::ConnectorId, manifest::{ParserVersion, RetrievalInstant}, }
+crates/ingestion/src/publish.rs [pub(crate)] impl ReviewQueued :: const fn new( connector: ConnectorId, reason: QueueReason, rules: Vec<RuleId>, conflicts: Vec<ConflictCase>, ) -> Self
+crates/ingestion/src/publish.rs [pub(crate)] impl<'run> PublishableRules<'run> :: const fn new( document: &'run OfficialDocument, connector: &'run ConnectorId, effective: EffectiveDate, retrieved_at: RetrievalInstant, ) -> Self
+crates/ingestion/src/publish.rs [pub] #[derive(Debug)] struct PublishableRules<'run>
+crates/ingestion/src/publish.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum QueueReason
+crates/ingestion/src/publish.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Publication
+crates/ingestion/src/publish.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PublishedRule
+crates/ingestion/src/publish.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PublishedRules
+crates/ingestion/src/publish.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReviewQueued
+crates/ingestion/src/publish.rs [pub] #[must_use] fn publish(publishable: PublishableRules<'_>) -> PublishedRules
+crates/ingestion/src/publish.rs [pub] impl Publication :: #[must_use] const fn published(&self) -> Option<&PublishedRules>
+crates/ingestion/src/publish.rs [pub] impl Publication :: #[must_use] const fn queued(&self) -> Option<&ReviewQueued>
+crates/ingestion/src/publish.rs [pub] impl PublishedRule :: #[must_use] const fn id(&self) -> &RuleId
+crates/ingestion/src/publish.rs [pub] impl PublishedRule :: #[must_use] const fn text_digest(&self) -> &ContentDigest
+crates/ingestion/src/publish.rs [pub] impl PublishedRules :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/ingestion/src/publish.rs [pub] impl PublishedRules :: #[must_use] const fn effective(&self) -> EffectiveDate
+crates/ingestion/src/publish.rs [pub] impl PublishedRules :: #[must_use] const fn parser_version(&self) -> ParserVersion
+crates/ingestion/src/publish.rs [pub] impl PublishedRules :: #[must_use] const fn retrieved_at(&self) -> RetrievalInstant
+crates/ingestion/src/publish.rs [pub] impl PublishedRules :: #[must_use] const fn scope(&self) -> &TargetScope
+crates/ingestion/src/publish.rs [pub] impl PublishedRules :: #[must_use] fn rules(&self) -> &[PublishedRule]
+crates/ingestion/src/publish.rs [pub] impl QueueReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/publish.rs [pub] impl QueueReason :: const ALL: [Self; 2]
+crates/ingestion/src/publish.rs [pub] impl ReviewQueued :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/ingestion/src/publish.rs [pub] impl ReviewQueued :: #[must_use] const fn reason(&self) -> QueueReason
+crates/ingestion/src/publish.rs [pub] impl ReviewQueued :: #[must_use] fn conflicts(&self) -> &[ConflictCase]
+crates/ingestion/src/publish.rs [pub] impl ReviewQueued :: #[must_use] fn rules(&self) -> &[RuleId]
+crates/ingestion/src/publish.rs [pub] impl<'run> PublishableRules<'run> :: #[must_use] const fn effective(&self) -> EffectiveDate
+crates/ingestion/src/publish.rs [pub] impl<'run> PublishableRules<'run> :: #[must_use] const fn scope(&self) -> &TargetScope
+crates/ingestion/src/snapshot.rs [priv] impl RawSnapshot
+crates/ingestion/src/snapshot.rs [priv] impl fmt::Debug for RawSnapshot
+crates/ingestion/src/snapshot.rs [priv] impl fmt::Debug for RawSnapshot :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/ingestion/src/snapshot.rs [priv] use academic_domain::ContentDigest
+crates/ingestion/src/snapshot.rs [priv] use academic_untrusted_content::{ IngestError, IngestedDocument, SourceId, SourceKind, Untrusted, ingest, }
+crates/ingestion/src/snapshot.rs [priv] use core::fmt
+crates/ingestion/src/snapshot.rs [priv] use crate::{ fetch::{FetchOutcome, HttpMetadata, Validators}, identifier::ConnectorId, manifest::{DeclaredTarget, ParserVersion, RetrievalInstant}, }
+crates/ingestion/src/snapshot.rs [pub(crate)] impl RawSnapshot :: fn source_bytes(&self) -> &[u8]
+crates/ingestion/src/snapshot.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum SnapshotError
+crates/ingestion/src/snapshot.rs [pub] fn store( connector: ConnectorId, target: DeclaredTarget, parser_version: ParserVersion, outcome: FetchOutcome, ) -> Result<RawSnapshot, SnapshotError>
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] const fn byte_len(&self) -> usize
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] const fn digest(&self) -> &ContentDigest
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] const fn http(&self) -> &HttpMetadata
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] const fn parser_version(&self) -> ParserVersion
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] const fn retrieved_at(&self) -> RetrievalInstant
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] const fn target(&self) -> DeclaredTarget
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] fn has_same_content_as(&self, other: &Self) -> bool
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: #[must_use] fn next_validators(&self) -> Validators
+crates/ingestion/src/snapshot.rs [pub] impl RawSnapshot :: fn seal( &self, source_id: SourceId, kind: SourceKind, ingest_seq: u64, ) -> Result<Untrusted<IngestedDocument>, IngestError>
+crates/ingestion/src/snapshot.rs [pub] struct RawSnapshot
+crates/ingestion/src/stage.rs [priv] fn reason_for(status: crate::terms::TermsStatus) -> DenialReason
+crates/ingestion/src/stage.rs [priv] impl Corpus
+crates/ingestion/src/stage.rs [priv] impl Described
+crates/ingestion/src/stage.rs [priv] impl Fetched
+crates/ingestion/src/stage.rs [priv] impl IngestSeq
+crates/ingestion/src/stage.rs [priv] impl Parsed
+crates/ingestion/src/stage.rs [priv] impl Proposed
+crates/ingestion/src/stage.rs [priv] impl Reconciled
+crates/ingestion/src/stage.rs [priv] impl RunRecord
+crates/ingestion/src/stage.rs [priv] impl Snapshotted
+crates/ingestion/src/stage.rs [priv] impl Stage
+crates/ingestion/src/stage.rs [priv] impl StageFailure
+crates/ingestion/src/stage.rs [priv] impl Validated
+crates/ingestion/src/stage.rs [priv] impl core::fmt::Debug for Acquisition<'_>
+crates/ingestion/src/stage.rs [priv] impl core::fmt::Debug for Acquisition<'_> :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/ingestion/src/stage.rs [priv] use academic_domain::engines::RuleId
+crates/ingestion/src/stage.rs [priv] use academic_untrusted_content::{IngestError, IngestedDocument, SourceId, SourceKind, Untrusted}
+crates/ingestion/src/stage.rs [priv] use crate::{ conflict::{ConflictCase, ContendingSource, detect}, dating::Dating, document::{OfficialDocument, ParseError, SchemaError, parse, validate}, fetch::{ConditionalFetch, ConditionalRequest, FetchOutcome}, identifier::{ConnectorId, ProgramKey}, manifest::{ConnectorManifest, DeclaredTarget, LastSuccess, RetrievalInstant}, publish::{Publication, PublishableRules, QueueReason, ReviewQueued, publish}, snapshot::{RawSnapshot, SnapshotError, store}, terms::{Denial, DenialReason, TermsLedger, deny}, }
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] enum RunOutcome
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct Described
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct Fetched
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct Parsed
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct Proposed
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct Reconciled
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct RunRecord
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct Snapshotted
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct TermsCleared
+crates/ingestion/src/stage.rs [pub] #[derive(Debug)] struct Validated
+crates/ingestion/src/stage.rs [pub] #[derive(Debug, Clone)] enum Appropriateness
+crates/ingestion/src/stage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Stage
+crates/ingestion/src/stage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct IngestSeq
+crates/ingestion/src/stage.rs [pub] #[derive(Debug, Clone, Default)] struct Corpus
+crates/ingestion/src/stage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[error("{} failed: {reason}", .stage.as_str())] struct StageFailure
+crates/ingestion/src/stage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum FailureReason
+crates/ingestion/src/stage.rs [pub] enum Acquisition<'run>
+crates/ingestion/src/stage.rs [pub] fn ai_proposal_where_appropriate( validated: Validated, appropriateness: Appropriateness, ) -> Result<Proposed, StageFailure>
+crates/ingestion/src/stage.rs [pub] fn claim_publication_or_review_queue( reconciled: Reconciled, ledger: &TermsLedger, ) -> Result<Publication, StageFailure>
+crates/ingestion/src/stage.rs [pub] fn deterministic_parse(described: Described) -> Result<Parsed, StageFailure>
+crates/ingestion/src/stage.rs [pub] fn discover_fetch_import( manifest: &ConnectorManifest, ledger: &TermsLedger, now: RetrievalInstant, acquisition: Acquisition<'_>, ) -> Result<Fetched, StageFailure>
+crates/ingestion/src/stage.rs [pub] fn immutable_raw_snapshot( cleared: TermsCleared, manifest: &ConnectorManifest, ) -> Result<Snapshotted, StageFailure>
+crates/ingestion/src/stage.rs [pub] fn policy_and_terms_check( fetched: Fetched, manifest: &ConnectorManifest, ledger: &TermsLedger, ) -> Result<TermsCleared, StageFailure>
+crates/ingestion/src/stage.rs [pub] fn reconciliation_and_entity_resolution( proposed: Proposed, corpus: &Corpus, ) -> Result<Reconciled, StageFailure>
+crates/ingestion/src/stage.rs [pub] fn run( manifest: &ConnectorManifest, ledger: &TermsLedger, corpus: &Corpus, now: RetrievalInstant, acquisition: Acquisition<'_>, ingest_seq: IngestSeq, appropriateness: Appropriateness, ) -> RunRecord
+crates/ingestion/src/stage.rs [pub] fn schema_validation(parsed: Parsed) -> Result<Validated, StageFailure>
+crates/ingestion/src/stage.rs [pub] fn source_metadata_and_retrieval_time( snapshotted: Snapshotted, manifest: &ConnectorManifest, ingest_seq: IngestSeq, ) -> Result<Described, StageFailure>
+crates/ingestion/src/stage.rs [pub] impl Corpus :: #[must_use] const fn new() -> Self
+crates/ingestion/src/stage.rs [pub] impl Corpus :: #[must_use] fn knowing(mut self, program: ProgramKey) -> Self
+crates/ingestion/src/stage.rs [pub] impl Corpus :: #[must_use] fn with_contender(mut self, contender: ContendingSource) -> Self
+crates/ingestion/src/stage.rs [pub] impl Described :: #[must_use] const fn ingest_seq(&self) -> IngestSeq
+crates/ingestion/src/stage.rs [pub] impl Described :: #[must_use] const fn snapshot(&self) -> &RawSnapshot
+crates/ingestion/src/stage.rs [pub] impl Described :: #[must_use] fn into_snapshot(self) -> RawSnapshot
+crates/ingestion/src/stage.rs [pub] impl Fetched :: #[must_use] const fn outcome(&self) -> &FetchOutcome
+crates/ingestion/src/stage.rs [pub] impl IngestSeq :: #[must_use] const fn at(seq: u64) -> Self
+crates/ingestion/src/stage.rs [pub] impl IngestSeq :: #[must_use] const fn get(self) -> u64
+crates/ingestion/src/stage.rs [pub] impl Parsed :: #[must_use] const fn document(&self) -> &OfficialDocument
+crates/ingestion/src/stage.rs [pub] impl Parsed :: #[must_use] const fn snapshot(&self) -> &RawSnapshot
+crates/ingestion/src/stage.rs [pub] impl Proposed :: #[must_use] const fn document(&self) -> &OfficialDocument
+crates/ingestion/src/stage.rs [pub] impl Proposed :: #[must_use] const fn sealed(&self) -> Option<&Untrusted<IngestedDocument>>
+crates/ingestion/src/stage.rs [pub] impl Reconciled :: #[must_use] const fn document(&self) -> &OfficialDocument
+crates/ingestion/src/stage.rs [pub] impl Reconciled :: #[must_use] fn conflicts(&self) -> &[ConflictCase]
+crates/ingestion/src/stage.rs [pub] impl Reconciled :: #[must_use] fn publishable(&self) -> Option<PublishableRules<'_>>
+crates/ingestion/src/stage.rs [pub] impl RunRecord :: #[must_use] const fn failure(&self) -> Option<&StageFailure>
+crates/ingestion/src/stage.rs [pub] impl RunRecord :: #[must_use] const fn outcome(&self) -> &RunOutcome
+crates/ingestion/src/stage.rs [pub] impl RunRecord :: #[must_use] const fn published(&self) -> Option<&crate::publish::PublishedRules>
+crates/ingestion/src/stage.rs [pub] impl RunRecord :: #[must_use] fn reached(&self) -> &[Stage]
+crates/ingestion/src/stage.rs [pub] impl Snapshotted :: #[must_use] const fn snapshot(&self) -> &RawSnapshot
+crates/ingestion/src/stage.rs [pub] impl Stage :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/stage.rs [pub] impl Stage :: #[must_use] const fn spec_line(self) -> &'static str
+crates/ingestion/src/stage.rs [pub] impl Stage :: const ALL: [Self; 9]
+crates/ingestion/src/stage.rs [pub] impl StageFailure :: #[must_use] const fn denial(&self) -> Option<&Denial>
+crates/ingestion/src/stage.rs [pub] impl StageFailure :: #[must_use] const fn reason(&self) -> &FailureReason
+crates/ingestion/src/stage.rs [pub] impl StageFailure :: #[must_use] const fn stage(&self) -> Stage
+crates/ingestion/src/stage.rs [pub] impl Validated :: #[must_use] const fn document(&self) -> &OfficialDocument
+crates/ingestion/src/terms.rs [priv] impl Denial
+crates/ingestion/src/terms.rs [priv] impl DenialReason
+crates/ingestion/src/terms.rs [priv] impl Fallback
+crates/ingestion/src/terms.rs [priv] impl TermsLedger
+crates/ingestion/src/terms.rs [priv] impl TermsStatus
+crates/ingestion/src/terms.rs [priv] use crate::identifier::ConnectorId
+crates/ingestion/src/terms.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum DenialReason
+crates/ingestion/src/terms.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum DenialRoute
+crates/ingestion/src/terms.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum TermsStatus
+crates/ingestion/src/terms.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Fallback
+crates/ingestion/src/terms.rs [pub] #[derive(Debug, Clone, Default)] struct TermsLedger
+crates/ingestion/src/terms.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[error("{connector} refused: {}", .reason.as_str())] struct Denial
+crates/ingestion/src/terms.rs [pub] fn deny(connector: ConnectorId, reason: DenialReason) -> Denial
+crates/ingestion/src/terms.rs [pub] impl Denial :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/ingestion/src/terms.rs [pub] impl Denial :: #[must_use] const fn connector_disabled(&self) -> bool
+crates/ingestion/src/terms.rs [pub] impl Denial :: #[must_use] const fn fallbacks(&self) -> &[Fallback]
+crates/ingestion/src/terms.rs [pub] impl Denial :: #[must_use] const fn reason(&self) -> DenialReason
+crates/ingestion/src/terms.rs [pub] impl Denial :: #[must_use] const fn route(&self) -> DenialRoute
+crates/ingestion/src/terms.rs [pub] impl DenialReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/terms.rs [pub] impl DenialReason :: const ALL: [Self; 6]
+crates/ingestion/src/terms.rs [pub] impl Fallback :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/terms.rs [pub] impl Fallback :: const ALL: [Self; 4]
+crates/ingestion/src/terms.rs [pub] impl TermsLedger :: #[must_use] const fn new() -> Self
+crates/ingestion/src/terms.rs [pub] impl TermsLedger :: #[must_use] fn status(&self, connector: &ConnectorId) -> TermsStatus
+crates/ingestion/src/terms.rs [pub] impl TermsLedger :: fn record(&mut self, connector: ConnectorId, status: TermsStatus)
+crates/ingestion/src/terms.rs [pub] impl TermsStatus :: #[must_use] const fn as_str(self) -> &'static str
+crates/ingestion/src/terms.rs [pub] impl TermsStatus :: #[must_use] const fn permits_a_fetch(self) -> bool
+crates/ingestion/src/terms.rs [pub] impl TermsStatus :: const ALL: [Self; 4]

@@ -1,0 +1,213 @@
+crates/requirement/src/candidate.rs [priv] impl ReviewAttestation
+crates/requirement/src/candidate.rs [priv] impl ReviewAttestation :: fn user_id(&self) -> Result<EntityId, RequirementError>
+crates/requirement/src/candidate.rs [priv] impl ReviewGate
+crates/requirement/src/candidate.rs [priv] impl ReviewedRule
+crates/requirement/src/candidate.rs [priv] impl RuleCandidate
+crates/requirement/src/candidate.rs [priv] use academic_domain::{ Actor, ContentDigest, EntityId, TimestampMillis, engines::RuleId as SourceRuleId, }
+crates/requirement/src/candidate.rs [priv] use crate::{ dsl::{RuleBody, RuleId}, error::RequirementError, }
+crates/requirement/src/candidate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ReviewGate
+crates/requirement/src/candidate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReviewAttestation
+crates/requirement/src/candidate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReviewedRule
+crates/requirement/src/candidate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RuleCandidate
+crates/requirement/src/candidate.rs [pub] impl ReviewAttestation :: #[must_use] const fn attested_at(&self) -> TimestampMillis
+crates/requirement/src/candidate.rs [pub] impl ReviewAttestation :: #[must_use] const fn candidate(&self) -> &RuleId
+crates/requirement/src/candidate.rs [pub] impl ReviewAttestation :: #[must_use] const fn reviewer(&self) -> &Actor
+crates/requirement/src/candidate.rs [pub] impl ReviewAttestation :: #[must_use] const fn source_rule(&self) -> &SourceRuleId
+crates/requirement/src/candidate.rs [pub] impl ReviewAttestation :: #[must_use] fn file( reviewer: Actor, candidate: RuleId, source_rule: SourceRuleId, attested_at: TimestampMillis, ) -> Self
+crates/requirement/src/candidate.rs [pub] impl ReviewGate :: fn admit( candidate: RuleCandidate, first: ReviewAttestation, second: ReviewAttestation, ) -> Result<ReviewedRule, RequirementError>
+crates/requirement/src/candidate.rs [pub] impl ReviewedRule :: #[must_use] const fn attestations(&self) -> (&ReviewAttestation, &ReviewAttestation)
+crates/requirement/src/candidate.rs [pub] impl ReviewedRule :: #[must_use] const fn body(&self) -> &RuleBody
+crates/requirement/src/candidate.rs [pub] impl ReviewedRule :: #[must_use] const fn id(&self) -> &RuleId
+crates/requirement/src/candidate.rs [pub] impl ReviewedRule :: #[must_use] const fn quoted_source_digest(&self) -> ContentDigest
+crates/requirement/src/candidate.rs [pub] impl ReviewedRule :: #[must_use] const fn source_digest(&self) -> ContentDigest
+crates/requirement/src/candidate.rs [pub] impl ReviewedRule :: #[must_use] const fn source_rule(&self) -> &SourceRuleId
+crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] const fn extracted_by(&self) -> &Actor
+crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] const fn id(&self) -> &RuleId
+crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] const fn proposed_body(&self) -> &RuleBody
+crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] const fn source_digest(&self) -> ContentDigest
+crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] const fn source_rule(&self) -> &SourceRuleId
+crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] fn extracted( id: RuleId, source_rule: SourceRuleId, body: RuleBody, extracted_by: Actor, quoted_source: String, source_digest: ContentDigest, ) -> Self
+crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] fn quoted_source(&self) -> &str
+crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] fn quoted_source_digest(&self) -> ContentDigest
+crates/requirement/src/dsl.rs [priv] fn applicability(value: Applicability) -> String
+crates/requirement/src/dsl.rs [priv] fn count_constraint(rendered: &mut String, prefix: &str, value: &CountConstraint)
+crates/requirement/src/dsl.rs [priv] fn field(rendered: &mut String, key: &str, value: &str)
+crates/requirement/src/dsl.rs [priv] fn interval(rendered: &mut String, prefix: &str, value: ValidInterval)
+crates/requirement/src/dsl.rs [priv] fn is_identifier(value: &str) -> bool
+crates/requirement/src/dsl.rs [priv] fn operands_text(rendered: &mut String, operands: &[Operand])
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( ApprovalAuthority, "approval authority", "The office an exception approval was issued by." )
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( AreaId, "area id", "One general-education area, such as section 8.1's `WRITING_AND_SPEAKING`." )
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( CreditCategory, "credit category", "Section 11.2's `category:`, such as `ALL_RECOGNIZED` or `CSE_MAJOR`." )
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( GpaScope, "gpa scope", "Section 11.2's `scope:`, such as `ALL_GPA_ELIGIBLE`." )
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( ProgramId, "program id", "One non-credit training programme, such as section 8.1's life-respect education." )
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( RuleId, "rule id", "A rule's identifier inside its set -- section 11.2's `id:`." )
+crates/requirement/src/dsl.rs [priv] impl AdmissionYear
+crates/requirement/src/dsl.rs [priv] impl CreditAmount
+crates/requirement/src/dsl.rs [priv] impl InstructionLanguage
+crates/requirement/src/dsl.rs [priv] impl RuleBody
+crates/requirement/src/dsl.rs [priv] impl RuleBody
+crates/requirement/src/dsl.rs [priv] macro_rules! identifier_newtype
+crates/requirement/src/dsl.rs [priv] use academic_domain::{CourseId, Decimal, ValidInterval}
+crates/requirement/src/dsl.rs [priv] use crate::error::RequirementError
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Applicability
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum CoRequisiteTiming
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum DoubleCountingPolicy
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum RecognitionPolicy
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ThesisGrading
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum InstructionLanguage
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct AdmissionYear(u16)
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct CreditAmount(u16)
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum CountConstraint
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RuleBody
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ApprovalRequirement
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AreaRequirement
+crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Operand
+crates/requirement/src/dsl.rs [pub] impl AdmissionYear :: #[must_use] const fn get(self) -> u16
+crates/requirement/src/dsl.rs [pub] impl AdmissionYear :: fn new(value: u16) -> Result<Self, RequirementError>
+crates/requirement/src/dsl.rs [pub] impl CreditAmount :: #[must_use] const fn get(self) -> u16
+crates/requirement/src/dsl.rs [pub] impl CreditAmount :: fn new(value: u16) -> Result<Self, RequirementError>
+crates/requirement/src/dsl.rs [pub] impl InstructionLanguage :: #[must_use] const fn as_str(self) -> &'static str
+crates/requirement/src/dsl.rs [pub] impl RuleBody :: #[must_use] const fn rule_type(&self) -> crate::rule_type::RuleType
+crates/requirement/src/dsl.rs [pub] impl RuleBody :: #[must_use] fn canonical_text(&self) -> String
+crates/requirement/src/dsl.rs [pub] impl RuleBody :: fn compile(&self, rule: &RuleId) -> Result<(), RequirementError>
+crates/requirement/src/error.rs [priv] use thiserror::Error
+crates/requirement/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] #[non_exhaustive] enum RequirementError
+crates/requirement/src/evaluate.rs [priv] const fn shortfall(attained: u32, required: u32) -> ProofStatus
+crates/requirement/src/evaluate.rs [priv] fn admission_year_or_unknown( facts: &AcademicFacts, rule: &RuleId, rule_type: RuleType, gate: OpenGate, ) -> Result<AdmissionYear, Box<RuleOutcome>>
+crates/requirement/src/evaluate.rs [priv] fn applies_to(applicability: Applicability, year: AdmissionYear) -> bool
+crates/requirement/src/evaluate.rs [priv] fn counts_after_exclusions( attempt: &AttemptFact, constraints: &[CountConstraint], year: Option<AdmissionYear>, ) -> bool
+crates/requirement/src/evaluate.rs [priv] fn discharge( set: &RuleSet, facts: &AcademicFacts, course: &academic_domain::CourseId, equivalent_admitted: bool, ) -> Option<(EntityId, Option<RuleId>)>
+crates/requirement/src/evaluate.rs [priv] fn grade_point_meets( weighted_points: Decimal, denominator_credits: u32, threshold: Decimal, rule: &RuleId, ) -> Result<bool, RequirementError>
+crates/requirement/src/evaluate.rs [priv] impl RuleOutcome
+crates/requirement/src/evaluate.rs [priv] impl RuleOutcome :: fn bare(rule: &RuleId, rule_type: RuleType, status: ProofStatus) -> Self
+crates/requirement/src/evaluate.rs [priv] impl RuleOutcome :: fn unknown(rule: &RuleId, rule_type: RuleType, gate: OpenGate) -> Self
+crates/requirement/src/evaluate.rs [priv] use academic_domain::{Decimal, EntityId, engines::ProofStatus}
+crates/requirement/src/evaluate.rs [priv] use crate::{ dsl::{ AdmissionYear, Applicability, CoRequisiteTiming, CountConstraint, DoubleCountingPolicy, RecognitionPolicy, RuleBody, RuleId, }, error::RequirementError, facts::{AcademicFacts, AttemptFact, LanguageEvidence}, gate::OpenGate, publish::RuleSet, rule_type::RuleType, }
+crates/requirement/src/evaluate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Measure
+crates/requirement/src/evaluate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RuleOutcome
+crates/requirement/src/evaluate.rs [pub] fn evaluate( set: &RuleSet, rule: &RuleId, body: &RuleBody, facts: &AcademicFacts, ) -> Result<RuleOutcome, RequirementError>
+crates/requirement/src/facts.rs [priv] impl AcademicFacts
+crates/requirement/src/facts.rs [priv] impl AttemptStatus
+crates/requirement/src/facts.rs [priv] impl TermOrdinal
+crates/requirement/src/facts.rs [priv] use academic_domain::{CourseId, Decimal, EntityId, TimestampMillis}
+crates/requirement/src/facts.rs [priv] use crate::dsl::{ AdmissionYear, ApprovalAuthority, AreaId, CreditAmount, CreditCategory, InstructionLanguage, ProgramId, RuleId, }
+crates/requirement/src/facts.rs [priv] use std::collections::BTreeMap
+crates/requirement/src/facts.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum LanguageEvidence
+crates/requirement/src/facts.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct GpaReading
+crates/requirement/src/facts.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AttemptStatus
+crates/requirement/src/facts.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct TermOrdinal(u32)
+crates/requirement/src/facts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AcademicFacts
+crates/requirement/src/facts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ApprovalFact
+crates/requirement/src/facts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AttemptFact
+crates/requirement/src/facts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TrainingFact
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] const fn admission_year(&self) -> Option<AdmissionYear>
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] const fn as_of(&self) -> TimestampMillis
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn approvals(&self) -> &[ApprovalFact]
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn attempts(&self) -> &[AttemptFact]
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn gpa(&self, scope: &crate::dsl::GpaScope) -> Option<GpaReading>
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn new(as_of: TimestampMillis) -> Self
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn trainings(&self) -> &[TrainingFact]
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn with_admission_year(mut self, year: AdmissionYear) -> Self
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn with_approval(mut self, approval: ApprovalFact) -> Self
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn with_attempt(mut self, attempt: AttemptFact) -> Self
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn with_gpa(mut self, scope: &crate::dsl::GpaScope, reading: GpaReading) -> Self
+crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn with_training(mut self, training: TrainingFact) -> Self
+crates/requirement/src/facts.rs [pub] impl AttemptStatus :: #[must_use] const fn is_recognized(self) -> bool
+crates/requirement/src/facts.rs [pub] impl TermOrdinal :: #[must_use] const fn get(self) -> u32
+crates/requirement/src/facts.rs [pub] impl TermOrdinal :: #[must_use] const fn new(value: u32) -> Self
+crates/requirement/src/gate.rs [priv] const fn applicability_unknown() -> &'static str
+crates/requirement/src/gate.rs [priv] const fn double_counting_unknown() -> &'static str
+crates/requirement/src/gate.rs [priv] const fn recognition_unknown() -> &'static str
+crates/requirement/src/gate.rs [priv] impl OpenGate
+crates/requirement/src/gate.rs [priv] use crate::dsl::{Applicability, DoubleCountingPolicy, RecognitionPolicy}
+crates/requirement/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate
+crates/requirement/src/gate.rs [pub] #[must_use] fn unknown_readings() -> [(&'static str, &'static str); 3]
+crates/requirement/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str
+crates/requirement/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str
+crates/requirement/src/gate.rs [pub] impl OpenGate :: const ALL: [Self; 4]
+crates/requirement/src/lib.rs [pub] mod candidate
+crates/requirement/src/lib.rs [pub] mod dsl
+crates/requirement/src/lib.rs [pub] mod error
+crates/requirement/src/lib.rs [pub] mod evaluate
+crates/requirement/src/lib.rs [pub] mod facts
+crates/requirement/src/lib.rs [pub] mod gate
+crates/requirement/src/lib.rs [pub] mod publish
+crates/requirement/src/lib.rs [pub] mod rule_type
+crates/requirement/src/lib.rs [pub] use candidate::{ReviewAttestation, ReviewGate, ReviewedRule, RuleCandidate}
+crates/requirement/src/lib.rs [pub] use dsl::{ AdmissionYear, Applicability, ApprovalAuthority, ApprovalRequirement, AreaId, AreaRequirement, CoRequisiteTiming, CountConstraint, CreditAmount, CreditCategory, DoubleCountingPolicy, GpaScope, InstructionLanguage, Operand, ProgramId, RecognitionPolicy, RuleBody, RuleId, ThesisGrading, }
+crates/requirement/src/lib.rs [pub] use error::RequirementError
+crates/requirement/src/lib.rs [pub] use evaluate::{Measure, RuleOutcome, evaluate}
+crates/requirement/src/lib.rs [pub] use facts::{ AcademicFacts, ApprovalFact, AttemptFact, AttemptStatus, GpaReading, LanguageEvidence, TermOrdinal, TrainingFact, }
+crates/requirement/src/lib.rs [pub] use gate::{OpenGate, unknown_readings}
+crates/requirement/src/lib.rs [pub] use publish::{ ExecutableRule, FixtureCase, OfficialExampleFixtures, OfficialSourceBinding, RuleSet, RuleSetDraft, RuleSetLedger, RuleSetVersion, SyntheticTranscriptFixtures, }
+crates/requirement/src/lib.rs [pub] use rule_type::{RuleType, SPEC_PROSE_CATEGORIES, SPEC_YAML_TYPES, SpellingSource}
+crates/requirement/src/publish.rs [priv] fixture_class!( OfficialExampleFixtures, "The worked examples the official source itself states.", "no official example fixture" )
+crates/requirement/src/publish.rs [priv] fixture_class!( SyntheticTranscriptFixtures, "Synthetic transcripts written to exercise the rule's boundaries.", "no synthetic transcript fixture" )
+crates/requirement/src/publish.rs [priv] impl ExecutableRule
+crates/requirement/src/publish.rs [priv] impl FixtureCase
+crates/requirement/src/publish.rs [priv] impl OfficialSourceBinding
+crates/requirement/src/publish.rs [priv] impl RuleSet
+crates/requirement/src/publish.rs [priv] impl RuleSetDraft
+crates/requirement/src/publish.rs [priv] impl RuleSetLedger
+crates/requirement/src/publish.rs [priv] impl RuleSetVersion
+crates/requirement/src/publish.rs [priv] impl core::fmt::Display for RuleSetVersion
+crates/requirement/src/publish.rs [priv] impl core::fmt::Display for RuleSetVersion :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/requirement/src/publish.rs [priv] macro_rules! fixture_class
+crates/requirement/src/publish.rs [priv] use academic_domain::{ ContentDigest, CurriculumVersionId, RequirementSetId, engines::{ProofStatus, RuleId as SourceRuleId}, }
+crates/requirement/src/publish.rs [priv] use academic_ingestion::{ dating::EffectiveDate, identifier::ConnectorId, manifest::{ParserVersion, RetrievalInstant}, publish::{PublishedRule, PublishedRules}, }
+crates/requirement/src/publish.rs [priv] use crate::{ candidate::ReviewedRule, dsl::{RuleBody, RuleId}, error::RequirementError, evaluate::{RuleOutcome, evaluate}, facts::AcademicFacts, }
+crates/requirement/src/publish.rs [priv] use std::collections::BTreeMap
+crates/requirement/src/publish.rs [pub] #[derive(Debug, Clone)] struct RuleSetDraft
+crates/requirement/src/publish.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RuleSetVersion(u32)
+crates/requirement/src/publish.rs [pub] #[derive(Debug, Clone, Default)] struct RuleSetLedger
+crates/requirement/src/publish.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExecutableRule
+crates/requirement/src/publish.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct FixtureCase
+crates/requirement/src/publish.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OfficialSourceBinding
+crates/requirement/src/publish.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RuleSet
+crates/requirement/src/publish.rs [pub] impl ExecutableRule :: #[must_use] const fn body(&self) -> &RuleBody
+crates/requirement/src/publish.rs [pub] impl ExecutableRule :: #[must_use] const fn id(&self) -> &RuleId
+crates/requirement/src/publish.rs [pub] impl ExecutableRule :: #[must_use] const fn source_digest(&self) -> ContentDigest
+crates/requirement/src/publish.rs [pub] impl ExecutableRule :: #[must_use] const fn source_rule(&self) -> &SourceRuleId
+crates/requirement/src/publish.rs [pub] impl FixtureCase :: #[must_use] const fn new(facts: AcademicFacts, expected: ProofStatus) -> Self
+crates/requirement/src/publish.rs [pub] impl OfficialSourceBinding :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/requirement/src/publish.rs [pub] impl OfficialSourceBinding :: #[must_use] const fn effective(&self) -> EffectiveDate
+crates/requirement/src/publish.rs [pub] impl OfficialSourceBinding :: #[must_use] const fn parser_version(&self) -> ParserVersion
+crates/requirement/src/publish.rs [pub] impl OfficialSourceBinding :: #[must_use] const fn retrieved_at(&self) -> RetrievalInstant
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn curriculum_version(&self) -> CurriculumVersionId
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn set_id(&self) -> RequirementSetId
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn source(&self) -> &OfficialSourceBinding
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn supersedes(&self) -> Option<RuleSetVersion>
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn version(&self) -> RuleSetVersion
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] fn canonical_text(&self) -> String
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] fn rule(&self, id: &RuleId) -> Option<&ExecutableRule>
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] fn rule_set_hash(&self) -> ContentDigest
+crates/requirement/src/publish.rs [pub] impl RuleSet :: fn evaluate( &self, id: &RuleId, facts: &AcademicFacts, ) -> Result<RuleOutcome, RequirementError>
+crates/requirement/src/publish.rs [pub] impl RuleSet :: fn executable_rules(&self) -> impl Iterator<Item = &ExecutableRule>
+crates/requirement/src/publish.rs [pub] impl RuleSet :: fn rules(&self) -> impl Iterator<Item = (&RuleId, &RuleBody)>
+crates/requirement/src/publish.rs [pub] impl RuleSetDraft :: #[must_use] fn from_official_source( published: &PublishedRules, set_id: RequirementSetId, curriculum_version: CurriculumVersionId, version: RuleSetVersion, supersedes: Option<RuleSetVersion>, ) -> Self
+crates/requirement/src/publish.rs [pub] impl RuleSetDraft :: fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError>
+crates/requirement/src/publish.rs [pub] impl RuleSetDraft :: fn publish(self) -> Result<RuleSet, RequirementError>
+crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] const fn new() -> Self
+crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn by_hash(&self, hash: ContentDigest) -> Option<&RuleSet>
+crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn changed_rules(&self, earlier: RuleSetVersion, later: RuleSetVersion) -> Vec<RuleId>
+crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn current(&self) -> Option<&RuleSet>
+crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn version(&self, version: RuleSetVersion) -> Option<&RuleSet>
+crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn versions(&self) -> &[RuleSet]
+crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: fn publish(&mut self, set: RuleSet) -> Result<(), RequirementError>
+crates/requirement/src/publish.rs [pub] impl RuleSetVersion :: #[must_use] const fn get(self) -> u32
+crates/requirement/src/publish.rs [pub] impl RuleSetVersion :: #[must_use] const fn new(value: u32) -> Self
+crates/requirement/src/publish.rs [pub] impl RuleSetVersion :: #[must_use] const fn next(self) -> Self
+crates/requirement/src/publish.rs [pub] impl RuleSetVersion :: const FIRST: Self
+crates/requirement/src/rule_type.rs [priv] impl RuleType
+crates/requirement/src/rule_type.rs [priv] use crate::error::RequirementError
+crates/requirement/src/rule_type.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RuleType
+crates/requirement/src/rule_type.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SpellingSource
+crates/requirement/src/rule_type.rs [pub] const SPEC_PROSE_CATEGORIES: [(&str, &[RuleType]); 12]
+crates/requirement/src/rule_type.rs [pub] const SPEC_YAML_TYPES: [(&str, RuleType); 5]
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn acceptance_test(self) -> &'static str
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn as_str(self) -> &'static str
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn requirement(self) -> &'static str
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn spelling_source(self) -> SpellingSource
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] fn parse(identifier: &str) -> Option<Self>
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: const ALL: [Self; 14]
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: fn require(identifier: &str) -> Result<Self, RequirementError>

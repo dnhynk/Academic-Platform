@@ -1,0 +1,291 @@
+crates/repository-analysis/src/extract.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Dialect
+crates/repository-analysis/src/extract.rs [priv] const NOT_A_CALL: [&str; 16]
+crates/repository-analysis/src/extract.rs [priv] const fn is_identifier_byte(byte: u8) -> bool
+crates/repository-analysis/src/extract.rs [priv] fn blank(out: &mut [u8], at: usize, length: usize)
+crates/repository-analysis/src/extract.rs [priv] fn blank_comments(source: &str, line_marker: &str, block: bool) -> Vec<u8>
+crates/repository-analysis/src/extract.rs [priv] fn blank_comments_and_strings(source: &str, dialect: Dialect) -> Vec<u8>
+crates/repository-analysis/src/extract.rs [priv] fn blank_keep_newlines(out: &mut [u8], bytes: &[u8], from: usize, to: usize)
+crates/repository-analysis/src/extract.rs [priv] fn braced_source(path: &str, source: &str, dialect: Dialect) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] fn config_document(path: &str, source: &str) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] fn container_file(source: &str) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] fn declaration_end(code: &[u8], from: usize) -> usize
+crates/repository-analysis/src/extract.rs [priv] fn definition_uses(code: &[u8], source: &str, declarations: &[Declaration]) -> Vec<DataFlowEdge>
+crates/repository-analysis/src/extract.rs [priv] fn exported_at(no_comments: &[u8], at: usize, dialect: Dialect) -> bool
+crates/repository-analysis/src/extract.rs [priv] fn find(haystack: &[u8], from: usize, needle: &[u8]) -> Option<usize>
+crates/repository-analysis/src/extract.rs [priv] fn identifier_at(bytes: &[u8], at: usize) -> Option<(String, usize)>
+crates/repository-analysis/src/extract.rs [priv] fn is_dependency_section(section: &str, depth: usize) -> bool
+crates/repository-analysis/src/extract.rs [priv] fn json_document(source: &str, manifest: bool) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] fn lines_of(source: &str, start: usize, end: usize) -> (u32, u32)
+crates/repository-analysis/src/extract.rs [priv] fn lock_document(source: &str) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] fn package_of_specifier(specifier: &str) -> String
+crates/repository-analysis/src/extract.rs [priv] fn preceded_by_test_attribute(source: &str, no_comments: &[u8], at: usize) -> bool
+crates/repository-analysis/src/extract.rs [priv] fn python_source(path: &str, source: &str) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] fn qualified_before(code: &[u8], at: usize, dialect: Dialect) -> (String, usize)
+crates/repository-analysis/src/extract.rs [priv] fn rust_imports(source: &str, code: &[u8]) -> Vec<TokenSite>
+crates/repository-analysis/src/extract.rs [priv] fn scalar_tokens(value: &str) -> Vec<String>
+crates/repository-analysis/src/extract.rs [priv] fn skip_blanks(bytes: &[u8], mut at: usize) -> usize
+crates/repository-analysis/src/extract.rs [priv] fn span_of(source: &str, start: usize, end: usize) -> SourceSpan
+crates/repository-analysis/src/extract.rs [priv] fn sql_script(path: &str, source: &str) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] fn toml_document(source: &str, manifest: bool) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] fn typescript_imports(source: &str, no_comments: &[u8]) -> Vec<TokenSite>
+crates/repository-analysis/src/extract.rs [priv] fn yaml_document(source: &str, manifest: bool, iac: bool) -> FileFacts
+crates/repository-analysis/src/extract.rs [priv] use crate::index::{FileKind, SourceSpan, SymbolFingerprint, SymbolKind}
+crates/repository-analysis/src/extract.rs [pub(crate)] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct FileFacts
+crates/repository-analysis/src/extract.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct CallSite
+crates/repository-analysis/src/extract.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct DataFlowEdge
+crates/repository-analysis/src/extract.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct Declaration
+crates/repository-analysis/src/extract.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct DependencySite
+crates/repository-analysis/src/extract.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct TokenSite
+crates/repository-analysis/src/extract.rs [pub(crate)] fn read(path: &str, file: FileKind, bytes: &[u8]) -> FileFacts
+crates/repository-analysis/src/finding.rs [priv] impl ComponentCoverage
+crates/repository-analysis/src/finding.rs [priv] impl EvidenceStrength
+crates/repository-analysis/src/finding.rs [priv] impl EvidenceTier
+crates/repository-analysis/src/finding.rs [priv] impl ExcludedSite
+crates/repository-analysis/src/finding.rs [priv] impl ExclusionReason
+crates/repository-analysis/src/finding.rs [priv] impl Finding
+crates/repository-analysis/src/finding.rs [priv] impl FindingScope
+crates/repository-analysis/src/finding.rs [priv] impl LadderRung
+crates/repository-analysis/src/finding.rs [priv] impl Locator
+crates/repository-analysis/src/finding.rs [priv] impl TierEvidence
+crates/repository-analysis/src/finding.rs [priv] impl TierEvidence :: const fn tier(&self) -> EvidenceTier
+crates/repository-analysis/src/finding.rs [priv] use academic_model_run::DisplayedConfidence
+crates/repository-analysis/src/finding.rs [priv] use academic_policy::ContentDigest
+crates/repository-analysis/src/finding.rs [priv] use crate::{ index::{SourceSpan, SymbolFingerprint, SymbolKind}, paths::{ArtifactScope, ComponentId, PathClass}, }
+crates/repository-analysis/src/finding.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] enum TierEvidence
+crates/repository-analysis/src/finding.rs [pub(crate)] impl ComponentCoverage :: const fn new(observed: u32, analyzed: u32) -> Self
+crates/repository-analysis/src/finding.rs [pub(crate)] impl ExcludedSite :: const fn new(locator: Locator, reason: ExclusionReason) -> Self
+crates/repository-analysis/src/finding.rs [pub(crate)] impl Finding :: #[expect( clippy::too_many_arguments, reason = "every field of section 17.4's finding is required at construction; a builder \ would reintroduce the partially-built value this type exists to refuse" )] const fn seal( snapshot_id: String, subject: String, scope: FindingScope, tier: TierEvidence, rung: LadderRung, artifact_scope: ArtifactScope, strength: EvidenceStrength, locators: Vec<Locator>, excluded: Vec<ExcludedSite>, coverage: ComponentCoverage, ) -> Self
+crates/repository-analysis/src/finding.rs [pub(crate)] impl Locator :: const fn new( path: String, symbol: Option<SymbolFingerprint>, symbol_kind: Option<SymbolKind>, span: SourceSpan, blob_digest: ContentDigest, class: PathClass, scope: ArtifactScope, ) -> Self
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ComponentCoverage
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EvidenceStrength
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EvidenceTier
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ExclusionReason
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum LadderRung
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum FindingScope
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExcludedSite
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Finding
+crates/repository-analysis/src/finding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Locator
+crates/repository-analysis/src/finding.rs [pub] impl ComponentCoverage :: #[must_use] const fn analyzed_components(&self) -> u32
+crates/repository-analysis/src/finding.rs [pub] impl ComponentCoverage :: #[must_use] const fn observed_components(&self) -> u32
+crates/repository-analysis/src/finding.rs [pub] impl EvidenceStrength :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/finding.rs [pub] impl EvidenceStrength :: const ALL: [Self; 2]
+crates/repository-analysis/src/finding.rs [pub] impl EvidenceTier :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/finding.rs [pub] impl EvidenceTier :: const ALL: [Self; 3]
+crates/repository-analysis/src/finding.rs [pub] impl ExcludedSite :: #[must_use] const fn locator(&self) -> &Locator
+crates/repository-analysis/src/finding.rs [pub] impl ExcludedSite :: #[must_use] const fn reason(&self) -> ExclusionReason
+crates/repository-analysis/src/finding.rs [pub] impl ExclusionReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/finding.rs [pub] impl ExclusionReason :: const ALL: [Self; 2]
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] const fn artifact_scope(&self) -> ArtifactScope
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] const fn confidence(&self) -> Option<&DisplayedConfidence>
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] const fn coverage(&self) -> ComponentCoverage
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] const fn rung(&self) -> LadderRung
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] const fn scope(&self) -> &FindingScope
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] const fn strength(&self) -> EvidenceStrength
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] const fn tier(&self) -> EvidenceTier
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] fn excluded_sites(&self) -> &[ExcludedSite]
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] fn locators(&self) -> &[Locator]
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] fn snapshot_id(&self) -> &str
+crates/repository-analysis/src/finding.rs [pub] impl Finding :: #[must_use] fn subject(&self) -> &str
+crates/repository-analysis/src/finding.rs [pub] impl FindingScope :: #[must_use] const fn as_str(&self) -> &'static str
+crates/repository-analysis/src/finding.rs [pub] impl FindingScope :: #[must_use] const fn component(&self) -> &ComponentId
+crates/repository-analysis/src/finding.rs [pub] impl LadderRung :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/finding.rs [pub] impl LadderRung :: #[must_use] const fn tier(self) -> EvidenceTier
+crates/repository-analysis/src/finding.rs [pub] impl LadderRung :: const ALL: [Self; 5]
+crates/repository-analysis/src/finding.rs [pub] impl Locator :: #[must_use] const fn blob_digest(&self) -> &ContentDigest
+crates/repository-analysis/src/finding.rs [pub] impl Locator :: #[must_use] const fn class(&self) -> PathClass
+crates/repository-analysis/src/finding.rs [pub] impl Locator :: #[must_use] const fn scope(&self) -> ArtifactScope
+crates/repository-analysis/src/finding.rs [pub] impl Locator :: #[must_use] const fn span(&self) -> SourceSpan
+crates/repository-analysis/src/finding.rs [pub] impl Locator :: #[must_use] const fn symbol(&self) -> Option<&SymbolFingerprint>
+crates/repository-analysis/src/finding.rs [pub] impl Locator :: #[must_use] const fn symbol_kind(&self) -> Option<SymbolKind>
+crates/repository-analysis/src/finding.rs [pub] impl Locator :: #[must_use] fn path(&self) -> &str
+crates/repository-analysis/src/index.rs [priv] impl CoverageGapReason
+crates/repository-analysis/src/index.rs [priv] impl CoverageOutcome
+crates/repository-analysis/src/index.rs [priv] impl FileKind
+crates/repository-analysis/src/index.rs [priv] impl IndexKind
+crates/repository-analysis/src/index.rs [priv] impl PathCoverage
+crates/repository-analysis/src/index.rs [priv] impl SourceSpan
+crates/repository-analysis/src/index.rs [priv] impl SymbolFingerprint
+crates/repository-analysis/src/index.rs [priv] impl SymbolKind
+crates/repository-analysis/src/index.rs [priv] use academic_policy::ContentDigest
+crates/repository-analysis/src/index.rs [priv] use crate::paths::{ArtifactScope, PathClass}
+crates/repository-analysis/src/index.rs [pub(crate)] impl PathCoverage :: fn build( path: String, file_kind: FileKind, class: PathClass, scope: ArtifactScope, mut answer: impl FnMut(IndexKind) -> CoverageOutcome, ) -> Self
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum CoverageOutcome
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CoverageGapReason
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FileKind
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum IndexKind
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Support
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SymbolKind
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct SourceSpan
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathCoverage
+crates/repository-analysis/src/index.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct SymbolFingerprint
+crates/repository-analysis/src/index.rs [pub] #[must_use] const fn support(file: FileKind, index: IndexKind) -> Support
+crates/repository-analysis/src/index.rs [pub] impl CoverageGapReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/index.rs [pub] impl CoverageGapReason :: const ALL: [Self; 2]
+crates/repository-analysis/src/index.rs [pub] impl CoverageOutcome :: #[must_use] const fn is_gap(self) -> bool
+crates/repository-analysis/src/index.rs [pub] impl FileKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/index.rs [pub] impl FileKind :: #[must_use] fn of_path(path: &str) -> Self
+crates/repository-analysis/src/index.rs [pub] impl FileKind :: const ALL: [Self; 14]
+crates/repository-analysis/src/index.rs [pub] impl FileKind :: const SUPPORTED_LANGUAGES: [Self; 4]
+crates/repository-analysis/src/index.rs [pub] impl IndexKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/index.rs [pub] impl IndexKind :: #[must_use] const fn position(self) -> usize
+crates/repository-analysis/src/index.rs [pub] impl IndexKind :: const ALL: [Self; 7]
+crates/repository-analysis/src/index.rs [pub] impl IndexKind :: const COUNT: usize
+crates/repository-analysis/src/index.rs [pub] impl PathCoverage :: #[must_use] const fn class(&self) -> PathClass
+crates/repository-analysis/src/index.rs [pub] impl PathCoverage :: #[must_use] const fn file_kind(&self) -> FileKind
+crates/repository-analysis/src/index.rs [pub] impl PathCoverage :: #[must_use] const fn scope(&self) -> ArtifactScope
+crates/repository-analysis/src/index.rs [pub] impl PathCoverage :: #[must_use] fn gaps(&self) -> Vec<(IndexKind, CoverageGapReason)>
+crates/repository-analysis/src/index.rs [pub] impl PathCoverage :: #[must_use] fn outcome(&self, kind: IndexKind) -> CoverageOutcome
+crates/repository-analysis/src/index.rs [pub] impl PathCoverage :: #[must_use] fn path(&self) -> &str
+crates/repository-analysis/src/index.rs [pub] impl SourceSpan :: #[must_use] const fn end(self) -> u32
+crates/repository-analysis/src/index.rs [pub] impl SourceSpan :: #[must_use] const fn line_span(self) -> (u32, u32)
+crates/repository-analysis/src/index.rs [pub] impl SourceSpan :: #[must_use] const fn new(start: u32, end: u32, first_line: u32, last_line: u32) -> Self
+crates/repository-analysis/src/index.rs [pub] impl SourceSpan :: #[must_use] const fn start(self) -> u32
+crates/repository-analysis/src/index.rs [pub] impl SymbolFingerprint :: #[must_use] fn as_str(&self) -> &str
+crates/repository-analysis/src/index.rs [pub] impl SymbolFingerprint :: #[must_use] fn of(path: &str, kind: SymbolKind, name: &str) -> Self
+crates/repository-analysis/src/index.rs [pub] impl SymbolKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/index.rs [pub] impl SymbolKind :: const ALL: [Self; 6]
+crates/repository-analysis/src/ladder.rs [priv] #[derive(Debug, Clone)] struct Site
+crates/repository-analysis/src/ladder.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SiteKind
+crates/repository-analysis/src/ladder.rs [priv] #[expect( clippy::too_many_arguments, reason = "the arguments are the ladder's whole input; grouping them into a struct would \ move the same list one line up without removing a decision from this function" )] fn seal_finding( analysis: &RepositoryAnalysis, subject: &Subject, component: ComponentId, counted: &[&Site], excluded: Vec<ExcludedSite>, traced: bool, calibration: &CalibrationRegistry, purpose: &Purpose, now: u64, ) -> Result<Finding, AnalysisError>
+crates/repository-analysis/src/ladder.rs [priv] fn calibrated_confidence( analysis: &RepositoryAnalysis, counted: &[&Site], traced: bool, calibration: &CalibrationRegistry, purpose: &Purpose, now: u64, ) -> Result<DisplayedConfidence, AnalysisError>
+crates/repository-analysis/src/ladder.rs [priv] fn collect(analysis: &RepositoryAnalysis, subject: &Subject) -> (Vec<Site>, Vec<ExcludedSite>)
+crates/repository-analysis/src/ladder.rs [priv] fn selects(token: &str, needles: &[String]) -> bool
+crates/repository-analysis/src/ladder.rs [priv] impl AnalyzerIdentity
+crates/repository-analysis/src/ladder.rs [priv] impl EvidenceLadder
+crates/repository-analysis/src/ladder.rs [priv] impl RuntimeTrace
+crates/repository-analysis/src/ladder.rs [priv] impl Site
+crates/repository-analysis/src/ladder.rs [priv] impl Site :: const fn is_package(&self) -> bool
+crates/repository-analysis/src/ladder.rs [priv] impl Subject
+crates/repository-analysis/src/ladder.rs [priv] impl SubjectId
+crates/repository-analysis/src/ladder.rs [priv] use academic_model_run::{ CalibrationRegistry, DisplayedConfidence, ModelVersion, ProviderId, Purpose, RawScore, }
+crates/repository-analysis/src/ladder.rs [priv] use crate::{ AnalysisError, RepositoryAnalysis, finding::{ ComponentCoverage, EvidenceStrength, ExcludedSite, ExclusionReason, Finding, FindingScope, LadderRung, Locator, TierEvidence, }, index::{SourceSpan, SymbolFingerprint}, paths::{ArtifactScope, ComponentId, PackageId}, }
+crates/repository-analysis/src/ladder.rs [priv] use std::collections::BTreeMap
+crates/repository-analysis/src/ladder.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct EvidenceLadder
+crates/repository-analysis/src/ladder.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AnalyzerIdentity
+crates/repository-analysis/src/ladder.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RuntimeTrace
+crates/repository-analysis/src/ladder.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Subject
+crates/repository-analysis/src/ladder.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct SubjectId
+crates/repository-analysis/src/ladder.rs [pub] impl AnalyzerIdentity :: #[must_use] const fn model_version(&self) -> &ModelVersion
+crates/repository-analysis/src/ladder.rs [pub] impl AnalyzerIdentity :: #[must_use] const fn provider(&self) -> &ProviderId
+crates/repository-analysis/src/ladder.rs [pub] impl AnalyzerIdentity :: #[must_use] fn tool(&self) -> &str
+crates/repository-analysis/src/ladder.rs [pub] impl AnalyzerIdentity :: #[must_use] fn version(&self) -> &str
+crates/repository-analysis/src/ladder.rs [pub] impl AnalyzerIdentity :: fn new(tool: impl Into<String>, version: impl Into<String>) -> Result<Self, AnalysisError>
+crates/repository-analysis/src/ladder.rs [pub] impl EvidenceLadder :: fn classify( analysis: &RepositoryAnalysis, subject: &Subject, calibration: &CalibrationRegistry, purpose: &Purpose, traces: &[RuntimeTrace], now: u64, ) -> Result<Vec<Finding>, AnalysisError>
+crates/repository-analysis/src/ladder.rs [pub] impl RuntimeTrace :: #[must_use] const fn subject(&self) -> &SubjectId
+crates/repository-analysis/src/ladder.rs [pub] impl RuntimeTrace :: #[must_use] fn new(snapshot_id: impl Into<String>, subject: SubjectId) -> Self
+crates/repository-analysis/src/ladder.rs [pub] impl RuntimeTrace :: #[must_use] fn snapshot_id(&self) -> &str
+crates/repository-analysis/src/ladder.rs [pub] impl Subject :: #[must_use] const fn id(&self) -> &SubjectId
+crates/repository-analysis/src/ladder.rs [pub] impl Subject :: #[must_use] fn new( id: SubjectId, manifest_names: &[&str], import_names: &[&str], call_names: &[&str], config_keys: &[&str], ) -> Self
+crates/repository-analysis/src/ladder.rs [pub] impl SubjectId :: #[must_use] fn as_str(&self) -> &str
+crates/repository-analysis/src/ladder.rs [pub] impl SubjectId :: fn new(value: impl Into<String>) -> Result<Self, AnalysisError>
+crates/repository-analysis/src/lib.rs [priv] fn fact_count(facts: &FileFacts, kind: IndexKind) -> u32
+crates/repository-analysis/src/lib.rs [priv] fn resolve_reachability(files: &mut [AnalyzedFile])
+crates/repository-analysis/src/lib.rs [priv] impl AnalyzedFile
+crates/repository-analysis/src/lib.rs [priv] impl RepositoryAnalysis
+crates/repository-analysis/src/lib.rs [priv] impl SourceUnit
+crates/repository-analysis/src/lib.rs [priv] impl SymbolRecord
+crates/repository-analysis/src/lib.rs [priv] impl core::fmt::Debug for AnalyzedFile
+crates/repository-analysis/src/lib.rs [priv] impl core::fmt::Debug for AnalyzedFile :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/repository-analysis/src/lib.rs [priv] impl core::fmt::Debug for SourceUnit
+crates/repository-analysis/src/lib.rs [priv] impl core::fmt::Debug for SourceUnit :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/repository-analysis/src/lib.rs [priv] impl<'a> AnalysisInput<'a>
+crates/repository-analysis/src/lib.rs [priv] use academic_model_run::{ModelVersion, ProviderId}
+crates/repository-analysis/src/lib.rs [priv] use academic_policy::ContentDigest
+crates/repository-analysis/src/lib.rs [priv] use academic_repository::{ManifestEntry, RepositorySnapshot}
+crates/repository-analysis/src/lib.rs [priv] use academic_untrusted_content::SourceIndex
+crates/repository-analysis/src/lib.rs [priv] use extract::{CallSite, Declaration, DependencySite, FileFacts, TokenSite}
+crates/repository-analysis/src/lib.rs [priv] use std::collections::{BTreeMap, BTreeSet}
+crates/repository-analysis/src/lib.rs [pub(crate)] #[derive(Clone)] struct AnalyzedFile
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: const fn class(&self) -> PathClass
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: const fn package(&self) -> Option<&PackageId>
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: const fn scope(&self) -> ArtifactScope
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn call_is_reachable(&self, span: SourceSpan) -> bool
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn calls(&self) -> &[CallSite]
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn config_tokens(&self) -> impl Iterator<Item = &TokenSite>
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn dependencies(&self) -> &[DependencySite]
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn enclosing(&self, span: SourceSpan) -> Option<&Declaration>
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn iac_tokens(&self) -> impl Iterator<Item = &TokenSite>
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn imports(&self) -> &[TokenSite]
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn locator( &self, span: SourceSpan, enclosing: Option<&Declaration>, scope: ArtifactScope, ) -> Locator
+crates/repository-analysis/src/lib.rs [pub(crate)] impl AnalyzedFile :: fn path(&self) -> &str
+crates/repository-analysis/src/lib.rs [pub(crate)] impl RepositoryAnalysis :: fn files(&self) -> &[AnalyzedFile]
+crates/repository-analysis/src/lib.rs [pub] #[derive(Debug)] struct AnalysisInput<'a>
+crates/repository-analysis/src/lib.rs [pub] #[derive(Debug, Clone)] struct RepositoryAnalysis
+crates/repository-analysis/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SymbolRecord
+crates/repository-analysis/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AnalysisError
+crates/repository-analysis/src/lib.rs [pub] fn analyze(input: &AnalysisInput<'_>) -> Result<RepositoryAnalysis, AnalysisError>
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] const fn analyzed_component_count(&self) -> u32
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] const fn model_version(&self) -> &ModelVersion
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] const fn packages(&self) -> &PackageMap
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] const fn provider(&self) -> &ProviderId
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] fn coverage(&self) -> &[PathCoverage]
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] fn gaps(&self) -> Vec<(&str, IndexKind, CoverageGapReason)>
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] fn snapshot_id(&self) -> &str
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] fn supported_file_kinds() -> Vec<FileKind>
+crates/repository-analysis/src/lib.rs [pub] impl RepositoryAnalysis :: #[must_use] fn symbols(&self) -> Vec<SymbolRecord>
+crates/repository-analysis/src/lib.rs [pub] impl SourceUnit :: #[must_use] fn byte_len(&self) -> usize
+crates/repository-analysis/src/lib.rs [pub] impl SourceUnit :: #[must_use] fn new(path: impl Into<String>, source_bytes: Vec<u8>) -> Self
+crates/repository-analysis/src/lib.rs [pub] impl SourceUnit :: #[must_use] fn path(&self) -> &str
+crates/repository-analysis/src/lib.rs [pub] impl SymbolRecord :: #[must_use] const fn fingerprint(&self) -> &SymbolFingerprint
+crates/repository-analysis/src/lib.rs [pub] impl SymbolRecord :: #[must_use] const fn kind(&self) -> SymbolKind
+crates/repository-analysis/src/lib.rs [pub] impl SymbolRecord :: #[must_use] const fn reachable(&self) -> bool
+crates/repository-analysis/src/lib.rs [pub] impl SymbolRecord :: #[must_use] const fn span(&self) -> SourceSpan
+crates/repository-analysis/src/lib.rs [pub] impl SymbolRecord :: #[must_use] fn path(&self) -> &str
+crates/repository-analysis/src/lib.rs [pub] impl<'a> AnalysisInput<'a> :: fn of( snapshot: &'a RepositorySnapshot, sealed: &SourceIndex, identity: AnalyzerIdentity, units: Vec<SourceUnit>, ) -> Result<Self, AnalysisError>
+crates/repository-analysis/src/lib.rs [pub] mod extract
+crates/repository-analysis/src/lib.rs [pub] mod finding
+crates/repository-analysis/src/lib.rs [pub] mod index
+crates/repository-analysis/src/lib.rs [pub] mod ladder
+crates/repository-analysis/src/lib.rs [pub] mod paths
+crates/repository-analysis/src/lib.rs [pub] struct SourceUnit
+crates/repository-analysis/src/lib.rs [pub] use finding::{ ComponentCoverage, EvidenceStrength, EvidenceTier, ExcludedSite, ExclusionReason, Finding, FindingScope, LadderRung, Locator, }
+crates/repository-analysis/src/lib.rs [pub] use index::{ CoverageGapReason, CoverageOutcome, FileKind, IndexKind, PathCoverage, SourceSpan, Support, SymbolFingerprint, SymbolKind, support, }
+crates/repository-analysis/src/lib.rs [pub] use ladder::{AnalyzerIdentity, EvidenceLadder, RuntimeTrace, Subject, SubjectId}
+crates/repository-analysis/src/lib.rs [pub] use paths::{ ArtifactScope, ComponentError, ComponentId, PackageId, PackageMap, PathClass, PathClassification, }
+crates/repository-analysis/src/paths.rs [priv] const BUILD_DIRECTORIES: [&str; 4]
+crates/repository-analysis/src/paths.rs [priv] const BUILD_FILES: [&str; 3]
+crates/repository-analysis/src/paths.rs [priv] const DEVELOPMENT_DIRECTORIES: [&str; 5]
+crates/repository-analysis/src/paths.rs [priv] const EXAMPLE_DIRECTORIES: [&str; 6]
+crates/repository-analysis/src/paths.rs [priv] const GENERATED_DIRECTORIES: [&str; 6]
+crates/repository-analysis/src/paths.rs [priv] const MIGRATION_DIRECTORIES: [&str; 2]
+crates/repository-analysis/src/paths.rs [priv] const PACKAGE_MANIFESTS: [&str; 4]
+crates/repository-analysis/src/paths.rs [priv] const TEST_DIRECTORIES: [&str; 5]
+crates/repository-analysis/src/paths.rs [priv] const VENDORED_DIRECTORIES: [&str; 6]
+crates/repository-analysis/src/paths.rs [priv] fn has_segment(path: &str, names: &[&str]) -> bool
+crates/repository-analysis/src/paths.rs [priv] fn is_generated_file_name(name: &str) -> bool
+crates/repository-analysis/src/paths.rs [priv] fn is_test_file_name(name: &str) -> bool
+crates/repository-analysis/src/paths.rs [priv] fn split_parent(path: &str) -> (&str, &str)
+crates/repository-analysis/src/paths.rs [priv] impl ArtifactScope
+crates/repository-analysis/src/paths.rs [priv] impl ArtifactScope :: const fn rank(self) -> u8
+crates/repository-analysis/src/paths.rs [priv] impl ComponentId
+crates/repository-analysis/src/paths.rs [priv] impl PackageId
+crates/repository-analysis/src/paths.rs [priv] impl PackageMap
+crates/repository-analysis/src/paths.rs [priv] impl PathClass
+crates/repository-analysis/src/paths.rs [priv] impl PathClassification
+crates/repository-analysis/src/paths.rs [priv] use std::collections::BTreeSet
+crates/repository-analysis/src/paths.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ArtifactScope
+crates/repository-analysis/src/paths.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PathClass
+crates/repository-analysis/src/paths.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct PackageMap
+crates/repository-analysis/src/paths.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathClassification
+crates/repository-analysis/src/paths.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ComponentId
+crates/repository-analysis/src/paths.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct PackageId
+crates/repository-analysis/src/paths.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum ComponentError
+crates/repository-analysis/src/paths.rs [pub] #[must_use] fn class_of(path: &str) -> PathClass
+crates/repository-analysis/src/paths.rs [pub] #[must_use] fn classify_path(path: &str, packages: &PackageMap) -> PathClassification
+crates/repository-analysis/src/paths.rs [pub] #[must_use] fn scope_of(path: &str) -> ArtifactScope
+crates/repository-analysis/src/paths.rs [pub] impl ArtifactScope :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/paths.rs [pub] impl ArtifactScope :: #[must_use] const fn max(self, other: Self) -> Self
+crates/repository-analysis/src/paths.rs [pub] impl ArtifactScope :: const ALL: [Self; 5]
+crates/repository-analysis/src/paths.rs [pub] impl ComponentId :: #[must_use] fn as_str(&self) -> &str
+crates/repository-analysis/src/paths.rs [pub] impl ComponentId :: fn containing(path: &str) -> Result<Self, ComponentError>
+crates/repository-analysis/src/paths.rs [pub] impl ComponentId :: fn new(value: impl Into<String>) -> Result<Self, ComponentError>
+crates/repository-analysis/src/paths.rs [pub] impl PackageId :: #[must_use] fn as_str(&self) -> &str
+crates/repository-analysis/src/paths.rs [pub] impl PackageMap :: #[must_use] fn of_paths<'a>(paths: impl IntoIterator<Item = &'a str>) -> Self
+crates/repository-analysis/src/paths.rs [pub] impl PackageMap :: #[must_use] fn package_of(&self, path: &str) -> Option<PackageId>
+crates/repository-analysis/src/paths.rs [pub] impl PackageMap :: #[must_use] fn packages(&self) -> Vec<PackageId>
+crates/repository-analysis/src/paths.rs [pub] impl PathClass :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-analysis/src/paths.rs [pub] impl PathClass :: #[must_use] const fn promotes(self) -> bool
+crates/repository-analysis/src/paths.rs [pub] impl PathClass :: const ALL: [Self; 4]
+crates/repository-analysis/src/paths.rs [pub] impl PathClassification :: #[must_use] const fn class(&self) -> PathClass
+crates/repository-analysis/src/paths.rs [pub] impl PathClassification :: #[must_use] const fn package(&self) -> Option<&PackageId>
+crates/repository-analysis/src/paths.rs [pub] impl PathClassification :: #[must_use] const fn scope(&self) -> ArtifactScope
