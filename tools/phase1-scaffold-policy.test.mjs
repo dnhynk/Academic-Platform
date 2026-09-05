@@ -2191,7 +2191,12 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
         );
       }
 
-      if (!commandUse.test(source)) {
+      // Read as code rather than as text. `P2-RF25` pinned another crate's
+      // `use std::process::Command` line as the text of an item, and a check
+      // over the raw bytes fired on the pin rather than on a spawn -- which is
+      // the trap `crates/capture-gate/tests/capture_scans.rs` records for its
+      // own `#[path]` check one level down.
+      if (!commandUse.test(rustCodeOnly(source))) {
         continue;
       }
       const relative = path.slice(path.indexOf("crates"));
@@ -2462,6 +2467,81 @@ test("the_unenforced_process_classes_are_named", () => {
     enforced,
     "a crate declares the enforcement edge and is not marked enforced, or the reverse",
   );
+});
+
+/**
+ * The feature a package declares when it carries an operating-system device
+ * backend. Derived from, rather than a restatement of, the capture gate: the
+ * set of packages that declare it is what "can open a capture device" means
+ * below, so a second package growing one arrives as a changed set.
+ */
+const DEVICE_BACKEND_FEATURE = "native-capture";
+
+// `P2-A4`'s second audit, F5. The class that declares `CaptureDevice` links
+// neither capture crate, and the sentence that says where the capability is
+// enforced was checked only for being at least forty characters long.
+//
+// `an_elsewhere_basis_names_a_package_that_exists` in
+// `crates/process-sandbox/tests/enforcement.rs` is the half that resolves the
+// name. This is the half that needs the resolved graph: for the class that
+// declares such a capability, either the named enforcer is in its closure, or
+// **nothing in its closure can exercise the capability at all**. The second is
+// the true answer for `academic-capture-client`, and stating it that way is
+// what makes it checkable: the day that binary links something that can open a
+// device, this fails and somebody has to say which of the two is now the case.
+//
+// The set of packages that can open a capture device is derived, not listed:
+// it is the workspace packages whose manifest declares the feature that turns
+// on an operating-system device backend.
+test("an_elsewhere_basis_is_linked_or_unreachable", async () => {
+  const sandbox = await readFile(join("crates", "process-sandbox", "src", "lib.rs"), "utf8");
+  const elsewhere = [...sandbox.matchAll(/ProcessCapability::(\w+) => EnforcementBasis::Elsewhere\(\s*"((?:[^"\\]|\\.)*)"/gu)]
+    .map(([, capability, reason]) => [capability, reason]);
+  assert.deepEqual(
+    elsewhere.map(([capability]) => capability),
+    ["CaptureDevice"],
+    "the set of capabilities whose basis is elsewhere changed",
+  );
+
+  const deviceCapable = workspacePackages
+    .filter((pkg) => Object.keys(pkg.features).includes(DEVICE_BACKEND_FEATURE))
+    .map((pkg) => pkg.name)
+    .toSorted();
+  assert.deepEqual(
+    deviceCapable,
+    ["academic-capture-gate"],
+    `the set of packages declaring ${DEVICE_BACKEND_FEATURE} changed; every one of them can open a device`,
+  );
+
+  const policy = await readFile(join("crates", "policy", "src", "lib.rs"), "utf8");
+  for (const [capability, reason] of elsewhere) {
+    const named = reason.split(/[^A-Za-z0-9-]/u).filter((word) => word.startsWith("academic-"));
+    assert.deepEqual(named.toSorted(), deviceCapable, `${capability}'s reason names ${named}`);
+
+    // Which classes declare it, read out of the capability table rather than
+    // written here: each arm runs from `Self::Name => &[` to its `]`.
+    const declaring = [...policy.matchAll(/Self::(\w+) => &\[([^\]]*)\]/gu)]
+      .filter(([, , body]) => body.includes(`ProcessCapability::${capability},`) || body.includes(`ProcessCapability::${capability}]`) || body.trim() === `ProcessCapability::${capability}`)
+      .map(([, name]) => name)
+      .toSorted();
+    assert.deepEqual(declaring, ["CaptureClient"], `the classes declaring ${capability} changed`);
+
+    for (const className of declaring) {
+      const entry = [...PROCESS_BOUNDARIES].find(([, [, cls]]) => cls === className);
+      assert.ok(entry, `${className} has no process boundary`);
+      const [packageName] = entry;
+      const closure = resolvedShippingPackageNames(packageName);
+      const reachable = deviceCapable.filter((name) => closure.includes(name));
+      assert.deepEqual(
+        reachable,
+        [],
+        `${packageName} declares ${capability} and links ${reachable.join(", ")}; ` +
+          "the basis says the refusal is installed there, so this binary is no longer " +
+          "a class that cannot exercise the capability and the basis must say which " +
+          "mechanism refuses it in this process",
+      );
+    }
+  }
 });
 
 test("indexer_cannot_open_a_socket", async () => {

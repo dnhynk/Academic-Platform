@@ -106,6 +106,150 @@ fn a_basis_that_is_not_the_process_boundary_says_who_or_why() {
     }
 }
 
+/// An `Elsewhere` basis names a package that exists.
+///
+/// `P2-A4`'s second audit's F5: the only thing checked about a reason was
+/// `reason.len() >= 40`, so "a forty-character sentence naming a crate that is
+/// not linked passes, which is what is happening". A length is not a review.
+///
+/// `Elsewhere` is the one answer that points at somebody else, so it is the one
+/// that has to say who. The token is resolved against the workspace: the
+/// package directory must exist and its manifest must declare that name, so a
+/// reason naming a crate that was renamed or removed fails here rather than
+/// reading as a review of a mechanism nobody has.
+///
+/// Whether the class that *declares* the capability is joined to that package
+/// by anything but this sentence is the other half, and it needs the resolved
+/// dependency graph. `an_elsewhere_basis_is_linked_or_unreachable` in
+/// `tools/phase1-scaffold-policy.test.mjs` is that half.
+/// A class whose own declaration is defined in terms of a capability its
+/// boundary would refuse it.
+///
+/// `P2-A4`'s second audit's F7 is that three classes still compute their
+/// capability set and drop it, and that
+/// `the_unenforced_process_classes_are_named` "carries no obligation on the
+/// remainder". This is that obligation, and it is what says flipping those
+/// three flags is not the mechanical edit it looks like.
+///
+/// `refusals(class)` is the enforced subset less what the class declares, so
+/// entering the sandbox as `Indexer` refuses `WRITE_STAGED_ARTIFACT`. The
+/// `BrokerOnly` reason for `WriteSearchIndex` — which `Indexer` **declares** —
+/// says a search projection *is* a staged write. The two sentences are about
+/// the same syscall and they disagree about whether that class may make it.
+/// The same holds for `Connector` and `StageExternalPayload`, whose reason
+/// says staging "is governed by `WriteStagedArtifact`".
+///
+/// Nothing observes that today because neither binary calls `enter`. Closing
+/// those boundaries would make both processes refuse the write their own
+/// declaration is written in terms of — and because both binaries are still
+/// the four-line stub, the refusal would be **vacuously satisfied** and the
+/// disagreement would read as resolved. That is the argument for measuring it
+/// here instead of flipping the flags.
+///
+/// `ExportJob` is the third unenforced class and it has no pair: nothing it
+/// declares is defined in terms of a capability its boundary would refuse. It
+/// is the one of the three whose enforcement is the mechanical edit.
+///
+/// The set is compared whole, so a class that gains such a pair — or one whose
+/// pair is resolved by editing either sentence — fails here.
+#[test]
+fn a_declared_capability_is_not_defined_by_one_the_boundary_would_refuse() {
+    let mut tensions: Vec<String> = Vec::new();
+    for class in ProcessClass::ALL {
+        let refused = refusals(class);
+        for declared in class.capabilities() {
+            let EnforcementBasis::BrokerOnly(reason) = basis(*declared) else {
+                continue;
+            };
+            for other in ProcessCapability::ALL {
+                if other == *declared || !refused.contains(&other) {
+                    continue;
+                }
+                // The reasons spell a capability by its variant name, which is
+                // what `Debug` prints; `as_str` is the wire spelling and is not
+                // what the prose uses.
+                let variant = format!("{other:?}");
+                if reason.contains(&variant) {
+                    let name = format!("{declared:?}");
+                    tensions.push(format!(
+                        "{} declares {name} whose basis is written in terms of {variant}, \
+                         and its boundary would refuse {variant}",
+                        class.as_str()
+                    ));
+                }
+            }
+        }
+    }
+    tensions.sort();
+    assert_eq!(
+        tensions,
+        vec![
+            "CONNECTOR declares StageExternalPayload whose basis is written in terms of \
+             WriteStagedArtifact, and its boundary would refuse WriteStagedArtifact"
+                .to_owned(),
+            "INDEXER declares WriteSearchIndex whose basis is written in terms of \
+             WriteStagedArtifact, and its boundary would refuse WriteStagedArtifact"
+                .to_owned(),
+        ],
+        "the set of classes whose declaration argues with their own boundary changed"
+    );
+
+    // The check is not vacuous: every class was read, and the scan found a
+    // capability name inside a reason at all.
+    assert_eq!(ProcessClass::ALL.len(), 6);
+    assert!(
+        ProcessCapability::ALL
+            .into_iter()
+            .filter_map(|capability| match basis(capability) {
+                EnforcementBasis::BrokerOnly(reason) => Some(reason),
+                _ => None,
+            })
+            .any(|reason| reason.contains("WriteStagedArtifact")),
+        "no broker-only reason names another capability, so this rule reads nothing"
+    );
+}
+
+#[test]
+fn an_elsewhere_basis_names_a_package_that_exists() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_default();
+    let mut named: BTreeMap<&'static str, String> = BTreeMap::new();
+    for capability in ProcessCapability::ALL {
+        let EnforcementBasis::Elsewhere(reason) = basis(capability) else {
+            continue;
+        };
+        let package = reason
+            .split(|character: char| !(character.is_ascii_alphanumeric() || character == '-'))
+            .find(|word| word.starts_with("academic-"))
+            .unwrap_or_default();
+        assert!(
+            !package.is_empty(),
+            "{} says its enforcement is elsewhere and does not say where: {reason:?}",
+            capability.as_str()
+        );
+        let directory = package.strip_prefix("academic-").unwrap_or(package);
+        let manifest = root.join("crates").join(directory).join("Cargo.toml");
+        let text = std::fs::read_to_string(&manifest)
+            .unwrap_or_else(|_| String::from("<no manifest at that path>"));
+        assert!(
+            text.contains(&format!("name = \"{package}\"")),
+            "{} names {package}, and {} does not declare it",
+            capability.as_str(),
+            manifest.display()
+        );
+        named.insert(capability.as_str(), package.to_owned());
+    }
+    // The whole set, so a capability that becomes `Elsewhere` arrives here.
+    assert_eq!(
+        named,
+        BTreeMap::from([("CAPTURE_DEVICE", "academic-capture-gate".to_owned())]),
+        "the set of capabilities enforced elsewhere changed"
+    );
+}
+
 #[test]
 fn the_enforced_subset_is_exactly_the_two_the_operating_system_can_refuse() {
     let mut enforced: Vec<&'static str> = ProcessCapability::ALL
