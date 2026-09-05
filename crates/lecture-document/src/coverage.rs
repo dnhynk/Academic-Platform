@@ -618,10 +618,13 @@ impl CoverageReport {
 
     /// The witness a complete document needs, when there is one.
     ///
-    /// Five things have to hold, and every one of them is section 12.6's own:
-    /// no unmapped segment, whole segment coverage, whole token coverage, no
-    /// ordering finding, no unaccounted capture, and no unexplained hole. There
-    /// is no argument that relaxes any of them.
+    /// Every one of these is section 12.6's own, and there is no argument that
+    /// relaxes any of them: no unmapped segment, whole segment coverage, whole
+    /// token coverage, no ordering finding, no unaccounted capture, no
+    /// unexplained hole, and a reconciled account of every eligible segment.
+    /// They are listed rather than counted -- this comment said "five" and the
+    /// contract page said "six" while the code checked seven, which is
+    /// `P2-A4`'s F7.
     #[must_use]
     pub fn completeness_witness(&self) -> Option<CompletenessWitness> {
         if !self.unmapped.is_empty()
@@ -868,28 +871,41 @@ impl CoverageValidator {
             }
         }
 
-        // Section 12.6's segment coverage: mapped non-silence segments over all
-        // eligible segments. `EXCLUDED_NON_SPEECH` is the silence, so it leaves
-        // the denominator; the other two declared statuses do not, because a
-        // redaction and a recording failure are content that is missing rather
-        // than content that was never there.
+        // Section 12.6 writes the two ratios differently and this reads them
+        // apart, because reading them the same way was `P2-A4`'s F1:
+        //
+        //     segment coverage = mapped non-silence transcript segments
+        //                        / all eligible segments
+        //     token coverage   = mapped normalized tokens / all normalized tokens
+        //
+        // The segment line carries `non-silence`, so `EXCLUDED_NON_SPEECH`
+        // leaves that denominator; the other two declared statuses do not,
+        // because a redaction and a recording failure are content that is
+        // missing rather than content that was never there.
+        //
+        // **The token line carries no qualifier at all, and it does not get
+        // one here.** It used to: the non-speech tokens were subtracted from
+        // this denominator as well, on the strength of the *segment* line's
+        // word. Because `RawSegment::close` refuses a zero-token segment, every
+        // segment a caller can declare non-speech holds at least one
+        // transcribed word, so that subtraction let a document rendering **one
+        // of twenty-one** tokens be `COMPLETE` on both hosts. Under section
+        // 12.6's own denominator a declaration removes a token from the
+        // numerator and leaves it in the denominator, so any non-speech
+        // declaration forces `INCOMPLETE` -- the same treatment a redaction
+        // already gets, and for the same reason.
         let non_speech = accounts
             .iter()
             .filter(|account| matches!(account.status, SegmentStatus::ExcludedNonSpeech { .. }))
             .count() as u64;
         let eligible_segments = (eligible.len() as u64).saturating_sub(non_speech);
-        let non_speech_tokens: u64 = accounts
-            .iter()
-            .filter(|account| matches!(account.status, SegmentStatus::ExcludedNonSpeech { .. }))
-            .map(|account| account.token_count as u64)
-            .sum();
         let segment_coverage = Ratio {
             numerator: mapped_segments,
             denominator: eligible_segments,
         };
         let token_coverage = Ratio {
             numerator: mapped_tokens,
-            denominator: total_tokens.saturating_sub(non_speech_tokens),
+            denominator: total_tokens,
         };
 
         let (ordering_findings, ordering_exceptions) = check_ordering(inputs.document);

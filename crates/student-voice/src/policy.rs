@@ -231,9 +231,18 @@ impl RedactionPolicy {
 
     /// Whether `reference` cites this policy.
     ///
-    /// `D-3`'s closure. The basis is compared as well as the digest, because a
-    /// reference that agrees on the digest and disagrees on the basis is two
-    /// records of one decision that do not say the same thing.
+    /// `D-3`'s closure. The digest is the comparison; the basis comparison
+    /// beside it is **defence in depth and nothing more**, and this comment
+    /// used to claim otherwise.
+    ///
+    /// [`Self::canonical_bytes`] writes `basis=` into the digest preimage, so a
+    /// reference that agrees on the digest and disagrees on the basis needs a
+    /// SHA-256 collision. `P2-A4`'s F9 measured the consequence: deleting
+    /// `reference.basis() == self.basis` leaves the suite green, and no test
+    /// can drive it, because the state it refuses is unreachable rather than
+    /// merely unvisited. It is kept because it costs one comparison and it
+    /// stops being redundant the moment the preimage stops carrying the basis
+    /// — which is a change to `canonical_bytes`, one function away.
     #[must_use]
     pub fn resolves(&self, reference: &RedactionPolicyRef) -> bool {
         *reference.policy_digest() == self.digest() && reference.basis() == self.basis

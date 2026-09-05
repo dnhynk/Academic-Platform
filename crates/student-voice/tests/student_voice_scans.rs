@@ -37,6 +37,7 @@
 mod common;
 
 use std::{
+    collections::BTreeSet,
     error::Error,
     fs,
     path::{Path, PathBuf},
@@ -354,22 +355,153 @@ fn drop_use_items(code: &str) -> String {
     )
 }
 
+/// Every `impl` header of `code`, up to its opening brace.
+///
+/// A trait impl's methods carry no visibility modifier, so an inventory keyed
+/// on `pub fn` cannot see one at all. `impl From<&RestrictedOriginal> for
+/// Vec<String>` is a public route to removed student speech that declares no
+/// `pub fn`, and it passed this whole file before this header sweep existed.
+/// The precedent is `P2-Y3`'s and `P2-X5`'s: pin the complete set of headers,
+/// so a conversion nobody predicted fails as an extra entry rather than having
+/// to be named on a forbidden list.
+fn impl_headers(code: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut lines = code.lines().peekable();
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim_start();
+        if !(trimmed == "impl" || trimmed.starts_with("impl ") || trimmed.starts_with("impl<")) {
+            continue;
+        }
+        // A header may be wrapped, so keep reading until the block opens. An
+        // `impl Trait` in argument position is not a header and is skipped by
+        // the line anchor above: it can never begin a line, because a parameter
+        // list always puts a name and a colon in front of it.
+        let mut header = trimmed.to_owned();
+        while !header.contains('{') {
+            let Some(next) = lines.next() else {
+                break;
+            };
+            header.push(' ');
+            header.push_str(next.trim());
+        }
+        let end = header.find('{').unwrap_or(header.len());
+        found.insert(
+            header[..end]
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" "),
+        );
+    }
+    found
+}
+
+/// The type an `impl` header targets, and whether the header is a trait impl.
+///
+/// `impl From<&RestrictedOriginal> for Vec<String>` targets `Vec<String>`;
+/// `impl RestrictedOriginal` targets itself and is not a trait impl. The
+/// distinction matters because only the first kind holds methods a `pub fn`
+/// sweep is blind to.
+fn impl_target(header: &str) -> Option<(String, bool)> {
+    let rest = header
+        .strip_prefix("impl")
+        .map(str::trim_start)
+        .filter(|rest| !rest.is_empty())?;
+    // Drop the generic parameter list, which may itself contain ` for `
+    // nowhere but can contain angle brackets that the split below must not see.
+    let rest = if rest.starts_with('<') {
+        let mut depth = 0_usize;
+        let mut cut = None;
+        for (offset, character) in rest.char_indices() {
+            match character {
+                '<' => depth = depth.saturating_add(1),
+                '>' => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        cut = Some(offset.saturating_add(1));
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        rest.get(cut?..)?.trim_start()
+    } else {
+        rest
+    };
+    rest.split_once(" for ").map_or_else(
+        || Some((rest.trim().to_owned(), false)),
+        |(_, target)| Some((target.trim().to_owned(), true)),
+    )
+}
+
 /// Every `pub fn`, `pub const fn`, `pub async fn` and `pub unsafe fn`
-/// signature in `code`, whitespace-collapsed.
+/// signature in `code`, plus every `fn` declared inside a trait `impl` block,
+/// whitespace-collapsed.
+///
+/// The trait half is `P2-A4`'s F2: a trait impl's methods have no visibility
+/// modifier, so a sweep that keyed on `pub fn ` walked past
+/// `impl From<&RestrictedOriginal> for Vec<String>` and every rule below was
+/// blind to it. Inside such a block `Self` is the block's target type, so the
+/// signature is rewritten with the target substituted before it is returned --
+/// otherwise every conversion reads as returning `Self` and no rule about
+/// return types can see through it.
 fn public_signatures(code: &str) -> Vec<String> {
+    signatures_in_blocks(code)
+        .into_iter()
+        .map(|(_, signature)| signature)
+        .collect()
+}
+
+/// Every signature `public_signatures` returns, paired with the `impl` header
+/// it was declared in, or the empty string for a free function.
+///
+/// The header is what makes a rule about a *type* possible: a method of
+/// `RestrictedOriginal` need not name the type anywhere in its own signature,
+/// so a sweep that read signatures alone would miss an inherent
+/// `pub fn all_verbatim(&self) -> Vec<String>` as surely as the `pub fn` sweep
+/// missed the trait impl.
+fn signatures_in_blocks(code: &str) -> Vec<(String, String)> {
     let lines: Vec<&str> = code.lines().collect();
     let mut found = Vec::new();
+    // The block an `impl` opened, which runs to the first `}` at column zero --
+    // the same convention `declared_item` reads an item by.
+    let mut block: Option<(String, String, bool)> = None;
     for (index, line) in lines.iter().enumerate() {
+        if line.starts_with('}') {
+            block = None;
+        }
         let trimmed = line.trim_start();
-        if ![
+        if trimmed == "impl" || trimmed.starts_with("impl ") || trimmed.starts_with("impl<") {
+            let mut header = trimmed.to_owned();
+            for follow in lines.iter().skip(index.saturating_add(1)) {
+                if header.contains('{') {
+                    break;
+                }
+                header.push(' ');
+                header.push_str(follow.trim());
+            }
+            let end = header.find('{').unwrap_or(header.len());
+            let header = header[..end]
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ");
+            block =
+                impl_target(&header).map(|(target, is_trait)| (header.clone(), target, is_trait));
+            continue;
+        }
+        let public = [
             "pub fn ",
             "pub const fn ",
             "pub async fn ",
             "pub unsafe fn ",
         ]
         .iter()
-        .any(|start| trimmed.starts_with(start))
-        {
+        .any(|start| trimmed.starts_with(start));
+        let in_trait_impl = block.as_ref().is_some_and(|(_, _, is_trait)| *is_trait)
+            && ["fn ", "const fn ", "async fn ", "unsafe fn "]
+                .iter()
+                .any(|start| trimmed.starts_with(start));
+        if !public && !in_trait_impl {
             continue;
         }
         let mut signature = String::new();
@@ -380,9 +512,44 @@ fn public_signatures(code: &str) -> Vec<String> {
                 break;
             }
         }
-        found.push(signature.split_whitespace().collect::<Vec<_>>().join(" "));
+        let signature = signature.split_whitespace().collect::<Vec<_>>().join(" ");
+        let (header, signature) = match block.as_ref() {
+            Some((header, target, true)) => (header.clone(), substitute_self(&signature, target)),
+            Some((header, _, false)) => (header.clone(), signature),
+            None => (String::new(), signature),
+        };
+        found.push((header, signature));
     }
     found
+}
+
+/// Every signature in `code` that touches `name`: declared in an `impl` block
+/// for it, or naming it in its own parameters or return.
+fn signatures_touching(code: &str, name: &str) -> BTreeSet<String> {
+    signatures_in_blocks(code)
+        .into_iter()
+        .filter(|(header, signature)| uses_of(header, name) > 0 || uses_of(signature, name) > 0)
+        .map(|(_, signature)| signature)
+        .collect()
+}
+
+/// `signature` with every whole-word `Self` replaced by `target`.
+fn substitute_self(signature: &str, target: &str) -> String {
+    signature
+        .split_inclusive(|character: char| !character.is_alphanumeric() && character != '_')
+        .map(|piece| {
+            let (word, tail) = piece.split_at(
+                piece
+                    .find(|character: char| !character.is_alphanumeric() && character != '_')
+                    .unwrap_or(piece.len()),
+            );
+            if word == "Self" {
+                format!("{target}{tail}")
+            } else {
+                piece.to_owned()
+            }
+        })
+        .collect()
 }
 
 /// Splits a signature into its parameter list and its return type.
@@ -845,6 +1012,281 @@ fn no_disclosure_reaches_a_derivative() -> TestResult {
         declared_item(&derivative, "pub struct DisclosedOriginal<'a> {")?,
         "pub struct DisclosedOriginal<'a> { removed: &'a [RemovedUtterance], }",
         "the disclosure gained a field"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Every impl header is in the inventory
+// ---------------------------------------------------------------------------
+
+/// Every `impl` header this crate declares, pinned as a complete set.
+///
+/// Three entries, and all three are the redacting `Debug` this crate writes by
+/// hand instead of deriving. That is the whole trait surface: this crate
+/// implements no conversion, no dereference, no iteration and no arithmetic for
+/// any type it owns.
+const IMPL_HEADERS: &[&str] = &[
+    "impl AccuracyWitness",
+    "impl AffectedProjection",
+    "impl AffectedProjectionKind",
+    "impl CaptureUnderReview",
+    "impl CaseMeasurement",
+    "impl DeletionOutcome",
+    "impl DerivedArtifact",
+    "impl DiarizationCase",
+    "impl DiarizationCorpus",
+    "impl DiarizationMeasurement",
+    "impl DiarizationThreshold",
+    "impl DisclosedOriginal<'_>",
+    "impl EvidenceIndex",
+    "impl ExclusionRecord",
+    "impl HoldState",
+    "impl IngestionJobKind",
+    "impl IngestionReceipt",
+    "impl KeptUtterance",
+    "impl LectureDeletionPlan",
+    "impl LectureDeletionPreview",
+    "impl ManualExclusion",
+    "impl PiiClass",
+    "impl PiiFinding",
+    "impl ProjectionEffect",
+    "impl ProjectionRecord",
+    "impl RawAccessGrant",
+    "impl RawAccessLog",
+    "impl RawAccessRecord",
+    "impl RedactedDerivative",
+    "impl Redaction",
+    "impl RedactionMode",
+    "impl RedactionPlan",
+    "impl RedactionPolicy",
+    "impl RedactionScope",
+    "impl RestrictedOriginal",
+    "impl ReviewDecision",
+    "impl ReviewOutcome",
+    "impl ReviewedCapture<'_>",
+    "impl SpeakerTargeting",
+    "impl VoiceClass",
+    "impl VoiceSpan",
+    "impl fmt::Debug for KeptUtterance",
+    "impl fmt::Debug for RemovedUtterance",
+    "impl fmt::Debug for SourceUtterance<'_>",
+    "impl<'a> LectureSource<'a>",
+    "impl<'a> SourceUtterance<'a>",
+];
+
+/// Every trait `impl` in this crate is one of the three redacting `Debug`s.
+///
+/// `P2-A4`'s F2 and F3 are one defect measured twice: `public_signatures` read
+/// only lines beginning `pub fn `, so
+/// `impl From<&RestrictedOriginal> for Vec<String>` — five lines handing out
+/// removed student speech with no grant and no audit row — passed all
+/// twenty-four tests of this crate on both hosts, and so did
+/// `impl From<&DiarizationMeasurement> for AccuracyWitness`, which minted an
+/// automatic-editing claim out of a measurement the threshold had refused.
+///
+/// The close is a **whole-set** comparison of the header inventory rather than
+/// a list of forbidden trait names: `From` is the spelling that was measured,
+/// but `Into`, `Deref`, `AsRef`, `Borrow`, `Index`, `IntoIterator` and a trait
+/// this crate's author has not thought of all reach the same private fields.
+/// An entry nobody predicted fails as an extra key.
+#[test]
+fn every_impl_header_in_this_crate_is_in_the_inventory() -> TestResult {
+    let mut found: BTreeSet<String> = BTreeSet::new();
+    for path in crate_product_sources()? {
+        found.extend(impl_headers(&code_of(&path)?));
+    }
+    assert_eq!(
+        found,
+        IMPL_HEADERS.iter().map(|item| (*item).to_owned()).collect(),
+        "the impl-header inventory and the source disagree"
+    );
+
+    // Stated again as a property of the whole set, so the reason survives an
+    // edit to the list: the only trait this crate implements for any of its
+    // types is `fmt::Debug`, and each of those three is written by hand to
+    // redact. There is no conversion, no dereference, no iteration and no
+    // arithmetic anywhere in the inventory, which is a stronger statement than
+    // a list of forbidden trait names because it is closed on the other side.
+    let traits: Vec<&str> = found
+        .iter()
+        .filter(|header| impl_target(header).is_some_and(|(_, is_trait)| is_trait))
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        traits,
+        vec![
+            "impl fmt::Debug for KeptUtterance",
+            "impl fmt::Debug for RemovedUtterance",
+            "impl fmt::Debug for SourceUtterance<'_>",
+        ],
+        "this crate implements a trait that is not the redacting Debug"
+    );
+
+    // The scanner is not vacuous: it finds the header `P2-A4` injected, it
+    // reads the target out of a trait impl and out of an inherent one, and it
+    // does not read an `impl Trait` in argument position as a header.
+    assert_eq!(
+        impl_headers("impl From<&RestrictedOriginal> for Vec<String> {\n}\n"),
+        ["impl From<&RestrictedOriginal> for Vec<String>"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    );
+    assert_eq!(
+        impl_target("impl From<&RestrictedOriginal> for Vec<String>"),
+        Some(("Vec<String>".to_owned(), true))
+    );
+    assert_eq!(
+        impl_target("impl<'a> LectureSource<'a>"),
+        Some(("LectureSource<'a>".to_owned(), false))
+    );
+    assert!(impl_headers("fn takes(value: impl Display) {}\n").is_empty());
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Every route out of a restricted original is in the inventory
+// ---------------------------------------------------------------------------
+
+/// Every signature that touches a [`RestrictedOriginal`], pinned.
+///
+/// Nine entries: the six read-only accessors declared in its own `impl` block,
+/// the grant constructor that binds a grant to it, the accessor that reads that
+/// binding back, and `open`. Exactly one of the nine returns the removed
+/// speech, and it is `open`, which takes the grant **by value** and appends to
+/// the log before it returns.
+const RESTRICTED_ORIGINAL_SIGNATURES: &[&str] = &[
+    "pub const fn classification(&self) -> &'static str {",
+    "pub const fn digest(&self) -> &ContentDigest {",
+    "pub const fn lecture(&self) -> LectureSessionId {",
+    "pub const fn original(&self) -> &RestrictedOriginal {",
+    "pub const fn source_version(&self) -> u32 {",
+    "pub const fn terms(&self) -> RetentionTerms {",
+    "pub fn issued( original: &RestrictedOriginal, requested_by: Actor, purpose: &str, at: u64, ) -> Result<Self, AccessRefusal> {",
+    "pub fn open( &self, grant: RawAccessGrant, log: &mut RawAccessLog, ) -> Result<DisclosedOriginal<'_>, AccessRefusal> {",
+    "pub fn removed_count(&self) -> usize {",
+];
+
+/// Every signature that touches an [`AccuracyWitness`], pinned.
+///
+/// Ten entries. One produces a witness -- `witness`, which compares both axes
+/// against the threshold -- one consumes it by value into an automatic
+/// redaction mode, one hands back a reference to the one a plan already holds,
+/// and the rest are the witness's own read-only accessors.
+const ACCURACY_WITNESS_SIGNATURES: &[&str] = &[
+    "pub const fn accuracy_permille(&self) -> u64 {",
+    "pub const fn corpus_digest(&self) -> &ContentDigest {",
+    "pub const fn corpus_version(&self) -> u32 {",
+    "pub const fn missed_student_permille(&self) -> u64 {",
+    "pub const fn scorer_version(&self) -> u32 {",
+    "pub const fn threshold(&self) -> DiarizationThreshold {",
+    "pub const fn witness(&self) -> Option<&AccuracyWitness> {",
+    "pub fn automatic(policy: RedactionPolicy, witness: AccuracyWitness) -> Self {",
+    "pub fn corpus_id(&self) -> &str {",
+    "pub fn witness( &self, threshold: DiarizationThreshold, ) -> Result<AccuracyWitness, AccuracyRefusal> {",
+];
+
+/// Every signature that touches a [`DisclosedOriginal`], pinned.
+///
+/// Six entries. `open` is where one comes from; the other five are the reads a
+/// holder may make, and each is by position rather than in bulk. `P2-A4` noted
+/// that an inherent `pub fn all_verbatim(&self) -> Vec<String>` added here
+/// survives `no_disclosure_reaches_a_derivative`, because that rule is about
+/// routes into a *derivative* type and a `Vec<String>` is not one. It grants no
+/// capability a holder lacks, so it was recorded as an observation about that
+/// rule's scope rather than a hole — but a bulk read is a different shape from
+/// five positional ones, and it is a seventh entry here.
+const DISCLOSED_ORIGINAL_SIGNATURES: &[&str] = &[
+    "pub const fn is_empty(&self) -> bool {",
+    "pub const fn len(&self) -> usize {",
+    "pub fn open( &self, grant: RawAccessGrant, log: &mut RawAccessLog, ) -> Result<DisclosedOriginal<'_>, AccessRefusal> {",
+    "pub fn source_index(&self, position: usize) -> Option<usize> {",
+    "pub fn speaker(&self, position: usize) -> Option<Speaker> {",
+    "pub fn verbatim(&self, position: usize) -> Option<&str> {",
+];
+
+/// The three closed types have a complete signature inventory, both ways.
+///
+/// A rule about *return* types cannot close `P2-A4`'s F2, because
+/// `impl From<&RestrictedOriginal> for Vec<String>` returns a standard-library
+/// collection that no forbidden list would name. What closes it is counting
+/// every signature that touches the type at all and comparing the set: the
+/// injected `fn from(original: &RestrictedOriginal) -> Vec<String>` is an
+/// eighth entry here whatever it returns and however it is spelled.
+///
+/// The same rule holds for `AccuracyWitness`, where F3's injection is a tenth
+/// entry, and it is a stronger statement than
+/// `an_accuracy_witness_has_one_producer`'s construction count: that count is
+/// over `AccuracyWitness {` literals, and a conversion is free to build one.
+#[test]
+fn every_signature_naming_a_closed_type_is_in_the_inventory() -> TestResult {
+    let mut originals: BTreeSet<String> = BTreeSet::new();
+    let mut witnesses: BTreeSet<String> = BTreeSet::new();
+    let mut disclosures: BTreeSet<String> = BTreeSet::new();
+    for path in crate_product_sources()? {
+        let code = code_of(&path)?;
+        originals.extend(signatures_touching(&code, "RestrictedOriginal"));
+        witnesses.extend(signatures_touching(&code, "AccuracyWitness"));
+        disclosures.extend(signatures_touching(&code, "DisclosedOriginal"));
+    }
+    assert_eq!(
+        originals,
+        RESTRICTED_ORIGINAL_SIGNATURES
+            .iter()
+            .map(|item| (*item).to_owned())
+            .collect(),
+        "the routes to a restricted original changed"
+    );
+    assert_eq!(
+        witnesses,
+        ACCURACY_WITNESS_SIGNATURES
+            .iter()
+            .map(|item| (*item).to_owned())
+            .collect(),
+        "the routes to an accuracy witness changed"
+    );
+    assert_eq!(
+        disclosures,
+        DISCLOSED_ORIGINAL_SIGNATURES
+            .iter()
+            .map(|item| (*item).to_owned())
+            .collect(),
+        "the reads a disclosure offers changed"
+    );
+
+    // The sweep sees a trait impl's method, which is the whole point: the same
+    // fragment run through the old `pub fn` inventory produced nothing.
+    let injected = "impl From<&RestrictedOriginal> for Vec<String> {
+    fn from(original: &RestrictedOriginal) -> Self {
+        original.removed.iter().map(|u| u.verbatim.clone()).collect()
+    }
+}
+";
+    assert_eq!(
+        public_signatures(injected),
+        vec!["fn from(original: &RestrictedOriginal) -> Vec<String> {".to_owned()],
+        "the signature sweep is blind to a trait impl again"
+    );
+    assert!(
+        !RESTRICTED_ORIGINAL_SIGNATURES.contains(&public_signatures(injected)[0].as_str()),
+        "the injected route is on the inventory"
+    );
+
+    // `Self` resolves to the block's target and not to the parameter's type,
+    // so a conversion cannot hide its return behind the keyword.
+    assert_eq!(
+        public_signatures(
+            "impl From<&DiarizationMeasurement> for AccuracyWitness {\n    fn from(m: &DiarizationMeasurement) -> Self {\n"
+        ),
+        vec!["fn from(m: &DiarizationMeasurement) -> AccuracyWitness {".to_owned()]
+    );
+    // An inherent block's `pub fn` is still collected and its `Self` is left
+    // alone, so the inventories above are what the source says and not what the
+    // substitution rewrote.
+    assert_eq!(
+        public_signatures("impl RawAccessGrant {\n    pub fn issued() -> Self {\n"),
+        vec!["pub fn issued() -> Self {".to_owned()]
     );
     Ok(())
 }

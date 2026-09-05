@@ -1563,3 +1563,137 @@ const WHOLE_TRIP: &str = "pub(crate) fn trip(point: FaultPoint, frame_seq: u32) 
 const WHOLE_ESTIMATE_DRIFT: &str = "pub fn estimate_drift( first: Anchor, second: Anchor, policy: CapturePolicyRow, ) -> Result<DriftEstimate, AlignmentFault> { if first.session_tick().elapsed_nanos() == second.session_tick().elapsed_nanos() { return Err(AlignmentFault::AnchorsCoincide); } if second.session_tick().elapsed_nanos() < first.session_tick().elapsed_nanos() { return Err(AlignmentFault::AnchorsOutOfOrder); } let first_offset = first .offset_nanos() .ok_or(AlignmentFault::IntervalOutOfRange)?; let second_offset = second .offset_nanos() .ok_or(AlignmentFault::IntervalOutOfRange)?; let drift_nanos = second_offset .checked_sub(first_offset) .ok_or(AlignmentFault::IntervalOutOfRange)?; let magnitude = drift_nanos.unsigned_abs(); let confidence = if magnitude > policy.drift_tolerance_nanos() { AlignmentConfidence::Low { plus_minus_nanos: magnitude, } } else { AlignmentConfidence::Normal }; Ok(DriftEstimate { offset_nanos: first_offset, drift_nanos, confidence, }) }";
 const WHOLE_APPEND_REALIGNMENT: &str = "pub(crate) fn append_realignment( &mut self, clock: &SessionClock, first: Anchor, second: Anchor, policy: CapturePolicyRow, ) -> Result<MappingVersion, AlignmentFault> { clock.admit(first.session_tick())?; clock.admit(second.session_tick())?; let estimate = estimate_drift(first, second, policy)?; let version = MappingVersion { version: u32::try_from(self.versions.len()) .unwrap_or(u32::MAX) .saturating_add(1), first, second, estimate, policy_id: policy.id(), }; self.versions.push(version); Ok(version) }";
 const WHOLE_OPEN_GAP: &str = "fn open_gap(&mut self, cause: GapCause, elapsed_nanos: u64) -> Result<(), CaptureFault> { let at = self.clock.tick(elapsed_nanos)?; self.journal.append( at, RecordBody::Gap { cause, resumed_domain: None, }, )?; self.stopped = Some(cause); Ok(()) }";
+
+// ---------------------------------------------------------------------------
+// Every impl header is in the inventory
+// ---------------------------------------------------------------------------
+
+/// Every `impl` header of `code`, up to its opening brace.
+///
+/// A trait impl's methods carry no visibility modifier, so an inventory keyed
+/// on `pub fn` cannot see one at all. `P2-A4` measured that gap here with
+/// `impl From<&CaptureBytes> for Vec<u8>`, which passed this crate's whole suite. The precedent for closing
+/// it is `P2-Y3`'s and `P2-X5`'s: pin the complete set of headers, so a
+/// conversion nobody predicted fails as an extra entry rather than having to be
+/// named on a forbidden list.
+fn impl_headers(code: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut lines = code.lines().peekable();
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim_start();
+        if !(trimmed == "impl" || trimmed.starts_with("impl ") || trimmed.starts_with("impl<")) {
+            continue;
+        }
+        // A header may be wrapped, so keep reading until the block opens. An
+        // `impl Trait` in argument position is not a header and is skipped by
+        // the line anchor above: it can never begin a line, because a parameter
+        // list always puts a name and a colon in front of it.
+        let mut header = trimmed.to_owned();
+        while !header.contains('{') {
+            let Some(next) = lines.next() else {
+                break;
+            };
+            header.push(' ');
+            header.push_str(next.trim());
+        }
+        let end = header.find('{').unwrap_or(header.len());
+        found.insert(
+            header[..end]
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" "),
+        );
+    }
+    found
+}
+
+/// Every `impl` header this crate declares, pinned as a complete set.
+const IMPL_HEADERS: &[&str] = &[
+    "impl AlignmentConfidence",
+    "impl Anchor",
+    "impl CaptureBytes",
+    "impl CapturePolicyBook",
+    "impl CapturePolicyRow",
+    "impl CaptureRecorder",
+    "impl ChunkJournal",
+    "impl DriftEstimate",
+    "impl FailureKind",
+    "impl FailureSignal",
+    "impl FaultPoint",
+    "impl GapCause",
+    "impl JournalHeader",
+    "impl JournalRecord",
+    "impl JournalRecovery",
+    "impl LabelledMark",
+    "impl MappingLedger",
+    "impl MappingVersion",
+    "impl Mark",
+    "impl MarkLabel",
+    "impl MarkLabelKind",
+    "impl MarkLedger",
+    "impl Orientation",
+    "impl PreflightReading",
+    "impl RecordBody",
+    "impl SealedCapture",
+    "impl SessionClock",
+    "impl SessionClockDomain",
+    "impl SessionTick",
+    "impl SignalDelivery",
+    "impl fmt::Debug for CaptureBytes",
+    "impl<'body> Cursor<'body>",
+];
+
+/// The traits this crate implements for its own types, pinned as a set.
+///
+/// One: the redacting `Debug` on the byte wrapper, written by hand instead of
+/// derived. No conversion, no dereference, no iteration.
+const TRAIT_IMPLS: &[&str] = &["impl fmt::Debug for CaptureBytes"];
+
+/// Every `impl` header this crate declares is in the inventory, both ways.
+///
+/// `P2-A4`'s F12: the blindness that let a trait impl hand out removed student
+/// speech in `academic-student-voice` is a property of the scan's definition of
+/// "signature", not of that crate, and the same injection compiled and passed
+/// here. The close is the same whole-set comparison: `From` is the spelling
+/// that was measured, but `Into`, `TryFrom`, `Deref`, `AsRef`, `Borrow`,
+/// `Index`, `IntoIterator` and a trait nobody has thought of all reach the same
+/// private fields, so the rule is stated over the complete set rather than over
+/// a list of trait names.
+#[test]
+fn every_impl_header_in_this_crate_is_in_the_inventory() -> TestResult {
+    let mut found: BTreeSet<String> = BTreeSet::new();
+    for path in crate_product_sources()? {
+        found.extend(impl_headers(&code_of(&path)?));
+    }
+    assert_eq!(
+        found,
+        IMPL_HEADERS.iter().map(|item| (*item).to_owned()).collect(),
+        "the impl-header inventory and the source disagree"
+    );
+
+    // The trait half stated on its own, so the reason survives an edit to the
+    // list above: every header that names a trait is one of these, and none of
+    // them is a conversion, a dereference, an iteration or an arithmetic fold.
+    let traits: Vec<&str> = found
+        .iter()
+        .filter(|header| header.contains(" for "))
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        traits,
+        TRAIT_IMPLS.to_vec(),
+        "this crate implements a trait the inventory does not carry"
+    );
+
+    // The scanner is not vacuous: it finds the shape `P2-A4` injected, and it
+    // does not read an `impl Trait` in argument position as a header.
+    assert_eq!(
+        impl_headers("impl From<&CaptureBytes> for Vec<u8> {\n}\n"),
+        ["impl From<&CaptureBytes> for Vec<u8>"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    );
+    assert!(impl_headers("fn takes(value: impl Display) {}\n").is_empty());
+    Ok(())
+}

@@ -34,7 +34,7 @@
 mod common;
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     error::Error,
     fs,
     path::{Path, PathBuf},
@@ -988,5 +988,176 @@ fn the_preservation_types_offer_no_reducing_method() -> TestResult {
     // The reader is not vacuous: it finds names, and it finds none in a block
     // whose methods are all private.
     assert!(!public_methods(&coverage, "impl CoverageValidator {")?.is_empty());
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Every impl header is in the inventory
+// ---------------------------------------------------------------------------
+
+/// Every `impl` header of `code`, up to its opening brace.
+///
+/// A trait impl's methods carry no visibility modifier, so an inventory keyed
+/// on `pub fn` cannot see one at all. `P2-A4` measured that gap here with
+/// `impl From<&CoverageReport> for CompletenessWitness`, which passed this crate's whole suite. The precedent for closing
+/// it is `P2-Y3`'s and `P2-X5`'s: pin the complete set of headers, so a
+/// conversion nobody predicted fails as an extra entry rather than having to be
+/// named on a forbidden list.
+fn impl_headers(code: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut lines = code.lines().peekable();
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim_start();
+        if !(trimmed == "impl" || trimmed.starts_with("impl ") || trimmed.starts_with("impl<")) {
+            continue;
+        }
+        // A header may be wrapped, so keep reading until the block opens. An
+        // `impl Trait` in argument position is not a header and is skipped by
+        // the line anchor above: it can never begin a line, because a parameter
+        // list always puts a name and a colon in front of it.
+        let mut header = trimmed.to_owned();
+        while !header.contains('{') {
+            let Some(next) = lines.next() else {
+                break;
+            };
+            header.push(' ');
+            header.push_str(next.trim());
+        }
+        let end = header.find('{').unwrap_or(header.len());
+        found.insert(
+            header[..end]
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" "),
+        );
+    }
+    found
+}
+
+/// Every `impl` header this crate declares, pinned as a complete set.
+const IMPL_HEADERS: &[&str] = &[
+    "impl $name",
+    "impl AudioLocator",
+    "impl CaptureExclusion",
+    "impl CaptureExclusionLedger",
+    "impl CaptureExclusionReason",
+    "impl CompletenessWitness",
+    "impl CoverageConfig",
+    "impl CoverageReport",
+    "impl CoverageValidator",
+    "impl CrossReference",
+    "impl CrossReferenceReason",
+    "impl DeterministicEngine for TranscriptCoverageEngine",
+    "impl DispositionLedger",
+    "impl DocumentAnnotation",
+    "impl DocumentCompleteness",
+    "impl DocumentNode",
+    "impl GapFinding",
+    "impl LectureDocument",
+    "impl NodeKind",
+    "impl NonSpeechEvidence",
+    "impl NonSpeechReason",
+    "impl OrderingException",
+    "impl OrderingFinding",
+    "impl PdfArtifact",
+    "impl PreservationTransform",
+    "impl Ratio",
+    "impl RedactionBasis",
+    "impl RedactionPolicyRef",
+    "impl RenderDefect",
+    "impl RenderFinding",
+    "impl RenderQa",
+    "impl RenderQaReport",
+    "impl ReviewItem",
+    "impl ReviewQueue",
+    "impl RiskClass",
+    "impl Salience",
+    "impl SegmentAccount",
+    "impl SegmentDisposition",
+    "impl SegmentStatus",
+    "impl SourceMapping",
+    "impl StudyIndex",
+    "impl StudyIndexEntry",
+    "impl StudyIndexId",
+    "impl TranscriptCoverageEngine",
+    "impl TranscriptionFailure",
+    "impl UnaccountedCapture",
+    "impl UnmappedSegment",
+    "impl core::fmt::Debug for StudyIndex",
+    "impl core::fmt::Debug for StudyIndexEntry",
+    "impl fmt::Debug for $name",
+    "impl fmt::Debug for DocumentNode",
+    "impl fmt::Debug for LectureDocument",
+    "impl fmt::Debug for NodeDraft",
+    "impl fmt::Debug for SourceMapping",
+    "impl fmt::Display for $name",
+    "impl<'a> DocumentBuilder<'a>",
+    "impl<'a> StudyIndexBuilder<'a>",
+];
+
+/// The traits this crate implements for its own types, pinned as a set.
+///
+/// Nine. Eight are a `Debug` or a `Display`, two of those from the identifier
+/// macro, and the ninth is `P2-C5`'s engine trait. No conversion, no
+/// dereference, no iteration -- in particular nothing that mints a
+/// `CompletenessWitness` outside `completeness_witness`.
+const TRAIT_IMPLS: &[&str] = &[
+    "impl DeterministicEngine for TranscriptCoverageEngine",
+    "impl core::fmt::Debug for StudyIndex",
+    "impl core::fmt::Debug for StudyIndexEntry",
+    "impl fmt::Debug for $name",
+    "impl fmt::Debug for DocumentNode",
+    "impl fmt::Debug for LectureDocument",
+    "impl fmt::Debug for NodeDraft",
+    "impl fmt::Debug for SourceMapping",
+    "impl fmt::Display for $name",
+];
+
+/// Every `impl` header this crate declares is in the inventory, both ways.
+///
+/// `P2-A4`'s F12: the blindness that let a trait impl hand out removed student
+/// speech in `academic-student-voice` is a property of the scan's definition of
+/// "signature", not of that crate, and the same injection compiled and passed
+/// here. The close is the same whole-set comparison: `From` is the spelling
+/// that was measured, but `Into`, `TryFrom`, `Deref`, `AsRef`, `Borrow`,
+/// `Index`, `IntoIterator` and a trait nobody has thought of all reach the same
+/// private fields, so the rule is stated over the complete set rather than over
+/// a list of trait names.
+#[test]
+fn every_impl_header_in_this_crate_is_in_the_inventory() -> TestResult {
+    let mut found: BTreeSet<String> = BTreeSet::new();
+    for path in crate_product_sources()? {
+        found.extend(impl_headers(&code_of(&path)?));
+    }
+    assert_eq!(
+        found,
+        IMPL_HEADERS.iter().map(|item| (*item).to_owned()).collect(),
+        "the impl-header inventory and the source disagree"
+    );
+
+    // The trait half stated on its own, so the reason survives an edit to the
+    // list above: every header that names a trait is one of these, and none of
+    // them is a conversion, a dereference, an iteration or an arithmetic fold.
+    let traits: Vec<&str> = found
+        .iter()
+        .filter(|header| header.contains(" for "))
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        traits,
+        TRAIT_IMPLS.to_vec(),
+        "this crate implements a trait the inventory does not carry"
+    );
+
+    // The scanner is not vacuous: it finds the shape `P2-A4` injected, and it
+    // does not read an `impl Trait` in argument position as a header.
+    assert_eq!(
+        impl_headers("impl From<&CoverageReport> for CompletenessWitness {\n}\n"),
+        ["impl From<&CoverageReport> for CompletenessWitness"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    );
+    assert!(impl_headers("fn takes(value: impl Display) {}\n").is_empty());
     Ok(())
 }
