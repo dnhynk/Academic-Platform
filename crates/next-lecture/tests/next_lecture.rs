@@ -1596,6 +1596,18 @@ impl Sample {
             .all(|path| !support::relative(path).contains("/tests/")),
         "the product walk descended into tests"
     );
+    // A qualified path is a leading `::` however it is spelled. `tighten` glues
+    // the space in `<T as ::std::net::X>` shut, and deciding on the byte before
+    // the `::` then read the crate root as a middle segment: `P2-A5` measured a
+    // name resolved from a live function with this pass reporting nothing.
+    assert!(
+        support::absolute_paths("let _ = <str as ::std::net::ToSocketAddrs>::to_socket_addrs(h);")
+            .contains("std::net")
+    );
+    assert!(support::absolute_paths("let _: &dyn ::core::fmt::Debug = &v;").contains("core::fmt"));
+    // The other direction, so the repair is not "every segment is a root": a
+    // real middle segment still yields no second key.
+    assert!(!support::absolute_paths("std::alloc::Layout::new::<u8>()").contains("alloc::Layout"));
     Ok(())
 }
 

@@ -1002,6 +1002,7 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
     let code = &tighten(code);
     let bytes = code.as_bytes();
     let mut found = BTreeSet::new();
+    let mut taken = 0_usize;
     for (at, _) in code.match_indices("::") {
         let mut start = at;
         while start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
@@ -1015,19 +1016,17 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
         if start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
             continue;
         }
-        // A middle segment of a longer path — the `b` of `a::b::c` — is not a
+        // A middle segment of a longer path -- the `b` of `a::b::c` -- is not a
         // crate root, and skipping it is what stops one path yielding two keys.
-        // But a **leading** `::` is not a middle segment: `::std::path::Path`
-        // is the absolute form of the same reach, and an earlier version of
-        // this function skipped it for the same reason it skips `b`. That was
-        // measured: `::std::path::Path::new(p).metadata()` opens the
-        // filesystem, spells none of the forbidden constructs, adds no `use`
-        // item, and passed. What tells the two apart is the byte before the
-        // `::`.
-        let after_segment = start >= 3
-            && &code[start - 2..start] == "::"
-            && (bytes[start - 3].is_ascii_alphanumeric() || bytes[start - 3] == b'_');
-        if after_segment {
+        // What decides it is whether this segment already sits inside a key
+        // this pass took, not the byte three positions back. `tighten` glues
+        // `as ::std` shut, so that byte is the `s` of a keyword and the leading
+        // `::` of a qualified path read as a middle one: `P2-A5` measured
+        // `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)` resolving
+        // a name from a live function while this pass reported nothing. Every
+        // segment outside a key already taken is a root, and a root nobody
+        // admits fails as an extra key rather than passing.
+        if start < taken {
             continue;
         }
         let root = &code[start..at];
@@ -1040,6 +1039,7 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
         }
         if end > at + 2 {
             found.insert(code[start..end].to_owned());
+            taken = end;
         }
     }
     found
@@ -1236,6 +1236,18 @@ fn the_helpers_are_not_vacuous() -> TestResult {
     );
     let names: HashSet<&str> = CALL_SITE_COUNTS.iter().map(|(name, ..)| *name).collect();
     assert_eq!(names.len(), CALL_SITE_COUNTS.len());
+    // A qualified path is a leading `::` however it is spelled. `tighten` glues
+    // the space in `<T as ::std::net::X>` shut, and deciding on the byte before
+    // the `::` then read the crate root as a middle segment: `P2-A5` measured a
+    // name resolved from a live function with this pass reporting nothing.
+    assert!(
+        absolute_paths("let _ = <str as ::std::net::ToSocketAddrs>::to_socket_addrs(h);")
+            .contains("std::net")
+    );
+    assert!(absolute_paths("let _: &dyn ::core::fmt::Debug = &v;").contains("core::fmt"));
+    // The other direction, so the repair is not "every segment is a root": a
+    // real middle segment still yields no second key.
+    assert!(!absolute_paths("std::alloc::Layout::new::<u8>()").contains("alloc::Layout"));
     Ok(())
 }
 
