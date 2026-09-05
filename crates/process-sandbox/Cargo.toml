@@ -1,0 +1,45 @@
+[package]
+name = "academic-process-sandbox"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# The one measured operating-system backend and the probe binary that observes
+# it. Off by default: the default lane is pure safe Rust with no syscall and no
+# probe target, so `cargo test --workspace` links neither, and with the feature
+# off `enter` refuses on every platform rather than pretending.
+native-enforcement = ["dep:libc"]
+
+[dependencies]
+academic-policy = { path = "../policy" }
+thiserror.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = { version = "=0.2.189", default-features = false, features = [
+  "std",
+], optional = true }
+
+[[bin]]
+name = "academic-process-sandbox-probe"
+path = "probes/enforcement_probe.rs"
+required-features = ["native-enforcement"]
+
+# The Linux backend is the only `unsafe` in this crate and it is the whole
+# reason the feature exists: a Landlock ruleset and a seccomp filter are
+# syscalls. `unsafe_is_confined_to_the_linux_backend` refuses an `unsafe`
+# anywhere else, so the default lane keeps the workspace's `forbid` in practice.
+# Every other workspace Rust and Clippy deny is reproduced exactly.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"

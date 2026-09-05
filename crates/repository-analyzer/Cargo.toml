@@ -6,8 +6,12 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+native-enforcement = ["academic-process-sandbox/native-enforcement"]
+
 [dependencies]
 academic-policy = { path = "../policy" }
+academic-process-sandbox = { path = "../process-sandbox" }
 
 [lints]
 workspace = true

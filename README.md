@@ -94,6 +94,10 @@ cargo clippy -p academic-capture-gate --all-targets --locked --offline --feature
 cargo test -p academic-capture-gate --all-targets --locked --offline --features native-capture
 cargo clippy -p academic-capture --all-targets --locked --offline --features phase2-fault-injection -- -D warnings
 cargo test -p academic-capture --all-targets --locked --offline --features phase2-fault-injection
+cargo clippy -p academic-process-sandbox --all-targets --locked --offline --features native-enforcement -- -D warnings
+cargo test -p academic-process-sandbox --all-targets --locked --offline --features native-enforcement
+cargo clippy -p academic-repository-analyzer -p academic-capture-client -p academic-egress --all-targets --locked --offline --features native-enforcement -- -D warnings
+cargo test -p academic-repository-analyzer -p academic-capture-client -p academic-egress --all-targets --locked --offline --features native-enforcement
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
@@ -145,6 +149,23 @@ candidate receipt also has only its Windows x86-64 and Linux x86-64 rows. Both
 conditions fail closed, `production_data_allowed` remains `false`, and ADR-002
 remains unaccepted. The exact receipt shape and provisioning boundary are in
 [the admission receipt contract](docs/contracts/admission-receipt.md).
+
+`P2-RF21` adds `academic-process-sandbox`: the process-class capability
+declaration, enforced or refused. `P2-A5` and `P2-A4` each measured a process
+declaring `OpenOutboundSocket = false` while connecting to a remote host, on both
+native hosts, with Linux reporting `Seccomp: 0`; six binaries computed their
+class's capability set and dropped it. Three of them —
+`academic-repository-analyzer`, `academic-capture-client` and `academic-egress` —
+now call `enter` before any work and exit non-zero when the refusals cannot be
+installed and confirmed by the kernel. The two lanes above are the only builds
+that install anything: with `native-enforcement` off, every process class refuses
+to start on every platform, which is what the default lane observes by launching
+each binary. On Windows they refuse in the feature lane too, and the contract
+says exactly which parent would have to exist for that to change. The other three
+process classes are not enforced yet and
+`the_unenforced_process_classes_are_named` is what keeps that visible. What is
+and is not claimed is in
+[process capability enforcement](docs/contracts/process-capability-enforcement.md).
 
 `P2-X1` adds the desktop shell's contracts: `packages/ui` holds the route
 manifest, the command palette, backlink traversal, the persistent right-hand

@@ -1,0 +1,44 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-stage-b",
+  "task": "P2-RF21",
+  "resolution_budget": 1,
+  "summary": {
+    "added_external_crate_count": 0,
+    "added_external_crate_count_note": "P2-RF21 adds no package to Cargo.lock. The Linux backend needs libc; it is already resolved in this lock through earlier reviewed receipts (through libsqlite3-sys, and directly by academic-worker and academic-capture-gate under P2-G4 and P2-L1), at the same pinned version. What is new is one direct edge, recorded below, and one workspace path package. There is deliberately no windows-sys edge: this crate applies nothing on Windows, so it declares nothing there.",
+    "linked_into_binary_count": 0,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 1,
+    "added_workspace_path_package_note": "academic-process-sandbox is an eighth workspace package and deliberately not a seventh process class. It holds no ProcessClass of its own: it takes one, computes the capabilities that class does not declare, refuses them, and asks the kernel whether the refusal took. Three of the six P2-G7 process packages now declare an edge to it -- academic-capture-client, academic-egress and academic-repository-analyzer, the three P2-A5 and P2-A4 measured -- and six_process_entrypoints_are_exact_and_distinct pins the whole manifest and whole product source of all six against the two shapes, so the three that are not yet enforced stay visible rather than passing as done.",
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {
+    "libc": "0.2.189"
+  },
+  "direct_edge_review": {
+    "libc": {
+      "version": "0.2.189",
+      "edge": "crates/process-sandbox, [target.'cfg(target_os = \"linux\")'.dependencies], optional, behind the non-default native-enforcement feature",
+      "already_in_lock": true,
+      "owner": "academic-process-sandbox",
+      "license": "MIT OR Apache-2.0",
+      "features": "default-features = false, features = [\"std\"]. No extra_traits, no align, no rustc-dep-of-std. Identical to the edge P2-G4 reviewed for academic-worker.",
+      "why_this_dependency_belongs_inside_its_trust_boundary": "The Linux backend is four syscalls: prctl(PR_SET_NO_NEW_PRIVS), landlock_create_ruleset, landlock_restrict_self, and seccomp(SECCOMP_SET_MODE_FILTER). libc is the declaration of those numbers and of the socket syscall numbers the filter refuses, nothing more; the seccomp BPF program and the Landlock ruleset structure are defined in this crate because libc does not carry them. Writing the declarations by hand instead was considered and rejected for P2-G4's reason: extern \"C\" blocks, #[link] and no_mangle are refused anywhere in a workspace crate by only_egress_crate_has_a_socket's third half, so a hand-rolled binding would have had to weaken that rule. The edge is target-scoped to Linux rather than to unix because Linux is the only platform with a self-applicable mechanism, and an edge that existed where nothing used it would be an unreviewed capability.",
+      "advisory_path": "Unchanged. libc is already triaged through the Phase 1 receipt's advisory path; this adds a second crate's edge to an existing pinned version, not a version."
+    }
+  },
+  "added_workspace_path_packages": [
+    {
+      "name": "academic-process-sandbox",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null
+    }
+  ],
+  "owner": "academic-process-sandbox",
+  "why_this_dependency_belongs_inside_its_trust_boundary": "academic-process-sandbox is a workspace path crate, not an external dependency. It owns one contract: a process runs only while the capabilities it holds are the capabilities its class declares, and where that cannot be enforced the process refuses to start. It classifies every member of P2-G7's ProcessCapability vocabulary through an exhaustive match -- enforced here, enforced elsewhere by a named mechanism, or governed only by the broker's decision table with the reason recorded -- so a capability added to that vocabulary stops this crate compiling rather than joining an unenforced remainder. It is the second workspace crate outside the four reviewed platform leaves to hold unsafe code, and unsafe_is_confined_to_the_linux_backend in crates/process-sandbox/tests/scans.rs keeps that to the one backend file. Its only product edge is academic-policy: it reads the declaration off the same enum the broker decides with, so the declaration and the refusal cannot drift apart. It deliberately has no edge to academic-worker -- that crate's rule that nothing may depend on it is unchanged and still enforced -- and no edge to anything above academic-policy.",
+  "network_posture": "The crate's product source opens no socket. Its Linux backend names the socket syscall numbers, and only to put them in a seccomp deny list, which only_egress_crate_has_a_socket checks structurally: SECCOMP_DENY_LISTS applies the rule P2-G4 wrote for one file to both files, so every SYS_ spelling in this backend has to appear inside its denied_syscalls function or be one of the three it installs with. The probe binary under crates/process-sandbox/probes does name TcpStream, TcpListener and ToSocketAddrs, because a test that proves the operating system refuses a socket has to ask for one; it is a [[bin]] with required-features = [\"native-enforcement\"] and a path outside src, and a dependent crate links a package's library target and never its binaries, both of which that same scan reads out of cargo metadata. product_network stays NONE.",
+  "advisory_path": "Unchanged. The one external crate this task reaches was admitted by an earlier receipt at this exact version and is triaged through it. .github/dependabot.yml opens no version-update pull request.",
+  "admissions": []
+}
