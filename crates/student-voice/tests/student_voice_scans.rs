@@ -45,24 +45,38 @@ use std::{
 
 use common::TestResult;
 
-/// Constructions of `Name { .. }`, less every declaration form.
+/// Constructions of `Name { .. }`, less every position that is not one.
 ///
-/// `constructions_of` subtracts `struct`, `impl` and `for`. A **fourth** form
-/// spells the same three characters and it is not a construction: a function
-/// whose return type is the struct, written `-> Name {`. Counting it made "one
-/// producer" read as two the first time this rule ran, which is exactly the
-/// class of miscount `declarations_of` exists to fix one level up.
+/// `constructions_of` carries the whole rule now. It used to subtract only
+/// `struct`, `impl` and `for`, and this function subtracted the fourth form,
+/// `-> Name {`, on top. `P2-A4`'s second audit found the fifth: a function
+/// returning a **reference**, written `-> &Name {`, which neither subtraction
+/// saw, so `RestrictedOriginal` read as having two producers. Each round of
+/// that was one spelling further out, so the rule moved to what introduces
+/// the name rather than to a list of the ways it can be introduced.
 fn built_count(code: &str, name: &str) -> usize {
-    constructions_of(code, name).saturating_sub(occurrences(code, &format!("-> {name} {{")))
+    constructions_of(code, name)
 }
 
-/// The counter is not vacuous and does not over-subtract.
+/// The counter is not vacuous and subtracts every position that is not a
+/// construction, including the two that were counted before.
 #[test]
 fn the_construction_counter_reads_a_literal_and_not_a_return_type() {
     let sample = "pub struct Thing { a: u8, } impl Thing { } fn make() -> Thing { Thing { a: 1 } }";
     assert_eq!(built_count(sample, "Thing"), 1);
     let returns_only = "fn make() -> Thing { other() }";
     assert_eq!(built_count(returns_only, "Thing"), 0);
+    // The form that made `RestrictedOriginal` read as two.
+    let borrowed = "const fn held(&self) -> &Thing { &self.thing }";
+    assert_eq!(built_count(borrowed, "Thing"), 0);
+    let exclusive = "fn held(&mut self) -> &mut Thing { &mut self.thing }";
+    assert_eq!(built_count(exclusive, "Thing"), 0);
+    let lifetime = "fn held(&self) -> &'a Thing { &self.thing }";
+    assert_eq!(built_count(lifetime, "Thing"), 0);
+    // A trait impl for the type is still not a construction of it, and a
+    // literal written after one still is.
+    let trait_impl = "impl Debug for Thing { fn fmt(&self) { let _ = Thing { a: 1 }; } }";
+    assert_eq!(built_count(trait_impl, "Thing"), 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -604,20 +618,77 @@ fn public_methods(source: &str, header: &str) -> Result<Vec<String>, Box<dyn Err
     Ok(found)
 }
 
-/// Counts constructions of `Name { .. }`, less the declarations that spell the
-/// same three characters.
+/// Whether a `Name {` written after `before` is a declaration or a type
+/// rather than a construction.
 ///
-/// A bare `Name {` count reads a struct declaration, an inherent `impl` and a
-/// trait `impl` as constructions. Subtracting them is the same repair
-/// `declarations_of` is to `uses_of` one level up: the count has to be of the
-/// thing, not of the spelling.
+/// Four tokens introduce the name in a position that builds nothing:
+/// `struct Name {`, `impl Name {`, `impl Trait for Name {` and a return type
+/// `-> Name {`. Between the token and the name a type may carry `&`, `&mut`
+/// and a lifetime, and those are stripped rather than enumerated as further
+/// prefixes — which is the repair, because a list of prefixes is what failed:
+/// `-> Name {` was subtracted and `-> &RestrictedOriginal {` was not, so the
+/// type that holds the removed speech read as having two producers when it has
+/// one, and `P2-A4`'s second audit found it had no producer count at all.
+fn introduced_as_a_type(before: &str) -> bool {
+    let mut head = before.trim_end();
+    loop {
+        let shorter = if let Some(rest) = strip_token(head, "mut") {
+            rest
+        } else if let Some(rest) = head.strip_suffix('&') {
+            rest
+        } else if let Some(rest) = strip_lifetime(head) {
+            rest
+        } else {
+            break;
+        };
+        head = shorter.trim_end();
+    }
+    head.ends_with("->")
+        || ["struct", "impl", "for"]
+            .iter()
+            .any(|token| strip_token(head, token).is_some())
+}
+
+/// `text` without a trailing whole-word `token`, or `None`.
+fn strip_token<'a>(text: &'a str, token: &str) -> Option<&'a str> {
+    let rest = text.strip_suffix(token)?;
+    let boundary = rest
+        .chars()
+        .next_back()
+        .is_none_or(|character| !(character.is_alphanumeric() || character == '_'));
+    boundary.then_some(rest)
+}
+
+/// `text` without a trailing lifetime such as `'a` or `'static`, or `None`.
+fn strip_lifetime(text: &str) -> Option<&str> {
+    let name: String = text
+        .chars()
+        .rev()
+        .take_while(|character| character.is_alphanumeric() || *character == '_')
+        .collect();
+    if name.is_empty() {
+        return None;
+    }
+    let cut = text.len().checked_sub(name.len())?;
+    let rest = text.get(..cut)?;
+    rest.strip_suffix('\'')
+}
+
+/// Counts constructions of `Name { .. }`, less the declarations and the type
+/// positions that spell the same characters.
+///
+/// A bare `Name {` count reads a struct declaration, an inherent `impl`, a
+/// trait `impl` and a return type as constructions. Subtracting them is the
+/// same repair `declarations_of` is to `uses_of` one level up: the count has
+/// to be of the thing, not of the spelling.
 fn constructions_of(code: &str, name: &str) -> usize {
     let literal = format!("{name} {{");
-    let total = occurrences(code, &literal);
-    let declarations = occurrences(code, &format!("struct {literal}"))
-        .saturating_add(occurrences(code, &format!("impl {literal}")))
-        .saturating_add(occurrences(code, &format!("for {literal}")));
-    total.saturating_sub(declarations)
+    code.match_indices(&literal)
+        .filter(|(at, _)| {
+            code.get(..*at)
+                .is_some_and(|before| !introduced_as_a_type(before))
+        })
+        .count()
 }
 
 /// Whether `text` names any of `names` as a whole identifier.
@@ -827,6 +898,115 @@ fn a_reviewed_capture_has_one_producer() -> TestResult {
     }
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// A restricted original has one producer
+// ---------------------------------------------------------------------------
+
+/// The record of what a redaction took out is built in one place.
+///
+/// `P2-A4`'s second audit enumerated this crate's construction counts rather
+/// than asserting them and found exactly three — `AccuracyWitness`,
+/// `DiarizationMeasurement` and `ReviewedCapture`. The type that *holds the
+/// removed speech* had none, and that is why the forgery half of its F1
+/// worked: a second `RestrictedOriginal { … }` written beside the real one,
+/// copying the real digest and leaving `removed` empty, is a record of a
+/// redaction that says nothing was taken out of somebody's lecture, and
+/// `RawAccessGrant::issued(real, …)` **opens it**, because the refusal
+/// compares the digest and the digest was carried over. The audit measured it
+/// disclosing 0 utterances while the real original held 3, and writing an
+/// audit row asserting `utterances_disclosed = 0`.
+///
+/// A count over constructions is the shape that catches that, and it is the
+/// shape the other three already had. It is independent of
+/// `every_item_that_reaches_a_closed_type_is_pinned` in
+/// `crates/contracts/tests/item_inventory_scans.rs`, which catches the same
+/// injection as an item nobody wrote down: this one catches it as a second
+/// producer even if somebody adds it to that pin.
+#[test]
+fn a_restricted_original_has_one_producer() -> TestResult {
+    let mut built = 0;
+    for path in crate_product_sources()? {
+        built += built_count(&code_of(&path)?, "RestrictedOriginal");
+    }
+    assert_eq!(built, 1, "a RestrictedOriginal is built somewhere else");
+
+    // And the one place is the redaction, not merely somewhere in the file.
+    let derivative = code_of(&crate_root().join("src/derivative.rs"))?;
+    let redact = declared_item(&derivative, "pub fn redact(")?;
+    assert_eq!(
+        built_count(&redact, "RestrictedOriginal"),
+        1,
+        "the one construction of an original is outside `redact`"
+    );
+    assert_eq!(
+        declarations_of(&derivative, "redact"),
+        1,
+        "a second function named redact exists"
+    );
+
+    // The surface is seven reads and no write. `open` is the only one that
+    // returns the speech, and it takes the grant by value.
+    assert_eq!(
+        public_methods(&derivative, "impl RestrictedOriginal {")?,
+        vec![
+            "classification".to_owned(),
+            "digest".to_owned(),
+            "lecture".to_owned(),
+            "open".to_owned(),
+            "removed_count".to_owned(),
+            "source_version".to_owned(),
+            "terms".to_owned(),
+        ],
+        "the restricted original's public surface changed"
+    );
+    // No method takes the value by exclusive reference, so nothing writes
+    // through one. This is the half claim 5 is literally about, stated over
+    // the whole signature set rather than over the three the reader expects.
+    for signature in signatures_touching(&derivative, "RestrictedOriginal") {
+        assert!(
+            !signature.contains("&mut self"),
+            "a restricted original has a method that can write through it: {signature}"
+        );
+    }
+
+    // No second route into one: no `Default`, and the derive list is what it
+    // is. A `Serialize` added here hands out `removed` with no grant at all.
+    for path in crate_product_sources()? {
+        let code = code_of(&path)?;
+        assert_eq!(
+            occurrences(&code, "impl Default for RestrictedOriginal"),
+            0,
+            "{} gives an original a second route",
+            relative(&path)
+        );
+    }
+    assert_eq!(
+        declared_item(&derivative, "pub struct RestrictedOriginal {")?,
+        WHOLE_RESTRICTED_ORIGINAL,
+        "the original's fields changed"
+    );
+    assert_eq!(
+        occurrences(&derivative, RESTRICTED_ORIGINAL_DERIVES),
+        1,
+        "the derives on a restricted original changed"
+    );
+    Ok(())
+}
+
+/// The derive list on a restricted original, with the line it sits on.
+///
+/// Load-bearing, and invisible to every sweep in this file that reads a
+/// signature or an `impl` header: the items a derive writes are generated, so
+/// a serializing derive added here would hand out `removed` with no grant and
+/// no log row and no source line for a collector to keep. `Clone` is what
+/// lets a holder keep a copy; it is not what let `P2-A4` forge one, which
+/// needed the fields.
+const RESTRICTED_ORIGINAL_DERIVES: &str = "#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RestrictedOriginal {";
+
+/// The fields a restricted original holds, whole.
+const WHOLE_RESTRICTED_ORIGINAL: &str = "pub struct RestrictedOriginal { lecture: LectureSessionId, source_version: u32, terms: RetentionTerms, removed: Vec<RemovedUtterance>, digest: ContentDigest, }";
 
 // ---------------------------------------------------------------------------
 // The retention rule has one producer
