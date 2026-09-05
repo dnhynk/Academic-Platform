@@ -227,7 +227,7 @@ fn identifier_uses(code: &str, name: &str) -> usize {
 /// pinned sets below statements about what a function *takes and returns*: a
 /// second function with the same name and a different type fails, and so does
 /// the same function with a widened parameter.
-fn signatures(code: &str) -> Vec<String> {
+fn signatures(code: &str) -> Vec<(usize, String)> {
     let mut found = Vec::new();
     let bytes = code.as_bytes();
     for (at, _) in code.match_indices("fn ") {
@@ -248,15 +248,169 @@ fn signatures(code: &str) -> Vec<String> {
             }
         }
         if let Some(end) = end {
-            found.push(
+            found.push((
+                at,
                 code[at..end]
                     .split_whitespace()
                     .collect::<Vec<_>>()
                     .join(" "),
-            );
+            ));
         }
     }
     found
+}
+
+/// Every `impl` block in `code`, as the byte range of its body and the type it
+/// is written on.
+///
+/// The subject is what follows `for` in a trait implementation and what follows
+/// `impl` otherwise, generic arguments and a `where` clause dropped, reduced to
+/// its last path segment. `impl core::fmt::Debug for FetchOutcome` is
+/// `FetchOutcome`; `impl ConditionalRequest` is `ConditionalRequest`.
+fn impl_blocks(code: &str) -> Vec<(usize, usize, String)> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("impl") {
+        if at > 0 && (bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_') {
+            continue;
+        }
+        if code[at + 4..]
+            .starts_with(|character: char| character.is_alphanumeric() || character == '_')
+        {
+            continue;
+        }
+        let mut depth = 0_i32;
+        let mut open = None;
+        for (offset, character) in code[at..].char_indices() {
+            match character {
+                '<' | '(' | '[' => depth += 1,
+                '>' | ')' | ']' => depth -= 1,
+                ';' if depth <= 0 => break,
+                '{' if depth <= 0 => {
+                    open = Some(at + offset);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        let Some(open) = open else {
+            continue;
+        };
+        let header = &code[at..open];
+        let mut close = None;
+        let mut braces = 0_i32;
+        for (offset, character) in code[open..].char_indices() {
+            match character {
+                '{' => braces += 1,
+                '}' => {
+                    braces -= 1;
+                    if braces == 0 {
+                        close = Some(open + offset);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let Some(close) = close else {
+            continue;
+        };
+        let after_impl = header.get(4..).unwrap_or_default();
+        // `impl<'a, T: Bound>` -- the generic list belongs to the `impl`, not
+        // to the subject, so it is stepped over before anything is read.
+        let trimmed = after_impl.trim_start();
+        let subject_region = if trimmed.starts_with('<') {
+            let mut depth = 0_i32;
+            let mut end = trimmed.len();
+            for (offset, character) in trimmed.char_indices() {
+                match character {
+                    '<' => depth += 1,
+                    '>' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = offset + 1;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            trimmed.get(end..).unwrap_or_default()
+        } else {
+            trimmed
+        };
+        let mut subject = subject_region;
+        // `for` at depth zero separates the trait from the type it is on.
+        let mut depth = 0_i32;
+        for (offset, character) in subject_region.char_indices() {
+            match character {
+                '<' | '(' | '[' => depth += 1,
+                '>' | ')' | ']' => depth -= 1,
+                _ => {}
+            }
+            if depth == 0 && subject_region[offset..].starts_with(" for ") {
+                subject = subject_region.get(offset + 5..).unwrap_or_default();
+            }
+        }
+        let subject = subject
+            .split(" where ")
+            .next()
+            .unwrap_or_default()
+            .split('<')
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .rsplit("::")
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .to_owned();
+        found.push((open, close, subject));
+    }
+    found
+}
+
+/// The type an item at `at` is written on, if it is inside an `impl` block.
+///
+/// The innermost enclosing block, so a nested `impl` inside a function body
+/// resolves to itself rather than to whatever encloses it.
+fn owner_at(blocks: &[(usize, usize, String)], at: usize) -> Option<&str> {
+    blocks
+        .iter()
+        .filter(|(open, close, _)| at > *open && at < *close)
+        .min_by_key(|(open, close, _)| close - open)
+        .map(|(_, _, subject)| subject.as_str())
+}
+
+/// A signature with `Self` and the receiver resolved against `owner`.
+///
+/// `P2-R6` measured what this is for: a signature's text cannot see what
+/// `&self` is, and `pub fn emphasis(&self) -> u32` passed a scan about which
+/// types may be folded to a number because the type it was written on was
+/// nowhere in the string. `P2-A3` measured the same hole from the other side —
+/// the idiomatic `Self` inside `impl ConditionalRequest` put a
+/// challenge-to-request function past a set that was supposed to hold every
+/// signature producing or consuming a request. Both are the same defect: a
+/// reader that is not owner-aware sees a method as if it belonged to nobody.
+fn owner_resolved(signature: &str, owner: &str) -> String {
+    let mut out = String::with_capacity(signature.len());
+    let mut skip_to = 0_usize;
+    for (index, character) in signature.char_indices() {
+        if index < skip_to {
+            continue;
+        }
+        let matched = ["Self", "self"].into_iter().find(|name| {
+            signature[index..].starts_with(name) && is_whole_identifier(signature, index, name)
+        });
+        match matched {
+            Some(name) => {
+                out.push_str(owner);
+                skip_to = index + name.len();
+            }
+            None => out.push(character),
+        }
+    }
+    out
 }
 
 /// Every function declaration in `code`, as a public flag and a signature.
@@ -318,17 +472,40 @@ fn public_surface(source: &str, header: &str) -> Result<Vec<String>, Box<dyn Err
 }
 
 /// Every signature anywhere in this crate's product source that names one of
-/// `types`, paired with the file it is in.
+/// `types`, paired with the file it is in and the type it is written on.
+///
+/// Both the membership test and the recorded entry use the **owner-resolved**
+/// text, so a method inside `impl ConditionalRequest` is in the set whether it
+/// writes `Self`, `self` or the type's own name. Before `P2-A3`, the set was
+/// keyed on the spelling: `fn from_challenge(previous: Self, answered:
+/// &FetchOutcome) -> Self` — a request derived from a response, carrying the
+/// previous request's credential forward — sat in `fetch.rs` with the whole
+/// suite green, and the identical method with the two `Self`s written out
+/// failed. The owner is part of the key as well as of the text, so two types
+/// with an identically spelled method are two entries rather than one.
 fn signatures_naming(types: &[&str]) -> Result<BTreeSet<String>, Box<dyn Error>> {
     let mut found = BTreeSet::new();
     for path in product_sources()? {
         let code = code_of(&path)?;
-        for signature in signatures(&code) {
+        let blocks = impl_blocks(&code);
+        for (at, signature) in signatures(&code) {
+            // A free function and a trait method have no owner to resolve
+            // against: the first has no receiver and the second's is whichever
+            // type implements it, so both keep the text they were written with.
+            let owner = owner_at(&blocks, at);
+            let resolved = owner.map_or_else(
+                || signature.clone(),
+                |subject| owner_resolved(&signature, subject),
+            );
             if types
                 .iter()
-                .any(|name| identifier_uses(&signature, name) > 0)
+                .any(|name| identifier_uses(&resolved, name) > 0)
             {
-                found.insert(format!("{}: {signature}", relative(&path)));
+                found.insert(format!(
+                    "{}: [{}] {resolved}",
+                    relative(&path),
+                    owner.unwrap_or("-")
+                ));
             }
         }
     }
@@ -566,19 +743,34 @@ const CONFLICT_ITEMS: [&str; 24] = [
 /// `conflict.rs`. Every one of these returns a finding, a relation, a
 /// disposition, or a case — none of them returns a source, a connector, a
 /// target, or a claim, which is what "there is no winner" means.
-const CONFLICT_SIGNATURES: [&str; 12] = [
-    "crates/ingestion/src/conflict.rs: fn detect(left: ContendingSource, right: ContendingSource) -> Option<ConflictCase>",
-    "crates/ingestion/src/conflict.rs: fn dimension(&self) -> ConflictDimension",
-    "crates/ingestion/src/conflict.rs: fn finding(&self, dimension: ConflictDimension) -> Option<&DimensionFinding>",
-    "crates/ingestion/src/conflict.rs: fn findings(&self) -> &[DimensionFinding]",
-    "crates/ingestion/src/conflict.rs: fn left(&self) -> &ContendingSource",
-    "crates/ingestion/src/conflict.rs: fn open(left: ContendingSource, right: ContendingSource) -> Self",
-    "crates/ingestion/src/conflict.rs: fn outcome(&self) -> DimensionOutcome",
-    "crates/ingestion/src/conflict.rs: fn right(&self) -> &ContendingSource",
-    "crates/ingestion/src/publish.rs: fn conflicts(&self) -> &[ConflictCase]",
-    "crates/ingestion/src/publish.rs: fn new( connector: ConnectorId, reason: QueueReason, rules: Vec<RuleId>, conflicts: Vec<ConflictCase>, ) -> Self",
-    "crates/ingestion/src/stage.rs: fn conflicts(&self) -> &[ConflictCase]",
-    "crates/ingestion/src/stage.rs: fn with_contender(mut self, contender: ContendingSource) -> Self",
+const CONFLICT_SIGNATURES: [&str; 27] = [
+    "crates/ingestion/src/conflict.rs: [-] fn detect(left: ContendingSource, right: ContendingSource) -> Option<ConflictCase>",
+    "crates/ingestion/src/conflict.rs: [ConflictCase] fn disposition(&ConflictCase) -> AuditDisposition",
+    "crates/ingestion/src/conflict.rs: [ConflictCase] fn finding(&ConflictCase, dimension: ConflictDimension) -> Option<&DimensionFinding>",
+    "crates/ingestion/src/conflict.rs: [ConflictCase] fn findings(&ConflictCase) -> &[DimensionFinding]",
+    "crates/ingestion/src/conflict.rs: [ConflictCase] fn left(&ConflictCase) -> &ContendingSource",
+    "crates/ingestion/src/conflict.rs: [ConflictCase] fn open(left: ContendingSource, right: ContendingSource) -> ConflictCase",
+    "crates/ingestion/src/conflict.rs: [ConflictCase] fn resolution(&ConflictCase) -> &Resolution",
+    "crates/ingestion/src/conflict.rs: [ConflictCase] fn resolve(&mut ConflictCase, resolution: UserResolution)",
+    "crates/ingestion/src/conflict.rs: [ConflictCase] fn right(&ConflictCase) -> &ContendingSource",
+    "crates/ingestion/src/conflict.rs: [ConflictDimension] fn as_str(ConflictDimension) -> &'static str",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn authority(&ContendingSource) -> LegalAuthority",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn connector(&ContendingSource) -> &ConnectorId",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn dating(&ContendingSource) -> Dating",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn from_document( connector: ConnectorId, target: DeclaredTarget, document: &OfficialDocument, rule: &RuleId, ) -> Option<ContendingSource>",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn issued(&ContendingSource) -> Option<IssuanceDate>",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn rule(&ContendingSource) -> &RuleId",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn scope(&ContendingSource) -> &TargetScope",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn target(&ContendingSource) -> DeclaredTarget",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn text_digest(&ContendingSource) -> &ContentDigest",
+    "crates/ingestion/src/conflict.rs: [ContendingSource] fn transitional_measures(&ContendingSource) -> TransitionalMeasures",
+    "crates/ingestion/src/conflict.rs: [DimensionFinding] fn dimension(&DimensionFinding) -> ConflictDimension",
+    "crates/ingestion/src/conflict.rs: [DimensionFinding] fn outcome(&DimensionFinding) -> DimensionOutcome",
+    "crates/ingestion/src/conflict.rs: [DimensionOutcome] fn as_str(DimensionOutcome) -> &'static str",
+    "crates/ingestion/src/publish.rs: [ReviewQueued] fn conflicts(&ReviewQueued) -> &[ConflictCase]",
+    "crates/ingestion/src/publish.rs: [ReviewQueued] fn new( connector: ConnectorId, reason: QueueReason, rules: Vec<RuleId>, conflicts: Vec<ConflictCase>, ) -> ReviewQueued",
+    "crates/ingestion/src/stage.rs: [Corpus] fn with_contender(mut Corpus, contender: ContendingSource) -> Corpus",
+    "crates/ingestion/src/stage.rs: [Reconciled] fn conflicts(&Reconciled) -> &[ConflictCase]",
 ];
 
 /// The whole public surface of `ConflictCase`.
@@ -792,9 +984,11 @@ fn no_numeric_source_winner() -> TestResult {
 /// consumes one. A fourth fails as an extra key however it is named, which is
 /// what makes this a statement about the credential rather than about a
 /// spelling.
-const CREDENTIAL_SIGNATURES: [&str; 2] = [
-    "crates/ingestion/src/fetch.rs: fn credentialed( manifest: &ConnectorManifest, binding: CredentialBinding, target: DeclaredTarget, validators: Validators, ) -> Result<Self, Denial>",
-    "crates/ingestion/src/manifest.rs: fn credential_binding(&self) -> Option<CredentialBinding>",
+const CREDENTIAL_SIGNATURES: [&str; 4] = [
+    "crates/ingestion/src/fetch.rs: [ConditionalRequest] fn credentialed( manifest: &ConnectorManifest, binding: CredentialBinding, target: DeclaredTarget, validators: Validators, ) -> Result<ConditionalRequest, Denial>",
+    "crates/ingestion/src/manifest.rs: [ConnectorManifest] fn credential_binding(&ConnectorManifest) -> Option<CredentialBinding>",
+    "crates/ingestion/src/manifest.rs: [CredentialBinding] fn connector(&CredentialBinding) -> &ConnectorId",
+    "crates/ingestion/src/manifest.rs: [CredentialBinding] fn fmt(&CredentialBinding, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
 ];
 
 /// The whole set of `impl` block headers naming `CredentialBinding`.
@@ -948,8 +1142,14 @@ fn credentials_never_reach_a_general_crawler() -> TestResult {
 /// A bypass of an access control is a function from a challenge to an answer —
 /// that is, from a response to a request. Every entry here takes a manifest, a
 /// `&'static` target and a set of validators, and nothing else.
-const REQUEST_SIGNATURES: [&str; 1] = [
-    "crates/ingestion/src/fetch.rs: fn fetch(&self, request: &ConditionalRequest) -> Result<FetchOutcome, String>",
+const REQUEST_SIGNATURES: [&str; 7] = [
+    "crates/ingestion/src/fetch.rs: [-] fn fetch(&self, request: &ConditionalRequest) -> Result<FetchOutcome, String>",
+    "crates/ingestion/src/fetch.rs: [ConditionalRequest] fn anonymous( manifest: &ConnectorManifest, target: DeclaredTarget, validators: Validators, ) -> Result<ConditionalRequest, Denial>",
+    "crates/ingestion/src/fetch.rs: [ConditionalRequest] fn connector(&ConditionalRequest) -> &ConnectorId",
+    "crates/ingestion/src/fetch.rs: [ConditionalRequest] fn credentialed( manifest: &ConnectorManifest, binding: CredentialBinding, target: DeclaredTarget, validators: Validators, ) -> Result<ConditionalRequest, Denial>",
+    "crates/ingestion/src/fetch.rs: [ConditionalRequest] fn presents_a_credential(&ConditionalRequest) -> bool",
+    "crates/ingestion/src/fetch.rs: [ConditionalRequest] fn target(&ConditionalRequest) -> DeclaredTarget",
+    "crates/ingestion/src/fetch.rs: [ConditionalRequest] fn validators(&ConditionalRequest) -> &Validators",
 ];
 
 /// The whole public surface of `ConditionalRequest`.
@@ -1433,9 +1633,12 @@ fn no_document_text_leaves_the_parser() -> TestResult {
 /// this sweep and is covered instead by
 /// `tests/compile_fail/publishable_rules_cannot_be_assembled.rs`. A second
 /// entry point into publication fails here as an extra key.
-const PUBLISHABLE_SIGNATURES: [&str; 2] = [
-    "crates/ingestion/src/publish.rs: fn publish(publishable: PublishableRules<'_>) -> PublishedRules",
-    "crates/ingestion/src/stage.rs: fn publishable(&self) -> Option<PublishableRules<'_>>",
+const PUBLISHABLE_SIGNATURES: [&str; 5] = [
+    "crates/ingestion/src/publish.rs: [-] fn publish(publishable: PublishableRules<'_>) -> PublishedRules",
+    "crates/ingestion/src/publish.rs: [PublishableRules] fn effective(&PublishableRules) -> EffectiveDate",
+    "crates/ingestion/src/publish.rs: [PublishableRules] fn new( document: &'run OfficialDocument, connector: &'run ConnectorId, effective: EffectiveDate, retrieved_at: RetrievalInstant, ) -> PublishableRules",
+    "crates/ingestion/src/publish.rs: [PublishableRules] fn scope(&PublishableRules) -> &TargetScope",
+    "crates/ingestion/src/stage.rs: [Reconciled] fn publishable(&Reconciled) -> Option<PublishableRules<'_>>",
 ];
 
 /// The one assembly of the publishable value, whole.
@@ -1507,3 +1710,458 @@ fn the_publisher_has_one_argument_type_and_one_producer() -> TestResult {
     );
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// The whole-set inventory
+// ---------------------------------------------------------------------------
+
+/// Every `impl` block header this crate ships, whole.
+///
+/// The header runs from `impl` to the opening brace, so
+/// `impl From<&FetchOutcome> for ConditionalRequest` and `impl
+/// ConditionalRequest` are different entries and a trait implementation cannot
+/// arrive as an edit to an inherent one.
+fn impl_headers(code: &str) -> Vec<String> {
+    let bytes = code.as_bytes();
+    let mut found = Vec::new();
+    for (at, _) in code.match_indices("impl") {
+        if at > 0 && (bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_') {
+            continue;
+        }
+        if code[at + 4..]
+            .starts_with(|character: char| character.is_alphanumeric() || character == '_')
+        {
+            continue;
+        }
+        let Some(end) = code[at..].find(['{', ';']) else {
+            continue;
+        };
+        found.push(
+            code[at..at + end]
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" "),
+        );
+    }
+    found
+}
+
+/// The floor under the inventory walk.
+const INVENTORY_FILE_FLOOR: usize = 14;
+
+/// Nothing this crate declares is outside the two pinned sets.
+///
+/// `P2-A3` recorded that `ingestion_scans.rs` held eight tests and none of them
+/// was a whole-declaration or `impl` inventory, and that the repair which gave
+/// six other crates one skipped this crate on the ground that it already had
+/// a set comparison. It did not: `signatures_naming` is a set of the signatures
+/// whose **text** names a type, which the idiomatic `Self` walks past. That
+/// half is now owner-aware; this is the half that does not depend on naming a
+/// type at all.
+///
+/// Two whole sets, each compared in both directions:
+///
+/// 1. every function declaration this package ships, as a file, a visibility
+///    and a full signature;
+/// 2. every `impl` block header this package ships, as a file and a header.
+///
+/// A new function, a new method, a new inherent `impl` and a new trait `impl`
+/// each fail as an entry nobody wrote down, whatever they are called. That is
+/// what makes the sentence in `src/fetch.rs` true: a challenge-response loop
+/// fails as an extra key rather than as a missing token.
+#[test]
+fn every_declaration_and_impl_in_this_crate_is_pinned() -> TestResult {
+    let sources = product_sources()?;
+    assert!(
+        sources.len() >= INVENTORY_FILE_FLOOR,
+        "the inventory walk read only {} files",
+        sources.len()
+    );
+
+    let mut declared = Vec::new();
+    let mut headers = Vec::new();
+    for path in &sources {
+        let name = relative(path);
+        let code = code_of(path)?;
+        for (public, signature) in declarations(&code) {
+            let visibility = if public { "pub" } else { "priv" };
+            declared.push(format!("{name} [{visibility}] {signature}"));
+        }
+        for header in impl_headers(&code) {
+            headers.push(format!("{name}: {header}"));
+        }
+    }
+    declared.sort();
+    headers.sort();
+
+    assert_eq!(
+        declared,
+        DECLARATIONS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's declaration set changed"
+    );
+    assert_eq!(
+        headers,
+        IMPL_HEADERS
+            .iter()
+            .map(|entry| (*entry).to_owned())
+            .collect::<Vec<_>>(),
+        "this crate's impl inventory changed"
+    );
+    Ok(())
+}
+
+/// Every function this package declares, sorted.
+const DECLARATIONS: [&str; 261] = [
+    "crates/ingestion/src/conflict.rs [priv] fn compare_optional_dates<T: HasDate>(left: Option<T>, right: Option<T>) -> DateComparison",
+    "crates/ingestion/src/conflict.rs [priv] fn date(&self) -> crate::dating::Date",
+    "crates/ingestion/src/conflict.rs [priv] fn date(&self) -> crate::dating::Date",
+    "crates/ingestion/src/conflict.rs [priv] fn date(&self) -> crate::dating::Date",
+    "crates/ingestion/src/conflict.rs [pub] fn actor(&self) -> &DependentId",
+    "crates/ingestion/src/conflict.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/conflict.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/conflict.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/conflict.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/conflict.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/conflict.rs [pub] fn authority(&self) -> LegalAuthority",
+    "crates/ingestion/src/conflict.rs [pub] fn chose(&self) -> Side",
+    "crates/ingestion/src/conflict.rs [pub] fn connector(&self) -> &ConnectorId",
+    "crates/ingestion/src/conflict.rs [pub] fn dating(&self) -> Dating",
+    "crates/ingestion/src/conflict.rs [pub] fn detect(left: ContendingSource, right: ContendingSource) -> Option<ConflictCase>",
+    "crates/ingestion/src/conflict.rs [pub] fn dimension(&self) -> ConflictDimension",
+    "crates/ingestion/src/conflict.rs [pub] fn disposition(&self) -> AuditDisposition",
+    "crates/ingestion/src/conflict.rs [pub] fn finding(&self, dimension: ConflictDimension) -> Option<&DimensionFinding>",
+    "crates/ingestion/src/conflict.rs [pub] fn findings(&self) -> &[DimensionFinding]",
+    "crates/ingestion/src/conflict.rs [pub] fn from_document( connector: ConnectorId, target: DeclaredTarget, document: &OfficialDocument, rule: &RuleId, ) -> Option<Self>",
+    "crates/ingestion/src/conflict.rs [pub] fn issued(&self) -> Option<IssuanceDate>",
+    "crates/ingestion/src/conflict.rs [pub] fn left(&self) -> &ContendingSource",
+    "crates/ingestion/src/conflict.rs [pub] fn open(left: ContendingSource, right: ContendingSource) -> Self",
+    "crates/ingestion/src/conflict.rs [pub] fn outcome(&self) -> DimensionOutcome",
+    "crates/ingestion/src/conflict.rs [pub] fn recorded(chose: Side, actor: DependentId) -> Self",
+    "crates/ingestion/src/conflict.rs [pub] fn resolution(&self) -> &Resolution",
+    "crates/ingestion/src/conflict.rs [pub] fn resolve(&mut self, resolution: UserResolution)",
+    "crates/ingestion/src/conflict.rs [pub] fn right(&self) -> &ContendingSource",
+    "crates/ingestion/src/conflict.rs [pub] fn rule(&self) -> &RuleId",
+    "crates/ingestion/src/conflict.rs [pub] fn scope(&self) -> &TargetScope",
+    "crates/ingestion/src/conflict.rs [pub] fn target(&self) -> DeclaredTarget",
+    "crates/ingestion/src/conflict.rs [pub] fn text_digest(&self) -> &ContentDigest",
+    "crates/ingestion/src/conflict.rs [pub] fn transitional_measures(&self) -> TransitionalMeasures",
+    "crates/ingestion/src/dating.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
+    "crates/ingestion/src/dating.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
+    "crates/ingestion/src/dating.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
+    "crates/ingestion/src/dating.rs [priv] fn is_leap_year(year: u16) -> bool",
+    "crates/ingestion/src/dating.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/dating.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/dating.rs [pub] fn date(self) -> Date",
+    "crates/ingestion/src/dating.rs [pub] fn date(self) -> Date",
+    "crates/ingestion/src/dating.rs [pub] fn day(self) -> u8",
+    "crates/ingestion/src/dating.rs [pub] fn effective_date(self) -> Option<EffectiveDate>",
+    "crates/ingestion/src/dating.rs [pub] fn is_publishable(self) -> bool",
+    "crates/ingestion/src/dating.rs [pub] fn month(self) -> u8",
+    "crates/ingestion/src/dating.rs [pub] fn new(year: u16, month: u8, day: u8) -> Result<Self, DateError>",
+    "crates/ingestion/src/dating.rs [pub] fn on(date: Date) -> Self",
+    "crates/ingestion/src/dating.rs [pub] fn on(date: Date) -> Self",
+    "crates/ingestion/src/dating.rs [pub] fn relation_to(self, other: Self) -> DateRelation",
+    "crates/ingestion/src/dating.rs [pub] fn year(self) -> u16",
+    "crates/ingestion/src/diff.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/diff.rs [pub] fn between(previous: &OfficialDocument, current: &OfficialDocument) -> Self",
+    "crates/ingestion/src/diff.rs [pub] fn document_changes(&self) -> &[DocumentChange]",
+    "crates/ingestion/src/diff.rs [pub] fn impacted_rules(&self) -> Vec<RuleId>",
+    "crates/ingestion/src/diff.rs [pub] fn is_empty(&self) -> bool",
+    "crates/ingestion/src/diff.rs [pub] fn rule(&self) -> &RuleId",
+    "crates/ingestion/src/diff.rs [pub] fn rule_changes(&self) -> &[RuleChange]",
+    "crates/ingestion/src/document.rs [priv] fn parse_cohorts(value: &str) -> Option<CohortRange>",
+    "crates/ingestion/src/document.rs [priv] fn parse_date(value: &str) -> Option<Date>",
+    "crates/ingestion/src/document.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/document.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/document.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/document.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/document.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/document.rs [pub] fn authority(&self) -> LegalAuthority",
+    "crates/ingestion/src/document.rs [pub] fn between(first: AdmissionYear, last: AdmissionYear) -> Self",
+    "crates/ingestion/src/document.rs [pub] fn cohorts(&self) -> CohortRange",
+    "crates/ingestion/src/document.rs [pub] fn covers(self, year: AdmissionYear) -> bool",
+    "crates/ingestion/src/document.rs [pub] fn dating(&self) -> Dating",
+    "crates/ingestion/src/document.rs [pub] fn every() -> Self",
+    "crates/ingestion/src/document.rs [pub] fn from(year: AdmissionYear) -> Self",
+    "crates/ingestion/src/document.rs [pub] fn get(self) -> u16",
+    "crates/ingestion/src/document.rs [pub] fn hierarchy_relation(self, other: Self) -> HierarchyRelation",
+    "crates/ingestion/src/document.rs [pub] fn id(&self) -> &RuleId",
+    "crates/ingestion/src/document.rs [pub] fn intersects(self, other: Self) -> bool",
+    "crates/ingestion/src/document.rs [pub] fn is_within(self, other: Self) -> bool",
+    "crates/ingestion/src/document.rs [pub] fn issued(&self) -> Option<IssuanceDate>",
+    "crates/ingestion/src/document.rs [pub] fn new(program: ProgramKey, cohorts: CohortRange) -> Self",
+    "crates/ingestion/src/document.rs [pub] fn new(year: u16) -> Self",
+    "crates/ingestion/src/document.rs [pub] fn parse(snapshot: &RawSnapshot) -> Result<OfficialDocument, ParseError>",
+    "crates/ingestion/src/document.rs [pub] fn parse(value: &str) -> Option<Self>",
+    "crates/ingestion/src/document.rs [pub] fn parse(value: &str) -> Option<Self>",
+    "crates/ingestion/src/document.rs [pub] fn parser_version(&self) -> ParserVersion",
+    "crates/ingestion/src/document.rs [pub] fn program(&self) -> &ProgramKey",
+    "crates/ingestion/src/document.rs [pub] fn provides_for_a_transition(self) -> bool",
+    "crates/ingestion/src/document.rs [pub] fn relation_to(&self, other: &Self) -> ScopeRelation",
+    "crates/ingestion/src/document.rs [pub] fn relation_to(self, other: Self) -> TransitionRelation",
+    "crates/ingestion/src/document.rs [pub] fn rule(&self, id: &RuleId) -> Option<&ParsedRule>",
+    "crates/ingestion/src/document.rs [pub] fn rules(&self) -> &[ParsedRule]",
+    "crates/ingestion/src/document.rs [pub] fn scope(&self) -> &TargetScope",
+    "crates/ingestion/src/document.rs [pub] fn section(&self) -> &SectionPath",
+    "crates/ingestion/src/document.rs [pub] fn text_digest(&self) -> &ContentDigest",
+    "crates/ingestion/src/document.rs [pub] fn transitional_measures(&self) -> TransitionalMeasures",
+    "crates/ingestion/src/document.rs [pub] fn validate(document: &OfficialDocument) -> Result<(), SchemaError>",
+    "crates/ingestion/src/fetch.rs [priv] fn fetch(&self, request: &ConditionalRequest) -> Result<FetchOutcome, String>",
+    "crates/ingestion/src/fetch.rs [priv] fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result",
+    "crates/ingestion/src/fetch.rs [pub] fn anonymous( manifest: &ConnectorManifest, target: DeclaredTarget, validators: Validators, ) -> Result<Self, Denial>",
+    "crates/ingestion/src/fetch.rs [pub] fn as_str(&self) -> &str",
+    "crates/ingestion/src/fetch.rs [pub] fn connector(&self) -> &ConnectorId",
+    "crates/ingestion/src/fetch.rs [pub] fn content_type(&self) -> Option<&HeaderValue>",
+    "crates/ingestion/src/fetch.rs [pub] fn credentialed( manifest: &ConnectorManifest, binding: CredentialBinding, target: DeclaredTarget, validators: Validators, ) -> Result<Self, Denial>",
+    "crates/ingestion/src/fetch.rs [pub] fn entity_tag(&self) -> Option<&HeaderValue>",
+    "crates/ingestion/src/fetch.rs [pub] fn entity_tag(&self) -> Option<&HeaderValue>",
+    "crates/ingestion/src/fetch.rs [pub] fn is_conditional(&self) -> bool",
+    "crates/ingestion/src/fetch.rs [pub] fn last_modified(&self) -> Option<&HeaderValue>",
+    "crates/ingestion/src/fetch.rs [pub] fn last_modified(&self) -> Option<&HeaderValue>",
+    "crates/ingestion/src/fetch.rs [pub] fn new( status: Option<u16>, entity_tag: Option<HeaderValue>, last_modified: Option<HeaderValue>, content_type: Option<HeaderValue>, ) -> Self",
+    "crates/ingestion/src/fetch.rs [pub] fn new(value: impl Into<String>) -> Result<Self, HeaderError>",
+    "crates/ingestion/src/fetch.rs [pub] fn next_validators(&self) -> Validators",
+    "crates/ingestion/src/fetch.rs [pub] fn none() -> Self",
+    "crates/ingestion/src/fetch.rs [pub] fn presents_a_credential(&self) -> bool",
+    "crates/ingestion/src/fetch.rs [pub] fn status(&self) -> Option<u16>",
+    "crates/ingestion/src/fetch.rs [pub] fn target(&self) -> DeclaredTarget",
+    "crates/ingestion/src/fetch.rs [pub] fn validators(&self) -> &Validators",
+    "crates/ingestion/src/fetch.rs [pub] fn with_entity_tag(mut self, value: HeaderValue) -> Self",
+    "crates/ingestion/src/fetch.rs [pub] fn with_last_modified(mut self, value: HeaderValue) -> Self",
+    "crates/ingestion/src/gate.rs [pub] fn identifier(self) -> &'static str",
+    "crates/ingestion/src/gate.rs [pub] fn phase2_shipped_fallbacks() -> [Fallback",
+    "crates/ingestion/src/gate.rs [pub] fn statement(self) -> &'static str",
+    "crates/ingestion/src/gate.rs [pub] fn unreviewed_status() -> TermsStatus",
+    "crates/ingestion/src/graph.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/graph.rs [pub] fn edges(&self) -> &[(DependentNode, Dependency)]",
+    "crates/ingestion/src/graph.rs [pub] fn id(&self) -> &DependentId",
+    "crates/ingestion/src/graph.rs [pub] fn invalidate(&self, impacted: &[RuleId]) -> Invalidation",
+    "crates/ingestion/src/graph.rs [pub] fn is_empty(&self) -> bool",
+    "crates/ingestion/src/graph.rs [pub] fn kind(&self) -> DependentKind",
+    "crates/ingestion/src/graph.rs [pub] fn new() -> Self",
+    "crates/ingestion/src/graph.rs [pub] fn new(kind: DependentKind, id: DependentId) -> Self",
+    "crates/ingestion/src/graph.rs [pub] fn nodes(&self) -> &[DependentNode]",
+    "crates/ingestion/src/graph.rs [pub] fn of_kind(&self, kind: DependentKind) -> Vec<&DependentNode>",
+    "crates/ingestion/src/graph.rs [pub] fn record(&mut self, dependent: DependentNode, dependency: Dependency)",
+    "crates/ingestion/src/identifier.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
+    "crates/ingestion/src/identifier.rs [priv] fn is_name(value: &str) -> bool",
+    "crates/ingestion/src/identifier.rs [pub] fn as_str(&self) -> &str",
+    "crates/ingestion/src/identifier.rs [pub] fn new(value: impl Into<String>) -> Result<Self, NameError>",
+    "crates/ingestion/src/manifest.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
+    "crates/ingestion/src/manifest.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
+    "crates/ingestion/src/manifest.rs [pub] fn allowed_frequency(&self) -> AllowedFrequency",
+    "crates/ingestion/src/manifest.rs [pub] fn allowed_frequency(mut self, value: AllowedFrequency) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/manifest.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/manifest.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/manifest.rs [pub] fn at(seconds_since_epoch: u64) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn authentication_method(&self) -> AuthenticationMethod",
+    "crates/ingestion/src/manifest.rs [pub] fn authentication_method(mut self, value: AuthenticationMethod) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn build(self) -> Result<ConnectorManifest, ManifestError>",
+    "crates/ingestion/src/manifest.rs [pub] fn category(&self) -> SourceCategory",
+    "crates/ingestion/src/manifest.rs [pub] fn completeness(&self) -> Completeness",
+    "crates/ingestion/src/manifest.rs [pub] fn completeness(mut self, value: Completeness) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn connector(&self) -> &ConnectorId",
+    "crates/ingestion/src/manifest.rs [pub] fn connector(&self) -> &ConnectorId",
+    "crates/ingestion/src/manifest.rs [pub] fn connector_id(value: &str) -> Result<ConnectorId, NameError>",
+    "crates/ingestion/src/manifest.rs [pub] fn credential_binding(&self) -> Option<CredentialBinding>",
+    "crates/ingestion/src/manifest.rs [pub] fn declared(value: &'static str) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn declared_targets(&self) -> &[DeclaredTarget]",
+    "crates/ingestion/src/manifest.rs [pub] fn declares(&self, target: DeclaredTarget) -> bool",
+    "crates/ingestion/src/manifest.rs [pub] fn declaring(mut self, target: DeclaredTarget) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn due_at(instant: RetrievalInstant) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn earliest_next(self, last: RetrievalInstant) -> Option<RetrievalInstant>",
+    "crates/ingestion/src/manifest.rs [pub] fn for_connector(connector: ConnectorId, category: SourceCategory) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn get(self) -> u16",
+    "crates/ingestion/src/manifest.rs [pub] fn holds_a_credential(self) -> bool",
+    "crates/ingestion/src/manifest.rs [pub] fn instant(self) -> RetrievalInstant",
+    "crates/ingestion/src/manifest.rs [pub] fn is_overdue(self, now: RetrievalInstant) -> bool",
+    "crates/ingestion/src/manifest.rs [pub] fn last_success(&self) -> LastSuccess",
+    "crates/ingestion/src/manifest.rs [pub] fn last_success(mut self, value: LastSuccess) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn new(version: u16) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn next_verification(&self) -> NextVerification",
+    "crates/ingestion/src/manifest.rs [pub] fn next_verification(mut self, value: NextVerification) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn parser_version(&self) -> ParserVersion",
+    "crates/ingestion/src/manifest.rs [pub] fn parser_version(mut self, value: ParserVersion) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn personal_data_class(&self) -> PersonalDataClass",
+    "crates/ingestion/src/manifest.rs [pub] fn personal_data_class(mut self, value: PersonalDataClass) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn seconds(self) -> u64",
+    "crates/ingestion/src/manifest.rs [pub] fn source_ownership(&self) -> SourceOwnership",
+    "crates/ingestion/src/manifest.rs [pub] fn source_ownership(mut self, value: SourceOwnership) -> Self",
+    "crates/ingestion/src/manifest.rs [pub] fn terms_status(&self) -> TermsStatus",
+    "crates/ingestion/src/manifest.rs [pub] fn terms_status(mut self, value: TermsStatus) -> Self",
+    "crates/ingestion/src/publish.rs [priv] fn new( connector: ConnectorId, reason: QueueReason, rules: Vec<RuleId>, conflicts: Vec<ConflictCase>, ) -> Self",
+    "crates/ingestion/src/publish.rs [priv] fn new( document: &'run OfficialDocument, connector: &'run ConnectorId, effective: EffectiveDate, retrieved_at: RetrievalInstant, ) -> Self",
+    "crates/ingestion/src/publish.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/publish.rs [pub] fn conflicts(&self) -> &[ConflictCase]",
+    "crates/ingestion/src/publish.rs [pub] fn connector(&self) -> &ConnectorId",
+    "crates/ingestion/src/publish.rs [pub] fn connector(&self) -> &ConnectorId",
+    "crates/ingestion/src/publish.rs [pub] fn effective(&self) -> EffectiveDate",
+    "crates/ingestion/src/publish.rs [pub] fn effective(&self) -> EffectiveDate",
+    "crates/ingestion/src/publish.rs [pub] fn parser_version(&self) -> ParserVersion",
+    "crates/ingestion/src/publish.rs [pub] fn publish(publishable: PublishableRules<'_>) -> PublishedRules",
+    "crates/ingestion/src/publish.rs [pub] fn published(&self) -> Option<&PublishedRules>",
+    "crates/ingestion/src/publish.rs [pub] fn queued(&self) -> Option<&ReviewQueued>",
+    "crates/ingestion/src/publish.rs [pub] fn reason(&self) -> QueueReason",
+    "crates/ingestion/src/publish.rs [pub] fn retrieved_at(&self) -> RetrievalInstant",
+    "crates/ingestion/src/publish.rs [pub] fn rules(&self) -> &[RuleId]",
+    "crates/ingestion/src/publish.rs [pub] fn rules(&self) -> &[RuleId]",
+    "crates/ingestion/src/publish.rs [pub] fn scope(&self) -> &TargetScope",
+    "crates/ingestion/src/publish.rs [pub] fn scope(&self) -> &TargetScope",
+    "crates/ingestion/src/snapshot.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
+    "crates/ingestion/src/snapshot.rs [priv] fn source_bytes(&self) -> &[u8]",
+    "crates/ingestion/src/snapshot.rs [pub] fn byte_len(&self) -> usize",
+    "crates/ingestion/src/snapshot.rs [pub] fn connector(&self) -> &ConnectorId",
+    "crates/ingestion/src/snapshot.rs [pub] fn digest(&self) -> &ContentDigest",
+    "crates/ingestion/src/snapshot.rs [pub] fn has_same_content_as(&self, other: &Self) -> bool",
+    "crates/ingestion/src/snapshot.rs [pub] fn http(&self) -> &HttpMetadata",
+    "crates/ingestion/src/snapshot.rs [pub] fn next_validators(&self) -> Validators",
+    "crates/ingestion/src/snapshot.rs [pub] fn parser_version(&self) -> ParserVersion",
+    "crates/ingestion/src/snapshot.rs [pub] fn retrieved_at(&self) -> RetrievalInstant",
+    "crates/ingestion/src/snapshot.rs [pub] fn seal( &self, source_id: SourceId, kind: SourceKind, ingest_seq: u64, ) -> Result<Untrusted<IngestedDocument>, IngestError>",
+    "crates/ingestion/src/snapshot.rs [pub] fn store( connector: ConnectorId, target: DeclaredTarget, parser_version: ParserVersion, outcome: FetchOutcome, ) -> Result<RawSnapshot, SnapshotError>",
+    "crates/ingestion/src/snapshot.rs [pub] fn target(&self) -> DeclaredTarget",
+    "crates/ingestion/src/stage.rs [priv] fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result",
+    "crates/ingestion/src/stage.rs [priv] fn reason_for(status: crate::terms::TermsStatus) -> DenialReason",
+    "crates/ingestion/src/stage.rs [pub] fn ai_proposal_where_appropriate( validated: Validated, appropriateness: Appropriateness, ) -> Result<Proposed, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/stage.rs [pub] fn at(seq: u64) -> Self",
+    "crates/ingestion/src/stage.rs [pub] fn claim_publication_or_review_queue( reconciled: Reconciled, ledger: &TermsLedger, ) -> Result<Publication, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn conflicts(&self) -> &[ConflictCase]",
+    "crates/ingestion/src/stage.rs [pub] fn denial(&self) -> Option<&Denial>",
+    "crates/ingestion/src/stage.rs [pub] fn deterministic_parse(described: Described) -> Result<Parsed, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn discover_fetch_import( manifest: &ConnectorManifest, ledger: &TermsLedger, now: RetrievalInstant, acquisition: Acquisition<'_>, ) -> Result<Fetched, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn document(&self) -> &OfficialDocument",
+    "crates/ingestion/src/stage.rs [pub] fn document(&self) -> &OfficialDocument",
+    "crates/ingestion/src/stage.rs [pub] fn document(&self) -> &OfficialDocument",
+    "crates/ingestion/src/stage.rs [pub] fn document(&self) -> &OfficialDocument",
+    "crates/ingestion/src/stage.rs [pub] fn failure(&self) -> Option<&StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn get(self) -> u64",
+    "crates/ingestion/src/stage.rs [pub] fn immutable_raw_snapshot( cleared: TermsCleared, manifest: &ConnectorManifest, ) -> Result<Snapshotted, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn ingest_seq(&self) -> IngestSeq",
+    "crates/ingestion/src/stage.rs [pub] fn into_snapshot(self) -> RawSnapshot",
+    "crates/ingestion/src/stage.rs [pub] fn knowing(mut self, program: ProgramKey) -> Self",
+    "crates/ingestion/src/stage.rs [pub] fn new() -> Self",
+    "crates/ingestion/src/stage.rs [pub] fn outcome(&self) -> &FetchOutcome",
+    "crates/ingestion/src/stage.rs [pub] fn outcome(&self) -> &RunOutcome",
+    "crates/ingestion/src/stage.rs [pub] fn policy_and_terms_check( fetched: Fetched, manifest: &ConnectorManifest, ledger: &TermsLedger, ) -> Result<TermsCleared, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn publishable(&self) -> Option<PublishableRules<'_>>",
+    "crates/ingestion/src/stage.rs [pub] fn published(&self) -> Option<&crate::publish::PublishedRules>",
+    "crates/ingestion/src/stage.rs [pub] fn reached(&self) -> &[Stage]",
+    "crates/ingestion/src/stage.rs [pub] fn reason(&self) -> &FailureReason",
+    "crates/ingestion/src/stage.rs [pub] fn reconciliation_and_entity_resolution( proposed: Proposed, corpus: &Corpus, ) -> Result<Reconciled, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn run( manifest: &ConnectorManifest, ledger: &TermsLedger, corpus: &Corpus, now: RetrievalInstant, acquisition: Acquisition<'_>, ingest_seq: IngestSeq, appropriateness: Appropriateness, ) -> RunRecord",
+    "crates/ingestion/src/stage.rs [pub] fn schema_validation(parsed: Parsed) -> Result<Validated, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn sealed(&self) -> Option<&Untrusted<IngestedDocument>>",
+    "crates/ingestion/src/stage.rs [pub] fn snapshot(&self) -> &RawSnapshot",
+    "crates/ingestion/src/stage.rs [pub] fn snapshot(&self) -> &RawSnapshot",
+    "crates/ingestion/src/stage.rs [pub] fn snapshot(&self) -> &RawSnapshot",
+    "crates/ingestion/src/stage.rs [pub] fn source_metadata_and_retrieval_time( snapshotted: Snapshotted, manifest: &ConnectorManifest, ingest_seq: IngestSeq, ) -> Result<Described, StageFailure>",
+    "crates/ingestion/src/stage.rs [pub] fn spec_line(self) -> &'static str",
+    "crates/ingestion/src/stage.rs [pub] fn stage(&self) -> Stage",
+    "crates/ingestion/src/stage.rs [pub] fn with_contender(mut self, contender: ContendingSource) -> Self",
+    "crates/ingestion/src/terms.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/terms.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/terms.rs [pub] fn as_str(self) -> &'static str",
+    "crates/ingestion/src/terms.rs [pub] fn connector(&self) -> &ConnectorId",
+    "crates/ingestion/src/terms.rs [pub] fn connector_disabled(&self) -> bool",
+    "crates/ingestion/src/terms.rs [pub] fn deny(connector: ConnectorId, reason: DenialReason) -> Denial",
+    "crates/ingestion/src/terms.rs [pub] fn fallbacks(&self) -> &[Fallback]",
+    "crates/ingestion/src/terms.rs [pub] fn new() -> Self",
+    "crates/ingestion/src/terms.rs [pub] fn permits_a_fetch(self) -> bool",
+    "crates/ingestion/src/terms.rs [pub] fn reason(&self) -> DenialReason",
+    "crates/ingestion/src/terms.rs [pub] fn record(&mut self, connector: ConnectorId, status: TermsStatus)",
+    "crates/ingestion/src/terms.rs [pub] fn route(&self) -> DenialRoute",
+    "crates/ingestion/src/terms.rs [pub] fn status(&self, connector: &ConnectorId) -> TermsStatus",
+];
+
+/// Every `impl` block header this package declares, sorted.
+const IMPL_HEADERS: [&str; 84] = [
+    "crates/ingestion/src/conflict.rs: impl AuditDisposition",
+    "crates/ingestion/src/conflict.rs: impl ConflictCase",
+    "crates/ingestion/src/conflict.rs: impl ConflictDimension",
+    "crates/ingestion/src/conflict.rs: impl ContendingSource",
+    "crates/ingestion/src/conflict.rs: impl DateComparison",
+    "crates/ingestion/src/conflict.rs: impl DimensionFinding",
+    "crates/ingestion/src/conflict.rs: impl DimensionOutcome",
+    "crates/ingestion/src/conflict.rs: impl HasDate for IssuanceDate",
+    "crates/ingestion/src/conflict.rs: impl HasDate for crate::dating::EffectiveDate",
+    "crates/ingestion/src/conflict.rs: impl Side",
+    "crates/ingestion/src/conflict.rs: impl UserResolution",
+    "crates/ingestion/src/dating.rs: impl Date",
+    "crates/ingestion/src/dating.rs: impl DateRelation",
+    "crates/ingestion/src/dating.rs: impl Dating",
+    "crates/ingestion/src/dating.rs: impl EffectiveDate",
+    "crates/ingestion/src/dating.rs: impl IssuanceDate",
+    "crates/ingestion/src/dating.rs: impl fmt::Display for Date",
+    "crates/ingestion/src/dating.rs: impl fmt::Display for EffectiveDate",
+    "crates/ingestion/src/dating.rs: impl fmt::Display for IssuanceDate",
+    "crates/ingestion/src/diff.rs: impl DocumentChange",
+    "crates/ingestion/src/diff.rs: impl RuleChange",
+    "crates/ingestion/src/diff.rs: impl SourceDiff",
+    "crates/ingestion/src/document.rs: impl AdmissionYear",
+    "crates/ingestion/src/document.rs: impl CohortRange",
+    "crates/ingestion/src/document.rs: impl HierarchyRelation",
+    "crates/ingestion/src/document.rs: impl LegalAuthority",
+    "crates/ingestion/src/document.rs: impl OfficialDocument",
+    "crates/ingestion/src/document.rs: impl ParsedRule",
+    "crates/ingestion/src/document.rs: impl ScopeRelation",
+    "crates/ingestion/src/document.rs: impl TargetScope",
+    "crates/ingestion/src/document.rs: impl TransitionRelation",
+    "crates/ingestion/src/document.rs: impl TransitionalMeasures",
+    "crates/ingestion/src/fetch.rs: impl ConditionalRequest",
+    "crates/ingestion/src/fetch.rs: impl HeaderValue",
+    "crates/ingestion/src/fetch.rs: impl HttpMetadata",
+    "crates/ingestion/src/fetch.rs: impl Into<String>) -> Result<Self, HeaderError>",
+    "crates/ingestion/src/fetch.rs: impl Validators",
+    "crates/ingestion/src/fetch.rs: impl core::fmt::Debug for FetchOutcome",
+    "crates/ingestion/src/gate.rs: impl OpenGate",
+    "crates/ingestion/src/graph.rs: impl DependencyGraph",
+    "crates/ingestion/src/graph.rs: impl DependentKind",
+    "crates/ingestion/src/graph.rs: impl DependentNode",
+    "crates/ingestion/src/graph.rs: impl Invalidation",
+    "crates/ingestion/src/identifier.rs: impl $name",
+    "crates/ingestion/src/identifier.rs: impl Into<String>) -> Result<Self, NameError>",
+    "crates/ingestion/src/identifier.rs: impl fmt::Display for $name",
+    "crates/ingestion/src/manifest.rs: impl AllowedFrequency",
+    "crates/ingestion/src/manifest.rs: impl AuthenticationMethod",
+    "crates/ingestion/src/manifest.rs: impl ConnectorManifest",
+    "crates/ingestion/src/manifest.rs: impl CredentialBinding",
+    "crates/ingestion/src/manifest.rs: impl DeclaredTarget",
+    "crates/ingestion/src/manifest.rs: impl ManifestDraft",
+    "crates/ingestion/src/manifest.rs: impl ManifestField",
+    "crates/ingestion/src/manifest.rs: impl NextVerification",
+    "crates/ingestion/src/manifest.rs: impl ParserVersion",
+    "crates/ingestion/src/manifest.rs: impl RetrievalInstant",
+    "crates/ingestion/src/manifest.rs: impl SourceCategory",
+    "crates/ingestion/src/manifest.rs: impl fmt::Debug for CredentialBinding",
+    "crates/ingestion/src/manifest.rs: impl fmt::Display for DeclaredTarget",
+    "crates/ingestion/src/publish.rs: impl Publication",
+    "crates/ingestion/src/publish.rs: impl PublishedRules",
+    "crates/ingestion/src/publish.rs: impl QueueReason",
+    "crates/ingestion/src/publish.rs: impl ReviewQueued",
+    "crates/ingestion/src/publish.rs: impl<'run> PublishableRules<'run>",
+    "crates/ingestion/src/snapshot.rs: impl RawSnapshot",
+    "crates/ingestion/src/snapshot.rs: impl fmt::Debug for RawSnapshot",
+    "crates/ingestion/src/stage.rs: impl Corpus",
+    "crates/ingestion/src/stage.rs: impl Described",
+    "crates/ingestion/src/stage.rs: impl Fetched",
+    "crates/ingestion/src/stage.rs: impl IngestSeq",
+    "crates/ingestion/src/stage.rs: impl Parsed",
+    "crates/ingestion/src/stage.rs: impl Proposed",
+    "crates/ingestion/src/stage.rs: impl Reconciled",
+    "crates/ingestion/src/stage.rs: impl RunRecord",
+    "crates/ingestion/src/stage.rs: impl Snapshotted",
+    "crates/ingestion/src/stage.rs: impl Stage",
+    "crates/ingestion/src/stage.rs: impl StageFailure",
+    "crates/ingestion/src/stage.rs: impl Validated",
+    "crates/ingestion/src/stage.rs: impl core::fmt::Debug for Acquisition<'_>",
+    "crates/ingestion/src/terms.rs: impl Denial",
+    "crates/ingestion/src/terms.rs: impl DenialReason",
+    "crates/ingestion/src/terms.rs: impl Fallback",
+    "crates/ingestion/src/terms.rs: impl TermsLedger",
+    "crates/ingestion/src/terms.rs: impl TermsStatus",
+];
