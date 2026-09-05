@@ -10,6 +10,7 @@
  * capability snapshot an audit can now diff.
  */
 
+export * from "./academic.js";
 export * from "./backlinks.js";
 export * from "./capability-snapshot.js";
 export * from "./cs-map.js";

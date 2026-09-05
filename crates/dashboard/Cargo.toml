@@ -1,0 +1,83 @@
+[package]
+name = "academic-dashboard"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Four product edges, and each is a boundary this surface reads a fact out of
+# rather than a vocabulary it restates.
+#
+# `academic-domain` supplies section 3.9's `ProofStatus` -- the five the audit
+# tree publishes, which section 25.4's four display words are a total image of
+# -- section 7.2's `PredicateName`, whose four coverage edges the section 25.6
+# tabs partition, and every identifier and `Decimal` a figure names.
+#
+# `academic-record` supplies `P2-U4`'s section 10 vocabulary: `GpaValue`,
+# `AttemptDisposition`, `DispositionReason` and `RepeatProof` are the *proof*
+# section 25.4's first line asks each average to carry, and `AttemptStatus`,
+# `RepeatStatus` and `GradeSymbol` are what the six timeline facets read. It
+# also supplies `RegistrationConfirmation`, which is the point of the edge as
+# much as the rest: section 25.5's last sentence is an absence, and an absence
+# over a type this crate cannot name is not an absence.
+#
+# `academic-curriculum` supplies `P2-U1`'s `Course`, `CourseOffering`,
+# `CourseCode`, `TermCode` and `InstructorName`, which are section 25.6's
+# `Official identity` and `Offerings` blocks and the planner's left rail.
+#
+# `academic-review` supplies `P2-U8`'s `ReviewScope`, `OfferingAggregate` and
+# `BiasDisclosure`. That edge and the `academic-curriculum` edge are what make
+# `catalog_and_review_are_separate_sections` a measurement rather than a
+# tautology: both vocabularies are in this closure, and the section they may
+# appear in is what separates them.
+#
+# The edges it does **not** have are the point:
+#
+# * no `academic-audit` and no `academic-requirement` product edge, so no rule,
+#   no requirement set and no `DegreeAudit` is nameable here. This surface
+#   *displays* a verdict `P2-U3` computed and cannot compute one. Both are dev
+#   edges, so the four display states are compared against that engine's five
+#   rather than made equal to them by construction;
+# * no `academic-knowledge-state` and no `academic-freshness`, so no mastery
+#   ladder is in the closure. Section 10's last paragraph forbids folding a GPA
+#   chart and a knowledge map into one score, and the surface has no name for
+#   the second half of that sum;
+# * no `academic-store` and no `academic-vault`, so the canonical writer is
+#   absent and this crate persists nothing. It claims no migration number;
+# * no `academic-policy` and no `academic-egress-boundary` of any edge kind, so
+#   no grant, staged payload or provider row is nameable here.
+[dependencies]
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+academic-record = { path = "../record" }
+academic-review = { path = "../review" }
+thiserror.workspace = true
+
+[dev-dependencies]
+# `academic-audit` and `academic-offering` are **dev** edges on purpose. Section
+# 25.4's four display states and section 38's open cells both exist in those
+# crates in a different shape, and the claim is that two enumerations agree
+# after each was read out of the design document -- a product edge would make
+# one crate's answer the other's by construction rather than by comparison,
+# which is the reason `P2-L6` gives for its own `academic-home` dev edge.
+academic-audit = { path = "../audit" }
+academic-curriculum = { path = "../curriculum" }
+academic-domain = { path = "../domain" }
+# The review fixtures build a real `P2-U8` record, which is minted from a
+# `P2-M2` autosave over a `P2-U6` permitted collection. Both are dev edges: an
+# aggregate over no review would make the section comparison vacuous.
+academic-ingestion = { path = "../ingestion" }
+academic-offering = { path = "../offering" }
+academic-proposal = { path = "../proposal" }
+# The compile-fail suite compiles its cases against this crate plus this
+# crate's dev-dependencies, so the identifiers, the breakdown parts and the
+# record vocabulary a case has to name must be reachable from
+# `tests/compile_fail` as well. `academic-evidence-center`, `academic-scenario`
+# and `academic-home` declare their own edges twice for the same reason.
+academic-record = { path = "../record" }
+academic-review = { path = "../review" }
+trybuild.workspace = true
+
+[lints]
+workspace = true

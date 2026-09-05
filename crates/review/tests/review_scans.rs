@@ -750,7 +750,27 @@ const CRATE_PATH_NAME: &str = "academic_review";
 /// carries all six of section 29.5's dimensions. A file elsewhere that wired
 /// any of these types into a fetcher still fails here as an extra key before it
 /// fails anywhere else.
+///
+/// `P2-X3` is the second. Section 25.6's `Reviews` block is offering-scoped and
+/// carries the raw provenance and the bias indicators, so `academic-dashboard`
+/// names `ReviewScope`, `OfferingAggregate` and `BiasDisclosure` — and that is
+/// half of what makes its `catalog_and_review_are_separate_sections` a
+/// measurement rather than a tautology: it links this crate *and*
+/// `academic-curriculum`, so keeping a catalogue fact and an offering review in
+/// two blocks is a choice rather than something the compiler made for it.
+/// Nothing there composes a request either, which is what rule 3 above holds
+/// over the same walk.
+///
+/// This rule is keyed on a **spelling**, and that had a measured consequence:
+/// `P2-X3` first declared its own `DimensionReading` for a planner axis, and
+/// `crates/dashboard/src/lib.rs` and `crates/dashboard/src/planner.rs` arrived
+/// here on a name that had nothing to do with a review. The type is now
+/// `AxisReading`, which is what that crate would have wanted anyway with this
+/// crate in its closure, and the two files are gone from this list.
 const FOREIGN_USERS: &[&str] = &[
+    "crates/dashboard/src/course.rs",
+    "crates/dashboard/tests/dashboard.rs",
+    "crates/dashboard/tests/support/fixtures.rs",
     "crates/what-if/src/error.rs",
     "crates/what-if/src/inputs.rs",
     "crates/what-if/src/projected.rs",

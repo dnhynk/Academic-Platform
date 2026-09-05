@@ -296,6 +296,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-dashboard"
+version = "0.1.0"
+dependencies = [
+ "academic-audit",
+ "academic-curriculum",
+ "academic-domain",
+ "academic-ingestion",
+ "academic-offering",
+ "academic-proposal",
+ "academic-record",
+ "academic-review",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "academic-deletion"
 version = "0.1.0"
 dependencies = [

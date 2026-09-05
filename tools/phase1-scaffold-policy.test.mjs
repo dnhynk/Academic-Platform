@@ -946,6 +946,36 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-freshness",
       "academic-knowledge-state",
     ],
+    // `P2-X3`. Sections 25.4, 25.5 and 25.6: the four `Academic` routes of the
+    // section 25.1 tree. Four product edges and each is a boundary it reads a
+    // fact out of rather than a vocabulary it restates: `academic-curriculum`
+    // for `P2-U1`'s published course, revision and offering, which are section
+    // 25.6's `Official identity` and `Offerings` blocks and the planner's left
+    // rail; `academic-domain` for section 3.9's `ProofStatus`, whose five the
+    // four section 25.4 display words are a total image of, and section 7.2's
+    // `PredicateName`, whose four coverage edges the tabs partition;
+    // `academic-record` for `P2-U4`'s section 10 vocabulary, which is the
+    // *proof* each average carries and what the six timeline facets read; and
+    // `academic-review` for `P2-U8`'s offering-scoped reading, which is the
+    // other half of section 25.6's last sentence. The edges it does not have
+    // are the point: no `academic-knowledge-state` and no `academic-freshness`,
+    // so section 10's *같은 카드의 한 score로 합치지 않는다* is held by the
+    // surface having no name for the other operand, and
+    // `the_dashboard_surface_cannot_name_a_mastery` is the measurement; no
+    // `academic-audit` and no `academic-requirement` product edge, so no rule
+    // and no proof tree is nameable and this surface computes no verdict; no
+    // `academic-store` and no `academic-vault`, so it persists nothing and
+    // claims no migration number; and no `academic-policy` and no
+    // `academic-egress-boundary` of any edge kind. The `academic-record` edge is
+    // deliberate in the other direction too: `RegistrationConfirmation` is
+    // nameable from here and no product file names it, which is what makes
+    // section 25.5's last sentence a measurement rather than a tautology.
+    "academic-dashboard": [
+      "academic-curriculum",
+      "academic-domain",
+      "academic-record",
+      "academic-review",
+    ],
     // `P2-X2`. Section 25.2's `Home / Today`. Two product edges and no third.
     // `academic-domain` supplies every identifier a card names and the
     // `FreshnessBand` its eighth line is about; `academic-consent` supplies
@@ -1142,6 +1172,27 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // crate's dev-dependencies, and a case has to name the identifiers and the
     // `UserDecision` a centre entry is built from.
     "academic-evidence-center": ["academic-domain", "academic-proposal"],
+    // `P2-X3` links its four product crates a second time as dev edges for the
+    // `trybuild` reason `academic-scenario` gives below, and adds four more.
+    // `academic-audit` and `academic-offering` are dev edges on purpose: the
+    // section 38 cells and the section 25.4 display states exist in those two
+    // crates in a different shape, and the claim is that two enumerations agree
+    // after each was read out of the design document — a product edge would
+    // make one crate's answer the other's by construction, which is the reason
+    // `P2-L6` gives for its own `academic-home` dev edge.
+    // `academic-ingestion` and `academic-proposal` are what a real `P2-U8`
+    // review record is minted from, and an aggregate over no review would make
+    // `catalog_and_review_are_separate_sections` vacuous.
+    "academic-dashboard": [
+      "academic-audit",
+      "academic-curriculum",
+      "academic-domain",
+      "academic-ingestion",
+      "academic-offering",
+      "academic-proposal",
+      "academic-record",
+      "academic-review",
+    ],
     // `P2-X2` links its own consent and domain crates a second time as dev
     // edges for the same `trybuild` reason: a compile-fail case compiles
     // against the crate under test plus that crate's dev-dependencies, and the
@@ -3736,6 +3787,12 @@ const SOCKET_CAPABLE_CLOSURES = {
   // crate spells no socket construct, opens nothing at all, reads no clock, and
   // every instant it holds arrived inside a `P2-N3` value.
   "academic-gap": ["libc"],
+  // `P2-X3`. `libc` reaches it through `academic-domain` and through
+  // `academic-policy`'s bundled SQLite by way of `academic-curriculum`. The
+  // crate spells no socket construct, which is why its `SOCKET_ALLOWANCE` entry
+  // is absent rather than empty; it opens nothing at all, reads no clock, and
+  // every instant, offering and audit status it holds arrived as an argument.
+  "academic-dashboard": ["libc"],
   // `P2-X2`. `libc` reaches it through `academic-domain`, which is the whole of
   // how it arrives: this crate's other product edge, `academic-consent`, adds
   // nothing socket-capable. The crate spells no socket construct, which is why
@@ -6477,6 +6534,42 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     "academic-proposal",
   ]);
   assert.deepEqual(centerReceipt.vendored_data, []);
+
+  // `P2-X3` adds one workspace path package, `academic-dashboard`, and admits
+  // no external crate: its four product edges and its nine dev edges are all in
+  // this lock through earlier receipts. No knowledge-state and no freshness
+  // edge, which is the composite claim; no audit and no requirement *product*
+  // edge, which is the difference between displaying a verdict and computing
+  // one; and an `academic-record` edge that is there so that
+  // `RegistrationConfirmation` is nameable and provably unnamed.
+  const {
+    receipt: dashboardReceipt,
+    admitted: dashboardAdmitted,
+    pathPackages: dashboardPathPackages,
+  } = receiptFor("P2-X3");
+  assert.equal(dashboardAdmitted.size, 0, "P2-X3 must admit no external crate");
+  assert.deepEqual([...dashboardPathPackages], ["academic-dashboard@0.1.0"]);
+  assert.deepEqual(dashboardReceipt.summary.npm_additions, []);
+  assert.equal(dashboardReceipt.summary.npm_install_scripts_added, false);
+  assert.equal(dashboardReceipt.summary.linked_into_binary_count, 0);
+  assert.equal(dashboardReceipt.summary.build_time_only_count, 0);
+  assert.deepEqual(Object.keys(dashboardReceipt.direct_workspace_dependencies).toSorted(), [
+    "academic-curriculum",
+    "academic-domain",
+    "academic-record",
+    "academic-review",
+  ]);
+  assert.deepEqual(Object.keys(dashboardReceipt.dev_workspace_dependencies).toSorted(), [
+    "academic-audit",
+    "academic-curriculum",
+    "academic-domain",
+    "academic-ingestion",
+    "academic-offering",
+    "academic-proposal",
+    "academic-record",
+    "academic-review",
+  ]);
+  assert.deepEqual(dashboardReceipt.vendored_data, []);
 
   // `P2-X2` adds one workspace path package, `academic-home`, and admits no
   // external crate: its two product edges and its three dev edges are all in
