@@ -1,0 +1,33 @@
+error[E0451]: fields `label`, `placed` and `outcome` of struct `PlanSnapshot` are private
+  --> tests/compile_fail/no_academic_surface_type_has_a_public_field.rs:26:9
+   |
+25 |     let _snapshot = PlanSnapshot {
+   |                     ------------ in this type
+26 |         label: String::new(),
+   |         ^^^^^ private field
+27 |         placed: Vec::new(),
+   |         ^^^^^^ private field
+28 |         outcome,
+   |         ^^^^^^^ private field
+
+error[E0451]: fields `breakdown` and `permille` of struct `SecondaryPercentage` are private
+  --> tests/compile_fail/no_academic_surface_type_has_a_public_field.rs:31:9
+   |
+30 |     let _percentage = SecondaryPercentage {
+   |                       ------------------- in this type
+31 |         breakdown,
+   |         ^^^^^^^^^ private field
+32 |         permille: 720,
+   |         ^^^^^^^^ private field
+
+error[E0451]: fields `scope`, `value` and `proof` of struct `GpaFigure` are private
+  --> tests/compile_fail/no_academic_surface_type_has_a_public_field.rs:35:9
+   |
+34 |     let _figure = GpaFigure {
+   |                   --------- in this type
+35 |         scope: GpaScope::Cumulative,
+   |         ^^^^^ private field
+36 |         value: GpaValue::NoGradedAttempts,
+   |         ^^^^^ private field
+37 |         proof,
+   |         ^^^^^ private field

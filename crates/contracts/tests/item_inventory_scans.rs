@@ -60,12 +60,13 @@
 //! Two rules, and the first is the backstop under the second.
 //!
 //! * [`every_item_in_these_packages_is_pinned`] — the **whole item set** of
-//!   every package that keys an inventory on a line prefix: 23 packages,
-//!   6131 items, derived from
-//!   [`the_inventories_still_keyed_on_a_line_prefix_are_named`] rather than
-//!   written down. Keyed on nothing: an item added anywhere in one of them
-//!   fails whatever it is called and whatever kind it is. The pins are in
-//!   `pinned-items/<package>.items`, one key to a line.
+//!   every package that keys an inventory on a line prefix **or owns a closed
+//!   type**: 25 packages, 6792 items, derived from
+//!   [`the_inventories_still_keyed_on_a_line_prefix_are_named`] and from
+//!   [`CLOSED_TYPES`] rather than written down, and taken as a union by
+//!   [`packages_that_need_an_item_pin`]. Keyed on nothing: an item added
+//!   anywhere in one of them fails whatever it is called and whatever kind it
+//!   is. The pins are in `pinned-items/<package>.items`, one key to a line.
 //! * [`every_item_that_reaches_a_closed_type_is_pinned`] — for each type in
 //!   [`CLOSED_TYPES`], the set of items whose own text names it *or* that sit
 //!   inside something that does. This is the rule that fails **by name**: an
@@ -99,9 +100,9 @@
 //!
 //! # What this does not claim
 //!
-//! The pin reaches the 23 packages whose own inventories are keyed on a line
-//! prefix. **It does not reach the other 45 crates of the workspace**, which
-//! have no such inventory and no item pin either;
+//! The pin reaches the 25 packages either derivation reports. **It does not
+//! reach the other 45 crates of the workspace**, which key no inventory on a
+//! line prefix, own no closed type, and have no item pin either;
 //! `docs/contracts/policy-source-scans.md` names them and says when that
 //! starts to matter. What does reach all 68 is
 //! [`every_item_that_reaches_a_closed_type_is_pinned`], which is workspace-wide
@@ -164,7 +165,16 @@ struct ClosedType {
 /// section 20.3's three motivation edges into one, and each passed the whole
 /// workspace. A type is here when a contract sentence says what may and may
 /// not come out of it.
-const CLOSED_TYPES: [ClosedType; 6] = [
+///
+/// The last four came from `P2-X3`, which is the first crate in this repository
+/// to write such a sentence as an item-based rule from the start: it keys no
+/// inventory on a line prefix, so
+/// [`the_inventories_still_keyed_on_a_line_prefix_are_named`] never reports it,
+/// which is the seam `docs/contracts/policy-source-scans.md` records. Its
+/// entries here are also what put its **whole** item set under
+/// [`every_item_in_these_packages_is_pinned`], through
+/// [`packages_that_need_an_item_pin`].
+const CLOSED_TYPES: [ClosedType; 10] = [
     ClosedType {
         package: "student-voice",
         name: "RestrictedOriginal",
@@ -208,6 +218,39 @@ const CLOSED_TYPES: [ClosedType; 6] = [
         contract: "the three motivation edges come out as rows in `MOTIVATIONS`' order and no \
                    signature folds them into a number, because a number ranks one motivation \
                    above another and section 20.3 says none is",
+    },
+    ClosedType {
+        package: "record",
+        name: "RegistrationConfirmation",
+        items: &REGISTRATION_CONFIRMATION_ITEMS,
+        contract: "section 25.5's last sentence is 사용자의 실제 수강신청을 자동 수행하지 \
+                   않는다 and `P2-M4` made confirming one non-delegable; this is the whole \
+                   set of items anywhere in the workspace that reach it, so a route added \
+                   from a planner, a plan snapshot or anywhere else fails by name",
+    },
+    ClosedType {
+        package: "dashboard",
+        name: "SecondaryPercentage",
+        items: &SECONDARY_PERCENTAGE_ITEMS,
+        contract: "section 25.4's last line is 상세 breakdown이 항상 붙는다, and \
+                   `SecondaryPercentage::over` is the one producer and takes the breakdown \
+                   by value; a second producer is an entry here",
+    },
+    ClosedType {
+        package: "dashboard",
+        name: "GpaFigure",
+        items: &GPA_FIGURE_ITEMS,
+        contract: "section 25.4's first line asks each of three averages for its own proof \
+                   and section 10 forbids folding a grade average and a knowledge map into \
+                   one score; no item returns a number over more than one figure",
+    },
+    ClosedType {
+        package: "dashboard",
+        name: "PlanSnapshot",
+        items: &PLAN_SNAPSHOT_ITEMS,
+        contract: "section 25.5 fixes a saved plan and licenses 무엇이 stale해졌는지만 \
+                   표시한다; `restate` takes `&self` and returns a marking, and no item \
+                   takes a snapshot by mutable reference",
     },
 ];
 
@@ -477,11 +520,27 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
 /// found two more, in `repository-competency` and `build-learn`, through the
 /// `pub const NAME: fn(&T) -> u32` form.
 ///
-/// **Which packages.** Derived, not written down: every package that holds a
-/// file [`the_inventories_still_keyed_on_a_line_prefix_are_named`] reports,
-/// which is exactly the set whose contract rests on a reader that cannot see
-/// an item form. A package that grows such a collector has to grow a pin file
-/// with it, and the failure names the package.
+/// **Which packages.** Derived, not written down, from **two** sources, and
+/// [`packages_that_need_an_item_pin`] is their union:
+///
+/// * every package that holds a file
+///   [`the_inventories_still_keyed_on_a_line_prefix_are_named`] reports, which
+///   is the set whose contract rests on a reader that cannot see an item form;
+/// * every package that owns a type in [`CLOSED_TYPES`], which is where a
+///   package says that its own surface is the subject of a contract sentence.
+///
+/// The second source closes the seam `docs/contracts/policy-source-scans.md`
+/// records: *a crate that writes such a sentence as an item-based rule from the
+/// start never appears on the line-prefix list and never gets a pin.* `P2-X3`
+/// is the first such crate — `academic-dashboard` keys no inventory on a line
+/// prefix and its contract says what may and may not come out of three of its
+/// types — and adding it to `CLOSED_TYPES` is now what puts its **whole** item
+/// set under this rule as well. For the six types that were here before, the
+/// union changes nothing: all four of their packages were already on the first
+/// list.
+///
+/// A package that grows either has to grow a pin file with it, and the failure
+/// names the package.
 ///
 /// **Where the pins live.** `crates/contracts/tests/pinned-items/<package>.items`,
 /// one [`Item::sealed_key`] to a line, sorted. Six thousand keys are a table
@@ -497,14 +556,16 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
 /// and no `RawAccessLog` row, and this pin did not move, because the item
 /// **count was 376 before and after** and every key was byte-identical. A leaf
 /// now carries a fingerprint of its own text, so the body is in the pin. The
-/// price is that a body edit moves a line here — 5134 of the 6131 keys carry a
-/// fingerprint and the other 997 are containers, whose contents are enumerated
+/// price is that a body edit moves a line here — 5697 of the 6792 keys carry a
+/// fingerprint and the other 1095 are containers, whose contents are enumerated
 /// as items of their own — and that price is the point: a diff that touches a
-/// body in one of these packages is a diff a reviewer should read.
+/// body in one of these packages is a diff a reviewer should read. `P2-RF29`
+/// measured 5134 of 6131 over the 23 packages it derived; `P2-X3`'s two are the
+/// difference.
 #[test]
 fn every_item_in_these_packages_is_pinned() -> TestResult {
     let repository = repository_root()?;
-    let packages = packages_keyed_on_a_line_prefix(&repository)?;
+    let packages = packages_that_need_an_item_pin(&repository)?;
     assert!(
         packages.len() >= PINNED_PACKAGE_FLOOR,
         "the derivation found only {} packages to pin",
@@ -567,9 +628,14 @@ fn pinned_items(repository: &Path, package: &str) -> Result<Vec<String>, Box<dyn
 }
 
 /// The floor under the derivation, so an empty walk cannot satisfy the pin.
-const PINNED_PACKAGE_FLOOR: usize = 23;
+///
+/// 24 rather than 25: the floor is what an empty or truncated walk trips over,
+/// and it is deliberately below the measured count so that removing one
+/// package's pin fails on the missing file rather than here.
+const PINNED_PACKAGE_FLOOR: usize = 24;
 
-/// The floor under the pinned item count, measured at `4ac7701`: 6131.
+/// The floor under the pinned item count. `P2-RF29` measured 6131 at `4ac7701`
+/// over 23 packages; `P2-X3`'s union makes it 6792 over 25.
 const PINNED_ITEM_FLOOR: usize = 6_000;
 
 /// Every route to a closed type is one somebody wrote down.
@@ -667,6 +733,19 @@ fn files_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box<dy
     Ok(found)
 }
 
+/// Every package whose whole item set is pinned, from both derivations.
+///
+/// The union of the packages that key an inventory on a line prefix and the
+/// packages that own a closed type. Neither half is written down here: the
+/// first is read out of the test sources, the second out of [`CLOSED_TYPES`].
+fn packages_that_need_an_item_pin(repository: &Path) -> Result<Vec<String>, Box<dyn Error>> {
+    let mut found: BTreeSet<String> = packages_keyed_on_a_line_prefix(repository)?
+        .into_iter()
+        .collect();
+    found.extend(CLOSED_TYPES.iter().map(|closed| closed.package.to_owned()));
+    Ok(found.into_iter().collect())
+}
+
 /// The packages those files belong to, deduplicated.
 fn packages_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box<dyn Error>> {
     let mut found: BTreeSet<String> = BTreeSet::new();
@@ -702,15 +781,16 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
             .collect::<Vec<_>>(),
         "the set of inventories keyed on a line prefix changed"
     );
-    // Every one of them has a pin file, and every pin file names a package
-    // that is on this list. The second direction is what stops a pin being
-    // added for a package nobody scans and counted as coverage.
-    let packages = packages_keyed_on_a_line_prefix(&repository)?;
+    // Every package either derivation reports has a pin file, and every pin
+    // file names a package one of them reports. The second direction is what
+    // stops a pin being added for a package nobody scans and counted as
+    // coverage.
+    let packages = packages_that_need_an_item_pin(&repository)?;
     for package in &packages {
         let path = pin_path(&repository, package);
         assert!(
             path.is_file(),
-            "{} keys an inventory on a line prefix and has no item pin at {}",
+            "{} needs an item pin and has none at {}",
             package,
             relative(&repository, &path)
         );
@@ -728,7 +808,7 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
     pinned.sort();
     assert_eq!(
         pinned, packages,
-        "a pin file names a package that keys no inventory on a line prefix"
+        "a pin file names a package neither derivation reports"
     );
     Ok(())
 }
@@ -973,12 +1053,13 @@ const RELEASABLE_ARTIFACT_ITEMS: [&str; 11] = [
 ///
 /// Sixteen, not the fourteen `P2-A5` counted: `crates/*/tests/*.rs` does not
 /// reach `tests/support/mod.rs`, and two crates keep theirs there.
-const REACH_READERS: [&str; 16] = [
+const REACH_READERS: [&str; 17] = [
     "crates/blind-spot/tests/blind_spot_scans.rs",
     "crates/build-learn/tests/build_learn_scans.rs",
     "crates/competency/tests/competency_scans.rs",
     "crates/critical-path/tests/critical_path_scans.rs",
     "crates/cs-map/tests/cs_map_scans.rs",
+    "crates/dashboard/tests/dashboard_scans.rs",
     "crates/freshness/tests/freshness_scans.rs",
     "crates/gap/tests/gap_scans.rs",
     "crates/integrations/tests/support/mod.rs",
@@ -1075,4 +1156,68 @@ const INVENTORIES_KEYED_ON_A_LINE_PREFIX: [&str; 24] = [
     "crates/requirement/tests/requirement_scans.rs",
     "crates/student-voice/tests/student_voice_scans.rs",
     "crates/transcription/tests/transcription_scans.rs",
+];
+
+/// Every item of the workspace that reaches `RegistrationConfirmation`.
+///
+/// The type `P2-M4` made non-delegable and section 25.5's last sentence is
+/// about. `P2-X3` links `academic-record`, so it *can* name this type, and it
+/// appears here not at all — which is what makes
+/// `planner_has_no_registration_endpoint` a measurement rather than a statement
+/// about a type that crate could not have named anyway.
+const REGISTRATION_CONFIRMATION_ITEMS: [&str; 11] = [
+    "crates/record/src/attempt.rs [priv] impl CourseAttempt",
+    "crates/record/src/attempt.rs [priv] impl RegistrationConfirmation",
+    "crates/record/src/attempt.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RegistrationConfirmation |a9305b32a56a1e84",
+    "crates/record/src/attempt.rs [pub] impl CourseAttempt :: fn from_confirmed_registration( id: AttemptId, confirmation: &RegistrationConfirmation, grading_scheme_id: impl Into<String>, ) -> Result<Self, RecordError> |f8e5810e841e4f18",
+    "crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: #[must_use] const fn credits_attempted(&self) -> Decimal |977d2e0de233c5d8",
+    "crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: #[must_use] const fn term(&self) -> TermKey |c33462f2f1f0b6a4",
+    "crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: #[must_use] fn course_code(&self) -> &str |36272f9287cb4db3",
+    "crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: #[must_use] fn evidence_ids(&self) -> &[EvidenceId] |ab983fd29f7b2410",
+    "crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: fn new( course_code: impl Into<String>, term: TermKey, credits_attempted: Decimal, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, RecordError> |8610f6becc4ad5e1",
+    "crates/record/src/corpus.rs [priv] use crate::{ CanonicalIdentifier, RecordError, attempt::{AttemptHistory, CourseAttempt, RegistrationConfirmation, SettledStatus}, classify::{ClassificationRule, ClassificationRuleSet, ProgramId, RequirementCategory}, grade::{GradeSymbol, GradingScheme}, policy::{ AttemptOrigin, ExternalGradePolicyRow, PolicyBook, RecognitionDecision, RepeatPolicyRow, RepeatRecognition, RuleBook, }, term::TermKey, } |e613f509f28ed902",
+    "crates/record/src/corpus.rs [pub] fn baseline_history() -> Result<AttemptHistory, RecordError> |61250419477ae517",
+];
+
+/// Every item of the workspace that reaches `SecondaryPercentage`.
+const SECONDARY_PERCENTAGE_ITEMS: [&str; 11] = [
+    "crates/dashboard/src/lib.rs [pub] use percentage::{BreakdownPart, RequirementBreakdown, SecondaryPercentage} |af8d76a07c0b036c",
+    "crates/dashboard/src/percentage.rs [priv] impl SecondaryPercentage",
+    "crates/dashboard/src/percentage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SecondaryPercentage |372005a4eb9506a2",
+    "crates/dashboard/src/percentage.rs [pub] impl SecondaryPercentage :: #[must_use] const fn breakdown(&self) -> &RequirementBreakdown |d2758e5192d265b1",
+    "crates/dashboard/src/percentage.rs [pub] impl SecondaryPercentage :: #[must_use] const fn permille(&self) -> u32 |734625577c057347",
+    "crates/dashboard/src/percentage.rs [pub] impl SecondaryPercentage :: fn over(breakdown: RequirementBreakdown) -> Result<Self, DashboardError> |63c66580f8274120",
+    "crates/dashboard/src/screen.rs [priv] impl AcademicDashboard",
+    "crates/dashboard/src/screen.rs [priv] use crate::{ AttemptTimeline, AuditStateReading, DashboardError, GpaFigure, GpaScope, OpenGate, SecondaryPercentage, } |279f0ee1255a771b",
+    "crates/dashboard/src/screen.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AcademicDashboard |bef9b928345b8b52",
+    "crates/dashboard/src/screen.rs [pub] impl AcademicDashboard :: #[must_use] const fn secondary_percentage(&self) -> Option<&SecondaryPercentage> |49bc9a551b885f74",
+    "crates/dashboard/src/screen.rs [pub] impl AcademicDashboard :: fn assemble( filled: [DashboardSection; DashboardLine::ALL.len()], open: &[OpenGate], secondary: Option<SecondaryPercentage>, ) -> Result<Self, DashboardError> |c8cafe4c4fd6e649",
+];
+
+/// Every item of the workspace that reaches `GpaFigure`.
+const GPA_FIGURE_ITEMS: [&str; 12] = [
+    "crates/dashboard/src/gpa.rs [priv] impl GpaFigure",
+    "crates/dashboard/src/gpa.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GpaFigure |dab5538633effba5",
+    "crates/dashboard/src/gpa.rs [pub] impl GpaFigure :: #[must_use] const fn proof(&self) -> &GpaProof |7390c4384530985b",
+    "crates/dashboard/src/gpa.rs [pub] impl GpaFigure :: #[must_use] const fn scope(&self) -> GpaScope |c0615f21db41ad07",
+    "crates/dashboard/src/gpa.rs [pub] impl GpaFigure :: #[must_use] const fn value(&self) -> &GpaValue |089ea646c3591110",
+    "crates/dashboard/src/gpa.rs [pub] impl GpaFigure :: fn publish( scope: GpaScope, value: GpaValue, proof: GpaProof, ) -> Result<Self, DashboardError> |61b7c7cdafdaaccc",
+    "crates/dashboard/src/lib.rs [pub] use gpa::{GpaFigure, GpaProof, GpaScope} |78a9542aca8eb23a",
+    "crates/dashboard/src/screen.rs [priv] impl AcademicDashboard",
+    "crates/dashboard/src/screen.rs [priv] use crate::{ AttemptTimeline, AuditStateReading, DashboardError, GpaFigure, GpaScope, OpenGate, SecondaryPercentage, } |279f0ee1255a771b",
+    "crates/dashboard/src/screen.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum DashboardSection |4abdf15e7693fbfe",
+    "crates/dashboard/src/screen.rs [pub] impl AcademicDashboard :: #[must_use] fn average(&self, scope: GpaScope) -> Option<&GpaFigure> |2344fdd5bc112d0e",
+    "crates/dashboard/src/screen.rs [pub] impl AcademicDashboard :: #[must_use] fn averages(&self) -> Option<&[GpaFigure]> |451976619ac4a002",
+];
+
+/// Every item of the workspace that reaches `PlanSnapshot`.
+const PLAN_SNAPSHOT_ITEMS: [&str; 8] = [
+    "crates/dashboard/src/lib.rs [pub] use planner::{ AxisReading, CandidateOffering, DragOutcome, MeetingSlot, PlanSnapshot, PlannerBoard, PlannerDimension, RequirementContribution, StaleInput, StaleMarking, WorkloadRange, } |30925f475050a2fa",
+    "crates/dashboard/src/planner.rs [priv] impl PlanSnapshot",
+    "crates/dashboard/src/planner.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanSnapshot |53c4b696b8c99f55",
+    "crates/dashboard/src/planner.rs [pub] impl PlanSnapshot :: #[must_use] const fn outcome(&self) -> &DragOutcome |7107f390d3dc7e17",
+    "crates/dashboard/src/planner.rs [pub] impl PlanSnapshot :: #[must_use] fn label(&self) -> &str |1afa254cecf1df0d",
+    "crates/dashboard/src/planner.rs [pub] impl PlanSnapshot :: #[must_use] fn placed(&self) -> &[CandidateOffering] |c4fa92c637ce6cf1",
+    "crates/dashboard/src/planner.rs [pub] impl PlanSnapshot :: #[must_use] fn restate(&self, official: &[CandidateOffering]) -> StaleMarking |7ccb8a2b0ffb6ec4",
+    "crates/dashboard/src/planner.rs [pub] impl PlanSnapshot :: fn save(label: impl Into<String>, board: &PlannerBoard) -> Result<Self, DashboardError> |5fc3006ac0bee0cc",
 ];

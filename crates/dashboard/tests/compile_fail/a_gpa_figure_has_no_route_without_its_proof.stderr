@@ -1,0 +1,72 @@
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> tests/compile_fail/a_gpa_figure_has_no_route_without_its_proof.rs:15:23
+   |
+15 |     let _value_only = GpaFigure::publish(GpaScope::Cumulative, GpaValue::NoGradedAttempts);
+   |                       ^^^^^^^^^^^^^^^^^^-------------------------------------------------- argument #3 of type `GpaProof` is missing
+   |
+note: associated function defined here
+  --> src/gpa.rs
+   |
+   |     pub fn publish(
+   |            ^^^^^^^
+help: provide the argument
+   |
+15 |     let _value_only = GpaFigure::publish(GpaScope::Cumulative, GpaValue::NoGradedAttempts, /* GpaProof */);
+   |                                                                                          ++++++++++++++++
+
+error[E0599]: no associated function or constant named `default` found for struct `GpaFigure` in the current scope
+  --> tests/compile_fail/a_gpa_figure_has_no_route_without_its_proof.rs:18:31
+   |
+18 |     let _default = GpaFigure::default();
+   |                               ^^^^^^^ associated function or constant not found in `GpaFigure`
+   |
+note: if you're trying to build a new `GpaFigure`, consider using `GpaFigure::publish` which returns `Result<GpaFigure, DashboardError>`
+  --> src/gpa.rs
+   |
+   | /     pub fn publish(
+   | |         scope: GpaScope,
+   | |         value: GpaValue,
+   | |         proof: GpaProof,
+   | |     ) -> Result<Self, DashboardError> {
+   | |_____________________________________^
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_gpa_figure_has_no_route_without_its_proof.rs:21:38
+   |
+21 |     let _converted = GpaFigure::from(GpaValue::NoGradedAttempts);
+   |                      --------------- ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `GpaFigure`, found `GpaValue`
+   |                      |
+   |                      arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0599]: no method named `clear_proof` found for mutable reference `&mut GpaFigure` in the current scope
+  --> tests/compile_fail/a_gpa_figure_has_no_route_without_its_proof.rs:24:12
+   |
+24 |     figure.clear_proof();
+   |            ^^^^^^^^^^^ method not found in `&mut GpaFigure`
+
+error[E0599]: no method named `proof_mut` found for mutable reference `&mut GpaFigure` in the current scope
+  --> tests/compile_fail/a_gpa_figure_has_no_route_without_its_proof.rs:27:40
+   |
+27 |     let _proof: &mut GpaProof = figure.proof_mut();
+   |                                        ^^^^^^^^^
+   |
+help: there is a method `proof` with a similar name
+   |
+27 -     let _proof: &mut GpaProof = figure.proof_mut();
+27 +     let _proof: &mut GpaProof = figure.proof();
+   |
+
+error: cannot construct `GpaFigure` with struct literal syntax due to private fields
+  --> tests/compile_fail/a_gpa_figure_has_no_route_without_its_proof.rs:30:20
+   |
+30 |     let _literal = GpaFigure {
+   |                    ^^^^^^^^^
+31 |         scope: GpaScope::Major,
+   |         ---------------------- private field
+32 |         value: GpaValue::NoGradedAttempts,
+   |         --------------------------------- private field
+   |
+   = note: ...and other private field `proof` that was not provided

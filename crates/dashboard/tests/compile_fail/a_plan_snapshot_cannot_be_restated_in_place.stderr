@@ -1,0 +1,29 @@
+error[E0599]: no method named `set_label` found for mutable reference `&mut PlanSnapshot` in the current scope
+  --> tests/compile_fail/a_plan_snapshot_cannot_be_restated_in_place.rs:20:14
+   |
+20 |     snapshot.set_label("안 B");
+   |              ^^^^^^^^^
+   |
+help: there is a method `label` with a similar name, but with different arguments
+  --> src/planner.rs
+   |
+   |     pub fn label(&self) -> &str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `placed_mut` found for mutable reference `&mut PlanSnapshot` in the current scope
+  --> tests/compile_fail/a_plan_snapshot_cannot_be_restated_in_place.rs:23:57
+   |
+23 |     let _placed: &mut Vec<CandidateOffering> = snapshot.placed_mut();
+   |                                                         ^^^^^^^^^^
+   |
+help: there is a method `placed` with a similar name
+   |
+23 -     let _placed: &mut Vec<CandidateOffering> = snapshot.placed_mut();
+23 +     let _placed: &mut Vec<CandidateOffering> = snapshot.placed();
+   |
+
+error[E0599]: no method named `restate_in_place` found for mutable reference `&mut PlanSnapshot` in the current scope
+  --> tests/compile_fail/a_plan_snapshot_cannot_be_restated_in_place.rs:27:43
+   |
+27 |     let _applied: StaleMarking = snapshot.restate_in_place(&[]);
+   |                                           ^^^^^^^^^^^^^^^^ method not found in `&mut PlanSnapshot`

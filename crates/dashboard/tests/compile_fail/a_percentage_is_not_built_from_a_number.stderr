@@ -1,0 +1,66 @@
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_percentage_is_not_built_from_a_number.rs:17:50
+   |
+17 |     let _from_number = SecondaryPercentage::over(720_u32);
+   |                        ------------------------- ^^^^^^^ expected `RequirementBreakdown`, found `u32`
+   |                        |
+   |                        arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> src/percentage.rs
+   |
+   |     pub fn over(breakdown: RequirementBreakdown) -> Result<Self, DashboardError> {
+   |            ^^^^
+
+error[E0308]: mismatched types
+  --> tests/compile_fail/a_percentage_is_not_built_from_a_number.rs:20:48
+   |
+20 |     let _converted = SecondaryPercentage::from(720_u32);
+   |                      ------------------------- ^^^^^^^ expected `SecondaryPercentage`, found `u32`
+   |                      |
+   |                      arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+
+error[E0277]: the trait bound `SecondaryPercentage: TryFrom<u32>` is not satisfied
+  --> tests/compile_fail/a_percentage_is_not_built_from_a_number.rs:21:18
+   |
+21 |     let _tried = SecondaryPercentage::try_from(720_u32);
+   |                  ^^^^^^^^^^^^^^^^^^^ the trait `From<u32>` is not implemented for `SecondaryPercentage`
+   |
+   = note: required for `u32` to implement `Into<SecondaryPercentage>`
+   = note: required for `SecondaryPercentage` to implement `TryFrom<u32>`
+
+error[E0599]: no associated function or constant named `default` found for struct `SecondaryPercentage` in the current scope
+  --> tests/compile_fail/a_percentage_is_not_built_from_a_number.rs:24:41
+   |
+24 |     let _default = SecondaryPercentage::default();
+   |                                         ^^^^^^^ associated function or constant not found in `SecondaryPercentage`
+   |
+note: if you're trying to build a new `SecondaryPercentage`, consider using `SecondaryPercentage::over` which returns `Result<SecondaryPercentage, DashboardError>`
+  --> src/percentage.rs
+   |
+   |     pub fn over(breakdown: RequirementBreakdown) -> Result<Self, DashboardError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `clear_breakdown` found for mutable reference `&mut SecondaryPercentage` in the current scope
+  --> tests/compile_fail/a_percentage_is_not_built_from_a_number.rs:27:9
+   |
+27 |     bar.clear_breakdown();
+   |         ^^^^^^^^^^^^^^^
+   |
+help: there is a method `breakdown` with a similar name
+   |
+27 -     bar.clear_breakdown();
+27 +     bar.breakdown();
+   |
+
+error[E0277]: the trait bound `SecondaryPercentage: From<u32>` is not satisfied
+  --> tests/compile_fail/a_percentage_is_not_built_from_a_number.rs:21:18
+   |
+21 |     let _tried = SecondaryPercentage::try_from(720_u32);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<u32>` is not implemented for `SecondaryPercentage`
+   |
+   = note: required for `u32` to implement `Into<SecondaryPercentage>`
+   = note: required for `SecondaryPercentage` to implement `TryFrom<u32>`

@@ -14,6 +14,10 @@
  * task fixes is that every destination in the section 25.1 tree has a frame to
  * put content into, and that the frame carries the drawer.
  *
+ * `P2-X3` has since filled the `Academic` branch: its five routes take their
+ * sections from `academic.ts`, whose five lists are compared against
+ * `academic_dashboard`'s own enumerations.
+ *
  * `P2-X7` has since filled the `Evidence & Settings` branch: its four routes
  * take their sections from `evidence-center.ts`, whose six identifiers are
  * compared against `academic_evidence_center::CenterSection`. `P2-X2` has
@@ -26,6 +30,7 @@ import { breadcrumb, routeOf, type Destination } from "./destinations.js";
 import { renderDrawer, type DrawerPanel, type DrawerState } from "./drawer.js";
 import { entityFor, type EntityRef } from "./entities.js";
 import { EVIDENCE_CENTER_SECTIONS, sectionsForRoute } from "./evidence-center.js";
+import { academicSections } from "./academic.js";
 import { csMapRegions } from "./cs-map.js";
 import { homeSections } from "./home.js";
 import { backlinksOf } from "./backlinks.js";
@@ -171,6 +176,24 @@ function csMapSections(): ViewBuilder {
  * rather than the three children that happen to have content. A section whose
  * route is missing from the manifest fails here.
  */
+/**
+ * One `Academic` route's sections, from `academic.ts`.
+ *
+ * The headings and identifiers are that file's, and
+ * `the_academic_sections_are_the_crates_own` compares each of its five lists
+ * against `academic_dashboard`'s own enumeration read out of that crate's
+ * source.
+ */
+function academicRegions(routeId: string): ViewBuilder {
+  return () => {
+    const regions = academicSections(routeId);
+    if (regions.length === 0) {
+      throw new Error(`no section is assigned to the ${routeId} route`);
+    }
+    return regions.map((region) => frame(`${routeId}.${region.id}`, region.heading, "P2-X3"));
+  };
+}
+
 function centerIndex(): ViewBuilder {
   return (route) => {
     const children = ROUTE_MANIFEST.filter((candidate) => candidate.parentId === route.id);
@@ -193,11 +216,11 @@ function centerIndex(): ViewBuilder {
  */
 export const VIEW_BUILDERS: ReadonlyMap<string, ViewBuilder> = new Map<string, ViewBuilder>([
   ["home", todaySections()],
-  ["academic", framed("Academic", "P2-X3")],
-  ["academic.dashboard", framed("Academic dashboard", "P2-X3")],
-  ["academic.semester-planner", framed("Semester planner", "P2-X3")],
-  ["academic.courses", framed("Course catalog", "P2-X3")],
-  ["academic.graduation-audit", framed("Graduation audit", "P2-X3")],
+  ["academic", academicRegions("academic")],
+  ["academic.dashboard", academicRegions("academic.dashboard")],
+  ["academic.semester-planner", academicRegions("academic.semester-planner")],
+  ["academic.courses", academicRegions("academic.courses")],
+  ["academic.graduation-audit", academicRegions("academic.graduation-audit")],
   ["learn", framed("Learn", "P2-X4")],
   ["learn.lectures", framed("Lectures", "P2-X4")],
   ["learn.concepts", csMapSections()],
