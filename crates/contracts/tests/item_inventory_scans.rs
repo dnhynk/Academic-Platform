@@ -286,6 +286,11 @@ fn the_items_tile_every_file_the_workspace_compiles() -> TestResult {
 fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
     // One of every kind the enumeration names, in one file, plus the three
     // forms `P2-A4`'s second audit walked two whole-set inventories past.
+    //
+    // It is text handed to the reader and is never compiled, which is why it
+    // can carry `pub macro twice() {}`: declarative macros 2.0 are unstable and
+    // this repository builds on stable, but `macro` is on the keyword list and
+    // a control that skipped it would be a control over thirteen of fourteen.
     let sample = concat!(
         "#![allow(dead_code)]\n",
         "extern crate alloc;\n",
