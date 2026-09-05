@@ -476,6 +476,28 @@ const CALL_SITE_COUNTS: [(&str, usize, &str, &str); 8] = [
 /// an extra key without anyone having predicted it.
 const FILESYSTEM_CALLS: [&str; 3] = ["read", "read_dir", "symlink_metadata"];
 
+/// Every two-segment path this crate's product code spells through a crate
+/// root, as a whole set with a reason for each.
+///
+/// The third comparison this file did not have. `P2-A5`'s fifth audit measured
+/// `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)` running from
+/// inside [`SourceKind::of_path`] -- a live function on the capture path --
+/// with `repository_scans` reporting 11 ok, because [`FILESYSTEM_CALLS`] is
+/// over `fs::` names and [`USE_ITEMS`] is over `use` items, and a
+/// fully-qualified inline path is neither. `T226` recorded this crate as using
+/// "a different reader"; it used none.
+///
+/// A capability written as an absolute path is an extra key here whatever it
+/// is named, which is what a forbidden-token list cannot be.
+const REACHED_PATHS: [(&str, &str); 3] = [
+    ("core::fmt", "the hand-written Debug impls"),
+    (
+        "core::str",
+        "from_utf8 on the bytes the caller's reader handed back, in the secret scan",
+    ),
+    ("thiserror::Error", "the error enumerations' derive"),
+];
+
 /// Every `use` item in this crate's product code, as a whole set.
 ///
 /// The companion to [`FILESYSTEM_CALLS`]. A mutation reached without spelling
@@ -863,6 +885,23 @@ fn the_crate_touches_the_filesystem_only_to_read_it() -> TestResult {
             .collect::<BTreeSet<String>>(),
         "this crate's import set changed; a filesystem or transport type may have arrived"
     );
+
+    // Every path reached through a crate root, as a whole set. The two above
+    // are over a spelling (`fs::`) and over a declaration (`use`); this one is
+    // over what the code actually names, so a socket or a filesystem call
+    // written inline and fully qualified is an extra key rather than a silence.
+    let mut reached: BTreeSet<String> = BTreeSet::new();
+    for (_, code) in &product {
+        reached.extend(absolute_paths(&without_use_items(code)));
+    }
+    assert_eq!(
+        reached,
+        REACHED_PATHS
+            .iter()
+            .map(|(path, _)| (*path).to_owned())
+            .collect::<BTreeSet<String>>(),
+        "this crate reaches a path outside its inventory; every entry needs a reason"
+    );
     Ok(())
 }
 
@@ -872,6 +911,20 @@ fn the_crate_touches_the_filesystem_only_to_read_it() -> TestResult {
 /// an empty set.
 #[test]
 fn the_helpers_are_not_vacuous() -> TestResult {
+    // A qualified path is a leading `::` however it is spelled. `tighten` glues
+    // the space in `<T as ::std::net::X>` shut, and deciding on the byte before
+    // the `::` then read the crate root as a middle segment: `P2-A5` measured a
+    // name resolved from a live function of *this* crate with nothing in the
+    // workspace reporting it, because this file held no reach reader at all.
+    assert!(
+        absolute_paths("let _ = <str as ::std::net::ToSocketAddrs>::to_socket_addrs(h);")
+            .contains("std::net")
+    );
+    assert!(absolute_paths("let _: &dyn ::core::fmt::Debug = &v;").contains("core::fmt"));
+    // The other direction, so the repair is not "every segment is a root": a
+    // real middle segment still yields no second key.
+    assert!(!absolute_paths("std::alloc::Layout::new::<u8>()").contains("alloc::Layout"));
+    assert_eq!(REACHED_PATHS.len(), 3);
     assert_eq!(uses_of("a.expose(); expose_rendered();", "expose"), 1);
     assert_eq!(declarations_of("fn expose_rendered(", "expose"), 0);
     assert_eq!(declarations_of("fn expose(&self)", "expose"), 1);
@@ -1150,6 +1203,60 @@ fn tighten(code: &str) -> String {
     }
     out.push_str(rest);
     out
+}
+
+/// Every two-segment path `code` spells through a crate root.
+///
+/// The first segment has to be a crate root this package can name, so a field
+/// access such as `self.path` is not a path and `Self::Variant` is not one
+/// either. What it catches is the absolute form — `std::env::var`,
+/// `std::path::Path` — which is the shape that needs no `use` item.
+fn absolute_paths(code: &str) -> BTreeSet<String> {
+    let roots = ["std", "core", "alloc", "thiserror"];
+    let code = &tighten(code);
+    let bytes = code.as_bytes();
+    let mut found = BTreeSet::new();
+    let mut taken = 0_usize;
+    for (at, _) in code.match_indices("::") {
+        let mut start = at;
+        while start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+            start -= 1;
+        }
+        if start == at {
+            continue;
+        }
+        // A whole identifier: the byte before it cannot continue one, which is
+        // what stops `a::b::c` being read as a second root at `b`.
+        if start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+            continue;
+        }
+        // A middle segment of a longer path -- the `b` of `a::b::c` -- is not a
+        // crate root, and skipping it is what stops one path yielding two keys.
+        // What decides it is whether this segment already sits inside a key
+        // this pass took, not the byte three positions back. `tighten` glues
+        // `as ::std` shut, so that byte is the `s` of a keyword and the leading
+        // `::` of a qualified path read as a middle one: `P2-A5` measured
+        // `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)` resolving
+        // a name from a live function while this pass reported nothing. Every
+        // segment outside a key already taken is a root, and a root nobody
+        // admits fails as an extra key rather than passing.
+        if start < taken {
+            continue;
+        }
+        let root = &code[start..at];
+        if !roots.contains(&root) && !root.starts_with("academic_") {
+            continue;
+        }
+        let mut end = at + 2;
+        while end < bytes.len() && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'_') {
+            end += 1;
+        }
+        if end > at + 2 {
+            found.insert(code[start..end].to_owned());
+            taken = end;
+        }
+    }
+    found
 }
 
 /// Every `impl` header of `code`, from `impl` to the brace that opens it.
