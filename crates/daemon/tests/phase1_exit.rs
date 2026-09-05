@@ -1377,16 +1377,25 @@ fn collect_rust_sources(root: &Path, sources: &mut Vec<(PathBuf, String)>) -> io
     Ok(())
 }
 
-/// The one file in the workspace allowed an outbound socket construct.
+/// The two files in the workspace allowed an outbound socket construct.
 ///
-/// It is the process `P2-G4`'s sandbox contains: proving that the operating
-/// system refuses a socket means asking it for one. What keeps it scoped is
-/// read from `cargo metadata` rather than from this comment --
-/// `only_egress_crate_has_a_socket` in `tools/phase1-scaffold-policy.test.mjs`
-/// asserts that the target is `required-features = ["native-sandbox"]`, that it
-/// is the worker's only binary, and that no workspace crate depends on
-/// `academic-worker`, so no default build and no product crate reaches it.
-const SANDBOX_PROBE: &str = "crates/worker/probes/worker_probe.rs";
+/// Both are probes, and both exist for the same reason: proving that the
+/// operating system refuses a socket means asking it for one. The first is the
+/// process `P2-G4`'s sandbox contains; the second is `P2-RF21`'s, the process a
+/// class's own capability declaration is enforced against.
+///
+/// What keeps each scoped is read from `cargo metadata` rather than from this
+/// comment. `only_egress_crate_has_a_socket` in
+/// `tools/phase1-scaffold-policy.test.mjs` asserts that each target is the only
+/// binary its package declares and carries the package's non-default feature in
+/// `required-features`; for the worker it also asserts that no workspace crate
+/// depends on `academic-worker`, and for the enforcement crate -- which three
+/// process classes must depend on -- that a dependent reaches a package's
+/// library target and never its binaries.
+const SOCKET_PROBES: [&str; 2] = [
+    "crates/worker/probes/worker_probe.rs",
+    "crates/process-sandbox/probes/enforcement_probe.rs",
+];
 
 /// The product binary built with default plaintext features has no product
 /// networking, proved by source scan and by link scan.
@@ -1425,6 +1434,7 @@ fn phase1_exit_has_no_product_network() -> TestResult {
     ];
     let crates_dir = root.join("crates");
     let mut scanned = 0_usize;
+    let mut excepted: Vec<String> = Vec::new();
     for entry in fs::read_dir(&crates_dir)? {
         let entry = entry?;
         if !entry.file_type()?.is_dir() || entry.file_name() == "test-support" {
@@ -1447,7 +1457,19 @@ fn phase1_exit_has_no_product_network() -> TestResult {
             for (path, source) in sources {
                 let relative = path.strip_prefix(&root).unwrap_or(&path);
                 let spelled = relative.to_string_lossy().replace('\\', "/");
-                if spelled == SANDBOX_PROBE {
+                if SOCKET_PROBES.contains(&spelled.as_str()) {
+                    // An exception for a file that spells nothing prohibited is
+                    // a file quietly taken out of the scan. `T215` added one --
+                    // `crates/capture-gate/probes/capture_probe.rs`, which names
+                    // no socket -- and the reached/listed comparison below
+                    // passed, because that file is reached. This is what sees
+                    // it.
+                    assert!(
+                        prohibited.iter().any(|needle| source.contains(needle)),
+                        "{} is excepted from the network scan and names none of the prohibited constructs, so the exception takes it out of the scan for nothing",
+                        path.display()
+                    );
+                    excepted.push(spelled);
                     continue;
                 }
                 scanned += 1;
@@ -1464,6 +1486,18 @@ fn phase1_exit_has_no_product_network() -> TestResult {
     assert!(
         scanned >= 200,
         "the product source scan found only {scanned} files, so it proved little"
+    );
+    // An exception nobody matched is a stale exception, and one this walk never
+    // reached is an exception that proves nothing. Both directions.
+    excepted.sort();
+    let mut expected: Vec<String> = SOCKET_PROBES
+        .iter()
+        .map(|path| (*path).to_owned())
+        .collect();
+    expected.sort();
+    assert_eq!(
+        excepted, expected,
+        "the socket-probe exception list and the files this walk reached disagree"
     );
 
     // (2) Link scan of the default-feature `academicd` binary itself.
