@@ -107,7 +107,7 @@ by the **parent** that calls `CreateProcessW`.
 
 **No launcher in this repository launches a process class.** So on Windows a
 process class has no enforcing parent, `enter` returns
-`EnforcementError::Unavailable`, and all three enforced binaries exit `1`
+`EnforcementError::Unavailable`, and all four enforced binaries exit `1`
 without doing work. That is the contract holding: the declaration and the
 process agree, because the process does not run.
 
@@ -128,7 +128,7 @@ declare they do not have.
 `native-enforcement` feature is off by default, so `cargo build --workspace`
 produces binaries that refuse to start on every platform. That is the
 default-deny posture and it is observable: the acceptance suite in each of the
-three crates launches its own binary and requires exactly that.
+four crates launches its own binary and requires exactly that.
 
 ## Which capabilities are enforced, and where the others live
 
@@ -235,7 +235,7 @@ proving the operating system refuses one means asking for one. It is a `[[bin]]`
 with `required-features = ["native-enforcement"]` and a path outside `src`.
 
 `P2-G4`'s rule that **nothing may depend on `academic-worker`** is unchanged and
-still enforced; it is not available here, because three product crates do depend
+still enforced; it is not available here, because four product crates do depend
 on `academic-process-sandbox` — a process class that enforces its declaration has
 to link the thing that enforces it. What keeps the probe out of a product build
 instead is that a dependent links a package's *library* target and never its
@@ -244,14 +244,21 @@ whatever edges exist. Both halves are read out of `cargo metadata`.
 
 ## What this contract does not claim
 
-- **Three of the six process classes are not enforced yet.** `academic-connector`,
-  `academic-export-job` and `academic-indexer` still compute their capability set
-  and drop it. `P2-RF21` was scoped to the three binaries `P2-A5` and `P2-A4`
-  measured. `the_unenforced_process_classes_are_named` writes the split out and
-  re-derives the enforced half from `cargo metadata`, so the remainder is visible
-  rather than passing as done, and closing it needs its own process-level
-  evidence on both hosts.
-- **Nothing is enforced on Windows.** All three binaries refuse to start there.
+- **Two of the six process classes are not enforced yet, and the reason is an
+  argument rather than a scope decision.** `academic-connector` and
+  `academic-indexer` still compute their capability set and drop it. Enforcing
+  either would be vacuous: `refusals(Indexer)` holds `WriteStagedArtifact`, and
+  `WriteSearchIndex` -- which `Indexer` declares -- carries a `BrokerOnly` reason
+  written in terms of exactly that capability, so entering the boundary would
+  resolve the disagreement by refusing the write the declaration is defined by,
+  in a binary that makes no syscall. `Connector`/`StageExternalPayload` is the
+  same pair. `ExportJob` had no such pair -- `ReadArtifactRange` and
+  `AssembleExport` name no capability at all -- so it was the one class left
+  unenforced with no argument, which is what `P2-A4`'s third audit reported and
+  `T229` closed. `the_unenforced_process_classes_are_named` writes the split out
+  and re-derives the enforced half from `cargo metadata`, so the remainder is
+  visible rather than passing as done.
+- **Nothing is enforced on Windows.** All four binaries refuse to start there.
   This is not a claim that a Windows process is contained.
 - **The default build enforces nothing and runs nothing.** With
   `native-enforcement` off, `enter` refuses on every platform.
