@@ -197,6 +197,53 @@ fn every_class_holds_the_write_it_declares_and_no_other() {
 }
 
 #[test]
+fn no_class_reaches_the_second_abi_under_the_same_arch_token() {
+    // `P2-A5` measured a `REPOSITORY_ANALYZER` process that printed
+    // `Seccomp=2` and then completed a TCP handshake through the x32 ABI: the
+    // filter checked the arch token, and `AUDIT_ARCH_X86_64` is the token for
+    // two ABIs. What closes it is a rule in the filter, and what proves the
+    // rule is in force is a syscall on that ABI.
+    //
+    // The syscall is made inside `enter`, not here and not in the probe: this
+    // process cannot make it (an `enter` is irreversible and applies to the
+    // caller) and the probe may hold no `unsafe`. So `enter` makes it, requires
+    // `EPERM`, and puts *the answer* in the receipt — `-1` being `-EPERM` —
+    // which means a run that reached this assertion at all is a run in which
+    // the syscall was made and the kernel refused it. A filter that stopped
+    // covering x32 does not print a different receipt here; it fails `enter`,
+    // and the probe exits 3. A check that made the call and dropped its result
+    // would print the pid it got instead, which is why the number is read and
+    // not a word saying it was asked.
+    let expects_answer = cfg!(target_arch = "x86_64");
+    for class in ProcessClass::ALL {
+        let run = run(class);
+        if !cfg!(target_os = "linux") {
+            assert_eq!(run.code, Some(3), "{} entered", class.as_str());
+            continue;
+        }
+        assert_eq!(
+            run.code,
+            Some(0),
+            "{} did not enter, so the x32 refusal was not confirmed:\n{}",
+            class.as_str(),
+            run.stdout
+        );
+        // Both directions from the declaration: the classes whose socket is
+        // refused carry the answer, and the one that declares a socket has no
+        // filter to answer with.
+        let filtered = !class.allows(ProcessCapability::OpenOutboundSocket);
+        assert_eq!(
+            run.outcome("enter").contains("x32(getpid)=-1"),
+            filtered && expects_answer,
+            "{} declares OpenOutboundSocket = {} and its receipt is {}",
+            class.as_str(),
+            !filtered,
+            run.outcome("enter")
+        );
+    }
+}
+
+#[test]
 fn the_kernel_reports_the_filter_the_receipt_claims() {
     // The receipt line is this crate talking. `/proc/self/status` is the
     // kernel talking, read by the probe after the installation and printed
