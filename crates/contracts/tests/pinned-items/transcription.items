@@ -2,108 +2,108 @@ crates/transcription/src/annotation.rs [priv] impl Annotation
 crates/transcription/src/annotation.rs [priv] impl AnnotationKind
 crates/transcription/src/annotation.rs [priv] impl AnnotationLayer
 crates/transcription/src/annotation.rs [priv] impl core::fmt::Debug for Annotation
-crates/transcription/src/annotation.rs [priv] impl core::fmt::Debug for Annotation :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-crates/transcription/src/annotation.rs [priv] use academic_domain::ContentDigest
-crates/transcription/src/annotation.rs [priv] use crate::{authorize::be_len, fault::VersionFault, transcript::RawTranscript}
-crates/transcription/src/annotation.rs [pub] #[derive(Clone, PartialEq, Eq)] struct Annotation
-crates/transcription/src/annotation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AnnotationKind
-crates/transcription/src/annotation.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct AnnotationLayer
-crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] const fn first_token(&self) -> usize
-crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] const fn kind(&self) -> AnnotationKind
-crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] const fn segment(&self) -> usize
-crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] const fn token_count(&self) -> usize
-crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] fn over( kind: AnnotationKind, segment: usize, first_token: usize, token_count: usize, rendering: impl Into<String>, ) -> Self
-crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] fn rendering(&self) -> &str
-crates/transcription/src/annotation.rs [pub] impl AnnotationKind :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/annotation.rs [pub] impl AnnotationKind :: #[must_use] const fn spec_phrase(self) -> &'static str
-crates/transcription/src/annotation.rs [pub] impl AnnotationKind :: const ALL: [Self; 4]
-crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] const fn new() -> Self
-crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn annotations(&self) -> &[Annotation]
-crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn digest(&self) -> ContentDigest
-crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn is_empty(&self) -> bool
-crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn of_kind(&self, kind: AnnotationKind) -> Vec<&Annotation>
-crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn remove_kind(&mut self, kind: AnnotationKind) -> usize
-crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: fn apply( &mut self, raw: &RawTranscript, annotation: Annotation, ) -> Result<(), VersionFault>
+crates/transcription/src/annotation.rs [priv] impl core::fmt::Debug for Annotation :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |92a1d7e210a564f6
+crates/transcription/src/annotation.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/transcription/src/annotation.rs [priv] use crate::{authorize::be_len, fault::VersionFault, transcript::RawTranscript} |f139b45c5e3cba64
+crates/transcription/src/annotation.rs [pub] #[derive(Clone, PartialEq, Eq)] struct Annotation |10930a32c1c5dc2d
+crates/transcription/src/annotation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AnnotationKind |49528cbe0d2922d0
+crates/transcription/src/annotation.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct AnnotationLayer |7555291569611871
+crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] const fn first_token(&self) -> usize |38fb525b6129e0a5
+crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] const fn kind(&self) -> AnnotationKind |eed9da6fdd17fd08
+crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] const fn segment(&self) -> usize |62c6fc21b0d4769f
+crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] const fn token_count(&self) -> usize |a2c531c96e969b9f
+crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] fn over( kind: AnnotationKind, segment: usize, first_token: usize, token_count: usize, rendering: impl Into<String>, ) -> Self |b500d0417e1d0bb5
+crates/transcription/src/annotation.rs [pub] impl Annotation :: #[must_use] fn rendering(&self) -> &str |8e9e8abba11785b1
+crates/transcription/src/annotation.rs [pub] impl AnnotationKind :: #[must_use] const fn as_str(self) -> &'static str |f8db8a8ee7972eaa
+crates/transcription/src/annotation.rs [pub] impl AnnotationKind :: #[must_use] const fn spec_phrase(self) -> &'static str |0369ee9971b3e203
+crates/transcription/src/annotation.rs [pub] impl AnnotationKind :: const ALL: [Self; 4] |bd109189ed406c0b
+crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] const fn new() -> Self |ff0c80e55601e034
+crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn annotations(&self) -> &[Annotation] |2897157421bac005
+crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn digest(&self) -> ContentDigest |321e9122270f295f
+crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn is_empty(&self) -> bool |3c7b96684a724a9d
+crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn of_kind(&self, kind: AnnotationKind) -> Vec<&Annotation> |629e17e316e2a7df
+crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: #[must_use] fn remove_kind(&mut self, kind: AnnotationKind) -> usize |0947fa2ad1f2ae86
+crates/transcription/src/annotation.rs [pub] impl AnnotationLayer :: fn apply( &mut self, raw: &RawTranscript, annotation: Annotation, ) -> Result<(), VersionFault> |278f8279252731d5
 crates/transcription/src/authorize.rs [priv] impl AuthorizationBinding
-crates/transcription/src/authorize.rs [priv] impl AuthorizationBinding :: fn covers(&self, recovery: &JournalRecovery) -> bool
+crates/transcription/src/authorize.rs [priv] impl AuthorizationBinding :: fn covers(&self, recovery: &JournalRecovery) -> bool |71fd108ad120395d
 crates/transcription/src/authorize.rs [priv] impl AuthorizedCapture
 crates/transcription/src/authorize.rs [priv] impl AuthorizedChunk
 crates/transcription/src/authorize.rs [priv] impl InputManifest
 crates/transcription/src/authorize.rs [priv] impl SuppliedMaterial
 crates/transcription/src/authorize.rs [priv] impl core::fmt::Debug for AuthorizedCapture
-crates/transcription/src/authorize.rs [priv] impl core::fmt::Debug for AuthorizedCapture :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/transcription/src/authorize.rs [priv] impl core::fmt::Debug for AuthorizedCapture :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |4cd428cb3051767e
 crates/transcription/src/authorize.rs [priv] impl core::fmt::Debug for AuthorizedChunk
-crates/transcription/src/authorize.rs [priv] impl core::fmt::Debug for AuthorizedChunk :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-crates/transcription/src/authorize.rs [priv] use academic_capture::{CaptureRecorder, JournalRecovery, RecordBody}
-crates/transcription/src/authorize.rs [priv] use academic_domain::{Actor, ContentDigest, LectureSessionId}
-crates/transcription/src/authorize.rs [priv] use crate::fault::InputFault
-crates/transcription/src/authorize.rs [pub(crate)] fn be_len(value: usize) -> [u8; 8]
-crates/transcription/src/authorize.rs [pub] #[derive(Clone, PartialEq, Eq)] struct AuthorizedCapture
-crates/transcription/src/authorize.rs [pub] #[derive(Clone, PartialEq, Eq)] struct AuthorizedChunk
-crates/transcription/src/authorize.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AuthorizationBinding
-crates/transcription/src/authorize.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct InputManifest
-crates/transcription/src/authorize.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SuppliedMaterial
-crates/transcription/src/authorize.rs [pub] impl AuthorizationBinding :: #[must_use] const fn lecture(&self) -> LectureSessionId
-crates/transcription/src/authorize.rs [pub] impl AuthorizationBinding :: #[must_use] const fn policy_digest(&self) -> &ContentDigest
-crates/transcription/src/authorize.rs [pub] impl AuthorizationBinding :: #[must_use] const fn token_id(&self) -> &ContentDigest
-crates/transcription/src/authorize.rs [pub] impl AuthorizationBinding :: fn of(recorder: &CaptureRecorder, recovery: &JournalRecovery) -> Result<Self, InputFault>
-crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] const fn audio_clock_offset_nanos(&self) -> i64
-crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] const fn digest(&self) -> &ContentDigest
-crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] const fn frame_seq(&self) -> u32
-crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] const fn orientation_code(&self) -> u8
-crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] fn byte_len(&self) -> usize
-crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] const fn digest(&self) -> &ContentDigest
-crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] const fn elapsed_nanos(&self) -> u64
-crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] const fn frame_seq(&self) -> u32
-crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] fn audio(&self) -> &[u8]
-crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] fn byte_len(&self) -> usize
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] const fn binding(&self) -> &AuthorizationBinding
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] const fn for_binding(binding: AuthorizationBinding) -> Self
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn captures(&self) -> &[AuthorizedCapture]
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn chunks(&self) -> &[AuthorizedChunk]
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn input_digest(&self) -> ContentDigest
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn is_empty(&self) -> bool
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn materials(&self) -> &[SuppliedMaterial]
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_audio_chunk( &mut self, recovery: &JournalRecovery, frame_seq: u32, ) -> Result<(), InputFault>
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_capture( &mut self, recovery: &JournalRecovery, frame_seq: u32, ) -> Result<(), InputFault>
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_supplied_material( &mut self, supplied_by: &Actor, identifier: &str, bytes: &[u8], ) -> Result<(), InputFault>
-crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] const fn byte_len(&self) -> usize
-crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] const fn digest(&self) -> &ContentDigest
-crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] fn identifier(&self) -> &str
+crates/transcription/src/authorize.rs [priv] impl core::fmt::Debug for AuthorizedChunk :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |3fece83b02cd8600
+crates/transcription/src/authorize.rs [priv] use academic_capture::{CaptureRecorder, JournalRecovery, RecordBody} |3f5af3fab9cd6646
+crates/transcription/src/authorize.rs [priv] use academic_domain::{Actor, ContentDigest, LectureSessionId} |6831a182bae1d930
+crates/transcription/src/authorize.rs [priv] use crate::fault::InputFault |ae0da011b5408756
+crates/transcription/src/authorize.rs [pub(crate)] fn be_len(value: usize) -> [u8; 8] |1897deb6c9846f6c
+crates/transcription/src/authorize.rs [pub] #[derive(Clone, PartialEq, Eq)] struct AuthorizedCapture |a4b7b9254df2243e
+crates/transcription/src/authorize.rs [pub] #[derive(Clone, PartialEq, Eq)] struct AuthorizedChunk |bad6b9643ad00abd
+crates/transcription/src/authorize.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AuthorizationBinding |7eec240d456e6877
+crates/transcription/src/authorize.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct InputManifest |5bb25e90d3c56cfc
+crates/transcription/src/authorize.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SuppliedMaterial |44c182433e125c77
+crates/transcription/src/authorize.rs [pub] impl AuthorizationBinding :: #[must_use] const fn lecture(&self) -> LectureSessionId |bd075c887d3d5d9c
+crates/transcription/src/authorize.rs [pub] impl AuthorizationBinding :: #[must_use] const fn policy_digest(&self) -> &ContentDigest |c216a210e07fdf7a
+crates/transcription/src/authorize.rs [pub] impl AuthorizationBinding :: #[must_use] const fn token_id(&self) -> &ContentDigest |707124e5ca843ee8
+crates/transcription/src/authorize.rs [pub] impl AuthorizationBinding :: fn of(recorder: &CaptureRecorder, recovery: &JournalRecovery) -> Result<Self, InputFault> |416681e9ee848ce2
+crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] const fn audio_clock_offset_nanos(&self) -> i64 |ad2045bd3c196cbc
+crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
+crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] const fn frame_seq(&self) -> u32 |e686e198a9cf9227
+crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] const fn orientation_code(&self) -> u8 |85522c290db4cc12
+crates/transcription/src/authorize.rs [pub] impl AuthorizedCapture :: #[must_use] fn byte_len(&self) -> usize |e7cf0d48b74dcb83
+crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
+crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] const fn elapsed_nanos(&self) -> u64 |41d6339a5e24185c
+crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] const fn frame_seq(&self) -> u32 |e686e198a9cf9227
+crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] fn audio(&self) -> &[u8] |134a593f8e21d5d6
+crates/transcription/src/authorize.rs [pub] impl AuthorizedChunk :: #[must_use] fn byte_len(&self) -> usize |e7cf0d48b74dcb83
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] const fn binding(&self) -> &AuthorizationBinding |cb38e36231317249
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] const fn for_binding(binding: AuthorizationBinding) -> Self |d347fb20c5859fce
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn captures(&self) -> &[AuthorizedCapture] |f36880e5aaffe96f
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn chunks(&self) -> &[AuthorizedChunk] |d1b7a0522f75bd4c
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn input_digest(&self) -> ContentDigest |b1b302788f5c8bbd
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn is_empty(&self) -> bool |0650132461dc04f4
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn materials(&self) -> &[SuppliedMaterial] |77d89d216e5c7c1b
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_audio_chunk( &mut self, recovery: &JournalRecovery, frame_seq: u32, ) -> Result<(), InputFault> |e886df133023e913
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_capture( &mut self, recovery: &JournalRecovery, frame_seq: u32, ) -> Result<(), InputFault> |165233f3b6d47859
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_supplied_material( &mut self, supplied_by: &Actor, identifier: &str, bytes: &[u8], ) -> Result<(), InputFault> |f31a9e2cf09528f1
+crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] const fn byte_len(&self) -> usize |7d4ee0a1d06b1107
+crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
+crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] fn identifier(&self) -> &str |b6a891ecaafe7d61
 crates/transcription/src/compare.rs [priv] impl Divergence
-crates/transcription/src/compare.rs [priv] impl Divergence :: fn digest_material(&self) -> Vec<u8>
+crates/transcription/src/compare.rs [priv] impl Divergence :: fn digest_material(&self) -> Vec<u8> |e2790d4a9604c3cd
 crates/transcription/src/compare.rs [priv] impl ProviderRun
-crates/transcription/src/compare.rs [priv] impl ProviderRun :: fn identity(&self) -> Vec<u8>
+crates/transcription/src/compare.rs [priv] impl ProviderRun :: fn identity(&self) -> Vec<u8> |988e4906d3336735
 crates/transcription/src/compare.rs [priv] impl RetranscriptionComparison
 crates/transcription/src/compare.rs [priv] impl Side
-crates/transcription/src/compare.rs [priv] use academic_domain::ContentDigest
-crates/transcription/src/compare.rs [priv] use academic_model_run::{ModelVersion, ProviderId}
-crates/transcription/src/compare.rs [priv] use crate::{authorize::be_len, response::RawResponseId, transcript::RawTranscript}
-crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum Side
-crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum CompareFault
-crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Divergence
-crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RetranscriptionComparison
-crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Hash)] struct ProviderRun
-crates/transcription/src/compare.rs [pub] fn compare( left: &RawTranscript, right: &RawTranscript, ) -> Result<RetranscriptionComparison, CompareFault>
-crates/transcription/src/compare.rs [pub] impl Divergence :: #[must_use] const fn as_str(&self) -> &'static str
-crates/transcription/src/compare.rs [pub] impl ProviderRun :: #[must_use] const fn model_version(&self) -> &ModelVersion
-crates/transcription/src/compare.rs [pub] impl ProviderRun :: #[must_use] const fn provider(&self) -> &ProviderId
-crates/transcription/src/compare.rs [pub] impl ProviderRun :: #[must_use] const fn raw_response(&self) -> RawResponseId
-crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn agreeing_tokens(&self) -> usize
-crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn compared_tokens(&self) -> usize
-crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn input_digest(&self) -> &ContentDigest
-crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn left(&self) -> &ProviderRun
-crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn right(&self) -> &ProviderRun
-crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] fn divergence_digest(&self) -> ContentDigest
-crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] fn divergences(&self) -> &[Divergence]
-crates/transcription/src/compare.rs [pub] impl Side :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/compare.rs [pub] impl Side :: const ALL: [Self; 2]
-crates/transcription/src/fault.rs [priv] use crate::{provider::CapabilityField, route::RouteDenial}
-crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum CapabilityFault
-crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum DecodeFault
-crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum InputFault
-crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum PipelineFault
-crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum VersionFault
+crates/transcription/src/compare.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/transcription/src/compare.rs [priv] use academic_model_run::{ModelVersion, ProviderId} |bdd24c3bedc0c68b
+crates/transcription/src/compare.rs [priv] use crate::{authorize::be_len, response::RawResponseId, transcript::RawTranscript} |8ee5558d8b6e5623
+crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum Side |8b80cae3f891362a
+crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum CompareFault |3e4296ec289cb782
+crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Divergence |0a011e0fcd06ebed
+crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RetranscriptionComparison |472827bf03d67a5c
+crates/transcription/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Hash)] struct ProviderRun |5b44db9b6efe1549
+crates/transcription/src/compare.rs [pub] fn compare( left: &RawTranscript, right: &RawTranscript, ) -> Result<RetranscriptionComparison, CompareFault> |a2fc8a17c73fbfb8
+crates/transcription/src/compare.rs [pub] impl Divergence :: #[must_use] const fn as_str(&self) -> &'static str |af8a90de397df222
+crates/transcription/src/compare.rs [pub] impl ProviderRun :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
+crates/transcription/src/compare.rs [pub] impl ProviderRun :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
+crates/transcription/src/compare.rs [pub] impl ProviderRun :: #[must_use] const fn raw_response(&self) -> RawResponseId |293a1dbeb51355a9
+crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn agreeing_tokens(&self) -> usize |1e4d5d3cf9dae253
+crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn compared_tokens(&self) -> usize |00a80535fae7dfa1
+crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn input_digest(&self) -> &ContentDigest |a632941ad48433f0
+crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn left(&self) -> &ProviderRun |9347f4f122a00415
+crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] const fn right(&self) -> &ProviderRun |19b54e7c9f45762f
+crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] fn divergence_digest(&self) -> ContentDigest |c43ad00b490092f2
+crates/transcription/src/compare.rs [pub] impl RetranscriptionComparison :: #[must_use] fn divergences(&self) -> &[Divergence] |c22c788793bda6ac
+crates/transcription/src/compare.rs [pub] impl Side :: #[must_use] const fn as_str(self) -> &'static str |b05c3d710f4ae4ff
+crates/transcription/src/compare.rs [pub] impl Side :: const ALL: [Self; 2] |e17b6b72bead6b7e
+crates/transcription/src/fault.rs [priv] use crate::{provider::CapabilityField, route::RouteDenial} |c68cb9155885096c
+crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum CapabilityFault |b8a4d61ecc587cf6
+crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum DecodeFault |4960d9d942d9ee01
+crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum InputFault |0a809c46f2af2629
+crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum PipelineFault |0a41df6078d6dc45
+crates/transcription/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum VersionFault |0066bcccf07f35bc
 crates/transcription/src/lib.rs [priv] mod annotation
 crates/transcription/src/lib.rs [priv] mod authorize
 crates/transcription/src/lib.rs [priv] mod compare
@@ -114,73 +114,73 @@ crates/transcription/src/lib.rs [priv] mod response
 crates/transcription/src/lib.rs [priv] mod route
 crates/transcription/src/lib.rs [priv] mod transcript
 crates/transcription/src/lib.rs [priv] mod version
-crates/transcription/src/lib.rs [pub] use annotation::{Annotation, AnnotationKind, AnnotationLayer}
-crates/transcription/src/lib.rs [pub] use authorize::{ AuthorizationBinding, AuthorizedCapture, AuthorizedChunk, InputManifest, SuppliedMaterial, }
-crates/transcription/src/lib.rs [pub] use compare::{ CompareFault, Divergence, ProviderRun, RetranscriptionComparison, Side, compare, }
-crates/transcription/src/lib.rs [pub] use fault::{CapabilityFault, DecodeFault, InputFault, PipelineFault, VersionFault}
-crates/transcription/src/lib.rs [pub] use pipeline::{ CompletedRun, DownstreamJob, JobHandle, LOCAL_ONLY_RETENTION, ProviderSelection, RunIdentity, RunOutcome, RunRecord, Stage, SttProvider, TranscriptionRequest, run, }
-crates/transcription/src/lib.rs [pub] use provider::{ AudioFormat, CapabilityField, ChunkBoundary, ConfidenceSemantics, ContractDraft, ContractRegistry, FeatureClaim, ProviderContract, ProviderPlacement, Support, TimestampSemantics, }
-crates/transcription/src/lib.rs [pub] use response::{ ArchiveFault, ArchivedResponse, ProviderResponse, RawResponseArchive, RawResponseId, }
-crates/transcription/src/lib.rs [pub] use route::{RemoteAdmission, RemoteProcessingApproval, RouteDenial, SttPolicy, SttRoute}
-crates/transcription/src/lib.rs [pub] use transcript::{RESPONSE_BANNER, RawSegment, RawToken, RawTranscript, Speaker, decode}
-crates/transcription/src/lib.rs [pub] use version::{ AppliedCorrection, CorrectionAuthor, CorrectionCandidate, CorrectionStatus, EffectiveToken, LineageEffect, SettledCorrection, TokenAddress, TranscriptLineage, TranscriptSegment, TranscriptVersion, settles_corrections, }
-crates/transcription/src/pipeline.rs [priv] #[expect( clippy::too_many_arguments, reason = "the two halves of this stage need the response, the contract, the manifest, the archive position, the caller's section 27.3 fields, the route, the selection and the input artifacts" )] fn normalize( response: &ProviderResponse, contract: &ProviderContract, manifest: &InputManifest, raw_response: RawResponseId, identity: &RunIdentity, route: &SttRoute, selection: &ProviderSelection, input_artifact_refs: InputArtifactRefs, ) -> Result<(RawTranscript, ModelRun), PipelineFault>
-crates/transcription/src/pipeline.rs [priv] fn admit_authorized_inputs(manifest: &InputManifest) -> Result<InputArtifactRefs, PipelineFault>
-crates/transcription/src/pipeline.rs [priv] fn admitted_route(route: SttRoute) -> Result<SttRoute, PipelineFault>
-crates/transcription/src/pipeline.rs [priv] fn artifact_ref(digest: &ContentDigest) -> InputArtifactRef
-crates/transcription/src/pipeline.rs [priv] fn fan_out( manifest: &InputManifest, raw_response: RawResponseId, ) -> Result<Vec<JobHandle>, PipelineFault>
-crates/transcription/src/pipeline.rs [priv] fn read_provider_contract<'a>( registry: &'a ContractRegistry, selection: &ProviderSelection, ) -> Result<&'a ProviderContract, PipelineFault>
-crates/transcription/src/pipeline.rs [priv] fn record_model_run( identity: &RunIdentity, route: &SttRoute, selection: &ProviderSelection, input_artifact_refs: InputArtifactRefs, ) -> Result<ModelRun, PipelineFault>
-crates/transcription/src/pipeline.rs [priv] fn retain( archive: &mut RawResponseArchive, response: &ProviderResponse, ) -> Result<RawResponseId, PipelineFault>
-crates/transcription/src/pipeline.rs [priv] fn transcribe( provider: &dyn SttProvider, manifest: &InputManifest, contract: &ProviderContract, route: &SttRoute, selection: &ProviderSelection, ) -> Result<ProviderResponse, PipelineFault>
+crates/transcription/src/lib.rs [pub] use annotation::{Annotation, AnnotationKind, AnnotationLayer} |6f051f4b5acf5597
+crates/transcription/src/lib.rs [pub] use authorize::{ AuthorizationBinding, AuthorizedCapture, AuthorizedChunk, InputManifest, SuppliedMaterial, } |e5f741e38d718166
+crates/transcription/src/lib.rs [pub] use compare::{ CompareFault, Divergence, ProviderRun, RetranscriptionComparison, Side, compare, } |703e4a94060549d6
+crates/transcription/src/lib.rs [pub] use fault::{CapabilityFault, DecodeFault, InputFault, PipelineFault, VersionFault} |4cb9fe1e961b30e6
+crates/transcription/src/lib.rs [pub] use pipeline::{ CompletedRun, DownstreamJob, JobHandle, LOCAL_ONLY_RETENTION, ProviderSelection, RunIdentity, RunOutcome, RunRecord, Stage, SttProvider, TranscriptionRequest, run, } |8b23207772bb3276
+crates/transcription/src/lib.rs [pub] use provider::{ AudioFormat, CapabilityField, ChunkBoundary, ConfidenceSemantics, ContractDraft, ContractRegistry, FeatureClaim, ProviderContract, ProviderPlacement, Support, TimestampSemantics, } |04de0fd3325f1c2d
+crates/transcription/src/lib.rs [pub] use response::{ ArchiveFault, ArchivedResponse, ProviderResponse, RawResponseArchive, RawResponseId, } |a48522a1a7ac2487
+crates/transcription/src/lib.rs [pub] use route::{RemoteAdmission, RemoteProcessingApproval, RouteDenial, SttPolicy, SttRoute} |92db5683f064d5e3
+crates/transcription/src/lib.rs [pub] use transcript::{RESPONSE_BANNER, RawSegment, RawToken, RawTranscript, Speaker, decode} |b7011960eb06e741
+crates/transcription/src/lib.rs [pub] use version::{ AppliedCorrection, CorrectionAuthor, CorrectionCandidate, CorrectionStatus, EffectiveToken, LineageEffect, SettledCorrection, TokenAddress, TranscriptLineage, TranscriptSegment, TranscriptVersion, settles_corrections, } |3bede74b89f1f247
+crates/transcription/src/pipeline.rs [priv] #[expect( clippy::too_many_arguments, reason = "the two halves of this stage need the response, the contract, the manifest, the archive position, the caller's section 27.3 fields, the route, the selection and the input artifacts" )] fn normalize( response: &ProviderResponse, contract: &ProviderContract, manifest: &InputManifest, raw_response: RawResponseId, identity: &RunIdentity, route: &SttRoute, selection: &ProviderSelection, input_artifact_refs: InputArtifactRefs, ) -> Result<(RawTranscript, ModelRun), PipelineFault> |7216572d4809239f
+crates/transcription/src/pipeline.rs [priv] fn admit_authorized_inputs(manifest: &InputManifest) -> Result<InputArtifactRefs, PipelineFault> |e602c5a2198f5b6d
+crates/transcription/src/pipeline.rs [priv] fn admitted_route(route: SttRoute) -> Result<SttRoute, PipelineFault> |fdc50c69278af4a8
+crates/transcription/src/pipeline.rs [priv] fn artifact_ref(digest: &ContentDigest) -> InputArtifactRef |c150de6dce1ab43e
+crates/transcription/src/pipeline.rs [priv] fn fan_out( manifest: &InputManifest, raw_response: RawResponseId, ) -> Result<Vec<JobHandle>, PipelineFault> |3d16b153e09044bc
+crates/transcription/src/pipeline.rs [priv] fn read_provider_contract<'a>( registry: &'a ContractRegistry, selection: &ProviderSelection, ) -> Result<&'a ProviderContract, PipelineFault> |8f5cfc102aafc04c
+crates/transcription/src/pipeline.rs [priv] fn record_model_run( identity: &RunIdentity, route: &SttRoute, selection: &ProviderSelection, input_artifact_refs: InputArtifactRefs, ) -> Result<ModelRun, PipelineFault> |6ad27931c1e9d263
+crates/transcription/src/pipeline.rs [priv] fn retain( archive: &mut RawResponseArchive, response: &ProviderResponse, ) -> Result<RawResponseId, PipelineFault> |a40440bf0d79654c
+crates/transcription/src/pipeline.rs [priv] fn transcribe( provider: &dyn SttProvider, manifest: &InputManifest, contract: &ProviderContract, route: &SttRoute, selection: &ProviderSelection, ) -> Result<ProviderResponse, PipelineFault> |e7dfb5795fd6e96b
 crates/transcription/src/pipeline.rs [priv] impl CompletedRun
 crates/transcription/src/pipeline.rs [priv] impl DownstreamJob
 crates/transcription/src/pipeline.rs [priv] impl JobHandle
 crates/transcription/src/pipeline.rs [priv] impl ProviderSelection
 crates/transcription/src/pipeline.rs [priv] impl RunRecord
 crates/transcription/src/pipeline.rs [priv] impl Stage
-crates/transcription/src/pipeline.rs [priv] trait SttProvider :: fn transcribe(&self, request: &TranscriptionRequest<'_>) -> Option<ProviderResponse>
-crates/transcription/src/pipeline.rs [priv] use academic_domain::ContentDigest
-crates/transcription/src/pipeline.rs [priv] use academic_model_run::{ ArtifactId, Cost, Digest32, InputArtifactRef, InputArtifactRefs, ModelRun, ModelRunId, ModelVersion, ProviderId, Purpose, RetentionDeclaration, Transmission, }
-crates/transcription/src/pipeline.rs [priv] use crate::{ authorize::{InputManifest, be_len}, fault::PipelineFault, provider::{ContractRegistry, FeatureClaim, ProviderContract, ProviderPlacement}, response::{ProviderResponse, RawResponseArchive, RawResponseId}, route::{SttPolicy, SttRoute}, transcript::{RawTranscript, decode}, version::TranscriptLineage, }
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug)] enum RunOutcome
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug)] struct CompletedRun
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug)] struct RunRecord
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug)] struct TranscriptionRequest<'a>
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone)] struct RunIdentity
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DownstreamJob
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Stage
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct JobHandle
-crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProviderSelection
-crates/transcription/src/pipeline.rs [pub] const LOCAL_ONLY_RETENTION: &str
-crates/transcription/src/pipeline.rs [pub] fn run( manifest: &InputManifest, registry: &ContractRegistry, policy: &SttPolicy, selection: &ProviderSelection, provider: &dyn SttProvider, archive: &mut RawResponseArchive, identity: &RunIdentity, ) -> RunRecord
-crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn lineage(&self) -> &TranscriptLineage
-crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn model_run(&self) -> &ModelRun
-crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn raw_response(&self) -> RawResponseId
-crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn route(&self) -> &SttRoute
-crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn transcript(&self) -> &RawTranscript
-crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] fn jobs(&self) -> &[JobHandle]
-crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: const fn lineage_mut(&mut self) -> &mut TranscriptLineage
-crates/transcription/src/pipeline.rs [pub] impl DownstreamJob :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/pipeline.rs [pub] impl DownstreamJob :: #[must_use] const fn produces_proposals(self) -> bool
-crates/transcription/src/pipeline.rs [pub] impl DownstreamJob :: #[must_use] const fn spec_line(self) -> &'static str
-crates/transcription/src/pipeline.rs [pub] impl DownstreamJob :: const ALL: [Self; 3]
-crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn input_digest(&self) -> &ContentDigest
-crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn job(&self) -> DownstreamJob
-crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn job_id(&self) -> &ContentDigest
-crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn produces_proposals(&self) -> bool
-crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn raw_response(&self) -> RawResponseId
-crates/transcription/src/pipeline.rs [pub] impl ProviderSelection :: #[must_use] const fn model_version(&self) -> &ModelVersion
-crates/transcription/src/pipeline.rs [pub] impl ProviderSelection :: #[must_use] const fn provider(&self) -> &ProviderId
-crates/transcription/src/pipeline.rs [pub] impl ProviderSelection :: #[must_use] fn of( provider: ProviderId, model_version: ModelVersion, required_claims: Vec<FeatureClaim>, ) -> Self
-crates/transcription/src/pipeline.rs [pub] impl ProviderSelection :: #[must_use] fn required_claims(&self) -> &[FeatureClaim]
-crates/transcription/src/pipeline.rs [pub] impl RunRecord :: #[must_use] const fn completed(&self) -> Option<&CompletedRun>
-crates/transcription/src/pipeline.rs [pub] impl RunRecord :: #[must_use] const fn failure(&self) -> Option<(Stage, &PipelineFault)>
-crates/transcription/src/pipeline.rs [pub] impl RunRecord :: #[must_use] const fn outcome(&self) -> &RunOutcome
-crates/transcription/src/pipeline.rs [pub] impl RunRecord :: #[must_use] fn reached(&self) -> &[Stage]
-crates/transcription/src/pipeline.rs [pub] impl Stage :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/pipeline.rs [pub] impl Stage :: #[must_use] const fn spec_anchor(self) -> Option<&'static str>
-crates/transcription/src/pipeline.rs [pub] impl Stage :: const ALL: [Self; 7]
+crates/transcription/src/pipeline.rs [priv] trait SttProvider :: fn transcribe(&self, request: &TranscriptionRequest<'_>) -> Option<ProviderResponse> |d664293df5e6c6e2
+crates/transcription/src/pipeline.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/transcription/src/pipeline.rs [priv] use academic_model_run::{ ArtifactId, Cost, Digest32, InputArtifactRef, InputArtifactRefs, ModelRun, ModelRunId, ModelVersion, ProviderId, Purpose, RetentionDeclaration, Transmission, } |173563e243521352
+crates/transcription/src/pipeline.rs [priv] use crate::{ authorize::{InputManifest, be_len}, fault::PipelineFault, provider::{ContractRegistry, FeatureClaim, ProviderContract, ProviderPlacement}, response::{ProviderResponse, RawResponseArchive, RawResponseId}, route::{SttPolicy, SttRoute}, transcript::{RawTranscript, decode}, version::TranscriptLineage, } |59cb042efd9b839d
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug)] enum RunOutcome |6ae5833040aba5ff
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug)] struct CompletedRun |5d692f6cf15a984a
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug)] struct RunRecord |06401cf76d83b69c
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug)] struct TranscriptionRequest<'a> |bbc326011f07126f
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone)] struct RunIdentity |2d9efd832d78f9ce
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DownstreamJob |c9415cc475b5484b
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Stage |deaaaabc682fb6e8
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct JobHandle |407b990ba8b9e187
+crates/transcription/src/pipeline.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProviderSelection |a2da388dc5f7bbb5
+crates/transcription/src/pipeline.rs [pub] const LOCAL_ONLY_RETENTION: &str |2df6171f9f4a9209
+crates/transcription/src/pipeline.rs [pub] fn run( manifest: &InputManifest, registry: &ContractRegistry, policy: &SttPolicy, selection: &ProviderSelection, provider: &dyn SttProvider, archive: &mut RawResponseArchive, identity: &RunIdentity, ) -> RunRecord |6bf35d40002d5c55
+crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn lineage(&self) -> &TranscriptLineage |a8ed6fc9b3745cfc
+crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn model_run(&self) -> &ModelRun |063b0eb6b47d97fd
+crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn raw_response(&self) -> RawResponseId |293a1dbeb51355a9
+crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn route(&self) -> &SttRoute |fd0ef9a2104007fd
+crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] const fn transcript(&self) -> &RawTranscript |f24b5ff472831a01
+crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: #[must_use] fn jobs(&self) -> &[JobHandle] |fb418e00e42918df
+crates/transcription/src/pipeline.rs [pub] impl CompletedRun :: const fn lineage_mut(&mut self) -> &mut TranscriptLineage |8092bcc902604be7
+crates/transcription/src/pipeline.rs [pub] impl DownstreamJob :: #[must_use] const fn as_str(self) -> &'static str |722f89c3d8008880
+crates/transcription/src/pipeline.rs [pub] impl DownstreamJob :: #[must_use] const fn produces_proposals(self) -> bool |29f470556c5538f1
+crates/transcription/src/pipeline.rs [pub] impl DownstreamJob :: #[must_use] const fn spec_line(self) -> &'static str |439fe4668f1efb80
+crates/transcription/src/pipeline.rs [pub] impl DownstreamJob :: const ALL: [Self; 3] |7d427819e1459827
+crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn input_digest(&self) -> &ContentDigest |a632941ad48433f0
+crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn job(&self) -> DownstreamJob |6f387b655b28160c
+crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn job_id(&self) -> &ContentDigest |be05887a2dfcba18
+crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn produces_proposals(&self) -> bool |4c9f1725636c36fd
+crates/transcription/src/pipeline.rs [pub] impl JobHandle :: #[must_use] const fn raw_response(&self) -> RawResponseId |293a1dbeb51355a9
+crates/transcription/src/pipeline.rs [pub] impl ProviderSelection :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
+crates/transcription/src/pipeline.rs [pub] impl ProviderSelection :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
+crates/transcription/src/pipeline.rs [pub] impl ProviderSelection :: #[must_use] fn of( provider: ProviderId, model_version: ModelVersion, required_claims: Vec<FeatureClaim>, ) -> Self |caaef85cef08142e
+crates/transcription/src/pipeline.rs [pub] impl ProviderSelection :: #[must_use] fn required_claims(&self) -> &[FeatureClaim] |1d774eead87c38f0
+crates/transcription/src/pipeline.rs [pub] impl RunRecord :: #[must_use] const fn completed(&self) -> Option<&CompletedRun> |8f4ae66c84f88491
+crates/transcription/src/pipeline.rs [pub] impl RunRecord :: #[must_use] const fn failure(&self) -> Option<(Stage, &PipelineFault)> |3fd51b4c3a3b6571
+crates/transcription/src/pipeline.rs [pub] impl RunRecord :: #[must_use] const fn outcome(&self) -> &RunOutcome |bb4787bde421b9d4
+crates/transcription/src/pipeline.rs [pub] impl RunRecord :: #[must_use] fn reached(&self) -> &[Stage] |0aa6f6dd791da9c2
+crates/transcription/src/pipeline.rs [pub] impl Stage :: #[must_use] const fn as_str(self) -> &'static str |b538846cc7cea80a
+crates/transcription/src/pipeline.rs [pub] impl Stage :: #[must_use] const fn spec_anchor(self) -> Option<&'static str> |66bce0666bc10f88
+crates/transcription/src/pipeline.rs [pub] impl Stage :: const ALL: [Self; 7] |8ce5b560003d1861
 crates/transcription/src/pipeline.rs [pub] trait SttProvider
 crates/transcription/src/provider.rs [priv] impl AudioFormat
 crates/transcription/src/provider.rs [priv] impl CapabilityField
@@ -194,180 +194,180 @@ crates/transcription/src/provider.rs [priv] impl ProviderPlacement
 crates/transcription/src/provider.rs [priv] impl Support
 crates/transcription/src/provider.rs [priv] impl TimestampSemantics
 crates/transcription/src/provider.rs [priv] impl fmt::Display for CapabilityField
-crates/transcription/src/provider.rs [priv] impl fmt::Display for CapabilityField :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
-crates/transcription/src/provider.rs [priv] use academic_model_run::{ModelVersion, ProviderId}
-crates/transcription/src/provider.rs [priv] use core::fmt
-crates/transcription/src/provider.rs [priv] use crate::fault::CapabilityFault
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ChunkBoundary
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CapabilityField
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConfidenceSemantics
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FeatureClaim
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProviderPlacement
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Support
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TimestampSemantics
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Default)] struct ContractRegistry
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AudioFormat
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ContractDraft
-crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProviderContract
-crates/transcription/src/provider.rs [pub] impl AudioFormat :: #[must_use] const fn channels(&self) -> u8
-crates/transcription/src/provider.rs [pub] impl AudioFormat :: #[must_use] const fn sample_rate_hz(&self) -> u32
-crates/transcription/src/provider.rs [pub] impl AudioFormat :: #[must_use] fn container(&self) -> &str
-crates/transcription/src/provider.rs [pub] impl AudioFormat :: #[must_use] fn new(container: impl Into<String>, sample_rate_hz: u32, channels: u8) -> Self
-crates/transcription/src/provider.rs [pub] impl CapabilityField :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/provider.rs [pub] impl CapabilityField :: #[must_use] const fn spec_phrase(self) -> &'static str
-crates/transcription/src/provider.rs [pub] impl CapabilityField :: const ALL: [Self; 8]
-crates/transcription/src/provider.rs [pub] impl ChunkBoundary :: #[must_use] const fn overlap_nanos(&self) -> u64
-crates/transcription/src/provider.rs [pub] impl ChunkBoundary :: #[must_use] const fn window_nanos(&self) -> u64
-crates/transcription/src/provider.rs [pub] impl ChunkBoundary :: const fn new(window_nanos: u64, overlap_nanos: u64) -> Result<Self, CapabilityFault>
-crates/transcription/src/provider.rs [pub] impl ConfidenceSemantics :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/provider.rs [pub] impl ConfidenceSemantics :: const ALL: [Self; 3]
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn chunk_boundary(mut self, value: ChunkBoundary) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn confidence_semantics(mut self, value: ConfidenceSemantics) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn diarization(mut self, value: Support) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn for_provider( provider: ProviderId, model_version: ModelVersion, placement: ProviderPlacement, ) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn language_hints(mut self, value: Support) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn math_and_code(mut self, value: Support) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn timestamp_semantics(mut self, value: TimestampSemantics) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn vocabulary_hints(mut self, value: Support) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] fn audio_format(mut self, value: AudioFormat) -> Self
-crates/transcription/src/provider.rs [pub] impl ContractDraft :: fn declare(self) -> Result<ProviderContract, CapabilityFault>
-crates/transcription/src/provider.rs [pub] impl ContractRegistry :: #[must_use] const fn new() -> Self
-crates/transcription/src/provider.rs [pub] impl ContractRegistry :: #[must_use] fn contracts(&self) -> &[ProviderContract]
-crates/transcription/src/provider.rs [pub] impl ContractRegistry :: #[must_use] fn get( &self, provider: &ProviderId, model_version: &ModelVersion, ) -> Option<&ProviderContract>
-crates/transcription/src/provider.rs [pub] impl ContractRegistry :: fn declare(&mut self, contract: ProviderContract) -> Result<(), CapabilityFault>
-crates/transcription/src/provider.rs [pub] impl FeatureClaim :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/provider.rs [pub] impl FeatureClaim :: #[must_use] const fn decided_by(self) -> CapabilityField
-crates/transcription/src/provider.rs [pub] impl FeatureClaim :: const ALL: [Self; 6]
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn audio_format(&self) -> &AudioFormat
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn chunk_boundary(&self) -> ChunkBoundary
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn confidence_semantics(&self) -> ConfidenceSemantics
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn diarization(&self) -> Support
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn language_hints(&self) -> Support
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn math_and_code(&self) -> Support
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn model_version(&self) -> &ModelVersion
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn placement(&self) -> ProviderPlacement
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn provider(&self) -> &ProviderId
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn supports(&self, claim: FeatureClaim) -> bool
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn timestamp_semantics(&self) -> TimestampSemantics
-crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn vocabulary_hints(&self) -> Support
-crates/transcription/src/provider.rs [pub] impl ProviderPlacement :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/provider.rs [pub] impl ProviderPlacement :: const ALL: [Self; 2]
-crates/transcription/src/provider.rs [pub] impl Support :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/provider.rs [pub] impl Support :: const ALL: [Self; 2]
-crates/transcription/src/provider.rs [pub] impl TimestampSemantics :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/provider.rs [pub] impl TimestampSemantics :: const ALL: [Self; 3]
+crates/transcription/src/provider.rs [priv] impl fmt::Display for CapabilityField :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
+crates/transcription/src/provider.rs [priv] use academic_model_run::{ModelVersion, ProviderId} |bdd24c3bedc0c68b
+crates/transcription/src/provider.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/transcription/src/provider.rs [priv] use crate::fault::CapabilityFault |49bb9af7aae2c882
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ChunkBoundary |fc365798a232e992
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CapabilityField |d96e32555a65cd1b
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConfidenceSemantics |5eef9664c2c25648
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FeatureClaim |5a7506d1ae62a773
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProviderPlacement |69fa5ba3a7ab55bc
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Support |26ce49a795c01242
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TimestampSemantics |b4248763b0014f17
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, Default)] struct ContractRegistry |66353cd5e2f2b4ba
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AudioFormat |c9a1be9a0eb01377
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ContractDraft |5ed322133a88fdeb
+crates/transcription/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProviderContract |0ab8ea01b7ce0847
+crates/transcription/src/provider.rs [pub] impl AudioFormat :: #[must_use] const fn channels(&self) -> u8 |9d5d8ac0b4a288fa
+crates/transcription/src/provider.rs [pub] impl AudioFormat :: #[must_use] const fn sample_rate_hz(&self) -> u32 |375218c261cb2483
+crates/transcription/src/provider.rs [pub] impl AudioFormat :: #[must_use] fn container(&self) -> &str |2ddcd4d7bfc028ab
+crates/transcription/src/provider.rs [pub] impl AudioFormat :: #[must_use] fn new(container: impl Into<String>, sample_rate_hz: u32, channels: u8) -> Self |a82a37665fd89ad2
+crates/transcription/src/provider.rs [pub] impl CapabilityField :: #[must_use] const fn as_str(self) -> &'static str |0c5e929af0cc1804
+crates/transcription/src/provider.rs [pub] impl CapabilityField :: #[must_use] const fn spec_phrase(self) -> &'static str |af0469b0a3663f13
+crates/transcription/src/provider.rs [pub] impl CapabilityField :: const ALL: [Self; 8] |9c400db41014e555
+crates/transcription/src/provider.rs [pub] impl ChunkBoundary :: #[must_use] const fn overlap_nanos(&self) -> u64 |b75220f1506d9442
+crates/transcription/src/provider.rs [pub] impl ChunkBoundary :: #[must_use] const fn window_nanos(&self) -> u64 |e4e967cb25054198
+crates/transcription/src/provider.rs [pub] impl ChunkBoundary :: const fn new(window_nanos: u64, overlap_nanos: u64) -> Result<Self, CapabilityFault> |287ac32ad5b70a10
+crates/transcription/src/provider.rs [pub] impl ConfidenceSemantics :: #[must_use] const fn as_str(self) -> &'static str |84e08feae5965d9b
+crates/transcription/src/provider.rs [pub] impl ConfidenceSemantics :: const ALL: [Self; 3] |596e561ae4926390
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn chunk_boundary(mut self, value: ChunkBoundary) -> Self |236cba2043d647ef
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn confidence_semantics(mut self, value: ConfidenceSemantics) -> Self |54ce6fa6d53e6ecd
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn diarization(mut self, value: Support) -> Self |622b5d9b0c437e65
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn for_provider( provider: ProviderId, model_version: ModelVersion, placement: ProviderPlacement, ) -> Self |c9924cc532ad54ed
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn language_hints(mut self, value: Support) -> Self |4334bdba15d51a63
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn math_and_code(mut self, value: Support) -> Self |22cbef9ec789abb9
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn timestamp_semantics(mut self, value: TimestampSemantics) -> Self |c9b5d2ed239a45d3
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] const fn vocabulary_hints(mut self, value: Support) -> Self |306e8256e3010b57
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: #[must_use] fn audio_format(mut self, value: AudioFormat) -> Self |bafbba1761dc82b2
+crates/transcription/src/provider.rs [pub] impl ContractDraft :: fn declare(self) -> Result<ProviderContract, CapabilityFault> |d8e27b4cb89514ce
+crates/transcription/src/provider.rs [pub] impl ContractRegistry :: #[must_use] const fn new() -> Self |d8519fddee1ea04f
+crates/transcription/src/provider.rs [pub] impl ContractRegistry :: #[must_use] fn contracts(&self) -> &[ProviderContract] |b9480bf7b8cf7117
+crates/transcription/src/provider.rs [pub] impl ContractRegistry :: #[must_use] fn get( &self, provider: &ProviderId, model_version: &ModelVersion, ) -> Option<&ProviderContract> |33ad11b5858af562
+crates/transcription/src/provider.rs [pub] impl ContractRegistry :: fn declare(&mut self, contract: ProviderContract) -> Result<(), CapabilityFault> |7181f7fb41c77d62
+crates/transcription/src/provider.rs [pub] impl FeatureClaim :: #[must_use] const fn as_str(self) -> &'static str |6bf31b9697312de6
+crates/transcription/src/provider.rs [pub] impl FeatureClaim :: #[must_use] const fn decided_by(self) -> CapabilityField |1bdbfb6d23ed6cb6
+crates/transcription/src/provider.rs [pub] impl FeatureClaim :: const ALL: [Self; 6] |479aabb695500a35
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn audio_format(&self) -> &AudioFormat |1dd15dc30635ed8c
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn chunk_boundary(&self) -> ChunkBoundary |844b30201782d9b2
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn confidence_semantics(&self) -> ConfidenceSemantics |b02ef6adff0fd738
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn diarization(&self) -> Support |9492dc4cadc5dfc6
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn language_hints(&self) -> Support |39924196f418916e
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn math_and_code(&self) -> Support |c3b01432fd3132f2
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn placement(&self) -> ProviderPlacement |3177fb5fb9b45b39
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn supports(&self, claim: FeatureClaim) -> bool |f56cb4fbbd92c298
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn timestamp_semantics(&self) -> TimestampSemantics |fbd6ef5bd50c38ca
+crates/transcription/src/provider.rs [pub] impl ProviderContract :: #[must_use] const fn vocabulary_hints(&self) -> Support |6723e9f492fa2e2a
+crates/transcription/src/provider.rs [pub] impl ProviderPlacement :: #[must_use] const fn as_str(self) -> &'static str |1f53932026284f29
+crates/transcription/src/provider.rs [pub] impl ProviderPlacement :: const ALL: [Self; 2] |6d60eb85320ac5a2
+crates/transcription/src/provider.rs [pub] impl Support :: #[must_use] const fn as_str(self) -> &'static str |889ea77b8d489f6a
+crates/transcription/src/provider.rs [pub] impl Support :: const ALL: [Self; 2] |5a9bdfae03645cff
+crates/transcription/src/provider.rs [pub] impl TimestampSemantics :: #[must_use] const fn as_str(self) -> &'static str |639d5cd2f596d49a
+crates/transcription/src/provider.rs [pub] impl TimestampSemantics :: const ALL: [Self; 3] |bcd2e815ea65e1c5
 crates/transcription/src/response.rs [priv] impl ArchivedResponse
 crates/transcription/src/response.rs [priv] impl ProviderResponse
 crates/transcription/src/response.rs [priv] impl RawResponseArchive
 crates/transcription/src/response.rs [priv] impl RawResponseId
 crates/transcription/src/response.rs [priv] impl core::fmt::Debug for ProviderResponse
-crates/transcription/src/response.rs [priv] impl core::fmt::Debug for ProviderResponse :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/transcription/src/response.rs [priv] impl core::fmt::Debug for ProviderResponse :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |8311909a324e4c27
 crates/transcription/src/response.rs [priv] impl core::fmt::Display for RawResponseId
-crates/transcription/src/response.rs [priv] impl core::fmt::Display for RawResponseId :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-crates/transcription/src/response.rs [priv] use academic_domain::ContentDigest
-crates/transcription/src/response.rs [priv] use academic_egress_boundary::AcceptedResponse
-crates/transcription/src/response.rs [priv] use academic_model_run::{ModelVersion, ProviderId}
-crates/transcription/src/response.rs [priv] use academic_untrusted_content::{ IngestedDocument, SourceId, SourceIdError, SourceKind, Untrusted, }
-crates/transcription/src/response.rs [priv] use crate::{provider::ProviderPlacement, route::RemoteAdmission}
-crates/transcription/src/response.rs [pub(crate)] impl ProviderResponse :: fn response_bytes(&self) -> &[u8]
-crates/transcription/src/response.rs [pub] #[derive(Clone, PartialEq, Eq)] struct ProviderResponse
-crates/transcription/src/response.rs [pub] #[derive(Debug)] struct ArchivedResponse
-crates/transcription/src/response.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RawResponseId(u32)
-crates/transcription/src/response.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum ArchiveFault
-crates/transcription/src/response.rs [pub] #[derive(Debug, Default)] struct RawResponseArchive
-crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn byte_len(&self) -> usize
-crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn digest(&self) -> &ContentDigest
-crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn id(&self) -> RawResponseId
-crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn labelled(&self) -> &Untrusted<IngestedDocument>
-crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn model_version(&self) -> &ModelVersion
-crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn placement(&self) -> ProviderPlacement
-crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn provider(&self) -> &ProviderId
-crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] const fn digest(&self) -> &ContentDigest
-crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] const fn model_version(&self) -> &ModelVersion
-crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] const fn placement(&self) -> ProviderPlacement
-crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] const fn provider(&self) -> &ProviderId
-crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] fn byte_len(&self) -> usize
-crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] fn from_local(provider: ProviderId, model_version: ModelVersion, bytes: &[u8]) -> Self
-crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] fn from_remote(admission: &RemoteAdmission, accepted: &AcceptedResponse) -> Self
-crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] const fn new() -> Self
-crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] fn entries(&self) -> &[ArchivedResponse]
-crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] fn get(&self, id: RawResponseId) -> Option<&ArchivedResponse>
-crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] fn is_empty(&self) -> bool
-crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] fn len(&self) -> usize
-crates/transcription/src/response.rs [pub] impl RawResponseArchive :: fn retain(&mut self, response: &ProviderResponse) -> Result<RawResponseId, ArchiveFault>
-crates/transcription/src/response.rs [pub] impl RawResponseId :: #[must_use] const fn value(self) -> u32
+crates/transcription/src/response.rs [priv] impl core::fmt::Display for RawResponseId :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |83ce0a03bdfc77bc
+crates/transcription/src/response.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/transcription/src/response.rs [priv] use academic_egress_boundary::AcceptedResponse |22d46ad1b8ccc669
+crates/transcription/src/response.rs [priv] use academic_model_run::{ModelVersion, ProviderId} |bdd24c3bedc0c68b
+crates/transcription/src/response.rs [priv] use academic_untrusted_content::{ IngestedDocument, SourceId, SourceIdError, SourceKind, Untrusted, } |929c53fc3f72000a
+crates/transcription/src/response.rs [priv] use crate::{provider::ProviderPlacement, route::RemoteAdmission} |4211761e91e7cdb7
+crates/transcription/src/response.rs [pub(crate)] impl ProviderResponse :: fn response_bytes(&self) -> &[u8] |aa07f05815507637
+crates/transcription/src/response.rs [pub] #[derive(Clone, PartialEq, Eq)] struct ProviderResponse |ab75b54d98c9eb9a
+crates/transcription/src/response.rs [pub] #[derive(Debug)] struct ArchivedResponse |b6b9777ca32f797c
+crates/transcription/src/response.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RawResponseId(u32) |754f5cd01a43c7fb
+crates/transcription/src/response.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum ArchiveFault |6e2d690cdb365999
+crates/transcription/src/response.rs [pub] #[derive(Debug, Default)] struct RawResponseArchive |63bf9d7075cedd0a
+crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn byte_len(&self) -> usize |7d4ee0a1d06b1107
+crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
+crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn id(&self) -> RawResponseId |ad05fef3c070390d
+crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn labelled(&self) -> &Untrusted<IngestedDocument> |117c73fb20f8e147
+crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
+crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn placement(&self) -> ProviderPlacement |3177fb5fb9b45b39
+crates/transcription/src/response.rs [pub] impl ArchivedResponse :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
+crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
+crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
+crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] const fn placement(&self) -> ProviderPlacement |3177fb5fb9b45b39
+crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
+crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] fn byte_len(&self) -> usize |44c0a9b8fe12aa5b
+crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] fn from_local(provider: ProviderId, model_version: ModelVersion, bytes: &[u8]) -> Self |fc983d69f2bebf94
+crates/transcription/src/response.rs [pub] impl ProviderResponse :: #[must_use] fn from_remote(admission: &RemoteAdmission, accepted: &AcceptedResponse) -> Self |4c95b8ceeea04495
+crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] const fn new() -> Self |cfe9e37864a3d19e
+crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] fn entries(&self) -> &[ArchivedResponse] |a0b8724ce47c6135
+crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] fn get(&self, id: RawResponseId) -> Option<&ArchivedResponse> |653d7b77cca5d904
+crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] fn is_empty(&self) -> bool |8571b70138db480b
+crates/transcription/src/response.rs [pub] impl RawResponseArchive :: #[must_use] fn len(&self) -> usize |a39bcf820ac92d41
+crates/transcription/src/response.rs [pub] impl RawResponseArchive :: fn retain(&mut self, response: &ProviderResponse) -> Result<RawResponseId, ArchiveFault> |c37cf2ad8df606bd
+crates/transcription/src/response.rs [pub] impl RawResponseId :: #[must_use] const fn value(self) -> u32 |a20d276be9a8c0a4
 crates/transcription/src/route.rs [priv] impl RemoteAdmission
 crates/transcription/src/route.rs [priv] impl RemoteProcessingApproval
 crates/transcription/src/route.rs [priv] impl RouteDenial
 crates/transcription/src/route.rs [priv] impl SttPolicy
 crates/transcription/src/route.rs [priv] impl SttRoute
-crates/transcription/src/route.rs [priv] use academic_model_run::{ModelVersion, ProviderId, RetentionDeclaration}
-crates/transcription/src/route.rs [priv] use crate::provider::{ProviderContract, ProviderPlacement}
-crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum RouteDenial
-crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, Default)] struct SttPolicy
-crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum SttRoute
-crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RemoteAdmission
-crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RemoteProcessingApproval
-crates/transcription/src/route.rs [pub] impl RemoteAdmission :: #[must_use] const fn model_version(&self) -> &ModelVersion
-crates/transcription/src/route.rs [pub] impl RemoteAdmission :: #[must_use] const fn provider(&self) -> &ProviderId
-crates/transcription/src/route.rs [pub] impl RemoteAdmission :: #[must_use] const fn retention(&self) -> &RetentionDeclaration
-crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn external_processing_permitted(&self) -> bool
-crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn model_version(&self) -> &ModelVersion
-crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn provider(&self) -> &ProviderId
-crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn record( provider: ProviderId, model_version: ModelVersion, external_processing_permitted: bool, retention: Option<RetentionDeclaration>, ) -> Self
-crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn retention(&self) -> Option<&RetentionDeclaration>
-crates/transcription/src/route.rs [pub] impl RouteDenial :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/route.rs [pub] impl RouteDenial :: const ALL: [Self; 3]
-crates/transcription/src/route.rs [pub] impl SttPolicy :: #[must_use] const fn new() -> Self
-crates/transcription/src/route.rs [pub] impl SttPolicy :: #[must_use] fn approvals(&self) -> &[RemoteProcessingApproval]
-crates/transcription/src/route.rs [pub] impl SttPolicy :: #[must_use] fn approve_remote(mut self, approval: RemoteProcessingApproval) -> Self
-crates/transcription/src/route.rs [pub] impl SttPolicy :: #[must_use] fn route_for(&self, contract: &ProviderContract) -> SttRoute
-crates/transcription/src/route.rs [pub] impl SttRoute :: #[must_use] const fn admission(&self) -> Option<&RemoteAdmission>
-crates/transcription/src/route.rs [pub] impl SttRoute :: #[must_use] const fn as_str(&self) -> &'static str
-crates/transcription/src/route.rs [pub] impl SttRoute :: #[must_use] const fn denial(&self) -> Option<RouteDenial>
-crates/transcription/src/transcript.rs [priv] fn parse_token( value: &str, contract: &ProviderContract, response: &ProviderResponse, ) -> Result<RawToken, DecodeFault>
+crates/transcription/src/route.rs [priv] use academic_model_run::{ModelVersion, ProviderId, RetentionDeclaration} |902031bf4cbb4bad
+crates/transcription/src/route.rs [priv] use crate::provider::{ProviderContract, ProviderPlacement} |e58e176af2868ce0
+crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum RouteDenial |f12a7b7f19d8e0c0
+crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, Default)] struct SttPolicy |9e0b40a05ee2aaac
+crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum SttRoute |9969dec930230f35
+crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RemoteAdmission |8d496da54ef50ef4
+crates/transcription/src/route.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RemoteProcessingApproval |ea1aa099b186de4c
+crates/transcription/src/route.rs [pub] impl RemoteAdmission :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
+crates/transcription/src/route.rs [pub] impl RemoteAdmission :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
+crates/transcription/src/route.rs [pub] impl RemoteAdmission :: #[must_use] const fn retention(&self) -> &RetentionDeclaration |e620d29b59e300b5
+crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn external_processing_permitted(&self) -> bool |aa4eb15f2bb495c1
+crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
+crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
+crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn record( provider: ProviderId, model_version: ModelVersion, external_processing_permitted: bool, retention: Option<RetentionDeclaration>, ) -> Self |4c3b6af163990156
+crates/transcription/src/route.rs [pub] impl RemoteProcessingApproval :: #[must_use] const fn retention(&self) -> Option<&RetentionDeclaration> |c930a2ba17b928ad
+crates/transcription/src/route.rs [pub] impl RouteDenial :: #[must_use] const fn as_str(self) -> &'static str |f3a2fa6c98a213f5
+crates/transcription/src/route.rs [pub] impl RouteDenial :: const ALL: [Self; 3] |4db33b5d77e485f2
+crates/transcription/src/route.rs [pub] impl SttPolicy :: #[must_use] const fn new() -> Self |34b47db3fe22f48a
+crates/transcription/src/route.rs [pub] impl SttPolicy :: #[must_use] fn approvals(&self) -> &[RemoteProcessingApproval] |5e6ace85f0a63c30
+crates/transcription/src/route.rs [pub] impl SttPolicy :: #[must_use] fn approve_remote(mut self, approval: RemoteProcessingApproval) -> Self |2b7ac3b5de708428
+crates/transcription/src/route.rs [pub] impl SttPolicy :: #[must_use] fn route_for(&self, contract: &ProviderContract) -> SttRoute |1933925a74530bf0
+crates/transcription/src/route.rs [pub] impl SttRoute :: #[must_use] const fn admission(&self) -> Option<&RemoteAdmission> |29bdec4588e9a01d
+crates/transcription/src/route.rs [pub] impl SttRoute :: #[must_use] const fn as_str(&self) -> &'static str |b906eca996fe629c
+crates/transcription/src/route.rs [pub] impl SttRoute :: #[must_use] const fn denial(&self) -> Option<RouteDenial> |13fcaaaba42c881a
+crates/transcription/src/transcript.rs [priv] fn parse_token( value: &str, contract: &ProviderContract, response: &ProviderResponse, ) -> Result<RawToken, DecodeFault> |e7503cc029f33318
 crates/transcription/src/transcript.rs [priv] impl OpenSegment
-crates/transcription/src/transcript.rs [priv] impl OpenSegment :: fn close(self) -> Result<RawSegment, DecodeFault>
-crates/transcription/src/transcript.rs [priv] impl OpenSegment :: fn parse(value: &str, contract: &ProviderContract) -> Result<Self, DecodeFault>
+crates/transcription/src/transcript.rs [priv] impl OpenSegment :: fn close(self) -> Result<RawSegment, DecodeFault> |e64e0dabe0a943ed
+crates/transcription/src/transcript.rs [priv] impl OpenSegment :: fn parse(value: &str, contract: &ProviderContract) -> Result<Self, DecodeFault> |77a79358596e04b5
 crates/transcription/src/transcript.rs [priv] impl RawSegment
 crates/transcription/src/transcript.rs [priv] impl RawToken
 crates/transcription/src/transcript.rs [priv] impl RawTranscript
 crates/transcription/src/transcript.rs [priv] impl Speaker
 crates/transcription/src/transcript.rs [priv] impl fmt::Debug for RawSegment
-crates/transcription/src/transcript.rs [priv] impl fmt::Debug for RawSegment :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/transcription/src/transcript.rs [priv] impl fmt::Debug for RawSegment :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |652de91a6a54e5b0
 crates/transcription/src/transcript.rs [priv] impl fmt::Debug for RawToken
-crates/transcription/src/transcript.rs [priv] impl fmt::Debug for RawToken :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
-crates/transcription/src/transcript.rs [priv] struct OpenSegment
-crates/transcription/src/transcript.rs [priv] use academic_domain::{ContentDigest, LectureSessionId}
-crates/transcription/src/transcript.rs [priv] use academic_model_run::{ModelVersion, ProviderId, RawScore}
-crates/transcription/src/transcript.rs [priv] use core::fmt
-crates/transcription/src/transcript.rs [priv] use crate::{ authorize::be_len, fault::DecodeFault, provider::{ CapabilityField, ConfidenceSemantics, ProviderContract, Support, TimestampSemantics, }, response::{ProviderResponse, RawResponseId}, }
-crates/transcription/src/transcript.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RawSegment
-crates/transcription/src/transcript.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RawToken
-crates/transcription/src/transcript.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Speaker
-crates/transcription/src/transcript.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RawTranscript
-crates/transcription/src/transcript.rs [pub] const RESPONSE_BANNER: &str
-crates/transcription/src/transcript.rs [pub] fn decode( response: &ProviderResponse, contract: &ProviderContract, lecture: LectureSessionId, raw_response: RawResponseId, input_digest: ContentDigest, ) -> Result<RawTranscript, DecodeFault>
-crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] const fn end_nanos(&self) -> u64
-crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] const fn speaker(&self) -> Speaker
-crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] const fn start_nanos(&self) -> u64
-crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] fn id(&self) -> &str
-crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] fn source_audio_chunks(&self) -> &[u32]
-crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] fn tokens(&self) -> &[RawToken]
-crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] fn verbatim_text(&self) -> &str
-crates/transcription/src/transcript.rs [pub] impl RawToken :: #[must_use] const fn confidence(&self) -> Option<&RawScore>
-crates/transcription/src/transcript.rs [pub] impl RawToken :: #[must_use] const fn start_nanos(&self) -> Option<u64>
-crates/transcription/src/transcript.rs [pub] impl RawToken :: #[must_use] fn text(&self) -> &str
-crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn input_digest(&self) -> &ContentDigest
-crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn lecture(&self) -> LectureSessionId
-crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn model_version(&self) -> &ModelVersion
-crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn provider(&self) -> &ProviderId
-crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn raw_response(&self) -> RawResponseId
-crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] fn segments(&self) -> &[RawSegment]
-crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] fn token_sequence_digest(&self) -> ContentDigest
-crates/transcription/src/transcript.rs [pub] impl Speaker :: #[must_use] const fn is_attributed(self) -> bool
-crates/transcription/src/transcript.rs [pub] impl Speaker :: #[must_use] fn parse(value: &str) -> Option<Self>
-crates/transcription/src/transcript.rs [pub] impl Speaker :: #[must_use] fn spelling(self) -> String
+crates/transcription/src/transcript.rs [priv] impl fmt::Debug for RawToken :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |6baad4da6b7695aa
+crates/transcription/src/transcript.rs [priv] struct OpenSegment |07faf3f268adf498
+crates/transcription/src/transcript.rs [priv] use academic_domain::{ContentDigest, LectureSessionId} |3d13571811107cf5
+crates/transcription/src/transcript.rs [priv] use academic_model_run::{ModelVersion, ProviderId, RawScore} |9bbaf07ccabecdc3
+crates/transcription/src/transcript.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/transcription/src/transcript.rs [priv] use crate::{ authorize::be_len, fault::DecodeFault, provider::{ CapabilityField, ConfidenceSemantics, ProviderContract, Support, TimestampSemantics, }, response::{ProviderResponse, RawResponseId}, } |a41553829adeb1b8
+crates/transcription/src/transcript.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RawSegment |02cfe3b519254299
+crates/transcription/src/transcript.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RawToken |12098dafaf1d2e8e
+crates/transcription/src/transcript.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Speaker |1ff47fa43a5ca03e
+crates/transcription/src/transcript.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RawTranscript |9aeb708e3035edd5
+crates/transcription/src/transcript.rs [pub] const RESPONSE_BANNER: &str |9992a909ddfbe1b6
+crates/transcription/src/transcript.rs [pub] fn decode( response: &ProviderResponse, contract: &ProviderContract, lecture: LectureSessionId, raw_response: RawResponseId, input_digest: ContentDigest, ) -> Result<RawTranscript, DecodeFault> |a4eb833b941c8927
+crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] const fn end_nanos(&self) -> u64 |b82da8265ed0df7e
+crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] const fn speaker(&self) -> Speaker |02252f441fe5f4e2
+crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] const fn start_nanos(&self) -> u64 |ae2c804941f2abe4
+crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] fn id(&self) -> &str |35bcc7ec858ee311
+crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] fn source_audio_chunks(&self) -> &[u32] |3c2b76291408c3a8
+crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] fn tokens(&self) -> &[RawToken] |35a25738b0cfe53b
+crates/transcription/src/transcript.rs [pub] impl RawSegment :: #[must_use] fn verbatim_text(&self) -> &str |f6d5c2c2359e5989
+crates/transcription/src/transcript.rs [pub] impl RawToken :: #[must_use] const fn confidence(&self) -> Option<&RawScore> |9a25fe380ff10f43
+crates/transcription/src/transcript.rs [pub] impl RawToken :: #[must_use] const fn start_nanos(&self) -> Option<u64> |56dc7926e61e79f1
+crates/transcription/src/transcript.rs [pub] impl RawToken :: #[must_use] fn text(&self) -> &str |7fe9b569d6655b09
+crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn input_digest(&self) -> &ContentDigest |a632941ad48433f0
+crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn lecture(&self) -> LectureSessionId |bd075c887d3d5d9c
+crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
+crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
+crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] const fn raw_response(&self) -> RawResponseId |293a1dbeb51355a9
+crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] fn segments(&self) -> &[RawSegment] |85d960edaa269677
+crates/transcription/src/transcript.rs [pub] impl RawTranscript :: #[must_use] fn token_sequence_digest(&self) -> ContentDigest |fbacf394014bcfbd
+crates/transcription/src/transcript.rs [pub] impl Speaker :: #[must_use] const fn is_attributed(self) -> bool |242109bbc3eb729d
+crates/transcription/src/transcript.rs [pub] impl Speaker :: #[must_use] fn parse(value: &str) -> Option<Self> |3ccfa00a6a03bbac
+crates/transcription/src/transcript.rs [pub] impl Speaker :: #[must_use] fn spelling(self) -> String |c55261742010ee21
 crates/transcription/src/version.rs [priv] impl AppliedCorrection
 crates/transcription/src/version.rs [priv] impl CorrectionAuthor
 crates/transcription/src/version.rs [priv] impl CorrectionCandidate
@@ -376,80 +376,80 @@ crates/transcription/src/version.rs [priv] impl LineageEffect
 crates/transcription/src/version.rs [priv] impl SettledCorrection
 crates/transcription/src/version.rs [priv] impl TokenAddress
 crates/transcription/src/version.rs [priv] impl TranscriptLineage
-crates/transcription/src/version.rs [priv] impl TranscriptLineage :: fn effective_text_at(&self, address: TokenAddress) -> Result<&str, VersionFault>
-crates/transcription/src/version.rs [priv] impl TranscriptLineage :: fn token_at(&self, address: TokenAddress) -> Result<&RawToken, VersionFault>
+crates/transcription/src/version.rs [priv] impl TranscriptLineage :: fn effective_text_at(&self, address: TokenAddress) -> Result<&str, VersionFault> |1d523d50f988418c
+crates/transcription/src/version.rs [priv] impl TranscriptLineage :: fn token_at(&self, address: TokenAddress) -> Result<&RawToken, VersionFault> |83ae0d16f699329d
 crates/transcription/src/version.rs [priv] impl TranscriptVersion
 crates/transcription/src/version.rs [priv] impl core::fmt::Debug for AppliedCorrection
-crates/transcription/src/version.rs [priv] impl core::fmt::Debug for AppliedCorrection :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/transcription/src/version.rs [priv] impl core::fmt::Debug for AppliedCorrection :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |20dbc86926a32949
 crates/transcription/src/version.rs [priv] impl core::fmt::Debug for CorrectionCandidate
-crates/transcription/src/version.rs [priv] impl core::fmt::Debug for CorrectionCandidate :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/transcription/src/version.rs [priv] impl core::fmt::Debug for CorrectionCandidate :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |f9e8491617f141a9
 crates/transcription/src/version.rs [priv] impl core::fmt::Debug for EffectiveToken<'_>
-crates/transcription/src/version.rs [priv] impl core::fmt::Debug for EffectiveToken<'_> :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/transcription/src/version.rs [priv] impl core::fmt::Debug for EffectiveToken<'_> :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |9056721b4376c665
 crates/transcription/src/version.rs [priv] impl<'a> EffectiveToken<'a>
 crates/transcription/src/version.rs [priv] impl<'a> TranscriptSegment<'a>
-crates/transcription/src/version.rs [priv] use academic_domain::{Actor, ContentDigest, DecisionAction}
-crates/transcription/src/version.rs [priv] use academic_proposal::{Approved, DispositionRecord, ProposalId}
-crates/transcription/src/version.rs [priv] use crate::{ annotation::AnnotationLayer, authorize::be_len, fault::VersionFault, transcript::{RawSegment, RawToken, RawTranscript}, }
-crates/transcription/src/version.rs [pub] #[derive(Clone, PartialEq, Eq)] struct AppliedCorrection
-crates/transcription/src/version.rs [pub] #[derive(Clone, PartialEq, Eq)] struct CorrectionCandidate
-crates/transcription/src/version.rs [pub] #[derive(Clone, PartialEq, Eq)] struct EffectiveToken<'a>
-crates/transcription/src/version.rs [pub] #[derive(Debug)] struct TranscriptLineage
-crates/transcription/src/version.rs [pub] #[derive(Debug, Clone)] struct TranscriptSegment<'a>
-crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CorrectionAuthor
-crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CorrectionStatus
-crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum LineageEffect
-crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct TokenAddress
-crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SettledCorrection
-crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TranscriptVersion
-crates/transcription/src/version.rs [pub] #[must_use] const fn settles_corrections(actor: &Actor) -> bool
-crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] const fn address(&self) -> TokenAddress
-crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] const fn settled(&self) -> &SettledCorrection
-crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] fn previous_text(&self) -> &str
-crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] fn text(&self) -> &str
-crates/transcription/src/version.rs [pub] impl CorrectionAuthor :: #[must_use] const fn disposition_token(self) -> &'static str
-crates/transcription/src/version.rs [pub] impl CorrectionAuthor :: const ALL: [Self; 2]
-crates/transcription/src/version.rs [pub] impl CorrectionCandidate :: #[must_use] const fn address(&self) -> TokenAddress
-crates/transcription/src/version.rs [pub] impl CorrectionCandidate :: #[must_use] fn replacement_text(&self) -> &str
-crates/transcription/src/version.rs [pub] impl CorrectionCandidate :: fn proposing( address: TokenAddress, replacement_text: impl Into<String>, ) -> Result<Self, VersionFault>
-crates/transcription/src/version.rs [pub] impl CorrectionStatus :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/version.rs [pub] impl CorrectionStatus :: const ALL: [Self; 3]
-crates/transcription/src/version.rs [pub] impl LineageEffect :: #[must_use] const fn as_str(self) -> &'static str
-crates/transcription/src/version.rs [pub] impl LineageEffect :: #[must_use] const fn of(disposition: &DecisionAction) -> Self
-crates/transcription/src/version.rs [pub] impl LineageEffect :: const ALL: [Self; 2]
-crates/transcription/src/version.rs [pub] impl SettledCorrection :: #[must_use] const fn author(&self) -> CorrectionAuthor
-crates/transcription/src/version.rs [pub] impl SettledCorrection :: #[must_use] const fn candidate(&self) -> &CorrectionCandidate
-crates/transcription/src/version.rs [pub] impl SettledCorrection :: #[must_use] const fn proposal(&self) -> ProposalId
-crates/transcription/src/version.rs [pub] impl SettledCorrection :: #[must_use] fn confirmed(approved: Approved<CorrectionCandidate>) -> Self
-crates/transcription/src/version.rs [pub] impl SettledCorrection :: fn replaced( proposal: ProposalId, record: &DispositionRecord, own_text: CorrectionCandidate, ) -> Result<Self, VersionFault>
-crates/transcription/src/version.rs [pub] impl TokenAddress :: #[must_use] const fn new(segment: usize, position: usize) -> Self
-crates/transcription/src/version.rs [pub] impl TokenAddress :: #[must_use] const fn position(self) -> usize
-crates/transcription/src/version.rs [pub] impl TokenAddress :: #[must_use] const fn segment(self) -> usize
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] const fn raw(&self) -> &RawTranscript
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn append_annotations(&mut self, annotations: AnnotationLayer) -> u32
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn current(&self) -> &TranscriptVersion
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn open(raw: RawTranscript) -> Self
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn open_reviews(&self) -> &[TokenAddress]
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn segment_at(&self, version: u32, index: usize) -> Option<TranscriptSegment<'_>>
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn versions(&self) -> &[TranscriptVersion]
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: fn append_correction(&mut self, settled: SettledCorrection) -> Result<u32, VersionFault>
-crates/transcription/src/version.rs [pub] impl TranscriptLineage :: fn open_review(&mut self, address: TokenAddress) -> Result<(), VersionFault>
-crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] const fn annotations(&self) -> &AnnotationLayer
-crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] const fn number(&self) -> u32
-crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] const fn supersedes(&self) -> Option<u32>
-crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] fn corrections(&self) -> &[AppliedCorrection]
-crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] fn digest(&self) -> ContentDigest
-crates/transcription/src/version.rs [pub] impl<'a> EffectiveToken<'a> :: #[must_use] const fn corrected_at(&self) -> Option<u32>
-crates/transcription/src/version.rs [pub] impl<'a> EffectiveToken<'a> :: #[must_use] const fn raw(&self) -> &'a RawToken
-crates/transcription/src/version.rs [pub] impl<'a> EffectiveToken<'a> :: #[must_use] const fn text(&self) -> &'a str
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn correction_status(&self) -> CorrectionStatus
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn end_nanos(&self) -> u64
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn index(&self) -> usize
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn lecture(&self) -> academic_domain::LectureSessionId
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn speaker(&self) -> crate::transcript::Speaker
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn start_nanos(&self) -> u64
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn version(&self) -> u32
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn id(&self) -> &'a str
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn source_audio_chunks(&self) -> &'a [u32]
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn tokens(&self) -> &[EffectiveToken<'a>]
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn verbatim_text(&self) -> &'a str
-crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn versions(&self) -> &[u32]
+crates/transcription/src/version.rs [priv] use academic_domain::{Actor, ContentDigest, DecisionAction} |ae2213d85c01019f
+crates/transcription/src/version.rs [priv] use academic_proposal::{Approved, DispositionRecord, ProposalId} |da81e86b709b6c81
+crates/transcription/src/version.rs [priv] use crate::{ annotation::AnnotationLayer, authorize::be_len, fault::VersionFault, transcript::{RawSegment, RawToken, RawTranscript}, } |8a0aa06c57be9a6d
+crates/transcription/src/version.rs [pub] #[derive(Clone, PartialEq, Eq)] struct AppliedCorrection |d9f972b4976ad2e1
+crates/transcription/src/version.rs [pub] #[derive(Clone, PartialEq, Eq)] struct CorrectionCandidate |5796f32f105d3377
+crates/transcription/src/version.rs [pub] #[derive(Clone, PartialEq, Eq)] struct EffectiveToken<'a> |3eff74fff1dc4435
+crates/transcription/src/version.rs [pub] #[derive(Debug)] struct TranscriptLineage |867aef0df9164272
+crates/transcription/src/version.rs [pub] #[derive(Debug, Clone)] struct TranscriptSegment<'a> |085b8bfb79d9d9ff
+crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CorrectionAuthor |79622a41bff0902a
+crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CorrectionStatus |a73adb791c1349e1
+crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum LineageEffect |4c62cc0464ada744
+crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct TokenAddress |68f46f027d3d20a8
+crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SettledCorrection |7769c1347aa057c5
+crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TranscriptVersion |5c3290a41a0a572c
+crates/transcription/src/version.rs [pub] #[must_use] const fn settles_corrections(actor: &Actor) -> bool |fa18c2c94a22a4c3
+crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] const fn address(&self) -> TokenAddress |5ea540d2894916dc
+crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] const fn settled(&self) -> &SettledCorrection |bc8d330f3a7dad8e
+crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] fn previous_text(&self) -> &str |e35badae22ecfd97
+crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] fn text(&self) -> &str |e35975e2b6ed9efc
+crates/transcription/src/version.rs [pub] impl CorrectionAuthor :: #[must_use] const fn disposition_token(self) -> &'static str |c0db819b632f02e9
+crates/transcription/src/version.rs [pub] impl CorrectionAuthor :: const ALL: [Self; 2] |67d2f244c9060899
+crates/transcription/src/version.rs [pub] impl CorrectionCandidate :: #[must_use] const fn address(&self) -> TokenAddress |27d5f74e530324ac
+crates/transcription/src/version.rs [pub] impl CorrectionCandidate :: #[must_use] fn replacement_text(&self) -> &str |4a32134478b3b14d
+crates/transcription/src/version.rs [pub] impl CorrectionCandidate :: fn proposing( address: TokenAddress, replacement_text: impl Into<String>, ) -> Result<Self, VersionFault> |100ba5199d4bf5c4
+crates/transcription/src/version.rs [pub] impl CorrectionStatus :: #[must_use] const fn as_str(self) -> &'static str |a2aab81ca0a80f01
+crates/transcription/src/version.rs [pub] impl CorrectionStatus :: const ALL: [Self; 3] |f85b4111ad6974c0
+crates/transcription/src/version.rs [pub] impl LineageEffect :: #[must_use] const fn as_str(self) -> &'static str |e091e38512d4ae21
+crates/transcription/src/version.rs [pub] impl LineageEffect :: #[must_use] const fn of(disposition: &DecisionAction) -> Self |3d3644fb00c5e57f
+crates/transcription/src/version.rs [pub] impl LineageEffect :: const ALL: [Self; 2] |54b7de95c89b9df8
+crates/transcription/src/version.rs [pub] impl SettledCorrection :: #[must_use] const fn author(&self) -> CorrectionAuthor |6e06fb01665ff01a
+crates/transcription/src/version.rs [pub] impl SettledCorrection :: #[must_use] const fn candidate(&self) -> &CorrectionCandidate |311a7e3bef1dfc5e
+crates/transcription/src/version.rs [pub] impl SettledCorrection :: #[must_use] const fn proposal(&self) -> ProposalId |cf83f47de5eb8d84
+crates/transcription/src/version.rs [pub] impl SettledCorrection :: #[must_use] fn confirmed(approved: Approved<CorrectionCandidate>) -> Self |0a230308016a2839
+crates/transcription/src/version.rs [pub] impl SettledCorrection :: fn replaced( proposal: ProposalId, record: &DispositionRecord, own_text: CorrectionCandidate, ) -> Result<Self, VersionFault> |bdbfb0334c4fe262
+crates/transcription/src/version.rs [pub] impl TokenAddress :: #[must_use] const fn new(segment: usize, position: usize) -> Self |8793fee992f55f57
+crates/transcription/src/version.rs [pub] impl TokenAddress :: #[must_use] const fn position(self) -> usize |d9c45ec975f53929
+crates/transcription/src/version.rs [pub] impl TokenAddress :: #[must_use] const fn segment(self) -> usize |d7b1044ca70076f9
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] const fn raw(&self) -> &RawTranscript |690868c91f23d1c9
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn append_annotations(&mut self, annotations: AnnotationLayer) -> u32 |49effd7215af87cb
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn current(&self) -> &TranscriptVersion |607a1b071f67e91d
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn open(raw: RawTranscript) -> Self |17623562173710a1
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn open_reviews(&self) -> &[TokenAddress] |de4e1244c6106c17
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn segment_at(&self, version: u32, index: usize) -> Option<TranscriptSegment<'_>> |fa1bd7fa50a6f295
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: #[must_use] fn versions(&self) -> &[TranscriptVersion] |bf184deec5298174
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: fn append_correction(&mut self, settled: SettledCorrection) -> Result<u32, VersionFault> |56a50ad2b29eb514
+crates/transcription/src/version.rs [pub] impl TranscriptLineage :: fn open_review(&mut self, address: TokenAddress) -> Result<(), VersionFault> |be06506834042506
+crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] const fn annotations(&self) -> &AnnotationLayer |b129e03cbb7d3e97
+crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] const fn number(&self) -> u32 |e7f686cff75a564f
+crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] const fn supersedes(&self) -> Option<u32> |78144c1b4cc1418e
+crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] fn corrections(&self) -> &[AppliedCorrection] |d7d58da4167a0b61
+crates/transcription/src/version.rs [pub] impl TranscriptVersion :: #[must_use] fn digest(&self) -> ContentDigest |0f72e6913c79cc60
+crates/transcription/src/version.rs [pub] impl<'a> EffectiveToken<'a> :: #[must_use] const fn corrected_at(&self) -> Option<u32> |3108bf4fc8c614ae
+crates/transcription/src/version.rs [pub] impl<'a> EffectiveToken<'a> :: #[must_use] const fn raw(&self) -> &'a RawToken |9ef9e172ee5f1caa
+crates/transcription/src/version.rs [pub] impl<'a> EffectiveToken<'a> :: #[must_use] const fn text(&self) -> &'a str |69d99e3050f3089a
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn correction_status(&self) -> CorrectionStatus |2d70379f9864b7d7
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn end_nanos(&self) -> u64 |a16c435a7f99af09
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn index(&self) -> usize |a18f2202a3f231e5
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn lecture(&self) -> academic_domain::LectureSessionId |4c1e741cb61ebd4a
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn speaker(&self) -> crate::transcript::Speaker |5b4a6269938412d4
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn start_nanos(&self) -> u64 |9188e02ad42ff26f
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] const fn version(&self) -> u32 |8ac5a6b5c3dc1561
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn id(&self) -> &'a str |5873ad2059c434d8
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn source_audio_chunks(&self) -> &'a [u32] |d5f6cc244d772793
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn tokens(&self) -> &[EffectiveToken<'a>] |da42374acde8f9a8
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn verbatim_text(&self) -> &'a str |8b7b13448c6d8eac
+crates/transcription/src/version.rs [pub] impl<'a> TranscriptSegment<'a> :: #[must_use] fn versions(&self) -> &[u32] |c09dd0bd0514f460

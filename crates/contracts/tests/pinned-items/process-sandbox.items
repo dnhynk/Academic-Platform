@@ -1,86 +1,86 @@
-crates/process-sandbox/probes/enforcement_probe.rs [priv] const CREATED_FILE: &str
-crates/process-sandbox/probes/enforcement_probe.rs [priv] const EXISTING_FILE: &str
-crates/process-sandbox/probes/enforcement_probe.rs [priv] fn main() -> ExitCode
-crates/process-sandbox/probes/enforcement_probe.rs [priv] fn parse_class(value: &str) -> Option<ProcessClass>
-crates/process-sandbox/probes/enforcement_probe.rs [priv] fn report(name: &str, outcome: Result<String, &std::io::Error>)
-crates/process-sandbox/probes/enforcement_probe.rs [priv] use academic_policy::ProcessClass
-crates/process-sandbox/probes/enforcement_probe.rs [priv] use std::{ io::Write as _, net::{TcpListener, TcpStream, ToSocketAddrs}, path::Path, process::ExitCode, time::Duration, }
-crates/process-sandbox/src/lib.rs [priv] #![deny(missing_docs)]
+crates/process-sandbox/probes/enforcement_probe.rs [priv] const CREATED_FILE: &str |996b834a4e470618
+crates/process-sandbox/probes/enforcement_probe.rs [priv] const EXISTING_FILE: &str |f0390ea923ac917b
+crates/process-sandbox/probes/enforcement_probe.rs [priv] fn main() -> ExitCode |dbb44e918123ad40
+crates/process-sandbox/probes/enforcement_probe.rs [priv] fn parse_class(value: &str) -> Option<ProcessClass> |4d1af82b1fff75a9
+crates/process-sandbox/probes/enforcement_probe.rs [priv] fn report(name: &str, outcome: Result<String, &std::io::Error>) |37a8ba550d5618e3
+crates/process-sandbox/probes/enforcement_probe.rs [priv] use academic_policy::ProcessClass |e71d5a02fabd8a7a
+crates/process-sandbox/probes/enforcement_probe.rs [priv] use std::{ io::Write as _, net::{TcpListener, TcpStream, ToSocketAddrs}, path::Path, process::ExitCode, time::Duration, } |eb0660f5c4109ddc
+crates/process-sandbox/src/lib.rs [priv] #![deny(missing_docs)] |d27a0595f2b099f8
 crates/process-sandbox/src/lib.rs [priv] #[cfg(all(feature = "native-enforcement", target_os = "linux"))] mod linux
 crates/process-sandbox/src/lib.rs [priv] impl BackendId
 crates/process-sandbox/src/lib.rs [priv] impl Enforcement
 crates/process-sandbox/src/lib.rs [priv] impl EnforcementBasis
 crates/process-sandbox/src/lib.rs [priv] impl fmt::Display for BackendId
-crates/process-sandbox/src/lib.rs [priv] impl fmt::Display for BackendId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
-crates/process-sandbox/src/lib.rs [priv] use academic_policy::{ProcessCapability, ProcessClass}
-crates/process-sandbox/src/lib.rs [priv] use std::fmt
-crates/process-sandbox/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] enum BackendId
-crates/process-sandbox/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EnforcementBasis
-crates/process-sandbox/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Enforcement
-crates/process-sandbox/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum EnforcementError
-crates/process-sandbox/src/lib.rs [pub] #[must_use] const fn basis(capability: ProcessCapability) -> EnforcementBasis
-crates/process-sandbox/src/lib.rs [pub] #[must_use] fn refusal_line(class: ProcessClass, error: &EnforcementError) -> String
-crates/process-sandbox/src/lib.rs [pub] #[must_use] fn refusals(class: ProcessClass) -> Vec<ProcessCapability>
-crates/process-sandbox/src/lib.rs [pub] const NO_BACKEND_COMPILED: &str
-crates/process-sandbox/src/lib.rs [pub] const UNSUPPORTED_PLATFORM: &str
-crates/process-sandbox/src/lib.rs [pub] const WINDOWS_HAS_NO_SELF_APPLIED_MECHANISM: &str
-crates/process-sandbox/src/lib.rs [pub] fn enter(class: ProcessClass) -> Result<Enforcement, EnforcementError>
-crates/process-sandbox/src/lib.rs [pub] impl BackendId :: #[must_use] const fn as_str(self) -> &'static str
-crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] const fn backend(&self) -> BackendId
-crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] const fn class(&self) -> ProcessClass
-crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] fn receipt_line(&self) -> String
-crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] fn refused(&self) -> &[ProcessCapability]
-crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] fn verification(&self) -> &str
-crates/process-sandbox/src/lib.rs [pub] impl EnforcementBasis :: #[must_use] const fn as_str(self) -> &'static str
-crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn landlock_abi() -> i64
-crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn refuse_every_socket() -> Result<(), EnforcementError>
-crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn refuse_every_write(abi: i64) -> Result<(), EnforcementError>
-crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn seccomp_errno_available() -> i64
-crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "aarch64")] const AUDIT_ARCH: u32
-crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "x86_64")] #[allow(unsafe_code)] fn x32_answer() -> i64
-crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "x86_64")] const AUDIT_ARCH: u32
-crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "x86_64")] const BPF_JGE: u16
-crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "x86_64")] const X32_SYSCALL_BIT: i64
+crates/process-sandbox/src/lib.rs [priv] impl fmt::Display for BackendId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
+crates/process-sandbox/src/lib.rs [priv] use academic_policy::{ProcessCapability, ProcessClass} |adebf6a68eb60e11
+crates/process-sandbox/src/lib.rs [priv] use std::fmt |20996e02b97d7e41
+crates/process-sandbox/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] enum BackendId |5bc964c3db2f28d4
+crates/process-sandbox/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EnforcementBasis |e663ede0260a9d5b
+crates/process-sandbox/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Enforcement |0a42392261beb9c6
+crates/process-sandbox/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum EnforcementError |c094a35596f26364
+crates/process-sandbox/src/lib.rs [pub] #[must_use] const fn basis(capability: ProcessCapability) -> EnforcementBasis |eb237c88ebef2972
+crates/process-sandbox/src/lib.rs [pub] #[must_use] fn refusal_line(class: ProcessClass, error: &EnforcementError) -> String |c1551022aacc87e3
+crates/process-sandbox/src/lib.rs [pub] #[must_use] fn refusals(class: ProcessClass) -> Vec<ProcessCapability> |464a9cd325c03bcb
+crates/process-sandbox/src/lib.rs [pub] const NO_BACKEND_COMPILED: &str |a77c9fbb1c25a4e2
+crates/process-sandbox/src/lib.rs [pub] const UNSUPPORTED_PLATFORM: &str |1522021f35b138c9
+crates/process-sandbox/src/lib.rs [pub] const WINDOWS_HAS_NO_SELF_APPLIED_MECHANISM: &str |b8a5a353523d46f7
+crates/process-sandbox/src/lib.rs [pub] fn enter(class: ProcessClass) -> Result<Enforcement, EnforcementError> |64f47d931b25004e
+crates/process-sandbox/src/lib.rs [pub] impl BackendId :: #[must_use] const fn as_str(self) -> &'static str |b287c03979fb4f5f
+crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] const fn backend(&self) -> BackendId |b9f410b26c9570c0
+crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] const fn class(&self) -> ProcessClass |c6d95e039e688f14
+crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] fn receipt_line(&self) -> String |f0b4cacf45934b59
+crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] fn refused(&self) -> &[ProcessCapability] |d10194e5bf2ef1d5
+crates/process-sandbox/src/lib.rs [pub] impl Enforcement :: #[must_use] fn verification(&self) -> &str |4cc0efd2f8267895
+crates/process-sandbox/src/lib.rs [pub] impl EnforcementBasis :: #[must_use] const fn as_str(self) -> &'static str |d6db0248f16a8c89
+crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn landlock_abi() -> i64 |d0a03ce5de7f89d8
+crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn refuse_every_socket() -> Result<(), EnforcementError> |1dee7ad91cb72260
+crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn refuse_every_write(abi: i64) -> Result<(), EnforcementError> |557d697d48952d54
+crates/process-sandbox/src/linux.rs [priv] #[allow(unsafe_code)] fn seccomp_errno_available() -> i64 |c8d38ed9465abb92
+crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "aarch64")] const AUDIT_ARCH: u32 |ae194e49cc64c2a2
+crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "x86_64")] #[allow(unsafe_code)] fn x32_answer() -> i64 |e208821dac212260
+crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "x86_64")] const AUDIT_ARCH: u32 |02621f48494ca043
+crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "x86_64")] const BPF_JGE: u16 |a82c59d809f70749
+crates/process-sandbox/src/linux.rs [priv] #[cfg(target_arch = "x86_64")] const X32_SYSCALL_BIT: i64 |3e895439992ceb48
 crates/process-sandbox/src/linux.rs [priv] #[cfg(test)] mod tests
-crates/process-sandbox/src/linux.rs [priv] #[repr(C)] #[derive(Clone, Copy)] struct SockFilter
-crates/process-sandbox/src/linux.rs [priv] #[repr(C)] struct LandlockRulesetAttr
-crates/process-sandbox/src/linux.rs [priv] #[repr(C)] struct SockFprog
-crates/process-sandbox/src/linux.rs [priv] const ABI1_WRITE_HANDLED: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_BLOCK: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_CHAR: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_DIR: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_FIFO: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_REG: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_SOCK: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_SYM: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_REFER: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_REMOVE_DIR: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_REMOVE_FILE: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_TRUNCATE: u64
-crates/process-sandbox/src/linux.rs [priv] const ACCESS_WRITE_FILE: u64
-crates/process-sandbox/src/linux.rs [priv] const BPF_ABS: u16
-crates/process-sandbox/src/linux.rs [priv] const BPF_JEQ: u16
-crates/process-sandbox/src/linux.rs [priv] const BPF_JMP: u16
-crates/process-sandbox/src/linux.rs [priv] const BPF_K: u16
-crates/process-sandbox/src/linux.rs [priv] const BPF_LD: u16
-crates/process-sandbox/src/linux.rs [priv] const BPF_RET: u16
-crates/process-sandbox/src/linux.rs [priv] const BPF_W: u16
-crates/process-sandbox/src/linux.rs [priv] const LANDLOCK_CREATE_RULESET_VERSION: u32
-crates/process-sandbox/src/linux.rs [priv] const SECCOMP_GET_ACTION_AVAIL: u32
-crates/process-sandbox/src/linux.rs [priv] const SECCOMP_RET_ALLOW: u32
-crates/process-sandbox/src/linux.rs [priv] const SECCOMP_RET_ERRNO: u32
-crates/process-sandbox/src/linux.rs [priv] const SECCOMP_RET_KILL_PROCESS: u32
-crates/process-sandbox/src/linux.rs [priv] const SECCOMP_SET_MODE_FILTER: u32
-crates/process-sandbox/src/linux.rs [priv] const fn jump(code: u16, k: u32, jt: u8, jf: u8) -> SockFilter
-crates/process-sandbox/src/linux.rs [priv] const fn stmt(code: u16, k: u32) -> SockFilter
-crates/process-sandbox/src/linux.rs [priv] fn denied_syscalls() -> Vec<i64>
-crates/process-sandbox/src/linux.rs [priv] fn errno() -> i64
-crates/process-sandbox/src/linux.rs [priv] fn status_field(status: &str, name: &str) -> Option<String>
-crates/process-sandbox/src/linux.rs [priv] fn verify(refused_write: bool, refused_socket: bool) -> Result<String, EnforcementError>
-crates/process-sandbox/src/linux.rs [priv] mod tests :: #[test] fn a_status_field_is_read_by_exact_key()
-crates/process-sandbox/src/linux.rs [priv] mod tests :: #[test] fn the_deny_list_has_no_duplicate_and_no_negative_number()
-crates/process-sandbox/src/linux.rs [priv] mod tests :: use super::{denied_syscalls, status_field}
-crates/process-sandbox/src/linux.rs [priv] use academic_policy::ProcessCapability
-crates/process-sandbox/src/linux.rs [priv] use crate::EnforcementError
-crates/process-sandbox/src/linux.rs [priv] use std::{fs, io}
-crates/process-sandbox/src/linux.rs [pub(super)] #[allow(unsafe_code)] fn enter(refused: &[ProcessCapability]) -> Result<String, EnforcementError>
+crates/process-sandbox/src/linux.rs [priv] #[repr(C)] #[derive(Clone, Copy)] struct SockFilter |2332c95ee77a59c1
+crates/process-sandbox/src/linux.rs [priv] #[repr(C)] struct LandlockRulesetAttr |851b0769912a99e9
+crates/process-sandbox/src/linux.rs [priv] #[repr(C)] struct SockFprog |882d5a13d54aa28a
+crates/process-sandbox/src/linux.rs [priv] const ABI1_WRITE_HANDLED: u64 |bce90fbce32c6f28
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_BLOCK: u64 |d2f0e73360095795
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_CHAR: u64 |64a0898261ea1afe
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_DIR: u64 |77fbed0b03401f76
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_FIFO: u64 |fae2d0978c1f7b5f
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_REG: u64 |b6471a2e465957be
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_SOCK: u64 |a53a741135a10bb1
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_MAKE_SYM: u64 |b2d1c1ebd2ed7604
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_REFER: u64 |521f2279feaffc37
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_REMOVE_DIR: u64 |4e2fc4babe48bf8f
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_REMOVE_FILE: u64 |42a822e678a9edc1
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_TRUNCATE: u64 |8c7b6840af94583e
+crates/process-sandbox/src/linux.rs [priv] const ACCESS_WRITE_FILE: u64 |c1e2d174858f2618
+crates/process-sandbox/src/linux.rs [priv] const BPF_ABS: u16 |e9f1e481a7f28be7
+crates/process-sandbox/src/linux.rs [priv] const BPF_JEQ: u16 |92ffa80492f90bb2
+crates/process-sandbox/src/linux.rs [priv] const BPF_JMP: u16 |5d994a4d28843341
+crates/process-sandbox/src/linux.rs [priv] const BPF_K: u16 |0a64ddc461dc64de
+crates/process-sandbox/src/linux.rs [priv] const BPF_LD: u16 |353ad73327ef3f47
+crates/process-sandbox/src/linux.rs [priv] const BPF_RET: u16 |ba8ec0b13ff105ea
+crates/process-sandbox/src/linux.rs [priv] const BPF_W: u16 |e9f46be96a9e19ca
+crates/process-sandbox/src/linux.rs [priv] const LANDLOCK_CREATE_RULESET_VERSION: u32 |eb32f4f1a0a3f2d4
+crates/process-sandbox/src/linux.rs [priv] const SECCOMP_GET_ACTION_AVAIL: u32 |4f7fa6ae980cdc06
+crates/process-sandbox/src/linux.rs [priv] const SECCOMP_RET_ALLOW: u32 |d18768c90a95fdb6
+crates/process-sandbox/src/linux.rs [priv] const SECCOMP_RET_ERRNO: u32 |714d72d6b6baa88d
+crates/process-sandbox/src/linux.rs [priv] const SECCOMP_RET_KILL_PROCESS: u32 |b3151167fa793012
+crates/process-sandbox/src/linux.rs [priv] const SECCOMP_SET_MODE_FILTER: u32 |cbef85852a2f5da9
+crates/process-sandbox/src/linux.rs [priv] const fn jump(code: u16, k: u32, jt: u8, jf: u8) -> SockFilter |b119c3be37112f74
+crates/process-sandbox/src/linux.rs [priv] const fn stmt(code: u16, k: u32) -> SockFilter |7c84347b7220902c
+crates/process-sandbox/src/linux.rs [priv] fn denied_syscalls() -> Vec<i64> |265cb854d4783c7d
+crates/process-sandbox/src/linux.rs [priv] fn errno() -> i64 |bd55e5475235cdf9
+crates/process-sandbox/src/linux.rs [priv] fn status_field(status: &str, name: &str) -> Option<String> |038e3c78af5a891b
+crates/process-sandbox/src/linux.rs [priv] fn verify(refused_write: bool, refused_socket: bool) -> Result<String, EnforcementError> |9701937f766c6237
+crates/process-sandbox/src/linux.rs [priv] mod tests :: #[test] fn a_status_field_is_read_by_exact_key() |74d3c583390cedf8
+crates/process-sandbox/src/linux.rs [priv] mod tests :: #[test] fn the_deny_list_has_no_duplicate_and_no_negative_number() |48b33374e6aa4158
+crates/process-sandbox/src/linux.rs [priv] mod tests :: use super::{denied_syscalls, status_field} |2c4892f3d7e91237
+crates/process-sandbox/src/linux.rs [priv] use academic_policy::ProcessCapability |869d84bab4e36872
+crates/process-sandbox/src/linux.rs [priv] use crate::EnforcementError |db6820ffcfa0d584
+crates/process-sandbox/src/linux.rs [priv] use std::{fs, io} |12eccb0c90678941
+crates/process-sandbox/src/linux.rs [pub(super)] #[allow(unsafe_code)] fn enter(refused: &[ProcessCapability]) -> Result<String, EnforcementError> |e5dfdbbdd378d20b

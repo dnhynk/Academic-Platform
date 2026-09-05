@@ -3,144 +3,144 @@ crates/capture/src/align.rs [priv] impl Anchor
 crates/capture/src/align.rs [priv] impl DriftEstimate
 crates/capture/src/align.rs [priv] impl MappingLedger
 crates/capture/src/align.rs [priv] impl MappingVersion
-crates/capture/src/align.rs [priv] use crate::{ clock::{ClockFault, SessionClock, SessionTick}, policy::CapturePolicyRow, }
-crates/capture/src/align.rs [pub(crate)] impl MappingLedger :: fn append_realignment( &mut self, clock: &SessionClock, first: Anchor, second: Anchor, policy: CapturePolicyRow, ) -> Result<MappingVersion, AlignmentFault>
-crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum AlignmentConfidence
-crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Anchor
-crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DriftEstimate
-crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MappingVersion
-crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum AlignmentFault
-crates/capture/src/align.rs [pub] #[derive(Debug, Default, Clone, PartialEq, Eq)] struct MappingLedger
-crates/capture/src/align.rs [pub] const ALIGNMENT_LOW_CONFIDENCE: &str
-crates/capture/src/align.rs [pub] fn estimate_drift( first: Anchor, second: Anchor, policy: CapturePolicyRow, ) -> Result<DriftEstimate, AlignmentFault>
-crates/capture/src/align.rs [pub] impl AlignmentConfidence :: #[must_use] const fn badge(self) -> Option<&'static str>
-crates/capture/src/align.rs [pub] impl AlignmentConfidence :: #[must_use] const fn code(self) -> u8
-crates/capture/src/align.rs [pub] impl AlignmentConfidence :: #[must_use] const fn is_low(self) -> bool
-crates/capture/src/align.rs [pub] impl AlignmentConfidence :: #[must_use] const fn plus_minus_seconds(self) -> u64
-crates/capture/src/align.rs [pub] impl Anchor :: #[must_use] const fn at(at: SessionTick, reference_nanos: u64) -> Self
-crates/capture/src/align.rs [pub] impl Anchor :: #[must_use] const fn reference_nanos(self) -> u64
-crates/capture/src/align.rs [pub] impl Anchor :: #[must_use] const fn session_tick(self) -> SessionTick
-crates/capture/src/align.rs [pub] impl Anchor :: #[must_use] fn offset_nanos(self) -> Option<i64>
-crates/capture/src/align.rs [pub] impl DriftEstimate :: #[must_use] const fn confidence(self) -> AlignmentConfidence
-crates/capture/src/align.rs [pub] impl DriftEstimate :: #[must_use] const fn drift_nanos(self) -> i64
-crates/capture/src/align.rs [pub] impl DriftEstimate :: #[must_use] const fn offset_nanos(self) -> i64
-crates/capture/src/align.rs [pub] impl MappingLedger :: #[must_use] const fn new() -> Self
-crates/capture/src/align.rs [pub] impl MappingLedger :: #[must_use] fn current(&self) -> Option<MappingVersion>
-crates/capture/src/align.rs [pub] impl MappingLedger :: #[must_use] fn versions(&self) -> &[MappingVersion]
-crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn estimate(self) -> DriftEstimate
-crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn first(self) -> Anchor
-crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn policy_id(self) -> &'static str
-crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn second(self) -> Anchor
-crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn version(self) -> u32
+crates/capture/src/align.rs [priv] use crate::{ clock::{ClockFault, SessionClock, SessionTick}, policy::CapturePolicyRow, } |479499aacfb9a965
+crates/capture/src/align.rs [pub(crate)] impl MappingLedger :: fn append_realignment( &mut self, clock: &SessionClock, first: Anchor, second: Anchor, policy: CapturePolicyRow, ) -> Result<MappingVersion, AlignmentFault> |ae471ad9be0500d9
+crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum AlignmentConfidence |b20a3989e713ca2e
+crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Anchor |e321b2e694679a07
+crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DriftEstimate |6f07128fbc639a56
+crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MappingVersion |bb008964aa6a1de3
+crates/capture/src/align.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum AlignmentFault |cd03c70b763a796f
+crates/capture/src/align.rs [pub] #[derive(Debug, Default, Clone, PartialEq, Eq)] struct MappingLedger |5ae9de4fd86cb7fc
+crates/capture/src/align.rs [pub] const ALIGNMENT_LOW_CONFIDENCE: &str |8949896a88a6be9b
+crates/capture/src/align.rs [pub] fn estimate_drift( first: Anchor, second: Anchor, policy: CapturePolicyRow, ) -> Result<DriftEstimate, AlignmentFault> |b6f3db41dfc7856d
+crates/capture/src/align.rs [pub] impl AlignmentConfidence :: #[must_use] const fn badge(self) -> Option<&'static str> |5707f81f55615e71
+crates/capture/src/align.rs [pub] impl AlignmentConfidence :: #[must_use] const fn code(self) -> u8 |c65399f966abc440
+crates/capture/src/align.rs [pub] impl AlignmentConfidence :: #[must_use] const fn is_low(self) -> bool |cd49247fa933c499
+crates/capture/src/align.rs [pub] impl AlignmentConfidence :: #[must_use] const fn plus_minus_seconds(self) -> u64 |b35ef85aaad78b55
+crates/capture/src/align.rs [pub] impl Anchor :: #[must_use] const fn at(at: SessionTick, reference_nanos: u64) -> Self |9509a1b88e32a9ea
+crates/capture/src/align.rs [pub] impl Anchor :: #[must_use] const fn reference_nanos(self) -> u64 |3ee2ad48d15bd0e0
+crates/capture/src/align.rs [pub] impl Anchor :: #[must_use] const fn session_tick(self) -> SessionTick |4db741f16136d5c5
+crates/capture/src/align.rs [pub] impl Anchor :: #[must_use] fn offset_nanos(self) -> Option<i64> |091c60248d195917
+crates/capture/src/align.rs [pub] impl DriftEstimate :: #[must_use] const fn confidence(self) -> AlignmentConfidence |4382f08d2f31f024
+crates/capture/src/align.rs [pub] impl DriftEstimate :: #[must_use] const fn drift_nanos(self) -> i64 |39a6f6b3fffe5d64
+crates/capture/src/align.rs [pub] impl DriftEstimate :: #[must_use] const fn offset_nanos(self) -> i64 |c025ec2b4a03f30e
+crates/capture/src/align.rs [pub] impl MappingLedger :: #[must_use] const fn new() -> Self |6417186d1f4e8dcb
+crates/capture/src/align.rs [pub] impl MappingLedger :: #[must_use] fn current(&self) -> Option<MappingVersion> |30fb70b786e6426b
+crates/capture/src/align.rs [pub] impl MappingLedger :: #[must_use] fn versions(&self) -> &[MappingVersion] |89091a18d616f230
+crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn estimate(self) -> DriftEstimate |e9fe2684adb7cef8
+crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn first(self) -> Anchor |4a59445bec4cb14a
+crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn policy_id(self) -> &'static str |0871ce7a2c5b4b87
+crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn second(self) -> Anchor |ce32fa9114c31d1a
+crates/capture/src/align.rs [pub] impl MappingVersion :: #[must_use] const fn version(self) -> u32 |e91ea94fd364283d
 crates/capture/src/capture.rs [priv] impl CaptureBytes
 crates/capture/src/capture.rs [priv] impl Orientation
 crates/capture/src/capture.rs [priv] impl fmt::Debug for CaptureBytes
-crates/capture/src/capture.rs [priv] impl fmt::Debug for CaptureBytes :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
-crates/capture/src/capture.rs [priv] use academic_domain::ContentDigest
-crates/capture/src/capture.rs [priv] use std::fmt
-crates/capture/src/capture.rs [pub] #[derive(Clone, PartialEq, Eq)] struct CaptureBytes
-crates/capture/src/capture.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Orientation
-crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] const fn is_empty(&self) -> bool
-crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] const fn len(&self) -> usize
-crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] const fn of(chunk_bytes: Vec<u8>) -> Self
-crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] fn as_slice(&self) -> &[u8]
-crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] fn digest(&self) -> ContentDigest
-crates/capture/src/capture.rs [pub] impl Orientation :: #[must_use] const fn code(self) -> u8
-crates/capture/src/capture.rs [pub] impl Orientation :: #[must_use] fn from_code(code: u8) -> Option<Self>
-crates/capture/src/capture.rs [pub] impl Orientation :: const ALL: [Self; 8]
-crates/capture/src/clock.rs [priv] const CLOCK_DOMAIN_INFO: &[u8]
+crates/capture/src/capture.rs [priv] impl fmt::Debug for CaptureBytes :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |15051f7b9ade9db2
+crates/capture/src/capture.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/capture/src/capture.rs [priv] use std::fmt |20996e02b97d7e41
+crates/capture/src/capture.rs [pub] #[derive(Clone, PartialEq, Eq)] struct CaptureBytes |b7b83e2736df3945
+crates/capture/src/capture.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Orientation |972e36edfe1342e3
+crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] const fn is_empty(&self) -> bool |cf5ef610db29b365
+crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] const fn len(&self) -> usize |2d8603878b4d58ef
+crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] const fn of(chunk_bytes: Vec<u8>) -> Self |10f3ee474da8c18b
+crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] fn as_slice(&self) -> &[u8] |20dc1b47f13d8b25
+crates/capture/src/capture.rs [pub] impl CaptureBytes :: #[must_use] fn digest(&self) -> ContentDigest |a6c8a14ad09be2f3
+crates/capture/src/capture.rs [pub] impl Orientation :: #[must_use] const fn code(self) -> u8 |61fd8dfd1739cc5a
+crates/capture/src/capture.rs [pub] impl Orientation :: #[must_use] fn from_code(code: u8) -> Option<Self> |4657b39b5015deaf
+crates/capture/src/capture.rs [pub] impl Orientation :: const ALL: [Self; 8] |73c49cba75191367
+crates/capture/src/clock.rs [priv] const CLOCK_DOMAIN_INFO: &[u8] |7e00daf7b07add6d
 crates/capture/src/clock.rs [priv] impl SessionClock
 crates/capture/src/clock.rs [priv] impl SessionClockDomain
 crates/capture/src/clock.rs [priv] impl SessionTick
-crates/capture/src/clock.rs [priv] static CLOCKS_STARTED: AtomicU64
-crates/capture/src/clock.rs [priv] use academic_domain::{ContentDigest, LectureSessionId}
-crates/capture/src/clock.rs [priv] use std::sync::atomic::{AtomicU64, Ordering}
-crates/capture/src/clock.rs [pub(crate)] impl SessionClockDomain :: const fn recorded(digest: ContentDigest) -> Self
-crates/capture/src/clock.rs [pub(crate)] impl SessionTick :: const fn recorded(domain: SessionClockDomain, seq: u32, elapsed_nanos: u64) -> Self
-crates/capture/src/clock.rs [pub] #[derive(Debug)] struct SessionClock
-crates/capture/src/clock.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct SessionTick
-crates/capture/src/clock.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct SessionClockDomain(ContentDigest)
-crates/capture/src/clock.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum ClockFault
-crates/capture/src/clock.rs [pub] impl SessionClock :: #[must_use] const fn accepted_nanos(&self) -> u64
-crates/capture/src/clock.rs [pub] impl SessionClock :: #[must_use] const fn domain(&self) -> SessionClockDomain
-crates/capture/src/clock.rs [pub] impl SessionClock :: #[must_use] fn start( lecture_id: LectureSessionId, token_id: &ContentDigest, predecessor: Option<&ContentDigest>, ) -> Self
-crates/capture/src/clock.rs [pub] impl SessionClock :: fn admit(&self, tick: SessionTick) -> Result<SessionTick, ClockFault>
-crates/capture/src/clock.rs [pub] impl SessionClock :: fn tick(&mut self, elapsed_nanos: u64) -> Result<SessionTick, ClockFault>
-crates/capture/src/clock.rs [pub] impl SessionClockDomain :: #[must_use] const fn digest(&self) -> &ContentDigest
-crates/capture/src/clock.rs [pub] impl SessionTick :: #[must_use] const fn domain(&self) -> SessionClockDomain
-crates/capture/src/clock.rs [pub] impl SessionTick :: #[must_use] const fn elapsed_nanos(&self) -> u64
-crates/capture/src/clock.rs [pub] impl SessionTick :: #[must_use] const fn seq(&self) -> u32
-crates/capture/src/clock.rs [pub] impl SessionTick :: #[must_use] fn offset_from(self, earlier: Self) -> Option<i64>
+crates/capture/src/clock.rs [priv] static CLOCKS_STARTED: AtomicU64 |325ecdded7b65481
+crates/capture/src/clock.rs [priv] use academic_domain::{ContentDigest, LectureSessionId} |3d13571811107cf5
+crates/capture/src/clock.rs [priv] use std::sync::atomic::{AtomicU64, Ordering} |4ea7db44124018d2
+crates/capture/src/clock.rs [pub(crate)] impl SessionClockDomain :: const fn recorded(digest: ContentDigest) -> Self |413fef75b07747ff
+crates/capture/src/clock.rs [pub(crate)] impl SessionTick :: const fn recorded(domain: SessionClockDomain, seq: u32, elapsed_nanos: u64) -> Self |5c67b56e726376ae
+crates/capture/src/clock.rs [pub] #[derive(Debug)] struct SessionClock |f1d440fc6fc436b8
+crates/capture/src/clock.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct SessionTick |691b248863fab841
+crates/capture/src/clock.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct SessionClockDomain(ContentDigest) |5c8b642e8de74704
+crates/capture/src/clock.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum ClockFault |4289ea899584e9f0
+crates/capture/src/clock.rs [pub] impl SessionClock :: #[must_use] const fn accepted_nanos(&self) -> u64 |0a9137dfc60cc3a4
+crates/capture/src/clock.rs [pub] impl SessionClock :: #[must_use] const fn domain(&self) -> SessionClockDomain |2249b8ada0aa78d1
+crates/capture/src/clock.rs [pub] impl SessionClock :: #[must_use] fn start( lecture_id: LectureSessionId, token_id: &ContentDigest, predecessor: Option<&ContentDigest>, ) -> Self |476c653253034510
+crates/capture/src/clock.rs [pub] impl SessionClock :: fn admit(&self, tick: SessionTick) -> Result<SessionTick, ClockFault> |f13f3099ec505a42
+crates/capture/src/clock.rs [pub] impl SessionClock :: fn tick(&mut self, elapsed_nanos: u64) -> Result<SessionTick, ClockFault> |9b8343f645b8447e
+crates/capture/src/clock.rs [pub] impl SessionClockDomain :: #[must_use] const fn digest(&self) -> &ContentDigest |a9326b875358ea7a
+crates/capture/src/clock.rs [pub] impl SessionTick :: #[must_use] const fn domain(&self) -> SessionClockDomain |2249b8ada0aa78d1
+crates/capture/src/clock.rs [pub] impl SessionTick :: #[must_use] const fn elapsed_nanos(&self) -> u64 |41d6339a5e24185c
+crates/capture/src/clock.rs [pub] impl SessionTick :: #[must_use] const fn seq(&self) -> u32 |469b592ad17b092f
+crates/capture/src/clock.rs [pub] impl SessionTick :: #[must_use] fn offset_from(self, earlier: Self) -> Option<i64> |98e6e838085df215
 crates/capture/src/fault.rs [priv] impl FaultPoint
-crates/capture/src/fault.rs [priv] impl FaultPoint :: #[cfg(feature = "phase2-fault-injection")] const fn as_str(self) -> &'static str
-crates/capture/src/fault.rs [pub(crate)] #[cfg(feature = "phase2-fault-injection")] fn trip(point: FaultPoint, frame_seq: u32)
-crates/capture/src/fault.rs [pub(crate)] #[cfg(not(feature = "phase2-fault-injection"))] const fn trip(_point: FaultPoint, _frame_seq: u32)
-crates/capture/src/fault.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[cfg_attr(not(feature = "phase2-fault-injection"), allow(dead_code))] enum FaultPoint
-crates/capture/src/fault.rs [pub] const FAULT_FRAME_VARIABLE: &str
-crates/capture/src/fault.rs [pub] const FAULT_READY_MARKER_VARIABLE: &str
-crates/capture/src/fault.rs [pub] const FAULT_SELECTION_VARIABLE: &str
-crates/capture/src/fault.rs [pub] const FAULT_SELECTORS: &[&str]
-crates/capture/src/journal.rs [priv] const FRAME_HEADER_LEN: usize
-crates/capture/src/journal.rs [priv] const HEADER_LEN: usize
-crates/capture/src/journal.rs [priv] fn frame_digest(header: &[u8], body: &[u8]) -> ContentDigest
-crates/capture/src/journal.rs [priv] fn genesis() -> ContentDigest
+crates/capture/src/fault.rs [priv] impl FaultPoint :: #[cfg(feature = "phase2-fault-injection")] const fn as_str(self) -> &'static str |cdb4cba8931425ff
+crates/capture/src/fault.rs [pub(crate)] #[cfg(feature = "phase2-fault-injection")] fn trip(point: FaultPoint, frame_seq: u32) |fe4070bfffcb3df8
+crates/capture/src/fault.rs [pub(crate)] #[cfg(not(feature = "phase2-fault-injection"))] const fn trip(_point: FaultPoint, _frame_seq: u32) |3204fb1ce699d437
+crates/capture/src/fault.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[cfg_attr(not(feature = "phase2-fault-injection"), allow(dead_code))] enum FaultPoint |a7f06e263bbd3677
+crates/capture/src/fault.rs [pub] const FAULT_FRAME_VARIABLE: &str |c58f29fba1094201
+crates/capture/src/fault.rs [pub] const FAULT_READY_MARKER_VARIABLE: &str |6bfbf02c4217dd5c
+crates/capture/src/fault.rs [pub] const FAULT_SELECTION_VARIABLE: &str |22662e2f983092c8
+crates/capture/src/fault.rs [pub] const FAULT_SELECTORS: &[&str] |7b037c530b8a34c1
+crates/capture/src/journal.rs [priv] const FRAME_HEADER_LEN: usize |dfca1c043052e922
+crates/capture/src/journal.rs [priv] const HEADER_LEN: usize |cbc72414a6e32d97
+crates/capture/src/journal.rs [priv] fn frame_digest(header: &[u8], body: &[u8]) -> ContentDigest |a98fc16032c18794
+crates/capture/src/journal.rs [priv] fn genesis() -> ContentDigest |faa436daae1554a6
 crates/capture/src/journal.rs [priv] impl ChunkJournal
 crates/capture/src/journal.rs [priv] impl GapCause
 crates/capture/src/journal.rs [priv] impl JournalHeader
 crates/capture/src/journal.rs [priv] impl JournalRecord
 crates/capture/src/journal.rs [priv] impl JournalRecovery
 crates/capture/src/journal.rs [priv] impl RecordBody
-crates/capture/src/journal.rs [priv] impl RecordBody :: fn decode(kind: u8, body: &[u8]) -> Option<Self>
-crates/capture/src/journal.rs [priv] impl RecordBody :: fn encode(&self) -> Vec<u8>
+crates/capture/src/journal.rs [priv] impl RecordBody :: fn decode(kind: u8, body: &[u8]) -> Option<Self> |e5d85cf381d5a918
+crates/capture/src/journal.rs [priv] impl RecordBody :: fn encode(&self) -> Vec<u8> |591f039585785487
 crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body>
-crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: const fn over(body: &'body [u8]) -> Self
-crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: fn anchor(&mut self) -> Option<(u32, u64, u64)>
-crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: fn array<const N: usize>(&mut self) -> Option<[u8; N]>
-crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: fn byte(&mut self) -> Option<u8>
-crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: fn rest(&self) -> &'body [u8]
-crates/capture/src/journal.rs [priv] struct Cursor<'body>
-crates/capture/src/journal.rs [priv] use academic_domain::ContentDigest
-crates/capture/src/journal.rs [priv] use crate::{ align::{AlignmentConfidence, Anchor, DriftEstimate, MappingVersion}, capture::{CaptureBytes, Orientation}, clock::{SessionClockDomain, SessionTick}, fault::{self, FaultPoint}, mark::MarkLabelKind, preflight::{FailureKind, SignalDelivery}, }
-crates/capture/src/journal.rs [priv] use std::{ fs::{File, OpenOptions}, io::{Read as _, Seek as _, SeekFrom, Write as _}, path::{Path, PathBuf}, }
-crates/capture/src/journal.rs [pub] #[derive(Debug)] struct ChunkJournal
-crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct JournalHeader
-crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum GapCause
-crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RecordBody
-crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct JournalRecord
-crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct JournalRecovery
-crates/capture/src/journal.rs [pub] #[derive(Debug, thiserror::Error)] enum JournalFault
-crates/capture/src/journal.rs [pub] #[must_use] fn mapping_version_body(version: MappingVersion) -> RecordBody
-crates/capture/src/journal.rs [pub] const JOURNAL_MAGIC: &[u8; 8]
-crates/capture/src/journal.rs [pub] const MAX_BODY_BYTES: usize
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: #[must_use] const fn header(&self) -> JournalHeader
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: #[must_use] const fn tail(&self) -> &ContentDigest
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: #[must_use] fn path(&self) -> &Path
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: #[must_use] fn records(&self) -> &[JournalRecord]
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn append( &mut self, at: SessionTick, body: RecordBody, ) -> Result<&JournalRecord, JournalFault>
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn create( path: &Path, domain: SessionClockDomain, policy_digest: ContentDigest, token_id: ContentDigest, ) -> Result<Self, JournalFault>
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn recover(path: &Path) -> Result<JournalRecovery, JournalFault>
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn reopen(path: &Path) -> Result<(Self, JournalRecovery), JournalFault>
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn replay(bytes: &[u8]) -> Result<JournalRecovery, JournalFault>
-crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn verify_on_disk(&self) -> Result<JournalRecovery, JournalFault>
-crates/capture/src/journal.rs [pub] impl GapCause :: #[must_use] const fn as_str(self) -> &'static str
-crates/capture/src/journal.rs [pub] impl GapCause :: #[must_use] const fn code(self) -> u8
-crates/capture/src/journal.rs [pub] impl GapCause :: #[must_use] fn from_code(code: u8) -> Option<Self>
-crates/capture/src/journal.rs [pub] impl GapCause :: const ALL: [Self; 4]
-crates/capture/src/journal.rs [pub] impl JournalHeader :: #[must_use] const fn domain(&self) -> SessionClockDomain
-crates/capture/src/journal.rs [pub] impl JournalHeader :: #[must_use] const fn policy_digest(&self) -> &ContentDigest
-crates/capture/src/journal.rs [pub] impl JournalHeader :: #[must_use] const fn token_id(&self) -> &ContentDigest
-crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn at(&self) -> SessionTick
-crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn body(&self) -> &RecordBody
-crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn digest(&self) -> &ContentDigest
-crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn parent(&self) -> &ContentDigest
-crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn seq(&self) -> u32
-crates/capture/src/journal.rs [pub] impl JournalRecovery :: #[must_use] const fn header(&self) -> JournalHeader
-crates/capture/src/journal.rs [pub] impl JournalRecovery :: #[must_use] const fn partial_tail_bytes(&self) -> u64
-crates/capture/src/journal.rs [pub] impl JournalRecovery :: #[must_use] fn last_synced(&self) -> Option<&JournalRecord>
-crates/capture/src/journal.rs [pub] impl JournalRecovery :: #[must_use] fn records(&self) -> &[JournalRecord]
-crates/capture/src/journal.rs [pub] impl RecordBody :: #[must_use] const fn bytes(&self) -> Option<&CaptureBytes>
-crates/capture/src/journal.rs [pub] impl RecordBody :: #[must_use] const fn kind_code(&self) -> u8
-crates/capture/src/journal.rs [pub] impl RecordBody :: #[must_use] const fn kind_str(&self) -> &'static str
+crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: const fn over(body: &'body [u8]) -> Self |f88900952043e7bb
+crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: fn anchor(&mut self) -> Option<(u32, u64, u64)> |8a46227a2c895e62
+crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: fn array<const N: usize>(&mut self) -> Option<[u8; N]> |985c182373c891f7
+crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: fn byte(&mut self) -> Option<u8> |ddfe051dfe60abaa
+crates/capture/src/journal.rs [priv] impl<'body> Cursor<'body> :: fn rest(&self) -> &'body [u8] |f83219d714495479
+crates/capture/src/journal.rs [priv] struct Cursor<'body> |b12eadbef47bf524
+crates/capture/src/journal.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/capture/src/journal.rs [priv] use crate::{ align::{AlignmentConfidence, Anchor, DriftEstimate, MappingVersion}, capture::{CaptureBytes, Orientation}, clock::{SessionClockDomain, SessionTick}, fault::{self, FaultPoint}, mark::MarkLabelKind, preflight::{FailureKind, SignalDelivery}, } |7bf07b0fc8c33981
+crates/capture/src/journal.rs [priv] use std::{ fs::{File, OpenOptions}, io::{Read as _, Seek as _, SeekFrom, Write as _}, path::{Path, PathBuf}, } |49e5c9536d33c3e1
+crates/capture/src/journal.rs [pub] #[derive(Debug)] struct ChunkJournal |3a52344b65f511e6
+crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct JournalHeader |4d736274f63f14ee
+crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum GapCause |f4c4345d7a33c256
+crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RecordBody |09c3b1e1ca780565
+crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct JournalRecord |2bb288892a620063
+crates/capture/src/journal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct JournalRecovery |0700b7e634fbd479
+crates/capture/src/journal.rs [pub] #[derive(Debug, thiserror::Error)] enum JournalFault |f1ba517e125c34f6
+crates/capture/src/journal.rs [pub] #[must_use] fn mapping_version_body(version: MappingVersion) -> RecordBody |02d071a0878746cb
+crates/capture/src/journal.rs [pub] const JOURNAL_MAGIC: &[u8; 8] |bcbbc2314512071c
+crates/capture/src/journal.rs [pub] const MAX_BODY_BYTES: usize |5d20db3d175d7aab
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: #[must_use] const fn header(&self) -> JournalHeader |d08fbba02c3ca3cf
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: #[must_use] const fn tail(&self) -> &ContentDigest |41bde9df596d3b28
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: #[must_use] fn path(&self) -> &Path |7f3b463ffbb331a7
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: #[must_use] fn records(&self) -> &[JournalRecord] |dc11be9951e80c92
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn append( &mut self, at: SessionTick, body: RecordBody, ) -> Result<&JournalRecord, JournalFault> |6ce86aab851c62a8
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn create( path: &Path, domain: SessionClockDomain, policy_digest: ContentDigest, token_id: ContentDigest, ) -> Result<Self, JournalFault> |71a9f325739ffd96
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn recover(path: &Path) -> Result<JournalRecovery, JournalFault> |cf50cc8c2684ce32
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn reopen(path: &Path) -> Result<(Self, JournalRecovery), JournalFault> |89ee1ad9581bc3ec
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn replay(bytes: &[u8]) -> Result<JournalRecovery, JournalFault> |fad2e5f4ca5e13a5
+crates/capture/src/journal.rs [pub] impl ChunkJournal :: fn verify_on_disk(&self) -> Result<JournalRecovery, JournalFault> |a2754dd1a3ce8e89
+crates/capture/src/journal.rs [pub] impl GapCause :: #[must_use] const fn as_str(self) -> &'static str |b3486ba20295f32c
+crates/capture/src/journal.rs [pub] impl GapCause :: #[must_use] const fn code(self) -> u8 |7450ac406fa0eca0
+crates/capture/src/journal.rs [pub] impl GapCause :: #[must_use] fn from_code(code: u8) -> Option<Self> |4657b39b5015deaf
+crates/capture/src/journal.rs [pub] impl GapCause :: const ALL: [Self; 4] |09f2b3237188360d
+crates/capture/src/journal.rs [pub] impl JournalHeader :: #[must_use] const fn domain(&self) -> SessionClockDomain |2249b8ada0aa78d1
+crates/capture/src/journal.rs [pub] impl JournalHeader :: #[must_use] const fn policy_digest(&self) -> &ContentDigest |c216a210e07fdf7a
+crates/capture/src/journal.rs [pub] impl JournalHeader :: #[must_use] const fn token_id(&self) -> &ContentDigest |707124e5ca843ee8
+crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn at(&self) -> SessionTick |59939a0f304e6638
+crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn body(&self) -> &RecordBody |7ae42dca05ecc1ba
+crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
+crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn parent(&self) -> &ContentDigest |53dc9bd769c9281c
+crates/capture/src/journal.rs [pub] impl JournalRecord :: #[must_use] const fn seq(&self) -> u32 |469b592ad17b092f
+crates/capture/src/journal.rs [pub] impl JournalRecovery :: #[must_use] const fn header(&self) -> JournalHeader |d08fbba02c3ca3cf
+crates/capture/src/journal.rs [pub] impl JournalRecovery :: #[must_use] const fn partial_tail_bytes(&self) -> u64 |df8a98f6b1723e68
+crates/capture/src/journal.rs [pub] impl JournalRecovery :: #[must_use] fn last_synced(&self) -> Option<&JournalRecord> |6f6fcfadb76f9d53
+crates/capture/src/journal.rs [pub] impl JournalRecovery :: #[must_use] fn records(&self) -> &[JournalRecord] |dc11be9951e80c92
+crates/capture/src/journal.rs [pub] impl RecordBody :: #[must_use] const fn bytes(&self) -> Option<&CaptureBytes> |458323e3029b7c5e
+crates/capture/src/journal.rs [pub] impl RecordBody :: #[must_use] const fn kind_code(&self) -> u8 |a98fd5de4bb1d060
+crates/capture/src/journal.rs [pub] impl RecordBody :: #[must_use] const fn kind_str(&self) -> &'static str |89a3e69840e79435
 crates/capture/src/lib.rs [pub] mod align
 crates/capture/src/lib.rs [pub] mod capture
 crates/capture/src/lib.rs [pub] mod clock
@@ -150,138 +150,138 @@ crates/capture/src/lib.rs [pub] mod mark
 crates/capture/src/lib.rs [pub] mod policy
 crates/capture/src/lib.rs [pub] mod preflight
 crates/capture/src/lib.rs [pub] mod recorder
-crates/capture/src/lib.rs [pub] use align::{ ALIGNMENT_LOW_CONFIDENCE, AlignmentConfidence, AlignmentFault, Anchor, DriftEstimate, MappingLedger, MappingVersion, estimate_drift, }
-crates/capture/src/lib.rs [pub] use capture::{CaptureBytes, Orientation}
-crates/capture/src/lib.rs [pub] use clock::{ClockFault, SessionClock, SessionClockDomain, SessionTick}
-crates/capture/src/lib.rs [pub] use fault::{ FAULT_FRAME_VARIABLE, FAULT_READY_MARKER_VARIABLE, FAULT_SELECTION_VARIABLE, FAULT_SELECTORS, }
-crates/capture/src/lib.rs [pub] use journal::{ ChunkJournal, GapCause, JOURNAL_MAGIC, JournalFault, JournalHeader, JournalRecord, JournalRecovery, MAX_BODY_BYTES, RecordBody, mapping_version_body, }
-crates/capture/src/lib.rs [pub] use mark::{LabelledMark, Mark, MarkFault, MarkLabel, MarkLabelKind, MarkLedger}
-crates/capture/src/lib.rs [pub] use policy::{CapturePolicyBook, CapturePolicyRow, PUBLISHED_EFFECTIVE_FROM}
-crates/capture/src/lib.rs [pub] use preflight::{ FailureKind, FailureSignal, MicrophoneState, PreflightReading, SignalDelivery, }
-crates/capture/src/lib.rs [pub] use recorder::{CaptureFault, CaptureRecorder, SealedCapture, begin, resume}
+crates/capture/src/lib.rs [pub] use align::{ ALIGNMENT_LOW_CONFIDENCE, AlignmentConfidence, AlignmentFault, Anchor, DriftEstimate, MappingLedger, MappingVersion, estimate_drift, } |4af380c9e68c5bef
+crates/capture/src/lib.rs [pub] use capture::{CaptureBytes, Orientation} |eb96cd4459d95727
+crates/capture/src/lib.rs [pub] use clock::{ClockFault, SessionClock, SessionClockDomain, SessionTick} |2a8e9ed74912e1ad
+crates/capture/src/lib.rs [pub] use fault::{ FAULT_FRAME_VARIABLE, FAULT_READY_MARKER_VARIABLE, FAULT_SELECTION_VARIABLE, FAULT_SELECTORS, } |43f5852f5f947ad0
+crates/capture/src/lib.rs [pub] use journal::{ ChunkJournal, GapCause, JOURNAL_MAGIC, JournalFault, JournalHeader, JournalRecord, JournalRecovery, MAX_BODY_BYTES, RecordBody, mapping_version_body, } |76b47229ff66cd1a
+crates/capture/src/lib.rs [pub] use mark::{LabelledMark, Mark, MarkFault, MarkLabel, MarkLabelKind, MarkLedger} |36a27935f2d14025
+crates/capture/src/lib.rs [pub] use policy::{CapturePolicyBook, CapturePolicyRow, PUBLISHED_EFFECTIVE_FROM} |18045d92f3baf704
+crates/capture/src/lib.rs [pub] use preflight::{ FailureKind, FailureSignal, MicrophoneState, PreflightReading, SignalDelivery, } |4d6e6cb40ff6515f
+crates/capture/src/lib.rs [pub] use recorder::{CaptureFault, CaptureRecorder, SealedCapture, begin, resume} |afcf1195b3d30a46
 crates/capture/src/mark.rs [priv] impl LabelledMark
 crates/capture/src/mark.rs [priv] impl Mark
 crates/capture/src/mark.rs [priv] impl MarkLabel
 crates/capture/src/mark.rs [priv] impl MarkLabelKind
 crates/capture/src/mark.rs [priv] impl MarkLedger
-crates/capture/src/mark.rs [priv] use crate::clock::SessionTick
-crates/capture/src/mark.rs [pub(crate)] impl Mark :: const fn made(seq: u32, at: SessionTick) -> Self
-crates/capture/src/mark.rs [pub(crate)] impl MarkLabel :: const fn applied( mark_seq: u32, kind: MarkLabelKind, applied_at: SessionTick, ) -> Self
-crates/capture/src/mark.rs [pub(crate)] impl MarkLedger :: fn append_label( &mut self, mark_seq: u32, kind: MarkLabelKind, applied_at: SessionTick, ) -> Result<MarkLabel, MarkFault>
-crates/capture/src/mark.rs [pub(crate)] impl MarkLedger :: fn append_mark(&mut self, at: SessionTick) -> Mark
-crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct LabelledMark
-crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Mark
-crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MarkLabel
-crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum MarkLabelKind
-crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum MarkFault
-crates/capture/src/mark.rs [pub] #[derive(Debug, Default, Clone, PartialEq, Eq)] struct MarkLedger
-crates/capture/src/mark.rs [pub] impl LabelledMark :: #[must_use] const fn at(self) -> SessionTick
-crates/capture/src/mark.rs [pub] impl LabelledMark :: #[must_use] const fn label(self) -> Option<MarkLabelKind>
-crates/capture/src/mark.rs [pub] impl LabelledMark :: #[must_use] const fn mark(self) -> Mark
-crates/capture/src/mark.rs [pub] impl Mark :: #[must_use] const fn at(self) -> SessionTick
-crates/capture/src/mark.rs [pub] impl Mark :: #[must_use] const fn seq(self) -> u32
-crates/capture/src/mark.rs [pub] impl MarkLabel :: #[must_use] const fn applied_at(self) -> SessionTick
-crates/capture/src/mark.rs [pub] impl MarkLabel :: #[must_use] const fn kind(self) -> MarkLabelKind
-crates/capture/src/mark.rs [pub] impl MarkLabel :: #[must_use] const fn mark_seq(self) -> u32
-crates/capture/src/mark.rs [pub] impl MarkLabelKind :: #[must_use] const fn as_str(self) -> &'static str
-crates/capture/src/mark.rs [pub] impl MarkLabelKind :: #[must_use] const fn code(self) -> u8
-crates/capture/src/mark.rs [pub] impl MarkLabelKind :: #[must_use] fn from_code(code: u8) -> Option<Self>
-crates/capture/src/mark.rs [pub] impl MarkLabelKind :: const ALL: [Self; 5]
-crates/capture/src/mark.rs [pub] impl MarkLedger :: #[must_use] const fn new() -> Self
-crates/capture/src/mark.rs [pub] impl MarkLedger :: #[must_use] fn labels(&self) -> &[MarkLabel]
-crates/capture/src/mark.rs [pub] impl MarkLedger :: #[must_use] fn marks(&self) -> &[Mark]
-crates/capture/src/mark.rs [pub] impl MarkLedger :: #[must_use] fn resolve(&self, mark_seq: u32) -> Option<LabelledMark>
+crates/capture/src/mark.rs [priv] use crate::clock::SessionTick |d4e6dfad339b560d
+crates/capture/src/mark.rs [pub(crate)] impl Mark :: const fn made(seq: u32, at: SessionTick) -> Self |f00f91e426641d51
+crates/capture/src/mark.rs [pub(crate)] impl MarkLabel :: const fn applied( mark_seq: u32, kind: MarkLabelKind, applied_at: SessionTick, ) -> Self |d130b7faf9c51fd6
+crates/capture/src/mark.rs [pub(crate)] impl MarkLedger :: fn append_label( &mut self, mark_seq: u32, kind: MarkLabelKind, applied_at: SessionTick, ) -> Result<MarkLabel, MarkFault> |c66e9a8321bd02e2
+crates/capture/src/mark.rs [pub(crate)] impl MarkLedger :: fn append_mark(&mut self, at: SessionTick) -> Mark |ce666402ab8b5c11
+crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct LabelledMark |2d535be8062d29cc
+crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Mark |ce457eafffefbce6
+crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MarkLabel |4ddf2a48c1ef51fb
+crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum MarkLabelKind |65536a3f83592d0c
+crates/capture/src/mark.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum MarkFault |759652e52dcfee97
+crates/capture/src/mark.rs [pub] #[derive(Debug, Default, Clone, PartialEq, Eq)] struct MarkLedger |007ddc8807478e85
+crates/capture/src/mark.rs [pub] impl LabelledMark :: #[must_use] const fn at(self) -> SessionTick |461cadc2bb69adcc
+crates/capture/src/mark.rs [pub] impl LabelledMark :: #[must_use] const fn label(self) -> Option<MarkLabelKind> |c03da7a4a2cb1905
+crates/capture/src/mark.rs [pub] impl LabelledMark :: #[must_use] const fn mark(self) -> Mark |8451baeffcaabd52
+crates/capture/src/mark.rs [pub] impl Mark :: #[must_use] const fn at(self) -> SessionTick |d0f537616629db86
+crates/capture/src/mark.rs [pub] impl Mark :: #[must_use] const fn seq(self) -> u32 |e1243d244c77d4a1
+crates/capture/src/mark.rs [pub] impl MarkLabel :: #[must_use] const fn applied_at(self) -> SessionTick |0f0291e2eec85e8e
+crates/capture/src/mark.rs [pub] impl MarkLabel :: #[must_use] const fn kind(self) -> MarkLabelKind |d6a51cfafbad457e
+crates/capture/src/mark.rs [pub] impl MarkLabel :: #[must_use] const fn mark_seq(self) -> u32 |711bb94572cb7d31
+crates/capture/src/mark.rs [pub] impl MarkLabelKind :: #[must_use] const fn as_str(self) -> &'static str |4936252adb1752db
+crates/capture/src/mark.rs [pub] impl MarkLabelKind :: #[must_use] const fn code(self) -> u8 |b6d7e0af70d2d676
+crates/capture/src/mark.rs [pub] impl MarkLabelKind :: #[must_use] fn from_code(code: u8) -> Option<Self> |4657b39b5015deaf
+crates/capture/src/mark.rs [pub] impl MarkLabelKind :: const ALL: [Self; 5] |940700d1ff21ee1c
+crates/capture/src/mark.rs [pub] impl MarkLedger :: #[must_use] const fn new() -> Self |7edc6a0dd6d7f5b2
+crates/capture/src/mark.rs [pub] impl MarkLedger :: #[must_use] fn labels(&self) -> &[MarkLabel] |c2310cef4ee2e9c7
+crates/capture/src/mark.rs [pub] impl MarkLedger :: #[must_use] fn marks(&self) -> &[Mark] |83f7e9982f41be59
+crates/capture/src/mark.rs [pub] impl MarkLedger :: #[must_use] fn resolve(&self, mark_seq: u32) -> Option<LabelledMark> |0585b265beb3a70a
 crates/capture/src/policy.rs [priv] impl CapturePolicyBook
 crates/capture/src/policy.rs [priv] impl CapturePolicyRow
-crates/capture/src/policy.rs [priv] use academic_domain::ContentDigest
-crates/capture/src/policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CapturePolicyRow
-crates/capture/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CapturePolicyBook
-crates/capture/src/policy.rs [pub] const PUBLISHED_EFFECTIVE_FROM: u64
-crates/capture/src/policy.rs [pub] impl CapturePolicyBook :: #[must_use] fn effective_at(&self, at: u64) -> Option<CapturePolicyRow>
-crates/capture/src/policy.rs [pub] impl CapturePolicyBook :: #[must_use] fn of(rows: Vec<CapturePolicyRow>) -> Self
-crates/capture/src/policy.rs [pub] impl CapturePolicyBook :: #[must_use] fn published() -> Self
-crates/capture/src/policy.rs [pub] impl CapturePolicyBook :: #[must_use] fn rows(&self) -> &[CapturePolicyRow]
-crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn battery_floor_percent(&self) -> u8
-crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn declare( id: &'static str, effective_from: u64, drift_tolerance_nanos: u64, storage_floor_bytes: u64, battery_floor_percent: u8, notification_within_nanos: u64, ) -> Self
-crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn drift_tolerance_nanos(&self) -> u64
-crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn effective_from(&self) -> u64
-crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn id(&self) -> &'static str
-crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn notification_within_nanos(&self) -> u64
-crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn storage_floor_bytes(&self) -> u64
-crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] fn digest(&self) -> ContentDigest
+crates/capture/src/policy.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/capture/src/policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CapturePolicyRow |d8e6e75a5921e5e0
+crates/capture/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CapturePolicyBook |b8cafda53b04f383
+crates/capture/src/policy.rs [pub] const PUBLISHED_EFFECTIVE_FROM: u64 |8627a6fc42f42244
+crates/capture/src/policy.rs [pub] impl CapturePolicyBook :: #[must_use] fn effective_at(&self, at: u64) -> Option<CapturePolicyRow> |318abd7a24c8a18d
+crates/capture/src/policy.rs [pub] impl CapturePolicyBook :: #[must_use] fn of(rows: Vec<CapturePolicyRow>) -> Self |9a34f6ec8c3c742b
+crates/capture/src/policy.rs [pub] impl CapturePolicyBook :: #[must_use] fn published() -> Self |0f619cad37c1eae8
+crates/capture/src/policy.rs [pub] impl CapturePolicyBook :: #[must_use] fn rows(&self) -> &[CapturePolicyRow] |4ffd9201ac9ab1da
+crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn battery_floor_percent(&self) -> u8 |aeb57ebd7ba82322
+crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn declare( id: &'static str, effective_from: u64, drift_tolerance_nanos: u64, storage_floor_bytes: u64, battery_floor_percent: u8, notification_within_nanos: u64, ) -> Self |fcd1cc937cebaf26
+crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn drift_tolerance_nanos(&self) -> u64 |eed0557b79fe17be
+crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn effective_from(&self) -> u64 |465b27f7cd54a67c
+crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn id(&self) -> &'static str |213ce9eef07cedc7
+crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn notification_within_nanos(&self) -> u64 |ba8f511dbe88978e
+crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] const fn storage_floor_bytes(&self) -> u64 |2177d718748afe4c
+crates/capture/src/policy.rs [pub] impl CapturePolicyRow :: #[must_use] fn digest(&self) -> ContentDigest |35ac22c73fab30a2
 crates/capture/src/preflight.rs [priv] impl FailureKind
 crates/capture/src/preflight.rs [priv] impl FailureSignal
 crates/capture/src/preflight.rs [priv] impl PreflightReading
 crates/capture/src/preflight.rs [priv] impl SignalDelivery
-crates/capture/src/preflight.rs [priv] use crate::{clock::SessionTick, policy::CapturePolicyRow}
-crates/capture/src/preflight.rs [pub(crate)] impl FailureSignal :: const fn raised( kind: FailureKind, raised_at: SessionTick, observed_at_nanos: u64, ) -> Self
-crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct FailureSignal
-crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct PreflightReading
-crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FailureKind
-crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum MicrophoneState
-crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SignalDelivery
-crates/capture/src/preflight.rs [pub] impl FailureKind :: #[must_use] const fn as_str(self) -> &'static str
-crates/capture/src/preflight.rs [pub] impl FailureKind :: #[must_use] const fn code(self) -> u8
-crates/capture/src/preflight.rs [pub] impl FailureKind :: #[must_use] const fn delivery(self) -> SignalDelivery
-crates/capture/src/preflight.rs [pub] impl FailureKind :: #[must_use] fn from_code(code: u8) -> Option<Self>
-crates/capture/src/preflight.rs [pub] impl FailureKind :: const ALL: [Self; 3]
-crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn delivery(self) -> SignalDelivery
-crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn kind(self) -> FailureKind
-crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn latency_nanos(self) -> u64
-crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn observed_at_nanos(self) -> u64
-crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn raised_at(self) -> SessionTick
-crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn within(self, policy: CapturePolicyRow) -> bool
-crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn battery_charging(self) -> bool
-crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn battery_percent(self) -> u8
-crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn free_storage_bytes(self) -> u64
-crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn microphone(self) -> MicrophoneState
-crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn observed( free_storage_bytes: u64, battery_percent: u8, battery_charging: bool, microphone: MicrophoneState, ) -> Self
-crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] fn failures(self, policy: CapturePolicyRow) -> Vec<FailureKind>
-crates/capture/src/preflight.rs [pub] impl SignalDelivery :: #[must_use] const fn as_str(self) -> &'static str
-crates/capture/src/preflight.rs [pub] impl SignalDelivery :: #[must_use] const fn code(self) -> u8
-crates/capture/src/preflight.rs [pub] impl SignalDelivery :: #[must_use] fn from_code(code: u8) -> Option<Self>
-crates/capture/src/preflight.rs [pub] impl SignalDelivery :: const ALL: [Self; 2]
-crates/capture/src/recorder.rs [priv] fn start_session( token: CaptureCapabilityToken, policy: CapturePolicyRow, journal_path: &Path, recovered: Option<ChunkJournal>, ) -> Result<CaptureRecorder, CaptureFault>
+crates/capture/src/preflight.rs [priv] use crate::{clock::SessionTick, policy::CapturePolicyRow} |675cc5e8688ea1cd
+crates/capture/src/preflight.rs [pub(crate)] impl FailureSignal :: const fn raised( kind: FailureKind, raised_at: SessionTick, observed_at_nanos: u64, ) -> Self |8b08836712b8adf4
+crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct FailureSignal |f55265d650dcb224
+crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct PreflightReading |4f196bdd147dd8b8
+crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FailureKind |efc4be5e6ada3251
+crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum MicrophoneState |d693d2b842119d05
+crates/capture/src/preflight.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SignalDelivery |f615147299eda6ba
+crates/capture/src/preflight.rs [pub] impl FailureKind :: #[must_use] const fn as_str(self) -> &'static str |e62a32678572ef51
+crates/capture/src/preflight.rs [pub] impl FailureKind :: #[must_use] const fn code(self) -> u8 |4219c0c14d7ba403
+crates/capture/src/preflight.rs [pub] impl FailureKind :: #[must_use] const fn delivery(self) -> SignalDelivery |bb6d0223b50ed533
+crates/capture/src/preflight.rs [pub] impl FailureKind :: #[must_use] fn from_code(code: u8) -> Option<Self> |4657b39b5015deaf
+crates/capture/src/preflight.rs [pub] impl FailureKind :: const ALL: [Self; 3] |ecca3459d90dc230
+crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn delivery(self) -> SignalDelivery |c5ab7b50a62daba7
+crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn kind(self) -> FailureKind |8385cc77b2dfb8e5
+crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn latency_nanos(self) -> u64 |0567ca0a0da905a7
+crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn observed_at_nanos(self) -> u64 |0956996054745170
+crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn raised_at(self) -> SessionTick |40a7f7f3998933fc
+crates/capture/src/preflight.rs [pub] impl FailureSignal :: #[must_use] const fn within(self, policy: CapturePolicyRow) -> bool |f2c71445118fd226
+crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn battery_charging(self) -> bool |82eabbc5a7c3940f
+crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn battery_percent(self) -> u8 |fc995bee6bb8770c
+crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn free_storage_bytes(self) -> u64 |248bb1dfc8041c88
+crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn microphone(self) -> MicrophoneState |1dd63b407bb8aa74
+crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] const fn observed( free_storage_bytes: u64, battery_percent: u8, battery_charging: bool, microphone: MicrophoneState, ) -> Self |cbd94653aab82aa8
+crates/capture/src/preflight.rs [pub] impl PreflightReading :: #[must_use] fn failures(self, policy: CapturePolicyRow) -> Vec<FailureKind> |e0b1625d1316ee3a
+crates/capture/src/preflight.rs [pub] impl SignalDelivery :: #[must_use] const fn as_str(self) -> &'static str |31c8512220a4c51d
+crates/capture/src/preflight.rs [pub] impl SignalDelivery :: #[must_use] const fn code(self) -> u8 |acffd1881a0d4250
+crates/capture/src/preflight.rs [pub] impl SignalDelivery :: #[must_use] fn from_code(code: u8) -> Option<Self> |4657b39b5015deaf
+crates/capture/src/preflight.rs [pub] impl SignalDelivery :: const ALL: [Self; 2] |1c706f841c1dbce0
+crates/capture/src/recorder.rs [priv] fn start_session( token: CaptureCapabilityToken, policy: CapturePolicyRow, journal_path: &Path, recovered: Option<ChunkJournal>, ) -> Result<CaptureRecorder, CaptureFault> |d9ec5a03129db66b
 crates/capture/src/recorder.rs [priv] impl CaptureRecorder
-crates/capture/src/recorder.rs [priv] impl CaptureRecorder :: fn open_gap(&mut self, cause: GapCause, elapsed_nanos: u64) -> Result<(), CaptureFault>
-crates/capture/src/recorder.rs [priv] impl CaptureRecorder :: fn rebind(&mut self, ledger: &mut ConsentLedger, now: u64) -> Result<(), CaptureFault>
-crates/capture/src/recorder.rs [priv] impl CaptureRecorder :: fn still_running(&self) -> Result<(), CaptureFault>
+crates/capture/src/recorder.rs [priv] impl CaptureRecorder :: fn open_gap(&mut self, cause: GapCause, elapsed_nanos: u64) -> Result<(), CaptureFault> |f1314a91a8ee3524
+crates/capture/src/recorder.rs [priv] impl CaptureRecorder :: fn rebind(&mut self, ledger: &mut ConsentLedger, now: u64) -> Result<(), CaptureFault> |7f2a24d5b3bddbe8
+crates/capture/src/recorder.rs [priv] impl CaptureRecorder :: fn still_running(&self) -> Result<(), CaptureFault> |6053c73a15128e74
 crates/capture/src/recorder.rs [priv] impl SealedCapture
-crates/capture/src/recorder.rs [priv] use academic_consent::{ CaptureCapabilityToken, CaptureDenial, CaptureRequest, ConsentLedger, RetentionTerms, continue_capture, mint_capture_capability, }
-crates/capture/src/recorder.rs [priv] use academic_domain::{ContentDigest, LectureSessionId, OfferingId}
-crates/capture/src/recorder.rs [priv] use crate::{ align::{AlignmentFault, Anchor, MappingLedger, MappingVersion}, capture::{CaptureBytes, Orientation}, clock::{ClockFault, SessionClock, SessionClockDomain, SessionTick}, journal::{ ChunkJournal, GapCause, JournalFault, JournalHeader, JournalRecord, JournalRecovery, RecordBody, mapping_version_body, }, mark::{LabelledMark, Mark, MarkFault, MarkLabelKind, MarkLedger}, policy::{CapturePolicyBook, CapturePolicyRow}, preflight::{FailureKind, FailureSignal, PreflightReading}, }
-crates/capture/src/recorder.rs [priv] use std::path::Path
-crates/capture/src/recorder.rs [pub] #[derive(Debug)] struct CaptureRecorder
-crates/capture/src/recorder.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SealedCapture
-crates/capture/src/recorder.rs [pub] #[derive(Debug, thiserror::Error)] enum CaptureFault
-crates/capture/src/recorder.rs [pub] fn begin( ledger: &mut ConsentLedger, request: &CaptureRequest, journal_path: &Path, book: &CapturePolicyBook, reading: PreflightReading, now: u64, ) -> Result<CaptureRecorder, CaptureFault>
-crates/capture/src/recorder.rs [pub] fn resume( ledger: &mut ConsentLedger, request: &CaptureRequest, journal_path: &Path, book: &CapturePolicyBook, reading: PreflightReading, now: u64, ) -> Result<(CaptureRecorder, JournalRecovery), CaptureFault>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn audio_epoch(&self) -> SessionTick
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn clock_domain(&self) -> SessionClockDomain
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn journal_header(&self) -> JournalHeader
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn lecture_id(&self) -> LectureSessionId
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn mapping(&self) -> &MappingLedger
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn marks(&self) -> &MarkLedger
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn offering_id(&self) -> OfferingId
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn origin(&self) -> SessionTick
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn policy(&self) -> CapturePolicyRow
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn retention(&self) -> RetentionTerms
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn stopped(&self) -> Option<GapCause>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn token_id(&self) -> &ContentDigest
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] fn journal_path(&self) -> &Path
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] fn records(&self) -> &[JournalRecord]
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] fn signals(&self) -> &[FailureSignal]
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn capture_image( &mut self, ledger: &mut ConsentLedger, bytes: Vec<u8>, orientation: Orientation, elapsed_nanos: u64, now: u64, ) -> Result<&JournalRecord, CaptureFault>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn label_mark( &mut self, ledger: &mut ConsentLedger, mark_seq: u32, kind: MarkLabelKind, elapsed_nanos: u64, now: u64, ) -> Result<LabelledMark, CaptureFault>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn mark( &mut self, ledger: &mut ConsentLedger, elapsed_nanos: u64, now: u64, ) -> Result<Mark, CaptureFault>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn observe( &mut self, reading: PreflightReading, observed_at_nanos: u64, elapsed_nanos: u64, ) -> Result<Vec<FailureSignal>, CaptureFault>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn realign( &mut self, first: Anchor, second: Anchor, elapsed_nanos: u64, ) -> Result<MappingVersion, CaptureFault>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn record_audio_chunk( &mut self, ledger: &mut ConsentLedger, bytes: Vec<u8>, elapsed_nanos: u64, now: u64, ) -> Result<&JournalRecord, CaptureFault>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn seal( mut self, cause: GapCause, elapsed_nanos: u64, ) -> Result<SealedCapture, CaptureFault>
-crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn verify_on_disk(&self) -> Result<JournalRecovery, CaptureFault>
-crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] const fn journal(&self) -> &JournalRecovery
-crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] const fn mapping(&self) -> &MappingLedger
-crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] const fn marks(&self) -> &MarkLedger
-crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] const fn retention(&self) -> RetentionTerms
-crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] fn gaps(&self) -> Vec<(u32, GapCause)>
-crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] fn signals(&self) -> &[FailureSignal]
+crates/capture/src/recorder.rs [priv] use academic_consent::{ CaptureCapabilityToken, CaptureDenial, CaptureRequest, ConsentLedger, RetentionTerms, continue_capture, mint_capture_capability, } |947e7c478f0eb284
+crates/capture/src/recorder.rs [priv] use academic_domain::{ContentDigest, LectureSessionId, OfferingId} |6e710289d7c34f2e
+crates/capture/src/recorder.rs [priv] use crate::{ align::{AlignmentFault, Anchor, MappingLedger, MappingVersion}, capture::{CaptureBytes, Orientation}, clock::{ClockFault, SessionClock, SessionClockDomain, SessionTick}, journal::{ ChunkJournal, GapCause, JournalFault, JournalHeader, JournalRecord, JournalRecovery, RecordBody, mapping_version_body, }, mark::{LabelledMark, Mark, MarkFault, MarkLabelKind, MarkLedger}, policy::{CapturePolicyBook, CapturePolicyRow}, preflight::{FailureKind, FailureSignal, PreflightReading}, } |fa86466011a93113
+crates/capture/src/recorder.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/capture/src/recorder.rs [pub] #[derive(Debug)] struct CaptureRecorder |743e15c2726face1
+crates/capture/src/recorder.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SealedCapture |5e380f624e5b62f1
+crates/capture/src/recorder.rs [pub] #[derive(Debug, thiserror::Error)] enum CaptureFault |6ad30ff0dc482cd8
+crates/capture/src/recorder.rs [pub] fn begin( ledger: &mut ConsentLedger, request: &CaptureRequest, journal_path: &Path, book: &CapturePolicyBook, reading: PreflightReading, now: u64, ) -> Result<CaptureRecorder, CaptureFault> |9984527bd880ae49
+crates/capture/src/recorder.rs [pub] fn resume( ledger: &mut ConsentLedger, request: &CaptureRequest, journal_path: &Path, book: &CapturePolicyBook, reading: PreflightReading, now: u64, ) -> Result<(CaptureRecorder, JournalRecovery), CaptureFault> |677dcfc87f3159e3
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn audio_epoch(&self) -> SessionTick |a93fce9668d5e047
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn clock_domain(&self) -> SessionClockDomain |57793f39204f0313
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn journal_header(&self) -> JournalHeader |1f26853a46d041ef
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn lecture_id(&self) -> LectureSessionId |75e8cab4d52fee59
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn mapping(&self) -> &MappingLedger |1261bad9634c7416
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn marks(&self) -> &MarkLedger |b01610e84ea48dcb
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn offering_id(&self) -> OfferingId |153fbf98f29a1ac1
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn origin(&self) -> SessionTick |332fcf0d3045dae8
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn policy(&self) -> CapturePolicyRow |22721df7e8d2d5cf
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn retention(&self) -> RetentionTerms |19df5db91df4431f
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn stopped(&self) -> Option<GapCause> |efc46c51e4504bd3
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] const fn token_id(&self) -> &ContentDigest |e5007743f33f5dec
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] fn journal_path(&self) -> &Path |4c952695d0767dbb
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] fn records(&self) -> &[JournalRecord] |e226834fe2fd0718
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: #[must_use] fn signals(&self) -> &[FailureSignal] |98a0381103435ef8
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn capture_image( &mut self, ledger: &mut ConsentLedger, bytes: Vec<u8>, orientation: Orientation, elapsed_nanos: u64, now: u64, ) -> Result<&JournalRecord, CaptureFault> |1d06f1929f20016f
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn label_mark( &mut self, ledger: &mut ConsentLedger, mark_seq: u32, kind: MarkLabelKind, elapsed_nanos: u64, now: u64, ) -> Result<LabelledMark, CaptureFault> |ee1a1518c2645f76
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn mark( &mut self, ledger: &mut ConsentLedger, elapsed_nanos: u64, now: u64, ) -> Result<Mark, CaptureFault> |0002fb211a709da6
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn observe( &mut self, reading: PreflightReading, observed_at_nanos: u64, elapsed_nanos: u64, ) -> Result<Vec<FailureSignal>, CaptureFault> |bcb9a5e194480368
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn realign( &mut self, first: Anchor, second: Anchor, elapsed_nanos: u64, ) -> Result<MappingVersion, CaptureFault> |fcb352e8e2183120
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn record_audio_chunk( &mut self, ledger: &mut ConsentLedger, bytes: Vec<u8>, elapsed_nanos: u64, now: u64, ) -> Result<&JournalRecord, CaptureFault> |d7fbfdbedb992621
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn seal( mut self, cause: GapCause, elapsed_nanos: u64, ) -> Result<SealedCapture, CaptureFault> |72d6031bb5e7e40b
+crates/capture/src/recorder.rs [pub] impl CaptureRecorder :: fn verify_on_disk(&self) -> Result<JournalRecovery, CaptureFault> |d673966d805c618b
+crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] const fn journal(&self) -> &JournalRecovery |e583fafe12a0a341
+crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] const fn mapping(&self) -> &MappingLedger |1261bad9634c7416
+crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] const fn marks(&self) -> &MarkLedger |b01610e84ea48dcb
+crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] const fn retention(&self) -> RetentionTerms |9fc42635176888da
+crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] fn gaps(&self) -> Vec<(u32, GapCause)> |262a8b4784065218
+crates/capture/src/recorder.rs [pub] impl SealedCapture :: #[must_use] fn signals(&self) -> &[FailureSignal] |98a0381103435ef8

@@ -96,8 +96,8 @@ cargo clippy -p academic-capture --all-targets --locked --offline --features pha
 cargo test -p academic-capture --all-targets --locked --offline --features phase2-fault-injection
 cargo clippy -p academic-process-sandbox --all-targets --locked --offline --features native-enforcement -- -D warnings
 cargo test -p academic-process-sandbox --all-targets --locked --offline --features native-enforcement
-cargo clippy -p academic-repository-analyzer -p academic-capture-client -p academic-egress --all-targets --locked --offline --features native-enforcement -- -D warnings
-cargo test -p academic-repository-analyzer -p academic-capture-client -p academic-egress --all-targets --locked --offline --features native-enforcement
+cargo clippy -p academic-repository-analyzer -p academic-capture-client -p academic-egress -p academic-export-job --all-targets --locked --offline --features native-enforcement -- -D warnings
+cargo test -p academic-repository-analyzer -p academic-capture-client -p academic-egress -p academic-export-job --all-targets --locked --offline --features native-enforcement
 pnpm install --frozen-lockfile --offline
 pnpm lint
 pnpm typecheck
@@ -360,7 +360,11 @@ complete dependency-closure and whole-entrypoint guards: neither closure
 contains a network or key-material crate, and neither entrypoint reaches for
 one. The Rust standard library still puts a raw socket within reach of any
 process, so that is a bound on what these packages depend on and use, not an
-operating-system sandbox — `P2-G4` owns that. See
+operating-system sandbox. Four of the six classes now also enter the process
+boundary and refuse to start without it — see
+[the process capability enforcement contract](docs/contracts/process-capability-enforcement.md)
+for which two do not and why — and `P2-G4` owns the job-level sandbox one layer
+down. See
 [the permission broker contract](docs/contracts/permission-broker.md).
 
 `P2-G2` adds `academic-egress-boundary`, which stages for the egress-proxy

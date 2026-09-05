@@ -748,7 +748,64 @@ fn ordering_check() -> TestResult {
     assert_eq!(report.ordering_findings().len(), 1);
     assert_eq!(report.ordering_findings()[0].segment_index(), 0);
     assert_eq!(report.ordering_findings()[0].previous_segment_index(), 2);
+    // This document maps two of five segments, so `completeness_witness` has
+    // six other reasons to refuse it and an assertion here would say nothing
+    // about ordering. The document that isolates the clause is below.
     assert!(report.completeness_witness().is_none());
+    assert_eq!(report.unmapped_count(), 3);
+
+    // The document the ordering clause is the only thing refusing: every
+    // segment mapped whole, every token accounted, the capture placed, and the
+    // five segments rendered backwards. `P2-A4`'s third audit deleted
+    // `!self.ordering_findings.is_empty()` from `completeness_witness` and the
+    // whole workspace stayed at 1667 passed, 0 failed, because no document in
+    // the repository reached the clause with the other six satisfied. This one
+    // does: with the clause deleted it certifies a document that renders the
+    // lecture backwards as whole.
+    let mut backwards = DocumentBuilder::over(document_id("backwards")?, lineage, 1, &manifest)?;
+    for index in (0..SEGMENTS.len()).rev() {
+        backwards.push(whole_segment_node(
+            &format!("b-{index}"),
+            NodeKind::Paragraph,
+            index,
+            PreservationTransform::Punctuation,
+        )?)?;
+    }
+    let mut placement = whole_segment_node(
+        "b-cap",
+        NodeKind::CapturePlacement,
+        0,
+        PreservationTransform::CapturePlacement,
+    )?;
+    placement.nearby_captures = vec![seq];
+    backwards.push(placement)?;
+    let backwards = backwards.finish()?;
+    let report = validate(lineage, &backwards, &manifest, &capture.recovery)?;
+    // The other six clauses, each read on its own, so the refusal below cannot
+    // be coming from one of them.
+    assert_eq!(report.unmapped_count(), 0);
+    assert!(report.segment_coverage().is_whole());
+    assert!(report.token_coverage().is_whole());
+    assert_eq!(report.token_coverage().numerator(), TOTAL_TOKENS);
+    assert_eq!(report.token_coverage().denominator(), TOTAL_TOKENS);
+    assert!(report.unaccounted_captures().is_empty());
+    assert!(report.unexplained_gaps().is_empty());
+    assert!(report.reconciles());
+    assert!(report.ordering_exceptions().is_empty());
+    // Four nodes each go back behind segment 4, and the placement node goes
+    // back behind it again: five findings, enumerated rather than counted.
+    assert_eq!(
+        report
+            .ordering_findings()
+            .iter()
+            .map(|finding| (finding.previous_segment_index(), finding.segment_index()))
+            .collect::<Vec<_>>(),
+        vec![(4, 3), (4, 2), (4, 1), (4, 0), (4, 0)]
+    );
+    assert!(
+        report.completeness_witness().is_none(),
+        "a document that renders the lecture backwards was certified whole"
+    );
 
     // The same order with an explicit cross-reference is an exception, not a
     // finding — and the transcript's own order is untouched by it.
@@ -1359,6 +1416,21 @@ fn unmapped_forces_incomplete() -> TestResult {
     let report = validate(lineage, &short, &manifest, &capture.recovery)?;
     assert_eq!(report.unmapped_count(), 1);
     assert!(report.completeness_witness().is_none());
+    // `completeness_witness`'s doc argues that the `unmapped` clause is
+    // implied by the token clause, and the argument rests on
+    // `RawSegment::close` refusing a zero-token segment -- a refusal in
+    // another crate. Driven rather than asserted: the dropped segment's tokens
+    // are in the denominator and not in the numerator, so a build where that
+    // refusal went away fails here rather than silently making one of the
+    // seven clauses load-bearing again.
+    let (_, _, dropped_words) = SEGMENTS[4];
+    assert!(!dropped_words.is_empty());
+    assert!(!report.token_coverage().is_whole());
+    assert_eq!(report.token_coverage().denominator(), TOTAL_TOKENS);
+    assert_eq!(
+        report.token_coverage().numerator(),
+        TOTAL_TOKENS - dropped_words.len() as u64
+    );
     let qa = clean_render(&short)?;
     let pdf = PdfArtifact::render(&short, &report, &qa, ContentDigest::sha256(b"pdf"));
     assert_eq!(

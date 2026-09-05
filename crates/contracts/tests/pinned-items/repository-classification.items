@@ -5,40 +5,40 @@ crates/repository-classification/src/benefit.rs [priv] impl BenefitPart
 crates/repository-classification/src/benefit.rs [priv] impl TradeOff
 crates/repository-classification/src/benefit.rs [priv] impl Trigger
 crates/repository-classification/src/benefit.rs [priv] impl TriggerState
-crates/repository-classification/src/benefit.rs [priv] use academic_repository_analysis::SubjectId
-crates/repository-classification/src/benefit.rs [priv] use crate::{ClassificationError, scope::validated}
-crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum BenefitDimension
-crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum BenefitPart
-crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TriggerState
-crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, Default)] struct BenefitDraft
-crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BenefitContract
-crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct TradeOff
-crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct Trigger
-crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] const fn benefit(&self) -> BenefitDimension
-crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] const fn state(&self) -> TriggerState
-crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] fn concept(&self) -> &str
-crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] fn tradeoffs(&self) -> &[TradeOff]
-crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] fn triggers(&self) -> &[Trigger]
-crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: fn new( concept: &SubjectId, triggers: Vec<Trigger>, state: TriggerState, benefit: BenefitDimension, tradeoffs: Vec<TradeOff>, ) -> Result<Self, ClassificationError>
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDimension :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDimension :: const ALL: [Self; 4]
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] const fn with_benefit(mut self, benefit: BenefitDimension) -> Self
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] const fn with_state(mut self, state: TriggerState) -> Self
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] fn new() -> Self
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] fn with_concept(mut self, concept: &SubjectId) -> Self
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] fn with_tradeoffs(mut self, tradeoffs: Vec<TradeOff>) -> Self
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] fn with_triggers(mut self, triggers: Vec<Trigger>) -> Self
-crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: fn seal(self) -> Result<BenefitContract, ClassificationError>
-crates/repository-classification/src/benefit.rs [pub] impl BenefitPart :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/benefit.rs [pub] impl BenefitPart :: const ALL: [Self; 5]
-crates/repository-classification/src/benefit.rs [pub] impl TradeOff :: #[must_use] fn as_str(&self) -> &str
-crates/repository-classification/src/benefit.rs [pub] impl TradeOff :: fn new(value: impl Into<String>) -> Result<Self, ClassificationError>
-crates/repository-classification/src/benefit.rs [pub] impl Trigger :: #[must_use] fn as_str(&self) -> &str
-crates/repository-classification/src/benefit.rs [pub] impl Trigger :: fn new(value: impl Into<String>) -> Result<Self, ClassificationError>
-crates/repository-classification/src/benefit.rs [pub] impl TriggerState :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/benefit.rs [pub] impl TriggerState :: const ALL: [Self; 3]
-crates/repository-classification/src/chain.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct DraftConcept
-crates/repository-classification/src/chain.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct DraftNeed
+crates/repository-classification/src/benefit.rs [priv] use academic_repository_analysis::SubjectId |f41cb2007bc79ae9
+crates/repository-classification/src/benefit.rs [priv] use crate::{ClassificationError, scope::validated} |ce2ecdaf6b1d0ac0
+crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum BenefitDimension |a6d7a05e1ac7a7c6
+crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum BenefitPart |41bb2b734b62f80c
+crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TriggerState |41ff89b784f28a9b
+crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, Default)] struct BenefitDraft |dd190b29029e80bd
+crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BenefitContract |98c290b32e6012ff
+crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct TradeOff |8daa9f108fad30ff
+crates/repository-classification/src/benefit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct Trigger |7876b042791560b0
+crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] const fn benefit(&self) -> BenefitDimension |c9bbbdd549576a6a
+crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] const fn state(&self) -> TriggerState |7d8619bc9d148f2a
+crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] fn concept(&self) -> &str |3461fb1c567a83e1
+crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] fn tradeoffs(&self) -> &[TradeOff] |24a6305cbf3b37e7
+crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: #[must_use] fn triggers(&self) -> &[Trigger] |cd3d617cd3d78782
+crates/repository-classification/src/benefit.rs [pub] impl BenefitContract :: fn new( concept: &SubjectId, triggers: Vec<Trigger>, state: TriggerState, benefit: BenefitDimension, tradeoffs: Vec<TradeOff>, ) -> Result<Self, ClassificationError> |ab227181cedf3c31
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDimension :: #[must_use] const fn as_str(self) -> &'static str |c99524aae473b728
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDimension :: const ALL: [Self; 4] |22f70d705c692adf
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] const fn with_benefit(mut self, benefit: BenefitDimension) -> Self |c8f8c8c8022c4286
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] const fn with_state(mut self, state: TriggerState) -> Self |39f92fb66a1f9e06
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] fn new() -> Self |cd0c0ac7640488b6
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] fn with_concept(mut self, concept: &SubjectId) -> Self |ec5ab5f137adb63e
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] fn with_tradeoffs(mut self, tradeoffs: Vec<TradeOff>) -> Self |e80643585a927e3a
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: #[must_use] fn with_triggers(mut self, triggers: Vec<Trigger>) -> Self |29a70cc017004333
+crates/repository-classification/src/benefit.rs [pub] impl BenefitDraft :: fn seal(self) -> Result<BenefitContract, ClassificationError> |297591740ddbcf8b
+crates/repository-classification/src/benefit.rs [pub] impl BenefitPart :: #[must_use] const fn as_str(self) -> &'static str |0c9cf78444390a44
+crates/repository-classification/src/benefit.rs [pub] impl BenefitPart :: const ALL: [Self; 5] |8e08c73d3a2ea25b
+crates/repository-classification/src/benefit.rs [pub] impl TradeOff :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/repository-classification/src/benefit.rs [pub] impl TradeOff :: fn new(value: impl Into<String>) -> Result<Self, ClassificationError> |15980e61441c50cb
+crates/repository-classification/src/benefit.rs [pub] impl Trigger :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/repository-classification/src/benefit.rs [pub] impl Trigger :: fn new(value: impl Into<String>) -> Result<Self, ClassificationError> |15980e61441c50cb
+crates/repository-classification/src/benefit.rs [pub] impl TriggerState :: #[must_use] const fn as_str(self) -> &'static str |9791b1bd6b5eb028
+crates/repository-classification/src/benefit.rs [pub] impl TriggerState :: const ALL: [Self; 3] |88a0ce517fd57ff3
+crates/repository-classification/src/chain.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct DraftConcept |bb256e9d3f515c3f
+crates/repository-classification/src/chain.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct DraftNeed |32bbeff0c66eb50b
 crates/repository-classification/src/chain.rs [priv] impl ChainDraft
 crates/repository-classification/src/chain.rs [priv] impl ChainStep
 crates/repository-classification/src/chain.rs [priv] impl ConcreteNeed
@@ -48,105 +48,105 @@ crates/repository-classification/src/chain.rs [priv] impl NeedKind
 crates/repository-classification/src/chain.rs [priv] impl ProofChain
 crates/repository-classification/src/chain.rs [priv] impl RequiredConcept
 crates/repository-classification/src/chain.rs [priv] impl UserEvidenceGap
-crates/repository-classification/src/chain.rs [priv] use academic_domain::{EpistemicStatus, FreshnessBand, MasteryLevel, entity_registry::EntityKind}
-crates/repository-classification/src/chain.rs [priv] use academic_repository_analysis::{EvidenceTier, Finding, FindingScope, Locator, SubjectId}
-crates/repository-classification/src/chain.rs [priv] use academic_repository_correlation::{ApprovalStatus, DocumentId, IntentDocument}
-crates/repository-classification/src/chain.rs [priv] use crate::{ClassificationError, scope::GoalScope}
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum UserEvidenceGap
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ChainStep
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum NeedKind
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, Default)] struct ChainDraft
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum CurrentBasis
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConcreteNeed
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ControllingMechanism
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProofChain
-crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RequiredConcept
-crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] const fn with_gap(mut self, gap: UserEvidenceGap) -> Self
-crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn new() -> Self
-crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn with_basis(mut self, basis: CurrentBasis) -> Self
-crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn with_concept(mut self, concept: &SubjectId, tier: EntityKind) -> Self
-crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn with_mechanism(mut self, name: &SubjectId) -> Self
-crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn with_need(mut self, kind: NeedKind, name: &SubjectId, sites: Vec<Locator>) -> Self
-crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: fn seal(self) -> Result<ProofChain, ClassificationError>
-crates/repository-classification/src/chain.rs [pub] impl ChainStep :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/chain.rs [pub] impl ChainStep :: const ALL: [Self; 5]
-crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: #[must_use] const fn basis(&self) -> &CurrentBasis
-crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: #[must_use] const fn kind(&self) -> NeedKind
-crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: #[must_use] fn name(&self) -> &str
-crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: #[must_use] fn sites(&self) -> &[Locator]
-crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: fn shown_by( basis: CurrentBasis, kind: NeedKind, name: &SubjectId, sites: Vec<Locator>, ) -> Result<Self, ClassificationError>
-crates/repository-classification/src/chain.rs [pub] impl ControllingMechanism :: #[must_use] const fn need(&self) -> &ConcreteNeed
-crates/repository-classification/src/chain.rs [pub] impl ControllingMechanism :: #[must_use] fn controlling(need: ConcreteNeed, name: &SubjectId) -> Self
-crates/repository-classification/src/chain.rs [pub] impl ControllingMechanism :: #[must_use] fn name(&self) -> &str
-crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: #[must_use] const fn as_str(&self) -> &'static str
-crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: #[must_use] const fn finding_scope(&self) -> Option<&FindingScope>
-crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: #[must_use] const fn goal(&self) -> Option<&GoalScope>
-crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: #[must_use] fn snapshot_id(&self) -> &str
-crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: fn of_approved_goal( snapshot_id: impl Into<String>, goal: GoalScope, document: &IntentDocument, ) -> Result<Self, ClassificationError>
-crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: fn of_current_code(finding: &Finding) -> Result<Self, ClassificationError>
-crates/repository-classification/src/chain.rs [pub] impl NeedKind :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/chain.rs [pub] impl NeedKind :: const ALL: [Self; 2]
-crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn basis(&self) -> &CurrentBasis
-crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn closed_by(concept: RequiredConcept, gap: UserEvidenceGap) -> Self
-crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn concept(&self) -> &RequiredConcept
-crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn gap(&self) -> UserEvidenceGap
-crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn mechanism(&self) -> &ControllingMechanism
-crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn need(&self) -> &ConcreteNeed
-crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] fn snapshot_id(&self) -> &str
-crates/repository-classification/src/chain.rs [pub] impl RequiredConcept :: #[must_use] const fn mechanism(&self) -> &ControllingMechanism
-crates/repository-classification/src/chain.rs [pub] impl RequiredConcept :: #[must_use] const fn tier(&self) -> EntityKind
-crates/repository-classification/src/chain.rs [pub] impl RequiredConcept :: #[must_use] fn concept(&self) -> &str
-crates/repository-classification/src/chain.rs [pub] impl RequiredConcept :: fn realizing( mechanism: ControllingMechanism, concept: &SubjectId, tier: EntityKind, ) -> Result<Self, ClassificationError>
-crates/repository-classification/src/chain.rs [pub] impl UserEvidenceGap :: #[must_use] const fn as_str(&self) -> &'static str
-crates/repository-classification/src/chain.rs [pub] impl UserEvidenceGap :: #[must_use] const fn mastery(&self) -> MasteryLevel
-crates/repository-classification/src/chain.rs [pub] impl UserEvidenceGap :: #[must_use] fn of( mastery: MasteryLevel, freshness: FreshnessBand, status: EpistemicStatus, ) -> Option<Self>
+crates/repository-classification/src/chain.rs [priv] use academic_domain::{EpistemicStatus, FreshnessBand, MasteryLevel, entity_registry::EntityKind} |bee9b4df08cfc8d1
+crates/repository-classification/src/chain.rs [priv] use academic_repository_analysis::{EvidenceTier, Finding, FindingScope, Locator, SubjectId} |0293608b9856bca2
+crates/repository-classification/src/chain.rs [priv] use academic_repository_correlation::{ApprovalStatus, DocumentId, IntentDocument} |905be4bd70d17b92
+crates/repository-classification/src/chain.rs [priv] use crate::{ClassificationError, scope::GoalScope} |850e79a213c6b61f
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum UserEvidenceGap |2f811e86805a4fa8
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ChainStep |d37582d81445163d
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum NeedKind |8b9c7ff17f49cf11
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, Default)] struct ChainDraft |181bf22282c4cd7d
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum CurrentBasis |d1d3b8c0b692e885
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConcreteNeed |7f92e1b937499655
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ControllingMechanism |6d2e64099fdd5298
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProofChain |d3347414969917bd
+crates/repository-classification/src/chain.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RequiredConcept |eb5aa557a929b4e9
+crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] const fn with_gap(mut self, gap: UserEvidenceGap) -> Self |b9649f920831741b
+crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn new() -> Self |cd0c0ac7640488b6
+crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn with_basis(mut self, basis: CurrentBasis) -> Self |44c9c07b813f2357
+crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn with_concept(mut self, concept: &SubjectId, tier: EntityKind) -> Self |f49536370667b6ce
+crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn with_mechanism(mut self, name: &SubjectId) -> Self |2f1675362e602426
+crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: #[must_use] fn with_need(mut self, kind: NeedKind, name: &SubjectId, sites: Vec<Locator>) -> Self |d7d79d0f32109ce8
+crates/repository-classification/src/chain.rs [pub] impl ChainDraft :: fn seal(self) -> Result<ProofChain, ClassificationError> |44fc644a089b50b6
+crates/repository-classification/src/chain.rs [pub] impl ChainStep :: #[must_use] const fn as_str(self) -> &'static str |d4bd1057a52f352a
+crates/repository-classification/src/chain.rs [pub] impl ChainStep :: const ALL: [Self; 5] |9d0734be8292e07b
+crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: #[must_use] const fn basis(&self) -> &CurrentBasis |ebb52ec8b66ac7f2
+crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: #[must_use] const fn kind(&self) -> NeedKind |e775f3bf0eaa5d1d
+crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: #[must_use] fn name(&self) -> &str |dcd1b6c60790e001
+crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: #[must_use] fn sites(&self) -> &[Locator] |eb4321d10d6be8d6
+crates/repository-classification/src/chain.rs [pub] impl ConcreteNeed :: fn shown_by( basis: CurrentBasis, kind: NeedKind, name: &SubjectId, sites: Vec<Locator>, ) -> Result<Self, ClassificationError> |35bb38399e25e55d
+crates/repository-classification/src/chain.rs [pub] impl ControllingMechanism :: #[must_use] const fn need(&self) -> &ConcreteNeed |66669eb921793fc4
+crates/repository-classification/src/chain.rs [pub] impl ControllingMechanism :: #[must_use] fn controlling(need: ConcreteNeed, name: &SubjectId) -> Self |ccd123e7ad32d3e3
+crates/repository-classification/src/chain.rs [pub] impl ControllingMechanism :: #[must_use] fn name(&self) -> &str |dcd1b6c60790e001
+crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: #[must_use] const fn as_str(&self) -> &'static str |838889a5f2e003c4
+crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: #[must_use] const fn finding_scope(&self) -> Option<&FindingScope> |6db0385dfee84b23
+crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: #[must_use] const fn goal(&self) -> Option<&GoalScope> |f1f5b7206d54def2
+crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: #[must_use] fn snapshot_id(&self) -> &str |e78be9d6245b5ce9
+crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: fn of_approved_goal( snapshot_id: impl Into<String>, goal: GoalScope, document: &IntentDocument, ) -> Result<Self, ClassificationError> |e93b22777d213319
+crates/repository-classification/src/chain.rs [pub] impl CurrentBasis :: fn of_current_code(finding: &Finding) -> Result<Self, ClassificationError> |2ab13f28563e6403
+crates/repository-classification/src/chain.rs [pub] impl NeedKind :: #[must_use] const fn as_str(self) -> &'static str |c1fbb92cfc3ca696
+crates/repository-classification/src/chain.rs [pub] impl NeedKind :: const ALL: [Self; 2] |6ef36e81ffb8ce09
+crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn basis(&self) -> &CurrentBasis |f76ab66036f6f9cc
+crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn closed_by(concept: RequiredConcept, gap: UserEvidenceGap) -> Self |0e5d1dbee522ca3c
+crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn concept(&self) -> &RequiredConcept |6cd8b74ea0b5f80e
+crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn gap(&self) -> UserEvidenceGap |05706ea58988b875
+crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn mechanism(&self) -> &ControllingMechanism |8b4938a662ad7b58
+crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] const fn need(&self) -> &ConcreteNeed |682f72afebff4905
+crates/repository-classification/src/chain.rs [pub] impl ProofChain :: #[must_use] fn snapshot_id(&self) -> &str |b5f9c229004e1b03
+crates/repository-classification/src/chain.rs [pub] impl RequiredConcept :: #[must_use] const fn mechanism(&self) -> &ControllingMechanism |73e01b3ec7f6ee05
+crates/repository-classification/src/chain.rs [pub] impl RequiredConcept :: #[must_use] const fn tier(&self) -> EntityKind |7a2ac22c4e2d6c16
+crates/repository-classification/src/chain.rs [pub] impl RequiredConcept :: #[must_use] fn concept(&self) -> &str |3461fb1c567a83e1
+crates/repository-classification/src/chain.rs [pub] impl RequiredConcept :: fn realizing( mechanism: ControllingMechanism, concept: &SubjectId, tier: EntityKind, ) -> Result<Self, ClassificationError> |a7675740e1eb5cc9
+crates/repository-classification/src/chain.rs [pub] impl UserEvidenceGap :: #[must_use] const fn as_str(&self) -> &'static str |575456d20763c32e
+crates/repository-classification/src/chain.rs [pub] impl UserEvidenceGap :: #[must_use] const fn mastery(&self) -> MasteryLevel |81d0eb3e890dd83e
+crates/repository-classification/src/chain.rs [pub] impl UserEvidenceGap :: #[must_use] fn of( mastery: MasteryLevel, freshness: FreshnessBand, status: EpistemicStatus, ) -> Option<Self> |da850b237380c504
 crates/repository-classification/src/conflict.rs [priv] impl ClassificationConflict
 crates/repository-classification/src/conflict.rs [priv] impl OverrideDecision
 crates/repository-classification/src/conflict.rs [priv] impl UserOverride
-crates/repository-classification/src/conflict.rs [priv] use crate::{ ClassificationError, scope::{ClassificationKey, GoalScope, validated}, stance::{ClassificationLabel, Outlook}, }
-crates/repository-classification/src/conflict.rs [pub(crate)] impl ClassificationConflict :: const fn seal( key: ClassificationKey, standing: UserOverride, proposed: Outlook, ) -> Self
-crates/repository-classification/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum OverrideDecision
-crates/repository-classification/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ClassificationConflict
-crates/repository-classification/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UserOverride
-crates/repository-classification/src/conflict.rs [pub] impl ClassificationConflict :: #[must_use] const fn key(&self) -> &ClassificationKey
-crates/repository-classification/src/conflict.rs [pub] impl ClassificationConflict :: #[must_use] const fn proposed(&self) -> &Outlook
-crates/repository-classification/src/conflict.rs [pub] impl ClassificationConflict :: #[must_use] const fn proposed_label(&self) -> ClassificationLabel
-crates/repository-classification/src/conflict.rs [pub] impl ClassificationConflict :: #[must_use] const fn standing_override(&self) -> &UserOverride
-crates/repository-classification/src/conflict.rs [pub] impl OverrideDecision :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/conflict.rs [pub] impl OverrideDecision :: #[must_use] const fn contradicts(self, proposed: ClassificationLabel) -> bool
-crates/repository-classification/src/conflict.rs [pub] impl OverrideDecision :: const ALL: [Self; 3]
-crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] const fn asserted_at(&self) -> u64
-crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] const fn decision(&self) -> OverrideDecision
-crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] const fn goal(&self) -> &GoalScope
-crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] fn asserted_from_snapshot(&self) -> &str
-crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] fn concept(&self) -> &str
-crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] fn governs(&self, key: &ClassificationKey) -> bool
-crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: fn new( goal: GoalScope, concept: impl Into<String>, decision: OverrideDecision, asserted_from_snapshot: impl Into<String>, asserted_at: u64, ) -> Result<Self, ClassificationError>
-crates/repository-classification/src/lib.rs [priv] fn observed_by_concept(correlation: &Correlation) -> BTreeMap<String, ObservedProof>
-crates/repository-classification/src/lib.rs [priv] fn requirement_identity(snapshot_id: &str, goal: &str, version: u64, concept: &str) -> String
+crates/repository-classification/src/conflict.rs [priv] use crate::{ ClassificationError, scope::{ClassificationKey, GoalScope, validated}, stance::{ClassificationLabel, Outlook}, } |cf5e41d34c9d3fd5
+crates/repository-classification/src/conflict.rs [pub(crate)] impl ClassificationConflict :: const fn seal( key: ClassificationKey, standing: UserOverride, proposed: Outlook, ) -> Self |f9cc2e7b3cb65207
+crates/repository-classification/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum OverrideDecision |fcb973cb39cd401f
+crates/repository-classification/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ClassificationConflict |3a98ad25e94918af
+crates/repository-classification/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UserOverride |981eca9b0609815d
+crates/repository-classification/src/conflict.rs [pub] impl ClassificationConflict :: #[must_use] const fn key(&self) -> &ClassificationKey |b12d2864f5b99ca0
+crates/repository-classification/src/conflict.rs [pub] impl ClassificationConflict :: #[must_use] const fn proposed(&self) -> &Outlook |86e768526b5c4392
+crates/repository-classification/src/conflict.rs [pub] impl ClassificationConflict :: #[must_use] const fn proposed_label(&self) -> ClassificationLabel |08811e4c090718c9
+crates/repository-classification/src/conflict.rs [pub] impl ClassificationConflict :: #[must_use] const fn standing_override(&self) -> &UserOverride |99b275c41c5637d9
+crates/repository-classification/src/conflict.rs [pub] impl OverrideDecision :: #[must_use] const fn as_str(self) -> &'static str |d4524b241bdeaf6b
+crates/repository-classification/src/conflict.rs [pub] impl OverrideDecision :: #[must_use] const fn contradicts(self, proposed: ClassificationLabel) -> bool |ecd9e6806d29d906
+crates/repository-classification/src/conflict.rs [pub] impl OverrideDecision :: const ALL: [Self; 3] |fb66230558841332
+crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] const fn asserted_at(&self) -> u64 |8fc728d74ae9747e
+crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] const fn decision(&self) -> OverrideDecision |7721b944ac9bbf7d
+crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] const fn goal(&self) -> &GoalScope |f1053a57077190d4
+crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] fn asserted_from_snapshot(&self) -> &str |a55707e5d71c5105
+crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] fn concept(&self) -> &str |3461fb1c567a83e1
+crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: #[must_use] fn governs(&self, key: &ClassificationKey) -> bool |77c38347bd610c84
+crates/repository-classification/src/conflict.rs [pub] impl UserOverride :: fn new( goal: GoalScope, concept: impl Into<String>, decision: OverrideDecision, asserted_from_snapshot: impl Into<String>, asserted_at: u64, ) -> Result<Self, ClassificationError> |cfd8ddd2c472f471
+crates/repository-classification/src/lib.rs [priv] fn observed_by_concept(correlation: &Correlation) -> BTreeMap<String, ObservedProof> |808d2301a537f805
+crates/repository-classification/src/lib.rs [priv] fn requirement_identity(snapshot_id: &str, goal: &str, version: u64, concept: &str) -> String |e4d915c1dc1ed51d
 crates/repository-classification/src/lib.rs [priv] impl ClassificationSet
 crates/repository-classification/src/lib.rs [priv] impl From<academic_repository_analysis::AnalysisError> for ClassificationError
-crates/repository-classification/src/lib.rs [priv] impl From<academic_repository_analysis::AnalysisError> for ClassificationError :: fn from(error: academic_repository_analysis::AnalysisError) -> Self
-crates/repository-classification/src/lib.rs [priv] use academic_domain::entity_registry::EntityKind
-crates/repository-classification/src/lib.rs [priv] use academic_policy::ContentDigest
-crates/repository-classification/src/lib.rs [priv] use academic_repository_analysis::{EvidenceTier, Finding, SubjectId}
-crates/repository-classification/src/lib.rs [priv] use academic_repository_correlation::{Correlation, IntentDocument, RelationEdge}
-crates/repository-classification/src/lib.rs [priv] use std::collections::{BTreeMap, BTreeSet}
-crates/repository-classification/src/lib.rs [pub] #[derive(Debug)] struct ClassificationInput<'a>
-crates/repository-classification/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ClassificationSet
-crates/repository-classification/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum ClassificationError
-crates/repository-classification/src/lib.rs [pub] #[must_use] const fn can_found_a_requirement(finding: &Finding) -> bool
-crates/repository-classification/src/lib.rs [pub] #[must_use] fn approved_goal_subjects(document: &IntentDocument) -> Vec<SubjectId>
-crates/repository-classification/src/lib.rs [pub] #[must_use] fn observed_concepts(correlation: &Correlation) -> Vec<(String, ObservedProof)>
-crates/repository-classification/src/lib.rs [pub] #[must_use] fn observing_edges(correlation: &Correlation) -> Vec<&RelationEdge>
-crates/repository-classification/src/lib.rs [pub] fn classify(input: &ClassificationInput<'_>) -> Result<ClassificationSet, ClassificationError>
-crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] const fn goal(&self) -> &GoalScope
-crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn conflicts(&self) -> &[ClassificationConflict]
-crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn labelled(&self, label: ClassificationLabel) -> Vec<&ConceptStance>
-crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn requirements(&self) -> &[ProjectConceptRequirement]
-crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn snapshot_id(&self) -> &str
-crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn stance(&self, concept: &str) -> Option<&ConceptStance>
-crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn stances(&self) -> &[ConceptStance]
+crates/repository-classification/src/lib.rs [priv] impl From<academic_repository_analysis::AnalysisError> for ClassificationError :: fn from(error: academic_repository_analysis::AnalysisError) -> Self |10a9f631a2a80193
+crates/repository-classification/src/lib.rs [priv] use academic_domain::entity_registry::EntityKind |d164a1a9ad45303f
+crates/repository-classification/src/lib.rs [priv] use academic_policy::ContentDigest |b1f05af5a4ed642c
+crates/repository-classification/src/lib.rs [priv] use academic_repository_analysis::{EvidenceTier, Finding, SubjectId} |9dd54cf8d6370187
+crates/repository-classification/src/lib.rs [priv] use academic_repository_correlation::{Correlation, IntentDocument, RelationEdge} |54b66684178fb5fa
+crates/repository-classification/src/lib.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
+crates/repository-classification/src/lib.rs [pub] #[derive(Debug)] struct ClassificationInput<'a> |15fe93d6869504ef
+crates/repository-classification/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ClassificationSet |3703cbc661b93cb6
+crates/repository-classification/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum ClassificationError |4ed9a915c47bd87b
+crates/repository-classification/src/lib.rs [pub] #[must_use] const fn can_found_a_requirement(finding: &Finding) -> bool |b9e5a5be63f59cfd
+crates/repository-classification/src/lib.rs [pub] #[must_use] fn approved_goal_subjects(document: &IntentDocument) -> Vec<SubjectId> |1259924bf66c7b20
+crates/repository-classification/src/lib.rs [pub] #[must_use] fn observed_concepts(correlation: &Correlation) -> Vec<(String, ObservedProof)> |000483dc5e65f481
+crates/repository-classification/src/lib.rs [pub] #[must_use] fn observing_edges(correlation: &Correlation) -> Vec<&RelationEdge> |f7b0c2b92fa5d15c
+crates/repository-classification/src/lib.rs [pub] fn classify(input: &ClassificationInput<'_>) -> Result<ClassificationSet, ClassificationError> |f43c51b150f3c246
+crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] const fn goal(&self) -> &GoalScope |f1053a57077190d4
+crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn conflicts(&self) -> &[ClassificationConflict] |2a6ef07a9ea6fd00
+crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn labelled(&self, label: ClassificationLabel) -> Vec<&ConceptStance> |3b6e62a40217dc8b
+crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn requirements(&self) -> &[ProjectConceptRequirement] |80aeaf3ff38299f8
+crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn snapshot_id(&self) -> &str |f3d2b3f8490921f9
+crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn stance(&self, concept: &str) -> Option<&ConceptStance> |fa5b37d309455231
+crates/repository-classification/src/lib.rs [pub] impl ClassificationSet :: #[must_use] fn stances(&self) -> &[ConceptStance] |9b91c544abc9d222
 crates/repository-classification/src/lib.rs [pub] mod benefit
 crates/repository-classification/src/lib.rs [pub] mod chain
 crates/repository-classification/src/lib.rs [pub] mod conflict
@@ -154,116 +154,116 @@ crates/repository-classification/src/lib.rs [pub] mod migrate
 crates/repository-classification/src/lib.rs [pub] mod requirement
 crates/repository-classification/src/lib.rs [pub] mod scope
 crates/repository-classification/src/lib.rs [pub] mod stance
-crates/repository-classification/src/lib.rs [pub] use benefit::{ BenefitContract, BenefitDimension, BenefitDraft, BenefitPart, TradeOff, Trigger, TriggerState, }
-crates/repository-classification/src/lib.rs [pub] use chain::{ ChainDraft, ChainStep, ConcreteNeed, ControllingMechanism, CurrentBasis, NeedKind, ProofChain, RequiredConcept, UserEvidenceGap, }
-crates/repository-classification/src/lib.rs [pub] use conflict::{ClassificationConflict, OverrideDecision, UserOverride}
-crates/repository-classification/src/lib.rs [pub] use migrate::{ LocatorMigration, MigratedFinding, MigratedSite, MigrationOutcome, UnmatchedReason, migrate_locators, }
-crates/repository-classification/src/lib.rs [pub] use requirement::{ LifecycleRow, ProjectConceptRequirement, RequirementId, ResolutionStatus, RetirementReason, }
-crates/repository-classification/src/lib.rs [pub] use scope::{ClassificationKey, GoalId, GoalScope}
-crates/repository-classification/src/lib.rs [pub] use stance::{ClassificationLabel, ConceptStance, ObservedProof, Outlook}
-crates/repository-classification/src/migrate.rs [priv] fn follow( original: &Locator, symbols: &[SymbolRecord], into: &RepositoryAnalysis, ) -> MigrationOutcome
+crates/repository-classification/src/lib.rs [pub] use benefit::{ BenefitContract, BenefitDimension, BenefitDraft, BenefitPart, TradeOff, Trigger, TriggerState, } |3639ca37c502a141
+crates/repository-classification/src/lib.rs [pub] use chain::{ ChainDraft, ChainStep, ConcreteNeed, ControllingMechanism, CurrentBasis, NeedKind, ProofChain, RequiredConcept, UserEvidenceGap, } |915626b1cd2e5f8a
+crates/repository-classification/src/lib.rs [pub] use conflict::{ClassificationConflict, OverrideDecision, UserOverride} |3968b8ba0c48925f
+crates/repository-classification/src/lib.rs [pub] use migrate::{ LocatorMigration, MigratedFinding, MigratedSite, MigrationOutcome, UnmatchedReason, migrate_locators, } |c174eeaf28ec3bbf
+crates/repository-classification/src/lib.rs [pub] use requirement::{ LifecycleRow, ProjectConceptRequirement, RequirementId, ResolutionStatus, RetirementReason, } |4a67c8a6052321a4
+crates/repository-classification/src/lib.rs [pub] use scope::{ClassificationKey, GoalId, GoalScope} |5624198e0ab5baf2
+crates/repository-classification/src/lib.rs [pub] use stance::{ClassificationLabel, ConceptStance, ObservedProof, Outlook} |c0b8df2198ff6381
+crates/repository-classification/src/migrate.rs [priv] fn follow( original: &Locator, symbols: &[SymbolRecord], into: &RepositoryAnalysis, ) -> MigrationOutcome |a772686956a8d47b
 crates/repository-classification/src/migrate.rs [priv] impl LocatorMigration
 crates/repository-classification/src/migrate.rs [priv] impl MigratedFinding
 crates/repository-classification/src/migrate.rs [priv] impl MigratedSite
 crates/repository-classification/src/migrate.rs [priv] impl MigrationOutcome
 crates/repository-classification/src/migrate.rs [priv] impl UnmatchedReason
-crates/repository-classification/src/migrate.rs [priv] use academic_repository_analysis::{ Finding, Locator, RepositoryAnalysis, SourceSpan, SymbolFingerprint, SymbolKind, SymbolRecord, }
-crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum UnmatchedReason
-crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum MigrationOutcome
-crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LocatorMigration
-crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MigratedFinding
-crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MigratedSite
-crates/repository-classification/src/migrate.rs [pub] #[must_use] fn migrate_locators(finding: &Finding, into: &RepositoryAnalysis) -> MigratedFinding
-crates/repository-classification/src/migrate.rs [pub] impl LocatorMigration :: #[must_use] const fn ordinal(&self) -> usize
-crates/repository-classification/src/migrate.rs [pub] impl LocatorMigration :: #[must_use] const fn original(&self) -> &Locator
-crates/repository-classification/src/migrate.rs [pub] impl LocatorMigration :: #[must_use] const fn outcome(&self) -> &MigrationOutcome
-crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] const fn original(&self) -> &Finding
-crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] fn from_snapshot(&self) -> &str
-crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] fn migrated_count(&self) -> usize
-crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] fn migrations(&self) -> &[LocatorMigration]
-crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] fn to_snapshot(&self) -> &str
-crates/repository-classification/src/migrate.rs [pub] impl MigratedSite :: #[must_use] const fn span(&self) -> SourceSpan
-crates/repository-classification/src/migrate.rs [pub] impl MigratedSite :: #[must_use] const fn symbol(&self) -> &SymbolFingerprint
-crates/repository-classification/src/migrate.rs [pub] impl MigratedSite :: #[must_use] const fn symbol_kind(&self) -> SymbolKind
-crates/repository-classification/src/migrate.rs [pub] impl MigratedSite :: #[must_use] fn path(&self) -> &str
-crates/repository-classification/src/migrate.rs [pub] impl MigrationOutcome :: #[must_use] const fn as_str(&self) -> &'static str
-crates/repository-classification/src/migrate.rs [pub] impl MigrationOutcome :: #[must_use] const fn site(&self) -> Option<&MigratedSite>
-crates/repository-classification/src/migrate.rs [pub] impl UnmatchedReason :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/migrate.rs [pub] impl UnmatchedReason :: const ALL: [Self; 3]
+crates/repository-classification/src/migrate.rs [priv] use academic_repository_analysis::{ Finding, Locator, RepositoryAnalysis, SourceSpan, SymbolFingerprint, SymbolKind, SymbolRecord, } |a9c4db0ab446f065
+crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum UnmatchedReason |f13d1b458bfc75f8
+crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum MigrationOutcome |c47ffa0c65fcab58
+crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LocatorMigration |09ba527d72fab5c1
+crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MigratedFinding |4c307b9f7f996161
+crates/repository-classification/src/migrate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MigratedSite |6b11aba5f604e177
+crates/repository-classification/src/migrate.rs [pub] #[must_use] fn migrate_locators(finding: &Finding, into: &RepositoryAnalysis) -> MigratedFinding |827db027d8612654
+crates/repository-classification/src/migrate.rs [pub] impl LocatorMigration :: #[must_use] const fn ordinal(&self) -> usize |18d76b185fbcf97f
+crates/repository-classification/src/migrate.rs [pub] impl LocatorMigration :: #[must_use] const fn original(&self) -> &Locator |7ca4b4adbcc9980d
+crates/repository-classification/src/migrate.rs [pub] impl LocatorMigration :: #[must_use] const fn outcome(&self) -> &MigrationOutcome |bddee2ecbedf8463
+crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] const fn original(&self) -> &Finding |60b2183c145d551c
+crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] fn from_snapshot(&self) -> &str |d7018829bec32fae
+crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] fn migrated_count(&self) -> usize |773066cd9a856dba
+crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] fn migrations(&self) -> &[LocatorMigration] |a3a624e694adfcb0
+crates/repository-classification/src/migrate.rs [pub] impl MigratedFinding :: #[must_use] fn to_snapshot(&self) -> &str |42b6c56b77c8d911
+crates/repository-classification/src/migrate.rs [pub] impl MigratedSite :: #[must_use] const fn span(&self) -> SourceSpan |b0472fea5cb6777a
+crates/repository-classification/src/migrate.rs [pub] impl MigratedSite :: #[must_use] const fn symbol(&self) -> &SymbolFingerprint |ac1aeb87dd024ee7
+crates/repository-classification/src/migrate.rs [pub] impl MigratedSite :: #[must_use] const fn symbol_kind(&self) -> SymbolKind |37555028e65113eb
+crates/repository-classification/src/migrate.rs [pub] impl MigratedSite :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
+crates/repository-classification/src/migrate.rs [pub] impl MigrationOutcome :: #[must_use] const fn as_str(&self) -> &'static str |afd07c9eb98d9acc
+crates/repository-classification/src/migrate.rs [pub] impl MigrationOutcome :: #[must_use] const fn site(&self) -> Option<&MigratedSite> |da34885a75f13f68
+crates/repository-classification/src/migrate.rs [pub] impl UnmatchedReason :: #[must_use] const fn as_str(self) -> &'static str |7d7a40b08a3c9e3f
+crates/repository-classification/src/migrate.rs [pub] impl UnmatchedReason :: const ALL: [Self; 3] |d90cc53e65f3aa02
 crates/repository-classification/src/requirement.rs [priv] impl LifecycleRow
 crates/repository-classification/src/requirement.rs [priv] impl ProjectConceptRequirement
-crates/repository-classification/src/requirement.rs [priv] impl ProjectConceptRequirement :: fn settle(self, status: ResolutionStatus, at: u64) -> Result<Self, ClassificationError>
+crates/repository-classification/src/requirement.rs [priv] impl ProjectConceptRequirement :: fn settle(self, status: ResolutionStatus, at: u64) -> Result<Self, ClassificationError> |3d623022fffa70d7
 crates/repository-classification/src/requirement.rs [priv] impl RequirementId
 crates/repository-classification/src/requirement.rs [priv] impl ResolutionStatus
 crates/repository-classification/src/requirement.rs [priv] impl RetirementReason
-crates/repository-classification/src/requirement.rs [priv] use academic_repository_analysis::Locator
-crates/repository-classification/src/requirement.rs [priv] use crate::{ ClassificationError, chain::{ConcreteNeed, ProofChain, UserEvidenceGap}, scope::{ClassificationKey, GoalScope, validated}, }
-crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RetirementReason
-crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ResolutionStatus
-crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LifecycleRow
-crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectConceptRequirement
-crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RequirementId
-crates/repository-classification/src/requirement.rs [pub] impl LifecycleRow :: #[must_use] const fn at(&self) -> u64
-crates/repository-classification/src/requirement.rs [pub] impl LifecycleRow :: #[must_use] const fn status(&self) -> &ResolutionStatus
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn goal(&self) -> &GoalScope
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn id(&self) -> &RequirementId
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn key(&self) -> &ClassificationKey
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn need(&self) -> &ConcreteNeed
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn status(&self) -> &ResolutionStatus
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn user_state(&self) -> UserEvidenceGap
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] fn history(&self) -> &[LifecycleRow]
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] fn materialize( id: RequirementId, key: ClassificationKey, chain: &ProofChain, at: u64, ) -> Self
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: fn replaced( self, snapshot_id: impl Into<String>, by: RequirementId, at: u64, ) -> Result<Self, ClassificationError>
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: fn retired( self, snapshot_id: impl Into<String>, reason: RetirementReason, at: u64, ) -> Result<Self, ClassificationError>
-crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: fn satisfied( self, snapshot_id: impl Into<String>, evidence: Vec<Locator>, at: u64, ) -> Result<Self, ClassificationError>
-crates/repository-classification/src/requirement.rs [pub] impl RequirementId :: #[must_use] fn as_str(&self) -> &str
-crates/repository-classification/src/requirement.rs [pub] impl RequirementId :: fn new(value: impl Into<String>) -> Result<Self, ClassificationError>
-crates/repository-classification/src/requirement.rs [pub] impl ResolutionStatus :: #[must_use] const fn as_str(&self) -> &'static str
-crates/repository-classification/src/requirement.rs [pub] impl ResolutionStatus :: #[must_use] const fn is_open(&self) -> bool
-crates/repository-classification/src/requirement.rs [pub] impl RetirementReason :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/requirement.rs [pub] impl RetirementReason :: const ALL: [Self; 3]
+crates/repository-classification/src/requirement.rs [priv] use academic_repository_analysis::Locator |cae206f13da8eeb0
+crates/repository-classification/src/requirement.rs [priv] use crate::{ ClassificationError, chain::{ConcreteNeed, ProofChain, UserEvidenceGap}, scope::{ClassificationKey, GoalScope, validated}, } |442f22589ab47bfd
+crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RetirementReason |01ebd7eb6dae247d
+crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ResolutionStatus |b0781c67cf824098
+crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LifecycleRow |c384a5dcd923bd65
+crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectConceptRequirement |fdd5dfcef7388350
+crates/repository-classification/src/requirement.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RequirementId |fc05e0617ef5a392
+crates/repository-classification/src/requirement.rs [pub] impl LifecycleRow :: #[must_use] const fn at(&self) -> u64 |368ea1dacb54a954
+crates/repository-classification/src/requirement.rs [pub] impl LifecycleRow :: #[must_use] const fn status(&self) -> &ResolutionStatus |822cf2d80173efed
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn goal(&self) -> &GoalScope |9b9e84fdd4874c56
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn id(&self) -> &RequirementId |8049ffa7a13315ed
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn key(&self) -> &ClassificationKey |b12d2864f5b99ca0
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn need(&self) -> &ConcreteNeed |66669eb921793fc4
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn status(&self) -> &ResolutionStatus |822cf2d80173efed
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] const fn user_state(&self) -> UserEvidenceGap |ab2f0388c8bd9847
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] fn history(&self) -> &[LifecycleRow] |be9d8437e6e07862
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: #[must_use] fn materialize( id: RequirementId, key: ClassificationKey, chain: &ProofChain, at: u64, ) -> Self |7e3e7549d285c0eb
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: fn replaced( self, snapshot_id: impl Into<String>, by: RequirementId, at: u64, ) -> Result<Self, ClassificationError> |22b843c35c5f1fbc
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: fn retired( self, snapshot_id: impl Into<String>, reason: RetirementReason, at: u64, ) -> Result<Self, ClassificationError> |95d7127b8efb57b5
+crates/repository-classification/src/requirement.rs [pub] impl ProjectConceptRequirement :: fn satisfied( self, snapshot_id: impl Into<String>, evidence: Vec<Locator>, at: u64, ) -> Result<Self, ClassificationError> |2ab8a90edef249b3
+crates/repository-classification/src/requirement.rs [pub] impl RequirementId :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/repository-classification/src/requirement.rs [pub] impl RequirementId :: fn new(value: impl Into<String>) -> Result<Self, ClassificationError> |15980e61441c50cb
+crates/repository-classification/src/requirement.rs [pub] impl ResolutionStatus :: #[must_use] const fn as_str(&self) -> &'static str |cb1f4968a76714b3
+crates/repository-classification/src/requirement.rs [pub] impl ResolutionStatus :: #[must_use] const fn is_open(&self) -> bool |2c676e96d4adf4eb
+crates/repository-classification/src/requirement.rs [pub] impl RetirementReason :: #[must_use] const fn as_str(self) -> &'static str |1177ac28dfcfa90e
+crates/repository-classification/src/requirement.rs [pub] impl RetirementReason :: const ALL: [Self; 3] |92c29b7b3cc1ff2d
 crates/repository-classification/src/scope.rs [priv] impl ClassificationKey
 crates/repository-classification/src/scope.rs [priv] impl GoalId
 crates/repository-classification/src/scope.rs [priv] impl GoalScope
-crates/repository-classification/src/scope.rs [priv] use crate::ClassificationError
-crates/repository-classification/src/scope.rs [pub(crate)] fn validated(value: String, field: &'static str) -> Result<String, ClassificationError>
-crates/repository-classification/src/scope.rs [pub(crate)] impl ClassificationKey :: fn seal(snapshot_id: String, goal: GoalScope, concept: String) -> Self
-crates/repository-classification/src/scope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ClassificationKey
-crates/repository-classification/src/scope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct GoalId
-crates/repository-classification/src/scope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct GoalScope
-crates/repository-classification/src/scope.rs [pub] impl ClassificationKey :: #[must_use] const fn goal(&self) -> &GoalScope
-crates/repository-classification/src/scope.rs [pub] impl ClassificationKey :: #[must_use] fn concept(&self) -> &str
-crates/repository-classification/src/scope.rs [pub] impl ClassificationKey :: #[must_use] fn snapshot_id(&self) -> &str
-crates/repository-classification/src/scope.rs [pub] impl GoalId :: #[must_use] fn as_str(&self) -> &str
-crates/repository-classification/src/scope.rs [pub] impl GoalId :: fn new(value: impl Into<String>) -> Result<Self, ClassificationError>
-crates/repository-classification/src/scope.rs [pub] impl GoalScope :: #[must_use] const fn at(goal: GoalId, version: u64) -> Self
-crates/repository-classification/src/scope.rs [pub] impl GoalScope :: #[must_use] const fn goal(&self) -> &GoalId
-crates/repository-classification/src/scope.rs [pub] impl GoalScope :: #[must_use] const fn version(&self) -> u64
+crates/repository-classification/src/scope.rs [priv] use crate::ClassificationError |ff242cd0ba1a7c1c
+crates/repository-classification/src/scope.rs [pub(crate)] fn validated(value: String, field: &'static str) -> Result<String, ClassificationError> |2866732720370d27
+crates/repository-classification/src/scope.rs [pub(crate)] impl ClassificationKey :: fn seal(snapshot_id: String, goal: GoalScope, concept: String) -> Self |43cf648dd357b0ba
+crates/repository-classification/src/scope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ClassificationKey |ce34e1bdc4665c91
+crates/repository-classification/src/scope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct GoalId |3e242fbde8b60072
+crates/repository-classification/src/scope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct GoalScope |88356a437b511511
+crates/repository-classification/src/scope.rs [pub] impl ClassificationKey :: #[must_use] const fn goal(&self) -> &GoalScope |f1053a57077190d4
+crates/repository-classification/src/scope.rs [pub] impl ClassificationKey :: #[must_use] fn concept(&self) -> &str |3461fb1c567a83e1
+crates/repository-classification/src/scope.rs [pub] impl ClassificationKey :: #[must_use] fn snapshot_id(&self) -> &str |f3d2b3f8490921f9
+crates/repository-classification/src/scope.rs [pub] impl GoalId :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/repository-classification/src/scope.rs [pub] impl GoalId :: fn new(value: impl Into<String>) -> Result<Self, ClassificationError> |15980e61441c50cb
+crates/repository-classification/src/scope.rs [pub] impl GoalScope :: #[must_use] const fn at(goal: GoalId, version: u64) -> Self |9263d749dfe9a51d
+crates/repository-classification/src/scope.rs [pub] impl GoalScope :: #[must_use] const fn goal(&self) -> &GoalId |3739e1c0d3cde965
+crates/repository-classification/src/scope.rs [pub] impl GoalScope :: #[must_use] const fn version(&self) -> u64 |001fa9a4fdf89114
 crates/repository-classification/src/stance.rs [priv] impl ClassificationLabel
 crates/repository-classification/src/stance.rs [priv] impl ConceptStance
 crates/repository-classification/src/stance.rs [priv] impl ObservedProof
 crates/repository-classification/src/stance.rs [priv] impl Outlook
-crates/repository-classification/src/stance.rs [priv] use academic_repository_analysis::{ArtifactScope, EvidenceTier, LadderRung, Locator}
-crates/repository-classification/src/stance.rs [priv] use academic_repository_correlation::{EdgeEvidence, EvidenceRelation, RelationEdge}
-crates/repository-classification/src/stance.rs [priv] use crate::{benefit::BenefitContract, chain::ProofChain, scope::ClassificationKey}
-crates/repository-classification/src/stance.rs [pub(crate)] impl ConceptStance :: const fn seal( key: ClassificationKey, observed: Option<ObservedProof>, outlook: Option<Outlook>, ) -> Self
-crates/repository-classification/src/stance.rs [pub(crate)] impl ObservedProof :: fn of_edge(edge: &RelationEdge) -> Option<Self>
-crates/repository-classification/src/stance.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ClassificationLabel
-crates/repository-classification/src/stance.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Outlook
-crates/repository-classification/src/stance.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConceptStance
-crates/repository-classification/src/stance.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ObservedProof
-crates/repository-classification/src/stance.rs [pub] impl ClassificationLabel :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-classification/src/stance.rs [pub] impl ClassificationLabel :: #[must_use] const fn glyph(self) -> char
-crates/repository-classification/src/stance.rs [pub] impl ClassificationLabel :: const ALL: [Self; 3]
-crates/repository-classification/src/stance.rs [pub] impl ConceptStance :: #[must_use] const fn key(&self) -> &ClassificationKey
-crates/repository-classification/src/stance.rs [pub] impl ConceptStance :: #[must_use] const fn observed(&self) -> Option<&ObservedProof>
-crates/repository-classification/src/stance.rs [pub] impl ConceptStance :: #[must_use] const fn outlook(&self) -> Option<&Outlook>
-crates/repository-classification/src/stance.rs [pub] impl ConceptStance :: #[must_use] fn labels(&self) -> Vec<ClassificationLabel>
-crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] const fn artifact_scope(&self) -> ArtifactScope
-crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] const fn relation(&self) -> EvidenceRelation
-crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] const fn rung(&self) -> LadderRung
-crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] const fn tier(&self) -> EvidenceTier
-crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] fn locators(&self) -> &[Locator]
-crates/repository-classification/src/stance.rs [pub] impl Outlook :: #[must_use] const fn chain(&self) -> Option<&ProofChain>
-crates/repository-classification/src/stance.rs [pub] impl Outlook :: #[must_use] const fn contract(&self) -> Option<&BenefitContract>
-crates/repository-classification/src/stance.rs [pub] impl Outlook :: #[must_use] const fn label(&self) -> ClassificationLabel
+crates/repository-classification/src/stance.rs [priv] use academic_repository_analysis::{ArtifactScope, EvidenceTier, LadderRung, Locator} |acf26a16fde827a9
+crates/repository-classification/src/stance.rs [priv] use academic_repository_correlation::{EdgeEvidence, EvidenceRelation, RelationEdge} |f444c5260246442c
+crates/repository-classification/src/stance.rs [priv] use crate::{benefit::BenefitContract, chain::ProofChain, scope::ClassificationKey} |57af08f824f43645
+crates/repository-classification/src/stance.rs [pub(crate)] impl ConceptStance :: const fn seal( key: ClassificationKey, observed: Option<ObservedProof>, outlook: Option<Outlook>, ) -> Self |1c8bb313903fb2d8
+crates/repository-classification/src/stance.rs [pub(crate)] impl ObservedProof :: fn of_edge(edge: &RelationEdge) -> Option<Self> |a9ea04f8f03a5e69
+crates/repository-classification/src/stance.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ClassificationLabel |b380f02afef45122
+crates/repository-classification/src/stance.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Outlook |b6c774346412ac69
+crates/repository-classification/src/stance.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConceptStance |d5702de5857065f5
+crates/repository-classification/src/stance.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ObservedProof |30841198aa541974
+crates/repository-classification/src/stance.rs [pub] impl ClassificationLabel :: #[must_use] const fn as_str(self) -> &'static str |a76a934b96daedd2
+crates/repository-classification/src/stance.rs [pub] impl ClassificationLabel :: #[must_use] const fn glyph(self) -> char |c48043ba0402858e
+crates/repository-classification/src/stance.rs [pub] impl ClassificationLabel :: const ALL: [Self; 3] |3bb156a36d888e17
+crates/repository-classification/src/stance.rs [pub] impl ConceptStance :: #[must_use] const fn key(&self) -> &ClassificationKey |b12d2864f5b99ca0
+crates/repository-classification/src/stance.rs [pub] impl ConceptStance :: #[must_use] const fn observed(&self) -> Option<&ObservedProof> |c6a4d9f0f944fe89
+crates/repository-classification/src/stance.rs [pub] impl ConceptStance :: #[must_use] const fn outlook(&self) -> Option<&Outlook> |a9294480a26f8b72
+crates/repository-classification/src/stance.rs [pub] impl ConceptStance :: #[must_use] fn labels(&self) -> Vec<ClassificationLabel> |e6d63626943fc200
+crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] const fn artifact_scope(&self) -> ArtifactScope |0392205b918f3173
+crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] const fn relation(&self) -> EvidenceRelation |cb169658ccc9de2a
+crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] const fn rung(&self) -> LadderRung |c4168b5e115301e1
+crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] const fn tier(&self) -> EvidenceTier |7ab94330b79a5cd9
+crates/repository-classification/src/stance.rs [pub] impl ObservedProof :: #[must_use] fn locators(&self) -> &[Locator] |97ca5394ac0f66fc
+crates/repository-classification/src/stance.rs [pub] impl Outlook :: #[must_use] const fn chain(&self) -> Option<&ProofChain> |3b0e242134f95f40
+crates/repository-classification/src/stance.rs [pub] impl Outlook :: #[must_use] const fn contract(&self) -> Option<&BenefitContract> |58b62c1802279a71
+crates/repository-classification/src/stance.rs [pub] impl Outlook :: #[must_use] const fn label(&self) -> ClassificationLabel |f037cb1324bc609c

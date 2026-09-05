@@ -618,13 +618,43 @@ impl CoverageReport {
 
     /// The witness a complete document needs, when there is one.
     ///
-    /// Every one of these is section 12.6's own, and there is no argument that
-    /// relaxes any of them: no unmapped segment, whole segment coverage, whole
-    /// token coverage, no ordering finding, no unaccounted capture, no
-    /// unexplained hole, and a reconciled account of every eligible segment.
-    /// They are listed rather than counted -- this comment said "five" and the
-    /// contract page said "six" while the code checked seven, which is
+    /// Every one of these is section 12.6's own and none of them is relaxed
+    /// here. They are listed rather than counted -- this comment said "five"
+    /// and the contract page said "six" while the code checked seven, which is
     /// `P2-A4`'s F7.
+    ///
+    /// They are **not** independent, and reading the list as if they were is
+    /// what `P2-A4`'s third audit measured: it deleted each on its own and ran
+    /// the workspace, and four deletions changed nothing. Which four, and why,
+    /// so a green suite is not read as evidence that all seven bite.
+    ///
+    /// **Four can refuse a document this validator produces, and each has a
+    /// test that drives it:** `token_coverage` (`token_coverage_oracle`,
+    /// `unmapped_forces_incomplete`, `a_non_speech_declaration_cannot_delete_the_lecture`),
+    /// `ordering_findings` (`ordering_check`'s backwards document, which is
+    /// the only thing in the repository that reaches this clause with the
+    /// other six satisfied), `unaccounted_captures` (`capture_coverage`) and
+    /// `unexplained_gaps` (`audio_gap_threshold`).
+    ///
+    /// **Two are implied by the token clause**, so no document can be refused
+    /// by them alone. An unmapped segment is not in `accounts`, so it is not
+    /// subtracted as `non_speech`; its tokens stay in `total_tokens` and never
+    /// reach `mapped_tokens`; and `RawSegment::close` refuses a zero-token
+    /// segment, so it contributes at least one. Hence `unmapped` non-empty
+    /// implies `token_coverage` is not whole, and a segment neither mapped nor
+    /// declared non-speech implies the same. Both are kept because the
+    /// implication rests on `RawSegment::close`'s refusal, which lives in
+    /// another crate: a change there would make these two load-bearing again
+    /// without touching this file.
+    ///
+    /// **One cannot be false at all.** `reconciles` asserts that `accounts`
+    /// and `unmapped` together are exactly `0..eligible` with no duplicate;
+    /// `validate`'s four-arm match pushes each eligible index into exactly one
+    /// of them or returns `Err`, and `CoverageValidator::validate` is the only
+    /// producer of a `CoverageReport`. It is a self-check on that loop, not a
+    /// condition on the document, and it is kept for the same reason: it is
+    /// one `pub fn` returning `Self` away from being falsifiable, and it costs
+    /// a comparison over two vectors that are already in hand.
     #[must_use]
     pub fn completeness_witness(&self) -> Option<CompletenessWitness> {
         if !self.unmapped.is_empty()

@@ -388,6 +388,7 @@ name = "academic-export-job"
 version = "0.1.0"
 dependencies = [
  "academic-policy",
+ "academic-process-sandbox",
 ]
 
 [[package]]

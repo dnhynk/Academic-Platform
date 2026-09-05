@@ -1,157 +1,157 @@
-crates/proposal/src/batching.rs [priv] fn band_of(cuts: &[u16], value: u16) -> u8
-crates/proposal/src/batching.rs [priv] fn check_cuts(axis: &'static str, cuts: &[u16]) -> Result<(), ThresholdError>
-crates/proposal/src/batching.rs [priv] fn check_range(axis: &'static str, value: u16) -> Result<(), ThresholdError>
+crates/proposal/src/batching.rs [priv] fn band_of(cuts: &[u16], value: u16) -> u8 |6fe677eedb6b617c
+crates/proposal/src/batching.rs [priv] fn check_cuts(axis: &'static str, cuts: &[u16]) -> Result<(), ThresholdError> |97b8aff32cb5be56
+crates/proposal/src/batching.rs [priv] fn check_range(axis: &'static str, value: u16) -> Result<(), ThresholdError> |46d4700ec8c57e3e
 crates/proposal/src/batching.rs [priv] impl Batch
 crates/proposal/src/batching.rs [priv] impl BatchingThresholds
-crates/proposal/src/batching.rs [priv] use academic_domain::ConfidencePermille
-crates/proposal/src/batching.rs [priv] use crate::{error::ThresholdError, proposed::ProposalId, tier::RiskTier}
-crates/proposal/src/batching.rs [priv] use sha2::{Digest, Sha256}
-crates/proposal/src/batching.rs [pub(crate)] impl Batch :: const fn new(key: BatchKey, members: Vec<ProposalId>) -> Self
-crates/proposal/src/batching.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct BatchKey
-crates/proposal/src/batching.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Batch
-crates/proposal/src/batching.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BatchingThresholds
-crates/proposal/src/batching.rs [pub] impl Batch :: #[must_use] const fn key(&self) -> BatchKey
-crates/proposal/src/batching.rs [pub] impl Batch :: #[must_use] fn members(&self) -> &[ProposalId]
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] const fn version(&self) -> u32
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn confidence_band(&self, confidence: ConfidencePermille) -> u8
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn confidence_cuts(&self) -> &[u16]
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn digest(&self) -> [u8; 32]
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn impact_band(&self, impact: crate::proposed::ImpactPermille) -> u8
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn impact_cuts(&self) -> &[u16]
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn shipped() -> Self
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: const SHIPPED_VERSION: u32
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: fn new( version: u32, confidence_cuts: Vec<u16>, impact_cuts: Vec<u16>, ) -> Result<Self, ThresholdError>
-crates/proposal/src/disposition.rs [priv] fn disposition_digest( seq: DispositionSeq, proposal_id: ProposalId, disposition: &DecisionAction, user_id: u128, decided_at: u64, supersedes: Option<DispositionSeq>, ) -> [u8; 32]
+crates/proposal/src/batching.rs [priv] use academic_domain::ConfidencePermille |d005dc09bab4d851
+crates/proposal/src/batching.rs [priv] use crate::{error::ThresholdError, proposed::ProposalId, tier::RiskTier} |ef5e443a29cfc7c3
+crates/proposal/src/batching.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/proposal/src/batching.rs [pub(crate)] impl Batch :: const fn new(key: BatchKey, members: Vec<ProposalId>) -> Self |0af4689f0560eec1
+crates/proposal/src/batching.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct BatchKey |e9e8908ae952eb8c
+crates/proposal/src/batching.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Batch |8403d24c94fac1ab
+crates/proposal/src/batching.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BatchingThresholds |f8ea490d8dc82787
+crates/proposal/src/batching.rs [pub] impl Batch :: #[must_use] const fn key(&self) -> BatchKey |4f1caf397c6c1980
+crates/proposal/src/batching.rs [pub] impl Batch :: #[must_use] fn members(&self) -> &[ProposalId] |2f2423eb121d36d7
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] const fn version(&self) -> u32 |8ac5a6b5c3dc1561
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn confidence_band(&self, confidence: ConfidencePermille) -> u8 |8dd491663a67b1f9
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn confidence_cuts(&self) -> &[u16] |b68d0c1096ad2b0c
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn digest(&self) -> [u8; 32] |5b1e2fba31f81b6c
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn impact_band(&self, impact: crate::proposed::ImpactPermille) -> u8 |f7aadfeaf19c79ee
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn impact_cuts(&self) -> &[u16] |6cbe015da082150c
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn shipped() -> Self |bf7ac60b39229bb2
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: const SHIPPED_VERSION: u32 |6af8c29dca59f1be
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: fn new( version: u32, confidence_cuts: Vec<u16>, impact_cuts: Vec<u16>, ) -> Result<Self, ThresholdError> |d975b72c17463c41
+crates/proposal/src/disposition.rs [priv] fn disposition_digest( seq: DispositionSeq, proposal_id: ProposalId, disposition: &DecisionAction, user_id: u128, decided_at: u64, supersedes: Option<DispositionSeq>, ) -> [u8; 32] |3071099876b4ee99
 crates/proposal/src/disposition.rs [priv] impl DispositionRecord
 crates/proposal/src/disposition.rs [priv] impl DispositionSeq
 crates/proposal/src/disposition.rs [priv] impl ExplicitApproval
 crates/proposal/src/disposition.rs [priv] impl UserDecision
 crates/proposal/src/disposition.rs [priv] impl core::fmt::Display for DispositionSeq
-crates/proposal/src/disposition.rs [priv] impl core::fmt::Display for DispositionSeq :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-crates/proposal/src/disposition.rs [priv] use academic_domain::{Actor, DecisionAction}
-crates/proposal/src/disposition.rs [priv] use crate::{error::WorkflowError, proposed::ProposalId}
-crates/proposal/src/disposition.rs [priv] use sha2::{Digest, Sha256}
-crates/proposal/src/disposition.rs [pub(crate)] impl DispositionRecord :: fn new( seq: DispositionSeq, proposal_id: ProposalId, disposition: DecisionAction, decision: &UserDecision, decided_at: u64, supersedes: Option<DispositionSeq>, ) -> Self
-crates/proposal/src/disposition.rs [pub(crate)] impl DispositionSeq :: const fn next(self) -> Self
-crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DispositionSeq(u32)
-crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DispositionRecord
-crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExplicitApproval
-crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UserDecision
-crates/proposal/src/disposition.rs [pub] #[must_use] const fn disposition_token(action: &DecisionAction) -> &'static str
-crates/proposal/src/disposition.rs [pub] #[must_use] const fn releases_the_payload(action: &DecisionAction) -> bool
-crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn decided_at(&self) -> u64
-crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn disposition(&self) -> &DecisionAction
-crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn proposal_id(&self) -> ProposalId
-crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn record_digest(&self) -> &[u8; 32]
-crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn seq(&self) -> DispositionSeq
-crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn supersedes(&self) -> Option<DispositionSeq>
-crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn user_id(&self) -> u128
-crates/proposal/src/disposition.rs [pub] impl DispositionSeq :: #[must_use] const fn value(self) -> u32
-crates/proposal/src/disposition.rs [pub] impl DispositionSeq :: const FIRST: Self
-crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] const fn decision(&self) -> &UserDecision
-crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] const fn of(proposal_id: ProposalId, decision: UserDecision) -> Self
-crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] const fn proposal_id(&self) -> ProposalId
-crates/proposal/src/disposition.rs [pub] impl UserDecision :: #[must_use] const fn user_id(&self) -> u128
-crates/proposal/src/disposition.rs [pub] impl UserDecision :: fn by(actor: &Actor) -> Result<Self, WorkflowError>
+crates/proposal/src/disposition.rs [priv] impl core::fmt::Display for DispositionSeq :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |83ce0a03bdfc77bc
+crates/proposal/src/disposition.rs [priv] use academic_domain::{Actor, DecisionAction} |496675e9092daa2a
+crates/proposal/src/disposition.rs [priv] use crate::{error::WorkflowError, proposed::ProposalId} |5dd376f5c0edf3ce
+crates/proposal/src/disposition.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/proposal/src/disposition.rs [pub(crate)] impl DispositionRecord :: fn new( seq: DispositionSeq, proposal_id: ProposalId, disposition: DecisionAction, decision: &UserDecision, decided_at: u64, supersedes: Option<DispositionSeq>, ) -> Self |0c7b5f8769546e78
+crates/proposal/src/disposition.rs [pub(crate)] impl DispositionSeq :: const fn next(self) -> Self |0060f24eb211bfd1
+crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DispositionSeq(u32) |9ba9140872d72797
+crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DispositionRecord |00bb3d4f60ca67d9
+crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExplicitApproval |e161ed4fc7ebeb22
+crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UserDecision |b961ded946d4b47b
+crates/proposal/src/disposition.rs [pub] #[must_use] const fn disposition_token(action: &DecisionAction) -> &'static str |cbe4cbce1f044865
+crates/proposal/src/disposition.rs [pub] #[must_use] const fn releases_the_payload(action: &DecisionAction) -> bool |3168f72aaac15021
+crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn decided_at(&self) -> u64 |abbcece0778f7a44
+crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn disposition(&self) -> &DecisionAction |8e8a4964a16b24eb
+crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn proposal_id(&self) -> ProposalId |968f6ab311c78b44
+crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn record_digest(&self) -> &[u8; 32] |fc5dcbd528171402
+crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn seq(&self) -> DispositionSeq |7e8f96a1c6d1dbb7
+crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn supersedes(&self) -> Option<DispositionSeq> |948d5e30552dd928
+crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn user_id(&self) -> u128 |eb7d8fa9b76d6ea9
+crates/proposal/src/disposition.rs [pub] impl DispositionSeq :: #[must_use] const fn value(self) -> u32 |a20d276be9a8c0a4
+crates/proposal/src/disposition.rs [pub] impl DispositionSeq :: const FIRST: Self |76a63c0873e41dfb
+crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] const fn decision(&self) -> &UserDecision |3032061dcf107b0a
+crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] const fn of(proposal_id: ProposalId, decision: UserDecision) -> Self |af2620c7dc74f6ee
+crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] const fn proposal_id(&self) -> ProposalId |968f6ab311c78b44
+crates/proposal/src/disposition.rs [pub] impl UserDecision :: #[must_use] const fn user_id(&self) -> u128 |eb7d8fa9b76d6ea9
+crates/proposal/src/disposition.rs [pub] impl UserDecision :: fn by(actor: &Actor) -> Result<Self, WorkflowError> |44fb6d5a726fbeca
 crates/proposal/src/error.rs [priv] impl core::fmt::Display for DispositionState
-crates/proposal/src/error.rs [priv] impl core::fmt::Display for DispositionState :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-crates/proposal/src/error.rs [priv] use academic_domain::DecisionAction
-crates/proposal/src/error.rs [priv] use crate::{ disposition::disposition_token, proposed::ProposalId, tier::{RiskTier, Workflow}, }
-crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum DispositionState
-crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ThresholdError
-crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum WorkflowError
+crates/proposal/src/error.rs [priv] impl core::fmt::Display for DispositionState :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |792032f6ce378d97
+crates/proposal/src/error.rs [priv] use academic_domain::DecisionAction |4b07587db492d55d
+crates/proposal/src/error.rs [priv] use crate::{ disposition::disposition_token, proposed::ProposalId, tier::{RiskTier, Workflow}, } |1bc9d998a7bb47ab
+crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum DispositionState |f4b96297f67994d0
+crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ThresholdError |a9ca78e6601be3ce
+crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum WorkflowError |9a13a71066df41b0
 crates/proposal/src/lib.rs [priv] mod batching
 crates/proposal/src/lib.rs [priv] mod disposition
 crates/proposal/src/lib.rs [priv] mod error
 crates/proposal/src/lib.rs [priv] mod proposed
 crates/proposal/src/lib.rs [priv] mod queue
 crates/proposal/src/lib.rs [priv] mod tier
-crates/proposal/src/lib.rs [pub] use batching::{Batch, BatchKey, BatchingThresholds}
-crates/proposal/src/lib.rs [pub] use disposition::{ DispositionRecord, DispositionSeq, ExplicitApproval, UserDecision, disposition_token, releases_the_payload, }
-crates/proposal/src/lib.rs [pub] use error::{DispositionState, ThresholdError, WorkflowError}
-crates/proposal/src/lib.rs [pub] use proposed::{Approved, Autosaved, ImpactOutOfRange, ImpactPermille, ProposalId, Proposed}
-crates/proposal/src/lib.rs [pub] use queue::ReviewQueue
-crates/proposal/src/lib.rs [pub] use tier::{RiskTier, Workflow}
+crates/proposal/src/lib.rs [pub] use batching::{Batch, BatchKey, BatchingThresholds} |1b6b78f99aefabe9
+crates/proposal/src/lib.rs [pub] use disposition::{ DispositionRecord, DispositionSeq, ExplicitApproval, UserDecision, disposition_token, releases_the_payload, } |be034dd5742524f3
+crates/proposal/src/lib.rs [pub] use error::{DispositionState, ThresholdError, WorkflowError} |6bed727a81a468ee
+crates/proposal/src/lib.rs [pub] use proposed::{Approved, Autosaved, ImpactOutOfRange, ImpactPermille, ProposalId, Proposed} |d6bcda42809d2780
+crates/proposal/src/lib.rs [pub] use queue::ReviewQueue |4c000cf5e5f6e2b4
+crates/proposal/src/lib.rs [pub] use tier::{RiskTier, Workflow} |1df18ee708ed483c
 crates/proposal/src/proposed.rs [priv] impl ImpactPermille
 crates/proposal/src/proposed.rs [priv] impl ProposalId
 crates/proposal/src/proposed.rs [priv] impl fmt::Display for ProposalId
-crates/proposal/src/proposed.rs [priv] impl fmt::Display for ProposalId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/proposal/src/proposed.rs [priv] impl fmt::Display for ProposalId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |1d3a1f7c77b813d2
 crates/proposal/src/proposed.rs [priv] impl<T> Approved<T>
 crates/proposal/src/proposed.rs [priv] impl<T> Autosaved<T>
 crates/proposal/src/proposed.rs [priv] impl<T> Proposed<T>
 crates/proposal/src/proposed.rs [priv] impl<T> fmt::Debug for Proposed<T>
-crates/proposal/src/proposed.rs [priv] impl<T> fmt::Debug for Proposed<T> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
-crates/proposal/src/proposed.rs [priv] use academic_domain::{ConfidencePermille, EpistemicStatus}
-crates/proposal/src/proposed.rs [priv] use core::fmt
-crates/proposal/src/proposed.rs [priv] use crate::tier::RiskTier
-crates/proposal/src/proposed.rs [pub(crate)] impl<T> Approved<T> :: const fn new(id: ProposalId, value: T) -> Self
-crates/proposal/src/proposed.rs [pub(crate)] impl<T> Autosaved<T> :: const fn new(id: ProposalId, value: T) -> Self
-crates/proposal/src/proposed.rs [pub(crate)] impl<T> Proposed<T> :: fn release(self) -> T
-crates/proposal/src/proposed.rs [pub] #[derive(Debug)] struct Approved<T>
-crates/proposal/src/proposed.rs [pub] #[derive(Debug)] struct Autosaved<T>
-crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ImpactPermille(u16)
-crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ProposalId(u64)
-crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("impact permille {0} is above 1000")] struct ImpactOutOfRange(pub u16)
-crates/proposal/src/proposed.rs [pub] impl ImpactPermille :: #[must_use] const fn value(self) -> u16
-crates/proposal/src/proposed.rs [pub] impl ImpactPermille :: const fn new(value: u16) -> Result<Self, ImpactOutOfRange>
-crates/proposal/src/proposed.rs [pub] impl ProposalId :: #[must_use] const fn new(value: u64) -> Self
-crates/proposal/src/proposed.rs [pub] impl ProposalId :: #[must_use] const fn value(self) -> u64
-crates/proposal/src/proposed.rs [pub] impl<T> Approved<T> :: #[must_use] const fn epistemic_status(&self) -> EpistemicStatus
-crates/proposal/src/proposed.rs [pub] impl<T> Approved<T> :: #[must_use] const fn id(&self) -> ProposalId
-crates/proposal/src/proposed.rs [pub] impl<T> Approved<T> :: #[must_use] fn into_inner(self) -> T
-crates/proposal/src/proposed.rs [pub] impl<T> Approved<T> :: const EPISTEMIC_STATUS: EpistemicStatus
-crates/proposal/src/proposed.rs [pub] impl<T> Autosaved<T> :: #[must_use] const fn epistemic_status(&self) -> EpistemicStatus
-crates/proposal/src/proposed.rs [pub] impl<T> Autosaved<T> :: #[must_use] const fn id(&self) -> ProposalId
-crates/proposal/src/proposed.rs [pub] impl<T> Autosaved<T> :: #[must_use] fn into_inner(self) -> T
-crates/proposal/src/proposed.rs [pub] impl<T> Autosaved<T> :: const EPISTEMIC_STATUS: EpistemicStatus
-crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn confidence(&self) -> ConfidencePermille
-crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn id(&self) -> ProposalId
-crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn impact(&self) -> ImpactPermille
-crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn new( id: ProposalId, tier: RiskTier, confidence: ConfidencePermille, impact: ImpactPermille, value: T, ) -> Self
-crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn tier(&self) -> RiskTier
-crates/proposal/src/proposed.rs [pub] struct Proposed<T>
-crates/proposal/src/queue.rs [priv] #[derive(Debug)] struct Entry<T>
+crates/proposal/src/proposed.rs [priv] impl<T> fmt::Debug for Proposed<T> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |e4cecfe1b5d09e27
+crates/proposal/src/proposed.rs [priv] use academic_domain::{ConfidencePermille, EpistemicStatus} |23ae1f7896f11044
+crates/proposal/src/proposed.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/proposal/src/proposed.rs [priv] use crate::tier::RiskTier |eaa08773f7821abd
+crates/proposal/src/proposed.rs [pub(crate)] impl<T> Approved<T> :: const fn new(id: ProposalId, value: T) -> Self |42e4f8fa2ab35978
+crates/proposal/src/proposed.rs [pub(crate)] impl<T> Autosaved<T> :: const fn new(id: ProposalId, value: T) -> Self |42e4f8fa2ab35978
+crates/proposal/src/proposed.rs [pub(crate)] impl<T> Proposed<T> :: fn release(self) -> T |24db07d4c0642a7e
+crates/proposal/src/proposed.rs [pub] #[derive(Debug)] struct Approved<T> |5f25aa9753d21fb9
+crates/proposal/src/proposed.rs [pub] #[derive(Debug)] struct Autosaved<T> |b6a74fec5c2aaf38
+crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ImpactPermille(u16) |3854839f5412daa1
+crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ProposalId(u64) |2bbc79fdd6b6aab5
+crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("impact permille {0} is above 1000")] struct ImpactOutOfRange(pub u16) |fcd50845d2bd90cb
+crates/proposal/src/proposed.rs [pub] impl ImpactPermille :: #[must_use] const fn value(self) -> u16 |27944a9a432aaf76
+crates/proposal/src/proposed.rs [pub] impl ImpactPermille :: const fn new(value: u16) -> Result<Self, ImpactOutOfRange> |bea31eff492a81e0
+crates/proposal/src/proposed.rs [pub] impl ProposalId :: #[must_use] const fn new(value: u64) -> Self |a87096ab9b963419
+crates/proposal/src/proposed.rs [pub] impl ProposalId :: #[must_use] const fn value(self) -> u64 |aa0ff2143c4d731d
+crates/proposal/src/proposed.rs [pub] impl<T> Approved<T> :: #[must_use] const fn epistemic_status(&self) -> EpistemicStatus |5554f9bc4f3b43ee
+crates/proposal/src/proposed.rs [pub] impl<T> Approved<T> :: #[must_use] const fn id(&self) -> ProposalId |dda793a9ad77879a
+crates/proposal/src/proposed.rs [pub] impl<T> Approved<T> :: #[must_use] fn into_inner(self) -> T |7f17a27d76f310a6
+crates/proposal/src/proposed.rs [pub] impl<T> Approved<T> :: const EPISTEMIC_STATUS: EpistemicStatus |75e07512ac74109f
+crates/proposal/src/proposed.rs [pub] impl<T> Autosaved<T> :: #[must_use] const fn epistemic_status(&self) -> EpistemicStatus |5554f9bc4f3b43ee
+crates/proposal/src/proposed.rs [pub] impl<T> Autosaved<T> :: #[must_use] const fn id(&self) -> ProposalId |dda793a9ad77879a
+crates/proposal/src/proposed.rs [pub] impl<T> Autosaved<T> :: #[must_use] fn into_inner(self) -> T |7f17a27d76f310a6
+crates/proposal/src/proposed.rs [pub] impl<T> Autosaved<T> :: const EPISTEMIC_STATUS: EpistemicStatus |a8c6ee986e5cef0c
+crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
+crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn id(&self) -> ProposalId |dda793a9ad77879a
+crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn impact(&self) -> ImpactPermille |8db3f8605af47d99
+crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn new( id: ProposalId, tier: RiskTier, confidence: ConfidencePermille, impact: ImpactPermille, value: T, ) -> Self |c2d7eedcece3913f
+crates/proposal/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn tier(&self) -> RiskTier |5e74c536e0f627a8
+crates/proposal/src/proposed.rs [pub] struct Proposed<T> |8780e6b56e4d6093
+crates/proposal/src/queue.rs [priv] #[derive(Debug)] struct Entry<T> |0105304840f2b9f0
 crates/proposal/src/queue.rs [priv] impl<T> Default for ReviewQueue<T>
-crates/proposal/src/queue.rs [priv] impl<T> Default for ReviewQueue<T> :: fn default() -> Self
+crates/proposal/src/queue.rs [priv] impl<T> Default for ReviewQueue<T> :: fn default() -> Self |c3f536c7c9daac49
 crates/proposal/src/queue.rs [priv] impl<T> ReviewQueue<T>
-crates/proposal/src/queue.rs [priv] impl<T> ReviewQueue<T> :: fn open_record(&self, id: ProposalId) -> Option<(DispositionSeq, DecisionAction)>
-crates/proposal/src/queue.rs [priv] impl<T> ReviewQueue<T> :: fn record( &mut self, id: ProposalId, disposition: DecisionAction, decision: &UserDecision, at: u64, supersedes: Option<DispositionSeq>, ) -> Result<&DispositionRecord, WorkflowError>
-crates/proposal/src/queue.rs [priv] impl<T> ReviewQueue<T> :: fn require(&self, id: ProposalId, attempted: Workflow) -> Result<&Entry<T>, WorkflowError>
-crates/proposal/src/queue.rs [priv] use academic_domain::DecisionAction
-crates/proposal/src/queue.rs [priv] use crate::{ batching::{Batch, BatchKey, BatchingThresholds}, disposition::{ DispositionRecord, DispositionSeq, ExplicitApproval, UserDecision, releases_the_payload, }, error::{DispositionState, WorkflowError}, proposed::{Approved, Autosaved, ProposalId, Proposed}, tier::{RiskTier, Workflow}, }
-crates/proposal/src/queue.rs [priv] use std::collections::BTreeMap
-crates/proposal/src/queue.rs [pub] #[derive(Debug)] struct ReviewQueue<T>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] const fn new() -> Self
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn batches(&self, thresholds: &BatchingThresholds) -> Vec<Batch>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn history(&self) -> &[DispositionRecord]
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn history_of(&self, id: ProposalId) -> Vec<&DispositionRecord>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn identifiers(&self) -> Vec<ProposalId>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn is_committed(&self, id: ProposalId) -> bool
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn is_empty(&self) -> bool
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn len(&self) -> usize
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn pending(&self) -> Vec<ProposalId>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn state_of(&self, id: ProposalId) -> DispositionState
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn tier_of(&self, id: ProposalId) -> Option<RiskTier>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn admit(&mut self, proposed: Proposed<T>) -> Result<(), WorkflowError>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn approve( &mut self, id: ProposalId, approval: &ExplicitApproval, at: u64, ) -> Result<Approved<T>, WorkflowError>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn autosave(&mut self, id: ProposalId) -> Result<Autosaved<T>, WorkflowError>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn commit(&mut self, id: ProposalId) -> Result<Approved<T>, WorkflowError>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn decide( &mut self, id: ProposalId, disposition: DecisionAction, decision: &UserDecision, at: u64, ) -> Result<&DispositionRecord, WorkflowError>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn review( &mut self, id: ProposalId, disposition: DecisionAction, decision: &UserDecision, at: u64, ) -> Result<&DispositionRecord, WorkflowError>
-crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn undo( &mut self, id: ProposalId, decision: &UserDecision, at: u64, ) -> Result<&DispositionRecord, WorkflowError>
+crates/proposal/src/queue.rs [priv] impl<T> ReviewQueue<T> :: fn open_record(&self, id: ProposalId) -> Option<(DispositionSeq, DecisionAction)> |dcd549cf270be0d8
+crates/proposal/src/queue.rs [priv] impl<T> ReviewQueue<T> :: fn record( &mut self, id: ProposalId, disposition: DecisionAction, decision: &UserDecision, at: u64, supersedes: Option<DispositionSeq>, ) -> Result<&DispositionRecord, WorkflowError> |34152ec0c352959b
+crates/proposal/src/queue.rs [priv] impl<T> ReviewQueue<T> :: fn require(&self, id: ProposalId, attempted: Workflow) -> Result<&Entry<T>, WorkflowError> |af9d6fa5cb89ddf9
+crates/proposal/src/queue.rs [priv] use academic_domain::DecisionAction |4b07587db492d55d
+crates/proposal/src/queue.rs [priv] use crate::{ batching::{Batch, BatchKey, BatchingThresholds}, disposition::{ DispositionRecord, DispositionSeq, ExplicitApproval, UserDecision, releases_the_payload, }, error::{DispositionState, WorkflowError}, proposed::{Approved, Autosaved, ProposalId, Proposed}, tier::{RiskTier, Workflow}, } |12c83bd565f89f46
+crates/proposal/src/queue.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
+crates/proposal/src/queue.rs [pub] #[derive(Debug)] struct ReviewQueue<T> |238f9013ca9596a0
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] const fn new() -> Self |03b02b6897e38a00
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn batches(&self, thresholds: &BatchingThresholds) -> Vec<Batch> |a8c94928bc711ba3
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn history(&self) -> &[DispositionRecord] |f9d78931c981b956
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn history_of(&self, id: ProposalId) -> Vec<&DispositionRecord> |b09b65a580bc23d5
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn identifiers(&self) -> Vec<ProposalId> |a04016d0e43c76f2
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn is_committed(&self, id: ProposalId) -> bool |61c3f4c2b9135d8d
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn is_empty(&self) -> bool |8571b70138db480b
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn len(&self) -> usize |a39bcf820ac92d41
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn pending(&self) -> Vec<ProposalId> |c1720c36a0233c6c
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn state_of(&self, id: ProposalId) -> DispositionState |329a613fd88c45db
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: #[must_use] fn tier_of(&self, id: ProposalId) -> Option<RiskTier> |bc944f4e8ae19391
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn admit(&mut self, proposed: Proposed<T>) -> Result<(), WorkflowError> |1d77054ddb17446a
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn approve( &mut self, id: ProposalId, approval: &ExplicitApproval, at: u64, ) -> Result<Approved<T>, WorkflowError> |d1dcf3997443c421
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn autosave(&mut self, id: ProposalId) -> Result<Autosaved<T>, WorkflowError> |2bdb3ecf9dd4b0c1
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn commit(&mut self, id: ProposalId) -> Result<Approved<T>, WorkflowError> |ef314a111a7bef96
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn decide( &mut self, id: ProposalId, disposition: DecisionAction, decision: &UserDecision, at: u64, ) -> Result<&DispositionRecord, WorkflowError> |637c773ec8dc4b50
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn review( &mut self, id: ProposalId, disposition: DecisionAction, decision: &UserDecision, at: u64, ) -> Result<&DispositionRecord, WorkflowError> |5576b12941dabcdf
+crates/proposal/src/queue.rs [pub] impl<T> ReviewQueue<T> :: fn undo( &mut self, id: ProposalId, decision: &UserDecision, at: u64, ) -> Result<&DispositionRecord, WorkflowError> |074cbff3c455445d
 crates/proposal/src/tier.rs [priv] impl RiskTier
 crates/proposal/src/tier.rs [priv] impl Workflow
 crates/proposal/src/tier.rs [priv] impl fmt::Display for RiskTier
-crates/proposal/src/tier.rs [priv] impl fmt::Display for RiskTier :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/proposal/src/tier.rs [priv] impl fmt::Display for RiskTier :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
 crates/proposal/src/tier.rs [priv] impl fmt::Display for Workflow
-crates/proposal/src/tier.rs [priv] impl fmt::Display for Workflow :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
-crates/proposal/src/tier.rs [priv] use core::fmt
-crates/proposal/src/tier.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RiskTier
-crates/proposal/src/tier.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Workflow
-crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn as_str(self) -> &'static str
-crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn needs_a_human(self) -> bool
-crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn workflow(self) -> Workflow
-crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] fn parse(value: &str) -> Option<Self>
-crates/proposal/src/tier.rs [pub] impl RiskTier :: const ALL: [Self; 4]
-crates/proposal/src/tier.rs [pub] impl Workflow :: #[must_use] const fn as_str(self) -> &'static str
-crates/proposal/src/tier.rs [pub] impl Workflow :: const ALL: [Self; 4]
+crates/proposal/src/tier.rs [priv] impl fmt::Display for Workflow :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
+crates/proposal/src/tier.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/proposal/src/tier.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RiskTier |5ab7667f51a61af8
+crates/proposal/src/tier.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Workflow |6e8b4e9d0e924e81
+crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn as_str(self) -> &'static str |f907bdfeca3184f2
+crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn needs_a_human(self) -> bool |5a3f63d2c24c681e
+crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn workflow(self) -> Workflow |ae678d37839ea795
+crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] fn parse(value: &str) -> Option<Self> |10c44157d8ee8725
+crates/proposal/src/tier.rs [pub] impl RiskTier :: const ALL: [Self; 4] |3e063c5d2aacea63
+crates/proposal/src/tier.rs [pub] impl Workflow :: #[must_use] const fn as_str(self) -> &'static str |c3baeac0bc946057
+crates/proposal/src/tier.rs [pub] impl Workflow :: const ALL: [Self; 4] |0b58cb6774d10346

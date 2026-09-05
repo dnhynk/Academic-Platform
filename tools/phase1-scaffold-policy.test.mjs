@@ -390,7 +390,14 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-ingestion",
       "academic-proposal",
     ],
-    "academic-export-job": ["academic-policy"],
+    // `T229`. The fourth enforced process boundary, and the only class of the
+    // six whose declaration the boundary can enforce without contradicting it:
+    // `refusals(ExportJob)` is `{OpenOutboundSocket, WriteStagedArtifact}` and
+    // neither `ReadArtifactRange` nor `AssembleExport` has a `BrokerOnly` reason
+    // written in terms of either. Two product edges, the same two every enforced
+    // class has: the vocabulary it declares against, and the crate that installs
+    // the refusal.
+    "academic-export-job": ["academic-policy", "academic-process-sandbox"],
     "academic-indexer": ["academic-policy"],
     // `P2-P3`. Six product edges, each a boundary it reuses rather than
     // rebuilds: `academic-domain` for the UUIDv7 identifiers an
@@ -2106,11 +2113,11 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
         "`process::Command` for the paired permission run, which is what " +
         "makes a refusal inside the container evidence.",
     ],
-    // `P2-RF21`. Four sites, and all four exist because a process-level claim
-    // is only observable from another process: a suite that called `enter` in
-    // its own process would restrict the test runner, and one that read the
-    // declaration instead of launching something would be the source scan the
-    // audits already rejected.
+    // `P2-RF21`, and `T229`'s fourth process class. Five sites, and all five
+    // exist because a process-level claim is only observable from another
+    // process: a suite that called `enter` in its own process would restrict the
+    // test runner, and one that read the declaration instead of launching
+    // something would be the source scan the audits already rejected.
     [
       join("crates", "process-sandbox", "tests", "native.rs"),
       "test-only, behind the non-default `native-enforcement` feature: " +
@@ -2136,6 +2143,13 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
       join("crates", "repository-analyzer", "tests", "enforcement.rs"),
       "test-only: the same measurement for the analyzer process class, the " +
         "binary `P2-A5` reported the P1 on. Ships in no product build.",
+    ],
+    [
+      join("crates", "export-job", "tests", "enforcement.rs"),
+      "test-only: the same measurement for the export-job process class, the " +
+        "one `P2-A4`'s third audit found left unenforced with no argument " +
+        "rather than with the vacuity that keeps the other two out. Ships in " +
+        "no product build.",
     ],
     [
       join("crates", "core", "tests", "projection_generation.rs"),
@@ -2254,7 +2268,7 @@ const PROCESS_BOUNDARIES = new Map([
   ["academic-repository-analyzer", ["repository-analyzer", "RepositoryAnalyzer", true]],
   ["academic-connector", ["connector", "Connector", false]],
   ["academic-egress", ["egress", "EgressProxy", true]],
-  ["academic-export-job", ["export-job", "ExportJob", false]],
+  ["academic-export-job", ["export-job", "ExportJob", true]],
 ]);
 
 const PROCESS_POLICY_CLOSURE = [
@@ -2426,11 +2440,21 @@ test("six_process_entrypoints_are_exact_and_distinct", async () => {
   }
 });
 
-// `P2-RF21`. The remainder, named. `T215` was scoped to the three binaries the
-// two audits measured, so three process classes still compute their capability
-// set and drop it. Writing that out here is what stops the split above from
-// reading as six enforced boundaries, and what makes closing the other three a
-// visible edit rather than a silent one.
+// `P2-RF21`. The remainder, named. Two process classes still compute their
+// capability set and drop it. Writing that out here is what stops the split
+// above from reading as six enforced boundaries, and what makes closing the
+// other two a visible edit rather than a silent one.
+//
+// The two are a judgment rather than a scope decision, and `T229` is where the
+// third stopped being one. For `Indexer` and `Connector` the flip would be
+// vacuous: `refusals(Indexer)` holds `WriteStagedArtifact`, and
+// `WriteSearchIndex` -- which `Indexer` does declare -- has a `BrokerOnly`
+// reason written in terms of exactly that capability, so entering the boundary
+// would resolve the disagreement by refusing the write the declaration is
+// defined by. `Connector`/`StageExternalPayload` is the same pair.
+// `ExportJob` had no such pair -- `ReadArtifactRange` and `AssembleExport` name
+// no capability at all -- so it was left unenforced with no argument, and
+// `P2-A4`'s third audit is what said so. It is enforced now.
 //
 // The two sides are compared whole, and the enforced list is then re-derived
 // from `cargo metadata` instead of from the flag beside it, so a crate that
@@ -2447,13 +2471,10 @@ test("the_unenforced_process_classes_are_named", () => {
   assert.deepEqual(enforced, [
     "academic-capture-client",
     "academic-egress",
+    "academic-export-job",
     "academic-repository-analyzer",
   ]);
-  assert.deepEqual(unenforced, [
-    "academic-connector",
-    "academic-export-job",
-    "academic-indexer",
-  ]);
+  assert.deepEqual(unenforced, ["academic-connector", "academic-indexer"]);
   assert.equal(
     enforced.length + unenforced.length,
     PROCESS_BOUNDARIES.size,
@@ -2555,9 +2576,13 @@ test("indexer_cannot_open_a_socket", async () => {
 
 test("export_job_cannot_read_keys", async () => {
   await assertExactProcessBoundary("academic-export-job");
+  // One name wider than the unenforced closure, and it is the enforcement
+  // crate: `T229` turned this class on. `academic-process-sandbox`'s own
+  // product edge is `academic-policy`, which is already here, so the closure
+  // grows by exactly one workspace package and no third-party crate.
   assert.deepEqual(
     resolvedShippingPackageNames("academic-export-job"),
-    ["academic-export-job", ...PROCESS_POLICY_CLOSURE].toSorted(),
+    ["academic-export-job", "academic-process-sandbox", ...PROCESS_POLICY_CLOSURE].toSorted(),
     "the export-job feature graph changed; the entire new closure must be reviewed for key access",
   );
 });
@@ -4122,7 +4147,7 @@ test("only_egress_crate_has_a_socket", async () => {
       // a `[[bin]]` with `required-features` is unreachable from a dependent
       // whatever edges exist. Both halves are read from `cargo metadata`: the
       // probe is the package's only binary and it needs the non-default
-      // feature, and the packages that depend on it are exactly the three
+      // feature, and the packages that depend on it are exactly the enforced
       // process classes, each of which still declares exactly its own binary.
       const sandbox = packagesByName.get("academic-process-sandbox");
       assert.ok(sandbox, "academic-process-sandbox is absent");
@@ -4143,8 +4168,13 @@ test("only_egress_crate_has_a_socket", async () => {
         .toSorted();
       assert.deepEqual(
         dependents,
-        ["academic-capture-client", "academic-egress", "academic-repository-analyzer"],
-        "a crate outside the three enforced process classes depends on the enforcement crate",
+        [
+          "academic-capture-client",
+          "academic-egress",
+          "academic-export-job",
+          "academic-repository-analyzer",
+        ],
+        "a crate outside the enforced process classes depends on the enforcement crate",
       );
       for (const name of dependents) {
         const dependent = packagesByName.get(name);

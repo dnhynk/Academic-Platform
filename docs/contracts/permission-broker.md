@@ -93,7 +93,9 @@ checked as wholes. `indexer_cannot_open_a_socket` and
 `export_job_cannot_read_keys` are those whole checks on two of them: each
 package's shipping closure equals one reviewed list that contains no network or
 key-material crate, and its entire product source equals its one fixed
-process-class binding.
+process-class binding. The export-job closure is one workspace name wider than
+the indexer's, and the name is `academic-process-sandbox`: that class enters the
+process boundary, so it links what installs the refusal.
 
 Those two names are stronger than what the checks establish, so read them as
 scoped. The standard library puts `std::net` and a file read within reach of
