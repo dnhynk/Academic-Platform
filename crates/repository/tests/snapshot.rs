@@ -1263,3 +1263,193 @@ fn every_identifier_is_the_shape_this_crate_admits() -> TestResult {
     assert!(GitHubRepository::new("o", String::new()).is_err());
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// The refusals `P2-A5`'s sixth audit found nothing executes.
+// ---------------------------------------------------------------------------
+
+/// Every refusal this crate writes that a caller can reach, reached.
+///
+/// `P2-A5`'s sixth audit instrumented all 93 `return Err(` sites in the six
+/// `P2-R` crates with a marker that panics when reached and ran the whole
+/// workspace four times: 63 fired and **30 did not**. Eight of the thirty are
+/// in this crate, the crate the whole `P2-R` chain stands on. The audit went
+/// further on two of them and deleted them outright: 1687 tests still passed
+/// and **the only failure was the item pin**, which says an item's text
+/// changed and names no refusal — the same thing it would say for a rename.
+///
+/// Seven are driven here. The eighth, `github.rs:251`, cannot be: see
+/// [`the_lifetime_underflow_arm_is_a_comment_not_a_guard`].
+#[test]
+fn every_reachable_refusal_this_crate_writes_is_reached() -> TestResult {
+    // lib.rs:222 -- `check_relative`, whose own note says it refuses a path
+    // that is not relative, forward-slashed and free of `..`. It is reached
+    // from `SourceTree::paths` and from `SourceTree::read`, both public, and
+    // nothing in the workspace handed either a path it had to refuse.
+    for malformed in ["", "/etc/passwd", "src\\orders.rs", "C:/orders.rs", "a/../b", "a//b", "./a"] {
+        let entries = vec![SourceEntry::new(malformed, b"x".to_vec())];
+        let tree = SourceTree::Entries(&entries);
+        assert!(
+            matches!(tree.paths(), Err(RepositoryError::MalformedPath(_))),
+            "SourceTree::paths admitted {malformed:?}"
+        );
+        assert!(
+            matches!(tree.read(malformed), Err(RepositoryError::MalformedPath(_))),
+            "SourceTree::read admitted {malformed:?}"
+        );
+    }
+    // The other direction, so the refusal is about the path and not about the
+    // reader: a well-formed relative path is admitted by both.
+    let clean = vec![SourceEntry::new("src/orders.rs", b"x".to_vec())];
+    let tree = SourceTree::Entries(&clean);
+    assert_eq!(tree.paths()?, vec!["src/orders.rs".to_owned()]);
+    assert_eq!(tree.read("src/orders.rs")?, b"x".to_vec());
+
+    // github.rs:200 -- a token scope with no permission at all.
+    let repository = GitHubRepository::new("orders-team", "orders")?;
+    assert!(matches!(
+        TokenScope::new(repository.clone(), Vec::new()),
+        Err(GitHubError::EmptyScope)
+    ));
+    assert!(TokenScope::new(repository, vec![TokenPermission::ContentsRead]).is_ok());
+
+    // snapshot.rs:320 -- a tool version with an empty half. Both halves, so
+    // the `||` is driven on each side rather than only on the first.
+    assert!(matches!(
+        ToolVersion::new("", "1.0.0"),
+        Err(RepositoryError::EmptyIdentifier)
+    ));
+    assert!(matches!(
+        ToolVersion::new("analyzer", ""),
+        Err(RepositoryError::EmptyIdentifier)
+    ));
+
+    // source.rs:153 -- a commit identifier outside 7..=64 characters, on both
+    // sides of the range.
+    assert!(CommitId::new("abc123").is_err());
+    assert!(CommitId::new("a".repeat(65)).is_err());
+    // source.rs:159 -- one inside the range holding a character outside the
+    // lowercase hexadecimal digits.
+    assert!(CommitId::new("abc123g").is_err());
+    assert!(CommitId::new("ABC1234").is_err());
+    assert!(CommitId::new("abc1234").is_ok());
+    Ok(())
+}
+
+/// `lib.rs:520` and `lib.rs:260`, the two that need a whole capture behind
+/// them.
+///
+/// The first is the second copy of a guard whose first copy is driven, which
+/// is the shape `P2-U5` measured: `capture` checks `SecretScanResult::Blocked`
+/// and that copy runs; `LocalStages::inventory` checks it again for a caller
+/// that does not go through `capture`, and `SnapshotStages::inventory` is a
+/// public trait method, so that caller exists. It is driven here by calling
+/// the stage directly with an admission the gate blocked.
+#[test]
+fn the_inventory_stage_refuses_a_blocked_admission_on_its_own() -> TestResult {
+    let clean = clean_facts(Some("main"))?;
+    let policy = PathPolicy::new();
+    let directory = TempDir::new()?;
+    write_tree(directory.path(), &clean_files())?;
+    write_tree(
+        directory.path(),
+        &[(
+            "src/orders/config.rs",
+            "pub const TOKEN: &str = \"ghp_0123456789abcdefghijklmnopqrstuvwxyz\";\n",
+        )],
+    )?;
+    let blocked_request = request(
+        RepositorySource::LocalDirectory,
+        SourceTree::Directory(directory.path()),
+        &clean,
+        &policy,
+    )?;
+    let mut stages = LocalStages::new();
+    let admitted = stages.permission_and_secret_gate(&blocked_request)?;
+    assert_eq!(
+        admitted.result(),
+        SecretScanResult::Blocked,
+        "the fixture did not block, so the refusal below would be vacuous"
+    );
+    assert!(
+        matches!(
+            stages.inventory(&blocked_request, &admitted),
+            Err(RepositoryError::SecretGateBlocked)
+        ),
+        "the inventory stage ran over an admission the gate blocked"
+    );
+
+    // The control: the same stage over an admission the gate passed does
+    // produce an inventory, so the refusal above is about the admission.
+    let clean_directory = TempDir::new()?;
+    write_tree(clean_directory.path(), &clean_files())?;
+    let clean_request = request(
+        RepositorySource::LocalDirectory,
+        SourceTree::Directory(clean_directory.path()),
+        &clean,
+        &policy,
+    )?;
+    let mut clean_stages = LocalStages::new();
+    let passed = clean_stages.permission_and_secret_gate(&clean_request)?;
+    assert_ne!(passed.result(), SecretScanResult::Blocked);
+    assert!(clean_stages.inventory(&clean_request, &passed).is_ok());
+    Ok(())
+}
+
+/// `github.rs:251` and `lib.rs:260` are comments, not guards, and this says
+/// why.
+///
+/// `P2-RF29` made the same judgement about
+/// `CoverageReport::completeness_witness` in `crates/lecture-document`, and
+/// the form is its: state what makes the condition unfalsifiable, state what
+/// would make it falsifiable again, and keep it.
+///
+/// **`crates/repository/src/github.rs:251`** is
+/// `expires_at.checked_sub(issued_at)` returning `None`. The line above it
+/// returns `MalformedLifetime` unless `expires_at > issued_at`, and for `u64`
+/// that implication is total: a subtraction of a strictly smaller unsigned
+/// value cannot underflow. The arm is kept because the two lines are separated
+/// by an edit, not by a type — someone relaxing the first comparison to `<`
+/// would make the second load-bearing again in the same function — and because
+/// it costs one already-computed comparison.
+///
+/// **`crates/repository/src/lib.rs:260`** is the non-`Normal` arm of a
+/// `Component` match inside `walk`. The path it decomposes is
+/// `entry.path().strip_prefix(root)` for an entry `read_dir` returned under
+/// `root`, and `read_dir` never yields `.` or `..`, so every component of that
+/// remainder is `Component::Normal`. What keeps it is that `Component` has
+/// five variants and this reader must be total over them: the alternative is a
+/// wildcard that silently accepts a prefix or a root component the day `walk`
+/// is called with something other than a directory listing.
+///
+/// This test does not drive either. It exists so the judgement is a test
+/// somebody has to delete rather than a comment somebody can skip, and it
+/// holds the two facts the judgement rests on.
+#[test]
+fn the_lifetime_underflow_arm_is_a_comment_not_a_guard() -> TestResult {
+    // The fact `github.rs:251` rests on: the comparison above it is strict, so
+    // every value that reaches the subtraction has `expires_at > issued_at`.
+    assert!(TokenLifetime::new(10, 10).is_err());
+    assert!(TokenLifetime::new(10, 9).is_err());
+    assert!(TokenLifetime::new(10, 11).is_ok());
+    // And that a lifetime longer than the maximum is refused, which is the
+    // arm below the subtraction and is driven.
+    assert!(TokenLifetime::new(0, MAX_TOKEN_LIFETIME_MILLIS + 1).is_err());
+    assert!(TokenLifetime::new(0, MAX_TOKEN_LIFETIME_MILLIS).is_ok());
+
+    // The fact `lib.rs:260` rests on: a directory walk yields paths whose
+    // components are all `Component::Normal`, so the other four arms of the
+    // match are unreachable from `walk`'s own caller.
+    let directory = TempDir::new()?;
+    write_tree(directory.path(), &clean_files())?;
+    let tree = SourceTree::Directory(directory.path());
+    let paths = tree.paths()?;
+    assert!(!paths.is_empty(), "the walk read nothing");
+    for path in &paths {
+        assert!(
+            !path.starts_with('/') && !path.contains('\\') && !path.contains(".."),
+            "the walk produced {path}, which the match's other arms would have to classify"
+        );
+    }
+    Ok(())
+}

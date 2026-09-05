@@ -1756,3 +1756,73 @@ fn no_analyzed_byte_reaches_a_text_accessor() -> TestResult {
     assert!(!rendered.to_ascii_lowercase().contains(CANARY));
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// The refusal `P2-A5`'s sixth audit found nothing executes.
+// ---------------------------------------------------------------------------
+
+/// `lib.rs:226`, reached.
+///
+/// The sixth audit instrumented all 93 `return Err(` sites in the six `P2-R`
+/// crates and ran the whole workspace four times: 63 fired and **30 did not**.
+/// One of the thirty is in this crate. Three of `AnalysisInput::of`'s four
+/// refusals were driven by `an_analysis_is_about_one_frozen_snapshot`; the
+/// duplicate-path one was not, because every fixture built its units from the
+/// frozen manifest, where a path occurs once by construction. A caller that
+/// does not is exactly what the refusal is for.
+#[test]
+fn an_analysis_refuses_the_same_path_twice() -> TestResult {
+    let entries: Vec<SourceEntry> = REACHABLE_CALL_AND_CONFIG
+        .iter()
+        .map(|(path, body)| SourceEntry::new(*path, body.as_bytes().to_vec()))
+        .collect();
+    let facts = WorkingTreeFacts::checkout(
+        CommitId::new(HEAD)?,
+        Some("main".to_owned()),
+        REACHABLE_CALL_AND_CONFIG
+            .iter()
+            .map(|(path, _)| (*path).to_owned())
+            .collect(),
+        Vec::new(),
+        Vec::new(),
+    );
+    let policy = PathPolicy::new();
+    let request = SnapshotRequest {
+        repository: RepositoryId::new("repo_A")?,
+        source: RepositorySource::LocalDirectory,
+        tree: SourceTree::Entries(&entries),
+        facts: &facts,
+        policy: &policy,
+        captured_at: CAPTURED_AT,
+        parent_snapshots: Vec::new(),
+        submodule_refs: Vec::new(),
+        analysis_policy_hash: ContentDigest::of(b"analysis-policy-v1"),
+        tool_versions: vec![ToolVersion::new(ANALYZER, ANALYZER_VERSION)?],
+    };
+    let (captured, sealed) = capture_local(&request)?;
+    let bodies: BTreeMap<&str, &str> = REACHABLE_CALL_AND_CONFIG.iter().copied().collect();
+    let unit = |path: &str| SourceUnit::new(path, bodies[path].as_bytes().to_vec());
+
+    assert!(matches!(
+        AnalysisInput::of(
+            &captured.snapshot,
+            &sealed,
+            AnalyzerIdentity::new(ANALYZER, ANALYZER_VERSION)?,
+            vec![unit("src/cache.ts"), unit("src/cache.ts")],
+        ),
+        Err(AnalysisError::DuplicatePath(_))
+    ));
+
+    // The control: the same two units at different paths are admitted, so the
+    // refusal is about the repetition and not about the pair.
+    assert!(
+        AnalysisInput::of(
+            &captured.snapshot,
+            &sealed,
+            AnalyzerIdentity::new(ANALYZER, ANALYZER_VERSION)?,
+            vec![unit("src/cache.ts"), unit("package.json")],
+        )
+        .is_ok()
+    );
+    Ok(())
+}

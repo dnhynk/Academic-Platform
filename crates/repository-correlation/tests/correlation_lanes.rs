@@ -2136,3 +2136,159 @@ fn every_identifier_is_the_shape_this_crate_admits() -> TestResult {
     }
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// The refusals `P2-A5`'s sixth audit found nothing executes.
+// ---------------------------------------------------------------------------
+
+/// Every refusal `correlate` writes, reached.
+///
+/// `P2-A5`'s sixth audit instrumented all 93 `return Err(` sites in the six
+/// `P2-R` crates and ran the whole workspace four times: 63 fired and **30 did
+/// not**. Five of the thirty are in this crate, all of them in `correlate`
+/// itself, and each is the rule that keeps one input from being about a
+/// snapshot other than the one every other input is about. Nothing in the
+/// suite had ever handed `correlate` a mismatched artifact, so the five rules
+/// that make a correlation single-snapshot were themselves unmeasured.
+///
+/// Each is driven by building `CorrelationInput` directly, one field wrong at
+/// a time, over the corpus `all_seven` uses. The positive control is that the
+/// same input with the field correct correlates.
+#[test]
+fn every_refusal_correlate_writes_is_reached() -> TestResult {
+    let artifacts = everything()?;
+    let (snapshot, analysis) = analyzed_with(&SEVEN, BRANCH, V1, None)?;
+    let traces = vec![RuntimeTrace::new(
+        snapshot.snapshot_id(),
+        subject_id("redis")?,
+    )];
+    let findings = findings_of(&analysis, &traces)?;
+    let identity = AnalyzerIdentity::new(ANALYZER, V1)?;
+    let incidents = bound_incidents(&artifacts, snapshot.snapshot_id())?;
+    let declared = declared_in(&SEVEN);
+
+    let input = |analyzer: &'_ AnalyzerIdentity,
+                 findings: &'_ [Finding],
+                 intent: &'_ [IntentDocument],
+                 behavior: &'_ [BehaviorDocument],
+                 incidents: &'_ [IncidentRecord]| {
+        correlate(&CorrelationInput {
+            snapshot: &snapshot,
+            analyzer,
+            findings,
+            intent_documents: intent,
+            behavior_documents: behavior,
+            incidents,
+            feature_flags: &artifacts.flags,
+            deployments: &artifacts.deployments,
+            declared_dependencies: &declared,
+        })
+    };
+
+    // The positive control first, so every refusal below is about the one
+    // field it changes rather than about the fixture.
+    assert!(
+        input(
+            &identity,
+            &findings,
+            &artifacts.intent,
+            &artifacts.behavior,
+            &incidents,
+        )
+        .is_ok(),
+        "the fixture does not correlate, so the refusals below would be vacuous"
+    );
+
+    // lib.rs:284 -- an analyzer build the snapshot's `toolVersions` does not
+    // record. Section 19's ANALYSIS_CHANGED lane needs the build named, and a
+    // build the snapshot never saw cannot be the one that produced these
+    // findings.
+    let unrecorded = AnalyzerIdentity::new(ANALYZER, "9.9.9")?;
+    assert!(matches!(
+        input(
+            &unrecorded,
+            &findings,
+            &artifacts.intent,
+            &artifacts.behavior,
+            &incidents,
+        ),
+        Err(CorrelationError::AnalyzerNotInSnapshot(_, _))
+    ));
+
+    // lib.rs:316 -- a finding about another snapshot. The second corpus holds
+    // different bytes, so its findings are well-formed findings carrying a
+    // different snapshot identity.
+    let (other_snapshot, other_analysis) =
+        analyzed_with(&SEVEN_WITHOUT_TESTS, BRANCH, V1, None)?;
+    assert_ne!(other_snapshot.snapshot_id(), snapshot.snapshot_id());
+    let other_findings = findings_of(&other_analysis, &[])?;
+    assert!(!other_findings.is_empty(), "the other corpus produced none");
+    assert!(matches!(
+        input(
+            &identity,
+            &other_findings,
+            &artifacts.intent,
+            &artifacts.behavior,
+            &incidents,
+        ),
+        Err(CorrelationError::FindingIsAboutAnotherSnapshot(_, _))
+    ));
+
+    // lib.rs:338 -- an intent document at a path the frozen manifest does not
+    // hold, so a specification could otherwise be correlated against a
+    // snapshot that never contained it.
+    let mut absent_intent = artifacts.intent.clone();
+    absent_intent.push(intent_document(
+        "spec-absent",
+        IntentDocumentKind::Specification,
+        ApprovalStatus::Approved,
+        1,
+        Some(BRANCH),
+        "docs/absent.md",
+        &["redis"],
+    )?);
+    assert!(matches!(
+        input(
+            &identity,
+            &findings,
+            &absent_intent,
+            &artifacts.behavior,
+            &incidents,
+        ),
+        Err(CorrelationError::DocumentNotInSnapshot(_))
+    ));
+
+    // lib.rs:359 -- the same rule for a behaviour document. It is a second
+    // copy of the refusal above over a second input list, and `P2-U5` measured
+    // what a second copy nobody drives is worth.
+    let mut absent_behavior = artifacts.behavior.clone();
+    absent_behavior.push(behavior_document(
+        "behaviour-absent",
+        "docs/absent-behaviour.md",
+        &["redis"],
+    )?);
+    assert!(matches!(
+        input(
+            &identity,
+            &findings,
+            &artifacts.intent,
+            &absent_behavior,
+            &incidents,
+        ),
+        Err(CorrelationError::DocumentNotInSnapshot(_))
+    ));
+
+    // lib.rs:385 -- an incident bound to another snapshot.
+    let elsewhere = bound_incidents(&artifacts, other_snapshot.snapshot_id())?;
+    assert!(matches!(
+        input(
+            &identity,
+            &findings,
+            &artifacts.intent,
+            &artifacts.behavior,
+            &elsewhere,
+        ),
+        Err(CorrelationError::IncidentIsAboutAnotherSnapshot(_, _))
+    ));
+    Ok(())
+}
