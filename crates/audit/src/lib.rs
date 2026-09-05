@@ -21,13 +21,20 @@
 //! states no criterion, so an audit is `INDETERMINATE` until a user records
 //! one.
 //!
-//! # `INDETERMINATE` always says what is outstanding
+//! # `INDETERMINATE` always says what is outstanding, and `DETERMINATE` says
+//! nothing is
 //!
 //! [`verdict::IndeterminateVerdict`] takes its first [`verdict::MissingCheck`]
 //! as a **parameter**, so an indeterminate verdict with an empty list is not a
 //! call that can be written. Every arm of `MissingCheck` names the exact
 //! field, rule, attempt or source that is outstanding, and every one carries
 //! the action that settles it.
+//!
+//! The other half is [`engine::DegreeAudit`]'s: the outstanding checks are read
+//! first and an outstanding check is an indeterminate verdict whatever the
+//! three gates say. The three gates were the whole of the condition and the
+//! list was dropped on the determinate branch, so a determination could be
+//! published beside a check nobody had settled.
 //!
 //! # A leaf that cannot cite itself is not a leaf
 //!
@@ -39,6 +46,13 @@
 //! rule the source index does not place therefore cannot become a leaf: it is
 //! left **unevaluated**, which is a partial failure and blocks coverage, rather
 //! than evaluated into a verdict with no citation.
+//!
+//! A page recorded inside *another* document is refused the same way and is a
+//! separate check. [`source::RuleSourceIndex::placement`] takes the rule whole
+//! rather than its identifier, so the digest the span points inside and the
+//! digest the rule rests on are compared in the one place a span is read, and
+//! a leaf citing a document its rule was never read from is not a value this
+//! crate can produce.
 //!
 //! # Planned work never satisfies anything, in four layers
 //!
@@ -91,7 +105,7 @@ pub use select::{
     CatalogEntry, CommonRuleExample, CommonRuleExamples, RuleSetCatalog, RuleSetScope,
     SelectedRuleSet, Selection, select,
 };
-pub use source::{RuleSourceIndex, RuleSourceSpan};
+pub use source::{Placement, RuleSourceIndex, RuleSourceSpan};
 pub use transcript::{
     ALL_GPA_ELIGIBLE, CourseFactsIndex, CourseRequirementFacts, EntryAdmission, TranscriptEntry,
     TranscriptSnapshot,

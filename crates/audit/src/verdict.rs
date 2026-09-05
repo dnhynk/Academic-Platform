@@ -36,7 +36,7 @@
 //! at construction if it is empty. "The audit is indeterminate and we cannot
 //! say why" is not a value.
 
-use academic_domain::{AttemptId, TimestampMillis, engines::ProofStatus};
+use academic_domain::{AttemptId, ContentDigest, TimestampMillis, engines::ProofStatus};
 use academic_ingestion::{ConflictCase, RetrievalInstant};
 use academic_requirement::{OpenGate as RuleGate, RuleId, RuleSetVersion};
 
@@ -83,6 +83,22 @@ pub enum MissingCheck {
     RuleSourceSpanAbsent {
         /// The rule.
         rule: RuleId,
+    },
+    /// A published rule's recorded page is inside a document it was not read
+    /// from.
+    ///
+    /// Section 11.3's citation is *this rule's* page and paragraph, and a
+    /// paragraph of another snapshot is not one. The rule is not evaluated,
+    /// for the same reason [`MissingCheck::RuleSourceSpanAbsent`] leaves one
+    /// unevaluated: a citation that points elsewhere is worse than none,
+    /// because it reads as one.
+    RuleSourceSpanIsAnotherDocument {
+        /// The rule.
+        rule: RuleId,
+        /// The snapshot the recorded span points inside.
+        cited: ContentDigest,
+        /// The snapshot the rule itself rests on.
+        rests_on: ContentDigest,
     },
     /// A rule concluded `UNKNOWN` because an official fact is unconfirmed.
     OpenOfficialFact {
@@ -169,6 +185,15 @@ impl MissingCheck {
                 "record the official page and paragraph rule {} was read from",
                 rule.as_str()
             ),
+            Self::RuleSourceSpanIsAnotherDocument {
+                rule,
+                cited,
+                rests_on,
+            } => format!(
+                "record the page and paragraph rule {} was read from inside the official snapshot it \
+                 rests on, {rests_on}; the recorded placement points inside {cited}",
+                rule.as_str()
+            ),
             Self::OpenOfficialFact {
                 rule,
                 gate,
@@ -232,6 +257,7 @@ impl MissingCheck {
             Self::NoRuleSetCovers { .. } => "NO_RULE_SET_COVERS",
             Self::CompetingRuleSets { .. } => "COMPETING_RULE_SETS",
             Self::RuleSourceSpanAbsent { .. } => "RULE_SOURCE_SPAN_ABSENT",
+            Self::RuleSourceSpanIsAnotherDocument { .. } => "RULE_SOURCE_SPAN_IS_ANOTHER_DOCUMENT",
             Self::OpenOfficialFact { .. } => "OPEN_OFFICIAL_FACT",
             Self::RuleInputAbsent { .. } => "RULE_INPUT_ABSENT",
             Self::RuleConflict { .. } => "RULE_CONFLICT",

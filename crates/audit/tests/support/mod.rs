@@ -1047,6 +1047,56 @@ pub fn sources(rules: &RuleSet) -> Result<RuleSourceIndex, Box<dyn Error>> {
     Ok(index)
 }
 
+/// A digest no rule of any fixture set rests on.
+///
+/// A second printing of the same requirements, collected by the registrar. It
+/// is a real document in the story and the wrong one to cite: `source_digest`
+/// is what a leaf's `@text/` locator points inside, so a span carrying this is
+/// a citation of a paragraph nobody read the rule out of.
+pub fn another_document() -> ContentDigest {
+    ContentDigest::sha256(b"registrar/cse/degree-requirements-second-printing")
+}
+
+/// The same placements, every one of them inside another document.
+pub fn sources_from_another_document(rules: &RuleSet) -> Result<RuleSourceIndex, Box<dyn Error>> {
+    let mut index = RuleSourceIndex::new();
+    for (position, (rule, _)) in rules.rules().enumerate() {
+        let page = u32::try_from(position + 1)?;
+        let start = u64::from(page) * 1_000;
+        index = index.with(
+            rule.clone(),
+            RuleSourceSpan::new(artifact()?, another_document(), page, start, start + 400)?,
+        );
+    }
+    Ok(index)
+}
+
+/// The same placements with exactly one of them inside another document.
+///
+/// The narrowing case: a refusal that took every rule with it would pass a test
+/// that only counted refusals, and would be the wrong answer -- the other rules
+/// are placed inside the document they were read from and are citable.
+pub fn sources_one_from_another_document(
+    rules: &RuleSet,
+    moved: &str,
+) -> Result<RuleSourceIndex, Box<dyn Error>> {
+    let mut index = RuleSourceIndex::new();
+    for (position, (rule, _)) in rules.rules().enumerate() {
+        let page = u32::try_from(position + 1)?;
+        let start = u64::from(page) * 1_000;
+        let digest = if rule.as_str() == moved {
+            another_document()
+        } else {
+            source_digest()
+        };
+        index = index.with(
+            rule.clone(),
+            RuleSourceSpan::new(artifact()?, digest, page, start, start + 400)?,
+        );
+    }
+    Ok(index)
+}
+
 /// The same placements with one rule left out.
 pub fn sources_missing(rules: &RuleSet, omitted: &str) -> Result<RuleSourceIndex, Box<dyn Error>> {
     let mut index = RuleSourceIndex::new();

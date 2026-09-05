@@ -21,10 +21,10 @@ use academic_requirement::{Measure, OpenGate as RuleGate, RuleId, RuleSet, RuleS
 
 use academic_audit::{
     AttemptUsage, AuditError, CommonRuleExamples, CourseFactsIndex, CreditVerdict, DegreeAudit,
-    DegreeVerdict, EntryAdmission, EquivalencyDecision, GraduationAuditEngine, GraduationOutcome,
-    MissingCheck, OpenGate, PlanAnnotatedView, PlannedCoursework, ProfileField, RuleSetScope,
-    RuleSourceIndex, Selection, SourceFreshnessPolicy, StudentProfile, TranscriptSnapshot, encode,
-    select, verdict::ConflictReference,
+    DegreeVerdict, DeterminateVerdict, EntryAdmission, EquivalencyDecision, GraduationAuditEngine,
+    GraduationOutcome, MissingCheck, OpenGate, PlanAnnotatedView, PlannedCoursework, ProfileField,
+    RuleSetScope, RuleSourceIndex, Selection, SourceFreshnessPolicy, StudentProfile,
+    TranscriptSnapshot, encode, select, verdict::ConflictReference,
 };
 use support::{
     FRESHNESS, STALE_FRESHNESS, TestResult, audit_facts, catalog, course, profile, scope, sources,
@@ -1996,6 +1996,302 @@ fn an_audit_with_no_evaluated_rule_folds_to_unknown() -> TestResult {
         unplaced.len(),
         rules.rules().count(),
         "the audit did not name every rule it could not place"
+    );
+    Ok(())
+}
+// ---------------------------------------------------------------------------
+// a_leaf_cannot_cite_a_document_its_rule_was_not_read_from -- REQ-11-021
+// ---------------------------------------------------------------------------
+
+/// The citation on a leaf is a paragraph of the rule's own official snapshot.
+///
+/// `RuleSourceSpan::source_digest` is the snapshot a leaf's `@text/` locator
+/// points inside, and `ExecutableRule::source_digest` is the snapshot the rule
+/// was read out of. Both were recorded and nothing compared them: the index is
+/// keyed by rule identifier, an identifier is not a document, and
+/// `DegreeAudit::assemble` never read the rule's digest at all. Over the
+/// baseline set that was a `DETERMINATE NOT_POSSIBLE` verdict with **no
+/// outstanding check** and thirteen leaves citing paragraphs of a document none
+/// of the eight rules was read from -- section 11.3 requires a citation on every
+/// leaf and got one that pointed elsewhere.
+///
+/// Three measurements, because a refusal that refused everything would pass a
+/// one-sided one: the truthful placements still publish thirteen citing leaves,
+/// every placement moved into another document leaves all eight rules
+/// unevaluated, and **one** placement moved leaves exactly one.
+#[test]
+fn a_leaf_cannot_cite_a_document_its_rule_was_not_read_from() -> TestResult {
+    let rules = support::baseline_rules()?;
+    let published: Vec<&RuleId> = rules.rules().map(|(rule, _)| rule).collect();
+    assert_eq!(
+        published.len(),
+        8,
+        "the baseline set is not the eight rules"
+    );
+
+    // The two documents are two documents, so the comparison below is not
+    // trivially true.
+    let rests_on: BTreeSet<String> = rules
+        .executable_rules()
+        .map(|rule| rule.source_digest().to_string())
+        .collect();
+    assert_eq!(
+        rests_on.len(),
+        1,
+        "the baseline rules rest on more than one snapshot"
+    );
+    assert!(
+        !rests_on.contains(&support::another_document().to_string()),
+        "the fixture's other document is the one the rules were read from"
+    );
+
+    // Truthful placements: every rule is evaluated and every leaf cites the
+    // snapshot its rule rests on.
+    let truthful = audit(
+        &rules,
+        support::transcript()?,
+        sources(&rules)?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?;
+    let cited: Vec<String> = truthful
+        .nodes()
+        .iter()
+        .flat_map(academic_audit::AuditNode::walk)
+        .map(|node| node.leaf().source().source_digest().to_string())
+        .collect();
+    assert_eq!(cited.len(), 13, "the truthful tree lost leaves");
+    assert!(
+        cited.iter().all(|digest| rests_on.contains(digest)),
+        "a truthfully placed leaf cited another document"
+    );
+    assert!(
+        truthful.verdict().determinate().is_some(),
+        "the truthful placements were refused: {:?}",
+        truthful.verdict().missing()
+    );
+
+    // Every placement inside another document: nothing is evaluated, nothing
+    // is cited, and the audit names each rule and both digests.
+    let foreign = audit(
+        &rules,
+        support::transcript()?,
+        support::sources_from_another_document(&rules)?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?;
+    assert!(
+        foreign.verdict().determinate().is_none(),
+        "an audit citing another document reached a determination"
+    );
+    assert_eq!(
+        foreign.nodes().len(),
+        0,
+        "a leaf was built over a placement inside another document"
+    );
+    let named: Vec<&RuleId> = foreign
+        .verdict()
+        .missing()
+        .iter()
+        .filter_map(|check| match check {
+            MissingCheck::RuleSourceSpanIsAnotherDocument {
+                rule,
+                cited,
+                rests_on: rule_rests_on,
+            } => {
+                assert_eq!(*cited, support::another_document(), "the wrong document");
+                assert_ne!(cited, rule_rests_on, "the check reported two equal digests");
+                Some(rule)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        named, published,
+        "the audit did not name every rule whose page is in another document"
+    );
+
+    // Exactly one placement moved: the other seven are still evaluated, and
+    // the refusal is about the one rule rather than about the index.
+    let one_moved = audit(
+        &rules,
+        support::transcript()?,
+        support::sources_one_from_another_document(&rules, "total_credits")?,
+        Vec::new(),
+        Some(FRESHNESS),
+    )?;
+    let moved: Vec<&str> = one_moved
+        .verdict()
+        .missing()
+        .iter()
+        .filter_map(|check| match check {
+            MissingCheck::RuleSourceSpanIsAnotherDocument { rule, .. } => Some(rule.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        moved,
+        vec!["total_credits"],
+        "moving one placement refused more than one rule"
+    );
+    assert_eq!(
+        one_moved.unevaluated().len(),
+        1,
+        "moving one placement left more than one rule unevaluated"
+    );
+    assert!(
+        one_moved.nodes().len() >= 7,
+        "moving one placement cost the other rules their leaves"
+    );
+    assert!(
+        one_moved
+            .nodes()
+            .iter()
+            .flat_map(academic_audit::AuditNode::walk)
+            .all(|node| rests_on.contains(&node.leaf().source().source_digest().to_string())),
+        "a leaf survived citing another document"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// a_determination_never_leaves_a_check_outstanding -- REQ-11-029
+// ---------------------------------------------------------------------------
+
+/// `DETERMINATE` and a non-empty check list are not both possible.
+///
+/// Section 11.4's three gates were the whole of the condition in
+/// `DegreeAudit::assemble`, and the assembled `missing` list was **dropped** on
+/// the determinate branch -- so *that nothing is outstanding* was the one claim
+/// in the rule nothing checked. `transcript.rs` states the other half of it
+/// ("an empty list is what `DETERMINATE` needs from this input") about
+/// `TranscriptSnapshot::pending`, and nothing enforced it: an attempt whose
+/// credit contribution `P2-U4` could not settle produced
+/// `RECOGNITION_UNDECIDED` and a determination in the same evaluation, over
+/// credits the audit had therefore not counted.
+///
+/// The property is a biconditional over whole audits rather than a check on one
+/// arm: an audit is determinate exactly when its check list is empty. A new
+/// `MissingCheck` arm is then fail-closed without anything else being
+/// remembered.
+#[test]
+fn a_determination_never_leaves_a_check_outstanding() -> TestResult {
+    let baseline = support::baseline_rules()?;
+    let satisfiable = support::satisfiable_rules()?;
+    let open_gate = support::open_gate_rules()?;
+
+    let audits: Vec<(&str, DegreeAudit)> = vec![
+        (
+            "the baseline set, truthfully placed",
+            audit(
+                &baseline,
+                support::transcript()?,
+                sources(&baseline)?,
+                Vec::new(),
+                Some(FRESHNESS),
+            )?,
+        ),
+        (
+            "a satisfiable set the transcript clears",
+            audit(
+                &satisfiable,
+                support::transcript()?,
+                sources(&satisfiable)?,
+                Vec::new(),
+                Some(FRESHNESS),
+            )?,
+        ),
+        (
+            "a satisfiable set over an unsettled attempt",
+            audit(
+                &satisfiable,
+                support::transcript_with_undated_external()?,
+                sources(&satisfiable)?,
+                Vec::new(),
+                Some(FRESHNESS),
+            )?,
+        ),
+        (
+            "a rule whose official fact is unconfirmed",
+            audit(
+                &open_gate,
+                support::transcript()?,
+                sources(&open_gate)?,
+                Vec::new(),
+                Some(FRESHNESS),
+            )?,
+        ),
+        (
+            "a placement inside another document",
+            audit(
+                &baseline,
+                support::transcript()?,
+                support::sources_one_from_another_document(&baseline, "overall_gpa")?,
+                Vec::new(),
+                Some(FRESHNESS),
+            )?,
+        ),
+        (
+            "no recorded freshness criterion",
+            audit(
+                &baseline,
+                support::transcript()?,
+                sources(&baseline)?,
+                Vec::new(),
+                None,
+            )?,
+        ),
+    ];
+
+    for (route, audited) in &audits {
+        assert_eq!(
+            audited.verdict().determinate().is_some(),
+            audited.verdict().missing().is_empty(),
+            "{route}: determinate={:?} with checks {:?}",
+            audited
+                .verdict()
+                .determinate()
+                .map(DeterminateVerdict::outcome),
+            audited
+                .verdict()
+                .missing()
+                .iter()
+                .map(MissingCheck::kind)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    // Both sides occur, so the biconditional above is not vacuously true on
+    // one of them.
+    let determinate = audits
+        .iter()
+        .filter(|(_, audited)| audited.verdict().determinate().is_some())
+        .count();
+    assert!(determinate > 0, "no route reached a determination");
+    assert!(determinate < audits.len(), "no route was refused");
+
+    // The unsettled attempt is the route the three gates alone let through: it
+    // is `RECOGNITION_UNDECIDED` and nothing else, so its refusal is that
+    // check rather than a gate that also happened to fail.
+    let unsettled = &audits[2].1;
+    assert_eq!(
+        unsettled
+            .verdict()
+            .missing()
+            .iter()
+            .map(MissingCheck::kind)
+            .collect::<Vec<_>>(),
+        vec!["RECOGNITION_UNDECIDED"],
+        "the unsettled attempt was refused for some other reason"
+    );
+    // And settling it lets the same set through, which is what says the
+    // refusal was the check.
+    let settled = &audits[1];
+    assert!(
+        settled.1.verdict().determinate().is_some(),
+        "{}: refused with {:?}",
+        settled.0,
+        settled.1.verdict().missing()
     );
     Ok(())
 }

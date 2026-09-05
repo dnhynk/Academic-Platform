@@ -61,6 +61,11 @@ witness declarations, three crate-private `establish` sites, no `pub fn
 establish` anywhere, the constructor pinned to take all three by name, and
 exactly one `DegreeVerdict::Determinate` expression in the engine.
 
+**The three witnesses are necessary and they are not the whole condition.** A
+determination also says that nothing is outstanding, and `DegreeAudit::assemble`
+now reads the check list first — see [`INDETERMINATE` always says what is
+outstanding](#indeterminate-always-says-what-is-outstanding).
+
 ## `INDETERMINATE` always says what is outstanding
 
 `IndeterminateVerdict::new` takes its first `MissingCheck` as a **parameter**,
@@ -74,6 +79,18 @@ the letter and lose the point.
 The selector reports **every** unrecorded profile field rather than the first,
 because a user who fixes one gap and meets the next has been told the truth
 twice instead of once.
+
+**And a determination says the list is empty.** `DegreeAudit::assemble` matches
+on `IndeterminateVerdict::from_checks(missing)` before it looks at the three
+witnesses, so an outstanding check is an indeterminate verdict whatever the gates
+say, and a gate that refuses with nothing outstanding is still
+`AuditError::RefusedWithNoCheck`. The list used to be assembled and then dropped
+on the determinate branch: section 11.4's three gates were the whole of the
+condition, and an attempt whose credit contribution `P2-U4` could not settle
+produced `RECOGNITION_UNDECIDED` beside a `DETERMINATE` verdict.
+`a_determination_never_leaves_a_check_outstanding` requires the biconditional —
+determinate exactly when the list is empty — over six audits, with both sides
+occurring.
 
 ## Section 11.1's eight selector inputs
 
@@ -170,6 +187,15 @@ invent a citation, the engine leaves the rule unevaluated — which is exactly
 verdict without a citation and a verdict withheld are different things, and only
 the second is publishable. That is also what makes `adverse/partial_failure` an
 input file rather than a differently configured engine.
+
+A rule whose recorded page is inside **another document** is refused the same
+way and is a separate check — `MissingCheck::RuleSourceSpanIsAnotherDocument`.
+`RuleSourceIndex::placement` takes the published set rather than a bare
+identifier, so the digest the span points inside and the digest the rule rests on
+are compared in the one place a span is read. See [A source conflict is
+`P2-U6`'s finding and this engine's
+refusal](#a-source-conflict-is-p2-u6s-finding-and-this-engines-refusal), which
+carries the measurement.
 
 ## The mixed tree, and where section 11.3 and the harness disagree
 
@@ -428,20 +454,60 @@ section 11.4 assigns to the two people and no digest can settle. `S-24`'s
 sentence — *the engine can refuse an omission; it cannot detect a false claim* —
 holds for that half and no longer for the label.
 
-**And a leaf's citation is bound to its rule's identifier, not to its source.**
-`RuleSourceSpan` carries a `source_digest` and its own documentation calls it
-*the official snapshot whose digest the rule already carries*; nothing compares
-the two. Building the index with a digest no published rule rests on is a
-`DETERMINATE NOT_POSSIBLE` verdict, **no outstanding check**, and thirteen leaves
-citing paragraphs of a document none of the rules was read from. It is the shape
-above one step out — two digests exist and the correspondence between them is the
-caller's assertion — and it is section 11.3's citation rather than section 8.4's
-applicability, so it is recorded here rather than closed here. Closing it is not
-a check at `bind`: `AuditFacts::decode_sources` rebuilds the index from frozen
-inputs without the rule set in hand, so making the span underivable from anything
-but the rule needs the decoder to carry the set, and refusing it instead needs a
-new `MissingCheck` arm and a rule that goes unevaluated. Severity **P2**, and the
-reproduction is `t222-rf26-probes/t222_span_probe.rs`.
+**And a leaf cites its rule's own source.** `RuleSourceSpan` carries the digest
+of the snapshot its paragraph is inside and `ExecutableRule` carries the digest
+of the snapshot the rule was read out of. Both were recorded, the index is keyed
+by rule identifier, and nothing compared them: an index built with a digest no
+published rule rests on gave `DETERMINATE NOT_POSSIBLE`, **no outstanding
+check**, and thirteen leaves citing paragraphs of a document none of the eight
+rules was read from — section 11.3 requires a citation on every leaf and got one
+that pointed elsewhere.
+
+There is now no accessor that hands out a span for a bare identifier.
+`RuleSourceIndex::placement` takes the published set and returns `Placement`,
+whose three arms are the three things that can be true — the recorded page is
+inside the rule's own snapshot, this index has no page for the rule, or the page
+is inside another document — so the comparison is the one way to reach a span
+rather than a branch beside one. The third arm is
+`MissingCheck::RuleSourceSpanIsAnotherDocument`, which names the rule and both
+digests, and the rule is left **unevaluated** exactly as an unplaced one is: a
+citation that points elsewhere is worse than none, because it reads as one.
+
+`a_leaf_cannot_cite_a_document_its_rule_was_not_read_from` measures all three
+sides. Truthfully placed, the eight rules still publish thirteen leaves and every
+one cites the snapshot its rule rests on; every placement moved into another
+document leaves all eight unevaluated and names all eight; and **one** placement
+moved leaves exactly one, so the refusal is about the rule rather than about the
+index.
+
+**And a determination says nothing is outstanding.** Section 11.4's three gates
+were the whole of the condition in `DegreeAudit::assemble` and the assembled
+check list was dropped on the determinate branch, so *that nothing is
+outstanding* was the one claim in the rule nothing checked. An attempt whose
+credit contribution `P2-U4` could not settle produced `RECOGNITION_UNDECIDED` and
+a `DETERMINATE` verdict in the same evaluation, over credits the audit had
+therefore not counted — while `TranscriptSnapshot::pending` documented the
+opposite one file over. The checks are now read first and decide:
+`IndeterminateVerdict::from_checks` consumes the list before the witnesses are
+looked at, so an outstanding check is an indeterminate verdict whatever the three
+gates say, a gate that refuses with nothing outstanding is still
+`AuditError::RefusedWithNoCheck`, and a check arm added later is fail-closed
+without anything else being remembered.
+`a_determination_never_leaves_a_check_outstanding` drives six audits and requires
+the biconditional on each — determinate exactly when the list is empty — with
+both sides occurring.
+
+**What is left, one step out.** `ExecutableRule::source_digest` is a value the
+reviewer supplied and nothing checks it against the document the rules were
+parsed out of. `academic_ingestion::publish` carries each rule's own text digest
+and **not** the sealed snapshot's, so `PublishedRules` cannot state which
+document it is, and `RuleSetDraft::include` has nothing to compare a declared
+`source_digest` against. Measured on this tree: the fixture document's bytes hash
+to `sha256:9e3d…f1be`, the rules published from it rest on `sha256:8709…a642`,
+and a set declaring `sha256:7342…94d1` — a digest of a string no document has —
+publishes. A leaf's citation is therefore bound to its rule's declaration, and
+that declaration to nobody; it is `S-24`'s sentence one step further out.
+Recorded as `S-27` in `docs/contracts/policy-source-scans.md`, severity **P2**.
 
 **And an unread conflict store is not an empty one.** `AuditFacts::conflicts` is
 `Option<Vec<ConflictReference>>`, encoded as `InputValue::Unknown` when absent —
