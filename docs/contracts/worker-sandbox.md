@@ -272,6 +272,14 @@ files holding an `unsafe` item against exactly
 - **No provider SDK is called.** `academic-egress-boundary` owns the staging and
   the transport trait, and no implementation of it ships. What this task
   contributes to a provider call is the process it would run in.
+- **This is not the `P2-G7` process-class boundary.** `sandbox::enter` here
+  contains a *job* inside a worker process: it takes a `CapabilityDescriptor`
+  with two staged directories and resource limits, and it grants the contained
+  process read-write on the staged output. A `ProcessClass` capability set is one
+  layer up, has no directories, and includes classes that declare no write at
+  all, so this launcher cannot serve it. That boundary is
+  [process capability enforcement](process-capability-enforcement.md), and the
+  rule that nothing may depend on `academic-worker` is what keeps the two apart.
 
 ## The two names this backend shares with the machine
 

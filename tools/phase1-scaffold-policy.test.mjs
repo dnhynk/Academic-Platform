@@ -213,7 +213,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
   );
   assert.deepEqual(actual, {
     "academic-admission": [],
-    "academic-capture-client": ["academic-policy"],
+    "academic-capture-client": ["academic-policy", "academic-process-sandbox"],
     // `P2-L1`'s device gate. Its product edges are the consent decision it
     // re-runs and the domain identifiers its audit rows carry; `libc` and
     // `windows-sys` are optional target-specific edges behind the non-default
@@ -363,7 +363,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     ],
     "academic-desktop": ["academic-rpc"],
     "academic-domain": [],
-    "academic-egress": ["academic-policy"],
+    "academic-egress": ["academic-policy", "academic-process-sandbox"],
     // `P2-G2`'s DLP rulepack, minimizer, byte-accurate preview, and the sole
     // outbound transport seam. It is a separate package from `P2-G7`'s
     // egress-proxy process entry point, whose whole manifest and whole product
@@ -504,6 +504,16 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-vault",
     ],
     "academic-policy": [],
+    // `P2-RF21`. The process-class enforcement boundary. One product edge, and
+    // it is the vocabulary it enforces: `academic-policy` owns `ProcessClass`
+    // and `ProcessCapability`, so the declaration and the refusal are read off
+    // one enum rather than two. `libc` is an optional target-specific edge
+    // behind the non-default `native-enforcement` feature and is not a
+    // workspace package, so it appears in `SOCKET_CAPABLE_CLOSURES` below
+    // rather than here. The edges it does *not* have are the point: no
+    // `academic-worker`, so the job-level sandbox and its probe stay out of
+    // every process class's graph, and nothing above `academic-policy` at all.
+    "academic-process-sandbox": ["academic-policy"],
     "academic-projections": ["academic-domain", "academic-store"],
     // `P2-M2`'s proposal boundary, risk tiers and review queue. Its one product
     // edge is the domain crate, and the edges it does *not* have are the point:
@@ -627,7 +637,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-repository-classification",
       "academic-repository-correlation",
     ],
-    "academic-repository-analyzer": ["academic-policy"],
+    "academic-repository-analyzer": ["academic-policy", "academic-process-sandbox"],
     // `P2-K4`'s recovery-profile registry, independent backup key, and
     // rehearsal receipt. It sits above the key schedule and below the
     // portability boundary, opens no database, and reads no vault.
@@ -2096,6 +2106,37 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
         "`process::Command` for the paired permission run, which is what " +
         "makes a refusal inside the container evidence.",
     ],
+    // `P2-RF21`. Four sites, and all four exist because a process-level claim
+    // is only observable from another process: a suite that called `enter` in
+    // its own process would restrict the test runner, and one that read the
+    // declaration instead of launching something would be the source scan the
+    // audits already rejected.
+    [
+      join("crates", "process-sandbox", "tests", "native.rs"),
+      "test-only, behind the non-default `native-enforcement` feature: " +
+        "launches the enforcement probe once per process class and reads back " +
+        "what the operating system let it do. The probe is a `[[bin]]` with " +
+        "`required-features` and a `path` outside `src`. Ships in no product " +
+        "build.",
+    ],
+    [
+      join("crates", "capture-client", "tests", "enforcement.rs"),
+      "test-only: launches this crate's own process-class binary and reads " +
+        "its exit status, because a declaration enforced in a probe and not " +
+        "in the shipped executable is the defect `P2-A5` and `P2-A4` " +
+        "reported. Ships in no product build.",
+    ],
+    [
+      join("crates", "egress", "tests", "enforcement.rs"),
+      "test-only: the same measurement for the egress-proxy process class, " +
+        "which is the one class whose declaration keeps a socket. Ships in no " +
+        "product build.",
+    ],
+    [
+      join("crates", "repository-analyzer", "tests", "enforcement.rs"),
+      "test-only: the same measurement for the analyzer process class, the " +
+        "binary `P2-A5` reported the P1 on. Ships in no product build.",
+    ],
     [
       join("crates", "core", "tests", "projection_generation.rs"),
       "test-only: re-runs this repository's own generator so a committed " +
@@ -2185,13 +2226,30 @@ test("os_keystore_capabilities_are_available_but_unused", async () => {
   }
 });
 
+/**
+ * The six process boundaries, and whether each one's declaration is enforced.
+ *
+ * The third field is `P2-RF21`. Before it, all six `main` bodies were the same
+ * four lines -- compute the class's capability set, drop it -- and `P2-A5`
+ * measured a `REPOSITORY_ANALYZER` process connecting to a remote host while
+ * declaring `OpenOutboundSocket = false`. `P2-A4` measured the same shape on the
+ * capture and egress binaries.
+ *
+ * `true` means the binary calls `academic_process_sandbox::enter` before any
+ * work and exits non-zero when the refusals cannot be installed and confirmed.
+ * `false` means it is still the old four lines. The split is written out rather
+ * than derived because it is the open remainder: `T215` was scoped to the three
+ * binaries the two audits named, and `the_unenforced_process_classes_are_named`
+ * below is what keeps that remainder visible instead of letting it read as a
+ * finished job.
+ */
 const PROCESS_BOUNDARIES = new Map([
-  ["academic-capture-client", ["capture-client", "CaptureClient"]],
-  ["academic-indexer", ["indexer", "Indexer"]],
-  ["academic-repository-analyzer", ["repository-analyzer", "RepositoryAnalyzer"]],
-  ["academic-connector", ["connector", "Connector"]],
-  ["academic-egress", ["egress", "EgressProxy"]],
-  ["academic-export-job", ["export-job", "ExportJob"]],
+  ["academic-capture-client", ["capture-client", "CaptureClient", true]],
+  ["academic-indexer", ["indexer", "Indexer", false]],
+  ["academic-repository-analyzer", ["repository-analyzer", "RepositoryAnalyzer", true]],
+  ["academic-connector", ["connector", "Connector", false]],
+  ["academic-egress", ["egress", "EgressProxy", true]],
+  ["academic-export-job", ["export-job", "ExportJob", false]],
 ]);
 
 const PROCESS_POLICY_CLOSURE = [
@@ -2249,7 +2307,16 @@ function resolvedShippingPackageNames(rootName) {
   return [...visited].map((id) => packagesById.get(id).name).toSorted();
 }
 
-function expectedProcessManifest(packageName) {
+function expectedProcessManifest(packageName, enforced) {
+  const features = enforced
+    ? `
+[features]
+native-enforcement = ["academic-process-sandbox/native-enforcement"]
+`
+    : "";
+  const sandbox = enforced
+    ? 'academic-process-sandbox = { path = "../process-sandbox" }\n'
+    : "";
   return `[package]
 name = "${packageName}"
 version.workspace = true
@@ -2257,17 +2324,18 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
-
+${features}
 [dependencies]
 academic-policy = { path = "../policy" }
-
+${sandbox}
 [lints]
 workspace = true
 `;
 }
 
-function expectedProcessSource(processClass) {
-  return `use academic_policy::ProcessClass;
+function expectedProcessSource(processClass, enforced) {
+  if (!enforced) {
+    return `use academic_policy::ProcessClass;
 
 const PROCESS_CLASS: ProcessClass = ProcessClass::${processClass};
 
@@ -2275,33 +2343,74 @@ fn main() {
     let _capability_set = PROCESS_CLASS.capabilities();
 }
 `;
+  }
+  return `use std::process::ExitCode;
+
+use academic_policy::ProcessClass;
+
+const PROCESS_CLASS: ProcessClass = ProcessClass::${processClass};
+
+fn main() -> ExitCode {
+    match academic_process_sandbox::enter(PROCESS_CLASS) {
+        Ok(enforcement) => {
+            println!("{}", enforcement.receipt_line());
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!(
+                "{}",
+                academic_process_sandbox::refusal_line(PROCESS_CLASS, &error)
+            );
+            ExitCode::FAILURE
+        }
+    }
+}
+`;
 }
 
 async function assertExactProcessBoundary(packageName) {
-  const [directory, processClass] = PROCESS_BOUNDARIES.get(packageName);
+  const [directory, processClass, enforced] = PROCESS_BOUNDARIES.get(packageName);
   const pkg = packagesByName.get(packageName);
   assert.ok(pkg, `${packageName} is absent`);
-  assert.deepEqual(productDependencyNames(pkg), ["academic-policy"]);
-  assert.deepEqual(devDependencyNames(pkg), []);
-  assert.deepEqual(Object.keys(pkg.features), []);
   assert.deepEqual(
-    pkg.targets.map((target) => ({
-      name: target.name,
-      kind: target.kind,
-      crate_types: target.crate_types,
-    })),
-    [{ name: packageName, kind: ["bin"], crate_types: ["bin"] }],
+    productDependencyNames(pkg),
+    enforced ? ["academic-policy", "academic-process-sandbox"] : ["academic-policy"],
+  );
+  assert.deepEqual(devDependencyNames(pkg), []);
+  assert.deepEqual(Object.keys(pkg.features).toSorted(), enforced ? ["native-enforcement"] : []);
+  // An enforced boundary has one more target and it is the suite that launches
+  // the binary. Sorted, because `cargo metadata` fixes no order between a bin
+  // and a test.
+  const expectedTargets = [{ name: packageName, kind: ["bin"], crate_types: ["bin"] }];
+  if (enforced) {
+    expectedTargets.push({ name: "enforcement", kind: ["test"], crate_types: ["bin"] });
+  }
+  const byName = (left, right) => left.name.localeCompare(right.name);
+  assert.deepEqual(
+    pkg.targets
+      .map((target) => ({
+        name: target.name,
+        kind: target.kind,
+        crate_types: target.crate_types,
+      }))
+      .toSorted(byName),
+    expectedTargets.toSorted(byName),
     `${packageName} gained another executable, library, example, or build script`,
   );
   assert.equal(
     (await readFile(join("crates", directory, "Cargo.toml"), "utf8")).replaceAll("\r\n", "\n"),
-    expectedProcessManifest(packageName),
+    expectedProcessManifest(packageName, enforced),
     `${packageName}'s whole manifest changed; review the complete process boundary`,
   );
   const sources = await rustSources(join("crates", directory, "src"));
   assert.deepEqual(
     sources.map(([path, source]) => [path.split("\\").join("/"), source.replaceAll("\r\n", "\n")]),
-    [[join("crates", directory, "src", "main.rs").split("\\").join("/"), expectedProcessSource(processClass)]],
+    [
+      [
+        join("crates", directory, "src", "main.rs").split("\\").join("/"),
+        expectedProcessSource(processClass, enforced),
+      ],
+    ],
     `${packageName}'s complete product source is no longer its one fixed process-class binding`,
   );
 }
@@ -2310,6 +2419,49 @@ test("six_process_entrypoints_are_exact_and_distinct", async () => {
   for (const packageName of PROCESS_BOUNDARIES.keys()) {
     await assertExactProcessBoundary(packageName);
   }
+});
+
+// `P2-RF21`. The remainder, named. `T215` was scoped to the three binaries the
+// two audits measured, so three process classes still compute their capability
+// set and drop it. Writing that out here is what stops the split above from
+// reading as six enforced boundaries, and what makes closing the other three a
+// visible edit rather than a silent one.
+//
+// The two sides are compared whole, and the enforced list is then re-derived
+// from `cargo metadata` instead of from the flag beside it, so a crate that
+// gains or loses the edge without this list moving fails here.
+test("the_unenforced_process_classes_are_named", () => {
+  const enforced = [...PROCESS_BOUNDARIES]
+    .filter(([, [, , flag]]) => flag)
+    .map(([name]) => name)
+    .toSorted();
+  const unenforced = [...PROCESS_BOUNDARIES]
+    .filter(([, [, , flag]]) => !flag)
+    .map(([name]) => name)
+    .toSorted();
+  assert.deepEqual(enforced, [
+    "academic-capture-client",
+    "academic-egress",
+    "academic-repository-analyzer",
+  ]);
+  assert.deepEqual(unenforced, [
+    "academic-connector",
+    "academic-export-job",
+    "academic-indexer",
+  ]);
+  assert.equal(
+    enforced.length + unenforced.length,
+    PROCESS_BOUNDARIES.size,
+    "a process boundary is in neither list",
+  );
+  assert.deepEqual(
+    workspacePackages
+      .filter((pkg) => productDependencyNames(pkg).includes("academic-process-sandbox"))
+      .map((pkg) => pkg.name)
+      .toSorted(),
+    enforced,
+    "a crate declares the enforcement edge and is not marked enforced, or the reverse",
+  );
 });
 
 test("indexer_cannot_open_a_socket", async () => {
@@ -2923,6 +3075,54 @@ const SOCKET_ALLOWANCE = new Map([
   // `the_linux_backend_names_only_the_three_syscalls_it_installs` in
   // `crates/capture-gate/tests/capture_scans.rs` independently.
   ["crates/capture-gate/src/native/linux.rs", ["libc::syscall"]],
+  // `P2-RF21`. The process-class enforcement backend and its probe, and the
+  // two halves are the same bargain `P2-G4` struck one layer up.
+  //
+  // The backend names the socket syscalls to put them in a seccomp deny list,
+  // and the rule below -- keyed on `SECCOMP_DENY_LISTS`, not on one file name --
+  // is what makes that structural: every `SYS_` spelling in the file has to
+  // appear inside its `denied_syscalls` function or be one of the three it
+  // installs with.
+  //
+  // The probe is the process the enforcement is measured against. Proving that
+  // the operating system refuses a socket means asking it for one, so this file
+  // asks: a loopback listener and a connect to it are the deterministic control,
+  // and an optional external endpoint is what a by-hand run on a native host
+  // uses. It is a `[[bin]]` with `required-features = ["native-enforcement"]`
+  // and a `path` outside `src`, so no default build and no dependent crate
+  // links it -- a dependent reaches a package's library target and never its
+  // binaries. `the_probe_target_is_not_in_any_default_build` in
+  // `crates/process-sandbox/tests/scans.rs` reads the manifest for the same
+  // thing.
+  [
+    "crates/process-sandbox/probes/enforcement_probe.rs",
+    [
+      "Ipv4Addr",
+      "SocketAddr",
+      "SocketAddrV4",
+      "TcpListener",
+      "TcpStream",
+      "ToSocketAddrs",
+      "connect_timeout",
+      "std::net",
+    ],
+  ],
+  [
+    "crates/process-sandbox/src/linux.rs",
+    [
+      "SYS_accept4",
+      "SYS_bind",
+      "SYS_connect",
+      "SYS_listen",
+      "SYS_recvfrom",
+      "SYS_recvmsg",
+      "SYS_sendmsg",
+      "SYS_sendto",
+      "SYS_socket",
+      "SYS_socketpair",
+      "libc::syscall",
+    ],
+  ],
   [
     "crates/worker/src/sandbox/linux.rs",
     [
@@ -2941,11 +3141,11 @@ const SOCKET_ALLOWANCE = new Map([
   ],
 ]);
 
-/** The sandbox probe's file, which is the one binary allowed to ask for a socket. */
+/** The sandbox probe's file, one of the two binaries allowed to ask for a socket. */
 const SANDBOX_PROBE = "crates/worker/probes/worker_probe.rs";
 
-/** The Linux backend, which names socket syscalls only to refuse them. */
-const SANDBOX_DENY_LIST = "crates/worker/src/sandbox/linux.rs";
+/** `P2-RF21`'s enforcement probe, the other one. */
+const ENFORCEMENT_PROBE = "crates/process-sandbox/probes/enforcement_probe.rs";
 
 /** `P2-L1`'s Linux device layer, which names Landlock and no socket at all. */
 const CAPTURE_DEVICE_LAYER = "crates/capture-gate/src/native/linux.rs";
@@ -2964,6 +3164,43 @@ const CALLED_SYSCALLS = new Map([
   ["SYS_landlock_add_rule", "adds one path-beneath rule to that ruleset"],
   ["SYS_landlock_restrict_self", "applies the ruleset to this process, irrevocably"],
   ["SYS_seccomp", "installs the filter, and asks whether an action is available"],
+]);
+
+/**
+ * The same, for `P2-RF21`'s process-class enforcement backend.
+ *
+ * It is three rather than four because its Landlock ruleset has no rule: a
+ * class that does not declare `WriteStagedArtifact` handles every write-shaped
+ * access and grants none of them, so there is no path to add.
+ */
+const ENFORCEMENT_CALLED_SYSCALLS = new Map([
+  ["SYS_landlock_create_ruleset", "creates the write-refusing ruleset, and probes the ABI version"],
+  ["SYS_landlock_restrict_self", "applies the ruleset to this process, irrevocably"],
+  ["SYS_seccomp", "installs the filter, and asks whether an action is available"],
+]);
+
+/**
+ * Every file that builds a seccomp deny list, the syscalls it installs *with*,
+ * and the floor its own `SYS_` inventory has to clear.
+ *
+ * `P2-G4` wrote this rule for one file and keyed it on that file's name, so
+ * `P2-RF21`'s backend -- which builds a second deny list, for the one
+ * capability a process class does not declare -- would have been read by
+ * nothing. Keying it on a map is what applies the same rule to both: every
+ * `SYS_` name in each file is either one it installs with or one that sits
+ * inside its `denied_syscalls` function.
+ *
+ * The floor is per file because the two lists are not the same size: the
+ * worker refuses sockets, process creation and the sandbox syscalls; this one
+ * refuses exactly the socket family plus the submission-queue path around it,
+ * because it enforces one capability and not a job.
+ */
+const SECCOMP_DENY_LISTS = new Map([
+  ["crates/worker/src/sandbox/linux.rs", { called: CALLED_SYSCALLS, minimumNamed: 20 }],
+  [
+    "crates/process-sandbox/src/linux.rs",
+    { called: ENFORCEMENT_CALLED_SYSCALLS, minimumNamed: 14 },
+  ],
 ]);
 
 /**
@@ -2991,6 +3228,7 @@ const RAW_SYSCALL_FILES = new Map([
     ]),
   ],
   ["crates/worker/src/sandbox/linux.rs", CALLED_SYSCALLS],
+  ["crates/process-sandbox/src/linux.rs", ENFORCEMENT_CALLED_SYSCALLS],
 ]);
 
 /**
@@ -3197,6 +3435,13 @@ const SOCKET_CAPABLE_CLOSURES = {
   "academic-ledger": ["libc"],
   "academic-policy": ["libc"],
   "academic-portability": ["libc", "rustix", "windows-sys"],
+  // `P2-RF21`. `libc` reaches it through `academic-policy`'s `rusqlite`. Its
+  // own `libc` edge is optional, target-specific and behind the non-default
+  // `native-enforcement` feature, and this resolve is the default feature set,
+  // which is itself the claim that the default lane links no enforcement
+  // backend. The source half above is what says the crate names the socket
+  // syscalls to refuse them rather than to make them.
+  "academic-process-sandbox": ["libc"],
   "academic-projections": ["libc", "rustix", "windows-sys"],
   "academic-record": ["libc"],
   "academic-recovery": ["libc"],
@@ -3605,7 +3850,8 @@ test("only_egress_crate_has_a_socket", async () => {
   }
 
   for (const [file, spellings] of observed) {
-    if (file === SANDBOX_DENY_LIST) {
+    if (SECCOMP_DENY_LISTS.has(file)) {
+      const { called: calledSyscalls, minimumNamed } = SECCOMP_DENY_LISTS.get(file);
       // Every socket syscall this file names has to be inside the function
       // that builds the deny list. A file that names one anywhere else is
       // calling it, not refusing it.
@@ -3664,7 +3910,7 @@ test("only_egress_crate_has_a_socket", async () => {
               `${file} calls libc::syscall with ${first} rather than a libc::SYS_ name`,
             );
             assert.equal(
-              CALLED_SYSCALLS.has(first.slice("libc::".length)),
+              calledSyscalls.has(first.slice("libc::".length)),
               true,
               `${file} calls ${first}, which is not one of the reviewed syscalls it installs with`,
             );
@@ -3692,9 +3938,12 @@ test("only_egress_crate_has_a_socket", async () => {
       // `denied_syscalls` and every scan passed. This is what the contract
       // pages claimed and the code did not do.
       const named = new Set(whole.match(/\bSYS_[A-Za-z0-9_]+\b/gu) ?? []);
-      assert.ok(named.size >= 20, `${file} names only ${named.size} syscalls`);
+      assert.ok(
+        named.size >= minimumNamed,
+        `${file} names only ${named.size} syscalls`,
+      );
       for (const name of named) {
-        if (CALLED_SYSCALLS.has(name)) {
+        if (calledSyscalls.has(name)) {
           continue;
         }
         const inside = denied[0].split(name).length - 1;
@@ -3707,7 +3956,7 @@ test("only_egress_crate_has_a_socket", async () => {
         );
       }
       // An entry nobody calls any more is a stale exception.
-      for (const name of CALLED_SYSCALLS.keys()) {
+      for (const name of calledSyscalls.keys()) {
         assert.equal(named.has(name), true, `${file} no longer calls ${name}`);
       }
       continue;
@@ -3737,6 +3986,53 @@ test("only_egress_crate_has_a_socket", async () => {
         [],
         "a crate depends on academic-worker, so the probe is reachable from it",
       );
+      continue;
+    }
+    if (file === ENFORCEMENT_PROBE) {
+      // The same bargain, with one difference that has to be stated rather than
+      // copied: three product crates *do* depend on `academic-process-sandbox`,
+      // because a process class that enforces its declaration has to link the
+      // thing that enforces it. `academic-worker`'s rule -- nothing may depend
+      // on it -- is not available here and is not weakened either: it still
+      // holds, unchanged, in the branch above.
+      //
+      // What keeps this probe out of a product build instead is that a
+      // dependent links a package's *library* target and never its binaries, so
+      // a `[[bin]]` with `required-features` is unreachable from a dependent
+      // whatever edges exist. Both halves are read from `cargo metadata`: the
+      // probe is the package's only binary and it needs the non-default
+      // feature, and the packages that depend on it are exactly the three
+      // process classes, each of which still declares exactly its own binary.
+      const sandbox = packagesByName.get("academic-process-sandbox");
+      assert.ok(sandbox, "academic-process-sandbox is absent");
+      const probeTargets = sandbox.targets.filter((target) => target.kind.includes("bin"));
+      assert.deepEqual(
+        probeTargets.map((target) => target.name),
+        ["academic-process-sandbox-probe"],
+        "the enforcement crate gained a binary target beside its probe",
+      );
+      assert.deepEqual(
+        probeTargets.map((target) => target["required-features"] ?? []),
+        [["native-enforcement"]],
+        "the enforcement probe is buildable without the native-enforcement feature",
+      );
+      const dependents = workspacePackages
+        .filter((pkg) => workspaceDependencyNames(pkg).includes("academic-process-sandbox"))
+        .map((pkg) => pkg.name)
+        .toSorted();
+      assert.deepEqual(
+        dependents,
+        ["academic-capture-client", "academic-egress", "academic-repository-analyzer"],
+        "a crate outside the three enforced process classes depends on the enforcement crate",
+      );
+      for (const name of dependents) {
+        const dependent = packagesByName.get(name);
+        assert.deepEqual(
+          dependent.targets.filter((target) => target.kind.includes("bin")).map((t) => t.name),
+          [name],
+          `${name} declares a binary target that is not its own process entry point`,
+        );
+      }
       continue;
     }
     if (file === CAPTURE_DEVICE_LAYER) {
@@ -5622,6 +5918,44 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     }
   }
 
+  // `P2-RF21` adds the process-class enforcement boundary as
+  // `academic-process-sandbox` and admits no external crate. It reaches one
+  // direct edge, `libc`, at the version `P2-G4` already reviewed for
+  // `academic-worker`, and it deliberately reaches no `windows-sys`: it applies
+  // nothing on Windows, so an edge there would be a capability with no user.
+  // The same per-edge fields are required as above, and for the same reason.
+  const {
+    receipt: enforcementReceipt,
+    admitted: enforcementAdmitted,
+    pathPackages: enforcementPathPackages,
+  } = receiptFor("P2-RF21");
+  assert.equal(enforcementAdmitted.size, 0, "P2-RF21 must admit no external crate");
+  assert.deepEqual([...enforcementPathPackages], ["academic-process-sandbox@0.1.0"]);
+  assert.deepEqual(enforcementReceipt.summary.npm_additions, []);
+  assert.equal(enforcementReceipt.summary.npm_install_scripts_added, false);
+  assert.deepEqual(Object.keys(enforcementReceipt.direct_edge_review).toSorted(), ["libc"]);
+  for (const [name, edge] of Object.entries(enforcementReceipt.direct_edge_review)) {
+    assert.equal(edge.already_in_lock, true, `${name} is claimed as new`);
+    assert.equal(
+      lockTuples.some(([lockName, version]) => lockName === name && version === edge.version),
+      true,
+      `${name}@${edge.version} is not the version in Cargo.lock`,
+    );
+    for (const field of [
+      "owner",
+      "license",
+      "features",
+      "why_this_dependency_belongs_inside_its_trust_boundary",
+      "advisory_path",
+    ]) {
+      assert.equal(
+        typeof edge[field] === "string" && edge[field].length > 0,
+        true,
+        `${name}'s admission receipt has no ${field}`,
+      );
+    }
+  }
+
   // `P2-G5` adds the untrusted-content boundary as `academic-untrusted-content`
   // and admits no external crate: its product edges are `academic-egress-boundary`,
   // `sha2` and `thiserror`, and its dev edge is `academic-policy`, all four
@@ -6994,6 +7328,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     ...keyReceipt.direct_workspace_dependencies,
     ...scenarioReceipt.direct_workspace_dependencies,
     ...sandboxReceipt.direct_workspace_dependencies,
+    ...enforcementReceipt.direct_workspace_dependencies,
   };
   const directRegistryDependencies = workspacePackages.flatMap((pkg) =>
     pkg.dependencies.filter((dependency) => dependency.source !== null),

@@ -24,6 +24,15 @@ classes with everything else in the plan held equal, observes `SCOPE_MISMATCH`
 and zero bytes written for each, and then transmits successfully as
 `EgressProxy` so the refusals are attributable to the class.
 
+That is a refusal inside a process. The matching refusal *of* a process is
+[process capability enforcement](process-capability-enforcement.md): the
+`academic-egress` binary now enters an enforcement boundary before any work, and
+a class that does not declare `OpenOutboundSocket` is refused the socket by the
+operating system rather than by a library check it could be reached around. The
+egress-proxy class is the one class that keeps its socket there, and it is
+refused every filesystem write instead, which is the same rule applied to what
+it does not declare.
+
 ## What ships, and what does not
 
 The crate ships the versioned DLP rulepack, structural minimization, the

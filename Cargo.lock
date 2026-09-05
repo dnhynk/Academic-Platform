@@ -91,6 +91,7 @@ name = "academic-capture-client"
 version = "0.1.0"
 dependencies = [
  "academic-policy",
+ "academic-process-sandbox",
 ]
 
 [[package]]
@@ -341,6 +342,7 @@ name = "academic-egress"
 version = "0.1.0"
 dependencies = [
  "academic-policy",
+ "academic-process-sandbox",
 ]
 
 [[package]]
@@ -649,6 +651,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "academic-process-sandbox"
+version = "0.1.0"
+dependencies = [
+ "academic-policy",
+ "libc",
+ "thiserror",
+]
+
+[[package]]
 name = "academic-projections"
 version = "0.1.0"
 dependencies = [
@@ -754,6 +765,7 @@ name = "academic-repository-analyzer"
 version = "0.1.0"
 dependencies = [
  "academic-policy",
+ "academic-process-sandbox",
 ]
 
 [[package]]

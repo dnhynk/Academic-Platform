@@ -42,6 +42,7 @@ members = [
   "crates/offering",
   "crates/portability",
   "crates/policy",
+  "crates/process-sandbox",
   "crates/projections",
   "crates/proposal",
   "crates/readiness",

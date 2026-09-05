@@ -315,6 +315,10 @@ const ENV_VOCABULARY = new Map([
     "AMBIENT_ROOT: a directory the machine owns. Every name built on it is a shared name, so each appears in SHARED_NAME_SITES.",
   ],
   [
+    "env::consts",
+    "BUILD_CONSTANT: `OS`, `ARCH` and their neighbours are `&'static str` fixed by the target triple at compile time. Nothing on the machine can change one, so it names nothing and reads nothing.",
+  ],
+  [
     "env::var",
     "AMBIENT_READ: the value is whatever this machine put there. Each name read appears in ENVIRONMENT_NAMES.",
   ],
@@ -552,6 +556,10 @@ const SHARED_NAME_SITES = new Map([
   [
     'crates/daemon/tests/phase1_exit.rs :: lane.join("debug")',
     "SHARED, and inside the shared lane above: cargo puts a debug profile's output there and every build with these features produces the same bytes. It is read, never removed.",
+  ],
+  [
+    'crates/process-sandbox/tests/native.rs :: std::env::temp_dir().join(format!("t215-probe-{}-{}-{serial}",class.as_str(),std::process::id()))',
+    "UNIQUE: process id and a counter. The counter is not decoration -- the three suites in that file run as parallel threads of one process, so a name built from the process id alone had them sharing a directory and deleting each other's, which is how the probe reported a malformed invocation instead of a refusal.",
   ],
   [
     'crates/policy/tests/process_isolation.rs :: std::env::temp_dir().join(format!("academic-policy-canary-{}-{nonce}",std::process::id()))',
