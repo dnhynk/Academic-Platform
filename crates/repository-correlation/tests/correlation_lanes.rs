@@ -2218,8 +2218,7 @@ fn every_refusal_correlate_writes_is_reached() -> TestResult {
     // lib.rs:316 -- a finding about another snapshot. The second corpus holds
     // different bytes, so its findings are well-formed findings carrying a
     // different snapshot identity.
-    let (other_snapshot, other_analysis) =
-        analyzed_with(&SEVEN_WITHOUT_TESTS, BRANCH, V1, None)?;
+    let (other_snapshot, other_analysis) = analyzed_with(&SEVEN_WITHOUT_TESTS, BRANCH, V1, None)?;
     assert_ne!(other_snapshot.snapshot_id(), snapshot.snapshot_id());
     let other_findings = findings_of(&other_analysis, &[])?;
     assert!(!other_findings.is_empty(), "the other corpus produced none");

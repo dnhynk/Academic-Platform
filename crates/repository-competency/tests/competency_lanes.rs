@@ -1773,12 +1773,16 @@ fn a_generated_code_warrant_needs_an_explanation() -> TestResult {
         vec![ChangedSite::new(site, ChangeKind::ErrorHandling)],
     )?;
 
-    for empty in ["", "   ", "	
- "] {
+    for empty in [
+        "", "   ", "	
+ ",
+    ] {
         assert!(
             matches!(
                 ExplainedByUser::after(modified.clone(), empty),
-                Err(CompetencyError::WarrantStepHasNoNote(WarrantStep::Explained))
+                Err(CompetencyError::WarrantStepHasNoNote(
+                    WarrantStep::Explained
+                ))
             ),
             "an explanation of {empty:?} was admitted"
         );

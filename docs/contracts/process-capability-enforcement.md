@@ -9,8 +9,27 @@ what makes that set true of the running process, or stops the process.
 > class declares. Where that cannot be enforced, the process refuses to start.
 
 `academic_process_sandbox::enter` is the whole of it. A process-class binary
-calls it at the top of `main`, before any work, and there are exactly two
-outcomes:
+does not call it at the top of `main`; it has no `main` of its own to call it
+from. `academic_process_sandbox::class_main!` expands to the whole of `main`,
+and the binary crate's `src/main.rs` is three items — the `use`, the class
+`const`, and that macro call — so there is no statement position above the
+entry for anything to occupy. The macro's argument is an `ident` fragment, so
+a statement written into the argument, where it would be evaluated before
+`enter` runs, does not compile.
+
+*"Called at the top of `main`, before any work"* was a sentence nothing held
+anyone to until `P2-RF31`. `P2-A5`'s sixth audit put one live `std::net` name
+resolution above the entry in the shipped `academic-repository-analyzer` and
+measured the whole workspace, on both native hosts, reporting no difference at
+all. What that sentence had was four hand-written `main` bodies; what it has
+now is one macro body, in this crate, whose text is pinned. What remains
+outside it is anything the runtime executes before `main` at all — a
+constructor linked into `.init_array`, an attribute of that shape — and
+`no_process_class_binary_authors_a_statement_before_it_enters` in
+`crates/contracts/tests/item_inventory_scans.rs` is what says the crate holds
+no other item to write one in.
+
+There are exactly two outcomes:
 
 * an `Enforcement`, which means the refusals were installed **and** re-observed
   from the kernel, and the process may continue; or

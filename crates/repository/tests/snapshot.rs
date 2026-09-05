@@ -1286,7 +1286,15 @@ fn every_reachable_refusal_this_crate_writes_is_reached() -> TestResult {
     // that is not relative, forward-slashed and free of `..`. It is reached
     // from `SourceTree::paths` and from `SourceTree::read`, both public, and
     // nothing in the workspace handed either a path it had to refuse.
-    for malformed in ["", "/etc/passwd", "src\\orders.rs", "C:/orders.rs", "a/../b", "a//b", "./a"] {
+    for malformed in [
+        "",
+        "/etc/passwd",
+        "src\\orders.rs",
+        "C:/orders.rs",
+        "a/../b",
+        "a//b",
+        "./a",
+    ] {
         let entries = vec![SourceEntry::new(malformed, b"x".to_vec())];
         let tree = SourceTree::Entries(&entries);
         assert!(

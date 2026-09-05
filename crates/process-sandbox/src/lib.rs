@@ -12,8 +12,10 @@
 //! > its class declares. Where that cannot be enforced, the process refuses to
 //! > start.
 //!
-//! [`enter`] is the whole of it. It is called at the top of `main`, before any
-//! work, and it either returns an [`Enforcement`] — meaning the refusals were
+//! [`enter`] is the whole of it. It runs as the first statement of `main`
+//! because [`class_main`] **is** `main` — a class binary writes no `main` of
+//! its own, so there is no statement position above the entry — and it either
+//! returns an [`Enforcement`] — meaning the refusals were
 //! installed *and* re-observed from the kernel — or an [`EnforcementError`],
 //! and a caller that gets the error must exit without doing work. There is no
 //! third outcome: a partial application is an error, and a failed verification
@@ -317,7 +319,8 @@ pub const UNSUPPORTED_PLATFORM: &str =
 /// Applies this class's refusals to the calling process, or refuses to let it
 /// start.
 ///
-/// Call it at the top of `main`, before any work. On success the process holds
+/// Expanded as the first statement of `main` by [`class_main`], which is how
+/// "before any work" is enforced rather than asked for. On success the process holds
 /// exactly the capabilities in [`ProcessCapability::ALL`] that its class
 /// declares, for the two this crate enforces; on failure the caller must exit
 /// without doing work.

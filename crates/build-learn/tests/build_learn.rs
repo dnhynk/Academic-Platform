@@ -1655,7 +1655,10 @@ fn every_refusal_this_crate_writes_is_reached() -> TestResult {
         UnresolvedDecision::open(
             id("ordering")?,
             text("central ordering vs peer/offline merge")?,
-            vec![Alternative::named(id("central")?, text("central ordering")?)],
+            vec![Alternative::named(
+                id("central")?,
+                text("central ordering")?
+            )],
         ),
         Err(BuildLearnError::DecisionHasOneAlternative(_))
     ));

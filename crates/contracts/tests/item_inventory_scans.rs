@@ -100,37 +100,39 @@
 //!
 //! # What this does not claim
 //!
-//! The pin reaches every package either derivation reports, and no other. The
-//! two numbers that says — how many packages the workspace compiles and how
-//! many of them are pinned — are **asserted** by
-//! [`the_pin_names_what_it_covers_and_what_it_does_not`] rather than written
-//! here, because `P2-A5`'s fifth audit found this paragraph claiming 45
-//! unpinned crates and 68 in the workspace where the tree held 47 and 70, and
-//! recorded that it survived precisely because nothing asserted either number.
-//! Both moved again under `P2-RF29` and `P2-X3` while that was true. What is
-//! workspace-wide, and stays so whatever those numbers are, is
-//! [`every_item_that_reaches_a_closed_type_is_pinned`], which is over the whole
-//! workspace per closed type, and
-//! [`the_items_tile_every_file_the_workspace_compiles`], which is over files.
+//! The pin reaches **every package the workspace compiles**, and that number
+//! is **asserted** by [`the_pin_names_what_it_covers_and_what_it_does_not`]
+//! rather than written here, because `P2-A5`'s fifth audit found this
+//! paragraph claiming 45 unpinned crates and 68 in the workspace where the
+//! tree held 47 and 70, and recorded that it survived precisely because
+//! nothing asserted either number. It moved again under `P2-RF29`, `P2-X3` and
+//! `P2-RF30` while that was true. Since `P2-RF31` there is no unpinned
+//! remainder to keep in step: the selection is the crate walk, the two
+//! derivations that used to select are a control on that walk, and the
+//! remainder is asserted empty by name.
 //!
-//! Inside the pinned packages, a body is in the pin. Outside them a body is covered only
-//! where the item reaches a closed type, and the line-anchored `impl_headers`
-//! this file supplements rather than replaces is what is left over the rest.
-//! That residue is what `#[allow(non_local_definitions)]` costs: written on a
-//! declaration it is part of the key already, written inside a body it is not,
-//! and it switches off the one thing between a body and a globally effective
-//! trait impl.
+//! A body is therefore in the pin for every package. What a body is **not** is
+//! whatever `#[allow(non_local_definitions)]` switches off: written on a
+//! declaration the attribute is part of the key already, written inside a body
+//! it is not, and it removes the one thing between a body and a globally
+//! effective trait impl. [`every_item_that_reaches_a_closed_type_is_pinned`]
+//! is what is over the whole workspace *per type* rather than per package, and
+//! [`the_items_tile_every_file_the_workspace_compiles`] is what is over files.
 //!
-//! And a fingerprint is over [`support::Item::text`], the view with comments
-//! and string bodies blanked. So a doc comment is free — measured — and **a
-//! same-length change to a string literal's contents inside a leaf moves
-//! nothing here**: replacing `ORIGINAL_CLASSIFICATION`'s `"RESTRICTED"` with a
-//! ten-character substitute passes every rule in this file, and what refuses
-//! it is `raw_remains_restricted_under_authorized_access`, a behavioural test
-//! one crate over. That residue is a data substitution rather than a route:
-//! Rust executes no code written inside a string, and the two constructs that
-//! take a path as a literal — `include!` and `#[path]` — put it in the item's
-//! *declaration*, which is read from the restored view and is in the key.
+//! A fingerprint is over [`support::Item::text`] **and**
+//! [`support::Item::literals`]. The first is the view with comments and
+//! literal bodies blanked, which is what makes a name found in it a name the
+//! compiler sees rather than one a doc comment mentions; the second carries
+//! the literal values themselves, length-prefixed, because the first erases a
+//! literal's content *and* its length. `P2-A5`'s sixth audit measured what
+//! that cost: the two domain-separation constants of
+//! `crates/repository-competency` were set equal to one another and the whole
+//! workspace stayed green on both hosts. That form now fails here naming the
+//! constant, and so does exchanging one byte of a character class for another.
+//! **A comment is still free and so is whitespace** — [`support::Item::text`]
+//! is the whitespace-collapsed blanked view, so a reflow moves no key, which
+//! is measured rather than assumed and is the reason a pin line is worth
+//! reading when it does move.
 
 mod support;
 
@@ -1106,19 +1108,21 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
     Ok(())
 }
 
-/// One reader, copied sixteen times, and the copies are held to being one.
+/// One reader, copied into every crate that scans its own reaches, and the
+/// copies are held to being one text.
 ///
 /// `P2-R2` repaired a reach guard that a token list walked past; `P2-A5`
 /// measured the repaired one walked past by
 /// `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)`, which resolves
-/// a name. The helper it repaired is copied into every crate that scans its own
-/// reaches, and the audit counted fourteen with `crates/*/tests/*.rs`; there are
-/// **sixteen**, because `academic-integrations` and `academic-next-lecture` keep
-/// theirs one directory further down in `tests/support/mod.rs`.
+/// a name. [`REACH_READERS`] is the whole set of files holding a copy, read
+/// out of the tree and compared here in both directions, so the count lives in
+/// that array rather than in this sentence: an audit that counted the carriers
+/// with `crates/*/tests/*.rs` missed the two that keep theirs one directory
+/// further down in `tests/support/mod.rs`.
 ///
 /// **Why they are not one function.** They could be: a dev-dependency crate
 /// holding the helpers would give one copy. It would also add an edge to the
-/// dependency closure of sixteen crates, and that closure is the subject of
+/// dependency closure of every carrier crate, and that closure is the subject of
 /// `tools/phase1-scaffold-policy.test.mjs`'s dependency map, its acyclic graph
 /// and each crate's own `USE_ITEMS` inventory -- scans whose whole point is
 /// that the closure does not move. Paying in the thing being protected to
@@ -1128,10 +1132,10 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
 /// read rather than one it imports.
 ///
 /// **What replaces one copy.** This: the bodies are compared against each
-/// other, so sixteen copies are one text, and every carrier crate is required
-/// to hold the driving control. One driven copy plus textual identity is the
-/// same guarantee as one function, and a seventeenth copy that arrives with the
-/// old body fails here by name instead of waiting for an audit.
+/// other, so every copy is one text, and every carrier crate is required to
+/// hold the driving control. One driven copy plus textual identity is the same
+/// guarantee as one function, and a copy that arrives with the old body fails
+/// here by name instead of waiting for an audit.
 #[test]
 fn the_reach_readers_are_one_reader() -> TestResult {
     let repository = repository_root()?;
