@@ -155,9 +155,25 @@ Inside the band the number is the user's; outside it there is no value at all.
 
 **It fails, on both axes.** 967 is below 990 and 33 is above 0. That is the
 measured result and it is the intended default posture: with the corpus and the
-threshold this build ships, **no automatic redaction claim can be made**, and the
-only plan a profile can build is a manual one whose every exclusion a person
-decided.
+**default** threshold this build ships, no automatic redaction claim can be
+made, and the only plan such a profile can build is a manual one whose every
+exclusion a person decided.
+
+**That fail-closed is a property of the default configuration and not of the
+build, and the difference matters.** `P2-A4` measured it: the shipped corpus's
+967 permille clears `ABSOLUTE_ACCURACY_FLOOR` (900) and its 33 permille clears
+`ABSOLUTE_MISSED_STUDENT_CEILING` (50), so `DiarizationThreshold::new(2, 900, 50)`
+is a legal configuration inside the sanctioned band under which this corpus
+produces a witness and `RedactionMode::Automatic` becomes reachable — at a
+measured **33 permille of student speech left labelled instructor**. Nothing in
+this build has to change for that; a profile choosing a threshold at the floor
+is enough.
+
+So the sentence this page supports is "**this build's default configuration
+makes no automatic redaction claim, and the band admits a configuration under
+which the shipped corpus does**", not "this build makes no automatic redaction
+claim at all". What the band permits is the subject of the section below, and
+both of its bounds are driven — deleting either one is caught.
 
 `below_threshold_diarization_blocks_automatic_redaction` drives both refusals
 independently, drives the pass arm under a configuration inside the legal band

@@ -163,18 +163,60 @@ folding it into a pass would manufacture a verdict, which is the rule
 `InputValue::Unknown` already states for the engine harness. A resume writes a
 gap frame, so such a hole is normally explained; the report says both things.
 
-### Why a redaction cannot be complete
+### The two denominators are not the same, because section 12.6 does not write
+### them the same
 
-The coverage denominator excludes only the segments declared non-speech, because
-section 12.6's own sentence is "mapped non-silence segments / all eligible
-segments" and silence is what is not eligible. A redacted segment and a
-recording failure are eligible and unmapped, so they lower the ratio and the
-document is `INCOMPLETE`.
+Section 12.6 states the ratios as:
 
-**That is the intended reading and it has a cost worth stating**: a lecture with
-one student's voice redacted can never carry a completeness badge. It should
-not. The document no longer contains everything that was said, and section
-34.1's row for lecture-PDF information loss is about exactly that.
+```text
+segment coverage = mapped non-silence transcript segments / all eligible segments
+token coverage   = mapped normalized tokens / all normalized tokens
+```
+
+**The segment line carries `non-silence`. The token line carries no qualifier.**
+The implementation reads them apart on exactly that difference:
+
+| ratio | numerator | denominator | what `EXCLUDED_NON_SPEECH` does |
+|---|---|---|---|
+| segment | mapped segments | eligible segments less those declared non-speech | leaves both sides |
+| token | mapped tokens | **all** normalized tokens | leaves the numerator only |
+
+A redacted segment and a recording failure are eligible and unmapped on both
+lines, so they lower both ratios and the document is `INCOMPLETE`.
+
+**The segment line has two readings and only one of them is closed.** `non-silence`
+can qualify the numerator alone — "the mapped, non-silence segments, over all
+eligible segments" — in which case a declaration would lower the segment ratio
+too and the subtraction above would be wrong. It can equally restrict the whole
+ratio to the non-silence subset, which is what the code does. Nothing in section
+12.6 chooses between them, so the code keeps the reading it shipped with and
+`section_12_6_states_both_ratios` parses both lines back out of
+`PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` in both directions: if the
+document stops writing the qualifier on one line and not the other, that test
+fails and this paragraph has to be rewritten rather than quietly diverged from.
+
+**The token line has one reading, and the code used to break it.** Until `P2-RF20`
+the non-speech tokens were subtracted from the *token* denominator as well, on
+the strength of the segment line's word. `RawSegment::close` refuses a
+zero-token segment, so every segment a caller can declare non-speech holds at
+least one transcribed word — the subtraction was therefore not an edge case but
+the only way the status could ever be used. `P2-A4` measured a document
+rendering **one of the fixture's twenty-one tokens** minting a
+`CompletenessWitness` and reading `COMPLETE` on Windows native and on WSL2, with
+four transcribed segments of real lecture speech declared `SILENCE` and absent
+from the PDF. Under section 12.6's own denominator that document is `1/21` and
+`INCOMPLETE`.
+
+### Why a redaction — or a non-speech declaration — cannot be complete
+
+**This has a cost worth stating**: a lecture with one student's voice redacted
+can never carry a completeness badge, and neither can one with a single segment
+declared non-speech, because that segment's tokens stay in the token
+denominator. It should be so. The document no longer contains everything that
+was said, and section 34.1's row for lecture-PDF information loss is about
+exactly that. `EXCLUDED_NON_SPEECH` remains an account of where a segment went —
+section 12.6 requires every segment to carry one of the four statuses — but it
+is not a discount on the completeness claim.
 
 ### The unmapped condition is implied, and is kept anyway
 
@@ -196,10 +238,12 @@ parameter, no setter, and no second producer — the whole `impl` is pinned, the
 witness construction is counted at one site, and the `COMPLETE` upgrade is
 counted at one caller.
 
-Six things have to hold for a witness: no unmapped segment, whole segment
-coverage, whole token coverage, no ordering finding, no unaccounted capture, no
-unexplained hole, and a partition that reconciles. There is no argument that
-relaxes any of them.
+These have to hold for a witness, and there is no argument that relaxes any of
+them: no unmapped segment, whole segment coverage, whole token coverage, no
+ordering finding, no unaccounted capture, no unexplained hole, and a partition
+that reconciles. They are listed and not counted — this page said "six" and the
+function's own doc comment said "five" while the code checked seven, which is
+`P2-A4`'s F7 and the sixth count/list disagreement this Run has measured.
 
 ## The PDF is a rendering, and it is a sink
 

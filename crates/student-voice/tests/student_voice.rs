@@ -14,6 +14,7 @@ use academic_consent::{
     SubjectInventory,
 };
 use academic_domain::ContentDigest;
+use academic_lecture_document::RedactionBasis;
 use academic_student_voice::{
     ABSOLUTE_ACCURACY_FLOOR, ABSOLUTE_MISSED_STUDENT_CEILING, AccessRefusal, AccuracyRefusal,
     AffectedProjectionKind, CORPUS_ID, CORPUS_VERSION, CaptureUnderReview, CorpusFault,
@@ -21,9 +22,9 @@ use academic_student_voice::{
     DiarizationThreshold, EvidenceIndex, HoldRefusal, HoldState, IngestionJobKind, IngestionStage,
     LectureDeletionPlan, LectureSource, ManualExclusion, ORIGINAL_CLASSIFICATION, PiiClass,
     PiiFinding, ProjectionEffect, ProjectionRecord, RawAccessGrant, RawAccessLog, RedactionFault,
-    RedactionMode, RedactionPlan, RedactionScope, ReviewDecision, ReviewOutcome, ReviewedCapture,
-    SpeakerTargeting, ThresholdFault, VoiceSpan, apply_deletion, corpus_v1, dispatch,
-    inherit_terms, measure, preview_deletion, redact,
+    RedactionMode, RedactionPlan, RedactionPolicy, RedactionScope, ReviewDecision, ReviewOutcome,
+    ReviewedCapture, SourceUtterance, SpeakerTargeting, ThresholdFault, VoiceSpan, apply_deletion,
+    corpus_v1, dispatch, inherit_terms, measure, preview_deletion, redact,
 };
 use academic_transcription::Speaker;
 
@@ -283,6 +284,103 @@ fn below_threshold_diarization_blocks_automatic_redaction() -> TestResult {
             Err(RedactionFault::AutomaticActorCannotRedact)
         );
     }
+
+    // The same guard sits on the other constructor and only this one was
+    // driven. `P2-A4`'s F5: deleting `RedactionPolicy::published`'s actor check
+    // left the whole suite green, and it is load-bearing — a policy published
+    // by a `ModelRun` resolved against a user-decided reference, because
+    // `RedactionPolicyRef::citing` checks the *reference's* decider and
+    // `resolves` compares only the digest and the basis. Section 27.2 does not
+    // let a model make a redaction judgement, and the judgement is the policy.
+    for actor in automatic_actors()? {
+        assert_eq!(
+            RedactionPolicy::published(
+                1,
+                RedactionBasis::PermissionCondition,
+                SpeakerTargeting::NonInstructorVoices,
+                RedactionScope::DerivativeOnly,
+                actor,
+            ),
+            Err(RedactionFault::AutomaticActorCannotRedact),
+        );
+    }
+    // The control: the same call with a user succeeds, so the loop above is not
+    // passing because every call to `published` fails.
+    assert!(
+        RedactionPolicy::published(
+            1,
+            RedactionBasis::PermissionCondition,
+            SpeakerTargeting::NonInstructorVoices,
+            RedactionScope::DerivativeOnly,
+            user()?,
+        )
+        .is_ok()
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// 2b. a_redaction_that_removes_nothing_is_refused_on_both_paths
+// ---------------------------------------------------------------------------
+
+/// `RedactionFault::NothingExcluded` is driven where `redact` raises it, not
+/// only where `RedactionPlan::manual` does.
+///
+/// `P2-A4`'s F11: `derivative.rs`'s module doc says this guard is the one
+/// against the vacuous case and that "the suite drives it", and the suite drove
+/// exactly one of its two sites. Deleting the check inside `redact` left every
+/// row green. The reachable path is an **automatic** plan — which has no manual
+/// list for `RedactionPlan::manual` to refuse — whose `NamedSpeakers` policy
+/// targets somebody who does not speak in the source. Without the guard that
+/// call returns a "redacted derivative" holding every utterance in the lecture,
+/// students included, with `REDACTED` on it.
+#[test]
+fn a_redaction_that_removes_nothing_is_refused_on_both_paths() -> TestResult {
+    let directory = tempfile::tempdir()?;
+    let capture = clean_capture(&directory, "vacuous")?;
+    let manifest = full_manifest(&capture)?;
+    let transcribed = transcribe(&manifest)?;
+    let lineage = transcribed.lineage();
+    let source = LectureSource::of(lineage, 1, parent_terms())?;
+
+    // A speaker index the fixture does not use. Read off the source rather than
+    // assumed, so the case stays vacuous if the fixture gains a speaker.
+    let spoken: Vec<Speaker> = source
+        .utterances()
+        .iter()
+        .map(SourceUtterance::speaker)
+        .collect();
+    let absent = (0..u32::MAX)
+        .map(Speaker::StudentUnknown)
+        .find(|speaker| !spoken.contains(speaker))
+        .ok_or("the fixture has every student index")?;
+
+    let policy = named_speaker_policy(vec![absent])?;
+    let reference = reference_to(&policy)?;
+    let witness = measure(&perfect_corpus()?).witness(DIARIZATION_THRESHOLD_V1)?;
+    let plan = RedactionPlan::automatic(policy, witness);
+    assert_eq!(plan.manual_exclusions(), &[], "the automatic arm is empty");
+    assert_eq!(
+        redact(&plan, &reference, &source, parent_terms()),
+        Err(RedactionFault::NothingExcluded),
+        "a plan targeting nobody in the source produced a derivative"
+    );
+
+    // The control: the same automatic arm with a speaker who *is* in the source
+    // is a redaction, so the refusal above is about the empty exclusion set and
+    // not about the automatic mode.
+    let present = named_speaker_policy(vec![
+        spoken
+            .iter()
+            .copied()
+            .find(|speaker| !matches!(speaker, Speaker::Instructor))
+            .ok_or("the fixture has no non-instructor speaker")?,
+    ])?;
+    let present_reference = reference_to(&present)?;
+    let present_witness = measure(&perfect_corpus()?).witness(DIARIZATION_THRESHOLD_V1)?;
+    let present_plan = RedactionPlan::automatic(present, present_witness);
+    let redaction = redact(&present_plan, &present_reference, &source, parent_terms())?;
+    assert!(!redaction.derivative().excluded().is_empty());
     Ok(())
 }
 

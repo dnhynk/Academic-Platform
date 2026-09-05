@@ -126,8 +126,20 @@ got for each.
 |---|---|---|---|
 | Windows 11 26200 | microphone | `\\?\USB#VID_0DB0&PID_7696&MI_00#…#{65e8773d-…}\WaveIn2` and four more kernel-streaming capture filters | `OPENED` |
 | Windows 11 26200 | camera | none — `KSCATEGORY_VIDEO_CAMERA` is empty on this host | `NOT_RUN` |
-| WSL2 `6.18.33.2-microsoft-standard-WSL2` | microphone | `/dev/snd` | `OPENED` |
+| WSL2 `6.18.33.2-microsoft-standard-WSL2` | microphone | `/dev/snd` — a **directory**, not a device node | `OPENED` (a directory open) |
 | WSL2 | camera | none — no `/dev/video*` exists, so `/dev/null` stands in and the row says so | stand-in |
+
+**The two hosts are not measuring the same kind of thing, and the rows should
+be read accordingly.** The Windows rows reach real kernel-streaming capture
+filters, so a Windows row is "a capture device was refused". Neither WSL2 row
+reaches a capture device: `/dev/snd` is a directory that `File::open` succeeds
+on, which is why it passes the `measurable_targets` filter and becomes the
+microphone target, and `/dev/null` is the camera stand-in. What a WSL2 row
+establishes is "**a path outside the ruleset is refused and one inside it is
+admitted**" — the Landlock enforcement it measures is real and falsifiable
+(`P2-A4` §4.2 removed `enter`'s body and both rows failed), but it is not
+evidence that a microphone was refused on that host. `P2-A4`'s F13 is this
+sentence.
 
 `/dev/snd/timer` is the only node under `/dev/snd` on that host and it is
 `EACCES` to a user outside the `audio` group with or without a ruleset, so no

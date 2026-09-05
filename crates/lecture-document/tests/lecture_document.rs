@@ -14,20 +14,21 @@ use std::error::Error;
 use academic_domain::{ContentDigest, engines::EngineVersion};
 use academic_lecture_document::{
     COVERAGE_CONFIG_V1, CaptureExclusion, CaptureExclusionLedger, CaptureExclusionReason,
-    CoverageFault, DispositionLedger, DocumentAnnotation, DocumentBuilder, DocumentCompleteness,
-    DocumentFault, NodeDraft, NodeKind, NonSpeechEvidence, NonSpeechReason, PdfArtifact,
-    PreservationTransform, RedactionBasis, RedactionPolicyRef, RenderDefect, RenderQa,
-    RenderedImage, RenderedNode, RenderedPage, ReviewQueue, RiskClass, Salience,
-    SegmentDisposition, SegmentStatus, StudyIndexBuilder, StudyIndexId,
+    CoverageFault, CoverageInputs, CoverageValidator, DispositionLedger, DocumentAnnotation,
+    DocumentBuilder, DocumentCompleteness, DocumentFault, NodeDraft, NodeKind, NonSpeechEvidence,
+    NonSpeechReason, PdfArtifact, PreservationTransform, RedactionBasis, RedactionPolicyRef,
+    RenderDefect, RenderQa, RenderedImage, RenderedNode, RenderedPage, ReviewQueue, RiskClass,
+    Salience, SegmentDisposition, SegmentStatus, StudyIndexBuilder, StudyIndexId,
     TRANSCRIPT_COVERAGE_ENGINE_ID, TRANSCRIPT_COVERAGE_ENGINE_VERSION, TranscriptCoverageEngine,
     TranscriptionFailure, freeze, ruleset_hash,
 };
 
 use common::{
-    INSIDE, SEGMENTS, TOTAL_TOKENS, TestResult, calibration, capture_frame_seq,
+    INSIDE, SEGMENT_UNITS, SEGMENTS, TOTAL_TOKENS, TestResult, calibration, capture_frame_seq,
     capture_with_explained_gap, capture_with_hole, clean_capture, clean_render, cross_reference,
     document_id, engine_actor, full_manifest, importer_actor, model_actor, no_calibration, node_id,
-    purpose, transcribe, user, validate, validate_with, whole_document, whole_segment_node,
+    purpose, response_body, transcribe, transcribe_body, user, validate, validate_with,
+    whole_document, whole_segment_node,
 };
 
 /// The specification, read for the phrases the closed sets are compared to.
@@ -203,8 +204,12 @@ fn segment_coverage_oracle() -> TestResult {
 ///
 /// The fixture's five segments carry 4, 5, 5, 6 and 1 tokens: twenty-one in
 /// all. A document mapping the whole of segments zero, one and two covers
-/// 4 + 5 + 5 = **14**; declaring segment four non-speech removes its **1**
-/// token from the denominator, leaving **20**.
+/// 4 + 5 + 5 = **14** of **21**. Declaring segment four non-speech takes its
+/// token out of the *numerator* and leaves it in the denominator, because
+/// section 12.6 writes the token ratio as "mapped normalized tokens / all
+/// normalized tokens" with no qualifier — the qualifier is on the segment line
+/// only. Until `P2-RF20` this denominator read 20, and `P2-A4` measured what
+/// that bought: a document holding one of twenty-one tokens reading `COMPLETE`.
 #[test]
 fn token_coverage_oracle() -> TestResult {
     assert_eq!(
@@ -248,7 +253,7 @@ fn token_coverage_oracle() -> TestResult {
         &exclusions,
     )?;
     assert_eq!(report.token_coverage().numerator(), 14);
-    assert_eq!(report.token_coverage().denominator(), 20);
+    assert_eq!(report.token_coverage().denominator(), TOTAL_TOKENS);
 
     // A segment can be mapped and still be missing tokens. "serializability is"
     // is the first eighteen characters of segment zero and covers two of its
@@ -273,6 +278,434 @@ fn token_coverage_oracle() -> TestResult {
         "MAPPED",
         "a partially covered segment is still mapped; the loss shows in the token count"
     );
+
+    // A ratio nobody reads is not a check. `P2-A4`'s F4: deleting
+    // `!self.token_coverage.is_whole()` from `completeness_witness` left all
+    // thirty-one rows of this crate green, because the 2101-shape sweep builds
+    // every node with `whole_segment_node` and this oracle stopped at the two
+    // numbers. The condition is the *only* one that catches a segment that is
+    // mapped and whose tokens are not all rendered, so it is driven here: a
+    // document whose segments are all mapped, whose partition reconciles and
+    // whose unmapped list is empty is still `INCOMPLETE` on the token count
+    // alone.
+    let seq = capture_frame_seq(&capture).ok_or("the fixture capture has no image")?;
+    let mut whole_but_one =
+        DocumentBuilder::over(document_id("tok-drives")?, lineage, 1, &manifest)?;
+    whole_but_one.push(NodeDraft {
+        id: node_id("p-00")?,
+        kind: NodeKind::Paragraph,
+        rendered_text: "Instructor: serializability is".to_owned(),
+        mappings: vec![(0, 0, 18, PreservationTransform::SpeakerLabel)],
+        nearby_captures: Vec::new(),
+        annotations: Vec::new(),
+        cross_reference: None,
+    })?;
+    for index in 1..SEGMENTS.len() {
+        whole_but_one.push(whole_segment_node(
+            &format!("p-{index}"),
+            NodeKind::Paragraph,
+            index,
+            PreservationTransform::Punctuation,
+        )?)?;
+    }
+    let mut placement = whole_segment_node(
+        "p-cap",
+        NodeKind::CapturePlacement,
+        SEGMENTS.len().saturating_sub(1),
+        PreservationTransform::CapturePlacement,
+    )?;
+    placement.nearby_captures = vec![seq];
+    whole_but_one.push(placement)?;
+    let whole_but_one = whole_but_one.finish()?;
+    let drives = validate(lineage, &whole_but_one, &manifest, &capture.recovery)?;
+    assert_eq!(drives.unmapped_count(), 0, "the driver has no unmapped row");
+    assert!(drives.reconciles(), "the driver's partition reconciles");
+    assert!(
+        drives.segment_coverage().is_whole(),
+        "the driver's segment coverage is whole, so only the token ratio can refuse"
+    );
+    assert!(drives.ordering_findings().is_empty());
+    assert!(drives.unaccounted_captures().is_empty());
+    assert!(drives.unexplained_gaps().is_empty());
+    assert_eq!(drives.token_coverage().numerator(), TOTAL_TOKENS - 2);
+    assert_eq!(drives.token_coverage().denominator(), TOTAL_TOKENS);
+    assert!(
+        drives.completeness_witness().is_none(),
+        "two tokens are missing from the document and it minted a witness"
+    );
+    let qa = clean_render(&whole_but_one)?;
+    let pdf = PdfArtifact::render(&whole_but_one, &drives, &qa, ContentDigest::sha256(b"pdf"));
+    assert_eq!(pdf.completeness().as_str(), "INCOMPLETE");
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// a_non_speech_declaration_cannot_delete_the_lecture
+// ---------------------------------------------------------------------------
+
+/// `REQ-12-045`. Declaring a transcribed segment non-speech does not buy a
+/// completeness badge.
+///
+/// `P2-A4`'s F1, driven. `NonSpeechEvidence::declared` takes the caller's word
+/// that a segment holds no speech and nothing checks it against the segment's
+/// own token list — the `P2-L3` shape `disposition.rs`'s own module doc warns
+/// against. That is not closed here, because `EXCLUDED_NON_SPEECH` is one of
+/// section 12.6's four required statuses and `RawSegment::close` refuses a
+/// zero-token segment, so *every* legitimate declaration sits on at least one
+/// transcribed word. What is closed is the arithmetic: those words stay in the
+/// token denominator, so the declaration cannot make them disappear from the
+/// measurement as well as from the page.
+///
+/// At `c81b74b` this document — four of the five fixture segments declared
+/// `SILENCE`, one token of twenty-one rendered — measured `seg=1/1 tok=1/1`,
+/// minted a `CompletenessWitness` and rendered `COMPLETE` on Windows native and
+/// on WSL2.
+#[test]
+fn a_non_speech_declaration_cannot_delete_the_lecture() -> TestResult {
+    let directory = tempfile::tempdir()?;
+    let capture = clean_capture(&directory, "non-speech-loss")?;
+    let manifest = full_manifest(&capture)?;
+    let transcribed = transcribe(&manifest)?;
+    let lineage = transcribed.lineage();
+    let seq = capture_frame_seq(&capture).ok_or("the fixture capture has no image")?;
+    let last = SEGMENTS.len().saturating_sub(1);
+    let exclusions = CaptureExclusionLedger::new();
+
+    let mut builder = DocumentBuilder::over(document_id("silenced")?, lineage, 1, &manifest)?;
+    builder.push(whole_segment_node(
+        "s-last",
+        NodeKind::Paragraph,
+        last,
+        PreservationTransform::Punctuation,
+    )?)?;
+    let mut placement = whole_segment_node(
+        "s-cap",
+        NodeKind::CapturePlacement,
+        last,
+        PreservationTransform::CapturePlacement,
+    )?;
+    placement.nearby_captures = vec![seq];
+    builder.push(placement)?;
+    let document = builder.finish()?;
+
+    let mut dispositions = DispositionLedger::new();
+    for index in 0..last {
+        dispositions.record(SegmentDisposition::excluded_non_speech(
+            index,
+            NonSpeechEvidence::declared(NonSpeechReason::Silence, user()?)?,
+        ))?;
+    }
+    let report = validate_with(
+        lineage,
+        &document,
+        &manifest,
+        &capture.recovery,
+        &dispositions,
+        &exclusions,
+    )?;
+
+    // Every other condition the witness needs is satisfied, so the token ratio
+    // is what refuses. Without this the assertion below would pass for a reason
+    // it does not claim.
+    assert_eq!(report.unmapped_count(), 0);
+    assert!(report.reconciles());
+    assert!(report.segment_coverage().is_whole());
+    assert!(report.ordering_findings().is_empty());
+    assert!(report.unaccounted_captures().is_empty());
+    assert!(report.unexplained_gaps().is_empty());
+
+    let rendered = SEGMENTS[last].2.len() as u64;
+    assert_eq!(report.token_coverage().numerator(), rendered);
+    assert_eq!(
+        report.token_coverage().denominator(),
+        TOTAL_TOKENS,
+        "a declaration took the lecture's own words out of the denominator"
+    );
+    assert!(
+        !report.token_coverage().is_whole(),
+        "{} of {TOTAL_TOKENS} tokens are in the document and the ratio is whole",
+        rendered
+    );
+    assert!(report.completeness_witness().is_none());
+
+    let qa = clean_render(&document)?;
+    let pdf = PdfArtifact::render(&document, &report, &qa, ContentDigest::sha256(b"pdf"));
+    assert!(!pdf.completeness().is_complete());
+    assert_eq!(pdf.completeness().as_str(), "INCOMPLETE");
+
+    // The control, so this is not a test that everything is incomplete: the
+    // same document with nothing declared and every segment mapped is
+    // `COMPLETE`.
+    let whole = whole_document(lineage, &manifest, seq)?;
+    let clean = validate_with(
+        lineage,
+        &whole,
+        &manifest,
+        &capture.recovery,
+        &DispositionLedger::new(),
+        &exclusions,
+    )?;
+    assert!(clean.token_coverage().is_whole());
+    assert!(clean.completeness_witness().is_some());
+
+    // And one declaration on its own is enough to refuse, whichever segment it
+    // is: the loss does not need to be large to stop the badge.
+    for index in 0..SEGMENTS.len() {
+        let mut one = DispositionLedger::new();
+        one.record(SegmentDisposition::excluded_non_speech(
+            index,
+            NonSpeechEvidence::declared(NonSpeechReason::Silence, user()?)?,
+        ))?;
+        let mut short = DocumentBuilder::over(document_id("one-off")?, lineage, 1, &manifest)?;
+        for other in (0..SEGMENTS.len()).filter(|other| *other != index) {
+            short.push(whole_segment_node(
+                &format!("o-{other}"),
+                NodeKind::Paragraph,
+                other,
+                PreservationTransform::Punctuation,
+            )?)?;
+        }
+        let mut placement = whole_segment_node(
+            "o-cap",
+            NodeKind::CapturePlacement,
+            if index == last { 0 } else { last },
+            PreservationTransform::CapturePlacement,
+        )?;
+        placement.nearby_captures = vec![seq];
+        short.push(placement)?;
+        let short = short.finish()?;
+        let one_report = validate_with(
+            lineage,
+            &short,
+            &manifest,
+            &capture.recovery,
+            &one,
+            &exclusions,
+        )?;
+        assert!(
+            one_report.segment_coverage().is_whole(),
+            "segment {index}: the segment ratio is what refused, not the token ratio"
+        );
+        assert_eq!(
+            one_report.token_coverage().denominator(),
+            TOTAL_TOKENS,
+            "segment {index} left the token denominator"
+        );
+        assert!(
+            one_report.completeness_witness().is_none(),
+            "segment {index} declared non-speech still minted a witness"
+        );
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// a_segment_whose_verbatim_omits_its_tokens_is_refused
+// ---------------------------------------------------------------------------
+
+/// `REQ-12-039`. The token alignment section 12.6 asks for is a refusal, and
+/// the refusal is reachable from the real pipeline.
+///
+/// `P2-A4`'s F8 recorded this guard as undriven and left its severity
+/// contingent on whether a segment whose verbatim text does not contain its own
+/// tokens can be built by `academic_transcription::run` at all. It can:
+/// `RawSegment::close` (`crates/transcription/src/transcript.rs`) checks that a
+/// verbatim line is present and that the token list is non-empty, and **nothing
+/// there compares the two**. A provider answering with a verbatim line and a
+/// word that is not in it produces exactly that segment, and the decoder
+/// accepts it. So the contingency resolves to "reachable", and the guard is
+/// driven here rather than recorded.
+///
+/// The two arms are the two ways `token_spans` is called: `DocumentBuilder::push`
+/// and `CoverageValidator::validate`. Replacing the refusal with
+/// `unwrap_or(cursor)` left the whole crate suite green before this row.
+#[test]
+fn a_segment_whose_verbatim_omits_its_tokens_is_refused() -> TestResult {
+    let directory = tempfile::tempdir()?;
+    let capture = clean_capture(&directory, "misaligned")?;
+    let manifest = full_manifest(&capture)?;
+
+    // The fixture body with one word replaced by a token the verbatim line does
+    // not carry. Everything else — the segment header, the timings, the
+    // speaker, the chunk list — is the fixture's own, so what the decoder is
+    // being asked to accept differs in one field.
+    let (_, verbatim, words) = SEGMENTS[0];
+    let intruder = "zqxjabsentword";
+    assert!(
+        !verbatim.contains(intruder),
+        "the intruder token is in the fixture's own verbatim text"
+    );
+    let body = response_body().replace(
+        &format!("word: 0 {} {}\n", SEGMENT_UNITS[0], words[0]),
+        &format!("word: 0 {} {intruder}\n", SEGMENT_UNITS[0]),
+    );
+    assert!(
+        body.contains(intruder),
+        "the response body was not rewritten"
+    );
+
+    // The pipeline accepts it, which is the half that makes this reachable
+    // rather than dead.
+    let transcribed = transcribe_body(&manifest, &body)?;
+    let lineage = transcribed.lineage();
+    let segment = lineage
+        .segment_at(1, 0)
+        .ok_or("the misaligned transcript has no first segment")?;
+    assert!(
+        !segment.verbatim_text().contains(intruder),
+        "the decoder rewrote the verbatim text"
+    );
+    assert!(
+        segment
+            .tokens()
+            .iter()
+            .any(|token| token.text() == intruder),
+        "the decoder dropped the intruding token"
+    );
+
+    // The builder's arm.
+    let mut builder = DocumentBuilder::over(document_id("misaligned")?, lineage, 1, &manifest)?;
+    let refusal = builder.push(whole_segment_node(
+        "m-0",
+        NodeKind::Paragraph,
+        0,
+        PreservationTransform::Punctuation,
+    )?);
+    assert!(
+        matches!(
+            refusal,
+            Err(DocumentFault::VerbatimDoesNotContainTokens {
+                token_position: 0,
+                ..
+            })
+        ),
+        "the builder mapped a segment whose verbatim text omits its tokens: {refusal:?}"
+    );
+
+    // The validator's arm. `CoverageValidator::validate` walks the whole
+    // eligible set and aligns every segment, mapped or not, so a document that
+    // maps only the four aligned segments still reaches segment zero. The
+    // builder never saw it, so this refusal is the validator's own.
+    let mut partial = DocumentBuilder::over(document_id("m-partial")?, lineage, 1, &manifest)?;
+    for index in 1..SEGMENTS.len() {
+        partial.push(whole_segment_node(
+            &format!("m-{index}"),
+            NodeKind::Paragraph,
+            index,
+            PreservationTransform::Punctuation,
+        )?)?;
+    }
+    let partial = partial.finish()?;
+    let dispositions = DispositionLedger::new();
+    let exclusions = CaptureExclusionLedger::new();
+    let validated = CoverageValidator::validate(&CoverageInputs {
+        lineage,
+        version: 1,
+        document: &partial,
+        manifest: &manifest,
+        journal: &capture.recovery,
+        dispositions: &dispositions,
+        capture_exclusions: &exclusions,
+        config: COVERAGE_CONFIG_V1,
+    });
+    assert!(
+        matches!(
+            validated,
+            Err(CoverageFault::Document(
+                DocumentFault::VerbatimDoesNotContainTokens { .. }
+            ))
+        ),
+        "the validator measured a segment whose verbatim text omits its tokens: {validated:?}"
+    );
+
+    // The control: the unmodified body maps and validates, so neither arm above
+    // refuses everything.
+    let clean = transcribe(&manifest)?;
+    let clean_lineage = clean.lineage();
+    let seq = capture_frame_seq(&capture).ok_or("the fixture capture has no image")?;
+    let document = whole_document(clean_lineage, &manifest, seq)?;
+    assert!(validate(clean_lineage, &document, &manifest, &capture.recovery).is_ok());
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// section_12_6_states_both_ratios
+// ---------------------------------------------------------------------------
+
+/// Section 12.6's two ratio lines, parsed out of the specification both ways.
+///
+/// The reason this test exists rather than a sentence in a contract page: the
+/// implementation treats the two denominators differently, and the *only*
+/// warrant for the difference is that section 12.6 writes `non-silence` on one
+/// line and not the other. If the document stops saying that, the code's
+/// justification is gone and this fails — which is the shape `P2-N6` used, and
+/// the alternative is a divergence nobody notices, which is what `P2-A4` found.
+///
+/// Both readings of the segment line are recorded in
+/// `docs/contracts/lecture-document.md`. This test does not choose between
+/// them; it pins the text they are readings *of*.
+#[test]
+fn section_12_6_states_both_ratios() -> TestResult {
+    let specification = specification()?;
+    let segment_line = specification
+        .lines()
+        .map(str::trim)
+        .find(|line| line.starts_with("segment coverage"))
+        .ok_or("section 12.6's segment-coverage line moved")?;
+    let token_line = specification
+        .lines()
+        .map(str::trim)
+        .find(|line| line.starts_with("token coverage"))
+        .ok_or("section 12.6's token-coverage line moved")?;
+
+    // Forward: the document says what the code assumes.
+    assert_eq!(
+        segment_line,
+        "segment coverage = mapped non-silence transcript segments / all eligible segments",
+        "section 12.6's segment ratio changed"
+    );
+    assert_eq!(
+        token_line, "token coverage   = mapped normalized tokens / all normalized tokens",
+        "section 12.6's token ratio changed"
+    );
+
+    // Backward: the qualifier is on one line and not on the other, stated as a
+    // property rather than as two string literals, so a rewording that keeps
+    // the sentences but moves the qualifier still fails.
+    assert!(
+        segment_line.contains("non-silence"),
+        "the segment ratio lost its non-silence qualifier; the segment denominator's subtraction has no warrant now"
+    );
+    assert!(
+        !token_line.contains("non-silence") && !token_line.contains("silence"),
+        "the token ratio gained a silence qualifier; the token denominator would have to change with it"
+    );
+    assert_eq!(
+        token_line
+            .split_once('/')
+            .map(|(_, denominator)| denominator.trim()),
+        Some("all normalized tokens"),
+        "the token denominator is no longer every normalized token"
+    );
+
+    // And the four statuses the document requires are the four the code has, so
+    // "declared non-speech" is a real account of a segment rather than a way
+    // out of the measurement.
+    let statuses = specification
+        .lines()
+        .find(|line| line.contains("`EXCLUDED_NON_SPEECH`"))
+        .ok_or("section 12.6's status list moved")?;
+    for status in [
+        "`MAPPED`",
+        "`EXCLUDED_NON_SPEECH`",
+        "`REDACTED_WITH_POLICY`",
+        "`UNTRANSCRIBED_FAILURE`",
+    ] {
+        assert!(
+            statuses.contains(status),
+            "section 12.6 no longer lists {status}"
+        );
+    }
     Ok(())
 }
 
@@ -880,6 +1313,14 @@ fn segment_status_exhaustive() -> TestResult {
 
 /// `REQ-12-045` and `REQ-34-017`. One eligible segment with no status makes the
 /// rendering `INCOMPLETE`, and the banner carries the count.
+///
+/// **What this row does not cover, and why that mattered.** It drops a segment
+/// from the document and declares nothing, so the only path it drives is
+/// `UNMAPPED`. `P2-A4` found that the *declared* path — the same segment left
+/// out of the document and named `EXCLUDED_NON_SPEECH` — produced a `COMPLETE`
+/// badge over a document holding one of twenty-one tokens, and this row saw
+/// none of it. The declared path is driven below and again, on its own, in
+/// `a_non_speech_declaration_cannot_delete_the_lecture`.
 #[test]
 fn unmapped_forces_incomplete() -> TestResult {
     let directory = tempfile::tempdir()?;
@@ -936,6 +1377,44 @@ fn unmapped_forces_incomplete() -> TestResult {
     let whole_report = validate(lineage, &whole, &manifest, &capture.recovery)?;
     let borrowed = PdfArtifact::render(&short, &whole_report, &qa, ContentDigest::sha256(b"pdf"));
     assert!(!borrowed.completeness().is_complete());
+
+    // The same missing segment, now *declared* rather than left unmapped. The
+    // unmapped count goes to zero and the segment ratio goes whole — the two
+    // things this row measured — and the rendering is still `INCOMPLETE`,
+    // because the segment's six tokens are in the token denominator and not in
+    // the document. At `c81b74b` this branch read `COMPLETE`.
+    let mut declared = DispositionLedger::new();
+    declared.record(SegmentDisposition::excluded_non_speech(
+        4,
+        NonSpeechEvidence::declared(NonSpeechReason::Silence, user()?)?,
+    ))?;
+    let declared_report = validate_with(
+        lineage,
+        &short,
+        &manifest,
+        &capture.recovery,
+        &declared,
+        &CaptureExclusionLedger::new(),
+    )?;
+    assert_eq!(
+        declared_report.unmapped_count(),
+        0,
+        "the declaration accounts for the segment this row dropped"
+    );
+    assert!(
+        declared_report.segment_coverage().is_whole(),
+        "the declared segment left the segment denominator, as section 12.6's segment line says"
+    );
+    assert_eq!(
+        declared_report.token_coverage().denominator(),
+        TOTAL_TOKENS,
+        "the declared segment's tokens left the token denominator too"
+    );
+    assert!(declared_report.completeness_witness().is_none());
+    let declared_pdf =
+        PdfArtifact::render(&short, &declared_report, &qa, ContentDigest::sha256(b"pdf"));
+    assert_eq!(declared_pdf.completeness().as_str(), "INCOMPLETE");
+    assert!(!declared_pdf.completeness().is_complete());
     Ok(())
 }
 

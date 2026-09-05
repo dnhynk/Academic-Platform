@@ -19,7 +19,16 @@
 //!
 //! [`RedactionFault::NothingExcluded`] is the guard against the vacuous case:
 //! a plan whose exclusion set is empty would satisfy "the derivative contains
-//! no targeted speaker" by containing everything. The suite drives it.
+//! no targeted speaker" by containing everything.
+//!
+//! There are **two** sites, and until `P2-RF20` the suite drove one of them.
+//! [`RedactionPlan::manual`] refuses an empty list, and [`redact`] refuses a
+//! plan whose exclusion set comes out empty after the policy is applied — which
+//! is the only reachable arm for an *automatic* plan, because that arm has no
+//! manual list to be empty. `P2-A4`'s F11 deleted the second and every row
+//! stayed green while `redact` returned a derivative holding every utterance in
+//! the lecture, students included, labelled `REDACTED`.
+//! `a_redaction_that_removes_nothing_is_refused_on_both_paths` drives it now.
 //!
 //! # Automatic needs a witness, manual needs a person, and there is no third
 //!

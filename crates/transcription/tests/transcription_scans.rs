@@ -1349,3 +1349,183 @@ fn no_wall_clock_socket_or_file_reaches_this_crate() -> TestResult {
     );
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Every impl header is in the inventory
+// ---------------------------------------------------------------------------
+
+/// Every `impl` header of `code`, up to its opening brace.
+///
+/// A trait impl's methods carry no visibility modifier, so an inventory keyed
+/// on `pub fn` cannot see one at all. `P2-A4` measured that gap here with
+/// `impl From<&AuthorizedChunk> for Vec<u8>`, which passed this crate's whole suite. The precedent for closing
+/// it is `P2-Y3`'s and `P2-X5`'s: pin the complete set of headers, so a
+/// conversion nobody predicted fails as an extra entry rather than having to be
+/// named on a forbidden list.
+fn impl_headers(code: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut lines = code.lines().peekable();
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim_start();
+        if !(trimmed == "impl" || trimmed.starts_with("impl ") || trimmed.starts_with("impl<")) {
+            continue;
+        }
+        // A header may be wrapped, so keep reading until the block opens. An
+        // `impl Trait` in argument position is not a header and is skipped by
+        // the line anchor above: it can never begin a line, because a parameter
+        // list always puts a name and a colon in front of it.
+        let mut header = trimmed.to_owned();
+        while !header.contains('{') {
+            let Some(next) = lines.next() else {
+                break;
+            };
+            header.push(' ');
+            header.push_str(next.trim());
+        }
+        let end = header.find('{').unwrap_or(header.len());
+        found.insert(
+            header[..end]
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" "),
+        );
+    }
+    found
+}
+
+/// Every `impl` header this crate declares, pinned as a complete set.
+const IMPL_HEADERS: &[&str] = &[
+    "impl Annotation",
+    "impl AnnotationKind",
+    "impl AnnotationLayer",
+    "impl AppliedCorrection",
+    "impl ArchivedResponse",
+    "impl AudioFormat",
+    "impl AuthorizationBinding",
+    "impl AuthorizedCapture",
+    "impl AuthorizedChunk",
+    "impl CapabilityField",
+    "impl ChunkBoundary",
+    "impl CompletedRun",
+    "impl ConfidenceSemantics",
+    "impl ContractDraft",
+    "impl ContractRegistry",
+    "impl CorrectionAuthor",
+    "impl CorrectionCandidate",
+    "impl CorrectionStatus",
+    "impl Divergence",
+    "impl DownstreamJob",
+    "impl FeatureClaim",
+    "impl InputManifest",
+    "impl JobHandle",
+    "impl LineageEffect",
+    "impl OpenSegment",
+    "impl ProviderContract",
+    "impl ProviderPlacement",
+    "impl ProviderResponse",
+    "impl ProviderRun",
+    "impl ProviderSelection",
+    "impl RawResponseArchive",
+    "impl RawResponseId",
+    "impl RawSegment",
+    "impl RawToken",
+    "impl RawTranscript",
+    "impl RemoteAdmission",
+    "impl RemoteProcessingApproval",
+    "impl RetranscriptionComparison",
+    "impl RouteDenial",
+    "impl RunRecord",
+    "impl SettledCorrection",
+    "impl Side",
+    "impl Speaker",
+    "impl Stage",
+    "impl SttPolicy",
+    "impl SttRoute",
+    "impl SuppliedMaterial",
+    "impl Support",
+    "impl TimestampSemantics",
+    "impl TokenAddress",
+    "impl TranscriptLineage",
+    "impl TranscriptVersion",
+    "impl core::fmt::Debug for Annotation",
+    "impl core::fmt::Debug for AppliedCorrection",
+    "impl core::fmt::Debug for AuthorizedCapture",
+    "impl core::fmt::Debug for AuthorizedChunk",
+    "impl core::fmt::Debug for CorrectionCandidate",
+    "impl core::fmt::Debug for EffectiveToken<'_>",
+    "impl core::fmt::Debug for ProviderResponse",
+    "impl core::fmt::Display for RawResponseId",
+    "impl fmt::Debug for RawSegment",
+    "impl fmt::Debug for RawToken",
+    "impl fmt::Display for CapabilityField",
+    "impl<'a> EffectiveToken<'a>",
+    "impl<'a> TranscriptSegment<'a>",
+];
+
+/// The traits this crate implements for its own types, pinned as a set.
+///
+/// Eleven, and every one of them is a `Debug` or a `Display`. Nine of the
+/// `Debug`s are written by hand to redact what a derive would print. No
+/// conversion, no dereference, no iteration.
+const TRAIT_IMPLS: &[&str] = &[
+    "impl core::fmt::Debug for Annotation",
+    "impl core::fmt::Debug for AppliedCorrection",
+    "impl core::fmt::Debug for AuthorizedCapture",
+    "impl core::fmt::Debug for AuthorizedChunk",
+    "impl core::fmt::Debug for CorrectionCandidate",
+    "impl core::fmt::Debug for EffectiveToken<'_>",
+    "impl core::fmt::Debug for ProviderResponse",
+    "impl core::fmt::Display for RawResponseId",
+    "impl fmt::Debug for RawSegment",
+    "impl fmt::Debug for RawToken",
+    "impl fmt::Display for CapabilityField",
+];
+
+/// Every `impl` header this crate declares is in the inventory, both ways.
+///
+/// `P2-A4`'s F12: the blindness that let a trait impl hand out removed student
+/// speech in `academic-student-voice` is a property of the scan's definition of
+/// "signature", not of that crate, and the same injection compiled and passed
+/// here. The close is the same whole-set comparison: `From` is the spelling
+/// that was measured, but `Into`, `TryFrom`, `Deref`, `AsRef`, `Borrow`,
+/// `Index`, `IntoIterator` and a trait nobody has thought of all reach the same
+/// private fields, so the rule is stated over the complete set rather than over
+/// a list of trait names.
+#[test]
+fn every_impl_header_in_this_crate_is_in_the_inventory() -> TestResult {
+    let mut found: BTreeSet<String> = BTreeSet::new();
+    for path in crate_product_sources()? {
+        found.extend(impl_headers(&code_of(&path)?));
+    }
+    assert_eq!(
+        found,
+        IMPL_HEADERS.iter().map(|item| (*item).to_owned()).collect(),
+        "the impl-header inventory and the source disagree"
+    );
+
+    // The trait half stated on its own, so the reason survives an edit to the
+    // list above: every header that names a trait is one of these, and none of
+    // them is a conversion, a dereference, an iteration or an arithmetic fold.
+    let traits: Vec<&str> = found
+        .iter()
+        .filter(|header| header.contains(" for "))
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        traits,
+        TRAIT_IMPLS.to_vec(),
+        "this crate implements a trait the inventory does not carry"
+    );
+
+    // The scanner is not vacuous: it finds the shape `P2-A4` injected, and it
+    // does not read an `impl Trait` in argument position as a header.
+    assert_eq!(
+        impl_headers("impl From<&AuthorizedChunk> for Vec<u8> {\n}\n"),
+        ["impl From<&AuthorizedChunk> for Vec<u8>"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    );
+    assert!(impl_headers("fn takes(value: impl Display) {}\n").is_empty());
+    Ok(())
+}
