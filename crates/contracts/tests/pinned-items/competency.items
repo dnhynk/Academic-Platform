@@ -1,0 +1,205 @@
+crates/competency/src/criterion.rs [priv] #[derive(Debug, Serialize, Deserialize)] struct CriterionWire |fe776312c32add14
+crates/competency/src/criterion.rs [priv] impl ContributionImportance
+crates/competency/src/criterion.rs [priv] impl EnablingConcept
+crates/competency/src/criterion.rs [priv] impl From<PerformanceCriterion> for CriterionWire
+crates/competency/src/criterion.rs [priv] impl From<PerformanceCriterion> for CriterionWire :: fn from(value: PerformanceCriterion) -> Self |d5befe8176b64d88
+crates/competency/src/criterion.rs [priv] impl From<Situation> for String
+crates/competency/src/criterion.rs [priv] impl From<Situation> for String :: fn from(value: Situation) -> Self |30d097b22a1c2765
+crates/competency/src/criterion.rs [priv] impl Necessity
+crates/competency/src/criterion.rs [priv] impl PerformanceCriterion
+crates/competency/src/criterion.rs [priv] impl Situation
+crates/competency/src/criterion.rs [priv] impl TryFrom<CriterionWire> for PerformanceCriterion
+crates/competency/src/criterion.rs [priv] impl TryFrom<CriterionWire> for PerformanceCriterion :: fn try_from(wire: CriterionWire) -> Result<Self, Self::Error> |426319378d7771b1
+crates/competency/src/criterion.rs [priv] impl TryFrom<CriterionWire> for PerformanceCriterion :: type Error = CompetencyError |62d69a18725c2b52
+crates/competency/src/criterion.rs [priv] impl TryFrom<String> for Situation
+crates/competency/src/criterion.rs [priv] impl TryFrom<String> for Situation :: fn try_from(value: String) -> Result<Self, Self::Error> |f93735cc4b2f9826
+crates/competency/src/criterion.rs [priv] impl TryFrom<String> for Situation :: type Error = CompetencyError |62d69a18725c2b52
+crates/competency/src/criterion.rs [priv] use crate::{ CompetencyError, identity::{ConceptRef, CriterionId, non_empty}, } |d486a02b03e72b39
+crates/competency/src/criterion.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/competency/src/criterion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ContributionImportance |0c7a654de2870c24
+crates/competency/src/criterion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Necessity |c6d5705e13f09868
+crates/competency/src/criterion.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct Situation(String) |75e8bb0991228cb9
+crates/competency/src/criterion.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "CriterionWire", into = "CriterionWire")] struct PerformanceCriterion |c630e885aad6d769
+crates/competency/src/criterion.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct EnablingConcept |c692507d5bd07a5b
+crates/competency/src/criterion.rs [pub] impl ContributionImportance :: #[must_use] const fn as_str(self) -> &'static str |fa08fb3be24074b7
+crates/competency/src/criterion.rs [pub] impl ContributionImportance :: const ALL: [Self; 3] |e669f1676acc3746
+crates/competency/src/criterion.rs [pub] impl EnablingConcept :: #[must_use] const fn concept(&self) -> &ConceptRef |44b249370155f49a
+crates/competency/src/criterion.rs [pub] impl EnablingConcept :: #[must_use] const fn importance(&self) -> ContributionImportance |d9628d5f7fa9b323
+crates/competency/src/criterion.rs [pub] impl EnablingConcept :: #[must_use] const fn necessity(&self) -> Necessity |39f34e7af97fdc96
+crates/competency/src/criterion.rs [pub] impl EnablingConcept :: #[must_use] const fn of( concept: ConceptRef, importance: ContributionImportance, necessity: Necessity, ) -> Self |2fff1a349d0b157e
+crates/competency/src/criterion.rs [pub] impl Necessity :: #[must_use] const fn as_str(self) -> &'static str |9d6104d918b6cd9b
+crates/competency/src/criterion.rs [pub] impl Necessity :: const ALL: [Self; 2] |837999baba61054c
+crates/competency/src/criterion.rs [pub] impl PerformanceCriterion :: #[must_use] const fn id(&self) -> &CriterionId |bfbb483f64813981
+crates/competency/src/criterion.rs [pub] impl PerformanceCriterion :: #[must_use] fn about(&self) -> &[ConceptRef] |4b189dfdd4ef630d
+crates/competency/src/criterion.rs [pub] impl PerformanceCriterion :: #[must_use] fn is_about(&self, concept: &ConceptRef) -> bool |fc3f4f6879671e14
+crates/competency/src/criterion.rs [pub] impl PerformanceCriterion :: #[must_use] fn requirement(&self) -> &str |50d8bceb3d6176bf
+crates/competency/src/criterion.rs [pub] impl PerformanceCriterion :: fn of( id: CriterionId, requirement: impl Into<String>, about: Vec<ConceptRef>, ) -> Result<Self, CompetencyError> |37b3e62b21bea436
+crates/competency/src/criterion.rs [pub] impl Situation :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/competency/src/criterion.rs [pub] impl Situation :: fn new(value: impl Into<String>) -> Result<Self, CompetencyError> |2b0e12673ac2bcbb
+crates/competency/src/enabling.rs [priv] impl EnablingEdge
+crates/competency/src/enabling.rs [priv] impl EnablingGraph
+crates/competency/src/enabling.rs [priv] use crate::{ Competency, criterion::{ContributionImportance, Necessity}, identity::{CompetencyId, ConceptRef}, } |ca074986c0cd5168
+crates/competency/src/enabling.rs [priv] use serde::Serialize |64e275010a1227f2
+crates/competency/src/enabling.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(transparent)] struct EnablingGraph |ca405c9a44e9aafb
+crates/competency/src/enabling.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct EnablingEdge |9f0b2f6b98ef8046
+crates/competency/src/enabling.rs [pub] impl EnablingEdge :: #[must_use] const fn competency(&self) -> &CompetencyId |925bcf51a14c8fc3
+crates/competency/src/enabling.rs [pub] impl EnablingEdge :: #[must_use] const fn concept(&self) -> &ConceptRef |44b249370155f49a
+crates/competency/src/enabling.rs [pub] impl EnablingEdge :: #[must_use] const fn importance(&self) -> ContributionImportance |d9628d5f7fa9b323
+crates/competency/src/enabling.rs [pub] impl EnablingEdge :: #[must_use] const fn necessity(&self) -> Necessity |39f34e7af97fdc96
+crates/competency/src/enabling.rs [pub] impl EnablingGraph :: #[must_use] fn competencies_enabled_by(&self, concept: &ConceptRef) -> Vec<&EnablingEdge> |5693b6e804286137
+crates/competency/src/enabling.rs [pub] impl EnablingGraph :: #[must_use] fn concepts_enabling(&self, competency: &CompetencyId) -> Vec<&EnablingEdge> |ddb6fb80f1a7c2fa
+crates/competency/src/enabling.rs [pub] impl EnablingGraph :: #[must_use] fn edges(&self) -> &[EnablingEdge] |9e237f787a5c042d
+crates/competency/src/enabling.rs [pub] impl EnablingGraph :: #[must_use] fn of(competencies: &[Competency]) -> Self |d8dedb3151383630
+crates/competency/src/evidence.rs [priv] impl EvidenceOrigin
+crates/competency/src/evidence.rs [priv] impl EvidenceSource
+crates/competency/src/evidence.rs [priv] impl PromotingEvidence
+crates/competency/src/evidence.rs [priv] impl StageEvidence
+crates/competency/src/evidence.rs [priv] use academic_domain::{EntityId, EvidenceId} |f60979bb104be0f7
+crates/competency/src/evidence.rs [priv] use academic_knowledge_state::{EligibleEvidence, EvidenceCeiling, EvidenceKind} |d1473e4b716021fe
+crates/competency/src/evidence.rs [priv] use academic_repository_competency::{ClaimStanding, PersonalApplicationClaim} |42791525ff82f0c9
+crates/competency/src/evidence.rs [priv] use crate::{ CompetencyError, identity::{ConceptRef, RecordId}, stage::EvidenceStage, } |b8defea2e7fe3593
+crates/competency/src/evidence.rs [priv] use serde::Serialize |64e275010a1227f2
+crates/competency/src/evidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceOrigin |220a695f2be7cc07
+crates/competency/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PromotingEvidence |f07ce1b5763eb033
+crates/competency/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "origin", content = "id", rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceSource |dba2e17a1dbc27ca
+crates/competency/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct StageEvidence |82b280888ee90cb4
+crates/competency/src/evidence.rs [pub] impl EvidenceOrigin :: #[must_use] const fn as_str(self) -> &'static str |f03838ee7efd291b
+crates/competency/src/evidence.rs [pub] impl EvidenceOrigin :: const ALL: [Self; 2] |dbe0a9948bd0abc2
+crates/competency/src/evidence.rs [pub] impl EvidenceSource :: #[must_use] const fn origin(&self) -> EvidenceOrigin |f6176b9e1fd0c5b5
+crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: #[must_use] const fn admitted(&self) -> &EligibleEvidence |c85dbaca903b6253
+crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: #[must_use] const fn concept(&self) -> EntityId |bae9bbef3f4351be
+crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: #[must_use] const fn evidence_id(&self) -> EvidenceId |58d7c4992d779fc0
+crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: #[must_use] const fn kind(&self) -> EvidenceKind |ca633d0c025f0f95
+crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: fn of(inner: EligibleEvidence) -> Result<Self, CompetencyError> |25ce42c42d593803
+crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] const fn concept(&self) -> &ConceptRef |44b249370155f49a
+crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] const fn id(&self) -> &RecordId |dbe79657cd535cff
+crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] const fn source(&self) -> &EvidenceSource |af80cdba2ed29bd7
+crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] const fn stage(&self) -> EvidenceStage |eb4a0d8a3b324ed0
+crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] fn of_knowledge_state( id: RecordId, stage: EvidenceStage, evidence: &PromotingEvidence, ) -> Self |9db8de3bfc5c39a1
+crates/competency/src/evidence.rs [pub] impl StageEvidence :: fn of_personal_claim( id: RecordId, stage: EvidenceStage, claim: &PersonalApplicationClaim, ) -> Result<Self, CompetencyError> |55789112b3f1f1fc
+crates/competency/src/identity.rs [priv] const MAX_IDENTIFIER: usize |f2e4797df03fa784
+crates/competency/src/identity.rs [priv] impl CompetencyId
+crates/competency/src/identity.rs [priv] impl ConceptNamespace
+crates/competency/src/identity.rs [priv] impl ConceptRef
+crates/competency/src/identity.rs [priv] impl CriterionId
+crates/competency/src/identity.rs [priv] impl From<CompetencyId> for String
+crates/competency/src/identity.rs [priv] impl From<CompetencyId> for String :: fn from(value: CompetencyId) -> Self |158746d272954011
+crates/competency/src/identity.rs [priv] impl From<CriterionId> for String
+crates/competency/src/identity.rs [priv] impl From<CriterionId> for String :: fn from(value: CriterionId) -> Self |a6acfa30d55cce93
+crates/competency/src/identity.rs [priv] impl RecordId
+crates/competency/src/identity.rs [priv] impl TryFrom<String> for CompetencyId
+crates/competency/src/identity.rs [priv] impl TryFrom<String> for CompetencyId :: fn try_from(value: String) -> Result<Self, Self::Error> |f93735cc4b2f9826
+crates/competency/src/identity.rs [priv] impl TryFrom<String> for CompetencyId :: type Error = CompetencyError |62d69a18725c2b52
+crates/competency/src/identity.rs [priv] impl TryFrom<String> for CriterionId
+crates/competency/src/identity.rs [priv] impl TryFrom<String> for CriterionId :: fn try_from(value: String) -> Result<Self, Self::Error> |f93735cc4b2f9826
+crates/competency/src/identity.rs [priv] impl TryFrom<String> for CriterionId :: type Error = CompetencyError |62d69a18725c2b52
+crates/competency/src/identity.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
+crates/competency/src/identity.rs [priv] use crate::CompetencyError |0f18498eeb3e0d69
+crates/competency/src/identity.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/competency/src/identity.rs [pub(crate)] fn non_empty(value: String, what: &'static str) -> Result<String, CompetencyError> |f6819cf89dd0a24d
+crates/competency/src/identity.rs [pub(crate)] fn validated(value: String, what: &'static str) -> Result<String, CompetencyError> |860876b672a4c5c1
+crates/competency/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ConceptNamespace |ca8b7eadb81c5d38
+crates/competency/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct RecordId(String) |d30c45431f1910b9
+crates/competency/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "namespace", content = "id", rename_all = "SCREAMING_SNAKE_CASE")] enum ConceptRef |2df7309e6949596d
+crates/competency/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct CompetencyId(String) |7c6e014162262b7d
+crates/competency/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct CriterionId(String) |a9b39e015442dae3
+crates/competency/src/identity.rs [pub] impl CompetencyId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/competency/src/identity.rs [pub] impl CompetencyId :: fn new(value: impl Into<String>) -> Result<Self, CompetencyError> |021fa0be7f061192
+crates/competency/src/identity.rs [pub] impl ConceptNamespace :: #[must_use] const fn as_str(self) -> &'static str |d6a90074288c6239
+crates/competency/src/identity.rs [pub] impl ConceptNamespace :: const ALL: [Self; 2] |3d4d4170172c81fc
+crates/competency/src/identity.rs [pub] impl ConceptRef :: #[must_use] const fn namespace(&self) -> ConceptNamespace |7c2c2f7bb1cabc82
+crates/competency/src/identity.rs [pub] impl ConceptRef :: #[must_use] const fn ontology(id: EntityId) -> Self |64be6ab083538086
+crates/competency/src/identity.rs [pub] impl ConceptRef :: fn classification(token: impl Into<String>) -> Result<Self, CompetencyError> |7d9624f753cd2824
+crates/competency/src/identity.rs [pub] impl CriterionId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/competency/src/identity.rs [pub] impl CriterionId :: fn new(value: impl Into<String>) -> Result<Self, CompetencyError> |021fa0be7f061192
+crates/competency/src/identity.rs [pub] impl RecordId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/competency/src/identity.rs [pub] impl RecordId :: fn new(value: impl Into<String>) -> Result<Self, CompetencyError> |021fa0be7f061192
+crates/competency/src/lib.rs [priv] #[derive(Debug, Serialize, Deserialize)] #[serde(rename_all = "camelCase")] struct CompetencyWire |6931468631b50c78
+crates/competency/src/lib.rs [priv] impl Competency
+crates/competency/src/lib.rs [priv] impl CompetencyStatement
+crates/competency/src/lib.rs [priv] impl From<Competency> for CompetencyWire
+crates/competency/src/lib.rs [priv] impl From<Competency> for CompetencyWire :: fn from(value: Competency) -> Self |c5f912a2c250e269
+crates/competency/src/lib.rs [priv] impl TryFrom<CompetencyWire> for Competency
+crates/competency/src/lib.rs [priv] impl TryFrom<CompetencyWire> for Competency :: fn try_from(wire: CompetencyWire) -> Result<Self, Self::Error> |cb77ca445bffc4f8
+crates/competency/src/lib.rs [priv] impl TryFrom<CompetencyWire> for Competency :: type Error = CompetencyError |62d69a18725c2b52
+crates/competency/src/lib.rs [priv] impl fmt::Display for CompetencyStatement
+crates/competency/src/lib.rs [priv] impl fmt::Display for CompetencyStatement :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |72343705a86717f0
+crates/competency/src/lib.rs [priv] use academic_domain::predicates::{NodeType, PredicateName} |ec4582508f0c450f
+crates/competency/src/lib.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/competency/src/lib.rs [priv] use std::{collections::BTreeSet, fmt} |b119229f7dd87d00
+crates/competency/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CompetencyStatement |3901e6a83173e2fa
+crates/competency/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "CompetencyWire", into = "CompetencyWire")] struct Competency |8a3b72b497c83612
+crates/competency/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CompetencyError |e91bdbe0bbeaa011
+crates/competency/src/lib.rs [pub] fn declare( id: CompetencyId, context: Situation, criteria: Vec<PerformanceCriterion>, enabled_by: Vec<EnablingConcept>, rubric: EvidenceRubric, ) -> Result<Competency, CompetencyError> |d62cfe96ee057dfb
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] const fn context(&self) -> &Situation |188e7b0974a835cf
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] const fn enabling_predicate() -> PredicateName |9ef35bb93569b218
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] const fn id(&self) -> &CompetencyId |ca26e6bbeac25013
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] const fn node_type() -> NodeType |3c7154a94266d9a1
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] const fn rubric(&self) -> &EvidenceRubric |9982310ee3d72173
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] fn criteria(&self) -> &[PerformanceCriterion] |83d01eda43a5dd37
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] fn criterion(&self, id: &CriterionId) -> Option<&PerformanceCriterion> |e96379f7cecec7d5
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] fn enabled_by(&self) -> &[EnablingConcept] |b87754b2f52c6e86
+crates/competency/src/lib.rs [pub] impl Competency :: #[must_use] fn statement(&self) -> CompetencyStatement |61d2d879b0aaea49
+crates/competency/src/lib.rs [pub] impl CompetencyStatement :: #[must_use] fn performances(&self) -> &[String] |b52f7401506db5df
+crates/competency/src/lib.rs [pub] impl CompetencyStatement :: #[must_use] fn situation(&self) -> &str |36725a44944255c9
+crates/competency/src/lib.rs [pub] impl CompetencyStatement :: #[must_use] fn witnesses(&self) -> &[String] |921e266bccc02721
+crates/competency/src/lib.rs [pub] mod criterion
+crates/competency/src/lib.rs [pub] mod enabling
+crates/competency/src/lib.rs [pub] mod evidence
+crates/competency/src/lib.rs [pub] mod identity
+crates/competency/src/lib.rs [pub] mod rubric
+crates/competency/src/lib.rs [pub] mod sheet
+crates/competency/src/lib.rs [pub] mod stage
+crates/competency/src/lib.rs [pub] use criterion::{ ContributionImportance, EnablingConcept, Necessity, PerformanceCriterion, Situation, } |74b72a2872e53399
+crates/competency/src/lib.rs [pub] use enabling::{EnablingEdge, EnablingGraph} |c38bebafb96e3a21
+crates/competency/src/lib.rs [pub] use evidence::{EvidenceOrigin, EvidenceSource, PromotingEvidence, StageEvidence} |12576c44d75a36e7
+crates/competency/src/lib.rs [pub] use identity::{CompetencyId, ConceptNamespace, ConceptRef, CriterionId, RecordId} |b5b9329de0a84824
+crates/competency/src/lib.rs [pub] use rubric::{EvidenceRubric, RubricRow} |1e140d553784213c
+crates/competency/src/lib.rs [pub] use sheet::{CellState, RubricCell, RubricSheet, fill} |cfc114c64af96180
+crates/competency/src/lib.rs [pub] use stage::EvidenceStage |722f1907281bd253
+crates/competency/src/rubric.rs [priv] #[derive(Debug, Serialize, Deserialize)] struct RubricRowWire |e9d319fdad4124da
+crates/competency/src/rubric.rs [priv] impl EvidenceRubric
+crates/competency/src/rubric.rs [priv] impl From<RubricRow> for RubricRowWire
+crates/competency/src/rubric.rs [priv] impl From<RubricRow> for RubricRowWire :: fn from(value: RubricRow) -> Self |2e58e4001acac428
+crates/competency/src/rubric.rs [priv] impl RubricRow
+crates/competency/src/rubric.rs [priv] impl TryFrom<RubricRowWire> for RubricRow
+crates/competency/src/rubric.rs [priv] impl TryFrom<RubricRowWire> for RubricRow :: fn try_from(wire: RubricRowWire) -> Result<Self, Self::Error> |6d37d8dd2d84abdf
+crates/competency/src/rubric.rs [priv] impl TryFrom<RubricRowWire> for RubricRow :: type Error = CompetencyError |62d69a18725c2b52
+crates/competency/src/rubric.rs [priv] use crate::{ CompetencyError, identity::{CriterionId, non_empty}, stage::EvidenceStage, } |5f3ea94fbeb75de5
+crates/competency/src/rubric.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/competency/src/rubric.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(transparent)] struct EvidenceRubric |70c0692cb6bca42d
+crates/competency/src/rubric.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "RubricRowWire", into = "RubricRowWire")] struct RubricRow |f92dce66b0888a97
+crates/competency/src/rubric.rs [pub] impl EvidenceRubric :: #[must_use] const fn of(rows: Vec<RubricRow>) -> Self |aef4a5a2d5e850ef
+crates/competency/src/rubric.rs [pub] impl EvidenceRubric :: #[must_use] fn row(&self, criterion: &CriterionId, stage: EvidenceStage) -> Option<&RubricRow> |37b25f37d45be65c
+crates/competency/src/rubric.rs [pub] impl EvidenceRubric :: #[must_use] fn rows(&self) -> &[RubricRow] |7434b1cd1bfca26d
+crates/competency/src/rubric.rs [pub] impl EvidenceRubric :: #[must_use] fn witnesses(&self, criterion: &CriterionId) -> bool |15f53e865797ed8e
+crates/competency/src/rubric.rs [pub] impl RubricRow :: #[must_use] const fn criterion(&self) -> &CriterionId |8aef7b9d3c072b01
+crates/competency/src/rubric.rs [pub] impl RubricRow :: #[must_use] const fn stage(&self) -> EvidenceStage |eb4a0d8a3b324ed0
+crates/competency/src/rubric.rs [pub] impl RubricRow :: #[must_use] fn admits(&self) -> &str |9fce297c9db161e9
+crates/competency/src/rubric.rs [pub] impl RubricRow :: fn of( criterion: CriterionId, stage: EvidenceStage, admits: impl Into<String>, ) -> Result<Self, CompetencyError> |014f9f8ab167fa2e
+crates/competency/src/sheet.rs [priv] impl CellState
+crates/competency/src/sheet.rs [priv] impl RubricCell
+crates/competency/src/sheet.rs [priv] impl RubricSheet
+crates/competency/src/sheet.rs [priv] use crate::{ Competency, evidence::StageEvidence, identity::{CompetencyId, CriterionId}, stage::EvidenceStage, } |dbbb41d57fd12764
+crates/competency/src/sheet.rs [priv] use serde::Serialize |64e275010a1227f2
+crates/competency/src/sheet.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde( tag = "state", content = "records", rename_all = "SCREAMING_SNAKE_CASE" )] enum CellState |dff61dafffda4b95
+crates/competency/src/sheet.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct RubricCell |15447c054c601570
+crates/competency/src/sheet.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct RubricSheet |d0992a0fc4f4eb40
+crates/competency/src/sheet.rs [pub] #[must_use] fn fill(competency: &Competency, records: &[StageEvidence]) -> RubricSheet |c50d6bd5b19637f0
+crates/competency/src/sheet.rs [pub] impl CellState :: #[must_use] const fn is_filled(&self) -> bool |abf888aa6d3dbda9
+crates/competency/src/sheet.rs [pub] impl CellState :: #[must_use] fn records(&self) -> &[StageEvidence] |9c70e27c2eb5176f
+crates/competency/src/sheet.rs [pub] impl RubricCell :: #[must_use] const fn criterion(&self) -> &CriterionId |8aef7b9d3c072b01
+crates/competency/src/sheet.rs [pub] impl RubricCell :: #[must_use] const fn stage(&self) -> EvidenceStage |eb4a0d8a3b324ed0
+crates/competency/src/sheet.rs [pub] impl RubricCell :: #[must_use] const fn state(&self) -> &CellState |6681cc0bd81dbbba
+crates/competency/src/sheet.rs [pub] impl RubricCell :: #[must_use] fn admits(&self) -> Option<&str> |ce62ac0b945420d6
+crates/competency/src/sheet.rs [pub] impl RubricSheet :: #[must_use] const fn competency(&self) -> &CompetencyId |925bcf51a14c8fc3
+crates/competency/src/sheet.rs [pub] impl RubricSheet :: #[must_use] fn cell(&self, criterion: &CriterionId, stage: EvidenceStage) -> Option<&RubricCell> |80e14d86aaedcb98
+crates/competency/src/sheet.rs [pub] impl RubricSheet :: #[must_use] fn cells(&self) -> &[RubricCell] |5a5a21e500e27201
+crates/competency/src/sheet.rs [pub] impl RubricSheet :: #[must_use] fn filled(&self) -> Vec<&RubricCell> |96ef487639c53e0f
+crates/competency/src/sheet.rs [pub] impl RubricSheet :: #[must_use] fn unmatched(&self) -> &[StageEvidence] |834f983e9ea2779f
+crates/competency/src/stage.rs [priv] impl EvidenceStage
+crates/competency/src/stage.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/competency/src/stage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceStage |302e7a3beba97298
+crates/competency/src/stage.rs [pub] impl EvidenceStage :: #[must_use] const fn as_str(self) -> &'static str |0d1eb11bdc7949d9
+crates/competency/src/stage.rs [pub] impl EvidenceStage :: #[must_use] const fn spec_name(self) -> &'static str |400c7258b0969e2e
+crates/competency/src/stage.rs [pub] impl EvidenceStage :: const ALL: [Self; 6] |b23628ca4308690c

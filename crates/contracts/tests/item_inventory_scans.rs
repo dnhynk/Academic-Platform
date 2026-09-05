@@ -100,16 +100,20 @@
 //!
 //! # What this does not claim
 //!
-//! The pin reaches the 25 packages either derivation reports. **It does not
-//! reach the other 45 crates of the workspace**, which key no inventory on a
-//! line prefix, own no closed type, and have no item pin either;
-//! `docs/contracts/policy-source-scans.md` names them and says when that
-//! starts to matter. What does reach all 68 is
-//! [`every_item_that_reaches_a_closed_type_is_pinned`], which is workspace-wide
-//! per closed type, and [`the_items_tile_every_file_the_workspace_compiles`],
-//! which is workspace-wide over files.
+//! The pin reaches every package either derivation reports, and no other. The
+//! two numbers that says — how many packages the workspace compiles and how
+//! many of them are pinned — are **asserted** by
+//! [`the_pin_names_what_it_covers_and_what_it_does_not`] rather than written
+//! here, because `P2-A5`'s fifth audit found this paragraph claiming 45
+//! unpinned crates and 68 in the workspace where the tree held 47 and 70, and
+//! recorded that it survived precisely because nothing asserted either number.
+//! Both moved again under `P2-RF29` and `P2-X3` while that was true. What is
+//! workspace-wide, and stays so whatever those numbers are, is
+//! [`every_item_that_reaches_a_closed_type_is_pinned`], which is over the whole
+//! workspace per closed type, and
+//! [`the_items_tile_every_file_the_workspace_compiles`], which is over files.
 //!
-//! Inside the 23, a body is in the pin. Outside them a body is covered only
+//! Inside the pinned packages, a body is in the pin. Outside them a body is covered only
 //! where the item reaches a closed type, and the line-anchored `impl_headers`
 //! this file supplements rather than replaces is what is left over the rest.
 //! That residue is what `#[allow(non_local_definitions)]` costs: written on a
@@ -138,8 +142,8 @@ use std::{
 };
 
 use support::{
-    ITEM_KEYWORDS, Item, TestResult, crate_directories, items_of, lex, product_roots, relative,
-    repository_root, resolve, restored_literals,
+    ITEM_KEYWORDS, ITEM_MODIFIERS, Item, TestResult, crate_directories, items_of, lex,
+    product_roots, relative, repository_root, resolve, restored_literals,
 };
 
 /// A type whose routes out are the subject of a sentence in a contract.
@@ -174,7 +178,7 @@ struct ClosedType {
 /// entries here are also what put its **whole** item set under
 /// [`every_item_in_these_packages_is_pinned`], through
 /// [`packages_that_need_an_item_pin`].
-const CLOSED_TYPES: [ClosedType; 10] = [
+const CLOSED_TYPES: [ClosedType; 12] = [
     ClosedType {
         package: "student-voice",
         name: "RestrictedOriginal",
@@ -251,6 +255,24 @@ const CLOSED_TYPES: [ClosedType; 10] = [
         contract: "section 25.5 fixes a saved plan and licenses 무엇이 stale해졌는지만 \
                    표시한다; `restate` takes `&self` and returns a marking, and no item \
                    takes a snapshot by mutable reference",
+    },
+    ClosedType {
+        package: "competency",
+        name: "StageEvidence",
+        items: &STAGE_EVIDENCE_ITEMS,
+        contract: "two doors and there is no third: a filled rubric cell is founded on \
+                   `P2-N2`'s admitted evidence or on `P2-R5`'s personal claim, both values \
+                   another crate produced under its own checks, and there is no arm at all \
+                   for a `ProjectObservationClaim`, so a repository fact alone promotes \
+                   nothing",
+    },
+    ClosedType {
+        package: "competency",
+        name: "PromotingEvidence",
+        items: &PROMOTING_EVIDENCE_ITEMS,
+        contract: "one producer, `PromotingEvidence::of`, and it refuses \
+                   `EvidenceCeiling::NoPromotion`, which is how section 13.2's \
+                   `dependency/install/import만 존재` row cannot become stage evidence",
     },
 ];
 
@@ -600,6 +622,112 @@ fn every_item_in_these_packages_is_pinned() -> TestResult {
     Ok(())
 }
 
+/// The pin directory holds one file per derived package and no others, and the
+/// numbers this file used to state in prose are read out of the tree.
+///
+/// **The half that closes the derivation seam.** A package either derivation
+/// reports with no pin file fails naming the package; a pin file for a package
+/// neither derivation reports fails naming the file. Without the second
+/// direction a pin could be added for a package nobody scans and counted as
+/// coverage, and without the first a package could join a derivation and be
+/// pinned by nothing.
+///
+/// **The counts.** `P2-A5`'s fifth audit found the module documentation saying
+/// "the other 45 crates" and "all 68" where the tree held 47 and 70, and
+/// recorded that it survived because **nothing asserted either number**. Both
+/// have moved twice since — `P2-RF29` and `P2-X3` — while the prose stayed put.
+/// They are asserted here, each stated once, each compared with a walk: the
+/// workspace's package count, the pinned count, and the unpinned remainder as
+/// the difference of the two rather than as a third number somebody keeps in
+/// step by hand.
+#[test]
+fn the_pin_names_what_it_covers_and_what_it_does_not() -> TestResult {
+    let repository = repository_root()?;
+    let derived = packages_that_need_an_item_pin(&repository)?;
+    let mut pinned: Vec<String> = Vec::new();
+    for entry in fs::read_dir(repository.join("crates/contracts/tests/pinned-items"))? {
+        let path = entry?.path();
+        assert_eq!(
+            path.extension().and_then(|value| value.to_str()),
+            Some("items"),
+            "{} is not a pin file",
+            relative(&repository, &path)
+        );
+        pinned.push(
+            path.file_stem()
+                .and_then(|stem| stem.to_str())
+                .unwrap_or_default()
+                .to_owned(),
+        );
+    }
+    pinned.sort();
+    let held: BTreeSet<&str> = pinned.iter().map(String::as_str).collect();
+    let wanted: BTreeSet<&str> = derived.iter().map(String::as_str).collect();
+    let empty: [&str; 0] = [];
+    let missing: Vec<&str> = wanted.difference(&held).copied().collect();
+    let orphaned: Vec<&str> = held.difference(&wanted).copied().collect();
+    assert_eq!(
+        missing, empty,
+        "a derivation reports a package with no item pin"
+    );
+    assert_eq!(
+        orphaned, empty,
+        "a pin file names a package neither derivation reports"
+    );
+
+    let mut packages: Vec<String> = Vec::new();
+    for directory in crate_directories(&repository)? {
+        let package = directory
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| format!("{} has no name", directory.display()))?;
+        packages.push(package.to_owned());
+    }
+    packages.sort();
+    let mut items = 0_usize;
+    for package in &derived {
+        items = items.saturating_add(pinned_items(&repository, package)?.len());
+    }
+    assert_eq!(
+        packages.len(),
+        WORKSPACE_PACKAGES,
+        "the workspace's package count changed"
+    );
+    assert_eq!(
+        derived.len(),
+        PINNED_PACKAGES,
+        "the set of packages the derivations report changed"
+    );
+    assert_eq!(items, PINNED_ITEMS, "the pinned item count changed");
+    // The remainder is a subtraction rather than a fourth number to keep in
+    // step, and `crates/competency` is not in it: the audit's third door is
+    // what put it on the second derivation.
+    let unpinned: Vec<&str> = packages
+        .iter()
+        .map(String::as_str)
+        .filter(|package| !wanted.contains(*package))
+        .collect();
+    assert_eq!(
+        unpinned.len(),
+        WORKSPACE_PACKAGES - PINNED_PACKAGES,
+        "the unpinned remainder is not the difference of the two counts"
+    );
+    assert!(
+        !unpinned.contains(&"competency"),
+        "`crates/competency` is outside the pin again; `P2-A5` measured what that costs"
+    );
+    Ok(())
+}
+
+/// The packages the workspace compiles, counted at `b31cc27`.
+const WORKSPACE_PACKAGES: usize = 71;
+
+/// The packages either derivation reports, counted at `b31cc27`.
+const PINNED_PACKAGES: usize = 43;
+
+/// The keys the pin directory holds, counted at `b31cc27`.
+const PINNED_ITEMS: usize = 11_748;
+
 /// The file holding one package's pinned item set.
 fn pin_path(repository: &Path, package: &str) -> PathBuf {
     repository
@@ -632,11 +760,11 @@ fn pinned_items(repository: &Path, package: &str) -> Result<Vec<String>, Box<dyn
 /// 24 rather than 25: the floor is what an empty or truncated walk trips over,
 /// and it is deliberately below the measured count so that removing one
 /// package's pin fails on the missing file rather than here.
-const PINNED_PACKAGE_FLOOR: usize = 24;
+const PINNED_PACKAGE_FLOOR: usize = 43;
 
 /// The floor under the pinned item count. `P2-RF29` measured 6131 at `4ac7701`
 /// over 23 packages; `P2-X3`'s union makes it 6792 over 25.
-const PINNED_ITEM_FLOOR: usize = 6_000;
+const PINNED_ITEM_FLOOR: usize = 11_000;
 
 /// Every route to a closed type is one somebody wrote down.
 ///
@@ -695,12 +823,35 @@ fn every_item_that_reaches_a_closed_type_is_pinned() -> TestResult {
 /// Derived from the code of each file -- comments blanked and string bodies
 /// restored -- rather than written down, so a file that grows such a collector
 /// arrives here and one rewritten off the shape leaves.
+///
+/// **What "keyed on a line prefix" is, and what it was.** `T227` looked for
+/// three assembled literals: `starts_with("pub fn ")`, `starts_with("pub const
+/// fn ")` and `starts_with("impl ")`. `P2-A5`'s fifth audit measured that
+/// keying the detector on three spellings is the same failure the item reader
+/// exists to replace, one level up, and named the four packages it misses:
+/// `consent`, `curriculum` and `untrusted-content` write `starts_with("impl")`
+/// with no trailing space, and `what-if` writes `strip_prefix("pub fn ")`.
+///
+/// The question is asked without a list of literals now. A collector is keyed
+/// on a line prefix when it hands a **string literal whose first word is an
+/// item keyword, an item modifier or a visibility** to one of the three
+/// operations that take a prefix. The keyword list is [`ITEM_KEYWORDS`] and
+/// [`ITEM_MODIFIERS`] -- the reader's own closed enumeration, argued where it
+/// is declared -- so this detector and the reader move together instead of
+/// drifting apart.
 fn files_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box<dyn Error>> {
-    let markers = [
-        format!("starts_with({}pub fn {})", '"', '"'),
-        format!("starts_with({}pub const fn {})", '"', '"'),
-        format!("starts_with({}impl {})", '"', '"'),
+    // Assembled, so this file's own code is not a match for the scan it runs.
+    let operations = [
+        format!("starts{}with(", '_'),
+        format!("strip{}prefix(", '_'),
+        "find(".to_owned(),
     ];
+    let heads: BTreeSet<&str> = ITEM_KEYWORDS
+        .iter()
+        .chain(ITEM_MODIFIERS.iter())
+        .copied()
+        .chain(["pub"])
+        .collect();
     let mut found: Vec<String> = Vec::new();
     for directory in crate_directories(repository)? {
         let mut pending = vec![directory.join("tests")];
@@ -723,7 +874,10 @@ fn files_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box<dy
                 // fire on the scan rather than on what it scans -- which is
                 // why the markers above are assembled rather than written.
                 let code: String = restored_literals(&source).into_iter().collect();
-                if markers.iter().any(|marker| code.contains(marker.as_str())) {
+                if operations
+                    .iter()
+                    .any(|operation| keys_on_an_item_head(&code, operation, &heads))
+                {
                     found.push(relative(repository, &path));
                 }
             }
@@ -746,6 +900,41 @@ fn packages_that_need_an_item_pin(repository: &Path) -> Result<Vec<String>, Box<
     Ok(found.into_iter().collect())
 }
 
+/// Whether `code` hands `operation` a literal whose first word is an item head.
+///
+/// The literal is read by scanning rather than by pattern, so an escape inside
+/// it cannot end it early. A literal that does not open immediately after the
+/// parenthesis is not a prefix key -- `starts_with(marker)` passes a variable
+/// and says nothing about a spelling.
+fn keys_on_an_item_head(code: &str, operation: &str, heads: &BTreeSet<&str>) -> bool {
+    let bytes: Vec<char> = code.chars().collect();
+    let mut cursor = 0;
+    while let Some(at) = code[cursor..].find(operation).map(|at| at + cursor) {
+        cursor = at + operation.len();
+        let opens = code[..cursor].chars().count();
+        if bytes.get(opens) != Some(&'"') {
+            continue;
+        }
+        let mut word = String::new();
+        let mut index = opens + 1;
+        while let Some(character) = bytes.get(index) {
+            if *character == '"' || character.is_whitespace() {
+                break;
+            }
+            if *character == '\\' {
+                index += 2;
+                continue;
+            }
+            word.push(*character);
+            index += 1;
+        }
+        if heads.contains(word.as_str()) {
+            return true;
+        }
+    }
+    false
+}
+
 /// The packages those files belong to, deduplicated.
 fn packages_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box<dyn Error>> {
     let mut found: BTreeSet<String> = BTreeSet::new();
@@ -763,12 +952,25 @@ fn packages_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box
 ///
 /// `P2-A4`'s F2 records that the gap the item reader closes is in all six
 /// `P2-L` packages by construction, and reading for the collector's own shape
-/// says it is in seventeen more. Every one of them now carries a whole-set
-/// item pin as well ([`every_item_in_these_packages_is_pinned`] derives its
-/// package list from this one), so the list is no longer the remainder -- it
-/// is the derivation. What it still records is that these files read a line:
-/// the two readers are complementary, because a line-anchored `impl_headers`
-/// sees inside a function body and an item key does not.
+/// says it is in many more. Every one of them carries a whole-set item pin as
+/// well -- this is the first arm of [`packages_that_need_an_item_pin`] -- so
+/// the list is not the remainder, it is half the derivation. What it still
+/// records is that these files read a line: the two readers are complementary,
+/// because a line-anchored `impl_headers` sees inside a function body and an
+/// item key does not.
+///
+/// **The detector is no longer a list of literals.** `T227` searched for
+/// `starts_with("pub fn ")`, `starts_with("pub const fn ")` and
+/// `starts_with("impl ")`, and `P2-A5`'s fifth audit measured that keying it on
+/// three spellings is the same failure the item reader exists to replace, one
+/// level up: `consent`, `curriculum` and `untrusted-content` write
+/// `starts_with("impl")` with no trailing space and `what-if` writes
+/// `strip_prefix`, so four packages held the shape and were outside the arm.
+/// The question is asked about the **literal's first word** now, against
+/// [`ITEM_KEYWORDS`] and [`ITEM_MODIFIERS`] -- the reader's own closed
+/// enumeration, argued where it is declared -- so the detector and the reader
+/// move together instead of drifting apart, and eight controls below fix what
+/// it must see and what it must refuse.
 #[test]
 fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
     let repository = repository_root()?;
@@ -795,21 +997,61 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
             relative(&repository, &path)
         );
     }
-    let mut pinned: Vec<String> = Vec::new();
-    for entry in fs::read_dir(repository.join("crates/contracts/tests/pinned-items"))? {
-        let path = entry?.path();
-        let name = path
-            .file_stem()
-            .and_then(|stem| stem.to_str())
-            .unwrap_or_default()
-            .to_owned();
-        pinned.push(name);
+    // The detector answers for the four spellings `P2-A5` measured it missing,
+    // and refuses a literal that is not an item head, so "accept more" is not
+    // what this became. `find` is included because `crates/competency` keys
+    // `public_signatures` on one, which is how the crate holding claim 5's
+    // sentence stayed off this list.
+    let heads: BTreeSet<&str> = ITEM_KEYWORDS
+        .iter()
+        .chain(ITEM_MODIFIERS.iter())
+        .copied()
+        .chain(["pub"])
+        .collect();
+    let starts = format!("starts{}with(", '_');
+    let strips = format!("strip{}prefix(", '_');
+    let finds = "find(".to_owned();
+    for (code, operation) in [
+        (
+            format!("line.starts{}with({}impl{})", '_', '"', '"'),
+            &starts,
+        ),
+        (
+            format!("trimmed.strip{}prefix({}pub fn {})", '_', '"', '"'),
+            &strips,
+        ),
+        (format!("code.find({}pub fn {})", '"', '"'), &finds),
+        (
+            format!("line.starts{}with({}pub const fn {})", '_', '"', '"'),
+            &starts,
+        ),
+    ] {
+        assert!(
+            keys_on_an_item_head(&code, operation, &heads),
+            "the detector does not see {code}"
+        );
     }
-    pinned.sort();
-    assert_eq!(
-        pinned, packages,
-        "a pin file names a package neither derivation reports"
-    );
+    for (code, operation) in [
+        // A path prefix, a message and a variable are none of them item heads.
+        (
+            format!("rest.strip{}prefix({}crates/{})", '_', '"', '"'),
+            &strips,
+        ),
+        (
+            format!("line.starts{}with({}let roots = [{})", '_', '"', '"'),
+            &starts,
+        ),
+        (format!("code.find(marker.as{}str())", '_'), &finds),
+        (
+            format!("name.starts{}with({}academic{}{})", '_', '"', '_', '"'),
+            &starts,
+        ),
+    ] {
+        assert!(
+            !keys_on_an_item_head(&code, operation, &heads),
+            "the detector reads {code} as a line-prefix collector"
+        );
+    }
     Ok(())
 }
 
@@ -1049,11 +1291,72 @@ const RELEASABLE_ARTIFACT_ITEMS: [&str; 11] = [
     "crates/capture-gate/src/lib.rs [pub] use artifact::{ CaptureArtifact, CaptureManifest, ChunkRecord, PERMISSION_VIOLATION_RISK, QuarantinedArtifact, ReleasableArtifact, TimelineGap, ViolationRisk, } |5f1c50d32a5909a1",
 ];
 
+/// Every item of the workspace that reaches a `StageEvidence`.
+///
+/// The type `P2-R5`'s claim becomes a filled rubric cell through, and the
+/// crate `P2-A5`'s fifth audit opened a third door into. One method added
+/// inside the existing `impl StageEvidence` block -- spelling none of the two
+/// names `no_product_file_names_a_project_observation_claim` lists, adding no
+/// `use` item, no field and no re-export -- filled a personal competency cell
+/// at the `USED` stage from a snapshot identifier and a classification token
+/// alone, and passed the whole workspace on both hosts.
+///
+/// It passed because `crates/competency` had no item pin. It keys no inventory
+/// on a line prefix, so the first arm of
+/// [`packages_that_need_an_item_pin`] never reported it; declaring the two
+/// types its module documentation is about is what puts it on the second, which
+/// is the arm `P2-X3` built for exactly this — *where a package says that its
+/// own surface is the subject of a contract sentence*. The whole item set of
+/// `academic-competency` is pinned as a consequence, and the route is **named**
+/// here rather than reported as an item nobody wrote down.
+const STAGE_EVIDENCE_ITEMS: [&str; 22] = [
+    "crates/competency/src/evidence.rs [priv] impl StageEvidence",
+    "crates/competency/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct StageEvidence |82b280888ee90cb4",
+    "crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] const fn concept(&self) -> &ConceptRef |44b249370155f49a",
+    "crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] const fn id(&self) -> &RecordId |dbe79657cd535cff",
+    "crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] const fn source(&self) -> &EvidenceSource |af80cdba2ed29bd7",
+    "crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] const fn stage(&self) -> EvidenceStage |eb4a0d8a3b324ed0",
+    "crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] fn of_knowledge_state( id: RecordId, stage: EvidenceStage, evidence: &PromotingEvidence, ) -> Self |9db8de3bfc5c39a1",
+    "crates/competency/src/evidence.rs [pub] impl StageEvidence :: fn of_personal_claim( id: RecordId, stage: EvidenceStage, claim: &PersonalApplicationClaim, ) -> Result<Self, CompetencyError> |55789112b3f1f1fc",
+    "crates/competency/src/lib.rs [pub] use evidence::{EvidenceOrigin, EvidenceSource, PromotingEvidence, StageEvidence} |12576c44d75a36e7",
+    "crates/competency/src/sheet.rs [priv] impl CellState",
+    "crates/competency/src/sheet.rs [priv] impl RubricSheet",
+    "crates/competency/src/sheet.rs [priv] use crate::{ Competency, evidence::StageEvidence, identity::{CompetencyId, CriterionId}, stage::EvidenceStage, } |dbbb41d57fd12764",
+    "crates/competency/src/sheet.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde( tag = \"state\", content = \"records\", rename_all = \"SCREAMING_SNAKE_CASE\" )] enum CellState |dff61dafffda4b95",
+    "crates/competency/src/sheet.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct RubricSheet |d0992a0fc4f4eb40",
+    "crates/competency/src/sheet.rs [pub] #[must_use] fn fill(competency: &Competency, records: &[StageEvidence]) -> RubricSheet |c50d6bd5b19637f0",
+    "crates/competency/src/sheet.rs [pub] impl CellState :: #[must_use] fn records(&self) -> &[StageEvidence] |9c70e27c2eb5176f",
+    "crates/competency/src/sheet.rs [pub] impl RubricSheet :: #[must_use] fn unmatched(&self) -> &[StageEvidence] |834f983e9ea2779f",
+    "crates/readiness/src/cell.rs [priv] impl AxisEvidence",
+    "crates/readiness/src/cell.rs [priv] use academic_competency::{Competency, CriterionId, EvidenceStage, StageEvidence} |d00c8bd7741f1a9f",
+    "crates/readiness/src/cell.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct AxisEvidence |c24bba2f34ecebaf",
+    "crates/readiness/src/cell.rs [pub] impl AxisEvidence :: #[must_use] const fn record(&self) -> &StageEvidence |6c85860cd8571836",
+    "crates/readiness/src/cell.rs [pub] impl AxisEvidence :: fn place( axis: ReadinessAxis, criterion: CriterionId, locator: EvidenceLocatorId, record: &StageEvidence, ) -> Result<Self, ReadinessError> |61c7f825205ca14e",
+];
+
+/// Every item of the workspace that reaches a `PromotingEvidence`.
+///
+/// Door one. `PromotingEvidence::of` is the one producer and it refuses the
+/// `NoPromotion` ceiling, which is what makes a dependency declaration a value
+/// that cannot become stage evidence at all.
+const PROMOTING_EVIDENCE_ITEMS: [&str; 10] = [
+    "crates/competency/src/evidence.rs [priv] impl PromotingEvidence",
+    "crates/competency/src/evidence.rs [priv] impl StageEvidence",
+    "crates/competency/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PromotingEvidence |f07ce1b5763eb033",
+    "crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: #[must_use] const fn admitted(&self) -> &EligibleEvidence |c85dbaca903b6253",
+    "crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: #[must_use] const fn concept(&self) -> EntityId |bae9bbef3f4351be",
+    "crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: #[must_use] const fn evidence_id(&self) -> EvidenceId |58d7c4992d779fc0",
+    "crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: #[must_use] const fn kind(&self) -> EvidenceKind |ca633d0c025f0f95",
+    "crates/competency/src/evidence.rs [pub] impl PromotingEvidence :: fn of(inner: EligibleEvidence) -> Result<Self, CompetencyError> |25ce42c42d593803",
+    "crates/competency/src/evidence.rs [pub] impl StageEvidence :: #[must_use] fn of_knowledge_state( id: RecordId, stage: EvidenceStage, evidence: &PromotingEvidence, ) -> Self |9db8de3bfc5c39a1",
+    "crates/competency/src/lib.rs [pub] use evidence::{EvidenceOrigin, EvidenceSource, PromotingEvidence, StageEvidence} |12576c44d75a36e7",
+];
+
 /// Every file holding a copy of the reach reader.
 ///
 /// Sixteen, not the fourteen `P2-A5` counted: `crates/*/tests/*.rs` does not
 /// reach `tests/support/mod.rs`, and two crates keep theirs there.
-const REACH_READERS: [&str; 17] = [
+const REACH_READERS: [&str; 18] = [
     "crates/blind-spot/tests/blind_spot_scans.rs",
     "crates/build-learn/tests/build_learn_scans.rs",
     "crates/competency/tests/competency_scans.rs",
@@ -1070,6 +1373,7 @@ const REACH_READERS: [&str; 17] = [
     "crates/repository-classification/tests/classification_scans.rs",
     "crates/repository-competency/tests/competency_scans.rs",
     "crates/repository-correlation/tests/correlation_scans.rs",
+    "crates/repository/tests/repository_scans.rs",
     "crates/role-profile/tests/role_scans.rs",
 ];
 
@@ -1131,31 +1435,56 @@ const MOTIVATION_DISPLAY_ITEMS: [&str; 11] = [
 /// Derived, not asserted: the set is every `crates/*/tests/**.rs` whose code
 /// -- comments blanked, string bodies restored -- holds one of the three
 /// prefixes as a `starts_with` argument.
-const INVENTORIES_KEYED_ON_A_LINE_PREFIX: [&str; 24] = [
+const INVENTORIES_KEYED_ON_A_LINE_PREFIX: [&str; 49] = [
+    "crates/audit/tests/audit_scans.rs",
+    "crates/blind-spot/tests/blind_spot_scans.rs",
     "crates/build-learn/tests/build_learn_scans.rs",
     "crates/capture-gate/tests/capture_scans.rs",
     "crates/capture/tests/capture_scans.rs",
+    "crates/competency/tests/competency_scans.rs",
+    "crates/consent/tests/consent_scans.rs",
+    "crates/critical-path/tests/critical_path_scans.rs",
     "crates/cs-map/tests/cs_map_scans.rs",
+    "crates/curriculum/tests/curriculum_scans.rs",
+    "crates/dashboard/tests/dashboard_scans.rs",
     "crates/deletion/tests/deletion_scans.rs",
+    "crates/egress-boundary/tests/byte_path_pin.rs",
     "crates/evidence-center/tests/evidence_center_scans.rs",
+    "crates/export/tests/export_scans.rs",
+    "crates/freshness/tests/freshness_scans.rs",
+    "crates/gap/tests/gap_scans.rs",
     "crates/home/tests/home.rs",
     "crates/ingestion/tests/ingestion_scans.rs",
+    "crates/integrations/tests/integration_scans.rs",
+    "crates/integrations/tests/integrations.rs",
+    "crates/integrations/tests/support/mod.rs",
     "crates/keystore-platform/tests/facade.rs",
+    "crates/knowledge-state/tests/knowledge_state_scans.rs",
     "crates/lecture-document/tests/lecture_document_scans.rs",
+    "crates/model-run/tests/model_run_scans.rs",
+    "crates/next-lecture/tests/next_lecture_scans.rs",
+    "crates/next-lecture/tests/support/mod.rs",
     "crates/non-delegable/tests/non_delegable_scans.rs",
     "crates/offering/tests/offering_scans.rs",
     "crates/process-sandbox/tests/scans.rs",
     "crates/proposal/tests/proposal_scans.rs",
     "crates/readiness/tests/readiness_matrix.rs",
     "crates/readiness/tests/readiness_scans.rs",
+    "crates/record/tests/record_scans.rs",
     "crates/repository-analysis/tests/analysis_scans.rs",
     "crates/repository-classification/tests/classification_scans.rs",
     "crates/repository-competency/tests/competency_scans.rs",
     "crates/repository-correlation/tests/correlation_scans.rs",
     "crates/repository/tests/repository_scans.rs",
     "crates/requirement/tests/requirement_scans.rs",
+    "crates/review/tests/review_scans.rs",
+    "crates/role-profile/tests/role_scans.rs",
     "crates/student-voice/tests/student_voice_scans.rs",
     "crates/transcription/tests/transcription_scans.rs",
+    "crates/untrusted-content/tests/trust_scans.rs",
+    "crates/what-if/tests/support/mod.rs",
+    "crates/what-if/tests/what_if.rs",
+    "crates/what-if/tests/what_if_scans.rs",
 ];
 
 /// Every item of the workspace that reaches `RegistrationConfirmation`.

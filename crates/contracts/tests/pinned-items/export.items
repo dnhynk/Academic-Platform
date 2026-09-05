@@ -1,0 +1,342 @@
+crates/export/src/audit.rs [priv] #[cfg(test)] mod tests
+crates/export/src/audit.rs [priv] impl AuditRecord
+crates/export/src/audit.rs [priv] impl AuditRerun
+crates/export/src/audit.rs [priv] impl CatalogScopeRecord
+crates/export/src/audit.rs [priv] mod tests :: #[test] fn the_four_audit_files_are_distinct_and_live_under_one_directory() |3617a5a378bc573c
+crates/export/src/audit.rs [priv] mod tests :: use super::{FROZEN_INPUTS_FILE, OUTCOME_FILE, PROOF_TREE_FILE, RULE_SET_FILE} |b148e62c6c77bc80
+crates/export/src/audit.rs [priv] use academic_audit::{ CatalogEntry, DegreeAudit, GRADUATION_ENGINE_ID, GraduationAuditEngine, RuleSetCatalog, RuleSetScope, Selection, profile::{DegreeMode, GraduationStandard, InstitutionId}, select, } |94af70073080e263
+crates/export/src/audit.rs [priv] use academic_domain::{ ContentDigest, engines::{EngineVersion, FrozenInputs, RuleSetHash}, } |8a7e819b40add6e4
+crates/export/src/audit.rs [priv] use academic_requirement::{AdmissionYear, RuleSet} |fca9b99653c3516a
+crates/export/src/audit.rs [priv] use crate::{ExportError, ExportResult, bundle::encode_hex, read::ClaimedBundle} |9bcbb6269523d310
+crates/export/src/audit.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/export/src/audit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AuditRerun |707269325a1a9efb
+crates/export/src/audit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct AuditRecord |eb7585a8ae8092e0
+crates/export/src/audit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct CatalogScopeRecord |e1777e4b5b17865d
+crates/export/src/audit.rs [pub] const FROZEN_INPUTS_FILE: &str |e1b246bf95ceb183
+crates/export/src/audit.rs [pub] const OUTCOME_FILE: &str |e76fff371eb5b871
+crates/export/src/audit.rs [pub] const PROOF_TREE_FILE: &str |e188f8dacf6948ce
+crates/export/src/audit.rs [pub] const RULE_SET_FILE: &str |8f30f893b3d0c1f8
+crates/export/src/audit.rs [pub] fn rerun_audit(bundle: &ClaimedBundle, published: &[RuleSet]) -> ExportResult<AuditRerun> |6710ed5f0762f2ba
+crates/export/src/audit.rs [pub] impl AuditRecord :: #[must_use] fn referenced_paths(&self) -> [&str; 4] |1784ade475bfc9c2
+crates/export/src/audit.rs [pub] impl AuditRerun :: #[must_use] const fn engine_version(&self) -> EngineVersion |2929bedddaa2fc3b
+crates/export/src/audit.rs [pub] impl AuditRerun :: #[must_use] const fn outcome_byte_length(&self) -> usize |ba13bf6d39641ad5
+crates/export/src/audit.rs [pub] impl AuditRerun :: #[must_use] fn engine_id(&self) -> &str |20349af754a6af69
+crates/export/src/audit.rs [pub] impl AuditRerun :: #[must_use] fn outcome_sha256(&self) -> &str |f7695cc14b50ae09
+crates/export/src/audit.rs [pub] impl AuditRerun :: #[must_use] fn rule_set_hash(&self) -> &str |055933252102b0bd
+crates/export/src/audit.rs [pub] impl AuditRerun :: #[must_use] fn selected_scope_text(&self) -> &str |5c35a8e02fce5bf9
+crates/export/src/audit.rs [pub] impl CatalogScopeRecord :: fn of(scope: &RuleSetScope) -> Self |184c2480b79746ea
+crates/export/src/audit.rs [pub] impl CatalogScopeRecord :: fn rebuild(&self) -> ExportResult<RuleSetScope> |a35d8d3032cebaea
+crates/export/src/bundle.rs [priv] #[cfg(test)] mod tests
+crates/export/src/bundle.rs [priv] fn semantic_digest(semantic: &BundleSemantic) -> ExportResult<ContentDigest> |b3e1612a3b627931
+crates/export/src/bundle.rs [priv] impl BundleManifest
+crates/export/src/bundle.rs [priv] impl FileRecord
+crates/export/src/bundle.rs [priv] impl ManifestAttributes
+crates/export/src/bundle.rs [priv] impl ObjectRecord
+crates/export/src/bundle.rs [priv] impl PostureBlock
+crates/export/src/bundle.rs [priv] mod tests :: #[test] fn a_file_record_derives_its_restriction_from_its_label() -> Result<(), Box<dyn std::error::Error>> |7619609bfaed88df
+crates/export/src/bundle.rs [priv] mod tests :: #[test] fn a_posture_admitting_production_data_is_refused() |31215d09c3a22c26
+crates/export/src/bundle.rs [priv] mod tests :: #[test] fn an_object_record_carries_a_path_or_a_reason_and_never_both() |24298909311d10d6
+crates/export/src/bundle.rs [priv] mod tests :: #[test] fn hexadecimal_is_lowercase_and_fixed_width() |bd19fcfcaff9c5d5
+crates/export/src/bundle.rs [priv] mod tests :: fn posture(production_data_allowed: bool) -> PostureBlock |5cc1b5a1a8c6ecf4
+crates/export/src/bundle.rs [priv] mod tests :: use crate::{ label::{CopyrightNotice, SensitivityLabel, SharingRestriction}, source::WithheldReason, } |9eb8fbd2e207dea6
+crates/export/src/bundle.rs [priv] mod tests :: use super::{FileRecord, ObjectRecord, PostureBlock, encode_hex} |fe068db037253c48
+crates/export/src/bundle.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/export/src/bundle.rs [priv] use crate::{ BUNDLE_ENCRYPTED, ExportError, ExportResult, GRADUATION_EXPORT_FORMAT, GRADUATION_EXPORT_GENERATOR, GRADUATION_EXPORT_MANIFEST_VERSION, PROJECTIONS_INCLUDED, SEMANTIC_DIGEST_DOMAIN, label::{CopyrightNotice, SensitivityLabel, SharingRestriction}, source::{DeviceHead, GitRef, StoreIdentity, Watermark, WithheldReason}, } |e889c30ffdfedd27
+crates/export/src/bundle.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/export/src/bundle.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BundleCounts |6fa2c7675bc0bc56
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BundleVolatile |4a4cd62f32ebb924
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BundleManifest |782154538e1fd26c
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BundleSemantic |246ff60478ffa6b0
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct FileRecord |a165953369ca3ec5
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ManifestAttributes |f655cb7bddb9bc95
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ObjectRecord |554573748b62bd0f
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct PartRecord |76bae50c94eaf430
+crates/export/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct PostureBlock |c3b2202457575086
+crates/export/src/bundle.rs [pub] fn encode_hex(bytes: &[u8]) -> String |0ed45516ca37cc3b
+crates/export/src/bundle.rs [pub] impl BundleManifest :: fn from_json_bytes(bytes: &[u8]) -> ExportResult<Self> |c33c73cac3eab1ed
+crates/export/src/bundle.rs [pub] impl BundleManifest :: fn require_v2_contract(&self) -> ExportResult<()> |fbde68e8886bd159
+crates/export/src/bundle.rs [pub] impl BundleManifest :: fn seal(semantic: BundleSemantic, generated_at_unix_ms: i64) -> ExportResult<Self> |a9629ef33b7e2590
+crates/export/src/bundle.rs [pub] impl BundleManifest :: fn to_json_bytes(&self) -> ExportResult<Vec<u8>> |4073baafea9e488e
+crates/export/src/bundle.rs [pub] impl BundleManifest :: fn verify_semantic_digest(&self) -> ExportResult<()> |9e7a51d5df8bfdda
+crates/export/src/bundle.rs [pub] impl FileRecord :: #[must_use] const fn byte_length(&self) -> u64 |33a0523d5aee23ee
+crates/export/src/bundle.rs [pub] impl FileRecord :: #[must_use] const fn copyright_notice(&self) -> &CopyrightNotice |a2d2b34ae0b190b0
+crates/export/src/bundle.rs [pub] impl FileRecord :: #[must_use] const fn sensitivity(&self) -> SensitivityLabel |458c25fde5354430
+crates/export/src/bundle.rs [pub] impl FileRecord :: #[must_use] const fn sharing_restriction(&self) -> SharingRestriction |6b9bccbb9cb1f4d3
+crates/export/src/bundle.rs [pub] impl FileRecord :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
+crates/export/src/bundle.rs [pub] impl FileRecord :: #[must_use] fn restriction_follows_label(&self) -> bool |4a40e4a38bc52c54
+crates/export/src/bundle.rs [pub] impl FileRecord :: #[must_use] fn sha256(&self) -> &str |086273f419f7db61
+crates/export/src/bundle.rs [pub] impl FileRecord :: fn new( path: impl Into<String>, byte_length: u64, sha256: impl Into<String>, sensitivity: SensitivityLabel, copyright_notice: CopyrightNotice, ) -> Self |9a26093bf323d83b
+crates/export/src/bundle.rs [pub] impl ManifestAttributes :: #[must_use] fn restriction_follows_label(&self) -> bool |4a40e4a38bc52c54
+crates/export/src/bundle.rs [pub] impl ObjectRecord :: fn validate(&self) -> ExportResult<()> |054d292b5379ea99
+crates/export/src/bundle.rs [pub] impl PostureBlock :: fn require_phase2_posture(&self) -> ExportResult<()> |e49f1c02987cedf8
+crates/export/src/directory.rs [priv] #[cfg(not(unix))] fn create_private_directory(path: &Path) -> ExportResult<()> |76ed75699db139cb
+crates/export/src/directory.rs [priv] #[cfg(unix)] fn create_private_directory(path: &Path) -> ExportResult<()> |a4c8546ecce0072e
+crates/export/src/directory.rs [priv] const COPY_CHUNK_BYTES: usize |24ef8642bae1595a
+crates/export/src/directory.rs [priv] fn collect_files(root: &Path, current: &Path, files: &mut Vec<String>) -> ExportResult<()> |af22d93d541b1f52
+crates/export/src/directory.rs [priv] fn read_directory(root: &Path) -> ExportResult<Vec<PathBuf>> |e56c57573f4edee2
+crates/export/src/directory.rs [priv] fn relative_path_string(root: &Path, path: &Path) -> ExportResult<String> |62433098338a8ab2
+crates/export/src/directory.rs [priv] fn sync_directory(path: &Path) -> ExportResult<()> |911510510f9279ca
+crates/export/src/directory.rs [priv] static NEXT_STAGING: AtomicU64 |31a2867b2f12d40b
+crates/export/src/directory.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/export/src/directory.rs [priv] use crate::{ExportError, ExportResult, MAX_BUNDLE_RELATIVE_PATH_BYTES} |0998ada5a97ae3ad
+crates/export/src/directory.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/export/src/directory.rs [priv] use std::{ fs::{self, File, OpenOptions}, io::{Read, Write}, path::{Component, Path, PathBuf}, sync::atomic::{AtomicU64, Ordering}, time::{SystemTime, UNIX_EPOCH}, } |26a2d7da9c1a695c
+crates/export/src/directory.rs [pub] const WINDOWS_RESERVED_NAMES: &[&str] |5e0e50d4cf172089
+crates/export/src/directory.rs [pub] fn check_relative_path(relative: &str) -> ExportResult<()> |71fc8fb230910011
+crates/export/src/directory.rs [pub] fn copy_new_file( staging: &Path, relative: &str, source_path: &Path, ) -> ExportResult<(ContentDigest, u64)> |8f568471af83bc20
+crates/export/src/directory.rs [pub] fn create_directories(path: &Path) -> ExportResult<()> |d3820eea64fdd844
+crates/export/src/directory.rs [pub] fn create_new_directory(path: &Path) -> ExportResult<()> |4d19841dcc6cb403
+crates/export/src/directory.rs [pub] fn hash_file(path: &Path) -> ExportResult<(ContentDigest, u64)> |038debfc763314c9
+crates/export/src/directory.rs [pub] fn list_files(root: &Path) -> ExportResult<Vec<String>> |6d4af6669e6e648d
+crates/export/src/directory.rs [pub] fn publish(staging: &Path, destination: &Path) -> ExportResult<()> |e39f6ea8d23dc5af
+crates/export/src/directory.rs [pub] fn remove_staging(staging: &Path) -> ExportResult<()> |9a5a65cfbd263d07
+crates/export/src/directory.rs [pub] fn require_absent(path: &Path) -> ExportResult<()> |68f2cf690dcc212b
+crates/export/src/directory.rs [pub] fn reserve_staging_path(destination: &Path) -> ExportResult<PathBuf> |566dfa619768d00a
+crates/export/src/directory.rs [pub] fn resolve_relative(root: &Path, relative: &str) -> ExportResult<PathBuf> |66a2f01b24f8cdc3
+crates/export/src/directory.rs [pub] fn sync_tree(root: &Path) -> ExportResult<()> |245e0ddf5412bdf5
+crates/export/src/directory.rs [pub] fn write_new_file(staging: &Path, relative: &str, bytes: &[u8]) -> ExportResult<()> |677deef134ce1dbc
+crates/export/src/error.rs [priv] impl ExportError
+crates/export/src/error.rs [priv] impl From<academic_audit::AuditError> for ExportError
+crates/export/src/error.rs [priv] impl From<academic_audit::AuditError> for ExportError :: fn from(source: academic_audit::AuditError) -> Self |1a77dcd91b036c01
+crates/export/src/error.rs [priv] impl From<academic_domain::engines::EngineError> for ExportError
+crates/export/src/error.rs [priv] impl From<academic_domain::engines::EngineError> for ExportError :: fn from(source: academic_domain::engines::EngineError) -> Self |b6c03850ca0a8e87
+crates/export/src/error.rs [priv] impl fmt::Display for ExportError
+crates/export/src/error.rs [priv] impl fmt::Display for ExportError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |34bd32d367617c04
+crates/export/src/error.rs [priv] impl std::error::Error for ExportError
+crates/export/src/error.rs [priv] impl std::error::Error for ExportError :: fn source(&self) -> Option<&(dyn std::error::Error + 'static)> |e2de0ff96172eb06
+crates/export/src/error.rs [priv] use std::{fmt, path::Path, path::PathBuf} |e0bf44ab7c92b522
+crates/export/src/error.rs [pub] #[derive(Debug)] enum ExportError |d8f825d1753e6b61
+crates/export/src/error.rs [pub] impl ExportError :: fn io(operation: &'static str, path: &Path, source: std::io::Error) -> Self |eb25091c945bb775
+crates/export/src/error.rs [pub] impl ExportError :: fn mismatch( item: &'static str, expected: impl fmt::Display, observed: impl fmt::Display, ) -> Self |b488133f771af32c
+crates/export/src/error.rs [pub] type ExportResult<T> = Result<T, ExportError> |a1c4c06346d63cbc
+crates/export/src/graph.rs [priv] #[cfg(test)] mod tests
+crates/export/src/graph.rs [priv] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(untagged)] enum Node |8d965e23ee4061db
+crates/export/src/graph.rs [priv] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Context |07448e9165a1cc5a
+crates/export/src/graph.rs [priv] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct GraphDocument |7e6a52d0334ea76d
+crates/export/src/graph.rs [priv] fn iri(kind: &str, identifier: &str) -> String |b88860dc1632004a
+crates/export/src/graph.rs [priv] impl Node
+crates/export/src/graph.rs [priv] impl Node :: fn id(&self) -> &str |15f6746f91940b64
+crates/export/src/graph.rs [priv] mod tests :: #[test] fn an_empty_domain_still_renders_a_document_with_a_context() -> Result<(), Box<dyn std::error::Error>> |b96a2b6ad8ffea83
+crates/export/src/graph.rs [priv] mod tests :: #[test] fn an_iri_names_the_canonical_identifier_and_not_a_locator() |daf0914a0cfbbcfe
+crates/export/src/graph.rs [priv] mod tests :: use super::{iri, render} |6486df1e6e632b9a
+crates/export/src/graph.rs [priv] use crate::{ ExportError, ExportResult, label::SensitivityLabel, source::{ArtifactSource, ClaimSource, DomainRecord}, } |997444e6e7cdf9a6
+crates/export/src/graph.rs [priv] use serde::Serialize |64e275010a1227f2
+crates/export/src/graph.rs [pub] const JSON_LD_VERSION: &str |4f0e72aa080d79bc
+crates/export/src/graph.rs [pub] const VOCABULARY: &str |9b47a4d8c0091202
+crates/export/src/graph.rs [pub] fn render( domain_id: &str, scopes: &[&DomainRecord], artifacts: &[&ArtifactSource], evidence: &[&DomainRecord], claims: &[&ClaimSource], decisions: &[&DomainRecord], ) -> ExportResult<Vec<u8>> |97635fb152745c8d
+crates/export/src/label.rs [priv] #[cfg(test)] mod tests
+crates/export/src/label.rs [priv] impl CopyrightNotice
+crates/export/src/label.rs [priv] impl DomainTerms
+crates/export/src/label.rs [priv] impl SensitivityLabel
+crates/export/src/label.rs [priv] impl SharingRestriction
+crates/export/src/label.rs [priv] impl TermsRegister
+crates/export/src/label.rs [priv] mod tests :: #[test] fn a_notice_may_not_be_empty_or_span_lines() |6c83a31ea0457d53
+crates/export/src/label.rs [priv] mod tests :: #[test] fn a_register_refuses_a_domain_it_does_not_name() -> Result<(), Box<dyn std::error::Error>> |c729e5675f96d5a7
+crates/export/src/label.rs [priv] mod tests :: #[test] fn every_confidentiality_maps_to_its_own_label() |72f019220ca45ed5
+crates/export/src/label.rs [priv] mod tests :: #[test] fn sharing_restriction_is_a_total_function_of_sensitivity() |72d741027dbdba39
+crates/export/src/label.rs [priv] mod tests :: #[test] fn the_strongest_label_of_a_mixture_is_the_most_exposing_one() |e4295bad9fed6714
+crates/export/src/label.rs [priv] mod tests :: use academic_domain::Confidentiality |f37ae7fd7a108b97
+crates/export/src/label.rs [priv] mod tests :: use super::{ CopyrightNotice, DomainTerms, SensitivityLabel, SharingRestriction, TermsRegister, } |e9629bef734f3315
+crates/export/src/label.rs [priv] use academic_domain::Confidentiality |f37ae7fd7a108b97
+crates/export/src/label.rs [priv] use crate::{ExportError, ExportResult} |7b31d94fc0a63e77
+crates/export/src/label.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/export/src/label.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
+crates/export/src/label.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SensitivityLabel |c7f960553aeb4dcb
+crates/export/src/label.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SharingRestriction |3a307ccdbff8db76
+crates/export/src/label.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DomainTerms |60f4a7f85d818c97
+crates/export/src/label.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TermsRegister |547e06a57486cc32
+crates/export/src/label.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(transparent)] struct CopyrightNotice(String) |7faf529ffe6818aa
+crates/export/src/label.rs [pub] impl CopyrightNotice :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/export/src/label.rs [pub] impl CopyrightNotice :: fn new(text: impl Into<String>) -> ExportResult<Self> |8d559f4210fae0a1
+crates/export/src/label.rs [pub] impl DomainTerms :: #[must_use] const fn new(sensitivity: SensitivityLabel, notice: CopyrightNotice) -> Self |769b4602ea166877
+crates/export/src/label.rs [pub] impl DomainTerms :: #[must_use] const fn notice(&self) -> &CopyrightNotice |10380276e60906cc
+crates/export/src/label.rs [pub] impl DomainTerms :: #[must_use] const fn sensitivity(&self) -> SensitivityLabel |458c25fde5354430
+crates/export/src/label.rs [pub] impl DomainTerms :: #[must_use] const fn sharing_restriction(&self) -> SharingRestriction |69f85c2aa91ade9b
+crates/export/src/label.rs [pub] impl SensitivityLabel :: #[must_use] const fn as_str(self) -> &'static str |218276936398f476
+crates/export/src/label.rs [pub] impl SensitivityLabel :: #[must_use] const fn of(confidentiality: Confidentiality) -> Self |7da0c249525bba3d
+crates/export/src/label.rs [pub] impl SensitivityLabel :: #[must_use] const fn rank(self) -> u8 |ddce40b818c5b581
+crates/export/src/label.rs [pub] impl SensitivityLabel :: #[must_use] fn strongest(self, other: Self) -> Self |3546da7ae5364f5d
+crates/export/src/label.rs [pub] impl SensitivityLabel :: const ALL: [Self; 4] |42460b1b97f3d323
+crates/export/src/label.rs [pub] impl SensitivityLabel :: fn strongest_of(labels: impl IntoIterator<Item = Self>) -> Self |673e1ae6d127a85c
+crates/export/src/label.rs [pub] impl SharingRestriction :: #[must_use] const fn as_str(self) -> &'static str |705c2b35021976c0
+crates/export/src/label.rs [pub] impl SharingRestriction :: #[must_use] const fn of(label: SensitivityLabel) -> Self |e2ba4b534a02fbec
+crates/export/src/label.rs [pub] impl SharingRestriction :: const ALL: [Self; 4] |819e63a9cfd04cf5
+crates/export/src/label.rs [pub] impl TermsRegister :: #[must_use] const fn bundle_notice(&self) -> &CopyrightNotice |b5fb9fd09491a95f
+crates/export/src/label.rs [pub] impl TermsRegister :: #[must_use] fn new(bundle: CopyrightNotice) -> Self |9d1171207a9432b4
+crates/export/src/label.rs [pub] impl TermsRegister :: #[must_use] fn with_domain(mut self, domain_id: impl Into<String>, terms: DomainTerms) -> Self |c88215d5b18ff315
+crates/export/src/label.rs [pub] impl TermsRegister :: fn domains(&self) -> impl Iterator<Item = &str> |fe6bea4aa6ab2d05
+crates/export/src/label.rs [pub] impl TermsRegister :: fn for_domain(&self, domain_id: &str) -> ExportResult<&DomainTerms> |f01eb2cdab8409fc
+crates/export/src/lib.rs [pub] const BUNDLE_ENCRYPTED: bool |064b6a01e3b64f0d
+crates/export/src/lib.rs [pub] const BUNDLE_MANIFEST_SCHEMA: &str |c5b5473a4a97d394
+crates/export/src/lib.rs [pub] const FORMAT_MARKER_BYTES: &str |0e17d328439f1a86
+crates/export/src/lib.rs [pub] const FORMAT_MARKER_FILE: &str |b3bb534c2b5f4c77
+crates/export/src/lib.rs [pub] const GRADUATION_EXPORT_FORMAT: &str |7c8908592384b3b1
+crates/export/src/lib.rs [pub] const GRADUATION_EXPORT_GENERATOR: &str |6832216ea9fc63f1
+crates/export/src/lib.rs [pub] const GRADUATION_EXPORT_MANIFEST_VERSION: u32 |6328d710a93537d9
+crates/export/src/lib.rs [pub] const INVENTORY_FILE: &str |d8b08738bb8b9bdd
+crates/export/src/lib.rs [pub] const MANIFEST_FILE: &str |fd9bcfd5be093890
+crates/export/src/lib.rs [pub] const MANIFEST_SCHEMA_FILE: &str |b2d489572975ba92
+crates/export/src/lib.rs [pub] const MAX_BUNDLE_RELATIVE_PATH_BYTES: usize |8c5eefaa6d83026c
+crates/export/src/lib.rs [pub] const OPEN_FORMATS: &[&str] |543d57726c57011d
+crates/export/src/lib.rs [pub] const PARTS_DIRECTORY: &str |789392cf24c57d06
+crates/export/src/lib.rs [pub] const PDF_RENDERING_ABSENCE: &str |e5545d0d3a21ca91
+crates/export/src/lib.rs [pub] const PROJECTIONS_INCLUDED: bool |f208bef927c36bb9
+crates/export/src/lib.rs [pub] const SEMANTIC_DIGEST_DOMAIN: &str |67376b47ac365ca4
+crates/export/src/lib.rs [pub] mod audit
+crates/export/src/lib.rs [pub] mod bundle
+crates/export/src/lib.rs [pub] mod directory
+crates/export/src/lib.rs [pub] mod error
+crates/export/src/lib.rs [pub] mod graph
+crates/export/src/lib.rs [pub] mod label
+crates/export/src/lib.rs [pub] mod part
+crates/export/src/lib.rs [pub] mod read
+crates/export/src/lib.rs [pub] mod source
+crates/export/src/lib.rs [pub] mod write
+crates/export/src/lib.rs [pub] use audit::{AuditRecord, AuditRerun, CatalogScopeRecord, rerun_audit} |4f17f70e96d3e5c0
+crates/export/src/lib.rs [pub] use bundle::{ BundleManifest, BundleSemantic, BundleVolatile, FileRecord, ObjectRecord, PartRecord, PostureBlock, } |4fe1f206ec715507
+crates/export/src/lib.rs [pub] use error::{ExportError, ExportResult} |6a305b93822d4411
+crates/export/src/lib.rs [pub] use label::{ CopyrightNotice, DomainTerms, SensitivityLabel, SharingRestriction, TermsRegister, } |9b58c74cc2440a47
+crates/export/src/lib.rs [pub] use part::BundlePart |f4c39d36b3f1d9d2
+crates/export/src/lib.rs [pub] use read::{ClaimedBundle, read_bundle} |03861c305bafdc4c
+crates/export/src/lib.rs [pub] use source::{ ArtifactSource, BatchSource, ClaimSource, DeviceHead, DomainRecord, GitRef, OriginalInclusion, SourceView, StoreIdentity, Watermark, WithheldReason, } |78572dbbebb52971
+crates/export/src/lib.rs [pub] use write::{BundleReceipt, BundleRequest, RecordedAudit, write_bundle} |e4ae34b76bda95cf
+crates/export/src/part.rs [priv] #[cfg(test)] mod tests
+crates/export/src/part.rs [priv] impl BundlePart
+crates/export/src/part.rs [priv] mod tests :: #[test] fn every_part_has_a_distinct_directory_name_and_spelling() |c24dec3d14e6b352
+crates/export/src/part.rs [priv] mod tests :: #[test] fn no_predicate_namespace_belongs_to_two_parts() |98f112251aa0b98f
+crates/export/src/part.rs [priv] mod tests :: #[test] fn parse_round_trips_every_part_and_refuses_anything_else() |f9b84fa89c46342d
+crates/export/src/part.rs [priv] mod tests :: #[test] fn the_graph_part_selects_nothing_and_every_other_part_selects_something() |1c45ab50fadc0548
+crates/export/src/part.rs [priv] mod tests :: use super::BundlePart |467970bd394d6463
+crates/export/src/part.rs [priv] use crate::{ExportError, ExportResult} |7b31d94fc0a63e77
+crates/export/src/part.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum BundlePart |5ff8e7999b90c98c
+crates/export/src/part.rs [pub] impl BundlePart :: #[must_use] const fn as_str(self) -> &'static str |b12904dded419ca8
+crates/export/src/part.rs [pub] impl BundlePart :: #[must_use] const fn directory(self) -> &'static str |c3c703140af7dfb3
+crates/export/src/part.rs [pub] impl BundlePart :: #[must_use] const fn predicate_namespaces(self) -> &'static [&'static str] |756759411224d065
+crates/export/src/part.rs [pub] impl BundlePart :: #[must_use] const fn specification_sentence(self) -> &'static str |05b4b3dd407b5c5d
+crates/export/src/part.rs [pub] impl BundlePart :: #[must_use] fn for_predicate(predicate_id: &str) -> Option<Self> |06c47a8e377da206
+crates/export/src/part.rs [pub] impl BundlePart :: const ALL: [Self; 6] |edca3541a27b96d7
+crates/export/src/part.rs [pub] impl BundlePart :: fn parse(value: &str) -> ExportResult<Self> |fe8cd0a3911fc318
+crates/export/src/read.rs [priv] fn require_listed<'a>( referenced_by: &'static str, paths: impl Iterator<Item = &'a str>, listed: &BTreeSet<&str>, ) -> ExportResult<()> |6257a67832b280a3
+crates/export/src/read.rs [priv] impl ClaimedBundle
+crates/export/src/read.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/export/src/read.rs [priv] use crate::{ ExportError, ExportResult, FORMAT_MARKER_BYTES, FORMAT_MARKER_FILE, MANIFEST_FILE, bundle::{BundleManifest, FileRecord, encode_hex}, directory, part::BundlePart, } |4007c4c7be511c9b
+crates/export/src/read.rs [priv] use std::{ collections::BTreeSet, path::{Path, PathBuf}, } |7f6e952d35a72c93
+crates/export/src/read.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ClaimedBundle |1a19b479b39d34a0
+crates/export/src/read.rs [pub] fn read_bundle(root: &Path) -> ExportResult<ClaimedBundle> |4dd7834fe8a517b9
+crates/export/src/read.rs [pub] impl ClaimedBundle :: #[must_use] const fn manifest(&self) -> &BundleManifest |09abebf78671ac58
+crates/export/src/read.rs [pub] impl ClaimedBundle :: #[must_use] const fn originals_included(&self) -> bool |e8cb7bbf6a8587b0
+crates/export/src/read.rs [pub] impl ClaimedBundle :: #[must_use] fn parts(&self) -> &[crate::bundle::PartRecord] |dbef321a8a470a02
+crates/export/src/read.rs [pub] impl ClaimedBundle :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
+crates/export/src/read.rs [pub] impl ClaimedBundle :: fn file(&self, relative: &str) -> ExportResult<&FileRecord> |bc3da6043a09c47f
+crates/export/src/read.rs [pub] impl ClaimedBundle :: fn read_bytes(&self, relative: &str) -> ExportResult<Vec<u8>> |44a4f8166da20932
+crates/export/src/read.rs [pub] impl ClaimedBundle :: fn read_text(&self, relative: &str) -> ExportResult<String> |bc5bb27d025491c1
+crates/export/src/source.rs [priv] #[cfg(test)] mod tests
+crates/export/src/source.rs [priv] fn canonical_line(item: &'static str, value: String) -> ExportResult<String> |db2fc783f6ec1806
+crates/export/src/source.rs [priv] fn identifier(item: &'static str, value: String) -> ExportResult<String> |9230fc874272cdd2
+crates/export/src/source.rs [priv] fn require_object_name(value: &str) -> ExportResult<()> |b2fe7af015c60b81
+crates/export/src/source.rs [priv] fn require_sorted<'a>( kind: &'static str, values: impl Iterator<Item = &'a str>, ) -> ExportResult<()> |6f50491bc4c13dee
+crates/export/src/source.rs [priv] impl ArtifactSource
+crates/export/src/source.rs [priv] impl BatchSource
+crates/export/src/source.rs [priv] impl ClaimSource
+crates/export/src/source.rs [priv] impl DomainRecord
+crates/export/src/source.rs [priv] impl GitRef
+crates/export/src/source.rs [priv] impl OriginalInclusion
+crates/export/src/source.rs [priv] impl SourceView
+crates/export/src/source.rs [priv] impl WithheldReason
+crates/export/src/source.rs [priv] mod tests :: #[test] fn a_commit_that_is_not_an_object_name_is_refused() |2e9e401bf55c3285
+crates/export/src/source.rs [priv] mod tests :: #[test] fn a_domain_with_no_artifact_reports_the_weakest_label() -> ExportResult<()> |b7b13e86fba3a82b
+crates/export/src/source.rs [priv] mod tests :: #[test] fn a_withheld_reason_is_an_arm_rather_than_a_boolean() |181c002d867c3a8a
+crates/export/src/source.rs [priv] mod tests :: #[test] fn domains_are_sorted_and_deduplicated() -> ExportResult<()> |ef471b676ceef0bd
+crates/export/src/source.rs [priv] mod tests :: #[test] fn original_inclusion_has_two_values_and_no_default() |fdaab8d69cc0f83a
+crates/export/src/source.rs [priv] mod tests :: #[test] fn submodules_must_be_sorted_and_carry_object_names() |23fa45e8411acbc7
+crates/export/src/source.rs [priv] mod tests :: fn reference() -> GitRef |b916414fb74accdc
+crates/export/src/source.rs [priv] mod tests :: fn view(domains: &[&str]) -> ExportResult<SourceView> |b7701ca91f1961d6
+crates/export/src/source.rs [priv] mod tests :: use crate::{ExportResult, label::SensitivityLabel} |2d1fcff7ece372b4
+crates/export/src/source.rs [priv] mod tests :: use super::{ ArtifactSource, ClaimSource, DeviceHead, DomainRecord, GitRef, OriginalInclusion, SourceView, StoreIdentity, Watermark, WithheldReason, } |67b4765f12f28563
+crates/export/src/source.rs [priv] use academic_domain::Confidentiality |f37ae7fd7a108b97
+crates/export/src/source.rs [priv] use crate::{ExportError, ExportResult, label::SensitivityLabel} |05bc66dc757a7f20
+crates/export/src/source.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/export/src/source.rs [priv] use std::path::PathBuf |7df9a5891ba56cb7
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum OriginalInclusion |a40a13dbac5c42d5
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum WithheldReason |68ba8010276e6f82
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Watermark |64c4f0658abec72f
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ArtifactSource |fde36bd9983a0121
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BatchSource |00a11ad764a683ac
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ClaimSource |d2bb66f417f553d1
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DomainRecord |d380f6c20c0adc73
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SourceView |39ceae7d4c8eb802
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DeviceHead |4a42a846b238f2ad
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct GitRef |6f1e28f923e27edd
+crates/export/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct StoreIdentity |c1f7ed2ca0f7d9cd
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[allow(clippy::too_many_arguments)] fn new( artifact_id: impl Into<String>, domain_id: impl Into<String>, confidentiality: Confidentiality, content_sha256: impl Into<String>, byte_length: u64, media_type: impl Into<String>, vault_locator: impl Into<String>, original_path: PathBuf, canonical_json: impl Into<String>, ) -> ExportResult<Self> |22471078706688c8
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] const fn byte_length(&self) -> u64 |33a0523d5aee23ee
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] const fn confidentiality(&self) -> Confidentiality |92b87f6fb0d988ed
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] const fn label(&self) -> SensitivityLabel |71b0230a446b95c1
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] fn artifact_id(&self) -> &str |2672adb42dea72e9
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] fn canonical_json(&self) -> &str |2adb783f9307b151
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] fn content_sha256(&self) -> &str |a81d255b77788705
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] fn domain_id(&self) -> &str |f2f4ed05a5d10029
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] fn media_type(&self) -> &str |4c4d7f3746cef9b1
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] fn original_path(&self) -> &PathBuf |aab1a9b85d4cf640
+crates/export/src/source.rs [pub] impl ArtifactSource :: #[must_use] fn vault_locator(&self) -> &str |6f7d07f0af1404cf
+crates/export/src/source.rs [pub] impl BatchSource :: #[must_use] const fn envelope_byte_length(&self) -> u64 |1c72e6ff9cd75acc
+crates/export/src/source.rs [pub] impl BatchSource :: #[must_use] fn batch_id(&self) -> &str |15158b05d4634689
+crates/export/src/source.rs [pub] impl BatchSource :: #[must_use] fn canonical_json(&self) -> &str |2adb783f9307b151
+crates/export/src/source.rs [pub] impl BatchSource :: #[must_use] fn domain_id(&self) -> &str |f2f4ed05a5d10029
+crates/export/src/source.rs [pub] impl BatchSource :: #[must_use] fn envelope_path(&self) -> &PathBuf |f6894547e7725062
+crates/export/src/source.rs [pub] impl BatchSource :: #[must_use] fn envelope_sha256(&self) -> &str |ef493305cbfc4e55
+crates/export/src/source.rs [pub] impl BatchSource :: fn new( batch_id: impl Into<String>, domain_id: impl Into<String>, envelope_sha256: impl Into<String>, envelope_byte_length: u64, envelope_path: PathBuf, canonical_json: impl Into<String>, ) -> ExportResult<Self> |0df778c7c2b89740
+crates/export/src/source.rs [pub] impl ClaimSource :: #[must_use] const fn record(&self) -> &DomainRecord |9d5f0aa2d7644ca0
+crates/export/src/source.rs [pub] impl ClaimSource :: #[must_use] fn evidence_ids(&self) -> &[String] |ea015e55679b5f15
+crates/export/src/source.rs [pub] impl ClaimSource :: #[must_use] fn predicate_id(&self) -> &str |49276959ac64755d
+crates/export/src/source.rs [pub] impl ClaimSource :: fn new( claim_id: impl Into<String>, domain_id: impl Into<String>, predicate_id: impl Into<String>, evidence_ids: Vec<String>, canonical_json: impl Into<String>, ) -> ExportResult<Self> |5f5d2ecadd97a08a
+crates/export/src/source.rs [pub] impl DomainRecord :: #[must_use] fn canonical_json(&self) -> &str |2adb783f9307b151
+crates/export/src/source.rs [pub] impl DomainRecord :: #[must_use] fn domain_id(&self) -> &str |f2f4ed05a5d10029
+crates/export/src/source.rs [pub] impl DomainRecord :: #[must_use] fn id(&self) -> &str |35bcc7ec858ee311
+crates/export/src/source.rs [pub] impl DomainRecord :: fn new( id: impl Into<String>, domain_id: impl Into<String>, canonical_json: impl Into<String>, ) -> ExportResult<Self> |82da2b383be3d211
+crates/export/src/source.rs [pub] impl GitRef :: fn validate(&self) -> ExportResult<()> |f5ac0f0b33b4925f
+crates/export/src/source.rs [pub] impl OriginalInclusion :: #[must_use] const fn as_str(self) -> &'static str |342d551b6224ffb3
+crates/export/src/source.rs [pub] impl OriginalInclusion :: #[must_use] const fn includes_originals(self) -> bool |35bb5e1746d79586
+crates/export/src/source.rs [pub] impl OriginalInclusion :: const ALL: [Self; 2] |962522466545f6ea
+crates/export/src/source.rs [pub] impl SourceView :: #[must_use] fn domain_label(&self, domain_id: &str) -> SensitivityLabel |cca876a9b00bb710
+crates/export/src/source.rs [pub] impl SourceView :: fn domains(&self) -> Vec<String> |6c1eb5df78d2ee95
+crates/export/src/source.rs [pub] impl SourceView :: fn validate(&self) -> ExportResult<()> |a2e036bf8bf85066
+crates/export/src/source.rs [pub] impl WithheldReason :: #[must_use] const fn as_str(self) -> &'static str |9d6cff146aa76664
+crates/export/src/write.rs [priv] fn archive_markdown(request: &BundleRequest<'_>, objects: &[ObjectRecord]) -> String |5839ed1ca0aee0a7
+crates/export/src/write.rs [priv] fn build( request: &BundleRequest<'_>, staging: &Path, domains: &[String], ) -> ExportResult<BundleManifest> |face06c927f56e3e
+crates/export/src/write.rs [priv] fn evolution_markdown(request: &BundleRequest<'_>) -> String |62b987c0f4a3f585
+crates/export/src/write.rs [priv] fn formats_markdown(request: &BundleRequest<'_>) -> String |f82990e211c0f651
+crates/export/src/write.rs [priv] fn inventory_text( request: &BundleRequest<'_>, parts: &[PartRecord], objects: &[ObjectRecord], ) -> String |05cd93b4ea6debb8
+crates/export/src/write.rs [priv] fn notice_for_path( request: &BundleRequest<'_>, path: &str, ) -> ExportResult<crate::label::CopyrightNotice> |6a250694f4532531
+crates/export/src/write.rs [priv] fn official_record_markdown( recorded: RecordedAudit<'_>, rule_set_digest: &ContentDigest, proof_tree: &str, ) -> String |4cac93f9b6955f7e
+crates/export/src/write.rs [priv] fn paths_markdown(request: &BundleRequest<'_>) -> String |c794477ac3a89bef
+crates/export/src/write.rs [priv] fn render_node(node: &academic_domain::engines::ProofNode, depth: usize, rendered: &mut String) |6a3d0464b50257d9
+crates/export/src/write.rs [priv] fn render_proof_tree(audit: &DegreeAudit) -> String |dadb0e62cf6d615a
+crates/export/src/write.rs [priv] fn require_terms_for_every_domain(request: &BundleRequest<'_>) -> ExportResult<Vec<String>> |fabaca6e66b5b249
+crates/export/src/write.rs [priv] fn topical_markdown(part: BundlePart, request: &BundleRequest<'_>) -> String |b9e2eec0bf6a16e2
+crates/export/src/write.rs [priv] fn write_domain_stream( writer: &mut Writer<'_>, request: &BundleRequest<'_>, domains: &[String], prefix: &str, records: &[DomainRecord], ) -> ExportResult<()> |873d69dd2ac24766
+crates/export/src/write.rs [priv] fn write_part_claims( part: BundlePart, request: &BundleRequest<'_>, writer: &mut Writer<'_>, domains: &[String], ) -> ExportResult<()> |16c9ede690b640eb
+crates/export/src/write.rs [priv] fn write_part_five( request: &BundleRequest<'_>, writer: &mut Writer<'_>, domains: &[String], ) -> ExportResult<()> |3aaad096ce48c2a3
+crates/export/src/write.rs [priv] fn write_part_four( request: &BundleRequest<'_>, writer: &mut Writer<'_>, domains: &[String], ) -> ExportResult<()> |f9b06e91294b0d48
+crates/export/src/write.rs [priv] fn write_part_one( request: &BundleRequest<'_>, writer: &mut Writer<'_>, domains: &[String], ) -> ExportResult<AuditRecord> |50de784d1589f218
+crates/export/src/write.rs [priv] fn write_part_six( request: &BundleRequest<'_>, writer: &mut Writer<'_>, domains: &[String], ) -> ExportResult<()> |f01bb2b19553b856
+crates/export/src/write.rs [priv] fn write_part_two( request: &BundleRequest<'_>, writer: &mut Writer<'_>, domains: &[String], ) -> ExportResult<Vec<ObjectRecord>> |75c5dd6a07ab2b99
+crates/export/src/write.rs [priv] fn write_topical_part( part: BundlePart, request: &BundleRequest<'_>, writer: &mut Writer<'_>, domains: &[String], ) -> ExportResult<()> |92619ace8c847d9a
+crates/export/src/write.rs [priv] impl<'a> Writer<'a>
+crates/export/src/write.rs [priv] impl<'a> Writer<'a> :: const fn new(staging: &'a Path) -> Self |8eaa99397f0e921f
+crates/export/src/write.rs [priv] impl<'a> Writer<'a> :: fn copy( &mut self, relative: &str, source_path: &Path, sensitivity: SensitivityLabel, ) -> ExportResult<(ContentDigest, u64)> |8dfeaaa3084cba4f
+crates/export/src/write.rs [priv] impl<'a> Writer<'a> :: fn label_of(&self, prefix: &str) -> SensitivityLabel |03ff12b6d171a359
+crates/export/src/write.rs [priv] impl<'a> Writer<'a> :: fn paths_below(&self, prefix: &str) -> Vec<String> |3cffd566df8e1157
+crates/export/src/write.rs [priv] impl<'a> Writer<'a> :: fn write( &mut self, relative: &str, bytes: &[u8], sensitivity: SensitivityLabel, ) -> ExportResult<()> |9dd0d6e4856bdc8c
+crates/export/src/write.rs [priv] struct Writer<'a> |a05d4f9df544e03b
+crates/export/src/write.rs [priv] struct WrittenFile |44283dcbf39ffc73
+crates/export/src/write.rs [priv] use academic_audit::{DegreeAudit, GRADUATION_ENGINE_ID, RuleSetScope} |03e6d20a4ee6d1cc
+crates/export/src/write.rs [priv] use academic_domain::{ ContentDigest, engines::{EngineVersion, FrozenInputs}, } |84b798d6d00d6e40
+crates/export/src/write.rs [priv] use academic_requirement::RuleSet |ac4744bbd98bfc98
+crates/export/src/write.rs [priv] use crate::{ BUNDLE_ENCRYPTED, BUNDLE_MANIFEST_SCHEMA, ExportError, ExportResult, FORMAT_MARKER_BYTES, FORMAT_MARKER_FILE, GRADUATION_EXPORT_FORMAT, GRADUATION_EXPORT_GENERATOR, GRADUATION_EXPORT_MANIFEST_VERSION, INVENTORY_FILE, MANIFEST_FILE, MANIFEST_SCHEMA_FILE, OPEN_FORMATS, PARTS_DIRECTORY, PDF_RENDERING_ABSENCE, PROJECTIONS_INCLUDED, audit::{ AuditRecord, CatalogScopeRecord, FROZEN_INPUTS_FILE, OUTCOME_FILE, PROOF_TREE_FILE, RULE_SET_FILE, }, bundle::{ BundleCounts, BundleManifest, BundleSemantic, FileRecord, ManifestAttributes, ObjectRecord, PartRecord, PostureBlock, encode_hex, }, directory, graph, label::{SensitivityLabel, SharingRestriction, TermsRegister}, part::BundlePart, source::{ ArtifactSource, ClaimSource, DomainRecord, OriginalInclusion, SourceView, WithheldReason, }, } |594e0aafb7aa3c09
+crates/export/src/write.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/export/src/write.rs [pub] #[derive(Debug, Clone, Copy)] struct BundleRequest<'a> |201aa2aa91f42f24
+crates/export/src/write.rs [pub] #[derive(Debug, Clone, Copy)] struct RecordedAudit<'a> |e98d7eb35b052d41
+crates/export/src/write.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BundleReceipt |6ffa74d21f468737
+crates/export/src/write.rs [pub] fn write_bundle( request: &BundleRequest<'_>, destination: &Path, ) -> ExportResult<BundleReceipt> |3f2f5fe191615a85
