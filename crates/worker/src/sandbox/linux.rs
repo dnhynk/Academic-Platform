@@ -70,12 +70,33 @@ const AUDIT_ARCH: u32 = 0xc000_003e;
 #[cfg(target_arch = "aarch64")]
 const AUDIT_ARCH: u32 = 0xc000_00b7;
 
+/// The bit that selects the x32 ABI, which shares `AUDIT_ARCH_X86_64` with the
+/// 64-bit one.
+///
+/// `AUDIT_ARCH_X86_64` is the arch token for both ABIs and the kernel tells
+/// them apart by this bit in the syscall number and by nothing else, so the
+/// arch check below is only half an ABI check. `P2-A5` measured the other half
+/// missing in `academic-process-sandbox`'s filter, which is this one instruction
+/// for instruction: a process reported `Seccomp: 2` and completed a TCP
+/// handshake through an x32 `socket`. This list's exposure is wider, because
+/// x32 numbers the deny list would have to carry separately are `execve` 520,
+/// `execveat` 545, `ptrace` 521, `recvfrom` 517, `sendmsg` 518 and `recvmsg`
+/// 519 — six of the numbers below, none of them the native number with the bit
+/// set. So the refusal is of the ABI, which needs no table, rather than of a
+/// second set of numbers, which would need a correct one.
+///
+/// aarch64 needs none of this: its 32-bit compat ABI carries `AUDIT_ARCH_ARM`,
+/// a different token the arch check already refuses.
+#[cfg(target_arch = "x86_64")]
+const X32_SYSCALL_BIT: i64 = 0x4000_0000;
+
 const BPF_LD: u16 = 0x00;
 const BPF_JMP: u16 = 0x05;
 const BPF_RET: u16 = 0x06;
 const BPF_W: u16 = 0x00;
 const BPF_ABS: u16 = 0x20;
 const BPF_JEQ: u16 = 0x10;
+const BPF_JGE: u16 = 0x30;
 const BPF_K: u16 = 0x00;
 
 #[repr(C)]
@@ -417,6 +438,22 @@ pub(super) fn enter(
         stmt(BPF_LD | BPF_W | BPF_ABS, 0),
     ];
     let count = denied.len();
+    // The rest of the ABI check, which the arch word above cannot carry. Every
+    // x32 number is at or above the bit and every native one is below it, so an
+    // unsigned floor separates the two ABIs exactly; a number that is neither
+    // ABI's — a negative `nr` read as `u32` — is refused with them, which is the
+    // safe direction.
+    #[cfg(target_arch = "x86_64")]
+    {
+        // Past every native comparison and the allow, to the errno return.
+        let (Ok(floor), Ok(jt)) = (u32::try_from(X32_SYSCALL_BIT), u8::try_from(count + 1)) else {
+            return Err(SandboxError::Syscall {
+                step: "seccomp filter assembly",
+                code: -1,
+            });
+        };
+        program.push(jump(BPF_JMP | BPF_JGE | BPF_K, floor, jt, 0));
+    }
     for (index, number) in denied.iter().enumerate() {
         let remaining = u8::try_from(count - index - 1).unwrap_or(u8::MAX);
         let Some(jt) = remaining.checked_add(1) else {
@@ -465,6 +502,29 @@ pub(super) fn enter(
         });
     }
     drop(program);
+
+    // 5. The kernel's own answer about the ABI the arch word does not separate.
+    //
+    // A filter that installed is not a filter that covers the second ABI, and
+    // the difference was a `P2-A5` P1 in the sister backend. `getpid` is the
+    // number on purpose: it is not in `denied_syscalls`, so the answer
+    // separates a filter that refuses the x32 ABI from one that merely carries
+    // x32 spellings of the denied numbers. `EPERM` is required rather than any
+    // failure, because a kernel built without x32 answers `ENOSYS` and that
+    // would be the kernel's refusal rather than this filter's.
+    #[cfg(target_arch = "x86_64")]
+    {
+        // SAFETY: `getpid` takes no argument and touches no user memory. The
+        // x32 bit selects which ABI the number is read under and nothing else.
+        let returned = unsafe { libc::syscall(X32_SYSCALL_BIT | libc::SYS_getpid) };
+        let answer = if returned < 0 { -errno() } else { returned };
+        if answer != -i64::from(libc::EPERM) {
+            return Err(SandboxError::Syscall {
+                step: "seccomp filter does not refuse the x32 ABI",
+                code: answer,
+            });
+        }
+    }
     Ok(BackendId::LinuxSeccompLandlock)
 }
 

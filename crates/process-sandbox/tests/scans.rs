@@ -220,10 +220,12 @@ fn the_probe_target_is_not_in_any_default_build() -> TestResult {
 fn the_backend_names_only_the_syscalls_it_installs_with_outside_its_deny_list() -> TestResult {
     // The same bargain `P2-G4`'s backend makes, checked inside this crate as
     // well as in `tools/phase1-scaffold-policy.test.mjs`, because a rule that
-    // lives in one file only is a rule one merge can drop. Three syscalls are
-    // made; every other `SYS_` name in the file has to be inside the function
-    // that builds the deny list.
-    let installed = [
+    // lives in one file only is a rule one merge can drop. Four syscalls are
+    // made — the three the backend installs with, and the `getpid` it makes on
+    // the x32 ABI in order to be refused; every other `SYS_` name in the file
+    // has to be inside the function that builds the deny list.
+    let called = [
+        "SYS_getpid",
         "SYS_landlock_create_ruleset",
         "SYS_landlock_restrict_self",
         "SYS_seccomp",
@@ -258,7 +260,7 @@ fn the_backend_names_only_the_syscalls_it_installs_with_outside_its_deny_list() 
         named.len()
     );
     for name in &named {
-        if installed.contains(&name.as_str()) {
+        if called.contains(&name.as_str()) {
             assert!(
                 !denied.contains(name.as_str()),
                 "{name} is both installed with and denied"
@@ -274,7 +276,7 @@ fn the_backend_names_only_the_syscalls_it_installs_with_outside_its_deny_list() 
             anywhere - inside
         );
     }
-    for name in installed {
+    for name in called {
         assert!(
             named.iter().any(|found| found == name),
             "src/linux.rs no longer names {name}"

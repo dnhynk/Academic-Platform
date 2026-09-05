@@ -3164,6 +3164,13 @@ const CALLED_SYSCALLS = new Map([
   ["SYS_landlock_add_rule", "adds one path-beneath rule to that ruleset"],
   ["SYS_landlock_restrict_self", "applies the ruleset to this process, irrevocably"],
   ["SYS_seccomp", "installs the filter, and asks whether an action is available"],
+  [
+    "SYS_getpid",
+    "asked on the x32 ABI after the filter is installed, and required to answer EPERM: the " +
+      "arch word does not separate x32 from x86-64, so the coverage has to be observed rather " +
+      "than assumed. It is not in the deny list on purpose, so the answer reads the ABI gate " +
+      "rather than the number table",
+  ],
 ]);
 
 /**
@@ -3177,6 +3184,14 @@ const ENFORCEMENT_CALLED_SYSCALLS = new Map([
   ["SYS_landlock_create_ruleset", "creates the write-refusing ruleset, and probes the ABI version"],
   ["SYS_landlock_restrict_self", "applies the ruleset to this process, irrevocably"],
   ["SYS_seccomp", "installs the filter, and asks whether an action is available"],
+  [
+    "SYS_getpid",
+    "asked on the x32 ABI after the filter is installed, and required to answer EPERM before " +
+      "the receipt claims a socket refusal: `Seccomp: 2` says a filter is attached and nothing " +
+      "about what it covers, which is how `P2-A5` measured this process completing a TCP " +
+      "handshake. It is not in the deny list on purpose, so the answer reads the ABI gate " +
+      "rather than the number table",
+  ],
 ]);
 
 /**
@@ -3232,6 +3247,49 @@ const RAW_SYSCALL_FILES = new Map([
 ]);
 
 /**
+ * The one computed syscall number this repository admits, and its constant.
+ *
+ * The first-argument rule refuses an expression, because a number the rule
+ * cannot read is a number nobody reviewed. `P2-RF24` needs one shape that
+ * cannot be a plain `libc::SYS_` path: the same syscall on the x32 ABI, which
+ * is the native number with bit 30 set, made after a seccomp filter installs in
+ * order to observe that the filter refuses it. Both backends make exactly that
+ * call and would otherwise have to smuggle it past this rule.
+ *
+ * So the shape is admitted by prefix, the name inside it is reviewed like any
+ * other, and the constant is pinned as whole text: without the pin,
+ * `const X32_SYSCALL_BIT: i64 = 0;` turns every x32 spelling back into a native
+ * call this rule would still read as reviewed, which is the same reach the rule
+ * exists to refuse.
+ */
+const X32_SYSCALL_PREFIX = /^X32_SYSCALL_BIT\s*\|\s*/u;
+const X32_SYSCALL_BIT_DEFINITION = "const X32_SYSCALL_BIT: i64 = 0x4000_0000;";
+
+/**
+ * The first argument of one `libc::syscall` call, as a reviewed `SYS_` name.
+ *
+ * The split is on the first comma *or* the closing parenthesis, because a call
+ * with one argument has no comma and reading to the next comma anywhere in the
+ * file would hand the rule an expression it could only fail on.
+ */
+function reviewedSyscallName(file, whole, rest) {
+  const first = rest.split(/[,)]/u)[0].trim();
+  if (X32_SYSCALL_PREFIX.test(first)) {
+    assert.ok(
+      whole.includes(X32_SYSCALL_BIT_DEFINITION),
+      `${file} spells an x32 syscall without \`${X32_SYSCALL_BIT_DEFINITION}\``,
+    );
+  }
+  const path = first.replace(X32_SYSCALL_PREFIX, "");
+  assert.match(
+    path,
+    /^libc::SYS_[A-Za-z0-9_]+$/u,
+    `${file} calls libc::syscall with ${first} rather than a libc::SYS_ name`,
+  );
+  return path.slice("libc::".length);
+}
+
+/**
  * The three rules that make a raw syscall readable, applied to one file.
  *
  * Every mention of `libc::syscall` is a call, so its arguments stay in sight;
@@ -3253,20 +3311,11 @@ function assertRawSyscallsAreReviewed(file, whole, reviewed) {
   );
   const seen = new Set();
   for (const call of calls) {
-    const first = whole
-      .slice(call.index + call[0].length)
-      .split(",")[0]
-      .trim();
-    assert.match(
-      first,
-      /^libc::SYS_[A-Za-z0-9_]+$/u,
-      `${file} calls libc::syscall with ${first} rather than a libc::SYS_ name`,
-    );
-    const name = first.slice("libc::".length);
+    const name = reviewedSyscallName(file, whole, whole.slice(call.index + call[0].length));
     assert.equal(
       reviewed.has(name),
       true,
-      `${file} calls ${first}, which is not one of the reviewed syscalls it installs with`,
+      `${file} calls ${name}, which is not one of the reviewed syscalls it installs with`,
     );
     seen.add(name);
   }
@@ -3900,19 +3949,11 @@ test("only_egress_crate_has_a_socket", async () => {
               "without calling it, so its arguments are not read",
           );
           for (const call of calls) {
-            const first = whole
-              .slice(call.index + call[0].length)
-              .split(",")[0]
-              .trim();
-            assert.match(
-              first,
-              /^libc::SYS_[A-Za-z0-9_]+$/u,
-              `${file} calls libc::syscall with ${first} rather than a libc::SYS_ name`,
-            );
+            const name = reviewedSyscallName(file, whole, whole.slice(call.index + call[0].length));
             assert.equal(
-              calledSyscalls.has(first.slice("libc::".length)),
+              calledSyscalls.has(name),
               true,
-              `${file} calls ${first}, which is not one of the reviewed syscalls it installs with`,
+              `${file} calls ${name}, which is not one of the reviewed syscalls it installs with`,
             );
           }
           continue;

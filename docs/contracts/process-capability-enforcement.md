@@ -59,6 +59,44 @@ The whole backend is self-applied and unprivileged, in this order:
 Landlock before seccomp, because a filter installed first would deny the
 `landlock_*` syscalls the step needs.
 
+#### The filter gates an ABI, and the arch word is only half of one
+
+`seccomp_data` carries an `arch` token and a syscall number, and on x86 the token
+does not identify the ABI: `AUDIT_ARCH_X86_64` is the token for the 64-bit ABI
+**and** for x32, which the kernel tells apart by `__X32_SYSCALL_BIT` — bit 30 of
+the number — and by nothing else. A filter that checks the token and then
+compares native numbers therefore lets every x32 number fall past the comparisons
+to `SECCOMP_RET_ALLOW`.
+
+`P2-A5` measured that here. A `REPOSITORY_ANALYZER` process entered enforcement,
+read `Seccomp: 2` back from `/proc/self/status`, printed the receipt below — and
+opened a socket and completed a three-way handshake to a listener in a separate
+process, through x32 `socket` and x32 `connect`. All five socket-refusing classes
+did it. The sentence "a class that does not declare `OpenOutboundSocket` gets no
+socket at all" was false on any kernel built with `CONFIG_X86_X32`.
+
+So the gate is two instructions rather than one: the token has to be
+`AUDIT_ARCH` **and** the number has to be below the bit, which is an unsigned
+floor because every x32 number is `bit | n` and every native number is far below
+the bit. A number that is neither ABI's — a negative `nr` read as `u32` — is
+refused with them, which is the safe direction.
+
+**Why the x32 numbers are not added to the deny list instead.** An x32 number is
+not always the native number with the bit set. x32 has its own entry points from
+512 up for calls whose argument layout differs, and this deny list carries three
+of them: `recvfrom` is 517 and not 45, `sendmsg` 518 and not 46, `recvmsg` 519
+and not 47. The rest keep their native numbers — `socket` 41, `socketpair` 53,
+`connect` 42, `bind` 49, `listen` 50, `accept4` 288, `sendto` 44, and
+`io_uring_setup`/`_enter`/`_register` 425/426/427. So a deny list built by
+setting the bit on each native number would refuse seven of the ten socket calls
+and leave three reachable. The ABI gate has no such table to get wrong.
+
+**aarch64 needs no floor.** Its 32-bit compat ABI carries `AUDIT_ARCH_ARM`, a
+different token, so the arch check already refuses it. The i386 ABI reachable
+from an x86-64 process through `int 0x80` carries `AUDIT_ARCH_I386` and is
+likewise already refused — with `SECCOMP_RET_KILL_PROCESS`, measured as a child
+killed by `SIGSYS` against a control process that survives the same instruction.
+
 ### Windows
 
 There is no mechanism, and the reason is not a gap in this crate. A process
@@ -153,6 +191,25 @@ writing and requires the open to fail. Opening `/dev/null` creates nothing, and
 a success there means the ruleset did not take, which is
 `EnforcementError::NotVerified` and therefore a refusal to start. The answers go
 into the receipt line the binary prints.
+
+**`Seccomp: 2` is the weakest of those answers**, and the x32 bypass above is why
+that matters: it says a filter is attached and nothing about what the filter
+covers, so a process with a filter that refused nothing would read the same `2`.
+So when a socket was refused, `enter` also makes one syscall on the x32 ABI and
+requires `EPERM` — the filter's own answer, not the `ENOSYS` a kernel without
+x32 would give. The syscall is `getpid`, which is **not** in the deny list on
+purpose: its answer separates a filter that refuses the x32 ABI from one that
+merely carries x32 spellings of the denied numbers, because under the second a
+`getpid` on either ABI still returns the pid.
+
+What the receipt carries is that answer — `x32(getpid)=-1`, `-1` being `-EPERM` —
+and not a word saying the ABI was asked. The two differ under one edit: a check
+that makes the call and drops its result leaves a receipt claiming a refusal
+beside a process that got its own pid, and a relayed number cannot say that.
+`no_class_reaches_the_second_abi_under_the_same_arch_token` reads it for every
+class, in both directions from the declaration: the five whose socket is refused
+carry it, and `EGRESS_PROXY`, which declares a socket and installs no filter,
+does not.
 
 **It has to be the main thread, and that is checked rather than asked for.**
 Both mechanisms apply to the *calling thread* and are inherited by threads

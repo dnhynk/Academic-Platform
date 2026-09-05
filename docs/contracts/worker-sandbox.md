@@ -22,6 +22,7 @@ task ran on.
 | write outside the staged output | `EACCES` (13) | `ERROR_ACCESS_DENIED` (5) |
 | child process | `EPERM` (1) at `clone`/`fork`/`vfork`/`execve` | `ERROR_NOT_ENOUGH_QUOTA` (1816), `ActiveProcessLimit = 1` |
 | socket | `EPERM` (1) at `socket(2)`; no handle is created | the handle **is** created; every off-host connect is `WSAEACCES` (10013) |
+| the same on the x32 ABI | `EPERM` (1); the filter gates the ABI, not a second number table | not applicable: the Windows backend is not a syscall filter |
 | CPU bound | `RLIMIT_CPU`, `SIGXCPU`, job killed | `PerProcessUserTimeLimit`, job killed |
 | memory bound | `RLIMIT_AS`; the allocation is refused | `ProcessMemoryLimit`; the allocation is refused |
 | wall bound | parent deadline, `SIGKILL` | parent deadline, `TerminateJobObject` |
@@ -40,6 +41,37 @@ Windows refuses is every address off the host, with a permission code no routing
 failure produces. The acceptance test asserts exactly that per platform, and
 fails if the Windows backend ever starts refusing loopback as well, so the day
 that changes this page changes with it.
+
+**The x32 row.** `seccomp_data` carries an `arch` token and a syscall number, and
+on x86 the token does not identify the ABI: `AUDIT_ARCH_X86_64` is the token for
+the 64-bit ABI **and** for x32, which the kernel tells apart by
+`__X32_SYSCALL_BIT` — bit 30 of the number — and by nothing else. This filter
+checked the token and then compared native numbers, so every x32 number fell past
+the comparisons to `SECCOMP_RET_ALLOW`. `P2-A5` measured the identical gap in
+`academic-process-sandbox`'s filter, which is this one instruction for
+instruction: a process reported `Seccomp: 2` and completed a TCP handshake.
+
+The exposure here is wider than a socket, because six of the numbers this filter
+refuses have their own x32 entry points and are therefore *not* the native number
+with the bit set: `execve` 520, `execveat` 545, `ptrace` 521, `recvfrom` 517,
+`sendmsg` 518 and `recvmsg` 519. A repair that added x32 spellings to the deny
+list by setting the bit on each native number would have left all six reachable —
+including the two that create a process. So the refusal is of the ABI: one
+unsigned floor after the arch check, since every x32 number is at or above the
+bit and every native number is far below it. There is no table to get wrong.
+
+`enter` then asks the kernel. After the filter installs, it makes one x32 `getpid`
+— a number the deny list does **not** carry, so the answer separates a filter
+that refuses the x32 ABI from one that merely carries x32 spellings — and refuses
+to return a backend unless the answer is `EPERM`. That is the filter's own answer
+rather than the `ENOSYS` a kernel built without x32 would give. Every containment
+test is therefore also this test: a filter that stopped covering x32 does not let
+a contained run start.
+
+aarch64 needs no floor: its 32-bit compat ABI carries `AUDIT_ARCH_ARM`, a
+different token the arch check already refuses. `socketcall`, the multiplexed
+socket entry point, does not exist on this target — `libc::SYS_socketcall` is
+absent on `x86_64-unknown-linux-gnu` and the build fails on it.
 
 **The output row.** Two of the four bounds kill the job and two refuse the
 operation. `RLIMIT_FSIZE` bounds one file rather than a directory, and a job
@@ -187,16 +219,18 @@ two halves the same scan checks.
 
 Every `SYS_` spelling in that file must appear inside its `denied_syscalls`
 function, **counted** rather than merely present, so a spelling that is in the
-deny list and also somewhere else fails. The exception is the four syscalls the
+deny list and also somewhere else fails. The exception is the five syscalls the
 file *makes* -- `SYS_landlock_create_ruleset`, `SYS_landlock_add_rule`,
-`SYS_landlock_restrict_self`, `SYS_seccomp` -- which are how the sandbox is
-installed and are enumerated in the scan with that reason. Until `P2-RF10` the
-counted rule read only the ten socket names on the file's allowance, so a
-non-socket `SYS_` name outside `denied_syscalls` passed; `T146` observed that
-with `libc::SYS_memfd_create`.
+`SYS_landlock_restrict_self`, `SYS_seccomp`, and the `SYS_getpid` of the x32
+control above -- which are enumerated in the scan with that reason. Until
+`P2-RF10` the counted rule read only the ten socket names on the file's
+allowance, so a non-socket `SYS_` name outside `denied_syscalls` passed; `T146`
+observed that with `libc::SYS_memfd_create`.
 
 And every `libc::syscall(` call in that file must name a `libc::SYS_` constant
-from that four-name list as its first argument. A number fails. This is the half
+from that five-name list as its first argument, optionally OR-ed with
+`X32_SYSCALL_BIT`, whose definition the same rule pins as whole text. A number
+fails. This is the half
 that had been missing entirely: `libc::syscall` sits on the file's allowance, so
 `libc::syscall(41, 2, 1, 0)` -- which opens an AF_INET stream socket -- changed no
 allowance, spelled no listed pattern, passed every scan, and compiled clean under
