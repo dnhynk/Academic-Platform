@@ -83,8 +83,10 @@ RuleCandidate  ── ReviewGate::admit(candidate, first, second) ──▶ Revi
                        two attestations, two people                    │
                                                                        │
         RuleSetDraft::include(reviewed, official, synthetic) ───────────┘
-                       both fixture classes, both evaluated
+                       both fixture classes, carried with the rule
                                      │
+                     RuleSetDraft::publish() ── every case, against
+                                     │          the whole published set
                                      ▼
                              ExecutableRule ──▶ RuleSet::evaluate
 ```
@@ -239,11 +241,30 @@ so a release with one of them is not a call that can be written, and each class
 refuses construction when empty.
 
 What makes it more than two files existing is that each case declares the
-verdict the rule must reach on it and **is evaluated against the rule** before
-the rule enters the set. A fixture that disagrees stops the publication. That is
-the lesson [the engine harness](engine-harness.md) records about adverse fixture
-directories, applied where the fixture is a value rather than a file. Injection
-`U2-I11` disabled the comparison and was refused.
+verdict the rule must reach on it and **is evaluated**, so a fixture that
+disagrees stops the publication. That is the lesson [the engine
+harness](engine-harness.md) records about adverse fixture directories, applied
+where the fixture is a value rather than a file. Injection `U2-I11` disabled the
+comparison and was refused.
+
+**Against the published set, not against a prefix of it.** `include` can only
+reach the rules admitted before the one it is admitting, and `RuleSet::evaluate`
+resolves a `COURSE_OR_EQUIVALENT` operand through the `EQUIVALENCY` rules of the
+set it is handed. Running the cases at `include` was therefore not a weaker
+check but a wrong one, in both directions and depending only on admission order:
+a rule admitted before its equivalency was released on a fixture declaring
+`NOT_SATISFIED` for facts the published set answers `Satisfied` for, and the
+same rule's release was **refused** when the reviewer declared the status the
+published set actually reaches. Nothing enforced an order, and
+`crates/audit/tests/support/mod.rs` carried the workaround as a comment on its
+own fixture list.
+
+So `include` keeps the classes beside the rule and `RuleSetDraft::publish` runs
+every case of every admitted rule against the whole set.
+`the_release_fixtures_run_against_the_published_set` drives both directions
+under both admission orders, with a control that the same rule alone really does
+answer `NOT_SATISFIED`, so the pair is a measurement rather than a fixture that
+cannot fail.
 
 Every rule in every `dsl_*` test goes through the gate and through this
 admission, so both run fourteen more times than their own named tests run them.
@@ -336,6 +357,8 @@ refused.
 | `rule_candidate_review_gate` | `tests/requirement.rs` and `tests/compile_fail/` | five type-level routes are absent; one reviewer twice, a non-user reviewer, a mismatched attestation and a malformed body are each refused; two people admit |
 | `ruleset_immutable_publish` | `tests/requirement.rs` and `crates/store/src/requirement_tests.rs` | the predecessor is byte-identical after a successor; different content hashes differently; republishing and forking are refused in Rust and in SQL |
 | `new_rule_release_gate_requires_official_and_synthetic_fixtures` | `tests/requirement.rs` | an empty class is refused at construction; a case that disagrees with the rule stops the release; both classes agreeing admits |
+| `the_release_fixtures_run_against_the_published_set` | `tests/requirement.rs` | under both admission orders the true declared status is released and the false one is refused, with a control that the rule alone answers the false one |
+| `the_two_reviewers_attest_the_document_rule_as_well` | `tests/requirement.rs` | either reviewer naming another document rule is refused and the refusal names both; both naming the candidate's own is admitted and carried onto the reviewed rule |
 | `production_audit_no_llm` | `tests/requirement_scans.rs` and `crates/store/src/requirement_tests.rs` | the closure, the API spellings, the whole free-text inventory, the audit-path rule, and the absence of a text column |
 
 The five source scans that hold what a behavioural test cannot observe —

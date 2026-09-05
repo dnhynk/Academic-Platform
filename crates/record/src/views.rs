@@ -639,7 +639,7 @@ fn resolve_repeat_groups(
             recognized: recognized.map(|attempt| attempt.id),
             displaced,
             recognition_rule: recognition,
-            policy_row_id: row.map(|row| row.row_id.clone()),
+            policy_row_id: row.map(|row| row.row_id.as_str().to_owned()),
             ceiling,
             ceiling_applied,
         });
@@ -730,7 +730,7 @@ fn disposition_for(
             rules
                 .policies()
                 .repeat_row_at(attempt.term)
-                .map(|row| row.row_id.clone()),
+                .map(|row| row.row_id.as_str().to_owned()),
         );
     }
 
@@ -742,7 +742,7 @@ fn disposition_for(
             rules
                 .policies()
                 .repeat_row_at(attempt.term)
-                .map(|row| row.row_id.clone()),
+                .map(|row| row.row_id.as_str().to_owned()),
         );
     }
 
@@ -794,7 +794,7 @@ fn disposition_for(
                 reason,
                 AverageContribution::Excluded,
                 credit,
-                Some(row.row_id.clone()),
+                Some(row.row_id.as_str().to_owned()),
             );
         }
         // A row that does not exclude puts the grade back on the ordinary
@@ -805,7 +805,12 @@ fn disposition_for(
         } else {
             DispositionReason::Graded
         };
-        return build(reason, average, credit, Some(row.row_id.clone()));
+        return build(
+            reason,
+            average,
+            credit,
+            Some(row.row_id.as_str().to_owned()),
+        );
     }
 
     let credit = if treatment.earns_credit() {
@@ -836,7 +841,7 @@ fn disposition_for(
         rules
             .policies()
             .repeat_row_at(attempt.term)
-            .map(|row| row.row_id.clone())
+            .map(|row| row.row_id.as_str().to_owned())
     } else {
         None
     };

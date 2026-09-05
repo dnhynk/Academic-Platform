@@ -224,6 +224,48 @@ text and its SHA-256 is the hash every fixture is evaluated under; an engine
 refuses a hash that is not its own book's, so an average can never be attributed
 to a rule set that did not produce it.
 
+### The hash is an identity, which needs the rendering to be unambiguous
+
+That refusal is only worth anything if two different books cannot render the
+same bytes. The rendering is line oriented and separates its fields with a
+space, an `=` and a newline, so every value it interpolates has to be one that
+cannot hold any of the three. Four of them were `String`: both `row_id`s,
+`GradingScheme::id` and `RuleBook::classification_ruleset_id`. A `row_id`
+holding a newline and the rendering of the row above it folded a two-row repeat
+policy into a one-row book that rendered identically — and a recorded audit
+(`Satisfied`, GPA 2.90 over 12.0 credits, 14.0 earned) replayed under that book
+with **no** `RuleSetHashMismatch` and answered `Unknown` with no average at all.
+
+The four therefore carry `CanonicalIdentifier`, whose only constructor validates
+`check_identifier`'s charset — the one rule this crate already applied to a
+course code and a programme id, and whose own documentation said it was used by
+every identifier-shaped field here while five bypassed it. The other three were
+`ClassificationRule`'s `rule_id` and `course_code` and `ClassificationRuleSet`'s
+`id`, which are public fields on a type whose only door is
+`ClassificationRuleSet::publish`, and are validated there.
+
+Two scans hold the rule rather than the four positions.
+`every_value_the_rule_book_renders_is_separator_free` compares each rendered
+type's declared field set against a table and requires every rendered field's
+declared type to be one that cannot carry a separator, so a rendered `String`
+fails whatever it is called and a field added to any of the five types arrives
+unclassified. `the_rendering_separates_on_characters_no_identifier_can_hold`
+reads the templates out of the renderers themselves and requires the character
+on each side of every `{}` to be one the charset refuses, so a separator added
+later that the charset admits fails, and so does a charset widened to admit a
+separator already in use. `the_rule_book_hash_is_an_identity` rebuilds the
+collision from the book's own rendered text and requires the identifier to be
+refused, then moves each of eleven rendered positions in turn and requires
+eleven distinct hashes, so the refusal cannot pass by the rendering carrying
+less.
+
+Validation re-emitted nothing: every shipped identifier was already inside the
+charset, and all six committed `ruleset.txt` files are byte-identical.
+
+`S-25` is not this and is still open: the three `citation` fields are values the
+rendering **omits**, which is a question about what the hash covers rather than
+about what it can confuse, and closing it would re-emit every `ruleset.txt`.
+
 The attempt set reaches the engine entirely through the frozen inputs, and the
 product views compute from the same decoded facts — so a golden fixture and a
 product call run the same arithmetic over the same values rather than over two

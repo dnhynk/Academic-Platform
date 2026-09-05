@@ -340,7 +340,7 @@ set is the exception, and it is covered by `rule_set_hash`.
 **What that hash covers is every field of the set**, and it has to be, because
 the exception above is the whole of the rule set's contribution to the
 signature. `RuleSet::canonical_text` renders `RuleSet`'s six fields, all four of
-`OfficialSourceBinding`'s and all three of `ExecutableRule`'s, the compiled body
+`OfficialSourceBinding`'s and all four of `ExecutableRule`'s, the compiled body
 included. It used to render the rule's identifier, its type and its source
 digest and nothing the rule said, and two of the fields it dropped decided
 verdicts here: a credit threshold, and `retrieved_at`, which is what
@@ -380,6 +380,35 @@ which is what stood here — decided applicability from a coincidence: one
 unresolved conflict made a set that spelled the rule the document's way
 `INDETERMINATE` and left an identical set spelled any other way
 `DETERMINATE POSSIBLE`, with `conflict cases examined = 0` on the determination.
+
+**Bound is membership, and membership is attested rather than derived.** The
+document publishes many identifiers and `include` checks only that
+`source_rule` is one of them, so an extraction may carry any of them: publishing
+one credit-minimum body twelve times, once under each identifier the fixture
+document carries, left eleven of the twelve unblocked by an unresolved conflict
+about the twelfth. Nothing in the published data can tell those twelve apart —
+`PublishedRules` carries identifiers and dates and no per-rule text digest, and
+`ExecutableRule::source_digest` is the digest of the whole snapshot.
+
+What is fixed is the second half of that: `source_rule` is now part of what the
+two reviewers attest. `ReviewAttestation::file` names the pair, `ReviewGate::admit`
+requires both attestations to name the candidate's pair, and
+`the_two_reviewers_attest_the_document_rule_as_well` drives both directions.
+Section 11.4's *LLM은 원문에서 rule 후보를 추출할 수 있으나 사람이 검토한
+executable rule만 production audit에 사용한다* is the ground: `source_rule` is a
+field of the executable rule, so it is the reviewers' business, and it was
+previously supplied by `RuleCandidate::extracted` — *what a model extracted*, in
+its own words — and attested by nobody.
+
+**The residue, beside `S-24`.** `S-24` records that *the engine can refuse an
+omission; it cannot detect a false claim*. The same sentence is now true of the
+label: two reviewers who attest the wrong document rule are believed, and the
+eleven-of-twelve measurement above still holds under a false attestation. Making
+it checkable rather than attested needs `PublishedRules` to carry each document
+rule's own `text_digest` — `ParsedRule` already computes one and `publish` drops
+it — and needs the candidate's quoted span to be compared against it, which
+changes `P2-U6`'s publication output and every fixture document whose rules
+share one body. That is not this change.
 
 **And an unread conflict store is not an empty one.** `AuditFacts::conflicts` is
 `Option<Vec<ConflictReference>>`, encoded as `InputValue::Unknown` when absent —
@@ -588,7 +617,7 @@ Beside them:
   the deterministic builder, compares the baseline tree against the independent
   oracle, and requires both sides of the three-gate rule to be present.
 - `crates/audit/tests/compile_fail/` holds the eight absences.
-- `crates/audit/tests/audit_scans.rs` holds the nine source scans, enumerated in
+- `crates/audit/tests/audit_scans.rs` holds the eleven source scans, enumerated in
   [policy source scans](policy-source-scans.md) with the thirteen injections
   each was measured against.
 

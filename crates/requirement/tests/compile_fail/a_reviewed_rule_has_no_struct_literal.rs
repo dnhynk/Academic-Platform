@@ -30,8 +30,18 @@ fn main() {
             category: CreditCategory::new("ALL_RECOGNIZED").unwrap(),
             threshold: CreditAmount::new(130).unwrap(),
         },
-        first: ReviewAttestation::file(Actor::User { user_id: first }, rule.clone(), at),
-        second: ReviewAttestation::file(Actor::User { user_id: second }, rule, at),
+        first: ReviewAttestation::file(
+            Actor::User { user_id: first },
+            rule.clone(),
+            academic_domain::engines::RuleId::new("r-12-1").unwrap(),
+            at,
+        ),
+        second: ReviewAttestation::file(
+            Actor::User { user_id: second },
+            rule,
+            academic_domain::engines::RuleId::new("r-12-1").unwrap(),
+            at,
+        ),
         source_digest: ContentDigest::sha256(b"official"),
     };
 }

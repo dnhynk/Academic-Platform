@@ -109,6 +109,21 @@ pub enum RequirementError {
         under_review: String,
     },
 
+    /// An attestation that names a different document rule than the candidate
+    /// claims to have been read from.
+    ///
+    /// The crossing between the reviewer's identifier and the document's is
+    /// what `academic-audit`'s conflict gate decides applicability from, so it
+    /// is part of what the two reviewers attest rather than a value a model
+    /// supplies alone.
+    #[error("attestation names source rule `{named}`, not `{under_review}`")]
+    AttestationNamesAnotherSourceRule {
+        /// The document rule the attestation names.
+        named: String,
+        /// The document rule the candidate claims.
+        under_review: String,
+    },
+
     /// A publication whose superseded predecessor is not the version it claims.
     #[error("rule set `{claimed}` does not supersede `{actual}`")]
     SupersedesTheWrongVersion {

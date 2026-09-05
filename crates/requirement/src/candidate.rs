@@ -155,25 +155,46 @@ impl RuleCandidate {
     }
 }
 
-/// One reviewer's attestation that a candidate says what the source says.
+/// One reviewer's attestation that a candidate says what the source rule it
+/// names says.
+///
+/// The attestation names **both** identifiers, because the crossing between
+/// them is the thing being attested. `source_rule` is a free parameter of
+/// [`RuleCandidate::extracted`] whose own documentation calls it *what a model
+/// extracted*, and `academic-audit`'s conflict gate decides applicability from
+/// it: an unresolved conflict about a document rule blocks a set that publishes
+/// a rule read from that rule and does not block one that does not.
+/// `RuleSetDraft::include` checks that the document published the identifier,
+/// which is membership -- the document publishes many, and the extraction may
+/// carry any of them. Naming only the set-local identifier here left the value
+/// the gate reads asserted by a model and attested by nobody.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReviewAttestation {
     reviewer: Actor,
     candidate: RuleId,
+    source_rule: SourceRuleId,
     attested_at: TimestampMillis,
 }
 
 impl ReviewAttestation {
-    /// Files an attestation against one named candidate.
+    /// Files an attestation against one named candidate and the document rule
+    /// it was read from.
     ///
-    /// The candidate is named at filing time, so an attestation cannot be
-    /// filed once and reused for a different rule -- the gate compares both
-    /// against the candidate it was called with.
+    /// Both are named at filing time, so an attestation cannot be filed once
+    /// and reused for a different rule or for a different reading of the
+    /// document -- the gate compares both against the candidate it was called
+    /// with.
     #[must_use]
-    pub fn file(reviewer: Actor, candidate: RuleId, attested_at: TimestampMillis) -> Self {
+    pub fn file(
+        reviewer: Actor,
+        candidate: RuleId,
+        source_rule: SourceRuleId,
+        attested_at: TimestampMillis,
+    ) -> Self {
         Self {
             reviewer,
             candidate,
+            source_rule,
             attested_at,
         }
     }
@@ -188,6 +209,12 @@ impl ReviewAttestation {
     #[must_use]
     pub const fn candidate(&self) -> &RuleId {
         &self.candidate
+    }
+
+    /// Which document rule the reviewer attests the candidate was read from.
+    #[must_use]
+    pub const fn source_rule(&self) -> &SourceRuleId {
+        &self.source_rule
     }
 
     /// When it was filed.
@@ -272,8 +299,14 @@ impl ReviewGate {
     /// Admits a candidate that two different people have attested to.
     ///
     /// The two attestations are two parameters: there is no call that supplies
-    /// one. Both must name this candidate, both must be filed by an
-    /// `Actor::User`, and the two users must differ.
+    /// one. Both must name this candidate **and the document rule it claims to
+    /// have been read from**, both must be filed by an `Actor::User`, and the
+    /// two users must differ.
+    ///
+    /// The second half is what puts a person behind the crossing. It does not
+    /// make the crossing checkable -- see the module documentation -- and the
+    /// residue is recorded beside `S-24` in
+    /// `docs/contracts/graduation-audit.md`.
     pub fn admit(
         candidate: RuleCandidate,
         first: ReviewAttestation,
@@ -284,6 +317,12 @@ impl ReviewGate {
                 return Err(RequirementError::AttestationNamesAnotherCandidate {
                     named: attestation.candidate().as_str().to_owned(),
                     under_review: candidate.id().as_str().to_owned(),
+                });
+            }
+            if attestation.source_rule() != candidate.source_rule() {
+                return Err(RequirementError::AttestationNamesAnotherSourceRule {
+                    named: attestation.source_rule().as_str().to_owned(),
+                    under_review: candidate.source_rule().as_str().to_owned(),
                 });
             }
         }

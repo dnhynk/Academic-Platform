@@ -35,7 +35,7 @@
 use academic_domain::{AttemptId, Decimal, EvidenceId};
 
 use crate::{
-    RecordError,
+    CanonicalIdentifier, RecordError,
     attempt::{AttemptHistory, CourseAttempt, RegistrationConfirmation, SettledStatus},
     classify::{ClassificationRule, ClassificationRuleSet, ProgramId, RequirementCategory},
     grade::{GradeSymbol, GradingScheme},
@@ -162,7 +162,7 @@ pub fn confirmed_policy_v1() -> Result<PolicyBook, RecordError> {
     PolicyBook::new(
         vec![
             RepeatPolicyRow {
-                row_id: "repeat.no_ceiling.pre_2015".to_owned(),
+                row_id: CanonicalIdentifier::new("repeat.no_ceiling.pre_2015")?,
                 effective_from: TermKey::parse("2000_SPRING")?,
                 ceiling: None,
                 recognition: RepeatRecognition::LatestAttempt,
@@ -174,7 +174,7 @@ pub fn confirmed_policy_v1() -> Result<PolicyBook, RecordError> {
                     .to_owned(),
             },
             RepeatPolicyRow {
-                row_id: "repeat.ceiling.2015_spring".to_owned(),
+                row_id: CanonicalIdentifier::new("repeat.ceiling.2015_spring")?,
                 effective_from: TermKey::parse("2015_SPRING")?,
                 ceiling: Some(GradeSymbol::AZero),
                 recognition: RepeatRecognition::LatestAttempt,
@@ -184,7 +184,7 @@ pub fn confirmed_policy_v1() -> Result<PolicyBook, RecordError> {
             },
         ],
         vec![ExternalGradePolicyRow {
-            row_id: "external.excluded.2004_spring".to_owned(),
+            row_id: CanonicalIdentifier::new("external.excluded.2004_spring")?,
             effective_from: TermKey::parse("2004_SPRING")?,
             excluded_from_average: true,
             citation: "section 10, quoting the 평점환산기준표 유의사항".to_owned(),
@@ -201,14 +201,14 @@ pub fn confirmed_policy_ceiling_from(term: &str) -> Result<PolicyBook, RecordErr
     PolicyBook::new(
         vec![
             RepeatPolicyRow {
-                row_id: "repeat.no_ceiling.pre_2015".to_owned(),
+                row_id: CanonicalIdentifier::new("repeat.no_ceiling.pre_2015")?,
                 effective_from: TermKey::parse("2000_SPRING")?,
                 ceiling: None,
                 recognition: RepeatRecognition::LatestAttempt,
                 citation: "synthetic: the no-ceiling row the baseline book carries".to_owned(),
             },
             RepeatPolicyRow {
-                row_id: "repeat.ceiling.moved".to_owned(),
+                row_id: CanonicalIdentifier::new("repeat.ceiling.moved")?,
                 effective_from: TermKey::parse(term)?,
                 ceiling: Some(GradeSymbol::AZero),
                 recognition: RepeatRecognition::LatestAttempt,
@@ -217,7 +217,7 @@ pub fn confirmed_policy_ceiling_from(term: &str) -> Result<PolicyBook, RecordErr
             },
         ],
         vec![ExternalGradePolicyRow {
-            row_id: "external.excluded.2004_spring".to_owned(),
+            row_id: CanonicalIdentifier::new("external.excluded.2004_spring")?,
             effective_from: TermKey::parse("2004_SPRING")?,
             excluded_from_average: true,
             citation: "section 10, quoting the 평점환산기준표 유의사항".to_owned(),
@@ -227,29 +227,29 @@ pub fn confirmed_policy_ceiling_from(term: &str) -> Result<PolicyBook, RecordErr
 
 /// The rule book the golden fixtures are evaluated under.
 pub fn baseline_rules() -> Result<RuleBook, RecordError> {
-    Ok(RuleBook::new(
+    RuleBook::new(
         GradingScheme::snu_4_3_v1()?,
         confirmed_policy_v1()?,
         CLASSIFICATION_RULESET_ID,
-    ))
+    )
 }
 
 /// The same rule book publishing three digits instead of two.
 pub fn baseline_rules_scale3() -> Result<RuleBook, RecordError> {
-    Ok(RuleBook::new(
+    RuleBook::new(
         GradingScheme::snu_4_3_v2_scale3()?,
         confirmed_policy_v1()?,
         CLASSIFICATION_RULESET_ID,
-    ))
+    )
 }
 
 /// The rule book whose repeat-recognition rule is the published `UNKNOWN`.
 pub fn published_rules() -> Result<RuleBook, RecordError> {
-    Ok(RuleBook::new(
+    RuleBook::new(
         GradingScheme::snu_4_3_v1()?,
         PolicyBook::published_v1()?,
         CLASSIFICATION_RULESET_ID,
-    ))
+    )
 }
 
 // One private helper with the eight fields a settled corpus row needs. Grouping

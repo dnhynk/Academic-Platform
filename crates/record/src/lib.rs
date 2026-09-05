@@ -146,6 +146,12 @@ pub enum RecordError {
     /// A programme identity that is not identifier-shaped.
     #[error("malformed programme id: {0}")]
     MalformedProgramId(String),
+    /// An identifier the rule book's canonical text could not render.
+    ///
+    /// The rendering separates fields with a space, an `=` and a newline, so a
+    /// value holding one of them would let two different books render alike.
+    #[error("identifier is not canonical-text shaped: {0}")]
+    MalformedCanonicalIdentifier(String),
     /// Two classification rules for one programme and course.
     #[error("programme {program} classifies {course_code} twice")]
     DuplicateClassificationRule {
@@ -209,6 +215,50 @@ impl RecordError {
             }
             _ => EngineError::MalformedInput("the frozen inputs are not a valid attempt set"),
         }
+    }
+}
+
+/// An identifier the rule book's canonical text can render unambiguously.
+///
+/// [`policy::RuleBook::canonical_text`] separates its fields with a space, an
+/// `=` and a newline, and its SHA-256 is the `rule_set_hash` every replay is
+/// keyed by. A field rendered into it that could hold one of those three
+/// characters makes the encoding ambiguous, and ambiguous is not a synonym for
+/// unlikely: a `row_id` holding a newline and the rendering of the row above it
+/// makes two rule books with different row sets render the same bytes, so a
+/// recorded average replays under a book that is not its own and is accepted.
+///
+/// The four positions the rule book renders therefore carry this type rather
+/// than a `String`. There is no public field and no constructor that skips
+/// [`CanonicalIdentifier::new`], so the charset is a property of the value
+/// rather than a check somebody has to remember at each site.
+///
+/// The charset is [`check_identifier`]'s, which admits none of the three.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CanonicalIdentifier(String);
+
+impl CanonicalIdentifier {
+    /// Builds an identifier, refusing a spelling the canonical text could not
+    /// carry without ambiguity.
+    pub fn new(value: impl Into<String>) -> Result<Self, RecordError> {
+        let value = value.into();
+        if check_identifier(&value) {
+            Ok(Self(value))
+        } else {
+            Err(RecordError::MalformedCanonicalIdentifier(value))
+        }
+    }
+
+    /// Returns the identifier text.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for CanonicalIdentifier {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.0)
     }
 }
 
