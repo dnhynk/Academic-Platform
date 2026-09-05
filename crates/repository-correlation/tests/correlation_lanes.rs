@@ -2063,3 +2063,76 @@ fn the_dependency_channel_is_over_the_manifest_and_not_over_the_findings() -> Te
     assert!(refused("package.json").is_none());
     Ok(())
 }
+
+/// Every byte, against the class the doc comments state.
+///
+/// `P2-A5`'s F6 measured this gap: widening the admitted character class by
+/// exactly one byte in `src/artifact.rs` left this crate at 0 failed, and the workspace
+/// byte-identical to its baseline. `P2-R4` had the measurement already; this is
+/// that test, ported. It walks the whole byte range and compares admitted
+/// against belongs, so it is a measurement rather than three examples, and the
+/// class it compares against is **written here** rather than read from the
+/// crate -- an oracle that asked the code what it admits would agree with the
+/// code whatever the code says.
+#[test]
+fn every_identifier_is_the_shape_this_crate_admits() -> TestResult {
+    // `[A-Za-z0-9._-]` within 64 bytes, which the module note says is the same
+    // shape `SubjectId` accepts -- so all four constructors are walked, not one.
+    let belongs = |byte: u8| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-');
+
+    for byte in 0_u8..=127 {
+        let candidate = format!("a{}b", char::from(byte));
+        for taken in [
+            DocumentId::new(candidate.clone()).is_ok(),
+            IncidentId::new(candidate.clone()).is_ok(),
+            FlagKey::new(candidate.clone()).is_ok(),
+            DeploymentTarget::new(candidate.clone()).is_ok(),
+        ] {
+            assert_eq!(
+                taken,
+                belongs(byte),
+                "byte {byte} in {candidate:?} is admitted {taken} and belongs {}",
+                belongs(byte)
+            );
+        }
+    }
+
+    for outside in [
+        "\u{ac1c}\u{b150}",
+        "a\u{ac1c}b",
+        "a\u{00e9}b",
+        "a\u{1f600}b",
+    ] {
+        assert!(
+            DocumentId::new(outside).is_err(),
+            "{outside:?} was admitted as a document identifier"
+        );
+    }
+
+    let longest = "a".repeat(64);
+    for outcome in [
+        DocumentId::new(longest.as_str()).is_ok(),
+        IncidentId::new(longest.as_str()).is_ok(),
+        FlagKey::new(longest.as_str()).is_ok(),
+        DeploymentTarget::new(longest.as_str()).is_ok(),
+    ] {
+        assert!(
+            outcome,
+            "64 bytes is inside the stated bound and was refused"
+        );
+    }
+    for refused in [String::new(), "a".repeat(65)] {
+        for outcome in [
+            DocumentId::new(refused.as_str()).is_err(),
+            IncidentId::new(refused.as_str()).is_err(),
+            FlagKey::new(refused.as_str()).is_err(),
+            DeploymentTarget::new(refused.as_str()).is_err(),
+        ] {
+            assert!(
+                outcome,
+                "{refused:?} is outside the stated bound and was admitted"
+            );
+        }
+    }
+    Ok(())
+}

@@ -1700,3 +1700,49 @@ fn two_works_touching_one_observation_are_refused_rather_than_chosen_between() -
     );
     Ok(())
 }
+
+/// The length bound on an external identity is measured, not merely present.
+///
+/// `P2-A5`'s F8 swept every refusal site of this crate and found one that no
+/// test drives: deleting `ExternalAuthorId::new`'s only `return Err` outright
+/// left the crate at 26 passed, 0 failed. Its own `# Errors` section names the
+/// refusal and the scan documentation rests on it -- "bounded in length and
+/// **not** put through `validated` ... so a mapping cannot be made to hold an
+/// arbitrarily large blob under an identity's name" -- and nothing measured
+/// the bound. Both sides of it, and the empty value, are measured here.
+#[test]
+fn an_external_identity_is_bounded_in_length_and_not_in_shape() -> TestResult {
+    // 320 is the longest address RFC 5321 admits, and the doc comment says so.
+    for (length, admitted) in [(1_usize, true), (320, true), (321, false), (0, false)] {
+        let value = "a".repeat(length);
+        // Every namespace, from the crate's own exhaustive order, so a fourth
+        // one added with its own bound is measured here rather than assumed.
+        for source in IdentitySource::ALL {
+            let outcome = ExternalAuthorId::new(source, value.as_str());
+            assert_eq!(
+                outcome.is_ok(),
+                admitted,
+                "an external identity of {length} bytes in {} was admitted {} and should be \
+                 {admitted}",
+                source.as_str(),
+                outcome.is_ok()
+            );
+        }
+    }
+
+    // The other half of the sentence: the value is *not* put through the
+    // identifier shape, so an address and a display name survive. A test that
+    // only drove the length would pass if somebody added `validated` here and
+    // dropped every identity this type exists to carry.
+    for value in [
+        "ada@example.invalid",
+        "Ada Lovelace",
+        "ada+notes@example.invalid",
+    ] {
+        assert!(
+            ExternalAuthorId::new(IdentitySource::GitAuthorEmail, value).is_ok(),
+            "{value:?} was refused by a type that is documented not to check shape"
+        );
+    }
+    Ok(())
+}
