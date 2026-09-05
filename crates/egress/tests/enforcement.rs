@@ -94,11 +94,31 @@ stderr: {stderr}"
     }
 }
 
+/// The whole of this crate's `src/main.rs`, comments and blank lines removed.
+///
+/// A pin, not two `contains`. `P2-A5`'s sixth audit put
+/// `<str as ::std::net::ToSocketAddrs>::to_socket_addrs("example.invalid:80")`
+/// above the sandbox entry in `academic-repository-analyzer`'s `main` and
+/// measured the whole workspace, both hosts, reporting no difference at all.
+/// The reason this suite did not see it is that it asked whether two
+/// substrings were **present** and nothing about what else the file held.
+///
+/// The file now holds three items and no `fn main`:
+/// `academic_process_sandbox::class_main!` is the whole of `main`, so a
+/// statement above the entry has no position to occupy, and any line added to
+/// this file at all fails here naming the file.
+const MAIN_RS: [&str; 3] = [
+    "use academic_policy::ProcessClass;",
+    "const PROCESS_CLASS: ProcessClass = ProcessClass::EgressProxy;",
+    "academic_process_sandbox::class_main!(PROCESS_CLASS);",
+];
+
 #[test]
 fn this_binary_is_bound_to_exactly_one_process_class() {
     // The binding is a `const` in `main.rs`; what this reads is that the class
     // named here is the one whose declaration the receipt above is checked
-    // against, and that it is one of the six.
+    // against, that it is one of the six, and that the file binds it and
+    // enters and does nothing else.
     assert!(
         ProcessClass::ALL.contains(&CLASS),
         "{} is not one of the six process classes",
@@ -113,12 +133,13 @@ fn this_binary_is_bound_to_exactly_one_process_class() {
     let Ok(source) = source else {
         return;
     };
-    assert!(
-        source.contains("const PROCESS_CLASS: ProcessClass = ProcessClass::EgressProxy;"),
-        "src/main.rs no longer binds EgressProxy"
-    );
-    assert!(
-        source.contains("academic_process_sandbox::enter(PROCESS_CLASS)"),
-        "src/main.rs no longer enters the process sandbox"
+    let code: Vec<&str> = source
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with("//"))
+        .collect();
+    assert_eq!(
+        code, MAIN_RS,
+        "src/main.rs is not the three items this binary is allowed to hold"
     );
 }

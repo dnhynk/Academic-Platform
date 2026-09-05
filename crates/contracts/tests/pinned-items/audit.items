@@ -2,15 +2,15 @@ crates/audit/src/engine.rs [priv] const fn no_attempt_reason(rule_type: RuleType
 crates/audit/src/engine.rs [priv] const fn outcome_of(status: ProofStatus) -> GraduationOutcome |c1c4517709254d52
 crates/audit/src/engine.rs [priv] fn academic_facts(facts: &AuditFacts) -> Result<academic_requirement::AcademicFacts, AuditError> |e51eb6877ce2ca72
 crates/audit/src/engine.rs [priv] fn build_node( rule: &RuleId, body: &RuleBody, outcome: &RuleOutcome, span: &RuleSourceSpan, transcript: &TranscriptSnapshot, set: &RuleSet, academic: &academic_requirement::AcademicFacts, ) -> Result<AuditNode, AuditError> |921f6284dc9b41ac
-crates/audit/src/engine.rs [priv] fn collect_missing(outcome: &RuleOutcome, missing: &mut Vec<MissingCheck>) |07a31b48f890972d
+crates/audit/src/engine.rs [priv] fn collect_missing(outcome: &RuleOutcome, missing: &mut Vec<MissingCheck>) |9ba9941541ab05cb
 crates/audit/src/engine.rs [priv] fn fold(leaves: &[ProofLeaf]) -> ProofStatus |a644350a986ac537
 crates/audit/src/engine.rs [priv] fn not_fresh(engine: &GraduationAuditEngine, facts: &AuditFacts) -> MissingCheck |30dd5c082ba75591
-crates/audit/src/engine.rs [priv] fn operand_children( rule: &RuleId, operands: &[Operand], span: &RuleSourceSpan, transcript: &TranscriptSnapshot, set: &RuleSet, academic: &academic_requirement::AcademicFacts, ) -> Result<Vec<AuditNode>, AuditError> |cbe642e6a7d931b0
-crates/audit/src/engine.rs [priv] fn proof_tree( nodes: &[AuditNode], facts: &AuditFacts, inputs: &FrozenInputs, ) -> Result<ProofNode, AuditError> |d00ee29754e102f7
-crates/audit/src/engine.rs [priv] fn published_values( status: ProofStatus, leaves: &[ProofLeaf], verdict: &DegreeVerdict, ) -> BTreeMap<String, Decimal> |45e30ae3d5b00388
+crates/audit/src/engine.rs [priv] fn operand_children( rule: &RuleId, operands: &[Operand], span: &RuleSourceSpan, transcript: &TranscriptSnapshot, set: &RuleSet, academic: &academic_requirement::AcademicFacts, ) -> Result<Vec<AuditNode>, AuditError> |884d3f2e75e365e8
+crates/audit/src/engine.rs [priv] fn proof_tree( nodes: &[AuditNode], facts: &AuditFacts, inputs: &FrozenInputs, ) -> Result<ProofNode, AuditError> |b12f9447c27c52d7
+crates/audit/src/engine.rs [priv] fn published_values( status: ProofStatus, leaves: &[ProofLeaf], verdict: &DegreeVerdict, ) -> BTreeMap<String, Decimal> |89d04758e07e07b5
 crates/audit/src/engine.rs [priv] fn render(node: &AuditNode, facts: &AuditFacts) -> Result<ProofNode, AuditError> |9964e46d782a6f10
-crates/audit/src/engine.rs [priv] fn root_inputs(inputs: &FrozenInputs) -> Result<Vec<InputKey>, AuditError> |6a0f7ccd4e806d5d
-crates/audit/src/engine.rs [priv] fn source_index_digest(facts: &AuditFacts) -> ContentDigest |49f8628808df24e4
+crates/audit/src/engine.rs [priv] fn root_inputs(inputs: &FrozenInputs) -> Result<Vec<InputKey>, AuditError> |0f7707a595058b80
+crates/audit/src/engine.rs [priv] fn source_index_digest(facts: &AuditFacts) -> ContentDigest |0ed08c9d71a1620f
 crates/audit/src/engine.rs [priv] fn substitution( set: &RuleSet, transcript: &TranscriptSnapshot, academic: &academic_requirement::AcademicFacts, operand: &Operand, ) -> Option<(academic_domain::AttemptId, RuleId)> |b833a68f24bb91ee
 crates/audit/src/engine.rs [priv] impl AuditInputBinding
 crates/audit/src/engine.rs [priv] impl AuditNode
@@ -19,7 +19,7 @@ crates/audit/src/engine.rs [priv] impl DegreeAudit :: fn assemble( engine: &Grad
 crates/audit/src/engine.rs [priv] impl DeterministicEngine for GraduationAuditEngine
 crates/audit/src/engine.rs [priv] impl DeterministicEngine for GraduationAuditEngine :: fn engine_id(&self) -> &'static str |5931340ea7219172
 crates/audit/src/engine.rs [priv] impl DeterministicEngine for GraduationAuditEngine :: fn engine_version(&self) -> EngineVersion |8626f10d8fabf9c2
-crates/audit/src/engine.rs [priv] impl DeterministicEngine for GraduationAuditEngine :: fn evaluate( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, engine_version: EngineVersion, ) -> Result<EngineOutcome, EngineError> |dfd792e47ee3eeba
+crates/audit/src/engine.rs [priv] impl DeterministicEngine for GraduationAuditEngine :: fn evaluate( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, engine_version: EngineVersion, ) -> Result<EngineOutcome, EngineError> |8ba81a47b1f142f7
 crates/audit/src/engine.rs [priv] impl GraduationAuditEngine
 crates/audit/src/engine.rs [priv] use academic_domain::{ AuditId, ContentDigest, Decimal, engines::{ DeterministicEngine, EngineError, EngineOutcome, EngineResult, EngineVersion, FrozenInputs, InputKey, NodeId, ProofNode, ProofStatus, RuleId as EngineRuleId, RuleSetHash, }, } |7e1f47dcff2ec5d4
 crates/audit/src/engine.rs [priv] use academic_requirement::{Measure, Operand, RuleBody, RuleId, RuleOutcome, RuleSet, RuleType} |82456c1bb579e85a
@@ -29,15 +29,15 @@ crates/audit/src/engine.rs [pub] #[derive(Debug, Clone)] struct GraduationAuditE
 crates/audit/src/engine.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AuditInputBinding |97ff9e157df483b5
 crates/audit/src/engine.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AuditNode |f932543ebd3ba31b
 crates/audit/src/engine.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DegreeAudit |50410ab8e568b51d
-crates/audit/src/engine.rs [pub] const GRADUATION_ENGINE_ID: &str |cbeee26cdcb44ad7
-crates/audit/src/engine.rs [pub] const GRADUATION_HARNESS_DIR: &str |b42e77347ee806d5
-crates/audit/src/engine.rs [pub] const RULE_DEGREE_AUDIT: &str |2467b69c3b982623
+crates/audit/src/engine.rs [pub] const GRADUATION_ENGINE_ID: &str |3995659681430d63
+crates/audit/src/engine.rs [pub] const GRADUATION_HARNESS_DIR: &str |5fc12cfc2b33df55
+crates/audit/src/engine.rs [pub] const RULE_DEGREE_AUDIT: &str |72186d26daef6fc5
 crates/audit/src/engine.rs [pub] impl AuditInputBinding :: #[must_use] const fn frozen_inputs_digest(self) -> ContentDigest |2c0adb40dd3745ca
 crates/audit/src/engine.rs [pub] impl AuditInputBinding :: #[must_use] const fn profile_digest(self) -> ContentDigest |370c7f361d09cb4c
 crates/audit/src/engine.rs [pub] impl AuditInputBinding :: #[must_use] const fn rule_set_hash(self) -> RuleSetHash |ac5b2c53ec16fe51
 crates/audit/src/engine.rs [pub] impl AuditInputBinding :: #[must_use] const fn source_index_digest(self) -> ContentDigest |313b274ddf18a840
 crates/audit/src/engine.rs [pub] impl AuditInputBinding :: #[must_use] const fn transcript_digest(self) -> ContentDigest |914afcc0b5c35690
-crates/audit/src/engine.rs [pub] impl AuditInputBinding :: #[must_use] fn canonical_text(self) -> String |5b027a01a55e993d
+crates/audit/src/engine.rs [pub] impl AuditInputBinding :: #[must_use] fn canonical_text(self) -> String |6cb38b917677470f
 crates/audit/src/engine.rs [pub] impl AuditInputBinding :: #[must_use] fn digest(self) -> ContentDigest |8101f13ebfea8b34
 crates/audit/src/engine.rs [pub] impl AuditNode :: #[must_use] const fn leaf(&self) -> &ProofLeaf |1af23e4609eb3d6d
 crates/audit/src/engine.rs [pub] impl AuditNode :: #[must_use] const fn node_id(&self) -> &NodeId |7a37abe82a29596a
@@ -63,7 +63,7 @@ crates/audit/src/engine.rs [pub] impl GraduationAuditEngine :: fn evaluate_audit
 crates/audit/src/error.rs [priv] use academic_domain::{AttemptId, DomainError, engines::EngineError} |fcdabeef8ca28342
 crates/audit/src/error.rs [priv] use academic_record::RecordError |3f1728b7cc036923
 crates/audit/src/error.rs [priv] use academic_requirement::RequirementError |ab26f7b01854eac1
-crates/audit/src/error.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum AuditError |92721243d33a35ba
+crates/audit/src/error.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum AuditError |b1f28f069aa8e4c8
 crates/audit/src/explain.rs [priv] impl CreditExplanation
 crates/audit/src/explain.rs [priv] impl CreditLine
 crates/audit/src/explain.rs [priv] impl CreditVerdict
@@ -84,45 +84,45 @@ crates/audit/src/explain.rs [pub] impl CreditLine :: #[must_use] const fn attemp
 crates/audit/src/explain.rs [pub] impl CreditLine :: #[must_use] const fn verdict(&self) -> CreditVerdict |e943d39a27dea327
 crates/audit/src/explain.rs [pub] impl CreditLine :: #[must_use] fn course_code(&self) -> &str |36272f9287cb4db3
 crates/audit/src/explain.rs [pub] impl CreditVerdict :: #[must_use] const fn is_included(self) -> bool |d5b50b93911f5393
-crates/audit/src/explain.rs [pub] impl CreditVerdict :: #[must_use] const fn kind(self) -> &'static str |916f479346cc394a
-crates/audit/src/explain.rs [pub] impl CreditVerdict :: #[must_use] fn reason_text(self) -> String |1a432453878e4348
-crates/audit/src/facts.rs [priv] fn count(value: usize) -> Result<i64, AuditError> |ee4a62f7dcc4a5bc
-crates/audit/src/facts.rs [priv] fn decode_conflicts(inputs: &FrozenInputs) -> Result<Option<Vec<ConflictReference>>, AuditError> |5b5f233cce1a5cd0
-crates/audit/src/facts.rs [priv] fn decode_language(token: &str) -> Result<LanguageEvidence, AuditError> |1eeb53dbdbda50be
-crates/audit/src/facts.rs [priv] fn decode_profile(inputs: &FrozenInputs) -> Result<StudentProfile, AuditError> |3188639938b5274b
-crates/audit/src/facts.rs [priv] fn decode_reason(token: &str) -> Result<DispositionReason, AuditError> |78eefe077ea9547c
-crates/audit/src/facts.rs [priv] fn decode_sources(inputs: &FrozenInputs) -> Result<RuleSourceIndex, AuditError> |d55aebe9b01d1d06
-crates/audit/src/facts.rs [priv] fn decode_transcript(inputs: &FrozenInputs) -> Result<TranscriptSnapshot, AuditError> |9dc48f3fc754dd24
-crates/audit/src/facts.rs [priv] fn digest_from_reference(value: &str) -> Result<ContentDigest, AuditError> |e11b3a5e5a43c07f
-crates/audit/src/facts.rs [priv] fn digest_reference(digest: ContentDigest) -> String |d4e1729d81bd91bc
-crates/audit/src/facts.rs [priv] fn encode_conflicts( conflicts: Option<&[ConflictReference]>, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError> |29b337cdf383f3ba
-crates/audit/src/facts.rs [priv] fn encode_profile( profile: &StudentProfile, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError> |018ecdbf77f24ee6
-crates/audit/src/facts.rs [priv] fn encode_sources( sources: &RuleSourceIndex, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError> |836d2fc7981e0844
-crates/audit/src/facts.rs [priv] fn encode_transcript( transcript: &TranscriptSnapshot, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError> |469c48facdab98fd
-crates/audit/src/facts.rs [priv] fn index_count(value: i64) -> Result<usize, AuditError> |78c40ab756ae8ea8
-crates/audit/src/facts.rs [priv] fn optional_integer(inputs: &FrozenInputs, key: &str) -> Result<Option<i64>, AuditError> |eba55726d3f255cf
-crates/audit/src/facts.rs [priv] fn optional_reference(inputs: &FrozenInputs, key: &str) -> Result<Option<String>, AuditError> |bbd0527dcb48e2af
+crates/audit/src/explain.rs [pub] impl CreditVerdict :: #[must_use] const fn kind(self) -> &'static str |e1ef64ec4c065fc4
+crates/audit/src/explain.rs [pub] impl CreditVerdict :: #[must_use] fn reason_text(self) -> String |9639ed8b3e2573f9
+crates/audit/src/facts.rs [priv] fn count(value: usize) -> Result<i64, AuditError> |1f10c59b9ed33283
+crates/audit/src/facts.rs [priv] fn decode_conflicts(inputs: &FrozenInputs) -> Result<Option<Vec<ConflictReference>>, AuditError> |d4def504eca22ae3
+crates/audit/src/facts.rs [priv] fn decode_language(token: &str) -> Result<LanguageEvidence, AuditError> |66dabd38719997ea
+crates/audit/src/facts.rs [priv] fn decode_profile(inputs: &FrozenInputs) -> Result<StudentProfile, AuditError> |0203e3ee77a9695e
+crates/audit/src/facts.rs [priv] fn decode_reason(token: &str) -> Result<DispositionReason, AuditError> |9dad8a5f8fcd0087
+crates/audit/src/facts.rs [priv] fn decode_sources(inputs: &FrozenInputs) -> Result<RuleSourceIndex, AuditError> |67bed4606abc8b70
+crates/audit/src/facts.rs [priv] fn decode_transcript(inputs: &FrozenInputs) -> Result<TranscriptSnapshot, AuditError> |c9c71c8caaf0d74a
+crates/audit/src/facts.rs [priv] fn digest_from_reference(value: &str) -> Result<ContentDigest, AuditError> |4fad62adb443e6f9
+crates/audit/src/facts.rs [priv] fn digest_reference(digest: ContentDigest) -> String |5940a45cebc687cc
+crates/audit/src/facts.rs [priv] fn encode_conflicts( conflicts: Option<&[ConflictReference]>, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError> |c5e7532362ebde26
+crates/audit/src/facts.rs [priv] fn encode_profile( profile: &StudentProfile, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError> |d01a0355b6ebb013
+crates/audit/src/facts.rs [priv] fn encode_sources( sources: &RuleSourceIndex, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError> |d53a5b417a9f120c
+crates/audit/src/facts.rs [priv] fn encode_transcript( transcript: &TranscriptSnapshot, push: &mut impl FnMut(String, InputValue) -> Result<(), AuditError>, ) -> Result<(), AuditError> |66a9d56753e62ce3
+crates/audit/src/facts.rs [priv] fn index_count(value: i64) -> Result<usize, AuditError> |b6bba2bbca2aa0ff
+crates/audit/src/facts.rs [priv] fn optional_integer(inputs: &FrozenInputs, key: &str) -> Result<Option<i64>, AuditError> |ea0cfc4039d0d51f
+crates/audit/src/facts.rs [priv] fn optional_reference(inputs: &FrozenInputs, key: &str) -> Result<Option<String>, AuditError> |c2df42b1a194630d
 crates/audit/src/facts.rs [priv] fn reference(value: Option<&str>) -> InputValue |e0f8a8bea4ab3036
-crates/audit/src/facts.rs [priv] fn required_decimal(inputs: &FrozenInputs, key: &str) -> Result<Decimal, AuditError> |0fe8a317c0cca729
-crates/audit/src/facts.rs [priv] fn required_integer(inputs: &FrozenInputs, key: &str) -> Result<i64, AuditError> |0f75cc57771634a7
-crates/audit/src/facts.rs [priv] fn required_reference(inputs: &FrozenInputs, key: &str) -> Result<String, AuditError> |42ff66206ca31ae3
-crates/audit/src/facts.rs [priv] fn value_of<'inputs>( inputs: &'inputs FrozenInputs, key: &str, ) -> Result<&'inputs InputValue, AuditError> |eff397148a83a061
+crates/audit/src/facts.rs [priv] fn required_decimal(inputs: &FrozenInputs, key: &str) -> Result<Decimal, AuditError> |ac4552df9dd16d37
+crates/audit/src/facts.rs [priv] fn required_integer(inputs: &FrozenInputs, key: &str) -> Result<i64, AuditError> |6e0b962758c1f5e7
+crates/audit/src/facts.rs [priv] fn required_reference(inputs: &FrozenInputs, key: &str) -> Result<String, AuditError> |532a6a6831a4c0e1
+crates/audit/src/facts.rs [priv] fn value_of<'inputs>( inputs: &'inputs FrozenInputs, key: &str, ) -> Result<&'inputs InputValue, AuditError> |8af249abf896b04f
 crates/audit/src/facts.rs [priv] use academic_domain::{ ArtifactId, AttemptId, ContentDigest, CourseId, Decimal, TimestampMillis, engines::{FrozenInputs, InputKey, InputValue}, } |f031d87b9ea05fc2
 crates/audit/src/facts.rs [priv] use academic_record::{ attempt::AttemptStatus as RecordAttemptStatus, term::TermKey, views::DispositionReason, } |abacad9e4d98320c
 crates/audit/src/facts.rs [priv] use academic_requirement::{ AdmissionYear, ApprovalAuthority, ApprovalFact, AreaId, CreditAmount, CreditCategory, GpaReading, InstructionLanguage, LanguageEvidence, RuleId, } |1c0630e7ebec7e4f
 crates/audit/src/facts.rs [priv] use crate::{ error::AuditError, profile::{ DegreeMode, ExchangeOrTransfer, GraduationStandard, InstitutionId, ProgrammeId, StudentProfile, }, source::{RuleSourceIndex, RuleSourceSpan}, transcript::{EntryAdmission, TranscriptEntry, TranscriptSnapshot}, verdict::{ConflictReference, SourceFreshnessPolicy}, } |9c6c1bd6c773b093
 crates/audit/src/facts.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
 crates/audit/src/facts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AuditFacts |e945d586ac7decfa
-crates/audit/src/facts.rs [pub] #[must_use] fn entry_keys(index: usize) -> Vec<String> |9a136322f339f3fb
-crates/audit/src/facts.rs [pub] fn decode(inputs: &FrozenInputs) -> Result<AuditFacts, AuditError> |f1ce7dcee0d40ac5
-crates/audit/src/facts.rs [pub] fn encode(facts: &AuditFacts) -> Result<FrozenInputs, AuditError> |c929b3474b6b1823
+crates/audit/src/facts.rs [pub] #[must_use] fn entry_keys(index: usize) -> Vec<String> |4404cb10ffe218c1
+crates/audit/src/facts.rs [pub] fn decode(inputs: &FrozenInputs) -> Result<AuditFacts, AuditError> |93603f9a86344bda
+crates/audit/src/facts.rs [pub] fn encode(facts: &AuditFacts) -> Result<FrozenInputs, AuditError> |19baf673e06e7211
 crates/audit/src/gate.rs [priv] impl OpenGate
 crates/audit/src/gate.rs [priv] use academic_requirement::OpenGate as RuleGate |92a110f67d6076ce
 crates/audit/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate |44848f9c0b3d2b77
 crates/audit/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn from_rule_gate(gate: RuleGate) -> Option<Self> |dcf63253834ca3f1
-crates/audit/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |5fd3b48442306566
-crates/audit/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn spec_line(self) -> &'static str |acb4f5d49968b671
-crates/audit/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |4d13864554fac2b8
+crates/audit/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |f226e883215e489c
+crates/audit/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn spec_line(self) -> &'static str |5ce1f369b1c3aaad
+crates/audit/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |3f5463611a87364e
 crates/audit/src/gate.rs [pub] impl OpenGate :: const ALL: [Self; 7] |ef89b5dd33ed8332
 crates/audit/src/leaf.rs [priv] impl AttemptUsage
 crates/audit/src/leaf.rs [priv] impl EquivalencyDecision
@@ -136,12 +136,12 @@ crates/audit/src/leaf.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Attem
 crates/audit/src/leaf.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum EquivalencyDecision |c61e07a3ca2d6af7
 crates/audit/src/leaf.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProofLeaf |dc64b78d08131f56
 crates/audit/src/leaf.rs [pub] impl AttemptUsage :: #[must_use] fn attempts(&self) -> &[AttemptId] |a4d110ea7251e7a6
-crates/audit/src/leaf.rs [pub] impl AttemptUsage :: #[must_use] fn canonical_text(&self) -> String |d39a373551205085
+crates/audit/src/leaf.rs [pub] impl AttemptUsage :: #[must_use] fn canonical_text(&self) -> String |891817a2bcb270ee
 crates/audit/src/leaf.rs [pub] impl AttemptUsage :: #[must_use] fn of(attempts: Vec<AttemptId>, when_empty: NoAttemptReason) -> Self |b361612722f49764
-crates/audit/src/leaf.rs [pub] impl EquivalencyDecision :: #[must_use] fn canonical_text(&self) -> String |f61268f03273d0e1
+crates/audit/src/leaf.rs [pub] impl EquivalencyDecision :: #[must_use] fn canonical_text(&self) -> String |82e56b16dfef6d2a
 crates/audit/src/leaf.rs [pub] impl EquivalencyDecision :: #[must_use] fn of(rules: Vec<RuleId>) -> Self |0a53de525e567f5b
 crates/audit/src/leaf.rs [pub] impl EquivalencyDecision :: #[must_use] fn rules(&self) -> &[RuleId] |3bbbfbbb8a1ade94
-crates/audit/src/leaf.rs [pub] impl NoAttemptReason :: #[must_use] const fn as_str(self) -> &'static str |5e1625eeb569a99d
+crates/audit/src/leaf.rs [pub] impl NoAttemptReason :: #[must_use] const fn as_str(self) -> &'static str |409b9e56766f580a
 crates/audit/src/leaf.rs [pub] impl ProofLeaf :: #[must_use] #[allow(clippy::too_many_arguments)] const fn new( rule: RuleId, source: RuleSourceSpan, attempts: AttemptUsage, equivalency: EquivalencyDecision, rule_type: RuleType, status: ProofStatus, measure: Option<Measure>, open_gate: Option<OpenGate>, rule_gate: Option<RuleGate>, ) -> Self |e70db4a09acb6ced
 crates/audit/src/leaf.rs [pub] impl ProofLeaf :: #[must_use] const fn attempts(&self) -> &AttemptUsage |9a95749f481f0585
 crates/audit/src/leaf.rs [pub] impl ProofLeaf :: #[must_use] const fn equivalency(&self) -> &EquivalencyDecision |c7db9346de07ce0f
@@ -185,7 +185,7 @@ crates/audit/src/plan.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
 crates/audit/src/plan.rs [pub] #[derive(Debug, Clone, Copy)] struct PlanAnnotatedView<'audit> |aa55ea80fba22d17
 crates/audit/src/plan.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum PlanNote |07a0b1bc35593f9d
 crates/audit/src/plan.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct PlannedCoursework |6ed33d45a7f52aea
-crates/audit/src/plan.rs [pub] impl PlanNote :: #[must_use] const fn as_str(self) -> &'static str |e33449380b883add
+crates/audit/src/plan.rs [pub] impl PlanNote :: #[must_use] const fn as_str(self) -> &'static str |8845310c9e51eab3
 crates/audit/src/plan.rs [pub] impl PlannedCoursework :: #[must_use] const fn none() -> Self |a9b273c5a69b18a4
 crates/audit/src/plan.rs [pub] impl PlannedCoursework :: #[must_use] fn from_scenario(scenario: &PlanScenario) -> Self |e2fe609f2f8a50a2
 crates/audit/src/plan.rs [pub] impl PlannedCoursework :: #[must_use] fn intended_term(&self, course_code: &str) -> Option<TermKey> |61bb2f973219f065
@@ -194,17 +194,17 @@ crates/audit/src/plan.rs [pub] impl PlannedCoursework :: fn course_codes(&self) 
 crates/audit/src/plan.rs [pub] impl<'audit> PlanAnnotatedView<'audit> :: #[must_use] const fn new( audit: &'audit crate::engine::DegreeAudit, plan: &'audit PlannedCoursework, ) -> Self |49fbd9bf101981d3
 crates/audit/src/plan.rs [pub] impl<'audit> PlanAnnotatedView<'audit> :: #[must_use] fn note_for(&self, course_code: &str) -> PlanNote |5cf3fbad8b03193b
 crates/audit/src/plan.rs [pub] impl<'audit> PlanAnnotatedView<'audit> :: #[must_use] fn planned_only(&self) -> Vec<&'audit str> |d30ca304c1b9d2cd
-crates/audit/src/profile.rs [priv] fn is_identifier(value: &str) -> bool |181c744ea8c16742
+crates/audit/src/profile.rs [priv] fn is_identifier(value: &str) -> bool |00c3c765c9947879
 crates/audit/src/profile.rs [priv] fn render<T>(value: Option<&T>, accessor: fn(&T) -> &str) -> String |5199fcf1077e51fe
-crates/audit/src/profile.rs [priv] fn unknown() -> String |32772fe7372090ae
-crates/audit/src/profile.rs [priv] identifier_newtype!( GraduationStandard, "graduation standard", "The graduation standard the user lawfully selected, such as `2026`." ) |0a80afb109b19ddf
-crates/audit/src/profile.rs [priv] identifier_newtype!( InstitutionId, "institution id", "One node of section 11.1's `institutionPath`, such as `SNU`." ) |ee0fb794e9af8859
-crates/audit/src/profile.rs [priv] identifier_newtype!( ProgrammeId, "programme id", "One additional major or minor programme, such as `stat`." ) |a0a40d81040cab09
+crates/audit/src/profile.rs [priv] fn unknown() -> String |de838425bb957f6f
+crates/audit/src/profile.rs [priv] identifier_newtype!( GraduationStandard, "graduation standard", "The graduation standard the user lawfully selected, such as `2026`." ) |3ae2fa2b261f4b1c
+crates/audit/src/profile.rs [priv] identifier_newtype!( InstitutionId, "institution id", "One node of section 11.1's `institutionPath`, such as `SNU`." ) |e6e921eb1c8a05b9
+crates/audit/src/profile.rs [priv] identifier_newtype!( ProgrammeId, "programme id", "One additional major or minor programme, such as `stat`." ) |7ce0547ec97090c5
 crates/audit/src/profile.rs [priv] impl DegreeMode
 crates/audit/src/profile.rs [priv] impl ProfileField
 crates/audit/src/profile.rs [priv] impl SelectorDimension
 crates/audit/src/profile.rs [priv] impl StudentProfile
-crates/audit/src/profile.rs [priv] impl StudentProfile :: fn rendered_field(&self, field: ProfileField) -> String |eebe21f4058dce2f
+crates/audit/src/profile.rs [priv] impl StudentProfile :: fn rendered_field(&self, field: ProfileField) -> String |30e85d89cb744724
 crates/audit/src/profile.rs [priv] impl<T> Recorded<T>
 crates/audit/src/profile.rs [priv] macro_rules! identifier_newtype |c9e1006ad8b12cb1
 crates/audit/src/profile.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
@@ -216,17 +216,17 @@ crates/audit/src/profile.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Pa
 crates/audit/src/profile.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SelectorDimension |3908b926713706bb
 crates/audit/src/profile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Recorded<T> |31d4ac35111107cd
 crates/audit/src/profile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct StudentProfile |8563900eec61c8b6
-crates/audit/src/profile.rs [pub] impl DegreeMode :: #[must_use] const fn as_str(self) -> &'static str |14561129146dd509
-crates/audit/src/profile.rs [pub] impl DegreeMode :: #[must_use] const fn spec_word(self) -> &'static str |1dc31d13d4c65e13
+crates/audit/src/profile.rs [pub] impl DegreeMode :: #[must_use] const fn as_str(self) -> &'static str |0514b082a0ff7852
+crates/audit/src/profile.rs [pub] impl DegreeMode :: #[must_use] const fn spec_word(self) -> &'static str |7c5a389291b1a430
 crates/audit/src/profile.rs [pub] impl DegreeMode :: const ALL: [Self; 5] |17afae0f5457ad10
-crates/audit/src/profile.rs [pub] impl ProfileField :: #[must_use] const fn action(self) -> &'static str |d24f5f8e04ddf8e3
+crates/audit/src/profile.rs [pub] impl ProfileField :: #[must_use] const fn action(self) -> &'static str |153844b25c6d9e19
 crates/audit/src/profile.rs [pub] impl ProfileField :: #[must_use] const fn dimension(self) -> SelectorDimension |662ab29447068c34
 crates/audit/src/profile.rs [pub] impl ProfileField :: #[must_use] const fn gate(self) -> Option<OpenGate> |9d3ea697a9ce3e5f
-crates/audit/src/profile.rs [pub] impl ProfileField :: #[must_use] const fn spec_key(self) -> Option<&'static str> |9e54b6df9d5a1c41
+crates/audit/src/profile.rs [pub] impl ProfileField :: #[must_use] const fn spec_key(self) -> Option<&'static str> |584e11463997d9ce
 crates/audit/src/profile.rs [pub] impl ProfileField :: const ALL: [Self; 9] |2852e7d2194954b4
-crates/audit/src/profile.rs [pub] impl SelectorDimension :: #[must_use] const fn as_str(self) -> &'static str |a785269d084dcb21
+crates/audit/src/profile.rs [pub] impl SelectorDimension :: #[must_use] const fn as_str(self) -> &'static str |aa148bc269d76f1e
 crates/audit/src/profile.rs [pub] impl SelectorDimension :: #[must_use] const fn narrows_the_catalogue(self) -> bool |757b45b2c3356ea8
-crates/audit/src/profile.rs [pub] impl SelectorDimension :: #[must_use] const fn spec_words(self) -> &'static str |5a29e2ebef1069ae
+crates/audit/src/profile.rs [pub] impl SelectorDimension :: #[must_use] const fn spec_words(self) -> &'static str |adf0ed6eeaa73ca3
 crates/audit/src/profile.rs [pub] impl SelectorDimension :: const ALL: [Self; 8] |a60c69f11b386dd0
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] const fn additional_majors(&self) -> &Recorded<Vec<ProgrammeId>> |b14d1874907530ca
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] const fn admission_year(&self) -> &Recorded<AdmissionYear> |92e1ac49c75a22bd
@@ -238,7 +238,7 @@ crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] const fn ex
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] const fn graduation_standard(&self) -> &Recorded<GraduationStandard> |9fecc2774e003216
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] const fn university(&self) -> &Recorded<InstitutionId> |974bde68762f91fe
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] const fn unrecorded() -> Self |c32a226a86b02ee1
-crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] fn canonical_text(&self) -> String |9f54f2e6ce9ab216
+crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] fn canonical_text(&self) -> String |f601a9e8bb4cd6a0
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] fn digest(&self) -> ContentDigest |6bfd34430452d72a
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] fn is_recorded(&self, field: ProfileField) -> bool |3a9748ac520b8de9
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] fn with_additional_majors(mut self, value: Vec<ProgrammeId>) -> Self |22fef772f5b3be1a
@@ -252,8 +252,8 @@ crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] fn with_gra
 crates/audit/src/profile.rs [pub] impl StudentProfile :: #[must_use] fn with_university(mut self, value: InstitutionId) -> Self |778f2c8cb034cc1e
 crates/audit/src/profile.rs [pub] impl<T> Recorded<T> :: #[must_use] const fn is_known(&self) -> bool |4533924e4dcddc0f
 crates/audit/src/profile.rs [pub] impl<T> Recorded<T> :: #[must_use] const fn known(&self) -> Option<&T> |44cb9236b63d6581
-crates/audit/src/select.rs [priv] fn render(value: Option<&InstitutionId>) -> String |fe1858f7ea1023ac
-crates/audit/src/select.rs [priv] fn rendered_profile(profile: &StudentProfile) -> String |3bd3573f7632d2fc
+crates/audit/src/select.rs [priv] fn render(value: Option<&InstitutionId>) -> String |51726c192ef260f5
+crates/audit/src/select.rs [priv] fn rendered_profile(profile: &StudentProfile) -> String |a193ec83238fb261
 crates/audit/src/select.rs [priv] impl CatalogEntry
 crates/audit/src/select.rs [priv] impl CommonRuleExample
 crates/audit/src/select.rs [priv] impl CommonRuleExamples
@@ -278,7 +278,7 @@ crates/audit/src/select.rs [pub] impl CommonRuleExample :: #[must_use] const fn 
 crates/audit/src/select.rs [pub] impl CommonRuleExample :: #[must_use] const fn rule(&self) -> &RuleId |e0edb136c356960c
 crates/audit/src/select.rs [pub] impl CommonRuleExample :: #[must_use] const fn threshold(&self) -> u16 |f2bce04e479a054d
 crates/audit/src/select.rs [pub] impl CommonRuleExamples :: #[must_use] fn floors(&self) -> &[CommonRuleExample] |b39d5fab0f3f9c85
-crates/audit/src/select.rs [pub] impl CommonRuleExamples :: const LABEL: &'static str |141360c28f20b9fd
+crates/audit/src/select.rs [pub] impl CommonRuleExamples :: const LABEL: &'static str |8059d12760ca9131
 crates/audit/src/select.rs [pub] impl CommonRuleExamples :: fn of(rules: &RuleSet) -> Result<Self, AuditError> |1bf2b1b233b41325
 crates/audit/src/select.rs [pub] impl RuleSetCatalog :: #[must_use] const fn new() -> Self |cfe9e37864a3d19e
 crates/audit/src/select.rs [pub] impl RuleSetCatalog :: #[must_use] fn entries(&self) -> &[CatalogEntry] |2a9d39c82dbeff85
@@ -289,9 +289,9 @@ crates/audit/src/select.rs [pub] impl RuleSetScope :: #[must_use] const fn depar
 crates/audit/src/select.rs [pub] impl RuleSetScope :: #[must_use] const fn major_mode(&self) -> DegreeMode |ad940a513fe748a6
 crates/audit/src/select.rs [pub] impl RuleSetScope :: #[must_use] const fn standard_range(&self) -> (&GraduationStandard, &GraduationStandard) |f6165791dd561c57
 crates/audit/src/select.rs [pub] impl RuleSetScope :: #[must_use] const fn university(&self) -> &InstitutionId |5c841ef3f8e09aaa
-crates/audit/src/select.rs [pub] impl RuleSetScope :: #[must_use] fn canonical_text(&self) -> String |e996386cc84c462e
+crates/audit/src/select.rs [pub] impl RuleSetScope :: #[must_use] fn canonical_text(&self) -> String |f1720d4a67010e12
 crates/audit/src/select.rs [pub] impl RuleSetScope :: #[must_use] fn covers(&self, profile: &StudentProfile) -> Option<bool> |7bd8867216fda648
-crates/audit/src/select.rs [pub] impl RuleSetScope :: fn new( university: InstitutionId, college: InstitutionId, department: InstitutionId, admission_year: AdmissionYear, standard_from: GraduationStandard, standard_to: GraduationStandard, major_mode: DegreeMode, ) -> Result<Self, AuditError> |f681f02251f355e9
+crates/audit/src/select.rs [pub] impl RuleSetScope :: fn new( university: InstitutionId, college: InstitutionId, department: InstitutionId, admission_year: AdmissionYear, standard_from: GraduationStandard, standard_to: GraduationStandard, major_mode: DegreeMode, ) -> Result<Self, AuditError> |cc193610910c723d
 crates/audit/src/select.rs [pub] impl SelectedRuleSet :: #[must_use] const fn rules(&self) -> &RuleSet |26976d5b4d284421
 crates/audit/src/select.rs [pub] impl SelectedRuleSet :: #[must_use] const fn scope(&self) -> &RuleSetScope |d52f96d036dd8119
 crates/audit/src/select.rs [pub] impl SelectedRuleSet :: #[must_use] fn version(&self) -> RuleSetVersion |f1e48cbbfcee0fd0
@@ -314,11 +314,11 @@ crates/audit/src/source.rs [pub] impl RuleSourceSpan :: #[must_use] const fn art
 crates/audit/src/source.rs [pub] impl RuleSourceSpan :: #[must_use] const fn page(&self) -> u32 |2961e18a0a7d568f
 crates/audit/src/source.rs [pub] impl RuleSourceSpan :: #[must_use] const fn paragraph(&self) -> (u64, u64) |708c7965f93fccc4
 crates/audit/src/source.rs [pub] impl RuleSourceSpan :: #[must_use] const fn source_digest(&self) -> ContentDigest |78c036c273a2bb04
-crates/audit/src/source.rs [pub] impl RuleSourceSpan :: #[must_use] fn canonical_text(&self) -> String |b0d1e4303224dbca
+crates/audit/src/source.rs [pub] impl RuleSourceSpan :: #[must_use] fn canonical_text(&self) -> String |3b3de73c66d03b37
 crates/audit/src/source.rs [pub] impl RuleSourceSpan :: #[must_use] fn locators(&self) -> Vec<SourceLocator> |221039e32a12182f
 crates/audit/src/source.rs [pub] impl RuleSourceSpan :: fn new( artifact: ArtifactId, source_digest: ContentDigest, page: u32, paragraph_start: u64, paragraph_end: u64, ) -> Result<Self, AuditError> |436c38ed569232b3
 crates/audit/src/transcript.rs [priv] fn reading_over<'a>( dispositions: impl Iterator<Item = &'a AttemptDisposition>, ) -> Result<Option<GpaReading>, AuditError> |56f0fe5fecec38a2
-crates/audit/src/transcript.rs [priv] fn rendered(value: Decimal) -> String |afb38267c83ba4d9
+crates/audit/src/transcript.rs [priv] fn rendered(value: Decimal) -> String |6718d7121dd684db
 crates/audit/src/transcript.rs [priv] fn term_ordinal(term: TermKey) -> TermOrdinal |af281a963be6156a
 crates/audit/src/transcript.rs [priv] fn whole_credits(credits: Decimal, attempt: AttemptId) -> Result<CreditAmount, AuditError> |16682cbd9b725c05
 crates/audit/src/transcript.rs [priv] fn whole_denominator(credits: Decimal) -> Result<u32, AuditError> |a6d4ca6ac4ab8482
@@ -326,17 +326,17 @@ crates/audit/src/transcript.rs [priv] fn whole_units(value: Decimal) -> Option<i
 crates/audit/src/transcript.rs [priv] impl CourseFactsIndex
 crates/audit/src/transcript.rs [priv] impl EntryAdmission
 crates/audit/src/transcript.rs [priv] impl TranscriptEntry
-crates/audit/src/transcript.rs [priv] impl TranscriptEntry :: fn admission_text(&self) -> String |ba2fc3cdab252303
-crates/audit/src/transcript.rs [priv] impl TranscriptEntry :: fn canonical_text(&self) -> String |487bfc353252dbb0
-crates/audit/src/transcript.rs [priv] impl TranscriptEntry :: fn category_text(&self) -> String |0359553b85e91f9b
+crates/audit/src/transcript.rs [priv] impl TranscriptEntry :: fn admission_text(&self) -> String |4e27a73e6be8407a
+crates/audit/src/transcript.rs [priv] impl TranscriptEntry :: fn canonical_text(&self) -> String |bd54ebd4fd4f02d4
+crates/audit/src/transcript.rs [priv] impl TranscriptEntry :: fn category_text(&self) -> String |6289a019f7c9047e
 crates/audit/src/transcript.rs [priv] impl TranscriptSnapshot
 crates/audit/src/transcript.rs [priv] use academic_domain::{AttemptId, ContentDigest, CourseId, Decimal, EntityId} |10b1b009fac37191
 crates/audit/src/transcript.rs [priv] use academic_record::{ attempt::{AttemptHistory, AttemptStatus as RecordAttemptStatus}, classify::{ClassificationRuleSet, ProgramId as RecordProgramId}, decimal, facts::AttemptFacts, policy::RuleBook, term::{Semester, TermKey}, views::{ AttemptDisposition, AverageContribution, CreditContribution, DispositionReason, RecordViews, }, } |055b746399478a5a
 crates/audit/src/transcript.rs [priv] use academic_requirement::{ AreaId, AttemptFact, AttemptStatus as RuleAttemptStatus, CreditAmount, CreditCategory, GpaReading, GpaScope, LanguageEvidence, TermOrdinal, } |18719bf530656d3b
 crates/audit/src/transcript.rs [priv] use crate::error::AuditError |ad07541017bf8a31
 crates/audit/src/transcript.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
-crates/audit/src/transcript.rs [pub(crate)] const fn language_token(language: LanguageEvidence) -> &'static str |ef3f2e766ef56e12
-crates/audit/src/transcript.rs [pub(crate)] const fn reason_token(reason: DispositionReason) -> &'static str |53525ea9452b748a
+crates/audit/src/transcript.rs [pub(crate)] const fn language_token(language: LanguageEvidence) -> &'static str |3fc5b09605f490bb
+crates/audit/src/transcript.rs [pub(crate)] const fn reason_token(reason: DispositionReason) -> &'static str |8001d3cfb76e0aa1
 crates/audit/src/transcript.rs [pub(crate)] fn as_attempt(entity: EntityId) -> Option<AttemptId> |dee229fa2dba5a80
 crates/audit/src/transcript.rs [pub(crate)] fn as_entity(attempt: AttemptId) -> Result<EntityId, AuditError> |f9602c358c5da683
 crates/audit/src/transcript.rs [pub(crate)] impl TranscriptEntry :: #[allow(clippy::too_many_arguments)] const fn decoded( attempt: AttemptId, course_code: String, course: CourseId, term: TermKey, record_status: RecordAttemptStatus, admission: EntryAdmission, categories: Vec<CreditCategory>, area: Option<AreaId>, is_major: bool, language: LanguageEvidence, ) -> Self |322b2359a98db894
@@ -346,11 +346,11 @@ crates/audit/src/transcript.rs [pub] #[derive(Debug, Clone, Default, PartialEq, 
 crates/audit/src/transcript.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CourseRequirementFacts |8cc45505404f8a55
 crates/audit/src/transcript.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TranscriptEntry |428aced1f6b8ac50
 crates/audit/src/transcript.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TranscriptSnapshot |8fa406be2bc6191b
-crates/audit/src/transcript.rs [pub] const ALL_GPA_ELIGIBLE: &str |4afc9e730195f75c
+crates/audit/src/transcript.rs [pub] const ALL_GPA_ELIGIBLE: &str |d7a9aeb3c596a2a2
 crates/audit/src/transcript.rs [pub] impl CourseFactsIndex :: #[must_use] const fn new() -> Self |4011f9e89a92104a
 crates/audit/src/transcript.rs [pub] impl CourseFactsIndex :: #[must_use] fn facts(&self, course_code: &str) -> Option<&CourseRequirementFacts> |cec25d497b8de971
 crates/audit/src/transcript.rs [pub] impl CourseFactsIndex :: #[must_use] fn with(mut self, course_code: impl Into<String>, facts: CourseRequirementFacts) -> Self |608b4367f712617a
-crates/audit/src/transcript.rs [pub] impl EntryAdmission :: #[must_use] const fn as_str(self) -> &'static str |b69919c128f23e8c
+crates/audit/src/transcript.rs [pub] impl EntryAdmission :: #[must_use] const fn as_str(self) -> &'static str |57b03730bb1494fd
 crates/audit/src/transcript.rs [pub] impl EntryAdmission :: #[must_use] const fn reason(self) -> DispositionReason |dc0732f8ba0223bd
 crates/audit/src/transcript.rs [pub] impl TranscriptEntry :: #[must_use] const fn admission(&self) -> EntryAdmission |8b9a5604ff79d052
 crates/audit/src/transcript.rs [pub] impl TranscriptEntry :: #[must_use] const fn area(&self) -> Option<&AreaId> |5b8f34c0772182f3
@@ -364,12 +364,12 @@ crates/audit/src/transcript.rs [pub] impl TranscriptEntry :: #[must_use] const f
 crates/audit/src/transcript.rs [pub] impl TranscriptEntry :: #[must_use] fn categories(&self) -> &[CreditCategory] |6d20b08894ef8fb1
 crates/audit/src/transcript.rs [pub] impl TranscriptEntry :: #[must_use] fn course_code(&self) -> &str |36272f9287cb4db3
 crates/audit/src/transcript.rs [pub] impl TranscriptEntry :: fn as_rule_fact(&self) -> Result<AttemptFact, AuditError> |914520ac7f58cfcc
-crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: #[must_use] fn canonical_text(&self) -> String |82e06832da2e2e03
+crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: #[must_use] fn canonical_text(&self) -> String |8a7faf8df633a05b
 crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: #[must_use] fn digest(&self) -> ContentDigest |6bfd34430452d72a
 crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: #[must_use] fn entries(&self) -> &[TranscriptEntry] |229ed266cf7cfb6e
 crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: #[must_use] fn pending(&self) -> Vec<&TranscriptEntry> |9d856588ad980c0a
 crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: #[must_use] fn reading(&self, scope: &GpaScope) -> Option<GpaReading> |45cca7316b0f62e1
-crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: fn from_record( history: &AttemptHistory, classification: &ClassificationRuleSet, rules: &RuleBook, primary_program: &RecordProgramId, courses: &CourseFactsIndex, ) -> Result<Self, AuditError> |c7250d9465be6c30
+crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: fn from_record( history: &AttemptHistory, classification: &ClassificationRuleSet, rules: &RuleBook, primary_program: &RecordProgramId, courses: &CourseFactsIndex, ) -> Result<Self, AuditError> |a00a18b1b9972401
 crates/audit/src/transcript.rs [pub] impl TranscriptSnapshot :: fn readings(&self) -> impl Iterator<Item = (&String, &GpaReading)> |9759eca8c9e2f9d1
 crates/audit/src/verdict.rs [priv] #[cfg(test)] mod tests
 crates/audit/src/verdict.rs [priv] impl ConflictFreeWitness
@@ -383,8 +383,8 @@ crates/audit/src/verdict.rs [priv] impl IndeterminateVerdict
 crates/audit/src/verdict.rs [priv] impl MissingCheck
 crates/audit/src/verdict.rs [priv] impl SourceFreshnessPolicy
 crates/audit/src/verdict.rs [priv] mod tests :: #[test] fn coverage_refuses_an_empty_leaf_set() |452152cb3396346b
-crates/audit/src/verdict.rs [priv] mod tests :: #[test] fn freshness_refuses_a_retrieval_after_the_audit_instant() |196ee9fd306f35a0
-crates/audit/src/verdict.rs [priv] mod tests :: #[test] fn the_conflict_gate_separates_an_unread_store_from_an_empty_one() |22eaf3299bb560a4
+crates/audit/src/verdict.rs [priv] mod tests :: #[test] fn freshness_refuses_a_retrieval_after_the_audit_instant() |f6e15031074e7a8e
+crates/audit/src/verdict.rs [priv] mod tests :: #[test] fn the_conflict_gate_separates_an_unread_store_from_an_empty_one() |afcd3d502f4b824c
 crates/audit/src/verdict.rs [priv] mod tests :: const AS_OF: TimestampMillis |4be89fc85000950d
 crates/audit/src/verdict.rs [priv] mod tests :: const AS_OF_SECONDS: u64 |c4809a06f33c04b2
 crates/audit/src/verdict.rs [priv] mod tests :: const POLICY: SourceFreshnessPolicy |eee48e3cebcb2f8c
@@ -417,7 +417,7 @@ crates/audit/src/verdict.rs [pub] impl ConflictReference :: #[must_use] fn of(ca
 crates/audit/src/verdict.rs [pub] impl ConflictReference :: #[must_use] fn right_connector(&self) -> &str |bb3779b5a0ee6501
 crates/audit/src/verdict.rs [pub] impl ConflictReference :: #[must_use] fn rule(&self) -> &str |d699cca174b2bba9
 crates/audit/src/verdict.rs [pub] impl CoverageWitness :: #[must_use] const fn rules_covered(self) -> usize |12220c1d8ff73efd
-crates/audit/src/verdict.rs [pub] impl DegreeVerdict :: #[must_use] const fn as_str(&self) -> &'static str |60372dc36ae2b4a3
+crates/audit/src/verdict.rs [pub] impl DegreeVerdict :: #[must_use] const fn as_str(&self) -> &'static str |5e93e03c86069aca
 crates/audit/src/verdict.rs [pub] impl DegreeVerdict :: #[must_use] const fn determinate(&self) -> Option<DeterminateVerdict> |e791ef667d42f5a7
 crates/audit/src/verdict.rs [pub] impl DegreeVerdict :: #[must_use] fn missing(&self) -> &[MissingCheck] |b15c60d4726b677a
 crates/audit/src/verdict.rs [pub] impl DeterminateVerdict :: #[must_use] const fn conflict_free(self) -> ConflictFreeWitness |6205ab484e248fd2
@@ -425,11 +425,11 @@ crates/audit/src/verdict.rs [pub] impl DeterminateVerdict :: #[must_use] const f
 crates/audit/src/verdict.rs [pub] impl DeterminateVerdict :: #[must_use] const fn freshness(self) -> FreshnessWitness |d3e3a447cb596955
 crates/audit/src/verdict.rs [pub] impl DeterminateVerdict :: #[must_use] const fn outcome(self) -> GraduationOutcome |c2714488cfe6444b
 crates/audit/src/verdict.rs [pub] impl FreshnessWitness :: #[must_use] const fn age_seconds(self) -> u64 |77af13213bb44338
-crates/audit/src/verdict.rs [pub] impl GraduationOutcome :: #[must_use] const fn as_str(self) -> &'static str |7f9c51f99dbbdb09
+crates/audit/src/verdict.rs [pub] impl GraduationOutcome :: #[must_use] const fn as_str(self) -> &'static str |0ddbe499b8a5038f
 crates/audit/src/verdict.rs [pub] impl IndeterminateVerdict :: #[must_use] fn missing(&self) -> &[MissingCheck] |83d7cbf0d799df22
 crates/audit/src/verdict.rs [pub] impl MissingCheck :: #[must_use] const fn dimension(&self) -> Option<SelectorDimension> |1d89978b3fda668c
-crates/audit/src/verdict.rs [pub] impl MissingCheck :: #[must_use] const fn kind(&self) -> &'static str |0f255345d74015e8
-crates/audit/src/verdict.rs [pub] impl MissingCheck :: #[must_use] fn action(&self) -> String |3ebdc8ffb9b26ae2
-crates/audit/src/verdict.rs [pub] impl MissingCheck :: #[must_use] fn canonical_text(&self) -> String |3fc554eee68dcb1a
+crates/audit/src/verdict.rs [pub] impl MissingCheck :: #[must_use] const fn kind(&self) -> &'static str |7d03ad5859e899ee
+crates/audit/src/verdict.rs [pub] impl MissingCheck :: #[must_use] fn action(&self) -> String |c3c17ea6fbe744bd
+crates/audit/src/verdict.rs [pub] impl MissingCheck :: #[must_use] fn canonical_text(&self) -> String |f881ca8d25bff4f7
 crates/audit/src/verdict.rs [pub] impl SourceFreshnessPolicy :: #[must_use] const fn limit_seconds(self) -> u64 |b071f2b2bbc0a0c5
 crates/audit/src/verdict.rs [pub] impl SourceFreshnessPolicy :: #[must_use] const fn max_age_seconds(max_age_seconds: u64) -> Self |57779b4894174672

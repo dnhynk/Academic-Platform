@@ -15,19 +15,19 @@ crates/proposal/src/batching.rs [pub] impl Batch :: #[must_use] fn members(&self
 crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] const fn version(&self) -> u32 |8ac5a6b5c3dc1561
 crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn confidence_band(&self, confidence: ConfidencePermille) -> u8 |8dd491663a67b1f9
 crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn confidence_cuts(&self) -> &[u16] |b68d0c1096ad2b0c
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn digest(&self) -> [u8; 32] |5b1e2fba31f81b6c
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn digest(&self) -> [u8; 32] |71545a18f788766f
 crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn impact_band(&self, impact: crate::proposed::ImpactPermille) -> u8 |f7aadfeaf19c79ee
 crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn impact_cuts(&self) -> &[u16] |6cbe015da082150c
 crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: #[must_use] fn shipped() -> Self |bf7ac60b39229bb2
 crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: const SHIPPED_VERSION: u32 |6af8c29dca59f1be
-crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: fn new( version: u32, confidence_cuts: Vec<u16>, impact_cuts: Vec<u16>, ) -> Result<Self, ThresholdError> |d975b72c17463c41
-crates/proposal/src/disposition.rs [priv] fn disposition_digest( seq: DispositionSeq, proposal_id: ProposalId, disposition: &DecisionAction, user_id: u128, decided_at: u64, supersedes: Option<DispositionSeq>, ) -> [u8; 32] |3071099876b4ee99
+crates/proposal/src/batching.rs [pub] impl BatchingThresholds :: fn new( version: u32, confidence_cuts: Vec<u16>, impact_cuts: Vec<u16>, ) -> Result<Self, ThresholdError> |fd7979137b59cf53
+crates/proposal/src/disposition.rs [priv] fn disposition_digest( seq: DispositionSeq, proposal_id: ProposalId, disposition: &DecisionAction, user_id: u128, decided_at: u64, supersedes: Option<DispositionSeq>, ) -> [u8; 32] |bf836d8273a98d10
 crates/proposal/src/disposition.rs [priv] impl DispositionRecord
 crates/proposal/src/disposition.rs [priv] impl DispositionSeq
 crates/proposal/src/disposition.rs [priv] impl ExplicitApproval
 crates/proposal/src/disposition.rs [priv] impl UserDecision
 crates/proposal/src/disposition.rs [priv] impl core::fmt::Display for DispositionSeq
-crates/proposal/src/disposition.rs [priv] impl core::fmt::Display for DispositionSeq :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |83ce0a03bdfc77bc
+crates/proposal/src/disposition.rs [priv] impl core::fmt::Display for DispositionSeq :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |a21778ab5e13fa72
 crates/proposal/src/disposition.rs [priv] use academic_domain::{Actor, DecisionAction} |496675e9092daa2a
 crates/proposal/src/disposition.rs [priv] use crate::{error::WorkflowError, proposed::ProposalId} |5dd376f5c0edf3ce
 crates/proposal/src/disposition.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
@@ -37,7 +37,7 @@ crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq,
 crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DispositionRecord |00bb3d4f60ca67d9
 crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExplicitApproval |e161ed4fc7ebeb22
 crates/proposal/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UserDecision |b961ded946d4b47b
-crates/proposal/src/disposition.rs [pub] #[must_use] const fn disposition_token(action: &DecisionAction) -> &'static str |cbe4cbce1f044865
+crates/proposal/src/disposition.rs [pub] #[must_use] const fn disposition_token(action: &DecisionAction) -> &'static str |04a8733eacdee724
 crates/proposal/src/disposition.rs [pub] #[must_use] const fn releases_the_payload(action: &DecisionAction) -> bool |3168f72aaac15021
 crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn decided_at(&self) -> u64 |abbcece0778f7a44
 crates/proposal/src/disposition.rs [pub] impl DispositionRecord :: #[must_use] const fn disposition(&self) -> &DecisionAction |8e8a4964a16b24eb
@@ -54,12 +54,12 @@ crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] co
 crates/proposal/src/disposition.rs [pub] impl UserDecision :: #[must_use] const fn user_id(&self) -> u128 |eb7d8fa9b76d6ea9
 crates/proposal/src/disposition.rs [pub] impl UserDecision :: fn by(actor: &Actor) -> Result<Self, WorkflowError> |44fb6d5a726fbeca
 crates/proposal/src/error.rs [priv] impl core::fmt::Display for DispositionState
-crates/proposal/src/error.rs [priv] impl core::fmt::Display for DispositionState :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |792032f6ce378d97
+crates/proposal/src/error.rs [priv] impl core::fmt::Display for DispositionState :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |44779df2d4ce3839
 crates/proposal/src/error.rs [priv] use academic_domain::DecisionAction |4b07587db492d55d
 crates/proposal/src/error.rs [priv] use crate::{ disposition::disposition_token, proposed::ProposalId, tier::{RiskTier, Workflow}, } |1bc9d998a7bb47ab
 crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum DispositionState |f4b96297f67994d0
-crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ThresholdError |a9ca78e6601be3ce
-crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum WorkflowError |9a13a71066df41b0
+crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ThresholdError |a7430ab84929fde7
+crates/proposal/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum WorkflowError |8045a96a82d7a70d
 crates/proposal/src/lib.rs [priv] mod batching
 crates/proposal/src/lib.rs [priv] mod disposition
 crates/proposal/src/lib.rs [priv] mod error
@@ -75,12 +75,12 @@ crates/proposal/src/lib.rs [pub] use tier::{RiskTier, Workflow} |1df18ee708ed483
 crates/proposal/src/proposed.rs [priv] impl ImpactPermille
 crates/proposal/src/proposed.rs [priv] impl ProposalId
 crates/proposal/src/proposed.rs [priv] impl fmt::Display for ProposalId
-crates/proposal/src/proposed.rs [priv] impl fmt::Display for ProposalId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |1d3a1f7c77b813d2
+crates/proposal/src/proposed.rs [priv] impl fmt::Display for ProposalId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |0daeeb9c36281561
 crates/proposal/src/proposed.rs [priv] impl<T> Approved<T>
 crates/proposal/src/proposed.rs [priv] impl<T> Autosaved<T>
 crates/proposal/src/proposed.rs [priv] impl<T> Proposed<T>
 crates/proposal/src/proposed.rs [priv] impl<T> fmt::Debug for Proposed<T>
-crates/proposal/src/proposed.rs [priv] impl<T> fmt::Debug for Proposed<T> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |e4cecfe1b5d09e27
+crates/proposal/src/proposed.rs [priv] impl<T> fmt::Debug for Proposed<T> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |831be35b56658728
 crates/proposal/src/proposed.rs [priv] use academic_domain::{ConfidencePermille, EpistemicStatus} |23ae1f7896f11044
 crates/proposal/src/proposed.rs [priv] use core::fmt |60337ade2d1be0ef
 crates/proposal/src/proposed.rs [priv] use crate::tier::RiskTier |eaa08773f7821abd
@@ -91,7 +91,7 @@ crates/proposal/src/proposed.rs [pub] #[derive(Debug)] struct Approved<T> |5f25a
 crates/proposal/src/proposed.rs [pub] #[derive(Debug)] struct Autosaved<T> |b6a74fec5c2aaf38
 crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ImpactPermille(u16) |3854839f5412daa1
 crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ProposalId(u64) |2bbc79fdd6b6aab5
-crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("impact permille {0} is above 1000")] struct ImpactOutOfRange(pub u16) |fcd50845d2bd90cb
+crates/proposal/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("impact permille {0} is above 1000")] struct ImpactOutOfRange(pub u16) |c91c05ab45f32102
 crates/proposal/src/proposed.rs [pub] impl ImpactPermille :: #[must_use] const fn value(self) -> u16 |27944a9a432aaf76
 crates/proposal/src/proposed.rs [pub] impl ImpactPermille :: const fn new(value: u16) -> Result<Self, ImpactOutOfRange> |bea31eff492a81e0
 crates/proposal/src/proposed.rs [pub] impl ProposalId :: #[must_use] const fn new(value: u64) -> Self |a87096ab9b963419
@@ -148,10 +148,10 @@ crates/proposal/src/tier.rs [priv] impl fmt::Display for Workflow :: fn fmt(&sel
 crates/proposal/src/tier.rs [priv] use core::fmt |60337ade2d1be0ef
 crates/proposal/src/tier.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RiskTier |5ab7667f51a61af8
 crates/proposal/src/tier.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Workflow |6e8b4e9d0e924e81
-crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn as_str(self) -> &'static str |f907bdfeca3184f2
+crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn as_str(self) -> &'static str |f7247e5fd820378d
 crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn needs_a_human(self) -> bool |5a3f63d2c24c681e
 crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] const fn workflow(self) -> Workflow |ae678d37839ea795
 crates/proposal/src/tier.rs [pub] impl RiskTier :: #[must_use] fn parse(value: &str) -> Option<Self> |10c44157d8ee8725
 crates/proposal/src/tier.rs [pub] impl RiskTier :: const ALL: [Self; 4] |3e063c5d2aacea63
-crates/proposal/src/tier.rs [pub] impl Workflow :: #[must_use] const fn as_str(self) -> &'static str |c3baeac0bc946057
+crates/proposal/src/tier.rs [pub] impl Workflow :: #[must_use] const fn as_str(self) -> &'static str |7c37e337994db436
 crates/proposal/src/tier.rs [pub] impl Workflow :: const ALL: [Self; 4] |0b58cb6774d10346

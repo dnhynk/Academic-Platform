@@ -1,0 +1,207 @@
+crates/recovery/src/backup_key.rs [priv] #[cfg(test)] mod tests
+crates/recovery/src/backup_key.rs [priv] fn bytes(entries: &[(Value, Value)], key: u64) -> Result<Vec<u8>, BackupKeyError> |a83140d4f2efa1dc
+crates/recovery/src/backup_key.rs [priv] fn expect_keys(entries: &[(Value, Value)], keys: &[u64]) -> Result<(), BackupKeyError> |dd2d11fbc78e733e
+crates/recovery/src/backup_key.rs [priv] fn find(entries: &[(Value, Value)], key: u64) -> Result<&Value, BackupKeyError> |31feeaa80c1e8fb6
+crates/recovery/src/backup_key.rs [priv] fn fixed<const N: usize>(entries: &[(Value, Value)], key: u64) -> Result<[u8; N], BackupKeyError> |1a4738647622655c
+crates/recovery/src/backup_key.rs [priv] fn integer(entries: &[(Value, Value)], key: u64) -> Result<u32, BackupKeyError> |680d2be037ef11ca
+crates/recovery/src/backup_key.rs [priv] fn map<const N: usize>(entries: [(u64, Value); N]) -> Value |4c882aaa8c83579e
+crates/recovery/src/backup_key.rs [priv] fn pinned_profile( identifier: &str, memory_kib: u32, iterations: u32, parallelism: u32, ) -> Result<Argon2idProfile, BackupKeyError> |0effa4477731fd7a
+crates/recovery/src/backup_key.rs [priv] fn text(entries: &[(Value, Value)], key: u64) -> Result<String, BackupKeyError> |5c1a598ad13ee98d
+crates/recovery/src/backup_key.rs [priv] fn unsigned(value: u32) -> Value |2c5c11a24d2db504
+crates/recovery/src/backup_key.rs [priv] impl BackupKeyError
+crates/recovery/src/backup_key.rs [priv] impl BackupMasterKey
+crates/recovery/src/backup_key.rs [priv] impl BackupMasterKey :: const fn from_zeroizing(bytes: Zeroizing<[u8; KEY_BYTES]>) -> Self |3be9f35700ebe5bd
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientKind
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientKind :: const fn from_tag(tag: u8) -> Option<Self> |72a42b6d0da68369
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientKind :: const fn tag(self) -> u8 |897784879240f1f9
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientRecord
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientRecord :: fn compute_mac(&self, root: &BackupMasterKey) -> Result<Vec<u8>, BackupKeyError> |774f4598875743c4
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientRecord :: fn identity_bytes(&self) -> Result<Vec<u8>, BackupKeyError> |e7caa6c4c1cd8b2a
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientRecord :: fn identity_value(&self) -> Value |d797e1d1e508ee21
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientRecord :: fn mac_covered_bytes(&self) -> Result<Vec<u8>, BackupKeyError> |f9a52f0441f9c0fe
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientRecord :: fn mac_covered_value(&self) -> Value |75f79f4507de1787
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientRecord :: fn to_value(&self) -> Value |24c5d74f9b20bb07
+crates/recovery/src/backup_key.rs [priv] impl BackupRecipientSet
+crates/recovery/src/backup_key.rs [priv] impl BackupSetId
+crates/recovery/src/backup_key.rs [priv] impl From<RandomnessUnavailable> for BackupKeyError
+crates/recovery/src/backup_key.rs [priv] impl From<RandomnessUnavailable> for BackupKeyError :: fn from(_: RandomnessUnavailable) -> Self |04f313db95d8ad18
+crates/recovery/src/backup_key.rs [priv] impl Zeroize for BackupMasterKey
+crates/recovery/src/backup_key.rs [priv] impl Zeroize for BackupMasterKey :: fn zeroize(&mut self) |6bc4d1c56becce5a
+crates/recovery/src/backup_key.rs [priv] impl ZeroizeOnDrop for BackupMasterKey
+crates/recovery/src/backup_key.rs [priv] impl fmt::Debug for BackupRecipientRecord
+crates/recovery/src/backup_key.rs [priv] impl fmt::Debug for BackupRecipientRecord :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |85496f052a31468c
+crates/recovery/src/backup_key.rs [priv] impl std::fmt::Debug for BackupMasterKey
+crates/recovery/src/backup_key.rs [priv] impl std::fmt::Debug for BackupMasterKey :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |1047d6e07b334fb0
+crates/recovery/src/backup_key.rs [priv] mod tests :: #[test] fn backup_recipient_kinds_are_never_the_device_keystore() |4814aecbe704ea79
+crates/recovery/src/backup_key.rs [priv] mod tests :: #[test] fn device_only_cannot_create_a_backup_key_set() -> Result<(), BackupKeyError> |53c03840052207f0
+crates/recovery/src/backup_key.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/recovery/src/backup_key.rs [priv] use academic_crypto::{ Argon2idProfile, IDENTIFIER_BYTES, KEY_BYTES, RECOVERY_ARGON2ID_V1, RandomnessUnavailable, RecoverySecret, } |206349f3ccdcdb44
+crates/recovery/src/backup_key.rs [priv] use chacha20poly1305::{ XChaCha20Poly1305, XNonce, aead::{Aead, KeyInit, Payload}, } |5d69161fe977b6c9
+crates/recovery/src/backup_key.rs [priv] use ciborium::value::{Integer, Value} |1efc220dba1bcc05
+crates/recovery/src/backup_key.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/recovery/src/backup_key.rs [priv] use crate::profile::{RecipientRequirement, RecoveryProfile, RecoveryProfileError} |d127880e93d1968b
+crates/recovery/src/backup_key.rs [priv] use hkdf::Hkdf |d5c60d1ea8101abd
+crates/recovery/src/backup_key.rs [priv] use hmac::{Hmac, Mac} |f7f94ef294179f56
+crates/recovery/src/backup_key.rs [priv] use sha2::Sha512 |e91d151ab0c6ce03
+crates/recovery/src/backup_key.rs [priv] use subtle::ConstantTimeEq as _ |1513b10184955900
+crates/recovery/src/backup_key.rs [priv] use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing} |0f7f6220498cfeb0
+crates/recovery/src/backup_key.rs [pub(crate)] fn decode_canonical(input: &[u8]) -> Result<Value, BackupKeyError> |022ddedca77fbc95
+crates/recovery/src/backup_key.rs [pub(crate)] fn encode(value: &Value) -> Result<Vec<u8>, BackupKeyError> |6a01482b5ab30ebb
+crates/recovery/src/backup_key.rs [pub(crate)] impl BackupMasterKey :: fn derive( &self, set_id: BackupSetId, info: &[u8], ) -> Result<Zeroizing<[u8; KEY_BYTES]>, BackupKeyError> |1192e7d0667aec12
+crates/recovery/src/backup_key.rs [pub] #[derive(Clone, PartialEq, Eq)] struct BackupRecipientRecord |208adf58129ab7da
+crates/recovery/src/backup_key.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum BackupRecipientKind |c48e9e523361a6e4
+crates/recovery/src/backup_key.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct BackupSetId([u8; IDENTIFIER_BYTES]) |1315f20edd60bef2
+crates/recovery/src/backup_key.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BackupRecipientSet |c1b92e3e27743a2b
+crates/recovery/src/backup_key.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum BackupKeyError |97be0c781efda014
+crates/recovery/src/backup_key.rs [pub] const BACKUP_RECIPIENT_SET_VERSION: u8 |5bc623e0b4f3030d
+crates/recovery/src/backup_key.rs [pub] const BACKUP_ROOT_INFO: &[u8] |b4afd27427f04e2a
+crates/recovery/src/backup_key.rs [pub] const BACKUP_WRAP_ALGORITHM_ID: &str |c96a5931ef0c271f
+crates/recovery/src/backup_key.rs [pub] const RECORD_MAC_BYTES: usize |fc8e0721e3369f08
+crates/recovery/src/backup_key.rs [pub] const WRAPPED_ROOT_BYTES: usize |9899eeace4748624
+crates/recovery/src/backup_key.rs [pub] const WRAP_NONCE_BYTES: usize |f718ecac25e34463
+crates/recovery/src/backup_key.rs [pub] fn create_backup_key_set( profile: RecoveryProfile, set_id: BackupSetId, secrets: &[(BackupRecipientKind, &RecoverySecret)], ) -> Result<(BackupMasterKey, BackupRecipientSet), BackupKeyError> |9332b4cdbf8b8821
+crates/recovery/src/backup_key.rs [pub] impl BackupKeyError :: #[must_use] const fn is_integrity_incident(&self) -> bool |283985b3fbbbd973
+crates/recovery/src/backup_key.rs [pub] impl BackupMasterKey :: #[must_use] fn expose_secret(&self) -> &[u8; KEY_BYTES] |f7a4356ebda18b1c
+crates/recovery/src/backup_key.rs [pub] impl BackupMasterKey :: fn generate() -> Result<Self, BackupKeyError> |3d1d72a8583d1ea1
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientKind :: #[must_use] const fn as_str(self) -> &'static str |aa1e8eb2878b3cb0
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientKind :: #[must_use] const fn from_requirement(requirement: RecipientRequirement) -> Option<Self> |def5ee8881bd5f9e
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientKind :: #[must_use] const fn requirement(self) -> RecipientRequirement |ad88f222c57d11c1
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: #[must_use] const fn kdf(&self) -> Argon2idProfile |d809f023e74bf8de
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: #[must_use] const fn kind(&self) -> BackupRecipientKind |1478815dcc45399a
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: #[must_use] const fn recipient_id(&self) -> &[u8; IDENTIFIER_BYTES] |01e0d2a4d7c27ae2
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: #[must_use] const fn set_id(&self) -> BackupSetId |452ffc4df8bd0d5a
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: fn from_canonical_cbor(input: &[u8]) -> Result<Self, BackupKeyError> |79f4df4e2f14d3ba
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: fn open(&self, secret: &RecoverySecret) -> Result<BackupMasterKey, BackupKeyError> |2cc0a7e4f60f7ed3
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: fn open_with_wrapping_key_bytes( &self, wrapping_key: &[u8; KEY_BYTES], ) -> Result<BackupMasterKey, BackupKeyError> |0150ca9241177393
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: fn to_canonical_cbor(&self) -> Result<Vec<u8>, BackupKeyError> |f9ca6a7f7716489f
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientRecord :: fn wrap( root: &BackupMasterKey, set_id: BackupSetId, recipient_id: [u8; IDENTIFIER_BYTES], kind: BackupRecipientKind, secret: &RecoverySecret, ) -> Result<Self, BackupKeyError> |595196796ae6b5a4
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientSet :: #[must_use] const fn new(set_id: BackupSetId) -> Self |ea15efc55f254599
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientSet :: #[must_use] const fn set_id(&self) -> BackupSetId |452ffc4df8bd0d5a
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientSet :: #[must_use] fn records(&self) -> &[BackupRecipientRecord] |2eea59475924b370
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientSet :: fn from_canonical_cbor(input: &[u8]) -> Result<Self, BackupKeyError> |ae630f17c45a4ca9
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientSet :: fn open( &self, kind: BackupRecipientKind, secret: &RecoverySecret, ) -> Result<BackupMasterKey, BackupKeyError> |8796ab6830196dda
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientSet :: fn push(&mut self, record: BackupRecipientRecord) -> Result<(), BackupKeyError> |46f79cc5a15738d7
+crates/recovery/src/backup_key.rs [pub] impl BackupRecipientSet :: fn to_canonical_cbor(&self) -> Result<Vec<u8>, BackupKeyError> |ef1d81e2da5647b9
+crates/recovery/src/backup_key.rs [pub] impl BackupSetId :: #[must_use] const fn as_bytes(&self) -> &[u8; IDENTIFIER_BYTES] |816d419da3ebbb82
+crates/recovery/src/backup_key.rs [pub] impl BackupSetId :: #[must_use] const fn from_bytes(bytes: [u8; IDENTIFIER_BYTES]) -> Self |5013c8f4f0e3448b
+crates/recovery/src/backup_key.rs [pub] impl BackupSetId :: fn generate() -> Result<Self, BackupKeyError> |20b2d0e64d60e9c3
+crates/recovery/src/backup_key.rs [pub] struct BackupMasterKey(Zeroizing<[u8; KEY_BYTES]>) |ace47c4a012b5cca
+crates/recovery/src/envelope.rs [priv] #[cfg(test)] mod tests
+crates/recovery/src/envelope.rs [priv] fn fixed_bytes<const N: usize>(value: &Value) -> Result<[u8; N], SealedManifestError> |318482835370b902
+crates/recovery/src/envelope.rs [priv] fn signing_key( root: &BackupMasterKey, set_id: BackupSetId, ) -> Result<SigningKey, SealedManifestError> |2edabf9fa2c64f53
+crates/recovery/src/envelope.rs [priv] impl SealedManifest
+crates/recovery/src/envelope.rs [priv] impl SealedManifest :: fn header_bytes(&self) -> Result<Vec<u8>, SealedManifestError> |315fd00ba50b7d71
+crates/recovery/src/envelope.rs [priv] impl SealedManifest :: fn header_value(&self) -> Value |fff1f6949bf7004a
+crates/recovery/src/envelope.rs [priv] impl SealedManifest :: fn signed_preimage(&self) -> Result<Vec<u8>, SealedManifestError> |d78a02a1226b6204
+crates/recovery/src/envelope.rs [priv] mod tests :: #[test] fn a_flipped_ciphertext_byte_fails_the_signature() -> Result<(), SealedManifestError> |22f2e6961867fc4d
+crates/recovery/src/envelope.rs [priv] mod tests :: #[test] fn a_sealed_manifest_round_trips_through_canonical_cbor() -> Result<(), SealedManifestError> |5ae4812a2d6d91cd
+crates/recovery/src/envelope.rs [priv] mod tests :: #[test] fn another_root_neither_verifies_nor_opens() -> Result<(), SealedManifestError> |b8a98f931609df93
+crates/recovery/src/envelope.rs [priv] mod tests :: fn root() -> BackupMasterKey |14bc8dfa8d215165
+crates/recovery/src/envelope.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/recovery/src/envelope.rs [priv] use chacha20poly1305::{ XChaCha20Poly1305, XNonce, aead::{Aead, KeyInit, Payload}, } |5d69161fe977b6c9
+crates/recovery/src/envelope.rs [priv] use ciborium::value::{Integer, Value} |1efc220dba1bcc05
+crates/recovery/src/envelope.rs [priv] use crate::backup_key::{BackupKeyError, BackupMasterKey, BackupSetId, decode_canonical, encode} |d7c6ea743ff018fc
+crates/recovery/src/envelope.rs [priv] use ed25519_dalek::{Signature, Signer as _, SigningKey, Verifier as _, VerifyingKey} |8c4ee07bd6dcd624
+crates/recovery/src/envelope.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/recovery/src/envelope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SealedManifest |b1f26860e9e0c2e6
+crates/recovery/src/envelope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum SealedManifestError |70ebf26881432f35
+crates/recovery/src/envelope.rs [pub] const ENVELOPE_VERSION: u8 |938d7e47aed65e86
+crates/recovery/src/envelope.rs [pub] const MANIFEST_AEAD_INFO: &[u8] |93bd0eb046509175
+crates/recovery/src/envelope.rs [pub] const MANIFEST_SIGNING_INFO: &[u8] |8ea575974b918fab
+crates/recovery/src/envelope.rs [pub] const NONCE_BYTES: usize |4e81e5411f77c500
+crates/recovery/src/envelope.rs [pub] const SIGNATURE_DOMAIN: &[u8] |57b847612d73761b
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: #[must_use] const fn manifest_version(&self) -> u32 |610f8bffec4fe177
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: #[must_use] const fn set_id(&self) -> BackupSetId |452ffc4df8bd0d5a
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: #[must_use] const fn verifying_key(&self) -> &[u8; 32] |c2e3f7569746c0e6
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: #[must_use] fn format(&self) -> &str |77a053258f73c94d
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: fn envelope_digest(&self) -> Result<[u8; 32], SealedManifestError> |31372bf51f146d63
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: fn from_canonical_cbor(input: &[u8]) -> Result<Self, SealedManifestError> |ebcae755cfd1b4ab
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: fn open(&self, root: &BackupMasterKey) -> Result<Vec<u8>, SealedManifestError> |d37fc316d3f4cadb
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: fn seal( root: &BackupMasterKey, set_id: BackupSetId, format: &str, manifest_version: u32, body: &[u8], ) -> Result<Self, SealedManifestError> |fa1827021e0ba1bd
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: fn to_canonical_cbor(&self) -> Result<Vec<u8>, SealedManifestError> |3cde3af16c81551d
+crates/recovery/src/envelope.rs [pub] impl SealedManifest :: fn verify_signature(&self) -> Result<(), SealedManifestError> |5a8a3e46a3e28e1a
+crates/recovery/src/lib.rs [pub] const BACKUP_FORMAT_V2: &str |86ab4bb3d33d4237
+crates/recovery/src/lib.rs [pub] const BACKUP_MANIFEST_VERSION: u32 |4c8bff7ab817e218
+crates/recovery/src/lib.rs [pub] const PHASE2_BACKUP_FAULT_IDS: &[&str] |02e29c4b216eed8c
+crates/recovery/src/lib.rs [pub] mod backup_key
+crates/recovery/src/lib.rs [pub] mod envelope
+crates/recovery/src/lib.rs [pub] mod profile
+crates/recovery/src/lib.rs [pub] mod rehearsal
+crates/recovery/src/lib.rs [pub] use backup_key::{ BACKUP_RECIPIENT_SET_VERSION, BACKUP_ROOT_INFO, BackupKeyError, BackupMasterKey, BackupRecipientKind, BackupRecipientRecord, BackupRecipientSet, BackupSetId, create_backup_key_set, } |54a177fbe2cb86c9
+crates/recovery/src/lib.rs [pub] use envelope::{ ENVELOPE_VERSION, MANIFEST_AEAD_INFO, MANIFEST_SIGNING_INFO, SealedManifest, SealedManifestError, } |a39a0ca80a2cefb7
+crates/recovery/src/lib.rs [pub] use profile::{ DEVICE_ONLY_IRRECOVERABILITY_STATEMENT, RECOVERY_PROFILES, RecipientRequirement, RecoveryProfile, RecoveryProfileError, } |e8b7d7a0c68a9902
+crates/recovery/src/lib.rs [pub] use rehearsal::{ IngestRefusal, KeyMaterialState, REHEARSAL_RECEIPT_RELATIVE_PATH, RehearsalError, RehearsalObservations, RehearsalReceipt, admit_first_ingest, } |b81a0530f3198530
+crates/recovery/src/profile.rs [priv] #[cfg(test)] mod tests
+crates/recovery/src/profile.rs [priv] impl RecipientRequirement
+crates/recovery/src/profile.rs [priv] impl RecoveryProfile
+crates/recovery/src/profile.rs [priv] mod tests :: #[test] fn every_profile_has_a_distinct_stable_spelling() |bf4d119c5347f812
+crates/recovery/src/profile.rs [priv] mod tests :: #[test] fn every_profile_requires_the_device_keystore() |1cceab746a14b56c
+crates/recovery/src/profile.rs [priv] mod tests :: #[test] fn only_device_only_lacks_an_independent_backup_recipient() |45e58367246108b3
+crates/recovery/src/profile.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/recovery/src/profile.rs [priv] use academic_crypto::{RecipientKind, RecipientRecord} |6f0eafa893178b3f
+crates/recovery/src/profile.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum RecipientRequirement |895abb2c8959ddb1
+crates/recovery/src/profile.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] #[non_exhaustive] enum RecoveryProfile |b30dea296807bd4e
+crates/recovery/src/profile.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RecoveryProfileError |0393daef58efb2bf
+crates/recovery/src/profile.rs [pub] const DEVICE_ONLY_IRRECOVERABILITY_STATEMENT: &str |8df718539fceb618
+crates/recovery/src/profile.rs [pub] const RECOVERY_PROFILES: &[RecoveryProfile] |bf876a576515277a
+crates/recovery/src/profile.rs [pub] impl RecipientRequirement :: #[must_use] const fn as_str(self) -> &'static str |45adc726e48bd779
+crates/recovery/src/profile.rs [pub] impl RecipientRequirement :: #[must_use] const fn recipient_kind(self) -> RecipientKind |ac6e60570f056544
+crates/recovery/src/profile.rs [pub] impl RecipientRequirement :: #[must_use] const fn survives_device_loss(self) -> bool |0d8dd263a5861c69
+crates/recovery/src/profile.rs [pub] impl RecoveryProfile :: #[must_use] const fn as_str(self) -> &'static str |8b38d3fd5dc38c66
+crates/recovery/src/profile.rs [pub] impl RecoveryProfile :: #[must_use] const fn loss_statement(self) -> &'static str |95f7873bffa1ddc9
+crates/recovery/src/profile.rs [pub] impl RecoveryProfile :: #[must_use] const fn recipients(self) -> &'static [RecipientRequirement] |1ba48db7c2ddde79
+crates/recovery/src/profile.rs [pub] impl RecoveryProfile :: #[must_use] fn backup_capable_recipients(self) -> Vec<RecipientRequirement> |7d0e572ff2434974
+crates/recovery/src/profile.rs [pub] impl RecoveryProfile :: #[must_use] fn parse(value: &str) -> Option<Self> |cb9df3455159f85c
+crates/recovery/src/profile.rs [pub] impl RecoveryProfile :: #[must_use] fn supports_independent_backup(self) -> bool |8fc65ee8559b1364
+crates/recovery/src/profile.rs [pub] impl RecoveryProfile :: fn validate_recipients( self, records: &[RecipientRecord], ) -> Result<(), RecoveryProfileError> |5683cb77d2ce6eae
+crates/recovery/src/rehearsal.rs [priv] #[cfg(test)] mod tests
+crates/recovery/src/rehearsal.rs [priv] fn key(index: u64) -> Value |e0c908eb4f6c541b
+crates/recovery/src/rehearsal.rs [priv] fn read_fixed<const N: usize>(value: &Value) -> Result<[u8; N], RehearsalError> |8ef0a3fbf2438075
+crates/recovery/src/rehearsal.rs [priv] fn read_unsigned(value: &Value) -> Result<u64, RehearsalError> |ab82e2c886f5c03b
+crates/recovery/src/rehearsal.rs [priv] fn unsigned(value: u64) -> Value |b733814d36bea2ed
+crates/recovery/src/rehearsal.rs [priv] impl KeyMaterialState
+crates/recovery/src/rehearsal.rs [priv] impl RehearsalError
+crates/recovery/src/rehearsal.rs [priv] impl RehearsalError :: fn io(operation: &'static str, path: &Path, source: io::Error) -> Self |f55930e626bfa948
+crates/recovery/src/rehearsal.rs [priv] impl RehearsalReceipt
+crates/recovery/src/rehearsal.rs [priv] impl RehearsalReceipt :: fn compute_mac(&self, key: &VaultMasterKey) -> Result<Vec<u8>, RehearsalError> |c4767df258021983
+crates/recovery/src/rehearsal.rs [priv] impl RehearsalReceipt :: fn mac_covered_bytes(&self) -> Result<Vec<u8>, RehearsalError> |e6fa42cc0d8fa37d
+crates/recovery/src/rehearsal.rs [priv] impl RehearsalReceipt :: fn mac_covered_value(&self) -> Value |3e7d05d57b65939b
+crates/recovery/src/rehearsal.rs [priv] mod tests :: #[test] fn the_receipt_path_is_the_one_the_plan_fixes() |62999d2a36e1d82a
+crates/recovery/src/rehearsal.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/recovery/src/rehearsal.rs [priv] use academic_crypto::{IDENTIFIER_BYTES, ProfileId, RecipientSet, VaultMasterKey} |32fd885023cf77bb
+crates/recovery/src/rehearsal.rs [priv] use ciborium::value::{Integer, Value} |1efc220dba1bcc05
+crates/recovery/src/rehearsal.rs [priv] use crate::{ backup_key::{BackupKeyError, BackupSetId, decode_canonical, encode}, profile::RecoveryProfile, } |f76239f79274cf2c
+crates/recovery/src/rehearsal.rs [priv] use hmac::{Hmac, Mac as _} |bd426bb7c588513f
+crates/recovery/src/rehearsal.rs [priv] use sha2::{Digest as _, Sha256, Sha512} |a67defc9acb4a1bb
+crates/recovery/src/rehearsal.rs [priv] use std::{ fs, io::{self, Write as _}, path::{Path, PathBuf}, } |134421de1e4ddf01
+crates/recovery/src/rehearsal.rs [priv] use subtle::ConstantTimeEq as _ |1513b10184955900
+crates/recovery/src/rehearsal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct KeyMaterialState |b9088fdbf0afe22e
+crates/recovery/src/rehearsal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RehearsalObservations |869eb977c08d3265
+crates/recovery/src/rehearsal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RehearsalReceipt |00b7f16e883fdfb6
+crates/recovery/src/rehearsal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum IngestRefusal |b624135f459289da
+crates/recovery/src/rehearsal.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum RehearsalError |eb37389c276ced5f
+crates/recovery/src/rehearsal.rs [pub] const ADMISSION_DIRECTORY: &str |b62a7d74a694446b
+crates/recovery/src/rehearsal.rs [pub] const KEY_MATERIAL_DIGEST_DOMAIN: &[u8] |2a852bf7fe034cb6
+crates/recovery/src/rehearsal.rs [pub] const RECEIPT_MAC_BYTES: usize |b6b300c209fcef51
+crates/recovery/src/rehearsal.rs [pub] const RECEIPT_VERSION: u8 |1711c8b0699f2f48
+crates/recovery/src/rehearsal.rs [pub] const REHEARSAL_RECEIPT_RELATIVE_PATH: &str |0764f406b69ff6a4
+crates/recovery/src/rehearsal.rs [pub] fn admit_first_ingest( profile_root: &Path, key: &VaultMasterKey, profile_id: ProfileId, selected: RecoveryProfile, current: &KeyMaterialState, ) -> Result<RehearsalReceipt, IngestRefusal> |9536a20f59fb1674
+crates/recovery/src/rehearsal.rs [pub] impl KeyMaterialState :: #[must_use] const fn changed_at_unix_ms(&self) -> i64 |0be75b248f5ce1d0
+crates/recovery/src/rehearsal.rs [pub] impl KeyMaterialState :: #[must_use] const fn digest(&self) -> &[u8; 32] |b884b800ba4cf542
+crates/recovery/src/rehearsal.rs [pub] impl KeyMaterialState :: #[must_use] const fn from_parts(generation: u64, digest: [u8; 32], changed_at_unix_ms: i64) -> Self |83fc37de8c05e44b
+crates/recovery/src/rehearsal.rs [pub] impl KeyMaterialState :: #[must_use] const fn generation(&self) -> u64 |7a3f7cc9f3e0cdb4
+crates/recovery/src/rehearsal.rs [pub] impl KeyMaterialState :: fn from_recipient_set( set: &RecipientSet, generation: u64, changed_at_unix_ms: i64, ) -> Result<Self, RehearsalError> |5c1958914cfd4c05
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: #[must_use] const fn backup_set_id(&self) -> BackupSetId |3f4a8115c949bc70
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: #[must_use] const fn completed_at_unix_ms(&self) -> i64 |a1191808e091b8f0
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: #[must_use] const fn key_material_generation(&self) -> u64 |602358c83c8e5f3c
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: #[must_use] const fn profile_id(&self) -> ProfileId |df5ab6b8c51852f1
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: #[must_use] const fn recovery_profile(&self) -> RecoveryProfile |e4fc9f03824af751
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: #[must_use] const fn restored_canonical_semantic_digest(&self) -> &[u8; 32] |42f36085d3a8dee8
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: #[must_use] const fn restored_object_count(&self) -> u64 |0cf76fda4bd53644
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: #[must_use] fn path_in(profile_root: &Path) -> PathBuf |0e1413f30373d3d2
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: fn from_canonical_cbor(input: &[u8]) -> Result<Self, RehearsalError> |c474d25c0a32b8b0
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: fn read_from_profile(profile_root: &Path) -> Result<Option<Self>, RehearsalError> |73697f6f10e4326d
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: fn record( key: &VaultMasterKey, observed: &RehearsalObservations, key_material: &KeyMaterialState, ) -> Result<Self, RehearsalError> |a9f966eddde69b44
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: fn to_canonical_cbor(&self) -> Result<Vec<u8>, RehearsalError> |25d5f44e03498de9
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: fn verify(&self, key: &VaultMasterKey) -> Result<(), RehearsalError> |ddd74c5347598069
+crates/recovery/src/rehearsal.rs [pub] impl RehearsalReceipt :: fn write_into_profile(&self, profile_root: &Path) -> Result<PathBuf, RehearsalError> |12097a71f9f075f7

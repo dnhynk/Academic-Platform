@@ -26,7 +26,7 @@ crates/record/src/attempt.rs [pub] impl AttemptHistory :: #[must_use] fn get(&se
 crates/record/src/attempt.rs [pub] impl AttemptHistory :: #[must_use] fn new() -> Self |5cd671b58161b793
 crates/record/src/attempt.rs [pub] impl AttemptHistory :: fn append(&mut self, attempt: CourseAttempt) -> Result<(), RecordError> |4abc80c7759df39a
 crates/record/src/attempt.rs [pub] impl AttemptHistory :: fn append_correction( &mut self, attempt: CourseAttempt, supersedes: AttemptId, scope_id: ScopeId, source_claim_id: academic_domain::ClaimId, target_claim_id: academic_domain::ClaimId, ) -> Result<(), RecordError> |ed70e913fdc1710b
-crates/record/src/attempt.rs [pub] impl AttemptStatus :: #[must_use] const fn as_str(self) -> &'static str |bfd62e3439360980
+crates/record/src/attempt.rs [pub] impl AttemptStatus :: #[must_use] const fn as_str(self) -> &'static str |67985c626743cfe9
 crates/record/src/attempt.rs [pub] impl AttemptStatus :: #[must_use] const fn is_settled(self) -> bool |1dea3e3d7a08cb81
 crates/record/src/attempt.rs [pub] impl AttemptStatus :: #[must_use] fn parse(text: &str) -> Option<Self> |620c3fd34cb67cf7
 crates/record/src/attempt.rs [pub] impl AttemptStatus :: const ALL: [Self; 8] |a8deae67172cac81
@@ -53,7 +53,7 @@ crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: #[must_use] 
 crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: #[must_use] fn course_code(&self) -> &str |36272f9287cb4db3
 crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: #[must_use] fn evidence_ids(&self) -> &[EvidenceId] |ab983fd29f7b2410
 crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: fn new( course_code: impl Into<String>, term: TermKey, credits_attempted: Decimal, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, RecordError> |8610f6becc4ad5e1
-crates/record/src/attempt.rs [pub] impl RepeatStatus :: #[must_use] const fn as_str(self) -> &'static str |92a0b0af8edf5594
+crates/record/src/attempt.rs [pub] impl RepeatStatus :: #[must_use] const fn as_str(self) -> &'static str |8e2a21eea1df246b
 crates/record/src/attempt.rs [pub] impl RepeatStatus :: #[must_use] fn parse(text: &str) -> Option<Self> |620c3fd34cb67cf7
 crates/record/src/attempt.rs [pub] impl RepeatStatus :: const ALL: [Self; 4] |0f715d1aaf5faaf7
 crates/record/src/attempt.rs [pub] impl SettledStatus :: #[must_use] const fn into_status(self) -> AttemptStatus |303f85ca7379f580
@@ -70,9 +70,9 @@ crates/record/src/classify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struc
 crates/record/src/classify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ClassificationRuleSet |92ab5d9fbd5eeac8
 crates/record/src/classify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RequirementClassification |b955b7c0dadee88c
 crates/record/src/classify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ProgramId(String) |c71c7be52499600c
-crates/record/src/classify.rs [pub] const CLASSIFICATION_PREDICATE: &str |30322571d8d5c5e0
-crates/record/src/classify.rs [pub] const CLASSIFIER_NAME: &str |8609211469d54829
-crates/record/src/classify.rs [pub] fn classification_claim( classification: &RequirementClassification, claim_id: ClaimId, subject_entity_id: EntityId, scope_id: ScopeId, valid_time: ValidInterval, evidence_ids: Vec<EvidenceId>, ) -> Result<(Claim, Actor), RecordError> |063d329b0d6ad768
+crates/record/src/classify.rs [pub] const CLASSIFICATION_PREDICATE: &str |83ed4c6e9404281e
+crates/record/src/classify.rs [pub] const CLASSIFIER_NAME: &str |faa0ab565075db20
+crates/record/src/classify.rs [pub] fn classification_claim( classification: &RequirementClassification, claim_id: ClaimId, subject_entity_id: EntityId, scope_id: ScopeId, valid_time: ValidInterval, evidence_ids: Vec<EvidenceId>, ) -> Result<(Claim, Actor), RecordError> |f6ba2fc7376a38de
 crates/record/src/classify.rs [pub] impl ClassificationRuleSet :: #[must_use] fn classify(&self, attempt: &CourseAttempt) -> Vec<RequirementClassification> |40eef7b746473717
 crates/record/src/classify.rs [pub] impl ClassificationRuleSet :: #[must_use] fn id(&self) -> &str |35bcc7ec858ee311
 crates/record/src/classify.rs [pub] impl ClassificationRuleSet :: #[must_use] fn programs(&self) -> Vec<ProgramId> |3fccaeffe264a560
@@ -80,7 +80,7 @@ crates/record/src/classify.rs [pub] impl ClassificationRuleSet :: #[must_use] fn
 crates/record/src/classify.rs [pub] impl ClassificationRuleSet :: fn publish( id: impl Into<String>, rules: Vec<ClassificationRule>, ) -> Result<Self, RecordError> |6c3f65200e711a35
 crates/record/src/classify.rs [pub] impl ProgramId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
 crates/record/src/classify.rs [pub] impl ProgramId :: fn new(value: impl Into<String>) -> Result<Self, RecordError> |1110649928d1cec0
-crates/record/src/classify.rs [pub] impl RequirementCategory :: #[must_use] const fn as_str(self) -> &'static str |2abb91dab2fe0864
+crates/record/src/classify.rs [pub] impl RequirementCategory :: #[must_use] const fn as_str(self) -> &'static str |2a0864926bc26321
 crates/record/src/classify.rs [pub] impl RequirementCategory :: #[must_use] const fn is_major(self) -> bool |b598710e03bb7d42
 crates/record/src/classify.rs [pub] impl RequirementCategory :: #[must_use] fn parse(text: &str) -> Option<Self> |df75217871cfdec3
 crates/record/src/classify.rs [pub] impl RequirementCategory :: const ALL: [Self; 5] |5d3be68c2e96a5ff
@@ -92,29 +92,29 @@ crates/record/src/corpus.rs [priv] #[allow(clippy::too_many_arguments)] fn settl
 crates/record/src/corpus.rs [priv] fn credits(whole: i128) -> Result<Decimal, RecordError> |b189c17108686c5a
 crates/record/src/corpus.rs [priv] use academic_domain::{AttemptId, Decimal, EvidenceId} |7069f7a9ac3abff2
 crates/record/src/corpus.rs [priv] use crate::{ CanonicalIdentifier, RecordError, attempt::{AttemptHistory, CourseAttempt, RegistrationConfirmation, SettledStatus}, classify::{ClassificationRule, ClassificationRuleSet, ProgramId, RequirementCategory}, grade::{GradeSymbol, GradingScheme}, policy::{ AttemptOrigin, ExternalGradePolicyRow, PolicyBook, RecognitionDecision, RepeatPolicyRow, RepeatRecognition, RuleBook, }, term::TermKey, } |e613f509f28ed902
-crates/record/src/corpus.rs [pub] const ADDITIONAL_PROGRAM: &str |a166693686e0be78
-crates/record/src/corpus.rs [pub] const CLASSIFICATION_RULESET_ID: &str |9f1d93c0df10989b
-crates/record/src/corpus.rs [pub] const COURSE_ADDITIONAL: &str |5679e3829bd43823
-crates/record/src/corpus.rs [pub] const COURSE_EXCHANGE: &str |159ee4f2853b4f4f
-crates/record/src/corpus.rs [pub] const COURSE_FAILED: &str |26c7e1dec099e6db
-crates/record/src/corpus.rs [pub] const COURSE_REGISTERED: &str |885d60c0bb73c85a
-crates/record/src/corpus.rs [pub] const COURSE_REPEATED: &str |48f13a1e7f59605c
-crates/record/src/corpus.rs [pub] const COURSE_SATISFACTORY: &str |a93ca503b854e620
-crates/record/src/corpus.rs [pub] const COURSE_SHARED: &str |75152035f072b9eb
-crates/record/src/corpus.rs [pub] const COURSE_WITHDRAWN: &str |ffb90e5826d9675c
-crates/record/src/corpus.rs [pub] const PRIMARY_PROGRAM: &str |943fb26bdc17da41
-crates/record/src/corpus.rs [pub] fn baseline_history() -> Result<AttemptHistory, RecordError> |61250419477ae517
+crates/record/src/corpus.rs [pub] const ADDITIONAL_PROGRAM: &str |fa12e53f3b5acb46
+crates/record/src/corpus.rs [pub] const CLASSIFICATION_RULESET_ID: &str |9bc3eff099f1fbfa
+crates/record/src/corpus.rs [pub] const COURSE_ADDITIONAL: &str |90672985d7233f9c
+crates/record/src/corpus.rs [pub] const COURSE_EXCHANGE: &str |369c97b346eabdb3
+crates/record/src/corpus.rs [pub] const COURSE_FAILED: &str |c64227a027040d70
+crates/record/src/corpus.rs [pub] const COURSE_REGISTERED: &str |a5135822549bb5f2
+crates/record/src/corpus.rs [pub] const COURSE_REPEATED: &str |260f33473ffc43c6
+crates/record/src/corpus.rs [pub] const COURSE_SATISFACTORY: &str |859cfcb5a61d148e
+crates/record/src/corpus.rs [pub] const COURSE_SHARED: &str |3878f91aae90375b
+crates/record/src/corpus.rs [pub] const COURSE_WITHDRAWN: &str |82904bb95fe6135c
+crates/record/src/corpus.rs [pub] const PRIMARY_PROGRAM: &str |4785684b3af691b9
+crates/record/src/corpus.rs [pub] fn baseline_history() -> Result<AttemptHistory, RecordError> |9fac65d9555dec71
 crates/record/src/corpus.rs [pub] fn baseline_rules() -> Result<RuleBook, RecordError> |ea3fb1c0801a8c31
 crates/record/src/corpus.rs [pub] fn baseline_rules_scale3() -> Result<RuleBook, RecordError> |7c2cddd1c7e6bb5e
-crates/record/src/corpus.rs [pub] fn classification_v1() -> Result<ClassificationRuleSet, RecordError> |423ffcd02215e863
-crates/record/src/corpus.rs [pub] fn confirmed_policy_ceiling_from(term: &str) -> Result<PolicyBook, RecordError> |b4ffd890313868e5
-crates/record/src/corpus.rs [pub] fn confirmed_policy_v1() -> Result<PolicyBook, RecordError> |fb66b2e9598d092b
-crates/record/src/corpus.rs [pub] fn history_with_conflicting_records() -> Result<AttemptHistory, RecordError> |4cf2f52640043772
-crates/record/src/corpus.rs [pub] fn history_with_undated_external() -> Result<AttemptHistory, RecordError> |17d5495da30642b0
+crates/record/src/corpus.rs [pub] fn classification_v1() -> Result<ClassificationRuleSet, RecordError> |6b9b1564ec716fad
+crates/record/src/corpus.rs [pub] fn confirmed_policy_ceiling_from(term: &str) -> Result<PolicyBook, RecordError> |846251dcac64b486
+crates/record/src/corpus.rs [pub] fn confirmed_policy_v1() -> Result<PolicyBook, RecordError> |242e35c396aee783
+crates/record/src/corpus.rs [pub] fn history_with_conflicting_records() -> Result<AttemptHistory, RecordError> |493c6e69e80c7fd6
+crates/record/src/corpus.rs [pub] fn history_with_undated_external() -> Result<AttemptHistory, RecordError> |82f2fc355520ae30
 crates/record/src/corpus.rs [pub] fn published_rules() -> Result<RuleBook, RecordError> |6978b376b6130b0f
-crates/record/src/corpus.rs [pub] fn single_grade_history(grade: GradeSymbol) -> Result<AttemptHistory, RecordError> |93b98f6a854d1361
-crates/record/src/corpus.rs [pub] fn synthetic_attempt_id(index: u8) -> Result<AttemptId, RecordError> |d995e9732b20bd19
-crates/record/src/corpus.rs [pub] fn synthetic_evidence_id(index: u8) -> Result<EvidenceId, RecordError> |46903b08ea0cec9f
+crates/record/src/corpus.rs [pub] fn single_grade_history(grade: GradeSymbol) -> Result<AttemptHistory, RecordError> |05848952963fb694
+crates/record/src/corpus.rs [pub] fn synthetic_attempt_id(index: u8) -> Result<AttemptId, RecordError> |203d7142ff0e761f
+crates/record/src/corpus.rs [pub] fn synthetic_evidence_id(index: u8) -> Result<EvidenceId, RecordError> |f8c2e5c8c3d67d70
 crates/record/src/decimal.rs [priv] fn align(left: Decimal, right: Decimal) -> Result<(i128, i128, u8), RecordError> |d614f12fd846979d
 crates/record/src/decimal.rs [priv] fn pow10(exponent: u32) -> Result<i128, RecordError> |1b8aed6f7e4f6fe2
 crates/record/src/decimal.rs [priv] use academic_domain::Decimal |1ac852ff7e32a31c
@@ -134,9 +134,9 @@ crates/record/src/decimal.rs [pub] fn sub(left: Decimal, right: Decimal) -> Resu
 crates/record/src/decimal.rs [pub] fn zero() -> Result<Decimal, RecordError> |1c4d44f4e0d89228
 crates/record/src/engine.rs [priv] const fn rank(status: ProofStatus) -> u8 |f9781163d68fb54d
 crates/record/src/engine.rs [priv] const fn worsen(current: ProofStatus, candidate: ProofStatus) -> ProofStatus |153b0cdcaf61e12a
-crates/record/src/engine.rs [priv] fn attempt_input_keys( inputs: &FrozenInputs, attempt: &AttemptFacts, ) -> Result<Vec<InputKey>, RecordError> |d3901e4a04f649b7
+crates/record/src/engine.rs [priv] fn attempt_input_keys( inputs: &FrozenInputs, attempt: &AttemptFacts, ) -> Result<Vec<InputKey>, RecordError> |d619fee7b185dfde
 crates/record/src/engine.rs [priv] fn duplicate_records(facts: &[AttemptFacts]) -> BTreeSet<academic_domain::AttemptId> |509134e1c5663498
-crates/record/src/engine.rs [priv] fn scope_input_keys(inputs: &FrozenInputs) -> Result<Vec<InputKey>, RecordError> |aa3b006e9169310b
+crates/record/src/engine.rs [priv] fn scope_input_keys(inputs: &FrozenInputs) -> Result<Vec<InputKey>, RecordError> |15c75f97c80844b5
 crates/record/src/engine.rs [priv] impl CreditAccountingEngine
 crates/record/src/engine.rs [priv] impl DeterministicEngine for CreditAccountingEngine
 crates/record/src/engine.rs [priv] impl DeterministicEngine for CreditAccountingEngine :: fn engine_id(&self) -> &'static str |ed4aa0213671a73f
@@ -152,23 +152,23 @@ crates/record/src/engine.rs [priv] use crate::{ RecordError, classify::{ProgramI
 crates/record/src/engine.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
 crates/record/src/engine.rs [pub] #[derive(Debug, Clone)] struct CreditAccountingEngine |a13b51970ff5bf02
 crates/record/src/engine.rs [pub] #[derive(Debug, Clone)] struct GpaEngine |7cbf21fb92f6628c
-crates/record/src/engine.rs [pub] const CREDIT_ENGINE_ID: &str |b8e6f730499fdb9e
-crates/record/src/engine.rs [pub] const GPA_ENGINE_ID: &str |b5af67408cb7314f
-crates/record/src/engine.rs [pub] const RULE_CREDIT_DOUBLE_COUNT: &str |cb58753f9784f6d0
-crates/record/src/engine.rs [pub] const RULE_CREDIT_TOTALS: &str |c44c5c0e1b96d2c6
-crates/record/src/engine.rs [pub] const RULE_GPA_AVERAGE: &str |e55059fffd646415
-crates/record/src/engine.rs [pub] const RULE_GPA_DISPOSITION: &str |9cc96f819e35e429
-crates/record/src/engine.rs [pub] const RULE_GPA_SINGLE_RECORD: &str |267336b92786c0a2
+crates/record/src/engine.rs [pub] const CREDIT_ENGINE_ID: &str |22c12dc44d1fa08e
+crates/record/src/engine.rs [pub] const GPA_ENGINE_ID: &str |07cfcb763ec34983
+crates/record/src/engine.rs [pub] const RULE_CREDIT_DOUBLE_COUNT: &str |d9ad07c050618df3
+crates/record/src/engine.rs [pub] const RULE_CREDIT_TOTALS: &str |50c19686f6a32447
+crates/record/src/engine.rs [pub] const RULE_GPA_AVERAGE: &str |62fc2d41bdc1715a
+crates/record/src/engine.rs [pub] const RULE_GPA_DISPOSITION: &str |24a1de1e42b69545
+crates/record/src/engine.rs [pub] const RULE_GPA_SINGLE_RECORD: &str |ad869b1c6c7cceb7
 crates/record/src/engine.rs [pub] impl CreditAccountingEngine :: #[must_use] const fn new(rules: RuleBook, version: EngineVersion) -> Self |496222101a042c08
 crates/record/src/engine.rs [pub] impl CreditAccountingEngine :: #[must_use] fn rule_set_hash(&self) -> RuleSetHash |8040c1b35549d561
-crates/record/src/engine.rs [pub] impl CreditAccountingEngine :: fn evaluate_record( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<EngineOutcome, RecordError> |71d7c89516cf92ca
+crates/record/src/engine.rs [pub] impl CreditAccountingEngine :: fn evaluate_record( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<EngineOutcome, RecordError> |d507de72a0d33c06
 crates/record/src/engine.rs [pub] impl GpaEngine :: #[must_use] const fn new(rules: RuleBook, version: EngineVersion) -> Self |496222101a042c08
 crates/record/src/engine.rs [pub] impl GpaEngine :: #[must_use] const fn rules(&self) -> &RuleBook |370f06de34c5e0c8
 crates/record/src/engine.rs [pub] impl GpaEngine :: #[must_use] fn rule_set_hash(&self) -> RuleSetHash |8040c1b35549d561
-crates/record/src/engine.rs [pub] impl GpaEngine :: fn evaluate_record( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<EngineOutcome, RecordError> |8ed5aa8072893dbf
-crates/record/src/facts.rs [priv] fn integer(inputs: &FrozenInputs, key: &str) -> Result<Option<i64>, RecordError> |33d6b89719776aae
-crates/record/src/facts.rs [priv] fn required_decimal(inputs: &FrozenInputs, key: &str) -> Result<Decimal, RecordError> |a0e41b064857d181
-crates/record/src/facts.rs [priv] fn required_reference(inputs: &FrozenInputs, key: &str) -> Result<String, RecordError> |7b54d7bf64b6e967
+crates/record/src/engine.rs [pub] impl GpaEngine :: fn evaluate_record( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<EngineOutcome, RecordError> |2c2d08732b3b643f
+crates/record/src/facts.rs [priv] fn integer(inputs: &FrozenInputs, key: &str) -> Result<Option<i64>, RecordError> |10a40374cb3f3d70
+crates/record/src/facts.rs [priv] fn required_decimal(inputs: &FrozenInputs, key: &str) -> Result<Decimal, RecordError> |6d3c29a3abe4d505
+crates/record/src/facts.rs [priv] fn required_reference(inputs: &FrozenInputs, key: &str) -> Result<String, RecordError> |81f4786ae38f27ff
 crates/record/src/facts.rs [priv] impl AttemptFacts
 crates/record/src/facts.rs [priv] impl GpaScope
 crates/record/src/facts.rs [priv] use academic_domain::{ AttemptId, Decimal, engines::{FrozenInputs, InputKey, InputValue}, } |6e9769902c91e0b0
@@ -176,15 +176,15 @@ crates/record/src/facts.rs [priv] use crate::{ RecordError, attempt::{AttemptSta
 crates/record/src/facts.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
 crates/record/src/facts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum GpaScope |fd1b4ef100863927
 crates/record/src/facts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AttemptFacts |2b515efcc41601fb
-crates/record/src/facts.rs [pub] fn decode(inputs: &FrozenInputs) -> Result<(Vec<AttemptFacts>, GpaScope), RecordError> |c600cc936b3bbb20
-crates/record/src/facts.rs [pub] fn encode(facts: &[AttemptFacts], scope: &GpaScope) -> Result<FrozenInputs, RecordError> |79e54917e5fd5787
+crates/record/src/facts.rs [pub] fn decode(inputs: &FrozenInputs) -> Result<(Vec<AttemptFacts>, GpaScope), RecordError> |572bcbda29d3e332
+crates/record/src/facts.rs [pub] fn encode(facts: &[AttemptFacts], scope: &GpaScope) -> Result<FrozenInputs, RecordError> |d8f0a496f0ad1cb2
 crates/record/src/facts.rs [pub] impl AttemptFacts :: #[must_use] fn from_attempt(attempt: &CourseAttempt, classification: &ClassificationRuleSet) -> Self |129f14601a758a59
 crates/record/src/facts.rs [pub] impl AttemptFacts :: #[must_use] fn is_major_for(&self, program: &ProgramId) -> bool |bbfeb698dcaea72b
-crates/record/src/facts.rs [pub] impl GpaScope :: #[must_use] const fn tag(&self) -> &'static str |55cb182dfef0b749
+crates/record/src/facts.rs [pub] impl GpaScope :: #[must_use] const fn tag(&self) -> &'static str |5782c4317aae51c2
 crates/record/src/grade.rs [priv] impl GradeSymbol
 crates/record/src/grade.rs [priv] impl GradeTreatment
 crates/record/src/grade.rs [priv] impl GradingScheme
-crates/record/src/grade.rs [priv] impl GradingScheme :: fn snu_table(id: &str, published_scale: u8) -> Result<Self, RecordError> |900301c6d4dbb360
+crates/record/src/grade.rs [priv] impl GradingScheme :: fn snu_table(id: &str, published_scale: u8) -> Result<Self, RecordError> |ccc40e20fda95f11
 crates/record/src/grade.rs [priv] use academic_domain::Decimal |1ac852ff7e32a31c
 crates/record/src/grade.rs [priv] use crate::CanonicalIdentifier |a4a32acb437767fd
 crates/record/src/grade.rs [priv] use crate::{RecordError, decimal} |86b9e2dce04bbf5c
@@ -192,8 +192,8 @@ crates/record/src/grade.rs [priv] use std::collections::BTreeMap |8924be3040ea8f
 crates/record/src/grade.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct GradeTreatment |efbfe676b0356fc4
 crates/record/src/grade.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum GradeSymbol |4a528eb11e3d2718
 crates/record/src/grade.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GradingScheme |a94310e9347df6c5
-crates/record/src/grade.rs [pub] impl GradeSymbol :: #[must_use] const fn as_str(self) -> &'static str |1afa9c9dfd176aef
-crates/record/src/grade.rs [pub] impl GradeSymbol :: #[must_use] const fn as_token(self) -> &'static str |bd9a158c50560d95
+crates/record/src/grade.rs [pub] impl GradeSymbol :: #[must_use] const fn as_str(self) -> &'static str |30f1b8d2d2f642fa
+crates/record/src/grade.rs [pub] impl GradeSymbol :: #[must_use] const fn as_token(self) -> &'static str |4bbddc90c8510d78
 crates/record/src/grade.rs [pub] impl GradeSymbol :: #[must_use] fn parse(text: &str) -> Option<Self> |006aa4b0355de4bb
 crates/record/src/grade.rs [pub] impl GradeSymbol :: #[must_use] fn parse_token(text: &str) -> Option<Self> |005a5ca6b0d10e4f
 crates/record/src/grade.rs [pub] impl GradeSymbol :: const ALL: [Self; 17] |1ed1e09ad55fe327
@@ -206,29 +206,29 @@ crates/record/src/grade.rs [pub] impl GradeTreatment :: #[must_use] const fn par
 crates/record/src/grade.rs [pub] impl GradeTreatment :: #[must_use] const fn unresolved() -> Self |9046b9722851f984
 crates/record/src/grade.rs [pub] impl GradeTreatment :: fn graded(grade_points: Decimal, earns_credit: bool) -> Self |9806a973cda6a8a8
 crates/record/src/grade.rs [pub] impl GradingScheme :: #[must_use] const fn published_scale(&self) -> u8 |0a1ae9c0f820fb7e
-crates/record/src/grade.rs [pub] impl GradingScheme :: #[must_use] fn canonical_text(&self) -> String |e432a3fc1cbf1370
+crates/record/src/grade.rs [pub] impl GradingScheme :: #[must_use] fn canonical_text(&self) -> String |6c59c750e253d02b
 crates/record/src/grade.rs [pub] impl GradingScheme :: #[must_use] fn citation(&self) -> &str |8a88b021dfd35bd9
 crates/record/src/grade.rs [pub] impl GradingScheme :: #[must_use] fn id(&self) -> &str |f1df4007ead98374
 crates/record/src/grade.rs [pub] impl GradingScheme :: #[must_use] fn treatment(&self, symbol: GradeSymbol) -> GradeTreatment |70879e51693e87e7
 crates/record/src/grade.rs [pub] impl GradingScheme :: fn new( id: impl Into<String>, treatments: BTreeMap<GradeSymbol, GradeTreatment>, published_scale: u8, citation: impl Into<String>, ) -> Result<Self, RecordError> |e63d8344084112d1
-crates/record/src/grade.rs [pub] impl GradingScheme :: fn snu_4_3_v1() -> Result<Self, RecordError> |bfb0ddc129761c7d
-crates/record/src/grade.rs [pub] impl GradingScheme :: fn snu_4_3_v2_scale3() -> Result<Self, RecordError> |53d801ae883b8a0f
-crates/record/src/harness.rs [priv] fn bounds_text() -> String |88de46f9ec040f92
-crates/record/src/harness.rs [priv] fn credit_cases() -> Result<Vec<(String, FrozenInputs)>, RecordError> |2f962ff674cd8c23
-crates/record/src/harness.rs [priv] fn gpa_cases() -> Result<Vec<(String, FrozenInputs)>, RecordError> |9145d2384d945deb
+crates/record/src/grade.rs [pub] impl GradingScheme :: fn snu_4_3_v1() -> Result<Self, RecordError> |429f5a8eda47190c
+crates/record/src/grade.rs [pub] impl GradingScheme :: fn snu_4_3_v2_scale3() -> Result<Self, RecordError> |6bd1b1b4ff188d64
+crates/record/src/harness.rs [priv] fn bounds_text() -> String |8b3b1dd050b89530
+crates/record/src/harness.rs [priv] fn credit_cases() -> Result<Vec<(String, FrozenInputs)>, RecordError> |6b5fdee4d8e10768
+crates/record/src/harness.rs [priv] fn gpa_cases() -> Result<Vec<(String, FrozenInputs)>, RecordError> |84e1d08e0884f63d
 crates/record/src/harness.rs [priv] fn inputs_for(history: &AttemptHistory, scope: &GpaScope) -> Result<FrozenInputs, RecordError> |3649acbe38a93b62
 crates/record/src/harness.rs [priv] use academic_domain::engines::{EngineVersion, FrozenInputs} |657804002862c999
 crates/record/src/harness.rs [priv] use crate::{ RecordError, attempt::AttemptHistory, classify::ProgramId, corpus, engine::{CreditAccountingEngine, GpaEngine}, facts::{AttemptFacts, GpaScope, encode}, policy::RuleBook, term::{Semester, TermKey}, } |2916a24487a0a395
 crates/record/src/harness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CorpusFile |38f1f9d759dd5ea3
-crates/record/src/harness.rs [pub] const CREDIT_HARNESS_DIR: &str |66f854fe58ca42f0
+crates/record/src/harness.rs [pub] const CREDIT_HARNESS_DIR: &str |0ca4be89aa727096
 crates/record/src/harness.rs [pub] const CREDIT_TENTHS_HIGH: i128 |705913292bfd2648
 crates/record/src/harness.rs [pub] const CREDIT_TENTHS_LOW: i128 |f830a8afa2268307
-crates/record/src/harness.rs [pub] const GPA_HARNESS_DIR: &str |4e3dae67ef62a51d
-crates/record/src/harness.rs [pub] const HARNESS_ROOT: &str |86f2b7c4363281c3
+crates/record/src/harness.rs [pub] const GPA_HARNESS_DIR: &str |7c8e18a6207cd03e
+crates/record/src/harness.rs [pub] const HARNESS_ROOT: &str |a94832256679a473
 crates/record/src/harness.rs [pub] const PROPERTY_MAX_ATTEMPTS: usize |904254429c2732ab
-crates/record/src/harness.rs [pub] fn corpus_files() -> Result<Vec<CorpusFile>, RecordError> |26d36dea36413060
+crates/record/src/harness.rs [pub] fn corpus_files() -> Result<Vec<CorpusFile>, RecordError> |4d9fb04673d34ad7
 crates/record/src/ingest.rs [priv] fn claim_object_text(claim: &academic_domain::Claim) -> Option<String> |dd639132244090d4
-crates/record/src/ingest.rs [priv] fn row_object_text(row: &TranscriptRow) -> String |b5fd57c59c9e049e
+crates/record/src/ingest.rs [priv] fn row_object_text(row: &TranscriptRow) -> String |ee64e23226ded734
 crates/record/src/ingest.rs [priv] use academic_domain::{AttemptId, AuthorityClass, EpistemicStatus, EvidenceId} |852f15f5e461c627
 crates/record/src/ingest.rs [priv] use academic_transcript::{ claims::ConfirmedRowClaim, record::{TranscriptField, TranscriptRow}, } |fc65023393f53f04
 crates/record/src/ingest.rs [priv] use crate::{ RecordError, attempt::{CourseAttempt, SettledStatus}, grade::GradeSymbol, policy::AttemptOrigin, term::TermKey, } |8de5e51018c5ce2f
@@ -240,13 +240,13 @@ crates/record/src/lib.rs [priv] impl std::fmt::Display for CanonicalIdentifier
 crates/record/src/lib.rs [priv] impl std::fmt::Display for CanonicalIdentifier :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |a17b504c172945b1
 crates/record/src/lib.rs [priv] use academic_domain::{AttemptId, DomainError, EntityId, engines::EngineError} |0353739a59d16c64
 crates/record/src/lib.rs [priv] use academic_transcript::TranscriptError |e594327a7789b123
-crates/record/src/lib.rs [pub(crate)] fn check_identifier(value: &str) -> bool |377c60c1911a9a8b
+crates/record/src/lib.rs [pub(crate)] fn check_identifier(value: &str) -> bool |0daec3ae72a0bcf6
 crates/record/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct CanonicalIdentifier(String) |59bc6d864a896194
-crates/record/src/lib.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum RecordError |86e5f39dabc24614
-crates/record/src/lib.rs [pub] const ENGINE_VERSION_TEXT: &str |055859cc4a730dbd
+crates/record/src/lib.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum RecordError |8d80953cb7e1d8fe
+crates/record/src/lib.rs [pub] const ENGINE_VERSION_TEXT: &str |e26290849d6ca661
 crates/record/src/lib.rs [pub] impl CanonicalIdentifier :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
 crates/record/src/lib.rs [pub] impl CanonicalIdentifier :: fn new(value: impl Into<String>) -> Result<Self, RecordError> |1379e425e6d370ee
-crates/record/src/lib.rs [pub] impl RecordError :: #[must_use] fn into_engine_error(self) -> EngineError |dabd78808ba3f10c
+crates/record/src/lib.rs [pub] impl RecordError :: #[must_use] fn into_engine_error(self) -> EngineError |5cf04cd990155680
 crates/record/src/lib.rs [pub] mod attempt
 crates/record/src/lib.rs [pub] mod classify
 crates/record/src/lib.rs [pub] mod corpus
@@ -274,10 +274,10 @@ crates/record/src/plan.rs [pub] fn delete_scenario( store: &mut PlanStore, histo
 crates/record/src/plan.rs [pub] impl PlanScenario :: #[must_use] const fn id(&self) -> EntityId |a56e7dd843e9b56b
 crates/record/src/plan.rs [pub] impl PlanScenario :: #[must_use] fn choices(&self) -> &[PlanScenarioChoice] |301cacbe8ec7dd34
 crates/record/src/plan.rs [pub] impl PlanScenario :: #[must_use] fn label(&self) -> &str |1afa254cecf1df0d
-crates/record/src/plan.rs [pub] impl PlanScenario :: fn new( id: EntityId, label: impl Into<String>, choices: Vec<PlanScenarioChoice>, ) -> Result<Self, RecordError> |0167417a9df6ef7b
+crates/record/src/plan.rs [pub] impl PlanScenario :: fn new( id: EntityId, label: impl Into<String>, choices: Vec<PlanScenarioChoice>, ) -> Result<Self, RecordError> |9b6aaeb03386d115
 crates/record/src/plan.rs [pub] impl PlanScenarioChoice :: #[must_use] const fn intended_term(&self) -> TermKey |0db1e090633defd4
 crates/record/src/plan.rs [pub] impl PlanScenarioChoice :: #[must_use] fn course_code(&self) -> &str |36272f9287cb4db3
-crates/record/src/plan.rs [pub] impl PlanScenarioChoice :: fn new( course_code: impl Into<String>, intended_term: TermKey, ) -> Result<Self, RecordError> |71c7dbf66ceb66a7
+crates/record/src/plan.rs [pub] impl PlanScenarioChoice :: fn new( course_code: impl Into<String>, intended_term: TermKey, ) -> Result<Self, RecordError> |b433384d730799ec
 crates/record/src/plan.rs [pub] impl PlanStore :: #[must_use] fn get(&self, id: EntityId) -> Option<&PlanScenario> |b2c55ce53d1294aa
 crates/record/src/plan.rs [pub] impl PlanStore :: #[must_use] fn is_empty(&self) -> bool |f380e2fbf812a616
 crates/record/src/plan.rs [pub] impl PlanStore :: #[must_use] fn len(&self) -> usize |8d62f919ac812d86
@@ -297,26 +297,26 @@ crates/record/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct 
 crates/record/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RepeatPolicyRow |c5fdb7d1c51e4aed
 crates/record/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RuleBook |43d887c23635e317
 crates/record/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct PolicyBook |a964239a49be8b68
-crates/record/src/policy.rs [pub] impl AttemptOrigin :: #[must_use] const fn as_str(self) -> &'static str |3880036bc4507497
+crates/record/src/policy.rs [pub] impl AttemptOrigin :: #[must_use] const fn as_str(self) -> &'static str |e990c112132c412e
 crates/record/src/policy.rs [pub] impl AttemptOrigin :: #[must_use] const fn is_external(self) -> bool |1e31fcd8a9961390
 crates/record/src/policy.rs [pub] impl AttemptOrigin :: #[must_use] fn parse(text: &str) -> Option<Self> |4636adbe78279d7f
 crates/record/src/policy.rs [pub] impl AttemptOrigin :: const ALL: [Self; 4] |59b90065cb9e30a6
-crates/record/src/policy.rs [pub] impl PolicyBook :: #[must_use] fn canonical_text(&self) -> String |996fabbb7a5ee5f6
+crates/record/src/policy.rs [pub] impl PolicyBook :: #[must_use] fn canonical_text(&self) -> String |80b1828850744f07
 crates/record/src/policy.rs [pub] impl PolicyBook :: #[must_use] fn external_row_at(&self, term: TermKey) -> Option<&ExternalGradePolicyRow> |2431906712170f2d
 crates/record/src/policy.rs [pub] impl PolicyBook :: #[must_use] fn external_rows(&self) -> &[ExternalGradePolicyRow] |5644f111711971f2
 crates/record/src/policy.rs [pub] impl PolicyBook :: #[must_use] fn repeat_row_at(&self, term: TermKey) -> Option<&RepeatPolicyRow> |7cbcfa26abff9d00
 crates/record/src/policy.rs [pub] impl PolicyBook :: #[must_use] fn repeat_rows(&self) -> &[RepeatPolicyRow] |557c98ed5543025f
 crates/record/src/policy.rs [pub] impl PolicyBook :: fn new( mut repeat_rows: Vec<RepeatPolicyRow>, mut external_rows: Vec<ExternalGradePolicyRow>, ) -> Result<Self, RecordError> |850f6ec186aeae48
-crates/record/src/policy.rs [pub] impl PolicyBook :: fn published_v1() -> Result<Self, RecordError> |6f42b669062de014
-crates/record/src/policy.rs [pub] impl RecognitionDecision :: #[must_use] const fn as_str(self) -> &'static str |c9e2a8b714640435
+crates/record/src/policy.rs [pub] impl PolicyBook :: fn published_v1() -> Result<Self, RecordError> |95f151958b1fac9d
+crates/record/src/policy.rs [pub] impl RecognitionDecision :: #[must_use] const fn as_str(self) -> &'static str |7c5fe069a91d7e75
 crates/record/src/policy.rs [pub] impl RecognitionDecision :: #[must_use] fn parse(text: &str) -> Option<Self> |9d31dd7ea347dfff
 crates/record/src/policy.rs [pub] impl RecognitionDecision :: const ALL: [Self; 3] |5274942f15f1c354
-crates/record/src/policy.rs [pub] impl RepeatRecognition :: #[must_use] const fn as_str(self) -> &'static str |1c30479d8c8bae9e
+crates/record/src/policy.rs [pub] impl RepeatRecognition :: #[must_use] const fn as_str(self) -> &'static str |0933f0816bb9a647
 crates/record/src/policy.rs [pub] impl RepeatRecognition :: #[must_use] fn parse(text: &str) -> Option<Self> |4e40b67a5c77cd4b
 crates/record/src/policy.rs [pub] impl RepeatRecognition :: const ALL: [Self; 3] |040fdefaf0d34b93
 crates/record/src/policy.rs [pub] impl RuleBook :: #[must_use] const fn policies(&self) -> &PolicyBook |ea2faa31360b6f04
 crates/record/src/policy.rs [pub] impl RuleBook :: #[must_use] const fn scheme(&self) -> &GradingScheme |acc8cc10e3e435ae
-crates/record/src/policy.rs [pub] impl RuleBook :: #[must_use] fn canonical_text(&self) -> String |6a1fd81a109fa044
+crates/record/src/policy.rs [pub] impl RuleBook :: #[must_use] fn canonical_text(&self) -> String |7b77aa8a7746a685
 crates/record/src/policy.rs [pub] impl RuleBook :: #[must_use] fn classification_ruleset_id(&self) -> &str |149c08881f2670c2
 crates/record/src/policy.rs [pub] impl RuleBook :: #[must_use] fn digest(&self) -> ContentDigest |6bfd34430452d72a
 crates/record/src/policy.rs [pub] impl RuleBook :: fn new( scheme: GradingScheme, policies: PolicyBook, classification_ruleset_id: impl Into<String>, ) -> Result<Self, RecordError> |66b34dbc3da94608
@@ -332,15 +332,15 @@ crates/record/src/term.rs [priv] use core::{cmp::Ordering, fmt} |9b470e99b4c946e
 crates/record/src/term.rs [priv] use crate::RecordError |30bfee4faa180d11
 crates/record/src/term.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct TermKey |5e6792e2dda214de
 crates/record/src/term.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Semester |4d32c893c80e364f
-crates/record/src/term.rs [pub] impl Semester :: #[must_use] const fn as_str(self) -> &'static str |96ecb38c4bfa5f0a
+crates/record/src/term.rs [pub] impl Semester :: #[must_use] const fn as_str(self) -> &'static str |23fdab84e742ea24
 crates/record/src/term.rs [pub] impl Semester :: #[must_use] fn parse(text: &str) -> Option<Self> |e5031d6da1e93623
 crates/record/src/term.rs [pub] impl Semester :: const ALL: [Self; 4] |6ca4801c4c94276b
 crates/record/src/term.rs [pub] impl TermKey :: #[must_use] const fn semester(self) -> Semester |bbfaee197b15097d
 crates/record/src/term.rs [pub] impl TermKey :: #[must_use] const fn year(self) -> u16 |fb2c64c5fb0aaf53
-crates/record/src/term.rs [pub] impl TermKey :: #[must_use] fn canonical_text(self) -> String |93d8591a0b6754f8
+crates/record/src/term.rs [pub] impl TermKey :: #[must_use] fn canonical_text(self) -> String |b6294290bfb49178
 crates/record/src/term.rs [pub] impl TermKey :: fn new(year: u16, semester: Semester) -> Result<Self, RecordError> |3c1f8080f4dc56fa
-crates/record/src/term.rs [pub] impl TermKey :: fn parse(text: &str) -> Result<Self, RecordError> |613130b9d29d298f
-crates/record/src/term.rs [pub] impl TermKey :: fn parse_transcript_term(text: &str) -> Result<Self, RecordError> |b7fc2e6b7a979d3e
+crates/record/src/term.rs [pub] impl TermKey :: fn parse(text: &str) -> Result<Self, RecordError> |df2b0bfc98c913a5
+crates/record/src/term.rs [pub] impl TermKey :: fn parse_transcript_term(text: &str) -> Result<Self, RecordError> |d85e33c701629675
 crates/record/src/views.rs [priv] fn average_contribution( attempt: &AttemptFacts, grade: GradeSymbol, treatment: GradeTreatment, ceilinged: &BTreeMap<AttemptId, GradeSymbol>, rules: &RuleBook, ) -> Result<AverageContribution, RecordError> |5442c14362e85b47
 crates/record/src/views.rs [priv] fn disposition_for( attempt: &AttemptFacts, rules: &RuleBook, undecided_groups: &BTreeSet<AttemptId>, displaced: &BTreeSet<AttemptId>, ceilinged: &BTreeMap<AttemptId, GradeSymbol>, ) -> Result<AttemptDisposition, RecordError> |8ff3b10ded948f18
 crates/record/src/views.rs [priv] fn exceeds_ceiling(grade: GradeSymbol, ceiling: GradeSymbol, rules: &RuleBook) -> bool |4200acae25c90300
@@ -375,7 +375,7 @@ crates/record/src/views.rs [pub] impl AttemptDisposition :: #[must_use] fn polic
 crates/record/src/views.rs [pub] impl CreditTotal :: #[must_use] const fn partial(&self) -> Decimal |5f5b4e97839cfa28
 crates/record/src/views.rs [pub] impl CreditTotal :: #[must_use] fn complete(&self) -> Option<Decimal> |a4f7537732d3045e
 crates/record/src/views.rs [pub] impl CreditTotal :: #[must_use] fn unknown(&self) -> &[AttemptId] |fced3e79664b76e8
-crates/record/src/views.rs [pub] impl DispositionReason :: #[must_use] const fn as_str(self) -> &'static str |9ceebed471babcae
+crates/record/src/views.rs [pub] impl DispositionReason :: #[must_use] const fn as_str(self) -> &'static str |3aeb8339497f59d5
 crates/record/src/views.rs [pub] impl DispositionReason :: #[must_use] const fn is_unknown(self) -> bool |826957194c16ebcb
 crates/record/src/views.rs [pub] impl DispositionReason :: #[must_use] fn parse(text: &str) -> Option<Self> |4010ca4c76d6ed43
 crates/record/src/views.rs [pub] impl DispositionReason :: const ALL: [Self; 13] |1101de204c401350

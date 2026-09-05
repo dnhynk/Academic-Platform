@@ -78,6 +78,15 @@ pub struct Lexed {
     /// The unblanked source, for quoting a site back in a failure.
     pub source: Vec<char>,
     pub literals: BTreeMap<usize, String>,
+    /// The character and byte-character literals, keyed by the position of
+    /// their opening quote, held as their whole source text, quotes included.
+    ///
+    /// Separate from [`Lexed::literals`] because they are restored differently:
+    /// `lex` blanks a character literal **including** its quotes, so there is
+    /// no opening quote left in [`Lexed::code`] to hang a body on, and
+    /// [`restored_literals`] -- whose output is scanned for `"` by
+    /// [`to_string_end`] -- must not grow a quote where the code has none.
+    pub characters: BTreeMap<usize, String>,
 }
 
 /// Blanks comments and literal bodies, character position preserved.
@@ -88,6 +97,7 @@ pub fn lex(source: &str) -> Lexed {
     let chars: Vec<char> = source.chars().collect();
     let mut code: Vec<char> = Vec::with_capacity(chars.len());
     let mut literals = BTreeMap::new();
+    let mut characters = BTreeMap::new();
     let mut index = 0_usize;
     while index < chars.len() {
         let current = chars[index];
@@ -138,6 +148,7 @@ pub fn lex(source: &str) -> Lexed {
                     .then_some(3)
             };
             if let Some(width) = literal {
+                characters.insert(index, chars[index..index + width].iter().collect());
                 code.extend(core::iter::repeat_n(' ', width));
                 index += width;
                 continue;
@@ -225,6 +236,7 @@ pub fn lex(source: &str) -> Lexed {
         code,
         source: chars,
         literals,
+        characters,
     }
 }
 
@@ -298,6 +310,7 @@ pub fn resolve(root: &Path, repository: &Path) -> Result<Closure, Box<dyn Error>
             code,
             source: original,
             literals,
+            ..
         } = lex(&source);
         let file_directory = file.parent().map_or_else(PathBuf::new, Path::to_path_buf);
         let mut stack = vec![directory];
@@ -713,6 +726,20 @@ pub struct Item {
     /// found in it a name the compiler sees rather than one a doc comment
     /// mentions.
     pub text: String,
+    /// Every literal **value** inside the item's extent, verbatim and in
+    /// source order: string, byte-string and raw-string bodies, and the whole
+    /// source text of each character and byte-character literal.
+    ///
+    /// [`Item::text`] cannot carry these and must not. It is the blanked view
+    /// because a type named in a doc comment or in a quoted sample is not a
+    /// route, and that is the property [`Item::names`] rests on. So the value
+    /// is kept here instead and folded into [`Item::sealed_key`] separately:
+    /// `P2-A5`'s sixth audit measured two domain-separation constants
+    /// exchanged for one another with the whole workspace green, because a
+    /// literal's content **and its length** are both erased before the
+    /// fingerprint is taken -- `lex` pushes one space per source character and
+    /// [`Item::text`] collapses a run of spaces to one.
+    pub literals: Vec<String>,
     /// Where the item starts in the lexed source, attributes included.
     pub start: usize,
     /// One past its last character.
@@ -764,9 +791,22 @@ impl Item {
             return key;
         }
         let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-        for byte in self.text.bytes() {
-            hash ^= u64::from(byte);
-            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        let mut fold = |bytes: &[u8]| {
+            for byte in bytes {
+                hash ^= u64::from(*byte);
+                hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        };
+        fold(self.text.as_bytes());
+        // Length-prefixed rather than delimited, because a delimiter is a
+        // byte and a literal may hold any byte, the zero byte included: one
+        // two-byte value and two one-byte values would otherwise fold to the
+        // same number. The prefix makes the fold injective over the sequence,
+        // so exchanging one literal for another of the same length moves the
+        // key exactly as inserting one does.
+        for value in &self.literals {
+            fold(&value.len().to_be_bytes());
+            fold(value.as_bytes());
         }
         format!("{key} |{hash:016x}")
     }
@@ -867,10 +907,27 @@ fn spells(text: &str, word: &str) -> bool {
 /// macro invocation. That is the default-deny: a form this reader has no rule
 /// for stops the scan rather than passing through it.
 pub fn items_of(file: &str, source: &str) -> Result<Vec<Item>, Box<dyn Error>> {
-    let Lexed { code, .. } = lex(source);
+    let Lexed {
+        code,
+        literals,
+        characters,
+        ..
+    } = lex(source);
     let restored = restored_literals(source);
     let mut found = Vec::new();
     read_items(file, &code, &restored, 0, code.len(), "", &mut found)?;
+    // Filled here rather than inside the reader, because an item already
+    // carries its own extent and the two side tables are keyed by position.
+    // A container's extent covers its members', but a container carries no
+    // fingerprint, so nothing is folded twice.
+    let mut values = literals;
+    values.extend(characters);
+    for item in &mut found {
+        item.literals = values
+            .range(item.start..item.end)
+            .map(|(_, value)| value.clone())
+            .collect();
+    }
     Ok(found)
 }
 
@@ -1028,6 +1085,7 @@ fn read_items(
                 declaration: attributes.join(" "),
                 attributes: Vec::new(),
                 text: collapse(code, start, index),
+                literals: Vec::new(),
                 start,
                 end: index,
             });
@@ -1153,6 +1211,7 @@ fn read_items(
                 declaration: collapse(restored, declaration_start, tree),
                 attributes,
                 text: collapse(code, start, end),
+                literals: Vec::new(),
                 start,
                 end,
             });
@@ -1171,6 +1230,7 @@ fn read_items(
             declaration: collapse(restored, declaration_start, shape.declaration_end),
             attributes,
             text: collapse(code, start, shape.end),
+            literals: Vec::new(),
             start,
             end: shape.end,
         };

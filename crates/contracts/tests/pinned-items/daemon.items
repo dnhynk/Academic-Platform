@@ -1,0 +1,207 @@
+crates/daemon/src/lib.rs [priv] mod readers
+crates/daemon/src/lib.rs [priv] mod runtime_meta
+crates/daemon/src/lib.rs [priv] mod service
+crates/daemon/src/lib.rs [priv] mod shutdown
+crates/daemon/src/lib.rs [priv] mod singleton
+crates/daemon/src/lib.rs [priv] mod transport
+crates/daemon/src/lib.rs [priv] mod writer
+crates/daemon/src/lib.rs [priv] use academic_core::local_service::LocalServiceError |509ad15953e86b77
+crates/daemon/src/lib.rs [priv] use academic_rpc::RpcError |7838205297dc75f9
+crates/daemon/src/lib.rs [priv] use academic_store::error::StoreError |8d1aea213369cac9
+crates/daemon/src/lib.rs [priv] use std::{fmt, io, time::Duration} |7f4b917f01315308
+crates/daemon/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/daemon/src/lib.rs [pub(crate)] fn daemon_io( operation: &'static str, path: impl fmt::Display, source: io::Error, ) -> DaemonError |86ac79532a83a7c9
+crates/daemon/src/lib.rs [pub] #[cfg(unix)] use transport::MAX_UNIX_ENDPOINT_PATH_LEN |948eabe120cc358c
+crates/daemon/src/lib.rs [pub] #[derive(Debug, Error)] enum DaemonError |d68126cb98210b87
+crates/daemon/src/lib.rs [pub] const CLIENT_FRAME_TIMEOUT: Duration |e8cf037568eb89d3
+crates/daemon/src/lib.rs [pub] const DAEMON_BINARY_NAME: &str |785e7fcfe605b820
+crates/daemon/src/lib.rs [pub] const MAX_CONCURRENT_CONNECTIONS: usize |f78621a0979863b2
+crates/daemon/src/lib.rs [pub] const SESSION_NONCE_CAPABILITY_PREFIX: &str |c9725db0e6f6b7d9
+crates/daemon/src/lib.rs [pub] const WRITER_QUEUE_CAPACITY: usize |0f29afbb3cf78d8d
+crates/daemon/src/lib.rs [pub] use readers::ReaderFactory |2dca95eaa63d6b4f
+crates/daemon/src/lib.rs [pub] use runtime_meta::SessionNonce |fcbe7ee3f1df3f13
+crates/daemon/src/lib.rs [pub] use service::{DaemonConfig, RunningDaemon} |ff3c388accc656ca
+crates/daemon/src/lib.rs [pub] use transport::{LocalEndpoint, runtime_profile_directory, session_metadata_path} |ec63ca8bb254a857
+crates/daemon/src/lib.rs [pub] use writer::{AdmissionError, AdmittedMutation, WriterQueue} |0910f2c04d6990a3
+crates/daemon/src/main.rs [priv] #[tokio::main] async fn main() -> Result<(), Box<dyn Error>> |ebf036b0957c0db0
+crates/daemon/src/main.rs [priv] use academic_daemon::{DaemonConfig, RunningDaemon} |f44b3a635f65eb02
+crates/daemon/src/main.rs [priv] use std::{env, error::Error, io, path::PathBuf} |16fa757115035986
+crates/daemon/src/readers.rs [priv] impl ReaderFactory
+crates/daemon/src/readers.rs [priv] use academic_store::{connection::ReaderConnection, error::StoreError, profile::SyntheticProfile} |a13eb8796c0f3e9d
+crates/daemon/src/readers.rs [pub(crate)] impl ReaderFactory :: const fn new(profile: SyntheticProfile) -> Self |4e9647dcf3c153e7
+crates/daemon/src/readers.rs [pub] #[derive(Debug, Clone)] struct ReaderFactory |a6490dc9f0a09f02
+crates/daemon/src/readers.rs [pub] impl ReaderFactory :: fn open(&self) -> Result<ReaderConnection, StoreError> |a8f24a530d31be8f
+crates/daemon/src/runtime_meta.rs [priv] impl SessionNonce
+crates/daemon/src/runtime_meta.rs [priv] use academic_rpc::generated::ClientHandshake |56753ab48e052e4d
+crates/daemon/src/runtime_meta.rs [priv] use crate::{ DaemonError, SESSION_NONCE_CAPABILITY_PREFIX, daemon_io, transport::{self, RuntimePaths}, } |c8953586e3bee036
+crates/daemon/src/runtime_meta.rs [priv] use std::{ fs::{self, OpenOptions}, io::{self, Write}, path::Path, } |aa06a03181e4bb0e
+crates/daemon/src/runtime_meta.rs [pub(crate)] fn authenticate_session( mut client: ClientHandshake, nonce: &SessionNonce, ) -> Result<ClientHandshake, DaemonError> |f7b3f023a173502b
+crates/daemon/src/runtime_meta.rs [pub(crate)] fn publish_metadata( paths: &RuntimePaths, nonce: &SessionNonce, ) -> Result<(), DaemonError> |02bb815029aa150a
+crates/daemon/src/runtime_meta.rs [pub(crate)] fn remove_metadata(path: &Path) -> Result<(), DaemonError> |22d4dd5489c0b1b8
+crates/daemon/src/runtime_meta.rs [pub(crate)] impl SessionNonce :: fn fresh() -> Result<Self, DaemonError> |85ceb8f471a5283f
+crates/daemon/src/runtime_meta.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SessionNonce([u8; 32]) |e91816c83a457561
+crates/daemon/src/runtime_meta.rs [pub] impl SessionNonce :: #[must_use] fn as_hex(&self) -> String |565ba1f13dea2f31
+crates/daemon/src/runtime_meta.rs [pub] impl SessionNonce :: #[must_use] fn capability_id(&self) -> String |e2af40360b948737
+crates/daemon/src/service.rs [priv] #[cfg(unix)] fn bind_listener( paths: &transport::RuntimePaths, config: &DaemonConfig, ) -> io::Result<transport::LocalListener> |a45e269efd572471
+crates/daemon/src/service.rs [priv] #[cfg(windows)] fn bind_listener( paths: &transport::RuntimePaths, _config: &DaemonConfig, ) -> io::Result<transport::LocalListener> |04ca46a847f0f13b
+crates/daemon/src/service.rs [priv] async fn read_client_frame<S>( stream: &mut S, class: FrameClass, frame_timeout: Duration, shutdown: &mut watch::Receiver<bool>, ) -> Result<Option<LocalCoreEnvelope>, DaemonError> where S: AsyncRead + Unpin, |f51c41ef9e75a90f
+crates/daemon/src/service.rs [priv] impl DaemonConfig
+crates/daemon/src/service.rs [priv] impl RunningDaemon
+crates/daemon/src/service.rs [priv] impl fmt::Debug for DaemonConfig
+crates/daemon/src/service.rs [priv] impl fmt::Debug for DaemonConfig :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c300cba149865b87
+crates/daemon/src/service.rs [priv] use academic_admission::{AdmissionVerifier, Posture} |f370eb8209fe3d93
+crates/daemon/src/service.rs [priv] use academic_core::local_service::{LocalServiceStartup, rejection_response} |8dc443888d387dd9
+crates/daemon/src/service.rs [priv] use academic_rpc::{ FrameClass, ServerHandshakeConfig, authorize_mutable_request, generated::{LocalCoreEnvelope, local_core_envelope}, negotiate_handshake, read_envelope, write_envelope, } |246dda232401f785
+crates/daemon/src/service.rs [priv] use academic_store::{ path_policy::{NativePathProbe, PathProbe}, profile::open_synthetic_profile, } |124defd86be291ba
+crates/daemon/src/service.rs [priv] use crate::{ AdmissionError, CLIENT_FRAME_TIMEOUT, DaemonError, LocalEndpoint, ReaderFactory, SessionNonce, WriterQueue, daemon_io, runtime_meta, shutdown, singleton, transport, } |8e2e496d0bd3995f
+crates/daemon/src/service.rs [priv] use std::{ fmt, io, path::{Path, PathBuf}, sync::Arc, time::Duration, } |8a6413951af1fc05
+crates/daemon/src/service.rs [priv] use tokio::{ io::{AsyncRead, AsyncWrite}, sync::{oneshot, watch}, task::JoinHandle, } |3c3b3a3be7919589
+crates/daemon/src/service.rs [pub(crate)] async fn serve_connection<S>( mut stream: S, writer: Arc<WriterQueue>, nonce: &SessionNonce, posture: &Posture, frame_timeout: Duration, mut shutdown: watch::Receiver<bool>, ) -> Result<(), DaemonError> where S: AsyncRead + AsyncWrite + Unpin, |152795e6c26c0748
+crates/daemon/src/service.rs [pub] #[derive(Clone)] struct DaemonConfig |570f01a19469557d
+crates/daemon/src/service.rs [pub] #[derive(Debug)] struct RunningDaemon |b43f06727407f723
+crates/daemon/src/service.rs [pub] impl DaemonConfig :: #[cfg(unix)] #[must_use] const fn with_required_unix_peer_uid(mut self, uid: u32) -> Self |6a849ecd40cf7b7a
+crates/daemon/src/service.rs [pub] impl DaemonConfig :: #[must_use] fn new(profile_root: impl Into<PathBuf>, runtime_root: impl Into<PathBuf>) -> Self |8485f76bd983a0cb
+crates/daemon/src/service.rs [pub] impl DaemonConfig :: #[must_use] fn with_client_frame_timeout(mut self, timeout: Duration) -> Self |291fd3fd20b95361
+crates/daemon/src/service.rs [pub] impl DaemonConfig :: #[must_use] fn with_path_probe(mut self, probe: Arc<dyn PathProbe>) -> Self |9043557a8d2ac91d
+crates/daemon/src/service.rs [pub] impl RunningDaemon :: #[must_use] const fn endpoint(&self) -> &LocalEndpoint |66bdfa4c86149f09
+crates/daemon/src/service.rs [pub] impl RunningDaemon :: #[must_use] const fn posture(&self) -> &Posture |38858d194d7bc005
+crates/daemon/src/service.rs [pub] impl RunningDaemon :: #[must_use] const fn readers(&self) -> &ReaderFactory |e37127d70b0bd146
+crates/daemon/src/service.rs [pub] impl RunningDaemon :: #[must_use] const fn session_nonce(&self) -> &SessionNonce |e273105c7e84189b
+crates/daemon/src/service.rs [pub] impl RunningDaemon :: #[must_use] const fn startup(&self) -> &LocalServiceStartup |6fe7019412e066e8
+crates/daemon/src/service.rs [pub] impl RunningDaemon :: #[must_use] fn metadata_path(&self) -> &Path |81872e00d6a74e31
+crates/daemon/src/service.rs [pub] impl RunningDaemon :: #[must_use] fn writer(&self) -> Arc<WriterQueue> |651b1c612711470e
+crates/daemon/src/service.rs [pub] impl RunningDaemon :: async fn start(config: DaemonConfig) -> Result<Self, DaemonError> |c9f53a5286138f3a
+crates/daemon/src/shutdown.rs [priv] #[derive(Debug)] struct RuntimeCleanup(RuntimePaths) |68e91e2f67351e8a
+crates/daemon/src/shutdown.rs [priv] const TRANSIENT_ACCEPT_BACKOFF: Duration |387a5ed86ef4f957
+crates/daemon/src/shutdown.rs [priv] fn join_connection(result: Result<Result<(), DaemonError>, JoinError>) -> Result<(), DaemonError> |18b8b29f9d0f95c7
+crates/daemon/src/shutdown.rs [priv] fn join_listener( result: Result<Result<(), DaemonError>, JoinError>, ) -> Result<Result<(), DaemonError>, DaemonError> |11154f702fbc9fb5
+crates/daemon/src/shutdown.rs [priv] impl Drop for RunningDaemon
+crates/daemon/src/shutdown.rs [priv] impl Drop for RunningDaemon :: fn drop(&mut self) |760288c4a83ff43b
+crates/daemon/src/shutdown.rs [priv] impl Drop for RuntimeCleanup
+crates/daemon/src/shutdown.rs [priv] impl Drop for RuntimeCleanup :: fn drop(&mut self) |a45afff2e2988258
+crates/daemon/src/shutdown.rs [priv] impl RunningDaemon
+crates/daemon/src/shutdown.rs [priv] use academic_admission::Posture |93dead50f1055ef4
+crates/daemon/src/shutdown.rs [priv] use crate::{ DaemonError, MAX_CONCURRENT_CONNECTIONS, SessionNonce, WriterQueue, daemon_io, runtime_meta::remove_metadata, service::{RunningDaemon, serve_connection}, transport::{self, LocalListener, RuntimePaths, SingletonGuard}, } |1238b8acac1f9284
+crates/daemon/src/shutdown.rs [priv] use std::{io, sync::Arc, time::Duration} |775b2f4bf574b856
+crates/daemon/src/shutdown.rs [priv] use tokio::{ sync::{oneshot, watch}, task::{JoinError, JoinSet}, } |b69c633bed079c20
+crates/daemon/src/shutdown.rs [pub(crate)] #[derive(Debug)] struct ListenerConfig |6170666ead9dfb01
+crates/daemon/src/shutdown.rs [pub(crate)] async fn listener_loop( mut listener: LocalListener, config: ListenerConfig, mut stop: oneshot::Receiver<()>, _singleton: SingletonGuard, runtime_paths: RuntimePaths, ) -> Result<(), DaemonError> |42f45614edff2d0d
+crates/daemon/src/shutdown.rs [pub] impl RunningDaemon :: async fn shutdown(mut self) -> Result<(), DaemonError> |39f32d7648c2e6ee
+crates/daemon/src/singleton.rs [priv] use crate::{ DaemonError, daemon_io, transport::{RuntimePaths, SingletonGuard}, } |409aa9cc5db3fb66
+crates/daemon/src/singleton.rs [priv] use std::io |d59b5941c7f3d246
+crates/daemon/src/singleton.rs [pub(crate)] fn acquire(paths: &RuntimePaths) -> Result<SingletonGuard, DaemonError> |6f2166d3c50da59e
+crates/daemon/src/transport/mod.rs [priv] #[cfg(unix)] mod unix
+crates/daemon/src/transport/mod.rs [priv] #[cfg(windows)] #[allow(unsafe_code)] mod windows
+crates/daemon/src/transport/mod.rs [priv] const PROFILE_KEY_BYTES: usize |03d595f13ae18ab5
+crates/daemon/src/transport/mod.rs [priv] fn profile_key(profile_root: &Path) -> io::Result<String> |a47a70156218e81e
+crates/daemon/src/transport/mod.rs [priv] impl From<io::Error> for RuntimeLayoutError
+crates/daemon/src/transport/mod.rs [priv] impl From<io::Error> for RuntimeLayoutError :: fn from(source: io::Error) -> Self |708723117a0a5666
+crates/daemon/src/transport/mod.rs [priv] impl LocalEndpoint
+crates/daemon/src/transport/mod.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/daemon/src/transport/mod.rs [priv] use std::{ fs, io, path::{Path, PathBuf}, } |d3ff9122c19b094b
+crates/daemon/src/transport/mod.rs [pub(crate)] #[cfg(unix)] use unix::{ LocalListener, SingletonGuard, accept_error_is_transient, cleanup_endpoint, prepare_runtime, secure_metadata, } |f8d697b2c7b501bb
+crates/daemon/src/transport/mod.rs [pub(crate)] #[cfg(windows)] use windows::{ LocalListener, SingletonGuard, accept_error_is_transient, cleanup_endpoint, prepare_runtime, secure_metadata, } |4a7e8cb945a16ddd
+crates/daemon/src/transport/mod.rs [pub(crate)] #[derive(Debug)] enum RuntimeLayoutError |6cb896e00a99955c
+crates/daemon/src/transport/mod.rs [pub(crate)] #[derive(Debug, Clone)] struct RuntimePaths |6357379665a699df
+crates/daemon/src/transport/mod.rs [pub(crate)] const PRODUCT_RUNTIME_DIR: &str |1fdbf14ba4285209
+crates/daemon/src/transport/mod.rs [pub(crate)] const SESSION_METADATA_FILE: &str |538cd03026b2dd72
+crates/daemon/src/transport/mod.rs [pub(crate)] const SINGLETON_LOCK_FILE: &str |0a657f75229a1702
+crates/daemon/src/transport/mod.rs [pub] #[cfg(unix)] use unix::MAX_UNIX_ENDPOINT_PATH_LEN |157a8bc32aaacb27
+crates/daemon/src/transport/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum LocalEndpoint |0bbe038ce1679ea6
+crates/daemon/src/transport/mod.rs [pub] fn runtime_profile_directory(runtime_root: &Path, profile_root: &Path) -> io::Result<PathBuf> |d8f8dd6aa85fb723
+crates/daemon/src/transport/mod.rs [pub] fn session_metadata_path(runtime_root: &Path, profile_root: &Path) -> io::Result<PathBuf> |d423afd19f39768e
+crates/daemon/src/transport/mod.rs [pub] impl LocalEndpoint :: #[must_use] fn display_value(&self) -> String |a501ae99d2c9e38e
+crates/daemon/src/transport/unix.rs [priv] #[cfg(any(target_os = "linux", target_os = "android"))] const SUN_PATH_CAPACITY: usize |c5e847a0c651e902
+crates/daemon/src/transport/unix.rs [priv] #[cfg(not(any(target_os = "linux", target_os = "android")))] const SUN_PATH_CAPACITY: usize |b68ed4a458035b62
+crates/daemon/src/transport/unix.rs [priv] const ENDPOINT_FILE: &str |dc01b2f3333af623
+crates/daemon/src/transport/unix.rs [priv] fn ensure_private_directory(path: &Path) -> io::Result<()> |b2274073e325e419
+crates/daemon/src/transport/unix.rs [priv] fn path_len(path: &Path) -> usize |48576cb37e5f135e
+crates/daemon/src/transport/unix.rs [priv] fn remove_stale_socket(path: &Path) -> io::Result<()> |1fb23c132269dea2
+crates/daemon/src/transport/unix.rs [priv] fn require_plain_directory(path: &Path, private: bool) -> io::Result<()> |b38e7acf500df1ec
+crates/daemon/src/transport/unix.rs [priv] fn verify_socket(path: &Path) -> io::Result<()> |6092f1126ebe9437
+crates/daemon/src/transport/unix.rs [priv] impl LocalListener
+crates/daemon/src/transport/unix.rs [priv] impl SingletonGuard
+crates/daemon/src/transport/unix.rs [priv] use rustix::{ fd::OwnedFd, fs::{self as rfs, FlockOperation, Mode, OFlags}, process::{Uid, getuid}, } |4350e50b1b279407
+crates/daemon/src/transport/unix.rs [priv] use std::{ fs::{self, Permissions}, io, os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt}, path::Path, } |9f50df55698d04c4
+crates/daemon/src/transport/unix.rs [priv] use super::{ LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SESSION_METADATA_FILE, SINGLETON_LOCK_FILE, profile_key, } |5410bc2ab313c560
+crates/daemon/src/transport/unix.rs [priv] use tokio::net::{UnixListener, UnixStream} |151d5886bd133732
+crates/daemon/src/transport/unix.rs [pub(crate)] #[derive(Debug)] struct LocalListener |b6589742f2e41a4b
+crates/daemon/src/transport/unix.rs [pub(crate)] #[derive(Debug)] struct SingletonGuard |b8b685dde55808f6
+crates/daemon/src/transport/unix.rs [pub(crate)] fn accept_error_is_transient(error: &io::Error) -> bool |ffb9077f8e4dde3d
+crates/daemon/src/transport/unix.rs [pub(crate)] fn cleanup_endpoint(paths: &RuntimePaths) |8bc2ce8d4f5cf3e8
+crates/daemon/src/transport/unix.rs [pub(crate)] fn prepare_runtime( runtime_root: &Path, profile_root: &Path, ) -> Result<RuntimePaths, RuntimeLayoutError> |00bf4f9eb06541ee
+crates/daemon/src/transport/unix.rs [pub(crate)] fn secure_metadata(path: &Path) -> io::Result<()> |c2dabab3fe5a4247
+crates/daemon/src/transport/unix.rs [pub(crate)] impl LocalListener :: async fn accept(&mut self) -> io::Result<UnixStream> |1a087dc070513ade
+crates/daemon/src/transport/unix.rs [pub(crate)] impl LocalListener :: fn bind(paths: &RuntimePaths) -> io::Result<Self> |89caf7c4edc62d0e
+crates/daemon/src/transport/unix.rs [pub(crate)] impl LocalListener :: fn bind_with_expected_uid( paths: &RuntimePaths, expected_uid: Uid, ) -> io::Result<Self> |9fd379228967f768
+crates/daemon/src/transport/unix.rs [pub(crate)] impl SingletonGuard :: fn acquire(paths: &RuntimePaths) -> io::Result<Self> |0f785bfda4631ade
+crates/daemon/src/transport/unix.rs [pub] const MAX_UNIX_ENDPOINT_PATH_LEN: usize |7b463f9416e8e2fd
+crates/daemon/src/transport/windows.rs [priv] #[derive(Debug)] struct OwnedHandle(HANDLE) |c7917318e7f55705
+crates/daemon/src/transport/windows.rs [priv] fn create_pipe( name: &str, security: &mut SecurityDescriptor, first: bool, ) -> io::Result<NamedPipeServer> |c211b4079e88f85e
+crates/daemon/src/transport/windows.rs [priv] fn current_user_sid() -> io::Result<Vec<u8>> |1d1c1cdb52132c40
+crates/daemon/src/transport/windows.rs [priv] fn ensure_private_directory(path: &Path) -> io::Result<()> |f013c535407a3f95
+crates/daemon/src/transport/windows.rs [priv] fn secure_path(path: &Path) -> io::Result<()> |77570df5a80a443b
+crates/daemon/src/transport/windows.rs [priv] fn sid_bytes(sid: PSID) -> io::Result<Vec<u8>> |4c98f5110ee71dbd
+crates/daemon/src/transport/windows.rs [priv] fn sid_string(sid: PSID) -> io::Result<String> |dbdeafe9829ef4f9
+crates/daemon/src/transport/windows.rs [priv] fn verify_descriptor( descriptor: PSECURITY_DESCRIPTOR, dacl: *mut ACL, expected_sid: &[u8], ) -> io::Result<()> |d697890496b209b8
+crates/daemon/src/transport/windows.rs [priv] fn verify_named_path(path: &Path, expected_sid: &[u8]) -> io::Result<()> |99678fcd67224eab
+crates/daemon/src/transport/windows.rs [priv] fn verify_pipe_acl(server: &NamedPipeServer, expected_sid: &[u8]) -> io::Result<()> |c87fe8a4cdbb90db
+crates/daemon/src/transport/windows.rs [priv] fn wide(value: &str) -> Vec<u16> |f85e8ebea51b87c4
+crates/daemon/src/transport/windows.rs [priv] fn wide_os(value: &OsStr) -> Vec<u16> |bbf0aabfb6800459
+crates/daemon/src/transport/windows.rs [priv] impl Drop for OwnedHandle
+crates/daemon/src/transport/windows.rs [priv] impl Drop for OwnedHandle :: fn drop(&mut self) |8674c8519d758c97
+crates/daemon/src/transport/windows.rs [priv] impl Drop for SecurityDescriptor
+crates/daemon/src/transport/windows.rs [priv] impl Drop for SecurityDescriptor :: fn drop(&mut self) |e36fe8bb75bcd4a3
+crates/daemon/src/transport/windows.rs [priv] impl LocalListener
+crates/daemon/src/transport/windows.rs [priv] impl SecurityDescriptor
+crates/daemon/src/transport/windows.rs [priv] impl SecurityDescriptor :: fn attributes(&mut self) -> SECURITY_ATTRIBUTES |f55b91c1641f02c2
+crates/daemon/src/transport/windows.rs [priv] impl SingletonGuard
+crates/daemon/src/transport/windows.rs [priv] unsafe impl Send for OwnedHandle
+crates/daemon/src/transport/windows.rs [priv] unsafe impl Send for SecurityDescriptor
+crates/daemon/src/transport/windows.rs [priv] unsafe impl Sync for SecurityDescriptor
+crates/daemon/src/transport/windows.rs [priv] use std::{ ffi::{OsStr, c_void}, fs::{File, OpenOptions}, io, os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle}, path::Path, ptr, } |5a709e57973752d1
+crates/daemon/src/transport/windows.rs [priv] use super::{ LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SESSION_METADATA_FILE, SINGLETON_LOCK_FILE, profile_key, } |5410bc2ab313c560
+crates/daemon/src/transport/windows.rs [priv] use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions} |e2250f19a1827870
+crates/daemon/src/transport/windows.rs [priv] use windows_sys::Win32::{ Foundation::{ CloseHandle, ERROR_BROKEN_PIPE, ERROR_LOCK_VIOLATION, ERROR_NO_DATA, ERROR_PIPE_BUSY, ERROR_SUCCESS, HANDLE, LocalFree, }, Security::{ ACCESS_ALLOWED_ACE, ACL, Authorization::{ ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW, GetNamedSecurityInfoW, GetSecurityInfo, SE_FILE_OBJECT, SE_KERNEL_OBJECT, SetNamedSecurityInfoW, }, DACL_SECURITY_INFORMATION, EqualSid, GetAce, GetSecurityDescriptorControl, GetSecurityDescriptorDacl, GetTokenInformation, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID, SE_DACL_PROTECTED, SECURITY_ATTRIBUTES, TOKEN_QUERY, TOKEN_USER, TokenUser, }, Storage::FileSystem::{ FILE_FLAG_OPEN_REPARSE_POINT, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, }, System::{ IO::OVERLAPPED, RemoteDesktop::ProcessIdToSessionId, SystemServices::ACCESS_ALLOWED_ACE_TYPE, Threading::{GetCurrentProcess, GetCurrentProcessId, OpenProcessToken}, }, } |0c1c2bc6f49f0a82
+crates/daemon/src/transport/windows.rs [pub(crate)] #[derive(Debug)] struct LocalListener |727cd69d00662ec5
+crates/daemon/src/transport/windows.rs [pub(crate)] #[derive(Debug)] struct SecurityDescriptor |696a3145a3010362
+crates/daemon/src/transport/windows.rs [pub(crate)] #[derive(Debug)] struct SingletonGuard |b165e6683a003a6d
+crates/daemon/src/transport/windows.rs [pub(crate)] fn accept_error_is_transient(error: &io::Error) -> bool |f51da9dfcbf9f299
+crates/daemon/src/transport/windows.rs [pub(crate)] fn cleanup_endpoint(_paths: &RuntimePaths) |ec8c96e48801f4ea
+crates/daemon/src/transport/windows.rs [pub(crate)] fn prepare_runtime( runtime_root: &Path, profile_root: &Path, ) -> Result<RuntimePaths, RuntimeLayoutError> |7ed6423bd7a98f30
+crates/daemon/src/transport/windows.rs [pub(crate)] fn secure_metadata(path: &Path) -> io::Result<()> |b540c8c0ecc9a40c
+crates/daemon/src/transport/windows.rs [pub(crate)] impl LocalListener :: async fn accept(&mut self) -> io::Result<NamedPipeServer> |2b2fdb29a5c3c455
+crates/daemon/src/transport/windows.rs [pub(crate)] impl LocalListener :: fn bind(paths: &RuntimePaths) -> io::Result<Self> |6592b53f4999cdcc
+crates/daemon/src/transport/windows.rs [pub(crate)] impl SecurityDescriptor :: fn current_user_only() -> io::Result<Self> |5ad477d11ad62f6d
+crates/daemon/src/transport/windows.rs [pub(crate)] impl SingletonGuard :: fn acquire(paths: &RuntimePaths) -> io::Result<Self> |5fd3257874527f2b
+crates/daemon/src/writer.rs [priv] #[derive(Debug)] enum Work |19cedab7ec8efe7b
+crates/daemon/src/writer.rs [priv] #[derive(Debug)] struct WriterRegistration |5a9cf4e3e101268d
+crates/daemon/src/writer.rs [priv] impl AdmittedMutation
+crates/daemon/src/writer.rs [priv] impl Drop for WriterQueue
+crates/daemon/src/writer.rs [priv] impl Drop for WriterQueue :: fn drop(&mut self) |ad474403d2dc260f
+crates/daemon/src/writer.rs [priv] impl Drop for WriterRegistration
+crates/daemon/src/writer.rs [priv] impl Drop for WriterRegistration :: fn drop(&mut self) |c4299e613f8e171d
+crates/daemon/src/writer.rs [priv] impl WriterQueue
+crates/daemon/src/writer.rs [priv] impl WriterRegistration
+crates/daemon/src/writer.rs [priv] impl WriterRegistration :: fn claim(profile: &SyntheticProfile) -> Result<Self, LocalServiceError> |cd89dae9f366e766
+crates/daemon/src/writer.rs [priv] impl fmt::Debug for WriterQueue
+crates/daemon/src/writer.rs [priv] impl fmt::Debug for WriterQueue :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |1ec50da8a61a3f5c
+crates/daemon/src/writer.rs [priv] static WRITER_REGISTRY: OnceLock<Mutex<BTreeSet<PathBuf>>> |b5016ee61b2eb398
+crates/daemon/src/writer.rs [priv] type ServiceResult = Result<academic_rpc::generated::MutableResponse, LocalServiceError> |dc22239a9ede1071
+crates/daemon/src/writer.rs [priv] use academic_core::local_service::{LocalService, LocalServiceError, LocalServiceStartup} |535904e0b42ef18a
+crates/daemon/src/writer.rs [priv] use academic_rpc::generated::MutableRequest |7b86328a405d6368
+crates/daemon/src/writer.rs [priv] use academic_store::profile::SyntheticProfile |04cda8feb72699b3
+crates/daemon/src/writer.rs [priv] use crate::WRITER_QUEUE_CAPACITY |0024c2b027e8124e
+crates/daemon/src/writer.rs [priv] use std::{ collections::BTreeSet, fmt, path::PathBuf, sync::{ Mutex, OnceLock, atomic::{AtomicBool, AtomicU64, Ordering}, mpsc::{self, SyncSender, TrySendError}, }, thread::{self, JoinHandle, ThreadId}, } |cafb2ce8c38a4986
+crates/daemon/src/writer.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/daemon/src/writer.rs [priv] use tokio::sync::oneshot |14254a97090725cc
+crates/daemon/src/writer.rs [pub] #[derive(Debug)] struct AdmittedMutation |b5d099228959b40e
+crates/daemon/src/writer.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)] enum AdmissionError |06525c36373b05f0
+crates/daemon/src/writer.rs [pub] impl AdmittedMutation :: async fn finish(self) -> Result<ServiceResult, AdmissionError> |bf3bda883502d13f
+crates/daemon/src/writer.rs [pub] impl WriterQueue :: #[must_use] const fn owner_thread(&self) -> ThreadId |20b9e275ce2665fe
+crates/daemon/src/writer.rs [pub] impl WriterQueue :: #[must_use] fn current_revision(&self) -> u64 |d6e3f188a04ac6fa
+crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn observe_revision(&self, revision: u64) |e7c79eedf804c496
+crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn shutdown(&self) |4a91a1d9c7e210cf
+crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn start( profile: SyntheticProfile, ) -> Result<(Self, LocalServiceStartup), LocalServiceError> |b802cdaccc601746
+crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn try_admit(&self, request: MutableRequest) -> Result<AdmittedMutation, AdmissionError> |d4f24e4e5d325117
+crates/daemon/src/writer.rs [pub] struct WriterQueue |1bfc655f3deaeeab

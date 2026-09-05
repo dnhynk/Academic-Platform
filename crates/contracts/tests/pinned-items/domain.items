@@ -1,0 +1,802 @@
+crates/domain/src/engines.rs [priv] fn is_identifier(value: &str) -> bool |00c3c765c9947879
+crates/domain/src/engines.rs [priv] fn parse_input_value(encoded: &str) -> Result<InputValue, EngineError> |0879d11dddb3397d
+crates/domain/src/engines.rs [priv] fn render_input_value(value: &InputValue) -> String |f38a5eb0b8fb2bb4
+crates/domain/src/engines.rs [priv] identifier_newtype!(InputKey, "input key") |dc17b01664542c47
+crates/domain/src/engines.rs [priv] identifier_newtype!(NodeId, "node id") |219925aa6395d9a9
+crates/domain/src/engines.rs [priv] identifier_newtype!(RuleId, "rule id") |5f1354c0ab1237f1
+crates/domain/src/engines.rs [priv] impl AdversePath
+crates/domain/src/engines.rs [priv] impl ArtifactClass
+crates/domain/src/engines.rs [priv] impl EngineLifecycle
+crates/domain/src/engines.rs [priv] impl EngineOutcome
+crates/domain/src/engines.rs [priv] impl EngineResult
+crates/domain/src/engines.rs [priv] impl EngineVersion
+crates/domain/src/engines.rs [priv] impl ExplanationSnapshot
+crates/domain/src/engines.rs [priv] impl FrozenInputs
+crates/domain/src/engines.rs [priv] impl HighImpactPath
+crates/domain/src/engines.rs [priv] impl ProofNode
+crates/domain/src/engines.rs [priv] impl ProofNode :: fn render_into(&self, depth: usize, rendered: &mut String) |828d5d8fa1e395bf
+crates/domain/src/engines.rs [priv] impl ProofNode :: fn validate_into( &self, inputs: &FrozenInputs, seen: &mut BTreeSet<NodeId>, ) -> Result<(), EngineError> |caaebe1ac67cefc8
+crates/domain/src/engines.rs [priv] impl ProofStatus
+crates/domain/src/engines.rs [priv] impl RuleSetHash
+crates/domain/src/engines.rs [priv] impl SourceLocator
+crates/domain/src/engines.rs [priv] impl fmt::Display for EngineVersion
+crates/domain/src/engines.rs [priv] impl fmt::Display for EngineVersion :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |516d3689e81429d9
+crates/domain/src/engines.rs [priv] impl fmt::Display for ExplanationSnapshot
+crates/domain/src/engines.rs [priv] impl fmt::Display for ExplanationSnapshot :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |cf93be8f23dde9bb
+crates/domain/src/engines.rs [priv] impl fmt::Display for HarnessViolation
+crates/domain/src/engines.rs [priv] impl fmt::Display for HarnessViolation :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |614b0705a656c661
+crates/domain/src/engines.rs [priv] impl fmt::Display for ProofStatus
+crates/domain/src/engines.rs [priv] impl fmt::Display for ProofStatus :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
+crates/domain/src/engines.rs [priv] impl fmt::Display for RuleSetHash
+crates/domain/src/engines.rs [priv] impl fmt::Display for RuleSetHash :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |516d3689e81429d9
+crates/domain/src/engines.rs [priv] macro_rules! identifier_newtype |da0f9c86b0caa8de
+crates/domain/src/engines.rs [priv] mod generated
+crates/domain/src/engines.rs [priv] trait DeterministicEngine :: fn engine_id(&self) -> &'static str |48d2611c9e36946a
+crates/domain/src/engines.rs [priv] trait DeterministicEngine :: fn engine_version(&self) -> EngineVersion |a44527b1a34959df
+crates/domain/src/engines.rs [priv] trait DeterministicEngine :: fn evaluate( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, engine_version: EngineVersion, ) -> Result<EngineOutcome, EngineError> |8a0533d5c1111991
+crates/domain/src/engines.rs [priv] use crate::{ArtifactId, ContentDigest, Decimal, EvidenceLocator} |b0e021a1e24be1e4
+crates/domain/src/engines.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, fmt, } |8f93bbea86673950
+crates/domain/src/engines.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct EngineDescriptor |0856a80ff49d87eb
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AdversePath |61e3b23ba330a157
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ArtifactClass |9ce0c990ab125cb9
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EngineLifecycle |5fcbc02c70faa64b
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum HighImpactPath |9dd922dbd7d97b6f
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProofStatus |95cdc11506a0f6c9
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct EngineVersion(u16) |33845241b7dd6afb
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RuleSetHash(ContentDigest) |c581dd1d006ad34a
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct EngineHarnessArtifacts |636645f8f1c99b84
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum HarnessViolation |33558ae1de477d18
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum InputValue |c5b003cdbf66c238
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EngineOutcome |35ab6386f47be742
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EngineResult |7a011141eba5c3e0
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExplanationSnapshot(String) |82a5f58295be80bf
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct FrozenInputs |1064e83a69225c0a
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProofNode |4a9137f2c04610fc
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SourceLocator |185b12a69eac8de0
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct InputKey(String) |d2bfdf4f5fb5d3e2
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct NodeId(String) |f7d718614ea9b7c0
+crates/domain/src/engines.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RuleId(String) |fac22e6b34bd5c6e
+crates/domain/src/engines.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum EngineError |a72987eaf00ec796
+crates/domain/src/engines.rs [pub] #[must_use] fn audit_engine_harness( registry: &[EngineDescriptor], discovered: &BTreeMap<EngineName, EngineHarnessArtifacts>, ) -> Vec<HarnessViolation> |1cc0a37b998e153f
+crates/domain/src/engines.rs [pub] impl AdversePath :: #[must_use] const fn as_str(self) -> &'static str |78ae86ecd3554fe8
+crates/domain/src/engines.rs [pub] impl AdversePath :: #[must_use] const fn directory(self) -> &'static str |e61b8edd6dca2dfd
+crates/domain/src/engines.rs [pub] impl AdversePath :: const ALL: [Self; 3] |cba018074dc8f667
+crates/domain/src/engines.rs [pub] impl ArtifactClass :: #[must_use] const fn as_str(self) -> &'static str |c7201996de5ab071
+crates/domain/src/engines.rs [pub] impl ArtifactClass :: #[must_use] const fn path(self) -> &'static str |791fe327c9fbb95f
+crates/domain/src/engines.rs [pub] impl ArtifactClass :: const ALL: [Self; 4] |dfeab2eeaa7632cf
+crates/domain/src/engines.rs [pub] impl EngineLifecycle :: #[must_use] const fn as_str(self) -> &'static str |533cdb9a08f9b9f2
+crates/domain/src/engines.rs [pub] impl EngineOutcome :: #[must_use] fn canonical_bytes( &self, engine_id: &str, rule_set_hash: RuleSetHash, engine_version: EngineVersion, inputs: &FrozenInputs, ) -> Vec<u8> |ddd11e8e67e46605
+crates/domain/src/engines.rs [pub] impl EngineOutcome :: fn new( result: EngineResult, proof_tree: ProofNode, inputs: &FrozenInputs, ) -> Result<Self, EngineError> |da513d5bf53335d1
+crates/domain/src/engines.rs [pub] impl EngineResult :: #[must_use] fn is_partial_failure(&self) -> bool |8847c2b7ecaf2035
+crates/domain/src/engines.rs [pub] impl EngineVersion :: #[must_use] const fn get(self) -> u16 |f74116c955832efb
+crates/domain/src/engines.rs [pub] impl EngineVersion :: const MIN: Self |01a6a21e3b4be39d
+crates/domain/src/engines.rs [pub] impl EngineVersion :: fn new(value: u16) -> Result<Self, EngineError> |632cfc1bff41d08b
+crates/domain/src/engines.rs [pub] impl ExplanationSnapshot :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/domain/src/engines.rs [pub] impl ExplanationSnapshot :: #[must_use] fn render(result: &EngineResult, proof_tree: &ProofNode) -> Self |0e6f9e94932af600
+crates/domain/src/engines.rs [pub] impl FrozenInputs :: #[must_use] fn canonical_text(&self) -> String |ad76c2e8a7c55876
+crates/domain/src/engines.rs [pub] impl FrozenInputs :: #[must_use] fn digest(&self) -> ContentDigest |6bfd34430452d72a
+crates/domain/src/engines.rs [pub] impl FrozenInputs :: #[must_use] fn get(&self, key: &InputKey) -> Option<&InputValue> |2deb29f6c85f58f8
+crates/domain/src/engines.rs [pub] impl FrozenInputs :: fn keys(&self) -> impl Iterator<Item = &InputKey> |2e4328d25e9b05bc
+crates/domain/src/engines.rs [pub] impl FrozenInputs :: fn new( entries: impl IntoIterator<Item = (InputKey, InputValue)>, ) -> Result<Self, EngineError> |88427e9485ba171a
+crates/domain/src/engines.rs [pub] impl FrozenInputs :: fn parse(input: &str) -> Result<Self, EngineError> |71c43de82b0fa417
+crates/domain/src/engines.rs [pub] impl HighImpactPath :: #[must_use] const fn as_str(self) -> &'static str |9b0c42c5be19d3f1
+crates/domain/src/engines.rs [pub] impl HighImpactPath :: const ALL: [Self; 4] |d68eeb28c7d96e02
+crates/domain/src/engines.rs [pub] impl ProofNode :: #[must_use] fn walk(&self) -> Vec<&Self> |db5e7c9b37a4b88b
+crates/domain/src/engines.rs [pub] impl ProofNode :: fn validate(&self, inputs: &FrozenInputs) -> Result<(), EngineError> |7452bb12ea8f7377
+crates/domain/src/engines.rs [pub] impl ProofStatus :: #[must_use] const fn as_str(self) -> &'static str |0050d7301243d906
+crates/domain/src/engines.rs [pub] impl ProofStatus :: const ALL: [Self; 5] |7388eb9032d590c6
+crates/domain/src/engines.rs [pub] impl RuleSetHash :: #[must_use] const fn digest(self) -> ContentDigest |83342c715e34887e
+crates/domain/src/engines.rs [pub] impl RuleSetHash :: #[must_use] const fn new(digest: ContentDigest) -> Self |3c4693a4d69a30db
+crates/domain/src/engines.rs [pub] impl SourceLocator :: #[must_use] fn canonical_text(&self) -> String |600d69fd54e555ba
+crates/domain/src/engines.rs [pub] trait DeterministicEngine
+crates/domain/src/engines.rs [pub] use generated::{ENGINE_REGISTRY, ENGINE_REGISTRY_VERSION, EngineName, HARNESS_ROOT, SpecRow} |d690b0a8efe8e881
+crates/domain/src/engines/generated.rs [priv] impl EngineName
+crates/domain/src/engines/generated.rs [priv] use super::{EngineDescriptor, EngineLifecycle, HighImpactPath} |6a254425ee6a6fc2
+crates/domain/src/engines/generated.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct SpecRow |a32eccd7d9f36c72
+crates/domain/src/engines/generated.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EngineName |dcdf01bdc500a41d
+crates/domain/src/engines/generated.rs [pub] #[rustfmt::skip] const ENGINE_REGISTRY: [EngineDescriptor; 12] |4337655a28190d8f
+crates/domain/src/engines/generated.rs [pub] const ENGINE_REGISTRY_VERSION: u16 |0073a75e810f4633
+crates/domain/src/engines/generated.rs [pub] const HARNESS_ROOT: &str |a94832256679a473
+crates/domain/src/engines/generated.rs [pub] impl EngineName :: #[must_use] const fn as_str(self) -> &'static str |4418d4e6c545525e
+crates/domain/src/engines/generated.rs [pub] impl EngineName :: #[must_use] const fn descriptor(self) -> &'static EngineDescriptor |4595dc7c462f258a
+crates/domain/src/engines/generated.rs [pub] impl EngineName :: #[must_use] fn parse(name: &str) -> Option<Self> |439c779ad378adc5
+crates/domain/src/engines/generated.rs [pub] impl EngineName :: const ALL: [Self; 12] |97b68d0d87f0d2e5
+crates/domain/src/entity_registry.rs [priv] #[cfg(test)] mod tests
+crates/domain/src/entity_registry.rs [priv] #[derive(Debug, Default, Clone)] struct PartialAlias |b3d17257193b2f51
+crates/domain/src/entity_registry.rs [priv] const fn object_kind_name(object: &ClaimObject) -> &'static str |4b76045692857d2e
+crates/domain/src/entity_registry.rs [priv] fn entity_object(claim: &Claim, predicate: &'static str) -> Result<EntityId, RegistryError> |9560a7d27c1a2d5d
+crates/domain/src/entity_registry.rs [priv] fn require_user_confirmed(claim: &Claim, action: &'static str) -> Result<(), RegistryError> |33f798890be51fa7
+crates/domain/src/entity_registry.rs [priv] fn text_object<'claim>( claim: &'claim Claim, predicate: &'static str, ) -> Result<&'claim str, RegistryError> |a16161da1c46afd8
+crates/domain/src/entity_registry.rs [priv] impl AliasKind
+crates/domain/src/entity_registry.rs [priv] impl EntityKind
+crates/domain/src/entity_registry.rs [priv] impl EntityRegistry
+crates/domain/src/entity_registry.rs [priv] impl EntityRegistry :: fn apply( &mut self, fact: &RegistryFact, anchor: &IdentityAnchor, pending_alias: &mut BTreeMap<EntityId, PartialAlias>, ) |c156a4a4566b78db
+crates/domain/src/entity_registry.rs [priv] impl EntityRegistry :: fn entry(&mut self, entity_id: EntityId, anchor: &IdentityAnchor) -> &mut RegisteredEntity |94988ac42bb52e61
+crates/domain/src/entity_registry.rs [priv] impl EntityRegistry :: fn rebuild_reclassification_candidates(&mut self) |1269d7b82cf45fb3
+crates/domain/src/entity_registry.rs [priv] impl EquivalenceClass
+crates/domain/src/entity_registry.rs [priv] impl GrowthNarrative
+crates/domain/src/entity_registry.rs [priv] impl ImpactPreview
+crates/domain/src/entity_registry.rs [priv] impl MasteryDelta
+crates/domain/src/entity_registry.rs [priv] impl OntologyChangeProposal
+crates/domain/src/entity_registry.rs [priv] impl OntologyImpactSnapshot
+crates/domain/src/entity_registry.rs [priv] impl PartialAlias
+crates/domain/src/entity_registry.rs [priv] impl PartialAlias :: fn into_alias(self, alias_id: EntityId) -> Option<Alias> |044efb15dda920f2
+crates/domain/src/entity_registry.rs [priv] impl RegistryFact
+crates/domain/src/entity_registry.rs [priv] mod tests :: #[test] fn a_cyclic_redirect_chain_terminates() -> Result<(), DomainError> |1af4b8e4b2b0c8f2
+crates/domain/src/entity_registry.rs [priv] mod tests :: #[test] fn a_registry_predicate_refuses_a_foreign_object_kind() -> Result<(), DomainError> |76c91fe54d2e766c
+crates/domain/src/entity_registry.rs [priv] mod tests :: #[test] fn a_split_source_is_never_comparable_to_one_successor() -> Result<(), DomainError> |cc18777995caadf3
+crates/domain/src/entity_registry.rs [priv] mod tests :: #[test] fn closed_vocabularies_refuse_unknown_members() |03bba6b934c4b067
+crates/domain/src/entity_registry.rs [priv] mod tests :: #[test] fn degenerate_proposals_are_refused() -> Result<(), DomainError> |e611cba62bcc1ddc
+crates/domain/src/entity_registry.rs [priv] mod tests :: #[test] fn every_registry_fact_round_trips_through_a_claim() -> Result<(), DomainError> |1b22790a2168c8b0
+crates/domain/src/entity_registry.rs [priv] mod tests :: #[test] fn merge_chains_resolve_to_the_surviving_identity() -> Result<(), DomainError> |f6b5aa0438353091
+crates/domain/src/entity_registry.rs [priv] mod tests :: #[test] fn preview_bytes_are_order_independent() -> Result<(), DomainError> |028a52d73567c040
+crates/domain/src/entity_registry.rs [priv] mod tests :: fn anchor(entity: u32) -> Result<IdentityAnchor, DomainError> |37b5e3455148db82
+crates/domain/src/entity_registry.rs [priv] mod tests :: fn built(anchors: &[IdentityAnchor], claims: &[Claim]) -> Result<EntityRegistry, DomainError> |e5f384c5ff700f78
+crates/domain/src/entity_registry.rs [priv] mod tests :: fn id<T: std::str::FromStr<Err = DomainError>>(suffix: u32) -> Result<T, DomainError> |d7c807bfff38df6e
+crates/domain/src/entity_registry.rs [priv] mod tests :: fn user_claim( sequence: u32, subject: u32, predicate: &str, object: ClaimObject, ) -> Result<Claim, DomainError> |81e086df858873e9
+crates/domain/src/entity_registry.rs [priv] mod tests :: use crate::{AuthorityClass, ClaimId, DomainError, EpistemicStatus} |04e5a155662ea9dd
+crates/domain/src/entity_registry.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/domain/src/entity_registry.rs [priv] use crate::{ Claim, ClaimObject, ContentDigest, DomainId, EntityId, EntityIdentityChangeId, EpistemicStatus, EvidenceId, MasteryLevel, PredicateId, ScopeId, TimestampMillis, ValidInterval, } |ea3fe01dd719347f
+crates/domain/src/entity_registry.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/domain/src/entity_registry.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct IdentityAnchor |52ba4c2ff01d8b7c
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MasteryDelta |ae5751c9da6b2858
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct StateComparison |1604c67255e178e7
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] struct EquivalenceExclusion |806d0189eb8828c7
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] struct ObservedState |ce6a1dac4a33aee0
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum AliasKind |01486f89334f9532
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EntityKind |b56057d2d062b12b
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EquivalenceClass |711fabc75c93c0be
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct MentionContext |bcd3da2cbfd7e548
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct OntologyImpactSnapshot |4f5e786c33a12460
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum MentionResolution |20475e28ded03543
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum OntologyChangeProposal |a20e88fbc3bc98c9
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RegistryFact |9554617253ca78b0
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EntityRegistry |09c2ca321a5f1d42
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GrowthNarrative |dbe7be45735636dc
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ImpactPreview |e50fd0843e613856
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RegisteredEntity |f4b0057ef1dc38e7
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)] struct ReclassificationItem |0055a23fd79ac637
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] struct Alias |bd69c983801d3661
+crates/domain/src/entity_registry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum RegistryError |ce22d846d796efb5
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_ALIAS_KIND: &str |126a0208c6d193ba
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_ALIAS_LANGUAGE: &str |caa73bccac0a98a2
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_ALIAS_OF: &str |f4fc778ae5f81b42
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_ALIAS_TEXT: &str |98c0977079205da8
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_ALIAS_VERSION: &str |9ff6288e179f759d
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_ENTITY_KIND: &str |748d59378817a2dd
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_ENTITY_LABEL: &str |2d4b91f5d75b53bc
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_ENTITY_LABEL_LANGUAGE: &str |11707729a413681c
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_MERGED_INTO: &str |5223f7bd83ddf985
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_RECLASSIFICATION_PENDING: &str |a2a9616498415566
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_SENSE_OF: &str |a959c27a2a202d0a
+crates/domain/src/entity_registry.rs [pub] const PREDICATE_SPLIT_INTO: &str |a5d9b2b5c464a2d2
+crates/domain/src/entity_registry.rs [pub] const REGISTRY_PREDICATES: [&str; 12] |1143d32f7b9892df
+crates/domain/src/entity_registry.rs [pub] impl AliasKind :: #[must_use] const fn as_str(self) -> &'static str |e8fb72562cc456e5
+crates/domain/src/entity_registry.rs [pub] impl AliasKind :: fn parse(value: &str) -> Result<Self, RegistryError> |f6c5ed63aa5f77c7
+crates/domain/src/entity_registry.rs [pub] impl EntityKind :: #[must_use] const fn as_str(self) -> &'static str |26009239a32269ef
+crates/domain/src/entity_registry.rs [pub] impl EntityKind :: fn parse(value: &str) -> Result<Self, RegistryError> |90e96bc7fad45fca
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn aliases_of(&self, entity_id: EntityId) -> Vec<&Alias> |e6839f93afa71658
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn compare_across_change( &self, before: &[ObservedState], after: &[ObservedState], ) -> Vec<StateComparison> |cb193ca262c67823
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn entity(&self, entity_id: EntityId) -> Option<&RegisteredEntity> |b7ddee53182029c7
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn equivalence(&self, before: EntityId, after: EntityId) -> EquivalenceClass |31daa2f9db723905
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn growth_narrative(comparisons: &[StateComparison]) -> GrowthNarrative |457395fd7a393a64
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn is_redirected(&self, entity_id: EntityId) -> bool |760687ace2e5fa7b
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn reclassification_queue(&self) -> &[ReclassificationItem] |baf20de14e187a8c
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn redirects_into(&self, entity_id: EntityId) -> Vec<EntityId> |0843ea812788a7ab
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn resolve_identity(&self, entity_id: EntityId) -> EntityId |b8b1ea20de8f4ce6
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn resolve_mention( &self, text: &str, language: &str, context: &MentionContext, ) -> MentionResolution |908242b296045b95
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: #[must_use] fn split_targets(&self, entity_id: EntityId) -> Vec<EntityId> |ba956da13e4f5f43
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: fn aliases(&self) -> impl Iterator<Item = &Alias> |1af2fac0991422df
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: fn build(anchors: &[IdentityAnchor], claims: &[Claim]) -> Result<Self, RegistryError> |ab1109457ef839db
+crates/domain/src/entity_registry.rs [pub] impl EntityRegistry :: fn entities(&self) -> impl Iterator<Item = &RegisteredEntity> |95a24f23626ab626
+crates/domain/src/entity_registry.rs [pub] impl EquivalenceClass :: #[must_use] const fn as_str(self) -> &'static str |3c897a55e79638b8
+crates/domain/src/entity_registry.rs [pub] impl EquivalenceClass :: #[must_use] const fn permits_comparison(self) -> bool |3bfa2ab66a7e501a
+crates/domain/src/entity_registry.rs [pub] impl GrowthNarrative :: #[must_use] fn growth_count(&self) -> usize |14bede3940bd7a04
+crates/domain/src/entity_registry.rs [pub] impl ImpactPreview :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |65455084d50aff1a
+crates/domain/src/entity_registry.rs [pub] impl ImpactPreview :: #[must_use] fn digest(&self) -> ContentDigest |da0b060b540ce27b
+crates/domain/src/entity_registry.rs [pub] impl ImpactPreview :: fn compute( proposal: &OntologyChangeProposal, snapshot: &OntologyImpactSnapshot, ) -> Result<Self, RegistryError> |ab0a3f00667b6d89
+crates/domain/src/entity_registry.rs [pub] impl ImpactPreview :: fn verify_cited(&self, cited: ContentDigest) -> Result<(), RegistryError> |3c3e91de1b419d42
+crates/domain/src/entity_registry.rs [pub] impl MasteryDelta :: #[must_use] fn is_growth(self) -> bool |e4e7be0d2892f80b
+crates/domain/src/entity_registry.rs [pub] impl OntologyChangeProposal :: #[must_use] const fn action(&self) -> &'static str |409d9fc7c98b04aa
+crates/domain/src/entity_registry.rs [pub] impl OntologyChangeProposal :: #[must_use] const fn source(&self) -> EntityId |326c132db89fa85d
+crates/domain/src/entity_registry.rs [pub] impl OntologyChangeProposal :: fn validate(&self) -> Result<(), RegistryError> |b64faaa7e0edae4f
+crates/domain/src/entity_registry.rs [pub] impl OntologyImpactSnapshot :: #[must_use] fn evidence_for(&self, entity_id: EntityId) -> BTreeSet<EvidenceId> |0f4967bd513af4f1
+crates/domain/src/entity_registry.rs [pub] impl RegistryFact :: #[must_use] const fn predicate(&self) -> &'static str |88b29921d796d048
+crates/domain/src/entity_registry.rs [pub] impl RegistryFact :: #[must_use] const fn subject(&self) -> EntityId |fe553860fbcea848
+crates/domain/src/entity_registry.rs [pub] impl RegistryFact :: #[must_use] fn object(&self) -> ClaimObject |27ae6d7f683a9740
+crates/domain/src/entity_registry.rs [pub] impl RegistryFact :: fn decode(claim: &Claim) -> Result<Option<Self>, RegistryError> |06515e7050ae2b8b
+crates/domain/src/entity_registry.rs [pub] impl RegistryFact :: fn predicate_id(&self) -> Result<PredicateId, crate::DomainError> |63a803783f7cabe5
+crates/domain/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/domain/src/lib.rs [priv] aggregate_registration!( AuditRegistration, AuditId, "audit", requirement_set_id: RequirementSetId ) |6cbc8d7811c561d1
+crates/domain/src/lib.rs [priv] aggregate_registration!( CapturePermissionRegistration, CapturePermissionId, "capture permission", offering_id: OfferingId ) |e0d2cba36ffe08a7
+crates/domain/src/lib.rs [priv] aggregate_registration!( CourseRevisionRegistration, CourseRevisionId, "course revision", curriculum_version_id: CurriculumVersionId ) |adc8e4317fe41b92
+crates/domain/src/lib.rs [priv] aggregate_registration!( CurriculumVersionRegistration, CurriculumVersionId, "curriculum version" ) |51e2084d7dce3fbc
+crates/domain/src/lib.rs [priv] aggregate_registration!( EgressDecisionRegistration, EgressDecisionId, "egress decision" ) |d28206624b07e763
+crates/domain/src/lib.rs [priv] aggregate_registration!( EntityIdentityChangeRegistration, EntityIdentityChangeId, "entity identity change", entity_id: EntityId ) |fda9c2e7cd8a289d
+crates/domain/src/lib.rs [priv] aggregate_registration!( LectureDocumentRegistration, LectureDocumentId, "lecture document", lecture_session_id: LectureSessionId ) |065c91eca34bdcaa
+crates/domain/src/lib.rs [priv] aggregate_registration!( LectureSessionRegistration, LectureSessionId, "lecture session", offering_id: OfferingId ) |b558acee78f19539
+crates/domain/src/lib.rs [priv] aggregate_registration!( OfferingRegistration, OfferingId, "offering", course_revision_id: CourseRevisionId ) |0567b730ab192c37
+crates/domain/src/lib.rs [priv] aggregate_registration!( ProposalDispositionRegistration, ProposalId, "proposal disposition", model_run_id: ModelRunId ) |11c1433f49d0dfb5
+crates/domain/src/lib.rs [priv] aggregate_registration!( RequirementSetRegistration, RequirementSetId, "requirement set", curriculum_version_id: CurriculumVersionId ) |ab2a5312ced99767
+crates/domain/src/lib.rs [priv] aggregate_registration!( RetentionActionRegistration, RetentionActionId, "retention action" ) |a89353fe681e8f57
+crates/domain/src/lib.rs [priv] aggregate_registration!( SnapshotRegistration, SnapshotId, "snapshot", repository_id: RepositoryId ) |b3216411af81f89c
+crates/domain/src/lib.rs [priv] aggregate_registration!( TranscriptVersionRegistration, TranscriptVersionId, "transcript version", lecture_session_id: LectureSessionId ) |337229eda4f61107
+crates/domain/src/lib.rs [priv] aggregate_registration!(AttemptRegistration, AttemptId, "attempt", offering_id: OfferingId) |8b5cca5e32a4d2d0
+crates/domain/src/lib.rs [priv] aggregate_registration!(ConsentRegistration, ConsentId, "consent") |4d8f90ec3c4e5d46
+crates/domain/src/lib.rs [priv] aggregate_registration!(FindingRegistration, FindingId, "finding", snapshot_id: SnapshotId) |8b01d745d78f78e0
+crates/domain/src/lib.rs [priv] aggregate_registration!(ModelRunRegistration, ModelRunId, "model run") |3add9878257e3270
+crates/domain/src/lib.rs [priv] impl Actor
+crates/domain/src/lib.rs [priv] impl ArtifactDescriptor
+crates/domain/src/lib.rs [priv] impl Claim
+crates/domain/src/lib.rs [priv] impl ConfidencePermille
+crates/domain/src/lib.rs [priv] impl ContentDigest
+crates/domain/src/lib.rs [priv] impl Decimal
+crates/domain/src/lib.rs [priv] impl Event
+crates/domain/src/lib.rs [priv] impl EventPayload
+crates/domain/src/lib.rs [priv] impl EvidenceItem
+crates/domain/src/lib.rs [priv] impl EvidenceLocator
+crates/domain/src/lib.rs [priv] impl FromStr for ContentDigest
+crates/domain/src/lib.rs [priv] impl FromStr for ContentDigest :: fn from_str(value: &str) -> Result<Self, Self::Err> |bc04ee1150d6f955
+crates/domain/src/lib.rs [priv] impl FromStr for ContentDigest :: type Err = DomainError |7721a58a9ce832dc
+crates/domain/src/lib.rs [priv] impl FromStr for VaultLocator
+crates/domain/src/lib.rs [priv] impl FromStr for VaultLocator :: fn from_str(value: &str) -> Result<Self, Self::Err> |164c0c52bcd8b955
+crates/domain/src/lib.rs [priv] impl FromStr for VaultLocator :: type Err = DomainError |7721a58a9ce832dc
+crates/domain/src/lib.rs [priv] impl LogicalPath
+crates/domain/src/lib.rs [priv] impl MediaType
+crates/domain/src/lib.rs [priv] impl PredicateId
+crates/domain/src/lib.rs [priv] impl PredictionMetadata
+crates/domain/src/lib.rs [priv] impl PredictionMetadata :: fn from_version( version: u16, observation_window: PredictionObservationWindow, positive_sample_count: u32, ) -> Result<Self, DomainError> |65a6580990485f0e
+crates/domain/src/lib.rs [priv] impl PredictionObservationWindow
+crates/domain/src/lib.rs [priv] impl ScopeDescriptor
+crates/domain/src/lib.rs [priv] impl Serialize for ContentDigest
+crates/domain/src/lib.rs [priv] impl Serialize for ContentDigest :: fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer, |15fef4d0d0c77649
+crates/domain/src/lib.rs [priv] impl Serialize for Decimal
+crates/domain/src/lib.rs [priv] impl Serialize for Decimal :: fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer, |a7111e7e35950e57
+crates/domain/src/lib.rs [priv] impl Serialize for VaultLocator
+crates/domain/src/lib.rs [priv] impl Serialize for VaultLocator :: fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer, |15fef4d0d0c77649
+crates/domain/src/lib.rs [priv] impl TimestampMillis
+crates/domain/src/lib.rs [priv] impl UnsignedBatch
+crates/domain/src/lib.rs [priv] impl UserDecision
+crates/domain/src/lib.rs [priv] impl ValidInterval
+crates/domain/src/lib.rs [priv] impl VaultLocator
+crates/domain/src/lib.rs [priv] impl fmt::Display for ContentDigest
+crates/domain/src/lib.rs [priv] impl fmt::Display for ContentDigest :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |a51f7065d601e218
+crates/domain/src/lib.rs [priv] impl fmt::Display for VaultLocator
+crates/domain/src/lib.rs [priv] impl fmt::Display for VaultLocator :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |20e8eb951cce538e
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for ConfidencePermille
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for ConfidencePermille :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |056c1be22cc26b68
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for ContentDigest
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for ContentDigest :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |3b8cae4d797976a1
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for Decimal
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for Decimal :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |bc1f5e7889488826
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for LogicalPath
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for LogicalPath :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |46ff499aa508e5c8
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for MediaType
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for MediaType :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |46ff499aa508e5c8
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for PredicateId
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for PredicateId :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |46ff499aa508e5c8
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for PredictionMetadata
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for PredictionMetadata :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |af005d1c202f413a
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for PredictionObservationWindow
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for PredictionObservationWindow :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |84c964a58ea872f5
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for ValidInterval
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for ValidInterval :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |af8787ba5c44de16
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for VaultLocator
+crates/domain/src/lib.rs [priv] impl<'de> Deserialize<'de> for VaultLocator :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |3b8cae4d797976a1
+crates/domain/src/lib.rs [priv] macro_rules! aggregate_registration |5b496904686eaa01
+crates/domain/src/lib.rs [priv] macro_rules! uuid_id |819d2cd3f006fb66
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn claim_actor_authority_status_matrix_fails_closed() -> Result<(), Box<dyn std::error::Error>> |619e0686cae0e1fe
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn constrained_deserialization_cannot_bypass_constructors() |54984652cfed1f2d
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn decimal_uses_canonical_string_coefficients_at_i128_boundaries() -> Result<(), Box<dyn std::error::Error>> |8cadb7e015c26d0a
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn digest_requires_canonical_lowercase_prefix() |6ef530eb814db538
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn keyed_locator_changes_across_domains() -> Result<(), DomainError> |33f5b2765f436ce6
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn logical_path_rejects_all_platform_absolute_and_uri_forms() |5fb8bd07e4e04b62
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn mastery_and_freshness_are_independent_types() |c00dcda5e7ec3d42
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn model_event_cannot_impersonate_user_confirmed_claim() -> Result<(), Box<dyn std::error::Error>> |0842895f423dd6b2
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn prediction_requires_confidence_and_typed_metadata_without_changing_ai_inference() -> Result<(), Box<dyn std::error::Error>> |8e90fa4c5dd57a4f
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn t007_artifact_descriptor_mutation_corpus_matches_rust_semantics() -> Result<(), Box<dyn std::error::Error>> |dfc152bf577a518b
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn t013_curated_deterministic_claims_require_importer_provenance() -> Result<(), Box<dyn std::error::Error>> |bc8a62968ff2b70e
+crates/domain/src/lib.rs [priv] mod tests :: #[test] fn uuid_ids_require_rfc_variant_and_version_seven_at_every_constructor() |1ed2e265196c3c20
+crates/domain/src/lib.rs [priv] mod tests :: fn id<T: FromStr<Err = DomainError>>(suffix: u32) -> Result<T, DomainError> |811cb934056ed4ce
+crates/domain/src/lib.rs [priv] mod tests :: proptest! { #[test] fn half_open_interval_contains_only_its_domain(from in -1_000_000_i64..1_000_000_i64, width in 1_i64..10_000_i64) { let to = from + width; let interval = ValidInterval::new(TimestampMillis::new(from), Some(TimestampMillis::new(to)))?; prop_assert!(interval.contains(TimestampMillis::new(from))); prop_assert!(interval.contains(TimestampMillis::new(to - 1))); prop_assert!(!interval.contains(TimestampMillis::new(to))); } #[test] fn invalid_intervals_are_rejected(from in -1_000_000_i64..1_000_000_i64, delta in -10_000_i64..=0_i64) { let result = ValidInterval::new( TimestampMillis::new(from), Some(TimestampMillis::new(from + delta)), ); prop_assert_eq!(result, Err(DomainError::InvalidInterval)); } } |219fed331983d188
+crates/domain/src/lib.rs [priv] mod tests :: use proptest::prelude::* |12b9e90d25a64729
+crates/domain/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/domain/src/lib.rs [priv] type HmacSha256 = Hmac<Sha256> |88779196e7814e6d
+crates/domain/src/lib.rs [priv] use hmac::{Hmac, Mac} |f7f94ef294179f56
+crates/domain/src/lib.rs [priv] use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser::SerializeStruct} |b1fce4815f94e606
+crates/domain/src/lib.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/domain/src/lib.rs [priv] use std::{fmt, str::FromStr} |7c0fb4940103ca7f
+crates/domain/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/domain/src/lib.rs [priv] use uuid::Uuid |fe1842bfeba75f75
+crates/domain/src/lib.rs [priv] uuid_id!(ArtifactId, "artifact") |b49cac95ac1f6218
+crates/domain/src/lib.rs [priv] uuid_id!(AttemptId, "attempt") |15fa6d0b3c23a9bb
+crates/domain/src/lib.rs [priv] uuid_id!(AuditId, "audit") |163934ed1d04aacd
+crates/domain/src/lib.rs [priv] uuid_id!(BatchId, "batch") |f9847f70e7743c6f
+crates/domain/src/lib.rs [priv] uuid_id!(CapturePermissionId, "capture permission") |dc7bba6650559150
+crates/domain/src/lib.rs [priv] uuid_id!(ClaimId, "claim") |4c18548cf7752603
+crates/domain/src/lib.rs [priv] uuid_id!(ConsentId, "consent") |d427518a7541c1dd
+crates/domain/src/lib.rs [priv] uuid_id!(CourseId, "course") |a62b39a6a2220d86
+crates/domain/src/lib.rs [priv] uuid_id!(CourseRevisionId, "course revision") |d0cc5af797d23721
+crates/domain/src/lib.rs [priv] uuid_id!(CurriculumVersionId, "curriculum version") |6e142c25c31fb62e
+crates/domain/src/lib.rs [priv] uuid_id!(DecisionId, "decision") |ea97242455330834
+crates/domain/src/lib.rs [priv] uuid_id!(DeviceId, "device") |16444632b52db846
+crates/domain/src/lib.rs [priv] uuid_id!(DomainId, "domain") |bc24d16d6784c0ca
+crates/domain/src/lib.rs [priv] uuid_id!(EgressDecisionId, "egress decision") |8442b832d5736fbf
+crates/domain/src/lib.rs [priv] uuid_id!(EntityId, "entity") |434305d05189d45a
+crates/domain/src/lib.rs [priv] uuid_id!(EntityIdentityChangeId, "entity identity change") |9d5b46762c8c9352
+crates/domain/src/lib.rs [priv] uuid_id!(EventId, "event") |3b16856ad456db97
+crates/domain/src/lib.rs [priv] uuid_id!(EvidenceId, "evidence") |fbd608e64e09fed4
+crates/domain/src/lib.rs [priv] uuid_id!(FindingId, "finding") |b6283d832040ce6f
+crates/domain/src/lib.rs [priv] uuid_id!(LectureDocumentId, "lecture document") |a2135cfe28a14436
+crates/domain/src/lib.rs [priv] uuid_id!(LectureSessionId, "lecture session") |bcaca7895101f5db
+crates/domain/src/lib.rs [priv] uuid_id!(ModelRunId, "model run") |038df330af8ad75f
+crates/domain/src/lib.rs [priv] uuid_id!(OfferingId, "offering") |f3477b79fb88d388
+crates/domain/src/lib.rs [priv] uuid_id!(PermissionLineageId, "permission lineage") |a63ffc8c5efca7ae
+crates/domain/src/lib.rs [priv] uuid_id!(ProposalId, "proposal") |233919cf73db81a8
+crates/domain/src/lib.rs [priv] uuid_id!(RepositoryId, "repository") |1ee0377140895c5a
+crates/domain/src/lib.rs [priv] uuid_id!(RequirementSetId, "requirement set") |c327aaf5ce0e029f
+crates/domain/src/lib.rs [priv] uuid_id!(RetentionActionId, "retention action") |6e9bc31979ee57a6
+crates/domain/src/lib.rs [priv] uuid_id!(ScopeId, "scope") |27c89fb81a2dc14b
+crates/domain/src/lib.rs [priv] uuid_id!(SnapshotId, "snapshot") |57c64ee05e919ab4
+crates/domain/src/lib.rs [priv] uuid_id!(TranscriptVersionId, "transcript version") |1b2e9b06893d8d5c
+crates/domain/src/lib.rs [pub] #[derive( Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default, )] #[serde(transparent)] struct TimestampMillis(i64) |6e68e4d245a523ff
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AggregateRegistrationRef |b2729de3579a580b
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct Decimal |266e18a74056e4ad
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)] struct PredictionMetadata |608f448f2dc946d4
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)] struct PredictionObservationWindow |3738b68d41fed2a0
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)] struct ValidInterval |be83220e0aca39b5
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum AuthorityClass |2675bcebc1c9055f
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ClaimRelationKind |247b00ec75ed671b
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Confidentiality |64dbcaa0dce49872
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum DomainKind |0772fe07fb345128
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceRole |8e3655135df9ee6a
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceStrength |eb3eb5d654dc9030
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum RetentionClass |1a378bc313d46c94
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ContentDigest([u8; 32]) |326991f239acde51
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct ConfidencePermille(u16) |b653fe98f15929c8
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EpistemicStatus |375b26fb65a96034
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum FreshnessBand |7b23fa5b1f010309
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MasteryLevel |2641e6760350ad85
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct VaultLocator([u8; 32]) |64d820c986e38375
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct LogicalPath(String) |6aabff48b5cfcb6e
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct MediaType(String) |a6a5c1d7c2660ce2
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct PredicateId(String) |cdcc9074c30ab1c2
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ArtifactDescriptor |06974dc6efcc1128
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ArtifactRepresentation |a812ddab1f734b50
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ResolutionSlot |1ab81025dee72283
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ScopeDescriptor |95f677eb40f044ae
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct UnsignedBatch |ca860f20f0110a9f
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceLocator |74db7210faf19ee9
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "action", rename_all = "SCREAMING_SNAKE_CASE")] enum DecisionAction |6a27e6ffad40717d
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", content = "value", rename_all = "SCREAMING_SNAKE_CASE")] enum EventPayload |12131fc06afba50d
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum Actor |98d2aea3372cf5de
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "type", content = "value", rename_all = "SCREAMING_SNAKE_CASE")] enum ClaimObject |b2ddf53580097e00
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct Claim |ba4d5f5c6bd45f16
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ClaimRelation |8a66ac5a52a5c91d
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct Event |d7c336e7b3327409
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct EvidenceItem |d0cfe236c2082008
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct UserDecision |cfa8e609ad8cf184
+crates/domain/src/lib.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum DomainError |6ac3cbfae9b42ef5
+crates/domain/src/lib.rs [pub] const ARTIFACT_FORMAT_VERSIONS: [u16; 2] |465edc7fdd5ef13f
+crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION: u16 |86215cdca91b2c15
+crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION_V1: u16 |a2f01bdb9c3638b3
+crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION_V2: u16 |96bde8939e1f9449
+crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION_V3: u16 |3fca25bfb93c8ceb
+crates/domain/src/lib.rs [pub] const MAX_SAFE_JSON_INTEGER: u64 |ce0c848e2ff99917
+crates/domain/src/lib.rs [pub] const PREDICTION_METADATA_VERSION_V1: u16 |6224870e237a5a0a
+crates/domain/src/lib.rs [pub] const V3_EVENT_KINDS: [&str; 18] |17e1e0f215dbc79c
+crates/domain/src/lib.rs [pub] fn validate_artifact_json_number_tokens(input: &str) -> Result<(), DomainError> |307be06e3f280c25
+crates/domain/src/lib.rs [pub] impl Actor :: #[must_use] const fn kind_name(&self) -> &'static str |90aacb9bdfa10391
+crates/domain/src/lib.rs [pub] impl Actor :: fn validate(&self) -> Result<(), DomainError> |06d6b991d8111e3f
+crates/domain/src/lib.rs [pub] impl ArtifactDescriptor :: #[must_use] fn is_artifact_digest_bound(&self, representation: &ArtifactRepresentation) -> bool |627238846af452ce
+crates/domain/src/lib.rs [pub] impl ArtifactDescriptor :: #[must_use] fn representation(&self, locator: &EvidenceLocator) -> Option<&ArtifactRepresentation> |8b9e25c4d3ed2f9f
+crates/domain/src/lib.rs [pub] impl ArtifactDescriptor :: fn validate(&self) -> Result<(), DomainError> |65691c8c89ee8fe1
+crates/domain/src/lib.rs [pub] impl ArtifactDescriptor :: fn validate_for_actor(&self, _actor: &Actor) -> Result<(), DomainError> |1b32447111b3d71e
+crates/domain/src/lib.rs [pub] impl Claim :: fn validate(&self) -> Result<(), DomainError> |8ad8c4435fdb8ca9
+crates/domain/src/lib.rs [pub] impl Claim :: fn validate_for_actor(&self, actor: &Actor) -> Result<(), DomainError> |13b10798abe2dd29
+crates/domain/src/lib.rs [pub] impl ConfidencePermille :: #[must_use] const fn value(self) -> u16 |27944a9a432aaf76
+crates/domain/src/lib.rs [pub] impl ConfidencePermille :: fn new(value: u16) -> Result<Self, DomainError> |d919a28f72bc3a96
+crates/domain/src/lib.rs [pub] impl ContentDigest :: #[must_use] const fn as_bytes(&self) -> &[u8; 32] |316d3966b533191c
+crates/domain/src/lib.rs [pub] impl ContentDigest :: #[must_use] const fn from_sha256_bytes(bytes: [u8; 32]) -> Self |1dc33e07748a6441
+crates/domain/src/lib.rs [pub] impl ContentDigest :: #[must_use] fn sha256(bytes: &[u8]) -> Self |de50ad588abe9f46
+crates/domain/src/lib.rs [pub] impl Decimal :: #[must_use] const fn coefficient(self) -> i128 |f5b96a01638756f3
+crates/domain/src/lib.rs [pub] impl Decimal :: #[must_use] const fn scale(self) -> u8 |8fcc0bd9381b49fe
+crates/domain/src/lib.rs [pub] impl Decimal :: fn new(coefficient: i128, scale: u8) -> Result<Self, DomainError> |c77b216a4fdeca41
+crates/domain/src/lib.rs [pub] impl Event :: fn validate(&self) -> Result<(), DomainError> |bc5c6927194c4541
+crates/domain/src/lib.rs [pub] impl EventPayload :: #[must_use] const fn kind(&self) -> &'static str |0a7a86c32e4095e7
+crates/domain/src/lib.rs [pub] impl EventPayload :: #[must_use] const fn minimum_schema_version(&self) -> u16 |50c07c15a6912177
+crates/domain/src/lib.rs [pub] impl EventPayload :: #[must_use] fn registration(&self) -> Option<AggregateRegistrationRef> |9466f50aa7850535
+crates/domain/src/lib.rs [pub] impl EvidenceItem :: fn validate(&self) -> Result<(), DomainError> |6a7803a3c3436121
+crates/domain/src/lib.rs [pub] impl EvidenceLocator :: fn validate(&self) -> Result<(), DomainError> |4f975340e3a2ec3b
+crates/domain/src/lib.rs [pub] impl LogicalPath :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/domain/src/lib.rs [pub] impl LogicalPath :: fn parse(value: impl Into<String>) -> Result<Self, DomainError> |81968f81af3c28dc
+crates/domain/src/lib.rs [pub] impl MediaType :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/domain/src/lib.rs [pub] impl MediaType :: fn parse(value: impl Into<String>) -> Result<Self, DomainError> |90d003810f0076a5
+crates/domain/src/lib.rs [pub] impl PredicateId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/domain/src/lib.rs [pub] impl PredicateId :: fn parse(value: impl Into<String>) -> Result<Self, DomainError> |7ffbf46bde114d25
+crates/domain/src/lib.rs [pub] impl PredictionMetadata :: #[must_use] const fn observation_window(self) -> PredictionObservationWindow |d9b8e4cc21bdbfca
+crates/domain/src/lib.rs [pub] impl PredictionMetadata :: #[must_use] const fn positive_sample_count(self) -> u32 |10f4f3099dc05159
+crates/domain/src/lib.rs [pub] impl PredictionMetadata :: #[must_use] const fn version(self) -> u16 |2ebdeeb5a3130a6f
+crates/domain/src/lib.rs [pub] impl PredictionMetadata :: fn new( observation_window: PredictionObservationWindow, positive_sample_count: u32, ) -> Result<Self, DomainError> |4bc8c33192875e78
+crates/domain/src/lib.rs [pub] impl PredictionMetadata :: fn validate(self) -> Result<(), DomainError> |5c6c8b220ce693bc
+crates/domain/src/lib.rs [pub] impl PredictionObservationWindow :: #[must_use] const fn from(self) -> TimestampMillis |5d8decf0411592ff
+crates/domain/src/lib.rs [pub] impl PredictionObservationWindow :: #[must_use] const fn to(self) -> TimestampMillis |3d87fee2a1bbfde9
+crates/domain/src/lib.rs [pub] impl PredictionObservationWindow :: fn new(from: TimestampMillis, to: TimestampMillis) -> Result<Self, DomainError> |d535867693e15564
+crates/domain/src/lib.rs [pub] impl PredictionObservationWindow :: fn validate(self) -> Result<(), DomainError> |f4086b5e54d4adc4
+crates/domain/src/lib.rs [pub] impl ScopeDescriptor :: fn validate(&self) -> Result<(), DomainError> |95eed239b11d3a4e
+crates/domain/src/lib.rs [pub] impl TimestampMillis :: #[must_use] const fn new(value: i64) -> Self |1b2afe2dbcbb3c75
+crates/domain/src/lib.rs [pub] impl TimestampMillis :: #[must_use] const fn value(self) -> i64 |50fda6de5b263ce9
+crates/domain/src/lib.rs [pub] impl UnsignedBatch :: fn validate(&self) -> Result<(), DomainError> |5392fa555d47aad8
+crates/domain/src/lib.rs [pub] impl UserDecision :: fn validate(&self) -> Result<(), DomainError> |ca3e369b8c7b043b
+crates/domain/src/lib.rs [pub] impl ValidInterval :: #[must_use] const fn from(self) -> TimestampMillis |5d8decf0411592ff
+crates/domain/src/lib.rs [pub] impl ValidInterval :: #[must_use] const fn open_ended(from: TimestampMillis) -> Self |99f1b4899d79a88b
+crates/domain/src/lib.rs [pub] impl ValidInterval :: #[must_use] const fn to(self) -> Option<TimestampMillis> |94fecdfcc6688654
+crates/domain/src/lib.rs [pub] impl ValidInterval :: #[must_use] fn contains(self, instant: TimestampMillis) -> bool |8ee97e0f36ce24c0
+crates/domain/src/lib.rs [pub] impl ValidInterval :: fn new(from: TimestampMillis, to: Option<TimestampMillis>) -> Result<Self, DomainError> |901230d1bcb6aa11
+crates/domain/src/lib.rs [pub] impl VaultLocator :: #[must_use] const fn as_bytes(&self) -> &[u8; 32] |316d3966b533191c
+crates/domain/src/lib.rs [pub] impl VaultLocator :: #[must_use] const fn from_bytes(bytes: [u8; 32]) -> Self |9bce10bc4be18d05
+crates/domain/src/lib.rs [pub] impl VaultLocator :: fn derive( domain_locator_key: &[u8], format_version: u16, media_type: &MediaType, digest: ContentDigest, ) -> Result<Self, DomainError> |b55d0ff729ae78f9
+crates/domain/src/lib.rs [pub] mod engines
+crates/domain/src/lib.rs [pub] mod entity_registry
+crates/domain/src/lib.rs [pub] mod ontology
+crates/domain/src/lib.rs [pub] mod predicates
+crates/domain/src/lib.rs [pub] mod question
+crates/domain/src/lib.rs [pub] mod temporal
+crates/domain/src/ontology.rs [priv] fn append_text(bytes: &mut Vec<u8>, value: &str) |a73a0b500f0a4563
+crates/domain/src/ontology.rs [priv] fn require_text(value: impl Into<String>, name: &'static str) -> Result<String, OntologyError> |433f9595c0d71678
+crates/domain/src/ontology.rs [priv] fn taxonomy_nodes_digest(nodes: &[TaxonomyNode]) -> ContentDigest |b7e8c299ecfa9fde
+crates/domain/src/ontology.rs [priv] fn validate_nodes(nodes: &[TaxonomyNode]) -> Result<(), OntologyError> |0a625c6fc7731dbc
+crates/domain/src/ontology.rs [priv] impl ApprovedConcept
+crates/domain/src/ontology.rs [priv] impl ApprovedOntologyChange
+crates/domain/src/ontology.rs [priv] impl Concept
+crates/domain/src/ontology.rs [priv] impl ConceptCandidate
+crates/domain/src/ontology.rs [priv] impl ConceptPromotion
+crates/domain/src/ontology.rs [priv] impl ConceptPromotionCriterion
+crates/domain/src/ontology.rs [priv] impl ConceptPromotionCriterion :: const fn tag(self) -> u8 |c08a6d1da26b3fb2
+crates/domain/src/ontology.rs [priv] impl ConceptPromotionCriterion :: fn id_bytes(self) -> [u8; 16] |c66b9aed9ff8ffaa
+crates/domain/src/ontology.rs [priv] impl ConceptPromotionGate
+crates/domain/src/ontology.rs [priv] impl Field
+crates/domain/src/ontology.rs [priv] impl GranularityStatus
+crates/domain/src/ontology.rs [priv] impl Mention
+crates/domain/src/ontology.rs [priv] impl OntologyChangeReview
+crates/domain/src/ontology.rs [priv] impl OntologyMetricName
+crates/domain/src/ontology.rs [priv] impl OntologyQualityMetrics
+crates/domain/src/ontology.rs [priv] impl Operation
+crates/domain/src/ontology.rs [priv] impl TaxonomyMixSelection
+crates/domain/src/ontology.rs [priv] impl TaxonomyNode
+crates/domain/src/ontology.rs [priv] impl TaxonomySource
+crates/domain/src/ontology.rs [priv] impl TaxonomySource :: const fn tag(self) -> u8 |d6ec5c75543f4d39
+crates/domain/src/ontology.rs [priv] impl TaxonomyVersionIdentity
+crates/domain/src/ontology.rs [priv] impl TaxonomyVersionIdentity :: fn append_canonical_bytes(&self, bytes: &mut Vec<u8>) |860c8875e33fd3eb
+crates/domain/src/ontology.rs [priv] impl VerifiedCuratorApproval
+crates/domain/src/ontology.rs [priv] impl VerifiedCuratorApproval :: fn verify( actor: &Actor, claim: &Claim, evidence: &EvidenceItem, subject: EntityId, scope_id: ScopeId, review_digest: ContentDigest, ) -> Result<Self, OntologyError> |834afb967e3815fe
+crates/domain/src/ontology.rs [priv] impl VersionedImpactPreview
+crates/domain/src/ontology.rs [priv] impl VersionedTaxonomyImport
+crates/domain/src/ontology.rs [priv] impl fmt::Debug for OntologyMetricValue
+crates/domain/src/ontology.rs [priv] impl fmt::Debug for OntologyMetricValue :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |55b8a71f1b203b5a
+crates/domain/src/ontology.rs [priv] use crate::{ Actor, Claim, ClaimObject, ContentDigest, DomainError, EntityId, EpistemicStatus, EvidenceId, EvidenceItem, ScopeId, entity_registry::{ EntityKind, ImpactPreview, OntologyChangeProposal, OntologyImpactSnapshot, RegistryError, }, } |311f7cb41ed65c0c
+crates/domain/src/ontology.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/domain/src/ontology.rs [priv] use std::{collections::BTreeSet, fmt} |b119229f7dd87d00
+crates/domain/src/ontology.rs [pub] #[derive(Debug)] struct OntologyMetricObservation |fbd501a8bdbbde30
+crates/domain/src/ontology.rs [pub] #[derive(Debug)] struct VerifiedCuratorApproval |74054ad5e9d8e25d
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)] struct ConceptPromotionGate |37da9278f271c48c
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum OntologyMetricName |2fb6757be84d37d3
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum PromotionAbstention |29eb76d8fe0838dc
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct GranularityExample |555d32952df6c67c
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConceptPromotionCriterion |a384e1d51de762f1
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TaxonomySource |076c466f347b6f0f
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct OntologyQualityMetrics |e2486d3471cd40a4
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum GranularityStatus |2b63a58f63250704
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum BaseTaxonomyMix |59112396ceb29c84
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ConceptPromotion |65758af5883d3922
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ApprovedConcept |a4e09cf6405f9e69
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ApprovedOntologyChange |c89707f516bac933
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConceptCandidate |723773eea20c6c1e
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Mention |db12f06773b3aa3e
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OntologyChangeReview |9832bfef76dbf6e7
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TaxonomyMixSelection |dbc46e71e0321fc9
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VersionedImpactPreview |368288289dea7ff4
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VersionedTaxonomyImport |86db5275b1377317
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct TaxonomyVersionIdentity |cd118c58a4cc3c44
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum TaxonomyNode |b67e1920b7d3ca01
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Concept |52ad1720f975df89
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Field |1d714733d044bdad
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Operation |c8579e1ecc2a44e2
+crates/domain/src/ontology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum OntologyError |cbd653e2cd3cbdfb
+crates/domain/src/ontology.rs [pub] const CURATOR_APPROVAL_OBJECT: &str |1d9db232f541365c
+crates/domain/src/ontology.rs [pub] const CURATOR_APPROVAL_PREDICATE: &str |205f2cc15d6ff903
+crates/domain/src/ontology.rs [pub] const GRANULARITY_EXAMPLES: [GranularityExample; 4] |da1e25ab62535a88
+crates/domain/src/ontology.rs [pub] enum OntologyMetricValue |38e31a3994049f13
+crates/domain/src/ontology.rs [pub] impl ApprovedConcept :: #[must_use] const fn approved_by(&self) -> EntityId |a43544de16865d0f
+crates/domain/src/ontology.rs [pub] impl ApprovedConcept :: #[must_use] const fn concept(&self) -> &Concept |5b6ebaefbb1d0da9
+crates/domain/src/ontology.rs [pub] impl ApprovedConcept :: #[must_use] const fn status(&self) -> GranularityStatus |1d2e3df95ce26b8d
+crates/domain/src/ontology.rs [pub] impl ApprovedOntologyChange :: #[must_use] const fn approved_by(&self) -> EntityId |a43544de16865d0f
+crates/domain/src/ontology.rs [pub] impl ApprovedOntologyChange :: #[must_use] const fn preview(&self) -> &VersionedImpactPreview |101906c89c3397ee
+crates/domain/src/ontology.rs [pub] impl ApprovedOntologyChange :: #[must_use] const fn status(&self) -> GranularityStatus |1d2e3df95ce26b8d
+crates/domain/src/ontology.rs [pub] impl Concept :: #[must_use] const fn field_id(&self) -> EntityId |d7ddc7d28dd3b10d
+crates/domain/src/ontology.rs [pub] impl Concept :: #[must_use] const fn id(&self) -> EntityId |a56e7dd843e9b56b
+crates/domain/src/ontology.rs [pub] impl Concept :: #[must_use] fn label(&self) -> &str |1afa254cecf1df0d
+crates/domain/src/ontology.rs [pub] impl Concept :: fn new( id: EntityId, label: impl Into<String>, field_id: EntityId, ) -> Result<Self, OntologyError> |4815fd1aee585770
+crates/domain/src/ontology.rs [pub] impl ConceptCandidate :: #[must_use] const fn concept(&self) -> &Concept |5b6ebaefbb1d0da9
+crates/domain/src/ontology.rs [pub] impl ConceptCandidate :: #[must_use] const fn criteria(&self) -> &BTreeSet<ConceptPromotionCriterion> |e606450ca65754cf
+crates/domain/src/ontology.rs [pub] impl ConceptCandidate :: #[must_use] const fn scope_id(&self) -> ScopeId |cc1d9cd716484840
+crates/domain/src/ontology.rs [pub] impl ConceptCandidate :: #[must_use] fn review_digest(&self) -> ContentDigest |30e33c49d47369e9
+crates/domain/src/ontology.rs [pub] impl ConceptCandidate :: fn approve( self, approval: VerifiedCuratorApproval, ) -> Result<ApprovedConcept, OntologyError> |030f1bb27b8b0890
+crates/domain/src/ontology.rs [pub] impl ConceptPromotion :: #[must_use] const fn status(&self) -> GranularityStatus |c6bfd6e1771fd72c
+crates/domain/src/ontology.rs [pub] impl ConceptPromotionGate :: fn evaluate( mention: &Mention, concept_id: EntityId, field_id: EntityId, scope_id: ScopeId, ) -> Result<ConceptPromotion, OntologyError> |4abb7ea6d3d71c71
+crates/domain/src/ontology.rs [pub] impl Field :: #[must_use] const fn id(&self) -> EntityId |a56e7dd843e9b56b
+crates/domain/src/ontology.rs [pub] impl Field :: #[must_use] fn label(&self) -> &str |1afa254cecf1df0d
+crates/domain/src/ontology.rs [pub] impl Field :: fn new(id: EntityId, label: impl Into<String>) -> Result<Self, OntologyError> |91ecaa293886161a
+crates/domain/src/ontology.rs [pub] impl GranularityStatus :: #[must_use] const fn as_str(self) -> &'static str |0e962a2b727e91eb
+crates/domain/src/ontology.rs [pub] impl Mention :: #[must_use] const fn criteria(&self) -> &BTreeSet<ConceptPromotionCriterion> |e606450ca65754cf
+crates/domain/src/ontology.rs [pub] impl Mention :: #[must_use] fn occurrence_count(&self) -> usize |1a50b0d90d398d19
+crates/domain/src/ontology.rs [pub] impl Mention :: #[must_use] fn surface(&self) -> &str |b01845d7b8f3a1b7
+crates/domain/src/ontology.rs [pub] impl Mention :: fn new( surface: impl Into<String>, occurrences: impl IntoIterator<Item = EvidenceId>, criteria: impl IntoIterator<Item = ConceptPromotionCriterion>, ) -> Result<Self, OntologyError> |1991a7c08138b7b7
+crates/domain/src/ontology.rs [pub] impl OntologyChangeReview :: #[must_use] const fn preview(&self) -> &VersionedImpactPreview |101906c89c3397ee
+crates/domain/src/ontology.rs [pub] impl OntologyChangeReview :: #[must_use] const fn status(&self) -> GranularityStatus |d6d1fdfaef3de5f9
+crates/domain/src/ontology.rs [pub] impl OntologyChangeReview :: fn approve( self, approval: VerifiedCuratorApproval, ) -> Result<ApprovedOntologyChange, OntologyError> |011d8e3a3e8bb67f
+crates/domain/src/ontology.rs [pub] impl OntologyChangeReview :: fn new( taxonomy_version: TaxonomyVersionIdentity, scope_id: ScopeId, proposal: OntologyChangeProposal, snapshot: &OntologyImpactSnapshot, ) -> Result<Self, OntologyError> |5602c2484f3e19e7
+crates/domain/src/ontology.rs [pub] impl OntologyMetricName :: #[must_use] const fn as_str(self) -> &'static str |4ca4e982185f91c3
+crates/domain/src/ontology.rs [pub] impl OntologyQualityMetrics :: #[must_use] const fn near_duplicate_pair_count(self) -> u64 |7ef6eb8a02df0a04
+crates/domain/src/ontology.rs [pub] impl OntologyQualityMetrics :: #[must_use] const fn orphan_count(self) -> u64 |144e814c3f7237c8
+crates/domain/src/ontology.rs [pub] impl OntologyQualityMetrics :: fn observe( observations: impl IntoIterator<Item = OntologyMetricObservation>, ) -> Result<Self, OntologyError> |618fd831dd85730b
+crates/domain/src/ontology.rs [pub] impl Operation :: #[must_use] const fn concept_id(&self) -> EntityId |19f671a11f3c6405
+crates/domain/src/ontology.rs [pub] impl Operation :: #[must_use] const fn id(&self) -> EntityId |a56e7dd843e9b56b
+crates/domain/src/ontology.rs [pub] impl Operation :: #[must_use] fn label(&self) -> &str |1afa254cecf1df0d
+crates/domain/src/ontology.rs [pub] impl Operation :: fn new( id: EntityId, label: impl Into<String>, concept_id: EntityId, ) -> Result<Self, OntologyError> |a0de34a4712d5df7
+crates/domain/src/ontology.rs [pub] impl TaxonomyMixSelection :: #[must_use] const fn configuration_version(&self) -> u32 |a131537df75e109f
+crates/domain/src/ontology.rs [pub] impl TaxonomyMixSelection :: #[must_use] fn versions(&self) -> &[TaxonomyVersionIdentity] |a02035fe2ac61165
+crates/domain/src/ontology.rs [pub] impl TaxonomyMixSelection :: fn new( configuration_version: u32, versions: Vec<TaxonomyVersionIdentity>, ) -> Result<Self, OntologyError> |4506b24513786a22
+crates/domain/src/ontology.rs [pub] impl TaxonomyNode :: #[must_use] const fn entity_kind(&self) -> EntityKind |dbd7ae03b7dcf5d3
+crates/domain/src/ontology.rs [pub] impl TaxonomyNode :: #[must_use] const fn id(&self) -> EntityId |d911a93b746e1d72
+crates/domain/src/ontology.rs [pub] impl TaxonomyNode :: #[must_use] fn label(&self) -> &str |e0c861aa590faa7e
+crates/domain/src/ontology.rs [pub] impl TaxonomyVersionIdentity :: #[must_use] const fn content_digest(&self) -> ContentDigest |f6f34e7bb63bb908
+crates/domain/src/ontology.rs [pub] impl TaxonomyVersionIdentity :: #[must_use] const fn source(&self) -> TaxonomySource |bd611ddcee34abf3
+crates/domain/src/ontology.rs [pub] impl TaxonomyVersionIdentity :: #[must_use] const fn taxonomy_id(&self) -> EntityId |452ae44f8b097fcb
+crates/domain/src/ontology.rs [pub] impl TaxonomyVersionIdentity :: #[must_use] fn release(&self) -> &str |703aedb10758454f
+crates/domain/src/ontology.rs [pub] impl TaxonomyVersionIdentity :: fn new( taxonomy_id: EntityId, source: TaxonomySource, release: impl Into<String>, content_digest: ContentDigest, ) -> Result<Self, OntologyError> |aa132bfa554cb0f1
+crates/domain/src/ontology.rs [pub] impl VerifiedCuratorApproval :: fn for_change_review( actor: &Actor, claim: &Claim, evidence: &EvidenceItem, review: &OntologyChangeReview, ) -> Result<Self, OntologyError> |b38d5754c18ff8da
+crates/domain/src/ontology.rs [pub] impl VerifiedCuratorApproval :: fn for_concept( actor: &Actor, claim: &Claim, evidence: &EvidenceItem, candidate: &ConceptCandidate, ) -> Result<Self, OntologyError> |f60db37d0337558a
+crates/domain/src/ontology.rs [pub] impl VersionedImpactPreview :: #[must_use] const fn impact(&self) -> &ImpactPreview |b44d82fccb446d9d
+crates/domain/src/ontology.rs [pub] impl VersionedImpactPreview :: #[must_use] const fn scope_id(&self) -> ScopeId |cc1d9cd716484840
+crates/domain/src/ontology.rs [pub] impl VersionedImpactPreview :: #[must_use] const fn taxonomy_version(&self) -> &TaxonomyVersionIdentity |e9f73e24ca1ddec2
+crates/domain/src/ontology.rs [pub] impl VersionedImpactPreview :: #[must_use] fn digest(&self) -> ContentDigest |4f0f9051e2d4a47d
+crates/domain/src/ontology.rs [pub] impl VersionedTaxonomyImport :: #[must_use] const fn identity(&self) -> &TaxonomyVersionIdentity |4c36a03016cb685e
+crates/domain/src/ontology.rs [pub] impl VersionedTaxonomyImport :: #[must_use] fn nodes(&self) -> &[TaxonomyNode] |c206d22f01cfa223
+crates/domain/src/ontology.rs [pub] impl VersionedTaxonomyImport :: fn from_nodes( taxonomy_id: EntityId, source: TaxonomySource, release: impl Into<String>, nodes: Vec<TaxonomyNode>, ) -> Result<Self, OntologyError> |430aa8f3a144e8bc
+crates/domain/src/ontology.rs [pub] impl VersionedTaxonomyImport :: fn with_identity( identity: TaxonomyVersionIdentity, nodes: Vec<TaxonomyNode>, ) -> Result<Self, OntologyError> |0e9de7bd530cf28e
+crates/domain/src/predicates.rs [priv] const fn strength_rank(strength: EvidenceStrength) -> u8 |2a641255bcf289d8
+crates/domain/src/predicates.rs [priv] fn saturating_len(count: usize) -> u8 |f1700a78ac46f4b7
+crates/domain/src/predicates.rs [priv] impl EdgeAssertion<'_>
+crates/domain/src/predicates.rs [priv] impl EdgeAssertion<'_> :: fn check_qualifiers( &self, descriptor: &'static PredicateDescriptor, ) -> Result<Option<PrerequisiteStrength>, RegistryError> |9cb4c31d7dabdb73
+crates/domain/src/predicates.rs [priv] impl EdgeEvidence
+crates/domain/src/predicates.rs [priv] impl EdgeKey
+crates/domain/src/predicates.rs [priv] impl EvidenceRule
+crates/domain/src/predicates.rs [priv] impl From<&EvidenceLocator> for EvidenceLocatorKind
+crates/domain/src/predicates.rs [priv] impl From<&EvidenceLocator> for EvidenceLocatorKind :: fn from(locator: &EvidenceLocator) -> Self |8d51a956231ff16b
+crates/domain/src/predicates.rs [priv] mod generated
+crates/domain/src/predicates.rs [priv] use crate::{ArtifactId, AuthorityClass, EntityId, EvidenceItem, EvidenceLocator, EvidenceRole} |1c85f385068d0544
+crates/domain/src/predicates.rs [priv] use crate::{EvidenceStrength, MasteryLevel} |c64a97a4ae52b9d1
+crates/domain/src/predicates.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum QualifierKind |f9359dedc21aad23
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct EdgeAssertion<'a> |748cd8cd55d8321a
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct EdgeEvidence |d08ba20d8db939e9
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct EvidenceRule |6d5a7a109825e446
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MinimumEvidence |370565b4fd0ad6f7
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct PredicateDescriptor |17cb08bef4e1c589
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct QualifierSchema |8041f97fab6d5a00
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum Cardinality |0123a8a67f49f0f9
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum EdgeDirection |d3e7c337c220af9b
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum EvidenceLocatorKind |de645b7bb7b94378
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PrerequisiteStrength |6304a152c6f2228c
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct EdgeKey |c030a1d2c2bf38ed
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum QualifierValue |2b8177e19f4ec6d4
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Qualifier |51f805089f78ec7b
+crates/domain/src/predicates.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum RegistryError |75ca48a3752b6b31
+crates/domain/src/predicates.rs [pub] #[must_use] fn inverse_neighbours( edges: &[EdgeKey], predicate: PredicateName, object: EntityId, ) -> Vec<EntityId> |91b520bad1f49263
+crates/domain/src/predicates.rs [pub] #[must_use] fn supports_mastery(predicate: PredicateName, level: MasteryLevel) -> bool |22ec6a384d06af85
+crates/domain/src/predicates.rs [pub] fn personal_mastery_ceiling(predicate: PredicateName) -> Result<MasteryLevel, RegistryError> |c7b2571a2b9439ea
+crates/domain/src/predicates.rs [pub] fn prerequisite_descriptor( predicate: PredicateName, ) -> Result<&'static PredicateDescriptor, RegistryError> |1ee6760c426f8cfc
+crates/domain/src/predicates.rs [pub] impl EdgeAssertion<'_> :: fn validate(&self) -> Result<(), RegistryError> |994b5d9411011a21
+crates/domain/src/predicates.rs [pub] impl EdgeEvidence :: #[must_use] fn from_item(item: &EvidenceItem) -> Self |0d43e8280d271616
+crates/domain/src/predicates.rs [pub] impl EdgeKey :: #[must_use] const fn object(&self) -> EntityId |2be807c141503357
+crates/domain/src/predicates.rs [pub] impl EdgeKey :: #[must_use] const fn predicate(&self) -> PredicateName |6f280b3c546e0587
+crates/domain/src/predicates.rs [pub] impl EdgeKey :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
+crates/domain/src/predicates.rs [pub] impl EdgeKey :: fn new( predicate: PredicateName, subject: EntityId, object: EntityId, ) -> Result<Self, RegistryError> |b596a37cb33263ec
+crates/domain/src/predicates.rs [pub] impl EvidenceRule :: #[must_use] fn effective(&self, strength: Option<PrerequisiteStrength>) -> MinimumEvidence |20395612d6171e32
+crates/domain/src/predicates.rs [pub] use generated::{ NodeType, OPEN_GATES, PREDICATE_REGISTRY, PREDICATE_REGISTRY_VERSION, PredicateName, } |f7df0a6d56b4bd41
+crates/domain/src/predicates/generated.rs [priv] impl NodeType
+crates/domain/src/predicates/generated.rs [priv] impl PredicateName
+crates/domain/src/predicates/generated.rs [priv] use crate::{AuthorityClass, EvidenceStrength, MasteryLevel} |a89603a3e2aff022
+crates/domain/src/predicates/generated.rs [priv] use super::{ Cardinality, EdgeDirection, EvidenceLocatorKind, EvidenceRule, MinimumEvidence, PredicateDescriptor, PrerequisiteStrength, QualifierKind, QualifierSchema, } |517daf2a0ac24b07
+crates/domain/src/predicates/generated.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum NodeType |ec0371c6e8f60fab
+crates/domain/src/predicates/generated.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PredicateName |0a380d2c0328e5d2
+crates/domain/src/predicates/generated.rs [pub] #[rustfmt::skip] const PREDICATE_REGISTRY: [PredicateDescriptor; 20] |23fec4512ae37db4
+crates/domain/src/predicates/generated.rs [pub] const OPEN_GATES: [&str; 1] |fc41ce11d11faa4c
+crates/domain/src/predicates/generated.rs [pub] const PREDICATE_REGISTRY_VERSION: u16 |f625778628fb90fc
+crates/domain/src/predicates/generated.rs [pub] impl NodeType :: #[must_use] const fn as_str(self) -> &'static str |d81114d3de3264d2
+crates/domain/src/predicates/generated.rs [pub] impl NodeType :: const ALL: [Self; 37] |7cb06977ad45a58d
+crates/domain/src/predicates/generated.rs [pub] impl PredicateName :: #[must_use] const fn as_str(self) -> &'static str |66ff30747b1b504c
+crates/domain/src/predicates/generated.rs [pub] impl PredicateName :: #[must_use] const fn descriptor(self) -> &'static PredicateDescriptor |9fc5e9e4619500cc
+crates/domain/src/predicates/generated.rs [pub] impl PredicateName :: #[must_use] fn parse(name: &str) -> Option<Self> |439c779ad378adc5
+crates/domain/src/predicates/generated.rs [pub] impl PredicateName :: const ALL: [Self; 20] |4bbe4e7b3f5c515a
+crates/domain/src/question.rs [priv] fn require_text(value: impl Into<String>, name: &'static str) -> Result<String, QuestionError> |306535c82462ae34
+crates/domain/src/question.rs [priv] fn verify_user_resolution_action( actor: &Actor, claim: &Claim, evidence: &EvidenceItem, question_id: EntityId, scope_id: ScopeId, predicate: &'static str, ) -> Result<EntityId, QuestionError> |32dd9268ec399980
+crates/domain/src/question.rs [priv] impl ContextLocator
+crates/domain/src/question.rs [priv] impl GeneratedExplanation
+crates/domain/src/question.rs [priv] impl PredeclaredQuestionValidation
+crates/domain/src/question.rs [priv] impl Question
+crates/domain/src/question.rs [priv] impl Question :: fn latest_time(&self) -> TimestampMillis |1a08e9a0395ee68d
+crates/domain/src/question.rs [priv] impl Question :: fn transitioned( mut self, to: QuestionStatus, occurred_at: TimestampMillis, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, QuestionError> |29889fc16b6cb070
+crates/domain/src/question.rs [priv] impl Question :: fn validate(&self) -> Result<(), QuestionError> |6fad97e6e011ce05
+crates/domain/src/question.rs [priv] impl QuestionDeferral
+crates/domain/src/question.rs [priv] impl QuestionLifecycleEvent
+crates/domain/src/question.rs [priv] impl QuestionObsolescence
+crates/domain/src/question.rs [priv] impl QuestionObsolescence :: fn validate(&self) -> Result<(), QuestionError> |71b4f393366137a0
+crates/domain/src/question.rs [priv] impl QuestionReframe
+crates/domain/src/question.rs [priv] impl QuestionRelation
+crates/domain/src/question.rs [priv] impl QuestionResolutionDecision
+crates/domain/src/question.rs [priv] impl QuestionResolutionDecision :: fn validate_for(&self, question_id: EntityId, scope_id: ScopeId) -> Result<(), QuestionError> |f7a5e2fbeceaa4e4
+crates/domain/src/question.rs [priv] impl QuestionRevision
+crates/domain/src/question.rs [priv] impl QuestionStatus
+crates/domain/src/question.rs [priv] impl QuestionValidationCompletion
+crates/domain/src/question.rs [priv] impl QuestionValidationCompletion :: fn validate(&self) -> Result<(), QuestionError> |e0c4275276018fa9
+crates/domain/src/question.rs [priv] impl QuestionWorkspace
+crates/domain/src/question.rs [priv] impl ResolutionCandidate
+crates/domain/src/question.rs [priv] impl ReuseSummary
+crates/domain/src/question.rs [priv] impl VerifiedQuestionResolution
+crates/domain/src/question.rs [priv] impl<'de> Deserialize<'de> for ContextLocator
+crates/domain/src/question.rs [priv] impl<'de> Deserialize<'de> for ContextLocator :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |46ff499aa508e5c8
+crates/domain/src/question.rs [priv] impl<'de> Deserialize<'de> for Question
+crates/domain/src/question.rs [priv] impl<'de> Deserialize<'de> for Question :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |c3412ad5ee2616f7
+crates/domain/src/question.rs [priv] use crate::{ Actor, ArtifactId, Claim, ClaimObject, ContentDigest, DomainError, EntityId, EpistemicStatus, EvidenceId, EvidenceItem, LogicalPath, ScopeId, TimestampMillis, } |ee08b4436c026afc
+crates/domain/src/question.rs [priv] use serde::{Deserialize, Deserializer, Serialize, de} |dc61b32e439c93bb
+crates/domain/src/question.rs [priv] use std::{collections::BTreeSet, num::NonZeroU64} |22fc2e692bd197b5
+crates/domain/src/question.rs [pub] #[derive(Debug)] struct VerifiedQuestionResolution |d7e4cf1b7af2f445
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum AiExplanationPreference |27e53b3c6be17f00
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum QuestionDeferralReason |f12165c2dfde9d59
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ReuseObservation |fd46b86eaf054126
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct QuestionDeferral |f3d3888e948732a7
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct QuestionTransition |55685fb418b23fe9
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(deny_unknown_fields, tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum ReuseTarget |faf3c15cb19ef745
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionStatus |ebf3a09249c5e778
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ObsolescenceReasonCode |1c86328134531644
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionComparisonQuality |695d8f2784bdd941
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionConditionSpecificity |62c348331e1623ef
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionEvidenceUse |a1ba04452e0ccb89
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionImportance |5101b2ebb7f25ad3
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionPrerequisiteDepth |a85e15adece09b9f
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionRelationKind |e16c537f55079496
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionTargetScope |017332583e1b7320
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionWorkspaceRegion |3f98ebd1ff71449c
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UncountedReuseReason |d747bce0bab55b76
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct QuestionReframe |c5ced8741ef84170
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct QuestionWorkspace |32016d2a53503434
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolutionCandidate |2ea92fc84412648d
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct ContextLocator(String) |f8821a96c0a4d38d
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(rename_all = "camelCase")] struct Question |dd8566a27fd56289
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct GeneratedExplanation |b1f3a043505c3104
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct PredeclaredQuestionValidation |374363a09f7c86c2
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct QuestionGrowthDescriptors |b38efe518d7cfed9
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct QuestionLifecycleEvent |365301e95683cea8
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct QuestionObsolescence |f813faa46aad3fb5
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct QuestionRelation |9a3c5f6144bcb265
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct QuestionRevision |d020c90c5590b03a
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct QuestionValidationCompletion |0aba44856747c2ab
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "camelCase")] struct ReuseSummary |7dc6c31b4ec951b9
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionResolutionDecision |e4e1363ed146e458
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionOrigin |9d5c88fd5ff91870
+crates/domain/src/question.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum QuestionError |63458b7f92d1461a
+crates/domain/src/question.rs [pub] #[must_use] fn lifecycle_transition_is_allowed(from: QuestionStatus, to: QuestionStatus) -> bool |1ca6d50d66fb7d0f
+crates/domain/src/question.rs [pub] const QUESTION_LIFECYCLE_TRANSITIONS: [QuestionTransition; 7] |5b3b2d304e0bf5ab
+crates/domain/src/question.rs [pub] const QUESTION_RESOLUTION_OBJECT: &str |2d120d9e5c5469c4
+crates/domain/src/question.rs [pub] const QUESTION_RESOLUTION_PREDICATE: &str |30e7fa28336558f0
+crates/domain/src/question.rs [pub] const QUESTION_VALIDATION_APPROVAL_PREDICATE: &str |8c0f632c7ce477e7
+crates/domain/src/question.rs [pub] const QUESTION_WORKSPACE_REGION_ORDER: [QuestionWorkspaceRegion; 6] |4c098300afb421c6
+crates/domain/src/question.rs [pub] fn validate_lifecycle_definition( statuses: &[QuestionStatus], transitions: &[QuestionTransition], ) -> Result<(), QuestionError> |cd39cfe986da8aab
+crates/domain/src/question.rs [pub] impl ContextLocator :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/domain/src/question.rs [pub] impl ContextLocator :: fn parse(value: impl Into<String>) -> Result<Self, QuestionError> |cfafa817005a326f
+crates/domain/src/question.rs [pub] impl GeneratedExplanation :: #[must_use] const fn artifact_id(&self) -> ArtifactId |a03a77dacbcf1e64
+crates/domain/src/question.rs [pub] impl GeneratedExplanation :: #[must_use] const fn new( artifact_id: ArtifactId, question_id: EntityId, model_run_id: EntityId, created_at: TimestampMillis, ) -> Self |003ec26d9bc1b716
+crates/domain/src/question.rs [pub] impl GeneratedExplanation :: #[must_use] fn is_resolution_evidence(&self, evidence: &EvidenceItem) -> bool |dd44afdcaa5bfa51
+crates/domain/src/question.rs [pub] impl PredeclaredQuestionValidation :: #[must_use] const fn new( validation_id: EntityId, question_id: EntityId, scope_id: ScopeId, expected_result_digest: ContentDigest, declared_at: TimestampMillis, ) -> Self |085b8fc5c524aff7
+crates/domain/src/question.rs [pub] impl PredeclaredQuestionValidation :: #[must_use] const fn validation_id(&self) -> EntityId |f7e81284e3c51b73
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] const fn created_at(&self) -> TimestampMillis |1aa38f184b82c017
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] const fn id(&self) -> EntityId |a56e7dd843e9b56b
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] const fn origin(&self) -> &QuestionOrigin |c7206a992ad7f813
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] const fn scope_id(&self) -> ScopeId |cc1d9cd716484840
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] const fn status(&self) -> QuestionStatus |c9f992ae3e5f972d
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] fn canonical_text(&self) -> &str |2e2d9e025df0b669
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] fn lifecycle(&self) -> &[QuestionLifecycleEvent] |46c8626548e0f546
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] fn related_concept_claims(&self) -> &[EntityId] |fdb97a241a6d2ca6
+crates/domain/src/question.rs [pub] impl Question :: #[must_use] fn revisions(&self) -> &[QuestionRevision] |c393ec1b00eb9fa5
+crates/domain/src/question.rs [pub] impl Question :: fn mark_obsolete( self, obsolescence: QuestionObsolescence, occurred_at: TimestampMillis, ) -> Result<Self, QuestionError> |f2235a0a24329ff5
+crates/domain/src/question.rs [pub] impl Question :: fn new( id: EntityId, scope_id: ScopeId, canonical_text: impl Into<String>, created_at: TimestampMillis, origin: QuestionOrigin, related_concept_claims: impl IntoIterator<Item = EntityId>, importance: QuestionImportance, ) -> Result<Self, QuestionError> |2584f5a28357bc87
+crates/domain/src/question.rs [pub] impl Question :: fn partially_resolve( self, occurred_at: TimestampMillis, evidence_ids: impl IntoIterator<Item = EvidenceId>, ) -> Result<Self, QuestionError> |3ccebf49609eb3b9
+crates/domain/src/question.rs [pub] impl Question :: fn propose_resolution( &self, explanation: GeneratedExplanation, evidence_ids: impl IntoIterator<Item = EvidenceId>, ) -> Result<ResolutionCandidate, QuestionError> |92af9ce8b389528a
+crates/domain/src/question.rs [pub] impl Question :: fn reframe( self, replacement_id: EntityId, replacement_text: impl Into<String>, occurred_at: TimestampMillis, ) -> Result<QuestionReframe, QuestionError> |9d5435b06a7d8485
+crates/domain/src/question.rs [pub] impl Question :: fn reopen(self, occurred_at: TimestampMillis) -> Result<Self, QuestionError> |f6a1fb411423d4be
+crates/domain/src/question.rs [pub] impl Question :: fn resolve( self, resolution: VerifiedQuestionResolution, occurred_at: TimestampMillis, ) -> Result<Self, QuestionError> |99a92c1fb04b839f
+crates/domain/src/question.rs [pub] impl Question :: fn revise( mut self, replacement_text: impl Into<String>, revised_at: TimestampMillis, ) -> Result<Self, QuestionError> |4e7db6046d63c72a
+crates/domain/src/question.rs [pub] impl QuestionDeferral :: #[must_use] const fn deferred_at(self) -> TimestampMillis |3b86f99361faeb71
+crates/domain/src/question.rs [pub] impl QuestionDeferral :: #[must_use] const fn new(reason: QuestionDeferralReason, deferred_at: TimestampMillis) -> Self |2a99aa30b96d0040
+crates/domain/src/question.rs [pub] impl QuestionDeferral :: #[must_use] const fn reason(self) -> QuestionDeferralReason |6358d6c19dcf1f60
+crates/domain/src/question.rs [pub] impl QuestionLifecycleEvent :: #[must_use] const fn from(&self) -> QuestionStatus |c654ecb94d6f5415
+crates/domain/src/question.rs [pub] impl QuestionLifecycleEvent :: #[must_use] const fn occurred_at(&self) -> TimestampMillis |e47a3195a49b8173
+crates/domain/src/question.rs [pub] impl QuestionLifecycleEvent :: #[must_use] const fn to(&self) -> QuestionStatus |ce8130be5dfbd46b
+crates/domain/src/question.rs [pub] impl QuestionLifecycleEvent :: #[must_use] fn evidence_ids(&self) -> &[EvidenceId] |ab983fd29f7b2410
+crates/domain/src/question.rs [pub] impl QuestionObsolescence :: #[must_use] const fn reason(&self) -> ObsolescenceReasonCode |c704886574fea707
+crates/domain/src/question.rs [pub] impl QuestionObsolescence :: #[must_use] fn evidence_ids(&self) -> &[EvidenceId] |ab983fd29f7b2410
+crates/domain/src/question.rs [pub] impl QuestionObsolescence :: fn new( reason: ObsolescenceReasonCode, evidence_ids: impl IntoIterator<Item = EvidenceId>, ) -> Result<Self, QuestionError> |2cecb2c10287d4ae
+crates/domain/src/question.rs [pub] impl QuestionReframe :: #[must_use] const fn original(&self) -> &Question |af53e7be102e1fdf
+crates/domain/src/question.rs [pub] impl QuestionReframe :: #[must_use] const fn relation(&self) -> &QuestionRelation |9c0dbcd93c1394ad
+crates/domain/src/question.rs [pub] impl QuestionReframe :: #[must_use] const fn replacement(&self) -> &Question |4b5f5dfb63a9c8a3
+crates/domain/src/question.rs [pub] impl QuestionRelation :: #[must_use] const fn from(&self) -> EntityId |7ef005290f5a837d
+crates/domain/src/question.rs [pub] impl QuestionRelation :: #[must_use] const fn kind(&self) -> QuestionRelationKind |d0b6ba72ca5e749d
+crates/domain/src/question.rs [pub] impl QuestionRelation :: #[must_use] const fn to(&self) -> EntityId |0b46fddc4d43bbfb
+crates/domain/src/question.rs [pub] impl QuestionRevision :: #[must_use] const fn revised_at(&self) -> TimestampMillis |27e67a1014aa4837
+crates/domain/src/question.rs [pub] impl QuestionRevision :: #[must_use] fn previous_text(&self) -> &str |e35badae22ecfd97
+crates/domain/src/question.rs [pub] impl QuestionRevision :: #[must_use] fn replacement_text(&self) -> &str |4a32134478b3b14d
+crates/domain/src/question.rs [pub] impl QuestionStatus :: #[must_use] const fn as_str(self) -> &'static str |636b351fc7b39cc1
+crates/domain/src/question.rs [pub] impl QuestionStatus :: const ALL: [Self; 6] |349c8d80c36f8282
+crates/domain/src/question.rs [pub] impl QuestionValidationCompletion :: #[must_use] const fn completed_at(&self) -> TimestampMillis |0d19dcfc5d26372b
+crates/domain/src/question.rs [pub] impl QuestionValidationCompletion :: fn new( declaration: PredeclaredQuestionValidation, completed_at: TimestampMillis, evidence: EvidenceItem, ) -> Result<Self, QuestionError> |f6f884d6af75d49d
+crates/domain/src/question.rs [pub] impl QuestionWorkspace :: #[must_use] const fn question_id(&self) -> EntityId |893e65d10be9240b
+crates/domain/src/question.rs [pub] impl QuestionWorkspace :: #[must_use] const fn regions(&self) -> &[QuestionWorkspaceRegion; 6] |cb04687b1b695700
+crates/domain/src/question.rs [pub] impl QuestionWorkspace :: #[must_use] fn ai_explanation(&self) -> Option<&GeneratedExplanation> |8cdb2222c9cfeb22
+crates/domain/src/question.rs [pub] impl QuestionWorkspace :: fn new( question_id: EntityId, preference: AiExplanationPreference, ai_explanation: Option<GeneratedExplanation>, ) -> Result<Self, QuestionError> |449880b5841b8e1c
+crates/domain/src/question.rs [pub] impl ResolutionCandidate :: #[must_use] const fn explanation(&self) -> &GeneratedExplanation |5de50af24f17c983
+crates/domain/src/question.rs [pub] impl ResolutionCandidate :: #[must_use] const fn question_id(&self) -> EntityId |893e65d10be9240b
+crates/domain/src/question.rs [pub] impl ResolutionCandidate :: #[must_use] fn evidence_ids(&self) -> &[EvidenceId] |ab983fd29f7b2410
+crates/domain/src/question.rs [pub] impl ReuseSummary :: #[must_use] const fn targets(&self) -> &BTreeSet<ReuseTarget> |23e2e8e3a04f9c6a
+crates/domain/src/question.rs [pub] impl ReuseSummary :: #[must_use] fn from_observations(observations: impl IntoIterator<Item = ReuseObservation>) -> Self |b0082b63261452ae
+crates/domain/src/question.rs [pub] impl ReuseSummary :: #[must_use] fn reuse_count(&self) -> usize |e777d23f999df602
+crates/domain/src/question.rs [pub] impl ReuseSummary :: #[must_use] fn uncounted_reasons(&self) -> &[UncountedReuseReason] |99e8e9f18b8dae51
+crates/domain/src/question.rs [pub] impl VerifiedQuestionResolution :: fn user_decision( question: &Question, actor: &Actor, claim: &Claim, evidence: &EvidenceItem, ) -> Result<Self, QuestionError> |a1eb34e3e0e60b9a
+crates/domain/src/question.rs [pub] impl VerifiedQuestionResolution :: fn validated_then_approved( question: &Question, completion: QuestionValidationCompletion, actor: &Actor, claim: &Claim, evidence: &EvidenceItem, ) -> Result<Self, QuestionError> |0cbc847d528069ad
+crates/domain/src/temporal.rs [priv] #[cfg(test)] mod tests
+crates/domain/src/temporal.rs [priv] impl ChangeOrigin
+crates/domain/src/temporal.rs [priv] impl ExplainedTransition
+crates/domain/src/temporal.rs [priv] impl TimeCoordinates
+crates/domain/src/temporal.rs [priv] impl TimeTravelDimension
+crates/domain/src/temporal.rs [priv] impl TransitionCause
+crates/domain/src/temporal.rs [priv] mod tests :: #[test] fn a_single_cause_labels_and_a_mixed_one_refuses() |10584b776cff7289
+crates/domain/src/temporal.rs [priv] mod tests :: #[test] fn a_split_interval_yields_one_origin_per_segment() -> Result<(), TemporalError> |d07d9fccc2736807
+crates/domain/src/temporal.rs [priv] mod tests :: #[test] fn every_declared_carrier_is_a_real_v3_registration_arm() |f6f2619fedfd2af1
+crates/domain/src/temporal.rs [priv] mod tests :: #[test] fn explaining_a_mixed_step_refuses_instead_of_choosing() |31859c54fc57f6eb
+crates/domain/src/temporal.rs [priv] mod tests :: #[test] fn named_dimensions_are_unique_and_ordered_by_spec_bullet() |45b14fffc0b94e70
+crates/domain/src/temporal.rs [priv] mod tests :: #[test] fn steps_may_not_run_backwards_in_known_time() |60c06711f7ccaea7
+crates/domain/src/temporal.rs [priv] mod tests :: fn at(known: u64, valid: i64) -> TimeCoordinates |d0212bec1ecdc9fc
+crates/domain/src/temporal.rs [priv] mod tests :: use crate::V3_EVENT_KINDS |f140d785376d71a8
+crates/domain/src/temporal.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/domain/src/temporal.rs [priv] use crate::TimestampMillis |ac5a27371a30808c
+crates/domain/src/temporal.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/domain/src/temporal.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DimensionStep |590e24f1a4956cd0
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct TransitionSegment |a8957bb261ae6e40
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)] struct TransitionCause |66a941ee53351949
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] enum DimensionCarrier |4cce4f11854652c7
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct TimeCoordinates |be058909161efc33
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ChangeOrigin |299b3c015c80487b
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TimeTravelDimension |7f99c616ebbaf809
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExplainedTransition |029ee7923aedd905
+crates/domain/src/temporal.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum TemporalError |5b116018eddcea22
+crates/domain/src/temporal.rs [pub] const CHANGE_ORIGINS: [ChangeOrigin; 4] |20238df5544b438a
+crates/domain/src/temporal.rs [pub] const NAMED_TIME_TRAVEL_DIMENSIONS: [TimeTravelDimension; 15] |4bbd3a731faafc07
+crates/domain/src/temporal.rs [pub] fn explain_transition( dimension: TimeTravelDimension, origin_at: TimeCoordinates, steps: &[DimensionStep], ) -> Result<ExplainedTransition, TemporalError> |d285ebfd69129114
+crates/domain/src/temporal.rs [pub] impl ChangeOrigin :: #[must_use] const fn as_str(self) -> &'static str |e3d634096c21bc1d
+crates/domain/src/temporal.rs [pub] impl ChangeOrigin :: #[must_use] const fn is_observation_system_change(self) -> bool |56e8c86b0552f880
+crates/domain/src/temporal.rs [pub] impl ExplainedTransition :: #[must_use] fn is_entirely_observation_system_change(&self) -> bool |8d7adb19f9a82bf5
+crates/domain/src/temporal.rs [pub] impl TimeCoordinates :: #[must_use] const fn new(known_at_accept_seq: u64, valid_at: TimestampMillis) -> Self |07897d8c3a2e0b6c
+crates/domain/src/temporal.rs [pub] impl TimeTravelDimension :: #[must_use] const fn as_str(self) -> &'static str |e52ae56e7b8df07a
+crates/domain/src/temporal.rs [pub] impl TimeTravelDimension :: #[must_use] const fn carrier(self) -> DimensionCarrier |4c50087d5bfca033
+crates/domain/src/temporal.rs [pub] impl TimeTravelDimension :: #[must_use] const fn spec_bullet(self) -> u8 |4fd2451dc645c535
+crates/domain/src/temporal.rs [pub] impl TimeTravelDimension :: #[must_use] const fn spec_name(self) -> &'static str |2ba21d7786258495
+crates/domain/src/temporal.rs [pub] impl TransitionCause :: #[must_use] const fn evidence() -> Self |c692d19cadd113c7
+crates/domain/src/temporal.rs [pub] impl TransitionCause :: #[must_use] const fn identity() -> Self |9033b8501c5822aa
+crates/domain/src/temporal.rs [pub] impl TransitionCause :: #[must_use] const fn official() -> Self |c921d44570337263
+crates/domain/src/temporal.rs [pub] impl TransitionCause :: #[must_use] const fn projector() -> Self |eb9dbbcbbac744c8
+crates/domain/src/temporal.rs [pub] impl TransitionCause :: #[must_use] fn origins(self) -> Vec<ChangeOrigin> |1ac907021a81d4b8
+crates/domain/src/temporal.rs [pub] impl TransitionCause :: fn label(self) -> Result<ChangeOrigin, TemporalError> |a4c820f5feab8322

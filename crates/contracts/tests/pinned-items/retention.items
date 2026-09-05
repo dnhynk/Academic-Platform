@@ -1,0 +1,284 @@
+crates/retention/src/engine.rs [priv] fn collect_objects(root: &std::path::Path, into: &mut Vec<PathBuf>) -> Result<(), EngineError> |b704455ca166572e
+crates/retention/src/engine.rs [priv] impl OpeningObservation
+crates/retention/src/engine.rs [priv] impl<'a> RotationEngine<'a>
+crates/retention/src/engine.rs [priv] impl<'a> RotationEngine<'a> :: fn require_planned(&self, unit: &RotationUnit) -> Result<(), EngineError> |52186c949c199c1d
+crates/retention/src/engine.rs [priv] use academic_crypto::{DomainKek, KEY_BYTES, ProfileId, VaultMasterKey} |67e007b9def6fb0f
+crates/retention/src/engine.rs [priv] use academic_domain::{ArtifactDescriptor, DomainId, VaultLocator} |fc30877ec6dc2545
+crates/retention/src/engine.rs [priv] use academic_vault::{ ENCRYPTED_FORMAT_VERSION, EncryptedVault, VaultError, object::{self, HEADER_BYTES, ObjectFormatError}, shred_key_slot_at, } |93c4a3bcc1e9ac3f
+crates/retention/src/engine.rs [priv] use crate::{ entry::{JournalEntry, UnitKind}, fault::{self, FaultPoint}, journal::{AppendOnlyJournal, JournalError}, rotation::{ CanonicalReference, CanonicalReferenceError, OpeningGeneration, RotationError, RotationPlan, RotationState, RotationUnit, StoreDatabaseError, StoreDatabaseExecutor, StoreDatabaseRekey, UnitProgress, require_rotation_accepted, store_database_target_id, }, tombstone::{BackupTombstone, TombstoneError}, } |4f1f9805ee781170
+crates/retention/src/engine.rs [priv] use std::{fs, path::PathBuf} |d35f0cb1d8547f1a
+crates/retention/src/engine.rs [pub] #[derive(Debug)] struct RotationEngine<'a> |0ff91eb46b14367b
+crates/retention/src/engine.rs [pub] #[derive(Debug)] struct RotationKeys<'a> |b05d899cfcfc2511
+crates/retention/src/engine.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum HeaderProbe |89c702e8d16bca51
+crates/retention/src/engine.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum OpeningObservation |65c405174d8e63b0
+crates/retention/src/engine.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct AppliedTombstones |b60f045118162495
+crates/retention/src/engine.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)] struct SparedObject |f4be35e6e8566efe
+crates/retention/src/engine.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)] struct TombstonedArtifact |12d41a2d9563a49b
+crates/retention/src/engine.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum EngineError |fba6b455dfa2e56e
+crates/retention/src/engine.rs [pub] #[must_use] fn retirement_digest( rotation_id: &str, unit_id: &str, source_locator: &[u8; 32], target_locator: &[u8; 32], ) -> [u8; 32] |d99fa64b6a1ec67b
+crates/retention/src/engine.rs [pub] const RETIREMENT_DIGEST_DOMAIN: &[u8] |6f48f0b46dfdccc0
+crates/retention/src/engine.rs [pub] fn apply_tombstones( objects_root: &std::path::Path, tombstones: &[BackupTombstone], ) -> Result<AppliedTombstones, EngineError> |938acb39d9e494a8
+crates/retention/src/engine.rs [pub] fn domain_keks( source: &VaultMasterKey, target: &VaultMasterKey, profile: ProfileId, domain: DomainId, ) -> Result<(DomainKek, DomainKek), EngineError> |5dc89129967fab22
+crates/retention/src/engine.rs [pub] fn observe_reachable_opening( vault: &EncryptedVault, keys: &RotationKeys<'_>, source_descriptor: &ArtifactDescriptor, progress: UnitProgress, ) -> Result<OpeningObservation, EngineError> |3a5c392e4c6b3b4b
+crates/retention/src/engine.rs [pub] fn probe_header(path: &std::path::Path, kek: &DomainKek) -> HeaderProbe |2489d7aedc3f0230
+crates/retention/src/engine.rs [pub] fn rebind_locator( descriptor: &ArtifactDescriptor, kek: &DomainKek, profile: ProfileId, ) -> Result<ArtifactDescriptor, EngineError> |8991fae6ef5d2e3c
+crates/retention/src/engine.rs [pub] fn retire_superseded_object( journal: &mut AppendOnlyJournal, vault: &EncryptedVault, unit: &RotationUnit, superseded: &ArtifactDescriptor, reference: &dyn CanonicalReference, ) -> Result<[u8; 32], EngineError> |7e6874ba2e447b36
+crates/retention/src/engine.rs [pub] fn shred_with_tombstone( journal: &mut AppendOnlyJournal, vault: &EncryptedVault, descriptor: &ArtifactDescriptor, tombstone: &BackupTombstone, ) -> Result<(), EngineError> |2d9e7aa017a00625
+crates/retention/src/engine.rs [pub] impl OpeningObservation :: #[must_use] const fn agrees_with(self, generation: OpeningGeneration) -> bool |16c6a0d63831f8ad
+crates/retention/src/engine.rs [pub] impl OpeningObservation :: #[must_use] const fn is_exactly_one(self) -> bool |7f431397fda732bc
+crates/retention/src/engine.rs [pub] impl<'a> RotationEngine<'a> :: #[must_use] const fn new( plan: &'a RotationPlan, source: &'a EncryptedVault, target: &'a EncryptedVault, ) -> Self |fc4070f41d0de2e2
+crates/retention/src/engine.rs [pub] impl<'a> RotationEngine<'a> :: fn begin(&self, journal: &mut AppendOnlyJournal) -> Result<(), EngineError> |e817054090ea993c
+crates/retention/src/engine.rs [pub] impl<'a> RotationEngine<'a> :: fn complete(&self, journal: &mut AppendOnlyJournal) -> Result<(), EngineError> |0fbf459c1d17765f
+crates/retention/src/engine.rs [pub] impl<'a> RotationEngine<'a> :: fn rotate_object( &self, journal: &mut AppendOnlyJournal, unit: &RotationUnit, source_descriptor: &ArtifactDescriptor, ) -> Result<ArtifactDescriptor, EngineError> |2a6dc4073a440ff1
+crates/retention/src/engine.rs [pub] impl<'a> RotationEngine<'a> :: fn rotate_store_database( &self, journal: &mut AppendOnlyJournal, unit: &RotationUnit, executor: &dyn StoreDatabaseExecutor, ) -> Result<StoreDatabaseRekey, EngineError> |393b7470e83e81fb
+crates/retention/src/entry.rs [priv] impl UnitKind
+crates/retention/src/entry.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/retention/src/entry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] #[non_exhaustive] enum UnitKind |22e7aa31467387b7
+crates/retention/src/entry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct PlannedUnit |fd7db479d6619c13
+crates/retention/src/entry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", deny_unknown_fields)] #[non_exhaustive] enum JournalEntry |a361c9d477abf441
+crates/retention/src/entry.rs [pub] impl UnitKind :: #[must_use] const fn as_str(self) -> &'static str |5cd67eca24522ca3
+crates/retention/src/execute.rs [priv] fn record_settlement( journal: &mut AppendOnlyJournal, action_hex: &str, outcome: &RetentionOutcome, ) -> Result<(), JournalError> |4a099d0f69316a16
+crates/retention/src/execute.rs [priv] impl ActionId
+crates/retention/src/execute.rs [priv] trait RetentionExecutor :: fn execute( &mut self, journal: &mut AppendOnlyJournal, action: &PlannedAction, ) -> Result<(), ExecutionFailure> |117991459296f0e7
+crates/retention/src/execute.rs [priv] use crate::{ entry::JournalEntry, journal::{AppendOnlyJournal, JournalError}, plan::{ ClassResolution, DeletionPlan, PlannedAction, RetentionOutcome, UnresolvedLocator, UnresolvedReason, UnresolvedSet, }, } |b64db735558304ad
+crates/retention/src/execute.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ActionId([u8; 16]) |37d302655d47f75e
+crates/retention/src/execute.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExecutionFailure |d35f3dcb54b1c71c
+crates/retention/src/execute.rs [pub] #[must_use] fn empty_class_reasons(plan: &DeletionPlan) -> Vec<(&'static str, String)> |6348b9f283ff2dbf
+crates/retention/src/execute.rs [pub] #[must_use] fn planned_locators(plan: &DeletionPlan) -> Vec<String> |9e0cdb8d0bad9391
+crates/retention/src/execute.rs [pub] fn settle<E: RetentionExecutor + ?Sized>( journal: &mut AppendOnlyJournal, action_id: ActionId, plan: &DeletionPlan, executor: &mut E, ) -> Result<RetentionOutcome, JournalError> |17c9fe3ecb009690
+crates/retention/src/execute.rs [pub] impl ActionId :: #[must_use] const fn from_bytes(bytes: [u8; 16]) -> Self |6cf16b40d51d0287
+crates/retention/src/execute.rs [pub] impl ActionId :: #[must_use] fn to_hex(self) -> String |ef5773cdc5ed484e
+crates/retention/src/execute.rs [pub] trait RetentionExecutor
+crates/retention/src/fault.rs [priv] impl FaultPoint
+crates/retention/src/fault.rs [priv] impl FaultPoint :: #[cfg(feature = "phase2-fault-injection")] const fn as_str(self) -> &'static str |d59f1c986974d177
+crates/retention/src/fault.rs [pub(crate)] #[cfg(feature = "phase2-fault-injection")] fn trip(point: FaultPoint) |f6dd4b552511e984
+crates/retention/src/fault.rs [pub(crate)] #[cfg(not(feature = "phase2-fault-injection"))] const fn trip(_point: FaultPoint) |86a9bdc652dcb8a9
+crates/retention/src/fault.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[cfg_attr(not(feature = "phase2-fault-injection"), allow(dead_code))] enum FaultPoint |9bfbc7ea5af19ae8
+crates/retention/src/fault.rs [pub] const FAULT_ACTION_VARIABLE: &str |bdbe5e4559ee5e93
+crates/retention/src/fault.rs [pub] const FAULT_READY_MARKER_VARIABLE: &str |e412356e458c802a
+crates/retention/src/fault.rs [pub] const FAULT_SELECTION_VARIABLE: &str |a8c29be9cb1c1dad
+crates/retention/src/fault.rs [pub] const FAULT_SELECTORS: &[&str] |9c0944916d9cd45b
+crates/retention/src/journal.rs [priv] fn entry_json(entry: &JournalEntry) -> Result<String, JournalError> |386cd875efe8b71d
+crates/retention/src/journal.rs [priv] fn io(operation: &'static str, path: &Path, source: std::io::Error) -> JournalError |b1a4fb4b92f1d1c0
+crates/retention/src/journal.rs [priv] fn read_complete_records(path: &Path) -> Result<(Vec<JournalRecord>, u64), JournalError> |00375554c6cc1c7c
+crates/retention/src/journal.rs [priv] fn read_head(journal: &Path) -> Result<Option<JournalHead>, JournalError> |ccf0ca9c7409b4d8
+crates/retention/src/journal.rs [priv] fn record_digest( sequence: u64, previous_digest: &str, entry: &JournalEntry, ) -> Result<String, JournalError> |75175c314e8a862e
+crates/retention/src/journal.rs [priv] fn require_head_covered( path: &Path, records: &[JournalRecord], head: Option<&JournalHead>, ) -> Result<(), JournalError> |0508db358b412abe
+crates/retention/src/journal.rs [priv] fn write_head(journal: &Path, records: &[JournalRecord]) -> Result<(), JournalError> |6bfca7fc3e3a0605
+crates/retention/src/journal.rs [priv] impl AppendOnlyJournal
+crates/retention/src/journal.rs [priv] use crate::entry::JournalEntry |de066d7921fda009
+crates/retention/src/journal.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/retention/src/journal.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/retention/src/journal.rs [priv] use std::{ fs::{self, File, OpenOptions}, io::{BufRead as _, BufReader, Write as _}, path::{Path, PathBuf}, } |2b1b6c14a07a5131
+crates/retention/src/journal.rs [pub(crate)] fn sync_directory(path: &Path) -> Result<(), JournalError> |4cc59c2fd8f18abc
+crates/retention/src/journal.rs [pub] #[derive(Debug)] struct AppendOnlyJournal |08eec5089f60c843
+crates/retention/src/journal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct JournalHead |8ec4982674feb5e3
+crates/retention/src/journal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct JournalRecord |ddbfb2baecf88884
+crates/retention/src/journal.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum JournalError |6fdd5141ff87790d
+crates/retention/src/journal.rs [pub] #[must_use] fn genesis_digest() -> String |1658c719d019c023
+crates/retention/src/journal.rs [pub] #[must_use] fn head_path(journal: &Path) -> PathBuf |4211a403a7127363
+crates/retention/src/journal.rs [pub] const DELETION_JOURNAL_RELATIVE_PATH: &str |789bb4bd8d512ace
+crates/retention/src/journal.rs [pub] const JOURNAL_DIGEST_DOMAIN: &[u8] |c0ef559d4819999d
+crates/retention/src/journal.rs [pub] const JOURNAL_HEAD_SUFFIX: &str |bd72e8ebe87a793f
+crates/retention/src/journal.rs [pub] const JOURNAL_VERSION: u8 |ea85809cc9055a35
+crates/retention/src/journal.rs [pub] const MAX_JOURNAL_BYTES: u64 |fa42b0b20a5e7dfe
+crates/retention/src/journal.rs [pub] const ROTATION_JOURNAL_RELATIVE_PATH: &str |eae0e73cb492f4dd
+crates/retention/src/journal.rs [pub] fn read_verified(path: &Path) -> Result<Vec<JournalRecord>, JournalError> |e9c4b7798a2eb63e
+crates/retention/src/journal.rs [pub] impl AppendOnlyJournal :: #[must_use] fn path(&self) -> &Path |7f3b463ffbb331a7
+crates/retention/src/journal.rs [pub] impl AppendOnlyJournal :: #[must_use] fn records(&self) -> &[JournalRecord] |dc11be9951e80c92
+crates/retention/src/journal.rs [pub] impl AppendOnlyJournal :: fn append(&mut self, entry: JournalEntry) -> Result<&JournalRecord, JournalError> |2caf454fada86853
+crates/retention/src/journal.rs [pub] impl AppendOnlyJournal :: fn entries(&self) -> impl Iterator<Item = &JournalEntry> |9bfbfb4299369e43
+crates/retention/src/journal.rs [pub] impl AppendOnlyJournal :: fn open(path: &Path) -> Result<Self, JournalError> |9ae4a3cbe8109b24
+crates/retention/src/lib.rs [pub] #[cfg(feature = "rotation-engine")] mod engine
+crates/retention/src/lib.rs [pub] const FAULT_INJECTION_FEATURE: &str |78e188980dab703b
+crates/retention/src/lib.rs [pub] const PHASE2_RETENTION_FAULT_IDS: &[&str] |c572c98bbadfc032
+crates/retention/src/lib.rs [pub] const PHASE2_ROTATION_FAULT_IDS: &[&str] |4d2ebf35d59efe80
+crates/retention/src/lib.rs [pub] mod entry
+crates/retention/src/lib.rs [pub] mod execute
+crates/retention/src/lib.rs [pub] mod fault
+crates/retention/src/lib.rs [pub] mod journal
+crates/retention/src/lib.rs [pub] mod plan
+crates/retention/src/lib.rs [pub] mod recipients
+crates/retention/src/lib.rs [pub] mod rotation
+crates/retention/src/lib.rs [pub] mod tombstone
+crates/retention/src/lib.rs [pub] use entry::{JournalEntry, PlannedUnit, UnitKind} |3ca393c721174a07
+crates/retention/src/lib.rs [pub] use execute::{ActionId, ExecutionFailure, RetentionExecutor, settle} |39ae7e35cc54a73e
+crates/retention/src/lib.rs [pub] use fault::{ FAULT_ACTION_VARIABLE, FAULT_READY_MARKER_VARIABLE, FAULT_SELECTION_VARIABLE, FAULT_SELECTORS, } |0d8dc192fc6da13f
+crates/retention/src/lib.rs [pub] use journal::{ AppendOnlyJournal, DELETION_JOURNAL_RELATIVE_PATH, JOURNAL_VERSION, JournalError, JournalRecord, ROTATION_JOURNAL_RELATIVE_PATH, } |0b4976a80def26a7
+crates/retention/src/lib.rs [pub] use plan::{ ActionKind, ClassResolution, DERIVATIVE_CLASSES, DeletionPlan, DerivativeClass, DerivativeResolver, GATE_38_026_STATEMENT, OriginalVoiceAuthority, PlanNode, PlannedAction, RETENTION_OUTCOMES, RetentionOutcome, RetentionSubject, SubjectScope, UnresolvedLocator, UnresolvedReason, UnresolvedSet, VoiceSpan, } |f6dbf6cdbbb46d8c
+crates/retention/src/lib.rs [pub] use recipients::{ RECIPIENTS_RELATIVE_PATH, REVOCATION_SCOPE_STATEMENT, RecipientError, RevocationOutcome, } |ae366a711efa9507
+crates/retention/src/lib.rs [pub] use rotation::{ KeyGeneration, OpeningGeneration, RotationError, RotationId, RotationPlan, RotationState, RotationUnit, UnitProgress, UnitState, } |78d8873d5dd26ecc
+crates/retention/src/lib.rs [pub] use tombstone::{BackupTombstone, TOMBSTONE_DIRECTORY, TombstoneError} |5d9a52d173aa2c0a
+crates/retention/src/plan.rs [priv] impl DeletionPlan
+crates/retention/src/plan.rs [priv] impl DerivativeClass
+crates/retention/src/plan.rs [priv] impl OriginalVoiceAuthority
+crates/retention/src/plan.rs [priv] impl PlanNode
+crates/retention/src/plan.rs [priv] impl PlannedAction
+crates/retention/src/plan.rs [priv] impl RetentionOutcome
+crates/retention/src/plan.rs [priv] impl RetentionSubject
+crates/retention/src/plan.rs [priv] impl UnresolvedLocator
+crates/retention/src/plan.rs [priv] impl UnresolvedSet
+crates/retention/src/plan.rs [priv] trait DerivativeResolver :: fn resolve(&self, class: DerivativeClass, subject: &RetentionSubject) -> ClassResolution |6f7b68a93871667b
+crates/retention/src/plan.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct PlannedAction |f7558785f6edb213
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct VoiceSpan |e01f15f996742be5
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] #[non_exhaustive] enum DerivativeClass |0c3fd27042dd26bc
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] #[non_exhaustive] enum ActionKind |622073b3cc5af472
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] #[non_exhaustive] enum UnresolvedReason |45f0127dcd998e73
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum ClassResolution |0024f5e56690e049
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum RetentionOutcome |841ca2142eba3c7c
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum SubjectScope |48a47a84210ce8a5
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeletionPlan |301ec7e25fefd13e
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OriginalVoiceAuthority |d705da70b37e0e9e
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanNode |a8d2b579f4c5bd03
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RetentionSubject |24fd6ce69f43d1c8
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UnresolvedLocator |e7d6ee5a23ab54e5
+crates/retention/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UnresolvedSet(Vec<UnresolvedLocator>) |82b6b5e307a145d5
+crates/retention/src/plan.rs [pub] const DERIVATIVE_CLASSES: &[DerivativeClass] |0e5ca483da410f44
+crates/retention/src/plan.rs [pub] const GATE_38_026_STATEMENT: &str |5da96a0d380514a8
+crates/retention/src/plan.rs [pub] const RETENTION_OUTCOMES: &[&str] |e9df02beb9a89724
+crates/retention/src/plan.rs [pub] impl DeletionPlan :: #[must_use] const fn subject(&self) -> &RetentionSubject |f60c6b25e34771fd
+crates/retention/src/plan.rs [pub] impl DeletionPlan :: #[must_use] fn actions(&self) -> Vec<PlannedAction> |d75865029ead520d
+crates/retention/src/plan.rs [pub] impl DeletionPlan :: #[must_use] fn enumerated_classes(&self) -> Vec<DerivativeClass> |4449334d800b17ec
+crates/retention/src/plan.rs [pub] impl DeletionPlan :: #[must_use] fn nodes(&self) -> &[PlanNode] |e8818b14c3762f53
+crates/retention/src/plan.rs [pub] impl DeletionPlan :: #[must_use] fn unresolved_nodes(&self) -> Vec<UnresolvedLocator> |6a503ccaf1105eaf
+crates/retention/src/plan.rs [pub] impl DeletionPlan :: fn build<R: DerivativeResolver + ?Sized>(subject: RetentionSubject, resolver: &R) -> Self |80e077e9fb97f63c
+crates/retention/src/plan.rs [pub] impl DerivativeClass :: #[must_use] const fn action_kind(self) -> ActionKind |fcf9fc9e72cdec1e
+crates/retention/src/plan.rs [pub] impl DerivativeClass :: #[must_use] const fn as_str(self) -> &'static str |d98ded37af7d46be
+crates/retention/src/plan.rs [pub] impl OriginalVoiceAuthority :: #[must_use] fn authority_id(&self) -> &str |e9723d3c79cc6909
+crates/retention/src/plan.rs [pub] impl OriginalVoiceAuthority :: #[must_use] fn evidence_digest(&self) -> &str |78b8265cc9a05af1
+crates/retention/src/plan.rs [pub] impl OriginalVoiceAuthority :: #[must_use] fn new(authority_id: String, evidence_digest: String) -> Self |6228ed187160108a
+crates/retention/src/plan.rs [pub] impl PlanNode :: #[must_use] fn actions(&self) -> Vec<PlannedAction> |5d9c5507468f9584
+crates/retention/src/plan.rs [pub] impl PlannedAction :: #[must_use] fn locator_hex(&self) -> String |0ea2536235648d21
+crates/retention/src/plan.rs [pub] impl RetentionOutcome :: #[must_use] const fn as_str(&self) -> &'static str |981d6d163dfcae86
+crates/retention/src/plan.rs [pub] impl RetentionOutcome :: #[must_use] fn unresolved(&self) -> &[UnresolvedLocator] |9199219d418fd8eb
+crates/retention/src/plan.rs [pub] impl RetentionSubject :: #[must_use] const fn locator(&self) -> &[u8; 32] |024ba05f6d3a4fca
+crates/retention/src/plan.rs [pub] impl RetentionSubject :: #[must_use] const fn open_gate_statement(&self) -> Option<&'static str> |9151ff157ccac02b
+crates/retention/src/plan.rs [pub] impl RetentionSubject :: #[must_use] const fn scope(&self) -> &SubjectScope |f8cf92cd6f7314f7
+crates/retention/src/plan.rs [pub] impl RetentionSubject :: #[must_use] const fn voice_spans_in_original( locator: [u8; 32], authority: OriginalVoiceAuthority, spans: Vec<VoiceSpan>, ) -> Self |2f9c2fcf22ed39b9
+crates/retention/src/plan.rs [pub] impl RetentionSubject :: #[must_use] const fn whole_object(locator: [u8; 32]) -> Self |f381576b212b90d5
+crates/retention/src/plan.rs [pub] impl RetentionSubject :: #[must_use] fn locator_hex(&self) -> String |0ea2536235648d21
+crates/retention/src/plan.rs [pub] impl UnresolvedLocator :: #[must_use] fn to_row(&self) -> String |25e37701afd30cea
+crates/retention/src/plan.rs [pub] impl UnresolvedSet :: #[must_use] fn locators(&self) -> &[UnresolvedLocator] |09322be29bcedf80
+crates/retention/src/plan.rs [pub] impl UnresolvedSet :: #[must_use] fn new(locators: Vec<UnresolvedLocator>) -> Option<Self> |e9e89f2fd9bf169e
+crates/retention/src/plan.rs [pub] impl UnresolvedSet :: #[must_use] fn rows(&self) -> Vec<String> |0edc32a1b172d67c
+crates/retention/src/plan.rs [pub] trait DerivativeResolver
+crates/retention/src/recipients.rs [priv] fn io(operation: &'static str, path: &Path, source: std::io::Error) -> RecipientError |11818864d4c13a6c
+crates/retention/src/recipients.rs [priv] fn kind_name(kind: RecipientKind) -> &'static str |221881ed53018576
+crates/retention/src/recipients.rs [priv] impl From<RotationError> for RecipientError
+crates/retention/src/recipients.rs [priv] impl From<RotationError> for RecipientError :: fn from(_: RotationError) -> Self |d63f0c6eeb89dffe
+crates/retention/src/recipients.rs [priv] impl RevocationOutcome
+crates/retention/src/recipients.rs [priv] use academic_crypto::{ ProfileId, RecipientKind, RecipientRecord, RecipientSet, RecordError, UnlockError, } |0efcd1144d25516f
+crates/retention/src/recipients.rs [priv] use crate::{ entry::JournalEntry, fault::{self, FaultPoint}, journal::{AppendOnlyJournal, JournalError, sync_directory}, rotation::{KeyGeneration, RotationError, RotationState, require_rotation_accepted}, } |f272b08d5b8b34a1
+crates/retention/src/recipients.rs [priv] use std::{ collections::BTreeSet, fs::{self, File}, io::Write as _, path::{Path, PathBuf}, } |b5efd7cd46648c1e
+crates/retention/src/recipients.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RevocationOutcome |63cc2005545a681a
+crates/retention/src/recipients.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum RecipientError |1f8adc4efac26b06
+crates/retention/src/recipients.rs [pub] #[must_use] fn revoked_recipient_ids(journal: &AppendOnlyJournal) -> BTreeSet<String> |0baa1208cb111af8
+crates/retention/src/recipients.rs [pub] const RECIPIENTS_RELATIVE_PATH: &str |f836ecdace378b32
+crates/retention/src/recipients.rs [pub] const REVOCATION_SCOPE_STATEMENT: &str |e12f1a7d861b4527
+crates/retention/src/recipients.rs [pub] fn add_recipient( profile_root: &Path, profile: ProfileId, journal: &mut AppendOnlyJournal, record: RecipientRecord, generation: KeyGeneration, ) -> Result<(), RecipientError> |57bf4ee2024e0351
+crates/retention/src/recipients.rs [pub] fn read_set(profile_root: &Path, profile: ProfileId) -> Result<RecipientSet, RecipientError> |cfdb1e8700ea569b
+crates/retention/src/recipients.rs [pub] fn retire_generation<F>( profile_root: &Path, profile: ProfileId, journal: &AppendOnlyJournal, kept_generation: KeyGeneration, mut keeps: F, ) -> Result<Vec<RecipientRecord>, RecipientError> where F: FnMut(&RecipientRecord) -> bool, |1795a52bdf0c2aa7
+crates/retention/src/recipients.rs [pub] fn revoke_recipient( profile_root: &Path, profile: ProfileId, journal: &mut AppendOnlyJournal, recipient_id: &[u8; 16], revoked_generation: KeyGeneration, still_under_revoked_generation: Vec<String>, ) -> Result<RevocationOutcome, RecipientError> |1685c02fb3902cba
+crates/retention/src/recipients.rs [pub] fn rewrap_for_generation<F>( profile_root: &Path, profile: ProfileId, journal: &mut AppendOnlyJournal, generation: KeyGeneration, mut wrap: F, ) -> Result<Vec<RecipientRecord>, RecipientError> where F: FnMut(&RecipientRecord) -> Result<RecipientRecord, RecipientError>, |7b3e3b495a1e0d80
+crates/retention/src/recipients.rs [pub] fn write_set(profile_root: &Path, set: &RecipientSet) -> Result<(), RecipientError> |e74a5eeee9a35596
+crates/retention/src/recipients.rs [pub] impl RevocationOutcome :: #[must_use] const fn remaining_recipients(&self) -> usize |54d81c8113b6226b
+crates/retention/src/recipients.rs [pub] impl RevocationOutcome :: #[must_use] const fn scope_statement(&self) -> &'static str |c7d37d8d5becf764
+crates/retention/src/recipients.rs [pub] impl RevocationOutcome :: #[must_use] fn recipient_id(&self) -> &str |da753462c1103121
+crates/retention/src/recipients.rs [pub] impl RevocationOutcome :: #[must_use] fn revoked_generation(&self) -> &str |b47b245d4c1d244d
+crates/retention/src/recipients.rs [pub] impl RevocationOutcome :: #[must_use] fn still_under_revoked_generation(&self) -> &[String] |bff91aae2b49aa4b
+crates/retention/src/rotation.rs [priv] fn derive_unit_id(kind: UnitKind, seed: Option<&[u8]>) -> [u8; 32] |3698143caffa52fe
+crates/retention/src/rotation.rs [priv] fn locate<'a>( state: &'a mut Option<RotationState>, rotation_id: &str, unit_id: &str, ) -> Result<&'a mut UnitState, RotationError> |2606d082f41495d1
+crates/retention/src/rotation.rs [priv] fn rebuild_unit(planned: &PlannedUnit) -> Result<UnitState, RotationError> |295811e170194dd9
+crates/retention/src/rotation.rs [priv] impl From<KeyScheduleError> for RotationError
+crates/retention/src/rotation.rs [priv] impl From<KeyScheduleError> for RotationError :: fn from(_: KeyScheduleError) -> Self |10ac01f328135556
+crates/retention/src/rotation.rs [priv] impl KeyGeneration
+crates/retention/src/rotation.rs [priv] impl RotationId
+crates/retention/src/rotation.rs [priv] impl RotationPlan
+crates/retention/src/rotation.rs [priv] impl RotationState
+crates/retention/src/rotation.rs [priv] impl RotationUnit
+crates/retention/src/rotation.rs [priv] impl RotationUnit :: fn to_planned(&self) -> PlannedUnit |b075fc216ab7e1ba
+crates/retention/src/rotation.rs [priv] impl UnitProgress
+crates/retention/src/rotation.rs [priv] trait CanonicalReference :: fn resolved_locator( &self, artifact: ArtifactId, ) -> Result<Option<[u8; 32]>, CanonicalReferenceError> |785abaa8e482c774
+crates/retention/src/rotation.rs [priv] trait StoreDatabaseExecutor :: fn generations(&self) -> Result<(KeyGeneration, KeyGeneration), StoreDatabaseError> |852283d5112291e3
+crates/retention/src/rotation.rs [priv] trait StoreDatabaseExecutor :: fn rekey_store_database(&self) -> Result<StoreDatabaseRekey, StoreDatabaseError> |8beb07bfe58c8b2d
+crates/retention/src/rotation.rs [priv] use academic_crypto::{KeyScheduleError, ProfileId, VaultMasterKey} |d1787bb3a98e504b
+crates/retention/src/rotation.rs [priv] use academic_domain::ArtifactId |77efb702b06697b4
+crates/retention/src/rotation.rs [priv] use crate::{ entry::{JournalEntry, PlannedUnit, UnitKind}, journal::{AppendOnlyJournal, JournalError}, } |6ac5576e6c5b8746
+crates/retention/src/rotation.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone)] struct RotationPlan |9c5bf8f04912cc3a
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone)] struct RotationState |c98cb1ce5f8f34c9
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum OpeningGeneration |47ddf4242edf0758
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum StoreDatabaseRekey |22e9c77cd5ec93a7
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum UnitProgress |5b2e02f982b8e0af
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RotationId([u8; ROTATION_ID_BYTES]) |53ca441299319011
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] struct KeyGeneration([u8; 32]) |6dc4b076be25c581
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("{}", ROTATION_NOT_ACCEPTED_STATEMENT)] struct RotationNotAccepted |2f4bcc006c8c753b
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RotationUnit |d37ab68c060f9f74
+crates/retention/src/rotation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UnitState |686a719482d8fb65
+crates/retention/src/rotation.rs [pub] #[derive(Debug, thiserror::Error)] #[error("the canonical reference could not be read: {0}")] struct CanonicalReferenceError(pub String) |ef316a83cce81dad
+crates/retention/src/rotation.rs [pub] #[derive(Debug, thiserror::Error)] #[error("the store database could not be rekeyed: {0}")] struct StoreDatabaseError(pub String) |127e0379665ae1c4
+crates/retention/src/rotation.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum RotationError |d1b8be1271cc7e85
+crates/retention/src/rotation.rs [pub] #[must_use] fn store_database_target_id(profile: ProfileId, generation: KeyGeneration) -> [u8; 32] |6e1c46b4a94065d9
+crates/retention/src/rotation.rs [pub] const ROTATION_ID_BYTES: usize |6a2dad00eea65164
+crates/retention/src/rotation.rs [pub] const ROTATION_NOT_ACCEPTED_STATEMENT: &str |e234ae8ecfe91566
+crates/retention/src/rotation.rs [pub] const STORE_DATABASE_TARGET_DOMAIN: &[u8] |e4a98c2372d87985
+crates/retention/src/rotation.rs [pub] const UNIT_ID_DOMAIN: &[u8] |6e8cab777c30dddb
+crates/retention/src/rotation.rs [pub] fn require_rotation_accepted() -> Result<(), RotationNotAccepted> |196247a6302dcebf
+crates/retention/src/rotation.rs [pub] fn resume(journal: &AppendOnlyJournal) -> Result<Option<RotationState>, RotationError> |4c7794c3e710fdbf
+crates/retention/src/rotation.rs [pub] impl KeyGeneration :: #[must_use] fn to_hex(self) -> String |ef5773cdc5ed484e
+crates/retention/src/rotation.rs [pub] impl KeyGeneration :: fn of(master: &VaultMasterKey, profile: ProfileId) -> Result<Self, KeyScheduleError> |d5f4e0848ad806f7
+crates/retention/src/rotation.rs [pub] impl KeyGeneration :: fn parse(value: &str) -> Result<Self, RotationError> |36435da70740ef65
+crates/retention/src/rotation.rs [pub] impl RotationId :: #[must_use] const fn from_bytes(bytes: [u8; ROTATION_ID_BYTES]) -> Self |5326317ff5a708cc
+crates/retention/src/rotation.rs [pub] impl RotationId :: #[must_use] fn to_hex(self) -> String |ef5773cdc5ed484e
+crates/retention/src/rotation.rs [pub] impl RotationPlan :: #[must_use] const fn profile_id(&self) -> ProfileId |df5ab6b8c51852f1
+crates/retention/src/rotation.rs [pub] impl RotationPlan :: #[must_use] const fn rotation_id(&self) -> RotationId |41643e825e556e94
+crates/retention/src/rotation.rs [pub] impl RotationPlan :: #[must_use] const fn source(&self) -> KeyGeneration |b6714f86cd412690
+crates/retention/src/rotation.rs [pub] impl RotationPlan :: #[must_use] const fn target(&self) -> KeyGeneration |dedfc6e6e39f308c
+crates/retention/src/rotation.rs [pub] impl RotationPlan :: #[must_use] fn started_entry(&self) -> JournalEntry |1c7ecdfc0180f399
+crates/retention/src/rotation.rs [pub] impl RotationPlan :: #[must_use] fn units(&self) -> &[RotationUnit] |f174e5f93a90f18a
+crates/retention/src/rotation.rs [pub] impl RotationPlan :: fn new( rotation_id: RotationId, profile_id: ProfileId, source: KeyGeneration, target: KeyGeneration, units: Vec<RotationUnit>, ) -> Result<Self, RotationError> |5765e20b7003411f
+crates/retention/src/rotation.rs [pub] impl RotationState :: #[must_use] const fn is_complete(&self) -> bool |5ff3a5a26b2eb3e2
+crates/retention/src/rotation.rs [pub] impl RotationState :: #[must_use] const fn source(&self) -> KeyGeneration |b6714f86cd412690
+crates/retention/src/rotation.rs [pub] impl RotationState :: #[must_use] const fn target(&self) -> KeyGeneration |dedfc6e6e39f308c
+crates/retention/src/rotation.rs [pub] impl RotationState :: #[must_use] fn migrated(&self) -> Vec<&UnitState> |cfe42dd5be864a29
+crates/retention/src/rotation.rs [pub] impl RotationState :: #[must_use] fn opening_generation(&self, unit_id: &[u8; 32]) -> Option<OpeningGeneration> |8c492681fc290d61
+crates/retention/src/rotation.rs [pub] impl RotationState :: #[must_use] fn remaining(&self) -> Vec<&UnitState> |f24623d1ffb18bca
+crates/retention/src/rotation.rs [pub] impl RotationState :: #[must_use] fn rotation_id(&self) -> &str |68c746739e70bbb5
+crates/retention/src/rotation.rs [pub] impl RotationState :: #[must_use] fn units(&self) -> &[UnitState] |891d9b514ca43787
+crates/retention/src/rotation.rs [pub] impl RotationState :: fn replay<'a>( entries: impl IntoIterator<Item = &'a JournalEntry>, ) -> Result<Option<Self>, RotationError> |a30e945df7751d7f
+crates/retention/src/rotation.rs [pub] impl RotationState :: fn require_generations( &self, source: KeyGeneration, target: KeyGeneration, ) -> Result<(), RotationError> |4015b7f45ac6aeab
+crates/retention/src/rotation.rs [pub] impl RotationUnit :: #[must_use] const fn kind(&self) -> UnitKind |3a7732c4b9839b47
+crates/retention/src/rotation.rs [pub] impl RotationUnit :: #[must_use] const fn source_locator(&self) -> Option<&[u8; 32]> |b129d90dec90ce96
+crates/retention/src/rotation.rs [pub] impl RotationUnit :: #[must_use] const fn unit_id(&self) -> &[u8; 32] |7fa23895241d0e72
+crates/retention/src/rotation.rs [pub] impl RotationUnit :: #[must_use] fn object(source_locator: [u8; 32]) -> Self |e897413f51e92535
+crates/retention/src/rotation.rs [pub] impl RotationUnit :: #[must_use] fn store_database(profile: ProfileId) -> Self |e4634f80464ec3d8
+crates/retention/src/rotation.rs [pub] impl RotationUnit :: #[must_use] fn unit_id_hex(&self) -> String |04dd075ea0f684dd
+crates/retention/src/rotation.rs [pub] impl UnitProgress :: #[must_use] const fn opening_generation(self) -> OpeningGeneration |9a0aff6ed64aeedf
+crates/retention/src/rotation.rs [pub] trait CanonicalReference
+crates/retention/src/rotation.rs [pub] trait StoreDatabaseExecutor
+crates/retention/src/tombstone.rs [priv] fn decode_locator(value: &str) -> Result<[u8; 32], TombstoneError> |6350746a68ef168e
+crates/retention/src/tombstone.rs [priv] fn file_stem(tombstone: &BackupTombstone) -> Result<String, TombstoneError> |c441afe8def86612
+crates/retention/src/tombstone.rs [priv] fn io(operation: &'static str, path: &Path, source: std::io::Error) -> TombstoneError |b241029d5911c894
+crates/retention/src/tombstone.rs [priv] impl BackupTombstone
+crates/retention/src/tombstone.rs [priv] use academic_domain::ArtifactId |77efb702b06697b4
+crates/retention/src/tombstone.rs [priv] use crate::{ fault::{self, FaultPoint}, journal::{JournalError, sync_directory}, } |acb43d3b967e4a93
+crates/retention/src/tombstone.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/retention/src/tombstone.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/retention/src/tombstone.rs [priv] use std::{ fs::{self, File}, io::Write as _, path::{Path, PathBuf}, } |c8fcdf8de1d65fdb
+crates/retention/src/tombstone.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BackupTombstone |7407ae1eb3d054cc
+crates/retention/src/tombstone.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum TombstoneError |842c0cbe33e19b72
+crates/retention/src/tombstone.rs [pub] #[must_use] fn tombstone_dir(backup_root: &Path) -> PathBuf |ac0e7258a925cdaa
+crates/retention/src/tombstone.rs [pub] const TOMBSTONE_DIGEST_DOMAIN: &[u8] |ac7a929924a267dd
+crates/retention/src/tombstone.rs [pub] const TOMBSTONE_DIRECTORY: &str |fe2fed55b8967471
+crates/retention/src/tombstone.rs [pub] const TOMBSTONE_EXTENSION: &str |60213bc89915499d
+crates/retention/src/tombstone.rs [pub] const TOMBSTONE_VERSION: u8 |2033e0fbafa742ca
+crates/retention/src/tombstone.rs [pub] fn read_from_backup(backup_root: &Path) -> Result<Vec<BackupTombstone>, TombstoneError> |3662cad5544a35c2
+crates/retention/src/tombstone.rs [pub] fn write_into_backup( backup_root: &Path, tombstone: &BackupTombstone, ) -> Result<PathBuf, TombstoneError> |30f7922712348d22
+crates/retention/src/tombstone.rs [pub] impl BackupTombstone :: #[must_use] fn covering( action_id: String, artifact: ArtifactId, locator: [u8; 32], superseded: &[[u8; 32]], shredded_at_ms: u64, ) -> Self |addecac3d122040b
+crates/retention/src/tombstone.rs [pub] impl BackupTombstone :: #[must_use] fn digest(&self) -> [u8; 32] |28831f7f176027fd
+crates/retention/src/tombstone.rs [pub] impl BackupTombstone :: #[must_use] fn digest_hex(&self) -> String |f6904150495c3f5e
+crates/retention/src/tombstone.rs [pub] impl BackupTombstone :: #[must_use] fn new( action_id: String, artifact: ArtifactId, locator: [u8; 32], shredded_at_ms: u64, ) -> Self |b819c24d75b4f50e
+crates/retention/src/tombstone.rs [pub] impl BackupTombstone :: fn artifact_id_bytes(&self) -> Result<[u8; 16], TombstoneError> |b6c298339638c48a
+crates/retention/src/tombstone.rs [pub] impl BackupTombstone :: fn covered_locators(&self) -> Result<Vec<[u8; 32]>, TombstoneError> |f03b2de6c9e13778
+crates/retention/src/tombstone.rs [pub] impl BackupTombstone :: fn locator_bytes(&self) -> Result<[u8; 32], TombstoneError> |5d58e0a7cd270339

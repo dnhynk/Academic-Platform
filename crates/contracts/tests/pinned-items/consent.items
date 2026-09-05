@@ -1,10 +1,10 @@
-crates/consent/src/capability.rs [priv] fn token_id(bound: &BoundPermission, now: u64) -> ContentDigest |625108a31dc26b5a
+crates/consent/src/capability.rs [priv] fn token_id(bound: &BoundPermission, now: u64) -> ContentDigest |c01aa1e5e443d6a7
 crates/consent/src/capability.rs [priv] impl BoundPermission
 crates/consent/src/capability.rs [priv] impl CaptureCapabilityToken
 crates/consent/src/capability.rs [priv] impl CaptureDenial
 crates/consent/src/capability.rs [priv] impl CaptureDenialReason
 crates/consent/src/capability.rs [priv] impl fmt::Debug for CaptureCapabilityToken
-crates/consent/src/capability.rs [priv] impl fmt::Debug for CaptureCapabilityToken :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |2355c7338a2e4509
+crates/consent/src/capability.rs [priv] impl fmt::Debug for CaptureCapabilityToken :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |7be7782af120945a
 crates/consent/src/capability.rs [priv] impl<'a> ResolvedRequest<'a>
 crates/consent/src/capability.rs [priv] impl<'a> ResolvedRequest<'a> :: fn resolve(request: &'a CaptureRequest) -> Result<Self, CaptureDenialReason> |3ea0177212f8aa91
 crates/consent/src/capability.rs [priv] struct ResolvedRequest<'a> |78d7ba22824ea6fc
@@ -12,7 +12,7 @@ crates/consent/src/capability.rs [priv] use academic_domain::{CapturePermissionI
 crates/consent/src/capability.rs [priv] use core::fmt |60337ade2d1be0ef
 crates/consent/src/capability.rs [priv] use crate::{ checklist::ChecklistDimension, ledger::ConsentLedger, permission::{CaptureMedium, CaptureProcessing, Condition, TermKey}, retention::RetentionTerms, status::{CaptureStatus, status_of}, } |daab7c76cd16cb7e
 crates/consent/src/capability.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum CaptureDenialReason |6a48546f6edb9224
-crates/consent/src/capability.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("capture refused: {reason:?} at status {status:?}")] struct CaptureDenial |766933096ac4d7c8
+crates/consent/src/capability.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("capture refused: {reason:?} at status {status:?}")] struct CaptureDenial |d97ecea80bece58b
 crates/consent/src/capability.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BoundPermission |d98d301de7a69d42
 crates/consent/src/capability.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct CaptureRequest |8ed664293dc659b7
 crates/consent/src/capability.rs [pub] fn bind_permission( ledger: &ConsentLedger, request: &CaptureRequest, now: u64, ) -> Result<BoundPermission, CaptureDenial> |c620352a52d54e4b
@@ -35,7 +35,7 @@ crates/consent/src/capability.rs [pub] impl CaptureCapabilityToken :: #[must_use
 crates/consent/src/capability.rs [pub] impl CaptureDenial :: #[must_use] const fn queues_recheck(&self) -> bool |60392b3ad7f5d343
 crates/consent/src/capability.rs [pub] impl CaptureDenial :: #[must_use] const fn reason(&self) -> CaptureDenialReason |60d91155aec2a6f4
 crates/consent/src/capability.rs [pub] impl CaptureDenial :: #[must_use] const fn status(&self) -> CaptureStatus |e8671143ba7876a9
-crates/consent/src/capability.rs [pub] impl CaptureDenialReason :: #[must_use] const fn as_str(self) -> &'static str |5ca8f58ca68e6024
+crates/consent/src/capability.rs [pub] impl CaptureDenialReason :: #[must_use] const fn as_str(self) -> &'static str |99d19abd332326ad
 crates/consent/src/capability.rs [pub] struct CaptureCapabilityToken |f01c9c9b74992ab5
 crates/consent/src/checklist.rs [priv] impl Checklist
 crates/consent/src/checklist.rs [priv] impl ChecklistDimension
@@ -50,9 +50,9 @@ crates/consent/src/checklist.rs [pub] impl Checklist :: #[must_use] fn entry(&se
 crates/consent/src/checklist.rs [pub] impl Checklist :: #[must_use] fn is_complete(&self) -> bool |dad7f195aee97064
 crates/consent/src/checklist.rs [pub] impl Checklist :: #[must_use] fn unanswered(&self) -> Vec<ChecklistDimension> |268f584ccac051ed
 crates/consent/src/checklist.rs [pub] impl Checklist :: fn answer( &mut self, dimension: ChecklistDimension, entry: ChecklistEntry, ) -> Result<(), crate::ConsentError> |35fad1f89e8d69f1
-crates/consent/src/checklist.rs [pub] impl ChecklistDimension :: #[must_use] const fn as_str(self) -> &'static str |b3fb94575ada656c
-crates/consent/src/checklist.rs [pub] impl NotApplicableReason :: #[must_use] const fn as_str(self) -> &'static str |dbb771ddc50bb1ca
-crates/consent/src/evidence.rs [priv] fn conditions_digest(conditions: &[Condition]) -> ContentDigest |ff4442c1949fdacf
+crates/consent/src/checklist.rs [pub] impl ChecklistDimension :: #[must_use] const fn as_str(self) -> &'static str |931a30cd0e1f503b
+crates/consent/src/checklist.rs [pub] impl NotApplicableReason :: #[must_use] const fn as_str(self) -> &'static str |bb9e4dbdc099d90c
+crates/consent/src/evidence.rs [priv] fn conditions_digest(conditions: &[Condition]) -> ContentDigest |6c3a37ceb4f1d936
 crates/consent/src/evidence.rs [priv] fn push_len(bytes: &mut Vec<u8>, len: usize) |bd13c7e8af2f531c
 crates/consent/src/evidence.rs [priv] impl AttestationKind
 crates/consent/src/evidence.rs [priv] impl AttestationRecord
@@ -73,7 +73,7 @@ crates/consent/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] stru
 crates/consent/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EvidenceArtifact |92f852f9ca323889
 crates/consent/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RefusalRecord |8aad5b94ee880d68
 crates/consent/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct WrittenAuthority |6a1938e438bb2c20
-crates/consent/src/evidence.rs [pub] impl AttestationKind :: #[must_use] const fn as_str(self) -> &'static str |821920e7212ade94
+crates/consent/src/evidence.rs [pub] impl AttestationKind :: #[must_use] const fn as_str(self) -> &'static str |566d2a4895148c14
 crates/consent/src/evidence.rs [pub] impl AttestationRecord :: #[must_use] const fn conditions_digest(&self) -> &ContentDigest |09ed79eb73c48cba
 crates/consent/src/evidence.rs [pub] impl AttestationRecord :: #[must_use] const fn file( kind: AttestationKind, heard_at: u64, conditions_digest: ContentDigest, ) -> Self |0792835a01a98b0d
 crates/consent/src/evidence.rs [pub] impl AttestationRecord :: #[must_use] const fn heard_at(&self) -> u64 |dfbe18443d64aab4
@@ -93,7 +93,7 @@ crates/consent/src/evidence.rs [pub] impl EvidenceArtifact :: #[must_use] const 
 crates/consent/src/evidence.rs [pub] impl EvidenceArtifact :: #[must_use] const fn byte_len(&self) -> u64 |5d90c04da372ed2c
 crates/consent/src/evidence.rs [pub] impl EvidenceArtifact :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
 crates/consent/src/evidence.rs [pub] impl EvidenceArtifact :: #[must_use] const fn new(artifact_id: ArtifactId, digest: ContentDigest, byte_len: u64) -> Self |8e82c5a04e983526
-crates/consent/src/evidence.rs [pub] impl GrantAuthority :: #[must_use] const fn as_str(self) -> &'static str |2626fb65e3b5aa5e
+crates/consent/src/evidence.rs [pub] impl GrantAuthority :: #[must_use] const fn as_str(self) -> &'static str |e52990c687b745b0
 crates/consent/src/evidence.rs [pub] impl RefusalRecord :: #[must_use] const fn authority(&self) -> &WrittenAuthority |8157c672d11e9bbb
 crates/consent/src/evidence.rs [pub] impl RefusalRecord :: #[must_use] const fn record(authority: WrittenAuthority, refused_at: u64) -> Self |f8ef595652baa0dd
 crates/consent/src/evidence.rs [pub] impl RefusalRecord :: #[must_use] const fn refused_at(&self) -> u64 |0b745a40fe0d3384
@@ -101,8 +101,8 @@ crates/consent/src/evidence.rs [pub] impl WrittenAuthority :: #[must_use] const 
 crates/consent/src/evidence.rs [pub] impl WrittenAuthority :: #[must_use] const fn authority(&self) -> GrantAuthority |e36d8115ad7fb40c
 crates/consent/src/evidence.rs [pub] impl WrittenAuthority :: #[must_use] const fn kind(&self) -> WrittenEvidenceKind |1642bde145ea3405
 crates/consent/src/evidence.rs [pub] impl WrittenAuthority :: #[must_use] const fn new( authority: GrantAuthority, kind: WrittenEvidenceKind, artifact: EvidenceArtifact, ) -> Self |039ccffcc2376551
-crates/consent/src/evidence.rs [pub] impl WrittenEvidenceKind :: #[must_use] const fn as_str(self) -> &'static str |46dd4bd36936ee30
-crates/consent/src/expiry.rs [priv] fn impact_digest( subject: &SubjectInventory, audio: &MediumImpact, transcript: &MediumImpact, derivatives: &[DerivativeImpact], at: u64, ) -> ContentDigest |d170f940771f7911
+crates/consent/src/evidence.rs [pub] impl WrittenEvidenceKind :: #[must_use] const fn as_str(self) -> &'static str |b9c02d511f4ebfa8
+crates/consent/src/expiry.rs [priv] fn impact_digest( subject: &SubjectInventory, audio: &MediumImpact, transcript: &MediumImpact, derivatives: &[DerivativeImpact], at: u64, ) -> ContentDigest |f158d3930ac5b447
 crates/consent/src/expiry.rs [priv] fn push_bound(material: &mut Vec<u8>, bound: RetentionBound) |c3457292d0e3b7e1
 crates/consent/src/expiry.rs [priv] fn push_medium(material: &mut Vec<u8>, medium: &MediumImpact) |6e78009eeb997dc5
 crates/consent/src/expiry.rs [priv] impl DeletionImpact
@@ -116,7 +116,7 @@ crates/consent/src/expiry.rs [priv] use crate::{ ledger::{ConsentEventKind, Cons
 crates/consent/src/expiry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DerivativeImpact |9320bb0cba2599d9
 crates/consent/src/expiry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MediumImpact |5f62e8b6d2fe4c4e
 crates/consent/src/expiry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum DerivativeClass |098d07988f4fd654
-crates/consent/src/expiry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, thiserror::Error)] #[non_exhaustive] enum ExpiryRefusal |d49d92ef72762d14
+crates/consent/src/expiry.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, thiserror::Error)] #[non_exhaustive] enum ExpiryRefusal |f756bf265c7060be
 crates/consent/src/expiry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeletionImpact |5df16fd6da033e36
 crates/consent/src/expiry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExpiryPlan |227871e69c5cf551
 crates/consent/src/expiry.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SubjectInventory |cc5195fc1d06bdbb
@@ -132,7 +132,7 @@ crates/consent/src/expiry.rs [pub] impl DeletionImpact :: #[must_use] const fn t
 crates/consent/src/expiry.rs [pub] impl DeletionImpact :: #[must_use] const fn transcript(&self) -> MediumImpact |9857d7b86d934ebe
 crates/consent/src/expiry.rs [pub] impl DeletionImpact :: #[must_use] fn derivatives(&self) -> &[DerivativeImpact] |24691ad7c04a2237
 crates/consent/src/expiry.rs [pub] impl DeletionImpact :: #[must_use] fn objects_reached(&self) -> u64 |3cf47a222b59359a
-crates/consent/src/expiry.rs [pub] impl DerivativeClass :: #[must_use] const fn as_str(self) -> &'static str |1ba6e3e9c701c1f2
+crates/consent/src/expiry.rs [pub] impl DerivativeClass :: #[must_use] const fn as_str(self) -> &'static str |d98ded37af7d46be
 crates/consent/src/expiry.rs [pub] impl DerivativeImpact :: #[must_use] const fn audio_expires_now(&self) -> bool |57754a3dddaa23e5
 crates/consent/src/expiry.rs [pub] impl DerivativeImpact :: #[must_use] const fn class(&self) -> DerivativeClass |a94822cde5ed20ae
 crates/consent/src/expiry.rs [pub] impl DerivativeImpact :: #[must_use] const fn inherited(&self) -> RetentionTerms |4002a4eb0f20769a
@@ -161,8 +161,8 @@ crates/consent/src/external.rs [pub] impl ExternalReviewTask :: #[must_use] cons
 crates/consent/src/external.rs [pub] impl ExternalReviewTask :: #[must_use] const fn question(&self) -> LegalQuestion |e44cd5c4781ba8c0
 crates/consent/src/external.rs [pub] impl ExternalReviewTask :: #[must_use] const fn referred_to(&self) -> ReferralTarget |c8307a40ea30a1d1
 crates/consent/src/external.rs [pub] impl ExternalReviewTask :: #[must_use] const fn term(&self) -> TermKey |c33462f2f1f0b6a4
-crates/consent/src/external.rs [pub] impl LegalQuestion :: #[must_use] const fn as_str(self) -> &'static str |9aad9521f2bb1858
-crates/consent/src/external.rs [pub] impl ReferralTarget :: #[must_use] const fn as_str(self) -> &'static str |6925c891e87790c2
+crates/consent/src/external.rs [pub] impl LegalQuestion :: #[must_use] const fn as_str(self) -> &'static str |7d6e4f069c4f8b69
+crates/consent/src/external.rs [pub] impl ReferralTarget :: #[must_use] const fn as_str(self) -> &'static str |be918077bc9fe415
 crates/consent/src/gate.rs [priv] impl ConsentLedger
 crates/consent/src/gate.rs [priv] impl OpenGate
 crates/consent/src/gate.rs [priv] impl UnfilledCell
@@ -171,8 +171,8 @@ crates/consent/src/gate.rs [priv] use crate::{ConsentLedger, permission::TermKey
 crates/consent/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate |d833892f7edc266b
 crates/consent/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct UnfilledCell |64040aa8dcce7d10
 crates/consent/src/gate.rs [pub] impl ConsentLedger :: #[must_use] fn unfilled_cells( &self, offering_id: OfferingId, term: TermKey, at: u64, ) -> Vec<UnfilledCell> |2341f989d4e037ab
-crates/consent/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |14d9f9abe29156a7
-crates/consent/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |c9c2632ac5f63c9b
+crates/consent/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |f1a68b95a21357b6
+crates/consent/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |b4afa963c21274d3
 crates/consent/src/gate.rs [pub] impl UnfilledCell :: #[must_use] const fn gate(&self) -> OpenGate |e525a57d18d885a2
 crates/consent/src/gate.rs [pub] impl UnfilledCell :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
 crates/consent/src/gate.rs [pub] impl UnfilledCell :: #[must_use] const fn term(&self) -> TermKey |c33462f2f1f0b6a4
@@ -191,7 +191,7 @@ crates/consent/src/ledger.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, P
 crates/consent/src/ledger.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RecheckItem |03437997f8a27655
 crates/consent/src/ledger.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LedgerEntry |01609dd41bcc67f2
 crates/consent/src/ledger.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct ConsentLedger |730d05d9cb9bfd1c
-crates/consent/src/ledger.rs [pub] impl ConsentEventKind :: #[must_use] const fn as_str(self) -> &'static str |1cb725e6e7644a7a
+crates/consent/src/ledger.rs [pub] impl ConsentEventKind :: #[must_use] const fn as_str(self) -> &'static str |d284f5818376cf2b
 crates/consent/src/ledger.rs [pub] impl ConsentLedger :: #[must_use] const fn new() -> Self |2ae444d9d93c87b8
 crates/consent/src/ledger.rs [pub] impl ConsentLedger :: #[must_use] fn entries(&self) -> &[LedgerEntry] |d1716f553133fbd9
 crates/consent/src/ledger.rs [pub] impl ConsentLedger :: #[must_use] fn permission_for( &self, offering_id: OfferingId, term: TermKey, lecture_id: LectureSessionId, ) -> Option<&PermissionRecord> |82cd17d515d5a9e5
@@ -213,7 +213,7 @@ crates/consent/src/ledger.rs [pub] impl RecheckItem :: #[must_use] const fn queu
 crates/consent/src/ledger.rs [pub] impl RecheckItem :: #[must_use] const fn status(&self) -> CaptureStatus |e8671143ba7876a9
 crates/consent/src/ledger.rs [pub] impl RecheckItem :: #[must_use] const fn term(&self) -> TermKey |c33462f2f1f0b6a4
 crates/consent/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
-crates/consent/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] #[non_exhaustive] enum ConsentError |cde27ad3e26cfc45
+crates/consent/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] #[non_exhaustive] enum ConsentError |51b7b8563fcfb358
 crates/consent/src/lib.rs [pub] mod capability
 crates/consent/src/lib.rs [pub] mod checklist
 crates/consent/src/lib.rs [pub] mod evidence
@@ -255,10 +255,10 @@ crates/consent/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, E
 crates/consent/src/permission.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum Disposition |962f8cbd533fd678
 crates/consent/src/permission.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PermissionRecord |2d0b81336a1a9bc8
 crates/consent/src/permission.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PermittedUse |c950680b1bd6357e
-crates/consent/src/permission.rs [pub] impl CaptureMedium :: #[must_use] const fn as_str(self) -> &'static str |e5e15b17a42a6478
-crates/consent/src/permission.rs [pub] impl CaptureProcessing :: #[must_use] const fn as_str(self) -> &'static str |055f6aabbe1092aa
+crates/consent/src/permission.rs [pub] impl CaptureMedium :: #[must_use] const fn as_str(self) -> &'static str |e1b31f5d541082c1
+crates/consent/src/permission.rs [pub] impl CaptureProcessing :: #[must_use] const fn as_str(self) -> &'static str |eff41dc34e34c1aa
 crates/consent/src/permission.rs [pub] impl CaptureProcessing :: #[must_use] const fn leaves_the_device(self) -> bool |5850bdd799feeb48
-crates/consent/src/permission.rs [pub] impl Condition :: #[must_use] const fn as_str(self) -> &'static str |9cd6debd47b32740
+crates/consent/src/permission.rs [pub] impl Condition :: #[must_use] const fn as_str(self) -> &'static str |89c902c4dc37d09f
 crates/consent/src/permission.rs [pub] impl PermissionRecord :: #[must_use] const fn checklist(&self) -> &Checklist |6afc74d3c123e47d
 crates/consent/src/permission.rs [pub] impl PermissionRecord :: #[must_use] const fn disposition(&self) -> &Disposition |d8bf84e5edaa40f8
 crates/consent/src/permission.rs [pub] impl PermissionRecord :: #[must_use] const fn grant(&self) -> Option<&AuthorityGrant> |e18dbced4686e962
@@ -281,9 +281,9 @@ crates/consent/src/permission.rs [pub] impl PermittedUse :: #[must_use] const fn
 crates/consent/src/permission.rs [pub] impl PermittedUse :: #[must_use] fn allowed_media(&self) -> &[CaptureMedium] |3f380ee9928493e5
 crates/consent/src/permission.rs [pub] impl PermittedUse :: #[must_use] fn allowed_processing(&self) -> &[CaptureProcessing] |3e2fb51789273c47
 crates/consent/src/permission.rs [pub] impl PermittedUse :: #[must_use] fn new( allowed_media: Vec<CaptureMedium>, allowed_processing: Vec<CaptureProcessing>, external_processing_allowed: bool, sharing_allowed: bool, ) -> Self |da970c86577b37c5
-crates/consent/src/permission.rs [pub] impl ScopeGrain :: #[must_use] const fn kind_str(self) -> &'static str |171593f7f6880925
+crates/consent/src/permission.rs [pub] impl ScopeGrain :: #[must_use] const fn kind_str(self) -> &'static str |23d9c492c21754fe
 crates/consent/src/permission.rs [pub] impl ScopeGrain :: #[must_use] fn reaches(self, lecture_id: LectureSessionId) -> bool |26e6f256a4c3041f
-crates/consent/src/permission.rs [pub] impl Season :: #[must_use] const fn as_str(self) -> &'static str |a284d5f7b1e62028
+crates/consent/src/permission.rs [pub] impl Season :: #[must_use] const fn as_str(self) -> &'static str |7917e80b3692302b
 crates/consent/src/permission.rs [pub] impl TermKey :: #[must_use] const fn season(self) -> Season |a832751fefb1bf3a
 crates/consent/src/permission.rs [pub] impl TermKey :: #[must_use] const fn year(self) -> u16 |fb2c64c5fb0aaf53
 crates/consent/src/permission.rs [pub] impl TermKey :: const fn new(year: u16, season: Season) -> Result<Self, ConsentError> |84c75642144dd82e
@@ -292,7 +292,7 @@ crates/consent/src/retention.rs [priv] impl RetentionTerms
 crates/consent/src/retention.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum RetentionBound |0c3e5e7c3ade9aac
 crates/consent/src/retention.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RetentionTerms |2295442c6a76281a
 crates/consent/src/retention.rs [pub] impl RetentionBound :: #[must_use] const fn is_expired_at(self, at: u64) -> bool |895643e820537095
-crates/consent/src/retention.rs [pub] impl RetentionBound :: #[must_use] const fn kind_str(self) -> &'static str |cf51eadc9e5ebbaa
+crates/consent/src/retention.rs [pub] impl RetentionBound :: #[must_use] const fn kind_str(self) -> &'static str |3a07e04cd1d5558f
 crates/consent/src/retention.rs [pub] impl RetentionBound :: #[must_use] fn stricter(self, other: Self) -> Self |405afa9fa3fb2de7
 crates/consent/src/retention.rs [pub] impl RetentionTerms :: #[must_use] const fn audio(self) -> RetentionBound |82096d6328de8513
 crates/consent/src/retention.rs [pub] impl RetentionTerms :: #[must_use] const fn new(audio: RetentionBound, transcript: RetentionBound) -> Self |067b63fba5dcf995
@@ -303,5 +303,5 @@ crates/consent/src/status.rs [priv] impl CaptureStatus
 crates/consent/src/status.rs [priv] use crate::{ evidence::AuthorityGrant, permission::{Disposition, PermissionRecord}, } |100f66d1438dc084
 crates/consent/src/status.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)] #[non_exhaustive] enum CaptureStatus |fed955a8b98672de
 crates/consent/src/status.rs [pub] #[must_use] fn status_of(record: &PermissionRecord, at: u64) -> CaptureStatus |73a8be23f6bc79b5
-crates/consent/src/status.rs [pub] impl CaptureStatus :: #[must_use] const fn as_str(self) -> &'static str |070ff93baec0feca
+crates/consent/src/status.rs [pub] impl CaptureStatus :: #[must_use] const fn as_str(self) -> &'static str |f1bb59581df00c69
 crates/consent/src/status.rs [pub] impl CaptureStatus :: #[must_use] const fn is_permitting(self) -> bool |46c69844365c97ac

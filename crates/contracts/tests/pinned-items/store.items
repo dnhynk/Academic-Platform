@@ -1,0 +1,1183 @@
+crates/store/src/accept.rs [priv] #[cfg(feature = "sqlcipher-store")] const WRITABLE_V3_ARM: Option<&str> |a6fa60072cbaa76e
+crates/store/src/accept.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] const WRITABLE_V3_ARM: Option<&str> |f1573cfa859fa3be
+crates/store/src/accept.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] use crate::connection::open_writer |a6cce1cd083570c9
+crates/store/src/accept.rs [priv] fn accept_verified_batch_with_faults<V, F>( writer: &mut WriterConnection, verified: &VerifiedBatch, command: AcceptanceCommand<'_>, accepted_at: TimestampMillis, vault: &V, faults: &F, ) -> Result<AcceptanceOutcome, AcceptError> where V: SealedObjectVerifier, F: AcceptanceFaultInjector, |04642d6fef995d3f
+crates/store/src/accept.rs [priv] fn ensure_sqlite_coordinate(value: u64) -> Result<(), AcceptError> |ce94c77f994eb83d
+crates/store/src/accept.rs [priv] fn preflight_artifact_closure( writer: &WriterConnection, batch: &UnsignedBatch, ) -> Result<BTreeMap<ArtifactId, ArtifactDescriptor>, AcceptError> |5bd9772af90a08d5
+crates/store/src/accept.rs [priv] fn revalidate_sealed_receipts<V: SealedObjectVerifier>( vault: &V, sealed_receipts: &mut BTreeMap<ArtifactId, V::Receipt>, ) -> Result<(), AcceptError> |057cb7b0f9d9624d
+crates/store/src/accept.rs [priv] impl AcceptanceStore
+crates/store/src/accept.rs [priv] impl AcceptanceStore :: fn ensure_vault_profile<V: SealedObjectVerifier>(&self, vault: &V) -> Result<(), AcceptError> |5d739acf2398e732
+crates/store/src/accept.rs [priv] impl Error for AcceptError
+crates/store/src/accept.rs [priv] impl Error for AcceptError :: fn source(&self) -> Option<&(dyn Error + 'static)> |3f3217673b168817
+crates/store/src/accept.rs [priv] impl From<IdempotencyError> for AcceptError
+crates/store/src/accept.rs [priv] impl From<IdempotencyError> for AcceptError :: fn from(error: IdempotencyError) -> Self |eb4fa2f3f43765ae
+crates/store/src/accept.rs [priv] impl From<InjectedFault> for AcceptError
+crates/store/src/accept.rs [priv] impl From<InjectedFault> for AcceptError :: fn from(error: InjectedFault) -> Self |c135d80828f4bd92
+crates/store/src/accept.rs [priv] impl From<LedgerError> for AcceptError
+crates/store/src/accept.rs [priv] impl From<LedgerError> for AcceptError :: fn from(error: LedgerError) -> Self |e575b30a6d983a16
+crates/store/src/accept.rs [priv] impl From<OutboxError> for AcceptError
+crates/store/src/accept.rs [priv] impl From<OutboxError> for AcceptError :: fn from(error: OutboxError) -> Self |dda0646cd99eb94a
+crates/store/src/accept.rs [priv] impl From<RepositoryError> for AcceptError
+crates/store/src/accept.rs [priv] impl From<RepositoryError> for AcceptError :: fn from(error: RepositoryError) -> Self |8bda5ca1249cd21c
+crates/store/src/accept.rs [priv] impl From<StoreError> for AcceptError
+crates/store/src/accept.rs [priv] impl From<StoreError> for AcceptError :: fn from(error: StoreError) -> Self |1f9dd19bf676c75e
+crates/store/src/accept.rs [priv] impl From<rusqlite::Error> for AcceptError
+crates/store/src/accept.rs [priv] impl From<rusqlite::Error> for AcceptError :: fn from(error: rusqlite::Error) -> Self |50d65eb68b1e5da9
+crates/store/src/accept.rs [priv] impl fmt::Debug for AcceptanceStore
+crates/store/src/accept.rs [priv] impl fmt::Debug for AcceptanceStore :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |cea32590519726d8
+crates/store/src/accept.rs [priv] impl fmt::Display for AcceptError
+crates/store/src/accept.rs [priv] impl fmt::Display for AcceptError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |221b915b55b5523c
+crates/store/src/accept.rs [priv] use academic_contracts::VerifiedBatch |91144211d0b90ade
+crates/store/src/accept.rs [priv] use academic_domain::{ ArtifactDescriptor, ArtifactId, ClaimId, DecisionAction, EventPayload, EvidenceId, TimestampMillis, UnsignedBatch, VaultLocator, } |0dcc0798d2e506ef
+crates/store/src/accept.rs [priv] use academic_ledger::LedgerError |17a179f2f8928267
+crates/store/src/accept.rs [priv] use academic_vault::{SealedObjectReceipt, SealedObjectVerifier} |1cf3dc9fe659fc4f
+crates/store/src/accept.rs [priv] use crate::{ connection::{PragmaSnapshot, WriterConnection, verify_admitted_schema_version}, error::{StoreError, StoreResult}, fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault, NoFault}, idempotency::{ AcceptanceCommand, DurableAcceptanceReceipt, IdempotencyError, insert_command_receipt, lookup_command_receipt, }, outbox::{OutboxError, insert_outbox}, repository::{ ClosureWriter, RepositoryError, find_batch, insert_batch, preflight_artifact_descriptor, preflight_claim_evidence, preflight_evidence_artifact, read_device_head, read_replica_state, update_heads, }, } |c2ddc70ef1b7d6d4
+crates/store/src/accept.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, error::Error, fmt, path::{Path, PathBuf}, } |9fc09be349e86460
+crates/store/src/accept.rs [pub(crate)] impl AcceptanceStore :: #[cfg(feature = "sqlcipher-store")] fn open( profile_root: &Path, database_path: &Path, key: &academic_crypto::StoreKey, ) -> StoreResult<Self> |37ac87405265a4c4
+crates/store/src/accept.rs [pub(crate)] impl AcceptanceStore :: #[cfg(not(feature = "sqlcipher-store"))] fn open(profile_root: &Path, database_path: &Path) -> StoreResult<Self> |b9b6737f30b2d4f3
+crates/store/src/accept.rs [pub] #[derive(Debug)] enum AcceptError |2e5d51a7033f246e
+crates/store/src/accept.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AcceptanceOutcome |61b396e44c6bd111
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: #[must_use] fn database_path(&self) -> &Path |05bb90caa80271cd
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn accept_verified_batch<V: SealedObjectVerifier>( &mut self, verified: &VerifiedBatch, command: AcceptanceCommand<'_>, accepted_at: TimestampMillis, vault: &V, ) -> Result<AcceptanceOutcome, AcceptError> |13deada831ce8ebd
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn accept_verified_batch_with_faults<V, F>( &mut self, verified: &VerifiedBatch, command: AcceptanceCommand<'_>, accepted_at: TimestampMillis, vault: &V, faults: &F, ) -> Result<AcceptanceOutcome, AcceptError> where V: SealedObjectVerifier, F: AcceptanceFaultInjector, |284fa19956ec41f3
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn descriptor_migrations( &self, ) -> StoreResult<Vec<crate::descriptor_migration::DescriptorMigration>> |805bc60abea1700a
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn locator_is_already_in_chain( &self, artifact: ArtifactId, locator: &VaultLocator, ) -> StoreResult<bool> |62d535930790e5f1
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn next_descriptor_migration_seq(&self, artifact: ArtifactId) -> StoreResult<u64> |6b6382d94a8441ec
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn pragma_snapshot(&self) -> StoreResult<PragmaSnapshot> |da8da1833dd46994
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn record_descriptor_migration<V: SealedObjectVerifier>( &mut self, migration: &crate::descriptor_migration::DescriptorMigration, migrated: &ArtifactDescriptor, vault: &V, ) -> StoreResult<()> |81d21c37312c82c2
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn resolved_artifact_descriptor( &self, artifact: ArtifactId, ) -> StoreResult<Option<ArtifactDescriptor>> |7b51bc006fb8e850
+crates/store/src/accept.rs [pub] impl AcceptanceStore :: fn superseded_locators(&self, artifact: ArtifactId) -> StoreResult<Vec<VaultLocator>> |e9c808de59c1d6ad
+crates/store/src/accept.rs [pub] struct AcceptanceStore |3f0cc8dc811521f1
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn acceptance_is_still_atomic_with_18_arms() -> Result<(), Box<dyn Error>> |7acd0c40619f6f60
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn authorizer_covers_every_canonical_table() -> Result<(), Box<dyn Error>> |f4ca192a5f5c7915
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn closure_row_requires_its_event() -> Result<(), Box<dyn Error>> |af1cdbeada93aa11
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn every_new_table_denies_update_and_delete() -> Result<(), Box<dyn Error>> |b84e01d166bfa9a8
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn migration_0004_is_forward_only_and_pre_listen() -> Result<(), Box<dyn Error>> |457cbfb8fdc724c0
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn no_aggregate_smuggled_into_object_text() -> Result<(), Box<dyn Error>> |1ed772fabbd2c8c0
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn the_test_base_is_the_real_schema_two() -> Result<(), Box<dyn Error>> |fe5077abfa7d0d6d
+crates/store/src/aggregate_closure_tests.rs [priv] const CLOSURE_TABLES: [(&str, &str, Option<&str>); 18] |e90de7da789d9bfe
+crates/store/src/aggregate_closure_tests.rs [priv] fn append_all_arms<'connection>( connection: &'connection mut Connection, stop_after: Option<usize>, ) -> Result<(Transaction<'connection>, usize), Box<dyn Error>> |7443a59a08cc1691
+crates/store/src/aggregate_closure_tests.rs [priv] fn closure_table_for(payload: &EventPayload) -> Result<&'static str, Box<dyn Error>> |2e8a1c14cb234745
+crates/store/src/aggregate_closure_tests.rs [priv] fn column_names(connection: &Connection, table: &str) -> Result<Vec<String>, Box<dyn Error>> |74fa58051f924aa6
+crates/store/src/aggregate_closure_tests.rs [priv] fn count(connection: &Connection, table: &str) -> Result<i64, Box<dyn Error>> |d1ec68691b678817
+crates/store/src/aggregate_closure_tests.rs [priv] fn eighteen_arm_events() -> Result<Vec<Event>, Box<dyn Error>> |d4774f4c4049d386
+crates/store/src/aggregate_closure_tests.rs [priv] fn migration_0004_statements() -> String |920f4dd26b2cd18b
+crates/store/src/aggregate_closure_tests.rs [priv] fn schema_two_literal(prefix: &str) -> Result<String, Box<dyn Error>> |3fad0589bf1f1324
+crates/store/src/aggregate_closure_tests.rs [priv] fn seed_batch( transaction: &Transaction<'_>, batch_id: &[u8; 16], event_count: u64, ) -> Result<(), Box<dyn Error>> |5f4a3f2d83810d23
+crates/store/src/aggregate_closure_tests.rs [priv] fn synthetic_id(suffix: u32) -> [u8; 16] |e935c784086232e4
+crates/store/src/aggregate_closure_tests.rs [priv] impl Drop for MigratedDatabase
+crates/store/src/aggregate_closure_tests.rs [priv] impl Drop for MigratedDatabase :: fn drop(&mut self) |17cdcdcc7f5f9e27
+crates/store/src/aggregate_closure_tests.rs [priv] impl MigratedDatabase
+crates/store/src/aggregate_closure_tests.rs [priv] impl MigratedDatabase :: fn empty(label: &str) -> Result<Self, Box<dyn Error>> |8f1f2e1cddb2f9aa
+crates/store/src/aggregate_closure_tests.rs [priv] impl MigratedDatabase :: fn new(label: &str) -> Result<Self, Box<dyn Error>> |5946def2588814e5
+crates/store/src/aggregate_closure_tests.rs [priv] impl MigratedDatabase :: fn open(&self) -> Result<Connection, Box<dyn Error>> |bcc28b41f7b7dae0
+crates/store/src/aggregate_closure_tests.rs [priv] static NEXT_TEMP: AtomicU64 |3d22fec565cea36a
+crates/store/src/aggregate_closure_tests.rs [priv] struct MigratedDatabase |fb4c064976731727
+crates/store/src/aggregate_closure_tests.rs [priv] use academic_domain::{ Actor, ContentDigest, DomainId, Event, EventId, EventPayload, ScopeDescriptor, ScopeId, TimestampMillis, V3_EVENT_KINDS, ValidInterval, } |93cb337a9da50638
+crates/store/src/aggregate_closure_tests.rs [priv] use crate::{ SQLITE_APPLICATION_ID, authorizer::{CANONICAL_TABLES, install_canonical_authorizer}, migration::{ MIGRATION_0001_SQL, MIGRATION_0003_SQL, MIGRATION_0004_SQL, apply_aggregate_migration_pre_listen, }, repository::ClosureWriter, } |637a68ccb8c2525f
+crates/store/src/aggregate_closure_tests.rs [priv] use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior, params} |f17aab2d7775bae5
+crates/store/src/aggregate_closure_tests.rs [priv] use std::{ collections::BTreeSet, error::Error, fs, path::PathBuf, sync::{ Arc, atomic::{AtomicBool, AtomicU64, Ordering}, }, } |93f30d8c6c543c80
+crates/store/src/aggregate_closure_tests.rs [pub(crate)] fn apply_schema_two_canonical_core( connection: &Connection, ) -> Result<(), Box<dyn Error>> |84c18b1cb7858ca6
+crates/store/src/aggregate_closure_tests.rs [pub(crate)] fn typed_id<T>(suffix: u32) -> Result<T, Box<dyn Error>> where T: std::str::FromStr, T::Err: std::fmt::Display, |28df763ac5990023
+crates/store/src/aggregate_timeline_tests.rs [priv] #[test] fn aggregate_timeline_covers_every_v3_registration_arm() -> Result<(), Box<dyn Error>> |4fee16104e57a365
+crates/store/src/aggregate_timeline_tests.rs [priv] #[test] fn aggregate_timeline_excludes_knowledge_accepted_later() -> Result<(), Box<dyn Error>> |8fe387f8eecd3ccb
+crates/store/src/aggregate_timeline_tests.rs [priv] #[test] fn aggregate_timeline_refuses_a_known_at_beyond_the_head() -> Result<(), Box<dyn Error>> |755fe44dce82037e
+crates/store/src/aggregate_timeline_tests.rs [priv] #[test] fn aggregate_timeline_refuses_a_profile_without_aggregate_tables() -> Result<(), Box<dyn Error>> |f6345edcd02e7a66
+crates/store/src/aggregate_timeline_tests.rs [priv] #[test] fn aggregate_timeline_registry_matches_the_migrated_schema() -> Result<(), Box<dyn Error>> |f23ceec857209557
+crates/store/src/aggregate_timeline_tests.rs [priv] #[test] fn aggregate_timeline_valid_at_reinterprets_history() -> Result<(), Box<dyn Error>> |9596eb4e615beda6
+crates/store/src/aggregate_timeline_tests.rs [priv] #[test] fn every_carried_dimension_resolves_to_a_projected_arm() -> Result<(), Box<dyn Error>> |45e6c70b839f3a13
+crates/store/src/aggregate_timeline_tests.rs [priv] #[test] fn origin_marks_report_an_identity_change_as_an_ontology_change() -> Result<(), Box<dyn Error>> |9ba311b27b4a48bd
+crates/store/src/aggregate_timeline_tests.rs [priv] const WAVE_ONE_HEAD: u64 |abf65da21c462c54
+crates/store/src/aggregate_timeline_tests.rs [priv] const WAVE_TWO_HEAD: u64 |187ba09f74d60c9a
+crates/store/src/aggregate_timeline_tests.rs [priv] fn actor() -> Actor |ccb4fc1fe409d05b
+crates/store/src/aggregate_timeline_tests.rs [priv] fn append_wave( connection: &mut Connection, batch_suffix: u32, id_base: u32, event_id_base: u32, accept_seq_start: u64, valid_time: ValidInterval, with_scope: bool, ) -> Result<(), Box<dyn Error>> |ec92ce33fd0714b5
+crates/store/src/aggregate_timeline_tests.rs [priv] fn at(known_at_accept_seq: u64, valid_at: i64) -> TimeCoordinates |c3cf589804fda3e4
+crates/store/src/aggregate_timeline_tests.rs [priv] fn domain() -> Result<DomainId, Box<dyn Error>> |057e9ccdbf90b317
+crates/store/src/aggregate_timeline_tests.rs [priv] fn read( connection: &Connection, coordinates: TimeCoordinates, ) -> Result<AggregateTimelineSnapshot, Box<dyn Error>> |261efbfb33f4c5b7
+crates/store/src/aggregate_timeline_tests.rs [priv] fn request(coordinates: TimeCoordinates) -> Result<AggregateTimelineRequest, Box<dyn Error>> |ec12001e185d9406
+crates/store/src/aggregate_timeline_tests.rs [priv] fn scope() -> Result<ScopeId, Box<dyn Error>> |9ffc4120523fdcae
+crates/store/src/aggregate_timeline_tests.rs [priv] fn seed_batch( transaction: &Transaction<'_>, batch_id: &[u8; 16], device_id: &[u8; 16], accept_seq_start: u64, accept_seq_end: u64, filler: u8, ) -> Result<(), Box<dyn Error>> |5f664d8e657bb060
+crates/store/src/aggregate_timeline_tests.rs [priv] fn two_wave_database(label: &str) -> Result<TimelineDatabase, Box<dyn Error>> |d502675794330589
+crates/store/src/aggregate_timeline_tests.rs [priv] fn wave_payloads( id_base: u32, valid_time: ValidInterval, ) -> Result<Vec<EventPayload>, Box<dyn Error>> |8c0ec05b05bed334
+crates/store/src/aggregate_timeline_tests.rs [priv] impl Drop for TimelineDatabase
+crates/store/src/aggregate_timeline_tests.rs [priv] impl Drop for TimelineDatabase :: fn drop(&mut self) |17cdcdcc7f5f9e27
+crates/store/src/aggregate_timeline_tests.rs [priv] impl TimelineDatabase
+crates/store/src/aggregate_timeline_tests.rs [priv] impl TimelineDatabase :: fn empty(label: &str) -> Result<Self, Box<dyn Error>> |5b34d38e2000ff44
+crates/store/src/aggregate_timeline_tests.rs [priv] impl TimelineDatabase :: fn migrated(label: &str) -> Result<Self, Box<dyn Error>> |6e9eb5882c7ac636
+crates/store/src/aggregate_timeline_tests.rs [priv] impl TimelineDatabase :: fn open(&self) -> Result<Connection, Box<dyn Error>> |bcc28b41f7b7dae0
+crates/store/src/aggregate_timeline_tests.rs [priv] impl TimelineDatabase :: fn schema_one(label: &str) -> Result<Self, Box<dyn Error>> |3f4ddf854ee04fb0
+crates/store/src/aggregate_timeline_tests.rs [priv] static NEXT_TEMP: AtomicU64 |3d22fec565cea36a
+crates/store/src/aggregate_timeline_tests.rs [priv] struct TimelineDatabase |27a004cbee14b06f
+crates/store/src/aggregate_timeline_tests.rs [priv] use academic_domain::{ Actor, ContentDigest, DomainId, Event, EventId, EventPayload, ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch, V3_EVENT_KINDS, ValidInterval, temporal::{DimensionCarrier, NAMED_TIME_TRAVEL_DIMENSIONS, TimeCoordinates}, } |117af4083d059bc7
+crates/store/src/aggregate_timeline_tests.rs [priv] use crate::{ aggregate_closure_tests::{apply_schema_two_canonical_core, typed_id}, migration::{MIGRATION_0001_SQL, apply_aggregate_migration_pre_listen}, queries::QueryError, repository::ClosureWriter, timeline::{ AGGREGATE_TABLES, AggregateTimelineRequest, AggregateTimelineSnapshot, aggregate_timeline_from_connection, origin_marks_from_connection, }, } |900627aed930364e
+crates/store/src/aggregate_timeline_tests.rs [priv] use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior, params} |f17aab2d7775bae5
+crates/store/src/aggregate_timeline_tests.rs [priv] use std::{ error::Error, fs, path::PathBuf, sync::atomic::{AtomicU64, Ordering}, } |443ece882763bafc
+crates/store/src/authorizer.rs [priv] fn authorize_product_statement( context: AuthContext<'_>, acceptance_authorized: bool, ) -> Authorization |def3b496a36f95c9
+crates/store/src/authorizer.rs [priv] fn authorize_reader_statement(context: AuthContext<'_>) -> Authorization |b6e4578d792101de
+crates/store/src/authorizer.rs [priv] fn is_acceptance_insert_table(table_name: &str) -> bool |f53dd219c3058fc2
+crates/store/src/authorizer.rs [priv] fn is_acceptance_update_table(table_name: &str) -> bool |f7038d951da8c6ba
+crates/store/src/authorizer.rs [priv] fn is_canonical_table(table_name: &str) -> bool |dcbbb91f5ce99bbd
+crates/store/src/authorizer.rs [priv] use crate::error::StoreResult |a16d4d02141704ae
+crates/store/src/authorizer.rs [priv] use rusqlite::{ Connection, hooks::{AuthAction, AuthContext, Authorization}, } |e93da9a4f9b3f434
+crates/store/src/authorizer.rs [priv] use std::sync::{ Arc, atomic::{AtomicBool, Ordering}, } |eb9727021012a091
+crates/store/src/authorizer.rs [pub(crate)] fn install_canonical_authorizer( connection: &Connection, acceptance_authorized: Arc<AtomicBool>, ) -> StoreResult<()> |25d32a7517ea3ad8
+crates/store/src/authorizer.rs [pub(crate)] fn install_reader_authorizer(connection: &Connection) -> StoreResult<()> |157a8b4eed28e928
+crates/store/src/authorizer.rs [pub] const CANONICAL_TABLES: &[&str] |a7639c8c720cecab
+crates/store/src/bin/sqlcipher_spike.rs [priv] fn main() |afbc338ea9e2573f
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: #[derive(Debug)] struct HarnessError |de7c5ff2787bf978
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum DbFaultDisposition |86cd1f552f8d495d
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: #[derive(Debug, PartialEq, Eq)] struct DbFaultState |d12903a2a9aeed62
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const BACKUP_KEY: &str |3407b3d5956f1b77
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const BUILD_DIGEST: [u8; 32] |96cd9378c514a394
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const CANARY_CREATED_AT_BASE: i64 |320e89f1da9c63c2
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const CANARY_FILE: &str |9cb67c9314955c75
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const DB_FAULT_EXIT_BASE: i32 |e03783b8a0144ad7
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const DB_FAULT_IDS: [&str; 7] |94ec27e15388ac8b
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const DB_FAULT_RESPONSE: [u8; 4] |da03b38fed4df7ca
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const PRIMARY_KEY: &str |4613d9dff0ca6df9
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const REKEY_COMPLETE_EXIT: i32 |697be20700896a84
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const REKEY_KEY: &str |a7d13cc2b296bc16
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const REKEY_PAYLOAD_BYTES: i64 |d3733bacd0f09756
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const RESTORE_KEY: &str |2df75711fee408ec
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: const WRONG_KEY: &str |b6ace70f236843df
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn apply_key_before_page_access(connection: &Connection, key: &str) -> SpikeResult<()> |f79e43ed95fdc20e
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn canary_count_with_key( path: &Path, key: &'static str, key_label: &'static str, ) -> SpikeResult<usize> |8937712c6a7fb579
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn child_db_fault(database: &Path, checkpoint: &str) -> SpikeResult<()> |4c5ddec8ca4d5eb3
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn child_rekey(database: &Path, before: &Path, after: &Path) -> SpikeResult<()> |f30f78fbab23e6dc
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn child_wal_crash(database: &Path) -> SpikeResult<()> |1de28ea47a335cd5
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn cipher_settings(connection: &Connection) -> SpikeResult<CipherSettings> |a487b27fa21a7675
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn classify_db_fault_state(state: DbFaultState) -> SpikeResult<DbFaultDisposition> |9ca9e2a22ebc2826
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn collect_files(root: &Path, files: &mut Vec<PathBuf>) -> SpikeResult<()> |3b52f716d31e3568
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn companion_path(database: &Path, suffix: &str) -> PathBuf |15f93f3f032235ae
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn copy_database_artifacts(database: &Path, destination: &Path) -> SpikeResult<Vec<PathBuf>> |2e7b9d2976040572
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn db_fault_index(checkpoint: &str) -> SpikeResult<usize> |2574248388b6215c
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn encrypted_online_backup( source: &Connection, destination: &Path, destination_key: &'static str, key_label: &'static str, ) -> SpikeResult<()> |b16854d244e9a850
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn exercise_memory_temp_store(connection: &Connection, canaries: &[String]) -> SpikeResult<()> |6498c63204cf95c4
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn exit_at_db_fault(checkpoint: &str, expected: &str) -> SpikeResult<()> |7990c26ead2e90f9
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn find_all(haystack: &[u8], needle: &[u8]) -> Vec<usize> |c5751e151d02a6b8
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn initialize_database( path: &Path, include_rekey_payload: bool, ) -> SpikeResult<(KeyedConnection, CipherSettings, S1Pragmas)> |7a72dd94896903d6
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn insert_canaries(connection: &mut Connection, canaries: &[String]) -> SpikeResult<()> |ee235db5f65b8478
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn insert_rekey_payload(connection: &Connection) -> SpikeResult<()> |99b3464eedfb64f8
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn json_escape(value: &str) -> String |27bb505657a36299
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn path_argument( arguments: &mut impl Iterator<Item = OsString>, name: &str, ) -> SpikeResult<PathBuf> |ea25b7085bcdc63a
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn pragma_decimal(connection: &Connection, name: &str) -> SpikeResult<i64> |05ceed3004cf99f9
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn pragma_i64(connection: &Connection, name: &str) -> SpikeResult<i64> |01899252c84bb989
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn pragma_text(connection: &Connection, name: &str) -> SpikeResult<String> |d9380567691b58a3
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn read_canaries(connection: &Connection) -> SpikeResult<Vec<Vec<u8>>> |75df0d015b561199
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn read_db_fault_state(connection: &Connection) -> SpikeResult<DbFaultState> |a34d29c6bbc9cfe7
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn read_s1_pragmas(connection: &Connection) -> SpikeResult<S1Pragmas> |dfc07a428c45c461
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn scan_file( path: &Path, canaries: &[String], findings: &mut Vec<CanaryFinding>, ) -> SpikeResult<()> |c9a2da151cc7b2b3
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn validate_key(key: &str) -> SpikeResult<()> |f3c2365beb4e6445
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn verify_canaries(connection: &Connection, expected: &[String]) -> SpikeResult<usize> |5e9c6abab23a3efa
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn verify_cipher_integrity(connection: &Connection) -> SpikeResult<()> |04d879d9c055a5bc
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn verify_shared_current(connection: &mut Connection) -> SpikeResult<()> |a16bf6a9a948b15d
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: fn write_marker(path: &Path, value: &str) -> SpikeResult<()> |f1dddfca79d0a64a
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl Error for HarnessError
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl HarnessError
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl HarnessError :: fn new(message: impl Into<String>) -> Self |897d5ed8df314acc
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl HarnessReceipt
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl KeyedConnection
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl KeyedConnection :: fn create(path: &Path, key: &'static str, key_label: &'static str) -> SpikeResult<Self> |2074a2704b387578
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl KeyedConnection :: fn open(path: &Path, key: &'static str, key_label: &'static str) -> SpikeResult<Self> |217fc5addf804bbc
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl KeyedConnection :: fn open_read_only( path: &Path, key: &'static str, key_label: &'static str, ) -> SpikeResult<Self> |743ae146b2a2caa5
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl fmt::Debug for KeyedConnection
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl fmt::Debug for KeyedConnection :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |9aa89f21a4d7de22
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl fmt::Display for HarnessError
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: impl fmt::Display for HarnessError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |5c05e3c3db5c74c6
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: struct KeyedConnection |9f1538f4ef35a3e3
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: use academic_store::migration::{MigrationStatus, migrate_open_connection_pre_listen} |b54a42735739e69f
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: use rusqlite::{ Connection, OpenFlags, OptionalExtension, TransactionBehavior, backup::Backup, params, } |fafcc9a70f0e9866
+crates/store/src/bin/sqlcipher_spike.rs [priv] mod enabled :: use std::{ collections::HashSet, error::Error, ffi::OsString, fmt, fs::{self, File, OpenOptions}, io::{BufReader, Read, Seek, SeekFrom, Write}, path::{Path, PathBuf}, process, thread, time::Duration, } |c3112568a938637c
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: #[derive(Debug, Clone, PartialEq, Eq)] struct CanaryFinding |0caec1f4c7b4c3d5
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: #[derive(Debug, Clone, PartialEq, Eq)] struct CipherSettings |083b905053336ef1
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: #[derive(Debug, Clone, PartialEq, Eq)] struct HarnessReceipt |add30256a145cb82
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: #[derive(Debug, Clone, PartialEq, Eq)] struct S1Pragmas |430a60c7fead9d1c
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: #[derive(Debug, Clone, PartialEq, Eq)] struct ScanSummary |61ec9038c532794a
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: #[must_use] const fn rekey_complete_exit_code() -> i32 |c05b74241fc7a269
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: #[must_use] const fn wal_crash_exit_code() -> i32 |175e028f75c5d975
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn canary_count_with_primary_key(path: &Path) -> SpikeResult<usize> |e43323c13e2a2d9d
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn canary_count_with_rekey_key(path: &Path) -> SpikeResult<usize> |ea0af40e91b5e279
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn capture_crash_artifacts( database: &Path, destination: &Path, ) -> SpikeResult<Vec<PathBuf>> |af5e1d5b9cf38ccd
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn corrupt_header_copy(source: &Path, destination: &Path) -> SpikeResult<()> |07322aae0014cbaf
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn corrupt_header_is_rejected(path: &Path) -> SpikeResult<bool> |5fee07b731cfb1e2
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn create_initialized_database( path: &Path, include_rekey_payload: bool, ) -> SpikeResult<(CipherSettings, S1Pragmas)> |736b20498f2f7574
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn db_fault_exit_code(checkpoint: &str) -> SpikeResult<i32> |4af3da29ecc01766
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn db_fault_outcome(path: &Path, checkpoint: &str) -> SpikeResult<String> |68d4324f7e000827
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn documented_recovery_key(path: &Path) -> SpikeResult<String> |c503382613eb74c3
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn load_canaries() -> SpikeResult<Vec<String>> |6c0064b2b033c928
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn make_truncated_wal_snapshot( database: &Path, destination: &Path, ) -> SpikeResult<PathBuf> |32a8ad0cc2322df1
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn online_backup_and_empty_restore( source_path: &Path, backup_path: &Path, restore_path: &Path, ) -> SpikeResult<usize> |aa7b579b8aed1353
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn run_cli() -> SpikeResult<()> |a4229e9fefba544d
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn run_full_harness(root: &Path) -> SpikeResult<HarnessReceipt> |07a7823be07596db
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn scan_artifacts(root: &Path, canaries: &[String]) -> SpikeResult<ScanSummary> |4af97f1437e68a6a
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn truncated_wal_outcome(path: &Path) -> SpikeResult<String> |53f5816de3dfe604
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn wait_for_marker(path: &Path, attempts: usize) -> bool |f041e3dc59c7e668
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: fn wrong_key_is_rejected(path: &Path) -> SpikeResult<bool> |ce761b34e647a9a4
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: impl HarnessReceipt :: #[must_use] fn to_json(&self) -> String |dfe759d96a47b78f
+crates/store/src/bin/sqlcipher_spike.rs [pub] mod enabled :: type SpikeResult<T> = Result<T, Box<dyn Error>> |fe71c77e8b8e7c2c
+crates/store/src/bin/sqlcipher_spike.rs [pub] use enabled::* |030fe4dae33de399
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] #[allow(dead_code)] fn main() |0a50101ed3fbb650
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const BUILD_DIGEST: [u8; 32] |ebd55fc4267d4cf5
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const CANARY_CREATED_AT_BASE: i64 |49cc531091e0ba4c
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const CANONICAL_AGGREGATES: &str |989ccda4ad43f849
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const CANONICAL_EVENTS: &str |a3a7c34083cf50a3
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const CANONICAL_HEADS: &str |5ae3db54c189e407
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const CANONICAL_OUTBOX: &str |b5e4e93eefc75f12
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const CANONICAL_RECEIPT_AND_BATCH: &str |716c9338fc757555
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const DB_FAULT_EXIT_BASE: i32 |e03783b8a0144ad7
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const DB_FAULT_IDS: [&str; 7] |94ec27e15388ac8b
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const REKEY_STARTED_EXIT: i32 |ddfcff94f5ecbcb0
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const SYNTHETIC_PROFILE_ID: [u8; 16] |885431ab6b703279
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const SYNTHETIC_RECIPIENT_ID: [u8; 16] |915de001da584fd6
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const SYNTHETIC_RECOVERY_SECRET: [u8; 32] |50da9206a33dfa0d
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: const WAL_CRASH_EXIT: i32 |884b9c8908911369
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn child_db_fault(workdir: &Path, checkpoint: &str) -> ProbeResult<()> |35ce4aa368da559a
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn child_rekey(workdir: &Path, marker: &Path) -> ProbeResult<()> |ab9578fc707c6a49
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn child_wal_crash(workdir: &Path) -> ProbeResult<()> |014820c529ce7271
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn collect_files(root: &Path, files: &mut Vec<PathBuf>) -> ProbeResult<()> |b79c2c232cbaf2d9
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn companion(database: &Path, suffix: &str) -> PathBuf |61747e032a7837cd
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn count_occurrences(haystack: &[u8], needle: &[u8]) -> usize |20326e1d27490eaf
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn db_fault_index(checkpoint: &str) -> ProbeResult<usize> |c3dfadcb1b597810
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn exit_at_db_fault(checkpoint: &str, expected: &str) -> ProbeResult<()> |2ab1fa85d3212d1a
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn path_argument( arguments: &mut impl Iterator<Item = OsString>, name: &str, ) -> ProbeResult<PathBuf> |e35a213b9896be12
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn print_posture() |f3f4a2da13cba1f1
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn synthetic_profile() -> ProfileId |fbf0c678ed6c969a
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: fn synthetic_secret() -> RecoverySecret |dcd505e03eccf418
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: impl Error for HarnessError
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: impl HarnessError
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: impl fmt::Display for HarnessError
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: impl fmt::Display for HarnessError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |5c05e3c3db5c74c6
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: use academic_crypto::{ ProfileId, RECOVERY_ARGON2ID_V1, RecipientRecord, RecipientSet, RecoverySecret, StoreKey, UnlockThrottle, VaultMasterKey, create_recovery_recipient, unlock_with_recovery, } |ea48a85e88aa629a
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: use academic_store::{ STORE_DATABASE_FILE, cipher::{ CipherSettings, EncryptedProfile, create_encrypted_profile, open_encrypted_profile, }, path_policy::NativePathProbe, } |2d907075d52c2a76
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: use rusqlite::{Connection, OpenFlags, TransactionBehavior, backup::Backup, params} |1985816eb939de3f
+crates/store/src/bin/sqlcipher_store_probe.rs [priv] mod enabled :: use std::{ collections::BTreeSet, error::Error, ffi::OsString, fmt, fs, path::{Path, PathBuf}, process::{self, Command, Stdio}, time::Duration, } |01fb7419b2df90e5
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] #[allow(dead_code)] mod enabled
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: #[derive(Debug)] struct HarnessError |fdbbc04fa999ead9
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: #[must_use] const fn rekey_started_exit_code() -> i32 |5753fcc45d6c4de9
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: #[must_use] const fn wal_crash_exit_code() -> i32 |a62b1503391620f5
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: #[must_use] fn database_path(workdir: &Path) -> PathBuf |34f87bea8c1f66a4
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: #[must_use] fn profile_root(workdir: &Path) -> PathBuf |20ef139faf618879
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: const ARTIFACT_DIRECTORY: &str |4c12e3195ed4109a
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: const BACKUP_KEY_HEX: &str |287214b36d247cdc
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: const CANARY_FILE: &str |cd481cbaf6fad646
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: const CANONICAL_COUNT_TABLES: &[&str] |742e28cc56195d20
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: const PROFILE_DIRECTORY: &str |24d2107fe05d5c81
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: const RECIPIENT_FILE: &str |8240f67926d65931
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: const REKEY_TARGET_HEX: &str |3648010d1c171f15
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn apply_raw_key(connection: &Connection, key: &StoreKey) -> ProbeResult<()> |57d5dedcd3099f12
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn canonical_counts(workdir: &Path, key: &StoreKey) -> ProbeResult<Vec<(String, i64)>> |d40bbf9aa26bf9e6
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn copy_artifacts( database: &Path, destination: &Path, label: &str, ) -> ProbeResult<Vec<PathBuf>> |b253c8ee3c034f8d
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn create_profile(workdir: &Path, key: &StoreKey) -> ProbeResult<EncryptedProfile> |0c03b06741ab0903
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn db_fault_exit_code(checkpoint: &str) -> ProbeResult<i32> |9aa184ae8f0d48d6
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn encrypted_backup(source: &Connection, destination: &Path) -> ProbeResult<()> |3ec492e0d0ba2168
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn load_canaries() -> ProbeResult<Vec<String>> |9adc2ed3465773c8
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn observed_cipher_settings(workdir: &Path, key: &StoreKey) -> ProbeResult<CipherSettings> |ece6bfb02a66835d
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn open_keyed(path: &Path, key: &StoreKey) -> ProbeResult<Connection> |54721547ac48353a
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn open_profile(workdir: &Path, key: &StoreKey) -> ProbeResult<EncryptedProfile> |3807813db579d088
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn page_one_authenticates(path: &Path, key: &StoreKey) -> ProbeResult<bool> |0c28c20540b122ad
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn provision(workdir: &Path) -> ProbeResult<StoreKey> |f2cfa83b3f74810f
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn readable_canary_count( connection: &Connection, canaries: &[String], ) -> ProbeResult<usize> |0738d82ec82b5c2e
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn run_cli() -> ProbeResult<()> |ba1e9dbb524aa244
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn run_receipt(workdir: &Path) -> ProbeResult<()> |522787af53c92098
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn scan_for(root: &Path, needles: &[Vec<u8>]) -> ProbeResult<(u64, u64, usize)> |20f6e42160b1a969
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn unlock(workdir: &Path) -> ProbeResult<StoreKey> |b5bc5a5f61e98b10
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: fn write_canaries(connection: &mut Connection, canaries: &[String]) -> ProbeResult<()> |9ad0aeeafde5c717
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: impl HarnessError :: fn new(message: impl Into<String>) -> Self |4e8ce4bfc428bcd5
+crates/store/src/bin/sqlcipher_store_probe.rs [pub] mod enabled :: type ProbeResult<T> = Result<T, Box<dyn Error>> |18fd01bee064bd40
+crates/store/src/cipher.rs [priv] #[cfg(test)] mod tests
+crates/store/src/cipher.rs [priv] const INCOMPLETE_PROFILE_MARKER_CONTENTS: &str |58c77244e75f384e
+crates/store/src/cipher.rs [priv] const KEY_STATEMENT_PUNCTUATION: usize |39b8dbdbcc6ecf76
+crates/store/src/cipher.rs [priv] fn apply_rekey(connection: &Connection, key: &StoreKey, database_path: &Path) -> StoreResult<()> |c17a18eff3f0a3f1
+crates/store/src/cipher.rs [priv] fn cipher_exact(setting: &'static str, expected: String, actual: String) -> StoreResult<()> |4ec093b8503f929b
+crates/store/src/cipher.rs [priv] fn key_statement(hex: &str) -> String |a3521a36c04c9728
+crates/store/src/cipher.rs [priv] fn keying_statement(pragma: &str, hex: &str) -> String |3e05ac39cac45029
+crates/store/src/cipher.rs [priv] fn known_encrypted_profile_files() -> [&'static str; 6] |f74ace6b39d53d51
+crates/store/src/cipher.rs [priv] fn pragma_decimal(connection: &Connection, name: &str) -> StoreResult<i64> |366fb8f112fdbbff
+crates/store/src/cipher.rs [priv] fn pragma_text(connection: &Connection, name: &str) -> StoreResult<String> |cbc9b198b5fce79e
+crates/store/src/cipher.rs [priv] fn read_and_verify_cipher_settings( connection: &Connection, database_path: &Path, ) -> StoreResult<CipherSettings> |f648bf204973cfd9
+crates/store/src/cipher.rs [priv] fn verify_complete_incomplete_marker(root: &Path) -> StoreResult<()> |7539ae4c881c3af4
+crates/store/src/cipher.rs [priv] fn verify_format_marker(root: &Path) -> StoreResult<()> |4a189a8d63cc17f7
+crates/store/src/cipher.rs [priv] fn verify_removable_incomplete_marker(root: &Path) -> StoreResult<()> |b320a94d8a6eedf9
+crates/store/src/cipher.rs [priv] impl EncryptedProfile
+crates/store/src/cipher.rs [priv] impl IncompleteEncryptedProfile
+crates/store/src/cipher.rs [priv] mod tests :: #[test] fn frozen_schema_two_identity_matches_migration_0003() |a90958a4b97d6b60
+crates/store/src/cipher.rs [priv] mod tests :: #[test] fn storage_encryption_string_names_every_asserted_setting() |b6a235cd7eaabb9f
+crates/store/src/cipher.rs [priv] mod tests :: #[test] fn the_key_statement_is_the_raw_key_form_with_inner_quotes_doubled() |6a541c53f1916083
+crates/store/src/cipher.rs [priv] mod tests :: use crate::{STORE_FORMAT_UUID, STORE_SCHEMA_SEMVER, STORE_SCHEMA_VERSION} |def581483ed54cf3
+crates/store/src/cipher.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/store/src/cipher.rs [priv] use academic_crypto::StoreKey |b02bf12c7091d80e
+crates/store/src/cipher.rs [priv] use crate::{ INCOMPLETE_PROFILE_MARKER, PROFILE_FORMAT_V2_MARKER, STORE_DATABASE_FILE, accept::AcceptanceStore, connection::{ReaderConnection, open_keyed_reader}, error::{StoreError, StoreResult}, migration::{MigrationStatus, migrate_open_connection_pre_listen}, path_policy::{ PathProbe, ProfileRootState, validate_created_profile_path, validate_existing_profile_path, validate_new_profile_path, }, platform, profile::{ probe_failure, read_bounded_file, require_regular_file, sync_directory, sync_parent_directory, write_new_synced_file, }, } |f3dfdfb1fa029eab
+crates/store/src/cipher.rs [priv] use rusqlite::{Connection, OpenFlags} |d458ad3640374d11
+crates/store/src/cipher.rs [priv] use std::{ fs, path::{Path, PathBuf}, } |6a80078e40f46abb
+crates/store/src/cipher.rs [pub(crate)] fn locked_if_undecryptable(error: StoreError, database_path: &Path) -> StoreError |12f3008492ae22a4
+crates/store/src/cipher.rs [pub] #[derive(Debug)] struct IncompleteEncryptedProfile |15ac6dd4dbc8b61a
+crates/store/src/cipher.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum StoreRekeyOutcome |5ce64890fbd30e0e
+crates/store/src/cipher.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CipherSettings |083b905053336ef1
+crates/store/src/cipher.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EncryptedProfile |a59e2c7b55f544b1
+crates/store/src/cipher.rs [pub] const ENCRYPTED_STORE_STORAGE_ENCRYPTION: &str |db2d6e80b5adf34f
+crates/store/src/cipher.rs [pub] const ENCRYPTED_STORE_STORAGE_MODE: &str |ce1784b1c2f29175
+crates/store/src/cipher.rs [pub] const PHASE2_ENCRYPTED_STORE_FAULT_IDS: &[&str] |017e37c6af7c4c5b
+crates/store/src/cipher.rs [pub] const PROFILE_FORMAT_V2_MARKER_CONTENTS: &str |1bf4b451461609eb
+crates/store/src/cipher.rs [pub] const REQUIRED_CIPHER_HMAC_ALGORITHM: &str |615f9c08c9aceef2
+crates/store/src/cipher.rs [pub] const REQUIRED_CIPHER_KDF_ALGORITHM: &str |4b04eb52eec6f211
+crates/store/src/cipher.rs [pub] const REQUIRED_CIPHER_MAJOR_VERSION: &str |ab699bfeea33cb41
+crates/store/src/cipher.rs [pub] const REQUIRED_CIPHER_PAGE_SIZE: i64 |d3359c2556ee530c
+crates/store/src/cipher.rs [pub] const REQUIRED_KDF_ITER: i64 |e0ac00a427a40550
+crates/store/src/cipher.rs [pub] fn apply_store_key( connection: &Connection, key: &StoreKey, database_path: &Path, ) -> StoreResult<()> |a18000b5b133eb76
+crates/store/src/cipher.rs [pub] fn cipher_integrity_report(connection: &Connection) -> StoreResult<Vec<String>> |08c63b96088e25a4
+crates/store/src/cipher.rs [pub] fn create_encrypted_profile<P: PathProbe + ?Sized>( root: &Path, probe: &P, key: &StoreKey, creating_build_digest: [u8; 32], ) -> StoreResult<EncryptedProfile> |a70dacae35dcc4c0
+crates/store/src/cipher.rs [pub] fn open_encrypted_profile<P: PathProbe + ?Sized>( root: &Path, probe: &P, key: &StoreKey, ) -> StoreResult<EncryptedProfile> |6693e97593061621
+crates/store/src/cipher.rs [pub] fn prepare_encrypted_profile<P: PathProbe + ?Sized>( root: &Path, probe: &P, ) -> StoreResult<IncompleteEncryptedProfile> |b4969fc36526eefa
+crates/store/src/cipher.rs [pub] fn read_cipher_settings(connection: &Connection) -> StoreResult<CipherSettings> |54c5042d8977b590
+crates/store/src/cipher.rs [pub] fn rekey_encrypted_profile<P: PathProbe + ?Sized>( root: &Path, probe: &P, current: &StoreKey, next: &StoreKey, ) -> StoreResult<StoreRekeyOutcome> |f2d5885cb88e54bc
+crates/store/src/cipher.rs [pub] fn remove_incomplete_encrypted_profile<P: PathProbe + ?Sized>( root: &Path, probe: &P, ) -> StoreResult<()> |2461e210a0345c98
+crates/store/src/cipher.rs [pub] fn verify_cipher_settings(settings: &CipherSettings) -> StoreResult<()> |db27f8db867c8ca2
+crates/store/src/cipher.rs [pub] impl EncryptedProfile :: #[must_use] const fn cipher_settings(&self) -> &CipherSettings |08249afbd37881c9
+crates/store/src/cipher.rs [pub] impl EncryptedProfile :: #[must_use] const fn migration_status(&self) -> MigrationStatus |8f78f939a482d2d3
+crates/store/src/cipher.rs [pub] impl EncryptedProfile :: #[must_use] fn database_path(&self) -> &Path |f8538a3bafe42241
+crates/store/src/cipher.rs [pub] impl EncryptedProfile :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
+crates/store/src/cipher.rs [pub] impl EncryptedProfile :: fn open_acceptance_store(&self, key: &StoreKey) -> StoreResult<AcceptanceStore> |259ccffa75cd50aa
+crates/store/src/cipher.rs [pub] impl EncryptedProfile :: fn open_reader(&self, key: &StoreKey) -> StoreResult<ReaderConnection> |1abc99f62468118c
+crates/store/src/cipher.rs [pub] impl IncompleteEncryptedProfile :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
+crates/store/src/cipher.rs [pub] impl IncompleteEncryptedProfile :: fn complete<P: PathProbe + ?Sized>( self, probe: &P, key: &StoreKey, creating_build_digest: [u8; 32], ) -> StoreResult<EncryptedProfile> |317d3ad0069125a4
+crates/store/src/connection.rs [priv] #[cfg(all(test, not(feature = "sqlcipher-store")))] mod tests
+crates/store/src/connection.rs [priv] const SQLITE_SYNCHRONOUS_FULL: i64 |71d4fc4f27b2ca81
+crates/store/src/connection.rs [priv] const SQLITE_TEMP_STORE_MEMORY: i64 |71b0728beab1ffea
+crates/store/src/connection.rs [priv] const fn bool_i64(value: bool) -> i64 |20df2c4b613543ce
+crates/store/src/connection.rs [priv] fn configure_reader_connection(connection: &Connection) -> StoreResult<()> |447f376ffc07fd2a
+crates/store/src/connection.rs [priv] fn configure_writer_connection(connection: &Connection) -> StoreResult<()> |0be2c70789e00e5e
+crates/store/src/connection.rs [priv] fn exact(pragma: &'static str, expected: &str, actual: String) -> StoreResult<()> |fd3a903fa77c1bd6
+crates/store/src/connection.rs [priv] fn open_reader_prepared( database_path: &Path, prepare: impl FnOnce(&Connection) -> StoreResult<()>, ) -> StoreResult<ReaderConnection> |c666681365ddad6b
+crates/store/src/connection.rs [priv] fn open_writer_prepared( database_path: &Path, prepare: impl FnOnce(&Connection) -> StoreResult<()>, ) -> StoreResult<WriterConnection> |83fc6bb6cd300bc6
+crates/store/src/connection.rs [priv] fn pragma_i64(connection: &Connection, name: &'static str) -> StoreResult<i64> |53706450a0e7b533
+crates/store/src/connection.rs [priv] fn pragma_text(connection: &Connection, name: &'static str) -> StoreResult<String> |f6088fbe57a03abd
+crates/store/src/connection.rs [priv] fn verify_identity_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> |a93d29168a25e62c
+crates/store/src/connection.rs [priv] fn verify_reader_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> |7d5bfae43aa5cba5
+crates/store/src/connection.rs [priv] fn verify_writer_operational_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> |a5efbd42e8a6fee3
+crates/store/src/connection.rs [priv] impl Drop for AcceptanceAuthorization
+crates/store/src/connection.rs [priv] impl Drop for AcceptanceAuthorization :: fn drop(&mut self) |33c993e02a828f4e
+crates/store/src/connection.rs [priv] impl ReaderConnection
+crates/store/src/connection.rs [priv] impl WriterConnection
+crates/store/src/connection.rs [priv] impl fmt::Debug for AcceptanceAuthorization
+crates/store/src/connection.rs [priv] impl fmt::Debug for AcceptanceAuthorization :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |47f9a25aaa4c191d
+crates/store/src/connection.rs [priv] impl fmt::Debug for ReaderConnection
+crates/store/src/connection.rs [priv] impl fmt::Debug for ReaderConnection :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |e3807a0671650695
+crates/store/src/connection.rs [priv] impl fmt::Debug for WriterConnection
+crates/store/src/connection.rs [priv] impl fmt::Debug for WriterConnection :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |31502368c91b1848
+crates/store/src/connection.rs [priv] mod tests :: #[test] fn acceptance_authorization_allows_only_append_and_head_updates() -> Result<(), Box<dyn Error>> |7375dfadce53dea8
+crates/store/src/connection.rs [priv] mod tests :: #[test] fn admitted_writer_close_checkpoints_the_main_database() -> Result<(), Box<dyn Error>> |abf4141fce837765
+crates/store/src/connection.rs [priv] mod tests :: #[test] fn admitted_writer_records_the_schema_cookie_it_was_admitted_with() -> Result<(), Box<dyn Error>> |353b3969f4a0794b
+crates/store/src/connection.rs [priv] mod tests :: #[test] fn migration_snapshot_allows_uninitialized_identity_but_writer_snapshot_does_not() |9f7718ea21f737fc
+crates/store/src/connection.rs [priv] mod tests :: #[test] fn migration_snapshot_rejects_every_operational_mismatch() |b7b36e2f63693cc2
+crates/store/src/connection.rs [priv] mod tests :: #[test] fn public_writer_rejects_canonical_insert_outside_acceptance() -> Result<(), Box<dyn Error>> |d6a453501873f85e
+crates/store/src/connection.rs [priv] mod tests :: const CANONICAL_FRAGMENT: &str |8c0ec8f76c39a7d8
+crates/store/src/connection.rs [priv] mod tests :: fn expected_migration_snapshot() -> PragmaSnapshot |1e7806c01fc581f5
+crates/store/src/connection.rs [priv] mod tests :: fn migrated_database(label: &str) -> Result<(PathBuf, PathBuf), Box<dyn Error>> |06afcb4ffbf416b0
+crates/store/src/connection.rs [priv] mod tests :: fn remove_test_root(root: &Path) |39c6b322ec032b55
+crates/store/src/connection.rs [priv] mod tests :: static NEXT_TEST_DATABASE: AtomicU64 |3eab8b2bc7aef55e
+crates/store/src/connection.rs [priv] mod tests :: use crate::migration::migrate_pre_listen |e68ed598ec9c320f
+crates/store/src/connection.rs [priv] mod tests :: use std::{ error::Error, fs, sync::atomic::{AtomicU64, Ordering as AtomicOrdering}, } |7e3d104c426a6d1a
+crates/store/src/connection.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/store/src/connection.rs [priv] use crate::{ SQLITE_APPLICATION_ID, SQLITE_BUSY_TIMEOUT_MILLIS, STORE_SCHEMA_VERSION, authorizer::{install_canonical_authorizer, install_reader_authorizer}, error::{StoreError, StoreResult}, migration::verify_current_schema, } |820fd94d4eb7def2
+crates/store/src/connection.rs [priv] use rusqlite::{ Connection, OpenFlags, OptionalExtension, Params, Row, Transaction, TransactionBehavior, config::DbConfig, } |77c4335ac89c5df8
+crates/store/src/connection.rs [priv] use std::{ fmt, path::{Path, PathBuf}, sync::{ Arc, atomic::{AtomicBool, Ordering}, }, } |69e87a12b28bca1e
+crates/store/src/connection.rs [pub(crate)] #[cfg(feature = "sqlcipher-store")] fn open_keyed_writer( database_path: &Path, key: &academic_crypto::StoreKey, ) -> StoreResult<WriterConnection> |dbd8bf47a0ef20e0
+crates/store/src/connection.rs [pub(crate)] #[cfg(not(feature = "sqlcipher-store"))] fn open_writer(database_path: &Path) -> StoreResult<WriterConnection> |06543e4eff43a461
+crates/store/src/connection.rs [pub(crate)] fn configure_migration_connection(connection: &Connection) -> StoreResult<()> |a03528bc557d3222
+crates/store/src/connection.rs [pub(crate)] fn disable_checkpoint_on_close(connection: &Connection) -> StoreResult<()> |3920127c96179897
+crates/store/src/connection.rs [pub(crate)] fn enable_checkpoint_on_close(connection: &Connection) -> StoreResult<()> |6da9c6ae99fc9449
+crates/store/src/connection.rs [pub(crate)] fn read_pragma_snapshot(connection: &Connection) -> StoreResult<PragmaSnapshot> |6793ef0a51d0048f
+crates/store/src/connection.rs [pub(crate)] fn read_schema_version(connection: &Connection) -> StoreResult<i64> |a00f07baa5e932eb
+crates/store/src/connection.rs [pub(crate)] fn verify_admitted_schema_version( connection: &Connection, admitted: i64, ) -> StoreResult<()> |ffcdc6e306b75290
+crates/store/src/connection.rs [pub(crate)] fn verify_fts5(connection: &Connection) -> StoreResult<()> |1f61b99ebc00952f
+crates/store/src/connection.rs [pub(crate)] fn verify_migration_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> |b4de5b9d19561f5d
+crates/store/src/connection.rs [pub(crate)] fn verify_writer_pragmas(pragmas: &PragmaSnapshot) -> StoreResult<()> |4c4efe5d6e3add07
+crates/store/src/connection.rs [pub(crate)] impl ReaderConnection :: fn begin_deferred(&mut self) -> StoreResult<Transaction<'_>> |2496a123b5501c73
+crates/store/src/connection.rs [pub(crate)] impl ReaderConnection :: fn query_collect<T, P, F>( &self, sql: &str, params: P, mapper: F, ) -> StoreResult<Vec<T>> where P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>, |d8d965648f67dcf7
+crates/store/src/connection.rs [pub(crate)] impl ReaderConnection :: fn with_query_connection<T>( &self, operation: impl for<'connection> FnOnce(&'connection Connection) -> T, ) -> T |4e3278588467eb87
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: #[cfg(all(test, not(feature = "sqlcipher-store")))] fn execute<P: Params>(&self, sql: &str, params: P) -> StoreResult<usize> |7a9f387198eb6da9
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: #[cfg(all(test, not(feature = "sqlcipher-store")))] fn execute_batch(&self, sql: &str) -> StoreResult<()> |851853d5346dc24c
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: #[cfg(all(test, not(feature = "sqlcipher-store")))] fn query_row<T, P, F>(&self, sql: &str, params: P, mapper: F) -> StoreResult<T> where P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>, |49fa80819e122a27
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: #[cfg(feature = "sqlcipher-store")] fn cipher_settings(&self) -> StoreResult<crate::cipher::CipherSettings> |77e940bd36eb3a1b
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: #[must_use] fn database_path(&self) -> &Path |fd7295dca20dcdc7
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: const fn admitted_schema_version(&self) -> i64 |780d55612d1ece2e
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: fn authorize_acceptance(&self) -> AcceptanceAuthorization |29eec366a1909d1b
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: fn begin_immediate(&mut self) -> StoreResult<Transaction<'_>> |bc34287e7334762b
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: fn pragma_snapshot(&self) -> StoreResult<PragmaSnapshot> |000cf0da8b0f37ae
+crates/store/src/connection.rs [pub(crate)] impl WriterConnection :: fn with_preflight_reader<T>( &self, operation: impl for<'connection> FnOnce(&'connection Connection) -> T, ) -> T |71b4018dc42ce3bd
+crates/store/src/connection.rs [pub(crate)] struct AcceptanceAuthorization |26af3726e32be959
+crates/store/src/connection.rs [pub(crate)] struct WriterConnection |489f569dde1935b3
+crates/store/src/connection.rs [pub] #[cfg(feature = "sqlcipher-store")] fn open_keyed_reader( database_path: &Path, key: &academic_crypto::StoreKey, ) -> StoreResult<ReaderConnection> |cf1c3ab044ad8728
+crates/store/src/connection.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn open_reader(database_path: &Path) -> StoreResult<ReaderConnection> |a6dbfee9b2ee2401
+crates/store/src/connection.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PragmaSnapshot |6d5374fe863b7f16
+crates/store/src/connection.rs [pub] impl ReaderConnection :: #[must_use] fn database_path(&self) -> &Path |f8538a3bafe42241
+crates/store/src/connection.rs [pub] impl ReaderConnection :: fn execute<P: Params>(&self, sql: &str, params: P) -> StoreResult<usize> |ae23f4de492f2656
+crates/store/src/connection.rs [pub] impl ReaderConnection :: fn execute_batch(&self, sql: &str) -> StoreResult<()> |5d7a24588ec35eeb
+crates/store/src/connection.rs [pub] impl ReaderConnection :: fn pragma_snapshot(&self) -> StoreResult<PragmaSnapshot> |da0900baab8e4578
+crates/store/src/connection.rs [pub] impl ReaderConnection :: fn query_row<T, P, F>(&self, sql: &str, params: P, mapper: F) -> StoreResult<T> where P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>, |10166209e0b6c2bc
+crates/store/src/connection.rs [pub] struct ReaderConnection |54adad8e2e134d4b
+crates/store/src/curriculum_tests.rs [priv] #[test] fn a_curriculum_row_is_bound_to_its_registered_event() -> Result<(), Box<dyn Error>> |13c0e23e4502c60a
+crates/store/src/curriculum_tests.rs [priv] #[test] fn curriculum_publish_is_atomic_under_injected_failure() -> Result<(), Box<dyn Error>> |7ebc6815bca5588c
+crates/store/src/curriculum_tests.rs [priv] #[test] fn no_relation_table_carries_another_relations_column() -> Result<(), Box<dyn Error>> |e9d55892c1a93913
+crates/store/src/curriculum_tests.rs [priv] #[test] fn the_section_nine_boundaries_hold_in_the_schema() -> Result<(), Box<dyn Error>> |1b9abcfa1a38c467
+crates/store/src/curriculum_tests.rs [priv] #[test] fn the_table_list_is_the_migrations_own() -> Result<(), Box<dyn Error>> |ee70fb0b735b1834
+crates/store/src/curriculum_tests.rs [priv] const CURRICULUM_TABLES: [&str; 15] |5774c9c001f4bec0
+crates/store/src/curriculum_tests.rs [priv] const RELATION_COLUMNS: [(&str, &[&str]); 4] |aa6e75f78eac6dd1
+crates/store/src/curriculum_tests.rs [priv] fn columns_of(connection: &Connection, table: &str) -> Result<BTreeSet<String>, Box<dyn Error>> |b06fd64e1c9fa54a
+crates/store/src/curriculum_tests.rs [priv] fn migrated(label: &str) -> Result<(MigratedDatabase, Connection, Registered), Box<dyn Error>> |302e9f1b3907aed0
+crates/store/src/curriculum_tests.rs [priv] fn publication_insert_count( connection: &mut Connection, registered: &Registered, ) -> Result<usize, Box<dyn Error>> |06eaa47c3719e9fc
+crates/store/src/curriculum_tests.rs [priv] fn record_digest(label: &str) -> [u8; 32] |d848abed1893a014
+crates/store/src/curriculum_tests.rs [priv] fn register(connection: &mut Connection) -> Result<Registered, Box<dyn Error>> |5b1889f710ca8c07
+crates/store/src/curriculum_tests.rs [priv] fn row_counts(connection: &Connection) -> Result<Vec<(&'static str, i64)>, Box<dyn Error>> |fdf1f896b089452d
+crates/store/src/curriculum_tests.rs [priv] fn synthetic_id(suffix: u32) -> [u8; 16] |e935c784086232e4
+crates/store/src/curriculum_tests.rs [priv] fn write_publication( transaction: &Transaction<'_>, registered: &Registered, stop: usize, ) -> Result<(), Box<dyn Error>> |28eacefd947a2298
+crates/store/src/curriculum_tests.rs [priv] impl Drop for MigratedDatabase
+crates/store/src/curriculum_tests.rs [priv] impl Drop for MigratedDatabase :: fn drop(&mut self) |17cdcdcc7f5f9e27
+crates/store/src/curriculum_tests.rs [priv] impl MigratedDatabase
+crates/store/src/curriculum_tests.rs [priv] impl MigratedDatabase :: fn new(label: &str) -> Result<Self, Box<dyn Error>> |910eff06f00840ec
+crates/store/src/curriculum_tests.rs [priv] impl MigratedDatabase :: fn open(&self) -> Result<Connection, Box<dyn Error>> |bcc28b41f7b7dae0
+crates/store/src/curriculum_tests.rs [priv] static NEXT_TEMP: std::sync::atomic::AtomicU64 |2da9f89d2c0cdfe6
+crates/store/src/curriculum_tests.rs [priv] struct MigratedDatabase |fb4c064976731727
+crates/store/src/curriculum_tests.rs [priv] struct Registered |0ca2f6c3dd5959b5
+crates/store/src/curriculum_tests.rs [priv] use academic_domain::{ Actor, ContentDigest, CourseRevisionId, CurriculumVersionId, DomainId, Event, EventPayload, OfferingId, ScopeDescriptor, ScopeId, TimestampMillis, ValidInterval, } |4d03800692bd23d9
+crates/store/src/curriculum_tests.rs [priv] use crate::{ aggregate_closure_tests::{apply_schema_two_canonical_core, typed_id}, migration::{MIGRATION_0014_SQL, apply_aggregate_migration_pre_listen}, repository::ClosureWriter, } |692ef9f35ebfe88b
+crates/store/src/curriculum_tests.rs [priv] use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior, params} |f17aab2d7775bae5
+crates/store/src/curriculum_tests.rs [priv] use std::{collections::BTreeSet, error::Error, fs, path::PathBuf} |a28f5a4f4fe566b3
+crates/store/src/curriculum_tests.rs [pub(crate)] fn seed_batch( transaction: &Transaction<'_>, batch_id: &[u8; 16], event_count: u64, ) -> Result<(), Box<dyn Error>> |07c5cbb57434fd86
+crates/store/src/descriptor_migration.rs [priv] fn identifier(bytes: &[u8]) -> StoreResult<[u8; 16]> |4a14c3d2f0939c18
+crates/store/src/descriptor_migration.rs [priv] fn locator(bytes: &[u8]) -> StoreResult<VaultLocator> |7427745bd7d4fbbc
+crates/store/src/descriptor_migration.rs [priv] fn migration_table_exists(connection: &Connection) -> StoreResult<bool> |1bc0b4d78ea989ed
+crates/store/src/descriptor_migration.rs [priv] fn rejected(reason: &'static str) -> StoreError |b6bea4bc57691a99
+crates/store/src/descriptor_migration.rs [priv] impl DescriptorMigration
+crates/store/src/descriptor_migration.rs [priv] use academic_domain::{ArtifactDescriptor, ArtifactId, ContentDigest, VaultLocator} |75a6fffcc2668860
+crates/store/src/descriptor_migration.rs [priv] use academic_vault::{SealedObjectVerifier, VaultError} |342a27a0057e3a3e
+crates/store/src/descriptor_migration.rs [priv] use crate::error::{StoreError, StoreResult} |834447585162d867
+crates/store/src/descriptor_migration.rs [priv] use rusqlite::{Connection, OptionalExtension as _, params} |da5151f5da524f56
+crates/store/src/descriptor_migration.rs [pub(crate)] fn insert_descriptor_migration<V: SealedObjectVerifier>( connection: &Connection, migration: &DescriptorMigration, migrated: &ArtifactDescriptor, vault: &V, ) -> StoreResult<()> |e489475f434d77ca
+crates/store/src/descriptor_migration.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DescriptorMigration |8e8568e3e5e380ca
+crates/store/src/descriptor_migration.rs [pub] const DESCRIPTOR_MIGRATION_DIGEST_DOMAIN: &[u8] |04ffa5f885cef698
+crates/store/src/descriptor_migration.rs [pub] fn locator_is_already_in_chain( connection: &Connection, artifact: ArtifactId, locator: &VaultLocator, ) -> StoreResult<bool> |17cc953ed994fd79
+crates/store/src/descriptor_migration.rs [pub] fn next_migration_seq(connection: &Connection, artifact: ArtifactId) -> StoreResult<u64> |901421bcc5f6ede0
+crates/store/src/descriptor_migration.rs [pub] fn read_descriptor_migrations( connection: &Connection, ) -> StoreResult<Vec<DescriptorMigration>> |5ca759a8e2b01509
+crates/store/src/descriptor_migration.rs [pub] fn resolve_descriptors( descriptors: &mut [ArtifactDescriptor], migrations: &[DescriptorMigration], ) -> StoreResult<()> |8e43051d3fffbd06
+crates/store/src/descriptor_migration.rs [pub] fn resolve_with_stored_migrations( connection: &Connection, descriptors: &mut [ArtifactDescriptor], ) -> StoreResult<()> |a24dd4b365c616a4
+crates/store/src/descriptor_migration.rs [pub] fn superseded_locators( connection: &Connection, artifact: ArtifactId, ) -> StoreResult<Vec<VaultLocator>> |edc150384914a4eb
+crates/store/src/descriptor_migration.rs [pub] impl DescriptorMigration :: #[must_use] fn names(&self, descriptor: &ArtifactDescriptor) -> bool |b16f3bec1f5453ad
+crates/store/src/descriptor_migration.rs [pub] impl DescriptorMigration :: #[must_use] fn of( retention_action_id: [u8; 16], descriptor: &ArtifactDescriptor, migration_seq: u64, migrated: &ArtifactDescriptor, ) -> Self |5af8a147b20e4ce7
+crates/store/src/descriptor_migration.rs [pub] impl DescriptorMigration :: #[must_use] fn record_digest(&self) -> ContentDigest |d8248a83e065cdd9
+crates/store/src/descriptor_migration.rs [pub] impl DescriptorMigration :: fn apply_to(&self, descriptor: &mut ArtifactDescriptor) |ad2befef1a8e8b11
+crates/store/src/entity_registry_tests.rs [priv] #[cfg(unix)] fn create_private_root(path: &Path) -> std::io::Result<()> |d7f225e403ca108a
+crates/store/src/entity_registry_tests.rs [priv] #[cfg(unix)] fn temporary_base() -> std::io::Result<PathBuf> |2aaaab522e12dd13
+crates/store/src/entity_registry_tests.rs [priv] #[cfg(windows)] fn create_private_root(path: &Path) -> std::io::Result<()> |a69b8c0513882b5b
+crates/store/src/entity_registry_tests.rs [priv] #[cfg(windows)] fn temporary_base() -> std::io::Result<PathBuf> |7e5af31bc75238fd
+crates/store/src/entity_registry_tests.rs [priv] #[derive(Debug, Clone, Copy)] struct AliasSpec<'text> |702203970e78a501
+crates/store/src/entity_registry_tests.rs [priv] #[derive(Debug, Clone, Copy)] struct EntitySpec<'label> |ec066ef79de6d7ea
+crates/store/src/entity_registry_tests.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct StoredEvent |ded4ace0d0754416
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn alias_metadata_round_trips_through_canonical_claims() -> Result<(), Box<dyn Error>> |ac75e10b958629c8
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn ambiguous_mention_abstains() -> Result<(), Box<dyn Error>> |2e6a8c4cac8acee5
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn equivalence_class_is_reported_for_every_cross_change_comparison() -> Result<(), Box<dyn Error>> |1fbc297274d92be8
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn historical_state_is_not_silently_distorted() -> Result<(), Box<dyn Error>> |b79dc850b3764691
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn homonym_split_keeps_evidence_separate() -> Result<(), Box<dyn Error>> |2877ea0f847e570a
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn identity_change_below_user_authority_is_refused() -> Result<(), Box<dyn Error>> |a6e47c66fed3de43
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn incomparable_nodes_are_excluded_from_growth_narratives() -> Result<(), Box<dyn Error>> |1999cda1f1be909c
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn merge_preserves_ids_and_redirects() -> Result<(), Box<dyn Error>> |a1d58f135b6cc876
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn ontology_change_preview_shows_state_edge_question_counts() -> Result<(), Box<dyn Error>> |4af1aca6252eea01
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn registry_fact_without_an_identity_anchor_is_refused() -> Result<(), Box<dyn Error>> |75a94044470b3aa0
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn registry_predicates_are_parseable_and_scoped() -> Result<(), Box<dyn Error>> |67600146a6f511ff
+crates/store/src/entity_registry_tests.rs [priv] #[test] fn split_creates_reclassification_queue_and_moves_nothing() -> Result<(), Box<dyn Error>> |c38d9c4a77d50e81
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_BTREE_VERSIONED: u32 |0c1b0a4517dcee70
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_CACHE: u32 |0d17c4d5c1eacd86
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_CPU_CACHE: u32 |c2b09aac06dfebe6
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_DB_CACHE: u32 |6f59f9c362fcc252
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_DUP_PREFERRED: u32 |c3751339d8f87bd8
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_MVCC_ABBREVIATION: u32 |314fc90f10b2074e
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_MVCC_KOREAN: u32 |825579e75f65a9c0
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_MVCC_PREFERRED: u32 |8ec35f1c1996285c
+crates/store/src/entity_registry_tests.rs [priv] const ALIAS_WEB_CACHE: u32 |84d6d9520eb2c2bf
+crates/store/src/entity_registry_tests.rs [priv] const BATCH_CHANGE: u32 |8c2a310abf9f2feb
+crates/store/src/entity_registry_tests.rs [priv] const BATCH_HISTORY: u32 |6e76f3455a9e1cd0
+crates/store/src/entity_registry_tests.rs [priv] const CON_BTREE: u32 |68f8546389e7a61d
+crates/store/src/entity_registry_tests.rs [priv] const CON_CACHE: u32 |2973acc9af4d5e39
+crates/store/src/entity_registry_tests.rs [priv] const CON_CPU_CACHE: u32 |ae35f1dccae13051
+crates/store/src/entity_registry_tests.rs [priv] const CON_DB_CACHE: u32 |e26788f05c281555
+crates/store/src/entity_registry_tests.rs [priv] const CON_MVCC: u32 |3432f32a67ca82e4
+crates/store/src/entity_registry_tests.rs [priv] const CON_MVCC_DUP: u32 |af25e697a1de43c9
+crates/store/src/entity_registry_tests.rs [priv] const CON_PAXOS: u32 |54f1e222b2fb3195
+crates/store/src/entity_registry_tests.rs [priv] const CON_WEB_CACHE: u32 |e68b6f321f7a0a20
+crates/store/src/entity_registry_tests.rs [priv] const DEVICE: u32 |ad772dc75301381b
+crates/store/src/entity_registry_tests.rs [priv] const DOMAIN: u32 |3f152547a841492b
+crates/store/src/entity_registry_tests.rs [priv] const LINEAGE: u32 |eeab4b4e64d496b1
+crates/store/src/entity_registry_tests.rs [priv] const PREDICATE_MASTERY: &str |2564b170d2ff291c
+crates/store/src/entity_registry_tests.rs [priv] const SCOPE: u32 |31ea317806ae56dc
+crates/store/src/entity_registry_tests.rs [priv] const YEAR_FIVE: i64 |e0f2b35628c8e19b
+crates/store/src/entity_registry_tests.rs [priv] const YEAR_FOUR: i64 |f2694a589435dbc2
+crates/store/src/entity_registry_tests.rs [priv] const YEAR_ONE: i64 |f167f73057c7d447
+crates/store/src/entity_registry_tests.rs [priv] const YEAR_THREE: i64 |46eb1c362661b95d
+crates/store/src/entity_registry_tests.rs [priv] const YEAR_TWO: i64 |cd7c67e526d1bf9e
+crates/store/src/entity_registry_tests.rs [priv] fn accept_batch( connection: &mut Connection, batch: &UnsignedBatch, receipts: &ReceiptMap, accept_seq_start: u64, filler: u8, ) -> Result<(), Box<dyn Error>> |e5e766dee2a78cec
+crates/store/src/entity_registry_tests.rs [priv] fn authority_from_str(value: &str) -> Result<AuthorityClass, Box<dyn Error>> |7ca5a45b73cc530b
+crates/store/src/entity_registry_tests.rs [priv] fn change_batch( evidence: &FixtureEvidence, vault: &Vault, origin_seq_start: u64, ) -> Result<(UnsignedBatch, ReceiptMap), Box<dyn Error>> |13791c5fef80cb81
+crates/store/src/entity_registry_tests.rs [priv] fn history_batch( evidence: &FixtureEvidence, vault: &Vault, ) -> Result<(UnsignedBatch, ReceiptMap), Box<dyn Error>> |5c6f23f20ba62a3a
+crates/store/src/entity_registry_tests.rs [priv] fn id_from_blob<T>(bytes: &[u8]) -> Result<T, Box<dyn Error>> where T: std::str::FromStr, T::Err: std::fmt::Display, |bc90f6159f28fe5a
+crates/store/src/entity_registry_tests.rs [priv] fn impact_snapshot() -> Result<OntologyImpactSnapshot, Box<dyn Error>> |d29c59b5e30b2aaf
+crates/store/src/entity_registry_tests.rs [priv] fn ingest_fixture_evidence(vault: &Vault) -> Result<FixtureEvidence, Box<dyn Error>> |921cef7049d69c89
+crates/store/src/entity_registry_tests.rs [priv] fn interval(from: i64, to: Option<i64>) -> Result<ValidInterval, Box<dyn Error>> |c653179050188868
+crates/store/src/entity_registry_tests.rs [priv] fn load_anchors(connection: &Connection) -> Result<Vec<IdentityAnchor>, Box<dyn Error>> |82a74a60ea66d84c
+crates/store/src/entity_registry_tests.rs [priv] fn load_claim_evidence( connection: &Connection, ) -> Result<BTreeSet<ClaimEvidenceLink>, Box<dyn Error>> |351c56797490f015
+crates/store/src/entity_registry_tests.rs [priv] fn load_claims(connection: &Connection) -> Result<Vec<Claim>, Box<dyn Error>> |cbab1d6b7b981551
+crates/store/src/entity_registry_tests.rs [priv] fn load_event_bytes(connection: &Connection) -> Result<BTreeMap<i64, StoredEvent>, Box<dyn Error>> |b37c13e8446a23ae
+crates/store/src/entity_registry_tests.rs [priv] fn mastery_from_str(value: &str) -> Result<MasteryLevel, Box<dyn Error>> |b3c7b0a91e90c1de
+crates/store/src/entity_registry_tests.rs [priv] fn merge_proposal() -> Result<OntologyChangeProposal, Box<dyn Error>> |8b649417a84c03d0
+crates/store/src/entity_registry_tests.rs [priv] fn observed_states(connection: &Connection, at: i64) -> Result<Vec<ObservedState>, Box<dyn Error>> |be1d011cb4f44738
+crates/store/src/entity_registry_tests.rs [priv] fn open_at(path: &Path) -> Result<Connection, Box<dyn Error>> |a7bd76d3e2e6eae6
+crates/store/src/entity_registry_tests.rs [priv] fn seed_batch( transaction: &rusqlite::Transaction<'_>, batch: &UnsignedBatch, accept_seq_start: u64, filler: u8, ) -> Result<(), Box<dyn Error>> |12901a421effd42e
+crates/store/src/entity_registry_tests.rs [priv] fn split_proposal() -> Result<OntologyChangeProposal, Box<dyn Error>> |b2b38fc34dfe071f
+crates/store/src/entity_registry_tests.rs [priv] fn status_from_str(value: &str) -> Result<EpistemicStatus, Box<dyn Error>> |c8ef9eca7df5a762
+crates/store/src/entity_registry_tests.rs [priv] fn synthetic_artifact( vault: &Vault, artifact: u32, evidence: u32, bytes: &[u8], ) -> Result<SyntheticArtifact, Box<dyn Error>> |e823e78435b919fd
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn finish( self, batch: u32, previous_batch_hash: Option<ContentDigest>, ) -> Result<(UnsignedBatch, ReceiptMap), Box<dyn Error>> |36e001c7aedca184
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn new( origin_seq_start: u64, event_base: u32, claim_base: u32, change_base: u32, ) -> Result<Self, Box<dyn Error>> |2a72e5baa11a1f43
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push(&mut self, actor: Actor, payload: EventPayload) -> Result<(), Box<dyn Error>> |2a3da88b807e13f7
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push_alias( &mut self, spec: &AliasSpec<'_>, evidence: EvidenceId, from: i64, ) -> Result<(), Box<dyn Error>> |76ac64bcd204f28e
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push_anchor(&mut self, entity: u32, from: i64) -> Result<(), Box<dyn Error>> |c522681f1d068759
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push_artifact( &mut self, artifact: &SyntheticArtifact, vault: &Vault, ) -> Result<(), Box<dyn Error>> |59a0818501d702ab
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push_curated_fact( &mut self, fact: &RegistryFact, evidence: EvidenceId, from: i64, ) -> Result<(), Box<dyn Error>> |a0b52f8f6aab33bf
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push_entity( &mut self, spec: &EntitySpec<'_>, evidence: EvidenceId, from: i64, ) -> Result<(), Box<dyn Error>> |01988cf5e49fc50d
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push_mastery( &mut self, entity: u32, mastery: MasteryLevel, evidence: EvidenceId, at: i64, ) -> Result<(), Box<dyn Error>> |433e64477e3b5629
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push_scope(&mut self, label: &str) -> Result<(), Box<dyn Error>> |c27c1a3ee765fe67
+crates/store/src/entity_registry_tests.rs [priv] impl BatchBuilder :: fn push_user_fact( &mut self, fact: &RegistryFact, evidence: EvidenceId, from: i64, ) -> Result<(), Box<dyn Error>> |7d7c984adfa584f9
+crates/store/src/entity_registry_tests.rs [priv] impl Drop for RegistryDatabase
+crates/store/src/entity_registry_tests.rs [priv] impl Drop for RegistryDatabase :: fn drop(&mut self) |17cdcdcc7f5f9e27
+crates/store/src/entity_registry_tests.rs [priv] impl LoadedFixture
+crates/store/src/entity_registry_tests.rs [priv] impl LoadedFixture :: fn apply_ontology_change(&self) -> Result<(), Box<dyn Error>> |63a551a68ae92d75
+crates/store/src/entity_registry_tests.rs [priv] impl LoadedFixture :: fn new(label: &str) -> Result<Self, Box<dyn Error>> |06a60c5bfbcc7541
+crates/store/src/entity_registry_tests.rs [priv] impl LoadedFixture :: fn registry(&self) -> Result<EntityRegistry, Box<dyn Error>> |9876703deba85579
+crates/store/src/entity_registry_tests.rs [priv] impl RegistryDatabase
+crates/store/src/entity_registry_tests.rs [priv] impl RegistryDatabase :: fn new(label: &str) -> Result<Self, Box<dyn Error>> |45b66eb5faf7b3df
+crates/store/src/entity_registry_tests.rs [priv] impl RegistryDatabase :: fn open(&self) -> Result<Connection, Box<dyn Error>> |01db27a053e0ac94
+crates/store/src/entity_registry_tests.rs [priv] static NEXT_TEMP: AtomicU64 |3d22fec565cea36a
+crates/store/src/entity_registry_tests.rs [priv] struct BatchBuilder |aad2f6b63f398af2
+crates/store/src/entity_registry_tests.rs [priv] struct FixtureEvidence |b3b56f611c779fae
+crates/store/src/entity_registry_tests.rs [priv] struct LoadedFixture |6897d48180852772
+crates/store/src/entity_registry_tests.rs [priv] struct RegistryDatabase |65939f600574dd45
+crates/store/src/entity_registry_tests.rs [priv] struct SyntheticArtifact |e2cf94c6dc97e5e8
+crates/store/src/entity_registry_tests.rs [priv] type ClaimEvidenceLink = (Vec<u8>, Vec<u8>, i64) |193930cf4e921af2
+crates/store/src/entity_registry_tests.rs [priv] type ReceiptMap = BTreeMap<ArtifactId, SealedObjectCapability> |d36053ea84950647
+crates/store/src/entity_registry_tests.rs [priv] use academic_domain::{ Actor, ArtifactDescriptor, ArtifactId, ArtifactRepresentation, AuthorityClass, BatchId, Claim, ClaimId, ClaimObject, Confidentiality, ContentDigest, DomainId, EntityId, EntityIdentityChangeId, EntityIdentityChangeRegistration, EpistemicStatus, Event, EventId, EventPayload, EvidenceId, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, MasteryLevel, MediaType, PermissionLineageId, PredicateId, RetentionClass, ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch, ValidInterval, entity_registry::{ Alias, AliasKind, EntityKind, EntityRegistry, EquivalenceClass, IdentityAnchor, ImpactPreview, MentionContext, MentionResolution, ObservedState, OntologyChangeProposal, OntologyImpactSnapshot, PREDICATE_MERGED_INTO, RegistryError, RegistryFact, }, } |ffafc32284a2c8ff
+crates/store/src/entity_registry_tests.rs [priv] use academic_vault::{ArtifactIngestRequest, DomainKeyring, SealedObjectCapability, Vault} |39f767806c5cc764
+crates/store/src/entity_registry_tests.rs [priv] use crate::{ aggregate_closure_tests::{apply_schema_two_canonical_core, typed_id}, migration::apply_aggregate_migration_pre_listen, repository::ClosureWriter, } |091e0094cc4853fa
+crates/store/src/entity_registry_tests.rs [priv] use rusqlite::{Connection, OpenFlags, TransactionBehavior, params} |940c6e1a31a2b153
+crates/store/src/entity_registry_tests.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, error::Error, fs, path::{Path, PathBuf}, sync::atomic::{AtomicU64, Ordering}, } |222d43766cd790cc
+crates/store/src/error.rs [priv] impl Error for StoreError
+crates/store/src/error.rs [priv] impl Error for StoreError :: fn source(&self) -> Option<&(dyn Error + 'static)> |7c8e0aaa68d5b15c
+crates/store/src/error.rs [priv] impl From<PathPolicyViolation> for StoreError
+crates/store/src/error.rs [priv] impl From<PathPolicyViolation> for StoreError :: fn from(source: PathPolicyViolation) -> Self |801968d0c0f0c3c2
+crates/store/src/error.rs [priv] impl From<rusqlite::Error> for StoreError
+crates/store/src/error.rs [priv] impl From<rusqlite::Error> for StoreError :: fn from(source: rusqlite::Error) -> Self |6eebc3dbf5e0acd9
+crates/store/src/error.rs [priv] impl StoreError
+crates/store/src/error.rs [priv] impl fmt::Display for StoreError
+crates/store/src/error.rs [priv] impl fmt::Display for StoreError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |9293c2281aac1517
+crates/store/src/error.rs [priv] use crate::path_policy::PathPolicyViolation |e3b10c561b93166e
+crates/store/src/error.rs [priv] use std::{error::Error, fmt, io, path::PathBuf} |4f075a9774b5377a
+crates/store/src/error.rs [pub] #[derive(Debug)] #[non_exhaustive] enum StoreError |dfa2e188a91bf4ed
+crates/store/src/error.rs [pub] impl StoreError :: #[must_use] fn io(operation: &'static str, path: impl Into<PathBuf>, source: io::Error) -> Self |2366cdd902a5f9be
+crates/store/src/error.rs [pub] type StoreResult<T> = Result<T, StoreError> |18c0627bd433ee74
+crates/store/src/fault.rs [priv] impl AcceptanceFaultInjector for NoFault
+crates/store/src/fault.rs [priv] impl AcceptanceFaultInjector for NoFault :: fn hit(&self, _point: AcceptanceFaultPoint) -> Result<(), InjectedFault> |6602d176a668ec32
+crates/store/src/fault.rs [priv] impl AcceptanceFaultPoint
+crates/store/src/fault.rs [priv] impl Error for InjectedFault
+crates/store/src/fault.rs [priv] impl fmt::Display for InjectedFault
+crates/store/src/fault.rs [priv] impl fmt::Display for InjectedFault :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |85ca3f3d3dee0838
+crates/store/src/fault.rs [priv] trait AcceptanceFaultInjector: fmt::Debug + Send + Sync :: fn hit(&self, point: AcceptanceFaultPoint) -> Result<(), InjectedFault> |eaf45cc41a6d95d6
+crates/store/src/fault.rs [priv] use std::{error::Error, fmt} |da07ae2fa3e26f41
+crates/store/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct InjectedFault |eb69a76653603f36
+crates/store/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AcceptanceFaultPoint |f7c456de55656920
+crates/store/src/fault.rs [pub] #[derive(Debug, Default, Clone, Copy)] struct NoFault |e785c8561a3106ec
+crates/store/src/fault.rs [pub] impl AcceptanceFaultPoint :: #[must_use] const fn as_str(self) -> &'static str |a6b7c932bf3ae0f5
+crates/store/src/fault.rs [pub] trait AcceptanceFaultInjector: fmt::Debug + Send + Sync
+crates/store/src/idempotency.rs [priv] const RECEIPT_LENGTH: usize |4c082b5aa66a5721
+crates/store/src/idempotency.rs [priv] const RECEIPT_MAGIC: &[u8; 4] |f43a23475d6c8db9
+crates/store/src/idempotency.rs [priv] const RECEIPT_VERSION: u16 |0cd8802fad8b3ea0
+crates/store/src/idempotency.rs [priv] fn checked_i64(value: u64) -> Result<i64, IdempotencyError> |4ce39d122b1f4621
+crates/store/src/idempotency.rs [priv] fn id_from_bytes<T>(bytes: [u8; 16]) -> Result<T, DomainError> where T: FromStr<Err = DomainError>, |b7fd8cb4c7e2f672
+crates/store/src/idempotency.rs [priv] impl AcceptanceCommand<'_>
+crates/store/src/idempotency.rs [priv] impl DurableAcceptanceReceipt
+crates/store/src/idempotency.rs [priv] impl DurableAcceptanceReceipt :: fn decode(response_bytes: Vec<u8>, response_hash: [u8; 32]) -> Result<Self, IdempotencyError> |36c4181579fdcb75
+crates/store/src/idempotency.rs [priv] impl Error for IdempotencyError
+crates/store/src/idempotency.rs [priv] impl Error for IdempotencyError :: fn source(&self) -> Option<&(dyn Error + 'static)> |67d625d69881ea31
+crates/store/src/idempotency.rs [priv] impl From<DomainError> for IdempotencyError
+crates/store/src/idempotency.rs [priv] impl From<DomainError> for IdempotencyError :: fn from(error: DomainError) -> Self |36cb81b886707050
+crates/store/src/idempotency.rs [priv] impl From<rusqlite::Error> for IdempotencyError
+crates/store/src/idempotency.rs [priv] impl From<rusqlite::Error> for IdempotencyError :: fn from(error: rusqlite::Error) -> Self |50d65eb68b1e5da9
+crates/store/src/idempotency.rs [priv] impl fmt::Display for IdempotencyError
+crates/store/src/idempotency.rs [priv] impl fmt::Display for IdempotencyError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |196bf92e1d3176ba
+crates/store/src/idempotency.rs [priv] use academic_domain::{BatchId, ContentDigest, DomainError, TimestampMillis} |7dc9b5946fe62323
+crates/store/src/idempotency.rs [priv] use rusqlite::{OptionalExtension, Transaction, params} |ba340f3bc8f93e93
+crates/store/src/idempotency.rs [priv] use std::{error::Error, fmt, str::FromStr} |67e5f7553e5b9ce7
+crates/store/src/idempotency.rs [pub(crate)] fn insert_command_receipt( transaction: &Transaction<'_>, command: &AcceptanceCommand<'_>, receipt: &DurableAcceptanceReceipt, created_at: TimestampMillis, ) -> Result<(), IdempotencyError> |a92da93b79f4ffa3
+crates/store/src/idempotency.rs [pub(crate)] fn lookup_command_receipt( transaction: &Transaction<'_>, command: &AcceptanceCommand<'_>, ) -> Result<Option<DurableAcceptanceReceipt>, IdempotencyError> |4b36275749cd9ec5
+crates/store/src/idempotency.rs [pub(crate)] impl DurableAcceptanceReceipt :: fn new( batch_id: BatchId, envelope_hash: ContentDigest, accept_seq_start: u64, accept_seq_end: u64, committed_revision: u64, ) -> Self |8dc430287a6709d0
+crates/store/src/idempotency.rs [pub] #[derive(Debug)] enum IdempotencyError |cc7409d19fbd20b0
+crates/store/src/idempotency.rs [pub] #[derive(Debug, Clone, Copy)] struct AcceptanceCommand<'a> |da9fce3c55ea3ae9
+crates/store/src/idempotency.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DurableAcceptanceReceipt |7706995f97e04eea
+crates/store/src/idempotency.rs [pub] impl AcceptanceCommand<'_> :: #[must_use] fn request_hash(&self) -> ContentDigest |4457d2fb8e49d0ef
+crates/store/src/idempotency.rs [pub] impl DurableAcceptanceReceipt :: #[must_use] const fn response_hash(&self) -> ContentDigest |2e5f90078a48fef0
+crates/store/src/idempotency.rs [pub] impl DurableAcceptanceReceipt :: #[must_use] fn response_bytes(&self) -> &[u8] |ebefe01946949c63
+crates/store/src/lib.rs [priv] #[cfg(all(feature = "bundled-sqlite", feature = "sqlcipher-store"))] compile_error!( "`bundled-sqlite` and `sqlcipher-store` are mutually exclusive store lanes: \ the plaintext synthetic lane and the encrypted lane must never link into \ one binary. Build the encrypted lane with \ `--no-default-features --features sqlcipher-store`." ) |50531d48aeb6ec2d
+crates/store/src/lib.rs [priv] #[cfg(all(test, not(feature = "sqlcipher-store")))] mod tests
+crates/store/src/lib.rs [priv] #[cfg(test)] mod aggregate_closure_tests
+crates/store/src/lib.rs [priv] #[cfg(test)] mod aggregate_timeline_tests
+crates/store/src/lib.rs [priv] #[cfg(test)] mod curriculum_tests
+crates/store/src/lib.rs [priv] #[cfg(test)] mod entity_registry_tests
+crates/store/src/lib.rs [priv] #[cfg(test)] mod model_run_closure_tests
+crates/store/src/lib.rs [priv] #[cfg(test)] mod proposal_closure_tests
+crates/store/src/lib.rs [priv] #[cfg(test)] mod repository_snapshot_tests
+crates/store/src/lib.rs [priv] #[cfg(test)] mod requirement_tests
+crates/store/src/lib.rs [priv] mod authorizer
+crates/store/src/lib.rs [priv] mod platform
+crates/store/src/lib.rs [priv] mod schema_fingerprint
+crates/store/src/lib.rs [priv] mod tests :: #[test] fn default_storage_contract_is_plaintext_synthetic_only() |bc9acd6f51e441cd
+crates/store/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/store/src/lib.rs [pub] #[cfg(feature = "sqlcipher-store")] const STORE_FORMAT_UUID: [u8; 16] |52b948282cd73af8
+crates/store/src/lib.rs [pub] #[cfg(feature = "sqlcipher-store")] const STORE_MINIMUM_READER_PROTOCOL: (u32, u32) |0a945486e3ecd471
+crates/store/src/lib.rs [pub] #[cfg(feature = "sqlcipher-store")] const STORE_MINIMUM_WRITER_PROTOCOL: (u32, u32) |8f1625155e4e4c55
+crates/store/src/lib.rs [pub] #[cfg(feature = "sqlcipher-store")] const STORE_SCHEMA_SEMVER: &str |36cfe3efe3511374
+crates/store/src/lib.rs [pub] #[cfg(feature = "sqlcipher-store")] const STORE_SCHEMA_VERSION: u32 |11bc14076044d8fe
+crates/store/src/lib.rs [pub] #[cfg(feature = "sqlcipher-store")] mod cipher
+crates/store/src/lib.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Phase1StoragePolicy |7278cc7595275c03
+crates/store/src/lib.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const PHASE1_POLICY_BANNER: &str |5813b242548e1e39
+crates/store/src/lib.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const PHASE1_STORAGE_POLICY: Phase1StoragePolicy |e1f632bdd50e8f41
+crates/store/src/lib.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const STORE_FORMAT_UUID: [u8; 16] |f629dee4b1a7f6a1
+crates/store/src/lib.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const STORE_MINIMUM_READER_PROTOCOL: (u32, u32) |fad1e195044fec0e
+crates/store/src/lib.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const STORE_MINIMUM_WRITER_PROTOCOL: (u32, u32) |121695c5ac1d793e
+crates/store/src/lib.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const STORE_SCHEMA_SEMVER: &str |be8797d50375f93f
+crates/store/src/lib.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const STORE_SCHEMA_VERSION: u32 |bde59d12fccab425
+crates/store/src/lib.rs [pub] const BUNDLED_SQLITE_FEATURE: &str |4791dc4473224b7b
+crates/store/src/lib.rs [pub] const INCOMPLETE_PROFILE_MARKER: &str |8a72d25772c8c459
+crates/store/src/lib.rs [pub] const PROFILE_FORMAT_V2_MARKER: &str |63aaba15332a0606
+crates/store/src/lib.rs [pub] const SQLCIPHER_SPIKE_FEATURE: &str |5c99a3908468f78e
+crates/store/src/lib.rs [pub] const SQLCIPHER_STORE_FEATURE: &str |2a2944e64d942050
+crates/store/src/lib.rs [pub] const SQLITE_APPLICATION_ID: u32 |8cf8b0a51bb47398
+crates/store/src/lib.rs [pub] const SQLITE_BUSY_TIMEOUT_MILLIS: u64 |3e9ae07b59732ef6
+crates/store/src/lib.rs [pub] const STORE_DATABASE_FILE: &str |e628588f581ae84d
+crates/store/src/lib.rs [pub] const SYNTHETIC_PROFILE_MARKER: &str |890ac3e9b80f8f3f
+crates/store/src/lib.rs [pub] mod accept
+crates/store/src/lib.rs [pub] mod connection
+crates/store/src/lib.rs [pub] mod descriptor_migration
+crates/store/src/lib.rs [pub] mod error
+crates/store/src/lib.rs [pub] mod fault
+crates/store/src/lib.rs [pub] mod idempotency
+crates/store/src/lib.rs [pub] mod migration
+crates/store/src/lib.rs [pub] mod outbox
+crates/store/src/lib.rs [pub] mod path_policy
+crates/store/src/lib.rs [pub] mod profile
+crates/store/src/lib.rs [pub] mod queries
+crates/store/src/lib.rs [pub] mod repository
+crates/store/src/lib.rs [pub] mod timeline
+crates/store/src/lib.rs [pub] use academic_vault::{SealedObjectReceipt, SealedObjectVerifier} |341e465994b2bf7e
+crates/store/src/migration.rs [priv] #[cfg(feature = "sqlcipher-store")] fn insert_schema_identity( transaction: &rusqlite::Transaction<'_>, creating_build_digest: [u8; 32], created_at_unix_ms: i64, ) -> StoreResult<()> |d075d5e8870fb1bb
+crates/store/src/migration.rs [priv] #[cfg(feature = "sqlcipher-store")] fn verify_storage_declaration(identity: &SchemaIdentity) -> StoreResult<()> |4b20cfd92458da70
+crates/store/src/migration.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn insert_schema_identity( transaction: &rusqlite::Transaction<'_>, creating_build_digest: [u8; 32], created_at_unix_ms: i64, ) -> StoreResult<()> |c5777a78ede28e69
+crates/store/src/migration.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn verify_storage_declaration(identity: &SchemaIdentity) -> StoreResult<()> |3c77b99196d1939e
+crates/store/src/migration.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] use crate::PHASE1_STORAGE_POLICY |5c854718f4e93ed0
+crates/store/src/migration.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum SchemaAdmission |0d5298783594fd21
+crates/store/src/migration.rs [priv] fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> StoreResult<()> |3c523130d26caef4
+crates/store/src/migration.rs [priv] fn fixed_bytes<const N: usize>(component: &'static str, bytes: Vec<u8>) -> StoreResult<[u8; N]> |a9ce41543ffa0218
+crates/store/src/migration.rs [priv] fn hex_bytes(bytes: &[u8]) -> String |c52d9eb4620f2450
+crates/store/src/migration.rs [priv] fn identity_exact(component: &'static str, expected: String, actual: String) -> StoreResult<()> |fd9785fad34f5e90
+crates/store/src/migration.rs [priv] fn inspect_schema_before_mutation(connection: &Connection) -> StoreResult<SchemaAdmission> |49ff6123b4958ec2
+crates/store/src/migration.rs [priv] fn nonnegative_u32(component: &'static str, value: i64) -> StoreResult<u32> |47e2b870a26fad68
+crates/store/src/migration.rs [priv] fn observed_version_for_error(value: i64) -> u32 |a9bab249f3a12665
+crates/store/src/migration.rs [priv] fn unix_time_millis() -> StoreResult<i64> |67a23f2738c0d1a7
+crates/store/src/migration.rs [priv] fn verify_integrity(connection: &Connection) -> StoreResult<()> |6b5fd7eb270d9e8b
+crates/store/src/migration.rs [priv] use crate::{ SQLITE_APPLICATION_ID, STORE_FORMAT_UUID, STORE_MINIMUM_READER_PROTOCOL, STORE_MINIMUM_WRITER_PROTOCOL, STORE_SCHEMA_SEMVER, STORE_SCHEMA_VERSION, connection::{ PragmaSnapshot, configure_migration_connection, disable_checkpoint_on_close, enable_checkpoint_on_close, read_pragma_snapshot, verify_fts5, verify_migration_pragmas, verify_writer_pragmas, }, error::{StoreError, StoreResult}, schema_fingerprint::{user_schema_object_count, verify_store_schema_fingerprint}, } |b7e206f4fed4cea2
+crates/store/src/migration.rs [priv] use rusqlite::{Connection, OpenFlags, TransactionBehavior, params} |940c6e1a31a2b153
+crates/store/src/migration.rs [priv] use std::{ path::Path, time::{SystemTime, UNIX_EPOCH}, } |57e89dc14203b803
+crates/store/src/migration.rs [pub(crate)] fn verify_current_schema( connection: &Connection, pragmas: &PragmaSnapshot, ) -> StoreResult<()> |be14d125e650b7bb
+crates/store/src/migration.rs [pub] #[cfg(any(feature = "sqlcipher-store", test))] const MIGRATION_0003_SQL: &str |bacac6596453f74d
+crates/store/src/migration.rs [pub] #[cfg(feature = "sqlcipher-store")] const STORE_MIGRATION_SQL: &[&str] |b8e0b825fd85247f
+crates/store/src/migration.rs [pub] #[cfg(feature = "sqlcipher-store")] fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdentity> |38d0a6172c4c8940
+crates/store/src/migration.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const STORE_MIGRATION_SQL: &[&str] |e30c6f8909491169
+crates/store/src/migration.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdentity> |3f9e45c80a98a6ef
+crates/store/src/migration.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum MigrationStatus |6d1ffa98842b2942
+crates/store/src/migration.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SchemaIdentity |9e9304404abc5171
+crates/store/src/migration.rs [pub] const MIGRATION_0001_SQL: &str |46021efc8c0fc0fe
+crates/store/src/migration.rs [pub] const MIGRATION_0004_SQL: &str |f646032e08ccae2d
+crates/store/src/migration.rs [pub] const MIGRATION_0005_SQL: &str |730810d818ee0bec
+crates/store/src/migration.rs [pub] const MIGRATION_0006_SQL: &str |078e502a3c32dc54
+crates/store/src/migration.rs [pub] const MIGRATION_0007_SQL: &str |ef0d8c77959f1151
+crates/store/src/migration.rs [pub] const MIGRATION_0009_SQL: &str |5cfc20586f9abd82
+crates/store/src/migration.rs [pub] const MIGRATION_0012_SQL: &str |f94f3ab7a0bd2f1c
+crates/store/src/migration.rs [pub] const MIGRATION_0014_SQL: &str |c9dbc3f3a31f715b
+crates/store/src/migration.rs [pub] const MIGRATION_0015_SQL: &str |3e0d157ca7191370
+crates/store/src/migration.rs [pub] fn apply_aggregate_migration_pre_listen(connection: &mut Connection) -> StoreResult<()> |5f31fd041defbd3d
+crates/store/src/migration.rs [pub] fn checked_sqlite_integer(value: u64) -> StoreResult<i64> |e0572db0bd0b51bf
+crates/store/src/migration.rs [pub] fn migrate_open_connection_pre_listen( connection: &mut Connection, creating_build_digest: [u8; 32], ) -> StoreResult<MigrationStatus> |b94453f806d129cd
+crates/store/src/migration.rs [pub] fn migrate_pre_listen( database_path: &Path, creating_build_digest: [u8; 32], ) -> StoreResult<MigrationStatus> |401113db32df98d2
+crates/store/src/migration.rs [pub] fn verify_schema_identity( identity: &SchemaIdentity, pragmas: &PragmaSnapshot, ) -> StoreResult<()> |15daf5cfbc60e705
+crates/store/src/model_run_closure_tests.rs [priv] #[test] fn a_reanalysis_addresses_the_subject_it_supersedes() -> Result<(), Box<dyn Error>> |95c2517864229484
+crates/store/src/model_run_closure_tests.rs [priv] #[test] fn model_run_provenance_is_bound_to_its_event_digest() -> Result<(), Box<dyn Error>> |e2ca5c8ad22fe82a
+crates/store/src/model_run_closure_tests.rs [priv] #[test] fn model_run_row_requires_every_stored_field() -> Result<(), Box<dyn Error>> |287cf6aff82bbecf
+crates/store/src/model_run_closure_tests.rs [priv] #[test] fn reanalysis_creates_new_candidate_not_mutation() -> Result<(), Box<dyn Error>> |b31031b5422d3281
+crates/store/src/model_run_closure_tests.rs [priv] #[test] fn reanalysis_diff_links_both_model_runs() -> Result<(), Box<dyn Error>> |e2dd7def725f3bc5
+crates/store/src/model_run_closure_tests.rs [priv] const RUNS: [(u32, &str); 3] |33ec425fc41ffc80
+crates/store/src/model_run_closure_tests.rs [priv] fn insert_candidate( connection: &Connection, candidate: &[u8; 16], model_run: &[u8; 16], subject: &[u8; 32], value: &[u8; 32], supersedes: Option<&[u8; 16]>, ) -> rusqlite::Result<usize> |c1c57bdaa7b9240c
+crates/store/src/model_run_closure_tests.rs [priv] fn insert_provenance( connection: &Connection, model_run: &[u8; 16], label: &str, transmission: (&str, Option<&str>), ) -> Result<(), Box<dyn Error>> |dbf809ed362dc7d9
+crates/store/src/model_run_closure_tests.rs [priv] fn record_digest(label: &str) -> [u8; 32] |d848abed1893a014
+crates/store/src/model_run_closure_tests.rs [priv] fn seed_batch( transaction: &Transaction<'_>, batch_id: &[u8; 16], event_count: u64, ) -> Result<(), Box<dyn Error>> |5f4a3f2d83810d23
+crates/store/src/model_run_closure_tests.rs [priv] fn seeded(label: &str) -> Result<SeededRuns, Box<dyn Error>> |07055ae37d3da792
+crates/store/src/model_run_closure_tests.rs [priv] fn synthetic_id(suffix: u32) -> [u8; 16] |e935c784086232e4
+crates/store/src/model_run_closure_tests.rs [priv] fn three_model_runs(connection: &mut Connection) -> Result<(), Box<dyn Error>> |caaf9f88cf8e7ef9
+crates/store/src/model_run_closure_tests.rs [priv] impl Drop for MigratedDatabase
+crates/store/src/model_run_closure_tests.rs [priv] impl Drop for MigratedDatabase :: fn drop(&mut self) |17cdcdcc7f5f9e27
+crates/store/src/model_run_closure_tests.rs [priv] impl MigratedDatabase
+crates/store/src/model_run_closure_tests.rs [priv] impl MigratedDatabase :: fn new(label: &str) -> Result<Self, Box<dyn Error>> |ff120a6d910d5f9d
+crates/store/src/model_run_closure_tests.rs [priv] impl MigratedDatabase :: fn open(&self) -> Result<Connection, Box<dyn Error>> |bcc28b41f7b7dae0
+crates/store/src/model_run_closure_tests.rs [priv] static NEXT_TEMP: std::sync::atomic::AtomicU64 |2da9f89d2c0cdfe6
+crates/store/src/model_run_closure_tests.rs [priv] struct MigratedDatabase |fb4c064976731727
+crates/store/src/model_run_closure_tests.rs [priv] type SeededRuns = (MigratedDatabase, [[u8; 16]; 3]) |c787241e2d7bc5f5
+crates/store/src/model_run_closure_tests.rs [priv] use academic_domain::{ Actor, ContentDigest, DomainId, Event, EventPayload, ModelRunId, ModelRunRegistration, ScopeDescriptor, ScopeId, TimestampMillis, ValidInterval, } |99340c8477aa80d1
+crates/store/src/model_run_closure_tests.rs [priv] use crate::{ aggregate_closure_tests::{apply_schema_two_canonical_core, typed_id}, migration::apply_aggregate_migration_pre_listen, repository::ClosureWriter, } |091e0094cc4853fa
+crates/store/src/model_run_closure_tests.rs [priv] use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior, params} |f17aab2d7775bae5
+crates/store/src/model_run_closure_tests.rs [priv] use std::{collections::BTreeMap, error::Error, fs, path::PathBuf} |3d9825e5e982b6d5
+crates/store/src/outbox.rs [priv] fn checked_i64(value: u64) -> Result<i64, OutboxError> |45b58352daadb54d
+crates/store/src/outbox.rs [priv] fn decode_row(row: RawOutboxRow) -> Result<OutboxEntry, OutboxError> |efa71d034f1b81d8
+crates/store/src/outbox.rs [priv] fn event_kind_mask(verified: &VerifiedBatch) -> [u8; 8] |caedbda7fa1257d4
+crates/store/src/outbox.rs [priv] fn id_from_blob<T>(bytes: Vec<u8>) -> Result<T, OutboxError> where T: std::str::FromStr<Err = DomainError>, |763bdbcbae4129ba
+crates/store/src/outbox.rs [priv] fn positive_u64(value: i64, reason: &'static str) -> Result<u64, OutboxError> |134f0ce6d321a774
+crates/store/src/outbox.rs [priv] impl Error for OutboxError
+crates/store/src/outbox.rs [priv] impl Error for OutboxError :: fn source(&self) -> Option<&(dyn Error + 'static)> |7d8b4fc5d5cf23cc
+crates/store/src/outbox.rs [priv] impl From<DomainError> for OutboxError
+crates/store/src/outbox.rs [priv] impl From<DomainError> for OutboxError :: fn from(error: DomainError) -> Self |36cb81b886707050
+crates/store/src/outbox.rs [priv] impl From<StoreError> for OutboxError
+crates/store/src/outbox.rs [priv] impl From<StoreError> for OutboxError :: fn from(error: StoreError) -> Self |1f9dd19bf676c75e
+crates/store/src/outbox.rs [priv] impl From<rusqlite::Error> for OutboxError
+crates/store/src/outbox.rs [priv] impl From<rusqlite::Error> for OutboxError :: fn from(error: rusqlite::Error) -> Self |50d65eb68b1e5da9
+crates/store/src/outbox.rs [priv] impl fmt::Display for OutboxError
+crates/store/src/outbox.rs [priv] impl fmt::Display for OutboxError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |77c8cbaefa956864
+crates/store/src/outbox.rs [priv] type RawOutboxRow = (i64, Vec<u8>, i64, i64, i64, Vec<u8>, Vec<u8>, i64) |12ec8883b3a597c7
+crates/store/src/outbox.rs [priv] use academic_contracts::VerifiedBatch |91144211d0b90ade
+crates/store/src/outbox.rs [priv] use academic_domain::{BatchId, ContentDigest, DomainError, EventPayload, TimestampMillis} |f0a8030f808d3c9d
+crates/store/src/outbox.rs [priv] use crate::{connection::ReaderConnection, error::StoreError} |1550939d55cec4e6
+crates/store/src/outbox.rs [priv] use rusqlite::{Transaction, params} |321babbea4923844
+crates/store/src/outbox.rs [priv] use std::{error::Error, fmt} |da07ae2fa3e26f41
+crates/store/src/outbox.rs [pub(crate)] fn insert_outbox( transaction: &Transaction<'_>, verified: &VerifiedBatch, accept_seq_start: u64, accept_seq_end: u64, canonical_revision: u64, created_at: TimestampMillis, ) -> Result<(), OutboxError> |a24c4b22f916db7e
+crates/store/src/outbox.rs [pub] #[derive(Debug)] enum OutboxError |792a2cb5c0553852
+crates/store/src/outbox.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OutboxEntry |680185cc2c2d38f5
+crates/store/src/outbox.rs [pub] fn read_outbox(reader: &ReaderConnection) -> Result<Vec<OutboxEntry>, OutboxError> |df287ec59f31984e
+crates/store/src/path_policy.rs [priv] #[cfg(not(windows))] fn looks_like_windows_drive(value: &str) -> bool |71ef15dbf9b4cc47
+crates/store/src/path_policy.rs [priv] #[cfg(windows)] use academic_store_platform::{WindowsPathKind, classify_windows_path} |9ab4c94cd263f2f1
+crates/store/src/path_policy.rs [priv] fn require_owner_only(access: ProfileAccess) -> Result<(), PathPolicyViolation> |97b042ea42790321
+crates/store/src/path_policy.rs [priv] fn validate_common_evidence(evidence: &PathEvidence) -> Result<(), PathPolicyViolation> |137864050c2ae4d7
+crates/store/src/path_policy.rs [priv] fn validate_lexical_path(path: &Path) -> Result<(), PathPolicyViolation> |b5cc622cdb3b5732
+crates/store/src/path_policy.rs [priv] fn validated(requested_root: &Path, evidence: PathEvidence) -> ValidatedProfilePath |073a2838e45525ba
+crates/store/src/path_policy.rs [priv] impl NativePathProbe
+crates/store/src/path_policy.rs [priv] impl PathEvidence
+crates/store/src/path_policy.rs [priv] impl PathProbe for NativePathProbe
+crates/store/src/path_policy.rs [priv] impl PathProbe for NativePathProbe :: fn inspect(&self, requested_root: &Path) -> Result<PathEvidence, PathProbeFailure> |acabbea59ee5bc74
+crates/store/src/path_policy.rs [priv] impl PathProbeFailure
+crates/store/src/path_policy.rs [priv] impl ValidatedProfilePath
+crates/store/src/path_policy.rs [priv] impl fmt::Debug for NativePathProbe
+crates/store/src/path_policy.rs [priv] impl fmt::Debug for NativePathProbe :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |23fcc2d96725f25d
+crates/store/src/path_policy.rs [priv] impl fmt::Display for PathPolicyViolation
+crates/store/src/path_policy.rs [priv] impl fmt::Display for PathPolicyViolation :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |7e98500b0ff3a1f4
+crates/store/src/path_policy.rs [priv] impl fmt::Display for PathProbeFailure
+crates/store/src/path_policy.rs [priv] impl fmt::Display for PathProbeFailure :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |07c607d7b0782ecb
+crates/store/src/path_policy.rs [priv] trait PathProbe: fmt::Debug + Send + Sync :: fn inspect(&self, requested_root: &Path) -> Result<PathEvidence, PathProbeFailure> |fe3caed46a520c24
+crates/store/src/path_policy.rs [priv] use crate::platform |6f0625377511d271
+crates/store/src/path_policy.rs [priv] use std::{ fmt, path::{Component, Path, PathBuf}, } |56d59707f1de588a
+crates/store/src/path_policy.rs [pub] #[derive(Clone, Default)] struct NativePathProbe |7ef1a4e82f5454a4
+crates/store/src/path_policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum PathProbeFailureCode |be82d76ac7e00228
+crates/store/src/path_policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ProfileAccess |0a603896baa2b73a
+crates/store/src/path_policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ProfileRootState |32de4aa0a85f88d5
+crates/store/src/path_policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum StorageLocality |0d7d14da5b63fb99
+crates/store/src/path_policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum PathPolicyViolation |c650182cfab346bd
+crates/store/src/path_policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathEvidence |4f127f9c518185f5
+crates/store/src/path_policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathProbeFailure |f44635ab855aee47
+crates/store/src/path_policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ValidatedProfilePath |be0217bab7fd49b8
+crates/store/src/path_policy.rs [pub] fn validate_created_profile_path<P: PathProbe + ?Sized>( requested_root: &Path, probe: &P, ) -> Result<ValidatedProfilePath, PathPolicyViolation> |cc4bc9aaa871277c
+crates/store/src/path_policy.rs [pub] fn validate_existing_profile_path<P: PathProbe + ?Sized>( requested_root: &Path, probe: &P, ) -> Result<ValidatedProfilePath, PathPolicyViolation> |6ca39038dda835eb
+crates/store/src/path_policy.rs [pub] fn validate_new_profile_path<P: PathProbe + ?Sized>( requested_root: &Path, probe: &P, ) -> Result<ValidatedProfilePath, PathPolicyViolation> |84246a30a5e9da0e
+crates/store/src/path_policy.rs [pub] impl NativePathProbe :: #[must_use] fn with_sync_roots(configured_sync_roots: Vec<PathBuf>) -> Self |c40131b927e1b750
+crates/store/src/path_policy.rs [pub] impl PathEvidence :: #[must_use] fn safe_empty(canonical_root: impl Into<PathBuf>) -> Self |e1004664dbb02045
+crates/store/src/path_policy.rs [pub] impl PathEvidence :: #[must_use] fn safe_missing(canonical_existing_ancestor: impl Into<PathBuf>) -> Self |7e2da1cfb8023e7f
+crates/store/src/path_policy.rs [pub] impl PathProbeFailure :: #[must_use] fn new(code: PathProbeFailureCode, detail: impl Into<String>) -> Self |c5fefc78396b8b9f
+crates/store/src/path_policy.rs [pub] impl ValidatedProfilePath :: #[must_use] const fn root_state(&self) -> ProfileRootState |3beecd7893f6c8d5
+crates/store/src/path_policy.rs [pub] impl ValidatedProfilePath :: #[must_use] fn canonical_existing_ancestor(&self) -> &Path |dccfd63694def42d
+crates/store/src/path_policy.rs [pub] impl ValidatedProfilePath :: #[must_use] fn requested_root(&self) -> &Path |dc67924fc04a8a2f
+crates/store/src/path_policy.rs [pub] trait PathProbe: fmt::Debug + Send + Sync
+crates/store/src/platform/mod.rs [priv] #[cfg(not(any(unix, windows)))] mod host
+crates/store/src/platform/mod.rs [priv] #[cfg(test)] mod tests
+crates/store/src/platform/mod.rs [priv] #[cfg(unix)] mod unix
+crates/store/src/platform/mod.rs [priv] #[cfg(unix)] use unix as host |76100942f437c427
+crates/store/src/platform/mod.rs [priv] #[cfg(windows)] mod windows
+crates/store/src/platform/mod.rs [priv] #[cfg(windows)] use windows as host |f3fcef6313e20999
+crates/store/src/platform/mod.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct SupplementalPolicy |982aaa023f78ae5b
+crates/store/src/platform/mod.rs [priv] fn inconsistent_capabilities(detail: &'static str) -> PathProbeFailure |b6e3ece3c3c410c0
+crates/store/src/platform/mod.rs [priv] fn map_capabilities( capabilities: PathCapabilities, supplemental: SupplementalPolicy, ) -> Result<PathEvidence, PathProbeFailure> |4b4270331e3fc9c0
+crates/store/src/platform/mod.rs [priv] fn map_native_error(error: PathCapabilityError) -> PathProbeFailure |452539b2fdcbc865
+crates/store/src/platform/mod.rs [priv] fn map_root_state(state: NativeRootState) -> Result<ProfileRootState, PathProbeFailure> |4731d8721150b714
+crates/store/src/platform/mod.rs [priv] mod host :: use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/store/src/platform/mod.rs [priv] mod host :: use super::{PathProbeFailure, PathProbeFailureCode, SupplementalPolicy} |20ed68f8608f6fa5
+crates/store/src/platform/mod.rs [priv] mod tests :: #[test] fn changed_native_final_identity_stays_failed() |f7e8cce3a9d16f9d
+crates/store/src/platform/mod.rs [priv] mod tests :: #[test] fn inconsistent_native_capabilities_fail_closed() |5e5a6a491d1ceaa4
+crates/store/src/platform/mod.rs [priv] mod tests :: #[test] fn native_capabilities_map_without_promoting_unknown() |fe96169a70355330
+crates/store/src/platform/mod.rs [priv] mod tests :: fn absolute_test_path(component: &str) -> PathBuf |4b9029a62828a1e6
+crates/store/src/platform/mod.rs [priv] mod tests :: fn no_supplemental_policy() -> SupplementalPolicy |2cbe837649f68c3c
+crates/store/src/platform/mod.rs [priv] mod tests :: use academic_store_platform::LocalityUnknown |04193d93f1c51ee3
+crates/store/src/platform/mod.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/store/src/platform/mod.rs [priv] use academic_store_platform::{ DirectoryAccess, FinalPathStatus, PathCapabilities, PathCapabilityError, PathCapabilityErrorCode, RootState as NativeRootState, StorageLocality as NativeStorageLocality, } |de8aaeabec92ca78
+crates/store/src/platform/mod.rs [priv] use crate::path_policy::{ PathEvidence, PathProbeFailure, PathProbeFailureCode, ProfileAccess, ProfileRootState, StorageLocality, } |8be8b471f9eec218
+crates/store/src/platform/mod.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/store/src/platform/mod.rs [pub(crate)] #[cfg(not(any(unix, windows)))] use host::{sync_directory, sync_parent_directory} |927227bdc9a2533f
+crates/store/src/platform/mod.rs [pub(crate)] #[cfg(unix)] use unix::{sync_directory, sync_parent_directory} |c3f9696592220285
+crates/store/src/platform/mod.rs [pub(crate)] #[cfg(windows)] use windows::{sync_directory, sync_parent_directory} |770b17e105c950cf
+crates/store/src/platform/mod.rs [pub(crate)] fn create_profile_directory(path: &Path) -> Result<(), PathProbeFailure> |2bbecae82e2c5432
+crates/store/src/platform/mod.rs [pub(crate)] fn inspect_profile_path( requested_root: &Path, configured_sync_roots: &[PathBuf], ) -> Result<PathEvidence, PathProbeFailure> |0161da911c2b3df8
+crates/store/src/platform/mod.rs [pub(crate)] mod host :: fn sync_directory(_path: &Path) -> Result<(), PathProbeFailure> |8ce06ee5fd41e7a8
+crates/store/src/platform/mod.rs [pub(crate)] mod host :: fn sync_parent_directory(_path: &Path) -> Result<(), PathProbeFailure> |a1c22c09962607a6
+crates/store/src/platform/mod.rs [pub(super)] mod host :: fn paths_equal(left: &Path, right: &Path) -> bool |c9362a7323141913
+crates/store/src/platform/mod.rs [pub(super)] mod host :: fn supplemental_policy( _requested_root: &Path, _canonical_existing_ancestor: &Path, _configured_sync_roots: &[PathBuf], ) -> Result<SupplementalPolicy, PathProbeFailure> |738a59b00dbdc66c
+crates/store/src/platform/unix.rs [priv] fn has_git_ancestor(path: &Path) -> Result<bool, PathProbeFailure> |80158b25584d99cc
+crates/store/src/platform/unix.rs [priv] fn native_sync_roots(configured: &[PathBuf]) -> Vec<PathBuf> |90bebf9cc66480ae
+crates/store/src/platform/unix.rs [priv] fn os_error(operation: &'static str, error: io::Error) -> PathProbeFailure |fef1bea06be098ee
+crates/store/src/platform/unix.rs [priv] use crate::path_policy::{PathProbeFailure, PathProbeFailureCode} |fb32b7c0710147a5
+crates/store/src/platform/unix.rs [priv] use std::{ env, fs, io, path::{Path, PathBuf}, } |626ec7bbb91c28da
+crates/store/src/platform/unix.rs [priv] use super::SupplementalPolicy |691a9e7279952eb8
+crates/store/src/platform/unix.rs [pub(crate)] fn sync_directory(path: &Path) -> Result<(), PathProbeFailure> |edc2e94e3c8bc0f9
+crates/store/src/platform/unix.rs [pub(crate)] fn sync_parent_directory(path: &Path) -> Result<(), PathProbeFailure> |aaa25f612a7d2b22
+crates/store/src/platform/unix.rs [pub(super)] fn paths_equal(left: &Path, right: &Path) -> bool |c9362a7323141913
+crates/store/src/platform/unix.rs [pub(super)] fn supplemental_policy( requested_root: &Path, canonical_existing_ancestor: &Path, configured_sync_roots: &[PathBuf], ) -> Result<SupplementalPolicy, PathProbeFailure> |9f57f51f81cdaa6e
+crates/store/src/platform/windows.rs [priv] #[cfg(test)] mod tests
+crates/store/src/platform/windows.rs [priv] fn has_git_ancestor(path: &Path) -> Result<bool, PathProbeFailure> |5cc09858293cd0ba
+crates/store/src/platform/windows.rs [priv] fn native_sync_roots(configured: &[PathBuf]) -> Vec<PathBuf> |5af8529511d6b042
+crates/store/src/platform/windows.rs [priv] fn normalize_windows_path(path: &Path) -> String |e89737e171417718
+crates/store/src/platform/windows.rs [priv] fn path_starts_with_case_insensitive(path: &Path, root: &Path) -> bool |89dd5c2b00a3dc8a
+crates/store/src/platform/windows.rs [priv] fn revalidate_directory_barrier( path: &Path, require_owner_only: bool, ) -> Result<(), PathProbeFailure> |d0b15a775065a30f
+crates/store/src/platform/windows.rs [priv] fn verify_directory_barrier_capabilities( capabilities: &PathCapabilities, require_owner_only: bool, ) -> Result<(), PathProbeFailure> |78e9bf750abdc899
+crates/store/src/platform/windows.rs [priv] mod tests :: #[test] fn profile_root_barrier_rejects_broad_access_while_parent_barrier_allows_it() |53a1d9eeb9dac86c
+crates/store/src/platform/windows.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/store/src/platform/windows.rs [priv] use academic_store_platform::{ DirectoryAccess, FinalPathStatus, PathCapabilities, RootState, StorageLocality, } |21dd1a7a9f0b480e
+crates/store/src/platform/windows.rs [priv] use crate::path_policy::{PathProbeFailure, PathProbeFailureCode} |fb32b7c0710147a5
+crates/store/src/platform/windows.rs [priv] use std::{ env, fs, path::{Path, PathBuf}, } |172dc8b0faa0e676
+crates/store/src/platform/windows.rs [priv] use super::{SupplementalPolicy, inconsistent_capabilities, map_native_error} |1feba2879ec54067
+crates/store/src/platform/windows.rs [pub(crate)] fn sync_directory(path: &Path) -> Result<(), PathProbeFailure> |4fc039e3b6109695
+crates/store/src/platform/windows.rs [pub(crate)] fn sync_parent_directory(path: &Path) -> Result<(), PathProbeFailure> |65b7d27d7a3cf28b
+crates/store/src/platform/windows.rs [pub(super)] fn paths_equal(left: &Path, right: &Path) -> bool |b599f8005bf26930
+crates/store/src/platform/windows.rs [pub(super)] fn supplemental_policy( requested_root: &Path, canonical_existing_ancestor: &Path, configured_sync_roots: &[PathBuf], ) -> Result<SupplementalPolicy, PathProbeFailure> |fc4bc505ba17a431
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] const INCOMPLETE_PROFILE_MARKER_CONTENTS: &str |31f4efd1dfd13d95
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn is_known_profile_file(name: &str) -> bool |5c1a44f9c7ffa5c6
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn known_profile_files() -> [&'static str; 6] |f9073025f2bf4d92
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn manifest_field(accepted: bool, field: &'static str) -> StoreResult<()> |c9797395cb91d599
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn verify_complete_incomplete_marker(root: &Path) -> StoreResult<()> |455b3c674121bfd9
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn verify_removable_incomplete_marker(root: &Path) -> StoreResult<()> |25418415e4a18d76
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] impl IncompleteProfile
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] impl SyntheticIngestManifest<'static>
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] impl SyntheticProfile
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] use crate::path_policy::PathProbe |24e142b2cd416e3e
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] use crate::{ INCOMPLETE_PROFILE_MARKER, PHASE1_POLICY_BANNER, PHASE1_STORAGE_POLICY, STORE_DATABASE_FILE, SYNTHETIC_PROFILE_MARKER, accept::AcceptanceStore, connection::{ReaderConnection, open_reader, open_writer}, migration::{MigrationStatus, migrate_pre_listen}, path_policy::{ ProfileRootState, validate_created_profile_path, validate_existing_profile_path, validate_new_profile_path, }, } |d34910c8bb5aed8b
+crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] use std::path::PathBuf |ee071d6ff273c970
+crates/store/src/profile.rs [priv] use crate::{ error::{StoreError, StoreResult}, path_policy::PathPolicyViolation, platform, } |21858c32f0f05b6c
+crates/store/src/profile.rs [priv] use std::{ fs::{self, File, OpenOptions}, io::{Read, Write}, path::Path, } |dad5ed3630b58c4e
+crates/store/src/profile.rs [pub(crate)] fn probe_failure(failure: crate::path_policy::PathProbeFailure) -> StoreError |c659e88d547851e2
+crates/store/src/profile.rs [pub(crate)] fn read_bounded_file(path: &Path, maximum_bytes: usize) -> StoreResult<Vec<u8>> |09422521337d009c
+crates/store/src/profile.rs [pub(crate)] fn require_regular_file(path: &Path) -> StoreResult<()> |c920eb93a771d59e
+crates/store/src/profile.rs [pub(crate)] fn sync_directory(path: &Path) -> StoreResult<()> |dfd950580e267684
+crates/store/src/profile.rs [pub(crate)] fn sync_parent_directory(path: &Path) -> StoreResult<()> |6133bbf0b103842c
+crates/store/src/profile.rs [pub(crate)] fn write_new_synced_file(path: &Path, contents: &[u8]) -> StoreResult<()> |9e70713aab96e310
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] #[derive(Debug)] struct IncompleteProfile |16b49ae54f5f7de7
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct SyntheticIngestManifest<'a> |2fe79e417fc5d6ef
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] #[derive(Debug, Clone, PartialEq, Eq)] struct SyntheticProfile |86498ecee2950138
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const SYNTHETIC_PROFILE_MARKER_CONTENTS: &str |0a9335b0c22fafe6
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn create_synthetic_profile<P: PathProbe + ?Sized>( root: &Path, probe: &P, creating_build_digest: [u8; 32], ) -> StoreResult<SyntheticProfile> |8f9767aaef93b7e2
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn open_synthetic_profile<P: PathProbe + ?Sized>( root: &Path, probe: &P, ) -> StoreResult<SyntheticProfile> |842f2d4fdce85390
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn prepare_synthetic_profile<P: PathProbe + ?Sized>( root: &Path, probe: &P, ) -> StoreResult<IncompleteProfile> |638562d838889316
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn remove_incomplete_profile<P: PathProbe + ?Sized>(root: &Path, probe: &P) -> StoreResult<()> |abcf5f6ce155e75a
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn require_profile_format(root: &Path) -> StoreResult<()> |0028cb7ad2d66ec6
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn validate_synthetic_manifest(manifest: &SyntheticIngestManifest<'_>) -> StoreResult<()> |278250b92ed4b81c
+crates/store/src/profile.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn write_policy_banner(mut output: impl Write) -> StoreResult<()> |23781e845b7739ca
+crates/store/src/profile.rs [pub] impl IncompleteProfile :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
+crates/store/src/profile.rs [pub] impl IncompleteProfile :: fn complete<P: PathProbe + ?Sized>( self, probe: &P, creating_build_digest: [u8; 32], ) -> StoreResult<SyntheticProfile> |73cef4f4c00882a9
+crates/store/src/profile.rs [pub] impl SyntheticIngestManifest<'static> :: #[must_use] const fn allowlisted() -> Self |8233e2ec470faa73
+crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] const fn migration_status(&self) -> MigrationStatus |8f78f939a482d2d3
+crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] fn database_path(&self) -> &Path |f8538a3bafe42241
+crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
+crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn open_acceptance_store(&self) -> StoreResult<AcceptanceStore> |cfb93aa55d6db200
+crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn open_reader(&self) -> StoreResult<ReaderConnection> |33c62c53b1679235
+crates/store/src/proposal_closure_tests.rs [priv] #[allow(clippy::too_many_arguments)] fn insert_disposition( connection: &Connection, proposal: &[u8], seq: i64, disposition: &str, actor_class: &str, explicit_approval: i64, supersedes: Option<i64>, ) -> rusqlite::Result<usize> |94641270c503c369
+crates/store/src/proposal_closure_tests.rs [priv] #[test] fn a_disposition_is_a_user_action() -> Result<(), Box<dyn Error>> |771c13d37de3f516
+crates/store/src/proposal_closure_tests.rs [priv] #[test] fn a_high_approval_confirmation_is_explicit() -> Result<(), Box<dyn Error>> |1f555837a2decc28
+crates/store/src/proposal_closure_tests.rs [priv] #[test] fn a_rejected_proposal_row_is_retained() -> Result<(), Box<dyn Error>> |4561ae20545c020f
+crates/store/src/proposal_closure_tests.rs [priv] #[test] fn a_review_row_needs_the_event_that_authorized_it() -> Result<(), Box<dyn Error>> |9c490d923bf34153
+crates/store/src/proposal_closure_tests.rs [priv] #[test] fn an_undo_names_an_open_record_and_cannot_fork() -> Result<(), Box<dyn Error>> |15c7dd963cb47bf2
+crates/store/src/proposal_closure_tests.rs [priv] #[test] fn low_risk_autosave_persists_only_as_ai_inferred() -> Result<(), Box<dyn Error>> |59c5cafece729c3f
+crates/store/src/proposal_closure_tests.rs [priv] #[test] fn the_batching_configuration_is_versioned_and_immutable() -> Result<(), Box<dyn Error>> |dbe77425166d41b4
+crates/store/src/proposal_closure_tests.rs [priv] const PROPOSALS: [(u32, &str, &str); 4] |82d76485faf091b4
+crates/store/src/proposal_closure_tests.rs [priv] const SPARE: (u32, &str) |ff92302070c738a1
+crates/store/src/proposal_closure_tests.rs [priv] fn four_proposals(connection: &mut Connection) -> Result<(), Box<dyn Error>> |80467144b559fb23
+crates/store/src/proposal_closure_tests.rs [priv] fn migrated(label: &str) -> Result<(MigratedDatabase, Connection), Box<dyn Error>> |140b0e21cf7029a4
+crates/store/src/proposal_closure_tests.rs [priv] fn must_fail(result: rusqlite::Result<usize>, claim: &str) -> Result<String, Box<dyn Error>> |d1a6f41fcdd754ff
+crates/store/src/proposal_closure_tests.rs [priv] fn proposal_in(tier: &str) -> Result<Vec<u8>, Box<dyn Error>> |455c57ced748b422
+crates/store/src/proposal_closure_tests.rs [priv] fn record_digest(label: &str) -> [u8; 32] |d848abed1893a014
+crates/store/src/proposal_closure_tests.rs [priv] fn seed_batch( transaction: &Transaction<'_>, batch_id: &[u8; 16], event_count: u64, ) -> Result<(), Box<dyn Error>> |5f4a3f2d83810d23
+crates/store/src/proposal_closure_tests.rs [priv] fn seed_policy(connection: &Connection) -> Result<(), Box<dyn Error>> |0061a3cc43d282f0
+crates/store/src/proposal_closure_tests.rs [priv] fn seed_reviews(connection: &Connection) -> Result<(), Box<dyn Error>> |11b91b6f95482b22
+crates/store/src/proposal_closure_tests.rs [priv] fn synthetic_id(suffix: u32) -> [u8; 16] |e935c784086232e4
+crates/store/src/proposal_closure_tests.rs [priv] impl Drop for MigratedDatabase
+crates/store/src/proposal_closure_tests.rs [priv] impl Drop for MigratedDatabase :: fn drop(&mut self) |17cdcdcc7f5f9e27
+crates/store/src/proposal_closure_tests.rs [priv] impl MigratedDatabase
+crates/store/src/proposal_closure_tests.rs [priv] impl MigratedDatabase :: fn new(label: &str) -> Result<Self, Box<dyn Error>> |553b524816c2142d
+crates/store/src/proposal_closure_tests.rs [priv] impl MigratedDatabase :: fn open(&self) -> Result<Connection, Box<dyn Error>> |bcc28b41f7b7dae0
+crates/store/src/proposal_closure_tests.rs [priv] static NEXT_TEMP: std::sync::atomic::AtomicU64 |2da9f89d2c0cdfe6
+crates/store/src/proposal_closure_tests.rs [priv] struct MigratedDatabase |fb4c064976731727
+crates/store/src/proposal_closure_tests.rs [priv] use academic_domain::{ Actor, ContentDigest, DomainId, Event, EventPayload, ModelRunId, ModelRunRegistration, ProposalDispositionRegistration, ProposalId, ScopeDescriptor, ScopeId, TimestampMillis, ValidInterval, } |59454165b94b506e
+crates/store/src/proposal_closure_tests.rs [priv] use crate::{ aggregate_closure_tests::{apply_schema_two_canonical_core, typed_id}, migration::apply_aggregate_migration_pre_listen, repository::ClosureWriter, } |091e0094cc4853fa
+crates/store/src/proposal_closure_tests.rs [priv] use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior, params} |f17aab2d7775bae5
+crates/store/src/proposal_closure_tests.rs [priv] use std::{collections::BTreeMap, error::Error, fs, path::PathBuf} |3d9825e5e982b6d5
+crates/store/src/queries.rs [priv] fn parse_actor_kind(value: &str) -> Result<ResolverActorKind, QueryError> |327273678b5ec91a
+crates/store/src/queries.rs [priv] fn parse_relation_kind(value: &str) -> Result<ClaimRelationKind, QueryError> |e8ce4c261e48b237
+crates/store/src/queries.rs [priv] fn projection_source_authority_from_connection( connection: &Connection, domain_id: DomainId, known_at_accept_seq: u64, ) -> Result<ProjectionSourceAuthority, QueryError> |c29bdbd8f0a3c384
+crates/store/src/queries.rs [priv] fn read_claims( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionClaim>, QueryError> |787ea08971696f1b
+crates/store/src/queries.rs [priv] fn read_decisions( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionDecision>, QueryError> |fb558c3d438602aa
+crates/store/src/queries.rs [priv] fn read_relations( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionRelation>, QueryError> |8c2413ed96dd9951
+crates/store/src/queries.rs [priv] fn resolve_from_connection( connection: &Connection, query: &ResolutionQuery, ) -> Result<ResolutionResult, QueryError> |2f716b409d03c167
+crates/store/src/queries.rs [priv] impl Error for QueryError
+crates/store/src/queries.rs [priv] impl Error for QueryError :: fn source(&self) -> Option<&(dyn Error + 'static)> |cf85601a442f897a
+crates/store/src/queries.rs [priv] impl From<ContractError> for QueryError
+crates/store/src/queries.rs [priv] impl From<ContractError> for QueryError :: fn from(error: ContractError) -> Self |371be9d20acd8fa0
+crates/store/src/queries.rs [priv] impl From<DomainError> for QueryError
+crates/store/src/queries.rs [priv] impl From<DomainError> for QueryError :: fn from(error: DomainError) -> Self |36cb81b886707050
+crates/store/src/queries.rs [priv] impl From<RepositoryError> for QueryError
+crates/store/src/queries.rs [priv] impl From<RepositoryError> for QueryError :: fn from(error: RepositoryError) -> Self |8bda5ca1249cd21c
+crates/store/src/queries.rs [priv] impl From<StoreError> for QueryError
+crates/store/src/queries.rs [priv] impl From<StoreError> for QueryError :: fn from(error: StoreError) -> Self |1f9dd19bf676c75e
+crates/store/src/queries.rs [priv] impl fmt::Display for QueryError
+crates/store/src/queries.rs [priv] impl fmt::Display for QueryError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |20e12c5841fb3da2
+crates/store/src/queries.rs [priv] type RawClaim = ( Vec<u8>, Vec<u8>, String, Vec<u8>, String, Option<Vec<u8>>, Option<String>, Option<i64>, Option<String>, Option<i64>, Option<i64>, Option<i64>, String, String, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, i64, Option<i64>, i64, ) |ecafa062019880bf
+crates/store/src/queries.rs [priv] use academic_contracts::{ ContractError, decode_canonical_claim_object, decode_canonical_evidence_ids, } |ae9e96dda3ca2d32
+crates/store/src/queries.rs [priv] use academic_domain::{ ArtifactId, Claim, ClaimId, ClaimRelation, ClaimRelationKind, ConfidencePermille, ContentDigest, DecisionAction, DecisionId, DomainError, DomainId, EntityId, EvidenceId, PredicateId, ResolutionSlot, ScopeId, TimestampMillis, UserDecision, ValidInterval, } |eab4bbb356c8010d
+crates/store/src/queries.rs [priv] use academic_ledger::{ ResolutionClaim, ResolutionDecision, ResolutionQuery, ResolutionRelation, ResolutionResult, ResolverActorKind, resolve_snapshot, } |22f47c0b93f82729
+crates/store/src/queries.rs [priv] use crate::{ connection::ReaderConnection, error::StoreError, repository::{ RepositoryError, StoredClaimObject, decode_claim_object, decode_prediction_metadata, id_from_blob, parse_authority, parse_epistemic, }, } |3b73982efaf6e37d
+crates/store/src/queries.rs [priv] use rusqlite::{Connection, Params, Row} |0e9358616adf08a4
+crates/store/src/queries.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, error::Error, fmt, } |a71ff26f23e4c4bc
+crates/store/src/queries.rs [pub(crate)] fn checked_i64(value: u64) -> Result<i64, QueryError> |ac1257aa24559f80
+crates/store/src/queries.rs [pub(crate)] fn fixed_bytes<const LENGTH: usize>( bytes: Vec<u8>, reason: &'static str, ) -> Result<[u8; LENGTH], QueryError> |3d06354b5b6c14e4
+crates/store/src/queries.rs [pub(crate)] fn nonnegative_u64(value: i64, reason: &'static str) -> Result<u64, QueryError> |08a78b09e5ea92dd
+crates/store/src/queries.rs [pub(crate)] fn positive_u64(value: i64, reason: &'static str) -> Result<u64, QueryError> |fdd52d6c106e9a65
+crates/store/src/queries.rs [pub(crate)] fn query_collect<T, P, F>( connection: &Connection, sql: &str, params: P, mapper: F, ) -> Result<Vec<T>, QueryError> where P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>, |bf7cd218b788c161
+crates/store/src/queries.rs [pub] #[derive(Debug)] enum QueryError |597feaa79d20ea15
+crates/store/src/queries.rs [pub] #[derive(Debug)] struct ProjectionSnapshotRequest<'policy> |9b69265bbe7c625a
+crates/store/src/queries.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CanonicalSnapshot |66d4e886359f10ec
+crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionEvidenceLocator |930e6295e16a401f
+crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionResolvedClaim |a68a6835322459bf
+crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionSourceAuthority |704a7cc12e0593ec
+crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionSourceSnapshot |82093a4de3d51963
+crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct StoredBatchMaterial |6ec5b1fc7f3e27ce
+crates/store/src/queries.rs [pub] const PROJECTION_RESOLVER_VERSION: &str |c64449d5015594bb
+crates/store/src/queries.rs [pub] fn batch_material( reader: &ReaderConnection, batch_id: academic_domain::BatchId, ) -> Result<StoredBatchMaterial, QueryError> |1d2ff759d6edacc6
+crates/store/src/queries.rs [pub] fn canonical_snapshot(reader: &ReaderConnection) -> Result<CanonicalSnapshot, QueryError> |82dfc99d8f6bfeb1
+crates/store/src/queries.rs [pub] fn projection_source_authority( reader: &mut ReaderConnection, domain_id: DomainId, known_at_accept_seq: u64, ) -> Result<ProjectionSourceAuthority, QueryError> |933ec2673ca6a4df
+crates/store/src/queries.rs [pub] fn projection_source_snapshot( reader: &mut ReaderConnection, request: &ProjectionSnapshotRequest<'_>, ) -> Result<ProjectionSourceSnapshot, QueryError> |79d624c7909ea787
+crates/store/src/queries.rs [pub] fn resolve( reader: &ReaderConnection, query: &ResolutionQuery, ) -> Result<ResolutionResult, QueryError> |33c4437434ac528b
+crates/store/src/queries.rs [pub] use academic_ledger::AuthorityPolicy |bd81cbf3625a651a
+crates/store/src/repository.rs [priv] #[derive(Debug, Clone)] struct AcceptedClaim |6f7a7b66e1b68bcb
+crates/store/src/repository.rs [priv] #[derive(Debug, Clone)] struct AcceptedEvidence |312f5a3d7ec4f009
+crates/store/src/repository.rs [priv] fn actor_kind(actor: &Actor) -> &'static str |35b9f286b6668cd7
+crates/store/src/repository.rs [priv] fn aggregate_closure_row(payload: &EventPayload) -> Option<AggregateClosureRow<'_>> |9e8289be3d5e011e
+crates/store/src/repository.rs [priv] fn authority_class(value: AuthorityClass) -> &'static str |906a4054a442b459
+crates/store/src/repository.rs [priv] fn checked_i64(value: u64) -> Result<i64, RepositoryError> |cb0f7e93e6e49689
+crates/store/src/repository.rs [priv] fn claim_object_columns(object: &ClaimObject) -> ClaimObjectColumns |56d1b183af363d66
+crates/store/src/repository.rs [priv] fn confidentiality(value: Confidentiality) -> &'static str |5d0e9f04c440f318
+crates/store/src/repository.rs [priv] fn decode_locator(kind: &str, bytes: &[u8]) -> Result<EvidenceLocator, RepositoryError> |ff5544922838cc52
+crates/store/src/repository.rs [priv] fn digest_bytes(bytes: Vec<u8>, reason: &'static str) -> Result<[u8; 32], RepositoryError> |f98cfd54e838a2d9
+crates/store/src/repository.rs [priv] fn digest_from_blob(bytes: Vec<u8>) -> Result<ContentDigest, RepositoryError> |ed23baa175f1432d
+crates/store/src/repository.rs [priv] fn encode_locator(locator: &EvidenceLocator) -> Result<(&'static str, Vec<u8>), RepositoryError> |a7fab5563b9d4cfe
+crates/store/src/repository.rs [priv] fn epistemic_status(value: EpistemicStatus) -> &'static str |a91b6a271a48dbec
+crates/store/src/repository.rs [priv] fn event_kind(payload: &EventPayload) -> &'static str |1ba4903abb88ef81
+crates/store/src/repository.rs [priv] fn evidence_role(value: EvidenceRole) -> &'static str |dc6b1641689ec72f
+crates/store/src/repository.rs [priv] fn evidence_strength(value: EvidenceStrength) -> &'static str |08e3e4c239f0dadd
+crates/store/src/repository.rs [priv] fn freshness(value: FreshnessBand) -> &'static str |d133a340622a71f2
+crates/store/src/repository.rs [priv] fn hex_lower(bytes: &[u8]) -> String |edadd8225b66008a
+crates/store/src/repository.rs [priv] fn load_artifact( transaction: &Connection, id: ArtifactId, ) -> Result<Option<ArtifactDescriptor>, RepositoryError> |1a810c3c828b40a9
+crates/store/src/repository.rs [priv] fn load_claim( transaction: &Transaction<'_>, id: ClaimId, ) -> Result<Option<AcceptedClaim>, RepositoryError> |90ef03567f7ac749
+crates/store/src/repository.rs [priv] fn load_evidence( transaction: &Transaction<'_>, id: EvidenceId, ) -> Result<Option<AcceptedEvidence>, RepositoryError> |7fe3158caa1aefcf
+crates/store/src/repository.rs [priv] fn load_scope( transaction: &Transaction<'_>, id: ScopeId, ) -> Result<Option<ScopeDescriptor>, RepositoryError> |1a614bbee8e82efb
+crates/store/src/repository.rs [priv] fn mastery(value: MasteryLevel) -> &'static str |171a29df0d174e75
+crates/store/src/repository.rs [priv] fn nonnegative_u64(value: i64, reason: &'static str) -> Result<u64, RepositoryError> |b7e950772bb05d82
+crates/store/src/repository.rs [priv] fn parse_confidentiality(value: &str) -> Result<Confidentiality, RepositoryError> |e1a550844501103d
+crates/store/src/repository.rs [priv] fn parse_evidence_role(value: &str) -> Result<EvidenceRole, RepositoryError> |d8d8c889e685d8ea
+crates/store/src/repository.rs [priv] fn parse_evidence_strength(value: &str) -> Result<EvidenceStrength, RepositoryError> |f3b1d842606bd9fd
+crates/store/src/repository.rs [priv] fn parse_freshness(value: &str) -> Result<FreshnessBand, RepositoryError> |4eb56cc65141e0c7
+crates/store/src/repository.rs [priv] fn parse_mastery(value: &str) -> Result<MasteryLevel, RepositoryError> |4d6557fd0d7104ba
+crates/store/src/repository.rs [priv] fn parse_retention(value: &str) -> Result<RetentionClass, RepositoryError> |fe382cd04c66ea8e
+crates/store/src/repository.rs [priv] fn positive_u64(value: i64, reason: &'static str) -> Result<u64, RepositoryError> |e9494f7cc83a455a
+crates/store/src/repository.rs [priv] fn relation_kind(value: ClaimRelationKind) -> &'static str |d76c356f28a98cfd
+crates/store/src/repository.rs [priv] fn required<T>(value: Option<T>, reason: &'static str) -> Result<T, RepositoryError> |a7caddbee0a9d29b
+crates/store/src/repository.rs [priv] fn retention_class(value: RetentionClass) -> &'static str |bfcd371fa8f5dde6
+crates/store/src/repository.rs [priv] fn row_exists( transaction: &Transaction<'_>, table: &'static str, column: &'static str, id: &[u8; 16], ) -> Result<bool, RepositoryError> |067a363f4db0c78c
+crates/store/src/repository.rs [priv] impl Error for RepositoryError
+crates/store/src/repository.rs [priv] impl Error for RepositoryError :: fn source(&self) -> Option<&(dyn Error + 'static)> |501139744209086f
+crates/store/src/repository.rs [priv] impl From<ContractError> for RepositoryError
+crates/store/src/repository.rs [priv] impl From<ContractError> for RepositoryError :: fn from(error: ContractError) -> Self |371be9d20acd8fa0
+crates/store/src/repository.rs [priv] impl From<DomainError> for RepositoryError
+crates/store/src/repository.rs [priv] impl From<DomainError> for RepositoryError :: fn from(error: DomainError) -> Self |36cb81b886707050
+crates/store/src/repository.rs [priv] impl From<LedgerError> for RepositoryError
+crates/store/src/repository.rs [priv] impl From<LedgerError> for RepositoryError :: fn from(error: LedgerError) -> Self |e575b30a6d983a16
+crates/store/src/repository.rs [priv] impl From<rusqlite::Error> for RepositoryError
+crates/store/src/repository.rs [priv] impl From<rusqlite::Error> for RepositoryError :: fn from(error: rusqlite::Error) -> Self |50d65eb68b1e5da9
+crates/store/src/repository.rs [priv] impl fmt::Display for RepositoryError
+crates/store/src/repository.rs [priv] impl fmt::Display for RepositoryError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |fb3851299427ce52
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R>
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_artifact( &mut self, event: &Event, descriptor: &ArtifactDescriptor, ) -> Result<(), RepositoryError> |552a5b3ec3a36a72
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_claim( &mut self, event: &Event, claim: &Claim, _accept_seq: u64, ) -> Result<(), RepositoryError> |c28c21b39c823859
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_decision( &mut self, event: &Event, decision: &UserDecision, _accept_seq: u64, ) -> Result<(), RepositoryError> |a3396d0e8246adf4
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_evidence( &mut self, event: &Event, item: &EvidenceItem, ) -> Result<(), RepositoryError> |9f9ec32183a6e3f8
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_registration( &mut self, event: &Event, row: &AggregateClosureRow<'_>, ) -> Result<(), RepositoryError> |ccb855ec477222d1
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_relation( &mut self, event: &Event, relation: &academic_domain::ClaimRelation, _accept_seq: u64, ) -> Result<(), RepositoryError> |5fbf6c7f7b8ac099
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_scope( &mut self, event: &Event, scope: &ScopeDescriptor, ) -> Result<(), RepositoryError> |8ed5e95955f0f753
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn artifact(&self, id: ArtifactId) -> Result<ArtifactDescriptor, RepositoryError> |e1514e820566e815
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn claim(&self, id: ClaimId) -> Result<AcceptedClaim, RepositoryError> |0c8094c9f5aac06d
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn evidence(&self, id: EvidenceId) -> Result<AcceptedEvidence, RepositoryError> |79dff6920db8238a
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn require_sealed_descriptor( &self, descriptor: &ArtifactDescriptor, ) -> Result<(), RepositoryError> |047a1723c99548b6
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn scope(&self, id: ScopeId) -> Result<ScopeDescriptor, RepositoryError> |d164b4dc0d55f7bf
+crates/store/src/repository.rs [priv] struct AggregateClosureRow<'payload> |41ccbb5df60a8e42
+crates/store/src/repository.rs [priv] struct ClaimObjectColumns |bd68e48626432045
+crates/store/src/repository.rs [priv] use academic_contracts::{ ContractError, VerifiedBatch, decode_canonical_evidence_locator, encode_canonical_actor, encode_canonical_claim_object, encode_canonical_event_payload, encode_canonical_evidence_ids, encode_canonical_evidence_locator, } |afa6c80df66d0c70
+crates/store/src/repository.rs [priv] use academic_domain::{ Actor, ArtifactDescriptor, ArtifactId, AuthorityClass, BatchId, Claim, ClaimId, ClaimObject, ClaimRelationKind, Confidentiality, ContentDigest, Decimal, DecisionAction, DeviceId, DomainError, DomainId, EntityId, EpistemicStatus, Event, EventPayload, EvidenceId, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, FreshnessBand, MasteryLevel, MediaType, PredicateId, PredictionMetadata, PredictionObservationWindow, RetentionClass, ScopeDescriptor, ScopeId, TimestampMillis, UnsignedBatch, UserDecision, ValidInterval, } |8a29f8fefd2744c2
+crates/store/src/repository.rs [priv] use academic_ledger::{LedgerError, ResolverActorKind, relation_effect_is_authorized_for_kind} |20a1da5437c12d5a
+crates/store/src/repository.rs [priv] use academic_vault::SealedObjectReceipt |da3607bec91666b6
+crates/store/src/repository.rs [priv] use crate::{connection::WriterConnection, error::StoreError} |5e1fe476a7d3faf2
+crates/store/src/repository.rs [priv] use rusqlite::{Connection, OptionalExtension, Transaction, params} |3562ff1f7154a85b
+crates/store/src/repository.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, error::Error, fmt, str::FromStr, } |024d589da5789646
+crates/store/src/repository.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ReplicaState |5cbd9ec16299f9dc
+crates/store/src/repository.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct StoredDeviceHead |cb7c353b9112cbac
+crates/store/src/repository.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct StoredBatch |7e51acae4292eb1f
+crates/store/src/repository.rs [pub(crate)] fn decode_claim_object( columns: StoredClaimObject, ) -> Result<ClaimObject, RepositoryError> |ca806dcedcec1b1d
+crates/store/src/repository.rs [pub(crate)] fn decode_prediction_metadata( version: Option<i64>, from: Option<i64>, to: Option<i64>, samples: Option<i64>, ) -> Result<Option<PredictionMetadata>, RepositoryError> |1e3d32cac53e3fc4
+crates/store/src/repository.rs [pub(crate)] fn find_batch( transaction: &Transaction<'_>, batch_id: BatchId, ) -> Result<Option<StoredBatch>, RepositoryError> |930bee3834f59acb
+crates/store/src/repository.rs [pub(crate)] fn id_from_blob<T>(bytes: Vec<u8>) -> Result<T, RepositoryError> where T: FromStr<Err = DomainError>, |1cf219c68729c86f
+crates/store/src/repository.rs [pub(crate)] fn insert_batch( transaction: &Transaction<'_>, verified: &VerifiedBatch, accept_seq_start: u64, accept_seq_end: u64, accepted_at: TimestampMillis, ) -> Result<(), RepositoryError> |502660d8f1b4e0d4
+crates/store/src/repository.rs [pub(crate)] fn parse_authority(value: &str) -> Result<AuthorityClass, RepositoryError> |b4109d6b351919e1
+crates/store/src/repository.rs [pub(crate)] fn parse_epistemic(value: &str) -> Result<EpistemicStatus, RepositoryError> |0f7df29d8f3dd84c
+crates/store/src/repository.rs [pub(crate)] fn preflight_artifact_descriptor( writer: &WriterConnection, artifact_id: ArtifactId, ) -> Result<Option<ArtifactDescriptor>, RepositoryError> |d5ebcfaed98e353a
+crates/store/src/repository.rs [pub(crate)] fn preflight_claim_evidence( writer: &WriterConnection, claim_id: ClaimId, ) -> Result<Option<Vec<EvidenceId>>, RepositoryError> |4554871fc7c16ba6
+crates/store/src/repository.rs [pub(crate)] fn preflight_evidence_artifact( writer: &WriterConnection, evidence_id: EvidenceId, ) -> Result<Option<ArtifactId>, RepositoryError> |6cde9a9ddf5205ea
+crates/store/src/repository.rs [pub(crate)] fn read_device_head( transaction: &Transaction<'_>, device_id: DeviceId, ) -> Result<Option<StoredDeviceHead>, RepositoryError> |7a3218ef525cd175
+crates/store/src/repository.rs [pub(crate)] fn read_replica_state( transaction: &Transaction<'_>, ) -> Result<ReplicaState, RepositoryError> |d6f60d7d3db82931
+crates/store/src/repository.rs [pub(crate)] fn update_heads( transaction: &Transaction<'_>, batch: &UnsignedBatch, envelope_hash: ContentDigest, next_accept_seq: u64, committed_revision: u64, updated_at: TimestampMillis, had_device_head: bool, ) -> Result<(), RepositoryError> |4c4ee38bb2ae6caf
+crates/store/src/repository.rs [pub(crate)] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_event( &mut self, event: &Event, accept_seq: u64, ) -> Result<(), RepositoryError> |11d859a442db698f
+crates/store/src/repository.rs [pub(crate)] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn new( transaction: &'transaction Transaction<'connection>, batch: &'transaction UnsignedBatch, sealed_receipts: &'receipts BTreeMap<ArtifactId, R>, ) -> Self |f51a3da7e5760e26
+crates/store/src/repository.rs [pub(crate)] struct ClosureWriter<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> |598ff49e6e90bb43
+crates/store/src/repository.rs [pub(crate)] struct StoredClaimObject |05d154e694eb43d8
+crates/store/src/repository.rs [pub] #[derive(Debug)] enum RepositoryError |9bf5880bd8b065a3
+crates/store/src/repository_snapshot_tests.rs [priv] #[allow(clippy::too_many_arguments)] fn insert_snapshot( connection: &Connection, suffix: u32, digest_label: &str, source: &str, source_type: &str, commit_id: Option<&str>, dirty_patch: Option<Vec<u8>>, ) -> rusqlite::Result<usize> |7cfd80d3aa92cf66
+crates/store/src/repository_snapshot_tests.rs [priv] #[test] fn a_dirty_working_tree_row_is_not_a_commit_row() -> Result<(), Box<dyn Error>> |9f5398be32d19191
+crates/store/src/repository_snapshot_tests.rs [priv] #[test] fn a_secret_digest_row_needs_a_recorded_decision() -> Result<(), Box<dyn Error>> |6a452462b57cc354
+crates/store/src/repository_snapshot_tests.rs [priv] #[test] fn a_typed_snapshot_row_needs_the_event_that_authorized_it() -> Result<(), Box<dyn Error>> |a696131b84772adb
+crates/store/src/repository_snapshot_tests.rs [priv] #[test] fn both_halves_of_the_dirty_manifest_are_rows() -> Result<(), Box<dyn Error>> |db082b845381a6a9
+crates/store/src/repository_snapshot_tests.rs [priv] #[test] fn the_repository_tables_are_append_only() -> Result<(), Box<dyn Error>> |530f7fc385827812
+crates/store/src/repository_snapshot_tests.rs [priv] const SNAPSHOTS: [(u32, &str, &str); 2] |61d13a5cdce22ec9
+crates/store/src/repository_snapshot_tests.rs [priv] fn migrated(label: &str) -> Result<(MigratedDatabase, Connection), Box<dyn Error>> |add9f023812c882d
+crates/store/src/repository_snapshot_tests.rs [priv] fn must_fail(result: rusqlite::Result<usize>, claim: &str) -> Result<String, Box<dyn Error>> |d1a6f41fcdd754ff
+crates/store/src/repository_snapshot_tests.rs [priv] fn record_digest(label: &str) -> [u8; 32] |d848abed1893a014
+crates/store/src/repository_snapshot_tests.rs [priv] fn seed_batch( transaction: &Transaction<'_>, batch_id: &[u8; 16], event_count: u64, ) -> Result<(), Box<dyn Error>> |5f4a3f2d83810d23
+crates/store/src/repository_snapshot_tests.rs [priv] fn synthetic_id(suffix: u32) -> [u8; 16] |e935c784086232e4
+crates/store/src/repository_snapshot_tests.rs [priv] fn two_snapshots(connection: &mut Connection) -> Result<(), Box<dyn Error>> |aa8abfe438210011
+crates/store/src/repository_snapshot_tests.rs [priv] impl Drop for MigratedDatabase
+crates/store/src/repository_snapshot_tests.rs [priv] impl Drop for MigratedDatabase :: fn drop(&mut self) |17cdcdcc7f5f9e27
+crates/store/src/repository_snapshot_tests.rs [priv] impl MigratedDatabase
+crates/store/src/repository_snapshot_tests.rs [priv] impl MigratedDatabase :: fn new(label: &str) -> Result<Self, Box<dyn Error>> |0ba753469a1ea6a9
+crates/store/src/repository_snapshot_tests.rs [priv] impl MigratedDatabase :: fn open(&self) -> Result<Connection, Box<dyn Error>> |bcc28b41f7b7dae0
+crates/store/src/repository_snapshot_tests.rs [priv] static NEXT_TEMP: std::sync::atomic::AtomicU64 |2da9f89d2c0cdfe6
+crates/store/src/repository_snapshot_tests.rs [priv] struct MigratedDatabase |fb4c064976731727
+crates/store/src/repository_snapshot_tests.rs [priv] use academic_domain::{ Actor, ContentDigest, DomainId, Event, EventPayload, RepositoryId, ScopeDescriptor, ScopeId, SnapshotId, SnapshotRegistration, TimestampMillis, ValidInterval, } |7dd9ca9ea43a8628
+crates/store/src/repository_snapshot_tests.rs [priv] use crate::{ aggregate_closure_tests::{apply_schema_two_canonical_core, typed_id}, migration::apply_aggregate_migration_pre_listen, repository::ClosureWriter, } |091e0094cc4853fa
+crates/store/src/repository_snapshot_tests.rs [priv] use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior, params} |f17aab2d7775bae5
+crates/store/src/repository_snapshot_tests.rs [priv] use std::{collections::BTreeMap, error::Error, fs, path::PathBuf} |3d9825e5e982b6d5
+crates/store/src/requirement_tests.rs [priv] #[test] fn a_published_version_is_append_only_and_the_chain_does_not_fork() -> TestResult |700e10a404808453
+crates/store/src/requirement_tests.rs [priv] #[test] fn every_requirement_table_is_guarded_and_canonical() -> TestResult |3a5badb4fbd72a5c
+crates/store/src/requirement_tests.rs [priv] #[test] fn no_requirement_table_carries_a_free_text_column() -> TestResult |87f77477136b542b
+crates/store/src/requirement_tests.rs [priv] #[test] fn one_reviewer_cannot_attest_twice_to_one_rule() -> TestResult |ab2325af105e1339
+crates/store/src/requirement_tests.rs [priv] #[test] fn the_rule_type_check_is_the_specifications_fourteen() -> TestResult |ce78c13d1fcd04c3
+crates/store/src/requirement_tests.rs [priv] const REQUIREMENT_TABLES: [&str; 3] |a3c68b0bc204f928
+crates/store/src/requirement_tests.rs [priv] fn columns_of(connection: &Connection, table: &str) -> Result<BTreeSet<String>, Box<dyn Error>> |b06fd64e1c9fa54a
+crates/store/src/requirement_tests.rs [priv] fn insert_rule( connection: &Connection, registered: &Registered, rule_uuid: u32, rule_id: &str, rule_type: &str, ) -> Result<Vec<u8>, Box<dyn Error>> |1873a6d887fa4ba2
+crates/store/src/requirement_tests.rs [priv] fn migrated(label: &str) -> Result<(MigratedDatabase, Connection, Registered), Box<dyn Error>> |302e9f1b3907aed0
+crates/store/src/requirement_tests.rs [priv] fn migration_rule_types() -> Result<Vec<String>, Box<dyn Error>> |cfcf17a6f72a563d
+crates/store/src/requirement_tests.rs [priv] fn publish_version( connection: &Connection, registered: &Registered, version: i64, supersedes: Option<i64>, hash_byte: u8, ) -> Result<(), Box<dyn Error>> |a0bb6217e57968d6
+crates/store/src/requirement_tests.rs [priv] fn record_digest(label: &str) -> [u8; 32] |63b954dc7ef00507
+crates/store/src/requirement_tests.rs [priv] fn register(connection: &mut Connection) -> Result<Registered, Box<dyn Error>> |b80896a0387644a0
+crates/store/src/requirement_tests.rs [priv] impl Drop for MigratedDatabase
+crates/store/src/requirement_tests.rs [priv] impl Drop for MigratedDatabase :: fn drop(&mut self) |e209846f2d839e85
+crates/store/src/requirement_tests.rs [priv] impl MigratedDatabase
+crates/store/src/requirement_tests.rs [priv] impl MigratedDatabase :: fn new(label: &str) -> Result<Self, Box<dyn Error>> |dcb0f6dab042439c
+crates/store/src/requirement_tests.rs [priv] impl MigratedDatabase :: fn open(&self) -> Result<Connection, Box<dyn Error>> |bcc28b41f7b7dae0
+crates/store/src/requirement_tests.rs [priv] static NEXT_TEMP: std::sync::atomic::AtomicU64 |2da9f89d2c0cdfe6
+crates/store/src/requirement_tests.rs [priv] struct MigratedDatabase |fb4c064976731727
+crates/store/src/requirement_tests.rs [priv] struct Registered |a4210ed4199285ff
+crates/store/src/requirement_tests.rs [priv] type TestResult = Result<(), Box<dyn Error>> |9734d211689cdaf8
+crates/store/src/requirement_tests.rs [priv] use academic_domain::{ Actor, ContentDigest, CurriculumVersionId, DomainId, Event, EventPayload, RequirementSetId, ScopeDescriptor, ScopeId, TimestampMillis, ValidInterval, } |3e3f9bf15d35b4b7
+crates/store/src/requirement_tests.rs [priv] use crate::{ aggregate_closure_tests::{apply_schema_two_canonical_core, typed_id}, migration::{MIGRATION_0015_SQL, apply_aggregate_migration_pre_listen}, repository::ClosureWriter, } |810ac87c9b0097c8
+crates/store/src/requirement_tests.rs [priv] use rusqlite::{Connection, OpenFlags, TransactionBehavior, params} |940c6e1a31a2b153
+crates/store/src/requirement_tests.rs [priv] use std::{collections::BTreeSet, error::Error, fs, path::PathBuf} |a28f5a4f4fe566b3
+crates/store/src/schema_fingerprint.rs [priv] #[cfg(test)] mod tests
+crates/store/src/schema_fingerprint.rs [priv] #[derive(Debug)] struct SchemaObject |4f6a0034ba6fd1dc
+crates/store/src/schema_fingerprint.rs [priv] #[derive(Debug, Clone)] struct SchemaFingerprint |0317128937bba724
+crates/store/src/schema_fingerprint.rs [priv] #[derive(Debug, Default)] struct FingerprintEncoder |d28c5a1ffb516313
+crates/store/src/schema_fingerprint.rs [priv] const STORE_SCHEMA_FINGERPRINT_VERSION: u32 |b89ed6172a6d5d44
+crates/store/src/schema_fingerprint.rs [priv] const USER_SCHEMA_OBJECT_PREDICATE: &str |eb3768d40d2d7cac
+crates/store/src/schema_fingerprint.rs [priv] fn canonical_sql(sql: &str) -> Vec<u8> |25471da8b850fb63
+crates/store/src/schema_fingerprint.rs [priv] fn encode_table_structure( connection: &Connection, table: &str, fingerprint: &mut FingerprintEncoder, ) -> StoreResult<()> |c96eaea2c2503233
+crates/store/src/schema_fingerprint.rs [priv] fn expected_schema_fingerprint(migration_sql: &[&str]) -> StoreResult<&'static SchemaFingerprint> |6bbd89e9d8ada428
+crates/store/src/schema_fingerprint.rs [priv] fn is_bare_word_byte(byte: u8) -> bool |6aa83f19d988ea56
+crates/store/src/schema_fingerprint.rs [priv] fn push_sql_token(output: &mut Vec<u8>, kind: u8, value: &[u8]) |3c5fbee655c5ae01
+crates/store/src/schema_fingerprint.rs [priv] fn quoted_token(input: &[u8], start: usize, opening: u8, closing: u8) -> (Vec<u8>, usize) |ad974ccadfc15f38
+crates/store/src/schema_fingerprint.rs [priv] fn schema_fingerprint(connection: &Connection) -> StoreResult<SchemaFingerprint> |f60e448d636f98a6
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn bool(&mut self, value: bool) |57c2e5fb61a819bd
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn finish(self) -> Vec<u8> |d4ff7091a5d12142
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn i64(&mut self, value: i64) |8236a36600f7cfc9
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn marker(&mut self, marker: &str) |9330a45047ed9e7f
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn optional_sql(&mut self, value: Option<&str>) |780cf724e582e9f5
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn optional_text(&mut self, value: Option<&str>) |9fd346dc1534c1e5
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn raw_bytes(&mut self, value: &[u8]) |186cdf5231b3c864
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn text(&mut self, value: &str) |0f93afd4a6a6654d
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn u32(&mut self, value: u32) |b2e80531821cd921
+crates/store/src/schema_fingerprint.rs [priv] impl FingerprintEncoder :: fn u64(&mut self, value: u64) |19e4b97b725a80e1
+crates/store/src/schema_fingerprint.rs [priv] mod tests :: #[test] fn ddl_canonicalization_ignores_formatting_comments_and_identifier_case() |b3c941fa910b7e5a
+crates/store/src/schema_fingerprint.rs [priv] mod tests :: #[test] fn ddl_canonicalization_preserves_semantic_literals_and_operators() |6fa50bf891e7055c
+crates/store/src/schema_fingerprint.rs [priv] mod tests :: use super::canonical_sql |9197def5131c3e25
+crates/store/src/schema_fingerprint.rs [priv] static EXPECTED_SCHEMA_FINGERPRINT: OnceLock<SchemaFingerprint> |a7f96040f2636c58
+crates/store/src/schema_fingerprint.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/store/src/schema_fingerprint.rs [priv] use crate::{ STORE_SCHEMA_VERSION, error::{StoreError, StoreResult}, } |fe877a8f0cc093a3
+crates/store/src/schema_fingerprint.rs [priv] use rusqlite::{Connection, OptionalExtension} |d635752983d0ccc3
+crates/store/src/schema_fingerprint.rs [priv] use std::sync::OnceLock |bb0ffa895719ab45
+crates/store/src/schema_fingerprint.rs [pub(crate)] fn user_schema_object_count(connection: &Connection) -> StoreResult<i64> |e1ad090734c422c8
+crates/store/src/schema_fingerprint.rs [pub(crate)] fn verify_store_schema_fingerprint( connection: &Connection, migration_sql: &[&str], ) -> StoreResult<()> |83408a28d21a0c80
+crates/store/src/timeline.rs [priv] const fn table(kind: &'static str, name: &'static str) -> AggregateTable |9b55dfb26260b90b
+crates/store/src/timeline.rs [priv] fn accept_sequences( connection: &Connection, sql: &str, parameters: &[&dyn rusqlite::ToSql], ) -> Result<Vec<u64>, QueryError> |40f0877c06126afc
+crates/store/src/timeline.rs [priv] fn missing_aggregate_tables(connection: &Connection) -> Result<Vec<&'static str>, QueryError> |3d311b46f21af740
+crates/store/src/timeline.rs [priv] fn read_aggregate_table( connection: &Connection, request: &AggregateTimelineRequest, descriptor: AggregateTable, ) -> Result<Vec<AggregateTimelineRow>, QueryError> |54195474f1cbd209
+crates/store/src/timeline.rs [priv] fn row_digest( request: &AggregateTimelineRequest, rows: &[AggregateTimelineRow], ) -> Result<ContentDigest, QueryError> |762ddb66de6a1fce
+crates/store/src/timeline.rs [priv] fn table_exists(connection: &Connection, name: &str) -> Result<bool, QueryError> |d534efaee4ba6fb9
+crates/store/src/timeline.rs [priv] impl AggregateTable
+crates/store/src/timeline.rs [priv] impl AggregateTimelineSnapshot
+crates/store/src/timeline.rs [priv] impl OriginMarks
+crates/store/src/timeline.rs [priv] type RawAggregateRow = ( Vec<u8>, Vec<u8>, i64, Vec<u8>, Option<Vec<u8>>, i64, Option<i64>, ) |630d673c6d8d1d32
+crates/store/src/timeline.rs [priv] use academic_domain::{ ContentDigest, DomainId, ScopeId, TimestampMillis, temporal::TimeCoordinates, } |eea09824eb0369b6
+crates/store/src/timeline.rs [priv] use crate::{ connection::ReaderConnection, error::StoreError, queries::{QueryError, checked_i64, fixed_bytes, nonnegative_u64, positive_u64, query_collect}, repository::id_from_blob, } |51402b7d2cbd04ad
+crates/store/src/timeline.rs [priv] use rusqlite::Connection |c18764f6d68c89de
+crates/store/src/timeline.rs [pub(crate)] fn aggregate_timeline_from_connection( connection: &Connection, request: &AggregateTimelineRequest, ) -> Result<AggregateTimelineSnapshot, QueryError> |53853e13e7c63837
+crates/store/src/timeline.rs [pub(crate)] fn origin_marks_from_connection( connection: &Connection, domain_id: DomainId, after_accept_seq: u64, through_accept_seq: u64, ) -> Result<OriginMarks, QueryError> |0dfe812519c787cc
+crates/store/src/timeline.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AggregateTable |1e28380a7db94b09
+crates/store/src/timeline.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AggregateTimelineRequest |2eafb57f0f192d69
+crates/store/src/timeline.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AggregateTimelineRow |4d0582492cbe6e85
+crates/store/src/timeline.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AggregateTimelineSnapshot |0d8401fb4a12d42c
+crates/store/src/timeline.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct OriginMarks |aa96ed42c379cd80
+crates/store/src/timeline.rs [pub] const AGGREGATE_TABLES: [AggregateTable; 18] |3a6158efef3d4101
+crates/store/src/timeline.rs [pub] fn aggregate_timeline_snapshot( reader: &mut ReaderConnection, request: &AggregateTimelineRequest, ) -> Result<AggregateTimelineSnapshot, QueryError> |e168da46fc37430a
+crates/store/src/timeline.rs [pub] fn origin_marks( reader: &mut ReaderConnection, domain_id: DomainId, after_accept_seq: u64, through_accept_seq: u64, ) -> Result<OriginMarks, QueryError> |c6a7c7bc1d07f2df
+crates/store/src/timeline.rs [pub] impl AggregateTable :: #[must_use] fn resolved_primary_key_column(&self) -> String |3f2ebcfa376a9e3e
+crates/store/src/timeline.rs [pub] impl AggregateTimelineSnapshot :: #[must_use] fn rows_of(&self, kind: &str) -> Vec<&AggregateTimelineRow> |ae2101ec3643a2f6
+crates/store/src/timeline.rs [pub] impl OriginMarks :: #[must_use] fn ordered(&self) -> Vec<(u64, &'static str)> |23c04402b82d44e6

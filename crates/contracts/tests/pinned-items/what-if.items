@@ -25,30 +25,30 @@ crates/what-if/src/assumption.rs [pub] const ASSUMPTION_KINDS: [AssumptionKind; 
 crates/what-if/src/assumption.rs [pub] impl AssumedWorkload :: #[must_use] const fn of(range: WorkloadHoursRange, source: ModelRunId) -> Self |6642784341066e5a
 crates/what-if/src/assumption.rs [pub] impl AssumedWorkload :: #[must_use] const fn range(&self) -> WorkloadHoursRange |f27f82e593b8943a
 crates/what-if/src/assumption.rs [pub] impl AssumedWorkload :: #[must_use] const fn source(&self) -> ModelRunId |7a68d1e25579559a
-crates/what-if/src/assumption.rs [pub] impl AssumptionKind :: #[must_use] const fn spec_key(self) -> &'static str |6a40ee1271cde205
-crates/what-if/src/assumption.rs [pub] impl HypotheticalCompletion :: const SPEC_VALUE: &'static str |d2ced8ab90b9a8ac
+crates/what-if/src/assumption.rs [pub] impl AssumptionKind :: #[must_use] const fn spec_key(self) -> &'static str |80701d6d6d428cf8
+crates/what-if/src/assumption.rs [pub] impl HypotheticalCompletion :: const SPEC_VALUE: &'static str |3436e83c1bfc7536
 crates/what-if/src/assumption.rs [pub] impl PlanAssumptions :: #[must_use] const fn completion(&self) -> HypotheticalCompletion |de860a434e8bede7
 crates/what-if/src/assumption.rs [pub] impl PlanAssumptions :: #[must_use] const fn coverage(&self) -> ProbabilisticCoverage |2f813b9480babb98
 crates/what-if/src/assumption.rs [pub] impl PlanAssumptions :: #[must_use] const fn of( workload: AssumedWorkload, completion: HypotheticalCompletion, coverage: ProbabilisticCoverage, ) -> Self |e4a5145883e5b9e8
 crates/what-if/src/assumption.rs [pub] impl PlanAssumptions :: #[must_use] const fn workload(&self) -> AssumedWorkload |934ecbb556dcfc7e
-crates/what-if/src/assumption.rs [pub] impl ProbabilisticCoverage :: const SPEC_VALUE: &'static str |d2ced8ab90b9a8ac
+crates/what-if/src/assumption.rs [pub] impl ProbabilisticCoverage :: const SPEC_VALUE: &'static str |7c8bfc20f83affde
 crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumption :: #[must_use] const fn grade(&self) -> GradeSymbol |0a1ec1cb11220544
 crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumption :: #[must_use] const fn of(offering_id: OfferingId, grade: GradeSymbol) -> Self |08c58a27ce8f0030
 crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumption :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
 crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumptions :: #[must_use] fn grade_for(&self, offering_id: OfferingId) -> Option<GradeSymbol> |ee86b84b16a85656
 crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumptions :: #[must_use] fn stated(&self) -> &[StatedGradeAssumption] |0c16f1fca1a4116f
 crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumptions :: fn stating(stated: Vec<StatedGradeAssumption>) -> Result<Self, WhatIfError> |46fa84326aed2aa2
-crates/what-if/src/basis.rs [priv] const BASIS_DIGEST_DOMAIN: &str |019168a7f81c7aeb
+crates/what-if/src/basis.rs [priv] const BASIS_DIGEST_DOMAIN: &str |c60fdc1375bd4835
 crates/what-if/src/basis.rs [priv] impl BasisField
 crates/what-if/src/basis.rs [priv] impl ScenarioBasis
 crates/what-if/src/basis.rs [priv] use academic_domain::{ContentDigest, TimestampMillis} |ad1474dfdaf9b4b0
 crates/what-if/src/basis.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/what-if/src/basis.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
-crates/what-if/src/basis.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BasisField |d2c09554ee6eb606
-crates/what-if/src/basis.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ScenarioBasis |c1f7b81428944f2c
+crates/what-if/src/basis.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BasisField |85731a8840b48e73
+crates/what-if/src/basis.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ScenarioBasis |7a501804b2ae7acb
 crates/what-if/src/basis.rs [pub] const BASIS_FIELDS: [BasisField; 4] |3c0bf0ff4b37810a
-crates/what-if/src/basis.rs [pub] impl BasisField :: #[must_use] const fn spec_key(self) -> &'static str |aeb452fc88c4a2a7
-crates/what-if/src/basis.rs [pub] impl BasisField :: #[must_use] const fn wire_key(self) -> &'static str |f285ea675147a819
+crates/what-if/src/basis.rs [pub] impl BasisField :: #[must_use] const fn spec_key(self) -> &'static str |9ad4f4d6be3079c7
+crates/what-if/src/basis.rs [pub] impl BasisField :: #[must_use] const fn wire_key(self) -> &'static str |441605e982ee0639
 crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] const fn knowledge_state_as_of(&self) -> TimestampMillis |0fac9529e5a4aa43
 crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] const fn of( student_record_snapshot: ContentDigest, requirement_set_hash: ContentDigest, offering_catalog_snapshot: ContentDigest, knowledge_state_as_of: TimestampMillis, ) -> Self |94b83474ab7cb717
 crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] const fn offering_catalog_snapshot(&self) -> ContentDigest |6f77ea13b38a5f4a
@@ -104,10 +104,10 @@ crates/what-if/src/comparison.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] st
 crates/what-if/src/comparison.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReorderingExplanation |2cd141a8e5262bf6
 crates/what-if/src/comparison.rs [pub] const COMPARISON_DIMENSIONS: [ComparisonDimension; 6] |46028a004bba85c4
 crates/what-if/src/comparison.rs [pub] fn compare<'a>( plans: &[&'a PlanScenario], priority: &DimensionPriority, ) -> Result<ComparisonView<'a>, WhatIfError> |25ba351f2f3d96bf
-crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn as_str(self) -> &'static str |ab335dc40233a2aa
+crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn as_str(self) -> &'static str |f5ddf0ddd0d5f4ca
 crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn lane(self) -> DimensionLane |7814cb9384a503c8
-crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn spec_certainty(self) -> &'static str |acf9213cbd105a89
-crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn spec_label(self) -> &'static str |245ae46653e12324
+crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn spec_certainty(self) -> &'static str |4967082d8d41d614
+crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn spec_label(self) -> &'static str |ef8bd7b9640390bc
 crates/what-if/src/comparison.rs [pub] impl DimensionMove :: #[must_use] const fn dimension(&self) -> ComparisonDimension |8b86f8ea940a37e2
 crates/what-if/src/comparison.rs [pub] impl DimensionMove :: #[must_use] const fn from_rank(&self) -> usize |cab6aa24a6c4904b
 crates/what-if/src/comparison.rs [pub] impl DimensionMove :: #[must_use] const fn to_rank(&self) -> usize |6fe47a0b0b652485
@@ -190,7 +190,7 @@ crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_us
 crates/what-if/src/deterministic.rs [pub] impl DownstreamUnlock :: #[must_use] const fn completion(&self) -> HypotheticalCompletion |de860a434e8bede7
 crates/what-if/src/deterministic.rs [pub] impl DownstreamUnlock :: #[must_use] const fn course(&self) -> CourseId |c8cc3bd34fb8c4d1
 crates/what-if/src/deterministic.rs [pub] impl DownstreamUnlock :: #[must_use] const fn standing(&self) -> &UnlockStanding |18a896d05b30b62d
-crates/what-if/src/deterministic.rs [pub] impl EnrolmentLimitStanding :: #[must_use] const fn as_str(self) -> &'static str |1c4f66eef49d84f4
+crates/what-if/src/deterministic.rs [pub] impl EnrolmentLimitStanding :: #[must_use] const fn as_str(self) -> &'static str |3cc889079e096a99
 crates/what-if/src/deterministic.rs [pub] impl GpaScenario :: #[must_use] const fn average(&self) -> &HypotheticalTermAverage |0d56fc0a3d1e7f78
 crates/what-if/src/deterministic.rs [pub] impl GpaScenario :: #[must_use] const fn scale(&self) -> u8 |4a989c5604a1c8c2
 crates/what-if/src/deterministic.rs [pub] impl GpaScenario :: #[must_use] fn excluded(&self) -> &[(OfferingId, AverageExclusion)] |0c1a901056f8f8d9
@@ -218,28 +218,28 @@ crates/what-if/src/error.rs [priv] use academic_review::ReviewError |f5d41884c41
 crates/what-if/src/error.rs [priv] use academic_scenario::ScenarioError |ae9bb05bfa3f8cfb
 crates/what-if/src/error.rs [priv] use crate::{comparison::ComparisonDimension, lane::DeterministicItem} |a3af4dcaa20692f7
 crates/what-if/src/error.rs [priv] use thiserror::Error |fc76a959c1db87ed
-crates/what-if/src/error.rs [pub] #[derive(Debug, Error)] #[non_exhaustive] enum WhatIfError |fb946e2c1bbcb5fd
+crates/what-if/src/error.rs [pub] #[derive(Debug, Error)] #[non_exhaustive] enum WhatIfError |8b3463dbb2807b8d
 crates/what-if/src/graduation.rs [priv] impl GraduationMode
 crates/what-if/src/graduation.rs [priv] impl<'a> HypotheticalGraduation<'a>
 crates/what-if/src/graduation.rs [priv] use crate::{ assumption::HypotheticalCompletion, deterministic::{Allocation, CategoryContribution}, scenario::PlanScenario, } |6bb35cf2e1ac7cc4
 crates/what-if/src/graduation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct HypotheticalGraduation<'a> |5a73cfdaf01578a0
 crates/what-if/src/graduation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum GraduationMode |abfb37d5f396885a
 crates/what-if/src/graduation.rs [pub] const GRADUATION_MODES: [GraduationMode; 2] |826dbafe5ef767b2
-crates/what-if/src/graduation.rs [pub] impl GraduationMode :: #[must_use] const fn as_str(self) -> &'static str |4877b6b8d5498dde
+crates/what-if/src/graduation.rs [pub] impl GraduationMode :: #[must_use] const fn as_str(self) -> &'static str |d030ce3f68baa14c
 crates/what-if/src/graduation.rs [pub] impl GraduationMode :: #[must_use] const fn concludes_graduation(self) -> bool |c2de24588e20607c
-crates/what-if/src/graduation.rs [pub] impl GraduationMode :: #[must_use] const fn owner_package(self) -> &'static str |9c5d961b1857e05c
+crates/what-if/src/graduation.rs [pub] impl GraduationMode :: #[must_use] const fn owner_package(self) -> &'static str |b16101d772a06ab7
 crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] const fn mode(&self) -> GraduationMode |4ec9866e2f3c7524
 crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] const fn of(plan: &'a PlanScenario) -> Self |5da7136bd87da001
 crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] const fn plan(&self) -> &'a PlanScenario |bbf4b5c7adccab96
 crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] fn completion(&self) -> HypotheticalCompletion |dd040cbf3fa31bc5
 crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] fn contributions(&self) -> &[CategoryContribution] |f78a4a54b4a4cce1
 crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] fn proof(&self) -> &Allocation |682aacda9a96f19d
-crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: const BANNER: &'static str |8028fe87a96675d3
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: const BANNER: &'static str |e9da9f63c179cfdb
 crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: const MODE: GraduationMode |883131b14c1d21ee
-crates/what-if/src/inputs.rs [priv] const INPUTS_DIGEST_DOMAIN: &str |4d62892c31e33d54
-crates/what-if/src/inputs.rs [priv] const fn band_tag(band: LikelihoodBand) -> &'static str |2aa02c38840a9725
-crates/what-if/src/inputs.rs [priv] const fn basis_tag(basis: OpportunityBasis) -> &'static str |cdce191a0a04edb0
-crates/what-if/src/inputs.rs [priv] fn digest_choice(hasher: FieldHasher, choice: &PlanChoice) -> FieldHasher |d4af15cf80a0e05f
+crates/what-if/src/inputs.rs [priv] const INPUTS_DIGEST_DOMAIN: &str |37713373661130a3
+crates/what-if/src/inputs.rs [priv] const fn band_tag(band: LikelihoodBand) -> &'static str |d3baa9a2ad26c1ee
+crates/what-if/src/inputs.rs [priv] const fn basis_tag(basis: OpportunityBasis) -> &'static str |90782a5612a461f4
+crates/what-if/src/inputs.rs [priv] fn digest_choice(hasher: FieldHasher, choice: &PlanChoice) -> FieldHasher |0a18a484814ce09a
 crates/what-if/src/inputs.rs [priv] fn weekday_index(weekday: Weekday) -> u8 |36c93c809803805e
 crates/what-if/src/inputs.rs [priv] impl CatalogueRow
 crates/what-if/src/inputs.rs [priv] impl DownstreamCourse
@@ -278,7 +278,7 @@ crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct
 crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathCoverageTargets |501b96bd8eb3e3e2
 crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanChoice |0811057e53ea6ca9
 crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanInputs |a49a3ceb638799f9
-crates/what-if/src/inputs.rs [pub] #[must_use] fn plan_inputs_digest(inputs: &PlanInputs) -> ContentDigest |8e4f735233db5888
+crates/what-if/src/inputs.rs [pub] #[must_use] fn plan_inputs_digest(inputs: &PlanInputs) -> ContentDigest |fd92ba9f9579870f
 crates/what-if/src/inputs.rs [pub] const PLAN_CHOICE_FIELDS: [PlanChoiceField; 9] |e1f26cf305d29314
 crates/what-if/src/inputs.rs [pub] const PLAN_INPUT_FIELDS: [PlanInputField; 13] |5f24dfeefaee016d
 crates/what-if/src/inputs.rs [pub] const RELEVANCE_SUBJECTS: [RelevanceSubject; 2] |04b783220114a12f
@@ -304,15 +304,15 @@ crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] const fn seat(
 crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] fn of( offering_id: OfferingId, seat: ConfirmedSeat, catalogue: CatalogueRow, conditions: OfficialConditions, assumed_weekly_hours: WorkloadHoursRange, syllabus_concepts: Vec<SyllabusConceptSignal>, ) -> Self |7018e8c0c4b731ec
 crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] fn official_prerequisites(&self) -> &[OfficialPrerequisite] |ccf4307130777e75
 crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] fn syllabus_concepts(&self) -> &[SyllabusConceptSignal] |97b3ac677a252629
-crates/what-if/src/inputs.rs [pub] impl PlanChoiceField :: #[must_use] const fn field_name(self) -> &'static str |ecc8ec0b84429e43
-crates/what-if/src/inputs.rs [pub] impl PlanInputField :: #[must_use] const fn field_name(self) -> &'static str |c14deb1405854616
+crates/what-if/src/inputs.rs [pub] impl PlanChoiceField :: #[must_use] const fn field_name(self) -> &'static str |08ef624036df8b55
+crates/what-if/src/inputs.rs [pub] impl PlanInputField :: #[must_use] const fn field_name(self) -> &'static str |71250c7c8dd0d8d1
 crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn band(&self) -> LikelihoodBand |51b121b0423df22c
 crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn basis(&self) -> OpportunityBasis |1a5779d0250a76ca
 crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn of( offering_id: OfferingId, subject: RelevanceSubject, target: EntityId, band: LikelihoodBand, basis: OpportunityBasis, ) -> Self |40a543869d603d16
 crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
 crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn subject(&self) -> RelevanceSubject |8d21b14823bbfb2e
 crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn target(&self) -> EntityId |8c61747c7d85ff73
-crates/what-if/src/inputs.rs [pub] impl RelevanceSubject :: #[must_use] const fn as_str(self) -> &'static str |2926789a0bd81cd3
+crates/what-if/src/inputs.rs [pub] impl RelevanceSubject :: #[must_use] const fn as_str(self) -> &'static str |6fa60184a71b6cdb
 crates/what-if/src/lane.rs [priv] impl DeterministicItem
 crates/what-if/src/lane.rs [priv] impl LaneItem
 crates/what-if/src/lane.rs [priv] impl ProjectedItem
@@ -327,14 +327,14 @@ crates/what-if/src/lane.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Par
 crates/what-if/src/lane.rs [pub] const DETERMINISTIC_LANE: [DeterministicItem; 7] |44c429e54bf21531
 crates/what-if/src/lane.rs [pub] const PROJECTED_LANE: [ProjectedItem; 7] |6ea42a2bc5157561
 crates/what-if/src/lane.rs [pub] const UI_SECTIONS: [UiSection; 2] |167f4f0e4bacaa1c
-crates/what-if/src/lane.rs [pub] impl DeterministicItem :: #[must_use] const fn as_str(self) -> &'static str |a68478b94efecdd8
-crates/what-if/src/lane.rs [pub] impl DeterministicItem :: #[must_use] const fn spec_phrase(self) -> &'static str |685b36763006d395
+crates/what-if/src/lane.rs [pub] impl DeterministicItem :: #[must_use] const fn as_str(self) -> &'static str |402a52756f017f65
+crates/what-if/src/lane.rs [pub] impl DeterministicItem :: #[must_use] const fn spec_phrase(self) -> &'static str |6c2fc7c99ff7dbdd
 crates/what-if/src/lane.rs [pub] impl LaneItem :: #[must_use] const fn section(self) -> UiSection |8f15bf163a35a060
 crates/what-if/src/lane.rs [pub] impl LaneItem :: #[must_use] const fn spec_phrase(self) -> &'static str |494acb63cca6e915
-crates/what-if/src/lane.rs [pub] impl ProjectedItem :: #[must_use] const fn as_str(self) -> &'static str |ab9421b5e7a8fbdc
-crates/what-if/src/lane.rs [pub] impl ProjectedItem :: #[must_use] const fn spec_phrase(self) -> &'static str |60cd34fdc09a860d
+crates/what-if/src/lane.rs [pub] impl ProjectedItem :: #[must_use] const fn as_str(self) -> &'static str |ff251c9d972e9983
+crates/what-if/src/lane.rs [pub] impl ProjectedItem :: #[must_use] const fn spec_phrase(self) -> &'static str |7697310220d7255c
 crates/what-if/src/lane.rs [pub] impl SectionView<'_> :: #[must_use] const fn section(&self) -> UiSection |976e9ddf1e9873e6
-crates/what-if/src/lane.rs [pub] impl UiSection :: #[must_use] const fn spec_key(self) -> &'static str |ded6e5a4a42d1aa5
+crates/what-if/src/lane.rs [pub] impl UiSection :: #[must_use] const fn spec_key(self) -> &'static str |7fd1518f95b03532
 crates/what-if/src/lane.rs [pub] impl UiSection :: #[must_use] fn items(self) -> Vec<LaneItem> |1bf94039f957c064
 crates/what-if/src/lib.rs [pub] const WHAT_IF_ENGINE_VERSION: u32 |0b5c2f7887daab54
 crates/what-if/src/lib.rs [pub] mod assumption
@@ -417,7 +417,7 @@ crates/what-if/src/projected.rs [pub] impl RelevanceEntry :: #[must_use] const f
 crates/what-if/src/projected.rs [pub] impl RelevanceEntry :: #[must_use] const fn subject(&self) -> RelevanceSubject |8d21b14823bbfb2e
 crates/what-if/src/projected.rs [pub] impl RelevanceEntry :: #[must_use] const fn target(&self) -> EntityId |8c61747c7d85ff73
 crates/what-if/src/projected.rs [pub] impl RelevanceProjection :: #[must_use] fn entries(&self) -> &[RelevanceEntry] |c4df254d34d0c3c1
-crates/what-if/src/scenario.rs [priv] fn assumption_value(inputs: &PlanInputs, kind: AssumptionKind) -> String |3c1fd8d35357e192
+crates/what-if/src/scenario.rs [priv] fn assumption_value(inputs: &PlanInputs, kind: AssumptionKind) -> String |785928acfb76066a
 crates/what-if/src/scenario.rs [priv] fn scenario_inputs(inputs: &PlanInputs) -> ScenarioInputs |d82ffb520393795c
 crates/what-if/src/scenario.rs [priv] impl PlanScenario
 crates/what-if/src/scenario.rs [priv] impl ScenarioKey
@@ -438,8 +438,8 @@ crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] const fn p
 crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] fn choices(&self) -> &[PlanChoice] |4bba4c748400d5e6
 crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] fn section(&self, section: UiSection) -> SectionView<'_> |6d1f821395fb6c75
 crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] fn sections(&self) -> [SectionView<'_>; 2] |2f42252376c6b961
-crates/what-if/src/scenario.rs [pub] impl ScenarioKey :: #[must_use] const fn field_name(self) -> &'static str |18a02220b3a4fb79
-crates/what-if/src/scenario.rs [pub] impl ScenarioKey :: #[must_use] const fn spec_key(self) -> &'static str |e5c83c1f342ce0c6
+crates/what-if/src/scenario.rs [pub] impl ScenarioKey :: #[must_use] const fn field_name(self) -> &'static str |f89de349458372cb
+crates/what-if/src/scenario.rs [pub] impl ScenarioKey :: #[must_use] const fn spec_key(self) -> &'static str |82000291f796d2a5
 crates/what-if/src/stale.rs [priv] impl FrozenPlan
 crates/what-if/src/stale.rs [priv] impl RecomputeConsent
 crates/what-if/src/stale.rs [priv] impl StaleCause
@@ -454,7 +454,7 @@ crates/what-if/src/stale.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Pa
 crates/what-if/src/stale.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct FrozenPlan |75bd8f4e781bc808
 crates/what-if/src/stale.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RecomputeConsent |ee43c6228683e9f4
 crates/what-if/src/stale.rs [pub] const STALE_CAUSES: [StaleCause; 3] |de65e88e08ca92ea
-crates/what-if/src/stale.rs [pub] const STALE_INPUT: &str |6f8e8c4fb121fcba
+crates/what-if/src/stale.rs [pub] const STALE_INPUT: &str |cad371e35cf84ddb
 crates/what-if/src/stale.rs [pub] impl FrozenPlan :: #[must_use] const fn marker(&self) -> &'static str |89d8e47eb4ec7b4d
 crates/what-if/src/stale.rs [pub] impl FrozenPlan :: #[must_use] const fn plan(&self) -> &PlanScenario |185a4b7d48550790
 crates/what-if/src/stale.rs [pub] impl FrozenPlan :: #[must_use] fn mark(plan: PlanScenario, first: StaleInput, rest: Vec<StaleInput>) -> Self |93b6cd6611f03b92
@@ -464,8 +464,8 @@ crates/what-if/src/stale.rs [pub] impl RecomputeConsent :: #[must_use] const fn 
 crates/what-if/src/stale.rs [pub] impl RecomputeConsent :: #[must_use] const fn plan_id(&self) -> EntityId |757a11ab809cd693
 crates/what-if/src/stale.rs [pub] impl RecomputeConsent :: #[must_use] fn covers(&self) -> &[StaleInput] |41a6ed36bcf17837
 crates/what-if/src/stale.rs [pub] impl RecomputeConsent :: #[must_use] fn of(plan_id: EntityId, decision: UserDecision, covers: Vec<StaleInput>) -> Self |80b02973cc705105
-crates/what-if/src/stale.rs [pub] impl StaleCause :: #[must_use] const fn as_str(self) -> &'static str |1877847eacf48b58
-crates/what-if/src/stale.rs [pub] impl StaleCause :: #[must_use] const fn spec_phrase(self) -> &'static str |52b83495878c1899
+crates/what-if/src/stale.rs [pub] impl StaleCause :: #[must_use] const fn as_str(self) -> &'static str |ce36403e17b81d37
+crates/what-if/src/stale.rs [pub] impl StaleCause :: #[must_use] const fn spec_phrase(self) -> &'static str |1d6128a0f099f0d4
 crates/what-if/src/stale.rs [pub] impl StaleInput :: #[must_use] const fn cause(&self) -> StaleCause |e63b43003e666ae9
 crates/what-if/src/stale.rs [pub] impl StaleInput :: #[must_use] const fn observed_at(&self) -> TimestampMillis |749fa84cdb818501
 crates/what-if/src/stale.rs [pub] impl StaleInput :: #[must_use] const fn of( offering_id: OfferingId, cause: StaleCause, observed_at: TimestampMillis, ) -> Self |c301cba6f73b4c69

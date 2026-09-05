@@ -1,0 +1,321 @@
+crates/projections/src/bitemporal.rs [priv] const fn object_kind(object: &ClaimObject) -> &'static str |40bc44e674128bac
+crates/projections/src/bitemporal.rs [priv] fn aggregate_row(row: &AggregateTimelineRow) -> SnapshotAggregateRow |32d33a7054cf7d37
+crates/projections/src/bitemporal.rs [priv] fn canonical_input_digest( coordinates: ProjectionCoordinates, aggregate: ContentDigest, ledger: ContentDigest, ) -> ContentDigest |163661d85c10f889
+crates/projections/src/bitemporal.rs [priv] fn checked_i64(value: u64) -> ProjectionResult<i64> |53c68ffc0d859ded
+crates/projections/src/bitemporal.rs [priv] fn migrate_timeline_database(path: &Path) -> ProjectionResult<()> |1fce05570d0a6ff0
+crates/projections/src/bitemporal.rs [priv] fn pragma_i64(connection: &Connection, name: &str) -> ProjectionResult<i64> |67137ba9ec72ad14
+crates/projections/src/bitemporal.rs [priv] fn read_canonical( canonical: &mut ReaderConnection, security_domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, projector: &ProjectorIdentity, ) -> ProjectionResult<MaterializedSnapshot> |cd02a9cc10d200c3
+crates/projections/src/bitemporal.rs [priv] fn read_persisted( connection: &Connection, security_domain: DomainId, coordinates: ProjectionCoordinates, projector_version: &str, ) -> ProjectionResult<Option<MaterializedSnapshot>> |2730b598d6df4cf9
+crates/projections/src/bitemporal.rs [priv] fn read_persisted_aggregates( connection: &Connection, snapshot_id: &[u8; 16], ) -> ProjectionResult<Vec<SnapshotAggregateRow>> |2a9b69cf4c9798cf
+crates/projections/src/bitemporal.rs [priv] fn read_persisted_claims( connection: &Connection, snapshot_id: &[u8; 16], ) -> ProjectionResult<Vec<SnapshotClaimRow>> |44487dbb5ecbdb7e
+crates/projections/src/bitemporal.rs [priv] fn snapshot_identity( security_domain: DomainId, coordinates: ProjectionCoordinates, projector_version: &str, ) -> [u8; 16] |30cdd9b02b3376a1
+crates/projections/src/bitemporal.rs [priv] fn unix_time_millis() -> ProjectionResult<i64> |fe9d986934f692b2
+crates/projections/src/bitemporal.rs [priv] fn user_object_count(connection: &Connection) -> ProjectionResult<i64> |f8433f87de7c513e
+crates/projections/src/bitemporal.rs [priv] fn verify_timeline_format(connection: &Connection) -> ProjectionResult<()> |f7605d5a4da745ed
+crates/projections/src/bitemporal.rs [priv] impl AggregateLane
+crates/projections/src/bitemporal.rs [priv] impl AggregateLane :: fn parse(value: &str) -> ProjectionResult<Self> |07c09cef66a0521b
+crates/projections/src/bitemporal.rs [priv] impl MaterializedSnapshot
+crates/projections/src/bitemporal.rs [priv] impl ProjectorIdentity
+crates/projections/src/bitemporal.rs [priv] impl TimelineStore
+crates/projections/src/bitemporal.rs [priv] impl TimelineStore :: fn open_reader(&self) -> ProjectionResult<Connection> |a836cf50460216a2
+crates/projections/src/bitemporal.rs [priv] impl TimelineStore :: fn persist(&self, snapshot: &MaterializedSnapshot) -> ProjectionResult<()> |2b0b3eea9ddb3d60
+crates/projections/src/bitemporal.rs [priv] type RawAggregate = ( String, Vec<u8>, Vec<u8>, i64, Vec<u8>, Option<Vec<u8>>, i64, Option<i64>, ) |6b685c91aa2f84e9
+crates/projections/src/bitemporal.rs [priv] type RawClaim = ( Vec<u8>, Vec<u8>, String, Vec<u8>, i64, String, String, String, String, i64, Option<i64>, ) |47de5e624f7c95a0
+crates/projections/src/bitemporal.rs [priv] type RawSnapshot = ( Vec<u8>, i64, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>, String, i64, ) |4c4442e76c4eaf3e
+crates/projections/src/bitemporal.rs [priv] use academic_domain::{ ClaimId, ClaimObject, ContentDigest, DomainId, EntityId, PredicateId, ScopeId, TimestampMillis, temporal::{ ChangeOrigin, DimensionCarrier, DimensionStep, ExplainedTransition, TemporalError, TimeTravelDimension, TransitionCause, explain_transition, }, } |89174417948f2def
+crates/projections/src/bitemporal.rs [priv] use academic_store::{ connection::ReaderConnection, queries::{AuthorityPolicy, ProjectionSnapshotRequest, QueryError, projection_source_snapshot}, timeline::{ AggregateTimelineRequest, AggregateTimelineRow, OriginMarks, aggregate_timeline_snapshot, }, } |62050c747def21e4
+crates/projections/src/bitemporal.rs [priv] use crate::{ generation::ProjectionCoordinates, resolution::{ PredicatePolicies, authority_name, authority_policy_name, epistemic_name, parse_authority_policy, }, runner::{ProjectionError, ProjectionResult, fixed_bytes, id_from_bytes}, } |6cdc04e4b08a71a0
+crates/projections/src/bitemporal.rs [priv] use rusqlite::{Connection, OpenFlags, OptionalExtension as _, TransactionBehavior, params} |c3d16663b4366519
+crates/projections/src/bitemporal.rs [priv] use std::{ fs, io, path::{Path, PathBuf}, time::{SystemTime, UNIX_EPOCH}, } |9812ca9c28102202
+crates/projections/src/bitemporal.rs [pub] #[derive(Debug, Clone)] struct TimelineStore |d1956ff366c1a223
+crates/projections/src/bitemporal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum AggregateLane |198430293a9f15c5
+crates/projections/src/bitemporal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MaterializedSnapshot |79cf639eaa3e7ddf
+crates/projections/src/bitemporal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectorIdentity |39dc45695b9763d8
+crates/projections/src/bitemporal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SnapshotAggregateRow |e3209723ff0e4b65
+crates/projections/src/bitemporal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SnapshotClaimRow |bdcee027545c9b98
+crates/projections/src/bitemporal.rs [pub] #[must_use] fn transition_cause( before: &MaterializedSnapshot, after: &MaterializedSnapshot, identity_changed: bool, official_correction: bool, ) -> TransitionCause |30a5792360cff57d
+crates/projections/src/bitemporal.rs [pub] const TIMELINE_APPLICATION_ID: u32 |274652a4f1df868c
+crates/projections/src/bitemporal.rs [pub] const TIMELINE_DATABASE_VERSION: u32 |fd90ce4062edaa80
+crates/projections/src/bitemporal.rs [pub] const TIMELINE_MIGRATION_SQL: &str |242f9893d6fe1621
+crates/projections/src/bitemporal.rs [pub] const TIMELINE_PROJECTOR_VERSION: &str |a07439c2d07d8789
+crates/projections/src/bitemporal.rs [pub] fn explain_dimension_transition( dimension: TimeTravelDimension, origin_at: ProjectionCoordinates, steps: &[DimensionStep], ) -> Result<ExplainedTransition, TemporalError> |0299d607a416c811
+crates/projections/src/bitemporal.rs [pub] fn explain_recomputation( before: &MaterializedSnapshot, after: &MaterializedSnapshot, ) -> Result<ChangeOrigin, TemporalError> |9a9325799d821d91
+crates/projections/src/bitemporal.rs [pub] fn origin_pure_steps( marks: &OriginMarks, valid_at: TimestampMillis, projector_change_at: Option<ProjectionCoordinates>, ) -> ProjectionResult<Vec<DimensionStep>> |d79670c0a06aa0aa
+crates/projections/src/bitemporal.rs [pub] impl AggregateLane :: #[must_use] const fn as_str(self) -> &'static str |d89ae7ab8c9d8d57
+crates/projections/src/bitemporal.rs [pub] impl MaterializedSnapshot :: #[must_use] fn content_digest(&self) -> ContentDigest |b0e8ec2e50616543
+crates/projections/src/bitemporal.rs [pub] impl MaterializedSnapshot :: fn dimension( &self, dimension: TimeTravelDimension, ) -> Result<Vec<&SnapshotAggregateRow>, TemporalError> |01396de52ea3d8f3
+crates/projections/src/bitemporal.rs [pub] impl ProjectorIdentity :: #[must_use] fn new( version: impl Into<String>, binary_digest: ContentDigest, config_hash: ContentDigest, ) -> Self |2d108bb539f9f6cc
+crates/projections/src/bitemporal.rs [pub] impl TimelineStore :: #[must_use] fn database_path(&self) -> &Path |f8538a3bafe42241
+crates/projections/src/bitemporal.rs [pub] impl TimelineStore :: fn discard(&self) -> ProjectionResult<()> |3953ab3114090f86
+crates/projections/src/bitemporal.rs [pub] impl TimelineStore :: fn materialize( &self, canonical: &mut ReaderConnection, security_domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, projector: &ProjectorIdentity, ) -> ProjectionResult<MaterializedSnapshot> |072a4c3746796765
+crates/projections/src/bitemporal.rs [pub] impl TimelineStore :: fn open(database_path: impl AsRef<Path>) -> ProjectionResult<Self> |880a36b360133932
+crates/projections/src/bitemporal.rs [pub] impl TimelineStore :: fn snapshot( &self, security_domain: DomainId, coordinates: ProjectionCoordinates, projector_version: &str, ) -> ProjectionResult<Option<MaterializedSnapshot>> |a355a6003dd64d6a
+crates/projections/src/bitemporal.rs [pub] impl TimelineStore :: fn snapshot_count(&self) -> ProjectionResult<u64> |545d40004b4ef019
+crates/projections/src/checksum.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/projections/src/checksum.rs [pub(crate)] fn append_field(target: &mut Vec<u8>, field: &[u8]) |8a2f917d46096d4f
+crates/projections/src/checksum.rs [pub(crate)] fn append_optional_field(target: &mut Vec<u8>, field: Option<&[u8]>) |2ba065fd848dec63
+crates/projections/src/checksum.rs [pub] #[must_use] fn order_stable_checksum<I>(records: I) -> ContentDigest where I: IntoIterator<Item = Vec<u8>>, |c5d4033feb7e071b
+crates/projections/src/fts.rs [priv] fn checked_i64(value: u64) -> ProjectionResult<i64> |53c68ffc0d859ded
+crates/projections/src/fts.rs [priv] fn fixed_bytes<const N: usize>(bytes: Vec<u8>, reason: &'static str) -> ProjectionResult<[u8; N]> |ed99df3d1dd9488d
+crates/projections/src/fts.rs [priv] fn fts_literal(query: &str) -> ProjectionResult<String> |b01927ee4426e30a
+crates/projections/src/fts.rs [priv] fn hit_from_raw( row: RawHit, rank: u64, generation_id: GenerationId, coordinates: ProjectionCoordinates, ) -> ProjectionResult<SearchHit> |2e4cf9aa3228500a
+crates/projections/src/fts.rs [priv] fn id_from_bytes<T>(bytes: Vec<u8>, reason: &'static str) -> ProjectionResult<T> where T: FromStr<Err = DomainError>, |eea4520199b325a6
+crates/projections/src/fts.rs [priv] fn isolated_fts_schema(kind: ProjectionKind) -> ProjectionResult<&'static str> |762258037f352fbe
+crates/projections/src/fts.rs [priv] fn lexical_table(kind: ProjectionKind) -> ProjectionResult<&'static str> |b3a6de4ac0795e45
+crates/projections/src/fts.rs [priv] fn nonnegative_u64(value: i64, reason: &'static str) -> ProjectionResult<u64> |b33ce636678681f0
+crates/projections/src/fts.rs [priv] fn positive_u64(value: i64, reason: &'static str) -> ProjectionResult<u64> |dc8ba0ce73d67f16
+crates/projections/src/fts.rs [priv] fn read_isolated_document_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawIsolatedDocument> |c0f9b1c768341760
+crates/projections/src/fts.rs [priv] fn uuid_text(bytes: [u8; 16]) -> String |3690fc423808f2c2
+crates/projections/src/fts.rs [priv] impl SearchSourceRecord
+crates/projections/src/fts.rs [priv] impl SearchSourceRecord :: fn stable_tiebreaker(&self) -> ContentDigest |438757ea891dfbac
+crates/projections/src/fts.rs [priv] impl SearchSourceRecord :: fn without_key_canonical_bytes(&self) -> Vec<u8> |db5ab02d098517b3
+crates/projections/src/fts.rs [priv] type RawHit = ( String, Vec<u8>, String, Vec<u8>, Vec<u8>, Vec<u8>, i64, String, Vec<u8>, Vec<u8>, String, String, String, i64, Option<i64>, i64, Vec<u8>, ) |e1b373fff6e9032b
+crates/projections/src/fts.rs [priv] type RawIsolatedDocument = (i64, Vec<u8>, RawHit) |651e9c516cd48d79
+crates/projections/src/fts.rs [priv] use academic_domain::{ ArtifactId, AuthorityClass, ClaimId, ClaimObject, ContentDigest, DomainError, DomainId, EntityId, EpistemicStatus, EvidenceId, TimestampMillis, ValidInterval, } |ed1896d8b8fe5231
+crates/projections/src/fts.rs [priv] use academic_store::queries::{ProjectionEvidenceLocator, ProjectionResolvedClaim} |48cbb69549153781
+crates/projections/src/fts.rs [priv] use crate::{ checksum::{append_field, append_optional_field}, generation::{GenerationId, ProjectionCoordinates, ProjectionKind, ResolutionProvenance}, resolution::{ AuthorityPolicy, authority_name, authority_policy_name, epistemic_name, parse_authority, parse_authority_policy, parse_epistemic, }, runner::{ProjectionError, ProjectionResult}, } |41886fa59d738db3
+crates/projections/src/fts.rs [priv] use rusqlite::{Connection, Transaction, params} |54f1f17a90a57b0c
+crates/projections/src/fts.rs [priv] use std::{collections::BTreeMap, str::FromStr} |4e629190935168d9
+crates/projections/src/fts.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct SearchSourceRecord |a95a30a69838c87b
+crates/projections/src/fts.rs [pub(crate)] fn load_search_sources( resolved: &[ProjectionResolvedClaim], evidence_locators: &[ProjectionEvidenceLocator], domain: DomainId, ) -> ProjectionResult<Vec<SearchSourceRecord>> |3febde3976f6e294
+crates/projections/src/fts.rs [pub(crate)] fn persisted_search_canonical_records( connection: &Connection, generation_id: GenerationId, ) -> ProjectionResult<Vec<Vec<u8>>> |15e85076fb2a3f27
+crates/projections/src/fts.rs [pub(crate)] fn read_exact_symbol_hits( connection: &Connection, generation_id: GenerationId, coordinates: ProjectionCoordinates, symbol: &str, ) -> ProjectionResult<Vec<ExactSymbolHit>> |2fac98709820b05a
+crates/projections/src/fts.rs [pub(crate)] fn read_ranked_hits( connection: &Connection, kind: ProjectionKind, generation_id: GenerationId, coordinates: ProjectionCoordinates, query: &str, limit: usize, ) -> ProjectionResult<Vec<SearchHit>> |8c6fc8aaf7e7b75a
+crates/projections/src/fts.rs [pub(crate)] fn write_search_records<F>( transaction: &Transaction<'_>, kind: ProjectionKind, generation_id: GenerationId, records: &[SearchSourceRecord], mut after_record: F, ) -> ProjectionResult<()> where F: FnMut(usize, usize) -> ProjectionResult<()>, |be433e1198914f16
+crates/projections/src/fts.rs [pub(crate)] impl SearchSourceRecord :: fn canonical_bytes(&self) -> Vec<u8> |fa66a555a6366ef1
+crates/projections/src/fts.rs [pub(crate)] impl SearchSourceRecord :: fn verification_bytes(&self) -> Vec<u8> |d88dfd3042714ba5
+crates/projections/src/fts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExactLocator |eb42c0075e9337a6
+crates/projections/src/fts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExactSymbolHit |901ec9ff31652320
+crates/projections/src/fts.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SearchHit |76506d5999c44ab9
+crates/projections/src/generation.rs [priv] impl GenerationId
+crates/projections/src/generation.rs [priv] impl GenerationState
+crates/projections/src/generation.rs [priv] impl ProjectionAvailability
+crates/projections/src/generation.rs [priv] impl ProjectionKind
+crates/projections/src/generation.rs [priv] impl fmt::Display for GenerationId
+crates/projections/src/generation.rs [priv] impl fmt::Display for GenerationId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |80468b214c2aae66
+crates/projections/src/generation.rs [priv] impl fmt::Display for ProjectionKind
+crates/projections/src/generation.rs [priv] impl fmt::Display for ProjectionKind :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
+crates/projections/src/generation.rs [priv] use academic_domain::{ContentDigest, DomainId} |fc65f5e2a9ceac9b
+crates/projections/src/generation.rs [priv] use crate::resolution::AuthorityPolicy |55652ea7a4c27501
+crates/projections/src/generation.rs [priv] use crate::{ GRAPH_PROJECTION_KIND, TRIGRAM_LEXICAL_PROJECTION_KIND, UNICODE_LEXICAL_PROJECTION_KIND, } |0bdc90d65913b04e
+crates/projections/src/generation.rs [priv] use std::fmt |20996e02b97d7e41
+crates/projections/src/generation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum GenerationState |6005933c250229a2
+crates/projections/src/generation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProjectionKind |c194aa9f667a961c
+crates/projections/src/generation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct GenerationId([u8; 16]) |b5ff7b9acf53b6d3
+crates/projections/src/generation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ProjectionAvailability |1b080c745163e9e5
+crates/projections/src/generation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ActiveGeneration |28c42d3a7204192d
+crates/projections/src/generation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GenerationMetadata |47544f09f6505571
+crates/projections/src/generation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionPage<T> |f321d6177970ed8c
+crates/projections/src/generation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolutionProvenance |c43aed399a745186
+crates/projections/src/generation.rs [pub] impl GenerationId :: #[must_use] const fn as_bytes(&self) -> &[u8; 16] |6546369da0708dea
+crates/projections/src/generation.rs [pub] impl GenerationId :: #[must_use] const fn from_bytes(bytes: [u8; 16]) -> Self |6cf16b40d51d0287
+crates/projections/src/generation.rs [pub] impl GenerationState :: #[must_use] const fn as_str(self) -> &'static str |55b75301f9946fed
+crates/projections/src/generation.rs [pub] impl GenerationState :: #[must_use] fn parse(value: &str) -> Option<Self> |97a068b06feebd66
+crates/projections/src/generation.rs [pub] impl ProjectionAvailability :: #[must_use] const fn selected(&self) -> Option<&ActiveGeneration> |53f3d7eb4091db76
+crates/projections/src/generation.rs [pub] impl ProjectionKind :: #[must_use] const fn as_str(self) -> &'static str |de10a24eca15875f
+crates/projections/src/generation.rs [pub] impl ProjectionKind :: #[must_use] const fn tokenizer_version(self) -> &'static str |62787015eee51377
+crates/projections/src/generation.rs [pub] impl ProjectionKind :: #[must_use] fn parse(value: &str) -> Option<Self> |8a714e081bdca168
+crates/projections/src/generation.rs [pub] use academic_domain::temporal::TimeCoordinates as ProjectionCoordinates |5e20b34ba9f77e92
+crates/projections/src/graph.rs [priv] fn checked_i64(value: u64) -> ProjectionResult<i64> |53c68ffc0d859ded
+crates/projections/src/graph.rs [priv] fn checked_usize(value: usize) -> ProjectionResult<i64> |c740863cb83cdfca
+crates/projections/src/graph.rs [priv] fn fixed_bytes<const N: usize>(bytes: Vec<u8>, reason: &'static str) -> ProjectionResult<[u8; N]> |ed99df3d1dd9488d
+crates/projections/src/graph.rs [priv] fn id_from_array<T>(bytes: [u8; 16]) -> ProjectionResult<T> where T: FromStr<Err = DomainError>, |658551e246531888
+crates/projections/src/graph.rs [priv] fn id_from_bytes<T>(bytes: Vec<u8>, reason: &'static str) -> ProjectionResult<T> where T: FromStr<Err = DomainError>, |8e5fc357fcbd60bd
+crates/projections/src/graph.rs [priv] fn positive_u64(value: i64, reason: &'static str) -> ProjectionResult<u64> |6cd6ff99ea20b3be
+crates/projections/src/graph.rs [priv] fn read_evidence_bytes( connection: &Connection, generation_id: GenerationId, claim_id: [u8; 16], ) -> ProjectionResult<Vec<[u8; 16]>> |e2781820db5caeab
+crates/projections/src/graph.rs [priv] fn uuid_text(bytes: [u8; 16]) -> String |3690fc423808f2c2
+crates/projections/src/graph.rs [priv] impl GraphSourceRecord
+crates/projections/src/graph.rs [priv] use academic_domain::{ AuthorityClass, ClaimId, ClaimObject, ContentDigest, DomainError, DomainId, EntityId, EpistemicStatus, EvidenceId, ScopeId, TimestampMillis, ValidInterval, } |cfda735c9a3d023b
+crates/projections/src/graph.rs [priv] use academic_store::queries::ProjectionResolvedClaim |374d7e34e33586b7
+crates/projections/src/graph.rs [priv] use crate::{ checksum::append_field, generation::{GenerationId, ProjectionCoordinates, ResolutionProvenance}, resolution::{ AuthorityPolicy, authority_name, authority_policy_name, epistemic_name, parse_authority, parse_authority_policy, parse_epistemic, }, runner::{ProjectionError, ProjectionResult}, } |9608f7a232821f78
+crates/projections/src/graph.rs [priv] use rusqlite::{Connection, Transaction, params} |54f1f17a90a57b0c
+crates/projections/src/graph.rs [priv] use std::str::FromStr |5c44eeb8fa29b250
+crates/projections/src/graph.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct GraphSourceRecord |bc0719604b4cb2f7
+crates/projections/src/graph.rs [pub(crate)] fn load_graph_sources( resolved: &[ProjectionResolvedClaim], domain: DomainId, ) -> ProjectionResult<Vec<GraphSourceRecord>> |f190dff63b0a4ee2
+crates/projections/src/graph.rs [pub(crate)] fn persisted_graph_canonical_records( connection: &Connection, generation_id: GenerationId, ) -> ProjectionResult<Vec<Vec<u8>>> |22e7c8269f30d896
+crates/projections/src/graph.rs [pub(crate)] fn read_graph_edges( connection: &Connection, generation_id: GenerationId, coordinates: ProjectionCoordinates, source_entity_id: EntityId, ) -> ProjectionResult<Vec<GraphEdge>> |2d6a0cc79b3c624f
+crates/projections/src/graph.rs [pub(crate)] fn write_graph_records<F>( transaction: &Transaction<'_>, generation_id: GenerationId, records: &[GraphSourceRecord], mut after_record: F, ) -> ProjectionResult<()> where F: FnMut(usize, usize) -> ProjectionResult<()>, |6a3c3ee85afbf048
+crates/projections/src/graph.rs [pub(crate)] impl GraphSourceRecord :: fn canonical_bytes(&self) -> Vec<u8> |a3ade84f20c38e1f
+crates/projections/src/graph.rs [pub(crate)] impl GraphSourceRecord :: fn verification_bytes(&self) -> Vec<u8> |f562859e210a3eea
+crates/projections/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GraphEdge |b4481802d17a435a
+crates/projections/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/projections/src/lib.rs [priv] mod tests :: #[test] fn projection_names_do_not_claim_canonical_authority() |3b7d38baaa64a781
+crates/projections/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/projections/src/lib.rs [pub] const GRAPH_PROJECTION_KIND: &str |388d2abc95492134
+crates/projections/src/lib.rs [pub] const PHASE1_PROJECTION_KINDS: &[&str] |888dfe810d3829ba
+crates/projections/src/lib.rs [pub] const PROJECTION_SCHEMA_VERSION: u32 |67a57bb8921a1a8f
+crates/projections/src/lib.rs [pub] const TRIGRAM_LEXICAL_PROJECTION_KIND: &str |d14f1158d695ab44
+crates/projections/src/lib.rs [pub] const UNICODE_LEXICAL_PROJECTION_KIND: &str |b62e911430dc3a91
+crates/projections/src/lib.rs [pub] mod bitemporal
+crates/projections/src/lib.rs [pub] mod checksum
+crates/projections/src/lib.rs [pub] mod fts
+crates/projections/src/lib.rs [pub] mod generation
+crates/projections/src/lib.rs [pub] mod graph
+crates/projections/src/lib.rs [pub] mod query
+crates/projections/src/lib.rs [pub] mod resolution
+crates/projections/src/lib.rs [pub] mod runner
+crates/projections/src/query.rs [priv] #[allow(clippy::too_many_arguments)] fn bind_availability( projection: &Connection, binding: CanonicalBinding, active: Option<ActiveGeneration>, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, ) -> ProjectionResult<ProjectionAvailability> |d53ac60b3c242bf1
+crates/projections/src/query.rs [priv] #[derive(Debug, Clone, Copy)] struct CanonicalBinding |7a482d3b7521b2e0
+crates/projections/src/query.rs [priv] fn canonical_binding( reader: &mut ReaderConnection, domain: DomainId, coordinates: ProjectionCoordinates, ) -> ProjectionResult<CanonicalBinding> |d4ae3a59f8b06f3e
+crates/projections/src/query.rs [priv] fn select_availability( canonical: &mut ReaderConnection, projection: &Connection, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, ) -> ProjectionResult<ProjectionAvailability> |62b12d7af75fb857
+crates/projections/src/query.rs [priv] impl ProjectionReader
+crates/projections/src/query.rs [priv] impl ProjectionReader :: #[allow(clippy::too_many_arguments)] fn search_ranked_impl<B: ProjectionReadBehavior + ?Sized>( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, query: &str, limit: usize, barrier: &B, ) -> ProjectionResult<ProjectionPage<SearchHit>> |08b3ec009e9b71f2
+crates/projections/src/query.rs [priv] impl ProjectionReader :: fn exact_symbol_lookup_impl<B: ProjectionReadBehavior + ?Sized>( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, symbol: &str, barrier: &B, ) -> ProjectionResult<ProjectionPage<ExactSymbolHit>> |ba034017e7a1b448
+crates/projections/src/query.rs [priv] impl ProjectionReader :: fn graph_neighbors_impl<B: ProjectionReadBehavior + ?Sized>( &self, domain: DomainId, source_entity_id: EntityId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, barrier: &B, ) -> ProjectionResult<ProjectionPage<GraphEdge>> |918b7aca3bbc7904
+crates/projections/src/query.rs [priv] impl ProjectionReader :: fn open_snapshot_connections(&self) -> ProjectionResult<(ReaderConnection, Connection)> |be383340ea39b2bd
+crates/projections/src/query.rs [priv] mod read_boundary
+crates/projections/src/query.rs [priv] mod read_boundary :: #[cfg(feature = "phase1-fault-injection")] impl<T> ProjectionReadBehavior for T where T: ProjectionReadBarrier + ?Sized,
+crates/projections/src/query.rs [priv] mod read_boundary :: impl ProjectionReadBehavior for NoProjectionReadBarrier
+crates/projections/src/query.rs [priv] mod read_boundary :: impl ProjectionReadBehavior for NoProjectionReadBarrier :: fn after_active_metadata(&self) -> ProjectionResult<()> |8c2584dcf5008fd1
+crates/projections/src/query.rs [priv] mod read_boundary :: impl<T> ProjectionReadBehavior for T where T: ProjectionReadBarrier + ?Sized, :: fn after_active_metadata(&self) -> ProjectionResult<()> |ddd40fce769f74fb
+crates/projections/src/query.rs [priv] mod read_boundary :: trait ProjectionReadBarrier: fmt::Debug :: fn after_active_metadata(&self) -> ProjectionResult<()> |73d837b3d81909c0
+crates/projections/src/query.rs [priv] mod read_boundary :: trait ProjectionReadBehavior: fmt::Debug :: fn after_active_metadata(&self) -> ProjectionResult<()> |73d837b3d81909c0
+crates/projections/src/query.rs [priv] mod read_boundary :: use super::{ProjectionResult, fmt} |1d76dbde3afc678f
+crates/projections/src/query.rs [priv] use academic_domain::{DomainId, EntityId} |ea90b22088c4c85a
+crates/projections/src/query.rs [priv] use academic_store::{ connection::{ReaderConnection, open_reader}, queries::projection_source_authority, } |65b9466942b0f838
+crates/projections/src/query.rs [priv] use crate::{ fts::{ExactSymbolHit, SearchHit, read_exact_symbol_hits, read_ranked_hits}, generation::{ ActiveGeneration, ProjectionAvailability, ProjectionCoordinates, ProjectionKind, ProjectionPage, }, graph::{GraphEdge, read_graph_edges}, resolution::{CANONICAL_RESOLVER_VERSION, PredicatePolicies}, runner::{ ProjectionError, ProjectionResult, Watermark, open_projection_reader, read_active_generation, read_verified_generation, }, } |db96060b74811d71
+crates/projections/src/query.rs [priv] use read_boundary::{NoProjectionReadBarrier, ProjectionReadBehavior} |2aee0accaaf40b7a
+crates/projections/src/query.rs [priv] use rusqlite::{Connection, TransactionBehavior} |f32f5b0cb9f8eb84
+crates/projections/src/query.rs [priv] use std::{ fmt, path::{Path, PathBuf}, } |dc2ed8fd9695652b
+crates/projections/src/query.rs [pub(crate)] mod read_boundary :: #[derive(Debug, Clone, Copy, Default)] struct NoProjectionReadBarrier |12e68805e91f0d36
+crates/projections/src/query.rs [pub(crate)] mod read_boundary :: trait ProjectionReadBehavior: fmt::Debug
+crates/projections/src/query.rs [pub] #[cfg(feature = "phase1-fault-injection")] use read_boundary::ProjectionReadBarrier |773b3ccb4fb96b85
+crates/projections/src/query.rs [pub] #[derive(Debug, Clone)] struct ProjectionReader |9ffeac77250a1f3b
+crates/projections/src/query.rs [pub] impl ProjectionReader :: #[cfg(feature = "phase1-fault-injection")] #[doc(hidden)] #[allow(clippy::too_many_arguments)] fn search_ranked_with_barrier<B: ProjectionReadBarrier + ?Sized>( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, query: &str, limit: usize, barrier: &B, ) -> ProjectionResult<ProjectionPage<SearchHit>> |1d79edec97180380
+crates/projections/src/query.rs [pub] impl ProjectionReader :: #[cfg(feature = "phase1-fault-injection")] #[doc(hidden)] fn exact_symbol_lookup_with_barrier<B: ProjectionReadBarrier + ?Sized>( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, symbol: &str, barrier: &B, ) -> ProjectionResult<ProjectionPage<ExactSymbolHit>> |9f2bf6e38b78b9f4
+crates/projections/src/query.rs [pub] impl ProjectionReader :: #[cfg(feature = "phase1-fault-injection")] #[doc(hidden)] fn graph_neighbors_with_barrier<B: ProjectionReadBarrier + ?Sized>( &self, domain: DomainId, source_entity_id: EntityId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, barrier: &B, ) -> ProjectionResult<ProjectionPage<GraphEdge>> |490a3548e3f1dd11
+crates/projections/src/query.rs [pub] impl ProjectionReader :: #[must_use] fn new( canonical_reader: &ReaderConnection, projection_database_path: impl AsRef<Path>, ) -> Self |73293f586b6b8f53
+crates/projections/src/query.rs [pub] impl ProjectionReader :: fn availability( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, ) -> ProjectionResult<ProjectionAvailability> |6db122163635f86b
+crates/projections/src/query.rs [pub] impl ProjectionReader :: fn exact_symbol_lookup( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, symbol: &str, ) -> ProjectionResult<ProjectionPage<ExactSymbolHit>> |bab28c614ae5129f
+crates/projections/src/query.rs [pub] impl ProjectionReader :: fn graph_neighbors( &self, domain: DomainId, source_entity_id: EntityId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, ) -> ProjectionResult<ProjectionPage<GraphEdge>> |5943f2e6f8c38ac8
+crates/projections/src/query.rs [pub] impl ProjectionReader :: fn search_ranked( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, query: &str, limit: usize, ) -> ProjectionResult<ProjectionPage<SearchHit>> |0a64e6e030abad0e
+crates/projections/src/query.rs [pub] mod read_boundary :: #[cfg(feature = "phase1-fault-injection")] #[doc(hidden)] trait ProjectionReadBarrier: fmt::Debug
+crates/projections/src/resolution.rs [priv] impl PredicatePolicies
+crates/projections/src/resolution.rs [priv] use academic_domain::{AuthorityClass, EpistemicStatus, PredicateId} |ccbe4e93222efc3b
+crates/projections/src/resolution.rs [priv] use crate::{ checksum::append_field, runner::{ProjectionError, ProjectionResult}, } |fd42f24c284e1de7
+crates/projections/src/resolution.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
+crates/projections/src/resolution.rs [pub(crate)] const fn authority_name(value: AuthorityClass) -> &'static str |3522fb433ab7d372
+crates/projections/src/resolution.rs [pub(crate)] const fn authority_policy_name(policy: AuthorityPolicy) -> &'static str |22fab8727655b74c
+crates/projections/src/resolution.rs [pub(crate)] const fn epistemic_name(value: EpistemicStatus) -> &'static str |86555449fe1c0baf
+crates/projections/src/resolution.rs [pub(crate)] fn parse_authority(value: &str) -> ProjectionResult<AuthorityClass> |f139af83405e7001
+crates/projections/src/resolution.rs [pub(crate)] fn parse_authority_policy(value: &str) -> ProjectionResult<AuthorityPolicy> |6867366df3af2674
+crates/projections/src/resolution.rs [pub(crate)] fn parse_epistemic(value: &str) -> ProjectionResult<EpistemicStatus> |9e352840fdb9c226
+crates/projections/src/resolution.rs [pub(crate)] impl PredicatePolicies :: fn entries(&self) -> &BTreeMap<PredicateId, AuthorityPolicy> |1ab8d1c5cc00434d
+crates/projections/src/resolution.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PredicatePolicies |6243b6c12df0e120
+crates/projections/src/resolution.rs [pub] impl PredicatePolicies :: #[must_use] const fn canonical_hash(&self) -> academic_domain::ContentDigest |a65b6834d4cc5750
+crates/projections/src/resolution.rs [pub] impl PredicatePolicies :: #[must_use] fn version(&self) -> &str |f680103844b06749
+crates/projections/src/resolution.rs [pub] impl PredicatePolicies :: fn new( version: impl Into<String>, entries: impl IntoIterator<Item = (PredicateId, AuthorityPolicy)>, ) -> ProjectionResult<Self> |fd17505ac93c7942
+crates/projections/src/resolution.rs [pub] impl PredicatePolicies :: fn policy_for(&self, predicate: &PredicateId) -> ProjectionResult<AuthorityPolicy> |2bfb89172e952051
+crates/projections/src/resolution.rs [pub] impl PredicatePolicies :: fn single( version: impl Into<String>, predicate: PredicateId, policy: AuthorityPolicy, ) -> ProjectionResult<Self> |b48fe25cbbc23da4
+crates/projections/src/resolution.rs [pub] use academic_store::queries::{ AuthorityPolicy, PROJECTION_RESOLVER_VERSION as CANONICAL_RESOLVER_VERSION, } |311e5f018c82d8d3
+crates/projections/src/runner.rs [priv] #[cfg(feature = "phase1-fault-injection")] fn apply_verification_corruption( connection: &Connection, generation_id: GenerationId, kind: ProjectionKind, corruption: ProjectionVerificationCorruption, ) -> ProjectionResult<()> |9c3e83976fc89df9
+crates/projections/src/runner.rs [priv] #[derive(Debug)] enum SourceRecords |994681644ed6b623
+crates/projections/src/runner.rs [priv] #[derive(Debug, Clone, Copy)] struct BuildAuthority<'a> |8de8b27f69af7877
+crates/projections/src/runner.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ExistingFormat |bd64901830911b94
+crates/projections/src/runner.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum PersistedGenerationFormat |3b703d00c5342111
+crates/projections/src/runner.rs [priv] const PARENT_MIGRATION_0002_SQL: &str |e72b2c98e48bdf8c
+crates/projections/src/runner.rs [priv] const PREVIOUS_PROJECTION_ALGORITHM_VERSION: &str |9420dc51422e36aa
+crates/projections/src/runner.rs [priv] const USER_SCHEMA_OBJECT_PREDICATE: &str |eb3768d40d2d7cac
+crates/projections/src/runner.rs [priv] fn activate_generation<F: ProjectionFaultBehavior + ?Sized>( projection: &mut Connection, generation_id: GenerationId, authority: &BuildAuthority<'_>, activated_at_unix_ms: i64, faults: &F, ) -> ProjectionResult<bool> |027132ab0ba58f63
+crates/projections/src/runner.rs [priv] fn checked_i64(value: u64) -> ProjectionResult<i64> |53c68ffc0d859ded
+crates/projections/src/runner.rs [priv] fn configure_admitted_current_database(path: &Path, admission: Connection) -> ProjectionResult<()> |a914a32b7e399bd4
+crates/projections/src/runner.rs [priv] fn configure_projection_writer(connection: &Connection) -> ProjectionResult<()> |c8fe5002848b5aa1
+crates/projections/src/runner.rs [priv] fn create_building_generation( projection: &mut Connection, authority: &BuildAuthority<'_>, builder_binary_digest: ContentDigest, effective_config_hash: ContentDigest, built_at_unix_ms: i64, ) -> ProjectionResult<GenerationId> |4e5b1976fcb7b5e0
+crates/projections/src/runner.rs [priv] fn create_sidecar_file(path: &Path) -> ProjectionResult<bool> |d13c10ce499c9285
+crates/projections/src/runner.rs [priv] fn derive_generation_id( generation_seq: i64, kind: ProjectionKind, domain: DomainId, built_at_unix_ms: i64, builder_binary_digest: ContentDigest, effective_config_hash: ContentDigest, ) -> GenerationId |537be51a775e724e
+crates/projections/src/runner.rs [priv] fn existing_projection_format(connection: &Connection) -> ProjectionResult<ExistingFormat> |2e329f6891ad7519
+crates/projections/src/runner.rs [priv] fn finish_writer_handoff( admission: Connection, writer: Connection, result: ProjectionResult<()>, ) -> ProjectionResult<()> |a8866462b9157f64
+crates/projections/src/runner.rs [priv] fn initialize_admitted_empty_database(path: &Path, admission: Connection) -> ProjectionResult<()> |779edd095d2bf549
+crates/projections/src/runner.rs [priv] fn initialize_projection_connection(connection: &mut Connection) -> ProjectionResult<()> |d053e3024a6d6022
+crates/projections/src/runner.rs [priv] fn initialize_projection_database(path: &Path) -> ProjectionResult<()> |e7d8470a07eea69b
+crates/projections/src/runner.rs [priv] fn mark_failed( projection: &mut Connection, generation_id: GenerationId, reason: &str, ) -> ProjectionResult<()> |e616f27f5c183636
+crates/projections/src/runner.rs [priv] fn mark_verified( projection: &mut Connection, generation_id: GenerationId, record_count: u64, checksum: ContentDigest, ) -> ProjectionResult<()> |d9027f4820270ad7
+crates/projections/src/runner.rs [priv] fn migration_schema_fingerprint(sql: &str) -> ProjectionResult<Vec<(String, String, String)>> |ba2026c0d97f64ba
+crates/projections/src/runner.rs [priv] fn nonnegative_u64(value: i64, reason: &'static str) -> ProjectionResult<u64> |b33ce636678681f0
+crates/projections/src/runner.rs [priv] fn open_projection_writer(path: &Path) -> ProjectionResult<Connection> |fb41147725a16327
+crates/projections/src/runner.rs [priv] fn persisted_generation_format( connection: &Connection, ) -> ProjectionResult<PersistedGenerationFormat> |cdcc549dc2f607cf
+crates/projections/src/runner.rs [priv] fn pragma_i64(connection: &Connection, name: &'static str) -> ProjectionResult<i64> |0c8020f1a9484043
+crates/projections/src/runner.rs [priv] fn projection_schema_fingerprint( connection: &Connection, ) -> ProjectionResult<Vec<(String, String, String)>> |0944fe39f410525a
+crates/projections/src/runner.rs [priv] fn read_and_verify_candidate( connection: &Connection, generation_id: GenerationId, kind: ProjectionKind, coordinates: ProjectionCoordinates, watermark: Watermark, policies: &PredicatePolicies, ) -> ProjectionResult<Vec<Vec<u8>>> |a7edd815b104830e
+crates/projections/src/runner.rs [priv] fn read_generation_metadata( connection: &Connection, generation_id: GenerationId, ) -> ProjectionResult<GenerationMetadata> |d2019a1072996cb7
+crates/projections/src/runner.rs [priv] fn remove_disposable_sidecar(path: &Path) -> ProjectionResult<()> |b89b1df7ff7ed317
+crates/projections/src/runner.rs [priv] fn replace_projection_database(path: &Path) -> ProjectionResult<()> |2822338179685fb6
+crates/projections/src/runner.rs [priv] fn unix_time_millis() -> ProjectionResult<i64> |fe9d986934f692b2
+crates/projections/src/runner.rs [priv] fn user_object_count(connection: &Connection) -> ProjectionResult<i64> |fd8364a973c96139
+crates/projections/src/runner.rs [priv] fn verify_candidate_generation<F: ProjectionFaultBehavior + ?Sized>( projection: &mut Connection, generation_id: GenerationId, kind: ProjectionKind, coordinates: ProjectionCoordinates, watermark: Watermark, policies: &PredicatePolicies, faults: &F, ) -> ProjectionResult<Vec<Vec<u8>>> |1c55a2e54636ff3c
+crates/projections/src/runner.rs [priv] fn verify_fts5(connection: &Connection) -> ProjectionResult<()> |e9d7f6002b895aa8
+crates/projections/src/runner.rs [priv] fn verify_generation_storage( connection: &Connection, generation_id: GenerationId, kind: ProjectionKind, coordinates: ProjectionCoordinates, watermark: Watermark, policies: &PredicatePolicies, ) -> ProjectionResult<()> |05a682fc7932d7ca
+crates/projections/src/runner.rs [priv] fn verify_named_fts_schema(connection: &Connection) -> ProjectionResult<()> |85d293c195e45420
+crates/projections/src/runner.rs [priv] fn verify_projection_identity(connection: &Connection) -> ProjectionResult<()> |a95fc73eb9a09a5b
+crates/projections/src/runner.rs [priv] fn verify_projection_schema(connection: &Connection) -> ProjectionResult<()> |85e5fd3a211ca67b
+crates/projections/src/runner.rs [priv] fn verify_table_columns( connection: &Connection, table: &str, expected: &[&str], ) -> ProjectionResult<()> |bda539bd5bb44c99
+crates/projections/src/runner.rs [priv] fn write_records<F: ProjectionFaultBehavior + ?Sized>( projection: &mut Connection, kind: ProjectionKind, generation_id: GenerationId, source_records: &SourceRecords, faults: &F, ) -> ProjectionResult<()> |73ddf442f876e49b
+crates/projections/src/runner.rs [priv] impl Error for ProjectionError
+crates/projections/src/runner.rs [priv] impl Error for ProjectionError :: fn source(&self) -> Option<&(dyn Error + 'static)> |621870c9842aa742
+crates/projections/src/runner.rs [priv] impl From<QueryError> for ProjectionError
+crates/projections/src/runner.rs [priv] impl From<QueryError> for ProjectionError :: fn from(error: QueryError) -> Self |1338b0514cc473b8
+crates/projections/src/runner.rs [priv] impl From<StoreError> for ProjectionError
+crates/projections/src/runner.rs [priv] impl From<StoreError> for ProjectionError :: fn from(error: StoreError) -> Self |1f9dd19bf676c75e
+crates/projections/src/runner.rs [priv] impl From<io::Error> for ProjectionError
+crates/projections/src/runner.rs [priv] impl From<io::Error> for ProjectionError :: fn from(error: io::Error) -> Self |cca899d02370ed38
+crates/projections/src/runner.rs [priv] impl From<rusqlite::Error> for ProjectionError
+crates/projections/src/runner.rs [priv] impl From<rusqlite::Error> for ProjectionError :: fn from(error: rusqlite::Error) -> Self |50d65eb68b1e5da9
+crates/projections/src/runner.rs [priv] impl ProjectionRunner
+crates/projections/src/runner.rs [priv] impl ProjectionRunner :: fn rebuild<F: ProjectionFaultBehavior + ?Sized>( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, activate: bool, faults: &F, ) -> ProjectionResult<GenerationReceipt> |6ad525300f561800
+crates/projections/src/runner.rs [priv] impl SourceRecords
+crates/projections/src/runner.rs [priv] impl SourceRecords :: fn len(&self) -> usize |b6964340155c73fb
+crates/projections/src/runner.rs [priv] impl SourceRecords :: fn verification_records(&self) -> Vec<Vec<u8>> |98e98a6e77b56ab9
+crates/projections/src/runner.rs [priv] impl fmt::Display for ProjectionError
+crates/projections/src/runner.rs [priv] impl fmt::Display for ProjectionError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |a60c15fd2ef27283
+crates/projections/src/runner.rs [priv] mod fault_boundary
+crates/projections/src/runner.rs [priv] mod fault_boundary :: #[cfg(feature = "phase1-fault-injection")] impl<T> ProjectionFaultBehavior for T where T: ProjectionFaultInjector + ?Sized,
+crates/projections/src/runner.rs [priv] mod fault_boundary :: impl ProjectionFaultBehavior for NoProjectionFault
+crates/projections/src/runner.rs [priv] mod fault_boundary :: impl ProjectionFaultBehavior for NoProjectionFault :: fn hit(&self, _point: ProjectionFaultPoint) -> ProjectionResult<()> |3c7bfc69e20853f7
+crates/projections/src/runner.rs [priv] mod fault_boundary :: impl ProjectionFaultPoint
+crates/projections/src/runner.rs [priv] mod fault_boundary :: impl<T> ProjectionFaultBehavior for T where T: ProjectionFaultInjector + ?Sized, :: fn hit(&self, point: ProjectionFaultPoint) -> ProjectionResult<()> |f48fa1b6187aa219
+crates/projections/src/runner.rs [priv] mod fault_boundary :: impl<T> ProjectionFaultBehavior for T where T: ProjectionFaultInjector + ?Sized, :: fn verification_corruption(&self) -> Option<ProjectionVerificationCorruption> |8fef4348c207e95d
+crates/projections/src/runner.rs [priv] mod fault_boundary :: trait ProjectionFaultBehavior: fmt::Debug :: #[cfg(feature = "phase1-fault-injection")] fn verification_corruption(&self) -> Option<ProjectionVerificationCorruption> |0889f6c1e2628a60
+crates/projections/src/runner.rs [priv] mod fault_boundary :: trait ProjectionFaultBehavior: fmt::Debug :: fn hit(&self, point: ProjectionFaultPoint) -> ProjectionResult<()> |95f97e8587d9d0e9
+crates/projections/src/runner.rs [priv] mod fault_boundary :: trait ProjectionFaultInjector: fmt::Debug :: fn hit(&self, point: ProjectionFaultPoint) -> ProjectionResult<()> |95f97e8587d9d0e9
+crates/projections/src/runner.rs [priv] mod fault_boundary :: trait ProjectionFaultInjector: fmt::Debug :: fn verification_corruption(&self) -> Option<ProjectionVerificationCorruption> |b5c437cc7ccf2bfe
+crates/projections/src/runner.rs [priv] mod fault_boundary :: use super::{ProjectionResult, fmt} |1d76dbde3afc678f
+crates/projections/src/runner.rs [priv] use academic_domain::{ContentDigest, DomainError, DomainId, TimestampMillis} |7087b8ef96f883c1
+crates/projections/src/runner.rs [priv] use academic_store::{ connection::{ReaderConnection, open_reader}, error::StoreError, queries::{ProjectionSnapshotRequest, QueryError, projection_source_snapshot}, } |0d7651b4bc5e4b8e
+crates/projections/src/runner.rs [priv] use crate::{ PROJECTION_SCHEMA_VERSION, checksum::order_stable_checksum, fts::{ SearchSourceRecord, load_search_sources, persisted_search_canonical_records, write_search_records, }, generation::{ ActiveGeneration, GenerationId, GenerationMetadata, GenerationState, ProjectionCoordinates, ProjectionKind, }, graph::{ GraphSourceRecord, load_graph_sources, persisted_graph_canonical_records, write_graph_records, }, resolution::{CANONICAL_RESOLVER_VERSION, PredicatePolicies}, } |f4cd8ffaa400c34d
+crates/projections/src/runner.rs [priv] use fault_boundary::{NoProjectionFault, ProjectionFaultBehavior} |b80473d77f0fe38f
+crates/projections/src/runner.rs [priv] use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, params} |b23c03852a11c9e6
+crates/projections/src/runner.rs [priv] use std::{ error::Error, fmt, fs, io, path::{Path, PathBuf}, str::FromStr, time::{SystemTime, UNIX_EPOCH}, } |0c6ca1eb0b86217d
+crates/projections/src/runner.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Watermark |bd12e2c4b2fd7f6d
+crates/projections/src/runner.rs [pub(crate)] fn fixed_bytes<const N: usize>( bytes: Vec<u8>, reason: &'static str, ) -> ProjectionResult<[u8; N]> |ab59fd7998259b06
+crates/projections/src/runner.rs [pub(crate)] fn id_from_bytes<T>(bytes: Vec<u8>, reason: &'static str) -> ProjectionResult<T> where T: FromStr<Err = DomainError>, |f3c8485d1958e87f
+crates/projections/src/runner.rs [pub(crate)] fn open_projection_reader(path: &Path) -> ProjectionResult<Connection> |7806ee57b1f33187
+crates/projections/src/runner.rs [pub(crate)] fn read_active_generation( connection: &Connection, kind: ProjectionKind, domain: DomainId, ) -> ProjectionResult<Option<ActiveGeneration>> |b2921a3425d1cf98
+crates/projections/src/runner.rs [pub(crate)] fn read_verified_generation( connection: &Connection, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, watermark: Watermark, policies: &PredicatePolicies, ) -> ProjectionResult<Option<ActiveGeneration>> |011e4f7e786040c0
+crates/projections/src/runner.rs [pub(crate)] mod fault_boundary :: #[derive(Debug, Clone, Copy, Default)] struct NoProjectionFault |4f2362ffb419f387
+crates/projections/src/runner.rs [pub(crate)] mod fault_boundary :: trait ProjectionFaultBehavior: fmt::Debug
+crates/projections/src/runner.rs [pub] #[cfg(feature = "phase1-fault-injection")] use fault_boundary::{ ProjectionFaultInjector, ProjectionFaultPoint, ProjectionVerificationCorruption, } |421acbaedde5ee14
+crates/projections/src/runner.rs [pub] #[derive(Debug)] enum ProjectionError |68ec104667c898a0
+crates/projections/src/runner.rs [pub] #[derive(Debug, Clone)] struct ProjectionRunner |4fb900acc9063dfb
+crates/projections/src/runner.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GenerationReceipt |578304d4359896ea
+crates/projections/src/runner.rs [pub] const MIGRATION_0002_SQL: &str |509f7ad46ace9166
+crates/projections/src/runner.rs [pub] const MIGRATION_0003_SQL: &str |3cd5b885f46bab52
+crates/projections/src/runner.rs [pub] const PROJECTION_ALGORITHM_VERSION: &str |5dfbc1c51f33b77c
+crates/projections/src/runner.rs [pub] const PROJECTION_APPLICATION_ID: u32 |4c13f673dd703880
+crates/projections/src/runner.rs [pub] const PROJECTION_DATABASE_VERSION: u32 |e14b028efd741114
+crates/projections/src/runner.rs [pub] fn migrate_projection_database(path: &Path) -> ProjectionResult<()> |ac401ab4dc6068bd
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: #[cfg(feature = "phase1-fault-injection")] fn audit_active_generation( &self, kind: ProjectionKind, domain: DomainId, ) -> ProjectionResult<Option<ActiveGeneration>> |c29b1a6ffd1d9db1
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: #[cfg(feature = "phase1-fault-injection")] fn audit_generation_state_count( &self, kind: ProjectionKind, domain: DomainId, state: GenerationState, excluding: Option<GenerationId>, ) -> ProjectionResult<u64> |4372617aedf6574c
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: #[cfg(feature = "phase1-fault-injection")] fn generation(&self, generation_id: GenerationId) -> ProjectionResult<GenerationMetadata> |00e53de127102976
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: #[cfg(feature = "phase1-fault-injection")] fn rebuild_at_with_faults<F: ProjectionFaultInjector + ?Sized>( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, faults: &F, ) -> ProjectionResult<GenerationReceipt> |0470b435f1902eb3
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: #[must_use] fn canonical_database_path(&self) -> &Path |bb7360fbb08985bd
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: #[must_use] fn projection_database_path(&self) -> &Path |735c5b1fc3639a3b
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: fn active_generation( &self, kind: ProjectionKind, domain: DomainId, ) -> ProjectionResult<Option<ActiveGeneration>> |b13c76b9956dfc43
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: fn build_inactive_at( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, ) -> ProjectionResult<GenerationReceipt> |5b6ff73a06f9393e
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: fn drop_projection(&self, kind: ProjectionKind, domain: DomainId) -> ProjectionResult<()> |1327f5f546d21ef1
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: fn open( canonical_reader: &ReaderConnection, projection_database_path: impl AsRef<Path>, builder_binary_digest: ContentDigest, effective_config_hash: ContentDigest, ) -> ProjectionResult<Self> |14f9ee1f4dc29364
+crates/projections/src/runner.rs [pub] impl ProjectionRunner :: fn rebuild_at( &self, kind: ProjectionKind, domain: DomainId, coordinates: ProjectionCoordinates, policies: &PredicatePolicies, ) -> ProjectionResult<GenerationReceipt> |276fcb9273048de8
+crates/projections/src/runner.rs [pub] mod fault_boundary :: #[cfg(feature = "phase1-fault-injection")] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ProjectionVerificationCorruption |2a3c762c106ca66b
+crates/projections/src/runner.rs [pub] mod fault_boundary :: #[cfg(feature = "phase1-fault-injection")] trait ProjectionFaultInjector: fmt::Debug
+crates/projections/src/runner.rs [pub] mod fault_boundary :: #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ProjectionFaultPoint |b32d2bba01f53ddc
+crates/projections/src/runner.rs [pub] mod fault_boundary :: impl ProjectionFaultPoint :: #[must_use] #[cfg(feature = "phase1-fault-injection")] const fn as_str(self) -> &'static str |4b100a17ea6adc0c
+crates/projections/src/runner.rs [pub] type ProjectionResult<T> = Result<T, ProjectionError> |c9193ef0570c3a0c

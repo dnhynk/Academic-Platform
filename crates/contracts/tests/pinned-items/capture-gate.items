@@ -1,5 +1,5 @@
-crates/capture-gate/probes/capture_probe.rs [priv] fn attempt(target: &str) -> String |352f9203a3e443d5
-crates/capture-gate/probes/capture_probe.rs [priv] fn main() |6e40f3b1c82f3558
+crates/capture-gate/probes/capture_probe.rs [priv] fn attempt(target: &str) -> String |b4bb2df78c7b233c
+crates/capture-gate/probes/capture_probe.rs [priv] fn main() |5335dc3d4364f869
 crates/capture-gate/probes/capture_probe.rs [priv] use academic_capture_gate::native::{REPORT_DIR_VAR, REPORT_FILE} |fceb21b41c9e7065
 crates/capture-gate/probes/capture_probe.rs [priv] use std::{fmt::Write as _, fs, path::Path} |dd822e1f613b5332
 crates/capture-gate/src/artifact.rs [priv] impl CaptureArtifact
@@ -10,7 +10,7 @@ crates/capture-gate/src/artifact.rs [priv] impl ReleasableArtifact
 crates/capture-gate/src/artifact.rs [priv] impl TimelineGap
 crates/capture-gate/src/artifact.rs [priv] impl ViolationRisk
 crates/capture-gate/src/artifact.rs [priv] impl fmt::Debug for ReleasableArtifact
-crates/capture-gate/src/artifact.rs [priv] impl fmt::Debug for ReleasableArtifact :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |5d5a884dd8b40afc
+crates/capture-gate/src/artifact.rs [priv] impl fmt::Debug for ReleasableArtifact :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |9d401845ea198532
 crates/capture-gate/src/artifact.rs [priv] use academic_consent::{CaptureDenialReason, CaptureStatus, RetentionTerms} |be684ae41928a68d
 crates/capture-gate/src/artifact.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
 crates/capture-gate/src/artifact.rs [priv] use crate::audit::CaptureRefusalReason |608eba12c5873ec1
@@ -28,7 +28,7 @@ crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)]
 crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaptureManifest |1876cb93dd266498
 crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ChunkRecord |d3fa046434710843
 crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct QuarantinedArtifact |bad5169c4f30b5ae
-crates/capture-gate/src/artifact.rs [pub] const PERMISSION_VIOLATION_RISK: &str |bab4575ff4386d53
+crates/capture-gate/src/artifact.rs [pub] const PERMISSION_VIOLATION_RISK: &str |0d2720180d13b457
 crates/capture-gate/src/artifact.rs [pub] impl CaptureArtifact :: #[must_use] const fn as_quarantined(&self) -> Option<&QuarantinedArtifact> |18f37edf29b2c7b8
 crates/capture-gate/src/artifact.rs [pub] impl CaptureArtifact :: #[must_use] const fn as_releasable(&self) -> Option<&ReleasableArtifact> |5a55f780817bfa34
 crates/capture-gate/src/artifact.rs [pub] impl CaptureArtifact :: #[must_use] const fn is_quarantined(&self) -> bool |7eebd9fe61d59703
@@ -67,7 +67,7 @@ crates/capture-gate/src/audit.rs [pub(crate)] impl CaptureAudit :: fn record_ref
 crates/capture-gate/src/audit.rs [pub(crate)] impl CaptureRefusal :: const fn from_denial(denial: CaptureDenial, class: Option<DeviceClass>) -> Self |b3931e17556a96e2
 crates/capture-gate/src/audit.rs [pub(crate)] impl CaptureRefusal :: const fn of(reason: CaptureRefusalReason, class: Option<DeviceClass>) -> Self |042ecc7bfbf5dd96
 crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum CaptureRefusalReason |fbb3ae7292e14325
-crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("capture refused at the device layer: {reason:?}")] struct CaptureRefusal |a6f4f1a7b5f5fef8
+crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("capture refused at the device layer: {reason:?}")] struct CaptureRefusal |cd838cda950b3dc3
 crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, Default)] struct CaptureAudit |484af57136f5c9be
 crates/capture-gate/src/audit.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaptureAuditRow |7213f1b080023a6a
 crates/capture-gate/src/audit.rs [pub] const REFUSAL_REASONS: [CaptureRefusalReason; 6] |c420ad85f273ab77
@@ -87,7 +87,7 @@ crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] const 
 crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] const fn reason(&self) -> CaptureRefusalReason |dd8efa91ca249179
 crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] fn denial_reason(&self) -> Option<CaptureDenialReason> |28d3b9e4093ef49b
 crates/capture-gate/src/audit.rs [pub] impl CaptureRefusal :: #[must_use] fn status(&self) -> Option<CaptureStatus> |11023e38d10a423c
-crates/capture-gate/src/audit.rs [pub] impl CaptureRefusalReason :: #[must_use] const fn as_str(self) -> &'static str |2b5800f744837c19
+crates/capture-gate/src/audit.rs [pub] impl CaptureRefusalReason :: #[must_use] const fn as_str(self) -> &'static str |f0f51fd0a68bcf50
 crates/capture-gate/src/daemon.rs [priv] impl CaptureAuthorization
 crates/capture-gate/src/daemon.rs [priv] use academic_consent::{CaptureRequest, ConsentLedger, mint_capture_capability} |3c439c364d491a79
 crates/capture-gate/src/daemon.rs [priv] use crate::{ audit::{AuditSubject, CaptureAudit, CaptureRefusal}, device::DeviceRuleset, } |ea355c41fe120ca9
@@ -106,8 +106,8 @@ crates/capture-gate/src/device.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, 
 crates/capture-gate/src/device.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum DeviceClass |79a3133171acbbbb
 crates/capture-gate/src/device.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeviceRuleset |3d3a899a6fb68fb4
 crates/capture-gate/src/device.rs [pub] const DEVICE_CLASSES: [DeviceClass; 3] |e5da964f1bc375c1
-crates/capture-gate/src/device.rs [pub] impl BackendId :: #[must_use] const fn as_str(self) -> &'static str |20098cc62d58fb78
-crates/capture-gate/src/device.rs [pub] impl DeviceClass :: #[must_use] const fn as_str(self) -> &'static str |131131d20f1c3b0c
+crates/capture-gate/src/device.rs [pub] impl BackendId :: #[must_use] const fn as_str(self) -> &'static str |f577cbb73b68ce4d
+crates/capture-gate/src/device.rs [pub] impl DeviceClass :: #[must_use] const fn as_str(self) -> &'static str |206c208ef36f7301
 crates/capture-gate/src/device.rs [pub] impl DeviceClass :: #[must_use] const fn of(medium: CaptureMedium) -> Option<Self> |750426bd376467fe
 crates/capture-gate/src/device.rs [pub] impl DeviceLayer :: #[must_use] const fn backend(self) -> BackendId |8cc25e6787be9f63
 crates/capture-gate/src/device.rs [pub] impl DeviceLayer :: #[must_use] const fn is_enforced(self) -> bool |06fc5b02f0d3b0cb
@@ -127,9 +127,9 @@ crates/capture-gate/src/lib.rs [pub] use audit::{ CaptureAudit, CaptureAuditRow,
 crates/capture-gate/src/lib.rs [pub] use daemon::{CaptureAuthorization, authorize} |2d1b692c92288fb4
 crates/capture-gate/src/lib.rs [pub] use device::{BackendId, DEVICE_CLASSES, DeviceClass, DeviceLayer, DeviceRuleset} |6374057f4c4f2b4f
 crates/capture-gate/src/lib.rs [pub] use session::{CaptureSession, open_device, releasable_bytes} |2c91b6301da4e5b7
-crates/capture-gate/src/native/linux.rs [priv] #[allow(unsafe_code)] fn enter(rules: &[RuleFd], handled: u64) -> Result<(), NativeError> |4bd2bc4aff660c82
+crates/capture-gate/src/native/linux.rs [priv] #[allow(unsafe_code)] fn enter(rules: &[RuleFd], handled: u64) -> Result<(), NativeError> |2baba42abbcd2646
 crates/capture-gate/src/native/linux.rs [priv] #[allow(unsafe_code)] fn landlock_abi() -> i64 |d0a03ce5de7f89d8
-crates/capture-gate/src/native/linux.rs [priv] #[allow(unsafe_code)] fn resolve(path: &Path, abi: i64, writable: bool, executable: bool) -> Result<RuleFd, NativeError> |dcaf3c8cd3a25ff7
+crates/capture-gate/src/native/linux.rs [priv] #[allow(unsafe_code)] fn resolve(path: &Path, abi: i64, writable: bool, executable: bool) -> Result<RuleFd, NativeError> |18f544f98a902c8d
 crates/capture-gate/src/native/linux.rs [priv] #[derive(Debug, Clone, Copy)] struct RuleFd |ec4f6167ed79ac87
 crates/capture-gate/src/native/linux.rs [priv] #[repr(C)] #[derive(Debug, Default)] struct LandlockRulesetAttr |a77d454adf483f52
 crates/capture-gate/src/native/linux.rs [priv] #[repr(C, packed)] #[derive(Debug, Clone, Copy)] struct LandlockPathBeneathAttr |bc0f581c7a01d7c4
@@ -144,13 +144,13 @@ crates/capture-gate/src/native/linux.rs [priv] const ACCESS_TRUNCATE: u64 |8c7b6
 crates/capture-gate/src/native/linux.rs [priv] const ACCESS_WRITE_FILE: u64 |c1e2d174858f2618
 crates/capture-gate/src/native/linux.rs [priv] const LANDLOCK_CREATE_RULESET_VERSION: u32 |eb32f4f1a0a3f2d4
 crates/capture-gate/src/native/linux.rs [priv] const LANDLOCK_RULE_PATH_BENEATH: u32 |f08bcd5660ad911c
-crates/capture-gate/src/native/linux.rs [priv] const RUNTIME_IMAGE_DIRECTORIES: [&str; 4] |3450a2cdb7697912
+crates/capture-gate/src/native/linux.rs [priv] const RUNTIME_IMAGE_DIRECTORIES: [&str; 4] |a86b7f307d4e0b9e
 crates/capture-gate/src/native/linux.rs [priv] fn errno() -> i64 |bd55e5475235cdf9
 crates/capture-gate/src/native/linux.rs [priv] fn handled_mask(abi: i64) -> u64 |7dd7dd2f5484e98d
 crates/capture-gate/src/native/linux.rs [priv] use crate::device::{BackendId, DeviceLayer} |a0eb484e977fc956
 crates/capture-gate/src/native/linux.rs [priv] use std::{ ffi::CString, io, os::unix::{ffi::OsStrExt as _, process::CommandExt as _}, path::Path, process::Command, } |02fad31a7cb9e15b
 crates/capture-gate/src/native/linux.rs [priv] use super::{LaunchSpec, NativeError, REPORT_DIR_VAR, REPORT_FILE} |1393ed9c1945ccc0
-crates/capture-gate/src/native/linux.rs [pub(super)] #[allow(unsafe_code)] fn launch(spec: &LaunchSpec) -> Result<String, NativeError> |14472f5415ab1eef
+crates/capture-gate/src/native/linux.rs [pub(super)] #[allow(unsafe_code)] fn launch(spec: &LaunchSpec) -> Result<String, NativeError> |c383ebe00bbc3531
 crates/capture-gate/src/native/linux.rs [pub(super)] fn availability() -> DeviceLayer |0ff38112cb7cf45d
 crates/capture-gate/src/native/mod.rs [priv] #[cfg(all(feature = "native-capture", target_os = "linux"))] mod linux
 crates/capture-gate/src/native/mod.rs [priv] #[cfg(all(feature = "native-capture", target_os = "windows"))] mod windows
@@ -160,32 +160,32 @@ crates/capture-gate/src/native/mod.rs [priv] use crate::device::{DeviceClass, De
 crates/capture-gate/src/native/mod.rs [priv] use std::path::PathBuf |7df9a5891ba56cb7
 crates/capture-gate/src/native/mod.rs [pub] #[derive(Debug, Clone)] struct LaunchSpec |ada8adf66e25028a
 crates/capture-gate/src/native/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeviceTree |413f53d4fdd2b38e
-crates/capture-gate/src/native/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum NativeError |217cf3f5321b6871
-crates/capture-gate/src/native/mod.rs [pub] #[must_use] fn availability() -> DeviceLayer |6eda4d90c1e8ca3e
-crates/capture-gate/src/native/mod.rs [pub] #[must_use] fn device_paths(class: DeviceClass) -> Vec<String> |ff11f859b01cbf24
-crates/capture-gate/src/native/mod.rs [pub] const REPORT_DIR_VAR: &str |5ccfc95906470d46
-crates/capture-gate/src/native/mod.rs [pub] const REPORT_FILE: &str |df454927ea182d09
-crates/capture-gate/src/native/mod.rs [pub] fn launch(spec: &LaunchSpec) -> Result<String, NativeError> |b3d5fc79e6325f29
+crates/capture-gate/src/native/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum NativeError |5a2010b54c49c4e8
+crates/capture-gate/src/native/mod.rs [pub] #[must_use] fn availability() -> DeviceLayer |d8f9d76ed506bf58
+crates/capture-gate/src/native/mod.rs [pub] #[must_use] fn device_paths(class: DeviceClass) -> Vec<String> |4e63cfc52122d919
+crates/capture-gate/src/native/mod.rs [pub] const REPORT_DIR_VAR: &str |2f9b894f2e171d14
+crates/capture-gate/src/native/mod.rs [pub] const REPORT_FILE: &str |7e3003d4acc72be2
+crates/capture-gate/src/native/mod.rs [pub] fn launch(spec: &LaunchSpec) -> Result<String, NativeError> |130bf6f592ec8717
 crates/capture-gate/src/native/mod.rs [pub] impl DeviceTree :: #[must_use] const fn class(&self) -> DeviceClass |b45a73a20f3d890d
 crates/capture-gate/src/native/mod.rs [pub] impl DeviceTree :: #[must_use] const fn new(class: DeviceClass, path: PathBuf) -> Self |3684923c7ee41d45
 crates/capture-gate/src/native/mod.rs [pub] impl DeviceTree :: #[must_use] fn path(&self) -> &std::path::Path |382090c7e10395ef
 crates/capture-gate/src/native/mod.rs [pub] impl LaunchSpec :: #[must_use] fn permits(&self, class: DeviceClass) -> bool |df4c2d2301d2583c
-crates/capture-gate/src/native/windows.rs [priv] #[allow(unsafe_code)] fn container_sid() -> Result<PSID, NativeError> |773c6e3843586605
-crates/capture-gate/src/native/windows.rs [priv] #[allow(unsafe_code)] fn grant(path: &Path, sid: PSID, rights: u32, inherit: u32) -> Result<(), NativeError> |c571ba85b23c649d
+crates/capture-gate/src/native/windows.rs [priv] #[allow(unsafe_code)] fn container_sid() -> Result<PSID, NativeError> |b88a087fc8990936
+crates/capture-gate/src/native/windows.rs [priv] #[allow(unsafe_code)] fn grant(path: &Path, sid: PSID, rights: u32, inherit: u32) -> Result<(), NativeError> |d815ce92f8f7162d
 crates/capture-gate/src/native/windows.rs [priv] #[allow(unsafe_code)] fn last_error() -> i64 |8ced44264d6516f1
 crates/capture-gate/src/native/windows.rs [priv] #[derive(Debug)] struct ProfileLock |38329fac176406b9
-crates/capture-gate/src/native/windows.rs [priv] const CONTAINER_NAME: &str |608d0002f913c0a0
+crates/capture-gate/src/native/windows.rs [priv] const CONTAINER_NAME: &str |ba5077f5acbd1b78
 crates/capture-gate/src/native/windows.rs [priv] const INHERIT_ALL: u32 |157b169356a0b3bb
 crates/capture-gate/src/native/windows.rs [priv] const KSCATEGORY_CAPTURE: GUID |4cac0932374c5ca7
 crates/capture-gate/src/native/windows.rs [priv] const KSCATEGORY_VIDEO_CAMERA: GUID |e585b9dc65b6166b
-crates/capture-gate/src/native/windows.rs [priv] const PROFILE_LOCK_FILE: &str |54701d4ad7a6d557
+crates/capture-gate/src/native/windows.rs [priv] const PROFILE_LOCK_FILE: &str |87bb5eee0ceac6e3
 crates/capture-gate/src/native/windows.rs [priv] const PROFILE_LOCK_WAIT: Duration |e5bc526b24cd88fe
 crates/capture-gate/src/native/windows.rs [priv] const RIGHTS_READ_EXECUTE: u32 |af1f5f43fc4294ea
 crates/capture-gate/src/native/windows.rs [priv] const RIGHTS_READ_WRITE: u32 |f27d1f3f572f822d
 crates/capture-gate/src/native/windows.rs [priv] const SHARING_VIOLATION: i32 |15edfea90f5579dd
-crates/capture-gate/src/native/windows.rs [priv] fn environment_block(report_dir: &Path) -> Vec<u16> |dfa035b237b41b96
-crates/capture-gate/src/native/windows.rs [priv] fn profile_lock_path() -> Option<PathBuf> |e558005a6d1ed443
-crates/capture-gate/src/native/windows.rs [priv] fn read_report(report_dir: &Path) -> Result<String, NativeError> |05979ee754b29b04
+crates/capture-gate/src/native/windows.rs [priv] fn environment_block(report_dir: &Path) -> Vec<u16> |47743b36696dc0b4
+crates/capture-gate/src/native/windows.rs [priv] fn profile_lock_path() -> Option<PathBuf> |a6a066db3c1a3b10
+crates/capture-gate/src/native/windows.rs [priv] fn read_report(report_dir: &Path) -> Result<String, NativeError> |575e759242cabff7
 crates/capture-gate/src/native/windows.rs [priv] fn wide(value: &str) -> Vec<u16> |ad0865c921d15081
 crates/capture-gate/src/native/windows.rs [priv] impl Drop for OwnedHandle
 crates/capture-gate/src/native/windows.rs [priv] impl Drop for OwnedHandle :: #[allow(unsafe_code)] fn drop(&mut self) |879f8cc9eb471557
@@ -198,14 +198,14 @@ crates/capture-gate/src/native/windows.rs [priv] use std::{ ffi::c_void, fs::Ope
 crates/capture-gate/src/native/windows.rs [priv] use super::{LaunchSpec, NativeError, REPORT_DIR_VAR, REPORT_FILE} |1393ed9c1945ccc0
 crates/capture-gate/src/native/windows.rs [priv] use windows_sys::{ Win32::{ Devices::DeviceAndDriverInstallation::{ CM_GET_DEVICE_INTERFACE_LIST_PRESENT, CM_Get_Device_Interface_List_SizeW, CM_Get_Device_Interface_ListW, }, Foundation::{CloseHandle, GetLastError, HANDLE, WAIT_TIMEOUT}, Security::{ ACL, Authorization::{ EXPLICIT_ACCESS_W, GRANT_ACCESS, GetNamedSecurityInfoW, SE_FILE_OBJECT, SetEntriesInAclW, SetNamedSecurityInfoW, TRUSTEE_IS_SID, TRUSTEE_IS_WELL_KNOWN_GROUP, }, DACL_SECURITY_INFORMATION, Isolation::{CreateAppContainerProfile, DeriveAppContainerSidFromAppContainerName}, PSID, SECURITY_CAPABILITIES, }, System::Threading::{ CREATE_SUSPENDED, CreateProcessW, DeleteProcThreadAttributeList, EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess, INFINITE, InitializeProcThreadAttributeList, LPPROC_THREAD_ATTRIBUTE_LIST, PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES, PROCESS_INFORMATION, ResumeThread, STARTUPINFOEXW, UpdateProcThreadAttribute, WaitForSingleObject, }, }, core::GUID, } |318e715a6f269348
 crates/capture-gate/src/native/windows.rs [pub(super)] #[allow(dead_code)] fn enter() -> Result<BackendId, NativeError> |cfebc0c06c8ba23c
-crates/capture-gate/src/native/windows.rs [pub(super)] #[allow(unsafe_code)] fn device_interface_paths(class: DeviceClass) -> Vec<String> |3a1cb9e0f932fd97
-crates/capture-gate/src/native/windows.rs [pub(super)] #[allow(unsafe_code)] fn launch(spec: &LaunchSpec) -> Result<String, NativeError> |d6a00369b150e2fe
+crates/capture-gate/src/native/windows.rs [pub(super)] #[allow(unsafe_code)] fn device_interface_paths(class: DeviceClass) -> Vec<String> |cae433f15b6f289d
+crates/capture-gate/src/native/windows.rs [pub(super)] #[allow(unsafe_code)] fn launch(spec: &LaunchSpec) -> Result<String, NativeError> |f398e03d71750938
 crates/capture-gate/src/native/windows.rs [pub(super)] fn availability() -> DeviceLayer |e96aeba9dcc336e8
 crates/capture-gate/src/session.rs [priv] impl CaptureSession
 crates/capture-gate/src/session.rs [priv] impl CaptureSession :: fn first_unbound_chunk( &self, ledger: &ConsentLedger, ) -> Option<(ViolationRisk, CaptureDenial)> |f901e0929c39e1bd
 crates/capture-gate/src/session.rs [priv] impl CaptureSession :: fn subject(&self) -> AuditSubject |3d76acded95ef88d
 crates/capture-gate/src/session.rs [priv] impl fmt::Debug for CaptureSession
-crates/capture-gate/src/session.rs [priv] impl fmt::Debug for CaptureSession :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |46ca59b4e21509fb
+crates/capture-gate/src/session.rs [priv] impl fmt::Debug for CaptureSession :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |b2daf89bf8835034
 crates/capture-gate/src/session.rs [priv] use academic_consent::{ CaptureCapabilityToken, CaptureDenial, ConsentLedger, RetentionTerms, bind_permission, continue_capture, } |081b168ad5950d78
 crates/capture-gate/src/session.rs [priv] use academic_domain::{ContentDigest, LectureSessionId, OfferingId} |6e710289d7c34f2e
 crates/capture-gate/src/session.rs [priv] use crate::{ artifact::{CaptureArtifact, ChunkRecord, TimelineGap, ViolationRisk}, audit::{AuditSubject, CaptureAudit, CaptureRefusal, CaptureRefusalReason}, daemon::CaptureAuthorization, device::{DeviceClass, DeviceLayer}, } |54b8e2332b42e788

@@ -10,7 +10,7 @@ crates/build-learn/src/branch.rs [priv] use academic_gap::{PrerequisiteEdge, gap
 crates/build-learn/src/branch.rs [priv] use crate::{ BuildLearnError, goal::ProjectGoal, responsibility::ResponsibilityDecomposition, text::PartId, } |ec9348402fbe7e01
 crates/build-learn/src/branch.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/build-learn/src/branch.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
-crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum RequirementCondition |dcbc25c4711cf1c8
+crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum RequirementCondition |6d1f85feaf2cfa39
 crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ArchitectureBranch |709d933896469d89
 crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct BranchGroup |2c6b85f4d4ec06d2
 crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ConceptRequirement |205ea8b7e175bd19
@@ -33,7 +33,7 @@ crates/build-learn/src/branch.rs [pub] impl ConceptRequirement :: #[must_use] co
 crates/build-learn/src/branch.rs [pub] impl ConceptRequirement :: #[must_use] const fn serves(&self) -> &PartId |ae0b4f4dc8216d91
 crates/build-learn/src/branch.rs [pub] impl ConceptRequirement :: fn always( concept: EntityId, kind: EntityKind, serves: PartId, ) -> Result<Self, BuildLearnError> |bc22e60ddaddb5ff
 crates/build-learn/src/branch.rs [pub] impl RequirementCondition :: #[must_use] const fn alternative(&self) -> Option<&PartId> |dd21cebb571784cc
-crates/build-learn/src/branch.rs [pub] impl RequirementCondition :: #[must_use] const fn as_str(&self) -> &'static str |7d5de9cb8a564139
+crates/build-learn/src/branch.rs [pub] impl RequirementCondition :: #[must_use] const fn as_str(&self) -> &'static str |8f802460c95f0caa
 crates/build-learn/src/branch.rs [pub] impl RequirementCondition :: #[must_use] const fn decision(&self) -> Option<&PartId> |ec086ad07fe2a89f
 crates/build-learn/src/goal.rs [priv] impl Alternative
 crates/build-learn/src/goal.rs [priv] impl Constraint
@@ -53,7 +53,7 @@ crates/build-learn/src/goal.rs [priv] use serde::{Deserialize, Serialize} |fa058
 crates/build-learn/src/goal.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
 crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)] #[serde(transparent)] struct Constraints |d3a074d3bc3a8975
 crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)] #[serde(transparent)] struct UnresolvedDecisions |262c0f566305c232
-crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde( try_from = "Vec<ObservableCriterion>", into = "Vec<ObservableCriterion>" )] struct SuccessCriteria |24663e216f811b9e
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde( try_from = "Vec<ObservableCriterion>", into = "Vec<ObservableCriterion>" )] struct SuccessCriteria |774950686bef6d5e
 crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct Alternative |a8e5290454b7bb58
 crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct Constraint |78b03b38e1777364
 crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ObservableCriterion |6562207172ede4ee
@@ -93,15 +93,15 @@ crates/build-learn/src/input.rs [priv] impl InputKind
 crates/build-learn/src/input.rs [priv] impl NormalizedIntent
 crates/build-learn/src/input.rs [priv] use crate::{BuildLearnError, text::NonEmptyText} |3c5df49f2843c330
 crates/build-learn/src/input.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/build-learn/src/input.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum InputKind |84400b0185db4e22
-crates/build-learn/src/input.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum GoalInput |882a3313c6760243
+crates/build-learn/src/input.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum InputKind |88969b72201ab26f
+crates/build-learn/src/input.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum GoalInput |feb11877ff520c60
 crates/build-learn/src/input.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct NormalizedIntent |beefe765641a8e8b
 crates/build-learn/src/input.rs [pub] const INPUT_KINDS: [InputKind; 6] |fca567ca18f1c9f2
 crates/build-learn/src/input.rs [pub] fn normalize(input: &GoalInput) -> Result<NormalizedIntent, BuildLearnError> |2aea4c0078ad0303
 crates/build-learn/src/input.rs [pub] impl GoalInput :: #[must_use] const fn kind(&self) -> InputKind |4435d37b57bf5972
 crates/build-learn/src/input.rs [pub] impl GoalInput :: #[must_use] const fn snapshot_id(&self) -> Option<&NonEmptyText> |81e9d2eec1bfd793
-crates/build-learn/src/input.rs [pub] impl InputKind :: #[must_use] const fn as_str(self) -> &'static str |564b179e1b2be5dc
-crates/build-learn/src/input.rs [pub] impl InputKind :: #[must_use] const fn spec_token(self) -> &'static str |5d2c668078c31fcd
+crates/build-learn/src/input.rs [pub] impl InputKind :: #[must_use] const fn as_str(self) -> &'static str |fdf35a1f78b6acef
+crates/build-learn/src/input.rs [pub] impl InputKind :: #[must_use] const fn spec_token(self) -> &'static str |feb11ec0df4e0c87
 crates/build-learn/src/input.rs [pub] impl NormalizedIntent :: #[must_use] const fn capability(&self) -> &NonEmptyText |5f5f8b8fb859076c
 crates/build-learn/src/input.rs [pub] impl NormalizedIntent :: #[must_use] const fn snapshot_id(&self) -> Option<&NonEmptyText> |349c1504f8cd5b06
 crates/build-learn/src/input.rs [pub] impl NormalizedIntent :: #[must_use] const fn source(&self) -> InputKind |7579dc96bf27ba57
@@ -116,7 +116,7 @@ crates/build-learn/src/learning.rs [priv] impl SimulationPassed
 crates/build-learn/src/learning.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
 crates/build-learn/src/learning.rs [priv] use crate::text::{NonEmptyText, PartId} |cb0e8098e9e9b0a6
 crates/build-learn/src/learning.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CheckpointStage |ca6556bf48b4c5a5
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CheckpointStage |df7861b001697840
 crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct EvidenceTask |868c58b95f2dbf8c
 crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ExplainedByHand |e2c280feeeea8510
 crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct LearningItem |b356493a7d048813
@@ -125,8 +125,8 @@ crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, S
 crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct SelectionApproved |99ec99a84899c7fc
 crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct SimulationPassed |ef2385ae62041c99
 crates/build-learn/src/learning.rs [pub] const CHECKPOINT_STAGES: [CheckpointStage; 4] |08f1b3722e6a4187
-crates/build-learn/src/learning.rs [pub] impl CheckpointStage :: #[must_use] const fn as_str(self) -> &'static str |93879b24d77ff649
-crates/build-learn/src/learning.rs [pub] impl CheckpointStage :: #[must_use] const fn spec_token(self) -> &'static str |bd1e0f91ca3d52e8
+crates/build-learn/src/learning.rs [pub] impl CheckpointStage :: #[must_use] const fn as_str(self) -> &'static str |ceab4943ad7d1305
+crates/build-learn/src/learning.rs [pub] impl CheckpointStage :: #[must_use] const fn spec_token(self) -> &'static str |4f039a2ae951e8cb
 crates/build-learn/src/learning.rs [pub] impl EvidenceTask :: #[must_use] const fn of(runs: NonEmptyText, shows: NonEmptyText) -> Self |72a99663a2b600f6
 crates/build-learn/src/learning.rs [pub] impl EvidenceTask :: #[must_use] const fn runs(&self) -> &NonEmptyText |9c74c2e35edbc4a4
 crates/build-learn/src/learning.rs [pub] impl EvidenceTask :: #[must_use] const fn shows(&self) -> &NonEmptyText |b5a2c84f99ce217c
@@ -156,7 +156,7 @@ crates/build-learn/src/lib.rs [priv] impl From<academic_critical_path::CriticalP
 crates/build-learn/src/lib.rs [priv] impl From<academic_gap::GapError> for BuildLearnError
 crates/build-learn/src/lib.rs [priv] impl From<academic_gap::GapError> for BuildLearnError :: fn from(error: academic_gap::GapError) -> Self |ce9f5c5d013b2a68
 crates/build-learn/src/lib.rs [priv] use academic_domain::{EntityId, entity_registry::EntityKind} |fd6f7cca0e2d53ff
-crates/build-learn/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum BuildLearnError |95ba9012f85453c0
+crates/build-learn/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum BuildLearnError |f84a1d1542e084c4
 crates/build-learn/src/lib.rs [pub] mod branch
 crates/build-learn/src/lib.rs [pub] mod goal
 crates/build-learn/src/lib.rs [pub] mod input
@@ -194,10 +194,10 @@ crates/build-learn/src/mapping.rs [priv] use crate::{BuildLearnError, text::NonE
 crates/build-learn/src/mapping.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/build-learn/src/mapping.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
 crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MappingEvidence<'a> |ff96fb5a6f57f658
-crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CoverageEvidenceKind |0d183ac81163f2fd
-crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EnrolmentStanding |57d62d9ad15d6a2b
-crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MappingStatus |e3a82b4f873c17b1
-crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PersonalEvidenceStanding |9a2094a516eaee01
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CoverageEvidenceKind |971d3ffe5f351928
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EnrolmentStanding |fef463e909f538f6
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MappingStatus |47bc0660ff55faec
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PersonalEvidenceStanding |708e1531174eef9c
 crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ActualCoverage |884065ac08401fcf
 crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ChannelComparison |2e04ac2ca9190adc
 crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct CourseProjectMapping |c84cdcab6de8f86d
@@ -220,16 +220,16 @@ crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: #[must_use]
 crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: #[must_use] const fn status(&self) -> MappingStatus |4f22627c2dae128d
 crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
 crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: fn publish( subject: EntityId, designed: Option<DesignedCoverage>, actual: Option<ActualCoverage>, status: MappingStatus, reason: NonEmptyText, ) -> Result<Self, BuildLearnError> |5030abd764c09acf
-crates/build-learn/src/mapping.rs [pub] impl CoverageEvidenceKind :: #[must_use] const fn as_str(self) -> &'static str |956c64fb111675d4
-crates/build-learn/src/mapping.rs [pub] impl CoverageEvidenceKind :: #[must_use] const fn spec_token(self) -> &'static str |929fa17c6ae9b551
+crates/build-learn/src/mapping.rs [pub] impl CoverageEvidenceKind :: #[must_use] const fn as_str(self) -> &'static str |88f486a49a960ddf
+crates/build-learn/src/mapping.rs [pub] impl CoverageEvidenceKind :: #[must_use] const fn spec_token(self) -> &'static str |c7129d92372a52d8
 crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] const fn course(&self) -> CourseId |c8cc3bd34fb8c4d1
 crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] fn competencies(&self) -> &[EntityId] |f340f019cb649e04
 crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] fn concepts(&self) -> &[EntityId] |d99d9af965bd9d0c
 crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] fn designs(&self, subject: EntityId) -> bool |2521c60380282fd9
 crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] fn of(revision: &CourseRevision) -> Self |e92cc66414c4515d
-crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] const fn as_str(self) -> &'static str |f7c7e5347bac778d
+crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] const fn as_str(self) -> &'static str |8117043eaf947cf3
 crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] const fn requires_actual_coverage(self) -> bool |efcee04ba99089de
-crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] const fn spec_token(self) -> &'static str |389b5b9362c61b02
+crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] const fn spec_token(self) -> &'static str |529ed7dbdaff0796
 crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] fn for_evidence(evidence: &MappingEvidence<'_>) -> Self |f77cf2d4df083932
 crates/build-learn/src/motivation.rs [priv] impl Motivation
 crates/build-learn/src/motivation.rs [priv] impl MotivationDisplay
@@ -239,13 +239,13 @@ crates/build-learn/src/motivation.rs [priv] use academic_domain::EntityId |2b359
 crates/build-learn/src/motivation.rs [priv] use crate::{BuildLearnError, text::NonEmptyText} |3c5df49f2843c330
 crates/build-learn/src/motivation.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/build-learn/src/motivation.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
-crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Motivation |5d8359e9872cf1cd
+crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Motivation |09d93a82cd622018
 crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct MotivationDisplay |acf73a31544c9eed
 crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct MotivationEdge |0740d0389ea5eea0
 crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct MotivationRow |0c419d14ae272121
 crates/build-learn/src/motivation.rs [pub] const MOTIVATIONS: [Motivation; 3] |eaeb1d0f5931a9c1
 crates/build-learn/src/motivation.rs [pub] impl Motivation :: #[must_use] const fn as_str(self) -> &'static str |baf485c97b1f1117
-crates/build-learn/src/motivation.rs [pub] impl Motivation :: #[must_use] const fn spec_token(self) -> &'static str |02375bda118d65f7
+crates/build-learn/src/motivation.rs [pub] impl Motivation :: #[must_use] const fn spec_token(self) -> &'static str |e4ec2240f3b0ccdd
 crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
 crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] fn carries(&self, motivation: Motivation) -> bool |5476beea5e5903d7
 crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] fn rows(&self) -> &[MotivationRow] |dd0ea27f50a8481e
@@ -262,14 +262,14 @@ crates/build-learn/src/plan.rs [priv] use academic_domain::EntityId |2b35968c8cf
 crates/build-learn/src/plan.rs [priv] use crate::{ branch::ArchitectureBranch, learning::LearningItem, motivation::MotivationDisplay, readiness::ReadinessFinding, text::{NonEmptyText, PartId}, } |eeca5926216b9579
 crates/build-learn/src/plan.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/build-learn/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanDraft<'a> |2f0b8d43d196542a
-crates/build-learn/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum PlanStep |4880725f9cb2b1aa
-crates/build-learn/src/plan.rs [pub] const STEP_KINDS: [&str; 3] |a97a8f0be1e54f34
+crates/build-learn/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum PlanStep |0e1fa90aa471313b
+crates/build-learn/src/plan.rs [pub] const STEP_KINDS: [&str; 3] |bf050cc0d83291a7
 crates/build-learn/src/plan.rs [pub] impl PlanDraft<'_> :: #[must_use] fn implementation_steps(&self) -> Vec<&PlanStep> |ad06651e215932c7
 crates/build-learn/src/plan.rs [pub] impl PlanDraft<'_> :: #[must_use] fn learning_items(&self) -> Vec<&LearningItem> |4b8e15b08bcdd53c
 crates/build-learn/src/plan.rs [pub] impl PlanDraft<'_> :: #[must_use] fn motivation(&self, concept: EntityId) -> Option<&MotivationDisplay> |bf9b3c0c6c1b148a
 crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn answers(&self) -> Option<&PartId> |1b0a99c1938bfa8c
 crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn id(&self) -> &PartId |43234c8dbada49f2
-crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn kind(&self) -> &'static str |31d7ee68a8f87dac
+crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn kind(&self) -> &'static str |21cf866cc9654c8f
 crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn learning(&self) -> Option<&LearningItem> |43b346df001ee719
 crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn satisfies(&self) -> Option<&PartId> |55b5a0e80ce3540c
 crates/build-learn/src/readiness.rs [priv] impl ReadinessCategory
@@ -281,17 +281,17 @@ crates/build-learn/src/readiness.rs [priv] use academic_gap::ConceptState |7e178
 crates/build-learn/src/readiness.rs [priv] use academic_repository_classification::BenefitContract |7f675f5cc8091e17
 crates/build-learn/src/readiness.rs [priv] use crate::{ branch::{ConceptRequirement, RequirementCondition}, text::PartId, } |c78e9ada2b6df516
 crates/build-learn/src/readiness.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/build-learn/src/readiness.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ReadinessCategory |e2d50cc78e668ec8
+crates/build-learn/src/readiness.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ReadinessCategory |e2f6b2fa53a44475
 crates/build-learn/src/readiness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RequirementOrigin |70720c98bb4bac84
 crates/build-learn/src/readiness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReadinessFinding |a27f6e01ba8e4b0f
 crates/build-learn/src/readiness.rs [pub] #[must_use] fn categorize( requirement: &ConceptRequirement, origin: RequirementOrigin, state: &ConceptState, ) -> ReadinessFinding |22126a8f5b54e0fb
 crates/build-learn/src/readiness.rs [pub] const READINESS_CATEGORIES: [ReadinessCategory; 6] |d06e37a816b32889
-crates/build-learn/src/readiness.rs [pub] const RESOLUTION_ORDER: [(&str, ReadinessCategory); 6] |67525d15246cb0c1
+crates/build-learn/src/readiness.rs [pub] const RESOLUTION_ORDER: [(&str, ReadinessCategory); 6] |67b6d095ca4fba53
 crates/build-learn/src/readiness.rs [pub] const ROW_WITHOUT_A_SHORT_NAME: ReadinessCategory |781f17049a9b1a75
-crates/build-learn/src/readiness.rs [pub] const SHORT_NAMES: [(&str, ReadinessCategory); 5] |44f4320e74800e1d
-crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn as_str(self) -> &'static str |cb034c5e2565d366
-crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn meaning_token(self) -> &'static str |e9fd71e9822c3921
-crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn spec_token(self) -> &'static str |362441a867a358a3
+crates/build-learn/src/readiness.rs [pub] const SHORT_NAMES: [(&str, ReadinessCategory); 5] |5bfe0323fd4c063e
+crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn as_str(self) -> &'static str |3a8181fa216eb773
+crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn meaning_token(self) -> &'static str |3ef4136838d47839
+crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn spec_token(self) -> &'static str |fcf942b9c2c2a20b
 crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] fn short_name(self) -> Option<&'static str> |c7bd50a04bb64ae6
 crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn category(&self) -> ReadinessCategory |0c014f55e89c9db1
 crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn freshness(&self) -> FreshnessBand |d44bf370bf8ca109
@@ -299,7 +299,7 @@ crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] c
 crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn origin(&self) -> &RequirementOrigin |aaad77774e3ce28c
 crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn requirement(&self) -> &ConceptRequirement |33121ff798491218
 crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn sufficiency_gap_count(&self) -> usize |b47074266c0880e3
-crates/build-learn/src/readiness.rs [pub] impl RequirementOrigin :: #[must_use] const fn as_str(&self) -> &'static str |1f2ef202e15a9cf1
+crates/build-learn/src/readiness.rs [pub] impl RequirementOrigin :: #[must_use] const fn as_str(&self) -> &'static str |163521bc187bae91
 crates/build-learn/src/responsibility.rs [priv] impl ObservableResponsibility
 crates/build-learn/src/responsibility.rs [priv] impl ResponsibilityDecomposition
 crates/build-learn/src/responsibility.rs [priv] use crate::{ BuildLearnError, goal::ProjectGoal, text::{NonEmptyText, PartId}, } |6f61819c43804ec9
@@ -343,12 +343,12 @@ crates/build-learn/src/text.rs [priv] impl TryFrom<String> for PartId :: fn try_
 crates/build-learn/src/text.rs [priv] impl TryFrom<String> for PartId :: type Error = BuildLearnError |a487b0a74021dc69
 crates/build-learn/src/text.rs [priv] use crate::BuildLearnError |d6a5363542b705ce
 crates/build-learn/src/text.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/build-learn/src/text.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct NonEmptyText(String) |6b23d10a7d366220
-crates/build-learn/src/text.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct PartId(String) |1e70d5e7c3ffdca9
+crates/build-learn/src/text.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct NonEmptyText(String) |d3012a6be2240210
+crates/build-learn/src/text.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct PartId(String) |54d564e90bbbb771
 crates/build-learn/src/text.rs [pub] impl NonEmptyText :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
 crates/build-learn/src/text.rs [pub] impl NonEmptyText :: fn new(value: impl Into<String>) -> Result<Self, BuildLearnError> |ee0d627e858a9d69
 crates/build-learn/src/text.rs [pub] impl PartId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
-crates/build-learn/src/text.rs [pub] impl PartId :: fn new(value: impl Into<String>) -> Result<Self, BuildLearnError> |44600c79285af2fe
+crates/build-learn/src/text.rs [pub] impl PartId :: fn new(value: impl Into<String>) -> Result<Self, BuildLearnError> |84d211a3631d0515
 crates/build-learn/src/validate.rs [priv] impl PlanDefect
 crates/build-learn/src/validate.rs [priv] impl PlanVerdict
 crates/build-learn/src/validate.rs [priv] impl ValidatedPlan
@@ -357,11 +357,11 @@ crates/build-learn/src/validate.rs [priv] use crate::{ plan::{PlanDraft, PlanSte
 crates/build-learn/src/validate.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/build-learn/src/validate.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
 crates/build-learn/src/validate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum PlanVerdict |5f061df843d42cb1
-crates/build-learn/src/validate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum PlanDefect |9460279d14b49d34
+crates/build-learn/src/validate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum PlanDefect |87dd0bab55a7f95d
 crates/build-learn/src/validate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ValidatedPlan |c0eda0bb55823295
 crates/build-learn/src/validate.rs [pub] #[must_use] fn validate(draft: &PlanDraft<'_>) -> PlanVerdict |c5c6af31e6fe98fd
-crates/build-learn/src/validate.rs [pub] const PLAN_DEFECT_KINDS: [&str; 8] |c589ec59e5c02d36
-crates/build-learn/src/validate.rs [pub] impl PlanDefect :: #[must_use] const fn as_str(&self) -> &'static str |abd59594a9321b50
+crates/build-learn/src/validate.rs [pub] const PLAN_DEFECT_KINDS: [&str; 8] |8ea12184c55befcf
+crates/build-learn/src/validate.rs [pub] impl PlanDefect :: #[must_use] const fn as_str(&self) -> &'static str |82832f409209da21
 crates/build-learn/src/validate.rs [pub] impl PlanVerdict :: #[must_use] const fn is_accepted(&self) -> bool |83ce5b9e7d91a11f
 crates/build-learn/src/validate.rs [pub] impl PlanVerdict :: #[must_use] const fn plan(&self) -> Option<&ValidatedPlan> |dce65f07da405e20
 crates/build-learn/src/validate.rs [pub] impl PlanVerdict :: #[must_use] fn defects(&self) -> &[PlanDefect] |e4b2bc48fe31162d

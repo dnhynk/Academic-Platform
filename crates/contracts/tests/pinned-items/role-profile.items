@@ -1,5 +1,5 @@
 crates/role-profile/src/adjustment.rs [priv] #[derive(Debug, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct AdjustmentWire |b23df50f281439c8
-crates/role-profile/src/adjustment.rs [priv] #[derive(Debug, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct LayerWire |65eecbc42479412d
+crates/role-profile/src/adjustment.rs [priv] #[derive(Debug, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct LayerWire |56a55dac9764ec2c
 crates/role-profile/src/adjustment.rs [priv] impl Adjustment
 crates/role-profile/src/adjustment.rs [priv] impl AdjustmentLayer
 crates/role-profile/src/adjustment.rs [priv] impl From<AdjustmentLayer> for LayerWire
@@ -16,17 +16,17 @@ crates/role-profile/src/adjustment.rs [priv] impl UserAdjustment
 crates/role-profile/src/adjustment.rs [priv] use academic_competency::CompetencyId |72c781270bf99b7a
 crates/role-profile/src/adjustment.rs [priv] use crate::{ RoleError, bundle::BundleImportance, identity::{RoleProfileRef, non_empty}, } |dad6fe244329f4c9
 crates/role-profile/src/adjustment.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/role-profile/src/adjustment.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum Adjustment |189a1d81b7be1a87
-crates/role-profile/src/adjustment.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "AdjustmentWire", into = "AdjustmentWire")] struct UserAdjustment |b0271f2159cda88a
-crates/role-profile/src/adjustment.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "LayerWire", into = "LayerWire")] struct AdjustmentLayer |82cf1bc47888c992
-crates/role-profile/src/adjustment.rs [pub] impl Adjustment :: #[must_use] const fn as_str(&self) -> &'static str |7dd671f1d36b124d
+crates/role-profile/src/adjustment.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum Adjustment |94dd7bf08aa1fd8c
+crates/role-profile/src/adjustment.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "AdjustmentWire", into = "AdjustmentWire")] struct UserAdjustment |ac5f97c7e3c0a302
+crates/role-profile/src/adjustment.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "LayerWire", into = "LayerWire")] struct AdjustmentLayer |fa102735c7fc7188
+crates/role-profile/src/adjustment.rs [pub] impl Adjustment :: #[must_use] const fn as_str(&self) -> &'static str |a7f376ff5ea69ee4
 crates/role-profile/src/adjustment.rs [pub] impl Adjustment :: #[must_use] const fn competency(&self) -> &CompetencyId |4ebfa29d5a1ebefc
 crates/role-profile/src/adjustment.rs [pub] impl AdjustmentLayer :: #[must_use] const fn base(&self) -> &RoleProfileRef |4a8872ab89de6cf1
 crates/role-profile/src/adjustment.rs [pub] impl AdjustmentLayer :: #[must_use] fn adjustments(&self) -> &[UserAdjustment] |95d5dc8e694d5cfa
 crates/role-profile/src/adjustment.rs [pub] impl AdjustmentLayer :: fn over(base: RoleProfileRef, adjustments: Vec<UserAdjustment>) -> Result<Self, RoleError> |8dccd819cb3f0d51
 crates/role-profile/src/adjustment.rs [pub] impl UserAdjustment :: #[must_use] const fn adjustment(&self) -> &Adjustment |e055b51b8509d5ae
 crates/role-profile/src/adjustment.rs [pub] impl UserAdjustment :: #[must_use] fn because(&self) -> &str |e1c2e1b6aaa66c49
-crates/role-profile/src/adjustment.rs [pub] impl UserAdjustment :: fn of(adjustment: Adjustment, because: impl Into<String>) -> Result<Self, RoleError> |c3a68b632d154a59
+crates/role-profile/src/adjustment.rs [pub] impl UserAdjustment :: fn of(adjustment: Adjustment, because: impl Into<String>) -> Result<Self, RoleError> |7b3b26da7fbc24db
 crates/role-profile/src/bundle.rs [priv] impl BundleEntry
 crates/role-profile/src/bundle.rs [priv] impl BundleImportance
 crates/role-profile/src/bundle.rs [priv] impl BundleOrigin
@@ -47,28 +47,28 @@ crates/role-profile/src/bundle.rs [priv] use academic_competency::CompetencyId |
 crates/role-profile/src/bundle.rs [priv] use academic_ingestion::Date |2eba83a8b7940637
 crates/role-profile/src/bundle.rs [priv] use crate::{ RoleError, identity::{RoleProfileRef, non_empty, validated}, } |a457c94e4bf14591
 crates/role-profile/src/bundle.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BundleImportance |c1b802b82a515fde
-crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct RecordedOn(Date) |60c0e937d562e1a2
-crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct BundleScope(String) |dacc3afd7318c3e5
+crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BundleImportance |6ab44219e8f5173b
+crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct RecordedOn(Date) |43b97f86fea5cdca
+crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct BundleScope(String) |84c6aaa385afebbd
 crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BundleEntry |0d701d59ac25c11b
-crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct BundleSource |bd8778be80fae247
-crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", content = "from", rename_all = "SCREAMING_SNAKE_CASE")] enum BundleOrigin |7a6570911816c29e
+crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct BundleSource |86bade7d602e8c7e
+crates/role-profile/src/bundle.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", content = "from", rename_all = "SCREAMING_SNAKE_CASE")] enum BundleOrigin |b27dca2bf398cd4d
 crates/role-profile/src/bundle.rs [pub] impl BundleEntry :: #[must_use] const fn competency(&self) -> &CompetencyId |925bcf51a14c8fc3
 crates/role-profile/src/bundle.rs [pub] impl BundleEntry :: #[must_use] const fn importance(&self) -> BundleImportance |dd3e3d03157763c5
 crates/role-profile/src/bundle.rs [pub] impl BundleEntry :: #[must_use] const fn of(competency: CompetencyId, importance: BundleImportance) -> Self |a00a73c3808d445c
-crates/role-profile/src/bundle.rs [pub] impl BundleImportance :: #[must_use] const fn as_str(self) -> &'static str |52424d5701fccb9d
+crates/role-profile/src/bundle.rs [pub] impl BundleImportance :: #[must_use] const fn as_str(self) -> &'static str |915e62246200a8f1
 crates/role-profile/src/bundle.rs [pub] impl BundleImportance :: const ALL: [Self; 3] |0c0fa1dd37383a2a
-crates/role-profile/src/bundle.rs [pub] impl BundleOrigin :: #[must_use] const fn as_str(&self) -> &'static str |4613a6a8669a20f2
+crates/role-profile/src/bundle.rs [pub] impl BundleOrigin :: #[must_use] const fn as_str(&self) -> &'static str |27e7fd96666d8f40
 crates/role-profile/src/bundle.rs [pub] impl BundleOrigin :: #[must_use] const fn base(&self) -> Option<&RoleProfileRef> |b48d86ecf95dc293
 crates/role-profile/src/bundle.rs [pub] impl BundleScope :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
-crates/role-profile/src/bundle.rs [pub] impl BundleScope :: const USER_CURATED_GENERAL: &'static str |3e0fabb13a5d99d4
-crates/role-profile/src/bundle.rs [pub] impl BundleScope :: fn new(value: impl Into<String>) -> Result<Self, RoleError> |daba67789c6a1ca5
+crates/role-profile/src/bundle.rs [pub] impl BundleScope :: const USER_CURATED_GENERAL: &'static str |72ac632ea3316c6b
+crates/role-profile/src/bundle.rs [pub] impl BundleScope :: fn new(value: impl Into<String>) -> Result<Self, RoleError> |da5a857d20e00e02
 crates/role-profile/src/bundle.rs [pub] impl BundleSource :: #[must_use] const fn consulted_on(&self) -> RecordedOn |0c016ad4bcec36a4
 crates/role-profile/src/bundle.rs [pub] impl BundleSource :: #[must_use] fn cited_as(&self) -> &str |2aa672d5545d0b21
-crates/role-profile/src/bundle.rs [pub] impl BundleSource :: fn cited(cited_as: impl Into<String>, consulted_on: RecordedOn) -> Result<Self, RoleError> |8fb2df4fd31c0c43
+crates/role-profile/src/bundle.rs [pub] impl BundleSource :: fn cited(cited_as: impl Into<String>, consulted_on: RecordedOn) -> Result<Self, RoleError> |a06445791f7f49b4
 crates/role-profile/src/bundle.rs [pub] impl RecordedOn :: #[must_use] const fn date(self) -> Date |bd54cf816d380043
 crates/role-profile/src/bundle.rs [pub] impl RecordedOn :: #[must_use] const fn on(date: Date) -> Self |6410eb6b10a33c6b
-crates/role-profile/src/bundle.rs [pub] impl RecordedOn :: fn parse(text: &str) -> Result<Self, RoleError> |0d636e9759b6b1d5
+crates/role-profile/src/bundle.rs [pub] impl RecordedOn :: fn parse(text: &str) -> Result<Self, RoleError> |9fa127c72c978bb9
 crates/role-profile/src/direction.rs [priv] impl DirectionName
 crates/role-profile/src/direction.rs [priv] impl From<DirectionName> for String
 crates/role-profile/src/direction.rs [priv] impl From<DirectionName> for String :: fn from(value: DirectionName) -> Self |c355af8a8bd67f0b
@@ -78,13 +78,13 @@ crates/role-profile/src/direction.rs [priv] impl TryFrom<String> for DirectionNa
 crates/role-profile/src/direction.rs [priv] impl TryFrom<String> for DirectionName :: type Error = RoleError |fa5e7d0f0049888f
 crates/role-profile/src/direction.rs [priv] use crate::{RoleError, identity::validated} |0ca00dc920410d36
 crates/role-profile/src/direction.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/role-profile/src/direction.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "kind", content = "name", rename_all = "SCREAMING_SNAKE_CASE")] enum RoleDirection |ff76457285522cd4
-crates/role-profile/src/direction.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct DirectionName(String) |ff811905c718a363
-crates/role-profile/src/direction.rs [pub] const NO_SHIPPED_BUNDLES: &str |5f2b7cd73acf711f
+crates/role-profile/src/direction.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "kind", content = "name", rename_all = "SCREAMING_SNAKE_CASE")] enum RoleDirection |3189f090f4347658
+crates/role-profile/src/direction.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct DirectionName(String) |95cc741133f4fe73
+crates/role-profile/src/direction.rs [pub] const NO_SHIPPED_BUNDLES: &str |9748616fed149d53
 crates/role-profile/src/direction.rs [pub] impl DirectionName :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
-crates/role-profile/src/direction.rs [pub] impl DirectionName :: fn new(value: impl Into<String>) -> Result<Self, RoleError> |daba67789c6a1ca5
+crates/role-profile/src/direction.rs [pub] impl DirectionName :: fn new(value: impl Into<String>) -> Result<Self, RoleError> |f8646041c310750f
 crates/role-profile/src/direction.rs [pub] impl RoleDirection :: #[must_use] const fn is_named_by_the_specification(&self) -> bool |a3d2f23fdf6cae8d
-crates/role-profile/src/direction.rs [pub] impl RoleDirection :: #[must_use] const fn spec_name(&self) -> Option<&'static str> |c9c2dc3dfdbf0477
+crates/role-profile/src/direction.rs [pub] impl RoleDirection :: #[must_use] const fn spec_name(&self) -> Option<&'static str> |8655b0d009068312
 crates/role-profile/src/direction.rs [pub] impl RoleDirection :: const NAMED: [Self; 12] |1176ab93712f091a
 crates/role-profile/src/identity.rs [priv] impl From<RoleLabel> for String
 crates/role-profile/src/identity.rs [priv] impl From<RoleLabel> for String :: fn from(value: RoleLabel) -> Self |faefffd538b02eaf
@@ -112,21 +112,21 @@ crates/role-profile/src/identity.rs [priv] use core::{fmt, num::NonZeroU32} |bd5
 crates/role-profile/src/identity.rs [priv] use crate::RoleError |004d4fe79d411c28
 crates/role-profile/src/identity.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/role-profile/src/identity.rs [pub(crate)] fn non_empty(value: String, what: &'static str) -> Result<String, RoleError> |3158b2cb562e35f9
-crates/role-profile/src/identity.rs [pub(crate)] fn validated(value: String, what: &'static str) -> Result<String, RoleError> |0dec3783acc1fc0b
-crates/role-profile/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "u32", into = "u32")] struct RoleProfileVersion(NonZeroU32) |2771e15baa25c3dd
-crates/role-profile/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct RoleLabel(String) |e52d7ca2f52fc487
-crates/role-profile/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct RoleProfileId(String) |f12bcb913d793389
+crates/role-profile/src/identity.rs [pub(crate)] fn validated(value: String, what: &'static str) -> Result<String, RoleError> |b2965a079381a976
+crates/role-profile/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "u32", into = "u32")] struct RoleProfileVersion(NonZeroU32) |b18debe94cd518f3
+crates/role-profile/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct RoleLabel(String) |cbb20aa686cf7ac7
+crates/role-profile/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct RoleProfileId(String) |f3c79e7cdafa2cd1
 crates/role-profile/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] struct RoleProfileRef |b3d069970e15341d
 crates/role-profile/src/identity.rs [pub] const MAX_IDENTIFIER: usize |f37bfb0f85a73a57
-crates/role-profile/src/identity.rs [pub] const VERSION_QUALIFIER: &str |0e1cddb588f3cbc3
+crates/role-profile/src/identity.rs [pub] const VERSION_QUALIFIER: &str |425591f78682c52e
 crates/role-profile/src/identity.rs [pub] impl RoleLabel :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
-crates/role-profile/src/identity.rs [pub] impl RoleLabel :: fn new(value: impl Into<String>) -> Result<Self, RoleError> |7117661b9ece1a9c
+crates/role-profile/src/identity.rs [pub] impl RoleLabel :: fn new(value: impl Into<String>) -> Result<Self, RoleError> |ea630727a528e28b
 crates/role-profile/src/identity.rs [pub] impl RoleProfileId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
-crates/role-profile/src/identity.rs [pub] impl RoleProfileId :: fn new(value: impl Into<String>) -> Result<Self, RoleError> |daba67789c6a1ca5
+crates/role-profile/src/identity.rs [pub] impl RoleProfileId :: fn new(value: impl Into<String>) -> Result<Self, RoleError> |ec4c3ad4067627d8
 crates/role-profile/src/identity.rs [pub] impl RoleProfileRef :: #[must_use] const fn of(profile: RoleProfileId, version: RoleProfileVersion) -> Self |1aadbc5a38c63d01
 crates/role-profile/src/identity.rs [pub] impl RoleProfileRef :: #[must_use] const fn profile(&self) -> &RoleProfileId |dd83e5b94a8e944f
 crates/role-profile/src/identity.rs [pub] impl RoleProfileRef :: #[must_use] const fn version(&self) -> RoleProfileVersion |357c8a3d5ecdb1e0
-crates/role-profile/src/identity.rs [pub] impl RoleProfileRef :: #[must_use] fn rendered(&self) -> String |de01f6614f8e417c
+crates/role-profile/src/identity.rs [pub] impl RoleProfileRef :: #[must_use] fn rendered(&self) -> String |53ab5ebb1bedaea3
 crates/role-profile/src/identity.rs [pub] impl RoleProfileVersion :: #[must_use] const fn get(self) -> u32 |b7cc43e516a12580
 crates/role-profile/src/identity.rs [pub] impl RoleProfileVersion :: #[must_use] const fn qualifier_key() -> &'static str |5a2a5f448afd8736
 crates/role-profile/src/identity.rs [pub] impl RoleProfileVersion :: #[must_use] fn registry_kind() -> Option<QualifierKind> |307e4b58cde95a86
@@ -137,16 +137,16 @@ crates/role-profile/src/interest.rs [priv] impl InterestStanding
 crates/role-profile/src/interest.rs [priv] impl RoleInterest
 crates/role-profile/src/interest.rs [priv] use crate::identity::RoleProfileId |8ab4ddd79392bc90
 crates/role-profile/src/interest.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/role-profile/src/interest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum InterestStanding |f9838d70b65f536d
+crates/role-profile/src/interest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum InterestStanding |12ec6ce59833adb8
 crates/role-profile/src/interest.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct RoleInterest |4cdc8162b7159165
-crates/role-profile/src/interest.rs [pub] const REFUSED_STANDINGS: [(&str, &str); 2] |0a0d72857d2bc8cf
-crates/role-profile/src/interest.rs [pub] impl InterestStanding :: #[must_use] const fn as_str(self) -> &'static str |e95dff36e2083ffe
+crates/role-profile/src/interest.rs [pub] const REFUSED_STANDINGS: [(&str, &str); 2] |f96ee6efc870afa2
+crates/role-profile/src/interest.rs [pub] impl InterestStanding :: #[must_use] const fn as_str(self) -> &'static str |d1b5128430f6b8b4
 crates/role-profile/src/interest.rs [pub] impl InterestStanding :: const ALL: [Self; 3] |97e8b225d0cdc7b5
 crates/role-profile/src/interest.rs [pub] impl RoleInterest :: #[must_use] const fn in_role(profile: RoleProfileId, standing: InterestStanding) -> Self |639293eb38d32051
 crates/role-profile/src/interest.rs [pub] impl RoleInterest :: #[must_use] const fn profile(&self) -> &RoleProfileId |dd83e5b94a8e944f
 crates/role-profile/src/interest.rs [pub] impl RoleInterest :: #[must_use] const fn standing(&self) -> InterestStanding |b52be588a9a04455
 crates/role-profile/src/interest.rs [pub] impl RoleInterest :: #[must_use] fn standing_now(self, standing: InterestStanding) -> Self |d78705cbb9ac65d1
-crates/role-profile/src/lib.rs [priv] #[derive(Debug, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct RoleProfileWire |ea5750a361535903
+crates/role-profile/src/lib.rs [priv] #[derive(Debug, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct RoleProfileWire |623cc3ae7c9e0262
 crates/role-profile/src/lib.rs [priv] fn checked( id: &RoleProfileId, competencies: &[BundleEntry], sources: &[BundleSource], ) -> Result<(), RoleError> |d87c72b7b802670f
 crates/role-profile/src/lib.rs [priv] impl From<RoleProfile> for RoleProfileWire
 crates/role-profile/src/lib.rs [priv] impl From<RoleProfile> for RoleProfileWire :: fn from(value: RoleProfile) -> Self |c08196c302491048
@@ -158,8 +158,8 @@ crates/role-profile/src/lib.rs [priv] use academic_competency::CompetencyId |72c
 crates/role-profile/src/lib.rs [priv] use academic_domain::predicates::{NodeType, PredicateName} |ec4582508f0c450f
 crates/role-profile/src/lib.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/role-profile/src/lib.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
-crates/role-profile/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "RoleProfileWire", into = "RoleProfileWire")] struct RoleProfile |bdf8f852e73dc7e5
-crates/role-profile/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RoleError |9a98291f4e31e215
+crates/role-profile/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "RoleProfileWire", into = "RoleProfileWire")] struct RoleProfile |a22b070c4f2e31cf
+crates/role-profile/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RoleError |2c6f19afc14b9097
 crates/role-profile/src/lib.rs [pub] fn declare( id: RoleProfileId, label: RoleLabel, direction: RoleDirection, valid_at: RecordedOn, scope: BundleScope, competencies: Vec<BundleEntry>, sources: Vec<BundleSource>, ) -> Result<RoleProfile, RoleError> |5e7f56bc0b770758
 crates/role-profile/src/lib.rs [pub] fn fork( base: &RoleProfile, into: RoleProfileId, label: RoleLabel, valid_at: RecordedOn, scope: BundleScope, sources: Vec<BundleSource>, ) -> Result<RoleProfile, RoleError> |47d3d0407cf69e84
 crates/role-profile/src/lib.rs [pub] fn revise( base: &RoleProfile, layer: &AdjustmentLayer, valid_at: RecordedOn, ) -> Result<RoleProfile, RoleError> |2f3a5fc8f6739411

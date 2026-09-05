@@ -1,0 +1,9 @@
+crates/test-support/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/test-support/src/lib.rs [priv] impl FaultId
+crates/test-support/src/lib.rs [priv] mod tests :: #[test] fn fault_ids_are_complete_unique_and_stable() |900bf267b0da6c76
+crates/test-support/src/lib.rs [priv] mod tests :: use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/test-support/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/test-support/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FaultId |baf02e1561f106fe
+crates/test-support/src/lib.rs [pub] const FAULT_INJECTION_FEATURE: &str |0812aecab89419be
+crates/test-support/src/lib.rs [pub] const PHASE1_FAULT_IDS: &[FaultId] |7f32c0bf257e6170
+crates/test-support/src/lib.rs [pub] impl FaultId :: #[must_use] const fn as_str(self) -> &'static str |a8d17de567829f46

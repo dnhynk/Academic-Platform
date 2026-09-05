@@ -1,0 +1,33 @@
+crates/desktop/src/command.rs [priv] impl DesktopCommand
+crates/desktop/src/command.rs [priv] impl SyntheticFixtureId
+crates/desktop/src/command.rs [priv] use academic_rpc::generated::{ SyntheticBackupCommand, SyntheticIngestCommand, SyntheticRestoreCommand, mutable_request, } |bc89ecd12a643919
+crates/desktop/src/command.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum DesktopCommand |79a8a7518c3dfad3
+crates/desktop/src/command.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SyntheticFixtureId |348f23e02ececbe8
+crates/desktop/src/command.rs [pub] #[must_use] fn capability_ids() -> Vec<&'static str> |75e926eefe0782dd
+crates/desktop/src/command.rs [pub] impl DesktopCommand :: #[must_use] const fn capability_id(self) -> &'static str |189e9ad03d82c752
+crates/desktop/src/command.rs [pub] impl DesktopCommand :: #[must_use] const fn is_write(self) -> bool |da65932663c4af3d
+crates/desktop/src/command.rs [pub] impl DesktopCommand :: #[must_use] fn mutable_command(self) -> Option<mutable_request::Command> |15c5a299ecc9a5d4
+crates/desktop/src/command.rs [pub] impl DesktopCommand :: const ALL: &'static [Self] |ce8e6fc97d96e364
+crates/desktop/src/command.rs [pub] impl SyntheticFixtureId :: #[must_use] const fn as_str(self) -> &'static str |c3c30a400182435a
+crates/desktop/src/command.rs [pub] impl SyntheticFixtureId :: const ALL: &'static [Self] |e274e2b70eab659d
+crates/desktop/src/lib.rs [pub] mod command
+crates/desktop/src/lib.rs [pub] mod optimistic
+crates/desktop/src/lib.rs [pub] use command::{DesktopCommand, SyntheticFixtureId, capability_ids} |4a0691c15b22fb88
+crates/desktop/src/lib.rs [pub] use optimistic::{Canonical, NotCanonical, Optimistic, SubmittedRequest} |0501be56d6e3bf57
+crates/desktop/src/optimistic.rs [priv] impl<T> Canonical<T>
+crates/desktop/src/optimistic.rs [priv] impl<T> Optimistic<T>
+crates/desktop/src/optimistic.rs [priv] impl<T> fmt::Debug for Optimistic<T>
+crates/desktop/src/optimistic.rs [priv] impl<T> fmt::Debug for Optimistic<T> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |0dd2c18206693151
+crates/desktop/src/optimistic.rs [priv] use academic_rpc::generated::ImmutableReceipt |329843dfe3aa49c5
+crates/desktop/src/optimistic.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/desktop/src/optimistic.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/desktop/src/optimistic.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)] enum NotCanonical |51f1c61469b28196
+crates/desktop/src/optimistic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Canonical<T> |344b9ffec06eff6a
+crates/desktop/src/optimistic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SubmittedRequest |ba03de9067942d12
+crates/desktop/src/optimistic.rs [pub] impl<T> Canonical<T> :: #[must_use] const fn receipt(&self) -> &ImmutableReceipt |20c7b7aa7c30636b
+crates/desktop/src/optimistic.rs [pub] impl<T> Canonical<T> :: #[must_use] const fn value(&self) -> &T |e753876dfa9c164f
+crates/desktop/src/optimistic.rs [pub] impl<T> Canonical<T> :: #[must_use] fn into_value(self) -> T |8528bb1715ae1307
+crates/desktop/src/optimistic.rs [pub] impl<T> Optimistic<T> :: #[must_use] const fn new(value: T, request: SubmittedRequest) -> Self |92f072edad49760f
+crates/desktop/src/optimistic.rs [pub] impl<T> Optimistic<T> :: #[must_use] const fn request(&self) -> &SubmittedRequest |212822a23399a069
+crates/desktop/src/optimistic.rs [pub] impl<T> Optimistic<T> :: fn confirm(self, receipt: &ImmutableReceipt) -> Result<Canonical<T>, NotCanonical> |32103ba89334db03
+crates/desktop/src/optimistic.rs [pub] struct Optimistic<T> |beb5a91055b8d0ce

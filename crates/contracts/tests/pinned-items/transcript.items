@@ -1,0 +1,233 @@
+crates/transcript/src/admission.rs [priv] impl AdmittedImport
+crates/transcript/src/admission.rs [priv] use academic_admission::AdmissionVerifier |2e88ed923733c219
+crates/transcript/src/admission.rs [priv] use crate::TranscriptError |1e63422bfb5295a2
+crates/transcript/src/admission.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/transcript/src/admission.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AdmittedImport |2d684fe0f6a5d28f
+crates/transcript/src/admission.rs [pub] impl AdmittedImport :: #[cfg(feature = "phase2-fault-injection")] #[must_use] fn for_fault_injection_only() -> Self |06af1f1feb7cc0df
+crates/transcript/src/admission.rs [pub] impl AdmittedImport :: #[must_use] fn platforms(&self) -> &[String] |70e756dbe6961275
+crates/transcript/src/admission.rs [pub] impl AdmittedImport :: #[must_use] fn receipt_digest(&self) -> &str |8e0e4c8f254cd811
+crates/transcript/src/admission.rs [pub] impl AdmittedImport :: fn open(profile_root: &Path) -> Result<Self, TranscriptError> |8e83c19ef5790dd7
+crates/transcript/src/claims.rs [priv] fn predicate() -> Result<PredicateId, TranscriptError> |07d7febe904d609c
+crates/transcript/src/claims.rs [priv] fn row_object_text(row: &TranscriptRow) -> String |ee64e23226ded734
+crates/transcript/src/claims.rs [priv] impl ConfirmedRowClaim
+crates/transcript/src/claims.rs [priv] impl ImportRowClaim
+crates/transcript/src/claims.rs [priv] use academic_domain::{ Actor, AuthorityClass, Claim, ClaimId, ClaimObject, ClaimRelation, ClaimRelationKind, ConfidencePermille, EntityId, EpistemicStatus, EvidenceId, PredicateId, ScopeId, ValidInterval, } |62c2702cd1f287ac
+crates/transcript/src/claims.rs [priv] use crate::{ TranscriptError, reconcile::ReconciledTranscript, record::{TranscriptField, TranscriptRow}, source::TranscriptFormat, } |8253a85a91167aef
+crates/transcript/src/claims.rs [pub] #[derive(Debug, Clone)] struct RowClaimContext |788f1f709499d43c
+crates/transcript/src/claims.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ModelRead |049c988dc30369c0
+crates/transcript/src/claims.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RowClaimIds |eb68df2416c7cafc
+crates/transcript/src/claims.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConfirmedRowClaim |a24c32b529af6d9e
+crates/transcript/src/claims.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ImportRowClaim |efc487c93856ffbb
+crates/transcript/src/claims.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LinkedRowClaims |b3f9f344e7206f38
+crates/transcript/src/claims.rs [pub] const DETERMINISTIC_IMPORTER_NAME: &str |6e8ec084bc4a4d4f
+crates/transcript/src/claims.rs [pub] const DETERMINISTIC_IMPORTER_VERSION: &str |9bc8cab9399ad8a6
+crates/transcript/src/claims.rs [pub] const TRANSCRIPT_ROW_PREDICATE: &str |838fac5aee927fdb
+crates/transcript/src/claims.rs [pub] fn confirm_reconciled_rows( reconciled: &ReconciledTranscript, format: TranscriptFormat, model_read: Option<ModelRead>, user_id: EntityId, ids: &[RowClaimIds], context: &RowClaimContext, ) -> Result<Vec<LinkedRowClaims>, TranscriptError> |00b3772489152784
+crates/transcript/src/claims.rs [pub] fn import_row_claim( row: &TranscriptRow, format: TranscriptFormat, model_read: Option<ModelRead>, ids: RowClaimIds, context: &RowClaimContext, ) -> Result<ImportRowClaim, TranscriptError> |37a8f1d6210d2b20
+crates/transcript/src/claims.rs [pub] impl ConfirmedRowClaim :: #[must_use] const fn actor(&self) -> &Actor |4635fbbe825da5f6
+crates/transcript/src/claims.rs [pub] impl ConfirmedRowClaim :: #[must_use] const fn claim(&self) -> &Claim |243f090ac0d96001
+crates/transcript/src/claims.rs [pub] impl ConfirmedRowClaim :: #[must_use] const fn import_claim_id(&self) -> ClaimId |ab686708ba13261c
+crates/transcript/src/claims.rs [pub] impl ConfirmedRowClaim :: #[must_use] const fn ordinal(&self) -> u32 |8153b65400f09c93
+crates/transcript/src/claims.rs [pub] impl ImportRowClaim :: #[must_use] const fn actor(&self) -> &Actor |4635fbbe825da5f6
+crates/transcript/src/claims.rs [pub] impl ImportRowClaim :: #[must_use] const fn claim(&self) -> &Claim |243f090ac0d96001
+crates/transcript/src/claims.rs [pub] impl ImportRowClaim :: #[must_use] const fn format(&self) -> TranscriptFormat |95584c844e8d53b4
+crates/transcript/src/claims.rs [pub] impl ImportRowClaim :: #[must_use] const fn ordinal(&self) -> u32 |8153b65400f09c93
+crates/transcript/src/fault.rs [priv] impl FaultPoint
+crates/transcript/src/fault.rs [priv] impl FaultPoint :: #[cfg(feature = "phase2-fault-injection")] const fn as_str(self) -> &'static str |1d3d4e50b706a84b
+crates/transcript/src/fault.rs [pub(crate)] #[cfg(feature = "phase2-fault-injection")] fn trip(point: FaultPoint) |f6dd4b552511e984
+crates/transcript/src/fault.rs [pub(crate)] #[cfg(not(feature = "phase2-fault-injection"))] const fn trip(_point: FaultPoint) |86a9bdc652dcb8a9
+crates/transcript/src/fault.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[cfg_attr(not(feature = "phase2-fault-injection"), allow(dead_code))] enum FaultPoint |37a3a3f300fa7d1e
+crates/transcript/src/fault.rs [pub] const FAULT_ACTION_VARIABLE: &str |baff9fd61db8d432
+crates/transcript/src/fault.rs [pub] const FAULT_READY_MARKER_VARIABLE: &str |2f73239b4e10fcd3
+crates/transcript/src/fault.rs [pub] const FAULT_SELECTION_VARIABLE: &str |41cf2cda7590615e
+crates/transcript/src/fault.rs [pub] const FAULT_SELECTORS: &[&str] |75aac562e505a626
+crates/transcript/src/lib.rs [priv] impl TranscriptError
+crates/transcript/src/lib.rs [priv] mod fault
+crates/transcript/src/lib.rs [priv] use academic_domain::{ClaimId, DomainError, TranscriptVersionId} |49148c6df5fc2907
+crates/transcript/src/lib.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/transcript/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/transcript/src/lib.rs [pub(crate)] impl TranscriptError :: fn io(path: &Path, source: std::io::Error) -> Self |84917d55468865ea
+crates/transcript/src/lib.rs [pub] #[cfg(feature = "encrypted-vault")] mod vault
+crates/transcript/src/lib.rs [pub] #[derive(Debug, Error)] #[non_exhaustive] enum TranscriptError |f2b290c4b3307bc9
+crates/transcript/src/lib.rs [pub] impl TranscriptError :: #[must_use] const fn code(&self) -> &'static str |5e0915f746e4364f
+crates/transcript/src/lib.rs [pub] mod admission
+crates/transcript/src/lib.rs [pub] mod claims
+crates/transcript/src/lib.rs [pub] mod reconcile
+crates/transcript/src/lib.rs [pub] mod record
+crates/transcript/src/lib.rs [pub] mod redaction
+crates/transcript/src/lib.rs [pub] mod session
+crates/transcript/src/lib.rs [pub] mod source
+crates/transcript/src/lib.rs [pub] use fault::{ FAULT_ACTION_VARIABLE, FAULT_READY_MARKER_VARIABLE, FAULT_SELECTION_VARIABLE, FAULT_SELECTORS, } |0d8dc192fc6da13f
+crates/transcript/src/reconcile.rs [priv] impl HaltCause
+crates/transcript/src/reconcile.rs [priv] impl ReconciledTranscript
+crates/transcript/src/reconcile.rs [priv] impl ReconciliationHalt
+crates/transcript/src/reconcile.rs [priv] impl ReconciliationOutcome
+crates/transcript/src/reconcile.rs [priv] impl TranscriptChecksums
+crates/transcript/src/reconcile.rs [priv] use crate::record::{NormalizedTranscript, TranscriptField} |88bef6f25a4eff06
+crates/transcript/src/reconcile.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/transcript/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum HaltCause |edac99caa3ecb9d9
+crates/transcript/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ReconciliationOutcome |dee4fa6ec4c1ffb3
+crates/transcript/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReconciledTranscript |6d4e852ea3ae7baa
+crates/transcript/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReconciliationHalt |644bdc5c0e15ea37
+crates/transcript/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TranscriptChecksums |9c92bce5f136bc24
+crates/transcript/src/reconcile.rs [pub] #[must_use] fn field_digest(ordinal: u32, field: TranscriptField, value: &str) -> [u8; 32] |bf1079b61255aa54
+crates/transcript/src/reconcile.rs [pub] #[must_use] fn reconcile( candidate: &NormalizedTranscript, reference: &TranscriptChecksums, ) -> ReconciliationOutcome |277f538107b22e77
+crates/transcript/src/reconcile.rs [pub] const FIELD_CHECKSUM_LABEL: &[u8] |69d074fac56c015e
+crates/transcript/src/reconcile.rs [pub] const IDENTITY_CHECKSUM_LABEL: &[u8] |d034ecfcfda45917
+crates/transcript/src/reconcile.rs [pub] impl HaltCause :: #[must_use] const fn as_str(&self) -> &'static str |8cd531dee43b8955
+crates/transcript/src/reconcile.rs [pub] impl ReconciledTranscript :: #[must_use] const fn reference_identity_digest(&self) -> &[u8; 32] |370b0dcdefb22d5a
+crates/transcript/src/reconcile.rs [pub] impl ReconciledTranscript :: #[must_use] const fn transcript(&self) -> &NormalizedTranscript |4d8a68d13804acc8
+crates/transcript/src/reconcile.rs [pub] impl ReconciliationHalt :: #[must_use] const fn cause(&self) -> &HaltCause |69ecc3b0895a1b05
+crates/transcript/src/reconcile.rs [pub] impl ReconciliationHalt :: #[must_use] const fn ordinal(&self) -> u32 |8153b65400f09c93
+crates/transcript/src/reconcile.rs [pub] impl ReconciliationHalt :: #[must_use] const fn rows_reconciled_before_halt(&self) -> u32 |4598fd0f12e67e39
+crates/transcript/src/reconcile.rs [pub] impl ReconciliationHalt :: #[must_use] fn disagreeing_fields(&self) -> &[TranscriptField] |329c53f085984ab0
+crates/transcript/src/reconcile.rs [pub] impl ReconciliationOutcome :: #[must_use] const fn halt(&self) -> Option<&ReconciliationHalt> |bbaacbd160cbecf2
+crates/transcript/src/reconcile.rs [pub] impl ReconciliationOutcome :: #[must_use] fn reconciled(&self) -> Option<&ReconciledTranscript> |39d185770375eae8
+crates/transcript/src/reconcile.rs [pub] impl TranscriptChecksums :: #[must_use] const fn identity_digest(&self) -> &[u8; 32] |a5a6cf4956eaa52a
+crates/transcript/src/reconcile.rs [pub] impl TranscriptChecksums :: #[must_use] fn field_digest(&self, ordinal: u32, field: TranscriptField) -> Option<&[u8; 32]> |a4196460360a21bd
+crates/transcript/src/reconcile.rs [pub] impl TranscriptChecksums :: #[must_use] fn of(transcript: &NormalizedTranscript) -> Self |eeccfc150cf0ef2a
+crates/transcript/src/reconcile.rs [pub] impl TranscriptChecksums :: #[must_use] fn row_count(&self) -> u32 |69220716c5b575f4
+crates/transcript/src/record.rs [priv] fn check_field(name: &'static str, value: &str) -> Result<(), TranscriptError> |34c3d0003aa3ed72
+crates/transcript/src/record.rs [priv] fn push_field(out: &mut Vec<u8>, bytes: &[u8]) |c28632de3a6a76ba
+crates/transcript/src/record.rs [priv] fn push_u32(out: &mut Vec<u8>, value: u32) |ec86ab8166792250
+crates/transcript/src/record.rs [priv] impl IdentityField
+crates/transcript/src/record.rs [priv] impl NormalizedTranscript
+crates/transcript/src/record.rs [priv] impl TranscriptField
+crates/transcript/src/record.rs [priv] impl TranscriptIdentity
+crates/transcript/src/record.rs [priv] impl TranscriptRow
+crates/transcript/src/record.rs [priv] impl fmt::Debug for NormalizedTranscript
+crates/transcript/src/record.rs [priv] impl fmt::Debug for NormalizedTranscript :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |de22ca7cc0136ae6
+crates/transcript/src/record.rs [priv] impl fmt::Debug for TranscriptIdentity
+crates/transcript/src/record.rs [priv] impl fmt::Debug for TranscriptIdentity :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |6c89bd28324c661a
+crates/transcript/src/record.rs [priv] impl fmt::Display for IdentityField
+crates/transcript/src/record.rs [priv] impl fmt::Display for IdentityField :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
+crates/transcript/src/record.rs [priv] impl fmt::Display for TranscriptField
+crates/transcript/src/record.rs [priv] impl fmt::Display for TranscriptField :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
+crates/transcript/src/record.rs [priv] use academic_domain::Decimal |1ac852ff7e32a31c
+crates/transcript/src/record.rs [priv] use crate::TranscriptError |1e63422bfb5295a2
+crates/transcript/src/record.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/transcript/src/record.rs [priv] use std::fmt |20996e02b97d7e41
+crates/transcript/src/record.rs [pub] #[derive(Clone, PartialEq, Eq)] struct NormalizedTranscript |690ea61b878b9c22
+crates/transcript/src/record.rs [pub] #[derive(Clone, PartialEq, Eq)] struct TranscriptIdentity |95d3714d0824d90d
+crates/transcript/src/record.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum IdentityField |8d58b34b70915723
+crates/transcript/src/record.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TranscriptField |5bd8e00bc36ed8fc
+crates/transcript/src/record.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TranscriptRow |31f208402027109a
+crates/transcript/src/record.rs [pub] #[must_use] fn canonical_decimal(value: Decimal) -> String |9d6d8c9ccaf5b2b0
+crates/transcript/src/record.rs [pub] const CANONICAL_ENCODING_LABEL: &[u8] |7b3c927c66dcd9bc
+crates/transcript/src/record.rs [pub] const MAX_FIELD_BYTES: usize |3771eb3bb288b126
+crates/transcript/src/record.rs [pub] const MAX_ROWS: usize |df8db9f0642cb7da
+crates/transcript/src/record.rs [pub] fn parse_decimal(value: &str) -> Result<Decimal, TranscriptError> |383b161e8779c973
+crates/transcript/src/record.rs [pub] impl IdentityField :: #[must_use] const fn as_str(self) -> &'static str |e935eb44ef43efaa
+crates/transcript/src/record.rs [pub] impl IdentityField :: const ALL: [Self; 2] |5ae03294650202d3
+crates/transcript/src/record.rs [pub] impl NormalizedTranscript :: #[must_use] const fn identity(&self) -> &TranscriptIdentity |670d03cfe402dba1
+crates/transcript/src/record.rs [pub] impl NormalizedTranscript :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |760dce419dc32969
+crates/transcript/src/record.rs [pub] impl NormalizedTranscript :: #[must_use] fn canonical_digest(&self) -> [u8; 32] |49b5bf165b8f00b0
+crates/transcript/src/record.rs [pub] impl NormalizedTranscript :: #[must_use] fn rows(&self) -> &[TranscriptRow] |dda1e21040766c94
+crates/transcript/src/record.rs [pub] impl NormalizedTranscript :: fn new( identity: TranscriptIdentity, rows: Vec<TranscriptRow>, ) -> Result<Self, TranscriptError> |cb5ed2d1af8d1a90
+crates/transcript/src/record.rs [pub] impl TranscriptField :: #[must_use] const fn as_str(self) -> &'static str |400e068368bceda8
+crates/transcript/src/record.rs [pub] impl TranscriptField :: const ALL: [Self; 4] |8077eb83a1a2e9a8
+crates/transcript/src/record.rs [pub] impl TranscriptIdentity :: #[must_use] fn field(&self, field: IdentityField) -> &str |589f16b80849def4
+crates/transcript/src/record.rs [pub] impl TranscriptIdentity :: #[must_use] fn institution(&self) -> &str |a4abe6e3eb6b1589
+crates/transcript/src/record.rs [pub] impl TranscriptIdentity :: #[must_use] fn issued_on(&self) -> &str |4f555eb6a294f207
+crates/transcript/src/record.rs [pub] impl TranscriptIdentity :: #[must_use] fn student_name(&self) -> &str |bdf2828712414271
+crates/transcript/src/record.rs [pub] impl TranscriptIdentity :: #[must_use] fn student_number(&self) -> &str |ff00b9740b7db461
+crates/transcript/src/record.rs [pub] impl TranscriptIdentity :: fn new( student_number: impl Into<String>, student_name: impl Into<String>, institution: impl Into<String>, issued_on: impl Into<String>, ) -> Result<Self, TranscriptError> |66a1c91491ce97eb
+crates/transcript/src/record.rs [pub] impl TranscriptRow :: #[must_use] const fn credits(&self) -> Decimal |4c1a60e5da672c26
+crates/transcript/src/record.rs [pub] impl TranscriptRow :: #[must_use] const fn ordinal(&self) -> u32 |8153b65400f09c93
+crates/transcript/src/record.rs [pub] impl TranscriptRow :: #[must_use] fn course_code(&self) -> &str |36272f9287cb4db3
+crates/transcript/src/record.rs [pub] impl TranscriptRow :: #[must_use] fn field(&self, field: TranscriptField) -> String |6cce410b69850aa4
+crates/transcript/src/record.rs [pub] impl TranscriptRow :: #[must_use] fn grade(&self) -> &str |6ef5c39e3ead9103
+crates/transcript/src/record.rs [pub] impl TranscriptRow :: #[must_use] fn term(&self) -> &str |c8cf5cff390f2091
+crates/transcript/src/record.rs [pub] impl TranscriptRow :: fn new( ordinal: u32, course_code: impl Into<String>, term: impl Into<String>, credits: Decimal, grade: impl Into<String>, ) -> Result<Self, TranscriptError> |1ab935ec80e29281
+crates/transcript/src/redaction.rs [priv] fn hex(bytes: &[u8; 32]) -> String |57782ee83db14096
+crates/transcript/src/redaction.rs [priv] impl RedactedProjection
+crates/transcript/src/redaction.rs [priv] impl RedactionProfile
+crates/transcript/src/redaction.rs [priv] impl fmt::Debug for RedactedProjection
+crates/transcript/src/redaction.rs [priv] impl fmt::Debug for RedactedProjection :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c8b987acecf659ac
+crates/transcript/src/redaction.rs [priv] use crate::record::{IdentityField, NormalizedTranscript, TranscriptField} |ad93693ba0d1cf4e
+crates/transcript/src/redaction.rs [priv] use std::fmt |20996e02b97d7e41
+crates/transcript/src/redaction.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RedactedProjection |8fbdbbcca950e457
+crates/transcript/src/redaction.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct RedactionProfile |6e9239a02e1542e2
+crates/transcript/src/redaction.rs [pub] #[must_use] fn project(transcript: &NormalizedTranscript, profile: RedactionProfile) -> RedactedProjection |1eb255d3daadd9b0
+crates/transcript/src/redaction.rs [pub] #[must_use] fn redacted_export(projection: &RedactedProjection) -> Vec<u8> |e853ee00565bdda9
+crates/transcript/src/redaction.rs [pub] const REDACTED_EXPORT_LABEL: &str |41ae06c91e1c41fa
+crates/transcript/src/redaction.rs [pub] impl RedactedProjection :: #[must_use] const fn profile(&self) -> RedactionProfile |2c884e651e115bd7
+crates/transcript/src/redaction.rs [pub] impl RedactedProjection :: #[must_use] const fn source_digest(&self) -> &[u8; 32] |8907464e61cbcf6a
+crates/transcript/src/redaction.rs [pub] impl RedactedProjection :: #[must_use] fn institution(&self) -> &str |a4abe6e3eb6b1589
+crates/transcript/src/redaction.rs [pub] impl RedactedProjection :: #[must_use] fn issued_on(&self) -> &str |4f555eb6a294f207
+crates/transcript/src/redaction.rs [pub] impl RedactedProjection :: #[must_use] fn retained_values(&self) -> Vec<&str> |01a9969be8a84e65
+crates/transcript/src/redaction.rs [pub] impl RedactedProjection :: #[must_use] fn rows(&self) -> &[[String; 4]] |79e48aa5377c1a26
+crates/transcript/src/redaction.rs [pub] impl RedactedProjection :: #[must_use] fn student_name(&self) -> Option<&str> |845b365f7d6f697c
+crates/transcript/src/redaction.rs [pub] impl RedactedProjection :: #[must_use] fn student_number(&self) -> Option<&str> |9c312311ff97d4f8
+crates/transcript/src/redaction.rs [pub] impl RedactionProfile :: #[must_use] const fn removes(self, field: IdentityField) -> bool |9bc095eaa0e0a08b
+crates/transcript/src/redaction.rs [pub] impl RedactionProfile :: #[must_use] const fn retain_all() -> Self |69b748e38c2a272e
+crates/transcript/src/redaction.rs [pub] impl RedactionProfile :: #[must_use] fn all() -> [Self; 4] |079ede95ec2cb3b8
+crates/transcript/src/redaction.rs [pub] impl RedactionProfile :: #[must_use] fn removed_fields(self) -> Vec<IdentityField> |f80c3b36137d617f
+crates/transcript/src/redaction.rs [pub] impl RedactionProfile :: #[must_use] fn removing(fields: &[IdentityField]) -> Self |68f74732c18970dc
+crates/transcript/src/session.rs [priv] fn sync_directory(directory: &Path) -> Result<(), TranscriptError> |2d27afe32a467b02
+crates/transcript/src/session.rs [priv] fn write_durable(path: &Path, bytes: &[u8]) -> Result<(), TranscriptError> |2c8237e33861a668
+crates/transcript/src/session.rs [priv] impl ImportSession
+crates/transcript/src/session.rs [priv] impl SessionState
+crates/transcript/src/session.rs [priv] use academic_domain::TranscriptVersionId |f5e57130f23eb070
+crates/transcript/src/session.rs [priv] use crate::{ TranscriptError, admission::AdmittedImport, fault::{self, FaultPoint}, reconcile::ReconciledTranscript, record::TranscriptField, } |caac9663dde57ca5
+crates/transcript/src/session.rs [priv] use std::{ fs::{self, File}, io::Write as _, path::{Path, PathBuf}, } |c8fcdf8de1d65fdb
+crates/transcript/src/session.rs [pub] #[derive(Debug)] struct ImportSession |96d6a670c7bd66e4
+crates/transcript/src/session.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum SessionState |18a1bfc2abd3f7dd
+crates/transcript/src/session.rs [pub] #[must_use] fn encode_confirmed_set( version_id: TranscriptVersionId, reconciled: &ReconciledTranscript, ) -> Vec<u8> |d9c9d365eead50ab
+crates/transcript/src/session.rs [pub] #[must_use] fn session_directory(profile_root: &Path, version_id: TranscriptVersionId) -> PathBuf |acdd855980d17f9a
+crates/transcript/src/session.rs [pub] const CONFIRMED_FILE_NAME: &str |e64f867091759958
+crates/transcript/src/session.rs [pub] const CONFIRMED_SET_LABEL: &[u8] |5d78f5839f4ceb84
+crates/transcript/src/session.rs [pub] const LEASE_FILE_NAME: &str |d6212efc6078067c
+crates/transcript/src/session.rs [pub] const SESSIONS_RELATIVE_PATH: &str |5b23ccace5058d37
+crates/transcript/src/session.rs [pub] const STAGING_FILE_NAME: &str |8e1332a202bfc6ae
+crates/transcript/src/session.rs [pub] fn inspect( profile_root: &Path, version_id: TranscriptVersionId, ) -> Result<SessionState, TranscriptError> |fc3aacb5eda12dd0
+crates/transcript/src/session.rs [pub] impl ImportSession :: #[must_use] const fn version_id(&self) -> TranscriptVersionId |8b920fef977f0e22
+crates/transcript/src/session.rs [pub] impl ImportSession :: #[must_use] fn directory(&self) -> &Path |1d0a900ca8427275
+crates/transcript/src/session.rs [pub] impl ImportSession :: fn begin( _admitted: &AdmittedImport, profile_root: &Path, version_id: TranscriptVersionId, ) -> Result<Self, TranscriptError> |3420fb813a7384ed
+crates/transcript/src/session.rs [pub] impl ImportSession :: fn publish(self) -> Result<PathBuf, TranscriptError> |42b0acd32fd598b8
+crates/transcript/src/session.rs [pub] impl ImportSession :: fn release(&self) -> Result<(), TranscriptError> |a45a21b71b8882a6
+crates/transcript/src/session.rs [pub] impl ImportSession :: fn resume( _admitted: &AdmittedImport, profile_root: &Path, version_id: TranscriptVersionId, ) -> Result<Self, TranscriptError> |6801c29ee59b1686
+crates/transcript/src/session.rs [pub] impl ImportSession :: fn stage(&self, reconciled: &ReconciledTranscript) -> Result<(), TranscriptError> |5817bb6a38325c82
+crates/transcript/src/session.rs [pub] impl SessionState :: #[must_use] const fn is_published(self) -> bool |89617f0b867ca3d9
+crates/transcript/src/session.rs [pub] impl SessionState :: #[must_use] const fn lease_held(self) -> bool |f9b2461d2596559b
+crates/transcript/src/source.rs [priv] fn escape_pdf(value: &str) -> String |b68db98bc52555d6
+crates/transcript/src/source.rs [priv] fn extract_pdf_text(bytes: &[u8]) -> Result<String, TranscriptError> |6e830a0ba8c9039f
+crates/transcript/src/source.rs [priv] fn finish( student_number: Option<String>, student_name: Option<String>, institution: Option<String>, issued_on: Option<String>, rows: Vec<TranscriptRow>, ) -> Result<NormalizedTranscript, TranscriptError> |aebe1b97798fa5c4
+crates/transcript/src/source.rs [priv] fn parse_labelled_lines(text: &str) -> Result<NormalizedTranscript, TranscriptError> |69402e86ede2bd09
+crates/transcript/src/source.rs [priv] fn push_object(out: &mut Vec<u8>, number: u32, body: &[u8]) |8718de131d96bc47
+crates/transcript/src/source.rs [priv] fn push_row( position: usize, course_code: &str, term: &str, credits: &str, grade: &str, ) -> Result<TranscriptRow, TranscriptError> |f1f173552d05704b
+crates/transcript/src/source.rs [priv] fn push_stream_object(out: &mut Vec<u8>, number: u32, dictionary: &[u8], payload: &[u8]) |65603d07eb473f85
+crates/transcript/src/source.rs [priv] fn set_once( slot: &mut Option<String>, value: &str, field: &'static str, ) -> Result<(), TranscriptError> |11bc1a98a3d7ba38
+crates/transcript/src/source.rs [priv] fn text_line(key: &str, values: &[&str]) -> String |a84b900eda0ded62
+crates/transcript/src/source.rs [priv] impl TranscriptFormat
+crates/transcript/src/source.rs [priv] mod grammar
+crates/transcript/src/source.rs [priv] use crate::{ TranscriptError, record::{ MAX_ROWS, NormalizedTranscript, TranscriptIdentity, TranscriptRow, canonical_decimal, parse_decimal, }, } |215348ba18678df9
+crates/transcript/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TranscriptFormat |4ad69ef474c728f2
+crates/transcript/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ManualRowEntry |6648651ee67ea179
+crates/transcript/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SyntheticTranscriptPdf |6d3fbb20ce44e327
+crates/transcript/src/source.rs [pub] #[must_use] fn build_synthetic_transcript_pdf(transcript: &NormalizedTranscript) -> SyntheticTranscriptPdf |aec3002a2ff56912
+crates/transcript/src/source.rs [pub] #[must_use] fn render_csv(transcript: &NormalizedTranscript) -> String |0d2ad11eabc132ba
+crates/transcript/src/source.rs [pub] #[must_use] fn render_manual_entries(transcript: &NormalizedTranscript) -> Vec<ManualRowEntry> |f32850237033d3e1
+crates/transcript/src/source.rs [pub] const CORPUS_CREATOR_TOOL: &str |cea71c7abf18c5cf
+crates/transcript/src/source.rs [pub] const CORPUS_EXIF_SOFTWARE: &str |700bd3c380336e74
+crates/transcript/src/source.rs [pub] const CORPUS_PRODUCER: &str |419bfe97bd947124
+crates/transcript/src/source.rs [pub] const CSV_ROW_HEADER: &str |c98ca8090d21ea3f
+crates/transcript/src/source.rs [pub] const ORIGINAL_ONLY_MARKERS: &[&str] |fc67bbff4b4e0429
+crates/transcript/src/source.rs [pub] fn parse_csv(bytes: &[u8]) -> Result<NormalizedTranscript, TranscriptError> |d9f5f46721199a8f
+crates/transcript/src/source.rs [pub] fn parse_manual_entry( student_number: &str, student_name: &str, institution: &str, issued_on: &str, entries: &[ManualRowEntry], ) -> Result<NormalizedTranscript, TranscriptError> |0c2a4cea71506c85
+crates/transcript/src/source.rs [pub] fn parse_pdf_text_layer(bytes: &[u8]) -> Result<NormalizedTranscript, TranscriptError> |eb2f4864d59c3d1d
+crates/transcript/src/source.rs [pub] impl TranscriptFormat :: #[must_use] const fn as_str(self) -> &'static str |5351f3ff9732a5b6
+crates/transcript/src/source.rs [pub] impl TranscriptFormat :: #[must_use] const fn is_model_read(self) -> bool |7a1c25ba1008c9b1
+crates/transcript/src/source.rs [pub] impl TranscriptFormat :: const ALL: [Self; 4] |8e1c07716304d963
+crates/transcript/src/source.rs [pub] mod grammar :: const INSTITUTION: &str |d6b9375f4abf5a57
+crates/transcript/src/source.rs [pub] mod grammar :: const ISSUED_ON: &str |06b92cf452be5c1f
+crates/transcript/src/source.rs [pub] mod grammar :: const ROW: &str |94eecee867cbe17b
+crates/transcript/src/source.rs [pub] mod grammar :: const STUDENT_NAME: &str |0b4b46f5db825c1a
+crates/transcript/src/source.rs [pub] mod grammar :: const STUDENT_NUMBER: &str |c1e01e741ec986e4
+crates/transcript/src/vault.rs [priv] use academic_domain::{ ArtifactId, Confidentiality, DomainId, MediaType, PermissionLineageId, RetentionClass, } |101b768c8454cdf4
+crates/transcript/src/vault.rs [priv] use academic_vault::{ArtifactIngestRequest, EncryptedVault, SealedEncryptedObject} |279921e4e5b1098f
+crates/transcript/src/vault.rs [priv] use crate::{TranscriptError, admission::AdmittedImport} |052d9604eb763d32
+crates/transcript/src/vault.rs [pub] const TRANSCRIPT_CONFIDENTIALITY: Confidentiality |d3410b20e7ee41d3
+crates/transcript/src/vault.rs [pub] const TRANSCRIPT_RETENTION_CLASS: RetentionClass |bb64c1523c203b41
+crates/transcript/src/vault.rs [pub] fn store_transcript_original( _admitted: &AdmittedImport, vault: &EncryptedVault, request: &ArtifactIngestRequest, original: &[u8], ) -> Result<SealedEncryptedObject, TranscriptError> |c8238afa0af53a46
+crates/transcript/src/vault.rs [pub] fn transcript_ingest_request( artifact_id: ArtifactId, media_type: MediaType, domain_id: DomainId, permission_lineage_id: PermissionLineageId, ) -> ArtifactIngestRequest |36f38ec4a99d8856

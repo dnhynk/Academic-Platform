@@ -1,5 +1,5 @@
 crates/student-voice/src/corpus.rs [priv] fn check_timeline( case: &str, timeline: &'static str, spans: &[VoiceSpan], ) -> Result<(), CorpusFault> |10b3b0c7a8d9b819
-crates/student-voice/src/corpus.rs [priv] fn push_span(text: &mut String, timeline: &str, span: VoiceSpan) |4acb8fc4244abe59
+crates/student-voice/src/corpus.rs [priv] fn push_span(text: &mut String, timeline: &str, span: VoiceSpan) |5717538749b4fc12
 crates/student-voice/src/corpus.rs [priv] impl DiarizationCase
 crates/student-voice/src/corpus.rs [priv] impl DiarizationCorpus
 crates/student-voice/src/corpus.rs [priv] impl VoiceClass
@@ -11,24 +11,24 @@ crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq,
 crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct VoiceSpan |e67bb2780865bfde
 crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DiarizationCase |3af80014e67b5ae2
 crates/student-voice/src/corpus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DiarizationCorpus |f3371f28fdfc7c14
-crates/student-voice/src/corpus.rs [pub] const CORPUS_ID: &str |06367f9c0be0a790
-crates/student-voice/src/corpus.rs [pub] const CORPUS_ROOT: &str |43e85849214af3b5
+crates/student-voice/src/corpus.rs [pub] const CORPUS_ID: &str |1e9845ba16169e84
+crates/student-voice/src/corpus.rs [pub] const CORPUS_ROOT: &str |9ec8af22181312d6
 crates/student-voice/src/corpus.rs [pub] const CORPUS_VERSION: u32 |4a3eecd6bf98d84b
-crates/student-voice/src/corpus.rs [pub] fn corpus_v1() -> Result<DiarizationCorpus, CorpusFault> |8bce8747b42a8109
-crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |a9c7fe90b2a2a04e
+crates/student-voice/src/corpus.rs [pub] fn corpus_v1() -> Result<DiarizationCorpus, CorpusFault> |8bd4ebdbb07182da
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |0aae85611733c2aa
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn hypothesis(&self) -> &[VoiceSpan] |b9756be7fb742aa4
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn name(&self) -> &str |dcd1b6c60790e001
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference(&self) -> &[VoiceSpan] |47fb7ac06ca2acd0
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference_ms(&self) -> u64 |1d8350e3f7908f0b
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: #[must_use] fn reference_student_ms(&self) -> u64 |0ce3415060587604
-crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: fn new( name: &str, reference: Vec<VoiceSpan>, hypothesis: Vec<VoiceSpan>, ) -> Result<Self, CorpusFault> |28642384006d8840
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCase :: fn new( name: &str, reference: Vec<VoiceSpan>, hypothesis: Vec<VoiceSpan>, ) -> Result<Self, CorpusFault> |86be6ac60a641b54
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] const fn version(&self) -> u32 |8ac5a6b5c3dc1561
-crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |0309a3cd5d5e5f40
+crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |7731941097abb505
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn cases(&self) -> &[DiarizationCase] |6ab1bc2b62f6da66
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn digest(&self) -> ContentDigest |da0b060b540ce27b
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: #[must_use] fn id(&self) -> &str |35bcc7ec858ee311
 crates/student-voice/src/corpus.rs [pub] impl DiarizationCorpus :: fn new(id: &str, version: u32, cases: Vec<DiarizationCase>) -> Result<Self, CorpusFault> |0c196b348005ef71
-crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: #[must_use] const fn as_str(self) -> &'static str |600b1ba149e339cc
+crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: #[must_use] const fn as_str(self) -> &'static str |a623e254f56ba2bc
 crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: #[must_use] const fn of(speaker: Speaker) -> Self |08c0b258ce2d829c
 crates/student-voice/src/corpus.rs [pub] impl VoiceClass :: const ALL: [Self; 3] |649d0faf0450a737
 crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn duration_ms(self) -> u64 |dd5eb69c5e5fbf84
@@ -38,7 +38,7 @@ crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn 
 crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn speaker(self) -> Speaker |28cbf3f1e1af2350
 crates/student-voice/src/corpus.rs [pub] impl VoiceSpan :: #[must_use] const fn start_ms(self) -> u64 |3bdfb0a6eb81856e
 crates/student-voice/src/derivative.rs [priv] fn excluded_indices( plan: &RedactionPlan, source: &LectureSource<'_>, ) -> Result<Vec<usize>, RedactionFault> |48ba0ac276951940
-crates/student-voice/src/derivative.rs [priv] fn original_digest(source: &LectureSource<'_>) -> ContentDigest |10ba9d49cbb17765
+crates/student-voice/src/derivative.rs [priv] fn original_digest(source: &LectureSource<'_>) -> ContentDigest |3cc02dda2090e97b
 crates/student-voice/src/derivative.rs [priv] impl DerivedArtifact
 crates/student-voice/src/derivative.rs [priv] impl DisclosedOriginal<'_>
 crates/student-voice/src/derivative.rs [priv] impl ExclusionRecord
@@ -53,11 +53,11 @@ crates/student-voice/src/derivative.rs [priv] impl RedactionMode
 crates/student-voice/src/derivative.rs [priv] impl RedactionPlan
 crates/student-voice/src/derivative.rs [priv] impl RestrictedOriginal
 crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for KeptUtterance
-crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for KeptUtterance :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |cf9e4632129b38cb
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for KeptUtterance :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |a2d2e688da868429
 crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for RemovedUtterance
-crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for RemovedUtterance :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |5ab99053d47da692
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for RemovedUtterance :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |7c70c034f6dbc38a
 crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for SourceUtterance<'_>
-crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for SourceUtterance<'_> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |5ab99053d47da692
+crates/student-voice/src/derivative.rs [priv] impl fmt::Debug for SourceUtterance<'_> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |dd4b39f3bc31a232
 crates/student-voice/src/derivative.rs [priv] impl<'a> LectureSource<'a>
 crates/student-voice/src/derivative.rs [priv] impl<'a> SourceUtterance<'a>
 crates/student-voice/src/derivative.rs [priv] use academic_consent::{DerivativeClass, RetentionTerms} |27d163a4bb33c233
@@ -83,12 +83,12 @@ crates/student-voice/src/derivative.rs [pub] #[derive(Debug, Clone, PartialEq, E
 crates/student-voice/src/derivative.rs [pub] #[derive(Debug, PartialEq, Eq)] struct DisclosedOriginal<'a> |775891ec1cfd006e
 crates/student-voice/src/derivative.rs [pub] #[derive(Debug, PartialEq, Eq)] struct RawAccessGrant |92c2480c5f6143e7
 crates/student-voice/src/derivative.rs [pub] #[must_use] fn inherit_terms(parent: RetentionTerms, requested: RetentionTerms) -> RetentionTerms |a81237207dd810c0
-crates/student-voice/src/derivative.rs [pub] const ORIGINAL_CLASSIFICATION: &str |629e2c144b9d4e30
+crates/student-voice/src/derivative.rs [pub] const ORIGINAL_CLASSIFICATION: &str |85361be2684dc69f
 crates/student-voice/src/derivative.rs [pub] fn redact( plan: &RedactionPlan, reference: &RedactionPolicyRef, source: &LectureSource<'_>, requested: RetentionTerms, ) -> Result<Redaction, RedactionFault> |c2aa9a77fda6aec6
 crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn class(&self) -> DerivativeClass |a94822cde5ed20ae
 crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn parent_digest(&self) -> &ContentDigest |4faed7917a066636
 crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] const fn terms(&self) -> RetentionTerms |b79645f296391abe
-crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn digest(&self) -> ContentDigest |05ebf206ce1a5372
+crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn digest(&self) -> ContentDigest |2d29daf81bd87abe
 crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn of_artifact(parent: &Self, class: DerivativeClass, requested: RetentionTerms) -> Self |7cb58905892b4726
 crates/student-voice/src/derivative.rs [pub] impl DerivedArtifact :: #[must_use] fn of_derivative( parent: &RedactedDerivative, class: DerivativeClass, requested: RetentionTerms, ) -> Self |5f7afdaeb5d1dc8a
 crates/student-voice/src/derivative.rs [pub] impl DisclosedOriginal<'_> :: #[must_use] const fn is_empty(&self) -> bool |35d5d87bd2b25e5e
@@ -125,7 +125,7 @@ crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_u
 crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn policy_digest(&self) -> &ContentDigest |c216a210e07fdf7a
 crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn source_version(&self) -> u32 |aa69af4c9348861f
 crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] const fn terms(&self) -> RetentionTerms |b79645f296391abe
-crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |6d6988df98dcb5dd
+crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |7bef3ec8bdc978d8
 crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn digest(&self) -> ContentDigest |da0b060b540ce27b
 crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn excluded(&self) -> &[ExclusionRecord] |461345d68dbabf77
 crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn inherit_for_child(&self, requested: RetentionTerms) -> RetentionTerms |5af168562c6025ef
@@ -133,7 +133,7 @@ crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_u
 crates/student-voice/src/derivative.rs [pub] impl RedactedDerivative :: #[must_use] fn kept(&self) -> &[KeptUtterance] |49c3304add7a6cfd
 crates/student-voice/src/derivative.rs [pub] impl Redaction :: #[must_use] const fn derivative(&self) -> &RedactedDerivative |20f8321bfa106c00
 crates/student-voice/src/derivative.rs [pub] impl Redaction :: #[must_use] const fn original(&self) -> &RestrictedOriginal |a7b7e25b10cc1bd5
-crates/student-voice/src/derivative.rs [pub] impl RedactionMode :: #[must_use] const fn as_str(&self) -> &'static str |05b49c82e385e757
+crates/student-voice/src/derivative.rs [pub] impl RedactionMode :: #[must_use] const fn as_str(&self) -> &'static str |ee0d5d89b03f0933
 crates/student-voice/src/derivative.rs [pub] impl RedactionMode :: #[must_use] const fn witness(&self) -> Option<&AccuracyWitness> |e159a494bd523327
 crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] const fn mode(&self) -> &RedactionMode |231ea4d55e082871
 crates/student-voice/src/derivative.rs [pub] impl RedactionPlan :: #[must_use] const fn policy(&self) -> &RedactionPolicy |1d2160e48a248cf6
@@ -158,17 +158,17 @@ crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[m
 crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn start_nanos(&self) -> u64 |ae2c804941f2abe4
 crates/student-voice/src/derivative.rs [pub] impl<'a> SourceUtterance<'a> :: #[must_use] const fn verbatim(&self) -> &'a str |3f4fdebaf3dc22a8
 crates/student-voice/src/fault.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
-crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AccessRefusal |b4332720314dd541
-crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AccuracyRefusal |3c0f335bc415d99e
-crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum DeletionFault |231b08904e69548d
-crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum ThresholdFault |7db46bc2398cdf38
-crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CorpusFault |1ce56a4a6a7b4bac
-crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum HoldRefusal |70a7248dc1b3078e
-crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RedactionFault |3e7f85c1ab998a94
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AccessRefusal |c85d12c15a4d15a8
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AccuracyRefusal |a4c5ca9a16435e03
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum DeletionFault |d6bfb745fee7cf04
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum ThresholdFault |db2999de49a05541
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CorpusFault |d4bef0714b7f4216
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum HoldRefusal |8a1f342f959b1f57
+crates/student-voice/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RedactionFault |7659910fefecf660
 crates/student-voice/src/harness.rs [priv] use crate::{ corpus::{CORPUS_ROOT, DiarizationCorpus, corpus_v1}, fault::CorpusFault, measure::{measure, measure_case}, } |0b4cef0ac9e7be58
 crates/student-voice/src/harness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CorpusFile |38f1f9d759dd5ea3
-crates/student-voice/src/harness.rs [pub] #[must_use] fn corpus_dir(corpus: &DiarizationCorpus) -> String |a0424a4a1b22a7e7
-crates/student-voice/src/harness.rs [pub] fn corpus_files() -> Result<Vec<CorpusFile>, CorpusFault> |8494b7c9166593ef
+crates/student-voice/src/harness.rs [pub] #[must_use] fn corpus_dir(corpus: &DiarizationCorpus) -> String |dbdc6a8ff16c5480
+crates/student-voice/src/harness.rs [pub] fn corpus_files() -> Result<Vec<CorpusFile>, CorpusFault> |2175d06ecb55aecd
 crates/student-voice/src/hold.rs [priv] impl CaptureUnderReview
 crates/student-voice/src/hold.rs [priv] impl HoldState
 crates/student-voice/src/hold.rs [priv] impl IngestionJobKind
@@ -200,13 +200,13 @@ crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] fn
 crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: #[must_use] fn screened(bytes: CaptureBytes, findings: Vec<PiiFinding>) -> Self |c45a6cb29bc709c9
 crates/student-voice/src/hold.rs [pub] impl CaptureUnderReview :: fn record_review(&mut self, decision: ReviewDecision) -> Result<(), HoldRefusal> |9513b4370243a549
 crates/student-voice/src/hold.rs [pub] impl HoldState :: #[must_use] const fn is_held(&self) -> bool |6f3d2a523667b55f
-crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: #[must_use] const fn as_str(self) -> &'static str |57b86f0ee7c0f8e6
-crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: #[must_use] const fn spec_word(self) -> &'static str |8b18378a1012b254
+crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: #[must_use] const fn as_str(self) -> &'static str |f5e6af1d9f1c0b84
+crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: #[must_use] const fn spec_word(self) -> &'static str |f5f2f3bd55912c28
 crates/student-voice/src/hold.rs [pub] impl IngestionJobKind :: const ALL: [Self; 2] |f613a5c08e8fe8c5
 crates/student-voice/src/hold.rs [pub] impl IngestionReceipt :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
 crates/student-voice/src/hold.rs [pub] impl IngestionReceipt :: #[must_use] const fn kind(&self) -> IngestionJobKind |a7cea02474f16aa0
-crates/student-voice/src/hold.rs [pub] impl PiiClass :: #[must_use] const fn as_str(self) -> &'static str |5454f4c0498b3bf6
-crates/student-voice/src/hold.rs [pub] impl PiiClass :: #[must_use] const fn spec_phrase(self) -> &'static str |9327540a960716e1
+crates/student-voice/src/hold.rs [pub] impl PiiClass :: #[must_use] const fn as_str(self) -> &'static str |4254ec22739fb930
+crates/student-voice/src/hold.rs [pub] impl PiiClass :: #[must_use] const fn spec_phrase(self) -> &'static str |b336ae570a9ea4b8
 crates/student-voice/src/hold.rs [pub] impl PiiClass :: const ALL: [Self; 3] |cbb049c7bfecc08b
 crates/student-voice/src/hold.rs [pub] impl PiiFinding :: #[must_use] const fn class(&self) -> PiiClass |65fd77c812ba8637
 crates/student-voice/src/hold.rs [pub] impl PiiFinding :: #[must_use] const fn detected_by(&self) -> &Actor |409e8c228f69228c
@@ -217,7 +217,7 @@ crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const 
 crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn reviewed_by(&self) -> &Actor |868fdeadca3a15aa
 crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] fn addressed(&self) -> &[PiiClass] |b58e324bf777dc2c
 crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: fn recorded( capture_digest: ContentDigest, addressed: Vec<PiiClass>, outcome: ReviewOutcome, reviewed_by: Actor, at: u64, ) -> Result<Self, HoldRefusal> |47a98120bd018647
-crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: #[must_use] const fn as_str(self) -> &'static str |a7b761f8e95b468a
+crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: #[must_use] const fn as_str(self) -> &'static str |ff2c269777a73815
 crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: const ALL: [Self; 2] |4f59f7e91d38ab17
 crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
 crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] const fn kind(&self) -> IngestionJobKind |a7cea02474f16aa0
@@ -272,7 +272,7 @@ crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] co
 crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn student_as_instructor_ms(&self) -> u64 |3f1eaf59f65ae4e8
 crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn unattributed_ms(&self) -> u64 |0ea8e2cc5a57a8dc
 crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] const fn uncovered_ms(&self) -> u64 |d43492e856ce2668
-crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |49c18c26a714ce52
+crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |d39acee732f5d220
 crates/student-voice/src/measure.rs [pub] impl CaseMeasurement :: #[must_use] fn case(&self) -> &str |ec6b758042d09aa9
 crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn accuracy_permille(&self) -> u64 |d73cc639424c6583
 crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn agreed_ms(&self) -> u64 |3d6adfedf46cf476
@@ -289,7 +289,7 @@ crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_
 crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn student_recall_permille(&self) -> u64 |e829c464cf804a80
 crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn unattributed_ms(&self) -> u64 |0ea8e2cc5a57a8dc
 crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] const fn uncovered_ms(&self) -> u64 |d43492e856ce2668
-crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |0be8d8ccf939e023
+crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |a286baa075d20a3a
 crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn cases(&self) -> &[CaseMeasurement] |ee8d6e2ae615178a
 crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: #[must_use] fn corpus_id(&self) -> &str |a1f51e08ddf65289
 crates/student-voice/src/measure.rs [pub] impl DiarizationMeasurement :: fn witness( &self, threshold: DiarizationThreshold, ) -> Result<AccuracyWitness, AccuracyRefusal> |3747a8b57bbf08a7
@@ -307,21 +307,21 @@ crates/student-voice/src/policy.rs [priv] use crate::{corpus::VoiceClass, fault:
 crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RedactionScope |20d08df8cc72ca3f
 crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum SpeakerTargeting |02fa7883bba63808
 crates/student-voice/src/policy.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RedactionPolicy |95619cab4d025672
-crates/student-voice/src/policy.rs [pub] const GATE_38_026_OPEN: &str |72706d30e878af0f
+crates/student-voice/src/policy.rs [pub] const GATE_38_026_OPEN: &str |783572d0fee6ffb6
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn basis(&self) -> RedactionBasis |47e2ef1860c55b46
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn decided_by(&self) -> &Actor |b598fbe979710f10
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn scope(&self) -> RedactionScope |4a066a3d5eadaa00
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn targeting(&self) -> &SpeakerTargeting |f8df4469cab2ab4b
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] const fn version(&self) -> u32 |8ac5a6b5c3dc1561
-crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |fd2708bf223c0a9f
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |977c91bd0068802d
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn digest(&self) -> ContentDigest |da0b060b540ce27b
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn resolves(&self, reference: &RedactionPolicyRef) -> bool |b0748cc28a5c221a
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn targets(&self, speaker: Speaker) -> bool |b6885e5f5a8d5ab9
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn published( version: u32, basis: RedactionBasis, targeting: SpeakerTargeting, scope: RedactionScope, decided_by: Actor, ) -> Result<Self, RedactionFault> |9727675eaf72fedc
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn resolve(&self, reference: &RedactionPolicyRef) -> Result<(), RedactionFault> |f21c9e07f157be94
-crates/student-voice/src/policy.rs [pub] impl RedactionScope :: #[must_use] const fn as_str(self) -> &'static str |4eb85eea7088bee8
+crates/student-voice/src/policy.rs [pub] impl RedactionScope :: #[must_use] const fn as_str(self) -> &'static str |7222162fcdc654ef
 crates/student-voice/src/policy.rs [pub] impl RedactionScope :: const ALL: [Self; 1] |7634b0bd2d6ffb37
-crates/student-voice/src/policy.rs [pub] impl SpeakerTargeting :: #[must_use] const fn kind_str(&self) -> &'static str |0f0ebf3dd63e1932
+crates/student-voice/src/policy.rs [pub] impl SpeakerTargeting :: #[must_use] const fn kind_str(&self) -> &'static str |8ca72e6e45a479e6
 crates/student-voice/src/policy.rs [pub] impl SpeakerTargeting :: #[must_use] fn targets(&self, speaker: Speaker) -> bool |aa2da2762465ebbf
 crates/student-voice/src/preview.rs [priv] impl AffectedProjection
 crates/student-voice/src/preview.rs [priv] impl AffectedProjectionKind
@@ -343,7 +343,7 @@ crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)]
 crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LectureDeletionPreview |509890989720d89a
 crates/student-voice/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionRecord |6f8de0731e2ecfcb
 crates/student-voice/src/preview.rs [pub] #[must_use] fn affected_projections( index: &EvidenceIndex, deleted: &[ContentDigest], ) -> Vec<AffectedProjection> |81abd09f26c84ef7
-crates/student-voice/src/preview.rs [pub] #[must_use] fn preview_deletion( ledger: &mut ConsentLedger, subject: &SubjectInventory, index: &EvidenceIndex, deleted: &[ContentDigest], at: u64, ) -> LectureDeletionPreview |6d23b75cb36b92bd
+crates/student-voice/src/preview.rs [pub] #[must_use] fn preview_deletion( ledger: &mut ConsentLedger, subject: &SubjectInventory, index: &EvidenceIndex, deleted: &[ContentDigest], at: u64, ) -> LectureDeletionPreview |9394379e99bb8c5d
 crates/student-voice/src/preview.rs [pub] #[must_use] fn unreferenced_objects( index: &EvidenceIndex, deleted: &[ContentDigest], ) -> Vec<ContentDigest> |14c349fb4d5d3195
 crates/student-voice/src/preview.rs [pub] fn apply_deletion( ledger: &mut ConsentLedger, plan: &LectureDeletionPlan, shown: &ContentDigest, at: u64, ) -> Result<DeletionOutcome, DeletionFault> |3e5142948e3ebbb8
 crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn cited_deleted(&self) -> usize |b2827635f82f4ba3
@@ -351,8 +351,8 @@ crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use]
 crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn effect(&self) -> ProjectionEffect |7853558bf4afb305
 crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] const fn kind(&self) -> AffectedProjectionKind |78e65d958320d184
 crates/student-voice/src/preview.rs [pub] impl AffectedProjection :: #[must_use] fn id(&self) -> &str |35bcc7ec858ee311
-crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: #[must_use] const fn as_str(self) -> &'static str |286f82f525f49ab5
-crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: #[must_use] const fn spec_word(self) -> &'static str |a4d016b31db66137
+crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: #[must_use] const fn as_str(self) -> &'static str |dbf73d04e4fa7a29
+crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: #[must_use] const fn spec_word(self) -> &'static str |b682eff1b0da938f
 crates/student-voice/src/preview.rs [pub] impl AffectedProjectionKind :: const ALL: [Self; 2] |88b77254b18baf7e
 crates/student-voice/src/preview.rs [pub] impl DeletionOutcome :: #[must_use] const fn objects_reached(&self) -> u64 |05986ac873a6c0c6
 crates/student-voice/src/preview.rs [pub] impl DeletionOutcome :: #[must_use] const fn projections_affected(&self) -> usize |1c87262a672a639b
@@ -363,12 +363,12 @@ crates/student-voice/src/preview.rs [pub] impl LectureDeletionPlan :: #[must_use
 crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
 crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn impact(&self) -> &DeletionImpact |f3cbb4c0ea38c771
 crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] const fn previewed_at(&self) -> u64 |eca4efb3bcf16883
-crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |ea0bb0e43509123e
+crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |be04184443bfe77f
 crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn deleted(&self) -> &[ContentDigest] |86a985f4bd189fcd
 crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn partition_reconciles(&self, index: &EvidenceIndex) -> bool |bc3457704db83344
 crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn projections(&self) -> &[AffectedProjection] |6cd2aea7789718fd
 crates/student-voice/src/preview.rs [pub] impl LectureDeletionPreview :: #[must_use] fn unreferenced(&self) -> &[ContentDigest] |19f0c3e099d0f717
-crates/student-voice/src/preview.rs [pub] impl ProjectionEffect :: #[must_use] const fn as_str(self) -> &'static str |9b3fb246ebf4184d
+crates/student-voice/src/preview.rs [pub] impl ProjectionEffect :: #[must_use] const fn as_str(self) -> &'static str |2940bc4b42f715c1
 crates/student-voice/src/preview.rs [pub] impl ProjectionEffect :: const ALL: [Self; 2] |1464937ccb3e30a4
 crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: #[must_use] const fn kind(&self) -> AffectedProjectionKind |78e65d958320d184
 crates/student-voice/src/preview.rs [pub] impl ProjectionRecord :: #[must_use] fn cites(&self) -> &[ContentDigest] |53a943b8ff6cbe9b

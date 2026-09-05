@@ -11,9 +11,9 @@ crates/model-run/src/calibration.rs [priv] impl PartialOrd for CalibratedConfide
 crates/model-run/src/calibration.rs [priv] impl PartialOrd for CalibratedConfidence :: fn partial_cmp(&self, other: &Self) -> Option<Ordering> |59539d55ada9ceea
 crates/model-run/src/calibration.rs [priv] impl RawScore
 crates/model-run/src/calibration.rs [priv] impl fmt::Debug for RawScore
-crates/model-run/src/calibration.rs [priv] impl fmt::Debug for RawScore :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |440c225d46e0f96b
+crates/model-run/src/calibration.rs [priv] impl fmt::Debug for RawScore :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |035ddc6c971c8e7d
 crates/model-run/src/calibration.rs [priv] impl fmt::Display for DisplayedConfidence
-crates/model-run/src/calibration.rs [priv] impl fmt::Display for DisplayedConfidence :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |3a9d5e36c210ae89
+crates/model-run/src/calibration.rs [priv] impl fmt::Display for DisplayedConfidence :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |54ec74a745cee212
 crates/model-run/src/calibration.rs [priv] use academic_domain::ConfidencePermille |d005dc09bab4d851
 crates/model-run/src/calibration.rs [priv] use core::{cmp::Ordering, fmt} |9b470e99b4c946ef
 crates/model-run/src/calibration.rs [priv] use crate::{ ModelRunError, record::{Digest32, ModelVersion, ProviderId, Purpose}, } |08e2733f7c4bddd5
@@ -32,7 +32,7 @@ crates/model-run/src/calibration.rs [pub] impl CalibratedConfidence :: #[must_us
 crates/model-run/src/calibration.rs [pub] impl CalibrationBin :: #[must_use] const fn confidence_permille(&self) -> u16 |8f4053aebc68d02d
 crates/model-run/src/calibration.rs [pub] impl CalibrationBin :: #[must_use] const fn upper_raw_units(&self) -> u32 |cc2e7ba44ec22e43
 crates/model-run/src/calibration.rs [pub] impl CalibrationBin :: fn new(upper_raw_units: u32, confidence_permille: u16) -> Result<Self, ModelRunError> |485859d6d96be94e
-crates/model-run/src/calibration.rs [pub] impl CalibrationDataset :: #[expect( clippy::too_many_arguments, reason = "the arguments are the dataset identity plus the refresh metadata that decides staleness" )] fn new( id: CalibrationDatasetId, provider: ProviderId, model_version: ModelVersion, purpose: Purpose, digest: Digest32, sample_count: u32, refreshed_at: u64, refresh_interval_millis: u64, bins: Vec<CalibrationBin>, ) -> Result<Self, ModelRunError> |7b7037a84e6a60a9
+crates/model-run/src/calibration.rs [pub] impl CalibrationDataset :: #[expect( clippy::too_many_arguments, reason = "the arguments are the dataset identity plus the refresh metadata that decides staleness" )] fn new( id: CalibrationDatasetId, provider: ProviderId, model_version: ModelVersion, purpose: Purpose, digest: Digest32, sample_count: u32, refreshed_at: u64, refresh_interval_millis: u64, bins: Vec<CalibrationBin>, ) -> Result<Self, ModelRunError> |183ebd5f0dd7a9bd
 crates/model-run/src/calibration.rs [pub] impl CalibrationDataset :: #[must_use] const fn digest(&self) -> &Digest32 |fa496274d895a8c2
 crates/model-run/src/calibration.rs [pub] impl CalibrationDataset :: #[must_use] const fn id(&self) -> &CalibrationDatasetId |ba001e9d697352ac
 crates/model-run/src/calibration.rs [pub] impl CalibrationDataset :: #[must_use] const fn is_stale(&self, now: u64) -> bool |e4598e45fc671ed1
@@ -43,7 +43,7 @@ crates/model-run/src/calibration.rs [pub] impl CalibrationDataset :: #[must_use]
 crates/model-run/src/calibration.rs [pub] impl CalibrationDataset :: #[must_use] const fn refreshed_at(&self) -> u64 |7cf67c1a073f4c9c
 crates/model-run/src/calibration.rs [pub] impl CalibrationDataset :: #[must_use] const fn sample_count(&self) -> u32 |152132cbca9ed457
 crates/model-run/src/calibration.rs [pub] impl CalibrationDatasetId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
-crates/model-run/src/calibration.rs [pub] impl CalibrationDatasetId :: fn new(value: impl Into<String>) -> Result<Self, ModelRunError> |82f8f25853c57980
+crates/model-run/src/calibration.rs [pub] impl CalibrationDatasetId :: fn new(value: impl Into<String>) -> Result<Self, ModelRunError> |ea03ae888a14ffdd
 crates/model-run/src/calibration.rs [pub] impl CalibrationRegistry :: #[must_use] const fn new() -> Self |7aa06f0bdca1dd87
 crates/model-run/src/calibration.rs [pub] impl CalibrationRegistry :: #[must_use] fn datasets(&self) -> &[CalibrationDataset] |b093a99863b00c5e
 crates/model-run/src/calibration.rs [pub] impl CalibrationRegistry :: fn interpret( &self, score: &RawScore, purpose: &Purpose, now: u64, ) -> Result<CalibratedConfidence, ModelRunError> |bd9c99f2eecba0fd
@@ -53,7 +53,7 @@ crates/model-run/src/calibration.rs [pub] impl DisplayedConfidence :: #[must_use
 crates/model-run/src/calibration.rs [pub] impl RawScore :: #[must_use] const fn model_version(&self) -> &ModelVersion |167345060e9fa600
 crates/model-run/src/calibration.rs [pub] impl RawScore :: #[must_use] const fn new(provider: ProviderId, model_version: ModelVersion, units: u32) -> Self |9d278434a782eba6
 crates/model-run/src/calibration.rs [pub] impl RawScore :: #[must_use] const fn provider(&self) -> &ProviderId |3f6a8b6c7f90d57f
-crates/model-run/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ModelRunError |33883a02295d1342
+crates/model-run/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ModelRunError |901a65699d118432
 crates/model-run/src/lib.rs [pub] mod calibration
 crates/model-run/src/lib.rs [pub] mod reanalysis
 crates/model-run/src/lib.rs [pub] mod reconcile
@@ -69,7 +69,7 @@ crates/model-run/src/reanalysis.rs [priv] use crate::record::{Digest32, ModelRun
 crates/model-run/src/reanalysis.rs [pub] #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)] struct CandidateId([u8; 16]) |8bb1c455bce65546
 crates/model-run/src/reanalysis.rs [pub] #[derive(Clone, PartialEq, Eq, Debug)] struct Candidate |0866159382c522ce
 crates/model-run/src/reanalysis.rs [pub] #[derive(Clone, PartialEq, Eq, Debug)] struct ReanalysisDiff |52278c29d3411b6d
-crates/model-run/src/reanalysis.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ReanalysisError |c8e144829d524afa
+crates/model-run/src/reanalysis.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ReanalysisError |9435ba78c17a1a72
 crates/model-run/src/reanalysis.rs [pub] impl Candidate :: #[must_use] const fn candidate_digest(&self) -> &Digest32 |54f1814d33c39746
 crates/model-run/src/reanalysis.rs [pub] impl Candidate :: #[must_use] const fn first( id: CandidateId, model_run: ModelRunId, subject_digest: Digest32, candidate_digest: Digest32, ) -> Self |46da3c48f34929a3
 crates/model-run/src/reanalysis.rs [pub] impl Candidate :: #[must_use] const fn id(&self) -> &CandidateId |0b1806abbab34cb7
@@ -93,12 +93,12 @@ crates/model-run/src/reconcile.rs [priv] use academic_policy::{AuditRow, Consump
 crates/model-run/src/reconcile.rs [priv] use crate::record::{ModelRun, Transmission, TransmittedRange} |44c9151d4f2ffc9b
 crates/model-run/src/reconcile.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
 crates/model-run/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Reconciliation |13d5d2393975603c
-crates/model-run/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ReconciliationError |066b16939df18cae
+crates/model-run/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ReconciliationError |0436114910be77cd
 crates/model-run/src/reconcile.rs [pub] fn reconcile_transmitted_ranges( run: &ModelRun, audit_rows: &[AuditRow], consumptions: &[ConsumptionRow], ) -> Result<Reconciliation, ReconciliationError> |9bae9d7e8e024ca3
 crates/model-run/src/reconcile.rs [pub] impl Reconciliation :: #[must_use] const fn audit_seq(&self) -> Option<u64> |fe57fa2dc5ebd8bf
 crates/model-run/src/reconcile.rs [pub] impl Reconciliation :: #[must_use] const fn byte_count(&self) -> u64 |cede097e9ef5d3b4
 crates/model-run/src/reconcile.rs [pub] impl Reconciliation :: #[must_use] fn grant_id(&self) -> Option<&str> |6cfc5c7aa292c60a
-crates/model-run/src/record.rs [priv] const RECORD_DIGEST_DOMAIN: &[u8] |8a1414d808cdf6a2
+crates/model-run/src/record.rs [priv] const RECORD_DIGEST_DOMAIN: &[u8] |ab3e537d5634f863
 crates/model-run/src/record.rs [priv] fn push_count(hasher: &mut Sha256, count: usize) |901045075ddbaef3
 crates/model-run/src/record.rs [priv] fn push_text(hasher: &mut Sha256, value: &str) |7b24578b6f763fc6
 crates/model-run/src/record.rs [priv] impl ArtifactId
@@ -112,12 +112,12 @@ crates/model-run/src/record.rs [priv] impl Transmission
 crates/model-run/src/record.rs [priv] impl TransmittedRange
 crates/model-run/src/record.rs [priv] impl fmt::Debug for Digest32
 crates/model-run/src/record.rs [priv] impl fmt::Debug for Digest32 :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |e6004c8c836646e7
-crates/model-run/src/record.rs [priv] macro_rules! nonempty_text |f46ffac278175ac6
-crates/model-run/src/record.rs [priv] nonempty_text!(EgressGrantId, "egress grant identifier") |a31592c663ad8888
-crates/model-run/src/record.rs [priv] nonempty_text!(ModelVersion, "model version") |3277fa7225a48935
-crates/model-run/src/record.rs [priv] nonempty_text!(ProviderId, "provider") |bd217554f21489fe
-crates/model-run/src/record.rs [priv] nonempty_text!(Purpose, "purpose") |972257b0a9daf30c
-crates/model-run/src/record.rs [priv] nonempty_text!(RetentionDeclaration, "retention declaration") |fe3546cea6f3ab88
+crates/model-run/src/record.rs [priv] macro_rules! nonempty_text |fee7c7ad9798a9f1
+crates/model-run/src/record.rs [priv] nonempty_text!(EgressGrantId, "egress grant identifier") |334473c7c961e383
+crates/model-run/src/record.rs [priv] nonempty_text!(ModelVersion, "model version") |8fcb49df0ed9394b
+crates/model-run/src/record.rs [priv] nonempty_text!(ProviderId, "provider") |c381bc0a7e89d363
+crates/model-run/src/record.rs [priv] nonempty_text!(Purpose, "purpose") |e964ed4f0b822775
+crates/model-run/src/record.rs [priv] nonempty_text!(RetentionDeclaration, "retention declaration") |9551f43379e2335b
 crates/model-run/src/record.rs [priv] use core::fmt |60337ade2d1be0ef
 crates/model-run/src/record.rs [priv] use crate::ModelRunError |9e5150aaa3084202
 crates/model-run/src/record.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
@@ -138,13 +138,13 @@ crates/model-run/src/record.rs [pub] impl Cost :: fn new(micros: u64, currency: 
 crates/model-run/src/record.rs [pub] impl Digest32 :: #[must_use] const fn as_bytes(&self) -> &[u8; 32] |316d3966b533191c
 crates/model-run/src/record.rs [pub] impl Digest32 :: #[must_use] const fn from_bytes(bytes: [u8; 32]) -> Self |9bce10bc4be18d05
 crates/model-run/src/record.rs [pub] impl Digest32 :: #[must_use] fn of(bytes: &[u8]) -> Self |db2831eeba6d0974
-crates/model-run/src/record.rs [pub] impl Digest32 :: #[must_use] fn to_lower_hex(&self) -> String |3dbe71b8989c47d8
+crates/model-run/src/record.rs [pub] impl Digest32 :: #[must_use] fn to_lower_hex(&self) -> String |0e431ce5fd76744a
 crates/model-run/src/record.rs [pub] impl InputArtifactRef :: #[must_use] const fn artifact_id(&self) -> &ArtifactId |5f6efefe18292554
 crates/model-run/src/record.rs [pub] impl InputArtifactRef :: #[must_use] const fn content_digest(&self) -> &Digest32 |758140de144af866
 crates/model-run/src/record.rs [pub] impl InputArtifactRef :: #[must_use] const fn new(artifact_id: ArtifactId, content_digest: Digest32) -> Self |db6c7bbd2fe840e5
 crates/model-run/src/record.rs [pub] impl InputArtifactRefs :: #[must_use] fn as_slice(&self) -> &[InputArtifactRef] |39f738baead3e31e
 crates/model-run/src/record.rs [pub] impl InputArtifactRefs :: fn new(refs: Vec<InputArtifactRef>) -> Result<Self, ModelRunError> |8d2568b79b5ca8ef
-crates/model-run/src/record.rs [pub] impl ModelRun :: #[expect( clippy::too_many_arguments, reason = "the arguments are the twelve section 27.3 fields; a shorter list would be a field this type does not require" )] #[must_use] const fn record( id: ModelRunId, purpose: Purpose, provider: ProviderId, model_version: ModelVersion, prompt_template_hash: Digest32, input_artifact_refs: InputArtifactRefs, transmitted_byte_ranges: Transmission, redaction_policy_hash: Digest32, output_artifact: ArtifactId, started_at: u64, cost: Cost, retention_declaration: RetentionDeclaration, ) -> Self |feab01b77ccb2941
+crates/model-run/src/record.rs [pub] impl ModelRun :: #[expect( clippy::too_many_arguments, reason = "the arguments are the twelve section 27.3 fields; a shorter list would be a field this type does not require" )] #[must_use] const fn record( id: ModelRunId, purpose: Purpose, provider: ProviderId, model_version: ModelVersion, prompt_template_hash: Digest32, input_artifact_refs: InputArtifactRefs, transmitted_byte_ranges: Transmission, redaction_policy_hash: Digest32, output_artifact: ArtifactId, started_at: u64, cost: Cost, retention_declaration: RetentionDeclaration, ) -> Self |abf62ef9d66da251
 crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] const fn cost(&self) -> &Cost |4e7cf659e78b32cc
 crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] const fn id(&self) -> &ModelRunId |05918fb8d400d9ba
 crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] const fn input_artifact_refs(&self) -> &InputArtifactRefs |33c010ff8e08682d
@@ -157,11 +157,11 @@ crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] const fn redac
 crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] const fn retention_declaration(&self) -> &RetentionDeclaration |dd6271d1ab448e59
 crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] const fn started_at(&self) -> u64 |c7a279164d4d4724
 crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] const fn transmitted_byte_ranges(&self) -> &Transmission |fee1b652b972436b
-crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] fn record_digest(&self) -> Digest32 |577879eafd71dae7
+crates/model-run/src/record.rs [pub] impl ModelRun :: #[must_use] fn record_digest(&self) -> Digest32 |5bcef784f89cfdc7
 crates/model-run/src/record.rs [pub] impl ModelRunId :: #[must_use] const fn as_bytes(&self) -> &[u8; 16] |6546369da0708dea
 crates/model-run/src/record.rs [pub] impl ModelRunId :: #[must_use] const fn from_bytes(bytes: [u8; 16]) -> Self |6cf16b40d51d0287
 crates/model-run/src/record.rs [pub] impl Transmission :: #[must_use] const fn grant_id(&self) -> Option<&EgressGrantId> |d35ca917efb680d5
-crates/model-run/src/record.rs [pub] impl Transmission :: #[must_use] const fn kind(&self) -> &'static str |cc6e4674011727d9
+crates/model-run/src/record.rs [pub] impl Transmission :: #[must_use] const fn kind(&self) -> &'static str |5af6bd43cdad711b
 crates/model-run/src/record.rs [pub] impl Transmission :: #[must_use] fn ranges(&self) -> &[TransmittedRange] |e1139b4954a31434
 crates/model-run/src/record.rs [pub] impl Transmission :: fn egressed( grant_id: EgressGrantId, ranges: Vec<TransmittedRange>, ) -> Result<Self, ModelRunError> |cb550b6aad7c8830
 crates/model-run/src/record.rs [pub] impl TransmittedRange :: #[must_use] const fn content_digest(&self) -> &Digest32 |758140de144af866

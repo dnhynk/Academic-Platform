@@ -1,0 +1,102 @@
+crates/admission/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/admission/src/lib.rs [priv] #[derive(Debug)] struct DecodedPayload |a133679dec19fe8f
+crates/admission/src/lib.rs [priv] #[derive(Debug)] struct PlatformRow |9d459d2b6dfc358c
+crates/admission/src/lib.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] enum PostureKind |2d9de9f0e01d0824
+crates/admission/src/lib.rs [priv] const ADMITTED_DATA_POLICY: &str |9a961b6aa8b2d9bc
+crates/admission/src/lib.rs [priv] const ADMITTED_OBJECT_FORMAT: &str |9fbf679c5ecf4fe1
+crates/admission/src/lib.rs [priv] const ADMITTED_PRODUCT_NETWORK: &str |fbfc8f2ac1c26a61
+crates/admission/src/lib.rs [priv] const ADMITTED_STORAGE_ENCRYPTION: &str |7a24d6c7bb6ff57c
+crates/admission/src/lib.rs [priv] const ADMITTED_STORAGE_MODE: &str |4c02ebac3f464cd8
+crates/admission/src/lib.rs [priv] const ENCRYPTED_PROFILE_MARKER: &str |74a0b3f993784d81
+crates/admission/src/lib.rs [priv] const ENCRYPTED_PROFILE_MARKER_BYTES: &[u8] |125f2eadcf8bc9da
+crates/admission/src/lib.rs [priv] const MAX_RECEIPT_BYTES: usize |cb674ee7e2708592
+crates/admission/src/lib.rs [priv] const PLAINTEXT_SQLITE_HEADER: &[u8; 16] |ef2bc54e4f13a804
+crates/admission/src/lib.rs [priv] const SYNTHETIC_DATA_POLICY: &str |bba6b9bd8b8f9fc5
+crates/admission/src/lib.rs [priv] const SYNTHETIC_PRODUCT_NETWORK: &str |658ad3649824abdf
+crates/admission/src/lib.rs [priv] const SYNTHETIC_PROFILE_MARKER: &str |71b4f6a4f4f51bf8
+crates/admission/src/lib.rs [priv] const SYNTHETIC_STORAGE_ENCRYPTION: &str |b4f282640cbe22d6
+crates/admission/src/lib.rs [priv] const SYNTHETIC_STORAGE_MODE: &str |b8eba28075c1fcec
+crates/admission/src/lib.rs [priv] fn bytes_field(value: Option<Value>, field: &'static str) -> Result<Vec<u8>, AdmissionError> |5841d238f011fb17
+crates/admission/src/lib.rs [priv] fn decode_envelope(bytes: &[u8]) -> Result<DecodedEnvelope, AdmissionError> |dcc99f52b24a5e85
+crates/admission/src/lib.rs [priv] fn decode_payload(bytes: &[u8]) -> Result<DecodedPayload, AdmissionError> |9e1ed4429e306619
+crates/admission/src/lib.rs [priv] fn decode_platform_row(value: Value) -> Result<PlatformRow, AdmissionError> |26a6affbb7c4be1c
+crates/admission/src/lib.rs [priv] fn decode_single(bytes: &[u8]) -> Result<Value, AdmissionError> |d3955c3971a27e82
+crates/admission/src/lib.rs [priv] fn encode_payload( spec_digest: &[u8; 32], schema_version: u32, rows: &[PlatformRow], ) -> Result<Vec<u8>, AdmissionError> |0435bdc3b31d5ffc
+crates/admission/src/lib.rs [priv] fn encode_value(value: &Value) -> Result<Vec<u8>, AdmissionError> |bcab85053483236b
+crates/admission/src/lib.rs [priv] fn fixed_bytes<const N: usize>( value: Option<Value>, field: &'static str, ) -> Result<[u8; N], AdmissionError> |ebaaf2219946a6e7
+crates/admission/src/lib.rs [priv] fn lowercase_hex(bytes: &[u8]) -> String |c40f09bd90fb924a
+crates/admission/src/lib.rs [priv] fn platform_row_value(row: &PlatformRow) -> Value |f6d1ce165bf940c9
+crates/admission/src/lib.rs [priv] fn read_leading_bytes(path: &Path) -> Result<[u8; 16], AdmissionError> |f403487543383413
+crates/admission/src/lib.rs [priv] fn require_encrypted_profile_marker(profile_root: &Path) -> Result<(), AdmissionError> |c7a5fb8056a0f8b8
+crates/admission/src/lib.rs [priv] fn required_platform_name(platform: &str) -> &'static str |38ffa58da6f58851
+crates/admission/src/lib.rs [priv] fn text_field(value: Option<Value>, field: &'static str) -> Result<String, AdmissionError> |1a06697466202b08
+crates/admission/src/lib.rs [priv] fn unsigned(value: Option<Value>, field: &'static str) -> Result<u64, AdmissionError> |abbeac9446dd2644
+crates/admission/src/lib.rs [priv] fn validate_payload( payload: DecodedPayload, envelope_bytes: &[u8], ) -> Result<VerifiedAdmission, AdmissionError> |21916c16cf5149bf
+crates/admission/src/lib.rs [priv] fn validate_platform_row(row: &PlatformRow) -> Result<(), AdmissionError> |5a315270d204626c
+crates/admission/src/lib.rs [priv] fn verify_with_compiled_acceptance_key(decoded: &DecodedEnvelope) -> Result<(), AdmissionError> |086a282a71ae1257
+crates/admission/src/lib.rs [priv] impl AdmissionError
+crates/admission/src/lib.rs [priv] impl AdmissionVerifier
+crates/admission/src/lib.rs [priv] impl Default for Posture
+crates/admission/src/lib.rs [priv] impl Default for Posture :: fn default() -> Self |a7beb95edf767b28
+crates/admission/src/lib.rs [priv] impl Posture
+crates/admission/src/lib.rs [priv] impl Serialize for Posture
+crates/admission/src/lib.rs [priv] impl Serialize for Posture :: fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer, |a9abbad062aed030
+crates/admission/src/lib.rs [priv] impl VerifiedAdmission
+crates/admission/src/lib.rs [priv] mod tests :: #[test] fn a_plaintext_profile_with_a_copied_marker_is_not_admitted() -> Result<(), Box<dyn Error>> |73d86246974f9aa6
+crates/admission/src/lib.rs [priv] mod tests :: #[test] fn admitted_posture_requires_verified_receipt() -> Result<(), Box<dyn Error>> |3f9c307787bdac60
+crates/admission/src/lib.rs [priv] mod tests :: #[test] fn candidate_receipt_has_first_windows_and_second_linux_rows() -> Result<(), Box<dyn Error>> |abbfc9237c6b32ab
+crates/admission/src/lib.rs [priv] mod tests :: #[test] fn forged_signature_denies_admission() -> Result<(), Box<dyn Error>> |dffe3bea18080eea
+crates/admission/src/lib.rs [priv] mod tests :: #[test] fn missing_platform_row_denies_admission() -> Result<(), Box<dyn Error>> |4d0786ba279ca0da
+crates/admission/src/lib.rs [priv] mod tests :: #[test] fn stale_spec_digest_denies_admission() -> Result<(), Box<dyn Error>> |7b67631a3ac4e75f
+crates/admission/src/lib.rs [priv] mod tests :: #[test] fn synthetic_posture_is_emitted_when_receipt_absent() -> Result<(), Box<dyn Error>> |616dd3b32a52ab07
+crates/admission/src/lib.rs [priv] mod tests :: #[test] fn unprovisioned_empty_zero_byte_and_all_zero_keys_fail_closed() -> Result<(), Box<dyn Error>> |18b4cac7624ddf94
+crates/admission/src/lib.rs [priv] mod tests :: const CIPHERTEXT_HEAD: [u8; 16] |67b636ca689798e8
+crates/admission/src/lib.rs [priv] mod tests :: const TEST_SIGNING_SEED: [u8; 32] |9ddca80563ac4a37
+crates/admission/src/lib.rs [priv] mod tests :: fn complete_rows() -> Vec<PlatformRow> |f2678ddde1ca3ff2
+crates/admission/src/lib.rs [priv] mod tests :: fn profile_with_receipt(receipt: &[u8]) -> Result<TempDir, Box<dyn Error>> |528b4e2c90c7a4da
+crates/admission/src/lib.rs [priv] mod tests :: fn profile_with_receipt_and_store( receipt: &[u8], store_head: &[u8], ) -> Result<TempDir, Box<dyn Error>> |3d7ef720e894617b
+crates/admission/src/lib.rs [priv] mod tests :: fn row(platform: &str, discriminator: u8) -> PlatformRow |3892fffc81b1c9d4
+crates/admission/src/lib.rs [priv] mod tests :: fn signed_receipt( spec_digest: [u8; 32], schema_version: u32, rows: &[PlatformRow], signing: &SigningKey, ) -> Result<Vec<u8>, AdmissionError> |cdc085a7f30d2152
+crates/admission/src/lib.rs [priv] mod tests :: fn verify_with_test_key( profile_root: &Path, key_bytes: &[u8], ) -> Result<VerifiedAdmission, AdmissionError> |2599a8ca55deab4b
+crates/admission/src/lib.rs [priv] mod tests :: use ed25519_dalek::{Signer as _, SigningKey} |fe25a64013bab25d
+crates/admission/src/lib.rs [priv] mod tests :: use std::{error::Error, fs} |842f2c01880d0069
+crates/admission/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/admission/src/lib.rs [priv] mod tests :: use tempfile::TempDir |deefd06db3ab305a
+crates/admission/src/lib.rs [priv] struct DecodedEnvelope |d69c20a37591fdf7
+crates/admission/src/lib.rs [priv] use ciborium::value::{Integer, Value} |1efc220dba1bcc05
+crates/admission/src/lib.rs [priv] use ed25519_dalek::{Signature, VerifyingKey} |5cc5a65b7fe40dc0
+crates/admission/src/lib.rs [priv] use serde::{Serialize, Serializer, ser::SerializeStruct as _} |e4059f77c1398eca
+crates/admission/src/lib.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/admission/src/lib.rs [priv] use std::{ fs, io::{Cursor, Read as _}, path::{Path, PathBuf}, } |28cbc0d156e7c588
+crates/admission/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/admission/src/lib.rs [pub] #[derive(Debug, Clone, Copy, Default)] struct AdmissionVerifier |926cad5b16a42c08
+crates/admission/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum AcceptancePublicKey |c6b3ac3d4ddd15aa
+crates/admission/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Posture |9c8b8c82e4118ccd
+crates/admission/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VerifiedAdmission |8fd398c508a4ce3b
+crates/admission/src/lib.rs [pub] #[derive(Debug, Error)] enum AdmissionError |7e282472b8de97ef
+crates/admission/src/lib.rs [pub] const ACCEPTANCE_PUBLIC_KEY: AcceptancePublicKey |6444a1b2dd54aa3b
+crates/admission/src/lib.rs [pub] const ADMISSION_RECEIPT_RELATIVE_PATH: &str |7a2436ceb17fa3e1
+crates/admission/src/lib.rs [pub] const ADMISSION_RECEIPT_VERSION: u16 |110334e50b083561
+crates/admission/src/lib.rs [pub] const CANONICAL_SPEC_DIGEST: [u8; 32] |afa2f9aa686e6dca
+crates/admission/src/lib.rs [pub] const COMPILED_STORE_SCHEMA_VERSION: u32 |f3b8dc393d563dd3
+crates/admission/src/lib.rs [pub] const PROFILE_DATABASE_FILE: &str |79271bb4e2a5fe4d
+crates/admission/src/lib.rs [pub] const REQUIRED_ADMISSION_PLATFORMS: [&str; 5] |8bae8f3e9ca925da
+crates/admission/src/lib.rs [pub] const SIGNED_ENVELOPE_VERSION: u16 |48d0f73c7a753e42
+crates/admission/src/lib.rs [pub] impl AdmissionError :: #[must_use] const fn code(&self) -> &'static str |38bd8f5b64857013
+crates/admission/src/lib.rs [pub] impl AdmissionVerifier :: #[must_use] fn posture(profile_root: &Path) -> Posture |254f9962d4321d2f
+crates/admission/src/lib.rs [pub] impl AdmissionVerifier :: fn verify(profile_root: &Path) -> Result<VerifiedAdmission, AdmissionError> |ddf751d620e0b96c
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] const fn banner(&self) -> &'static str |76ea1bfe3ecc44ba
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] const fn data_policy(&self) -> &'static str |216834475a20bac5
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] const fn object_format(&self) -> Option<&'static str> |4c95196209f861fe
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] const fn product_network(&self) -> &'static str |7be0b1001ead2968
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] const fn production_data_allowed(&self) -> bool |7240fdcd3e1c7cfd
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] const fn storage_encryption(&self) -> &'static str |ee85f7c916e73d0d
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] const fn storage_mode(&self) -> &'static str |0332a637dfd7eaf3
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] const fn synthetic() -> Self |ac2dd91b8cf0951f
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] fn admission_platforms(&self) -> &[String] |2f06bd1b37a57955
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] fn admission_receipt_digest(&self) -> Option<&str> |4128cbcd98cc6d28
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] fn canonical_json_bytes(&self) -> Vec<u8> |fd1b6ac71a687d46
+crates/admission/src/lib.rs [pub] impl Posture :: #[must_use] fn from_verified(verified: &VerifiedAdmission) -> Self |e49f633ce48f0b1c
+crates/admission/src/lib.rs [pub] impl VerifiedAdmission :: #[must_use] fn platforms(&self) -> &[String] |70e756dbe6961275
+crates/admission/src/lib.rs [pub] impl VerifiedAdmission :: #[must_use] fn posture(&self) -> Posture |8b611530ddb1aa4c
+crates/admission/src/lib.rs [pub] impl VerifiedAdmission :: #[must_use] fn receipt_digest(&self) -> &str |8e0e4c8f254cd811

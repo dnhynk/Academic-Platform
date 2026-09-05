@@ -1,0 +1,240 @@
+crates/crypto/src/derive.rs [priv] #[cfg(test)] mod tests
+crates/crypto/src/derive.rs [priv] fn expand( master: &VaultMasterKey, profile: ProfileId, info: &[u8], ) -> Result<Zeroizing<[u8; KEY_BYTES]>, KeyScheduleError> |36a1f18c46d398c4
+crates/crypto/src/derive.rs [priv] fn expand_from( ikm: &[u8; KEY_BYTES], profile: ProfileId, info: &[u8], ) -> Result<Zeroizing<[u8; KEY_BYTES]>, KeyScheduleError> |0449d4b4b1bc2689
+crates/crypto/src/derive.rs [priv] fn kek_info(domain: DomainId) -> [u8; 18 + IDENTIFIER_BYTES] |9938fe9a83f8bb18
+crates/crypto/src/derive.rs [priv] impl DomainKek
+crates/crypto/src/derive.rs [priv] impl VaultMasterKey
+crates/crypto/src/derive.rs [priv] mod tests :: #[test] fn info_strings_are_the_frozen_adr_005_literals() |3aecf5fe16d2eef3
+crates/crypto/src/derive.rs [priv] mod tests :: #[test] fn locator_keys_are_separated_by_domain_and_by_profile() |c4860e9a468dc655
+crates/crypto/src/derive.rs [priv] mod tests :: #[test] fn the_locator_key_is_an_hkdf_sub_derivation_of_the_domain_kek() |7ecb76f01d944878
+crates/crypto/src/derive.rs [priv] mod tests :: #[test] fn the_schedule_agrees_with_rfc_5869_hkdf_sha_512() |261401f794456cb9
+crates/crypto/src/derive.rs [priv] mod tests :: fn master(byte: u8) -> VaultMasterKey |0663075a9a002bef
+crates/crypto/src/derive.rs [priv] mod tests :: fn rfc5869_hkdf_sha512(salt: &[u8], ikm: &[u8], info: &[u8], length: usize) -> Vec<u8> |7df654a2210de0b3
+crates/crypto/src/derive.rs [priv] mod tests :: use crate::keys::KEY_BYTES |b3d4afbeec0190ef
+crates/crypto/src/derive.rs [priv] mod tests :: use hmac::{Hmac, Mac} |f7f94ef294179f56
+crates/crypto/src/derive.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/crypto/src/derive.rs [priv] use crate::keys::{ AuditKey, DomainId, DomainKek, DomainLocatorKey, IDENTIFIER_BYTES, KEY_BYTES, ProfileId, RecipientMacKey, RehearsalKey, StoreKey, VaultMasterKey, } |bdd38b947c67857f
+crates/crypto/src/derive.rs [priv] use hkdf::Hkdf |d5c60d1ea8101abd
+crates/crypto/src/derive.rs [priv] use sha2::{Digest as _, Sha256, Sha512} |a67defc9acb4a1bb
+crates/crypto/src/derive.rs [priv] use zeroize::Zeroizing |df92b00a7874c4a0
+crates/crypto/src/derive.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum KeyScheduleError |e25328d670ffb86f
+crates/crypto/src/derive.rs [pub] const AUDIT_INFO: &[u8] |c40cae484a94f66c
+crates/crypto/src/derive.rs [pub] const KEK_INFO_PREFIX: &[u8] |f2d0937bac7bf1f1
+crates/crypto/src/derive.rs [pub] const KEY_GENERATION_INFO: &[u8] |75fee55b822caff1
+crates/crypto/src/derive.rs [pub] const RECIPIENT_MAC_INFO: &[u8] |a61c621dac1ce9ba
+crates/crypto/src/derive.rs [pub] const REHEARSAL_INFO: &[u8] |aca27a1390f06d78
+crates/crypto/src/derive.rs [pub] const STORE_INFO: &[u8] |ef978e8a36a48ba0
+crates/crypto/src/derive.rs [pub] const VAULT_LOCATOR_INFO: &[u8] |fdf415f0c59f9ebe
+crates/crypto/src/derive.rs [pub] impl DomainKek :: fn derive_locator_key( &self, profile: ProfileId, ) -> Result<DomainLocatorKey, KeyScheduleError> |93cf24c2986e12f0
+crates/crypto/src/derive.rs [pub] impl VaultMasterKey :: fn derive_audit_key(&self, profile: ProfileId) -> Result<AuditKey, KeyScheduleError> |aa026f78f07d9aa2
+crates/crypto/src/derive.rs [pub] impl VaultMasterKey :: fn derive_domain_kek( &self, profile: ProfileId, domain: DomainId, ) -> Result<DomainKek, KeyScheduleError> |2c4f4e36587e6507
+crates/crypto/src/derive.rs [pub] impl VaultMasterKey :: fn derive_recipient_mac_key( &self, profile: ProfileId, ) -> Result<RecipientMacKey, KeyScheduleError> |f276db665a10f502
+crates/crypto/src/derive.rs [pub] impl VaultMasterKey :: fn derive_rehearsal_key( &self, profile: ProfileId, ) -> Result<RehearsalKey, KeyScheduleError> |22e34166ff8cded0
+crates/crypto/src/derive.rs [pub] impl VaultMasterKey :: fn derive_store_key(&self, profile: ProfileId) -> Result<StoreKey, KeyScheduleError> |26db3f9cc90f60be
+crates/crypto/src/derive.rs [pub] impl VaultMasterKey :: fn generation_id(&self, profile: ProfileId) -> Result<[u8; KEY_BYTES], KeyScheduleError> |bfa252f7c1d1af07
+crates/crypto/src/fault.rs [priv] impl FaultPoint
+crates/crypto/src/fault.rs [priv] impl FaultPoint :: #[cfg(feature = "phase2-fault-injection")] const fn as_str(self) -> &'static str |5c4bb96dd843c0f2
+crates/crypto/src/fault.rs [pub(crate)] #[cfg(feature = "phase2-fault-injection")] fn trip(point: FaultPoint) |b6a3f2ca38175926
+crates/crypto/src/fault.rs [pub(crate)] #[cfg(not(feature = "phase2-fault-injection"))] const fn trip(_point: FaultPoint) |86a9bdc652dcb8a9
+crates/crypto/src/fault.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum FaultPoint |bf45ce57d49ad1ce
+crates/crypto/src/fault.rs [pub] const FAULT_ACTION_VARIABLE: &str |fa9a364684137839
+crates/crypto/src/fault.rs [pub] const FAULT_READY_MARKER_VARIABLE: &str |352f7f7ceba5c598
+crates/crypto/src/fault.rs [pub] const FAULT_SELECTION_VARIABLE: &str |955d321a905ea57b
+crates/crypto/src/keys.rs [priv] #[cfg(test)] mod tests
+crates/crypto/src/keys.rs [priv] const fn nibble_to_hex(nibble: u8) -> char |cb45e07f45b6e2b3
+crates/crypto/src/keys.rs [priv] impl ArtifactDek
+crates/crypto/src/keys.rs [priv] impl DeviceWrappingKey
+crates/crypto/src/keys.rs [priv] impl DomainId
+crates/crypto/src/keys.rs [priv] impl ProfileId
+crates/crypto/src/keys.rs [priv] impl RecoverySecret
+crates/crypto/src/keys.rs [priv] impl StoreKey
+crates/crypto/src/keys.rs [priv] impl VaultMasterKey
+crates/crypto/src/keys.rs [priv] impl fmt::Display for RandomnessUnavailable
+crates/crypto/src/keys.rs [priv] impl fmt::Display for RandomnessUnavailable :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |4987f755241f224e
+crates/crypto/src/keys.rs [priv] impl std::error::Error for RandomnessUnavailable
+crates/crypto/src/keys.rs [priv] macro_rules! secret_key |1f34341f89ae3ab1
+crates/crypto/src/keys.rs [priv] mod tests :: #[test] fn every_key_type_is_zeroize_on_drop() |ecac52d30113a4be
+crates/crypto/src/keys.rs [priv] mod tests :: #[test] fn generated_keys_are_full_width_and_not_constant() |f83dd17401ee7931
+crates/crypto/src/keys.rs [priv] mod tests :: #[test] fn raw_hex_is_lowercase_and_exactly_sixty_four_characters() |5610c4886dfcc866
+crates/crypto/src/keys.rs [priv] mod tests :: const fn assert_zeroize_on_drop<T: ZeroizeOnDrop>() |33ef4de62e32077a
+crates/crypto/src/keys.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/crypto/src/keys.rs [priv] secret_key!( ArtifactDek, "A per-artifact data-encryption key, wrapped by a `DomainKek`." ) |ce786c239495addd
+crates/crypto/src/keys.rs [priv] secret_key!( DeviceWrappingKey, "The 32-byte secret the operating-system broker holds for a device recipient." ) |4b7659fef8224a98
+crates/crypto/src/keys.rs [priv] secret_key!( DomainKek, "A per-domain key-encryption key, `KEK_d` of ADR-005." ) |76578fc680249b8e
+crates/crypto/src/keys.rs [priv] secret_key!( DomainLocatorKey, "The HMAC key one domain's vault locators are derived under." ) |89580abff14bccfb
+crates/crypto/src/keys.rs [priv] secret_key!( RecipientMacKey, "The key the recipient-record MAC is taken under, derived from the VMK." ) |2195896916afe27b
+crates/crypto/src/keys.rs [priv] secret_key!( RecipientWrapKey, "The key a single recipient's wrapped VMK is sealed under." ) |2952938dfca0a2c8
+crates/crypto/src/keys.rs [priv] secret_key!( RecoverySecret, "The 256-bit recovery secret a recovery recipient is derived from." ) |ac07515d3109e3bb
+crates/crypto/src/keys.rs [priv] secret_key!( RehearsalKey, "The key a restore-rehearsal receipt is authenticated under, derived from the VMK." ) |fdf4749bb25a423d
+crates/crypto/src/keys.rs [priv] secret_key!( StoreKey, "The SQLCipher raw store key, `SKEY_p` of ADR-005." ) |9c52f092f90ab6f6
+crates/crypto/src/keys.rs [priv] secret_key!( VaultMasterKey, "The Vault Master Key: 32 random bytes, never persisted unwrapped." ) |d5ae6a31ffb99666
+crates/crypto/src/keys.rs [priv] secret_key!(AuditKey, "The egress-audit key, `AUDKEY` of ADR-005.") |2d8b77163cb66b12
+crates/crypto/src/keys.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/crypto/src/keys.rs [priv] use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing} |0f7f6220498cfeb0
+crates/crypto/src/keys.rs [pub(crate)] fn random_key_bytes() -> Result<Zeroizing<[u8; KEY_BYTES]>, RandomnessUnavailable> |e26985aa825113b6
+crates/crypto/src/keys.rs [pub(crate)] impl VaultMasterKey :: const fn from_bytes(bytes: Zeroizing<[u8; KEY_BYTES]>) -> Self |d843b7bcb5bcc11e
+crates/crypto/src/keys.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DomainId([u8; IDENTIFIER_BYTES]) |df00ac13301048d8
+crates/crypto/src/keys.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ProfileId([u8; IDENTIFIER_BYTES]) |d14dc010be59921b
+crates/crypto/src/keys.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RandomnessUnavailable |2f91ff6b0d170703
+crates/crypto/src/keys.rs [pub] const IDENTIFIER_BYTES: usize |42c982238d6cce31
+crates/crypto/src/keys.rs [pub] const KEY_BYTES: usize |b45411243febc4d5
+crates/crypto/src/keys.rs [pub] impl ArtifactDek :: fn generate() -> Result<Self, RandomnessUnavailable> |020912ba6edb5b23
+crates/crypto/src/keys.rs [pub] impl DeviceWrappingKey :: fn generate() -> Result<Self, RandomnessUnavailable> |020912ba6edb5b23
+crates/crypto/src/keys.rs [pub] impl DomainId :: #[must_use] const fn as_bytes(&self) -> &[u8; IDENTIFIER_BYTES] |816d419da3ebbb82
+crates/crypto/src/keys.rs [pub] impl DomainId :: #[must_use] const fn from_bytes(bytes: [u8; IDENTIFIER_BYTES]) -> Self |5013c8f4f0e3448b
+crates/crypto/src/keys.rs [pub] impl ProfileId :: #[must_use] const fn as_bytes(&self) -> &[u8; IDENTIFIER_BYTES] |816d419da3ebbb82
+crates/crypto/src/keys.rs [pub] impl ProfileId :: #[must_use] const fn from_bytes(bytes: [u8; IDENTIFIER_BYTES]) -> Self |5013c8f4f0e3448b
+crates/crypto/src/keys.rs [pub] impl RecoverySecret :: #[must_use] fn from_entropy(bytes: [u8; KEY_BYTES]) -> Self |28d8e161be026530
+crates/crypto/src/keys.rs [pub] impl RecoverySecret :: fn generate() -> Result<Self, RandomnessUnavailable> |020912ba6edb5b23
+crates/crypto/src/keys.rs [pub] impl StoreKey :: #[must_use] fn expose_raw_hex(&self) -> Zeroizing<String> |6be4abcd9a92b224
+crates/crypto/src/keys.rs [pub] impl VaultMasterKey :: fn generate() -> Result<Self, RandomnessUnavailable> |020912ba6edb5b23
+crates/crypto/src/keystore.rs [priv] #[cfg(feature = "os-keystore")] mod platform
+crates/crypto/src/keystore.rs [priv] impl fmt::Display for KeystoreFailure
+crates/crypto/src/keystore.rs [priv] impl fmt::Display for KeystoreFailure :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |61f8622fbf3c1914
+crates/crypto/src/keystore.rs [priv] impl std::error::Error for KeystoreFailure
+crates/crypto/src/keystore.rs [priv] mod platform :: fn label_of(label: &str) -> Result<native::KeystoreLabel, KeystoreFailure> |44c222dfacd6e09a
+crates/crypto/src/keystore.rs [priv] mod platform :: fn translate(error: &native::KeystoreError) -> KeystoreFailure |e83ae45468de4414
+crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore
+crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore :: fn open(&self, label: &str, blob: &[u8]) -> Result<Zeroizing<Vec<u8>>, KeystoreFailure> |b06328aacca66425
+crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore :: fn provider(&self) -> &str |e7bc2289d3ef09dc
+crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore :: fn seal(&self, label: &str, secret: &[u8]) -> Result<Vec<u8>, KeystoreFailure> |527879e522bf2add
+crates/crypto/src/keystore.rs [priv] mod platform :: impl PlatformKeystore
+crates/crypto/src/keystore.rs [priv] mod platform :: use academic_keystore_platform as native |d6c9c213effcc8be
+crates/crypto/src/keystore.rs [priv] mod platform :: use super::{DeviceKeystore, KeystoreFailure} |aae8eeda62a16cbc
+crates/crypto/src/keystore.rs [priv] mod platform :: use zeroize::Zeroizing |df92b00a7874c4a0
+crates/crypto/src/keystore.rs [priv] trait DeviceKeystore :: fn open(&self, label: &str, blob: &[u8]) -> Result<Zeroizing<Vec<u8>>, KeystoreFailure> |451e909dadac16a6
+crates/crypto/src/keystore.rs [priv] trait DeviceKeystore :: fn provider(&self) -> &str |5be56b5cffe6e792
+crates/crypto/src/keystore.rs [priv] trait DeviceKeystore :: fn seal(&self, label: &str, secret: &[u8]) -> Result<Vec<u8>, KeystoreFailure> |cebf51103797ee23
+crates/crypto/src/keystore.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/crypto/src/keystore.rs [priv] use zeroize::Zeroizing |df92b00a7874c4a0
+crates/crypto/src/keystore.rs [pub] #[cfg(feature = "os-keystore")] use platform::{PlatformKeystore, purge} |ba002378b261c716
+crates/crypto/src/keystore.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum KeystoreFailure |2b09ea05bddc49a6
+crates/crypto/src/keystore.rs [pub] mod platform :: #[derive(Debug, Clone, Copy, Default)] #[non_exhaustive] struct PlatformKeystore |a82b1f071adeac5f
+crates/crypto/src/keystore.rs [pub] mod platform :: fn purge(label: &str, blob: &[u8]) -> Result<bool, KeystoreFailure> |ffd78e919fc290a5
+crates/crypto/src/keystore.rs [pub] mod platform :: impl PlatformKeystore :: #[must_use] const fn new() -> Self |b9d2c925d16ed005
+crates/crypto/src/keystore.rs [pub] trait DeviceKeystore
+crates/crypto/src/lib.rs [priv] fn from_recipient_error(error: RecipientError, wrong_key: UnlockError) -> UnlockError |322b91509358f786
+crates/crypto/src/lib.rs [priv] fn keystore_error(failure: KeystoreFailure, provider: &str, label: &str) -> UnlockError |cfd153757efa75b6
+crates/crypto/src/lib.rs [priv] fn wrap_key_from(bytes: &[u8]) -> Result<RecipientWrapKey, UnlockError> |ea653ba1f9eeaf54
+crates/crypto/src/lib.rs [priv] impl From<KeyScheduleError> for UnlockError
+crates/crypto/src/lib.rs [priv] impl From<KeyScheduleError> for UnlockError :: fn from(_: KeyScheduleError) -> Self |10ac01f328135556
+crates/crypto/src/lib.rs [priv] impl From<RandomnessUnavailable> for UnlockError
+crates/crypto/src/lib.rs [priv] impl From<RandomnessUnavailable> for UnlockError :: fn from(_: RandomnessUnavailable) -> Self |04f313db95d8ad18
+crates/crypto/src/lib.rs [priv] impl UnlockError
+crates/crypto/src/lib.rs [priv] mod fault
+crates/crypto/src/lib.rs [priv] use fault::FaultPoint |bbb87ed3aed8f147
+crates/crypto/src/lib.rs [priv] use recipient::RecipientError |8ac9b354ea51b409
+crates/crypto/src/lib.rs [priv] use zeroize::Zeroizing |df92b00a7874c4a0
+crates/crypto/src/lib.rs [pub] #[cfg(feature = "os-keystore")] use keystore::{PlatformKeystore, purge as purge_device_key} |a26b338e02163441
+crates/crypto/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum UnlockError |802cd0e3f2eff879
+crates/crypto/src/lib.rs [pub] const FAULT_INJECTION_FEATURE: &str |78e188980dab703b
+crates/crypto/src/lib.rs [pub] const PHASE2_KEY_FAULT_IDS: &[&str] |3d598acd6fb440d7
+crates/crypto/src/lib.rs [pub] fn create_device_recipient<K: DeviceKeystore + ?Sized>( master: &VaultMasterKey, profile: ProfileId, recipient_id: [u8; IDENTIFIER_BYTES], label: &str, keystore: &K, ) -> Result<RecipientRecord, UnlockError> |e30bb46030b097ee
+crates/crypto/src/lib.rs [pub] fn create_recovery_recipient( master: &VaultMasterKey, profile: ProfileId, recipient_id: [u8; IDENTIFIER_BYTES], secret: &RecoverySecret, argon2_profile: Argon2idProfile, ) -> Result<RecipientRecord, UnlockError> |4d4206b1728e17fc
+crates/crypto/src/lib.rs [pub] fn unlock_with_device<K: DeviceKeystore + ?Sized>( record: &RecipientRecord, profile: ProfileId, keystore: &K, ) -> Result<VaultMasterKey, UnlockError> |a1c5fcee21723621
+crates/crypto/src/lib.rs [pub] fn unlock_with_recovery( record: &RecipientRecord, profile: ProfileId, secret: &RecoverySecret, throttle: &mut UnlockThrottle, now_ms: u64, ) -> Result<VaultMasterKey, UnlockError> |50fd3e9a835633a0
+crates/crypto/src/lib.rs [pub] impl UnlockError :: #[must_use] const fn is_integrity_incident(&self) -> bool |ff516991fd43c900
+crates/crypto/src/lib.rs [pub] impl UnlockError :: #[must_use] const fn leaves_profile_locked(&self) -> bool |1a4e7657489cb338
+crates/crypto/src/lib.rs [pub] mod derive
+crates/crypto/src/lib.rs [pub] mod keys
+crates/crypto/src/lib.rs [pub] mod keystore
+crates/crypto/src/lib.rs [pub] mod recipient
+crates/crypto/src/lib.rs [pub] mod recovery
+crates/crypto/src/lib.rs [pub] use derive::{ AUDIT_INFO, KEK_INFO_PREFIX, KEY_GENERATION_INFO, KeyScheduleError, RECIPIENT_MAC_INFO, REHEARSAL_INFO, STORE_INFO, VAULT_LOCATOR_INFO, } |2a6c1bc4e807e11f
+crates/crypto/src/lib.rs [pub] use fault::{FAULT_ACTION_VARIABLE, FAULT_READY_MARKER_VARIABLE, FAULT_SELECTION_VARIABLE} |4bc0495626fe051e
+crates/crypto/src/lib.rs [pub] use keys::{ ArtifactDek, AuditKey, DeviceWrappingKey, DomainId, DomainKek, DomainLocatorKey, IDENTIFIER_BYTES, KEY_BYTES, ProfileId, RandomnessUnavailable, RecipientMacKey, RecipientWrapKey, RecoverySecret, RehearsalKey, StoreKey, VaultMasterKey, } |6b292d00ef68e715
+crates/crypto/src/lib.rs [pub] use keystore::{DeviceKeystore, KeystoreFailure} |0fcb63632d39808a
+crates/crypto/src/lib.rs [pub] use recipient::{ DEVICE_KDF_ALGORITHM_ID, RECORD_MAC_BYTES, RECORD_VERSION, RECOVERY_KDF_ALGORITHM_ID, RecipientKind, RecipientParameters, RecipientRecord, RecipientSet, RecordError, SET_VERSION, WRAP_ALGORITHM_ID, WRAP_NONCE_BYTES, WRAPPED_VMK_BYTES, } |3c4209bf12147dba
+crates/crypto/src/lib.rs [pub] use recovery::{ Argon2idProfile, PINNED_PROFILES, RECOVERY_ARGON2ID_V1, RecoveryError, UnlockThrottle, } |725967dbc42eeb4a
+crates/crypto/src/recipient.rs [priv] fn bytes(entries: &[(Value, Value)], key: u64) -> Result<Vec<u8>, RecordError> |e52c86328852b046
+crates/crypto/src/recipient.rs [priv] fn compute_mac( master: &VaultMasterKey, profile: ProfileId, covered: &[u8], ) -> Result<Vec<u8>, RecipientError> |fdcf7f663d9f115c
+crates/crypto/src/recipient.rs [priv] fn decode_canonical(input: &[u8]) -> Result<Value, RecordError> |17279741c2b717a4
+crates/crypto/src/recipient.rs [priv] fn encode(value: &Value) -> Result<Vec<u8>, RecordError> |71382db7b34c4c66
+crates/crypto/src/recipient.rs [priv] fn expect_keys(entries: &[(Value, Value)], keys: &[u64]) -> Result<(), RecordError> |945e0c41a10ccd00
+crates/crypto/src/recipient.rs [priv] fn find(entries: &[(Value, Value)], key: u64) -> Result<&Value, RecordError> |4033c422d389fc94
+crates/crypto/src/recipient.rs [priv] fn fixed<const N: usize>(entries: &[(Value, Value)], key: u64) -> Result<[u8; N], RecordError> |7e0984df005820f4
+crates/crypto/src/recipient.rs [priv] fn integer(entries: &[(Value, Value)], key: u64) -> Result<u32, RecordError> |5e3dd93190f2de82
+crates/crypto/src/recipient.rs [priv] fn mac_key_bytes( master: &VaultMasterKey, profile: ProfileId, ) -> Result<Zeroizing<[u8; KEY_BYTES]>, RecipientError> |b19d5c3146a5a31b
+crates/crypto/src/recipient.rs [priv] fn map<const N: usize>(entries: [(u64, Value); N]) -> Value |4c882aaa8c83579e
+crates/crypto/src/recipient.rs [priv] fn text(entries: &[(Value, Value)], key: u64) -> Result<String, RecordError> |40426e7531296849
+crates/crypto/src/recipient.rs [priv] fn unsigned(value: u32) -> Value |2c5c11a24d2db504
+crates/crypto/src/recipient.rs [priv] impl From<RandomnessUnavailable> for RecipientError
+crates/crypto/src/recipient.rs [priv] impl From<RandomnessUnavailable> for RecipientError :: fn from(_: RandomnessUnavailable) -> Self |04f313db95d8ad18
+crates/crypto/src/recipient.rs [priv] impl RecipientKind
+crates/crypto/src/recipient.rs [priv] impl RecipientKind :: const fn from_tag(tag: u8) -> Option<Self> |028c43205d0ecbc0
+crates/crypto/src/recipient.rs [priv] impl RecipientKind :: const fn kdf_algorithm_id(self) -> &'static str |0026413086799962
+crates/crypto/src/recipient.rs [priv] impl RecipientKind :: const fn tag(self) -> u8 |b5cb828f2c8dcbb6
+crates/crypto/src/recipient.rs [priv] impl RecipientParameters
+crates/crypto/src/recipient.rs [priv] impl RecipientParameters :: const fn kind(&self) -> RecipientKind |9d33d232833532b0
+crates/crypto/src/recipient.rs [priv] impl RecipientParameters :: fn from_value(kind: RecipientKind, value: &Value) -> Result<Self, RecordError> |553345c730139dae
+crates/crypto/src/recipient.rs [priv] impl RecipientParameters :: fn to_value(&self) -> Value |e7232b767056c21a
+crates/crypto/src/recipient.rs [priv] impl RecipientRecord
+crates/crypto/src/recipient.rs [priv] impl RecipientRecord :: fn identity_value(&self) -> Value |ecd47528aed7915f
+crates/crypto/src/recipient.rs [priv] impl RecipientRecord :: fn mac_covered_value(&self) -> Value |b82dc716e419cf7f
+crates/crypto/src/recipient.rs [priv] impl RecipientRecord :: fn to_value(&self) -> Value |ee995a93e5d1a7e9
+crates/crypto/src/recipient.rs [priv] impl RecipientSet
+crates/crypto/src/recipient.rs [priv] impl fmt::Debug for RecipientRecord
+crates/crypto/src/recipient.rs [priv] impl fmt::Debug for RecipientRecord :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |a4b607fb6e4c6084
+crates/crypto/src/recipient.rs [priv] use chacha20poly1305::{ KeyInit as _, XChaCha20Poly1305, XNonce, aead::{Aead as _, Payload}, } |ec96f0d9b1e3b6ff
+crates/crypto/src/recipient.rs [priv] use ciborium::value::{Integer, Value} |1efc220dba1bcc05
+crates/crypto/src/recipient.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/crypto/src/recipient.rs [priv] use crate::{ keys::{ IDENTIFIER_BYTES, KEY_BYTES, ProfileId, RandomnessUnavailable, RecipientWrapKey, VaultMasterKey, }, recovery::Argon2idProfile, } |646499f544f595cf
+crates/crypto/src/recipient.rs [priv] use hmac::{Hmac, Mac} |f7f94ef294179f56
+crates/crypto/src/recipient.rs [priv] use sha2::Sha512 |e91d151ab0c6ce03
+crates/crypto/src/recipient.rs [priv] use subtle::ConstantTimeEq as _ |1513b10184955900
+crates/crypto/src/recipient.rs [priv] use zeroize::Zeroizing |df92b00a7874c4a0
+crates/crypto/src/recipient.rs [pub(crate)] fn unwrap( record: &RecipientRecord, profile: ProfileId, wrap_key: &RecipientWrapKey, ) -> Result<VaultMasterKey, RecipientError> |81af4cd129e31706
+crates/crypto/src/recipient.rs [pub(crate)] fn wrap( master: &VaultMasterKey, profile: ProfileId, recipient_id: [u8; IDENTIFIER_BYTES], parameters: RecipientParameters, keystore_blob: Vec<u8>, wrap_key: &RecipientWrapKey, ) -> Result<RecipientRecord, RecipientError> |6d74f33178cd43dd
+crates/crypto/src/recipient.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RecipientRecord |0dc2631dbc8f91e6
+crates/crypto/src/recipient.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum RecipientKind |8bc930c31a9274d7
+crates/crypto/src/recipient.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RecipientError |d56cc7872c146820
+crates/crypto/src/recipient.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RecordError |f6be97c5537e390a
+crates/crypto/src/recipient.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum RecipientParameters |6515dd8c1a5e79ec
+crates/crypto/src/recipient.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RecipientSet |753379e0b6ab0f5b
+crates/crypto/src/recipient.rs [pub] const DEVICE_KDF_ALGORITHM_ID: &str |f9a822ecbbfa6c8b
+crates/crypto/src/recipient.rs [pub] const RECORD_MAC_BYTES: usize |fc8e0721e3369f08
+crates/crypto/src/recipient.rs [pub] const RECORD_VERSION: u8 |b6cadfa47d87fc19
+crates/crypto/src/recipient.rs [pub] const RECOVERY_KDF_ALGORITHM_ID: &str |a9705887b815a453
+crates/crypto/src/recipient.rs [pub] const SET_VERSION: u8 |a457d8510493a638
+crates/crypto/src/recipient.rs [pub] const WRAPPED_VMK_BYTES: usize |c8e544bdacd447dc
+crates/crypto/src/recipient.rs [pub] const WRAP_ALGORITHM_ID: &str |798950da573bbe2c
+crates/crypto/src/recipient.rs [pub] const WRAP_NONCE_BYTES: usize |f718ecac25e34463
+crates/crypto/src/recipient.rs [pub] impl RecipientRecord :: #[must_use] const fn kind(&self) -> RecipientKind |e41b08469ef58a7f
+crates/crypto/src/recipient.rs [pub] impl RecipientRecord :: #[must_use] const fn parameters(&self) -> &RecipientParameters |759bc3278760b0fe
+crates/crypto/src/recipient.rs [pub] impl RecipientRecord :: #[must_use] const fn profile_id(&self) -> ProfileId |df5ab6b8c51852f1
+crates/crypto/src/recipient.rs [pub] impl RecipientRecord :: #[must_use] const fn recipient_id(&self) -> &[u8; IDENTIFIER_BYTES] |01e0d2a4d7c27ae2
+crates/crypto/src/recipient.rs [pub] impl RecipientRecord :: #[must_use] fn keystore_blob(&self) -> &[u8] |99e2a3f33208b4d5
+crates/crypto/src/recipient.rs [pub] impl RecipientRecord :: fn from_canonical_cbor(input: &[u8]) -> Result<Self, RecordError> |720129efbdf61f84
+crates/crypto/src/recipient.rs [pub] impl RecipientRecord :: fn to_canonical_cbor(&self) -> Result<Vec<u8>, RecordError> |c21c93b996088c9d
+crates/crypto/src/recipient.rs [pub] impl RecipientSet :: #[must_use] const fn new(profile_id: ProfileId) -> Self |2528c2df757dcd88
+crates/crypto/src/recipient.rs [pub] impl RecipientSet :: #[must_use] fn records(&self) -> &[RecipientRecord] |db2ed869ba6f22ae
+crates/crypto/src/recipient.rs [pub] impl RecipientSet :: fn from_canonical_cbor(input: &[u8]) -> Result<Self, RecordError> |910f2110d37d901f
+crates/crypto/src/recipient.rs [pub] impl RecipientSet :: fn push(&mut self, record: RecipientRecord) |b403eaa69f4ff965
+crates/crypto/src/recipient.rs [pub] impl RecipientSet :: fn to_canonical_cbor(&self) -> Result<Vec<u8>, RecordError> |b781f9cafa6bd604
+crates/crypto/src/recovery.rs [priv] #[cfg(test)] mod tests
+crates/crypto/src/recovery.rs [priv] const THROTTLE_BASE_MS: u64 |769daede8e0e5511
+crates/crypto/src/recovery.rs [priv] const THROTTLE_CAP_MS: u64 |ef792c9331d15045
+crates/crypto/src/recovery.rs [priv] const THROTTLE_MAX_DOUBLINGS: u32 |3723abe3d3fc61ae
+crates/crypto/src/recovery.rs [priv] impl Argon2idProfile
+crates/crypto/src/recovery.rs [priv] impl Default for UnlockThrottle
+crates/crypto/src/recovery.rs [priv] impl Default for UnlockThrottle :: fn default() -> Self |c3f536c7c9daac49
+crates/crypto/src/recovery.rs [priv] impl UnlockThrottle
+crates/crypto/src/recovery.rs [priv] mod tests :: #[test] fn a_record_cannot_downgrade_or_invent_a_profile() |98d5dee5e267d13a
+crates/crypto/src/recovery.rs [priv] mod tests :: #[test] fn the_pinned_profile_is_versioned_and_exact() |64ef8cd4e6394db3
+crates/crypto/src/recovery.rs [priv] mod tests :: #[test] fn the_throttle_backs_off_and_clears_on_success() |7bfbd1b6471f4074
+crates/crypto/src/recovery.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/crypto/src/recovery.rs [priv] use argon2::{Algorithm, Argon2, Params, Version} |aad0f8a8ffec460c
+crates/crypto/src/recovery.rs [priv] use crate::{ keys::{IDENTIFIER_BYTES, KEY_BYTES, RecipientWrapKey, RecoverySecret}, recipient::RecordError, } |8084ef5804673693
+crates/crypto/src/recovery.rs [priv] use zeroize::Zeroizing |df92b00a7874c4a0
+crates/crypto/src/recovery.rs [pub(crate)] impl Argon2idProfile :: fn from_record( identifier: &str, memory_kib: u32, iterations: u32, parallelism: u32, ) -> Result<Self, RecordError> |487016543e1cd878
+crates/crypto/src/recovery.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Argon2idProfile |d350a4a67b6d1190
+crates/crypto/src/recovery.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct UnlockThrottle |746ef71cacf41aef
+crates/crypto/src/recovery.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RecoveryError |6c4bd741c01152f2
+crates/crypto/src/recovery.rs [pub] const PINNED_PROFILES: &[Argon2idProfile] |2723694eec4140a3
+crates/crypto/src/recovery.rs [pub] const RECOVERY_ARGON2ID_V1: Argon2idProfile |50e9ac9a4708f83e
+crates/crypto/src/recovery.rs [pub] impl Argon2idProfile :: fn derive_wrap_key( self, secret: &RecoverySecret, salt: &[u8; IDENTIFIER_BYTES], ) -> Result<RecipientWrapKey, RecoveryError> |9414b72fc02c2176
+crates/crypto/src/recovery.rs [pub] impl UnlockThrottle :: #[must_use] const fn consecutive_failures(&self) -> u32 |6eaadf6f72e2eff7
+crates/crypto/src/recovery.rs [pub] impl UnlockThrottle :: #[must_use] const fn new() -> Self |6b7be8ce3883178f
+crates/crypto/src/recovery.rs [pub] impl UnlockThrottle :: #[must_use] const fn wait_remaining_ms(&self, now_ms: u64) -> Option<u64> |d06b2e1e311dce0e
+crates/crypto/src/recovery.rs [pub] impl UnlockThrottle :: const fn record_failure(&mut self, now_ms: u64) |f47223bd090224c6
+crates/crypto/src/recovery.rs [pub] impl UnlockThrottle :: const fn record_success(&mut self) |d4fc9a11ebacce69
