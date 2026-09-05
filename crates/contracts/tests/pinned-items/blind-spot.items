@@ -7,12 +7,12 @@ crates/blind-spot/src/coverage.rs [priv] use academic_knowledge_state::{Eligible
 crates/blind-spot/src/coverage.rs [priv] use crate::{BlindSpotError, resolution::FieldResolver, scope::BlindSpotScope} |b1b0d0575396408a
 crates/blind-spot/src/coverage.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/blind-spot/src/coverage.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
-crates/blind-spot/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceDiversity |7bf01f31680348ba
-crates/blind-spot/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExposureSource |298dc162792238c6
+crates/blind-spot/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceDiversity |789305fd350e2b17
+crates/blind-spot/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExposureSource |0fcbbd00c2115933
 crates/blind-spot/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExposureItem |0a433f10039c7497
 crates/blind-spot/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct FieldCoverage |26390ff3c7bcf74f
 crates/blind-spot/src/coverage.rs [pub] const EXPOSURE_SOURCES: [ExposureSource; 5] |5c78d7fdcfcde32b
-crates/blind-spot/src/coverage.rs [pub] impl EvidenceDiversity :: #[must_use] const fn as_str(self) -> &'static str |39c54d7f133b9a4f
+crates/blind-spot/src/coverage.rs [pub] impl EvidenceDiversity :: #[must_use] const fn as_str(self) -> &'static str |336a29124db39306
 crates/blind-spot/src/coverage.rs [pub] impl EvidenceDiversity :: #[must_use] const fn of_distinct_sources(distinct: usize) -> Self |ccd1ca7bdd95b5b6
 crates/blind-spot/src/coverage.rs [pub] impl ExposureItem :: #[must_use] const fn evidence(&self) -> &EligibleEvidence |b158e9088a97ba9b
 crates/blind-spot/src/coverage.rs [pub] impl ExposureItem :: #[must_use] const fn observed_at(&self) -> TimestampMillis |749fa84cdb818501
@@ -21,8 +21,8 @@ crates/blind-spot/src/coverage.rs [pub] impl ExposureItem :: #[must_use] const f
 crates/blind-spot/src/coverage.rs [pub] impl ExposureItem :: #[must_use] fn concept(&self) -> EntityId |9640d54ec2b64414
 crates/blind-spot/src/coverage.rs [pub] impl ExposureItem :: #[must_use] fn evidence_id(&self) -> EvidenceId |d79e6f99fc5e25f8
 crates/blind-spot/src/coverage.rs [pub] impl ExposureItem :: #[must_use] fn records_difficulty(&self) -> bool |9522d397e51b6ccd
-crates/blind-spot/src/coverage.rs [pub] impl ExposureSource :: #[must_use] const fn as_str(self) -> &'static str |f875bf6be41c046b
-crates/blind-spot/src/coverage.rs [pub] impl ExposureSource :: #[must_use] const fn design_token(self) -> &'static str |48e40b80961751a7
+crates/blind-spot/src/coverage.rs [pub] impl ExposureSource :: #[must_use] const fn as_str(self) -> &'static str |060081abb00cd185
+crates/blind-spot/src/coverage.rs [pub] impl ExposureSource :: #[must_use] const fn design_token(self) -> &'static str |66b6b4ddc33e76bd
 crates/blind-spot/src/coverage.rs [pub] impl FieldCoverage :: #[must_use] const fn by_source(&self) -> &BTreeMap<ExposureSource, u32> |c38ccb9a3ff14947
 crates/blind-spot/src/coverage.rs [pub] impl FieldCoverage :: #[must_use] const fn evidence_count(&self) -> u32 |52cd52e160279d0f
 crates/blind-spot/src/coverage.rs [pub] impl FieldCoverage :: #[must_use] const fn key(&self) -> EntityId |fa7967edbfba97cb
@@ -43,18 +43,18 @@ crates/blind-spot/src/disposition.rs [priv] use crate::BlindSpotError |2f0e67ffd
 crates/blind-spot/src/disposition.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/blind-spot/src/disposition.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
 crates/blind-spot/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct UserDispositionChoice |34fbb18c368fe99a
-crates/blind-spot/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UserDisposition |cdd0a069d1fd8c0f
+crates/blind-spot/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UserDisposition |257d03961146fd8a
 crates/blind-spot/src/disposition.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct DispositionLedger |183c28c0a9e4072b
 crates/blind-spot/src/disposition.rs [pub] const DISPOSITIONS: [UserDisposition; 4] |e3c77d29bcce9621
-crates/blind-spot/src/disposition.rs [pub] const DISPOSITION_PREDICATE: &str |5ab244d08c6e8ac1
-crates/blind-spot/src/disposition.rs [pub] const SCHEMA_EXAMPLE_DISPOSITION: &str |eb668445e6d805d4
+crates/blind-spot/src/disposition.rs [pub] const DISPOSITION_PREDICATE: &str |675e73ead1a26ad0
+crates/blind-spot/src/disposition.rs [pub] const SCHEMA_EXAMPLE_DISPOSITION: &str |e1fa3c24ff368be6
 crates/blind-spot/src/disposition.rs [pub] impl DispositionLedger :: #[must_use] fn fields(&self) -> Vec<EntityId> |df4a9f6075772ba0
 crates/blind-spot/src/disposition.rs [pub] impl DispositionLedger :: #[must_use] fn is_empty(&self) -> bool |8571b70138db480b
 crates/blind-spot/src/disposition.rs [pub] impl DispositionLedger :: #[must_use] fn len(&self) -> usize |a39bcf820ac92d41
 crates/blind-spot/src/disposition.rs [pub] impl DispositionLedger :: #[must_use] fn new() -> Self |c678e22912327081
 crates/blind-spot/src/disposition.rs [pub] impl DispositionLedger :: #[must_use] fn standing(&self, field: EntityId) -> Option<&UserDispositionChoice> |d4fd7a44a7075a85
 crates/blind-spot/src/disposition.rs [pub] impl DispositionLedger :: fn record(mut self, choice: UserDispositionChoice) -> Result<Self, BlindSpotError> |2381852a1ea8afb4
-crates/blind-spot/src/disposition.rs [pub] impl UserDisposition :: #[must_use] const fn as_str(self) -> &'static str |6c0d3c349a444287
+crates/blind-spot/src/disposition.rs [pub] impl UserDisposition :: #[must_use] const fn as_str(self) -> &'static str |be44da4b318a2e1e
 crates/blind-spot/src/disposition.rs [pub] impl UserDisposition :: #[must_use] const fn needs_deadline(self) -> bool |6ff83d67f8262ff0
 crates/blind-spot/src/disposition.rs [pub] impl UserDispositionChoice :: #[must_use] const fn chosen_at(self) -> TimestampMillis |028ca837b96c2535
 crates/blind-spot/src/disposition.rs [pub] impl UserDispositionChoice :: #[must_use] const fn disposition(self) -> UserDisposition |18f71d6aae53f001
@@ -80,8 +80,8 @@ crates/blind-spot/src/finding.rs [priv] use crate::{ coverage::EvidenceDiversity
 crates/blind-spot/src/finding.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/blind-spot/src/finding.rs [pub(crate)] impl BlindSpotFinding :: #[must_use] #[allow(clippy::too_many_arguments)] const fn assemble( field: EntityId, scope: String, exposure_evidence_count: u32, evidence_diversity: EvidenceDiversity, basis: StateBasis, relevance_to_active_goals: GoalRelevance, likely_cause: SkewExplanation, user_disposition: Option<UserDisposition>, presentation: FindingPresentation, warns: bool, ) -> Self |57e68a67ac588613
 crates/blind-spot/src/finding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BlindSpotFinding |68f3d277a9d3e27f
-crates/blind-spot/src/finding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct BlindSpotFindingWire |ffacddf738e7cf12
-crates/blind-spot/src/finding.rs [pub] const FINDING_FIELDS: [&str; 8] |4201311f8c46baf2
+crates/blind-spot/src/finding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct BlindSpotFindingWire |326115e0d59478d2
+crates/blind-spot/src/finding.rs [pub] const FINDING_FIELDS: [&str; 8] |7d5963db725582fa
 crates/blind-spot/src/finding.rs [pub] impl BlindSpotFinding :: #[must_use] const fn basis(&self) -> &StateBasis |38a542b15114db2e
 crates/blind-spot/src/finding.rs [pub] impl BlindSpotFinding :: #[must_use] const fn classification(&self) -> BlindSpotState |7662e14b7c325d0d
 crates/blind-spot/src/finding.rs [pub] impl BlindSpotFinding :: #[must_use] const fn evidence_diversity(&self) -> EvidenceDiversity |b27150c4126fc589
@@ -94,7 +94,7 @@ crates/blind-spot/src/finding.rs [pub] impl BlindSpotFinding :: #[must_use] cons
 crates/blind-spot/src/finding.rs [pub] impl BlindSpotFinding :: #[must_use] const fn warns(&self) -> bool |706a86dc440fdad9
 crates/blind-spot/src/finding.rs [pub] impl BlindSpotFinding :: #[must_use] fn scope(&self) -> &str |9dc49905de5c9ff9
 crates/blind-spot/src/finding.rs [pub] impl BlindSpotFinding :: #[must_use] fn to_wire(&self) -> BlindSpotFindingWire |07c60d9b3da65e2c
-crates/blind-spot/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum BlindSpotError |8f15b2ca13036826
+crates/blind-spot/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum BlindSpotError |72c736f250a12425
 crates/blind-spot/src/lib.rs [pub] mod coverage
 crates/blind-spot/src/lib.rs [pub] mod detector
 crates/blind-spot/src/lib.rs [pub] mod disposition
@@ -123,14 +123,14 @@ crates/blind-spot/src/presentation.rs [priv] impl FindingPresentation
 crates/blind-spot/src/presentation.rs [priv] impl NeutralPresentation
 crates/blind-spot/src/presentation.rs [priv] use crate::{ relevance::GoalRelevance, state::{BLIND_SPOT_STATES, BlindSpotState}, taste::TastePath, } |bcb6ed620518c092
 crates/blind-spot/src/presentation.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/blind-spot/src/presentation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum FindingPresentation |a33bcd338b7e0a1d
+crates/blind-spot/src/presentation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum FindingPresentation |7c7ea9ff406576aa
 crates/blind-spot/src/presentation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct NeutralPresentation |89f865f484cb5af1
 crates/blind-spot/src/presentation.rs [pub] #[must_use] const fn headline(state: BlindSpotState) -> &'static str |879a9a80736d977b
 crates/blind-spot/src/presentation.rs [pub] #[must_use] fn renderable_copy() -> Vec<&'static str> |43cd73277548a865
-crates/blind-spot/src/presentation.rs [pub] const CANNOT_INFER_ABILITY: &str |e28ab958276f31ef
-crates/blind-spot/src/presentation.rs [pub] const CLAIM_ABOUT_THE_PERSON: &str |83c8e1ef70777fe4
-crates/blind-spot/src/presentation.rs [pub] const EMPHASIS: &str |1e25eb7d873e9ea0
-crates/blind-spot/src/presentation.rs [pub] const NOT_A_JUDGEMENT_OF_ABILITY: &str |a37ac5ab81495c6c
+crates/blind-spot/src/presentation.rs [pub] const CANNOT_INFER_ABILITY: &str |b65565cecafdbb3c
+crates/blind-spot/src/presentation.rs [pub] const CLAIM_ABOUT_THE_PERSON: &str |1020df4d9ba1c13b
+crates/blind-spot/src/presentation.rs [pub] const EMPHASIS: &str |e30a8e449434ae75
+crates/blind-spot/src/presentation.rs [pub] const NOT_A_JUDGEMENT_OF_ABILITY: &str |dfa831a3561a698d
 crates/blind-spot/src/presentation.rs [pub] impl FindingPresentation :: #[must_use] const fn path(&self) -> Option<&TastePath> |f5a40eafb8e2c715
 crates/blind-spot/src/presentation.rs [pub] impl FindingPresentation :: #[must_use] const fn presentation(&self) -> &NeutralPresentation |9050966cfc7d3a70
 crates/blind-spot/src/presentation.rs [pub] impl NeutralPresentation :: #[must_use] const fn emphasis(&self) -> &'static str |c01854fd351d68a9
@@ -163,7 +163,7 @@ crates/blind-spot/src/relevance.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, S
 crates/blind-spot/src/relevance.rs [pub] impl GoalRelevance :: #[must_use] const fn citing_goals(&self) -> &BTreeSet<EntityId> |0861f5d62db33ed1
 crates/blind-spot/src/relevance.rs [pub] impl GoalRelevance :: #[must_use] const fn none() -> Self |0cd942aae174e303
 crates/blind-spot/src/relevance.rs [pub] impl GoalRelevance :: #[must_use] const fn of(citing_goals: BTreeSet<EntityId>) -> Self |63367c23a7505882
-crates/blind-spot/src/relevance.rs [pub] impl GoalRelevance :: #[must_use] fn as_str(&self) -> &'static str |611685b3240ce16a
+crates/blind-spot/src/relevance.rs [pub] impl GoalRelevance :: #[must_use] fn as_str(&self) -> &'static str |2e08bcf9abe08141
 crates/blind-spot/src/relevance.rs [pub] impl GoalRelevance :: #[must_use] fn is_low(&self) -> bool |6176056b2b198377
 crates/blind-spot/src/resolution.rs [priv] impl FieldResolver
 crates/blind-spot/src/resolution.rs [priv] use academic_domain::{ EntityId, ontology::{TaxonomyNode, VersionedTaxonomyImport}, } |43234cd0d668e734
@@ -180,20 +180,20 @@ crates/blind-spot/src/scope.rs [priv] impl TaxonomyGranularity
 crates/blind-spot/src/scope.rs [priv] use academic_domain::{ TimestampMillis, entity_registry::EntityKind, ontology::TaxonomyVersionIdentity, } |bebbb08be9008085
 crates/blind-spot/src/scope.rs [priv] use crate::BlindSpotError |2f0e67ffdb10518d
 crates/blind-spot/src/scope.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/blind-spot/src/scope.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TaxonomyGranularity |c872ee9a02ac8b16
-crates/blind-spot/src/scope.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum ObservationWindow |20fe4ec0b7a66d46
+crates/blind-spot/src/scope.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TaxonomyGranularity |a083ede3fa17dd23
+crates/blind-spot/src/scope.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum ObservationWindow |152dbeee46ead171
 crates/blind-spot/src/scope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BlindSpotScope |71fbe1fc382f07c3
 crates/blind-spot/src/scope.rs [pub] const GRANULARITIES: [TaxonomyGranularity; 3] |16ee09f3f7841ca8
 crates/blind-spot/src/scope.rs [pub] impl BlindSpotScope :: #[must_use] const fn granularity(&self) -> TaxonomyGranularity |5dc618d3aedaf050
 crates/blind-spot/src/scope.rs [pub] impl BlindSpotScope :: #[must_use] const fn minimum_exposure(&self) -> u32 |e5b4ddf628086f27
 crates/blind-spot/src/scope.rs [pub] impl BlindSpotScope :: #[must_use] const fn taxonomy(&self) -> &TaxonomyVersionIdentity |4ae0936e127038ea
 crates/blind-spot/src/scope.rs [pub] impl BlindSpotScope :: #[must_use] const fn window(&self) -> ObservationWindow |39bc5d28686e4b4b
-crates/blind-spot/src/scope.rs [pub] impl BlindSpotScope :: #[must_use] fn label(&self) -> String |5c9779feda9d7e9c
+crates/blind-spot/src/scope.rs [pub] impl BlindSpotScope :: #[must_use] fn label(&self) -> String |c1bddc44d1ba16b2
 crates/blind-spot/src/scope.rs [pub] impl BlindSpotScope :: fn select( taxonomy: TaxonomyVersionIdentity, granularity: TaxonomyGranularity, window: ObservationWindow, minimum_exposure: u32, ) -> Result<Self, BlindSpotError> |fbe82e1893dca567
-crates/blind-spot/src/scope.rs [pub] impl ObservationWindow :: #[must_use] const fn as_str(self) -> &'static str |07ceb7a79ae5a10c
+crates/blind-spot/src/scope.rs [pub] impl ObservationWindow :: #[must_use] const fn as_str(self) -> &'static str |0defbf24cf59ddff
 crates/blind-spot/src/scope.rs [pub] impl ObservationWindow :: #[must_use] fn holds(self, at: TimestampMillis) -> bool |8d61e2bddf3794a9
 crates/blind-spot/src/scope.rs [pub] impl ObservationWindow :: fn between(from: TimestampMillis, to: TimestampMillis) -> Result<Self, BlindSpotError> |9a258f94acc00f73
-crates/blind-spot/src/scope.rs [pub] impl TaxonomyGranularity :: #[must_use] const fn as_str(self) -> &'static str |f4095a26c1d0fabc
+crates/blind-spot/src/scope.rs [pub] impl TaxonomyGranularity :: #[must_use] const fn as_str(self) -> &'static str |72705592a8e8a26c
 crates/blind-spot/src/scope.rs [pub] impl TaxonomyGranularity :: #[must_use] const fn tier(self) -> EntityKind |b9d26de51460957f
 crates/blind-spot/src/state.rs [priv] impl BelowMinimum
 crates/blind-spot/src/state.rs [priv] impl BlindSpotState
@@ -210,8 +210,8 @@ crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)
 crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct GoalBlock |503e1a4764a8cbf3
 crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct LowRecency |8266698c983e2f2c
 crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ScopeExclusion |06c9d0359672cf62
-crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BlindSpotState |9573de1ad472a497
-crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExposureClass |4d2706592f10c237
+crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BlindSpotState |b9841a028de65342
+crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExposureClass |a333c2bb13341de2
 crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum StateBasis |d14425197db81f57
 crates/blind-spot/src/state.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ObservedDifficulty |81d376b76138a8b6
 crates/blind-spot/src/state.rs [pub] #[must_use] const fn state_of(basis: &StateBasis) -> BlindSpotState |6410b346e581228a
@@ -221,8 +221,8 @@ crates/blind-spot/src/state.rs [pub] const LOW_RECENCY_BANDS: [FreshnessBand; 2]
 crates/blind-spot/src/state.rs [pub] impl BelowMinimum :: #[must_use] const fn minimum(self) -> u32 |29b25769332375e5
 crates/blind-spot/src/state.rs [pub] impl BelowMinimum :: #[must_use] const fn observed(self) -> u32 |bfa4cdf26b94a76b
 crates/blind-spot/src/state.rs [pub] impl BelowMinimum :: const fn of(observed: u32, minimum: u32) -> Result<Self, BlindSpotError> |0c9d7b221691d129
-crates/blind-spot/src/state.rs [pub] impl BlindSpotState :: #[must_use] const fn as_str(self) -> &'static str |294196a6335c1cda
-crates/blind-spot/src/state.rs [pub] impl BlindSpotState :: #[must_use] const fn meaning(self) -> &'static str |c3019079f92c1d79
+crates/blind-spot/src/state.rs [pub] impl BlindSpotState :: #[must_use] const fn as_str(self) -> &'static str |94e1cf1b25405d61
+crates/blind-spot/src/state.rs [pub] impl BlindSpotState :: #[must_use] const fn meaning(self) -> &'static str |ce4a6b8691d4a203
 crates/blind-spot/src/state.rs [pub] impl GoalBlock :: #[must_use] const fn blocking_concept(self) -> EntityId |ad9332761868f665
 crates/blind-spot/src/state.rs [pub] impl GoalBlock :: #[must_use] const fn goal(self) -> EntityId |8faa1c2810c30011
 crates/blind-spot/src/state.rs [pub] impl GoalBlock :: fn of(goal: EntityId, blocking_concept: EntityId) -> Result<Self, BlindSpotError> |2c0f937d7954b378
@@ -238,11 +238,11 @@ crates/blind-spot/src/taste.rs [priv] impl TasteStep
 crates/blind-spot/src/taste.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
 crates/blind-spot/src/taste.rs [priv] use crate::{ BlindSpotError, disposition::{UserDisposition, UserDispositionChoice}, } |f09c8e9d79d4887f
 crates/blind-spot/src/taste.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/blind-spot/src/taste.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TasteStep |61d48086402b5581
+crates/blind-spot/src/taste.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TasteStep |6b597f49a2525f1c
 crates/blind-spot/src/taste.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] struct TastePath |368a459b0755c7b9
 crates/blind-spot/src/taste.rs [pub] const TASTE_STEPS: [TasteStep; 3] |96431df5264ab514
 crates/blind-spot/src/taste.rs [pub] impl TastePath :: #[must_use] const fn key(self) -> EntityId |07410953c260c9ed
 crates/blind-spot/src/taste.rs [pub] impl TastePath :: #[must_use] const fn step(self) -> TasteStep |c469b16e86207440
 crates/blind-spot/src/taste.rs [pub] impl TastePath :: fn for_explore( choice: &UserDispositionChoice, key: EntityId, step: TasteStep, ) -> Result<Self, BlindSpotError> |c65e93531a78bdd2
-crates/blind-spot/src/taste.rs [pub] impl TasteStep :: #[must_use] const fn as_str(self) -> &'static str |e07630c38518b721
-crates/blind-spot/src/taste.rs [pub] impl TasteStep :: #[must_use] const fn design_token(self) -> &'static str |3a9fd1420728417d
+crates/blind-spot/src/taste.rs [pub] impl TasteStep :: #[must_use] const fn as_str(self) -> &'static str |5dd21272d28bf3c3
+crates/blind-spot/src/taste.rs [pub] impl TasteStep :: #[must_use] const fn design_token(self) -> &'static str |20e63e1b2177e7fa

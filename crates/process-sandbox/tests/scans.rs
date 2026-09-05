@@ -309,6 +309,17 @@ fn declared_surface(code: &str) -> Vec<String> {
             ));
         } else if trimmed.starts_with("#[derive(") {
             found.push(collapse(trimmed));
+        } else if let Some(rest) = trimmed.strip_prefix("macro_rules! ") {
+            // An exported macro is a public item of this crate and the five
+            // `pub …` prefixes below do not begin with `pub`. `P2-RF31` added
+            // `class_main!` and this whole set passed unchanged, which is the
+            // same line-prefix hole `P2-A5` recorded three times elsewhere in
+            // this run; the name is enough here because the transcriber's own
+            // text is pinned by `crates/contracts/tests/pinned-items`.
+            found.push(format!(
+                "macro_rules! {}",
+                collapse(rest.trim_end_matches('{').trim())
+            ));
         } else if trimmed.starts_with("pub fn ")
             || trimmed.starts_with("pub const fn ")
             || trimmed.starts_with("pub const ")
@@ -356,6 +367,7 @@ fn the_declared_surface_of_this_crate_is_reviewed() -> TestResult {
             "impl Enforcement",
             "impl EnforcementBasis",
             "impl fmt::Display for BackendId",
+            "macro_rules! class_main",
             "pub const NO_BACKEND_COMPILED: &str",
             "pub const UNSUPPORTED_PLATFORM: &str",
             "pub const WINDOWS_HAS_NO_SELF_APPLIED_MECHANISM: &str",
@@ -377,6 +389,30 @@ fn the_declared_surface_of_this_crate_is_reviewed() -> TestResult {
         ],
         "this crate's declared surface changed: a trait impl, a derive, a public \
          constructor or a public constant was added or removed"
+    );
+
+    // The reader is exercised against a sample of every arm it has, so an arm
+    // that matched nothing would make the whole set above pass over a smaller
+    // set than the crate declares. The macro arm is the one `P2-RF31` added
+    // after measuring that `class_main!` joined this crate's public surface
+    // with this comparison unchanged.
+    assert_eq!(
+        declared_surface(
+            "impl A for B {\n#[derive(Debug)]\npub struct C;\npub enum D {}\n\
+             pub const E: u8 = 1;\npub fn f() {}\npub const fn g() {}\n\
+             macro_rules! h {\n"
+        ),
+        vec![
+            "#[derive(Debug)]",
+            "impl A for B",
+            "macro_rules! h",
+            "pub const E: u8",
+            "pub const fn g()",
+            "pub enum D",
+            "pub fn f()",
+            "pub struct C",
+        ],
+        "the surface reader lost an arm"
     );
     Ok(())
 }

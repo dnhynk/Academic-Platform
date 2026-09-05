@@ -1,0 +1,153 @@
+crates/rpc/build.rs [priv] fn main() -> Result<(), Box<dyn Error>> |d633e364e753fd14
+crates/rpc/build.rs [priv] use std::{env, error::Error, path::PathBuf} |e9de2ace2a9f1366
+crates/rpc/src/convert.rs [priv] #[cfg(test)] mod tests
+crates/rpc/src/convert.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct WireField<'a> |633142a3a38705c4
+crates/rpc/src/convert.rs [priv] fn acceptance_range( value: &generated::AcceptanceRange, ) -> Result<ValidatedAcceptanceRange, RpcError> |2739c872a2bf19a4
+crates/rpc/src/convert.rs [priv] fn admitted_canonical_json(receipt_digest: &str) -> Vec<u8> |a23e589d5b1be44d
+crates/rpc/src/convert.rs [priv] fn digest(bytes: &[u8], field: &'static str) -> Result<ContentDigest, RpcError> |581a65bf14157833
+crates/rpc/src/convert.rs [priv] fn exact_array<const WIDTH: usize>( bytes: &[u8], field: &'static str, ) -> Result<[u8; WIDTH], RpcError> |63d31477c0eaa125
+crates/rpc/src/convert.rs [priv] fn expect_wire(field: WireField<'_>, expected: u8) -> Result<(), RpcError> |95baaa4eaaaa9d87
+crates/rpc/src/convert.rs [priv] fn idempotency_key(bytes: &[u8], field: &'static str) -> Result<IdempotencyKey, RpcError> |4c78e6fd4fbcd8ac
+crates/rpc/src/convert.rs [priv] fn insert_once(seen: &mut BTreeSet<u32>, message: &'static str, tag: u32) -> Result<(), RpcError> |ade29593b5d2f0f6
+crates/rpc/src/convert.rs [priv] fn malformed(detail: impl Into<String>) -> RpcError |d8463ff0112691bc
+crates/rpc/src/convert.rs [priv] fn nested_bytes<'a>(field: WireField<'a>) -> Result<&'a [u8], RpcError> |11e43cb8eb786c8f
+crates/rpc/src/convert.rs [priv] fn next_wire_field<'a>(bytes: &'a [u8], cursor: &mut usize) -> Result<WireField<'a>, RpcError> |b3039fd84d9d4f6e
+crates/rpc/src/convert.rs [priv] fn opaque_id(bytes: &[u8], field: &'static str) -> Result<OpaqueId, RpcError> |972c0c7bceb9f620
+crates/rpc/src/convert.rs [priv] fn read_key(bytes: &[u8], cursor: &mut usize) -> Result<(u32, u8), RpcError> |e82e49772f426ae8
+crates/rpc/src/convert.rs [priv] fn read_varint(bytes: &[u8], cursor: &mut usize) -> Result<u64, RpcError> |05c2fd6b24a91dcf
+crates/rpc/src/convert.rs [priv] fn read_wire_value<'a>( bytes: &'a [u8], cursor: &mut usize, wire_type: u8, tag: u32, depth: usize, ) -> Result<Option<&'a [u8]>, RpcError> |2d2189e339fc474e
+crates/rpc/src/convert.rs [priv] fn skip_group( bytes: &[u8], cursor: &mut usize, opening_tag: u32, depth: usize, ) -> Result<(), RpcError> |6be7a227f2c40f6d
+crates/rpc/src/convert.rs [priv] fn take_bytes<'a>( bytes: &'a [u8], cursor: &mut usize, length: usize, ) -> Result<&'a [u8], RpcError> |8be9bf36082dcba4
+crates/rpc/src/convert.rs [priv] fn validate_backup_command_wire(bytes: &[u8]) -> Result<(), RpcError> |bed84673674da09e
+crates/rpc/src/convert.rs [priv] fn validate_ingest_command_wire(bytes: &[u8]) -> Result<(), RpcError> |1c15b6856d906d69
+crates/rpc/src/convert.rs [priv] fn validate_mutable_request_wire(bytes: &[u8]) -> Result<(), RpcError> |78815fd22647c391
+crates/rpc/src/convert.rs [priv] fn validate_nonempty_bounded( value: &str, field: &'static str, maximum: usize, ) -> Result<(), RpcError> |85e70dca4fc9bd21
+crates/rpc/src/convert.rs [priv] fn validate_receipt(receipt: &generated::ImmutableReceipt) -> Result<ValidatedReceipt, RpcError> |53ebe8c954e62606
+crates/rpc/src/convert.rs [priv] fn validate_restore_command_wire(bytes: &[u8]) -> Result<(), RpcError> |4611138f18e5f960
+crates/rpc/src/convert.rs [priv] fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> |2e86ae18410e3bc7
+crates/rpc/src/convert.rs [priv] impl IdempotencyKey
+crates/rpc/src/convert.rs [priv] impl OpaqueId
+crates/rpc/src/convert.rs [priv] mod tests :: #[test] fn an_admitted_handshake_validates_on_the_client() -> Result<(), RpcError> |225684414280364a
+crates/rpc/src/convert.rs [priv] mod tests :: const RECEIPT_DIGEST: &str |fcd219186d225d61
+crates/rpc/src/convert.rs [priv] mod tests :: fn admitted_policy() -> DataPosture |215919ded3dd2c37
+crates/rpc/src/convert.rs [priv] mod tests :: fn client() -> ClientHandshake |c69b3bdef6d3fe30
+crates/rpc/src/convert.rs [priv] mod tests :: use crate::{ ServerHandshakeConfig, generated::{ClientHandshake, DataPosture, ProtocolVersion}, handshake::negotiate_handshake, } |81b2940ae331053e
+crates/rpc/src/convert.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/rpc/src/convert.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/rpc/src/convert.rs [priv] use crate::{ PHASE1_PROTOCOL_POLICY, error::RpcError, generated::{ self, LocalCoreEnvelope, MutableRequest, MutableResponse, MutationStatus, ProfileLockState, ServerHandshake, WriteDisposition, local_core_envelope, mutable_request, }, handshake::{ LOCAL_CORE_PROTOCOL_NAME, LOCAL_CORE_PROTOCOL_VERSION, MINIMUM_CLIENT_VERSION, PHASE1_CAPABILITY_IDS, READ_ONLY_CAPABILITY_IDS, WRITE_CAPABILITY_IDS, expected_capability_for_command, protocol_version_from_proto, storage_schema_for, validate_capability_list, validate_client_handshake, }, limits::{ FrameClass, IDEMPOTENCY_KEY_BYTES, MAX_DAEMON_BUILD_BYTES, MAX_PROJECTION_STATES, MAX_PROTOBUF_NESTING_DEPTH, MAX_RESPONSE_REASON_BYTES, MAX_SYNTHETIC_FIXTURE_ID_BYTES, OPAQUE_ID_BYTES, SHA256_DIGEST_BYTES, }, } |6286b4cdb4b96bf8
+crates/rpc/src/convert.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ValidatedAcceptanceRange |cecebfc91c411551
+crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ValidatedReceipt |d030081b45ef7d65
+crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct IdempotencyKey([u8; IDEMPOTENCY_KEY_BYTES]) |87763333361b3717
+crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] struct OpaqueId([u8; OPAQUE_ID_BYTES]) |b64cd58702e2eff9
+crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ValidatedWriteCommand |5b41b1637b9dcbd5
+crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ValidatedMutableRequest |736e47ac3cbc4353
+crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ValidatedMutableResponse |5bbb21066dee57c5
+crates/rpc/src/convert.rs [pub] fn validate_closed_envelope_wire(bytes: &[u8]) -> Result<(), RpcError> |a4846fd9a642475e
+crates/rpc/src/convert.rs [pub] fn validate_envelope(envelope: &LocalCoreEnvelope) -> Result<FrameClass, RpcError> |21e804471a38bd96
+crates/rpc/src/convert.rs [pub] fn validate_mutable_request( request: &MutableRequest, ) -> Result<ValidatedMutableRequest, RpcError> |4da363c108e2e2dd
+crates/rpc/src/convert.rs [pub] fn validate_mutable_response( response: &MutableResponse, ) -> Result<ValidatedMutableResponse, RpcError> |0a775e7bf2e3552a
+crates/rpc/src/convert.rs [pub] impl IdempotencyKey :: #[must_use] const fn as_bytes(&self) -> &[u8; IDEMPOTENCY_KEY_BYTES] |734385d593496b44
+crates/rpc/src/convert.rs [pub] impl IdempotencyKey :: #[must_use] const fn from_bytes(bytes: [u8; IDEMPOTENCY_KEY_BYTES]) -> Self |dfc371c80e1b1b47
+crates/rpc/src/convert.rs [pub] impl OpaqueId :: #[must_use] const fn as_bytes(&self) -> &[u8; OPAQUE_ID_BYTES] |4af9a8fff33e5f8c
+crates/rpc/src/convert.rs [pub] impl OpaqueId :: #[must_use] const fn from_bytes(bytes: [u8; OPAQUE_ID_BYTES]) -> Self |5cfe7c4c46c5355b
+crates/rpc/src/error.rs [priv] impl Error for RpcError
+crates/rpc/src/error.rs [priv] impl From<io::Error> for RpcError
+crates/rpc/src/error.rs [priv] impl From<io::Error> for RpcError :: fn from(value: io::Error) -> Self |c7e631f3e973887e
+crates/rpc/src/error.rs [priv] impl From<prost::DecodeError> for RpcError
+crates/rpc/src/error.rs [priv] impl From<prost::DecodeError> for RpcError :: fn from(value: prost::DecodeError) -> Self |e2332c667af1af8f
+crates/rpc/src/error.rs [priv] impl From<prost::EncodeError> for RpcError
+crates/rpc/src/error.rs [priv] impl From<prost::EncodeError> for RpcError :: fn from(value: prost::EncodeError) -> Self |6348a28df27ba3e4
+crates/rpc/src/error.rs [priv] impl fmt::Display for RpcError
+crates/rpc/src/error.rs [priv] impl fmt::Display for RpcError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |d0ffa41d67e4adaa
+crates/rpc/src/error.rs [priv] use crate::limits::FrameClass |265fa7fd70157599
+crates/rpc/src/error.rs [priv] use std::{error::Error, fmt, io} |8f279776b3a7d951
+crates/rpc/src/error.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum FrameSection |a4d246c84b105562
+crates/rpc/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RpcError |6242a7670e618aaf
+crates/rpc/src/frame.rs [priv] async fn read_counted<R>( reader: &mut R, target: &mut [u8], section: FrameSection, ) -> Result<(), RpcError> where R: AsyncRead + Unpin, |25e34eeb2bc7ab32
+crates/rpc/src/frame.rs [priv] fn declared_payload_length( prefix: [u8; FRAME_PREFIX_BYTES], class: FrameClass, ) -> Result<usize, RpcError> |f14e8ace4d2d10da
+crates/rpc/src/frame.rs [priv] fn validate_payload_length(length: usize, class: FrameClass) -> Result<u32, RpcError> |7bac4ec4cec6e665
+crates/rpc/src/frame.rs [priv] use crate::{ error::{FrameSection, RpcError}, limits::{FRAME_PREFIX_BYTES, FrameClass}, } |e27d4e3b7b206174
+crates/rpc/src/frame.rs [priv] use prost::Message |870ff1cfdbec50e8
+crates/rpc/src/frame.rs [priv] use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt} |ad71f89188950499
+crates/rpc/src/frame.rs [pub] async fn read_frame<R>(reader: &mut R, class: FrameClass) -> Result<Vec<u8>, RpcError> where R: AsyncRead + Unpin, |01135e018b8446ff
+crates/rpc/src/frame.rs [pub] async fn write_frame<W>( writer: &mut W, payload: &[u8], class: FrameClass, ) -> Result<(), RpcError> where W: AsyncWrite + Unpin, |e496093ee121b1dc
+crates/rpc/src/frame.rs [pub] async fn write_message<W, M>( writer: &mut W, message: &M, class: FrameClass, ) -> Result<(), RpcError> where W: AsyncWrite + Unpin, M: Message, |bb02acbeb87e05e0
+crates/rpc/src/frame.rs [pub] fn decode_exact_frame(bytes: &[u8], class: FrameClass) -> Result<&[u8], RpcError> |98381e79b5baa9f9
+crates/rpc/src/frame.rs [pub] fn decode_message_frame<M>(bytes: &[u8], class: FrameClass) -> Result<M, RpcError> where M: Message + Default, |7bdf076975e7c00b
+crates/rpc/src/frame.rs [pub] fn encode_frame(payload: &[u8], class: FrameClass) -> Result<Vec<u8>, RpcError> |d5694c5133f1c83b
+crates/rpc/src/frame.rs [pub] fn encode_message_frame<M: Message>( message: &M, class: FrameClass, ) -> Result<Vec<u8>, RpcError> |17f9d48f9201cfcb
+crates/rpc/src/generated.rs [priv] const EXPECTED_CODEGEN_FNV1A64: u64 |4c4ae7f8b34e2121
+crates/rpc/src/generated.rs [priv] const EXPECTED_SCHEMA_FNV1A64: u64 |e3e82eae108792bc
+crates/rpc/src/generated.rs [priv] fn fnv1a64(bytes: &[u8]) -> u64 |601d1bccfa48d284
+crates/rpc/src/generated.rs [priv] include!(concat!(env!("OUT_DIR"), "/academic.v1.rs")) |77f0f0a178592621
+crates/rpc/src/generated.rs [pub] #[must_use] fn codegen_fingerprints_match() -> bool |fe708205c81e193f
+crates/rpc/src/handshake.rs [priv] const fn client_is_below_minimum(client: ProtocolVersion, minimum: ProtocolVersion) -> bool |1fc263e995cd1d0a
+crates/rpc/src/handshake.rs [priv] const fn negotiate_same_major_minor( client: ProtocolVersion, server: ProtocolVersion, ) -> ProtocolVersion |8a6be3ed01aa40bd
+crates/rpc/src/handshake.rs [priv] fn contains_capability(haystack: &[&str], needle: &str) -> bool |f52525c68cc35945
+crates/rpc/src/handshake.rs [priv] fn is_known_capability(capability: &str) -> bool |d118add5583026d0
+crates/rpc/src/handshake.rs [priv] fn policy_message(posture: &Posture) -> DataPosture |cd14d255d55de1b9
+crates/rpc/src/handshake.rs [priv] fn proto_version(version: ProtocolVersion) -> generated::ProtocolVersion |19dc41ca76aeb946
+crates/rpc/src/handshake.rs [priv] impl Default for ServerHandshakeConfig
+crates/rpc/src/handshake.rs [priv] impl Default for ServerHandshakeConfig :: fn default() -> Self |60fad6ddcfa45fac
+crates/rpc/src/handshake.rs [priv] impl ServerHandshakeConfig
+crates/rpc/src/handshake.rs [priv] use academic_admission::Posture |93dead50f1055ef4
+crates/rpc/src/handshake.rs [priv] use crate::{ error::RpcError, generated::{ self, ClientHandshake, DataPosture, MutableRequest, ProfileLockState, ServerHandshake, StorageSchemaVersion, WriteDisposition, mutable_request, }, limits::{MAX_CAPABILITY_ID_BYTES, MAX_CAPABILITY_IDS, MAX_DAEMON_BUILD_BYTES}, } |e52f8fd30b53c391
+crates/rpc/src/handshake.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/rpc/src/handshake.rs [pub(crate)] fn protocol_version_from_proto( value: Option<&generated::ProtocolVersion>, field: &'static str, ) -> Result<ProtocolVersion, RpcError> |d6b94215a47f700f
+crates/rpc/src/handshake.rs [pub(crate)] fn validate_capability_list(capabilities: &[String]) -> Result<(), RpcError> |4f561fdab0274cc1
+crates/rpc/src/handshake.rs [pub(crate)] fn validate_client_handshake( client: &ClientHandshake, ) -> Result<ProtocolVersion, RpcError> |f9bf316c9e7a369a
+crates/rpc/src/handshake.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] struct ProtocolVersion |a3e20509d3ee2a7b
+crates/rpc/src/handshake.rs [pub] #[derive(Debug, Clone, PartialEq)] struct ServerHandshakeConfig |2344961a5781448c
+crates/rpc/src/handshake.rs [pub] #[must_use] fn storage_schema_for(production_data_allowed: bool) -> StorageSchemaVersion |2039dbb2ede3d1d5
+crates/rpc/src/handshake.rs [pub] const LOCAL_CORE_PROTOCOL_NAME: &str |e67300611d5dd831
+crates/rpc/src/handshake.rs [pub] const LOCAL_CORE_PROTOCOL_VERSION: ProtocolVersion |aee7235371f80871
+crates/rpc/src/handshake.rs [pub] const MINIMUM_CLIENT_VERSION: ProtocolVersion |88ae8784f88e85d7
+crates/rpc/src/handshake.rs [pub] const PHASE1_CAPABILITY_IDS: &[&str] |1cadd81d8f4871d9
+crates/rpc/src/handshake.rs [pub] const READ_ONLY_CAPABILITY_IDS: &[&str] |8673b5eb5a98171e
+crates/rpc/src/handshake.rs [pub] const WRITE_CAPABILITY_IDS: &[&str] |c43db9f25dbdd42d
+crates/rpc/src/handshake.rs [pub] fn authorize_mutable_request( handshake: &ServerHandshake, request: &MutableRequest, ) -> Result<(), RpcError> |848b9f1833300c2f
+crates/rpc/src/handshake.rs [pub] fn expected_capability_for_command(command: &mutable_request::Command) -> &'static str |2d49a6cdbb9e791a
+crates/rpc/src/handshake.rs [pub] fn negotiate_handshake( client: &ClientHandshake, config: &ServerHandshakeConfig, ) -> Result<ServerHandshake, RpcError> |152c0f495f5d7053
+crates/rpc/src/handshake.rs [pub] impl ServerHandshakeConfig :: #[must_use] fn with_posture(mut self, posture: Posture) -> Self |7e3eb8ed8e7e0b97
+crates/rpc/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/rpc/src/lib.rs [priv] fn require_frame_class(actual: FrameClass, expected: FrameClass) -> Result<(), RpcError> |2b6186b5171493b2
+crates/rpc/src/lib.rs [priv] mod tests :: #[test] fn local_protocol_names_and_limits_are_frozen() |80a3503554e65d01
+crates/rpc/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/rpc/src/lib.rs [priv] use prost::Message |870ff1cfdbec50e8
+crates/rpc/src/lib.rs [priv] use tokio::io::{AsyncRead, AsyncWrite} |bf0ac0725ee6f1b6
+crates/rpc/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Phase1ProtocolPolicy |fbb1a9f75acc77bb
+crates/rpc/src/lib.rs [pub] #[must_use] fn committed_proto_codegen_matches() -> bool |1cbf4077ad5a65f2
+crates/rpc/src/lib.rs [pub] async fn read_envelope<R>( reader: &mut R, class: FrameClass, ) -> Result<generated::LocalCoreEnvelope, RpcError> where R: AsyncRead + Unpin, |c45176a5b0f8671e
+crates/rpc/src/lib.rs [pub] async fn write_envelope<W>( writer: &mut W, envelope: &generated::LocalCoreEnvelope, class: FrameClass, ) -> Result<(), RpcError> where W: AsyncWrite + Unpin, |4c64560a734f9d1d
+crates/rpc/src/lib.rs [pub] const LOCAL_CORE_PROTO_PACKAGE: &str |84bef993b97b70a4
+crates/rpc/src/lib.rs [pub] const PHASE1_POLICY_BANNER: &str |f6b77376e0df4444
+crates/rpc/src/lib.rs [pub] const PHASE1_PROTOCOL_POLICY: Phase1ProtocolPolicy |cdd8cfb077d78d1f
+crates/rpc/src/lib.rs [pub] fn decode_envelope_frame( bytes: &[u8], class: FrameClass, ) -> Result<generated::LocalCoreEnvelope, RpcError> |32053beb071bdf34
+crates/rpc/src/lib.rs [pub] fn decode_envelope_payload( payload: &[u8], class: FrameClass, ) -> Result<generated::LocalCoreEnvelope, RpcError> |eb75d17db0287587
+crates/rpc/src/lib.rs [pub] fn encode_envelope_frame( envelope: &generated::LocalCoreEnvelope, class: FrameClass, ) -> Result<Vec<u8>, RpcError> |d14c0f756953f8f1
+crates/rpc/src/lib.rs [pub] mod convert
+crates/rpc/src/lib.rs [pub] mod error
+crates/rpc/src/lib.rs [pub] mod frame
+crates/rpc/src/lib.rs [pub] mod generated
+crates/rpc/src/lib.rs [pub] mod handshake
+crates/rpc/src/lib.rs [pub] mod limits
+crates/rpc/src/lib.rs [pub] use error::{FrameSection, RpcError} |134d90b8c975dbbd
+crates/rpc/src/lib.rs [pub] use handshake::{ LOCAL_CORE_PROTOCOL_NAME, LOCAL_CORE_PROTOCOL_VERSION, MINIMUM_CLIENT_VERSION, PHASE1_CAPABILITY_IDS, ProtocolVersion, READ_ONLY_CAPABILITY_IDS, ServerHandshakeConfig, WRITE_CAPABILITY_IDS, authorize_mutable_request, expected_capability_for_command, negotiate_handshake, } |9e1f20428ab5c08e
+crates/rpc/src/lib.rs [pub] use limits::{ FRAME_PREFIX_BYTES, FrameClass, MAX_COMMAND_FRAME_BYTES, MAX_HANDSHAKE_FRAME_BYTES, } |7c1b50fd130bd0ef
+crates/rpc/src/limits.rs [priv] impl FrameClass
+crates/rpc/src/limits.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum FrameClass |9166cc3882715bf3
+crates/rpc/src/limits.rs [pub] const FRAME_PREFIX_BYTES: usize |c15a600875d8982b
+crates/rpc/src/limits.rs [pub] const IDEMPOTENCY_KEY_BYTES: usize |f0809a6f29ed598f
+crates/rpc/src/limits.rs [pub] const MAX_CAPABILITY_IDS: usize |325172f50ca175df
+crates/rpc/src/limits.rs [pub] const MAX_CAPABILITY_ID_BYTES: usize |c0155457ea7e33d7
+crates/rpc/src/limits.rs [pub] const MAX_COMMAND_FRAME_BYTES: usize |5f8b7b35136cfde7
+crates/rpc/src/limits.rs [pub] const MAX_DAEMON_BUILD_BYTES: usize |a65aa9d10cdc754e
+crates/rpc/src/limits.rs [pub] const MAX_HANDSHAKE_FRAME_BYTES: usize |2e55bc52da459bac
+crates/rpc/src/limits.rs [pub] const MAX_PROJECTION_STATES: usize |e06c41c13abf6591
+crates/rpc/src/limits.rs [pub] const MAX_PROTOBUF_NESTING_DEPTH: usize |cada91484d95575d
+crates/rpc/src/limits.rs [pub] const MAX_RESPONSE_REASON_BYTES: usize |732ffa42e5a92070
+crates/rpc/src/limits.rs [pub] const MAX_SYNTHETIC_FIXTURE_ID_BYTES: usize |db9f2e04eabe96ee
+crates/rpc/src/limits.rs [pub] const OPAQUE_ID_BYTES: usize |3a41ae577294fc11
+crates/rpc/src/limits.rs [pub] const SHA256_DIGEST_BYTES: usize |433498407d43fe68
+crates/rpc/src/limits.rs [pub] impl FrameClass :: #[must_use] const fn max_payload_bytes(self) -> usize |16d5a1f88a1364b5

@@ -2414,27 +2414,22 @@ fn main() {
 }
 `;
   }
-  return `use std::process::ExitCode;
-
-use academic_policy::ProcessClass;
+  // `P2-RF31`. An enforced boundary declares no `fn main` of its own: the
+  // whole of `main` is one expansion of `academic_process_sandbox::class_main!`,
+  // so there is no statement position above the sandbox entry. `P2-A5`'s sixth
+  // audit put a live `std::net` name resolution there and measured the whole
+  // Rust workspace green on both hosts; this file is the independent oracle on
+  // the same bytes, and it is why the comment is pinned too rather than
+  // stripped -- a comment is the one thing the Rust item reader is blind to.
+  return `use academic_policy::ProcessClass;
 
 const PROCESS_CLASS: ProcessClass = ProcessClass::${processClass};
 
-fn main() -> ExitCode {
-    match academic_process_sandbox::enter(PROCESS_CLASS) {
-        Ok(enforcement) => {
-            println!("{}", enforcement.receipt_line());
-            ExitCode::SUCCESS
-        }
-        Err(error) => {
-            eprintln!(
-                "{}",
-                academic_process_sandbox::refusal_line(PROCESS_CLASS, &error)
-            );
-            ExitCode::FAILURE
-        }
-    }
-}
+// The whole of \`main\`. \`P2-A5\`'s sixth audit put a live name resolution above
+// the sandbox entry in a hand-written \`main\` here and measured no difference
+// anywhere in the workspace; this crate now declares no \`fn main\` at all, so
+// there is no statement position above the entry to write one into.
+academic_process_sandbox::class_main!(PROCESS_CLASS);
 `;
 }
 

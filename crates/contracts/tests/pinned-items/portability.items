@@ -1,0 +1,465 @@
+crates/portability/src/backup.rs [priv] #[cfg(test)] mod tests
+crates/portability/src/backup.rs [priv] const BACKUP_PAGES_PER_STEP: i32 |ac622441f445aecc
+crates/portability/src/backup.rs [priv] const fn retention_name(value: academic_domain::RetentionClass) -> &'static str |d34d96ff2775216e
+crates/portability/src/backup.rs [priv] fn copy_database(source: &Connection, destination_path: &Path) -> PortabilityResult<()> |c456a313b4b28970
+crates/portability/src/backup.rs [priv] fn remove_sidecar_journals(database_path: &Path) -> PortabilityResult<()> |b013115ddecd409a
+crates/portability/src/backup.rs [priv] fn require_same_snapshot( source: &CanonicalRows, snapshot: &CanonicalRows, ) -> PortabilityResult<()> |744cf5c5651e85e7
+crates/portability/src/backup.rs [priv] mod tests :: #[test] fn backup_step_size_allows_an_interruptible_copy() |fb8c3d9cf0474ae9
+crates/portability/src/backup.rs [priv] mod tests :: #[test] fn embedded_schema_matches_the_frozen_backup_contract() -> PortabilityResult<()> |8fa9dd59f4e79901
+crates/portability/src/backup.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/backup.rs [priv] use academic_vault::{DomainKeyring, Vault} |1871b6e6ef91f166
+crates/portability/src/backup.rs [priv] use crate::{ PHASE1_BACKUP_FORMAT, PHASE1_BACKUP_MANIFEST_VERSION, PHASE1_BACKUP_PLAINTEXT_WARNING, PHASE1_PORTABILITY_GENERATOR, PortabilityError, PortabilityResult, checksum::{encode_hex, hash_file}, directory, fault::{self, PortabilityFaultPoint}, manifest::{BackupManifest, BackupSemantic, FileEntry, ObjectEntry}, verify::{ CanonicalDatabase, CanonicalRows, PolicyBlock, read_artifact_descriptors, read_canonical_rows, }, } |3d1c3d1c820d1c90
+crates/portability/src/backup.rs [priv] use rusqlite::{ Connection, backup::{Backup, StepResult}, } |235f4b86c354a513
+crates/portability/src/backup.rs [priv] use std::{ fs, path::{Path, PathBuf}, } |6a80078e40f46abb
+crates/portability/src/backup.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BackupReceipt |98fbe856152721db
+crates/portability/src/backup.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VerifiedBackup |98b57ff6a0ba1c8f
+crates/portability/src/backup.rs [pub] const BACKUP_MANIFEST_SCHEMA: &str |24ae20b02289cfda
+crates/portability/src/backup.rs [pub] const DATABASE_DIRECTORY: &str |65ee5627cffff789
+crates/portability/src/backup.rs [pub] const MANIFEST_FILE: &str |c0b6aac431a3e496
+crates/portability/src/backup.rs [pub] const MANIFEST_SCHEMA_FILE: &str |6a0d01190454c7bb
+crates/portability/src/backup.rs [pub] const OBJECTS_DIRECTORY: &str |276b68edf34281db
+crates/portability/src/backup.rs [pub] fn backup_profile( profile_root: &Path, destination: &Path, keyring: DomainKeyring, ) -> PortabilityResult<BackupReceipt> |b3fe9a12fc735690
+crates/portability/src/backup.rs [pub] fn find_unpublished_backups(destination: &Path) -> PortabilityResult<Vec<PathBuf>> |f8303d5642b944ad
+crates/portability/src/backup.rs [pub] fn remove_unpublished_backup(destination: &Path, staging: &Path) -> PortabilityResult<()> |10bc74cb999b2ff2
+crates/portability/src/backup.rs [pub] fn verify_backup_directory(root: &Path) -> PortabilityResult<VerifiedBackup> |1018b24870dc018b
+crates/portability/src/checksum.rs [priv] #[cfg(test)] mod tests
+crates/portability/src/checksum.rs [priv] const FILE_HASH_CHUNK_BYTES: usize |368ddceb7fbaf088
+crates/portability/src/checksum.rs [priv] const HEX_DIGITS: &[u8; 16] |03bcc408b59733e1
+crates/portability/src/checksum.rs [priv] const fn decode_hex_digit(byte: u8) -> Option<u8> |38ddc693921c586f
+crates/portability/src/checksum.rs [priv] impl CanonicalDigest
+crates/portability/src/checksum.rs [priv] mod tests :: #[test] fn absent_and_empty_optional_fields_differ() |e27289b9b74503e6
+crates/portability/src/checksum.rs [priv] mod tests :: #[test] fn hex_round_trip_is_exact_and_strict() |889b4a576f8d9c7a
+crates/portability/src/checksum.rs [priv] mod tests :: #[test] fn length_delimiting_prevents_field_boundary_collisions() |891f215c81e658ec
+crates/portability/src/checksum.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/checksum.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/portability/src/checksum.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/portability/src/checksum.rs [priv] use std::{ fs::File, io::{self, Read}, path::Path, } |c812b49bd38ed949
+crates/portability/src/checksum.rs [pub] #[derive(Debug)] struct CanonicalDigest |af75ca776b0a4c29
+crates/portability/src/checksum.rs [pub] #[must_use] fn decode_hex(value: &str) -> Option<Vec<u8>> |5a8b61f0fdf5f9e8
+crates/portability/src/checksum.rs [pub] #[must_use] fn encode_hex(bytes: &[u8]) -> String |fadf9df3c581b205
+crates/portability/src/checksum.rs [pub] fn hash_file(path: &Path) -> io::Result<(ContentDigest, u64)> |1e98894d6cf96527
+crates/portability/src/checksum.rs [pub] impl CanonicalDigest :: #[must_use] fn finish(self) -> ContentDigest |fd504f9a96c95613
+crates/portability/src/checksum.rs [pub] impl CanonicalDigest :: #[must_use] fn new(domain_separator: &str) -> Self |ebb2c1018e144950
+crates/portability/src/checksum.rs [pub] impl CanonicalDigest :: fn boolean(&mut self, value: bool) -> &mut Self |30e43109f8fbe0eb
+crates/portability/src/checksum.rs [pub] impl CanonicalDigest :: fn field(&mut self, bytes: &[u8]) -> &mut Self |ce5ed0134285f5be
+crates/portability/src/checksum.rs [pub] impl CanonicalDigest :: fn optional(&mut self, value: Option<&[u8]>) -> &mut Self |819f253c90fe1c62
+crates/portability/src/checksum.rs [pub] impl CanonicalDigest :: fn signed(&mut self, value: i64) -> &mut Self |bcbee4fd78d8ce9e
+crates/portability/src/checksum.rs [pub] impl CanonicalDigest :: fn text(&mut self, value: &str) -> &mut Self |6f74a910add8750a
+crates/portability/src/checksum.rs [pub] impl CanonicalDigest :: fn unsigned(&mut self, value: u64) -> &mut Self |37be5000a4ce2997
+crates/portability/src/encrypted/backup.rs [priv] const BACKUP_PAGES_PER_STEP: i32 |ac622441f445aecc
+crates/portability/src/encrypted/backup.rs [priv] const fn retention_name(value: academic_domain::RetentionClass) -> &'static str |d34d96ff2775216e
+crates/portability/src/encrypted/backup.rs [priv] fn copy_encrypted_database( source: &Connection, destination_path: &Path, key: &StoreKey, ) -> PortabilityResult<()> |e76045807c400494
+crates/portability/src/encrypted/backup.rs [priv] fn remove_sidecar_journals(database_path: &Path) -> PortabilityResult<()> |eaac85967cab54e7
+crates/portability/src/encrypted/backup.rs [priv] fn require_same_snapshot( source: &CanonicalRows, snapshot: &CanonicalRows, ) -> PortabilityResult<()> |19bdbd66a9e3d593
+crates/portability/src/encrypted/backup.rs [priv] impl fmt::Debug for BackupPlan<'_>
+crates/portability/src/encrypted/backup.rs [priv] impl fmt::Debug for BackupPlan<'_> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |d31c5486dde4f986
+crates/portability/src/encrypted/backup.rs [priv] use academic_crypto::{StoreKey, VaultMasterKey} |97589ed639124abb
+crates/portability/src/encrypted/backup.rs [priv] use academic_recovery::{BackupMasterKey, BackupRecipientSet, BackupSetId, RecoveryProfile} |114ec44c2b692b85
+crates/portability/src/encrypted/backup.rs [priv] use academic_vault::{EncryptedVault, SealedObjectVerifier as _} |9fcce54317f92da5
+crates/portability/src/encrypted/backup.rs [priv] use crate::{ PortabilityError, PortabilityResult, checksum::{encode_hex, hash_file}, directory, encrypted::{ DATABASE_DIRECTORY, FORMAT_MARKER_CONTENTS, FORMAT_MARKER_FILE, MANIFEST_FILE, ProfileKeys, RECIPIENTS_FILE, manifest::{ BACKUP_FORMAT, BACKUP_GENERATOR, BACKUP_MANIFEST_VERSION, EncryptedBackupManifest, EncryptedBackupSemantic, EncryptedObjectEntry, }, object_relative_path, require_unreadable_without_key, }, fault::{self, PortabilityFaultPoint}, manifest::FileEntry, verify::{ CanonicalDatabase, CanonicalRows, PolicyBlock, read_artifact_descriptors, read_canonical_rows, }, } |7d86475b7fd4698e
+crates/portability/src/encrypted/backup.rs [priv] use rusqlite::{ Connection, backup::{Backup, StepResult}, } |235f4b86c354a513
+crates/portability/src/encrypted/backup.rs [priv] use std::fmt |20996e02b97d7e41
+crates/portability/src/encrypted/backup.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/portability/src/encrypted/backup.rs [pub(crate)] fn may_be_shredded(error: &academic_vault::VaultError) -> bool |b7719f2f9bf8c86f
+crates/portability/src/encrypted/backup.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EncryptedBackupReceipt |100c6e8cb11aaf5c
+crates/portability/src/encrypted/backup.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VerifiedEncryptedBackup |0651d8d4e2fab10b
+crates/portability/src/encrypted/backup.rs [pub] fn backup_encrypted_profile( profile_root: &Path, destination: &Path, master: &VaultMasterKey, keys: &ProfileKeys, plan: &BackupPlan<'_>, ) -> PortabilityResult<EncryptedBackupReceipt> |ffcdcddc566c8b02
+crates/portability/src/encrypted/backup.rs [pub] fn find_unpublished_backups(destination: &Path) -> PortabilityResult<Vec<PathBuf>> |f8303d5642b944ad
+crates/portability/src/encrypted/backup.rs [pub] fn read_backup_recipients(root: &Path) -> PortabilityResult<BackupRecipientSet> |8fb65dee3ae511ec
+crates/portability/src/encrypted/backup.rs [pub] fn remove_unpublished_backup(destination: &Path, staging: &Path) -> PortabilityResult<()> |10bc74cb999b2ff2
+crates/portability/src/encrypted/backup.rs [pub] fn verify_encrypted_backup_directory( root: &Path, backup_root: &BackupMasterKey, ) -> PortabilityResult<VerifiedEncryptedBackup> |42a2a545a686f16e
+crates/portability/src/encrypted/backup.rs [pub] struct BackupPlan<'a> |a2b453038549cffe
+crates/portability/src/encrypted/manifest.rs [priv] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ObjectIdentity<'a> |e26e6b1b9b2e4fb9
+crates/portability/src/encrypted/manifest.rs [priv] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct SemanticIdentity<'a> |cb8c4d8d927ea81c
+crates/portability/src/encrypted/manifest.rs [priv] impl EncryptedBackupManifest
+crates/portability/src/encrypted/manifest.rs [priv] impl EncryptedBackupSemantic
+crates/portability/src/encrypted/manifest.rs [priv] use academic_recovery::{BackupMasterKey, BackupSetId, SealedManifest} |b0678f9278582e03
+crates/portability/src/encrypted/manifest.rs [priv] use crate::{ PortabilityError, PortabilityResult, manifest::{FileEntry, VolatileBlock, digest_of, require_sorted_unique}, verify::{ CanonicalCounts, CanonicalWatermark, DeviceHeadRow, PolicyBlock, StoreSchemaIdentity, }, } |226f581265434348
+crates/portability/src/encrypted/manifest.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/portability/src/encrypted/manifest.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct EncryptedBackupManifest |79f3596479805321
+crates/portability/src/encrypted/manifest.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct EncryptedBackupSemantic |f54d5a71263b3153
+crates/portability/src/encrypted/manifest.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct EncryptedObjectEntry |2fafd3db49b8bc61
+crates/portability/src/encrypted/manifest.rs [pub] const BACKUP_FORMAT: &str |f91fca0c4f69303a
+crates/portability/src/encrypted/manifest.rs [pub] const BACKUP_GENERATOR: &str |3f610c9ff1dabce5
+crates/portability/src/encrypted/manifest.rs [pub] const BACKUP_MANIFEST_VERSION: u32 |2656631a1f76328c
+crates/portability/src/encrypted/manifest.rs [pub] const IDENTITY_DIGEST_DOMAIN: &str |b13d257824e88024
+crates/portability/src/encrypted/manifest.rs [pub] const SEMANTIC_DIGEST_DOMAIN: &str |1ef7a24ae4461f73
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupManifest :: fn from_body_bytes(bytes: &[u8]) -> PortabilityResult<Self> |8c97b167f5c6d407
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupManifest :: fn new( semantic: EncryptedBackupSemantic, generated_at_unix_ms: i64, ) -> PortabilityResult<Self> |2a3f597a9429868c
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupManifest :: fn open(bytes: &[u8], root: &BackupMasterKey) -> PortabilityResult<Self> |2e2d569664b1e749
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupManifest :: fn require_contract(&self) -> PortabilityResult<()> |4e93a91aaad7e30b
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupManifest :: fn seal(&self, root: &BackupMasterKey, set_id: BackupSetId) -> PortabilityResult<Vec<u8>> |090d0f1221da60de
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupManifest :: fn to_body_bytes(&self) -> PortabilityResult<Vec<u8>> |cd34de416d30cde5
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupManifest :: fn verify_semantic_digest(&self) -> PortabilityResult<()> |861b29dc09ae4eb4
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupManifest :: fn verify_signature(bytes: &[u8]) -> PortabilityResult<()> |f320d2dfe16a0572
+crates/portability/src/encrypted/manifest.rs [pub] impl EncryptedBackupSemantic :: fn identity_digest(&self) -> PortabilityResult<String> |5ed0d677cde64eb7
+crates/portability/src/encrypted/mod.rs [priv] impl ProfileKeys
+crates/portability/src/encrypted/mod.rs [priv] use academic_crypto::{DomainKek, ProfileId, StoreKey, VaultMasterKey} |35f4a5d086cd8018
+crates/portability/src/encrypted/mod.rs [priv] use academic_domain::DomainId |ebb64ac42e30af06
+crates/portability/src/encrypted/mod.rs [priv] use academic_vault::EncryptedDomainKeyring |ce20f4377daf3152
+crates/portability/src/encrypted/mod.rs [priv] use crate::{PortabilityError, PortabilityResult} |b07f5a530e7a39c7
+crates/portability/src/encrypted/mod.rs [pub(crate)] fn object_relative_path(artifact_id: &str) -> PortabilityResult<String> |5235c85dcfd347ee
+crates/portability/src/encrypted/mod.rs [pub(crate)] fn require_unreadable_without_key( database_path: &std::path::Path, ) -> PortabilityResult<()> |b09b4d7fa291ee8c
+crates/portability/src/encrypted/mod.rs [pub] #[derive(Debug)] struct ProfileKeys |5529abc55d07e3d7
+crates/portability/src/encrypted/mod.rs [pub] #[must_use] fn database_relative_path() -> String |35395f1915e05f9c
+crates/portability/src/encrypted/mod.rs [pub] #[must_use] fn is_tombstone_path(relative: &str) -> bool |e6e601d1f99f62c8
+crates/portability/src/encrypted/mod.rs [pub] const DATABASE_DIRECTORY: &str |65ee5627cffff789
+crates/portability/src/encrypted/mod.rs [pub] const FORMAT_MARKER_CONTENTS: &str |354b90cedf02a238
+crates/portability/src/encrypted/mod.rs [pub] const FORMAT_MARKER_FILE: &str |b2340d0551f12c9e
+crates/portability/src/encrypted/mod.rs [pub] const MANIFEST_FILE: &str |7212f78d46b10b84
+crates/portability/src/encrypted/mod.rs [pub] const OBJECTS_DIRECTORY: &str |276b68edf34281db
+crates/portability/src/encrypted/mod.rs [pub] const RECIPIENTS_FILE: &str |50175dcc2cebd126
+crates/portability/src/encrypted/mod.rs [pub] const RESTORED_VAULT_OBJECTS_DIRECTORY: &str |398ef6b4b68e01f9
+crates/portability/src/encrypted/mod.rs [pub] const RESTORE_INCOMPLETE_MARKER: &str |cdf1aefb239f9929
+crates/portability/src/encrypted/mod.rs [pub] impl ProfileKeys :: #[must_use] const fn generation(&self) -> [u8; 32] |a7392837d2d6d50e
+crates/portability/src/encrypted/mod.rs [pub] impl ProfileKeys :: #[must_use] const fn profile_id(&self) -> ProfileId |df5ab6b8c51852f1
+crates/portability/src/encrypted/mod.rs [pub] impl ProfileKeys :: #[must_use] const fn store_key(&self) -> &StoreKey |d818141f6a5e9967
+crates/portability/src/encrypted/mod.rs [pub] impl ProfileKeys :: #[must_use] fn domains(&self) -> Vec<DomainId> |3f80967437c1398c
+crates/portability/src/encrypted/mod.rs [pub] impl ProfileKeys :: fn derive( master: &VaultMasterKey, profile_id: ProfileId, domains: &[DomainId], ) -> PortabilityResult<Self> |0aaf23018466e5b0
+crates/portability/src/encrypted/mod.rs [pub] impl ProfileKeys :: fn keyring(&self, master: &VaultMasterKey) -> PortabilityResult<EncryptedDomainKeyring> |8ae4087c198ff53e
+crates/portability/src/encrypted/mod.rs [pub] mod backup
+crates/portability/src/encrypted/mod.rs [pub] mod manifest
+crates/portability/src/encrypted/mod.rs [pub] mod restore
+crates/portability/src/encrypted/mod.rs [pub] mod rotation
+crates/portability/src/encrypted/restore.rs [priv] #[cfg(test)] mod tests
+crates/portability/src/encrypted/restore.rs [priv] fn apply_backup_tombstones( backup_root_directory: &Path, staging: &Path, ) -> PortabilityResult<AppliedTombstones> |ba591aa1bfc27ddd
+crates/portability/src/encrypted/restore.rs [priv] fn build_restored_profile( staging: &Path, verified: &VerifiedEncryptedBackup, recovered: &RecoveredProfileKeys, plan: &EncryptedRestorePlan<'_>, ) -> PortabilityResult<RestoreOutcome> |a3a9b117662e96ec
+crates/portability/src/encrypted/restore.rs [priv] fn remove_journal_sidecars(database_path: &Path) -> PortabilityResult<()> |231b43b708be6240
+crates/portability/src/encrypted/restore.rs [priv] fn remove_marker(staging: &Path, marker: &str) -> PortabilityResult<()> |23b740cece1f862d
+crates/portability/src/encrypted/restore.rs [priv] fn require_outside_backup( backup_root_directory: &Path, destination: &Path, ) -> PortabilityResult<()> |49b531d340326940
+crates/portability/src/encrypted/restore.rs [priv] fn restore_marker_contents(destination: &Path) -> String |8b8606b7028fedc1
+crates/portability/src/encrypted/restore.rs [priv] mod tests :: #[test] fn the_restore_marker_records_its_intended_destination() |8aa3dd7a93fbded1
+crates/portability/src/encrypted/restore.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/encrypted/restore.rs [priv] type RestoreOutcome = (ReplayReport, String, u64) |7a111ac098fb2e2b
+crates/portability/src/encrypted/restore.rs [priv] use academic_contracts::DeviceAuthorization |ee15a11cc213a7b3
+crates/portability/src/encrypted/restore.rs [priv] use academic_crypto::{ ProfileId, RecipientSet, RecoverySecret, UnlockThrottle, VaultMasterKey, unlock_with_recovery, } |423d30dc7807c784
+crates/portability/src/encrypted/restore.rs [priv] use academic_recovery::{ BackupMasterKey, BackupRecipientKind, BackupRecipientSet, RecoveryProfile, } |6d70555b19c1d2c7
+crates/portability/src/encrypted/restore.rs [priv] use academic_retention::engine::{AppliedTombstones, SparedObject, TombstonedArtifact} |4bb032abac49fa73
+crates/portability/src/encrypted/restore.rs [priv] use academic_store::{ INCOMPLETE_PROFILE_MARKER, cipher::prepare_encrypted_profile, path_policy::PathProbe, } |c4254517678c275f
+crates/portability/src/encrypted/restore.rs [priv] use academic_vault::{EncryptedVault, SealedObjectVerifier as _} |9fcce54317f92da5
+crates/portability/src/encrypted/restore.rs [priv] use crate::{ PortabilityError, PortabilityResult, RESTORE_INCOMPLETE_MARKER, checksum::{decode_hex, encode_hex}, directory, encrypted::{ ProfileKeys, backup::{ VerifiedEncryptedBackup, read_backup_recipients, verify_encrypted_backup_directory, }, manifest::EncryptedBackupManifest, require_unreadable_without_key, }, fault::{self, PortabilityFaultPoint}, verify::{CanonicalDatabase, ReplayReport, read_artifact_descriptors, read_canonical_rows}, } |580e35d14e4ea9b8
+crates/portability/src/encrypted/restore.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/portability/src/encrypted/restore.rs [pub] #[derive(Debug)] struct EncryptedRestorePlan<'a> |9bb4e11e21725790
+crates/portability/src/encrypted/restore.rs [pub] #[derive(Debug)] struct RecoveredProfileKeys |0430324eec63c343
+crates/portability/src/encrypted/restore.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EncryptedRestoreReceipt |cdb6a21f1d70fc9d
+crates/portability/src/encrypted/restore.rs [pub] fn find_unpublished_restores(destination: &Path) -> PortabilityResult<Vec<PathBuf>> |8b4662d0a7e019b9
+crates/portability/src/encrypted/restore.rs [pub] fn open_backup_with_secret( backup_root_directory: &Path, kind: BackupRecipientKind, secret: &RecoverySecret, ) -> PortabilityResult<(BackupMasterKey, BackupRecipientSet)> |ede5556e2a4dba37
+crates/portability/src/encrypted/restore.rs [pub] fn recover_profile_keys( verified: &VerifiedEncryptedBackup, secret: &RecoverySecret, now_ms: u64, ) -> PortabilityResult<RecoveredProfileKeys> |82172d9549e8496a
+crates/portability/src/encrypted/restore.rs [pub] fn remove_unpublished_restore(destination: &Path, staging: &Path) -> PortabilityResult<()> |dbfa46ae640db854
+crates/portability/src/encrypted/restore.rs [pub] fn restore_encrypted_profile<P: PathProbe + ?Sized>( backup_root_directory: &Path, destination: &Path, probe: &P, backup_root: &BackupMasterKey, recovered: &RecoveredProfileKeys, plan: &EncryptedRestorePlan<'_>, ) -> PortabilityResult<EncryptedRestoreReceipt> |49568d7b4c5c8dac
+crates/portability/src/encrypted/rotation.rs [priv] impl CanonicalReference for StoreCanonicalReference<'_>
+crates/portability/src/encrypted/rotation.rs [priv] impl CanonicalReference for StoreCanonicalReference<'_> :: fn resolved_locator( &self, artifact: ArtifactId, ) -> Result<Option<[u8; 32]>, CanonicalReferenceError> |b362b25b728bbcf7
+crates/portability/src/encrypted/rotation.rs [priv] impl<'a, P: PathProbe + ?Sized> StoreDatabaseRekey<'a, P>
+crates/portability/src/encrypted/rotation.rs [priv] impl<'a> StoreCanonicalReference<'a>
+crates/portability/src/encrypted/rotation.rs [priv] impl<P: PathProbe + ?Sized> StoreDatabaseExecutor for StoreDatabaseRekey<'_, P>
+crates/portability/src/encrypted/rotation.rs [priv] impl<P: PathProbe + ?Sized> StoreDatabaseExecutor for StoreDatabaseRekey<'_, P> :: fn generations(&self) -> Result<(KeyGeneration, KeyGeneration), StoreDatabaseError> |938685f05f9dc232
+crates/portability/src/encrypted/rotation.rs [priv] impl<P: PathProbe + ?Sized> StoreDatabaseExecutor for StoreDatabaseRekey<'_, P> :: fn rekey_store_database(&self) -> Result<RekeyOutcome, StoreDatabaseError> |9c6126b8ccc645cd
+crates/portability/src/encrypted/rotation.rs [priv] use academic_crypto::{ProfileId, VaultMasterKey} |1243eaaa207ed4e3
+crates/portability/src/encrypted/rotation.rs [priv] use academic_domain::{ArtifactDescriptor, ArtifactId} |0e56ae55a1ac1a89
+crates/portability/src/encrypted/rotation.rs [priv] use academic_retention::{ BackupTombstone, rotation::{ CanonicalReference, CanonicalReferenceError, KeyGeneration, StoreDatabaseError, StoreDatabaseExecutor, StoreDatabaseRekey as RekeyOutcome, }, } |e071bcdd0d8e1d16
+crates/portability/src/encrypted/rotation.rs [priv] use academic_store::{accept::AcceptanceStore, cipher, path_policy::PathProbe} |d04f40c58a1c88a4
+crates/portability/src/encrypted/rotation.rs [priv] use crate::{PortabilityError, PortabilityResult} |b07f5a530e7a39c7
+crates/portability/src/encrypted/rotation.rs [pub] #[derive(Debug)] struct StoreCanonicalReference<'a> |b9c6355f37cd2200
+crates/portability/src/encrypted/rotation.rs [pub] #[derive(Debug)] struct StoreDatabaseRekey<'a, P: PathProbe + ?Sized> |acc8b7aeabf4216f
+crates/portability/src/encrypted/rotation.rs [pub] fn deletion_tombstone( store: &AcceptanceStore, action_id: String, descriptor: &ArtifactDescriptor, shredded_at_ms: u64, ) -> PortabilityResult<BackupTombstone> |f695de799a62ae6d
+crates/portability/src/encrypted/rotation.rs [pub] impl<'a, P: PathProbe + ?Sized> StoreDatabaseRekey<'a, P> :: #[must_use] const fn new( profile_root: &'a std::path::Path, probe: &'a P, profile_id: ProfileId, source: &'a VaultMasterKey, target: &'a VaultMasterKey, ) -> Self |e7745303a16fcbda
+crates/portability/src/encrypted/rotation.rs [pub] impl<'a> StoreCanonicalReference<'a> :: #[must_use] const fn new(store: &'a AcceptanceStore) -> Self |717115d6e23d4929
+crates/portability/src/export.rs [priv] #[cfg(test)] mod tests
+crates/portability/src/export.rs [priv] const fn retention_name(value: academic_domain::RetentionClass) -> &'static str |d34d96ff2775216e
+crates/portability/src/export.rs [priv] fn inventory( rows: &CanonicalRows, objects: &[ObjectEntry], canonical_semantic_digest: &str, ) -> String |e41287a5d7c91797
+crates/portability/src/export.rs [priv] fn jsonl<T: serde::Serialize>(rows: &[T]) -> PortabilityResult<Vec<u8>> |3bdc160d39830e25
+crates/portability/src/export.rs [priv] fn write_export( staging: &Path, database: &CanonicalDatabase, rows: &CanonicalRows, descriptors: &[academic_domain::ArtifactDescriptor], vault: &Vault, canonical_semantic_digest: &str, ) -> PortabilityResult<Vec<ObjectEntry>> |04afc49cc2487942
+crates/portability/src/export.rs [priv] mod tests :: #[test] fn canonical_stream_names_are_sorted_and_complete() |803a5c7c3c81165f
+crates/portability/src/export.rs [priv] mod tests :: #[test] fn embedded_schema_matches_the_frozen_export_contract() -> PortabilityResult<()> |cf76aea01c4ad3b9
+crates/portability/src/export.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/export.rs [priv] use academic_vault::{DomainKeyring, Vault} |1871b6e6ef91f166
+crates/portability/src/export.rs [priv] use crate::{ PHASE1_EXPORT_FORMAT, PHASE1_EXPORT_MANIFEST_VERSION, PHASE1_PORTABILITY_GENERATOR, PortabilityError, PortabilityResult, checksum::{encode_hex, hash_file}, directory, manifest::{ExportManifest, ExportSemantic, FileEntry, ObjectEntry}, verify::{ ArtifactRow, CanonicalDatabase, CanonicalRows, PolicyBlock, canonical_json, read_artifact_descriptors, read_batch_envelope, read_canonical_rows, uuid_bytes, }, } |f1d0d09be63fdbdb
+crates/portability/src/export.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/portability/src/export.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExportReceipt |17c5c92194f4e95b
+crates/portability/src/export.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VerifiedExport |b8058d26609fac4f
+crates/portability/src/export.rs [pub] const CANONICAL_DIRECTORY: &str |9cf36e79a73deb69
+crates/portability/src/export.rs [pub] const CANONICAL_FILES: &[&str] |bf2260b4fdd2c3c7
+crates/portability/src/export.rs [pub] const EXPORT_MANIFEST_SCHEMA: &str |323f0aeb4cde91ce
+crates/portability/src/export.rs [pub] const INVENTORY_FILE: &str |b9e03ec36685bca6
+crates/portability/src/export.rs [pub] const LEDGER_BATCH_DIRECTORY: &str |bf63534db3a6d10c
+crates/portability/src/export.rs [pub] const LEDGER_EVENTS_FILE: &str |25e2b8a6f9057498
+crates/portability/src/export.rs [pub] const MANIFEST_FILE: &str |c0b6aac431a3e496
+crates/portability/src/export.rs [pub] const MANIFEST_SCHEMA_FILE: &str |a44bc71301b0bc53
+crates/portability/src/export.rs [pub] const OBJECTS_DIRECTORY: &str |276b68edf34281db
+crates/portability/src/export.rs [pub] const POSTURE_FILE: &str |e743076c94960ec5
+crates/portability/src/export.rs [pub] const STORE_SCHEMA_FILE: &str |3368d72936a03a60
+crates/portability/src/export.rs [pub] fn export_profile( profile_root: &Path, destination: &Path, keyring: DomainKeyring, ) -> PortabilityResult<ExportReceipt> |c6de525034d3080b
+crates/portability/src/export.rs [pub] fn read_exported_artifacts(root: &Path) -> PortabilityResult<Vec<ArtifactRow>> |35c3e3057d37e94c
+crates/portability/src/export.rs [pub] fn verify_export_directory(root: &Path) -> PortabilityResult<VerifiedExport> |841923376d88256b
+crates/portability/src/fault.rs [priv] #[cfg(test)] mod tests
+crates/portability/src/fault.rs [priv] impl PortabilityFaultPoint
+crates/portability/src/fault.rs [priv] mod tests :: #[test] fn fault_catalog_is_complete_unique_and_stable() |cf2d9442b20219f6
+crates/portability/src/fault.rs [priv] mod tests :: use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/portability/src/fault.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/fault.rs [pub(crate)] #[cfg(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection"))] fn trip(point: PortabilityFaultPoint) |c9f85b5ec79d1243
+crates/portability/src/fault.rs [pub(crate)] #[cfg(not(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection")))] const fn trip(_point: PortabilityFaultPoint) |0d3313e6d8595c53
+crates/portability/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PortabilityFaultPoint |030de7121c3e0766
+crates/portability/src/fault.rs [pub] const FAULT_READY_MARKER_VARIABLE: &str |0137723dc94df3f1
+crates/portability/src/fault.rs [pub] const FAULT_SELECTION_VARIABLE: &str |504a8963981bcefc
+crates/portability/src/fault.rs [pub] const PORTABILITY_FAULT_POINTS: &[PortabilityFaultPoint] |f97347fbab5bd930
+crates/portability/src/fault.rs [pub] impl PortabilityFaultPoint :: #[must_use] const fn as_str(self) -> &'static str |c16919485d438ed2
+crates/portability/src/fault.rs [pub] impl PortabilityFaultPoint :: #[must_use] fn parse(value: &str) -> Option<Self> |0ef601193947f188
+crates/portability/src/lib.rs [priv] #[cfg(feature = "encrypted-portability")] impl From<academic_crypto::KeyScheduleError> for PortabilityError
+crates/portability/src/lib.rs [priv] #[cfg(feature = "encrypted-portability")] impl From<academic_recovery::BackupKeyError> for PortabilityError
+crates/portability/src/lib.rs [priv] #[cfg(feature = "encrypted-portability")] impl From<academic_recovery::RecoveryProfileError> for PortabilityError
+crates/portability/src/lib.rs [priv] #[cfg(feature = "encrypted-portability")] impl From<academic_recovery::SealedManifestError> for PortabilityError
+crates/portability/src/lib.rs [priv] #[cfg(feature = "plaintext-portability")] impl From<ProjectionError> for PortabilityError
+crates/portability/src/lib.rs [priv] #[cfg(feature = "plaintext-portability")] use academic_projections::runner::ProjectionError |8c6a228f19d689fb
+crates/portability/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/portability/src/lib.rs [priv] impl Error for PortabilityError
+crates/portability/src/lib.rs [priv] impl Error for PortabilityError :: fn source(&self) -> Option<&(dyn Error + 'static)> |c8f6815d453a7c67
+crates/portability/src/lib.rs [priv] impl From<ContractError> for PortabilityError
+crates/portability/src/lib.rs [priv] impl From<ContractError> for PortabilityError :: fn from(value: ContractError) -> Self |95b50961fb7e5f1a
+crates/portability/src/lib.rs [priv] impl From<DomainError> for PortabilityError
+crates/portability/src/lib.rs [priv] impl From<DomainError> for PortabilityError :: fn from(value: DomainError) -> Self |3ace0d3cb51854a6
+crates/portability/src/lib.rs [priv] impl From<ProjectionError> for PortabilityError :: fn from(value: ProjectionError) -> Self |ac110c960be0f21c
+crates/portability/src/lib.rs [priv] impl From<QueryError> for PortabilityError
+crates/portability/src/lib.rs [priv] impl From<QueryError> for PortabilityError :: fn from(value: QueryError) -> Self |254ddac15a5bf0d0
+crates/portability/src/lib.rs [priv] impl From<StoreError> for PortabilityError
+crates/portability/src/lib.rs [priv] impl From<StoreError> for PortabilityError :: fn from(value: StoreError) -> Self |c0d34cd90e3de60c
+crates/portability/src/lib.rs [priv] impl From<VaultError> for PortabilityError
+crates/portability/src/lib.rs [priv] impl From<VaultError> for PortabilityError :: fn from(value: VaultError) -> Self |8d2181c205e61244
+crates/portability/src/lib.rs [priv] impl From<academic_crypto::KeyScheduleError> for PortabilityError :: fn from(_: academic_crypto::KeyScheduleError) -> Self |64bb9e602b250031
+crates/portability/src/lib.rs [priv] impl From<academic_recovery::BackupKeyError> for PortabilityError :: fn from(value: academic_recovery::BackupKeyError) -> Self |7437882581a6452f
+crates/portability/src/lib.rs [priv] impl From<academic_recovery::RecoveryProfileError> for PortabilityError :: fn from(value: academic_recovery::RecoveryProfileError) -> Self |960c91553bdf33cb
+crates/portability/src/lib.rs [priv] impl From<academic_recovery::SealedManifestError> for PortabilityError :: fn from(value: academic_recovery::SealedManifestError) -> Self |487b6ac91d298f7f
+crates/portability/src/lib.rs [priv] impl From<rusqlite::Error> for PortabilityError
+crates/portability/src/lib.rs [priv] impl From<rusqlite::Error> for PortabilityError :: fn from(value: rusqlite::Error) -> Self |f1e24cdfb1bb95d3
+crates/portability/src/lib.rs [priv] impl PortabilityError
+crates/portability/src/lib.rs [priv] impl fmt::Display for PortabilityError
+crates/portability/src/lib.rs [priv] impl fmt::Display for PortabilityError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |281290881477da4d
+crates/portability/src/lib.rs [priv] mod directory :: #[cfg(not(unix))] fn create_private_directory(path: &Path) -> PortabilityResult<()> |bf564b195dd9bea1
+crates/portability/src/lib.rs [priv] mod directory :: #[cfg(unix)] fn create_private_directory(path: &Path) -> PortabilityResult<()> |b4e59438cab6d446
+crates/portability/src/lib.rs [priv] mod directory :: const COPY_CHUNK_BYTES: usize |24ef8642bae1595a
+crates/portability/src/lib.rs [priv] mod directory :: const WINDOWS_RESERVED_NAMES: &[&str] |585726473df276c4
+crates/portability/src/lib.rs [priv] mod directory :: fn collect_files( root: &Path, current: &Path, files: &mut Vec<String>, ) -> PortabilityResult<()> |d265e4b3585fde8e
+crates/portability/src/lib.rs [priv] mod directory :: fn remove_tree(path: &Path) -> PortabilityResult<()> |cb8f323bf84f25d4
+crates/portability/src/lib.rs [priv] mod directory :: static NEXT_STAGING: AtomicU64 |31a2867b2f12d40b
+crates/portability/src/lib.rs [priv] mod directory :: use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/portability/src/lib.rs [priv] mod directory :: use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/portability/src/lib.rs [priv] mod directory :: use std::{ fs::{self, File, OpenOptions}, io::{Read, Write}, path::{Component, Path, PathBuf}, sync::atomic::{AtomicU64, Ordering}, time::{SystemTime, UNIX_EPOCH}, } |26a2d7da9c1a695c
+crates/portability/src/lib.rs [priv] mod directory :: use super::{MAX_PORTABLE_RELATIVE_PATH_BYTES, PortabilityError, PortabilityResult} |4984e5ccb06029ec
+crates/portability/src/lib.rs [priv] mod tests :: #[test] fn backup_format_never_claims_confidentiality() |51efccd5171dac1e
+crates/portability/src/lib.rs [priv] mod tests :: #[test] fn portability_contract_preserves_projection_non_authority() |93cee425917561e9
+crates/portability/src/lib.rs [priv] mod tests :: #[test] fn produced_relative_paths_stay_windows_safe() |08d33e6d34c4f966
+crates/portability/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/lib.rs [priv] use academic_contracts::ContractError |d96ed7c9bb8b6ee6
+crates/portability/src/lib.rs [priv] use academic_domain::DomainError |b26bd6a1fa51a11b
+crates/portability/src/lib.rs [priv] use academic_store::{error::StoreError, queries::QueryError} |0d12147f442f6909
+crates/portability/src/lib.rs [priv] use academic_vault::VaultError |dddf38d871312eab
+crates/portability/src/lib.rs [priv] use std::{error::Error, fmt, io, path::PathBuf} |4f075a9774b5377a
+crates/portability/src/lib.rs [pub(crate)] impl PortabilityError :: fn io(operation: &'static str, path: impl Into<PathBuf>, source: io::Error) -> Self |33bea858fbd88c0e
+crates/portability/src/lib.rs [pub(crate)] impl PortabilityError :: fn mismatch( subject: &'static str, expected: impl fmt::Display, actual: impl fmt::Display, ) -> Self |1eb2e26b4e4301a9
+crates/portability/src/lib.rs [pub(crate)] impl PortabilityError :: fn replay(subject: &'static str, detail: impl fmt::Display) -> Self |cbc0cff4a5ca0574
+crates/portability/src/lib.rs [pub(crate)] mod directory
+crates/portability/src/lib.rs [pub(crate)] mod directory :: const STAGING_NAME_MARKER: &str |ed06497d665bbe00
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn check_relative_path(relative: &str) -> PortabilityResult<()> |c493bba079a6ded2
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn copy_new_file( source: &Path, destination: &Path, ) -> PortabilityResult<(ContentDigest, u64)> |24825948189f9dd1
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn create_directories(path: &Path) -> PortabilityResult<()> |d0c5ae573fe77f48
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn create_new_directory(path: &Path) -> PortabilityResult<()> |183ec65e41a3b380
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn find_staging_directories(destination: &Path) -> PortabilityResult<Vec<PathBuf>> |9c0afc718223af4b
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn list_files(root: &Path) -> PortabilityResult<Vec<String>> |cc9cea090b1e9be2
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn now_unix_millis() -> PortabilityResult<i64> |44c1e9fd7246dcaa
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn publish(staging: &Path, destination: &Path) -> PortabilityResult<()> |487133bfaae1f1ec
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn publish_over_empty(staging: &Path, destination: &Path) -> PortabilityResult<()> |dced01e46bd76ddf
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn read_directory(root: &Path) -> PortabilityResult<Vec<PathBuf>> |4fe39de89b60d3fd
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn relative_path_string(root: &Path, path: &Path) -> PortabilityResult<String> |18ba8dd842b70b67
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn remove_staging_directory( destination: &Path, staging: &Path, ) -> PortabilityResult<()> |edff921758a88e2b
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn require_absent(path: &Path) -> PortabilityResult<()> |be63946861bce7cc
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn require_new_empty_directory(path: &Path) -> PortabilityResult<()> |72362552d2f8ae02
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn reserve_staging_path( destination: &Path, suffix: &str, ) -> PortabilityResult<PathBuf> |3f7963c2d6d66f19
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn resolve_relative(root: &Path, relative: &str) -> PortabilityResult<PathBuf> |e76d300b648ff1b6
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn sync_directory(path: &Path) -> PortabilityResult<()> |d4c3f065089002bd
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn sync_tree(root: &Path) -> PortabilityResult<()> |d669d61f7abbaa33
+crates/portability/src/lib.rs [pub(crate)] mod directory :: fn write_new_file(path: &Path, bytes: &[u8]) -> PortabilityResult<()> |62f73c8619d9bc25
+crates/portability/src/lib.rs [pub] #[cfg(feature = "encrypted-portability")] mod encrypted
+crates/portability/src/lib.rs [pub] #[cfg(feature = "plaintext-portability")] mod backup
+crates/portability/src/lib.rs [pub] #[cfg(feature = "plaintext-portability")] mod export
+crates/portability/src/lib.rs [pub] #[cfg(feature = "plaintext-portability")] mod restore
+crates/portability/src/lib.rs [pub] #[derive(Debug)] #[non_exhaustive] enum PortabilityError |065a6cb675709eb2
+crates/portability/src/lib.rs [pub] const EXPORT_INCLUDES_PROJECTIONS_BY_DEFAULT: bool |fe350d3cca51956d
+crates/portability/src/lib.rs [pub] const MAX_PORTABLE_RELATIVE_PATH_BYTES: usize |9910a2bfd585ff0f
+crates/portability/src/lib.rs [pub] const PHASE1_BACKUP_FORMAT: &str |5be04142f3d5c81f
+crates/portability/src/lib.rs [pub] const PHASE1_BACKUP_MANIFEST_VERSION: u32 |06b998e09031931c
+crates/portability/src/lib.rs [pub] const PHASE1_BACKUP_PLAINTEXT_WARNING: &str |b87f38bbdcd9875e
+crates/portability/src/lib.rs [pub] const PHASE1_EXPORT_FORMAT: &str |c7bdf475fbc8d043
+crates/portability/src/lib.rs [pub] const PHASE1_EXPORT_MANIFEST_VERSION: u32 |f8ceeb36f405b834
+crates/portability/src/lib.rs [pub] const PHASE1_PORTABILITY_GENERATOR: &str |f52fad17a54ea77a
+crates/portability/src/lib.rs [pub] const RESTORE_INCOMPLETE_MARKER: &str |13273ab42813fa3f
+crates/portability/src/lib.rs [pub] const RESTORE_REQUIRES_EMPTY_PROFILE: bool |758b4db1fb0181fa
+crates/portability/src/lib.rs [pub] mod checksum
+crates/portability/src/lib.rs [pub] mod fault
+crates/portability/src/lib.rs [pub] mod manifest
+crates/portability/src/lib.rs [pub] mod verify
+crates/portability/src/lib.rs [pub] type PortabilityResult<T> = Result<T, PortabilityError> |e0fc76762c7b8a24
+crates/portability/src/manifest.rs [priv] #[cfg(all(test, feature = "plaintext-portability"))] mod tests
+crates/portability/src/manifest.rs [priv] #[cfg(feature = "plaintext-portability")] fn parse_json<T: for<'de> Deserialize<'de>>( bytes: &[u8], operation: &'static str, ) -> PortabilityResult<T> |53409f0d8908f8b3
+crates/portability/src/manifest.rs [priv] #[cfg(feature = "plaintext-portability")] fn render_json<T: Serialize>(value: &T) -> PortabilityResult<Vec<u8>> |0497817cdc79c4b9
+crates/portability/src/manifest.rs [priv] #[cfg(feature = "plaintext-portability")] impl BackupManifest
+crates/portability/src/manifest.rs [priv] #[cfg(feature = "plaintext-portability")] impl ExportManifest
+crates/portability/src/manifest.rs [priv] #[cfg(feature = "plaintext-portability")] use crate::{ PHASE1_BACKUP_FORMAT, PHASE1_BACKUP_MANIFEST_VERSION, PHASE1_BACKUP_PLAINTEXT_WARNING, PHASE1_EXPORT_FORMAT, PHASE1_EXPORT_MANIFEST_VERSION, PHASE1_PORTABILITY_GENERATOR, verify::{ BatchRow, CanonicalCounts, CanonicalWatermark, DeviceHeadRow, PolicyBlock, StoreSchemaIdentity, }, } |2819f2f4c885b67f
+crates/portability/src/manifest.rs [priv] mod tests :: #[test] fn duplicate_file_paths_are_rejected() |f56ddc26d7463292
+crates/portability/src/manifest.rs [priv] mod tests :: #[test] fn unsorted_file_lists_are_rejected() |c801460bf9eb03b2
+crates/portability/src/manifest.rs [priv] mod tests :: #[test] fn volatile_generation_time_is_outside_the_digest() -> PortabilityResult<()> |8e0fa1de4cc220bf
+crates/portability/src/manifest.rs [priv] mod tests :: fn sample_files() -> Vec<FileEntry> |56313ccf4b775918
+crates/portability/src/manifest.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/manifest.rs [priv] use crate::{ PortabilityError, PortabilityResult, checksum::{CanonicalDigest, encode_hex}, verify::canonical_json, } |bc4dc12331bddd18
+crates/portability/src/manifest.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/portability/src/manifest.rs [pub(crate)] fn digest_of<T: Serialize>(domain: &str, value: &T) -> PortabilityResult<String> |2a58eb5f538ec6e8
+crates/portability/src/manifest.rs [pub(crate)] fn require_sorted_unique(files: &[FileEntry]) -> PortabilityResult<()> |ea44134ab44dc6c9
+crates/portability/src/manifest.rs [pub] #[cfg(feature = "plaintext-portability")] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BackupManifest |a4b3126971440c82
+crates/portability/src/manifest.rs [pub] #[cfg(feature = "plaintext-portability")] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BackupSemantic |634655691c1a4d06
+crates/portability/src/manifest.rs [pub] #[cfg(feature = "plaintext-portability")] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ExportManifest |f1dad662fbed09e2
+crates/portability/src/manifest.rs [pub] #[cfg(feature = "plaintext-portability")] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ExportSemantic |d708e7c67a181f0d
+crates/portability/src/manifest.rs [pub] #[cfg(feature = "plaintext-portability")] const BACKUP_SEMANTIC_DIGEST_DOMAIN: &str |9c6ee2c0f4e53580
+crates/portability/src/manifest.rs [pub] #[cfg(feature = "plaintext-portability")] const EXPORT_SEMANTIC_DIGEST_DOMAIN: &str |b312142454acfd4c
+crates/portability/src/manifest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct VolatileBlock |1ccd0a079bada4c1
+crates/portability/src/manifest.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct FileEntry |ad362e92374464f4
+crates/portability/src/manifest.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ObjectEntry |aee183d33b9c3a75
+crates/portability/src/manifest.rs [pub] impl BackupManifest :: fn from_json_bytes(bytes: &[u8]) -> PortabilityResult<Self> |f3811c9ad3711cd8
+crates/portability/src/manifest.rs [pub] impl BackupManifest :: fn require_phase1_contract(&self) -> PortabilityResult<()> |0c18990a772256a2
+crates/portability/src/manifest.rs [pub] impl BackupManifest :: fn seal(semantic: BackupSemantic, generated_at_unix_ms: i64) -> PortabilityResult<Self> |6e94e62456b907f8
+crates/portability/src/manifest.rs [pub] impl BackupManifest :: fn to_json_bytes(&self) -> PortabilityResult<Vec<u8>> |9fd78e03b9692b87
+crates/portability/src/manifest.rs [pub] impl BackupManifest :: fn verify_semantic_digest(&self) -> PortabilityResult<()> |fa2e82557f62c148
+crates/portability/src/manifest.rs [pub] impl ExportManifest :: fn from_json_bytes(bytes: &[u8]) -> PortabilityResult<Self> |bbc63593d510010c
+crates/portability/src/manifest.rs [pub] impl ExportManifest :: fn require_phase1_contract(&self) -> PortabilityResult<()> |a9eda20d4824939d
+crates/portability/src/manifest.rs [pub] impl ExportManifest :: fn seal(semantic: ExportSemantic, generated_at_unix_ms: i64) -> PortabilityResult<Self> |a44979407b868d3c
+crates/portability/src/manifest.rs [pub] impl ExportManifest :: fn to_json_bytes(&self) -> PortabilityResult<Vec<u8>> |9fd78e03b9692b87
+crates/portability/src/manifest.rs [pub] impl ExportManifest :: fn verify_semantic_digest(&self) -> PortabilityResult<()> |1bed48bcfc7c9c2c
+crates/portability/src/restore.rs [priv] #[cfg(test)] mod tests
+crates/portability/src/restore.rs [priv] fn build_restored_profile( staging: &Path, verified: &VerifiedBackup, keyring: DomainKeyring, plan: &RestorePlan<'_>, ) -> PortabilityResult<RestoreOutcome> |d843bd40ef8ef719
+crates/portability/src/restore.rs [priv] fn rebuild_projections( staging: &Path, database_path: &Path, plan: &RestorePlan<'_>, ) -> PortabilityResult<Vec<RestoredProjection>> |35beefb6a897065c
+crates/portability/src/restore.rs [priv] fn remove_journal_sidecars(database_path: &Path) -> PortabilityResult<()> |231b43b708be6240
+crates/portability/src/restore.rs [priv] fn remove_marker(staging: &Path, marker: &str) -> PortabilityResult<()> |23b740cece1f862d
+crates/portability/src/restore.rs [priv] fn restore_marker_contents(destination: &Path) -> String |ce5f4df7d11690e9
+crates/portability/src/restore.rs [priv] mod tests :: #[test] fn projection_sidecar_is_not_the_canonical_database() |36b376ecd15d297a
+crates/portability/src/restore.rs [priv] mod tests :: #[test] fn restore_marker_records_its_intended_destination() |e4409814bad42bd9
+crates/portability/src/restore.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/restore.rs [priv] type RestoreOutcome = (ReplayReport, Vec<RestoredProjection>, String) |115a8eab59c5f91d
+crates/portability/src/restore.rs [priv] use academic_contracts::DeviceAuthorization |ee15a11cc213a7b3
+crates/portability/src/restore.rs [priv] use academic_domain::{ContentDigest, DomainId} |fc65f5e2a9ceac9b
+crates/portability/src/restore.rs [priv] use academic_projections::{ generation::{ProjectionCoordinates, ProjectionKind}, resolution::PredicatePolicies, runner::ProjectionRunner, } |750e8dd410d92fe6
+crates/portability/src/restore.rs [priv] use academic_store::{ INCOMPLETE_PROFILE_MARKER, connection::open_reader, path_policy::PathProbe, profile::prepare_synthetic_profile, } |ecfba2b06d58ad34
+crates/portability/src/restore.rs [priv] use academic_vault::{DomainKeyring, Vault} |1871b6e6ef91f166
+crates/portability/src/restore.rs [priv] use crate::{ PortabilityError, PortabilityResult, RESTORE_INCOMPLETE_MARKER, backup::{VerifiedBackup, verify_backup_directory}, checksum::encode_hex, directory, fault::{self, PortabilityFaultPoint}, manifest::BackupManifest, verify::{CanonicalDatabase, ReplayReport, read_artifact_descriptors, read_canonical_rows}, } |21b21c4223e935ea
+crates/portability/src/restore.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/portability/src/restore.rs [pub] #[derive(Debug)] struct RestorePlan<'a> |863f1ddaee77387a
+crates/portability/src/restore.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ProjectionRebuildTarget |ec74ea940d64887d
+crates/portability/src/restore.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RestoreReceipt |8a678546a20ac244
+crates/portability/src/restore.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RestoredProjection |65d2e20bd809fc63
+crates/portability/src/restore.rs [pub] const PROJECTION_SIDECAR_FILE: &str |caa91b03243a800c
+crates/portability/src/restore.rs [pub] const RESTORED_VAULT_OBJECTS_DIRECTORY: &str |398ef3b4b68dfce0
+crates/portability/src/restore.rs [pub] fn find_unpublished_restores(destination: &Path) -> PortabilityResult<Vec<PathBuf>> |8b4662d0a7e019b9
+crates/portability/src/restore.rs [pub] fn remove_unpublished_restore(destination: &Path, staging: &Path) -> PortabilityResult<()> |dbfa46ae640db854
+crates/portability/src/restore.rs [pub] fn restore_profile<P: PathProbe + ?Sized>( backup_root: &Path, destination: &Path, probe: &P, keyring: DomainKeyring, plan: &RestorePlan<'_>, ) -> PortabilityResult<RestoreReceipt> |19363181f89a4cc3
+crates/portability/src/verify.rs [priv] #[cfg(all(test, not(feature = "encrypted-portability")))] mod tests
+crates/portability/src/verify.rs [priv] #[cfg(feature = "encrypted-portability")] fn read_schema_identity(connection: &Connection) -> PortabilityResult<StoreSchemaIdentity> |16d11eb169a62967
+crates/portability/src/verify.rs [priv] #[cfg(feature = "encrypted-portability")] impl PolicyBlock
+crates/portability/src/verify.rs [priv] #[cfg(feature = "encrypted-portability")] type EncryptedSchemaRaw = (Vec<u8>, i64, String, i64, i64, i64, i64, String, String) |74f17ce5a5de501a
+crates/portability/src/verify.rs [priv] #[cfg(not(feature = "encrypted-portability"))] fn read_schema_identity(connection: &Connection) -> PortabilityResult<StoreSchemaIdentity> |de82ca98e765c1eb
+crates/portability/src/verify.rs [priv] #[cfg(not(feature = "encrypted-portability"))] impl PolicyBlock
+crates/portability/src/verify.rs [priv] #[cfg(not(feature = "encrypted-portability"))] type SchemaRaw = ( Vec<u8>, i64, String, i64, i64, i64, i64, String, String, String, i64, String, ) |809cd2573282983b
+crates/portability/src/verify.rs [priv] #[derive(Debug)] struct DeviceChain |5e8a0559c570bd06
+crates/portability/src/verify.rs [priv] const fn event_kind(payload: &EventPayload) -> &'static str |4a07b5b9a7c967a4
+crates/portability/src/verify.rs [priv] fn append_section<T: Serialize>( digest: &mut CanonicalDigest, name: &str, rows: &[T], ) -> PortabilityResult<()> |4531cbef1043dbf3
+crates/portability/src/verify.rs [priv] fn artifact_descriptor(row: &ArtifactRow) -> PortabilityResult<ArtifactDescriptor> |43ae6e983a863c14
+crates/portability/src/verify.rs [priv] fn bounded_u32(value: i64, subject: &'static str) -> PortabilityResult<u32> |1df125948e9673db
+crates/portability/src/verify.rs [priv] fn collect<Raw, Row, Read, Map>( connection: &Connection, sql: &str, read: Read, map: Map, ) -> PortabilityResult<Vec<Row>> where Read: FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<Raw>, Map: Fn(Raw) -> PortabilityResult<Row>, |87770d8f53676513
+crates/portability/src/verify.rs [priv] fn decode_locator(kind: &str, bytes: &[u8]) -> PortabilityResult<EvidenceLocator> |b5b15072d181919d
+crates/portability/src/verify.rs [priv] fn digest_hex(bytes: &[u8]) -> String |43fe49c512026876
+crates/portability/src/verify.rs [priv] fn nonnegative(value: i64, subject: &'static str) -> PortabilityResult<u64> |45884cd53872128d
+crates/portability/src/verify.rs [priv] fn parse_confidentiality(value: &str) -> PortabilityResult<Confidentiality> |abcba0db6f2b2c0f
+crates/portability/src/verify.rs [priv] fn parse_digest(hex: &str) -> PortabilityResult<ContentDigest> |2463af60090e2497
+crates/portability/src/verify.rs [priv] fn parse_id<T>(text: &str) -> PortabilityResult<T> where T: FromStr<Err = DomainError>, |44eaf1a4e41579b8
+crates/portability/src/verify.rs [priv] fn parse_retention(value: &str) -> PortabilityResult<RetentionClass> |72d9af1289b56048
+crates/portability/src/verify.rs [priv] fn read_artifacts(connection: &Connection) -> PortabilityResult<Vec<ArtifactRow>> |dc7390d06f9f3709
+crates/portability/src/verify.rs [priv] fn read_batches(connection: &Connection) -> PortabilityResult<Vec<BatchRow>> |8e4c6a0b44f9a5fe
+crates/portability/src/verify.rs [priv] fn read_claims(connection: &Connection) -> PortabilityResult<Vec<ClaimRow>> |540de2f3797b034e
+crates/portability/src/verify.rs [priv] fn read_command_receipts(connection: &Connection) -> PortabilityResult<Vec<CommandReceiptRow>> |8817020e9c4b0521
+crates/portability/src/verify.rs [priv] fn read_decisions(connection: &Connection) -> PortabilityResult<Vec<DecisionRow>> |edd30e515915f688
+crates/portability/src/verify.rs [priv] fn read_device_heads(connection: &Connection) -> PortabilityResult<Vec<DeviceHeadRow>> |2edc5875872401d6
+crates/portability/src/verify.rs [priv] fn read_events(connection: &Connection) -> PortabilityResult<Vec<EventRow>> |fb85ae87e2e6a3bc
+crates/portability/src/verify.rs [priv] fn read_evidence(connection: &Connection) -> PortabilityResult<Vec<EvidenceRow>> |e27a884852636d42
+crates/portability/src/verify.rs [priv] fn read_outbox(connection: &Connection) -> PortabilityResult<Vec<OutboxRow>> |56b625a8ed2e5054
+crates/portability/src/verify.rs [priv] fn read_relations(connection: &Connection) -> PortabilityResult<Vec<RelationRow>> |34a6da104696fabd
+crates/portability/src/verify.rs [priv] fn read_scopes(connection: &Connection) -> PortabilityResult<Vec<ScopeRow>> |9d4e2ab2a8681b5c
+crates/portability/src/verify.rs [priv] fn read_watermark(connection: &Connection) -> PortabilityResult<CanonicalWatermark> |9c6d5bd98e9a903a
+crates/portability/src/verify.rs [priv] fn require(subject: &'static str, expected: &str, actual: &str) -> PortabilityResult<()> |0321c8368a7cd52f
+crates/portability/src/verify.rs [priv] fn require_i64(subject: &'static str, expected: i64, actual: i64) -> PortabilityResult<()> |373e6b5de4115877
+crates/portability/src/verify.rs [priv] fn require_u64(subject: &'static str, expected: u64, actual: u64) -> PortabilityResult<()> |c685e2933a6333a3
+crates/portability/src/verify.rs [priv] impl CanonicalDatabase
+crates/portability/src/verify.rs [priv] impl CanonicalDatabase :: fn constrain(connection: Connection, database_path: &Path) -> PortabilityResult<Self> |901db1a6a9268417
+crates/portability/src/verify.rs [priv] impl CanonicalRows
+crates/portability/src/verify.rs [priv] impl DeviceChain
+crates/portability/src/verify.rs [priv] impl DeviceChain :: const fn new() -> Self |d59b9cd3f65aacec
+crates/portability/src/verify.rs [priv] impl Drop for ReadSnapshot<'_>
+crates/portability/src/verify.rs [priv] impl Drop for ReadSnapshot<'_> :: fn drop(&mut self) |1b461dc12c0a9ccb
+crates/portability/src/verify.rs [priv] mod tests :: #[test] fn identifier_text_and_bytes_round_trip() -> PortabilityResult<()> |f66a44578c253c03
+crates/portability/src/verify.rs [priv] mod tests :: #[test] fn phase1_policy_block_rejects_production_posture() |a02996e6a77f74a1
+crates/portability/src/verify.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/portability/src/verify.rs [priv] type ArtifactRaw = ( Vec<u8>, Vec<u8>, Vec<u8>, String, i64, Vec<u8>, String, String, Vec<u8>, i64, Vec<u8>, ) |2efccb742e5256c1
+crates/portability/src/verify.rs [priv] type BatchRaw = ( Vec<u8>, Vec<u8>, i64, i64, Option<Vec<u8>>, i64, i64, i64, i64, i64, Vec<u8>, i64, Vec<u8>, i64, Vec<u8>, Vec<u8>, ) |4c5f82b911951fa1
+crates/portability/src/verify.rs [priv] type ClaimRaw = ( Vec<u8>, Vec<u8>, Vec<u8>, String, Vec<u8>, String, Option<Vec<u8>>, Option<String>, Option<i64>, Option<String>, Option<i64>, Option<i64>, Option<i64>, String, String, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, i64, Option<i64>, ) |4bc98099448a19fb
+crates/portability/src/verify.rs [priv] type DecisionRaw = ( Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>, String, Vec<u8>, String, Option<Vec<u8>>, i64, Option<i64>, Vec<u8>, i64, Option<i64>, ) |ecc38429b442d74b
+crates/portability/src/verify.rs [priv] type EventRaw = ( Vec<u8>, Vec<u8>, i64, i64, i64, String, Vec<u8>, Vec<u8>, String, Vec<u8>, i64, ) |ee7ac212382f4c01
+crates/portability/src/verify.rs [priv] type EvidenceRaw = ( Vec<u8>, Vec<u8>, Vec<u8>, i64, Vec<u8>, String, String, String, String, ) |ec20680fedbc9efe
+crates/portability/src/verify.rs [priv] type OutboxRaw = (i64, Vec<u8>, i64, i64, i64, Vec<u8>, Vec<u8>, i64) |84ddeed7ea890df9
+crates/portability/src/verify.rs [priv] type ReceiptRaw = ( Vec<u8>, Vec<u8>, Vec<u8>, Option<i64>, i64, i64, Vec<u8>, i64, ) |5def2a43576bcca1
+crates/portability/src/verify.rs [priv] use academic_contracts::{ DeviceAuthorization, decode_canonical_claim_object, decode_canonical_evidence_ids, decode_canonical_evidence_locator, encode_canonical_actor, encode_canonical_event_payload, verify_signed_batch, } |34521f267ae3362c
+crates/portability/src/verify.rs [priv] use academic_domain::{ ArtifactDescriptor, ArtifactId, ArtifactRepresentation, ClaimObject, Confidentiality, ContentDigest, DomainError, DomainId, EventPayload, EvidenceLocator, MediaType, PermissionLineageId, RetentionClass, VaultLocator, } |e0637fa529379e97
+crates/portability/src/verify.rs [priv] use crate::{ PortabilityError, PortabilityResult, checksum::{CanonicalDigest, decode_hex, encode_hex}, } |c7e2536d37e4ab90
+crates/portability/src/verify.rs [priv] use rusqlite::{Connection, OpenFlags} |d458ad3640374d11
+crates/portability/src/verify.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/portability/src/verify.rs [priv] use std::{ collections::BTreeMap, path::{Path, PathBuf}, str::FromStr, } |d6aff18e8df4d2b7
+crates/portability/src/verify.rs [pub(crate)] #[cfg(feature = "encrypted-portability")] fn parse_domain_id(text: &str) -> PortabilityResult<DomainId> |ece7e5f8d708ba02
+crates/portability/src/verify.rs [pub(crate)] fn count_of(value: usize) -> u64 |1639d4ac0511b049
+crates/portability/src/verify.rs [pub(crate)] fn uuid_bytes(text: &str) -> PortabilityResult<[u8; 16]> |f5b13d3b03193d88
+crates/portability/src/verify.rs [pub(crate)] fn uuid_text(bytes: &[u8]) -> PortabilityResult<String> |b50d2974b9368960
+crates/portability/src/verify.rs [pub(crate)] impl CanonicalDatabase :: const fn connection(&self) -> &Connection |ddd68c589f19d1a9
+crates/portability/src/verify.rs [pub] #[cfg(feature = "encrypted-portability")] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct PolicyBlock |6c2a7943cef38670
+crates/portability/src/verify.rs [pub] #[cfg(feature = "encrypted-portability")] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct StoreSchemaIdentity |42ab3a77d180ca5a
+crates/portability/src/verify.rs [pub] #[cfg(not(feature = "encrypted-portability"))] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct PolicyBlock |147f8fb178df39e0
+crates/portability/src/verify.rs [pub] #[cfg(not(feature = "encrypted-portability"))] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct StoreSchemaIdentity |dcacdc79ed8660e0
+crates/portability/src/verify.rs [pub] #[derive(Debug)] struct CanonicalDatabase |026250e36caa39d7
+crates/portability/src/verify.rs [pub] #[derive(Debug)] struct ReadSnapshot<'a> |59b723390b48ed8f
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ReplayReport |2d97816e90b2358a
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct CanonicalCounts |03afa069511e2d9f
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct CanonicalWatermark |b17a9f9cf9c3b24f
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ArtifactRow |5c03d7970c59b1ff
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct BatchRow |f838cdca7d4804da
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct CanonicalRows |d61db37e5c860eda
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ClaimRow |d126e3349675cd7b
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct CommandReceiptRow |33f91f00957b38f4
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DecisionRow |d8891fb7b621c3f3
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DeviceHeadRow |07a0e57aff2ee1bd
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct EventRow |02fb844c5a80cc30
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct EvidenceRow |7a0cf5e8d1a7b4ba
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct OutboxRow |7362d7144f45418a
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct RelationRow |09e1101ed4e16bc4
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct RepresentationRow |ddc3072c4f90690d
+crates/portability/src/verify.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ScopeRow |b1a2ae4368db2ffd
+crates/portability/src/verify.rs [pub] const CANONICAL_SEMANTIC_DIGEST_DOMAIN: &str |347590434250b175
+crates/portability/src/verify.rs [pub] fn canonical_json<T: Serialize>(value: &T) -> PortabilityResult<Vec<u8>> |e922c60b49d021b7
+crates/portability/src/verify.rs [pub] fn read_artifact_descriptors( database: &CanonicalDatabase, ) -> PortabilityResult<Vec<ArtifactDescriptor>> |290a704e6ae31a3f
+crates/portability/src/verify.rs [pub] fn read_batch_envelope(connection: &Connection, batch_id: &str) -> PortabilityResult<Vec<u8>> |6c9c749a44c09e2a
+crates/portability/src/verify.rs [pub] fn read_canonical_rows(database: &CanonicalDatabase) -> PortabilityResult<CanonicalRows> |6b25522750538623
+crates/portability/src/verify.rs [pub] fn replay_signed_batches( database: &CanonicalDatabase, authorizations: &[DeviceAuthorization], ) -> PortabilityResult<ReplayReport> |a85e631d80637c98
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: #[cfg(feature = "encrypted-portability")] fn cipher_integrity_check(&self) -> PortabilityResult<()> |8532106176276516
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: #[cfg(feature = "encrypted-portability")] fn open_copy( database_path: &Path, key: &academic_crypto::StoreKey, ) -> PortabilityResult<Self> |53af70e4a86a86a2
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: #[cfg(feature = "encrypted-portability")] fn open_source( database_path: &Path, key: &academic_crypto::StoreKey, ) -> PortabilityResult<Self> |ea057255eef6c1f9
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: #[cfg(not(feature = "encrypted-portability"))] fn open_copy(database_path: &Path) -> PortabilityResult<Self> |3ff31f58183cccf9
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: #[cfg(not(feature = "encrypted-portability"))] fn open_source(database_path: &Path) -> PortabilityResult<Self> |898e8f810a1f9422
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: #[must_use] fn path(&self) -> &Path |7f3b463ffbb331a7
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: fn begin_read(&self) -> PortabilityResult<ReadSnapshot<'_>> |daa06f9629f61395
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: fn foreign_key_check(&self) -> PortabilityResult<()> |f393dbdb26c074a0
+crates/portability/src/verify.rs [pub] impl CanonicalDatabase :: fn integrity_check(&self) -> PortabilityResult<()> |c45f31be0788b3bd
+crates/portability/src/verify.rs [pub] impl CanonicalRows :: fn semantic_digest(&self) -> PortabilityResult<ContentDigest> |d73fc56bf9b55011
+crates/portability/src/verify.rs [pub] impl PolicyBlock :: #[must_use] fn encrypted_v2() -> Self |f8cb9fa5253e7bf4
+crates/portability/src/verify.rs [pub] impl PolicyBlock :: #[must_use] fn phase1() -> Self |932842afb920d85d
+crates/portability/src/verify.rs [pub] impl PolicyBlock :: fn require_encrypted_v2(&self) -> PortabilityResult<()> |2620bf0299782f56
+crates/portability/src/verify.rs [pub] impl PolicyBlock :: fn require_phase1(&self) -> PortabilityResult<()> |a0cdd5730fba192c

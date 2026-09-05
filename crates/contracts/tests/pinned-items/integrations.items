@@ -11,16 +11,16 @@ crates/integrations/src/assistant.rs [pub] #[derive(Debug, Clone, Copy, PartialE
 crates/integrations/src/assistant.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EvidenceEligibility |bd80a34fe76df87d
 crates/integrations/src/assistant.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AssistantSelection |adc0a7facde998dd
 crates/integrations/src/assistant.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GeneratedCode |32f6b5ebd717539d
-crates/integrations/src/assistant.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AssistantError |e9a17848335de390
+crates/integrations/src/assistant.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum AssistantError |ea10b5d5f024b544
 crates/integrations/src/assistant.rs [pub] impl AssistantContext :: #[must_use] const fn selection(&self) -> &AssistantSelection |99d95ac59f800571
 crates/integrations/src/assistant.rs [pub] impl AssistantContext :: #[must_use] const fn staged(&self) -> &StagedPayload |97055bac51879233
 crates/integrations/src/assistant.rs [pub] impl AssistantContext :: fn minimize( proxy: &EgressProxy<'_>, document: &SourceDocument, selection: &AssistantSelection, identifier_policy: &IdentifierPolicy, max_bytes: u64, ) -> Result<Self, EgressDenial> |3c70256b0b0496ae
 crates/integrations/src/assistant.rs [pub] impl AssistantSelection :: #[must_use] fn symbols(&self) -> &[String] |613471de2afa171d
 crates/integrations/src/assistant.rs [pub] impl AssistantSelection :: fn new(symbols: Vec<String>) -> Result<Self, AssistantError> |49e6a4da0d00327a
-crates/integrations/src/assistant.rs [pub] impl AssistantUse :: #[must_use] const fn as_str(self) -> &'static str |cdb94241ddcdddd8
+crates/integrations/src/assistant.rs [pub] impl AssistantUse :: #[must_use] const fn as_str(self) -> &'static str |1e7ef35bb9bafd98
 crates/integrations/src/assistant.rs [pub] impl AssistantUse :: #[must_use] const fn eligibility(self) -> EvidenceEligibility |e1a304711f2ff7c9
 crates/integrations/src/assistant.rs [pub] impl AssistantUse :: const ALL: [Self; 5] |6a5efb699d595015
-crates/integrations/src/assistant.rs [pub] impl EvidenceEligibility :: #[must_use] const fn as_str(self) -> &'static str |a394c0714ba60261
+crates/integrations/src/assistant.rs [pub] impl EvidenceEligibility :: #[must_use] const fn as_str(self) -> &'static str |90f7f345ae457ada
 crates/integrations/src/assistant.rs [pub] impl EvidenceEligibility :: const ALL: [Self; 1] |d6f611f7112c24c0
 crates/integrations/src/assistant.rs [pub] impl GeneratedCode :: #[must_use] const fn context_digest(&self) -> Digest32 |0d9ffc4169dd9a3a
 crates/integrations/src/assistant.rs [pub] impl GeneratedCode :: #[must_use] const fn eligibility(&self) -> EvidenceEligibility |27bb1561d1fbd10a
@@ -37,10 +37,10 @@ crates/integrations/src/calendar.rs [priv] use academic_domain::TimestampMillis 
 crates/integrations/src/calendar.rs [priv] use crate::identity::{CanonicalRef, ExternalId} |6c0e95158cd5ade3
 crates/integrations/src/calendar.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
 crates/integrations/src/calendar.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CalendarEventKind |94a6980d8e6211f8
-crates/integrations/src/calendar.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CalendarError |624618cf8a373b82
+crates/integrations/src/calendar.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CalendarError |cdfae80c9fa3bcaf
 crates/integrations/src/calendar.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CalendarPayload |3bf7db0273c30133
-crates/integrations/src/calendar.rs [pub] impl CalendarEventKind :: #[must_use] const fn as_str(self) -> &'static str |d8e0ddc92247a1f1
-crates/integrations/src/calendar.rs [pub] impl CalendarEventKind :: #[must_use] const fn summary(self) -> &'static str |51df3b7f7a658dbf
+crates/integrations/src/calendar.rs [pub] impl CalendarEventKind :: #[must_use] const fn as_str(self) -> &'static str |1a0bad12074517cd
+crates/integrations/src/calendar.rs [pub] impl CalendarEventKind :: #[must_use] const fn summary(self) -> &'static str |689dbd3ff7da57e3
 crates/integrations/src/calendar.rs [pub] impl CalendarEventKind :: const ALL: [Self; 4] |7dbfe58669d80656
 crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] const fn ends_at(&self) -> TimestampMillis |37b9e1f71dffd9b1
 crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] const fn event_id(&self) -> &ExternalId |34419ad335745df7
@@ -48,7 +48,7 @@ crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] co
 crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] const fn starts_at(&self) -> TimestampMillis |623c37cff40c9d9b
 crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] const fn subject(&self) -> CanonicalRef |0da6cc5a3aa0cff0
 crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] const fn summary(&self) -> &'static str |e1c21c0a6cfe63e4
-crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] fn digest(&self) -> [u8; 32] |9083b30446ed49d3
+crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] fn digest(&self) -> [u8; 32] |39f6552511a8c8b3
 crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: #[must_use] fn encode(&self) -> Vec<u8> |ac816ccfd46c7a12
 crates/integrations/src/calendar.rs [pub] impl CalendarPayload :: fn new( event_id: ExternalId, subject: CanonicalRef, kind: CalendarEventKind, starts_at: TimestampMillis, ends_at: TimestampMillis, ) -> Result<Self, CalendarError> |bbb1eec57f9481f9
 crates/integrations/src/github.rs [priv] fn broker_refusal(error: BrokerError, context: &str) -> ConnectorError |91930d8aa9eca762
@@ -64,7 +64,7 @@ crates/integrations/src/github.rs [priv] impl RepositoryBlob
 crates/integrations/src/github.rs [priv] impl WebhookDelivery
 crates/integrations/src/github.rs [priv] impl WebhookEventKind
 crates/integrations/src/github.rs [priv] impl<'broker> PrivateBlobEgress<'broker>
-crates/integrations/src/github.rs [priv] impl<'broker> PrivateBlobEgress<'broker> :: #[expect( clippy::too_many_arguments, reason = "the arguments are the two capabilities, the staged bytes, the plan and the disclosure purpose; folding them into a struct would put the refusals below behind a constructor this function is the only caller of" )] fn bind_disclosure( &self, blob: &RepositoryBlob, staged: &StagedPayload, egress: &CapabilityToken, disclosure: Option<&CapabilityToken>, plan: &TransmissionPlan<'_>, disclosure_purpose_id: &str, now: u64, ) -> Result<Option<String>, ConnectorError> |ecd225fafdef9b88
+crates/integrations/src/github.rs [priv] impl<'broker> PrivateBlobEgress<'broker> :: #[expect( clippy::too_many_arguments, reason = "the arguments are the two capabilities, the staged bytes, the plan and the disclosure purpose; folding them into a struct would put the refusals below behind a constructor this function is the only caller of" )] fn bind_disclosure( &self, blob: &RepositoryBlob, staged: &StagedPayload, egress: &CapabilityToken, disclosure: Option<&CapabilityToken>, plan: &TransmissionPlan<'_>, disclosure_purpose_id: &str, now: u64, ) -> Result<Option<String>, ConnectorError> |52236a94a6c1ffff
 crates/integrations/src/github.rs [priv] use academic_egress_boundary::{ EgressProxy, OutboundTransport, StagedGrantJournal, StagedPayload, Transmission, TransmissionPlan, } |e00ba85f1fe98bff
 crates/integrations/src/github.rs [priv] use academic_policy::{ BrokerError, CapabilityToken, PermissionBroker, ReasonCode, RuntimeToolCall, } |9e7712884e0b02fc
 crates/integrations/src/github.rs [priv] use academic_repository::{FineGrainedToken, GitHubError, GitHubRepository, TokenPermission} |38b5f5f956575d94
@@ -81,25 +81,25 @@ crates/integrations/src/github.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] s
 crates/integrations/src/github.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GitHubConnector |a66012d08e84a932
 crates/integrations/src/github.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReadRequest |c993a3ed7c8ca03f
 crates/integrations/src/github.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RepositoryBlob |691638d92e5ab80a
-crates/integrations/src/github.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum ConnectorError |043d8ba59daa8200
+crates/integrations/src/github.rs [pub] #[derive(Debug, thiserror::Error)] #[non_exhaustive] enum ConnectorError |c5514b8b4309c030
 crates/integrations/src/github.rs [pub] impl BlobDenial :: #[must_use] const fn bytes_transmitted(&self) -> usize |51ac484b3c903dcb
 crates/integrations/src/github.rs [pub] impl BlobDenial :: #[must_use] const fn reason(&self) -> ReasonCode |caeda9c630274452
 crates/integrations/src/github.rs [pub] impl BlobDenial :: #[must_use] fn detail(&self) -> &str |8e3f8446f708b731
 crates/integrations/src/github.rs [pub] impl BlobTransfer :: #[must_use] const fn transmission(&self) -> &Transmission |029e13ed4688b39d
 crates/integrations/src/github.rs [pub] impl BlobTransfer :: #[must_use] fn disclosure_grant_id(&self) -> Option<&str> |576eb32969f5d728
-crates/integrations/src/github.rs [pub] impl BlobVisibility :: #[must_use] const fn as_str(self) -> &'static str |ca64962b4499c2c0
+crates/integrations/src/github.rs [pub] impl BlobVisibility :: #[must_use] const fn as_str(self) -> &'static str |bb72862a1f060129
 crates/integrations/src/github.rs [pub] impl BlobVisibility :: #[must_use] const fn required_grants(self) -> u8 |df8cc2113bf0e977
 crates/integrations/src/github.rs [pub] impl BlobVisibility :: const ALL: [Self; 2] |e61f712438d8b61b
 crates/integrations/src/github.rs [pub] impl ConnectorError :: #[must_use] const fn reason(&self) -> Option<ReasonCode> |518aca44a250d166
 crates/integrations/src/github.rs [pub] impl GitHubConnector :: #[must_use] const fn new(repository: GitHubRepository) -> Self |e54599aac291aea2
 crates/integrations/src/github.rs [pub] impl GitHubConnector :: #[must_use] const fn repository(&self) -> &GitHubRepository |f5086a2516b974a8
-crates/integrations/src/github.rs [pub] impl GitHubConnector :: fn read( &self, token: &FineGrainedToken, operation: GitHubOperation, now: u64, ) -> Result<ReadRequest, ConnectorError> |0af38eee2bdf184f
-crates/integrations/src/github.rs [pub] impl GitHubOperation :: #[must_use] const fn as_str(self) -> &'static str |dfe5b9501771846e
+crates/integrations/src/github.rs [pub] impl GitHubConnector :: fn read( &self, token: &FineGrainedToken, operation: GitHubOperation, now: u64, ) -> Result<ReadRequest, ConnectorError> |c5d0e1359fe22720
+crates/integrations/src/github.rs [pub] impl GitHubOperation :: #[must_use] const fn as_str(self) -> &'static str |570ccda4c089b083
 crates/integrations/src/github.rs [pub] impl GitHubOperation :: #[must_use] const fn method(self) -> HttpMethod |0882e7379ef45cac
 crates/integrations/src/github.rs [pub] impl GitHubOperation :: #[must_use] const fn permission(self) -> TokenPermission |b9d34014cb6dcc6b
-crates/integrations/src/github.rs [pub] impl GitHubOperation :: #[must_use] const fn resource(self) -> &'static str |6d63a803b6ebe6ea
+crates/integrations/src/github.rs [pub] impl GitHubOperation :: #[must_use] const fn resource(self) -> &'static str |958b4e1baa9812cf
 crates/integrations/src/github.rs [pub] impl GitHubOperation :: const ALL: [Self; 6] |735cc55cf1b70f7d
-crates/integrations/src/github.rs [pub] impl HttpMethod :: #[must_use] const fn as_str(self) -> &'static str |b0b11a03f88119bd
+crates/integrations/src/github.rs [pub] impl HttpMethod :: #[must_use] const fn as_str(self) -> &'static str |a75238ba4b68db00
 crates/integrations/src/github.rs [pub] impl HttpMethod :: const ALL: [Self; 1] |fd7cc1e6f675a8c4
 crates/integrations/src/github.rs [pub] impl ReadRequest :: #[must_use] const fn method(&self) -> HttpMethod |06619307bb32d86c
 crates/integrations/src/github.rs [pub] impl ReadRequest :: #[must_use] const fn operation(&self) -> GitHubOperation |7d9402615f893935
@@ -113,10 +113,10 @@ crates/integrations/src/github.rs [pub] impl WebhookDelivery :: #[must_use] cons
 crates/integrations/src/github.rs [pub] impl WebhookDelivery :: #[must_use] const fn kind(&self) -> WebhookEventKind |366b743821377cf2
 crates/integrations/src/github.rs [pub] impl WebhookDelivery :: #[must_use] const fn repository(&self) -> &GitHubRepository |f5086a2516b974a8
 crates/integrations/src/github.rs [pub] impl WebhookDelivery :: fn accept( kind: WebhookEventKind, repository: GitHubRepository, delivery_id: SourceId, ingest_seq: u64, bytes: &[u8], ) -> Result<Self, ConnectorError> |43c20de7f4d25e83
-crates/integrations/src/github.rs [pub] impl WebhookEventKind :: #[must_use] const fn as_str(self) -> &'static str |2f68ffc74dc17edb
+crates/integrations/src/github.rs [pub] impl WebhookEventKind :: #[must_use] const fn as_str(self) -> &'static str |a554de7443677428
 crates/integrations/src/github.rs [pub] impl WebhookEventKind :: #[must_use] const fn source_kind(self) -> SourceKind |e386bf620aba55e4
 crates/integrations/src/github.rs [pub] impl WebhookEventKind :: const ALL: [Self; 3] |3b76c684cddadde6
-crates/integrations/src/github.rs [pub] impl<'broker> PrivateBlobEgress<'broker> :: #[expect( clippy::too_many_arguments, reason = "the arguments are the two capabilities and P2-G2's own transmit signature; folding them into a struct would hide which token is which" )] fn transmit<T: OutboundTransport>( &self, blob: &RepositoryBlob, staged: &StagedPayload, egress: &CapabilityToken, disclosure: Option<&CapabilityToken>, disclosure_purpose_id: &str, plan: &TransmissionPlan<'_>, journal: &mut StagedGrantJournal, transport: &mut T, now: &dyn Fn() -> u64, ) -> Result<BlobTransfer, ConnectorError> |d75641da92c812d4
+crates/integrations/src/github.rs [pub] impl<'broker> PrivateBlobEgress<'broker> :: #[expect( clippy::too_many_arguments, reason = "the arguments are the two capabilities and P2-G2's own transmit signature; folding them into a struct would hide which token is which" )] fn transmit<T: OutboundTransport>( &self, blob: &RepositoryBlob, staged: &StagedPayload, egress: &CapabilityToken, disclosure: Option<&CapabilityToken>, disclosure_purpose_id: &str, plan: &TransmissionPlan<'_>, journal: &mut StagedGrantJournal, transport: &mut T, now: &dyn Fn() -> u64, ) -> Result<BlobTransfer, ConnectorError> |dccd7a168c10814c
 crates/integrations/src/github.rs [pub] impl<'broker> PrivateBlobEgress<'broker> :: #[must_use] const fn new( broker: &'broker PermissionBroker, proxy: &'broker EgressProxy<'broker>, ) -> Self |d4f2454b28ae2684
 crates/integrations/src/ide.rs [priv] impl ChangedScope
 crates/integrations/src/ide.rs [priv] impl DeepLink
@@ -139,10 +139,10 @@ crates/integrations/src/ide.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] stru
 crates/integrations/src/ide.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SnapshotRequest |a526cb9eac7b8d6f
 crates/integrations/src/ide.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct SymbolRef |69fe3038aae07f87
 crates/integrations/src/ide.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct WorkspacePath(String) |fa6c6dda14de56c1
-crates/integrations/src/ide.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum IdeError |355aabd2bc83cfcb
+crates/integrations/src/ide.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum IdeError |558368c12b43db6b
 crates/integrations/src/ide.rs [pub] impl ChangedScope :: #[must_use] const fn digest(&self) -> ContentDigest |bec3c57166450b4c
 crates/integrations/src/ide.rs [pub] impl ChangedScope :: #[must_use] const fn since(&self) -> TimestampMillis |9c5ee2c326ee95bd
-crates/integrations/src/ide.rs [pub] impl ChangedScope :: #[must_use] fn new(since: TimestampMillis, mut paths: Vec<WorkspacePath>) -> Self |2ef3b8aebaf9578b
+crates/integrations/src/ide.rs [pub] impl ChangedScope :: #[must_use] fn new(since: TimestampMillis, mut paths: Vec<WorkspacePath>) -> Self |cbb680a0e92bdaaa
 crates/integrations/src/ide.rs [pub] impl ChangedScope :: #[must_use] fn paths(&self) -> &[WorkspacePath] |4838d26472f9dd8a
 crates/integrations/src/ide.rs [pub] impl DeepLink :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
 crates/integrations/src/ide.rs [pub] impl ScopeConfirmation :: #[must_use] const fn at(&self) -> TimestampMillis |8bbc46d946c9bc4b
@@ -157,14 +157,14 @@ crates/integrations/src/ide.rs [pub] impl SymbolRef :: #[must_use] const fn path
 crates/integrations/src/ide.rs [pub] impl SymbolRef :: #[must_use] const fn start(&self) -> u32 |debeb75a1f9cdfcd
 crates/integrations/src/ide.rs [pub] impl SymbolRef :: #[must_use] fn name(&self) -> &str |dcd1b6c60790e001
 crates/integrations/src/ide.rs [pub] impl SymbolRef :: fn new( path: WorkspacePath, name: impl Into<String>, start: u32, end: u32, ) -> Result<Self, IdeError> |afb49fe19bf53b7d
-crates/integrations/src/ide.rs [pub] impl WatchMode :: #[must_use] const fn as_str(self) -> &'static str |99a216ada5245bcd
+crates/integrations/src/ide.rs [pub] impl WatchMode :: #[must_use] const fn as_str(self) -> &'static str |c0c54ebb9dd91ddb
 crates/integrations/src/ide.rs [pub] impl WatchMode :: const ALL: [Self; 2] |2b9d7754c5bcc848
 crates/integrations/src/ide.rs [pub] impl WorkspacePath :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
-crates/integrations/src/ide.rs [pub] impl WorkspacePath :: fn new(value: impl Into<String>) -> Result<Self, IdeError> |bf6414c9bed1e340
+crates/integrations/src/ide.rs [pub] impl WorkspacePath :: fn new(value: impl Into<String>) -> Result<Self, IdeError> |a236ac7c76527c94
 crates/integrations/src/ide.rs [pub] impl<'workspace, W: IdeWorkspace + ?Sized> IdeAdapter<'workspace, W> :: #[must_use] const fn attach(workspace: &'workspace W) -> Self |24777f61a0c32306
 crates/integrations/src/ide.rs [pub] impl<'workspace, W: IdeWorkspace + ?Sized> IdeAdapter<'workspace, W> :: #[must_use] const fn watch(&self) -> WatchMode |5444b4886beff871
 crates/integrations/src/ide.rs [pub] impl<'workspace, W: IdeWorkspace + ?Sized> IdeAdapter<'workspace, W> :: #[must_use] const fn with_watch(mut self, watch: WatchMode) -> Self |0799ac91e267c38e
-crates/integrations/src/ide.rs [pub] impl<'workspace, W: IdeWorkspace + ?Sized> IdeAdapter<'workspace, W> :: #[must_use] fn deep_link(&self, symbol: &SymbolRef) -> DeepLink |ac55f3958f33c80c
+crates/integrations/src/ide.rs [pub] impl<'workspace, W: IdeWorkspace + ?Sized> IdeAdapter<'workspace, W> :: #[must_use] fn deep_link(&self, symbol: &SymbolRef) -> DeepLink |64b2735d5d3ba802
 crates/integrations/src/ide.rs [pub] impl<'workspace, W: IdeWorkspace + ?Sized> IdeAdapter<'workspace, W> :: #[must_use] fn open_paths(&self) -> Vec<WorkspacePath> |9fe973cebda34d38
 crates/integrations/src/ide.rs [pub] impl<'workspace, W: IdeWorkspace + ?Sized> IdeAdapter<'workspace, W> :: #[must_use] fn symbols(&self, path: &WorkspacePath) -> Vec<SymbolRef> |cfe92c69f519dc51
 crates/integrations/src/ide.rs [pub] impl<'workspace, W: IdeWorkspace + ?Sized> IdeAdapter<'workspace, W> :: fn changed_scope(&self, since: TimestampMillis) -> Result<ChangedScope, IdeError> |66ddae14f78c4ec0
@@ -185,20 +185,20 @@ crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq
 crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CanonicalRef |33fc85e84732e7aa
 crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConflictBasis |ebd5b4657a34f858
 crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SourceAuthority |f493d82ccfcdc95c
-crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum IdentityError |1b1b557034f8e219
+crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum IdentityError |a6792ea73b117a40
 crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, Default)] struct IdentityMap |1ace6e27c25c6a59
 crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExternalIdentity |00518cff32013fa4
 crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SyncConflict |6a3454b138d46c5e
 crates/integrations/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ExternalId(String) |059f44ca6fc02971
 crates/integrations/src/identity.rs [pub] const MAX_EXTERNAL_ID_BYTES: usize |df713c21ecb314c1
-crates/integrations/src/identity.rs [pub] impl CanonicalKind :: #[must_use] const fn as_str(self) -> &'static str |83812936582579eb
+crates/integrations/src/identity.rs [pub] impl CanonicalKind :: #[must_use] const fn as_str(self) -> &'static str |3ac72c648e7c4423
 crates/integrations/src/identity.rs [pub] impl CanonicalKind :: const ALL: [Self; 5] |173697a7c34e65ea
 crates/integrations/src/identity.rs [pub] impl CanonicalRef :: #[must_use] const fn as_bytes(&self) -> &[u8; 16] |1bbdb56a23218fae
 crates/integrations/src/identity.rs [pub] impl CanonicalRef :: #[must_use] const fn kind(self) -> CanonicalKind |dfe02a9a87886eff
-crates/integrations/src/identity.rs [pub] impl ConflictBasis :: #[must_use] const fn as_str(self) -> &'static str |22b58f274c7dbd68
+crates/integrations/src/identity.rs [pub] impl ConflictBasis :: #[must_use] const fn as_str(self) -> &'static str |cd2e1ab716ec5440
 crates/integrations/src/identity.rs [pub] impl ConflictBasis :: const ALL: [Self; 3] |06083d860cc01233
 crates/integrations/src/identity.rs [pub] impl ExternalId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
-crates/integrations/src/identity.rs [pub] impl ExternalId :: fn new(value: impl Into<String>) -> Result<Self, IdentityError> |662227bb96d34aa3
+crates/integrations/src/identity.rs [pub] impl ExternalId :: fn new(value: impl Into<String>) -> Result<Self, IdentityError> |efb9582ad65bc8bc
 crates/integrations/src/identity.rs [pub] impl ExternalIdentity :: #[must_use] const fn authority(&self) -> SourceAuthority |0c45491281fac6e3
 crates/integrations/src/identity.rs [pub] impl ExternalIdentity :: #[must_use] const fn canonical(&self) -> CanonicalRef |55e6a84114b4e54c
 crates/integrations/src/identity.rs [pub] impl ExternalIdentity :: #[must_use] const fn external_id(&self) -> &ExternalId |e8817442ca106f41
@@ -211,7 +211,7 @@ crates/integrations/src/identity.rs [pub] impl IdentityMap :: #[must_use] fn map
 crates/integrations/src/identity.rs [pub] impl IdentityMap :: #[must_use] fn new() -> Self |cd0c0ac7640488b6
 crates/integrations/src/identity.rs [pub] impl IdentityMap :: #[must_use] fn resolve( &self, system: ConnectorKind, external_id: &ExternalId, ) -> Option<&ExternalIdentity> |d827206a40d554be
 crates/integrations/src/identity.rs [pub] impl IdentityMap :: fn register(&mut self, identity: ExternalIdentity) -> Option<&SyncConflict> |3829a61517658cb7
-crates/integrations/src/identity.rs [pub] impl SourceAuthority :: #[must_use] const fn as_str(self) -> &'static str |d90167f61c53c4d9
+crates/integrations/src/identity.rs [pub] impl SourceAuthority :: #[must_use] const fn as_str(self) -> &'static str |f98e38bfca4eea5a
 crates/integrations/src/identity.rs [pub] impl SourceAuthority :: const ALL: [Self; 4] |358119b8255aa1d2
 crates/integrations/src/identity.rs [pub] impl SyncConflict :: #[must_use] const fn basis(&self) -> ConflictBasis |74c1a8d72ce3b537
 crates/integrations/src/identity.rs [pub] impl SyncConflict :: #[must_use] const fn held(&self) -> &ExternalIdentity |93bc9cbfbffd82c4
@@ -236,15 +236,15 @@ crates/integrations/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)
 crates/integrations/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConnectorHealth |6bb860283eca85e1
 crates/integrations/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConnectorKind |50a4324e509137c1
 crates/integrations/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CoreView |b87e95bce39fccc9
-crates/integrations/src/lib.rs [pub] impl ConnectorHealth :: #[must_use] const fn as_str(self) -> &'static str |09e990d8400e4dd9
+crates/integrations/src/lib.rs [pub] impl ConnectorHealth :: #[must_use] const fn as_str(self) -> &'static str |5562fc387793cf2a
 crates/integrations/src/lib.rs [pub] impl ConnectorHealth :: const ALL: [Self; 2] |d09caa31904add50
-crates/integrations/src/lib.rs [pub] impl ConnectorKind :: #[must_use] const fn as_str(self) -> &'static str |716835f9b59c6f01
+crates/integrations/src/lib.rs [pub] impl ConnectorKind :: #[must_use] const fn as_str(self) -> &'static str |5bfa0fedb3da8e9f
 crates/integrations/src/lib.rs [pub] impl ConnectorKind :: const ALL: [Self; 10] |d53320ae02f39c1d
 crates/integrations/src/lib.rs [pub] impl ConnectorRegistry :: #[must_use] const fn all_down() -> Self |1f8dfb48001df0f3
 crates/integrations/src/lib.rs [pub] impl ConnectorRegistry :: #[must_use] const fn all_up() -> Self |8e148f194be9590f
 crates/integrations/src/lib.rs [pub] impl ConnectorRegistry :: #[must_use] const fn with(mut self, kind: ConnectorKind, health: ConnectorHealth) -> Self |3ec91b36ac603a8f
 crates/integrations/src/lib.rs [pub] impl ConnectorRegistry :: #[must_use] fn unreachable(&self) -> Vec<ConnectorKind> |bd3895f83ae35848
-crates/integrations/src/lib.rs [pub] impl CoreView :: #[must_use] const fn as_str(self) -> &'static str |1ad606d866ada783
+crates/integrations/src/lib.rs [pub] impl CoreView :: #[must_use] const fn as_str(self) -> &'static str |2266f1659af72bea
 crates/integrations/src/lib.rs [pub] impl CoreView :: const ALL: [Self; 5] |174e8c1d00a780b2
 crates/integrations/src/lib.rs [pub] impl<'core, G: CoreGraph + ?Sized, F: ConnectorFleet + ?Sized> IntegrationSurface<'core, G, F> :: #[must_use] const fn new(core: &'core G, fleet: &'core F) -> Self |a173884594c165fc
 crates/integrations/src/lib.rs [pub] impl<'core, G: CoreGraph + ?Sized, F: ConnectorFleet + ?Sized> IntegrationSurface<'core, G, F> :: fn connector_health(&self, kind: ConnectorKind) -> ConnectorHealth |7bdacf1dc0225263

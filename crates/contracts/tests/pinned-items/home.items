@@ -7,7 +7,7 @@ crates/home/src/alert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] stru
 crates/home/src/alert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AlertBucket |70cacdf5cc83686c
 crates/home/src/alert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GroupedAlerts |33985a6c8a395fbd
 crates/home/src/alert.rs [pub] impl AlertBucket :: #[must_use] const fn of(deadline: Option<TimestampMillis>, window: DayWindow) -> Self |096ca4ad4895d1d1
-crates/home/src/alert.rs [pub] impl AlertBucket :: #[must_use] const fn spec_words(self) -> &'static str |6ff316818bcc3d23
+crates/home/src/alert.rs [pub] impl AlertBucket :: #[must_use] const fn spec_words(self) -> &'static str |ca60e6f478b08444
 crates/home/src/alert.rs [pub] impl AlertBucket :: const ALL: [Self; 3] |3b1a41bad688cc7f
 crates/home/src/alert.rs [pub] impl DayWindow :: #[must_use] const fn ends(self) -> TimestampMillis |336e9aae63054caf
 crates/home/src/alert.rs [pub] impl DayWindow :: #[must_use] const fn starts(self) -> TimestampMillis |e84072e415391381
@@ -36,7 +36,7 @@ crates/home/src/card.rs [pub] impl OfficialCondition :: #[must_use] const fn due
 crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn kind(&self) -> OpenItemKind |09a1b45cfd10cf5e
 crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn new(kind: OpenItemKind, subject: EntityId) -> Self |ee5bf23714ff119c
 crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
-crates/home/src/card.rs [pub] impl OpenItemKind :: #[must_use] const fn spec_words(self) -> &'static str |78d60df9015cf9aa
+crates/home/src/card.rs [pub] impl OpenItemKind :: #[must_use] const fn spec_words(self) -> &'static str |3b34d8c3181b5756
 crates/home/src/card.rs [pub] impl OpenItemKind :: const ALL: [Self; 2] |09fab32b832750c0
 crates/home/src/freshness.rs [priv] impl FreshnessAlert
 crates/home/src/freshness.rs [priv] use academic_domain::{EntityId, FreshnessBand} |db517c91fd47e371
@@ -56,12 +56,12 @@ crates/home/src/lib.rs [priv] mod permission
 crates/home/src/lib.rs [priv] mod prerequisite
 crates/home/src/lib.rs [priv] mod screen
 crates/home/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum HomeGroup |295cd76a9acc802a
-crates/home/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum HomeError |7564fd812c1d5ad4
+crates/home/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum HomeError |8c74aea28194dae8
 crates/home/src/lib.rs [pub] const HIGHEST_BRIEF: usize |9260bb27411b77cf
 crates/home/src/lib.rs [pub] const LOWEST_BRIEF: usize |2b85c67495021575
-crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn id(self) -> &'static str |d044152fc5728b74
+crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn id(self) -> &'static str |96627b58ce22f3fb
 crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn position(self) -> usize |175b4253bdc44a40
-crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn spec_words(self) -> &'static str |e36a037b2190f994
+crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn spec_words(self) -> &'static str |379105101c7561c6
 crates/home/src/lib.rs [pub] impl HomeGroup :: const ALL: [Self; 8] |b688cbb9fb987834
 crates/home/src/lib.rs [pub] impl HomeGroup :: const COUNT: usize |c2aed194b6323dd9
 crates/home/src/lib.rs [pub] use alert::{AlertBucket, DayWindow, GroupedAlerts} |bf00b3500160ad99
@@ -83,7 +83,7 @@ crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn at(
 crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn new(occasion: ScheduledOccasion, subject: EntityId, at: TimestampMillis) -> Self |39713a908ba307bb
 crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn occasion(&self) -> ScheduledOccasion |1d065dc047ce90e9
 crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
-crates/home/src/occasion.rs [pub] impl ScheduledOccasion :: #[must_use] const fn spec_words(self) -> &'static str |cdce6e91778661c7
+crates/home/src/occasion.rs [pub] impl ScheduledOccasion :: #[must_use] const fn spec_words(self) -> &'static str |963ffd64703debe2
 crates/home/src/occasion.rs [pub] impl ScheduledOccasion :: const ALL: [Self; 3] |539e019dcc1c88a3
 crates/home/src/occasion.rs [pub] impl UpcomingUse :: #[must_use] const fn at(&self) -> TimestampMillis |8bbc46d946c9bc4b
 crates/home/src/occasion.rs [pub] impl UpcomingUse :: #[must_use] const fn occasion(&self) -> ScheduledOccasion |1d065dc047ce90e9
@@ -93,7 +93,7 @@ crates/home/src/permission.rs [priv] impl RecordingPermission
 crates/home/src/permission.rs [priv] use academic_consent::CaptureStatus |c95b2dabd26a8c87
 crates/home/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RecordingPermission |e2401a4d7732d7a9
 crates/home/src/permission.rs [pub] impl RecordingPermission :: #[must_use] const fn of(status: CaptureStatus) -> Self |fdaec5d376dbdc4f
-crates/home/src/permission.rs [pub] impl RecordingPermission :: #[must_use] const fn spec_words(self) -> &'static str |0dae644ab5c0c8ab
+crates/home/src/permission.rs [pub] impl RecordingPermission :: #[must_use] const fn spec_words(self) -> &'static str |813914176bf00062
 crates/home/src/permission.rs [pub] impl RecordingPermission :: const ALL: [Self; 4] |b4cdd8fc09d5e70f
 crates/home/src/prerequisite.rs [priv] impl EstimatedMinutes
 crates/home/src/prerequisite.rs [priv] impl PrerequisiteBrief

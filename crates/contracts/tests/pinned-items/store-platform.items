@@ -1,0 +1,115 @@
+crates/store-platform/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/store-platform/src/lib.rs [priv] #[cfg(unix)] mod unix
+crates/store-platform/src/lib.rs [priv] #[cfg(windows)] mod windows
+crates/store-platform/src/lib.rs [priv] fn contains_windows_device_component(value: &str) -> bool |913e04e8eb3c6414
+crates/store-platform/src/lib.rs [priv] fn is_numbered_windows_device(value: &str, prefix: &str) -> bool |e690e403b7ba1c8c
+crates/store-platform/src/lib.rs [priv] fn validate_common_path(path: &Path) -> Result<(), PathCapabilityError> |729536803f1e209c
+crates/store-platform/src/lib.rs [priv] impl PathCapabilityError
+crates/store-platform/src/lib.rs [priv] impl fmt::Display for PathCapabilityError
+crates/store-platform/src/lib.rs [priv] impl fmt::Display for PathCapabilityError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |22ec5aced3665583
+crates/store-platform/src/lib.rs [priv] impl std::error::Error for PathCapabilityError
+crates/store-platform/src/lib.rs [priv] mod tests :: #[test] fn injected_unix_mount_types_cover_local_remote_and_unknown() |cea7d126b12b1a01
+crates/store-platform/src/lib.rs [priv] mod tests :: #[test] fn injected_windows_storage_facts_fail_closed() |0ab95cfd88e443bb
+crates/store-platform/src/lib.rs [priv] mod tests :: #[test] fn windows_namespace_classification_is_cross_host() |4e3dbc06e23eb44c
+crates/store-platform/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/store-platform/src/lib.rs [priv] use std::{ fmt, path::{Component, Path, PathBuf}, } |56d59707f1de588a
+crates/store-platform/src/lib.rs [pub(crate)] impl PathCapabilityError :: const fn new( code: PathCapabilityErrorCode, operation: &'static str, os_code: Option<i64>, ) -> Self |91248ccf79e6911d
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum DirectoryAccess |c8541e4d575b681e
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum PathCapabilityErrorCode |1a55ff0c9b1f7abd
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum RemoteDeviceFact |b2c7423af9d2e10e
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum RootState |28e28929f530c691
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum WindowsDriveKind |8fdbed4fc83f3e8d
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum WindowsPathKind |27220b93f830532c
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum FinalPathStatus |d472182efff5242c
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum LocalityUnknown |a190f944c20070f0
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum StorageLocality |32d1de0d7d183933
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathCapabilities |da5568e3504b09a1
+crates/store-platform/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathCapabilityError |ecf5011eb30d0f6b
+crates/store-platform/src/lib.rs [pub] #[must_use] fn classify_unix_filesystem_type(filesystem_type: &str) -> StorageLocality |617238d9501cce0a
+crates/store-platform/src/lib.rs [pub] #[must_use] fn classify_windows_path(value: &str) -> WindowsPathKind |d47b39b387917f2b
+crates/store-platform/src/lib.rs [pub] #[must_use] fn classify_windows_storage( drive: WindowsDriveKind, remote_device: RemoteDeviceFact, ) -> StorageLocality |db20844f65876ade
+crates/store-platform/src/lib.rs [pub] fn create_owner_only_directory(path: &Path) -> Result<PathCapabilities, PathCapabilityError> |bf3b0e27ffe7fa2e
+crates/store-platform/src/lib.rs [pub] fn inspect_path(path: &Path) -> Result<PathCapabilities, PathCapabilityError> |79fce1c3787bfef5
+crates/store-platform/src/unix.rs [priv] #[cfg(any(target_os = "linux", target_os = "macos"))] use crate::classify_unix_filesystem_type |e42693206c13a982
+crates/store-platform/src/unix.rs [priv] #[cfg(any(target_os = "linux", target_os = "macos"))] use std::{ffi::OsString, os::unix::ffi::OsStringExt} |6c3178d8636ab723
+crates/store-platform/src/unix.rs [priv] #[cfg(not(any(target_os = "linux", target_os = "macos")))] fn mount_locality( _canonical_path: &Path, _handle: &OwnedFd, ) -> Result<StorageLocality, PathCapabilityError> |ec37a56102d9f01b
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "linux")] fn decode_mount_field(value: &[u8]) -> Vec<u8> |68f85b5cb8a6dc96
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "linux")] fn mount_locality( canonical_path: &Path, handle: &OwnedFd, ) -> Result<StorageLocality, PathCapabilityError> |9af3ec2befe3f379
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "linux")] use std::{ fs, os::{fd::AsRawFd, unix::ffi::OsStrExt}, } |fb22b48bb1537f3c
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "macos")] const MNT_LOCAL: u32 |a461161da47f84a2
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "macos")] const MNT_REMOVABLE: u32 |a9462bdc92fb21a3
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "macos")] fn classify_macos_mount(flags: u32, filesystem_type: &str) -> StorageLocality |925382316f878cae
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "macos")] fn mount_locality( _canonical_path: &Path, handle: &OwnedFd, ) -> Result<StorageLocality, PathCapabilityError> |2e4972cbc761de8d
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "macos")] fn mount_type_name(raw: &[c_char]) -> String |429ee0ee19591b61
+crates/store-platform/src/unix.rs [priv] #[cfg(target_os = "macos")] use std::ffi::c_char |86329fd3cc88ca04
+crates/store-platform/src/unix.rs [priv] #[cfg(test)] mod tests
+crates/store-platform/src/unix.rs [priv] #[derive(Debug)] struct Walk |9c89bcf62619cbc5
+crates/store-platform/src/unix.rs [priv] fn capabilities_from_walk(walk: Walk) -> Result<PathCapabilities, PathCapabilityError> |9ad4eb093dd0b4ec
+crates/store-platform/src/unix.rs [priv] fn descriptor_path(handle: &OwnedFd) -> Result<PathBuf, PathCapabilityError> |1a21ddc6acbb1525
+crates/store-platform/src/unix.rs [priv] fn directory_access(handle: &OwnedFd) -> Result<DirectoryAccess, PathCapabilityError> |2ae8d03b0bfdfe7c
+crates/store-platform/src/unix.rs [priv] fn directory_is_empty(handle: &OwnedFd) -> Result<bool, PathCapabilityError> |2026e08b9dc64a4b
+crates/store-platform/src/unix.rs [priv] fn errno_error(operation: &'static str, error: Errno) -> PathCapabilityError |b63eb905e12a0251
+crates/store-platform/src/unix.rs [priv] fn map_open_error(operation: &'static str, error: Errno) -> PathCapabilityError |705ce70b846336b3
+crates/store-platform/src/unix.rs [priv] fn normal_components(path: &Path) -> Result<Vec<&OsStr>, PathCapabilityError> |494ecde2dc3b98df
+crates/store-platform/src/unix.rs [priv] fn same_walk_identity(left: &Walk, right: &Walk) -> Result<bool, PathCapabilityError> |90c6b50f78abec35
+crates/store-platform/src/unix.rs [priv] fn walk_once(path: &Path) -> Result<Walk, PathCapabilityError> |6480340349f57fe5
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "linux")] #[test] fn mount_field_decoder_handles_kernel_octal_escapes() |676044354c6b4501
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "linux")] use super::decode_mount_field |2f853959769bac43
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "macos")] #[test] fn injected_macos_mount_facts_decide_locality_fail_closed() |6f852718cd2c83ea
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "macos")] #[test] fn native_macos_boot_volume_is_local_and_not_removable() -> Result<(), PathCapabilityError> |3b1462a9f5163b55
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "macos")] #[test] fn statfs_type_name_stops_at_the_padding_nul() |53e436d1e5601595
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "macos")] use crate::{LocalityUnknown, PathCapabilityError, StorageLocality} |1232d3c8d16fd143
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "macos")] use rustix::fs::{self as rfs, Mode, OFlags} |cdf856463bfdb012
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "macos")] use std::{ffi::c_char, path::Path} |c7b34f9815c750f0
+crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "macos")] use super::{ MNT_LOCAL, MNT_REMOVABLE, classify_macos_mount, errno_error, mount_locality, mount_type_name, } |8470968f39a5e96d
+crates/store-platform/src/unix.rs [priv] use crate::{ DirectoryAccess, FinalPathStatus, LocalityUnknown, PathCapabilities, PathCapabilityError, PathCapabilityErrorCode, RootState, StorageLocality, } |f4d2b525529c1d2a
+crates/store-platform/src/unix.rs [priv] use rustix::{ fs::{self as rfs, AtFlags, Dir, FileType, Mode, OFlags}, io::Errno, process, } |503a0b6cdc2e20e5
+crates/store-platform/src/unix.rs [priv] use std::{ ffi::OsStr, os::fd::OwnedFd, path::{Component, Path, PathBuf}, } |2f3be4f082d949da
+crates/store-platform/src/unix.rs [pub(super)] fn create_owner_only_directory( path: &Path, ) -> Result<PathCapabilities, PathCapabilityError> |b4a516ae446e97f8
+crates/store-platform/src/unix.rs [pub(super)] fn inspect_path(path: &Path) -> Result<PathCapabilities, PathCapabilityError> |130f492aff857148
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn create_directory_relative( parent: &OwnedHandle, name: &OsStr, descriptor: &LocalAllocation, ) -> Result<OpenedComponent, PathCapabilityError> |c616ac9c75b24eb7
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn current_user_sid() -> Result<UserSid, PathCapabilityError> |189289a432d8e841
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn directory_is_empty(handle: &OwnedHandle) -> Result<RootState, PathCapabilityError> |b7a5154203bc2a2d
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn drive_kind(path: &Path) -> Result<WindowsDriveKind, PathCapabilityError> |c5de0c58ee1820b7
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn file_attributes(handle: &OwnedHandle) -> Result<u32, PathCapabilityError> |50c4fa746f579b87
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn file_identity(handle: &OwnedHandle) -> Result<FileIdentity, PathCapabilityError> |76de288c6687d63a
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn final_path(handle: &OwnedHandle) -> Result<PathBuf, PathCapabilityError> |b8e5a63c8f3194b5
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn open_existing_component(path: &Path) -> Result<OpenedComponent, PathCapabilityError> |25401b3c238c056f
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn protected_security_descriptor(user: &UserSid) -> Result<LocalAllocation, PathCapabilityError> |8e89fa2d06812c19
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn remote_device_fact(handle: &OwnedHandle) -> RemoteDeviceFact |e343911425e18a88
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn sid_string(sid: PSID) -> Result<String, PathCapabilityError> |f23b72829ebec00a
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn system_sid() -> Result<SystemSid, PathCapabilityError> |e281ebf3f2735367
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn verify_directory_dacl(handle: &OwnedHandle) -> Result<DirectoryAccess, PathCapabilityError> |8e6e869262231b57
+crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn verify_non_inheritable(handle: &OwnedHandle) -> Result<(), PathCapabilityError> |47f5faf135abcb82
+crates/store-platform/src/windows.rs [priv] #[derive(Debug)] struct LocalAllocation(*mut c_void) |d3f796f9244454a3
+crates/store-platform/src/windows.rs [priv] #[derive(Debug)] struct OpenedComponent |32f1be9b0fc16bf6
+crates/store-platform/src/windows.rs [priv] #[derive(Debug)] struct OwnedHandle(HANDLE) |c7917318e7f55705
+crates/store-platform/src/windows.rs [priv] #[derive(Debug)] struct SystemSid |56ec8ffcd6add13f
+crates/store-platform/src/windows.rs [priv] #[derive(Debug)] struct UserSid |5949411c82fc7499
+crates/store-platform/src/windows.rs [priv] #[derive(Debug)] struct Walk |9fb22ab3062d092f
+crates/store-platform/src/windows.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct FileIdentity |31d70f7c20ab7d07
+crates/store-platform/src/windows.rs [priv] const FILE_DEVICE_NETWORK_FILE_SYSTEM: u32 |575d3ff6ddc7c465
+crates/store-platform/src/windows.rs [priv] fn capabilities_from_walk(walk: Walk) -> Result<PathCapabilities, PathCapabilityError> |ba10cb5ab52079c4
+crates/store-platform/src/windows.rs [priv] fn last_error(operation: &'static str) -> PathCapabilityError |23cbd05fb139f173
+crates/store-platform/src/windows.rs [priv] fn normalize_final_path(path: PathBuf) -> PathBuf |773d463445c040db
+crates/store-platform/src/windows.rs [priv] fn ntstatus_error(operation: &'static str, status: i32) -> PathCapabilityError |8208a0ed1389bdf4
+crates/store-platform/src/windows.rs [priv] fn paths_equal_case_insensitive(left: &Path, right: &Path) -> bool |ea26bf468ff5418e
+crates/store-platform/src/windows.rs [priv] fn recheck_reparse_state(walk: &Walk) -> Result<(), PathCapabilityError> |67f60901d30ba293
+crates/store-platform/src/windows.rs [priv] fn same_walk_identity(left: &Walk, right: &Walk) -> bool |1ad3ec33834da4a9
+crates/store-platform/src/windows.rs [priv] fn walk_once(path: &Path) -> Result<Walk, PathCapabilityError> |808cf077f461fea3
+crates/store-platform/src/windows.rs [priv] fn wide_path(path: &Path) -> Result<Vec<u16>, PathCapabilityError> |965fd5c2d2202a9d
+crates/store-platform/src/windows.rs [priv] fn wide_text(value: &OsStr) -> Result<Vec<u16>, PathCapabilityError> |174641209cd7d23d
+crates/store-platform/src/windows.rs [priv] impl Drop for LocalAllocation
+crates/store-platform/src/windows.rs [priv] impl Drop for LocalAllocation :: #[allow(unsafe_code)] fn drop(&mut self) |70e7ca1deb082f67
+crates/store-platform/src/windows.rs [priv] impl Drop for OwnedHandle
+crates/store-platform/src/windows.rs [priv] impl Drop for OwnedHandle :: #[allow(unsafe_code)] fn drop(&mut self) |3d1a016d9d33a96d
+crates/store-platform/src/windows.rs [priv] impl LocalAllocation
+crates/store-platform/src/windows.rs [priv] impl LocalAllocation :: fn as_security_descriptor(&self) -> PSECURITY_DESCRIPTOR |e9b3c492e9cfa90a
+crates/store-platform/src/windows.rs [priv] impl OwnedHandle
+crates/store-platform/src/windows.rs [priv] impl OwnedHandle :: fn raw(&self) -> HANDLE |99dce7c9b2d8dc6f
+crates/store-platform/src/windows.rs [priv] use crate::{ DirectoryAccess, FinalPathStatus, PathCapabilities, PathCapabilityError, PathCapabilityErrorCode, RemoteDeviceFact, RootState, StorageLocality, WindowsDriveKind, classify_windows_storage, } |85621907d96f9996
+crates/store-platform/src/windows.rs [priv] use std::{ ffi::{OsStr, OsString, c_void}, mem::{MaybeUninit, offset_of, size_of}, os::windows::ffi::{OsStrExt, OsStringExt}, path::{Path, PathBuf}, ptr::{null, null_mut}, } |907c6fbe6a802828
+crates/store-platform/src/windows.rs [priv] use windows_sys::Wdk::{ Foundation::OBJECT_ATTRIBUTES, Storage::FileSystem::{ FILE_CREATE, FILE_DIRECTORY_FILE, FILE_DIRECTORY_INFORMATION, FILE_OPEN_REPARSE_POINT, FILE_SYNCHRONOUS_IO_NONALERT, FileDirectoryInformation, FileFsDeviceInformation, NtCreateFile, NtQueryDirectoryFile, NtQueryVolumeInformationFile, }, System::SystemServices::{FILE_FS_DEVICE_INFORMATION, FILE_REMOTE_DEVICE}, } |734f74bff15352aa
+crates/store-platform/src/windows.rs [priv] use windows_sys::Win32::{ Foundation::{ CloseHandle, ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_SUCCESS, GetHandleInformation, HANDLE, HANDLE_FLAG_INHERIT, INVALID_HANDLE_VALUE, LocalFree, OBJ_CASE_INSENSITIVE, STATUS_NO_MORE_FILES, STATUS_NO_SUCH_FILE, STATUS_OBJECT_NAME_COLLISION, UNICODE_STRING, }, Security::{ ACCESS_ALLOWED_ACE, ACE_HEADER, ACL_SIZE_INFORMATION, AclSizeInformation, Authorization::{ ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW, GetSecurityInfo, SDDL_REVISION_1, SE_FILE_OBJECT, }, CreateWellKnownSid, DACL_SECURITY_INFORMATION, EqualSid, GetAce, GetAclInformation, GetLengthSid, GetSecurityDescriptorControl, GetTokenInformation, INHERITED_ACE, IsValidSid, OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID, SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER, TokenUser, WinLocalSystemSid, }, Storage::FileSystem::{ CreateFileW, FILE_ALL_ACCESS, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_TAG_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_ID_INFO, FILE_LIST_DIRECTORY, FILE_NAME_NORMALIZED, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FileAttributeTagInfo, FileIdInfo, GetDriveTypeW, GetFileInformationByHandleEx, GetFinalPathNameByHandleW, GetVolumePathNameW, OPEN_EXISTING, READ_CONTROL, VOLUME_NAME_DOS, }, System::{ IO::IO_STATUS_BLOCK, SystemServices::ACCESS_ALLOWED_ACE_TYPE, Threading::{GetCurrentProcess, OpenProcessToken}, WindowsProgramming::{ DRIVE_CDROM, DRIVE_FIXED, DRIVE_NO_ROOT_DIR, DRIVE_RAMDISK, DRIVE_REMOTE, DRIVE_REMOVABLE, }, }, } |8ae19e59f01876df
+crates/store-platform/src/windows.rs [pub(super)] fn create_owner_only_directory( path: &Path, ) -> Result<PathCapabilities, PathCapabilityError> |f53e103a16142e52
+crates/store-platform/src/windows.rs [pub(super)] fn inspect_path(path: &Path) -> Result<PathCapabilities, PathCapabilityError> |b531a50cd87c365d

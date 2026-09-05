@@ -1,0 +1,3 @@
+crates/repository-analyzer/src/main.rs [priv] academic_process_sandbox::class_main!(PROCESS_CLASS) |782aa07953465591
+crates/repository-analyzer/src/main.rs [priv] const PROCESS_CLASS: ProcessClass |c0bca2cd106798e2
+crates/repository-analyzer/src/main.rs [priv] use academic_policy::ProcessClass |e71d5a02fabd8a7a

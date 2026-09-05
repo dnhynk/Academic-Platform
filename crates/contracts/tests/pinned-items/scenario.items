@@ -1,0 +1,118 @@
+crates/scenario/src/envelope.rs [priv] const ADMITTED_AUTHORITY: AuthorityClass |f9e46a95bc4dc49d
+crates/scenario/src/envelope.rs [priv] const ADMITTED_STATUS: EpistemicStatus |60e61a4ac643f594
+crates/scenario/src/envelope.rs [priv] const BINDING_DOMAIN: &str |6f2dfd723d76e728
+crates/scenario/src/envelope.rs [priv] const fn authority_tag(authority: AuthorityClass) -> &'static str |45528092625ed750
+crates/scenario/src/envelope.rs [priv] const fn basis_tag(opportunity: &ProjectedEvidenceOpportunity) -> &'static str |fda5f72a38f38c20
+crates/scenario/src/envelope.rs [priv] const fn kind_tag(opportunity: &ProjectedEvidenceOpportunity) -> &'static str |0bf96c966d41a7ab
+crates/scenario/src/envelope.rs [priv] const fn likelihood_tag(opportunity: &ProjectedEvidenceOpportunity) -> &'static str |1d44986d1322cecb
+crates/scenario/src/envelope.rs [priv] const fn status_tag(status: EpistemicStatus) -> &'static str |b1827ae155fe0f4c
+crates/scenario/src/envelope.rs [priv] fn binding_digest( envelope_version: u32, hypothetical: bool, authority_class: AuthorityClass, epistemic_status: EpistemicStatus, projection: &ScenarioProjection, ) -> ContentDigest |3e5d4282d1e62c1c
+crates/scenario/src/envelope.rs [priv] fn workload_range(workload: &ProjectedWorkloadRange) -> WorkloadHoursRange |05f179e255ddf846
+crates/scenario/src/envelope.rs [priv] impl ProjectionEnvelope
+crates/scenario/src/envelope.rs [priv] use academic_domain::{AuthorityClass, ContentDigest, EpistemicStatus} |a5160bbd0da1c262
+crates/scenario/src/envelope.rs [priv] use crate::{ opportunity::ProjectedEvidenceOpportunity, simulate::ScenarioProjection, workload::{ProjectedWorkloadRange, WorkloadHoursRange}, } |b6cade93114a9fa6
+crates/scenario/src/envelope.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/scenario/src/envelope.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/scenario/src/envelope.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/scenario/src/envelope.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ProjectionEnvelope |47c9d7d2cfe3e06d
+crates/scenario/src/envelope.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum ProjectionAdmissionError |be2dca7f4c6be6df
+crates/scenario/src/envelope.rs [pub] const PROJECTION_ENVELOPE_VERSION: u32 |a78e73e3abd2aeff
+crates/scenario/src/envelope.rs [pub] fn admit_projection_payload( payload: &[u8], ) -> Result<ScenarioProjection, ProjectionAdmissionError> |7c222a1b4c39239b
+crates/scenario/src/envelope.rs [pub] impl ProjectionEnvelope :: #[must_use] fn seal(projection: ScenarioProjection) -> Self |9010dd024595b02c
+crates/scenario/src/error.rs [priv] use academic_domain::DomainError |b26bd6a1fa51a11b
+crates/scenario/src/error.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/scenario/src/error.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum ScenarioError |4cb78b2ee2667249
+crates/scenario/src/lib.rs [pub] const SCENARIO_ENGINE_VERSION: u32 |0a8a7a6a7c3d80ac
+crates/scenario/src/lib.rs [pub] mod envelope
+crates/scenario/src/lib.rs [pub] mod error
+crates/scenario/src/lib.rs [pub] mod opportunity
+crates/scenario/src/lib.rs [pub] mod proposed
+crates/scenario/src/lib.rs [pub] mod simulate
+crates/scenario/src/lib.rs [pub] mod workload
+crates/scenario/src/lib.rs [pub] use envelope::{ PROJECTION_ENVELOPE_VERSION, ProjectionAdmissionError, ProjectionEnvelope, admit_projection_payload, } |2377170442a9ce64
+crates/scenario/src/lib.rs [pub] use error::ScenarioError |d772e2d33beda820
+crates/scenario/src/lib.rs [pub] use opportunity::{ LikelihoodBand, OpportunityBasis, OpportunityKind, ProjectedEvidenceOpportunity, } |c2cce185bf763a2e
+crates/scenario/src/lib.rs [pub] use proposed::{ProjectedMastery, ProjectionCalibration, ProposalProvenance, Proposed} |4cf6d893227470f3
+crates/scenario/src/lib.rs [pub] use simulate::{ ScenarioAssumption, ScenarioChoice, ScenarioInputs, ScenarioProjection, SyllabusConceptSignal, project, scenario_inputs_digest, } |9df9aa36529162b5
+crates/scenario/src/lib.rs [pub] use workload::{ProjectedWorkloadRange, WorkloadHoursRange} |46cc32e3105ad72e
+crates/scenario/src/opportunity.rs [priv] impl ProjectedEvidenceOpportunity
+crates/scenario/src/opportunity.rs [priv] use academic_domain::{ConfidencePermille, EntityId, OfferingId} |97b1933d464f28b0
+crates/scenario/src/opportunity.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/scenario/src/opportunity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum LikelihoodBand |576945888ede1357
+crates/scenario/src/opportunity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum OpportunityBasis |e5302c821950d123
+crates/scenario/src/opportunity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum OpportunityKind |5daa9ae4f5cf1144
+crates/scenario/src/opportunity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ProjectedEvidenceOpportunity |6daf1842372bd3c0
+crates/scenario/src/opportunity.rs [pub] impl ProjectedEvidenceOpportunity :: #[must_use] const fn likelihood(&self) -> LikelihoodBand |6ee0b2b1bed7c116
+crates/scenario/src/proposed.rs [priv] #[cfg(test)] mod tests
+crates/scenario/src/proposed.rs [priv] impl ProposalProvenance
+crates/scenario/src/proposed.rs [priv] impl<T: Clone> Clone for Proposed<T>
+crates/scenario/src/proposed.rs [priv] impl<T: Clone> Clone for Proposed<T> :: fn clone(&self) -> Self |7355e4f6aec7cde6
+crates/scenario/src/proposed.rs [priv] impl<T: Copy> Copy for Proposed<T>
+crates/scenario/src/proposed.rs [priv] impl<T: Eq> Eq for Proposed<T>
+crates/scenario/src/proposed.rs [priv] impl<T: Ord> Proposed<T>
+crates/scenario/src/proposed.rs [priv] impl<T: PartialEq> PartialEq for Proposed<T>
+crates/scenario/src/proposed.rs [priv] impl<T: PartialEq> PartialEq for Proposed<T> :: fn eq(&self, other: &Self) -> bool |0f10b106d250dd99
+crates/scenario/src/proposed.rs [priv] impl<T> Proposed<T>
+crates/scenario/src/proposed.rs [priv] impl<T> fmt::Debug for Proposed<T>
+crates/scenario/src/proposed.rs [priv] impl<T> fmt::Debug for Proposed<T> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |198a5da40932afc9
+crates/scenario/src/proposed.rs [priv] mod tests :: #[test] fn calibration_reports_direction_only() -> Result<(), academic_domain::DomainError> |bfcffba10a9c812c
+crates/scenario/src/proposed.rs [priv] mod tests :: #[test] fn debug_redacts_the_proposed_value() -> Result<(), academic_domain::DomainError> |225e40115649cd2a
+crates/scenario/src/proposed.rs [priv] mod tests :: #[test] fn provenance_is_carried_verbatim() -> Result<(), academic_domain::DomainError> |a133a09c8a4bbcd0
+crates/scenario/src/proposed.rs [priv] mod tests :: fn provenance() -> Result<ProposalProvenance, academic_domain::DomainError> |214f6f517a458167
+crates/scenario/src/proposed.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/scenario/src/proposed.rs [priv] use academic_domain::{ContentDigest, MasteryLevel, ModelRunId, TimestampMillis} |08d39d080c146806
+crates/scenario/src/proposed.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/scenario/src/proposed.rs [priv] use std::{cmp::Ordering, fmt} |5c19e09887ed6c61
+crates/scenario/src/proposed.rs [pub(crate)] impl<T> Proposed<T> :: const fn sealed_value(&self) -> &T |90df00d484c2a62c
+crates/scenario/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ProposalProvenance |eb5f9ba69b5e5b64
+crates/scenario/src/proposed.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ProjectionCalibration |178c934a8a4c6706
+crates/scenario/src/proposed.rs [pub] impl ProposalProvenance :: #[must_use] const fn engine_version(&self) -> u32 |6c0f9dc4d611b60f
+crates/scenario/src/proposed.rs [pub] impl ProposalProvenance :: #[must_use] const fn inputs_digest(&self) -> ContentDigest |eee3c389958ac754
+crates/scenario/src/proposed.rs [pub] impl ProposalProvenance :: #[must_use] const fn model_run_id(&self) -> ModelRunId |9d57a20dd2ea6232
+crates/scenario/src/proposed.rs [pub] impl ProposalProvenance :: #[must_use] const fn new( model_run_id: ModelRunId, inputs_digest: ContentDigest, engine_version: u32, proposed_at: TimestampMillis, ) -> Self |485dd88e86c7c467
+crates/scenario/src/proposed.rs [pub] impl ProposalProvenance :: #[must_use] const fn proposed_at(&self) -> TimestampMillis |9df1186f1dc45861
+crates/scenario/src/proposed.rs [pub] impl<T: Ord> Proposed<T> :: #[must_use] fn calibrate(&self, actual: &T) -> ProjectionCalibration |fec1b04e6a9ead8e
+crates/scenario/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn new(value: T, provenance: ProposalProvenance) -> Self |1cd7d9af93d0797c
+crates/scenario/src/proposed.rs [pub] impl<T> Proposed<T> :: #[must_use] const fn provenance(&self) -> &ProposalProvenance |9db957d883926730
+crates/scenario/src/proposed.rs [pub] struct Proposed<T> |abcc5e2fbf8ce1f4
+crates/scenario/src/proposed.rs [pub] type ProjectedMastery = Proposed<MasteryLevel> |bb050b6f3a9596b6
+crates/scenario/src/simulate.rs [priv] const INPUTS_DIGEST_DOMAIN: &str |0e10c59a91df3d5d
+crates/scenario/src/simulate.rs [priv] const fn basis_tag(basis: OpportunityBasis) -> &'static str |90782a5612a461f4
+crates/scenario/src/simulate.rs [priv] const fn likelihood_from_coverage(coverage_permille: u16) -> LikelihoodBand |ec156132d5f15bde
+crates/scenario/src/simulate.rs [priv] const fn step_down(band: LikelihoodBand) -> LikelihoodBand |6e6621dbb6bdd04a
+crates/scenario/src/simulate.rs [priv] fn confidence_from_basis(basis: OpportunityBasis) -> Result<ConfidencePermille, ScenarioError> |c09bd12d46179155
+crates/scenario/src/simulate.rs [priv] fn length(value: usize) -> u64 |be1da2497c84c339
+crates/scenario/src/simulate.rs [priv] fn opportunity( offering_id: OfferingId, signal: &SyllabusConceptSignal, kind: OpportunityKind, likelihood: LikelihoodBand, confidence: ConfidencePermille, ) -> ProjectedEvidenceOpportunity |f5faa431a617adec
+crates/scenario/src/simulate.rs [priv] fn project_signal( offering_id: OfferingId, signal: &SyllabusConceptSignal, ) -> Result<Vec<ProjectedEvidenceOpportunity>, ScenarioError> |faa78e4ac2b35ae8
+crates/scenario/src/simulate.rs [priv] use academic_domain::{ ConfidencePermille, ContentDigest, EntityId, ModelRunId, OfferingId, TimestampMillis, } |1fea7cc64238e3e8
+crates/scenario/src/simulate.rs [priv] use crate::{ SCENARIO_ENGINE_VERSION, error::ScenarioError, opportunity::{ LikelihoodBand, OpportunityBasis, OpportunityKind, ProjectedEvidenceOpportunity, }, proposed::ProposalProvenance, workload::{ProjectedWorkloadRange, WorkloadHoursRange}, } |74399f78a621331d
+crates/scenario/src/simulate.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/scenario/src/simulate.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/scenario/src/simulate.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/scenario/src/simulate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ScenarioAssumption |0812ce99f2f7ae53
+crates/scenario/src/simulate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ScenarioChoice |80d8fde06b35aa68
+crates/scenario/src/simulate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ScenarioInputs |609908b85a44f89f
+crates/scenario/src/simulate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ScenarioProjection |07ea6bc158218b3e
+crates/scenario/src/simulate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct SyllabusConceptSignal |aa76373012fa0fac
+crates/scenario/src/simulate.rs [pub] #[must_use] fn scenario_inputs_digest(inputs: &ScenarioInputs) -> ContentDigest |949ee692934abb57
+crates/scenario/src/simulate.rs [pub] fn project(inputs: &ScenarioInputs) -> Result<ScenarioProjection, ScenarioError> |7d9efdfb5f5cfbf9
+crates/scenario/src/workload.rs [priv] #[cfg(test)] mod tests
+crates/scenario/src/workload.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct WireWorkload |40314b144362a4e7
+crates/scenario/src/workload.rs [priv] const fn saturate(hours: u16) -> u16 |8091da27fce0d280
+crates/scenario/src/workload.rs [priv] impl Serialize for ProjectedWorkloadRange
+crates/scenario/src/workload.rs [priv] impl Serialize for ProjectedWorkloadRange :: fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer, |ad562473fc22ccb6
+crates/scenario/src/workload.rs [priv] impl WorkloadHoursRange
+crates/scenario/src/workload.rs [priv] impl<'de> Deserialize<'de> for ProjectedWorkloadRange
+crates/scenario/src/workload.rs [priv] impl<'de> Deserialize<'de> for ProjectedWorkloadRange :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |fcd142da63b6a056
+crates/scenario/src/workload.rs [priv] mod tests :: #[test] fn range_rejects_reversed_and_overlong_spans() |e7a351fba88a8f1f
+crates/scenario/src/workload.rs [priv] mod tests :: #[test] fn totals_saturate_at_one_week() -> Result<(), ScenarioError> |9eee31dfbe5bea90
+crates/scenario/src/workload.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/scenario/src/workload.rs [priv] use crate::{error::ScenarioError, proposed::Proposed} |78a4e1c9f29df19e
+crates/scenario/src/workload.rs [priv] use serde::{Deserialize, Serialize, Serializer, de::Deserializer} |3bc23f39cde18a2d
+crates/scenario/src/workload.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct WorkloadHoursRange |a3510c242433f08b
+crates/scenario/src/workload.rs [pub] impl WorkloadHoursRange :: #[must_use] const fn high_hours(self) -> u16 |6d4dffc9de15bfe1
+crates/scenario/src/workload.rs [pub] impl WorkloadHoursRange :: #[must_use] const fn low_hours(self) -> u16 |c01fe391c3275b23
+crates/scenario/src/workload.rs [pub] impl WorkloadHoursRange :: #[must_use] const fn saturating_add(self, other: Self) -> Self |79f05bfba10f8663
+crates/scenario/src/workload.rs [pub] impl WorkloadHoursRange :: const MAXIMUM_WEEKLY_HOURS: u16 |f34219ef2b5e1308
+crates/scenario/src/workload.rs [pub] impl WorkloadHoursRange :: fn new(low_hours: u16, high_hours: u16) -> Result<Self, ScenarioError> |c2577709331544f3
+crates/scenario/src/workload.rs [pub] type ProjectedWorkloadRange = Proposed<WorkloadHoursRange> |eda4a1e02bf0c04d

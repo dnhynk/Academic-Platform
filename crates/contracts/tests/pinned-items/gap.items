@@ -9,8 +9,8 @@ crates/gap/src/case.rs [priv] impl TryFrom<GapCaseWire> for GapCase :: type Erro
 crates/gap/src/case.rs [priv] use academic_domain::{ ConfidencePermille, EntityId, EvidenceId, ScopeId, question::QuestionStatus, } |e774cbe5f98a24a8
 crates/gap/src/case.rs [priv] use crate::{ GapError, explanation::{GapExplanation, MinimumRemediation, RemediationActivity}, kind::GapKind, path::{AncestorImpact, BlockingPath}, state::StateSnapshot, } |bb5cb333c00559e5
 crates/gap/src/case.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/gap/src/case.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "GapCaseWire", into = "GapCaseWire")] struct GapCase |90138dda573a6ed6
-crates/gap/src/case.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct GapCaseWire |e6c10a5f7b34b28b
+crates/gap/src/case.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "GapCaseWire", into = "GapCaseWire")] struct GapCase |451d40b421e60b3e
+crates/gap/src/case.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct GapCaseWire |a3d7b6dcd31084a9
 crates/gap/src/case.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct RootCandidate |a33b03396c159e3b
 crates/gap/src/case.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct TieDiagnostic |04b2615728876916
 crates/gap/src/case.rs [pub] #[must_use] fn roots_of(candidates: &[RootCandidate]) -> Vec<&RootCandidate> |283291a7d55c5b32
@@ -61,15 +61,15 @@ crates/gap/src/explanation.rs [priv] impl SpecificityDefect
 crates/gap/src/explanation.rs [priv] use academic_domain::{ConfidencePermille, EntityId, EvidenceId, entity_registry::EntityKind} |f968172616c0680f
 crates/gap/src/explanation.rs [priv] use crate::{GapError, kind::GapKind, node::gap_bearing, path::BlockingPath, state::StateSnapshot} |3ffa474b0943cea6
 crates/gap/src/explanation.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum NoAlternativeReason |4664a052b9a89b79
-crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum RemediationActivity |dcd15b9b7d94ecc1
-crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SpecificityDefect |ca957c3c1dd75a8e
+crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum NoAlternativeReason |bac0cb415a336844
+crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum RemediationActivity |1ee84bfa0d8f045c
+crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SpecificityDefect |25a429b4413aa5cb
 crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExplanationParts |0800f1dd9d6a215b
 crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)] struct LinkedContext |a0fd4690fe93e5f8
-crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "alternative", rename_all = "SCREAMING_SNAKE_CASE")] enum AlternativePath |7023ca8f2451cbf7
+crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "alternative", rename_all = "SCREAMING_SNAKE_CASE")] enum AlternativePath |e554c3cb551920b0
 crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct GapExplanation |b29773675ec49274
 crates/gap/src/explanation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct MinimumRemediation |884430de96a9aa58
-crates/gap/src/explanation.rs [pub] const EXPLANATION_FIELDS: [&str; 8] |6274442f816c2644
+crates/gap/src/explanation.rs [pub] const EXPLANATION_FIELDS: [&str; 8] |d1ae37b51f6e8206
 crates/gap/src/explanation.rs [pub] impl GapExplanation :: #[must_use] const fn alternative(&self) -> &AlternativePath |429e92d311b2fbbb
 crates/gap/src/explanation.rs [pub] impl GapExplanation :: #[must_use] const fn blocks(&self) -> &BlockingPath |35576a03ff0fe9e5
 crates/gap/src/explanation.rs [pub] impl GapExplanation :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
@@ -88,9 +88,9 @@ crates/gap/src/explanation.rs [pub] impl MinimumRemediation :: #[must_use] const
 crates/gap/src/explanation.rs [pub] impl MinimumRemediation :: #[must_use] fn description(&self) -> &str |a53862c8f1c9236d
 crates/gap/src/explanation.rs [pub] impl MinimumRemediation :: #[must_use] fn of( minutes: u16, activity: RemediationActivity, description: &str, sources: Vec<EvidenceId>, ) -> Self |a473efec6c4c580e
 crates/gap/src/explanation.rs [pub] impl MinimumRemediation :: #[must_use] fn sources(&self) -> &[EvidenceId] |7d9fb585f7b9b8a2
-crates/gap/src/explanation.rs [pub] impl RemediationActivity :: #[must_use] const fn cell(self) -> &'static str |156a679a13363247
+crates/gap/src/explanation.rs [pub] impl RemediationActivity :: #[must_use] const fn cell(self) -> &'static str |cd6000442c7f70da
 crates/gap/src/explanation.rs [pub] impl RemediationActivity :: #[must_use] const fn for_kind(kind: GapKind) -> Self |3ca495fd6132ab1c
-crates/gap/src/explanation.rs [pub] impl SpecificityDefect :: #[must_use] const fn as_str(self) -> &'static str |60e530c5b830d9af
+crates/gap/src/explanation.rs [pub] impl SpecificityDefect :: #[must_use] const fn as_str(self) -> &'static str |6cb0208ce474d0d6
 crates/gap/src/explanation.rs [pub] impl SpecificityDefect :: #[must_use] const fn field(self) -> &'static str |7cc08824d02046b4
 crates/gap/src/explanation.rs [pub] impl SpecificityDefect :: const ALL: [Self; 8] |9d02c8f6afe38dc0
 crates/gap/src/goal.rs [priv] impl ActiveGoal
@@ -104,8 +104,8 @@ crates/gap/src/goal.rs [priv] impl TryFrom<Vec<SuccessCriterion>> for GoalCriter
 crates/gap/src/goal.rs [priv] use academic_domain::{EntityId, MasteryLevel, ScopeId, entity_registry::EntityKind} |4f30dc691df9fe7b
 crates/gap/src/goal.rs [priv] use crate::{GapError, node::gap_bearing} |3f2e37aa66988caf
 crates/gap/src/goal.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/gap/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum SuccessCriterion |7d81d49b3a1b2bc3
-crates/gap/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "Vec<SuccessCriterion>", into = "Vec<SuccessCriterion>")] struct GoalCriteria |74c989ed85e11c6a
+crates/gap/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum SuccessCriterion |9e05d8680fb4f102
+crates/gap/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "Vec<SuccessCriterion>", into = "Vec<SuccessCriterion>")] struct GoalCriteria |abf4b5e8ff151a28
 crates/gap/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ActiveGoal |eb6058fe17bc7369
 crates/gap/src/goal.rs [pub] impl ActiveGoal :: #[must_use] const fn criteria(&self) -> &GoalCriteria |48ee6aea18fa38c9
 crates/gap/src/goal.rs [pub] impl ActiveGoal :: #[must_use] const fn goal(&self) -> EntityId |558491bd8473c12f
@@ -131,9 +131,9 @@ crates/gap/src/graph.rs [priv] use crate::GapError |a501870445f6798a
 crates/gap/src/graph.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct PrerequisiteGraph |dfac779e111e7abf
 crates/gap/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PrerequisiteEdge |20c5d214a20557bc
 crates/gap/src/graph.rs [pub] #[must_use] const fn blocking_floor(strength: PrerequisiteStrength) -> Option<MasteryLevel> |64875800f3556c77
-crates/gap/src/graph.rs [pub] #[must_use] const fn strength_token(strength: PrerequisiteStrength) -> &'static str |5774cfa8e7242920
+crates/gap/src/graph.rs [pub] #[must_use] const fn strength_token(strength: PrerequisiteStrength) -> &'static str |af8f8d83e884d6fd
 crates/gap/src/graph.rs [pub] fn predicate_of_token(token: &str) -> Result<PredicateName, GapError> |ad8d56cb58ad0c1a
-crates/gap/src/graph.rs [pub] fn strength_of_token(token: &str) -> Result<PrerequisiteStrength, GapError> |d82a25a465089818
+crates/gap/src/graph.rs [pub] fn strength_of_token(token: &str) -> Result<PrerequisiteStrength, GapError> |8602415f34101d25
 crates/gap/src/graph.rs [pub] impl PrerequisiteEdge :: #[must_use] const fn advanced(&self) -> EntityId |58a2e96cbf3b94e9
 crates/gap/src/graph.rs [pub] impl PrerequisiteEdge :: #[must_use] const fn blocks(&self) -> bool |d5ddb7c58c457e23
 crates/gap/src/graph.rs [pub] impl PrerequisiteEdge :: #[must_use] const fn floor(&self) -> Option<MasteryLevel> |9e1163bff14e4579
@@ -156,17 +156,17 @@ crates/gap/src/graph.rs [pub] mod strength_serde :: fn serialize<S>(value: &Prer
 crates/gap/src/kind.rs [priv] impl GapKind
 crates/gap/src/kind.rs [priv] impl StateDimension
 crates/gap/src/kind.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/gap/src/kind.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum GapKind |57ecedb04f253ab5
-crates/gap/src/kind.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum StateDimension |d708a2ffd5232235
+crates/gap/src/kind.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum GapKind |7c99ca77ccb8e7b0
+crates/gap/src/kind.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum StateDimension |64ba8885b021d730
 crates/gap/src/kind.rs [pub] const GAP_KINDS: [GapKind; 5] |89b0b2a4b0465dec
 crates/gap/src/kind.rs [pub] const STATE_DIMENSIONS: [StateDimension; 4] |257f162edb958d40
-crates/gap/src/kind.rs [pub] const STEP_SIX_INFORMAL_NAMES: [&str; 4] |1f97455720663c86
-crates/gap/src/kind.rs [pub] impl GapKind :: #[must_use] const fn as_str(self) -> &'static str |b6e9989792c1fc98
-crates/gap/src/kind.rs [pub] impl GapKind :: #[must_use] const fn meaning(self) -> &'static str |6956a3b9e94fec7b
-crates/gap/src/kind.rs [pub] impl GapKind :: #[must_use] const fn response(self) -> &'static str |a0d5e51b22624549
-crates/gap/src/kind.rs [pub] impl StateDimension :: #[must_use] const fn as_str(self) -> &'static str |6428c3f7c4b21460
-crates/gap/src/kind.rs [pub] impl StateDimension :: #[must_use] const fn spec_token(self) -> &'static str |a27f62c116087d71
-crates/gap/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum GapError |85dc71d9d176b958
+crates/gap/src/kind.rs [pub] const STEP_SIX_INFORMAL_NAMES: [&str; 4] |b9c25c8bca19bb29
+crates/gap/src/kind.rs [pub] impl GapKind :: #[must_use] const fn as_str(self) -> &'static str |93c99cdbad4d2fd9
+crates/gap/src/kind.rs [pub] impl GapKind :: #[must_use] const fn meaning(self) -> &'static str |4459b2e933bc9482
+crates/gap/src/kind.rs [pub] impl GapKind :: #[must_use] const fn response(self) -> &'static str |154e5a8394cbcc48
+crates/gap/src/kind.rs [pub] impl StateDimension :: #[must_use] const fn as_str(self) -> &'static str |e33166df5a747b5d
+crates/gap/src/kind.rs [pub] impl StateDimension :: #[must_use] const fn spec_token(self) -> &'static str |efe7e46f6aa102cd
+crates/gap/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum GapError |a561dc5acc213450
 crates/gap/src/lib.rs [pub] mod case
 crates/gap/src/lib.rs [pub] mod engine
 crates/gap/src/lib.rs [pub] mod explanation
@@ -190,9 +190,9 @@ crates/gap/src/lib.rs [pub] use state::{ConceptState, OfferedEvidence, Spillover
 crates/gap/src/node.rs [priv] impl IdentityStanding
 crates/gap/src/node.rs [priv] use academic_domain::{EntityId, entity_registry::EntityKind} |fd6f7cca0e2d53ff
 crates/gap/src/node.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/gap/src/node.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "standing", rename_all = "SCREAMING_SNAKE_CASE")] enum IdentityStanding |183dfd293873638b
+crates/gap/src/node.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "standing", rename_all = "SCREAMING_SNAKE_CASE")] enum IdentityStanding |f61392370f8e375e
 crates/gap/src/node.rs [pub] #[must_use] const fn gap_bearing(kind: EntityKind) -> bool |ac98855dc156e3c5
-crates/gap/src/node.rs [pub] impl IdentityStanding :: #[must_use] const fn as_str(&self) -> &'static str |0e8552a19a79b9e6
+crates/gap/src/node.rs [pub] impl IdentityStanding :: #[must_use] const fn as_str(&self) -> &'static str |abb2254a4ef031bd
 crates/gap/src/node.rs [pub] impl IdentityStanding :: #[must_use] const fn is_settled(&self) -> bool |0fc3e419d707aae1
 crates/gap/src/path.rs [priv] impl AncestorImpact
 crates/gap/src/path.rs [priv] impl BlockingPath
@@ -200,9 +200,9 @@ crates/gap/src/path.rs [priv] impl PathStep
 crates/gap/src/path.rs [priv] use academic_domain::{ EntityId, predicates::{PredicateName, PrerequisiteStrength}, } |e597d04ecfb42680
 crates/gap/src/path.rs [priv] use crate::graph::PrerequisiteEdge |d0b46a257a1bfa07
 crates/gap/src/path.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/gap/src/path.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct AncestorImpact |ec8ba19f4f3aa1d9
+crates/gap/src/path.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct AncestorImpact |cea23e14070e2eaf
 crates/gap/src/path.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct BlockingPath |5af2a3eb873f9c3b
-crates/gap/src/path.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct PathStep |ee08b348aff6a21c
+crates/gap/src/path.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct PathStep |08ff25b35f03162b
 crates/gap/src/path.rs [pub] impl AncestorImpact :: #[must_use] const fn ancestor(&self) -> EntityId |9f75373e999b6293
 crates/gap/src/path.rs [pub] impl AncestorImpact :: #[must_use] const fn hops_above_root(&self) -> usize |1a316e636493d8a3
 crates/gap/src/path.rs [pub] impl AncestorImpact :: #[must_use] const fn of( ancestor: EntityId, hops_above_root: usize, weakest_link: PrerequisiteStrength, ) -> Self |84500161a80516ef
@@ -228,7 +228,7 @@ crates/gap/src/routing.rs [priv] use academic_freshness::rank |2e36d3adf6f705f2
 crates/gap/src/routing.rs [priv] use academic_knowledge_state::{SufficiencyGap, UnseenBasis, rung} |28e68f5f61eabca1
 crates/gap/src/routing.rs [priv] use crate::{kind::GapKind, state::ConceptState} |d4d87afa6d36687c
 crates/gap/src/routing.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/gap/src/routing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "branch", rename_all = "SCREAMING_SNAKE_CASE")] enum BranchStanding |306acbef82d60d35
+crates/gap/src/routing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "branch", rename_all = "SCREAMING_SNAKE_CASE")] enum BranchStanding |22d5f27b85ede0a6
 crates/gap/src/routing.rs [pub] #[must_use] fn route( state: &ConceptState, floor: MasteryLevel, branch: &BranchStanding, ) -> Option<GapKind> |fb040c3c28171979
 crates/gap/src/routing.rs [pub] const RETRIEVAL_FLOOR: FreshnessBand |16eec419cb421a2b
 crates/gap/src/routing.rs [pub] impl BranchStanding :: #[must_use] const fn is_settled(&self) -> bool |836fea82b2a70d31

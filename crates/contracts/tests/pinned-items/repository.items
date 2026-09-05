@@ -1,19 +1,19 @@
 crates/repository/src/gate.rs [priv] const MAX_SCANNED_BYTES: usize |60e8757a5070d27a
-crates/repository/src/gate.rs [priv] const SECRET_FILE_NAMES: [&str; 6] |f0ffa52fbc09d196
-crates/repository/src/gate.rs [priv] const SECRET_FILE_SEGMENTS: [&str; 8] |d55cd7d9b69f49ba
-crates/repository/src/gate.rs [priv] const SECRET_FILE_SUFFIXES: [&str; 9] |7fc8fe3773b599b4
+crates/repository/src/gate.rs [priv] const SECRET_FILE_NAMES: [&str; 6] |9674e59b69e72c2b
+crates/repository/src/gate.rs [priv] const SECRET_FILE_SEGMENTS: [&str; 8] |d5fe27a59da0ef36
+crates/repository/src/gate.rs [priv] const SECRET_FILE_SUFFIXES: [&str; 9] |30a5b009c64230aa
 crates/repository/src/gate.rs [priv] fn distinct_characters(run: &str) -> usize |06aa63baf121967b
-crates/repository/src/gate.rs [priv] fn longest_secret_run(text: &str) -> &str |d326cce314485d00
-crates/repository/src/gate.rs [priv] fn scan_secrets(path: &str, bytes: &[u8]) -> ContentVerdict |4157604c30c0e41d
+crates/repository/src/gate.rs [priv] fn longest_secret_run(text: &str) -> &str |ab08bf0364b481e8
+crates/repository/src/gate.rs [priv] fn scan_secrets(path: &str, bytes: &[u8]) -> ContentVerdict |3f070e054f72324b
 crates/repository/src/gate.rs [priv] impl AdmittedPaths
 crates/repository/src/gate.rs [priv] impl AdmittedPaths :: fn admit( request_digest: ContentDigest, admitted: Vec<String>, opaque: Vec<String>, excluded: Vec<ExcludedPath>, findings: Vec<SecretFinding>, result: SecretScanResult, ) -> Self |bde9032bbb960391
 crates/repository/src/gate.rs [priv] impl DisclosureDecision
 crates/repository/src/gate.rs [priv] impl ExcludedPath
 crates/repository/src/gate.rs [priv] impl ExclusionReason
 crates/repository/src/gate.rs [priv] impl PathPolicy
-crates/repository/src/gate.rs [priv] impl PathPolicy :: fn is_secret_file(path: &str) -> bool |3ee218924f95ec94
+crates/repository/src/gate.rs [priv] impl PathPolicy :: fn is_secret_file(path: &str) -> bool |1a0971b91478d284
 crates/repository/src/gate.rs [priv] impl PathRule
-crates/repository/src/gate.rs [priv] impl PathRule :: fn matches(&self, path: &str) -> bool |20f52101b2e77eaa
+crates/repository/src/gate.rs [priv] impl PathRule :: fn matches(&self, path: &str) -> bool |840601349e454e20
 crates/repository/src/gate.rs [priv] impl SecretFinding
 crates/repository/src/gate.rs [priv] impl SecretScanResult
 crates/repository/src/gate.rs [priv] use academic_policy::{ContentDigest, Decision, ReasonCode} |e90b366e36051a0f
@@ -44,7 +44,7 @@ crates/repository/src/gate.rs [pub] impl DisclosureDecision :: #[must_use] fn re
 crates/repository/src/gate.rs [pub] impl DisclosureDecision :: fn record( decision_id: impl Into<String>, actor_id: impl Into<String>, reason: impl Into<String>, recorded_at: u64, ) -> Result<Self, RepositoryError> |394c255598411a7a
 crates/repository/src/gate.rs [pub] impl ExcludedPath :: #[must_use] const fn reason(&self) -> ExclusionReason |8ac5d1eab37fcc09
 crates/repository/src/gate.rs [pub] impl ExcludedPath :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
-crates/repository/src/gate.rs [pub] impl ExclusionReason :: #[must_use] const fn as_str(self) -> &'static str |0d5edea81c2e9707
+crates/repository/src/gate.rs [pub] impl ExclusionReason :: #[must_use] const fn as_str(self) -> &'static str |43e435d5a82f5cb8
 crates/repository/src/gate.rs [pub] impl ExclusionReason :: const ALL: [Self; 4] |f4e95310404a8192
 crates/repository/src/gate.rs [pub] impl PathPolicy :: #[must_use] const fn new() -> Self |926e7ca8f9461177
 crates/repository/src/gate.rs [pub] impl PathPolicy :: #[must_use] fn allowing(mut self, rules: Vec<PathRule>) -> Self |2839be87dd163823
@@ -52,13 +52,13 @@ crates/repository/src/gate.rs [pub] impl PathPolicy :: #[must_use] fn classify(&
 crates/repository/src/gate.rs [pub] impl PathPolicy :: #[must_use] fn denying(mut self, rules: Vec<PathRule>) -> Self |f147a682e4f6ef9d
 crates/repository/src/gate.rs [pub] impl PathPolicy :: #[must_use] fn excluding(mut self, rules: Vec<PathRule>) -> Self |970563dcb459b621
 crates/repository/src/gate.rs [pub] impl PathPolicy :: #[must_use] fn ignoring(mut self, rules: Vec<PathRule>) -> Self |7a9fd515e8f53d4e
-crates/repository/src/gate.rs [pub] impl PathPolicy :: fn parse_gitignore(text: &str) -> Result<Vec<PathRule>, RepositoryError> |1d991e1007a3ae12
+crates/repository/src/gate.rs [pub] impl PathPolicy :: fn parse_gitignore(text: &str) -> Result<Vec<PathRule>, RepositoryError> |1c6b0e0aee315799
 crates/repository/src/gate.rs [pub] impl SecretFinding :: #[must_use] const fn blob_digest(&self) -> Option<&ContentDigest> |759e9f89366d53f8
 crates/repository/src/gate.rs [pub] impl SecretFinding :: #[must_use] const fn disclosure(&self) -> Option<&DisclosureDecision> |aa7880cac93d6d08
 crates/repository/src/gate.rs [pub] impl SecretFinding :: #[must_use] const fn reason(&self) -> ReasonCode |caeda9c630274452
 crates/repository/src/gate.rs [pub] impl SecretFinding :: #[must_use] fn disclose(self, decision: DisclosureDecision, bytes: &[u8]) -> Self |1ea43843f8746216
 crates/repository/src/gate.rs [pub] impl SecretFinding :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
-crates/repository/src/gate.rs [pub] impl SecretScanResult :: #[must_use] const fn as_str(self) -> &'static str |44fb5c71acaa4901
+crates/repository/src/gate.rs [pub] impl SecretScanResult :: #[must_use] const fn as_str(self) -> &'static str |ef3b29c3580563f3
 crates/repository/src/gate.rs [pub] impl SecretScanResult :: #[must_use] const fn decision(self) -> Decision |c4b2e743b44e9a64
 crates/repository/src/github.rs [priv] impl FineGrainedToken
 crates/repository/src/github.rs [priv] impl GitHubRepository
@@ -67,9 +67,9 @@ crates/repository/src/github.rs [priv] impl TokenLifetime
 crates/repository/src/github.rs [priv] impl TokenPermission
 crates/repository/src/github.rs [priv] impl TokenScope
 crates/repository/src/github.rs [priv] impl core::fmt::Debug for FineGrainedToken
-crates/repository/src/github.rs [priv] impl core::fmt::Debug for FineGrainedToken :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |5662c82416613224
+crates/repository/src/github.rs [priv] impl core::fmt::Debug for FineGrainedToken :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |95cb3967d143d725
 crates/repository/src/github.rs [priv] impl core::fmt::Debug for SealedCredential
-crates/repository/src/github.rs [priv] impl core::fmt::Debug for SealedCredential :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |cbe4afec18698672
+crates/repository/src/github.rs [priv] impl core::fmt::Debug for SealedCredential :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |3210b30e237fdbda
 crates/repository/src/github.rs [priv] impl<K: DeviceKeystore> CredentialStore<K>
 crates/repository/src/github.rs [priv] trait GitHubRepositoryReader :: fn read_tree( &self, token: &FineGrainedToken, repository: &GitHubRepository, commit: &CommitId, now: u64, ) -> Result<Vec<SourceEntry>, GitHubError> |f00829ab6c50b6e7
 crates/repository/src/github.rs [priv] use academic_crypto::{DeviceKeystore, KeystoreFailure} |02b353bd1b403eae
@@ -81,7 +81,7 @@ crates/repository/src/github.rs [pub] #[derive(Debug)] struct CredentialStore<K:
 crates/repository/src/github.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct TokenLifetime |a64316918e0199e5
 crates/repository/src/github.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Access |7cec27b428900e53
 crates/repository/src/github.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TokenPermission |15b8ad5d17a13718
-crates/repository/src/github.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum GitHubError |0840985a7978910a
+crates/repository/src/github.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum GitHubError |6cef0f4f6dded655
 crates/repository/src/github.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TokenScope |8ba3ed82f284bbcd
 crates/repository/src/github.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct GitHubRepository |c8ef26850ba4189f
 crates/repository/src/github.rs [pub] const MAX_TOKEN_LIFETIME_MILLIS: u64 |8b5c466232e34f78
@@ -90,10 +90,10 @@ crates/repository/src/github.rs [pub] impl FineGrainedToken :: #[must_use] const
 crates/repository/src/github.rs [pub] impl FineGrainedToken :: #[must_use] const fn scope(&self) -> &TokenScope |02873d0e417c6ae8
 crates/repository/src/github.rs [pub] impl FineGrainedToken :: #[must_use] fn new(scope: TokenScope, lifetime: TokenLifetime, secret: Vec<u8>) -> Self |c11bcb6557817f9a
 crates/repository/src/github.rs [pub] impl FineGrainedToken :: fn authorize( &self, repository: &GitHubRepository, permission: TokenPermission, now: u64, ) -> Result<(), GitHubError> |8d22090a9dd698a7
-crates/repository/src/github.rs [pub] impl GitHubRepository :: #[must_use] fn as_label(&self) -> String |a6bb7df01c9084ff
+crates/repository/src/github.rs [pub] impl GitHubRepository :: #[must_use] fn as_label(&self) -> String |7dd1446d09f6dce9
 crates/repository/src/github.rs [pub] impl GitHubRepository :: #[must_use] fn name(&self) -> &str |dcd1b6c60790e001
 crates/repository/src/github.rs [pub] impl GitHubRepository :: #[must_use] fn owner(&self) -> &str |780456f91baf3bf3
-crates/repository/src/github.rs [pub] impl GitHubRepository :: fn new(owner: impl Into<String>, name: impl Into<String>) -> Result<Self, GitHubError> |aecf65dee8d25562
+crates/repository/src/github.rs [pub] impl GitHubRepository :: fn new(owner: impl Into<String>, name: impl Into<String>) -> Result<Self, GitHubError> |4a44ea74d7830759
 crates/repository/src/github.rs [pub] impl SealedCredential :: #[must_use] const fn lifetime(&self) -> TokenLifetime |3d8104d373a86f5b
 crates/repository/src/github.rs [pub] impl SealedCredential :: #[must_use] const fn scope(&self) -> &TokenScope |02873d0e417c6ae8
 crates/repository/src/github.rs [pub] impl SealedCredential :: #[must_use] fn label(&self) -> &str |1afa254cecf1df0d
@@ -103,7 +103,7 @@ crates/repository/src/github.rs [pub] impl TokenLifetime :: #[must_use] const fn
 crates/repository/src/github.rs [pub] impl TokenLifetime :: #[must_use] const fn issued_at(&self) -> u64 |287957b1fddbf0c6
 crates/repository/src/github.rs [pub] impl TokenLifetime :: const fn new(issued_at: u64, expires_at: u64) -> Result<Self, GitHubError> |3625225faa1407bc
 crates/repository/src/github.rs [pub] impl TokenPermission :: #[must_use] const fn access(self) -> Access |22bfe938fa377e5e
-crates/repository/src/github.rs [pub] impl TokenPermission :: #[must_use] const fn as_str(self) -> &'static str |4d7a141bcc5239f8
+crates/repository/src/github.rs [pub] impl TokenPermission :: #[must_use] const fn as_str(self) -> &'static str |b742d5be339df76a
 crates/repository/src/github.rs [pub] impl TokenPermission :: const ALL: [Self; 3] |d8f756089012b9ad
 crates/repository/src/github.rs [pub] impl TokenScope :: #[must_use] const fn repository(&self) -> &GitHubRepository |f5086a2516b974a8
 crates/repository/src/github.rs [pub] impl TokenScope :: #[must_use] fn covers(&self, repository: &GitHubRepository) -> bool |65488bdeaa060657
@@ -115,9 +115,9 @@ crates/repository/src/github.rs [pub] impl<K: DeviceKeystore> CredentialStore<K>
 crates/repository/src/github.rs [pub] struct FineGrainedToken |a2500937520e2efc
 crates/repository/src/github.rs [pub] trait GitHubRepositoryReader
 crates/repository/src/lib.rs [priv] #[must_use] fn source_kind_of(language: Language) -> SourceKind |4c02ae528bb2dd33
-crates/repository/src/lib.rs [priv] fn check_relative(path: &str) -> Result<(), RepositoryError> |eb84e714673c66bd
-crates/repository/src/lib.rs [priv] fn source_id_for(path: &str) -> Result<SourceId, RepositoryError> |afb71ef9d61421d7
-crates/repository/src/lib.rs [priv] fn walk(root: &Path, directory: &Path, found: &mut Vec<String>) -> Result<(), RepositoryError> |a2ce1d3ae44a0c35
+crates/repository/src/lib.rs [priv] fn check_relative(path: &str) -> Result<(), RepositoryError> |8877f6f906335223
+crates/repository/src/lib.rs [priv] fn source_id_for(path: &str) -> Result<SourceId, RepositoryError> |76b7ef0994acfc4b
+crates/repository/src/lib.rs [priv] fn walk(root: &Path, directory: &Path, found: &mut Vec<String>) -> Result<(), RepositoryError> |c8ad73991518cf17
 crates/repository/src/lib.rs [priv] impl IndexReceipt
 crates/repository/src/lib.rs [priv] impl LocalStages
 crates/repository/src/lib.rs [priv] impl SnapshotRequest<'_>
@@ -129,7 +129,7 @@ crates/repository/src/lib.rs [priv] impl SnapshotStages for LocalStages :: fn pe
 crates/repository/src/lib.rs [priv] impl SourceEntry
 crates/repository/src/lib.rs [priv] impl SourceTree<'_>
 crates/repository/src/lib.rs [priv] impl core::fmt::Debug for SourceEntry
-crates/repository/src/lib.rs [priv] impl core::fmt::Debug for SourceEntry :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |ce3c59c11130f082
+crates/repository/src/lib.rs [priv] impl core::fmt::Debug for SourceEntry :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |c0d0c46de03be72f
 crates/repository/src/lib.rs [priv] trait SnapshotStages :: fn freeze( &mut self, request: &SnapshotRequest<'_>, listed: Inventory, ) -> Result<RepositorySnapshot, RepositoryError> |b50205264ae3d3ef
 crates/repository/src/lib.rs [priv] trait SnapshotStages :: fn index(&mut self, snapshot: &RepositorySnapshot) -> Result<IndexReceipt, RepositoryError> |b4bd061c40e78c55
 crates/repository/src/lib.rs [priv] trait SnapshotStages :: fn inventory( &mut self, request: &SnapshotRequest<'_>, admitted: &AdmittedPaths, ) -> Result<Inventory, RepositoryError> |f3faeccddbe10b0b
@@ -153,12 +153,12 @@ crates/repository/src/lib.rs [pub] impl IndexReceipt :: #[must_use] fn snapshot_
 crates/repository/src/lib.rs [pub] impl LocalStages :: #[must_use] const fn documents(&self) -> &SourceIndex |efb0e91b9c67243e
 crates/repository/src/lib.rs [pub] impl LocalStages :: #[must_use] fn into_documents(self) -> SourceIndex |6d186b06cbfcd2aa
 crates/repository/src/lib.rs [pub] impl LocalStages :: #[must_use] fn new() -> Self |8882b2e6626d92fa
-crates/repository/src/lib.rs [pub] impl SnapshotRequest<'_> :: #[must_use] fn digest(&self) -> ContentDigest |fe4f8b22e74a0bf1
+crates/repository/src/lib.rs [pub] impl SnapshotRequest<'_> :: #[must_use] fn digest(&self) -> ContentDigest |239102318fda72fa
 crates/repository/src/lib.rs [pub] impl SourceEntry :: #[must_use] fn byte_len(&self) -> usize |13167bdc63595765
 crates/repository/src/lib.rs [pub] impl SourceEntry :: #[must_use] fn new(path: impl Into<String>, source_bytes: Vec<u8>) -> Self |525d214cb6425cf4
 crates/repository/src/lib.rs [pub] impl SourceEntry :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
 crates/repository/src/lib.rs [pub] impl SourceTree<'_> :: fn paths(&self) -> Result<Vec<String>, RepositoryError> |38e25b6fe3879a16
-crates/repository/src/lib.rs [pub] impl SourceTree<'_> :: fn read(&self, path: &str) -> Result<Vec<u8>, RepositoryError> |6be0eb3de6c0a01e
+crates/repository/src/lib.rs [pub] impl SourceTree<'_> :: fn read(&self, path: &str) -> Result<Vec<u8>, RepositoryError> |62559a6bc7e4ad22
 crates/repository/src/lib.rs [pub] mod gate
 crates/repository/src/lib.rs [pub] mod github
 crates/repository/src/lib.rs [pub] mod snapshot
@@ -180,10 +180,10 @@ crates/repository/src/snapshot.rs [priv] impl SubmoduleRef
 crates/repository/src/snapshot.rs [priv] impl ToolVersion
 crates/repository/src/snapshot.rs [priv] use academic_policy::ContentDigest |b1f05af5a4ed642c
 crates/repository/src/snapshot.rs [priv] use crate::{ gate::{AdmittedPaths, ExcludedPath, SecretFinding, SecretScanResult}, github::GitHubError, source::{CommitId, RepositorySource, SnapshotType}, } |b460a8205e3b41f9
-crates/repository/src/snapshot.rs [pub(crate)] fn digest_of_manifest(entries: &[ManifestEntry]) -> ContentDigest |512b1021cbc3e30d
+crates/repository/src/snapshot.rs [pub(crate)] fn digest_of_manifest(entries: &[ManifestEntry]) -> ContentDigest |afcbd3cf3ab57268
 crates/repository/src/snapshot.rs [pub(crate)] fn manifest_entry(path: &str, bytes: &[u8]) -> ManifestEntry |01a11309b390df4d
 crates/repository/src/snapshot.rs [pub(crate)] impl Inventory :: fn of( admitted: &AdmittedPaths, entries: Vec<ManifestEntry>, dirty_tracked: Vec<ManifestEntry>, dirty_untracked: Vec<ManifestEntry>, read_paths: Vec<String>, ) -> Self |68e540fd1920ab2b
-crates/repository/src/snapshot.rs [pub(crate)] impl RepositorySnapshot :: fn freeze(identity: SnapshotIdentity, listed: Inventory) -> Self |21faa1f5cbf844f7
+crates/repository/src/snapshot.rs [pub(crate)] impl RepositorySnapshot :: fn freeze(identity: SnapshotIdentity, listed: Inventory) -> Self |48455dfa51460733
 crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DirtyKind |7620fd9ce6421cda
 crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Language |e2f298cc217ed553
 crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DirtyManifest |ea613596075b3af9
@@ -194,8 +194,8 @@ crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Pa
 crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)] struct SubmoduleRef |e8b6bf840bb8044e
 crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)] struct ToolVersion |81cf3574d64c6ed8
 crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RepositoryId |93b36329e0292475
-crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RepositoryError |68918b7573bc97b8
-crates/repository/src/snapshot.rs [pub] impl DirtyKind :: #[must_use] const fn as_str(self) -> &'static str |7e6d50fe6cf801bb
+crates/repository/src/snapshot.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum RepositoryError |f37203948c8da1d3
+crates/repository/src/snapshot.rs [pub] impl DirtyKind :: #[must_use] const fn as_str(self) -> &'static str |4c71289faeacda12
 crates/repository/src/snapshot.rs [pub] impl DirtyKind :: const ALL: [Self; 2] |cbdb9d4bd5270750
 crates/repository/src/snapshot.rs [pub] impl DirtyManifest :: #[must_use] const fn patch_digest(&self) -> &ContentDigest |e46100c36c351ac0
 crates/repository/src/snapshot.rs [pub] impl DirtyManifest :: #[must_use] fn entries(&self) -> Vec<(DirtyKind, &ManifestEntry)> |0346e06b3459d669
@@ -203,15 +203,15 @@ crates/repository/src/snapshot.rs [pub] impl DirtyManifest :: #[must_use] fn tra
 crates/repository/src/snapshot.rs [pub] impl DirtyManifest :: #[must_use] fn untracked(&self) -> &[ManifestEntry] |77bbe8cfced33813
 crates/repository/src/snapshot.rs [pub] impl Inventory :: #[must_use] fn entries(&self) -> &[ManifestEntry] |e126973eb6557a6d
 crates/repository/src/snapshot.rs [pub] impl Inventory :: #[must_use] fn read_paths(&self) -> &[String] |0db2a8d017c918cb
-crates/repository/src/snapshot.rs [pub] impl Language :: #[must_use] const fn as_str(self) -> &'static str |306b431bf02c4039
-crates/repository/src/snapshot.rs [pub] impl Language :: #[must_use] fn of_path(path: &str) -> Self |e3d917e5108afa79
+crates/repository/src/snapshot.rs [pub] impl Language :: #[must_use] const fn as_str(self) -> &'static str |6a81657f4e40a6bc
+crates/repository/src/snapshot.rs [pub] impl Language :: #[must_use] fn of_path(path: &str) -> Self |b76ecdbb58bd87bd
 crates/repository/src/snapshot.rs [pub] impl Language :: const ALL: [Self; 7] |5881bef8b390841e
 crates/repository/src/snapshot.rs [pub] impl ManifestEntry :: #[must_use] const fn blob_digest(&self) -> &ContentDigest |e9b3d4e998d0e9a0
 crates/repository/src/snapshot.rs [pub] impl ManifestEntry :: #[must_use] const fn byte_len(&self) -> u64 |5d90c04da372ed2c
 crates/repository/src/snapshot.rs [pub] impl ManifestEntry :: #[must_use] const fn language(&self) -> Language |0504215fbba44ce5
 crates/repository/src/snapshot.rs [pub] impl ManifestEntry :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
 crates/repository/src/snapshot.rs [pub] impl RepositoryId :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
-crates/repository/src/snapshot.rs [pub] impl RepositoryId :: fn new(value: impl Into<String>) -> Result<Self, RepositoryError> |865c14c8e433e8f6
+crates/repository/src/snapshot.rs [pub] impl RepositoryId :: fn new(value: impl Into<String>) -> Result<Self, RepositoryError> |a5538468aa79deef
 crates/repository/src/snapshot.rs [pub] impl RepositorySnapshot :: #[must_use] const fn analysis_policy_hash(&self) -> &ContentDigest |16ae7b1f9fbee908
 crates/repository/src/snapshot.rs [pub] impl RepositorySnapshot :: #[must_use] const fn captured_at(&self) -> u64 |750cf9facfe50924
 crates/repository/src/snapshot.rs [pub] impl RepositorySnapshot :: #[must_use] const fn commit(&self) -> Option<&CommitId> |507dade13e65da67
@@ -242,16 +242,16 @@ crates/repository/src/source.rs [priv] impl WorkingTreeFacts
 crates/repository/src/source.rs [pub(crate)] #[must_use] fn resolve_snapshot_type( source: RepositorySource, facts: &WorkingTreeFacts, ) -> SnapshotType |2f1ea06ec1a4ac3d
 crates/repository/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RepositorySource |f7b4cbc73245e5cf
 crates/repository/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SnapshotType |9e0fcfb77d16fa96
-crates/repository/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum CommitIdError |182bdc6a3600222a
+crates/repository/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum CommitIdError |47d728e3421e30bb
 crates/repository/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct WorkingTreeFacts |47b29a2e36709549
 crates/repository/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct CommitId |93a5d01d0fd10c70
 crates/repository/src/source.rs [pub] impl CommitId :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
-crates/repository/src/source.rs [pub] impl CommitId :: fn new(value: impl Into<String>) -> Result<Self, CommitIdError> |1a6a56c407985672
-crates/repository/src/source.rs [pub] impl RepositorySource :: #[must_use] const fn as_str(self) -> &'static str |3a4b032ed1cdb771
+crates/repository/src/source.rs [pub] impl CommitId :: fn new(value: impl Into<String>) -> Result<Self, CommitIdError> |d0f9340bc6dbd24d
+crates/repository/src/source.rs [pub] impl RepositorySource :: #[must_use] const fn as_str(self) -> &'static str |6928bf49077e2a41
 crates/repository/src/source.rs [pub] impl RepositorySource :: #[must_use] const fn needs_github_credential(self) -> bool |07969a2245e24975
 crates/repository/src/source.rs [pub] impl RepositorySource :: #[must_use] fn parse(value: &str) -> Option<Self> |be81c0baa1cb2975
 crates/repository/src/source.rs [pub] impl RepositorySource :: const ALL: [Self; 8] |6add881738d8fdcc
-crates/repository/src/source.rs [pub] impl SnapshotType :: #[must_use] const fn as_str(self) -> &'static str |8799c678415216cf
+crates/repository/src/source.rs [pub] impl SnapshotType :: #[must_use] const fn as_str(self) -> &'static str |b46eccf4fdce3c87
 crates/repository/src/source.rs [pub] impl SnapshotType :: #[must_use] fn parse(value: &str) -> Option<Self> |76d2bf49fbd90901
 crates/repository/src/source.rs [pub] impl SnapshotType :: const ALL: [Self; 4] |9f4a3086740c023e
 crates/repository/src/source.rs [pub] impl WorkingTreeFacts :: #[must_use] const fn checkout( head: CommitId, branch: Option<String>, tracked: Vec<String>, modified: Vec<String>, untracked: Vec<String>, ) -> Self |db163aa72c2596bf

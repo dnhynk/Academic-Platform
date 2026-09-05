@@ -100,37 +100,39 @@
 //!
 //! # What this does not claim
 //!
-//! The pin reaches every package either derivation reports, and no other. The
-//! two numbers that says — how many packages the workspace compiles and how
-//! many of them are pinned — are **asserted** by
-//! [`the_pin_names_what_it_covers_and_what_it_does_not`] rather than written
-//! here, because `P2-A5`'s fifth audit found this paragraph claiming 45
-//! unpinned crates and 68 in the workspace where the tree held 47 and 70, and
-//! recorded that it survived precisely because nothing asserted either number.
-//! Both moved again under `P2-RF29` and `P2-X3` while that was true. What is
-//! workspace-wide, and stays so whatever those numbers are, is
-//! [`every_item_that_reaches_a_closed_type_is_pinned`], which is over the whole
-//! workspace per closed type, and
-//! [`the_items_tile_every_file_the_workspace_compiles`], which is over files.
+//! The pin reaches **every package the workspace compiles**, and that number
+//! is **asserted** by [`the_pin_names_what_it_covers_and_what_it_does_not`]
+//! rather than written here, because `P2-A5`'s fifth audit found this
+//! paragraph claiming 45 unpinned crates and 68 in the workspace where the
+//! tree held 47 and 70, and recorded that it survived precisely because
+//! nothing asserted either number. It moved again under `P2-RF29`, `P2-X3` and
+//! `P2-RF30` while that was true. Since `P2-RF31` there is no unpinned
+//! remainder to keep in step: the selection is the crate walk, the two
+//! derivations that used to select are a control on that walk, and the
+//! remainder is asserted empty by name.
 //!
-//! Inside the pinned packages, a body is in the pin. Outside them a body is covered only
-//! where the item reaches a closed type, and the line-anchored `impl_headers`
-//! this file supplements rather than replaces is what is left over the rest.
-//! That residue is what `#[allow(non_local_definitions)]` costs: written on a
-//! declaration it is part of the key already, written inside a body it is not,
-//! and it switches off the one thing between a body and a globally effective
-//! trait impl.
+//! A body is therefore in the pin for every package. What a body is **not** is
+//! whatever `#[allow(non_local_definitions)]` switches off: written on a
+//! declaration the attribute is part of the key already, written inside a body
+//! it is not, and it removes the one thing between a body and a globally
+//! effective trait impl. [`every_item_that_reaches_a_closed_type_is_pinned`]
+//! is what is over the whole workspace *per type* rather than per package, and
+//! [`the_items_tile_every_file_the_workspace_compiles`] is what is over files.
 //!
-//! And a fingerprint is over [`support::Item::text`], the view with comments
-//! and string bodies blanked. So a doc comment is free — measured — and **a
-//! same-length change to a string literal's contents inside a leaf moves
-//! nothing here**: replacing `ORIGINAL_CLASSIFICATION`'s `"RESTRICTED"` with a
-//! ten-character substitute passes every rule in this file, and what refuses
-//! it is `raw_remains_restricted_under_authorized_access`, a behavioural test
-//! one crate over. That residue is a data substitution rather than a route:
-//! Rust executes no code written inside a string, and the two constructs that
-//! take a path as a literal — `include!` and `#[path]` — put it in the item's
-//! *declaration*, which is read from the restored view and is in the key.
+//! A fingerprint is over [`support::Item::text`] **and**
+//! [`support::Item::literals`]. The first is the view with comments and
+//! literal bodies blanked, which is what makes a name found in it a name the
+//! compiler sees rather than one a doc comment mentions; the second carries
+//! the literal values themselves, length-prefixed, because the first erases a
+//! literal's content *and* its length. `P2-A5`'s sixth audit measured what
+//! that cost: the two domain-separation constants of
+//! `crates/repository-competency` were set equal to one another and the whole
+//! workspace stayed green on both hosts. That form now fails here naming the
+//! constant, and so does exchanging one byte of a character class for another.
+//! **A comment is still free and so is whitespace** — [`support::Item::text`]
+//! is the whitespace-collapsed blanked view, so a reflow moves no key, which
+//! is measured rather than assumed and is the reason a pin line is worth
+//! reading when it does move.
 
 mod support;
 
@@ -668,11 +670,34 @@ fn the_pin_names_what_it_covers_and_what_it_does_not() -> TestResult {
     let orphaned: Vec<&str> = held.difference(&wanted).copied().collect();
     assert_eq!(
         missing, empty,
-        "a derivation reports a package with no item pin"
+        "a package the workspace compiles has no item pin"
     );
     assert_eq!(
         orphaned, empty,
-        "a pin file names a package neither derivation reports"
+        "a pin file names a package the workspace does not compile"
+    );
+
+    // The two derivations are the control on the walk rather than the
+    // selection. Every package either of them reports must be in the pinned
+    // set, so a walk that returned a truncated list fails here naming what it
+    // lost instead of making every comparison above pass over a smaller world.
+    let mut derived_by_rule: BTreeSet<String> = packages_keyed_on_a_line_prefix(&repository)?
+        .into_iter()
+        .collect();
+    derived_by_rule.extend(CLOSED_TYPES.iter().map(|closed| closed.package.to_owned()));
+    assert!(
+        derived_by_rule.len() >= 43,
+        "the two derivations report only {} packages",
+        derived_by_rule.len()
+    );
+    let unreported: Vec<&str> = derived_by_rule
+        .iter()
+        .map(String::as_str)
+        .filter(|package| !wanted.contains(*package))
+        .collect();
+    assert_eq!(
+        unreported, empty,
+        "a package a derivation reports is outside the walk that selects the pin"
     );
 
     let mut packages: Vec<String> = Vec::new();
@@ -699,34 +724,39 @@ fn the_pin_names_what_it_covers_and_what_it_does_not() -> TestResult {
         "the set of packages the derivations report changed"
     );
     assert_eq!(items, PINNED_ITEMS, "the pinned item count changed");
-    // The remainder is a subtraction rather than a fourth number to keep in
-    // step, and `crates/competency` is not in it: the audit's third door is
-    // what put it on the second derivation.
+    // The remainder is empty, and it is enumerated rather than counted: a
+    // package outside the pin fails here by name. `P2-RF30` left 28 packages
+    // in this remainder and named them; one of the 28 was the analyzer
+    // process, and `P2-A5`'s sixth audit reached the network from inside it
+    // with the whole workspace green.
     let unpinned: Vec<&str> = packages
         .iter()
         .map(String::as_str)
         .filter(|package| !wanted.contains(*package))
         .collect();
     assert_eq!(
-        unpinned.len(),
-        WORKSPACE_PACKAGES - PINNED_PACKAGES,
-        "the unpinned remainder is not the difference of the two counts"
+        unpinned, empty,
+        "a package the workspace compiles is outside the pin"
     );
-    assert!(
-        !unpinned.contains(&"competency"),
-        "`crates/competency` is outside the pin again; `P2-A5` measured what that costs"
+    assert_eq!(
+        derived.len(),
+        WORKSPACE_PACKAGES,
+        "the pinned set is no longer every package the workspace compiles"
     );
     Ok(())
 }
 
-/// The packages the workspace compiles, counted at `b31cc27`.
+/// The packages the workspace compiles, counted at `5f5c39c`.
 const WORKSPACE_PACKAGES: usize = 71;
 
-/// The packages either derivation reports, counted at `b31cc27`.
-const PINNED_PACKAGES: usize = 43;
+/// The packages the pin covers. Since `P2-RF31` this is all of them.
+const PINNED_PACKAGES: usize = 71;
 
-/// The keys the pin directory holds, counted at `b31cc27`.
-const PINNED_ITEMS: usize = 11_748;
+/// The keys the pin directory holds, counted at `5f5c39c` plus this branch.
+///
+/// 11 748 over 43 packages before `P2-RF31`. The 28 packages that joined and
+/// the literal values that joined the fingerprint are the difference.
+const PINNED_ITEMS: usize = 18_117;
 
 /// The file holding one package's pinned item set.
 fn pin_path(repository: &Path, package: &str) -> PathBuf {
@@ -755,16 +785,18 @@ fn pinned_items(repository: &Path, package: &str) -> Result<Vec<String>, Box<dyn
     Ok(held)
 }
 
-/// The floor under the derivation, so an empty walk cannot satisfy the pin.
+/// The floor under the walk, so a truncated one cannot satisfy the pin.
 ///
-/// 24 rather than 25: the floor is what an empty or truncated walk trips over,
-/// and it is deliberately below the measured count so that removing one
-/// package's pin fails on the missing file rather than here.
-const PINNED_PACKAGE_FLOOR: usize = 43;
+/// Equal to [`WORKSPACE_PACKAGES`] now, and that equality is the repair.
+/// While the pinned set was a derivation this floor tracked the derivation's
+/// own answer, so `P2-A5`'s sixth audit could record that "the floor still
+/// cannot see that the answer should be 71". The selection is the walk, the
+/// answer is every package, and a walk that returns fewer fails here.
+const PINNED_PACKAGE_FLOOR: usize = 71;
 
-/// The floor under the pinned item count. `P2-RF29` measured 6131 at `4ac7701`
-/// over 23 packages; `P2-X3`'s union makes it 6792 over 25.
-const PINNED_ITEM_FLOOR: usize = 11_000;
+/// The floor under the pinned item count. `P2-RF29` measured 6131 over 23
+/// packages, `P2-X3` 6792 over 25, `P2-RF30` 11 748 over 43.
+const PINNED_ITEM_FLOOR: usize = 17_000;
 
 /// Every route to a closed type is one somebody wrote down.
 ///
@@ -887,17 +919,38 @@ fn files_keyed_on_a_line_prefix(repository: &Path) -> Result<Vec<String>, Box<dy
     Ok(found)
 }
 
-/// Every package whose whole item set is pinned, from both derivations.
+/// Every package whose whole item set is pinned: every package the workspace
+/// compiles.
 ///
-/// The union of the packages that key an inventory on a line prefix and the
-/// packages that own a closed type. Neither half is written down here: the
-/// first is read out of the test sources, the second out of [`CLOSED_TYPES`].
+/// **There is no derivation in the selection role any more, and that is the
+/// point.** Until `P2-RF31` this was the union of the packages that key an
+/// inventory on a line prefix and the packages that own a closed type, and
+/// `P2-RF30` enumerated the 28 packages on neither arm and left them open.
+/// `P2-A5`'s sixth audit then put one live `std::net` name resolution into one
+/// of the 28 — `crates/repository-analyzer`, the analyzer process itself —
+/// and measured the whole workspace green on both hosts. Every round of this
+/// Run had found the next thing the selection rule did not spell, and a
+/// selection rule that reports a crate only when the crate already carries an
+/// inventory or a closed type cannot report a crate that carries neither.
+///
+/// So the selection is now the walk, and what the derivations do instead is
+/// **control** it: [`the_pin_names_what_it_covers_and_what_it_does_not`]
+/// requires every package either of them reports to be in this set, so a walk
+/// that returned a truncated or empty list fails naming the packages it lost
+/// rather than passing over a smaller world.
 fn packages_that_need_an_item_pin(repository: &Path) -> Result<Vec<String>, Box<dyn Error>> {
-    let mut found: BTreeSet<String> = packages_keyed_on_a_line_prefix(repository)?
-        .into_iter()
-        .collect();
-    found.extend(CLOSED_TYPES.iter().map(|closed| closed.package.to_owned()));
-    Ok(found.into_iter().collect())
+    let mut found: Vec<String> = Vec::new();
+    for directory in crate_directories(repository)? {
+        found.push(
+            directory
+                .file_name()
+                .and_then(|name| name.to_str())
+                .ok_or_else(|| format!("{} has no name", directory.display()))?
+                .to_owned(),
+        );
+    }
+    found.sort();
+    Ok(found)
 }
 
 /// Whether `code` hands `operation` a literal whose first word is an item head.
@@ -1055,19 +1108,21 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
     Ok(())
 }
 
-/// One reader, copied sixteen times, and the copies are held to being one.
+/// One reader, copied into every crate that scans its own reaches, and the
+/// copies are held to being one text.
 ///
 /// `P2-R2` repaired a reach guard that a token list walked past; `P2-A5`
 /// measured the repaired one walked past by
 /// `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)`, which resolves
-/// a name. The helper it repaired is copied into every crate that scans its own
-/// reaches, and the audit counted fourteen with `crates/*/tests/*.rs`; there are
-/// **sixteen**, because `academic-integrations` and `academic-next-lecture` keep
-/// theirs one directory further down in `tests/support/mod.rs`.
+/// a name. [`REACH_READERS`] is the whole set of files holding a copy, read
+/// out of the tree and compared here in both directions, so the count lives in
+/// that array rather than in this sentence: an audit that counted the carriers
+/// with `crates/*/tests/*.rs` missed the two that keep theirs one directory
+/// further down in `tests/support/mod.rs`.
 ///
 /// **Why they are not one function.** They could be: a dev-dependency crate
 /// holding the helpers would give one copy. It would also add an edge to the
-/// dependency closure of sixteen crates, and that closure is the subject of
+/// dependency closure of every carrier crate, and that closure is the subject of
 /// `tools/phase1-scaffold-policy.test.mjs`'s dependency map, its acyclic graph
 /// and each crate's own `USE_ITEMS` inventory -- scans whose whole point is
 /// that the closure does not move. Paying in the thing being protected to
@@ -1077,10 +1132,10 @@ fn the_inventories_still_keyed_on_a_line_prefix_are_named() -> TestResult {
 /// read rather than one it imports.
 ///
 /// **What replaces one copy.** This: the bodies are compared against each
-/// other, so sixteen copies are one text, and every carrier crate is required
-/// to hold the driving control. One driven copy plus textual identity is the
-/// same guarantee as one function, and a seventeenth copy that arrives with the
-/// old body fails here by name instead of waiting for an audit.
+/// other, so every copy is one text, and every carrier crate is required to
+/// hold the driving control. One driven copy plus textual identity is the same
+/// guarantee as one function, and a copy that arrives with the old body fails
+/// here by name instead of waiting for an audit.
 #[test]
 fn the_reach_readers_are_one_reader() -> TestResult {
     let repository = repository_root()?;
@@ -1193,6 +1248,449 @@ fn the_reach_readers_are_one_reader() -> TestResult {
 }
 
 // ---------------------------------------------------------------------------
+// The eight binaries the workspace ships
+// ---------------------------------------------------------------------------
+
+/// The crates that ship a `src/main.rs`.
+///
+/// Read out of the tree by [`shipped_binaries`] and compared here in both
+/// directions, so a ninth binary crate cannot arrive outside the two rules
+/// below. `P2-A5`'s sixth audit put one live `std::net` name resolution above
+/// the sandbox entry in the shipped `academic-repository-analyzer` and
+/// measured the whole workspace green on both hosts. The reason nothing saw
+/// it: all eight of these were outside every reach reader and outside the item
+/// pin, and the derivation that chose what to watch selected on what a crate
+/// already had, so it could not report a crate that had neither.
+const SHIPPED_BINARIES: [&str; 8] = [
+    "capture-client",
+    "cli",
+    "connector",
+    "daemon",
+    "egress",
+    "export-job",
+    "indexer",
+    "repository-analyzer",
+];
+
+/// The four binaries that enter the process sandbox, and the class each binds.
+///
+/// The two process classes not here are `CONNECTOR` and `INDEXER`, and they
+/// are absent for a reason this repository already measured rather than for
+/// one nobody wrote down:
+/// `a_declared_capability_is_not_defined_by_one_the_boundary_would_refuse` in
+/// `crates/process-sandbox/tests/enforcement.rs` pins them as the whole set of
+/// classes whose declaration argues with their own boundary. A third arriving
+/// there fails there.
+const CLASS_BINARIES: [(&str, &str); 4] = [
+    ("capture-client", "CaptureClient"),
+    ("egress", "EgressProxy"),
+    ("export-job", "ExportJob"),
+    ("repository-analyzer", "RepositoryAnalyzer"),
+];
+
+/// Every product file of a shipped binary that declares a top-level `fn main`.
+///
+/// Both directions, and the four class binaries are deliberately **not** here.
+/// Their whole `main` is one expansion of
+/// `academic_process_sandbox::class_main!`, so each crate declares no `fn main`
+/// and there is no statement position above the sandbox entry to write into.
+/// One appearing here again is the shape the sixth audit measured, and it
+/// fails naming the file.
+const FILES_DECLARING_FN_MAIN: [&str; 4] = [
+    "crates/cli/src/main.rs",
+    "crates/connector/src/main.rs",
+    "crates/daemon/src/main.rs",
+    "crates/indexer/src/main.rs",
+];
+
+/// Every crate directory holding a `src/main.rs`.
+fn shipped_binaries(repository: &Path) -> Result<Vec<String>, Box<dyn Error>> {
+    let mut found = Vec::new();
+    for directory in crate_directories(repository)? {
+        if !directory.join("src").join("main.rs").is_file() {
+            continue;
+        }
+        found.push(
+            directory
+                .file_name()
+                .and_then(|name| name.to_str())
+                .ok_or_else(|| format!("{} has no name", directory.display()))?
+                .to_owned(),
+        );
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// One shipped binary's whole product closure, as its files' text.
+fn binary_sources(
+    repository: &Path,
+    package: &str,
+) -> Result<BTreeMap<String, String>, Box<dyn Error>> {
+    let directory = repository.join("crates").join(package);
+    let mut found = BTreeMap::new();
+    for root in product_roots(&directory)? {
+        for file in resolve(&root, repository)?.files {
+            found.insert(relative(repository, &file), fs::read_to_string(&file)?);
+        }
+    }
+    Ok(found)
+}
+
+/// The set of crates shipping an executable is the set these rules watch.
+#[test]
+fn the_shipped_binaries_are_the_ones_this_file_watches() -> TestResult {
+    let repository = repository_root()?;
+    assert_eq!(
+        shipped_binaries(&repository)?,
+        SHIPPED_BINARIES
+            .iter()
+            .map(|package| (*package).to_owned())
+            .collect::<Vec<String>>(),
+        "the set of crates shipping a src/main.rs changed"
+    );
+    Ok(())
+}
+
+/// A process-class binary runs nothing of its own before the sandbox is in.
+///
+/// **This is the rule the sixth audit's F1 is about, and it is not a scan over
+/// names.** The injection it measured was one statement above
+/// `academic_process_sandbox::enter`. A reach reader would have caught that
+/// particular one, and would not have caught a second reach through a crate
+/// root the binary already names — the key is a root and one segment, so
+/// `academic_rpc::listen` beside `academic_rpc::connect` is not a new key.
+/// What closes the window is that there is no window: the four class binaries
+/// declare no `fn main` at all, `class_main!` is the whole of it, and its
+/// argument is an `ident` fragment so `class_main!({ reach(); PROCESS_CLASS })`
+/// does not compile.
+///
+/// Two directions, so neither half can be dodged. A `fn main` written into a
+/// class binary is a file this rule does not list; an item of any other kind
+/// written into one of their `main.rs` files is an extra key in the whole-set
+/// comparison below.
+#[test]
+fn no_process_class_binary_authors_a_statement_before_it_enters() -> TestResult {
+    let repository = repository_root()?;
+
+    let mut declaring: Vec<String> = Vec::new();
+    for package in shipped_binaries(&repository)? {
+        for (name, source) in binary_sources(&repository, &package)? {
+            if items_of(&name, &source)?
+                .iter()
+                .any(|item| item.owner.is_empty() && item.kind == "fn" && item.name == "main")
+            {
+                declaring.push(name);
+            }
+        }
+    }
+    declaring.sort();
+    assert_eq!(
+        declaring,
+        FILES_DECLARING_FN_MAIN
+            .iter()
+            .map(|file| (*file).to_owned())
+            .collect::<Vec<String>>(),
+        "a shipped binary declares a `fn main` this rule does not cover"
+    );
+
+    for (package, class) in CLASS_BINARIES {
+        let name = format!("crates/{package}/src/main.rs");
+        let source = fs::read_to_string(repository.join(&name))?;
+        let keys: Vec<String> = items_of(&name, &source)?.iter().map(Item::key).collect();
+        assert_eq!(
+            keys,
+            vec![
+                format!("{name} [priv] use academic_policy::ProcessClass"),
+                format!("{name} [priv] const PROCESS_CLASS: ProcessClass"),
+                format!("{name} [priv] academic_process_sandbox::class_main!(PROCESS_CLASS)"),
+            ],
+            "{name} is not the three items a class binary is allowed to hold"
+        );
+        assert!(
+            source.contains(&format!("ProcessClass::{class};")),
+            "{name} no longer binds {class}"
+        );
+    }
+    Ok(())
+}
+
+/// Every path a shipped binary reaches through a crate root, with a reason.
+///
+/// The third comparison `crates/repository/tests/repository_scans.rs` gained
+/// in `P2-RF30`, widened to the eight crates that ship an executable — the
+/// eight the sixth audit found on no reach reader at all. A capability written
+/// as an absolute path inside a shipped process is an extra key here whatever
+/// it is named, which is the property a forbidden-token list cannot have.
+///
+/// **What this cannot close, measured rather than assumed.** The key is the
+/// crate root and the segment after it, so a third segment is not a new key:
+/// `std::fs::write`, already listed for `cli`, and `std::fs::remove_dir_all`
+/// are one `std::fs`. And an import is stripped before the pass, so a reach
+/// spelled through an imported name — `use std::net::ToSocketAddrs;` and
+/// then a bare method call — carries no `::` at all and yields nothing
+/// here. What sees both is the item pin: since `P2-RF31` every package the
+/// workspace compiles has one, a `use` item is an item, and a body edit moves
+/// a fingerprint. This rule is the layer that names *what* was reached rather
+/// than saying that something changed, and the four class binaries rest on
+/// neither —
+/// [`no_process_class_binary_authors_a_statement_before_it_enters`] is what
+/// says they run nothing of their own before the sandbox is installed.
+#[test]
+fn every_path_a_shipped_binary_reaches_has_a_reason() -> TestResult {
+    let repository = repository_root()?;
+    let mut reached: BTreeSet<String> = BTreeSet::new();
+    let mut files = 0_usize;
+    for package in shipped_binaries(&repository)? {
+        for (_, source) in binary_sources(&repository, &package)? {
+            files += 1;
+            let code: String = lex(&source).code.into_iter().collect();
+            for path in absolute_paths(&without_use_items(&code)) {
+                reached.insert(format!("{package} {path}"));
+            }
+        }
+    }
+    assert!(files >= 30, "the walk read only {files} product files");
+    assert_eq!(
+        reached,
+        BINARY_REACHES
+            .iter()
+            .map(|(package, path, _)| format!("{package} {path}"))
+            .collect::<BTreeSet<String>>(),
+        "a shipped binary reaches a path outside its inventory; every entry needs a reason"
+    );
+
+    // This copy of the reader is held to being the same text as the other
+    // eighteen by `the_reach_readers_are_one_reader`, and it is driven here
+    // through the form that walked past the repaired one, so it does not rest
+    // on the other carriers' evidence.
+    assert!(
+        absolute_paths("let _ = <str as ::std::net::ToSocketAddrs>::to_socket_addrs(h);")
+            .contains("std::net")
+    );
+    assert!(absolute_paths("let _: &dyn ::core::fmt::Debug = &v;").contains("core::fmt"));
+    assert!(!absolute_paths("std::alloc::Layout::new::<u8>()").contains("alloc::Layout"));
+    Ok(())
+}
+
+/// `code` with every `use` item removed, so an import is not read as a reach.
+fn without_use_items(code: &str) -> String {
+    let mut kept = String::with_capacity(code.len());
+    let mut inside = false;
+    for line in code.lines() {
+        let trimmed = line.trim_start();
+        let opens = trimmed.starts_with("use ")
+            || (trimmed.starts_with("pub") && trimmed.contains(" use "));
+        if inside || opens {
+            inside = !line.trim_end().ends_with(';');
+            continue;
+        }
+        kept.push_str(line);
+        kept.push('\n');
+    }
+    kept
+}
+
+/// `code` with the whitespace that sits inside a path or a macro call removed.
+///
+/// Rust allows whitespace inside a path and between a macro's `!` and its
+/// delimiter, and both were measured slipping past the two extractors below:
+/// `std :: path :: Path::new(p).metadata()` opens the filesystem and
+/// `include_str! ("x")` reads a file, and each compiled and passed.
+///
+/// It closes exactly those two gaps and nothing wider. Deleting **all**
+/// whitespace was tried first and is wrong in the one direction that matters:
+/// it joins unrelated tokens, and `… Formatter and core::str …` becomes
+/// `…Formatterandcore::str…`, where `core` is no longer a whole identifier and
+/// the key **disappears**. A transform that can hide a key is worse than the
+/// hole it closes. `the_helpers_are_not_vacuous` carries that case.
+fn tighten(code: &str) -> String {
+    let mut out = String::with_capacity(code.len());
+    let mut rest = code;
+    while let Some(at) = rest.find(char::is_whitespace) {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        let stop = tail
+            .find(|character: char| !character.is_whitespace())
+            .unwrap_or(tail.len());
+        let after = &tail[stop..];
+        // The run is inside a path or a macro call exactly when a `::` or a `!`
+        // ends what came before it, or a `::` or a `!` starts what follows.
+        // `foo ! (x)` and `foo! (x)` are both macro calls, so both sides of the
+        // `!` are tightened; `a != b` and `if !flag` survive it, because the
+        // extractor still requires a delimiter immediately after the `!`.
+        let joins = out.ends_with("::")
+            || out.ends_with('!')
+            || after.starts_with("::")
+            || after.starts_with('!');
+        if !joins {
+            out.push(' ');
+        }
+        rest = after;
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Every two-segment path `code` spells through a crate root.
+///
+/// The first segment has to be a crate root this package can name, so a field
+/// access such as `self.path` is not a path and `Self::Variant` is not one
+/// either. What it catches is the absolute form — `std::env::var`,
+/// `std::path::Path` — which is the shape that needs no `use` item.
+fn absolute_paths(code: &str) -> BTreeSet<String> {
+    let roots = ["std", "core", "alloc", "thiserror"];
+    let code = &tighten(code);
+    let bytes = code.as_bytes();
+    let mut found = BTreeSet::new();
+    let mut taken = 0_usize;
+    for (at, _) in code.match_indices("::") {
+        let mut start = at;
+        while start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+            start -= 1;
+        }
+        if start == at {
+            continue;
+        }
+        // A whole identifier: the byte before it cannot continue one, which is
+        // what stops `a::b::c` being read as a second root at `b`.
+        if start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+            continue;
+        }
+        // A middle segment of a longer path -- the `b` of `a::b::c` -- is not a
+        // crate root, and skipping it is what stops one path yielding two keys.
+        // What decides it is whether this segment already sits inside a key
+        // this pass took, not the byte three positions back. `tighten` glues
+        // `as ::std` shut, so that byte is the `s` of a keyword and the leading
+        // `::` of a qualified path read as a middle one: `P2-A5` measured
+        // `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)` resolving
+        // a name from a live function while this pass reported nothing. Every
+        // segment outside a key already taken is a root, and a root nobody
+        // admits fails as an extra key rather than passing.
+        if start < taken {
+            continue;
+        }
+        let root = &code[start..at];
+        if !roots.contains(&root) && !root.starts_with("academic_") {
+            continue;
+        }
+        let mut end = at + 2;
+        while end < bytes.len() && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'_') {
+            end += 1;
+        }
+        if end > at + 2 {
+            found.insert(code[start..end].to_owned());
+            taken = end;
+        }
+    }
+    found
+}
+
+/// Every path a shipped binary reaches through a crate root, with a reason.
+///
+/// The `(package, path, reason)` shape `crates/repository/tests/repository_scans.rs`
+/// uses, over the eight crates that ship an executable. `connector` and
+/// `indexer` are absent because they reach nothing: their whole `main` reads
+/// `PROCESS_CLASS.capabilities()` through an import.
+const BINARY_REACHES: [(&str, &str, &str); 19] = [
+    (
+        "capture-client",
+        "academic_process_sandbox::class_main",
+        "the whole of `main`; the crate authors no statement of its own",
+    ),
+    (
+        "cli",
+        "academic_admission::AdmissionVerifier",
+        "the receipt posture the banner and the `admission` subcommand print",
+    ),
+    (
+        "cli",
+        "academic_core::operations",
+        "the backup format constant and the operation types the subcommands hand to the daemon",
+    ),
+    (
+        "cli",
+        "academic_daemon::SESSION_NONCE_CAPABILITY_PREFIX",
+        "the session-nonce prefix, restated as this crate's own `const` so the two agree",
+    ),
+    (
+        "cli",
+        "academic_rpc::generated",
+        "the generated request and response types; ingest is the only mutation and it travels over IPC",
+    ),
+    (
+        "cli",
+        "std::env",
+        "`var_os` for `LOCALAPPDATA` and `XDG_RUNTIME_DIR`, to find the current user's runtime root",
+    ),
+    (
+        "cli",
+        "std::error",
+        "`Box<dyn Error>` in the doctor's own helpers",
+    ),
+    (
+        "cli",
+        "std::fmt",
+        "the hand-written `Display` for `CliFailure`",
+    ),
+    (
+        "cli",
+        "std::fs",
+        "the doctor's `--deep` fixture writes, under a caller-named profile root",
+    ),
+    (
+        "cli",
+        "std::future",
+        "the `Future` bound on the async command dispatcher",
+    ),
+    (
+        "cli",
+        "std::path",
+        "`absolute`, which resolves `..` against the filesystem rather than lexically",
+    ),
+    (
+        "daemon",
+        "academic_rpc::PHASE1_POLICY_BANNER",
+        "the banner this binary prints before it starts",
+    ),
+    (
+        "daemon",
+        "academic_rpc::generated",
+        "the wire types the transport carries",
+    ),
+    (
+        "daemon",
+        "std::fs",
+        "`symlink_metadata` and `create_dir` on the Windows transport's runtime root",
+    ),
+    (
+        "daemon",
+        "std::slice",
+        "`from_raw_parts` over the Windows security-descriptor bytes, inside the crate's `unsafe`",
+    ),
+    (
+        "daemon",
+        "std::time",
+        "`SystemTime::now`, the writer's one clock reading",
+    ),
+    (
+        "egress",
+        "academic_process_sandbox::class_main",
+        "the whole of `main`; the crate authors no statement of its own",
+    ),
+    (
+        "export-job",
+        "academic_process_sandbox::class_main",
+        "the whole of `main`; the crate authors no statement of its own",
+    ),
+    (
+        "repository-analyzer",
+        "academic_process_sandbox::class_main",
+        "the whole of `main`; the crate authors no statement of its own",
+    ),
+];
+
+// ---------------------------------------------------------------------------
 // The pinned sets
 // ---------------------------------------------------------------------------
 
@@ -1281,7 +1779,7 @@ const RELEASABLE_ARTIFACT_ITEMS: [&str; 11] = [
     "crates/capture-gate/src/artifact.rs [priv] impl CaptureArtifact",
     "crates/capture-gate/src/artifact.rs [priv] impl ReleasableArtifact",
     "crates/capture-gate/src/artifact.rs [priv] impl fmt::Debug for ReleasableArtifact",
-    "crates/capture-gate/src/artifact.rs [priv] impl fmt::Debug for ReleasableArtifact :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |5d5a884dd8b40afc",
+    "crates/capture-gate/src/artifact.rs [priv] impl fmt::Debug for ReleasableArtifact :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |9d401845ea198532",
     "crates/capture-gate/src/artifact.rs [pub(crate)] impl CaptureArtifact :: const fn releasable(manifest: CaptureManifest, bytes: Vec<u8>) -> Self |732d2d152c6adf48",
     "crates/capture-gate/src/artifact.rs [pub] #[derive(Clone, PartialEq, Eq)] struct ReleasableArtifact |56e39015c24901ba",
     "crates/capture-gate/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum CaptureArtifact |f806e5314858e29b",
@@ -1322,7 +1820,7 @@ const STAGE_EVIDENCE_ITEMS: [&str; 22] = [
     "crates/competency/src/sheet.rs [priv] impl CellState",
     "crates/competency/src/sheet.rs [priv] impl RubricSheet",
     "crates/competency/src/sheet.rs [priv] use crate::{ Competency, evidence::StageEvidence, identity::{CompetencyId, CriterionId}, stage::EvidenceStage, } |dbbb41d57fd12764",
-    "crates/competency/src/sheet.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde( tag = \"state\", content = \"records\", rename_all = \"SCREAMING_SNAKE_CASE\" )] enum CellState |dff61dafffda4b95",
+    "crates/competency/src/sheet.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde( tag = \"state\", content = \"records\", rename_all = \"SCREAMING_SNAKE_CASE\" )] enum CellState |7ab2831ae1a419d1",
     "crates/competency/src/sheet.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct RubricSheet |d0992a0fc4f4eb40",
     "crates/competency/src/sheet.rs [pub] #[must_use] fn fill(competency: &Competency, records: &[StageEvidence]) -> RubricSheet |c50d6bd5b19637f0",
     "crates/competency/src/sheet.rs [pub] impl CellState :: #[must_use] fn records(&self) -> &[StageEvidence] |9c70e27c2eb5176f",
@@ -1356,10 +1854,11 @@ const PROMOTING_EVIDENCE_ITEMS: [&str; 10] = [
 ///
 /// Sixteen, not the fourteen `P2-A5` counted: `crates/*/tests/*.rs` does not
 /// reach `tests/support/mod.rs`, and two crates keep theirs there.
-const REACH_READERS: [&str; 18] = [
+const REACH_READERS: [&str; 19] = [
     "crates/blind-spot/tests/blind_spot_scans.rs",
     "crates/build-learn/tests/build_learn_scans.rs",
     "crates/competency/tests/competency_scans.rs",
+    "crates/contracts/tests/item_inventory_scans.rs",
     "crates/critical-path/tests/critical_path_scans.rs",
     "crates/cs-map/tests/cs_map_scans.rs",
     "crates/dashboard/tests/dashboard_scans.rs",
@@ -1435,7 +1934,7 @@ const MOTIVATION_DISPLAY_ITEMS: [&str; 11] = [
 /// Derived, not asserted: the set is every `crates/*/tests/**.rs` whose code
 /// -- comments blanked, string bodies restored -- holds one of the three
 /// prefixes as a `starts_with` argument.
-const INVENTORIES_KEYED_ON_A_LINE_PREFIX: [&str; 49] = [
+const INVENTORIES_KEYED_ON_A_LINE_PREFIX: [&str; 50] = [
     "crates/audit/tests/audit_scans.rs",
     "crates/blind-spot/tests/blind_spot_scans.rs",
     "crates/build-learn/tests/build_learn_scans.rs",
@@ -1443,6 +1942,7 @@ const INVENTORIES_KEYED_ON_A_LINE_PREFIX: [&str; 49] = [
     "crates/capture/tests/capture_scans.rs",
     "crates/competency/tests/competency_scans.rs",
     "crates/consent/tests/consent_scans.rs",
+    "crates/contracts/tests/item_inventory_scans.rs",
     "crates/critical-path/tests/critical_path_scans.rs",
     "crates/cs-map/tests/cs_map_scans.rs",
     "crates/curriculum/tests/curriculum_scans.rs",
@@ -1505,7 +2005,7 @@ const REGISTRATION_CONFIRMATION_ITEMS: [&str; 11] = [
     "crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: #[must_use] fn evidence_ids(&self) -> &[EvidenceId] |ab983fd29f7b2410",
     "crates/record/src/attempt.rs [pub] impl RegistrationConfirmation :: fn new( course_code: impl Into<String>, term: TermKey, credits_attempted: Decimal, evidence_ids: Vec<EvidenceId>, ) -> Result<Self, RecordError> |8610f6becc4ad5e1",
     "crates/record/src/corpus.rs [priv] use crate::{ CanonicalIdentifier, RecordError, attempt::{AttemptHistory, CourseAttempt, RegistrationConfirmation, SettledStatus}, classify::{ClassificationRule, ClassificationRuleSet, ProgramId, RequirementCategory}, grade::{GradeSymbol, GradingScheme}, policy::{ AttemptOrigin, ExternalGradePolicyRow, PolicyBook, RecognitionDecision, RepeatPolicyRow, RepeatRecognition, RuleBook, }, term::TermKey, } |e613f509f28ed902",
-    "crates/record/src/corpus.rs [pub] fn baseline_history() -> Result<AttemptHistory, RecordError> |61250419477ae517",
+    "crates/record/src/corpus.rs [pub] fn baseline_history() -> Result<AttemptHistory, RecordError> |9fac65d9555dec71",
 ];
 
 /// Every item of the workspace that reaches `SecondaryPercentage`.

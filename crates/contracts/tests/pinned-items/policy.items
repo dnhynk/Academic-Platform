@@ -1,0 +1,228 @@
+crates/policy/src/lib.rs [priv] #[derive(Debug)] enum PlannedDecision |be91a6f62584a062
+crates/policy/src/lib.rs [priv] #[derive(Debug)] struct CompleteRequest<'a> |352a9e00c4cca84a
+crates/policy/src/lib.rs [priv] #[derive(Debug)] struct RuntimeGrant |492beb5b58d74979
+crates/policy/src/lib.rs [priv] #[derive(Debug)] struct StoredProcessGrant |0f53585107ff3999
+crates/policy/src/lib.rs [priv] #[expect( clippy::too_many_arguments, reason = "the arguments map a request into the fixed audit row" )] fn insert_request_audit( transaction: &Transaction<'_>, request: &PermissionRequest, grant_id: Option<&str>, decision: Decision, reason: Option<ReasonCode>, payload_digest: Option<&str>, byte_count: u64, at: u64, ) -> Result<(), BrokerError> |5b9d75b2cd8cde32
+crates/policy/src/lib.rs [priv] #[expect( clippy::too_many_arguments, reason = "the arguments mirror the fixed audit row" )] fn insert_audit( transaction: &Transaction<'_>, grant_id: Option<&str>, decision: Decision, reason: Option<ReasonCode>, actor_id: &str, process_class: ProcessClass, capability: ProcessCapability, payload_digest: Option<&str>, byte_count: u64, destination_id: &str, artifact_ranges: &[ObjectRange], external_transmission_digest: Option<&str>, created_claim_ids: &[String], at: u64, ) -> Result<u64, BrokerError> |58f904f0ec23ddfd
+crates/policy/src/lib.rs [priv] const MISSING_VALUE: &str |045a4983f39a5028
+crates/policy/src/lib.rs [priv] fn canonical_ranges(ranges: &[ObjectRange]) -> Option<String> |2b9381766cb97ca6
+crates/policy/src/lib.rs [priv] fn decision_fingerprint( request: &PermissionRequest, decision: Decision, reason: Option<ReasonCode>, rule: Option<&EgressRule>, ) -> DecisionFingerprint |1f65be793c8de16d
+crates/policy/src/lib.rs [priv] fn deny_process_use( transaction: Transaction<'_>, token: &ProcessCapabilityToken, activity: &ProcessActivity<'_>, payload_digest: Option<&ContentDigest>, byte_count: u64, at: u64, reason: ReasonCode, ) -> Result<(), BrokerError> |6fe783c96edd1d39
+crates/policy/src/lib.rs [priv] fn insert_runtime_audit( transaction: &Transaction<'_>, capability: &CapabilityToken, decision: Decision, reason: Option<ReasonCode>, payload_digest: Option<&str>, byte_count: u64, at: u64, ) -> Result<u64, BrokerError> |e6e5a56c2206d70c
+crates/policy/src/lib.rs [priv] fn load_audit_claims(connection: &Connection, audit_seq: u64) -> Result<Vec<String>, BrokerError> |14147b7259308de0
+crates/policy/src/lib.rs [priv] fn load_audit_ranges( connection: &Connection, audit_seq: u64, ) -> Result<Vec<ObjectRange>, BrokerError> |b1acc8961a299939
+crates/policy/src/lib.rs [priv] fn load_process_grant( transaction: &Transaction<'_>, token_id: &str, ) -> Result<Option<StoredProcessGrant>, BrokerError> |0de8232110285968
+crates/policy/src/lib.rs [priv] fn load_runtime_grant( transaction: &Transaction<'_>, grant_id: &str, ) -> Result<Option<RuntimeGrant>, BrokerError> |ba0fd5c06e66149d
+crates/policy/src/lib.rs [priv] fn lower_hex(bytes: &[u8]) -> String |7be6cb58ad66d846
+crates/policy/src/lib.rs [priv] fn nonempty(value: Option<&str>) -> Result<&str, ReasonCode> |26808060c8593720
+crates/policy/src/lib.rs [priv] fn nonnegative(value: i64) -> Result<u64, BrokerError> |ac44a3abc7f23f4a
+crates/policy/src/lib.rs [priv] fn push_bytes(bytes: &mut Vec<u8>, value: &[u8]) |1b597230b17644af
+crates/policy/src/lib.rs [priv] fn push_optional_string(bytes: &mut Vec<u8>, value: Option<&str>) |b61c7766ff667f86
+crates/policy/src/lib.rs [priv] fn push_ranges(bytes: &mut Vec<u8>, ranges: &[ObjectRange]) |a6979c3e10645f5f
+crates/policy/src/lib.rs [priv] fn push_string(bytes: &mut Vec<u8>, value: &str) |52656b931d4b782b
+crates/policy/src/lib.rs [priv] fn range_byte_count(ranges: &[ObjectRange]) -> Option<u64> |bf225e5add566ae9
+crates/policy/src/lib.rs [priv] fn request_digest(request: &PermissionRequest) -> String |9399bfd6615a7474
+crates/policy/src/lib.rs [priv] fn sqlite_u64(value: u64) -> Result<i64, BrokerError> |e0438f00e9fdc3e3
+crates/policy/src/lib.rs [priv] fn sqlite_usize(value: usize) -> Result<i64, BrokerError> |43a6984d529e1099
+crates/policy/src/lib.rs [priv] impl AuthorizedToolCall<'_>
+crates/policy/src/lib.rs [priv] impl CapabilityToken
+crates/policy/src/lib.rs [priv] impl ContentDigest
+crates/policy/src/lib.rs [priv] impl Decision
+crates/policy/src/lib.rs [priv] impl Decision :: const fn as_str(self) -> &'static str |c1295edd886c2490
+crates/policy/src/lib.rs [priv] impl DecisionReceipt
+crates/policy/src/lib.rs [priv] impl Default for PolicySnapshot
+crates/policy/src/lib.rs [priv] impl Default for PolicySnapshot :: fn default() -> Self |076136365d399712
+crates/policy/src/lib.rs [priv] impl EgressRule
+crates/policy/src/lib.rs [priv] impl EgressRule :: fn canonical_bytes(&self) -> Vec<u8> |e3420c9096f2e010
+crates/policy/src/lib.rs [priv] impl EgressRule :: fn is_structurally_valid(&self) -> bool |7d44a6311bd3fcbb
+crates/policy/src/lib.rs [priv] impl EgressRule :: fn matches_tuple(&self, request: &CompleteRequest<'_>) -> bool |817b099bf1c202bb
+crates/policy/src/lib.rs [priv] impl EgressRule :: fn requested_scope_contains_minimum(&self, requested: &[ObjectRange]) -> bool |45de04c7ddb73d58
+crates/policy/src/lib.rs [priv] impl ObjectRange
+crates/policy/src/lib.rs [priv] impl ObjectRange :: fn byte_count(&self) -> u64 |632bcdded228f892
+crates/policy/src/lib.rs [priv] impl ObjectRange :: fn contains(&self, required: &Self) -> bool |cb52c28d271f8632
+crates/policy/src/lib.rs [priv] impl PermissionBroker
+crates/policy/src/lib.rs [priv] impl PermissionBroker :: fn issue( &self, request: PermissionRequest, issued_at: u64, rule: &EgressRule, ) -> Result<DecisionOutcome, BrokerError> |23ecad96c9540d94
+crates/policy/src/lib.rs [priv] impl PermissionBroker :: fn plan(&self, request: &PermissionRequest) -> Result<PlannedDecision, BrokerError> |2459c4fac0dc4630
+crates/policy/src/lib.rs [priv] impl PermissionBroker :: fn with_connection(connection: Connection, grant_ttl_millis: u64) -> Result<Self, BrokerError> |68cdc023ba41b87a
+crates/policy/src/lib.rs [priv] impl PolicySnapshot
+crates/policy/src/lib.rs [priv] impl PolicySnapshot :: fn canonical_bytes(&self) -> Vec<u8> |bd47ad09dd316c8c
+crates/policy/src/lib.rs [priv] impl PolicyVersion
+crates/policy/src/lib.rs [priv] impl ProcessCapability
+crates/policy/src/lib.rs [priv] impl ProcessCapability :: fn parse(value: &str) -> Result<Self, BrokerError> |70934ec003273804
+crates/policy/src/lib.rs [priv] impl ProcessClass
+crates/policy/src/lib.rs [priv] impl ProcessClass :: fn parse(value: &str) -> Result<Self, BrokerError> |5a0ced39312f0ae6
+crates/policy/src/lib.rs [priv] impl ReasonCode
+crates/policy/src/lib.rs [priv] impl ReasonCode :: fn parse(value: &str) -> Result<Self, BrokerError> |a9904473f8d63dec
+crates/policy/src/lib.rs [priv] impl RuntimeGrant
+crates/policy/src/lib.rs [priv] impl RuntimeGrant :: fn matches_capability(&self, capability: &CapabilityToken) -> bool |a2a07c380e756150
+crates/policy/src/lib.rs [priv] impl StoredProcessGrant
+crates/policy/src/lib.rs [priv] impl StoredProcessGrant :: fn matches_token(&self, token: &ProcessCapabilityToken) -> bool |fd80770b9e1b5dc8
+crates/policy/src/lib.rs [priv] impl fmt::Debug for AuthorizedToolCall<'_>
+crates/policy/src/lib.rs [priv] impl fmt::Debug for AuthorizedToolCall<'_> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |1298ec4c3f31b058
+crates/policy/src/lib.rs [priv] impl fmt::Debug for CapabilityToken
+crates/policy/src/lib.rs [priv] impl fmt::Debug for CapabilityToken :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |7b676af4fe3612db
+crates/policy/src/lib.rs [priv] impl fmt::Debug for ContentDigest
+crates/policy/src/lib.rs [priv] impl fmt::Debug for ContentDigest :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |445d14d0d46aabab
+crates/policy/src/lib.rs [priv] impl fmt::Debug for PermissionBroker
+crates/policy/src/lib.rs [priv] impl fmt::Debug for PermissionBroker :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |9489f255144b45a6
+crates/policy/src/lib.rs [priv] impl fmt::Debug for ProcessActivity<'_>
+crates/policy/src/lib.rs [priv] impl fmt::Debug for ProcessActivity<'_> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |a318fab643c5e0a9
+crates/policy/src/lib.rs [priv] impl fmt::Debug for ProcessCapabilityToken
+crates/policy/src/lib.rs [priv] impl fmt::Debug for ProcessCapabilityToken :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |68521b55e1721163
+crates/policy/src/lib.rs [priv] impl fmt::Debug for RuntimeToolCall<'_>
+crates/policy/src/lib.rs [priv] impl fmt::Debug for RuntimeToolCall<'_> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |bc0389ff8f5f781d
+crates/policy/src/lib.rs [priv] impl<'a> CompleteRequest<'a>
+crates/policy/src/lib.rs [priv] impl<'a> CompleteRequest<'a> :: fn resolve(request: &'a PermissionRequest) -> Result<Self, ReasonCode> |c7e3cb47b62a58bd
+crates/policy/src/lib.rs [priv] impl<'a> ProcessActivity<'a>
+crates/policy/src/lib.rs [priv] impl<'a> ProcessActivity<'a> :: fn new( capability: ProcessCapability, ranges: Vec<ObjectRange>, destination_id: Option<String>, transmitted_bytes: Option<&'a [u8]>, claim_ids: Vec<String>, ) -> Result<Self, BrokerError> |49da858103477e9b
+crates/policy/src/lib.rs [priv] impl<'a> RuntimeToolCall<'a>
+crates/policy/src/lib.rs [priv] mod provider
+crates/policy/src/lib.rs [priv] use rusqlite::{Connection, OptionalExtension as _, Transaction, params} |3e41f7403d8f279a
+crates/policy/src/lib.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/policy/src/lib.rs [priv] use std::{ collections::HashMap, fmt, path::Path, sync::{ Mutex, RwLock, atomic::{AtomicU64, Ordering}, }, } |5eb5997665a64543
+crates/policy/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/policy/src/lib.rs [pub] #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ContentDigest(String) |bd65afe2a2023b21
+crates/policy/src/lib.rs [pub] #[derive(Debug)] struct DecisionOutcome |12e0ad6d769a3a8f
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Decision |9671d8f843e57a2b
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ReasonCode |c05f70c1e3e63fd1
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProcessCapability |8a014aff130903d8
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProcessClass |0f78599b50b3f47d
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AuditRow |6ea72be4f8b18208
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConsumptionRow |0cd885edc48f1ca1
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DecisionFingerprint |f0f5efc524c0b9e4
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DecisionReceipt |965c64d5e9554fc3
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EgressRule |6a9db9ef4b9709c3
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GrantRow |c538a4ee19ba2035
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PermissionRequest |17d9ef29a5da00e9
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PolicySnapshot |85dc43fac4a98982
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Hash)] struct PolicyVersion(String) |24f0d4d3b101a51c
+crates/policy/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)] struct ObjectRange |30bb5a3f075bc606
+crates/policy/src/lib.rs [pub] #[derive(Debug, Error)] enum BrokerError |1e7dea94e61d1802
+crates/policy/src/lib.rs [pub] const AUDIT_RETENTION_POLICY_ID: &str |06fe0e1756aa57f7
+crates/policy/src/lib.rs [pub] const DEFAULT_GRANT_TTL_MILLIS: u64 |199568b716717cd3
+crates/policy/src/lib.rs [pub] const POLICY_SCHEMA_SQL: &str |ab15a70c51b4da34
+crates/policy/src/lib.rs [pub] impl AuthorizedToolCall<'_> :: #[must_use] const fn payload(&self) -> &[u8] |b8277838e7bcd92c
+crates/policy/src/lib.rs [pub] impl AuthorizedToolCall<'_> :: #[must_use] const fn ranges(&self) -> &[ObjectRange] |a89bc3b4eb04d727
+crates/policy/src/lib.rs [pub] impl CapabilityToken :: #[must_use] fn grant_id(&self) -> &str |d35f29fe5db6584d
+crates/policy/src/lib.rs [pub] impl ContentDigest :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/policy/src/lib.rs [pub] impl ContentDigest :: #[must_use] fn of(bytes: &[u8]) -> Self |9136be08d3928a23
+crates/policy/src/lib.rs [pub] impl ContentDigest :: fn parse(value: impl Into<String>) -> Result<Self, BrokerError> |43627bfe91a0419f
+crates/policy/src/lib.rs [pub] impl DecisionReceipt :: #[must_use] const fn evaluated_at(&self) -> u64 |083a951ab752bc08
+crates/policy/src/lib.rs [pub] impl DecisionReceipt :: #[must_use] const fn fingerprint(&self) -> &DecisionFingerprint |8e4eef5a2dad859f
+crates/policy/src/lib.rs [pub] impl DecisionReceipt :: #[must_use] const fn request(&self) -> &PermissionRequest |3dabebb2a5022b43
+crates/policy/src/lib.rs [pub] impl DecisionReceipt :: #[must_use] fn grant_id(&self) -> Option<&str> |6cfc5c7aa292c60a
+crates/policy/src/lib.rs [pub] impl ObjectRange :: #[must_use] const fn content_digest(&self) -> &ContentDigest |47aa558963bafaa0
+crates/policy/src/lib.rs [pub] impl ObjectRange :: #[must_use] const fn end(&self) -> u64 |1a5405ba52319d82
+crates/policy/src/lib.rs [pub] impl ObjectRange :: #[must_use] const fn start(&self) -> u64 |e351a72bbc5566c4
+crates/policy/src/lib.rs [pub] impl ObjectRange :: #[must_use] fn object_id(&self) -> &str |b8f713aa92405ba3
+crates/policy/src/lib.rs [pub] impl ObjectRange :: fn new( object_id: impl Into<String>, start: u64, end: u64, content_digest: ContentDigest, ) -> Result<Self, BrokerError> |ce414e4f584e8e58
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: #[must_use] const fn default_policy_version(&self) -> &PolicyVersion |03482974f9a0daed
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn audit_rows(&self) -> Result<Vec<AuditRow>, BrokerError> |9ba6c91e95cc1c81
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn consumption_rows(&self) -> Result<Vec<ConsumptionRow>, BrokerError> |c4754b193fb3808d
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn default_policy_snapshot(&self) -> Result<PolicySnapshot, BrokerError> |180ab30a76f3537d
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn evaluate( &self, request: PermissionRequest, issued_at: u64, ) -> Result<DecisionOutcome, BrokerError> |00ac853d5cb9454c
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn execute<T>( &self, capability: &CapabilityToken, call: RuntimeToolCall<'_>, now: u64, tool: impl FnOnce(AuthorizedToolCall<'_>) -> T, ) -> Result<T, BrokerError> |36849663dbfd149d
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn grant_row(&self, grant_id: &str) -> Result<Option<GrantRow>, BrokerError> |aaabdc724f802705
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn install_policy(&self, snapshot: PolicySnapshot) -> Result<PolicyVersion, BrokerError> |7110c93e1638abcf
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn mint_process_capability( &self, actor_id: impl Into<String>, process_class: ProcessClass, capability: ProcessCapability, issued_at: u64, ) -> Result<ProcessCapabilityToken, BrokerError> |17d1eeff923330d8
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn new_profile() -> Result<Self, BrokerError> |998c2704e79bd067
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn new_profile_with_ttl(grant_ttl_millis: u64) -> Result<Self, BrokerError> |9bc65805b86d6f97
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn open(path: &Path) -> Result<Self, BrokerError> |e6803b645d8ed279
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn replay( &self, receipt: &DecisionReceipt, replayed_at: u64, ) -> Result<DecisionFingerprint, BrokerError> |f1e4c6d84596ec61
+crates/policy/src/lib.rs [pub] impl PermissionBroker :: fn use_process_capability( &self, token: &ProcessCapabilityToken, actor_id: &str, process_class: ProcessClass, capability: ProcessCapability, activity: ProcessActivity<'_>, now: u64, ) -> Result<(), BrokerError> |591dbe23a9659145
+crates/policy/src/lib.rs [pub] impl PolicySnapshot :: #[must_use] const fn local_first_default_deny() -> Self |9846d3f36056ef1f
+crates/policy/src/lib.rs [pub] impl PolicySnapshot :: #[must_use] const fn local_processing_preferred(&self) -> bool |839cc1589cca8f49
+crates/policy/src/lib.rs [pub] impl PolicySnapshot :: #[must_use] fn configured_egress_rule_count(&self) -> usize |35f36d4f4e284870
+crates/policy/src/lib.rs [pub] impl PolicySnapshot :: #[must_use] fn version(&self) -> PolicyVersion |868c4c912063c8ca
+crates/policy/src/lib.rs [pub] impl PolicySnapshot :: fn from_rules(mut rules: Vec<EgressRule>) -> Result<Self, BrokerError> |8f5ce52ccc5a4c91
+crates/policy/src/lib.rs [pub] impl PolicyVersion :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/policy/src/lib.rs [pub] impl ProcessCapability :: #[must_use] const fn as_str(self) -> &'static str |2c22e0cbaa98ff42
+crates/policy/src/lib.rs [pub] impl ProcessCapability :: const ALL: [Self; 11] |07bfb412f5b1d3ed
+crates/policy/src/lib.rs [pub] impl ProcessClass :: #[must_use] const fn as_str(self) -> &'static str |1e12661a645c7783
+crates/policy/src/lib.rs [pub] impl ProcessClass :: #[must_use] const fn capabilities(self) -> &'static [ProcessCapability] |4fb7e3fe694c4b75
+crates/policy/src/lib.rs [pub] impl ProcessClass :: #[must_use] fn allows(self, capability: ProcessCapability) -> bool |daa01e2d62a01e7c
+crates/policy/src/lib.rs [pub] impl ProcessClass :: const ALL: [Self; 6] |e8b7a8f813226cae
+crates/policy/src/lib.rs [pub] impl ReasonCode :: #[must_use] const fn as_str(self) -> &'static str |4dc4e51851ec0d04
+crates/policy/src/lib.rs [pub] impl<'a> ProcessActivity<'a> :: fn artifact_read(ranges: Vec<ObjectRange>) -> Result<Self, BrokerError> |d05f2feb5f48d687
+crates/policy/src/lib.rs [pub] impl<'a> ProcessActivity<'a> :: fn capability_use(capability: ProcessCapability) -> Result<Self, BrokerError> |94344d3125bba354
+crates/policy/src/lib.rs [pub] impl<'a> ProcessActivity<'a> :: fn claims_created( ranges: Vec<ObjectRange>, claim_ids: Vec<String>, ) -> Result<Self, BrokerError> |0acaf8283d5df80b
+crates/policy/src/lib.rs [pub] impl<'a> ProcessActivity<'a> :: fn external_transmission( ranges: Vec<ObjectRange>, destination_id: impl Into<String>, transmitted_bytes: &'a [u8], ) -> Result<Self, BrokerError> |3a63f0410ebefa77
+crates/policy/src/lib.rs [pub] impl<'a> RuntimeToolCall<'a> :: fn new( actor_id: impl Into<String>, process_class: ProcessClass, operation: impl Into<String>, purpose_id: impl Into<String>, destination_id: impl Into<String>, ranges: Vec<ObjectRange>, payload: &'a [u8], ) -> Result<Self, BrokerError> |b536091b186b4cfa
+crates/policy/src/lib.rs [pub] struct AuthorizedToolCall<'a> |9d92b0c45e4d2b01
+crates/policy/src/lib.rs [pub] struct CapabilityToken |3f25fcc6733dc18c
+crates/policy/src/lib.rs [pub] struct PermissionBroker |a74e6b4ed2df094a
+crates/policy/src/lib.rs [pub] struct ProcessActivity<'a> |44ae713e2b92a593
+crates/policy/src/lib.rs [pub] struct ProcessCapabilityToken |7d5e0deeb59ad06b
+crates/policy/src/lib.rs [pub] struct RuntimeToolCall<'a> |bd109f82745d2125
+crates/policy/src/lib.rs [pub] use provider::{ DeletionReceiptDraft, DeletionReceiptRow, ProviderIdentity, ProviderPolicyDraft, ProviderPolicySnapshot, ProviderSurface, ProviderUserPolicy, } |cadce8a089117e84
+crates/policy/src/provider.rs [priv] #[derive(Debug)] struct ProviderScalarRow |2b156de5e4eccf3e
+crates/policy/src/provider.rs [priv] #[derive(Debug)] struct StoredUserPolicy |3a12073b18cf381b
+crates/policy/src/provider.rs [priv] const MAX_SQLITE_SEQUENCE: u64 |d56e9ef645082f62
+crates/policy/src/provider.rs [priv] fn canonical_set(mut values: Vec<String>) -> Result<Vec<String>, BrokerError> |2ca81a7ba02d095a
+crates/policy/src/provider.rs [priv] fn insert_provider_snapshot( transaction: &Transaction<'_>, snapshot: &ProviderPolicySnapshot, ) -> Result<(), BrokerError> |e8b479423f31f2cf
+crates/policy/src/provider.rs [priv] fn load_current_provider_snapshot( connection: &Connection, destination_id: &str, at: u64, ) -> Result<Option<ProviderPolicySnapshot>, BrokerError> |2f64481c31a52f31
+crates/policy/src/provider.rs [priv] fn load_current_provider_snapshot_at_revision( connection: &Connection, destination_id: &str, at: u64, maximum_snapshot_seq: u64, ) -> Result<Option<ProviderPolicySnapshot>, BrokerError> |f902c76b6ae00901
+crates/policy/src/provider.rs [priv] fn load_current_user_policy( connection: &Connection, snapshot_digest: &str, at: u64, maximum_user_policy_seq: u64, ) -> Result<Option<StoredUserPolicy>, BrokerError> |a78405570c85883f
+crates/policy/src/provider.rs [priv] fn load_provider_snapshot( connection: &Connection, digest: &str, ) -> Result<Option<ProviderPolicySnapshot>, BrokerError> |121fd9a893142172
+crates/policy/src/provider.rs [priv] fn load_strings(connection: &Connection, sql: &str, key: &str) -> Result<Vec<String>, BrokerError> |c1618cf2571dfbb9
+crates/policy/src/provider.rs [priv] fn provider_scalar_row(row: &Row<'_>) -> rusqlite::Result<ProviderScalarRow> |241d7e380df19dc0
+crates/policy/src/provider.rs [priv] fn provider_u64(value: i64) -> Result<u64, BrokerError> |d482927e650ae022
+crates/policy/src/provider.rs [priv] fn push_set(bytes: &mut Vec<u8>, values: &[String]) |01c51d2fa08303d5
+crates/policy/src/provider.rs [priv] fn required<T>(value: Option<T>, field: &'static str) -> Result<T, BrokerError> |2bcfa6b5fd4632a5
+crates/policy/src/provider.rs [priv] fn valid_text(value: &str) -> bool |ed0b183e5ff70dc0
+crates/policy/src/provider.rs [priv] impl PermissionBroker
+crates/policy/src/provider.rs [priv] impl ProviderIdentity
+crates/policy/src/provider.rs [priv] impl ProviderPolicySnapshot
+crates/policy/src/provider.rs [priv] impl ProviderPolicySnapshot :: fn canonical_bytes(&self) -> Vec<u8> |43ac3dbaf5580680
+crates/policy/src/provider.rs [priv] impl ProviderPolicySnapshot :: fn effective_training_use(&self) -> bool |1dafada53c9684c9
+crates/policy/src/provider.rs [priv] impl ProviderPolicySnapshot :: fn from_draft(draft: ProviderPolicyDraft) -> Result<Self, BrokerError> |4c4337c6d962bbef
+crates/policy/src/provider.rs [priv] impl ProviderRegistryRevision
+crates/policy/src/provider.rs [priv] impl ProviderScalarRow
+crates/policy/src/provider.rs [priv] impl ProviderScalarRow :: fn into_snapshot(self, connection: &Connection) -> Result<ProviderPolicySnapshot, BrokerError> |096a00fe469a7131
+crates/policy/src/provider.rs [priv] impl ProviderSurface
+crates/policy/src/provider.rs [priv] impl ProviderSurface :: const fn as_str(self) -> &'static str |b847e28b7af6d134
+crates/policy/src/provider.rs [priv] impl ProviderSurface :: fn parse(value: &str) -> Result<Self, BrokerError> |5e06ead6aff330b7
+crates/policy/src/provider.rs [priv] use rusqlite::{Connection, OptionalExtension as _, Row, Transaction, params} |0abc0be36c96d6e2
+crates/policy/src/provider.rs [priv] use super::{BrokerError, ContentDigest, PermissionBroker, ReasonCode, push_string, sqlite_u64} |229a0b741c6fdd25
+crates/policy/src/provider.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ProviderRegistryRevision |b62b2d508ef3a1ef
+crates/policy/src/provider.rs [pub(crate)] fn provider_registry_revision( connection: &Connection, ) -> Result<ProviderRegistryRevision, BrokerError> |fe9655d90297f78d
+crates/policy/src/provider.rs [pub(crate)] fn validate_provider_for_grant( connection: &Connection, facts: &ProviderGrantFacts<'_>, at: u64, revision: Option<ProviderRegistryRevision>, ) -> Result<u64, BrokerError> |39214db455aaa618
+crates/policy/src/provider.rs [pub(crate)] impl ProviderRegistryRevision :: const fn empty() -> Self |d901aae8ad49d590
+crates/policy/src/provider.rs [pub(crate)] struct ProviderGrantFacts<'a> |56999483aeda9640
+crates/policy/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ProviderSurface |c3aad2e00d43784d
+crates/policy/src/provider.rs [pub] #[derive(Debug, Clone, Default)] struct ProviderPolicyDraft |01c2ed68f7db806d
+crates/policy/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeletionReceiptDraft |2a7bd4a3e7e88bef
+crates/policy/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeletionReceiptRow |d3976772f8195de2
+crates/policy/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProviderIdentity |444b8f1cbf2b99c6
+crates/policy/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProviderPolicySnapshot |e749b18b80f13944
+crates/policy/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProviderUserPolicy |60f7f7cf25613cc2
+crates/policy/src/provider.rs [pub] impl PermissionBroker :: fn current_provider_policy( &self, identity: &ProviderIdentity, at: u64, ) -> Result<Option<ProviderPolicySnapshot>, BrokerError> |1b8f3d6ccdc84b4e
+crates/policy/src/provider.rs [pub] impl PermissionBroker :: fn deletion_receipt( &self, receipt_id: &str, ) -> Result<Option<DeletionReceiptRow>, BrokerError> |abc914806e545425
+crates/policy/src/provider.rs [pub] impl PermissionBroker :: fn provider_policy_versions( &self, identity: &ProviderIdentity, ) -> Result<Vec<ProviderPolicySnapshot>, BrokerError> |8fc554d8caa5ca65
+crates/policy/src/provider.rs [pub] impl PermissionBroker :: fn record_provider_user_policy( &self, mut policy: ProviderUserPolicy, ) -> Result<(), BrokerError> |a8d47f93cc1bc948
+crates/policy/src/provider.rs [pub] impl PermissionBroker :: fn register_provider_policy( &self, draft: ProviderPolicyDraft, registered_at: u64, ) -> Result<ProviderPolicySnapshot, BrokerError> |5e7146f066c4b096
+crates/policy/src/provider.rs [pub] impl PermissionBroker :: fn store_deletion_receipt( &self, draft: DeletionReceiptDraft, ) -> Result<DeletionReceiptRow, BrokerError> |1ae3d5ae3168f080
+crates/policy/src/provider.rs [pub] impl ProviderIdentity :: #[must_use] const fn surface(&self) -> ProviderSurface |3516982c12fd4dbd
+crates/policy/src/provider.rs [pub] impl ProviderIdentity :: #[must_use] fn destination_id(&self) -> String |97c70787cfb72bff
+crates/policy/src/provider.rs [pub] impl ProviderIdentity :: #[must_use] fn vendor_id(&self) -> &str |0c8dcb9820cb1d9d
+crates/policy/src/provider.rs [pub] impl ProviderIdentity :: fn new( vendor_id: impl Into<String>, surface: ProviderSurface, ) -> Result<Self, BrokerError> |2211cab976149d29
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn abuse_logging_enabled(&self) -> bool |4d054c5cf3b74ad9
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn at_rest_encryption_declared(&self) -> bool |169db011d909cee9
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn deletion_api_available(&self) -> bool |a727dfd9e80a96bd
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn deletion_receipt_capable(&self) -> bool |ad09fe09ba7659a3
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn identity(&self) -> &ProviderIdentity |325f9c69fa3f0a7c
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn last_verified_at(&self) -> u64 |bc6a2534a08a68a8
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn maximum_input_bytes(&self) -> u64 |710aeebbeb942b8a
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn policy_source_digest(&self) -> &ContentDigest |b3df9251f95edcc8
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn server_retention_millis(&self) -> u64 |7a25aa419b41e0d2
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn snapshot_digest(&self) -> &ContentDigest |c3dad2b7cfdeeb22
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn training_opt_out_applied(&self) -> bool |3ace7df183769b41
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn training_use_enabled(&self) -> bool |36951920fad0d073
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn transit_encryption_declared(&self) -> bool |9a61d26741bddca9
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] const fn ttl_millis(&self) -> u64 |e85d14bd1b5c7368
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] fn destination_id(&self) -> &str |ec38c0a8a73c8f29
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] fn logging_configuration(&self) -> &str |7d7a08f77f0e9e99
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] fn residency_regions(&self) -> &[String] |55fd129781d8457d
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] fn retention_terms_hash(&self) -> ContentDigest |2e51c5a638fca9e9
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] fn subprocessors(&self) -> &[String] |7b866b5799b2f079
+crates/policy/src/provider.rs [pub] impl ProviderPolicySnapshot :: #[must_use] fn verified_until(&self) -> u64 |17bed99754ea52b1

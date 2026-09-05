@@ -1,0 +1,548 @@
+crates/vault/src/bin/emit-object-corpus.rs [priv] const ARTIFACT_ID: [u8; 16] |bf77c2b40836f5d6
+crates/vault/src/bin/emit-object-corpus.rs [priv] const BASE_NONCE: [u8; BASE_NONCE_BYTES] |80c31634e38b5612
+crates/vault/src/bin/emit-object-corpus.rs [priv] const CORPUS_CHUNK_SIZE: u32 |75decffdc2bce71b
+crates/vault/src/bin/emit-object-corpus.rs [priv] const DEK: [u8; KEY_BYTES] |c20a20a3e3f1ba27
+crates/vault/src/bin/emit-object-corpus.rs [priv] const DOMAIN_ID: [u8; 16] |68c3b0a69cf8a961
+crates/vault/src/bin/emit-object-corpus.rs [priv] const DOMAIN_KEK: [u8; KEY_BYTES] |dedbfbce5037ba69
+crates/vault/src/bin/emit-object-corpus.rs [priv] const EMPTY_BASE_NONCE: [u8; BASE_NONCE_BYTES] |a1f51a2b67666f84
+crates/vault/src/bin/emit-object-corpus.rs [priv] const EMPTY_LOCATOR: [u8; 32] |cc394b3b7e87ab53
+crates/vault/src/bin/emit-object-corpus.rs [priv] const LOCATOR: [u8; 32] |930443481151f6f1
+crates/vault/src/bin/emit-object-corpus.rs [priv] const PERMISSION_LINEAGE_ID: [u8; 16] |b23d86310a3562f7
+crates/vault/src/bin/emit-object-corpus.rs [priv] const PLAINTEXT: &[u8] |acf6eb80f6f0d165
+crates/vault/src/bin/emit-object-corpus.rs [priv] fn emit() -> Result<PathBuf, String> |f1dc8c8dba57f690
+crates/vault/src/bin/emit-object-corpus.rs [priv] fn main() -> ExitCode |2a432af7f56049d1
+crates/vault/src/bin/emit-object-corpus.rs [priv] fn nibble(value: u8) -> char |78b981ad9f088bc9
+crates/vault/src/bin/emit-object-corpus.rs [priv] fn push_field(out: &mut String, name: &str, bytes: &[u8]) |8eacccfbbc2ee27e
+crates/vault/src/bin/emit-object-corpus.rs [priv] use academic_domain::RetentionClass |5cd06198854786b3
+crates/vault/src/bin/emit-object-corpus.rs [priv] use academic_vault::object::{ self, BASE_NONCE_BYTES, HEADER_BYTES, HEADER_LEN_FIELD, KEY_BYTES, StreamingPrefix, TAG_BYTES, } |f0a0426b88c3e213
+crates/vault/src/bin/emit-object-corpus.rs [priv] use std::{env, fs, path::PathBuf, process::ExitCode} |60a4b29482a42fed
+crates/vault/src/durability.rs [priv] #[cfg(not(any(unix, windows)))] mod host
+crates/vault/src/durability.rs [priv] #[cfg(unix)] #[path = "platform/unix.rs"] mod host
+crates/vault/src/durability.rs [priv] #[cfg(windows)] #[path = "platform/windows.rs"] mod host
+crates/vault/src/durability.rs [priv] mod host :: impl LockedTemp
+crates/vault/src/durability.rs [priv] mod host :: use std::{fs::File, io, path::Path} |cac90d0c3de7394f
+crates/vault/src/durability.rs [priv] use crate::{VaultError, VaultResult} |b54d3acd8aaa96df
+crates/vault/src/durability.rs [priv] use std::{fs::File, path::Path} |2b2d23e8cf1cab63
+crates/vault/src/durability.rs [pub(crate)] fn acquire_shared_object_lease(path: &Path) -> VaultResult<SharedObjectLease> |1dd3daf760b0fa53
+crates/vault/src/durability.rs [pub(crate)] fn create_locked_temp(path: &Path) -> VaultResult<LockedTemp> |9379376ef35ac630
+crates/vault/src/durability.rs [pub(crate)] fn object_identity(file: &File, path: &Path) -> VaultResult<ObjectIdentity> |011a6f8836a58872
+crates/vault/src/durability.rs [pub(crate)] fn open_readonly_no_follow(path: &Path) -> VaultResult<File> |0e13958778d171ea
+crates/vault/src/durability.rs [pub(crate)] fn publish_locked_no_replace( temp: &mut LockedTemp, source: &Path, destination: &Path, ) -> VaultResult<bool> |39254a74502e156b
+crates/vault/src/durability.rs [pub(crate)] fn publish_no_replace(source: &Path, destination: &Path) -> VaultResult<bool> |172788f867c4c678
+crates/vault/src/durability.rs [pub(crate)] fn symlink_metadata_no_follow(path: &Path) -> std::io::Result<std::fs::Metadata> |1ad49c882e8ece93
+crates/vault/src/durability.rs [pub(crate)] fn sync_directory(path: &Path) -> VaultResult<()> |647e5c5c6fe81a91
+crates/vault/src/durability.rs [pub(crate)] fn try_acquire_exclusive_object_lease( path: &Path, ) -> VaultResult<Option<ExclusiveObjectLease>> |50de7b59620f8f9f
+crates/vault/src/durability.rs [pub(crate)] fn try_remove_unlocked(path: &Path) -> VaultResult<bool> |3da8873d9d97abc2
+crates/vault/src/durability.rs [pub(crate)] mod host :: #[derive(Debug)] struct ExclusiveObjectLease |54555beae8a0a0b9
+crates/vault/src/durability.rs [pub(crate)] mod host :: #[derive(Debug)] struct LockedTemp(File) |b1292b3ed129bf3b
+crates/vault/src/durability.rs [pub(crate)] mod host :: #[derive(Debug)] struct SharedObjectLease |2cc42f24292d092e
+crates/vault/src/durability.rs [pub(crate)] mod host :: #[derive(Debug, Clone, PartialEq, Eq)] struct ObjectIdentity |05771e619315e5b5
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn create_locked_temp(_path: &Path) -> io::Result<LockedTemp> |2129fa57108893c9
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn object_identity(_file: &File) -> io::Result<ObjectIdentity> |6142d659a9d773b6
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn open_readonly_no_follow(_path: &Path) -> io::Result<File> |03a7741dd3c029b6
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn publish_locked_no_replace( _temp: &mut LockedTemp, _source: &Path, _destination: &Path, ) -> io::Result<bool> |73a35d4ef3012075
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn publish_no_replace(_source: &Path, _destination: &Path) -> io::Result<bool> |eeec7357bebc7a55
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn symlink_metadata_no_follow(_path: &Path) -> io::Result<std::fs::Metadata> |54efd2f63d854c67
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn sync_directory(_path: &Path) -> io::Result<()> |750ab118b9882a39
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn try_acquire_exclusive_object_lease( _path: &Path, ) -> io::Result<Option<ExclusiveObjectLease>> |e428ac5ff94aaa95
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn try_acquire_shared_object_lease( _path: &Path, ) -> io::Result<Option<SharedObjectLease>> |44b78030a5670db9
+crates/vault/src/durability.rs [pub(crate)] mod host :: fn try_remove_unlocked(_path: &Path) -> io::Result<bool> |2b9f052fa0659741
+crates/vault/src/durability.rs [pub(crate)] mod host :: impl LockedTemp :: fn file_mut(&mut self) -> &mut File |af7015bdb94de721
+crates/vault/src/durability.rs [pub(crate)] use host::{ExclusiveObjectLease, LockedTemp, ObjectIdentity, SharedObjectLease} |dabaf2f505bca0a8
+crates/vault/src/encrypted.rs [priv] #[derive(Debug)] struct LiveSealedObject |f925ec0ae8ddae41
+crates/vault/src/encrypted.rs [priv] fn fill(source: &mut impl Read, buffer: &mut [u8], path: &Path) -> VaultResult<usize> |0371457b1cf3113d
+crates/vault/src/encrypted.rs [priv] fn open_exact_object( path: &Path, descriptor: &ArtifactDescriptor, domain_kek: &[u8; KEY_BYTES], ) -> VaultResult<(File, ObjectIdentity)> |af5b53b4ead55843
+crates/vault/src/encrypted.rs [priv] fn read_and_open_header( file: &mut File, path: &Path, domain_kek: &[u8; KEY_BYTES], ) -> VaultResult<OpenedHeader> |98eb4faf5ec6a167
+crates/vault/src/encrypted.rs [priv] fn require_sealed_length(file: &File, path: &Path, header: &ObjectHeader) -> VaultResult<()> |873d4e419268b4e0
+crates/vault/src/encrypted.rs [priv] fn verify_open_object( file: &mut File, path: &Path, descriptor: &ArtifactDescriptor, domain_kek: &[u8; KEY_BYTES], ) -> VaultResult<()> |e2915e1af3811db5
+crates/vault/src/encrypted.rs [priv] impl ArtifactIngestRequest
+crates/vault/src/encrypted.rs [priv] impl Drop for EncryptedObjectReader
+crates/vault/src/encrypted.rs [priv] impl Drop for EncryptedObjectReader :: fn drop(&mut self) |da80f8b38a4789f9
+crates/vault/src/encrypted.rs [priv] impl EncryptedDomainKeyring
+crates/vault/src/encrypted.rs [priv] impl EncryptedDomainKeyring :: fn keys(&self, domain_id: DomainId) -> VaultResult<&DomainObjectKeys> |032e7ab82a3cfe33
+crates/vault/src/encrypted.rs [priv] impl EncryptedObjectReader
+crates/vault/src/encrypted.rs [priv] impl EncryptedObjectReader :: fn load_chunk(&mut self, index: u64) -> VaultResult<()> |592bcc3c76297c8e
+crates/vault/src/encrypted.rs [priv] impl EncryptedObjectReader :: fn new(file: File, path: PathBuf, opened: OpenedHeader) -> Self |c8d817876bc7e09b
+crates/vault/src/encrypted.rs [priv] impl EncryptedVault
+crates/vault/src/encrypted.rs [priv] impl EncryptedVault :: fn create_temp(&self) -> VaultResult<(PathBuf, LockedTemp)> |be2bf5867eebc65a
+crates/vault/src/encrypted.rs [priv] impl EncryptedVault :: fn ingest_with_chunk_size( &self, request: &ArtifactIngestRequest, mut source: impl Read, chunk_size: u32, ) -> VaultResult<SealedEncryptedObject> |2ade79824f1d1254
+crates/vault/src/encrypted.rs [priv] impl EncryptedVault :: fn publish( &self, descriptor: ArtifactDescriptor, mut temp: LockedTemp, temp_path: PathBuf, ) -> VaultResult<SealedEncryptedObject> |b5b417593ce29d07
+crates/vault/src/encrypted.rs [priv] impl EncryptedVault :: fn read_back( &self, path: &Path, descriptor: &ArtifactDescriptor, lease: SharedObjectLease, ) -> VaultResult<LiveSealedObject> |b61fcb33ab45d478
+crates/vault/src/encrypted.rs [priv] impl ObjectNamespace for EncryptedVault
+crates/vault/src/encrypted.rs [priv] impl ObjectNamespace for EncryptedVault :: fn layout(&self) -> &VaultLayout |eb92d0105da423f2
+crates/vault/src/encrypted.rs [priv] impl ObjectNamespace for EncryptedVault :: fn validate_descriptor_locator(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf> |1b5dfb0968d0defc
+crates/vault/src/encrypted.rs [priv] impl ObjectNamespace for EncryptedVault :: fn verify_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<()> |d8e06e54a0679d35
+crates/vault/src/encrypted.rs [priv] impl Read for EncryptedObjectReader
+crates/vault/src/encrypted.rs [priv] impl Read for EncryptedObjectReader :: fn read(&mut self, out: &mut [u8]) -> io::Result<usize> |b02374c2667e7a01
+crates/vault/src/encrypted.rs [priv] impl SealedEncryptedObject
+crates/vault/src/encrypted.rs [priv] impl SealedObjectReceipt for SealedEncryptedObject
+crates/vault/src/encrypted.rs [priv] impl SealedObjectReceipt for SealedEncryptedObject :: fn descriptor(&self) -> &ArtifactDescriptor |6aab2c5c7f01b294
+crates/vault/src/encrypted.rs [priv] impl SealedObjectReceipt for SealedEncryptedObject :: fn disposition(&self) -> SealDisposition |35f283f0445c7787
+crates/vault/src/encrypted.rs [priv] impl SealedObjectReceipt for SealedEncryptedObject :: fn object_path(&self) -> &Path |50cea71212a644ea
+crates/vault/src/encrypted.rs [priv] impl SealedObjectVerifier for EncryptedVault
+crates/vault/src/encrypted.rs [priv] impl SealedObjectVerifier for EncryptedVault :: fn profile_root(&self) -> &Path |1a5b76f06ac2d407
+crates/vault/src/encrypted.rs [priv] impl SealedObjectVerifier for EncryptedVault :: fn revalidate_sealed_object(&self, receipt: &mut Self::Receipt) -> VaultResult<()> |9e1a65c3eb0785ac
+crates/vault/src/encrypted.rs [priv] impl SealedObjectVerifier for EncryptedVault :: fn verify_sealed_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<Self::Receipt> |495249bd3b11238e
+crates/vault/src/encrypted.rs [priv] impl SealedObjectVerifier for EncryptedVault :: type Receipt = SealedEncryptedObject |ae88a5084f25b08e
+crates/vault/src/encrypted.rs [priv] impl Seek for EncryptedObjectReader
+crates/vault/src/encrypted.rs [priv] impl Seek for EncryptedObjectReader :: fn seek(&mut self, position: SeekFrom) -> io::Result<u64> |53dc401c782aa8e1
+crates/vault/src/encrypted.rs [priv] impl ShredReceipt
+crates/vault/src/encrypted.rs [priv] impl std::fmt::Debug for EncryptedDomainKeyring
+crates/vault/src/encrypted.rs [priv] impl std::fmt::Debug for EncryptedDomainKeyring :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |dab051ba1f977f83
+crates/vault/src/encrypted.rs [priv] impl std::fmt::Debug for EncryptedObjectReader
+crates/vault/src/encrypted.rs [priv] impl std::fmt::Debug for EncryptedObjectReader :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |ff11c07426b29585
+crates/vault/src/encrypted.rs [priv] struct DomainObjectKeys |e69c4faa335cca4a
+crates/vault/src/encrypted.rs [priv] use academic_crypto::{ArtifactDek, DomainKek, DomainLocatorKey, KEY_BYTES, ProfileId} |1b34ef5acdc2f955
+crates/vault/src/encrypted.rs [priv] use academic_domain::{ ArtifactDescriptor, ContentDigest, DomainId, MAX_SAFE_JSON_INTEGER, VaultLocator, } |6996dbac5dcf11a2
+crates/vault/src/encrypted.rs [priv] use crate::{ ArtifactIngestRequest, SealDisposition, SealedObjectReceipt, SealedObjectVerifier, VaultError, VaultResult, durability::{self, LockedTemp, ObjectIdentity, SharedObjectLease}, fault::{self, FaultPoint}, integrity_mismatch, layout::{ObjectFormat, VaultLayout}, now_millis, object::{ self, HEADER_BYTES, ObjectFormatError, ObjectHeader, OpenedHeader, StreamingPrefix, TAG_BYTES, }, reconcile::{ObjectNamespace, ReconcileOptions, ReconcileReport}, } |92a068ca0806b387
+crates/vault/src/encrypted.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/vault/src/encrypted.rs [priv] use std::{ collections::BTreeMap, fs::{self, File}, io::{self, Read, Seek, SeekFrom, Write}, path::{Path, PathBuf}, } |468cb2c279349ef7
+crates/vault/src/encrypted.rs [pub(crate)] impl ArtifactIngestRequest :: fn descriptor_for( &self, content_digest: ContentDigest, byte_length: u64, vault_locator: VaultLocator, format_version: u16, ) -> ArtifactDescriptor |b9f6798136477993
+crates/vault/src/encrypted.rs [pub(crate)] impl EncryptedVault :: fn validate_descriptor_locator( &self, descriptor: &ArtifactDescriptor, ) -> VaultResult<PathBuf> |ea0c256ee2038d52
+crates/vault/src/encrypted.rs [pub] #[derive(Debug)] struct EncryptedVault |30b341660e258b08
+crates/vault/src/encrypted.rs [pub] #[derive(Debug)] struct ResealOutcome |c06c4a872d96937e
+crates/vault/src/encrypted.rs [pub] #[derive(Debug)] struct SealedEncryptedObject |8afc936ca5a5e8b9
+crates/vault/src/encrypted.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ShredReceipt |a99b0306edcffbd9
+crates/vault/src/encrypted.rs [pub] const ENCRYPTED_FORMAT_VERSION: u16 |e5e22f36e1027c45
+crates/vault/src/encrypted.rs [pub] const ENCRYPTED_OBJECT_FORMAT: &str |de9c4721fb64fdaa
+crates/vault/src/encrypted.rs [pub] const PHASE2_OBJECT_FAULT_IDS: &[&str] |db2637378fec0177
+crates/vault/src/encrypted.rs [pub] fn shred_key_slot_at(path: &Path, tombstone_digest: &[u8; 32]) -> VaultResult<ShredReceipt> |1947f91cd5353e69
+crates/vault/src/encrypted.rs [pub] impl EncryptedDomainKeyring :: #[must_use] const fn new(profile: ProfileId) -> Self |e851d33786ba87b9
+crates/vault/src/encrypted.rs [pub] impl EncryptedDomainKeyring :: fn insert(&mut self, domain_id: DomainId, kek: DomainKek) -> VaultResult<()> |a8c7055ef8f3e013
+crates/vault/src/encrypted.rs [pub] impl EncryptedObjectReader :: #[must_use] const fn header(&self) -> &ObjectHeader |268bb907bec55016
+crates/vault/src/encrypted.rs [pub] impl EncryptedObjectReader :: #[must_use] const fn plaintext_digest(&self) -> &[u8; 32] |7171d78275fe67b2
+crates/vault/src/encrypted.rs [pub] impl EncryptedObjectReader :: #[must_use] const fn plaintext_len(&self) -> u64 |89e1fbf56021c46f
+crates/vault/src/encrypted.rs [pub] impl EncryptedObjectReader :: #[must_use] fn path(&self) -> &Path |7f3b463ffbb331a7
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: #[must_use] const fn chunk_size(&self) -> u32 |a4682cf867b8feeb
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: #[must_use] const fn layout(&self) -> &VaultLayout |07ae04573e7f23f5
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: #[must_use] fn profile_root(&self) -> &Path |b5d851954ff9a30c
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: fn ingest( &self, request: &ArtifactIngestRequest, source: impl Read, ) -> VaultResult<SealedEncryptedObject> |8411dc9b48be6710
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: fn open(profile_root: &Path, keyring: EncryptedDomainKeyring) -> VaultResult<Self> |41df27209c88a559
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: fn open_reader( &self, descriptor: &ArtifactDescriptor, ) -> VaultResult<EncryptedObjectReader> |27345707fc44ca75
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: fn open_with_chunk_size( profile_root: &Path, keyring: EncryptedDomainKeyring, chunk_size: u32, ) -> VaultResult<Self> |d1c621f2ab867af1
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: fn reconcile(&self, options: &ReconcileOptions<'_>) -> VaultResult<ReconcileReport> |fbe6db57c66b75d5
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: fn reseal( &self, descriptor: &ArtifactDescriptor, destination: &Self, ) -> VaultResult<ResealOutcome> |2b955b37ada06b48
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: fn shred_key_slot( &self, descriptor: &ArtifactDescriptor, tombstone_digest: &[u8; 32], ) -> VaultResult<ShredReceipt> |63048ceac4fb7e72
+crates/vault/src/encrypted.rs [pub] impl EncryptedVault :: fn verify_shredded_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf> |746873a94dbc11a0
+crates/vault/src/encrypted.rs [pub] impl SealedEncryptedObject :: #[must_use] const fn descriptor(&self) -> &ArtifactDescriptor |4268918b78cfed56
+crates/vault/src/encrypted.rs [pub] impl SealedEncryptedObject :: #[must_use] const fn disposition(&self) -> SealDisposition |521edc0cb52433dd
+crates/vault/src/encrypted.rs [pub] impl SealedEncryptedObject :: #[must_use] fn object_path(&self) -> &Path |9d97f187fccd9c91
+crates/vault/src/encrypted.rs [pub] impl ShredReceipt :: #[must_use] const fn locator(&self) -> &[u8; 32] |024ba05f6d3a4fca
+crates/vault/src/encrypted.rs [pub] impl ShredReceipt :: #[must_use] const fn was_already_shredded(&self) -> bool |b76bfc3cc6060713
+crates/vault/src/encrypted.rs [pub] impl ShredReceipt :: #[must_use] fn object_path(&self) -> &Path |9d97f187fccd9c91
+crates/vault/src/encrypted.rs [pub] struct EncryptedDomainKeyring |7b4916fb643caa92
+crates/vault/src/encrypted.rs [pub] struct EncryptedObjectReader |f7290a72bfd92104
+crates/vault/src/fault.rs [priv] impl FaultPoint
+crates/vault/src/fault.rs [priv] impl FaultPoint :: #[cfg(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection"))] const fn as_str(self) -> &'static str |d2d5b9b833a684d3
+crates/vault/src/fault.rs [priv] impl FaultPoint :: #[cfg(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection"))] const fn is_phase2(self) -> bool |de5bb40baf88c388
+crates/vault/src/fault.rs [pub(crate)] #[cfg(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection"))] fn trip(point: FaultPoint) |612ee74cf4f5ad29
+crates/vault/src/fault.rs [pub(crate)] #[cfg(not(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection")))] const fn trip(_point: FaultPoint) |6fed26571aa7114c
+crates/vault/src/fault.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[cfg_attr( not(any(feature = "phase1-fault-injection", feature = "phase2-fault-injection")), allow(dead_code) )] enum FaultPoint |9c0632a724785897
+crates/vault/src/ingest.rs [priv] const STREAM_BUFFER_BYTES: usize |07262efa00733cd2
+crates/vault/src/ingest.rs [priv] fn create_temp(vault: &Vault) -> VaultResult<(PathBuf, durability::LockedTemp)> |1cfc5254bcf9aba7
+crates/vault/src/ingest.rs [priv] fn open_exact_object( path: &Path, expected_digest: ContentDigest, expected_length: u64, ) -> VaultResult<(File, durability::ObjectIdentity)> |e1960d882f9f0410
+crates/vault/src/ingest.rs [priv] fn verify_open_file( file: &mut File, path: &Path, expected_digest: ContentDigest, expected_length: u64, ) -> VaultResult<()> |25abae7804d91b48
+crates/vault/src/ingest.rs [priv] impl ArtifactIngestRequest
+crates/vault/src/ingest.rs [priv] impl ArtifactIngestRequest :: fn descriptor( &self, content_digest: ContentDigest, byte_length: u64, vault_locator: VaultLocator, ) -> ArtifactDescriptor |76c85d97fe74eb57
+crates/vault/src/ingest.rs [priv] impl LiveObjectEvidence
+crates/vault/src/ingest.rs [priv] use academic_domain::{ ArtifactDescriptor, ArtifactId, Confidentiality, ContentDigest, DomainId, MAX_SAFE_JSON_INTEGER, MediaType, PermissionLineageId, RetentionClass, VaultLocator, } |54e1a2f65bdfa39e
+crates/vault/src/ingest.rs [priv] use crate::{ SealDisposition, SealedArtifactReceipt, VAULT_FORMAT_VERSION, Vault, VaultError, VaultResult, durability, fault::{self, FaultPoint}, integrity_mismatch, now_millis, } |c44b2b5f5d30b4fe
+crates/vault/src/ingest.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/vault/src/ingest.rs [priv] use std::{ fs::{self, File}, io::{self, Read, Seek, SeekFrom, Write}, path::{Path, PathBuf}, } |2629ceb80526ee06
+crates/vault/src/ingest.rs [pub(crate)] #[derive(Debug)] struct LiveObjectEvidence |60f7123da81d5951
+crates/vault/src/ingest.rs [pub(crate)] fn hash_reader(mut source: impl Read, path: &Path) -> VaultResult<(ContentDigest, u64)> |d64e138aed8d9fb5
+crates/vault/src/ingest.rs [pub(crate)] fn ingest( vault: &Vault, request: &ArtifactIngestRequest, mut source: impl Read, ) -> VaultResult<SealedArtifactReceipt> |d2015ce3d1a3d9aa
+crates/vault/src/ingest.rs [pub(crate)] fn verify_object_with_lease( path: &Path, expected_digest: ContentDigest, expected_length: u64, lease: durability::SharedObjectLease, ) -> VaultResult<LiveObjectEvidence> |b85794aeef1144ce
+crates/vault/src/ingest.rs [pub(crate)] impl LiveObjectEvidence :: fn revalidate( &mut self, path: &Path, expected_digest: ContentDigest, expected_length: u64, ) -> VaultResult<()> |272ab66dae571f83
+crates/vault/src/ingest.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ArtifactIngestRequest |13a9751bccd3cc8c
+crates/vault/src/ingest.rs [pub] impl ArtifactIngestRequest :: #[must_use] const fn artifact_id(&self) -> ArtifactId |a03a77dacbcf1e64
+crates/vault/src/ingest.rs [pub] impl ArtifactIngestRequest :: #[must_use] const fn confidentiality(&self) -> Confidentiality |92b87f6fb0d988ed
+crates/vault/src/ingest.rs [pub] impl ArtifactIngestRequest :: #[must_use] const fn domain_id(&self) -> DomainId |9fb858cbc19bf3e6
+crates/vault/src/ingest.rs [pub] impl ArtifactIngestRequest :: #[must_use] const fn media_type(&self) -> &MediaType |8289eea34ea68543
+crates/vault/src/ingest.rs [pub] impl ArtifactIngestRequest :: #[must_use] const fn new( artifact_id: ArtifactId, media_type: MediaType, domain_id: DomainId, confidentiality: Confidentiality, retention_class: RetentionClass, permission_lineage_id: PermissionLineageId, ) -> Self |0df8cde6b64321ec
+crates/vault/src/ingest.rs [pub] impl ArtifactIngestRequest :: #[must_use] const fn permission_lineage_id(&self) -> PermissionLineageId |3570eab99089bd7a
+crates/vault/src/ingest.rs [pub] impl ArtifactIngestRequest :: #[must_use] const fn retention_class(&self) -> RetentionClass |bcab6df90e2b6307
+crates/vault/src/layout.rs [priv] #[cfg(not(any(unix, windows)))] fn create_private_directory(path: &Path) -> VaultResult<()> |feb02b4be8ee30a4
+crates/vault/src/layout.rs [priv] #[cfg(test)] mod tests
+crates/vault/src/layout.rs [priv] #[cfg(unix)] fn create_private_directory(path: &Path) -> VaultResult<()> |1f3fbf7790b76ea4
+crates/vault/src/layout.rs [priv] #[cfg(windows)] fn create_private_directory(path: &Path) -> VaultResult<()> |50bd293684beed62
+crates/vault/src/layout.rs [priv] const LEASES_DIRECTORY: &str |fbdc317d67a8b781
+crates/vault/src/layout.rs [priv] const QUARANTINE_DIRECTORY: &str |3598ce490f62f45d
+crates/vault/src/layout.rs [priv] const TEMP_DIRECTORY: &str |51b24dc0549a473d
+crates/vault/src/layout.rs [priv] const VAULT_DIRECTORY: &str |9e8e76a2ecc1bf14
+crates/vault/src/layout.rs [priv] fn ensure_child_directory(parent: &Path, child: &Path) -> VaultResult<()> |8ebafe32aa455fa1
+crates/vault/src/layout.rs [priv] fn is_hex_component(value: &str, expected_length: usize) -> bool |2302577a51554f1d
+crates/vault/src/layout.rs [priv] fn is_retention_component(value: &str) -> bool |2e03b5033ba6ebff
+crates/vault/src/layout.rs [priv] fn is_uuid_component(value: &str) -> bool |1a3d199e4662b697
+crates/vault/src/layout.rs [priv] fn require_safe_directory(path: &Path) -> VaultResult<()> |f0c4619523a38bcb
+crates/vault/src/layout.rs [priv] fn retention_component(value: RetentionClass) -> &'static str |1edf0eb29020f9b5
+crates/vault/src/layout.rs [priv] impl ObjectFormat
+crates/vault/src/layout.rs [priv] impl VaultLayout
+crates/vault/src/layout.rs [priv] impl VaultLayout :: fn ensure_namespaced_parent(&self, root: &Path, path: &Path) -> VaultResult<()> |42250c865ff54a34
+crates/vault/src/layout.rs [priv] impl VaultLayout :: fn lease_path_parts( &self, domain_id: DomainId, retention_class: RetentionClass, permission_lineage_id: PermissionLineageId, locator: &VaultLocator, ) -> PathBuf |be19f7c7c845653c
+crates/vault/src/layout.rs [priv] mod tests :: #[test] fn canonical_path_shape_rejects_bad_fanout() |a368e8dc4c5afd94
+crates/vault/src/layout.rs [priv] mod tests :: #[test] fn the_two_object_namespaces_never_share_a_path() |1d01bfef8b5cff00
+crates/vault/src/layout.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/vault/src/layout.rs [priv] use academic_domain::{ ArtifactDescriptor, DomainId, PermissionLineageId, RetentionClass, VaultLocator, } |71d0bc36b069f7fa
+crates/vault/src/layout.rs [priv] use crate::{VaultError, VaultResult, durability, encode_hex} |87f693f0db8f9f94
+crates/vault/src/layout.rs [priv] use std::{ fs, path::{Path, PathBuf}, } |6a80078e40f46abb
+crates/vault/src/layout.rs [pub(crate)] #[cfg(not(any(unix, windows)))] fn is_link_or_reparse(_metadata: &fs::Metadata) -> bool |f6d32d4cbe5712ca
+crates/vault/src/layout.rs [pub(crate)] #[cfg(unix)] fn is_link_or_reparse(metadata: &fs::Metadata) -> bool |a68931cd2900f81f
+crates/vault/src/layout.rs [pub(crate)] #[cfg(windows)] fn is_link_or_reparse(metadata: &fs::Metadata) -> bool |787091ecfcb0c830
+crates/vault/src/layout.rs [pub(crate)] impl VaultLayout :: fn ensure_lease_path( &self, descriptor: &ArtifactDescriptor, ) -> VaultResult<PathBuf> |bb960a5fba09fb65
+crates/vault/src/layout.rs [pub(crate)] impl VaultLayout :: fn ensure_lease_path_for_object(&self, object_path: &Path) -> VaultResult<PathBuf> |2ccf04b7b13b031e
+crates/vault/src/layout.rs [pub(crate)] impl VaultLayout :: fn ensure_object_parent( &self, descriptor: &ArtifactDescriptor, ) -> VaultResult<PathBuf> |d5018fd78a22fb04
+crates/vault/src/layout.rs [pub(crate)] impl VaultLayout :: fn initialize(&self) -> VaultResult<()> |6415ee649094f210
+crates/vault/src/layout.rs [pub(crate)] impl VaultLayout :: fn is_canonical_object_path(&self, path: &Path) -> bool |4c907a444c41b943
+crates/vault/src/layout.rs [pub(crate)] impl VaultLayout :: fn new(profile_root: &Path, format: ObjectFormat) -> Self |71fbb264f78f6d80
+crates/vault/src/layout.rs [pub(crate)] impl VaultLayout :: fn object_path_parts( &self, domain_id: DomainId, retention_class: RetentionClass, permission_lineage_id: PermissionLineageId, locator: &VaultLocator, ) -> PathBuf |eb5722d6e901e5d5
+crates/vault/src/layout.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ObjectFormat |6930dd40e0fac2c8
+crates/vault/src/layout.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VaultLayout |6a3207e81d33e7ed
+crates/vault/src/layout.rs [pub] impl ObjectFormat :: #[must_use] const fn directory_component(self) -> &'static str |68288fab25927684
+crates/vault/src/layout.rs [pub] impl ObjectFormat :: #[must_use] const fn format_version(self) -> u16 |ba232435316bddbf
+crates/vault/src/layout.rs [pub] impl ObjectFormat :: #[must_use] const fn object_extension(self) -> &'static str |e14849103f23854d
+crates/vault/src/layout.rs [pub] impl VaultLayout :: #[must_use] const fn format(&self) -> ObjectFormat |28402a17cc611719
+crates/vault/src/layout.rs [pub] impl VaultLayout :: #[must_use] fn leases_root(&self) -> &Path |f405f74cd8fa0d35
+crates/vault/src/layout.rs [pub] impl VaultLayout :: #[must_use] fn objects_root(&self) -> &Path |78bbef3ff827a147
+crates/vault/src/layout.rs [pub] impl VaultLayout :: #[must_use] fn profile_root(&self) -> &Path |944667a308ccf2c1
+crates/vault/src/layout.rs [pub] impl VaultLayout :: #[must_use] fn quarantine_dir(&self) -> &Path |079d27c830ddb1bd
+crates/vault/src/layout.rs [pub] impl VaultLayout :: #[must_use] fn temp_dir(&self) -> &Path |43f93844211a18d5
+crates/vault/src/layout.rs [pub] impl VaultLayout :: #[must_use] fn vault_root(&self) -> &Path |62f63135a05d085b
+crates/vault/src/layout.rs [pub] impl VaultLayout :: fn object_path(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf> |69ed72d7c945f914
+crates/vault/src/lib.rs [priv] #[cfg(feature = "aead-objects")] mod encrypted
+crates/vault/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/vault/src/lib.rs [priv] impl Default for DomainKeyring
+crates/vault/src/lib.rs [priv] impl Default for DomainKeyring :: fn default() -> Self |c3f536c7c9daac49
+crates/vault/src/lib.rs [priv] impl DomainKeyring
+crates/vault/src/lib.rs [priv] impl Drop for DomainKeyring
+crates/vault/src/lib.rs [priv] impl Drop for DomainKeyring :: fn drop(&mut self) |3c935ac078e15b8a
+crates/vault/src/lib.rs [priv] impl Error for VaultError
+crates/vault/src/lib.rs [priv] impl Error for VaultError :: fn source(&self) -> Option<&(dyn Error + 'static)> |7cd24589841d160b
+crates/vault/src/lib.rs [priv] impl From<DomainError> for VaultError
+crates/vault/src/lib.rs [priv] impl From<DomainError> for VaultError :: fn from(value: DomainError) -> Self |3ace0d3cb51854a6
+crates/vault/src/lib.rs [priv] impl SealedObjectVerifier for Vault
+crates/vault/src/lib.rs [priv] impl SealedObjectVerifier for Vault :: fn profile_root(&self) -> &Path |1a5b76f06ac2d407
+crates/vault/src/lib.rs [priv] impl SealedObjectVerifier for Vault :: fn revalidate_sealed_object(&self, receipt: &mut Self::Receipt) -> VaultResult<()> |d866a28b96d40bb8
+crates/vault/src/lib.rs [priv] impl SealedObjectVerifier for Vault :: fn verify_sealed_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<Self::Receipt> |09b02033a1ea5fea
+crates/vault/src/lib.rs [priv] impl SealedObjectVerifier for Vault :: type Receipt = SealedObjectCapability |fcaecf5ee398a760
+crates/vault/src/lib.rs [priv] impl Vault
+crates/vault/src/lib.rs [priv] impl VaultError
+crates/vault/src/lib.rs [priv] impl fmt::Debug for DomainKeyring
+crates/vault/src/lib.rs [priv] impl fmt::Debug for DomainKeyring :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |dae077f4d2032091
+crates/vault/src/lib.rs [priv] impl fmt::Display for VaultError
+crates/vault/src/lib.rs [priv] impl fmt::Display for VaultError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |eeef26792f46ddc2
+crates/vault/src/lib.rs [priv] impl reconcile::ObjectNamespace for Vault
+crates/vault/src/lib.rs [priv] impl reconcile::ObjectNamespace for Vault :: fn layout(&self) -> &VaultLayout |eb92d0105da423f2
+crates/vault/src/lib.rs [priv] impl reconcile::ObjectNamespace for Vault :: fn validate_descriptor_locator(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf> |1b5dfb0968d0defc
+crates/vault/src/lib.rs [priv] impl reconcile::ObjectNamespace for Vault :: fn verify_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<()> |328ab0a076b81f47
+crates/vault/src/lib.rs [priv] mod durability
+crates/vault/src/lib.rs [priv] mod fault
+crates/vault/src/lib.rs [priv] mod ingest
+crates/vault/src/lib.rs [priv] mod receipt
+crates/vault/src/lib.rs [priv] mod reconcile
+crates/vault/src/lib.rs [priv] mod seal
+crates/vault/src/lib.rs [priv] mod tests :: #[cfg(feature = "aead-objects")] #[test] fn the_encrypted_lane_still_refuses_to_claim_acceptance() |492658dd397178ff
+crates/vault/src/lib.rs [priv] mod tests :: #[test] fn digest_type_remains_exact() |db72c9a915497b68
+crates/vault/src/lib.rs [priv] mod tests :: #[test] fn keyring_debug_never_exposes_key_material() -> VaultResult<()> |98c77d9f451763d7
+crates/vault/src/lib.rs [priv] mod tests :: #[test] fn local_hex_encoder_is_lowercase_and_exact() |7f81abac9c152ced
+crates/vault/src/lib.rs [priv] mod tests :: #[test] fn plaintext_vault_format_never_claims_acceptance() |7063e21d9f9309c5
+crates/vault/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/vault/src/lib.rs [priv] use academic_domain::{ArtifactDescriptor, ArtifactId, DomainError, DomainId, VaultLocator} |a9fd3c084c92ae76
+crates/vault/src/lib.rs [priv] use std::{ collections::BTreeMap, error::Error, fmt, io, path::{Path, PathBuf}, } |332065adc5e69d6a
+crates/vault/src/lib.rs [pub(crate)] fn encode_hex(bytes: &[u8]) -> String |b8959ae4acf52223
+crates/vault/src/lib.rs [pub(crate)] fn integrity_mismatch(path: &Path) -> VaultError |de45b4a707b525e7
+crates/vault/src/lib.rs [pub(crate)] fn now_millis() -> VaultResult<u64> |b0daed0be97b8c64
+crates/vault/src/lib.rs [pub(crate)] impl DomainKeyring :: fn get(&self, domain_id: DomainId) -> VaultResult<&[u8]> |2d2bed1810908a1b
+crates/vault/src/lib.rs [pub(crate)] impl Vault :: fn derive_locator( &self, descriptor: &ArtifactDescriptor, ) -> VaultResult<VaultLocator> |8771b7867ced7e1d
+crates/vault/src/lib.rs [pub(crate)] impl Vault :: fn validate_descriptor_locator( &self, descriptor: &ArtifactDescriptor, ) -> VaultResult<PathBuf> |8168a94e8d5d99f5
+crates/vault/src/lib.rs [pub(crate)] impl VaultError :: fn io(operation: &'static str, path: impl Into<PathBuf>, source: io::Error) -> Self |33bea858fbd88c0e
+crates/vault/src/lib.rs [pub] #[cfg(feature = "aead-objects")] const ENCRYPTED_VAULT_FORMAT: VaultFormatContract |350adca88205f576
+crates/vault/src/lib.rs [pub] #[cfg(feature = "aead-objects")] mod object
+crates/vault/src/lib.rs [pub] #[cfg(feature = "aead-objects")] use encrypted::{ ENCRYPTED_FORMAT_VERSION, ENCRYPTED_OBJECT_FORMAT, EncryptedDomainKeyring, EncryptedObjectReader, EncryptedVault, PHASE2_OBJECT_FAULT_IDS, ResealOutcome, SealedEncryptedObject, ShredReceipt, shred_key_slot_at, } |5c6f39eef9b42150
+crates/vault/src/lib.rs [pub] #[derive(Debug)] #[non_exhaustive] enum VaultError |748edb61247e3a17
+crates/vault/src/lib.rs [pub] #[derive(Debug)] struct Vault |3f995a152c0a3557
+crates/vault/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct VaultFormatContract |84e5776a04243d95
+crates/vault/src/lib.rs [pub] const PHASE1_VAULT_FORMAT: VaultFormatContract |aac476cc468f902e
+crates/vault/src/lib.rs [pub] const VAULT_FORMAT_VERSION: u16 |b54abaedba35e78b
+crates/vault/src/lib.rs [pub] const VAULT_MIN_READ_FORMAT: &str |be23e1807aa48839
+crates/vault/src/lib.rs [pub] const VAULT_WRITE_FORMAT: &str |eba64046ec571d7b
+crates/vault/src/lib.rs [pub] impl DomainKeyring :: #[must_use] const fn new() -> Self |6b4cc2eefa74fdf8
+crates/vault/src/lib.rs [pub] impl DomainKeyring :: fn insert(&mut self, domain_id: DomainId, key: &[u8]) -> VaultResult<()> |23caf98c5e588605
+crates/vault/src/lib.rs [pub] impl Vault :: #[must_use] const fn layout(&self) -> &VaultLayout |07ae04573e7f23f5
+crates/vault/src/lib.rs [pub] impl Vault :: #[must_use] fn profile_root(&self) -> &Path |b5d851954ff9a30c
+crates/vault/src/lib.rs [pub] impl Vault :: fn ingest( &self, request: &ArtifactIngestRequest, source: impl io::Read, ) -> VaultResult<SealedArtifactReceipt> |661169abdef218f1
+crates/vault/src/lib.rs [pub] impl Vault :: fn open(profile_root: &Path, keyring: DomainKeyring) -> VaultResult<Self> |af2549c65851b9ec
+crates/vault/src/lib.rs [pub] impl Vault :: fn reconcile(&self, options: &ReconcileOptions<'_>) -> VaultResult<ReconcileReport> |e992c4a5e45dbdac
+crates/vault/src/lib.rs [pub] impl Vault :: fn revalidate_sealed_object( &self, capability: &mut SealedObjectCapability, ) -> VaultResult<()> |a7982b38386b751b
+crates/vault/src/lib.rs [pub] impl Vault :: fn verify_sealed_object( &self, descriptor: &ArtifactDescriptor, ) -> VaultResult<SealedObjectCapability> |e26efa5164c2dd44
+crates/vault/src/lib.rs [pub] mod layout
+crates/vault/src/lib.rs [pub] struct DomainKeyring |b653c5ce077255f4
+crates/vault/src/lib.rs [pub] type VaultResult<T> = Result<T, VaultError> |15d7b28d8429905e
+crates/vault/src/lib.rs [pub] use ingest::ArtifactIngestRequest |4daa6576139d1dc1
+crates/vault/src/lib.rs [pub] use layout::{ObjectFormat, VaultLayout} |d5cdcba1a1231922
+crates/vault/src/lib.rs [pub] use receipt::{SealDisposition, SealedArtifactReceipt, SealedObjectCapability} |2b1182d565f3f8f7
+crates/vault/src/lib.rs [pub] use reconcile::{ReconcileOptions, ReconcileRecord, ReconcileReport, ReconcileState} |72212710d7bf990e
+crates/vault/src/lib.rs [pub] use seal::{SealedObjectReceipt, SealedObjectVerifier} |711cc0d410875c23
+crates/vault/src/object.rs [priv] #[cfg(test)] mod tests
+crates/vault/src/object.rs [priv] const AEAD_ID_AT: usize |938fa5e283d7b67b
+crates/vault/src/object.rs [priv] const ARTIFACT_ID_AT: usize |2d9672db0e5b522c
+crates/vault/src/object.rs [priv] const BASE_NONCE_AT: usize |0260e3a200939603
+crates/vault/src/object.rs [priv] const CHUNK_SIZE_AT: usize |0e815abee8bf39ec
+crates/vault/src/object.rs [priv] const DOMAIN_ID_AT: usize |aaea53515a596499
+crates/vault/src/object.rs [priv] const FORMAT_VERSION_AT: usize |ef27d37cb52e2468
+crates/vault/src/object.rs [priv] const HEADER_LEN_AT: usize |08f18b77496ccf09
+crates/vault/src/object.rs [priv] const LOCATOR_AT: usize |e4785f38d5f1808a
+crates/vault/src/object.rs [priv] const MAGIC_AT: usize |fd4798776f8586c1
+crates/vault/src/object.rs [priv] const PERMISSION_LINEAGE_AT: usize |de2f262ebf05e619
+crates/vault/src/object.rs [priv] const PLAINTEXT_LEN_AT: usize |2337ee2522087a13
+crates/vault/src/object.rs [priv] const RETENTION_CLASS_AT: usize |df11bd25ffe07962
+crates/vault/src/object.rs [priv] const RETENTION_COURSE_TERM: u8 |53d65f7138605d9c
+crates/vault/src/object.rs [priv] const RETENTION_EPHEMERAL: u8 |346c5f632ca080d6
+crates/vault/src/object.rs [priv] const RETENTION_LEGAL_HOLD: u8 |8cb9fd8eaf8cbc3d
+crates/vault/src/object.rs [priv] const RETENTION_USER_MANAGED: u8 |c3b306d1f34a5b34
+crates/vault/src/object.rs [priv] const WRAPPED_DEK_AT: usize |c7b946366db44589
+crates/vault/src/object.rs [priv] const WRAPPED_DEK_LEN_AT: usize |51213ecb191b85d7
+crates/vault/src/object.rs [priv] const fn retention_code(value: RetentionClass) -> u8 |5dc539663a633143
+crates/vault/src/object.rs [priv] fn read_u16(bytes: &[u8], at: usize) -> u16 |6a115c9b7a75ea7a
+crates/vault/src/object.rs [priv] fn read_u32(bytes: &[u8], at: usize) -> u32 |54d1eb4a6775eb04
+crates/vault/src/object.rs [priv] fn read_u64(bytes: &[u8], at: usize) -> u64 |f518e7a098a1dc93
+crates/vault/src/object.rs [priv] impl Drop for OpenedHeader
+crates/vault/src/object.rs [priv] impl Drop for OpenedHeader :: fn drop(&mut self) |c88c83d75ed5044f
+crates/vault/src/object.rs [priv] impl From<ObjectFormatError> for VaultError
+crates/vault/src/object.rs [priv] impl From<ObjectFormatError> for VaultError :: fn from(value: ObjectFormatError) -> Self |1b21c5690d87f07e
+crates/vault/src/object.rs [priv] impl ObjectHeader
+crates/vault/src/object.rs [priv] impl OpenedHeader
+crates/vault/src/object.rs [priv] impl StreamingPrefix
+crates/vault/src/object.rs [priv] impl core::fmt::Debug for OpenedHeader
+crates/vault/src/object.rs [priv] impl core::fmt::Debug for OpenedHeader :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |9492daa6cb43af45
+crates/vault/src/object.rs [priv] impl core::fmt::Display for ObjectFormatError
+crates/vault/src/object.rs [priv] impl core::fmt::Display for ObjectFormatError :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |383dc975fe8eba57
+crates/vault/src/object.rs [priv] impl std::error::Error for ObjectFormatError
+crates/vault/src/object.rs [priv] mod tests :: #[test] fn a_chunk_round_trips_and_rejects_a_moved_index() |dc188e9e1be272a0
+crates/vault/src/object.rs [priv] mod tests :: #[test] fn a_sealed_header_opens_only_under_its_own_domain_key() |604852644fc09d59
+crates/vault/src/object.rs [priv] mod tests :: #[test] fn an_opened_header_prints_no_key_byte_or_plaintext_digest() |513659302fc52735
+crates/vault/src/object.rs [priv] mod tests :: #[test] fn chunk_geometry_covers_the_zero_length_and_partial_cases() |bc2025389b73f392
+crates/vault/src/object.rs [priv] mod tests :: #[test] fn header_field_tampering_fails_the_tag() |8c408a07e2b7dbaf
+crates/vault/src/object.rs [priv] mod tests :: #[test] fn the_chunk_nonce_xors_only_the_trailing_eight_bytes() |fe00c81700fb0df9
+crates/vault/src/object.rs [priv] mod tests :: #[test] fn the_frozen_offsets_add_up() |f2d27f1f5445b50d
+crates/vault/src/object.rs [priv] mod tests :: #[test] fn the_two_write_stages_compose_into_the_one_step_header() |f95c8d9b2398f816
+crates/vault/src/object.rs [priv] mod tests :: const DEK: [u8; KEY_BYTES] |da4612023e824339
+crates/vault/src/object.rs [priv] mod tests :: const KEK: [u8; KEY_BYTES] |8e5cb0799822b192
+crates/vault/src/object.rs [priv] mod tests :: const NONCE: [u8; BASE_NONCE_BYTES] |f6527f5aea318256
+crates/vault/src/object.rs [priv] mod tests :: fn prefix() -> StreamingPrefix |e62772b9f0d56332
+crates/vault/src/object.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/vault/src/object.rs [priv] use academic_domain::{ArtifactDescriptor, ContentDigest, RetentionClass} |a5e8d02493b3f545
+crates/vault/src/object.rs [priv] use chacha20poly1305::{ KeyInit as _, XChaCha20Poly1305, XNonce, aead::{Aead as _, AeadInPlace as _, Payload}, } |908d54b7f579ef53
+crates/vault/src/object.rs [priv] use crate::VaultError |ce22167a415cf2f2
+crates/vault/src/object.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/vault/src/object.rs [pub] #[derive(Debug)] struct StreamingPrefix |6b5fa2feaabc44ec
+crates/vault/src/object.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum ObjectFormatError |8dfce4f0318c31cb
+crates/vault/src/object.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ObjectHeader |1a9fe50037058996
+crates/vault/src/object.rs [pub] #[must_use] fn is_shredded_header(bytes: &[u8]) -> bool |06611928c6fc78a7
+crates/vault/src/object.rs [pub] #[must_use] fn shredded_key_slot(tombstone_digest: &[u8; 32]) -> [u8; WRAPPED_DEK_BYTES] |d74abb4d5d3d8d9d
+crates/vault/src/object.rs [pub] const AEAD_ID_XCHACHA20_POLY1305: u8 |8c88217218547a17
+crates/vault/src/object.rs [pub] const BASE_NONCE_BYTES: usize |124dec4d8dcc32c0
+crates/vault/src/object.rs [pub] const DEFAULT_CHUNK_SIZE: u32 |d3cc062ed70689b7
+crates/vault/src/object.rs [pub] const HEADER_BYTES: usize |0880eabddb35a9b0
+crates/vault/src/object.rs [pub] const HEADER_LEN_FIELD: u16 |6707914cba50d9cb
+crates/vault/src/object.rs [pub] const KEY_BYTES: usize |b45411243febc4d5
+crates/vault/src/object.rs [pub] const KEY_SLOT_OFFSET: usize |6822eb154ce26ed6
+crates/vault/src/object.rs [pub] const KEY_SLOT_SHRED_MARKER: &[u8; 24] |0fb2fb00a2ada48e
+crates/vault/src/object.rs [pub] const OBJECT_FORMAT_VERSION: u16 |532e09ce5cb8556f
+crates/vault/src/object.rs [pub] const OBJECT_MAGIC: [u8; 4] |3bec3cc818086bc9
+crates/vault/src/object.rs [pub] const STREAMING_PREFIX_BYTES: usize |45ebe562ee99d130
+crates/vault/src/object.rs [pub] const TAG_BYTES: usize |ddaa0ad954fdfea6
+crates/vault/src/object.rs [pub] const WRAPPED_DEK_BYTES: usize |6f30b454f3e07f87
+crates/vault/src/object.rs [pub] const WRAP_AAD_BYTES: usize |1608d3669cd0e907
+crates/vault/src/object.rs [pub] fn open_chunk( dek: &[u8; KEY_BYTES], header: &ObjectHeader, index: u64, buffer: &mut Vec<u8>, ) -> Result<(), ObjectFormatError> |40ebc44cf96093b9
+crates/vault/src/object.rs [pub] fn open_header( bytes: &[u8], domain_kek: &[u8; KEY_BYTES], ) -> Result<OpenedHeader, ObjectFormatError> |3eeaacc737e51e52
+crates/vault/src/object.rs [pub] fn read_artifact_id(bytes: &[u8]) -> Result<[u8; 16], ObjectFormatError> |e0478baebf295875
+crates/vault/src/object.rs [pub] fn read_locator(bytes: &[u8]) -> Result<[u8; 32], ObjectFormatError> |26ed0cdd3a58677d
+crates/vault/src/object.rs [pub] fn require_plaintext_digest( expected: &[u8; 32], observed: ContentDigest, ) -> Result<(), ObjectFormatError> |2148918f1ba01946
+crates/vault/src/object.rs [pub] fn require_shredded_identity( bytes: &[u8], descriptor: &ArtifactDescriptor, ) -> Result<(), ObjectFormatError> |0f525f694d7d93c1
+crates/vault/src/object.rs [pub] fn seal_chunk( dek: &[u8; KEY_BYTES], prefix: &StreamingPrefix, index: u64, is_final: bool, buffer: &mut Vec<u8>, ) -> Result<(), ObjectFormatError> |8cfad52f0157d277
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] const fn chunk_count(&self) -> u64 |dfcb47381618b6d9
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] const fn chunk_offset(&self, index: u64) -> u64 |c21428a81cd28d10
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] const fn chunk_plaintext_len(&self, index: u64) -> u32 |e1190684211aa0aa
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] const fn chunk_size(&self) -> u32 |a4682cf867b8feeb
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] const fn geometry(chunk_size: u32, plaintext_len: u64) -> Self |3e1d996f8c238fc7
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] const fn plaintext_len(&self) -> u64 |e3f89bfc8684e456
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] const fn sealed_len(&self) -> u64 |4fcd37246feef51b
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] fn chunk_aad(&self, index: u64) -> [u8; 45] |4a373b3d43b091b4
+crates/vault/src/object.rs [pub] impl ObjectHeader :: #[must_use] fn chunk_nonce(&self, index: u64) -> [u8; BASE_NONCE_BYTES] |d5736d78d1cabc1f
+crates/vault/src/object.rs [pub] impl ObjectHeader :: fn require_matches( &self, descriptor: &ArtifactDescriptor, ) -> Result<(), ObjectFormatError> |759231ba48033135
+crates/vault/src/object.rs [pub] impl OpenedHeader :: #[must_use] const fn expose_dek(&self) -> &[u8; KEY_BYTES] |303be0b00f9b532b
+crates/vault/src/object.rs [pub] impl OpenedHeader :: #[must_use] const fn plaintext_digest(&self) -> &[u8; 32] |bd981f108d9895a2
+crates/vault/src/object.rs [pub] impl StreamingPrefix :: #[must_use] fn base_nonce(&self) -> [u8; BASE_NONCE_BYTES] |eb112c969d37379a
+crates/vault/src/object.rs [pub] impl StreamingPrefix :: #[must_use] fn chunk_aad(&self, index: u64, plaintext_len: u32, is_final: bool) -> [u8; 45] |12423cef3835c29a
+crates/vault/src/object.rs [pub] impl StreamingPrefix :: #[must_use] fn chunk_nonce(&self, index: u64) -> [u8; BASE_NONCE_BYTES] |db28f0a86ecd716f
+crates/vault/src/object.rs [pub] impl StreamingPrefix :: #[must_use] fn new( chunk_size: u32, artifact_id: [u8; 16], domain_id: [u8; 16], retention_class: RetentionClass, permission_lineage_id: [u8; 16], base_nonce: [u8; BASE_NONCE_BYTES], ) -> Self |f51b3f6249ed3aee
+crates/vault/src/object.rs [pub] impl StreamingPrefix :: fn seal_header( &self, domain_kek: &[u8; KEY_BYTES], dek: &[u8; KEY_BYTES], locator: [u8; 32], plaintext_len: u64, plaintext_digest: [u8; 32], ) -> Result<[u8; HEADER_BYTES], ObjectFormatError> |53e14aac93820162
+crates/vault/src/object.rs [pub] impl StreamingPrefix :: fn seal_wrapped_dek( &self, domain_kek: &[u8; KEY_BYTES], dek: &[u8; KEY_BYTES], wrap_aad: &[u8; WRAP_AAD_BYTES], plaintext_digest: [u8; 32], ) -> Result<[u8; WRAPPED_DEK_BYTES], ObjectFormatError> |5c30d77fab484610
+crates/vault/src/object.rs [pub] impl StreamingPrefix :: fn wrap_aad( &self, locator: [u8; 32], plaintext_len: u64, ) -> Result<[u8; WRAP_AAD_BYTES], ObjectFormatError> |dc2ba19b3708f122
+crates/vault/src/object.rs [pub] struct OpenedHeader |ef49a38a4f7185c9
+crates/vault/src/platform/unix.rs [priv] fn errno(error: rustix::io::Errno) -> io::Error |d48cad733d5cefbf
+crates/vault/src/platform/unix.rs [priv] fn open_lease_file(path: &Path) -> io::Result<File> |684e7faf84b1a32f
+crates/vault/src/platform/unix.rs [priv] impl LockedTemp
+crates/vault/src/platform/unix.rs [priv] use rustix::fs::{ CWD, FlockOperation, Mode, OFlags, RenameFlags, flock, fsync, open, renameat_with, } |5a4ba3417e971783
+crates/vault/src/platform/unix.rs [priv] use std::{ fs::{self, File, OpenOptions}, io, os::unix::fs::{MetadataExt, OpenOptionsExt}, path::Path, } |0bb641ac7e47acd5
+crates/vault/src/platform/unix.rs [pub(crate)] #[derive(Debug)] struct ExclusiveObjectLease |e3381ed49ca50005
+crates/vault/src/platform/unix.rs [pub(crate)] #[derive(Debug)] struct LockedTemp(File) |b1292b3ed129bf3b
+crates/vault/src/platform/unix.rs [pub(crate)] #[derive(Debug)] struct SharedObjectLease |d1f0944a17004b4a
+crates/vault/src/platform/unix.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct ObjectIdentity |ff6dbca3189b23ad
+crates/vault/src/platform/unix.rs [pub(crate)] fn create_locked_temp(path: &Path) -> io::Result<LockedTemp> |1a1e4f66c32a37c4
+crates/vault/src/platform/unix.rs [pub(crate)] fn object_identity(file: &File) -> io::Result<ObjectIdentity> |ce1927da0fce63df
+crates/vault/src/platform/unix.rs [pub(crate)] fn open_readonly_no_follow(path: &Path) -> io::Result<File> |44e2d7c52e69d41b
+crates/vault/src/platform/unix.rs [pub(crate)] fn publish_locked_no_replace( _temp: &mut LockedTemp, source: &Path, destination: &Path, ) -> io::Result<bool> |1f13d4169ab4436a
+crates/vault/src/platform/unix.rs [pub(crate)] fn publish_no_replace(source: &Path, destination: &Path) -> io::Result<bool> |89781ef42b97365d
+crates/vault/src/platform/unix.rs [pub(crate)] fn symlink_metadata_no_follow(path: &Path) -> io::Result<fs::Metadata> |aa2bd9512cc0e2aa
+crates/vault/src/platform/unix.rs [pub(crate)] fn sync_directory(path: &Path) -> io::Result<()> |0e309d9d9f97341e
+crates/vault/src/platform/unix.rs [pub(crate)] fn try_acquire_exclusive_object_lease( path: &Path, ) -> io::Result<Option<ExclusiveObjectLease>> |08a2b8eb1bcb58c7
+crates/vault/src/platform/unix.rs [pub(crate)] fn try_acquire_shared_object_lease( path: &Path, ) -> io::Result<Option<SharedObjectLease>> |8bf715e1c4e12dbd
+crates/vault/src/platform/unix.rs [pub(crate)] fn try_remove_unlocked(path: &Path) -> io::Result<bool> |5b9365b9e7492632
+crates/vault/src/platform/unix.rs [pub(crate)] impl LockedTemp :: fn file_mut(&mut self) -> &mut File |af7015bdb94de721
+crates/vault/src/platform/windows.rs [priv] #[allow(unsafe_code)] fn flush_handle(file: &File) -> io::Result<()> |b7cd433d8cfa6854
+crates/vault/src/platform/windows.rs [priv] #[allow(unsafe_code)] fn move_file_no_replace(source: &Path, destination: &Path) -> io::Result<bool> |be5ff8012c90d2a7
+crates/vault/src/platform/windows.rs [priv] #[allow(unsafe_code)] fn rename_handle_no_replace(file: &File, destination: &Path) -> io::Result<bool> |7bb7f1474089ac44
+crates/vault/src/platform/windows.rs [priv] #[cfg(test)] mod tests
+crates/vault/src/platform/windows.rs [priv] const DIRECTORY_BARRIER_FILE: &str |b7ecd1884ad9943a
+crates/vault/src/platform/windows.rs [priv] const MAX_SHARING_ATTEMPTS: usize |744416c7dcb9917e
+crates/vault/src/platform/windows.rs [priv] const RETRY_MILLIS: [u64; MAX_SHARING_ATTEMPTS - 1] |1e5d1a1016682465
+crates/vault/src/platform/windows.rs [priv] enum VerbatimBody |b77fc2ae8e13e44e
+crates/vault/src/platform/windows.rs [priv] fn destination_exists(error: &io::Error, destination: &Path) -> bool |b6115370762fe61c
+crates/vault/src/platform/windows.rs [priv] fn ensure_lease_file(path: &Path) -> io::Result<()> |bc8fb629bbd31ee4
+crates/vault/src/platform/windows.rs [priv] fn flush_directory(path: &Path) -> io::Result<()> |650f487f221950cd
+crates/vault/src/platform/windows.rs [priv] fn is_directory_flush_unsupported(error: &io::Error) -> bool |9721765210ba2675
+crates/vault/src/platform/windows.rs [priv] fn is_sharing_violation(error: &io::Error) -> bool |11632f35ad45f743
+crates/vault/src/platform/windows.rs [priv] fn normalize_separators(original: &[u16]) -> Vec<u16> |6f083487a0255b3f
+crates/vault/src/platform/windows.rs [priv] fn open_directory_barrier(path: &Path) -> io::Result<File> |6849a358ffaa0d7b
+crates/vault/src/platform/windows.rs [priv] fn open_lease_file_for_creation(path: &Path) -> io::Result<File> |a8b68a900ea36a8b
+crates/vault/src/platform/windows.rs [priv] fn raw_handle(file: &File) -> HANDLE |2d4552388d502969
+crates/vault/src/platform/windows.rs [priv] fn require_regular_non_reparse_handle(file: &File) -> io::Result<()> |f4224574734b3711
+crates/vault/src/platform/windows.rs [priv] fn require_resolved_components(body: &[u16]) -> io::Result<Vec<u16>> |9f6678b44414eee3
+crates/vault/src/platform/windows.rs [priv] fn require_safe_barrier_shape(path: &Path) -> io::Result<()> |c60cf0452f1bc581
+crates/vault/src/platform/windows.rs [priv] fn retry_sharing_violation<T>(mut operation: impl FnMut() -> io::Result<T>) -> io::Result<T> |64f697cf30037f58
+crates/vault/src/platform/windows.rs [priv] fn verbatim_body(path: &Path) -> io::Result<VerbatimBody> |305e7ade137e1167
+crates/vault/src/platform/windows.rs [priv] fn verbatim_path(path: &Path) -> io::Result<PathBuf> |2ca921ed97727417
+crates/vault/src/platform/windows.rs [priv] fn wide_nt_path(path: &Path) -> io::Result<Vec<u16>> |e4f455983162cc9f
+crates/vault/src/platform/windows.rs [priv] fn wide_path(path: &Path) -> io::Result<Vec<u16>> |9102366af0a47991
+crates/vault/src/platform/windows.rs [priv] fn wide_path_without_terminator(path: &Path) -> io::Result<Vec<u16>> |c06679b119cc9d6c
+crates/vault/src/platform/windows.rs [priv] impl LockedTemp
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[derive(Debug)] struct TestDirectory(PathBuf) |ff917580e0216d15
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn handle_rename_path_normalizes_caller_separators() -> io::Result<()> |3ba04abda44379dc
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn native_directory_flush_requires_a_writable_handle() -> io::Result<()> |a1c6deacc17de1fe
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn native_directory_sync_tolerates_a_concurrently_open_barrier() -> io::Result<()> |407ccd8787811d6a
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn native_forward_slash_spelling_reaches_vault_operations() -> io::Result<()> |2e6ab834aec6ff05
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn native_lease_creation_tolerates_a_live_shared_lease() -> io::Result<()> |f7556f38889b1db6
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn native_live_temp_excludes_scavenger() -> io::Result<()> |0c36744bbb6137d4
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn native_long_forward_slash_path_publishes_through_the_verbatim_prefix() -> io::Result<()> |f21a7d5af57832f2
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn native_write_through_publish_moves_locked_temp() -> io::Result<()> |7c93d249ccf87b51
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn native_write_through_publish_never_overwrites() -> io::Result<()> |ffffe0648ea8ea45
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn sharing_retry_is_bounded_and_eventually_succeeds() -> io::Result<()> |11cdf13af5630f41
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn sharing_retry_stops_at_exact_limit() |acb920973e70dc83
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn verbatim_prefix_normalizes_caller_separators() -> io::Result<()> |9a06b35e52757ba7
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn verbatim_prefix_preserves_canonical_backslash_spellings() -> io::Result<()> |ef09c71e5c042b1e
+crates/vault/src/platform/windows.rs [priv] mod tests :: #[test] fn verbatim_prefix_rejects_spellings_it_cannot_express() |7e7f61ae845780db
+crates/vault/src/platform/windows.rs [priv] mod tests :: fn nt_text(path: &str) -> io::Result<String> |b54d82a37551108f
+crates/vault/src/platform/windows.rs [priv] mod tests :: fn respell_with_forward_slashes(path: &Path) -> PathBuf |211310f7bebc6461
+crates/vault/src/platform/windows.rs [priv] mod tests :: fn verbatim_text(path: &str) -> io::Result<String> |0b4c921e5f1fd765
+crates/vault/src/platform/windows.rs [priv] mod tests :: impl Drop for TestDirectory
+crates/vault/src/platform/windows.rs [priv] mod tests :: impl Drop for TestDirectory :: fn drop(&mut self) |4bf7a1afc4496615
+crates/vault/src/platform/windows.rs [priv] mod tests :: impl TestDirectory
+crates/vault/src/platform/windows.rs [priv] mod tests :: impl TestDirectory :: fn create() -> io::Result<Self> |552c6a0bafc1c006
+crates/vault/src/platform/windows.rs [priv] mod tests :: static NEXT_DIRECTORY: AtomicU64 |9df09c82a64a48b5
+crates/vault/src/platform/windows.rs [priv] mod tests :: use std::{ cell::Cell, ffi::OsStr, io::Read as _, path::PathBuf, sync::atomic::{AtomicU64, Ordering}, } |2e192b4c2fbd3172
+crates/vault/src/platform/windows.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/vault/src/platform/windows.rs [priv] use std::{ ffi::OsString, fs::{self, File, OpenOptions}, io::{self, Write}, mem::size_of, os::windows::{ ffi::{OsStrExt, OsStringExt}, fs::{MetadataExt, OpenOptionsExt}, io::AsRawHandle, }, path::{Path, PathBuf}, thread, time::Duration, } |b50450bac1935ab5
+crates/vault/src/platform/windows.rs [priv] use windows_sys::Win32::{ Foundation::{ ERROR_ACCESS_DENIED, ERROR_LOCK_VIOLATION, ERROR_SHARING_VIOLATION, GENERIC_READ, GENERIC_WRITE, HANDLE, }, Storage::FileSystem::{ DELETE, FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_DELETE_ON_CLOSE, FILE_FLAG_OPEN_REPARSE_POINT, FILE_FLAG_WRITE_THROUGH, FILE_ID_INFO, FILE_RENAME_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FileIdInfo, FileRenameInfoEx, FlushFileBuffers, GetFileInformationByHandleEx, MOVEFILE_WRITE_THROUGH, MoveFileExW, SetFileInformationByHandle, }, } |5aea9ccebf62f3b6
+crates/vault/src/platform/windows.rs [pub(crate)] #[allow(unsafe_code)] fn object_identity(file: &File) -> io::Result<ObjectIdentity> |1e007d3ab22d77ad
+crates/vault/src/platform/windows.rs [pub(crate)] #[derive(Debug)] struct ExclusiveObjectLease |e3381ed49ca50005
+crates/vault/src/platform/windows.rs [pub(crate)] #[derive(Debug)] struct LockedTemp(File) |b1292b3ed129bf3b
+crates/vault/src/platform/windows.rs [pub(crate)] #[derive(Debug)] struct SharedObjectLease |d1f0944a17004b4a
+crates/vault/src/platform/windows.rs [pub(crate)] #[derive(Debug, Clone, PartialEq, Eq)] struct ObjectIdentity |d67498738f104aaf
+crates/vault/src/platform/windows.rs [pub(crate)] fn create_locked_temp(path: &Path) -> io::Result<LockedTemp> |35f6d30a1ffdc20e
+crates/vault/src/platform/windows.rs [pub(crate)] fn open_readonly_no_follow(path: &Path) -> io::Result<File> |967eaf4051e6bf58
+crates/vault/src/platform/windows.rs [pub(crate)] fn publish_locked_no_replace( temp: &mut LockedTemp, _source: &Path, destination: &Path, ) -> io::Result<bool> |d354395c2cfc2d0d
+crates/vault/src/platform/windows.rs [pub(crate)] fn publish_no_replace(source: &Path, destination: &Path) -> io::Result<bool> |a98f6d5a032c9c89
+crates/vault/src/platform/windows.rs [pub(crate)] fn symlink_metadata_no_follow(path: &Path) -> io::Result<fs::Metadata> |9bcb18a167584166
+crates/vault/src/platform/windows.rs [pub(crate)] fn sync_directory(path: &Path) -> io::Result<()> |0c6cc2322b00c68e
+crates/vault/src/platform/windows.rs [pub(crate)] fn try_acquire_exclusive_object_lease( path: &Path, ) -> io::Result<Option<ExclusiveObjectLease>> |ad991421f2ab3136
+crates/vault/src/platform/windows.rs [pub(crate)] fn try_acquire_shared_object_lease( path: &Path, ) -> io::Result<Option<SharedObjectLease>> |e5c4b045ab1dda37
+crates/vault/src/platform/windows.rs [pub(crate)] fn try_remove_unlocked(path: &Path) -> io::Result<bool> |21c4c37a92da97c6
+crates/vault/src/platform/windows.rs [pub(crate)] impl LockedTemp :: fn file_mut(&mut self) -> &mut File |af7015bdb94de721
+crates/vault/src/receipt.rs [priv] impl SealedArtifactReceipt
+crates/vault/src/receipt.rs [priv] impl SealedObjectReceipt for SealedArtifactReceipt
+crates/vault/src/receipt.rs [priv] impl SealedObjectReceipt for SealedArtifactReceipt :: fn descriptor(&self) -> &ArtifactDescriptor |87f132118cec56f5
+crates/vault/src/receipt.rs [priv] impl SealedObjectReceipt for SealedArtifactReceipt :: fn disposition(&self) -> SealDisposition |1862f9ecc158de3e
+crates/vault/src/receipt.rs [priv] impl SealedObjectReceipt for SealedArtifactReceipt :: fn object_path(&self) -> &Path |0832e6a351ca2013
+crates/vault/src/receipt.rs [priv] use academic_domain::ArtifactDescriptor |970367a864ef19fc
+crates/vault/src/receipt.rs [priv] use crate::{SealedObjectReceipt, VaultResult, ingest::LiveObjectEvidence, integrity_mismatch} |14daa1e29e40ebde
+crates/vault/src/receipt.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/vault/src/receipt.rs [pub(crate)] impl SealedArtifactReceipt :: fn new( descriptor: ArtifactDescriptor, object_path: PathBuf, disposition: SealDisposition, live_evidence: LiveObjectEvidence, ) -> Self |8aa9da360df22c5d
+crates/vault/src/receipt.rs [pub(crate)] impl SealedArtifactReceipt :: fn revalidate(&mut self, canonical_path: &Path) -> VaultResult<()> |3a063232f467ed49
+crates/vault/src/receipt.rs [pub] #[derive(Debug)] struct SealedArtifactReceipt |808763d98875689f
+crates/vault/src/receipt.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum SealDisposition |eb0501e3b3c01b8e
+crates/vault/src/receipt.rs [pub] impl SealedArtifactReceipt :: #[must_use] const fn descriptor(&self) -> &ArtifactDescriptor |4268918b78cfed56
+crates/vault/src/receipt.rs [pub] impl SealedArtifactReceipt :: #[must_use] const fn disposition(&self) -> SealDisposition |521edc0cb52433dd
+crates/vault/src/receipt.rs [pub] impl SealedArtifactReceipt :: #[must_use] fn object_path(&self) -> &Path |9d97f187fccd9c91
+crates/vault/src/receipt.rs [pub] type SealedObjectCapability = SealedArtifactReceipt |386c4d1f5699a2a1
+crates/vault/src/reconcile.rs [priv] #[cfg(test)] mod tests
+crates/vault/src/reconcile.rs [priv] const DEFAULT_ORPHAN_GRACE: Duration |717ab7ab49c83dd1
+crates/vault/src/reconcile.rs [priv] const DEFAULT_TEMP_EXPIRY: Duration |f17d7215ba25e522
+crates/vault/src/reconcile.rs [priv] const DIRECTORY_BARRIER_FILE: &str |b7ecd1884ad9943a
+crates/vault/src/reconcile.rs [priv] const MAX_QUARANTINE_FILENAME_BYTES: usize |1fedffd2397128ac
+crates/vault/src/reconcile.rs [priv] const QUARANTINE_SUFFIX: &str |81485d4d658b10ce
+crates/vault/src/reconcile.rs [priv] fn file_age(path: &Path, now: SystemTime) -> VaultResult<Duration> |d8e7b9a9fdcaca2b
+crates/vault/src/reconcile.rs [priv] fn file_age_from_metadata(metadata: &fs::Metadata, now: SystemTime) -> VaultResult<Duration> |71e6fff845955cef
+crates/vault/src/reconcile.rs [priv] fn portable_relative_object_path(relative: &Path, source: &Path) -> VaultResult<String> |3c33e6144ad31a28
+crates/vault/src/reconcile.rs [priv] fn quarantine<N: ObjectNamespace>( vault: &N, source: &Path, now: SystemTime, ) -> VaultResult<Option<PathBuf>> |582fdd25d7ea6fc2
+crates/vault/src/reconcile.rs [priv] fn quarantine_path_identity<N: ObjectNamespace>(vault: &N, source: &Path) -> VaultResult<String> |560c810625102ad6
+crates/vault/src/reconcile.rs [priv] fn reconcile_existing_quarantine<N: ObjectNamespace>( vault: &N, report: &mut ReconcileReport, ) -> VaultResult<()> |1f6100079a5bf613
+crates/vault/src/reconcile.rs [priv] fn reconcile_temps<N: ObjectNamespace>( vault: &N, options: &ReconcileOptions<'_>, report: &mut ReconcileReport, ) -> VaultResult<()> |fa7847847c79410e
+crates/vault/src/reconcile.rs [priv] fn record( state: ReconcileState, path: PathBuf, artifact_id: Option<ArtifactId>, ) -> ReconcileRecord |6f191fdd51cf070d
+crates/vault/src/reconcile.rs [priv] fn system_time_millis(value: SystemTime) -> VaultResult<u64> |38ceaf654829cfa9
+crates/vault/src/reconcile.rs [priv] fn walk_objects<N: ObjectNamespace>( directory: &Path, vault: &N, files: &mut Vec<PathBuf>, report: &mut ReconcileReport, ) -> VaultResult<()> |f6fa378aa18b60bb
+crates/vault/src/reconcile.rs [priv] impl ReconcileRecord
+crates/vault/src/reconcile.rs [priv] impl ReconcileReport
+crates/vault/src/reconcile.rs [priv] impl<'a> ReconcileOptions<'a>
+crates/vault/src/reconcile.rs [priv] mod tests :: #[test] fn quarantine_filename_bound_covers_maximum_system_time() |76e91efb6f8986d3
+crates/vault/src/reconcile.rs [priv] mod tests :: #[test] fn quarantine_identity_serialization_is_platform_neutral() -> VaultResult<()> |7642fc5b3a588eb8
+crates/vault/src/reconcile.rs [priv] mod tests :: const DOMAIN: &str |e54fafa573ce5ec7
+crates/vault/src/reconcile.rs [priv] mod tests :: const LINEAGE: &str |f2cc421a5b202c99
+crates/vault/src/reconcile.rs [priv] mod tests :: const LOCATOR: &str |abf5bbb9b25f987b
+crates/vault/src/reconcile.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/vault/src/reconcile.rs [priv] trait ObjectNamespace :: fn layout(&self) -> &VaultLayout |418cfbed76847046
+crates/vault/src/reconcile.rs [priv] trait ObjectNamespace :: fn validate_descriptor_locator(&self, descriptor: &ArtifactDescriptor) -> VaultResult<PathBuf> |de22dadee977b37e
+crates/vault/src/reconcile.rs [priv] trait ObjectNamespace :: fn verify_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<()> |6c284af54ed41a71
+crates/vault/src/reconcile.rs [priv] use academic_domain::{ArtifactDescriptor, ArtifactId} |0e56ae55a1ac1a89
+crates/vault/src/reconcile.rs [priv] use crate::{VaultError, VaultResult, durability, encode_hex, layout::VaultLayout} |a7fbc90dc2f0ff90
+crates/vault/src/reconcile.rs [priv] use sha2::{Digest as _, Sha256} |5d1c2fa75fc061ad
+crates/vault/src/reconcile.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, fs, io, path::{Component, Path, PathBuf}, time::{Duration, SystemTime, UNIX_EPOCH}, } |a1436f9692051f80
+crates/vault/src/reconcile.rs [pub(crate)] fn reconcile<N: ObjectNamespace>( vault: &N, options: &ReconcileOptions<'_>, ) -> VaultResult<ReconcileReport> |cc3d249773f80876
+crates/vault/src/reconcile.rs [pub(crate)] trait ObjectNamespace
+crates/vault/src/reconcile.rs [pub] #[derive(Debug, Clone)] struct ReconcileOptions<'a> |75227f0c50849373
+crates/vault/src/reconcile.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ReconcileState |6d6a84ab2fb64918
+crates/vault/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReconcileRecord |96a1cbc492066543
+crates/vault/src/reconcile.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct ReconcileReport |d168986bf6d805c7
+crates/vault/src/reconcile.rs [pub] impl ReconcileRecord :: #[must_use] const fn artifact_id(&self) -> Option<ArtifactId> |47915a978667bc17
+crates/vault/src/reconcile.rs [pub] impl ReconcileRecord :: #[must_use] const fn state(&self) -> ReconcileState |3c3ea36d15de9f32
+crates/vault/src/reconcile.rs [pub] impl ReconcileRecord :: #[must_use] fn path(&self) -> &Path |7f3b463ffbb331a7
+crates/vault/src/reconcile.rs [pub] impl ReconcileReport :: #[must_use] fn records(&self) -> &[ReconcileRecord] |ec6b040d6d41ce33
+crates/vault/src/reconcile.rs [pub] impl ReconcileReport :: #[must_use] fn repair_required(&self) -> bool |deb0527f9922f592
+crates/vault/src/reconcile.rs [pub] impl<'a> ReconcileOptions<'a> :: #[must_use] const fn new(now: SystemTime) -> Self |71226d8ef684b0b5
+crates/vault/src/reconcile.rs [pub] impl<'a> ReconcileOptions<'a> :: #[must_use] const fn with_orphan_grace(mut self, orphan_grace: Duration) -> Self |85550edae857d774
+crates/vault/src/reconcile.rs [pub] impl<'a> ReconcileOptions<'a> :: #[must_use] const fn with_referenced(mut self, referenced: &'a [ArtifactDescriptor]) -> Self |2eb8de82ab0d8603
+crates/vault/src/reconcile.rs [pub] impl<'a> ReconcileOptions<'a> :: #[must_use] const fn with_retry_candidates( mut self, retry_candidates: &'a [ArtifactDescriptor], ) -> Self |fb5a52e86a748ca9
+crates/vault/src/reconcile.rs [pub] impl<'a> ReconcileOptions<'a> :: #[must_use] const fn with_temp_expiry(mut self, temp_expiry: Duration) -> Self |88278a1d0e5e89c6
+crates/vault/src/seal.rs [priv] trait SealedObjectReceipt :: fn descriptor(&self) -> &ArtifactDescriptor |b3e532bb127d897e
+crates/vault/src/seal.rs [priv] trait SealedObjectReceipt :: fn disposition(&self) -> SealDisposition |f7e0820593f655b9
+crates/vault/src/seal.rs [priv] trait SealedObjectReceipt :: fn object_path(&self) -> &Path |54b26ff4f1a60c92
+crates/vault/src/seal.rs [priv] trait SealedObjectVerifier :: fn profile_root(&self) -> &Path |5f35b23fec4ac51b
+crates/vault/src/seal.rs [priv] trait SealedObjectVerifier :: fn revalidate_sealed_object(&self, receipt: &mut Self::Receipt) -> VaultResult<()> |57a434ce8daf79b4
+crates/vault/src/seal.rs [priv] trait SealedObjectVerifier :: fn verify_sealed_object(&self, descriptor: &ArtifactDescriptor) -> VaultResult<Self::Receipt> |48f1e37656534283
+crates/vault/src/seal.rs [priv] trait SealedObjectVerifier :: type Receipt: SealedObjectReceipt |bff9607c97350bbd
+crates/vault/src/seal.rs [priv] use academic_domain::ArtifactDescriptor |970367a864ef19fc
+crates/vault/src/seal.rs [priv] use crate::{SealDisposition, VaultResult} |20c784b768c88e09
+crates/vault/src/seal.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/vault/src/seal.rs [pub] trait SealedObjectReceipt
+crates/vault/src/seal.rs [pub] trait SealedObjectVerifier

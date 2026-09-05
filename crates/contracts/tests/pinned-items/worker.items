@@ -1,0 +1,273 @@
+crates/worker/probes/worker_probe.rs [priv] #[allow(clippy::too_many_lines)] fn attempt(operation: &JobOperation, descriptor: &CapabilityDescriptor) -> String |24fd7a021c7f7e09
+crates/worker/probes/worker_probe.rs [priv] const MEMORY_CHUNK_BYTES: usize |9d7a3d14d33c274a
+crates/worker/probes/worker_probe.rs [priv] fn attempt_unstaged(operation: &JobOperation) -> Option<String> |f93a70d0a17166cd
+crates/worker/probes/worker_probe.rs [priv] fn baseline(report: &mut String) |b02aed49140121be
+crates/worker/probes/worker_probe.rs [priv] fn canary_read(variable: &str, what: &str) -> String |44d67972525f59ff
+crates/worker/probes/worker_probe.rs [priv] fn flush(report_dir: &Path, report: &str) |f63f96a74727fc52
+crates/worker/probes/worker_probe.rs [priv] fn main() |2ee9bce00dfbbd9d
+crates/worker/probes/worker_probe.rs [priv] fn open_socket() -> String |8e76b76fa96443f6
+crates/worker/probes/worker_probe.rs [priv] fn refused(error: &std::io::Error, what: &str) -> String |5c64e43590019102
+crates/worker/probes/worker_probe.rs [priv] fn run(report: &mut String) -> Result<(), String> |b31d23ca25af6e81
+crates/worker/probes/worker_probe.rs [priv] fn spawn_child() -> String |e7bb83f4a1826fb4
+crates/worker/probes/worker_probe.rs [priv] use academic_worker::{ JobOperation, JobRequest, WireDescriptor, capability::CapabilityDescriptor, sandbox::{ self, DESCRIPTOR_FILE, HOME_CANARY_VAR, INPUT_DIR_VAR, JOB_FILE, REPORT_DIR_VAR, REPORT_FILE, VAULT_CANARY_VAR, }, } |2479a8e8eb82a331
+crates/worker/probes/worker_probe.rs [priv] use std::{ fmt::Write as _, fs, io::Write as _, net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream}, path::{Path, PathBuf}, time::{Duration, Instant}, } |53a7bbb4b5e73beb
+crates/worker/src/capability.rs [priv] #[cfg(unix)] fn path_bytes(path: &Path) -> Vec<u8> |9b725b9e6a3443c1
+crates/worker/src/capability.rs [priv] #[cfg(windows)] fn path_bytes(path: &Path) -> Vec<u8> |9c7fd53887bacab5
+crates/worker/src/capability.rs [priv] #[derive(Debug, Clone)] struct Issued |17839a53a464f294
+crates/worker/src/capability.rs [priv] fn push_field(out: &mut Vec<u8>, bytes: &[u8]) |e35e1aa168b0407e
+crates/worker/src/capability.rs [priv] impl CapabilityDescriptor
+crates/worker/src/capability.rs [priv] impl DescriptorRegistry
+crates/worker/src/capability.rs [priv] impl JobCapability
+crates/worker/src/capability.rs [priv] impl JobCapabilitySet
+crates/worker/src/capability.rs [priv] impl JobId
+crates/worker/src/capability.rs [priv] impl WireDescriptor
+crates/worker/src/capability.rs [priv] impl fmt::Display for JobId
+crates/worker/src/capability.rs [priv] impl fmt::Display for JobId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |cf93be8f23dde9bb
+crates/worker/src/capability.rs [priv] use crate::receipt::ResourceLimits |cde8c0dc4b1ba2f6
+crates/worker/src/capability.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/worker/src/capability.rs [priv] use std::{ collections::BTreeMap, fmt, path::{Path, PathBuf}, } |988663a48081b012
+crates/worker/src/capability.rs [pub(crate)] fn hex_lower(bytes: &[u8]) -> String |f0a54431ef57a40d
+crates/worker/src/capability.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum JobCapability |a7956832321eb350
+crates/worker/src/capability.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CapabilityDescriptor |ee486bcfeb343088
+crates/worker/src/capability.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct WireDescriptor(String) |372dac60abecaac8
+crates/worker/src/capability.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct JobCapabilitySet(Vec<JobCapability>) |a6b0df65e42919ea
+crates/worker/src/capability.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct JobId(String) |2a5f696f8e64638d
+crates/worker/src/capability.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum DescriptorError |3d1e4a9c88f69ebe
+crates/worker/src/capability.rs [pub] #[derive(Debug, Default)] struct DescriptorRegistry |642a8dc8d8bf384d
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] const fn capabilities(&self) -> &JobCapabilitySet |120277da45b299f4
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] const fn expires_at(&self) -> u64 |94d3dd9f7cc04620
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] const fn issued_at(&self) -> u64 |287957b1fddbf0c6
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] const fn job(&self) -> &JobId |d7c771240cc3927d
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] const fn limits(&self) -> &ResourceLimits |05624b9408283661
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] fn canonical_bytes(&self) -> Vec<u8> |e216f02e7cc921b6
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] fn digest(&self) -> String |7a179468058349fe
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] fn holds(&self, capability: JobCapability) -> bool |e2a1238a17156168
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] fn staged_input(&self) -> &Path |8139ad38c49841e7
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] fn staged_output(&self) -> &Path |2e01c76fa90cc551
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: #[must_use] fn to_wire(&self) -> WireDescriptor |09bf441450ae78d0
+crates/worker/src/capability.rs [pub] impl CapabilityDescriptor :: fn require(&self, capability: JobCapability) -> Result<(), DescriptorError> |008834dd03bb80ca
+crates/worker/src/capability.rs [pub] impl DescriptorRegistry :: #[must_use] fn consumed_at(&self, job: &JobId) -> Option<u64> |67d51de759ae4a6b
+crates/worker/src/capability.rs [pub] impl DescriptorRegistry :: #[must_use] fn new() -> Self |8b8ceea8e9117504
+crates/worker/src/capability.rs [pub] impl DescriptorRegistry :: fn consume( &mut self, descriptor: &CapabilityDescriptor, now: u64, ) -> Result<(), DescriptorError> |8800e9a04c92aa1c
+crates/worker/src/capability.rs [pub] impl DescriptorRegistry :: fn issue( &mut self, job: JobId, capabilities: JobCapabilitySet, dirs: &crate::staging::StagedJobDirs, limits: ResourceLimits, issued_at: u64, expires_at: u64, ) -> Result<CapabilityDescriptor, DescriptorError> |40c3c2c0f2b7e2fc
+crates/worker/src/capability.rs [pub] impl JobCapability :: #[must_use] const fn as_str(self) -> &'static str |a22bea3c2ec1bc0c
+crates/worker/src/capability.rs [pub] impl JobCapability :: const ALL: [Self; 2] |5306b22d45691217
+crates/worker/src/capability.rs [pub] impl JobCapability :: fn parse(value: &str) -> Result<Self, DescriptorError> |b5a90482673239ca
+crates/worker/src/capability.rs [pub] impl JobCapabilitySet :: #[must_use] fn as_slice(&self) -> &[JobCapability] |04be39ffdd57589c
+crates/worker/src/capability.rs [pub] impl JobCapabilitySet :: #[must_use] fn holds(&self, capability: JobCapability) -> bool |937f86ce71175ba5
+crates/worker/src/capability.rs [pub] impl JobCapabilitySet :: #[must_use] fn new(capabilities: impl IntoIterator<Item = JobCapability>) -> Self |a592a17b21d132fc
+crates/worker/src/capability.rs [pub] impl JobId :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/worker/src/capability.rs [pub] impl JobId :: fn new(value: &str) -> Result<Self, DescriptorError> |a1ce7554f673cadc
+crates/worker/src/capability.rs [pub] impl WireDescriptor :: #[must_use] fn as_str(&self) -> &str |4a13aa86cdcd767d
+crates/worker/src/capability.rs [pub] impl WireDescriptor :: fn parse(text: &str) -> Result<CapabilityDescriptor, DescriptorError> |42c1fae9defc82fc
+crates/worker/src/job.rs [priv] impl JobOperation
+crates/worker/src/job.rs [priv] impl JobRequest
+crates/worker/src/job.rs [priv] impl OperationOutcome
+crates/worker/src/job.rs [priv] impl ProbeReport
+crates/worker/src/job.rs [priv] impl fmt::Display for OperationOutcome
+crates/worker/src/job.rs [priv] impl fmt::Display for OperationOutcome :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |bc68622066c076c0
+crates/worker/src/job.rs [priv] use crate::capability::DescriptorError |9c2f921fdbe9810b
+crates/worker/src/job.rs [priv] use std::{fmt, path::PathBuf} |614b3305a1e40e12
+crates/worker/src/job.rs [pub] #[derive(Debug, Clone)] struct JobPlan |ce2c6b5162ed22ab
+crates/worker/src/job.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum JobOperation |7cbcad33bfcedecc
+crates/worker/src/job.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum OperationOutcome |6e96a26851dcca61
+crates/worker/src/job.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct JobRequest |cc54126886fff8d9
+crates/worker/src/job.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct ProbeReport |97af32568b4cafaa
+crates/worker/src/job.rs [pub] impl JobOperation :: #[must_use] const fn must_be_refused(&self) -> bool |8ab68915888b846e
+crates/worker/src/job.rs [pub] impl JobOperation :: #[must_use] fn to_line(&self) -> String |4c20e8bdc84f0071
+crates/worker/src/job.rs [pub] impl JobOperation :: fn parse(line: &str) -> Result<Self, DescriptorError> |7d5d0959cb4e9f8f
+crates/worker/src/job.rs [pub] impl JobRequest :: #[must_use] fn new(operations: Vec<JobOperation>) -> Self |2d7f913affd6d10a
+crates/worker/src/job.rs [pub] impl JobRequest :: #[must_use] fn operations(&self) -> &[JobOperation] |eba492f8443efffc
+crates/worker/src/job.rs [pub] impl JobRequest :: #[must_use] fn to_script(&self) -> String |2daf8943b5cf00bc
+crates/worker/src/job.rs [pub] impl JobRequest :: fn parse(text: &str) -> Result<Self, DescriptorError> |27256079fbe598bc
+crates/worker/src/job.rs [pub] impl OperationOutcome :: #[must_use] const fn is_refused(&self) -> bool |81667b230acd7a17
+crates/worker/src/job.rs [pub] impl ProbeReport :: #[must_use] fn outcome_of(&self, operation: &JobOperation) -> OperationOutcome |79553426eec8d676
+crates/worker/src/job.rs [pub] impl ProbeReport :: #[must_use] fn outcomes(&self) -> &[(String, OperationOutcome)] |3c1bb6eb2152edbb
+crates/worker/src/job.rs [pub] impl ProbeReport :: #[must_use] fn parse(stdout: &str) -> Self |001beae06316e546
+crates/worker/src/lib.rs [priv] #![deny(missing_docs)] |d27a0595f2b099f8
+crates/worker/src/lib.rs [pub] mod capability
+crates/worker/src/lib.rs [pub] mod job
+crates/worker/src/lib.rs [pub] mod receipt
+crates/worker/src/lib.rs [pub] mod sandbox
+crates/worker/src/lib.rs [pub] mod staging
+crates/worker/src/lib.rs [pub] use capability::{ CapabilityDescriptor, DescriptorError, DescriptorRegistry, JobCapability, JobCapabilitySet, JobId, WireDescriptor, } |01339b6f7d03fa92
+crates/worker/src/lib.rs [pub] use job::{JobOperation, JobPlan, JobRequest, OperationOutcome, ProbeReport} |e49c1c83dce139fc
+crates/worker/src/lib.rs [pub] use receipt::{LimitKind, ResourceLimits, ResourceReceipt, RunOutcome, WorkerRun} |79dd77b3d4c9a36b
+crates/worker/src/lib.rs [pub] use sandbox::{Availability, BackendId, SandboxError, SandboxUnavailable} |ff99cfe61295047f
+crates/worker/src/lib.rs [pub] use staging::{AcceptError, AcceptedOutput, StagedJobDirs, StagedOutput, StagingAuthority} |7d3ae48609dbb431
+crates/worker/src/receipt.rs [priv] impl LimitKind
+crates/worker/src/receipt.rs [priv] impl ResourceLimits
+crates/worker/src/receipt.rs [priv] impl ResourceReceipt
+crates/worker/src/receipt.rs [priv] impl RunOutcome
+crates/worker/src/receipt.rs [priv] impl WorkerRun
+crates/worker/src/receipt.rs [priv] use academic_domain::ModelRunId |db380dd2a0125544
+crates/worker/src/receipt.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ResourceLimits |e6e5f309f39f231c
+crates/worker/src/receipt.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] enum LimitKind |8b0b8cf7f625a2d2
+crates/worker/src/receipt.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RunOutcome |e98701396fde2158
+crates/worker/src/receipt.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResourceReceipt |f4cad6c4832c9133
+crates/worker/src/receipt.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct WorkerRun |63aa46dc001bb896
+crates/worker/src/receipt.rs [pub] impl LimitKind :: #[must_use] const fn as_str(self) -> &'static str |045e3f9917cfdfb0
+crates/worker/src/receipt.rs [pub] impl LimitKind :: const ALL: [Self; 4] |042dd0804e845cd3
+crates/worker/src/receipt.rs [pub] impl ResourceLimits :: #[must_use] const fn cpu_millis(&self) -> u64 |0070afbf614bc24c
+crates/worker/src/receipt.rs [pub] impl ResourceLimits :: #[must_use] const fn memory_bytes(&self) -> u64 |c66fdaf231de1150
+crates/worker/src/receipt.rs [pub] impl ResourceLimits :: #[must_use] const fn new( cpu_millis: u64, memory_bytes: u64, wall_millis: u64, output_bytes: u64, ) -> Self |a217b71370536151
+crates/worker/src/receipt.rs [pub] impl ResourceLimits :: #[must_use] const fn output_bytes(&self) -> u64 |cadd3125c82229ec
+crates/worker/src/receipt.rs [pub] impl ResourceLimits :: #[must_use] const fn wall_millis(&self) -> u64 |03761f944ad441ea
+crates/worker/src/receipt.rs [pub] impl ResourceLimits :: #[must_use] fn canonical_bytes(&self) -> [u8; 32] |82a8dcf77b91e2c5
+crates/worker/src/receipt.rs [pub] impl ResourceReceipt :: #[must_use] const fn backend(&self) -> crate::sandbox::BackendId |203fb24473449976
+crates/worker/src/receipt.rs [pub] impl ResourceReceipt :: #[must_use] const fn cpu_millis(&self) -> u64 |0070afbf614bc24c
+crates/worker/src/receipt.rs [pub] impl ResourceReceipt :: #[must_use] const fn limits(&self) -> &ResourceLimits |05624b9408283661
+crates/worker/src/receipt.rs [pub] impl ResourceReceipt :: #[must_use] const fn new( backend: crate::sandbox::BackendId, limits: ResourceLimits, cpu_millis: u64, peak_memory_bytes: u64, wall_millis: u64, output_bytes: u64, outcome: RunOutcome, ) -> Self |e9e7b8aee7392d45
+crates/worker/src/receipt.rs [pub] impl ResourceReceipt :: #[must_use] const fn outcome(&self) -> &RunOutcome |bb4787bde421b9d4
+crates/worker/src/receipt.rs [pub] impl ResourceReceipt :: #[must_use] const fn output_bytes(&self) -> u64 |cadd3125c82229ec
+crates/worker/src/receipt.rs [pub] impl ResourceReceipt :: #[must_use] const fn peak_memory_bytes(&self) -> u64 |f77897c68180d2f6
+crates/worker/src/receipt.rs [pub] impl ResourceReceipt :: #[must_use] const fn wall_millis(&self) -> u64 |03761f944ad441ea
+crates/worker/src/receipt.rs [pub] impl RunOutcome :: #[must_use] const fn is_acceptable(&self) -> bool |4f4f8e01d0e82c9a
+crates/worker/src/receipt.rs [pub] impl WorkerRun :: #[must_use] const fn model_run_id(&self) -> &ModelRunId |b022cb6e072f7db2
+crates/worker/src/receipt.rs [pub] impl WorkerRun :: #[must_use] const fn new(model_run_id: ModelRunId, receipt: ResourceReceipt) -> Self |adbd91074d29ae2e
+crates/worker/src/receipt.rs [pub] impl WorkerRun :: #[must_use] const fn receipt(&self) -> &ResourceReceipt |3b4983c4f774ae75
+crates/worker/src/sandbox/linux.rs [priv] #[allow(unsafe_code)] fn add_rule(ruleset: i32, path: &Path, allowed: u64) -> Result<(), SandboxError> |70791cd7ef6c5a37
+crates/worker/src/sandbox/linux.rs [priv] #[allow(unsafe_code)] fn landlock_abi() -> i64 |d0a03ce5de7f89d8
+crates/worker/src/sandbox/linux.rs [priv] #[allow(unsafe_code)] fn open_path(path: &Path) -> Result<i32, SandboxError> |63cccdede0d1bec8
+crates/worker/src/sandbox/linux.rs [priv] #[allow(unsafe_code)] fn set_limit(resource: u32, soft: u64, hard: u64) -> Result<(), SandboxError> |28cfcfe9facf47d7
+crates/worker/src/sandbox/linux.rs [priv] #[cfg(target_arch = "aarch64")] const AUDIT_ARCH: u32 |602f6296fc897fa4
+crates/worker/src/sandbox/linux.rs [priv] #[cfg(target_arch = "x86_64")] const AUDIT_ARCH: u32 |57f555a286f767a0
+crates/worker/src/sandbox/linux.rs [priv] #[cfg(target_arch = "x86_64")] const BPF_JGE: u16 |d3804b7185d4d006
+crates/worker/src/sandbox/linux.rs [priv] #[cfg(target_arch = "x86_64")] const X32_SYSCALL_BIT: i64 |7daea50556ef5e33
+crates/worker/src/sandbox/linux.rs [priv] #[repr(C)] #[derive(Debug)] struct SockFprog |df37296bdd8740e8
+crates/worker/src/sandbox/linux.rs [priv] #[repr(C)] #[derive(Debug, Clone, Copy)] struct SockFilter |328bc4126d751a32
+crates/worker/src/sandbox/linux.rs [priv] #[repr(C)] #[derive(Debug, Default)] struct LandlockRulesetAttr |a77d454adf483f52
+crates/worker/src/sandbox/linux.rs [priv] #[repr(C, packed)] #[derive(Debug, Clone, Copy)] struct LandlockPathBeneathAttr |bc0f581c7a01d7c4
+crates/worker/src/sandbox/linux.rs [priv] const ABI1_HANDLED: u64 |d948f2c797b9e0bf
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_IOCTL_DEV: u64 |581874464d9c67e2
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_MAKE_DIR: u64 |77fbed0b03401f76
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_MAKE_REG: u64 |b6471a2e465957be
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_READ_DIR: u64 |9df6ffacae9ff31c
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_READ_FILE: u64 |f25411cbcf760e82
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_REFER: u64 |521f2279feaffc37
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_REMOVE_DIR: u64 |4e2fc4babe48bf8f
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_REMOVE_FILE: u64 |42a822e678a9edc1
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_TRUNCATE: u64 |8c7b6840af94583e
+crates/worker/src/sandbox/linux.rs [priv] const ACCESS_WRITE_FILE: u64 |c1e2d174858f2618
+crates/worker/src/sandbox/linux.rs [priv] const BPF_ABS: u16 |e9f1e481a7f28be7
+crates/worker/src/sandbox/linux.rs [priv] const BPF_JEQ: u16 |92ffa80492f90bb2
+crates/worker/src/sandbox/linux.rs [priv] const BPF_JMP: u16 |5d994a4d28843341
+crates/worker/src/sandbox/linux.rs [priv] const BPF_K: u16 |0a64ddc461dc64de
+crates/worker/src/sandbox/linux.rs [priv] const BPF_LD: u16 |353ad73327ef3f47
+crates/worker/src/sandbox/linux.rs [priv] const BPF_RET: u16 |ba8ec0b13ff105ea
+crates/worker/src/sandbox/linux.rs [priv] const BPF_W: u16 |e9f46be96a9e19ca
+crates/worker/src/sandbox/linux.rs [priv] const LANDLOCK_CREATE_RULESET_VERSION: u32 |eb32f4f1a0a3f2d4
+crates/worker/src/sandbox/linux.rs [priv] const LANDLOCK_RULE_PATH_BENEATH: u32 |f08bcd5660ad911c
+crates/worker/src/sandbox/linux.rs [priv] const SECCOMP_GET_ACTION_AVAIL: u32 |4f7fa6ae980cdc06
+crates/worker/src/sandbox/linux.rs [priv] const SECCOMP_RET_ALLOW: u32 |d18768c90a95fdb6
+crates/worker/src/sandbox/linux.rs [priv] const SECCOMP_RET_ERRNO: u32 |714d72d6b6baa88d
+crates/worker/src/sandbox/linux.rs [priv] const SECCOMP_RET_KILL_PROCESS: u32 |b3151167fa793012
+crates/worker/src/sandbox/linux.rs [priv] const SECCOMP_SET_MODE_FILTER: u32 |cbef85852a2f5da9
+crates/worker/src/sandbox/linux.rs [priv] const fn jump(code: u16, k: u32, jt: u8, jf: u8) -> SockFilter |b119c3be37112f74
+crates/worker/src/sandbox/linux.rs [priv] const fn stmt(code: u16, k: u32) -> SockFilter |7c84347b7220902c
+crates/worker/src/sandbox/linux.rs [priv] fn denied_syscalls() -> Vec<i64> |8d2e1ed349752d72
+crates/worker/src/sandbox/linux.rs [priv] fn errno() -> i64 |bd55e5475235cdf9
+crates/worker/src/sandbox/linux.rs [priv] fn handled_mask(abi: i64) -> u64 |7dd7dd2f5484e98d
+crates/worker/src/sandbox/linux.rs [priv] fn rusage_millis(value: &libc::timeval) -> u64 |8b60f83b57c9aabe
+crates/worker/src/sandbox/linux.rs [priv] use crate::{ capability::CapabilityDescriptor, job::ProbeReport, receipt::{LimitKind, ResourceReceipt, RunOutcome}, } |29f072f4d6e9ac7c
+crates/worker/src/sandbox/linux.rs [priv] use std::{ ffi::CString, io, os::unix::ffi::OsStrExt as _, path::Path, time::{Duration, Instant}, } |85b240ca42d514c3
+crates/worker/src/sandbox/linux.rs [priv] use super::{Availability, BackendId, LaunchSpec, SandboxError, SandboxUnavailable} |d398df4a403d1c9c
+crates/worker/src/sandbox/linux.rs [pub(super)] #[allow(unsafe_code)] fn availability() -> Availability |6ded0c606e5a3304
+crates/worker/src/sandbox/linux.rs [pub(super)] #[allow(unsafe_code)] fn enter( descriptor: &CapabilityDescriptor, report_dir: &Path, ) -> Result<BackendId, SandboxError> |2396e14ae22c4144
+crates/worker/src/sandbox/linux.rs [pub(super)] #[allow(unsafe_code)] fn launch(spec: &LaunchSpec) -> Result<(ResourceReceipt, ProbeReport), SandboxError> |3054bd4b305a2ab5
+crates/worker/src/sandbox/mod.rs [priv] #[cfg(all(feature = "native-sandbox", any(target_os = "linux", windows)))] fn apply_output_bound( outcome: crate::receipt::RunOutcome, output_bytes: u64, limits: &crate::receipt::ResourceLimits, ) -> crate::receipt::RunOutcome |e6d4064f29e5152a
+crates/worker/src/sandbox/mod.rs [priv] #[cfg(all(feature = "native-sandbox", any(target_os = "linux", windows)))] fn staged_output_bytes( descriptor: &crate::capability::CapabilityDescriptor, ) -> Result<u64, SandboxError> |ecc10c80a04de64a
+crates/worker/src/sandbox/mod.rs [priv] #[cfg(all(feature = "native-sandbox", any(target_os = "linux", windows)))] fn write_job_inputs(spec: &LaunchSpec) -> Result<(), SandboxError> |525e2d7d88b498c1
+crates/worker/src/sandbox/mod.rs [priv] #[cfg(all(feature = "native-sandbox", target_os = "linux"))] mod linux
+crates/worker/src/sandbox/mod.rs [priv] #[cfg(all(feature = "native-sandbox", windows))] mod windows
+crates/worker/src/sandbox/mod.rs [priv] impl Availability
+crates/worker/src/sandbox/mod.rs [priv] impl BackendId
+crates/worker/src/sandbox/mod.rs [priv] impl fmt::Display for BackendId
+crates/worker/src/sandbox/mod.rs [priv] impl fmt::Display for BackendId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |c5c623b2dd03b9c8
+crates/worker/src/sandbox/mod.rs [priv] use std::{fmt, path::PathBuf} |614b3305a1e40e12
+crates/worker/src/sandbox/mod.rs [pub] #[allow(unused_variables)] fn enter( descriptor: &crate::capability::CapabilityDescriptor, report_dir: &std::path::Path, ) -> Result<BackendId, SandboxError> |08e0b44fff03de40
+crates/worker/src/sandbox/mod.rs [pub] #[allow(unused_variables)] fn launch( spec: &LaunchSpec, ) -> Result<(crate::receipt::ResourceReceipt, crate::job::ProbeReport), SandboxError> |8dd7980fdb5cd2d9
+crates/worker/src/sandbox/mod.rs [pub] #[derive(Debug, Clone)] struct LaunchSpec |bf8a44047690223e
+crates/worker/src/sandbox/mod.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] enum BackendId |87dd2ac25707463c
+crates/worker/src/sandbox/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Availability |4e5722b447362d69
+crates/worker/src/sandbox/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SandboxUnavailable |0a3c19c4448f180e
+crates/worker/src/sandbox/mod.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum SandboxError |fdae2eadad9e2024
+crates/worker/src/sandbox/mod.rs [pub] #[must_use] fn availability() -> Availability |0e3219c46b4a624e
+crates/worker/src/sandbox/mod.rs [pub] #[must_use] fn read_report(report_dir: &std::path::Path) -> crate::job::ProbeReport |d679b88e5bd6467b
+crates/worker/src/sandbox/mod.rs [pub] const DESCRIPTOR_FILE: &str |ab0ef3907f0d0095
+crates/worker/src/sandbox/mod.rs [pub] const HOME_CANARY_VAR: &str |564501b2d6018518
+crates/worker/src/sandbox/mod.rs [pub] const INPUT_DIR_VAR: &str |eef85c714ec3bb3a
+crates/worker/src/sandbox/mod.rs [pub] const JOB_FILE: &str |d5c2584579992952
+crates/worker/src/sandbox/mod.rs [pub] const REPORT_DIR_VAR: &str |f0f57993e15e4761
+crates/worker/src/sandbox/mod.rs [pub] const REPORT_FILE: &str |3ba528090f8af8dc
+crates/worker/src/sandbox/mod.rs [pub] const VAR_PREFIX: &str |c5402786d8b1fe77
+crates/worker/src/sandbox/mod.rs [pub] const VAULT_CANARY_VAR: &str |128448eb265fdaeb
+crates/worker/src/sandbox/mod.rs [pub] impl Availability :: #[must_use] const fn backend(&self) -> Option<BackendId> |71a470b5337e8fbf
+crates/worker/src/sandbox/mod.rs [pub] impl Availability :: #[must_use] fn reason(&self) -> Option<&str> |0a08b0626d0eb5c2
+crates/worker/src/sandbox/mod.rs [pub] impl BackendId :: #[must_use] const fn as_str(self) -> &'static str |aeb8c0de9c7bedb1
+crates/worker/src/sandbox/mod.rs [pub] impl BackendId :: #[must_use] const fn compiled() -> Self |81a1b38edd6578ab
+crates/worker/src/sandbox/windows.rs [priv] #[allow(unsafe_code)] fn accounting(job: HANDLE) -> (u64, u64) |b98d2c44d2e7bfce
+crates/worker/src/sandbox/windows.rs [priv] #[allow(unsafe_code)] fn container_sid() -> Result<PSID, SandboxError> |7122b34f362661f6
+crates/worker/src/sandbox/windows.rs [priv] #[allow(unsafe_code)] fn grant(path: &Path, sid: PSID, rights: u32, inherit: u32) -> Result<(), SandboxError> |be3321e13d58e332
+crates/worker/src/sandbox/windows.rs [priv] #[allow(unsafe_code)] fn last_error() -> i64 |8ced44264d6516f1
+crates/worker/src/sandbox/windows.rs [priv] #[derive(Debug)] struct ProfileLock |38329fac176406b9
+crates/worker/src/sandbox/windows.rs [priv] const CONTAINER_NAME: &str |4b12506da0fdd54e
+crates/worker/src/sandbox/windows.rs [priv] const INHERIT_ALL: u32 |e1077ccb05f25e70
+crates/worker/src/sandbox/windows.rs [priv] const PROFILE_LOCK_FILE: &str |edf45cf404a211dd
+crates/worker/src/sandbox/windows.rs [priv] const PROFILE_LOCK_WAIT: Duration |e5bc526b24cd88fe
+crates/worker/src/sandbox/windows.rs [priv] const RIGHTS_READ_EXECUTE: u32 |af1f5f43fc4294ea
+crates/worker/src/sandbox/windows.rs [priv] const RIGHTS_READ_WRITE: u32 |cc7e350759a862c2
+crates/worker/src/sandbox/windows.rs [priv] const SHARING_VIOLATION: i32 |15edfea90f5579dd
+crates/worker/src/sandbox/windows.rs [priv] const STATUS_QUOTA_EXCEEDED: u32 |dff2ff9c468f4c33
+crates/worker/src/sandbox/windows.rs [priv] fn job_environment(spec: &LaunchSpec) -> Vec<u16> |a0e8b2a7a13aecd9
+crates/worker/src/sandbox/windows.rs [priv] fn profile_lock_path() -> Option<PathBuf> |a6a066db3c1a3b10
+crates/worker/src/sandbox/windows.rs [priv] fn wide(value: &str) -> Vec<u16> |ad0865c921d15081
+crates/worker/src/sandbox/windows.rs [priv] impl Drop for JobHandle
+crates/worker/src/sandbox/windows.rs [priv] impl Drop for JobHandle :: #[allow(unsafe_code)] fn drop(&mut self) |2332d8b514393aa6
+crates/worker/src/sandbox/windows.rs [priv] impl ProfileLock
+crates/worker/src/sandbox/windows.rs [priv] impl ProfileLock :: fn acquire() -> Self |ae04e2be80fa58cb
+crates/worker/src/sandbox/windows.rs [priv] static PROFILE_CREATION: Mutex<()> |8993390886b241b5
+crates/worker/src/sandbox/windows.rs [priv] struct JobHandle(HANDLE) |eff731a81991dce1
+crates/worker/src/sandbox/windows.rs [priv] use crate::{ job::ProbeReport, receipt::{LimitKind, ResourceReceipt, RunOutcome}, } |94025b5224a94e93
+crates/worker/src/sandbox/windows.rs [priv] use std::{ ffi::c_void, fs::OpenOptions, mem::{size_of, zeroed}, os::windows::fs::OpenOptionsExt as _, path::{Path, PathBuf}, ptr::{null, null_mut}, sync::{Mutex, PoisonError}, time::{Duration, Instant}, } |96db172dde8c5032
+crates/worker/src/sandbox/windows.rs [priv] use super::{Availability, BackendId, LaunchSpec, SandboxError, SandboxUnavailable} |d398df4a403d1c9c
+crates/worker/src/sandbox/windows.rs [priv] use windows_sys::Win32::{ Foundation::{CloseHandle, GetLastError, HANDLE, WAIT_TIMEOUT}, Security::{ ACL, Authorization::*, DACL_SECURITY_INFORMATION, Isolation::{CreateAppContainerProfile, DeriveAppContainerSidFromAppContainerName}, PSID, SECURITY_CAPABILITIES, }, System::{ JobObjects::*, Threading::{ CREATE_SUSPENDED, CreateProcessW, DeleteProcThreadAttributeList, EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess, InitializeProcThreadAttributeList, LPPROC_THREAD_ATTRIBUTE_LIST, PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES, PROCESS_INFORMATION, ResumeThread, STARTUPINFOEXW, UpdateProcThreadAttribute, WaitForSingleObject, }, }, } |e6e47aad2a6db789
+crates/worker/src/sandbox/windows.rs [pub(super)] #[allow(clippy::too_many_lines)] #[allow(unsafe_code)] fn launch(spec: &LaunchSpec) -> Result<(ResourceReceipt, ProbeReport), SandboxError> |bb540d21b1eada93
+crates/worker/src/sandbox/windows.rs [pub(super)] fn availability() -> Availability |93d5573354c93ab6
+crates/worker/src/sandbox/windows.rs [pub(super)] fn enter() -> Result<BackendId, SandboxError> |bea5bd027af60643
+crates/worker/src/staging.rs [priv] fn directory_bytes(root: &Path) -> io::Result<u64> |18c7c9accfdd3237
+crates/worker/src/staging.rs [priv] fn outcome_label(outcome: &RunOutcome) -> String |9e09264cda73140d
+crates/worker/src/staging.rs [priv] impl AcceptedOutput
+crates/worker/src/staging.rs [priv] impl StagedJobDirs
+crates/worker/src/staging.rs [priv] impl StagedOutput
+crates/worker/src/staging.rs [priv] impl StagingAuthority
+crates/worker/src/staging.rs [priv] impl fmt::Debug for AcceptedOutput
+crates/worker/src/staging.rs [priv] impl fmt::Debug for AcceptedOutput :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |4753bdb5149fb5bf
+crates/worker/src/staging.rs [priv] impl fmt::Debug for StagedOutput
+crates/worker/src/staging.rs [priv] impl fmt::Debug for StagedOutput :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |ea7084c92e0f1b24
+crates/worker/src/staging.rs [priv] impl fmt::Debug for StagingAuthority
+crates/worker/src/staging.rs [priv] impl fmt::Debug for StagingAuthority :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |55ff5ca89a578cfc
+crates/worker/src/staging.rs [priv] use crate::{ capability::{CapabilityDescriptor, DescriptorError, JobCapability, hex_lower}, receipt::{ResourceReceipt, RunOutcome}, } |431b236245faab83
+crates/worker/src/staging.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/worker/src/staging.rs [priv] use std::{ fmt, fs, io, path::{Path, PathBuf}, } |7936002989ba98da
+crates/worker/src/staging.rs [pub] #[derive(Clone, PartialEq, Eq)] struct AcceptedOutput |0c686c8be55caf33
+crates/worker/src/staging.rs [pub] #[derive(Clone, PartialEq, Eq)] struct StagedOutput |f92c80166d81492c
+crates/worker/src/staging.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct StagedJobDirs |9b05dc170c191ec1
+crates/worker/src/staging.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum AcceptError |5e2a738eddce9db7
+crates/worker/src/staging.rs [pub] impl AcceptedOutput :: #[must_use] fn bytes(&self) -> &[u8] |a3abc5b93da5a4c9
+crates/worker/src/staging.rs [pub] impl AcceptedOutput :: #[must_use] fn digest(&self) -> &str |b08757f8183df8b9
+crates/worker/src/staging.rs [pub] impl StagedJobDirs :: #[must_use] fn input(&self) -> &Path |8d9a6af1976a54f5
+crates/worker/src/staging.rs [pub] impl StagedJobDirs :: #[must_use] fn new(input: impl Into<PathBuf>, output: impl Into<PathBuf>) -> Self |57057a7e1a6f0d1f
+crates/worker/src/staging.rs [pub] impl StagedJobDirs :: #[must_use] fn output(&self) -> &Path |08e08ec6571b53f3
+crates/worker/src/staging.rs [pub] impl StagedJobDirs :: fn create_under(root: &Path) -> io::Result<Self> |c6c8a7dfa868d5a9
+crates/worker/src/staging.rs [pub] impl StagedJobDirs :: fn output_bytes(&self) -> io::Result<u64> |49308073b1378a2e
+crates/worker/src/staging.rs [pub] impl StagedOutput :: #[must_use] fn digest(&self) -> &str |b08757f8183df8b9
+crates/worker/src/staging.rs [pub] impl StagedOutput :: #[must_use] fn is_empty(&self) -> bool |f9e05970d04e6b46
+crates/worker/src/staging.rs [pub] impl StagedOutput :: #[must_use] fn job(&self) -> &str |c2a8e405dfbd20db
+crates/worker/src/staging.rs [pub] impl StagedOutput :: #[must_use] fn len(&self) -> usize |9f312642f4bb0d8e
+crates/worker/src/staging.rs [pub] impl StagedOutput :: #[must_use] fn relative_path(&self) -> &Path |3ba6f5b9ac6d38ad
+crates/worker/src/staging.rs [pub] impl StagedOutput :: fn read( descriptor: &CapabilityDescriptor, relative_path: &Path, ) -> Result<Self, AcceptError> |ec278087b3f5ecb0
+crates/worker/src/staging.rs [pub] impl StagingAuthority :: #[must_use] const fn from_secret(secret: [u8; 32]) -> Self |4906074b9d103323
+crates/worker/src/staging.rs [pub] impl StagingAuthority :: #[must_use] fn identity(&self) -> String |332287e09f211993
+crates/worker/src/staging.rs [pub] impl StagingAuthority :: fn accept( &self, descriptor: &CapabilityDescriptor, receipt: &ResourceReceipt, staged: StagedOutput, ) -> Result<AcceptedOutput, AcceptError> |ea0c3c099637cde6
+crates/worker/src/staging.rs [pub] struct StagingAuthority |10dc4ffa178e5b3e

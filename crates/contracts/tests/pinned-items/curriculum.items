@@ -9,9 +9,9 @@ crates/curriculum/src/course.rs [pub] impl Course :: #[must_use] const fn code(&
 crates/curriculum/src/course.rs [pub] impl Course :: #[must_use] const fn id(&self) -> CourseId |f267fe43e4a24691
 crates/curriculum/src/course.rs [pub] impl CourseDraft :: #[must_use] const fn canonical_identity(mut self, entity: EntityId) -> Self |e78d14f6550b2732
 crates/curriculum/src/course.rs [pub] impl CourseDraft :: #[must_use] const fn new(id: CourseId, code: CourseCode) -> Self |af08f96b61fd40d0
-crates/curriculum/src/course.rs [pub] impl CourseDraft :: fn build(self) -> Result<Course, CurriculumError> |7928c66d033345d5
+crates/curriculum/src/course.rs [pub] impl CourseDraft :: fn build(self) -> Result<Course, CurriculumError> |ecff502fd8b53984
 crates/curriculum/src/error.rs [priv] use thiserror::Error |fc76a959c1db87ed
-crates/curriculum/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] #[non_exhaustive] enum CurriculumError |3d9705aaf00f39a0
+crates/curriculum/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] #[non_exhaustive] enum CurriculumError |f3d8f83c1b876ee6
 crates/curriculum/src/fault.rs [priv] impl PublishCheckpoint
 crates/curriculum/src/fault.rs [priv] impl PublishFaultInjector for NoFault
 crates/curriculum/src/fault.rs [priv] impl PublishFaultInjector for NoFault :: fn hit(&self, _point: PublishCheckpoint) -> Result<(), CurriculumError> |13a4ddc6fb44ab6b
@@ -20,15 +20,15 @@ crates/curriculum/src/fault.rs [priv] use crate::error::CurriculumError |6d6c095
 crates/curriculum/src/fault.rs [priv] use std::fmt |20996e02b97d7e41
 crates/curriculum/src/fault.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PublishCheckpoint |7b7df2b66291b749
 crates/curriculum/src/fault.rs [pub] #[derive(Debug, Default, Clone, Copy)] struct NoFault |e785c8561a3106ec
-crates/curriculum/src/fault.rs [pub] impl PublishCheckpoint :: #[must_use] const fn as_str(self) -> &'static str |c57d8f12e2794518
+crates/curriculum/src/fault.rs [pub] impl PublishCheckpoint :: #[must_use] const fn as_str(self) -> &'static str |51803dd1dc051588
 crates/curriculum/src/fault.rs [pub] impl PublishCheckpoint :: const ALL: [Self; 7] |7424a7b686d00765
 crates/curriculum/src/fault.rs [pub] trait PublishFaultInjector: fmt::Debug
 crates/curriculum/src/gate.rs [priv] impl OpenGate
 crates/curriculum/src/gate.rs [priv] use crate::{ offering::GradingMode, relation::CourseCodeReuse, revision::CurriculumCategory, version::{CohortTransition, PublicationStatus}, } |e18cb082a2952035
 crates/curriculum/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate |3c692cc9d0c7943e
-crates/curriculum/src/gate.rs [pub] #[must_use] fn unknown_readings() -> [(&'static str, &'static str); 5] |2baa9afe1f64b65b
-crates/curriculum/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |b92c4dc0e1d02ed9
-crates/curriculum/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |08398b2cdc8fdff7
+crates/curriculum/src/gate.rs [pub] #[must_use] fn unknown_readings() -> [(&'static str, &'static str); 5] |a6748cb37cc351b8
+crates/curriculum/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |d082f1be0fcc8280
+crates/curriculum/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |30f6c25d3822630d
 crates/curriculum/src/gate.rs [pub] impl OpenGate :: const ALL: [Self; 3] |9a9cd3608520b119
 crates/curriculum/src/lib.rs [pub] mod course
 crates/curriculum/src/lib.rs [pub] mod error
@@ -94,17 +94,17 @@ crates/curriculum/src/offering.rs [pub] impl CourseOfferingDraft :: #[must_use] 
 crates/curriculum/src/offering.rs [pub] impl CourseOfferingDraft :: #[must_use] fn material_ref(mut self, reference: EntityId) -> Self |48471e181ac3472f
 crates/curriculum/src/offering.rs [pub] impl CourseOfferingDraft :: #[must_use] fn meeting(mut self, meeting: Meeting) -> Self |b04352f89c42c088
 crates/curriculum/src/offering.rs [pub] impl CourseOfferingDraft :: #[must_use] fn review_ref(mut self, reference: EntityId) -> Self |4e96a06cc2d34589
-crates/curriculum/src/offering.rs [pub] impl GradingMode :: #[must_use] const fn as_str(self) -> &'static str |04e9725ec786a6ce
+crates/curriculum/src/offering.rs [pub] impl GradingMode :: #[must_use] const fn as_str(self) -> &'static str |dc7a87f2b53afb42
 crates/curriculum/src/offering.rs [pub] impl GradingMode :: const ALL: [Self; 3] |dbbc9fd9cf125fa3
 crates/curriculum/src/offering.rs [pub] impl Meeting :: #[must_use] const fn from_minute(self) -> u16 |eeabcab6d3bf815b
 crates/curriculum/src/offering.rs [pub] impl Meeting :: #[must_use] const fn to_minute(self) -> u16 |5dc16c7148269573
 crates/curriculum/src/offering.rs [pub] impl Meeting :: #[must_use] const fn weekday(self) -> Weekday |aead9a5952cf8201
-crates/curriculum/src/offering.rs [pub] impl Meeting :: fn new( weekday: Weekday, from_minute: u16, to_minute: u16, ) -> Result<Self, CurriculumError> |d941f5376dc0ab5d
-crates/curriculum/src/offering.rs [pub] impl OfferingStatus :: #[must_use] const fn as_str(self) -> &'static str |39c92df563beabe0
+crates/curriculum/src/offering.rs [pub] impl Meeting :: fn new( weekday: Weekday, from_minute: u16, to_minute: u16, ) -> Result<Self, CurriculumError> |94528d1425f74149
+crates/curriculum/src/offering.rs [pub] impl OfferingStatus :: #[must_use] const fn as_str(self) -> &'static str |9e6b110b34559697
 crates/curriculum/src/offering.rs [pub] impl OfferingStatus :: const ALL: [Self; 4] |86132bbb1943752b
 crates/curriculum/src/offering.rs [pub] impl Weekday :: const ALL: [Self; 7] |115a78bf9155e429
 crates/curriculum/src/publish.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct LedgerMark |eb184e79b5150bc5
-crates/curriculum/src/publish.rs [priv] fn validate( ledger: &CurriculumLedger, publication: &CurriculumPublication, ) -> Result<(), CurriculumError> |7496662ba1ffc11c
+crates/curriculum/src/publish.rs [priv] fn validate( ledger: &CurriculumLedger, publication: &CurriculumPublication, ) -> Result<(), CurriculumError> |d301dd963f575f16
 crates/curriculum/src/publish.rs [priv] impl CurriculumLedger
 crates/curriculum/src/publish.rs [priv] impl CurriculumLedger
 crates/curriculum/src/publish.rs [priv] impl CurriculumLedger :: fn mark(&self) -> LedgerMark |d51ba45812834a5a
@@ -183,10 +183,10 @@ crates/curriculum/src/relation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, 
 crates/curriculum/src/relation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CourseCodeReuse |585a09d5ed30f597
 crates/curriculum/src/relation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CourseRelationKind |3c048b0f746daf51
 crates/curriculum/src/relation.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct CourseRelations |bb1036e4e1bf907b
-crates/curriculum/src/relation.rs [pub] impl CourseCodeReuse :: #[must_use] const fn as_str(self) -> &'static str |80c762cf67f73015
+crates/curriculum/src/relation.rs [pub] impl CourseCodeReuse :: #[must_use] const fn as_str(self) -> &'static str |a31afa61b8c0d0c0
 crates/curriculum/src/relation.rs [pub] impl CourseCodeReuse :: const ALL: [Self; 3] |8a906885bcaa2c36
-crates/curriculum/src/relation.rs [pub] impl CourseRelationKind :: #[must_use] const fn as_str(self) -> &'static str |e6ccbb4bf1a4a637
-crates/curriculum/src/relation.rs [pub] impl CourseRelationKind :: #[must_use] const fn specification_word(self) -> &'static str |cce63a2f0d9cc2b4
+crates/curriculum/src/relation.rs [pub] impl CourseRelationKind :: #[must_use] const fn as_str(self) -> &'static str |1446538aedc574da
+crates/curriculum/src/relation.rs [pub] impl CourseRelationKind :: #[must_use] const fn specification_word(self) -> &'static str |0394a3fe3caa70c6
 crates/curriculum/src/relation.rs [pub] impl CourseRelationKind :: const ALL: [Self; 4] |aa72c5bcf653e768
 crates/curriculum/src/relation.rs [pub] impl CourseRelations :: #[must_use] const fn new() -> Self |1064f07bdfe54e8d
 crates/curriculum/src/relation.rs [pub] impl CourseRelations :: #[must_use] fn equivalences(&self) -> &[EquivalenceRelation] |25b0540d481549be
@@ -204,17 +204,17 @@ crates/curriculum/src/relation.rs [pub] impl CourseRelations :: fn record_retire
 crates/curriculum/src/relation.rs [pub] impl EquivalenceRelation :: #[must_use] const fn source(self) -> CourseId |f24d1c8e493e7e07
 crates/curriculum/src/relation.rs [pub] impl EquivalenceRelation :: #[must_use] const fn target(self) -> CourseId |b5877229d1288f07
 crates/curriculum/src/relation.rs [pub] impl EquivalenceRelation :: #[must_use] const fn valid_time(self) -> ValidInterval |bf94822463331ffe
-crates/curriculum/src/relation.rs [pub] impl EquivalenceRelation :: fn record( source: CourseId, target: CourseId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError> |0884441f44554dc4
+crates/curriculum/src/relation.rs [pub] impl EquivalenceRelation :: fn record( source: CourseId, target: CourseId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError> |296fc637ee4a535f
 crates/curriculum/src/relation.rs [pub] impl IdentityDecision :: #[must_use] const fn decision(self) -> DecisionId |90749da067fb7d3c
 crates/curriculum/src/relation.rs [pub] impl IdentityDecision :: #[must_use] const fn earlier(self) -> CourseId |e9444ad5c96bc13d
 crates/curriculum/src/relation.rs [pub] impl IdentityDecision :: #[must_use] const fn later(self) -> CourseId |5e1e4eeb09a9d3a1
 crates/curriculum/src/relation.rs [pub] impl IdentityDecision :: #[must_use] const fn valid_time(self) -> ValidInterval |bf94822463331ffe
 crates/curriculum/src/relation.rs [pub] impl IdentityDecision :: #[must_use] const fn verdict(self) -> CourseCodeReuse |d30b6e4e1eb4173f
-crates/curriculum/src/relation.rs [pub] impl IdentityDecision :: fn record( earlier: CourseId, later: CourseId, verdict: CourseCodeReuse, decision: DecisionId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError> |88f5383e2973e0c7
+crates/curriculum/src/relation.rs [pub] impl IdentityDecision :: fn record( earlier: CourseId, later: CourseId, verdict: CourseCodeReuse, decision: DecisionId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError> |89f436a218d4f4dc
 crates/curriculum/src/relation.rs [pub] impl ReplacementRelation :: #[must_use] const fn replacement(self) -> CourseId |66081ce0a34a5f35
 crates/curriculum/src/relation.rs [pub] impl ReplacementRelation :: #[must_use] const fn retired(self) -> CourseId |25a18527d3087603
 crates/curriculum/src/relation.rs [pub] impl ReplacementRelation :: #[must_use] const fn valid_time(self) -> ValidInterval |bf94822463331ffe
-crates/curriculum/src/relation.rs [pub] impl ReplacementRelation :: fn record( retired: CourseId, replacement: CourseId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError> |2c0a201edd0add61
+crates/curriculum/src/relation.rs [pub] impl ReplacementRelation :: fn record( retired: CourseId, replacement: CourseId, valid_time: ValidInterval, ) -> Result<Self, CurriculumError> |aaf8f5efa2655efc
 crates/curriculum/src/relation.rs [pub] impl RetirementRelation :: #[must_use] const fn course(self) -> CourseId |2185a2d9e6760207
 crates/curriculum/src/relation.rs [pub] impl RetirementRelation :: #[must_use] const fn record(course: CourseId, valid_time: ValidInterval) -> Self |4e1db2c97eafa851
 crates/curriculum/src/relation.rs [pub] impl RetirementRelation :: #[must_use] const fn valid_time(self) -> ValidInterval |bf94822463331ffe
@@ -254,10 +254,10 @@ crates/curriculum/src/revision.rs [pub] impl CourseRevisionDraft :: #[must_use] 
 crates/curriculum/src/revision.rs [pub] impl CourseRevisionDraft :: #[must_use] fn official_prerequisite(mut self, entry: OfficialPrerequisite) -> Self |44e7950931dff166
 crates/curriculum/src/revision.rs [pub] impl CourseRevisionDraft :: #[must_use] fn recommended_prerequisite(mut self, entry: RecommendedPrerequisite) -> Self |daa91436de591e8c
 crates/curriculum/src/revision.rs [pub] impl CourseRevisionDraft :: #[must_use] fn title(mut self, title: CourseTitle) -> Self |26c5b0396302ba5c
-crates/curriculum/src/revision.rs [pub] impl CourseRevisionDraft :: fn build(self) -> Result<CourseRevision, CurriculumError> |f52b869ca17f6c23
+crates/curriculum/src/revision.rs [pub] impl CourseRevisionDraft :: fn build(self) -> Result<CourseRevision, CurriculumError> |4dee9dbc8b3436c9
 crates/curriculum/src/revision.rs [pub] impl Credits :: #[must_use] const fn value(self) -> u8 |5c6125105aa1c0fd
-crates/curriculum/src/revision.rs [pub] impl Credits :: fn new(value: u8) -> Result<Self, CurriculumError> |975d63d22b8d04bb
-crates/curriculum/src/revision.rs [pub] impl CurriculumCategory :: #[must_use] const fn as_str(self) -> &'static str |b8ea2005e9e7f000
+crates/curriculum/src/revision.rs [pub] impl Credits :: fn new(value: u8) -> Result<Self, CurriculumError> |4325ea00f0360581
+crates/curriculum/src/revision.rs [pub] impl CurriculumCategory :: #[must_use] const fn as_str(self) -> &'static str |164f84e7ca4f63a1
 crates/curriculum/src/revision.rs [pub] impl CurriculumCategory :: #[must_use] const fn is_known(self) -> bool |2375043dda6b7e7b
 crates/curriculum/src/revision.rs [pub] impl CurriculumCategory :: const ALL: [Self; 6] |343c56eee5e5dd63
 crates/curriculum/src/revision.rs [pub] impl OfficialPrerequisite :: #[must_use] const fn course(self) -> CourseId |2185a2d9e6760207
@@ -265,14 +265,14 @@ crates/curriculum/src/revision.rs [pub] impl OfficialPrerequisite :: #[must_use]
 crates/curriculum/src/revision.rs [pub] impl RecommendedPrerequisite :: #[must_use] const fn course(self) -> CourseId |2185a2d9e6760207
 crates/curriculum/src/revision.rs [pub] impl RecommendedPrerequisite :: #[must_use] const fn on(course: CourseId) -> Self |228710a3bcd9d928
 crates/curriculum/src/text.rs [priv] const MAX_LEN: usize |46cd98d8f4cdcf15
-crates/curriculum/src/text.rs [priv] fn bounded(field: &'static str, value: &str) -> Result<(), CurriculumError> |4822898891eef2b0
+crates/curriculum/src/text.rs [priv] fn bounded(field: &'static str, value: &str) -> Result<(), CurriculumError> |1ea5902a18003b95
 crates/curriculum/src/text.rs [priv] macro_rules! restricted_text |13394dc2ff5af2b8
-crates/curriculum/src/text.rs [priv] restricted_text!( AdmissionCohort, "admission cohort", "A 학번 as section 8.1 writes it (`2026`). The unit a curriculum version\n\ applies to and the unit a transition arrangement moves.", |character| character.is_ascii_digit(), "an admission cohort admits only ASCII digits" ) |006574f8322ab0e4
-crates/curriculum/src/text.rs [priv] restricted_text!( CourseCode, "course code", "Section 8.2's `courseCode`, as the catalogue prints it (`M1522.001800`).\n\n\ A course code is a label, never an identity: two occurrences of one code\n\ are the same course only when [`crate::relation::IdentityDecision`] says\n\ so. See [`crate::relation::CourseCodeReuse`].", |character| character.is_ascii_alphanumeric() || matches!(character, | | ), "a course code admits only ASCII letters, digits, '.', '-' and '_'" ) |76e330f0f740b77e
-crates/curriculum/src/text.rs [priv] restricted_text!( CourseTitle, "course title", "Section 8.2's `titleKo`. Korean and Latin letters, digits, spaces, and a\n\ small punctuation set; no control characters and no line separators.", |character| { character.is_alphanumeric() || matches!( character, | | | | | | | | ) }, "a course title admits letters, digits, spaces and ( ) , · - / : ." ) |e22f26d783ddba31
-crates/curriculum/src/text.rs [priv] restricted_text!( InstructorName, "instructor name", "One entry of section 8.2's `instructors`. This is offering reality: it is\n\ admitted on [`crate::offering::CourseOffering`] and on nothing else.", |character| character.is_alphanumeric() || matches!(character, | | ), "an instructor name admits letters, digits, spaces, '.' and '-'" ) |54e0d7c98dd0a622
-crates/curriculum/src/text.rs [priv] restricted_text!( SectionCode, "section code", "Section 8.2's `section`. The division within one term's offering.", |character| character.is_ascii_alphanumeric() || character == , "a section code admits only ASCII letters, digits and '-'" ) |dc309e7db3a8ca25
-crates/curriculum/src/text.rs [priv] restricted_text!( TermCode, "term code", "Section 8.2's `term` (`2026_FALL`). The academic term a section runs in.", |character| character.is_ascii_uppercase() || character.is_ascii_digit() || character == , "a term code admits only ASCII upper-case letters, digits and '_'" ) |2ca5f7924de2ec7b
+crates/curriculum/src/text.rs [priv] restricted_text!( AdmissionCohort, "admission cohort", "A 학번 as section 8.1 writes it (`2026`). The unit a curriculum version\n\ applies to and the unit a transition arrangement moves.", |character| character.is_ascii_digit(), "an admission cohort admits only ASCII digits" ) |b1552bd2e8b2cd56
+crates/curriculum/src/text.rs [priv] restricted_text!( CourseCode, "course code", "Section 8.2's `courseCode`, as the catalogue prints it (`M1522.001800`).\n\n\ A course code is a label, never an identity: two occurrences of one code\n\ are the same course only when [`crate::relation::IdentityDecision`] says\n\ so. See [`crate::relation::CourseCodeReuse`].", |character| character.is_ascii_alphanumeric() || matches!(character, | | ), "a course code admits only ASCII letters, digits, '.', '-' and '_'" ) |e7c91028a444c55b
+crates/curriculum/src/text.rs [priv] restricted_text!( CourseTitle, "course title", "Section 8.2's `titleKo`. Korean and Latin letters, digits, spaces, and a\n\ small punctuation set; no control characters and no line separators.", |character| { character.is_alphanumeric() || matches!( character, | | | | | | | | ) }, "a course title admits letters, digits, spaces and ( ) , · - / : ." ) |524c3b4437d3225a
+crates/curriculum/src/text.rs [priv] restricted_text!( InstructorName, "instructor name", "One entry of section 8.2's `instructors`. This is offering reality: it is\n\ admitted on [`crate::offering::CourseOffering`] and on nothing else.", |character| character.is_alphanumeric() || matches!(character, | | ), "an instructor name admits letters, digits, spaces, '.' and '-'" ) |893ea54ec311a1fe
+crates/curriculum/src/text.rs [priv] restricted_text!( SectionCode, "section code", "Section 8.2's `section`. The division within one term's offering.", |character| character.is_ascii_alphanumeric() || character == , "a section code admits only ASCII letters, digits and '-'" ) |73bb9525302ab36a
+crates/curriculum/src/text.rs [priv] restricted_text!( TermCode, "term code", "Section 8.2's `term` (`2026_FALL`). The academic term a section runs in.", |character| character.is_ascii_uppercase() || character.is_ascii_digit() || character == , "a term code admits only ASCII upper-case letters, digits and '_'" ) |0790b2de55daefcb
 crates/curriculum/src/text.rs [priv] use crate::error::CurriculumError |6d6c095898b2e43b
 crates/curriculum/src/version.rs [priv] impl CohortTransition
 crates/curriculum/src/version.rs [priv] impl CurriculumVersion
@@ -286,7 +286,7 @@ crates/curriculum/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, E
 crates/curriculum/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PublicationStatus |eaed0b6b029f8cd3
 crates/curriculum/src/version.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CurriculumVersion |34aad2638770cc6a
 crates/curriculum/src/version.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TransitionArrangement |52c17b7f8cdf93c1
-crates/curriculum/src/version.rs [pub] impl CohortTransition :: #[must_use] const fn as_str(self) -> &'static str |b1dec4d4c01fb3e5
+crates/curriculum/src/version.rs [pub] impl CohortTransition :: #[must_use] const fn as_str(self) -> &'static str |b798aafde068de24
 crates/curriculum/src/version.rs [pub] impl CohortTransition :: const ALL: [Self; 3] |3b5abe8f6f2a18b0
 crates/curriculum/src/version.rs [pub] impl CurriculumVersion :: #[must_use] const fn admission_year_range(&self) -> (&AdmissionCohort, &AdmissionCohort) |26f5919b60b28b81
 crates/curriculum/src/version.rs [pub] impl CurriculumVersion :: #[must_use] const fn id(&self) -> CurriculumVersionId |9b8c1d87b3e090a9
@@ -303,10 +303,10 @@ crates/curriculum/src/version.rs [pub] impl CurriculumVersionDraft :: #[must_use
 crates/curriculum/src/version.rs [pub] impl CurriculumVersionDraft :: #[must_use] const fn supersedes(mut self, earlier: CurriculumVersionId) -> Self |0538acfa2e01f1fc
 crates/curriculum/src/version.rs [pub] impl CurriculumVersionDraft :: #[must_use] fn institution_segment(mut self, segment: &str) -> Self |b6b110177fe18657
 crates/curriculum/src/version.rs [pub] impl CurriculumVersionDraft :: #[must_use] fn transition(mut self, arrangement: TransitionArrangement) -> Self |67b990253e6e497c
-crates/curriculum/src/version.rs [pub] impl CurriculumVersionDraft :: fn build(self) -> Result<CurriculumVersion, CurriculumError> |d7c90dc40e7bcf22
-crates/curriculum/src/version.rs [pub] impl PublicationStatus :: #[must_use] const fn as_str(self) -> &'static str |bd1519fcf35194e8
+crates/curriculum/src/version.rs [pub] impl CurriculumVersionDraft :: fn build(self) -> Result<CurriculumVersion, CurriculumError> |bc1cb3c8e16b9077
+crates/curriculum/src/version.rs [pub] impl PublicationStatus :: #[must_use] const fn as_str(self) -> &'static str |8807e74e0cfce066
 crates/curriculum/src/version.rs [pub] impl PublicationStatus :: const ALL: [Self; 2] |3090e97f8b9be375
 crates/curriculum/src/version.rs [pub] impl TransitionArrangement :: #[must_use] const fn cohort(&self) -> &AdmissionCohort |7620e2388546de93
 crates/curriculum/src/version.rs [pub] impl TransitionArrangement :: #[must_use] const fn disposition(&self) -> CohortTransition |68fe044b0408c8f7
 crates/curriculum/src/version.rs [pub] impl TransitionArrangement :: #[must_use] const fn valid_time(&self) -> ValidInterval |ffe03530f5082d8a
-crates/curriculum/src/version.rs [pub] impl TransitionArrangement :: fn record( cohort: AdmissionCohort, disposition: CohortTransition, valid_time: ValidInterval, ) -> Result<Self, CurriculumError> |1cfabb14174bf553
+crates/curriculum/src/version.rs [pub] impl TransitionArrangement :: fn record( cohort: AdmissionCohort, disposition: CohortTransition, valid_time: ValidInterval, ) -> Result<Self, CurriculumError> |d20493989cee1339

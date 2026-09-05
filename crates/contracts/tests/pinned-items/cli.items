@@ -1,0 +1,233 @@
+crates/cli/src/client.rs [priv] async fn connect(endpoint: &LocalEndpoint) -> io::Result<Box<dyn ClientStream>> |a618e39aa66f2e30
+crates/cli/src/client.rs [priv] async fn exchange_handshake( stream: &mut Box<dyn ClientStream>, handshake: ClientHandshake, ) -> Result<ServerHandshake, CliFailure> |5d36ce9994009754
+crates/cli/src/client.rs [priv] const SESSION_NONCE_CAPABILITY_PREFIX: &str |70f695995360dc85
+crates/cli/src/client.rs [priv] fn client_handshake(capabilities: &[&str], nonce_capability: &str) -> ClientHandshake |e970e9f3dc490c51
+crates/cli/src/client.rs [priv] fn parse_endpoint(value: &str) -> Result<LocalEndpoint, CliFailure> |ca2e8a9d52d3109c
+crates/cli/src/client.rs [priv] fn transport_failure(error: &io::Error) -> CliFailure |9f8a7d23cff7b270
+crates/cli/src/client.rs [priv] impl<T> ClientStream for T where T: AsyncRead + AsyncWrite + Unpin + Send
+crates/cli/src/client.rs [priv] trait ClientStream: AsyncRead + AsyncWrite + Unpin + Send
+crates/cli/src/client.rs [priv] use academic_daemon::{LocalEndpoint, session_metadata_path} |24e985a0dda866cd
+crates/cli/src/client.rs [priv] use academic_rpc::{ FrameClass, LOCAL_CORE_PROTOCOL_NAME, LOCAL_CORE_PROTOCOL_VERSION, generated::{ ClientHandshake, LocalCoreEnvelope, MutableRequest, MutableResponse, ProtocolVersion, ServerHandshake, local_core_envelope, }, read_envelope, write_envelope, } |f25890942cda7576
+crates/cli/src/client.rs [priv] use crate::output::{CliFailure, ExitClass} |d5931aedfdce6dcd
+crates/cli/src/client.rs [priv] use std::{ fs, io, path::{Path, PathBuf}, } |d3ff9122c19b094b
+crates/cli/src/client.rs [priv] use tokio::io::{AsyncRead, AsyncWrite} |bf0ac0725ee6f1b6
+crates/cli/src/client.rs [pub] #[derive(Debug, Clone)] struct SessionMetadata |b251fe4708aa16a9
+crates/cli/src/client.rs [pub] async fn handshake_only( metadata: &SessionMetadata, capabilities: &[&str], ) -> Result<ServerHandshake, CliFailure> |33d6f97a11fc10f2
+crates/cli/src/client.rs [pub] async fn send_mutation( metadata: &SessionMetadata, capability: &str, request: MutableRequest, ) -> Result<(ServerHandshake, MutableResponse), CliFailure> |5c3cba3f7ac4dfab
+crates/cli/src/client.rs [pub] const DAEMON_UNREACHABLE: &str |15a42ea229377080
+crates/cli/src/client.rs [pub] fn default_runtime_root() -> Result<PathBuf, CliFailure> |ca29cc18f1d40464
+crates/cli/src/client.rs [pub] fn read_session_metadata( runtime_root: &Path, profile_root: &Path, ) -> Result<Option<SessionMetadata>, CliFailure> |779c150cd782e9d8
+crates/cli/src/commands/admission.rs [priv] fn report(profile_root: &Path) -> (serde_json::Value, Option<CliFailure>) |7d5f269122d500ca
+crates/cli/src/commands/admission.rs [priv] use academic_admission::AdmissionVerifier |2e88ed923733c219
+crates/cli/src/commands/admission.rs [priv] use crate::output::{CliFailure, CommandResult, ExitClass} |223bb40bb30c355b
+crates/cli/src/commands/admission.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/admission.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/cli/src/commands/admission.rs [pub] fn lines(value: &serde_json::Value) -> Vec<String> |899aa6059d7ec8a4
+crates/cli/src/commands/admission.rs [pub] fn show(profile_root: &Path) -> serde_json::Value |f5136c6edb4a4295
+crates/cli/src/commands/admission.rs [pub] fn verify(profile_root: &Path) -> CommandResult |cdbd19270606c8fa
+crates/cli/src/commands/backup.rs [priv] use academic_core::operations::{ BACKUP_PLAINTEXT_WARNING, SYNTHETIC_EXPORT_CAPABILITY, backup_synthetic_profile, } |adc81ccc7390c108
+crates/cli/src/commands/backup.rs [priv] use crate::{ commands::{classify, display, ownership::consult_owning_daemon}, output::CommandResult, } |51d03bbb5e3846aa
+crates/cli/src/commands/backup.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/backup.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/cli/src/commands/backup.rs [pub] async fn run(profile_root: &Path, destination: &Path, runtime_root: &Path) -> CommandResult |f6ed67c6ec51d095
+crates/cli/src/commands/backup.rs [pub] fn lines(value: &serde_json::Value) -> Vec<String> |9318320317c58e1d
+crates/cli/src/commands/crash_replay.rs [priv] #[cfg(test)] mod tests
+crates/cli/src/commands/crash_replay.rs [priv] fn row_json(row: &FaultRow) -> serde_json::Value |f073384c3b3ff9f2
+crates/cli/src/commands/crash_replay.rs [priv] impl RestartOutcome
+crates/cli/src/commands/crash_replay.rs [priv] mod tests :: #[test] fn every_row_states_an_owner_a_point_and_an_outcome() |7e877144a3360846
+crates/cli/src/commands/crash_replay.rs [priv] mod tests :: #[test] fn the_matrix_matches_the_enumerated_phase_one_fault_contract() |b1164c74ac93dd18
+crates/cli/src/commands/crash_replay.rs [priv] mod tests :: #[test] fn the_two_post_commit_faults_require_an_idempotent_retry() |41ca9a3a38a6a818
+crates/cli/src/commands/crash_replay.rs [priv] mod tests :: #[test] fn this_build_can_never_inject_a_fault() |4c9cbf8bb9f6c835
+crates/cli/src/commands/crash_replay.rs [priv] mod tests :: use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/cli/src/commands/crash_replay.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/cli/src/commands/crash_replay.rs [priv] use RestartOutcome::{Complete, IdempotentRetry, NoReference, Quarantine} |ec90908bba32fcb4
+crates/cli/src/commands/crash_replay.rs [priv] use crate::output::{CliFailure, CommandResult, ExitClass} |223bb40bb30c355b
+crates/cli/src/commands/crash_replay.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/crash_replay.rs [pub] #[derive(Debug, Clone, Copy)] struct FaultRow |4df0bab2ddbab4e7
+crates/cli/src/commands/crash_replay.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum RestartOutcome |1371651d64b8aca1
+crates/cli/src/commands/crash_replay.rs [pub] #[must_use] const fn injection_available() -> bool |ee5561923e0442cd
+crates/cli/src/commands/crash_replay.rs [pub] const FAULT_MATRIX: &[FaultRow] |2e385551fcb6f3cb
+crates/cli/src/commands/crash_replay.rs [pub] fn lines(value: &serde_json::Value) -> Vec<String> |94852e5f18292db1
+crates/cli/src/commands/crash_replay.rs [pub] fn run(fault: Option<&str>, all: bool) -> CommandResult |311663822cf18a7e
+crates/cli/src/commands/crash_replay.rs [pub] impl RestartOutcome :: #[must_use] const fn code(self) -> &'static str |adef52be80882969
+crates/cli/src/commands/daemon.rs [priv] fn lock_state_name(value: i32) -> &'static str |83d42beb848b788c
+crates/cli/src/commands/daemon.rs [priv] fn version_json(version: &academic_rpc::generated::ProtocolVersion) -> serde_json::Value |f1b59da12aff35c1
+crates/cli/src/commands/daemon.rs [priv] fn write_disposition_name(value: i32) -> &'static str |c8d7042711d98f68
+crates/cli/src/commands/daemon.rs [priv] use academic_core::operations::{ DIAGNOSTICS_CAPABILITY, diagnose_profile, ensure_synthetic_profile, } |84c0e48c4be8256f
+crates/cli/src/commands/daemon.rs [priv] use academic_daemon::{DaemonConfig, RunningDaemon} |f44b3a635f65eb02
+crates/cli/src/commands/daemon.rs [priv] use academic_rpc::generated::{ProfileLockState, ServerHandshake, WriteDisposition} |d7b1bcead5a4b0e4
+crates/cli/src/commands/daemon.rs [priv] use crate::{ client::{DAEMON_UNREACHABLE, SessionMetadata, handshake_only, read_session_metadata}, commands::{classify, display}, output::{CliFailure, CommandResult, ExitClass}, } |ba8114cac96766d7
+crates/cli/src/commands/daemon.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/daemon.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/cli/src/commands/daemon.rs [pub] async fn serve(profile_root: &Path, runtime_root: &Path) -> CommandResult |8817b0826ac7f719
+crates/cli/src/commands/daemon.rs [pub] async fn status(profile_root: &Path, runtime_root: &Path) -> CommandResult |cfc3059d60d9f3ce
+crates/cli/src/commands/daemon.rs [pub] fn handshake_json(handshake: &ServerHandshake) -> serde_json::Value |e391cde250bc6264
+crates/cli/src/commands/daemon.rs [pub] fn require_session( runtime_root: &Path, profile_root: &Path, ) -> Result<SessionMetadata, CliFailure> |0424c821601535a2
+crates/cli/src/commands/daemon.rs [pub] fn serve_lines(value: &serde_json::Value) -> Vec<String> |06ca1a17fe064e4f
+crates/cli/src/commands/daemon.rs [pub] fn status_lines(value: &serde_json::Value) -> Vec<String> |668e8f39fff6f8b9
+crates/cli/src/commands/doctor.rs [priv] #[cfg(test)] mod tests
+crates/cli/src/commands/doctor.rs [priv] #[derive(Debug, Clone, Copy, Deserialize)] #[serde(rename_all = "kebab-case")] enum ToolVersionPolicy |40b820b3d88914b3
+crates/cli/src/commands/doctor.rs [priv] #[derive(Debug, Deserialize)] struct ToolVersionCase |06ae1917175bf7d3
+crates/cli/src/commands/doctor.rs [priv] #[derive(Debug, Deserialize)] struct ToolVersionCorpus |1f5a04cd48fdafde
+crates/cli/src/commands/doctor.rs [priv] #[derive(Debug, Deserialize)] struct ToolVersionSpecification |5a4bed82d3613246
+crates/cli/src/commands/doctor.rs [priv] #[derive(Debug, Serialize)] struct ToolCheck |fe895e718bf67503
+crates/cli/src/commands/doctor.rs [priv] const TOOL_VERSION_CORPUS_JSON: &str |11e710781651046b
+crates/cli/src/commands/doctor.rs [priv] fn check_tool(specification: &ToolVersionSpecification) -> ToolCheck |8dda33a09e1fa9c1
+crates/cli/src/commands/doctor.rs [priv] fn has_ordinary_stable_build_metadata(value: &str) -> bool |4e011c4c4450af1e
+crates/cli/src/commands/doctor.rs [priv] fn is_supported_tool_version(specification: &ToolVersionSpecification, output: &str) -> bool |a2fd4a801b5c969a
+crates/cli/src/commands/doctor.rs [priv] fn observe_tool_version(name: &str, resolved_path: Option<&Path>) -> Option<String> |fbd25421caeee2a3
+crates/cli/src/commands/doctor.rs [priv] fn resolve_executable(tool: &str) -> Option<PathBuf> |a720a99c4cfb7620
+crates/cli/src/commands/doctor.rs [priv] fn tool_version(program: &Path) -> Option<String> |f6958ab7be54d709
+crates/cli/src/commands/doctor.rs [priv] fn validate_tool_version_corpus(corpus: &ToolVersionCorpus) -> Result<(), CliFailure> |8935a5b6c1b482dc
+crates/cli/src/commands/doctor.rs [priv] mod tests :: #[cfg(unix)] fn write_version_shim( directory: &Path, version: &str, ) -> Result<PathBuf, Box<dyn std::error::Error>> |90b0015dc5986592
+crates/cli/src/commands/doctor.rs [priv] mod tests :: #[cfg(windows)] fn write_version_shim( directory: &Path, version: &str, ) -> Result<PathBuf, Box<dyn std::error::Error>> |f77b41071234565c
+crates/cli/src/commands/doctor.rs [priv] mod tests :: #[test] fn a_shim_only_tool_is_observed_through_its_resolved_path() -> Result<(), Box<dyn std::error::Error>> |d720574178b2919f
+crates/cli/src/commands/doctor.rs [priv] mod tests :: #[test] fn t017_doctor_and_bootstrap_share_token_exact_version_conformance() -> Result<(), Box<dyn std::error::Error>> |ca4703f20051314a
+crates/cli/src/commands/doctor.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/cli/src/commands/doctor.rs [priv] use academic_core::operations::{ProfileDiagnosis, diagnose_profile} |86f4395a070bcd62
+crates/cli/src/commands/doctor.rs [priv] use crate::{ commands::{classify, display}, output::{CliFailure, CommandResult, ExitClass}, } |02a96abd07d2d98d
+crates/cli/src/commands/doctor.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/cli/src/commands/doctor.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/doctor.rs [priv] use std::{ env, path::{Path, PathBuf}, process::Command, } |ec3cb8389ad53aed
+crates/cli/src/commands/doctor.rs [pub] fn lines(value: &serde_json::Value) -> Vec<String> |ae48828fbd2a9dc1
+crates/cli/src/commands/doctor.rs [pub] fn run(profile_root: Option<&Path>, deep: bool) -> CommandResult |7dc81a81048c1ac7
+crates/cli/src/commands/export.rs [priv] use academic_core::operations::{SYNTHETIC_EXPORT_CAPABILITY, export_synthetic_profile} |8c23bcbf2d8050a7
+crates/cli/src/commands/export.rs [priv] use crate::{ commands::{classify, display, ownership::consult_owning_daemon}, output::CommandResult, } |51d03bbb5e3846aa
+crates/cli/src/commands/export.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/export.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/cli/src/commands/export.rs [pub] async fn run(profile_root: &Path, destination: &Path, runtime_root: &Path) -> CommandResult |94f798cc03199534
+crates/cli/src/commands/export.rs [pub] fn lines(value: &serde_json::Value) -> Vec<String> |edfd0694fa19ec8b
+crates/cli/src/commands/fixture.rs [priv] fn read_fixture(path: &Path) -> Result<FixtureDocument, CliFailure> |868a9f0d86a5a79e
+crates/cli/src/commands/fixture.rs [priv] use academic_core::{ FINAL_VALID_AT, FixtureDocument, build_fixture_document, fixture_json, parse_fixture_document_json, replay_fixture_document, verify_fixture_document, } |dbb0d72eb3c4b1ef
+crates/cli/src/commands/fixture.rs [priv] use crate::{ commands::display, output::{CliFailure, CommandResult, ExitClass}, } |1a47f8471732c689
+crates/cli/src/commands/fixture.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/fixture.rs [priv] use std::{fs, path::Path} |23592b2026de79d1
+crates/cli/src/commands/fixture.rs [pub] fn emit(output: Option<&Path>) -> CommandResult |81fe92fd4338cf1d
+crates/cli/src/commands/fixture.rs [pub] fn lines(value: &serde_json::Value) -> Vec<String> |1542786fc629e908
+crates/cli/src/commands/fixture.rs [pub] fn replay(path: &Path) -> CommandResult |a04455fe956851bf
+crates/cli/src/commands/fixture.rs [pub] fn verify(path: &Path) -> CommandResult |99611c670fd53c83
+crates/cli/src/commands/ingest.rs [priv] #[cfg(test)] mod tests
+crates/cli/src/commands/ingest.rs [priv] fn classify_rejection(reason: &str) -> ExitClass |2b7437f4c3697cd7
+crates/cli/src/commands/ingest.rs [priv] fn hex_lower(bytes: &[u8]) -> String |4f3368b7e680b2ad
+crates/cli/src/commands/ingest.rs [priv] fn receipt_json(response: &MutableResponse) -> serde_json::Value |c2c573707f5e42f6
+crates/cli/src/commands/ingest.rs [priv] fn status_name(value: i32) -> &'static str |2ce9dee8104cfb30
+crates/cli/src/commands/ingest.rs [priv] mod tests :: #[test] fn every_daemon_rejection_reason_maps_to_a_nonzero_class() |c9c32e133169b500
+crates/cli/src/commands/ingest.rs [priv] mod tests :: #[test] fn no_real_or_arbitrary_input_is_allowlisted() |9721cdc9cbbdb705
+crates/cli/src/commands/ingest.rs [priv] mod tests :: #[test] fn the_allowlist_holds_only_the_committed_synthetic_fixture() |e20ce1535c9d8723
+crates/cli/src/commands/ingest.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/cli/src/commands/ingest.rs [priv] use academic_core::{ local_service::PHASE1_SYNTHETIC_FIXTURE_ID, operations::{SYNTHETIC_INGEST_CAPABILITY, synthetic_ingest_request}, } |e5e446a2bcd3b918
+crates/cli/src/commands/ingest.rs [priv] use academic_rpc::generated::{MutableResponse, MutationStatus} |82823242efdab317
+crates/cli/src/commands/ingest.rs [priv] use crate::{ client::send_mutation, commands::{classify, daemon::handshake_json, daemon::require_session, display}, output::{CliFailure, CommandResult, ExitClass}, } |08fe5632a59e119e
+crates/cli/src/commands/ingest.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/ingest.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/cli/src/commands/ingest.rs [pub] #[must_use] fn is_allowlisted(fixture_id: &str) -> bool |b192a0c590ed15c7
+crates/cli/src/commands/ingest.rs [pub] async fn run( profile_root: &Path, runtime_root: &Path, fixture_id: &str, expected_revision: Option<u64>, ) -> CommandResult |e5c89fe4ba186ded
+crates/cli/src/commands/ingest.rs [pub] const ALLOWLISTED_FIXTURE_IDS: &[&str] |54aebab7d06887c9
+crates/cli/src/commands/ingest.rs [pub] fn lines(value: &serde_json::Value) -> Vec<String> |ab42ba13cf830925
+crates/cli/src/commands/mod.rs [priv] use academic_core::operations::{FailureClass, OperationError} |017500d7a8cb64c5
+crates/cli/src/commands/mod.rs [priv] use crate::output::{CliFailure, ExitClass} |d5931aedfdce6dcd
+crates/cli/src/commands/mod.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/cli/src/commands/mod.rs [pub] fn classify(operation: &'static str, error: &OperationError) -> CliFailure |ec59ab83623cbad1
+crates/cli/src/commands/mod.rs [pub] fn display(path: &Path) -> String |21cbb30f192136c3
+crates/cli/src/commands/mod.rs [pub] fn native_path(path: &Path) -> Result<PathBuf, CliFailure> |55b944934069ef9c
+crates/cli/src/commands/mod.rs [pub] mod admission
+crates/cli/src/commands/mod.rs [pub] mod backup
+crates/cli/src/commands/mod.rs [pub] mod crash_replay
+crates/cli/src/commands/mod.rs [pub] mod daemon
+crates/cli/src/commands/mod.rs [pub] mod doctor
+crates/cli/src/commands/mod.rs [pub] mod export
+crates/cli/src/commands/mod.rs [pub] mod fixture
+crates/cli/src/commands/mod.rs [pub] mod ingest
+crates/cli/src/commands/mod.rs [pub] mod ownership
+crates/cli/src/commands/mod.rs [pub] mod restore
+crates/cli/src/commands/ownership.rs [priv] use academic_rpc::generated::ProfileLockState |611e7448420f4aa8
+crates/cli/src/commands/ownership.rs [priv] use crate::{ client::{DAEMON_UNREACHABLE, handshake_only, read_session_metadata}, commands::daemon::handshake_json, output::{CliFailure, ExitClass}, } |759f63069f7f9654
+crates/cli/src/commands/ownership.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/ownership.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/cli/src/commands/ownership.rs [pub] async fn consult_owning_daemon( runtime_root: &Path, profile_root: &Path, capability: &str, ) -> Result<serde_json::Value, CliFailure> |790cc5dec3cd4081
+crates/cli/src/commands/restore.rs [priv] use academic_core::operations::restore_synthetic_profile |b7db4d5fb4d17b20
+crates/cli/src/commands/restore.rs [priv] use crate::{ client::read_session_metadata, commands::{classify, display}, output::{CliFailure, CommandResult, ExitClass}, } |45cf7c1adda2c0e1
+crates/cli/src/commands/restore.rs [priv] use serde_json::json |8ffe47256113d60b
+crates/cli/src/commands/restore.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/cli/src/commands/restore.rs [pub] fn lines(value: &serde_json::Value) -> Vec<String> |a44dca06e1a6f941
+crates/cli/src/commands/restore.rs [pub] fn run(backup_root: &Path, new_profile: &Path, runtime_root: &Path) -> CommandResult |357d9300dd8eeb97
+crates/cli/src/main.rs [priv] #[cfg(test)] mod tests
+crates/cli/src/main.rs [priv] #[derive(Debug, Parser)] #[command( name = "academic", version, about = "Academic OS local-core CLI", long_about = "Operates local profiles and verifies the compiled admission contract. \ This build has no provisioned acceptance key, so production data remains denied." )] struct Cli |5075639091912dcc
+crates/cli/src/main.rs [priv] #[derive(Debug, Subcommand)] enum AdmissionCommand |816548fdd663de85
+crates/cli/src/main.rs [priv] #[derive(Debug, Subcommand)] enum Commands |10e3ef6d380dc052
+crates/cli/src/main.rs [priv] #[derive(Debug, Subcommand)] enum DaemonCommand |09f7fc60b2a074ad
+crates/cli/src/main.rs [priv] #[derive(Debug, Subcommand)] enum FixtureCommand |541b6e0759fd537e
+crates/cli/src/main.rs [priv] const fn describe(command: &Commands) -> (&'static str, OutputFormat) |f1067e10571f1c3d
+crates/cli/src/main.rs [priv] fn block_on<F, Fut>(future: F) -> CommandResult where F: FnOnce() -> Fut, Fut: std::future::Future<Output = CommandResult>, |75491734de30c93e
+crates/cli/src/main.rs [priv] fn command_profile(command: &Commands) -> Option<&std::path::Path> |97811feb1650e50a
+crates/cli/src/main.rs [priv] fn dispatch(command: Commands) -> (CommandResult, Renderer) |a39f1f6ec601d9c6
+crates/cli/src/main.rs [priv] fn exit_code(class: ExitClass) -> ExitCode |7fd9af1b70085160
+crates/cli/src/main.rs [priv] fn main() -> ExitCode |6c46f09f999a1865
+crates/cli/src/main.rs [priv] fn resolve_runtime(runtime: Option<PathBuf>) -> Result<PathBuf, CliFailure> |52d92e0a72d76800
+crates/cli/src/main.rs [priv] mod client
+crates/cli/src/main.rs [priv] mod commands
+crates/cli/src/main.rs [priv] mod output
+crates/cli/src/main.rs [priv] mod policy_banner
+crates/cli/src/main.rs [priv] mod tests :: #[test] fn crash_replay_requires_exactly_one_selection() |6ba9d24312bbbde8
+crates/cli/src/main.rs [priv] mod tests :: #[test] fn daemon_exposes_only_serve_and_status() -> Result<(), Box<dyn std::error::Error>> |25bfe814237fa4ef
+crates/cli/src/main.rs [priv] mod tests :: #[test] fn no_environment_or_flag_override_exists() -> Result<(), Box<dyn std::error::Error>> |d1016effda8864e6
+crates/cli/src/main.rs [priv] mod tests :: #[test] fn no_flag_on_any_command_can_admit_real_data() |5e9be8ab34d04ab1
+crates/cli/src/main.rs [priv] mod tests :: #[test] fn t010_fixture_emit_is_v2_only_and_rejects_version_selection() -> Result<(), Box<dyn std::error::Error>> |f18cf3040d796969
+crates/cli/src/main.rs [priv] mod tests :: #[test] fn the_command_surface_is_exactly_the_phase_one_contract() -> Result<(), Box<dyn std::error::Error>> |26d60eb09c1a62f0
+crates/cli/src/main.rs [priv] mod tests :: #[test] fn the_parser_offers_no_key_or_override_option() |21583c01d7a8333d
+crates/cli/src/main.rs [priv] mod tests :: const ADMISSION_AUTHORITY_TOKENS: [(&str, usize, bool); 10] |4704e6fb18b2fa8b
+crates/cli/src/main.rs [priv] mod tests :: const ADMISSION_FORBIDDEN_SEAMS: [&str; 12] |2579f4ded7a4c8ec
+crates/cli/src/main.rs [priv] mod tests :: const CARGO_TEST_TARGET_DIRECTORIES: [&str; 3] |6da330fe3d2190ae
+crates/cli/src/main.rs [priv] mod tests :: const FILE_SCOPE_ITEM_STARTS: [&str; 17] |405ffc1ba9025448
+crates/cli/src/main.rs [priv] mod tests :: const WHOLE_ACCEPTANCE_KEY: &str |11fbaedd43645c8c
+crates/cli/src/main.rs [priv] mod tests :: const WHOLE_KEY_CHECK: &str |a6c90e62aa378454
+crates/cli/src/main.rs [priv] mod tests :: const WHOLE_VERIFY: &str |fc1527d5fea0e54e
+crates/cli/src/main.rs [priv] mod tests :: fn declared_modules(text: &str) -> Vec<String> |182b7c28d4656039
+crates/cli/src/main.rs [priv] mod tests :: fn module_files(declaring: &std::path::Path, name: &str) -> [std::path::PathBuf; 2] |798a21759e1b8eb0
+crates/cli/src/main.rs [priv] mod tests :: fn path_attribute_targets(declaring: &std::path::Path, text: &str) -> Vec<std::path::PathBuf> |0ec0fe8e6bfb51b5
+crates/cli/src/main.rs [priv] mod tests :: fn product_sources( root: &std::path::Path, skip: &[&str], ) -> Result<Vec<(std::path::PathBuf, String)>, Box<dyn std::error::Error>> |08a731dfd0e0314f
+crates/cli/src/main.rs [priv] mod tests :: fn whole(source: &str, signature: &str, closer: &str) -> Option<String> |779c9a6a947e2a93
+crates/cli/src/main.rs [priv] mod tests :: use clap::CommandFactory |8fdf9fe0b5399408
+crates/cli/src/main.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/cli/src/main.rs [priv] type Renderer = fn(&serde_json::Value) -> Vec<String> |4d17d85a566a79aa
+crates/cli/src/main.rs [priv] use clap::{Parser, Subcommand} |bfa3a1ce67e93c7f
+crates/cli/src/main.rs [priv] use crate::{ client::default_runtime_root, output::{ CliFailure, CommandResult, ExitClass, OutputFormat, emit_failure, emit_success, write_banner, }, } |2725b79540877e2a
+crates/cli/src/main.rs [priv] use std::{path::PathBuf, process::ExitCode} |9c3fa2cb67bbeb69
+crates/cli/src/output.rs [priv] #[cfg(test)] mod tests
+crates/cli/src/output.rs [priv] #[derive(Debug, Serialize)] struct Envelope<'a> |69276bc41e8a9df1
+crates/cli/src/output.rs [priv] #[derive(Debug, Serialize)] struct ErrorBlock<'a> |455a9ea023f17636
+crates/cli/src/output.rs [priv] fn write_json(envelope: &Envelope<'_>) -> io::Result<()> |87b0c937a27a21e6
+crates/cli/src/output.rs [priv] impl CliFailure
+crates/cli/src/output.rs [priv] impl ExitClass
+crates/cli/src/output.rs [priv] impl std::error::Error for CliFailure
+crates/cli/src/output.rs [priv] impl std::fmt::Display for CliFailure
+crates/cli/src/output.rs [priv] impl std::fmt::Display for CliFailure :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |d4f2de062f013f23
+crates/cli/src/output.rs [priv] mod tests :: #[test] fn a_failure_envelope_always_carries_the_policy_object() -> Result<(), Box<dyn std::error::Error>> |569aecc718e41b9c
+crates/cli/src/output.rs [priv] mod tests :: #[test] fn every_failure_class_has_a_distinct_nonzero_code() |121545025dfe1b0b
+crates/cli/src/output.rs [priv] mod tests :: #[test] fn exit_codes_do_not_collide_with_the_clap_usage_code() |9520d000b4608227
+crates/cli/src/output.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/cli/src/output.rs [priv] use clap::ValueEnum |17f04cc30453ea2f
+crates/cli/src/output.rs [priv] use crate::policy_banner::DataPolicy |6ab8bd43d600e73f
+crates/cli/src/output.rs [priv] use serde::Serialize |64e275010a1227f2
+crates/cli/src/output.rs [priv] use std::io::{self, Write} |14fcd7da464ed6db
+crates/cli/src/output.rs [pub] #[derive(Debug)] struct CliFailure |3c7709b643ec09b9
+crates/cli/src/output.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExitClass |d3bf239cd0624171
+crates/cli/src/output.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)] #[value(rename_all = "lower")] enum OutputFormat |7964b8c42bc56389
+crates/cli/src/output.rs [pub] fn emit_failure( command: &str, format: OutputFormat, failure: &CliFailure, posture: &DataPolicy, ) -> io::Result<()> |051487d797ab5e6b
+crates/cli/src/output.rs [pub] fn emit_success( command: &str, format: OutputFormat, value: &serde_json::Value, human: &[String], posture: &DataPolicy, ) -> io::Result<()> |03ff7918c3a4efd9
+crates/cli/src/output.rs [pub] fn write_banner(format: OutputFormat, posture: &DataPolicy) -> io::Result<()> |1cbcaf271e5c801c
+crates/cli/src/output.rs [pub] impl CliFailure :: #[must_use] const fn class(&self) -> ExitClass |305b4458f02b11af
+crates/cli/src/output.rs [pub] impl CliFailure :: #[must_use] fn reason(&self) -> &str |232a3ee0930bd1b9
+crates/cli/src/output.rs [pub] impl CliFailure :: #[must_use] fn with_result(mut self, result: serde_json::Value) -> Self |5b5083ac11cc74ed
+crates/cli/src/output.rs [pub] impl CliFailure :: fn internal(reason: impl Into<String>, error: impl std::fmt::Display) -> Self |59392812a19b6ee2
+crates/cli/src/output.rs [pub] impl CliFailure :: fn new(class: ExitClass, reason: impl Into<String>, detail: impl Into<String>) -> Self |f078d8a3e4212eb6
+crates/cli/src/output.rs [pub] impl ExitClass :: #[must_use] const fn as_str(self) -> &'static str |97d5764466d364b3
+crates/cli/src/output.rs [pub] impl ExitClass :: #[must_use] const fn code(self) -> i32 |3a6d84eb11409218
+crates/cli/src/output.rs [pub] type CommandResult = Result<serde_json::Value, CliFailure> |c1d08f1c1e02e4a6
+crates/cli/src/policy_banner.rs [priv] #[cfg(test)] mod tests
+crates/cli/src/policy_banner.rs [priv] mod tests :: #[test] fn policy_matches_the_frozen_protocol_contract() |88ec1f187665ba64
+crates/cli/src/policy_banner.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/cli/src/policy_banner.rs [priv] use std::path::Path |1465cbc1c85d9e5e
+crates/cli/src/policy_banner.rs [pub] #[cfg(test)] #[must_use] const fn data_policy() -> DataPolicy |7cb1efdb7cde8e8c
+crates/cli/src/policy_banner.rs [pub] #[must_use] fn posture_for_profile(profile_root: Option<&Path>) -> DataPolicy |3b483fc7c662c0cc
+crates/cli/src/policy_banner.rs [pub] use academic_admission::Posture as DataPolicy |f1036ae9e7ac951b

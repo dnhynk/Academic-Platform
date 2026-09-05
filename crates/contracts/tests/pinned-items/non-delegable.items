@@ -9,10 +9,10 @@ crates/non-delegable/src/action.rs [pub] #[derive(Debug, Clone, Copy, PartialEq,
 crates/non-delegable/src/action.rs [pub] impl Action :: #[must_use] const fn delegability(self) -> Delegability |e4b85a88d08b2f96
 crates/non-delegable/src/action.rs [pub] impl Action :: #[must_use] const fn non_delegable(self) -> Option<NonDelegableAction> |0eb38f1d17fd7c85
 crates/non-delegable/src/action.rs [pub] impl Action :: #[must_use] fn all() -> Vec<Self> |a849f7dbec2a4052
-crates/non-delegable/src/action.rs [pub] impl CandidateGeneration :: #[must_use] const fn spec_row(self) -> &'static str |20db59bdb8039b4a
+crates/non-delegable/src/action.rs [pub] impl CandidateGeneration :: #[must_use] const fn spec_row(self) -> &'static str |70e883170b449f6c
 crates/non-delegable/src/action.rs [pub] impl CandidateGeneration :: const ALL: [Self; 10] |b8804bf9d4ff73e8
-crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] const fn as_str(self) -> &'static str |fea7156cbae23ca8
-crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] const fn declared_phrase(self) -> &'static str |abd73a91cadd7b58
+crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] const fn as_str(self) -> &'static str |a54d6856cbb1407d
+crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] const fn declared_phrase(self) -> &'static str |a3b8e70a5ee9ef9b
 crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] const fn declared_tier(self) -> Option<RiskTier> |8e984b81abe61b31
 crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] fn parse(value: &str) -> Option<Self> |bb9b98e20b28a98d
 crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: const ALL: [Self; 6] |669f87b4abb2dacd
@@ -47,7 +47,7 @@ crates/non-delegable/src/decision.rs [pub] impl DecisionEvent :: fn recorded( ac
 crates/non-delegable/src/error.rs [priv] impl core::fmt::Display for NonDelegableAction
 crates/non-delegable/src/error.rs [priv] impl core::fmt::Display for NonDelegableAction :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |25a42a36f35d706a
 crates/non-delegable/src/error.rs [priv] use crate::action::NonDelegableAction |ca4aa116a5089268
-crates/non-delegable/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum NonDelegableError |db4cce034e28cf13
+crates/non-delegable/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum NonDelegableError |092e896a3eb16242
 crates/non-delegable/src/lib.rs [priv] #![doc(test(attr(deny(warnings))))] |6fb5840d02903e77
 crates/non-delegable/src/lib.rs [pub] mod action
 crates/non-delegable/src/lib.rs [pub] mod command

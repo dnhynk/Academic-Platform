@@ -1,0 +1,287 @@
+crates/core/src/lib.rs [priv] #[cfg(test)] mod tests
+crates/core/src/lib.rs [priv] #[derive(Debug)] struct RequiredNullableJsonSafeTimestamp(Option<TimestampMillis>) |6a06679e634a7c44
+crates/core/src/lib.rs [priv] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ReplayDigestMaterial<'a> |4072f12d4c92b59b
+crates/core/src/lib.rs [priv] #[derive(Debug, Deserialize)] #[serde(deny_unknown_fields)] struct PredictionClaimDisclosureWire |dea117d177996f0c
+crates/core/src/lib.rs [priv] #[derive(Debug, Deserialize)] #[serde(deny_unknown_fields)] struct PredictionMetadataWire |ffa6556315aff3ed
+crates/core/src/lib.rs [priv] #[derive(Debug, Deserialize)] #[serde(deny_unknown_fields)] struct PredictionObservationWindowWire |837cf87eeeae6416
+crates/core/src/lib.rs [priv] #[derive(Debug, Deserialize)] #[serde(deny_unknown_fields)] struct PredictionValidIntervalWire |7baa5d9b719526aa
+crates/core/src/lib.rs [priv] const ARTIFACT_ID: &str |e63cbbe736fa9475
+crates/core/src/lib.rs [priv] const ATTEMPT_ID: &str |5b73a9612df456f5
+crates/core/src/lib.rs [priv] const AUDIT_ID: &str |b34e900261cc7bbd
+crates/core/src/lib.rs [priv] const BATCH_ID: &str |0bfd2f01901313c9
+crates/core/src/lib.rs [priv] const CAPTURE_PERMISSION_ID: &str |14a30de983a5ccd5
+crates/core/src/lib.rs [priv] const CLAIM_AI_FLUENT: &str |91833ae2d784eb47
+crates/core/src/lib.rs [priv] const CLAIM_AI_UNDERSTOOD: &str |bcdbee46e95ba976
+crates/core/src/lib.rs [priv] const CLAIM_COURSE_OFFERING_PREDICTION: &str |9f4118609e2f9611
+crates/core/src/lib.rs [priv] const CLAIM_DEADLINE_NEW: &str |98bcae92405f7eb6
+crates/core/src/lib.rs [priv] const CLAIM_DEADLINE_OLD: &str |426dfe896814f2ac
+crates/core/src/lib.rs [priv] const CLAIM_FRESH_HIGH: &str |aeb3dc1686586691
+crates/core/src/lib.rs [priv] const CLAIM_FRESH_STALE: &str |e41e57bf1209b071
+crates/core/src/lib.rs [priv] const CLAIM_USER_PRACTICED: &str |3ebd0f0932a7b85c
+crates/core/src/lib.rs [priv] const CONCEPT_ID: &str |0626df4f774be8c1
+crates/core/src/lib.rs [priv] const CONSENT_ID: &str |38444b35e515fa32
+crates/core/src/lib.rs [priv] const COURSE_REVISION_ID: &str |66e2fbabc2291831
+crates/core/src/lib.rs [priv] const CURRICULUM_VERSION_ID: &str |78a4b1f5aff1bee3
+crates/core/src/lib.rs [priv] const DEADLINE_SUBJECT_ID: &str |4eb2ae7698f51141
+crates/core/src/lib.rs [priv] const DEVICE_ID: &str |23cef20fa1de54bf
+crates/core/src/lib.rs [priv] const DOMAIN_ID: &str |0577defd09feaab5
+crates/core/src/lib.rs [priv] const EGRESS_DECISION_ID: &str |4398ff19647b5293
+crates/core/src/lib.rs [priv] const ENTITY_IDENTITY_CHANGE_ID: &str |348790babcbf8e32
+crates/core/src/lib.rs [priv] const EVIDENCE_ID: &str |68ae1a953a43bd49
+crates/core/src/lib.rs [priv] const FINDING_ID: &str |ac04300fcf5aade1
+crates/core/src/lib.rs [priv] const FIXTURE_SIGNING_SEED: [u8; 32] |a82a468b28862cf1
+crates/core/src/lib.rs [priv] const IMMUTABLE_V1_FIXTURE_JSON: &str |3e6a0aa81d6deab2
+crates/core/src/lib.rs [priv] const IMMUTABLE_V2_FIXTURE_JSON: &str |d963a4143df927ae
+crates/core/src/lib.rs [priv] const JSON_SAFE_INTEGER_MAX: u64 |117cfb400b3a3a3a
+crates/core/src/lib.rs [priv] const LECTURE_DOCUMENT_ID: &str |1e8546c817e8fcc6
+crates/core/src/lib.rs [priv] const LECTURE_SESSION_ID: &str |2cea12a1c1c48139
+crates/core/src/lib.rs [priv] const MODEL_RUN_AGGREGATE_ID: &str |c7e1e12186786e8e
+crates/core/src/lib.rs [priv] const MODEL_RUN_ID: &str |5e75b9be586726fb
+crates/core/src/lib.rs [priv] const OFFERING_ID: &str |157ee47cb26d8243
+crates/core/src/lib.rs [priv] const PERMISSION_ID: &str |4ed18677ab181f89
+crates/core/src/lib.rs [priv] const PREDICTION_SUBJECT_ID: &str |616420bd811df0b5
+crates/core/src/lib.rs [priv] const PROPOSAL_ID: &str |42c5ae1bd9f37726
+crates/core/src/lib.rs [priv] const REPOSITORY_ID: &str |dcb0797798293834
+crates/core/src/lib.rs [priv] const REQUIREMENT_SET_ID: &str |4c9a3aafe8796503
+crates/core/src/lib.rs [priv] const RETENTION_ACTION_ID: &str |352afeaf718de1c1
+crates/core/src/lib.rs [priv] const SCOPE_ID: &str |49cd7f8ebff12fd3
+crates/core/src/lib.rs [priv] const SNAPSHOT_ID: &str |10542e94a6848b05
+crates/core/src/lib.rs [priv] const TRANSCRIPT_VERSION_ID: &str |8fbe3551b248b814
+crates/core/src/lib.rs [priv] const USER_ID: &str |80f25a450fcddb05
+crates/core/src/lib.rs [priv] fn assert_fixture_integer_lexemes(input: &str) -> Result<(), CoreError> |9c83be2c55e4ee88
+crates/core/src/lib.rs [priv] fn bounded_decimal_magnitude(digits: &[u8], limit: usize) -> usize |26e7050db634b51a
+crates/core/src/lib.rs [priv] fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> |455cd7173cfb3132
+crates/core/src/lib.rs [priv] fn claim( id: &str, subject: &str, predicate: &str, object: ClaimObject, provenance: (AuthorityClass, EpistemicStatus, Option<u16>), prediction_metadata: Option<PredictionMetadata>, valid_time: ValidInterval, ) -> Result<Claim, DomainError> |4b05bbc5fabe7d8e
+crates/core/src/lib.rs [priv] fn deserialize_json_safe_timestamp<'de, D>(deserializer: D) -> Result<TimestampMillis, D::Error> where D: Deserializer<'de>, |8c9880bd85fdad36
+crates/core/src/lib.rs [priv] fn deserialize_json_safe_u16<'de, D>(deserializer: D) -> Result<u16, D::Error> where D: Deserializer<'de>, |8fb83d7294053052
+crates/core/src/lib.rs [priv] fn deserialize_json_safe_u32<'de, D>(deserializer: D) -> Result<u32, D::Error> where D: Deserializer<'de>, |d43a26d3e2da467a
+crates/core/src/lib.rs [priv] fn deserialize_json_safe_u64<'de, D>(deserializer: D) -> Result<u64, D::Error> where D: Deserializer<'de>, |f67cea402176866c
+crates/core/src/lib.rs [priv] fn deserialize_present_prediction_claims<'de, D>( deserializer: D, ) -> Result<Option<Vec<PredictionClaimDisclosure>>, D::Error> where D: Deserializer<'de>, |30a0ff59062fee7f
+crates/core/src/lib.rs [priv] fn ensure_fixture_trust_anchor( document: &FixtureDocument, authorization: &DeviceAuthorization, ) -> Result<(), CoreError> |0002889482468683
+crates/core/src/lib.rs [priv] fn fixture_device_authorization() -> Result<DeviceAuthorization, DomainError> |3e8758bfdb147497
+crates/core/src/lib.rs [priv] fn fixture_event( sequence: u64, actor: Actor, payload: EventPayload, ) -> Result<academic_domain::Event, DomainError> |c94db0bb80b5cc0b
+crates/core/src/lib.rs [priv] fn fixture_signing_key() -> SigningKey |0551d8036c721b9c
+crates/core/src/lib.rs [priv] fn is_lower_hex(value: &str, exact_len: Option<usize>) -> bool |898e8533cf3ae8d5
+crates/core/src/lib.rs [priv] fn is_nonnegative_mathematical_integer_token(token: &str) -> bool |bd5fa4df8bedbaf3
+crates/core/src/lib.rs [priv] fn json_number_token_end(bytes: &[u8], start: usize) -> Option<usize> |5f612766ad8291e7
+crates/core/src/lib.rs [priv] fn json_safe_u64_from_f64<E>(value: f64) -> Result<u64, E> where E: de::Error, |09a331b9537f8d88
+crates/core/src/lib.rs [priv] fn json_safe_u64_from_i64<E>(value: i64) -> Result<u64, E> where E: de::Error, |40159e50c167abc8
+crates/core/src/lib.rs [priv] fn json_safe_u64_from_u64<E>(value: u64) -> Result<u64, E> where E: de::Error, |0d64b1458e75f083
+crates/core/src/lib.rs [priv] fn parse_id<T>(value: &str) -> Result<T, DomainError> where T: FromStr<Err = DomainError>, |f22d49d10ed63a6a
+crates/core/src/lib.rs [priv] fn summarize_replay( core: &Core, verified: &VerifiedBatch, valid_at: TimestampMillis, known_at_accept_seq: u64, ) -> Result<ReplaySummary, CoreError> |e7982e65b0d9aa1c
+crates/core/src/lib.rs [priv] impl Core
+crates/core/src/lib.rs [priv] impl FixtureDocument
+crates/core/src/lib.rs [priv] impl<'de> Deserialize<'de> for PredictionClaimDisclosure
+crates/core/src/lib.rs [priv] impl<'de> Deserialize<'de> for PredictionClaimDisclosure :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |fdff3fbfc88189f8
+crates/core/src/lib.rs [priv] impl<'de> Deserialize<'de> for RequiredNullableJsonSafeTimestamp
+crates/core/src/lib.rs [priv] impl<'de> Deserialize<'de> for RequiredNullableJsonSafeTimestamp :: fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de>, |8f27c79eb9ba652a
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn adr_003_has_at_least_twelve_bitemporal_examples() -> Result<(), Box<dyn std::error::Error>> |2a6b2a58ef14ca09
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn artifact_locator_is_keyed_and_not_plain_digest() -> Result<(), Box<dyn std::error::Error>> |7ed82ad89fade650
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn committed_fixture_relation_event_round_trips_protobuf_losslessly() -> Result<(), Box<dyn std::error::Error>> |86db1eb07553ff98
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn equal_rank_disagreement_is_reported_as_conflict_without_a_false_winner() -> Result<(), Box<dyn std::error::Error>> |1802f0ca11c3d92a
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn fixture_replay_rejects_wrapper_supplied_trust_anchor() -> Result<(), Box<dyn std::error::Error>> |fadf7f81da4ffecc
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn normalized_repository_locator_rejects_parent_escape() |d03f6c2f08d6ca43
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn rust_fixture_wrapper_matches_schema_minimum_unique_and_exact_property_rules() -> Result<(), Box<dyn std::error::Error>> |00c382b19018629f
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn shared_prediction_metadata_corpus_matches_rust_wrapper_semantics() -> Result<(), Box<dyn std::error::Error>> |707a9d14bf518ea2
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn shared_raw_and_integer_fixture_corpora_match_rust_typed_deserialization() -> Result<(), Box<dyn std::error::Error>> |8fd08a6d6ef51a56
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn signed_fixture_round_trips_and_replays() -> Result<(), Box<dyn std::error::Error>> |f3df841c36f16ecd
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn strict_utf8_byte_corpus_rejects_before_json_deserialization() -> Result<(), Box<dyn std::error::Error>> |736998686af99400
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn t010_v1_fixture_verification_is_constrained_to_the_exact_frozen_golden() -> Result<(), Box<dyn std::error::Error>> |bdfd549f1ec1df0e
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn t093_v3_fixture_matches_the_deterministic_builder() -> Result<(), Box<dyn std::error::Error>> |954f2b09ac834e59
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn v1_and_v2_bytes_remain_byte_identical() -> Result<(), Box<dyn std::error::Error>> |3af5521db036670c
+crates/core/src/lib.rs [priv] mod tests :: use academic_contracts::{ decode_claim_relation_event_proto, encode_claim_relation_event_proto, } |758c431d14803734
+crates/core/src/lib.rs [priv] mod tests :: use academic_domain::LogicalPath |75b6ee61f4eb43fd
+crates/core/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/core/src/lib.rs [priv] use academic_contracts::{ ContractError, DeviceAuthorization, VerifiedBatch, sign_batch, verify_signed_batch, } |8d70961a3bd74e34
+crates/core/src/lib.rs [priv] use academic_domain::{ Actor, ArtifactDescriptor, ArtifactRepresentation, AttemptRegistration, AuditRegistration, AuthorityClass, BatchId, CapturePermissionRegistration, Claim, ClaimId, ClaimObject, ClaimRelation, ClaimRelationKind, ConfidencePermille, Confidentiality, ConsentRegistration, ContentDigest, CourseRevisionRegistration, CurriculumVersionRegistration, DecisionAction, DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2, EVENT_SCHEMA_VERSION_V3, EgressDecisionRegistration, EntityIdentityChangeRegistration, EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, FindingRegistration, FreshnessBand, LectureDocumentRegistration, LectureSessionRegistration, MasteryLevel, MediaType, ModelRunRegistration, OfferingRegistration, PREDICTION_METADATA_VERSION_V1, PredicateId, PredictionMetadata, PredictionObservationWindow, ProposalDispositionRegistration, RequirementSetRegistration, ResolutionSlot, RetentionActionRegistration, RetentionClass, ScopeDescriptor, ScopeId, SnapshotRegistration, TimestampMillis, TranscriptVersionRegistration, UserDecision, ValidInterval, VaultLocator, } |6198c209aac6e00a
+crates/core/src/lib.rs [priv] use academic_ledger::{ AcceptanceReceipt, AuthorityPolicy, EVENT_SCHEMA_VERSION, LedgerError, LedgerState, ResolutionQuery, UnsignedBatch, event, } |59812905c81093ab
+crates/core/src/lib.rs [priv] use ed25519_dalek::SigningKey |70ab5f7e036912da
+crates/core/src/lib.rs [priv] use serde::{Deserialize, Deserializer, Serialize, de} |dc61b32e439c93bb
+crates/core/src/lib.rs [priv] use std::{collections::BTreeSet, fmt, str::FromStr} |0f062c45ae73a382
+crates/core/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/core/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TimeTravelCase |122aca990fdfd1ec
+crates/core/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(deny_unknown_fields)] struct PredictionClaimDisclosure |798089ba5036590a
+crates/core/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct FixtureContract |15e8ab06799289d3
+crates/core/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct FixtureDocument |353b9a66e5a35972
+crates/core/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ReplaySummary |471bbf54d501760a
+crates/core/src/lib.rs [pub] #[derive(Debug, Default)] struct Core |f5f969c39b31a33e
+crates/core/src/lib.rs [pub] #[derive(Debug, Error)] enum CoreError |b929aab3b09a6b6b
+crates/core/src/lib.rs [pub] const FINAL_VALID_AT: TimestampMillis |2dfc8759f30ac2aa
+crates/core/src/lib.rs [pub] const FIXTURE_VERSION: u16 |9bece099b3db2e1b
+crates/core/src/lib.rs [pub] const FIXTURE_VERSION_V1: u16 |87c426bd568660e8
+crates/core/src/lib.rs [pub] const FIXTURE_VERSION_V2: u16 |de20037498469bea
+crates/core/src/lib.rs [pub] const FIXTURE_VERSION_V3: u16 |e65136ba8db24720
+crates/core/src/lib.rs [pub] const SYNTHETIC_ARTIFACT_BYTES: &[u8] |6f01ad2c87b19169
+crates/core/src/lib.rs [pub] fn build_fixture_document() -> Result<FixtureDocument, CoreError> |1231fdfa8b3d8965
+crates/core/src/lib.rs [pub] fn fixture_json(document: &FixtureDocument) -> Result<String, CoreError> |f0875b0fbc0b0b7b
+crates/core/src/lib.rs [pub] fn immutable_v2_fixture_document() -> Result<FixtureDocument, CoreError> |d1b6cff6ad9bfe94
+crates/core/src/lib.rs [pub] fn parse_fixture_document_json(input: &[u8]) -> Result<FixtureDocument, CoreError> |a5b61b0c3b8177f6
+crates/core/src/lib.rs [pub] fn replay_fixture_document( document: &FixtureDocument, valid_at: TimestampMillis, known_at_accept_seq: u64, ) -> Result<ReplaySummary, CoreError> |63765b177a78a388
+crates/core/src/lib.rs [pub] fn time_travel_cases() -> Result<Vec<TimeTravelCase>, DomainError> |0bc0ffe44bf52cf6
+crates/core/src/lib.rs [pub] fn verify_fixture_document(document: &FixtureDocument) -> Result<ReplaySummary, CoreError> |b9a62baac59a6991
+crates/core/src/lib.rs [pub] impl Core :: #[must_use] const fn ledger(&self) -> &LedgerState |5fcd492350fe4bb1
+crates/core/src/lib.rs [pub] impl Core :: #[must_use] fn new() -> Self |93a41b8182043330
+crates/core/src/lib.rs [pub] impl Core :: fn accept_signed_batch( &mut self, envelope_bytes: &[u8], authorization: &DeviceAuthorization, ) -> Result<(VerifiedBatch, AcceptanceReceipt), CoreError> |06be266fc8e3e0f6
+crates/core/src/lib.rs [pub] impl FixtureDocument :: fn validate_contract(&self) -> Result<(), CoreError> |f3e8893c3434e7be
+crates/core/src/lib.rs [pub] mod local_service
+crates/core/src/lib.rs [pub] mod operations
+crates/core/src/lib.rs [pub] mod service
+crates/core/src/local_service.rs [priv] #[derive(Debug)] struct FixtureContext |6f18aa9d8217b94a
+crates/core/src/local_service.rs [priv] const REQUEST_DIGEST_DOMAIN: &[u8] |40d263b9d74a646d
+crates/core/src/local_service.rs [priv] const RESPONSE_DIGEST_DOMAIN: &[u8] |bd5c87f3414aa2de
+crates/core/src/local_service.rs [priv] fn accepted_response( request: &MutableRequest, validated: &ValidatedMutableRequest, outcome: &AcceptanceOutcome, ) -> Result<MutableResponse, LocalServiceError> |c32c8e6f7d8d8f38
+crates/core/src/local_service.rs [priv] fn append_bytes(target: &mut Vec<u8>, value: &[u8]) |409165b485783c89
+crates/core/src/local_service.rs [priv] fn append_optional_u64(bytes: &mut Vec<u8>, value: Option<u64>) |8e70f94d2ded06fa
+crates/core/src/local_service.rs [priv] fn append_range( bytes: &mut Vec<u8>, range: Option<academic_rpc::convert::ValidatedAcceptanceRange>, ) |619ac61dab2a0e65
+crates/core/src/local_service.rs [priv] fn mutable_response_digest(response: &MutableResponse) -> Result<ContentDigest, RpcError> |280a9237c86ed199
+crates/core/src/local_service.rs [priv] fn timestamp_now() -> Result<TimestampMillis, LocalServiceError> |c938df14b0769d54
+crates/core/src/local_service.rs [priv] impl FixtureContext
+crates/core/src/local_service.rs [priv] impl FixtureContext :: fn load() -> Result<Self, LocalServiceError> |ce304957827aeebe
+crates/core/src/local_service.rs [priv] impl From<academic_store::error::StoreError> for LocalServiceError
+crates/core/src/local_service.rs [priv] impl From<academic_store::error::StoreError> for LocalServiceError :: fn from(error: academic_store::error::StoreError) -> Self |0ad1dba7684c6479
+crates/core/src/local_service.rs [priv] impl LocalService
+crates/core/src/local_service.rs [priv] impl LocalService :: fn handle_mutable_request_with<F>( &mut self, request: &MutableRequest, accepted_at: TimestampMillis, faults: &F, ) -> Result<MutableResponse, LocalServiceError> where F: AcceptanceFaultInjector, |4ca0bd88a077c49a
+crates/core/src/local_service.rs [priv] impl LocalService :: fn reject( &self, request: &MutableRequest, reason: &'static str, revision: Option<u64>, ) -> Result<MutableResponse, LocalServiceError> |ffeef3d091fada87
+crates/core/src/local_service.rs [priv] impl LocalService :: fn seal_fixture_artifacts(&self) -> Result<(), LocalServiceError> |ab8daa947b4ff5e8
+crates/core/src/local_service.rs [priv] impl LocalServiceStartup
+crates/core/src/local_service.rs [priv] use academic_contracts::{DeviceAuthorization, VerifiedBatch, verify_signed_batch} |4d09b2d7876b3baa
+crates/core/src/local_service.rs [priv] use academic_domain::{ArtifactDescriptor, ContentDigest, EventPayload, TimestampMillis} |3051260b683a6039
+crates/core/src/local_service.rs [priv] use academic_rpc::{ RpcError, convert::{ValidatedMutableRequest, ValidatedWriteCommand, validate_mutable_request}, generated::{ AcceptanceRange, ImmutableReceipt, MutableRequest, MutableResponse, MutationStatus, }, } |a6774cc138887524
+crates/core/src/local_service.rs [priv] use academic_store::{ accept::{AcceptError, AcceptanceOutcome}, fault::{AcceptanceFaultInjector, NoFault}, idempotency::{AcceptanceCommand, IdempotencyError}, profile::SyntheticProfile, queries::{QueryError, batch_material, canonical_snapshot}, } |f73f4d27720f9155
+crates/core/src/local_service.rs [priv] use academic_vault::{ ArtifactIngestRequest, DomainKeyring, ReconcileOptions, ReconcileReport, ReconcileState, VaultError, } |1b60e384598d64be
+crates/core/src/local_service.rs [priv] use crate::{ CoreError, FixtureDocument, SYNTHETIC_ARTIFACT_BYTES, fixture_device_authorization, immutable_v2_fixture_document, service::{AcceptanceService, ServiceError}, verify_fixture_document, } |200f3d71f0481083
+crates/core/src/local_service.rs [priv] use std::{ collections::BTreeSet, io::Cursor, time::{SystemTime, UNIX_EPOCH}, } |724d1fa1aaac9576
+crates/core/src/local_service.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/core/src/local_service.rs [pub(crate)] const FIXTURE_LOCATOR_KEY: &[u8] |3ed33ba2c9b40720
+crates/core/src/local_service.rs [pub] #[derive(Debug)] struct LocalService |065471fbc61bb396
+crates/core/src/local_service.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LocalServiceStartup |0baf3aed5a9bfb39
+crates/core/src/local_service.rs [pub] #[derive(Debug, Error)] enum LocalServiceError |080b96b1088fe3ad
+crates/core/src/local_service.rs [pub] const PHASE1_SYNTHETIC_FIXTURE_ID: &str |a3c74eff44996589
+crates/core/src/local_service.rs [pub] fn mutable_request_digest(request: &MutableRequest) -> Result<ContentDigest, RpcError> |799e8c12bfac168b
+crates/core/src/local_service.rs [pub] fn rejection_response( request: &MutableRequest, reason: &str, profile_revision: u64, ) -> Result<MutableResponse, LocalServiceError> |584788fcc94a8572
+crates/core/src/local_service.rs [pub] impl LocalService :: #[cfg(feature = "phase1-fault-injection")] fn handle_mutable_request_now_with_faults<F>( &mut self, request: &MutableRequest, faults: &F, ) -> Result<MutableResponse, LocalServiceError> where F: AcceptanceFaultInjector, |ddbceb637c4f3322
+crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_mutable_request( &mut self, request: &MutableRequest, accepted_at: TimestampMillis, ) -> Result<MutableResponse, LocalServiceError> |44f961767ebd8930
+crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_mutable_request_now( &mut self, request: &MutableRequest, ) -> Result<MutableResponse, LocalServiceError> |4078cf3c5f684c4c
+crates/core/src/local_service.rs [pub] impl LocalService :: fn open( profile: SyntheticProfile, now: SystemTime, ) -> Result<(Self, LocalServiceStartup), LocalServiceError> |dffc50e15a508757
+crates/core/src/local_service.rs [pub] impl LocalService :: fn open_reader( &self, ) -> Result<academic_store::connection::ReaderConnection, LocalServiceError> |f477222da6dbf66c
+crates/core/src/local_service.rs [pub] impl LocalServiceStartup :: #[must_use] const fn profile_revision(&self) -> u64 |80f9a1d15f3b3934
+crates/core/src/local_service.rs [pub] impl LocalServiceStartup :: #[must_use] const fn reconciliation(&self) -> &ReconcileReport |8da8e3034fd999b9
+crates/core/src/operations.rs [priv] #[cfg(test)] mod tests
+crates/core/src/operations.rs [priv] #[derive(Debug, Clone)] struct FixtureMaterial |3dea008d3a98f628
+crates/core/src/operations.rs [priv] const CLI_CLIENT_INSTANCE_DOMAIN: &[u8] |987e517fba94e0d6
+crates/core/src/operations.rs [priv] const CLI_INGEST_IDEMPOTENCY_DOMAIN: &[u8] |5c69765a6148bd63
+crates/core/src/operations.rs [priv] const CLI_INGEST_REQUEST_DOMAIN: &[u8] |b8e3dd494e97c87b
+crates/core/src/operations.rs [priv] const PHASE1_PREDICATE_POLICIES: &[(&str, AuthorityPolicy)] |6d58f8753d355a0d
+crates/core/src/operations.rs [priv] const VAULT_QUARANTINE_EXTENSION: &str |8488af55def5b938
+crates/core/src/operations.rs [priv] const VAULT_TEMP_EXTENSION: &str |c98897733676dacc
+crates/core/src/operations.rs [priv] fn classify_portability(error: &PortabilityError) -> FailureClass |3f841583f59cf5bc
+crates/core/src/operations.rs [priv] fn classify_store(error: &StoreError) -> FailureClass |54b00a30190d1ad9
+crates/core/src/operations.rs [priv] fn fixture_domains(material: &FixtureMaterial) -> Vec<DomainId> |4834f86e10c62d4a
+crates/core/src/operations.rs [priv] fn fixture_keyring(material: &FixtureMaterial) -> Result<DomainKeyring, OperationError> |94af36d52336fd22
+crates/core/src/operations.rs [priv] fn fixture_material() -> Result<FixtureMaterial, OperationError> |19ae264085b10162
+crates/core/src/operations.rs [priv] fn io_error(operation: &'static str, path: &Path, source: std::io::Error) -> OperationError |ef06615a9a654f39
+crates/core/src/operations.rs [priv] fn vault_entry_names(directory: &Path, extension: &str) -> Result<Vec<String>, OperationError> |c171ca6801854778
+crates/core/src/operations.rs [priv] impl OperationError
+crates/core/src/operations.rs [priv] impl ProfileDiagnosis
+crates/core/src/operations.rs [priv] mod tests :: #[test] fn a_repeated_ingest_request_is_byte_identical() -> Result<(), Box<dyn std::error::Error>> |2d1383456234c65e
+crates/core/src/operations.rs [priv] mod tests :: #[test] fn capability_constants_are_declared_by_the_frozen_protocol() |bac4caf4140cdf85
+crates/core/src/operations.rs [priv] mod tests :: #[test] fn frozen_policy_table_covers_exactly_the_fixture_predicates() -> Result<(), Box<dyn std::error::Error>> |e7f63fc200d9e5a7
+crates/core/src/operations.rs [priv] mod tests :: #[test] fn projection_identity_is_stable_across_calls() -> Result<(), Box<dyn std::error::Error>> |73f1e20e572cce4c
+crates/core/src/operations.rs [priv] mod tests :: #[test] fn projection_targets_cover_every_kind_in_every_fixture_domain() -> Result<(), Box<dyn std::error::Error>> |8cb66d0f21daef67
+crates/core/src/operations.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/core/src/operations.rs [priv] use academic_contracts::{DeviceAuthorization, verify_signed_batch} |f62b4cec2b7fda78
+crates/core/src/operations.rs [priv] use academic_domain::{ ArtifactDescriptor, ContentDigest, DomainId, EventPayload, PredicateId, TimestampMillis, } |c3d4653a1f25f630
+crates/core/src/operations.rs [priv] use academic_portability::{ PortabilityError, backup::{BackupReceipt, backup_profile}, export::{ExportReceipt, export_profile}, restore::{ PROJECTION_SIDECAR_FILE, ProjectionRebuildTarget, RestorePlan, RestoreReceipt, restore_profile, }, verify::{CanonicalDatabase, read_canonical_rows}, } |58fb161991e4c7ec
+crates/core/src/operations.rs [priv] use academic_projections::{ generation::{ProjectionCoordinates, ProjectionKind}, resolution::{AuthorityPolicy, PredicatePolicies}, runner::ProjectionRunner, } |c3dc12d54dec1f13
+crates/core/src/operations.rs [priv] use academic_rpc::generated::{MutableRequest, SyntheticIngestCommand, mutable_request} |945188e3725f5f7a
+crates/core/src/operations.rs [priv] use academic_store::{ SYNTHETIC_PROFILE_MARKER, connection::open_reader, error::StoreError, path_policy::{NativePathProbe, PathPolicyViolation}, queries::{QueryError, canonical_snapshot}, } |86334860a25d7f94
+crates/core/src/operations.rs [priv] use academic_vault::{DomainKeyring, Vault} |1871b6e6ef91f166
+crates/core/src/operations.rs [priv] use crate::{ CoreError, fixture_device_authorization, immutable_v2_fixture_document, local_service::{FIXTURE_LOCATOR_KEY, PHASE1_SYNTHETIC_FIXTURE_ID}, } |bb8d29d728d359b1
+crates/core/src/operations.rs [priv] use serde::Serialize |64e275010a1227f2
+crates/core/src/operations.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, fs, path::{Path, PathBuf}, } |4fe2631b8df4cc0e
+crates/core/src/operations.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum FailureClass |29e7a167fe7d14c6
+crates/core/src/operations.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ProfileDisposition |ccf2bfb5f3f4acc2
+crates/core/src/operations.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Severity |f8d6a72130d2b26e
+crates/core/src/operations.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct CanonicalState |3260d571a48bf04a
+crates/core/src/operations.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Finding |ec06abf132007572
+crates/core/src/operations.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ProfileDiagnosis |86ea973d9e67cc94
+crates/core/src/operations.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ProjectionWatermark |d28a08d5a187fd21
+crates/core/src/operations.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct StoreIdentity |92f1016640be91b5
+crates/core/src/operations.rs [pub] #[derive(Debug, thiserror::Error)] enum OperationError |4b348ebb43550063
+crates/core/src/operations.rs [pub] #[must_use] fn creating_build_digest() -> [u8; 32] |a638e7c0f8e4e34a
+crates/core/src/operations.rs [pub] #[must_use] fn projection_builder_digest() -> ContentDigest |0e3cf3cd518580bf
+crates/core/src/operations.rs [pub] #[must_use] fn projection_config_hash() -> ContentDigest |2d3b2e1b0c33d094
+crates/core/src/operations.rs [pub] const BACKUP_FORMAT: &str |071ff21717c2c380
+crates/core/src/operations.rs [pub] const BACKUP_PLAINTEXT_WARNING: &str |b191a751a54c5558
+crates/core/src/operations.rs [pub] const DIAGNOSTICS_CAPABILITY: &str |987b867b3febbd1f
+crates/core/src/operations.rs [pub] const EXPORT_FORMAT: &str |f64c842b38513eb8
+crates/core/src/operations.rs [pub] const PHASE1_POLICY_REGISTRY_VERSION: &str |20d215a0430dc669
+crates/core/src/operations.rs [pub] const PHASE1_PROJECTION_KINDS: &[ProjectionKind] |f1a3185e7da56eff
+crates/core/src/operations.rs [pub] const PHASE1_PROJECTION_VALID_AT: TimestampMillis |fdd063d8d5f186f8
+crates/core/src/operations.rs [pub] const SYNTHETIC_EXPORT_CAPABILITY: &str |c58152812d8406fa
+crates/core/src/operations.rs [pub] const SYNTHETIC_INGEST_CAPABILITY: &str |019cf2cd47f1a78e
+crates/core/src/operations.rs [pub] fn backup_synthetic_profile( profile_root: &Path, destination: &Path, ) -> Result<BackupReceipt, OperationError> |8a0805580db508f8
+crates/core/src/operations.rs [pub] fn diagnose_profile( profile_root: &Path, deep: bool, ) -> Result<ProfileDiagnosis, OperationError> |8f5487ed38470e47
+crates/core/src/operations.rs [pub] fn ensure_synthetic_profile(profile_root: &Path) -> Result<ProfileDisposition, OperationError> |b4dc4739b6cc59cc
+crates/core/src/operations.rs [pub] fn export_synthetic_profile( profile_root: &Path, destination: &Path, ) -> Result<ExportReceipt, OperationError> |5a6c4bdd96168184
+crates/core/src/operations.rs [pub] fn fixture_authorizations() -> Result<Vec<DeviceAuthorization>, OperationError> |0a353dd64b4781fb
+crates/core/src/operations.rs [pub] fn fixture_predicate_policies() -> Result<PredicatePolicies, OperationError> |1b1fa657bb8b2ded
+crates/core/src/operations.rs [pub] fn projection_targets( known_at_accept_seq: u64, ) -> Result<Vec<ProjectionRebuildTarget>, OperationError> |7f359d9b9675ef03
+crates/core/src/operations.rs [pub] fn restore_synthetic_profile( backup_root: &Path, destination: &Path, ) -> Result<RestoreReceipt, OperationError> |74d50d1bc0018176
+crates/core/src/operations.rs [pub] fn synthetic_ingest_request( fixture_id: &str, expected_profile_revision: Option<u64>, ) -> Result<MutableRequest, OperationError> |29ff6c95b67471bd
+crates/core/src/operations.rs [pub] impl OperationError :: #[must_use] fn classify(&self) -> FailureClass |f28332f97456dabb
+crates/core/src/operations.rs [pub] impl ProfileDiagnosis :: #[must_use] fn repair_required(&self) -> bool |233625fc90098a7d
+crates/core/src/service.rs [priv] #[cfg(test)] mod tests
+crates/core/src/service.rs [priv] impl AcceptanceService
+crates/core/src/service.rs [priv] impl Error for ServiceError
+crates/core/src/service.rs [priv] impl Error for ServiceError :: fn source(&self) -> Option<&(dyn Error + 'static)> |e8e38c72576d07b7
+crates/core/src/service.rs [priv] impl From<AcceptError> for ServiceError
+crates/core/src/service.rs [priv] impl From<AcceptError> for ServiceError :: fn from(error: AcceptError) -> Self |6c094725af9851c9
+crates/core/src/service.rs [priv] impl From<ContractError> for ServiceError
+crates/core/src/service.rs [priv] impl From<ContractError> for ServiceError :: fn from(error: ContractError) -> Self |371be9d20acd8fa0
+crates/core/src/service.rs [priv] impl From<InjectedFault> for ServiceError
+crates/core/src/service.rs [priv] impl From<InjectedFault> for ServiceError :: fn from(error: InjectedFault) -> Self |c135d80828f4bd92
+crates/core/src/service.rs [priv] impl From<StoreError> for ServiceError
+crates/core/src/service.rs [priv] impl From<StoreError> for ServiceError :: fn from(error: StoreError) -> Self |1f9dd19bf676c75e
+crates/core/src/service.rs [priv] impl From<VaultError> for ServiceError
+crates/core/src/service.rs [priv] impl From<VaultError> for ServiceError :: fn from(error: VaultError) -> Self |19dceebffaf26a76
+crates/core/src/service.rs [priv] impl fmt::Debug for AcceptanceService
+crates/core/src/service.rs [priv] impl fmt::Debug for AcceptanceService :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |44c7fb5c22d9172b
+crates/core/src/service.rs [priv] impl fmt::Display for ServiceError
+crates/core/src/service.rs [priv] impl fmt::Display for ServiceError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |1e19872d83ca8783
+crates/core/src/service.rs [priv] mod tests :: #[cfg(unix)] fn temporary_base() -> std::io::Result<PathBuf> |ec8148012ddee6fc
+crates/core/src/service.rs [priv] mod tests :: #[cfg(windows)] fn temporary_base() -> std::io::Result<PathBuf> |7e5af31bc75238fd
+crates/core/src/service.rs [priv] mod tests :: #[derive(Debug)] struct ExitAtIpc02 |749d43c7e8d414fe
+crates/core/src/service.rs [priv] mod tests :: #[derive(Debug)] struct TemporaryDatabase |009fd76a480ae8f1
+crates/core/src/service.rs [priv] mod tests :: #[test] fn core_acceptance_with_real_vault_bytes_rejects_missing_object() -> Result<(), Box<dyn Error>> |a55a543ecd59b707
+crates/core/src/service.rs [priv] mod tests :: #[test] fn ipc02_fault_child() -> Result<(), Box<dyn Error>> |88b3a2b4d5f759bb
+crates/core/src/service.rs [priv] mod tests :: #[test] fn ipc02_process_exit_restart_replays_exact_receipt() -> Result<(), Box<dyn Error>> |3b584197df03cf01
+crates/core/src/service.rs [priv] mod tests :: fn acceptance_command(envelope: &[u8]) -> AcceptanceCommand<'_> |549d1be6cc8e933f
+crates/core/src/service.rs [priv] mod tests :: fn id<T>(suffix: u32) -> Result<T, DomainError> where T: FromStr<Err = DomainError>, |07baeef468902a1b
+crates/core/src/service.rs [priv] mod tests :: fn signed_scope_batch() -> Result<(UnsignedBatch, Vec<u8>, DeviceAuthorization), Box<dyn Error>> |1be0e8f8c1ef875a
+crates/core/src/service.rs [priv] mod tests :: impl AcceptanceFaultInjector for ExitAtIpc02
+crates/core/src/service.rs [priv] mod tests :: impl AcceptanceFaultInjector for ExitAtIpc02 :: fn hit(&self, point: AcceptanceFaultPoint) -> Result<(), InjectedFault> |7a4bc13856ec000e
+crates/core/src/service.rs [priv] mod tests :: impl Drop for TemporaryDatabase
+crates/core/src/service.rs [priv] mod tests :: impl Drop for TemporaryDatabase :: fn drop(&mut self) |17cdcdcc7f5f9e27
+crates/core/src/service.rs [priv] mod tests :: impl TemporaryDatabase
+crates/core/src/service.rs [priv] mod tests :: impl TemporaryDatabase :: fn new() -> Result<Self, Box<dyn Error>> |6b1c37cbeb12495d
+crates/core/src/service.rs [priv] mod tests :: static NEXT_TEMP: AtomicU64 |3d22fec565cea36a
+crates/core/src/service.rs [priv] mod tests :: use academic_domain::{ Actor, BatchId, DeviceId, DomainError, DomainId, EntityId, Event, EventId, EventPayload, ScopeDescriptor, ScopeId, UnsignedBatch, } |79b992b4e923acef
+crates/core/src/service.rs [priv] mod tests :: use academic_ledger::EVENT_SCHEMA_VERSION |352ab4b3a622c4bd
+crates/core/src/service.rs [priv] mod tests :: use academic_store::{ connection::open_reader, path_policy::NativePathProbe, profile::{SyntheticProfile, create_synthetic_profile, open_synthetic_profile}, queries::canonical_snapshot, } |ccbace4c05907c7c
+crates/core/src/service.rs [priv] mod tests :: use academic_vault::ArtifactIngestRequest |de4e36a3a8850960
+crates/core/src/service.rs [priv] mod tests :: use ed25519_dalek::SigningKey |70ab5f7e036912da
+crates/core/src/service.rs [priv] mod tests :: use std::{ env, error::Error, fs, path::PathBuf, process::Command as ProcessCommand, str::FromStr, sync::atomic::{AtomicU64, Ordering}, } |42e7f5f60144e319
+crates/core/src/service.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/core/src/service.rs [priv] use academic_contracts::{ContractError, DeviceAuthorization, verify_signed_batch} |ed12114af101e1a0
+crates/core/src/service.rs [priv] use academic_domain::TimestampMillis |06dc51c3583793c7
+crates/core/src/service.rs [priv] use academic_store::{ accept::{AcceptError, AcceptanceOutcome, AcceptanceStore}, error::StoreError, fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault, NoFault}, idempotency::AcceptanceCommand, profile::SyntheticProfile, } |1b53d9d53de53d0d
+crates/core/src/service.rs [priv] use academic_vault::{DomainKeyring, Vault, VaultError} |bce3077658c1880c
+crates/core/src/service.rs [priv] use std::{error::Error, fmt} |da07ae2fa3e26f41
+crates/core/src/service.rs [pub(crate)] impl AcceptanceService :: fn accept_signed_command_with<F>( &mut self, command: AcceptanceCommand<'_>, authorization: &DeviceAuthorization, accepted_at: TimestampMillis, faults: &F, ) -> Result<AcceptanceOutcome, ServiceError> where F: AcceptanceFaultInjector, |440df0cd195f0891
+crates/core/src/service.rs [pub] #[derive(Debug)] enum ServiceError |faeb00af4afc270a
+crates/core/src/service.rs [pub] impl AcceptanceService :: #[cfg(any(test, feature = "phase1-fault-injection"))] fn accept_signed_command_with_faults<F>( &mut self, command: AcceptanceCommand<'_>, authorization: &DeviceAuthorization, accepted_at: TimestampMillis, faults: &F, ) -> Result<AcceptanceOutcome, ServiceError> where F: AcceptanceFaultInjector, |70f1dcf5371086ba
+crates/core/src/service.rs [pub] impl AcceptanceService :: #[must_use] const fn vault(&self) -> &Vault |c33b431eb48f5cd9
+crates/core/src/service.rs [pub] impl AcceptanceService :: fn accept_signed_command( &mut self, command: AcceptanceCommand<'_>, authorization: &DeviceAuthorization, accepted_at: TimestampMillis, ) -> Result<AcceptanceOutcome, ServiceError> |b8f25870e43d3fa5
+crates/core/src/service.rs [pub] impl AcceptanceService :: fn open(profile: &SyntheticProfile, keyring: DomainKeyring) -> Result<Self, ServiceError> |9ce77a20341aa5d8
+crates/core/src/service.rs [pub] struct AcceptanceService |0efc2924cff8a69c

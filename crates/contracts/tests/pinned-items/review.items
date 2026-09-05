@@ -8,7 +8,7 @@ crates/review/src/access.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct 
 crates/review/src/access.rs [pub] fn permit( ledger: &SourceTermsLedger, source: &ConnectorId, mode: SourceAccessMode, ) -> Result<PermittedCollection, Denial> |668d5bbc50aa0be6
 crates/review/src/access.rs [pub] impl PermittedCollection :: #[must_use] const fn mode(&self) -> SourceAccessMode |94f41470c2e6d59d
 crates/review/src/access.rs [pub] impl PermittedCollection :: #[must_use] const fn source(&self) -> &ConnectorId |93e3ca34bb63f67d
-crates/review/src/access.rs [pub] impl SourceAccessMode :: #[must_use] const fn as_str(self) -> &'static str |45f9deef5eea1a85
+crates/review/src/access.rs [pub] impl SourceAccessMode :: #[must_use] const fn as_str(self) -> &'static str |80742bae8197cfce
 crates/review/src/access.rs [pub] impl SourceAccessMode :: #[must_use] const fn is_a_person_act(self) -> bool |50c2ebddf123f664
 crates/review/src/access.rs [pub] impl SourceAccessMode :: #[must_use] const fn presents_a_credential(self) -> bool |7b9434a59b23e1c0
 crates/review/src/access.rs [pub] impl SourceAccessMode :: #[must_use] fn parse(value: &str) -> Option<Self> |1ce406e8721ecbd9
@@ -39,7 +39,7 @@ crates/review/src/aggregate.rs [pub] impl AggregationClaim :: #[must_use] const 
 crates/review/src/aggregate.rs [pub] impl AggregationClaim :: #[must_use] const fn method(&self) -> AggregationMethod |50f33cae06a5a63a
 crates/review/src/aggregate.rs [pub] impl AggregationClaim :: #[must_use] fn asserted_over(&self) -> &[ReviewScope] |ba28f4319207361c
 crates/review/src/aggregate.rs [pub] impl AggregationClaim :: #[must_use] fn asserting( method: AggregationMethod, course: CourseId, aggregates: &[OfferingAggregate], ) -> Self |c303a44a5a224c84
-crates/review/src/aggregate.rs [pub] impl AggregationMethod :: #[must_use] const fn as_str(self) -> &'static str |aa40205f7afc52f3
+crates/review/src/aggregate.rs [pub] impl AggregationMethod :: #[must_use] const fn as_str(self) -> &'static str |a316f45208cdb758
 crates/review/src/aggregate.rs [pub] impl AggregationMethod :: const ALL: [Self; 2] |f8171e3e2719d436
 crates/review/src/aggregate.rs [pub] impl BandDistribution :: #[must_use] const fn counts(self) -> [u32; 5] |e4ad70b69324c55f
 crates/review/src/aggregate.rs [pub] impl BandDistribution :: #[must_use] const fn dimension(self) -> ReviewDimension |b69a0e2269b60d5b
@@ -76,9 +76,9 @@ crates/review/src/bias.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Part
 crates/review/src/bias.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum BiasStrength |0410f979891b1c35
 crates/review/src/bias.rs [pub] #[derive(Debug, Clone, Default)] struct BiasDisclosureDraft |f8667f15656c0582
 crates/review/src/bias.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BiasDisclosure |30a4fb95f98efe2f
-crates/review/src/bias.rs [pub] impl BiasDimension :: #[must_use] const fn as_str(self) -> &'static str |4f1ca6edd91a405f
+crates/review/src/bias.rs [pub] impl BiasDimension :: #[must_use] const fn as_str(self) -> &'static str |73f5c89000cb053c
 crates/review/src/bias.rs [pub] impl BiasDimension :: #[must_use] const fn index(self) -> usize |09c17885f4d71b7e
-crates/review/src/bias.rs [pub] impl BiasDimension :: #[must_use] const fn spec_phrase(self) -> &'static str |513c922fc4e7f9fe
+crates/review/src/bias.rs [pub] impl BiasDimension :: #[must_use] const fn spec_phrase(self) -> &'static str |f65f58c40cae34ef
 crates/review/src/bias.rs [pub] impl BiasDimension :: const ALL: [Self; 6] |38e514cd6b15f15a
 crates/review/src/bias.rs [pub] impl BiasDisclosure :: #[must_use] fn disclosed(&self) -> Vec<BiasDimension> |7e1525ce391f0a7b
 crates/review/src/bias.rs [pub] impl BiasDisclosure :: #[must_use] fn finding(&self, dimension: BiasDimension) -> BiasFinding |bacfd1b266f96d3d
@@ -90,7 +90,7 @@ crates/review/src/bias.rs [pub] impl BiasFinding :: #[must_use] const fn dimensi
 crates/review/src/bias.rs [pub] impl BiasFinding :: #[must_use] const fn measured(self) -> u32 |e04184bd24faf5f7
 crates/review/src/bias.rs [pub] impl BiasFinding :: #[must_use] const fn new(dimension: BiasDimension, measured: u32, strength: BiasStrength) -> Self |b7503b21e419679c
 crates/review/src/bias.rs [pub] impl BiasFinding :: #[must_use] const fn strength(self) -> BiasStrength |9e0f3ee876d0529f
-crates/review/src/bias.rs [pub] impl BiasStrength :: #[must_use] const fn as_str(self) -> &'static str |ed455b6f2501fea9
+crates/review/src/bias.rs [pub] impl BiasStrength :: #[must_use] const fn as_str(self) -> &'static str |009b73e84dc4846a
 crates/review/src/bias.rs [pub] impl BiasStrength :: const ALL: [Self; 3] |5f14ab5b4435e586
 crates/review/src/dimension.rs [priv] impl DimensionBand
 crates/review/src/dimension.rs [priv] impl DimensionReading
@@ -101,22 +101,22 @@ crates/review/src/dimension.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)
 crates/review/src/dimension.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DimensionBand |4c547981dd020803
 crates/review/src/dimension.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ReviewDimension |647903b4fcafeed3
 crates/review/src/dimension.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReviewExtraction |818c973721cbf705
-crates/review/src/dimension.rs [pub] impl DimensionBand :: #[must_use] const fn as_str(self) -> &'static str |150cf0d235dd875c
+crates/review/src/dimension.rs [pub] impl DimensionBand :: #[must_use] const fn as_str(self) -> &'static str |0057aa09fb406d51
 crates/review/src/dimension.rs [pub] impl DimensionBand :: #[must_use] const fn index(self) -> usize |806705fc885b5d72
 crates/review/src/dimension.rs [pub] impl DimensionBand :: const ALL: [Self; 5] |85310361afe53c6d
 crates/review/src/dimension.rs [pub] impl DimensionReading :: #[must_use] const fn band(self) -> DimensionBand |c24ea09bea7d2520
 crates/review/src/dimension.rs [pub] impl DimensionReading :: #[must_use] const fn dimension(self) -> ReviewDimension |b69a0e2269b60d5b
 crates/review/src/dimension.rs [pub] impl DimensionReading :: #[must_use] const fn new(dimension: ReviewDimension, band: DimensionBand, span_index: usize) -> Self |107ebabcead6a268
 crates/review/src/dimension.rs [pub] impl DimensionReading :: #[must_use] const fn span_index(self) -> usize |cc8c33ac1a9db4b9
-crates/review/src/dimension.rs [pub] impl ReviewDimension :: #[must_use] const fn as_str(self) -> &'static str |d0e8ac66f628b145
+crates/review/src/dimension.rs [pub] impl ReviewDimension :: #[must_use] const fn as_str(self) -> &'static str |ae2910ebab8e7b61
 crates/review/src/dimension.rs [pub] impl ReviewDimension :: #[must_use] const fn index(self) -> usize |34186a378b5be851
-crates/review/src/dimension.rs [pub] impl ReviewDimension :: #[must_use] const fn spec_key(self) -> &'static str |836f193266d7fd10
+crates/review/src/dimension.rs [pub] impl ReviewDimension :: #[must_use] const fn spec_key(self) -> &'static str |ceaeeea4b95e1548
 crates/review/src/dimension.rs [pub] impl ReviewDimension :: const ALL: [Self; 9] |14a0b5d3a402088c
 crates/review/src/dimension.rs [pub] impl ReviewExtraction :: #[must_use] fn band(&self, dimension: ReviewDimension) -> DimensionBand |d07e40c2e85c1201
 crates/review/src/dimension.rs [pub] impl ReviewExtraction :: #[must_use] fn reading(&self, dimension: ReviewDimension) -> DimensionReading |197c1c5dac717a18
 crates/review/src/dimension.rs [pub] impl ReviewExtraction :: #[must_use] fn readings(&self) -> &[DimensionReading] |55a9a657abace5fa
 crates/review/src/dimension.rs [pub] impl ReviewExtraction :: fn read(readings: &[DimensionReading]) -> Result<Self, ReviewError> |29c1d94da22dc077
-crates/review/src/duplicate.rs [priv] fn shingles(text: &str) -> BTreeSet<String> |e6108ea285e384a3
+crates/review/src/duplicate.rs [priv] fn shingles(text: &str) -> BTreeSet<String> |0df322d6efc33679
 crates/review/src/duplicate.rs [priv] fn words(text: &str) -> Vec<String> |afdd51f4f8bcb41c
 crates/review/src/duplicate.rs [priv] impl DuplicateFinding
 crates/review/src/duplicate.rs [priv] impl SimilarityPermille
@@ -133,15 +133,15 @@ crates/review/src/duplicate.rs [pub] impl DuplicateFinding :: #[must_use] const 
 crates/review/src/duplicate.rs [pub] impl SimilarityPermille :: #[must_use] const fn value(self) -> u16 |27944a9a432aaf76
 crates/review/src/duplicate.rs [pub] impl SimilarityPermille :: const fn new(value: u16) -> Result<Self, ReviewError> |be4d26f74f6d9d1b
 crates/review/src/error.rs [priv] use crate::{bias::BiasDimension, dimension::ReviewDimension, scope::ScopeDimension} |54d443a63d465188
-crates/review/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ReviewError |16e1233ba8786ae1
+crates/review/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum ReviewError |550cbbea9be44d5d
 crates/review/src/gate.rs [priv] impl OpenGate
 crates/review/src/gate.rs [priv] impl fmt::Display for OpenGate
-crates/review/src/gate.rs [priv] impl fmt::Display for OpenGate :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |e9542847007eb35b
+crates/review/src/gate.rs [priv] impl fmt::Display for OpenGate :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |a85e33d3ca5748d3
 crates/review/src/gate.rs [priv] use core::fmt |60337ade2d1be0ef
 crates/review/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum OpenGate |f35624d85c781247
-crates/review/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |57d8e485d8cb9d21
-crates/review/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn question(self) -> &'static str |6be13976694bbb80
-crates/review/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn while_open(self) -> &'static str |4096627cc03b50b6
+crates/review/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |5b949ef418519685
+crates/review/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn question(self) -> &'static str |cf056664f7f492ff
+crates/review/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn while_open(self) -> &'static str |9afd1c127a0ef5ea
 crates/review/src/gate.rs [pub] impl OpenGate :: const ALL: [Self; 1] |56de07088e7943a9
 crates/review/src/lib.rs [priv] #![deny(missing_docs)] |d27a0595f2b099f8
 crates/review/src/lib.rs [pub] mod access
@@ -201,16 +201,16 @@ crates/review/src/scope.rs [pub] impl ReviewScope :: #[must_use] const fn source
 crates/review/src/scope.rs [pub] impl ReviewScope :: #[must_use] const fn term(&self) -> Option<&TermCode> |1d7eca4d11d71704
 crates/review/src/scope.rs [pub] impl ReviewScope :: #[must_use] fn carries(&self, dimension: ScopeDimension) -> bool |044bc54e56934ecd
 crates/review/src/scope.rs [pub] impl ReviewScope :: #[must_use] fn same_scope_as(&self, other: &Self) -> bool |279ad446a9a8ae3a
-crates/review/src/scope.rs [pub] impl ScopeDimension :: #[must_use] const fn as_str(self) -> &'static str |e09a863da4cfbed4
+crates/review/src/scope.rs [pub] impl ScopeDimension :: #[must_use] const fn as_str(self) -> &'static str |5d2bc4c17eb26f9e
 crates/review/src/scope.rs [pub] impl ScopeDimension :: #[must_use] const fn is_nullable(self) -> bool |10aa06b44286a90a
-crates/review/src/scope.rs [pub] impl ScopeDimension :: #[must_use] const fn spec_name(self) -> &'static str |a1b9b80db9edbaef
+crates/review/src/scope.rs [pub] impl ScopeDimension :: #[must_use] const fn spec_name(self) -> &'static str |be2d997c21546bde
 crates/review/src/scope.rs [pub] impl ScopeDimension :: const ALL: [Self; 4] |47df397de0b2cccd
-crates/review/src/text.rs [priv] fn hex_lower(bytes: &[u8]) -> String |3f1463855cf60057
+crates/review/src/text.rs [priv] fn hex_lower(bytes: &[u8]) -> String |40de7e73a481687b
 crates/review/src/text.rs [priv] fn span_digest(bytes: &[u8]) -> String |cc77d840e78ad399
 crates/review/src/text.rs [priv] impl ProvenanceSpan
 crates/review/src/text.rs [priv] impl RawReviewText
 crates/review/src/text.rs [priv] impl fmt::Debug for RawReviewText
-crates/review/src/text.rs [priv] impl fmt::Debug for RawReviewText :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |dac315ffe79acbcf
+crates/review/src/text.rs [priv] impl fmt::Debug for RawReviewText :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |2231ff0d0cab8ce4
 crates/review/src/text.rs [priv] use academic_untrusted_content::{ IngestError, IngestedDocument, SourceId, Untrusted, ingest_review_text, } |116b5607ce9fbf7e
 crates/review/src/text.rs [priv] use core::fmt |60337ade2d1be0ef
 crates/review/src/text.rs [priv] use crate::error::ReviewError |a2522063991237c4

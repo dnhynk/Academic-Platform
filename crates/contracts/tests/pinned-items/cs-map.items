@@ -4,7 +4,7 @@ crates/cs-map/src/anchor.rs [priv] use crate::{ CsMapError, atlas::{Atlas, Coord
 crates/cs-map/src/anchor.rs [priv] use serde::Serialize |64e275010a1227f2
 crates/cs-map/src/anchor.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
 crates/cs-map/src/anchor.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct YouAnchor |7180cb1498d6bf68
-crates/cs-map/src/anchor.rs [pub] const YOU_REFERENCE_LABEL: &str |f076cc3bb92d8904
+crates/cs-map/src/anchor.rs [pub] const YOU_REFERENCE_LABEL: &str |c5d50a6a738737e4
 crates/cs-map/src/anchor.rs [pub] impl YouAnchor :: #[must_use] const fn at(&self) -> Coordinate |fe1ff28952b47063
 crates/cs-map/src/anchor.rs [pub] impl YouAnchor :: #[must_use] const fn label(&self) -> &'static str |e8b995c67b3d543d
 crates/cs-map/src/anchor.rs [pub] impl YouAnchor :: #[must_use] const fn references(&self) -> &BTreeSet<EntityId> |2a126dd665a80fab
@@ -22,14 +22,14 @@ crates/cs-map/src/atlas.rs [priv] use academic_domain::{EntityId, predicates::No
 crates/cs-map/src/atlas.rs [priv] use crate::{ CsMapError, graph::{ClusterId, MapGraph}, } |b08e3d8528526c73
 crates/cs-map/src/atlas.rs [priv] use serde::Serialize |64e275010a1227f2
 crates/cs-map/src/atlas.rs [priv] use std::collections::{BTreeMap, BTreeSet, VecDeque} |88d2c7f652908947
-crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SemanticZoom |625070adbda086b1
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SemanticZoom |ab506059502679ec
 crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct Coordinate |fcc67a9c4554cc9c
 crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct Landmark |88a7559835bfb669
 crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct Placement |c8742e6ff7214d6c
 crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Atlas |28de115d923f3350
 crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LandmarkDrift |5aa643b4482245fd
 crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct InitialView |5c57522067061c2f
-crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct LevelView |f00bd5a5e0a636fc
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct LevelView |df3d8d2d40aa4e45
 crates/cs-map/src/atlas.rs [pub] #[must_use] fn growth_band(node_count: usize) -> usize |3a194522d295398b
 crates/cs-map/src/atlas.rs [pub] const GRID: i64 |017d87e70d1ed170
 crates/cs-map/src/atlas.rs [pub] const GROWTH_BAND_SIZE: usize |f4f5c68bdef0b656
@@ -55,20 +55,20 @@ crates/cs-map/src/atlas.rs [pub] impl InitialView :: #[must_use] fn materialised
 crates/cs-map/src/atlas.rs [pub] impl LandmarkDrift :: #[must_use] const fn furthest(&self) -> i64 |c226979743a88d78
 crates/cs-map/src/atlas.rs [pub] impl LandmarkDrift :: #[must_use] const fn vanished(&self) -> &BTreeSet<ClusterId> |ae2e836e4da7c5f4
 crates/cs-map/src/atlas.rs [pub] impl LandmarkDrift :: fn within_tolerance(&self) -> Result<(), CsMapError> |cf713aeaa798882c
-crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] const fn as_str(self) -> &'static str |2e3fc4662b7d4411
+crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] const fn as_str(self) -> &'static str |ba45156d2b8bf1aa
 crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] const fn horizon(self) -> Option<u8> |c2cf693360221936
-crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] const fn spec_label(self) -> &'static str |d1b52550d11e49a3
+crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] const fn spec_label(self) -> &'static str |8ba5b7d06f1fcd1e
 crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] fn shown_types(self) -> BTreeSet<NodeType> |43cf9bfb19962e0f
 crates/cs-map/src/budget.rs [priv] impl BudgetMeasure
 crates/cs-map/src/budget.rs [priv] impl BudgetReading
 crates/cs-map/src/budget.rs [priv] use crate::CsMapError |07263657cc1e281a
 crates/cs-map/src/budget.rs [priv] use serde::Serialize |64e275010a1227f2
-crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BudgetMeasure |ddc9906df7874b6b
-crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct BudgetReading |225f2f5beaeabe43
-crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct RenderBudget |dfd0f4241673ff9b
+crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BudgetMeasure |593d1f41f4816836
+crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct BudgetReading |d043fc243c74f405
+crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct RenderBudget |73505bc91b71ef45
 crates/cs-map/src/budget.rs [pub] const ATLAS_BUDGET: RenderBudget |c5a6fefb1e2c5056
 crates/cs-map/src/budget.rs [pub] const BUDGET_MEASURES: [BudgetMeasure; 5] |5f95fb2c9d62df45
-crates/cs-map/src/budget.rs [pub] impl BudgetMeasure :: #[must_use] const fn as_str(self) -> &'static str |c7ff1d2a02c40824
+crates/cs-map/src/budget.rs [pub] impl BudgetMeasure :: #[must_use] const fn as_str(self) -> &'static str |c0c7397c41ea0686
 crates/cs-map/src/budget.rs [pub] impl BudgetReading :: fn within(&self, budget: &RenderBudget) -> Result<(), CsMapError> |5564e379992e943e
 crates/cs-map/src/encoding.rs [priv] fn serialize_predicate<S: Serializer>( value: &PredicateName, serializer: S, ) -> Result<S::Ok, S::Error> |31ca1d45af473f98
 crates/cs-map/src/encoding.rs [priv] impl AsOfBadge
@@ -84,22 +84,22 @@ crates/cs-map/src/encoding.rs [priv] use academic_domain::{ ConfidencePermille, 
 crates/cs-map/src/encoding.rs [priv] use crate::CsMapError |07263657cc1e281a
 crates/cs-map/src/encoding.rs [priv] use serde::{Serialize, Serializer} |b0127e9743455558
 crates/cs-map/src/encoding.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BorderPattern |2cdc28e168a9405b
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ChannelSubject |53394597beeea1af
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum DashPattern |beb258c737c43be7
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum GlyphMark |213ea2d23aaafd8a
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum HaloState |83585d3397f6d740
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum LensRelevance |e735acbaa61baa67
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum VisualChannel |4f185f3bfceadb91
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BorderPattern |158965abc5351306
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ChannelSubject |44303ad3d64d86aa
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum DashPattern |5c1810fbad4407b2
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum GlyphMark |41b6298c21ec2f47
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum HaloState |a49f071865f36a5d
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum LensRelevance |21e923ed44d90e32
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum VisualChannel |158af99d2b647b4c
 crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct FreshnessRing(FreshnessBand) |cbcbf7617ca598fd
 crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct MasteryFill(MasteryLevel) |f7ed09ef5fb1e3f9
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct EdgeStroke |98dff1bea4c6717c
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct AsOfBadge |d0f9a23127679a73
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct EncodedEdge |dacadb6636d44b64
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct EdgeStroke |a875c6f738163687
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct AsOfBadge |fab83c009f2744b6
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct EncodedEdge |d033c6a82f45ed13
 crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct NodeReading |74cc5ffdf9b1c6c6
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde( tag = "channel", content = "value", rename_all = "SCREAMING_SNAKE_CASE" )] enum ChannelValue |2db0694919178440
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde( tag = "channel", content = "value", rename_all = "SCREAMING_SNAKE_CASE" )] enum ChannelValue |37d9e1fa845935b5
 crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ChannelFrame |115248693524fef1
-crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct EncodedNode |7a95d702b7196dd5
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct EncodedNode |c5fd95259f392650
 crates/cs-map/src/encoding.rs [pub] #[must_use] const fn encode_edge( from: EntityId, to: EntityId, predicate: PredicateName, status: EpistemicStatus, ) -> EncodedEdge |501e5cffa93efc55
 crates/cs-map/src/encoding.rs [pub] #[must_use] fn encode_node( reading: &NodeReading, relevance: LensRelevance, as_of: AsOfBadge, ) -> EncodedNode |5137741e81f2a400
 crates/cs-map/src/encoding.rs [pub] const CONFIDENT_AT_OR_ABOVE_PERMILLE: u16 |07561091e4eefb32
@@ -114,12 +114,12 @@ crates/cs-map/src/encoding.rs [pub] impl ChannelValue :: #[must_use] const fn ch
 crates/cs-map/src/encoding.rs [pub] impl EdgeStroke :: #[must_use] const fn of(predicate: PredicateName, status: EpistemicStatus) -> Self |c9def1ec198cdc90
 crates/cs-map/src/encoding.rs [pub] impl FreshnessRing :: #[must_use] const fn band(self) -> FreshnessBand |2b9847e3f36f07d2
 crates/cs-map/src/encoding.rs [pub] impl FreshnessRing :: #[must_use] const fn of(band: FreshnessBand) -> Self |a57daee8f7767cdb
-crates/cs-map/src/encoding.rs [pub] impl GlyphMark :: #[must_use] const fn label(self) -> &'static str |4625f625233e211d
-crates/cs-map/src/encoding.rs [pub] impl GlyphMark :: #[must_use] const fn symbol(self) -> &'static str |eac35e795538a569
+crates/cs-map/src/encoding.rs [pub] impl GlyphMark :: #[must_use] const fn label(self) -> &'static str |edc78372beccf35d
+crates/cs-map/src/encoding.rs [pub] impl GlyphMark :: #[must_use] const fn symbol(self) -> &'static str |bdd3d134d9ea6917
 crates/cs-map/src/encoding.rs [pub] impl MasteryFill :: #[must_use] const fn level(self) -> MasteryLevel |7667f0b6ec9f55fc
 crates/cs-map/src/encoding.rs [pub] impl MasteryFill :: #[must_use] const fn of(level: MasteryLevel) -> Self |5e94f2505dd4042a
-crates/cs-map/src/encoding.rs [pub] impl VisualChannel :: #[must_use] const fn key(self) -> &'static str |13c39ca769776352
-crates/cs-map/src/encoding.rs [pub] impl VisualChannel :: #[must_use] const fn spec_bullet_head(self) -> &'static str |1934b06f2d358970
+crates/cs-map/src/encoding.rs [pub] impl VisualChannel :: #[must_use] const fn key(self) -> &'static str |1e7209c7ad4e76a7
+crates/cs-map/src/encoding.rs [pub] impl VisualChannel :: #[must_use] const fn spec_bullet_head(self) -> &'static str |67046af014f1c906
 crates/cs-map/src/encoding.rs [pub] impl VisualChannel :: #[must_use] const fn subject(self) -> ChannelSubject |eb17b9d8b6950332
 crates/cs-map/src/focus.rs [priv] enum Admitted |83e0661814279d7f
 crates/cs-map/src/focus.rs [priv] fn induced(graph: &MapGraph, nodes: &BTreeSet<EntityId>, admitted: &Admitted) -> BTreeSet<MapEdge> |9bd6880da068df48
@@ -131,8 +131,8 @@ crates/cs-map/src/focus.rs [priv] use academic_domain::{ConfidencePermille, Enti
 crates/cs-map/src/focus.rs [priv] use crate::{ CsMapError, encoding::NodeReading, graph::{MapEdge, MapGraph}, } |55d269e8b2fd77d4
 crates/cs-map/src/focus.rs [priv] use serde::Serialize |64e275010a1227f2
 crates/cs-map/src/focus.rs [priv] use std::collections::{BTreeMap, BTreeSet, VecDeque} |88d2c7f652908947
-crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CoverageSide |51cdb292088d32e6
-crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum FocusKind |6b463de5bb68010c
+crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CoverageSide |227b6ea35a907253
+crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum FocusKind |6ff87ae382465ea9
 crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct HopCount(u8) |439bb3af33cb8d57
 crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum FocusMode |6a0868be64ea0ec8
 crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Subgraph |8c41b2c5c9080076
@@ -140,7 +140,7 @@ crates/cs-map/src/focus.rs [pub] const FOCUS_KINDS: [FocusKind; 5] |ffcbea26e3c1
 crates/cs-map/src/focus.rs [pub] const MAX_HOPS: u8 |fad6ac2bb10833bc
 crates/cs-map/src/focus.rs [pub] const MIN_HOPS: u8 |3f89003313e6dd34
 crates/cs-map/src/focus.rs [pub] fn focus( graph: &MapGraph, readings: &BTreeMap<EntityId, NodeReading>, mode: &FocusMode, ) -> Result<Subgraph, CsMapError> |5b687b46f33a2d97
-crates/cs-map/src/focus.rs [pub] impl FocusKind :: #[must_use] const fn spec_bullet_head(self) -> &'static str |14f87ad0d2e7b4d1
+crates/cs-map/src/focus.rs [pub] impl FocusKind :: #[must_use] const fn spec_bullet_head(self) -> &'static str |f979e68342efbfc4
 crates/cs-map/src/focus.rs [pub] impl FocusMode :: #[must_use] const fn kind(&self) -> FocusKind |05814f12ccd0acf1
 crates/cs-map/src/focus.rs [pub] impl HopCount :: #[must_use] const fn value(self) -> u8 |5c6125105aa1c0fd
 crates/cs-map/src/focus.rs [pub] impl HopCount :: fn new(hops: u8) -> Result<Self, CsMapError> |68289ed6105de787
@@ -155,7 +155,7 @@ crates/cs-map/src/graph.rs [priv] use crate::CsMapError |07263657cc1e281a
 crates/cs-map/src/graph.rs [priv] use serde::Serialize |64e275010a1227f2
 crates/cs-map/src/graph.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, fmt, } |8f93bbea86673950
 crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct ClusterId(EntityId) |8c4ec348b26509c7
-crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct MapEdge |8ff036cb6e8252ca
+crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct MapEdge |c844e1f579babedd
 crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MapGraph |d4eede3123f46e85
 crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MapNode |b352db0fe9e6de03
 crates/cs-map/src/graph.rs [pub] impl ClusterId :: #[must_use] const fn entity(self) -> EntityId |b2a2e2e2d2940d18
@@ -179,12 +179,12 @@ crates/cs-map/src/lens.rs [priv] use academic_domain::{EntityId, predicates::Nod
 crates/cs-map/src/lens.rs [priv] use crate::{ CsMapError, encoding::{LensRelevance, VISUAL_CHANNELS, VisualChannel}, } |cdc9f4fabf849eaa
 crates/cs-map/src/lens.rs [priv] use serde::Serialize |64e275010a1227f2
 crates/cs-map/src/lens.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
-crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MapLens |d0703ef46ce7f417
+crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MapLens |b8de955c46182ac2
 crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LensComposition |e13d2c1ebe40932f
 crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LensSubject |42b9c1c9be6f3603
 crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct LayerCollision |d6979e7162eedce2
 crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Legend |03555cf3893ae8b3
-crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct LegendEntry |22eddebe049c7765
+crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct LegendEntry |48710f170f400322
 crates/cs-map/src/lens.rs [pub] #[must_use] fn relevance_of(lens: MapLens, subject: &LensSubject) -> LensRelevance |1b2100e7734add1d
 crates/cs-map/src/lens.rs [pub] const MAP_LENSES: [MapLens; 10] |dc49e894278a7aa2
 crates/cs-map/src/lens.rs [pub] const MAX_OVERLAYS: usize |47b4f7beea1e2669
@@ -199,12 +199,12 @@ crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] fn legend(&s
 crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] fn overlays(&self) -> &[MapLens] |99788846671c8328
 crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] fn relevance(&self, subject: &LensSubject) -> LensRelevance |34bd11dfd0fb0e3d
 crates/cs-map/src/lens.rs [pub] impl LensComposition :: fn overlay(self, lens: MapLens) -> Result<Self, CsMapError> |35206ebc419be1f0
-crates/cs-map/src/lens.rs [pub] impl MapLens :: #[must_use] const fn as_str(self) -> &'static str |3f8217ea192d1294
+crates/cs-map/src/lens.rs [pub] impl MapLens :: #[must_use] const fn as_str(self) -> &'static str |90eb00f683623d91
 crates/cs-map/src/lens.rs [pub] impl MapLens :: #[must_use] const fn claimed_channel(self) -> Option<VisualChannel> |dcdabbeb309d96aa
-crates/cs-map/src/lens.rs [pub] impl MapLens :: #[must_use] const fn spec_name(self) -> &'static str |ea308d21b800b37d
+crates/cs-map/src/lens.rs [pub] impl MapLens :: #[must_use] const fn spec_name(self) -> &'static str |e04a792ac32063d9
 crates/cs-map/src/lib.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
 crates/cs-map/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
-crates/cs-map/src/lib.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum CsMapError |6008c685bf645c2d
+crates/cs-map/src/lib.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum CsMapError |aaf2e33e5d7423cf
 crates/cs-map/src/lib.rs [pub] mod anchor
 crates/cs-map/src/lib.rs [pub] mod atlas
 crates/cs-map/src/lib.rs [pub] mod budget
@@ -224,28 +224,28 @@ crates/cs-map/src/lib.rs [pub] use lens::{ LayerCollision, Legend, LegendEntry, 
 crates/cs-map/src/lib.rs [pub] use scrubber::{ Appearance, MAP_TRANSITIONS, MapDelta, MapEvent, MapProjection, MapTransition, SplitComparison, Timeline, TransitionPattern, } |97f4ff0abe6876aa
 crates/cs-map/src/lib.rs [pub] use search::{REVEAL_STAGES, RevealStage, SearchReveal, reveal} |5237e021277791a4
 crates/cs-map/src/scrubber.rs [priv] fn recorded(pane: &MapProjection, node: EntityId) -> Result<MapTransition, CsMapError> |7d6b31661415444a
-crates/cs-map/src/scrubber.rs [priv] fn serialize_coordinates<S: serde::Serializer>( value: &TimeCoordinates, serializer: S, ) -> Result<S::Ok, S::Error> |a4d2e18472c27c40
+crates/cs-map/src/scrubber.rs [priv] fn serialize_coordinates<S: serde::Serializer>( value: &TimeCoordinates, serializer: S, ) -> Result<S::Ok, S::Error> |6c4e5412b80743c3
 crates/cs-map/src/scrubber.rs [priv] impl MapTransition
 crates/cs-map/src/scrubber.rs [priv] impl Timeline
 crates/cs-map/src/scrubber.rs [priv] use academic_domain::{ EntityId, temporal::{ChangeOrigin, TimeCoordinates}, } |ee08d97596935849
 crates/cs-map/src/scrubber.rs [priv] use crate::CsMapError |07263657cc1e281a
 crates/cs-map/src/scrubber.rs [priv] use serde::Serialize |64e275010a1227f2
 crates/cs-map/src/scrubber.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
-crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Appearance |e40c31a69741755b
-crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MapTransition |90aef08c3368e87f
-crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TransitionPattern |7b2c3425f07c2616
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Appearance |fb77f79d9baaf806
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MapTransition |20d8789ab6794d9a
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TransitionPattern |c0c63db2e21cc823
 crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct MapDelta |a942479e18e2217b
-crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct MapEvent |c2408bbbbce4285c
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct MapEvent |443644543819681f
 crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Timeline |c94d3a6b2fa3ffcd
-crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct MapProjection |35f9d5d4d0df44b7
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct MapProjection |f2bf030080c0da82
 crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct SplitComparison |0ae815855dbd5539
 crates/cs-map/src/scrubber.rs [pub] const MAP_TRANSITIONS: [MapTransition; 5] |a1fd5689d9a0677d
-crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn as_str(self) -> &'static str |bd10b012a0444b68
-crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn badge(self) -> &'static str |3c360b16288073b7
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn as_str(self) -> &'static str |25f3e3e69e408637
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn badge(self) -> &'static str |7be0ab688225308f
 crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn change_origin(self) -> Option<ChangeOrigin> |82bcfe74b65c557e
 crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn pattern(self) -> TransitionPattern |e7c0d41c4401e6c2
 crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn record_moved(self) -> bool |af1e6b254d9c46f4
-crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn screen_reader_name(self) -> &'static str |d4a2c4261a035bb4
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn screen_reader_name(self) -> &'static str |08c40b04e7837440
 crates/cs-map/src/scrubber.rs [pub] impl Timeline :: #[must_use] fn events(&self) -> &[MapEvent] |6d314667422b4fb8
 crates/cs-map/src/scrubber.rs [pub] impl Timeline :: #[must_use] fn project(&self, at: TimeCoordinates) -> MapProjection |42df0d9545cb310a
 crates/cs-map/src/scrubber.rs [pub] impl Timeline :: fn compare( &self, left: TimeCoordinates, right: TimeCoordinates, ) -> Result<SplitComparison, CsMapError> |05c94a395cce5cb6
@@ -256,7 +256,7 @@ crates/cs-map/src/search.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb
 crates/cs-map/src/search.rs [priv] use crate::{ CsMapError, graph::{ClusterId, MapGraph}, } |b08e3d8528526c73
 crates/cs-map/src/search.rs [priv] use serde::Serialize |64e275010a1227f2
 crates/cs-map/src/search.rs [priv] use std::collections::{BTreeMap, BTreeSet, VecDeque} |88d2c7f652908947
-crates/cs-map/src/search.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "stage", content = "value", rename_all = "SCREAMING_SNAKE_CASE")] enum RevealStage |22608a51c0f91c92
+crates/cs-map/src/search.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "stage", content = "value", rename_all = "SCREAMING_SNAKE_CASE")] enum RevealStage |d6395df3d60c931e
 crates/cs-map/src/search.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct SearchReveal |0e412d6b5309db42
 crates/cs-map/src/search.rs [pub] const REVEAL_STAGES: usize |217845acda457605
 crates/cs-map/src/search.rs [pub] fn reveal( graph: &MapGraph, standing_at: EntityId, query: &str, ) -> Result<SearchReveal, CsMapError> |1c1ffba164cf0c3e

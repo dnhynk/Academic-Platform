@@ -1,10 +1,10 @@
 crates/critical-path/src/checkpoint.rs [priv] impl CheckpointDecision
 crates/critical-path/src/checkpoint.rs [priv] use crate::hypergraph::{EdgeStanding, SatisfyingSet} |0b38ece8644e207c
 crates/critical-path/src/checkpoint.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/critical-path/src/checkpoint.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CheckpointDecision |043bd3fa8522b0bf
+crates/critical-path/src/checkpoint.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CheckpointDecision |84065c21aae213da
 crates/critical-path/src/checkpoint.rs [pub] #[must_use] fn uncertain_edge_ratio_permille(set: &SatisfyingSet) -> u16 |3b0d56a968ad1b23
 crates/critical-path/src/checkpoint.rs [pub] const UNCERTAIN_EDGE_RATIO_THRESHOLD_PERMILLE: u16 |4e2e3bc9fbdefb24
-crates/critical-path/src/checkpoint.rs [pub] impl CheckpointDecision :: #[must_use] const fn as_str(self) -> &'static str |d0f3b04446776635
+crates/critical-path/src/checkpoint.rs [pub] impl CheckpointDecision :: #[must_use] const fn as_str(self) -> &'static str |b5a13eb738df64ee
 crates/critical-path/src/checkpoint.rs [pub] impl CheckpointDecision :: #[must_use] const fn for_ratio(ratio_permille: u16) -> Self |46245b7926a908cb
 crates/critical-path/src/constraint.rs [priv] const fn worse(left: ConstraintVerdict, right: ConstraintVerdict) -> ConstraintVerdict |d413d60112cb95b8
 crates/critical-path/src/constraint.rs [priv] fn deadline_or_horizon(inputs: &ConstraintInputs, delay_days_high: u32) -> ConstraintFinding |7b8523c42b3251b1
@@ -24,24 +24,24 @@ crates/critical-path/src/constraint.rs [priv] use academic_domain::{EntityId, Fr
 crates/critical-path/src/constraint.rs [priv] use crate::{ CriticalPathError, checkpoint::{CheckpointDecision, uncertain_edge_ratio_permille}, hypergraph::SatisfyingSet, option::AcquisitionOption, } |f2434561e13a4542
 crates/critical-path/src/constraint.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/critical-path/src/constraint.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
-crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Constraint |6a8061cfdbc6368e
-crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ConstraintVerdict |42a44a10643c7ad9
-crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum OfficialPrerequisiteStanding |8233354557462e08
+crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Constraint |9e0548254ba7c1cb
+crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ConstraintVerdict |3fc41a8aaa78e9a4
+crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum OfficialPrerequisiteStanding |8cdad9a746c18ab5
 crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, Default)] struct ConstraintInputs |0bd43f249d144053
-crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "insertion", rename_all = "SCREAMING_SNAKE_CASE")] enum RequiredInsertion |fdca7f844677b63e
+crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "insertion", rename_all = "SCREAMING_SNAKE_CASE")] enum RequiredInsertion |1dbeaf691e4e5f4f
 crates/critical-path/src/constraint.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ConstraintFinding |cfc7b53548ecce06
 crates/critical-path/src/constraint.rs [pub] #[must_use] const fn is_stale(band: FreshnessBand) -> bool |03b2ecb4395c8f4d
 crates/critical-path/src/constraint.rs [pub] const CONSTRAINTS: [Constraint; 8] |30b60a68193e87f6
 crates/critical-path/src/constraint.rs [pub] fn evaluate( set: &SatisfyingSet, options: &[AcquisitionOption], inputs: &ConstraintInputs, calendar_delay_days_high: u32, ) -> Result<[ConstraintFinding; 8], CriticalPathError> |1bf86db5dc97fc40
-crates/critical-path/src/constraint.rs [pub] impl Constraint :: #[must_use] const fn as_str(self) -> &'static str |b4c165be6fcd1ded
-crates/critical-path/src/constraint.rs [pub] impl Constraint :: #[must_use] const fn spec_bullet(self) -> &'static str |f84606a9a247f38d
+crates/critical-path/src/constraint.rs [pub] impl Constraint :: #[must_use] const fn as_str(self) -> &'static str |891981f597c2cfbd
+crates/critical-path/src/constraint.rs [pub] impl Constraint :: #[must_use] const fn spec_bullet(self) -> &'static str |a7dfe6ba2cffc684
 crates/critical-path/src/constraint.rs [pub] impl ConstraintFinding :: #[must_use] const fn constraint(&self) -> Constraint |54bae90cfb3b57a6
 crates/critical-path/src/constraint.rs [pub] impl ConstraintFinding :: #[must_use] const fn insertion(&self) -> Option<&RequiredInsertion> |ccec5fe3b9145e61
 crates/critical-path/src/constraint.rs [pub] impl ConstraintFinding :: #[must_use] const fn verdict(&self) -> ConstraintVerdict |d40e0cb17286f519
 crates/critical-path/src/constraint.rs [pub] impl ConstraintFinding :: #[must_use] fn of( constraint: Constraint, verdict: ConstraintVerdict, subjects: Vec<EntityId>, insertion: Option<RequiredInsertion>, ) -> Self |c3a9533a1c521478
 crates/critical-path/src/constraint.rs [pub] impl ConstraintFinding :: #[must_use] fn subjects(&self) -> &[EntityId] |5deadd18c0c3c05c
 crates/critical-path/src/constraint.rs [pub] impl ConstraintVerdict :: #[must_use] const fn admits(self) -> bool |c61fb62631129176
-crates/critical-path/src/constraint.rs [pub] impl ConstraintVerdict :: #[must_use] const fn as_str(self) -> &'static str |753f1ddb3150f329
+crates/critical-path/src/constraint.rs [pub] impl ConstraintVerdict :: #[must_use] const fn as_str(self) -> &'static str |58bb71a241dc03c0
 crates/critical-path/src/counterfactual.rs [priv] fn concepts_needed_by_every(sets: &[crate::hypergraph::SatisfyingSet]) -> Vec<EntityId> |e2c3de3fa2d561e1
 crates/critical-path/src/counterfactual.rs [priv] fn same_relation(left: &EdgeMember, right: &EdgeMember) -> bool |954cc6d1654c0a4a
 crates/critical-path/src/counterfactual.rs [priv] impl EdgeOutcome
@@ -49,12 +49,12 @@ crates/critical-path/src/counterfactual.rs [priv] impl EdgeSensitivity
 crates/critical-path/src/counterfactual.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
 crates/critical-path/src/counterfactual.rs [priv] use crate::{ CriticalPathError, hypergraph::{EdgeMember, Hyperedge, PrerequisiteHypergraph, satisfying_sets}, } |77c3c7858aad8e4f
 crates/critical-path/src/counterfactual.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/critical-path/src/counterfactual.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EdgeOutcome |59386cbff2c7b57c
+crates/critical-path/src/counterfactual.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EdgeOutcome |b0a4f097b1e20739
 crates/critical-path/src/counterfactual.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EdgeSensitivity |8b6a228864e2ae4a
 crates/critical-path/src/counterfactual.rs [pub] fn sensitivity( graph: &PrerequisiteHypergraph, goal_concept: EntityId, ) -> Result<Vec<EdgeSensitivity>, CriticalPathError> |035fdbeccd5092b6
 crates/critical-path/src/counterfactual.rs [pub] fn sensitivity_of( graph: &PrerequisiteHypergraph, goal_concept: EntityId, member: &EdgeMember, before: &[crate::hypergraph::SatisfyingSet], ) -> Result<EdgeSensitivity, CriticalPathError> |df72773d9820ee93
 crates/critical-path/src/counterfactual.rs [pub] fn without( graph: &PrerequisiteHypergraph, member: &EdgeMember, ) -> Result<PrerequisiteHypergraph, CriticalPathError> |ae6aa2580e7e0dc9
-crates/critical-path/src/counterfactual.rs [pub] impl EdgeOutcome :: #[must_use] const fn as_str(self) -> &'static str |d6673da2e83da62b
+crates/critical-path/src/counterfactual.rs [pub] impl EdgeOutcome :: #[must_use] const fn as_str(self) -> &'static str |ac0c9b0d8df4aa41
 crates/critical-path/src/counterfactual.rs [pub] impl EdgeSensitivity :: #[must_use] const fn dependent(&self) -> EntityId |f44990c3ffcda80b
 crates/critical-path/src/counterfactual.rs [pub] impl EdgeSensitivity :: #[must_use] const fn outcome(&self) -> EdgeOutcome |36a2f8470aad4926
 crates/critical-path/src/counterfactual.rs [pub] impl EdgeSensitivity :: #[must_use] const fn predicate(&self) -> &'static str |f791daf03dad0fe3
@@ -72,11 +72,11 @@ crates/critical-path/src/disclosure.rs [priv] impl UncertainEdges
 crates/critical-path/src/disclosure.rs [priv] use academic_domain::{ContentDigest, EntityId, EvidenceId} |f317cbecf5bbd1ac
 crates/critical-path/src/disclosure.rs [priv] use crate::{ CriticalPathError, hypergraph::EdgeStanding, vector::{BasisFamily, CostComponent}, } |d35b74215a0a0fd6
 crates/critical-path/src/disclosure.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum DisclosureGroup |f61b7797e1bd1c67
-crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExclusionReason |5c3243617882d0ae
-crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "alternatives", rename_all = "SCREAMING_SNAKE_CASE")] enum Alternatives |1459e9e6a421ee51
-crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "exclusions", rename_all = "SCREAMING_SNAKE_CASE")] enum Exclusions |c492038dac70243d
-crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "uncertain_edges", rename_all = "SCREAMING_SNAKE_CASE")] enum UncertainEdges |db2c00ec98ce33c3
+crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum DisclosureGroup |47b4d3d6260d6032
+crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExclusionReason |3d4bea4ca2731aeb
+crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "alternatives", rename_all = "SCREAMING_SNAKE_CASE")] enum Alternatives |e7b564b684b873fc
+crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "exclusions", rename_all = "SCREAMING_SNAKE_CASE")] enum Exclusions |eb23306d9825c063
+crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "uncertain_edges", rename_all = "SCREAMING_SNAKE_CASE")] enum UncertainEdges |cecbf443589f6f71
 crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct AlternativeRoute |aa81fde4ff1445f9
 crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ComputationSnapshot |59a422bba9933c0e
 crates/critical-path/src/disclosure.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct CostAssumption |1a74c71d2e763c95
@@ -89,7 +89,7 @@ crates/critical-path/src/disclosure.rs [pub] const DISCLOSURE_GROUPS: [Disclosur
 crates/critical-path/src/disclosure.rs [pub] impl Alternatives :: #[must_use] fn of(routes: Vec<AlternativeRoute>, ranked_count: usize) -> Self |f75daa5af0b82758
 crates/critical-path/src/disclosure.rs [pub] impl Alternatives :: #[must_use] fn routes(&self) -> &[AlternativeRoute] |c36b5788a0e6d0e5
 crates/critical-path/src/disclosure.rs [pub] impl CostAssumptions :: #[must_use] fn entries(&self) -> &[CostAssumption] |463a5d3a68356144
-crates/critical-path/src/disclosure.rs [pub] impl CostAssumptions :: fn of(entries: Vec<CostAssumption>) -> Result<Self, CriticalPathError> |af110006568c9f34
+crates/critical-path/src/disclosure.rs [pub] impl CostAssumptions :: fn of(entries: Vec<CostAssumption>) -> Result<Self, CriticalPathError> |e8d3e286c8d82bcb
 crates/critical-path/src/disclosure.rs [pub] impl Disclosure :: #[must_use] const fn alternatives(&self) -> &Alternatives |680795a7f959b56d
 crates/critical-path/src/disclosure.rs [pub] impl Disclosure :: #[must_use] const fn cost_assumptions(&self) -> &CostAssumptions |b2fa3fa3f55c584a
 crates/critical-path/src/disclosure.rs [pub] impl Disclosure :: #[must_use] const fn exclusions(&self) -> &Exclusions |1f7543f22030db8c
@@ -97,9 +97,9 @@ crates/critical-path/src/disclosure.rs [pub] impl Disclosure :: #[must_use] cons
 crates/critical-path/src/disclosure.rs [pub] impl Disclosure :: #[must_use] const fn snapshot(&self) -> &ComputationSnapshot |95b2a57b2af3d7ce
 crates/critical-path/src/disclosure.rs [pub] impl Disclosure :: #[must_use] const fn uncertain_edges(&self) -> &UncertainEdges |b284b0bd02c6a080
 crates/critical-path/src/disclosure.rs [pub] impl Disclosure :: #[must_use] fn group_has_entries(&self, group: DisclosureGroup) -> bool |1ce196fa24790363
-crates/critical-path/src/disclosure.rs [pub] impl DisclosureGroup :: #[must_use] const fn as_str(self) -> &'static str |7470e7741a6bbd36
-crates/critical-path/src/disclosure.rs [pub] impl DisclosureGroup :: #[must_use] const fn spec_token(self) -> &'static str |9e2387cffd54047b
-crates/critical-path/src/disclosure.rs [pub] impl ExclusionReason :: #[must_use] const fn as_str(self) -> &'static str |2793ca0e0d0efd3b
+crates/critical-path/src/disclosure.rs [pub] impl DisclosureGroup :: #[must_use] const fn as_str(self) -> &'static str |6c4a1977756b9908
+crates/critical-path/src/disclosure.rs [pub] impl DisclosureGroup :: #[must_use] const fn spec_token(self) -> &'static str |89b0df3b435be89e
+crates/critical-path/src/disclosure.rs [pub] impl ExclusionReason :: #[must_use] const fn as_str(self) -> &'static str |1671b7ecc3a40339
 crates/critical-path/src/disclosure.rs [pub] impl Exclusions :: #[must_use] fn of(routes: Vec<ExcludedRoute>) -> Self |fadb76745ed22bbd
 crates/critical-path/src/disclosure.rs [pub] impl Exclusions :: #[must_use] fn routes(&self) -> &[ExcludedRoute] |bdc12a06b083c612
 crates/critical-path/src/disclosure.rs [pub] impl UncertainEdges :: #[must_use] fn edges(&self) -> &[UncertainEdge] |6cc1e4332e20d116
@@ -119,7 +119,7 @@ crates/critical-path/src/edit.rs [pub] impl EditedPlan :: #[must_use] fn changed
 crates/critical-path/src/edit.rs [pub] impl EditedPlan :: #[must_use] fn edits(&self) -> &[RelationEdit] |f16834d37eeabbea
 crates/critical-path/src/edit.rs [pub] impl EditedPlan :: fn apply( &self, edit: RelationEdit, recomputed: CriticalPathResult, recomputed_graph: PrerequisiteHypergraph, ) -> Result<Self, CriticalPathError> |2e8d359b01942236
 crates/critical-path/src/edit.rs [pub] impl EditedPlan :: fn of( base: CriticalPathResult, base_graph: PrerequisiteHypergraph, edit: RelationEdit, recomputed: CriticalPathResult, recomputed_graph: PrerequisiteHypergraph, ) -> Result<Self, CriticalPathError> |086d7ff76345ac2b
-crates/critical-path/src/edit.rs [pub] impl RelationEdit :: #[must_use] const fn as_str(&self) -> &'static str |9e06f34723e3a1b5
+crates/critical-path/src/edit.rs [pub] impl RelationEdit :: #[must_use] const fn as_str(&self) -> &'static str |ce017aa5c92bc459
 crates/critical-path/src/edit.rs [pub] impl RelationEdit :: #[must_use] fn target(&self) -> EntityId |cea83acd1cd53bb5
 crates/critical-path/src/engine.rs [priv] fn academic_partition_is_feasible(candidate: &Candidate) -> bool |b90a9480da191a56
 crates/critical-path/src/engine.rs [priv] fn candidate_for( set: &SatisfyingSet, by_concept: &BTreeMap<[u8; 16], &ConceptEstimate>, inputs: &ConstraintInputs, ) -> Result<Candidate, CriticalPathError> |cddf58a24c45f7cb
@@ -150,7 +150,7 @@ crates/critical-path/src/hypergraph.rs [priv] use academic_gap::PrerequisiteEdge
 crates/critical-path/src/hypergraph.rs [priv] use crate::CriticalPathError |3ed99623820d973e
 crates/critical-path/src/hypergraph.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/critical-path/src/hypergraph.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
-crates/critical-path/src/hypergraph.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EdgeStanding |63ef01ae97625371
+crates/critical-path/src/hypergraph.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EdgeStanding |5dd3405655934cac
 crates/critical-path/src/hypergraph.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct PrerequisiteHypergraph |e8636b1c2f6c8db3
 crates/critical-path/src/hypergraph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Hyperedge |2216432988c97e39
 crates/critical-path/src/hypergraph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EdgeMember |f5dbec51771683b3
@@ -176,7 +176,7 @@ crates/critical-path/src/hypergraph.rs [pub] impl SatisfyingSet :: #[must_use] f
 crates/critical-path/src/hypergraph.rs [pub] impl SatisfyingSet :: #[must_use] fn holds(&self, concept: EntityId) -> bool |07c776c2b6500ceb
 crates/critical-path/src/hypergraph.rs [pub] impl SatisfyingSet :: #[must_use] fn members(&self) -> &[EdgeMember] |bb4f042ec8f99e3b
 crates/critical-path/src/hypergraph.rs [pub] impl SatisfyingSet :: #[must_use] fn uncertain_member_count(&self) -> usize |4759d8f4d0bf1f82
-crates/critical-path/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CriticalPathError |42ea1428ca295cad
+crates/critical-path/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CriticalPathError |3248e7bbe5d3cb3d
 crates/critical-path/src/lib.rs [pub] mod checkpoint
 crates/critical-path/src/lib.rs [pub] mod constraint
 crates/critical-path/src/lib.rs [pub] mod counterfactual
@@ -210,10 +210,10 @@ crates/critical-path/src/option.rs [priv] use academic_curriculum::{Credits, Off
 crates/critical-path/src/option.rs [priv] use academic_domain::{EntityId, EvidenceId, OfferingId} |da77329d5f30ef68
 crates/critical-path/src/option.rs [priv] use crate::CriticalPathError |3ed99623820d973e
 crates/critical-path/src/option.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/critical-path/src/option.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum OpportunityKind |edf0d0116092d479
+crates/critical-path/src/option.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum OpportunityKind |5daa9ae4f5cf1144
 crates/critical-path/src/option.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum AcquisitionOption |ba5c0bac49eaa9b3
 crates/critical-path/src/option.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct Opportunity |f92c4f598deb9559
-crates/critical-path/src/option.rs [pub] impl AcquisitionOption :: #[must_use] const fn as_str(&self) -> &'static str |179fdb1bfd5de497
+crates/critical-path/src/option.rs [pub] impl AcquisitionOption :: #[must_use] const fn as_str(&self) -> &'static str |ca1bb6d898fd66cd
 crates/critical-path/src/option.rs [pub] impl AcquisitionOption :: #[must_use] const fn credits(&self) -> u8 |0dd3aa1893270b4f
 crates/critical-path/src/option.rs [pub] impl AcquisitionOption :: #[must_use] const fn offering(&self) -> Option<OfferingId> |0a6791855b8c1e35
 crates/critical-path/src/option.rs [pub] impl AcquisitionOption :: #[must_use] const fn offering_status(&self) -> Option<OfferingStatus> |a17a1c02c2d55e27
@@ -226,7 +226,7 @@ crates/critical-path/src/option.rs [pub] impl Opportunity :: #[must_use] const f
 crates/critical-path/src/option.rs [pub] impl Opportunity :: #[must_use] const fn kind(&self) -> OpportunityKind |d908b1df699a764a
 crates/critical-path/src/option.rs [pub] impl Opportunity :: #[must_use] const fn of(concept: EntityId, kind: OpportunityKind, source: EvidenceId) -> Self |8574825ea7b38c61
 crates/critical-path/src/option.rs [pub] impl Opportunity :: #[must_use] const fn source(&self) -> EvidenceId |f403b923a4d51c45
-crates/critical-path/src/option.rs [pub] impl OpportunityKind :: #[must_use] const fn as_str(self) -> &'static str |d81c964c884ba98b
+crates/critical-path/src/option.rs [pub] impl OpportunityKind :: #[must_use] const fn as_str(self) -> &'static str |b09ef1400c0657bf
 crates/critical-path/src/pareto.rs [priv] impl Dominated
 crates/critical-path/src/pareto.rs [priv] impl ParetoFront
 crates/critical-path/src/pareto.rs [priv] use crate::{ plan::Candidate, vector::{BENEFIT_COMPONENTS, COST_COMPONENTS}, } |468b5851b56da58d
@@ -250,7 +250,7 @@ crates/critical-path/src/plan.rs [priv] use academic_domain::EntityId |2b35968c8
 crates/critical-path/src/plan.rs [priv] use crate::{ CriticalPathError, checkpoint::CheckpointDecision, constraint::{ConstraintFinding, ConstraintVerdict, RequiredInsertion}, disclosure::Disclosure, hypergraph::SatisfyingSet, option::AcquisitionOption, pareto::ParetoFront, preference::{NamedStrategy, PreferenceSlider}, vector::{BenefitVector, CostVector}, } |88e459bf7c681e54
 crates/critical-path/src/plan.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/critical-path/src/plan.rs [pub(crate)] impl CriticalPathResult :: const fn ranked_path( candidate: Candidate, rank: usize, role: PathRole, strategy: Option<NamedStrategy>, ) -> RankedPath |af7fbfde24ed3c71
-crates/critical-path/src/plan.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PathRole |4ee16c9ddd37e8ed
+crates/critical-path/src/plan.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PathRole |2c5915607ac26b38
 crates/critical-path/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Candidate |7f37043613da77d4
 crates/critical-path/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CriticalPathResult |a072ed61cd5bbb77
 crates/critical-path/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanStep |02a7d31d801ff87c
@@ -273,8 +273,8 @@ crates/critical-path/src/plan.rs [pub] impl CriticalPathResult :: #[must_use] co
 crates/critical-path/src/plan.rs [pub] impl CriticalPathResult :: #[must_use] fn ranked(&self) -> &[RankedPath] |914a54b7be96b4d2
 crates/critical-path/src/plan.rs [pub] impl CriticalPathResult :: #[must_use] fn roles(&self) -> &[(EntityId, PathRole)] |5c9e9102bf9f823e
 crates/critical-path/src/plan.rs [pub] impl CriticalPathResult :: fn of( goal: EntityId, front: ParetoFront, ranked: Vec<RankedPath>, roles: Vec<(EntityId, PathRole)>, slider: PreferenceSlider, disclosure: Disclosure, ) -> Result<Self, CriticalPathError> |91653c03c5920116
-crates/critical-path/src/plan.rs [pub] impl PathRole :: #[must_use] const fn as_str(self) -> &'static str |af6e14e8bc204f2e
-crates/critical-path/src/plan.rs [pub] impl PathRole :: #[must_use] const fn spec_token(self) -> &'static str |20ca53659fb3e39f
+crates/critical-path/src/plan.rs [pub] impl PathRole :: #[must_use] const fn as_str(self) -> &'static str |97539698e50670fd
+crates/critical-path/src/plan.rs [pub] impl PathRole :: #[must_use] const fn spec_token(self) -> &'static str |9a283af987d9f0f4
 crates/critical-path/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
 crates/critical-path/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn of( concept: EntityId, options: Vec<AcquisitionOption>, required_before: Option<RequiredInsertion>, ) -> Self |5cc8fa9f06533ab1
 crates/critical-path/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn required_before(&self) -> Option<&RequiredInsertion> |c0536b322bb21901
@@ -295,14 +295,14 @@ crates/critical-path/src/preference.rs [priv] impl<'a> Ranking<'a>
 crates/critical-path/src/preference.rs [priv] use crate::{ CriticalPathError, pareto::ParetoFront, plan::Candidate, vector::{BenefitComponent, CostComponent, VectorAxis, all_axes}, } |8fddb8c2d8242b5f
 crates/critical-path/src/preference.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/critical-path/src/preference.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
-crates/critical-path/src/preference.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum NamedStrategy |47c10b6f3078bb23
+crates/critical-path/src/preference.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum NamedStrategy |6fad6043097d13be
 crates/critical-path/src/preference.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Ranking<'a> |200ef69c8f1ef7f9
-crates/critical-path/src/preference.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "Vec<VectorAxis>", into = "Vec<VectorAxis>")] struct PreferenceSlider |0107eb1c5fc4a42d
+crates/critical-path/src/preference.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "Vec<VectorAxis>", into = "Vec<VectorAxis>")] struct PreferenceSlider |966988d4efbd0187
 crates/critical-path/src/preference.rs [pub] #[must_use] fn rank<'a>(front: &'a ParetoFront, slider: &PreferenceSlider) -> Ranking<'a> |2dd83b93d7b61b24
 crates/critical-path/src/preference.rs [pub] const NAMED_STRATEGIES: [NamedStrategy; 4] |3311a4ee4d1681ea
-crates/critical-path/src/preference.rs [pub] const STRATEGY_NAMES_ARE_EXAMPLES: &str |f4f7d2033c0f170f
-crates/critical-path/src/preference.rs [pub] impl NamedStrategy :: #[must_use] const fn as_str(self) -> &'static str |96af43fdb96d8301
-crates/critical-path/src/preference.rs [pub] impl NamedStrategy :: #[must_use] const fn spec_token(self) -> &'static str |6c5bc767779b46ae
+crates/critical-path/src/preference.rs [pub] const STRATEGY_NAMES_ARE_EXAMPLES: &str |c1d1d7c477e292ac
+crates/critical-path/src/preference.rs [pub] impl NamedStrategy :: #[must_use] const fn as_str(self) -> &'static str |dc4c637bfa3a1de8
+crates/critical-path/src/preference.rs [pub] impl NamedStrategy :: #[must_use] const fn spec_token(self) -> &'static str |0a223fd69bf4cf35
 crates/critical-path/src/preference.rs [pub] impl NamedStrategy :: fn slider(self) -> Result<PreferenceSlider, CriticalPathError> |e4b05940da84078e
 crates/critical-path/src/preference.rs [pub] impl PreferenceSlider :: #[must_use] fn order(&self) -> &[VectorAxis] |f0a26fd5e448317c
 crates/critical-path/src/preference.rs [pub] impl PreferenceSlider :: fn of(order: Vec<VectorAxis>) -> Result<Self, CriticalPathError> |7c36887f0ff14e8d
@@ -310,22 +310,22 @@ crates/critical-path/src/preference.rs [pub] impl<'a> Ranking<'a> :: #[must_use]
 crates/critical-path/src/preference.rs [pub] impl<'a> Ranking<'a> :: #[must_use] const fn slider(&self) -> &PreferenceSlider |06149ce141471683
 crates/critical-path/src/preference.rs [pub] impl<'a> Ranking<'a> :: #[must_use] fn candidates(&self) -> Vec<&'a Candidate> |d9529fd11c95c98c
 crates/critical-path/src/preference.rs [pub] impl<'a> Ranking<'a> :: #[must_use] fn order(&self) -> &[usize] |ab09b9df90f9ff22
-crates/critical-path/src/proof.rs [priv] const fn official_token(standing: OfficialPrerequisiteStanding) -> &'static str |5bf95271ddd1111e
-crates/critical-path/src/proof.rs [priv] const fn standing_token(standing: EdgeStanding) -> &'static str |e3e17e9aba353bf4
-crates/critical-path/src/proof.rs [priv] fn axis_token(axis: &crate::vector::VectorAxis) -> String |c2383ad068486ed4
+crates/critical-path/src/proof.rs [priv] const fn official_token(standing: OfficialPrerequisiteStanding) -> &'static str |236d26cff92d8a04
+crates/critical-path/src/proof.rs [priv] const fn standing_token(standing: EdgeStanding) -> &'static str |6dcb53f339bb5268
+crates/critical-path/src/proof.rs [priv] fn axis_token(axis: &crate::vector::VectorAxis) -> String |713493bbc590ca27
 crates/critical-path/src/proof.rs [priv] fn band_token(band: FreshnessBand) -> &'static str |40ebaa5e4372a809
 crates/critical-path/src/proof.rs [priv] fn count(value: usize) -> i64 |e7c8ee2852d4c750
-crates/critical-path/src/proof.rs [priv] fn hex(bytes: &[u8; 16]) -> String |b542f5facc2e447f
+crates/critical-path/src/proof.rs [priv] fn hex(bytes: &[u8; 16]) -> String |510f250fc38c6bbf
 crates/critical-path/src/proof.rs [priv] fn key(name: &str) -> Result<InputKey, CriticalPathError> |88b55a5b126655a0
-crates/critical-path/src/proof.rs [priv] fn push_meeting( entries: &mut Vec<(InputKey, InputValue)>, prefix: &str, meeting: Meeting, ) -> Result<(), CriticalPathError> |9c4c7dcb3e04835b
+crates/critical-path/src/proof.rs [priv] fn push_meeting( entries: &mut Vec<(InputKey, InputValue)>, prefix: &str, meeting: Meeting, ) -> Result<(), CriticalPathError> |339373ae023298c6
 crates/critical-path/src/proof.rs [priv] fn stage_node( node_id: &str, rule_id: &str, status: ProofStatus, children: Vec<ProofNode>, ) -> Result<ProofNode, CriticalPathError> |fe9cdd6d1c533dfe
 crates/critical-path/src/proof.rs [priv] use academic_curriculum::{Meeting, Weekday} |09e5b851eb496e41
 crates/critical-path/src/proof.rs [priv] use academic_domain::{ FreshnessBand, engines::{ EngineError, EngineOutcome, EngineResult, FrozenInputs, InputKey, InputValue, NodeId, ProofNode, ProofStatus, RuleId, }, } |daff7c593e68679a
 crates/critical-path/src/proof.rs [priv] use crate::{ CriticalPathError, constraint::{CONSTRAINTS, OfficialPrerequisiteStanding}, engine::PlanRequest, hypergraph::EdgeStanding, plan::CriticalPathResult, vector::{BENEFIT_COMPONENTS, COST_COMPONENTS}, } |fa4c2100f6c95de8
-crates/critical-path/src/proof.rs [pub] const CRITICAL_PATH_CORPUS_ROOT: &str |a224b2b8bf1f3a2f
-crates/critical-path/src/proof.rs [pub] const STAGE_RULES: [&str; 5] |94bdc2d4c0daf270
-crates/critical-path/src/proof.rs [pub] fn frozen_inputs(request: &PlanRequest<'_>) -> Result<FrozenInputs, CriticalPathError> |0bb11e3c15ad9fc2
-crates/critical-path/src/proof.rs [pub] fn outcome( result: &CriticalPathResult, inputs: &FrozenInputs, ) -> Result<EngineOutcome, CriticalPathError> |613011fe58b3ed21
+crates/critical-path/src/proof.rs [pub] const CRITICAL_PATH_CORPUS_ROOT: &str |b2c7be5b050c5c05
+crates/critical-path/src/proof.rs [pub] const STAGE_RULES: [&str; 5] |7ee5ab50a0835534
+crates/critical-path/src/proof.rs [pub] fn frozen_inputs(request: &PlanRequest<'_>) -> Result<FrozenInputs, CriticalPathError> |6e8b7efd4510c2ee
+crates/critical-path/src/proof.rs [pub] fn outcome( result: &CriticalPathResult, inputs: &FrozenInputs, ) -> Result<EngineOutcome, CriticalPathError> |a1e9096ac4a179e0
 crates/critical-path/src/proof.rs [pub] type HarnessError = EngineError |857c608deb56dbf2
 crates/critical-path/src/vector.rs [priv] impl BasisFamily
 crates/critical-path/src/vector.rs [priv] impl BenefitComponent
@@ -337,12 +337,12 @@ crates/critical-path/src/vector.rs [priv] impl CostVector
 crates/critical-path/src/vector.rs [priv] impl Unit
 crates/critical-path/src/vector.rs [priv] use crate::CriticalPathError |3ed99623820d973e
 crates/critical-path/src/vector.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BasisFamily |9f5f0a033dde23a3
-crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BenefitComponent |122e958a211d4be1
-crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CostComponent |33343d6131c25968
-crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Unit |88619ae585de0f46
-crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "side", rename_all = "SCREAMING_SNAKE_CASE")] enum VectorAxis |d36fd91370bd7e99
-crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "basis", rename_all = "SCREAMING_SNAKE_CASE")] enum CostBasis |b916808e773006fd
+crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BasisFamily |0b034b9af952743e
+crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BenefitComponent |eab0cb7edf06d07c
+crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CostComponent |bcd25ecbd5c6d895
+crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Unit |3f62b391348c47b3
+crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "side", rename_all = "SCREAMING_SNAKE_CASE")] enum VectorAxis |19ce8e5b244bdcfb
+crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "basis", rename_all = "SCREAMING_SNAKE_CASE")] enum CostBasis |3e6e213e5492cdb9
 crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct BenefitVector |34e522ee19396137
 crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct CostEstimate |ef2b6d34c50b4edc
 crates/critical-path/src/vector.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct CostVector |949861c9232441a1
@@ -350,15 +350,15 @@ crates/critical-path/src/vector.rs [pub] #[must_use] fn all_axes() -> Vec<Vector
 crates/critical-path/src/vector.rs [pub] const BASIS_FAMILIES: [BasisFamily; 4] |1da3dfcf8d4fd5de
 crates/critical-path/src/vector.rs [pub] const BENEFIT_COMPONENTS: [BenefitComponent; 5] |62bc7380338fcf58
 crates/critical-path/src/vector.rs [pub] const COST_COMPONENTS: [CostComponent; 7] |eec0638d1846a7f1
-crates/critical-path/src/vector.rs [pub] impl BasisFamily :: #[must_use] const fn spec_token(self) -> &'static str |ad1a1246bc0e54da
-crates/critical-path/src/vector.rs [pub] impl BenefitComponent :: #[must_use] const fn spec_token(self) -> &'static str |59f5e64714516227
+crates/critical-path/src/vector.rs [pub] impl BasisFamily :: #[must_use] const fn spec_token(self) -> &'static str |12e9f788cd51079c
+crates/critical-path/src/vector.rs [pub] impl BenefitComponent :: #[must_use] const fn spec_token(self) -> &'static str |f64097a7c8e9eb93
 crates/critical-path/src/vector.rs [pub] impl BenefitComponent :: #[must_use] const fn unit(self) -> Unit |38f0bab904e8b2ad
 crates/critical-path/src/vector.rs [pub] impl BenefitVector :: #[must_use] const fn component(&self, component: BenefitComponent) -> &CostEstimate |5b31116ba42e48e0
 crates/critical-path/src/vector.rs [pub] impl BenefitVector :: fn of(estimates: [CostEstimate; 5]) -> Result<Self, CriticalPathError> |9c43fc2ae2296515
 crates/critical-path/src/vector.rs [pub] impl CostBasis :: #[must_use] const fn is_measured(&self) -> bool |70daebecdcd59925
 crates/critical-path/src/vector.rs [pub] impl CostBasis :: #[must_use] fn families(&self) -> &[BasisFamily] |d194b3fdcd7c39c0
 crates/critical-path/src/vector.rs [pub] impl CostBasis :: fn measured(families: &[BasisFamily]) -> Result<Self, CriticalPathError> |6955aca4a52c1100
-crates/critical-path/src/vector.rs [pub] impl CostComponent :: #[must_use] const fn spec_token(self) -> &'static str |9e40df890ac0da82
+crates/critical-path/src/vector.rs [pub] impl CostComponent :: #[must_use] const fn spec_token(self) -> &'static str |6f1f57adb7df1d4a
 crates/critical-path/src/vector.rs [pub] impl CostComponent :: #[must_use] const fn unit(self) -> Unit |c00e46c175541878
 crates/critical-path/src/vector.rs [pub] impl CostEstimate :: #[must_use] const fn basis(&self) -> &CostBasis |ea9b6db5dbd2f680
 crates/critical-path/src/vector.rs [pub] impl CostEstimate :: #[must_use] const fn high(&self) -> u32 |8ffdd66833a0d777
@@ -370,4 +370,4 @@ crates/critical-path/src/vector.rs [pub] impl CostEstimate :: fn plus(&self, oth
 crates/critical-path/src/vector.rs [pub] impl CostVector :: #[must_use] const fn component(&self, component: CostComponent) -> &CostEstimate |91977c62ecfdc0f5
 crates/critical-path/src/vector.rs [pub] impl CostVector :: fn of(estimates: [CostEstimate; 7]) -> Result<Self, CriticalPathError> |6ead74975dca1093
 crates/critical-path/src/vector.rs [pub] impl CostVector :: fn plus(&self, other: &Self) -> Result<Self, CriticalPathError> |1f78c8e0586e731a
-crates/critical-path/src/vector.rs [pub] impl Unit :: #[must_use] const fn as_str(self) -> &'static str |1271236e8375e8ec
+crates/critical-path/src/vector.rs [pub] impl Unit :: #[must_use] const fn as_str(self) -> &'static str |a854c65c810f363a

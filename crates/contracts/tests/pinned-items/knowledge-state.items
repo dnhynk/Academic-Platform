@@ -5,8 +5,8 @@ crates/knowledge-state/src/assertion.rs [priv] impl FluencyRecord
 crates/knowledge-state/src/assertion.rs [priv] impl From<KnowledgeStateAssertion> for AssertionWire
 crates/knowledge-state/src/assertion.rs [priv] impl From<KnowledgeStateAssertion> for AssertionWire :: fn from(value: KnowledgeStateAssertion) -> Self |bc76ca8fd0f8d12f
 crates/knowledge-state/src/assertion.rs [priv] impl KnowledgeStateAssertion
-crates/knowledge-state/src/assertion.rs [priv] impl KnowledgeStateAssertion :: #[allow(clippy::too_many_arguments)] fn seal( version: u32, supersedes: Option<AssertionId>, concept: EntityId, as_of: TimestampMillis, projection: &MasteryProjection, facets: FacetProfile, freshness_band: FreshnessBand, freshness_confidence: ConfidencePermille, confirmation: Option<ConfirmationRecord>, broad_signals: Vec<BroadSignal>, ) -> Result<Self, KnowledgeStateError> |e7c2b17131db2f67
-crates/knowledge-state/src/assertion.rs [priv] impl KnowledgeStateAssertion :: fn identity_digest(&self) -> ContentDigest |6930f2c57ae1301f
+crates/knowledge-state/src/assertion.rs [priv] impl KnowledgeStateAssertion :: #[allow(clippy::too_many_arguments)] fn seal( version: u32, supersedes: Option<AssertionId>, concept: EntityId, as_of: TimestampMillis, projection: &MasteryProjection, facets: FacetProfile, freshness_band: FreshnessBand, freshness_confidence: ConfidencePermille, confirmation: Option<ConfirmationRecord>, broad_signals: Vec<BroadSignal>, ) -> Result<Self, KnowledgeStateError> |bb276f1b101de247
+crates/knowledge-state/src/assertion.rs [priv] impl KnowledgeStateAssertion :: fn identity_digest(&self) -> ContentDigest |0344ca47be43ba2d
 crates/knowledge-state/src/assertion.rs [priv] impl TryFrom<AssertionWire> for KnowledgeStateAssertion
 crates/knowledge-state/src/assertion.rs [priv] impl TryFrom<AssertionWire> for KnowledgeStateAssertion :: fn try_from(value: AssertionWire) -> Result<Self, Self::Error> |5a42f214748a20cc
 crates/knowledge-state/src/assertion.rs [priv] impl TryFrom<AssertionWire> for KnowledgeStateAssertion :: type Error = KnowledgeStateError |1836ebb124f415ba
@@ -16,8 +16,8 @@ crates/knowledge-state/src/assertion.rs [priv] use serde::{Deserialize, Serializ
 crates/knowledge-state/src/assertion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(transparent)] struct AssertionId(ContentDigest) |1a56d371c4e24e4f
 crates/knowledge-state/src/assertion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] struct ConfirmationRecord |f052fc475dba32a6
 crates/knowledge-state/src/assertion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] struct FluencyRecord |6b1ee61c423bd0d7
-crates/knowledge-state/src/assertion.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "AssertionWire", into = "AssertionWire")] struct KnowledgeStateAssertion |368ee03384e90b3f
-crates/knowledge-state/src/assertion.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct AssertionWire |cb5e0020cb2ab8c8
+crates/knowledge-state/src/assertion.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "AssertionWire", into = "AssertionWire")] struct KnowledgeStateAssertion |3cdb59903a267fc3
+crates/knowledge-state/src/assertion.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct AssertionWire |c6cb9358736a044c
 crates/knowledge-state/src/assertion.rs [pub] impl AssertionId :: #[must_use] const fn digest(&self) -> &ContentDigest |a9326b875358ea7a
 crates/knowledge-state/src/assertion.rs [pub] impl ConfirmationRecord :: #[must_use] const fn confirmed_at(&self) -> TimestampMillis |181572787e2fa697
 crates/knowledge-state/src/assertion.rs [pub] impl ConfirmationRecord :: #[must_use] const fn level(&self) -> MasteryLevel |7b16fd52f391f1f6
@@ -61,9 +61,9 @@ crates/knowledge-state/src/confirmation.rs [pub] #[derive(Debug, Clone, Copy, Pa
 crates/knowledge-state/src/confirmation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AiProposal |b3729b1a1a8dfd38
 crates/knowledge-state/src/confirmation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TransferContext |161f0ada52e94cea
 crates/knowledge-state/src/confirmation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TransferRepetition |50a6f02980b121e5
-crates/knowledge-state/src/confirmation.rs [pub] const STATE_CONFIRMATION_OBJECT: &str |c98a2ed11461e49f
-crates/knowledge-state/src/confirmation.rs [pub] const STATE_CONFIRMATION_PREDICATE: &str |b9ca59dbd0433437
-crates/knowledge-state/src/confirmation.rs [pub] impl AdjustmentDirection :: #[must_use] const fn as_str(self) -> &'static str |b13bb9e786f679d5
+crates/knowledge-state/src/confirmation.rs [pub] const STATE_CONFIRMATION_OBJECT: &str |86b088b9dbc96a86
+crates/knowledge-state/src/confirmation.rs [pub] const STATE_CONFIRMATION_PREDICATE: &str |f833846b0662b254
+crates/knowledge-state/src/confirmation.rs [pub] impl AdjustmentDirection :: #[must_use] const fn as_str(self) -> &'static str |ebe387ce8e4db3fa
 crates/knowledge-state/src/confirmation.rs [pub] impl AdjustmentDirection :: #[must_use] const fn between(standing: MasteryLevel, proposed: MasteryLevel) -> Self |6e2ab56687b597cb
 crates/knowledge-state/src/confirmation.rs [pub] impl AdjustmentDirection :: const ALL: [Self; 3] |68a31e663904db18
 crates/knowledge-state/src/confirmation.rs [pub] impl AiProposal :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
@@ -121,8 +121,8 @@ crates/knowledge-state/src/eligibility.rs [priv] use serde::{Deserialize, Serial
 crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ConceptLink |6df7fa330bb3df7c
 crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Outcome |30a26430df2d5f64
 crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Participation |1d305c2806d56cfc
-crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EligibilityCheck |6cd832ff19912171
-crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EligibilityReasonCode |90039d80ee4fe7ca
+crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EligibilityCheck |50076e72646b3aac
+crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EligibilityReasonCode |3e86d6b0859a5487
 crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum EligibilityOutcome |13a36d5a72aac7a1
 crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum SourceIntegrity |4dda1323654acfdc
 crates/knowledge-state/src/eligibility.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BlockedEvidence |d9669e89576f81fc
@@ -132,13 +132,13 @@ crates/knowledge-state/src/eligibility.rs [pub] impl BlockedEvidence :: #[must_u
 crates/knowledge-state/src/eligibility.rs [pub] impl BlockedEvidence :: #[must_use] const fn evidence_id(&self) -> EvidenceId |94909e3d6e9dcda9
 crates/knowledge-state/src/eligibility.rs [pub] impl BlockedEvidence :: #[must_use] fn failed_checks(&self) -> Vec<EligibilityCheck> |402e18fe104c9b7c
 crates/knowledge-state/src/eligibility.rs [pub] impl BlockedEvidence :: #[must_use] fn reasons(&self) -> &[EligibilityReasonCode] |d7ab9dd4f9baf806
-crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityCheck :: #[must_use] const fn as_str(self) -> &'static str |d4541049a96f8894
-crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityCheck :: #[must_use] const fn question(self) -> &'static str |11522690893e2e98
+crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityCheck :: #[must_use] const fn as_str(self) -> &'static str |1cf53106473a7293
+crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityCheck :: #[must_use] const fn question(self) -> &'static str |cbab616d2ea1299a
 crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityCheck :: const ALL: [Self; 4] |349b9db9bb0aa3f1
 crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityOutcome :: #[must_use] const fn admitted(&self) -> Option<&EligibleEvidence> |7d2aa008650c1e9d
 crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityOutcome :: #[must_use] const fn blocked(&self) -> Option<&BlockedEvidence> |e03575d3ef735836
 crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityOutcome :: #[must_use] fn admit( evidence: ConceptEvidence, evidence_id: EvidenceId, dossier: &EvidenceDossier, ) -> Self |3cbe9deb1bfd6626
-crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityReasonCode :: #[must_use] const fn as_str(self) -> &'static str |a903c5cc2a2c6d0c
+crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityReasonCode :: #[must_use] const fn as_str(self) -> &'static str |e4a0b525aeb726dc
 crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityReasonCode :: #[must_use] const fn check(self) -> EligibilityCheck |5f070576a8ae83d3
 crates/knowledge-state/src/eligibility.rs [pub] impl EligibilityReasonCode :: const ALL: [Self; 8] |c64bbcd51c1c953f
 crates/knowledge-state/src/eligibility.rs [pub] impl EligibleEvidence :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
@@ -170,8 +170,8 @@ crates/knowledge-state/src/evidence.rs [priv] use academic_repository_classifica
 crates/knowledge-state/src/evidence.rs [priv] use crate::{KnowledgeStateError, confirmation::UserConfirmation, ladder::FacetStrength} |4795b1f7f246ded0
 crates/knowledge-state/src/evidence.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CeilingRow |f2eff8f191049299
-crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceKind |c8a2c93d6d383fbb
-crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", content = "level", rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceCeiling |e046bc6f3e25b3b0
+crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceKind |9b0e62e93addabe6
+crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", content = "level", rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceCeiling |f0b2961a326df540
 crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ConceptEvidence |c4dbb86d573e5535
 crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DependencyOnly |849b6c182be12d9a
 crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectUse |1dd2233ffe8e851b
@@ -181,7 +181,7 @@ crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, E
 crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ExerciseOutcome |11b68ec14b0fd4d1
 crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct IncidentRepair |664600ac4e702889
 crates/knowledge-state/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct TeachingSite |b044feec93b8524c
-crates/knowledge-state/src/evidence.rs [pub] const CEILINGS: [CeilingRow; 8] |33655fb562fac8cf
+crates/knowledge-state/src/evidence.rs [pub] const CEILINGS: [CeilingRow; 8] |71f9651c2ec41ae5
 crates/knowledge-state/src/evidence.rs [pub] impl BroadSignal :: #[must_use] const fn grade(&self) -> &CourseGradeSignal |d25b1b12cd6a1836
 crates/knowledge-state/src/evidence.rs [pub] impl BroadSignal :: #[must_use] const fn of_grade(signal: CourseGradeSignal) -> Self |1950f9280975516a
 crates/knowledge-state/src/evidence.rs [pub] impl ConceptEvidence :: #[must_use] const fn ceiling(&self) -> EvidenceCeiling |bf4317e90e07e3ab
@@ -198,7 +198,7 @@ crates/knowledge-state/src/evidence.rs [pub] impl DependencyOnly :: #[must_use] 
 crates/knowledge-state/src/evidence.rs [pub] impl DependencyOnly :: #[must_use] fn of_stance(stance: &ConceptStance) -> Option<Self> |b494c6267f5e439e
 crates/knowledge-state/src/evidence.rs [pub] impl DependencyOnly :: #[must_use] fn snapshot(&self) -> &str |9fe7ca97122bc149
 crates/knowledge-state/src/evidence.rs [pub] impl EvidenceCeiling :: #[must_use] const fn admits(self, level: MasteryLevel) -> bool |1c8df5bfdb1d9af9
-crates/knowledge-state/src/evidence.rs [pub] impl EvidenceKind :: #[must_use] const fn as_str(self) -> &'static str |ee40072976138764
+crates/knowledge-state/src/evidence.rs [pub] impl EvidenceKind :: #[must_use] const fn as_str(self) -> &'static str |f8e682eba4af4631
 crates/knowledge-state/src/evidence.rs [pub] impl EvidenceKind :: #[must_use] const fn ceiling(self) -> EvidenceCeiling |f67d6d0568396af2
 crates/knowledge-state/src/evidence.rs [pub] impl EvidenceKind :: const ALL: [Self; 8] |4a5fba98b56a2547
 crates/knowledge-state/src/evidence.rs [pub] impl ExerciseOutcome :: #[must_use] const fn artifact(&self) -> EvidenceId |65b0a883af91df67
@@ -269,11 +269,11 @@ crates/knowledge-state/src/ladder.rs [priv] impl From<AutomaticLevel> for Master
 crates/knowledge-state/src/ladder.rs [priv] impl MasteryFacet
 crates/knowledge-state/src/ladder.rs [priv] use academic_domain::MasteryLevel |e2c2cdd2e57dc6f2
 crates/knowledge-state/src/ladder.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/knowledge-state/src/ladder.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum AutomaticLevel |807672443b474db8
-crates/knowledge-state/src/ladder.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum FacetStrength |215dced0fe1b381f
-crates/knowledge-state/src/ladder.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MasteryFacet |b4f5bf1166b91a00
+crates/knowledge-state/src/ladder.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum AutomaticLevel |d832ae41e46c1545
+crates/knowledge-state/src/ladder.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum FacetStrength |477244d56ea2263a
+crates/knowledge-state/src/ladder.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MasteryFacet |9a7e5a8de810531d
 crates/knowledge-state/src/ladder.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] struct FacetProfile |6237adf5a27a408a
-crates/knowledge-state/src/ladder.rs [pub] #[must_use] const fn level_token(level: MasteryLevel) -> &'static str |1e7c7273287611e0
+crates/knowledge-state/src/ladder.rs [pub] #[must_use] const fn level_token(level: MasteryLevel) -> &'static str |f3906abac673906a
 crates/knowledge-state/src/ladder.rs [pub] #[must_use] const fn rung(level: MasteryLevel) -> u8 |449207bff2811df8
 crates/knowledge-state/src/ladder.rs [pub] const LADDER: [MasteryLevel; 6] |33c7870c7b47b634
 crates/knowledge-state/src/ladder.rs [pub] impl AutomaticLevel :: #[must_use] const fn level(self) -> MasteryLevel |5fcc7ac6c34c2105
@@ -282,11 +282,11 @@ crates/knowledge-state/src/ladder.rs [pub] impl AutomaticLevel :: const ALL: [Se
 crates/knowledge-state/src/ladder.rs [pub] impl FacetProfile :: #[must_use] const fn of( recognize: FacetStrength, explain: FacetStrength, solve_structured_problem: FacetStrength, implement_or_operate: FacetStrength, transfer_to_novel_situation: FacetStrength, ) -> Self |44cec766369967d8
 crates/knowledge-state/src/ladder.rs [pub] impl FacetProfile :: #[must_use] const fn strength(&self, facet: MasteryFacet) -> FacetStrength |04d51f67d4bf41cf
 crates/knowledge-state/src/ladder.rs [pub] impl FacetProfile :: #[must_use] fn with_transfer_at_least(&self, strength: FacetStrength) -> Self |346d4401dd6d9275
-crates/knowledge-state/src/ladder.rs [pub] impl FacetStrength :: #[must_use] const fn as_str(self) -> &'static str |59af72421c03baa6
+crates/knowledge-state/src/ladder.rs [pub] impl FacetStrength :: #[must_use] const fn as_str(self) -> &'static str |9b27a7e6237ebca8
 crates/knowledge-state/src/ladder.rs [pub] impl FacetStrength :: const ALL: [Self; 3] |774b9f55a9c374f3
-crates/knowledge-state/src/ladder.rs [pub] impl MasteryFacet :: #[must_use] const fn key(self) -> &'static str |12175169083db8ec
+crates/knowledge-state/src/ladder.rs [pub] impl MasteryFacet :: #[must_use] const fn key(self) -> &'static str |819dc3208b44fe60
 crates/knowledge-state/src/ladder.rs [pub] impl MasteryFacet :: const ALL: [Self; 5] |9938523073393814
-crates/knowledge-state/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum KnowledgeStateError |c5fe4d605360845b
+crates/knowledge-state/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum KnowledgeStateError |5390d2f24c54dd43
 crates/knowledge-state/src/lib.rs [pub] mod assertion
 crates/knowledge-state/src/lib.rs [pub] mod confirmation
 crates/knowledge-state/src/lib.rs [pub] mod conflict
@@ -303,7 +303,7 @@ crates/knowledge-state/src/lib.rs [pub] use evidence::{ BroadSignal, CEILINGS, C
 crates/knowledge-state/src/lib.rs [pub] use history::{ EvidenceRetraction, FreshnessInput, HistoryEntry, KnowledgeStateHistory, ProposalApplication, ProposalOutcome, } |dee69ef12636536a
 crates/knowledge-state/src/lib.rs [pub] use ladder::{ AutomaticLevel, FacetProfile, FacetStrength, LADDER, MasteryFacet, level_token, rung, } |f47f7e5e0711469d
 crates/knowledge-state/src/lib.rs [pub] use projection::{ CeilingDisclosure, EvidenceSufficiency, MasteryProjection, SufficiencyGap, UNSEEN_MEANING, UnseenBasis, automatic_contribution, project, } |f2cda4f0a7ac9cef
-crates/knowledge-state/src/projection.rs [priv] fn ceiling_cell(kind: EvidenceKind) -> &'static str |064511ee12cf90e4
+crates/knowledge-state/src/projection.rs [priv] fn ceiling_cell(kind: EvidenceKind) -> &'static str |09ab2095997f9564
 crates/knowledge-state/src/projection.rs [priv] impl CeilingDisclosure
 crates/knowledge-state/src/projection.rs [priv] impl EvidenceSufficiency
 crates/knowledge-state/src/projection.rs [priv] impl MasteryProjection
@@ -314,13 +314,13 @@ crates/knowledge-state/src/projection.rs [priv] use academic_domain::{Confidence
 crates/knowledge-state/src/projection.rs [priv] use crate::{ confirmation::FluentAuthorization, eligibility::{BlockedEvidence, EligibilityCheck, EligibleEvidence}, evidence::{CEILINGS, EvidenceCeiling, EvidenceKind}, ladder::AutomaticLevel, } |999d629e5e4b77e6
 crates/knowledge-state/src/projection.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/knowledge-state/src/projection.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CeilingDisclosure |a0eda9ace0ad9b05
-crates/knowledge-state/src/projection.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UnseenBasis |b6e49a88ec0ea27d
-crates/knowledge-state/src/projection.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SufficiencyGap |9ee1d88aa5c2b9d5
+crates/knowledge-state/src/projection.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UnseenBasis |33602651562650a8
+crates/knowledge-state/src/projection.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SufficiencyGap |3c935f180735f8d0
 crates/knowledge-state/src/projection.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MasteryProjection |0ae8ef282061ea66
 crates/knowledge-state/src/projection.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct EvidenceSufficiency |6ed0b15e758f562a
 crates/knowledge-state/src/projection.rs [pub] #[must_use] const fn automatic_contribution(kind: EvidenceKind) -> AutomaticLevel |482f6ed51ac1c14d
-crates/knowledge-state/src/projection.rs [pub] const UNSEEN_MEANING: &str |becf8b60fa75cd92
-crates/knowledge-state/src/projection.rs [pub] fn project( evidence: &[EligibleEvidence], blocked: &[BlockedEvidence], ) -> Result<MasteryProjection, crate::KnowledgeStateError> |df59314af67c2da0
+crates/knowledge-state/src/projection.rs [pub] const UNSEEN_MEANING: &str |2f7d2feee685c00b
+crates/knowledge-state/src/projection.rs [pub] fn project( evidence: &[EligibleEvidence], blocked: &[BlockedEvidence], ) -> Result<MasteryProjection, crate::KnowledgeStateError> |0570f840839221a0
 crates/knowledge-state/src/projection.rs [pub] impl CeilingDisclosure :: #[must_use] const fn ceiling(self) -> EvidenceCeiling |4924fccea036f51f
 crates/knowledge-state/src/projection.rs [pub] impl CeilingDisclosure :: #[must_use] const fn cell(self) -> &'static str |25c9bd544ce9391d
 crates/knowledge-state/src/projection.rs [pub] impl CeilingDisclosure :: #[must_use] const fn from(self) -> Option<EvidenceKind> |f98252def4e76469
@@ -337,8 +337,8 @@ crates/knowledge-state/src/projection.rs [pub] impl MasteryProjection :: #[must_
 crates/knowledge-state/src/projection.rs [pub] impl MasteryProjection :: #[must_use] fn contradicting(&self) -> &[EvidenceId] |fed540d22591452a
 crates/knowledge-state/src/projection.rs [pub] impl MasteryProjection :: #[must_use] fn supporting(&self) -> &[EvidenceId] |a5542e684b945df6
 crates/knowledge-state/src/projection.rs [pub] impl MasteryProjection :: fn with_fluency( &self, authorization: FluentAuthorization, concept: academic_domain::EntityId, ) -> Result<Self, crate::KnowledgeStateError> |68ff042deefdc6d3
-crates/knowledge-state/src/projection.rs [pub] impl SufficiencyGap :: #[must_use] const fn as_str(self) -> &'static str |a154b02f1580fc8f
+crates/knowledge-state/src/projection.rs [pub] impl SufficiencyGap :: #[must_use] const fn as_str(self) -> &'static str |ded186b76c240ced
 crates/knowledge-state/src/projection.rs [pub] impl SufficiencyGap :: #[must_use] const fn deduction(self) -> u16 |595fb67ebbae3645
 crates/knowledge-state/src/projection.rs [pub] impl SufficiencyGap :: const ALL: [Self; 6] |662ebd4a6d94e7a0
-crates/knowledge-state/src/projection.rs [pub] impl UnseenBasis :: #[must_use] const fn as_str(self) -> &'static str |800393893df6281c
+crates/knowledge-state/src/projection.rs [pub] impl UnseenBasis :: #[must_use] const fn as_str(self) -> &'static str |c3a3dfbf87fbd7c6
 crates/knowledge-state/src/projection.rs [pub] impl UnseenBasis :: const ALL: [Self; 2] |7d8bee9ade2e6359

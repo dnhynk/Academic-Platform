@@ -43,7 +43,7 @@ use academic_repository_competency::{
     ContributionKind, ContributionRecord, ExplainedByUser, ExternalAuthorId, GeneratedCodeWarrant,
     IdentitySource, ModifiedByUser, OriginReport, OutcomeArtifact, OutcomeKind, PromotionCheck,
     PromotionInput, PromotionSet, RejectionReason, RubricId, ScaffoldRubric, UserId,
-    VerifiedByUser, observation_alone_promotes, promote,
+    VerifiedByUser, WarrantStep, observation_alone_promotes, promote,
 };
 use academic_repository_correlation::{Correlation, CorrelationInput, correlate};
 use academic_untrusted_content::SourceIndex;
@@ -1744,5 +1744,52 @@ fn an_external_identity_is_bounded_in_length_and_not_in_shape() -> TestResult {
             "{value:?} was refused by a type that is documented not to check shape"
         );
     }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The refusal `P2-A5`'s sixth audit found nothing executes.
+// ---------------------------------------------------------------------------
+
+/// `generated.rs:172`, reached.
+///
+/// The sixth audit instrumented all 93 `return Err(` sites in the six `P2-R`
+/// crates and ran the whole workspace four times: 63 fired and **30 did not**.
+/// One of the thirty is in this crate, and it is the third step of the
+/// generated-code warrant: the note the user writes when they explain what
+/// they changed. The suite built the whole three-step warrant and never built
+/// it with the last step empty, so the rule that a warrant carries an
+/// explanation was itself unmeasured.
+///
+/// Driven on both sides of `trim`, because an explanation of spaces is the
+/// form a caller actually produces.
+#[test]
+fn a_generated_code_warrant_needs_an_explanation() -> TestResult {
+    let corpus = built(&OBSERVED_REDIS)?;
+    let site = corpus.site("src/cache.ts")?;
+    let verified = VerifiedByUser::at(vec![site.clone()], "ran the reconnect path under a fault")?;
+    let modified = ModifiedByUser::after(
+        verified,
+        vec![ChangedSite::new(site, ChangeKind::ErrorHandling)],
+    )?;
+
+    for empty in [
+        "", "   ", "	
+ ",
+    ] {
+        assert!(
+            matches!(
+                ExplainedByUser::after(modified.clone(), empty),
+                Err(CompetencyError::WarrantStepHasNoNote(
+                    WarrantStep::Explained
+                ))
+            ),
+            "an explanation of {empty:?} was admitted"
+        );
+    }
+
+    // The control: a written explanation is admitted, so the refusal is about
+    // the note and not about the step.
+    assert!(ExplainedByUser::after(modified, "the retry is now bounded").is_ok());
     Ok(())
 }

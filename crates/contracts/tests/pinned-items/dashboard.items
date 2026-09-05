@@ -6,7 +6,7 @@ crates/dashboard/src/audit_state.rs [priv] use academic_domain::engines::ProofSt
 crates/dashboard/src/audit_state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AuditState |621bbbf102d9ba51
 crates/dashboard/src/audit_state.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct AuditStateReading |5edc4d881140c3e7
 crates/dashboard/src/audit_state.rs [pub] impl AuditState :: #[must_use] const fn of(status: ProofStatus) -> Self |b79a4776b8a3a71f
-crates/dashboard/src/audit_state.rs [pub] impl AuditState :: #[must_use] const fn spec_word(self) -> &'static str |17b790250a03f72e
+crates/dashboard/src/audit_state.rs [pub] impl AuditState :: #[must_use] const fn spec_word(self) -> &'static str |c5c558f553ac98ab
 crates/dashboard/src/audit_state.rs [pub] impl AuditState :: const ALL: [Self; 4] |a18b4e35f847205b
 crates/dashboard/src/audit_state.rs [pub] impl AuditStateReading :: #[must_use] const fn engine_status(self) -> ProofStatus |f28167ad8e86642e
 crates/dashboard/src/audit_state.rs [pub] impl AuditStateReading :: #[must_use] const fn is_evaluated(self) -> bool |3e4df20095ae92eb
@@ -41,7 +41,7 @@ crates/dashboard/src/course.rs [pub] impl CatalogIdentity :: #[must_use] const f
 crates/dashboard/src/course.rs [pub] impl CatalogIdentity :: #[must_use] const fn revision(&self) -> CourseRevisionId |4c5261d21b689a1c
 crates/dashboard/src/course.rs [pub] impl CatalogIdentity :: #[must_use] const fn source_snapshot(&self) -> Option<&ContentDigest> |e54d52a56e15f694
 crates/dashboard/src/course.rs [pub] impl CatalogIdentity :: #[must_use] const fn valid_time(&self) -> ValidInterval |ffe03530f5082d8a
-crates/dashboard/src/course.rs [pub] impl CatalogIdentity :: fn of(course: &Course, revision: &CourseRevision) -> Result<Self, DashboardError> |90c60a641189235c
+crates/dashboard/src/course.rs [pub] impl CatalogIdentity :: fn of(course: &Course, revision: &CourseRevision) -> Result<Self, DashboardError> |54814ce670285144
 crates/dashboard/src/course.rs [pub] impl Connections :: #[must_use] fn competencies(&self) -> &[EntityId] |f340f019cb649e04
 crates/dashboard/src/course.rs [pub] impl Connections :: #[must_use] fn follow_on(&self) -> &[CourseCode] |cc74b4cc40e5a702
 crates/dashboard/src/course.rs [pub] impl Connections :: #[must_use] fn linking( prerequisites: Vec<CourseCode>, follow_on: Vec<CourseCode>, projects: Vec<EntityId>, competencies: Vec<EntityId>, roles: Vec<EntityId>, ) -> Self |5ca76786bc87ed12
@@ -56,20 +56,20 @@ crates/dashboard/src/course.rs [pub] impl CourseDetail :: #[must_use] fn offerin
 crates/dashboard/src/course.rs [pub] impl CourseDetail :: #[must_use] fn reviews(&self) -> &[ReviewSection] |a52aa90131469507
 crates/dashboard/src/course.rs [pub] impl CourseDetail :: #[must_use] fn rows_in(&self, section: CourseSection) -> usize |46d2bb968cd2c549
 crates/dashboard/src/course.rs [pub] impl CourseDetail :: fn assemble( identity: CatalogIdentity, offerings: Vec<OfferingRow>, coverage: CoverageReport, my_record: Vec<TimelineEntry>, connections: Connections, reviews: Vec<ReviewSection>, ) -> Result<Self, DashboardError> |c2a59d14157d0fd3
-crates/dashboard/src/course.rs [pub] impl CourseSection :: #[must_use] const fn id(self) -> &'static str |1ea4290136d42f28
+crates/dashboard/src/course.rs [pub] impl CourseSection :: #[must_use] const fn id(self) -> &'static str |6558e740e09a019e
 crates/dashboard/src/course.rs [pub] impl CourseSection :: #[must_use] const fn position(self) -> usize |a379748f40d460cb
-crates/dashboard/src/course.rs [pub] impl CourseSection :: #[must_use] const fn spec_heading(self) -> &'static str |6d444b9bf8172693
+crates/dashboard/src/course.rs [pub] impl CourseSection :: #[must_use] const fn spec_heading(self) -> &'static str |a19615b451d5207b
 crates/dashboard/src/course.rs [pub] impl CourseSection :: const ALL: [Self; 6] |c652636b8fa3b6f8
 crates/dashboard/src/course.rs [pub] impl CoverageEntry :: #[must_use] const fn predicate(&self) -> PredicateName |6f280b3c546e0587
 crates/dashboard/src/course.rs [pub] impl CoverageEntry :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
 crates/dashboard/src/course.rs [pub] impl CoverageEntry :: #[must_use] fn evidence(&self) -> &str |cce14a9057926de5
 crates/dashboard/src/course.rs [pub] impl CoverageEntry :: #[must_use] fn tab(&self) -> CoverageTab |9b7388c23a154572
-crates/dashboard/src/course.rs [pub] impl CoverageEntry :: fn of( predicate: PredicateName, subject: EntityId, evidence: impl Into<String>, ) -> Result<Self, DashboardError> |a3a20aa710703754
+crates/dashboard/src/course.rs [pub] impl CoverageEntry :: fn of( predicate: PredicateName, subject: EntityId, evidence: impl Into<String>, ) -> Result<Self, DashboardError> |28c388a5ac1229be
 crates/dashboard/src/course.rs [pub] impl CoverageReport :: #[must_use] fn entries(&self) -> &[CoverageEntry] |2e8aa59b8178ac3e
 crates/dashboard/src/course.rs [pub] impl CoverageReport :: #[must_use] fn over(entries: Vec<CoverageEntry>) -> Self |ea041a1f4f4eaefc
 crates/dashboard/src/course.rs [pub] impl CoverageReport :: #[must_use] fn tab(&self, tab: CoverageTab) -> Vec<&CoverageEntry> |95fd290d2f98a343
 crates/dashboard/src/course.rs [pub] impl CoverageTab :: #[must_use] const fn predicate(self) -> PredicateName |bf7bb5ce12cc635a
-crates/dashboard/src/course.rs [pub] impl CoverageTab :: #[must_use] const fn spec_word(self) -> &'static str |53dc6cb181a9228c
+crates/dashboard/src/course.rs [pub] impl CoverageTab :: #[must_use] const fn spec_word(self) -> &'static str |c517fef584cade9b
 crates/dashboard/src/course.rs [pub] impl CoverageTab :: #[must_use] fn of(predicate: PredicateName) -> Option<Self> |d84c8beccb97b565
 crates/dashboard/src/course.rs [pub] impl CoverageTab :: const ALL: [Self; 4] |16e8628808ead6c3
 crates/dashboard/src/course.rs [pub] impl OfferingRow :: #[must_use] const fn capacity(&self) -> Option<u16> |22a3f1a42db043d8
@@ -88,9 +88,9 @@ crates/dashboard/src/course.rs [pub] impl ReviewSection :: #[must_use] const fn 
 crates/dashboard/src/gate.rs [priv] impl OpenGate
 crates/dashboard/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate |a8cd5b3261a526c7
 crates/dashboard/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn blocks_the_dashboard(self) -> bool |3335c661d1ecefd2
-crates/dashboard/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |ad38f873489d4834
-crates/dashboard/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn spec_line(self) -> &'static str |f32c314737823f13
-crates/dashboard/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |b1171c3a6a450f0e
+crates/dashboard/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |c7833cd98bec1764
+crates/dashboard/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn spec_line(self) -> &'static str |6cb8a956d065a1b5
+crates/dashboard/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |9ab23676705977d6
 crates/dashboard/src/gate.rs [pub] impl OpenGate :: const ALL: [Self; 7] |47e90a65b489e91a
 crates/dashboard/src/gate.rs [pub] impl OpenGate :: const BLOCKING: [Self; 6] |723f01424c6a5e71
 crates/dashboard/src/gpa.rs [priv] impl GpaFigure
@@ -113,7 +113,7 @@ crates/dashboard/src/gpa.rs [pub] impl GpaProof :: #[must_use] fn included(&self
 crates/dashboard/src/gpa.rs [pub] impl GpaProof :: #[must_use] fn reasons(&self) -> &[(AttemptId, DispositionReason)] |61fcf96250af48bc
 crates/dashboard/src/gpa.rs [pub] impl GpaProof :: #[must_use] fn recording( included: Vec<AttemptId>, reasons: Vec<(AttemptId, DispositionReason)>, repeats: Vec<RepeatProof>, ) -> Self |00b11155e9034a42
 crates/dashboard/src/gpa.rs [pub] impl GpaProof :: #[must_use] fn repeats(&self) -> &[RepeatProof] |08063bd64e53ea79
-crates/dashboard/src/gpa.rs [pub] impl GpaScope :: #[must_use] const fn spec_word(self) -> &'static str |5fb5d5b74057a7b1
+crates/dashboard/src/gpa.rs [pub] impl GpaScope :: #[must_use] const fn spec_word(self) -> &'static str |57d8e7635ef5e41c
 crates/dashboard/src/gpa.rs [pub] impl GpaScope :: const ALL: [Self; 3] |a4e3db9f89eb3c54
 crates/dashboard/src/lib.rs [priv] #![forbid(unsafe_code)] |1ac66e371b73deac
 crates/dashboard/src/lib.rs [priv] mod audit_state
@@ -124,7 +124,7 @@ crates/dashboard/src/lib.rs [priv] mod percentage
 crates/dashboard/src/lib.rs [priv] mod planner
 crates/dashboard/src/lib.rs [priv] mod screen
 crates/dashboard/src/lib.rs [priv] mod timeline
-crates/dashboard/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum DashboardError |e9215eb02e72df93
+crates/dashboard/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum DashboardError |e0776ebc1909095c
 crates/dashboard/src/lib.rs [pub] use audit_state::{AuditState, AuditStateReading} |ffd01ef7bb372ae1
 crates/dashboard/src/lib.rs [pub] use course::{ CatalogIdentity, Connections, CourseDetail, CourseSection, CoverageEntry, CoverageReport, CoverageTab, OfferingRow, ReviewSection, } |4d92a32da27e0ac9
 crates/dashboard/src/lib.rs [pub] use gate::OpenGate |7040170218a3f5e6
@@ -144,7 +144,7 @@ crates/dashboard/src/percentage.rs [pub] impl BreakdownPart :: #[must_use] const
 crates/dashboard/src/percentage.rs [pub] impl BreakdownPart :: #[must_use] const fn reading(&self) -> AuditStateReading |5e616b2f8f0fcdaf
 crates/dashboard/src/percentage.rs [pub] impl BreakdownPart :: #[must_use] const fn required(&self) -> u32 |4dbfa6850687880f
 crates/dashboard/src/percentage.rs [pub] impl BreakdownPart :: #[must_use] fn label(&self) -> &str |1afa254cecf1df0d
-crates/dashboard/src/percentage.rs [pub] impl BreakdownPart :: fn of( label: impl Into<String>, counted: u32, required: u32, reading: AuditStateReading, ) -> Result<Self, DashboardError> |bde59220f75c2e20
+crates/dashboard/src/percentage.rs [pub] impl BreakdownPart :: fn of( label: impl Into<String>, counted: u32, required: u32, reading: AuditStateReading, ) -> Result<Self, DashboardError> |c3c4ee4558c8d150
 crates/dashboard/src/percentage.rs [pub] impl RequirementBreakdown :: #[must_use] fn parts(&self) -> &[BreakdownPart] |ad55e49276d77e42
 crates/dashboard/src/percentage.rs [pub] impl RequirementBreakdown :: #[must_use] fn unsettled(&self) -> Vec<&BreakdownPart> |fdebfaaa190ad52c
 crates/dashboard/src/percentage.rs [pub] impl RequirementBreakdown :: fn assemble(parts: Vec<BreakdownPart>) -> Result<Self, DashboardError> |03b01b02d56c59ac
@@ -157,7 +157,7 @@ crates/dashboard/src/planner.rs [priv] impl DragOutcome
 crates/dashboard/src/planner.rs [priv] impl MeetingSlot
 crates/dashboard/src/planner.rs [priv] impl PlanSnapshot
 crates/dashboard/src/planner.rs [priv] impl PlannerBoard
-crates/dashboard/src/planner.rs [priv] impl PlannerBoard :: fn entries_on(&self, dimension: PlannerDimension) -> Vec<String> |f43af9be64366a80
+crates/dashboard/src/planner.rs [priv] impl PlannerBoard :: fn entries_on(&self, dimension: PlannerDimension) -> Vec<String> |c1b90246ade6a8e2
 crates/dashboard/src/planner.rs [priv] impl PlannerDimension
 crates/dashboard/src/planner.rs [priv] impl RequirementContribution
 crates/dashboard/src/planner.rs [priv] impl StaleMarking
@@ -178,7 +178,7 @@ crates/dashboard/src/planner.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Defa
 crates/dashboard/src/planner.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] enum StaleInput |82906a2ab14f77b1
 crates/dashboard/src/planner.rs [pub] impl AxisReading :: #[must_use] const fn dimension(&self) -> PlannerDimension |d1f0e48cf1295cbd
 crates/dashboard/src/planner.rs [pub] impl AxisReading :: #[must_use] fn entries(&self) -> &[String] |2b1ebef9a03e4a15
-crates/dashboard/src/planner.rs [pub] impl CandidateOffering :: #[expect( clippy::too_many_arguments, reason = "section 25.5 names six axes and a candidate carries a fact on each; \ grouping them into a struct of six fields would be the same list \ one indirection further from the sentence it comes from" )] #[must_use] fn declaring( offering: OfferingId, course_code: CourseCode, term: TermCode, credits: u32, meeting: MeetingSlot, prerequisites: Vec<CourseCode>, contributions: Vec<RequirementContribution>, exposes: Vec<String>, relevant_to: Vec<String>, workload: WorkloadRange, unlocks: Vec<CourseCode>, ) -> Self |24eceafa28fbe61f
+crates/dashboard/src/planner.rs [pub] impl CandidateOffering :: #[expect( clippy::too_many_arguments, reason = "section 25.5 names six axes and a candidate carries a fact on each; \ grouping them into a struct of six fields would be the same list \ one indirection further from the sentence it comes from" )] #[must_use] fn declaring( offering: OfferingId, course_code: CourseCode, term: TermCode, credits: u32, meeting: MeetingSlot, prerequisites: Vec<CourseCode>, contributions: Vec<RequirementContribution>, exposes: Vec<String>, relevant_to: Vec<String>, workload: WorkloadRange, unlocks: Vec<CourseCode>, ) -> Self |5c20893682b945b9
 crates/dashboard/src/planner.rs [pub] impl CandidateOffering :: #[must_use] const fn course_code(&self) -> &CourseCode |db3c87ae27e424db
 crates/dashboard/src/planner.rs [pub] impl CandidateOffering :: #[must_use] const fn credits(&self) -> u32 |54714d483880a7ed
 crates/dashboard/src/planner.rs [pub] impl CandidateOffering :: #[must_use] const fn meeting(&self) -> MeetingSlot |d1323c831bb637d6
@@ -206,15 +206,15 @@ crates/dashboard/src/planner.rs [pub] impl PlannerBoard :: #[must_use] fn evalua
 crates/dashboard/src/planner.rs [pub] impl PlannerBoard :: #[must_use] fn placed(&self) -> &[CandidateOffering] |c4fa92c637ce6cf1
 crates/dashboard/src/planner.rs [pub] impl PlannerBoard :: #[must_use] fn remove(&self, offering: OfferingId) -> (Self, DragOutcome) |151916ba586c76dc
 crates/dashboard/src/planner.rs [pub] impl PlannerBoard :: fn place( &self, candidate: CandidateOffering, ) -> Result<(Self, DragOutcome), DashboardError> |3e2b346f4365cf99
-crates/dashboard/src/planner.rs [pub] impl PlannerDimension :: #[must_use] const fn id(self) -> &'static str |5bd22c180b48f7c9
+crates/dashboard/src/planner.rs [pub] impl PlannerDimension :: #[must_use] const fn id(self) -> &'static str |8e0964e00761560c
 crates/dashboard/src/planner.rs [pub] impl PlannerDimension :: #[must_use] const fn index(self) -> usize |9274bc70c8866721
 crates/dashboard/src/planner.rs [pub] impl PlannerDimension :: #[must_use] const fn position(self) -> usize |213e9f1331a24be0
-crates/dashboard/src/planner.rs [pub] impl PlannerDimension :: #[must_use] const fn spec_line(self) -> &'static str |641cc268bf6aa5f8
+crates/dashboard/src/planner.rs [pub] impl PlannerDimension :: #[must_use] const fn spec_line(self) -> &'static str |be4725e7e4f4defb
 crates/dashboard/src/planner.rs [pub] impl PlannerDimension :: const ALL: [Self; 6] |c94f2356296b3a19
 crates/dashboard/src/planner.rs [pub] impl RequirementContribution :: #[must_use] const fn credits(&self) -> u32 |54714d483880a7ed
 crates/dashboard/src/planner.rs [pub] impl RequirementContribution :: #[must_use] fn proof_node(&self) -> &str |6c4eaaff122a7171
 crates/dashboard/src/planner.rs [pub] impl RequirementContribution :: #[must_use] fn rule_label(&self) -> &str |08b90c25498a6a65
-crates/dashboard/src/planner.rs [pub] impl RequirementContribution :: fn of( rule_label: impl Into<String>, credits: u32, proof_node: impl Into<String>, ) -> Result<Self, DashboardError> |f17a9412ef9cdb35
+crates/dashboard/src/planner.rs [pub] impl RequirementContribution :: fn of( rule_label: impl Into<String>, credits: u32, proof_node: impl Into<String>, ) -> Result<Self, DashboardError> |91496774035a4c25
 crates/dashboard/src/planner.rs [pub] impl StaleMarking :: #[must_use] fn is_current(&self) -> bool |ded99cbc205849c8
 crates/dashboard/src/planner.rs [pub] impl StaleMarking :: #[must_use] fn stale(&self) -> &[StaleInput] |1743502ba9f0d65f
 crates/dashboard/src/planner.rs [pub] impl WorkloadRange :: #[must_use] const fn high_hours(&self) -> u32 |761681713174e6e3
@@ -236,9 +236,9 @@ crates/dashboard/src/screen.rs [pub] impl AcademicDashboard :: #[must_use] fn av
 crates/dashboard/src/screen.rs [pub] impl AcademicDashboard :: #[must_use] fn averages(&self) -> Option<&[GpaFigure]> |451976619ac4a002
 crates/dashboard/src/screen.rs [pub] impl AcademicDashboard :: fn assemble( filled: [DashboardSection; DashboardLine::ALL.len()], open: &[OpenGate], secondary: Option<SecondaryPercentage>, ) -> Result<Self, DashboardError> |c8cafe4c4fd6e649
 crates/dashboard/src/screen.rs [pub] impl DashboardLine :: #[must_use] const fn blocked_by(self) -> &'static [OpenGate] |5e97e95ddcd90a86
-crates/dashboard/src/screen.rs [pub] impl DashboardLine :: #[must_use] const fn id(self) -> &'static str |c83ceec6534f73e7
+crates/dashboard/src/screen.rs [pub] impl DashboardLine :: #[must_use] const fn id(self) -> &'static str |e5164f616e4b3b59
 crates/dashboard/src/screen.rs [pub] impl DashboardLine :: #[must_use] const fn position(self) -> usize |ce9b6672b0c82992
-crates/dashboard/src/screen.rs [pub] impl DashboardLine :: #[must_use] const fn spec_line(self) -> &'static str |af9282f48def699a
+crates/dashboard/src/screen.rs [pub] impl DashboardLine :: #[must_use] const fn spec_line(self) -> &'static str |faf610f02afbd812
 crates/dashboard/src/screen.rs [pub] impl DashboardLine :: const ALL: [Self; 6] |15c10733498dbf4b
 crates/dashboard/src/screen.rs [pub] impl DashboardSection :: #[must_use] const fn line(&self) -> Option<DashboardLine> |a78c2ccde98062fa
 crates/dashboard/src/timeline.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] enum EntryKind |16cc0e7369b0da29
@@ -254,7 +254,7 @@ crates/dashboard/src/timeline.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] st
 crates/dashboard/src/timeline.rs [pub] impl AttemptTimeline :: #[must_use] fn entries(&self) -> &[TimelineEntry] |8acea9313d05ab7f
 crates/dashboard/src/timeline.rs [pub] impl AttemptTimeline :: #[must_use] fn entry_for(&self, attempt: AttemptId) -> Option<&TimelineEntry> |2bd90b7028047110
 crates/dashboard/src/timeline.rs [pub] impl AttemptTimeline :: #[must_use] fn of(history: &AttemptHistory, planned: &[PlanScenarioChoice]) -> Self |858a89c96c8a5339
-crates/dashboard/src/timeline.rs [pub] impl LifecycleFacet :: #[must_use] const fn spec_word(self) -> &'static str |b9167597f99fb625
+crates/dashboard/src/timeline.rs [pub] impl LifecycleFacet :: #[must_use] const fn spec_word(self) -> &'static str |bb2877ee28f6ac16
 crates/dashboard/src/timeline.rs [pub] impl LifecycleFacet :: const ALL: [Self; 6] |e670de73f81f3558
 crates/dashboard/src/timeline.rs [pub] impl TimelineEntry :: #[must_use] const fn attempt(&self) -> Option<AttemptId> |5cedfb11c1aa8b81
 crates/dashboard/src/timeline.rs [pub] impl TimelineEntry :: #[must_use] const fn facet(&self, facet: LifecycleFacet) -> FacetReading |e5354328b752b09b

@@ -33,8 +33,8 @@ crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] co
 crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn history(&self) -> &[CorrectionRecord] |a9fe96cf3e626789
 crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn resolution(&self) -> Resolution |f3846e6c6773f46b
 crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: fn settle( &mut self, outcome: CorrectionOutcome, decided_by: UserDecision, decided_at: TimestampMillis, ) |801835b424acd4c2
-crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: #[must_use] const fn marker_token(self) -> &'static str |0c1d6fafa513e541
-crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: #[must_use] const fn spec_words(self) -> &'static str |7243d19443955134
+crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: #[must_use] const fn marker_token(self) -> &'static str |f76eca4f019e0615
+crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: #[must_use] const fn spec_words(self) -> &'static str |51d61d25b46d1ae1
 crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: const ALL: [Self; 2] |cb5b6224ce4f184a
 crates/evidence-center/src/conflict.rs [pub] impl ConflictLane :: const ALL: [Self; 2] |f7d91f0d034a1296
 crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn applies(&self) -> ValidInterval |99d63873db58414a
@@ -45,7 +45,7 @@ crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] co
 crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn observed_in(&self) -> Option<SnapshotId> |ef1f3249518693f5
 crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn recorded_at(&self) -> TimestampMillis |3701f70df0bcee75
 crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn status(&self) -> EpistemicStatus |b9d792f9fbc7e44e
-crates/evidence-center/src/conflict.rs [pub] impl CorrectionChoice :: #[must_use] const fn spec_words(self) -> &'static str |97b7bae51b4d0296
+crates/evidence-center/src/conflict.rs [pub] impl CorrectionChoice :: #[must_use] const fn spec_words(self) -> &'static str |2225769b5d16d75f
 crates/evidence-center/src/conflict.rs [pub] impl CorrectionChoice :: const ALL: [Self; 3] |136afb942c01525e
 crates/evidence-center/src/conflict.rs [pub] impl CorrectionOutcome :: #[must_use] const fn choice(&self) -> CorrectionChoice |0165878663e37aa8
 crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn choice(&self) -> CorrectionChoice |18a7a917595ec5db
@@ -90,7 +90,7 @@ crates/evidence-center/src/error.rs [priv] use academic_domain::{ClaimId, Timest
 crates/evidence-center/src/error.rs [priv] use academic_proposal::{ProposalId, WorkflowError} |5393cd394b8a8149
 crates/evidence-center/src/error.rs [priv] use crate::{ConflictClass, PermissionRef, ProposalClass} |bac6be3acc221888
 crates/evidence-center/src/error.rs [priv] use thiserror::Error |fc76a959c1db87ed
-crates/evidence-center/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] enum CenterError |88d5e86cdb719e62
+crates/evidence-center/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] enum CenterError |771780a24ea7bb80
 crates/evidence-center/src/inbox.rs [priv] impl ConceptMergeProposal
 crates/evidence-center/src/inbox.rs [priv] impl FindingClassification
 crates/evidence-center/src/inbox.rs [priv] impl InboxEntry
@@ -126,7 +126,7 @@ crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: 
 crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn new( header: ProposalHeader, project: EntityId, snapshot: SnapshotId, finding: FindingId, classification: FindingClassification, ) -> Self |153efb2e8bb9cb2a
 crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn project(&self) -> EntityId |e9a88bf8126b106b
 crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn snapshot(&self) -> SnapshotId |bdfccc8beed07152
-crates/evidence-center/src/inbox.rs [pub] impl ProposalClass :: #[must_use] const fn spec_words(self) -> &'static str |c6b83084fd4bed6e
+crates/evidence-center/src/inbox.rs [pub] impl ProposalClass :: #[must_use] const fn spec_words(self) -> &'static str |603b63b128032fec
 crates/evidence-center/src/inbox.rs [pub] impl ProposalClass :: const ALL: [Self; 4] |43aac71505d2fc42
 crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
 crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn id(&self) -> ProposalId |dda793a9ad77879a
@@ -166,7 +166,7 @@ crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, 
 crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CenterSection |ee742ae9f71ecfd6
 crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Default)] struct EvidenceCenter |eb621a37f950e76b
 crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SectionIndex |88cf273fa84450d1
-crates/evidence-center/src/lib.rs [pub] impl CenterSection :: #[must_use] const fn spec_words(self) -> &'static str |d496281d4661bcba
+crates/evidence-center/src/lib.rs [pub] impl CenterSection :: #[must_use] const fn spec_words(self) -> &'static str |b733f791645358b4
 crates/evidence-center/src/lib.rs [pub] impl CenterSection :: const ALL: [Self; 6] |a1a6fd89ab3180c6
 crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn conflicts(&self) -> &ConflictBoard |3b28734c678042a5
 crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn corrections(&self) -> &CorrectionLedger |32becbe41bd44dbe
@@ -218,8 +218,8 @@ crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: fn
 crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn confidence(&self) -> ConfidencePermille |e5fc0c026f672afe
 crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn kind(&self) -> SpanKind |63eab7ae75dafdb7
 crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn session(&self) -> LectureSessionId |8c07c539f803268e
-crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: #[must_use] const fn marker_token(self) -> &'static str |2ed7ace5407ae346
-crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: #[must_use] const fn spec_words(self) -> &'static str |6d7a9cfd192ab7fd
+crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: #[must_use] const fn marker_token(self) -> &'static str |45359a5ee09ff86a
+crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: #[must_use] const fn spec_words(self) -> &'static str |f18fd8c88dec617a
 crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: const ALL: [Self; 3] |9163c271be0ce423
 crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn ends_at(&self) -> TimestampMillis |37b9e1f71dffd9b1
 crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn new( session: LectureSessionId, version: TranscriptVersionId, starts_at: TimestampMillis, ends_at: TimestampMillis, ) -> Self |4ab266fe64306599
@@ -311,7 +311,7 @@ crates/evidence-center/src/transmission.rs [pub] impl ObjectRange :: #[must_use]
 crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn destination(&self) -> ContentDigest |3a32c9de388d1548
 crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn new(destination: ContentDigest, surface: ProviderSurface) -> Self |1f344500d43de7c2
 crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn surface(&self) -> ProviderSurface |3516982c12fd4dbd
-crates/evidence-center/src/transmission.rs [pub] impl ProviderSurface :: #[must_use] const fn as_str(self) -> &'static str |8c5a43ee62ca9e47
+crates/evidence-center/src/transmission.rs [pub] impl ProviderSurface :: #[must_use] const fn as_str(self) -> &'static str |e3e2f76946dd6ef7
 crates/evidence-center/src/transmission.rs [pub] impl ProviderSurface :: const ALL: [Self; 2] |3107aec6be526358
 crates/evidence-center/src/transmission.rs [pub] impl ReceiptState :: #[must_use] const fn receipt(&self) -> Option<&DeletionReceiptRef> |978df6b72cc5cc17
 crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] const fn new() -> Self |747ac9c4a1e22bf8

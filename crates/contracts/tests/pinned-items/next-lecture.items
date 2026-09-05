@@ -37,7 +37,7 @@ crates/next-lecture/src/engine.rs [priv] use academic_gap::{ConceptState, GapCas
 crates/next-lecture/src/engine.rs [priv] use crate::{ NextLectureError, brief::{CandidateParts, HIGHEST_PREPARATION, PreparationBrief, PreparationCandidate}, claim::ExpectedConceptClaim, } |4cabb4b166ff8c01
 crates/next-lecture/src/engine.rs [pub] fn propose( claim: &ExpectedConceptClaim, case: &GapCase, graph: &PrerequisiteGraph, states: &[ConceptState], edge_confidence: ConfidencePermille, ) -> Result<Option<PreparationBrief>, NextLectureError> |38bbcc3c4b280629
 crates/next-lecture/src/lib.rs [priv] #![deny(missing_docs)] |d27a0595f2b099f8
-crates/next-lecture/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum NextLectureError |332e39e58256a934
+crates/next-lecture/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum NextLectureError |99693e8dee662c67
 crates/next-lecture/src/lib.rs [pub] mod brief
 crates/next-lecture/src/lib.rs [pub] mod claim
 crates/next-lecture/src/lib.rs [pub] mod engine
@@ -55,10 +55,10 @@ crates/next-lecture/src/minimality.rs [priv] impl MinimalityDefect
 crates/next-lecture/src/minimality.rs [priv] use academic_gap::{PrerequisiteGraph, RootCandidate} |16f592cc456e7896
 crates/next-lecture/src/minimality.rs [priv] use crate::claim::ExpectedConceptClaim |cdafee447e9b170a
 crates/next-lecture/src/minimality.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/next-lecture/src/minimality.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MinimalityDefect |de2b80cd0cc08d37
+crates/next-lecture/src/minimality.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MinimalityDefect |7284e35cac8638e2
 crates/next-lecture/src/minimality.rs [pub] #[must_use] fn minimality_defects( claim: &ExpectedConceptClaim, root: &RootCandidate, graph: &PrerequisiteGraph, ) -> Vec<MinimalityDefect> |9a3e3810c245e792
-crates/next-lecture/src/minimality.rs [pub] impl MinimalityDefect :: #[must_use] const fn as_str(self) -> &'static str |6f7606c06f4a6014
-crates/next-lecture/src/minimality.rs [pub] impl MinimalityDefect :: #[must_use] const fn spec_token(self) -> &'static str |0eec347878ed2445
+crates/next-lecture/src/minimality.rs [pub] impl MinimalityDefect :: #[must_use] const fn as_str(self) -> &'static str |dd225bc891acde6a
+crates/next-lecture/src/minimality.rs [pub] impl MinimalityDefect :: #[must_use] const fn spec_token(self) -> &'static str |3f593719f430f4bd
 crates/next-lecture/src/minimality.rs [pub] impl MinimalityDefect :: const ALL: [Self; 3] |9f65db21d6516031
 crates/next-lecture/src/source.rs [priv] impl ExpectedConceptSource
 crates/next-lecture/src/source.rs [priv] impl MaterialReference
@@ -67,12 +67,12 @@ crates/next-lecture/src/source.rs [priv] use academic_lecture_document::NodeId |
 crates/next-lecture/src/source.rs [priv] use academic_untrusted_content::SourceId |b03bd18dddbb3339
 crates/next-lecture/src/source.rs [priv] use crate::NextLectureError |3a0d4088b5e42f4b
 crates/next-lecture/src/source.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/next-lecture/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExpectedConceptSource |12792bcb13c7c31b
+crates/next-lecture/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExpectedConceptSource |22ecd7d0a0797ec6
 crates/next-lecture/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MaterialReference |068ef56dfcd0a39d
 crates/next-lecture/src/source.rs [pub] const EXPECTED_CONCEPT_SOURCES: [ExpectedConceptSource; 7] |2bf23ae249d67696
-crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: #[must_use] const fn as_str(self) -> &'static str |d14f29ccd89d715d
+crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: #[must_use] const fn as_str(self) -> &'static str |fc46f7e670f9b7ff
 crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: #[must_use] const fn is_recorded_by_this_system(self) -> bool |47cf8f76bb7cd3cb
-crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: #[must_use] const fn spec_token(self) -> &'static str |8a7f7e98337675fa
+crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: #[must_use] const fn spec_token(self) -> &'static str |b25bf9d3b62f5eba
 crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: const ALL: [Self; 7] |efca7a6d4b71f594
 crates/next-lecture/src/source.rs [pub] impl MaterialReference :: #[must_use] const fn document(&self) -> &SourceId |01d7e45cbc247417
 crates/next-lecture/src/source.rs [pub] impl MaterialReference :: #[must_use] const fn lecture_node(&self) -> Option<&NodeId> |fa7e2e471cc660ba
@@ -89,7 +89,7 @@ crates/next-lecture/src/uncertainty.rs [priv] use academic_gap::{ConceptState, P
 crates/next-lecture/src/uncertainty.rs [priv] use academic_untrusted_content::ResolvedSpan |2c67f1ac2f66bd51
 crates/next-lecture/src/uncertainty.rs [priv] use crate::{NextLectureError, claim::ExpectedConceptClaim, source::MaterialReference} |66e1eafddf97cdf8
 crates/next-lecture/src/uncertainty.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
-crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PrepAxis |74c84e54af901bb9
+crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PrepAxis |171506f7d50ff984
 crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExpectedConceptReading |998fbea19ab5043e
 crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PrepUncertainty |51effb5c251637e3
 crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PrerequisiteEdgeReading |3c3fb49a62dfc9ee
@@ -100,8 +100,8 @@ crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: #[mu
 crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: #[must_use] const fn material(&self) -> &MaterialReference |973ed22c61e630c1
 crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: #[must_use] fn citations(&self) -> &[ResolvedSpan] |380bd27af695c80e
 crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: const AXIS: PrepAxis |ed6e5432c3f5dd4a
-crates/next-lecture/src/uncertainty.rs [pub] impl PrepAxis :: #[must_use] const fn as_str(self) -> &'static str |7184041f77a6c8ca
-crates/next-lecture/src/uncertainty.rs [pub] impl PrepAxis :: #[must_use] const fn spec_token(self) -> &'static str |d47e98d359d20d11
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepAxis :: #[must_use] const fn as_str(self) -> &'static str |8cfa46f92ab74297
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepAxis :: #[must_use] const fn spec_token(self) -> &'static str |2874f9c168b27fc8
 crates/next-lecture/src/uncertainty.rs [pub] impl PrepAxis :: const ALL: [Self; 3] |042b16430f4d89e7
 crates/next-lecture/src/uncertainty.rs [pub] impl PrepUncertainty :: #[must_use] const fn expected_concept(&self) -> &ExpectedConceptReading |af37fdb076788067
 crates/next-lecture/src/uncertainty.rs [pub] impl PrepUncertainty :: #[must_use] const fn prerequisite_edge(&self) -> &PrerequisiteEdgeReading |607287808f0c6e5c

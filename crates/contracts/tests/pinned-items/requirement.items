@@ -29,18 +29,18 @@ crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] cons
 crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] fn extracted( id: RuleId, source_rule: SourceRuleId, body: RuleBody, extracted_by: Actor, quoted_source: String, source_digest: ContentDigest, ) -> Self |b92d745eefd1c160
 crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] fn quoted_source(&self) -> &str |7d31cda92ca1b209
 crates/requirement/src/candidate.rs [pub] impl RuleCandidate :: #[must_use] fn quoted_source_digest(&self) -> ContentDigest |96549a6ef3a47602
-crates/requirement/src/dsl.rs [priv] fn applicability(value: Applicability) -> String |3885da50be8a26cc
-crates/requirement/src/dsl.rs [priv] fn count_constraint(rendered: &mut String, prefix: &str, value: &CountConstraint) |4a2dab0455ff9b08
-crates/requirement/src/dsl.rs [priv] fn field(rendered: &mut String, key: &str, value: &str) |a2157ca6bf673f76
-crates/requirement/src/dsl.rs [priv] fn interval(rendered: &mut String, prefix: &str, value: ValidInterval) |1f4572cf2e10df34
-crates/requirement/src/dsl.rs [priv] fn is_identifier(value: &str) -> bool |181c744ea8c16742
-crates/requirement/src/dsl.rs [priv] fn operands_text(rendered: &mut String, operands: &[Operand]) |e55634e44d3e3099
-crates/requirement/src/dsl.rs [priv] identifier_newtype!( ApprovalAuthority, "approval authority", "The office an exception approval was issued by." ) |ee4f52454d749b8a
-crates/requirement/src/dsl.rs [priv] identifier_newtype!( AreaId, "area id", "One general-education area, such as section 8.1's `WRITING_AND_SPEAKING`." ) |b9bdde8f59be092a
-crates/requirement/src/dsl.rs [priv] identifier_newtype!( CreditCategory, "credit category", "Section 11.2's `category:`, such as `ALL_RECOGNIZED` or `CSE_MAJOR`." ) |37fd1ab60e262feb
-crates/requirement/src/dsl.rs [priv] identifier_newtype!( GpaScope, "gpa scope", "Section 11.2's `scope:`, such as `ALL_GPA_ELIGIBLE`." ) |bd181ebb7fa9b3dc
-crates/requirement/src/dsl.rs [priv] identifier_newtype!( ProgramId, "program id", "One non-credit training programme, such as section 8.1's life-respect education." ) |f5f0350db9cd5ad7
-crates/requirement/src/dsl.rs [priv] identifier_newtype!( RuleId, "rule id", "A rule's identifier inside its set -- section 11.2's `id:`." ) |2d0a17c5839c74d5
+crates/requirement/src/dsl.rs [priv] fn applicability(value: Applicability) -> String |81cb1805b2499f2e
+crates/requirement/src/dsl.rs [priv] fn count_constraint(rendered: &mut String, prefix: &str, value: &CountConstraint) |b4adaf5380b16a52
+crates/requirement/src/dsl.rs [priv] fn field(rendered: &mut String, key: &str, value: &str) |e4786d9608e87a9d
+crates/requirement/src/dsl.rs [priv] fn interval(rendered: &mut String, prefix: &str, value: ValidInterval) |40ad3821f6a647af
+crates/requirement/src/dsl.rs [priv] fn is_identifier(value: &str) -> bool |00c3c765c9947879
+crates/requirement/src/dsl.rs [priv] fn operands_text(rendered: &mut String, operands: &[Operand]) |febc0f2b9509a330
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( ApprovalAuthority, "approval authority", "The office an exception approval was issued by." ) |65f5296ab9e9b196
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( AreaId, "area id", "One general-education area, such as section 8.1's `WRITING_AND_SPEAKING`." ) |a21ae29c71d3560a
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( CreditCategory, "credit category", "Section 11.2's `category:`, such as `ALL_RECOGNIZED` or `CSE_MAJOR`." ) |b69771e3cabf54ff
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( GpaScope, "gpa scope", "Section 11.2's `scope:`, such as `ALL_GPA_ELIGIBLE`." ) |0d84b2c62770b725
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( ProgramId, "program id", "One non-credit training programme, such as section 8.1's life-respect education." ) |3e61e8be7824ffb1
+crates/requirement/src/dsl.rs [priv] identifier_newtype!( RuleId, "rule id", "A rule's identifier inside its set -- section 11.2's `id:`." ) |d1c728ece3c9995e
 crates/requirement/src/dsl.rs [priv] impl AdmissionYear
 crates/requirement/src/dsl.rs [priv] impl CreditAmount
 crates/requirement/src/dsl.rs [priv] impl InstructionLanguage
@@ -63,21 +63,21 @@ crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struc
 crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AreaRequirement |b3e5b28d13b4a973
 crates/requirement/src/dsl.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Operand |a34f804f721fb004
 crates/requirement/src/dsl.rs [pub] impl AdmissionYear :: #[must_use] const fn get(self) -> u16 |f74116c955832efb
-crates/requirement/src/dsl.rs [pub] impl AdmissionYear :: fn new(value: u16) -> Result<Self, RequirementError> |8153f6d6d5106a54
+crates/requirement/src/dsl.rs [pub] impl AdmissionYear :: fn new(value: u16) -> Result<Self, RequirementError> |fe62dbd8370193ee
 crates/requirement/src/dsl.rs [pub] impl CreditAmount :: #[must_use] const fn get(self) -> u16 |f74116c955832efb
-crates/requirement/src/dsl.rs [pub] impl CreditAmount :: fn new(value: u16) -> Result<Self, RequirementError> |c22b15074fe222ec
-crates/requirement/src/dsl.rs [pub] impl InstructionLanguage :: #[must_use] const fn as_str(self) -> &'static str |ab93f09be8ec89d8
+crates/requirement/src/dsl.rs [pub] impl CreditAmount :: fn new(value: u16) -> Result<Self, RequirementError> |4d19b002c879912f
+crates/requirement/src/dsl.rs [pub] impl InstructionLanguage :: #[must_use] const fn as_str(self) -> &'static str |6bb6b6234afabf0d
 crates/requirement/src/dsl.rs [pub] impl RuleBody :: #[must_use] const fn rule_type(&self) -> crate::rule_type::RuleType |22f3a5591b60dca3
-crates/requirement/src/dsl.rs [pub] impl RuleBody :: #[must_use] fn canonical_text(&self) -> String |5e4ac138b3b1197a
-crates/requirement/src/dsl.rs [pub] impl RuleBody :: fn compile(&self, rule: &RuleId) -> Result<(), RequirementError> |afb83bb90a32fef4
+crates/requirement/src/dsl.rs [pub] impl RuleBody :: #[must_use] fn canonical_text(&self) -> String |b8f22f2ada938d43
+crates/requirement/src/dsl.rs [pub] impl RuleBody :: fn compile(&self, rule: &RuleId) -> Result<(), RequirementError> |31271c11082ca2f8
 crates/requirement/src/error.rs [priv] use thiserror::Error |fc76a959c1db87ed
-crates/requirement/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] #[non_exhaustive] enum RequirementError |585cb9cf39f42858
+crates/requirement/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] #[non_exhaustive] enum RequirementError |b9a95cf8794d1bcc
 crates/requirement/src/evaluate.rs [priv] const fn shortfall(attained: u32, required: u32) -> ProofStatus |1857a4f455760b3b
 crates/requirement/src/evaluate.rs [priv] fn admission_year_or_unknown( facts: &AcademicFacts, rule: &RuleId, rule_type: RuleType, gate: OpenGate, ) -> Result<AdmissionYear, Box<RuleOutcome>> |e98724afbcdc591b
 crates/requirement/src/evaluate.rs [priv] fn applies_to(applicability: Applicability, year: AdmissionYear) -> bool |9279ad20e1ea804b
 crates/requirement/src/evaluate.rs [priv] fn counts_after_exclusions( attempt: &AttemptFact, constraints: &[CountConstraint], year: Option<AdmissionYear>, ) -> bool |3f55ef98a45e435a
 crates/requirement/src/evaluate.rs [priv] fn discharge( set: &RuleSet, facts: &AcademicFacts, course: &academic_domain::CourseId, equivalent_admitted: bool, ) -> Option<(EntityId, Option<RuleId>)> |d72e77f75b6397e4
-crates/requirement/src/evaluate.rs [priv] fn grade_point_meets( weighted_points: Decimal, denominator_credits: u32, threshold: Decimal, rule: &RuleId, ) -> Result<bool, RequirementError> |b89e37892d51a0cf
+crates/requirement/src/evaluate.rs [priv] fn grade_point_meets( weighted_points: Decimal, denominator_credits: u32, threshold: Decimal, rule: &RuleId, ) -> Result<bool, RequirementError> |99cbcc54792dca73
 crates/requirement/src/evaluate.rs [priv] impl RuleOutcome
 crates/requirement/src/evaluate.rs [priv] impl RuleOutcome :: fn bare(rule: &RuleId, rule_type: RuleType, status: ProofStatus) -> Self |ba80bb8b12f97ce6
 crates/requirement/src/evaluate.rs [priv] impl RuleOutcome :: fn unknown(rule: &RuleId, rule_type: RuleType, gate: OpenGate) -> Self |fddaed6e7853a98e
@@ -115,15 +115,15 @@ crates/requirement/src/facts.rs [pub] impl AcademicFacts :: #[must_use] fn with_
 crates/requirement/src/facts.rs [pub] impl AttemptStatus :: #[must_use] const fn is_recognized(self) -> bool |6f9654234baa9a98
 crates/requirement/src/facts.rs [pub] impl TermOrdinal :: #[must_use] const fn get(self) -> u32 |cdf9278334734035
 crates/requirement/src/facts.rs [pub] impl TermOrdinal :: #[must_use] const fn new(value: u32) -> Self |f49478937ddb996c
-crates/requirement/src/gate.rs [priv] const fn applicability_unknown() -> &'static str |0b093db512927d6e
-crates/requirement/src/gate.rs [priv] const fn double_counting_unknown() -> &'static str |1a029285a79b8251
-crates/requirement/src/gate.rs [priv] const fn recognition_unknown() -> &'static str |b9b9a087d3687590
+crates/requirement/src/gate.rs [priv] const fn applicability_unknown() -> &'static str |ae0949875ed80b0f
+crates/requirement/src/gate.rs [priv] const fn double_counting_unknown() -> &'static str |86b552c7a80c6fe6
+crates/requirement/src/gate.rs [priv] const fn recognition_unknown() -> &'static str |29fa8f8a0325fe89
 crates/requirement/src/gate.rs [priv] impl OpenGate
 crates/requirement/src/gate.rs [priv] use crate::dsl::{Applicability, DoubleCountingPolicy, RecognitionPolicy} |d856e8783e387c3f
 crates/requirement/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate |4da89b20ab9df77a
-crates/requirement/src/gate.rs [pub] #[must_use] fn unknown_readings() -> [(&'static str, &'static str); 3] |9fbef21afacce375
-crates/requirement/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |11bc28d63392d17c
-crates/requirement/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |168e3df2324bc2cc
+crates/requirement/src/gate.rs [pub] #[must_use] fn unknown_readings() -> [(&'static str, &'static str); 3] |6088deac02b677f3
+crates/requirement/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |55d1233f4591ff94
+crates/requirement/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str |0426138cd5d2558e
 crates/requirement/src/gate.rs [pub] impl OpenGate :: const ALL: [Self; 4] |99f5bad7741e35b0
 crates/requirement/src/lib.rs [pub] mod candidate
 crates/requirement/src/lib.rs [pub] mod dsl
@@ -141,8 +141,8 @@ crates/requirement/src/lib.rs [pub] use facts::{ AcademicFacts, ApprovalFact, At
 crates/requirement/src/lib.rs [pub] use gate::{OpenGate, unknown_readings} |7695483a13152722
 crates/requirement/src/lib.rs [pub] use publish::{ ExecutableRule, FixtureCase, OfficialExampleFixtures, OfficialSourceBinding, RuleSet, RuleSetDraft, RuleSetLedger, RuleSetVersion, SyntheticTranscriptFixtures, } |0b3d86af7de26b41
 crates/requirement/src/lib.rs [pub] use rule_type::{RuleType, SPEC_PROSE_CATEGORIES, SPEC_YAML_TYPES, SpellingSource} |a02af1b167f9fb41
-crates/requirement/src/publish.rs [priv] fixture_class!( OfficialExampleFixtures, "The worked examples the official source itself states.", "no official example fixture" ) |c2a3a24de4e4e607
-crates/requirement/src/publish.rs [priv] fixture_class!( SyntheticTranscriptFixtures, "Synthetic transcripts written to exercise the rule's boundaries.", "no synthetic transcript fixture" ) |99f717162a974227
+crates/requirement/src/publish.rs [priv] fixture_class!( OfficialExampleFixtures, "The worked examples the official source itself states.", "no official example fixture" ) |ca5fd2debf99139f
+crates/requirement/src/publish.rs [priv] fixture_class!( SyntheticTranscriptFixtures, "Synthetic transcripts written to exercise the rule's boundaries.", "no synthetic transcript fixture" ) |19f60f1d35bd8d84
 crates/requirement/src/publish.rs [priv] impl ExecutableRule
 crates/requirement/src/publish.rs [priv] impl FixtureCase
 crates/requirement/src/publish.rs [priv] impl OfficialSourceBinding
@@ -151,7 +151,7 @@ crates/requirement/src/publish.rs [priv] impl RuleSetDraft
 crates/requirement/src/publish.rs [priv] impl RuleSetLedger
 crates/requirement/src/publish.rs [priv] impl RuleSetVersion
 crates/requirement/src/publish.rs [priv] impl core::fmt::Display for RuleSetVersion
-crates/requirement/src/publish.rs [priv] impl core::fmt::Display for RuleSetVersion :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |83ce0a03bdfc77bc
+crates/requirement/src/publish.rs [priv] impl core::fmt::Display for RuleSetVersion :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |92999f372d88fde1
 crates/requirement/src/publish.rs [priv] macro_rules! fixture_class |57213b31fa87d01e
 crates/requirement/src/publish.rs [priv] use academic_domain::{ ContentDigest, CurriculumVersionId, RequirementSetId, engines::{ProofStatus, RuleId as SourceRuleId}, } |462ddc46e5041a88
 crates/requirement/src/publish.rs [priv] use academic_ingestion::{ dating::EffectiveDate, identifier::ConnectorId, manifest::{ParserVersion, RetrievalInstant}, publish::{PublishedRule, PublishedRules}, } |e79cee176321d4ab
@@ -178,22 +178,22 @@ crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn set
 crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn source(&self) -> &OfficialSourceBinding |c31f665ffd9707d8
 crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn supersedes(&self) -> Option<RuleSetVersion> |13ea19c50ac081c0
 crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] const fn version(&self) -> RuleSetVersion |497192adfeeeb8f3
-crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] fn canonical_text(&self) -> String |7767900324828c3f
+crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] fn canonical_text(&self) -> String |997dbf131d1e4d2a
 crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] fn rule(&self, id: &RuleId) -> Option<&ExecutableRule> |ea1b4c90b9e15d14
 crates/requirement/src/publish.rs [pub] impl RuleSet :: #[must_use] fn rule_set_hash(&self) -> ContentDigest |ef69f40eb1d3ad18
-crates/requirement/src/publish.rs [pub] impl RuleSet :: fn evaluate( &self, id: &RuleId, facts: &AcademicFacts, ) -> Result<RuleOutcome, RequirementError> |0fe3b089b02c381b
+crates/requirement/src/publish.rs [pub] impl RuleSet :: fn evaluate( &self, id: &RuleId, facts: &AcademicFacts, ) -> Result<RuleOutcome, RequirementError> |425e4258fb1ff7c3
 crates/requirement/src/publish.rs [pub] impl RuleSet :: fn executable_rules(&self) -> impl Iterator<Item = &ExecutableRule> |f0db26cd80620870
 crates/requirement/src/publish.rs [pub] impl RuleSet :: fn rules(&self) -> impl Iterator<Item = (&RuleId, &RuleBody)> |c4fea5685208ad62
 crates/requirement/src/publish.rs [pub] impl RuleSetDraft :: #[must_use] fn from_official_source( published: &PublishedRules, set_id: RequirementSetId, curriculum_version: CurriculumVersionId, version: RuleSetVersion, supersedes: Option<RuleSetVersion>, ) -> Self |45bc851d97365e5d
 crates/requirement/src/publish.rs [pub] impl RuleSetDraft :: fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError> |191901d31e9ebe2b
-crates/requirement/src/publish.rs [pub] impl RuleSetDraft :: fn publish(self) -> Result<RuleSet, RequirementError> |4de1c1ff292522fe
+crates/requirement/src/publish.rs [pub] impl RuleSetDraft :: fn publish(self) -> Result<RuleSet, RequirementError> |c267156856243e81
 crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] const fn new() -> Self |6417186d1f4e8dcb
 crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn by_hash(&self, hash: ContentDigest) -> Option<&RuleSet> |182fb3f61e885c1d
 crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn changed_rules(&self, earlier: RuleSetVersion, later: RuleSetVersion) -> Vec<RuleId> |8444d0f8ffa58e52
 crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn current(&self) -> Option<&RuleSet> |fd091d53d87c6922
 crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn version(&self, version: RuleSetVersion) -> Option<&RuleSet> |e668253c06caedd6
 crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: #[must_use] fn versions(&self) -> &[RuleSet] |809d5c28142b242c
-crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: fn publish(&mut self, set: RuleSet) -> Result<(), RequirementError> |96da9ef87510a527
+crates/requirement/src/publish.rs [pub] impl RuleSetLedger :: fn publish(&mut self, set: RuleSet) -> Result<(), RequirementError> |1a06f35434ffd787
 crates/requirement/src/publish.rs [pub] impl RuleSetVersion :: #[must_use] const fn get(self) -> u32 |cdf9278334734035
 crates/requirement/src/publish.rs [pub] impl RuleSetVersion :: #[must_use] const fn new(value: u32) -> Self |f49478937ddb996c
 crates/requirement/src/publish.rs [pub] impl RuleSetVersion :: #[must_use] const fn next(self) -> Self |a3d1c612f878f469
@@ -202,11 +202,11 @@ crates/requirement/src/rule_type.rs [priv] impl RuleType
 crates/requirement/src/rule_type.rs [priv] use crate::error::RequirementError |9dc5f15afc1330c5
 crates/requirement/src/rule_type.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RuleType |20da900a8e13c986
 crates/requirement/src/rule_type.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SpellingSource |4487b8dd9466cada
-crates/requirement/src/rule_type.rs [pub] const SPEC_PROSE_CATEGORIES: [(&str, &[RuleType]); 12] |2c05e47c2115b828
-crates/requirement/src/rule_type.rs [pub] const SPEC_YAML_TYPES: [(&str, RuleType); 5] |f3f9d25350a15ac2
-crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn acceptance_test(self) -> &'static str |b71b882a7900454d
-crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn as_str(self) -> &'static str |fd2d6f1fe17d50a3
-crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn requirement(self) -> &'static str |4975831213b3f330
+crates/requirement/src/rule_type.rs [pub] const SPEC_PROSE_CATEGORIES: [(&str, &[RuleType]); 12] |0ddc113d922167b0
+crates/requirement/src/rule_type.rs [pub] const SPEC_YAML_TYPES: [(&str, RuleType); 5] |29c4e3c3c29bf6f9
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn acceptance_test(self) -> &'static str |079d1dd7d361ec2a
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn as_str(self) -> &'static str |1535ba8a707fb0fc
+crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn requirement(self) -> &'static str |e902784101eaa87b
 crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] const fn spelling_source(self) -> SpellingSource |14c2ae475e1fed64
 crates/requirement/src/rule_type.rs [pub] impl RuleType :: #[must_use] fn parse(identifier: &str) -> Option<Self> |6d1543603cc07715
 crates/requirement/src/rule_type.rs [pub] impl RuleType :: const ALL: [Self; 14] |34a8b99d684e4083

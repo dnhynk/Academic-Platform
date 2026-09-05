@@ -17,19 +17,26 @@
 #[path = "support/mod.rs"]
 mod support;
 
-use std::{collections::BTreeSet, error::Error, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    fs,
+    path::PathBuf,
+};
 
 use academic_build_learn::{
-    ActualCoverage, ArchitectureBranch, BranchGroup, CHECKPOINT_STAGES, ChannelComparison,
-    ConceptRequirement, CourseProjectMapping, CoverageEvidenceKind, DesignedCoverage,
-    EnrolmentStanding, EvidenceTask, GoalInput, INPUT_KINDS, InputKind, LearningItem,
-    MAPPING_STATUSES, MOTIVATIONS, MappingEvidence, MappingStatus, Motivation, MotivationDisplay,
-    NonEmptyText, ObservableCriterion, PartId, PersonalEvidenceStanding, PlanDefect, PlanDraft,
-    PlanStep, ProjectGoal, READINESS_CATEGORIES, RESOLUTION_ORDER, ROW_WITHOUT_A_SHORT_NAME,
-    ReadinessCategory, ReadinessFinding, RequirementCondition, RequirementOrigin,
-    ResponsibilityDecomposition, SHORT_NAMES, SuccessCriteria, TechnologySlate,
-    UnresolvedDecisions, categorize, normalize, validate,
+    ActualCoverage, Alternative, ArchitectureBranch, BranchGroup, BuildLearnError,
+    CHECKPOINT_STAGES, ChannelComparison, ConceptRequirement, Constraint, Constraints,
+    CourseProjectMapping, CoverageEvidenceKind, DesignedCoverage, EnrolmentStanding, EvidenceTask,
+    GoalInput, INPUT_KINDS, InputKind, LearningItem, MAPPING_STATUSES, MOTIVATIONS,
+    MappingEvidence, MappingStatus, Motivation, MotivationDisplay, NonEmptyText,
+    ObservableCriterion, ObservableResponsibility, PartId, PersonalEvidenceStanding, PlanDefect,
+    PlanDraft, PlanStep, ProjectGoal, READINESS_CATEGORIES, RESOLUTION_ORDER,
+    ROW_WITHOUT_A_SHORT_NAME, ReadinessCategory, ReadinessFinding, RequirementCondition,
+    RequirementOrigin, ResponsibilityDecomposition, SHORT_NAMES, SuccessCriteria, TechnologySlate,
+    UnresolvedDecision, UnresolvedDecisions, categorize, normalize, validate,
 };
+use academic_critical_path::EdgeStanding;
 use academic_domain::entity_registry::EntityKind;
 
 use support::{
@@ -1543,6 +1550,261 @@ fn every_part_identifier_is_the_shape_this_crate_admits() -> TestResult {
     assert!(matches!(
         NonEmptyText::new("   "),
         Err(academic_build_learn::BuildLearnError::EmptyText)
+    ));
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The refusals `P2-A5`'s sixth audit found nothing executes.
+// ---------------------------------------------------------------------------
+
+/// Every refusal this crate writes, reached.
+///
+/// `P2-A5`'s sixth audit instrumented all 93 `return Err(` sites in the six
+/// `P2-R` crates with a marker that panics when reached, ran the whole
+/// workspace `--no-fail-fast` four times, then re-instrumented only the
+/// survivors so a panic could not mask a later guard on the same path. 63 were
+/// reached and **30 were not**. Fifteen of the thirty are in this crate, and
+/// each is named below by the file and line the audit recorded, beside the
+/// call that reaches it.
+///
+/// They are driven rather than deleted because each is a condition on caller
+/// data that the type system does not carry: a tier with no independent
+/// prerequisite, an empty group, a duplicate identity, a branch naming a
+/// decision the goal never opened. What `P2-R5` measured is the other case —
+/// a branch nothing runs is a branch whose defect the suite cannot see — and
+/// the answer to it is a call, not a comment.
+#[test]
+fn every_refusal_this_crate_writes_is_reached() -> TestResult {
+    let goal = editor_goal()?;
+
+    // branch.rs:128 -- `ConceptRequirement::always` on a tier that carries no
+    // independent prerequisite of its own. `EntityKind::Field` is the tier
+    // `academic_gap::gap_bearing` answers `false` for.
+    assert!(matches!(
+        ConceptRequirement::always(shared_state(), EntityKind::Field, id("merge-order")?),
+        Err(BuildLearnError::ConceptCarriesNoPrerequisite { .. })
+    ));
+
+    // branch.rs:193 -- a branch group with no members.
+    assert!(matches!(
+        BranchGroup::of(id("ordering")?, id("central")?, Vec::new()),
+        Err(BuildLearnError::EmptyBranchGroup { .. })
+    ));
+
+    // branch.rs:201 -- the same tier rule inside a group's member list, which
+    // is a second copy of the branch.rs:128 refusal on a different path.
+    assert!(matches!(
+        BranchGroup::of(
+            id("ordering")?,
+            id("central")?,
+            vec![(shared_state(), EntityKind::Field, id("merge-order")?)],
+        ),
+        Err(BuildLearnError::ConceptCarriesNoPrerequisite { .. })
+    ));
+
+    // branch.rs:286 -- a group naming a decision the goal did leave open, but
+    // an alternative it did not offer.
+    assert!(matches!(
+        ArchitectureBranch::of(
+            editor_decomposition()?,
+            realtime_collaboration(),
+            Vec::new(),
+            vec![BranchGroup::of(
+                id("ordering")?,
+                id("absent-alternative")?,
+                vec![(shared_state(), EntityKind::Concept, id("merge-order")?)],
+            )?],
+        ),
+        Err(BuildLearnError::BranchNamesNoAlternative { .. })
+    ));
+
+    // branch.rs:301 -- a decision the goal left open that no group answers.
+    // The fixture goal opens two, so answering one leaves the other unanswered.
+    assert!(matches!(
+        ArchitectureBranch::of(
+            editor_decomposition()?,
+            realtime_collaboration(),
+            Vec::new(),
+            vec![
+                BranchGroup::of(
+                    id("ordering")?,
+                    id("central")?,
+                    vec![(central_ordering(), EntityKind::Concept, id("merge-order")?)],
+                )?,
+                BranchGroup::of(
+                    id("ordering")?,
+                    id("peer")?,
+                    vec![(peer_merge(), EntityKind::Concept, id("merge-order")?)],
+                )?,
+            ],
+        ),
+        Err(BuildLearnError::DecisionHasNoBranch(_))
+    ));
+
+    // branch.rs:413 -- a requirement whose concept has no admitted edge in the
+    // graph the hypergraph is built over.
+    let branch = editor_branch()?;
+    assert!(matches!(
+        branch.hypergraph(&BTreeMap::new(), EdgeStanding::Settled),
+        Err(BuildLearnError::RequirementHasNoAdmittedEdge(_))
+    ));
+
+    // goal.rs:258 -- an open decision offered fewer than two alternatives.
+    assert!(matches!(
+        UnresolvedDecision::open(
+            id("ordering")?,
+            text("central ordering vs peer/offline merge")?,
+            vec![Alternative::named(
+                id("central")?,
+                text("central ordering")?
+            )],
+        ),
+        Err(BuildLearnError::DecisionHasOneAlternative(_))
+    ));
+
+    // goal.rs:265 -- two alternatives of one decision sharing an identity.
+    assert!(matches!(
+        UnresolvedDecision::open(
+            id("ordering")?,
+            text("central ordering vs peer/offline merge")?,
+            vec![
+                Alternative::named(id("central")?, text("central ordering")?),
+                Alternative::named(id("central")?, text("central ordering again")?),
+            ],
+        ),
+        Err(BuildLearnError::DuplicateAlternative(_))
+    ));
+
+    let intent = normalize(&editor_input()?)?;
+
+    // goal.rs:362 -- two success criteria sharing an identity.
+    let duplicate_criteria = SuccessCriteria::of(vec![
+        ObservableCriterion::state(
+            id("converge")?,
+            text("concurrent edits converge")?,
+            text("two clients compare documents")?,
+        ),
+        ObservableCriterion::state(
+            id("converge")?,
+            text("concurrent edits converge, restated")?,
+            text("two clients compare documents again")?,
+        ),
+    ])
+    .ok_or("the duplicate-criterion fixture was empty")?;
+    assert!(matches!(
+        ProjectGoal::state(
+            &intent,
+            duplicate_criteria,
+            editor_constraints()?,
+            editor_decisions()?,
+        ),
+        Err(BuildLearnError::DuplicateCriterion(_))
+    ));
+
+    // goal.rs:370 -- two constraints sharing an identity.
+    let duplicate_constraints = Constraints::of(vec![
+        Constraint::fixed(id("web-client")?, text("web client")?),
+        Constraint::fixed(id("web-client")?, text("web client, restated")?),
+    ]);
+    assert!(matches!(
+        ProjectGoal::state(
+            &intent,
+            editor_criteria()?,
+            duplicate_constraints,
+            editor_decisions()?,
+        ),
+        Err(BuildLearnError::DuplicateConstraint(_))
+    ));
+
+    // goal.rs:378 -- two open decisions sharing an identity.
+    let duplicate_decisions = UnresolvedDecisions::of(vec![
+        UnresolvedDecision::open(
+            id("ordering")?,
+            text("central ordering vs peer/offline merge")?,
+            vec![
+                Alternative::named(id("central")?, text("central ordering")?),
+                Alternative::named(id("peer")?, text("peer/offline merge")?),
+            ],
+        )?,
+        UnresolvedDecision::open(
+            id("ordering")?,
+            text("the same decision, restated")?,
+            vec![
+                Alternative::named(id("central")?, text("central ordering")?),
+                Alternative::named(id("peer")?, text("peer/offline merge")?),
+            ],
+        )?,
+    ]);
+    assert!(matches!(
+        ProjectGoal::state(
+            &intent,
+            editor_criteria()?,
+            editor_constraints()?,
+            duplicate_decisions,
+        ),
+        Err(BuildLearnError::DuplicateDecision(_))
+    ));
+
+    // input.rs:216 -- an initial specification with a title and no statement.
+    assert!(matches!(
+        normalize(&GoalInput::InitialSpec {
+            title: text("실시간 협업 편집기")?,
+            statements: Vec::new(),
+        }),
+        Err(BuildLearnError::SpecificationHasNoStatement)
+    ));
+
+    // mapping.rs:348 -- an actual coverage reading about a subject other than
+    // the one the mapping is published for.
+    let other = ot_fundamentals();
+    let revision = support::covering_revision(other)?;
+    let offering = support::offering_for(&revision)?;
+    let elsewhere = ActualCoverage::observed(
+        &offering,
+        other,
+        vec![(
+            CoverageEvidenceKind::Syllabus,
+            support::evidence_id("syllabus-week-9"),
+        )],
+        true,
+    )?;
+    assert!(matches!(
+        CourseProjectMapping::publish(
+            crdt_fundamentals(),
+            None,
+            Some(elsewhere),
+            MappingStatus::CanBeSupportedByCurrentCourse,
+            text("the coverage names another subject")?,
+        ),
+        Err(BuildLearnError::CoverageIsAboutAnotherSubject { .. })
+    ));
+
+    // responsibility.rs:122 -- two responsibilities sharing an identity.
+    let mut duplicated = editor_responsibilities()?;
+    duplicated.push(ObservableResponsibility::of(
+        id("merge-order")?,
+        id("converge")?,
+        text("the same responsibility, restated")?,
+        text("two clients that applied the same operations show different text")?,
+    ));
+    assert!(matches!(
+        ResponsibilityDecomposition::decompose(goal.clone(), duplicated),
+        Err(BuildLearnError::DuplicateResponsibility(_))
+    ));
+
+    // responsibility.rs:131 -- a responsibility serving a criterion the goal
+    // does not hold.
+    let mut unserved = editor_responsibilities()?;
+    unserved.push(ObservableResponsibility::of(
+        id("absent-responsibility")?,
+        id("absent-criterion")?,
+        text("serves a criterion nobody stated")?,
+        text("nothing observes it")?,
+    ));
+    assert!(matches!(
+        ResponsibilityDecomposition::decompose(goal, unserved),
+        Err(BuildLearnError::ResponsibilityServesNoCriterion { .. })
     ));
     Ok(())
 }

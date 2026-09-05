@@ -12,8 +12,10 @@
 //! > its class declares. Where that cannot be enforced, the process refuses to
 //! > start.
 //!
-//! [`enter`] is the whole of it. It is called at the top of `main`, before any
-//! work, and it either returns an [`Enforcement`] — meaning the refusals were
+//! [`enter`] is the whole of it. It runs as the first statement of `main`
+//! because [`class_main`] **is** `main` — a class binary writes no `main` of
+//! its own, so there is no statement position above the entry — and it either
+//! returns an [`Enforcement`] — meaning the refusals were
 //! installed *and* re-observed from the kernel — or an [`EnforcementError`],
 //! and a caller that gets the error must exit without doing work. There is no
 //! third outcome: a partial application is an error, and a failed verification
@@ -317,7 +319,8 @@ pub const UNSUPPORTED_PLATFORM: &str =
 /// Applies this class's refusals to the calling process, or refuses to let it
 /// start.
 ///
-/// Call it at the top of `main`, before any work. On success the process holds
+/// Expanded as the first statement of `main` by [`class_main`], which is how
+/// "before any work" is enforced rather than asked for. On success the process holds
 /// exactly the capabilities in [`ProcessCapability::ALL`] that its class
 /// declares, for the two this crate enforces; on failure the caller must exit
 /// without doing work.
@@ -379,4 +382,57 @@ pub fn enter(class: ProcessClass) -> Result<Enforcement, EnforcementError> {
 #[must_use]
 pub fn refusal_line(class: ProcessClass, error: &EnforcementError) -> String {
     format!("{} refuses to start: {error}", class.as_str())
+}
+
+/// The whole of a process-class binary's `main`, so the binary crate has no
+/// place to put a statement before [`enter`] runs.
+///
+/// # What this replaces, and why a scan was not enough
+///
+/// [`enter`]'s own contract sentence is *"call it at the top of `main`, before
+/// any work"*, and until `P2-RF31` nothing held anyone to it. `P2-A5`'s sixth
+/// audit put one live `std::net` name resolution above the `enter` call in the
+/// shipped `academic-repository-analyzer` and measured the whole workspace, on
+/// both hosts, reporting no difference at all: the four class binaries each
+/// wrote their own `fn main`, so the window between process start and the
+/// sandbox being installed was four bodies of free text.
+///
+/// A source scan reads the text those bodies hold today. This removes the
+/// bodies. A crate that expands this declares no `fn main` of its own, so
+/// there is no statement position above the call to write into, and the one
+/// body that remains is this transcriber -- in the crate whose whole suite is
+/// about the sandbox, and whose item text is pinned.
+///
+/// # The argument is an identifier
+///
+/// `$class:ident` rather than `$class:expr` or `$class:path`, so
+/// `class_main!({ reach(); PROCESS_CLASS })` does not compile. An `expr`
+/// fragment would put the window back inside the argument, where it would be
+/// evaluated before [`enter`] is called; the compiler refuses that here rather
+/// than a test noticing it later.
+///
+/// # What it does not close
+///
+/// Anything the runtime executes before `main` -- a static initializer written
+/// into `.init_array`, a `#[ctor]`-shaped attribute, a linked constructor in a
+/// C dependency. Those are outside `main` and outside this macro, and
+/// `no_process_class_binary_authors_a_statement_before_it_enters` in
+/// `crates/contracts/tests/item_inventory_scans.rs` is what says the crate
+/// holds no other item at all.
+#[macro_export]
+macro_rules! class_main {
+    ($class:ident) => {
+        fn main() -> ::std::process::ExitCode {
+            match $crate::enter($class) {
+                Ok(enforcement) => {
+                    ::std::println!("{}", enforcement.receipt_line());
+                    ::std::process::ExitCode::SUCCESS
+                }
+                Err(error) => {
+                    ::std::eprintln!("{}", $crate::refusal_line($class, &error));
+                    ::std::process::ExitCode::FAILURE
+                }
+            }
+        }
+    };
 }
