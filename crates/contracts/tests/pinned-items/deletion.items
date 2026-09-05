@@ -1,0 +1,238 @@
+crates/deletion/src/confirm.rs [priv] impl DeletionConfirmation
+crates/deletion/src/confirm.rs [priv] use academic_domain::{Actor, ContentDigest, TimestampMillis}
+crates/deletion/src/confirm.rs [priv] use academic_proposal::UserDecision
+crates/deletion/src/confirm.rs [priv] use crate::{error::DeletionFlowError, preview::DeletionImpactPreview}
+crates/deletion/src/confirm.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeletionConfirmation
+crates/deletion/src/confirm.rs [pub] impl DeletionConfirmation :: #[must_use] const fn confirmed_at(&self) -> TimestampMillis
+crates/deletion/src/confirm.rs [pub] impl DeletionConfirmation :: #[must_use] const fn decision(&self) -> &UserDecision
+crates/deletion/src/confirm.rs [pub] impl DeletionConfirmation :: #[must_use] const fn preview(&self) -> &DeletionImpactPreview
+crates/deletion/src/confirm.rs [pub] impl DeletionConfirmation :: #[must_use] const fn shown_digest(&self) -> ContentDigest
+crates/deletion/src/confirm.rs [pub] impl DeletionConfirmation :: fn given( preview: DeletionImpactPreview, actor: &Actor, shown: ContentDigest, confirmed_at: TimestampMillis, ) -> Result<Self, DeletionFlowError>
+crates/deletion/src/dry_run.rs [priv] impl DeletionDryRun
+crates/deletion/src/dry_run.rs [priv] impl DerivativeResolver for DeletionDryRun
+crates/deletion/src/dry_run.rs [priv] impl DerivativeResolver for DeletionDryRun :: fn resolve(&self, class: DerivativeClass, _subject: &RetentionSubject) -> ClassResolution
+crates/deletion/src/dry_run.rs [priv] impl DryRunNode
+crates/deletion/src/dry_run.rs [priv] trait DerivativeIndex :: fn resolve(&self, class: DerivativeClass, subject: &DeletionTarget) -> ClassTargets
+crates/deletion/src/dry_run.rs [priv] use academic_retention::{ ClassResolution, DERIVATIVE_CLASSES, DerivativeClass, DerivativeResolver, RetentionSubject, }
+crates/deletion/src/dry_run.rs [priv] use crate::{ protection::{ProtectionDecision, ProtectionRegistry}, target::DeletionTarget, }
+crates/deletion/src/dry_run.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum ClassTargets
+crates/deletion/src/dry_run.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeletionDryRun
+crates/deletion/src/dry_run.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DryRunNode
+crates/deletion/src/dry_run.rs [pub] const SPEC_DERIVATIVE_SENTENCE_HEAD: &str
+crates/deletion/src/dry_run.rs [pub] const SPEC_DERIVATIVE_SENTENCE_TAIL: &str
+crates/deletion/src/dry_run.rs [pub] const SPEC_DERIVATIVE_WORDS: [(DerivativeClass, &str); 7]
+crates/deletion/src/dry_run.rs [pub] impl DeletionDryRun :: #[must_use] const fn protection(&self) -> &ProtectionDecision
+crates/deletion/src/dry_run.rs [pub] impl DeletionDryRun :: #[must_use] const fn subject(&self) -> &DeletionTarget
+crates/deletion/src/dry_run.rs [pub] impl DeletionDryRun :: #[must_use] fn enumerated_classes(&self) -> Vec<DerivativeClass>
+crates/deletion/src/dry_run.rs [pub] impl DeletionDryRun :: #[must_use] fn nodes(&self) -> &[DryRunNode]
+crates/deletion/src/dry_run.rs [pub] impl DeletionDryRun :: #[must_use] fn plan(&self) -> academic_retention::DeletionPlan
+crates/deletion/src/dry_run.rs [pub] impl DeletionDryRun :: #[must_use] fn reached(&self) -> Vec<DeletionTarget>
+crates/deletion/src/dry_run.rs [pub] impl DeletionDryRun :: #[must_use] fn unresolved_classes(&self) -> Vec<DerivativeClass>
+crates/deletion/src/dry_run.rs [pub] impl DeletionDryRun :: fn of<I, P>(subject: DeletionTarget, index: &I, protection: &P) -> Self where I: DerivativeIndex + ?Sized, P: ProtectionRegistry + ?Sized,
+crates/deletion/src/dry_run.rs [pub] impl DryRunNode :: #[must_use] const fn class(&self) -> DerivativeClass
+crates/deletion/src/dry_run.rs [pub] impl DryRunNode :: #[must_use] const fn is_unresolved(&self) -> bool
+crates/deletion/src/dry_run.rs [pub] impl DryRunNode :: #[must_use] const fn resolution(&self) -> &ClassResolution
+crates/deletion/src/dry_run.rs [pub] impl DryRunNode :: #[must_use] fn targets(&self) -> &[DeletionTarget]
+crates/deletion/src/dry_run.rs [pub] trait DerivativeIndex
+crates/deletion/src/engine.rs [priv] impl DerivativeIndex for ObjectTreeIndex
+crates/deletion/src/engine.rs [priv] impl DerivativeIndex for ObjectTreeIndex :: fn resolve(&self, class: DerivativeClass, _subject: &DeletionTarget) -> ClassTargets
+crates/deletion/src/engine.rs [priv] impl KeySlotShredder for VaultShredder<'_>
+crates/deletion/src/engine.rs [priv] impl KeySlotShredder for VaultShredder<'_> :: fn shred( &mut self, journal: &mut AppendOnlyJournal, target: &DeletionTarget, tombstone: &BackupTombstone, ) -> Result<(), ExecutionFailure>
+crates/deletion/src/engine.rs [priv] impl ObjectTreeIndex
+crates/deletion/src/engine.rs [priv] impl<'a> VaultShredder<'a>
+crates/deletion/src/engine.rs [priv] use academic_domain::ArtifactDescriptor
+crates/deletion/src/engine.rs [priv] use academic_retention::{ AppendOnlyJournal, BackupTombstone, DerivativeClass, ExecutionFailure, UnresolvedReason, engine, }
+crates/deletion/src/engine.rs [priv] use academic_vault::EncryptedVault
+crates/deletion/src/engine.rs [priv] use crate::{ dry_run::{ClassTargets, DerivativeIndex}, executors::KeySlotShredder, target::DeletionTarget, }
+crates/deletion/src/engine.rs [priv] use std::collections::BTreeMap
+crates/deletion/src/engine.rs [pub] #[derive(Debug)] struct VaultShredder<'a>
+crates/deletion/src/engine.rs [pub] #[derive(Debug, Clone, Default)] struct ObjectTreeIndex
+crates/deletion/src/engine.rs [pub] impl ObjectTreeIndex :: #[must_use] const fn new() -> Self
+crates/deletion/src/engine.rs [pub] impl ObjectTreeIndex :: fn empty(&mut self, class: DerivativeClass, reason: String)
+crates/deletion/src/engine.rs [pub] impl ObjectTreeIndex :: fn holding(&mut self, class: DerivativeClass, targets: Vec<DeletionTarget>)
+crates/deletion/src/engine.rs [pub] impl<'a> VaultShredder<'a> :: #[must_use] const fn over( vault: &'a EncryptedVault, descriptors: BTreeMap<DeletionTarget, ArtifactDescriptor>, ) -> Self
+crates/deletion/src/error.rs [priv] use crate::{protection::ProtectionReason, target::DeletionTarget}
+crates/deletion/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum DeletionFlowError
+crates/deletion/src/execute.rs [priv] impl ArtifactDeletionReceipt
+crates/deletion/src/execute.rs [priv] impl UnresolvedTarget
+crates/deletion/src/execute.rs [priv] impl<'e, E: TargetExecutor + ?Sized + std::fmt::Debug> TargetAdapter<'e, E>
+crates/deletion/src/execute.rs [priv] impl<E: TargetExecutor + ?Sized + std::fmt::Debug> RetentionExecutor for TargetAdapter<'_, E>
+crates/deletion/src/execute.rs [priv] impl<E: TargetExecutor + ?Sized + std::fmt::Debug> RetentionExecutor for TargetAdapter<'_, E> :: fn execute( &mut self, journal: &mut AppendOnlyJournal, action: &PlannedAction, ) -> Result<(), ExecutionFailure>
+crates/deletion/src/execute.rs [priv] trait TargetExecutor :: fn execute( &mut self, journal: &mut AppendOnlyJournal, kind: ActionKind, class: DerivativeClass, target: &DeletionTarget, ) -> Result<(), ExecutionFailure>
+crates/deletion/src/execute.rs [priv] use academic_retention::{ ActionId, ActionKind, AppendOnlyJournal, DerivativeClass, ExecutionFailure, PlannedAction, RetentionExecutor, RetentionOutcome, UnresolvedReason, settle, }
+crates/deletion/src/execute.rs [priv] use crate::{ confirm::DeletionConfirmation, error::DeletionFlowError, provider::ProviderErasureLog, target::DeletionTarget, }
+crates/deletion/src/execute.rs [pub] #[derive(Debug)] struct TargetAdapter<'e, E: TargetExecutor + ?Sized + std::fmt::Debug>
+crates/deletion/src/execute.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ArtifactDeletionReceipt
+crates/deletion/src/execute.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UnresolvedTarget
+crates/deletion/src/execute.rs [pub] fn execute_deletion<E: TargetExecutor + ?Sized + std::fmt::Debug>( journal: &mut AppendOnlyJournal, action_id: ActionId, confirmation: &DeletionConfirmation, executor: &mut E, provider: ProviderErasureLog, ) -> Result<ArtifactDeletionReceipt, DeletionFlowError>
+crates/deletion/src/execute.rs [pub] impl ArtifactDeletionReceipt :: #[must_use] const fn outcome(&self) -> &RetentionOutcome
+crates/deletion/src/execute.rs [pub] impl ArtifactDeletionReceipt :: #[must_use] const fn outcome_word(&self) -> &'static str
+crates/deletion/src/execute.rs [pub] impl ArtifactDeletionReceipt :: #[must_use] const fn provider(&self) -> &ProviderErasureLog
+crates/deletion/src/execute.rs [pub] impl ArtifactDeletionReceipt :: #[must_use] const fn subject(&self) -> &DeletionTarget
+crates/deletion/src/execute.rs [pub] impl ArtifactDeletionReceipt :: #[must_use] fn is_fully_erased(&self) -> bool
+crates/deletion/src/execute.rs [pub] impl ArtifactDeletionReceipt :: #[must_use] fn report_rows(&self) -> Vec<String>
+crates/deletion/src/execute.rs [pub] impl ArtifactDeletionReceipt :: #[must_use] fn unresolved(&self) -> &[UnresolvedTarget]
+crates/deletion/src/execute.rs [pub] impl ArtifactDeletionReceipt :: #[must_use] fn unresolved_rows(&self) -> Vec<String>
+crates/deletion/src/execute.rs [pub] impl UnresolvedTarget :: #[must_use] fn to_row(&self) -> String
+crates/deletion/src/execute.rs [pub] impl<'e, E: TargetExecutor + ?Sized + std::fmt::Debug> TargetAdapter<'e, E> :: #[must_use] const fn drifted(&self) -> bool
+crates/deletion/src/execute.rs [pub] impl<'e, E: TargetExecutor + ?Sized + std::fmt::Debug> TargetAdapter<'e, E> :: #[must_use] fn failures(&self) -> &[UnresolvedTarget]
+crates/deletion/src/execute.rs [pub] impl<'e, E: TargetExecutor + ?Sized + std::fmt::Debug> TargetAdapter<'e, E> :: #[must_use] fn over(executor: &'e mut E, confirmation: &DeletionConfirmation) -> Self
+crates/deletion/src/execute.rs [pub] trait TargetExecutor
+crates/deletion/src/executors.rs [priv] impl DeletionPaths
+crates/deletion/src/executors.rs [priv] impl<'s, S: KeySlotShredder + ?Sized + std::fmt::Debug> FilesystemExecutor<'s, S>
+crates/deletion/src/executors.rs [priv] impl<'s, S: KeySlotShredder + ?Sized + std::fmt::Debug> FilesystemExecutor<'s, S> :: fn tombstone_for(&self, target: &DeletionTarget) -> BackupTombstone
+crates/deletion/src/executors.rs [priv] impl<S: KeySlotShredder + ?Sized + std::fmt::Debug> crate::execute::TargetExecutor for FilesystemExecutor<'_, S>
+crates/deletion/src/executors.rs [priv] impl<S: KeySlotShredder + ?Sized + std::fmt::Debug> crate::execute::TargetExecutor for FilesystemExecutor<'_, S> :: fn execute( &mut self, journal: &mut AppendOnlyJournal, kind: ActionKind, _class: DerivativeClass, target: &DeletionTarget, ) -> Result<(), ExecutionFailure>
+crates/deletion/src/executors.rs [priv] trait KeySlotShredder :: fn shred( &mut self, journal: &mut AppendOnlyJournal, target: &DeletionTarget, tombstone: &BackupTombstone, ) -> Result<(), ExecutionFailure>
+crates/deletion/src/executors.rs [priv] use academic_retention::{ ActionKind, AppendOnlyJournal, BackupTombstone, DerivativeClass, ExecutionFailure, UnresolvedReason, tombstone, }
+crates/deletion/src/executors.rs [priv] use crate::target::DeletionTarget
+crates/deletion/src/executors.rs [priv] use std::{collections::BTreeMap, path::PathBuf}
+crates/deletion/src/executors.rs [pub] #[derive(Debug)] struct FilesystemExecutor<'s, S: KeySlotShredder + ?Sized + std::fmt::Debug>
+crates/deletion/src/executors.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct DeletionPaths
+crates/deletion/src/executors.rs [pub] impl DeletionPaths :: #[must_use] const fn new() -> Self
+crates/deletion/src/executors.rs [pub] impl DeletionPaths :: #[must_use] fn backup_root(&self, target: &DeletionTarget) -> Option<&PathBuf>
+crates/deletion/src/executors.rs [pub] impl DeletionPaths :: #[must_use] fn purge_path(&self, target: &DeletionTarget) -> Option<&PathBuf>
+crates/deletion/src/executors.rs [pub] impl DeletionPaths :: fn backup_at(&mut self, target: DeletionTarget, path: PathBuf)
+crates/deletion/src/executors.rs [pub] impl DeletionPaths :: fn purge_at(&mut self, target: DeletionTarget, path: PathBuf)
+crates/deletion/src/executors.rs [pub] impl<'s, S: KeySlotShredder + ?Sized + std::fmt::Debug> FilesystemExecutor<'s, S> :: #[must_use] const fn new( shredder: &'s mut S, paths: DeletionPaths, action_id: String, shredded_at_ms: u64, ) -> Self
+crates/deletion/src/executors.rs [pub] impl<'s, S: KeySlotShredder + ?Sized + std::fmt::Debug> FilesystemExecutor<'s, S> :: #[must_use] fn purged(&self) -> &[PathBuf]
+crates/deletion/src/executors.rs [pub] impl<'s, S: KeySlotShredder + ?Sized + std::fmt::Debug> FilesystemExecutor<'s, S> :: #[must_use] fn tombstones(&self) -> &[BackupTombstone]
+crates/deletion/src/executors.rs [pub] trait KeySlotShredder
+crates/deletion/src/incident.rs [priv] impl ExposureScope
+crates/deletion/src/incident.rs [priv] impl ExternalLeakIncident
+crates/deletion/src/incident.rs [priv] impl IncidentClosure
+crates/deletion/src/incident.rs [priv] impl LeakIncidentState
+crates/deletion/src/incident.rs [priv] impl RecoveryStep
+crates/deletion/src/incident.rs [priv] use academic_domain::{ArtifactId, ContentDigest, TimestampMillis}
+crates/deletion/src/incident.rs [priv] use academic_evidence_center::{CorrectionChoice, CorrectionRecord}
+crates/deletion/src/incident.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ExposureScope
+crates/deletion/src/incident.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum LeakIncidentState
+crates/deletion/src/incident.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RecoveryStep
+crates/deletion/src/incident.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExternalLeakIncident
+crates/deletion/src/incident.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct IncidentClosure
+crates/deletion/src/incident.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum IncidentError
+crates/deletion/src/incident.rs [pub] impl ExposureScope :: #[must_use] const fn destination(&self) -> ContentDigest
+crates/deletion/src/incident.rs [pub] impl ExposureScope :: #[must_use] const fn exposed_bytes(&self) -> u64
+crates/deletion/src/incident.rs [pub] impl ExposureScope :: #[must_use] const fn new( exposed_bytes: u64, source: ArtifactId, destination: ContentDigest, provider_retention_days: u32, ) -> Self
+crates/deletion/src/incident.rs [pub] impl ExposureScope :: #[must_use] const fn provider_retention_days(&self) -> u32
+crates/deletion/src/incident.rs [pub] impl ExposureScope :: #[must_use] const fn source(&self) -> ArtifactId
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: #[must_use] const fn closure(&self) -> Option<&IncidentClosure>
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: #[must_use] const fn opened_at(&self) -> TimestampMillis
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: #[must_use] const fn reported(scope: ExposureScope, opened_at: TimestampMillis) -> Self
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: #[must_use] const fn scope(&self) -> ExposureScope
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: #[must_use] fn claim_corrections(&self) -> &[CorrectionChoice]
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: #[must_use] fn missing_steps(&self) -> Vec<RecoveryStep>
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: #[must_use] fn recorded_steps(&self) -> &[RecoveryStep]
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: #[must_use] fn state(&self) -> LeakIncidentState
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: fn close(&mut self, closed_at: TimestampMillis) -> Result<&IncidentClosure, IncidentError>
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: fn record_claim_correction(&mut self, record: &CorrectionRecord)
+crates/deletion/src/incident.rs [pub] impl ExternalLeakIncident :: fn record_recovery(&mut self, step: RecoveryStep)
+crates/deletion/src/incident.rs [pub] impl IncidentClosure :: #[must_use] const fn closed_at(&self) -> TimestampMillis
+crates/deletion/src/incident.rs [pub] impl IncidentClosure :: #[must_use] const fn scope(&self) -> ExposureScope
+crates/deletion/src/incident.rs [pub] impl IncidentClosure :: #[must_use] const fn steps(&self) -> &[RecoveryStep; 4]
+crates/deletion/src/incident.rs [pub] impl LeakIncidentState :: #[must_use] const fn as_str(self) -> &'static str
+crates/deletion/src/incident.rs [pub] impl LeakIncidentState :: const ALL: [Self; 3]
+crates/deletion/src/incident.rs [pub] impl RecoveryStep :: #[must_use] const fn as_str(self) -> &'static str
+crates/deletion/src/incident.rs [pub] impl RecoveryStep :: #[must_use] const fn spec_words(self) -> &'static str
+crates/deletion/src/incident.rs [pub] impl RecoveryStep :: const ALL: [Self; 4]
+crates/deletion/src/lib.rs [priv] #![doc(test(attr(deny(warnings))))]
+crates/deletion/src/lib.rs [pub] #[cfg(feature = "deletion-engine")] mod engine
+crates/deletion/src/lib.rs [pub] const EXTERNAL_LEAKAGE_PRINCIPLE: &str
+crates/deletion/src/lib.rs [pub] const FAULT_INJECTION_FEATURE: &str
+crates/deletion/src/lib.rs [pub] const PHASE2_DELETION_FAULT_IDS: &[&str]
+crates/deletion/src/lib.rs [pub] mod confirm
+crates/deletion/src/lib.rs [pub] mod dry_run
+crates/deletion/src/lib.rs [pub] mod error
+crates/deletion/src/lib.rs [pub] mod execute
+crates/deletion/src/lib.rs [pub] mod executors
+crates/deletion/src/lib.rs [pub] mod incident
+crates/deletion/src/lib.rs [pub] mod preview
+crates/deletion/src/lib.rs [pub] mod protection
+crates/deletion/src/lib.rs [pub] mod provider
+crates/deletion/src/lib.rs [pub] mod target
+crates/deletion/src/lib.rs [pub] use confirm::DeletionConfirmation
+crates/deletion/src/lib.rs [pub] use dry_run::{ ClassTargets, DeletionDryRun, DerivativeIndex, DryRunNode, SPEC_DERIVATIVE_SENTENCE_HEAD, SPEC_DERIVATIVE_SENTENCE_TAIL, SPEC_DERIVATIVE_WORDS, }
+crates/deletion/src/lib.rs [pub] use error::DeletionFlowError
+crates/deletion/src/lib.rs [pub] use execute::{ ArtifactDeletionReceipt, TargetAdapter, TargetExecutor, UnresolvedTarget, execute_deletion, }
+crates/deletion/src/lib.rs [pub] use executors::{DeletionPaths, FilesystemExecutor, KeySlotShredder}
+crates/deletion/src/lib.rs [pub] use incident::{ ExposureScope, ExternalLeakIncident, IncidentClosure, IncidentError, LeakIncidentState, RecoveryStep, }
+crates/deletion/src/lib.rs [pub] use preview::{DeletionImpactPreview, EvidenceCitations}
+crates/deletion/src/lib.rs [pub] use protection::{ ProtectionDecision, ProtectionPolicyKind, ProtectionReason, ProtectionRegistry, }
+crates/deletion/src/lib.rs [pub] use provider::{ProviderErasureEntry, ProviderErasureLog, ProviderErasureRequest}
+crates/deletion/src/lib.rs [pub] use target::DeletionTarget
+crates/deletion/src/preview.rs [priv] impl DeletionImpactPreview
+crates/deletion/src/preview.rs [priv] impl DeletionImpactPreview :: fn canonical_bytes(&self) -> Vec<u8>
+crates/deletion/src/preview.rs [priv] impl EvidenceCitations
+crates/deletion/src/preview.rs [priv] use academic_domain::ContentDigest
+crates/deletion/src/preview.rs [priv] use academic_student_voice::{ AffectedProjection, EvidenceIndex, affected_projections, unreferenced_objects, }
+crates/deletion/src/preview.rs [priv] use crate::{ dry_run::DeletionDryRun, error::DeletionFlowError, protection::ProtectionDecision, target::DeletionTarget, }
+crates/deletion/src/preview.rs [priv] use std::collections::BTreeMap
+crates/deletion/src/preview.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct EvidenceCitations
+crates/deletion/src/preview.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeletionImpactPreview
+crates/deletion/src/preview.rs [pub] impl DeletionImpactPreview :: #[must_use] const fn digest(&self) -> ContentDigest
+crates/deletion/src/preview.rs [pub] impl DeletionImpactPreview :: #[must_use] const fn dry_run(&self) -> &DeletionDryRun
+crates/deletion/src/preview.rs [pub] impl DeletionImpactPreview :: #[must_use] const fn previewed_at(&self) -> u64
+crates/deletion/src/preview.rs [pub] impl DeletionImpactPreview :: #[must_use] fn partition_reconciles(&self, index: &EvidenceIndex) -> bool
+crates/deletion/src/preview.rs [pub] impl DeletionImpactPreview :: #[must_use] fn projections(&self) -> &[AffectedProjection]
+crates/deletion/src/preview.rs [pub] impl DeletionImpactPreview :: #[must_use] fn reached(&self) -> &[DeletionTarget]
+crates/deletion/src/preview.rs [pub] impl DeletionImpactPreview :: #[must_use] fn unreferenced(&self) -> &[ContentDigest]
+crates/deletion/src/preview.rs [pub] impl DeletionImpactPreview :: fn of( dry_run: DeletionDryRun, index: &EvidenceIndex, citations: &EvidenceCitations, previewed_at: u64, ) -> Result<Self, DeletionFlowError>
+crates/deletion/src/preview.rs [pub] impl EvidenceCitations :: #[must_use] const fn new() -> Self
+crates/deletion/src/preview.rs [pub] impl EvidenceCitations :: #[must_use] fn digest_of(&self, target: &DeletionTarget) -> Option<ContentDigest>
+crates/deletion/src/preview.rs [pub] impl EvidenceCitations :: fn cite(&mut self, target: DeletionTarget, digest: ContentDigest)
+crates/deletion/src/protection.rs [priv] impl ProtectionDecision
+crates/deletion/src/protection.rs [priv] impl ProtectionPolicyKind
+crates/deletion/src/protection.rs [priv] impl ProtectionReason
+crates/deletion/src/protection.rs [priv] trait ProtectionRegistry :: fn decide(&self, target: &DeletionTarget) -> ProtectionDecision
+crates/deletion/src/protection.rs [priv] use academic_domain::TimestampMillis
+crates/deletion/src/protection.rs [priv] use crate::target::DeletionTarget
+crates/deletion/src/protection.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum ProtectionPolicyKind
+crates/deletion/src/protection.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] #[non_exhaustive] enum ProtectionDecision
+crates/deletion/src/protection.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProtectionReason
+crates/deletion/src/protection.rs [pub] impl ProtectionDecision :: #[must_use] const fn reason(&self) -> Option<&ProtectionReason>
+crates/deletion/src/protection.rs [pub] impl ProtectionPolicyKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/deletion/src/protection.rs [pub] impl ProtectionPolicyKind :: #[must_use] const fn spec_section(self) -> &'static str
+crates/deletion/src/protection.rs [pub] impl ProtectionPolicyKind :: #[must_use] const fn spec_words(self) -> &'static str
+crates/deletion/src/protection.rs [pub] impl ProtectionPolicyKind :: const ALL: [Self; 4]
+crates/deletion/src/protection.rs [pub] impl ProtectionReason :: #[must_use] const fn kind(&self) -> ProtectionPolicyKind
+crates/deletion/src/protection.rs [pub] impl ProtectionReason :: #[must_use] const fn revisit_at(&self) -> Option<TimestampMillis>
+crates/deletion/src/protection.rs [pub] impl ProtectionReason :: #[must_use] fn detail(&self) -> &str
+crates/deletion/src/protection.rs [pub] impl ProtectionReason :: #[must_use] fn to_row(&self) -> String
+crates/deletion/src/protection.rs [pub] impl ProtectionReason :: #[must_use] fn under( kind: ProtectionPolicyKind, detail: String, revisit_at: Option<TimestampMillis>, ) -> Self
+crates/deletion/src/protection.rs [pub] trait ProtectionRegistry
+crates/deletion/src/provider.rs [priv] impl ProviderErasureEntry
+crates/deletion/src/provider.rs [priv] impl ProviderErasureLog
+crates/deletion/src/provider.rs [priv] impl ProviderErasureRequest
+crates/deletion/src/provider.rs [priv] use academic_domain::{EgressDecisionId, TimestampMillis}
+crates/deletion/src/provider.rs [priv] use academic_evidence_center::{DeletionReceiptRef, ReceiptState}
+crates/deletion/src/provider.rs [priv] use crate::{error::DeletionFlowError, target::DeletionTarget}
+crates/deletion/src/provider.rs [priv] use std::collections::BTreeMap
+crates/deletion/src/provider.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ProviderErasureRequest
+crates/deletion/src/provider.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct ProviderErasureLog
+crates/deletion/src/provider.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProviderErasureEntry
+crates/deletion/src/provider.rs [pub] impl ProviderErasureEntry :: #[must_use] const fn is_settled(&self) -> bool
+crates/deletion/src/provider.rs [pub] impl ProviderErasureEntry :: #[must_use] const fn receipt(&self) -> Option<&DeletionReceiptRef>
+crates/deletion/src/provider.rs [pub] impl ProviderErasureEntry :: #[must_use] const fn request(&self) -> &ProviderErasureRequest
+crates/deletion/src/provider.rs [pub] impl ProviderErasureEntry :: #[must_use] const fn state(&self) -> ReceiptState
+crates/deletion/src/provider.rs [pub] impl ProviderErasureLog :: #[must_use] const fn new() -> Self
+crates/deletion/src/provider.rs [pub] impl ProviderErasureLog :: #[must_use] fn entries(&self) -> Vec<&ProviderErasureEntry>
+crates/deletion/src/provider.rs [pub] impl ProviderErasureLog :: #[must_use] fn entry( &self, target: &DeletionTarget, decision: EgressDecisionId, ) -> Option<&ProviderErasureEntry>
+crates/deletion/src/provider.rs [pub] impl ProviderErasureLog :: #[must_use] fn outstanding(&self) -> Vec<&ProviderErasureEntry>
+crates/deletion/src/provider.rs [pub] impl ProviderErasureLog :: #[must_use] fn outstanding_rows(&self) -> Vec<String>
+crates/deletion/src/provider.rs [pub] impl ProviderErasureLog :: fn record_receipt( &mut self, target: DeletionTarget, decision: EgressDecisionId, receipt: DeletionReceiptRef, ) -> Result<(), DeletionFlowError>
+crates/deletion/src/provider.rs [pub] impl ProviderErasureLog :: fn request(&mut self, request: ProviderErasureRequest, state: ReceiptState)
+crates/deletion/src/provider.rs [pub] impl ProviderErasureRequest :: #[must_use] const fn decision(&self) -> EgressDecisionId
+crates/deletion/src/provider.rs [pub] impl ProviderErasureRequest :: #[must_use] const fn new( target: DeletionTarget, decision: EgressDecisionId, requested_at: TimestampMillis, ) -> Self
+crates/deletion/src/provider.rs [pub] impl ProviderErasureRequest :: #[must_use] const fn requested_at(&self) -> TimestampMillis
+crates/deletion/src/provider.rs [pub] impl ProviderErasureRequest :: #[must_use] const fn target(&self) -> &DeletionTarget
+crates/deletion/src/provider.rs [pub] impl ProviderErasureRequest :: #[must_use] fn to_row(&self) -> String
+crates/deletion/src/target.rs [priv] fn hex_of(bytes: &[u8]) -> String
+crates/deletion/src/target.rs [priv] impl DeletionTarget
+crates/deletion/src/target.rs [priv] use academic_domain::ArtifactId
+crates/deletion/src/target.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DeletionTarget
+crates/deletion/src/target.rs [pub] impl DeletionTarget :: #[must_use] const fn artifact(&self) -> ArtifactId
+crates/deletion/src/target.rs [pub] impl DeletionTarget :: #[must_use] const fn locator(&self) -> &[u8; 32]
+crates/deletion/src/target.rs [pub] impl DeletionTarget :: #[must_use] const fn new(artifact: ArtifactId, locator: [u8; 32]) -> Self
+crates/deletion/src/target.rs [pub] impl DeletionTarget :: #[must_use] fn artifact_hex(&self) -> String
+crates/deletion/src/target.rs [pub] impl DeletionTarget :: #[must_use] fn locator_hex(&self) -> String
+crates/deletion/src/target.rs [pub] impl DeletionTarget :: #[must_use] fn to_row(&self) -> String

@@ -1,0 +1,237 @@
+crates/repository-competency/src/claim.rs [priv] const PERSONAL_CLAIM_DOMAIN: &[u8]
+crates/repository-competency/src/claim.rs [priv] const PROJECT_CLAIM_DOMAIN: &[u8]
+crates/repository-competency/src/claim.rs [priv] fn identity(domain: &[u8], parts: &[&str]) -> String
+crates/repository-competency/src/claim.rs [priv] impl ClaimId
+crates/repository-competency/src/claim.rs [priv] impl ClaimStanding
+crates/repository-competency/src/claim.rs [priv] impl PersonalApplicationClaim
+crates/repository-competency/src/claim.rs [priv] impl PersonalProvenance
+crates/repository-competency/src/claim.rs [priv] impl ProjectObservationClaim
+crates/repository-competency/src/claim.rs [priv] impl ProjectProvenance
+crates/repository-competency/src/claim.rs [priv] impl RejectionReason
+crates/repository-competency/src/claim.rs [priv] use academic_domain::MasteryLevel
+crates/repository-competency/src/claim.rs [priv] use academic_policy::ContentDigest
+crates/repository-competency/src/claim.rs [priv] use academic_repository_analysis::{ArtifactScope, EvidenceTier, LadderRung, Locator}
+crates/repository-competency/src/claim.rs [priv] use academic_repository_classification::{ClassificationKey, ObservedProof}
+crates/repository-competency/src/claim.rs [priv] use academic_repository_correlation::EvidenceRelation
+crates/repository-competency/src/claim.rs [priv] use crate::{ CompetencyError, contribution::{AuthoredWork, AuthorshipMode, ChangeId}, generated::CodeOrigin, identity::{ExternalAuthorId, UserId}, outcome::{CandidateSupport, OutcomeArtifact, OutcomeKind}, rubric::{ChangedSite, RubricId}, }
+crates/repository-competency/src/claim.rs [pub(crate)] fn personal_claim_identity( user: &str, snapshot_id: &str, goal: &str, version: u64, concept: &str, change: &str, ) -> String
+crates/repository-competency/src/claim.rs [pub(crate)] fn project_claim_identity( snapshot_id: &str, goal: &str, version: u64, concept: &str, ) -> String
+crates/repository-competency/src/claim.rs [pub(crate)] impl PersonalApplicationClaim :: fn seal( id: ClaimId, key: ClassificationKey, work: &AuthoredWork, outcomes: &[&OutcomeArtifact], observed_by: ClaimId, ) -> Self
+crates/repository-competency/src/claim.rs [pub(crate)] impl ProjectObservationClaim :: const fn seal( id: ClaimId, key: ClassificationKey, provenance: ProjectProvenance, ) -> Self
+crates/repository-competency/src/claim.rs [pub(crate)] impl ProjectProvenance :: fn of_proof(proof: &ObservedProof) -> Self
+crates/repository-competency/src/claim.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RejectionReason
+crates/repository-competency/src/claim.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ClaimStanding
+crates/repository-competency/src/claim.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PersonalApplicationClaim
+crates/repository-competency/src/claim.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PersonalProvenance
+crates/repository-competency/src/claim.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectObservationClaim
+crates/repository-competency/src/claim.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectProvenance
+crates/repository-competency/src/claim.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ClaimId
+crates/repository-competency/src/claim.rs [pub] impl ClaimId :: #[must_use] fn as_str(&self) -> &str
+crates/repository-competency/src/claim.rs [pub] impl ClaimId :: fn new(value: impl Into<String>) -> Result<Self, CompetencyError>
+crates/repository-competency/src/claim.rs [pub] impl ClaimStanding :: #[must_use] const fn as_str(&self) -> &'static str
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: #[must_use] const fn id(&self) -> &ClaimId
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: #[must_use] const fn key(&self) -> &ClassificationKey
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: #[must_use] const fn offered_at(&self) -> MasteryLevel
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: #[must_use] const fn predicate(&self) -> &'static str
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: #[must_use] const fn provenance(&self) -> &PersonalProvenance
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: #[must_use] const fn standing(&self) -> &ClaimStanding
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: #[must_use] const fn support(&self) -> CandidateSupport
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: #[must_use] fn concept(&self) -> &str
+crates/repository-competency/src/claim.rs [pub] impl PersonalApplicationClaim :: fn rejected(self, reason: RejectionReason, at: u64) -> Result<Self, CompetencyError>
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn author(&self) -> &ExternalAuthorId
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn change(&self) -> &ChangeId
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn mapping_version(&self) -> u64
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn mode(&self) -> AuthorshipMode
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn observed_by(&self) -> &ClaimId
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn origin(&self) -> &CodeOrigin
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn rubric(&self) -> &RubricId
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn rubric_version(&self) -> u64
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] const fn user(&self) -> &UserId
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] fn bearing_sites(&self) -> &[ChangedSite]
+crates/repository-competency/src/claim.rs [pub] impl PersonalProvenance :: #[must_use] fn outcomes(&self) -> &[OutcomeKind]
+crates/repository-competency/src/claim.rs [pub] impl ProjectObservationClaim :: #[must_use] const fn id(&self) -> &ClaimId
+crates/repository-competency/src/claim.rs [pub] impl ProjectObservationClaim :: #[must_use] const fn key(&self) -> &ClassificationKey
+crates/repository-competency/src/claim.rs [pub] impl ProjectObservationClaim :: #[must_use] const fn predicate(&self) -> &'static str
+crates/repository-competency/src/claim.rs [pub] impl ProjectObservationClaim :: #[must_use] const fn provenance(&self) -> &ProjectProvenance
+crates/repository-competency/src/claim.rs [pub] impl ProjectObservationClaim :: #[must_use] fn concept(&self) -> &str
+crates/repository-competency/src/claim.rs [pub] impl ProjectProvenance :: #[must_use] const fn artifact_scope(&self) -> ArtifactScope
+crates/repository-competency/src/claim.rs [pub] impl ProjectProvenance :: #[must_use] const fn relation(&self) -> EvidenceRelation
+crates/repository-competency/src/claim.rs [pub] impl ProjectProvenance :: #[must_use] const fn rung(&self) -> LadderRung
+crates/repository-competency/src/claim.rs [pub] impl ProjectProvenance :: #[must_use] const fn tier(&self) -> EvidenceTier
+crates/repository-competency/src/claim.rs [pub] impl ProjectProvenance :: #[must_use] fn locators(&self) -> &[Locator]
+crates/repository-competency/src/claim.rs [pub] impl RejectionReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/claim.rs [pub] impl RejectionReason :: const ALL: [Self; 3]
+crates/repository-competency/src/contribution.rs [priv] fn sites_meet(changed: &Locator, observed: &Locator) -> bool
+crates/repository-competency/src/contribution.rs [priv] impl AuthoredWork
+crates/repository-competency/src/contribution.rs [priv] impl AuthorshipMode
+crates/repository-competency/src/contribution.rs [priv] impl ChangeId
+crates/repository-competency/src/contribution.rs [priv] impl ContributionKind
+crates/repository-competency/src/contribution.rs [priv] impl<'a> ContributionDraft<'a>
+crates/repository-competency/src/contribution.rs [priv] use academic_repository_analysis::Locator
+crates/repository-competency/src/contribution.rs [priv] use crate::{ CompetencyError, generated::{CodeOrigin, GeneratedCodeWarrant, OriginReport, WarrantStep}, identity::{AuthorshipMap, ExternalAuthorId, UserId, validated}, rubric::{ChangeVerdict, ChangedSite, ScaffoldRubric}, }
+crates/repository-competency/src/contribution.rs [pub] #[derive(Debug)] struct ContributionDraft<'a>
+crates/repository-competency/src/contribution.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AuthorshipMode
+crates/repository-competency/src/contribution.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ContributionKind
+crates/repository-competency/src/contribution.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AuthoredWork
+crates/repository-competency/src/contribution.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ContributionRecord
+crates/repository-competency/src/contribution.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ChangeId
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] const fn author(&self) -> &ExternalAuthorId
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] const fn change(&self) -> &ChangeId
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] const fn mapping_version(&self) -> u64
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] const fn mode(&self) -> AuthorshipMode
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] const fn origin(&self) -> &CodeOrigin
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] const fn recorded_at(&self) -> u64
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] const fn user(&self) -> &UserId
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] const fn verdict(&self) -> &ChangeVerdict
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] fn bearing_sites(&self) -> &[ChangedSite]
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] fn snapshot_id(&self) -> &str
+crates/repository-competency/src/contribution.rs [pub] impl AuthoredWork :: #[must_use] fn touches(&self, observed: &[Locator]) -> bool
+crates/repository-competency/src/contribution.rs [pub] impl AuthorshipMode :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/contribution.rs [pub] impl AuthorshipMode :: const ALL: [Self; 2]
+crates/repository-competency/src/contribution.rs [pub] impl ChangeId :: #[must_use] fn as_str(&self) -> &str
+crates/repository-competency/src/contribution.rs [pub] impl ChangeId :: fn new(value: impl Into<String>) -> Result<Self, CompetencyError>
+crates/repository-competency/src/contribution.rs [pub] impl ContributionKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/contribution.rs [pub] impl ContributionKind :: #[must_use] const fn authorship_mode(self) -> Option<AuthorshipMode>
+crates/repository-competency/src/contribution.rs [pub] impl ContributionKind :: const ALL: [Self; 4]
+crates/repository-competency/src/contribution.rs [pub] impl<'a> ContributionDraft<'a> :: #[must_use] const fn over( record: &'a ContributionRecord, map: &'a AuthorshipMap, rubric: &'a ScaffoldRubric, ) -> Self
+crates/repository-competency/src/contribution.rs [pub] impl<'a> ContributionDraft<'a> :: #[must_use] fn warranted_by(mut self, warrant: GeneratedCodeWarrant) -> Self
+crates/repository-competency/src/contribution.rs [pub] impl<'a> ContributionDraft<'a> :: fn seal(self) -> Result<AuthoredWork, CompetencyError>
+crates/repository-competency/src/generated.rs [priv] impl CodeOrigin
+crates/repository-competency/src/generated.rs [priv] impl ExplainedByUser
+crates/repository-competency/src/generated.rs [priv] impl GeneratedCodeWarrant
+crates/repository-competency/src/generated.rs [priv] impl ModifiedByUser
+crates/repository-competency/src/generated.rs [priv] impl OriginReport
+crates/repository-competency/src/generated.rs [priv] impl VerifiedByUser
+crates/repository-competency/src/generated.rs [priv] impl WarrantStep
+crates/repository-competency/src/generated.rs [priv] use academic_repository_analysis::Locator
+crates/repository-competency/src/generated.rs [priv] use crate::{CompetencyError, rubric::ChangedSite}
+crates/repository-competency/src/generated.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum OriginReport
+crates/repository-competency/src/generated.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum WarrantStep
+crates/repository-competency/src/generated.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum CodeOrigin
+crates/repository-competency/src/generated.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExplainedByUser
+crates/repository-competency/src/generated.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GeneratedCodeWarrant
+crates/repository-competency/src/generated.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ModifiedByUser
+crates/repository-competency/src/generated.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VerifiedByUser
+crates/repository-competency/src/generated.rs [pub] impl CodeOrigin :: #[must_use] const fn as_str(&self) -> &'static str
+crates/repository-competency/src/generated.rs [pub] impl CodeOrigin :: #[must_use] const fn warrant(&self) -> Option<&GeneratedCodeWarrant>
+crates/repository-competency/src/generated.rs [pub] impl ExplainedByUser :: #[must_use] const fn modified(&self) -> &ModifiedByUser
+crates/repository-competency/src/generated.rs [pub] impl ExplainedByUser :: #[must_use] fn explanation(&self) -> &str
+crates/repository-competency/src/generated.rs [pub] impl ExplainedByUser :: fn after( modified: ModifiedByUser, explanation: impl Into<String>, ) -> Result<Self, CompetencyError>
+crates/repository-competency/src/generated.rs [pub] impl GeneratedCodeWarrant :: #[must_use] const fn explained(&self) -> &ExplainedByUser
+crates/repository-competency/src/generated.rs [pub] impl GeneratedCodeWarrant :: #[must_use] const fn modified(&self) -> &ModifiedByUser
+crates/repository-competency/src/generated.rs [pub] impl GeneratedCodeWarrant :: #[must_use] const fn sealed(explained: ExplainedByUser) -> Self
+crates/repository-competency/src/generated.rs [pub] impl GeneratedCodeWarrant :: #[must_use] const fn verified(&self) -> &VerifiedByUser
+crates/repository-competency/src/generated.rs [pub] impl ModifiedByUser :: #[must_use] const fn verified(&self) -> &VerifiedByUser
+crates/repository-competency/src/generated.rs [pub] impl ModifiedByUser :: #[must_use] fn edits(&self) -> &[ChangedSite]
+crates/repository-competency/src/generated.rs [pub] impl ModifiedByUser :: fn after( verified: VerifiedByUser, edits: Vec<ChangedSite>, ) -> Result<Self, CompetencyError>
+crates/repository-competency/src/generated.rs [pub] impl OriginReport :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/generated.rs [pub] impl OriginReport :: const ALL: [Self; 2]
+crates/repository-competency/src/generated.rs [pub] impl VerifiedByUser :: #[must_use] fn note(&self) -> &str
+crates/repository-competency/src/generated.rs [pub] impl VerifiedByUser :: #[must_use] fn sites(&self) -> &[Locator]
+crates/repository-competency/src/generated.rs [pub] impl VerifiedByUser :: fn at(sites: Vec<Locator>, note: impl Into<String>) -> Result<Self, CompetencyError>
+crates/repository-competency/src/generated.rs [pub] impl WarrantStep :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/generated.rs [pub] impl WarrantStep :: const ALL: [Self; 3]
+crates/repository-competency/src/identity.rs [priv] impl AuthorshipMap
+crates/repository-competency/src/identity.rs [priv] impl ExternalAuthorId
+crates/repository-competency/src/identity.rs [priv] impl IdentitySource
+crates/repository-competency/src/identity.rs [priv] impl UserId
+crates/repository-competency/src/identity.rs [priv] use crate::CompetencyError
+crates/repository-competency/src/identity.rs [priv] use std::collections::BTreeSet
+crates/repository-competency/src/identity.rs [pub(crate)] fn validated(value: String, field: &'static str) -> Result<String, CompetencyError>
+crates/repository-competency/src/identity.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum IdentitySource
+crates/repository-competency/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AuthorshipMap
+crates/repository-competency/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ExternalAuthorId
+crates/repository-competency/src/identity.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct UserId
+crates/repository-competency/src/identity.rs [pub] impl AuthorshipMap :: #[must_use] const fn user(&self) -> &UserId
+crates/repository-competency/src/identity.rs [pub] impl AuthorshipMap :: #[must_use] const fn version(&self) -> u64
+crates/repository-competency/src/identity.rs [pub] impl AuthorshipMap :: #[must_use] fn identities(&self) -> Vec<&ExternalAuthorId>
+crates/repository-competency/src/identity.rs [pub] impl AuthorshipMap :: #[must_use] fn of(user: UserId, version: u64, identities: Vec<ExternalAuthorId>) -> Self
+crates/repository-competency/src/identity.rs [pub] impl AuthorshipMap :: #[must_use] fn resolve(&self, external: &ExternalAuthorId) -> Option<&UserId>
+crates/repository-competency/src/identity.rs [pub] impl ExternalAuthorId :: #[must_use] const fn source(&self) -> IdentitySource
+crates/repository-competency/src/identity.rs [pub] impl ExternalAuthorId :: #[must_use] fn value(&self) -> &str
+crates/repository-competency/src/identity.rs [pub] impl ExternalAuthorId :: fn new(source: IdentitySource, value: impl Into<String>) -> Result<Self, CompetencyError>
+crates/repository-competency/src/identity.rs [pub] impl IdentitySource :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/identity.rs [pub] impl IdentitySource :: const ALL: [Self; 3]
+crates/repository-competency/src/identity.rs [pub] impl UserId :: #[must_use] fn as_str(&self) -> &str
+crates/repository-competency/src/identity.rs [pub] impl UserId :: fn new(value: impl Into<String>) -> Result<Self, CompetencyError>
+crates/repository-competency/src/lib.rs [priv] impl PromotionCheck
+crates/repository-competency/src/lib.rs [priv] impl PromotionSet
+crates/repository-competency/src/lib.rs [priv] use academic_repository_classification::{ClassificationSet, ConceptStance}
+crates/repository-competency/src/lib.rs [pub] #[derive(Debug)] struct PromotionInput<'a>
+crates/repository-competency/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PromotionCheck
+crates/repository-competency/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PromotionSet
+crates/repository-competency/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CompetencyError
+crates/repository-competency/src/lib.rs [pub] #[must_use] const fn observation_alone_promotes() -> bool
+crates/repository-competency/src/lib.rs [pub] #[must_use] fn observing_stances(classification: &ClassificationSet) -> Vec<&ConceptStance>
+crates/repository-competency/src/lib.rs [pub] fn promote(input: &PromotionInput<'_>) -> Result<PromotionSet, CompetencyError>
+crates/repository-competency/src/lib.rs [pub] impl PromotionCheck :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/lib.rs [pub] impl PromotionCheck :: #[must_use] const fn blocks(self) -> bool
+crates/repository-competency/src/lib.rs [pub] impl PromotionCheck :: const ALL: [Self; 5]
+crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn personal_claim(&self, concept: &str) -> Option<&PersonalApplicationClaim>
+crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn personal_claims(&self) -> &[PersonalApplicationClaim]
+crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn project_claim(&self, concept: &str) -> Option<&ProjectObservationClaim>
+crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn project_claims(&self) -> &[ProjectObservationClaim]
+crates/repository-competency/src/lib.rs [pub] impl PromotionSet :: #[must_use] fn snapshot_id(&self) -> &str
+crates/repository-competency/src/lib.rs [pub] mod claim
+crates/repository-competency/src/lib.rs [pub] mod contribution
+crates/repository-competency/src/lib.rs [pub] mod generated
+crates/repository-competency/src/lib.rs [pub] mod identity
+crates/repository-competency/src/lib.rs [pub] mod outcome
+crates/repository-competency/src/lib.rs [pub] mod rubric
+crates/repository-competency/src/lib.rs [pub] use claim::{ ClaimId, ClaimStanding, PersonalApplicationClaim, PersonalProvenance, ProjectObservationClaim, ProjectProvenance, RejectionReason, }
+crates/repository-competency/src/lib.rs [pub] use contribution::{ AuthoredWork, AuthorshipMode, ChangeId, ContributionDraft, ContributionKind, ContributionRecord, }
+crates/repository-competency/src/lib.rs [pub] use generated::{ CodeOrigin, ExplainedByUser, GeneratedCodeWarrant, ModifiedByUser, OriginReport, VerifiedByUser, WarrantStep, }
+crates/repository-competency/src/lib.rs [pub] use identity::{AuthorshipMap, ExternalAuthorId, IdentitySource, UserId}
+crates/repository-competency/src/lib.rs [pub] use outcome::{CandidateSupport, OutcomeArtifact, OutcomeKind}
+crates/repository-competency/src/lib.rs [pub] use rubric::{ChangeKind, ChangeVerdict, ChangedSite, RubricId, ScaffoldRubric}
+crates/repository-competency/src/outcome.rs [priv] impl CandidateSupport
+crates/repository-competency/src/outcome.rs [priv] impl OutcomeArtifact
+crates/repository-competency/src/outcome.rs [priv] impl OutcomeKind
+crates/repository-competency/src/outcome.rs [priv] use academic_repository_analysis::Locator
+crates/repository-competency/src/outcome.rs [priv] use crate::{CompetencyError, contribution::ChangeId}
+crates/repository-competency/src/outcome.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CandidateSupport
+crates/repository-competency/src/outcome.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum OutcomeKind
+crates/repository-competency/src/outcome.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OutcomeArtifact
+crates/repository-competency/src/outcome.rs [pub] impl CandidateSupport :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/outcome.rs [pub] impl CandidateSupport :: #[must_use] fn of(outcomes: &[&OutcomeArtifact]) -> Self
+crates/repository-competency/src/outcome.rs [pub] impl CandidateSupport :: const ALL: [Self; 3]
+crates/repository-competency/src/outcome.rs [pub] impl OutcomeArtifact :: #[must_use] const fn at(&self) -> &Locator
+crates/repository-competency/src/outcome.rs [pub] impl OutcomeArtifact :: #[must_use] const fn change(&self) -> &ChangeId
+crates/repository-competency/src/outcome.rs [pub] impl OutcomeArtifact :: #[must_use] const fn kind(&self) -> OutcomeKind
+crates/repository-competency/src/outcome.rs [pub] impl OutcomeArtifact :: #[must_use] const fn recorded_at(&self) -> u64
+crates/repository-competency/src/outcome.rs [pub] impl OutcomeArtifact :: #[must_use] fn concept(&self) -> &str
+crates/repository-competency/src/outcome.rs [pub] impl OutcomeArtifact :: fn new( kind: OutcomeKind, concept: impl Into<String>, change: ChangeId, at: Locator, recorded_at: u64, ) -> Result<Self, CompetencyError>
+crates/repository-competency/src/outcome.rs [pub] impl OutcomeKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/outcome.rs [pub] impl OutcomeKind :: const ALL: [Self; 4]
+crates/repository-competency/src/rubric.rs [priv] impl ChangeKind
+crates/repository-competency/src/rubric.rs [priv] impl ChangeVerdict
+crates/repository-competency/src/rubric.rs [priv] impl ChangedSite
+crates/repository-competency/src/rubric.rs [priv] impl RubricId
+crates/repository-competency/src/rubric.rs [priv] impl ScaffoldRubric
+crates/repository-competency/src/rubric.rs [priv] use academic_repository_analysis::{Locator, PathClass}
+crates/repository-competency/src/rubric.rs [priv] use crate::{CompetencyError, identity::validated}
+crates/repository-competency/src/rubric.rs [priv] use std::collections::BTreeSet
+crates/repository-competency/src/rubric.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ChangeKind
+crates/repository-competency/src/rubric.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ChangeVerdict
+crates/repository-competency/src/rubric.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ChangedSite
+crates/repository-competency/src/rubric.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ScaffoldRubric
+crates/repository-competency/src/rubric.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct RubricId
+crates/repository-competency/src/rubric.rs [pub] impl ChangeKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/repository-competency/src/rubric.rs [pub] impl ChangeKind :: const ALL: [Self; 10]
+crates/repository-competency/src/rubric.rs [pub] impl ChangeVerdict :: #[must_use] const fn as_str(&self) -> &'static str
+crates/repository-competency/src/rubric.rs [pub] impl ChangeVerdict :: #[must_use] const fn rubric(&self) -> &RubricId
+crates/repository-competency/src/rubric.rs [pub] impl ChangeVerdict :: #[must_use] const fn version(&self) -> u64
+crates/repository-competency/src/rubric.rs [pub] impl ChangeVerdict :: #[must_use] fn bearing_sites(&self) -> &[ChangedSite]
+crates/repository-competency/src/rubric.rs [pub] impl ChangedSite :: #[must_use] const fn kind(&self) -> ChangeKind
+crates/repository-competency/src/rubric.rs [pub] impl ChangedSite :: #[must_use] const fn locator(&self) -> &Locator
+crates/repository-competency/src/rubric.rs [pub] impl ChangedSite :: #[must_use] const fn new(locator: Locator, kind: ChangeKind) -> Self
+crates/repository-competency/src/rubric.rs [pub] impl RubricId :: #[must_use] fn as_str(&self) -> &str
+crates/repository-competency/src/rubric.rs [pub] impl RubricId :: fn new(value: impl Into<String>) -> Result<Self, CompetencyError>
+crates/repository-competency/src/rubric.rs [pub] impl ScaffoldRubric :: #[must_use] const fn id(&self) -> &RubricId
+crates/repository-competency/src/rubric.rs [pub] impl ScaffoldRubric :: #[must_use] const fn minimum_bearing_sites(&self) -> u32
+crates/repository-competency/src/rubric.rs [pub] impl ScaffoldRubric :: #[must_use] const fn version(&self) -> u64
+crates/repository-competency/src/rubric.rs [pub] impl ScaffoldRubric :: #[must_use] fn bears_understanding(&self, site: &ChangedSite) -> bool
+crates/repository-competency/src/rubric.rs [pub] impl ScaffoldRubric :: #[must_use] fn judge(&self, sites: &[ChangedSite]) -> ChangeVerdict
+crates/repository-competency/src/rubric.rs [pub] impl ScaffoldRubric :: #[must_use] fn scaffold_change_kinds(&self) -> Vec<ChangeKind>
+crates/repository-competency/src/rubric.rs [pub] impl ScaffoldRubric :: #[must_use] fn scaffold_path_classes(&self) -> Vec<PathClass>
+crates/repository-competency/src/rubric.rs [pub] impl ScaffoldRubric :: fn of( id: RubricId, version: u64, scaffold_change_kinds: Vec<ChangeKind>, scaffold_path_classes: Vec<PathClass>, minimum_bearing_sites: u32, ) -> Result<Self, CompetencyError>

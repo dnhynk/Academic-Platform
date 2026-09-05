@@ -1,0 +1,59 @@
+crates/non-delegable/src/action.rs [priv] impl Action
+crates/non-delegable/src/action.rs [priv] impl CandidateGeneration
+crates/non-delegable/src/action.rs [priv] impl NonDelegableAction
+crates/non-delegable/src/action.rs [priv] use academic_proposal::RiskTier
+crates/non-delegable/src/action.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Action
+crates/non-delegable/src/action.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CandidateGeneration
+crates/non-delegable/src/action.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Delegability
+crates/non-delegable/src/action.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum NonDelegableAction
+crates/non-delegable/src/action.rs [pub] impl Action :: #[must_use] const fn delegability(self) -> Delegability
+crates/non-delegable/src/action.rs [pub] impl Action :: #[must_use] const fn non_delegable(self) -> Option<NonDelegableAction>
+crates/non-delegable/src/action.rs [pub] impl Action :: #[must_use] fn all() -> Vec<Self>
+crates/non-delegable/src/action.rs [pub] impl CandidateGeneration :: #[must_use] const fn spec_row(self) -> &'static str
+crates/non-delegable/src/action.rs [pub] impl CandidateGeneration :: const ALL: [Self; 10]
+crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] const fn as_str(self) -> &'static str
+crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] const fn declared_phrase(self) -> &'static str
+crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] const fn declared_tier(self) -> Option<RiskTier>
+crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: #[must_use] fn parse(value: &str) -> Option<Self>
+crates/non-delegable/src/action.rs [pub] impl NonDelegableAction :: const ALL: [Self; 6]
+crates/non-delegable/src/command.rs [priv] impl ActionCommand
+crates/non-delegable/src/command.rs [priv] impl AuthorizedProposal
+crates/non-delegable/src/command.rs [priv] use academic_domain::{Actor, ContentDigest, TimestampMillis}
+crates/non-delegable/src/command.rs [priv] use crate::{ action::{Action, CandidateGeneration, Delegability}, decision::DecisionEvent, error::NonDelegableError, }
+crates/non-delegable/src/command.rs [pub] #[derive(Debug)] enum AuthorizedCommand
+crates/non-delegable/src/command.rs [pub] #[derive(Debug, Clone)] struct ActionCommand
+crates/non-delegable/src/command.rs [pub] #[derive(Debug, Clone)] struct AuthorizedProposal
+crates/non-delegable/src/command.rs [pub] fn authorise(command: ActionCommand) -> Result<AuthorizedCommand, NonDelegableError>
+crates/non-delegable/src/command.rs [pub] impl ActionCommand :: #[must_use] const fn action(&self) -> Action
+crates/non-delegable/src/command.rs [pub] impl ActionCommand :: #[must_use] const fn actor(&self) -> &Actor
+crates/non-delegable/src/command.rs [pub] impl ActionCommand :: #[must_use] const fn subject(&self) -> ContentDigest
+crates/non-delegable/src/command.rs [pub] impl ActionCommand :: #[must_use] const fn submitted( action: Action, actor: Actor, subject: ContentDigest, submitted_at: TimestampMillis, ) -> Self
+crates/non-delegable/src/command.rs [pub] impl ActionCommand :: #[must_use] const fn submitted_at(&self) -> TimestampMillis
+crates/non-delegable/src/command.rs [pub] impl AuthorizedProposal :: #[must_use] const fn actor(&self) -> &Actor
+crates/non-delegable/src/command.rs [pub] impl AuthorizedProposal :: #[must_use] const fn generation(&self) -> CandidateGeneration
+crates/non-delegable/src/command.rs [pub] impl AuthorizedProposal :: #[must_use] const fn subject(&self) -> ContentDigest
+crates/non-delegable/src/command.rs [pub] impl AuthorizedProposal :: #[must_use] const fn submitted_at(&self) -> TimestampMillis
+crates/non-delegable/src/decision.rs [priv] impl DecisionEvent
+crates/non-delegable/src/decision.rs [priv] use academic_domain::{Actor, ContentDigest, TimestampMillis}
+crates/non-delegable/src/decision.rs [priv] use academic_proposal::UserDecision
+crates/non-delegable/src/decision.rs [priv] use crate::{action::NonDelegableAction, error::NonDelegableError}
+crates/non-delegable/src/decision.rs [pub] #[derive(Debug)] struct DecisionEvent
+crates/non-delegable/src/decision.rs [pub] impl DecisionEvent :: #[must_use] const fn action(&self) -> NonDelegableAction
+crates/non-delegable/src/decision.rs [pub] impl DecisionEvent :: #[must_use] const fn decided_at(&self) -> TimestampMillis
+crates/non-delegable/src/decision.rs [pub] impl DecisionEvent :: #[must_use] const fn decision(&self) -> &UserDecision
+crates/non-delegable/src/decision.rs [pub] impl DecisionEvent :: #[must_use] const fn subject(&self) -> ContentDigest
+crates/non-delegable/src/decision.rs [pub] impl DecisionEvent :: fn authorises( &self, action: NonDelegableAction, subject: ContentDigest, ) -> Result<(), NonDelegableError>
+crates/non-delegable/src/decision.rs [pub] impl DecisionEvent :: fn recorded( action: NonDelegableAction, actor: &Actor, subject: ContentDigest, decided_at: TimestampMillis, ) -> Result<Self, NonDelegableError>
+crates/non-delegable/src/error.rs [priv] impl core::fmt::Display for NonDelegableAction
+crates/non-delegable/src/error.rs [priv] impl core::fmt::Display for NonDelegableAction :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/non-delegable/src/error.rs [priv] use crate::action::NonDelegableAction
+crates/non-delegable/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum NonDelegableError
+crates/non-delegable/src/lib.rs [priv] #![doc(test(attr(deny(warnings))))]
+crates/non-delegable/src/lib.rs [pub] mod action
+crates/non-delegable/src/lib.rs [pub] mod command
+crates/non-delegable/src/lib.rs [pub] mod decision
+crates/non-delegable/src/lib.rs [pub] mod error
+crates/non-delegable/src/lib.rs [pub] use action::{Action, CandidateGeneration, Delegability, NonDelegableAction}
+crates/non-delegable/src/lib.rs [pub] use command::{ActionCommand, AuthorizedCommand, AuthorizedProposal, authorise}
+crates/non-delegable/src/lib.rs [pub] use decision::DecisionEvent
+crates/non-delegable/src/lib.rs [pub] use error::NonDelegableError

@@ -1,0 +1,368 @@
+crates/build-learn/src/branch.rs [priv] fn require_serves( decomposition: &ResponsibilityDecomposition, requirement: &ConceptRequirement, ) -> Result<(), BuildLearnError>
+crates/build-learn/src/branch.rs [priv] impl ArchitectureBranch
+crates/build-learn/src/branch.rs [priv] impl ArchitectureBranch :: fn members_of<'a>( &self, requirements: impl Iterator<Item = &'a ConceptRequirement>, edges: &BTreeMap<EntityId, PrerequisiteEdge>, standing: EdgeStanding, ) -> Result<Vec<EdgeMember>, BuildLearnError>
+crates/build-learn/src/branch.rs [priv] impl BranchGroup
+crates/build-learn/src/branch.rs [priv] impl ConceptRequirement
+crates/build-learn/src/branch.rs [priv] impl RequirementCondition
+crates/build-learn/src/branch.rs [priv] use academic_critical_path::{EdgeMember, EdgeStanding, Hyperedge, SatisfyingSet, satisfying_sets}
+crates/build-learn/src/branch.rs [priv] use academic_domain::{EntityId, entity_registry::EntityKind}
+crates/build-learn/src/branch.rs [priv] use academic_gap::{PrerequisiteEdge, gap_bearing}
+crates/build-learn/src/branch.rs [priv] use crate::{ BuildLearnError, goal::ProjectGoal, responsibility::ResponsibilityDecomposition, text::PartId, }
+crates/build-learn/src/branch.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/branch.rs [priv] use std::collections::{BTreeMap, BTreeSet}
+crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum RequirementCondition
+crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ArchitectureBranch
+crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct BranchGroup
+crates/build-learn/src/branch.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ConceptRequirement
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: #[must_use] const fn decomposition(&self) -> &ResponsibilityDecomposition
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: #[must_use] const fn goal(&self) -> &ProjectGoal
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: #[must_use] const fn target(&self) -> EntityId
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: #[must_use] fn conjunction(&self) -> &[ConceptRequirement]
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: #[must_use] fn disjunctions(&self) -> &[Vec<BranchGroup>]
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: #[must_use] fn requirements(&self) -> Vec<&ConceptRequirement>
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: fn hypergraph( &self, edges: &BTreeMap<EntityId, PrerequisiteEdge>, standing: EdgeStanding, ) -> Result<Vec<Hyperedge>, BuildLearnError>
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: fn of( decomposition: ResponsibilityDecomposition, target: EntityId, conjunction: Vec<ConceptRequirement>, groups: Vec<BranchGroup>, ) -> Result<Self, BuildLearnError>
+crates/build-learn/src/branch.rs [pub] impl ArchitectureBranch :: fn satisfying_sets( &self, edges: &BTreeMap<EntityId, PrerequisiteEdge>, standing: EdgeStanding, ) -> Result<Vec<SatisfyingSet>, BuildLearnError>
+crates/build-learn/src/branch.rs [pub] impl BranchGroup :: #[must_use] const fn alternative(&self) -> &PartId
+crates/build-learn/src/branch.rs [pub] impl BranchGroup :: #[must_use] const fn decision(&self) -> &PartId
+crates/build-learn/src/branch.rs [pub] impl BranchGroup :: #[must_use] fn members(&self) -> &[ConceptRequirement]
+crates/build-learn/src/branch.rs [pub] impl BranchGroup :: fn of( decision: PartId, alternative: PartId, members: Vec<(EntityId, EntityKind, PartId)>, ) -> Result<Self, BuildLearnError>
+crates/build-learn/src/branch.rs [pub] impl ConceptRequirement :: #[must_use] const fn concept(&self) -> EntityId
+crates/build-learn/src/branch.rs [pub] impl ConceptRequirement :: #[must_use] const fn condition(&self) -> &RequirementCondition
+crates/build-learn/src/branch.rs [pub] impl ConceptRequirement :: #[must_use] const fn kind(&self) -> EntityKind
+crates/build-learn/src/branch.rs [pub] impl ConceptRequirement :: #[must_use] const fn serves(&self) -> &PartId
+crates/build-learn/src/branch.rs [pub] impl ConceptRequirement :: fn always( concept: EntityId, kind: EntityKind, serves: PartId, ) -> Result<Self, BuildLearnError>
+crates/build-learn/src/branch.rs [pub] impl RequirementCondition :: #[must_use] const fn alternative(&self) -> Option<&PartId>
+crates/build-learn/src/branch.rs [pub] impl RequirementCondition :: #[must_use] const fn as_str(&self) -> &'static str
+crates/build-learn/src/branch.rs [pub] impl RequirementCondition :: #[must_use] const fn decision(&self) -> Option<&PartId>
+crates/build-learn/src/goal.rs [priv] impl Alternative
+crates/build-learn/src/goal.rs [priv] impl Constraint
+crates/build-learn/src/goal.rs [priv] impl Constraints
+crates/build-learn/src/goal.rs [priv] impl From<SuccessCriteria> for Vec<ObservableCriterion>
+crates/build-learn/src/goal.rs [priv] impl From<SuccessCriteria> for Vec<ObservableCriterion> :: fn from(value: SuccessCriteria) -> Self
+crates/build-learn/src/goal.rs [priv] impl ObservableCriterion
+crates/build-learn/src/goal.rs [priv] impl ProjectGoal
+crates/build-learn/src/goal.rs [priv] impl SuccessCriteria
+crates/build-learn/src/goal.rs [priv] impl TryFrom<Vec<ObservableCriterion>> for SuccessCriteria
+crates/build-learn/src/goal.rs [priv] impl TryFrom<Vec<ObservableCriterion>> for SuccessCriteria :: fn try_from(criteria: Vec<ObservableCriterion>) -> Result<Self, Self::Error>
+crates/build-learn/src/goal.rs [priv] impl TryFrom<Vec<ObservableCriterion>> for SuccessCriteria :: type Error = BuildLearnError
+crates/build-learn/src/goal.rs [priv] impl UnresolvedDecision
+crates/build-learn/src/goal.rs [priv] impl UnresolvedDecisions
+crates/build-learn/src/goal.rs [priv] use crate::{ BuildLearnError, input::{InputKind, NormalizedIntent}, text::{NonEmptyText, PartId}, }
+crates/build-learn/src/goal.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/goal.rs [priv] use std::collections::BTreeSet
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)] #[serde(transparent)] struct Constraints
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)] #[serde(transparent)] struct UnresolvedDecisions
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde( try_from = "Vec<ObservableCriterion>", into = "Vec<ObservableCriterion>" )] struct SuccessCriteria
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct Alternative
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct Constraint
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ObservableCriterion
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ProjectGoal
+crates/build-learn/src/goal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct UnresolvedDecision
+crates/build-learn/src/goal.rs [pub] impl Alternative :: #[must_use] const fn id(&self) -> &PartId
+crates/build-learn/src/goal.rs [pub] impl Alternative :: #[must_use] const fn name(&self) -> &NonEmptyText
+crates/build-learn/src/goal.rs [pub] impl Alternative :: #[must_use] const fn named(id: PartId, name: NonEmptyText) -> Self
+crates/build-learn/src/goal.rs [pub] impl Constraint :: #[must_use] const fn fixed(id: PartId, statement: NonEmptyText) -> Self
+crates/build-learn/src/goal.rs [pub] impl Constraint :: #[must_use] const fn id(&self) -> &PartId
+crates/build-learn/src/goal.rs [pub] impl Constraint :: #[must_use] const fn statement(&self) -> &NonEmptyText
+crates/build-learn/src/goal.rs [pub] impl Constraints :: #[must_use] const fn of(constraints: Vec<Constraint>) -> Self
+crates/build-learn/src/goal.rs [pub] impl Constraints :: #[must_use] fn constraints(&self) -> &[Constraint]
+crates/build-learn/src/goal.rs [pub] impl ObservableCriterion :: #[must_use] const fn id(&self) -> &PartId
+crates/build-learn/src/goal.rs [pub] impl ObservableCriterion :: #[must_use] const fn observed_by(&self) -> &NonEmptyText
+crates/build-learn/src/goal.rs [pub] impl ObservableCriterion :: #[must_use] const fn state(id: PartId, statement: NonEmptyText, observed_by: NonEmptyText) -> Self
+crates/build-learn/src/goal.rs [pub] impl ObservableCriterion :: #[must_use] const fn statement(&self) -> &NonEmptyText
+crates/build-learn/src/goal.rs [pub] impl ProjectGoal :: #[must_use] const fn constraints(&self) -> &Constraints
+crates/build-learn/src/goal.rs [pub] impl ProjectGoal :: #[must_use] const fn source(&self) -> InputKind
+crates/build-learn/src/goal.rs [pub] impl ProjectGoal :: #[must_use] const fn success_criteria(&self) -> &SuccessCriteria
+crates/build-learn/src/goal.rs [pub] impl ProjectGoal :: #[must_use] const fn text(&self) -> &NonEmptyText
+crates/build-learn/src/goal.rs [pub] impl ProjectGoal :: #[must_use] const fn unresolved_decisions(&self) -> &UnresolvedDecisions
+crates/build-learn/src/goal.rs [pub] impl ProjectGoal :: fn state( intent: &NormalizedIntent, success_criteria: SuccessCriteria, constraints: Constraints, unresolved_decisions: UnresolvedDecisions, ) -> Result<Self, BuildLearnError>
+crates/build-learn/src/goal.rs [pub] impl SuccessCriteria :: #[must_use] fn criteria(&self) -> &[ObservableCriterion]
+crates/build-learn/src/goal.rs [pub] impl SuccessCriteria :: #[must_use] fn criterion(&self, id: &PartId) -> Option<&ObservableCriterion>
+crates/build-learn/src/goal.rs [pub] impl SuccessCriteria :: #[must_use] fn of(criteria: Vec<ObservableCriterion>) -> Option<Self>
+crates/build-learn/src/goal.rs [pub] impl UnresolvedDecision :: #[must_use] const fn id(&self) -> &PartId
+crates/build-learn/src/goal.rs [pub] impl UnresolvedDecision :: #[must_use] const fn question(&self) -> &NonEmptyText
+crates/build-learn/src/goal.rs [pub] impl UnresolvedDecision :: #[must_use] fn alternative(&self, id: &PartId) -> Option<&Alternative>
+crates/build-learn/src/goal.rs [pub] impl UnresolvedDecision :: #[must_use] fn alternatives(&self) -> &[Alternative]
+crates/build-learn/src/goal.rs [pub] impl UnresolvedDecision :: fn open( id: PartId, question: NonEmptyText, alternatives: Vec<Alternative>, ) -> Result<Self, BuildLearnError>
+crates/build-learn/src/goal.rs [pub] impl UnresolvedDecisions :: #[must_use] const fn of(decisions: Vec<UnresolvedDecision>) -> Self
+crates/build-learn/src/goal.rs [pub] impl UnresolvedDecisions :: #[must_use] fn decision(&self, id: &PartId) -> Option<&UnresolvedDecision>
+crates/build-learn/src/goal.rs [pub] impl UnresolvedDecisions :: #[must_use] fn decisions(&self) -> &[UnresolvedDecision]
+crates/build-learn/src/input.rs [priv] impl GoalInput
+crates/build-learn/src/input.rs [priv] impl InputKind
+crates/build-learn/src/input.rs [priv] impl NormalizedIntent
+crates/build-learn/src/input.rs [priv] use crate::{BuildLearnError, text::NonEmptyText}
+crates/build-learn/src/input.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/input.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum InputKind
+crates/build-learn/src/input.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum GoalInput
+crates/build-learn/src/input.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct NormalizedIntent
+crates/build-learn/src/input.rs [pub] const INPUT_KINDS: [InputKind; 6]
+crates/build-learn/src/input.rs [pub] fn normalize(input: &GoalInput) -> Result<NormalizedIntent, BuildLearnError>
+crates/build-learn/src/input.rs [pub] impl GoalInput :: #[must_use] const fn kind(&self) -> InputKind
+crates/build-learn/src/input.rs [pub] impl GoalInput :: #[must_use] const fn snapshot_id(&self) -> Option<&NonEmptyText>
+crates/build-learn/src/input.rs [pub] impl InputKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/build-learn/src/input.rs [pub] impl InputKind :: #[must_use] const fn spec_token(self) -> &'static str
+crates/build-learn/src/input.rs [pub] impl NormalizedIntent :: #[must_use] const fn capability(&self) -> &NonEmptyText
+crates/build-learn/src/input.rs [pub] impl NormalizedIntent :: #[must_use] const fn snapshot_id(&self) -> Option<&NonEmptyText>
+crates/build-learn/src/input.rs [pub] impl NormalizedIntent :: #[must_use] const fn source(&self) -> InputKind
+crates/build-learn/src/learning.rs [priv] impl CheckpointStage
+crates/build-learn/src/learning.rs [priv] impl EvidenceTask
+crates/build-learn/src/learning.rs [priv] impl ExplainedByHand
+crates/build-learn/src/learning.rs [priv] impl LearningItem
+crates/build-learn/src/learning.rs [priv] impl ReadingDone
+crates/build-learn/src/learning.rs [priv] impl ReturnCheckpoint
+crates/build-learn/src/learning.rs [priv] impl SelectionApproved
+crates/build-learn/src/learning.rs [priv] impl SimulationPassed
+crates/build-learn/src/learning.rs [priv] use academic_domain::EntityId
+crates/build-learn/src/learning.rs [priv] use crate::text::{NonEmptyText, PartId}
+crates/build-learn/src/learning.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CheckpointStage
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct EvidenceTask
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ExplainedByHand
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct LearningItem
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ReadingDone
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ReturnCheckpoint
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct SelectionApproved
+crates/build-learn/src/learning.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct SimulationPassed
+crates/build-learn/src/learning.rs [pub] const CHECKPOINT_STAGES: [CheckpointStage; 4]
+crates/build-learn/src/learning.rs [pub] impl CheckpointStage :: #[must_use] const fn as_str(self) -> &'static str
+crates/build-learn/src/learning.rs [pub] impl CheckpointStage :: #[must_use] const fn spec_token(self) -> &'static str
+crates/build-learn/src/learning.rs [pub] impl EvidenceTask :: #[must_use] const fn of(runs: NonEmptyText, shows: NonEmptyText) -> Self
+crates/build-learn/src/learning.rs [pub] impl EvidenceTask :: #[must_use] const fn runs(&self) -> &NonEmptyText
+crates/build-learn/src/learning.rs [pub] impl EvidenceTask :: #[must_use] const fn shows(&self) -> &NonEmptyText
+crates/build-learn/src/learning.rs [pub] impl ExplainedByHand :: #[must_use] const fn after(reading: ReadingDone, property: NonEmptyText) -> Self
+crates/build-learn/src/learning.rs [pub] impl ExplainedByHand :: #[must_use] const fn property(&self) -> &NonEmptyText
+crates/build-learn/src/learning.rs [pub] impl ExplainedByHand :: #[must_use] const fn reading(&self) -> &ReadingDone
+crates/build-learn/src/learning.rs [pub] impl LearningItem :: #[must_use] const fn checkpoint(&self) -> &ReturnCheckpoint
+crates/build-learn/src/learning.rs [pub] impl LearningItem :: #[must_use] const fn concept(&self) -> EntityId
+crates/build-learn/src/learning.rs [pub] impl LearningItem :: #[must_use] const fn evidence_task(&self) -> &EvidenceTask
+crates/build-learn/src/learning.rs [pub] impl LearningItem :: #[must_use] const fn id(&self) -> &PartId
+crates/build-learn/src/learning.rs [pub] impl LearningItem :: #[must_use] const fn plan( id: PartId, concept: EntityId, evidence_task: EvidenceTask, checkpoint: ReturnCheckpoint, ) -> Self
+crates/build-learn/src/learning.rs [pub] impl ReadingDone :: #[must_use] const fn of(source: NonEmptyText) -> Self
+crates/build-learn/src/learning.rs [pub] impl ReadingDone :: #[must_use] const fn source(&self) -> &NonEmptyText
+crates/build-learn/src/learning.rs [pub] impl ReturnCheckpoint :: #[must_use] const fn approved(&self) -> &SelectionApproved
+crates/build-learn/src/learning.rs [pub] impl ReturnCheckpoint :: #[must_use] const fn of(approved: SelectionApproved, returns_to: PartId) -> Self
+crates/build-learn/src/learning.rs [pub] impl ReturnCheckpoint :: #[must_use] const fn returns_to(&self) -> &PartId
+crates/build-learn/src/learning.rs [pub] impl SelectionApproved :: #[must_use] const fn after( simulation: SimulationPassed, decision: PartId, alternative: PartId, ) -> Self
+crates/build-learn/src/learning.rs [pub] impl SelectionApproved :: #[must_use] const fn alternative(&self) -> &PartId
+crates/build-learn/src/learning.rs [pub] impl SelectionApproved :: #[must_use] const fn decision(&self) -> &PartId
+crates/build-learn/src/learning.rs [pub] impl SelectionApproved :: #[must_use] const fn simulation(&self) -> &SimulationPassed
+crates/build-learn/src/learning.rs [pub] impl SelectionApproved :: #[must_use] const fn stages(&self) -> [CheckpointStage; 4]
+crates/build-learn/src/learning.rs [pub] impl SimulationPassed :: #[must_use] const fn after(explanation: ExplainedByHand, artifact: NonEmptyText) -> Self
+crates/build-learn/src/learning.rs [pub] impl SimulationPassed :: #[must_use] const fn artifact(&self) -> &NonEmptyText
+crates/build-learn/src/learning.rs [pub] impl SimulationPassed :: #[must_use] const fn explanation(&self) -> &ExplainedByHand
+crates/build-learn/src/lib.rs [priv] impl From<academic_critical_path::CriticalPathError> for BuildLearnError
+crates/build-learn/src/lib.rs [priv] impl From<academic_critical_path::CriticalPathError> for BuildLearnError :: fn from(error: academic_critical_path::CriticalPathError) -> Self
+crates/build-learn/src/lib.rs [priv] impl From<academic_gap::GapError> for BuildLearnError
+crates/build-learn/src/lib.rs [priv] impl From<academic_gap::GapError> for BuildLearnError :: fn from(error: academic_gap::GapError) -> Self
+crates/build-learn/src/lib.rs [priv] use academic_domain::{EntityId, entity_registry::EntityKind}
+crates/build-learn/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum BuildLearnError
+crates/build-learn/src/lib.rs [pub] mod branch
+crates/build-learn/src/lib.rs [pub] mod goal
+crates/build-learn/src/lib.rs [pub] mod input
+crates/build-learn/src/lib.rs [pub] mod learning
+crates/build-learn/src/lib.rs [pub] mod mapping
+crates/build-learn/src/lib.rs [pub] mod motivation
+crates/build-learn/src/lib.rs [pub] mod plan
+crates/build-learn/src/lib.rs [pub] mod readiness
+crates/build-learn/src/lib.rs [pub] mod responsibility
+crates/build-learn/src/lib.rs [pub] mod technology
+crates/build-learn/src/lib.rs [pub] mod text
+crates/build-learn/src/lib.rs [pub] mod validate
+crates/build-learn/src/lib.rs [pub] use branch::{ArchitectureBranch, BranchGroup, ConceptRequirement, RequirementCondition}
+crates/build-learn/src/lib.rs [pub] use goal::{ Alternative, Constraint, Constraints, ObservableCriterion, ProjectGoal, SuccessCriteria, UnresolvedDecision, UnresolvedDecisions, }
+crates/build-learn/src/lib.rs [pub] use input::{GoalInput, INPUT_KINDS, InputKind, NormalizedIntent, normalize}
+crates/build-learn/src/lib.rs [pub] use learning::{ CHECKPOINT_STAGES, CheckpointStage, EvidenceTask, ExplainedByHand, LearningItem, ReadingDone, ReturnCheckpoint, SelectionApproved, SimulationPassed, }
+crates/build-learn/src/lib.rs [pub] use mapping::{ ActualCoverage, COVERAGE_EVIDENCE_KINDS, ChannelComparison, CourseProjectMapping, CoverageEvidenceKind, DesignedCoverage, EnrolmentStanding, MAPPING_STATUSES, MappingEvidence, MappingStatus, PersonalEvidenceStanding, }
+crates/build-learn/src/lib.rs [pub] use motivation::{MOTIVATIONS, Motivation, MotivationDisplay, MotivationEdge, MotivationRow}
+crates/build-learn/src/lib.rs [pub] use plan::{PlanDraft, PlanStep, STEP_KINDS}
+crates/build-learn/src/lib.rs [pub] use readiness::{ READINESS_CATEGORIES, RESOLUTION_ORDER, ROW_WITHOUT_A_SHORT_NAME, ReadinessCategory, ReadinessFinding, RequirementOrigin, SHORT_NAMES, categorize, }
+crates/build-learn/src/lib.rs [pub] use responsibility::{ObservableResponsibility, ResponsibilityDecomposition}
+crates/build-learn/src/lib.rs [pub] use technology::{TechnologyEntry, TechnologySlate}
+crates/build-learn/src/lib.rs [pub] use text::{NonEmptyText, PartId}
+crates/build-learn/src/lib.rs [pub] use validate::{PLAN_DEFECT_KINDS, PlanDefect, PlanVerdict, ValidatedPlan, validate}
+crates/build-learn/src/mapping.rs [priv] impl ActualCoverage
+crates/build-learn/src/mapping.rs [priv] impl ChannelComparison
+crates/build-learn/src/mapping.rs [priv] impl CourseProjectMapping
+crates/build-learn/src/mapping.rs [priv] impl CoverageEvidenceKind
+crates/build-learn/src/mapping.rs [priv] impl DesignedCoverage
+crates/build-learn/src/mapping.rs [priv] impl MappingStatus
+crates/build-learn/src/mapping.rs [priv] impl MappingStatus
+crates/build-learn/src/mapping.rs [priv] use academic_curriculum::{CourseOffering, CourseRevision, OfferingStatus}
+crates/build-learn/src/mapping.rs [priv] use academic_domain::{CourseId, EntityId, EvidenceId, OfferingId}
+crates/build-learn/src/mapping.rs [priv] use crate::{BuildLearnError, text::NonEmptyText}
+crates/build-learn/src/mapping.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/mapping.rs [priv] use std::collections::BTreeSet
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct MappingEvidence<'a>
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CoverageEvidenceKind
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum EnrolmentStanding
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MappingStatus
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PersonalEvidenceStanding
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ActualCoverage
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ChannelComparison
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct CourseProjectMapping
+crates/build-learn/src/mapping.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct DesignedCoverage
+crates/build-learn/src/mapping.rs [pub] const COVERAGE_EVIDENCE_KINDS: [CoverageEvidenceKind; 4]
+crates/build-learn/src/mapping.rs [pub] const MAPPING_STATUSES: [MappingStatus; 6]
+crates/build-learn/src/mapping.rs [pub] impl ActualCoverage :: #[must_use] const fn is_upcoming(&self) -> bool
+crates/build-learn/src/mapping.rs [pub] impl ActualCoverage :: #[must_use] const fn offering(&self) -> OfferingId
+crates/build-learn/src/mapping.rs [pub] impl ActualCoverage :: #[must_use] const fn subject(&self) -> EntityId
+crates/build-learn/src/mapping.rs [pub] impl ActualCoverage :: #[must_use] fn sightings(&self) -> &[(CoverageEvidenceKind, EvidenceId)]
+crates/build-learn/src/mapping.rs [pub] impl ActualCoverage :: #[must_use] fn stages(&self) -> Vec<CoverageEvidenceKind>
+crates/build-learn/src/mapping.rs [pub] impl ActualCoverage :: fn observed( offering: &CourseOffering, subject: EntityId, sightings: Vec<(CoverageEvidenceKind, EvidenceId)>, upcoming: bool, ) -> Result<Self, BuildLearnError>
+crates/build-learn/src/mapping.rs [pub] impl ChannelComparison :: #[must_use] const fn breadth(&self) -> &academic_critical_path::CostEstimate
+crates/build-learn/src/mapping.rs [pub] impl ChannelComparison :: #[must_use] const fn immediate_gap(&self) -> &academic_critical_path::CostEstimate
+crates/build-learn/src/mapping.rs [pub] impl ChannelComparison :: #[must_use] const fn of( subject: EntityId, immediate_gap: academic_critical_path::CostEstimate, breadth: academic_critical_path::CostEstimate, ) -> Self
+crates/build-learn/src/mapping.rs [pub] impl ChannelComparison :: #[must_use] const fn subject(&self) -> EntityId
+crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: #[must_use] const fn actual(&self) -> Option<&ActualCoverage>
+crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: #[must_use] const fn designed(&self) -> Option<&DesignedCoverage>
+crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: #[must_use] const fn reason(&self) -> &NonEmptyText
+crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: #[must_use] const fn status(&self) -> MappingStatus
+crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: #[must_use] const fn subject(&self) -> EntityId
+crates/build-learn/src/mapping.rs [pub] impl CourseProjectMapping :: fn publish( subject: EntityId, designed: Option<DesignedCoverage>, actual: Option<ActualCoverage>, status: MappingStatus, reason: NonEmptyText, ) -> Result<Self, BuildLearnError>
+crates/build-learn/src/mapping.rs [pub] impl CoverageEvidenceKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/build-learn/src/mapping.rs [pub] impl CoverageEvidenceKind :: #[must_use] const fn spec_token(self) -> &'static str
+crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] const fn course(&self) -> CourseId
+crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] fn competencies(&self) -> &[EntityId]
+crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] fn concepts(&self) -> &[EntityId]
+crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] fn designs(&self, subject: EntityId) -> bool
+crates/build-learn/src/mapping.rs [pub] impl DesignedCoverage :: #[must_use] fn of(revision: &CourseRevision) -> Self
+crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] const fn as_str(self) -> &'static str
+crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] const fn requires_actual_coverage(self) -> bool
+crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] const fn spec_token(self) -> &'static str
+crates/build-learn/src/mapping.rs [pub] impl MappingStatus :: #[must_use] fn for_evidence(evidence: &MappingEvidence<'_>) -> Self
+crates/build-learn/src/motivation.rs [priv] impl Motivation
+crates/build-learn/src/motivation.rs [priv] impl MotivationDisplay
+crates/build-learn/src/motivation.rs [priv] impl MotivationEdge
+crates/build-learn/src/motivation.rs [priv] impl MotivationRow
+crates/build-learn/src/motivation.rs [priv] use academic_domain::EntityId
+crates/build-learn/src/motivation.rs [priv] use crate::{BuildLearnError, text::NonEmptyText}
+crates/build-learn/src/motivation.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/motivation.rs [priv] use std::collections::BTreeSet
+crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Motivation
+crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct MotivationDisplay
+crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct MotivationEdge
+crates/build-learn/src/motivation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct MotivationRow
+crates/build-learn/src/motivation.rs [pub] const MOTIVATIONS: [Motivation; 3]
+crates/build-learn/src/motivation.rs [pub] impl Motivation :: #[must_use] const fn as_str(self) -> &'static str
+crates/build-learn/src/motivation.rs [pub] impl Motivation :: #[must_use] const fn spec_token(self) -> &'static str
+crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] const fn concept(&self) -> EntityId
+crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] fn carries(&self, motivation: Motivation) -> bool
+crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: #[must_use] fn rows(&self) -> &[MotivationRow]
+crates/build-learn/src/motivation.rs [pub] impl MotivationDisplay :: fn of(concept: EntityId, edges: &[MotivationEdge]) -> Result<Self, BuildLearnError>
+crates/build-learn/src/motivation.rs [pub] impl MotivationEdge :: #[must_use] const fn concept(&self) -> EntityId
+crates/build-learn/src/motivation.rs [pub] impl MotivationEdge :: #[must_use] const fn motivation(&self) -> Motivation
+crates/build-learn/src/motivation.rs [pub] impl MotivationEdge :: #[must_use] const fn of(motivation: Motivation, concept: EntityId, reason: NonEmptyText) -> Self
+crates/build-learn/src/motivation.rs [pub] impl MotivationEdge :: #[must_use] const fn reason(&self) -> &NonEmptyText
+crates/build-learn/src/motivation.rs [pub] impl MotivationRow :: #[must_use] const fn motivation(&self) -> Motivation
+crates/build-learn/src/motivation.rs [pub] impl MotivationRow :: #[must_use] const fn reason(&self) -> &NonEmptyText
+crates/build-learn/src/plan.rs [priv] impl PlanDraft<'_>
+crates/build-learn/src/plan.rs [priv] impl PlanStep
+crates/build-learn/src/plan.rs [priv] use academic_domain::EntityId
+crates/build-learn/src/plan.rs [priv] use crate::{ branch::ArchitectureBranch, learning::LearningItem, motivation::MotivationDisplay, readiness::ReadinessFinding, text::{NonEmptyText, PartId}, }
+crates/build-learn/src/plan.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanDraft<'a>
+crates/build-learn/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum PlanStep
+crates/build-learn/src/plan.rs [pub] const STEP_KINDS: [&str; 3]
+crates/build-learn/src/plan.rs [pub] impl PlanDraft<'_> :: #[must_use] fn implementation_steps(&self) -> Vec<&PlanStep>
+crates/build-learn/src/plan.rs [pub] impl PlanDraft<'_> :: #[must_use] fn learning_items(&self) -> Vec<&LearningItem>
+crates/build-learn/src/plan.rs [pub] impl PlanDraft<'_> :: #[must_use] fn motivation(&self, concept: EntityId) -> Option<&MotivationDisplay>
+crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn answers(&self) -> Option<&PartId>
+crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn id(&self) -> &PartId
+crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn kind(&self) -> &'static str
+crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn learning(&self) -> Option<&LearningItem>
+crates/build-learn/src/plan.rs [pub] impl PlanStep :: #[must_use] const fn satisfies(&self) -> Option<&PartId>
+crates/build-learn/src/readiness.rs [priv] impl ReadinessCategory
+crates/build-learn/src/readiness.rs [priv] impl ReadinessFinding
+crates/build-learn/src/readiness.rs [priv] impl RequirementOrigin
+crates/build-learn/src/readiness.rs [priv] use academic_critical_path::is_stale
+crates/build-learn/src/readiness.rs [priv] use academic_domain::{FreshnessBand, MasteryLevel}
+crates/build-learn/src/readiness.rs [priv] use academic_gap::ConceptState
+crates/build-learn/src/readiness.rs [priv] use academic_repository_classification::BenefitContract
+crates/build-learn/src/readiness.rs [priv] use crate::{ branch::{ConceptRequirement, RequirementCondition}, text::PartId, }
+crates/build-learn/src/readiness.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/readiness.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ReadinessCategory
+crates/build-learn/src/readiness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum RequirementOrigin
+crates/build-learn/src/readiness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReadinessFinding
+crates/build-learn/src/readiness.rs [pub] #[must_use] fn categorize( requirement: &ConceptRequirement, origin: RequirementOrigin, state: &ConceptState, ) -> ReadinessFinding
+crates/build-learn/src/readiness.rs [pub] const READINESS_CATEGORIES: [ReadinessCategory; 6]
+crates/build-learn/src/readiness.rs [pub] const RESOLUTION_ORDER: [(&str, ReadinessCategory); 6]
+crates/build-learn/src/readiness.rs [pub] const ROW_WITHOUT_A_SHORT_NAME: ReadinessCategory
+crates/build-learn/src/readiness.rs [pub] const SHORT_NAMES: [(&str, ReadinessCategory); 5]
+crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn as_str(self) -> &'static str
+crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn meaning_token(self) -> &'static str
+crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] const fn spec_token(self) -> &'static str
+crates/build-learn/src/readiness.rs [pub] impl ReadinessCategory :: #[must_use] fn short_name(self) -> Option<&'static str>
+crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn category(&self) -> ReadinessCategory
+crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn freshness(&self) -> FreshnessBand
+crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn mastery(&self) -> MasteryLevel
+crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn origin(&self) -> &RequirementOrigin
+crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn requirement(&self) -> &ConceptRequirement
+crates/build-learn/src/readiness.rs [pub] impl ReadinessFinding :: #[must_use] const fn sufficiency_gap_count(&self) -> usize
+crates/build-learn/src/readiness.rs [pub] impl RequirementOrigin :: #[must_use] const fn as_str(&self) -> &'static str
+crates/build-learn/src/responsibility.rs [priv] impl ObservableResponsibility
+crates/build-learn/src/responsibility.rs [priv] impl ResponsibilityDecomposition
+crates/build-learn/src/responsibility.rs [priv] use crate::{ BuildLearnError, goal::ProjectGoal, text::{NonEmptyText, PartId}, }
+crates/build-learn/src/responsibility.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/responsibility.rs [priv] use std::collections::BTreeSet
+crates/build-learn/src/responsibility.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ObservableResponsibility
+crates/build-learn/src/responsibility.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ResponsibilityDecomposition
+crates/build-learn/src/responsibility.rs [pub] impl ObservableResponsibility :: #[must_use] const fn failure_if_absent(&self) -> &NonEmptyText
+crates/build-learn/src/responsibility.rs [pub] impl ObservableResponsibility :: #[must_use] const fn id(&self) -> &PartId
+crates/build-learn/src/responsibility.rs [pub] impl ObservableResponsibility :: #[must_use] const fn of( id: PartId, serves: PartId, statement: NonEmptyText, failure_if_absent: NonEmptyText, ) -> Self
+crates/build-learn/src/responsibility.rs [pub] impl ObservableResponsibility :: #[must_use] const fn serves(&self) -> &PartId
+crates/build-learn/src/responsibility.rs [pub] impl ObservableResponsibility :: #[must_use] const fn statement(&self) -> &NonEmptyText
+crates/build-learn/src/responsibility.rs [pub] impl ResponsibilityDecomposition :: #[must_use] const fn goal(&self) -> &ProjectGoal
+crates/build-learn/src/responsibility.rs [pub] impl ResponsibilityDecomposition :: #[must_use] fn responsibilities(&self) -> &[ObservableResponsibility]
+crates/build-learn/src/responsibility.rs [pub] impl ResponsibilityDecomposition :: #[must_use] fn responsibility(&self, id: &PartId) -> Option<&ObservableResponsibility>
+crates/build-learn/src/responsibility.rs [pub] impl ResponsibilityDecomposition :: #[must_use] fn serving(&self, criterion: &PartId) -> Vec<&ObservableResponsibility>
+crates/build-learn/src/responsibility.rs [pub] impl ResponsibilityDecomposition :: fn decompose( goal: ProjectGoal, responsibilities: Vec<ObservableResponsibility>, ) -> Result<Self, BuildLearnError>
+crates/build-learn/src/technology.rs [priv] impl TechnologyEntry
+crates/build-learn/src/technology.rs [priv] impl TechnologySlate
+crates/build-learn/src/technology.rs [priv] use crate::{ goal::ProjectGoal, text::{NonEmptyText, PartId}, }
+crates/build-learn/src/technology.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/technology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct TechnologyEntry
+crates/build-learn/src/technology.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct TechnologySlate
+crates/build-learn/src/technology.rs [pub] impl TechnologyEntry :: #[must_use] const fn alternative(&self) -> &PartId
+crates/build-learn/src/technology.rs [pub] impl TechnologyEntry :: #[must_use] const fn decision(&self) -> &PartId
+crates/build-learn/src/technology.rs [pub] impl TechnologyEntry :: #[must_use] const fn name(&self) -> &NonEmptyText
+crates/build-learn/src/technology.rs [pub] impl TechnologySlate :: #[must_use] const fn is_empty(&self) -> bool
+crates/build-learn/src/technology.rs [pub] impl TechnologySlate :: #[must_use] fn entries(&self) -> &[TechnologyEntry]
+crates/build-learn/src/technology.rs [pub] impl TechnologySlate :: #[must_use] fn under(goal: &ProjectGoal) -> Self
+crates/build-learn/src/text.rs [priv] impl From<NonEmptyText> for String
+crates/build-learn/src/text.rs [priv] impl From<NonEmptyText> for String :: fn from(value: NonEmptyText) -> Self
+crates/build-learn/src/text.rs [priv] impl From<PartId> for String
+crates/build-learn/src/text.rs [priv] impl From<PartId> for String :: fn from(value: PartId) -> Self
+crates/build-learn/src/text.rs [priv] impl NonEmptyText
+crates/build-learn/src/text.rs [priv] impl PartId
+crates/build-learn/src/text.rs [priv] impl TryFrom<String> for NonEmptyText
+crates/build-learn/src/text.rs [priv] impl TryFrom<String> for NonEmptyText :: fn try_from(value: String) -> Result<Self, Self::Error>
+crates/build-learn/src/text.rs [priv] impl TryFrom<String> for NonEmptyText :: type Error = BuildLearnError
+crates/build-learn/src/text.rs [priv] impl TryFrom<String> for PartId
+crates/build-learn/src/text.rs [priv] impl TryFrom<String> for PartId :: fn try_from(value: String) -> Result<Self, Self::Error>
+crates/build-learn/src/text.rs [priv] impl TryFrom<String> for PartId :: type Error = BuildLearnError
+crates/build-learn/src/text.rs [priv] use crate::BuildLearnError
+crates/build-learn/src/text.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/text.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct NonEmptyText(String)
+crates/build-learn/src/text.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct PartId(String)
+crates/build-learn/src/text.rs [pub] impl NonEmptyText :: #[must_use] fn as_str(&self) -> &str
+crates/build-learn/src/text.rs [pub] impl NonEmptyText :: fn new(value: impl Into<String>) -> Result<Self, BuildLearnError>
+crates/build-learn/src/text.rs [pub] impl PartId :: #[must_use] fn as_str(&self) -> &str
+crates/build-learn/src/text.rs [pub] impl PartId :: fn new(value: impl Into<String>) -> Result<Self, BuildLearnError>
+crates/build-learn/src/validate.rs [priv] impl PlanDefect
+crates/build-learn/src/validate.rs [priv] impl PlanVerdict
+crates/build-learn/src/validate.rs [priv] impl ValidatedPlan
+crates/build-learn/src/validate.rs [priv] use academic_domain::EntityId
+crates/build-learn/src/validate.rs [priv] use crate::{ plan::{PlanDraft, PlanStep}, readiness::ReadinessCategory, text::PartId, }
+crates/build-learn/src/validate.rs [priv] use serde::{Deserialize, Serialize}
+crates/build-learn/src/validate.rs [priv] use std::collections::{BTreeMap, BTreeSet}
+crates/build-learn/src/validate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum PlanVerdict
+crates/build-learn/src/validate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")] enum PlanDefect
+crates/build-learn/src/validate.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ValidatedPlan
+crates/build-learn/src/validate.rs [pub] #[must_use] fn validate(draft: &PlanDraft<'_>) -> PlanVerdict
+crates/build-learn/src/validate.rs [pub] const PLAN_DEFECT_KINDS: [&str; 8]
+crates/build-learn/src/validate.rs [pub] impl PlanDefect :: #[must_use] const fn as_str(&self) -> &'static str
+crates/build-learn/src/validate.rs [pub] impl PlanVerdict :: #[must_use] const fn is_accepted(&self) -> bool
+crates/build-learn/src/validate.rs [pub] impl PlanVerdict :: #[must_use] const fn plan(&self) -> Option<&ValidatedPlan>
+crates/build-learn/src/validate.rs [pub] impl PlanVerdict :: #[must_use] fn defects(&self) -> &[PlanDefect]
+crates/build-learn/src/validate.rs [pub] impl ValidatedPlan :: #[must_use] fn steps(&self) -> &[PlanStep]

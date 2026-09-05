@@ -1,0 +1,399 @@
+crates/lecture-document/src/config.rs [priv] impl CoverageConfig
+crates/lecture-document/src/config.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct CoverageConfig
+crates/lecture-document/src/config.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum ConfigFault
+crates/lecture-document/src/config.rs [pub] const COVERAGE_CONFIG_V1: CoverageConfig
+crates/lecture-document/src/config.rs [pub] impl CoverageConfig :: #[must_use] const fn gap_threshold_nanos(self) -> u64
+crates/lecture-document/src/config.rs [pub] impl CoverageConfig :: #[must_use] const fn low_confidence_at_or_below_permille(self) -> u16
+crates/lecture-document/src/config.rs [pub] impl CoverageConfig :: #[must_use] const fn version(self) -> u32
+crates/lecture-document/src/config.rs [pub] impl CoverageConfig :: const fn new( version: u32, gap_threshold_nanos: u64, low_confidence_at_or_below_permille: u16, ) -> Result<Self, ConfigFault>
+crates/lecture-document/src/coverage.rs [priv] fn check_captures( document: &LectureDocument, manifest: &InputManifest, exclusions: &CaptureExclusionLedger, ) -> Result<CaptureCheck, CoverageFault>
+crates/lecture-document/src/coverage.rs [priv] fn check_gaps(journal: &JournalRecovery, threshold_nanos: u64) -> Vec<GapFinding>
+crates/lecture-document/src/coverage.rs [priv] fn check_ordering(document: &LectureDocument) -> (Vec<OrderingFinding>, Vec<OrderingException>)
+crates/lecture-document/src/coverage.rs [priv] impl CompletenessWitness
+crates/lecture-document/src/coverage.rs [priv] impl CoverageReport
+crates/lecture-document/src/coverage.rs [priv] impl CoverageReport :: fn canonical_material(&self) -> Vec<u8>
+crates/lecture-document/src/coverage.rs [priv] impl CoverageValidator
+crates/lecture-document/src/coverage.rs [priv] impl DispositionLedger
+crates/lecture-document/src/coverage.rs [priv] impl GapFinding
+crates/lecture-document/src/coverage.rs [priv] impl OrderingException
+crates/lecture-document/src/coverage.rs [priv] impl OrderingFinding
+crates/lecture-document/src/coverage.rs [priv] impl Ratio
+crates/lecture-document/src/coverage.rs [priv] impl SegmentAccount
+crates/lecture-document/src/coverage.rs [priv] impl SegmentDisposition
+crates/lecture-document/src/coverage.rs [priv] impl SegmentStatus
+crates/lecture-document/src/coverage.rs [priv] impl UnaccountedCapture
+crates/lecture-document/src/coverage.rs [priv] impl UnmappedSegment
+crates/lecture-document/src/coverage.rs [priv] type CaptureCheck = ( Vec<u32>, Vec<(u32, CaptureExclusionReason)>, Vec<UnaccountedCapture>, )
+crates/lecture-document/src/coverage.rs [priv] use academic_capture::{JournalRecovery, RecordBody, SessionClockDomain}
+crates/lecture-document/src/coverage.rs [priv] use academic_domain::{ContentDigest, LectureSessionId}
+crates/lecture-document/src/coverage.rs [priv] use academic_transcription::{InputManifest, TranscriptLineage}
+crates/lecture-document/src/coverage.rs [priv] use crate::{ config::CoverageConfig, disposition::{ CaptureExclusionLedger, CaptureExclusionReason, NonSpeechEvidence, RedactionPolicyRef, TranscriptionFailure, }, document::{CrossReferenceReason, LectureDocument, NodeId, be_len, push_str, token_spans}, fault::CoverageFault, }
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, Copy)] struct CoverageInputs<'a>
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CompletenessWitness
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CoverageValidator
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct GapFinding
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Ratio
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct UnaccountedCapture
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct DispositionLedger
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum SegmentStatus
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CoverageReport
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OrderingException
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OrderingFinding
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SegmentAccount
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SegmentDisposition
+crates/lecture-document/src/coverage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UnmappedSegment
+crates/lecture-document/src/coverage.rs [pub] impl CompletenessWitness :: #[must_use] const fn report_digest(&self) -> &ContentDigest
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] const fn config(&self) -> CoverageConfig
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] const fn document_digest(&self) -> &ContentDigest
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] const fn lecture(&self) -> LectureSessionId
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] const fn segment_coverage(&self) -> Ratio
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] const fn token_coverage(&self) -> Ratio
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] const fn transcript_token_digest(&self) -> &ContentDigest
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] const fn version(&self) -> u32
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn accounts(&self) -> &[SegmentAccount]
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn completeness_witness(&self) -> Option<CompletenessWitness>
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn digest(&self) -> ContentDigest
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn excluded_captures(&self) -> &[(u32, CaptureExclusionReason)]
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn gaps(&self) -> &[GapFinding]
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn ordering_exceptions(&self) -> &[OrderingException]
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn ordering_findings(&self) -> &[OrderingFinding]
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn placed_captures(&self) -> &[u32]
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn reconciles(&self) -> bool
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn unaccounted_captures(&self) -> &[UnaccountedCapture]
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn unexplained_gaps(&self) -> Vec<GapFinding>
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn unmapped(&self) -> &[UnmappedSegment]
+crates/lecture-document/src/coverage.rs [pub] impl CoverageReport :: #[must_use] fn unmapped_count(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl CoverageValidator :: fn validate(inputs: &CoverageInputs<'_>) -> Result<CoverageReport, CoverageFault>
+crates/lecture-document/src/coverage.rs [pub] impl DispositionLedger :: #[must_use] const fn new() -> Self
+crates/lecture-document/src/coverage.rs [pub] impl DispositionLedger :: #[must_use] fn entries(&self) -> &[SegmentDisposition]
+crates/lecture-document/src/coverage.rs [pub] impl DispositionLedger :: #[must_use] fn for_segment(&self, segment_index: usize) -> Option<&SegmentDisposition>
+crates/lecture-document/src/coverage.rs [pub] impl DispositionLedger :: fn record(&mut self, disposition: SegmentDisposition) -> Result<(), CoverageFault>
+crates/lecture-document/src/coverage.rs [pub] impl GapFinding :: #[must_use] const fn explained(self) -> bool
+crates/lecture-document/src/coverage.rs [pub] impl GapFinding :: #[must_use] const fn from_frame_seq(self) -> u32
+crates/lecture-document/src/coverage.rs [pub] impl GapFinding :: #[must_use] const fn length_nanos(self) -> Option<u64>
+crates/lecture-document/src/coverage.rs [pub] impl GapFinding :: #[must_use] const fn to_frame_seq(self) -> u32
+crates/lecture-document/src/coverage.rs [pub] impl OrderingException :: #[must_use] const fn node(&self) -> &NodeId
+crates/lecture-document/src/coverage.rs [pub] impl OrderingException :: #[must_use] const fn reason(&self) -> CrossReferenceReason
+crates/lecture-document/src/coverage.rs [pub] impl OrderingException :: #[must_use] const fn segment_index(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl OrderingFinding :: #[must_use] const fn node(&self) -> &NodeId
+crates/lecture-document/src/coverage.rs [pub] impl OrderingFinding :: #[must_use] const fn previous_segment_index(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl OrderingFinding :: #[must_use] const fn segment_index(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl Ratio :: #[must_use] const fn denominator(self) -> u64
+crates/lecture-document/src/coverage.rs [pub] impl Ratio :: #[must_use] const fn is_whole(self) -> bool
+crates/lecture-document/src/coverage.rs [pub] impl Ratio :: #[must_use] const fn numerator(self) -> u64
+crates/lecture-document/src/coverage.rs [pub] impl SegmentAccount :: #[must_use] const fn segment_index(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl SegmentAccount :: #[must_use] const fn status(&self) -> &SegmentStatus
+crates/lecture-document/src/coverage.rs [pub] impl SegmentAccount :: #[must_use] const fn token_count(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl SegmentAccount :: #[must_use] fn segment_id(&self) -> &str
+crates/lecture-document/src/coverage.rs [pub] impl SegmentDisposition :: #[must_use] const fn excluded_non_speech(segment_index: usize, evidence: NonSpeechEvidence) -> Self
+crates/lecture-document/src/coverage.rs [pub] impl SegmentDisposition :: #[must_use] const fn redacted_with_policy(segment_index: usize, policy: RedactionPolicyRef) -> Self
+crates/lecture-document/src/coverage.rs [pub] impl SegmentDisposition :: #[must_use] const fn segment_index(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl SegmentDisposition :: #[must_use] const fn status(&self) -> &SegmentStatus
+crates/lecture-document/src/coverage.rs [pub] impl SegmentDisposition :: #[must_use] const fn untranscribed_failure( segment_index: usize, failure: TranscriptionFailure, ) -> Self
+crates/lecture-document/src/coverage.rs [pub] impl SegmentStatus :: #[must_use] const fn as_str(&self) -> &'static str
+crates/lecture-document/src/coverage.rs [pub] impl SegmentStatus :: #[must_use] const fn is_mapped(&self) -> bool
+crates/lecture-document/src/coverage.rs [pub] impl SegmentStatus :: const SPELLINGS: [&'static str; 4]
+crates/lecture-document/src/coverage.rs [pub] impl UnaccountedCapture :: #[must_use] const fn frame_seq(self) -> u32
+crates/lecture-document/src/coverage.rs [pub] impl UnmappedSegment :: #[must_use] const fn segment_index(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl UnmappedSegment :: #[must_use] const fn token_count(&self) -> usize
+crates/lecture-document/src/coverage.rs [pub] impl UnmappedSegment :: #[must_use] fn segment_id(&self) -> &str
+crates/lecture-document/src/disposition.rs [priv] impl CaptureExclusion
+crates/lecture-document/src/disposition.rs [priv] impl CaptureExclusionLedger
+crates/lecture-document/src/disposition.rs [priv] impl CaptureExclusionReason
+crates/lecture-document/src/disposition.rs [priv] impl NonSpeechEvidence
+crates/lecture-document/src/disposition.rs [priv] impl NonSpeechReason
+crates/lecture-document/src/disposition.rs [priv] impl RedactionBasis
+crates/lecture-document/src/disposition.rs [priv] impl RedactionPolicyRef
+crates/lecture-document/src/disposition.rs [priv] impl TranscriptionFailure
+crates/lecture-document/src/disposition.rs [priv] use academic_capture::{GapCause, JournalRecovery, RecordBody}
+crates/lecture-document/src/disposition.rs [priv] use academic_domain::{Actor, ContentDigest}
+crates/lecture-document/src/disposition.rs [priv] use crate::fault::CoverageFault
+crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct TranscriptionFailure
+crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CaptureExclusionReason
+crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum NonSpeechReason
+crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RedactionBasis
+crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct CaptureExclusionLedger
+crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CaptureExclusion
+crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct NonSpeechEvidence
+crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RedactionPolicyRef
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: #[must_use] const fn decided_by(&self) -> &Actor
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: #[must_use] const fn frame_seq(&self) -> u32
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: #[must_use] const fn reason(&self) -> CaptureExclusionReason
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: fn declared( frame_seq: u32, reason: CaptureExclusionReason, decided_by: Actor, ) -> Result<Self, CoverageFault>
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionLedger :: #[must_use] const fn new() -> Self
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionLedger :: #[must_use] fn entries(&self) -> &[CaptureExclusion]
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionLedger :: #[must_use] fn for_frame(&self, frame_seq: u32) -> Option<&CaptureExclusion>
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionLedger :: fn record(&mut self, exclusion: CaptureExclusion) -> Result<(), CoverageFault>
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionReason :: const ALL: [Self; 4]
+crates/lecture-document/src/disposition.rs [pub] impl NonSpeechEvidence :: #[must_use] const fn decided_by(&self) -> &Actor
+crates/lecture-document/src/disposition.rs [pub] impl NonSpeechEvidence :: #[must_use] const fn reason(&self) -> NonSpeechReason
+crates/lecture-document/src/disposition.rs [pub] impl NonSpeechEvidence :: fn declared(reason: NonSpeechReason, decided_by: Actor) -> Result<Self, CoverageFault>
+crates/lecture-document/src/disposition.rs [pub] impl NonSpeechReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/disposition.rs [pub] impl NonSpeechReason :: const ALL: [Self; 4]
+crates/lecture-document/src/disposition.rs [pub] impl RedactionBasis :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/disposition.rs [pub] impl RedactionBasis :: const ALL: [Self; 3]
+crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: #[must_use] const fn basis(&self) -> RedactionBasis
+crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: #[must_use] const fn decided_by(&self) -> &Actor
+crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: #[must_use] const fn policy_digest(&self) -> &ContentDigest
+crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: fn citing( policy_digest: ContentDigest, basis: RedactionBasis, decided_by: Actor, ) -> Result<Self, CoverageFault>
+crates/lecture-document/src/disposition.rs [pub] impl TranscriptionFailure :: #[must_use] const fn cause(self) -> GapCause
+crates/lecture-document/src/disposition.rs [pub] impl TranscriptionFailure :: #[must_use] const fn frame_seq(self) -> u32
+crates/lecture-document/src/disposition.rs [pub] impl TranscriptionFailure :: fn citing_journal_gap( recovery: &JournalRecovery, frame_seq: u32, ) -> Result<Self, CoverageFault>
+crates/lecture-document/src/document.rs [priv] fn find_chars(haystack: &[char], needle: &[char], from: usize) -> Option<usize>
+crates/lecture-document/src/document.rs [priv] identifier!(DocumentId, "DocumentId")
+crates/lecture-document/src/document.rs [priv] identifier!(NodeId, "NodeId")
+crates/lecture-document/src/document.rs [priv] impl CrossReference
+crates/lecture-document/src/document.rs [priv] impl CrossReferenceReason
+crates/lecture-document/src/document.rs [priv] impl DocumentAnnotation
+crates/lecture-document/src/document.rs [priv] impl DocumentNode
+crates/lecture-document/src/document.rs [priv] impl LectureDocument
+crates/lecture-document/src/document.rs [priv] impl NodeKind
+crates/lecture-document/src/document.rs [priv] impl SourceMapping
+crates/lecture-document/src/document.rs [priv] impl fmt::Debug for DocumentNode
+crates/lecture-document/src/document.rs [priv] impl fmt::Debug for DocumentNode :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/lecture-document/src/document.rs [priv] impl fmt::Debug for LectureDocument
+crates/lecture-document/src/document.rs [priv] impl fmt::Debug for LectureDocument :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/lecture-document/src/document.rs [priv] impl fmt::Debug for NodeDraft
+crates/lecture-document/src/document.rs [priv] impl fmt::Debug for NodeDraft :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/lecture-document/src/document.rs [priv] impl fmt::Debug for SourceMapping
+crates/lecture-document/src/document.rs [priv] impl fmt::Debug for SourceMapping :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/lecture-document/src/document.rs [priv] impl<'a> DocumentBuilder<'a>
+crates/lecture-document/src/document.rs [priv] macro_rules! identifier
+crates/lecture-document/src/document.rs [priv] use academic_domain::{ContentDigest, LectureSessionId}
+crates/lecture-document/src/document.rs [priv] use academic_transcription::{InputManifest, TranscriptLineage, TranscriptSegment}
+crates/lecture-document/src/document.rs [priv] use core::fmt
+crates/lecture-document/src/document.rs [priv] use crate::{fault::DocumentFault, transform::PreservationTransform}
+crates/lecture-document/src/document.rs [pub(crate)] fn be_len(value: usize) -> [u8; 8]
+crates/lecture-document/src/document.rs [pub(crate)] fn push_str(material: &mut Vec<u8>, value: &str)
+crates/lecture-document/src/document.rs [pub] #[derive(Clone)] struct NodeDraft
+crates/lecture-document/src/document.rs [pub] #[derive(Clone, PartialEq, Eq)] struct DocumentNode
+crates/lecture-document/src/document.rs [pub] #[derive(Clone, PartialEq, Eq)] struct LectureDocument
+crates/lecture-document/src/document.rs [pub] #[derive(Clone, PartialEq, Eq)] struct SourceMapping
+crates/lecture-document/src/document.rs [pub] #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DocumentId(String)
+crates/lecture-document/src/document.rs [pub] #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct NodeId(String)
+crates/lecture-document/src/document.rs [pub] #[derive(Debug)] struct DocumentBuilder<'a>
+crates/lecture-document/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CrossReferenceReason
+crates/lecture-document/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DocumentAnnotation
+crates/lecture-document/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum NodeKind
+crates/lecture-document/src/document.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct CrossReference
+crates/lecture-document/src/document.rs [pub] fn token_spans(segment: &TranscriptSegment<'_>) -> Result<Vec<(usize, usize)>, DocumentFault>
+crates/lecture-document/src/document.rs [pub] impl CrossReference :: #[must_use] const fn reason(self) -> CrossReferenceReason
+crates/lecture-document/src/document.rs [pub] impl CrossReference :: #[must_use] const fn to_segment(to_segment_index: usize, reason: CrossReferenceReason) -> Self
+crates/lecture-document/src/document.rs [pub] impl CrossReference :: #[must_use] const fn to_segment_index(self) -> usize
+crates/lecture-document/src/document.rs [pub] impl CrossReferenceReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/document.rs [pub] impl CrossReferenceReason :: const ALL: [Self; 3]
+crates/lecture-document/src/document.rs [pub] impl DocumentAnnotation :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/document.rs [pub] impl DocumentAnnotation :: const ALL: [Self; 8]
+crates/lecture-document/src/document.rs [pub] impl DocumentNode :: #[must_use] const fn cross_reference(&self) -> Option<CrossReference>
+crates/lecture-document/src/document.rs [pub] impl DocumentNode :: #[must_use] const fn id(&self) -> &NodeId
+crates/lecture-document/src/document.rs [pub] impl DocumentNode :: #[must_use] const fn kind(&self) -> NodeKind
+crates/lecture-document/src/document.rs [pub] impl DocumentNode :: #[must_use] fn annotations(&self) -> &[DocumentAnnotation]
+crates/lecture-document/src/document.rs [pub] impl DocumentNode :: #[must_use] fn first_segment_index(&self) -> Option<usize>
+crates/lecture-document/src/document.rs [pub] impl DocumentNode :: #[must_use] fn mappings(&self) -> &[SourceMapping]
+crates/lecture-document/src/document.rs [pub] impl DocumentNode :: #[must_use] fn nearby_captures(&self) -> &[u32]
+crates/lecture-document/src/document.rs [pub] impl DocumentNode :: #[must_use] fn rendered_text(&self) -> &str
+crates/lecture-document/src/document.rs [pub] impl LectureDocument :: #[must_use] const fn id(&self) -> &DocumentId
+crates/lecture-document/src/document.rs [pub] impl LectureDocument :: #[must_use] const fn lecture(&self) -> LectureSessionId
+crates/lecture-document/src/document.rs [pub] impl LectureDocument :: #[must_use] const fn transcript_token_digest(&self) -> &ContentDigest
+crates/lecture-document/src/document.rs [pub] impl LectureDocument :: #[must_use] const fn version(&self) -> u32
+crates/lecture-document/src/document.rs [pub] impl LectureDocument :: #[must_use] fn digest(&self) -> ContentDigest
+crates/lecture-document/src/document.rs [pub] impl LectureDocument :: #[must_use] fn nodes(&self) -> &[DocumentNode]
+crates/lecture-document/src/document.rs [pub] impl NodeKind :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/document.rs [pub] impl NodeKind :: const ALL: [Self; 5]
+crates/lecture-document/src/document.rs [pub] impl SourceMapping :: #[must_use] const fn char_range(&self) -> (usize, usize)
+crates/lecture-document/src/document.rs [pub] impl SourceMapping :: #[must_use] const fn segment_index(&self) -> usize
+crates/lecture-document/src/document.rs [pub] impl SourceMapping :: #[must_use] const fn transform(&self) -> PreservationTransform
+crates/lecture-document/src/document.rs [pub] impl SourceMapping :: #[must_use] fn covered_tokens(&self) -> &[usize]
+crates/lecture-document/src/document.rs [pub] impl SourceMapping :: #[must_use] fn segment_id(&self) -> &str
+crates/lecture-document/src/document.rs [pub] impl<'a> DocumentBuilder<'a> :: fn finish(self) -> Result<LectureDocument, DocumentFault>
+crates/lecture-document/src/document.rs [pub] impl<'a> DocumentBuilder<'a> :: fn over( id: DocumentId, lineage: &'a TranscriptLineage, version: u32, manifest: &'a InputManifest, ) -> Result<Self, DocumentFault>
+crates/lecture-document/src/document.rs [pub] impl<'a> DocumentBuilder<'a> :: fn push(&mut self, draft: NodeDraft) -> Result<(), DocumentFault>
+crates/lecture-document/src/engine.rs [priv] const fn satisfied_when(condition: bool) -> ProofStatus
+crates/lecture-document/src/engine.rs [priv] fn decimal(value: i64) -> Result<Decimal, EngineError>
+crates/lecture-document/src/engine.rs [priv] fn integer(value: u64) -> InputValue
+crates/lecture-document/src/engine.rs [priv] fn leaf( node_id: &str, rule: &str, status: ProofStatus, keys: &[&str], ) -> Result<ProofNode, EngineError>
+crates/lecture-document/src/engine.rs [priv] fn read_integer(inputs: &FrozenInputs, key: &str) -> Result<i64, EngineError>
+crates/lecture-document/src/engine.rs [priv] impl DeterministicEngine for TranscriptCoverageEngine
+crates/lecture-document/src/engine.rs [priv] impl DeterministicEngine for TranscriptCoverageEngine :: fn engine_id(&self) -> &'static str
+crates/lecture-document/src/engine.rs [priv] impl DeterministicEngine for TranscriptCoverageEngine :: fn engine_version(&self) -> EngineVersion
+crates/lecture-document/src/engine.rs [priv] impl DeterministicEngine for TranscriptCoverageEngine :: fn evaluate( &self, inputs: &FrozenInputs, rule_set_hash: RuleSetHash, _engine_version: EngineVersion, ) -> Result<EngineOutcome, EngineError>
+crates/lecture-document/src/engine.rs [priv] impl TranscriptCoverageEngine
+crates/lecture-document/src/engine.rs [priv] use academic_domain::{ ContentDigest, Decimal, engines::{ DeterministicEngine, EngineError, EngineOutcome, EngineResult, EngineVersion, FrozenInputs, InputKey, InputValue, NodeId as ProofNodeId, ProofNode, ProofStatus, RuleId, RuleSetHash, }, }
+crates/lecture-document/src/engine.rs [priv] use crate::{coverage::CoverageReport, render::RenderQaReport}
+crates/lecture-document/src/engine.rs [priv] use std::collections::BTreeMap
+crates/lecture-document/src/engine.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)] struct TranscriptCoverageEngine
+crates/lecture-document/src/engine.rs [pub] #[must_use] fn ruleset_hash() -> RuleSetHash
+crates/lecture-document/src/engine.rs [pub] const RULES: [&str; 8]
+crates/lecture-document/src/engine.rs [pub] const RULESET_TEXT: &str
+crates/lecture-document/src/engine.rs [pub] const RULE_CAPTURES: &str
+crates/lecture-document/src/engine.rs [pub] const RULE_COMPLETE: &str
+crates/lecture-document/src/engine.rs [pub] const RULE_GAPS: &str
+crates/lecture-document/src/engine.rs [pub] const RULE_ORDERING: &str
+crates/lecture-document/src/engine.rs [pub] const RULE_PARTITION: &str
+crates/lecture-document/src/engine.rs [pub] const RULE_RENDER: &str
+crates/lecture-document/src/engine.rs [pub] const RULE_SEGMENT_COVERAGE: &str
+crates/lecture-document/src/engine.rs [pub] const RULE_TOKEN_COVERAGE: &str
+crates/lecture-document/src/engine.rs [pub] const TRANSCRIPT_COVERAGE_ENGINE_ID: &str
+crates/lecture-document/src/engine.rs [pub] const TRANSCRIPT_COVERAGE_ENGINE_VERSION: u16
+crates/lecture-document/src/engine.rs [pub] fn freeze(report: &CoverageReport, qa: &RenderQaReport) -> Result<FrozenInputs, EngineError>
+crates/lecture-document/src/engine.rs [pub] impl TranscriptCoverageEngine :: fn evaluate_coverage( inputs: &FrozenInputs, rule_set_hash: RuleSetHash, ) -> Result<EngineOutcome, EngineError>
+crates/lecture-document/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum CoverageFault
+crates/lecture-document/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum DocumentFault
+crates/lecture-document/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum RenderFault
+crates/lecture-document/src/fault.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum StudyIndexFault
+crates/lecture-document/src/harness.rs [priv] fn property_bounds() -> String
+crates/lecture-document/src/harness.rs [priv] fn push(lines: &mut String, key: &str, value: i64)
+crates/lecture-document/src/harness.rs [priv] fn push_into(lines: &mut String, key: &str, value: i64)
+crates/lecture-document/src/harness.rs [priv] fn status_of(case: &Case, index: u32) -> &'static str
+crates/lecture-document/src/harness.rs [priv] fn tokens_of(case: &Case, index: u32) -> u32
+crates/lecture-document/src/harness.rs [priv] use academic_domain::engines::{EngineError, EngineVersion, FrozenInputs, RuleSetHash}
+crates/lecture-document/src/harness.rs [priv] use crate::engine::{ RULESET_TEXT, TRANSCRIPT_COVERAGE_ENGINE_ID, TRANSCRIPT_COVERAGE_ENGINE_VERSION, TranscriptCoverageEngine, ruleset_hash, }
+crates/lecture-document/src/harness.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Case
+crates/lecture-document/src/harness.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CorpusFile
+crates/lecture-document/src/harness.rs [pub] const GOLDEN: [Case; 4]
+crates/lecture-document/src/harness.rs [pub] const HARNESS_DIR: &str
+crates/lecture-document/src/harness.rs [pub] const HARNESS_ROOT: &str
+crates/lecture-document/src/harness.rs [pub] const PROPERTY_MAX_SEGMENTS: usize
+crates/lecture-document/src/harness.rs [pub] const SNAPSHOT_CASE: Case
+crates/lecture-document/src/harness.rs [pub] const VERSION_COMPAT: Case
+crates/lecture-document/src/harness.rs [pub] fn case_input(case: &Case) -> Result<FrozenInputs, EngineError>
+crates/lecture-document/src/harness.rs [pub] fn corpus_files() -> Result<Vec<CorpusFile>, EngineError>
+crates/lecture-document/src/harness.rs [pub] fn expected_bytes( inputs: &FrozenInputs, hash: RuleSetHash, version: EngineVersion, ) -> Result<Vec<u8>, EngineError>
+crates/lecture-document/src/harness.rs [pub] fn explanation_bytes(inputs: &FrozenInputs, hash: RuleSetHash) -> Result<Vec<u8>, EngineError>
+crates/lecture-document/src/lib.rs [priv] mod config
+crates/lecture-document/src/lib.rs [priv] mod coverage
+crates/lecture-document/src/lib.rs [priv] mod disposition
+crates/lecture-document/src/lib.rs [priv] mod document
+crates/lecture-document/src/lib.rs [priv] mod engine
+crates/lecture-document/src/lib.rs [priv] mod fault
+crates/lecture-document/src/lib.rs [priv] mod pdf
+crates/lecture-document/src/lib.rs [priv] mod render
+crates/lecture-document/src/lib.rs [priv] mod review
+crates/lecture-document/src/lib.rs [priv] mod study_index
+crates/lecture-document/src/lib.rs [priv] mod transform
+crates/lecture-document/src/lib.rs [pub] mod harness
+crates/lecture-document/src/lib.rs [pub] use config::{COVERAGE_CONFIG_V1, ConfigFault, CoverageConfig}
+crates/lecture-document/src/lib.rs [pub] use coverage::{ CompletenessWitness, CoverageInputs, CoverageReport, CoverageValidator, DispositionLedger, GapFinding, OrderingException, OrderingFinding, Ratio, SegmentAccount, SegmentDisposition, SegmentStatus, UnaccountedCapture, UnmappedSegment, }
+crates/lecture-document/src/lib.rs [pub] use disposition::{ CaptureExclusion, CaptureExclusionLedger, CaptureExclusionReason, NonSpeechEvidence, NonSpeechReason, RedactionBasis, RedactionPolicyRef, TranscriptionFailure, }
+crates/lecture-document/src/lib.rs [pub] use document::{ CrossReference, CrossReferenceReason, DocumentAnnotation, DocumentBuilder, DocumentId, DocumentNode, LectureDocument, NodeDraft, NodeId, NodeKind, SourceMapping, token_spans, }
+crates/lecture-document/src/lib.rs [pub] use engine::{ RULE_CAPTURES, RULE_COMPLETE, RULE_GAPS, RULE_ORDERING, RULE_PARTITION, RULE_RENDER, RULE_SEGMENT_COVERAGE, RULE_TOKEN_COVERAGE, RULES, RULESET_TEXT, TRANSCRIPT_COVERAGE_ENGINE_ID, TRANSCRIPT_COVERAGE_ENGINE_VERSION, TranscriptCoverageEngine, freeze, ruleset_hash, }
+crates/lecture-document/src/lib.rs [pub] use fault::{CoverageFault, DocumentFault, RenderFault, StudyIndexFault}
+crates/lecture-document/src/lib.rs [pub] use pdf::{DocumentCompleteness, PdfArtifact}
+crates/lecture-document/src/lib.rs [pub] use render::{ RenderDefect, RenderFinding, RenderQa, RenderQaReport, RenderedImage, RenderedNode, RenderedPage, }
+crates/lecture-document/src/lib.rs [pub] use review::{AudioLocator, ReviewItem, ReviewQueue, RiskClass}
+crates/lecture-document/src/lib.rs [pub] use study_index::{ STUDY_INDEX_DISCLOSURE, Salience, StudyIndex, StudyIndexBuilder, StudyIndexEntry, StudyIndexId, }
+crates/lecture-document/src/lib.rs [pub] use transform::PreservationTransform
+crates/lecture-document/src/pdf.rs [priv] impl DocumentCompleteness
+crates/lecture-document/src/pdf.rs [priv] impl PdfArtifact
+crates/lecture-document/src/pdf.rs [priv] impl PdfArtifact :: fn upgrade( document_digest: &ContentDigest, report: &CoverageReport, witness: CompletenessWitness, ) -> DocumentCompleteness
+crates/lecture-document/src/pdf.rs [priv] use academic_domain::ContentDigest
+crates/lecture-document/src/pdf.rs [priv] use crate::{ coverage::{CompletenessWitness, CoverageReport}, document::{DocumentId, LectureDocument, be_len, push_str}, render::RenderQaReport, }
+crates/lecture-document/src/pdf.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DocumentCompleteness
+crates/lecture-document/src/pdf.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PdfArtifact
+crates/lecture-document/src/pdf.rs [pub] impl DocumentCompleteness :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/pdf.rs [pub] impl DocumentCompleteness :: #[must_use] const fn is_complete(self) -> bool
+crates/lecture-document/src/pdf.rs [pub] impl PdfArtifact :: #[must_use] const fn completeness(&self) -> DocumentCompleteness
+crates/lecture-document/src/pdf.rs [pub] impl PdfArtifact :: #[must_use] const fn document(&self) -> &DocumentId
+crates/lecture-document/src/pdf.rs [pub] impl PdfArtifact :: #[must_use] const fn document_digest(&self) -> &ContentDigest
+crates/lecture-document/src/pdf.rs [pub] impl PdfArtifact :: #[must_use] const fn rendered_bytes_digest(&self) -> &ContentDigest
+crates/lecture-document/src/pdf.rs [pub] impl PdfArtifact :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/lecture-document/src/pdf.rs [pub] impl PdfArtifact :: #[must_use] fn render( document: &LectureDocument, report: &CoverageReport, qa: &RenderQaReport, rendered_bytes_digest: ContentDigest, ) -> Self
+crates/lecture-document/src/render.rs [priv] impl RenderDefect
+crates/lecture-document/src/render.rs [priv] impl RenderFinding
+crates/lecture-document/src/render.rs [priv] impl RenderQa
+crates/lecture-document/src/render.rs [priv] impl RenderQaReport
+crates/lecture-document/src/render.rs [priv] use academic_domain::ContentDigest
+crates/lecture-document/src/render.rs [priv] use crate::{ document::{LectureDocument, NodeId, be_len, push_str}, fault::RenderFault, }
+crates/lecture-document/src/render.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RenderQa
+crates/lecture-document/src/render.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RenderedImage
+crates/lecture-document/src/render.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RenderedPage
+crates/lecture-document/src/render.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RenderDefect
+crates/lecture-document/src/render.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RenderFinding
+crates/lecture-document/src/render.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RenderQaReport
+crates/lecture-document/src/render.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RenderedNode
+crates/lecture-document/src/render.rs [pub] impl RenderDefect :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/render.rs [pub] impl RenderDefect :: #[must_use] const fn spec_phrase(self) -> &'static str
+crates/lecture-document/src/render.rs [pub] impl RenderDefect :: const ALL: [Self; 4]
+crates/lecture-document/src/render.rs [pub] impl RenderFinding :: #[must_use] const fn capture_frame_seq(&self) -> Option<u32>
+crates/lecture-document/src/render.rs [pub] impl RenderFinding :: #[must_use] const fn defect(&self) -> RenderDefect
+crates/lecture-document/src/render.rs [pub] impl RenderFinding :: #[must_use] const fn node(&self) -> Option<&NodeId>
+crates/lecture-document/src/render.rs [pub] impl RenderFinding :: #[must_use] const fn page(&self) -> Option<u32>
+crates/lecture-document/src/render.rs [pub] impl RenderQa :: fn inspect( document: &LectureDocument, pages: &[RenderedPage], nodes: &[RenderedNode], images: &[RenderedImage], ) -> Result<RenderQaReport, RenderFault>
+crates/lecture-document/src/render.rs [pub] impl RenderQaReport :: #[must_use] const fn document_digest(&self) -> &ContentDigest
+crates/lecture-document/src/render.rs [pub] impl RenderQaReport :: #[must_use] const fn node_count(&self) -> usize
+crates/lecture-document/src/render.rs [pub] impl RenderQaReport :: #[must_use] const fn page_count(&self) -> usize
+crates/lecture-document/src/render.rs [pub] impl RenderQaReport :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/lecture-document/src/render.rs [pub] impl RenderQaReport :: #[must_use] fn findings(&self) -> &[RenderFinding]
+crates/lecture-document/src/render.rs [pub] impl RenderQaReport :: #[must_use] fn is_clean(&self) -> bool
+crates/lecture-document/src/render.rs [pub] impl RenderQaReport :: #[must_use] fn of(&self, defect: RenderDefect) -> Vec<&RenderFinding>
+crates/lecture-document/src/review.rs [priv] impl AudioLocator
+crates/lecture-document/src/review.rs [priv] impl ReviewItem
+crates/lecture-document/src/review.rs [priv] impl ReviewQueue
+crates/lecture-document/src/review.rs [priv] impl RiskClass
+crates/lecture-document/src/review.rs [priv] use academic_domain::ConfidencePermille
+crates/lecture-document/src/review.rs [priv] use academic_model_run::{CalibrationRegistry, Purpose}
+crates/lecture-document/src/review.rs [priv] use academic_transcription::TranscriptLineage
+crates/lecture-document/src/review.rs [priv] use crate::{ config::CoverageConfig, document::{LectureDocument, NodeId, NodeKind}, fault::CoverageFault, }
+crates/lecture-document/src/review.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RiskClass
+crates/lecture-document/src/review.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct ReviewQueue
+crates/lecture-document/src/review.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AudioLocator
+crates/lecture-document/src/review.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReviewItem
+crates/lecture-document/src/review.rs [pub] impl AudioLocator :: #[must_use] const fn end_nanos(&self) -> u64
+crates/lecture-document/src/review.rs [pub] impl AudioLocator :: #[must_use] const fn start_nanos(&self) -> u64
+crates/lecture-document/src/review.rs [pub] impl AudioLocator :: #[must_use] fn chunk_frame_seqs(&self) -> &[u32]
+crates/lecture-document/src/review.rs [pub] impl ReviewItem :: #[must_use] const fn audio(&self) -> &AudioLocator
+crates/lecture-document/src/review.rs [pub] impl ReviewItem :: #[must_use] const fn calibrated_permille(&self) -> Option<u16>
+crates/lecture-document/src/review.rs [pub] impl ReviewItem :: #[must_use] const fn class(&self) -> RiskClass
+crates/lecture-document/src/review.rs [pub] impl ReviewItem :: #[must_use] const fn node(&self) -> &NodeId
+crates/lecture-document/src/review.rs [pub] impl ReviewItem :: #[must_use] const fn segment_index(&self) -> usize
+crates/lecture-document/src/review.rs [pub] impl ReviewItem :: #[must_use] fn nearby_captures(&self) -> &[u32]
+crates/lecture-document/src/review.rs [pub] impl ReviewQueue :: #[must_use] fn items(&self) -> &[ReviewItem]
+crates/lecture-document/src/review.rs [pub] impl ReviewQueue :: #[must_use] fn of(&self, class: RiskClass) -> Vec<&ReviewItem>
+crates/lecture-document/src/review.rs [pub] impl ReviewQueue :: fn build( document: &LectureDocument, lineage: &TranscriptLineage, calibration: &CalibrationRegistry, purpose: &Purpose, now: u64, config: CoverageConfig, ) -> Result<Self, CoverageFault>
+crates/lecture-document/src/review.rs [pub] impl RiskClass :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/review.rs [pub] impl RiskClass :: const ALL: [Self; 3]
+crates/lecture-document/src/study_index.rs [priv] impl Salience
+crates/lecture-document/src/study_index.rs [priv] impl StudyIndex
+crates/lecture-document/src/study_index.rs [priv] impl StudyIndexEntry
+crates/lecture-document/src/study_index.rs [priv] impl StudyIndexId
+crates/lecture-document/src/study_index.rs [priv] impl core::fmt::Debug for StudyIndex
+crates/lecture-document/src/study_index.rs [priv] impl core::fmt::Debug for StudyIndex :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/lecture-document/src/study_index.rs [priv] impl core::fmt::Debug for StudyIndexEntry
+crates/lecture-document/src/study_index.rs [priv] impl core::fmt::Debug for StudyIndexEntry :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+crates/lecture-document/src/study_index.rs [priv] impl<'a> StudyIndexBuilder<'a>
+crates/lecture-document/src/study_index.rs [priv] use academic_domain::ContentDigest
+crates/lecture-document/src/study_index.rs [priv] use crate::{ document::{DocumentId, LectureDocument, NodeId, be_len, push_str}, fault::StudyIndexFault, }
+crates/lecture-document/src/study_index.rs [pub] #[derive(Clone, PartialEq, Eq)] struct StudyIndex
+crates/lecture-document/src/study_index.rs [pub] #[derive(Clone, PartialEq, Eq)] struct StudyIndexEntry
+crates/lecture-document/src/study_index.rs [pub] #[derive(Debug)] struct StudyIndexBuilder<'a>
+crates/lecture-document/src/study_index.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Salience
+crates/lecture-document/src/study_index.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct StudyIndexId(String)
+crates/lecture-document/src/study_index.rs [pub] const STUDY_INDEX_DISCLOSURE: &str
+crates/lecture-document/src/study_index.rs [pub] impl Salience :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/study_index.rs [pub] impl Salience :: const ALL: [Self; 3]
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndex :: #[must_use] const fn disclosure(&self) -> &'static str
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndex :: #[must_use] const fn document(&self) -> &DocumentId
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndex :: #[must_use] const fn document_digest(&self) -> &ContentDigest
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndex :: #[must_use] const fn id(&self) -> &StudyIndexId
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndex :: #[must_use] fn canonical_bytes(&self) -> Vec<u8>
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndex :: #[must_use] fn entries(&self) -> &[StudyIndexEntry]
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndex :: #[must_use] fn round_trips(&self, document: &LectureDocument) -> bool
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndexEntry :: #[must_use] const fn node(&self) -> &NodeId
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndexEntry :: #[must_use] const fn salience(&self) -> Salience
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndexEntry :: #[must_use] fn heading(&self) -> &str
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndexEntry :: #[must_use] fn id(&self) -> &str
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndexId :: #[must_use] fn as_str(&self) -> &str
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndexId :: #[must_use] fn is_empty(&self) -> bool
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndexId :: #[must_use] fn len(&self) -> usize
+crates/lecture-document/src/study_index.rs [pub] impl StudyIndexId :: fn new(value: &str) -> Result<Self, StudyIndexFault>
+crates/lecture-document/src/study_index.rs [pub] impl<'a> StudyIndexBuilder<'a> :: #[must_use] const fn over(id: StudyIndexId, document: &'a LectureDocument) -> Self
+crates/lecture-document/src/study_index.rs [pub] impl<'a> StudyIndexBuilder<'a> :: fn add( &mut self, id: &str, heading: &str, node: NodeId, salience: Salience, ) -> Result<(), StudyIndexFault>
+crates/lecture-document/src/study_index.rs [pub] impl<'a> StudyIndexBuilder<'a> :: fn finish(self) -> Result<StudyIndex, StudyIndexFault>
+crates/lecture-document/src/transform.rs [priv] impl PreservationTransform
+crates/lecture-document/src/transform.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PreservationTransform
+crates/lecture-document/src/transform.rs [pub] impl PreservationTransform :: #[must_use] const fn as_str(self) -> &'static str
+crates/lecture-document/src/transform.rs [pub] impl PreservationTransform :: #[must_use] const fn spec_phrase(self) -> &'static str
+crates/lecture-document/src/transform.rs [pub] impl PreservationTransform :: #[must_use] fn parse(value: &str) -> Option<Self>
+crates/lecture-document/src/transform.rs [pub] impl PreservationTransform :: const ALL: [Self; 9]

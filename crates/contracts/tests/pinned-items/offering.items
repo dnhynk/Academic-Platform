@@ -1,0 +1,387 @@
+crates/offering/src/claims.rs [priv] impl DecisionStanding
+crates/offering/src/claims.rs [priv] impl OfferingAssertion
+crates/offering/src/claims.rs [priv] impl OfferingClaimSet
+crates/offering/src/claims.rs [priv] use academic_domain::{ AuthorityClass, Claim, ClaimId, ClaimObject, ConfidencePermille, EntityId, EpistemicStatus, EvidenceId, PredicateId, ScopeId, ValidInterval, }
+crates/offering/src/claims.rs [priv] use crate::{ error::OfferingError, forecast::ScoredForecast, source::{ConfirmationEvidence, OfferingAnnouncement}, }
+crates/offering/src/claims.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum DecisionStanding
+crates/offering/src/claims.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum OfferingAssertion
+crates/offering/src/claims.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ClaimSubject
+crates/offering/src/claims.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OfferingClaimSet
+crates/offering/src/claims.rs [pub] const OFFERING_STATUS_PREDICATE: &str
+crates/offering/src/claims.rs [pub] fn announcement_claim( id: ClaimId, subject: &ClaimSubject, announcement: &OfferingAnnouncement, evidence_ids: Vec<EvidenceId>, ) -> Result<Claim, OfferingError>
+crates/offering/src/claims.rs [pub] fn confirmation_claim( id: ClaimId, subject: &ClaimSubject, evidence: &ConfirmationEvidence, evidence_ids: Vec<EvidenceId>, ) -> Result<Claim, OfferingError>
+crates/offering/src/claims.rs [pub] fn forecast_claim( id: ClaimId, subject: &ClaimSubject, scored: &ScoredForecast, evidence_ids: Vec<EvidenceId>, ) -> Result<Claim, OfferingError>
+crates/offering/src/claims.rs [pub] impl DecisionStanding :: #[must_use] const fn as_str(self) -> &'static str
+crates/offering/src/claims.rs [pub] impl OfferingAssertion :: #[must_use] const fn as_str(self) -> &'static str
+crates/offering/src/claims.rs [pub] impl OfferingClaimSet :: #[must_use] const fn official(official: Claim) -> Self
+crates/offering/src/claims.rs [pub] impl OfferingClaimSet :: #[must_use] const fn official_claim(&self) -> Option<&Claim>
+crates/offering/src/claims.rs [pub] impl OfferingClaimSet :: #[must_use] const fn predicted(prediction: Claim) -> Self
+crates/offering/src/claims.rs [pub] impl OfferingClaimSet :: #[must_use] const fn prediction(&self) -> Option<&Claim>
+crates/offering/src/claims.rs [pub] impl OfferingClaimSet :: #[must_use] fn official_arrived(self, official: Claim) -> Self
+crates/offering/src/claims.rs [pub] impl OfferingClaimSet :: #[must_use] fn official_standing(&self) -> Option<DecisionStanding>
+crates/offering/src/claims.rs [pub] impl OfferingClaimSet :: #[must_use] fn prediction_standing(&self) -> Option<DecisionStanding>
+crates/offering/src/corpus.rs [priv] fn code(value: &str) -> Result<CourseCode, OfferingError>
+crates/offering/src/corpus.rs [priv] fn every_other_spring() -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn every_other_spring_coded(course: &str) -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn every_spring(course: &str) -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn gap_two() -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn instructor_volatile() -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn irregular_only() -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn never_observed() -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn read_at(index: i64) -> TimestampMillis
+crates/offering/src/corpus.rs [priv] fn retired() -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn sparse() -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn suspended_notice() -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [priv] fn teacher(value: &str) -> Result<InstructorName, OfferingError>
+crates/offering/src/corpus.rs [priv] use academic_curriculum::{CourseCode, InstructorName}
+crates/offering/src/corpus.rs [priv] use academic_domain::TimestampMillis
+crates/offering/src/corpus.rs [priv] use academic_model_run::{ CalibrationBin, CalibrationDataset, CalibrationDatasetId, CalibrationRegistry, Digest32, ModelVersion, ProviderId, Purpose, }
+crates/offering/src/corpus.rs [priv] use academic_record::term::{Semester, TermKey}
+crates/offering/src/corpus.rs [priv] use crate::{ error::OfferingError, feature::ObservationWindow, forecast::{ OFFERING_FORECAST_ENGINE_VERSION, OFFERING_FORECAST_PROVIDER, OFFERING_FORECAST_PURPOSE, }, observation::{CourseHistory, CourseLifecycle, NoticeEffect, RecentNotice, TermObservation}, policy::{ForecastPolicy, VerificationRecency}, }
+crates/offering/src/corpus.rs [pub] #[must_use] const fn realized(case: &str) -> Option<crate::metrics::RealizedOutcome>
+crates/offering/src/corpus.rs [pub] const CASES: [&str; 10]
+crates/offering/src/corpus.rs [pub] const CORPUS_LIKELY_FLOOR_PERMILLE: u16
+crates/offering/src/corpus.rs [pub] const CORPUS_MINIMUM_WINDOW_TERMS: u32
+crates/offering/src/corpus.rs [pub] const CORPUS_NOW_MILLIS: i64
+crates/offering/src/corpus.rs [pub] const CORPUS_VERIFICATION_WITHIN_MILLIS: u64
+crates/offering/src/corpus.rs [pub] fn calibration_dataset(refreshed_at: u64) -> Result<CalibrationDataset, OfferingError>
+crates/offering/src/corpus.rs [pub] fn calibration_registry(refreshed_at: u64) -> Result<CalibrationRegistry, OfferingError>
+crates/offering/src/corpus.rs [pub] fn history(case: &str) -> Result<CourseHistory, OfferingError>
+crates/offering/src/corpus.rs [pub] fn policy() -> Result<ForecastPolicy, OfferingError>
+crates/offering/src/corpus.rs [pub] fn verification_recency() -> Result<VerificationRecency, OfferingError>
+crates/offering/src/corpus.rs [pub] fn window(case: &str) -> Result<ObservationWindow, OfferingError>
+crates/offering/src/corpus.rs [pub] fn window_start() -> Result<TermKey, OfferingError>
+crates/offering/src/error.rs [priv] impl From<RecordError> for OfferingError
+crates/offering/src/error.rs [priv] impl From<RecordError> for OfferingError :: fn from(error: RecordError) -> Self
+crates/offering/src/error.rs [priv] use academic_curriculum::CurriculumError
+crates/offering/src/error.rs [priv] use academic_domain::DomainError
+crates/offering/src/error.rs [priv] use academic_model_run::ModelRunError
+crates/offering/src/error.rs [priv] use academic_record::RecordError
+crates/offering/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum OfferingError
+crates/offering/src/feature.rs [priv] fn history_window(seasonal_terms: u32) -> FeatureSignal
+crates/offering/src/feature.rs [priv] fn instructor_change(seasonal: &[&crate::observation::TermObservation]) -> FeatureSignal
+crates/offering/src/feature.rs [priv] fn irregular_special(seasonal: &[&crate::observation::TermObservation]) -> FeatureSignal
+crates/offering/src/feature.rs [priv] fn lifecycle_status(lifecycle: &CourseLifecycle, target: TermKey) -> FeatureSignal
+crates/offering/src/feature.rs [priv] fn offering_gap(seasonal: &[&crate::observation::TermObservation]) -> FeatureSignal
+crates/offering/src/feature.rs [priv] fn recent_notices(history: &CourseHistory, window: ObservationWindow) -> FeatureSignal
+crates/offering/src/feature.rs [priv] fn seasonality(seasonal_terms: u32, positive_samples: u32) -> FeatureSignal
+crates/offering/src/feature.rs [priv] fn signal(family: FeatureFamily, value: i64, contribution: i32) -> FeatureSignal
+crates/offering/src/feature.rs [priv] impl FeatureFamily
+crates/offering/src/feature.rs [priv] impl FeatureSignal
+crates/offering/src/feature.rs [priv] impl FeatureVector
+crates/offering/src/feature.rs [priv] impl ObservationWindow
+crates/offering/src/feature.rs [priv] use academic_record::term::{Semester, TermKey}
+crates/offering/src/feature.rs [priv] use crate::{ error::OfferingError, observation::{CourseHistory, CourseLifecycle, NoticeEffect, Offered}, }
+crates/offering/src/feature.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct FeatureSignal
+crates/offering/src/feature.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ObservationWindow
+crates/offering/src/feature.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FeatureFamily
+crates/offering/src/feature.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct FeatureVector
+crates/offering/src/feature.rs [pub] const BASE_RAW_UNITS: i32
+crates/offering/src/feature.rs [pub] const MAX_RAW_UNITS: i32
+crates/offering/src/feature.rs [pub] impl FeatureFamily :: #[must_use] const fn as_str(self) -> &'static str
+crates/offering/src/feature.rs [pub] impl FeatureFamily :: #[must_use] const fn input_key(self) -> &'static str
+crates/offering/src/feature.rs [pub] impl FeatureFamily :: #[must_use] const fn spec_phrase(self) -> &'static str
+crates/offering/src/feature.rs [pub] impl FeatureFamily :: const ALL: [Self; 7]
+crates/offering/src/feature.rs [pub] impl FeatureSignal :: #[must_use] const fn contribution(self) -> i32
+crates/offering/src/feature.rs [pub] impl FeatureSignal :: #[must_use] const fn family(self) -> FeatureFamily
+crates/offering/src/feature.rs [pub] impl FeatureSignal :: #[must_use] const fn value(self) -> i64
+crates/offering/src/feature.rs [pub] impl FeatureVector :: #[must_use] const fn positive_samples(&self) -> u32
+crates/offering/src/feature.rs [pub] impl FeatureVector :: #[must_use] const fn seasonal_terms(&self) -> u32
+crates/offering/src/feature.rs [pub] impl FeatureVector :: #[must_use] const fn signals(&self) -> &[FeatureSignal; FeatureFamily::ALL.len()]
+crates/offering/src/feature.rs [pub] impl FeatureVector :: #[must_use] const fn window(&self) -> ObservationWindow
+crates/offering/src/feature.rs [pub] impl FeatureVector :: #[must_use] fn extract(history: &CourseHistory, window: ObservationWindow) -> Self
+crates/offering/src/feature.rs [pub] impl FeatureVector :: #[must_use] fn raw_units(&self) -> u32
+crates/offering/src/feature.rs [pub] impl FeatureVector :: #[must_use] fn signal(&self, family: FeatureFamily) -> FeatureSignal
+crates/offering/src/feature.rs [pub] impl ObservationWindow :: #[must_use] const fn from(self) -> TermKey
+crates/offering/src/feature.rs [pub] impl ObservationWindow :: #[must_use] const fn semester(self) -> Semester
+crates/offering/src/feature.rs [pub] impl ObservationWindow :: #[must_use] const fn to(self) -> TermKey
+crates/offering/src/feature.rs [pub] impl ObservationWindow :: #[must_use] fn contains(self, term: TermKey) -> bool
+crates/offering/src/feature.rs [pub] impl ObservationWindow :: #[must_use] fn seasonal_terms( self, history: &CourseHistory, ) -> Vec<&crate::observation::TermObservation>
+crates/offering/src/feature.rs [pub] impl ObservationWindow :: fn new(from: TermKey, to: TermKey) -> Result<Self, OfferingError>
+crates/offering/src/forecast.rs [priv] const INSTRUCTOR_VOLATILITY_RUNS: usize
+crates/offering/src/forecast.rs [priv] fn decide( history: &CourseHistory, window: ObservationWindow, features: &FeatureVector, raw_units: u32, policy: ForecastPolicy, registry: &CalibrationRegistry, now: TimestampMillis, ) -> Result<ForecastVerdict, OfferingError>
+crates/offering/src/forecast.rs [priv] fn disclosed_window( seasonal: &[&crate::observation::TermObservation], ) -> Result<PredictionObservationWindow, OfferingError>
+crates/offering/src/forecast.rs [priv] fn engine_result( features: &FeatureVector, raw_units: u32, verdict: &ForecastVerdict, root: ProofStatus, ) -> Result<EngineResult, OfferingError>
+crates/offering/src/forecast.rs [priv] fn family_status(contribution: i32, has_evidence: bool) -> ProofStatus
+crates/offering/src/forecast.rs [priv] fn frozen_inputs( history: &CourseHistory, window: ObservationWindow, features: &FeatureVector, raw_units: u32, policy: ForecastPolicy, ) -> Result<FrozenInputs, OfferingError>
+crates/offering/src/forecast.rs [priv] fn key(name: &str) -> Result<InputKey, OfferingError>
+crates/offering/src/forecast.rs [priv] fn lower(value: &str) -> String
+crates/offering/src/forecast.rs [priv] fn node_id(name: &str) -> Result<NodeId, OfferingError>
+crates/offering/src/forecast.rs [priv] fn proof_tree( features: &FeatureVector, verdict: &ForecastVerdict, policy: ForecastPolicy, root: ProofStatus, ) -> Result<ProofNode, OfferingError>
+crates/offering/src/forecast.rs [priv] fn root_status(verdict: &ForecastVerdict, policy: ForecastPolicy) -> ProofStatus
+crates/offering/src/forecast.rs [priv] fn rule_id(name: &str) -> Result<RuleId, OfferingError>
+crates/offering/src/forecast.rs [priv] fn whole(value: i128) -> Result<Decimal, OfferingError>
+crates/offering/src/forecast.rs [priv] impl AbstentionReason
+crates/offering/src/forecast.rs [priv] impl Forecast
+crates/offering/src/forecast.rs [priv] impl ScoredForecast
+crates/offering/src/forecast.rs [priv] use academic_curriculum::CourseCode
+crates/offering/src/forecast.rs [priv] use academic_domain::{ ConfidencePermille, ContentDigest, Decimal, PredictionMetadata, PredictionObservationWindow, TimestampMillis, engines::{ EngineOutcome, EngineResult, EngineVersion, FrozenInputs, InputKey, InputValue, NodeId, ProofNode, ProofStatus, RuleId, RuleSetHash, }, }
+crates/offering/src/forecast.rs [priv] use academic_model_run::{ CalibratedConfidence, CalibrationRegistry, ModelVersion, ProviderId, Purpose, RawScore, }
+crates/offering/src/forecast.rs [priv] use academic_record::term::TermKey
+crates/offering/src/forecast.rs [priv] use crate::{ error::OfferingError, feature::{FeatureFamily, FeatureVector, ObservationWindow}, observation::{CourseHistory, Offered}, policy::ForecastPolicy, }
+crates/offering/src/forecast.rs [priv] use std::collections::BTreeMap
+crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AbstentionReason
+crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ForecastVerdict
+crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Forecast
+crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ScoredForecast
+crates/offering/src/forecast.rs [pub] #[must_use] fn rule_set_hash() -> RuleSetHash
+crates/offering/src/forecast.rs [pub] const FORECAST_RULE_SET: &str
+crates/offering/src/forecast.rs [pub] const OFFERING_FORECAST_ENGINE_ID: &str
+crates/offering/src/forecast.rs [pub] const OFFERING_FORECAST_ENGINE_VERSION: u16
+crates/offering/src/forecast.rs [pub] const OFFERING_FORECAST_PROVIDER: &str
+crates/offering/src/forecast.rs [pub] const OFFERING_FORECAST_PURPOSE: &str
+crates/offering/src/forecast.rs [pub] const RULE_OFFERING_FORECAST: &str
+crates/offering/src/forecast.rs [pub] fn forecast( history: &CourseHistory, window: ObservationWindow, policy: ForecastPolicy, registry: &CalibrationRegistry, now: TimestampMillis, ) -> Result<Forecast, OfferingError>
+crates/offering/src/forecast.rs [pub] impl AbstentionReason :: #[must_use] const fn as_str(self) -> &'static str
+crates/offering/src/forecast.rs [pub] impl AbstentionReason :: #[must_use] const fn spec_phrase(self) -> Option<&'static str>
+crates/offering/src/forecast.rs [pub] impl AbstentionReason :: const ALL: [Self; 8]
+crates/offering/src/forecast.rs [pub] impl Forecast :: #[must_use] const fn course(&self) -> &CourseCode
+crates/offering/src/forecast.rs [pub] impl Forecast :: #[must_use] const fn features(&self) -> &FeatureVector
+crates/offering/src/forecast.rs [pub] impl Forecast :: #[must_use] const fn inputs(&self) -> &FrozenInputs
+crates/offering/src/forecast.rs [pub] impl Forecast :: #[must_use] const fn outcome(&self) -> &EngineOutcome
+crates/offering/src/forecast.rs [pub] impl Forecast :: #[must_use] const fn raw_units(&self) -> u32
+crates/offering/src/forecast.rs [pub] impl Forecast :: #[must_use] const fn target_term(&self) -> TermKey
+crates/offering/src/forecast.rs [pub] impl Forecast :: #[must_use] const fn verdict(&self) -> &ForecastVerdict
+crates/offering/src/forecast.rs [pub] impl Forecast :: fn canonical_bytes(&self) -> Result<Vec<u8>, OfferingError>
+crates/offering/src/forecast.rs [pub] impl ScoredForecast :: #[must_use] const fn calibrated(&self) -> &CalibratedConfidence
+crates/offering/src/forecast.rs [pub] impl ScoredForecast :: #[must_use] const fn confidence(&self) -> ConfidencePermille
+crates/offering/src/forecast.rs [pub] impl ScoredForecast :: #[must_use] const fn metadata(&self) -> PredictionMetadata
+crates/offering/src/gate.rs [priv] impl OpenGate
+crates/offering/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate
+crates/offering/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str
+crates/offering/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn spec_line(self) -> &'static str
+crates/offering/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn statement(self) -> &'static str
+crates/offering/src/gate.rs [pub] impl OpenGate :: const ALL: [Self; 1]
+crates/offering/src/lib.rs [pub] mod claims
+crates/offering/src/lib.rs [pub] mod corpus
+crates/offering/src/lib.rs [pub] mod error
+crates/offering/src/lib.rs [pub] mod feature
+crates/offering/src/lib.rs [pub] mod forecast
+crates/offering/src/lib.rs [pub] mod gate
+crates/offering/src/lib.rs [pub] mod metrics
+crates/offering/src/lib.rs [pub] mod observation
+crates/offering/src/lib.rs [pub] mod plan
+crates/offering/src/lib.rs [pub] mod policy
+crates/offering/src/lib.rs [pub] mod source
+crates/offering/src/lib.rs [pub] mod standing
+crates/offering/src/lib.rs [pub] use claims::{ ClaimSubject, DecisionStanding, OFFERING_STATUS_PREDICATE, OfferingAssertion, OfferingClaimSet, announcement_claim, confirmation_claim, forecast_claim, }
+crates/offering/src/lib.rs [pub] use error::OfferingError
+crates/offering/src/lib.rs [pub] use feature::{ BASE_RAW_UNITS, FeatureFamily, FeatureSignal, FeatureVector, MAX_RAW_UNITS, ObservationWindow, }
+crates/offering/src/lib.rs [pub] use forecast::{ AbstentionReason, FORECAST_RULE_SET, Forecast, ForecastVerdict, OFFERING_FORECAST_ENGINE_ID, OFFERING_FORECAST_ENGINE_VERSION, OFFERING_FORECAST_PROVIDER, OFFERING_FORECAST_PURPOSE, RULE_OFFERING_FORECAST, ScoredForecast, forecast, rule_set_hash, }
+crates/offering/src/lib.rs [pub] use gate::OpenGate
+crates/offering/src/lib.rs [pub] use metrics::{EvaluationEntry, RealizedOutcome, TermEvaluation, TermForecastMetrics}
+crates/offering/src/lib.rs [pub] use observation::{ CourseHistory, CourseLifecycle, NoticeEffect, Offered, RecentNotice, TermObservation, }
+crates/offering/src/lib.rs [pub] use plan::{DeterminatePlan, IndeterminatePlan, PlanOutcome, PlanRefusal}
+crates/offering/src/lib.rs [pub] use policy::{ForecastPolicy, VerificationRecency}
+crates/offering/src/lib.rs [pub] use source::{ CancellationNotice, ConfirmationEvidence, CrossSourceDisagreement, OfferingAnnouncement, OfficialListing, OfficialTermReading, }
+crates/offering/src/lib.rs [pub] use standing::{ AnnouncedStanding, CancelledStanding, ConfirmedSeat, ConfirmedStanding, HistoricallyLikelyStanding, OfferingStanding, Resolution, UncertainStanding, resolve, }
+crates/offering/src/metrics.rs [priv] fn ratio_permille(part: usize, whole: usize) -> u32
+crates/offering/src/metrics.rs [priv] impl EvaluationEntry
+crates/offering/src/metrics.rs [priv] impl RealizedOutcome
+crates/offering/src/metrics.rs [priv] impl TermEvaluation
+crates/offering/src/metrics.rs [priv] impl TermForecastMetrics
+crates/offering/src/metrics.rs [priv] use academic_curriculum::CourseCode
+crates/offering/src/metrics.rs [priv] use academic_record::term::TermKey
+crates/offering/src/metrics.rs [priv] use crate::{ error::OfferingError, forecast::{AbstentionReason, Forecast, ForecastVerdict}, }
+crates/offering/src/metrics.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RealizedOutcome
+crates/offering/src/metrics.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EvaluationEntry
+crates/offering/src/metrics.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TermEvaluation
+crates/offering/src/metrics.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TermForecastMetrics
+crates/offering/src/metrics.rs [pub] impl EvaluationEntry :: #[must_use] const fn abstained(&self) -> Option<AbstentionReason>
+crates/offering/src/metrics.rs [pub] impl EvaluationEntry :: #[must_use] const fn course(&self) -> &CourseCode
+crates/offering/src/metrics.rs [pub] impl EvaluationEntry :: #[must_use] const fn realized(&self) -> Option<RealizedOutcome>
+crates/offering/src/metrics.rs [pub] impl EvaluationEntry :: #[must_use] const fn scored_permille(&self) -> Option<u16>
+crates/offering/src/metrics.rs [pub] impl EvaluationEntry :: #[must_use] fn from_forecast(forecast: &Forecast, realized: Option<RealizedOutcome>) -> Self
+crates/offering/src/metrics.rs [pub] impl RealizedOutcome :: #[must_use] const fn as_str(self) -> &'static str
+crates/offering/src/metrics.rs [pub] impl RealizedOutcome :: #[must_use] const fn permille(self) -> i64
+crates/offering/src/metrics.rs [pub] impl RealizedOutcome :: const ALL: [Self; 2]
+crates/offering/src/metrics.rs [pub] impl TermEvaluation :: #[must_use] const fn term(&self) -> TermKey
+crates/offering/src/metrics.rs [pub] impl TermEvaluation :: #[must_use] fn entries(&self) -> &[EvaluationEntry]
+crates/offering/src/metrics.rs [pub] impl TermEvaluation :: #[must_use] fn measure(&self) -> TermForecastMetrics
+crates/offering/src/metrics.rs [pub] impl TermEvaluation :: fn new(term: TermKey, entries: Vec<EvaluationEntry>) -> Result<Self, OfferingError>
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] const fn abstained(&self) -> usize
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] const fn brier_denominator(&self) -> Option<usize>
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] const fn brier_numerator(&self) -> Option<u64>
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] const fn resolved(&self) -> usize
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] const fn scored(&self) -> usize
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] const fn term(&self) -> TermKey
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] const fn total(&self) -> usize
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] fn abstention_permille(&self) -> u32
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] fn brier_per_million_floor(&self) -> Option<u64>
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] fn coverage_permille(&self) -> u32
+crates/offering/src/metrics.rs [pub] impl TermForecastMetrics :: #[must_use] fn missing_outcomes(&self) -> &[CourseCode]
+crates/offering/src/observation.rs [priv] impl CourseHistory
+crates/offering/src/observation.rs [priv] impl CourseLifecycle
+crates/offering/src/observation.rs [priv] impl NoticeEffect
+crates/offering/src/observation.rs [priv] impl Offered
+crates/offering/src/observation.rs [priv] impl RecentNotice
+crates/offering/src/observation.rs [priv] impl TermObservation
+crates/offering/src/observation.rs [priv] use academic_curriculum::{CourseCode, InstructorName}
+crates/offering/src/observation.rs [priv] use academic_domain::TimestampMillis
+crates/offering/src/observation.rs [priv] use academic_record::term::TermKey
+crates/offering/src/observation.rs [priv] use crate::error::OfferingError
+crates/offering/src/observation.rs [priv] use std::collections::BTreeMap
+crates/offering/src/observation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RecentNotice
+crates/offering/src/observation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum NoticeEffect
+crates/offering/src/observation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Offered
+crates/offering/src/observation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum CourseLifecycle
+crates/offering/src/observation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CourseHistory
+crates/offering/src/observation.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TermObservation
+crates/offering/src/observation.rs [pub] impl CourseHistory :: #[must_use] const fn course(&self) -> &CourseCode
+crates/offering/src/observation.rs [pub] impl CourseHistory :: #[must_use] const fn lifecycle(&self) -> &CourseLifecycle
+crates/offering/src/observation.rs [pub] impl CourseHistory :: #[must_use] fn new(course: CourseCode) -> Self
+crates/offering/src/observation.rs [pub] impl CourseHistory :: #[must_use] fn notices(&self) -> &[RecentNotice]
+crates/offering/src/observation.rs [pub] impl CourseHistory :: #[must_use] fn observation(&self, term: TermKey) -> Option<&TermObservation>
+crates/offering/src/observation.rs [pub] impl CourseHistory :: fn notice(&mut self, notice: RecentNotice)
+crates/offering/src/observation.rs [pub] impl CourseHistory :: fn observations(&self) -> impl Iterator<Item = &TermObservation>
+crates/offering/src/observation.rs [pub] impl CourseHistory :: fn observe(&mut self, observation: TermObservation) -> Result<(), OfferingError>
+crates/offering/src/observation.rs [pub] impl CourseHistory :: fn set_lifecycle(&mut self, lifecycle: CourseLifecycle)
+crates/offering/src/observation.rs [pub] impl CourseLifecycle :: #[must_use] const fn as_str(&self) -> &'static str
+crates/offering/src/observation.rs [pub] impl CourseLifecycle :: #[must_use] const fn effective_from(&self) -> Option<TermKey>
+crates/offering/src/observation.rs [pub] impl NoticeEffect :: #[must_use] const fn as_str(self) -> &'static str
+crates/offering/src/observation.rs [pub] impl NoticeEffect :: const ALL: [Self; 3]
+crates/offering/src/observation.rs [pub] impl Offered :: #[must_use] const fn as_str(self) -> &'static str
+crates/offering/src/observation.rs [pub] impl Offered :: const ALL: [Self; 2]
+crates/offering/src/observation.rs [pub] impl RecentNotice :: #[must_use] const fn effect(&self) -> NoticeEffect
+crates/offering/src/observation.rs [pub] impl RecentNotice :: #[must_use] const fn issued_in(&self) -> TermKey
+crates/offering/src/observation.rs [pub] impl RecentNotice :: #[must_use] const fn new(issued_in: TermKey, effect: NoticeEffect) -> Self
+crates/offering/src/observation.rs [pub] impl TermObservation :: #[must_use] const fn is_irregular(&self) -> bool
+crates/offering/src/observation.rs [pub] impl TermObservation :: #[must_use] const fn not_offered(term: TermKey, read_at: TimestampMillis) -> Self
+crates/offering/src/observation.rs [pub] impl TermObservation :: #[must_use] const fn outcome(&self) -> Offered
+crates/offering/src/observation.rs [pub] impl TermObservation :: #[must_use] const fn read_at(&self) -> TimestampMillis
+crates/offering/src/observation.rs [pub] impl TermObservation :: #[must_use] const fn term(&self) -> TermKey
+crates/offering/src/observation.rs [pub] impl TermObservation :: #[must_use] fn instructors(&self) -> &[InstructorName]
+crates/offering/src/observation.rs [pub] impl TermObservation :: #[must_use] fn offered( term: TermKey, read_at: TimestampMillis, instructors: Vec<InstructorName>, irregular: bool, ) -> Self
+crates/offering/src/plan.rs [priv] impl DeterminatePlan
+crates/offering/src/plan.rs [priv] impl IndeterminatePlan
+crates/offering/src/plan.rs [priv] impl PlanRefusal
+crates/offering/src/plan.rs [priv] use academic_record::{plan::PlanScenario, term::TermKey}
+crates/offering/src/plan.rs [priv] use crate::standing::ConfirmedSeat
+crates/offering/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum PlanOutcome
+crates/offering/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum PlanRefusal
+crates/offering/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeterminatePlan
+crates/offering/src/plan.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct IndeterminatePlan
+crates/offering/src/plan.rs [pub] impl DeterminatePlan :: #[must_use] fn commit(scenario: &PlanScenario, seats: Vec<ConfirmedSeat>) -> PlanOutcome
+crates/offering/src/plan.rs [pub] impl DeterminatePlan :: #[must_use] fn is_empty(&self) -> bool
+crates/offering/src/plan.rs [pub] impl DeterminatePlan :: #[must_use] fn len(&self) -> usize
+crates/offering/src/plan.rs [pub] impl DeterminatePlan :: #[must_use] fn seats(&self) -> &[ConfirmedSeat]
+crates/offering/src/plan.rs [pub] impl IndeterminatePlan :: #[must_use] fn alternative_paths_required(&self) -> Vec<&str>
+crates/offering/src/plan.rs [pub] impl IndeterminatePlan :: #[must_use] fn new(first: PlanRefusal, rest: Vec<PlanRefusal>) -> Self
+crates/offering/src/plan.rs [pub] impl IndeterminatePlan :: #[must_use] fn refusals(&self) -> &[PlanRefusal]
+crates/offering/src/plan.rs [pub] impl PlanRefusal :: #[must_use] const fn action(&self) -> &'static str
+crates/offering/src/plan.rs [pub] impl PlanRefusal :: #[must_use] const fn as_str(&self) -> &'static str
+crates/offering/src/plan.rs [pub] impl PlanRefusal :: #[must_use] const fn requires_alternative_path(&self) -> bool
+crates/offering/src/plan.rs [pub] impl PlanRefusal :: #[must_use] fn course(&self) -> &str
+crates/offering/src/policy.rs [priv] impl ForecastPolicy
+crates/offering/src/policy.rs [priv] impl VerificationRecency
+crates/offering/src/policy.rs [priv] use crate::error::OfferingError
+crates/offering/src/policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ForecastPolicy
+crates/offering/src/policy.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct VerificationRecency
+crates/offering/src/policy.rs [pub] impl ForecastPolicy :: #[must_use] const fn likely_floor_permille(self) -> u16
+crates/offering/src/policy.rs [pub] impl ForecastPolicy :: #[must_use] const fn minimum_window_terms(self) -> u32
+crates/offering/src/policy.rs [pub] impl ForecastPolicy :: fn new( likely_floor_permille: u16, minimum_window_terms: u32, ) -> Result<Self, OfferingError>
+crates/offering/src/policy.rs [pub] impl VerificationRecency :: #[must_use] const fn within_millis(self) -> u64
+crates/offering/src/policy.rs [pub] impl VerificationRecency :: fn new(within_millis: u64) -> Result<Self, OfferingError>
+crates/offering/src/source.rs [priv] impl CancellationNotice
+crates/offering/src/source.rs [priv] impl ConfirmationEvidence
+crates/offering/src/source.rs [priv] impl CrossSourceDisagreement
+crates/offering/src/source.rs [priv] impl OfferingAnnouncement
+crates/offering/src/source.rs [priv] impl OfficialListing
+crates/offering/src/source.rs [priv] use academic_curriculum::{Capacity, CourseCode, InstructorName, Meeting}
+crates/offering/src/source.rs [priv] use academic_domain::TimestampMillis
+crates/offering/src/source.rs [priv] use academic_ingestion::{ConnectorId, SourceCategory}
+crates/offering/src/source.rs [priv] use academic_record::term::TermKey
+crates/offering/src/source.rs [priv] use crate::{error::OfferingError, policy::VerificationRecency}
+crates/offering/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum OfficialTermReading
+crates/offering/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CancellationNotice
+crates/offering/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConfirmationEvidence
+crates/offering/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CrossSourceDisagreement
+crates/offering/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OfferingAnnouncement
+crates/offering/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OfficialListing
+crates/offering/src/source.rs [pub] impl CancellationNotice :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/offering/src/source.rs [pub] impl CancellationNotice :: #[must_use] const fn course(&self) -> &CourseCode
+crates/offering/src/source.rs [pub] impl CancellationNotice :: #[must_use] const fn issued_at(&self) -> TimestampMillis
+crates/offering/src/source.rs [pub] impl CancellationNotice :: #[must_use] const fn source(&self) -> SourceCategory
+crates/offering/src/source.rs [pub] impl CancellationNotice :: #[must_use] const fn term(&self) -> TermKey
+crates/offering/src/source.rs [pub] impl CancellationNotice :: fn official( source: SourceCategory, connector: ConnectorId, issued_at: TimestampMillis, term: TermKey, course: CourseCode, ) -> Result<Self, OfferingError>
+crates/offering/src/source.rs [pub] impl ConfirmationEvidence :: #[must_use] const fn basis(&self) -> &OfficialListing
+crates/offering/src/source.rs [pub] impl ConfirmationEvidence :: #[must_use] const fn recency(&self) -> VerificationRecency
+crates/offering/src/source.rs [pub] impl ConfirmationEvidence :: #[must_use] const fn verified_at(&self) -> TimestampMillis
+crates/offering/src/source.rs [pub] impl ConfirmationEvidence :: #[must_use] fn cross_sources(&self) -> &[OfficialListing]
+crates/offering/src/source.rs [pub] impl ConfirmationEvidence :: #[must_use] fn disagreements(&self) -> &[CrossSourceDisagreement]
+crates/offering/src/source.rs [pub] impl ConfirmationEvidence :: fn from_registration_system( basis: OfficialListing, cross_sources: Vec<OfficialListing>, recency: VerificationRecency, verified_at: TimestampMillis, ) -> Result<Self, OfferingError>
+crates/offering/src/source.rs [pub] impl CrossSourceDisagreement :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/offering/src/source.rs [pub] impl CrossSourceDisagreement :: #[must_use] const fn retrieved_at(&self) -> TimestampMillis
+crates/offering/src/source.rs [pub] impl CrossSourceDisagreement :: #[must_use] const fn said_a_section_exists(&self) -> bool
+crates/offering/src/source.rs [pub] impl CrossSourceDisagreement :: #[must_use] const fn source(&self) -> SourceCategory
+crates/offering/src/source.rs [pub] impl OfferingAnnouncement :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/offering/src/source.rs [pub] impl OfferingAnnouncement :: #[must_use] const fn course(&self) -> &CourseCode
+crates/offering/src/source.rs [pub] impl OfferingAnnouncement :: #[must_use] const fn issued_at(&self) -> TimestampMillis
+crates/offering/src/source.rs [pub] impl OfferingAnnouncement :: #[must_use] const fn source(&self) -> SourceCategory
+crates/offering/src/source.rs [pub] impl OfferingAnnouncement :: #[must_use] const fn term(&self) -> TermKey
+crates/offering/src/source.rs [pub] impl OfferingAnnouncement :: fn official( source: SourceCategory, connector: ConnectorId, issued_at: TimestampMillis, term: TermKey, course: CourseCode, ) -> Result<Self, OfferingError>
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] const fn announced_capacity(&self) -> Option<Capacity>
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] const fn capacity(mut self, capacity: Capacity) -> Self
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] const fn connector(&self) -> &ConnectorId
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] const fn course(&self) -> &CourseCode
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] const fn lists_a_section(&self) -> bool
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] const fn retrieved_at(&self) -> TimestampMillis
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] const fn source(&self) -> SourceCategory
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] const fn term(&self) -> TermKey
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] fn instructor(mut self, name: InstructorName) -> Self
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] fn instructors(&self) -> &[InstructorName]
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] fn meeting(mut self, meeting: Meeting) -> Self
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] fn meetings(&self) -> &[Meeting]
+crates/offering/src/source.rs [pub] impl OfficialListing :: #[must_use] fn new( source: SourceCategory, connector: ConnectorId, retrieved_at: TimestampMillis, term: TermKey, course: CourseCode, lists_a_section: bool, ) -> Self
+crates/offering/src/standing.rs [priv] impl AnnouncedStanding
+crates/offering/src/standing.rs [priv] impl CancelledStanding
+crates/offering/src/standing.rs [priv] impl ConfirmedSeat
+crates/offering/src/standing.rs [priv] impl ConfirmedStanding
+crates/offering/src/standing.rs [priv] impl HistoricallyLikelyStanding
+crates/offering/src/standing.rs [priv] impl OfferingStanding
+crates/offering/src/standing.rs [priv] impl Resolution
+crates/offering/src/standing.rs [priv] impl UncertainStanding
+crates/offering/src/standing.rs [priv] use academic_curriculum::{Capacity, CourseCode, Meeting, OfferingStatus}
+crates/offering/src/standing.rs [priv] use academic_domain::TimestampMillis
+crates/offering/src/standing.rs [priv] use academic_model_run::{CalibratedConfidence, CalibrationRegistry, DisplayedConfidence}
+crates/offering/src/standing.rs [priv] use academic_record::term::TermKey
+crates/offering/src/standing.rs [priv] use crate::{ error::OfferingError, feature::ObservationWindow, forecast::{AbstentionReason, Forecast, ForecastVerdict, ScoredForecast, forecast}, observation::CourseHistory, policy::ForecastPolicy, source::{CancellationNotice, ConfirmationEvidence, OfferingAnnouncement, OfficialTermReading}, }
+crates/offering/src/standing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum OfferingStanding
+crates/offering/src/standing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct AnnouncedStanding
+crates/offering/src/standing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CancelledStanding
+crates/offering/src/standing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConfirmedSeat
+crates/offering/src/standing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConfirmedStanding
+crates/offering/src/standing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct HistoricallyLikelyStanding
+crates/offering/src/standing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Resolution
+crates/offering/src/standing.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UncertainStanding
+crates/offering/src/standing.rs [pub] fn resolve( history: &CourseHistory, window: ObservationWindow, official: Option<&OfficialTermReading>, policy: Option<ForecastPolicy>, registry: &CalibrationRegistry, now: TimestampMillis, ) -> Result<Resolution, OfferingError>
+crates/offering/src/standing.rs [pub] impl AnnouncedStanding :: #[must_use] const fn announcement(&self) -> &OfferingAnnouncement
+crates/offering/src/standing.rs [pub] impl CancelledStanding :: #[must_use] const fn notice(&self) -> &CancellationNotice
+crates/offering/src/standing.rs [pub] impl CancelledStanding :: const PLANNER_TREATMENT: &'static str
+crates/offering/src/standing.rs [pub] impl CancelledStanding :: const UI_COPY: &'static str
+crates/offering/src/standing.rs [pub] impl ConfirmedSeat :: #[must_use] const fn capacity(&self) -> Option<Capacity>
+crates/offering/src/standing.rs [pub] impl ConfirmedSeat :: #[must_use] const fn course(&self) -> &CourseCode
+crates/offering/src/standing.rs [pub] impl ConfirmedSeat :: #[must_use] const fn term(&self) -> TermKey
+crates/offering/src/standing.rs [pub] impl ConfirmedSeat :: #[must_use] const fn verified_at(&self) -> TimestampMillis
+crates/offering/src/standing.rs [pub] impl ConfirmedSeat :: #[must_use] fn meetings(&self) -> &[Meeting]
+crates/offering/src/standing.rs [pub] impl ConfirmedStanding :: #[must_use] const fn evidence(&self) -> &ConfirmationEvidence
+crates/offering/src/standing.rs [pub] impl ConfirmedStanding :: #[must_use] const fn verified_at(&self) -> TimestampMillis
+crates/offering/src/standing.rs [pub] impl ConfirmedStanding :: #[must_use] fn seat(&self) -> ConfirmedSeat
+crates/offering/src/standing.rs [pub] impl ConfirmedStanding :: const PLANNER_TREATMENT: &'static str
+crates/offering/src/standing.rs [pub] impl ConfirmedStanding :: const UI_COPY: &'static str
+crates/offering/src/standing.rs [pub] impl HistoricallyLikelyStanding :: #[must_use] const fn calibrated(&self) -> &CalibratedConfidence
+crates/offering/src/standing.rs [pub] impl HistoricallyLikelyStanding :: #[must_use] const fn scored(&self) -> &ScoredForecast
+crates/offering/src/standing.rs [pub] impl HistoricallyLikelyStanding :: #[must_use] fn displayed(&self) -> DisplayedConfidence
+crates/offering/src/standing.rs [pub] impl HistoricallyLikelyStanding :: const PLANNER_TREATMENT: &'static str
+crates/offering/src/standing.rs [pub] impl HistoricallyLikelyStanding :: const UI_COPY: &'static str
+crates/offering/src/standing.rs [pub] impl OfferingStanding :: #[must_use] const fn planner_treatment(&self) -> &'static str
+crates/offering/src/standing.rs [pub] impl OfferingStanding :: #[must_use] const fn status(&self) -> OfferingStatus
+crates/offering/src/standing.rs [pub] impl OfferingStanding :: #[must_use] const fn ui_copy(&self) -> &'static str
+crates/offering/src/standing.rs [pub] impl OfferingStanding :: #[must_use] fn seat(&self) -> Option<ConfirmedSeat>
+crates/offering/src/standing.rs [pub] impl Resolution :: #[must_use] const fn forecast(&self) -> Option<&Forecast>
+crates/offering/src/standing.rs [pub] impl Resolution :: #[must_use] const fn standing(&self) -> &OfferingStanding
+crates/offering/src/standing.rs [pub] impl UncertainStanding :: #[must_use] const fn announced(&self) -> Option<&AnnouncedStanding>
+crates/offering/src/standing.rs [pub] impl UncertainStanding :: #[must_use] const fn reason(&self) -> AbstentionReason
+crates/offering/src/standing.rs [pub] impl UncertainStanding :: #[must_use] const fn scored(&self) -> Option<&ScoredForecast>
+crates/offering/src/standing.rs [pub] impl UncertainStanding :: const PLANNER_TREATMENT: &'static str
+crates/offering/src/standing.rs [pub] impl UncertainStanding :: const UI_COPY: &'static str

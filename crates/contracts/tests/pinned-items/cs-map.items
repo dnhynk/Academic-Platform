@@ -1,0 +1,266 @@
+crates/cs-map/src/anchor.rs [priv] impl YouAnchor
+crates/cs-map/src/anchor.rs [priv] use academic_domain::EntityId
+crates/cs-map/src/anchor.rs [priv] use crate::{ CsMapError, atlas::{Atlas, Coordinate}, }
+crates/cs-map/src/anchor.rs [priv] use serde::Serialize
+crates/cs-map/src/anchor.rs [priv] use std::collections::BTreeSet
+crates/cs-map/src/anchor.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct YouAnchor
+crates/cs-map/src/anchor.rs [pub] const YOU_REFERENCE_LABEL: &str
+crates/cs-map/src/anchor.rs [pub] impl YouAnchor :: #[must_use] const fn at(&self) -> Coordinate
+crates/cs-map/src/anchor.rs [pub] impl YouAnchor :: #[must_use] const fn label(&self) -> &'static str
+crates/cs-map/src/anchor.rs [pub] impl YouAnchor :: #[must_use] const fn references(&self) -> &BTreeSet<EntityId>
+crates/cs-map/src/anchor.rs [pub] impl YouAnchor :: fn over(references: BTreeSet<EntityId>, atlas: &Atlas) -> Result<Self, CsMapError>
+crates/cs-map/src/atlas.rs [priv] const MEMBER_SPAN: i64
+crates/cs-map/src/atlas.rs [priv] fn reachable(graph: &MapGraph, from: EntityId, horizon: u8) -> BTreeSet<EntityId>
+crates/cs-map/src/atlas.rs [priv] fn serialize_node_types<S>(value: &BTreeSet<NodeType>, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer,
+crates/cs-map/src/atlas.rs [priv] fn spread(id: EntityId) -> u64
+crates/cs-map/src/atlas.rs [priv] impl Atlas
+crates/cs-map/src/atlas.rs [priv] impl Coordinate
+crates/cs-map/src/atlas.rs [priv] impl InitialView
+crates/cs-map/src/atlas.rs [priv] impl LandmarkDrift
+crates/cs-map/src/atlas.rs [priv] impl SemanticZoom
+crates/cs-map/src/atlas.rs [priv] use academic_domain::{EntityId, predicates::NodeType}
+crates/cs-map/src/atlas.rs [priv] use crate::{ CsMapError, graph::{ClusterId, MapGraph}, }
+crates/cs-map/src/atlas.rs [priv] use serde::Serialize
+crates/cs-map/src/atlas.rs [priv] use std::collections::{BTreeMap, BTreeSet, VecDeque}
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SemanticZoom
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct Coordinate
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct Landmark
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct Placement
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Atlas
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LandmarkDrift
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct InitialView
+crates/cs-map/src/atlas.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct LevelView
+crates/cs-map/src/atlas.rs [pub] #[must_use] fn growth_band(node_count: usize) -> usize
+crates/cs-map/src/atlas.rs [pub] const GRID: i64
+crates/cs-map/src/atlas.rs [pub] const GROWTH_BAND_SIZE: usize
+crates/cs-map/src/atlas.rs [pub] const LAYOUT_TOLERANCE_MILLI: i64
+crates/cs-map/src/atlas.rs [pub] const MAX_GROWTH_BAND: usize
+crates/cs-map/src/atlas.rs [pub] const MAX_INITIAL_CLUSTERS: usize
+crates/cs-map/src/atlas.rs [pub] const MIN_INITIAL_CLUSTERS: usize
+crates/cs-map/src/atlas.rs [pub] const PITCH_BASE: i64
+crates/cs-map/src/atlas.rs [pub] const PITCH_STEP: i64
+crates/cs-map/src/atlas.rs [pub] const SEMANTIC_ZOOMS: [SemanticZoom; 4]
+crates/cs-map/src/atlas.rs [pub] fn lay_out(graph: &MapGraph) -> Result<Atlas, CsMapError>
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: #[must_use] const fn growth_band(&self) -> usize
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: #[must_use] const fn work_units(&self) -> usize
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: #[must_use] fn anchor(&self, cluster: ClusterId) -> Option<Coordinate>
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: #[must_use] fn landmark_drift(&self, other: &Self) -> LandmarkDrift
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: #[must_use] fn landmarks(&self) -> &[Landmark]
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: #[must_use] fn placement(&self, node: EntityId) -> Option<Coordinate>
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: fn initial_view( &self, graph: &MapGraph, goal: EntityId, ) -> Result<InitialView, CsMapError>
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: fn level( &self, graph: &MapGraph, zoom: SemanticZoom, goal: EntityId, ) -> Result<LevelView, CsMapError>
+crates/cs-map/src/atlas.rs [pub] impl Atlas :: fn placements(&self) -> impl Iterator<Item = Placement> + '_
+crates/cs-map/src/atlas.rs [pub] impl Coordinate :: #[must_use] const fn displacement(self, other: Self) -> i64
+crates/cs-map/src/atlas.rs [pub] impl InitialView :: #[must_use] fn materialised(&self) -> BTreeSet<EntityId>
+crates/cs-map/src/atlas.rs [pub] impl LandmarkDrift :: #[must_use] const fn furthest(&self) -> i64
+crates/cs-map/src/atlas.rs [pub] impl LandmarkDrift :: #[must_use] const fn vanished(&self) -> &BTreeSet<ClusterId>
+crates/cs-map/src/atlas.rs [pub] impl LandmarkDrift :: fn within_tolerance(&self) -> Result<(), CsMapError>
+crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] const fn as_str(self) -> &'static str
+crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] const fn horizon(self) -> Option<u8>
+crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] const fn spec_label(self) -> &'static str
+crates/cs-map/src/atlas.rs [pub] impl SemanticZoom :: #[must_use] fn shown_types(self) -> BTreeSet<NodeType>
+crates/cs-map/src/budget.rs [priv] impl BudgetMeasure
+crates/cs-map/src/budget.rs [priv] impl BudgetReading
+crates/cs-map/src/budget.rs [priv] use crate::CsMapError
+crates/cs-map/src/budget.rs [priv] use serde::Serialize
+crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BudgetMeasure
+crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct BudgetReading
+crates/cs-map/src/budget.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct RenderBudget
+crates/cs-map/src/budget.rs [pub] const ATLAS_BUDGET: RenderBudget
+crates/cs-map/src/budget.rs [pub] const BUDGET_MEASURES: [BudgetMeasure; 5]
+crates/cs-map/src/budget.rs [pub] impl BudgetMeasure :: #[must_use] const fn as_str(self) -> &'static str
+crates/cs-map/src/budget.rs [pub] impl BudgetReading :: fn within(&self, budget: &RenderBudget) -> Result<(), CsMapError>
+crates/cs-map/src/encoding.rs [priv] fn serialize_predicate<S: Serializer>( value: &PredicateName, serializer: S, ) -> Result<S::Ok, S::Error>
+crates/cs-map/src/encoding.rs [priv] impl AsOfBadge
+crates/cs-map/src/encoding.rs [priv] impl BorderPattern
+crates/cs-map/src/encoding.rs [priv] impl ChannelFrame
+crates/cs-map/src/encoding.rs [priv] impl ChannelValue
+crates/cs-map/src/encoding.rs [priv] impl EdgeStroke
+crates/cs-map/src/encoding.rs [priv] impl FreshnessRing
+crates/cs-map/src/encoding.rs [priv] impl GlyphMark
+crates/cs-map/src/encoding.rs [priv] impl MasteryFill
+crates/cs-map/src/encoding.rs [priv] impl VisualChannel
+crates/cs-map/src/encoding.rs [priv] use academic_domain::{ ConfidencePermille, EntityId, EpistemicStatus, FreshnessBand, MasteryLevel, predicates::PredicateName, temporal::TimeCoordinates, }
+crates/cs-map/src/encoding.rs [priv] use crate::CsMapError
+crates/cs-map/src/encoding.rs [priv] use serde::{Serialize, Serializer}
+crates/cs-map/src/encoding.rs [priv] use std::collections::BTreeSet
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BorderPattern
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ChannelSubject
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum DashPattern
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum GlyphMark
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum HaloState
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum LensRelevance
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum VisualChannel
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct FreshnessRing(FreshnessBand)
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct MasteryFill(MasteryLevel)
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct EdgeStroke
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct AsOfBadge
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct EncodedEdge
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct NodeReading
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde( tag = "channel", content = "value", rename_all = "SCREAMING_SNAKE_CASE" )] enum ChannelValue
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ChannelFrame
+crates/cs-map/src/encoding.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct EncodedNode
+crates/cs-map/src/encoding.rs [pub] #[must_use] const fn encode_edge( from: EntityId, to: EntityId, predicate: PredicateName, status: EpistemicStatus, ) -> EncodedEdge
+crates/cs-map/src/encoding.rs [pub] #[must_use] fn encode_node( reading: &NodeReading, relevance: LensRelevance, as_of: AsOfBadge, ) -> EncodedNode
+crates/cs-map/src/encoding.rs [pub] const CONFIDENT_AT_OR_ABOVE_PERMILLE: u16
+crates/cs-map/src/encoding.rs [pub] const GLYPH_MARKS: [GlyphMark; 5]
+crates/cs-map/src/encoding.rs [pub] const LENS_RELEVANCES: [LensRelevance; 4]
+crates/cs-map/src/encoding.rs [pub] const VISUAL_CHANNELS: [VisualChannel; 8]
+crates/cs-map/src/encoding.rs [pub] impl AsOfBadge :: #[must_use] const fn at(coordinates: TimeCoordinates) -> Self
+crates/cs-map/src/encoding.rs [pub] impl BorderPattern :: #[must_use] fn of(status: EpistemicStatus, confidence: Option<ConfidencePermille>) -> Self
+crates/cs-map/src/encoding.rs [pub] impl ChannelFrame :: #[must_use] fn channel_values(&self) -> [ChannelValue; VISUAL_CHANNELS.len()]
+crates/cs-map/src/encoding.rs [pub] impl ChannelFrame :: fn draw( reading: &NodeReading, relevance: LensRelevance, as_of: AsOfBadge, edge: EncodedEdge, ) -> Result<Self, CsMapError>
+crates/cs-map/src/encoding.rs [pub] impl ChannelValue :: #[must_use] const fn channel(&self) -> VisualChannel
+crates/cs-map/src/encoding.rs [pub] impl EdgeStroke :: #[must_use] const fn of(predicate: PredicateName, status: EpistemicStatus) -> Self
+crates/cs-map/src/encoding.rs [pub] impl FreshnessRing :: #[must_use] const fn band(self) -> FreshnessBand
+crates/cs-map/src/encoding.rs [pub] impl FreshnessRing :: #[must_use] const fn of(band: FreshnessBand) -> Self
+crates/cs-map/src/encoding.rs [pub] impl GlyphMark :: #[must_use] const fn label(self) -> &'static str
+crates/cs-map/src/encoding.rs [pub] impl GlyphMark :: #[must_use] const fn symbol(self) -> &'static str
+crates/cs-map/src/encoding.rs [pub] impl MasteryFill :: #[must_use] const fn level(self) -> MasteryLevel
+crates/cs-map/src/encoding.rs [pub] impl MasteryFill :: #[must_use] const fn of(level: MasteryLevel) -> Self
+crates/cs-map/src/encoding.rs [pub] impl VisualChannel :: #[must_use] const fn key(self) -> &'static str
+crates/cs-map/src/encoding.rs [pub] impl VisualChannel :: #[must_use] const fn spec_bullet_head(self) -> &'static str
+crates/cs-map/src/encoding.rs [pub] impl VisualChannel :: #[must_use] const fn subject(self) -> ChannelSubject
+crates/cs-map/src/focus.rs [priv] enum Admitted
+crates/cs-map/src/focus.rs [priv] fn induced(graph: &MapGraph, nodes: &BTreeSet<EntityId>, admitted: &Admitted) -> BTreeSet<MapEdge>
+crates/cs-map/src/focus.rs [priv] fn require_node(graph: &MapGraph, node: EntityId) -> Result<(), CsMapError>
+crates/cs-map/src/focus.rs [priv] impl FocusKind
+crates/cs-map/src/focus.rs [priv] impl FocusMode
+crates/cs-map/src/focus.rs [priv] impl HopCount
+crates/cs-map/src/focus.rs [priv] use academic_domain::{ConfidencePermille, EntityId, EpistemicStatus, predicates::PredicateName}
+crates/cs-map/src/focus.rs [priv] use crate::{ CsMapError, encoding::NodeReading, graph::{MapEdge, MapGraph}, }
+crates/cs-map/src/focus.rs [priv] use serde::Serialize
+crates/cs-map/src/focus.rs [priv] use std::collections::{BTreeMap, BTreeSet, VecDeque}
+crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CoverageSide
+crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum FocusKind
+crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct HopCount(u8)
+crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum FocusMode
+crates/cs-map/src/focus.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Subgraph
+crates/cs-map/src/focus.rs [pub] const FOCUS_KINDS: [FocusKind; 5]
+crates/cs-map/src/focus.rs [pub] const MAX_HOPS: u8
+crates/cs-map/src/focus.rs [pub] const MIN_HOPS: u8
+crates/cs-map/src/focus.rs [pub] fn focus( graph: &MapGraph, readings: &BTreeMap<EntityId, NodeReading>, mode: &FocusMode, ) -> Result<Subgraph, CsMapError>
+crates/cs-map/src/focus.rs [pub] impl FocusKind :: #[must_use] const fn spec_bullet_head(self) -> &'static str
+crates/cs-map/src/focus.rs [pub] impl FocusMode :: #[must_use] const fn kind(&self) -> FocusKind
+crates/cs-map/src/focus.rs [pub] impl HopCount :: #[must_use] const fn value(self) -> u8
+crates/cs-map/src/focus.rs [pub] impl HopCount :: fn new(hops: u8) -> Result<Self, CsMapError>
+crates/cs-map/src/graph.rs [priv] fn serialize_predicate<S>(value: &PredicateName, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer,
+crates/cs-map/src/graph.rs [priv] impl ClusterId
+crates/cs-map/src/graph.rs [priv] impl MapGraph
+crates/cs-map/src/graph.rs [priv] impl MapNode
+crates/cs-map/src/graph.rs [priv] impl fmt::Display for ClusterId
+crates/cs-map/src/graph.rs [priv] impl fmt::Display for ClusterId :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result
+crates/cs-map/src/graph.rs [priv] use academic_domain::{ EntityId, predicates::{NodeType, PredicateName}, }
+crates/cs-map/src/graph.rs [priv] use crate::CsMapError
+crates/cs-map/src/graph.rs [priv] use serde::Serialize
+crates/cs-map/src/graph.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, fmt, }
+crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(transparent)] struct ClusterId(EntityId)
+crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] struct MapEdge
+crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MapGraph
+crates/cs-map/src/graph.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MapNode
+crates/cs-map/src/graph.rs [pub] impl ClusterId :: #[must_use] const fn entity(self) -> EntityId
+crates/cs-map/src/graph.rs [pub] impl ClusterId :: #[must_use] const fn of_field(field: EntityId) -> Self
+crates/cs-map/src/graph.rs [pub] impl MapGraph :: #[must_use] const fn edges(&self) -> &BTreeSet<MapEdge>
+crates/cs-map/src/graph.rs [pub] impl MapGraph :: #[must_use] fn clusters(&self) -> &[ClusterId]
+crates/cs-map/src/graph.rs [pub] impl MapGraph :: #[must_use] fn members(&self, cluster: ClusterId) -> BTreeSet<EntityId>
+crates/cs-map/src/graph.rs [pub] impl MapGraph :: #[must_use] fn node(&self, id: EntityId) -> Option<&MapNode>
+crates/cs-map/src/graph.rs [pub] impl MapGraph :: #[must_use] fn node_count(&self) -> usize
+crates/cs-map/src/graph.rs [pub] impl MapGraph :: fn declare(nodes: Vec<MapNode>, edges: Vec<MapEdge>) -> Result<Self, CsMapError>
+crates/cs-map/src/graph.rs [pub] impl MapGraph :: fn nodes(&self) -> impl Iterator<Item = &MapNode>
+crates/cs-map/src/graph.rs [pub] impl MapNode :: #[must_use] const fn cluster(&self) -> ClusterId
+crates/cs-map/src/graph.rs [pub] impl MapNode :: #[must_use] const fn id(&self) -> EntityId
+crates/cs-map/src/graph.rs [pub] impl MapNode :: #[must_use] const fn node_type(&self) -> NodeType
+crates/cs-map/src/graph.rs [pub] impl MapNode :: #[must_use] fn label(&self) -> &str
+crates/cs-map/src/graph.rs [pub] impl MapNode :: fn declare( id: EntityId, node_type: NodeType, label: impl Into<String>, cluster: ClusterId, ) -> Result<Self, CsMapError>
+crates/cs-map/src/lens.rs [priv] impl Legend
+crates/cs-map/src/lens.rs [priv] impl LensComposition
+crates/cs-map/src/lens.rs [priv] impl MapLens
+crates/cs-map/src/lens.rs [priv] use academic_domain::{EntityId, predicates::NodeType}
+crates/cs-map/src/lens.rs [priv] use crate::{ CsMapError, encoding::{LensRelevance, VISUAL_CHANNELS, VisualChannel}, }
+crates/cs-map/src/lens.rs [priv] use serde::Serialize
+crates/cs-map/src/lens.rs [priv] use std::collections::{BTreeMap, BTreeSet}
+crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MapLens
+crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LensComposition
+crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LensSubject
+crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct LayerCollision
+crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct Legend
+crates/cs-map/src/lens.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct LegendEntry
+crates/cs-map/src/lens.rs [pub] #[must_use] fn relevance_of(lens: MapLens, subject: &LensSubject) -> LensRelevance
+crates/cs-map/src/lens.rs [pub] const MAP_LENSES: [MapLens; 10]
+crates/cs-map/src/lens.rs [pub] const MAX_OVERLAYS: usize
+crates/cs-map/src/lens.rs [pub] impl Legend :: #[must_use] const fn is_pinned(&self) -> bool
+crates/cs-map/src/lens.rs [pub] impl Legend :: #[must_use] fn channels(&self) -> Vec<VisualChannel>
+crates/cs-map/src/lens.rs [pub] impl Legend :: #[must_use] fn entries(&self) -> &[LegendEntry]
+crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] const fn base(base: MapLens) -> Self
+crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] const fn base_lens(&self) -> MapLens
+crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] fn collision(&self) -> Option<LayerCollision>
+crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] fn composed(&self) -> Vec<MapLens>
+crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] fn legend(&self) -> Legend
+crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] fn overlays(&self) -> &[MapLens]
+crates/cs-map/src/lens.rs [pub] impl LensComposition :: #[must_use] fn relevance(&self, subject: &LensSubject) -> LensRelevance
+crates/cs-map/src/lens.rs [pub] impl LensComposition :: fn overlay(self, lens: MapLens) -> Result<Self, CsMapError>
+crates/cs-map/src/lens.rs [pub] impl MapLens :: #[must_use] const fn as_str(self) -> &'static str
+crates/cs-map/src/lens.rs [pub] impl MapLens :: #[must_use] const fn claimed_channel(self) -> Option<VisualChannel>
+crates/cs-map/src/lens.rs [pub] impl MapLens :: #[must_use] const fn spec_name(self) -> &'static str
+crates/cs-map/src/lib.rs [priv] use academic_domain::EntityId
+crates/cs-map/src/lib.rs [priv] use thiserror::Error
+crates/cs-map/src/lib.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum CsMapError
+crates/cs-map/src/lib.rs [pub] mod anchor
+crates/cs-map/src/lib.rs [pub] mod atlas
+crates/cs-map/src/lib.rs [pub] mod budget
+crates/cs-map/src/lib.rs [pub] mod encoding
+crates/cs-map/src/lib.rs [pub] mod focus
+crates/cs-map/src/lib.rs [pub] mod graph
+crates/cs-map/src/lib.rs [pub] mod lens
+crates/cs-map/src/lib.rs [pub] mod scrubber
+crates/cs-map/src/lib.rs [pub] mod search
+crates/cs-map/src/lib.rs [pub] use anchor::{YOU_REFERENCE_LABEL, YouAnchor}
+crates/cs-map/src/lib.rs [pub] use atlas::{ Atlas, Coordinate, InitialView, LAYOUT_TOLERANCE_MILLI, Landmark, LandmarkDrift, LevelView, MAX_INITIAL_CLUSTERS, MIN_INITIAL_CLUSTERS, Placement, SEMANTIC_ZOOMS, SemanticZoom, lay_out, }
+crates/cs-map/src/lib.rs [pub] use budget::{ATLAS_BUDGET, BUDGET_MEASURES, BudgetMeasure, BudgetReading, RenderBudget}
+crates/cs-map/src/lib.rs [pub] use encoding::{ AsOfBadge, BorderPattern, ChannelFrame, ChannelSubject, ChannelValue, DashPattern, EdgeStroke, EncodedEdge, EncodedNode, FreshnessRing, GLYPH_MARKS, GlyphMark, HaloState, LENS_RELEVANCES, LensRelevance, MasteryFill, NodeReading, VISUAL_CHANNELS, VisualChannel, encode_edge, encode_node, }
+crates/cs-map/src/lib.rs [pub] use focus::{FOCUS_KINDS, FocusKind, FocusMode, HopCount, MAX_HOPS, MIN_HOPS, Subgraph, focus}
+crates/cs-map/src/lib.rs [pub] use graph::{ClusterId, MapEdge, MapGraph, MapNode}
+crates/cs-map/src/lib.rs [pub] use lens::{ LayerCollision, Legend, LegendEntry, LensComposition, LensSubject, MAP_LENSES, MAX_OVERLAYS, MapLens, relevance_of, }
+crates/cs-map/src/lib.rs [pub] use scrubber::{ Appearance, MAP_TRANSITIONS, MapDelta, MapEvent, MapProjection, MapTransition, SplitComparison, Timeline, TransitionPattern, }
+crates/cs-map/src/lib.rs [pub] use search::{REVEAL_STAGES, RevealStage, SearchReveal, reveal}
+crates/cs-map/src/scrubber.rs [priv] fn recorded(pane: &MapProjection, node: EntityId) -> Result<MapTransition, CsMapError>
+crates/cs-map/src/scrubber.rs [priv] fn serialize_coordinates<S: serde::Serializer>( value: &TimeCoordinates, serializer: S, ) -> Result<S::Ok, S::Error>
+crates/cs-map/src/scrubber.rs [priv] impl MapTransition
+crates/cs-map/src/scrubber.rs [priv] impl Timeline
+crates/cs-map/src/scrubber.rs [priv] use academic_domain::{ EntityId, temporal::{ChangeOrigin, TimeCoordinates}, }
+crates/cs-map/src/scrubber.rs [priv] use crate::CsMapError
+crates/cs-map/src/scrubber.rs [priv] use serde::Serialize
+crates/cs-map/src/scrubber.rs [priv] use std::collections::{BTreeMap, BTreeSet}
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Appearance
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MapTransition
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TransitionPattern
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct MapDelta
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)] struct MapEvent
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Timeline
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct MapProjection
+crates/cs-map/src/scrubber.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct SplitComparison
+crates/cs-map/src/scrubber.rs [pub] const MAP_TRANSITIONS: [MapTransition; 5]
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn as_str(self) -> &'static str
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn badge(self) -> &'static str
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn change_origin(self) -> Option<ChangeOrigin>
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn pattern(self) -> TransitionPattern
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn record_moved(self) -> bool
+crates/cs-map/src/scrubber.rs [pub] impl MapTransition :: #[must_use] const fn screen_reader_name(self) -> &'static str
+crates/cs-map/src/scrubber.rs [pub] impl Timeline :: #[must_use] fn events(&self) -> &[MapEvent]
+crates/cs-map/src/scrubber.rs [pub] impl Timeline :: #[must_use] fn project(&self, at: TimeCoordinates) -> MapProjection
+crates/cs-map/src/scrubber.rs [pub] impl Timeline :: fn compare( &self, left: TimeCoordinates, right: TimeCoordinates, ) -> Result<SplitComparison, CsMapError>
+crates/cs-map/src/scrubber.rs [pub] impl Timeline :: fn declare(mut events: Vec<MapEvent>) -> Result<Self, CsMapError>
+crates/cs-map/src/search.rs [priv] fn shortest_path(graph: &MapGraph, from: EntityId, to: EntityId) -> Option<Vec<EntityId>>
+crates/cs-map/src/search.rs [priv] impl SearchReveal
+crates/cs-map/src/search.rs [priv] use academic_domain::EntityId
+crates/cs-map/src/search.rs [priv] use crate::{ CsMapError, graph::{ClusterId, MapGraph}, }
+crates/cs-map/src/search.rs [priv] use serde::Serialize
+crates/cs-map/src/search.rs [priv] use std::collections::{BTreeMap, BTreeSet, VecDeque}
+crates/cs-map/src/search.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] #[serde(tag = "stage", content = "value", rename_all = "SCREAMING_SNAKE_CASE")] enum RevealStage
+crates/cs-map/src/search.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct SearchReveal
+crates/cs-map/src/search.rs [pub] const REVEAL_STAGES: usize
+crates/cs-map/src/search.rs [pub] fn reveal( graph: &MapGraph, standing_at: EntityId, query: &str, ) -> Result<SearchReveal, CsMapError>
+crates/cs-map/src/search.rs [pub] impl SearchReveal :: #[must_use] const fn cluster(&self) -> ClusterId
+crates/cs-map/src/search.rs [pub] impl SearchReveal :: #[must_use] const fn node(&self) -> EntityId
+crates/cs-map/src/search.rs [pub] impl SearchReveal :: #[must_use] fn path(&self) -> &[EntityId]
+crates/cs-map/src/search.rs [pub] impl SearchReveal :: #[must_use] fn stages(&self) -> [RevealStage; REVEAL_STAGES]
