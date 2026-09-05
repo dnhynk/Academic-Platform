@@ -670,7 +670,18 @@ pub const ITEM_KEYWORDS: [&str; 14] = [
 /// `const` and `extern` are on both lists: `const fn` and `extern "C" fn` are
 /// modifiers while `const NAME:` and `extern crate` are items, and the two are
 /// told apart by what follows.
-pub const ITEM_MODIFIERS: [&str; 6] = ["async", "auto", "const", "default", "extern", "unsafe"];
+///
+/// `safe` is here because this workspace builds on **edition 2024**
+/// (`Cargo.toml:78`), where `unsafe extern "C" { pub safe fn abs(v: i32) -> i32; }`
+/// is stable: a foreign function that needs no `unsafe` at the call site. The
+/// reader refused it before, which stopped the workspace scan on Rust the
+/// workspace compiles. It is admitted everywhere rather than only inside an
+/// `extern` block, because this reader enumerates items and does not typecheck
+/// them; a `safe fn` written outside one is `rustc`'s error to give, not this
+/// file's.
+pub const ITEM_MODIFIERS: [&str; 7] = [
+    "async", "auto", "const", "default", "extern", "safe", "unsafe",
+];
 
 /// The item kinds that hold items of their own.
 ///
@@ -773,30 +784,43 @@ impl Item {
         self.names(word) || spells(&self.owner, word)
     }
 
-    /// The names this item introduces that another item could write a type
-    /// with: a type alias, a data type, a trait, a module, a macro, and every
-    /// capitalized identifier a `use` tree binds.
+    /// The second names this item gives to a type it already names.
     ///
     /// A rule keyed on one type name is a rule about a spelling until this
     /// closes over it. `type Removed = RestrictedOriginal;` is an item that
     /// names the closed type, so it is in the set; because it is, `Removed`
-    /// becomes a name that puts the next item in the set too.
+    /// becomes a name that puts the next item in the set too, and
+    /// `every_item_that_reaches_a_closed_type_is_pinned` iterates to a fixed
+    /// point over this.
+    ///
+    /// **Only the two aliasing forms.** A `type` declaration and the `as` half
+    /// of a `use` are the ways one type gets a second name. An earlier version
+    /// of this also returned the name of every `struct`, `enum`, `trait` and
+    /// `mod`, and every capitalized identifier a `use` tree binds; `P2-A5`'s F4
+    /// recorded that nothing called it, and measuring it explains why it could
+    /// not be called. `use crate::{branch::ArchitectureBranch,
+    /// motivation::MotivationDisplay, text::PartId}` reaches `MotivationDisplay`,
+    /// so under the old rule `ArchitectureBranch` and `PartId` became seeds --
+    /// every sibling of a closed type in every `use` tree, transitively, which
+    /// is the whole workspace. Containment is not aliasing: a `struct` holding
+    /// a closed type is a route the *reach* rule already sees, under its own
+    /// name.
     #[must_use]
     pub fn introduced_type_names(&self) -> Vec<String> {
         match self.kind.as_str() {
-            "type" | "struct" | "enum" | "union" | "trait" | "mod" | "macro" | "macro_rules" => {
-                if self.name.is_empty() {
-                    Vec::new()
-                } else {
-                    vec![self.name.clone()]
-                }
+            "type" if !self.name.is_empty() => vec![self.name.clone()],
+            "use" => {
+                let words: Vec<&str> = self
+                    .declaration
+                    .split(|character: char| !(character.is_alphanumeric() || character == '_'))
+                    .filter(|word| !word.is_empty())
+                    .collect();
+                words
+                    .windows(2)
+                    .filter(|pair| pair[0] == "as")
+                    .map(|pair| pair[1].to_owned())
+                    .collect()
             }
-            "use" => self
-                .declaration
-                .split(|character: char| !(character.is_alphanumeric() || character == '_'))
-                .filter(|word| word.starts_with(|first: char| first.is_uppercase()))
-                .map(str::to_owned)
-                .collect(),
             _ => Vec::new(),
         }
     }
@@ -1230,7 +1254,29 @@ fn item_shape(
             let at = skip_space(code, bang + 1);
             let name = word_at(code, at);
             let open = skip_space(code, at + name.chars().count());
-            let end = matching(code, open);
+            if !matches!(code.get(open), Some('(' | '[' | '{')) {
+                return Err(format!(
+                    "{file}: `macro_rules!` with no delimited transcriber, at `{}`",
+                    collapse(restored, at, (at + 60).min(code.len()))
+                )
+                .into());
+            }
+            let tree = matching(code, open);
+            // The three delimiters are all legal and only the brace form omits
+            // the terminating `;`. A reader that ended the item at the closing
+            // delimiter left that `;` in item position and refused it as "an
+            // item form this reader has no rule for" -- a false accusation
+            // against Rust that compiles, which `P2-A5` measured.
+            let end = if code.get(open) == Some(&'{') {
+                let after = skip_space(code, tree);
+                if code.get(after) == Some(&';') {
+                    after + 1
+                } else {
+                    tree
+                }
+            } else {
+                to_semicolon(code, tree)
+            };
             Ok(Shape {
                 name,
                 declaration_end: open,
