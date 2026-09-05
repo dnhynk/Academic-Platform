@@ -672,6 +672,13 @@ pub const ITEM_KEYWORDS: [&str; 14] = [
 /// told apart by what follows.
 pub const ITEM_MODIFIERS: [&str; 6] = ["async", "auto", "const", "default", "extern", "unsafe"];
 
+/// The item kinds that hold items of their own.
+///
+/// Everything else is a leaf, and a leaf may still *contain* an item — a
+/// function body may hold an `impl` — which is why a leaf is pinned with a
+/// fingerprint of its text and a container is not.
+pub const HOLDS_ITEMS: [&str; 4] = ["extern", "impl", "mod", "trait"];
+
 /// One item of a compilation unit.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Item {
@@ -725,6 +732,32 @@ impl Item {
     #[must_use]
     pub fn names(&self, word: &str) -> bool {
         spells(&self.text, word)
+    }
+
+    /// The key, plus a fingerprint of the item text when the item holds no
+    /// items of its own.
+    ///
+    /// A key is a declaration, and a declaration says nothing about a body.
+    /// An `impl` block written **inside a function body** is globally
+    /// effective Rust and this reader does not descend into a body, so
+    /// `redact`'s key does not move when one is written there — measured:
+    /// the injection passed both rules in this file and was caught only by
+    /// `T213`'s line-anchored `impl_headers`, one file over. A container's
+    /// contents are enumerated as items of their own and need no
+    /// fingerprint; a leaf's contents are not enumerated anywhere, so this
+    /// is where the pin has to carry them.
+    #[must_use]
+    pub fn sealed_key(&self) -> String {
+        let key = self.key();
+        if HOLDS_ITEMS.contains(&self.kind.as_str()) {
+            return key;
+        }
+        let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+        for byte in self.text.bytes() {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        format!("{key} |{hash:016x}")
     }
 
     /// Whether the item names `word`, or sits inside something that does.
