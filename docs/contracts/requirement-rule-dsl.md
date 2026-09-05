@@ -359,6 +359,7 @@ refused.
 | `new_rule_release_gate_requires_official_and_synthetic_fixtures` | `tests/requirement.rs` | an empty class is refused at construction; a case that disagrees with the rule stops the release; both classes agreeing admits |
 | `the_release_fixtures_run_against_the_published_set` | `tests/requirement.rs` | under both admission orders the true declared status is released and the false one is refused, with a control that the rule alone answers the false one |
 | `the_two_reviewers_attest_the_document_rule_as_well` | `tests/requirement.rs` | either reviewer naming another document rule is refused and the refusal names both; both naming the candidate's own is admitted and carried onto the reviewed rule |
+| `a_rule_quoting_another_document_rule_is_refused` | `tests/requirement.rs` | the quoted official span is compared against what the named document rule states: four false quotations are refused, three truthful ones publish, and a span differing only in surrounding space is the same span |
 | `production_audit_no_llm` | `tests/requirement_scans.rs` and `crates/store/src/requirement_tests.rs` | the closure, the API spellings, the whole free-text inventory, the audit-path rule, and the absence of a text column |
 
 The five source scans that hold what a behavioural test cannot observe —

@@ -53,7 +53,8 @@
 //!
 //! **No transport and no parser.** The official bytes stay behind
 //! `academic_ingestion::RawSnapshot`'s sealed route. What arrives here is a
-//! `PublishedRules`: identifiers, dates and a parser version.
+//! `PublishedRules`: identifiers, a digest of each rule's text, dates and a
+//! parser version.
 
 pub mod course;
 pub mod error;

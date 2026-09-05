@@ -1696,6 +1696,112 @@ fn a_source_conflict_is_applicable_by_the_document_identifier() -> TestResult {
 }
 
 // ---------------------------------------------------------------------------
+// one_body_cannot_be_published_under_every_document_identifier -- REQ-08-014
+// ---------------------------------------------------------------------------
+
+/// The applicability gate narrows by which document rule a body was read from,
+/// and that reading is checked against the document rather than believed.
+///
+/// The gate above binds to the document identifier a rule claims, and
+/// `RuleSetDraft::include` refuses one the document did not publish. That is
+/// **membership**: the document publishes twelve identifiers here and an
+/// extraction may carry any of them. So one credit-minimum body read out of
+/// `total_credits` was published twelve times, once under each -- eleven of the
+/// twelve were false claims, all twelve were admitted, and the unresolved
+/// conflict about `total_credits` blocked one and left **eleven
+/// `DETERMINATE POSSIBLE` with the conflict on the record**.
+///
+/// The sweep below is that measurement, both halves in one loop. A false claim
+/// is refused at publication, because the digest of the span the reviewers
+/// quoted is not the digest the document publishes for the rule they named; a
+/// truthful one is admitted and then blocked by the conflict. **Zero of the
+/// twelve reach a determination.**
+///
+/// The second loop is what stops that from being "refuse everything": each
+/// identifier, quoted truthfully, publishes, and only `total_credits` is
+/// blocked -- the narrowing the gate exists for survives.
+#[test]
+fn one_body_cannot_be_published_under_every_document_identifier() -> TestResult {
+    let reference = support::unresolved_conflict()?;
+    assert_eq!(
+        reference.rule(),
+        support::CONTESTED_RULE,
+        "the case has to be about a rule the document publishes"
+    );
+
+    let mut refused = Vec::new();
+    let mut blocked = Vec::new();
+    let mut determinate = Vec::new();
+    for labelled in support::DOCUMENT_RULES {
+        // One body, read from the contested rule, labelled every way in turn.
+        let Ok(rules) = support::credit_floor_read_from(labelled, support::CONTESTED_RULE, 12)
+        else {
+            refused.push(labelled);
+            continue;
+        };
+        let audited = audit(
+            &rules,
+            support::transcript()?,
+            sources(&rules)?,
+            vec![reference.clone()],
+            Some(FRESHNESS),
+        )?;
+        if audited
+            .verdict()
+            .missing()
+            .iter()
+            .any(|check| matches!(check, MissingCheck::UnresolvedSourceConflict { .. }))
+        {
+            blocked.push(labelled);
+        } else {
+            determinate.push(labelled);
+        }
+    }
+    assert_eq!(
+        blocked,
+        vec![support::CONTESTED_RULE],
+        "only the truthful claim should publish and be blocked"
+    );
+    assert_eq!(
+        refused.len(),
+        support::DOCUMENT_RULES.len() - 1,
+        "every false claim should be refused at publication, not {refused:?}"
+    );
+    assert!(
+        determinate.is_empty(),
+        "a mislabelled body reached a determination with the conflict open: {determinate:?}"
+    );
+
+    // And the gate still narrows rather than refusing everything: quoted
+    // truthfully, every identifier publishes and only the contested one blocks.
+    let mut truthfully_blocked = Vec::new();
+    for labelled in support::DOCUMENT_RULES {
+        let rules = support::credit_floor_read_from(labelled, labelled, 12)?;
+        let audited = audit(
+            &rules,
+            support::transcript()?,
+            sources(&rules)?,
+            vec![reference.clone()],
+            Some(FRESHNESS),
+        )?;
+        if audited
+            .verdict()
+            .missing()
+            .iter()
+            .any(|check| matches!(check, MissingCheck::UnresolvedSourceConflict { .. }))
+        {
+            truthfully_blocked.push(labelled);
+        }
+    }
+    assert_eq!(
+        truthfully_blocked,
+        vec![support::CONTESTED_RULE],
+        "the conflict stopped narrowing to the document rule it is about"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // an_unread_conflict_store_is_not_an_absence_of_conflict -- REQ-08-014
 // ---------------------------------------------------------------------------
 

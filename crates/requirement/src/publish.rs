@@ -23,6 +23,25 @@
 //! rule set founded on an `UNSCOPED_OFFICIAL_SOURCE` is therefore not a value
 //! that exists, for the same reason `P2-U1`'s curriculum version is not.
 //!
+//! # Each rule is bound to the document rule it was actually read from
+//!
+//! [`RuleSetDraft::include`] refuses a rule whose `source_rule` the document
+//! did not publish, and that alone is **membership**: the document publishes
+//! many identifiers and an extraction could carry any of them. One
+//! credit-minimum body published once under each of the twelve identifiers a
+//! fixture document carries was admitted all twelve times, so an unresolved
+//! conflict about the rule the body was really read from blocked one of the
+//! twelve and left eleven `DETERMINATE POSSIBLE` with the conflict on the
+//! record.
+//!
+//! What closes it is the digest publication now carries per rule.
+//! `academic_ingestion::PublishedRule::text_digest` is the document rule's own
+//! text; `ReviewedRule::quoted_source_digest` is the span the two reviewers
+//! read, hashed by the same `academic_ingestion::rule_text_digest`; and
+//! `include` requires them equal. The reviewers still say which document rule
+//! they believe it came from -- section 11.4 makes that a person's judgement --
+//! but a false claim is now refuted by the document rather than believed.
+//!
 //! # The release gate runs its fixtures
 //!
 //! Section 11.4: *새 rule은 공식 예시와 synthetic transcript fixture로 회귀
@@ -45,7 +64,7 @@ use academic_ingestion::{
     dating::EffectiveDate,
     identifier::ConnectorId,
     manifest::{ParserVersion, RetrievalInstant},
-    publish::PublishedRules,
+    publish::{PublishedRule, PublishedRules},
 };
 
 use crate::{
@@ -250,11 +269,12 @@ pub struct RuleSetDraft {
     version: RuleSetVersion,
     supersedes: Option<RuleSetVersion>,
     source: OfficialSourceBinding,
-    /// The rule identifiers the official source published, kept for the whole
-    /// life of the draft so `include` can bind each admitted rule to one. It
-    /// does not travel onto [`RuleSet`]: what the published set needs is the
-    /// binding on each rule, not the document's index.
-    source_rules: Vec<SourceRuleId>,
+    /// The rules the official source published -- each identifier with the
+    /// digest of its own text -- kept for the whole life of the draft so
+    /// `include` can bind each admitted rule to one. It does not travel onto
+    /// [`RuleSet`]: what the published set needs is the binding on each rule,
+    /// not the document's index.
+    source_rules: Vec<PublishedRule>,
     rules: Vec<ExecutableRule>,
     /// The two fixture classes each admitted rule was released on, in the
     /// order the rules were admitted.
@@ -301,6 +321,15 @@ impl RuleSetDraft {
     /// function does **not** do is run them: it can only reach the rules
     /// admitted before this one, and that prefix is not the set.
     ///
+    /// # The document rule the rule claims
+    ///
+    /// Two refusals, and they are two different things. The document must
+    /// publish the identifier the rule names, which is membership; and the
+    /// official text the two reviewers quoted must be the text that identifier
+    /// states, which is correspondence. Membership alone let one body be
+    /// published under every identifier the document carries -- see the module
+    /// documentation -- so both are here.
+    ///
     /// `evaluate` resolves a `COURSE_OR_EQUIVALENT` operand through the
     /// `EQUIVALENCY` rules of the set it is handed, so a rule admitted before
     /// its equivalency answers one thing against the prefix and another once
@@ -328,12 +357,18 @@ impl RuleSetDraft {
                 rule: reviewed.id().as_str().to_owned(),
             });
         }
-        if !self
+        let Some(named) = self
             .source_rules
             .iter()
-            .any(|published| published == reviewed.source_rule())
-        {
+            .find(|published| published.id() == reviewed.source_rule())
+        else {
             return Err(RequirementError::SourceRuleNotPublished {
+                rule: reviewed.id().as_str().to_owned(),
+                source_rule: reviewed.source_rule().as_str().to_owned(),
+            });
+        };
+        if named.text_digest() != &reviewed.quoted_source_digest() {
+            return Err(RequirementError::QuotedSourceIsNotTheNamedRule {
                 rule: reviewed.id().as_str().to_owned(),
                 source_rule: reviewed.source_rule().as_str().to_owned(),
             });

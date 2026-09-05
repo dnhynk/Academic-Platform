@@ -73,7 +73,7 @@ pub use diff::{DocumentChange, RuleChange, SourceDiff};
 pub use document::{
     AdmissionYear, CohortRange, HierarchyRelation, LegalAuthority, OfficialDocument, ParseError,
     ParsedRule, SUPERIOR_PAIRS, SchemaError, ScopeRelation, TargetScope, TransitionRelation,
-    TransitionalMeasures,
+    TransitionalMeasures, rule_text_digest,
 };
 pub use fetch::{
     ConditionalFetch, ConditionalRequest, FetchOutcome, HeaderValue, HttpMetadata, Validators,
@@ -87,7 +87,8 @@ pub use manifest::{
     ParserVersion, PersonalDataClass, RetrievalInstant, SourceCategory, SourceOwnership,
 };
 pub use publish::{
-    Publication, PublishableRules, PublishedRules, QueueReason, ReviewQueued, publish,
+    Publication, PublishableRules, PublishedRule, PublishedRules, QueueReason, ReviewQueued,
+    publish,
 };
 pub use snapshot::{RawSnapshot, SnapshotError};
 pub use stage::{

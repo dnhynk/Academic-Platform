@@ -470,6 +470,19 @@ impl TransitionRelation {
     }
 }
 
+/// The digest one rule's text is addressed by.
+///
+/// The one place the normalisation is written. A consumer that holds a span of
+/// official text and wants to know which published rule states it -- that is
+/// `academic_requirement::RuleSetDraft::include`, over a candidate's quoted
+/// source -- has to hash it the way the parser hashed the document, and two
+/// copies of `trim()` in two crates are two things that can drift apart. There
+/// is one copy and both callers reach it.
+#[must_use]
+pub fn rule_text_digest(text: &str) -> ContentDigest {
+    ContentDigest::sha256(text.trim().as_bytes())
+}
+
 /// One rule as parsed: an identifier and a digest of its text.
 ///
 /// The text itself is not here. A structural or textual change to a rule is
@@ -712,7 +725,7 @@ pub fn parse(snapshot: &RawSnapshot) -> Result<OfficialDocument, ParseError> {
                 rules.push(ParsedRule {
                     id,
                     section: here,
-                    text_digest: ContentDigest::sha256(body.trim().as_bytes()),
+                    text_digest: rule_text_digest(body),
                 });
             }
             _ => return Err(ParseError::UnrecognizedLine { line }),

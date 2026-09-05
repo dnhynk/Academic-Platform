@@ -63,6 +63,30 @@ pub enum RequirementError {
         source_rule: String,
     },
 
+    /// A reviewed rule whose quoted official text is not the text of the
+    /// document rule it names.
+    ///
+    /// Membership says the document publishes that identifier. It does not say
+    /// the body came from it, and the document publishes many: one
+    /// credit-minimum body labelled with any of the twelve identifiers a
+    /// fixture document carries was admitted twelve times over, so an
+    /// unresolved conflict about the rule it was really read from blocked one
+    /// of the twelve and left eleven `DETERMINATE`.
+    ///
+    /// The two reviewers attest which document rule they believe the candidate
+    /// was read from. This is the half nobody can attest: the official document
+    /// publishes a digest per rule, the candidate's quoted span has one, and if
+    /// they differ then the claimed crossing is refuted rather than doubted.
+    #[error(
+        "rule `{rule}` quotes text that is not what source rule `{source_rule}` states in this official source"
+    )]
+    QuotedSourceIsNotTheNamedRule {
+        /// The rule inside the set.
+        rule: String,
+        /// The document identifier it claimed to have been read from.
+        source_rule: String,
+    },
+
     /// A draft with no rule in it was offered for publication.
     ///
     /// Section 11.4 makes a graduation determination conditional on *rule

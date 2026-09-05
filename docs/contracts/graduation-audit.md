@@ -381,18 +381,19 @@ unresolved conflict made a set that spelled the rule the document's way
 `INDETERMINATE` and left an identical set spelled any other way
 `DETERMINATE POSSIBLE`, with `conflict cases examined = 0` on the determination.
 
-**Bound is membership, and membership is attested rather than derived.** The
-document publishes many identifiers and `include` checks only that
-`source_rule` is one of them, so an extraction may carry any of them: publishing
-one credit-minimum body twelve times, once under each identifier the fixture
-document carries, left eleven of the twelve unblocked by an unresolved conflict
-about the twelfth. Nothing in the published data can tell those twelve apart —
-`PublishedRules` carries identifiers and dates and no per-rule text digest, and
-`ExecutableRule::source_digest` is the digest of the whole snapshot.
+**Membership is not correspondence, and both are checked.** The document
+publishes many identifiers, so checking only that `source_rule` is one of them
+admits an extraction carrying any of them: one credit-minimum body read out of
+`total_credits` and published twelve times, once under each identifier the
+fixture document carries, was admitted twelve times over and left **eleven of
+the twelve `DETERMINATE POSSIBLE`** with the conflict about the twelfth on the
+record.
 
-What is fixed is the second half of that: `source_rule` is now part of what the
-two reviewers attest. `ReviewAttestation::file` names the pair, `ReviewGate::admit`
-requires both attestations to name the candidate's pair, and
+Two things close it, and they are two different things.
+
+*Who says so.* `source_rule` is part of what the two reviewers attest.
+`ReviewAttestation::file` names the pair `(RuleId, SourceRuleId)`,
+`ReviewGate::admit` requires both attestations to name the candidate's pair, and
 `the_two_reviewers_attest_the_document_rule_as_well` drives both directions.
 Section 11.4's *LLM은 원문에서 rule 후보를 추출할 수 있으나 사람이 검토한
 executable rule만 production audit에 사용한다* is the ground: `source_rule` is a
@@ -400,15 +401,47 @@ field of the executable rule, so it is the reviewers' business, and it was
 previously supplied by `RuleCandidate::extracted` — *what a model extracted*, in
 its own words — and attested by nobody.
 
-**The residue, beside `S-24`.** `S-24` records that *the engine can refuse an
-omission; it cannot detect a false claim*. The same sentence is now true of the
-label: two reviewers who attest the wrong document rule are believed, and the
-eleven-of-twelve measurement above still holds under a false attestation. Making
-it checkable rather than attested needs `PublishedRules` to carry each document
-rule's own `text_digest` — `ParsedRule` already computes one and `publish` drops
-it — and needs the candidate's quoted span to be compared against it, which
-changes `P2-U6`'s publication output and every fixture document whose rules
-share one body. That is not this change.
+*Whether it is so.* Publication carries each document rule's own text digest.
+`academic_ingestion::PublishedRule` is an identifier **and** a
+`ParsedRule::text_digest`, which publication used to drop;
+`ReviewedRule::quoted_source_digest` is the span the two reviewers read, taken
+with the same `academic_ingestion::rule_text_digest` the parser addressed the
+document with; and `RuleSetDraft::include` requires the two equal. A reviewer who
+attests the wrong document rule is now **refuted by the document** rather than
+believed. The normalisation is one function with two callers rather than two
+copies of `trim()` that agree today, and the refusal is two-sided by
+construction: `a_rule_quoting_another_document_rule_is_refused` drives four
+false quotations and three truthful ones, so a digest that made everything agree
+fails as loudly as one that made nothing agree.
+
+The measurement, end to end, is
+`one_body_cannot_be_published_under_every_document_identifier`: the same body
+under all twelve identifiers is **eleven refused at publication, one admitted
+and blocked by the conflict, zero determinations**; and, quoted truthfully, all
+twelve publish and only the contested one blocks — so the narrowing the gate
+exists for is intact.
+
+**What is left, beside `S-24`.** Two reviewers attesting that the compiled
+`RuleBody` says what the quoted prose says are still believed: the quotation is
+now bound to the document rule, and the body to the quotation is a reading, which
+section 11.4 assigns to the two people and no digest can settle. `S-24`'s
+sentence — *the engine can refuse an omission; it cannot detect a false claim* —
+holds for that half and no longer for the label.
+
+**And a leaf's citation is bound to its rule's identifier, not to its source.**
+`RuleSourceSpan` carries a `source_digest` and its own documentation calls it
+*the official snapshot whose digest the rule already carries*; nothing compares
+the two. Building the index with a digest no published rule rests on is a
+`DETERMINATE NOT_POSSIBLE` verdict, **no outstanding check**, and thirteen leaves
+citing paragraphs of a document none of the rules was read from. It is the shape
+above one step out — two digests exist and the correspondence between them is the
+caller's assertion — and it is section 11.3's citation rather than section 8.4's
+applicability, so it is recorded here rather than closed here. Closing it is not
+a check at `bind`: `AuditFacts::decode_sources` rebuilds the index from frozen
+inputs without the rule set in hand, so making the span underivable from anything
+but the rule needs the decoder to carry the set, and refusing it instead needs a
+new `MissingCheck` arm and a rule that goes unevaluated. Severity **P2**, and the
+reproduction is `t222-rf26-probes/t222_span_probe.rs`.
 
 **And an unread conflict store is not an empty one.** `AuditFacts::conflicts` is
 `Option<Vec<ConflictReference>>`, encoded as `InputValue::Unknown` when absent —

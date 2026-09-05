@@ -294,7 +294,7 @@ fn specification() -> Result<String, Box<dyn Error>> {
 /// The whole review gate. Two attestations, both naming this candidate, both
 /// filed by a user, the two users different, and the body compiled -- then and
 /// only then the one `ReviewedRule` this crate builds.
-const WHOLE_ADMIT: &str = "pub fn admit( candidate: RuleCandidate, first: ReviewAttestation, second: ReviewAttestation, ) -> Result<ReviewedRule, RequirementError> { for attestation in [&first, &second] { if attestation.candidate() != candidate.id() { return Err(RequirementError::AttestationNamesAnotherCandidate { named: attestation.candidate().as_str().to_owned(), under_review: candidate.id().as_str().to_owned(), }); } if attestation.source_rule() != candidate.source_rule() { return Err(RequirementError::AttestationNamesAnotherSourceRule { named: attestation.source_rule().as_str().to_owned(), under_review: candidate.source_rule().as_str().to_owned(), }); } } let first_user = first.user_id()?; let second_user = second.user_id()?; if first_user == second_user { return Err(RequirementError::OneReviewerTwice); } candidate.body.compile(&candidate.id)?; Ok(ReviewedRule { id: candidate.id, source_rule: candidate.source_rule, body: candidate.body, first, second, source_digest: candidate.source_digest, }) }";
+const WHOLE_ADMIT: &str = "pub fn admit( candidate: RuleCandidate, first: ReviewAttestation, second: ReviewAttestation, ) -> Result<ReviewedRule, RequirementError> { for attestation in [&first, &second] { if attestation.candidate() != candidate.id() { return Err(RequirementError::AttestationNamesAnotherCandidate { named: attestation.candidate().as_str().to_owned(), under_review: candidate.id().as_str().to_owned(), }); } if attestation.source_rule() != candidate.source_rule() { return Err(RequirementError::AttestationNamesAnotherSourceRule { named: attestation.source_rule().as_str().to_owned(), under_review: candidate.source_rule().as_str().to_owned(), }); } } let first_user = first.user_id()?; let second_user = second.user_id()?; if first_user == second_user { return Err(RequirementError::OneReviewerTwice); } candidate.body.compile(&candidate.id)?; let quoted_source_digest = candidate.quoted_source_digest(); Ok(ReviewedRule { id: candidate.id, source_rule: candidate.source_rule, body: candidate.body, first, second, source_digest: candidate.source_digest, quoted_source_digest, }) }";
 
 /// The gate's signature alone, as the public-signature sweep renders it.
 ///
@@ -309,7 +309,7 @@ const WHOLE_USER_ID: &str = "fn user_id(&self) -> Result<EntityId, RequirementEr
 /// The whole admission of a reviewed rule into a draft: the one place an
 /// `ExecutableRule` is built, and the fixtures are evaluated rather than
 /// counted.
-const WHOLE_INCLUDE: &str = "pub fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError> { if self .rules .iter() .any(|existing| existing.id() == reviewed.id()) { return Err(RequirementError::DuplicateRule { rule: reviewed.id().as_str().to_owned(), }); } if !self .source_rules .iter() .any(|published| published == reviewed.source_rule()) { return Err(RequirementError::SourceRuleNotPublished { rule: reviewed.id().as_str().to_owned(), source_rule: reviewed.source_rule().as_str().to_owned(), }); } let rule = ExecutableRule { id: reviewed.id().clone(), source_rule: reviewed.source_rule().clone(), body: reviewed.body().clone(), source_digest: reviewed.source_digest(), }; rule.body.compile(&rule.id)?; self.rules.push(rule); self.fixtures.push((official.clone(), synthetic.clone())); Ok(self) }";
+const WHOLE_INCLUDE: &str = "pub fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError> { if self .rules .iter() .any(|existing| existing.id() == reviewed.id()) { return Err(RequirementError::DuplicateRule { rule: reviewed.id().as_str().to_owned(), }); } let Some(named) = self .source_rules .iter() .find(|published| published.id() == reviewed.source_rule()) else { return Err(RequirementError::SourceRuleNotPublished { rule: reviewed.id().as_str().to_owned(), source_rule: reviewed.source_rule().as_str().to_owned(), }); }; if named.text_digest() != &reviewed.quoted_source_digest() { return Err(RequirementError::QuotedSourceIsNotTheNamedRule { rule: reviewed.id().as_str().to_owned(), source_rule: reviewed.source_rule().as_str().to_owned(), }); } let rule = ExecutableRule { id: reviewed.id().clone(), source_rule: reviewed.source_rule().clone(), body: reviewed.body().clone(), source_digest: reviewed.source_digest(), }; rule.body.compile(&rule.id)?; self.rules.push(rule); self.fixtures.push((official.clone(), synthetic.clone())); Ok(self) }";
 
 /// The whole ledger publication: the version must be new and the supersession
 /// must name the head.
@@ -1021,11 +1021,32 @@ fn production_audit_no_llm() -> TestResult {
                 && uses_of(declaration, "Cow") == 0,
             "{label} declares a free-text field: {declaration}"
         );
-        assert!(
-            !declaration.contains("quoted_source"),
-            "{label} carries the candidate's quotation forward"
-        );
+        // The quotation may cross this line only as a digest.
+        // `RuleSetDraft::include` compares it against the digest publication
+        // carries for the document rule the candidate names, which is what
+        // makes a false claim refutable rather than only doubted. Refusing the
+        // name outright refuses that too and still admits the sentence under
+        // any other name -- the whole-set refusal above is what stops the
+        // sentence, and this is what stops the sentence wearing a digest's
+        // name.
+        for field in declaration.split(',') {
+            let Some((name, declared_type)) = field.split_once(':') else {
+                continue;
+            };
+            assert!(
+                !name.contains("quoted") || declared_type.trim() == "ContentDigest",
+                "{label} carries the candidate's quotation as `{}`",
+                declared_type.trim()
+            );
+        }
     }
+    // And it does carry the digest: without it `RuleSetDraft::include` has
+    // nothing to compare against the document rule the reviewers named, and
+    // one body could be published under every identifier the document carries.
+    assert!(
+        reviewed.contains("quoted_source_digest: ContentDigest"),
+        "ReviewedRule stopped carrying the quotation's digest: {reviewed}"
+    );
     Ok(())
 }
 
@@ -2084,6 +2105,8 @@ const DECLARATIONS: &[&str] = &[
     "src/candidate.rs [pub] fn id(&self) -> &RuleId",
     "src/candidate.rs [pub] fn proposed_body(&self) -> &RuleBody",
     "src/candidate.rs [pub] fn quoted_source(&self) -> &str",
+    "src/candidate.rs [pub] fn quoted_source_digest(&self) -> ContentDigest",
+    "src/candidate.rs [pub] fn quoted_source_digest(&self) -> ContentDigest",
     "src/candidate.rs [pub] fn reviewer(&self) -> &Actor",
     "src/candidate.rs [pub] fn source_digest(&self) -> ContentDigest",
     "src/candidate.rs [pub] fn source_digest(&self) -> ContentDigest",
