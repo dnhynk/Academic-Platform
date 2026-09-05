@@ -43,5 +43,6 @@ fn main() {
             at,
         ),
         source_digest: ContentDigest::sha256(b"official"),
+        quoted_source_digest: ContentDigest::sha256(b"the page says at least 130 credits"),
     };
 }

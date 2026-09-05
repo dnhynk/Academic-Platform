@@ -1187,7 +1187,7 @@ const EXTERNAL_IMPORTS: [&str; 14] = [
     "crates/ingestion/src/graph.rs: use academic_domain::engines::RuleId;",
     "crates/ingestion/src/identifier.rs: use core::fmt;",
     "crates/ingestion/src/manifest.rs: use core::fmt;",
-    "crates/ingestion/src/publish.rs: use academic_domain::engines::RuleId;",
+    "crates/ingestion/src/publish.rs: use academic_domain::{ContentDigest, engines::RuleId};",
     "crates/ingestion/src/snapshot.rs: use academic_domain::ContentDigest;",
     "crates/ingestion/src/snapshot.rs: use academic_untrusted_content::{ IngestError, IngestedDocument, SourceId, SourceKind, Untrusted, ingest, };",
     "crates/ingestion/src/snapshot.rs: use core::fmt;",
@@ -1814,7 +1814,7 @@ fn every_declaration_and_impl_in_this_crate_is_pinned() -> TestResult {
 }
 
 /// Every function this package declares, sorted.
-const DECLARATIONS: [&str; 261] = [
+const DECLARATIONS: [&str; 264] = [
     "crates/ingestion/src/conflict.rs [priv] fn compare_optional_dates<T: HasDate>(left: Option<T>, right: Option<T>) -> DateComparison",
     "crates/ingestion/src/conflict.rs [priv] fn date(&self) -> crate::dating::Date",
     "crates/ingestion/src/conflict.rs [priv] fn date(&self) -> crate::dating::Date",
@@ -1903,6 +1903,7 @@ const DECLARATIONS: [&str; 261] = [
     "crates/ingestion/src/document.rs [pub] fn relation_to(&self, other: &Self) -> ScopeRelation",
     "crates/ingestion/src/document.rs [pub] fn relation_to(self, other: Self) -> TransitionRelation",
     "crates/ingestion/src/document.rs [pub] fn rule(&self, id: &RuleId) -> Option<&ParsedRule>",
+    "crates/ingestion/src/document.rs [pub] fn rule_text_digest(text: &str) -> ContentDigest",
     "crates/ingestion/src/document.rs [pub] fn rules(&self) -> &[ParsedRule]",
     "crates/ingestion/src/document.rs [pub] fn scope(&self) -> &TargetScope",
     "crates/ingestion/src/document.rs [pub] fn section(&self) -> &SectionPath",
@@ -2001,16 +2002,18 @@ const DECLARATIONS: [&str; 261] = [
     "crates/ingestion/src/publish.rs [pub] fn connector(&self) -> &ConnectorId",
     "crates/ingestion/src/publish.rs [pub] fn effective(&self) -> EffectiveDate",
     "crates/ingestion/src/publish.rs [pub] fn effective(&self) -> EffectiveDate",
+    "crates/ingestion/src/publish.rs [pub] fn id(&self) -> &RuleId",
     "crates/ingestion/src/publish.rs [pub] fn parser_version(&self) -> ParserVersion",
     "crates/ingestion/src/publish.rs [pub] fn publish(publishable: PublishableRules<'_>) -> PublishedRules",
     "crates/ingestion/src/publish.rs [pub] fn published(&self) -> Option<&PublishedRules>",
     "crates/ingestion/src/publish.rs [pub] fn queued(&self) -> Option<&ReviewQueued>",
     "crates/ingestion/src/publish.rs [pub] fn reason(&self) -> QueueReason",
     "crates/ingestion/src/publish.rs [pub] fn retrieved_at(&self) -> RetrievalInstant",
-    "crates/ingestion/src/publish.rs [pub] fn rules(&self) -> &[RuleId]",
+    "crates/ingestion/src/publish.rs [pub] fn rules(&self) -> &[PublishedRule]",
     "crates/ingestion/src/publish.rs [pub] fn rules(&self) -> &[RuleId]",
     "crates/ingestion/src/publish.rs [pub] fn scope(&self) -> &TargetScope",
     "crates/ingestion/src/publish.rs [pub] fn scope(&self) -> &TargetScope",
+    "crates/ingestion/src/publish.rs [pub] fn text_digest(&self) -> &ContentDigest",
     "crates/ingestion/src/snapshot.rs [priv] fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result",
     "crates/ingestion/src/snapshot.rs [priv] fn source_bytes(&self) -> &[u8]",
     "crates/ingestion/src/snapshot.rs [pub] fn byte_len(&self) -> usize",
@@ -2079,7 +2082,7 @@ const DECLARATIONS: [&str; 261] = [
 ];
 
 /// Every `impl` block header this package declares, sorted.
-const IMPL_HEADERS: [&str; 84] = [
+const IMPL_HEADERS: [&str; 85] = [
     "crates/ingestion/src/conflict.rs: impl AuditDisposition",
     "crates/ingestion/src/conflict.rs: impl ConflictCase",
     "crates/ingestion/src/conflict.rs: impl ConflictDimension",
@@ -2140,6 +2143,7 @@ const IMPL_HEADERS: [&str; 84] = [
     "crates/ingestion/src/manifest.rs: impl fmt::Debug for CredentialBinding",
     "crates/ingestion/src/manifest.rs: impl fmt::Display for DeclaredTarget",
     "crates/ingestion/src/publish.rs: impl Publication",
+    "crates/ingestion/src/publish.rs: impl PublishedRule",
     "crates/ingestion/src/publish.rs: impl PublishedRules",
     "crates/ingestion/src/publish.rs: impl QueueReason",
     "crates/ingestion/src/publish.rs: impl ReviewQueued",

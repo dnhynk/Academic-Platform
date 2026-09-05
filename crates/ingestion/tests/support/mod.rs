@@ -123,6 +123,21 @@ impl DocumentFixture {
         }
     }
 
+    /// The text one rule of this document states.
+    ///
+    /// `academic_requirement::RuleSetDraft::include` compares the digest of a
+    /// candidate's quoted span against the digest publication carries for the
+    /// document rule the candidate names, so a fixture that builds a candidate
+    /// has to quote what the document says rather than a sentence of its own.
+    /// Reading it back out of the fixture is what keeps the two from drifting.
+    pub fn rule_text(&self, rule: &str) -> Option<&str> {
+        self.sections
+            .iter()
+            .flat_map(|(_, rules)| rules.iter())
+            .find(|(id, _)| *id == rule)
+            .map(|(_, body)| body.as_str())
+    }
+
     /// Replaces one rule's text.
     pub fn with_rule_text(mut self, rule: &str, text: &str) -> Self {
         for (_, rules) in &mut self.sections {

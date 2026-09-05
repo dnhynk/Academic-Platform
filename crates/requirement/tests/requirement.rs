@@ -135,6 +135,23 @@ fn source_rule(_id: &str) -> Result<academic_domain::engines::RuleId, Box<dyn Er
     Ok(academic_domain::engines::RuleId::new("r-12-1")?)
 }
 
+/// The official text one rule of the fixture document states, which is what a
+/// model reading that rule would have quoted.
+///
+/// `RuleSetDraft::include` compares the digest of a candidate's quoted span
+/// against the digest publication carries for the rule the candidate names, so
+/// a fixture quoting anything else is refused however truthfully it is
+/// attested. Read back out of `DocumentFixture::dated` rather than transcribed:
+/// a copy here would be a second statement of the document's text that could
+/// drift from it. `a_rule_quoting_another_document_rule_is_refused` drives the
+/// refusal.
+fn quoted_source(rule: &str) -> Result<String, Box<dyn Error>> {
+    Ok(DocumentFixture::dated()
+        .rule_text(rule)
+        .ok_or_else(|| format!("the fixture document has no rule `{rule}`"))?
+        .to_owned())
+}
+
 fn digest() -> ContentDigest {
     ContentDigest::sha256(b"official/cse/degree-requirements")
 }
@@ -199,7 +216,7 @@ fn admit(
         Actor::ModelRun {
             run_id: entity(7_001)?,
         },
-        "the official page states this requirement in a sentence".to_owned(),
+        quoted_source("r-12-1")?,
         digest(),
     );
     let reviewed = ReviewGate::admit(
@@ -1590,7 +1607,7 @@ fn rule_candidate_review_gate() -> TestResult {
             Actor::ModelRun {
                 run_id: entity(7_001)?,
             },
-            "the page says at least 130 credits".to_owned(),
+            quoted_source("r-12-1")?,
             digest(),
         ))
     };
@@ -1662,7 +1679,7 @@ fn rule_candidate_review_gate() -> TestResult {
                 Actor::ModelRun {
                     run_id: entity(7_003)?
                 },
-                "the page says something".to_owned(),
+                quoted_source("r-12-1")?,
                 digest(),
             ),
             ReviewAttestation::file(reviewer(11)?, rule.clone(), source_rule("")?, AT),
@@ -1866,7 +1883,7 @@ fn new_rule_release_gate_requires_official_and_synthetic_fixtures() -> TestResul
                 Actor::ModelRun {
                     run_id: entity(7_001)?,
                 },
-                "the page says at least 130 credits".to_owned(),
+                quoted_source("r-12-1")?,
                 digest(),
             ),
             ReviewAttestation::file(reviewer(11)?, rule.clone(), source_rule("")?, AT),
@@ -2642,7 +2659,7 @@ fn shaped_set(shape: &SetShape) -> Result<RuleSet, Box<dyn Error>> {
             Actor::ModelRun {
                 run_id: entity(7_001)?,
             },
-            "the official page states this requirement in a sentence".to_owned(),
+            quoted_source(shape.source_rule)?,
             ContentDigest::sha256(shape.digest),
         );
         let reviewed = ReviewGate::admit(
@@ -2817,7 +2834,7 @@ fn a_rule_naming_an_unpublished_source_rule_is_refused() -> TestResult {
     let document: Vec<String> = published
         .rules()
         .iter()
-        .map(|rule| rule.as_str().to_owned())
+        .map(|rule| rule.id().as_str().to_owned())
         .collect();
     assert!(
         document.contains(&"r-12-1".to_owned()),
@@ -2850,7 +2867,7 @@ fn a_rule_naming_an_unpublished_source_rule_is_refused() -> TestResult {
             Actor::ModelRun {
                 run_id: entity(7_001)?,
             },
-            "the official page states this requirement in a sentence".to_owned(),
+            quoted_source("r-12-1")?,
             digest(),
         );
         let document_rule = academic_domain::engines::RuleId::new(source)?;
@@ -2890,6 +2907,119 @@ fn a_rule_naming_an_unpublished_source_rule_is_refused() -> TestResult {
         ),
         "a rule naming a document rule the source never published was admitted"
     );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// a_rule_quoting_another_document_rule_is_refused
+// ---------------------------------------------------------------------------
+
+/// Naming a document rule the source published is membership; the body having
+/// come from it is correspondence, and it is checked.
+///
+/// A document publishes many identifiers, so membership admits an extraction
+/// carrying any of them: one body was publishable under every identifier the
+/// document carries, and `academic-audit` decides whether an unresolved source
+/// conflict applies from exactly that value. The two reviewers attest which
+/// rule they believe it was read from -- section 11.4 makes that a person's
+/// judgement -- and this is the half a person cannot supply: publication
+/// carries each document rule's own text digest, the candidate's quoted span
+/// has one, and `include` requires them equal.
+///
+/// Both directions, and the whitespace case in between: the quotation is
+/// addressed the way the parser addressed the document, so a span that differs
+/// only in leading and trailing space is the same span and one that differs
+/// inside is not.
+#[test]
+fn a_rule_quoting_another_document_rule_is_refused() -> TestResult {
+    let published = official_source()?;
+    let rule = RuleId::new("total_credits")?;
+    let facts = AcademicFacts::new(AT);
+    let fixtures = || {
+        (
+            vec![FixtureCase::new(facts.clone(), ProofStatus::Needs)],
+            vec![FixtureCase::new(facts.clone(), ProofStatus::Needs)],
+        )
+    };
+    let review = |source: &str, quoted: String| -> Result<_, Box<dyn Error>> {
+        let document_rule = academic_domain::engines::RuleId::new(source)?;
+        Ok(ReviewGate::admit(
+            RuleCandidate::extracted(
+                rule.clone(),
+                document_rule.clone(),
+                RuleBody::CreditMinimum {
+                    category: CreditCategory::new("ALL_RECOGNIZED")?,
+                    threshold: CreditAmount::new(130)?,
+                },
+                Actor::ModelRun {
+                    run_id: entity(7_001)?,
+                },
+                quoted,
+                digest(),
+            ),
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), document_rule.clone(), AT),
+            ReviewAttestation::file(reviewer(12)?, rule.clone(), document_rule, AT),
+        )?)
+    };
+    let admit = |reviewed| -> Result<_, Box<dyn Error>> {
+        let (official, synthetic) = fixtures();
+        Ok(draft(&published)?.include(
+            reviewed,
+            &OfficialExampleFixtures::new(official, &rule)?,
+            &SyntheticTranscriptFixtures::new(synthetic, &rule)?,
+        ))
+    };
+
+    // The two document rules this fixture document really carries say different
+    // things, which is what makes the crossing observable at all.
+    let first = quoted_source("r-12-1")?;
+    let second = quoted_source("r-12-2")?;
+    assert_ne!(first, second);
+
+    for (label, named, quoted) in [
+        ("another rule's text", "r-12-1", second.clone()),
+        ("the other way round", "r-12-2", first.clone()),
+        (
+            "a sentence the document does not state at all",
+            "r-12-1",
+            "the official page states this requirement in a sentence".to_owned(),
+        ),
+        (
+            "the right words with an extra one inside",
+            "r-12-1",
+            first.replace("require", "require at least"),
+        ),
+    ] {
+        assert!(
+            matches!(
+                admit(review(named, quoted)?)?,
+                Err(RequirementError::QuotedSourceIsNotTheNamedRule { ref source_rule, .. })
+                    if source_rule == named
+            ),
+            "{label}: a rule quoting text `{named}` does not state was admitted"
+        );
+    }
+
+    // Truthful quotations publish, so the refusals above are about the
+    // disagreement rather than about refusing every quotation.
+    for (label, named, quoted) in [
+        ("the rule's own text", "r-12-1", first.clone()),
+        ("the other rule's own text", "r-12-2", second),
+        (
+            "the same span with surrounding space",
+            "r-12-1",
+            format!(
+                "
+  {first}  
+"
+            ),
+        ),
+    ] {
+        assert!(
+            admit(review(named, quoted)?)?.is_ok(),
+            "{label}: a rule quoting what `{named}` states was refused"
+        );
+    }
     Ok(())
 }
 
@@ -3037,9 +3167,9 @@ fn the_release_fixtures_run_against_the_published_set() -> TestResult {
 ///
 /// Both directions are here: an attestation naming another document rule is
 /// refused, and the same call with both attestations naming the candidate's own
-/// is admitted. What this does **not** do is make the label checkable — see
-/// `docs/contracts/graduation-audit.md`, which records the residue beside
-/// `S-24`.
+/// is admitted. Whether the label is **true** is a separate question and a
+/// separate check: `a_rule_quoting_another_document_rule_is_refused` compares
+/// the quoted span against what the named rule states, one layer on.
 #[test]
 fn the_two_reviewers_attest_the_document_rule_as_well() -> TestResult {
     let rule = RuleId::new("total_credits")?;
@@ -3058,7 +3188,7 @@ fn the_two_reviewers_attest_the_document_rule_as_well() -> TestResult {
             Actor::ModelRun {
                 run_id: entity(7_001)?,
             },
-            "the official page states this requirement in a sentence".to_owned(),
+            quoted_source("r-12-1")?,
             digest(),
         ))
     };

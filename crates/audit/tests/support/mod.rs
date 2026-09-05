@@ -435,6 +435,20 @@ pub fn catalog(rules: &RuleSet) -> Result<RuleSetCatalog, Box<dyn Error>> {
 // The official source and the published rules
 // ---------------------------------------------------------------------------
 
+/// The document `official_source` reads: the dated fixture plus one rule per
+/// entry of [`DOCUMENT_RULES`].
+///
+/// `document_rule_text` reads the rule bodies back out of this same value, so
+/// the text a fixture candidate quotes and the text publication digests are one
+/// thing rather than two that agree.
+pub fn official_document() -> DocumentFixture {
+    let mut fixture = DocumentFixture::dated();
+    for rule in DOCUMENT_RULES {
+        fixture = fixture.with_extra_rule("art-12", rule);
+    }
+    fixture
+}
+
 /// One completed `P2-U6` run's published rules.
 ///
 /// The only route to a `PublishedRules`: the type's fields are private and its
@@ -446,10 +460,7 @@ pub fn official_source() -> Result<PublishedRules, Box<dyn Error>> {
     let manifest = manifest(CONNECTOR)?;
     let ledger = permitting_ledger(CONNECTOR)?;
     let known = ingestion_corpus()?;
-    let mut fixture = DocumentFixture::dated();
-    for rule in DOCUMENT_RULES {
-        fixture = fixture.with_extra_rule("art-12", rule);
-    }
+    let fixture = official_document();
     let record = academic_ingestion::run(
         &manifest,
         &ledger,
@@ -499,6 +510,20 @@ fn admit(
     admit_as(draft, id, id, body, official, synthetic)
 }
 
+/// The official text of one rule of the fixture document.
+///
+/// Read back out of the document `official_source` publishes rather than
+/// transcribed, because `RuleSetDraft::include` compares the digest of a
+/// candidate's quoted span against the digest publication carries for the rule
+/// it names: a fixture quoting anything else is refused, and a transcription
+/// here would be a second copy of the document's text that could drift from it.
+pub fn document_rule_text(rule: &str) -> Result<String, Box<dyn Error>> {
+    Ok(official_document()
+        .rule_text(rule)
+        .ok_or_else(|| format!("the fixture document has no rule `{rule}`"))?
+        .to_owned())
+}
+
 /// The same, with the identifier the official document gives the rule stated
 /// separately from the identifier the reviewer chose inside the set.
 ///
@@ -524,7 +549,7 @@ pub fn admit_as(
         academic_domain::Actor::ModelRun {
             run_id: entity(7_001)?,
         },
-        "the official page states this requirement in a sentence".to_owned(),
+        document_rule_text(source_rule)?,
         source_digest(),
     );
     let reviewed = ReviewGate::admit(
@@ -851,6 +876,53 @@ pub fn credit_floor_named(
         vec![FixtureCase::new(empty_facts()?, ProofStatus::Needs)],
     )?;
     Ok(draft.publish()?)
+}
+
+/// The same credit floor, with the document rule the body was **read from**
+/// stated separately from the document rule the extraction **claims**.
+///
+/// `credit_floor_named` quotes the rule it names, which is a truthful
+/// publication. This one quotes `read_from` and labels the result `labelled`,
+/// so the two differ exactly when the claim is false --
+/// `one_body_cannot_be_published_under_every_document_identifier` sweeps every
+/// identifier the document carries and needs both cases from one builder.
+pub fn credit_floor_read_from(
+    labelled: &str,
+    read_from: &str,
+    threshold: u16,
+) -> Result<RuleSet, Box<dyn Error>> {
+    let published = official_source()?;
+    let rule = RuleId::new("credit_floor")?;
+    let document_rule = academic_domain::engines::RuleId::new(labelled)?;
+    let candidate = RuleCandidate::extracted(
+        rule.clone(),
+        document_rule.clone(),
+        RuleBody::CreditMinimum {
+            category: all_recognized()?,
+            threshold: CreditAmount::new(threshold)?,
+        },
+        academic_domain::Actor::ModelRun {
+            run_id: entity(7_001)?,
+        },
+        document_rule_text(read_from)?,
+        source_digest(),
+    );
+    let reviewed = ReviewGate::admit(
+        candidate,
+        ReviewAttestation::file(reviewer(11)?, rule.clone(), document_rule.clone(), AS_OF),
+        ReviewAttestation::file(reviewer(12)?, rule.clone(), document_rule, AS_OF),
+    )?;
+    let official = OfficialExampleFixtures::new(
+        vec![FixtureCase::new(empty_facts()?, ProofStatus::Needs)],
+        &rule,
+    )?;
+    let synthetic = SyntheticTranscriptFixtures::new(
+        vec![FixtureCase::new(empty_facts()?, ProofStatus::Needs)],
+        &rule,
+    )?;
+    Ok(draft(&published, RuleSetVersion::FIRST, None)?
+        .include(reviewed, &official, &synthetic)?
+        .publish()?)
 }
 
 /// The rules whose applicability or ceiling no confirmed source states.

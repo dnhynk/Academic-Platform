@@ -15,7 +15,7 @@
 //! A runtime check would sit one layer inside a function anybody can stop
 //! calling. This does not.
 
-use academic_domain::engines::RuleId;
+use academic_domain::{ContentDigest, engines::RuleId};
 
 use crate::{
     conflict::ConflictCase,
@@ -66,6 +66,39 @@ impl<'run> PublishableRules<'run> {
     }
 }
 
+/// One rule a publication put into the claim graph.
+///
+/// The identifier **and** the digest of the rule's own text. The identifier
+/// alone says only that the document publishes a name; a downstream consumer
+/// holding a body and claiming it was read from that name had nothing here to
+/// be checked against, so the claim was believed. That is what the digest is
+/// for: [`crate::document::ParsedRule`] already computes one per rule and
+/// publication used to drop it.
+///
+/// It is a digest and not the text. The bytes stay behind
+/// [`crate::snapshot::RawSnapshot`]'s one sealed route, and a consumer that
+/// wants to know whether a span it already holds is this rule's hashes it with
+/// [`crate::document::rule_text_digest`] and compares.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublishedRule {
+    id: RuleId,
+    text_digest: ContentDigest,
+}
+
+impl PublishedRule {
+    /// Which rule the document publishes.
+    #[must_use]
+    pub const fn id(&self) -> &RuleId {
+        &self.id
+    }
+
+    /// The digest of the text that rule states.
+    #[must_use]
+    pub const fn text_digest(&self) -> &ContentDigest {
+        &self.text_digest
+    }
+}
+
 /// What one publication put into the claim graph.
 ///
 /// Identifiers, dates and digests. No document text: the bytes stay behind
@@ -73,7 +106,7 @@ impl<'run> PublishableRules<'run> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublishedRules {
     connector: ConnectorId,
-    rules: Vec<RuleId>,
+    rules: Vec<PublishedRule>,
     effective: EffectiveDate,
     scope: TargetScope,
     retrieved_at: RetrievalInstant,
@@ -87,9 +120,9 @@ impl PublishedRules {
         &self.connector
     }
 
-    /// Which rules were published.
+    /// Which rules were published, each with the digest of its own text.
     #[must_use]
-    pub fn rules(&self) -> &[RuleId] {
+    pub fn rules(&self) -> &[PublishedRule] {
         &self.rules
     }
 
@@ -232,7 +265,10 @@ pub fn publish(publishable: PublishableRules<'_>) -> PublishedRules {
             .document
             .rules()
             .iter()
-            .map(|rule| rule.id().clone())
+            .map(|rule| PublishedRule {
+                id: rule.id().clone(),
+                text_digest: *rule.text_digest(),
+            })
             .collect(),
         effective: publishable.effective,
         scope: publishable.document.scope().clone(),

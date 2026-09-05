@@ -10,7 +10,7 @@
 
 mod support;
 
-use std::{error::Error, fs, path::PathBuf};
+use std::{collections::BTreeSet, error::Error, fs, path::PathBuf};
 
 use academic_domain::engines::RuleId;
 use academic_ingestion::{
@@ -20,8 +20,8 @@ use academic_ingestion::{
     DependentNode, DimensionOutcome, DocumentChange, Fallback, FetchOutcome, HierarchyRelation,
     IngestSeq, LegalAuthority, OpenGate, Publication, QueueReason, RetrievalInstant, RunOutcome,
     ScopeRelation, Side, SnapshotError, SourceDiff, Stage, TermsLedger, TermsStatus,
-    TransitionRelation, UNSCOPED_OFFICIAL_SOURCE, UserResolution, phase2_shipped_fallbacks, stage,
-    unreviewed_status,
+    TransitionRelation, UNSCOPED_OFFICIAL_SOURCE, UserResolution, phase2_shipped_fallbacks,
+    rule_text_digest, stage, unreviewed_status,
 };
 use academic_untrusted_content::{SourceId, SourceKind};
 use support::{
@@ -1328,7 +1328,8 @@ fn a_complete_run_publishes_what_the_document_says() -> TestResult {
     let manifest = manifest(CONNECTOR)?;
     let ledger = permitting_ledger(CONNECTOR)?;
     let known = corpus()?;
-    let source = FixtureSource::holding(DocumentFixture::dated().bytes(), "\"v1\"");
+    let fixture = DocumentFixture::dated();
+    let source = FixtureSource::holding(fixture.bytes(), "\"v1\"");
     let record = academic_ingestion::run(
         &manifest,
         &ledger,
@@ -1351,13 +1352,40 @@ fn a_complete_run_publishes_what_the_document_says() -> TestResult {
     assert_eq!(published.parser_version(), PARSER);
     assert_eq!(published.retrieved_at(), RETRIEVED_AT);
     assert_eq!(published.scope().program().as_str(), "cse");
+    // Every published rule carries the digest of its own text, not only its
+    // identifier. A consumer that holds a span of official text and claims it
+    // was read from one of these rules is checkable against this and was
+    // believed without it -- `academic_requirement::RuleSetDraft::include`.
+    //
+    // The expectation comes from the fixture the document was written from,
+    // not from the parse being checked, and the three digests are required to
+    // be distinct: a publication that carried one digest for every rule, or
+    // the whole snapshot's, would satisfy an identifier-only comparison.
+    let expected: Vec<(String, academic_domain::ContentDigest)> = ["r-12-1", "r-12-2", "r-13-1"]
+        .into_iter()
+        .map(|rule| {
+            let text = fixture
+                .rule_text(rule)
+                .ok_or_else(|| format!("the fixture has no rule `{rule}`"))?;
+            Ok::<_, Box<dyn std::error::Error>>((rule.to_owned(), rule_text_digest(text)))
+        })
+        .collect::<Result<_, _>>()?;
     assert_eq!(
-        published.rules(),
-        [
-            RuleId::new("r-12-1")?,
-            RuleId::new("r-12-2")?,
-            RuleId::new("r-13-1")?
-        ]
+        expected
+            .iter()
+            .map(|(_, digest)| *digest)
+            .collect::<BTreeSet<_>>()
+            .len(),
+        expected.len(),
+        "the fixture's three rules must state three different things"
+    );
+    assert_eq!(
+        published
+            .rules()
+            .iter()
+            .map(|rule| (rule.id().as_str().to_owned(), *rule.text_digest()))
+            .collect::<Vec<_>>(),
+        expected
     );
     assert_eq!(published.effective().to_string(), "2026-03-01");
 

@@ -50,10 +50,14 @@
 //!
 //! A candidate carries `quoted_source`, which is the span of official text a
 //! model read. That is the one free-text value in this crate, and it is on the
-//! one type that never reaches an evaluation. [`ReviewedRule`] does not carry
-//! it forward and [`crate::publish::ExecutableRule`] has no field it could sit
-//! in, so the production audit path has no sentence in it at all --
-//! `production_audit_no_llm`'s structural half.
+//! one type that never reaches an evaluation. What travels past the gate is its
+//! **digest** -- [`ReviewedRule::quoted_source_digest`] -- which is what makes
+//! the crossing to `source_rule` checkable: the official document publishes a
+//! digest per rule, and [`crate::publish::RuleSetDraft::include`] requires the
+//! two to agree. A digest is not a sentence, so [`ReviewedRule`] still carries
+//! no official text, [`crate::publish::ExecutableRule`] still has no field one
+//! could sit in, and the production audit path still has no sentence in it at
+//! all -- `production_audit_no_llm`'s structural half.
 
 use academic_domain::{
     Actor, ContentDigest, EntityId, TimestampMillis, engines::RuleId as SourceRuleId,
@@ -152,6 +156,18 @@ impl RuleCandidate {
     #[must_use]
     pub const fn source_digest(&self) -> ContentDigest {
         self.source_digest
+    }
+
+    /// The digest of the quoted span, addressed the way the official document
+    /// addresses its own rules.
+    ///
+    /// `academic_ingestion::rule_text_digest` is the one place that
+    /// normalisation is written and `ParsedRule` is its other caller, so this
+    /// value is comparable with the digest publication carries per rule rather
+    /// than merely computed alike.
+    #[must_use]
+    pub fn quoted_source_digest(&self) -> ContentDigest {
+        academic_ingestion::rule_text_digest(&self.quoted_source)
     }
 }
 
@@ -253,6 +269,7 @@ pub struct ReviewedRule {
     first: ReviewAttestation,
     second: ReviewAttestation,
     source_digest: ContentDigest,
+    quoted_source_digest: ContentDigest,
 }
 
 impl ReviewedRule {
@@ -285,6 +302,18 @@ impl ReviewedRule {
     pub const fn source_digest(&self) -> ContentDigest {
         self.source_digest
     }
+
+    /// The digest of the official span the two reviewers read.
+    ///
+    /// [`crate::publish::RuleSetDraft::include`] compares it against the digest
+    /// the official document publishes for [`ReviewedRule::source_rule`]. That
+    /// is the half the two attestations cannot supply: they say which document
+    /// rule the reviewers believe this was read from, and this says which
+    /// document rule the quoted text actually is.
+    #[must_use]
+    pub const fn quoted_source_digest(&self) -> ContentDigest {
+        self.quoted_source_digest
+    }
 }
 
 /// The one door from a model-extracted candidate to a reviewable rule.
@@ -303,10 +332,13 @@ impl ReviewGate {
     /// have been read from**, both must be filed by an `Actor::User`, and the
     /// two users must differ.
     ///
-    /// The second half is what puts a person behind the crossing. It does not
-    /// make the crossing checkable -- see the module documentation -- and the
-    /// residue is recorded beside `S-24` in
-    /// `docs/contracts/graduation-audit.md`.
+    /// The second half is what puts a person behind the crossing. What makes
+    /// that crossing **checkable** is one layer on:
+    /// [`ReviewedRule::quoted_source_digest`] travels out of here and
+    /// [`crate::publish::RuleSetDraft::include`] compares it against the digest
+    /// the official document publishes for the named rule, so two reviewers who
+    /// attest a document rule the quoted text is not from are refused rather
+    /// than believed.
     pub fn admit(
         candidate: RuleCandidate,
         first: ReviewAttestation,
@@ -332,6 +364,7 @@ impl ReviewGate {
             return Err(RequirementError::OneReviewerTwice);
         }
         candidate.body.compile(&candidate.id)?;
+        let quoted_source_digest = candidate.quoted_source_digest();
         Ok(ReviewedRule {
             id: candidate.id,
             source_rule: candidate.source_rule,
@@ -339,6 +372,7 @@ impl ReviewGate {
             first,
             second,
             source_digest: candidate.source_digest,
+            quoted_source_digest,
         })
     }
 }
