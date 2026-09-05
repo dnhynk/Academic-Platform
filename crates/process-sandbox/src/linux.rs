@@ -137,6 +137,9 @@ const BPF_RET: u16 = 0x06;
 const BPF_W: u16 = 0x00;
 const BPF_ABS: u16 = 0x20;
 const BPF_JEQ: u16 = 0x10;
+/// Unsigned, and used only by the x32 floor, so it is compiled only where that
+/// floor is. `aarch64-unknown-linux-gnu` refuses an unused constant.
+#[cfg(target_arch = "x86_64")]
 const BPF_JGE: u16 = 0x30;
 const BPF_K: u16 = 0x00;
 
