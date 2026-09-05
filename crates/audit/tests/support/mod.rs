@@ -516,9 +516,10 @@ pub fn admit_as(
     synthetic: Vec<FixtureCase>,
 ) -> Result<RuleSetDraft, Box<dyn Error>> {
     let rule = RuleId::new(id)?;
+    let document_rule = academic_domain::engines::RuleId::new(source_rule)?;
     let candidate = RuleCandidate::extracted(
         rule.clone(),
-        academic_domain::engines::RuleId::new(source_rule)?,
+        document_rule.clone(),
         body,
         academic_domain::Actor::ModelRun {
             run_id: entity(7_001)?,
@@ -528,8 +529,8 @@ pub fn admit_as(
     );
     let reviewed = ReviewGate::admit(
         candidate,
-        ReviewAttestation::file(reviewer(11)?, rule.clone(), AS_OF),
-        ReviewAttestation::file(reviewer(12)?, rule.clone(), AS_OF),
+        ReviewAttestation::file(reviewer(11)?, rule.clone(), document_rule.clone(), AS_OF),
+        ReviewAttestation::file(reviewer(12)?, rule.clone(), document_rule, AS_OF),
     )?;
     let official = OfficialExampleFixtures::new(official, &rule)?;
     let synthetic = SyntheticTranscriptFixtures::new(synthetic, &rule)?;

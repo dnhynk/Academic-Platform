@@ -28,18 +28,25 @@ use academic_domain::{
     engines::{DeterministicEngine as _, EngineVersion, ProofStatus},
 };
 use academic_record::{
+    CanonicalIdentifier,
     attempt::{
         AttemptHistory, AttemptStatus, CourseAttempt, RegistrationConfirmation, RepeatStatus,
         SettledStatus,
     },
-    classify::{ProgramId, RequirementCategory, classification_claim},
+    classify::{
+        ClassificationRule, ClassificationRuleSet, ProgramId, RequirementCategory,
+        classification_claim,
+    },
     corpus, decimal,
     engine::{CreditAccountingEngine, GpaEngine},
     facts::{AttemptFacts, GpaScope, encode},
-    grade::{GradeSymbol, GradingScheme},
+    grade::{GradeSymbol, GradeTreatment, GradingScheme},
     ingest::attempt_from_confirmed_row,
     plan::{PlanScenario, PlanScenarioChoice, PlanStore, delete_scenario},
-    policy::{AttemptOrigin, PolicyBook, RecognitionDecision, RepeatRecognition, RuleBook},
+    policy::{
+        AttemptOrigin, ExternalGradePolicyRow, PolicyBook, RecognitionDecision, RepeatPolicyRow,
+        RepeatRecognition, RuleBook,
+    },
     term::{Semester, TermKey},
     views::{
         AverageContribution, CreditContribution, DispositionReason, GpaValue, RecordViews,
@@ -1203,7 +1210,7 @@ fn repeat_ceiling_effective_date() -> TestResult {
             scheme.clone(),
             corpus::confirmed_policy_ceiling_from(term)?,
             corpus::CLASSIFICATION_RULESET_ID,
-        );
+        )?;
         let views = RecordViews::compute(&history, &rules, &classification)?;
         Ok(rendered(&views.cumulative_gpa()?))
     };
@@ -1678,5 +1685,358 @@ fn engine_inputs_are_refused_rather_than_defaulted() -> TestResult {
             "the engine must refuse {malformed:?} rather than default it"
         );
     }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// 4. The rule-book hash
+// ---------------------------------------------------------------------------
+
+/// Two rule books that differ produce two hashes, and the collision that
+/// falsified that is not a value any more.
+///
+/// `RuleBook::digest` is the `RuleSetHash` `GpaEngine`, `CreditAccountingEngine`
+/// and the transcript-coverage harness replay against, and each refuses
+/// `RecordError::RuleSetHashMismatch` on a mismatch. The rendering is line
+/// oriented and separates its fields with a space, an `=` and a newline, and it
+/// used to render four unvalidated `String`s straight into those lines. A
+/// `row_id` holding a newline and the text of the row above it therefore folded
+/// two dated repeat rows into one: the two books rendered the same bytes, a
+/// recorded average replayed under a book that governed nothing before 2020 and
+/// was **accepted**, and the answer went from `Satisfied` with a 2.90 average
+/// over 12.0 credits to `Unknown` with no average at all.
+///
+/// Both halves are here. The forged identifier is derived from the book's own
+/// rendered text -- nothing is transcribed -- and is refused at construction;
+/// and each position the rendering carries is moved in turn and required to
+/// move the digest, so the refusal above is not passing because the rendering
+/// stopped covering anything.
+#[test]
+fn the_rule_book_hash_is_an_identity() -> TestResult {
+    let scheme = GradingScheme::snu_4_3_v1()?;
+    let row = |id: &str, term: &str, ceiling: Option<GradeSymbol>, recognition| {
+        Ok::<_, Box<dyn Error>>(RepeatPolicyRow {
+            row_id: CanonicalIdentifier::new(id)?,
+            effective_from: TermKey::parse(term)?,
+            ceiling,
+            recognition,
+            citation: "synthetic".to_owned(),
+        })
+    };
+    let external = |id: &str, term: &str, excluded: bool| {
+        Ok::<_, Box<dyn Error>>(ExternalGradePolicyRow {
+            row_id: CanonicalIdentifier::new(id)?,
+            effective_from: TermKey::parse(term)?,
+            excluded_from_average: excluded,
+            citation: "synthetic".to_owned(),
+        })
+    };
+
+    // Book A: two dated repeat rows and one external row.
+    let early = row(
+        "repeat.early",
+        "2015_SPRING",
+        Some(GradeSymbol::AZero),
+        RepeatRecognition::Unknown,
+    )?;
+    let late = row(
+        "repeat.late",
+        "2020_SPRING",
+        Some(GradeSymbol::BZero),
+        RepeatRecognition::HighestAttempt,
+    )?;
+    let outside = external("external.excluded", "2004_SPRING", true)?;
+    let book = PolicyBook::new(vec![early.clone(), late.clone()], vec![outside.clone()])?;
+    let baseline = RuleBook::new(scheme.clone(), book.clone(), "classification.v1")?;
+
+    // The collision, rebuilt from the book's own rendering. The identifier that
+    // folded the two repeat rows into one is `repeat.early`'s whole rendered
+    // line plus the next line's leading token, and it is now not an identifier.
+    let text = baseline.canonical_text();
+    let repeat_lines: String = text
+        .lines()
+        .filter(|line| line.starts_with("repeat-policy "))
+        .map(|line| format!("{line}\n"))
+        .collect();
+    let stripped = repeat_lines
+        .strip_prefix("repeat-policy ")
+        .ok_or("the repeat rendering changed shape")?;
+    let cut = stripped
+        .rfind(" from=")
+        .ok_or("the repeat rendering changed shape")?;
+    let forged = &stripped[..cut];
+    assert!(
+        forged.contains('\n') && forged.starts_with("repeat.early"),
+        "the derivation did not produce the folded identifier: {forged:?}"
+    );
+    assert!(
+        CanonicalIdentifier::new(forged).is_err(),
+        "the identifier that folded two rows into one is still constructible"
+    );
+    // And the identifier it was derived from still is, so the refusal above is
+    // about the newline rather than about the derivation failing.
+    assert!(CanonicalIdentifier::new("repeat.early").is_ok());
+
+    // Every position the rendering carries moves the digest. Each mutant
+    // differs from the baseline in exactly one of them.
+    let mutants: Vec<(&str, RuleBook)> = vec![
+        (
+            "scheme.id",
+            RuleBook::new(
+                GradingScheme::snu_4_3_v2_scale3()?,
+                book.clone(),
+                "classification.v1",
+            )?,
+        ),
+        (
+            "classification_ruleset_id",
+            RuleBook::new(scheme.clone(), book.clone(), "classification.v2")?,
+        ),
+        (
+            "repeat.row_id",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(
+                    vec![
+                        row(
+                            "repeat.earlier",
+                            "2015_SPRING",
+                            Some(GradeSymbol::AZero),
+                            RepeatRecognition::Unknown,
+                        )?,
+                        late.clone(),
+                    ],
+                    vec![outside.clone()],
+                )?,
+                "classification.v1",
+            )?,
+        ),
+        (
+            "repeat.effective_from",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(
+                    vec![
+                        row(
+                            "repeat.early",
+                            "2016_SPRING",
+                            Some(GradeSymbol::AZero),
+                            RepeatRecognition::Unknown,
+                        )?,
+                        late.clone(),
+                    ],
+                    vec![outside.clone()],
+                )?,
+                "classification.v1",
+            )?,
+        ),
+        (
+            "repeat.ceiling",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(
+                    vec![
+                        row(
+                            "repeat.early",
+                            "2015_SPRING",
+                            None,
+                            RepeatRecognition::Unknown,
+                        )?,
+                        late.clone(),
+                    ],
+                    vec![outside.clone()],
+                )?,
+                "classification.v1",
+            )?,
+        ),
+        (
+            "repeat.recognition",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(
+                    vec![
+                        row(
+                            "repeat.early",
+                            "2015_SPRING",
+                            Some(GradeSymbol::AZero),
+                            RepeatRecognition::LatestAttempt,
+                        )?,
+                        late.clone(),
+                    ],
+                    vec![outside.clone()],
+                )?,
+                "classification.v1",
+            )?,
+        ),
+        (
+            "repeat.row_count",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(vec![early.clone()], vec![outside.clone()])?,
+                "classification.v1",
+            )?,
+        ),
+        (
+            "external.row_id",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(
+                    vec![early.clone(), late.clone()],
+                    vec![external("external.excluded.v2", "2004_SPRING", true)?],
+                )?,
+                "classification.v1",
+            )?,
+        ),
+        (
+            "external.effective_from",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(
+                    vec![early.clone(), late.clone()],
+                    vec![external("external.excluded", "2005_SPRING", true)?],
+                )?,
+                "classification.v1",
+            )?,
+        ),
+        (
+            "external.excluded_from_average",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(
+                    vec![early.clone(), late.clone()],
+                    vec![external("external.excluded", "2004_SPRING", false)?],
+                )?,
+                "classification.v1",
+            )?,
+        ),
+        (
+            "external.row_count",
+            RuleBook::new(
+                scheme.clone(),
+                PolicyBook::new(vec![early, late], Vec::new())?,
+                "classification.v1",
+            )?,
+        ),
+    ];
+
+    let mut seen: BTreeMap<String, String> = BTreeMap::new();
+    seen.insert(baseline.digest().to_string(), "baseline".to_owned());
+    for (position, mutant) in &mutants {
+        assert_ne!(
+            mutant.canonical_text(),
+            baseline.canonical_text(),
+            "moving {position} did not change the rendering"
+        );
+        let digest = mutant.digest().to_string();
+        let collided = seen.insert(digest.clone(), (*position).to_owned());
+        assert!(
+            collided.is_none(),
+            "{position} and {collided:?} share one rule-book hash"
+        );
+    }
+    assert_eq!(
+        seen.len(),
+        mutants.len() + 1,
+        "the movable positions did not produce distinct hashes"
+    );
+    Ok(())
+}
+
+/// The four identifiers the rule book renders are refused when they could make
+/// the rendering ambiguous, and the classification set's are refused at its one
+/// door.
+///
+/// Every separator the rendering uses is exercised, not just the newline the
+/// collision above used: a space folds a `from=` boundary, an `=` folds a
+/// field name, and a `/` folds the grade-point pair.
+#[test]
+fn no_rendered_identifier_can_hold_a_separator() -> TestResult {
+    fn treatments() -> Result<BTreeMap<GradeSymbol, GradeTreatment>, Box<dyn Error>> {
+        let published = GradingScheme::snu_4_3_v1()?;
+        Ok(GradeSymbol::ALL
+            .into_iter()
+            .map(|symbol| (symbol, published.treatment(symbol)))
+            .collect())
+    }
+
+    let structural = [' ', '=', '\n', '/', ':', '\t', '\r'];
+    for character in structural {
+        let value = format!("a{character}b");
+        assert!(
+            CanonicalIdentifier::new(value.clone()).is_err(),
+            "{character:?} is admitted inside a rendered identifier"
+        );
+        assert!(
+            GradingScheme::new(value.clone(), treatments()?, 2, "synthetic").is_err(),
+            "a grading scheme accepted {character:?} in its version identifier"
+        );
+        assert!(
+            RuleBook::new(
+                GradingScheme::snu_4_3_v1()?,
+                PolicyBook::published_v1()?,
+                value.clone(),
+            )
+            .is_err(),
+            "a rule book accepted {character:?} in its classification rule-set id"
+        );
+        assert!(
+            ClassificationRuleSet::publish(value.clone(), Vec::new()).is_err(),
+            "a classification rule set accepted {character:?} in its id"
+        );
+        // `ClassificationRule`'s two `String`s are public fields, so the check
+        // is at the set's one door. Both travel into the claim
+        // `classification_claim` renders as `program=..;category=..;rule=..;
+        // ruleset=..`.
+        for (field, rule) in [
+            (
+                "rule_id",
+                ClassificationRule {
+                    rule_id: value.clone(),
+                    program: ProgramId::new("cse")?,
+                    course_code: "M1522.000100".to_owned(),
+                    category: RequirementCategory::MajorRequired,
+                },
+            ),
+            (
+                "course_code",
+                ClassificationRule {
+                    rule_id: "rule.cls.001".to_owned(),
+                    program: ProgramId::new("cse")?,
+                    course_code: value.clone(),
+                    category: RequirementCategory::MajorRequired,
+                },
+            ),
+        ] {
+            assert!(
+                ClassificationRuleSet::publish("synthetic_classification_v1", vec![rule]).is_err(),
+                "a classification rule set accepted {character:?} in a rule's {field}"
+            );
+        }
+    }
+    // The control: the shipped spellings are admitted, so the refusals above
+    // are about the separator rather than about the constructor refusing
+    // everything.
+    assert!(CanonicalIdentifier::new("repeat.ceiling.2015_spring").is_ok());
+    assert!(
+        RuleBook::new(
+            GradingScheme::snu_4_3_v1()?,
+            PolicyBook::published_v1()?,
+            corpus::CLASSIFICATION_RULESET_ID,
+        )
+        .is_ok()
+    );
+    assert!(ClassificationRuleSet::publish("synthetic_classification_v1", Vec::new()).is_ok());
+    assert!(
+        ClassificationRuleSet::publish(
+            "synthetic_classification_v1",
+            vec![ClassificationRule {
+                rule_id: "rule.cls.001".to_owned(),
+                program: ProgramId::new("cse")?,
+                course_code: "M1522.000100".to_owned(),
+                category: RequirementCategory::MajorRequired,
+            }],
+        )
+        .is_ok()
+    );
     Ok(())
 }

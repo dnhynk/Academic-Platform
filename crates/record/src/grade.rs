@@ -17,6 +17,8 @@ use std::collections::BTreeMap;
 
 use academic_domain::Decimal;
 
+use crate::CanonicalIdentifier;
+
 use crate::{RecordError, decimal};
 
 /// Every grade symbol this crate admits.
@@ -249,7 +251,7 @@ impl GradeTreatment {
 /// publishes names the scheme it was computed under.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GradingScheme {
-    id: String,
+    id: CanonicalIdentifier,
     treatments: BTreeMap<GradeSymbol, GradeTreatment>,
     published_scale: u8,
     citation: String,
@@ -261,6 +263,9 @@ impl GradingScheme {
     /// Totality is the point. A scheme with a gap would make an average depend
     /// on whether a particular symbol happened to appear in the attempt set,
     /// and the gap would surface as a wrong number rather than as an error.
+    ///
+    /// `id` is rendered into [`GradingScheme::canonical_text`], so it is a
+    /// [`CanonicalIdentifier`] rather than a `String`.
     pub fn new(
         id: impl Into<String>,
         treatments: BTreeMap<GradeSymbol, GradeTreatment>,
@@ -276,7 +281,7 @@ impl GradingScheme {
             }
         }
         Ok(Self {
-            id: id.into(),
+            id: CanonicalIdentifier::new(id)?,
             treatments,
             published_scale,
             citation: citation.into(),
@@ -286,7 +291,7 @@ impl GradingScheme {
     /// Returns the scheme's version identifier.
     #[must_use]
     pub fn id(&self) -> &str {
-        &self.id
+        self.id.as_str()
     }
 
     /// Returns the number of digits an average is published to.

@@ -204,8 +204,8 @@ fn admit(
     );
     let reviewed = ReviewGate::admit(
         candidate,
-        ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
-        ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
+        ReviewAttestation::file(reviewer(11)?, rule.clone(), source_rule("")?, AT),
+        ReviewAttestation::file(reviewer(12)?, rule.clone(), source_rule("")?, AT),
     )?;
     let official = OfficialExampleFixtures::new(fixtures.0.to_vec(), &rule)?;
     let synthetic = SyntheticTranscriptFixtures::new(fixtures.1.to_vec(), &rule)?;
@@ -1599,8 +1599,8 @@ fn rule_candidate_review_gate() -> TestResult {
     assert_eq!(
         ReviewGate::admit(
             candidate()?,
-            ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
-            ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), source_rule("")?, AT),
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), source_rule("")?, AT),
         ),
         Err(RequirementError::OneReviewerTwice)
     );
@@ -1623,8 +1623,8 @@ fn rule_candidate_review_gate() -> TestResult {
             matches!(
                 ReviewGate::admit(
                     candidate()?,
-                    ReviewAttestation::file(actor.clone(), rule.clone(), AT),
-                    ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
+                    ReviewAttestation::file(actor.clone(), rule.clone(), source_rule("")?, AT),
+                    ReviewAttestation::file(reviewer(12)?, rule.clone(), source_rule("")?, AT),
                 ),
                 Err(RequirementError::ReviewerIsNotAUser { .. })
             ),
@@ -1637,8 +1637,13 @@ fn rule_candidate_review_gate() -> TestResult {
     assert!(matches!(
         ReviewGate::admit(
             candidate()?,
-            ReviewAttestation::file(reviewer(11)?, RuleId::new("other_rule")?, AT),
-            ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
+            ReviewAttestation::file(
+                reviewer(11)?,
+                RuleId::new("other_rule")?,
+                source_rule("")?,
+                AT
+            ),
+            ReviewAttestation::file(reviewer(12)?, rule.clone(), source_rule("")?, AT),
         ),
         Err(RequirementError::AttestationNamesAnotherCandidate { .. })
     ));
@@ -1660,8 +1665,8 @@ fn rule_candidate_review_gate() -> TestResult {
                 "the page says something".to_owned(),
                 digest(),
             ),
-            ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
-            ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), source_rule("")?, AT),
+            ReviewAttestation::file(reviewer(12)?, rule.clone(), source_rule("")?, AT),
         ),
         Err(RequirementError::MalformedRule { .. })
     ));
@@ -1670,8 +1675,8 @@ fn rule_candidate_review_gate() -> TestResult {
     // and the reviewed rule carries both attestations.
     let reviewed = ReviewGate::admit(
         candidate()?,
-        ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
-        ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
+        ReviewAttestation::file(reviewer(11)?, rule.clone(), source_rule("")?, AT),
+        ReviewAttestation::file(reviewer(12)?, rule.clone(), source_rule("")?, AT),
     )?;
     let (first, second) = reviewed.attestations();
     assert_ne!(
@@ -1864,8 +1869,8 @@ fn new_rule_release_gate_requires_official_and_synthetic_fixtures() -> TestResul
                 "the page says at least 130 credits".to_owned(),
                 digest(),
             ),
-            ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
-            ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), source_rule("")?, AT),
+            ReviewAttestation::file(reviewer(12)?, rule.clone(), source_rule("")?, AT),
         )?)
     };
 
@@ -1891,8 +1896,11 @@ fn new_rule_release_gate_requires_official_and_synthetic_fixtures() -> TestResul
     let published = official_source()?;
 
     // A fixture that merely exists proves nothing. Each case is evaluated
-    // against the rule and has to land where it says it will, so a fixture that
-    // disagrees with the rule stops the release.
+    // against the published set and has to land where it says it will, so a
+    // fixture that disagrees with the rule stops the release. The evaluation is
+    // at `publish` rather than at `include`, because `include` can only reach
+    // the rules admitted before this one -- see
+    // `the_release_fixtures_run_against_the_published_set`.
     for (label, official, synthetic) in [
         (
             "an official example that disagrees",
@@ -1905,11 +1913,13 @@ fn new_rule_release_gate_requires_official_and_synthetic_fixtures() -> TestResul
             vec![disagreeing.clone()],
         ),
     ] {
-        let refused = draft(&published)?.include(
-            reviewed()?,
-            &OfficialExampleFixtures::new(official, &rule)?,
-            &SyntheticTranscriptFixtures::new(synthetic, &rule)?,
-        );
+        let refused = draft(&published)?
+            .include(
+                reviewed()?,
+                &OfficialExampleFixtures::new(official, &rule)?,
+                &SyntheticTranscriptFixtures::new(synthetic, &rule)?,
+            )?
+            .publish();
         assert!(
             matches!(
                 refused,
@@ -2619,11 +2629,12 @@ fn shaped_set(shape: &SetShape) -> Result<RuleSet, Box<dyn Error>> {
         shape.supersedes,
     );
     let facts = AcademicFacts::new(AT);
+    let document_rule = academic_domain::engines::RuleId::new(shape.source_rule)?;
     let include = |draft: RuleSetDraft, id: &str| -> Result<RuleSetDraft, Box<dyn Error>> {
         let rule = RuleId::new(id)?;
         let candidate = RuleCandidate::extracted(
             rule.clone(),
-            academic_domain::engines::RuleId::new(shape.source_rule)?,
+            document_rule.clone(),
             RuleBody::CreditMinimum {
                 category: CreditCategory::new("ALL_RECOGNIZED")?,
                 threshold: CreditAmount::new(shape.threshold)?,
@@ -2636,8 +2647,8 @@ fn shaped_set(shape: &SetShape) -> Result<RuleSet, Box<dyn Error>> {
         );
         let reviewed = ReviewGate::admit(
             candidate,
-            ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
-            ReviewAttestation::file(reviewer(12)?, rule.clone(), AT),
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), document_rule.clone(), AT),
+            ReviewAttestation::file(reviewer(12)?, rule.clone(), document_rule.clone(), AT),
         )?;
         let official = OfficialExampleFixtures::new(
             vec![FixtureCase::new(facts.clone(), ProofStatus::Needs)],
@@ -2842,10 +2853,11 @@ fn a_rule_naming_an_unpublished_source_rule_is_refused() -> TestResult {
             "the official page states this requirement in a sentence".to_owned(),
             digest(),
         );
+        let document_rule = academic_domain::engines::RuleId::new(source)?;
         Ok(ReviewGate::admit(
             candidate,
-            ReviewAttestation::file(reviewer(11)?, rule.clone(), AT),
-            ReviewAttestation::file(reviewer(12)?, rule, AT),
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), document_rule.clone(), AT),
+            ReviewAttestation::file(reviewer(12)?, rule, document_rule, AT),
         )?)
     };
 
@@ -2878,5 +2890,214 @@ fn a_rule_naming_an_unpublished_source_rule_is_refused() -> TestResult {
         ),
         "a rule naming a document rule the source never published was admitted"
     );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// the_release_fixtures_run_against_the_published_set -- REQ-11-011
+// ---------------------------------------------------------------------------
+
+/// Section 11.4's regression check runs against the set the rule executes
+/// under, so admission order decides nothing.
+///
+/// `RuleSetDraft::include` can only reach the rules admitted before the one it
+/// is admitting, and `evaluate` resolves a `COURSE_OR_EQUIVALENT` operand
+/// through the `EQUIVALENCY` rules of the set it is handed. A rule admitted
+/// before its equivalency was therefore checked against a set that does not
+/// resolve it and executed against one that does — and the consequence was not
+/// a weaker check but a **wrong** one, in both directions: the gate accepted a
+/// fixture declaring `NOT_SATISFIED` for a rule the published set answers
+/// `Satisfied` for, and refused the release of the same rule when the reviewer
+/// declared the status the published set actually reaches.
+///
+/// Both directions are here, under both admission orders. Nothing enforces an
+/// order, and `crates/audit/tests/support/mod.rs` carried the workaround as a
+/// comment on its own fixture list.
+#[test]
+fn the_release_fixtures_run_against_the_published_set() -> TestResult {
+    let presented = course(13)?;
+    let required = course(2)?;
+    let facts = AcademicFacts::new(AT)
+        .with_admission_year(AdmissionYear::new(2_022)?)
+        .with_attempt(attempt(5_013, presented, 3)?);
+    let equivalency = RuleBody::Equivalency {
+        presented,
+        counts_for: required,
+        effective: ValidInterval::open_ended(BEFORE),
+    };
+    let all_of = RuleBody::AllOf {
+        operands: vec![Operand {
+            course: required,
+            equivalent_admitted: true,
+        }],
+    };
+
+    let publish_in_order =
+        |all_of_first: bool, declared: ProofStatus| -> Result<RuleSet, Box<dyn Error>> {
+            let case = vec![FixtureCase::new(facts.clone(), declared)];
+            let equivalent = vec![FixtureCase::new(facts.clone(), ProofStatus::Satisfied)];
+            let published = official_source()?;
+            let mut staged = draft(&published)?;
+            let admit_all_of = |staged| {
+                admit(
+                    staged,
+                    "required_course_set",
+                    all_of.clone(),
+                    (&case, &case),
+                )
+            };
+            let admit_equivalency = |staged| {
+                admit(
+                    staged,
+                    "equivalency_shared",
+                    equivalency.clone(),
+                    (&equivalent, &equivalent),
+                )
+            };
+            if all_of_first {
+                staged = admit_all_of(staged)?;
+                staged = admit_equivalency(staged)?;
+            } else {
+                staged = admit_equivalency(staged)?;
+                staged = admit_all_of(staged)?;
+            }
+            Ok(staged.publish()?)
+        };
+
+    for all_of_first in [false, true] {
+        let order = if all_of_first {
+            "the rule before its equivalency"
+        } else {
+            "the equivalency before the rule"
+        };
+
+        // The true status is released, whichever order the draft was built in.
+        let released = publish_in_order(all_of_first, ProofStatus::Satisfied)?;
+        assert_eq!(
+            status_of(&released, "required_course_set", &facts)?,
+            ProofStatus::Satisfied,
+            "{order}: the published rule does not answer what its fixture declared"
+        );
+
+        // And the status that is false of the published set is refused, which
+        // is the half that was accepted when the rule came first.
+        let refused = publish_in_order(all_of_first, ProofStatus::NotSatisfied);
+        let Err(error) = refused else {
+            return Err(format!(
+                "{order}: a fixture declaring NOT_SATISFIED was released for a rule                  the published set answers Satisfied for"
+            )
+            .into());
+        };
+        assert!(
+            error
+                .to_string()
+                .contains("a regression fixture disagrees with"),
+            "{order}: refused for another reason: {error}"
+        );
+    }
+
+    // The control: without the equivalency in the set the rule really does
+    // answer `NOT_SATISFIED`, so the refusal above is about the set the fixture
+    // was run against rather than about the fixture being unsatisfiable.
+    let alone = one_rule_set(
+        "required_course_set",
+        all_of,
+        &[FixtureCase::new(facts.clone(), ProofStatus::NotSatisfied)],
+        &[FixtureCase::new(facts.clone(), ProofStatus::NotSatisfied)],
+    )?;
+    assert_eq!(
+        status_of(&alone, "required_course_set", &facts)?,
+        ProofStatus::NotSatisfied,
+        "the operand is discharged with no equivalency in the set, so the pair above \
+         demonstrates nothing"
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// the_two_reviewers_attest_the_document_rule_as_well -- REQ-11-005
+// ---------------------------------------------------------------------------
+
+/// The crossing between the reviewer's identifier and the document's is part of
+/// what the two people attest.
+///
+/// `academic-audit` decides whether an unresolved source conflict applies to a
+/// set by comparing the conflict's document rule against
+/// `ExecutableRule::source_rule`. `RuleSetDraft::include` checks that the
+/// official document published that identifier, which is membership: the
+/// fixture document publishes twelve, and an extraction may carry any of them.
+/// The value was therefore supplied by a model — `RuleCandidate::extracted`'s
+/// own documentation calls it *what a model extracted* — and attested by
+/// nobody, so the same open conflict blocked the set that happened to be
+/// labelled the document's way and left eleven identical sets through.
+///
+/// Section 11.4's *LLM은 원문에서 rule 후보를 추출할 수 있으나 사람이 검토한
+/// executable rule만 production audit에 사용한다* is what makes this the
+/// reviewers' business: `source_rule` is a field of the executable rule.
+///
+/// Both directions are here: an attestation naming another document rule is
+/// refused, and the same call with both attestations naming the candidate's own
+/// is admitted. What this does **not** do is make the label checkable — see
+/// `docs/contracts/graduation-audit.md`, which records the residue beside
+/// `S-24`.
+#[test]
+fn the_two_reviewers_attest_the_document_rule_as_well() -> TestResult {
+    let rule = RuleId::new("total_credits")?;
+    let claimed = academic_domain::engines::RuleId::new("r-12-1")?;
+    let other = academic_domain::engines::RuleId::new("r-12-2")?;
+    assert_ne!(claimed, other);
+
+    let candidate = || -> Result<RuleCandidate, Box<dyn Error>> {
+        Ok(RuleCandidate::extracted(
+            rule.clone(),
+            claimed.clone(),
+            RuleBody::CreditMinimum {
+                category: CreditCategory::new("ALL_RECOGNIZED")?,
+                threshold: CreditAmount::new(130)?,
+            },
+            Actor::ModelRun {
+                run_id: entity(7_001)?,
+            },
+            "the official page states this requirement in a sentence".to_owned(),
+            digest(),
+        ))
+    };
+
+    // Either reviewer naming another document rule is refused, and the refusal
+    // names both identifiers rather than saying only that something disagreed.
+    for (label, first_source, second_source) in [
+        ("the first reviewer", other.clone(), claimed.clone()),
+        ("the second reviewer", claimed.clone(), other.clone()),
+        ("both reviewers", other.clone(), other.clone()),
+    ] {
+        let refused = ReviewGate::admit(
+            candidate()?,
+            ReviewAttestation::file(reviewer(11)?, rule.clone(), first_source, AT),
+            ReviewAttestation::file(reviewer(12)?, rule.clone(), second_source, AT),
+        );
+        assert!(
+            matches!(
+                refused,
+                Err(RequirementError::AttestationNamesAnotherSourceRule {
+                    ref named,
+                    ref under_review,
+                }) if named == "r-12-2" && under_review == "r-12-1"
+            ),
+            "{label} attested another document rule and the gate admitted it: {refused:?}"
+        );
+    }
+
+    // Both naming the candidate's own document rule is admitted, and the
+    // reviewed rule carries it forward, so the refusals above are about the
+    // disagreement rather than about the gate refusing everything.
+    let reviewed = ReviewGate::admit(
+        candidate()?,
+        ReviewAttestation::file(reviewer(11)?, rule.clone(), claimed.clone(), AT),
+        ReviewAttestation::file(reviewer(12)?, rule.clone(), claimed.clone(), AT),
+    )?;
+    assert_eq!(reviewed.source_rule(), &claimed);
+    let (first, second) = reviewed.attestations();
+    assert_eq!(first.source_rule(), &claimed);
+    assert_eq!(second.source_rule(), &claimed);
     Ok(())
 }

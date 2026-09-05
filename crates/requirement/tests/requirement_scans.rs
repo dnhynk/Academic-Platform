@@ -294,7 +294,7 @@ fn specification() -> Result<String, Box<dyn Error>> {
 /// The whole review gate. Two attestations, both naming this candidate, both
 /// filed by a user, the two users different, and the body compiled -- then and
 /// only then the one `ReviewedRule` this crate builds.
-const WHOLE_ADMIT: &str = "pub fn admit( candidate: RuleCandidate, first: ReviewAttestation, second: ReviewAttestation, ) -> Result<ReviewedRule, RequirementError> { for attestation in [&first, &second] { if attestation.candidate() != candidate.id() { return Err(RequirementError::AttestationNamesAnotherCandidate { named: attestation.candidate().as_str().to_owned(), under_review: candidate.id().as_str().to_owned(), }); } } let first_user = first.user_id()?; let second_user = second.user_id()?; if first_user == second_user { return Err(RequirementError::OneReviewerTwice); } candidate.body.compile(&candidate.id)?; Ok(ReviewedRule { id: candidate.id, source_rule: candidate.source_rule, body: candidate.body, first, second, source_digest: candidate.source_digest, }) }";
+const WHOLE_ADMIT: &str = "pub fn admit( candidate: RuleCandidate, first: ReviewAttestation, second: ReviewAttestation, ) -> Result<ReviewedRule, RequirementError> { for attestation in [&first, &second] { if attestation.candidate() != candidate.id() { return Err(RequirementError::AttestationNamesAnotherCandidate { named: attestation.candidate().as_str().to_owned(), under_review: candidate.id().as_str().to_owned(), }); } if attestation.source_rule() != candidate.source_rule() { return Err(RequirementError::AttestationNamesAnotherSourceRule { named: attestation.source_rule().as_str().to_owned(), under_review: candidate.source_rule().as_str().to_owned(), }); } } let first_user = first.user_id()?; let second_user = second.user_id()?; if first_user == second_user { return Err(RequirementError::OneReviewerTwice); } candidate.body.compile(&candidate.id)?; Ok(ReviewedRule { id: candidate.id, source_rule: candidate.source_rule, body: candidate.body, first, second, source_digest: candidate.source_digest, }) }";
 
 /// The gate's signature alone, as the public-signature sweep renders it.
 ///
@@ -309,7 +309,7 @@ const WHOLE_USER_ID: &str = "fn user_id(&self) -> Result<EntityId, RequirementEr
 /// The whole admission of a reviewed rule into a draft: the one place an
 /// `ExecutableRule` is built, and the fixtures are evaluated rather than
 /// counted.
-const WHOLE_INCLUDE: &str = "pub fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError> { if self .rules .iter() .any(|existing| existing.id() == reviewed.id()) { return Err(RequirementError::DuplicateRule { rule: reviewed.id().as_str().to_owned(), }); } if !self .source_rules .iter() .any(|published| published == reviewed.source_rule()) { return Err(RequirementError::SourceRuleNotPublished { rule: reviewed.id().as_str().to_owned(), source_rule: reviewed.source_rule().as_str().to_owned(), }); } let rule = ExecutableRule { id: reviewed.id().clone(), source_rule: reviewed.source_rule().clone(), body: reviewed.body().clone(), source_digest: reviewed.source_digest(), }; rule.body.compile(&rule.id)?; let staged = self.as_evaluable(); for case in official.cases().iter().chain(synthetic.cases()) { let outcome = evaluate(&staged, &rule.id, &rule.body, &case.facts)?; if outcome.status != case.expected { return Err(RequirementError::ReleaseFixturesMissing { rule: rule.id.as_str().to_owned(), missing: \"a regression fixture disagrees with the rule\", }); } } self.rules.push(rule); Ok(self) }";
+const WHOLE_INCLUDE: &str = "pub fn include( mut self, reviewed: ReviewedRule, official: &OfficialExampleFixtures, synthetic: &SyntheticTranscriptFixtures, ) -> Result<Self, RequirementError> { if self .rules .iter() .any(|existing| existing.id() == reviewed.id()) { return Err(RequirementError::DuplicateRule { rule: reviewed.id().as_str().to_owned(), }); } if !self .source_rules .iter() .any(|published| published == reviewed.source_rule()) { return Err(RequirementError::SourceRuleNotPublished { rule: reviewed.id().as_str().to_owned(), source_rule: reviewed.source_rule().as_str().to_owned(), }); } let rule = ExecutableRule { id: reviewed.id().clone(), source_rule: reviewed.source_rule().clone(), body: reviewed.body().clone(), source_digest: reviewed.source_digest(), }; rule.body.compile(&rule.id)?; self.rules.push(rule); self.fixtures.push((official.clone(), synthetic.clone())); Ok(self) }";
 
 /// The whole ledger publication: the version must be new and the supersession
 /// must name the head.
@@ -2007,6 +2007,62 @@ fn the_canonical_renderings_bind_every_field() -> TestResult {
             "{name}: the set renderer does not reach every field"
         );
     }
+
+    // 6. And the two sentences that state those counts in prose state the
+    //    counts the types declare.
+    //
+    //    Both said *all three of `ExecutableRule`'s* while the type declared
+    //    four -- `source_rule`, which `P2-RF18` added and `RULE_SET_FIELDS`
+    //    above correctly pinned. The prose is the half a reader trusts, and it
+    //    is where `P2-A3`'s brief inherited the wrong number from. Reading the
+    //    number word back makes it a claim rather than a caption.
+    const NUMBER_WORDS: [(&str, usize); 6] = [
+        ("three", 3),
+        ("four", 4),
+        ("five", 5),
+        ("six", 6),
+        ("seven", 7),
+        ("eight", 8),
+    ];
+    let word_before = |text: &str, needle: &str| -> Option<usize> {
+        let at = text.find(needle)?;
+        let word = text[..at].split_whitespace().next_back()?;
+        NUMBER_WORDS
+            .iter()
+            .find(|(spelling, _)| *spelling == word)
+            .map(|(_, count)| *count)
+    };
+    let publish_prose = fs::read_to_string(crate_root().join("src").join("publish.rs"))?;
+    let contract = fs::read_to_string(
+        crate_root()
+            .join("..")
+            .join("..")
+            .join("docs")
+            .join("contracts")
+            .join("graduation-audit.md"),
+    )?;
+    for (label, text, needle) in [
+        (
+            "docs/contracts/graduation-audit.md",
+            contract.as_str(),
+            "of `ExecutableRule`'s, the compiled body",
+        ),
+        (
+            "src/publish.rs",
+            publish_prose.as_str(),
+            "of
+    /// [`ExecutableRule`]'s including the body",
+        ),
+    ] {
+        let declared = item_body(&publish, "pub struct", "ExecutableRule")
+            .map(fields_at_top_level)
+            .ok_or("ExecutableRule is not declared")?;
+        assert_eq!(
+            word_before(text, needle),
+            Some(declared.len()),
+            "{label} states a different number of ExecutableRule fields than the type declares"
+        );
+    }
     Ok(())
 }
 
@@ -2023,7 +2079,7 @@ const DECLARATIONS: &[&str] = &[
     "src/candidate.rs [pub] fn candidate(&self) -> &RuleId",
     "src/candidate.rs [pub] fn extracted( id: RuleId, source_rule: SourceRuleId, body: RuleBody, extracted_by: Actor, quoted_source: String, source_digest: ContentDigest, ) -> Self",
     "src/candidate.rs [pub] fn extracted_by(&self) -> &Actor",
-    "src/candidate.rs [pub] fn file(reviewer: Actor, candidate: RuleId, attested_at: TimestampMillis) -> Self",
+    "src/candidate.rs [pub] fn file( reviewer: Actor, candidate: RuleId, source_rule: SourceRuleId, attested_at: TimestampMillis, ) -> Self",
     "src/candidate.rs [pub] fn id(&self) -> &RuleId",
     "src/candidate.rs [pub] fn id(&self) -> &RuleId",
     "src/candidate.rs [pub] fn proposed_body(&self) -> &RuleBody",
@@ -2031,6 +2087,7 @@ const DECLARATIONS: &[&str] = &[
     "src/candidate.rs [pub] fn reviewer(&self) -> &Actor",
     "src/candidate.rs [pub] fn source_digest(&self) -> ContentDigest",
     "src/candidate.rs [pub] fn source_digest(&self) -> ContentDigest",
+    "src/candidate.rs [pub] fn source_rule(&self) -> &SourceRuleId",
     "src/candidate.rs [pub] fn source_rule(&self) -> &SourceRuleId",
     "src/candidate.rs [pub] fn source_rule(&self) -> &SourceRuleId",
     "src/dsl.rs [priv] fn applicability(value: Applicability) -> String",
@@ -2080,7 +2137,6 @@ const DECLARATIONS: &[&str] = &[
     "src/gate.rs [pub] fn identifier(self) -> &'static str",
     "src/gate.rs [pub] fn statement(self) -> &'static str",
     "src/gate.rs [pub] fn unknown_readings() -> [(&'static str, &'static str); 3]",
-    "src/publish.rs [priv] fn as_evaluable(&self) -> RuleSet",
     "src/publish.rs [priv] fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result",
     "src/publish.rs [pub] fn body(&self) -> &RuleBody",
     "src/publish.rs [pub] fn by_hash(&self, hash: ContentDigest) -> Option<&RuleSet>",

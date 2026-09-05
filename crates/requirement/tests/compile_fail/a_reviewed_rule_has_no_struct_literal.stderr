@@ -10,9 +10,11 @@ error[E0451]: fields `id`, `source_rule`, `body`, `first`, `second` and `source_
 29 |         body: RuleBody::CreditMinimum {
    |         ^^^^ private field
 ...
-33 |         first: ReviewAttestation::file(Actor::User { user_id: first }, rule.clone(), at),
+33 |         first: ReviewAttestation::file(
    |         ^^^^^ private field
-34 |         second: ReviewAttestation::file(Actor::User { user_id: second }, rule, at),
+...
+39 |         second: ReviewAttestation::file(
    |         ^^^^^^ private field
-35 |         source_digest: ContentDigest::sha256(b"official"),
+...
+45 |         source_digest: ContentDigest::sha256(b"official"),
    |         ^^^^^^^^^^^^^ private field

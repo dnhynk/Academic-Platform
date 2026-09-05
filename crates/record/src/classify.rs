@@ -152,10 +152,33 @@ impl ClassificationRuleSet {
     /// Two rules on one pair would make the category depend on rule order.
     /// A course that is genuinely two things is two rules under two
     /// *programmes*, which is the multi-major case and is admitted.
+    ///
+    /// `ClassificationRule` has public fields, so its two `String`s are checked
+    /// here rather than at the field: this is the only producer of a
+    /// `ClassificationRuleSet`, and a rule outside one classifies nothing. Both
+    /// travel into the claim `classification_claim` renders as
+    /// `program=…;category=…;rule=…;ruleset=…`, which is the same ambiguity
+    /// [`crate::CanonicalIdentifier`] exists for one field further in; the set's
+    /// own `id` is copied onto [`crate::policy::RuleBook`], where the rule-book
+    /// hash renders it.
     pub fn publish(
         id: impl Into<String>,
         rules: Vec<ClassificationRule>,
     ) -> Result<Self, RecordError> {
+        let id = id.into();
+        if !crate::check_identifier(&id) {
+            return Err(RecordError::MalformedCanonicalIdentifier(id));
+        }
+        for rule in &rules {
+            if !crate::check_identifier(&rule.rule_id) {
+                return Err(RecordError::MalformedCanonicalIdentifier(
+                    rule.rule_id.clone(),
+                ));
+            }
+            if !crate::check_identifier(&rule.course_code) {
+                return Err(RecordError::MalformedCourseCode(rule.course_code.clone()));
+            }
+        }
         let mut seen = BTreeMap::new();
         for rule in &rules {
             let key = (rule.program.clone(), rule.course_code.clone());
@@ -166,10 +189,7 @@ impl ClassificationRuleSet {
                 });
             }
         }
-        Ok(Self {
-            id: id.into(),
-            rules,
-        })
+        Ok(Self { id, rules })
     }
 
     /// Returns the rule set's version identity.

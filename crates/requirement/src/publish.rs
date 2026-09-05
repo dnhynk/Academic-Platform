@@ -256,6 +256,15 @@ pub struct RuleSetDraft {
     /// binding on each rule, not the document's index.
     source_rules: Vec<SourceRuleId>,
     rules: Vec<ExecutableRule>,
+    /// The two fixture classes each admitted rule was released on, in the
+    /// order the rules were admitted.
+    ///
+    /// `include` can only evaluate a rule against the rules admitted *before*
+    /// it, which is a prefix of the set and not the set. Keeping the classes
+    /// lets [`RuleSetDraft::publish`] re-run every one of them against the
+    /// whole published set, which is what section 11.4's *새 rule은 공식 예시와
+    /// synthetic transcript fixture로 회귀 검증한다* is about.
+    fixtures: Vec<(OfficialExampleFixtures, SyntheticTranscriptFixtures)>,
 }
 
 impl RuleSetDraft {
@@ -281,16 +290,29 @@ impl RuleSetDraft {
             },
             source_rules: published.rules().to_vec(),
             rules: Vec::new(),
+            fixtures: Vec::new(),
         }
     }
 
-    /// Admits one reviewed rule, after running both fixture classes against it.
+    /// Admits one reviewed rule, carrying both fixture classes with it.
     ///
     /// The two classes are two parameters, so there is no call that supplies
-    /// one of them. Each case is evaluated against the rule as it will execute
-    /// -- through the same [`evaluate`] the audit uses, over the rules admitted
-    /// so far -- and the observed status must be the one the case declares. A
-    /// rule whose fixtures do not agree with it does not enter the set.
+    /// one of them, and each class is non-empty by construction. What this
+    /// function does **not** do is run them: it can only reach the rules
+    /// admitted before this one, and that prefix is not the set.
+    ///
+    /// `evaluate` resolves a `COURSE_OR_EQUIVALENT` operand through the
+    /// `EQUIVALENCY` rules of the set it is handed, so a rule admitted before
+    /// its equivalency answers one thing against the prefix and another once
+    /// published. Running the cases here was therefore not a weaker check but a
+    /// wrong one in both directions: it admitted a case declaring
+    /// `NOT_SATISFIED` for a rule the published set answers `Satisfied` for,
+    /// and it refused the release of the same rule when the reviewer declared
+    /// the status the published set actually reaches. Which of the two happened
+    /// depended only on admission order, and nothing enforces one.
+    ///
+    /// The classes are kept beside the rule and [`RuleSetDraft::publish`] runs
+    /// every one of them against the whole published set.
     pub fn include(
         mut self,
         reviewed: ReviewedRule,
@@ -323,39 +345,9 @@ impl RuleSetDraft {
             source_digest: reviewed.source_digest(),
         };
         rule.body.compile(&rule.id)?;
-
-        // Evaluate against the set as it stands, which is what the rule will
-        // see once published: an `ALL_OF` with a `COURSE_OR_EQUIVALENT` operand
-        // resolves through the `EQUIVALENCY` rules already admitted.
-        //
-        // The rule under test is evaluated by body rather than through the
-        // staged set, and is pushed only after every case agrees. A rule that
-        // was pushed first and popped on failure would leave the draft's state
-        // depending on where the loop stopped.
-        let staged = self.as_evaluable();
-        for case in official.cases().iter().chain(synthetic.cases()) {
-            let outcome = evaluate(&staged, &rule.id, &rule.body, &case.facts)?;
-            if outcome.status != case.expected {
-                return Err(RequirementError::ReleaseFixturesMissing {
-                    rule: rule.id.as_str().to_owned(),
-                    missing: "a regression fixture disagrees with the rule",
-                });
-            }
-        }
         self.rules.push(rule);
+        self.fixtures.push((official.clone(), synthetic.clone()));
         Ok(self)
-    }
-
-    /// A read-only view of the rules admitted so far, for fixture evaluation.
-    fn as_evaluable(&self) -> RuleSet {
-        RuleSet {
-            set_id: self.set_id,
-            curriculum_version: self.curriculum_version,
-            version: self.version,
-            supersedes: self.supersedes,
-            source: self.source.clone(),
-            rules: self.rules.clone(),
-        }
     }
 
     /// Freezes the draft into an immutable rule set.
@@ -376,6 +368,21 @@ impl RuleSetDraft {
     ///
     /// The reason code was the symptom. This is the state: a requirement set
     /// that requires nothing is not a lenient set, it is not a set.
+    ///
+    /// # Every fixture runs against the whole set
+    ///
+    /// [`RuleSetDraft::include`] can only reach the rules admitted before the
+    /// one it is admitting, so its pass is over a prefix. `evaluate` resolves a
+    /// `COURSE_OR_EQUIVALENT` operand through the `EQUIVALENCY` rules in the
+    /// set it is handed, so a rule admitted before its equivalency was checked
+    /// against a set that does not resolve it and executes against one that
+    /// does: the gate accepted a fixture declaring `NOT_SATISFIED` for a rule
+    /// the published set answers `Satisfied` for, and refused the release of
+    /// the same rule when the fixture declared the true status. Which of the
+    /// two happened depended only on admission order, and nothing enforced one.
+    ///
+    /// So the release check is here, over the set every rule will actually
+    /// execute against, and the order a draft was assembled in decides nothing.
     pub fn publish(self) -> Result<RuleSet, RequirementError> {
         if self.rules.is_empty() {
             return Err(RequirementError::EmptyRuleSet {
@@ -383,14 +390,26 @@ impl RuleSetDraft {
                 version: self.version.to_string(),
             });
         }
-        Ok(RuleSet {
+        let published = RuleSet {
             set_id: self.set_id,
             curriculum_version: self.curriculum_version,
             version: self.version,
             supersedes: self.supersedes,
             source: self.source,
             rules: self.rules,
-        })
+        };
+        for (rule, (official, synthetic)) in published.rules.iter().zip(&self.fixtures) {
+            for case in official.cases().iter().chain(synthetic.cases()) {
+                let outcome = evaluate(&published, &rule.id, &rule.body, &case.facts)?;
+                if outcome.status != case.expected {
+                    return Err(RequirementError::ReleaseFixturesMissing {
+                        rule: rule.id.as_str().to_owned(),
+                        missing: "a regression fixture disagrees with the rule",
+                    });
+                }
+            }
+        }
+        Ok(published)
     }
 }
 
@@ -504,7 +523,7 @@ impl RuleSet {
     /// So the rule is not "the fields that decide a verdict today" -- that is a
     /// judgement a later reader has to make again, and it was made wrongly
     /// twice here. The rule is **every field of [`RuleSet`]**: its six own
-    /// fields, all four of [`OfficialSourceBinding`]'s, and all three of
+    /// fields, all four of [`OfficialSourceBinding`]'s, and all four of
     /// [`ExecutableRule`]'s including the body, which
     /// [`RuleBody::canonical_text`] renders totally.
     /// `every_rule_set_field_moves_the_hash` moves each of them in turn, and

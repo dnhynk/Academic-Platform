@@ -32,6 +32,7 @@
 //! `docs/contracts/policy-source-scans.md` calls that the pin's cost, and this
 //! is one of the two decision sites in this crate worth spending it on.
 
+use academic_record::CanonicalIdentifier;
 use std::{
     collections::BTreeSet,
     error::Error,
@@ -595,7 +596,10 @@ const DECLARATIONS: &[&str] = &[
     "src/ingest.rs [priv] fn row_object_text(row: &TranscriptRow) -> String",
     "src/ingest.rs [pub] fn attempt_from_confirmed_row( id: AttemptId, row: &TranscriptRow, confirmed: &ConfirmedRowClaim, status: SettledStatus, origin: AttemptOrigin, grading_scheme_id: impl Into<String>, evidence_ids: Vec<EvidenceId>, ) -> Result<CourseAttempt, RecordError>",
     "src/lib.rs [priv] fn check_identifier(value: &str) -> bool",
+    "src/lib.rs [priv] fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result",
+    "src/lib.rs [pub] fn as_str(&self) -> &str",
     "src/lib.rs [pub] fn into_engine_error(self) -> EngineError",
+    "src/lib.rs [pub] fn new(value: impl Into<String>) -> Result<Self, RecordError>",
     "src/plan.rs [pub] fn choices(&self) -> &[PlanScenarioChoice]",
     "src/plan.rs [pub] fn course_code(&self) -> &str",
     "src/plan.rs [pub] fn delete_scenario( store: &mut PlanStore, history: &AttemptHistory, scenario_id: EntityId, ) -> Result<PlanDeletion, RecordError>",
@@ -620,7 +624,7 @@ const DECLARATIONS: &[&str] = &[
     "src/policy.rs [pub] fn external_rows(&self) -> &[ExternalGradePolicyRow]",
     "src/policy.rs [pub] fn is_external(self) -> bool",
     "src/policy.rs [pub] fn new( mut repeat_rows: Vec<RepeatPolicyRow>, mut external_rows: Vec<ExternalGradePolicyRow>, ) -> Result<Self, RecordError>",
-    "src/policy.rs [pub] fn new( scheme: GradingScheme, policies: PolicyBook, classification_ruleset_id: impl Into<String>, ) -> Self",
+    "src/policy.rs [pub] fn new( scheme: GradingScheme, policies: PolicyBook, classification_ruleset_id: impl Into<String>, ) -> Result<Self, RecordError>",
     "src/policy.rs [pub] fn parse(text: &str) -> Option<Self>",
     "src/policy.rs [pub] fn parse(text: &str) -> Option<Self>",
     "src/policy.rs [pub] fn parse(text: &str) -> Option<Self>",
@@ -710,14 +714,17 @@ const IMPL_HEADERS: &[&str] = &[
     "src/grade.rs: impl Into<String>, ) -> Result<Self, RecordError>",
     "src/grade.rs: impl Into<String>, treatments: BTreeMap<GradeSymbol, GradeTreatment>, published_scale: u8, citation: impl Into<String>, ) -> Result<Self, RecordError>",
     "src/ingest.rs: impl Into<String>, evidence_ids: Vec<EvidenceId>, ) -> Result<CourseAttempt, RecordError>",
+    "src/lib.rs: impl CanonicalIdentifier",
+    "src/lib.rs: impl Into<String>) -> Result<Self, RecordError>",
     "src/lib.rs: impl RecordError",
+    "src/lib.rs: impl std::fmt::Display for CanonicalIdentifier",
     "src/plan.rs: impl Into<String>, choices: Vec<PlanScenarioChoice>, ) -> Result<Self, RecordError>",
     "src/plan.rs: impl Into<String>, intended_term: TermKey, ) -> Result<Self, RecordError>",
     "src/plan.rs: impl PlanScenario",
     "src/plan.rs: impl PlanScenarioChoice",
     "src/plan.rs: impl PlanStore",
     "src/policy.rs: impl AttemptOrigin",
-    "src/policy.rs: impl Into<String>, ) -> Self",
+    "src/policy.rs: impl Into<String>, ) -> Result<Self, RecordError>",
     "src/policy.rs: impl PolicyBook",
     "src/policy.rs: impl RecognitionDecision",
     "src/policy.rs: impl RepeatRecognition",
@@ -1018,4 +1025,399 @@ fn every_declaration_and_impl_in_this_crate_is_pinned() -> TestResult {
         "this crate's impl inventory changed"
     );
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The rule-book hash and what it can confuse
+// ---------------------------------------------------------------------------
+
+/// The five types the rule-book rendering reaches, each as the fields it
+/// renders and the fields it does not.
+///
+/// `RuleBook::digest` is the `rule_set_hash` every replay is keyed by and its
+/// canonical text is line oriented, so a rendered value that could hold the
+/// space, the `=` or the newline it separates on makes two different books
+/// render the same bytes. That is not hypothetical: `row_id` was a `String`,
+/// and a `row_id` holding a newline plus the text of the row above it folded
+/// two dated repeat rows into one, replayed a recorded 2.90 average under a
+/// book that governed nothing before 2020, and was accepted.
+///
+/// The rule is therefore over the whole declared field set of each type rather
+/// than over the four positions that were wrong: a field added to any of them
+/// arrives here as an entry nobody wrote down, and a rendered field declared
+/// `String` fails whatever it is called.
+///
+/// The unrendered column is the other half and is deliberately small. The three
+/// `citation` fields are `S-25`: the rendering omits them, which is a separate
+/// open finding about what the hash *covers* rather than about what it can
+/// confuse, and closing it would re-emit every committed `ruleset.txt`.
+const RULE_BOOK_TYPES: &[(&str, &str, &str, &str)] = &[
+    (
+        "policy.rs",
+        "RepeatPolicyRow",
+        "row_id effective_from ceiling recognition",
+        "citation",
+    ),
+    (
+        "policy.rs",
+        "ExternalGradePolicyRow",
+        "row_id effective_from excluded_from_average",
+        "citation",
+    ),
+    ("policy.rs", "PolicyBook", "repeat_rows external_rows", ""),
+    (
+        "policy.rs",
+        "RuleBook",
+        "scheme policies classification_ruleset_id",
+        "",
+    ),
+    (
+        "grade.rs",
+        "GradingScheme",
+        "id treatments published_scale",
+        "citation",
+    ),
+];
+
+/// The declared types a rendered field may hold.
+///
+/// Every one of them either validates its own charset at construction
+/// (`CanonicalIdentifier`, `TermKey`) or has no textual freedom at all: an enum
+/// rendered through a fixed token, an integer, a boolean, or a container of
+/// those. `String` is absent, which is the whole of the rule.
+const SEPARATOR_FREE_TYPES: &[&str] = &[
+    "BTreeMap<GradeSymbol, GradeTreatment>",
+    "CanonicalIdentifier",
+    "GradingScheme",
+    "Option<GradeSymbol>",
+    "PolicyBook",
+    "RepeatRecognition",
+    "TermKey",
+    "Vec<ExternalGradePolicyRow>",
+    "Vec<RepeatPolicyRow>",
+    "bool",
+    "u8",
+];
+
+/// The body of `pub struct <name>`, brace to matching brace.
+fn struct_body<'a>(code: &'a str, name: &str) -> Option<&'a str> {
+    let needle = format!("pub struct {name}");
+    let at = code.match_indices(&needle).find(|(offset, _)| {
+        let after = code[offset + needle.len()..].chars().next();
+        after.is_none_or(|character| !(character.is_alphanumeric() || character == '_'))
+    })?;
+    let open = at.0 + code[at.0..].find('{')?;
+    let mut depth = 0_i32;
+    for (offset, character) in code[open + 1..].char_indices() {
+        match character {
+            '{' => depth += 1,
+            '}' if depth == 0 => return Some(&code[open + 1..open + 1 + offset]),
+            '}' => depth -= 1,
+            _ => {}
+        }
+    }
+    None
+}
+
+/// The `name: Type` pairs declared at depth zero of a struct body.
+fn declared_fields(body: &str) -> Vec<(String, String)> {
+    let mut fields = Vec::new();
+    let mut depth = 0_i32;
+    let mut current = String::new();
+    for character in body.chars() {
+        match character {
+            '{' | '(' | '[' | '<' => depth += 1,
+            '}' | ')' | ']' | '>' => depth -= 1,
+            ',' if depth == 0 => {
+                push_declared_field(&mut fields, &current);
+                current.clear();
+                continue;
+            }
+            _ => {}
+        }
+        current.push(character);
+    }
+    push_declared_field(&mut fields, &current);
+    fields
+}
+
+fn push_declared_field(fields: &mut Vec<(String, String)>, declaration: &str) {
+    let declaration = declaration.trim();
+    let declaration = declaration
+        .strip_prefix("pub(crate)")
+        .or_else(|| declaration.strip_prefix("pub "))
+        .unwrap_or(declaration)
+        .trim();
+    let Some((name, declared)) = declaration.split_once(':') else {
+        return;
+    };
+    let name = name.trim();
+    if name.is_empty()
+        || !name
+            .chars()
+            .all(|character| character.is_alphanumeric() || character == '_')
+    {
+        return;
+    }
+    let mut normalized = String::new();
+    let mut space = false;
+    for character in declared.trim().chars() {
+        if character.is_whitespace() {
+            space = true;
+            continue;
+        }
+        if space && !normalized.is_empty() && character != '>' {
+            normalized.push(' ');
+        }
+        space = false;
+        normalized.push(character);
+    }
+    fields.push((name.to_owned(), normalized));
+}
+
+/// Nothing the rule-book hash renders can carry one of its separators.
+///
+/// Two comparisons, both in both directions. Every type's declared field set
+/// equals the rendered set plus the unrendered set, so a field added to
+/// `RepeatPolicyRow` cannot arrive unclassified; and every rendered field's
+/// declared type is one of [`SEPARATOR_FREE_TYPES`], so a rendered `String`
+/// fails whatever it is named.
+#[test]
+fn every_value_the_rule_book_renders_is_separator_free() -> TestResult {
+    let admitted: BTreeSet<&str> = SEPARATOR_FREE_TYPES.iter().copied().collect();
+    assert_eq!(
+        admitted.len(),
+        SEPARATOR_FREE_TYPES.len(),
+        "the admitted-type list repeats an entry"
+    );
+    assert!(
+        !admitted.contains("String"),
+        "String is admitted as a rendered type, which is the defect itself"
+    );
+
+    let mut checked = 0_usize;
+    let mut withheld = 0_usize;
+    for (file, name, rendered, unrendered) in RULE_BOOK_TYPES {
+        let source = fs::read_to_string(crate_root().join("src").join(file))?;
+        let renderers: String = canonical_text_bodies(&source).concat();
+        assert!(
+            !renderers.is_empty(),
+            "{file} declares no canonical text to read"
+        );
+        let code = strip_non_code(&source);
+        let body = struct_body(&code, name).ok_or_else(|| format!("{name} is not declared"))?;
+        let fields = declared_fields(body);
+        assert!(!fields.is_empty(), "{name} declared no field");
+
+        let rendered_set: BTreeSet<&str> = rendered.split_whitespace().collect();
+        let unrendered_set: BTreeSet<&str> = unrendered.split_whitespace().collect();
+        let declared_set: BTreeSet<&str> = fields.iter().map(|(n, _)| n.as_str()).collect();
+        let classified: BTreeSet<&str> = rendered_set.union(&unrendered_set).copied().collect();
+        assert_eq!(
+            declared_set, classified,
+            "{name} declares a different field set than the table above"
+        );
+
+        for (field, declared) in &fields {
+            if !rendered_set.contains(field.as_str()) {
+                continue;
+            }
+            assert!(
+                admitted.contains(declared.as_str()),
+                "{name}.{field} is rendered into the rule-book hash as `{declared}`, which is \
+                 not one of the types that cannot hold a separator"
+            );
+            checked += 1;
+        }
+
+        // And the other half: a field the table calls unrendered must not be in
+        // a renderer. Without this the table could say `citation` is unrendered
+        // while the renderer wrote it, and the only thing that would notice is
+        // a committed `ruleset.txt` byte comparison -- which sees nothing when
+        // the value happens to be empty.
+        for field in &unrendered_set {
+            assert!(
+                !renderers.contains(&format!(".{field}")),
+                "{name}.{field} is called unrendered and a canonical text names it"
+            );
+            withheld += 1;
+        }
+    }
+    assert!(
+        withheld >= 3,
+        "only {withheld} unrendered fields were checked, so the other half read nothing"
+    );
+    assert!(
+        checked >= 12,
+        "only {checked} rendered fields were classified, so the sweep read less than the rendering"
+    );
+
+    // The reader is not vacuous: it reports a `String` where one is declared.
+    let source = fs::read_to_string(crate_root().join("src/policy.rs"))?;
+    let code = strip_non_code(&source);
+    let body = struct_body(&code, "RepeatPolicyRow").ok_or("RepeatPolicyRow is not declared")?;
+    let citation = declared_fields(body)
+        .into_iter()
+        .find(|(name, _)| name == "citation")
+        .ok_or("RepeatPolicyRow declares no citation")?;
+    assert_eq!(
+        citation.1, "String",
+        "the field reader no longer reports a declared type"
+    );
+    Ok(())
+}
+
+/// Every value the rendering interpolates sits between two characters no
+/// rendered identifier can hold.
+///
+/// The rule the test above states as a type is stated here as a grammar, read
+/// off the renderers themselves rather than restated: for each `{}` in each
+/// canonical-text template, the character on either side of it must be one
+/// `CanonicalIdentifier::new` refuses. A separator added later that the charset
+/// happens to admit — a `.`, a `-`, a digit — fails here, and so does a charset
+/// widened to admit a separator already in use.
+#[test]
+fn the_rendering_separates_on_characters_no_identifier_can_hold() -> TestResult {
+    let mut templates: Vec<String> = Vec::new();
+    for file in ["policy.rs", "grade.rs"] {
+        let source = fs::read_to_string(crate_root().join("src").join(file))?;
+        for body in canonical_text_bodies(&source) {
+            templates.extend(interpolating_literals(&body));
+        }
+    }
+    assert!(
+        templates.len() >= 6,
+        "only {} interpolating templates were read, so the reader missed the renderers",
+        templates.len()
+    );
+
+    let mut boundaries = 0_usize;
+    for template in &templates {
+        let characters: Vec<char> = template.chars().collect();
+        let mut index = 0;
+        while index < characters.len() {
+            if characters[index] != '{' {
+                index += 1;
+                continue;
+            }
+            let Some(offset) = characters[index..].iter().position(|c| *c == '}') else {
+                break;
+            };
+            let close = index + offset;
+            let before = if index == 0 {
+                None
+            } else {
+                characters.get(index - 1).copied()
+            };
+            for neighbour in [before, characters.get(close + 1).copied()] {
+                let Some(neighbour) = neighbour else {
+                    // The template boundary. The only interpolation that reaches
+                    // one is the `{}/{}` grade-point pair, whose two values are
+                    // integers and whose whole rendering is itself interpolated
+                    // between `points=` and a space.
+                    assert!(
+                        !template.contains(' ')
+                            && !template.contains('=')
+                            && !template.contains('\n'),
+                        "a line template interpolates a value at its own boundary: {template:?}"
+                    );
+                    continue;
+                };
+                assert!(
+                    CanonicalIdentifier::new(format!("a{neighbour}b")).is_err(),
+                    "the rendering separates on {neighbour:?}, which a rendered identifier is \
+                     allowed to contain: {template:?}"
+                );
+                boundaries += 1;
+            }
+            index = close + 1;
+        }
+    }
+    assert!(
+        boundaries >= 16,
+        "only {boundaries} interpolation boundaries were checked, so the reader missed most of \
+         the rendering"
+    );
+    Ok(())
+}
+
+/// The bodies of every `pub fn canonical_text` in one file, braces balanced
+/// with string literals and comments skipped.
+fn canonical_text_bodies(source: &str) -> Vec<String> {
+    let characters: Vec<char> = source.chars().collect();
+    let mut bodies = Vec::new();
+    let mut from = 0;
+    while let Some(at) = source[from..].find("pub fn canonical_text") {
+        let start = source[..from].chars().count() + source[from..][..at].chars().count();
+        let Some(open) = (start..characters.len()).find(|index| characters[*index] == '{') else {
+            break;
+        };
+        let mut depth = 0_i32;
+        let mut index = open;
+        let mut end = open;
+        while index < characters.len() {
+            match characters[index] {
+                '/' if characters.get(index + 1) == Some(&'/') => {
+                    while index < characters.len() && characters[index] != '\n' {
+                        index += 1;
+                    }
+                    continue;
+                }
+                '"' => {
+                    index += 1;
+                    while index < characters.len() && characters[index] != '"' {
+                        index += if characters[index] == '\\' { 2 } else { 1 };
+                    }
+                }
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = index;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            index += 1;
+        }
+        bodies.push(characters[open..=end].iter().collect());
+        from += at + "pub fn canonical_text".len();
+    }
+    bodies
+}
+
+/// Every double-quoted literal holding a `{}`, with the escapes it uses
+/// resolved to the characters they stand for.
+fn interpolating_literals(fragment: &str) -> Vec<String> {
+    let characters: Vec<char> = fragment.chars().collect();
+    let mut literals = Vec::new();
+    let mut index = 0;
+    while index < characters.len() {
+        if characters[index] != '"' {
+            index += 1;
+            continue;
+        }
+        let mut literal = String::new();
+        index += 1;
+        while index < characters.len() && characters[index] != '"' {
+            if characters[index] == '\\' && index + 1 < characters.len() {
+                literal.push(match characters[index + 1] {
+                    'n' => '\n',
+                    't' => '\t',
+                    'r' => '\r',
+                    other => other,
+                });
+                index += 2;
+                continue;
+            }
+            literal.push(characters[index]);
+            index += 1;
+        }
+        index += 1;
+        if literal.contains('{') {
+            literals.push(literal);
+        }
+    }
+    literals
 }

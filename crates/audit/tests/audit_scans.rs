@@ -1531,3 +1531,167 @@ fn every_declaration_and_impl_in_this_crate_is_pinned() -> TestResult {
     );
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// the_scans_these_documents_enumerate_are_the_ones_this_file_holds
+// ---------------------------------------------------------------------------
+
+/// The number words the two contracts use for a count of things in this
+/// repository.
+///
+/// Spelled out rather than digits because that is how both documents write
+/// them, and a count nobody can read back is a count nobody checks:
+/// `policy-source-scans.md` said *nine scans* in one paragraph while its own
+/// injection matrix named ten, and `graduation-audit.md` repeated the nine.
+const NUMBER_WORDS: [(&str, usize); 12] = [
+    ("five", 5),
+    ("six", 6),
+    ("seven", 7),
+    ("eight", 8),
+    ("nine", 9),
+    ("ten", 10),
+    ("eleven", 11),
+    ("twelve", 12),
+    ("thirteen", 13),
+    ("fourteen", 14),
+    ("fifteen", 15),
+    ("sixteen", 16),
+];
+
+/// The number word standing where `{}` is in `template`, resolved to a count.
+fn stated_count(document: &str, prefix: &str, suffix: &str) -> Option<usize> {
+    let at = document.find(prefix)? + prefix.len();
+    let rest = &document[at..];
+    let end = rest.find(suffix)?;
+    let word = rest[..end].trim();
+    NUMBER_WORDS
+        .iter()
+        .find(|(spelling, _)| *spelling == word)
+        .map(|(_, count)| *count)
+}
+
+/// Every backticked identifier in a fragment that looks like a test name.
+fn backticked_names(fragment: &str) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for piece in fragment.split('`').skip(1).step_by(2) {
+        if piece.starts_with("the_")
+            || piece.starts_with("no_")
+            || piece.starts_with("every_")
+            || piece.starts_with("each_")
+        {
+            names.insert(piece.to_owned());
+        }
+    }
+    names
+}
+
+/// The scans this file declares are the scans the two contracts enumerate, and
+/// the number each states is that many.
+///
+/// Three comparisons and two counts, all against the `#[test]` functions this
+/// file actually declares. `P2-A3`'s second audit measured the drift this
+/// closes: two documents said *nine scans* while the file held ten and the
+/// injection matrix in one of those documents named all ten, so the same page
+/// contradicted itself and a reader auditing "the nine scans" never asked what
+/// the tenth compared.
+///
+/// A count is not asserted anywhere here. The number word is read out of the
+/// prose and the names are read out of the two tables, so a scan added without
+/// a row fails, a row naming a scan that does not exist fails, and a number
+/// word that stops matching fails.
+#[test]
+fn the_scans_these_documents_enumerate_are_the_ones_this_file_holds() -> TestResult {
+    let own = fs::read_to_string(
+        repository_root()
+            .join("crates")
+            .join("audit")
+            .join("tests")
+            .join("audit_scans.rs"),
+    )?;
+    let mut declared: BTreeSet<String> = BTreeSet::new();
+    let mut lines = own.lines().peekable();
+    while let Some(line) = lines.next() {
+        if line.trim() != "#[test]" {
+            continue;
+        }
+        let signature = lines.peek().ok_or("a #[test] with nothing after it")?;
+        let name = signature
+            .trim()
+            .strip_prefix("fn ")
+            .and_then(|rest| rest.split('(').next())
+            .ok_or("a #[test] that is not followed by a function")?;
+        declared.insert(name.to_owned());
+    }
+    assert!(
+        declared.contains("the_scans_these_documents_enumerate_are_the_ones_this_file_holds"),
+        "the reader did not find this test, so it found nothing"
+    );
+
+    let scans = fs::read_to_string(
+        repository_root()
+            .join("docs")
+            .join("contracts")
+            .join("policy-source-scans.md"),
+    )?;
+    let audit = fs::read_to_string(
+        repository_root()
+            .join("docs")
+            .join("contracts")
+            .join("graduation-audit.md"),
+    )?;
+
+    // The two number words.
+    assert_eq!(
+        stated_count(
+            &scans,
+            "`crates/audit/tests/audit_scans.rs` holds ",
+            " scans."
+        ),
+        Some(declared.len()),
+        "policy-source-scans.md states a different number of scans than this file declares"
+    );
+    assert_eq!(
+        stated_count(
+            &audit,
+            "- `crates/audit/tests/audit_scans.rs` holds the ",
+            " source scans,"
+        ),
+        Some(declared.len()),
+        "graduation-audit.md states a different number of scans than this file declares"
+    );
+
+    // The injection matrix's own row for this file.
+    let marker = " — `crates/audit/tests/audit_scans.rs` |";
+    let row = scans
+        .lines()
+        .find(|line| line.contains(marker))
+        .ok_or("policy-source-scans.md has no injection-matrix row for this file")?;
+    let listed = backticked_names(row.split(marker).next().unwrap_or_default());
+    assert_eq!(
+        listed, declared,
+        "the injection matrix names a different set of scans than this file declares"
+    );
+
+    // The "What the `P2-U3` scans hold" table.
+    let heading = "## What the `P2-U3` scans hold";
+    let section_at = scans
+        .find(heading)
+        .ok_or("policy-source-scans.md has no P2-U3 scan table")?;
+    let section = &scans[section_at + heading.len()..];
+    let section = &section[..section.find("\n### ").unwrap_or(section.len())];
+    let mut tabled: BTreeSet<String> = BTreeSet::new();
+    for line in section.lines() {
+        let Some(first) = line
+            .strip_prefix("| `")
+            .and_then(|rest| rest.split('`').next())
+        else {
+            continue;
+        };
+        tabled.insert(first.to_owned());
+    }
+    assert_eq!(
+        tabled, declared,
+        "the P2-U3 scan table names a different set of scans than this file declares"
+    );
+    Ok(())
+}

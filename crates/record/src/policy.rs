@@ -24,7 +24,9 @@
 
 use academic_domain::ContentDigest;
 
-use crate::{RecordError, grade::GradeSymbol, grade::GradingScheme, term::TermKey};
+use crate::{
+    CanonicalIdentifier, RecordError, grade::GradeSymbol, grade::GradingScheme, term::TermKey,
+};
 
 /// Where an attempt's credits were earned.
 ///
@@ -156,8 +158,8 @@ impl RepeatRecognition {
 /// was *taken in*, which is what the notice says.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RepeatPolicyRow {
-    /// Row identity, carried into the proof tree.
-    pub row_id: String,
+    /// Row identity, carried into the proof tree and into the rule-book hash.
+    pub row_id: CanonicalIdentifier,
     /// The first term the row governs, inclusive.
     pub effective_from: TermKey,
     /// The highest grade a repeat attempt may be recorded as earning.
@@ -174,8 +176,8 @@ pub struct RepeatPolicyRow {
 /// One dated external-grade row.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExternalGradePolicyRow {
-    /// Row identity, carried into the proof tree.
-    pub row_id: String,
+    /// Row identity, carried into the proof tree and into the rule-book hash.
+    pub row_id: CanonicalIdentifier,
     /// The first term the row governs, inclusive.
     pub effective_from: TermKey,
     /// Whether a grade from outside this institution stays out of the average.
@@ -296,14 +298,14 @@ impl PolicyBook {
     pub fn published_v1() -> Result<Self, RecordError> {
         Self::new(
             vec![RepeatPolicyRow {
-                row_id: "repeat.ceiling.2015_spring".to_owned(),
+                row_id: CanonicalIdentifier::new("repeat.ceiling.2015_spring")?,
                 effective_from: TermKey::parse("2015_SPRING")?,
                 ceiling: Some(GradeSymbol::AZero),
                 recognition: RepeatRecognition::Unknown,
                 citation: "2026학년도 2학기 수강신청 안내, as quoted in section 10".to_owned(),
             }],
             vec![ExternalGradePolicyRow {
-                row_id: "external.excluded.2004_spring".to_owned(),
+                row_id: CanonicalIdentifier::new("external.excluded.2004_spring")?,
                 effective_from: TermKey::parse("2004_SPRING")?,
                 excluded_from_average: true,
                 citation: "서울대학교 성적등급 및 평점환산기준표 유의사항, as quoted in section 10"
@@ -323,22 +325,27 @@ impl PolicyBook {
 pub struct RuleBook {
     scheme: GradingScheme,
     policies: PolicyBook,
-    classification_ruleset_id: String,
+    classification_ruleset_id: CanonicalIdentifier,
 }
 
 impl RuleBook {
-    /// Assembles a rule book.
-    #[must_use]
+    /// Assembles a rule book, refusing an identifier the rendering could not
+    /// carry.
+    ///
+    /// This returns a `Result` where it used to be infallible, because
+    /// `classification_ruleset_id` is rendered into
+    /// [`RuleBook::canonical_text`] and a `String` there is the whole of
+    /// [`CanonicalIdentifier`]'s reason for existing.
     pub fn new(
         scheme: GradingScheme,
         policies: PolicyBook,
         classification_ruleset_id: impl Into<String>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, RecordError> {
+        Ok(Self {
             scheme,
             policies,
-            classification_ruleset_id: classification_ruleset_id.into(),
-        }
+            classification_ruleset_id: CanonicalIdentifier::new(classification_ruleset_id)?,
+        })
     }
 
     /// Returns the grading scheme.
@@ -356,7 +363,7 @@ impl RuleBook {
     /// Returns the classification rule set these results are classified under.
     #[must_use]
     pub fn classification_ruleset_id(&self) -> &str {
-        &self.classification_ruleset_id
+        self.classification_ruleset_id.as_str()
     }
 
     /// Renders the whole book. This is the byte form `ruleset.txt` holds.
