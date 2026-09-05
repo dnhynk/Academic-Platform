@@ -297,6 +297,7 @@ pub fn absolute_paths(code: &str) -> BTreeSet<String> {
     let code = &tighten(code);
     let bytes = code.as_bytes();
     let mut found = BTreeSet::new();
+    let mut taken = 0_usize;
     for (at, _) in code.match_indices("::") {
         let mut start = at;
         while start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
@@ -308,10 +309,17 @@ pub fn absolute_paths(code: &str) -> BTreeSet<String> {
         if start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
             continue;
         }
-        let after_segment = start >= 3
-            && &code[start - 2..start] == "::"
-            && (bytes[start - 3].is_ascii_alphanumeric() || bytes[start - 3] == b'_');
-        if after_segment {
+        // A middle segment of a longer path -- the `b` of `a::b::c` -- is not a
+        // crate root, and skipping it is what stops one path yielding two keys.
+        // What decides it is whether this segment already sits inside a key
+        // this pass took, not the byte three positions back. `tighten` glues
+        // `as ::std` shut, so that byte is the `s` of a keyword and the leading
+        // `::` of a qualified path read as a middle one: `P2-A5` measured
+        // `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)` resolving
+        // a name from a live function while this pass reported nothing. Every
+        // segment outside a key already taken is a root, and a root nobody
+        // admits fails as an extra key rather than passing.
+        if start < taken {
             continue;
         }
         let root = &code[start..at];
@@ -324,6 +332,7 @@ pub fn absolute_paths(code: &str) -> BTreeSet<String> {
         }
         if end > at + 2 {
             found.insert(code[start..end].to_owned());
+            taken = end;
         }
     }
     found

@@ -666,6 +666,18 @@ fn the_helpers_are_not_vacuous() -> TestResult {
     );
     // `REACHED_PATHS` is the sentinel list the sample above is written against.
     assert!(REACHED_PATHS.contains(&"std::process"));
+    // A qualified path is a leading `::` however it is spelled. `tighten` glues
+    // the space in `<T as ::std::net::X>` shut, and deciding on the byte before
+    // the `::` then read the crate root as a middle segment: `P2-A5` measured a
+    // name resolved from a live function with this pass reporting nothing.
+    assert!(
+        absolute_paths("let _ = <str as ::std::net::ToSocketAddrs>::to_socket_addrs(h);")
+            .contains("std::net")
+    );
+    assert!(absolute_paths("let _: &dyn ::core::fmt::Debug = &v;").contains("core::fmt"));
+    // The other direction, so the repair is not "every segment is a root": a
+    // real middle segment still yields no second key.
+    assert!(!absolute_paths("std::alloc::Layout::new::<u8>()").contains("alloc::Layout"));
     Ok(())
 }
 
