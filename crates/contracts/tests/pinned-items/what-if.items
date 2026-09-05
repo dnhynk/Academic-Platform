@@ -1,0 +1,473 @@
+crates/what-if/src/assumption.rs [priv] impl AssumedWorkload
+crates/what-if/src/assumption.rs [priv] impl AssumptionKind
+crates/what-if/src/assumption.rs [priv] impl From<StatedGradeAssumptions> for Vec<StatedGradeAssumption>
+crates/what-if/src/assumption.rs [priv] impl From<StatedGradeAssumptions> for Vec<StatedGradeAssumption> :: fn from(value: StatedGradeAssumptions) -> Self |b8f6727cab9282a4
+crates/what-if/src/assumption.rs [priv] impl HypotheticalCompletion
+crates/what-if/src/assumption.rs [priv] impl PlanAssumptions
+crates/what-if/src/assumption.rs [priv] impl ProbabilisticCoverage
+crates/what-if/src/assumption.rs [priv] impl StatedGradeAssumption
+crates/what-if/src/assumption.rs [priv] impl StatedGradeAssumptions
+crates/what-if/src/assumption.rs [priv] impl TryFrom<Vec<StatedGradeAssumption>> for StatedGradeAssumptions
+crates/what-if/src/assumption.rs [priv] impl TryFrom<Vec<StatedGradeAssumption>> for StatedGradeAssumptions :: fn try_from(stated: Vec<StatedGradeAssumption>) -> Result<Self, Self::Error> |2a8aaa2d12d5ee18
+crates/what-if/src/assumption.rs [priv] impl TryFrom<Vec<StatedGradeAssumption>> for StatedGradeAssumptions :: type Error = WhatIfError |28dd30be36ddd9f6
+crates/what-if/src/assumption.rs [priv] use academic_domain::{ModelRunId, OfferingId} |b9f0517bc5da4019
+crates/what-if/src/assumption.rs [priv] use academic_record::grade::GradeSymbol |a71197a50cf7425c
+crates/what-if/src/assumption.rs [priv] use academic_scenario::WorkloadHoursRange |5f3eeb0c6b20d6e4
+crates/what-if/src/assumption.rs [priv] use crate::error::WhatIfError |fcebce9534936141
+crates/what-if/src/assumption.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AssumedWorkload |f8cf73890742adf7
+crates/what-if/src/assumption.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct PlanAssumptions |322f44e76db72e5a
+crates/what-if/src/assumption.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct StatedGradeAssumption |bb991a85bfc6b4be
+crates/what-if/src/assumption.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AssumptionKind |4ecbc838eebc6c3d
+crates/what-if/src/assumption.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct HypotheticalCompletion |917f78a25c0c2f4c
+crates/what-if/src/assumption.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ProbabilisticCoverage |ed4a8ee1771acf95
+crates/what-if/src/assumption.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct StatedGradeAssumptions |0f401b1e6a155e49
+crates/what-if/src/assumption.rs [pub] const ASSUMPTION_KINDS: [AssumptionKind; 3] |d91b6edb7d1d00dd
+crates/what-if/src/assumption.rs [pub] impl AssumedWorkload :: #[must_use] const fn of(range: WorkloadHoursRange, source: ModelRunId) -> Self |6642784341066e5a
+crates/what-if/src/assumption.rs [pub] impl AssumedWorkload :: #[must_use] const fn range(&self) -> WorkloadHoursRange |f27f82e593b8943a
+crates/what-if/src/assumption.rs [pub] impl AssumedWorkload :: #[must_use] const fn source(&self) -> ModelRunId |7a68d1e25579559a
+crates/what-if/src/assumption.rs [pub] impl AssumptionKind :: #[must_use] const fn spec_key(self) -> &'static str |6a40ee1271cde205
+crates/what-if/src/assumption.rs [pub] impl HypotheticalCompletion :: const SPEC_VALUE: &'static str |d2ced8ab90b9a8ac
+crates/what-if/src/assumption.rs [pub] impl PlanAssumptions :: #[must_use] const fn completion(&self) -> HypotheticalCompletion |de860a434e8bede7
+crates/what-if/src/assumption.rs [pub] impl PlanAssumptions :: #[must_use] const fn coverage(&self) -> ProbabilisticCoverage |2f813b9480babb98
+crates/what-if/src/assumption.rs [pub] impl PlanAssumptions :: #[must_use] const fn of( workload: AssumedWorkload, completion: HypotheticalCompletion, coverage: ProbabilisticCoverage, ) -> Self |e4a5145883e5b9e8
+crates/what-if/src/assumption.rs [pub] impl PlanAssumptions :: #[must_use] const fn workload(&self) -> AssumedWorkload |934ecbb556dcfc7e
+crates/what-if/src/assumption.rs [pub] impl ProbabilisticCoverage :: const SPEC_VALUE: &'static str |d2ced8ab90b9a8ac
+crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumption :: #[must_use] const fn grade(&self) -> GradeSymbol |0a1ec1cb11220544
+crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumption :: #[must_use] const fn of(offering_id: OfferingId, grade: GradeSymbol) -> Self |08c58a27ce8f0030
+crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumption :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumptions :: #[must_use] fn grade_for(&self, offering_id: OfferingId) -> Option<GradeSymbol> |ee86b84b16a85656
+crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumptions :: #[must_use] fn stated(&self) -> &[StatedGradeAssumption] |0c16f1fca1a4116f
+crates/what-if/src/assumption.rs [pub] impl StatedGradeAssumptions :: fn stating(stated: Vec<StatedGradeAssumption>) -> Result<Self, WhatIfError> |46fa84326aed2aa2
+crates/what-if/src/basis.rs [priv] const BASIS_DIGEST_DOMAIN: &str |019168a7f81c7aeb
+crates/what-if/src/basis.rs [priv] impl BasisField
+crates/what-if/src/basis.rs [priv] impl ScenarioBasis
+crates/what-if/src/basis.rs [priv] use academic_domain::{ContentDigest, TimestampMillis} |ad1474dfdaf9b4b0
+crates/what-if/src/basis.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/what-if/src/basis.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/what-if/src/basis.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum BasisField |d2c09554ee6eb606
+crates/what-if/src/basis.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, rename_all = "snake_case")] struct ScenarioBasis |c1f7b81428944f2c
+crates/what-if/src/basis.rs [pub] const BASIS_FIELDS: [BasisField; 4] |3c0bf0ff4b37810a
+crates/what-if/src/basis.rs [pub] impl BasisField :: #[must_use] const fn spec_key(self) -> &'static str |aeb452fc88c4a2a7
+crates/what-if/src/basis.rs [pub] impl BasisField :: #[must_use] const fn wire_key(self) -> &'static str |f285ea675147a819
+crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] const fn knowledge_state_as_of(&self) -> TimestampMillis |0fac9529e5a4aa43
+crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] const fn of( student_record_snapshot: ContentDigest, requirement_set_hash: ContentDigest, offering_catalog_snapshot: ContentDigest, knowledge_state_as_of: TimestampMillis, ) -> Self |94b83474ab7cb717
+crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] const fn offering_catalog_snapshot(&self) -> ContentDigest |6f77ea13b38a5f4a
+crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] const fn requirement_set_hash(&self) -> ContentDigest |6a642476e25f6038
+crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] const fn student_record_snapshot(&self) -> ContentDigest |47f1af664a3c9790
+crates/what-if/src/basis.rs [pub] impl ScenarioBasis :: #[must_use] fn digest(&self) -> ContentDigest |d774083ea828314f
+crates/what-if/src/calibration.rs [priv] const fn direction_of(projected: Option<LikelihoodBand>, observed: bool) -> ProjectionCalibration |834ac30b26f0f0e8
+crates/what-if/src/calibration.rs [priv] impl CalibrationEntry
+crates/what-if/src/calibration.rs [priv] impl ModelCalibrationReport
+crates/what-if/src/calibration.rs [priv] impl ObservedOccasion
+crates/what-if/src/calibration.rs [priv] use academic_domain::{ContentDigest, EntityId, ModelRunId, OfferingId} |9161b05ec2121240
+crates/what-if/src/calibration.rs [priv] use academic_scenario::{LikelihoodBand, OpportunityKind, ProjectionCalibration} |bc30e8270033290c
+crates/what-if/src/calibration.rs [priv] use crate::{error::WhatIfError, scenario::PlanScenario} |dadd5bd9e1f55b5c
+crates/what-if/src/calibration.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/what-if/src/calibration.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct CalibrationEntry |01893de0b13dd045
+crates/what-if/src/calibration.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ObservedOccasion |f068657bc7577a3e
+crates/what-if/src/calibration.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ModelCalibrationReport |e4b16013f903a071
+crates/what-if/src/calibration.rs [pub] fn calibrate( plan: &PlanScenario, plan_id: EntityId, observed: &[ObservedOccasion], ) -> Result<ModelCalibrationReport, WhatIfError> |0cf53dce98fdd6d0
+crates/what-if/src/calibration.rs [pub] impl CalibrationEntry :: #[must_use] const fn concept_entity_id(&self) -> EntityId |7fbf8edd4f9a66e7
+crates/what-if/src/calibration.rs [pub] impl CalibrationEntry :: #[must_use] const fn direction(&self) -> ProjectionCalibration |bc4f16c54d11bf8c
+crates/what-if/src/calibration.rs [pub] impl CalibrationEntry :: #[must_use] const fn kind(&self) -> OpportunityKind |d908b1df699a764a
+crates/what-if/src/calibration.rs [pub] impl CalibrationEntry :: #[must_use] const fn observed(&self) -> bool |d6ded3a602c0943b
+crates/what-if/src/calibration.rs [pub] impl CalibrationEntry :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/calibration.rs [pub] impl CalibrationEntry :: #[must_use] const fn projected(&self) -> Option<LikelihoodBand> |8fc3639d53bd9069
+crates/what-if/src/calibration.rs [pub] impl ModelCalibrationReport :: #[must_use] const fn engine_version(&self) -> u32 |6c0f9dc4d611b60f
+crates/what-if/src/calibration.rs [pub] impl ModelCalibrationReport :: #[must_use] const fn inputs_digest(&self) -> ContentDigest |eee3c389958ac754
+crates/what-if/src/calibration.rs [pub] impl ModelCalibrationReport :: #[must_use] const fn model_run_id(&self) -> ModelRunId |9d57a20dd2ea6232
+crates/what-if/src/calibration.rs [pub] impl ModelCalibrationReport :: #[must_use] const fn plan_id(&self) -> EntityId |757a11ab809cd693
+crates/what-if/src/calibration.rs [pub] impl ModelCalibrationReport :: #[must_use] fn count_of(&self, direction: ProjectionCalibration) -> usize |29cd3ed4ad30bd16
+crates/what-if/src/calibration.rs [pub] impl ModelCalibrationReport :: #[must_use] fn entries(&self) -> &[CalibrationEntry] |5ecee495430002fe
+crates/what-if/src/calibration.rs [pub] impl ObservedOccasion :: #[must_use] const fn concept_entity_id(&self) -> EntityId |7fbf8edd4f9a66e7
+crates/what-if/src/calibration.rs [pub] impl ObservedOccasion :: #[must_use] const fn kind(&self) -> OpportunityKind |d908b1df699a764a
+crates/what-if/src/calibration.rs [pub] impl ObservedOccasion :: #[must_use] const fn of( offering_id: OfferingId, concept_entity_id: EntityId, kind: OpportunityKind, ) -> Self |7c239f89971a8cb4
+crates/what-if/src/calibration.rs [pub] impl ObservedOccasion :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/comparison.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DimensionQuantity |34fd95e92ff1f947
+crates/what-if/src/comparison.rs [priv] fn compare_on( left: &PlanScenario, right: &PlanScenario, dimension: ComparisonDimension, ) -> Ordering |2b95897962af888e
+crates/what-if/src/comparison.rs [priv] fn count(value: usize) -> u32 |6fb84ca3f03ec673
+crates/what-if/src/comparison.rs [priv] fn decisive_dimension( before: &ComparisonView<'_>, after: &ComparisonView<'_>, next: &DimensionPriority, ) -> Option<ComparisonDimension> |3c187a7dc12fd59a
+crates/what-if/src/comparison.rs [priv] fn read(plan: &PlanScenario, dimension: ComparisonDimension) -> DimensionQuantity |22990355fe42d3e9
+crates/what-if/src/comparison.rs [priv] impl ComparisonDimension
+crates/what-if/src/comparison.rs [priv] impl DimensionMove
+crates/what-if/src/comparison.rs [priv] impl DimensionPriority
+crates/what-if/src/comparison.rs [priv] impl ReorderingExplanation
+crates/what-if/src/comparison.rs [priv] impl<'a> ComparisonView<'a>
+crates/what-if/src/comparison.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
+crates/what-if/src/comparison.rs [priv] use crate::{ deterministic::UnlockStanding, error::WhatIfError, inputs::RelevanceSubject, scenario::PlanScenario, } |7a1ccd14a800d5c2
+crates/what-if/src/comparison.rs [priv] use std::{cmp::Ordering, collections::BTreeSet} |07e685eee1f11c21
+crates/what-if/src/comparison.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ComparisonDimension |913ca373cd06d99c
+crates/what-if/src/comparison.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DimensionLane |81802a66303d1986
+crates/what-if/src/comparison.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DimensionMove |880c8ab4e7044306
+crates/what-if/src/comparison.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ComparisonView<'a> |351450041ae6de98
+crates/what-if/src/comparison.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DimensionPriority |8060c5824be237ee
+crates/what-if/src/comparison.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReorderingExplanation |2cd141a8e5262bf6
+crates/what-if/src/comparison.rs [pub] const COMPARISON_DIMENSIONS: [ComparisonDimension; 6] |46028a004bba85c4
+crates/what-if/src/comparison.rs [pub] fn compare<'a>( plans: &[&'a PlanScenario], priority: &DimensionPriority, ) -> Result<ComparisonView<'a>, WhatIfError> |25ba351f2f3d96bf
+crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn as_str(self) -> &'static str |ab335dc40233a2aa
+crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn lane(self) -> DimensionLane |7814cb9384a503c8
+crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn spec_certainty(self) -> &'static str |acf9213cbd105a89
+crates/what-if/src/comparison.rs [pub] impl ComparisonDimension :: #[must_use] const fn spec_label(self) -> &'static str |245ae46653e12324
+crates/what-if/src/comparison.rs [pub] impl DimensionMove :: #[must_use] const fn dimension(&self) -> ComparisonDimension |8b86f8ea940a37e2
+crates/what-if/src/comparison.rs [pub] impl DimensionMove :: #[must_use] const fn from_rank(&self) -> usize |cab6aa24a6c4904b
+crates/what-if/src/comparison.rs [pub] impl DimensionMove :: #[must_use] const fn to_rank(&self) -> usize |6fe47a0b0b652485
+crates/what-if/src/comparison.rs [pub] impl DimensionPriority :: #[must_use] fn order(&self) -> &[ComparisonDimension] |28dc18ab95a08a41
+crates/what-if/src/comparison.rs [pub] impl DimensionPriority :: #[must_use] fn rank_of(&self, dimension: ComparisonDimension) -> Option<usize> |f0caf8f5f0d37f73
+crates/what-if/src/comparison.rs [pub] impl DimensionPriority :: fn of(order: Vec<ComparisonDimension>) -> Result<Self, WhatIfError> |c218d360136310b6
+crates/what-if/src/comparison.rs [pub] impl ReorderingExplanation :: #[must_use] const fn decisive(&self) -> Option<ComparisonDimension> |b593da194f08b231
+crates/what-if/src/comparison.rs [pub] impl ReorderingExplanation :: #[must_use] fn moved(&self) -> &[DimensionMove] |83c327d43f68e7f5
+crates/what-if/src/comparison.rs [pub] impl ReorderingExplanation :: #[must_use] fn order_after(&self) -> &[EntityId] |1b9a149d5b7c147c
+crates/what-if/src/comparison.rs [pub] impl ReorderingExplanation :: #[must_use] fn order_before(&self) -> &[EntityId] |0a45310b3684ba42
+crates/what-if/src/comparison.rs [pub] impl ReorderingExplanation :: #[must_use] fn order_changed(&self) -> bool |13ffa62564702076
+crates/what-if/src/comparison.rs [pub] impl ReorderingExplanation :: fn between( plans: &[&PlanScenario], previous: &DimensionPriority, next: &DimensionPriority, ) -> Result<Self, WhatIfError> |2fd89396171bdfd3
+crates/what-if/src/comparison.rs [pub] impl<'a> ComparisonView<'a> :: #[must_use] const fn priority(&self) -> &DimensionPriority |7eb369261d8ae517
+crates/what-if/src/comparison.rs [pub] impl<'a> ComparisonView<'a> :: #[must_use] fn order(&self) -> &[usize] |ab09b9df90f9ff22
+crates/what-if/src/comparison.rs [pub] impl<'a> ComparisonView<'a> :: #[must_use] fn ranked(&self) -> Vec<&'a PlanScenario> |c031e00c9d990256
+crates/what-if/src/comparison.rs [pub] impl<'a> ComparisonView<'a> :: #[must_use] fn ranked_ids(&self) -> Vec<EntityId> |3065f039fdd8e3cf
+crates/what-if/src/deterministic.rs [priv] fn overlap(left: Meeting, right: Meeting) -> Option<(Weekday, u16, u16)> |61c6e96b756f0981
+crates/what-if/src/deterministic.rs [priv] fn seat_meetings(seat: &ConfirmedSeat) -> &[Meeting] |bfc97ee524f0a8f1
+crates/what-if/src/deterministic.rs [priv] impl Allocation
+crates/what-if/src/deterministic.rs [priv] impl AllocationLine
+crates/what-if/src/deterministic.rs [priv] impl CategoryContribution
+crates/what-if/src/deterministic.rs [priv] impl CreditLoad
+crates/what-if/src/deterministic.rs [priv] impl DeterministicResults
+crates/what-if/src/deterministic.rs [priv] impl DownstreamUnlock
+crates/what-if/src/deterministic.rs [priv] impl EnrolmentLimitStanding
+crates/what-if/src/deterministic.rs [priv] impl GpaScenario
+crates/what-if/src/deterministic.rs [priv] impl PrerequisiteStanding
+crates/what-if/src/deterministic.rs [priv] impl RuleContribution
+crates/what-if/src/deterministic.rs [priv] impl ScheduleConflict
+crates/what-if/src/deterministic.rs [priv] impl ScheduleConflicts
+crates/what-if/src/deterministic.rs [priv] use academic_curriculum::{Credits, CurriculumCategory, Meeting, Weekday} |b1b2ee2a15b994f8
+crates/what-if/src/deterministic.rs [priv] use academic_domain::{CourseId, Decimal, OfferingId} |dacc5a42d9ee19c7
+crates/what-if/src/deterministic.rs [priv] use academic_offering::ConfirmedSeat |563de19437cc6067
+crates/what-if/src/deterministic.rs [priv] use academic_record::{decimal, grade::GradingScheme} |4d5e7d7a96f0408f
+crates/what-if/src/deterministic.rs [priv] use crate::{ assumption::{HypotheticalCompletion, StatedGradeAssumptions}, error::WhatIfError, inputs::{DownstreamCourse, PlanChoice}, lane::DeterministicItem, } |3e725a74ea0f2aaf
+crates/what-if/src/deterministic.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
+crates/what-if/src/deterministic.rs [pub(crate)] impl Allocation :: fn of(choices: &[PlanChoice]) -> Self |151c2c1e9b6ba690
+crates/what-if/src/deterministic.rs [pub(crate)] impl CreditLoad :: fn of(choices: &[PlanChoice]) -> Self |2ecf3648d52170a6
+crates/what-if/src/deterministic.rs [pub(crate)] impl DeterministicResults :: const fn of( credits: CreditLoad, schedule: ScheduleConflicts, prerequisites: Vec<PrerequisiteStanding>, rule_contribution: RuleContribution, allocation: Allocation, downstream: Vec<DownstreamUnlock>, gpa: Option<GpaScenario>, ) -> Self |4500777f25203480
+crates/what-if/src/deterministic.rs [pub(crate)] impl DownstreamUnlock :: fn of( downstream: &DownstreamCourse, completed: &BTreeSet<CourseId>, planned: &BTreeSet<CourseId>, completion: HypotheticalCompletion, ) -> Self |cf6d0ff065014c5e
+crates/what-if/src/deterministic.rs [pub(crate)] impl GpaScenario :: fn under( choices: &[PlanChoice], stated: &StatedGradeAssumptions, scheme: &GradingScheme, ) -> Result<Self, WhatIfError> |caf97a7cf4eee4fa
+crates/what-if/src/deterministic.rs [pub(crate)] impl PrerequisiteStanding :: fn of(choice: &PlanChoice, completed: &BTreeSet<CourseId>) -> Self |98261a325931d632
+crates/what-if/src/deterministic.rs [pub(crate)] impl RuleContribution :: fn under(choices: &[PlanChoice], completion: HypotheticalCompletion) -> Self |6836708ed887a863
+crates/what-if/src/deterministic.rs [pub(crate)] impl ScheduleConflicts :: fn of(choices: &[PlanChoice]) -> Self |eb667c44a626fcc5
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AverageExclusion |f34bca71615442c2
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EnrolmentLimitStanding |db97b80498bec267
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RequirementVerdict |d4b6a133b5537684
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct AllocationLine |31b96d8c80bd3c3c
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct CategoryContribution |950fd478300daa94
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ScheduleConflict |a64d60cae7dc9369
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum HypotheticalTermAverage |e16458b48e1f503a
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum UnlockStanding |10156bfe642bda8d
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Allocation |f8d1585151f46b0a
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CreditLoad |09e2d4e2017b97ed
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeterministicResults |7af1e3524802734c
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DownstreamUnlock |e2c8b7bf7966e8b2
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GpaScenario |3c4a68e0cfcfbff2
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PrerequisiteStanding |591cbc4e131f6a68
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RuleContribution |3b591499522244a2
+crates/what-if/src/deterministic.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ScheduleConflicts |e22e0795356b89d9
+crates/what-if/src/deterministic.rs [pub] const ENROLMENT_LIMIT_STANDINGS: [EnrolmentLimitStanding; 3] |50646bfafb367686
+crates/what-if/src/deterministic.rs [pub] impl Allocation :: #[must_use] fn lines(&self) -> &[AllocationLine] |0163e49e51907956
+crates/what-if/src/deterministic.rs [pub] impl Allocation :: #[must_use] fn proof_for(&self, category: CurriculumCategory) -> Vec<AllocationLine> |3ba887336b88f667
+crates/what-if/src/deterministic.rs [pub] impl AllocationLine :: #[must_use] const fn category(&self) -> CurriculumCategory |ac8578069d1d9014
+crates/what-if/src/deterministic.rs [pub] impl AllocationLine :: #[must_use] const fn course(&self) -> CourseId |c8cc3bd34fb8c4d1
+crates/what-if/src/deterministic.rs [pub] impl AllocationLine :: #[must_use] const fn credits(&self) -> Credits |a8efbfb00ef21c69
+crates/what-if/src/deterministic.rs [pub] impl AllocationLine :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/deterministic.rs [pub] impl CategoryContribution :: #[must_use] const fn category(&self) -> CurriculumCategory |ac8578069d1d9014
+crates/what-if/src/deterministic.rs [pub] impl CategoryContribution :: #[must_use] const fn credits(&self) -> u16 |6c9b49a631ec2ffb
+crates/what-if/src/deterministic.rs [pub] impl CreditLoad :: #[must_use] const fn requested(&self) -> u16 |583b54c4598daefb
+crates/what-if/src/deterministic.rs [pub] impl CreditLoad :: #[must_use] fn lines(&self) -> &[(OfferingId, Credits)] |5f5c736842004f0c
+crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_use] const fn allocation(&self) -> &Allocation |9eeb14f931fe9e4b
+crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_use] const fn credits(&self) -> &CreditLoad |e31279750021c152
+crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_use] const fn gpa(&self) -> Option<&GpaScenario> |81b042366d891e83
+crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_use] const fn rule_contribution(&self) -> &RuleContribution |c17e89836bda6f4b
+crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_use] const fn schedule(&self) -> &ScheduleConflicts |fc9d9bd3ef1eb8eb
+crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_use] fn downstream(&self) -> &[DownstreamUnlock] |17599663b00b1e60
+crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_use] fn prerequisites(&self) -> &[PrerequisiteStanding] |0bae7cd1377a4928
+crates/what-if/src/deterministic.rs [pub] impl DeterministicResults :: #[must_use] fn produced(&self) -> Vec<DeterministicItem> |be9dfc4cb677a4ba
+crates/what-if/src/deterministic.rs [pub] impl DownstreamUnlock :: #[must_use] const fn completion(&self) -> HypotheticalCompletion |de860a434e8bede7
+crates/what-if/src/deterministic.rs [pub] impl DownstreamUnlock :: #[must_use] const fn course(&self) -> CourseId |c8cc3bd34fb8c4d1
+crates/what-if/src/deterministic.rs [pub] impl DownstreamUnlock :: #[must_use] const fn standing(&self) -> &UnlockStanding |18a896d05b30b62d
+crates/what-if/src/deterministic.rs [pub] impl EnrolmentLimitStanding :: #[must_use] const fn as_str(self) -> &'static str |1c4f66eef49d84f4
+crates/what-if/src/deterministic.rs [pub] impl GpaScenario :: #[must_use] const fn average(&self) -> &HypotheticalTermAverage |0d56fc0a3d1e7f78
+crates/what-if/src/deterministic.rs [pub] impl GpaScenario :: #[must_use] const fn scale(&self) -> u8 |4a989c5604a1c8c2
+crates/what-if/src/deterministic.rs [pub] impl GpaScenario :: #[must_use] fn excluded(&self) -> &[(OfferingId, AverageExclusion)] |0c1a901056f8f8d9
+crates/what-if/src/deterministic.rs [pub] impl GpaScenario :: #[must_use] fn included(&self) -> &[OfferingId] |a1829ce4e9790fc7
+crates/what-if/src/deterministic.rs [pub] impl GpaScenario :: #[must_use] fn scheme_id(&self) -> &str |d0c576c26d3f514b
+crates/what-if/src/deterministic.rs [pub] impl PrerequisiteStanding :: #[must_use] const fn enrolment_limit(&self) -> EnrolmentLimitStanding |eb71d19787de5134
+crates/what-if/src/deterministic.rs [pub] impl PrerequisiteStanding :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/deterministic.rs [pub] impl PrerequisiteStanding :: #[must_use] fn unmet(&self) -> &[CourseId] |e5ca646654beddc6
+crates/what-if/src/deterministic.rs [pub] impl PrerequisiteStanding :: #[must_use] fn verdict(&self) -> RequirementVerdict |815fba66caa786e8
+crates/what-if/src/deterministic.rs [pub] impl RuleContribution :: #[must_use] const fn completion(&self) -> HypotheticalCompletion |de860a434e8bede7
+crates/what-if/src/deterministic.rs [pub] impl RuleContribution :: #[must_use] fn contributions(&self) -> &[CategoryContribution] |922adbfa77e428d4
+crates/what-if/src/deterministic.rs [pub] impl ScheduleConflict :: #[must_use] const fn earlier_choice(&self) -> OfferingId |c34a72b0f90448d0
+crates/what-if/src/deterministic.rs [pub] impl ScheduleConflict :: #[must_use] const fn from_minute(&self) -> u16 |e1b6db33a7c96105
+crates/what-if/src/deterministic.rs [pub] impl ScheduleConflict :: #[must_use] const fn later_choice(&self) -> OfferingId |61441cf89bc5d5ac
+crates/what-if/src/deterministic.rs [pub] impl ScheduleConflict :: #[must_use] const fn to_minute(&self) -> u16 |7183fa847cb88e57
+crates/what-if/src/deterministic.rs [pub] impl ScheduleConflict :: #[must_use] const fn weekday(&self) -> Weekday |48578168d454a265
+crates/what-if/src/deterministic.rs [pub] impl ScheduleConflicts :: #[must_use] fn conflicts(&self) -> &[ScheduleConflict] |70f747d3e34387bf
+crates/what-if/src/deterministic.rs [pub] impl ScheduleConflicts :: #[must_use] fn is_clear(&self) -> bool |244f3af3b76031a2
+crates/what-if/src/error.rs [priv] use academic_critical_path::CriticalPathError |0a9dc15854f59a28
+crates/what-if/src/error.rs [priv] use academic_curriculum::CurriculumError |4b0c8ae7d391f2a7
+crates/what-if/src/error.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
+crates/what-if/src/error.rs [priv] use academic_domain::{DomainError, OfferingId} |7c3685ce1af07256
+crates/what-if/src/error.rs [priv] use academic_record::RecordError |3f1728b7cc036923
+crates/what-if/src/error.rs [priv] use academic_review::ReviewError |f5d41884c412caab
+crates/what-if/src/error.rs [priv] use academic_scenario::ScenarioError |ae9bb05bfa3f8cfb
+crates/what-if/src/error.rs [priv] use crate::{comparison::ComparisonDimension, lane::DeterministicItem} |a3af4dcaa20692f7
+crates/what-if/src/error.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/what-if/src/error.rs [pub] #[derive(Debug, Error)] #[non_exhaustive] enum WhatIfError |fb946e2c1bbcb5fd
+crates/what-if/src/graduation.rs [priv] impl GraduationMode
+crates/what-if/src/graduation.rs [priv] impl<'a> HypotheticalGraduation<'a>
+crates/what-if/src/graduation.rs [priv] use crate::{ assumption::HypotheticalCompletion, deterministic::{Allocation, CategoryContribution}, scenario::PlanScenario, } |6bb35cf2e1ac7cc4
+crates/what-if/src/graduation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct HypotheticalGraduation<'a> |5a73cfdaf01578a0
+crates/what-if/src/graduation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum GraduationMode |abfb37d5f396885a
+crates/what-if/src/graduation.rs [pub] const GRADUATION_MODES: [GraduationMode; 2] |826dbafe5ef767b2
+crates/what-if/src/graduation.rs [pub] impl GraduationMode :: #[must_use] const fn as_str(self) -> &'static str |4877b6b8d5498dde
+crates/what-if/src/graduation.rs [pub] impl GraduationMode :: #[must_use] const fn concludes_graduation(self) -> bool |c2de24588e20607c
+crates/what-if/src/graduation.rs [pub] impl GraduationMode :: #[must_use] const fn owner_package(self) -> &'static str |9c5d961b1857e05c
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] const fn mode(&self) -> GraduationMode |4ec9866e2f3c7524
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] const fn of(plan: &'a PlanScenario) -> Self |5da7136bd87da001
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] const fn plan(&self) -> &'a PlanScenario |bbf4b5c7adccab96
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] fn completion(&self) -> HypotheticalCompletion |dd040cbf3fa31bc5
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] fn contributions(&self) -> &[CategoryContribution] |f78a4a54b4a4cce1
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: #[must_use] fn proof(&self) -> &Allocation |682aacda9a96f19d
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: const BANNER: &'static str |8028fe87a96675d3
+crates/what-if/src/graduation.rs [pub] impl<'a> HypotheticalGraduation<'a> :: const MODE: GraduationMode |883131b14c1d21ee
+crates/what-if/src/inputs.rs [priv] const INPUTS_DIGEST_DOMAIN: &str |4d62892c31e33d54
+crates/what-if/src/inputs.rs [priv] const fn band_tag(band: LikelihoodBand) -> &'static str |2aa02c38840a9725
+crates/what-if/src/inputs.rs [priv] const fn basis_tag(basis: OpportunityBasis) -> &'static str |cdce191a0a04edb0
+crates/what-if/src/inputs.rs [priv] fn digest_choice(hasher: FieldHasher, choice: &PlanChoice) -> FieldHasher |d4af15cf80a0e05f
+crates/what-if/src/inputs.rs [priv] fn weekday_index(weekday: Weekday) -> u8 |36c93c809803805e
+crates/what-if/src/inputs.rs [priv] impl CatalogueRow
+crates/what-if/src/inputs.rs [priv] impl DownstreamCourse
+crates/what-if/src/inputs.rs [priv] impl FieldHasher
+crates/what-if/src/inputs.rs [priv] impl FieldHasher :: fn count(self, value: usize) -> Self |89c3043321b2637e
+crates/what-if/src/inputs.rs [priv] impl FieldHasher :: fn field(mut self, bytes: &[u8]) -> Self |d9eb20ee3a2d95d4
+crates/what-if/src/inputs.rs [priv] impl FieldHasher :: fn opened(domain: &str) -> Self |b2b38479cca0bba8
+crates/what-if/src/inputs.rs [priv] impl FieldHasher :: fn sealed(self) -> ContentDigest |c0f3ca8077d10e18
+crates/what-if/src/inputs.rs [priv] impl InformalRecommendation
+crates/what-if/src/inputs.rs [priv] impl OfficialConditions
+crates/what-if/src/inputs.rs [priv] impl PathCoverageTargets
+crates/what-if/src/inputs.rs [priv] impl PlanChoice
+crates/what-if/src/inputs.rs [priv] impl PlanChoiceField
+crates/what-if/src/inputs.rs [priv] impl PlanInputField
+crates/what-if/src/inputs.rs [priv] impl RelevanceSignal
+crates/what-if/src/inputs.rs [priv] impl RelevanceSubject
+crates/what-if/src/inputs.rs [priv] struct FieldHasher(Sha256) |792f10ec0118e82a
+crates/what-if/src/inputs.rs [priv] use academic_critical_path::{CriticalPathResult, PathRole} |8a0bfe31e689c832
+crates/what-if/src/inputs.rs [priv] use academic_curriculum::{Credits, CurriculumCategory, OfficialPrerequisite, Weekday} |8afd1fd7c79ffa8c
+crates/what-if/src/inputs.rs [priv] use academic_domain::{ContentDigest, CourseId, EntityId, ModelRunId, OfferingId} |0c8eb2c359294224
+crates/what-if/src/inputs.rs [priv] use academic_offering::ConfirmedSeat |563de19437cc6067
+crates/what-if/src/inputs.rs [priv] use academic_record::grade::GradingScheme |0f7f632e4e523654
+crates/what-if/src/inputs.rs [priv] use academic_review::BiasDisclosure |f64f13fd9ceb8f29
+crates/what-if/src/inputs.rs [priv] use academic_scenario::{ LikelihoodBand, OpportunityBasis, SyllabusConceptSignal, WorkloadHoursRange, } |02681951a63e16fb
+crates/what-if/src/inputs.rs [priv] use crate::{ assumption::{ HypotheticalCompletion, PlanAssumptions, ProbabilisticCoverage, StatedGradeAssumptions, }, basis::ScenarioBasis, deterministic::EnrolmentLimitStanding, error::WhatIfError, } |9d6c24c799595f95
+crates/what-if/src/inputs.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/what-if/src/inputs.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CatalogueRow |7f70e26208f4c491
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RelevanceSignal |c4a4f096add33a21
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PlanChoiceField |9b98de4745d75e87
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PlanInputField |bcbae06644c87469
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RelevanceSubject |8cf5a99b6d18bbbb
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DownstreamCourse |d9a4f78859ed7c95
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct InformalRecommendation |d290c996a8188cd6
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OfficialConditions |5f30eb876f56a429
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathCoverageTargets |501b96bd8eb3e3e2
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanChoice |0811057e53ea6ca9
+crates/what-if/src/inputs.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanInputs |a49a3ceb638799f9
+crates/what-if/src/inputs.rs [pub] #[must_use] fn plan_inputs_digest(inputs: &PlanInputs) -> ContentDigest |8e4f735233db5888
+crates/what-if/src/inputs.rs [pub] const PLAN_CHOICE_FIELDS: [PlanChoiceField; 9] |e1f26cf305d29314
+crates/what-if/src/inputs.rs [pub] const PLAN_INPUT_FIELDS: [PlanInputField; 13] |5f24dfeefaee016d
+crates/what-if/src/inputs.rs [pub] const RELEVANCE_SUBJECTS: [RelevanceSubject; 2] |04b783220114a12f
+crates/what-if/src/inputs.rs [pub] impl CatalogueRow :: #[must_use] const fn of(course: CourseId, credits: Credits, category: CurriculumCategory) -> Self |5af8f8f54f56ce5f
+crates/what-if/src/inputs.rs [pub] impl DownstreamCourse :: #[must_use] const fn course(&self) -> CourseId |c8cc3bd34fb8c4d1
+crates/what-if/src/inputs.rs [pub] impl DownstreamCourse :: #[must_use] fn of(course: CourseId, official_prerequisites: Vec<OfficialPrerequisite>) -> Self |a2d8c9a96f8dee36
+crates/what-if/src/inputs.rs [pub] impl DownstreamCourse :: #[must_use] fn official_prerequisites(&self) -> &[OfficialPrerequisite] |ccf4307130777e75
+crates/what-if/src/inputs.rs [pub] impl InformalRecommendation :: #[must_use] const fn downstream_concept(&self) -> EntityId |2df44da180a05597
+crates/what-if/src/inputs.rs [pub] impl InformalRecommendation :: #[must_use] fn of(downstream_concept: EntityId, recommended_concepts: Vec<EntityId>) -> Self |6d761836b8cfe2b1
+crates/what-if/src/inputs.rs [pub] impl InformalRecommendation :: #[must_use] fn recommended_concepts(&self) -> &[EntityId] |f8243702f227a05c
+crates/what-if/src/inputs.rs [pub] impl OfficialConditions :: #[must_use] fn of( official_prerequisites: Vec<OfficialPrerequisite>, enrolment_limit: EnrolmentLimitStanding, ) -> Self |b612f17b3bd8bbfb
+crates/what-if/src/inputs.rs [pub] impl PathCoverageTargets :: #[must_use] fn role_of(&self, concept: EntityId) -> Option<PathRole> |05ab8721027490f8
+crates/what-if/src/inputs.rs [pub] impl PathCoverageTargets :: #[must_use] fn targets(&self) -> &[(EntityId, PathRole)] |249c3ce1743fb646
+crates/what-if/src/inputs.rs [pub] impl PathCoverageTargets :: fn from_critical_path(result: &CriticalPathResult) -> Result<Self, WhatIfError> |05ce03f78c9b435a
+crates/what-if/src/inputs.rs [pub] impl PathCoverageTargets :: fn of(targets: Vec<(EntityId, PathRole)>) -> Result<Self, WhatIfError> |0163c562b7c3a321
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] const fn assumed_weekly_hours(&self) -> WorkloadHoursRange |d7941d239870e4ea
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] const fn category(&self) -> CurriculumCategory |ac8578069d1d9014
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] const fn course(&self) -> CourseId |c8cc3bd34fb8c4d1
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] const fn credits(&self) -> Credits |a8efbfb00ef21c69
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] const fn enrolment_limit(&self) -> EnrolmentLimitStanding |eb71d19787de5134
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] const fn seat(&self) -> &ConfirmedSeat |b01f004c71beb18b
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] fn of( offering_id: OfferingId, seat: ConfirmedSeat, catalogue: CatalogueRow, conditions: OfficialConditions, assumed_weekly_hours: WorkloadHoursRange, syllabus_concepts: Vec<SyllabusConceptSignal>, ) -> Self |7018e8c0c4b731ec
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] fn official_prerequisites(&self) -> &[OfficialPrerequisite] |ccf4307130777e75
+crates/what-if/src/inputs.rs [pub] impl PlanChoice :: #[must_use] fn syllabus_concepts(&self) -> &[SyllabusConceptSignal] |97b3ac677a252629
+crates/what-if/src/inputs.rs [pub] impl PlanChoiceField :: #[must_use] const fn field_name(self) -> &'static str |ecc8ec0b84429e43
+crates/what-if/src/inputs.rs [pub] impl PlanInputField :: #[must_use] const fn field_name(self) -> &'static str |c14deb1405854616
+crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn band(&self) -> LikelihoodBand |51b121b0423df22c
+crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn basis(&self) -> OpportunityBasis |1a5779d0250a76ca
+crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn of( offering_id: OfferingId, subject: RelevanceSubject, target: EntityId, band: LikelihoodBand, basis: OpportunityBasis, ) -> Self |40a543869d603d16
+crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn subject(&self) -> RelevanceSubject |8d21b14823bbfb2e
+crates/what-if/src/inputs.rs [pub] impl RelevanceSignal :: #[must_use] const fn target(&self) -> EntityId |8c61747c7d85ff73
+crates/what-if/src/inputs.rs [pub] impl RelevanceSubject :: #[must_use] const fn as_str(self) -> &'static str |2926789a0bd81cd3
+crates/what-if/src/lane.rs [priv] impl DeterministicItem
+crates/what-if/src/lane.rs [priv] impl LaneItem
+crates/what-if/src/lane.rs [priv] impl ProjectedItem
+crates/what-if/src/lane.rs [priv] impl SectionView<'_>
+crates/what-if/src/lane.rs [priv] impl UiSection
+crates/what-if/src/lane.rs [priv] use crate::{deterministic::DeterministicResults, projected::ProjectedResults} |54870f5fb0cffa68
+crates/what-if/src/lane.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum SectionView<'a> |8ad75c6d34d3bb0e
+crates/what-if/src/lane.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DeterministicItem |b574b14b767b22a5
+crates/what-if/src/lane.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum LaneItem |e5e966c32fc9c7dc
+crates/what-if/src/lane.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProjectedItem |9f46b01938ea52ff
+crates/what-if/src/lane.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum UiSection |5da8a95781ef5c96
+crates/what-if/src/lane.rs [pub] const DETERMINISTIC_LANE: [DeterministicItem; 7] |44c429e54bf21531
+crates/what-if/src/lane.rs [pub] const PROJECTED_LANE: [ProjectedItem; 7] |6ea42a2bc5157561
+crates/what-if/src/lane.rs [pub] const UI_SECTIONS: [UiSection; 2] |167f4f0e4bacaa1c
+crates/what-if/src/lane.rs [pub] impl DeterministicItem :: #[must_use] const fn as_str(self) -> &'static str |a68478b94efecdd8
+crates/what-if/src/lane.rs [pub] impl DeterministicItem :: #[must_use] const fn spec_phrase(self) -> &'static str |685b36763006d395
+crates/what-if/src/lane.rs [pub] impl LaneItem :: #[must_use] const fn section(self) -> UiSection |8f15bf163a35a060
+crates/what-if/src/lane.rs [pub] impl LaneItem :: #[must_use] const fn spec_phrase(self) -> &'static str |494acb63cca6e915
+crates/what-if/src/lane.rs [pub] impl ProjectedItem :: #[must_use] const fn as_str(self) -> &'static str |ab9421b5e7a8fbdc
+crates/what-if/src/lane.rs [pub] impl ProjectedItem :: #[must_use] const fn spec_phrase(self) -> &'static str |60cd34fdc09a860d
+crates/what-if/src/lane.rs [pub] impl SectionView<'_> :: #[must_use] const fn section(&self) -> UiSection |976e9ddf1e9873e6
+crates/what-if/src/lane.rs [pub] impl UiSection :: #[must_use] const fn spec_key(self) -> &'static str |ded6e5a4a42d1aa5
+crates/what-if/src/lane.rs [pub] impl UiSection :: #[must_use] fn items(self) -> Vec<LaneItem> |1bf94039f957c064
+crates/what-if/src/lib.rs [pub] const WHAT_IF_ENGINE_VERSION: u32 |0b5c2f7887daab54
+crates/what-if/src/lib.rs [pub] mod assumption
+crates/what-if/src/lib.rs [pub] mod basis
+crates/what-if/src/lib.rs [pub] mod calibration
+crates/what-if/src/lib.rs [pub] mod comparison
+crates/what-if/src/lib.rs [pub] mod deterministic
+crates/what-if/src/lib.rs [pub] mod error
+crates/what-if/src/lib.rs [pub] mod graduation
+crates/what-if/src/lib.rs [pub] mod inputs
+crates/what-if/src/lib.rs [pub] mod lane
+crates/what-if/src/lib.rs [pub] mod projected
+crates/what-if/src/lib.rs [pub] mod scenario
+crates/what-if/src/lib.rs [pub] mod stale
+crates/what-if/src/lib.rs [pub] use assumption::{ ASSUMPTION_KINDS, AssumedWorkload, AssumptionKind, HypotheticalCompletion, PlanAssumptions, ProbabilisticCoverage, StatedGradeAssumption, StatedGradeAssumptions, } |27bb12f429db1345
+crates/what-if/src/lib.rs [pub] use basis::{BASIS_FIELDS, BasisField, ScenarioBasis} |c2ae334aad3549e2
+crates/what-if/src/lib.rs [pub] use calibration::{CalibrationEntry, ModelCalibrationReport, ObservedOccasion, calibrate} |86e17036a04001f7
+crates/what-if/src/lib.rs [pub] use comparison::{ COMPARISON_DIMENSIONS, ComparisonDimension, ComparisonView, DimensionLane, DimensionMove, DimensionPriority, ReorderingExplanation, compare, } |297bc4b8bbddabb9
+crates/what-if/src/lib.rs [pub] use deterministic::{ Allocation, AllocationLine, AverageExclusion, CategoryContribution, CreditLoad, DeterministicResults, DownstreamUnlock, ENROLMENT_LIMIT_STANDINGS, EnrolmentLimitStanding, GpaScenario, HypotheticalTermAverage, PrerequisiteStanding, RequirementVerdict, RuleContribution, ScheduleConflict, ScheduleConflicts, UnlockStanding, } |d280d6a9af3f6863
+crates/what-if/src/lib.rs [pub] use error::WhatIfError |1b0561a76721e667
+crates/what-if/src/lib.rs [pub] use graduation::{GRADUATION_MODES, GraduationMode, HypotheticalGraduation} |5eddf88dfe5e4f10
+crates/what-if/src/lib.rs [pub] use inputs::{ CatalogueRow, DownstreamCourse, InformalRecommendation, OfficialConditions, PLAN_CHOICE_FIELDS, PLAN_INPUT_FIELDS, PathCoverageTargets, PlanChoice, PlanChoiceField, PlanInputField, PlanInputs, RELEVANCE_SUBJECTS, RelevanceSignal, RelevanceSubject, plan_inputs_digest, } |59d0f03e523fd121
+crates/what-if/src/lib.rs [pub] use lane::{ DETERMINISTIC_LANE, DeterministicItem, LaneItem, PROJECTED_LANE, ProjectedItem, SectionView, UI_SECTIONS, UiSection, } |d5900e23af930ce3
+crates/what-if/src/lib.rs [pub] use projected::{ InformalReadiness, InformalReadinessEntry, PathCoverage, PathCoverageEntry, ProjectedResults, ProjectedWorkload, RelevanceEntry, RelevanceProjection, } |5d6fa198a1b74c40
+crates/what-if/src/lib.rs [pub] use scenario::{PlanScenario, SCENARIO_KEYS, ScenarioKey, simulate} |06920a309c245f0b
+crates/what-if/src/lib.rs [pub] use stale::{FrozenPlan, RecomputeConsent, STALE_CAUSES, STALE_INPUT, StaleCause, StaleInput} |143dfb751a1b0a59
+crates/what-if/src/projected.rs [priv] impl InformalReadiness
+crates/what-if/src/projected.rs [priv] impl InformalReadinessEntry
+crates/what-if/src/projected.rs [priv] impl PathCoverage
+crates/what-if/src/projected.rs [priv] impl PathCoverageEntry
+crates/what-if/src/projected.rs [priv] impl ProjectedResults
+crates/what-if/src/projected.rs [priv] impl ProjectedWorkload
+crates/what-if/src/projected.rs [priv] impl RelevanceEntry
+crates/what-if/src/projected.rs [priv] impl RelevanceProjection
+crates/what-if/src/projected.rs [priv] use academic_critical_path::PathRole |ee45e333e90055cb
+crates/what-if/src/projected.rs [priv] use academic_domain::{EntityId, OfferingId} |55dad23a8aa01d64
+crates/what-if/src/projected.rs [priv] use academic_review::BiasDisclosure |f64f13fd9ceb8f29
+crates/what-if/src/projected.rs [priv] use academic_scenario::{ LikelihoodBand, OpportunityBasis, OpportunityKind, ProjectedWorkloadRange, ScenarioProjection, WorkloadHoursRange, } |4ad14d03f52eefe4
+crates/what-if/src/projected.rs [priv] use crate::{ inputs::{RelevanceSignal, RelevanceSubject}, lane::ProjectedItem, } |218205ab005aa1e4
+crates/what-if/src/projected.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/what-if/src/projected.rs [pub(crate)] impl InformalReadiness :: fn of(entries: Vec<InformalReadinessEntry>) -> Self |c32db27938dd9618
+crates/what-if/src/projected.rs [pub(crate)] impl InformalReadinessEntry :: fn of( downstream_concept: EntityId, recommended: &[EntityId], touched: &BTreeSet<EntityId>, ) -> Self |afb6bdfe1ea9b47c
+crates/what-if/src/projected.rs [pub(crate)] impl PathCoverage :: fn of(entries: Vec<PathCoverageEntry>) -> Self |26406e73008f2186
+crates/what-if/src/projected.rs [pub(crate)] impl PathCoverageEntry :: const fn of( concept: EntityId, role: PathRole, offering_id: OfferingId, kind: OpportunityKind, likelihood: LikelihoodBand, ) -> Self |50fc39733bebb4c8
+crates/what-if/src/projected.rs [pub(crate)] impl ProjectedResults :: const fn of( opportunities: ScenarioProjection, relevance: RelevanceProjection, workload: ProjectedWorkload, path_coverage: PathCoverage, readiness: InformalReadiness, ) -> Self |bd7eba6e0a7d7673
+crates/what-if/src/projected.rs [pub(crate)] impl ProjectedWorkload :: const fn of( proposed: ProjectedWorkloadRange, band: WorkloadHoursRange, bias: BiasDisclosure, ) -> Self |3216b99f848bd35d
+crates/what-if/src/projected.rs [pub(crate)] impl RelevanceProjection :: fn of(signals: &[RelevanceSignal]) -> Self |246f71206cc6740b
+crates/what-if/src/projected.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RelevanceEntry |8677c5e4e56d9733
+crates/what-if/src/projected.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct PathCoverageEntry |b3a179769440af10
+crates/what-if/src/projected.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct InformalReadiness |5c6f2aea4d1f2f45
+crates/what-if/src/projected.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct InformalReadinessEntry |dbb2a0b165805181
+crates/what-if/src/projected.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PathCoverage |f99d38e76362786f
+crates/what-if/src/projected.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectedResults |65f765bcd9bd364d
+crates/what-if/src/projected.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectedWorkload |6db48edac62c2201
+crates/what-if/src/projected.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RelevanceProjection |e898d33a1044eb6e
+crates/what-if/src/projected.rs [pub] impl InformalReadiness :: #[must_use] fn entries(&self) -> &[InformalReadinessEntry] |9acac564d044c462
+crates/what-if/src/projected.rs [pub] impl InformalReadinessEntry :: #[must_use] const fn band(&self) -> LikelihoodBand |51b121b0423df22c
+crates/what-if/src/projected.rs [pub] impl InformalReadinessEntry :: #[must_use] const fn downstream_concept(&self) -> EntityId |2df44da180a05597
+crates/what-if/src/projected.rs [pub] impl InformalReadinessEntry :: #[must_use] fn covered(&self) -> &[EntityId] |dea3ca0b7370a234
+crates/what-if/src/projected.rs [pub] impl InformalReadinessEntry :: #[must_use] fn uncovered(&self) -> &[EntityId] |e0bde881084b1e34
+crates/what-if/src/projected.rs [pub] impl PathCoverage :: #[must_use] fn entries(&self) -> &[PathCoverageEntry] |3e1a4d13daae0b4d
+crates/what-if/src/projected.rs [pub] impl PathCoverage :: #[must_use] fn for_role(&self, role: PathRole) -> Vec<PathCoverageEntry> |2559ef47b857e1db
+crates/what-if/src/projected.rs [pub] impl PathCoverageEntry :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/what-if/src/projected.rs [pub] impl PathCoverageEntry :: #[must_use] const fn kind(&self) -> OpportunityKind |d908b1df699a764a
+crates/what-if/src/projected.rs [pub] impl PathCoverageEntry :: #[must_use] const fn likelihood(&self) -> LikelihoodBand |6ee0b2b1bed7c116
+crates/what-if/src/projected.rs [pub] impl PathCoverageEntry :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/projected.rs [pub] impl PathCoverageEntry :: #[must_use] const fn role(&self) -> PathRole |1d3b1649f76b5938
+crates/what-if/src/projected.rs [pub] impl ProjectedResults :: #[must_use] const fn opportunities(&self) -> &ScenarioProjection |e931eceb527e1ab0
+crates/what-if/src/projected.rs [pub] impl ProjectedResults :: #[must_use] const fn path_coverage(&self) -> &PathCoverage |84afbfcdcbd5270e
+crates/what-if/src/projected.rs [pub] impl ProjectedResults :: #[must_use] const fn readiness(&self) -> &InformalReadiness |eacdf5e95c7ec595
+crates/what-if/src/projected.rs [pub] impl ProjectedResults :: #[must_use] const fn relevance(&self) -> &RelevanceProjection |91f5d7cb2cc76279
+crates/what-if/src/projected.rs [pub] impl ProjectedResults :: #[must_use] const fn workload(&self) -> &ProjectedWorkload |e78a879308c6d364
+crates/what-if/src/projected.rs [pub] impl ProjectedResults :: #[must_use] fn produced(&self) -> Vec<ProjectedItem> |5e7a33d388206951
+crates/what-if/src/projected.rs [pub] impl ProjectedWorkload :: #[must_use] const fn band(&self) -> WorkloadHoursRange |eba5af9ffa9e2df8
+crates/what-if/src/projected.rs [pub] impl ProjectedWorkload :: #[must_use] const fn bias(&self) -> &BiasDisclosure |7a4e44db1abf6c7f
+crates/what-if/src/projected.rs [pub] impl ProjectedWorkload :: #[must_use] const fn proposed(&self) -> &ProjectedWorkloadRange |5966c2c61a54fa1b
+crates/what-if/src/projected.rs [pub] impl RelevanceEntry :: #[must_use] const fn band(&self) -> LikelihoodBand |51b121b0423df22c
+crates/what-if/src/projected.rs [pub] impl RelevanceEntry :: #[must_use] const fn basis(&self) -> OpportunityBasis |1a5779d0250a76ca
+crates/what-if/src/projected.rs [pub] impl RelevanceEntry :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/projected.rs [pub] impl RelevanceEntry :: #[must_use] const fn subject(&self) -> RelevanceSubject |8d21b14823bbfb2e
+crates/what-if/src/projected.rs [pub] impl RelevanceEntry :: #[must_use] const fn target(&self) -> EntityId |8c61747c7d85ff73
+crates/what-if/src/projected.rs [pub] impl RelevanceProjection :: #[must_use] fn entries(&self) -> &[RelevanceEntry] |c4df254d34d0c3c1
+crates/what-if/src/scenario.rs [priv] fn assumption_value(inputs: &PlanInputs, kind: AssumptionKind) -> String |3c1fd8d35357e192
+crates/what-if/src/scenario.rs [priv] fn scenario_inputs(inputs: &PlanInputs) -> ScenarioInputs |d82ffb520393795c
+crates/what-if/src/scenario.rs [priv] impl PlanScenario
+crates/what-if/src/scenario.rs [priv] impl ScenarioKey
+crates/what-if/src/scenario.rs [priv] use academic_domain::{ContentDigest, EntityId} |92ea992cc82c0440
+crates/what-if/src/scenario.rs [priv] use academic_scenario::{ OpportunityKind, ProposalProvenance, Proposed, ScenarioAssumption, ScenarioChoice, ScenarioInputs, WorkloadHoursRange, project, } |9179feb13e15cc8e
+crates/what-if/src/scenario.rs [priv] use crate::{ assumption::{ ASSUMPTION_KINDS, AssumptionKind, HypotheticalCompletion, PlanAssumptions, ProbabilisticCoverage, }, basis::ScenarioBasis, deterministic::{ Allocation, CreditLoad, DeterministicResults, DownstreamUnlock, GpaScenario, PrerequisiteStanding, RuleContribution, ScheduleConflicts, }, error::WhatIfError, inputs::{PlanChoice, PlanInputs, plan_inputs_digest}, lane::{SectionView, UiSection}, projected::{ InformalReadiness, InformalReadinessEntry, PathCoverage, PathCoverageEntry, ProjectedResults, ProjectedWorkload, RelevanceProjection, }, } |fb071e5cb4d48144
+crates/what-if/src/scenario.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/what-if/src/scenario.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ScenarioKey |0a62d5b3a50c9469
+crates/what-if/src/scenario.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PlanScenario |6106c16aaf9c9b01
+crates/what-if/src/scenario.rs [pub] const SCENARIO_KEYS: [ScenarioKey; 6] |e28248ecc8c2f6a3
+crates/what-if/src/scenario.rs [pub] fn simulate(inputs: &PlanInputs) -> Result<PlanScenario, WhatIfError> |4b5c601c4c684579
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] const fn assumptions(&self) -> &PlanAssumptions |60283bda24315d50
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] const fn basis(&self) -> &ScenarioBasis |10c3093509c508ed
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] const fn deterministic(&self) -> &DeterministicResults |49e98212d4c5196b
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] const fn id(&self) -> EntityId |a56e7dd843e9b56b
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] const fn inputs_digest(&self) -> ContentDigest |eee3c389958ac754
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] const fn projections(&self) -> &ProjectedResults |cae6bff559d84a6d
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] fn choices(&self) -> &[PlanChoice] |4bba4c748400d5e6
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] fn section(&self, section: UiSection) -> SectionView<'_> |6d1f821395fb6c75
+crates/what-if/src/scenario.rs [pub] impl PlanScenario :: #[must_use] fn sections(&self) -> [SectionView<'_>; 2] |2f42252376c6b961
+crates/what-if/src/scenario.rs [pub] impl ScenarioKey :: #[must_use] const fn field_name(self) -> &'static str |18a02220b3a4fb79
+crates/what-if/src/scenario.rs [pub] impl ScenarioKey :: #[must_use] const fn spec_key(self) -> &'static str |e5c83c1f342ce0c6
+crates/what-if/src/stale.rs [priv] impl FrozenPlan
+crates/what-if/src/stale.rs [priv] impl RecomputeConsent
+crates/what-if/src/stale.rs [priv] impl StaleCause
+crates/what-if/src/stale.rs [priv] impl StaleInput
+crates/what-if/src/stale.rs [priv] use academic_domain::{EntityId, OfferingId, TimestampMillis} |26927adb61f44922
+crates/what-if/src/stale.rs [priv] use academic_offering::CancellationNotice |b948c76a4bd19c9e
+crates/what-if/src/stale.rs [priv] use academic_proposal::UserDecision |46650cad7ba30030
+crates/what-if/src/stale.rs [priv] use crate::{ error::WhatIfError, inputs::PlanInputs, scenario::{PlanScenario, simulate}, } |92a72128c6555b03
+crates/what-if/src/stale.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/what-if/src/stale.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum StaleCause |9add19e69f277898
+crates/what-if/src/stale.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct StaleInput |25c22706c445d91e
+crates/what-if/src/stale.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct FrozenPlan |75bd8f4e781bc808
+crates/what-if/src/stale.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RecomputeConsent |ee43c6228683e9f4
+crates/what-if/src/stale.rs [pub] const STALE_CAUSES: [StaleCause; 3] |de65e88e08ca92ea
+crates/what-if/src/stale.rs [pub] const STALE_INPUT: &str |6f8e8c4fb121fcba
+crates/what-if/src/stale.rs [pub] impl FrozenPlan :: #[must_use] const fn marker(&self) -> &'static str |89d8e47eb4ec7b4d
+crates/what-if/src/stale.rs [pub] impl FrozenPlan :: #[must_use] const fn plan(&self) -> &PlanScenario |185a4b7d48550790
+crates/what-if/src/stale.rs [pub] impl FrozenPlan :: #[must_use] fn mark(plan: PlanScenario, first: StaleInput, rest: Vec<StaleInput>) -> Self |93b6cd6611f03b92
+crates/what-if/src/stale.rs [pub] impl FrozenPlan :: #[must_use] fn stale(&self) -> &[StaleInput] |1743502ba9f0d65f
+crates/what-if/src/stale.rs [pub] impl FrozenPlan :: fn recompute( self, consent: &RecomputeConsent, inputs: &PlanInputs, ) -> Result<PlanScenario, WhatIfError> |6ce0e442a627277c
+crates/what-if/src/stale.rs [pub] impl RecomputeConsent :: #[must_use] const fn decision(&self) -> &UserDecision |3032061dcf107b0a
+crates/what-if/src/stale.rs [pub] impl RecomputeConsent :: #[must_use] const fn plan_id(&self) -> EntityId |757a11ab809cd693
+crates/what-if/src/stale.rs [pub] impl RecomputeConsent :: #[must_use] fn covers(&self) -> &[StaleInput] |41a6ed36bcf17837
+crates/what-if/src/stale.rs [pub] impl RecomputeConsent :: #[must_use] fn of(plan_id: EntityId, decision: UserDecision, covers: Vec<StaleInput>) -> Self |80b02973cc705105
+crates/what-if/src/stale.rs [pub] impl StaleCause :: #[must_use] const fn as_str(self) -> &'static str |1877847eacf48b58
+crates/what-if/src/stale.rs [pub] impl StaleCause :: #[must_use] const fn spec_phrase(self) -> &'static str |52b83495878c1899
+crates/what-if/src/stale.rs [pub] impl StaleInput :: #[must_use] const fn cause(&self) -> StaleCause |e63b43003e666ae9
+crates/what-if/src/stale.rs [pub] impl StaleInput :: #[must_use] const fn observed_at(&self) -> TimestampMillis |749fa84cdb818501
+crates/what-if/src/stale.rs [pub] impl StaleInput :: #[must_use] const fn of( offering_id: OfferingId, cause: StaleCause, observed_at: TimestampMillis, ) -> Self |c301cba6f73b4c69
+crates/what-if/src/stale.rs [pub] impl StaleInput :: #[must_use] const fn offering_id(&self) -> OfferingId |1b676eaf185b2a90
+crates/what-if/src/stale.rs [pub] impl StaleInput :: #[must_use] fn from_cancellation(offering_id: OfferingId, notice: &CancellationNotice) -> Self |13cc75ea5f47831e

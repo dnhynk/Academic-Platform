@@ -1,0 +1,236 @@
+crates/egress-boundary/src/lib.rs [priv] fn from_broker(error: BrokerError, context: &str) -> EgressError |45dc6fc27888b331
+crates/egress-boundary/src/lib.rs [priv] fn unbuildable_call(error: BrokerError) -> EgressError |733acb0809ed19f0
+crates/egress-boundary/src/lib.rs [priv] impl EgressError
+crates/egress-boundary/src/lib.rs [priv] impl Route
+crates/egress-boundary/src/lib.rs [priv] impl<'broker> EgressProxy<'broker>
+crates/egress-boundary/src/lib.rs [priv] impl<'broker> EgressProxy<'broker> :: fn bind_grant( &self, plan: &TransmissionPlan<'_>, capability: &CapabilityToken, staged: &StagedPayload, ) -> Result<GrantRow, EgressError> |4ce0cf12d8565297
+crates/egress-boundary/src/lib.rs [priv] mod minimize
+crates/egress-boundary/src/lib.rs [priv] mod response
+crates/egress-boundary/src/lib.rs [priv] mod rulepack
+crates/egress-boundary/src/lib.rs [priv] mod stage
+crates/egress-boundary/src/lib.rs [priv] mod transport
+crates/egress-boundary/src/lib.rs [priv] use academic_policy::{BrokerError, CapabilityToken, GrantRow, PermissionBroker, ReasonCode} |cd001d1ebf44c42a
+crates/egress-boundary/src/lib.rs [pub] #[derive(Debug)] struct EgressProxy<'broker> |399461820524629d
+crates/egress-boundary/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Route |0c4056ae1390e265
+crates/egress-boundary/src/lib.rs [pub] #[derive(Debug, thiserror::Error)] enum EgressError |7206defcdf4b16b1
+crates/egress-boundary/src/lib.rs [pub] #[must_use] const fn cloud_egress_default() -> Route |dfffeb0be1bf0d54
+crates/egress-boundary/src/lib.rs [pub] impl EgressError :: #[must_use] const fn denial(&self) -> Option<&EgressDenial> |b105fe54d2d5182c
+crates/egress-boundary/src/lib.rs [pub] impl EgressError :: #[must_use] const fn reason(&self) -> Option<ReasonCode> |3f468190c846f833
+crates/egress-boundary/src/lib.rs [pub] impl Route :: #[must_use] const fn as_str(self) -> &'static str |205d89bf7299c3ee
+crates/egress-boundary/src/lib.rs [pub] impl<'broker> EgressProxy<'broker> :: #[must_use] const fn new(broker: &'broker PermissionBroker) -> Self |e8fe679cf874a2af
+crates/egress-boundary/src/lib.rs [pub] impl<'broker> EgressProxy<'broker> :: #[must_use] const fn with_rulepack(broker: &'broker PermissionBroker, rulepack: Rulepack) -> Self |0eae66112b774130
+crates/egress-boundary/src/lib.rs [pub] impl<'broker> EgressProxy<'broker> :: #[must_use] fn rulepack_id(&self) -> RulepackId |bdf7bd2d4f6b7a82
+crates/egress-boundary/src/lib.rs [pub] impl<'broker> EgressProxy<'broker> :: fn accept_response( &self, corpus: &CanaryCorpus, response: &[u8], ) -> Result<AcceptedResponse, Incident> |5c6317baa61939e9
+crates/egress-boundary/src/lib.rs [pub] impl<'broker> EgressProxy<'broker> :: fn stage(&self, request: &StagingRequest<'_>) -> Result<StagedPayload, EgressDenial> |dfcc8a33e1e154b3
+crates/egress-boundary/src/lib.rs [pub] impl<'broker> EgressProxy<'broker> :: fn transmit<T: OutboundTransport>( &self, capability: &CapabilityToken, staged: &StagedPayload, plan: &TransmissionPlan<'_>, journal: &mut StagedGrantJournal, transport: &mut T, now: &dyn Fn() -> u64, ) -> Result<Transmission, EgressError> |da8dd9de046e5890
+crates/egress-boundary/src/lib.rs [pub] impl<'broker> EgressProxy<'broker> :: fn transmit_without_completion<T: OutboundTransport>( &self, capability: &CapabilityToken, staged: &StagedPayload, plan: &TransmissionPlan<'_>, journal: &mut StagedGrantJournal, transport: &mut T, now: &dyn Fn() -> u64, ) -> Result<Transmission, EgressError> |0161ae1436d148c3
+crates/egress-boundary/src/lib.rs [pub] use minimize::{ClassificationError, Item, SourceRange, classify, items, minimal_ranges} |f1c2e72a0c8a9b41
+crates/egress-boundary/src/lib.rs [pub] use response::{ AcceptedResponse, CanaryCorpus, CanaryHit, HitSource, Incident, IncidentSeverity, } |2700891f554819a7
+crates/egress-boundary/src/lib.rs [pub] use rulepack::{Finding, Rule, Rulepack, RulepackId, ScanError, SpanKind} |b84f410ee7918c6e
+crates/egress-boundary/src/lib.rs [pub] use stage::{ EgressDenial, IdentifierPolicy, Preview, SourceDocument, StagedPayload, StagingRequest, Substitution, } |427c1a2fdcac2ad8
+crates/egress-boundary/src/lib.rs [pub] use transport::{ JournalEntry, OutboundTransport, ReconstructedAudit, StagedGrantJournal, Transmission, TransmissionPlan, TransportError, } |096e37bc98fe951e
+crates/egress-boundary/src/minimize.rs [priv] const CONTAINER_MAGICS: &[(&str, &[u8])] |eecfc4c10f41c68f
+crates/egress-boundary/src/minimize.rs [priv] const ITEM_KEYWORDS: &[&str] |5858581e773b3467
+crates/egress-boundary/src/minimize.rs [priv] const fn is_identifier_byte(byte: u8) -> bool |71fe166e0dd703b3
+crates/egress-boundary/src/minimize.rs [priv] fn blank_line_follows(bytes: &[u8], cursor: usize) -> bool |1341ec3ac45b58c9
+crates/egress-boundary/src/minimize.rs [priv] fn declared_name(header: &str) -> Option<(String, String)> |c708303ad5f4866d
+crates/egress-boundary/src/minimize.rs [priv] fn identifier_after(header: &str, from: usize) -> Option<String> |b82a666f9c8c38c3
+crates/egress-boundary/src/minimize.rs [priv] fn is_word_start(bytes: &[u8], cursor: usize) -> bool |71bdaf3200885173
+crates/egress-boundary/src/minimize.rs [priv] fn push_item( items: &mut Vec<Item>, text: &str, base: usize, start: usize, end: usize, body: Option<(usize, usize)>, header_end: usize, ) |2fcc685a3bc7b71c
+crates/egress-boundary/src/minimize.rs [priv] fn quoted_end(bytes: &[u8], open: usize, quote: u8) -> usize |7a75aaf607f66c1c
+crates/egress-boundary/src/minimize.rs [priv] fn skip_trivia(text: &str, cursor: usize) -> Option<usize> |4edfd3c66fe639f5
+crates/egress-boundary/src/minimize.rs [priv] fn top_level_items(text: &str, base: usize) -> Vec<Item> |125ca6c921b55787
+crates/egress-boundary/src/minimize.rs [priv] impl Item
+crates/egress-boundary/src/minimize.rs [priv] impl SourceRange
+crates/egress-boundary/src/minimize.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ClassificationError |d800156a22b5f284
+crates/egress-boundary/src/minimize.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] struct SourceRange |c213facc503b5c30
+crates/egress-boundary/src/minimize.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Item |95ec68381a132446
+crates/egress-boundary/src/minimize.rs [pub] #[must_use] fn items(text: &str, base: usize) -> Vec<Item> |b4281df35e4c183b
+crates/egress-boundary/src/minimize.rs [pub] #[must_use] fn minimal_ranges(text: &str, focus: &[String]) -> Option<Vec<SourceRange>> |107048b929e08589
+crates/egress-boundary/src/minimize.rs [pub] fn classify(bytes: &[u8]) -> Result<&str, ClassificationError> |508571a5984c6645
+crates/egress-boundary/src/minimize.rs [pub] impl Item :: #[must_use] const fn range(&self) -> SourceRange |c00e679c3e87a573
+crates/egress-boundary/src/minimize.rs [pub] impl Item :: #[must_use] fn keyword(&self) -> &str |9cd4024e13e12cf7
+crates/egress-boundary/src/minimize.rs [pub] impl Item :: #[must_use] fn name(&self) -> &str |dcd1b6c60790e001
+crates/egress-boundary/src/minimize.rs [pub] impl SourceRange :: #[must_use] const fn end(self) -> usize |7188d4fc57551459
+crates/egress-boundary/src/minimize.rs [pub] impl SourceRange :: #[must_use] const fn is_empty(self) -> bool |55dfe83fdcc6bf2f
+crates/egress-boundary/src/minimize.rs [pub] impl SourceRange :: #[must_use] const fn len(self) -> usize |17f96ff741ee7371
+crates/egress-boundary/src/minimize.rs [pub] impl SourceRange :: #[must_use] const fn new(start: usize, end: usize) -> Self |974d3e8f4aecb0e5
+crates/egress-boundary/src/minimize.rs [pub] impl SourceRange :: #[must_use] const fn start(self) -> usize |ec29edf8876e3229
+crates/egress-boundary/src/response.rs [priv] impl AcceptedResponse
+crates/egress-boundary/src/response.rs [priv] impl CanaryCorpus
+crates/egress-boundary/src/response.rs [priv] impl Incident
+crates/egress-boundary/src/response.rs [priv] impl fmt::Debug for AcceptedResponse
+crates/egress-boundary/src/response.rs [priv] impl fmt::Debug for AcceptedResponse :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |28bf7dec1799112e
+crates/egress-boundary/src/response.rs [priv] impl fmt::Display for Incident
+crates/egress-boundary/src/response.rs [priv] impl fmt::Display for Incident :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |43a42126b542d920
+crates/egress-boundary/src/response.rs [priv] impl std::error::Error for Incident
+crates/egress-boundary/src/response.rs [priv] use academic_policy::{ContentDigest, ReasonCode} |53b681422317a6f9
+crates/egress-boundary/src/response.rs [priv] use crate::rulepack::Rulepack |6cb89837ae30c21c
+crates/egress-boundary/src/response.rs [priv] use std::fmt |20996e02b97d7e41
+crates/egress-boundary/src/response.rs [pub(crate)] fn accept_response( rulepack: &Rulepack, corpus: &CanaryCorpus, response: &[u8], ) -> Result<AcceptedResponse, Incident> |22d1400bf8b6a15f
+crates/egress-boundary/src/response.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum IncidentSeverity |8702fa36d2308a6f
+crates/egress-boundary/src/response.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct CanaryCorpus |e26ae7fcd00f5561
+crates/egress-boundary/src/response.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum HitSource |bae09b28e204060d
+crates/egress-boundary/src/response.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CanaryHit |457ff995497d914f
+crates/egress-boundary/src/response.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Incident |cd6f8439766daa3c
+crates/egress-boundary/src/response.rs [pub] impl AcceptedResponse :: #[must_use] fn bytes(&self) -> &[u8] |2ab893417e754650
+crates/egress-boundary/src/response.rs [pub] impl AcceptedResponse :: #[must_use] fn digest(&self) -> &str |b08757f8183df8b9
+crates/egress-boundary/src/response.rs [pub] impl CanaryCorpus :: #[must_use] fn is_empty(&self) -> bool |13ac28fa4b8c324b
+crates/egress-boundary/src/response.rs [pub] impl CanaryCorpus :: #[must_use] fn len(&self) -> usize |77b6ff32997b6993
+crates/egress-boundary/src/response.rs [pub] impl CanaryCorpus :: #[must_use] fn new(tokens: Vec<String>) -> Self |5a1f8f902bd5d0d9
+crates/egress-boundary/src/response.rs [pub] impl Incident :: #[must_use] const fn reason(&self) -> ReasonCode |caeda9c630274452
+crates/egress-boundary/src/response.rs [pub] impl Incident :: #[must_use] const fn response_byte_count(&self) -> usize |18784fd6681df76d
+crates/egress-boundary/src/response.rs [pub] impl Incident :: #[must_use] const fn severity(&self) -> IncidentSeverity |aca35c462b0cd6f8
+crates/egress-boundary/src/response.rs [pub] impl Incident :: #[must_use] fn detail(&self) -> &str |8e3f8446f708b731
+crates/egress-boundary/src/response.rs [pub] impl Incident :: #[must_use] fn hits(&self) -> &[CanaryHit] |cc8539a6df3d1a63
+crates/egress-boundary/src/response.rs [pub] impl Incident :: #[must_use] fn response_digest(&self) -> &str |373eb3136f4b16c9
+crates/egress-boundary/src/response.rs [pub] struct AcceptedResponse |8613ceb11e62a2cb
+crates/egress-boundary/src/rulepack.rs [priv] #[derive(Debug)] struct Budget |44a876c626cc2201
+crates/egress-boundary/src/rulepack.rs [priv] #[derive(Debug, Clone, Copy)] struct Span |067d789e66984fd9
+crates/egress-boundary/src/rulepack.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Alphabet |ab8d178aeb59ac14
+crates/egress-boundary/src/rulepack.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum RuleKind |2bd17f0755c3b31a
+crates/egress-boundary/src/rulepack.rs [priv] const BUILTIN_NAME: &str |18f06cac70f3c890
+crates/egress-boundary/src/rulepack.rs [priv] const BUILTIN_RULES: &[Rule] |befe0a7da07ebf4f
+crates/egress-boundary/src/rulepack.rs [priv] const BUILTIN_TOKEN_BUDGET: usize |bbd01d734b27ca44
+crates/egress-boundary/src/rulepack.rs [priv] const BUILTIN_VERSION: u32 |a20f99ebe302ea05
+crates/egress-boundary/src/rulepack.rs [priv] const fn is_token_byte(byte: u8) -> bool |991b5e9941605bd1
+crates/egress-boundary/src/rulepack.rs [priv] fn assignment_hits(bytes: &[u8], needles: &[&str], min_value: usize) -> Vec<(usize, usize)> |ad3cdd7754fd4ab4
+crates/egress-boundary/src/rulepack.rs [priv] fn classify_spans(text: &str) -> Vec<Span> |c2c788151cd06a7b
+crates/egress-boundary/src/rulepack.rs [priv] fn credential_uri_hits(text: &str, schemes: &[&str]) -> Vec<(usize, usize)> |eb5cdc2669f67a00
+crates/egress-boundary/src/rulepack.rs [priv] fn digit_group_hits(bytes: &[u8], groups: &[usize], separator: u8) -> Vec<(usize, usize)> |ef4b2b1ecfa305af
+crates/egress-boundary/src/rulepack.rs [priv] fn email_hits(bytes: &[u8]) -> Vec<(usize, usize)> |f890a94bdbbf22ee
+crates/egress-boundary/src/rulepack.rs [priv] fn entropy_centibits(token: &[u8], rule_id: &'static str) -> Result<u32, ScanError> |76fe54d06bd4bc84
+crates/egress-boundary/src/rulepack.rs [priv] fn entropy_hits( bytes: &[u8], min_len: usize, min_centibits: u32, alphabet: Alphabet, rule_id: &'static str, budget: &mut Budget, ) -> Result<Vec<(usize, usize)>, ScanError> |3b7502bd7dfdecba
+crates/egress-boundary/src/rulepack.rs [priv] fn is_email_domain(byte: u8) -> bool |7418b8a8620211bc
+crates/egress-boundary/src/rulepack.rs [priv] fn is_email_local(byte: u8) -> bool |9ab11638c756329d
+crates/egress-boundary/src/rulepack.rs [priv] fn marker_hits(text: &str, marker: &str) -> Vec<(usize, usize)> |9c8f49eddd3ffcc8
+crates/egress-boundary/src/rulepack.rs [priv] fn matches_groups(window: &[u8], groups: &[usize], separator: u8) -> bool |9ab393cea3e1f4f6
+crates/egress-boundary/src/rulepack.rs [priv] fn push_str(bytes: &mut Vec<u8>, value: &str) |73ace954b2b72f62
+crates/egress-boundary/src/rulepack.rs [priv] fn run_rule( rule: &Rule, text: &str, spans: &[Span], budget: &mut Budget, ) -> Result<Vec<Finding>, ScanError> |99e64fd96cb42b01
+crates/egress-boundary/src/rulepack.rs [priv] fn span_kind_at(spans: &[Span], offset: usize) -> SpanKind |0b9dca71bd59f294
+crates/egress-boundary/src/rulepack.rs [priv] fn string_literal_end(bytes: &[u8], open: usize) -> usize |826aeba6782f248c
+crates/egress-boundary/src/rulepack.rs [priv] fn token_body_end(bytes: &[u8], from: usize, alphabet: Alphabet) -> usize |cee4642e28a49129
+crates/egress-boundary/src/rulepack.rs [priv] fn token_prefix_hits( bytes: &[u8], prefix: &str, min_body: usize, alphabet: Alphabet, ) -> Vec<(usize, usize)> |b8c1768bd8fec088
+crates/egress-boundary/src/rulepack.rs [priv] impl Alphabet
+crates/egress-boundary/src/rulepack.rs [priv] impl Alphabet :: const fn admits(self, byte: u8) -> bool |e88ea060e216a4f9
+crates/egress-boundary/src/rulepack.rs [priv] impl Budget
+crates/egress-boundary/src/rulepack.rs [priv] impl Budget :: fn charge(&mut self, rule_id: &'static str) -> Result<(), ScanError> |e62a8aad61c18e7e
+crates/egress-boundary/src/rulepack.rs [priv] impl Default for Rulepack
+crates/egress-boundary/src/rulepack.rs [priv] impl Default for Rulepack :: fn default() -> Self |2fd1f94af4457f00
+crates/egress-boundary/src/rulepack.rs [priv] impl Finding
+crates/egress-boundary/src/rulepack.rs [priv] impl Rule
+crates/egress-boundary/src/rulepack.rs [priv] impl Rulepack
+crates/egress-boundary/src/rulepack.rs [priv] impl RulepackId
+crates/egress-boundary/src/rulepack.rs [priv] impl SpanKind
+crates/egress-boundary/src/rulepack.rs [priv] use academic_policy::{ContentDigest, ReasonCode} |53b681422317a6f9
+crates/egress-boundary/src/rulepack.rs [pub] #[derive(Debug, Clone)] struct Rulepack |f86e50fe9f1a3375
+crates/egress-boundary/src/rulepack.rs [pub] #[derive(Debug, Clone, Copy)] struct Rule |f8831d20b10b081d
+crates/egress-boundary/src/rulepack.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] enum SpanKind |c855a90d506595b5
+crates/egress-boundary/src/rulepack.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Finding |e57c206f577596a9
+crates/egress-boundary/src/rulepack.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RulepackId |f74c868c0671c619
+crates/egress-boundary/src/rulepack.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[error("DLP rule {rule_id} could not complete: {detail}")] struct ScanError |13f2755a42628ab5
+crates/egress-boundary/src/rulepack.rs [pub] impl Finding :: #[must_use] const fn end(&self) -> usize |c014441fd792dc3f
+crates/egress-boundary/src/rulepack.rs [pub] impl Finding :: #[must_use] const fn reason(&self) -> ReasonCode |caeda9c630274452
+crates/egress-boundary/src/rulepack.rs [pub] impl Finding :: #[must_use] const fn rule_id(&self) -> &'static str |43db23c86343967f
+crates/egress-boundary/src/rulepack.rs [pub] impl Finding :: #[must_use] const fn span_kind(&self) -> SpanKind |1524d663fb18045b
+crates/egress-boundary/src/rulepack.rs [pub] impl Finding :: #[must_use] const fn start(&self) -> usize |85d41956c8547305
+crates/egress-boundary/src/rulepack.rs [pub] impl Rule :: #[must_use] const fn id(&self) -> &'static str |213ce9eef07cedc7
+crates/egress-boundary/src/rulepack.rs [pub] impl Rule :: #[must_use] const fn reason(&self) -> ReasonCode |caeda9c630274452
+crates/egress-boundary/src/rulepack.rs [pub] impl Rulepack :: #[must_use] const fn builtin() -> Self |cd4850999897446e
+crates/egress-boundary/src/rulepack.rs [pub] impl Rulepack :: #[must_use] const fn rules(&self) -> &'static [Rule] |304a32470f529f4e
+crates/egress-boundary/src/rulepack.rs [pub] impl Rulepack :: #[must_use] const fn token_budget(&self) -> usize |5bc9ea532ca6387f
+crates/egress-boundary/src/rulepack.rs [pub] impl Rulepack :: #[must_use] const fn with_token_budget(self, token_budget: usize) -> Self |5e350fb17eb91e9f
+crates/egress-boundary/src/rulepack.rs [pub] impl Rulepack :: #[must_use] fn id(&self) -> RulepackId |8c2baf171df5ef63
+crates/egress-boundary/src/rulepack.rs [pub] impl Rulepack :: fn scan(&self, text: &str) -> Result<Vec<Finding>, ScanError> |52d7f7f3364fc0bd
+crates/egress-boundary/src/rulepack.rs [pub] impl RulepackId :: #[must_use] const fn name(&self) -> &'static str |18d00ac0f44d9b83
+crates/egress-boundary/src/rulepack.rs [pub] impl RulepackId :: #[must_use] const fn redaction_policy_hash(&self) -> &ContentDigest |43c5b921395b9723
+crates/egress-boundary/src/rulepack.rs [pub] impl RulepackId :: #[must_use] const fn version(&self) -> u32 |8ac5a6b5c3dc1561
+crates/egress-boundary/src/rulepack.rs [pub] impl RulepackId :: #[must_use] fn label(&self) -> String |b093f8814454646b
+crates/egress-boundary/src/rulepack.rs [pub] impl SpanKind :: #[must_use] const fn as_str(self) -> &'static str |e051cf84e82b01e8
+crates/egress-boundary/src/stage.rs [priv] fn concatenate(text: &str, ranges: &[SourceRange]) -> Option<String> |0798bd8c06cd5495
+crates/egress-boundary/src/stage.rs [priv] fn deny_on_findings(rulepack: &Rulepack, text: &str, stage: &str) -> Result<(), EgressDenial> |0a8a1ccd10d311c9
+crates/egress-boundary/src/stage.rs [priv] fn identifier_end(bytes: &[u8], from: usize) -> usize |68a60aee18cee861
+crates/egress-boundary/src/stage.rs [priv] fn meaning_check( selected: &str, redaction: &Redaction, request: &StagingRequest<'_>, ) -> Result<(), EgressDenial> |79d482b0c4b6529f
+crates/egress-boundary/src/stage.rs [priv] fn range_off_document() -> EgressDenial |f09f9c7259ff1968
+crates/egress-boundary/src/stage.rs [priv] fn staged_object_id(source_object_id: &str, preview: &Preview, rulepack: &RulepackId) -> String |f91582fd9694f669
+crates/egress-boundary/src/stage.rs [priv] fn substitute_identifiers( text: &str, ranges: &[SourceRange], policy: &IdentifierPolicy, ) -> Option<Redaction> |575ba4ef54ad36a5
+crates/egress-boundary/src/stage.rs [priv] impl EgressDenial
+crates/egress-boundary/src/stage.rs [priv] impl IdentifierPolicy
+crates/egress-boundary/src/stage.rs [priv] impl Preview
+crates/egress-boundary/src/stage.rs [priv] impl SourceDocument
+crates/egress-boundary/src/stage.rs [priv] impl StagedPayload
+crates/egress-boundary/src/stage.rs [priv] impl Substitution
+crates/egress-boundary/src/stage.rs [priv] impl fmt::Debug for Preview
+crates/egress-boundary/src/stage.rs [priv] impl fmt::Debug for Preview :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |9094a8e9f8e187b8
+crates/egress-boundary/src/stage.rs [priv] impl fmt::Debug for SourceDocument
+crates/egress-boundary/src/stage.rs [priv] impl fmt::Debug for SourceDocument :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |ac603336cd8189a1
+crates/egress-boundary/src/stage.rs [priv] impl fmt::Display for EgressDenial
+crates/egress-boundary/src/stage.rs [priv] impl fmt::Display for EgressDenial :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |756e8681ad4facac
+crates/egress-boundary/src/stage.rs [priv] impl std::error::Error for EgressDenial
+crates/egress-boundary/src/stage.rs [priv] struct Redaction |259d430cb3802783
+crates/egress-boundary/src/stage.rs [priv] use academic_policy::{ContentDigest, ObjectRange, ReasonCode} |ea32e6dea2ffe589
+crates/egress-boundary/src/stage.rs [priv] use crate::minimize::{self, ClassificationError, SourceRange} |dd7edc8608c6b356
+crates/egress-boundary/src/stage.rs [priv] use crate::rulepack::{Finding, Rulepack, RulepackId, ScanError} |576be2bdb33e86cc
+crates/egress-boundary/src/stage.rs [priv] use std::collections::BTreeMap |8924be3040ea8f9f
+crates/egress-boundary/src/stage.rs [priv] use std::fmt |20996e02b97d7e41
+crates/egress-boundary/src/stage.rs [pub(crate)] fn stage( rulepack: &Rulepack, request: &StagingRequest<'_>, ) -> Result<StagedPayload, EgressDenial> |b8ee8b63a3d9e2fb
+crates/egress-boundary/src/stage.rs [pub(crate)] impl EgressDenial :: fn aborted(reason: ReasonCode, detail: impl Into<String>, sent: usize) -> Self |c5c71473b232d413
+crates/egress-boundary/src/stage.rs [pub(crate)] impl EgressDenial :: fn new(reason: ReasonCode, detail: impl Into<String>) -> Self |5708595751023b1a
+crates/egress-boundary/src/stage.rs [pub(crate)] impl EgressDenial :: fn with_findings( reason: ReasonCode, detail: impl Into<String>, findings: Vec<Finding>, ) -> Self |9329cce6d5ee369d
+crates/egress-boundary/src/stage.rs [pub] #[derive(Debug)] struct StagedPayload |f5203824834d63ce
+crates/egress-boundary/src/stage.rs [pub] #[derive(Debug)] struct StagingRequest<'a> |2aee569f74a3c2cb
+crates/egress-boundary/src/stage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct EgressDenial |cd17a58326db574e
+crates/egress-boundary/src/stage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct IdentifierPolicy |cd9544df6372b106
+crates/egress-boundary/src/stage.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Substitution |c9781fed3c6f5336
+crates/egress-boundary/src/stage.rs [pub] impl EgressDenial :: #[must_use] const fn bytes_transmitted(&self) -> usize |51ac484b3c903dcb
+crates/egress-boundary/src/stage.rs [pub] impl EgressDenial :: #[must_use] const fn reason(&self) -> ReasonCode |caeda9c630274452
+crates/egress-boundary/src/stage.rs [pub] impl EgressDenial :: #[must_use] const fn route(&self) -> crate::Route |d37f43f95585117e
+crates/egress-boundary/src/stage.rs [pub] impl EgressDenial :: #[must_use] fn detail(&self) -> &str |8e3f8446f708b731
+crates/egress-boundary/src/stage.rs [pub] impl EgressDenial :: #[must_use] fn findings(&self) -> &[Finding] |59290d8140ea4bab
+crates/egress-boundary/src/stage.rs [pub] impl IdentifierPolicy :: #[must_use] const fn none() -> Self |b0641e982f44f9da
+crates/egress-boundary/src/stage.rs [pub] impl IdentifierPolicy :: #[must_use] fn new(substitute: Vec<String>, max_substituted_percent: u32) -> Self |5684dbd23183e93c
+crates/egress-boundary/src/stage.rs [pub] impl IdentifierPolicy :: #[must_use] fn substituted(&self) -> &[String] |56bcfd9f463b8255
+crates/egress-boundary/src/stage.rs [pub] impl Preview :: #[must_use] const fn rulepack(&self) -> &RulepackId |ab9dad1a7f82d25d
+crates/egress-boundary/src/stage.rs [pub] impl Preview :: #[must_use] fn byte_len(&self) -> usize |cced2db882f5b5a0
+crates/egress-boundary/src/stage.rs [pub] impl Preview :: #[must_use] fn bytes(&self) -> &[u8] |2ab893417e754650
+crates/egress-boundary/src/stage.rs [pub] impl Preview :: #[must_use] fn digest(&self) -> ContentDigest |912d6c96e71eae84
+crates/egress-boundary/src/stage.rs [pub] impl Preview :: #[must_use] fn render(&self) -> String |ee6b350cce770463
+crates/egress-boundary/src/stage.rs [pub] impl Preview :: #[must_use] fn source_ranges(&self) -> &[SourceRange] |03bcc1ff14d7f23e
+crates/egress-boundary/src/stage.rs [pub] impl Preview :: #[must_use] fn substitutions(&self) -> &[Substitution] |8f275dbc7b5c61b5
+crates/egress-boundary/src/stage.rs [pub] impl SourceDocument :: #[must_use] fn byte_len(&self) -> usize |cced2db882f5b5a0
+crates/egress-boundary/src/stage.rs [pub] impl SourceDocument :: #[must_use] fn new(object_id: impl Into<String>, payload: impl Into<Vec<u8>>) -> Self |430aa0650c1ff1db
+crates/egress-boundary/src/stage.rs [pub] impl SourceDocument :: #[must_use] fn object_id(&self) -> &str |b8f713aa92405ba3
+crates/egress-boundary/src/stage.rs [pub] impl StagedPayload :: #[must_use] const fn preview(&self) -> &Preview |fc6c1671776ebb81
+crates/egress-boundary/src/stage.rs [pub] impl StagedPayload :: #[must_use] fn staged_object_id(&self) -> &str |f422fa3c9ade2559
+crates/egress-boundary/src/stage.rs [pub] impl StagedPayload :: fn object_range(&self) -> Result<ObjectRange, academic_policy::BrokerError> |ffdc105da0825022
+crates/egress-boundary/src/stage.rs [pub] impl Substitution :: #[must_use] const fn source_range(&self) -> SourceRange |aa8ad7b23c912343
+crates/egress-boundary/src/stage.rs [pub] impl Substitution :: #[must_use] const fn staged_end(&self) -> usize |1b536437fdf943b7
+crates/egress-boundary/src/stage.rs [pub] impl Substitution :: #[must_use] const fn staged_start(&self) -> usize |d1ba68084be8cfd3
+crates/egress-boundary/src/stage.rs [pub] impl Substitution :: #[must_use] fn original(&self) -> &str |316d5fe03b803115
+crates/egress-boundary/src/stage.rs [pub] impl Substitution :: #[must_use] fn placeholder(&self) -> &str |573a561b9d1a31db
+crates/egress-boundary/src/stage.rs [pub] struct Preview |415be12b74e39ec4
+crates/egress-boundary/src/stage.rs [pub] struct SourceDocument |380ade75e2ab2cfa
+crates/egress-boundary/src/transport.rs [priv] impl StagedGrantJournal
+crates/egress-boundary/src/transport.rs [priv] impl Transmission
+crates/egress-boundary/src/transport.rs [priv] impl TransportError
+crates/egress-boundary/src/transport.rs [priv] trait OutboundTransport :: fn send_chunk(&mut self, chunk: &[u8]) -> Result<(), TransportError> |aa75a4c068da8fc1
+crates/egress-boundary/src/transport.rs [priv] use academic_policy::{AuthorizedToolCall, BrokerError, ProcessClass, ReasonCode, RuntimeToolCall} |5b95187bd35a9653
+crates/egress-boundary/src/transport.rs [priv] use crate::stage::{EgressDenial, StagedPayload} |9e2197587cf804bc
+crates/egress-boundary/src/transport.rs [pub(crate)] fn staged_runtime_call<'a>( staged: &'a StagedPayload, plan: &TransmissionPlan<'_>, ) -> Result<RuntimeToolCall<'a>, BrokerError> |bcae1eb699e4c991
+crates/egress-boundary/src/transport.rs [pub(crate)] fn transmission(bytes_sent: usize, payload_digest: String) -> Transmission |b43d507127e31e97
+crates/egress-boundary/src/transport.rs [pub(crate)] fn transport_denial(error: &TransportError) -> EgressDenial |dee8b88fd9237be7
+crates/egress-boundary/src/transport.rs [pub(crate)] fn write_authorized_bytes<T: OutboundTransport>( authorized: &AuthorizedToolCall<'_>, transport: &mut T, chunk_bytes: usize, now: &dyn Fn() -> u64, expires_at: u64, ) -> Result<usize, TransportError> |ac4fb57a011f0fec
+crates/egress-boundary/src/transport.rs [pub(crate)] impl StagedGrantJournal :: fn append(&mut self, entry: JournalEntry) |2f6b43c755332de2
+crates/egress-boundary/src/transport.rs [pub] #[derive(Debug, Clone)] struct TransmissionPlan<'a> |69fe9bcdb42c33e1
+crates/egress-boundary/src/transport.rs [pub] #[derive(Debug, Clone, Default)] struct StagedGrantJournal |b9e366f3dcceea25
+crates/egress-boundary/src/transport.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum JournalEntry |00985c9ad8110d1b
+crates/egress-boundary/src/transport.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ReconstructedAudit |463da126ba57390c
+crates/egress-boundary/src/transport.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Transmission |ef396a7ed6aebd5f
+crates/egress-boundary/src/transport.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] enum TransportError |ff68219adddb991c
+crates/egress-boundary/src/transport.rs [pub] impl StagedGrantJournal :: #[must_use] const fn new() -> Self |cfe9e37864a3d19e
+crates/egress-boundary/src/transport.rs [pub] impl StagedGrantJournal :: #[must_use] fn entries(&self) -> &[JournalEntry] |7d8ccec0d6626689
+crates/egress-boundary/src/transport.rs [pub] impl StagedGrantJournal :: #[must_use] fn reconstruct(&self) -> Vec<ReconstructedAudit> |0df3821839fccae0
+crates/egress-boundary/src/transport.rs [pub] impl Transmission :: #[must_use] const fn bytes_sent(&self) -> usize |3084874c184253ef
+crates/egress-boundary/src/transport.rs [pub] impl Transmission :: #[must_use] fn payload_digest(&self) -> &str |691980d1ba6a7e6d
+crates/egress-boundary/src/transport.rs [pub] impl TransportError :: #[must_use] const fn sent(&self) -> usize |20b8d7e934c81f49
+crates/egress-boundary/src/transport.rs [pub] trait OutboundTransport

@@ -1,0 +1,184 @@
+crates/untrusted-content/src/action.rs [priv] impl ActionLedger
+crates/untrusted-content/src/action.rs [priv] impl PrivilegedAction
+crates/untrusted-content/src/action.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PrivilegedAction |ced5aee8b6b021b2
+crates/untrusted-content/src/action.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq)] struct ActionLedger |a5e52188314b0bf1
+crates/untrusted-content/src/action.rs [pub] impl ActionLedger :: #[must_use] fn count(&self, action: PrivilegedAction) -> usize |3901dc1b8e427fc8
+crates/untrusted-content/src/action.rs [pub] impl ActionLedger :: #[must_use] fn new() -> Self |75f2c77668a216ef
+crates/untrusted-content/src/action.rs [pub] impl ActionLedger :: #[must_use] fn recorded(&self) -> Vec<(PrivilegedAction, usize)> |6bbfbe3a188f8fbe
+crates/untrusted-content/src/action.rs [pub] impl ActionLedger :: fn record(&mut self, action: PrivilegedAction) |0c782c39b0ccd33c
+crates/untrusted-content/src/action.rs [pub] impl PrivilegedAction :: #[must_use] const fn as_str(self) -> &'static str |8a72832b3bd60ff5
+crates/untrusted-content/src/action.rs [pub] impl PrivilegedAction :: #[must_use] fn parse(value: &str) -> Option<Self> |bb9b98e20b28a98d
+crates/untrusted-content/src/action.rs [pub] impl PrivilegedAction :: const ALL: [Self; 15] |879ced648e972289
+crates/untrusted-content/src/channel.rs [priv] fn escape(text: &str) -> String |b4944cdb492b4f8b
+crates/untrusted-content/src/channel.rs [priv] impl ChannelKind
+crates/untrusted-content/src/channel.rs [priv] impl PromptEnvelope
+crates/untrusted-content/src/channel.rs [priv] impl QuotedDocument
+crates/untrusted-content/src/channel.rs [priv] impl RenderedPrompt
+crates/untrusted-content/src/channel.rs [priv] impl Segment
+crates/untrusted-content/src/channel.rs [priv] impl SystemDirective
+crates/untrusted-content/src/channel.rs [priv] impl ToolDirective
+crates/untrusted-content/src/channel.rs [priv] impl UntrustedSpan
+crates/untrusted-content/src/channel.rs [priv] impl fmt::Debug for QuotedDocument
+crates/untrusted-content/src/channel.rs [priv] impl fmt::Debug for QuotedDocument :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |4ada90ab23c0fbb0
+crates/untrusted-content/src/channel.rs [priv] impl fmt::Debug for RenderedPrompt
+crates/untrusted-content/src/channel.rs [priv] impl fmt::Debug for RenderedPrompt :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |74d2d738b6bef0c9
+crates/untrusted-content/src/channel.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/untrusted-content/src/channel.rs [priv] use crate::{ ingest::IngestedDocument, label::{Provenance, Untrusted}, } |597cf338494c5f91
+crates/untrusted-content/src/channel.rs [pub] #[derive(Clone, PartialEq, Eq)] struct QuotedDocument |27c6091583ac83a8
+crates/untrusted-content/src/channel.rs [pub] #[derive(Clone, PartialEq, Eq)] struct RenderedPrompt |c1fbfaa36d3e7136
+crates/untrusted-content/src/channel.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct SystemDirective(&'static str) |053e4f3400298700
+crates/untrusted-content/src/channel.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ToolDirective(&'static str) |9107d11b5813e70b
+crates/untrusted-content/src/channel.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ChannelKind |1e4975f31ff20d24
+crates/untrusted-content/src/channel.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Segment |6d6fe7837d4ac837
+crates/untrusted-content/src/channel.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UntrustedSpan |3a93222ab9f99f52
+crates/untrusted-content/src/channel.rs [pub] #[derive(Debug, Default)] struct PromptEnvelope |230260a0d884426a
+crates/untrusted-content/src/channel.rs [pub] const PROMPT_FORMAT: &str |139b07fe4aa13568
+crates/untrusted-content/src/channel.rs [pub] impl ChannelKind :: #[must_use] const fn as_str(self) -> &'static str |a15c14812d18a360
+crates/untrusted-content/src/channel.rs [pub] impl ChannelKind :: const ALL: [Self; 4] |b701c76b532db17b
+crates/untrusted-content/src/channel.rs [pub] impl PromptEnvelope :: #[must_use] const fn new() -> Self |3b82fe445c1b0030
+crates/untrusted-content/src/channel.rs [pub] impl PromptEnvelope :: #[must_use] fn quoted_len(&self) -> usize |d09b8cfe77f85206
+crates/untrusted-content/src/channel.rs [pub] impl PromptEnvelope :: #[must_use] fn render(&self) -> RenderedPrompt |20be9b4792b810ca
+crates/untrusted-content/src/channel.rs [pub] impl PromptEnvelope :: fn push_system(&mut self, directive: SystemDirective) |a024578e8fe7db58
+crates/untrusted-content/src/channel.rs [pub] impl PromptEnvelope :: fn push_tool(&mut self, directive: ToolDirective) |7346e916b16f4402
+crates/untrusted-content/src/channel.rs [pub] impl PromptEnvelope :: fn quote(&mut self, document: &Untrusted<IngestedDocument>) |e0f9eac754528732
+crates/untrusted-content/src/channel.rs [pub] impl QuotedDocument :: #[must_use] const fn provenance(&self) -> &Provenance |44f73309828429b2
+crates/untrusted-content/src/channel.rs [pub] impl QuotedDocument :: #[must_use] fn digest(&self) -> &str |b08757f8183df8b9
+crates/untrusted-content/src/channel.rs [pub] impl RenderedPrompt :: #[must_use] const fn instruction_end(&self) -> usize |a35a16bdf23ffe65
+crates/untrusted-content/src/channel.rs [pub] impl RenderedPrompt :: #[must_use] fn instruction_region(&self) -> &str |e5ceea414e793cb2
+crates/untrusted-content/src/channel.rs [pub] impl RenderedPrompt :: #[must_use] fn segments(&self) -> &[Segment] |50cf2b102069f7ab
+crates/untrusted-content/src/channel.rs [pub] impl RenderedPrompt :: #[must_use] fn text(&self) -> &str |7fe9b569d6655b09
+crates/untrusted-content/src/channel.rs [pub] impl RenderedPrompt :: #[must_use] fn untrusted_spans(&self) -> &[UntrustedSpan] |59684e268888f5e8
+crates/untrusted-content/src/channel.rs [pub] impl Segment :: #[must_use] const fn end(&self) -> usize |c014441fd792dc3f
+crates/untrusted-content/src/channel.rs [pub] impl Segment :: #[must_use] const fn kind(&self) -> ChannelKind |1c553cbb0f903070
+crates/untrusted-content/src/channel.rs [pub] impl Segment :: #[must_use] const fn provenance(&self) -> Option<&Provenance> |5b8c3e9bc6618f3c
+crates/untrusted-content/src/channel.rs [pub] impl Segment :: #[must_use] const fn start(&self) -> usize |85d41956c8547305
+crates/untrusted-content/src/channel.rs [pub] impl SystemDirective :: #[must_use] const fn as_str(self) -> &'static str |d759738d4ee396bd
+crates/untrusted-content/src/channel.rs [pub] impl SystemDirective :: #[must_use] const fn new(text: &'static str) -> Self |93e6c973cb90051c
+crates/untrusted-content/src/channel.rs [pub] impl ToolDirective :: #[must_use] const fn as_str(self) -> &'static str |d759738d4ee396bd
+crates/untrusted-content/src/channel.rs [pub] impl ToolDirective :: #[must_use] const fn new(text: &'static str) -> Self |93e6c973cb90051c
+crates/untrusted-content/src/channel.rs [pub] impl UntrustedSpan :: #[must_use] const fn end(&self) -> usize |c014441fd792dc3f
+crates/untrusted-content/src/channel.rs [pub] impl UntrustedSpan :: #[must_use] const fn provenance(&self) -> &Provenance |44f73309828429b2
+crates/untrusted-content/src/channel.rs [pub] impl UntrustedSpan :: #[must_use] const fn start(&self) -> usize |85d41956c8547305
+crates/untrusted-content/src/ingest.rs [priv] impl IngestedDocument
+crates/untrusted-content/src/ingest.rs [priv] impl SourceIndex
+crates/untrusted-content/src/ingest.rs [priv] impl core::fmt::Debug for IngestedDocument
+crates/untrusted-content/src/ingest.rs [priv] impl core::fmt::Debug for IngestedDocument :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |67e213fb0a55dcca
+crates/untrusted-content/src/ingest.rs [priv] use academic_egress_boundary::AcceptedResponse |22d46ad1b8ccc669
+crates/untrusted-content/src/ingest.rs [priv] use crate::label::{Provenance, SourceId, SourceKind, Untrusted} |3035c5c1568d46ae
+crates/untrusted-content/src/ingest.rs [pub(crate)] impl IngestedDocument :: fn byte_len(&self) -> usize |6a0c6639c61f2015
+crates/untrusted-content/src/ingest.rs [pub(crate)] impl IngestedDocument :: fn text(&self) -> &str |ae5fbd03e035c57f
+crates/untrusted-content/src/ingest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum IndexError |b7c6cffdfb02c567
+crates/untrusted-content/src/ingest.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum IngestError |2d770f518efa41e9
+crates/untrusted-content/src/ingest.rs [pub] #[derive(Debug, Default)] struct SourceIndex |abc93014617c530b
+crates/untrusted-content/src/ingest.rs [pub] const MAX_SOURCE_BYTES: usize |e21da230aa773480
+crates/untrusted-content/src/ingest.rs [pub] fn ingest( source_id: SourceId, kind: SourceKind, ingest_seq: u64, bytes: &[u8], ) -> Result<Untrusted<IngestedDocument>, IngestError> |663c8ac8c7c44f3c
+crates/untrusted-content/src/ingest.rs [pub] fn ingest_code_comment( source_id: SourceId, ingest_seq: u64, bytes: &[u8], ) -> Result<Untrusted<IngestedDocument>, IngestError> |0bee6991dbe28961
+crates/untrusted-content/src/ingest.rs [pub] fn ingest_issue( source_id: SourceId, ingest_seq: u64, bytes: &[u8], ) -> Result<Untrusted<IngestedDocument>, IngestError> |98c5b847c1336362
+crates/untrusted-content/src/ingest.rs [pub] fn ingest_provider_response( source_id: SourceId, ingest_seq: u64, accepted: &AcceptedResponse, ) -> Result<Untrusted<IngestedDocument>, IngestError> |02d7da48899d3832
+crates/untrusted-content/src/ingest.rs [pub] fn ingest_readme( source_id: SourceId, ingest_seq: u64, bytes: &[u8], ) -> Result<Untrusted<IngestedDocument>, IngestError> |74c2b7b1fc6ab570
+crates/untrusted-content/src/ingest.rs [pub] fn ingest_review_text( source_id: SourceId, ingest_seq: u64, bytes: &[u8], ) -> Result<Untrusted<IngestedDocument>, IngestError> |eecb324e31a793bb
+crates/untrusted-content/src/ingest.rs [pub] fn ingest_syllabus( source_id: SourceId, ingest_seq: u64, bytes: &[u8], ) -> Result<Untrusted<IngestedDocument>, IngestError> |0609aa8c1fa4a740
+crates/untrusted-content/src/ingest.rs [pub] impl SourceIndex :: #[must_use] const fn new() -> Self |e712b5bfa072f900
+crates/untrusted-content/src/ingest.rs [pub] impl SourceIndex :: #[must_use] fn documents(&self) -> &[Untrusted<IngestedDocument>] |d24611c8907dae80
+crates/untrusted-content/src/ingest.rs [pub] impl SourceIndex :: #[must_use] fn get(&self, source_id: &SourceId) -> Option<&Untrusted<IngestedDocument>> |cd51d111a43a82a4
+crates/untrusted-content/src/ingest.rs [pub] impl SourceIndex :: #[must_use] fn is_empty(&self) -> bool |28965b9c1516a901
+crates/untrusted-content/src/ingest.rs [pub] impl SourceIndex :: #[must_use] fn len(&self) -> usize |c030589bad0a8e77
+crates/untrusted-content/src/ingest.rs [pub] impl SourceIndex :: fn insert(&mut self, document: Untrusted<IngestedDocument>) -> Result<(), IndexError> |b47d53f7785b0a82
+crates/untrusted-content/src/ingest.rs [pub] struct IngestedDocument |3a04890344b184ab
+crates/untrusted-content/src/label.rs [priv] impl Provenance
+crates/untrusted-content/src/label.rs [priv] impl SourceId
+crates/untrusted-content/src/label.rs [priv] impl SourceKind
+crates/untrusted-content/src/label.rs [priv] impl<T> Untrusted<T>
+crates/untrusted-content/src/label.rs [priv] impl<T> fmt::Debug for Untrusted<T>
+crates/untrusted-content/src/label.rs [priv] impl<T> fmt::Debug for Untrusted<T> :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |e494fb6f121dae4d
+crates/untrusted-content/src/label.rs [priv] use core::{fmt, marker::PhantomData} |a30db844f71e5b6a
+crates/untrusted-content/src/label.rs [priv] use sha2::{Digest, Sha256} |87ac0c844167be2e
+crates/untrusted-content/src/label.rs [pub(crate)] fn digest_of(bytes: &[u8]) -> String |83aea63f2571cdfe
+crates/untrusted-content/src/label.rs [pub(crate)] fn hex_lower(bytes: &[u8]) -> String |8eda58d0b3ffef8e
+crates/untrusted-content/src/label.rs [pub(crate)] impl<T> Untrusted<T> :: const fn expose(&self) -> &T |3b500b572cb73ebe
+crates/untrusted-content/src/label.rs [pub(crate)] impl<T> Untrusted<T> :: fn seal(value: T, provenance: Provenance, bytes: &[u8]) -> Self |2875fd1a68e67cce
+crates/untrusted-content/src/label.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SourceKind |013fefc0615eef0f
+crates/untrusted-content/src/label.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum SourceIdError |f506442eb1783a92
+crates/untrusted-content/src/label.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Provenance |b3ac0ef305214e89
+crates/untrusted-content/src/label.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct SourceId |bd93a080a955e3c8
+crates/untrusted-content/src/label.rs [pub] impl Provenance :: #[must_use] const fn ingest_seq(&self) -> u64 |42b53f4d412fa188
+crates/untrusted-content/src/label.rs [pub] impl Provenance :: #[must_use] const fn kind(&self) -> SourceKind |3397f60bf5e84674
+crates/untrusted-content/src/label.rs [pub] impl Provenance :: #[must_use] const fn new(source_id: SourceId, kind: SourceKind, ingest_seq: u64) -> Self |55325dfd06bb5fc5
+crates/untrusted-content/src/label.rs [pub] impl Provenance :: #[must_use] const fn source_id(&self) -> &SourceId |4a39c476b6e1843f
+crates/untrusted-content/src/label.rs [pub] impl SourceId :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/untrusted-content/src/label.rs [pub] impl SourceId :: fn new(value: impl Into<String>) -> Result<Self, SourceIdError> |b0c15852dd9cb6d7
+crates/untrusted-content/src/label.rs [pub] impl SourceKind :: #[must_use] const fn as_str(self) -> &'static str |e417afa1aa567895
+crates/untrusted-content/src/label.rs [pub] impl SourceKind :: #[must_use] fn parse(value: &str) -> Option<Self> |76d2bf49fbd90901
+crates/untrusted-content/src/label.rs [pub] impl SourceKind :: const ALL: [Self; 6] |6bb91de9ce6832c8
+crates/untrusted-content/src/label.rs [pub] impl<T> Untrusted<T> :: #[must_use] const fn byte_len(&self) -> usize |7d4ee0a1d06b1107
+crates/untrusted-content/src/label.rs [pub] impl<T> Untrusted<T> :: #[must_use] const fn provenance(&self) -> &Provenance |44f73309828429b2
+crates/untrusted-content/src/label.rs [pub] impl<T> Untrusted<T> :: #[must_use] fn digest(&self) -> &str |b08757f8183df8b9
+crates/untrusted-content/src/label.rs [pub] struct Untrusted<T> |20b8b70f699199bc
+crates/untrusted-content/src/lib.rs [priv] #![deny(missing_docs)] |d27a0595f2b099f8
+crates/untrusted-content/src/lib.rs [pub] #[must_use] fn envelope_for(index: &SourceIndex) -> PromptEnvelope |ff73cd0245e3adfe
+crates/untrusted-content/src/lib.rs [pub] const BOUNDARY_SYSTEM_DIRECTIVES: [SystemDirective; 4] |0f76378cf1b8014f
+crates/untrusted-content/src/lib.rs [pub] const BOUNDARY_TOOL_DIRECTIVES: [ToolDirective; 1] |beb5180658cbc73c
+crates/untrusted-content/src/lib.rs [pub] fn admit(queue: &mut ReviewQueue, index: &SourceIndex, output: &Untrusted<ModelOutput>) |65e2bca84d1ae50a
+crates/untrusted-content/src/lib.rs [pub] mod action
+crates/untrusted-content/src/lib.rs [pub] mod channel
+crates/untrusted-content/src/lib.rs [pub] mod ingest
+crates/untrusted-content/src/lib.rs [pub] mod label
+crates/untrusted-content/src/lib.rs [pub] mod proposal
+crates/untrusted-content/src/lib.rs [pub] use action::{ActionLedger, PrivilegedAction} |6d12ed880090fcec
+crates/untrusted-content/src/lib.rs [pub] use channel::{ ChannelKind, PROMPT_FORMAT, PromptEnvelope, QuotedDocument, RenderedPrompt, Segment, SystemDirective, ToolDirective, UntrustedSpan, } |5c25d67909cd4e1e
+crates/untrusted-content/src/lib.rs [pub] use ingest::{ IndexError, IngestError, IngestedDocument, MAX_SOURCE_BYTES, SourceIndex, ingest, ingest_code_comment, ingest_issue, ingest_provider_response, ingest_readme, ingest_review_text, ingest_syllabus, } |4bbb539c11744fc1
+crates/untrusted-content/src/lib.rs [pub] use label::{Provenance, SourceId, SourceIdError, SourceKind, Untrusted} |71112e3b38a56d88
+crates/untrusted-content/src/lib.rs [pub] use proposal::{ MAX_SUMMARY_BYTES, MAX_SUPPORT_SPANS, ModelOutput, PROPOSAL_FORMAT, Proposal, ProposalKind, QuarantineReason, QuarantinedOutput, ResolvedSpan, ReviewQueue, SPAN_DIGEST_HEX_LEN, SchemaError, SpanError, adjudicate, ingest_model_output, ingest_provider_model_output, quarantine_incident, } |0bbdb7ca73431d0c
+crates/untrusted-content/src/proposal.rs [priv] fn parse_schema(text: &str) -> Result<ParsedOutput, SchemaError> |1ce6df00c42f56f8
+crates/untrusted-content/src/proposal.rs [priv] fn parse_span(value: &str) -> Result<ParsedSpan, SchemaError> |25fc7e28f2ab8066
+crates/untrusted-content/src/proposal.rs [priv] fn resolve_span(index: &SourceIndex, span: &ParsedSpan) -> Result<ResolvedSpan, SpanError> |42534e344ae255c8
+crates/untrusted-content/src/proposal.rs [priv] impl Proposal
+crates/untrusted-content/src/proposal.rs [priv] impl ProposalKind
+crates/untrusted-content/src/proposal.rs [priv] impl QuarantinedOutput
+crates/untrusted-content/src/proposal.rs [priv] impl ResolvedSpan
+crates/untrusted-content/src/proposal.rs [priv] impl ReviewQueue
+crates/untrusted-content/src/proposal.rs [priv] impl fmt::Debug for ModelOutput
+crates/untrusted-content/src/proposal.rs [priv] impl fmt::Debug for ModelOutput :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |f3ac41742c088610
+crates/untrusted-content/src/proposal.rs [priv] impl fmt::Display for QuarantineReason
+crates/untrusted-content/src/proposal.rs [priv] impl fmt::Display for QuarantineReason :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |e7a5395424f81f98
+crates/untrusted-content/src/proposal.rs [priv] struct ParsedOutput |39eed6fad584e275
+crates/untrusted-content/src/proposal.rs [priv] struct ParsedSpan |a281b3d951e9542c
+crates/untrusted-content/src/proposal.rs [priv] use academic_egress_boundary::{AcceptedResponse, Incident} |48b58cf0a3938a67
+crates/untrusted-content/src/proposal.rs [priv] use core::fmt |60337ade2d1be0ef
+crates/untrusted-content/src/proposal.rs [priv] use crate::{ ingest::{IngestError, MAX_SOURCE_BYTES, SourceIndex}, label::{Provenance, SourceId, SourceKind, Untrusted, digest_of}, } |eae7b003162e28e7
+crates/untrusted-content/src/proposal.rs [pub] #[derive(Debug)] struct Proposal |3d49ae78634be48b
+crates/untrusted-content/src/proposal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProposalKind |63c34f9fd355e18e
+crates/untrusted-content/src/proposal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum SchemaError |b37c72d43e59f676
+crates/untrusted-content/src/proposal.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum SpanError |024e5d2e32d2c084
+crates/untrusted-content/src/proposal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum QuarantineReason |3afaf9c14d417fe3
+crates/untrusted-content/src/proposal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct QuarantinedOutput |e7416a6f872042cc
+crates/untrusted-content/src/proposal.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolvedSpan |8deae75ce6a298c7
+crates/untrusted-content/src/proposal.rs [pub] #[derive(Debug, Default)] struct ReviewQueue |f0fc1b8da8f6c1c1
+crates/untrusted-content/src/proposal.rs [pub] #[must_use] fn quarantine_incident(output_id: SourceId, incident: &Incident) -> QuarantinedOutput |5a2877d6c7ee980a
+crates/untrusted-content/src/proposal.rs [pub] const MAX_SUMMARY_BYTES: usize |f951b4b243ed8d8e
+crates/untrusted-content/src/proposal.rs [pub] const MAX_SUPPORT_SPANS: usize |4df12843b59698f8
+crates/untrusted-content/src/proposal.rs [pub] const PROPOSAL_FORMAT: &str |c4a357caaf7ddd74
+crates/untrusted-content/src/proposal.rs [pub] const SPAN_DIGEST_HEX_LEN: usize |cf83844766bb22c1
+crates/untrusted-content/src/proposal.rs [pub] fn adjudicate( index: &SourceIndex, output: &Untrusted<ModelOutput>, ) -> Result<Proposal, QuarantinedOutput> |a2515ca280907010
+crates/untrusted-content/src/proposal.rs [pub] fn ingest_model_output( output_id: SourceId, ingest_seq: u64, bytes: &[u8], ) -> Result<Untrusted<ModelOutput>, IngestError> |bfc0201b435afff6
+crates/untrusted-content/src/proposal.rs [pub] fn ingest_provider_model_output( output_id: SourceId, ingest_seq: u64, accepted: &AcceptedResponse, ) -> Result<Untrusted<ModelOutput>, IngestError> |ad3800a0f8c2eed7
+crates/untrusted-content/src/proposal.rs [pub] impl Proposal :: #[must_use] const fn kind(&self) -> ProposalKind |54cce67816dec583
+crates/untrusted-content/src/proposal.rs [pub] impl Proposal :: #[must_use] const fn summary(&self) -> &Untrusted<String> |53d34369440a917e
+crates/untrusted-content/src/proposal.rs [pub] impl Proposal :: #[must_use] fn support(&self) -> &[ResolvedSpan] |b5932d1271a48ea6
+crates/untrusted-content/src/proposal.rs [pub] impl ProposalKind :: #[must_use] const fn as_str(self) -> &'static str |9d68c5082f449d7e
+crates/untrusted-content/src/proposal.rs [pub] impl ProposalKind :: #[must_use] fn parse(value: &str) -> Option<Self> |76d2bf49fbd90901
+crates/untrusted-content/src/proposal.rs [pub] impl ProposalKind :: const ALL: [Self; 5] |a69a611fdd55c7d5
+crates/untrusted-content/src/proposal.rs [pub] impl QuarantinedOutput :: #[must_use] const fn byte_len(&self) -> usize |7d4ee0a1d06b1107
+crates/untrusted-content/src/proposal.rs [pub] impl QuarantinedOutput :: #[must_use] const fn output_id(&self) -> &SourceId |ea43a2c065392f1f
+crates/untrusted-content/src/proposal.rs [pub] impl QuarantinedOutput :: #[must_use] const fn reason(&self) -> &QuarantineReason |354cd02c56959d4d
+crates/untrusted-content/src/proposal.rs [pub] impl QuarantinedOutput :: #[must_use] fn digest(&self) -> &str |b08757f8183df8b9
+crates/untrusted-content/src/proposal.rs [pub] impl ResolvedSpan :: #[must_use] const fn end(&self) -> usize |c014441fd792dc3f
+crates/untrusted-content/src/proposal.rs [pub] impl ResolvedSpan :: #[must_use] const fn kind(&self) -> SourceKind |3397f60bf5e84674
+crates/untrusted-content/src/proposal.rs [pub] impl ResolvedSpan :: #[must_use] const fn source_id(&self) -> &SourceId |4a39c476b6e1843f
+crates/untrusted-content/src/proposal.rs [pub] impl ResolvedSpan :: #[must_use] const fn start(&self) -> usize |85d41956c8547305
+crates/untrusted-content/src/proposal.rs [pub] impl ResolvedSpan :: #[must_use] fn digest(&self) -> &str |b08757f8183df8b9
+crates/untrusted-content/src/proposal.rs [pub] impl ReviewQueue :: #[must_use] const fn new() -> Self |aa1a27a87962053a
+crates/untrusted-content/src/proposal.rs [pub] impl ReviewQueue :: #[must_use] fn proposals(&self) -> &[Proposal] |6dd8f80b036c7150
+crates/untrusted-content/src/proposal.rs [pub] impl ReviewQueue :: #[must_use] fn quarantined(&self) -> &[QuarantinedOutput] |7391fa4bb8d39857
+crates/untrusted-content/src/proposal.rs [pub] impl ReviewQueue :: fn admit(&mut self, outcome: Result<Proposal, QuarantinedOutput>) |dd84d25f803f94dd
+crates/untrusted-content/src/proposal.rs [pub] struct ModelOutput |889513fef90351f9

@@ -1,0 +1,226 @@
+crates/freshness/src/band.rs [priv] impl FreshnessSignal
+crates/freshness/src/band.rs [priv] use academic_domain::FreshnessBand |bc464503bde356f9
+crates/freshness/src/band.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/freshness/src/band.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum FreshnessSignal |c0335c77c688e07e
+crates/freshness/src/band.rs [pub] #[must_use] const fn band_token(band: FreshnessBand) -> &'static str |f248599fdb89c721
+crates/freshness/src/band.rs [pub] #[must_use] const fn rank(band: FreshnessBand) -> u8 |581ecfbb9618bdfe
+crates/freshness/src/band.rs [pub] #[must_use] const fn step_down(band: FreshnessBand) -> Option<FreshnessBand> |cdfbef8c8e518f6b
+crates/freshness/src/band.rs [pub] #[must_use] fn ceiling_of(left: FreshnessBand, right: FreshnessBand) -> FreshnessBand |ef145961ba926fe9
+crates/freshness/src/band.rs [pub] #[must_use] fn floor_of(left: FreshnessBand, right: FreshnessBand) -> FreshnessBand |090bcf9c15d09d3a
+crates/freshness/src/band.rs [pub] const BANDS: [FreshnessBand; 6] |3d5118fcfb64cfea
+crates/freshness/src/band.rs [pub] impl FreshnessSignal :: #[must_use] const fn bullet(self) -> &'static str |2568ccce2f9eb0ca
+crates/freshness/src/band.rs [pub] impl FreshnessSignal :: #[must_use] const fn code(self) -> &'static str |f310c94bcf64d20b
+crates/freshness/src/band.rs [pub] impl FreshnessSignal :: const ALL: [Self; 7] |1a84d4c244cc83b1
+crates/freshness/src/decay.rs [priv] #[must_use] fn permille_of_window(elapsed_millis: i64, window: PersistenceWindow) -> i64 |195183310eba45c2
+crates/freshness/src/decay.rs [priv] use academic_domain::FreshnessBand |bc464503bde356f9
+crates/freshness/src/decay.rs [priv] use crate::persistence::PersistenceWindow |2905cf4cde6fac42
+crates/freshness/src/decay.rs [pub] #[must_use] fn decay(elapsed_millis: i64, window: PersistenceWindow) -> FreshnessBand |b54a99818f23c246
+crates/freshness/src/disclosure.rs [priv] impl StaleDisclosure
+crates/freshness/src/disclosure.rs [priv] use academic_domain::FreshnessBand |bc464503bde356f9
+crates/freshness/src/disclosure.rs [priv] use crate::projection::FreshnessProjection |045206180227629d
+crates/freshness/src/disclosure.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/freshness/src/disclosure.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] struct StaleDisclosure |052faaf4bda36a1f
+crates/freshness/src/disclosure.rs [pub] const JUDGEMENT_TOKENS: [&str; 8] |a87be84b6372c447
+crates/freshness/src/disclosure.rs [pub] const NO_RECENT_USE: &str |71d70ef4050a832f
+crates/freshness/src/disclosure.rs [pub] const STALE_ACTION: &str |8721e337174f57ca
+crates/freshness/src/disclosure.rs [pub] const STALE_DISCLOSURE: &str |4458ab1bca867971
+crates/freshness/src/disclosure.rs [pub] const STALE_MEANING: &str |4dd65d0bb39e2841
+crates/freshness/src/disclosure.rs [pub] impl StaleDisclosure :: #[must_use] const fn action(&self) -> &'static str |07a4d1c5b8907441
+crates/freshness/src/disclosure.rs [pub] impl StaleDisclosure :: #[must_use] const fn disclosure(&self) -> &'static str |84d2cecbc5180da7
+crates/freshness/src/disclosure.rs [pub] impl StaleDisclosure :: #[must_use] const fn freshness(&self) -> &'static str |44be5f9ef96d3887
+crates/freshness/src/disclosure.rs [pub] impl StaleDisclosure :: #[must_use] const fn lines(&self) -> [&'static str; 5] |654a152b8fb207c0
+crates/freshness/src/disclosure.rs [pub] impl StaleDisclosure :: #[must_use] const fn meaning(&self) -> &'static str |a7e7f8b009bc54bf
+crates/freshness/src/disclosure.rs [pub] impl StaleDisclosure :: #[must_use] const fn recent_use(&self) -> &'static str |798b1bd57f17af8b
+crates/freshness/src/disclosure.rs [pub] impl StaleDisclosure :: #[must_use] fn of(projection: &FreshnessProjection) -> Option<Self> |a91f9c858bb8ebdc
+crates/freshness/src/evidence.rs [priv] impl DatedEvidence
+crates/freshness/src/evidence.rs [priv] impl Repetition
+crates/freshness/src/evidence.rs [priv] use academic_domain::{EntityId, EvidenceId, TimestampMillis} |093e4593f6214b03
+crates/freshness/src/evidence.rs [priv] use academic_knowledge_state::{EligibleEvidence, EvidenceKind} |48a58e62f0c7a230
+crates/freshness/src/evidence.rs [priv] use crate::persistence::{DAY_MILLIS, PersistenceWindow, RetentionPrior, elapsed_millis} |7c5e1f55d390f490
+crates/freshness/src/evidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct Repetition |a2bc32f33d71c6e7
+crates/freshness/src/evidence.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DatedEvidence |2f3228551298490a
+crates/freshness/src/evidence.rs [pub] impl DatedEvidence :: #[must_use] const fn at(evidence: EligibleEvidence, occurred_at: TimestampMillis) -> Self |4077b2b27090f7fa
+crates/freshness/src/evidence.rs [pub] impl DatedEvidence :: #[must_use] const fn concept(&self) -> EntityId |71103148a7f838ab
+crates/freshness/src/evidence.rs [pub] impl DatedEvidence :: #[must_use] const fn evidence(&self) -> &EligibleEvidence |b158e9088a97ba9b
+crates/freshness/src/evidence.rs [pub] impl DatedEvidence :: #[must_use] const fn evidence_id(&self) -> EvidenceId |b0ece756e14a5623
+crates/freshness/src/evidence.rs [pub] impl DatedEvidence :: #[must_use] const fn kind(&self) -> EvidenceKind |ae15f54a9faf5bb4
+crates/freshness/src/evidence.rs [pub] impl DatedEvidence :: #[must_use] const fn occurred_at(&self) -> TimestampMillis |e47a3195a49b8173
+crates/freshness/src/evidence.rs [pub] impl DatedEvidence :: #[must_use] fn window(&self, prior: &RetentionPrior) -> PersistenceWindow |cfe809277c83b404
+crates/freshness/src/evidence.rs [pub] impl Repetition :: #[must_use] const fn occasions(self) -> u32 |0a187464a68d4585
+crates/freshness/src/evidence.rs [pub] impl Repetition :: #[must_use] const fn repeats(self) -> u32 |b7478bd5050b03d4
+crates/freshness/src/evidence.rs [pub] impl Repetition :: #[must_use] const fn span_days(self) -> u32 |7f83ddafcd542d85
+crates/freshness/src/evidence.rs [pub] impl Repetition :: #[must_use] fn over( dated: &[DatedEvidence], window: PersistenceWindow, as_of: TimestampMillis, ) -> Self |a15171c7c0941ae4
+crates/freshness/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum FreshnessError |6b7cee0229007f62
+crates/freshness/src/lib.rs [pub] mod band
+crates/freshness/src/lib.rs [pub] mod decay
+crates/freshness/src/lib.rs [pub] mod disclosure
+crates/freshness/src/lib.rs [pub] mod evidence
+crates/freshness/src/lib.rs [pub] mod persistence
+crates/freshness/src/lib.rs [pub] mod projection
+crates/freshness/src/lib.rs [pub] mod recall
+crates/freshness/src/lib.rs [pub] mod spillover
+crates/freshness/src/lib.rs [pub] use band::{BANDS, FreshnessSignal, band_token, ceiling_of, floor_of, rank, step_down} |86c144ddc9107307
+crates/freshness/src/lib.rs [pub] use decay::decay |8ced4cb98ea054da
+crates/freshness/src/lib.rs [pub] use disclosure::{ JUDGEMENT_TOKENS, NO_RECENT_USE, STALE_ACTION, STALE_DISCLOSURE, STALE_MEANING, StaleDisclosure, } |0b29f9d3922d3670
+crates/freshness/src/lib.rs [pub] use evidence::{DatedEvidence, Repetition} |027fb0a78cf1c96d
+crates/freshness/src/lib.rs [pub] use persistence::{ CALIBRATED_PRIOR_NAME, Calibration, DAY_MILLIS, PersistenceClass, PersistenceWindow, PersonalizationSpeed, PriorBasis, PriorIdentity, PriorName, RetentionPrior, UNCALIBRATED_PRIOR_NAME, UNCALIBRATED_PRIOR_V1, elapsed_millis, persistence_class, } |83807cfac330e0e3
+crates/freshness/src/lib.rs [pub] use projection::{ ConfidenceGap, FRESHNESS_GAP_PERMILLE, FreshnessInputs, FreshnessProjection, FreshnessTrace, TraceEntry, project, } |fea6baed356e3188
+crates/freshness/src/lib.rs [pub] use recall::{ ContraryEvent, ContraryKind, RECALL_STATEMENT_PREDICATE, RecallCheck, RecallDirection, RecallStatement, UserRecall, } |f9514b3b3d763293
+crates/freshness/src/lib.rs [pub] use spillover::{ CitedEdge, NeighborUse, SPILLOVER_CEILING, SPILLOVER_EDGES, SPILLOVER_SOURCE_FLOOR, Spillover, } |c9a24fe31871f0ef
+crates/freshness/src/persistence.rs [priv] fn shifted(window: PersistenceWindow, shift: i64) -> PersistenceWindow |b21ae4f5201b5fc2
+crates/freshness/src/persistence.rs [priv] impl PersistenceClass
+crates/freshness/src/persistence.rs [priv] impl PersistenceWindow
+crates/freshness/src/persistence.rs [priv] impl PersonalizationSpeed
+crates/freshness/src/persistence.rs [priv] impl PriorIdentity
+crates/freshness/src/persistence.rs [priv] impl PriorName
+crates/freshness/src/persistence.rs [priv] impl RetentionPrior
+crates/freshness/src/persistence.rs [priv] use academic_domain::TimestampMillis |06dc51c3583793c7
+crates/freshness/src/persistence.rs [priv] use academic_knowledge_state::EvidenceKind |294e3e75e8bcca42
+crates/freshness/src/persistence.rs [priv] use crate::recall::{RecallCheck, RecallDirection} |aac7aaeaeb095750
+crates/freshness/src/persistence.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/freshness/src/persistence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PersistenceClass |213a72c6651ca16e
+crates/freshness/src/persistence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PriorBasis |e718cf74192a700d
+crates/freshness/src/persistence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PriorName |84939b92a3e8b668
+crates/freshness/src/persistence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] struct PersistenceWindow(u32) |b48af2a2dca8ce53
+crates/freshness/src/persistence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] struct PersonalizationSpeed |1bbe70d4acc08f0f
+crates/freshness/src/persistence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] struct PriorIdentity |ff32213f604ed8cc
+crates/freshness/src/persistence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Calibration |524b26a7698af793
+crates/freshness/src/persistence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] struct RetentionPrior |237d757947c63798
+crates/freshness/src/persistence.rs [pub] #[must_use] const fn persistence_class(kind: EvidenceKind) -> Option<PersistenceClass> |b08f03cf25f94043
+crates/freshness/src/persistence.rs [pub] #[must_use] fn elapsed_millis(earlier: TimestampMillis, later: TimestampMillis) -> Option<i64> |b4317dc8c3572505
+crates/freshness/src/persistence.rs [pub] const CALIBRATED_PRIOR_NAME: &str |e1581e6a8a90f958
+crates/freshness/src/persistence.rs [pub] const DAY_MILLIS: i64 |71560daa7b47388b
+crates/freshness/src/persistence.rs [pub] const UNCALIBRATED_PRIOR_NAME: &str |a1fbe9528314a820
+crates/freshness/src/persistence.rs [pub] const UNCALIBRATED_PRIOR_V1: RetentionPrior |ae34e37969c831ee
+crates/freshness/src/persistence.rs [pub] impl PersistenceClass :: #[must_use] const fn phrase(self) -> &'static str |2257165ca768224a
+crates/freshness/src/persistence.rs [pub] impl PersistenceClass :: const ALL: [Self; 2] |36dfc96e93b14e92
+crates/freshness/src/persistence.rs [pub] impl PersistenceWindow :: #[must_use] const fn days(self) -> u32 |e47dbd4133634814
+crates/freshness/src/persistence.rs [pub] impl PersistenceWindow :: #[must_use] const fn millis(self) -> i64 |7c360f240fd24a14
+crates/freshness/src/persistence.rs [pub] impl PersistenceWindow :: #[must_use] const fn of_days(days: u32) -> Option<Self> |a9f0465ef672e52e
+crates/freshness/src/persistence.rs [pub] impl PersonalizationSpeed :: #[must_use] const fn minimum_samples(self) -> u32 |fc89ba4c9fa16659
+crates/freshness/src/persistence.rs [pub] impl PersonalizationSpeed :: #[must_use] const fn of(minimum_samples: u32, step_days: u32) -> Option<Self> |9fb57323c2995560
+crates/freshness/src/persistence.rs [pub] impl PersonalizationSpeed :: #[must_use] const fn step_days(self) -> u32 |1f1ad8382ac0f545
+crates/freshness/src/persistence.rs [pub] impl PriorIdentity :: #[must_use] const fn generation(self) -> u32 |87ad1aa5abe3c313
+crates/freshness/src/persistence.rs [pub] impl PriorIdentity :: #[must_use] const fn name(self) -> PriorName |ec9b556913a93260
+crates/freshness/src/persistence.rs [pub] impl PriorIdentity :: #[must_use] const fn name_str(self) -> &'static str |88fbd11995021048
+crates/freshness/src/persistence.rs [pub] impl PriorIdentity :: #[must_use] const fn of(name: PriorName, generation: u32) -> Self |18204e1d2704dd8f
+crates/freshness/src/persistence.rs [pub] impl PriorName :: #[must_use] const fn as_str(self) -> &'static str |116d26f6eab14c69
+crates/freshness/src/persistence.rs [pub] impl PriorName :: const ALL: [Self; 2] |2a7aea74b3ca30c0
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] const fn basis(&self) -> PriorBasis |ae99f681dbb2b32f
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] const fn calibration(&self) -> Calibration |e87144268b0c2d4b
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] const fn identity(&self) -> PriorIdentity |b01cb4ff689d3d47
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] const fn is_uncalibrated(&self) -> bool |5f06f8891847bf71
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] const fn origin(&self) -> PriorIdentity |a5b0a417bae9a72b
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] const fn shortest(&self) -> PersistenceWindow |5462c6e727111dcf
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] const fn window_for(&self, kind: EvidenceKind) -> Option<PersistenceWindow> |2fd9ea071dd7ab3f
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] const fn window_of(&self, class: PersistenceClass) -> PersistenceWindow |cf18976cc1fb4804
+crates/freshness/src/persistence.rs [pub] impl RetentionPrior :: #[must_use] fn calibrate(&self, checks: &[RecallCheck], speed: PersonalizationSpeed) -> Self |68997ddcd0f7360e
+crates/freshness/src/projection.rs [priv] fn elapsed_or_refuse( earlier: TimestampMillis, as_of: TimestampMillis, ) -> Result<i64, FreshnessError> |7a297258e1829bea
+crates/freshness/src/projection.rs [priv] fn extended(window: PersistenceWindow, repeats: u32) -> PersistenceWindow |b9f81288201cccac
+crates/freshness/src/projection.rs [priv] fn later_of(held: Option<TimestampMillis>, next: TimestampMillis) -> TimestampMillis |3fbd46946e6db511
+crates/freshness/src/projection.rs [priv] fn latest_cap( inputs: FreshnessInputs<'_>, ) -> Option<(FreshnessSignal, TimestampMillis, FreshnessBand)> |5d77534879c7c186
+crates/freshness/src/projection.rs [priv] fn require_about(concept: EntityId, inputs: FreshnessInputs<'_>) -> Result<(), FreshnessError> |3e75c300ccc9ba7f
+crates/freshness/src/projection.rs [priv] fn require_not_in_future( inputs: FreshnessInputs<'_>, as_of: TimestampMillis, ) -> Result<(), FreshnessError> |c9c6671a1ac16d9e
+crates/freshness/src/projection.rs [priv] impl ConfidenceGap
+crates/freshness/src/projection.rs [priv] impl FreshnessProjection
+crates/freshness/src/projection.rs [priv] impl FreshnessTrace
+crates/freshness/src/projection.rs [priv] impl TraceEntry
+crates/freshness/src/projection.rs [priv] use academic_domain::{ConfidencePermille, EntityId, FreshnessBand, TimestampMillis} |ef1a0c357b74ab05
+crates/freshness/src/projection.rs [priv] use academic_knowledge_state::FreshnessInput |8a48a3e6bf1692bc
+crates/freshness/src/projection.rs [priv] use crate::{ FreshnessError, band::{FreshnessSignal, ceiling_of, floor_of, rank}, decay::decay, evidence::{DatedEvidence, Repetition}, persistence::{PersistenceClass, PersistenceWindow, PriorIdentity, RetentionPrior}, recall::{ContraryEvent, RecallStatement, UserRecall}, spillover::Spillover, } |34518d57ba2e9c9f
+crates/freshness/src/projection.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/freshness/src/projection.rs [pub] #[derive(Debug, Clone, Copy)] struct FreshnessInputs<'a> |5f88f329c22a9f74
+crates/freshness/src/projection.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ConfidenceGap |7bd76c45c32d8143
+crates/freshness/src/projection.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct FreshnessProjection |9d4f895cca09d754
+crates/freshness/src/projection.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct FreshnessTrace(Vec<TraceEntry>) |0faa194cafdb35f3
+crates/freshness/src/projection.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct TraceEntry |fc319d11f2ae943a
+crates/freshness/src/projection.rs [pub] const FRESHNESS_GAP_PERMILLE: u16 |b36cd08e11e612b4
+crates/freshness/src/projection.rs [pub] fn project( concept: EntityId, inputs: FreshnessInputs<'_>, prior: &RetentionPrior, as_of: TimestampMillis, ) -> Result<FreshnessProjection, FreshnessError> |1493b6f39d49c122
+crates/freshness/src/projection.rs [pub] impl ConfidenceGap :: #[must_use] const fn code(self) -> &'static str |cb9aead3eaf26b12
+crates/freshness/src/projection.rs [pub] impl ConfidenceGap :: const ALL: [Self; 4] |293fe288ab06c194
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn as_of(&self) -> TimestampMillis |c55945e949430e19
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn band(&self) -> FreshnessBand |45ab8e35c7b9e7e1
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn input(&self) -> FreshnessInput |84afc9fa1cf228f2
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn last_strong_evidence(&self) -> Option<TimestampMillis> |9c138d28c8a62762
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn prior(&self) -> PriorIdentity |e112f1fb19964769
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn prior_is_uncalibrated(&self) -> bool |3521674fc76ba2c2
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn prior_origin(&self) -> PriorIdentity |d68652263ff28837
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] const fn trace(&self) -> &FreshnessTrace |75efc931cde05577
+crates/freshness/src/projection.rs [pub] impl FreshnessProjection :: #[must_use] fn gaps(&self) -> &[ConfidenceGap] |c95890461bc7cdc6
+crates/freshness/src/projection.rs [pub] impl FreshnessTrace :: #[must_use] fn entries(&self) -> &[TraceEntry] |ff7e9cce7b3976bf
+crates/freshness/src/projection.rs [pub] impl FreshnessTrace :: #[must_use] fn names(&self, signal: FreshnessSignal) -> bool |4b6cecaf23c91a94
+crates/freshness/src/projection.rs [pub] impl FreshnessTrace :: #[must_use] fn of(&self, signal: FreshnessSignal) -> Vec<&TraceEntry> |5dac1ed9728b1ac3
+crates/freshness/src/projection.rs [pub] impl TraceEntry :: #[must_use] const fn at(&self) -> Option<TimestampMillis> |9fe014d31df00736
+crates/freshness/src/projection.rs [pub] impl TraceEntry :: #[must_use] const fn band(&self) -> Option<FreshnessBand> |c214817258033354
+crates/freshness/src/projection.rs [pub] impl TraceEntry :: #[must_use] const fn signal(&self) -> FreshnessSignal |4f65a440ef718446
+crates/freshness/src/projection.rs [pub] impl TraceEntry :: #[must_use] fn detail(&self) -> &str |8e3f8446f708b731
+crates/freshness/src/recall.rs [priv] impl ContraryEvent
+crates/freshness/src/recall.rs [priv] impl ContraryKind
+crates/freshness/src/recall.rs [priv] impl RecallCheck
+crates/freshness/src/recall.rs [priv] impl RecallStatement
+crates/freshness/src/recall.rs [priv] impl UserRecall
+crates/freshness/src/recall.rs [priv] use academic_domain::{ Actor, Claim, ClaimObject, EntityId, EpistemicStatus, EvidenceId, EvidenceItem, FreshnessBand, ScopeId, TimestampMillis, } |100ed0731254c99b
+crates/freshness/src/recall.rs [priv] use crate::FreshnessError |ad76c7f5f057dfc9
+crates/freshness/src/recall.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/freshness/src/recall.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RecallCheck |79402733b2fa29ad
+crates/freshness/src/recall.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct RecallStatement |699f6560539ba854
+crates/freshness/src/recall.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ContraryKind |424d76ae567d2a69
+crates/freshness/src/recall.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum RecallDirection |38595b22c9db37bf
+crates/freshness/src/recall.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UserRecall |df141707993caeae
+crates/freshness/src/recall.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] struct ContraryEvent |d35a513f20509ad0
+crates/freshness/src/recall.rs [pub] const RECALL_STATEMENT_PREDICATE: &str |6295db5104e72e4f
+crates/freshness/src/recall.rs [pub] impl ContraryEvent :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/freshness/src/recall.rs [pub] impl ContraryEvent :: #[must_use] const fn evidence_id(&self) -> EvidenceId |94909e3d6e9dcda9
+crates/freshness/src/recall.rs [pub] impl ContraryEvent :: #[must_use] const fn kind(&self) -> ContraryKind |d1ce98defce26e79
+crates/freshness/src/recall.rs [pub] impl ContraryEvent :: #[must_use] const fn observed_at(&self) -> TimestampMillis |749fa84cdb818501
+crates/freshness/src/recall.rs [pub] impl ContraryEvent :: #[must_use] const fn of( kind: ContraryKind, concept: EntityId, evidence_id: EvidenceId, observed_at: TimestampMillis, ) -> Self |889029c569c3b728
+crates/freshness/src/recall.rs [pub] impl ContraryKind :: #[must_use] const fn ceiling(self) -> FreshnessBand |5f2eac2a9a062b49
+crates/freshness/src/recall.rs [pub] impl ContraryKind :: #[must_use] const fn phrase(self) -> &'static str |1cbc6bffdbe03b09
+crates/freshness/src/recall.rs [pub] impl ContraryKind :: const ALL: [Self; 3] |e09923b32942c43f
+crates/freshness/src/recall.rs [pub] impl RecallCheck :: #[must_use] const fn checked_at(&self) -> TimestampMillis |e9b3d721972763e7
+crates/freshness/src/recall.rs [pub] impl RecallCheck :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/freshness/src/recall.rs [pub] impl RecallCheck :: #[must_use] const fn direction(&self) -> RecallDirection |a843ed3157bfaf97
+crates/freshness/src/recall.rs [pub] impl RecallCheck :: #[must_use] const fn from_contrary(event: &ContraryEvent) -> Self |b7e5a363617684c1
+crates/freshness/src/recall.rs [pub] impl RecallCheck :: #[must_use] const fn from_statement(statement: &RecallStatement) -> Self |38711d644062c002
+crates/freshness/src/recall.rs [pub] impl RecallStatement :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/freshness/src/recall.rs [pub] impl RecallStatement :: #[must_use] const fn scope_id(&self) -> ScopeId |cc1d9cd716484840
+crates/freshness/src/recall.rs [pub] impl RecallStatement :: #[must_use] const fn stated_at(&self) -> TimestampMillis |87932758132c50bb
+crates/freshness/src/recall.rs [pub] impl RecallStatement :: #[must_use] const fn statement(&self) -> UserRecall |63e3ae13a359c80b
+crates/freshness/src/recall.rs [pub] impl RecallStatement :: #[must_use] const fn user_id(&self) -> EntityId |242499cfed879797
+crates/freshness/src/recall.rs [pub] impl RecallStatement :: fn verify( actor: &Actor, claim: &Claim, evidence: &EvidenceItem, concept: EntityId, statement: UserRecall, stated_at: TimestampMillis, ) -> Result<Self, FreshnessError> |129b683c24351fed
+crates/freshness/src/recall.rs [pub] impl UserRecall :: #[must_use] const fn band(self) -> FreshnessBand |14b8bd133357ae9b
+crates/freshness/src/recall.rs [pub] impl UserRecall :: #[must_use] const fn phrase(self) -> &'static str |2b54c4c304064e1f
+crates/freshness/src/recall.rs [pub] impl UserRecall :: #[must_use] const fn raises(self) -> bool |f4dc724ede67efc0
+crates/freshness/src/recall.rs [pub] impl UserRecall :: const ALL: [Self; 2] |beddd5e37c577b3d
+crates/freshness/src/spillover.rs [priv] impl CitedEdge
+crates/freshness/src/spillover.rs [priv] impl NeighborUse
+crates/freshness/src/spillover.rs [priv] impl Spillover
+crates/freshness/src/spillover.rs [priv] use academic_domain::{ EntityId, EvidenceId, FreshnessBand, TimestampMillis, predicates::PredicateName, } |34d6fa52f71a045d
+crates/freshness/src/spillover.rs [priv] use crate::{ band::{floor_of, rank, step_down}, decay::decay, evidence::DatedEvidence, persistence::{RetentionPrior, elapsed_millis}, } |1558e5ed78a0e6e8
+crates/freshness/src/spillover.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CitedEdge |9474a026432e7a9e
+crates/freshness/src/spillover.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct NeighborUse |9435b77ad598de0e
+crates/freshness/src/spillover.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Spillover |1d4cde7b247bb68c
+crates/freshness/src/spillover.rs [pub] const SPILLOVER_CEILING: FreshnessBand |3cf39bdc0fc48642
+crates/freshness/src/spillover.rs [pub] const SPILLOVER_EDGES: [PredicateName; 4] |25f1b9b69c8694e5
+crates/freshness/src/spillover.rs [pub] const SPILLOVER_SOURCE_FLOOR: FreshnessBand |dc09c6819f9848e9
+crates/freshness/src/spillover.rs [pub] impl CitedEdge :: #[must_use] const fn object(&self) -> EntityId |2be807c141503357
+crates/freshness/src/spillover.rs [pub] impl CitedEdge :: #[must_use] const fn predicate(&self) -> PredicateName |6f280b3c546e0587
+crates/freshness/src/spillover.rs [pub] impl CitedEdge :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
+crates/freshness/src/spillover.rs [pub] impl CitedEdge :: #[must_use] fn evidence(&self) -> &[EvidenceId] |7246d56a3b5de3c6
+crates/freshness/src/spillover.rs [pub] impl CitedEdge :: #[must_use] fn joins(&self, concept: EntityId) -> bool |d20df95849514e76
+crates/freshness/src/spillover.rs [pub] impl CitedEdge :: #[must_use] fn of( predicate: PredicateName, subject: EntityId, object: EntityId, evidence: Vec<EvidenceId>, ) -> Option<Self> |52134a87f7d5b2bd
+crates/freshness/src/spillover.rs [pub] impl CitedEdge :: #[must_use] fn other_end(&self, concept: EntityId) -> Option<EntityId> |d3ea6c2240fc7cdd
+crates/freshness/src/spillover.rs [pub] impl NeighborUse :: #[must_use] const fn band(&self) -> FreshnessBand |45ab8e35c7b9e7e1
+crates/freshness/src/spillover.rs [pub] impl NeighborUse :: #[must_use] const fn edge(&self) -> &CitedEdge |8d4784e14497f97b
+crates/freshness/src/spillover.rs [pub] impl NeighborUse :: #[must_use] const fn last_use(&self) -> TimestampMillis |a4de0faaabf3dcf7
+crates/freshness/src/spillover.rs [pub] impl NeighborUse :: #[must_use] const fn neighbor(&self) -> EntityId |1f854b0b22c65541
+crates/freshness/src/spillover.rs [pub] impl NeighborUse :: #[must_use] fn direct( edge: CitedEdge, neighbor: EntityId, dated: &[DatedEvidence], prior: &RetentionPrior, as_of: TimestampMillis, ) -> Option<Self> |dc2f75c3f2cf7ba8
+crates/freshness/src/spillover.rs [pub] impl Spillover :: #[must_use] const fn at(&self) -> TimestampMillis |8bbc46d946c9bc4b
+crates/freshness/src/spillover.rs [pub] impl Spillover :: #[must_use] const fn band(&self) -> FreshnessBand |45ab8e35c7b9e7e1
+crates/freshness/src/spillover.rs [pub] impl Spillover :: #[must_use] const fn edge(&self) -> &CitedEdge |8d4784e14497f97b
+crates/freshness/src/spillover.rs [pub] impl Spillover :: #[must_use] const fn neighbor(&self) -> EntityId |1f854b0b22c65541
+crates/freshness/src/spillover.rs [pub] impl Spillover :: #[must_use] const fn neighbor_band(&self) -> FreshnessBand |fac4072ffb536a8f
+crates/freshness/src/spillover.rs [pub] impl Spillover :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
+crates/freshness/src/spillover.rs [pub] impl Spillover :: #[must_use] fn toward(subject: EntityId, use_: NeighborUse) -> Option<Self> |ba05efdee50ab48f

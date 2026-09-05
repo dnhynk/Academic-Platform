@@ -1,0 +1,123 @@
+crates/next-lecture/src/brief.rs [priv] impl PreparationBrief
+crates/next-lecture/src/brief.rs [priv] impl PreparationCandidate
+crates/next-lecture/src/brief.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
+crates/next-lecture/src/brief.rs [priv] use academic_gap::{BlockingPath, GapKind, MinimumRemediation, PrerequisiteGraph, RootCandidate} |ea4a0311bf9bebd7
+crates/next-lecture/src/brief.rs [priv] use crate::{ NextLectureError, claim::ExpectedConceptClaim, minimality::minimality_defects, uncertainty::PrepUncertainty, } |a1abc1737f126817
+crates/next-lecture/src/brief.rs [pub] #[derive(Debug, Clone, Copy)] struct CandidateParts<'a> |c9af5ac27bff0e01
+crates/next-lecture/src/brief.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PreparationBrief |58098b79dc115379
+crates/next-lecture/src/brief.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PreparationCandidate |eeab0a7c5c1d3f2b
+crates/next-lecture/src/brief.rs [pub] const HIGHEST_PREPARATION: usize |77e70909a781549a
+crates/next-lecture/src/brief.rs [pub] const LOWEST_PREPARATION: usize |5cfa21bb6db65e78
+crates/next-lecture/src/brief.rs [pub] impl PreparationBrief :: #[must_use] const fn lecture_concept(&self) -> EntityId |4f1910df27239fe7
+crates/next-lecture/src/brief.rs [pub] impl PreparationBrief :: #[must_use] fn candidates(&self) -> &[PreparationCandidate] |a0976814568dd73a
+crates/next-lecture/src/brief.rs [pub] impl PreparationBrief :: fn assemble( lecture_concept: EntityId, candidates: Vec<PreparationCandidate>, ) -> Result<Self, NextLectureError> |219531594db2f2f7
+crates/next-lecture/src/brief.rs [pub] impl PreparationCandidate :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/next-lecture/src/brief.rs [pub] impl PreparationCandidate :: #[must_use] const fn kind(&self) -> GapKind |2a043f6c00e16013
+crates/next-lecture/src/brief.rs [pub] impl PreparationCandidate :: #[must_use] const fn preparation(&self) -> &MinimumRemediation |64d5ac7860d44ec2
+crates/next-lecture/src/brief.rs [pub] impl PreparationCandidate :: #[must_use] const fn uncertainty(&self) -> &PrepUncertainty |cc1947be66fa0d10
+crates/next-lecture/src/brief.rs [pub] impl PreparationCandidate :: #[must_use] const fn why_now(&self) -> &BlockingPath |07614713f789591e
+crates/next-lecture/src/brief.rs [pub] impl PreparationCandidate :: #[must_use] fn reason(&self) -> &str |232a3ee0930bd1b9
+crates/next-lecture/src/brief.rs [pub] impl PreparationCandidate :: fn of( parts: CandidateParts<'_>, graph: &PrerequisiteGraph, ) -> Result<Self, NextLectureError> |6c26d8e214708a8a
+crates/next-lecture/src/claim.rs [priv] impl ExpectedConceptClaim
+crates/next-lecture/src/claim.rs [priv] use academic_domain::{ConfidencePermille, EntityId, EpistemicStatus, entity_registry::EntityKind} |aa1d2912a3f166c0
+crates/next-lecture/src/claim.rs [priv] use academic_gap::gap_bearing |698b575d00ea4ade
+crates/next-lecture/src/claim.rs [priv] use academic_untrusted_content::{Proposal, ResolvedSpan} |573f266cbf6fa6b3
+crates/next-lecture/src/claim.rs [priv] use crate::{NextLectureError, source::MaterialReference} |b98f2c2ad302e676
+crates/next-lecture/src/claim.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExpectedConceptClaim |2d0b9e95e486b7c6
+crates/next-lecture/src/claim.rs [pub] impl ExpectedConceptClaim :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/next-lecture/src/claim.rs [pub] impl ExpectedConceptClaim :: #[must_use] const fn concept_kind(&self) -> EntityKind |4c74a92e9a5124a4
+crates/next-lecture/src/claim.rs [pub] impl ExpectedConceptClaim :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
+crates/next-lecture/src/claim.rs [pub] impl ExpectedConceptClaim :: #[must_use] const fn material(&self) -> &MaterialReference |973ed22c61e630c1
+crates/next-lecture/src/claim.rs [pub] impl ExpectedConceptClaim :: #[must_use] const fn standing(&self) -> EpistemicStatus |a4f9010dcad0c08e
+crates/next-lecture/src/claim.rs [pub] impl ExpectedConceptClaim :: #[must_use] fn citations(&self) -> &[ResolvedSpan] |380bd27af695c80e
+crates/next-lecture/src/claim.rs [pub] impl ExpectedConceptClaim :: const STANDING: EpistemicStatus |fcc0f1331687970c
+crates/next-lecture/src/claim.rs [pub] impl ExpectedConceptClaim :: fn extract( concept: EntityId, concept_kind: EntityKind, material: MaterialReference, proposal: &Proposal, confidence: ConfidencePermille, ) -> Result<Self, NextLectureError> |06c5f4deedb52d79
+crates/next-lecture/src/engine.rs [priv] use academic_domain::ConfidencePermille |d005dc09bab4d851
+crates/next-lecture/src/engine.rs [priv] use academic_gap::{ConceptState, GapCase, PrerequisiteGraph} |865e3bb0ce8b0ece
+crates/next-lecture/src/engine.rs [priv] use crate::{ NextLectureError, brief::{CandidateParts, HIGHEST_PREPARATION, PreparationBrief, PreparationCandidate}, claim::ExpectedConceptClaim, } |4cabb4b166ff8c01
+crates/next-lecture/src/engine.rs [pub] fn propose( claim: &ExpectedConceptClaim, case: &GapCase, graph: &PrerequisiteGraph, states: &[ConceptState], edge_confidence: ConfidencePermille, ) -> Result<Option<PreparationBrief>, NextLectureError> |38bbcc3c4b280629
+crates/next-lecture/src/lib.rs [priv] #![deny(missing_docs)] |d27a0595f2b099f8
+crates/next-lecture/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum NextLectureError |332e39e58256a934
+crates/next-lecture/src/lib.rs [pub] mod brief
+crates/next-lecture/src/lib.rs [pub] mod claim
+crates/next-lecture/src/lib.rs [pub] mod engine
+crates/next-lecture/src/lib.rs [pub] mod minimality
+crates/next-lecture/src/lib.rs [pub] mod source
+crates/next-lecture/src/lib.rs [pub] mod uncertainty
+crates/next-lecture/src/lib.rs [pub] use brief::{ CandidateParts, HIGHEST_PREPARATION, LOWEST_PREPARATION, PreparationBrief, PreparationCandidate, } |a26bbd91eabcf630
+crates/next-lecture/src/lib.rs [pub] use claim::ExpectedConceptClaim |ad692a43e84334f0
+crates/next-lecture/src/lib.rs [pub] use engine::propose |12e81751bb183d84
+crates/next-lecture/src/lib.rs [pub] use minimality::{MinimalityDefect, minimality_defects} |7dcc84f3b6b49d6d
+crates/next-lecture/src/lib.rs [pub] use source::{EXPECTED_CONCEPT_SOURCES, ExpectedConceptSource, MaterialReference} |82d653d99d2fc766
+crates/next-lecture/src/lib.rs [pub] use uncertainty::{ ExpectedConceptReading, PREP_AXES, PrepAxis, PrepUncertainty, PrerequisiteEdgeReading, UserStateReading, } |211ab732de6ede3d
+crates/next-lecture/src/minimality.rs [priv] fn reaches( graph: &PrerequisiteGraph, from: academic_domain::EntityId, target: academic_domain::EntityId, ) -> bool |734e043f75d40f14
+crates/next-lecture/src/minimality.rs [priv] impl MinimalityDefect
+crates/next-lecture/src/minimality.rs [priv] use academic_gap::{PrerequisiteGraph, RootCandidate} |16f592cc456e7896
+crates/next-lecture/src/minimality.rs [priv] use crate::claim::ExpectedConceptClaim |cdafee447e9b170a
+crates/next-lecture/src/minimality.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/next-lecture/src/minimality.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MinimalityDefect |de2b80cd0cc08d37
+crates/next-lecture/src/minimality.rs [pub] #[must_use] fn minimality_defects( claim: &ExpectedConceptClaim, root: &RootCandidate, graph: &PrerequisiteGraph, ) -> Vec<MinimalityDefect> |9a3e3810c245e792
+crates/next-lecture/src/minimality.rs [pub] impl MinimalityDefect :: #[must_use] const fn as_str(self) -> &'static str |6f7606c06f4a6014
+crates/next-lecture/src/minimality.rs [pub] impl MinimalityDefect :: #[must_use] const fn spec_token(self) -> &'static str |0eec347878ed2445
+crates/next-lecture/src/minimality.rs [pub] impl MinimalityDefect :: const ALL: [Self; 3] |9f65db21d6516031
+crates/next-lecture/src/source.rs [priv] impl ExpectedConceptSource
+crates/next-lecture/src/source.rs [priv] impl MaterialReference
+crates/next-lecture/src/source.rs [priv] use academic_ingestion::dating::Date |be9b608747286092
+crates/next-lecture/src/source.rs [priv] use academic_lecture_document::NodeId |714fdecf5a5338a4
+crates/next-lecture/src/source.rs [priv] use academic_untrusted_content::SourceId |b03bd18dddbb3339
+crates/next-lecture/src/source.rs [priv] use crate::NextLectureError |3a0d4088b5e42f4b
+crates/next-lecture/src/source.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/next-lecture/src/source.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ExpectedConceptSource |12792bcb13c7c31b
+crates/next-lecture/src/source.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct MaterialReference |068ef56dfcd0a39d
+crates/next-lecture/src/source.rs [pub] const EXPECTED_CONCEPT_SOURCES: [ExpectedConceptSource; 7] |2bf23ae249d67696
+crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: #[must_use] const fn as_str(self) -> &'static str |d14f29ccd89d715d
+crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: #[must_use] const fn is_recorded_by_this_system(self) -> bool |47cf8f76bb7cd3cb
+crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: #[must_use] const fn spec_token(self) -> &'static str |8a7f7e98337675fa
+crates/next-lecture/src/source.rs [pub] impl ExpectedConceptSource :: const ALL: [Self; 7] |efca7a6d4b71f594
+crates/next-lecture/src/source.rs [pub] impl MaterialReference :: #[must_use] const fn document(&self) -> &SourceId |01d7e45cbc247417
+crates/next-lecture/src/source.rs [pub] impl MaterialReference :: #[must_use] const fn lecture_node(&self) -> Option<&NodeId> |fa7e2e471cc660ba
+crates/next-lecture/src/source.rs [pub] impl MaterialReference :: #[must_use] const fn published(&self) -> Date |a68ee994a71e3ce9
+crates/next-lecture/src/source.rs [pub] impl MaterialReference :: #[must_use] const fn source(&self) -> ExpectedConceptSource |322e6d3e39f0a8e0
+crates/next-lecture/src/source.rs [pub] impl MaterialReference :: fn of( source: ExpectedConceptSource, document: SourceId, published: Date, lecture_node: Option<NodeId>, ) -> Result<Self, NextLectureError> |53791d29cdc8a32e
+crates/next-lecture/src/uncertainty.rs [priv] impl ExpectedConceptReading
+crates/next-lecture/src/uncertainty.rs [priv] impl PrepAxis
+crates/next-lecture/src/uncertainty.rs [priv] impl PrepUncertainty
+crates/next-lecture/src/uncertainty.rs [priv] impl PrerequisiteEdgeReading
+crates/next-lecture/src/uncertainty.rs [priv] impl UserStateReading
+crates/next-lecture/src/uncertainty.rs [priv] use academic_domain::{ ConfidencePermille, EntityId, EvidenceId, FreshnessBand, MasteryLevel, predicates::{PredicateName, PrerequisiteStrength}, } |3754531f315ae641
+crates/next-lecture/src/uncertainty.rs [priv] use academic_gap::{ConceptState, PrerequisiteEdge} |1f91571331e36edb
+crates/next-lecture/src/uncertainty.rs [priv] use academic_untrusted_content::ResolvedSpan |2c67f1ac2f66bd51
+crates/next-lecture/src/uncertainty.rs [priv] use crate::{NextLectureError, claim::ExpectedConceptClaim, source::MaterialReference} |66e1eafddf97cdf8
+crates/next-lecture/src/uncertainty.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PrepAxis |74c84e54af901bb9
+crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ExpectedConceptReading |998fbea19ab5043e
+crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PrepUncertainty |51effb5c251637e3
+crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PrerequisiteEdgeReading |3c3fb49a62dfc9ee
+crates/next-lecture/src/uncertainty.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UserStateReading |be93300e7206f030
+crates/next-lecture/src/uncertainty.rs [pub] const PREP_AXES: [PrepAxis; 3] |2ee86713443a6a73
+crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
+crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: #[must_use] const fn material(&self) -> &MaterialReference |973ed22c61e630c1
+crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: #[must_use] fn citations(&self) -> &[ResolvedSpan] |380bd27af695c80e
+crates/next-lecture/src/uncertainty.rs [pub] impl ExpectedConceptReading :: const AXIS: PrepAxis |ed6e5432c3f5dd4a
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepAxis :: #[must_use] const fn as_str(self) -> &'static str |7184041f77a6c8ca
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepAxis :: #[must_use] const fn spec_token(self) -> &'static str |d47e98d359d20d11
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepAxis :: const ALL: [Self; 3] |042b16430f4d89e7
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepUncertainty :: #[must_use] const fn expected_concept(&self) -> &ExpectedConceptReading |af37fdb076788067
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepUncertainty :: #[must_use] const fn prerequisite_edge(&self) -> &PrerequisiteEdgeReading |607287808f0c6e5c
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepUncertainty :: #[must_use] const fn user_state(&self) -> &UserStateReading |9d35963c6ee580ef
+crates/next-lecture/src/uncertainty.rs [pub] impl PrepUncertainty :: fn factor( claim: &ExpectedConceptClaim, edge: &PrerequisiteEdge, edge_confidence: ConfidencePermille, state: &ConceptState, ) -> Result<Self, NextLectureError> |ca5c4d48ed90335a
+crates/next-lecture/src/uncertainty.rs [pub] impl PrerequisiteEdgeReading :: #[must_use] const fn advanced(&self) -> EntityId |58a2e96cbf3b94e9
+crates/next-lecture/src/uncertainty.rs [pub] impl PrerequisiteEdgeReading :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
+crates/next-lecture/src/uncertainty.rs [pub] impl PrerequisiteEdgeReading :: #[must_use] const fn predicate(&self) -> PredicateName |6f280b3c546e0587
+crates/next-lecture/src/uncertainty.rs [pub] impl PrerequisiteEdgeReading :: #[must_use] const fn prerequisite(&self) -> EntityId |57d8b148380f2d0d
+crates/next-lecture/src/uncertainty.rs [pub] impl PrerequisiteEdgeReading :: #[must_use] const fn strength(&self) -> PrerequisiteStrength |30b33e3d3f11dcae
+crates/next-lecture/src/uncertainty.rs [pub] impl PrerequisiteEdgeReading :: #[must_use] fn evidence(&self) -> &[EvidenceId] |7246d56a3b5de3c6
+crates/next-lecture/src/uncertainty.rs [pub] impl PrerequisiteEdgeReading :: const AXIS: PrepAxis |eb528667fadf6545
+crates/next-lecture/src/uncertainty.rs [pub] impl UserStateReading :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/next-lecture/src/uncertainty.rs [pub] impl UserStateReading :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
+crates/next-lecture/src/uncertainty.rs [pub] impl UserStateReading :: #[must_use] const fn freshness(&self) -> FreshnessBand |d44bf370bf8ca109
+crates/next-lecture/src/uncertainty.rs [pub] impl UserStateReading :: #[must_use] const fn mastery(&self) -> MasteryLevel |c66710767b58b246
+crates/next-lecture/src/uncertainty.rs [pub] impl UserStateReading :: #[must_use] fn contradicting(&self) -> &[EvidenceId] |fed540d22591452a
+crates/next-lecture/src/uncertainty.rs [pub] impl UserStateReading :: #[must_use] fn supporting(&self) -> &[EvidenceId] |a5542e684b945df6
+crates/next-lecture/src/uncertainty.rs [pub] impl UserStateReading :: const AXIS: PrepAxis |7a32a7a46f13e4d2

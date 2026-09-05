@@ -303,19 +303,18 @@ fn refuse_every_write(abi: i64) -> Result<(), EnforcementError> {
     Ok(())
 }
 
-/// Installs the seccomp filter that refuses the socket family.
-#[allow(unsafe_code)]
-fn refuse_every_socket() -> Result<(), EnforcementError> {
-    let available = seccomp_errno_available();
-    if available != 0 {
-        return Err(EnforcementError::Unavailable {
-            reason: format!(
-                "seccomp(SECCOMP_GET_ACTION_AVAIL, SECCOMP_RET_ERRNO) returned {available} \
-                 (errno {})",
-                errno()
-            ),
-        });
-    }
+/// The seccomp filter this backend installs, assembled.
+///
+/// Split out of [`refuse_every_socket`] so the program is a **value a test can
+/// read**. `P2-A5` measured, three audits running, that removing the x32 floor
+/// below and clamping [`x32_answer`] leaves this crate's whole suite green --
+/// 20 passed on a build whose x32 ABI answered `getpid` with a real pid and
+/// handed out a working socket descriptor. Nothing read the assembled program;
+/// the verification was `run.outcome("enter").contains("x32(getpid)=-1")`, a
+/// string the code under test prints about itself.
+///
+/// The test below reads it as the bytes the kernel is handed.
+fn socket_filter_program() -> Result<Vec<SockFilter>, EnforcementError> {
     let denied = denied_syscalls();
     let mut program = vec![
         stmt(BPF_LD | BPF_W | BPF_ABS, 4),
@@ -362,6 +361,23 @@ fn refuse_every_socket() -> Result<(), EnforcementError> {
         BPF_RET | BPF_K,
         SECCOMP_RET_ERRNO | u32::try_from(libc::EPERM).unwrap_or(1),
     ));
+    Ok(program)
+}
+
+/// Installs the seccomp filter that refuses the socket family.
+#[allow(unsafe_code)]
+fn refuse_every_socket() -> Result<(), EnforcementError> {
+    let available = seccomp_errno_available();
+    if available != 0 {
+        return Err(EnforcementError::Unavailable {
+            reason: format!(
+                "seccomp(SECCOMP_GET_ACTION_AVAIL, SECCOMP_RET_ERRNO) returned {available} \
+                 (errno {})",
+                errno()
+            ),
+        });
+    }
+    let program = socket_filter_program()?;
     let Ok(len) = u16::try_from(program.len()) else {
         return Err(EnforcementError::Syscall {
             step: "seccomp filter assembly",
@@ -536,7 +552,85 @@ pub(super) fn enter(refused: &[ProcessCapability]) -> Result<String, Enforcement
 
 #[cfg(test)]
 mod tests {
-    use super::{denied_syscalls, status_field};
+    use super::{
+        EnforcementError, SockFilter, denied_syscalls, socket_filter_program, status_field,
+    };
+
+    /// The eight bytes of one filter instruction, as the kernel reads them.
+    ///
+    /// `sock_filter` is `#[repr(C)]` and the kernel copies it verbatim, so the
+    /// little-endian encoding of the four fields **is** the instruction. This
+    /// spells it out rather than transmuting, so the pin below is over bytes a
+    /// reader can check against the ABI and not over this crate's memory
+    /// layout believing itself.
+    fn encoded(instruction: &SockFilter) -> [u8; 8] {
+        let code = instruction.code.to_le_bytes();
+        let k = instruction.k.to_le_bytes();
+        [
+            code[0],
+            code[1],
+            instruction.jt,
+            instruction.jf,
+            k[0],
+            k[1],
+            k[2],
+            k[3],
+        ]
+    }
+
+    /// The x32 floor is in the assembled program, as bytes.
+    ///
+    /// `P2-A5` scored this open for three rounds and named the close: the two
+    /// acceptance tests over this backend read a string the code under test
+    /// prints about itself, so removing the floor instruction and clamping
+    /// `x32_answer` left `the_kernel_reports_the_filter_the_receipt_claims` and
+    /// `no_class_reaches_the_second_abi_under_the_same_arch_token` both passing
+    /// while the x32 ABI handed out a working socket descriptor. **A receipt
+    /// that quotes the thing it is about is not a measurement.**
+    ///
+    /// This reads the program instead. The floor is instruction 4 -- after the
+    /// arch load, the arch comparison, the kill and the syscall-number load --
+    /// and its eight bytes are `BPF_JMP | BPF_JGE | BPF_K` (`0x35`), a jump
+    /// past every denied comparison and the allow, no fall-through offset, and
+    /// `X32_SYSCALL_BIT` little-endian. Removing the push fails here naming the
+    /// instruction; moving it fails on the index; widening the deny list
+    /// without moving the jump target fails on `jt`.
+    ///
+    /// x86_64 only, because the x32 ABI is: on `aarch64` there is no second ABI
+    /// under one `AUDIT_ARCH` token and `BPF_JGE` is not compiled at all.
+    #[cfg(target_arch = "x86_64")]
+    #[test]
+    fn the_x32_floor_is_pinned_as_the_bytes_the_kernel_reads() -> Result<(), EnforcementError> {
+        let program = socket_filter_program()?;
+        let denied = denied_syscalls().len();
+        // Four setup instructions, the floor, one comparison per denied
+        // syscall, the allow and the errno return.
+        assert_eq!(
+            program.len(),
+            denied + 7,
+            "the assembled filter is not the shape this pin is over"
+        );
+        // Saturating rather than panicking, the way the assembler's own
+        // `u8::try_from(count - index - 1)` is: a deny list too long for a jump
+        // offset produces a byte mismatch below, which is the failure that names
+        // what changed.
+        let jump_target = u8::try_from(denied + 1).unwrap_or(u8::MAX);
+        assert_eq!(
+            encoded(&program[4]),
+            [0x35, 0x00, jump_target, 0x00, 0x00, 0x00, 0x00, 0x40],
+            "the x32 floor is not the fifth instruction of the assembled filter"
+        );
+        // And it is the only unsigned jump, so a second one cannot stand in for
+        // it while this one is gone.
+        let floors = program
+            .iter()
+            .filter(|instruction| {
+                instruction.code == super::BPF_JMP | super::BPF_JGE | super::BPF_K
+            })
+            .count();
+        assert_eq!(floors, 1, "the filter carries {floors} unsigned jumps");
+        Ok(())
+    }
 
     #[test]
     fn the_deny_list_has_no_duplicate_and_no_negative_number() {
