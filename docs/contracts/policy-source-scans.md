@@ -177,7 +177,7 @@ remove.
 | `desktop_names_only_the_core_fixture_allowlist` — same file | none — two fixed paths, `crates/core/src/local_service.rs` and `crates/desktop/src/command.rs` | the one fixture identifier `academic-core` defines, compared against the `as_str` arms of the desktop's `SyntheticFixtureId`, sliced to that `impl` block so the capability arms are not read as fixtures. A source scan because the desktop must have no dependency edge to `academic-core`, which opens the store: the two constants can only be compared as text | none — a missing `impl` block or an unclosed one fails |
 | `capability_snapshot_has_no_wildcard` — `packages/ui/src/capability-snapshot.test.ts`, over `packages/ui/src/capability-snapshot.ts` | none — four fixed paths: the two committed snapshot documents and the two vendored Tauri schemas | not a source-text scan; the text it reads is JSON. Three layers: SHA-256 whole-file pins on all four; validation of both snapshot documents against Tauri's own schemas, with negative controls including one showing the schema accepts `$HOME/**` and so is not the guard; and `scanSnapshot`, whose deciding rule is a closed world over reviewed strings, keys and values separately, with the named wildcard forms used only for the failure message | none — a missing file fails the read; the enumeration of forms is compared against its own sample table in both directions so a form that stopped matching fails |
 | `route_manifest_matches_ia_exactly` — `packages/ui/src/route-manifest.test.ts`, over `packages/ui/src/ia.ts` | none — one fixed path, `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` | not a source-text scan; the text it reads is the specification. Section 25.1's drawn tree is parsed into labelled nodes with parents and compared with the route manifest as sets in both directions, plus a parent map and the reading order. A line the parser cannot account for raises rather than being skipped | none — an empty parse raises, and a second root or an unaccountable line raises |
-| `the_walk_reads_every_module_in_this_package`, `the_stage_order_and_the_gate_are_pinned`, `a_secret_digest_has_exactly_two_writers_and_one_needs_a_decision`, `the_snapshot_hands_back_owned_data_and_nothing_else`, `the_credential_is_repo_scoped_read_only_and_expiring_in_source`, `the_crate_touches_the_filesystem_only_to_read_it`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory`, `every_stage_of_the_seam_is_counted`, `the_vocabularies_match_the_specification`, `every_impl_header_in_this_crate_is_in_the_inventory` — `crates/repository/tests/repository_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus two fixed reads, `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and this page | eight whole-text pins (below); call-site counts by identifier on `permission_and_secret_gate` (1), `inventory` (1), `freeze` (2), `index` (1), `scan_secrets` (1), `admit` (1), `run_gate` (1) and `resolve_snapshot_type` (1), each with `fn <name>(` subtracted and each with the one file it may be called from; a whole-set comparison of every method signature in `impl RepositorySnapshot` against an 18-entry list, plus no `&mut self` and no public field; whole-set comparisons of every `fs::` name the product code spells against a three-entry read-only list and of every `use` item against a 14-entry list, both in both directions; counts of the two `blob_digest` assignment sites and of the functions taking a `DisclosureDecision` by value (1); a rule that the four `SnapshotStages` methods are exactly the four counted names; and section 17.2's `sourceType` values parsed out of the specification and compared with this crate's `SnapshotType` in both directions; and **a whole-set comparison of every `impl` header this crate declares** against a pinned inventory in both directions, which then refuses fifteen folding traits and every scalar conversion target over the whole inventory rather than over named type pairs — `P2-A5` injected `impl From<&PromotionSet> for u32` into `academic-repository-competency` and it passed 1543 tests over 265 binaries, because a trait `impl` declares no `pub fn` and no signature inventory can see one | `>= 6` files in the package walk, `>= 4` declared modules, every product file under `src/`, and a tripwire requiring every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the package to be a file the walk read |
+| `the_walk_reads_every_module_in_this_package`, `the_stage_order_and_the_gate_are_pinned`, `a_secret_digest_has_exactly_two_writers_and_one_needs_a_decision`, `the_snapshot_hands_back_owned_data_and_nothing_else`, `the_credential_is_repo_scoped_read_only_and_expiring_in_source`, `the_crate_touches_the_filesystem_only_to_read_it`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory`, `every_stage_of_the_seam_is_counted`, `the_vocabularies_match_the_specification`, `every_impl_header_in_this_crate_is_in_the_inventory` — `crates/repository/tests/repository_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus two fixed reads, `PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and this page | eight whole-text pins (below); call-site counts by identifier on `permission_and_secret_gate` (1), `inventory` (1), `freeze` (2), `index` (1), `scan_secrets` (1), `admit` (1), `run_gate` (1) and `resolve_snapshot_type` (1), each with `fn <name>(` subtracted and each with the one file it may be called from; a whole-set comparison of every method signature in `impl RepositorySnapshot` against an 18-entry list, plus no `&mut self` and no public field; whole-set comparisons of every `fs::` name the product code spells against a three-entry read-only list, of every `use` item against a 14-entry list, and of every two-segment path reached through a crate root against `REACHED_PATHS`' three entries, all three in both directions — the third arrived with `P2-RF30`, because `P2-A5`'s fifth audit measured a fully-qualified inline `std::net` path running from inside `SourceKind::of_path` while this crate held no reach reader at all and `T226`'s note said it held a different one; counts of the two `blob_digest` assignment sites and of the functions taking a `DisclosureDecision` by value (1); a rule that the four `SnapshotStages` methods are exactly the four counted names; and section 17.2's `sourceType` values parsed out of the specification and compared with this crate's `SnapshotType` in both directions; and **a whole-set comparison of every `impl` header this crate declares** against a pinned inventory in both directions, which then refuses fifteen folding traits and every scalar conversion target over the whole inventory rather than over named type pairs — `P2-A5` injected `impl From<&PromotionSet> for u32` into `academic-repository-competency` and it passed 1543 tests over 265 binaries, because a trait `impl` declares no `pub fn` and no signature inventory can see one | `>= 6` files in the package walk, `>= 4` declared modules, every product file under `src/`, and a tripwire requiring every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the package to be a file the walk read |
 | `the_walk_reads_every_module_in_this_package`, `the_analysis_crate_touches_no_file_and_no_socket`, `the_ladder_and_the_path_classification_are_pinned`, `each_guarded_name_has_exactly_its_call_sites`, `no_public_accessor_hands_out_analyzed_text`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory`, `every_impl_header_in_this_crate_is_in_the_inventory` — `crates/repository-analysis/tests/analysis_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus one fixed read of this page | eight whole-text pins (below); call-site counts by identifier on `seal` (1), `interpret` (1), `promotes` (1) and `build` (2), each with `fn <name>(` subtracted and each with the one file it may be called from; **three whole-set comparisons of what the product code can reach, all in both directions** — every `use` item against a 20-entry list, every two-segment path spelled through a crate root against a 4-entry list, and every macro invoked against a 4-entry list; a whole-set comparison of every `pub fn` whose return type names `str`, `String` or `u8` against a 14-entry justified inventory, in both directions, with the justification drawn from a closed four-value list; and, as a third and weakest layer, a forbidden-token pass over **all** source, `tests` included, for eleven filesystem and transport spellings; and **a whole-set comparison of every `impl` header this crate declares** against a pinned inventory in both directions, which then refuses fifteen folding traits and every scalar conversion target over the whole inventory rather than over named type pairs — `P2-A5` injected `impl From<&PromotionSet> for u32` into `academic-repository-competency` and it passed 1543 tests over 265 binaries, because a trait `impl` declares no `pub fn` and no signature inventory can see one | `>= 7` files in the package walk, `>= 5` declared modules, every product file under `src/`, and a tripwire requiring every `mod name;`, `pub mod name;` and `#[path = "…"]` target in the package to be a file the walk read |
 | `crates/repository-analysis/tests/evidence_tiers.rs` | n/a — the one `.rs` path it names is `target/debug/build.rs` in a synthetic corpus, which the fixture uses to show that `P2-R1`'s point-1 file policy removes the whole `target` subtree before this analyzer sees it | not a source-text scan: `P2-R2`'s eight named acceptance tests plus the per-rung promotion injections and the canary run of `no_analyzed_byte_reaches_a_text_accessor`, all over in-process synthetic corpora captured through `P2-R1`'s own `capture_local`. `P2-RF19` adds four more, three of them whole-set: `every_ladder_input_combination_lands_on_the_row_section_17_3_names` runs all 21 combinations of code shape, code placement and configuration placement, twice each for the runtime trace, against a table written out of section 17.3 rather than read back out of the analyzer; `no_observed_rests_on_manifest_presence` restates `INV-C-006` over the same enumeration and independently of that table; `row_four_narrows_to_test_scope_and_to_no_other_scope` crosses all five `ArtifactScope` values with themselves; and `every_subject_identifier_is_the_shape_this_crate_admits` offers every ASCII byte and both sides of the 64-byte bound | n/a |
 | `the_walk_reads_every_module_in_this_package`, `the_correlation_crate_touches_no_file_and_no_socket`, `every_field_of_this_crate_is_in_the_inventory`, `no_public_function_mutates_in_place`, `the_correlation_decisions_are_pinned`, `each_guarded_name_has_exactly_its_call_sites`, `the_helpers_are_not_vacuous`, `this_scan_is_in_the_inventory`, `every_impl_header_in_this_crate_is_in_the_inventory` — `crates/repository-correlation/tests/correlation_scans.rs` | recursive, **every `.rs` anywhere under this crate's package**, split into product source (everything outside `tests`) and all source; plus one fixed read of this page | nine whole-text pins (`impl EvidenceRelation`, `admit`, `active_view`, `code_relations`, `drifts_of`, `scopes_of`, `declares_dependency`, `compare`, `impl DriftScopes`); call-site counts by identifier on `seal` (10), `authority_table` (1) and `claim_type` (1), each with `fn <name>(` subtracted and each with the one file it may be called from; **three whole-set comparisons of what the product code can reach, all in both directions** — every `use` item, every two-segment path spelled through a crate root against a 4-entry list, and every macro invoked against a 1-entry list; **a whole-set comparison of every field of every type this crate declares** against a justified inventory, in both directions, which is the answer `tools/secret-debug-policy.test.mjs` gave with a field-name alternation until `P2-RF13` made it a whole set there too; a refusal of any `pub fn` taking `&mut self`; and, as a third and weakest layer, a forbidden-token pass over **all** source, `tests` included, for eleven filesystem and transport spellings; and **a whole-set comparison of every `impl` header this crate declares** against a pinned inventory in both directions, which then refuses fifteen folding traits and every scalar conversion target over the whole inventory rather than over named type pairs — `P2-A5` injected `impl From<&PromotionSet> for u32` into `academic-repository-competency` and it passed 1543 tests over 265 binaries, because a trait `impl` declares no `pub fn` and no signature inventory can see one | `>= 8` files in the package walk, `>= 6` declared modules, every product file under `src/`, a tripwire requiring every `mod name;` and `pub mod name;` in the package to be a file the walk read and refusing a `#[path]` attribute outright, and a two-entry pinned set of the files permitted to read one |
@@ -249,7 +249,7 @@ remove.
 | `unsafe_is_confined_to_the_linux_backend`, `the_probe_target_is_not_in_any_default_build`, `the_backend_names_only_the_syscalls_it_installs_with_outside_its_deny_list`, `the_declared_surface_of_this_crate_is_reviewed` — `crates/process-sandbox/tests/scans.rs` | recursive, `crates/process-sandbox/{src,probes,tests}` for the `unsafe` scan and `crates/process-sandbox/src` for the surface one, plus one fixed read of `crates/process-sandbox/Cargo.toml` and one of `crates/process-sandbox/src/linux.rs` | `unsafe` as a whole word, over a lexer that strips comments, strings, raw strings and character literals, against the one file allowed it; every `[[bin]]` section of the manifest for a `probes/` path and `required-features`; every `SYS_` name in the backend either inside `denied_syscalls` or one of the three it installs with; and every `impl` header, `#[derive]` list and public item in `src` as one whole set compared both ways, which is what sees a trait `impl` or a derive handing out an `Enforcement` nobody entered | `scanned >= 6` files for the `unsafe` walk, `>= 2` for the surface walk, `>= 14` syscall names, and one sample per lexer arm so a stripper that inverts on a raw string or a quoted character fails |
 | `the_binary_runs_only_while_its_declaration_is_enforced`, `this_binary_is_bound_to_exactly_one_process_class` — `crates/repository-analyzer/tests/enforcement.rs`, `crates/capture-client/tests/enforcement.rs`, `crates/egress/tests/enforcement.rs`, `crates/export-job/tests/enforcement.rs` | none — one fixed read of each crate's own `src/main.rs`, beside launching that crate's built binary | the process-class `const` and the `academic_process_sandbox::enter` call are both present, and the launched binary either exits `0` with a receipt naming exactly the capabilities its class does not declare, or exits non-zero having written nothing to standard output | not a source-text scan: the source read is one file per crate and the load is carried by the exit status of a real process. Four of the six process classes; the two that are not here are the two whose declaration the boundary cannot enforce without contradicting it, and `a_declared_capability_is_not_defined_by_one_the_boundary_would_refuse` two rows down is what pins that pair |
 | `the_walk_reads_every_crate_the_workspace_compiles`, `every_file_the_compiler_compiles_is_a_rust_file_a_walk_reads`, `every_product_file_is_compiled_by_its_own_crate`, `every_path_handed_to_the_compiler_is_one_this_reader_resolved` — `crates/contracts/tests/compilation_unit_scans.rs` | recursive, every crate under `crates/`; from each Cargo target root — `src/lib.rs`, `src/main.rs`, `src/bin/*.rs`, `build.rs`, an explicit manifest `path`, and every `tests`/`benches`/`examples` root — through `mod name;`, `#[path = "…"] mod name;` and `include!("…")`, recursively, plus a separate `*.rs` walk of every crate's `src` | the set the scans read against the set the compiler reads. Not a forbidden-spelling list: `include!` and `#[path]` stay legal and are **followed**. Every file in a crate's compilation unit is a `*.rs` file, so a `.inc` fails by name; every file a crate's product targets pull in is under that crate's own `src`, with three pinned exceptions (`crates/rpc/build.rs` and the two `probes/` binaries), so a `#[path]` reaching sideways fails by name; every `*.rs` file under a crate's `src` is in that crate's product closure, with six pinned exceptions (`crates/test-support/src`, which no target of its own crate compiles), which is the direction that makes the pair an equality; the crate directory set equals the workspace `members` list in both directions; every path handed to the compiler is a literal this reader resolved, with four pinned computed sites and a whole-text pin on the one that injects items. `cfg` is not evaluated, so the closure is a superset of any one configuration | `declared.len() >= 60` crates, `product_total >= 500` and `every_total >= 750` closure files, `examined >= 500` files on the `src` walk, `embedded.len() >= 25`; the crate-set equality is what fails if the walk stops short |
-| `the_items_tile_every_file_the_workspace_compiles`, `the_reader_refuses_an_item_form_it_has_no_rule_for`, `every_item_in_these_packages_is_pinned`, `every_item_that_reaches_a_closed_type_is_pinned`, `the_inventories_still_keyed_on_a_line_prefix_are_named`, `the_reach_readers_are_one_reader` — `crates/contracts/tests/item_inventory_scans.rs` | the compilation unit resolved by `crates/contracts/tests/support/mod.rs`, from every product target root through `mod`, `#[path]` and `include!`, recursively; plus every `crates/*/tests/**.rs` for the last row | the **items** a file holds, not the lines it spells. An item is read after its attributes, its visibility and its modifiers, and `mod`, `impl`, `trait` and `extern` blocks are descended into. Two properties carry the enumeration: a construct in item position that is none of the fourteen keywords and is not a macro invocation makes the reader return `Err`, and the extents it returns **tile** every product file — every non-whitespace character in exactly one **top-level** item — so an item it did not see **at top level** leaves a hole a test reads. An item written inside a leaf's body leaves no hole, because the leaf's own extent already covers it and the reader does not descend into a body: the tiling is total over the text, not over the items. What carries a body is the **sealed key** both pins compare — the declaration, plus a fingerprint of the item's own text when the item holds no items of its own. On that, two pins: the whole item set of **every package that either keys its own inventory on a line prefix or owns a closed type** -- 25 packages, 6792 items of which 5697 carry a body fingerprint and 1095 are containers, derived from `the_inventories_still_keyed_on_a_line_prefix_are_named` and from `CLOSED_TYPES` rather than written down, with the keys in `crates/contracts/tests/pinned-items/<package>.items`, one to a line -- keyed on nothing at all; and, per closed type, the items whose own text names it **or that sit inside something that does**, closed over aliasing to a fixed point so an item written against `type Removed = RestrictedOriginal;` is a route under its second name, which is the rule that fails naming the type. The owner half is what makes it a rule about a type rather than a signature: `pub fn bytes(&self) -> &[u8]` inside `impl ReleasableArtifact` names no type. Ten closed types: the four `P2-A4` measured, plus `PromotionSet` and `MotivationDisplay`, which `P2-A5` measured folded into a scalar by a `pub const NAME: fn(&T) -> u32` that passed the whole workspace, plus `P2-X3`'s `RegistrationConfirmation`, `SecondaryPercentage`, `GpaFigure` and `PlanSnapshot`. `the_reach_readers_are_one_reader` holds the seventeen copies of the reach reader to one text and requires every crate carrying one to drive the qualified-path form through it | `files.len() >= 500` product files, `items > 10_000`, `packages.len() >= 24` pinned packages and `total >= 6_000` pinned items, and a pin file that reads as empty is an error naming the path; the tiling is what fails if the reader stops short, because a file it read nothing from is all hole |
+| `the_items_tile_every_file_the_workspace_compiles`, `the_reader_refuses_an_item_form_it_has_no_rule_for`, `every_item_in_these_packages_is_pinned`, `the_pin_names_what_it_covers_and_what_it_does_not`, `every_item_that_reaches_a_closed_type_is_pinned`, `the_inventories_still_keyed_on_a_line_prefix_are_named`, `the_reach_readers_are_one_reader` — `crates/contracts/tests/item_inventory_scans.rs` | the compilation unit resolved by `crates/contracts/tests/support/mod.rs`, from every product target root through `mod`, `#[path]` and `include!`, recursively; plus every `crates/*/tests/**.rs` for the last row | the **items** a file holds, not the lines it spells. An item is read after its attributes, its visibility and its modifiers, and `mod`, `impl`, `trait` and `extern` blocks are descended into. Two properties carry the enumeration: a construct in item position that is none of the fourteen keywords and is not a macro invocation makes the reader return `Err`, and the extents it returns **tile** every product file — every non-whitespace character in exactly one **top-level** item — so an item it did not see **at top level** leaves a hole a test reads. An item written inside a leaf's body leaves no hole, because the leaf's own extent already covers it and the reader does not descend into a body: the tiling is total over the text, not over the items. What carries a body is the **sealed key** both pins compare — the declaration, plus a fingerprint of the item's own text when the item holds no items of its own. On that, two pins: the whole item set of **every package that either keys its own inventory on a line prefix or owns a closed type** -- 25 packages, 6792 items of which 5697 carry a body fingerprint and 1095 are containers, derived from `the_inventories_still_keyed_on_a_line_prefix_are_named` and from `CLOSED_TYPES` rather than written down, with the keys in `crates/contracts/tests/pinned-items/<package>.items`, one to a line -- keyed on nothing at all; and, per closed type, the items whose own text names it **or that sit inside something that does**, closed over aliasing to a fixed point so an item written against `type Removed = RestrictedOriginal;` is a route under its second name, which is the rule that fails naming the type. The owner half is what makes it a rule about a type rather than a signature: `pub fn bytes(&self) -> &[u8]` inside `impl ReleasableArtifact` names no type. Ten closed types: the four `P2-A4` measured, plus `PromotionSet` and `MotivationDisplay`, which `P2-A5` measured folded into a scalar by a `pub const NAME: fn(&T) -> u32` that passed the whole workspace, plus `P2-X3`'s `RegistrationConfirmation`, `SecondaryPercentage`, `GpaFigure` and `PlanSnapshot`. `the_reach_readers_are_one_reader` holds the seventeen copies of the reach reader to one text and requires every crate carrying one to drive the qualified-path form through it | `files.len() >= 500` product files, `items > 10_000`, `packages.len() >= 24` pinned packages and `total >= 6_000` pinned items, and a pin file that reads as empty is an error naming the path; the tiling is what fails if the reader stops short, because a file it read nothing from is all hole |
 | `an_elsewhere_basis_names_a_package_that_exists` — `crates/process-sandbox/tests/enforcement.rs`, and `an_elsewhere_basis_is_linked_or_unreachable` — `tools/phase1-scaffold-policy.test.mjs` | `crates/process-sandbox/src/lib.rs` and `crates/policy/src/lib.rs` as text, plus `cargo metadata --locked --offline` for the resolved graph | an enforcement basis that points at somebody else has to say who, and the name has to resolve: the package directory must exist and its manifest must declare that name. The graph half is a whole-set rule over the declaring classes — for each, either the named enforcer is in its resolved closure or **nothing in that closure can exercise the capability**, where the device-capable set is derived as the packages declaring the operating-system device backend feature. Replaces `reason.len() >= 40`, which a sixty-two-character sentence naming no package passes | the `Elsewhere` set is compared whole (one entry, `CAPTURE_DEVICE`), and the declaring-class set is read out of the capability table rather than written down |
 | `a_declared_capability_is_not_defined_by_one_the_boundary_would_refuse` — `crates/process-sandbox/tests/enforcement.rs` | `ProcessClass::ALL` × `ProcessCapability::ALL`, in memory | the obligation on the unenforced remainder. For every class, no capability it declares may have a `BrokerOnly` reason written in terms of a capability `refusals(class)` contains. Two pairs exist and are pinned whole — `CONNECTOR`/`StageExternalPayload` and `INDEXER`/`WriteSearchIndex`, both against `WriteStagedArtifact` — which is why those two boundaries are not the mechanical flag flip they look like: enforcing them would refuse each process the write its own declaration is defined by, vacuously, because both binaries are still the four-line stub. `EXPORT_JOB` has no pair, and that is why it is the one of the three `T229` enforced rather than recorded again: nothing it declares is defined in terms of a capability the boundary would refuse it | six classes read, and the scan is refused if no `BrokerOnly` reason names another capability at all |
 | `the_walk_reads_every_module_in_this_package`, `the_dashboard_crate_touches_no_file_and_no_socket`, `every_capitalized_identifier_in_this_crate_is_in_the_inventory`, `planner_has_no_registration_endpoint`, `the_dashboard_surface_cannot_name_a_mastery`, `this_scan_is_in_the_inventory` — `crates/dashboard/tests/dashboard_scans.rs` | recursive, every `.rs` of the package, and `crates/record/src` for the control | four whole sets over this crate's product text, each compared in both directions and none of them a spelling list: every `use` item; every two-segment path spelled through a crate root, read by the canonical reach reader that `the_reach_readers_are_one_reader` holds this copy to; every macro invoked; and **every capitalized identifier**, which is the form a `pub static`, a `pub const NAME: fn(&T) -> u32`, a trait `impl`, an item inside a function body and an item a macro expands to all take. The registration absence is stated in four parts: the edge is declared and every ledger name is really spelled in `academic-record`'s own text; no product file spells `RegistrationConfirmation` or `SettledStatus`; the two planner files spell none of the six ledger names; and every occurrence of the two `timeline.rs` does spell is preceded by an ampersand. Deliberately **not** keyed on `pub fn `, `pub const fn ` or `impl ` | `files.len() >= 8` product files, `read >= 10` files on the forbidden-construct pass, `found.len() >= 100` names, `record_sources.len() >= 5`, and one control per net: the nineteen constructs are each found in a sample that spells one and not in a quoted one, the name reader is required to see all four bypass shapes and to report nothing for a local binding, and `<str as ::std::net::ToSocketAddrs>::to_socket_addrs(host)` is driven through this crate's own copy of the reach reader |
@@ -3440,68 +3440,111 @@ rules were correct and pointed at two packages; this is the rollout.
 
 | | |
 |---|---|
-| crate directories under `crates/` | **70** |
-| packages whose own inventory is keyed on a line prefix | **23**, in 24 files |
-| of those, packages now carrying a whole-set item pin | **23 of 23** |
-| packages carrying a whole-set item pin for the *second* reason (they own a closed type) | **2** (`record`, `dashboard`), added by `P2-X3` |
-| items pinned | **6792** (6131 + 397 in `record` + 264 in `dashboard`) |
-| of those, keys carrying a body fingerprint | **5697** (`P2-RF29`'s 5134 + 343 + 220); the other **1095** are containers |
-| crates with **no** item pin | **45** |
-| closed types pinned workspace-wide | **10** (4 from `P2-A4`, 2 from `P2-A5`, 4 from `P2-X3`) |
-| copies of the reach reader, held to one text | **17** (`P2-A5` counted 14; `crates/*/tests/*.rs` does not reach `tests/support/mod.rs`; `P2-X3` added the seventeenth) |
+| crate directories under `crates/` | **71** |
+| packages whose own inventory is keyed on a line prefix | **43**, in 49 files |
+| packages carrying a whole-set item pin | **43 of 43** |
+| items pinned | **11748** |
+| of those, keys carrying a body fingerprint | **9860**; the other **1888** are containers |
+| crates with **no** item pin | **28** |
+| closed types pinned workspace-wide | **12** (4 from `P2-A4`, 2 from `P2-A5`, 4 from `P2-X3`, 2 from `P2-RF30`) |
+| copies of the reach reader, held to one text | **18** (`P2-A5` counted 14; `crates/*/tests/*.rs` does not reach `tests/support/mod.rs`; `P2-X3` added the seventeenth and `P2-RF30` the eighteenth) |
 
-The 23 are the batch conversion: one derivation, one rule, one pin file per
-package. No crate needed hand work, because the pin is keyed on nothing a crate
-can differ in -- it is that package's item set, and the item reader is one
-reader.
+**Every number in this table is asserted.** `P2-A5`'s fifth audit found this
+page's neighbour in `item_inventory_scans.rs` claiming 45 unpinned crates and 68
+in the workspace where the tree held 47 and 70, and recorded that it survived
+because nothing asserted either number. It then moved twice more, under `P2-RF29`
+and `P2-X3`, while the prose stood still — this table said 70 crate directories
+and 45 without a pin against a tree holding 71 and 46.
+`the_pin_names_what_it_covers_and_what_it_does_not` compares the workspace's
+package count, the derived count and the pin directory against each other, and
+takes the remainder as a **subtraction** rather than as a fourth number somebody
+keeps in step by hand.
 
-### The 45 that have no item pin, by name
+No crate needs hand work, because the pin is keyed on nothing a crate can differ
+in -- it is that package's item set, and the item reader is one reader.
 
-`admission`, `audit`, `blind-spot`, `capture-client`, `cli`, `competency`,
-`connector`, `consent`, `contracts`, `core`, `critical-path`, `crypto`,
-`curriculum`, `daemon`, `desktop`, `domain`, `egress`, `egress-boundary`,
-`export`, `export-job`, `freshness`, `gap`, `indexer`, `integrations`,
-`knowledge-state`, `ledger`, `model-run`, `next-lecture`, `policy`, `portability`,
-`projections`, `recovery`, `repository-analyzer`, `retention`, `review`,
-`role-profile`, `rpc`, `scenario`, `store`, `store-platform`, `test-support`,
-`transcript`, `untrusted-content`, `vault`, `what-if`, `worker`.
+### The 28 that have no item pin, by name
 
-`record` left this list in `P2-X3` and `dashboard` never joined it. See
-[What the `P2-X3` rollout closed](#what-the-p2-x3-rollout-closed).
+`admission`, `capture-client`, `cli`, `connector`, `contracts`, `core`,
+`crypto`, `daemon`, `desktop`, `domain`, `egress`, `export-job`, `indexer`,
+`ledger`, `policy`, `portability`, `projections`, `recovery`,
+`repository-analyzer`, `retention`, `rpc`, `scenario`, `store`,
+`store-platform`, `test-support`, `transcript`, `vault`, `worker`.
 
-**When that starts to matter.** These crates keep no whole-set inventory of
-their own that a line prefix could blind, which is why they are not on the
-derivation: there is no false sentence to make true. What is *not* true of them
-is the backstop -- an item added to any of them is not an extra key anywhere.
+Eighteen crates left this list in `P2-RF30` and two more in `P2-X3` before it.
+
+**Why this list is shorter, and what the old reason for its length was.** The
+page used to say of the crates on it: *"These crates keep no whole-set inventory
+of their own that a line prefix could blind, which is why they are not on the
+derivation: there is no false sentence to make true."*
+
+**That was false, and `P2-A5`'s fifth audit measured it false.** One method added
+inside the existing `impl StageEvidence` block of `crates/competency` — spelling
+none of the names that crate's guards list, adding no `use` item, no field and no
+re-export — filled a personal competency cell at the `USED` stage from a snapshot
+identifier and a classification token alone, and passed the whole workspace on
+both hosts. `crates/competency` is `P2-R5`'s only consumer on the
+personal-competency path and its module documentation opens with the claim that
+there are two doors into stage evidence and no third. It was on this list. The
+identical shape in a pinned package was caught by name, so **the attribution was
+the pin's scope, not the item's form**.
+
+The same audit measured a second reason the list was too long: the line-prefix
+arm searched for three assembled literals, so `consent`, `curriculum` and
+`untrusted-content`, which write their `impl` prefix with no trailing space, and
+`what-if`, which strips a prefix rather than testing one, held the shape and were
+outside the arm anyway. `PINNED_PACKAGE_FLOOR` was 23 and the derivation found
+exactly 23, so the floor could not see the miss either.
+
+Both are repaired without inventing a third derivation. `competency` enters
+through **both** existing arms: declaring `StageEvidence` and `PromotingEvidence`
+in `CLOSED_TYPES` puts it on the arm `P2-X3` built for exactly this — *where a
+package says that its own surface is the subject of a contract sentence* — and
+the line-prefix detector, asked about the literal's **first word** instead of
+about three spellings, reports it as well. The arm grew from 23 packages to 43.
+
+**What is still true of the 28.** An item added to any of them is not an extra
+key anywhere.
 Two things still reach them and both are workspace-wide:
 `every_item_that_reaches_a_closed_type_is_pinned`, which is over the whole
 workspace per closed type, and `the_items_tile_every_file_the_workspace_compiles`,
 which reads every product file of every crate and fails on an item form the
-reader has no rule for. So a route from one of the 47 **into** a closed type is
-caught today; an item that folds a type one of the 47 owns is not.
+reader has no rule for. So a route from one of the 28 **into** a closed type is
+caught today; an item that folds a type one of the 28 owns is not.
 
-The moment one of the 45 grows a contract sentence about its own surface --
+The moment one of the 28 grows a contract sentence about its own surface --
 "the only accessor", "no signature folds these" -- it needs a pin, and the
 line-prefix derivation will not add one for it, because it keys on the collector
 rather than on the sentence. That was the seam: a crate that writes such a
 sentence **as an item-based rule from the start** never appears on the
 line-prefix list and never got a pin.
 
-`P2-X3` is the first such crate, and closing the seam is what it did to this
-rule rather than what it worked around. The pinned-package set is now the
-**union of two derivations**: the packages that key an inventory on a line
-prefix, and the packages that own a type in `CLOSED_TYPES`. Declaring a closed
-type is how a package says its own surface is the subject of a contract
-sentence, and it now also pins that package's whole item set. For the six types
-that were there before, the union changes nothing — all four of their packages
-were already on the first list — so the addition is exactly `record` and
-`dashboard`.
+`P2-X3` closed the seam in the rule rather than working around it. The
+pinned-package set is the **union of two derivations**: the packages that key an
+inventory on a line prefix, and the packages that own a type in `CLOSED_TYPES`.
+Declaring a closed type is how a package says its own surface is the subject of a
+contract sentence, and it pins that package's whole item set.
 
-What is still not read is the sentence itself. A crate that writes one and
-declares no closed type still gets no pin, and nothing in this repository reads
-sentences.
+`P2-RF30` is what that arm was built for. `crates/competency` held the sentence
+`P2-A5` measured broken — *two doors and there is no third* — keyed no inventory
+on a line prefix that `T227`'s detector could see, and owned no closed type, so
+it was outside both arms. Declaring `StageEvidence` and `PromotingEvidence` puts
+it on the second, and normalising the first arm's detector puts it on that one
+too; either alone is enough, and the arm grew from 23 packages to 43 because the
+detector stopped keying on three spellings.
 
-### What the sixteen copied reach readers hold now
+**What is still not read is the sentence itself.** A crate that writes one, keys
+no line-prefix collector and declares no closed type still gets no pin, and
+nothing in this repository reads sentences. `crates/policy` is that shape today,
+measured rather than argued: `#[derive(Debug)] pub struct SurfaceProbe;`
+appended to `crates/policy/src/lib.rs` leaves `academic-policy` and
+`academic-contracts` at **67 passed, 0 failed, exit 0**. The 28 above are the
+list of crates where that is true, and the only closure over it that needs no
+detector at all is to pin every package the workspace compiles — 71 files
+instead of 43, and every body edit anywhere a line in a pin. `P2-RF30` did not
+make that trade and records it here as the one that remains.
+
+### What the eighteen copied reach readers hold now
 
 `P2-R2` repaired a reach guard from a token list into three whole-set
 allowlists. `P2-A5` measured the repaired one bypassed by
@@ -3511,16 +3554,40 @@ from a middle segment read the byte three positions back, which is then the `s`
 of a keyword. The rule now asks whether the segment already sits inside a key
 this pass took, which needs no keyword list and no leading-`::` exception.
 
-They are still sixteen copies. A dev-dependency crate would make them one, and
-would add an edge to the dependency closure of sixteen crates -- the closure
-that `tools/phase1-scaffold-policy.test.mjs`'s dependency map, its acyclic graph
-and each crate's `USE_ITEMS` inventory exist to hold still. Paying in the thing
-being protected to deduplicate the thing protecting it is the wrong trade. What
+They are eighteen copies. The eighteenth is `P2-R1`, and `P2-A5`'s fifth audit
+is what found it missing: `REACH_READERS` did not contain `crates/repository`,
+`T226` had recorded that crate as using a different reader, and **it used none**.
+`the_crate_touches_the_filesystem_only_to_read_it` compared every `fs::` name
+against a three-entry list and every `use` item against a fourteen-entry list and
+had no third comparison, so a fully-qualified inline `std::net` path inside
+`SourceKind::of_path` — a live function on the capture path — left both that test
+and `analyzer_cannot_mutate_source_or_open_a_socket` at 11 ok apiece, and none of
+that second test's three levels is about this crate's own source.
+
+Since `P2-RF29` the sealed key does notice such an injection, because
+`of_path`'s body text moves — but it notices it in another crate's test binary,
+as *"`academic-repository` compiles items nobody wrote down"*, which says that
+some text changed and not that this crate reached the network.
+`REACHED_PATHS` is a whole set of three entries with their reasons now, and the
+failure names `std::net`, in the suite where the claim lives. Measured on
+`b31cc27` before the repair and on this branch after: three forms —
+`<str as ::std::net::ToSocketAddrs>::to_socket_addrs`, `::std::env::var` and
+`::std::process::id`, none spelling an `fs::` name or adding a `use` item — each
+the only failure of eleven, each naming its own crate root.
+
+A dev-dependency crate would make them one, and would add an edge to the
+dependency closure of eighteen crates -- the closure that
+`tools/phase1-scaffold-policy.test.mjs`'s dependency map, its acyclic graph and
+each crate's `USE_ITEMS` inventory exist to hold still. Paying in the thing being
+protected to deduplicate the thing protecting it is the wrong trade. What
 replaces one copy is `the_reach_readers_are_one_reader`: the bodies are compared
-against each other with the crate-root list removed, so sixteen copies are one
-text, and every carrier crate is required to hold the driving control. One
-driven copy plus textual identity is the same guarantee as one function, and a
-seventeenth copy that arrives with the old body fails by name.
+against each other with the crate-root list removed, so eighteen copies are one
+text, and every carrier crate is required to hold the driving control. One driven
+copy plus textual identity is the same guarantee as one function, and a
+nineteenth copy that arrives with the old body fails by name. The eighteenth was
+not written by hand: it was taken whole out of
+`crates/repository-analysis/tests/analysis_scans.rs`, and that rule is what says
+so.
 
 ### The alias closure, and what it costs
 
@@ -3579,9 +3646,46 @@ Every row is its own build, injected into the worktree and restored, with
 | 10 | one reach reader given an extra statement | -- | `the_reach_readers_are_one_reader` FAILED naming `crates/role-profile/tests/role_scans.rs` |
 | 11 | one crate's qualified-path control removed | -- | the same test FAILED naming `role-profile` |
 
+`P2-RF30` added seven rows. Every "before" was measured on a second lane
+extracted from `git archive b31cc27`, with the injected files' git object hashes
+checked against the commit first; every "after" is its own build on the branch.
+
+| # | injection | before the repair | after |
+|---|---|---|---|
+| 12 | `pub fn of_snapshot_reading(id, stage, snapshot: &str, concept: &str)` inside the existing `impl StageEvidence` block of `crates/competency` — no forbidden token, no `use` item, no field, no re-export | **exit 0**, `item_inventory_scans` 6 ok: the crate was on neither derivation | `every_item_in_these_packages_is_pinned` FAILED naming the item **and** `every_item_that_reaches_a_closed_type_is_pinned` FAILED naming `StageEvidence` and quoting the contract; 5 passed, 2 failed |
+| 13 | the same door written as an `impl StageEvidence` block **inside the body** of `StageEvidence::id` — globally effective Rust the item reader does not descend into | **exit 0** on the same lane, riding in the same build as row 12 | the same two failures. `P2-RF29`'s sealed key is what carries the body once the package is pinned; the closed type is what names the route |
+| 14 | `pub const RAW_LEN: fn(&str) -> usize` at module level in `crates/untrusted-content` — one of the four packages the three-literal detector missed | (unpinned: nothing to fail) | `every_item_in_these_packages_is_pinned` FAILED naming `const RAW_LEN: fn(&str) -> usize`; the only failure of seven. The first form of this injection did not compile — it displaced `admit`'s doc comment under `#![deny(missing_docs)]` — and an injection that does not compile is not evidence |
+| 15 | `#[derive(Debug)] pub struct SurfaceProbe;` in `crates/policy`, a package on **neither** derivation | **exit 0** | **still exit 0**, 67 passed / 0 failed. This is the residue, measured rather than argued: the 28 crates on neither arm are where an added item is an extra key nowhere. The first form of it did not compile either, under `-D missing-debug-implementations` |
+| 16 | `<str as ::std::net::ToSocketAddrs>::to_socket_addrs("example.invalid:80")` in `SourceKind::of_path`, `crates/repository/src/snapshot.rs` | `repository_scans` **11 ok**, `snapshot` **11 ok** — including `analyzer_cannot_mutate_source_or_open_a_socket`; the only thing that fires is the sealed-key pin in another crate's binary, saying an item's text changed | `the_crate_touches_the_filesystem_only_to_read_it` FAILED naming `std::net` as a path outside the inventory; the only failure of eleven |
+| 17 | `::std::env::var("PATH")` and, in a second build, `::std::process::id()` at the same site | -- | the same test FAILED naming `std::env` and `std::process` in turn, each the only failure of eleven |
+| 18 | injection K: the `BPF_JGE` floor removed and `x32_answer()` clamped, then separately the floor's `k` replaced with `u32::MAX` | 20 passed, `native.rs` 4 passed, x32 ABI open | `the_x32_floor_is_pinned_as_the_bytes_the_kernel_reads` FAILED on the program's shape and, for the second form, on the eight bytes; the only failure in the package either way |
+
 ### Two findings recorded rather than repaired
 
-**Injection K persists and now completes a TCP handshake.** `P2-A5` removed the
+**Injection K is closed by `P2-RF30`.** The paragraph below is what three audits
+recorded; the close it names is made. `refuse_every_socket` assembled the filter
+and installed it in one function, so the program was never a value a test could
+read. The assembly is split into `socket_filter_program`, and
+`the_x32_floor_is_pinned_as_the_bytes_the_kernel_reads` reads it: the program is
+`denied_syscalls().len() + 7` instructions, instruction 4 encodes little-endian
+to `35 00 0e 00 00 00 00 40` — `BPF_JMP | BPF_JGE | BPF_K`, a jump past all
+thirteen denied comparisons and the allow, no fall-through, and
+`X32_SYSCALL_BIT` — and it is the only unsigned jump in the program. The eight
+bytes are spelled out from the four `#[repr(C)]` fields rather than transmuted,
+so the pin is over an encoding a reader can check against the seccomp ABI.
+x86_64 only, because the x32 ABI is.
+
+Both halves are driven in the WSL lane. Under the whole of injection K the
+package is 20 passed with `native.rs` 4 passed — the audit's number, with the
+x32 ABI open — and the byte pin is the only failure. Replacing the floor's `k`
+with `u32::MAX`, which leaves the length and the opcode intact and lets every
+x32 number through, fails on the bytes rather than on the shape: `[53, 0, 14, 0,
+255, 255, 255, 255]` against `[53, 0, 14, 0, 0, 0, 0, 64]`. A length pin alone
+would have accepted a floor nobody can reach.
+
+The original record follows.
+
+**Injection K persisted for three audits and completed a TCP handshake.** `P2-A5` removed the
 x32 ABI floor from the seccomp program and clamped `x32_answer()`, and the
 acceptance suite stayed green at 20 passed while an independent probe opened an
 x32 socket and connected to a listener in another process. The verification
