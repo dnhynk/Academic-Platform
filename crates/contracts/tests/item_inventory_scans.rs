@@ -165,6 +165,29 @@ fn product_items(package: &str) -> Result<Vec<Item>, Box<dyn Error>> {
     Ok(found)
 }
 
+/// Every product item of every package in `crates/`.
+///
+/// The closed-type rule is workspace-wide rather than package-wide, and the
+/// difference is not hypothetical: `crates/readiness/src/score.rs` names
+/// `AccuracyWitness`, so a route written there would have been outside a rule
+/// that read only the declaring package — a hole of exactly the shape this
+/// file exists to close, one crate over. It contributes no entry today because
+/// the mention is in a doc comment and `Item::text` is the blanked view, which
+/// is the reason that view exists.
+fn workspace_items() -> Result<Vec<Item>, Box<dyn Error>> {
+    let repository = repository_root()?;
+    let mut found = Vec::new();
+    for directory in crate_directories(&repository)? {
+        let package = directory
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default()
+            .to_owned();
+        found.extend(product_items(&package)?);
+    }
+    Ok(found)
+}
+
 /// Every product file of the workspace, with its text.
 fn product_files() -> Result<BTreeMap<String, String>, Box<dyn Error>> {
     let repository = repository_root()?;
@@ -369,9 +392,9 @@ fn every_item_in_these_packages_is_pinned() -> TestResult {
 /// is the sentence the reader has to go and check.
 #[test]
 fn every_item_that_reaches_a_closed_type_is_pinned() -> TestResult {
+    let workspace = workspace_items()?;
     for closed in &CLOSED_TYPES {
-        let items = product_items(closed.package)?;
-        let mut keys: Vec<String> = items
+        let mut keys: Vec<String> = workspace
             .iter()
             .filter(|item| item.reaches(closed.name))
             .map(Item::key)
@@ -384,8 +407,9 @@ fn every_item_that_reaches_a_closed_type_is_pinned() -> TestResult {
                 .iter()
                 .map(|entry| (*entry).to_owned())
                 .collect::<Vec<_>>(),
-            "the items that reach `{}` changed, and the contract on them is: {}",
+            "the items that reach `{}`, declared in {}, changed; the contract on them is: {}",
             closed.name,
+            closed.package,
             closed.contract
         );
     }
