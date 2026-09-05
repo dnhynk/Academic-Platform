@@ -1,52 +1,52 @@
 crates/home/src/alert.rs [priv] impl AlertBucket
 crates/home/src/alert.rs [priv] impl DayWindow
 crates/home/src/alert.rs [priv] impl GroupedAlerts
-crates/home/src/alert.rs [priv] use academic_domain::TimestampMillis
-crates/home/src/alert.rs [priv] use crate::{HomeCard, HomeError}
-crates/home/src/alert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DayWindow
-crates/home/src/alert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AlertBucket
-crates/home/src/alert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GroupedAlerts
-crates/home/src/alert.rs [pub] impl AlertBucket :: #[must_use] const fn of(deadline: Option<TimestampMillis>, window: DayWindow) -> Self
-crates/home/src/alert.rs [pub] impl AlertBucket :: #[must_use] const fn spec_words(self) -> &'static str
-crates/home/src/alert.rs [pub] impl AlertBucket :: const ALL: [Self; 3]
-crates/home/src/alert.rs [pub] impl DayWindow :: #[must_use] const fn ends(self) -> TimestampMillis
-crates/home/src/alert.rs [pub] impl DayWindow :: #[must_use] const fn starts(self) -> TimestampMillis
-crates/home/src/alert.rs [pub] impl DayWindow :: const fn new(starts: TimestampMillis, ends: TimestampMillis) -> Result<Self, HomeError>
-crates/home/src/alert.rs [pub] impl GroupedAlerts :: #[must_use] fn bucket(&self, bucket: AlertBucket) -> &[HomeCard]
-crates/home/src/alert.rs [pub] impl GroupedAlerts :: #[must_use] fn group(cards: Vec<HomeCard>, window: DayWindow) -> Self
-crates/home/src/alert.rs [pub] impl GroupedAlerts :: #[must_use] fn total(&self) -> usize
+crates/home/src/alert.rs [priv] use academic_domain::TimestampMillis |06dc51c3583793c7
+crates/home/src/alert.rs [priv] use crate::{HomeCard, HomeError} |71ebe5ca6d80bb48
+crates/home/src/alert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DayWindow |5f8c40288647ff9d
+crates/home/src/alert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AlertBucket |70cacdf5cc83686c
+crates/home/src/alert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GroupedAlerts |33985a6c8a395fbd
+crates/home/src/alert.rs [pub] impl AlertBucket :: #[must_use] const fn of(deadline: Option<TimestampMillis>, window: DayWindow) -> Self |096ca4ad4895d1d1
+crates/home/src/alert.rs [pub] impl AlertBucket :: #[must_use] const fn spec_words(self) -> &'static str |6ff316818bcc3d23
+crates/home/src/alert.rs [pub] impl AlertBucket :: const ALL: [Self; 3] |3b1a41bad688cc7f
+crates/home/src/alert.rs [pub] impl DayWindow :: #[must_use] const fn ends(self) -> TimestampMillis |336e9aae63054caf
+crates/home/src/alert.rs [pub] impl DayWindow :: #[must_use] const fn starts(self) -> TimestampMillis |e84072e415391381
+crates/home/src/alert.rs [pub] impl DayWindow :: const fn new(starts: TimestampMillis, ends: TimestampMillis) -> Result<Self, HomeError> |5d1589ef2db3dc69
+crates/home/src/alert.rs [pub] impl GroupedAlerts :: #[must_use] fn bucket(&self, bucket: AlertBucket) -> &[HomeCard] |ff86cf508f367a84
+crates/home/src/alert.rs [pub] impl GroupedAlerts :: #[must_use] fn group(cards: Vec<HomeCard>, window: DayWindow) -> Self |2547cb9d7b30189d
+crates/home/src/alert.rs [pub] impl GroupedAlerts :: #[must_use] fn total(&self) -> usize |aeadcff583f530bf
 crates/home/src/card.rs [priv] impl KnowledgeNeed
 crates/home/src/card.rs [priv] impl NextStep
 crates/home/src/card.rs [priv] impl OfficialCondition
 crates/home/src/card.rs [priv] impl OpenItem
 crates/home/src/card.rs [priv] impl OpenItemKind
-crates/home/src/card.rs [priv] use academic_domain::{EntityId, TimestampMillis}
-crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum OfficialCondition
-crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct KnowledgeNeed
-crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct NextStep
-crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct OpenItem
-crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum OpenItemKind
-crates/home/src/card.rs [pub] impl KnowledgeNeed :: #[must_use] const fn concept(&self) -> EntityId
-crates/home/src/card.rs [pub] impl KnowledgeNeed :: #[must_use] const fn new(concept: EntityId, project: EntityId) -> Self
-crates/home/src/card.rs [pub] impl KnowledgeNeed :: #[must_use] const fn project(&self) -> EntityId
-crates/home/src/card.rs [pub] impl NextStep :: #[must_use] const fn chosen(path: EntityId, step: EntityId) -> Self
-crates/home/src/card.rs [pub] impl NextStep :: #[must_use] const fn path(&self) -> EntityId
-crates/home/src/card.rs [pub] impl NextStep :: #[must_use] const fn step(&self) -> EntityId
-crates/home/src/card.rs [pub] impl OfficialCondition :: #[must_use] const fn due(&self) -> Option<TimestampMillis>
-crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn kind(&self) -> OpenItemKind
-crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn new(kind: OpenItemKind, subject: EntityId) -> Self
-crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn subject(&self) -> EntityId
-crates/home/src/card.rs [pub] impl OpenItemKind :: #[must_use] const fn spec_words(self) -> &'static str
-crates/home/src/card.rs [pub] impl OpenItemKind :: const ALL: [Self; 2]
+crates/home/src/card.rs [priv] use academic_domain::{EntityId, TimestampMillis} |41c4e388b321b28f
+crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum OfficialCondition |990a7116ed1e2199
+crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct KnowledgeNeed |5ee755117f8a67cd
+crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct NextStep |a066de77e573b1d2
+crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct OpenItem |c443cbc5b993aa60
+crates/home/src/card.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum OpenItemKind |d4f2283afbd4ce07
+crates/home/src/card.rs [pub] impl KnowledgeNeed :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/home/src/card.rs [pub] impl KnowledgeNeed :: #[must_use] const fn new(concept: EntityId, project: EntityId) -> Self |e1253650000dca53
+crates/home/src/card.rs [pub] impl KnowledgeNeed :: #[must_use] const fn project(&self) -> EntityId |e9a88bf8126b106b
+crates/home/src/card.rs [pub] impl NextStep :: #[must_use] const fn chosen(path: EntityId, step: EntityId) -> Self |5a34fb871b7a2c6d
+crates/home/src/card.rs [pub] impl NextStep :: #[must_use] const fn path(&self) -> EntityId |fe773c4365d7a477
+crates/home/src/card.rs [pub] impl NextStep :: #[must_use] const fn step(&self) -> EntityId |92a9b60095289965
+crates/home/src/card.rs [pub] impl OfficialCondition :: #[must_use] const fn due(&self) -> Option<TimestampMillis> |6227ff988202ad28
+crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn kind(&self) -> OpenItemKind |09a1b45cfd10cf5e
+crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn new(kind: OpenItemKind, subject: EntityId) -> Self |ee5bf23714ff119c
+crates/home/src/card.rs [pub] impl OpenItem :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
+crates/home/src/card.rs [pub] impl OpenItemKind :: #[must_use] const fn spec_words(self) -> &'static str |78d60df9015cf9aa
+crates/home/src/card.rs [pub] impl OpenItemKind :: const ALL: [Self; 2] |09fab32b832750c0
 crates/home/src/freshness.rs [priv] impl FreshnessAlert
-crates/home/src/freshness.rs [priv] use academic_domain::{EntityId, FreshnessBand}
-crates/home/src/freshness.rs [priv] use crate::UpcomingUse
-crates/home/src/freshness.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct FreshnessAlert
-crates/home/src/freshness.rs [pub] impl FreshnessAlert :: #[must_use] const fn band(&self) -> FreshnessBand
-crates/home/src/freshness.rs [pub] impl FreshnessAlert :: #[must_use] const fn concept(&self) -> EntityId
-crates/home/src/freshness.rs [pub] impl FreshnessAlert :: #[must_use] const fn raise(concept: EntityId, band: FreshnessBand, upcoming: UpcomingUse) -> Self
-crates/home/src/freshness.rs [pub] impl FreshnessAlert :: #[must_use] const fn upcoming(&self) -> UpcomingUse
-crates/home/src/lib.rs [priv] #![forbid(unsafe_code)]
+crates/home/src/freshness.rs [priv] use academic_domain::{EntityId, FreshnessBand} |db517c91fd47e371
+crates/home/src/freshness.rs [priv] use crate::UpcomingUse |feebd7fb0ed9424d
+crates/home/src/freshness.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct FreshnessAlert |206b1ef289342e1d
+crates/home/src/freshness.rs [pub] impl FreshnessAlert :: #[must_use] const fn band(&self) -> FreshnessBand |45ab8e35c7b9e7e1
+crates/home/src/freshness.rs [pub] impl FreshnessAlert :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/home/src/freshness.rs [pub] impl FreshnessAlert :: #[must_use] const fn raise(concept: EntityId, band: FreshnessBand, upcoming: UpcomingUse) -> Self |f518d26b6a9396d6
+crates/home/src/freshness.rs [pub] impl FreshnessAlert :: #[must_use] const fn upcoming(&self) -> UpcomingUse |1793c6733a80c6bc
+crates/home/src/lib.rs [priv] #![forbid(unsafe_code)] |1ac66e371b73deac
 crates/home/src/lib.rs [priv] impl HomeGroup
 crates/home/src/lib.rs [priv] mod alert
 crates/home/src/lib.rs [priv] mod card
@@ -55,76 +55,76 @@ crates/home/src/lib.rs [priv] mod occasion
 crates/home/src/lib.rs [priv] mod permission
 crates/home/src/lib.rs [priv] mod prerequisite
 crates/home/src/lib.rs [priv] mod screen
-crates/home/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum HomeGroup
-crates/home/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum HomeError
-crates/home/src/lib.rs [pub] const HIGHEST_BRIEF: usize
-crates/home/src/lib.rs [pub] const LOWEST_BRIEF: usize
-crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn id(self) -> &'static str
-crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn position(self) -> usize
-crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn spec_words(self) -> &'static str
-crates/home/src/lib.rs [pub] impl HomeGroup :: const ALL: [Self; 8]
-crates/home/src/lib.rs [pub] impl HomeGroup :: const COUNT: usize
-crates/home/src/lib.rs [pub] use alert::{AlertBucket, DayWindow, GroupedAlerts}
-crates/home/src/lib.rs [pub] use card::{KnowledgeNeed, NextStep, OfficialCondition, OpenItem, OpenItemKind}
-crates/home/src/lib.rs [pub] use freshness::FreshnessAlert
-crates/home/src/lib.rs [pub] use occasion::{ScheduledItem, ScheduledOccasion, UpcomingUse}
-crates/home/src/lib.rs [pub] use permission::RecordingPermission
-crates/home/src/lib.rs [pub] use prerequisite::{EstimatedMinutes, PrerequisiteBrief, PrerequisiteItem}
-crates/home/src/lib.rs [pub] use screen::{HomeCard, HomeScreen, HomeSection}
+crates/home/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum HomeGroup |295cd76a9acc802a
+crates/home/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] enum HomeError |7564fd812c1d5ad4
+crates/home/src/lib.rs [pub] const HIGHEST_BRIEF: usize |9260bb27411b77cf
+crates/home/src/lib.rs [pub] const LOWEST_BRIEF: usize |2b85c67495021575
+crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn id(self) -> &'static str |d044152fc5728b74
+crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn position(self) -> usize |175b4253bdc44a40
+crates/home/src/lib.rs [pub] impl HomeGroup :: #[must_use] const fn spec_words(self) -> &'static str |e36a037b2190f994
+crates/home/src/lib.rs [pub] impl HomeGroup :: const ALL: [Self; 8] |b688cbb9fb987834
+crates/home/src/lib.rs [pub] impl HomeGroup :: const COUNT: usize |c2aed194b6323dd9
+crates/home/src/lib.rs [pub] use alert::{AlertBucket, DayWindow, GroupedAlerts} |bf00b3500160ad99
+crates/home/src/lib.rs [pub] use card::{KnowledgeNeed, NextStep, OfficialCondition, OpenItem, OpenItemKind} |515b82b805ff3015
+crates/home/src/lib.rs [pub] use freshness::FreshnessAlert |5552b64cae11a034
+crates/home/src/lib.rs [pub] use occasion::{ScheduledItem, ScheduledOccasion, UpcomingUse} |07d322ab54debd44
+crates/home/src/lib.rs [pub] use permission::RecordingPermission |3bfa8a473093d03b
+crates/home/src/lib.rs [pub] use prerequisite::{EstimatedMinutes, PrerequisiteBrief, PrerequisiteItem} |02b81116c1004952
+crates/home/src/lib.rs [pub] use screen::{HomeCard, HomeScreen, HomeSection} |90d4b4de7491218e
 crates/home/src/occasion.rs [priv] impl ScheduledItem
 crates/home/src/occasion.rs [priv] impl ScheduledOccasion
 crates/home/src/occasion.rs [priv] impl UpcomingUse
-crates/home/src/occasion.rs [priv] use academic_domain::{EntityId, TimestampMillis}
-crates/home/src/occasion.rs [priv] use crate::HomeError
-crates/home/src/occasion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ScheduledItem
-crates/home/src/occasion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct UpcomingUse
-crates/home/src/occasion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ScheduledOccasion
-crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn at(&self) -> TimestampMillis
-crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn new(occasion: ScheduledOccasion, subject: EntityId, at: TimestampMillis) -> Self
-crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn occasion(&self) -> ScheduledOccasion
-crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn subject(&self) -> EntityId
-crates/home/src/occasion.rs [pub] impl ScheduledOccasion :: #[must_use] const fn spec_words(self) -> &'static str
-crates/home/src/occasion.rs [pub] impl ScheduledOccasion :: const ALL: [Self; 3]
-crates/home/src/occasion.rs [pub] impl UpcomingUse :: #[must_use] const fn at(&self) -> TimestampMillis
-crates/home/src/occasion.rs [pub] impl UpcomingUse :: #[must_use] const fn occasion(&self) -> ScheduledOccasion
-crates/home/src/occasion.rs [pub] impl UpcomingUse :: #[must_use] const fn subject(&self) -> EntityId
-crates/home/src/occasion.rs [pub] impl UpcomingUse :: fn declare( occasion: ScheduledOccasion, subject: EntityId, at: TimestampMillis, reference: TimestampMillis, ) -> Result<Self, HomeError>
+crates/home/src/occasion.rs [priv] use academic_domain::{EntityId, TimestampMillis} |41c4e388b321b28f
+crates/home/src/occasion.rs [priv] use crate::HomeError |a343b4ffe91df24b
+crates/home/src/occasion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ScheduledItem |d7c9a394826e7ce0
+crates/home/src/occasion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct UpcomingUse |15e960cf721d265b
+crates/home/src/occasion.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ScheduledOccasion |90672a3cc9262bb0
+crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn at(&self) -> TimestampMillis |8bbc46d946c9bc4b
+crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn new(occasion: ScheduledOccasion, subject: EntityId, at: TimestampMillis) -> Self |39713a908ba307bb
+crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn occasion(&self) -> ScheduledOccasion |1d065dc047ce90e9
+crates/home/src/occasion.rs [pub] impl ScheduledItem :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
+crates/home/src/occasion.rs [pub] impl ScheduledOccasion :: #[must_use] const fn spec_words(self) -> &'static str |cdce6e91778661c7
+crates/home/src/occasion.rs [pub] impl ScheduledOccasion :: const ALL: [Self; 3] |539e019dcc1c88a3
+crates/home/src/occasion.rs [pub] impl UpcomingUse :: #[must_use] const fn at(&self) -> TimestampMillis |8bbc46d946c9bc4b
+crates/home/src/occasion.rs [pub] impl UpcomingUse :: #[must_use] const fn occasion(&self) -> ScheduledOccasion |1d065dc047ce90e9
+crates/home/src/occasion.rs [pub] impl UpcomingUse :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
+crates/home/src/occasion.rs [pub] impl UpcomingUse :: fn declare( occasion: ScheduledOccasion, subject: EntityId, at: TimestampMillis, reference: TimestampMillis, ) -> Result<Self, HomeError> |ec92a816f4aa5c8f
 crates/home/src/permission.rs [priv] impl RecordingPermission
-crates/home/src/permission.rs [priv] use academic_consent::CaptureStatus
-crates/home/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RecordingPermission
-crates/home/src/permission.rs [pub] impl RecordingPermission :: #[must_use] const fn of(status: CaptureStatus) -> Self
-crates/home/src/permission.rs [pub] impl RecordingPermission :: #[must_use] const fn spec_words(self) -> &'static str
-crates/home/src/permission.rs [pub] impl RecordingPermission :: const ALL: [Self; 4]
+crates/home/src/permission.rs [priv] use academic_consent::CaptureStatus |c95b2dabd26a8c87
+crates/home/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum RecordingPermission |e2401a4d7732d7a9
+crates/home/src/permission.rs [pub] impl RecordingPermission :: #[must_use] const fn of(status: CaptureStatus) -> Self |fdaec5d376dbdc4f
+crates/home/src/permission.rs [pub] impl RecordingPermission :: #[must_use] const fn spec_words(self) -> &'static str |0dae644ab5c0c8ab
+crates/home/src/permission.rs [pub] impl RecordingPermission :: const ALL: [Self; 4] |b4cdd8fc09d5e70f
 crates/home/src/prerequisite.rs [priv] impl EstimatedMinutes
 crates/home/src/prerequisite.rs [priv] impl PrerequisiteBrief
 crates/home/src/prerequisite.rs [priv] impl PrerequisiteItem
-crates/home/src/prerequisite.rs [priv] use academic_domain::EntityId
-crates/home/src/prerequisite.rs [priv] use crate::{HIGHEST_BRIEF, HomeError, LOWEST_BRIEF, UpcomingUse}
-crates/home/src/prerequisite.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct PrerequisiteItem
-crates/home/src/prerequisite.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct EstimatedMinutes(u16)
-crates/home/src/prerequisite.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PrerequisiteBrief
-crates/home/src/prerequisite.rs [pub] impl EstimatedMinutes :: #[must_use] const fn minutes(self) -> u16
-crates/home/src/prerequisite.rs [pub] impl EstimatedMinutes :: const fn new(minutes: u16) -> Result<Self, HomeError>
-crates/home/src/prerequisite.rs [pub] impl PrerequisiteBrief :: #[must_use] fn items(&self) -> &[PrerequisiteItem]
-crates/home/src/prerequisite.rs [pub] impl PrerequisiteBrief :: fn assemble(items: Vec<PrerequisiteItem>) -> Result<Self, HomeError>
-crates/home/src/prerequisite.rs [pub] impl PrerequisiteItem :: #[must_use] const fn concept(&self) -> EntityId
-crates/home/src/prerequisite.rs [pub] impl PrerequisiteItem :: #[must_use] const fn estimated(&self) -> EstimatedMinutes
-crates/home/src/prerequisite.rs [pub] impl PrerequisiteItem :: #[must_use] const fn offer( concept: EntityId, why_now: UpcomingUse, estimated: EstimatedMinutes, ) -> Self
-crates/home/src/prerequisite.rs [pub] impl PrerequisiteItem :: #[must_use] const fn why_now(&self) -> UpcomingUse
+crates/home/src/prerequisite.rs [priv] use academic_domain::EntityId |2b35968c8cf5fb5f
+crates/home/src/prerequisite.rs [priv] use crate::{HIGHEST_BRIEF, HomeError, LOWEST_BRIEF, UpcomingUse} |1ee485a33b29777c
+crates/home/src/prerequisite.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct PrerequisiteItem |1c1382a347f9891e
+crates/home/src/prerequisite.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct EstimatedMinutes(u16) |4d9989e6f86163a0
+crates/home/src/prerequisite.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct PrerequisiteBrief |70a31a749c29fb96
+crates/home/src/prerequisite.rs [pub] impl EstimatedMinutes :: #[must_use] const fn minutes(self) -> u16 |bc8c8290fe73a52a
+crates/home/src/prerequisite.rs [pub] impl EstimatedMinutes :: const fn new(minutes: u16) -> Result<Self, HomeError> |6440bc2b0cb7c4f5
+crates/home/src/prerequisite.rs [pub] impl PrerequisiteBrief :: #[must_use] fn items(&self) -> &[PrerequisiteItem] |fb497a9205bf5bb5
+crates/home/src/prerequisite.rs [pub] impl PrerequisiteBrief :: fn assemble(items: Vec<PrerequisiteItem>) -> Result<Self, HomeError> |66bd51621f939e5f
+crates/home/src/prerequisite.rs [pub] impl PrerequisiteItem :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/home/src/prerequisite.rs [pub] impl PrerequisiteItem :: #[must_use] const fn estimated(&self) -> EstimatedMinutes |1535f5c1df34435c
+crates/home/src/prerequisite.rs [pub] impl PrerequisiteItem :: #[must_use] const fn offer( concept: EntityId, why_now: UpcomingUse, estimated: EstimatedMinutes, ) -> Self |0a859a62ae7c6fe9
+crates/home/src/prerequisite.rs [pub] impl PrerequisiteItem :: #[must_use] const fn why_now(&self) -> UpcomingUse |0f137741f427b006
 crates/home/src/screen.rs [priv] impl HomeCard
 crates/home/src/screen.rs [priv] impl HomeScreen
 crates/home/src/screen.rs [priv] impl<'screen> HomeSection<'screen>
-crates/home/src/screen.rs [priv] use academic_domain::TimestampMillis
-crates/home/src/screen.rs [priv] use crate::{ AlertBucket, DayWindow, FreshnessAlert, GroupedAlerts, HomeGroup, KnowledgeNeed, NextStep, OfficialCondition, OpenItem, PrerequisiteBrief, RecordingPermission, ScheduledItem, }
-crates/home/src/screen.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum HomeCard
-crates/home/src/screen.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct HomeSection<'screen>
-crates/home/src/screen.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct HomeScreen
-crates/home/src/screen.rs [pub] impl HomeCard :: #[must_use] const fn group(&self) -> HomeGroup
-crates/home/src/screen.rs [pub] impl HomeCard :: #[must_use] fn deadline(&self) -> Option<TimestampMillis>
-crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn bucket_of(card: &HomeCard, window: DayWindow) -> AlertBucket
-crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn cards(&self) -> &[HomeCard]
-crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn compose(cards: Vec<HomeCard>) -> Self
-crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn grouped(&self, window: DayWindow) -> GroupedAlerts
-crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn sections(&self) -> [HomeSection<'_>; HomeGroup::COUNT]
-crates/home/src/screen.rs [pub] impl<'screen> HomeSection<'screen> :: #[must_use] const fn group(&self) -> HomeGroup
-crates/home/src/screen.rs [pub] impl<'screen> HomeSection<'screen> :: #[must_use] fn cards(&self) -> &[&'screen HomeCard]
+crates/home/src/screen.rs [priv] use academic_domain::TimestampMillis |06dc51c3583793c7
+crates/home/src/screen.rs [priv] use crate::{ AlertBucket, DayWindow, FreshnessAlert, GroupedAlerts, HomeGroup, KnowledgeNeed, NextStep, OfficialCondition, OpenItem, PrerequisiteBrief, RecordingPermission, ScheduledItem, } |2882ff31b20e02c6
+crates/home/src/screen.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum HomeCard |21803f4b0df1f64a
+crates/home/src/screen.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct HomeSection<'screen> |db58f89068a77b8e
+crates/home/src/screen.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct HomeScreen |f2f9edf7640e7f21
+crates/home/src/screen.rs [pub] impl HomeCard :: #[must_use] const fn group(&self) -> HomeGroup |2208a68e601e9679
+crates/home/src/screen.rs [pub] impl HomeCard :: #[must_use] fn deadline(&self) -> Option<TimestampMillis> |458051780652abca
+crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn bucket_of(card: &HomeCard, window: DayWindow) -> AlertBucket |92a07a94bc4195a4
+crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn cards(&self) -> &[HomeCard] |e1969e6e65bfcc95
+crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn compose(cards: Vec<HomeCard>) -> Self |8d6f9073415cc4b9
+crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn grouped(&self, window: DayWindow) -> GroupedAlerts |8f4391a591b9f3bf
+crates/home/src/screen.rs [pub] impl HomeScreen :: #[must_use] fn sections(&self) -> [HomeSection<'_>; HomeGroup::COUNT] |957a0827ca0ad492
+crates/home/src/screen.rs [pub] impl<'screen> HomeSection<'screen> :: #[must_use] const fn group(&self) -> HomeGroup |87439ba9daed865b
+crates/home/src/screen.rs [pub] impl<'screen> HomeSection<'screen> :: #[must_use] fn cards(&self) -> &[&'screen HomeCard] |896505417cbda0a6

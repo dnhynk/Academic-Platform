@@ -6,91 +6,91 @@ crates/evidence-center/src/conflict.rs [priv] impl ConflictSide
 crates/evidence-center/src/conflict.rs [priv] impl CorrectionChoice
 crates/evidence-center/src/conflict.rs [priv] impl CorrectionOutcome
 crates/evidence-center/src/conflict.rs [priv] impl CorrectionRecord
-crates/evidence-center/src/conflict.rs [priv] use academic_domain::{ Actor, AuthorityClass, ClaimId, EpistemicStatus, SnapshotId, TimestampMillis, ValidInterval, }
-crates/evidence-center/src/conflict.rs [priv] use academic_proposal::UserDecision
-crates/evidence-center/src/conflict.rs [priv] use crate::CenterError
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum CorrectionOutcome
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Resolution
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ConflictSide
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConflictClass
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConflictLane
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CorrectionChoice
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Default)] struct ConflictBoard
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConflictCase
-crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CorrectionRecord
-crates/evidence-center/src/conflict.rs [pub] fn user_receipt(actor: &Actor) -> Result<UserDecision, CenterError>
-crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: #[must_use] const fn new() -> Self
-crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: #[must_use] fn cases(&self) -> &[ConflictCase]
-crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: #[must_use] fn of_class(&self, class: ConflictClass) -> Vec<&ConflictCase>
-crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: #[must_use] fn unresolved(&self) -> Vec<&ConflictCase>
-crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: fn open(&mut self, case: ConflictCase)
-crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: fn settle( &mut self, class: ConflictClass, claim: ClaimId, outcome: CorrectionOutcome, decided_by: UserDecision, decided_at: TimestampMillis, ) -> Result<(), CenterError>
-crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn both_sides(&self) -> (&ConflictSide, &ConflictSide)
-crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn class(&self) -> ConflictClass
-crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn offered(&self) -> [CorrectionChoice; 3]
-crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn open( class: ConflictClass, held: ConflictSide, incoming: ConflictSide, opened_at: TimestampMillis, ) -> Self
-crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn opened_at(&self) -> TimestampMillis
-crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn history(&self) -> &[CorrectionRecord]
-crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn resolution(&self) -> Resolution
-crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: fn settle( &mut self, outcome: CorrectionOutcome, decided_by: UserDecision, decided_at: TimestampMillis, )
-crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: #[must_use] const fn marker_token(self) -> &'static str
-crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: #[must_use] const fn spec_words(self) -> &'static str
-crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: const ALL: [Self; 2]
-crates/evidence-center/src/conflict.rs [pub] impl ConflictLane :: const ALL: [Self; 2]
-crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn applies(&self) -> ValidInterval
-crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn authority(&self) -> AuthorityClass
-crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn claim(&self) -> ClaimId
-crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn lane(&self) -> ConflictLane
-crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn new( lane: ConflictLane, claim: ClaimId, status: EpistemicStatus, authority: AuthorityClass, recorded_at: TimestampMillis, applies: ValidInterval, observed_in: Option<SnapshotId>, ) -> Self
-crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn observed_in(&self) -> Option<SnapshotId>
-crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn recorded_at(&self) -> TimestampMillis
-crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn status(&self) -> EpistemicStatus
-crates/evidence-center/src/conflict.rs [pub] impl CorrectionChoice :: #[must_use] const fn spec_words(self) -> &'static str
-crates/evidence-center/src/conflict.rs [pub] impl CorrectionChoice :: const ALL: [Self; 3]
-crates/evidence-center/src/conflict.rs [pub] impl CorrectionOutcome :: #[must_use] const fn choice(&self) -> CorrectionChoice
-crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn choice(&self) -> CorrectionChoice
-crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn decided_at(&self) -> TimestampMillis
-crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn decided_by(&self) -> &UserDecision
-crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn outcome(&self) -> CorrectionOutcome
+crates/evidence-center/src/conflict.rs [priv] use academic_domain::{ Actor, AuthorityClass, ClaimId, EpistemicStatus, SnapshotId, TimestampMillis, ValidInterval, } |43f4a466656e4bc3
+crates/evidence-center/src/conflict.rs [priv] use academic_proposal::UserDecision |46650cad7ba30030
+crates/evidence-center/src/conflict.rs [priv] use crate::CenterError |55643000a79fdd8d
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum CorrectionOutcome |6e799a42ec7676d7
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum Resolution |24cdf9adf3c6f9a8
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ConflictSide |04d5a7a820398fec
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConflictClass |7f6a707404b43522
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ConflictLane |751583ce0416d474
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CorrectionChoice |32f0079472e91272
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, Default)] struct ConflictBoard |55422839143f09dc
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ConflictCase |303c92014007e68a
+crates/evidence-center/src/conflict.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct CorrectionRecord |4395283f2c255a17
+crates/evidence-center/src/conflict.rs [pub] fn user_receipt(actor: &Actor) -> Result<UserDecision, CenterError> |aaa57096c7a4169c
+crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: #[must_use] const fn new() -> Self |374ee748af67c9ab
+crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: #[must_use] fn cases(&self) -> &[ConflictCase] |d1cb8846abba4f14
+crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: #[must_use] fn of_class(&self, class: ConflictClass) -> Vec<&ConflictCase> |75a3db56b0d15e91
+crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: #[must_use] fn unresolved(&self) -> Vec<&ConflictCase> |b6c5152f0447367b
+crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: fn open(&mut self, case: ConflictCase) |c5e11742a84193b8
+crates/evidence-center/src/conflict.rs [pub] impl ConflictBoard :: fn settle( &mut self, class: ConflictClass, claim: ClaimId, outcome: CorrectionOutcome, decided_by: UserDecision, decided_at: TimestampMillis, ) -> Result<(), CenterError> |ba6633dc91df881f
+crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn both_sides(&self) -> (&ConflictSide, &ConflictSide) |149ed371ee3ef1e6
+crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn class(&self) -> ConflictClass |ab1a18b063f64d1d
+crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn offered(&self) -> [CorrectionChoice; 3] |1c434bf0cab96a17
+crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn open( class: ConflictClass, held: ConflictSide, incoming: ConflictSide, opened_at: TimestampMillis, ) -> Self |1e8c8e9199a461a8
+crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] const fn opened_at(&self) -> TimestampMillis |67c3e1b2243a4713
+crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn history(&self) -> &[CorrectionRecord] |a9fe96cf3e626789
+crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: #[must_use] fn resolution(&self) -> Resolution |f3846e6c6773f46b
+crates/evidence-center/src/conflict.rs [pub] impl ConflictCase :: fn settle( &mut self, outcome: CorrectionOutcome, decided_by: UserDecision, decided_at: TimestampMillis, ) |801835b424acd4c2
+crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: #[must_use] const fn marker_token(self) -> &'static str |0c1d6fafa513e541
+crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: #[must_use] const fn spec_words(self) -> &'static str |7243d19443955134
+crates/evidence-center/src/conflict.rs [pub] impl ConflictClass :: const ALL: [Self; 2] |cb5b6224ce4f184a
+crates/evidence-center/src/conflict.rs [pub] impl ConflictLane :: const ALL: [Self; 2] |f7d91f0d034a1296
+crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn applies(&self) -> ValidInterval |99d63873db58414a
+crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn authority(&self) -> AuthorityClass |55768ebd548a95d4
+crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn claim(&self) -> ClaimId |4e7bdb3a9b627aa4
+crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn lane(&self) -> ConflictLane |b25fe29d1b586acb
+crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn new( lane: ConflictLane, claim: ClaimId, status: EpistemicStatus, authority: AuthorityClass, recorded_at: TimestampMillis, applies: ValidInterval, observed_in: Option<SnapshotId>, ) -> Self |a295b60548df84e9
+crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn observed_in(&self) -> Option<SnapshotId> |ef1f3249518693f5
+crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn recorded_at(&self) -> TimestampMillis |3701f70df0bcee75
+crates/evidence-center/src/conflict.rs [pub] impl ConflictSide :: #[must_use] const fn status(&self) -> EpistemicStatus |b9d792f9fbc7e44e
+crates/evidence-center/src/conflict.rs [pub] impl CorrectionChoice :: #[must_use] const fn spec_words(self) -> &'static str |97b7bae51b4d0296
+crates/evidence-center/src/conflict.rs [pub] impl CorrectionChoice :: const ALL: [Self; 3] |136afb942c01525e
+crates/evidence-center/src/conflict.rs [pub] impl CorrectionOutcome :: #[must_use] const fn choice(&self) -> CorrectionChoice |0165878663e37aa8
+crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn choice(&self) -> CorrectionChoice |18a7a917595ec5db
+crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn decided_at(&self) -> TimestampMillis |e8784743627f68df
+crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn decided_by(&self) -> &UserDecision |f5fe463d55074b92
+crates/evidence-center/src/conflict.rs [pub] impl CorrectionRecord :: #[must_use] const fn outcome(&self) -> CorrectionOutcome |749994548f562b93
 crates/evidence-center/src/correction.rs [priv] impl CorrectionLedger
 crates/evidence-center/src/correction.rs [priv] impl CorrectionMarker
 crates/evidence-center/src/correction.rs [priv] impl CorrectionOrigin
 crates/evidence-center/src/correction.rs [priv] impl HistoricalView
 crates/evidence-center/src/correction.rs [priv] impl UsedClaim
-crates/evidence-center/src/correction.rs [priv] use academic_domain::{ClaimId, TimestampMillis, temporal::TimeCoordinates}
-crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CorrectionMarker
-crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct UsedClaim
-crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CorrectionOrigin
-crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, Default)] struct CorrectionLedger
-crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct HistoricalView
-crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: #[must_use] const fn new() -> Self
-crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: #[must_use] fn claims(&self) -> &[UsedClaim]
-crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: #[must_use] fn corrections(&self) -> &[CorrectionMarker]
-crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: #[must_use] fn view_at(&self, coordinates: TimeCoordinates) -> HistoricalView
-crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: fn record_claim(&mut self, claim: UsedClaim)
-crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: fn record_correction(&mut self, marker: CorrectionMarker)
-crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn corrected(&self) -> ClaimId
-crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn new( corrected: ClaimId, superseding: ClaimId, origin: CorrectionOrigin, recorded_at_seq: u64, recorded_at: TimestampMillis, ) -> Self
-crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn origin(&self) -> CorrectionOrigin
-crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn recorded_at(&self) -> TimestampMillis
-crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn recorded_at_seq(&self) -> u64
-crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn superseding(&self) -> ClaimId
-crates/evidence-center/src/correction.rs [pub] impl CorrectionOrigin :: #[must_use] const fn is_observation_system_change(self) -> bool
-crates/evidence-center/src/correction.rs [pub] impl CorrectionOrigin :: const ALL: [Self; 4]
-crates/evidence-center/src/correction.rs [pub] impl HistoricalView :: #[must_use] const fn coordinates(&self) -> TimeCoordinates
-crates/evidence-center/src/correction.rs [pub] impl HistoricalView :: #[must_use] fn is_marked(&self, claim: ClaimId) -> bool
-crates/evidence-center/src/correction.rs [pub] impl HistoricalView :: #[must_use] fn markers(&self) -> &[CorrectionMarker]
-crates/evidence-center/src/correction.rs [pub] impl HistoricalView :: #[must_use] fn shown(&self) -> &[UsedClaim]
-crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] const fn accepted_at_seq(&self) -> u64
-crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] const fn applies_from(&self) -> TimestampMillis
-crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] const fn claim(&self) -> ClaimId
-crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] const fn new(claim: ClaimId, accepted_at_seq: u64, applies_from: TimestampMillis) -> Self
-crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] fn visible_at(&self, coordinates: TimeCoordinates) -> bool
-crates/evidence-center/src/error.rs [priv] use academic_domain::{ClaimId, TimestampMillis}
-crates/evidence-center/src/error.rs [priv] use academic_proposal::{ProposalId, WorkflowError}
-crates/evidence-center/src/error.rs [priv] use crate::{ConflictClass, PermissionRef, ProposalClass}
-crates/evidence-center/src/error.rs [priv] use thiserror::Error
-crates/evidence-center/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] enum CenterError
+crates/evidence-center/src/correction.rs [priv] use academic_domain::{ClaimId, TimestampMillis, temporal::TimeCoordinates} |652ae3e33786d99a
+crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CorrectionMarker |8b9538ff340d42df
+crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct UsedClaim |2337301c8e124895
+crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CorrectionOrigin |12d76079dfe39451
+crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, Default)] struct CorrectionLedger |2cd4e383ebcb1e11
+crates/evidence-center/src/correction.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct HistoricalView |db7532db0f11b188
+crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: #[must_use] const fn new() -> Self |d677286c3143673f
+crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: #[must_use] fn claims(&self) -> &[UsedClaim] |37dbc299813d53b1
+crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: #[must_use] fn corrections(&self) -> &[CorrectionMarker] |27fe6f0460c8ae92
+crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: #[must_use] fn view_at(&self, coordinates: TimeCoordinates) -> HistoricalView |fb9084fe87ba70a4
+crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: fn record_claim(&mut self, claim: UsedClaim) |c24e292d012191a1
+crates/evidence-center/src/correction.rs [pub] impl CorrectionLedger :: fn record_correction(&mut self, marker: CorrectionMarker) |cfce431d474219dc
+crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn corrected(&self) -> ClaimId |3c4da4b7c80b4ec2
+crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn new( corrected: ClaimId, superseding: ClaimId, origin: CorrectionOrigin, recorded_at_seq: u64, recorded_at: TimestampMillis, ) -> Self |087fcf9a5db5b754
+crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn origin(&self) -> CorrectionOrigin |347273f0dbab6111
+crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn recorded_at(&self) -> TimestampMillis |3701f70df0bcee75
+crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn recorded_at_seq(&self) -> u64 |d542ca483bcdb2cc
+crates/evidence-center/src/correction.rs [pub] impl CorrectionMarker :: #[must_use] const fn superseding(&self) -> ClaimId |57efca55163658be
+crates/evidence-center/src/correction.rs [pub] impl CorrectionOrigin :: #[must_use] const fn is_observation_system_change(self) -> bool |fdc7f3afb488a32f
+crates/evidence-center/src/correction.rs [pub] impl CorrectionOrigin :: const ALL: [Self; 4] |d10f83edcadee0f1
+crates/evidence-center/src/correction.rs [pub] impl HistoricalView :: #[must_use] const fn coordinates(&self) -> TimeCoordinates |93e0cc58de33ae45
+crates/evidence-center/src/correction.rs [pub] impl HistoricalView :: #[must_use] fn is_marked(&self, claim: ClaimId) -> bool |236f8df61779ad83
+crates/evidence-center/src/correction.rs [pub] impl HistoricalView :: #[must_use] fn markers(&self) -> &[CorrectionMarker] |23e0639e4aefa940
+crates/evidence-center/src/correction.rs [pub] impl HistoricalView :: #[must_use] fn shown(&self) -> &[UsedClaim] |390368b127a65cab
+crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] const fn accepted_at_seq(&self) -> u64 |11b32e5e8a96c85a
+crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] const fn applies_from(&self) -> TimestampMillis |a09cc0928bbb654b
+crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] const fn claim(&self) -> ClaimId |4e7bdb3a9b627aa4
+crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] const fn new(claim: ClaimId, accepted_at_seq: u64, applies_from: TimestampMillis) -> Self |1435d10cf9c8831b
+crates/evidence-center/src/correction.rs [pub] impl UsedClaim :: #[must_use] fn visible_at(&self, coordinates: TimeCoordinates) -> bool |e78fd123d35ebb2f
+crates/evidence-center/src/error.rs [priv] use academic_domain::{ClaimId, TimestampMillis} |71b549e63ee19bb8
+crates/evidence-center/src/error.rs [priv] use academic_proposal::{ProposalId, WorkflowError} |5393cd394b8a8149
+crates/evidence-center/src/error.rs [priv] use crate::{ConflictClass, PermissionRef, ProposalClass} |bac6be3acc221888
+crates/evidence-center/src/error.rs [priv] use thiserror::Error |fc76a959c1db87ed
+crates/evidence-center/src/error.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Error)] enum CenterError |88d5e86cdb719e62
 crates/evidence-center/src/inbox.rs [priv] impl ConceptMergeProposal
 crates/evidence-center/src/inbox.rs [priv] impl FindingClassification
 crates/evidence-center/src/inbox.rs [priv] impl InboxEntry
@@ -100,57 +100,57 @@ crates/evidence-center/src/inbox.rs [priv] impl ProposalHeader
 crates/evidence-center/src/inbox.rs [priv] impl ProposalInbox
 crates/evidence-center/src/inbox.rs [priv] impl RelationProposal
 crates/evidence-center/src/inbox.rs [priv] impl StateUpdateProposal
-crates/evidence-center/src/inbox.rs [priv] use academic_domain::{ ConfidencePermille, EntityId, FindingId, MasteryLevel, ModelRunId, PredicateId, SnapshotId, TimestampMillis, }
-crates/evidence-center/src/inbox.rs [priv] use academic_proposal::{ImpactPermille, ProposalId, RiskTier}
-crates/evidence-center/src/inbox.rs [priv] use crate::CenterError
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ConceptMergeProposal
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ProjectClassificationProposal
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ProposalHeader
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct StateUpdateProposal
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FindingClassification
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProposalClass
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Default)] struct ProposalInbox
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum InboxEntry
-crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RelationProposal
-crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn absorbed(&self) -> EntityId
-crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn evidence_before_merge(&self) -> u32
-crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn header(&self) -> &ProposalHeader
-crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn new( header: ProposalHeader, retained: EntityId, absorbed: EntityId, evidence_before_merge: u32, ) -> Self
-crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn retained(&self) -> EntityId
-crates/evidence-center/src/inbox.rs [pub] impl FindingClassification :: const ALL: [Self; 3]
-crates/evidence-center/src/inbox.rs [pub] impl InboxEntry :: #[must_use] const fn class(&self) -> ProposalClass
-crates/evidence-center/src/inbox.rs [pub] impl InboxEntry :: #[must_use] const fn header(&self) -> &ProposalHeader
-crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn classification(&self) -> FindingClassification
-crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn finding(&self) -> FindingId
-crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn header(&self) -> &ProposalHeader
-crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn new( header: ProposalHeader, project: EntityId, snapshot: SnapshotId, finding: FindingId, classification: FindingClassification, ) -> Self
-crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn project(&self) -> EntityId
-crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn snapshot(&self) -> SnapshotId
-crates/evidence-center/src/inbox.rs [pub] impl ProposalClass :: #[must_use] const fn spec_words(self) -> &'static str
-crates/evidence-center/src/inbox.rs [pub] impl ProposalClass :: const ALL: [Self; 4]
-crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn confidence(&self) -> ConfidencePermille
-crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn id(&self) -> ProposalId
-crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn impact(&self) -> ImpactPermille
-crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn model_run(&self) -> ModelRunId
-crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn new( id: ProposalId, tier: RiskTier, confidence: ConfidencePermille, impact: ImpactPermille, model_run: ModelRunId, proposed_at: TimestampMillis, ) -> Self
-crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn proposed_at(&self) -> TimestampMillis
-crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn tier(&self) -> RiskTier
-crates/evidence-center/src/inbox.rs [pub] impl ProposalInbox :: #[must_use] const fn new() -> Self
-crates/evidence-center/src/inbox.rs [pub] impl ProposalInbox :: #[must_use] fn entries(&self) -> &[InboxEntry]
-crates/evidence-center/src/inbox.rs [pub] impl ProposalInbox :: #[must_use] fn of_class(&self, class: ProposalClass) -> Vec<&InboxEntry>
-crates/evidence-center/src/inbox.rs [pub] impl ProposalInbox :: fn admit(&mut self, entry: InboxEntry) -> Result<(), CenterError>
-crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn corroborating_sources(&self) -> u32
-crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn header(&self) -> &ProposalHeader
-crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn new( header: ProposalHeader, subject: EntityId, predicate: PredicateId, object: EntityId, corroborating_sources: u32, ) -> Self
-crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn object(&self) -> EntityId
-crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn predicate(&self) -> &PredicateId
-crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn subject(&self) -> EntityId
-crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn concept(&self) -> EntityId
-crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn from_level(&self) -> MasteryLevel
-crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn header(&self) -> &ProposalHeader
-crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn new( header: ProposalHeader, concept: EntityId, from_level: MasteryLevel, to_level: MasteryLevel, ) -> Self
-crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn to_level(&self) -> MasteryLevel
-crates/evidence-center/src/lib.rs [priv] #![doc(test(attr(deny(warnings))))]
+crates/evidence-center/src/inbox.rs [priv] use academic_domain::{ ConfidencePermille, EntityId, FindingId, MasteryLevel, ModelRunId, PredicateId, SnapshotId, TimestampMillis, } |2fc89347d6531a48
+crates/evidence-center/src/inbox.rs [priv] use academic_proposal::{ImpactPermille, ProposalId, RiskTier} |6e738618e497ed51
+crates/evidence-center/src/inbox.rs [priv] use crate::CenterError |55643000a79fdd8d
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ConceptMergeProposal |bc43a27e2548f5d6
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ProjectClassificationProposal |1b18d88ab59bde8b
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ProposalHeader |6e95eabd516df1b0
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct StateUpdateProposal |dcaa3ece740e27dd
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FindingClassification |62fdb820919f5c92
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProposalClass |f777b15fea3766a8
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, Default)] struct ProposalInbox |d77648be0b802baf
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum InboxEntry |9ac83a0860aa5c89
+crates/evidence-center/src/inbox.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RelationProposal |bcadf2e6c7f0e7a5
+crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn absorbed(&self) -> EntityId |95a745d2ba65747d
+crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn evidence_before_merge(&self) -> u32 |7d67fe0b25737e7d
+crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn header(&self) -> &ProposalHeader |73e5b828913e0eca
+crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn new( header: ProposalHeader, retained: EntityId, absorbed: EntityId, evidence_before_merge: u32, ) -> Self |1d69999ab261d1e6
+crates/evidence-center/src/inbox.rs [pub] impl ConceptMergeProposal :: #[must_use] const fn retained(&self) -> EntityId |c311ceefdd6464fd
+crates/evidence-center/src/inbox.rs [pub] impl FindingClassification :: const ALL: [Self; 3] |dd6ba5c0aafcb56c
+crates/evidence-center/src/inbox.rs [pub] impl InboxEntry :: #[must_use] const fn class(&self) -> ProposalClass |d9c3ad68d8f0f37c
+crates/evidence-center/src/inbox.rs [pub] impl InboxEntry :: #[must_use] const fn header(&self) -> &ProposalHeader |d40e37e7ffc59917
+crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn classification(&self) -> FindingClassification |312ea0b8d60daad0
+crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn finding(&self) -> FindingId |d8a10f160e7a1589
+crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn header(&self) -> &ProposalHeader |73e5b828913e0eca
+crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn new( header: ProposalHeader, project: EntityId, snapshot: SnapshotId, finding: FindingId, classification: FindingClassification, ) -> Self |153efb2e8bb9cb2a
+crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn project(&self) -> EntityId |e9a88bf8126b106b
+crates/evidence-center/src/inbox.rs [pub] impl ProjectClassificationProposal :: #[must_use] const fn snapshot(&self) -> SnapshotId |bdfccc8beed07152
+crates/evidence-center/src/inbox.rs [pub] impl ProposalClass :: #[must_use] const fn spec_words(self) -> &'static str |c6b83084fd4bed6e
+crates/evidence-center/src/inbox.rs [pub] impl ProposalClass :: const ALL: [Self; 4] |43aac71505d2fc42
+crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn confidence(&self) -> ConfidencePermille |59839152a12b7693
+crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn id(&self) -> ProposalId |dda793a9ad77879a
+crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn impact(&self) -> ImpactPermille |8db3f8605af47d99
+crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn model_run(&self) -> ModelRunId |04d376d9043e2d84
+crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn new( id: ProposalId, tier: RiskTier, confidence: ConfidencePermille, impact: ImpactPermille, model_run: ModelRunId, proposed_at: TimestampMillis, ) -> Self |b98e063a03665484
+crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn proposed_at(&self) -> TimestampMillis |9df1186f1dc45861
+crates/evidence-center/src/inbox.rs [pub] impl ProposalHeader :: #[must_use] const fn tier(&self) -> RiskTier |5e74c536e0f627a8
+crates/evidence-center/src/inbox.rs [pub] impl ProposalInbox :: #[must_use] const fn new() -> Self |cfe9e37864a3d19e
+crates/evidence-center/src/inbox.rs [pub] impl ProposalInbox :: #[must_use] fn entries(&self) -> &[InboxEntry] |ce701092f59b03d2
+crates/evidence-center/src/inbox.rs [pub] impl ProposalInbox :: #[must_use] fn of_class(&self, class: ProposalClass) -> Vec<&InboxEntry> |de39308efb13d7e8
+crates/evidence-center/src/inbox.rs [pub] impl ProposalInbox :: fn admit(&mut self, entry: InboxEntry) -> Result<(), CenterError> |7db834bf32b678fd
+crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn corroborating_sources(&self) -> u32 |92aa92d939789ab1
+crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn header(&self) -> &ProposalHeader |73e5b828913e0eca
+crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn new( header: ProposalHeader, subject: EntityId, predicate: PredicateId, object: EntityId, corroborating_sources: u32, ) -> Self |7af8c653f9151a68
+crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn object(&self) -> EntityId |2be807c141503357
+crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn predicate(&self) -> &PredicateId |216546b2e325217b
+crates/evidence-center/src/inbox.rs [pub] impl RelationProposal :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
+crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn concept(&self) -> EntityId |a234d26f3e4fe82b
+crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn from_level(&self) -> MasteryLevel |dc4364bb369f7b10
+crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn header(&self) -> &ProposalHeader |73e5b828913e0eca
+crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn new( header: ProposalHeader, concept: EntityId, from_level: MasteryLevel, to_level: MasteryLevel, ) -> Self |e495ac9f95c86720
+crates/evidence-center/src/inbox.rs [pub] impl StateUpdateProposal :: #[must_use] const fn to_level(&self) -> MasteryLevel |072c13e1a1c09f86
+crates/evidence-center/src/lib.rs [priv] #![doc(test(attr(deny(warnings))))] |6fb5840d02903e77
 crates/evidence-center/src/lib.rs [priv] impl CenterSection
 crates/evidence-center/src/lib.rs [priv] impl EvidenceCenter
 crates/evidence-center/src/lib.rs [priv] impl SectionIndex
@@ -162,70 +162,70 @@ crates/evidence-center/src/lib.rs [priv] mod low_confidence
 crates/evidence-center/src/lib.rs [priv] mod permission
 crates/evidence-center/src/lib.rs [priv] mod source_change
 crates/evidence-center/src/lib.rs [priv] mod transmission
-crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum CenterItem
-crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CenterSection
-crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Default)] struct EvidenceCenter
-crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SectionIndex
-crates/evidence-center/src/lib.rs [pub] impl CenterSection :: #[must_use] const fn spec_words(self) -> &'static str
-crates/evidence-center/src/lib.rs [pub] impl CenterSection :: const ALL: [Self; 6]
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn conflicts(&self) -> &ConflictBoard
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn corrections(&self) -> &CorrectionLedger
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn inbox(&self) -> &ProposalInbox
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn low_confidence(&self) -> &LowConfidenceQueue
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn new() -> Self
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn permissions(&self) -> &PermissionQueue
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn source_changes(&self) -> &SourceChangeLog
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn transmissions(&self) -> &TransmissionLog
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] fn index(&self) -> Vec<SectionIndex>
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] fn items_of(&self, section: CenterSection) -> Vec<CenterItem>
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn conflicts_mut(&mut self) -> &mut ConflictBoard
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn corrections_mut(&mut self) -> &mut CorrectionLedger
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn inbox_mut(&mut self) -> &mut ProposalInbox
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn low_confidence_mut(&mut self) -> &mut LowConfidenceQueue
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn permissions_mut(&mut self) -> &mut PermissionQueue
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn source_changes_mut(&mut self) -> &mut SourceChangeLog
-crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn transmissions_mut(&mut self) -> &mut TransmissionLog
-crates/evidence-center/src/lib.rs [pub] impl SectionIndex :: #[must_use] const fn section(&self) -> CenterSection
-crates/evidence-center/src/lib.rs [pub] impl SectionIndex :: #[must_use] fn items(&self) -> &[CenterItem]
-crates/evidence-center/src/lib.rs [pub] use conflict::{ ConflictBoard, ConflictCase, ConflictClass, ConflictLane, ConflictSide, CorrectionChoice, CorrectionOutcome, CorrectionRecord, Resolution, user_receipt, }
-crates/evidence-center/src/lib.rs [pub] use correction::{ CorrectionLedger, CorrectionMarker, CorrectionOrigin, HistoricalView, UsedClaim, }
-crates/evidence-center/src/lib.rs [pub] use error::CenterError
-crates/evidence-center/src/lib.rs [pub] use inbox::{ ConceptMergeProposal, FindingClassification, InboxEntry, ProjectClassificationProposal, ProposalClass, ProposalHeader, ProposalInbox, RelationProposal, StateUpdateProposal, }
-crates/evidence-center/src/lib.rs [pub] use low_confidence::{ DocumentRegionLocator, LowConfidenceQueue, LowConfidenceSpan, SpanKind, TranscriptLocator, }
-crates/evidence-center/src/lib.rs [pub] use permission::{ DependentAction, DependentActionKind, ExpiringPermission, LivePermission, PermissionKind, PermissionQueue, PermissionRef, }
-crates/evidence-center/src/lib.rs [pub] use source_change::{SourceChangeEntry, SourceChangeLog}
-crates/evidence-center/src/lib.rs [pub] use transmission::{ DeletionReceiptRef, ObjectRange, ProviderRef, ProviderSurface, ReceiptState, TransmissionLog, TransmissionPurpose, TransmissionRecord, }
+crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum CenterItem |58ed93db0bb2765f
+crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum CenterSection |ee742ae9f71ecfd6
+crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, Default)] struct EvidenceCenter |eb621a37f950e76b
+crates/evidence-center/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SectionIndex |88cf273fa84450d1
+crates/evidence-center/src/lib.rs [pub] impl CenterSection :: #[must_use] const fn spec_words(self) -> &'static str |d496281d4661bcba
+crates/evidence-center/src/lib.rs [pub] impl CenterSection :: const ALL: [Self; 6] |a1a6fd89ab3180c6
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn conflicts(&self) -> &ConflictBoard |3b28734c678042a5
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn corrections(&self) -> &CorrectionLedger |32becbe41bd44dbe
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn inbox(&self) -> &ProposalInbox |b837c11b4f67d72f
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn low_confidence(&self) -> &LowConfidenceQueue |412e89c31ce05554
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn new() -> Self |10b2e276f67816aa
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn permissions(&self) -> &PermissionQueue |6d9b5d87b0aefec3
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn source_changes(&self) -> &SourceChangeLog |5ca6db9a559c5730
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] const fn transmissions(&self) -> &TransmissionLog |9001dd5e29b99025
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] fn index(&self) -> Vec<SectionIndex> |d7cffeb132672689
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: #[must_use] fn items_of(&self, section: CenterSection) -> Vec<CenterItem> |b05de87d84668997
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn conflicts_mut(&mut self) -> &mut ConflictBoard |b11b21210fa504e6
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn corrections_mut(&mut self) -> &mut CorrectionLedger |384f6975bca76ed7
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn inbox_mut(&mut self) -> &mut ProposalInbox |f1a7eed4bd709a94
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn low_confidence_mut(&mut self) -> &mut LowConfidenceQueue |ef87cfc917544997
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn permissions_mut(&mut self) -> &mut PermissionQueue |744b51f86ed93f60
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn source_changes_mut(&mut self) -> &mut SourceChangeLog |23458213b58d100d
+crates/evidence-center/src/lib.rs [pub] impl EvidenceCenter :: const fn transmissions_mut(&mut self) -> &mut TransmissionLog |0eb312f7812a7fa2
+crates/evidence-center/src/lib.rs [pub] impl SectionIndex :: #[must_use] const fn section(&self) -> CenterSection |1427b0a26253350d
+crates/evidence-center/src/lib.rs [pub] impl SectionIndex :: #[must_use] fn items(&self) -> &[CenterItem] |f6725f390a365224
+crates/evidence-center/src/lib.rs [pub] use conflict::{ ConflictBoard, ConflictCase, ConflictClass, ConflictLane, ConflictSide, CorrectionChoice, CorrectionOutcome, CorrectionRecord, Resolution, user_receipt, } |082e3cf8f936e4eb
+crates/evidence-center/src/lib.rs [pub] use correction::{ CorrectionLedger, CorrectionMarker, CorrectionOrigin, HistoricalView, UsedClaim, } |a2268e6d22d874f5
+crates/evidence-center/src/lib.rs [pub] use error::CenterError |d17c2c61089dc0a7
+crates/evidence-center/src/lib.rs [pub] use inbox::{ ConceptMergeProposal, FindingClassification, InboxEntry, ProjectClassificationProposal, ProposalClass, ProposalHeader, ProposalInbox, RelationProposal, StateUpdateProposal, } |7feb63ba482a5071
+crates/evidence-center/src/lib.rs [pub] use low_confidence::{ DocumentRegionLocator, LowConfidenceQueue, LowConfidenceSpan, SpanKind, TranscriptLocator, } |869300a88ca9494f
+crates/evidence-center/src/lib.rs [pub] use permission::{ DependentAction, DependentActionKind, ExpiringPermission, LivePermission, PermissionKind, PermissionQueue, PermissionRef, } |cfd5051a464512fc
+crates/evidence-center/src/lib.rs [pub] use source_change::{SourceChangeEntry, SourceChangeLog} |4a9b0e737d0ec106
+crates/evidence-center/src/lib.rs [pub] use transmission::{ DeletionReceiptRef, ObjectRange, ProviderRef, ProviderSurface, ReceiptState, TransmissionLog, TransmissionPurpose, TransmissionRecord, } |963ba6ecb59ca3d9
 crates/evidence-center/src/low_confidence.rs [priv] impl DocumentRegionLocator
 crates/evidence-center/src/low_confidence.rs [priv] impl LowConfidenceQueue
 crates/evidence-center/src/low_confidence.rs [priv] impl LowConfidenceSpan
 crates/evidence-center/src/low_confidence.rs [priv] impl SpanKind
 crates/evidence-center/src/low_confidence.rs [priv] impl TranscriptLocator
-crates/evidence-center/src/low_confidence.rs [priv] use academic_domain::{ ConfidencePermille, ContentDigest, LectureDocumentId, LectureSessionId, TimestampMillis, TranscriptVersionId, }
-crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum LowConfidenceSpan
-crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DocumentRegionLocator
-crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct TranscriptLocator
-crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SpanKind
-crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Default)] struct LowConfidenceQueue
-crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn document(&self) -> LectureDocumentId
-crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn new( session: LectureSessionId, document: LectureDocumentId, page: u32, source_image: ContentDigest, ) -> Self
-crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn page(&self) -> u32
-crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn session(&self) -> LectureSessionId
-crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn source_image(&self) -> ContentDigest
-crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: #[must_use] const fn new() -> Self
-crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: #[must_use] fn of_kind(&self, kind: SpanKind) -> Vec<&LowConfidenceSpan>
-crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: #[must_use] fn spans(&self) -> &[LowConfidenceSpan]
-crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: fn queue(&mut self, span: LowConfidenceSpan)
-crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn confidence(&self) -> ConfidencePermille
-crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn kind(&self) -> SpanKind
-crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn session(&self) -> LectureSessionId
-crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: #[must_use] const fn marker_token(self) -> &'static str
-crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: #[must_use] const fn spec_words(self) -> &'static str
-crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: const ALL: [Self; 3]
-crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn ends_at(&self) -> TimestampMillis
-crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn new( session: LectureSessionId, version: TranscriptVersionId, starts_at: TimestampMillis, ends_at: TimestampMillis, ) -> Self
-crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn session(&self) -> LectureSessionId
-crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn starts_at(&self) -> TimestampMillis
-crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn version(&self) -> TranscriptVersionId
+crates/evidence-center/src/low_confidence.rs [priv] use academic_domain::{ ConfidencePermille, ContentDigest, LectureDocumentId, LectureSessionId, TimestampMillis, TranscriptVersionId, } |1b4cdbddca038e34
+crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum LowConfidenceSpan |4c7c3a5cef26ae97
+crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DocumentRegionLocator |80fe39cc59a9f888
+crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct TranscriptLocator |24bdc9234166382d
+crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SpanKind |18a51ef9cab4c3b4
+crates/evidence-center/src/low_confidence.rs [pub] #[derive(Debug, Clone, Default)] struct LowConfidenceQueue |0ad9a4e30524d9b1
+crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn document(&self) -> LectureDocumentId |aa32dc1cc062004b
+crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn new( session: LectureSessionId, document: LectureDocumentId, page: u32, source_image: ContentDigest, ) -> Self |957c6a84d1fcc55f
+crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn page(&self) -> u32 |2961e18a0a7d568f
+crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn session(&self) -> LectureSessionId |ac37b2b07bcd578c
+crates/evidence-center/src/low_confidence.rs [pub] impl DocumentRegionLocator :: #[must_use] const fn source_image(&self) -> ContentDigest |41d16d3e8d536258
+crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: #[must_use] const fn new() -> Self |6a93da5e3bcd625b
+crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: #[must_use] fn of_kind(&self, kind: SpanKind) -> Vec<&LowConfidenceSpan> |b7db1c036a2002f7
+crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: #[must_use] fn spans(&self) -> &[LowConfidenceSpan] |954cd6bb6e870350
+crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceQueue :: fn queue(&mut self, span: LowConfidenceSpan) |a98e049a504032d1
+crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn confidence(&self) -> ConfidencePermille |e5fc0c026f672afe
+crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn kind(&self) -> SpanKind |63eab7ae75dafdb7
+crates/evidence-center/src/low_confidence.rs [pub] impl LowConfidenceSpan :: #[must_use] const fn session(&self) -> LectureSessionId |8c07c539f803268e
+crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: #[must_use] const fn marker_token(self) -> &'static str |2ed7ace5407ae346
+crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: #[must_use] const fn spec_words(self) -> &'static str |6d7a9cfd192ab7fd
+crates/evidence-center/src/low_confidence.rs [pub] impl SpanKind :: const ALL: [Self; 3] |9163c271be0ce423
+crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn ends_at(&self) -> TimestampMillis |37b9e1f71dffd9b1
+crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn new( session: LectureSessionId, version: TranscriptVersionId, starts_at: TimestampMillis, ends_at: TimestampMillis, ) -> Self |4ab266fe64306599
+crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn session(&self) -> LectureSessionId |ac37b2b07bcd578c
+crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn starts_at(&self) -> TimestampMillis |623c37cff40c9d9b
+crates/evidence-center/src/low_confidence.rs [pub] impl TranscriptLocator :: #[must_use] const fn version(&self) -> TranscriptVersionId |cbca4f6965a7e06e
 crates/evidence-center/src/permission.rs [priv] impl DependentAction
 crates/evidence-center/src/permission.rs [priv] impl DependentActionKind
 crates/evidence-center/src/permission.rs [priv] impl ExpiringPermission
@@ -233,56 +233,56 @@ crates/evidence-center/src/permission.rs [priv] impl LivePermission
 crates/evidence-center/src/permission.rs [priv] impl PermissionKind
 crates/evidence-center/src/permission.rs [priv] impl PermissionQueue
 crates/evidence-center/src/permission.rs [priv] impl PermissionRef
-crates/evidence-center/src/permission.rs [priv] use academic_domain::{ CapturePermissionId, ConsentId, EntityId, PermissionLineageId, TimestampMillis, }
-crates/evidence-center/src/permission.rs [priv] use crate::CenterError
-crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DependentAction
-crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ExpiringPermission
-crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DependentActionKind
-crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PermissionKind
-crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PermissionRef
-crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Default)] struct PermissionQueue
-crates/evidence-center/src/permission.rs [pub] #[derive(Debug, PartialEq, Eq)] struct LivePermission
-crates/evidence-center/src/permission.rs [pub] impl DependentAction :: #[must_use] const fn kind(&self) -> DependentActionKind
-crates/evidence-center/src/permission.rs [pub] impl DependentAction :: #[must_use] const fn new( subject: EntityId, kind: DependentActionKind, requires: PermissionRef, ) -> Self
-crates/evidence-center/src/permission.rs [pub] impl DependentAction :: #[must_use] const fn requires(&self) -> PermissionRef
-crates/evidence-center/src/permission.rs [pub] impl DependentAction :: #[must_use] const fn subject(&self) -> EntityId
-crates/evidence-center/src/permission.rs [pub] impl DependentActionKind :: const ALL: [Self; 4]
-crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn expires_at(&self) -> TimestampMillis
-crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn granted_at(&self) -> TimestampMillis
-crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn lineage(&self) -> PermissionLineageId
-crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn new( reference: PermissionRef, lineage: PermissionLineageId, granted_at: TimestampMillis, expires_at: TimestampMillis, ) -> Self
-crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn reference(&self) -> PermissionRef
-crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] fn has_lapsed(&self, at: TimestampMillis) -> bool
-crates/evidence-center/src/permission.rs [pub] impl LivePermission :: #[must_use] const fn proved_at(&self) -> TimestampMillis
-crates/evidence-center/src/permission.rs [pub] impl LivePermission :: #[must_use] const fn reference(&self) -> PermissionRef
-crates/evidence-center/src/permission.rs [pub] impl PermissionKind :: const ALL: [Self; 2]
-crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] const fn new() -> Self
-crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] fn blocked_dependents(&self, at: TimestampMillis) -> Vec<&DependentAction>
-crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] fn dependents(&self) -> &[DependentAction]
-crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] fn expiring_by(&self, horizon: TimestampMillis) -> Vec<&ExpiringPermission>
-crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] fn permissions(&self) -> &[ExpiringPermission]
-crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: fn gate( &self, action: &DependentAction, at: TimestampMillis, ) -> Result<LivePermission, CenterError>
-crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: fn record(&mut self, permission: ExpiringPermission)
-crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: fn register_dependent(&mut self, action: DependentAction)
-crates/evidence-center/src/permission.rs [pub] impl PermissionRef :: #[must_use] const fn kind(&self) -> PermissionKind
+crates/evidence-center/src/permission.rs [priv] use academic_domain::{ CapturePermissionId, ConsentId, EntityId, PermissionLineageId, TimestampMillis, } |327e7666db94d1bf
+crates/evidence-center/src/permission.rs [priv] use crate::CenterError |55643000a79fdd8d
+crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DependentAction |055cfeb3ac1c319e
+crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ExpiringPermission |f28e7bc22334d531
+crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DependentActionKind |e6deed5d2dc01561
+crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PermissionKind |c2ee6a392969636c
+crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PermissionRef |ca36ac66a11c3838
+crates/evidence-center/src/permission.rs [pub] #[derive(Debug, Clone, Default)] struct PermissionQueue |0237f1e00d915457
+crates/evidence-center/src/permission.rs [pub] #[derive(Debug, PartialEq, Eq)] struct LivePermission |53d94e990b135898
+crates/evidence-center/src/permission.rs [pub] impl DependentAction :: #[must_use] const fn kind(&self) -> DependentActionKind |8be7438ce8a0b24e
+crates/evidence-center/src/permission.rs [pub] impl DependentAction :: #[must_use] const fn new( subject: EntityId, kind: DependentActionKind, requires: PermissionRef, ) -> Self |008784f39bc88896
+crates/evidence-center/src/permission.rs [pub] impl DependentAction :: #[must_use] const fn requires(&self) -> PermissionRef |feb4a6cd94f141dd
+crates/evidence-center/src/permission.rs [pub] impl DependentAction :: #[must_use] const fn subject(&self) -> EntityId |3273cb353be018d3
+crates/evidence-center/src/permission.rs [pub] impl DependentActionKind :: const ALL: [Self; 4] |bc7aa7587de180a2
+crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn expires_at(&self) -> TimestampMillis |cbe98de0962929d3
+crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn granted_at(&self) -> TimestampMillis |bcf6f0e83fa18d5b
+crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn lineage(&self) -> PermissionLineageId |1b65844cc75edbd2
+crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn new( reference: PermissionRef, lineage: PermissionLineageId, granted_at: TimestampMillis, expires_at: TimestampMillis, ) -> Self |0845a3fdd58a9d90
+crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] const fn reference(&self) -> PermissionRef |8b23c69ee19c0441
+crates/evidence-center/src/permission.rs [pub] impl ExpiringPermission :: #[must_use] fn has_lapsed(&self, at: TimestampMillis) -> bool |2df51fe545ad3f4d
+crates/evidence-center/src/permission.rs [pub] impl LivePermission :: #[must_use] const fn proved_at(&self) -> TimestampMillis |acd93b3fa9f94e95
+crates/evidence-center/src/permission.rs [pub] impl LivePermission :: #[must_use] const fn reference(&self) -> PermissionRef |8b23c69ee19c0441
+crates/evidence-center/src/permission.rs [pub] impl PermissionKind :: const ALL: [Self; 2] |8c8939aeffdd9905
+crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] const fn new() -> Self |b7c8a514d932f099
+crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] fn blocked_dependents(&self, at: TimestampMillis) -> Vec<&DependentAction> |ed375d210d75b40a
+crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] fn dependents(&self) -> &[DependentAction] |39a786272b2a607f
+crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] fn expiring_by(&self, horizon: TimestampMillis) -> Vec<&ExpiringPermission> |69d2a6e80b8cba96
+crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: #[must_use] fn permissions(&self) -> &[ExpiringPermission] |53ada7c297c936af
+crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: fn gate( &self, action: &DependentAction, at: TimestampMillis, ) -> Result<LivePermission, CenterError> |308249d232edbb6c
+crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: fn record(&mut self, permission: ExpiringPermission) |dbf4c1c75a96cb8d
+crates/evidence-center/src/permission.rs [pub] impl PermissionQueue :: fn register_dependent(&mut self, action: DependentAction) |179792073b66388d
+crates/evidence-center/src/permission.rs [pub] impl PermissionRef :: #[must_use] const fn kind(&self) -> PermissionKind |e107c40b2d00aae1
 crates/evidence-center/src/source_change.rs [priv] impl SourceChangeEntry
 crates/evidence-center/src/source_change.rs [priv] impl SourceChangeLog
-crates/evidence-center/src/source_change.rs [priv] use academic_domain::{ContentDigest, TimestampMillis, engines::RuleId}
-crates/evidence-center/src/source_change.rs [priv] use academic_ingestion::{ ConnectorId, DependencyGraph, DependentKind, DependentNode, DocumentChange, SourceDiff, }
-crates/evidence-center/src/source_change.rs [pub] #[derive(Debug, Clone, Default)] struct SourceChangeLog
-crates/evidence-center/src/source_change.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SourceChangeEntry
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] const fn connector(&self) -> &ConnectorId
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] const fn current_content(&self) -> ContentDigest
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] const fn observed_at(&self) -> TimestampMillis
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] const fn previous_content(&self) -> ContentDigest
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn document_changes(&self) -> &[DocumentChange]
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn from_diff( connector: ConnectorId, previous_content: ContentDigest, current_content: ContentDigest, observed_at: TimestampMillis, diff: &SourceDiff, graph: &DependencyGraph, ) -> Self
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn impacted_plans(&self) -> &[DependentNode]
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn impacted_rules(&self) -> &[RuleId]
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn plans_of_kind(&self, kind: DependentKind) -> Vec<&DependentNode>
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeLog :: #[must_use] const fn new() -> Self
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeLog :: #[must_use] fn entries(&self) -> &[SourceChangeEntry]
-crates/evidence-center/src/source_change.rs [pub] impl SourceChangeLog :: fn record(&mut self, entry: SourceChangeEntry)
+crates/evidence-center/src/source_change.rs [priv] use academic_domain::{ContentDigest, TimestampMillis, engines::RuleId} |9d80a0a0131e8a94
+crates/evidence-center/src/source_change.rs [priv] use academic_ingestion::{ ConnectorId, DependencyGraph, DependentKind, DependentNode, DocumentChange, SourceDiff, } |c727fd633d6ab98f
+crates/evidence-center/src/source_change.rs [pub] #[derive(Debug, Clone, Default)] struct SourceChangeLog |6111ea064965fe71
+crates/evidence-center/src/source_change.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SourceChangeEntry |1b68c57c24c1650c
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] const fn connector(&self) -> &ConnectorId |0353e8326a81912d
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] const fn current_content(&self) -> ContentDigest |f938c27b18e8a5f2
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] const fn observed_at(&self) -> TimestampMillis |749fa84cdb818501
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] const fn previous_content(&self) -> ContentDigest |97f6e2ab5ef3ae24
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn document_changes(&self) -> &[DocumentChange] |2a1c57ea54c43d3b
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn from_diff( connector: ConnectorId, previous_content: ContentDigest, current_content: ContentDigest, observed_at: TimestampMillis, diff: &SourceDiff, graph: &DependencyGraph, ) -> Self |376876b71e0b3e92
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn impacted_plans(&self) -> &[DependentNode] |82c881e05379bc7d
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn impacted_rules(&self) -> &[RuleId] |041e9eff0993cded
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeEntry :: #[must_use] fn plans_of_kind(&self, kind: DependentKind) -> Vec<&DependentNode> |67a6c3dad30e6b1d
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeLog :: #[must_use] const fn new() -> Self |cfe9e37864a3d19e
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeLog :: #[must_use] fn entries(&self) -> &[SourceChangeEntry] |32f5bc40e49c0129
+crates/evidence-center/src/source_change.rs [pub] impl SourceChangeLog :: fn record(&mut self, entry: SourceChangeEntry) |ed551506fb4b54ed
 crates/evidence-center/src/transmission.rs [priv] impl DeletionReceiptRef
 crates/evidence-center/src/transmission.rs [priv] impl ObjectRange
 crates/evidence-center/src/transmission.rs [priv] impl ProviderRef
@@ -291,40 +291,40 @@ crates/evidence-center/src/transmission.rs [priv] impl ReceiptState
 crates/evidence-center/src/transmission.rs [priv] impl TransmissionLog
 crates/evidence-center/src/transmission.rs [priv] impl TransmissionPurpose
 crates/evidence-center/src/transmission.rs [priv] impl TransmissionRecord
-crates/evidence-center/src/transmission.rs [priv] use academic_domain::{ContentDigest, EgressDecisionId, TimestampMillis}
-crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ReceiptState
-crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DeletionReceiptRef
-crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProviderSurface
-crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TransmissionPurpose
-crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ObjectRange
-crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ProviderRef
-crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Default)] struct TransmissionLog
-crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TransmissionRecord
-crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn new( receipt_digest: ContentDigest, provider_policy_snapshot: ContentDigest, requested_at: TimestampMillis, received_at: TimestampMillis, ) -> Self
-crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn provider_policy_snapshot(&self) -> ContentDigest
-crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn receipt_digest(&self) -> ContentDigest
-crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn received_at(&self) -> TimestampMillis
-crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn requested_at(&self) -> TimestampMillis
-crates/evidence-center/src/transmission.rs [pub] impl ObjectRange :: #[must_use] const fn length(&self) -> u64
-crates/evidence-center/src/transmission.rs [pub] impl ObjectRange :: #[must_use] const fn new(offset: u64, length: u64) -> Self
-crates/evidence-center/src/transmission.rs [pub] impl ObjectRange :: #[must_use] const fn offset(&self) -> u64
-crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn destination(&self) -> ContentDigest
-crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn new(destination: ContentDigest, surface: ProviderSurface) -> Self
-crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn surface(&self) -> ProviderSurface
-crates/evidence-center/src/transmission.rs [pub] impl ProviderSurface :: #[must_use] const fn as_str(self) -> &'static str
-crates/evidence-center/src/transmission.rs [pub] impl ProviderSurface :: const ALL: [Self; 2]
-crates/evidence-center/src/transmission.rs [pub] impl ReceiptState :: #[must_use] const fn receipt(&self) -> Option<&DeletionReceiptRef>
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] const fn new() -> Self
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] fn deletion_receipts(&self) -> Vec<(EgressDecisionId, &DeletionReceiptRef)>
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] fn records(&self) -> &[TransmissionRecord]
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] fn without_offered_receipt(&self) -> Vec<&TransmissionRecord>
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: fn record(&mut self, record: TransmissionRecord)
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionPurpose :: const ALL: [Self; 4]
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn decision(&self) -> EgressDecisionId
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn new( decision: EgressDecisionId, purpose: TransmissionPurpose, payload_digest: ContentDigest, ranges: Vec<ObjectRange>, provider: ProviderRef, transmitted_at: TimestampMillis, receipt: ReceiptState, ) -> Self
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn payload_digest(&self) -> ContentDigest
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn provider(&self) -> ProviderRef
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn purpose(&self) -> TransmissionPurpose
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn receipt(&self) -> ReceiptState
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn transmitted_at(&self) -> TimestampMillis
-crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] fn ranges(&self) -> &[ObjectRange]
+crates/evidence-center/src/transmission.rs [priv] use academic_domain::{ContentDigest, EgressDecisionId, TimestampMillis} |29b7820682b756ec
+crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum ReceiptState |74ecec983982ea0c
+crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DeletionReceiptRef |9234a06d2da3bbf4
+crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ProviderSurface |8758b798e0bd8992
+crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum TransmissionPurpose |91785549c90edead
+crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ObjectRange |ee385c587f5c976c
+crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct ProviderRef |003033458ae813d5
+crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, Default)] struct TransmissionLog |c2aba32a7510cb78
+crates/evidence-center/src/transmission.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TransmissionRecord |2a6a3323a485056d
+crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn new( receipt_digest: ContentDigest, provider_policy_snapshot: ContentDigest, requested_at: TimestampMillis, received_at: TimestampMillis, ) -> Self |c855fd9296550fc3
+crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn provider_policy_snapshot(&self) -> ContentDigest |ef38266f40da4d28
+crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn receipt_digest(&self) -> ContentDigest |cb92677f7828e004
+crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn received_at(&self) -> TimestampMillis |d4051c2cbb46a81b
+crates/evidence-center/src/transmission.rs [pub] impl DeletionReceiptRef :: #[must_use] const fn requested_at(&self) -> TimestampMillis |b52e47903f957027
+crates/evidence-center/src/transmission.rs [pub] impl ObjectRange :: #[must_use] const fn length(&self) -> u64 |0cc5ae35b1fbc1dc
+crates/evidence-center/src/transmission.rs [pub] impl ObjectRange :: #[must_use] const fn new(offset: u64, length: u64) -> Self |3886dc9f23c73cb5
+crates/evidence-center/src/transmission.rs [pub] impl ObjectRange :: #[must_use] const fn offset(&self) -> u64 |b03f26ca218bb5b0
+crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn destination(&self) -> ContentDigest |3a32c9de388d1548
+crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn new(destination: ContentDigest, surface: ProviderSurface) -> Self |1f344500d43de7c2
+crates/evidence-center/src/transmission.rs [pub] impl ProviderRef :: #[must_use] const fn surface(&self) -> ProviderSurface |3516982c12fd4dbd
+crates/evidence-center/src/transmission.rs [pub] impl ProviderSurface :: #[must_use] const fn as_str(self) -> &'static str |8c5a43ee62ca9e47
+crates/evidence-center/src/transmission.rs [pub] impl ProviderSurface :: const ALL: [Self; 2] |3107aec6be526358
+crates/evidence-center/src/transmission.rs [pub] impl ReceiptState :: #[must_use] const fn receipt(&self) -> Option<&DeletionReceiptRef> |978df6b72cc5cc17
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] const fn new() -> Self |747ac9c4a1e22bf8
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] fn deletion_receipts(&self) -> Vec<(EgressDecisionId, &DeletionReceiptRef)> |bccc6ef878b8864c
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] fn records(&self) -> &[TransmissionRecord] |4eb90dde85a12dad
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: #[must_use] fn without_offered_receipt(&self) -> Vec<&TransmissionRecord> |cd2cafdddc66b811
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionLog :: fn record(&mut self, record: TransmissionRecord) |bb65b23a78f86d5d
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionPurpose :: const ALL: [Self; 4] |15e27581d2d0c6b9
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn decision(&self) -> EgressDecisionId |fd18cb0900d2b20b
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn new( decision: EgressDecisionId, purpose: TransmissionPurpose, payload_digest: ContentDigest, ranges: Vec<ObjectRange>, provider: ProviderRef, transmitted_at: TimestampMillis, receipt: ReceiptState, ) -> Self |eba589e37356d25d
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn payload_digest(&self) -> ContentDigest |46992b8ee9cb757c
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn provider(&self) -> ProviderRef |1f02c90b08a58e6f
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn purpose(&self) -> TransmissionPurpose |d4baba1675fcf2ad
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn receipt(&self) -> ReceiptState |d1f58d5e1cd4bb36
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] const fn transmitted_at(&self) -> TimestampMillis |ce7e72dcb1ab540f
+crates/evidence-center/src/transmission.rs [pub] impl TransmissionRecord :: #[must_use] fn ranges(&self) -> &[ObjectRange] |2596491203fdcbc6

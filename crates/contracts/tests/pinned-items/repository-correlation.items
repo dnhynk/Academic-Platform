@@ -1,4 +1,4 @@
-crates/repository-correlation/src/artifact.rs [priv] fn validated(value: String, field: &'static str) -> Result<String, CorrelationError>
+crates/repository-correlation/src/artifact.rs [priv] fn validated(value: String, field: &'static str) -> Result<String, CorrelationError> |9eeb1feb7e11dc22
 crates/repository-correlation/src/artifact.rs [priv] impl ApprovalStatus
 crates/repository-correlation/src/artifact.rs [priv] impl BehaviorDocument
 crates/repository-correlation/src/artifact.rs [priv] impl DeploymentRecord
@@ -11,119 +11,119 @@ crates/repository-correlation/src/artifact.rs [priv] impl IncidentId
 crates/repository-correlation/src/artifact.rs [priv] impl IncidentRecord
 crates/repository-correlation/src/artifact.rs [priv] impl IntentDocument
 crates/repository-correlation/src/artifact.rs [priv] impl IntentDocumentKind
-crates/repository-correlation/src/artifact.rs [priv] use academic_repository_analysis::SubjectId
-crates/repository-correlation/src/artifact.rs [priv] use crate::CorrelationError
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ApprovalStatus
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FlagState
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum IntentDocumentKind
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BehaviorDocument
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeploymentRecord
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct FeatureFlagRecord
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct IncidentRecord
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct IntentDocument
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DeploymentTarget
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DocumentId
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct FlagKey
-crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct IncidentId
-crates/repository-correlation/src/artifact.rs [pub] impl ApprovalStatus :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/artifact.rs [pub] impl ApprovalStatus :: const ALL: [Self; 3]
-crates/repository-correlation/src/artifact.rs [pub] impl BehaviorDocument :: #[must_use] const fn id(&self) -> &DocumentId
-crates/repository-correlation/src/artifact.rs [pub] impl BehaviorDocument :: #[must_use] fn explains(&self) -> &[SubjectId]
-crates/repository-correlation/src/artifact.rs [pub] impl BehaviorDocument :: #[must_use] fn new(id: DocumentId, path: impl Into<String>, explains: Vec<SubjectId>) -> Self
-crates/repository-correlation/src/artifact.rs [pub] impl BehaviorDocument :: #[must_use] fn path(&self) -> &str
-crates/repository-correlation/src/artifact.rs [pub] impl DeploymentRecord :: #[must_use] const fn target(&self) -> &DeploymentTarget
-crates/repository-correlation/src/artifact.rs [pub] impl DeploymentRecord :: #[must_use] fn deployed_snapshot(&self) -> &str
-crates/repository-correlation/src/artifact.rs [pub] impl DeploymentRecord :: #[must_use] fn new(target: DeploymentTarget, deployed_snapshot: impl Into<String>) -> Self
-crates/repository-correlation/src/artifact.rs [pub] impl DeploymentTarget :: #[must_use] fn as_str(&self) -> &str
-crates/repository-correlation/src/artifact.rs [pub] impl DeploymentTarget :: fn new(value: impl Into<String>) -> Result<Self, CorrelationError>
-crates/repository-correlation/src/artifact.rs [pub] impl DocumentId :: #[must_use] fn as_str(&self) -> &str
-crates/repository-correlation/src/artifact.rs [pub] impl DocumentId :: fn new(value: impl Into<String>) -> Result<Self, CorrelationError>
-crates/repository-correlation/src/artifact.rs [pub] impl FeatureFlagRecord :: #[must_use] const fn key(&self) -> &FlagKey
-crates/repository-correlation/src/artifact.rs [pub] impl FeatureFlagRecord :: #[must_use] const fn state(&self) -> FlagState
-crates/repository-correlation/src/artifact.rs [pub] impl FeatureFlagRecord :: #[must_use] fn gates(&self) -> &[SubjectId]
-crates/repository-correlation/src/artifact.rs [pub] impl FeatureFlagRecord :: #[must_use] fn new(key: FlagKey, state: FlagState, gates: Vec<SubjectId>) -> Self
-crates/repository-correlation/src/artifact.rs [pub] impl FlagKey :: #[must_use] fn as_str(&self) -> &str
-crates/repository-correlation/src/artifact.rs [pub] impl FlagKey :: fn new(value: impl Into<String>) -> Result<Self, CorrelationError>
-crates/repository-correlation/src/artifact.rs [pub] impl FlagState :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/artifact.rs [pub] impl FlagState :: const ALL: [Self; 2]
-crates/repository-correlation/src/artifact.rs [pub] impl IncidentId :: #[must_use] fn as_str(&self) -> &str
-crates/repository-correlation/src/artifact.rs [pub] impl IncidentId :: fn new(value: impl Into<String>) -> Result<Self, CorrelationError>
-crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] const fn id(&self) -> &IncidentId
-crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] const fn occurred_at(&self) -> u64
-crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] fn exposed(&self) -> &[SubjectId]
-crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] fn new( id: IncidentId, snapshot_id: impl Into<String>, occurred_at: u64, exposed: Vec<SubjectId>, ) -> Self
-crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] fn snapshot_id(&self) -> &str
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] const fn id(&self) -> &DocumentId
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] const fn kind(&self) -> IntentDocumentKind
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] const fn revision(&self) -> u64
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] const fn status(&self) -> ApprovalStatus
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] fn branch(&self) -> Option<&str>
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] fn mentions(&self) -> &[SubjectId]
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] fn new( id: DocumentId, kind: IntentDocumentKind, status: ApprovalStatus, revision: u64, branch: Option<String>, path: impl Into<String>, mentions: Vec<SubjectId>, ) -> Self
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] fn path(&self) -> &str
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocumentKind :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocumentKind :: #[must_use] const fn relation(self) -> crate::EvidenceRelation
-crates/repository-correlation/src/artifact.rs [pub] impl IntentDocumentKind :: const ALL: [Self; 2]
-crates/repository-correlation/src/authority.rs [priv] fn admit( lane: AuthorityLane, snapshot_id: &str, latest_approved: Option<u64>, source: &AnswerSource, ) -> AuthorityClass
+crates/repository-correlation/src/artifact.rs [priv] use academic_repository_analysis::SubjectId |f41cb2007bc79ae9
+crates/repository-correlation/src/artifact.rs [priv] use crate::CorrelationError |0d721c187dfb8256
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ApprovalStatus |eeef5cc0a0cbed6d
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum FlagState |0fd442390cfe4052
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum IntentDocumentKind |28bc977d9b9926e6
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BehaviorDocument |8ae8cc4979e310c0
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeploymentRecord |407cd644600b5ca2
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct FeatureFlagRecord |084b39084c3f4f1f
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct IncidentRecord |981fd80dfab3ae62
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct IntentDocument |c72f5dbc44ebdfbb
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DeploymentTarget |dda7b8399c5b2aee
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DocumentId |0cb57fd3e6a51d98
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct FlagKey |c6aa8bfc544eaf39
+crates/repository-correlation/src/artifact.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct IncidentId |cf1553b3677081fb
+crates/repository-correlation/src/artifact.rs [pub] impl ApprovalStatus :: #[must_use] const fn as_str(self) -> &'static str |e606a17b6cc14266
+crates/repository-correlation/src/artifact.rs [pub] impl ApprovalStatus :: const ALL: [Self; 3] |6617bf9094b25c77
+crates/repository-correlation/src/artifact.rs [pub] impl BehaviorDocument :: #[must_use] const fn id(&self) -> &DocumentId |c078e1e10622eceb
+crates/repository-correlation/src/artifact.rs [pub] impl BehaviorDocument :: #[must_use] fn explains(&self) -> &[SubjectId] |8f58ac3211d63fff
+crates/repository-correlation/src/artifact.rs [pub] impl BehaviorDocument :: #[must_use] fn new(id: DocumentId, path: impl Into<String>, explains: Vec<SubjectId>) -> Self |07fafeaee61ab2a4
+crates/repository-correlation/src/artifact.rs [pub] impl BehaviorDocument :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
+crates/repository-correlation/src/artifact.rs [pub] impl DeploymentRecord :: #[must_use] const fn target(&self) -> &DeploymentTarget |500852291d5b6629
+crates/repository-correlation/src/artifact.rs [pub] impl DeploymentRecord :: #[must_use] fn deployed_snapshot(&self) -> &str |82daafe8f94ccd73
+crates/repository-correlation/src/artifact.rs [pub] impl DeploymentRecord :: #[must_use] fn new(target: DeploymentTarget, deployed_snapshot: impl Into<String>) -> Self |1a89fd20ac05cde1
+crates/repository-correlation/src/artifact.rs [pub] impl DeploymentTarget :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/repository-correlation/src/artifact.rs [pub] impl DeploymentTarget :: fn new(value: impl Into<String>) -> Result<Self, CorrelationError> |da751bd5fa6a89ad
+crates/repository-correlation/src/artifact.rs [pub] impl DocumentId :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/repository-correlation/src/artifact.rs [pub] impl DocumentId :: fn new(value: impl Into<String>) -> Result<Self, CorrelationError> |da751bd5fa6a89ad
+crates/repository-correlation/src/artifact.rs [pub] impl FeatureFlagRecord :: #[must_use] const fn key(&self) -> &FlagKey |601caaddda031f6a
+crates/repository-correlation/src/artifact.rs [pub] impl FeatureFlagRecord :: #[must_use] const fn state(&self) -> FlagState |69c90008b4e60b20
+crates/repository-correlation/src/artifact.rs [pub] impl FeatureFlagRecord :: #[must_use] fn gates(&self) -> &[SubjectId] |86a8147056980813
+crates/repository-correlation/src/artifact.rs [pub] impl FeatureFlagRecord :: #[must_use] fn new(key: FlagKey, state: FlagState, gates: Vec<SubjectId>) -> Self |1b11fc98e16cd589
+crates/repository-correlation/src/artifact.rs [pub] impl FlagKey :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/repository-correlation/src/artifact.rs [pub] impl FlagKey :: fn new(value: impl Into<String>) -> Result<Self, CorrelationError> |da751bd5fa6a89ad
+crates/repository-correlation/src/artifact.rs [pub] impl FlagState :: #[must_use] const fn as_str(self) -> &'static str |01758fae81a5243e
+crates/repository-correlation/src/artifact.rs [pub] impl FlagState :: const ALL: [Self; 2] |cb41c94ca432127b
+crates/repository-correlation/src/artifact.rs [pub] impl IncidentId :: #[must_use] fn as_str(&self) -> &str |558078d6a3284b5a
+crates/repository-correlation/src/artifact.rs [pub] impl IncidentId :: fn new(value: impl Into<String>) -> Result<Self, CorrelationError> |da751bd5fa6a89ad
+crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] const fn id(&self) -> &IncidentId |2408fbcf732f5b4e
+crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] const fn occurred_at(&self) -> u64 |79c226431e605aaa
+crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] fn exposed(&self) -> &[SubjectId] |d61240475865f5fb
+crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] fn new( id: IncidentId, snapshot_id: impl Into<String>, occurred_at: u64, exposed: Vec<SubjectId>, ) -> Self |475261cc65afacbf
+crates/repository-correlation/src/artifact.rs [pub] impl IncidentRecord :: #[must_use] fn snapshot_id(&self) -> &str |f3d2b3f8490921f9
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] const fn id(&self) -> &DocumentId |c078e1e10622eceb
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] const fn kind(&self) -> IntentDocumentKind |3b1692e7fa198b6e
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] const fn revision(&self) -> u64 |c8012efe677b2288
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] const fn status(&self) -> ApprovalStatus |5c2c7af511b2a93e
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] fn branch(&self) -> Option<&str> |512ed5c049ff18be
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] fn mentions(&self) -> &[SubjectId] |bb91d6f1e627367b
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] fn new( id: DocumentId, kind: IntentDocumentKind, status: ApprovalStatus, revision: u64, branch: Option<String>, path: impl Into<String>, mentions: Vec<SubjectId>, ) -> Self |9d21ee8e6a2d3609
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocument :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocumentKind :: #[must_use] const fn as_str(self) -> &'static str |44f2bb4869623316
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocumentKind :: #[must_use] const fn relation(self) -> crate::EvidenceRelation |4bb66065f81a964d
+crates/repository-correlation/src/artifact.rs [pub] impl IntentDocumentKind :: const ALL: [Self; 2] |9222c0035cba3e77
+crates/repository-correlation/src/authority.rs [priv] fn admit( lane: AuthorityLane, snapshot_id: &str, latest_approved: Option<u64>, source: &AnswerSource, ) -> AuthorityClass |1fe66c05f259e3a9
 crates/repository-correlation/src/authority.rs [priv] impl Candidate
 crates/repository-correlation/src/authority.rs [priv] impl LaneAnswer
 crates/repository-correlation/src/authority.rs [priv] impl RankedCandidate
-crates/repository-correlation/src/authority.rs [priv] use academic_domain::AuthorityClass
-crates/repository-correlation/src/authority.rs [priv] use academic_ledger::AuthorityTable
-crates/repository-correlation/src/authority.rs [priv] use crate::{ CorrelationError, artifact::{ApprovalStatus, DocumentId, IntentDocumentKind}, relation::AuthorityLane, }
-crates/repository-correlation/src/authority.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum AnswerSource
-crates/repository-correlation/src/authority.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Candidate
-crates/repository-correlation/src/authority.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LaneAnswer
-crates/repository-correlation/src/authority.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RankedCandidate
-crates/repository-correlation/src/authority.rs [pub] fn active_view( lane: AuthorityLane, snapshot_id: &str, candidates: &[Candidate], ) -> Result<LaneAnswer, CorrelationError>
-crates/repository-correlation/src/authority.rs [pub] impl Candidate :: #[must_use] const fn source(&self) -> &AnswerSource
-crates/repository-correlation/src/authority.rs [pub] impl Candidate :: #[must_use] fn id(&self) -> &str
-crates/repository-correlation/src/authority.rs [pub] impl Candidate :: #[must_use] fn new(id: impl Into<String>, source: AnswerSource) -> Self
-crates/repository-correlation/src/authority.rs [pub] impl LaneAnswer :: #[must_use] const fn lane(&self) -> AuthorityLane
-crates/repository-correlation/src/authority.rs [pub] impl LaneAnswer :: #[must_use] const fn table(&self) -> AuthorityTable
-crates/repository-correlation/src/authority.rs [pub] impl LaneAnswer :: #[must_use] fn ranked(&self) -> &[RankedCandidate]
-crates/repository-correlation/src/authority.rs [pub] impl LaneAnswer :: #[must_use] fn winner(&self) -> Option<&RankedCandidate>
-crates/repository-correlation/src/authority.rs [pub] impl RankedCandidate :: #[must_use] const fn authority(&self) -> AuthorityClass
-crates/repository-correlation/src/authority.rs [pub] impl RankedCandidate :: #[must_use] const fn rank(&self) -> u16
-crates/repository-correlation/src/authority.rs [pub] impl RankedCandidate :: #[must_use] fn id(&self) -> &str
-crates/repository-correlation/src/compare.rs [priv] fn dependency_diff( before: &Correlation, after: &Correlation, cause: ChangeCause, ) -> Vec<DependencyChange>
-crates/repository-correlation/src/compare.rs [priv] fn drift_change( subject: String, transition: SemanticTransition, cause: ChangeCause, kind: DriftKind, ) -> SemanticChange
-crates/repository-correlation/src/compare.rs [priv] fn drifts_by_subject(correlation: &Correlation) -> BTreeMap<(String, DriftKind), DriftKind>
-crates/repository-correlation/src/compare.rs [priv] fn relations_by_subject(correlation: &Correlation) -> BTreeMap<String, BTreeSet<EvidenceRelation>>
-crates/repository-correlation/src/compare.rs [priv] fn semantic_diff( before: &Correlation, after: &Correlation, cause: ChangeCause, ) -> Vec<SemanticChange>
+crates/repository-correlation/src/authority.rs [priv] use academic_domain::AuthorityClass |e8a6133680e8bfd4
+crates/repository-correlation/src/authority.rs [priv] use academic_ledger::AuthorityTable |48155c4b341e930f
+crates/repository-correlation/src/authority.rs [priv] use crate::{ CorrelationError, artifact::{ApprovalStatus, DocumentId, IntentDocumentKind}, relation::AuthorityLane, } |6020b3c3f396592f
+crates/repository-correlation/src/authority.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum AnswerSource |13ccae33ba43d082
+crates/repository-correlation/src/authority.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Candidate |e1c2cebb10db6eac
+crates/repository-correlation/src/authority.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LaneAnswer |645dc62ff458f94e
+crates/repository-correlation/src/authority.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RankedCandidate |89632ad9242bbe71
+crates/repository-correlation/src/authority.rs [pub] fn active_view( lane: AuthorityLane, snapshot_id: &str, candidates: &[Candidate], ) -> Result<LaneAnswer, CorrelationError> |b1301b3e4da8e81e
+crates/repository-correlation/src/authority.rs [pub] impl Candidate :: #[must_use] const fn source(&self) -> &AnswerSource |7d021ccdffccf962
+crates/repository-correlation/src/authority.rs [pub] impl Candidate :: #[must_use] fn id(&self) -> &str |35bcc7ec858ee311
+crates/repository-correlation/src/authority.rs [pub] impl Candidate :: #[must_use] fn new(id: impl Into<String>, source: AnswerSource) -> Self |0ab47213bdf432b0
+crates/repository-correlation/src/authority.rs [pub] impl LaneAnswer :: #[must_use] const fn lane(&self) -> AuthorityLane |6b1d0c0375d16cd2
+crates/repository-correlation/src/authority.rs [pub] impl LaneAnswer :: #[must_use] const fn table(&self) -> AuthorityTable |77da8a6510fa3dc8
+crates/repository-correlation/src/authority.rs [pub] impl LaneAnswer :: #[must_use] fn ranked(&self) -> &[RankedCandidate] |605364a3bc6d0a06
+crates/repository-correlation/src/authority.rs [pub] impl LaneAnswer :: #[must_use] fn winner(&self) -> Option<&RankedCandidate> |c83a21618d0a50de
+crates/repository-correlation/src/authority.rs [pub] impl RankedCandidate :: #[must_use] const fn authority(&self) -> AuthorityClass |55768ebd548a95d4
+crates/repository-correlation/src/authority.rs [pub] impl RankedCandidate :: #[must_use] const fn rank(&self) -> u16 |5cece620e240dbb5
+crates/repository-correlation/src/authority.rs [pub] impl RankedCandidate :: #[must_use] fn id(&self) -> &str |35bcc7ec858ee311
+crates/repository-correlation/src/compare.rs [priv] fn dependency_diff( before: &Correlation, after: &Correlation, cause: ChangeCause, ) -> Vec<DependencyChange> |604da60f312191a8
+crates/repository-correlation/src/compare.rs [priv] fn drift_change( subject: String, transition: SemanticTransition, cause: ChangeCause, kind: DriftKind, ) -> SemanticChange |ef2b4cee1d4403aa
+crates/repository-correlation/src/compare.rs [priv] fn drifts_by_subject(correlation: &Correlation) -> BTreeMap<(String, DriftKind), DriftKind> |f1630dcc82ffcef7
+crates/repository-correlation/src/compare.rs [priv] fn relations_by_subject(correlation: &Correlation) -> BTreeMap<String, BTreeSet<EvidenceRelation>> |b8fb97c667847e44
+crates/repository-correlation/src/compare.rs [priv] fn semantic_diff( before: &Correlation, after: &Correlation, cause: ChangeCause, ) -> Vec<SemanticChange> |de0e2f66b0738895
 crates/repository-correlation/src/compare.rs [priv] impl ChangeCause
 crates/repository-correlation/src/compare.rs [priv] impl DependencyChange
 crates/repository-correlation/src/compare.rs [priv] impl PresenceChange
 crates/repository-correlation/src/compare.rs [priv] impl SemanticChange
 crates/repository-correlation/src/compare.rs [priv] impl SemanticTransition
 crates/repository-correlation/src/compare.rs [priv] impl SnapshotComparison
-crates/repository-correlation/src/compare.rs [priv] use crate::{Correlation, CorrelationError, EvidenceRelation, drift::DriftKind}
-crates/repository-correlation/src/compare.rs [priv] use std::collections::{BTreeMap, BTreeSet}
-crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ChangeCause
-crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PresenceChange
-crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SemanticTransition
-crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DependencyChange
-crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SemanticChange
-crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SnapshotComparison
-crates/repository-correlation/src/compare.rs [pub] fn compare( before: &Correlation, after: &Correlation, ) -> Result<SnapshotComparison, CorrelationError>
-crates/repository-correlation/src/compare.rs [pub] impl ChangeCause :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/compare.rs [pub] impl ChangeCause :: const ALL: [Self; 2]
-crates/repository-correlation/src/compare.rs [pub] impl DependencyChange :: #[must_use] const fn cause(&self) -> ChangeCause
-crates/repository-correlation/src/compare.rs [pub] impl DependencyChange :: #[must_use] const fn direction(&self) -> PresenceChange
-crates/repository-correlation/src/compare.rs [pub] impl DependencyChange :: #[must_use] fn subject(&self) -> &str
-crates/repository-correlation/src/compare.rs [pub] impl PresenceChange :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/compare.rs [pub] impl PresenceChange :: const ALL: [Self; 2]
-crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] const fn cause(&self) -> ChangeCause
-crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] const fn drift(&self) -> Option<DriftKind>
-crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] const fn transition(&self) -> SemanticTransition
-crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] fn after(&self) -> &[EvidenceRelation]
-crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] fn before(&self) -> &[EvidenceRelation]
-crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] fn subject(&self) -> &str
-crates/repository-correlation/src/compare.rs [pub] impl SemanticTransition :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/compare.rs [pub] impl SemanticTransition :: const ALL: [Self; 5]
-crates/repository-correlation/src/compare.rs [pub] impl SnapshotComparison :: #[must_use] const fn cause(&self) -> ChangeCause
-crates/repository-correlation/src/compare.rs [pub] impl SnapshotComparison :: #[must_use] fn dependency_diff(&self) -> &[DependencyChange]
-crates/repository-correlation/src/compare.rs [pub] impl SnapshotComparison :: #[must_use] fn semantic_diff(&self) -> &[SemanticChange]
+crates/repository-correlation/src/compare.rs [priv] use crate::{Correlation, CorrelationError, EvidenceRelation, drift::DriftKind} |22d675e45eeedf13
+crates/repository-correlation/src/compare.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
+crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum ChangeCause |379560b822bd07e9
+crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum PresenceChange |0b87e1add7ddb7ea
+crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum SemanticTransition |9c08bad7a7f07907
+crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DependencyChange |13d330db93210a4d
+crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SemanticChange |22d7e6fa9c6c4116
+crates/repository-correlation/src/compare.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SnapshotComparison |7b6e1bec64cfed14
+crates/repository-correlation/src/compare.rs [pub] fn compare( before: &Correlation, after: &Correlation, ) -> Result<SnapshotComparison, CorrelationError> |efec5022ee82b661
+crates/repository-correlation/src/compare.rs [pub] impl ChangeCause :: #[must_use] const fn as_str(self) -> &'static str |208cb177aad61f05
+crates/repository-correlation/src/compare.rs [pub] impl ChangeCause :: const ALL: [Self; 2] |da336ee335ab41de
+crates/repository-correlation/src/compare.rs [pub] impl DependencyChange :: #[must_use] const fn cause(&self) -> ChangeCause |5342a98096265408
+crates/repository-correlation/src/compare.rs [pub] impl DependencyChange :: #[must_use] const fn direction(&self) -> PresenceChange |29634991cb6b15c6
+crates/repository-correlation/src/compare.rs [pub] impl DependencyChange :: #[must_use] fn subject(&self) -> &str |7e3b80bd78f49d49
+crates/repository-correlation/src/compare.rs [pub] impl PresenceChange :: #[must_use] const fn as_str(self) -> &'static str |6815eb59cf46a7ea
+crates/repository-correlation/src/compare.rs [pub] impl PresenceChange :: const ALL: [Self; 2] |c4e8e247e12babd3
+crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] const fn cause(&self) -> ChangeCause |5342a98096265408
+crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] const fn drift(&self) -> Option<DriftKind> |0b61b689ee9b512b
+crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] const fn transition(&self) -> SemanticTransition |9f077880868408f6
+crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] fn after(&self) -> &[EvidenceRelation] |bb223dfc27ab93f5
+crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] fn before(&self) -> &[EvidenceRelation] |d0012898bae26fdf
+crates/repository-correlation/src/compare.rs [pub] impl SemanticChange :: #[must_use] fn subject(&self) -> &str |7e3b80bd78f49d49
+crates/repository-correlation/src/compare.rs [pub] impl SemanticTransition :: #[must_use] const fn as_str(self) -> &'static str |5e83f9eec632eb8a
+crates/repository-correlation/src/compare.rs [pub] impl SemanticTransition :: const ALL: [Self; 5] |c330f1601eec75d7
+crates/repository-correlation/src/compare.rs [pub] impl SnapshotComparison :: #[must_use] const fn cause(&self) -> ChangeCause |5342a98096265408
+crates/repository-correlation/src/compare.rs [pub] impl SnapshotComparison :: #[must_use] fn dependency_diff(&self) -> &[DependencyChange] |d1344abd37731bef
+crates/repository-correlation/src/compare.rs [pub] impl SnapshotComparison :: #[must_use] fn semantic_diff(&self) -> &[SemanticChange] |5cdfc6e917fc239a
 crates/repository-correlation/src/drift.rs [priv] impl BranchDifference
 crates/repository-correlation/src/drift.rs [priv] impl DeprecatedSpec
 crates/repository-correlation/src/drift.rs [priv] impl DriftKind
@@ -132,102 +132,102 @@ crates/repository-correlation/src/drift.rs [priv] impl DriftScopes
 crates/repository-correlation/src/drift.rs [priv] impl GatingFlag
 crates/repository-correlation/src/drift.rs [priv] impl ImplementationDrift
 crates/repository-correlation/src/drift.rs [priv] impl UndeployedCode
-crates/repository-correlation/src/drift.rs [priv] use crate::{ artifact::{DeploymentTarget, DocumentId, FlagKey, FlagState}, edge::RelationEdge, }
-crates/repository-correlation/src/drift.rs [pub(crate)] impl BranchDifference :: const fn seal(intent_branch: String, snapshot_branch: Option<String>) -> Self
-crates/repository-correlation/src/drift.rs [pub(crate)] impl DeprecatedSpec :: const fn seal(document: DocumentId, revision: u64) -> Self
-crates/repository-correlation/src/drift.rs [pub(crate)] impl DriftScopes :: const fn seal( deprecated_spec: Option<DeprecatedSpec>, feature_flag: Option<GatingFlag>, undeployed_code: Option<UndeployedCode>, branch_difference: Option<BranchDifference>, ) -> Self
-crates/repository-correlation/src/drift.rs [pub(crate)] impl GatingFlag :: const fn seal(key: FlagKey, state: FlagState) -> Self
-crates/repository-correlation/src/drift.rs [pub(crate)] impl ImplementationDrift :: const fn seal( kind: DriftKind, subject: String, snapshot_id: String, intent_side: Vec<RelationEdge>, implementation_side: Vec<RelationEdge>, description_side: Vec<RelationEdge>, scopes: DriftScopes, ) -> Self
-crates/repository-correlation/src/drift.rs [pub(crate)] impl UndeployedCode :: const fn seal(target: DeploymentTarget, deployed_snapshot: String) -> Self
-crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DriftKind
-crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DriftScopeKind
-crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BranchDifference
-crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeprecatedSpec
-crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GatingFlag
-crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ImplementationDrift
-crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UndeployedCode
-crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct DriftScopes
-crates/repository-correlation/src/drift.rs [pub] impl BranchDifference :: #[must_use] fn intent_branch(&self) -> &str
-crates/repository-correlation/src/drift.rs [pub] impl BranchDifference :: #[must_use] fn snapshot_branch(&self) -> Option<&str>
-crates/repository-correlation/src/drift.rs [pub] impl DeprecatedSpec :: #[must_use] const fn document(&self) -> &DocumentId
-crates/repository-correlation/src/drift.rs [pub] impl DeprecatedSpec :: #[must_use] const fn revision(&self) -> u64
-crates/repository-correlation/src/drift.rs [pub] impl DriftKind :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/drift.rs [pub] impl DriftKind :: const ALL: [Self; 2]
-crates/repository-correlation/src/drift.rs [pub] impl DriftScopeKind :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/drift.rs [pub] impl DriftScopeKind :: const ALL: [Self; 4]
-crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] const fn branch_difference(&self) -> Option<&BranchDifference>
-crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] const fn deprecated_spec(&self) -> Option<&DeprecatedSpec>
-crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] const fn feature_flag(&self) -> Option<&GatingFlag>
-crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] const fn undeployed_code(&self) -> Option<&UndeployedCode>
-crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] fn present(&self) -> Vec<DriftScopeKind>
-crates/repository-correlation/src/drift.rs [pub] impl GatingFlag :: #[must_use] const fn key(&self) -> &FlagKey
-crates/repository-correlation/src/drift.rs [pub] impl GatingFlag :: #[must_use] const fn state(&self) -> FlagState
-crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] const fn kind(&self) -> DriftKind
-crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] const fn scopes(&self) -> &DriftScopes
-crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn description_side(&self) -> &[RelationEdge]
-crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn implementation_side(&self) -> &[RelationEdge]
-crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn intent_side(&self) -> &[RelationEdge]
-crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn snapshot_id(&self) -> &str
-crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn subject(&self) -> &str
-crates/repository-correlation/src/drift.rs [pub] impl UndeployedCode :: #[must_use] const fn target(&self) -> &DeploymentTarget
-crates/repository-correlation/src/drift.rs [pub] impl UndeployedCode :: #[must_use] fn deployed_snapshot(&self) -> &str
+crates/repository-correlation/src/drift.rs [priv] use crate::{ artifact::{DeploymentTarget, DocumentId, FlagKey, FlagState}, edge::RelationEdge, } |5c631e4ad59c1c74
+crates/repository-correlation/src/drift.rs [pub(crate)] impl BranchDifference :: const fn seal(intent_branch: String, snapshot_branch: Option<String>) -> Self |3ed09fe8c669187b
+crates/repository-correlation/src/drift.rs [pub(crate)] impl DeprecatedSpec :: const fn seal(document: DocumentId, revision: u64) -> Self |99ea74be6c4325ff
+crates/repository-correlation/src/drift.rs [pub(crate)] impl DriftScopes :: const fn seal( deprecated_spec: Option<DeprecatedSpec>, feature_flag: Option<GatingFlag>, undeployed_code: Option<UndeployedCode>, branch_difference: Option<BranchDifference>, ) -> Self |587ece700b4cc87d
+crates/repository-correlation/src/drift.rs [pub(crate)] impl GatingFlag :: const fn seal(key: FlagKey, state: FlagState) -> Self |1695eea7f3740ef4
+crates/repository-correlation/src/drift.rs [pub(crate)] impl ImplementationDrift :: const fn seal( kind: DriftKind, subject: String, snapshot_id: String, intent_side: Vec<RelationEdge>, implementation_side: Vec<RelationEdge>, description_side: Vec<RelationEdge>, scopes: DriftScopes, ) -> Self |9f046fa6909696f2
+crates/repository-correlation/src/drift.rs [pub(crate)] impl UndeployedCode :: const fn seal(target: DeploymentTarget, deployed_snapshot: String) -> Self |8668d474a18057f1
+crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DriftKind |0d52f796663270cd
+crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum DriftScopeKind |e62585cb967d292f
+crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct BranchDifference |c2ef760afdcda6db
+crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct DeprecatedSpec |b0e7351304505e70
+crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct GatingFlag |693763518f4bfea7
+crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ImplementationDrift |8415583853bb0019
+crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct UndeployedCode |d8a95956d26f3004
+crates/repository-correlation/src/drift.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Default)] struct DriftScopes |d1bf23b4a5c02bee
+crates/repository-correlation/src/drift.rs [pub] impl BranchDifference :: #[must_use] fn intent_branch(&self) -> &str |48a2de7de9ee5dd3
+crates/repository-correlation/src/drift.rs [pub] impl BranchDifference :: #[must_use] fn snapshot_branch(&self) -> Option<&str> |83ae6a493d5a6dd0
+crates/repository-correlation/src/drift.rs [pub] impl DeprecatedSpec :: #[must_use] const fn document(&self) -> &DocumentId |56eeb81b7431ccb3
+crates/repository-correlation/src/drift.rs [pub] impl DeprecatedSpec :: #[must_use] const fn revision(&self) -> u64 |c8012efe677b2288
+crates/repository-correlation/src/drift.rs [pub] impl DriftKind :: #[must_use] const fn as_str(self) -> &'static str |bc2baef0f1133b25
+crates/repository-correlation/src/drift.rs [pub] impl DriftKind :: const ALL: [Self; 2] |19cd0425a4e269d8
+crates/repository-correlation/src/drift.rs [pub] impl DriftScopeKind :: #[must_use] const fn as_str(self) -> &'static str |a2b69d42fbda94eb
+crates/repository-correlation/src/drift.rs [pub] impl DriftScopeKind :: const ALL: [Self; 4] |c72cf94e23919556
+crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] const fn branch_difference(&self) -> Option<&BranchDifference> |4e9c30110f00ef5a
+crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] const fn deprecated_spec(&self) -> Option<&DeprecatedSpec> |70b7f4cd23fe4e8f
+crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] const fn feature_flag(&self) -> Option<&GatingFlag> |77080e7f71f55775
+crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] const fn undeployed_code(&self) -> Option<&UndeployedCode> |6d39f3454dda69a5
+crates/repository-correlation/src/drift.rs [pub] impl DriftScopes :: #[must_use] fn present(&self) -> Vec<DriftScopeKind> |3fa9f26ef7e82785
+crates/repository-correlation/src/drift.rs [pub] impl GatingFlag :: #[must_use] const fn key(&self) -> &FlagKey |601caaddda031f6a
+crates/repository-correlation/src/drift.rs [pub] impl GatingFlag :: #[must_use] const fn state(&self) -> FlagState |69c90008b4e60b20
+crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] const fn kind(&self) -> DriftKind |d7152bd14ca1ec3c
+crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] const fn scopes(&self) -> &DriftScopes |c21f7aa69762b5e5
+crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn description_side(&self) -> &[RelationEdge] |121519321469d955
+crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn implementation_side(&self) -> &[RelationEdge] |36fa88c100ce0035
+crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn intent_side(&self) -> &[RelationEdge] |d0ea1a3b90433b0d
+crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn snapshot_id(&self) -> &str |f3d2b3f8490921f9
+crates/repository-correlation/src/drift.rs [pub] impl ImplementationDrift :: #[must_use] fn subject(&self) -> &str |7e3b80bd78f49d49
+crates/repository-correlation/src/drift.rs [pub] impl UndeployedCode :: #[must_use] const fn target(&self) -> &DeploymentTarget |500852291d5b6629
+crates/repository-correlation/src/drift.rs [pub] impl UndeployedCode :: #[must_use] fn deployed_snapshot(&self) -> &str |82daafe8f94ccd73
 crates/repository-correlation/src/edge.rs [priv] impl RelationEdge
-crates/repository-correlation/src/edge.rs [priv] use academic_repository_analysis::{ArtifactScope, EvidenceTier, LadderRung, Locator}
-crates/repository-correlation/src/edge.rs [priv] use crate::{ EvidenceRelation, artifact::{ApprovalStatus, DocumentId, IncidentId, IntentDocumentKind}, relation::AuthorityLane, }
-crates/repository-correlation/src/edge.rs [pub(crate)] impl RelationEdge :: const fn seal( relation: EvidenceRelation, subject: String, snapshot_id: String, evidence: EdgeEvidence, ) -> Self
-crates/repository-correlation/src/edge.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum EdgeEvidence
-crates/repository-correlation/src/edge.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RelationEdge
-crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] const fn document_kind(&self) -> Option<IntentDocumentKind>
-crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] const fn evidence(&self) -> &EdgeEvidence
-crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] const fn lane(&self) -> AuthorityLane
-crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] const fn relation(&self) -> EvidenceRelation
-crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] fn snapshot_id(&self) -> &str
-crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] fn subject(&self) -> &str
-crates/repository-correlation/src/lib.rs [priv] const fn declares_dependency(kind: FileKind) -> bool
-crates/repository-correlation/src/lib.rs [priv] fn code_relations(finding: &Finding) -> Vec<EvidenceRelation>
-crates/repository-correlation/src/lib.rs [priv] fn drifts_of( input: &CorrelationInput<'_>, snapshot_id: &str, edges: &[RelationEdge], ) -> Vec<ImplementationDrift>
-crates/repository-correlation/src/lib.rs [priv] fn scopes_of(input: &CorrelationInput<'_>, snapshot_id: &str, subject: &str) -> DriftScopes
+crates/repository-correlation/src/edge.rs [priv] use academic_repository_analysis::{ArtifactScope, EvidenceTier, LadderRung, Locator} |acf26a16fde827a9
+crates/repository-correlation/src/edge.rs [priv] use crate::{ EvidenceRelation, artifact::{ApprovalStatus, DocumentId, IncidentId, IntentDocumentKind}, relation::AuthorityLane, } |66defd914b6bb769
+crates/repository-correlation/src/edge.rs [pub(crate)] impl RelationEdge :: const fn seal( relation: EvidenceRelation, subject: String, snapshot_id: String, evidence: EdgeEvidence, ) -> Self |721cd53e6171ad61
+crates/repository-correlation/src/edge.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum EdgeEvidence |3a551fc6524d80d6
+crates/repository-correlation/src/edge.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RelationEdge |72e18d78bfc73efa
+crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] const fn document_kind(&self) -> Option<IntentDocumentKind> |ab2f9dec8af43735
+crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] const fn evidence(&self) -> &EdgeEvidence |3e3e7317b3665b9b
+crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] const fn lane(&self) -> AuthorityLane |a12f2e6b31c1eba1
+crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] const fn relation(&self) -> EvidenceRelation |cb169658ccc9de2a
+crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] fn snapshot_id(&self) -> &str |f3d2b3f8490921f9
+crates/repository-correlation/src/edge.rs [pub] impl RelationEdge :: #[must_use] fn subject(&self) -> &str |7e3b80bd78f49d49
+crates/repository-correlation/src/lib.rs [priv] const fn declares_dependency(kind: FileKind) -> bool |c9613a363fd22929
+crates/repository-correlation/src/lib.rs [priv] fn code_relations(finding: &Finding) -> Vec<EvidenceRelation> |11dfb3feeeb2baa3
+crates/repository-correlation/src/lib.rs [priv] fn drifts_of( input: &CorrelationInput<'_>, snapshot_id: &str, edges: &[RelationEdge], ) -> Vec<ImplementationDrift> |bab32fe83d0360b9
+crates/repository-correlation/src/lib.rs [priv] fn scopes_of(input: &CorrelationInput<'_>, snapshot_id: &str, subject: &str) -> DriftScopes |69ba4730ea459dd5
 crates/repository-correlation/src/lib.rs [priv] impl Correlation
 crates/repository-correlation/src/lib.rs [priv] impl DeclaredDependency
 crates/repository-correlation/src/lib.rs [priv] impl core::fmt::Display for AuthorityLane
-crates/repository-correlation/src/lib.rs [priv] impl core::fmt::Display for AuthorityLane :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-crates/repository-correlation/src/lib.rs [priv] use academic_repository::RepositorySnapshot
-crates/repository-correlation/src/lib.rs [priv] use academic_repository_analysis::{ AnalyzerIdentity, ArtifactScope, EvidenceTier, FileKind, Finding, LadderRung, SubjectId, }
-crates/repository-correlation/src/lib.rs [priv] use std::collections::{BTreeMap, BTreeSet}
-crates/repository-correlation/src/lib.rs [pub] #[derive(Debug)] struct CorrelationInput<'a>
-crates/repository-correlation/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Correlation
-crates/repository-correlation/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DeclaredDependency
-crates/repository-correlation/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CorrelationError
-crates/repository-correlation/src/lib.rs [pub] fn correlate(input: &CorrelationInput<'_>) -> Result<Correlation, CorrelationError>
-crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] const fn declared_dependencies(&self) -> &BTreeSet<String>
-crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn analyzer_tool(&self) -> &str
-crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn analyzer_version(&self) -> &str
-crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn drifts(&self) -> &[ImplementationDrift]
-crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn lane_view(&self, lane: AuthorityLane, subject: &str) -> Vec<&RelationEdge>
-crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn relations(&self) -> &[RelationEdge]
-crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn snapshot_id(&self) -> &str
-crates/repository-correlation/src/lib.rs [pub] impl DeclaredDependency :: #[must_use] fn name(&self) -> &str
-crates/repository-correlation/src/lib.rs [pub] impl DeclaredDependency :: #[must_use] fn new(path: impl Into<String>, name: impl Into<String>) -> Self
-crates/repository-correlation/src/lib.rs [pub] impl DeclaredDependency :: #[must_use] fn path(&self) -> &str
+crates/repository-correlation/src/lib.rs [priv] impl core::fmt::Display for AuthorityLane :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |25a42a36f35d706a
+crates/repository-correlation/src/lib.rs [priv] use academic_repository::RepositorySnapshot |4b82cda3d59e4831
+crates/repository-correlation/src/lib.rs [priv] use academic_repository_analysis::{ AnalyzerIdentity, ArtifactScope, EvidenceTier, FileKind, Finding, LadderRung, SubjectId, } |4140b84e67ce6c4f
+crates/repository-correlation/src/lib.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
+crates/repository-correlation/src/lib.rs [pub] #[derive(Debug)] struct CorrelationInput<'a> |36d1b0eab284b66b
+crates/repository-correlation/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Correlation |c8a52316a853241e
+crates/repository-correlation/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)] struct DeclaredDependency |8a18658761884b1f
+crates/repository-correlation/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum CorrelationError |41a3bab51e04ba76
+crates/repository-correlation/src/lib.rs [pub] fn correlate(input: &CorrelationInput<'_>) -> Result<Correlation, CorrelationError> |eff23937fedf3de1
+crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] const fn declared_dependencies(&self) -> &BTreeSet<String> |c39c91ea484d63f1
+crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn analyzer_tool(&self) -> &str |0d18fd18d458ad03
+crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn analyzer_version(&self) -> &str |d17657ab88b096b5
+crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn drifts(&self) -> &[ImplementationDrift] |2563aef43daed3af
+crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn lane_view(&self, lane: AuthorityLane, subject: &str) -> Vec<&RelationEdge> |21bde8cfe76d675f
+crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn relations(&self) -> &[RelationEdge] |30b8cfd113cc90fe
+crates/repository-correlation/src/lib.rs [pub] impl Correlation :: #[must_use] fn snapshot_id(&self) -> &str |f3d2b3f8490921f9
+crates/repository-correlation/src/lib.rs [pub] impl DeclaredDependency :: #[must_use] fn name(&self) -> &str |dcd1b6c60790e001
+crates/repository-correlation/src/lib.rs [pub] impl DeclaredDependency :: #[must_use] fn new(path: impl Into<String>, name: impl Into<String>) -> Self |13f10eabd19a7ca6
+crates/repository-correlation/src/lib.rs [pub] impl DeclaredDependency :: #[must_use] fn path(&self) -> &str |09654f0138b76dd9
 crates/repository-correlation/src/lib.rs [pub] mod artifact
 crates/repository-correlation/src/lib.rs [pub] mod authority
 crates/repository-correlation/src/lib.rs [pub] mod compare
 crates/repository-correlation/src/lib.rs [pub] mod drift
 crates/repository-correlation/src/lib.rs [pub] mod edge
 crates/repository-correlation/src/lib.rs [pub] mod relation
-crates/repository-correlation/src/lib.rs [pub] use artifact::{ ApprovalStatus, BehaviorDocument, DeploymentRecord, DeploymentTarget, DocumentId, FeatureFlagRecord, FlagKey, FlagState, IncidentId, IncidentRecord, IntentDocument, IntentDocumentKind, }
-crates/repository-correlation/src/lib.rs [pub] use authority::{AnswerSource, Candidate, LaneAnswer, RankedCandidate, active_view}
-crates/repository-correlation/src/lib.rs [pub] use compare::{ ChangeCause, DependencyChange, PresenceChange, SemanticChange, SemanticTransition, SnapshotComparison, compare, }
-crates/repository-correlation/src/lib.rs [pub] use drift::{ BranchDifference, DeprecatedSpec, DriftKind, DriftScopeKind, DriftScopes, GatingFlag, ImplementationDrift, UndeployedCode, }
-crates/repository-correlation/src/lib.rs [pub] use edge::{EdgeEvidence, RelationEdge}
-crates/repository-correlation/src/lib.rs [pub] use relation::{AuthorityLane, EvidenceRelation}
+crates/repository-correlation/src/lib.rs [pub] use artifact::{ ApprovalStatus, BehaviorDocument, DeploymentRecord, DeploymentTarget, DocumentId, FeatureFlagRecord, FlagKey, FlagState, IncidentId, IncidentRecord, IntentDocument, IntentDocumentKind, } |0ce12a637e30c509
+crates/repository-correlation/src/lib.rs [pub] use authority::{AnswerSource, Candidate, LaneAnswer, RankedCandidate, active_view} |7a2b6b53d9076af7
+crates/repository-correlation/src/lib.rs [pub] use compare::{ ChangeCause, DependencyChange, PresenceChange, SemanticChange, SemanticTransition, SnapshotComparison, compare, } |ff395fc6aab9146f
+crates/repository-correlation/src/lib.rs [pub] use drift::{ BranchDifference, DeprecatedSpec, DriftKind, DriftScopeKind, DriftScopes, GatingFlag, ImplementationDrift, UndeployedCode, } |9d0b9734a1c9d135
+crates/repository-correlation/src/lib.rs [pub] use edge::{EdgeEvidence, RelationEdge} |5149f5c2c581c7d8
+crates/repository-correlation/src/lib.rs [pub] use relation::{AuthorityLane, EvidenceRelation} |04d28fbb9ba2bba0
 crates/repository-correlation/src/relation.rs [priv] impl AuthorityLane
 crates/repository-correlation/src/relation.rs [priv] impl EvidenceRelation
-crates/repository-correlation/src/relation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AuthorityLane
-crates/repository-correlation/src/relation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EvidenceRelation
-crates/repository-correlation/src/relation.rs [pub] impl AuthorityLane :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/relation.rs [pub] impl AuthorityLane :: #[must_use] const fn claim_type(self) -> Option<academic_ledger::ProductClaimType>
-crates/repository-correlation/src/relation.rs [pub] impl AuthorityLane :: const ALL: [Self; 3]
-crates/repository-correlation/src/relation.rs [pub] impl EvidenceRelation :: #[must_use] const fn as_str(self) -> &'static str
-crates/repository-correlation/src/relation.rs [pub] impl EvidenceRelation :: #[must_use] const fn lane(self) -> AuthorityLane
-crates/repository-correlation/src/relation.rs [pub] impl EvidenceRelation :: const ALL: [Self; 7]
+crates/repository-correlation/src/relation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AuthorityLane |02459f832baab2c8
+crates/repository-correlation/src/relation.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum EvidenceRelation |d2ac8b7f185ef14b
+crates/repository-correlation/src/relation.rs [pub] impl AuthorityLane :: #[must_use] const fn as_str(self) -> &'static str |b704ab545650456b
+crates/repository-correlation/src/relation.rs [pub] impl AuthorityLane :: #[must_use] const fn claim_type(self) -> Option<academic_ledger::ProductClaimType> |5efa839355d8c5fd
+crates/repository-correlation/src/relation.rs [pub] impl AuthorityLane :: const ALL: [Self; 3] |ae9abc28da68c10c
+crates/repository-correlation/src/relation.rs [pub] impl EvidenceRelation :: #[must_use] const fn as_str(self) -> &'static str |9ffd3989be0bd426
+crates/repository-correlation/src/relation.rs [pub] impl EvidenceRelation :: #[must_use] const fn lane(self) -> AuthorityLane |c79a375618cd87ec
+crates/repository-correlation/src/relation.rs [pub] impl EvidenceRelation :: const ALL: [Self; 7] |d41e7f27f6b14d4f

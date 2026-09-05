@@ -43,10 +43,17 @@
 //!   scan rather than passing through it.
 //! * [`the_items_tile_every_file_the_workspace_compiles`] — the extents the
 //!   reader returns cover every non-whitespace character of all 568 product
-//!   files of the workspace, disjointly. An item it failed to see would leave
-//!   a hole, and the hole is what the test reads. A spelling sweep can never
-//!   have that property: `signatures_in_blocks` covers a few dozen lines of a
-//!   900-line file and nothing says what the rest of it is.
+//!   files of the workspace, disjointly: every character belongs to exactly
+//!   one **top-level** item. An item the reader missed *at top level* would
+//!   leave a hole, and the hole is what the test reads. An item written inside
+//!   a leaf's body leaves **no** hole — the leaf's own extent already covers
+//!   it, and the reader does not descend into a body — so the tiling is total
+//!   over the text and not over the items. What carries a body is the
+//!   fingerprint in the next section, and `P2-A4`'s third audit is what the
+//!   difference cost while only one of the two rules took one. A spelling
+//!   sweep can never have even the text property: `signatures_in_blocks`
+//!   covers a few dozen lines of a 900-line file and nothing says what the
+//!   rest of it is.
 //!
 //! # What is pinned
 //!
@@ -70,14 +77,25 @@
 //! `impl ReleasableArtifact` names no type at all, and it is the accessor
 //! `crates/capture-gate/src/lib.rs` calls the only one in that crate.
 //!
-//! The second rule pins [`support::Item::sealed_key`] rather than
-//! [`support::Item::key`], and the difference is a measured hole: a key is a
+//! **Both rules pin [`support::Item::sealed_key`] rather than
+//! [`support::Item::key`]**, and the difference is a measured hole: a key is a
 //! declaration, an `impl` block written inside a function body is globally
-//! effective Rust, and this reader does not descend into a body. That
-//! injection passed **both** rules here and was caught only by `T213`'s
-//! line-anchored `impl_headers` one file over. A leaf carries a fingerprint of
-//! its own text; a container does not, because its contents are enumerated as
-//! items of their own.
+//! effective Rust, and this reader does not descend into a body. A leaf
+//! carries a fingerprint of its own text; a container does not, because its
+//! contents are enumerated as items of their own.
+//!
+//! The whole-set rule read `key` until `P2-A4`'s third audit wrote
+//! `#[rustfmt::skip] #[allow(non_local_definitions)] impl From<&Redaction> for
+//! Vec<String>` into the body of an existing method of
+//! `crates/student-voice/src/derivative.rs`. That handed three students'
+//! removed utterances to any crate in the workspace with no `RawAccessGrant`
+//! and no `RawAccessLog` row, and it passed both rules here, `impl_headers`
+//! one file over, `cargo fmt`, `pnpm test` and
+//! `cargo clippy --workspace --all-targets -- -D warnings` on both hosts: the
+//! item count was 376 before and after and every key was byte-identical. The
+//! closed-type rule was blind for a second reason — `Redaction` is not one of
+//! the six [`CLOSED_TYPES`], so `reaches` was `false` and that rule never
+//! looked at the item at all.
 //!
 //! # What this does not claim
 //!
@@ -90,12 +108,24 @@
 //! per closed type, and [`the_items_tile_every_file_the_workspace_compiles`],
 //! which is workspace-wide over files.
 //!
-//! And [`every_item_in_these_packages_is_pinned`] is over **declarations**: an
-//! item nested inside a function body of those two packages is not in it. What
-//! covers that for the four closed types is the fingerprint above; what covers
-//! it for the rest of those packages is the line-anchored `impl_headers` this
-//! file supplements rather than replaces. The two are complementary, and the
-//! injection that showed it is the reason both are still here.
+//! Inside the 23, a body is in the pin. Outside them a body is covered only
+//! where the item reaches a closed type, and the line-anchored `impl_headers`
+//! this file supplements rather than replaces is what is left over the rest.
+//! That residue is what `#[allow(non_local_definitions)]` costs: written on a
+//! declaration it is part of the key already, written inside a body it is not,
+//! and it switches off the one thing between a body and a globally effective
+//! trait impl.
+//!
+//! And a fingerprint is over [`support::Item::text`], the view with comments
+//! and string bodies blanked. So a doc comment is free — measured — and **a
+//! same-length change to a string literal's contents inside a leaf moves
+//! nothing here**: replacing `ORIGINAL_CLASSIFICATION`'s `"RESTRICTED"` with a
+//! ten-character substitute passes every rule in this file, and what refuses
+//! it is `raw_remains_restricted_under_authorized_access`, a behavioural test
+//! one crate over. That residue is a data substitution rather than a route:
+//! Rust executes no code written inside a string, and the two constructs that
+//! take a path as a literal — `include!` and `#[path]` — put it in the item's
+//! *declaration*, which is read from the restored view and is in the key.
 
 mod support;
 
@@ -185,6 +215,13 @@ const CLOSED_TYPES: [ClosedType; 6] = [
 ///
 /// A walk that returned nothing would satisfy every "no file holds" assertion
 /// in this file. `T217` measured 568 product files at `29f66d5`.
+///
+/// 568 is the **compiled** count, not a count of files on disk: a walk of
+/// non-test `.rs` files under `crates/` finds 579. The eleven are five
+/// `crates/*/examples/emit_*.rs` and the six files of
+/// `crates/test-support/src`, and what governs the difference is
+/// `compilation_unit_scans.rs`'s `every_product_file_is_compiled_by_its_own_crate`,
+/// which pins them. Nothing here reads a file no target compiles.
 const PRODUCT_FILE_FLOOR: usize = 500;
 
 /// The product items of one package, read from its compilation unit.
@@ -371,7 +408,10 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
         "the sample does not exercise every kind the enumeration names"
     );
 
-    // The three forms, each present as an item with its own key.
+    // The three forms, each present as an item with its own key. `key` rather
+    // than `sealed_key` on purpose: this reads what the reader made of a
+    // sample it is handed, and the two pins are what compare a fingerprint
+    // against the tree. It is the only remaining `key` call site.
     let keys: Vec<String> = read.iter().map(|item| item.key()).collect();
     for wanted in [
         "sample.rs [pub] const POINTER: fn(&Unit) -> u8",
@@ -427,7 +467,8 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
 // The pins
 // ---------------------------------------------------------------------------
 
-/// Nothing a scanned package compiles is outside the pinned item set.
+/// Nothing a scanned package compiles is outside the pinned item set, and no
+/// leaf of one holds text nobody wrote down.
 ///
 /// The backstop. It is keyed on nothing at all: not a visibility, not a
 /// keyword, not a type name. An item added anywhere in one of these packages
@@ -443,9 +484,23 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
 /// with it, and the failure names the package.
 ///
 /// **Where the pins live.** `crates/contracts/tests/pinned-items/<package>.items`,
-/// one [`Item::key`] to a line, sorted. Six thousand keys are a table rather
-/// than a source file: a product edit shows up in `git diff` as the lines it
-/// added, which is the review this pin exists to force.
+/// one [`Item::sealed_key`] to a line, sorted. Six thousand keys are a table
+/// rather than a source file: a product edit shows up in `git diff` as the
+/// lines it added, which is the review this pin exists to force.
+///
+/// **Why a sealed key and not a key.** A key is a declaration and says nothing
+/// about a body. `P2-A4`'s third audit wrote
+/// `#[rustfmt::skip] #[allow(non_local_definitions)] impl From<&Redaction> for
+/// Vec<String>` into the body of an existing method of
+/// `crates/student-voice/src/derivative.rs`; that handed three students'
+/// removed utterances to any crate in the workspace with no `RawAccessGrant`
+/// and no `RawAccessLog` row, and this pin did not move, because the item
+/// **count was 376 before and after** and every key was byte-identical. A leaf
+/// now carries a fingerprint of its own text, so the body is in the pin. The
+/// price is that a body edit moves a line here — 5134 of the 6131 keys carry a
+/// fingerprint and the other 997 are containers, whose contents are enumerated
+/// as items of their own — and that price is the point: a diff that touches a
+/// body in one of these packages is a diff a reviewer should read.
 #[test]
 fn every_item_in_these_packages_is_pinned() -> TestResult {
     let repository = repository_root()?;
@@ -459,7 +514,7 @@ fn every_item_in_these_packages_is_pinned() -> TestResult {
     let mut total = 0_usize;
     for package in &packages {
         let items = product_items(package)?;
-        let mut keys: Vec<String> = items.iter().map(Item::key).collect();
+        let mut keys: Vec<String> = items.iter().map(Item::sealed_key).collect();
         keys.sort();
         total = total.saturating_add(keys.len());
         let pinned = pinned_items(&repository, package)?;
