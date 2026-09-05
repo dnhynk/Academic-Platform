@@ -29,6 +29,14 @@
 //! coverage witness. A verdict without a citation and a verdict withheld are
 //! different things, and only the second is publishable.
 //!
+//! A rule whose recorded page is inside **another document** is refused the same
+//! way and reported as
+//! [`crate::verdict::MissingCheck::RuleSourceSpanIsAnotherDocument`]. The two
+//! digests are compared by [`crate::source::RuleSourceIndex::placement`], which
+//! takes the published set rather than a bare identifier, so a leaf citing a
+//! paragraph of a document its rule was not read from is not reachable from
+//! here.
+//!
 //! # What the root status is, and what it is not
 //!
 //! The root folds the rule nodes: `CONFLICT` if any conflicts, else `UNKNOWN`
@@ -61,7 +69,7 @@ use crate::{
     gate::OpenGate,
     leaf::{AttemptUsage, EquivalencyDecision, NoAttemptReason, ProofLeaf},
     select::SelectedRuleSet,
-    source::RuleSourceSpan,
+    source::{Placement, RuleSourceSpan},
     transcript::{EntryAdmission, TranscriptSnapshot, as_attempt},
     verdict::{
         ConflictFreeWitness, ConflictReference, CoverageWitness, DegreeVerdict, DeterminateVerdict,
@@ -312,11 +320,24 @@ impl DegreeAudit {
         let mut missing: Vec<MissingCheck> = Vec::new();
         let mut explanations: Vec<CreditExplanation> = Vec::new();
 
-        for (rule, body) in set.rules() {
-            let Some(span) = facts.sources.span(rule) else {
-                unevaluated.push(rule.clone());
-                missing.push(MissingCheck::RuleSourceSpanAbsent { rule: rule.clone() });
-                continue;
+        for executable in set.executable_rules() {
+            let (rule, body) = (executable.id(), executable.body());
+            let span = match facts.sources.placement(set, rule) {
+                Placement::InItsOwnSource(span) => span,
+                Placement::Absent => {
+                    unevaluated.push(rule.clone());
+                    missing.push(MissingCheck::RuleSourceSpanAbsent { rule: rule.clone() });
+                    continue;
+                }
+                Placement::AnotherDocument { cited, rests_on } => {
+                    unevaluated.push(rule.clone());
+                    missing.push(MissingCheck::RuleSourceSpanIsAnotherDocument {
+                        rule: rule.clone(),
+                        cited,
+                        rests_on,
+                    });
+                    continue;
+                }
             };
             let outcome = set.evaluate(rule, &academic)?;
             let node = build_node(
@@ -399,23 +420,35 @@ impl DegreeAudit {
             missing.push(not_fresh(engine, &facts));
         }
 
-        let verdict = match (coverage, conflict_free, freshness) {
-            (Some(coverage), Some(conflict_free), Some(freshness)) => {
-                DegreeVerdict::Determinate(DeterminateVerdict::new(
-                    outcome_of(root_status),
-                    coverage,
-                    conflict_free,
-                    freshness,
-                ))
-            }
-            // Reached only when a gate refused and produced no check. That is
-            // a defect in this function rather than a state of the record, and
-            // it is returned as one -- not papered over with the nearest
-            // `MissingCheck`, which is what stood here and what told a user who
-            // had recorded the freshness criterion to record it.
-            _ => DegreeVerdict::Indeterminate(
-                IndeterminateVerdict::from_checks(missing).ok_or(AuditError::RefusedWithNoCheck)?,
-            ),
+        // The outstanding checks are read first, and they decide. Section
+        // 11.4's three gates were the whole of the condition here and `missing`
+        // was dropped on the determinate branch, so *that nothing is
+        // outstanding* was the one claim in the rule nothing checked: an
+        // attempt whose credit contribution `P2-U4` could not settle produced
+        // `RECOGNITION_UNDECIDED` and a determination in the same evaluation,
+        // over a transcript whose credits the audit had therefore not counted.
+        // Consuming the list first makes the two verdicts exhaustive over it
+        // rather than over the witnesses, so a check added later is fail-closed
+        // without anything else being remembered.
+        let verdict = match IndeterminateVerdict::from_checks(missing) {
+            Some(outstanding) => DegreeVerdict::Indeterminate(outstanding),
+            None => match (coverage, conflict_free, freshness) {
+                (Some(coverage), Some(conflict_free), Some(freshness)) => {
+                    DegreeVerdict::Determinate(DeterminateVerdict::new(
+                        outcome_of(root_status),
+                        coverage,
+                        conflict_free,
+                        freshness,
+                    ))
+                }
+                // Reached only when a gate refused and produced no check. That
+                // is a defect in this function rather than a state of the
+                // record, and it is returned as one -- not papered over with
+                // the nearest `MissingCheck`, which is what stood here and what
+                // told a user who had recorded the freshness criterion to
+                // record it.
+                _ => return Err(AuditError::RefusedWithNoCheck),
+            },
         };
 
         let binding = AuditInputBinding {

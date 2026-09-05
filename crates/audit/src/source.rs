@@ -12,9 +12,26 @@
 //! no recorded span is not evaluated at all -- see [`crate::bind`] -- and is
 //! reported as a missing check, because a leaf that could not say where its
 //! rule came from would be a verdict without a citation.
+//!
+//! # A page inside another document is not this rule's page
+//!
+//! A span names a paragraph *inside a snapshot*, and the rule names the
+//! snapshot it was read out of. Those are two recorded digests, and while
+//! nothing compared them a leaf could cite a paragraph of a document its rule
+//! was never read from -- the index is keyed by rule identifier, and an
+//! identifier is not a document. Measured on this tree, an index built with a
+//! digest no published rule rests on gave `DETERMINATE NOT_POSSIBLE` with no
+//! outstanding check and thirteen leaves citing that other snapshot.
+//!
+//! So there is no accessor that hands out a span for a bare identifier.
+//! [`RuleSourceIndex::placement`] takes the published set the identifier
+//! belongs to and returns [`Placement`], whose three arms are the three things
+//! that can be true: the recorded page is this rule's page, this index has no
+//! page for it, or the recorded page is inside another document. The last two
+//! are different missing checks and neither is a leaf.
 
 use academic_domain::{ArtifactId, ContentDigest, EvidenceLocator, engines::SourceLocator};
-use academic_requirement::RuleId;
+use academic_requirement::{RuleId, RuleSet};
 use std::collections::BTreeMap;
 
 use crate::error::AuditError;
@@ -123,11 +140,38 @@ impl RuleSourceSpan {
     }
 }
 
+/// What the index has for one rule.
+///
+/// Three arms because three things can be true, and only the first is a
+/// citation: the recorded page is inside the snapshot the rule rests on, no
+/// page was recorded at all, or a page was recorded inside a different
+/// document. The last is the one that had no arm -- it was read as the first,
+/// and the leaf cited a document its rule was never read from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Placement<'index> {
+    /// The recorded page and paragraph, inside the rule's own snapshot.
+    InItsOwnSource(&'index RuleSourceSpan),
+    /// This index has no page for the rule.
+    ///
+    /// Either nobody recorded one, or the set does not publish the identifier
+    /// at all -- and both are the same thing here: there is no citation for it,
+    /// so it cannot become a leaf.
+    Absent,
+    /// A page was recorded inside a document this rule was not read from.
+    AnotherDocument {
+        /// The snapshot the recorded span points inside.
+        cited: ContentDigest,
+        /// The snapshot the rule itself rests on.
+        rests_on: ContentDigest,
+    },
+}
+
 /// Where each published rule was read from.
 ///
-/// A map with no fallback: [`RuleSourceIndex::span`] returns `None` for a rule
-/// nobody placed, and [`crate::bind::BoundRuleSet::bind`] turns that into an
-/// unevaluated rule rather than into a leaf with a made-up citation.
+/// A map with no fallback: [`RuleSourceIndex::placement`] is
+/// [`Placement::Absent`] for a rule nobody placed, and
+/// [`crate::engine::DegreeAudit`] turns that into an unevaluated rule rather
+/// than into a leaf with a made-up citation.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuleSourceIndex {
     spans: BTreeMap<RuleId, RuleSourceSpan>,
@@ -153,10 +197,29 @@ impl RuleSourceIndex {
         self
     }
 
-    /// Where one rule was read from, when it was recorded.
+    /// Where one rule was read from, when the recorded page is its own.
+    ///
+    /// The published set is a parameter and that is the check: the set knows
+    /// the digest of the snapshot each of its rules was read out of, the span
+    /// carries the digest of the snapshot its paragraph is inside, and this is
+    /// the one place in the crate the two are compared. A caller cannot ask for
+    /// a span without supplying the set to compare it against -- it cannot
+    /// supply the digest either, so it cannot supply the span's own -- and a
+    /// leaf citing another document is therefore not a branch somebody has to
+    /// remember to write.
     #[must_use]
-    pub fn span(&self, rule: &RuleId) -> Option<&RuleSourceSpan> {
-        self.spans.get(rule)
+    pub fn placement(&self, rules: &RuleSet, rule: &RuleId) -> Placement<'_> {
+        let (Some(span), Some(published)) = (self.spans.get(rule), rules.rule(rule)) else {
+            return Placement::Absent;
+        };
+        if span.source_digest() == published.source_digest() {
+            Placement::InItsOwnSource(span)
+        } else {
+            Placement::AnotherDocument {
+                cited: span.source_digest(),
+                rests_on: published.source_digest(),
+            }
+        }
     }
 
     /// Every recorded placement, by rule.
