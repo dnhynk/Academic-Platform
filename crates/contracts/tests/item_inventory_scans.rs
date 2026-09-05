@@ -67,6 +67,15 @@
 //! `impl ReleasableArtifact` names no type at all, and it is the accessor
 //! `crates/capture-gate/src/lib.rs` calls the only one in that crate.
 //!
+//! The second rule pins [`support::Item::sealed_key`] rather than
+//! [`support::Item::key`], and the difference is a measured hole: a key is a
+//! declaration, an `impl` block written inside a function body is globally
+//! effective Rust, and this reader does not descend into a body. That
+//! injection passed **both** rules here and was caught only by `T213`'s
+//! line-anchored `impl_headers` one file over. A leaf carries a fingerprint of
+//! its own text; a container does not, because its contents are enumerated as
+//! items of their own.
+//!
 //! # What this does not claim
 //!
 //! The two pinned packages are the two whose contract sentences the audit
@@ -74,6 +83,13 @@
 //! line prefix are enumerated by
 //! [`the_inventories_still_keyed_on_a_line_prefix_are_named`], so what is left
 //! open is a list somebody has to edit rather than a silence.
+//!
+//! And [`every_item_in_these_packages_is_pinned`] is over **declarations**: an
+//! item nested inside a function body of those two packages is not in it. What
+//! covers that for the four closed types is the fingerprint above; what covers
+//! it for the rest of those packages is the line-anchored `impl_headers` this
+//! file supplements rather than replaces. The two are complementary, and the
+//! injection that showed it is the reason both are still here.
 
 mod support;
 
