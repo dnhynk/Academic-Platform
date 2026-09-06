@@ -1,230 +1,54 @@
-# Desktop shell contract
+# Desktop shell and runtime contract
 
-`P2-X1` fixes four things: the route manifest, the typed local-core command
-allowlist, the boundary that keeps this surface away from the database and the
-keys, and the rule that an optimistic update is not canonical until the core
-returns a receipt. It also commits the Tauri capability and CSP snapshot that
-`P2-A2` and its re-audit could not diff, because there was nothing to diff.
+P2-X1b binds the existing route, palette, backlink, evidence drawer and sealed receipt contracts to a real Tauri window under approved `gate_59451294e004`. Only the non-default `desktop-runtime` feature selects Tauri and its build dependency. Default builds retain the contract library and the original network prohibition.
 
-## What this is not evidence for
+## Build and launch
 
-**No Tauri runtime is linked and no window opens.** `crates/desktop` depends on
-`academic-rpc` and `thiserror` and on nothing else. The snapshot under
-`crates/desktop/` is committed configuration, machine-checked against the
-formats Tauri itself reads; it is not a running application, and no test here
-claims otherwise.
+Run `node tools/source-preflight.mjs` before dependency retrieval and use the repository's pinned bootstrap. Linux needs `libwebkit2gtk-4.1-dev` and its system dependencies; Windows uses installed WebView2. The explicit hosted desktop lane installs only that named Linux package through `tools/desktop-prerequisites.mjs`.
 
-The measurement that decided it is in
-`docs/security/dependency-admission-phase2-x1.json`. `cargo metadata` on
-`tauri 2.11.5` resolves **388 new packages into the default product closure**,
-344 with `default-features = false`, and 160 for `tauri-utils` alone. All three
-closures contain `http`; the first two also contain `http-body`, `hyper`,
-`hyper-util`, `reqwest` and `tower-http`. Those six are exactly what
-`phase1_default_features_have_no_product_network` forbids in the workspace
-default product graph, at every feature setting — `default-features = false`
-is the minimum set and Cargo features only add, so a closure that already holds
-all six at the minimum holds them at every superset. Linking the runtime is
-therefore a separate decision with its own dependency admission, and this task
-does not make it.
+```powershell
+pnpm --filter @academic-os/ui build
+cargo build -p academic-desktop --features desktop-runtime --locked --offline
+cargo run -p academic-desktop --features desktop-runtime --locked --offline
+cargo run -p academic-desktop --features desktop-runtime --locked --offline -- --smoke
+```
 
-What the snapshot *is* evidence for is its own content, and that is what a later
-audit can diff.
+The ordinary window opens without a daemon and reports unavailable. To connect to an existing synthetic daemon started through the README workflow, replace `--smoke` with `--session <runtime>/academic-os/<profile-key>/session.meta`. The host selects one session file; the frontend cannot supply a path, endpoint, fixture, URL, process or key.
 
-## Route manifest
+`--smoke` runs a fixed bundled module in the real webview. It clicks rendered navigation, palette, backlink and pin controls across the destination corpus, observes persistent drawer state, invokes diagnostics, and attempts unallowlisted commands, nonexistent privileged plugins, extra fields and an incompatible version. It submits no mutation. Its displayed result supplements official Computer Use inspection; compilation and structural tests alone are not native GUI evidence.
 
-`packages/ui/src/routes.ts` is the manifest and `P2-X1` owns it. Every entry
-carries the section 25.1 label it answers for.
+## Frame and accessibility
 
-`route_manifest_matches_ia_exactly` parses section 25.1's drawn tree out of
-`PERSONAL_ACADEMIC_CS_PROJECT_OS_END_STATE_DESIGN.md` and compares the two as
-sets in both directions, then compares the parent of each label and the reading
-order. No count appears anywhere in the comparison: both sides are enumerated.
+`runtime-entry.ts` renders the existing `shell.ts`/`views.ts` state into native HTML. The canonical route manifest, independent view registry, entity corpus and relation table are unchanged. One specification tree line remains one route; detail parameters remain destinations of that route. Course, Concept, Project and Question are reachable through the global palette, their detail views expose backlinks and Pin evidence, and `navigate` carries drawer state across views. Sections explicitly have no live records; the shell does not invent academic results or claim a finished interactive atlas.
 
-**One tree line is one route.** Two of the specification's lines name a pair —
-`Course Catalog & Course Detail` and `Concepts / CS Map` — and neither is split,
-because splitting on punctuation would make the comparison depend on how a label
-is spelled. A route that also addresses one entity carries a detail parameter
-instead, and contributes two destinations: its index form and its detail form.
-`every_destination_opens` opens both.
+The user-supplied baseline-ui and fixing-accessibility references apply within the existing stack. Controls have native semantics and visible focus; the named native dialog has a labeled search input and browser-owned modal trapping/restoration. Ctrl/Cmd K opens the palette and Escape closes it. State feedback uses status regions, mutation errors appear beside the action, and empty states offer an explicit next action. No animation or framework migration is added. Further atlas/content/performance and accessibility review belong to the later surface tasks.
 
-The view registry in `packages/ui/src/views.ts` is written out route by route
-rather than derived from the manifest. A derived registry would make
-`every_destination_opens` vacuous — every route would have a view because every
-route was a route. Written out, the two enumerations are independent and are
-compared in both directions.
+The original named tests remain: `route_manifest_matches_ia_exactly`, `every_destination_opens`, `palette_reaches_four_entity_types_from_every_route`, `backlinks_resolve_for_four_entity_types`, `evidence_drawer_persists_across_views`, `capability_snapshot_has_no_wildcard`, `desktop_cannot_open_the_database_or_read_keys`, and `optimistic_update_is_not_canonical_before_receipt`.
 
-A view is a structure, not pixels: a title, a breadcrumb reaching the root, at
-least one section, the right-hand evidence drawer, and the backlinks of any
-bound entity. Each section names the task that fills it with product content, so
-a reader of a rendered view cannot mistake an empty frame for a finished
-surface. `P2-X2` through `P2-X7` own that content.
+## Local IPC and receipts
 
-## Command palette, backlinks, evidence drawer
+Tauri registers only `desktop_request_v1`. Its build-time `AppManifest::commands` names the same command and the local main-window capability grants only `allow-desktop-request-v1`. No core default permission bundle or remote capability is granted. Version 1 requests contain a closed operation enum mapping to `DesktopCommand`; unknown versions, fields and operations fail closed. Empty struct variants make Serde reject surplus fields even for argument-free operations.
 
-Section 25.1 requires Course, Concept, Project and Question to be reachable from
-any screen by command palette and by backlink, and requires the evidence drawer
-for the selected entity to persist rather than costing a tab.
+The client reads at most 4097 bytes from host-selected `session.meta`, requires the exact three-line v1 format and 64 lowercase hexadecimal nonce, and refuses non-local endpoints. Windows admits only `\\.\pipe\academic-os\<session>\<profile-key>`; Unix requires an absolute socket path ending in `d.sock`. Session nonce and path stay in Rust and are never returned or logged. The desktop opens no profile/database and acquires no root/provider key.
 
-- `palette_reaches_four_entity_types_from_every_route` enumerates the whole
-  `destination × entity kind` product and requires each cell to yield at least
-  one command whose target is the route the manifest says opens that kind, whose
-  entity the corpus holds, and which actually opens.
-- `backlinks_resolve_for_four_entity_types` walks every entity in the corpus,
-  compares the backlink set against one derived in the test from the relation
-  table, and requires each backlink to open the referring entity's own detail
-  form and to traverse back.
-- `evidence_drawer_persists_across_views` enumerates every ordered pair of
-  destinations and requires the selection to survive, and separately requires
-  that navigating with nothing pinned invents no selection.
+The existing bounded, semantically validated RPC framing is used. One five-second deadline covers connection, handshake, request and acknowledgement. Windows retries only pre-send errors 2 and 231, at 20 ms intervals within 25 attempts and a 500 ms connection deadline; other errors return promptly. No mutation is resent after delivery can be ambiguous. Missing acknowledgement reports no canonical save is **confirmed**, not that the daemon necessarily rolled back. The monotonic clock is checked before each desktop open, including after a delayed executor poll. The CLI now has its separately tested pre-send retry after PR #113; it preserves the last native error at expiry, while desktop reports a timeout, so this is not a claim of identical client behavior.
 
-The drawer is shell state carried by `navigate`, not view state a view may keep.
+Diagnostics reports validated handshake availability/lock state. Ingest names only `SyntheticFixtureId::Phase1BitemporalLedgerV2`. Backup and restore use existing mutable commands and can be refused by the core. Export reports unsupported because the frozen local protocol has no export response; it never opens the store to imitate the CLI export path.
 
-The corpus in `packages/ui/src/entities.ts` is synthetic and built in process,
-as `CONTRIBUTING.md` requires. Nothing here reads a profile, a database or a
-network, and this surface has no way to reach any of them.
+The original pure `mutable_request_digest` moved from core into `academic_rpc::digest` and is re-exported at its former core path. Digest domain, length framing and bytes are unchanged. Six independently assembled fixed SHA-256 vectors cover all command arms and absent/present expected revision; no new hash dependency was needed.
 
-## The typed local-core command allowlist
+A mutable response must have accepted/duplicate status and the submitted request ID. `Optimistic::confirm` then checks request ID, client instance, idempotency key and request digest against the core's immutable receipt. Only that promotion can produce accepted state and the UI's receipt ID. A shared request controller serializes diagnostics and saves, disabling both actions until the owner finishes; deferred-reply tests ensure diagnostics cannot release a pending save or leave a previous receipt beside an unconfirmed new save. Diagnostics preserves the last completed save, while starting a new save clears its receipt. The UI shows saving until this response, then saved; an initially collapsed Save details control exposes the receipt without putting protocol terminology in the ordinary status. Locked/incompatible/rejected/unavailable replies have no canonical receipt. Runtime stream tests exercise actual framing, locked state, dropped acknowledgements and mismatched receipts. Existing compile-fail tests still prevent reading, serializing or converting an unaccepted optimistic value; the TypeScript WeakMap seal is unchanged.
 
-`academic_desktop::DesktopCommand` is a closed enum with no constructor from a
-string: no `TryFrom<&str>`, no `FromStr`, no variant carrying a free-form
-capability identifier. `tests/compile_fail/desktop_command_is_not_built_from_a_string.rs`
-is what says so, and it fails with a committed diagnostic rather than merely
-failing.
+## Runtime dependency and capability policy
 
-The allowlist is compared against `academic_rpc`'s own tables rather than
-restating them:
+Tauri 2.11.5 disables defaults and selects only `wry`, `custom-protocol`, `x11`; tauri-build 2.6.3 selects only `config-json`. Dynamic ACL, TLS, filesystem asset protocol, updater and plugins remain disabled. No fs/http/shell Tauri plugin is installed. Workspace `unsafe_code = "forbid"` remains intact, including the context macro boundary.
 
-- the capability set the enum yields equals `PHASE1_CAPABILITY_IDS`;
-- each write variant's capability equals `expected_capability_for_command` of the
-  wire command it builds;
-- the read and write halves partition into `READ_ONLY_CAPABILITY_IDS` and
-  `WRITE_CAPABILITY_IDS` exactly.
+`dependency-admission-phase2-x1b.json` enumerates 327 new exact lock tuples with owner, source/checksum, SPDX license, resolved features, advisory path and trust-boundary admission. The full optional closure is pinned and checked against Cargo metadata without glob exemptions. It contains HTTP implementation dependencies required by Tauri and is not described as network-free; there is no product HTTP transport. Both default and optional desktop closures are checked for database/key owners and drivers. Public signature verification dependencies are not key custody. Platform link/build measurements and CI times belong to the task report and CI budget record.
 
-A capability list restated here would drift from the daemon's silently. One
-compared against the daemon's cannot.
+`tauri.conf.json` is compiled into the runtime. The checked snapshot now uses `desktop-dist`, enables the official global invoke API, disables drag/drop and replaces `core:default` with the one application permission. CSP permits bundled assets and the exact Windows IPC host `http://ipc.localhost` alongside `ipc:`; no wildcard host is allowed. Native smoke records IPC resource timing names where the WebView exposes them. Tauri's CSP nonce/hash modification stays enabled. Both changed snapshot files and the vendored schemas retain explicit SHA-256 pins and closed-value/authority checks; the snapshot is not claimed unchanged.
 
-`SyntheticFixtureId` is closed for the same reason: no `DesktopCommand` names a
-path, a URL, or anything a user typed, because the only ingest variant takes
-this enum. Its one identifier is
-compared against `academic-core`'s `PHASE1_SYNTHETIC_FIXTURE_ID` as *text*, by
-`desktop_names_only_the_core_fixture_allowlist`, because the desktop must have
-no dependency edge to `academic-core`.
+The whole-package source scan still checks exact path roots and all module/include targets. The new local IPC file and optional build script are admitted individually, with no broad source exclusion. `tools/desktop-runtime-policy.test.mjs` checks the optional closure, runtime command manifest, bounded session read and feature isolation in the UI verification lane.
 
-## The desktop has no edge to the database or to a key
+## Limits
 
-ADR-001's surface table forbids this surface the database, provider and root
-keys, and unrestricted filesystem or network authority.
-`desktop_cannot_open_the_database_or_read_keys` in
-`tools/phase1-scaffold-policy.test.mjs` judges it three ways, following
-`only_egress_crate_has_a_socket`, because each is blind to a different bypass.
-
-**Graph.** The declared workspace closure of every edge kind — normal, build and
-dev — is exactly `academic-admission`, `academic-contracts`, `academic-domain`
-and `academic-rpc`, compared whole. The resolved closure is checked against ten
-workspace crates that own the database or a key.
-
-**Link.** The resolved shipping closure is pinned entire, so a dependency added
-anywhere below the surface is a review of the whole new closure. On top of that
-it is intersected with thirteen database-capable crates and seventeen
-key-custody crates, and holds none of either. Notably it holds **no SQLite
-driver of any kind**.
-
-What that adds up to is an *edge* claim, and the heading is written to it: the
-desktop links nothing that can open a store and nothing that can derive, wrap or
-unwrap a key. It is not a claim that no byte a caller hands this crate could be
-key material — nothing here would notice that, and no assertion below pretends
-to.
-
-`ed25519-dalek`, `sha2`, `hmac` and `zeroize` *are* in the closure, through
-`academic-admission`'s receipt signature verification and `academic-domain`'s
-digests. Verifying a signature over public evidence is not key custody, and the
-guard says so by naming those four as deliberately absent from the custody list
-rather than by excusing them.
-
-**Source.** A closed world over path roots: every identifier the crate writes a
-`::` after must be one of twenty-five reviewed roots, read on paths rather than
-on imports, so a fully qualified `rusqlite::Connection::open` is refused even
-though it spells no `use`. The allowlist is compared in both directions, so a
-dead entry fails. The walk reads the whole package rather than `src`, has a
-floor under it, and requires every `mod` and `#[path]` target to be a file it
-read.
-
-`only_egress_crate_has_a_socket` records this crate's socket-capable link
-closure — `libc`, `mio`, `rustix`, `socket2`, `tokio`, `windows-sys`, all through
-`academic-rpc`, which needs them for the named pipe and Unix-domain socket the
-daemon listens on. The crate spells no socket construct, which is why its
-`SOCKET_ALLOWANCE` entry is absent rather than empty.
-
-## An optimistic update is not canonical before a receipt
-
-ADR-001: "A UI optimistic update is not canonical until the core returns an
-immutable object/event ID and local acceptance receipt."
-
-`academic_desktop::Optimistic<T>` enforces it by having no exit. There is no
-`value`, `get` or `into_inner`; no `Deref`, `AsRef` or `Borrow`; no
-`From<Optimistic<T>> for T`; no caller-closure `map`; no `Serialize`; and a
-`Debug` that redacts. `Optimistic::confirm` consumes the wrapper, compares all
-four fields the core binds a receipt to — request id, client instance id,
-idempotency key, request digest — and returns `Canonical<T>` only when every one
-matches. Taking `self` by value means a refused receipt leaves no wrapper behind
-for a second attempt.
-
-`packages/ui/src/optimistic.ts` is the same contract for shell state that never
-crosses into Rust. There the seal is a module-scoped `WeakMap`: the wrapper
-carries a tag and the submitted request and nothing else, so there is no
-property to read, no spread that recovers the value, and no `JSON.stringify`
-that emits it. A structurally identical forgery confirms to nothing.
-
-**This is the same kind of seal as `academic_scenario::Proposed<T>` and is
-deliberately not that type.** `Proposed<T>` has no promotion at all, because a
-projection becomes canonical only through a user decision recorded as its own
-event; adding one would weaken a contract `P2-X1` does not own. An optimistic
-update has exactly one promotion, and it is a receipt. The overlap is real and
-is recorded here rather than resolved by making one type serve both rules.
-
-## Capability and CSP snapshot
-
-`crates/desktop/tauri.conf.json` and `crates/desktop/capabilities/desktop.json`
-are the snapshot. `capability_snapshot_has_no_wildcard` in
-`packages/ui/src/capability-snapshot.test.ts` checks three things that fail for
-different reasons on purpose:
-
-1. **Whole-file pins.** All four files — the two snapshot documents and the two
-   vendored Tauri schemas — are pinned by the SHA-256 of their whole bytes.
-2. **The format Tauri reads.** Both documents validate against
-   `schemas/tauri/config-2.11.5.schema.json`, which is Tauri's own published
-   schema, and `schemas/tauri/capability-2.9.3.schema.json`, generated from
-   `tauri_utils::acl::capability::Capability`. Negative controls show the schema
-   is doing work — and one shows it is *not* the wildcard guard, because it
-   accepts a `$HOME/**` asset-protocol scope quite happily.
-3. **`scanSnapshot`.** A closed world over reviewed strings, keys and values in
-   separate sets, plus exact comparisons on the fields that carry authority: the
-   permission list, the asset-protocol scope, every CSP directive, the window
-   labels, the absence of `remote`, and an empty `plugins`.
-
-`WILDCARD_FORMS` enumerates ten shapes — glob stars, base-directory variables,
-insecure schemes, scheme wildcards, scheme-less hosts, brace expansion, path
-traversal. **It explains; it does not decide.** A deny list of shapes is broken
-by the shape that is not on it. The closed world is what refuses a fullwidth
-asterisk, a bare drive root, a protocol-relative source and a `data:` scheme,
-none of which any enumerated form matches. The injection matrix for all of this
-is in [policy source scans](policy-source-scans.md).
-
-**Filesystem, HTTP and shell authority in Tauri v2 arrive through the
-`tauri-plugin-fs`, `tauri-plugin-http` and `tauri-plugin-shell` crates.** The
-snapshot declares `"plugins": {}` and `crates/desktop` declares no plugin
-dependency of any kind, and the dependency guard above is what keeps that true.
-
-The CSP is written as a directive map rather than one string, so each directive
-is compared on its own. It grants `'self'` to the fetch directives, `ipc:` to
-`connect-src`, and `'none'` to everything else. When the runtime is linked, the
-Windows custom-protocol hosts may have to be added to `connect-src`; that is a
-snapshot change, and the pin is what will force it through review.
-
-## What stays open
-
-- The Tauri runtime binding, with the 388-package admission it implies.
-- Every §25.2–§25.13 surface's content. `P2-X1` fixes the frame, not the
-  contents.
-- `production_data_allowed` is still `false` and ADR-002 is still unaccepted.
-  Nothing in this task changes either.
+Production data remains forbidden and ADR-002 remains unaccepted. This gate creates no recorder, product HTTP transport, installer release, signing, updater or publication. Native platform observations, exact CI timings and any missing UI/platform evidence are recorded honestly in the external task report; the later X4/X6 reviews inherit the user's UI reference.

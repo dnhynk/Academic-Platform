@@ -10,7 +10,7 @@
   "scripts": {
     "lint": "eslint src --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm run build && node --test dist/*.test.js",
-    "build": "tsc"
+    "test": "pnpm run build && node --test dist/*.test.js && node --test ../../tools/desktop-runtime-policy.test.mjs",
+    "build": "tsc && node build-assets.mjs"
   }
 }

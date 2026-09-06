@@ -1,3 +1,4 @@
+crates/desktop/build.rs [priv] fn main() -> Result<(), Box<dyn std::error::Error>> |55bd9f957e290a37
 crates/desktop/src/command.rs [priv] impl DesktopCommand
 crates/desktop/src/command.rs [priv] impl SyntheticFixtureId
 crates/desktop/src/command.rs [priv] use academic_rpc::generated::{ SyntheticBackupCommand, SyntheticIngestCommand, SyntheticRestoreCommand, mutable_request, } |bc89ecd12a643919
@@ -10,10 +11,38 @@ crates/desktop/src/command.rs [pub] impl DesktopCommand :: #[must_use] fn mutabl
 crates/desktop/src/command.rs [pub] impl DesktopCommand :: const ALL: &'static [Self] |ce8e6fc97d96e364
 crates/desktop/src/command.rs [pub] impl SyntheticFixtureId :: #[must_use] const fn as_str(self) -> &'static str |c3c30a400182435a
 crates/desktop/src/command.rs [pub] impl SyntheticFixtureId :: const ALL: &'static [Self] |e274e2b70eab659d
+crates/desktop/src/lib.rs [priv] #[cfg(feature = "desktop-runtime")] mod local_client
+crates/desktop/src/lib.rs [pub] #[cfg(feature = "desktop-runtime")] mod runtime
 crates/desktop/src/lib.rs [pub] mod command
 crates/desktop/src/lib.rs [pub] mod optimistic
 crates/desktop/src/lib.rs [pub] use command::{DesktopCommand, SyntheticFixtureId, capability_ids} |4a0691c15b22fb88
 crates/desktop/src/lib.rs [pub] use optimistic::{Canonical, NotCanonical, Optimistic, SubmittedRequest} |0501be56d6e3bf57
+crates/desktop/src/local_client.rs [priv] #[cfg(any(windows, test))] async fn connect_with_retry<T, F: std::future::Future<Output = ()>>( mut open: impl FnMut() -> io::Result<T>, mut now: impl FnMut() -> std::time::Instant, mut sleep: impl FnMut(Duration) -> F, ) -> io::Result<T> |2dc5a0a388cbf066
+crates/desktop/src/local_client.rs [priv] #[cfg(test)] mod tests
+crates/desktop/src/local_client.rs [priv] async fn connect(endpoint: &str) -> io::Result<Box<dyn ClientStream>> |5f6fa7e376ae6585
+crates/desktop/src/local_client.rs [priv] fn parse_session(contents: &str) -> Result<(&str, &str), &'static str> |4bdc035b4ea6f5c1
+crates/desktop/src/local_client.rs [priv] impl LocalClient
+crates/desktop/src/local_client.rs [priv] impl LocalClient :: async fn exchange( &self, command: DesktopCommand, ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> |a8c29a30a6c8cbf8
+crates/desktop/src/local_client.rs [priv] impl LocalClient :: async fn protocol( &self, command: DesktopCommand, mut stream: &mut Box<dyn ClientStream>, nonce: &str, ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> |db4805867eaeb4ff
+crates/desktop/src/local_client.rs [priv] impl fmt::Debug for LocalClient
+crates/desktop/src/local_client.rs [priv] impl fmt::Debug for LocalClient :: fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result |954da55bacb4310d
+crates/desktop/src/local_client.rs [priv] impl<T: AsyncRead + AsyncWrite + Unpin + Send> ClientStream for T
+crates/desktop/src/local_client.rs [priv] mod tests :: #[test] fn session_metadata_is_bounded_and_local() |d933cbbb50534745
+crates/desktop/src/local_client.rs [priv] mod tests :: #[tokio::test] async fn delayed_retry_poll_never_opens_after_deadline() |8393a208fd1f11a6
+crates/desktop/src/local_client.rs [priv] mod tests :: #[tokio::test] async fn retry_budget_and_nontransient_errors_remain_bounded() |df061f53a0cad20e
+crates/desktop/src/local_client.rs [priv] mod tests :: #[tokio::test] async fn runtime_requires_matching_core_ack_and_surfaces_locked_state() -> Result<(), Box<dyn std::error::Error + Send + Sync>> |71c46e7b2b9c848f
+crates/desktop/src/local_client.rs [priv] mod tests :: async fn round_trip( lock_state: ProfileLockState, mismatched_receipt: bool, drop_ack: bool, ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> |550638827708420a
+crates/desktop/src/local_client.rs [priv] mod tests :: use academic_rpc::{ ServerHandshakeConfig, generated::{ImmutableReceipt, MutableResponse}, negotiate_handshake, } |33102a64b477edb2
+crates/desktop/src/local_client.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/desktop/src/local_client.rs [priv] trait ClientStream: AsyncRead + AsyncWrite + Unpin + Send
+crates/desktop/src/local_client.rs [priv] use academic_rpc::{ FrameClass, LOCAL_CORE_PROTOCOL_NAME, LOCAL_CORE_PROTOCOL_VERSION, generated::{ ClientHandshake, LocalCoreEnvelope, MutableRequest, MutationStatus, ProfileLockState, ProtocolVersion, WriteDisposition, local_core_envelope::Payload, }, read_envelope, write_envelope, } |51ec346372e8e715
+crates/desktop/src/local_client.rs [priv] use crate::{DesktopCommand, Optimistic, SubmittedRequest, runtime::RuntimeReply} |e8d511baf837f07e
+crates/desktop/src/local_client.rs [priv] use std::{ fmt, fs::File, io::{self, Read}, path::PathBuf, time::Duration, } |664836b4c6354b76
+crates/desktop/src/local_client.rs [priv] use tokio::io::{AsyncRead, AsyncWrite} |bf0ac0725ee6f1b6
+crates/desktop/src/local_client.rs [pub] impl LocalClient :: async fn execute(&self, command: DesktopCommand) -> RuntimeReply |1cbc117001e9956d
+crates/desktop/src/local_client.rs [pub] impl LocalClient :: fn new(session_path: Option<PathBuf>) -> Self |796afe6366bd7fb2
+crates/desktop/src/local_client.rs [pub] struct LocalClient |3ee679e2517efc6e
+crates/desktop/src/main.rs [priv] fn main() -> Result<(), Box<dyn std::error::Error>> |f5780e518f786491
 crates/desktop/src/optimistic.rs [priv] impl<T> Canonical<T>
 crates/desktop/src/optimistic.rs [priv] impl<T> Optimistic<T>
 crates/desktop/src/optimistic.rs [priv] impl<T> fmt::Debug for Optimistic<T>
@@ -31,3 +60,17 @@ crates/desktop/src/optimistic.rs [pub] impl<T> Optimistic<T> :: #[must_use] cons
 crates/desktop/src/optimistic.rs [pub] impl<T> Optimistic<T> :: #[must_use] const fn request(&self) -> &SubmittedRequest |212822a23399a069
 crates/desktop/src/optimistic.rs [pub] impl<T> Optimistic<T> :: fn confirm(self, receipt: &ImmutableReceipt) -> Result<Canonical<T>, NotCanonical> |32103ba89334db03
 crates/desktop/src/optimistic.rs [pub] struct Optimistic<T> |beb5a91055b8d0ce
+crates/desktop/src/runtime.rs [priv] #[cfg(test)] mod tests
+crates/desktop/src/runtime.rs [priv] #[tauri::command] async fn desktop_request_v1( request: RuntimeRequest, client: tauri::State<'_, crate::local_client::LocalClient>, ) -> Result<RuntimeReply, &'static str> |862333ad0e54bb91
+crates/desktop/src/runtime.rs [priv] impl RuntimeCommand
+crates/desktop/src/runtime.rs [priv] impl RuntimeCommand :: fn desktop_command(self) -> crate::DesktopCommand |ba16e9dc240aaae6
+crates/desktop/src/runtime.rs [priv] impl RuntimeReply
+crates/desktop/src/runtime.rs [priv] mod tests :: #[test] fn frontend_command_decoder_refuses_breadth() |6ab276e9ae3f0501
+crates/desktop/src/runtime.rs [priv] mod tests :: use super::RuntimeRequest |4b2834ca117ea617
+crates/desktop/src/runtime.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/desktop/src/runtime.rs [pub(crate)] impl RuntimeReply :: fn state(state: &'static str, message: &'static str) -> Self |99cb79577bc8d17a
+crates/desktop/src/runtime.rs [pub(crate)] impl RuntimeReply :: fn unavailable() -> Self |8ab1f522df431c25
+crates/desktop/src/runtime.rs [pub] #[derive(Debug, Deserialize)] #[serde(deny_unknown_fields)] struct RuntimeRequest |07707ed815f49927
+crates/desktop/src/runtime.rs [pub] #[derive(Debug, Deserialize)] #[serde(tag = "command", rename_all = "snake_case", deny_unknown_fields)] enum RuntimeCommand |347a84d5784ab254
+crates/desktop/src/runtime.rs [pub] #[derive(Debug, Serialize)] struct RuntimeReply |b4eaae640ec55e91
+crates/desktop/src/runtime.rs [pub] fn run() -> Result<(), Box<dyn std::error::Error>> |1e2f3bd4e2e83007

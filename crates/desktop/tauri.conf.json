@@ -4,10 +4,10 @@
   "identifier": "dev.academic-os.desktop",
   "version": "0.1.0",
   "build": {
-    "frontendDist": "../../packages/ui/dist"
+    "frontendDist": "../../packages/ui/desktop-dist"
   },
   "app": {
-    "withGlobalTauri": false,
+    "withGlobalTauri": true,
     "security": {
       "freezePrototype": true,
       "dangerousDisableAssetCspModification": false,
@@ -36,7 +36,8 @@
         ],
         "connect-src": [
           "'self'",
-          "ipc:"
+          "ipc:",
+          "http://ipc.localhost"
         ],
         "media-src": [
           "'none'"
@@ -69,7 +70,10 @@
         "label": "main",
         "title": "Academic OS",
         "width": 1280,
-        "height": 800
+        "height": 800,
+        "dragDropEnabled": false,
+        "minWidth": 760,
+        "minHeight": 600
       }
     ]
   },

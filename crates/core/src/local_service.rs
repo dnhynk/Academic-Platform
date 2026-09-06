@@ -43,7 +43,6 @@ use crate::{
 /// The only mutable D1 fixture identifier.
 pub const PHASE1_SYNTHETIC_FIXTURE_ID: &str = "phase0-synthetic-bitemporal-ledger-v2";
 pub(crate) const FIXTURE_LOCATOR_KEY: &[u8] = b"phase0-synthetic-domain-locator-key";
-const REQUEST_DIGEST_DOMAIN: &[u8] = b"academic.local-mutable-request.v1\0";
 const RESPONSE_DIGEST_DOMAIN: &[u8] = b"academic.local-mutable-response.v1\0";
 
 /// Startup evidence proving V1 reconciliation completed before a listener may bind.
@@ -375,31 +374,7 @@ impl FixtureContext {
     }
 }
 
-/// Computes the stable non-self-referential digest of a P1 mutable request.
-pub fn mutable_request_digest(request: &MutableRequest) -> Result<ContentDigest, RpcError> {
-    let mut candidate = request.clone();
-    candidate.request_digest = vec![0; 32];
-    let validated = validate_mutable_request(&candidate)?;
-    let mut bytes = Vec::new();
-    bytes.extend_from_slice(REQUEST_DIGEST_DOMAIN);
-    bytes.extend_from_slice(validated.request_id.as_bytes());
-    bytes.extend_from_slice(validated.client_instance_id.as_bytes());
-    bytes.extend_from_slice(validated.idempotency_key.as_bytes());
-    append_optional_u64(&mut bytes, validated.expected_profile_revision);
-    append_bytes(&mut bytes, validated.capability_id.as_bytes());
-    match validated.command {
-        ValidatedWriteCommand::SyntheticIngest { fixture_id } => {
-            bytes.push(1);
-            append_bytes(&mut bytes, fixture_id.as_bytes());
-        }
-        ValidatedWriteCommand::SyntheticBackup => bytes.push(2),
-        ValidatedWriteCommand::SyntheticRestore { backup_receipt_id } => {
-            bytes.push(3);
-            bytes.extend_from_slice(backup_receipt_id.as_bytes());
-        }
-    }
-    Ok(ContentDigest::sha256(&bytes))
-}
+pub use academic_rpc::digest::mutable_request_digest;
 
 /// Builds a valid P1 rejection after queue admission or another non-mutating denial.
 pub fn rejection_response(
@@ -497,16 +472,6 @@ fn append_range(
             bytes.push(1);
             bytes.extend_from_slice(&range.start.to_be_bytes());
             bytes.extend_from_slice(&range.end.to_be_bytes());
-        }
-        None => bytes.push(0),
-    }
-}
-
-fn append_optional_u64(bytes: &mut Vec<u8>, value: Option<u64>) {
-    match value {
-        Some(value) => {
-            bytes.push(1);
-            bytes.extend_from_slice(&value.to_be_bytes());
         }
         None => bytes.push(0),
     }

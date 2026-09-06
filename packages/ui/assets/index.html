@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Academic OS</title>
+    <link rel="stylesheet" href="shell.css">
+    <script type="module" src="runtime-entry.js"></script>
+  </head>
+  <body>
+    <header><strong>Academic OS</strong><span>Synthetic workspace</span><button id="palette-open">Find anything · Ctrl K</button></header>
+    <p id="daemon-status" role="status">Connecting to the local service…</p>
+    <div class="workspace"><nav id="navigation" aria-label="Workspace"></nav><main id="view" tabindex="-1"></main><aside id="drawer" aria-label="Evidence drawer"></aside></div>
+    <footer><div class="actions"><button id="diagnostics">Check local service</button><button id="ingest" aria-describedby="command-status">Ingest synthetic fixture</button><span>Real or production data is forbidden.</span></div><p id="command-status" role="status">No save requested.</p><details id="receipt-details" hidden><summary>Save details</summary><p>Receipt ID: <code id="receipt-id"></code></p></details></footer>
+    <dialog id="palette" aria-labelledby="palette-label"><label id="palette-label" for="palette-query">Find a course, concept, project, question or view</label><input id="palette-query" type="search" autocomplete="off"><div id="palette-results"></div><button id="palette-close">Close</button></dialog>
+  </body>
+</html>

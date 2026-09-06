@@ -19,20 +19,17 @@
 //! [`ImmutableReceipt`](academic_rpc::generated::ImmutableReceipt) and compares
 //! every field the core bound the request to.
 //!
-//! **What this crate is not.** It links no Tauri runtime and opens no window.
-//! `crates/desktop/tauri.conf.json` and `crates/desktop/capabilities/` are the
-//! committed capability and CSP snapshot; `packages/ui` is the route manifest,
-//! palette, backlinks and evidence drawer; `docs/contracts/desktop-shell.md`
-//! states what each of those is and is not evidence for. This crate opens no
-//! socket, declares no foreign function, reads no environment variable, spawns
-//! no process and runs no build script, and it has no dependency edge of any
-//! kind to `academic-store`, `academic-vault` or `academic-crypto` --
-//! `desktop_cannot_open_the_database_or_read_keys` in
-//! `tools/phase1-scaffold-policy.test.mjs` judges that from the Cargo graph,
-//! the resolved link closure and the source text together.
+//! The optional `desktop-runtime` feature starts the bundled Tauri window and
+//! sends the existing versioned RPC over local endpoints. Default builds keep
+//! only these typed contracts. Neither lane links a store or key owner;
+//! see `docs/contracts/desktop-shell.md` for the measured boundary.
 
 pub mod command;
+#[cfg(feature = "desktop-runtime")]
+mod local_client;
 pub mod optimistic;
+#[cfg(feature = "desktop-runtime")]
+pub mod runtime;
 
 pub use command::{DesktopCommand, SyntheticFixtureId, capability_ids};
 pub use optimistic::{Canonical, NotCanonical, Optimistic, SubmittedRequest};

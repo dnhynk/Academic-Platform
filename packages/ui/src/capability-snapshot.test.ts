@@ -37,11 +37,11 @@ const repositoryRoot = new URL("../../../", import.meta.url);
 const PINNED_FILES: readonly (readonly [string, string])[] = [
   [
     "crates/desktop/tauri.conf.json",
-    "89df304a70c7854f72ee3c6ded20b70feef83e1f92f09123b829297e28a7bb75",
+    "0f53d6652951986e2670a87e8b18e5fd0912e5fb95c2fae64fd4883e0f8b40af",
   ],
   [
     "crates/desktop/capabilities/desktop.json",
-    "54efe90b8f50836a6fa316521198f490c6497aca7063e1ec39622fad65865167",
+    "262b89abf5261c09226f59c94d633afb1076f8bb31c852df0ea0974caf8dca6f",
   ],
   [
     "schemas/tauri/config-2.11.5.schema.json",

@@ -16,15 +16,18 @@ fn submitted() -> SubmittedRequest {
     }
 }
 
-fn pending() -> Optimistic<u32> {
-    Optimistic::new(7, submitted())
+// A local type keeps diagnostics independent of optional crates implementing From<u32>.
+struct Value;
+
+fn pending() -> Optimistic<Value> {
+    Optimistic::new(Value, submitted())
 }
 
 fn main() {
     let update = pending();
 
-    let _by_into: u32 = update.into();
-    let _by_as_ref: &u32 = pending().as_ref();
-    let _by_borrow: &u32 = Borrow::borrow(&pending());
-    let _by_deref: u32 = *pending();
+    let _by_into: Value = update.into();
+    let _by_as_ref: &Value = pending().as_ref();
+    let _by_borrow: &Value = Borrow::borrow(&pending());
+    let _by_deref: Value = *pending();
 }

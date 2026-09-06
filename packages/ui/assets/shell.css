@@ -1,0 +1,25 @@
+:root { font-family: "Segoe UI", system-ui, sans-serif; color: #26332f; background: #f7f8f5; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; height: 100dvh; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+header, footer { display: flex; gap: 24px; align-items: center; padding: 16px 24px; background: #fff; border-bottom: 1px solid #dce2da; }
+header strong { font-size: 21px; } header span { flex: 1; color: #59645c; }
+button, input { font: inherit; } button { cursor: pointer; border: 1px solid #cdd5cc; border-radius: 6px; padding: 8px 12px; background: white; color: inherit; text-align: left; }
+button:hover { background: #eaf0e8; } button:focus-visible, input:focus-visible { outline: 3px solid #276747; outline-offset: 2px; }
+button:disabled { cursor: wait; opacity: .6; }
+#daemon-status { margin: 0; padding: 10px 24px; background: #fff2d6; font-size: 14px; }
+.workspace { display: grid; grid-template-columns: 260px minmax(300px, 1fr) 300px; min-height: 0; }
+nav, main, aside { overflow: auto; padding: 24px; } nav { padding: 14px; border-right: 1px solid #dce2da; } nav button { display: block; width: 100%; border: none; margin: 3px 0; background: transparent; font-size: 13px; }
+nav button[aria-current="page"] { background: #deebdb; font-weight: 600; }
+main h1 { margin-top: 14px; font-size: 30px; font-weight: 600; } main section { background: #fff; border: 1px solid #dde3da; border-radius: 8px; padding: 16px 20px; margin: 14px 0; } h2 { font-size: 17px; font-weight: 600; }
+.breadcrumb, .hint { font-size: 13px; color: #637064; } aside { border-left: 1px solid #dce2da; background: #f0f4ed; } aside button, .backlinks button { display: block; margin: 8px 0; } footer { border-top: 1px solid #dce2da; font-size: 13px; }
+dialog { width: 680px; max-width: 90vw; border: 1px solid #cdd5cc; border-radius: 12px; padding: 24px; } dialog::backdrop { background: #17251e66; } dialog label { display: block; margin-bottom: 12px; } dialog input { width: 100%; padding: 12px; border: 1px solid #aab8a7; border-radius: 6px; } #palette-results { max-height: 50vh; overflow: auto; padding: 10px 0; } #palette-results button { display: block; width: 100%; margin: 4px 0; }
+footer { display: block; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+#command-status { margin: 8px 0 0; color: #4b574e; }
+h1, h2 { text-wrap: balance; } p { text-wrap: pretty; } pre { font-variant-numeric: tabular-nums; }
+nav button[data-depth="1"] { font-weight: 600; margin-top: 12px; }
+nav button[data-depth="2"] { padding-left: 24px; }
+#native-smoke-report { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 10; max-width: 70vw; max-height: 45dvh; overflow: auto; background: #fff; border: 2px solid #276747; padding: 16px; font-size: 12px; }
+@media (max-width: 1000px) { .workspace { grid-template-columns: 190px minmax(0, 1fr) 220px; } nav, main, aside { padding: 14px; } header { gap: 12px; } }
+
+#receipt-details { margin-top: 8px; } #receipt-details summary { cursor: pointer; } #receipt-id { overflow-wrap: anywhere; }

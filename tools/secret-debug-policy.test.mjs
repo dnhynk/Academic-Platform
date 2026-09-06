@@ -341,6 +341,9 @@ const BYTE_CLASSES = new Map([
 const SECRET_BYTE_CLASSES = new Set(["key-material", "content"]);
 
 const BYTE_FIELD_CLASSES = new Map([
+  ["LocalClient.client_id", "identifier"],
+  ["RuntimeCommand.backup_receipt_id", "identifier"],
+  ["RuntimeReply.receipt_id", "identifier"],
   ["AcceptanceCommand.client_instance_id", "identifier"],
   ["AcceptanceCommand.envelope_bytes", "canonical-encoding"],
   ["AcceptanceCommand.idempotency_key", "identifier"],

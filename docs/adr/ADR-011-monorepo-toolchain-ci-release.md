@@ -21,3 +21,7 @@ The preflight has no third-party parser dependency and therefore cannot be delay
 ## Acceptance gates
 
 Fresh Windows one-command bootstrap rehearsal; architecture-specific native dependency matrix when storage/UI arrive; SBOM and license/advisory policy; signed installer and OS code signing; updater signature negative test; protected release environment; provenance; and secret/capability/plaintext-canary CI.
+
+## Optional native desktop build (`P2-X1b`)
+
+Tauri 2.11.5 and tauri-build 2.6.3 are exact, non-default desktop-runtime dependencies. The default workspace retains its network prohibition. The reviewed 327-package added registry closure records exact checksums, selected features, owner, licenses and advisory paths in `docs/security/dependency-admission-phase2-x1b.json`. Five separate desktop jobs use the existing five-label matrix, a 30-minute limit, bundled UI build, feature clippy/tests and native binary build. Linux installs only the declared WebKitGTK 4.1 development prerequisite through the bounded helper; Windows and macOS use their platform runtime. Publication, signing and update delivery remain outside this implementation.

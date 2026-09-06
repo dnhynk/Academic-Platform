@@ -8,6 +8,7 @@ use prost::Message;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 pub mod convert;
+pub mod digest;
 pub mod error;
 pub mod frame;
 pub mod generated;

@@ -7,8 +7,8 @@
  * the two enumerations are independent, and the test compares them in both
  * directions -- a route with no view fails, and a view with no route fails.
  *
- * What a view is here is a structure, not pixels. No Tauri runtime is linked
- * and no window opens; opening a destination builds a titled frame with a
+ * Opening a destination builds a titled frame consumed by runtime-entry.ts,
+ * which renders it inside the optional Tauri window. Each frame carries a
  * breadcrumb, at least one section, and the right-hand evidence drawer. The
  * per-surface content of those sections is `P2-X2` through `P2-X7`; what this
  * task fixes is that every destination in the section 25.1 tree has a frame to

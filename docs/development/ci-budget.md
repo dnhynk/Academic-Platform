@@ -92,7 +92,7 @@ lasted 20:03; rerunning that same commit lasted 16:06, a 3:57 runner spread.
 
 ## Post-split budget
 
-The workflow now materializes 22 required jobs. The five `rust-default-*` jobs
+The workflow now materializes 27 required jobs, including the five optional desktop jobs described at the end of this record. The five `rust-default-*` jobs
 retain formatting, default clippy, the workspace test apart from
 `academic-store` (including doc tests), and all fixture commands. The five
 `rust-store-*` jobs run `academic-store`'s default-feature tests on the same
@@ -1693,3 +1693,11 @@ is 47 seconds **down** inside a job whose observed spread is over nine minutes.
 The honest statement is that this task's cost is not measurable at one reading.
 `pnpm-contracts`, which is where the Node scan actually runs, came in at 1:01
 against 15:00 -- the same second as `P2-X7`'s 1:02.
+
+## Optional desktop runtime lane (`P2-X1b`)
+
+The approved runtime adds five `rust-desktop-*` jobs on the same existing Linux, Linux ARM, Windows, Windows ARM and macOS labels. The current workflow therefore materializes 27 required jobs; historical 22-job measurements above retain their original counts. Each desktop job has a 30-minute timeout and builds the bundled UI before feature-enabled clippy, tests and a native binary build. Linux alone installs the bounded WebKitGTK 4.1 development prerequisite. The default feature graph and its network prohibition remain unchanged.
+
+The first runtime run [34006125305](https://github.com/dnhynk/Academic-Platform/actions/runs/34006125305), at `bd6b7dc`, was cancelled on the user's pause. Four desktop jobs completed: Linux x64 4:30, Linux ARM64 5:04, Windows x64 8:13, and macOS ARM64 3:52. Windows ARM64 was interrupted after 8:16; that is neither a completed duration nor a timeout reading. All five retain the 30-minute limit. These initial measurements do not validate the resumed source's deadline and request-serialization fixes; the coordinator follows the replacement run through completion and refreshes the latest-run table under the rule above.
+
+Native compiler-artifact measurements intersected with platform-filtered Cargo graphs identify 118 newly admitted normal-link crates and 46 build/proc-macro-only crates on Windows, and 133 and 60 respectively on Linux. The lock adds 327 exact package tuples and replaces none. These are observed crate dependencies, not retained linker-symbol counts; the external task report retains the machine-readable artifact and closure receipts.

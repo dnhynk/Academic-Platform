@@ -2852,7 +2852,39 @@ const DESKTOP_SHIPPING_CLOSURE = [
  * Local types and modules are here for the same reason -- the rule is "every
  * root was reviewed", and a rule with exceptions is not that rule.
  */
+// Instant/future/cell/Cell cover the monotonic deadline and controlled tests.
 const DESKTOP_PATH_ROOTS = [
+  "Instant",
+  "future",
+  "cell",
+  "Cell",
+  "from_str",
+  "Ok",
+  "super",
+  "PageLoadEvent",
+  "webview",
+  "ErrorKind",
+  "Error",
+  "AppManifest",
+  "Attributes",
+  "Box",
+  "Builder",
+  "ClientOptions",
+  "Duration",
+  "File",
+  "FrameClass",
+  "LocalClient",
+  "MutationStatus",
+  "Path",
+  "PathBuf",
+  "Payload",
+  "ProfileLockState",
+  "RuntimeReply",
+  "ServerHandshakeConfig",
+  "Uuid",
+  "UnixStream",
+  "WriteDisposition",
+  "String",
   "Borrow",
   "Command",
   "DesktopCommand",
@@ -2868,7 +2900,27 @@ const DESKTOP_PATH_ROOTS = [
   "collections",
   "command",
   "core",
+  "crate",
+  "digest",
+  "env",
+  "error",
   "fmt",
+  "fs",
+  "io",
+  "local_client",
+  "local_core_envelope",
+  "named_pipe",
+  "net",
+  "path",
+  "runtime",
+  "serde",
+  "tauri",
+  "tauri_build",
+  "time",
+  "tokio",
+  "u32",
+  "uuid",
+  "windows",
   "generated",
   "mutable_request",
   "optimistic",
@@ -3179,6 +3231,7 @@ const LOCAL_IPC_SPELLINGS = new Set([
  * review.
  */
 const SOCKET_ALLOWANCE = new Map([
+  ["crates/desktop/src/local_client.rs", ["UnixStream", "named_pipe", "tokio::net"]],
   ["crates/cli/src/client.rs", ["NamedPipe", "UnixStream", "tokio::net"]],
   // Windows pre-send availability retry and its synthetic native controls.
   ["crates/cli/src/client/windows_connect.rs", ["NamedPipeClient", "named_pipe", "tokio::net"]],
@@ -4280,7 +4333,7 @@ test("only_egress_crate_has_a_socket", async () => {
         `${file} spells the outbound socket construct ${spelling}; only the egress crates may`,
       );
       assert.equal(
-        file.startsWith("crates/cli/") || file.startsWith("crates/daemon/"),
+        file.startsWith("crates/cli/") || file.startsWith("crates/daemon/") || file === "crates/desktop/src/local_client.rs",
         true,
         `${file} is not one of the local IPC transports`,
       );
@@ -4305,7 +4358,7 @@ test("only_egress_crate_has_a_socket", async () => {
       .filter((pkg) => pkg.targets.some((target) => target.kind.includes("custom-build")))
       .map((pkg) => pkg.name)
       .toSorted(),
-    ["academic-rpc"],
+    ["academic-desktop", "academic-rpc"],
     "a crate gained a build script, which can generate source this scan never sees",
   );
 
@@ -6009,6 +6062,18 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     return found;
   };
 
+  const { receipt: runtimeReceipt, admitted: runtimeAdmitted } = receiptFor("P2-X1b");
+  assert.equal(runtimeReceipt.gate, "gate_59451294e004");
+  assert.equal(runtimeAdmitted.size, runtimeReceipt.summary.added_external_crate_count);
+  assert.deepEqual(runtimeReceipt.pins, { tauri: "2.11.5", "tauri-build": "2.6.3" });
+  for (const admission of runtimeReceipt.admissions) {
+    for (const field of ["owner", "license", "advisory_path", "trust_boundary_justification", "checksum"]) {
+      assert.ok(typeof admission[field] === "string" && admission[field].length > 0, `${admission.name}: missing ${field}`);
+    }
+    assert.ok(Array.isArray(admission.admitted_features));
+    assert.equal(admission.source, "registry+https://github.com/rust-lang/crates.io-index");
+  }
+
   // Every package `P2-K1` added is enumerated in its own receipt. Subtracting
   // exactly that set and re-checking the frozen Phase 1 digest proves two
   // things at once: no Phase 1 dependency moved, and nothing entered the lock
@@ -7566,6 +7631,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     receipt.admissions.map((entry) => [entry.name, entry.version]),
   );
   const expectedDirectVersions = {
+    ...runtimeReceipt.pins,
     ...preservedPhase0Versions,
     ...admittedVersions,
     ...keyReceipt.direct_workspace_dependencies,
@@ -8004,6 +8070,11 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
         ]
       : [];
     const expectedUses = [
+      ...(admission.name === "tokio" ? [{
+        package: "academic-desktop", kind: "normal", target: null,
+        default_features: false,
+        features: ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"],
+      }] : []),
       ...admission.uses,
       ...n5GapUse,
       ...l6NextLectureUse,
