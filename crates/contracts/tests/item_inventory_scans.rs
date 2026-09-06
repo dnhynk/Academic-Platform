@@ -754,7 +754,7 @@ const PINNED_PACKAGES: usize = 71;
 ///
 /// 11 748 over 43 packages before `P2-RF31`. The 28 packages that joined and
 /// the literal values that joined the fingerprint are the difference.
-const PINNED_ITEMS: usize = 18_152;
+const PINNED_ITEMS: usize = 18_200;
 
 /// The file holding one package's pinned item set.
 fn pin_path(repository: &Path, package: &str) -> PathBuf {
@@ -1259,11 +1259,12 @@ fn the_reach_readers_are_one_reader() -> TestResult {
 /// it: all eight of these were outside every reach reader and outside the item
 /// pin, and the derivation that chose what to watch selected on what a crate
 /// already had, so it could not report a crate that had neither.
-const SHIPPED_BINARIES: [&str; 8] = [
+const SHIPPED_BINARIES: [&str; 9] = [
     "capture-client",
     "cli",
     "connector",
     "daemon",
+    "desktop",
     "egress",
     "export-job",
     "indexer",
@@ -1294,10 +1295,12 @@ const CLASS_BINARIES: [(&str, &str); 4] = [
 /// and there is no statement position above the sandbox entry to write into.
 /// One appearing here again is the shape the sixth audit measured, and it
 /// fails naming the file.
-const FILES_DECLARING_FN_MAIN: [&str; 4] = [
+const FILES_DECLARING_FN_MAIN: [&str; 6] = [
     "crates/cli/src/main.rs",
     "crates/connector/src/main.rs",
     "crates/daemon/src/main.rs",
+    "crates/desktop/build.rs",
+    "crates/desktop/src/main.rs",
     "crates/indexer/src/main.rs",
 ];
 
@@ -1587,10 +1590,50 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
 /// Every path a shipped binary reaches through a crate root, with a reason.
 ///
 /// The `(package, path, reason)` shape `crates/repository/tests/repository_scans.rs`
-/// uses, over the eight crates that ship an executable. `connector` and
+/// uses, over the nine crates that ship an executable. `connector` and
 /// `indexer` are absent because they reach nothing: their whole `main` reads
 /// `PROCESS_CLASS.capabilities()` through an import.
-const BINARY_REACHES: [(&str, &str, &str); 26] = [
+const BINARY_REACHES: [(&str, &str, &str); 34] = [
+    (
+        "desktop",
+        "academic_desktop::runtime",
+        "the feature-gated entry point starts the bundled local Tauri window",
+    ),
+    (
+        "desktop",
+        "academic_rpc::digest",
+        "the shared pure request digest binds a synthetic IPC mutation to its receipt",
+    ),
+    (
+        "desktop",
+        "std::env",
+        "host launch arguments select session metadata or the explicit synthetic smoke",
+    ),
+    (
+        "desktop",
+        "std::error",
+        "typed runtime and local IPC errors fail without canonical acceptance",
+    ),
+    (
+        "desktop",
+        "std::cell",
+        "cfg(test) controlled clock and open counters for delayed-poll regression",
+    ),
+    (
+        "desktop",
+        "std::future",
+        "injected sleep future permits deterministic retry scheduling controls",
+    ),
+    (
+        "desktop",
+        "std::time",
+        "monotonic pre-open deadline bounds only pre-send local connection retries",
+    ),
+    (
+        "desktop",
+        "std::path",
+        "host-selected session metadata and validation of local Unix socket paths",
+    ),
     (
         "capture-client",
         "academic_process_sandbox::class_main",

@@ -331,6 +331,43 @@ jobs:
       - name: Run the rotation seam over the real store
         run: cargo test -p academic-portability --no-default-features --features encrypted-portability-rotation --locked
 
+  rust-desktop:
+    name: rust-desktop-${{ matrix.os }}
+    needs: source-preflight
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest]
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+      - name: Install pinned Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+      - name: Install pinned pnpm
+        run: npm install --global pnpm@11.22.0
+      - name: Install bounded Linux WebView prerequisites
+        run: node tools/desktop-prerequisites.mjs
+      - name: Populate the Cargo registry from the committed lockfile
+        run: cargo fetch --locked
+      - name: Frozen dependency install
+        run: pnpm install --frozen-lockfile --store-dir ~/.pnpm-store
+      - name: Build bundled desktop assets
+        run: pnpm --filter @academic-os/ui build
+      - name: Lint the optional desktop runtime
+        run: cargo clippy -p academic-desktop --all-targets --features desktop-runtime --locked --offline -- -D warnings
+      - name: Test the optional desktop runtime
+        run: cargo test -p academic-desktop --all-targets --features desktop-runtime --locked --offline
+      - name: Build the native desktop executable
+        run: cargo build -p academic-desktop --features desktop-runtime --locked --offline
+
   contracts:
     name: pnpm-contracts
     needs: source-preflight

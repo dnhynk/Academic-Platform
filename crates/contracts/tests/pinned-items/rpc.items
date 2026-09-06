@@ -51,6 +51,12 @@ crates/rpc/src/convert.rs [pub] impl IdempotencyKey :: #[must_use] const fn as_b
 crates/rpc/src/convert.rs [pub] impl IdempotencyKey :: #[must_use] const fn from_bytes(bytes: [u8; IDEMPOTENCY_KEY_BYTES]) -> Self |dfc371c80e1b1b47
 crates/rpc/src/convert.rs [pub] impl OpaqueId :: #[must_use] const fn as_bytes(&self) -> &[u8; OPAQUE_ID_BYTES] |4af9a8fff33e5f8c
 crates/rpc/src/convert.rs [pub] impl OpaqueId :: #[must_use] const fn from_bytes(bytes: [u8; OPAQUE_ID_BYTES]) -> Self |5cfe7c4c46c5355b
+crates/rpc/src/digest.rs [priv] const REQUEST_DIGEST_DOMAIN: &[u8] |40d263b9d74a646d
+crates/rpc/src/digest.rs [priv] fn append_bytes(target: &mut Vec<u8>, value: &[u8]) |409165b485783c89
+crates/rpc/src/digest.rs [priv] fn append_optional_u64(bytes: &mut Vec<u8>, value: Option<u64>) |8e70f94d2ded06fa
+crates/rpc/src/digest.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/rpc/src/digest.rs [priv] use crate::{ RpcError, convert::{ValidatedWriteCommand, validate_mutable_request}, generated::MutableRequest, } |125b06b75ccca425
+crates/rpc/src/digest.rs [pub] fn mutable_request_digest(request: &MutableRequest) -> Result<ContentDigest, RpcError> |799e8c12bfac168b
 crates/rpc/src/error.rs [priv] impl Error for RpcError
 crates/rpc/src/error.rs [priv] impl From<io::Error> for RpcError
 crates/rpc/src/error.rs [priv] impl From<io::Error> for RpcError :: fn from(value: io::Error) -> Self |c7e631f3e973887e
@@ -127,6 +133,7 @@ crates/rpc/src/lib.rs [pub] fn decode_envelope_frame( bytes: &[u8], class: Frame
 crates/rpc/src/lib.rs [pub] fn decode_envelope_payload( payload: &[u8], class: FrameClass, ) -> Result<generated::LocalCoreEnvelope, RpcError> |eb75d17db0287587
 crates/rpc/src/lib.rs [pub] fn encode_envelope_frame( envelope: &generated::LocalCoreEnvelope, class: FrameClass, ) -> Result<Vec<u8>, RpcError> |d14c0f756953f8f1
 crates/rpc/src/lib.rs [pub] mod convert
+crates/rpc/src/lib.rs [pub] mod digest
 crates/rpc/src/lib.rs [pub] mod error
 crates/rpc/src/lib.rs [pub] mod frame
 crates/rpc/src/lib.rs [pub] mod generated

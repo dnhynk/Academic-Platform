@@ -127,11 +127,9 @@ crates/core/src/lib.rs [pub] mod local_service
 crates/core/src/lib.rs [pub] mod operations
 crates/core/src/lib.rs [pub] mod service
 crates/core/src/local_service.rs [priv] #[derive(Debug)] struct FixtureContext |6f18aa9d8217b94a
-crates/core/src/local_service.rs [priv] const REQUEST_DIGEST_DOMAIN: &[u8] |40d263b9d74a646d
 crates/core/src/local_service.rs [priv] const RESPONSE_DIGEST_DOMAIN: &[u8] |bd5c87f3414aa2de
 crates/core/src/local_service.rs [priv] fn accepted_response( request: &MutableRequest, validated: &ValidatedMutableRequest, outcome: &AcceptanceOutcome, ) -> Result<MutableResponse, LocalServiceError> |c32c8e6f7d8d8f38
 crates/core/src/local_service.rs [priv] fn append_bytes(target: &mut Vec<u8>, value: &[u8]) |409165b485783c89
-crates/core/src/local_service.rs [priv] fn append_optional_u64(bytes: &mut Vec<u8>, value: Option<u64>) |8e70f94d2ded06fa
 crates/core/src/local_service.rs [priv] fn append_range( bytes: &mut Vec<u8>, range: Option<academic_rpc::convert::ValidatedAcceptanceRange>, ) |619ac61dab2a0e65
 crates/core/src/local_service.rs [priv] fn mutable_response_digest(response: &MutableResponse) -> Result<ContentDigest, RpcError> |280a9237c86ed199
 crates/core/src/local_service.rs [priv] fn timestamp_now() -> Result<TimestampMillis, LocalServiceError> |c938df14b0769d54
@@ -157,7 +155,6 @@ crates/core/src/local_service.rs [pub] #[derive(Debug)] struct LocalService |065
 crates/core/src/local_service.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LocalServiceStartup |0baf3aed5a9bfb39
 crates/core/src/local_service.rs [pub] #[derive(Debug, Error)] enum LocalServiceError |080b96b1088fe3ad
 crates/core/src/local_service.rs [pub] const PHASE1_SYNTHETIC_FIXTURE_ID: &str |a3c74eff44996589
-crates/core/src/local_service.rs [pub] fn mutable_request_digest(request: &MutableRequest) -> Result<ContentDigest, RpcError> |799e8c12bfac168b
 crates/core/src/local_service.rs [pub] fn rejection_response( request: &MutableRequest, reason: &str, profile_revision: u64, ) -> Result<MutableResponse, LocalServiceError> |584788fcc94a8572
 crates/core/src/local_service.rs [pub] impl LocalService :: #[cfg(feature = "phase1-fault-injection")] fn handle_mutable_request_now_with_faults<F>( &mut self, request: &MutableRequest, faults: &F, ) -> Result<MutableResponse, LocalServiceError> where F: AcceptanceFaultInjector, |ddbceb637c4f3322
 crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_mutable_request( &mut self, request: &MutableRequest, accepted_at: TimestampMillis, ) -> Result<MutableResponse, LocalServiceError> |44f961767ebd8930
@@ -166,6 +163,7 @@ crates/core/src/local_service.rs [pub] impl LocalService :: fn open( profile: Sy
 crates/core/src/local_service.rs [pub] impl LocalService :: fn open_reader( &self, ) -> Result<academic_store::connection::ReaderConnection, LocalServiceError> |f477222da6dbf66c
 crates/core/src/local_service.rs [pub] impl LocalServiceStartup :: #[must_use] const fn profile_revision(&self) -> u64 |80f9a1d15f3b3934
 crates/core/src/local_service.rs [pub] impl LocalServiceStartup :: #[must_use] const fn reconciliation(&self) -> &ReconcileReport |8da8e3034fd999b9
+crates/core/src/local_service.rs [pub] use academic_rpc::digest::mutable_request_digest |2af747a612f6b160
 crates/core/src/operations.rs [priv] #[cfg(test)] mod tests
 crates/core/src/operations.rs [priv] #[derive(Debug, Clone)] struct FixtureMaterial |3dea008d3a98f628
 crates/core/src/operations.rs [priv] const CLI_CLIENT_INSTANCE_DOMAIN: &[u8] |987e517fba94e0d6

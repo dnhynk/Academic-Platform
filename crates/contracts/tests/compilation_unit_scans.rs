@@ -69,15 +69,18 @@ use support::{
 ///
 /// `S-12` in `docs/contracts/policy-source-scans.md` is the row about a scan
 /// that walks `<crate>/src` and stops seeing product-shaped code beside it.
-/// These four are that shape, and the three probes are why the row exists:
+/// These roots are that shape, and the three probes are why the row exists:
 /// they are the only files in the workspace that name a socket type, each a
-/// `[[bin]]` behind `required-features` with a `path` outside `src`. A fifth
+/// `[[bin]]` behind `required-features` with a `path` outside `src`. Another root
 /// arriving fails here rather than becoming a tree that no `src` walk reads —
 /// which is what happened: `crates/process-sandbox/probes/enforcement_probe.rs`
 /// arrived from `P2-RF21` while this list held three, and it failed as an extra
 /// key with no edit to any scan.
-const PRODUCT_ROOTS_OUTSIDE_SRC: [&str; 4] = [
+/// The optional desktop build script adds only the reviewed Tauri command
+/// manifest; its presence does not exempt generated code or other roots.
+const PRODUCT_ROOTS_OUTSIDE_SRC: [&str; 5] = [
     "crates/capture-gate/probes/capture_probe.rs",
+    "crates/desktop/build.rs",
     "crates/process-sandbox/probes/enforcement_probe.rs",
     "crates/rpc/build.rs",
     "crates/worker/probes/worker_probe.rs",

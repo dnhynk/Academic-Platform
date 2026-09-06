@@ -2076,6 +2076,76 @@ const expectedCiWorkflow = {
     "cancel-in-progress": true,
   },
   jobs: {
+    "rust-desktop": {
+      "name": "rust-desktop-${{ matrix.os }}",
+      "needs": "source-preflight",
+      "runs-on": "${{ matrix.os }}",
+      "timeout-minutes": 30,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "os": [
+            "ubuntu-latest",
+            "ubuntu-24.04-arm",
+            "windows-latest",
+            "windows-11-arm",
+            "macos-latest"
+          ]
+        }
+      },
+      "steps": [
+        {
+          "name": "Checkout without persisted credentials",
+          "uses": "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "with": {
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Install pinned Rust toolchain",
+          "run": "rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy"
+        },
+        {
+          "name": "Install pinned Node",
+          "uses": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "with": {
+            "node-version-file": ".nvmrc"
+          }
+        },
+        {
+          "name": "Install pinned pnpm",
+          "run": "npm install --global pnpm@11.22.0"
+        },
+        {
+          "name": "Install bounded Linux WebView prerequisites",
+          "run": "node tools/desktop-prerequisites.mjs"
+        },
+        {
+          "name": "Populate the Cargo registry from the committed lockfile",
+          "run": "cargo fetch --locked"
+        },
+        {
+          "name": "Frozen dependency install",
+          "run": "pnpm install --frozen-lockfile --store-dir ~/.pnpm-store"
+        },
+        {
+          "name": "Build bundled desktop assets",
+          "run": "pnpm --filter @academic-os/ui build"
+        },
+        {
+          "name": "Lint the optional desktop runtime",
+          "run": "cargo clippy -p academic-desktop --all-targets --features desktop-runtime --locked --offline -- -D warnings"
+        },
+        {
+          "name": "Test the optional desktop runtime",
+          "run": "cargo test -p academic-desktop --all-targets --features desktop-runtime --locked --offline"
+        },
+        {
+          "name": "Build the native desktop executable",
+          "run": "cargo build -p academic-desktop --features desktop-runtime --locked --offline"
+        }
+      ]
+    },
     "source-preflight": {
       name: "dependency-source-preflight",
       "runs-on": "ubuntu-latest",
@@ -2558,8 +2628,8 @@ assertCiJobCountNarrative(readmeText, ciBudgetText);
 // job count changes they stop matching and stop injecting anything, so each one
 // asserts that it actually changed its document before asserting that the
 // changed document is rejected.
-const staleReadmeCount = readmeText.replace("22/22", "12/12");
-const staleBudgetCount = ciBudgetText.replace("22 required jobs", "12 required jobs");
+const staleReadmeCount = readmeText.replace("27/27", "12/12");
+const staleBudgetCount = ciBudgetText.replace("27 required jobs", "12 required jobs");
 assert.notEqual(staleReadmeCount, readmeText, "the stale README job-count mutation must alter the README");
 assert.notEqual(
   staleBudgetCount,
@@ -2589,7 +2659,7 @@ assertExactCiExecutionPolicy(ciText);
 const assertNativeFixtureCiTopology = (ci) => {
   const workflow = requireCiRecord(parseCiWorkflow(ci), "CI workflow");
   const jobs = requireCiRecord(workflow.jobs, "CI jobs");
-  for (const jobName of ["rust-default", "rust-store", "rust-features"]) {
+  for (const jobName of ["rust-default", "rust-store", "rust-features", "rust-desktop"]) {
     const rustJob = requireCiRecord(jobs[jobName], `CI job ${jobName}`);
     assertUnconditionalRequiredExecution(rustJob, `CI job ${jobName}`);
     assert.equal(

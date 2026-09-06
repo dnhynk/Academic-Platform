@@ -8,11 +8,10 @@
  * Tauri's own published schema for the version this repository measured, and
  * `schemas/tauri/capability-2.9.3.schema.json` was generated from
  * `tauri_utils::acl::capability::Capability` with `schemars`. Neither crate is
- * a dependency of this repository; the schemas are vendored data.
+ * used to load these vendored schemas during JavaScript tests.
  *
- * No Tauri runtime is linked, so nothing here opens a window. What the snapshot
- * is evidence for is its own content: an audit can diff these two files and
- * this module's rules decide whether the content grants breadth.
+ * The optional desktop-runtime feature consumes this exact snapshot. Native
+ * startup, command enforcement and GUI evidence supplement these source checks.
  *
  * ## Three layers, and which one catches what
  *
@@ -99,19 +98,20 @@ export const ALLOWED_SNAPSHOT_STRINGS: ReadonlySet<string> = new Set([
   "Academic OS",
   "dev.academic-os.desktop",
   "0.1.0",
-  "../../packages/ui/dist",
+  "../../packages/ui/desktop-dist",
   "desktop",
   "'self'",
   "'none'",
   "ipc:",
+  "http://ipc.localhost",
   "main",
   // capabilities/desktop.json
-  "The single main-window capability. It carries core permissions only; filesystem, HTTP and shell authority in Tauri v2 arrive through the tauri-plugin-fs, tauri-plugin-http and tauri-plugin-shell crates, and crates/desktop declares no plugin dependency of any kind.",
-  "core:default",
+  "Only the versioned desktop command from the local main window.",
+  "allow-desktop-request-v1",
 ]);
 
 /** The permission identifiers the capability may carry. */
-export const ALLOWED_PERMISSIONS: readonly string[] = ["core:default"];
+export const ALLOWED_PERMISSIONS: readonly string[] = ["allow-desktop-request-v1"];
 
 /** The window labels the capability and the configuration may name. */
 export const ALLOWED_WINDOW_LABELS: readonly string[] = ["main"];
@@ -123,7 +123,7 @@ export const EXPECTED_CSP: ReadonlyMap<string, readonly string[]> = new Map([
   ["style-src", ["'self'"]],
   ["img-src", ["'self'"]],
   ["font-src", ["'self'"]],
-  ["connect-src", ["'self'", "ipc:"]],
+  ["connect-src", ["'self'", "ipc:", "http://ipc.localhost"]],
   ["media-src", ["'none'"]],
   ["object-src", ["'none'"]],
   ["worker-src", ["'none'"]],
@@ -238,6 +238,9 @@ export const CONFIG_STRUCTURAL_KEYS: ReadonlySet<string> = new Set([
   "title",
   "width",
   "height",
+  "minWidth",
+  "minHeight",
+  "dragDropEnabled",
   "plugins",
   "description",
   "local",
@@ -275,7 +278,7 @@ function authorityRules(documents: SnapshotDocuments): readonly SnapshotViolatio
 
   violations.push(
     ...expectExact("config/plugins", "no-plugin-declares-authority", config["plugins"], {}),
-    ...expectExact("config/app/withGlobalTauri", "no-global-tauri", app["withGlobalTauri"], false),
+    ...expectExact("config/app/withGlobalTauri", "bundled-global-tauri", app["withGlobalTauri"], true),
     ...expectExact(
       "config/app/security/freezePrototype",
       "prototype-frozen",

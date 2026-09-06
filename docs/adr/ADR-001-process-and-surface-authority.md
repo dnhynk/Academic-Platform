@@ -44,3 +44,9 @@ The listener bounds what any one client can consume. Both frames of a connection
 ## Consequences
 
 The core can outlive any UI and policy has one enforcement point. Packaging and local IPC become first-class native test obligations. Phase 0 CLI success must not be read as evidence that these remaining gates passed.
+
+## Approved optional desktop runtime (`P2-X1b`)
+
+The `desktop-runtime` feature now starts one bundled Tauri window. One versioned command maps a closed synthetic vocabulary into the existing local daemon protocol. The Rust host alone reads caller-selected session metadata; the webview receives availability and a matched immutable receipt, never the nonce, profile path, database or key. Windows connection attempts are bounded to 25 within 500 ms, with 20 ms between transient pre-send errors; no request is replayed after delivery becomes ambiguous. The whole async exchange has a five-second deadline. Missing or mismatched acknowledgement reports no confirmed canonical save.
+
+The capability grants only `allow-desktop-request-v1` to the local main window. The measured Windows IPC origin exception is exactly `http://ipc.localhost`; no filesystem, HTTP or shell plugin is installed. Dependency admission and native smoke obligations are recorded in `docs/contracts/desktop-shell.md`.
