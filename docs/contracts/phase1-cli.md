@@ -86,6 +86,34 @@ correctly either way.
 
 ## Exit codes
 
+Windows endpoint opens retry only `ERROR_FILE_NOT_FOUND` (2) and
+`ERROR_PIPE_BUSY` (231), before any handshake or request bytes are sent. The
+policy permits at most 25 opens, with a 20 ms pause capped by a 500 ms overall
+deadline; no new open starts after that deadline. An exhausted endpoint still
+reports `DAEMON_UNREACHABLE`, class `UNAVAILABLE`, exit 14. Access denied and
+other open errors return immediately. Handshake, protocol, identity, write,
+and response failures never reconnect or replay a request: a lost response can
+follow a committed mutation. Unix socket connection behavior is unchanged.
+
+The Windows daemon keeps two pending pipe instances when capacity allows and
+creates the successor before awaiting a connection. Pending handles belong to
+the listener across cancellation by its `select!` loop, so reaping a completed
+serve task cannot close another client's pipe. The protected current-user DACL,
+remote-client rejection, singleton and one-request-per-connection rules still
+apply. This bridges the accept handoff; it cannot promise unlimited immediate
+opens during a burst that fills the finite instance pool, which is why the
+client also needs bounded availability retries.
+
+Native regressions in `crates/cli/src/client/windows_tests.rs` force a missing
+endpoint and an occupied instance before polling the product connection, then
+publish a replacement. They also check access denial, the exact unavailable
+class, and no reconnect after a lost handshake or mutation response. Injected
+clock tests exercise the attempt and deadline bounds independently. The daemon
+tests in `crates/daemon/src/transport/windows_tests.rs` cancel a polled accept,
+keep an already-open client across cancellation, open the successor while the
+first accept remains unpolled, and fill/release the native instance ceiling.
+The existing Phase 1 exit suite and its fault semantics are unchanged.
+
 Exit codes distinguish *why* a command failed, so a caller can branch without
 parsing prose. `crates/cli/tests/cli.rs` produces each class from a real command
 rather than asserting against this table.

@@ -3166,7 +3166,7 @@ const LOCAL_IPC_SPELLINGS = new Set([
 /**
  * Every file that may spell a socket, and exactly which spellings.
  *
- * The five daemon and client files run the section 3.6 local IPC seam.
+ * The daemon and client entries run or test the section 3.6 local IPC seam.
  * `academic-egress` is the crate the section 3.6 topology allows an outbound
  * socket in -- it is the egress-proxy process, and `P2-G7`'s `ProcessClass`
  * matrix gives only that class the `OpenOutboundSocket` capability. Its
@@ -3179,13 +3179,17 @@ const LOCAL_IPC_SPELLINGS = new Set([
  * review.
  */
 const SOCKET_ALLOWANCE = new Map([
-  ["crates/cli/src/client.rs", ["NamedPipe", "UnixStream", "named_pipe", "tokio::net"]],
+  ["crates/cli/src/client.rs", ["NamedPipe", "UnixStream", "tokio::net"]],
+  // Windows pre-send availability retry and its synthetic native controls.
+  ["crates/cli/src/client/windows_connect.rs", ["NamedPipeClient", "named_pipe", "tokio::net"]],
+  ["crates/cli/src/client/windows_tests.rs", ["NamedPipe", "named_pipe", "tokio::net"]],
   ["crates/daemon/src/transport/mod.rs", ["NamedPipe"]],
   ["crates/daemon/src/transport/unix.rs", ["NamedPipe", "UnixListener", "UnixStream", "tokio::net"]],
   [
     "crates/daemon/src/transport/windows.rs",
     ["NamedPipe", "NamedPipeServer", "named_pipe", "tokio::net"],
   ],
+  ["crates/daemon/src/transport/windows_tests.rs", ["NamedPipe", "named_pipe"]],
   ["crates/daemon/tests/phase1_exit.rs", ["NamedPipe", "UnixStream", "named_pipe", "tokio::net"]],
   ["crates/daemon/tests/support/mod.rs", ["NamedPipe", "UnixStream", "named_pipe", "tokio::net"]],
   ["crates/daemon/tests/unix_socket.rs", ["NamedPipe"]],

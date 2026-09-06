@@ -1,4 +1,6 @@
-crates/cli/src/client.rs [priv] async fn connect(endpoint: &LocalEndpoint) -> io::Result<Box<dyn ClientStream>> |a618e39aa66f2e30
+crates/cli/src/client.rs [priv] #[cfg(all(test, windows))] #[path = "client/windows_tests.rs"] mod windows_tests
+crates/cli/src/client.rs [priv] #[cfg(windows)] mod windows_connect
+crates/cli/src/client.rs [priv] async fn connect(endpoint: &LocalEndpoint) -> io::Result<Box<dyn ClientStream>> |0f880ac158e3d5d7
 crates/cli/src/client.rs [priv] async fn exchange_handshake( stream: &mut Box<dyn ClientStream>, handshake: ClientHandshake, ) -> Result<ServerHandshake, CliFailure> |5d36ce9994009754
 crates/cli/src/client.rs [priv] const SESSION_NONCE_CAPABILITY_PREFIX: &str |70f695995360dc85
 crates/cli/src/client.rs [priv] fn client_handshake(capabilities: &[&str], nonce_capability: &str) -> ClientHandshake |e970e9f3dc490c51
@@ -17,6 +19,29 @@ crates/cli/src/client.rs [pub] async fn send_mutation( metadata: &SessionMetadat
 crates/cli/src/client.rs [pub] const DAEMON_UNREACHABLE: &str |15a42ea229377080
 crates/cli/src/client.rs [pub] fn default_runtime_root() -> Result<PathBuf, CliFailure> |ca29cc18f1d40464
 crates/cli/src/client.rs [pub] fn read_session_metadata( runtime_root: &Path, profile_root: &Path, ) -> Result<Option<SessionMetadata>, CliFailure> |779c150cd782e9d8
+crates/cli/src/client/windows_connect.rs [priv] #[cfg(test)] mod tests
+crates/cli/src/client/windows_connect.rs [priv] async fn open_with_retry<T, S: Future<Output = ()>>( mut open: impl FnMut() -> io::Result<T>, mut now: impl FnMut() -> Instant, mut sleep: impl FnMut(Duration) -> S, ) -> io::Result<T> |f63db5898357fa9f
+crates/cli/src/client/windows_connect.rs [priv] const DEADLINE: Duration |80e4c7eb441a8f95
+crates/cli/src/client/windows_connect.rs [priv] const MAX_ATTEMPTS: usize |a8b5d82e14229066
+crates/cli/src/client/windows_connect.rs [priv] const RETRY_DELAY: Duration |42ed387ab7a5b3be
+crates/cli/src/client/windows_connect.rs [priv] mod tests :: #[tokio::test] async fn attempts_and_overall_deadline_are_independent_bounds() |a4a48b39043401f5
+crates/cli/src/client/windows_connect.rs [priv] mod tests :: #[tokio::test] async fn retries_only_the_two_pre_connection_availability_errors() -> io::Result<()> |cbb183fada178e05
+crates/cli/src/client/windows_connect.rs [priv] mod tests :: use std::cell::Cell |1095612d882686f2
+crates/cli/src/client/windows_connect.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/cli/src/client/windows_connect.rs [priv] use std::{ future::Future, io, time::{Duration, Instant}, } |7dd536ba59a0a54c
+crates/cli/src/client/windows_connect.rs [priv] use tokio::net::windows::named_pipe::{ClientOptions, NamedPipeClient} |d54d1665d57dbeea
+crates/cli/src/client/windows_connect.rs [pub(super)] async fn connect(name: &str) -> io::Result<NamedPipeClient> |539589d65320b093
+crates/cli/src/client/windows_tests.rs [priv] #[tokio::test] async fn absent_endpoint_keeps_exact_public_unreachable_class() -> TestResult |141c5d060c6912bb
+crates/cli/src/client/windows_tests.rs [priv] #[tokio::test] async fn delayed_endpoint_and_forced_busy_gap_recover_before_sending() -> TestResult |0db7359e905f69b1
+crates/cli/src/client/windows_tests.rs [priv] #[tokio::test] async fn handshake_and_ambiguous_mutation_failures_never_reconnect() -> TestResult |8bf786c9d8df3e73
+crates/cli/src/client/windows_tests.rs [priv] #[tokio::test] async fn native_access_denied_is_returned_without_waiting_for_availability() -> TestResult |e08ac9bdbca35de2
+crates/cli/src/client/windows_tests.rs [priv] async fn assert_pending(future: std::pin::Pin<&mut impl Future>) |87afb6acd50b098b
+crates/cli/src/client/windows_tests.rs [priv] fn endpoint(temp: &tempfile::TempDir) -> LocalEndpoint |516b04a3d060494f
+crates/cli/src/client/windows_tests.rs [priv] fn name(endpoint: &LocalEndpoint) -> io::Result<&str> |46c69728706dc3fa
+crates/cli/src/client/windows_tests.rs [priv] type TestResult = Result<(), Box<dyn std::error::Error>> |7a37f3abf03d7ba5
+crates/cli/src/client/windows_tests.rs [priv] use std::{ future::{Future, poll_fn}, pin::pin, task::Poll, time::{Duration, Instant}, } |78035327a6dbac1c
+crates/cli/src/client/windows_tests.rs [priv] use super::* |19dbf88307d136ac
+crates/cli/src/client/windows_tests.rs [priv] use tokio::net::windows::named_pipe::{ClientOptions, ServerOptions} |b42353d69da6c1cf
 crates/cli/src/commands/admission.rs [priv] fn report(profile_root: &Path) -> (serde_json::Value, Option<CliFailure>) |7d5f269122d500ca
 crates/cli/src/commands/admission.rs [priv] use academic_admission::AdmissionVerifier |2e88ed923733c219
 crates/cli/src/commands/admission.rs [priv] use crate::output::{CliFailure, CommandResult, ExitClass} |223bb40bb30c355b

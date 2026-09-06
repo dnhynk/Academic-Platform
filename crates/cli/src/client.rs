@@ -23,6 +23,9 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::output::{CliFailure, ExitClass};
 
+#[cfg(windows)]
+mod windows_connect;
+
 /// Endpoint and session nonce a running daemon published for one profile.
 #[derive(Debug, Clone)]
 pub struct SessionMetadata {
@@ -162,10 +165,7 @@ impl<T> ClientStream for T where T: AsyncRead + AsyncWrite + Unpin + Send {}
 async fn connect(endpoint: &LocalEndpoint) -> io::Result<Box<dyn ClientStream>> {
     match endpoint {
         #[cfg(windows)]
-        LocalEndpoint::NamedPipe(name) => {
-            use tokio::net::windows::named_pipe::ClientOptions;
-            Ok(Box::new(ClientOptions::new().open(name)?))
-        }
+        LocalEndpoint::NamedPipe(name) => Ok(Box::new(windows_connect::connect(name).await?)),
         #[cfg(not(windows))]
         LocalEndpoint::NamedPipe(_) => Err(io::Error::new(
             io::ErrorKind::Unsupported,
@@ -182,6 +182,10 @@ async fn connect(endpoint: &LocalEndpoint) -> io::Result<Box<dyn ClientStream>> 
         )),
     }
 }
+
+#[cfg(all(test, windows))]
+#[path = "client/windows_tests.rs"]
+mod windows_tests;
 
 /// Reason reported when published metadata names an endpoint nothing answers.
 ///

@@ -136,6 +136,7 @@ crates/daemon/src/transport/unix.rs [pub(crate)] impl LocalListener :: fn bind(p
 crates/daemon/src/transport/unix.rs [pub(crate)] impl LocalListener :: fn bind_with_expected_uid( paths: &RuntimePaths, expected_uid: Uid, ) -> io::Result<Self> |9fd379228967f768
 crates/daemon/src/transport/unix.rs [pub(crate)] impl SingletonGuard :: fn acquire(paths: &RuntimePaths) -> io::Result<Self> |0f785bfda4631ade
 crates/daemon/src/transport/unix.rs [pub] const MAX_UNIX_ENDPOINT_PATH_LEN: usize |7b463f9416e8e2fd
+crates/daemon/src/transport/windows.rs [priv] #[cfg(test)] #[path = "windows_tests.rs"] mod tests
 crates/daemon/src/transport/windows.rs [priv] #[derive(Debug)] struct OwnedHandle(HANDLE) |c7917318e7f55705
 crates/daemon/src/transport/windows.rs [priv] fn create_pipe( name: &str, security: &mut SecurityDescriptor, first: bool, ) -> io::Result<NamedPipeServer> |c211b4079e88f85e
 crates/daemon/src/transport/windows.rs [priv] fn current_user_sid() -> io::Result<Vec<u8>> |1d1c1cdb52132c40
@@ -159,21 +160,30 @@ crates/daemon/src/transport/windows.rs [priv] impl SingletonGuard
 crates/daemon/src/transport/windows.rs [priv] unsafe impl Send for OwnedHandle
 crates/daemon/src/transport/windows.rs [priv] unsafe impl Send for SecurityDescriptor
 crates/daemon/src/transport/windows.rs [priv] unsafe impl Sync for SecurityDescriptor
-crates/daemon/src/transport/windows.rs [priv] use std::{ ffi::{OsStr, c_void}, fs::{File, OpenOptions}, io, os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle}, path::Path, ptr, } |5a709e57973752d1
+crates/daemon/src/transport/windows.rs [priv] use std::{ collections::VecDeque, ffi::{OsStr, c_void}, fs::{File, OpenOptions}, io, os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle}, path::Path, ptr, } |b49c33b86cf58024
 crates/daemon/src/transport/windows.rs [priv] use super::{ LocalEndpoint, PRODUCT_RUNTIME_DIR, RuntimeLayoutError, RuntimePaths, SESSION_METADATA_FILE, SINGLETON_LOCK_FILE, profile_key, } |5410bc2ab313c560
 crates/daemon/src/transport/windows.rs [priv] use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions} |e2250f19a1827870
 crates/daemon/src/transport/windows.rs [priv] use windows_sys::Win32::{ Foundation::{ CloseHandle, ERROR_BROKEN_PIPE, ERROR_LOCK_VIOLATION, ERROR_NO_DATA, ERROR_PIPE_BUSY, ERROR_SUCCESS, HANDLE, LocalFree, }, Security::{ ACCESS_ALLOWED_ACE, ACL, Authorization::{ ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW, GetNamedSecurityInfoW, GetSecurityInfo, SE_FILE_OBJECT, SE_KERNEL_OBJECT, SetNamedSecurityInfoW, }, DACL_SECURITY_INFORMATION, EqualSid, GetAce, GetSecurityDescriptorControl, GetSecurityDescriptorDacl, GetTokenInformation, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID, SE_DACL_PROTECTED, SECURITY_ATTRIBUTES, TOKEN_QUERY, TOKEN_USER, TokenUser, }, Storage::FileSystem::{ FILE_FLAG_OPEN_REPARSE_POINT, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, }, System::{ IO::OVERLAPPED, RemoteDesktop::ProcessIdToSessionId, SystemServices::ACCESS_ALLOWED_ACE_TYPE, Threading::{GetCurrentProcess, GetCurrentProcessId, OpenProcessToken}, }, } |0c1c2bc6f49f0a82
-crates/daemon/src/transport/windows.rs [pub(crate)] #[derive(Debug)] struct LocalListener |727cd69d00662ec5
+crates/daemon/src/transport/windows.rs [pub(crate)] #[derive(Debug)] struct LocalListener |4c6e5bfd7c5362de
 crates/daemon/src/transport/windows.rs [pub(crate)] #[derive(Debug)] struct SecurityDescriptor |696a3145a3010362
 crates/daemon/src/transport/windows.rs [pub(crate)] #[derive(Debug)] struct SingletonGuard |b165e6683a003a6d
 crates/daemon/src/transport/windows.rs [pub(crate)] fn accept_error_is_transient(error: &io::Error) -> bool |f51da9dfcbf9f299
 crates/daemon/src/transport/windows.rs [pub(crate)] fn cleanup_endpoint(_paths: &RuntimePaths) |ec8c96e48801f4ea
 crates/daemon/src/transport/windows.rs [pub(crate)] fn prepare_runtime( runtime_root: &Path, profile_root: &Path, ) -> Result<RuntimePaths, RuntimeLayoutError> |7ed6423bd7a98f30
 crates/daemon/src/transport/windows.rs [pub(crate)] fn secure_metadata(path: &Path) -> io::Result<()> |b540c8c0ecc9a40c
-crates/daemon/src/transport/windows.rs [pub(crate)] impl LocalListener :: async fn accept(&mut self) -> io::Result<NamedPipeServer> |2b2fdb29a5c3c455
-crates/daemon/src/transport/windows.rs [pub(crate)] impl LocalListener :: fn bind(paths: &RuntimePaths) -> io::Result<Self> |6592b53f4999cdcc
+crates/daemon/src/transport/windows.rs [pub(crate)] impl LocalListener :: async fn accept(&mut self) -> io::Result<NamedPipeServer> |4a3281850dac8db4
+crates/daemon/src/transport/windows.rs [pub(crate)] impl LocalListener :: fn bind(paths: &RuntimePaths) -> io::Result<Self> |0d21b78b05520da5
 crates/daemon/src/transport/windows.rs [pub(crate)] impl SecurityDescriptor :: fn current_user_only() -> io::Result<Self> |5ad477d11ad62f6d
 crates/daemon/src/transport/windows.rs [pub(crate)] impl SingletonGuard :: fn acquire(paths: &RuntimePaths) -> io::Result<Self> |5fd3257874527f2b
+crates/daemon/src/transport/windows_tests.rs [priv] #[tokio::test] async fn cancelled_accept_preserves_endpoint_and_already_open_client() -> TestResult |89f8296735cbed88
+crates/daemon/src/transport/windows_tests.rs [priv] #[tokio::test] async fn instance_ceiling_preserves_existing_accept_and_recovers() -> TestResult |7ee33a4f7fe91302
+crates/daemon/src/transport/windows_tests.rs [priv] #[tokio::test] async fn successor_is_openable_before_first_accept_resumes() -> TestResult |ee000c17fdc83c82
+crates/daemon/src/transport/windows_tests.rs [priv] async fn poll_pending(future: std::pin::Pin<&mut impl Future>) |8bd72a7e11670d7c
+crates/daemon/src/transport/windows_tests.rs [priv] fn paths(temp: &tempfile::TempDir) -> RuntimePaths |296e5497e74cfd09
+crates/daemon/src/transport/windows_tests.rs [priv] type TestResult = Result<(), Box<dyn std::error::Error>> |7a37f3abf03d7ba5
+crates/daemon/src/transport/windows_tests.rs [priv] use std::{ future::{Future, poll_fn}, pin::pin, task::Poll, time::Duration, } |ae8c4e9996de4c87
+crates/daemon/src/transport/windows_tests.rs [priv] use super::* |19dbf88307d136ac
+crates/daemon/src/transport/windows_tests.rs [priv] use tokio::{ io::{AsyncReadExt, AsyncWriteExt}, net::windows::named_pipe::ClientOptions, } |c5b3fa5f06c59d39
 crates/daemon/src/writer.rs [priv] #[derive(Debug)] enum Work |19cedab7ec8efe7b
 crates/daemon/src/writer.rs [priv] #[derive(Debug)] struct WriterRegistration |5a9cf4e3e101268d
 crates/daemon/src/writer.rs [priv] impl AdmittedMutation
