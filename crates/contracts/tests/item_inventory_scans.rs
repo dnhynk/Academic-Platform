@@ -42,8 +42,8 @@
 //!   the reader return `Err`. **Default-deny**: an unforeseen form stops the
 //!   scan rather than passing through it.
 //! * [`the_items_tile_every_file_the_workspace_compiles`] — the extents the
-//!   reader returns cover every non-whitespace character of all 568 product
-//!   files of the workspace, disjointly: every character belongs to exactly
+//!   reader returns cover every non-whitespace character of the workspace's
+//!   resolved product files, disjointly: every character belongs to exactly
 //!   one **top-level** item. An item the reader missed *at top level* would
 //!   leave a hole, and the hole is what the test reads. An item written inside
 //!   a leaf's body leaves **no** hole — the leaf's own extent already covers
@@ -60,11 +60,10 @@
 //! Two rules, and the first is the backstop under the second.
 //!
 //! * [`every_item_in_these_packages_is_pinned`] — the **whole item set** of
-//!   every package that keys an inventory on a line prefix **or owns a closed
-//!   type**: 25 packages, 6792 items, derived from
-//!   [`the_inventories_still_keyed_on_a_line_prefix_are_named`] and from
-//!   [`CLOSED_TYPES`] rather than written down, and taken as a union by
-//!   [`packages_that_need_an_item_pin`]. Keyed on nothing: an item added
+//!   every workspace package, enumerated by [`packages_that_need_an_item_pin`].
+//!   The line-prefix inventories and [`CLOSED_TYPES`] are controls on that
+//!   walk; the package and item counts are asserted by
+//!   [`the_pin_names_what_it_covers_and_what_it_does_not`]. Keyed on nothing: an item added
 //!   anywhere in one of them fails whatever it is called and whatever kind it
 //!   is. The pins are in `pinned-items/<package>.items`, one key to a line.
 //! * [`every_item_that_reaches_a_closed_type_is_pinned`] — for each type in
@@ -567,7 +566,7 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
 /// names the package.
 ///
 /// **Where the pins live.** `crates/contracts/tests/pinned-items/<package>.items`,
-/// one [`Item::sealed_key`] to a line, sorted. Six thousand keys are a table
+/// one [`Item::sealed_key`] to a line, sorted. The enumerated keys are a table
 /// rather than a source file: a product edit shows up in `git diff` as the
 /// lines it added, which is the review this pin exists to force.
 ///
@@ -580,12 +579,11 @@ fn the_reader_refuses_an_item_form_it_has_no_rule_for() -> TestResult {
 /// and no `RawAccessLog` row, and this pin did not move, because the item
 /// **count was 376 before and after** and every key was byte-identical. A leaf
 /// now carries a fingerprint of its own text, so the body is in the pin. The
-/// price is that a body edit moves a line here — 5697 of the 6792 keys carry a
-/// fingerprint and the other 1095 are containers, whose contents are enumerated
-/// as items of their own — and that price is the point: a diff that touches a
-/// body in one of these packages is a diff a reviewer should read. `P2-RF29`
-/// measured 5134 of 6131 over the 23 packages it derived; `P2-X3`'s two are the
-/// difference.
+/// price is that a body edit moves a line here: leaves carry fingerprints,
+/// while containers have their contents enumerated as items of their own.
+/// A diff that touches a body in one of these packages is a diff a reviewer
+/// should read. The pin files hold that enumeration; the count assertion
+/// below checks their total without duplicating a snapshot in this prose.
 #[test]
 fn every_item_in_these_packages_is_pinned() -> TestResult {
     let repository = repository_root()?;
@@ -756,7 +754,7 @@ const PINNED_PACKAGES: usize = 71;
 ///
 /// 11 748 over 43 packages before `P2-RF31`. The 28 packages that joined and
 /// the literal values that joined the fingerprint are the difference.
-const PINNED_ITEMS: usize = 18_117;
+const PINNED_ITEMS: usize = 18_152;
 
 /// The file holding one package's pinned item set.
 fn pin_path(repository: &Path, package: &str) -> PathBuf {
@@ -1592,7 +1590,7 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
 /// uses, over the eight crates that ship an executable. `connector` and
 /// `indexer` are absent because they reach nothing: their whole `main` reads
 /// `PROCESS_CLASS.capabilities()` through an import.
-const BINARY_REACHES: [(&str, &str, &str); 19] = [
+const BINARY_REACHES: [(&str, &str, &str); 26] = [
     (
         "capture-client",
         "academic_process_sandbox::class_main",
@@ -1615,8 +1613,18 @@ const BINARY_REACHES: [(&str, &str, &str); 19] = [
     ),
     (
         "cli",
+        "academic_rpc::ServerHandshakeConfig",
+        "cfg(test) native pipe peer uses the product's synthetic handshake configuration",
+    ),
+    (
+        "cli",
         "academic_rpc::generated",
         "the generated request and response types; ingest is the only mutation and it travels over IPC",
+    ),
+    (
+        "cli",
+        "academic_rpc::negotiate_handshake",
+        "cfg(test) native pipe peer sends a valid handshake before dropping a mutation response",
     ),
     (
         "cli",
@@ -1649,6 +1657,16 @@ const BINARY_REACHES: [(&str, &str, &str); 19] = [
         "`absolute`, which resolves `..` against the filesystem rather than lexically",
     ),
     (
+        "cli",
+        "std::pin",
+        "cfg(test) polls a connection in a forced unavailable state before publishing the pipe",
+    ),
+    (
+        "cli",
+        "std::process",
+        "cfg(test) scopes synthetic named-pipe names by process and temporary-directory identity",
+    ),
+    (
         "daemon",
         "academic_rpc::PHASE1_POLICY_BANNER",
         "the banner this binary prints before it starts",
@@ -1660,8 +1678,23 @@ const BINARY_REACHES: [(&str, &str, &str); 19] = [
     ),
     (
         "daemon",
+        "std::error",
+        "cfg(test) native listener regression result carries transport and timeout errors",
+    ),
+    (
+        "daemon",
         "std::fs",
         "`symlink_metadata` and `create_dir` on the Windows transport's runtime root",
+    ),
+    (
+        "daemon",
+        "std::pin",
+        "cfg(test) polls and cancels accept without relying on a scheduler race",
+    ),
+    (
+        "daemon",
+        "std::process",
+        "cfg(test) scopes synthetic named-pipe names by process and temporary-directory identity",
     ),
     (
         "daemon",

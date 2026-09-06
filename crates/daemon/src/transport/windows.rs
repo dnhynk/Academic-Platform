@@ -1,6 +1,7 @@
 //! Windows named-pipe, session mutex, and current-user ACL implementation.
 
 use std::{
+    collections::VecDeque,
     ffi::{OsStr, c_void},
     fs::{File, OpenOptions},
     io,
@@ -170,7 +171,7 @@ impl SingletonGuard {
 #[derive(Debug)]
 pub(crate) struct LocalListener {
     name: String,
-    next: Option<NamedPipeServer>,
+    pending: VecDeque<NamedPipeServer>,
     security: SecurityDescriptor,
 }
 
@@ -188,29 +189,53 @@ impl LocalListener {
         let mut security = SecurityDescriptor::current_user_only()?;
         let next = create_pipe(&name, &mut security, true)?;
         verify_pipe_acl(&next, &security.sid)?;
+        let spare = create_pipe(&name, &mut security, false)?;
+        verify_pipe_acl(&spare, &security.sid)?;
         Ok(Self {
             name,
-            next: Some(next),
+            pending: VecDeque::from([next, spare]),
             security,
         })
     }
 
     pub(crate) async fn accept(&mut self) -> io::Result<NamedPipeServer> {
-        let pending = match self.next.take() {
-            Some(pending) => pending,
-            // The previous accept could not pre-create the replacement because
-            // the instance ceiling was momentarily full. Re-creating it here
-            // means one transient failure never costs the endpoint permanently.
-            None => create_pipe(&self.name, &mut self.security, false)?,
-        };
-        pending.connect().await?;
-        // Pre-create the next instance so another client can connect while this
-        // one is served. Failing here is transient and must not drop the client
-        // that already connected: the instance is re-created on the next accept.
-        self.next = create_pipe(&self.name, &mut self.security, false).ok();
-        Ok(pending)
+        // Reserve the successor BEFORE waiting: clients can open an instance
+        // before ConnectNamedPipe completes. Two pending instances bridge that
+        // handoff, though a burst can still fill the bounded OS instance pool.
+        while self.pending.len() < 2 {
+            match create_pipe(&self.name, &mut self.security, false) {
+                Ok(pipe) => self.pending.push_back(pipe),
+                // At the OS ceiling, still accept an existing instance. Once
+                // a served connection closes, the next accept replenishes it.
+                Err(error)
+                    if error.raw_os_error() == i32::try_from(ERROR_PIPE_BUSY).ok()
+                        && !self.pending.is_empty() =>
+                {
+                    break;
+                }
+                Err(error) => return Err(error),
+            }
+        }
+        let pending = self
+            .pending
+            .front()
+            .ok_or_else(|| io::Error::other("named-pipe listener has no pending instance"))?;
+        // Keep ownership in the listener across the await. The listener loop's
+        // select! cancels this future when it reaps a completed serve task;
+        // dropping a locally owned pipe here loses even an already-open client.
+        let connected = pending.connect().await;
+        let accepted = self
+            .pending
+            .pop_front()
+            .ok_or_else(|| io::Error::other("named-pipe listener lost its pending instance"))?;
+        connected?;
+        Ok(accepted)
     }
 }
+
+#[cfg(test)]
+#[path = "windows_tests.rs"]
+mod tests;
 
 /// Accept errors that describe one connection or a momentarily full instance
 /// ceiling rather than a dead endpoint.
