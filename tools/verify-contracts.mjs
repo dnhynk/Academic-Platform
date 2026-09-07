@@ -257,6 +257,15 @@ const sha256Upper = (bytes) => createHash("sha256").update(bytes).digest("hex").
 const assertImmutableV1Bytes = (bytes, expected, label) => {
   assert.equal(sha256Upper(bytes), expected, `${label} bytes are immutable`);
 };
+for (const [path, digest] of [
+  ["schemas/fixtures/signed-batch-v3.json", "d61381ed855768a5a9399a4e7a3b5ea3ce917e25cca192f1d35e4d33eda256b8"],
+  ["schemas/jsonschema/signed-batch-fixture-v2.schema.json", "8129049111cc42da110fe153a53ad397128aba4ac342d58e9bdcf12d2174e6a5"],
+  ["schemas/jsonschema/signed-batch-fixture-v3.schema.json", "f680037eae3a9a1e4d22f754e4941e003e3331d76d1e5e7002b4345bf297844d"],
+  ["schemas/proto/academic/v2/ledger.proto", "65c9e14a188cab5edeef605bb39c5ddaada26df19bf8b68dfdd8d7ce97ebf221"],
+  ["schemas/proto/academic/v3/ledger.proto", "60af16f6a3ff30772ecfee7dce19fa64a420b2398bb07496711c8b3095b91ee2"],
+]) {
+  assertImmutableV1Bytes(await readFile(new URL(`../${path}`, import.meta.url)), digest.toUpperCase(), path);
+}
 const replaceBytesOnce = (source, needleUtf8, replacementHex, label) => {
   assert.match(replacementHex, /^(?:[0-9a-f]{2})+$/u, `${label}: canonical replacement hex`);
   const sourceBuffer = Buffer.from(source);
@@ -1150,6 +1159,7 @@ const assertV2WriterCapabilityGate = (input) => {
   assert.deepEqual(
     publicFunctions,
     [
+      "decode_canonical_actor",
       "decode_canonical_claim_object",
       "decode_canonical_evidence_ids",
       "decode_canonical_evidence_locator",
@@ -1201,7 +1211,9 @@ const assertV2WriterCapabilityGate = (input) => {
     [
       "ProtoContractError",
       "decode_claim_relation_event_proto",
+      "decode_claim_relation_event_proto_v4",
       "encode_claim_relation_event_proto",
+      "encode_claim_relation_event_proto_v4",
     ].toSorted(),
     "academic-contracts Proto reexports must match the reviewed capability allowlist",
   );
@@ -1210,7 +1222,9 @@ const assertV2WriterCapabilityGate = (input) => {
     [
       { kind: "enum", name: "ProtoContractError" },
       { kind: "fn", name: "encode_claim_relation_event_proto" },
+      { kind: "fn", name: "encode_claim_relation_event_proto_v4" },
       { kind: "fn", name: "decode_claim_relation_event_proto" },
+      { kind: "fn", name: "decode_claim_relation_event_proto_v4" },
     ],
     "every child-module public item must match the reviewed capability allowlist",
   );
@@ -1221,6 +1235,7 @@ const assertV2WriterCapabilityGate = (input) => {
       verify_signed_batch: "pub fn verify_signed_batch(envelope_bytes: &[u8], authorization: &DeviceAuthorization,) -> Result<VerifiedBatch, ContractError> {}",
       encode_unsigned_batch: "pub fn encode_unsigned_batch(batch: &UnsignedBatch) -> Result<Vec<u8>, ContractError> {}",
       decode_unsigned_batch: "pub fn decode_unsigned_batch(bytes: &[u8]) -> Result<UnsignedBatch, ContractError> {}",
+      decode_canonical_actor: "pub fn decode_canonical_actor(bytes: &[u8]) -> Result<Actor, ContractError> {}",
       encode_canonical_actor: "pub fn encode_canonical_actor(actor: &Actor) -> Result<Vec<u8>, ContractError> {}",
       encode_canonical_event_payload: "pub fn encode_canonical_event_payload(event: &Event) -> Result<Vec<u8>, ContractError> {}",
       encode_canonical_claim_object: "pub fn encode_canonical_claim_object(object: &ClaimObject) -> Result<Vec<u8>, ContractError> {}",
@@ -1235,6 +1250,8 @@ const assertV2WriterCapabilityGate = (input) => {
   assertExactRustSignatures(
     protoFunctions,
     {
+      encode_claim_relation_event_proto_v4: "pub fn encode_claim_relation_event_proto_v4(event: &Event) -> Result<Vec<u8>, ProtoContractError> {}",
+      decode_claim_relation_event_proto_v4: "pub fn decode_claim_relation_event_proto_v4(bytes: &[u8]) -> Result<Event, ProtoContractError> {}",
       encode_claim_relation_event_proto: "pub fn encode_claim_relation_event_proto(event: &Event) -> Result<Vec<u8>, ProtoContractError> {}",
       decode_claim_relation_event_proto: "pub fn decode_claim_relation_event_proto(bytes: &[u8]) -> Result<Event, ProtoContractError> {}",
     },
@@ -1332,8 +1349,8 @@ const assertV2WriterCapabilityGate = (input) => {
   const writerGuard = functions.get("require_current_writer_payload")?.source ?? "";
   assert.match(
     writerGuard,
-    /let json = decode_canonical_payload_json\(bytes\)\?;\s*let source_schema_version = read_schema_version\(&json\)\?;\s*if source_schema_version != EVENT_SCHEMA_VERSION_V3 \{\s*return Err\(DomainError::UnsupportedSchemaVersion\(source_schema_version\)\.into\(\)\);\s*\}/u,
-    "the writer guard must decode returned bytes and require semantic schema v3",
+    /let json = decode_canonical_payload_json\(bytes\)\?;\s*let source_schema_version = read_schema_version\(&json\)\?;\s*if source_schema_version != EVENT_SCHEMA_VERSION_V4 \{\s*return Err\(DomainError::UnsupportedSchemaVersion\(source_schema_version\)\.into\(\)\);\s*\}/u,
+    "the writer guard must decode returned bytes and require semantic schema v4",
   );
   assert.match(
     functions.get("sign_batch")?.source ?? "",
@@ -1345,6 +1362,7 @@ const assertV2WriterCapabilityGate = (input) => {
   const legacyProjectionNames = [
     "encode_unsigned_batch_v1_projection",
     "encode_unsigned_batch_v2_projection",
+    "encode_unsigned_batch_v3_projection",
   ];
   for (const name of legacyProjectionNames) {
     const projection = functions.get(name)?.source;
@@ -1889,10 +1907,12 @@ const nativeFixtureCiCommands = [
   "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v1.json",
   "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json",
   "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json",
-  "cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v3.json",
-  "git diff --exit-code -- schemas/fixtures/",
   "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json",
   "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v3.json",
+  "cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v4.json",
+  "git diff --exit-code -- schemas/fixtures/",
+  "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v4.json",
+  "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v4.json",
 ];
 // The exit's platform claims are the Windows named-pipe endpoint and the Unix
 // domain socket, so its matrix is exactly the two labels that carry one of
@@ -2218,10 +2238,12 @@ const expectedCiWorkflow = {
           run: nativeFixtureCiCommands[2],
         },
         { name: "Replay immutable v2 fixture", run: nativeFixtureCiCommands[3] },
-        { name: "Emit deterministic v3 fixture", run: nativeFixtureCiCommands[4] },
-        { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[5] },
-        { name: "Verify deterministic v3 fixture", run: nativeFixtureCiCommands[6] },
-        { name: "Replay deterministic v3 fixture", run: nativeFixtureCiCommands[7] },
+        { name: "Verify immutable v3 fixture and upcast", run: "cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json" },
+        { name: "Replay immutable v3 fixture", run: "cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v3.json" },
+        { name: "Emit deterministic v4 fixture", run: nativeFixtureCiCommands[6] },
+        { name: "Reject fixture byte drift", run: nativeFixtureCiCommands[7] },
+        { name: "Verify deterministic v4 fixture", run: nativeFixtureCiCommands[8] },
+        { name: "Replay deterministic v4 fixture", run: nativeFixtureCiCommands[9] },
       ],
     },
     "rust-store": {
@@ -3145,15 +3167,15 @@ for (const [name, mutation] of [
   [
     "failure-tolerant v3 verification step",
     ciText.replace(
-      "      - name: Verify deterministic v3 fixture",
-      "      - name: Verify deterministic v3 fixture\n        continue-on-error: true",
+      "      - name: Verify deterministic v4 fixture",
+      "      - name: Verify deterministic v4 fixture\n        continue-on-error: true",
     ),
   ],
   [
     "disabled v3 replay step",
     ciText.replace(
-      "      - name: Replay deterministic v3 fixture",
-      "      - name: Replay deterministic v3 fixture\n        if: false",
+      "      - name: Replay deterministic v4 fixture",
+      "      - name: Replay deterministic v4 fixture\n        if: false",
     ),
   ],
   [
@@ -3166,8 +3188,8 @@ for (const [name, mutation] of [
   [
     "duplicate key in required fixture step",
     ciText.replace(
-      `        run: ${nativeFixtureCiCommands[4]}`,
-      `        run: ${nativeFixtureCiCommands[4]}\n        run: ${nativeFixtureCiCommands[4]}`,
+      `        run: ${nativeFixtureCiCommands[6]}`,
+      `        run: ${nativeFixtureCiCommands[6]}\n        run: ${nativeFixtureCiCommands[6]}`,
     ),
   ],
   [
@@ -3208,11 +3230,70 @@ for (const [name, mutation] of [
     `${name} must fail effective CI conformance verification`,
   );
 }
-const protoRoots = [protoV1Text, protoV2Text, protoV3Text].map((text) => {
+const protoV4Text = await readFile("schemas/proto/academic/v4/ledger.proto", "utf8");
+const protoRoots = [protoV1Text, protoV2Text, protoV3Text, protoV4Text].map((text) => {
   const root = protobuf.parse(text, { keepCase: true }).root;
   root.resolveAll();
   return root;
 });
+
+// The actor addition is the whole v4 Proto delta. Every existing message and
+// enum is identical, and no new event payload or old actor tag is permitted.
+const v3Namespace = protoRoots[2].lookup("academic.v3").nested;
+const v4Namespace = protoRoots[3].lookup("academic.v4").nested;
+assert.deepEqual(Object.keys(v4Namespace).sort(), [...Object.keys(v3Namespace), "DeterministicPredictionActor"].sort());
+for (const [name, declaration] of Object.entries(v3Namespace)) {
+  if (name === "Actor") continue;
+  assert.deepEqual(JSON.parse(JSON.stringify(v4Namespace[name].toJSON())), JSON.parse(JSON.stringify(declaration.toJSON())), `v4 must preserve ${name}`);
+}
+assert.deepEqual(v4Namespace.Actor.toJSON(), {
+  oneofs: { kind: { oneof: ["user", "deterministic_engine", "model_run", "importer", "deterministic_prediction"] } },
+  fields: { ...v3Namespace.Actor.toJSON().fields, deterministic_prediction: { type: "DeterministicPredictionActor", id: 5 } },
+});
+assert.deepEqual(v4Namespace.DeterministicPredictionActor.toJSON(), { fields: {
+  name: { type: "string", id: 1 }, version: { type: "string", id: 2 },
+  frozen_inputs_digest: { type: "bytes", id: 3 }, rule_set_digest: { type: "bytes", id: 4 },
+} });
+const predictionActorValue = { kind: "DETERMINISTIC_PREDICTION", name: "forecast", version: "1",
+  frozen_inputs_digest: `sha256:${"11".repeat(32)}`, rule_set_digest: `sha256:${"22".repeat(32)}` };
+const { parseDeterministicPredictionActorJson } = await import("../packages/web-contracts/dist/index.js");
+const actorValidator = ajv.compile(JSON.parse(await readFile("schemas/jsonschema/deterministic-prediction-actor-v4.schema.json", "utf8")));
+const actorRaw = (value) => new TextEncoder().encode(JSON.stringify(value));
+assert.deepEqual(parseDeterministicPredictionActorJson(actorRaw(predictionActorValue), 4), predictionActorValue);
+assert.equal(actorValidator(predictionActorValue), true);
+for (const version of [0, 1, 2, 3, 5]) {
+  assert.throws(() => parseDeterministicPredictionActorJson(actorRaw(predictionActorValue), version));
+}
+for (const field of Object.keys(predictionActorValue)) {
+  const missing = { ...predictionActorValue };
+  delete missing[field];
+  assert.equal(actorValidator(missing), false, `schema requires ${field}`);
+  assert.throws(() => parseDeterministicPredictionActorJson(actorRaw(missing), 4));
+  for (const value of [null, false, 3, "", " ", "\u0085", "sha256:00"]) {
+    const invalid = { ...predictionActorValue, [field]: value };
+    assert.equal(actorValidator(invalid), false, `schema rejects ${field}=${String(value)}`);
+    assert.throws(() => parseDeterministicPredictionActorJson(actorRaw(invalid), 4));
+  }
+}
+const unknownActorField = { ...predictionActorValue, model_run: "not a model" };
+assert.equal(actorValidator(unknownActorField), false);
+assert.throws(() => parseDeterministicPredictionActorJson(actorRaw(unknownActorField), 4));
+const duplicateActorRaw = new TextEncoder().encode(JSON.stringify(predictionActorValue).replace('"version":"1"', '"version":"1","version":"2"'));
+assert.throws(() => parseDeterministicPredictionActorJson(duplicateActorRaw, 4));
+assert.throws(() => parseDeterministicPredictionActorJson(new Uint8Array([0xff]), 4));
+const wireActor = protoRoots[3].lookupType("academic.v4.Actor");
+const wireValue = { deterministic_prediction: { name: "forecast", version: "1",
+  frozen_inputs_digest: Buffer.alloc(32, 0x11), rule_set_digest: Buffer.alloc(32, 0x22) } };
+const actorBytes = wireActor.encode(wireValue).finish();
+assert.equal(Buffer.from(actorBytes).toString("hex"), `2a510a08666f7265636173741201311a20${"11".repeat(32)}2220${"22".repeat(32)}`);
+assert.deepEqual(wireActor.toObject(wireActor.decode(actorBytes), { bytes: Array }),
+  { deterministic_prediction: { name: "forecast", version: "1", frozen_inputs_digest: Array(32).fill(0x11), rule_set_digest: Array(32).fill(0x22) } });
+const fixtureV4Bytes = await readFile("schemas/fixtures/signed-batch-v4.json");
+const fixtureV4 = parseFixtureDocumentJson(fixtureV4Bytes);
+assert.equal(fixtureV4.fixture_version, 4);
+const fixtureV4Validator = ajv.compile(JSON.parse(await readFile("schemas/jsonschema/signed-batch-fixture-v4.schema.json", "utf8")));
+assert.equal(fixtureV4Validator(fixtureV4), true);
+assert.equal(validateFixtureSchemaV3(fixtureV4), false);
 const assertPredictionProtoContract = ([v1Root, v2Root]) => {
   assert.ok(v1Root !== undefined && v2Root !== undefined);
   const v1Claim = v1Root.lookupType("academic.v1.Claim");
@@ -3319,6 +3400,14 @@ const actorWireFields = [
   ["ModelRun", "model_run", 3],
   ["Importer", "importer", 4],
 ];
+const actorWireFieldsV4 = [...actorWireFields, ["DeterministicPrediction", "deterministic_prediction", 5]];
+const declaredActorWireFields = (version) => version >= 4 ? actorWireFieldsV4 : actorWireFields;
+const v4RustScalarFields = [
+  ["ProtoDeterministicPredictionActor", "name", 1],
+  ["ProtoDeterministicPredictionActor", "version", 2],
+  ["ProtoDeterministicPredictionActor", "frozen_inputs_digest", 3],
+  ["ProtoDeterministicPredictionActor", "rule_set_digest", 4],
+];
 // Arms every declared Proto version carries. Tags 10..=15 are frozen.
 const legacyPayloadWireFields = [
   ["ArtifactRegistered", "artifact_registered", 10],
@@ -3374,7 +3463,7 @@ const v3RustScalarFields = v3PayloadWireFields.flatMap(([, , , messageName, pare
 // protobuf's last-oneof-value rule to every tag any declared version emits. A
 // v1 or v2 root therefore declares a subset of the arms Rust knows.
 const declaredPayloadWireFields = (version) =>
-  version === 3 ? payloadWireFields : legacyPayloadWireFields;
+  version >= 3 ? payloadWireFields : legacyPayloadWireFields;
 const relationKindValues = [
   ["Unspecified", "CLAIM_RELATION_KIND_UNSPECIFIED", 0],
   ["Supports", "CLAIM_RELATION_KIND_SUPPORTS", 1],
@@ -3532,16 +3621,16 @@ const assertRustRelationMappings = (source) => {
     "every Proto relation discriminant must decode to the identical domain kind",
   );
 };
-const actorVariantNames = actorWireFields.map(([name]) => name);
+const actorVariantNames = actorWireFieldsV4.map(([name]) => name);
 const assertRustActorMappings = (source) => {
   const functions = rustRootFunctionBodies(source);
   const encodeSource = functions.get("encode_actor")?.source ?? "";
   const decodeSource = functions.get("decode_actor")?.source ?? "";
   const encodedPairs = [...encodeSource.matchAll(
-    /Actor::(?<domain>User|DeterministicEngine|ModelRun|Importer)\s*\{[^}]*\}\s*=>[\s\S]*?proto_actor::Kind::(?<wire>User|DeterministicEngine|ModelRun|Importer)\b/gu,
+    /Actor::(?<domain>User|DeterministicEngine|ModelRun|Importer|DeterministicPrediction)\s*\{[^}]*\}\s*=>[\s\S]*?proto_actor::Kind::(?<wire>User|DeterministicEngine|ModelRun|Importer|DeterministicPrediction)\b/gu,
   )].map((match) => [match.groups.domain, match.groups.wire]);
   const decodedPairs = [...decodeSource.matchAll(
-    /proto_actor::Kind::(?<wire>User|DeterministicEngine|ModelRun|Importer)\([^)]*\)\s*=>\s*Ok\(Actor::(?<domain>User|DeterministicEngine|ModelRun|Importer)\b/gu,
+    /proto_actor::Kind::(?<wire>User|DeterministicEngine|ModelRun|Importer|DeterministicPrediction)\([^)]*\)\s*=>\s*Ok\(Actor::(?<domain>User|DeterministicEngine|ModelRun|Importer|DeterministicPrediction)\b/gu,
   )].map((match) => [match.groups.wire, match.groups.domain]);
   const identity = actorVariantNames.map((name) => [name, name]);
   assert.deepEqual(
@@ -3557,7 +3646,7 @@ const assertRustActorMappings = (source) => {
 };
 const assertRustWireContract = (source) => {
   const expectedFieldsByStruct = new Map();
-  for (const [structName, fieldName] of [...rustScalarFields, ...v3RustScalarFields]) {
+  for (const [structName, fieldName] of [...rustScalarFields, ...v3RustScalarFields, ...v4RustScalarFields]) {
     const fields = expectedFieldsByStruct.get(structName) ?? [];
     fields.push(fieldName);
     expectedFieldsByStruct.set(structName, fields);
@@ -3576,7 +3665,7 @@ const assertRustWireContract = (source) => {
   }
   assert.deepEqual(
     rustOneofVariantNames(source, "proto_actor", "Kind"),
-    actorWireFields.map(([variantName]) => variantName),
+    actorWireFieldsV4.map(([variantName]) => variantName),
     "ProtoActor.kind hand-written oneof membership must be exact",
   );
   assert.deepEqual(
@@ -3584,7 +3673,7 @@ const assertRustWireContract = (source) => {
     payloadWireFields.map(([variantName]) => variantName),
     "ProtoOriginEvent.payload hand-written oneof membership must be exact",
   );
-  for (const [structName, fieldName, tag] of [...rustScalarFields, ...v3RustScalarFields]) {
+  for (const [structName, fieldName, tag] of [...rustScalarFields, ...v3RustScalarFields, ...v4RustScalarFields]) {
     const body = rustStructBody(source, structName);
     assert.match(
       body,
@@ -3593,7 +3682,7 @@ const assertRustWireContract = (source) => {
     );
   }
   for (const [structName, oneofField, tags] of [
-    ["ProtoActor", "kind", "1, 2, 3, 4"],
+    ["ProtoActor", "kind", "1, 2, 3, 4, 5"],
     ["ProtoOriginEvent", "payload", "10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33"],
   ]) {
     assert.match(
@@ -3608,7 +3697,7 @@ const assertRustWireContract = (source) => {
     );
   }
   for (const [moduleName, fields] of [
-    ["proto_actor", actorWireFields],
+    ["proto_actor", actorWireFieldsV4],
     ["proto_origin_event", payloadWireFields],
   ]) {
     const body = rustModuleEnumBody(source, moduleName, moduleName === "proto_actor" ? "Kind" : "Payload");
@@ -3623,6 +3712,10 @@ const assertRustWireContract = (source) => {
         const messageName = moduleName === "proto_actor" ? "Actor" : "OriginEvent";
         const oneofName = moduleName === "proto_actor" ? "kind" : "payload";
         const field = root.lookupType(`academic.v${version}.${messageName}`).fields[fieldName];
+        if (moduleName === "proto_actor" && version < 4 && fieldName === "deterministic_prediction") {
+          assert.equal(field, undefined);
+          continue;
+        }
         if (
           moduleName === "proto_origin_event" &&
           !declaredPayloadWireFields(version).some(([, name]) => name === fieldName)
@@ -3649,9 +3742,9 @@ const assertRustWireContract = (source) => {
     }
   }
   for (const [versionIndex, root] of protoRoots.entries()) {
-    const reviewedFields = versionIndex + 1 === 3
-      ? [...rustScalarFields, ...v3RustScalarFields]
-      : rustScalarFields;
+    const reviewedFields = [...rustScalarFields,
+      ...(versionIndex + 1 >= 3 ? v3RustScalarFields : []),
+      ...(versionIndex + 1 >= 4 ? v4RustScalarFields : [])];
     for (const [structName, fieldName] of reviewedFields) {
       const messageName = structName.slice("Proto".length);
       const protoField = root.lookupType(`academic.v${versionIndex + 1}.${messageName}`).fields[fieldName];
@@ -3686,7 +3779,7 @@ const assertRustWireContract = (source) => {
       // emitted tag is ever dropped, reordered, or reused across the three.
       const supersetTags = protoMessage === "OriginEvent"
         ? payloadWireFields.map(([, , tag]) => tag)
-        : declaredTags;
+        : actorWireFieldsV4.map(([, , tag]) => tag);
       assert.deepEqual(
         declaredTags,
         supersetTags.slice(0, declaredTags.length),
@@ -4132,7 +4225,7 @@ v3_arms_use_unreused_tags(protoRoots);
 /// together, and a tag mutation on either side of the v3 boundary fails.
 const proto_codegen_has_no_drift_v3 = () => {
   assert.match(protoV3Text, /package academic\.v3;/u);
-  assert.equal(protoRoots.length, 3, "the drift gate reviews three Proto versions");
+  assert.equal(protoRoots.length, 4, "the drift gate reviews four Proto versions");
   assertRustWireContract(rustProtoContractText);
 
   const rustTagMutation = rustProtoContractText.replace(
@@ -4521,5 +4614,5 @@ const engine_registry_matches_its_source_and_the_specification = async () => {
 await engine_registry_matches_its_source_and_the_specification();
 
 console.log(
-  "Immutable v1 and v2 contracts, the §7.1/§7.2 predicate registry and the §28 engine registry with their generated constants, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v3-only writers, event schema v3 arm and tag discipline across three Proto versions, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
+  "Immutable v1 and v2 contracts, the §7.1/§7.2 predicate registry and the §28 engine registry with their generated constants, strict synthetic fixture ingress, Phase 1 manifest policy, crate-wide semantic v4-only writers, event schema v3 arm and tag discipline across four Proto versions, RFC-variant UUIDv7 parity, effective native CI execution, Rust/Proto wire descriptors, and source-preflight topology verified.",
 );

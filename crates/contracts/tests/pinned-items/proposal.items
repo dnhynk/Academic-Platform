@@ -52,7 +52,7 @@ crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] co
 crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] const fn of(proposal_id: ProposalId, decision: UserDecision) -> Self |af2620c7dc74f6ee
 crates/proposal/src/disposition.rs [pub] impl ExplicitApproval :: #[must_use] const fn proposal_id(&self) -> ProposalId |968f6ab311c78b44
 crates/proposal/src/disposition.rs [pub] impl UserDecision :: #[must_use] const fn user_id(&self) -> u128 |eb7d8fa9b76d6ea9
-crates/proposal/src/disposition.rs [pub] impl UserDecision :: fn by(actor: &Actor) -> Result<Self, WorkflowError> |44fb6d5a726fbeca
+crates/proposal/src/disposition.rs [pub] impl UserDecision :: fn by(actor: &Actor) -> Result<Self, WorkflowError> |31a0797cfeeb644e
 crates/proposal/src/error.rs [priv] impl core::fmt::Display for DispositionState
 crates/proposal/src/error.rs [priv] impl core::fmt::Display for DispositionState :: fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result |44779df2d4ce3839
 crates/proposal/src/error.rs [priv] use academic_domain::DecisionAction |4b07587db492d55d

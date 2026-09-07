@@ -18,13 +18,17 @@
 //! ```compile_fail
 //! use academic_contracts::encode_unsigned_batch_v2_projection;
 //! ```
+//!
+//! ```compile_fail
+//! use academic_contracts::encode_unsigned_batch_v3_projection;
+//! ```
 
 use std::{collections::BTreeMap, io::Cursor};
 
 use academic_domain::{
     Actor, ClaimObject, ContentDigest, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1,
-    EVENT_SCHEMA_VERSION_V2, EVENT_SCHEMA_VERSION_V3, EntityId, Event, EvidenceId, EvidenceLocator,
-    UnsignedBatch, V3_EVENT_KINDS,
+    EVENT_SCHEMA_VERSION_V2, EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4, EntityId, Event,
+    EvidenceId, EvidenceLocator, UnsignedBatch, V3_EVENT_KINDS,
 };
 use ciborium::value::{Integer, Value as CborValue};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -35,7 +39,8 @@ use thiserror::Error;
 mod proto_contract;
 
 pub use proto_contract::{
-    ProtoContractError, decode_claim_relation_event_proto, encode_claim_relation_event_proto,
+    ProtoContractError, decode_claim_relation_event_proto, decode_claim_relation_event_proto_v4,
+    encode_claim_relation_event_proto, encode_claim_relation_event_proto_v4,
 };
 
 /// Signed-envelope format version.
@@ -326,6 +331,13 @@ pub fn encode_canonical_actor(actor: &Actor) -> Result<Vec<u8>, ContractError> {
     encode_domain_value(actor)
 }
 
+/// Reads exact canonical actor provenance from a normalized ledger event.
+pub fn decode_canonical_actor(bytes: &[u8]) -> Result<Actor, ContractError> {
+    let actor: Actor = decode_domain_value(bytes)?;
+    actor.validate()?;
+    Ok(actor)
+}
+
 /// Canonically encodes the payload of one fully validated event.
 pub fn encode_canonical_event_payload(event: &Event) -> Result<Vec<u8>, ContractError> {
     event.validate()?;
@@ -384,7 +396,7 @@ fn decode_domain_value<T: DeserializeOwned + Serialize>(bytes: &[u8]) -> Result<
 fn require_current_writer_payload(bytes: &[u8]) -> Result<(), ContractError> {
     let json = decode_canonical_payload_json(bytes)?;
     let source_schema_version = read_schema_version(&json)?;
-    if source_schema_version != EVENT_SCHEMA_VERSION_V3 {
+    if source_schema_version != EVENT_SCHEMA_VERSION_V4 {
         return Err(DomainError::UnsupportedSchemaVersion(source_schema_version).into());
     }
     Ok(())
@@ -399,6 +411,7 @@ fn encode_unsigned_batch_v1_projection(
 ) -> Result<Vec<u8>, ContractError> {
     batch.validate()?;
     let mut json = serde_json::to_value(batch)?;
+    require_legacy_actor_shape(&json)?;
     require_legacy_arm_shape(&json)?;
     require_v1_claim_shape(&json)?;
     transform_decisions_for_v1(&mut json)?;
@@ -412,9 +425,44 @@ fn encode_unsigned_batch_v2_projection(
 ) -> Result<Vec<u8>, ContractError> {
     batch.validate()?;
     let mut json = serde_json::to_value(batch)?;
+    require_legacy_actor_shape(&json)?;
     require_legacy_arm_shape(&json)?;
     set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V2)?;
     encode_cbor_value(&json_to_cbor(&json)?)
+}
+
+fn encode_unsigned_batch_v3_projection(
+    batch: &UnsignedBatch,
+    _capability: LegacySourceEqualityCapability,
+) -> Result<Vec<u8>, ContractError> {
+    batch.validate()?;
+    let mut json = serde_json::to_value(batch)?;
+    require_legacy_actor_shape(&json)?;
+    set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V3)?;
+    encode_cbor_value(&json_to_cbor(&json)?)
+}
+
+/// A historical schema cannot carry a later actor even under a valid signature.
+fn require_legacy_actor_shape(json: &JsonValue) -> Result<(), ContractError> {
+    let events = json
+        .get("events")
+        .and_then(JsonValue::as_array)
+        .ok_or(ContractError::InvalidShape("batch events must be an array"))?;
+    for event in events {
+        let kind = event
+            .get("actor")
+            .and_then(|actor| actor.get("kind"))
+            .and_then(JsonValue::as_str);
+        if !matches!(
+            kind,
+            Some("USER" | "DETERMINISTIC_ENGINE" | "MODEL_RUN" | "IMPORTER")
+        ) {
+            return Err(ContractError::LegacyCompatibility(
+                "legacy payload carries an unsupported actor",
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Decodes and canonicality-checks an unsigned signing payload.
@@ -443,6 +491,12 @@ fn decode_source_payload(
     mut json: JsonValue,
     source_schema_version: u16,
 ) -> Result<UnsignedBatch, ContractError> {
+    if matches!(
+        source_schema_version,
+        EVENT_SCHEMA_VERSION_V1 | EVENT_SCHEMA_VERSION_V2 | EVENT_SCHEMA_VERSION_V3
+    ) {
+        require_legacy_actor_shape(&json)?;
+    }
     match source_schema_version {
         EVENT_SCHEMA_VERSION_V1 => {
             require_v1_claim_shape(&json)?;
@@ -456,8 +510,10 @@ fn decode_source_payload(
             set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V3)?;
         }
         EVENT_SCHEMA_VERSION_V3 => {}
+        EVENT_SCHEMA_VERSION_V4 => {}
         other => return Err(DomainError::UnsupportedSchemaVersion(other).into()),
     }
+    set_schema_version(&mut json, EVENT_SCHEMA_VERSION_V4)?;
     let batch: UnsignedBatch = serde_json::from_value(json)?;
     batch.validate()?;
     Ok(batch)
@@ -499,7 +555,10 @@ fn require_source_typed_equality(
         EVENT_SCHEMA_VERSION_V2 => {
             encode_unsigned_batch_v2_projection(batch, LegacySourceEqualityCapability)?
         }
-        EVENT_SCHEMA_VERSION_V3 => encode_unsigned_batch(batch)?,
+        EVENT_SCHEMA_VERSION_V3 => {
+            encode_unsigned_batch_v3_projection(batch, LegacySourceEqualityCapability)?
+        }
+        EVENT_SCHEMA_VERSION_V4 => encode_unsigned_batch(batch)?,
         other => return Err(DomainError::UnsupportedSchemaVersion(other).into()),
     };
     if typed_bytes != original_bytes {
@@ -1185,6 +1244,110 @@ mod tests {
     }
 
     #[test]
+    fn deterministic_prediction_signed_provenance_is_required_and_legacy_sources_refuse_it()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut batch = prediction_batch()?;
+        batch.events[0].actor = Actor::DeterministicPrediction {
+            name: "offering.forecast".to_owned(),
+            version: "1".to_owned(),
+            frozen_inputs_digest: ContentDigest::sha256(b"synthetic history"),
+            rule_set_digest: ContentDigest::sha256(b"synthetic rule/1"),
+        };
+        let signing_key = SigningKey::from_bytes(&[0x51; 32]);
+        let auth = authorization(&batch, &signing_key)?;
+        let envelope = sign_batch(&batch, &signing_key)?;
+        let verified = verify_signed_batch(&envelope, &auth)?;
+        assert_eq!(verified.batch(), &batch);
+        assert_eq!(verified.source_schema_version(), EVENT_SCHEMA_VERSION_V4);
+        assert_eq!(verified.source_envelope(), envelope);
+        let original = serde_json::to_value(&batch)?;
+        let mut invalid = Vec::new();
+        for field in ["name", "version", "frozen_inputs_digest", "rule_set_digest"] {
+            let mut json = original.clone();
+            json["events"][0]["actor"]
+                .as_object_mut()
+                .ok_or("actor")?
+                .remove(field);
+            invalid.push((format!("missing {field}"), json));
+            for value in [
+                JsonValue::Null,
+                JsonValue::String(String::new()),
+                JsonValue::String(" ".into()),
+                JsonValue::Bool(true),
+                JsonValue::String("sha256:00".into()),
+            ] {
+                if matches!(field, "name" | "version")
+                    && value == JsonValue::String("sha256:00".into())
+                {
+                    continue;
+                }
+                let mut json = original.clone();
+                json["events"][0]["actor"][field] = value;
+                invalid.push((format!("invalid {field}"), json));
+            }
+        }
+        for field in [
+            "confidence",
+            "prediction_metadata",
+            "scope_id",
+            "valid_time",
+            "evidence_ids",
+        ] {
+            let mut json = original.clone();
+            json["events"][0]["payload"]["value"]
+                .as_object_mut()
+                .ok_or("claim")?
+                .remove(field);
+            invalid.push((format!("missing {field}"), json));
+        }
+        for (pointer, value) in [
+            (
+                "/events/0/payload/value/confidence",
+                serde_json::json!(1001),
+            ),
+            (
+                "/events/0/payload/value/evidence_ids",
+                serde_json::json!([]),
+            ),
+            (
+                "/events/0/payload/value/prediction_metadata/version",
+                serde_json::json!(2),
+            ),
+            (
+                "/events/0/payload/value/prediction_metadata/positive_sample_count",
+                serde_json::json!(0),
+            ),
+            (
+                "/events/0/payload/value/prediction_metadata/observation_window/to",
+                serde_json::json!(-1000),
+            ),
+            (
+                "/events/0/payload/value/valid_time/to",
+                serde_json::json!(100),
+            ),
+        ] {
+            let mut json = original.clone();
+            *json.pointer_mut(pointer).ok_or("mutation pointer")? = value;
+            invalid.push((pointer.to_owned(), json));
+        }
+        let mut unknown = original.clone();
+        unknown["events"][0]["actor"]["model_run_id"] = serde_json::json!("ignored?");
+        invalid.push(("unknown actor provenance".to_owned(), unknown));
+        for version in 1..=3 {
+            let mut json = original.clone();
+            json["schema_version"] = serde_json::json!(version);
+            invalid.push((format!("frozen source v{version}"), json));
+        }
+        for (name, json) in invalid {
+            let payload = encode_cbor_value(&json_to_cbor(&json)?)?;
+            let signed = sign_test_payload(&payload, &signing_key)?;
+            assert!(verify_signed_batch(&signed, &auth).is_err(), "{name}");
+            assert!(decode_unsigned_batch(&payload).is_err(), "{name}");
+        }
+        Ok(())
+    }
+
+    #[test]
     fn encoding_is_deterministic() -> Result<(), Box<dyn std::error::Error>> {
         let batch = minimal_batch()?;
         let first = encode_unsigned_batch(&batch)?;
@@ -1401,7 +1564,7 @@ mod tests {
             assert_eq!(second_source, source_version, "upcasting is deterministic");
             assert_eq!(first, second, "upcasting the same bytes yields one batch");
             assert_eq!(
-                first.schema_version, EVENT_SCHEMA_VERSION_V3,
+                first.schema_version, EVENT_SCHEMA_VERSION_V4,
                 "every accepted source reaches the v3 arm table"
             );
             assert_eq!(
@@ -1442,7 +1605,7 @@ mod tests {
     #[test]
     fn unknown_authenticated_field_fails_closed_v3() -> Result<(), Box<dyn std::error::Error>> {
         let batch = v3_registration_batch()?;
-        let payload = encode_unsigned_batch(&batch)?;
+        let payload = encode_unsigned_batch_v3_projection(&batch, LegacySourceEqualityCapability)?;
         assert_eq!(decode_unsigned_batch(&payload)?, batch);
 
         let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
@@ -1498,20 +1661,20 @@ mod tests {
     }
 
     #[test]
-    fn every_current_writer_semantically_emits_v3_payloads()
+    fn every_current_writer_semantically_emits_v4_payloads()
     -> Result<(), Box<dyn std::error::Error>> {
         let batch = minimal_batch()?;
         let payload = encode_unsigned_batch(&batch)?;
         assert_eq!(
             read_schema_version(&decode_canonical_payload_json(&payload)?)?,
-            EVENT_SCHEMA_VERSION_V3
+            EVENT_SCHEMA_VERSION_V4
         );
 
         let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
         let envelope = decode_envelope(&sign_batch(&batch, &signing_key)?)?;
         assert_eq!(
             read_schema_version(&decode_canonical_payload_json(&envelope.payload)?)?,
-            EVENT_SCHEMA_VERSION_V3
+            EVENT_SCHEMA_VERSION_V4
         );
         Ok(())
     }
@@ -1567,7 +1730,7 @@ mod tests {
         );
         assert_eq!(
             verified.batch().schema_version,
-            academic_domain::EVENT_SCHEMA_VERSION_V3
+            academic_domain::EVENT_SCHEMA_VERSION_V4
         );
         assert_eq!(verified.batch(), &batch);
 
@@ -1593,8 +1756,21 @@ mod tests {
                 EVENT_SCHEMA_VERSION_V1,
                 encode_unsigned_batch_v1_projection(&batch, LegacySourceEqualityCapability)?,
             ),
-            (EVENT_SCHEMA_VERSION_V2, encode_unsigned_batch(&batch)?),
+            (
+                EVENT_SCHEMA_VERSION_V2,
+                encode_unsigned_batch_v2_projection(&batch, LegacySourceEqualityCapability)?,
+            ),
+            (
+                EVENT_SCHEMA_VERSION_V3,
+                encode_unsigned_batch_v3_projection(&batch, LegacySourceEqualityCapability)?,
+            ),
+            (EVENT_SCHEMA_VERSION_V4, encode_unsigned_batch(&batch)?),
         ] {
+            let valid = sign_test_payload(&payload, &signing_key)?;
+            assert_eq!(
+                verify_signed_batch(&valid, &authorization)?.source_schema_version(),
+                source_version
+            );
             let source_json = cbor_to_json(&decode_single_cbor(&payload)?)?;
             for pointer in [
                 "",

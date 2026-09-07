@@ -38,6 +38,52 @@ is absent or source independence is not explicitly attested. The full table,
 reason codes, and the bounded limits of that attestation are recorded in
 [product authority resolution](../contracts/product-authority-resolution.md).
 
+## Deterministic prediction provenance (gate_7e4af1a2ad17)
+
+The resolved choice is a separate `DeterministicPrediction` actor. It records a
+stable ASCII engine `name` and `version`, `frozen_inputs_digest`, and
+`rule_set_digest`; both digests are SHA-256 values. The name/version grammar is
+`[A-Za-z0-9][A-Za-z0-9._+/-]*`. No model execution is invented for a historical
+forecast. The original deterministic-result producer retains its authority.
+
+| Actor | Active authority + status |
+|---|---|
+| `User` | `UserExplicit + UserConfirmed` |
+| `DeterministicEngine` | `DeterministicEngine + DeterministicDerived` |
+| `ModelRun` | `ModelInference + AiInferred`, `Prediction + Prediction` |
+| `Importer` | `Official + OfficialConfirmed`, `DirectObservation + CodeObserved`, `Curated + DeterministicDerived`, `Unknown + Unknown` |
+| `DeterministicPrediction` | `Prediction + Prediction` |
+
+The new producer cannot assert terminal/disputed claims, register aggregates,
+record decisions, or claim user, official, curated, observed, deterministic-result,
+or model-inference authority. Its only events are forecast assertions and claim
+relations. Forecast assertions require confidence, versioned bounded observation
+history, positive samples, a registered scope, closed source evidence, and an
+independent valid interval at signed ingress and ledger acceptance.
+
+Removing a prediction with `SUPERSEDES` or `RETRACTS` additionally requires the
+relation author and both claim authors to have the same producer identity: engine
+name/version for deterministic forecasts, run ID for model forecasts. Frozen-input
+digests may differ across reruns. Source and target must address the same subject,
+predicate and scope. Resolution rechecks this ownership from retained canonical
+provenance; shared `Prediction` authority does not confer another producer's
+removal rights. Existing protection for user-selected objects remains in force.
+Official arrivals compete as separate claims and never promote prediction bytes.
+
+This ownership rule also closes the earlier cross-run model-prediction removal
+gap. Such historical v3 bytes still authenticate unchanged, but current replay
+refuses the removal batch; retained projections keep both candidates as a
+conflict. The synthetic baseline/current receipt is documented in the product
+authority contract. Unchanged golden replay is not a claim that every formerly
+accepted lifecycle effect remains authorized.
+
+Event/Proto/fixture v4 is the additive boundary. Existing payload tags and all
+frozen v1/v2/v3 schemas and signed bytes stay immutable, and historical sources
+refuse the new producer before upcast. See ADR-009 and ADR-012 for wire and store
+admission. The total 360-cell actor/authority/status matrix, raw signed negatives,
+Proto fixed bytes, replay, removal controls and migration tests implement this
+decision; production-data admission remains closed.
+
 ## Executable evidence
 
 - The ledger rejects origin gaps, parent-hash forks, batch-ID collisions, duplicate immutable IDs, and missing artifact/evidence/claim closure.

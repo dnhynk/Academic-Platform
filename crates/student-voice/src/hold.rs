@@ -183,9 +183,10 @@ impl ReviewDecision {
                 reviewed_by,
                 at,
             }),
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
-                Err(HoldRefusal::AutomaticActorCannotReview)
-            }
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => Err(HoldRefusal::AutomaticActorCannotReview),
         }
     }
 

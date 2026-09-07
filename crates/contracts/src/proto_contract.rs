@@ -1,12 +1,12 @@
 //! Executable Protobuf round-trip for the actor and claim-relation contract.
 //!
-//! The wire tags here are checked against both declared v1 and v2 schemas by
+//! The wire tags here are checked against the declared v1 through v4 schemas by
 //! `tools/verify-contracts.mjs`; the domain conversion revalidates all UUIDv7
 //! and event invariants after decoding.
 
 use academic_domain::{
-    Actor, ClaimId, ClaimRelation, ClaimRelationKind, DomainError, DomainId, EntityId, Event,
-    EventId, EventPayload, ScopeId, TimestampMillis,
+    Actor, ClaimId, ClaimRelation, ClaimRelationKind, ContentDigest, DomainError, DomainId,
+    EntityId, Event, EventId, EventPayload, ScopeId, TimestampMillis,
 };
 use prost::{Enumeration, Message};
 use thiserror::Error;
@@ -73,14 +73,27 @@ struct ProtoImporterActor {
 }
 
 #[derive(Clone, PartialEq, Message)]
+struct ProtoDeterministicPredictionActor {
+    #[prost(string, tag = "1")]
+    name: String,
+    #[prost(string, tag = "2")]
+    version: String,
+    #[prost(bytes = "vec", tag = "3")]
+    frozen_inputs_digest: Vec<u8>,
+    #[prost(bytes = "vec", tag = "4")]
+    rule_set_digest: Vec<u8>,
+}
+
+#[derive(Clone, PartialEq, Message)]
 struct ProtoActor {
-    #[prost(oneof = "proto_actor::Kind", tags = "1, 2, 3, 4")]
+    #[prost(oneof = "proto_actor::Kind", tags = "1, 2, 3, 4, 5")]
     kind: Option<proto_actor::Kind>,
 }
 
 mod proto_actor {
     use super::{
-        ProtoDeterministicEngineActor, ProtoImporterActor, ProtoModelRunActor, ProtoUserActor,
+        ProtoDeterministicEngineActor, ProtoDeterministicPredictionActor, ProtoImporterActor,
+        ProtoModelRunActor, ProtoUserActor,
     };
     use prost::Oneof;
 
@@ -94,6 +107,8 @@ mod proto_actor {
         ModelRun(ProtoModelRunActor),
         #[prost(message, tag = "4")]
         Importer(ProtoImporterActor),
+        #[prost(message, tag = "5")]
+        DeterministicPrediction(ProtoDeterministicPredictionActor),
     }
 }
 
@@ -523,6 +538,12 @@ mod proto_origin_event {
 
 /// Encodes a relation event through the exact Protobuf tags declared in the schema.
 pub fn encode_claim_relation_event_proto(event: &Event) -> Result<Vec<u8>, ProtoContractError> {
+    require_legacy_actor(&event.actor)?;
+    encode_claim_relation_event_proto_v4(event)
+}
+
+/// Encodes the additive v4 actor contract without changing any event payload tag.
+pub fn encode_claim_relation_event_proto_v4(event: &Event) -> Result<Vec<u8>, ProtoContractError> {
     event.validate()?;
     let EventPayload::ClaimRelated(relation) = &event.payload else {
         return Err(ProtoContractError::UnsupportedPayload);
@@ -549,6 +570,46 @@ pub fn encode_claim_relation_event_proto(event: &Event) -> Result<Vec<u8>, Proto
 
 /// Decodes Protobuf bytes and reconstructs the complete structured actor/relation event.
 pub fn decode_claim_relation_event_proto(bytes: &[u8]) -> Result<Event, ProtoContractError> {
+    reject_v4_actor_in_legacy_wire(bytes)?;
+    let event = decode_claim_relation_event_proto_v4(bytes)?;
+    require_legacy_actor(&event.actor)?;
+    Ok(event)
+}
+
+fn reject_v4_actor_in_legacy_wire(mut bytes: &[u8]) -> Result<(), ProtoContractError> {
+    use prost::encoding::{DecodeContext, WireType, decode_key, decode_varint, skip_field};
+    while !bytes.is_empty() {
+        let (tag, wire) = decode_key(&mut bytes)?;
+        if tag == 5 && wire == WireType::LengthDelimited {
+            let length = usize::try_from(decode_varint(&mut bytes)?)
+                .map_err(|_| ProtoContractError::Missing("actor length"))?;
+            let mut actor = bytes
+                .get(..length)
+                .ok_or(ProtoContractError::Missing("actor bytes"))?;
+            bytes = &bytes[length..];
+            while !actor.is_empty() {
+                let (actor_tag, actor_wire) = decode_key(&mut actor)?;
+                if actor_tag == 5 {
+                    return Err(DomainError::UnsupportedSchemaVersion(4).into());
+                }
+                skip_field(actor_wire, actor_tag, &mut actor, DecodeContext::default())?;
+            }
+        } else {
+            skip_field(wire, tag, &mut bytes, DecodeContext::default())?;
+        }
+    }
+    Ok(())
+}
+
+fn require_legacy_actor(actor: &Actor) -> Result<(), ProtoContractError> {
+    if matches!(actor, Actor::DeterministicPrediction { .. }) {
+        return Err(DomainError::UnsupportedSchemaVersion(4).into());
+    }
+    Ok(())
+}
+
+/// Decodes the v4 superset and validates required deterministic forecast provenance.
+pub fn decode_claim_relation_event_proto_v4(bytes: &[u8]) -> Result<Event, ProtoContractError> {
     let value = ProtoOriginEvent::decode(bytes)?;
     let Some(payload) = value.payload else {
         return Err(ProtoContractError::Missing("payload"));
@@ -627,6 +688,17 @@ fn encode_actor(actor: &Actor) -> ProtoActor {
             name: name.clone(),
             version: version.clone(),
         }),
+        Actor::DeterministicPrediction {
+            name,
+            version,
+            frozen_inputs_digest,
+            rule_set_digest,
+        } => proto_actor::Kind::DeterministicPrediction(ProtoDeterministicPredictionActor {
+            name: name.clone(),
+            version: version.clone(),
+            frozen_inputs_digest: frozen_inputs_digest.as_bytes().to_vec(),
+            rule_set_digest: rule_set_digest.as_bytes().to_vec(),
+        }),
     };
     ProtoActor { kind: Some(kind) }
 }
@@ -650,7 +722,20 @@ fn decode_actor(value: ProtoActor) -> Result<Actor, ProtoContractError> {
             name: value.name,
             version: value.version,
         }),
+        proto_actor::Kind::DeterministicPrediction(value) => Ok(Actor::DeterministicPrediction {
+            name: value.name,
+            version: value.version,
+            frozen_inputs_digest: decode_prediction_digest(value.frozen_inputs_digest)?,
+            rule_set_digest: decode_prediction_digest(value.rule_set_digest)?,
+        }),
     }
+}
+
+fn decode_prediction_digest(bytes: Vec<u8>) -> Result<ContentDigest, ProtoContractError> {
+    let digest = bytes
+        .try_into()
+        .map_err(|_| ProtoContractError::Missing("prediction digest must be 32 bytes"))?;
+    Ok(ContentDigest::from_sha256_bytes(digest))
 }
 
 const fn encode_relation_kind(value: ClaimRelationKind) -> ProtoClaimRelationKind {
@@ -677,6 +762,73 @@ const fn decode_relation_kind(value: ProtoClaimRelationKind) -> Option<ClaimRela
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn v4_prediction_actor_has_fixed_bytes_and_legacy_wire_refuses_both_orders()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let actor = Actor::DeterministicPrediction {
+            name: "forecast".to_owned(),
+            version: "1".to_owned(),
+            frozen_inputs_digest: ContentDigest::from_sha256_bytes([0x11; 32]),
+            rule_set_digest: ContentDigest::from_sha256_bytes([0x22; 32]),
+        };
+        let expected = format!(
+            "2a510a08666f7265636173741201311a20{}2220{}",
+            "11".repeat(32),
+            "22".repeat(32)
+        );
+        assert_eq!(hex::encode(encode_actor(&actor).encode_to_vec()), expected);
+        let mut event = Event {
+            id: "01900000-0000-7000-8000-000000000001".parse()?,
+            origin_seq: 1,
+            origin_observed_at: TimestampMillis::new(1),
+            actor: actor.clone(),
+            domain_id: "01900000-0000-7000-8000-000000000002".parse()?,
+            payload: EventPayload::ClaimRelated(ClaimRelation {
+                source_claim_id: "01900000-0000-7000-8000-000000000003".parse()?,
+                target_claim_id: "01900000-0000-7000-8000-000000000004".parse()?,
+                kind: ClaimRelationKind::Retracts,
+                scope_id: "01900000-0000-7000-8000-000000000005".parse()?,
+            }),
+        };
+        let bytes = encode_claim_relation_event_proto_v4(&event)?;
+        assert_eq!(decode_claim_relation_event_proto_v4(&bytes)?, event);
+        assert!(encode_claim_relation_event_proto(&event).is_err());
+        assert!(decode_claim_relation_event_proto(&bytes).is_err());
+        let mut wire = ProtoOriginEvent::decode(bytes.as_slice())?;
+        let Some(proto_actor::Kind::DeterministicPrediction(valid)) =
+            wire.actor.clone().and_then(|value| value.kind)
+        else {
+            return Err("actor".into());
+        };
+        for field in 0..4 {
+            let mut invalid = valid.clone();
+            match field {
+                0 => invalid.name.clear(),
+                1 => invalid.version.clear(),
+                2 => invalid.frozen_inputs_digest.clear(),
+                _ => invalid.rule_set_digest.push(0),
+            }
+            wire.actor = Some(ProtoActor {
+                kind: Some(proto_actor::Kind::DeterministicPrediction(invalid)),
+            });
+            assert!(decode_claim_relation_event_proto_v4(&wire.encode_to_vec()).is_err());
+        }
+        event.actor = Actor::ModelRun {
+            run_id: "01900000-0000-7000-8000-000000000006".parse()?,
+        };
+        let legacy = encode_claim_relation_event_proto(&event)?;
+        for ordered in [
+            [bytes.clone(), legacy.clone()],
+            [legacy.clone(), bytes.clone()],
+        ] {
+            assert!(
+                decode_claim_relation_event_proto(&ordered.concat()).is_err(),
+                "a later old actor must not hide a new actor"
+            );
+        }
+        Ok(())
+    }
 
     #[test]
     fn protobuf_uuid_boundary_requires_rfc_variant_uuidv7() -> Result<(), Box<dyn std::error::Error>>
@@ -1152,6 +1304,7 @@ mod tests {
                 Some(proto_actor::Kind::DeterministicEngine(_)) => "DeterministicEngine",
                 Some(proto_actor::Kind::ModelRun(_)) => "ModelRun",
                 Some(proto_actor::Kind::Importer(_)) => "Importer",
+                Some(proto_actor::Kind::DeterministicPrediction(_)) => "DeterministicPrediction",
                 None => "Missing",
             };
             assert_eq!(selected_arm, expected_arm);

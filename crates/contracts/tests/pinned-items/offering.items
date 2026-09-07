@@ -10,7 +10,7 @@ crates/offering/src/claims.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struc
 crates/offering/src/claims.rs [pub] const OFFERING_STATUS_PREDICATE: &str |1feb57c8b2222374
 crates/offering/src/claims.rs [pub] fn announcement_claim( id: ClaimId, subject: &ClaimSubject, announcement: &OfferingAnnouncement, evidence_ids: Vec<EvidenceId>, ) -> Result<Claim, OfferingError> |dbbfaaccb71a2acb
 crates/offering/src/claims.rs [pub] fn confirmation_claim( id: ClaimId, subject: &ClaimSubject, evidence: &ConfirmationEvidence, evidence_ids: Vec<EvidenceId>, ) -> Result<Claim, OfferingError> |11f532c046402afe
-crates/offering/src/claims.rs [pub] fn forecast_claim( id: ClaimId, subject: &ClaimSubject, scored: &ScoredForecast, evidence_ids: Vec<EvidenceId>, ) -> Result<Claim, OfferingError> |2a7876e6aa2e8216
+crates/offering/src/claims.rs [pub] fn forecast_claim( id: ClaimId, subject: &ClaimSubject, scored: &ScoredForecast, evidence_ids: Vec<EvidenceId>, ) -> Result<Claim, OfferingError> |7ad2f7aecaec8eae
 crates/offering/src/claims.rs [pub] impl DecisionStanding :: #[must_use] const fn as_str(self) -> &'static str |894d2feefea3948c
 crates/offering/src/claims.rs [pub] impl OfferingAssertion :: #[must_use] const fn as_str(self) -> &'static str |642d175326d0628e
 crates/offering/src/claims.rs [pub] impl OfferingClaimSet :: #[must_use] const fn official(official: Claim) -> Self |a28dd2d7f34a5a5b
@@ -98,8 +98,8 @@ crates/offering/src/feature.rs [pub] impl ObservationWindow :: #[must_use] const
 crates/offering/src/feature.rs [pub] impl ObservationWindow :: #[must_use] fn contains(self, term: TermKey) -> bool |0346d5a5a2d68154
 crates/offering/src/feature.rs [pub] impl ObservationWindow :: #[must_use] fn seasonal_terms( self, history: &CourseHistory, ) -> Vec<&crate::observation::TermObservation> |6b0e59119bc7c9c2
 crates/offering/src/feature.rs [pub] impl ObservationWindow :: fn new(from: TermKey, to: TermKey) -> Result<Self, OfferingError> |93f2b1f36de509ab
+crates/offering/src/forecast.rs [priv] #[allow(clippy::too_many_arguments)] fn decide( history: &CourseHistory, window: ObservationWindow, features: &FeatureVector, raw_units: u32, policy: ForecastPolicy, registry: &CalibrationRegistry, now: TimestampMillis, frozen_inputs_digest: ContentDigest, ) -> Result<ForecastVerdict, OfferingError> |041cb3598eeff6ec
 crates/offering/src/forecast.rs [priv] const INSTRUCTOR_VOLATILITY_RUNS: usize |38e4a324efe3f685
-crates/offering/src/forecast.rs [priv] fn decide( history: &CourseHistory, window: ObservationWindow, features: &FeatureVector, raw_units: u32, policy: ForecastPolicy, registry: &CalibrationRegistry, now: TimestampMillis, ) -> Result<ForecastVerdict, OfferingError> |d36b571559c3ade7
 crates/offering/src/forecast.rs [priv] fn disclosed_window( seasonal: &[&crate::observation::TermObservation], ) -> Result<PredictionObservationWindow, OfferingError> |93ecee890e7b62ce
 crates/offering/src/forecast.rs [priv] fn engine_result( features: &FeatureVector, raw_units: u32, verdict: &ForecastVerdict, root: ProofStatus, ) -> Result<EngineResult, OfferingError> |22cca18740b3a718
 crates/offering/src/forecast.rs [priv] fn family_status(contribution: i32, has_evidence: bool) -> ProofStatus |2fc6bd9977766143
@@ -123,7 +123,7 @@ crates/offering/src/forecast.rs [priv] use std::collections::BTreeMap |8924be304
 crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] enum AbstentionReason |1fe1e4e970fb709c
 crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ForecastVerdict |28df35a282369812
 crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct Forecast |ef87714ef987d783
-crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ScoredForecast |f2f5d8722fda69e9
+crates/offering/src/forecast.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ScoredForecast |d52f69aa36cfc536
 crates/offering/src/forecast.rs [pub] #[must_use] fn rule_set_hash() -> RuleSetHash |4d38451da6ff52aa
 crates/offering/src/forecast.rs [pub] const FORECAST_RULE_SET: &str |1c6a6bd9c9ad4a5a
 crates/offering/src/forecast.rs [pub] const OFFERING_FORECAST_ENGINE_ID: &str |0a820605d43b7a4d
@@ -131,7 +131,7 @@ crates/offering/src/forecast.rs [pub] const OFFERING_FORECAST_ENGINE_VERSION: u1
 crates/offering/src/forecast.rs [pub] const OFFERING_FORECAST_PROVIDER: &str |495a1d06d993d492
 crates/offering/src/forecast.rs [pub] const OFFERING_FORECAST_PURPOSE: &str |74d7ac7d6025488d
 crates/offering/src/forecast.rs [pub] const RULE_OFFERING_FORECAST: &str |20d16b2529b19b07
-crates/offering/src/forecast.rs [pub] fn forecast( history: &CourseHistory, window: ObservationWindow, policy: ForecastPolicy, registry: &CalibrationRegistry, now: TimestampMillis, ) -> Result<Forecast, OfferingError> |0e5d9dcfa96f09e4
+crates/offering/src/forecast.rs [pub] fn forecast( history: &CourseHistory, window: ObservationWindow, policy: ForecastPolicy, registry: &CalibrationRegistry, now: TimestampMillis, ) -> Result<Forecast, OfferingError> |5658fe2e53dd6a34
 crates/offering/src/forecast.rs [pub] impl AbstentionReason :: #[must_use] const fn as_str(self) -> &'static str |6dcd465648d29cee
 crates/offering/src/forecast.rs [pub] impl AbstentionReason :: #[must_use] const fn spec_phrase(self) -> Option<&'static str> |dd5270cd180e4c6f
 crates/offering/src/forecast.rs [pub] impl AbstentionReason :: const ALL: [Self; 8] |3873ebe5714653c1
@@ -146,6 +146,7 @@ crates/offering/src/forecast.rs [pub] impl Forecast :: fn canonical_bytes(&self)
 crates/offering/src/forecast.rs [pub] impl ScoredForecast :: #[must_use] const fn calibrated(&self) -> &CalibratedConfidence |9be6e812fee2056e
 crates/offering/src/forecast.rs [pub] impl ScoredForecast :: #[must_use] const fn confidence(&self) -> ConfidencePermille |9f53849ee437f69b
 crates/offering/src/forecast.rs [pub] impl ScoredForecast :: #[must_use] const fn metadata(&self) -> PredictionMetadata |d85992b0ba4983a1
+crates/offering/src/forecast.rs [pub] impl ScoredForecast :: #[must_use] fn actor(&self) -> &academic_domain::Actor |52ef275fbd28708b
 crates/offering/src/gate.rs [priv] impl OpenGate
 crates/offering/src/gate.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] #[non_exhaustive] enum OpenGate |72eacf36fdb6c82f
 crates/offering/src/gate.rs [pub] impl OpenGate :: #[must_use] const fn identifier(self) -> &'static str |fed5734eb51b1cd3

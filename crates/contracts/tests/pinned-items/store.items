@@ -54,6 +54,7 @@ crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn closure_row_requir
 crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn every_new_table_denies_update_and_delete() -> Result<(), Box<dyn Error>> |b84e01d166bfa9a8
 crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn migration_0004_is_forward_only_and_pre_listen() -> Result<(), Box<dyn Error>> |457cbfb8fdc724c0
 crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn no_aggregate_smuggled_into_object_text() -> Result<(), Box<dyn Error>> |1ed772fabbd2c8c0
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn prediction_actor_migration_preserves_rows_and_refuses_reentry_and_plaintext() -> Result<(), Box<dyn Error>> |bc30c35dfcef7a64
 crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn the_test_base_is_the_real_schema_two() -> Result<(), Box<dyn Error>> |fe5077abfa7d0d6d
 crates/store/src/aggregate_closure_tests.rs [priv] const CLOSURE_TABLES: [(&str, &str, Option<&str>); 18] |e90de7da789d9bfe
 crates/store/src/aggregate_closure_tests.rs [priv] fn append_all_arms<'connection>( connection: &'connection mut Connection, stop_after: Option<usize>, ) -> Result<(Transaction<'connection>, usize), Box<dyn Error>> |7443a59a08cc1691
@@ -682,7 +683,7 @@ crates/store/src/migration.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn
 crates/store/src/migration.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] fn verify_storage_declaration(identity: &SchemaIdentity) -> StoreResult<()> |3c77b99196d1939e
 crates/store/src/migration.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] use crate::PHASE1_STORAGE_POLICY |5c854718f4e93ed0
 crates/store/src/migration.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum SchemaAdmission |0d5298783594fd21
-crates/store/src/migration.rs [priv] fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> StoreResult<()> |3c523130d26caef4
+crates/store/src/migration.rs [priv] fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> StoreResult<()> |7fc9aa4d67837d88
 crates/store/src/migration.rs [priv] fn fixed_bytes<const N: usize>(component: &'static str, bytes: Vec<u8>) -> StoreResult<[u8; N]> |a9ce41543ffa0218
 crates/store/src/migration.rs [priv] fn hex_bytes(bytes: &[u8]) -> String |c52d9eb4620f2450
 crates/store/src/migration.rs [priv] fn identity_exact(component: &'static str, expected: String, actual: String) -> StoreResult<()> |fd9785fad34f5e90
@@ -696,7 +697,8 @@ crates/store/src/migration.rs [priv] use rusqlite::{Connection, OpenFlags, Trans
 crates/store/src/migration.rs [priv] use std::{ path::Path, time::{SystemTime, UNIX_EPOCH}, } |57e89dc14203b803
 crates/store/src/migration.rs [pub(crate)] fn verify_current_schema( connection: &Connection, pragmas: &PragmaSnapshot, ) -> StoreResult<()> |be14d125e650b7bb
 crates/store/src/migration.rs [pub] #[cfg(any(feature = "sqlcipher-store", test))] const MIGRATION_0003_SQL: &str |bacac6596453f74d
-crates/store/src/migration.rs [pub] #[cfg(feature = "sqlcipher-store")] const STORE_MIGRATION_SQL: &[&str] |b8e0b825fd85247f
+crates/store/src/migration.rs [pub] #[cfg(any(feature = "sqlcipher-store", test))] fn apply_prediction_actor_migration_pre_listen(connection: &mut Connection) -> StoreResult<()> |7b7e775f1ce0c3ee
+crates/store/src/migration.rs [pub] #[cfg(feature = "sqlcipher-store")] const STORE_MIGRATION_SQL: &[&str] |d4678c043f4b6a54
 crates/store/src/migration.rs [pub] #[cfg(feature = "sqlcipher-store")] fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdentity> |38d0a6172c4c8940
 crates/store/src/migration.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] const STORE_MIGRATION_SQL: &[&str] |e30c6f8909491169
 crates/store/src/migration.rs [pub] #[cfg(not(feature = "sqlcipher-store"))] fn read_schema_identity(connection: &Connection) -> StoreResult<SchemaIdentity> |3f9e45c80a98a6ef
@@ -711,6 +713,7 @@ crates/store/src/migration.rs [pub] const MIGRATION_0009_SQL: &str |5cfc20586f9a
 crates/store/src/migration.rs [pub] const MIGRATION_0012_SQL: &str |f94f3ab7a0bd2f1c
 crates/store/src/migration.rs [pub] const MIGRATION_0014_SQL: &str |c9dbc3f3a31f715b
 crates/store/src/migration.rs [pub] const MIGRATION_0015_SQL: &str |3e0d157ca7191370
+crates/store/src/migration.rs [pub] const MIGRATION_0016_SQL: &str |4b16fc5e27eceb74
 crates/store/src/migration.rs [pub] fn apply_aggregate_migration_pre_listen(connection: &mut Connection) -> StoreResult<()> |5f31fd041defbd3d
 crates/store/src/migration.rs [pub] fn checked_sqlite_integer(value: u64) -> StoreResult<i64> |e0572db0bd0b51bf
 crates/store/src/migration.rs [pub] fn migrate_open_connection_pre_listen( connection: &mut Connection, creating_build_digest: [u8; 32], ) -> StoreResult<MigrationStatus> |b94453f806d129cd
@@ -935,12 +938,12 @@ crates/store/src/proposal_closure_tests.rs [priv] use academic_domain::{ Actor, 
 crates/store/src/proposal_closure_tests.rs [priv] use crate::{ aggregate_closure_tests::{apply_schema_two_canonical_core, typed_id}, migration::apply_aggregate_migration_pre_listen, repository::ClosureWriter, } |091e0094cc4853fa
 crates/store/src/proposal_closure_tests.rs [priv] use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior, params} |f17aab2d7775bae5
 crates/store/src/proposal_closure_tests.rs [priv] use std::{collections::BTreeMap, error::Error, fs, path::PathBuf} |3d9825e5e982b6d5
-crates/store/src/queries.rs [priv] fn parse_actor_kind(value: &str) -> Result<ResolverActorKind, QueryError> |327273678b5ec91a
+crates/store/src/queries.rs [priv] fn parse_actor_kind(value: &str) -> Result<ResolverActorKind, QueryError> |e18331f804122f5a
 crates/store/src/queries.rs [priv] fn parse_relation_kind(value: &str) -> Result<ClaimRelationKind, QueryError> |e8ce4c261e48b237
 crates/store/src/queries.rs [priv] fn projection_source_authority_from_connection( connection: &Connection, domain_id: DomainId, known_at_accept_seq: u64, ) -> Result<ProjectionSourceAuthority, QueryError> |c29bdbd8f0a3c384
-crates/store/src/queries.rs [priv] fn read_claims( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionClaim>, QueryError> |787ea08971696f1b
+crates/store/src/queries.rs [priv] fn read_claims( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionClaim>, QueryError> |de3ca91a99a2580b
 crates/store/src/queries.rs [priv] fn read_decisions( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionDecision>, QueryError> |fb558c3d438602aa
-crates/store/src/queries.rs [priv] fn read_relations( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionRelation>, QueryError> |8c2413ed96dd9951
+crates/store/src/queries.rs [priv] fn read_relations( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionRelation>, QueryError> |cc29a12e5840d724
 crates/store/src/queries.rs [priv] fn resolve_from_connection( connection: &Connection, query: &ResolutionQuery, ) -> Result<ResolutionResult, QueryError> |2f716b409d03c167
 crates/store/src/queries.rs [priv] impl Error for QueryError
 crates/store/src/queries.rs [priv] impl Error for QueryError :: fn source(&self) -> Option<&(dyn Error + 'static)> |cf85601a442f897a
@@ -954,7 +957,7 @@ crates/store/src/queries.rs [priv] impl From<StoreError> for QueryError
 crates/store/src/queries.rs [priv] impl From<StoreError> for QueryError :: fn from(error: StoreError) -> Self |1f9dd19bf676c75e
 crates/store/src/queries.rs [priv] impl fmt::Display for QueryError
 crates/store/src/queries.rs [priv] impl fmt::Display for QueryError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |20e12c5841fb3da2
-crates/store/src/queries.rs [priv] type RawClaim = ( Vec<u8>, Vec<u8>, String, Vec<u8>, String, Option<Vec<u8>>, Option<String>, Option<i64>, Option<String>, Option<i64>, Option<i64>, Option<i64>, String, String, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, i64, Option<i64>, i64, ) |ecafa062019880bf
+crates/store/src/queries.rs [priv] type RawClaim = ( Vec<u8>, Vec<u8>, String, Vec<u8>, String, Option<Vec<u8>>, Option<String>, Option<i64>, Option<String>, Option<i64>, Option<i64>, Option<i64>, String, String, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, i64, Option<i64>, i64, Vec<u8>, ) |352bc982e2418d26
 crates/store/src/queries.rs [priv] use academic_contracts::{ ContractError, decode_canonical_claim_object, decode_canonical_evidence_ids, } |ae9e96dda3ca2d32
 crates/store/src/queries.rs [priv] use academic_domain::{ ArtifactId, Claim, ClaimId, ClaimRelation, ClaimRelationKind, ConfidencePermille, ContentDigest, DecisionAction, DecisionId, DomainError, DomainId, EntityId, EvidenceId, PredicateId, ResolutionSlot, ScopeId, TimestampMillis, UserDecision, ValidInterval, } |eab4bbb356c8010d
 crates/store/src/queries.rs [priv] use academic_ledger::{ ResolutionClaim, ResolutionDecision, ResolutionQuery, ResolutionRelation, ResolutionResult, ResolverActorKind, resolve_snapshot, } |22f47c0b93f82729
@@ -981,7 +984,7 @@ crates/store/src/queries.rs [pub] fn projection_source_authority( reader: &mut R
 crates/store/src/queries.rs [pub] fn projection_source_snapshot( reader: &mut ReaderConnection, request: &ProjectionSnapshotRequest<'_>, ) -> Result<ProjectionSourceSnapshot, QueryError> |79d624c7909ea787
 crates/store/src/queries.rs [pub] fn resolve( reader: &ReaderConnection, query: &ResolutionQuery, ) -> Result<ResolutionResult, QueryError> |33c4437434ac528b
 crates/store/src/queries.rs [pub] use academic_ledger::AuthorityPolicy |bd81cbf3625a651a
-crates/store/src/repository.rs [priv] #[derive(Debug, Clone)] struct AcceptedClaim |6f7a7b66e1b68bcb
+crates/store/src/repository.rs [priv] #[derive(Debug, Clone)] struct AcceptedClaim |3547fcf6b8b28d23
 crates/store/src/repository.rs [priv] #[derive(Debug, Clone)] struct AcceptedEvidence |312f5a3d7ec4f009
 crates/store/src/repository.rs [priv] fn actor_kind(actor: &Actor) -> &'static str |35b9f286b6668cd7
 crates/store/src/repository.rs [priv] fn aggregate_closure_row(payload: &EventPayload) -> Option<AggregateClosureRow<'_>> |9e8289be3d5e011e
@@ -1000,7 +1003,7 @@ crates/store/src/repository.rs [priv] fn evidence_strength(value: EvidenceStreng
 crates/store/src/repository.rs [priv] fn freshness(value: FreshnessBand) -> &'static str |d133a340622a71f2
 crates/store/src/repository.rs [priv] fn hex_lower(bytes: &[u8]) -> String |edadd8225b66008a
 crates/store/src/repository.rs [priv] fn load_artifact( transaction: &Connection, id: ArtifactId, ) -> Result<Option<ArtifactDescriptor>, RepositoryError> |1a810c3c828b40a9
-crates/store/src/repository.rs [priv] fn load_claim( transaction: &Transaction<'_>, id: ClaimId, ) -> Result<Option<AcceptedClaim>, RepositoryError> |90ef03567f7ac749
+crates/store/src/repository.rs [priv] fn load_claim( transaction: &Transaction<'_>, id: ClaimId, ) -> Result<Option<AcceptedClaim>, RepositoryError> |c2b7186fe2cf3983
 crates/store/src/repository.rs [priv] fn load_evidence( transaction: &Transaction<'_>, id: EvidenceId, ) -> Result<Option<AcceptedEvidence>, RepositoryError> |7fe3158caa1aefcf
 crates/store/src/repository.rs [priv] fn load_scope( transaction: &Transaction<'_>, id: ScopeId, ) -> Result<Option<ScopeDescriptor>, RepositoryError> |1a614bbee8e82efb
 crates/store/src/repository.rs [priv] fn mastery(value: MasteryLevel) -> &'static str |171a29df0d174e75
@@ -1030,11 +1033,11 @@ crates/store/src/repository.rs [priv] impl fmt::Display for RepositoryError
 crates/store/src/repository.rs [priv] impl fmt::Display for RepositoryError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |fb3851299427ce52
 crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R>
 crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_artifact( &mut self, event: &Event, descriptor: &ArtifactDescriptor, ) -> Result<(), RepositoryError> |552a5b3ec3a36a72
-crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_claim( &mut self, event: &Event, claim: &Claim, _accept_seq: u64, ) -> Result<(), RepositoryError> |c28c21b39c823859
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_claim( &mut self, event: &Event, claim: &Claim, _accept_seq: u64, ) -> Result<(), RepositoryError> |a901dae18136b52b
 crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_decision( &mut self, event: &Event, decision: &UserDecision, _accept_seq: u64, ) -> Result<(), RepositoryError> |a3396d0e8246adf4
 crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_evidence( &mut self, event: &Event, item: &EvidenceItem, ) -> Result<(), RepositoryError> |9f9ec32183a6e3f8
 crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_registration( &mut self, event: &Event, row: &AggregateClosureRow<'_>, ) -> Result<(), RepositoryError> |ccb855ec477222d1
-crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_relation( &mut self, event: &Event, relation: &academic_domain::ClaimRelation, _accept_seq: u64, ) -> Result<(), RepositoryError> |5fbf6c7f7b8ac099
+crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_relation( &mut self, event: &Event, relation: &academic_domain::ClaimRelation, _accept_seq: u64, ) -> Result<(), RepositoryError> |e6e6b7ad940803d4
 crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn append_scope( &mut self, event: &Event, scope: &ScopeDescriptor, ) -> Result<(), RepositoryError> |8ed5e95955f0f753
 crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn artifact(&self, id: ArtifactId) -> Result<ArtifactDescriptor, RepositoryError> |e1514e820566e815
 crates/store/src/repository.rs [priv] impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt> ClosureWriter<'transaction, 'connection, 'receipts, R> :: fn claim(&self, id: ClaimId) -> Result<AcceptedClaim, RepositoryError> |0c8094c9f5aac06d
@@ -1153,6 +1156,7 @@ crates/store/src/schema_fingerprint.rs [priv] use academic_domain::ContentDigest
 crates/store/src/schema_fingerprint.rs [priv] use crate::{ STORE_SCHEMA_VERSION, error::{StoreError, StoreResult}, } |fe877a8f0cc093a3
 crates/store/src/schema_fingerprint.rs [priv] use rusqlite::{Connection, OptionalExtension} |d635752983d0ccc3
 crates/store/src/schema_fingerprint.rs [priv] use std::sync::OnceLock |bb0ffa895719ab45
+crates/store/src/schema_fingerprint.rs [pub(crate)] #[cfg(any(feature = "sqlcipher-store", test))] fn verify_prior_store_schema_fingerprint( connection: &Connection, migration_sql: &[&str], ) -> StoreResult<()> |eb0b40ca2548d8e1
 crates/store/src/schema_fingerprint.rs [pub(crate)] fn user_schema_object_count(connection: &Connection) -> StoreResult<i64> |e1ad090734c422c8
 crates/store/src/schema_fingerprint.rs [pub(crate)] fn verify_store_schema_fingerprint( connection: &Connection, migration_sql: &[&str], ) -> StoreResult<()> |83408a28d21a0c80
 crates/store/src/timeline.rs [priv] const fn table(kind: &'static str, name: &'static str) -> AggregateTable |9b55dfb26260b90b

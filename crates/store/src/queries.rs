@@ -686,6 +686,7 @@ type RawClaim = (
     i64,
     Option<i64>,
     i64,
+    Vec<u8>,
 );
 
 fn read_claims(
@@ -708,7 +709,7 @@ fn read_claims(
             "c.authority_class, c.epistemic_status, c.confidence_permille, ",
             "c.prediction_metadata_version, c.prediction_observation_from, ",
             "c.prediction_observation_to, c.prediction_sample_count, c.valid_from, c.valid_to, ",
-            "e.accept_seq FROM claim c JOIN ledger_event e ON e.event_id = c.assertion_event_id ",
+            "e.accept_seq, e.actor_canonical FROM claim c JOIN ledger_event e ON e.event_id = c.assertion_event_id ",
             "WHERE c.subject_entity_id = ?1 AND c.predicate_id = ?2 AND c.scope_id = ?3 ",
             "AND e.accept_seq <= ?4 ORDER BY e.accept_seq, c.claim_id"
         ),
@@ -737,6 +738,7 @@ fn read_claims(
                 row.get(19)?,
                 row.get(20)?,
                 row.get(21)?,
+                row.get(22)?,
             ))
         },
     )?;
@@ -801,8 +803,10 @@ fn read_claims(
                 )?,
                 evidence_ids: evidence.remove(&claim_id).unwrap_or_default(),
             };
-            claim.validate()?;
+            let actor = academic_contracts::decode_canonical_actor(&row.22)?;
+            claim.validate_for_actor(&actor)?;
             Ok(ResolutionClaim {
+                actor,
                 claim,
                 accept_seq: positive_u64(row.21, "claim acceptance sequence")?,
             })
@@ -814,12 +818,12 @@ fn read_relations(
     connection: &Connection,
     query: &ResolutionQuery,
 ) -> Result<Vec<ResolutionRelation>, QueryError> {
-    type Raw = (Vec<u8>, Vec<u8>, String, Vec<u8>, String, i64);
+    type Raw = (Vec<u8>, Vec<u8>, String, Vec<u8>, String, i64, Vec<u8>);
     let rows: Vec<Raw> = query_collect(
         connection,
         concat!(
             "SELECT r.source_claim_id, r.target_claim_id, r.relation_kind, r.scope_id, ",
-            "r.actor_kind, e.accept_seq FROM claim_relation r ",
+            "r.actor_kind, e.accept_seq, e.actor_canonical FROM claim_relation r ",
             "JOIN ledger_event e ON e.event_id = r.relation_event_id ",
             "WHERE r.scope_id = ?1 AND e.accept_seq <= ?2 ",
             "ORDER BY e.accept_seq, r.relation_event_id"
@@ -836,6 +840,7 @@ fn read_relations(
                 row.get(3)?,
                 row.get(4)?,
                 row.get(5)?,
+                row.get(6)?,
             ))
         },
     )?;
@@ -848,7 +853,13 @@ fn read_relations(
                     kind: parse_relation_kind(&row.2)?,
                     scope_id: id_from_blob(row.3)?,
                 },
-                actor_kind: parse_actor_kind(&row.4)?,
+                actor: {
+                    let actor = academic_contracts::decode_canonical_actor(&row.6)?;
+                    if ResolverActorKind::from(&actor) != parse_actor_kind(&row.4)? {
+                        return Err(QueryError::Corrupt("relation actor kind mismatch"));
+                    }
+                    actor
+                },
                 accept_seq: positive_u64(row.5, "relation acceptance sequence")?,
             })
         })
@@ -988,6 +999,7 @@ fn parse_actor_kind(value: &str) -> Result<ResolverActorKind, QueryError> {
         "DETERMINISTIC_ENGINE" => Ok(ResolverActorKind::DeterministicEngine),
         "MODEL_RUN" => Ok(ResolverActorKind::ModelRun),
         "IMPORTER" => Ok(ResolverActorKind::Importer),
+        "DETERMINISTIC_PREDICTION" => Ok(ResolverActorKind::DeterministicPrediction),
         _ => Err(QueryError::Corrupt("relation actor kind is invalid")),
     }
 }

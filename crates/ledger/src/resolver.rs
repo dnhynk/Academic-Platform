@@ -31,6 +31,7 @@ pub enum ResolverActorKind {
     DeterministicEngine,
     ModelRun,
     Importer,
+    DeterministicPrediction,
 }
 
 impl From<&Actor> for ResolverActorKind {
@@ -40,6 +41,7 @@ impl From<&Actor> for ResolverActorKind {
             Actor::DeterministicEngine { .. } => Self::DeterministicEngine,
             Actor::ModelRun { .. } => Self::ModelRun,
             Actor::Importer { .. } => Self::Importer,
+            Actor::DeterministicPrediction { .. } => Self::DeterministicPrediction,
         }
     }
 }
@@ -49,6 +51,7 @@ impl From<&Actor> for ResolverActorKind {
 pub struct ResolutionClaim {
     pub claim: Claim,
     pub accept_seq: u64,
+    pub actor: Actor,
 }
 
 /// One accepted claim relation and the author category that controls lifecycle effects.
@@ -56,7 +59,7 @@ pub struct ResolutionClaim {
 pub struct ResolutionRelation {
     pub relation: ClaimRelation,
     pub accept_seq: u64,
-    pub actor_kind: ResolverActorKind,
+    pub actor: Actor,
 }
 
 /// One accepted user decision and its replica-local known-time coordinate.
@@ -213,30 +216,35 @@ pub(super) fn resolve_snapshot_with_authority_rank(
         let Some(source) = claims
             .iter()
             .find(|claim| claim.claim.id == record.relation.source_claim_id)
-            .map(|claim| &claim.claim)
         else {
             continue;
         };
         let Some(target) = claims
             .iter()
             .find(|claim| claim.claim.id == record.relation.target_claim_id)
-            .map(|claim| &claim.claim)
         else {
             continue;
         };
         if chosen_object
             .as_ref()
-            .is_some_and(|object| object == &target.object)
+            .is_some_and(|object| object == &target.claim.object)
         {
             continue;
         }
         if relation_effect_is_authorized_for_kind(
-            record.actor_kind,
+            ResolverActorKind::from(&record.actor),
             record.relation.kind,
-            source,
-            target,
+            &source.claim,
+            &target.claim,
+        ) && prediction_relation_ownership_is_authorized(
+            &record.actor,
+            record.relation.kind,
+            &source.claim,
+            &source.actor,
+            &target.claim,
+            &target.actor,
         ) {
-            rejected.insert(target.id);
+            rejected.insert(target.claim.id);
         }
     }
 
@@ -409,6 +417,10 @@ pub fn relation_effect_is_authorized_for_kind(
             AuthorityClass::Prediction,
             EpistemicStatus::Prediction
         ) | (
+            ResolverActorKind::DeterministicPrediction,
+            AuthorityClass::Prediction,
+            EpistemicStatus::Prediction
+        ) | (
             ResolverActorKind::Importer,
             AuthorityClass::Official,
             EpistemicStatus::OfficialConfirmed
@@ -418,6 +430,51 @@ pub fn relation_effect_is_authorized_for_kind(
             EpistemicStatus::CodeObserved
         )
     )
+}
+
+/// Prediction lifecycle changes belong to one producer, never just a shared status.
+/// Input digests may change on a rerun; engine name/version identify its owner.
+#[must_use]
+pub fn prediction_relation_ownership_is_authorized(
+    actor: &Actor,
+    kind: ClaimRelationKind,
+    source: &Claim,
+    source_actor: &Actor,
+    target: &Claim,
+    target_actor: &Actor,
+) -> bool {
+    if !matches!(
+        kind,
+        ClaimRelationKind::Supersedes | ClaimRelationKind::Retracts
+    ) || (source.authority_class != AuthorityClass::Prediction
+        && target.authority_class != AuthorityClass::Prediction)
+    {
+        return true;
+    }
+    let same_owner = |other: &Actor| match (actor, other) {
+        (Actor::ModelRun { run_id: left }, Actor::ModelRun { run_id: right }) => left == right,
+        (
+            Actor::DeterministicPrediction {
+                name: left,
+                version: left_version,
+                ..
+            },
+            Actor::DeterministicPrediction {
+                name: right,
+                version: right_version,
+                ..
+            },
+        ) => left == right && left_version == right_version,
+        _ => false,
+    };
+    source.validate_for_actor(source_actor).is_ok()
+        && target.validate_for_actor(target_actor).is_ok()
+        && source.scope_id == target.scope_id
+        && source.subject_entity_id == target.subject_entity_id
+        && source.predicate_id == target.predicate_id
+        && actor.validate().is_ok()
+        && same_owner(source_actor)
+        && same_owner(target_actor)
 }
 
 pub(crate) fn relation_effect_is_authorized(

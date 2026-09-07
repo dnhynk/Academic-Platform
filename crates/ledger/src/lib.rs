@@ -30,7 +30,8 @@ use resolver::relation_effect_is_authorized;
 pub use resolver::{
     AuthorityPolicy, KnowledgeStateView, ResolutionClaim, ResolutionDecision, ResolutionQuery,
     ResolutionRelation, ResolutionResult, ResolverActorKind,
-    relation_effect_is_authorized_for_kind, resolve_snapshot,
+    prediction_relation_ownership_is_authorized, relation_effect_is_authorized_for_kind,
+    resolve_snapshot,
 };
 
 #[cfg(test)]
@@ -127,11 +128,12 @@ struct DeviceHead {
     batch_hash: ContentDigest,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct AcceptedClaimMeta {
     accept_seq: u64,
     domain_id: DomainId,
     scope_id: ScopeId,
+    actor: Actor,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -400,6 +402,7 @@ impl LedgerState {
                             accept_seq,
                             domain_id: event.domain_id,
                             scope_id: claim.scope_id,
+                            actor: event.actor.clone(),
                         },
                     ),
                 );
@@ -418,6 +421,13 @@ impl LedgerState {
                     relation.kind,
                     source_claim,
                     target_claim,
+                ) || !prediction_relation_ownership_is_authorized(
+                    &event.actor,
+                    relation.kind,
+                    source_claim,
+                    &source.actor,
+                    target_claim,
+                    &target.actor,
                 ) {
                     return Err(LedgerError::UnauthorizedRelationEffect {
                         actor: event.actor.kind_name(),
@@ -516,7 +526,7 @@ impl LedgerState {
     fn claim_record(&self, claim_id: ClaimId) -> Result<(&Claim, AcceptedClaimMeta), LedgerError> {
         self.claims
             .get(&claim_id)
-            .map(|(claim, metadata)| (claim, *metadata))
+            .map(|(claim, metadata)| (claim, metadata.clone()))
             .ok_or(LedgerError::UnknownClaim(claim_id))
     }
 
@@ -559,6 +569,7 @@ impl LedgerState {
             .map(|(claim, metadata)| ResolutionClaim {
                 claim: claim.clone(),
                 accept_seq: metadata.accept_seq,
+                actor: metadata.actor.clone(),
             })
             .collect::<Vec<_>>();
         let relations = self
@@ -567,7 +578,7 @@ impl LedgerState {
             .map(|(relation, metadata)| ResolutionRelation {
                 relation: relation.clone(),
                 accept_seq: metadata.accept_seq,
-                actor_kind: ResolverActorKind::from(&metadata.actor),
+                actor: metadata.actor.clone(),
             })
             .collect::<Vec<_>>();
         let decisions = self
@@ -596,6 +607,7 @@ impl LedgerState {
             .map(|(claim, metadata)| ResolutionClaim {
                 claim: claim.clone(),
                 accept_seq: metadata.accept_seq,
+                actor: metadata.actor.clone(),
             })
             .collect::<Vec<_>>();
         let relations = self
@@ -604,7 +616,7 @@ impl LedgerState {
             .map(|(relation, metadata)| ResolutionRelation {
                 relation: relation.clone(),
                 accept_seq: metadata.accept_seq,
-                actor_kind: ResolverActorKind::from(&metadata.actor),
+                actor: metadata.actor.clone(),
             })
             .collect::<Vec<_>>();
         let decisions = self
@@ -947,6 +959,7 @@ mod tests {
                     accept_seq,
                     domain_id: id(1)?,
                     scope_id: claim.scope_id,
+                    actor: actor_for_resolution_claim(&claim)?,
                 },
             ),
         );
@@ -2309,6 +2322,7 @@ mod tests {
                     accept_seq: 1,
                     domain_id: id(1)?,
                     scope_id: first.scope_id,
+                    actor: actor_for_resolution_claim(first)?,
                 },
             ),
         );
@@ -2320,6 +2334,7 @@ mod tests {
                     accept_seq: 2,
                     domain_id: id(1)?,
                     scope_id: second.scope_id,
+                    actor: actor_for_resolution_claim(&second)?,
                 },
             ),
         );

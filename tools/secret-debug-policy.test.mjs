@@ -417,6 +417,8 @@ const BYTE_FIELD_CLASSES = new Map([
   ["ProfileKeys.generation", "identifier"],
   ["ProjectionEvidenceLocator.locator_payload", "locator"],
   ["ProtoSha256Digest.value", "digest"],
+  ["ProtoDeterministicPredictionActor.frozen_inputs_digest", "digest"],
+  ["ProtoDeterministicPredictionActor.rule_set_digest", "digest"],
   ["ProtoUuidV7.value", "identifier"],
   ["ProviderResponse.provider_response_bytes", "content"],
   ["RawActive.active_policy_hash", "digest"],

@@ -278,34 +278,19 @@ unconditionally** in `standing::resolve` for exactly that reason.
 
 ### What this task found one step out
 
-The actor matrix in `Claim::validate_for_actor` gives
-`AuthorityClass::Prediction` to `Actor::ModelRun` alone.
-`Actor::DeterministicEngine` carries `AuthorityClass::DeterministicEngine` and
-nothing else, so **a deterministic historical forecaster cannot sign its own
-prediction claim as a deterministic engine** — while §30.1's own example of a
-`PREDICTION` claim is *status PREDICTION · historical pattern · confidence .72*,
-which is a pattern and not a model.
+Resolved `gate_7e4af1a2ad17` adds `Actor::DeterministicPrediction` in event
+schema v4. `ScoredForecast::actor` carries the actual forecaster name/version,
+frozen feature/policy input digest and rule-set digest. `forecast_claim` validates
+against that producer before returning. The original `DeterministicEngine` still
+cannot author a prediction; model forecasts retain their separate `ModelRun` lane.
+Neither producer can turn the forecast into official or user-owned state.
 
-**The matrix is `academic-domain`'s line and not ADR-003's.** ADR-003 constrains
-actors in three places and none of them reaches `Prediction`: a
-deterministic-engine actor may not self-assign curated authority; a
-state-removing relation's two claims must share an authority/status pair, one of
-the six being *prediction/prediction* with no actor named; and its one
-actor-to-authority rule is negative — automated events cannot assert
-`USER_EXPLICIT`/`USER_CONFIRMED`. §30.2 defines `PREDICTION` with no actor in it
-and reserves the model for `AI_INFERRED`. So the specification permits what the
-code refuses.
-
-This crate still does not widen the matrix — who may assert a prediction is a
-product decision, and ADR-003's own requirement that every active `Prediction`
-carry a bounded observation window and a positive sample count would need a
-holder other than the `ModelRun` record. What it does is make the decision
-untakeable by drift.
-`a_forecast_claim_is_not_signable_by_a_deterministic_engine` executes the
-divergence against the code and `no_document_gives_a_prediction_to_one_actor`
-executes it against both documents, pinning ADR-003's three actor sentences as a
-whole set. `S-21` in [policy source scans](policy-source-scans.md) carries it as
-open.
+The actor addition does not add a store dependency to this pure crate. Signed
+acceptance and replay are tested through core, and the encrypted store admits the
+new actor through migration `0016`; frozen plaintext profiles refuse it. The
+forecast history, calibrated confidence, positive sample count and valid interval
+remain independent disclosures. Official confirmation/announcement producers and
+`ConfirmedSeat` stay separate and continue to require their original witnesses.
 
 ## Source authority
 

@@ -1,15 +1,15 @@
 use std::{collections::BTreeSet, error::Error, str::FromStr};
 
 use academic_domain::{
-    AuthorityClass, Claim, ClaimObject, ContentDigest, DecisionAction, DecisionId, DomainError,
-    EntityId, EpistemicStatus, EvidenceId, PredicateId, ResolutionSlot, ScopeId, TimestampMillis,
-    UserDecision, ValidInterval,
+    Actor, AuthorityClass, Claim, ClaimObject, ContentDigest, DecisionAction, DecisionId,
+    DomainError, EntityId, EpistemicStatus, EvidenceId, PredicateId, ResolutionSlot, ScopeId,
+    TimestampMillis, UserDecision, ValidInterval,
 };
 use academic_ledger::{
     ClaimSourceProvenance, ConflictReason, CorroborationReasonCode, IndependenceBasis,
     NEW_EVIDENCE_CONFLICT, NEW_EVIDENCE_CONFLICTS_WITH_OVERRIDE, ProductClaimType,
     ProductResolutionQuery, RelationSupportTier, ResolutionClaim, ResolutionDecision,
-    ResolutionRelation, ResolverActorKind, SourceIndependenceAttestation, resolve_product_snapshot,
+    ResolutionRelation, SourceIndependenceAttestation, resolve_product_snapshot,
 };
 
 fn id<T: FromStr<Err = DomainError>>(suffix: u32) -> Result<T, DomainError> {
@@ -29,6 +29,20 @@ fn claim(
     accept_seq: u64,
 ) -> Result<ResolutionClaim, DomainError> {
     Ok(ResolutionClaim {
+        actor: match authority_class {
+            AuthorityClass::UserExplicit => Actor::User { user_id: id(800)? },
+            AuthorityClass::DeterministicEngine => Actor::DeterministicEngine {
+                name: "engine".into(),
+                version: "1".into(),
+            },
+            AuthorityClass::ModelInference | AuthorityClass::Prediction => {
+                Actor::ModelRun { run_id: id(801)? }
+            }
+            _ => Actor::Importer {
+                name: "importer".into(),
+                version: "1".into(),
+            },
+        },
         claim: Claim {
             id: id(suffix)?,
             subject_entity_id: id(1)?,
@@ -196,7 +210,7 @@ fn ai_rerun_never_removes_an_override() -> Result<(), Box<dyn Error>> {
             scope_id: scope,
         },
         accept_seq: 4,
-        actor_kind: ResolverActorKind::ModelRun,
+        actor: rerun.actor.clone(),
     };
 
     let before = resolve_product_snapshot(

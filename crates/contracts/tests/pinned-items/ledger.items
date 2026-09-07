@@ -1,10 +1,10 @@
 crates/ledger/src/lib.rs [priv] #[cfg(test)] mod tests
 crates/ledger/src/lib.rs [priv] #[cfg(test)] use academic_domain::{AuthorityClass, MasteryLevel} |4d7628f96673465b
 crates/ledger/src/lib.rs [priv] #[cfg(test)] use resolver::authority_rank |1c2ce79c1d8cc78f
-crates/ledger/src/lib.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AcceptedClaimMeta |a1e63f16b692f766
 crates/ledger/src/lib.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct AcceptedDecisionMeta |c7d6cea95529ba36
 crates/ledger/src/lib.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DeviceHead |79df12385dd4233a
 crates/ledger/src/lib.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct AcceptedArtifact |a4dc9253c3d121fd
+crates/ledger/src/lib.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct AcceptedClaimMeta |2ff22dbe56bd817d
 crates/ledger/src/lib.rs [priv] #[derive(Debug, Clone, PartialEq, Eq)] struct AcceptedRelationMeta |2600e4d8ddfe07c1
 crates/ledger/src/lib.rs [priv] impl AcceptedArtifact
 crates/ledger/src/lib.rs [priv] impl AcceptedArtifact :: fn supports_evidence(&self, evidence: &EvidenceItem) -> bool |8549bbd175010baa
@@ -12,8 +12,8 @@ crates/ledger/src/lib.rs [priv] impl Default for LedgerState
 crates/ledger/src/lib.rs [priv] impl Default for LedgerState :: fn default() -> Self |c3f536c7c9daac49
 crates/ledger/src/lib.rs [priv] impl LedgerState
 crates/ledger/src/lib.rs [priv] impl LedgerState :: fn apply_batch( &mut self, batch: &UnsignedBatch, batch_hash: ContentDigest, ) -> Result<AcceptanceReceipt, LedgerError> |3618349c2ab6ddf2
-crates/ledger/src/lib.rs [priv] impl LedgerState :: fn apply_event(&mut self, event: &Event, accept_seq: u64) -> Result<(), LedgerError> |938278ff9fd78e57
-crates/ledger/src/lib.rs [priv] impl LedgerState :: fn claim_record(&self, claim_id: ClaimId) -> Result<(&Claim, AcceptedClaimMeta), LedgerError> |f63d58c2c86d0acd
+crates/ledger/src/lib.rs [priv] impl LedgerState :: fn apply_event(&mut self, event: &Event, accept_seq: u64) -> Result<(), LedgerError> |585f4df83be984c1
+crates/ledger/src/lib.rs [priv] impl LedgerState :: fn claim_record(&self, claim_id: ClaimId) -> Result<(&Claim, AcceptedClaimMeta), LedgerError> |63eb2bba0bf81f8f
 crates/ledger/src/lib.rs [priv] impl LedgerState :: fn validate_device_chain(&self, batch: &UnsignedBatch) -> Result<(), LedgerError> |111285df32fcf3aa
 crates/ledger/src/lib.rs [priv] impl PredicateRegistry
 crates/ledger/src/lib.rs [priv] mod product_authority
@@ -25,7 +25,7 @@ crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn ledger_acceptance_requir
 crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn origin_gap_and_fork_fail_closed() -> Result<(), Box<dyn std::error::Error>> |107b17f50b791cc0
 crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn page_time_and_repository_evidence_fails_closed_without_a_byte_resolver() -> Result<(), Box<dyn std::error::Error>> |c256040cb02f3f64
 crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn prediction_requirements_are_rechecked_at_acceptance_and_resolution_boundaries() -> Result<(), Box<dyn std::error::Error>> |801fc547523eb21c
-crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn resolution_ignores_cross_scope_claims_relations_and_decisions() -> Result<(), Box<dyn std::error::Error>> |77cefc640b5e5d2b
+crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn resolution_ignores_cross_scope_claims_relations_and_decisions() -> Result<(), Box<dyn std::error::Error>> |01403f8e02898641
 crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn t007_distinct_object_decisions_compose_without_erasing_prior_rejection() -> Result<(), Box<dyn std::error::Error>> |2dd0ed95d3c4c558
 crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn t007_forged_full_span_representation_digest_is_rejected() -> Result<(), Box<dyn std::error::Error>> |146ca296290b8317
 crates/ledger/src/lib.rs [priv] mod tests :: #[test] fn t007_model_supersession_of_user_confirmed_claim_is_rejected() -> Result<(), Box<dyn std::error::Error>> |4fcd7d4e3c9496e0
@@ -43,7 +43,7 @@ crates/ledger/src/lib.rs [priv] mod tests :: fn accept_resolution_batch( claims:
 crates/ledger/src/lib.rs [priv] mod tests :: fn actor_for_resolution_claim(claim: &Claim) -> Result<Actor, DomainError> |d211df79b90dbb6d
 crates/ledger/src/lib.rs [priv] mod tests :: fn fixture_batch() -> Result<UnsignedBatch, DomainError> |d26cb2ed0f11b071
 crates/ledger/src/lib.rs [priv] mod tests :: fn id<T: FromStr<Err = DomainError>>(suffix: u32) -> Result<T, DomainError> |811cb934056ed4ce
-crates/ledger/src/lib.rs [priv] mod tests :: fn insert_claim( ledger: &mut LedgerState, claim: Claim, accept_seq: u64, ) -> Result<(), DomainError> |d19642417bfd5492
+crates/ledger/src/lib.rs [priv] mod tests :: fn insert_claim( ledger: &mut LedgerState, claim: Claim, accept_seq: u64, ) -> Result<(), DomainError> |b44bfe377628e16c
 crates/ledger/src/lib.rs [priv] mod tests :: fn policy_authority(policy: AuthorityPolicy) -> (AuthorityClass, EpistemicStatus) |c7d97ce7c871b824
 crates/ledger/src/lib.rs [priv] mod tests :: fn resolution_claim( suffix: u32, object: ClaimObject, authority_class: AuthorityClass, epistemic_status: EpistemicStatus, valid_time: ValidInterval, ) -> Result<Claim, DomainError> |a9b3bad087117ea2
 crates/ledger/src/lib.rs [priv] mod tests :: fn verify_batch(batch: &UnsignedBatch) -> Result<VerifiedBatch, Box<dyn std::error::Error>> |7d8ef30393911bdf
@@ -73,13 +73,13 @@ crates/ledger/src/lib.rs [pub] impl LedgerState :: #[must_use] fn artifact(&self
 crates/ledger/src/lib.rs [pub] impl LedgerState :: #[must_use] fn claim(&self, id: ClaimId) -> Option<&Claim> |542f516bdc6b81ab
 crates/ledger/src/lib.rs [pub] impl LedgerState :: #[must_use] fn evidence(&self, id: EvidenceId) -> Option<&EvidenceItem> |dd5c0eb954e74f3a
 crates/ledger/src/lib.rs [pub] impl LedgerState :: #[must_use] fn knowledge_state_as_of( &self, subject_entity_id: EntityId, scope_id: ScopeId, mastery_predicate_id: PredicateId, freshness_predicate_id: PredicateId, valid_at: TimestampMillis, known_at_accept_seq: u64, ) -> KnowledgeStateView |a7f97a897063dd59
-crates/ledger/src/lib.rs [pub] impl LedgerState :: #[must_use] fn resolve(&self, query: &ResolutionQuery) -> ResolutionResult |5c146da016e61f26
-crates/ledger/src/lib.rs [pub] impl LedgerState :: #[must_use] fn resolve_product( &self, query: &ProductResolutionQuery, provenance: &[ClaimSourceProvenance], independence: &[SourceIndependenceAttestation], ) -> ProductResolutionResult |cbc89f51ebb663af
+crates/ledger/src/lib.rs [pub] impl LedgerState :: #[must_use] fn resolve(&self, query: &ResolutionQuery) -> ResolutionResult |8e72957b24f34c70
+crates/ledger/src/lib.rs [pub] impl LedgerState :: #[must_use] fn resolve_product( &self, query: &ProductResolutionQuery, provenance: &[ClaimSourceProvenance], independence: &[SourceIndependenceAttestation], ) -> ProductResolutionResult |c15484661b63ae3d
 crates/ledger/src/lib.rs [pub] impl LedgerState :: fn accept_verified_batch( &mut self, verified: &VerifiedBatch, ) -> Result<AcceptanceReceipt, LedgerError> |c0e203043be8d56d
 crates/ledger/src/lib.rs [pub] impl PredicateRegistry :: fn validate_claim(&self, claim: &Claim) -> Result<(), RegistryError> |5f9741413ac41f17
 crates/ledger/src/lib.rs [pub] use academic_domain::{EVENT_SCHEMA_VERSION, UnsignedBatch} |20ef65220ae8b70e
 crates/ledger/src/lib.rs [pub] use product_authority::{ AuthorityRank, AuthorityTable, ClaimSourceProvenance, ConflictCard, ConflictReason, CorroborationReasonCode, IndependenceBasis, NEW_EVIDENCE_CONFLICT, NEW_EVIDENCE_CONFLICTS_WITH_OVERRIDE, ProductClaimType, ProductResolutionQuery, ProductResolutionResult, RelationSupportAssessment, RelationSupportTier, SourceIndependenceAttestation, resolve_product_snapshot, } |b6cb822984b8d38c
-crates/ledger/src/lib.rs [pub] use resolver::{ AuthorityPolicy, KnowledgeStateView, ResolutionClaim, ResolutionDecision, ResolutionQuery, ResolutionRelation, ResolutionResult, ResolverActorKind, relation_effect_is_authorized_for_kind, resolve_snapshot, } |7fe4f51398caa678
+crates/ledger/src/lib.rs [pub] use resolver::{ AuthorityPolicy, KnowledgeStateView, ResolutionClaim, ResolutionDecision, ResolutionQuery, ResolutionRelation, ResolutionResult, ResolverActorKind, prediction_relation_ownership_is_authorized, relation_effect_is_authorized_for_kind, resolve_snapshot, } |77543416abdd1b79
 crates/ledger/src/product_authority.rs [priv] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum DigestLookup |dd6bd3f7dd18131a
 crates/ledger/src/product_authority.rs [priv] fn assess_relation_support( query: &ProductResolutionQuery, claims: &[ResolutionClaim], provenance: &[ClaimSourceProvenance], independence: &[SourceIndependenceAttestation], ) -> Vec<RelationSupportAssessment> |e2aa71f96a213806
 crates/ledger/src/product_authority.rs [priv] fn independent_pair_exists( claim_ids: &[ClaimId], digests: &[DigestLookup], independence: &[SourceIndependenceAttestation], ) -> bool |e20aad5afb701983
@@ -116,20 +116,21 @@ crates/ledger/src/product_authority.rs [pub] impl ConflictReason :: #[must_use] 
 crates/ledger/src/product_authority.rs [pub] impl ProductClaimType :: #[must_use] const fn authority_table(self) -> AuthorityTable |e7e40747e058faf9
 crates/ledger/src/product_authority.rs [pub] impl ProductClaimType :: const ALL: [Self; 6] |22af4ce96210a7c0
 crates/ledger/src/resolver.rs [priv] impl From<&Actor> for ResolverActorKind
-crates/ledger/src/resolver.rs [priv] impl From<&Actor> for ResolverActorKind :: fn from(actor: &Actor) -> Self |b0dfec4c9e802219
+crates/ledger/src/resolver.rs [priv] impl From<&Actor> for ResolverActorKind :: fn from(actor: &Actor) -> Self |4f494cfbb06ff4cf
 crates/ledger/src/resolver.rs [priv] use academic_domain::{ Actor, AuthorityClass, Claim, ClaimId, ClaimObject, ClaimRelation, ClaimRelationKind, DecisionAction, EntityId, EpistemicStatus, FreshnessBand, MasteryLevel, PredicateId, ScopeId, TimestampMillis, UserDecision, } |37d2ca2eb17cc5f3
 crates/ledger/src/resolver.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
 crates/ledger/src/resolver.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
 crates/ledger/src/resolver.rs [pub(crate)] fn authority_rank(policy: AuthorityPolicy, authority: AuthorityClass) -> u16 |b65b78239a216a91
 crates/ledger/src/resolver.rs [pub(crate)] fn relation_effect_is_authorized( actor: &Actor, kind: ClaimRelationKind, source: &Claim, target: &Claim, ) -> bool |f8436e87050136d6
-crates/ledger/src/resolver.rs [pub(super)] fn resolve_snapshot_with_authority_rank( query: &ResolutionQuery, claims: &[ResolutionClaim], relations: &[ResolutionRelation], decisions: &[ResolutionDecision], rank_for: impl Fn(&Claim) -> u16, user_authority_rank: u16, ) -> ResolutionResult |e91300cef9d8cab9
+crates/ledger/src/resolver.rs [pub(super)] fn resolve_snapshot_with_authority_rank( query: &ResolutionQuery, claims: &[ResolutionClaim], relations: &[ResolutionRelation], decisions: &[ResolutionDecision], rank_for: impl Fn(&Claim) -> u16, user_authority_rank: u16, ) -> ResolutionResult |2681a8a33f5c65e5
 crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum AuthorityPolicy |ed595c1006afc416
-crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ResolverActorKind |95a6db0eab8d7250
-crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolutionClaim |23e930fc92fc255e
+crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ResolverActorKind |5166a450fb04b031
+crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolutionClaim |69b37b3c3e69798d
 crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolutionDecision |8e08c60e3eda3509
 crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolutionQuery |9bff9d9bd73fd633
-crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolutionRelation |52bfb51f4bff0e40
+crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ResolutionRelation |4cbdae1ba01c41a9
 crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct KnowledgeStateView |495a2e2321936491
 crates/ledger/src/resolver.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ResolutionResult |aa87adf375989b6d
-crates/ledger/src/resolver.rs [pub] #[must_use] fn relation_effect_is_authorized_for_kind( actor_kind: ResolverActorKind, kind: ClaimRelationKind, source: &Claim, target: &Claim, ) -> bool |9abc36c02dd0dc09
+crates/ledger/src/resolver.rs [pub] #[must_use] fn prediction_relation_ownership_is_authorized( actor: &Actor, kind: ClaimRelationKind, source: &Claim, source_actor: &Actor, target: &Claim, target_actor: &Actor, ) -> bool |0e7136af7d4b83eb
+crates/ledger/src/resolver.rs [pub] #[must_use] fn relation_effect_is_authorized_for_kind( actor_kind: ResolverActorKind, kind: ClaimRelationKind, source: &Claim, target: &Claim, ) -> bool |83a5f5b45cd324ee
 crates/ledger/src/resolver.rs [pub] #[must_use] fn resolve_snapshot( query: &ResolutionQuery, claims: &[ResolutionClaim], relations: &[ResolutionRelation], decisions: &[ResolutionDecision], ) -> ResolutionResult |aab29b2155c70db6

@@ -62,10 +62,10 @@ fn decision() -> Result<UserDecision, Box<dyn std::error::Error>> {
     Ok(UserDecision::by(&user(0x11)?)?)
 }
 
-/// The three automatic actor variants of `academic-domain`.
+/// The four automatic actor variants of `academic-domain`.
 ///
 /// Written as a `match` over the closed enum rather than as a literal list, so
-/// a fifth variant fails to compile here until it is classified.
+/// a new variant fails to compile here until it is classified.
 fn automatic_actors() -> Result<Vec<Actor>, Box<dyn std::error::Error>> {
     let candidates = [
         Actor::DeterministicEngine {
@@ -79,15 +79,22 @@ fn automatic_actors() -> Result<Vec<Actor>, Box<dyn std::error::Error>> {
             name: "synthetic-importer".to_owned(),
             version: "1".to_owned(),
         },
+        Actor::DeterministicPrediction {
+            name: "synthetic-forecast".into(),
+            version: "1".into(),
+            frozen_inputs_digest: academic_domain::ContentDigest::sha256(b"synthetic inputs"),
+            rule_set_digest: academic_domain::ContentDigest::sha256(b"synthetic rules"),
+        },
         user(0x22)?,
     ];
     Ok(candidates
         .into_iter()
         .filter(|actor| match actor {
             Actor::User { .. } => false,
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
-                true
-            }
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => true,
         })
         .collect())
 }

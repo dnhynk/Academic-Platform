@@ -386,7 +386,10 @@ impl InputManifest {
         // classified here too.
         match supplied_by {
             Actor::User { .. } => {}
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => {
                 return Err(InputFault::MaterialNotUserSupplied);
             }
         }

@@ -244,6 +244,125 @@ fn seed_batch(
     Ok(())
 }
 
+#[test]
+fn prediction_actor_migration_preserves_rows_and_refuses_reentry_and_plaintext()
+-> Result<(), Box<dyn Error>> {
+    use crate::migration::{
+        MIGRATION_0005_SQL, MIGRATION_0006_SQL, MIGRATION_0007_SQL, MIGRATION_0009_SQL,
+        MIGRATION_0012_SQL, MIGRATION_0014_SQL, MIGRATION_0015_SQL, MIGRATION_0016_SQL,
+        apply_prediction_actor_migration_pre_listen,
+    };
+    let mut connection = Connection::open_in_memory()?;
+    apply_schema_two_canonical_core(&connection)?;
+    for sql in [
+        MIGRATION_0004_SQL,
+        MIGRATION_0005_SQL,
+        MIGRATION_0006_SQL,
+        MIGRATION_0007_SQL,
+        MIGRATION_0009_SQL,
+        MIGRATION_0012_SQL,
+        MIGRATION_0014_SQL,
+        MIGRATION_0015_SQL,
+    ] {
+        connection.execute_batch(sql)?;
+    }
+    let transaction = connection.transaction()?;
+    seed_batch(&transaction, &synthetic_id(1), 4)?;
+    transaction.execute("INSERT INTO ledger_event VALUES (?1, ?2, 1, 1, 1, 'IMPORTER', ?3, ?4, 'SCOPE_REGISTERED', ?5, ?6)",
+        params![synthetic_id(2).as_slice(), synthetic_id(1).as_slice(), b"synthetic actor".as_slice(),
+            synthetic_id(3).as_slice(), b"synthetic original payload".as_slice(), [0x17_u8;32].as_slice()])?;
+    for (id, kind) in [
+        (3_u32, "CLAIM_ASSERTED"),
+        (4, "CLAIM_ASSERTED"),
+        (5, "CLAIM_RELATED"),
+    ] {
+        transaction.execute(
+            "INSERT INTO ledger_event VALUES (?1, ?2, ?3, 1, ?3, 'MODEL_RUN', ?4, ?5, ?6, ?7, ?8)",
+            params![
+                synthetic_id(id).as_slice(),
+                synthetic_id(1).as_slice(),
+                id - 1,
+                b"synthetic model".as_slice(),
+                synthetic_id(3).as_slice(),
+                kind,
+                b"synthetic original claim".as_slice(),
+                [0x18_u8; 32].as_slice()
+            ],
+        )?;
+    }
+    transaction.execute(
+        "INSERT INTO scope VALUES (?1, ?2, ?3, 'synthetic scope')",
+        params![
+            synthetic_id(6).as_slice(),
+            synthetic_id(2).as_slice(),
+            synthetic_id(3).as_slice()
+        ],
+    )?;
+    for (id, event) in [(10_u32, 3_u32), (11, 4)] {
+        transaction.execute("INSERT INTO claim (claim_id, assertion_event_id, subject_entity_id, predicate_id, scope_id, object_kind, object_text, authority_class, epistemic_status, confidence_permille, prediction_metadata_version, prediction_observation_from, prediction_observation_to, prediction_sample_count, valid_from, valid_to) VALUES (?1, ?2, ?3, 'academic.offering.status', ?4, 'TEXT', 'runs', 'PREDICTION', 'PREDICTION', 720, 1, 10, 20, 1, 100, 200)",
+            params![synthetic_id(id).as_slice(), synthetic_id(event).as_slice(), synthetic_id(12).as_slice(), synthetic_id(6).as_slice()])?;
+    }
+    transaction.execute(
+        "INSERT INTO claim_relation VALUES (?1, ?2, ?3, ?4, 'SUPERSEDES', 'MODEL_RUN')",
+        params![
+            synthetic_id(5).as_slice(),
+            synthetic_id(11).as_slice(),
+            synthetic_id(10).as_slice(),
+            synthetic_id(6).as_slice()
+        ],
+    )?;
+    transaction.commit()?;
+    let snapshot = |db: &Connection| -> Result<Vec<Vec<u8>>, rusqlite::Error> {
+        db.prepare("SELECT signed_envelope FROM ledger_batch UNION ALL SELECT actor_canonical FROM ledger_event UNION ALL SELECT canonical_payload FROM ledger_event UNION ALL SELECT CAST(hex(relation_event_id) || hex(source_claim_id) || hex(target_claim_id) || hex(scope_id) || relation_kind || actor_kind AS BLOB) FROM claim_relation")?
+            .query_map([], |row| row.get(0))?.collect()
+    };
+    let before = snapshot(&connection)?;
+    // A failed maintenance transaction restores the old shape and all row bytes.
+    connection.execute_batch("PRAGMA foreign_keys=OFF;")?;
+    {
+        let rollback = connection.transaction()?;
+        rollback.execute_batch(MIGRATION_0016_SQL)?;
+        assert!(
+            rollback
+                .execute_batch("INSERT INTO no_such_table VALUES (1)")
+                .is_err()
+        );
+    }
+    assert_eq!(snapshot(&connection)?, before);
+    let old_shape: String = connection.query_row(
+        "SELECT sql FROM sqlite_schema WHERE name='ledger_event'",
+        [],
+        |row| row.get(0),
+    )?;
+    assert!(!old_shape.contains("DETERMINISTIC_PREDICTION"));
+    connection.execute_batch("PRAGMA foreign_keys=ON;")?;
+    apply_prediction_actor_migration_pre_listen(&mut connection)?;
+    assert_eq!(snapshot(&connection)?, before);
+    for table in ["ledger_event", "claim_relation"] {
+        let shape: String = connection.query_row(
+            "SELECT sql FROM sqlite_schema WHERE name=?1",
+            [table],
+            |row| row.get(0),
+        )?;
+        assert!(shape.contains("DETERMINISTIC_PREDICTION"));
+        assert!(
+            connection
+                .execute_batch(&format!("DELETE FROM {table}"))
+                .is_err()
+        );
+    }
+    assert!(apply_prediction_actor_migration_pre_listen(&mut connection).is_err());
+    assert_eq!(snapshot(&connection)?, before);
+    assert_eq!(
+        connection.query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))?,
+        1
+    );
+    let mut plaintext = Connection::open_in_memory()?;
+    plaintext.execute_batch(MIGRATION_0001_SQL)?;
+    assert!(apply_prediction_actor_migration_pre_listen(&mut plaintext).is_err());
+    Ok(())
+}
+
 fn column_names(connection: &Connection, table: &str) -> Result<Vec<String>, Box<dyn Error>> {
     let mut statement =
         connection.prepare(&format!("SELECT name FROM pragma_table_info('{table}')"))?;

@@ -19,14 +19,15 @@ use academic_domain::{
     ClaimRelation, ClaimRelationKind, ConfidencePermille, Confidentiality, ConsentRegistration,
     ContentDigest, CourseRevisionRegistration, CurriculumVersionRegistration, DecisionAction,
     DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2,
-    EVENT_SCHEMA_VERSION_V3, EgressDecisionRegistration, EntityIdentityChangeRegistration,
-    EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength,
-    FindingRegistration, FreshnessBand, LectureDocumentRegistration, LectureSessionRegistration,
-    MasteryLevel, MediaType, ModelRunRegistration, OfferingRegistration,
-    PREDICTION_METADATA_VERSION_V1, PredicateId, PredictionMetadata, PredictionObservationWindow,
-    ProposalDispositionRegistration, RequirementSetRegistration, ResolutionSlot,
-    RetentionActionRegistration, RetentionClass, ScopeDescriptor, ScopeId, SnapshotRegistration,
-    TimestampMillis, TranscriptVersionRegistration, UserDecision, ValidInterval, VaultLocator,
+    EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4, EgressDecisionRegistration,
+    EntityIdentityChangeRegistration, EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator,
+    EvidenceRole, EvidenceStrength, FindingRegistration, FreshnessBand,
+    LectureDocumentRegistration, LectureSessionRegistration, MasteryLevel, MediaType,
+    ModelRunRegistration, OfferingRegistration, PREDICTION_METADATA_VERSION_V1, PredicateId,
+    PredictionMetadata, PredictionObservationWindow, ProposalDispositionRegistration,
+    RequirementSetRegistration, ResolutionSlot, RetentionActionRegistration, RetentionClass,
+    ScopeDescriptor, ScopeId, SnapshotRegistration, TimestampMillis, TranscriptVersionRegistration,
+    UserDecision, ValidInterval, VaultLocator,
 };
 use academic_ledger::{
     AcceptanceReceipt, AuthorityPolicy, EVENT_SCHEMA_VERSION, LedgerError, LedgerState,
@@ -40,10 +41,14 @@ use thiserror::Error;
 pub const FIXTURE_VERSION_V1: u16 = EVENT_SCHEMA_VERSION_V1;
 /// Immutable legacy fixture wrapper version carrying event schema v2.
 pub const FIXTURE_VERSION_V2: u16 = EVENT_SCHEMA_VERSION_V2;
-/// Current fixture wrapper version carrying event schema v3.
+/// Immutable legacy fixture wrapper version carrying event schema v3.
 pub const FIXTURE_VERSION_V3: u16 = EVENT_SCHEMA_VERSION_V3;
+/// Current fixture wrapper carrying the additive forecast actor.
+pub const FIXTURE_VERSION_V4: u16 = EVENT_SCHEMA_VERSION_V4;
 /// Fixture version emitted by current writers.
-pub const FIXTURE_VERSION: u16 = FIXTURE_VERSION_V3;
+pub const FIXTURE_VERSION: u16 = FIXTURE_VERSION_V4;
+const IMMUTABLE_V3_FIXTURE_JSON: &str =
+    include_str!("../../../schemas/fixtures/signed-batch-v3.json");
 /// Fixed synthetic artifact bytes. They contain no personal or production data.
 pub const SYNTHETIC_ARTIFACT_BYTES: &[u8] =
     b"SYNTHETIC ONLY: no personal data; no network egress.\n";
@@ -488,7 +493,7 @@ impl FixtureDocument {
     pub fn validate_contract(&self) -> Result<(), CoreError> {
         if !matches!(
             self.fixture_version,
-            FIXTURE_VERSION_V1 | FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3
+            FIXTURE_VERSION_V1 | FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3 | FIXTURE_VERSION_V4
         ) {
             return Err(CoreError::UnsupportedFixtureVersion(self.fixture_version));
         }
@@ -504,6 +509,7 @@ impl FixtureDocument {
             FIXTURE_VERSION_V1 => "academic.event-batch/v1 deterministic-cbor",
             FIXTURE_VERSION_V2 => "academic.event-batch/v2 deterministic-cbor",
             FIXTURE_VERSION_V3 => "academic.event-batch/v3 deterministic-cbor",
+            FIXTURE_VERSION_V4 => "academic.event-batch/v4 deterministic-cbor",
             _ => return Err(CoreError::UnsupportedFixtureVersion(self.fixture_version)),
         };
         if self.contract.envelope != "academic.signed-batch-envelope/v1 deterministic-cbor"
@@ -554,7 +560,7 @@ impl FixtureDocument {
                     "v1 replay must not invent prediction disclosures",
                 ));
             }
-            (FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3, Some(disclosures))
+            (FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3 | FIXTURE_VERSION_V4, Some(disclosures))
                 if !disclosures.is_empty() =>
             {
                 let ids = disclosures
@@ -570,9 +576,9 @@ impl FixtureDocument {
                     disclosure.prediction_metadata.validate()?;
                 }
             }
-            (FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3, _) => {
+            (FIXTURE_VERSION_V2 | FIXTURE_VERSION_V3 | FIXTURE_VERSION_V4, _) => {
                 return Err(CoreError::InvalidFixtureContract(
-                    "v2 and v3 replay require prediction claim disclosures",
+                    "v2, v3 and v4 replay require prediction claim disclosures",
                 ));
             }
             (other, _) => return Err(CoreError::UnsupportedFixtureVersion(other)),
@@ -786,20 +792,20 @@ pub fn build_fixture_document() -> Result<FixtureDocument, CoreError> {
     let signed = sign_batch(&batch, &signing_key)?;
     let mut core = Core::new();
     let (verified, _) = core.accept_signed_batch(&signed, &authorization)?;
-    if verified.source_schema_version() != FIXTURE_VERSION_V3 {
+    if verified.source_schema_version() != FIXTURE_VERSION_V4 {
         return Err(CoreError::FixtureDrift);
     }
     let expected_replay = summarize_replay(&core, &verified, FINAL_VALID_AT, u64::MAX)?;
     Ok(FixtureDocument {
-        fixture_version: FIXTURE_VERSION_V3,
-        name: "phase0-synthetic-bitemporal-ledger-v3".to_owned(),
+        fixture_version: FIXTURE_VERSION_V4,
+        name: "phase0-synthetic-bitemporal-ledger-v4".to_owned(),
         data_class: "SYNTHETIC_ONLY".to_owned(),
         network_egress: "NONE".to_owned(),
         contract: FixtureContract {
             envelope: "academic.signed-batch-envelope/v1 deterministic-cbor".to_owned(),
-            payload: "academic.event-batch/v3 deterministic-cbor".to_owned(),
+            payload: "academic.event-batch/v4 deterministic-cbor".to_owned(),
             signature: "Ed25519".to_owned(),
-            event_schema_version: FIXTURE_VERSION_V3,
+            event_schema_version: FIXTURE_VERSION_V4,
         },
         device_id: authorization.device_id(),
         user_id: authorization.user_id(),
@@ -838,6 +844,12 @@ pub fn verify_fixture_document(document: &FixtureDocument) -> Result<ReplaySumma
             }
         }
         FIXTURE_VERSION_V3 => {
+            let immutable: FixtureDocument = serde_json::from_str(IMMUTABLE_V3_FIXTURE_JSON)?;
+            if *document != immutable {
+                return Err(CoreError::FixtureDrift);
+            }
+        }
+        FIXTURE_VERSION_V4 => {
             if *document != build_fixture_document()? {
                 return Err(CoreError::FixtureDrift);
             }
@@ -1303,7 +1315,12 @@ fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> {
         fixture_event(13, ai_actor.clone(), EventPayload::ClaimAsserted(ai_fluent))?,
         fixture_event(
             14,
-            ai_actor,
+            Actor::DeterministicPrediction {
+                name: "synthetic.offering.forecast".to_owned(),
+                version: "1".to_owned(),
+                frozen_inputs_digest: ContentDigest::sha256(b"synthetic historical observations"),
+                rule_set_digest: ContentDigest::sha256(b"synthetic forecast rules/1"),
+            },
             EventPayload::ClaimAsserted(course_offering_prediction),
         )?,
         // Event schema v3 arms, Proto tags 16..=33 in declaration order. Each
@@ -1773,7 +1790,7 @@ mod tests {
             let signed = hex::decode(&document.signed_batch_cbor_hex)?;
             let verified = verify_signed_batch(&signed, &authorization)?;
             assert_eq!(verified.source_schema_version(), source);
-            assert_eq!(verified.batch().schema_version, EVENT_SCHEMA_VERSION_V3);
+            assert_eq!(verified.batch().schema_version, EVENT_SCHEMA_VERSION_V4);
             assert_eq!(
                 verified.source_envelope(),
                 signed.as_slice(),
@@ -1791,14 +1808,16 @@ mod tests {
         Ok(())
     }
 
-    /// The committed v3 fixture is exactly what the deterministic builder emits.
+    /// The immutable v3 fixture still verifies; the current builder emits v4.
     #[test]
     fn t093_v3_fixture_matches_the_deterministic_builder() -> Result<(), Box<dyn std::error::Error>>
     {
         let committed_v3 = include_str!("../../../schemas/fixtures/signed-batch-v3.json");
         let document: FixtureDocument = serde_json::from_str(committed_v3)?;
         assert_eq!(document.fixture_version, FIXTURE_VERSION_V3);
-        assert_eq!(fixture_json(&build_fixture_document()?)?, committed_v3);
+        assert_eq!(fixture_json(&document)?, committed_v3);
+        let current = include_str!("../../../schemas/fixtures/signed-batch-v4.json");
+        assert_eq!(fixture_json(&build_fixture_document()?)?, current);
         verify_fixture_document(&document)?;
 
         let authorization = fixture_device_authorization()?;
@@ -1956,24 +1975,24 @@ mod tests {
         assert_eq!(parsed.expected_replay.accepted_events, 32);
 
         for (needle, replacement) in [
-            ("\"fixture_version\": 3", "\"fixture_version\": 3.0"),
+            ("\"fixture_version\": 4", "\"fixture_version\": 4.0"),
             (
-                "\"event_schema_version\": 3",
-                "\"event_schema_version\": 3e0",
+                "\"event_schema_version\": 4",
+                "\"event_schema_version\": 4e0",
             ),
         ] {
             let version_lexeme =
                 fixture_json(&build_fixture_document()?)?.replacen(needle, replacement, 1);
             let parsed = parse_fixture_document_json(version_lexeme.as_bytes())?;
-            assert_eq!(parsed.fixture_version, FIXTURE_VERSION_V3);
+            assert_eq!(parsed.fixture_version, FIXTURE_VERSION_V4);
             assert_eq!(
                 parsed.contract.event_schema_version,
-                EVENT_SCHEMA_VERSION_V3
+                EVENT_SCHEMA_VERSION_V4
             );
         }
         for replacement in ["3.5", "65536", "-1"] {
             let invalid = fixture_json(&build_fixture_document()?)?.replacen(
-                "\"fixture_version\": 3",
+                "\"fixture_version\": 4",
                 &format!("\"fixture_version\": {replacement}"),
                 1,
             );
@@ -2186,6 +2205,313 @@ mod tests {
             .ok_or(CoreError::MissingProjection("claim relation event"))?;
         let bytes = encode_claim_relation_event_proto(relation_event)?;
         assert_eq!(decode_claim_relation_event_proto(&bytes)?, *relation_event);
+        Ok(())
+    }
+    #[test]
+    fn historical_cross_run_prediction_bytes_authenticate_but_removal_is_rejected()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // Generated and accepted by baseline 69a0531's v3-only writer in an
+        // isolated synthetic probe. Keep its original source bytes unchanged.
+        let envelope =
+            hex::decode(include_str!("../tests/fixtures/historical-cross-run-v3.cbor.hex").trim())?;
+        assert_eq!(
+            ContentDigest::sha256(&envelope).to_string(),
+            "sha256:18b11ff0e4a81f87221eca477ba345c34130760287d7a77d029ecb835485e8a9"
+        );
+        let verified = verify_signed_batch(&envelope, &fixture_device_authorization()?)?;
+        assert_eq!(verified.source_schema_version(), 3);
+        assert_eq!(verified.source_envelope(), envelope);
+        let mut core = Core::new();
+        assert!(matches!(
+            core.accept_signed_batch(&envelope, &fixture_device_authorization()?),
+            Err(CoreError::Ledger(LedgerError::UnauthorizedRelationEffect {
+                actor: "MODEL_RUN",
+                kind: ClaimRelationKind::Supersedes
+            }))
+        ));
+        assert!(
+            core.ledger()
+                .claim(parse_id("01900000-0000-7000-8000-000000009910")?)
+                .is_none()
+        );
+        // Retained older projections also ignore this effect instead of
+        // rewriting either assertion or its authenticated provenance.
+        let mut claims = Vec::new();
+        let mut relations = Vec::new();
+        for event in &verified.batch().events {
+            match &event.payload {
+                EventPayload::ClaimAsserted(claim) => {
+                    claims.push(academic_ledger::ResolutionClaim {
+                        claim: claim.clone(),
+                        actor: event.actor.clone(),
+                        accept_seq: event.origin_seq,
+                    })
+                }
+                EventPayload::ClaimRelated(relation) => {
+                    relations.push(academic_ledger::ResolutionRelation {
+                        relation: relation.clone(),
+                        actor: event.actor.clone(),
+                        accept_seq: event.origin_seq,
+                    })
+                }
+                _ => {}
+            }
+        }
+        let target = &claims[0].claim;
+        let result = academic_ledger::resolve_snapshot(
+            &ResolutionQuery {
+                subject_entity_id: target.subject_entity_id,
+                predicate_id: target.predicate_id.clone(),
+                scope_id: target.scope_id,
+                valid_at: target.valid_time.from(),
+                known_at_accept_seq: 6,
+                policy: AuthorityPolicy::OfficialFact,
+            },
+            &claims,
+            &relations,
+            &[],
+        );
+        assert!(!result.rejected_claim_ids.contains(&target.id));
+        assert!(result.conflicting_claim_ids.contains(&target.id));
+        assert!(result.conflicting_claim_ids.contains(&claims[1].claim.id));
+        Ok(())
+    }
+
+    #[test]
+    fn deterministic_prediction_replays_with_owned_relations_and_closed_evidence()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let base = build_unsigned_fixture_batch()?;
+        let target_event = base
+            .events
+            .iter()
+            .find(|event| matches!(event.actor, Actor::DeterministicPrediction { .. }))
+            .ok_or("missing deterministic prediction fixture")?;
+        let EventPayload::ClaimAsserted(target) = &target_event.payload else {
+            return Err("claim expected".into());
+        };
+        let owner = target_event.actor.clone();
+        let model = Actor::ModelRun {
+            run_id: parse_id("01900000-0000-7000-8000-000000009901")?,
+        };
+        let other_engine = Actor::DeterministicPrediction {
+            name: "different.forecaster".to_owned(),
+            version: "1".to_owned(),
+            frozen_inputs_digest: ContentDigest::sha256(b"other input"),
+            rule_set_digest: ContentDigest::sha256(b"other rules"),
+        };
+        let mut revised_input = owner.clone();
+        if let Actor::DeterministicPrediction {
+            frozen_inputs_digest,
+            ..
+        } = &mut revised_input
+        {
+            *frozen_inputs_digest = ContentDigest::sha256(b"new observations");
+        }
+        let mut next_version = owner.clone();
+        if let Actor::DeterministicPrediction { version, .. } = &mut next_version {
+            *version = "2".into();
+        }
+        let other_model = Actor::ModelRun {
+            run_id: parse_id("01900000-0000-7000-8000-000000009906")?,
+        };
+        for kind in [ClaimRelationKind::Supersedes, ClaimRelationKind::Retracts] {
+            for (target_actor, source_actor, relation_actor, permitted) in [
+                (
+                    owner.clone(),
+                    revised_input.clone(),
+                    revised_input.clone(),
+                    true,
+                ),
+                (owner.clone(), model.clone(), model.clone(), false),
+                (owner.clone(), owner.clone(), model.clone(), false),
+                (
+                    owner.clone(),
+                    other_engine.clone(),
+                    other_engine.clone(),
+                    false,
+                ),
+                (owner.clone(), owner.clone(), other_engine.clone(), false),
+                (
+                    owner.clone(),
+                    next_version.clone(),
+                    next_version.clone(),
+                    false,
+                ),
+                (model.clone(), owner.clone(), owner.clone(), false),
+                (
+                    model.clone(),
+                    other_model.clone(),
+                    other_model.clone(),
+                    false,
+                ),
+                (model.clone(), model.clone(), model.clone(), true),
+            ] {
+                let mut batch = base.clone();
+                for event in &mut batch.events {
+                    if event.id == target_event.id {
+                        event.actor = target_actor.clone();
+                    }
+                }
+                let mut source = target.clone();
+                source.id = parse_id("01900000-0000-7000-8000-000000009902")?;
+                source.object = ClaimObject::Text("other forecast outcome".to_owned());
+                let source_seq = batch.origin_seq_end + 1;
+                let mut event = target_event.clone();
+                event.id = parse_id("01900000-0000-7000-8000-000000009903")?;
+                event.origin_seq = source_seq;
+                event.actor = source_actor;
+                event.payload = EventPayload::ClaimAsserted(source.clone());
+                batch.events.push(event.clone());
+                event.id = parse_id("01900000-0000-7000-8000-000000009904")?;
+                event.origin_seq += 1;
+                event.actor = relation_actor;
+                event.payload = EventPayload::ClaimRelated(ClaimRelation {
+                    source_claim_id: source.id,
+                    target_claim_id: target.id,
+                    kind,
+                    scope_id: target.scope_id,
+                });
+                batch.origin_seq_end = event.origin_seq;
+                batch.events.push(event);
+                let envelope = sign_batch(&batch, &fixture_signing_key())?;
+                let mut core = Core::new();
+                let result = core.accept_signed_batch(&envelope, &fixture_device_authorization()?);
+                assert_eq!(result.is_ok(), permitted, "{kind:?}");
+                if permitted {
+                    assert_eq!(core.ledger().claim(target.id), Some(target));
+                    let query = ResolutionQuery {
+                        subject_entity_id: target.subject_entity_id,
+                        predicate_id: target.predicate_id.clone(),
+                        scope_id: target.scope_id,
+                        valid_at: target.valid_time.from(),
+                        known_at_accept_seq: batch.origin_seq_end,
+                        policy: AuthorityPolicy::OfficialFact,
+                    };
+                    let resolved = core.ledger().resolve(&query);
+                    assert!(resolved.rejected_claim_ids.contains(&target.id));
+                    let mut replay = Core::new();
+                    replay.accept_signed_batch(&envelope, &fixture_device_authorization()?)?;
+                    assert_eq!(replay.ledger().resolve(&query), resolved);
+                    for axis in ["subject", "predicate", "scope"] {
+                        let mut outside = batch.clone();
+                        let source_index = outside.events.len() - 2;
+                        if axis == "scope" {
+                            let EventPayload::ClaimRelated(relation) =
+                                &mut outside.events[source_index + 1].payload
+                            else {
+                                return Err("relation".into());
+                            };
+                            relation.scope_id = parse_id("01900000-0000-7000-8000-000000009913")?;
+                        } else {
+                            let EventPayload::ClaimAsserted(claim) =
+                                &mut outside.events[source_index].payload
+                            else {
+                                return Err("claim".into());
+                            };
+                            if axis == "subject" {
+                                claim.subject_entity_id =
+                                    parse_id("01900000-0000-7000-8000-000000009914")?;
+                            } else {
+                                claim.predicate_id = PredicateId::parse("academic.other.forecast")?;
+                            }
+                        }
+                        let mut denied = Core::new();
+                        let result = denied.accept_signed_batch(
+                            &sign_batch(&outside, &fixture_signing_key())?,
+                            &fixture_device_authorization()?,
+                        );
+                        assert!(
+                            matches!(
+                                result,
+                                Err(CoreError::Ledger(
+                                    LedgerError::CrossScope(_)
+                                        | LedgerError::UnauthorizedRelationEffect { .. }
+                                ))
+                            ),
+                            "{axis}"
+                        );
+                        assert!(denied.ledger().claim(target.id).is_none());
+                    }
+                    // An earlier user choice survives either forecast class's
+                    // later owned lifecycle event, including a retraction.
+                    let mut decision_event = target_event.clone();
+                    decision_event.id = parse_id("01900000-0000-7000-8000-000000009907")?;
+                    decision_event.origin_seq = source_seq;
+                    decision_event.actor = Actor::User {
+                        user_id: parse_id(USER_ID)?,
+                    };
+                    decision_event.payload = EventPayload::DecisionRecorded(UserDecision {
+                        id: parse_id("01900000-0000-7000-8000-000000009909")?,
+                        target_claim_id: target.id,
+                        target_object: target.object.clone(),
+                        resolution_slot: academic_domain::ResolutionSlot {
+                            subject_entity_id: target.subject_entity_id,
+                            predicate_id: target.predicate_id.clone(),
+                            scope_id: target.scope_id,
+                        },
+                        action: DecisionAction::Confirm,
+                        valid_time: target.valid_time,
+                        rationale_evidence_ids: Vec::new(),
+                        decided_at: target.valid_time.from(),
+                        reversible_until: None,
+                    });
+                    let insertion = batch.events.len() - 2;
+                    for event in &mut batch.events[insertion..] {
+                        event.origin_seq += 1;
+                    }
+                    batch.events.insert(insertion, decision_event.clone());
+                    batch.origin_seq_end += 1;
+                    let mut chosen = Core::new();
+                    chosen.accept_signed_batch(
+                        &sign_batch(&batch, &fixture_signing_key())?,
+                        &fixture_device_authorization()?,
+                    )?;
+                    let overridden = chosen.ledger().resolve(&ResolutionQuery {
+                        known_at_accept_seq: batch.origin_seq_end,
+                        ..query
+                    });
+                    assert_eq!(overridden.active_claim_ids, vec![target.id]);
+                    assert!(overridden.conflicting_claim_ids.contains(&source.id));
+                    decision_event.actor = target_actor;
+                    batch.events[insertion] = decision_event;
+                    assert!(
+                        sign_batch(&batch, &fixture_signing_key()).is_err(),
+                        "forecasters cannot author user decisions"
+                    );
+                } else {
+                    assert!(
+                        core.ledger().claim(target.id).is_none(),
+                        "denial must be atomic"
+                    );
+                    // A different producer may append a candidate while the
+                    // existing forecast stays available for user review.
+                    batch.events.pop();
+                    batch.origin_seq_end -= 1;
+                    core.accept_signed_batch(
+                        &sign_batch(&batch, &fixture_signing_key())?,
+                        &fixture_device_authorization()?,
+                    )?;
+                    assert_eq!(core.ledger().claim(target.id), Some(target));
+                    assert_eq!(core.ledger().claim(source.id), Some(&source));
+                }
+            }
+        }
+        // A signed digest is provenance, not a substitute for evidence closure.
+        let mut missing = base.clone();
+        for event in &mut missing.events {
+            if let EventPayload::ClaimAsserted(claim) = &mut event.payload
+                && claim.id == target.id
+            {
+                claim.evidence_ids = vec![parse_id("01900000-0000-7000-8000-000000009905")?];
+            }
+        }
+        let envelope = sign_batch(&missing, &fixture_signing_key())?;
+        let mut core = Core::new();
+        assert!(
+            core.accept_signed_batch(&envelope, &fixture_device_authorization()?)
+                .is_err()
+        );
+        assert!(core.ledger().claim(target.id).is_none());
         Ok(())
     }
 }

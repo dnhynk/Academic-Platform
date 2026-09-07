@@ -371,7 +371,7 @@ crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, 
 crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields, tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum EvidenceLocator |74db7210faf19ee9
 crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "action", rename_all = "SCREAMING_SNAKE_CASE")] enum DecisionAction |6a27e6ffad40717d
 crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", content = "value", rename_all = "SCREAMING_SNAKE_CASE")] enum EventPayload |12131fc06afba50d
-crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum Actor |98d2aea3372cf5de
+crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")] enum Actor |86a786554ce65663
 crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "type", content = "value", rename_all = "SCREAMING_SNAKE_CASE")] enum ClaimObject |b2ddf53580097e00
 crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct Claim |ba4d5f5c6bd45f16
 crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct ClaimRelation |8a66ac5a52a5c91d
@@ -380,22 +380,23 @@ crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, 
 crates/domain/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] struct UserDecision |cfa8e609ad8cf184
 crates/domain/src/lib.rs [pub] #[derive(Debug, Error, Clone, PartialEq, Eq)] enum DomainError |6ac3cbfae9b42ef5
 crates/domain/src/lib.rs [pub] const ARTIFACT_FORMAT_VERSIONS: [u16; 2] |465edc7fdd5ef13f
-crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION: u16 |86215cdca91b2c15
+crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION: u16 |861dd4dca9180f26
 crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION_V1: u16 |a2f01bdb9c3638b3
 crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION_V2: u16 |96bde8939e1f9449
 crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION_V3: u16 |3fca25bfb93c8ceb
+crates/domain/src/lib.rs [pub] const EVENT_SCHEMA_VERSION_V4: u16 |e1df4d83c1389bf5
 crates/domain/src/lib.rs [pub] const MAX_SAFE_JSON_INTEGER: u64 |ce0c848e2ff99917
 crates/domain/src/lib.rs [pub] const PREDICTION_METADATA_VERSION_V1: u16 |6224870e237a5a0a
 crates/domain/src/lib.rs [pub] const V3_EVENT_KINDS: [&str; 18] |17e1e0f215dbc79c
 crates/domain/src/lib.rs [pub] fn validate_artifact_json_number_tokens(input: &str) -> Result<(), DomainError> |307be06e3f280c25
-crates/domain/src/lib.rs [pub] impl Actor :: #[must_use] const fn kind_name(&self) -> &'static str |90aacb9bdfa10391
-crates/domain/src/lib.rs [pub] impl Actor :: fn validate(&self) -> Result<(), DomainError> |06d6b991d8111e3f
+crates/domain/src/lib.rs [pub] impl Actor :: #[must_use] const fn kind_name(&self) -> &'static str |c9f91b833a7bdcf3
+crates/domain/src/lib.rs [pub] impl Actor :: fn validate(&self) -> Result<(), DomainError> |e94c5f30966465dc
 crates/domain/src/lib.rs [pub] impl ArtifactDescriptor :: #[must_use] fn is_artifact_digest_bound(&self, representation: &ArtifactRepresentation) -> bool |627238846af452ce
 crates/domain/src/lib.rs [pub] impl ArtifactDescriptor :: #[must_use] fn representation(&self, locator: &EvidenceLocator) -> Option<&ArtifactRepresentation> |8b9e25c4d3ed2f9f
 crates/domain/src/lib.rs [pub] impl ArtifactDescriptor :: fn validate(&self) -> Result<(), DomainError> |65691c8c89ee8fe1
 crates/domain/src/lib.rs [pub] impl ArtifactDescriptor :: fn validate_for_actor(&self, _actor: &Actor) -> Result<(), DomainError> |1b32447111b3d71e
 crates/domain/src/lib.rs [pub] impl Claim :: fn validate(&self) -> Result<(), DomainError> |8ad8c4435fdb8ca9
-crates/domain/src/lib.rs [pub] impl Claim :: fn validate_for_actor(&self, actor: &Actor) -> Result<(), DomainError> |13b10798abe2dd29
+crates/domain/src/lib.rs [pub] impl Claim :: fn validate_for_actor(&self, actor: &Actor) -> Result<(), DomainError> |333ca7fbf458a3fa
 crates/domain/src/lib.rs [pub] impl ConfidencePermille :: #[must_use] const fn value(self) -> u16 |27944a9a432aaf76
 crates/domain/src/lib.rs [pub] impl ConfidencePermille :: fn new(value: u16) -> Result<Self, DomainError> |d919a28f72bc3a96
 crates/domain/src/lib.rs [pub] impl ContentDigest :: #[must_use] const fn as_bytes(&self) -> &[u8; 32] |316d3966b533191c
@@ -404,7 +405,7 @@ crates/domain/src/lib.rs [pub] impl ContentDigest :: #[must_use] fn sha256(bytes
 crates/domain/src/lib.rs [pub] impl Decimal :: #[must_use] const fn coefficient(self) -> i128 |f5b96a01638756f3
 crates/domain/src/lib.rs [pub] impl Decimal :: #[must_use] const fn scale(self) -> u8 |8fcc0bd9381b49fe
 crates/domain/src/lib.rs [pub] impl Decimal :: fn new(coefficient: i128, scale: u8) -> Result<Self, DomainError> |c77b216a4fdeca41
-crates/domain/src/lib.rs [pub] impl Event :: fn validate(&self) -> Result<(), DomainError> |bc5c6927194c4541
+crates/domain/src/lib.rs [pub] impl Event :: fn validate(&self) -> Result<(), DomainError> |cec25f8c62cb6f63
 crates/domain/src/lib.rs [pub] impl EventPayload :: #[must_use] const fn kind(&self) -> &'static str |0a7a86c32e4095e7
 crates/domain/src/lib.rs [pub] impl EventPayload :: #[must_use] const fn minimum_schema_version(&self) -> u16 |50c07c15a6912177
 crates/domain/src/lib.rs [pub] impl EventPayload :: #[must_use] fn registration(&self) -> Option<AggregateRegistrationRef> |9466f50aa7850535

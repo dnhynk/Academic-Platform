@@ -774,8 +774,9 @@ impl TranscriptLineage {
 pub const fn settles_corrections(actor: &Actor) -> bool {
     match actor {
         Actor::User { .. } => true,
-        Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
-            false
-        }
+        Actor::DeterministicEngine { .. }
+        | Actor::ModelRun { .. }
+        | Actor::Importer { .. }
+        | Actor::DeterministicPrediction { .. } => false,
     }
 }

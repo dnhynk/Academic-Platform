@@ -118,6 +118,36 @@ in; the entry points refuse and the open items are listed in
 The record shape, the retention result vocabulary, and the fault rows are in
 [rotation and retention](../contracts/rotation-and-retention.md).
 
+## Forecast actor migration 0016
+
+Migration `0016_phase2_deterministic_prediction.sql`, reserved for T238, widens
+only the `ledger_event` and `claim_relation` actor-kind CHECKs in the encrypted
+schema-2 lane. Both tables are rebuilt with every existing column copied and
+append-only triggers restored. The original envelope, signature, actor and
+payload bytes are retained. The schema identity stays unchanged, while exact
+admission fingerprints include the additional migration; an older binary therefore
+refuses this schema rather than misreading its actors.
+
+The plaintext schema-1 lane still applies only 0001 and refuses the new actor.
+Normal profile opening refuses the old shape; no transparent startup upgrade is
+claimed. A maintenance caller opens a dedicated read/write handle, applies its
+store key before the first page access, calls
+`academic_store::migration::apply_prediction_actor_migration_pre_listen(&mut connection)`,
+closes the handle, and then calls the ordinary `open_encrypted_profile` API.
+This entry point accepts only the exact pre-0016 encrypted shape and profile
+identity, runs exclusively before listening, preserves the incoming foreign-key
+setting on success and failure, and checks
+integrity and all foreign keys before commit. Its prior-schema comparison does
+not populate the cached current-schema fingerprint. Reapplication, partial and
+plaintext schemas fail. Rejected maintenance disables checkpoint-on-close and
+does not end an incoming transaction. A keyed prior-profile test verifies normal
+open refusal, mid-rebuild authorization failure and rollback, exact main-file
+bytes on rejection, identity and frozen envelope retention, successful reopen,
+and repeat refusal. Populated ledger/claim/relation rows are compared before
+and after the migration and a rolled-back rebuild. Backup/export retain signed
+envelopes unchanged; replay reads the authenticated source version and the
+resolver reads canonical author provenance for prediction removal ownership.
+
 ## Acceptance gate
 
 Fixture for each supported schema version; interrupted large migration resume; restore only to empty destination; object/ledger/key closure; independent fresh-profile restore; and vendor-neutral export/import round trip.

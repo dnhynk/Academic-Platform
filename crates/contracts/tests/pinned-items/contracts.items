@@ -13,19 +13,21 @@ crates/contracts/src/lib.rs [priv] fn decode_domain_value<T: DeserializeOwned + 
 crates/contracts/src/lib.rs [priv] fn decode_envelope(bytes: &[u8]) -> Result<DecodedEnvelope, ContractError> |0f462bad7f53da32
 crates/contracts/src/lib.rs [priv] fn decode_json_object(value: &CborValue) -> Result<JsonValue, ContractError> |fc3a9bfbc81fa2e5
 crates/contracts/src/lib.rs [priv] fn decode_single_cbor(bytes: &[u8]) -> Result<CborValue, ContractError> |42061a166f7ff3dd
-crates/contracts/src/lib.rs [priv] fn decode_source_payload( mut json: JsonValue, source_schema_version: u16, ) -> Result<UnsignedBatch, ContractError> |957ba3598dc0e1a3
+crates/contracts/src/lib.rs [priv] fn decode_source_payload( mut json: JsonValue, source_schema_version: u16, ) -> Result<UnsignedBatch, ContractError> |af0e58b17389e63e
 crates/contracts/src/lib.rs [priv] fn decode_unsigned_batch_with_source(bytes: &[u8]) -> Result<(UnsignedBatch, u16), ContractError> |278084f69f2cde60
 crates/contracts/src/lib.rs [priv] fn encode_cbor_value(value: &CborValue) -> Result<Vec<u8>, ContractError> |d0cbfad7e60a85fa
 crates/contracts/src/lib.rs [priv] fn encode_domain_value<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, ContractError> |f0c693f5aa124122
 crates/contracts/src/lib.rs [priv] fn encode_envelope( payload: &[u8], public_key: &[u8; 32], signature: &[u8; 64], ) -> Result<Vec<u8>, ContractError> |e4687bafc7a397b6
-crates/contracts/src/lib.rs [priv] fn encode_unsigned_batch_v1_projection( batch: &UnsignedBatch, _capability: LegacySourceEqualityCapability, ) -> Result<Vec<u8>, ContractError> |13927ade2bf399d2
-crates/contracts/src/lib.rs [priv] fn encode_unsigned_batch_v2_projection( batch: &UnsignedBatch, _capability: LegacySourceEqualityCapability, ) -> Result<Vec<u8>, ContractError> |e8712a1b50771618
+crates/contracts/src/lib.rs [priv] fn encode_unsigned_batch_v1_projection( batch: &UnsignedBatch, _capability: LegacySourceEqualityCapability, ) -> Result<Vec<u8>, ContractError> |68de8f7a806db876
+crates/contracts/src/lib.rs [priv] fn encode_unsigned_batch_v2_projection( batch: &UnsignedBatch, _capability: LegacySourceEqualityCapability, ) -> Result<Vec<u8>, ContractError> |4dc517d867eda6ac
+crates/contracts/src/lib.rs [priv] fn encode_unsigned_batch_v3_projection( batch: &UnsignedBatch, _capability: LegacySourceEqualityCapability, ) -> Result<Vec<u8>, ContractError> |d704e57d0442c6e1
 crates/contracts/src/lib.rs [priv] fn integer(value: u64) -> CborValue |84758cd8b9a54b62
 crates/contracts/src/lib.rs [priv] fn json_to_cbor(value: &JsonValue) -> Result<CborValue, ContractError> |fa96a80982054e35
 crates/contracts/src/lib.rs [priv] fn read_schema_version(json: &JsonValue) -> Result<u16, ContractError> |cae75478bbce14cf
-crates/contracts/src/lib.rs [priv] fn require_current_writer_payload(bytes: &[u8]) -> Result<(), ContractError> |af5b70100ede5be5
+crates/contracts/src/lib.rs [priv] fn require_current_writer_payload(bytes: &[u8]) -> Result<(), ContractError> |c7bbaf0e7e2b4e0c
+crates/contracts/src/lib.rs [priv] fn require_legacy_actor_shape(json: &JsonValue) -> Result<(), ContractError> |670d2da5cc8a0edf
 crates/contracts/src/lib.rs [priv] fn require_legacy_arm_shape(json: &JsonValue) -> Result<(), ContractError> |15258e8d4031a302
-crates/contracts/src/lib.rs [priv] fn require_source_typed_equality( batch: &UnsignedBatch, source_schema_version: u16, original_bytes: &[u8], ) -> Result<(), ContractError> |a6aeaecf6c6d2b06
+crates/contracts/src/lib.rs [priv] fn require_source_typed_equality( batch: &UnsignedBatch, source_schema_version: u16, original_bytes: &[u8], ) -> Result<(), ContractError> |a7cf12a41f51c1b0
 crates/contracts/src/lib.rs [priv] fn require_v1_claim_shape(json: &JsonValue) -> Result<(), ContractError> |1477cb55ccbdde73
 crates/contracts/src/lib.rs [priv] fn set_schema_version(json: &mut JsonValue, version: u16) -> Result<(), ContractError> |5748292887a068df
 crates/contracts/src/lib.rs [priv] fn take_bytes(value: Option<CborValue>, error: &'static str) -> Result<Vec<u8>, ContractError> |9e3de479e0ec8af2
@@ -38,8 +40,9 @@ crates/contracts/src/lib.rs [priv] impl DeviceAuthorization
 crates/contracts/src/lib.rs [priv] impl VerifiedBatch
 crates/contracts/src/lib.rs [priv] mod proto_contract
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn deterministic_cbor_round_trips_decimal_i128_boundaries() -> Result<(), Box<dyn std::error::Error>> |782afd733e532eea
+crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn deterministic_prediction_signed_provenance_is_required_and_legacy_sources_refuse_it() -> Result<(), Box<dyn std::error::Error>> |19a78bfe0e72dcb9
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn encoding_is_deterministic() -> Result<(), Box<dyn std::error::Error>> |86d95dc861fad11a
-crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn every_current_writer_semantically_emits_v3_payloads() -> Result<(), Box<dyn std::error::Error>> |89d905d9167d2b12
+crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn every_current_writer_semantically_emits_v4_payloads() -> Result<(), Box<dyn std::error::Error>> |520169788dc4ccaf
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn normalized_value_encoders_are_exact_signed_contract_subvalues() -> Result<(), Box<dyn std::error::Error>> |3b2cf9b795aafa52
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn prediction_metadata_round_trips_signed_cbor_and_malformed_forms_fail_closed() -> Result<(), Box<dyn std::error::Error>> |6692b1d59769e342
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn prediction_without_confidence_produces_no_payload_or_signature() -> Result<(), Box<dyn std::error::Error>> |f71b8bc85df11484
@@ -50,14 +53,14 @@ crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn signed_batch_rejects_
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn signed_decode_revalidates_rfc_variant_uuidv7_before_issuing_capability() -> Result<(), Box<dyn std::error::Error>> |38d095fa36e451c0
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn source_v1_rejects_v2_prediction_metadata_before_verified_capability() -> Result<(), Box<dyn std::error::Error>> |a98ac0fead53e083
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn t007_known_proto_oneof_arms_obey_last_value_wins_in_every_field_order() -> Result<(), Box<dyn std::error::Error>> |8a12494ba354ce50
-crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn t008_v1_user_decision_wire_upcasts_deterministically_to_v3() -> Result<(), Box<dyn std::error::Error>> |a8aeb0671ce1713c
-crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn t010_signed_v1_and_v2_reject_unknown_authenticated_nested_fields() -> Result<(), Box<dyn std::error::Error>> |a6f463cfbf8be91d
+crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn t008_v1_user_decision_wire_upcasts_deterministically_to_v3() -> Result<(), Box<dyn std::error::Error>> |b1cd2e81b691deb9
+crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn t010_signed_v1_and_v2_reject_unknown_authenticated_nested_fields() -> Result<(), Box<dyn std::error::Error>> |2412947c756cc2e9
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn t010_verification_orders_canonicality_and_signature_before_typed_equality() -> Result<(), Box<dyn std::error::Error>> |d94c873e368428c5
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn t013_every_relation_kind_round_trips_exactly() -> Result<(), Box<dyn std::error::Error>> |6575fc1f985f0d73
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn t015_rust_relation_bytes_match_both_declared_proto_runtimes() -> Result<(), Box<dyn std::error::Error>> |5afe500d93d91cd4
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn tampering_fails_signature_verification() -> Result<(), Box<dyn std::error::Error>> |a90de3974b3a48e3
-crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn unknown_authenticated_field_fails_closed_v3() -> Result<(), Box<dyn std::error::Error>> |7161481b46667fe9
-crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn v1_and_v2_upcast_is_pure_and_deterministic() -> Result<(), Box<dyn std::error::Error>> |60162e115b7865be
+crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn unknown_authenticated_field_fails_closed_v3() -> Result<(), Box<dyn std::error::Error>> |6b760064489f3447
+crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn v1_and_v2_upcast_is_pure_and_deterministic() -> Result<(), Box<dyn std::error::Error>> |79f0a191e5e171e1
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn v1_upcast_does_not_invent_prediction_metadata() -> Result<(), Box<dyn std::error::Error>> |9107467a8bd5d57a
 crates/contracts/src/lib.rs [priv] mod tests :: #[test] fn verified_capability_retains_exact_authenticated_source_bytes() -> Result<(), Box<dyn std::error::Error>> |6a2ca257fb353782
 crates/contracts/src/lib.rs [priv] mod tests :: fn authorization( batch: &UnsignedBatch, signing_key: &SigningKey, ) -> Result<DeviceAuthorization, DomainError> |15d4933bc9ef32c2
@@ -70,7 +73,7 @@ crates/contracts/src/lib.rs [priv] mod tests :: use academic_domain::{ Actor, Au
 crates/contracts/src/lib.rs [priv] mod tests :: use std::str::FromStr |5c44eeb8fa29b250
 crates/contracts/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
 crates/contracts/src/lib.rs [priv] struct DecodedEnvelope |5c1574121b4d7302
-crates/contracts/src/lib.rs [priv] use academic_domain::{ Actor, ClaimObject, ContentDigest, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2, EVENT_SCHEMA_VERSION_V3, EntityId, Event, EvidenceId, EvidenceLocator, UnsignedBatch, V3_EVENT_KINDS, } |f0d842e703a3498b
+crates/contracts/src/lib.rs [priv] use academic_domain::{ Actor, ClaimObject, ContentDigest, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2, EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4, EntityId, Event, EvidenceId, EvidenceLocator, UnsignedBatch, V3_EVENT_KINDS, } |138a04c0ca2be401
 crates/contracts/src/lib.rs [priv] use ciborium::value::{Integer, Value as CborValue} |20778c38db6e9d22
 crates/contracts/src/lib.rs [priv] use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey} |e47b02de61545096
 crates/contracts/src/lib.rs [priv] use serde::{Serialize, de::DeserializeOwned} |b3a368172808804f
@@ -81,6 +84,7 @@ crates/contracts/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct 
 crates/contracts/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct VerifiedBatch |be48447e05e2532f
 crates/contracts/src/lib.rs [pub] #[derive(Debug, Error)] enum ContractError |9145a566caf11652
 crates/contracts/src/lib.rs [pub] const SIGNED_ENVELOPE_VERSION: u16 |48d0f73c7a753e42
+crates/contracts/src/lib.rs [pub] fn decode_canonical_actor(bytes: &[u8]) -> Result<Actor, ContractError> |23c76a7249d1b804
 crates/contracts/src/lib.rs [pub] fn decode_canonical_claim_object(bytes: &[u8]) -> Result<ClaimObject, ContractError> |d8fb962d4bec900f
 crates/contracts/src/lib.rs [pub] fn decode_canonical_evidence_ids(bytes: &[u8]) -> Result<Vec<EvidenceId>, ContractError> |6a7b8142519bedb8
 crates/contracts/src/lib.rs [pub] fn decode_canonical_evidence_locator(bytes: &[u8]) -> Result<EvidenceLocator, ContractError> |0c46a824b29a22da
@@ -105,10 +109,10 @@ crates/contracts/src/lib.rs [pub] impl VerifiedBatch :: #[must_use] const fn sig
 crates/contracts/src/lib.rs [pub] impl VerifiedBatch :: #[must_use] const fn source_schema_version(&self) -> u16 |c3f9f7767b976c9f
 crates/contracts/src/lib.rs [pub] impl VerifiedBatch :: #[must_use] fn source_envelope(&self) -> &[u8] |2b583c14eefc34e5
 crates/contracts/src/lib.rs [pub] impl VerifiedBatch :: #[must_use] fn source_payload(&self) -> &[u8] |57d65c83b8612ae5
-crates/contracts/src/lib.rs [pub] use proto_contract::{ ProtoContractError, decode_claim_relation_event_proto, encode_claim_relation_event_proto, } |57ce4373f40f4d51
+crates/contracts/src/lib.rs [pub] use proto_contract::{ ProtoContractError, decode_claim_relation_event_proto, decode_claim_relation_event_proto_v4, encode_claim_relation_event_proto, encode_claim_relation_event_proto_v4, } |c8ae67327efef627
 crates/contracts/src/proto_contract.rs [priv] #[cfg(test)] mod tests
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)] #[repr(i32)] enum ProtoClaimRelationKind |d63ff6df60165d3e
-crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoActor |e97d01a61a9f39e3
+crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoActor |ece49fb3058a18b5
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoArtifactDescriptor |37408548bf45b695
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoAttemptRegistration |7cd36d0e00403bb2
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoAuditRegistration |8545bd6eb11e4358
@@ -119,6 +123,7 @@ crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoCourseRevisionRegistration |e39f1d9a725f0e0d
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoCurriculumVersionRegistration |b9c1f3814af40bba
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoDeterministicEngineActor |55db475faae94143
+crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoDeterministicPredictionActor |c95a52a6b38ac29c
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoEgressDecisionRegistration |34a631e5558eef12
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoEntityIdentityChangeRegistration |ca5f635c98458b63
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoEvidenceItem |21315c7108d9dd22
@@ -144,31 +149,37 @@ crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message
 crates/contracts/src/proto_contract.rs [priv] #[derive(Clone, PartialEq, Message)] struct ProtoValidInterval |bce0cfdb1a5054db
 crates/contracts/src/proto_contract.rs [priv] const fn decode_relation_kind(value: ProtoClaimRelationKind) -> Option<ClaimRelationKind> |ba909a5ae3e018dc
 crates/contracts/src/proto_contract.rs [priv] const fn encode_relation_kind(value: ClaimRelationKind) -> ProtoClaimRelationKind |6c2b08c3417556bc
-crates/contracts/src/proto_contract.rs [priv] fn decode_actor(value: ProtoActor) -> Result<Actor, ProtoContractError> |fe5362333b4e8f3a
+crates/contracts/src/proto_contract.rs [priv] fn decode_actor(value: ProtoActor) -> Result<Actor, ProtoContractError> |1a5df1a90785539b
 crates/contracts/src/proto_contract.rs [priv] fn decode_id<T>( value: Option<ProtoUuidV7>, name: &'static str, constructor: impl FnOnce(Uuid) -> Result<T, DomainError>, ) -> Result<T, ProtoContractError> |1336e11f2e22e350
-crates/contracts/src/proto_contract.rs [priv] fn encode_actor(actor: &Actor) -> ProtoActor |37173421e48159d8
+crates/contracts/src/proto_contract.rs [priv] fn decode_prediction_digest(bytes: Vec<u8>) -> Result<ContentDigest, ProtoContractError> |c5e5c804899ca4c5
+crates/contracts/src/proto_contract.rs [priv] fn encode_actor(actor: &Actor) -> ProtoActor |ac0edcf05ee8c453
+crates/contracts/src/proto_contract.rs [priv] fn reject_v4_actor_in_legacy_wire(mut bytes: &[u8]) -> Result<(), ProtoContractError> |242e40d58e2849d7
+crates/contracts/src/proto_contract.rs [priv] fn require_legacy_actor(actor: &Actor) -> Result<(), ProtoContractError> |1d8e2dbb6d997592
 crates/contracts/src/proto_contract.rs [priv] fn uuid(bytes: &[u8; 16]) -> ProtoUuidV7 |90d798a106762205
 crates/contracts/src/proto_contract.rs [priv] mod proto_actor
 crates/contracts/src/proto_contract.rs [priv] mod proto_actor :: use prost::Oneof |a58b1f20e32d7956
-crates/contracts/src/proto_contract.rs [priv] mod proto_actor :: use super::{ ProtoDeterministicEngineActor, ProtoImporterActor, ProtoModelRunActor, ProtoUserActor, } |6c18a6574ec5a14d
+crates/contracts/src/proto_contract.rs [priv] mod proto_actor :: use super::{ ProtoDeterministicEngineActor, ProtoDeterministicPredictionActor, ProtoImporterActor, ProtoModelRunActor, ProtoUserActor, } |1c03af8a61ec0839
 crates/contracts/src/proto_contract.rs [priv] mod proto_origin_event
 crates/contracts/src/proto_contract.rs [priv] mod proto_origin_event :: use prost::Oneof |a58b1f20e32d7956
 crates/contracts/src/proto_contract.rs [priv] mod proto_origin_event :: use super::{ ProtoArtifactDescriptor, ProtoAttemptRegistration, ProtoAuditRegistration, ProtoCapturePermissionRegistration, ProtoClaim, ProtoClaimRelation, ProtoConsentRegistration, ProtoCourseRevisionRegistration, ProtoCurriculumVersionRegistration, ProtoEgressDecisionRegistration, ProtoEntityIdentityChangeRegistration, ProtoEvidenceItem, ProtoFindingRegistration, ProtoLectureDocumentRegistration, ProtoLectureSessionRegistration, ProtoModelRunRegistration, ProtoOfferingRegistration, ProtoProposalDispositionRegistration, ProtoRequirementSetRegistration, ProtoRetentionActionRegistration, ProtoScopeDescriptor, ProtoSnapshotRegistration, ProtoTranscriptVersionRegistration, ProtoUserDecision, } |1b33b81f878c62c1
 crates/contracts/src/proto_contract.rs [priv] mod tests :: #[test] fn protobuf_uuid_boundary_requires_rfc_variant_uuidv7() -> Result<(), Box<dyn std::error::Error>> |3f8b5756077f1178
-crates/contracts/src/proto_contract.rs [priv] mod tests :: #[test] fn t017_every_actor_variant_matches_independent_v1_v2_protobufjs_bytes() -> Result<(), Box<dyn std::error::Error>> |b8a198dab1adc987
+crates/contracts/src/proto_contract.rs [priv] mod tests :: #[test] fn t017_every_actor_variant_matches_independent_v1_v2_protobufjs_bytes() -> Result<(), Box<dyn std::error::Error>> |690ef71aa94febce
 crates/contracts/src/proto_contract.rs [priv] mod tests :: #[test] fn t093_every_v3_arm_matches_the_independent_protobufjs_golden() -> Result<(), Box<dyn std::error::Error>> |571c3532b3e1cca1
 crates/contracts/src/proto_contract.rs [priv] mod tests :: #[test] fn t093_v3_source_digest_round_trips_present_and_absent() -> Result<(), Box<dyn std::error::Error>> |e06204b72afdc54f
 crates/contracts/src/proto_contract.rs [priv] mod tests :: #[test] fn v3_arms_use_unreused_tags() -> Result<(), Box<dyn std::error::Error>> |6cf06fb03992a1f8
+crates/contracts/src/proto_contract.rs [priv] mod tests :: #[test] fn v4_prediction_actor_has_fixed_bytes_and_legacy_wire_refuses_both_orders() -> Result<(), Box<dyn std::error::Error>> |b09cda96624bef88
 crates/contracts/src/proto_contract.rs [priv] mod tests :: fn v3_arm_goldens() -> Result<Vec<V3ArmGolden>, Box<dyn std::error::Error>> |ccf8c2bbfbf24688
 crates/contracts/src/proto_contract.rs [priv] mod tests :: fn v3_registration_event( payload: proto_origin_event::Payload, ) -> Result<ProtoOriginEvent, Box<dyn std::error::Error>> |ca47f09e41db491a
 crates/contracts/src/proto_contract.rs [priv] mod tests :: type V3ArmGolden = (u32, &'static str, proto_origin_event::Payload, &'static str) |420314a9e4e5b0ce
 crates/contracts/src/proto_contract.rs [priv] mod tests :: use super::* |19dbf88307d136ac
-crates/contracts/src/proto_contract.rs [priv] use academic_domain::{ Actor, ClaimId, ClaimRelation, ClaimRelationKind, DomainError, DomainId, EntityId, Event, EventId, EventPayload, ScopeId, TimestampMillis, } |eb86e2dadcc9a5e2
+crates/contracts/src/proto_contract.rs [priv] use academic_domain::{ Actor, ClaimId, ClaimRelation, ClaimRelationKind, ContentDigest, DomainError, DomainId, EntityId, Event, EventId, EventPayload, ScopeId, TimestampMillis, } |237c17015ad693af
 crates/contracts/src/proto_contract.rs [priv] use prost::{Enumeration, Message} |9336cf62217748a7
 crates/contracts/src/proto_contract.rs [priv] use thiserror::Error |fc76a959c1db87ed
 crates/contracts/src/proto_contract.rs [priv] use uuid::Uuid |fe1842bfeba75f75
-crates/contracts/src/proto_contract.rs [pub(super)] mod proto_actor :: #[derive(Clone, PartialEq, Oneof)] enum Kind |d6fb39dd634a7499
+crates/contracts/src/proto_contract.rs [pub(super)] mod proto_actor :: #[derive(Clone, PartialEq, Oneof)] enum Kind |7869bb5405cab639
 crates/contracts/src/proto_contract.rs [pub(super)] mod proto_origin_event :: #[derive(Clone, PartialEq, Oneof)] enum Payload |c98972d578842f4e
 crates/contracts/src/proto_contract.rs [pub] #[derive(Debug, Error)] enum ProtoContractError |f64604bcec54d540
-crates/contracts/src/proto_contract.rs [pub] fn decode_claim_relation_event_proto(bytes: &[u8]) -> Result<Event, ProtoContractError> |5ce9eb3cc9d8d9cf
-crates/contracts/src/proto_contract.rs [pub] fn encode_claim_relation_event_proto(event: &Event) -> Result<Vec<u8>, ProtoContractError> |efa6323100ba419d
+crates/contracts/src/proto_contract.rs [pub] fn decode_claim_relation_event_proto(bytes: &[u8]) -> Result<Event, ProtoContractError> |ee6e857752592f6e
+crates/contracts/src/proto_contract.rs [pub] fn decode_claim_relation_event_proto_v4(bytes: &[u8]) -> Result<Event, ProtoContractError> |aaadc4f69feda004
+crates/contracts/src/proto_contract.rs [pub] fn encode_claim_relation_event_proto(event: &Event) -> Result<Vec<u8>, ProtoContractError> |7f14d723f49546d1
+crates/contracts/src/proto_contract.rs [pub] fn encode_claim_relation_event_proto_v4(event: &Event) -> Result<Vec<u8>, ProtoContractError> |d01ffc56fb4d867e

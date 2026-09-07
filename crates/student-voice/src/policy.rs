@@ -145,7 +145,10 @@ impl RedactionPolicy {
     ) -> Result<Self, RedactionFault> {
         match &decided_by {
             Actor::User { .. } => {}
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => {
                 return Err(RedactionFault::AutomaticActorCannotRedact);
             }
         }

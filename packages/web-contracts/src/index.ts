@@ -14,7 +14,41 @@ export type FreshnessBand =
   | "HIGH"
   | "VERY_HIGH";
 
-export type FixtureVersion = 1 | 2 | 3;
+export type FixtureVersion = 1 | 2 | 3 | 4;
+
+export interface DeterministicPredictionActor {
+  readonly kind: "DETERMINISTIC_PREDICTION";
+  readonly name: string;
+  readonly version: string;
+  readonly frozen_inputs_digest: string;
+  readonly rule_set_digest: string;
+}
+
+/** The actor was introduced in v4; no historical schema may reinterpret it. */
+export function parseDeterministicPredictionActorJson(
+  input: Uint8Array,
+  schemaVersion: number,
+): DeterministicPredictionActor {
+  if (schemaVersion !== 4) throw new TypeError("deterministic prediction requires schema v4");
+  const raw = decodePortableFixtureJsonBytes(input);
+  assertPortableFixtureJsonText(raw);
+  const value: unknown = JSON.parse(raw);
+  if (!isRecord(value)) throw new TypeError("actor must be an object");
+  requireExactKeys(value, ["kind", "name", "version", "frozen_inputs_digest", "rule_set_digest"], "actor");
+  if (value.kind !== "DETERMINISTIC_PREDICTION") throw new TypeError("unsupported actor kind");
+  const name = requireString(value, "name");
+  const version = requireString(value, "version");
+  if (!/^[A-Za-z0-9][A-Za-z0-9._+/-]*$/u.test(name) || !/^[A-Za-z0-9][A-Za-z0-9._+/-]*$/u.test(version)) {
+    throw new TypeError("invalid deterministic prediction identity");
+  }
+  const frozenInputsDigest = requireString(value, "frozen_inputs_digest");
+  const ruleSetDigest = requireString(value, "rule_set_digest");
+  if (!digestPattern.test(frozenInputsDigest) || !digestPattern.test(ruleSetDigest)) {
+    throw new TypeError("invalid deterministic prediction provenance digest");
+  }
+  return { kind: "DETERMINISTIC_PREDICTION", name, version,
+    frozen_inputs_digest: frozenInputsDigest, rule_set_digest: ruleSetDigest };
+}
 
 export interface FixtureContractV1 {
   readonly envelope: "academic.signed-batch-envelope/v1 deterministic-cbor";
@@ -37,7 +71,14 @@ export interface FixtureContractV3 {
   readonly event_schema_version: 3;
 }
 
-export type FixtureContract = FixtureContractV1 | FixtureContractV2 | FixtureContractV3;
+export interface FixtureContractV4 {
+  readonly envelope: "academic.signed-batch-envelope/v1 deterministic-cbor";
+  readonly payload: "academic.event-batch/v4 deterministic-cbor";
+  readonly signature: "Ed25519";
+  readonly event_schema_version: 4;
+}
+
+export type FixtureContract = FixtureContractV1 | FixtureContractV2 | FixtureContractV3 | FixtureContractV4;
 
 export interface PredictionObservationWindow {
   readonly from: number;
@@ -719,6 +760,14 @@ function parseContract(value: unknown, fixtureVersion: FixtureVersion): FixtureC
       event_schema_version: 2,
     };
   }
+  if (fixtureVersion === 4) {
+    return {
+      envelope: "academic.signed-batch-envelope/v1 deterministic-cbor",
+      payload: "academic.event-batch/v4 deterministic-cbor",
+      signature: "Ed25519",
+      event_schema_version: 4,
+    };
+  }
   return {
     envelope: "academic.signed-batch-envelope/v1 deterministic-cbor",
     payload: "academic.event-batch/v3 deterministic-cbor",
@@ -902,7 +951,8 @@ export function parseFixtureDocument(value: unknown): FixtureDocument {
   if (
     value.fixture_version !== 1 &&
     value.fixture_version !== 2 &&
-    value.fixture_version !== 3
+    value.fixture_version !== 3 &&
+    value.fixture_version !== 4
   ) {
     throw new TypeError("unsupported fixture_version");
   }

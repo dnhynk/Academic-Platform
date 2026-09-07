@@ -66,7 +66,7 @@ crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn
 crates/transcription/src/authorize.rs [pub] impl InputManifest :: #[must_use] fn materials(&self) -> &[SuppliedMaterial] |77d89d216e5c7c1b
 crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_audio_chunk( &mut self, recovery: &JournalRecovery, frame_seq: u32, ) -> Result<(), InputFault> |e886df133023e913
 crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_capture( &mut self, recovery: &JournalRecovery, frame_seq: u32, ) -> Result<(), InputFault> |165233f3b6d47859
-crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_supplied_material( &mut self, supplied_by: &Actor, identifier: &str, bytes: &[u8], ) -> Result<(), InputFault> |cdf15e9398dfcf64
+crates/transcription/src/authorize.rs [pub] impl InputManifest :: fn admit_supplied_material( &mut self, supplied_by: &Actor, identifier: &str, bytes: &[u8], ) -> Result<(), InputFault> |dba244f785d6e134
 crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] const fn byte_len(&self) -> usize |7d4ee0a1d06b1107
 crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
 crates/transcription/src/authorize.rs [pub] impl SuppliedMaterial :: #[must_use] fn identifier(&self) -> &str |b6a891ecaafe7d61
@@ -401,7 +401,7 @@ crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq
 crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)] struct TokenAddress |68f46f027d3d20a8
 crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct SettledCorrection |7769c1347aa057c5
 crates/transcription/src/version.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct TranscriptVersion |5c3290a41a0a572c
-crates/transcription/src/version.rs [pub] #[must_use] const fn settles_corrections(actor: &Actor) -> bool |fa18c2c94a22a4c3
+crates/transcription/src/version.rs [pub] #[must_use] const fn settles_corrections(actor: &Actor) -> bool |24b974da395fc927
 crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] const fn address(&self) -> TokenAddress |5ea540d2894916dc
 crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] const fn settled(&self) -> &SettledCorrection |bc8d330f3a7dad8e
 crates/transcription/src/version.rs [pub] impl AppliedCorrection :: #[must_use] fn previous_text(&self) -> &str |e35badae22ecfd97
