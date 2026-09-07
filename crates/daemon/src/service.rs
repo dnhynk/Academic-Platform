@@ -337,6 +337,42 @@ where
         return Ok(());
     };
     let request = match envelope.payload {
+        Some(local_core_envelope::Payload::DetailRequest(frame)) => {
+            let request: academic_rpc::details::DetailRequest =
+                academic_rpc::details::decode(&frame.canonical_json)?;
+            if handshake.write_disposition
+                != academic_rpc::generated::WriteDisposition::Allowed as i32
+                || handshake.lock_state
+                    != academic_rpc::generated::ProfileLockState::Unlocked as i32
+                || !handshake
+                    .capability_ids
+                    .iter()
+                    .any(|id| id == request.capability())
+            {
+                return Err(
+                    academic_rpc::details::invalid("detail capability was not negotiated").into(),
+                );
+            }
+            if *shutdown.borrow() {
+                return Ok(());
+            }
+            let response = writer
+                .details(request)
+                .await
+                .map_err(|error| DaemonError::ListenerTask(error.to_string()))??;
+            if let Some(state) = &response.details {
+                writer.observe_revision(state.revision);
+            }
+            let frame = LocalCoreEnvelope {
+                payload: Some(local_core_envelope::Payload::DetailResponse(
+                    academic_rpc::generated::DetailResponseFrame {
+                        canonical_json: academic_rpc::details::encode(&response)?,
+                    },
+                )),
+            };
+            write_envelope(&mut stream, &frame, FrameClass::Command).await?;
+            return Ok(());
+        }
         Some(local_core_envelope::Payload::MutableRequest(request)) => request,
         _ => {
             return Err(DaemonError::InvalidSessionMetadata(

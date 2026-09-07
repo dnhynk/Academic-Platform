@@ -63,6 +63,72 @@ pub struct StoredBatchMaterial {
     pub accept_seq_end: u64,
 }
 
+/// Bounded original source bytes and the replica revision from one read transaction.
+/// Verification keys remain caller-owned; a stored public key is never a trust anchor.
+#[derive(Debug)]
+pub struct SignedHistorySnapshot {
+    pub revision: u64,
+    pub accept_seq_head: u64,
+    pub batches: Vec<SignedHistoryBatch>,
+}
+pub struct SignedHistoryBatch {
+    pub envelope: Vec<u8>,
+    pub accept_seq_start: u64,
+    pub accept_seq_end: u64,
+}
+impl fmt::Debug for SignedHistoryBatch {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("SignedHistoryBatch")
+            .field("envelope_len", &self.envelope.len())
+            .field("accept_seq_start", &self.accept_seq_start)
+            .field("accept_seq_end", &self.accept_seq_end)
+            .finish_non_exhaustive()
+    }
+}
+pub fn signed_history_snapshot(
+    reader: &mut ReaderConnection,
+) -> Result<SignedHistorySnapshot, QueryError> {
+    let transaction = reader.begin_deferred()?;
+    let (revision, head, count, bytes): (i64, i64, i64, i64) = transaction.query_row(
+        "SELECT profile_revision, next_accept_seq - 1, (SELECT count(*) FROM ledger_batch), (SELECT coalesce(sum(length(signed_envelope)), 0) FROM ledger_batch) FROM replica_state WHERE singleton = 1",
+        [], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+    ).map_err(StoreError::from)?;
+    if count > 4096 || bytes > 33_554_432 {
+        return Err(QueryError::Corrupt(
+            "signed history exceeds bounded detail replay",
+        ));
+    }
+    let batches = {
+        let mut statement = transaction.prepare("SELECT signed_envelope, accept_seq_start, accept_seq_end FROM ledger_batch ORDER BY accept_seq_start").map_err(StoreError::from)?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, Vec<u8>>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, i64>(2)?,
+                ))
+            })
+            .map_err(StoreError::from)?;
+        let mut batches = Vec::new();
+        for row in rows {
+            let (envelope, start, end) = row.map_err(StoreError::from)?;
+            batches.push(SignedHistoryBatch {
+                envelope,
+                accept_seq_start: positive_u64(start, "history start")?,
+                accept_seq_end: positive_u64(end, "history end")?,
+            });
+        }
+        batches
+    };
+    transaction.commit().map_err(StoreError::from)?;
+    Ok(SignedHistorySnapshot {
+        revision: nonnegative_u64(revision, "history revision")?,
+        accept_seq_head: nonnegative_u64(head, "history head")?,
+        batches,
+    })
+}
+
 /// Exact canonical resolver implementation bound into projection generations.
 pub const PROJECTION_RESOLVER_VERSION: &str = "academic-ledger-resolve-snapshot-v1";
 

@@ -56,7 +56,7 @@ crates/daemon/src/service.rs [priv] use academic_store::{ path_policy::{NativePa
 crates/daemon/src/service.rs [priv] use crate::{ AdmissionError, CLIENT_FRAME_TIMEOUT, DaemonError, LocalEndpoint, ReaderFactory, SessionNonce, WriterQueue, daemon_io, runtime_meta, shutdown, singleton, transport, } |8e2e496d0bd3995f
 crates/daemon/src/service.rs [priv] use std::{ fmt, io, path::{Path, PathBuf}, sync::Arc, time::Duration, } |8a6413951af1fc05
 crates/daemon/src/service.rs [priv] use tokio::{ io::{AsyncRead, AsyncWrite}, sync::{oneshot, watch}, task::JoinHandle, } |3c3b3a3be7919589
-crates/daemon/src/service.rs [pub(crate)] async fn serve_connection<S>( mut stream: S, writer: Arc<WriterQueue>, nonce: &SessionNonce, posture: &Posture, frame_timeout: Duration, mut shutdown: watch::Receiver<bool>, ) -> Result<(), DaemonError> where S: AsyncRead + AsyncWrite + Unpin, |152795e6c26c0748
+crates/daemon/src/service.rs [pub(crate)] async fn serve_connection<S>( mut stream: S, writer: Arc<WriterQueue>, nonce: &SessionNonce, posture: &Posture, frame_timeout: Duration, mut shutdown: watch::Receiver<bool>, ) -> Result<(), DaemonError> where S: AsyncRead + AsyncWrite + Unpin, |0d22efd88f08b2ca
 crates/daemon/src/service.rs [pub] #[derive(Clone)] struct DaemonConfig |570f01a19469557d
 crates/daemon/src/service.rs [pub] #[derive(Debug)] struct RunningDaemon |b43f06727407f723
 crates/daemon/src/service.rs [pub] impl DaemonConfig :: #[cfg(unix)] #[must_use] const fn with_required_unix_peer_uid(mut self, uid: u32) -> Self |6a849ecd40cf7b7a
@@ -184,7 +184,7 @@ crates/daemon/src/transport/windows_tests.rs [priv] type TestResult = Result<(),
 crates/daemon/src/transport/windows_tests.rs [priv] use std::{ future::{Future, poll_fn}, pin::pin, task::Poll, time::Duration, } |ae8c4e9996de4c87
 crates/daemon/src/transport/windows_tests.rs [priv] use super::* |19dbf88307d136ac
 crates/daemon/src/transport/windows_tests.rs [priv] use tokio::{ io::{AsyncReadExt, AsyncWriteExt}, net::windows::named_pipe::ClientOptions, } |c5b3fa5f06c59d39
-crates/daemon/src/writer.rs [priv] #[derive(Debug)] enum Work |19cedab7ec8efe7b
+crates/daemon/src/writer.rs [priv] #[derive(Debug)] enum Work |5914eb4f08674965
 crates/daemon/src/writer.rs [priv] #[derive(Debug)] struct WriterRegistration |5a9cf4e3e101268d
 crates/daemon/src/writer.rs [priv] impl AdmittedMutation
 crates/daemon/src/writer.rs [priv] impl Drop for WriterQueue
@@ -210,8 +210,9 @@ crates/daemon/src/writer.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Er
 crates/daemon/src/writer.rs [pub] impl AdmittedMutation :: async fn finish(self) -> Result<ServiceResult, AdmissionError> |bf3bda883502d13f
 crates/daemon/src/writer.rs [pub] impl WriterQueue :: #[must_use] const fn owner_thread(&self) -> ThreadId |20b9e275ce2665fe
 crates/daemon/src/writer.rs [pub] impl WriterQueue :: #[must_use] fn current_revision(&self) -> u64 |d6e3f188a04ac6fa
+crates/daemon/src/writer.rs [pub] impl WriterQueue :: async fn details( &self, request: academic_rpc::details::DetailRequest, ) -> Result<Result<academic_rpc::details::DetailReply, LocalServiceError>, AdmissionError> |0a503fd9df375212
 crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn observe_revision(&self, revision: u64) |e7c79eedf804c496
 crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn shutdown(&self) |4a91a1d9c7e210cf
-crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn start( profile: SyntheticProfile, ) -> Result<(Self, LocalServiceStartup), LocalServiceError> |b802cdaccc601746
+crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn start( profile: SyntheticProfile, ) -> Result<(Self, LocalServiceStartup), LocalServiceError> |9ee4d50db6ce3059
 crates/daemon/src/writer.rs [pub] impl WriterQueue :: fn try_admit(&self, request: MutableRequest) -> Result<AdmittedMutation, AdmissionError> |d4f24e4e5d325117
 crates/daemon/src/writer.rs [pub] struct WriterQueue |1bfc655f3deaeeab

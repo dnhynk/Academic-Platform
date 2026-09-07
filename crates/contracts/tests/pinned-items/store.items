@@ -906,6 +906,7 @@ crates/store/src/profile.rs [pub] impl SyntheticIngestManifest<'static> :: #[mus
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] const fn migration_status(&self) -> MigrationStatus |8f78f939a482d2d3
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] fn database_path(&self) -> &Path |f8538a3bafe42241
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
+crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn detail_incarnation(&self) -> StoreResult<[u8; 32]> |02db7b4e115e0dab
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn open_acceptance_store(&self) -> StoreResult<AcceptanceStore> |cfb93aa55d6db200
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn open_reader(&self) -> StoreResult<ReaderConnection> |33c62c53b1679235
 crates/store/src/proposal_closure_tests.rs [priv] #[allow(clippy::too_many_arguments)] fn insert_disposition( connection: &Connection, proposal: &[u8], seq: i64, disposition: &str, actor_class: &str, explicit_approval: i64, supersedes: Option<i64>, ) -> rusqlite::Result<usize> |94641270c503c369
@@ -955,6 +956,8 @@ crates/store/src/queries.rs [priv] impl From<RepositoryError> for QueryError
 crates/store/src/queries.rs [priv] impl From<RepositoryError> for QueryError :: fn from(error: RepositoryError) -> Self |8bda5ca1249cd21c
 crates/store/src/queries.rs [priv] impl From<StoreError> for QueryError
 crates/store/src/queries.rs [priv] impl From<StoreError> for QueryError :: fn from(error: StoreError) -> Self |1f9dd19bf676c75e
+crates/store/src/queries.rs [priv] impl fmt::Debug for SignedHistoryBatch
+crates/store/src/queries.rs [priv] impl fmt::Debug for SignedHistoryBatch :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |e20a122a6819c65f
 crates/store/src/queries.rs [priv] impl fmt::Display for QueryError
 crates/store/src/queries.rs [priv] impl fmt::Display for QueryError :: fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result |20e12c5841fb3da2
 crates/store/src/queries.rs [priv] type RawClaim = ( Vec<u8>, Vec<u8>, String, Vec<u8>, String, Option<Vec<u8>>, Option<String>, Option<i64>, Option<String>, Option<i64>, Option<i64>, Option<i64>, String, String, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, i64, Option<i64>, i64, Vec<u8>, ) |352bc982e2418d26
@@ -971,6 +974,7 @@ crates/store/src/queries.rs [pub(crate)] fn positive_u64(value: i64, reason: &'s
 crates/store/src/queries.rs [pub(crate)] fn query_collect<T, P, F>( connection: &Connection, sql: &str, params: P, mapper: F, ) -> Result<Vec<T>, QueryError> where P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>, |bf7cd218b788c161
 crates/store/src/queries.rs [pub] #[derive(Debug)] enum QueryError |597feaa79d20ea15
 crates/store/src/queries.rs [pub] #[derive(Debug)] struct ProjectionSnapshotRequest<'policy> |9b69265bbe7c625a
+crates/store/src/queries.rs [pub] #[derive(Debug)] struct SignedHistorySnapshot |1e0a5571302e46b4
 crates/store/src/queries.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CanonicalSnapshot |66d4e886359f10ec
 crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionEvidenceLocator |930e6295e16a401f
 crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionResolvedClaim |a68a6835322459bf
@@ -983,6 +987,8 @@ crates/store/src/queries.rs [pub] fn canonical_snapshot(reader: &ReaderConnectio
 crates/store/src/queries.rs [pub] fn projection_source_authority( reader: &mut ReaderConnection, domain_id: DomainId, known_at_accept_seq: u64, ) -> Result<ProjectionSourceAuthority, QueryError> |933ec2673ca6a4df
 crates/store/src/queries.rs [pub] fn projection_source_snapshot( reader: &mut ReaderConnection, request: &ProjectionSnapshotRequest<'_>, ) -> Result<ProjectionSourceSnapshot, QueryError> |79d624c7909ea787
 crates/store/src/queries.rs [pub] fn resolve( reader: &ReaderConnection, query: &ResolutionQuery, ) -> Result<ResolutionResult, QueryError> |33c4437434ac528b
+crates/store/src/queries.rs [pub] fn signed_history_snapshot( reader: &mut ReaderConnection, ) -> Result<SignedHistorySnapshot, QueryError> |71cc5b9f03690444
+crates/store/src/queries.rs [pub] struct SignedHistoryBatch |fb40b92d900d69c4
 crates/store/src/queries.rs [pub] use academic_ledger::AuthorityPolicy |bd81cbf3625a651a
 crates/store/src/repository.rs [priv] #[derive(Debug, Clone)] struct AcceptedClaim |3547fcf6b8b28d23
 crates/store/src/repository.rs [priv] #[derive(Debug, Clone)] struct AcceptedEvidence |312f5a3d7ec4f009

@@ -754,7 +754,7 @@ const PINNED_PACKAGES: usize = 71;
 ///
 /// 11 748 over 43 packages before `P2-RF31`. The 28 packages that joined and
 /// the literal values that joined the fingerprint are the difference.
-const PINNED_ITEMS: usize = 18_222;
+const PINNED_ITEMS: usize = 18_380;
 
 /// The file holding one package's pinned item set.
 fn pin_path(repository: &Path, package: &str) -> PathBuf {
@@ -1593,7 +1593,7 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
 /// uses, over the nine crates that ship an executable. `connector` and
 /// `indexer` are absent because they reach nothing: their whole `main` reads
 /// `PROCESS_CLASS.capabilities()` through an import.
-const BINARY_REACHES: [(&str, &str, &str); 34] = [
+const BINARY_REACHES: [(&str, &str, &str); 37] = [
     (
         "desktop",
         "academic_desktop::runtime",
@@ -1603,6 +1603,16 @@ const BINARY_REACHES: [(&str, &str, &str); 34] = [
         "desktop",
         "academic_rpc::digest",
         "the shared pure request digest binds a synthetic IPC mutation to its receipt",
+    ),
+    (
+        "desktop",
+        "academic_rpc::details",
+        "closed bounded detail DTOs and request digests validate original durable receipt identity without store or key access",
+    ),
+    (
+        "desktop",
+        "academic_rpc::generated",
+        "the additive detail frame carries bounded canonical DTO bytes over the existing host-selected local session",
     ),
     (
         "desktop",
@@ -1713,6 +1723,11 @@ const BINARY_REACHES: [(&str, &str, &str); 34] = [
         "daemon",
         "academic_rpc::PHASE1_POLICY_BANNER",
         "the banner this binary prints before it starts",
+    ),
+    (
+        "daemon",
+        "academic_rpc::details",
+        "negotiated detail commands decode and encode closed bounded DTOs through the existing sole-writer queue",
     ),
     (
         "daemon",

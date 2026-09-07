@@ -1,9 +1,10 @@
 //! Synthetic-only D1 composition over the stable P1, S2, and V1 boundaries.
 //!
 //! This module does not expose a raw SQLite connection or fabricate a sealed
-//! receipt. It resolves the sole repository-allowlisted fixture, durably seals
-//! its exact bytes through V1, and asks S2 to verify the receipt again inside
-//! the one-writer acceptance path.
+//! receipt. The synthetic ingest command resolves the repository-allowlisted
+//! fixture; detail reads replay the host-selected accepted profile and detail
+//! dispositions append signed claims. Both write routes use the same S2 owner
+//! and V1 vault verification inside the one-writer acceptance path.
 
 use std::{
     collections::BTreeSet,
@@ -11,7 +12,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use academic_contracts::{DeviceAuthorization, VerifiedBatch, verify_signed_batch};
+use academic_contracts::{DeviceAuthorization, verify_signed_batch};
 use academic_domain::{ArtifactDescriptor, ContentDigest, EventPayload, TimestampMillis};
 use academic_rpc::{
     RpcError,
@@ -25,7 +26,7 @@ use academic_store::{
     fault::{AcceptanceFaultInjector, NoFault},
     idempotency::{AcceptanceCommand, IdempotencyError},
     profile::SyntheticProfile,
-    queries::{QueryError, batch_material, canonical_snapshot},
+    queries::{QueryError, canonical_snapshot},
 };
 use academic_vault::{
     ArtifactIngestRequest, DomainKeyring, ReconcileOptions, ReconcileReport, ReconcileState,
@@ -69,6 +70,8 @@ impl LocalServiceStartup {
 /// Fail-closed D1 composition error.
 #[derive(Debug, Error)]
 pub enum LocalServiceError {
+    #[error(transparent)]
+    Details(#[from] crate::details::DetailError),
     /// The deterministic fixture or its trust anchor drifted.
     #[error(transparent)]
     Core(#[from] CoreError),
@@ -111,6 +114,7 @@ pub struct LocalService {
     profile: SyntheticProfile,
     service: AcceptanceService,
     fixture: FixtureContext,
+    details: crate::details::DetailContext,
 }
 
 impl LocalService {
@@ -123,40 +127,17 @@ impl LocalService {
         let reader = profile.open_reader().map_err(QueryError::from)?;
         let snapshot = canonical_snapshot(&reader)?;
 
-        let referenced = match snapshot.batch_count {
-            0 => {
-                if snapshot.event_count != 0
-                    || snapshot.artifact_count != 0
-                    || snapshot.receipt_count != 0
-                {
-                    return Err(LocalServiceError::UnexpectedCanonicalState(
-                        "rows exist without an accepted batch",
-                    ));
-                }
-                Vec::new()
-            }
-            1 => {
-                let stored = batch_material(&reader, fixture.verified.batch().batch_id)?;
-                if stored.signed_envelope != fixture.envelope
-                    || stored.envelope_hash != fixture.verified.envelope_hash()
-                    || stored.payload_hash != fixture.verified.payload_hash()
-                {
-                    return Err(LocalServiceError::UnexpectedCanonicalState(
-                        "accepted batch is not the exact allowlisted fixture",
-                    ));
-                }
-                fixture.descriptors.clone()
-            }
-            _ => {
-                return Err(LocalServiceError::UnexpectedCanonicalState(
-                    "more than one canonical batch exists",
-                ));
-            }
-        };
+        let details = crate::details::DetailContext::new(
+            &profile,
+            fixture.authorization.clone(),
+            crate::fixture_signing_key(),
+            Vec::new(),
+        )?;
+        let referenced = details.referenced_artifacts(&profile)?;
 
         let mut keyring = DomainKeyring::new();
         let mut domains = BTreeSet::new();
-        for descriptor in &fixture.descriptors {
+        for descriptor in fixture.descriptors.iter().chain(referenced.iter()) {
             if domains.insert(descriptor.domain_id) {
                 keyring.insert(descriptor.domain_id, FIXTURE_LOCATOR_KEY)?;
             }
@@ -182,12 +163,23 @@ impl LocalService {
                 profile,
                 service,
                 fixture,
+                details,
             },
             LocalServiceStartup {
                 reconciliation,
                 profile_revision: snapshot.profile_revision,
             },
         ))
+    }
+
+    /// Closed detail requests execute on the same sole writer lane as ingest.
+    pub fn handle_detail_request_now(
+        &mut self,
+        request: &academic_rpc::details::DetailRequest,
+    ) -> Result<academic_rpc::details::DetailReply, LocalServiceError> {
+        Ok(self
+            .details
+            .handle(&self.profile, &mut self.service, request, timestamp_now()?)?)
     }
 
     /// Executes one P1 mutable request. Policy denials and optimistic conflicts
@@ -335,7 +327,6 @@ impl LocalService {
 struct FixtureContext {
     envelope: Vec<u8>,
     authorization: DeviceAuthorization,
-    verified: VerifiedBatch,
     descriptors: Vec<ArtifactDescriptor>,
 }
 
@@ -368,7 +359,6 @@ impl FixtureContext {
         Ok(Self {
             envelope,
             authorization,
-            verified,
             descriptors,
         })
     }

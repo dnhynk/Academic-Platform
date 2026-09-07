@@ -157,6 +157,19 @@ message LocalCoreEnvelope {
     ServerHandshake server_handshake = 2;
     MutableRequest mutable_request = 3;
     MutableResponse mutable_response = 4;
+    DetailRequestFrame detail_request = 16;
+    DetailResponseFrame detail_response = 17;
   }
   reserved 5 to 15;
+}
+
+// Versioned closed JSON DTOs from academic_rpc::details, limited to 1 MiB.
+// Existing tags and frozen Phase 1 fixtures retain their original bytes.
+message DetailRequestFrame {
+  bytes canonical_json = 1;
+  reserved 2 to 15;
+}
+message DetailResponseFrame {
+  bytes canonical_json = 1;
+  reserved 2 to 15;
 }

@@ -1282,7 +1282,9 @@ test("workspace_dependency_direction_is_acyclic", () => {
       "academic-transcription",
     ],
     "academic-requirement": ["academic-domain"],
-    "academic-daemon": ["academic-portability", "academic-projections", "academic-vault"],
+    // X4 IPC tests seed supplied synthetic detail input through core acceptance.
+    // The feature is a test edge; the daemon default never imports a corpus.
+    "academic-daemon": ["academic-core", "academic-portability", "academic-projections", "academic-vault"],
     // The encrypted portability acceptance suite builds its keys through the
     // `P2-K1` public schedule rather than fabricating them, exactly as the
     // encrypted object suite does. The product edge is the optional one above.
@@ -2854,6 +2856,15 @@ const DESKTOP_SHIPPING_CLOSURE = [
  */
 // Instant/future/cell/Cell cover the monotonic deadline and controlled tests.
 const DESKTOP_PATH_ROOTS = [
+  // X4 closed RPC detail vocabulary and its native decoder tests; no new IO.
+  "details",
+  "dto",
+  "DetailAction",
+  "DetailReplyState",
+  "DetailRequest",
+  "DetailSelector",
+  "RuntimeCommand",
+  "from_value",
   "Instant",
   "future",
   "cell",

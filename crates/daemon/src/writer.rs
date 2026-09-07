@@ -24,6 +24,10 @@ type ServiceResult = Result<academic_rpc::generated::MutableResponse, LocalServi
 
 #[derive(Debug)]
 enum Work {
+    Details {
+        request: academic_rpc::details::DetailRequest,
+        reply: oneshot::Sender<Result<academic_rpc::details::DetailReply, LocalServiceError>>,
+    },
     Mutation {
         request: MutableRequest,
         reply: oneshot::Sender<ServiceResult>,
@@ -109,6 +113,10 @@ impl WriterQueue {
                 }
                 while let Ok(work) = receiver.recv() {
                     match work {
+                        Work::Details { request, reply } => {
+                            let result = service.handle_detail_request_now(&request);
+                            let _ignored = reply.send(result);
+                        }
                         Work::Mutation { request, reply } => {
                             let result = service.handle_mutable_request_now(&request);
                             let _ignored = reply.send(result);
@@ -161,6 +169,31 @@ impl WriterQueue {
             Err(TrySendError::Full(_)) => Err(AdmissionError::ResourceExhausted),
             Err(TrySendError::Disconnected(_)) => Err(AdmissionError::ShuttingDown),
         }
+    }
+
+    /// Detail reads and decisions share the same bounded owner lane and shutdown rules.
+    pub async fn details(
+        &self,
+        request: academic_rpc::details::DetailRequest,
+    ) -> Result<Result<academic_rpc::details::DetailReply, LocalServiceError>, AdmissionError> {
+        if !self.accepting.load(Ordering::Acquire) {
+            return Err(AdmissionError::ShuttingDown);
+        }
+        let (reply, receiver) = oneshot::channel();
+        {
+            let guard = self
+                .sender
+                .lock()
+                .map_err(|_| AdmissionError::ShuttingDown)?;
+            let sender = guard.as_ref().ok_or(AdmissionError::ShuttingDown)?;
+            sender
+                .try_send(Work::Details { request, reply })
+                .map_err(|error| match error {
+                    TrySendError::Full(_) => AdmissionError::ResourceExhausted,
+                    TrySendError::Disconnected(_) => AdmissionError::ShuttingDown,
+                })?;
+        }
+        receiver.await.map_err(|_| AdmissionError::ShuttingDown)
     }
 
     /// Returns the most recently completed canonical revision observed by the

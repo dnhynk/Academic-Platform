@@ -41,17 +41,21 @@ impl LocalClient {
             _ => RuntimeReply::unavailable(),
         }
     }
-    async fn exchange(
-        &self,
-        command: DesktopCommand,
-    ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> {
+    fn session(&self) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let path = self.session_path.as_ref().ok_or("No session selected")?;
         if path.file_name().is_none_or(|name| name != "session.meta") {
             return Err("Expected daemon session.meta".into());
         }
-        // No filesystem path or session nonce ever crosses the JS boundary.
         let mut contents = String::new();
         File::open(path)?.take(4097).read_to_string(&mut contents)?;
+        Ok(contents)
+    }
+    async fn exchange(
+        &self,
+        command: DesktopCommand,
+    ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> {
+        // No filesystem path or session nonce ever crosses the JS boundary.
+        let contents = self.session()?;
         let (endpoint, nonce) = parse_session(&contents)?;
         let mut stream = connect(endpoint).await?;
         self.protocol(command, &mut stream, nonce).await
@@ -188,8 +192,163 @@ impl LocalClient {
             state: "accepted",
             message: "Synthetic example saved.",
             receipt_id: Some(canonical.receipt().receipt_id.clone()),
+            detail_fields: None,
         })
     }
+
+    pub async fn execute_details(
+        &self,
+        request: academic_rpc::details::DetailRequest,
+    ) -> RuntimeReply {
+        match tokio::time::timeout(Duration::from_secs(10), self.exchange_details(request)).await {
+            Ok(Ok(reply)) => reply,
+            _ => RuntimeReply::unavailable(),
+        }
+    }
+    async fn exchange_details(
+        &self,
+        request: academic_rpc::details::DetailRequest,
+    ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> {
+        use academic_rpc::details as dto;
+        let contents = self.session()?;
+        let (endpoint, nonce) = parse_session(&contents)?;
+        let mut stream = connect(endpoint).await?;
+        write_envelope(
+            &mut stream,
+            &LocalCoreEnvelope {
+                payload: Some(Payload::ClientHandshake(ClientHandshake {
+                    protocol_name: LOCAL_CORE_PROTOCOL_NAME.to_owned(),
+                    protocol_version: Some(ProtocolVersion { major: 1, minor: 0 }),
+                    capability_ids: vec![
+                        request.capability().to_owned(),
+                        format!("learning-platform.local.session-nonce.{nonce}"),
+                    ],
+                })),
+            },
+            FrameClass::Handshake,
+        )
+        .await?;
+        let Some(Payload::ServerHandshake(handshake)) =
+            read_envelope(&mut stream, FrameClass::Handshake)
+                .await?
+                .payload
+        else {
+            return Err("Wrong handshake".into());
+        };
+        if handshake.protocol_name != LOCAL_CORE_PROTOCOL_NAME
+            || handshake.write_disposition != WriteDisposition::Allowed as i32
+            || handshake.lock_state != ProfileLockState::Unlocked as i32
+            || handshake
+                .negotiated_protocol_version
+                .as_ref()
+                .is_none_or(|v| v.major != 1)
+            || !handshake
+                .capability_ids
+                .iter()
+                .any(|id| id == request.capability())
+            || handshake
+                .policy
+                .as_ref()
+                .is_none_or(|p| p.production_data_allowed)
+        {
+            return Err("Detail capability unavailable".into());
+        }
+        write_envelope(
+            &mut stream,
+            &LocalCoreEnvelope {
+                payload: Some(Payload::DetailRequest(
+                    academic_rpc::generated::DetailRequestFrame {
+                        canonical_json: dto::encode(&request)?,
+                    },
+                )),
+            },
+            FrameClass::Command,
+        )
+        .await?;
+        let Some(Payload::DetailResponse(frame)) = read_envelope(&mut stream, FrameClass::Command)
+            .await?
+            .payload
+        else {
+            return Err("Wrong detail response".into());
+        };
+        let reply: dto::DetailReply = dto::decode(&frame.canonical_json)?;
+        reply.validate()?;
+        if reply.version != 1 {
+            return Err("Wrong detail response version".into());
+        }
+        if let dto::DetailRequest::DetailsDecide { decision } = &request {
+            validate_detail_decision_reply(decision, &reply)?;
+        }
+        if let dto::DetailRequest::DetailsAudio { audio: request } = &request
+            && reply.state == dto::DetailReplyState::Ready
+        {
+            let audio = reply.audio.as_ref().ok_or("missing audio response")?;
+            if audio.lecture_id != request.lecture_id
+                || audio.offset != request.offset
+                || audio.bytes.is_empty()
+                || u64::try_from(audio.bytes.len())? > request.length
+                || audio.offset + u64::try_from(audio.bytes.len())? > audio.total_bytes
+            {
+                return Err("audio response range mismatch".into());
+            }
+        }
+        Ok(RuntimeReply {
+            version: 1,
+            state: match reply.state {
+                dto::DetailReplyState::Ready => "ready",
+                dto::DetailReplyState::Accepted => "accepted",
+                dto::DetailReplyState::Rejected => "rejected",
+                dto::DetailReplyState::Unavailable => "unavailable",
+            },
+            message: "Local detail service response.",
+            receipt_id: reply.receipt_id.map(|id| id.to_vec()),
+            detail_fields: Some(crate::runtime::RuntimeDetailFields {
+                decision_sequence: reply.decision_sequence,
+                receipt_decision: reply.receipt_decision,
+                reason: reply.reason,
+                request_id: reply.request_id,
+                client_instance_id: reply.client_instance_id,
+                idempotency_key: reply.idempotency_key,
+                request_digest: reply.request_digest,
+                details: reply.details,
+                audio: reply.audio,
+            }),
+        })
+    }
+}
+
+fn validate_detail_decision_reply(
+    request: &academic_rpc::details::DetailDecisionRequest,
+    reply: &academic_rpc::details::DetailReply,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use academic_rpc::details as dto;
+    reply.validate()?;
+    if reply.request_id != Some(request.request_id)
+        || reply.client_instance_id != Some(request.client_instance_id)
+        || reply.idempotency_key != Some(request.idempotency_key)
+        || reply.request_digest != Some(*dto::decision_digest(request)?.as_bytes())
+    {
+        return Err("Detail receipt identity mismatch".into());
+    }
+    if reply.state == dto::DetailReplyState::Accepted {
+        if reply.details.as_ref().is_none_or(|state| {
+            state.revision <= request.expected_revision
+                || state.profile_id != request.expected_profile_id
+        }) {
+            return Err("Detail response has no matching durable revision/profile".into());
+        }
+        let original = reply
+            .receipt_decision
+            .as_ref()
+            .ok_or("missing original decision receipt")?;
+        if Some(original.sequence) != reply.decision_sequence
+            || original.relation_id != request.relation_id
+            || original.action != request.action
+        {
+            return Err("original receipt decision does not match request".into());
+        }
+    }
+    Ok(())
 }
 
 fn parse_session(contents: &str) -> Result<(&str, &str), &'static str> {
@@ -289,6 +448,71 @@ mod tests {
         generated::{ImmutableReceipt, MutableResponse},
         negotiate_handshake,
     };
+
+    #[test]
+    fn original_receipt_can_be_confirmed_after_visible_source_removal()
+    -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        use academic_rpc::details as dto;
+        let request = dto::DetailDecisionRequest {
+            relation_id: "removed-relation".to_owned(),
+            action: dto::DetailAction::Reject,
+            expected_revision: 1,
+            expected_profile_id: "profile-incarnation".to_owned(),
+            selector: dto::DetailSelector::default(),
+            request_id: [1; 16],
+            client_instance_id: [2; 16],
+            idempotency_key: [3; 32],
+        };
+        let reply: dto::DetailReply = serde_json::from_value(serde_json::json!({
+            "version":1,"state":"accepted","message":"ACCEPTED","receipt_id":([4;16]),"decision_sequence":11,
+            "receipt_decision":{"sequence":11,"relation_id":"removed-relation","relation_claim_id":"01900000-0000-7000-8000-000000000911","action":"reject","undoes":null,"actor":"01900000-0000-7000-8000-000000000912"},
+            "reason":"ACCEPTED","request_id":request.request_id,"client_instance_id":request.client_instance_id,"idempotency_key":request.idempotency_key,"request_digest":dto::decision_digest(&request)?.as_bytes(),
+            "details":{"corpus":{"lectures":[],"concepts":[],"projects":[],"questions":[]},"decisions":[],"revision":3,"profile_id":"profile-incarnation","known_at_accept_seq":15,"valid_at_ms":200,"projector_version":"academic.details.v1","source_digest":"source"},"audio":null
+        }))?;
+        validate_detail_decision_reply(&request, &reply)?;
+        let mut undo_request = request.clone();
+        undo_request.action = dto::DetailAction::Undo;
+        let mut undo_reply = reply.clone();
+        undo_reply.request_digest = Some(*dto::decision_digest(&undo_request)?.as_bytes());
+        let original_undo = undo_reply
+            .receipt_decision
+            .as_mut()
+            .ok_or("missing undo receipt")?;
+        original_undo.action = dto::DetailAction::Undo;
+        original_undo.undoes = Some(5);
+        validate_detail_decision_reply(&undo_request, &undo_reply)?;
+        for target in [None, Some(0), Some(11)] {
+            let mut invalid = undo_reply.clone();
+            invalid
+                .receipt_decision
+                .as_mut()
+                .ok_or("missing undo receipt")?
+                .undoes = target;
+            assert!(validate_detail_decision_reply(&undo_request, &invalid).is_err());
+        }
+        for index in 0..5 {
+            let mut bad = reply.clone();
+            match index {
+                0 => bad.request_id = Some([9; 16]),
+                1 => bad.decision_sequence = Some(12),
+                2 => {
+                    bad.receipt_decision
+                        .as_mut()
+                        .ok_or("missing test receipt")?
+                        .action = dto::DetailAction::Undo
+                }
+                3 => {
+                    bad.receipt_decision
+                        .as_mut()
+                        .ok_or("missing test receipt")?
+                        .relation_id = "another-relation".to_owned()
+                }
+                _ => bad.receipt_decision = None,
+            }
+            assert!(validate_detail_decision_reply(&request, &bad).is_err());
+        }
+        Ok(())
+    }
 
     #[tokio::test]
     async fn delayed_retry_poll_never_opens_after_deadline() {

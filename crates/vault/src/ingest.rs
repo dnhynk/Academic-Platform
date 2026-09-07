@@ -30,6 +30,21 @@ pub(crate) struct LiveObjectEvidence {
 }
 
 impl LiveObjectEvidence {
+    pub(crate) fn read_range(
+        &mut self,
+        path: &Path,
+        offset: u64,
+        length: usize,
+    ) -> VaultResult<Vec<u8>> {
+        self.file
+            .seek(SeekFrom::Start(offset))
+            .map_err(|e| VaultError::io("seek retained object", path, e))?;
+        let mut bytes = vec![0; length];
+        self.file
+            .read_exact(&mut bytes)
+            .map_err(|e| VaultError::io("read retained object range", path, e))?;
+        Ok(bytes)
+    }
     pub(crate) fn revalidate(
         &mut self,
         path: &Path,

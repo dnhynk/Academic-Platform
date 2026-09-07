@@ -229,6 +229,29 @@ impl SyntheticProfile {
     pub fn open_reader(&self) -> StoreResult<ReaderConnection> {
         open_reader(&self.database_path)
     }
+
+    /// Durable local incarnation for pending desktop operations. Ordinary restore
+    /// copies canonical state, not this local metadata. This is not a key.
+    pub fn detail_incarnation(&self) -> StoreResult<[u8; 32]> {
+        let path = self.root.join("detail-incarnation.v1");
+        if !path
+            .try_exists()
+            .map_err(|e| StoreError::io("inspect detail incarnation", &path, e))?
+        {
+            let random: Vec<u8> =
+                self.open_reader()?
+                    .query_row("SELECT randomblob(32)", [], |row| row.get(0))?;
+            match write_new_synced_file(&path, &random) {
+                Ok(()) => sync_directory(&self.root)?,
+                Err(StoreError::Io { source, .. })
+                    if source.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(error) => return Err(error),
+            }
+        }
+        academic_store_platform::read_detail_incarnation(&self.root).map_err(|e| {
+            StoreError::io("read detail incarnation without following links", &path, e)
+        })
+    }
 }
 
 /// Creates a secure root and writes the incomplete marker before any database work.

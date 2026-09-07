@@ -484,7 +484,9 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
 
     validate_capability_list(&server.capability_ids)?;
     for capability in &server.capability_ids {
-        if !PHASE1_CAPABILITY_IDS.contains(&capability.as_str()) {
+        if !PHASE1_CAPABILITY_IDS.contains(&capability.as_str())
+            && !crate::details::DETAILS_CAPABILITIES.contains(&capability.as_str())
+        {
             return Err(RpcError::InvalidCapabilityId {
                 capability: capability.clone(),
             });
@@ -574,6 +576,19 @@ pub fn validate_envelope(envelope: &LocalCoreEnvelope) -> Result<FrameClass, Rpc
         }
         local_core_envelope::Payload::MutableResponse(response) => {
             let _ = validate_mutable_response(response)?;
+            Ok(FrameClass::Command)
+        }
+        local_core_envelope::Payload::DetailRequest(frame) => {
+            let request: crate::details::DetailRequest =
+                crate::details::decode(&frame.canonical_json)?;
+            if let crate::details::DetailRequest::DetailsDecide { decision } = request {
+                crate::details::reference(&decision.relation_id)?;
+            }
+            Ok(FrameClass::Command)
+        }
+        local_core_envelope::Payload::DetailResponse(frame) => {
+            let reply: crate::details::DetailReply = crate::details::decode(&frame.canonical_json)?;
+            reply.validate()?;
             Ok(FrameClass::Command)
         }
     }
@@ -812,7 +827,7 @@ pub fn validate_closed_envelope_wire(bytes: &[u8]) -> Result<(), RpcError> {
     let mut payload_tag = None;
     while cursor < bytes.len() {
         let field = next_wire_field(bytes, &mut cursor)?;
-        if !(1..=4).contains(&field.tag) {
+        if !(1..=4).contains(&field.tag) && ![16, 17].contains(&field.tag) {
             return Err(RpcError::UnknownEnvelopeField { tag: field.tag });
         }
         if payload_tag.replace(field.tag).is_some() {
@@ -821,6 +836,9 @@ pub fn validate_closed_envelope_wire(bytes: &[u8]) -> Result<(), RpcError> {
         let payload = nested_bytes(field)?;
         if field.tag == 3 {
             validate_mutable_request_wire(payload)?;
+        }
+        if [16, 17].contains(&field.tag) {
+            validate_ingest_command_wire(payload)?;
         }
     }
     payload_tag

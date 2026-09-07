@@ -1,5 +1,32 @@
 //! Safe Unix descriptor-relative implementation.
 
+pub(crate) fn read_detail_incarnation(root: &std::path::Path) -> std::io::Result<[u8; 32]> {
+    use std::io::Read;
+    let directory = rustix::fs::open(
+        root,
+        rustix::fs::OFlags::RDONLY
+            | rustix::fs::OFlags::DIRECTORY
+            | rustix::fs::OFlags::NOFOLLOW
+            | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )?;
+    let descriptor = rustix::fs::openat(
+        &directory,
+        "detail-incarnation.v1",
+        rustix::fs::OFlags::RDONLY | rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )?;
+    let file = std::fs::File::from(descriptor);
+    if !file.metadata()?.is_file() || file.metadata()?.len() != 32 {
+        return Err(std::io::Error::other("invalid detail incarnation file"));
+    }
+    let mut bytes = Vec::new();
+    file.take(33).read_to_end(&mut bytes)?;
+    bytes
+        .try_into()
+        .map_err(|_| std::io::Error::other("invalid detail incarnation length"))
+}
+
 use std::{
     ffi::OsStr,
     os::fd::OwnedFd,

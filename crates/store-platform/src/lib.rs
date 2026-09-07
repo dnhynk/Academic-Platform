@@ -14,6 +14,15 @@ mod unix;
 #[cfg(windows)]
 mod windows;
 
+/// Reads the fixed local incarnation marker without following its final component.
+/// The caller has already admitted the profile root; no raw handle escapes.
+pub fn read_detail_incarnation(profile_root: &Path) -> std::io::Result<[u8; 32]> {
+    #[cfg(windows)]
+    return windows::read_detail_incarnation(profile_root);
+    #[cfg(unix)]
+    return unix::read_detail_incarnation(profile_root);
+}
+
 /// Host-independent classification of a Windows path spelling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]

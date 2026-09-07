@@ -1,3 +1,76 @@
+crates/core/src/bin/detail_fixture.rs [priv] fn main() -> Result<(), Box<dyn std::error::Error>> |d1016e23ab1fbe5b
+crates/core/src/bin/detail_fixture.rs [priv] use std::{io::Read, path::PathBuf} |c19ba28f1271826b
+crates/core/src/details.rs [priv] #[cfg(test)] mod tests
+crates/core/src/details.rs [priv] #[derive(Clone)] struct BoundRelation |b9f6c72848042ddd
+crates/core/src/details.rs [priv] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DispositionRecord |a7f2aa374329b679
+crates/core/src/details.rs [priv] fn decision_receipt( batch: &VerifiedBatch, sequence: u64, request: &DetailDecisionRequest, ) -> Result<dto::DetailDecisionReceipt, DetailError> |f2344caa9936a9f3
+crates/core/src/details.rs [priv] fn decode_claim<T: serde::de::DeserializeOwned + Serialize>( claim: &Claim, ) -> Result<T, DetailError> |ca7f1b100f923c6d
+crates/core/src/details.rs [priv] fn profile_identity(profile: &SyntheticProfile) -> Result<String, DetailError> |e47cba8edf41d054
+crates/core/src/details.rs [priv] fn reply( state: DetailReplyState, reason: &str, details: Option<DetailState>, request: Option<&DetailDecisionRequest>, receipt_id: Option<[u8; 16]>, ) -> Result<DetailReply, DetailError> |047692d47fdeb04d
+crates/core/src/details.rs [priv] fn require_import_claim(actor: &Actor, claim: &Claim) -> Result<(), DetailError> |2cfcf7a6a6b6eb20
+crates/core/src/details.rs [priv] impl DetailContext
+crates/core/src/details.rs [priv] impl DetailContext :: fn audio( &self, service: &AcceptanceService, history: &History, request: &dto::DetailAudioRequest, now: TimestampMillis, ) -> Result<DetailReply, DetailError> |5de1051f5d768232
+crates/core/src/details.rs [priv] impl DetailContext :: fn commit( &self, profile: &SyntheticProfile, service: &mut AcceptanceService, request: &DetailDecisionRequest, envelope: &[u8], now: TimestampMillis, ) -> Result<DetailReply, DetailError> |b8ecb7f11bf943a9
+crates/core/src/details.rs [priv] impl DetailContext :: fn decide( &self, profile: &SyntheticProfile, service: &mut AcceptanceService, history: &History, request: &DetailDecisionRequest, now: TimestampMillis, ) -> Result<DetailReply, DetailError> |0f0f6155ea84e4b6
+crates/core/src/details.rs [priv] impl DetailContext :: fn history(&self, profile: &SyntheticProfile) -> Result<History, DetailError> |65f366c8ba18cdba
+crates/core/src/details.rs [priv] impl DetailContext :: fn project( &self, history: &History, selector: &DetailSelector, now: TimestampMillis, ) -> Result<Projection, DetailError> |3937554c80608fcc
+crates/core/src/details.rs [priv] impl std::fmt::Debug for DetailContext
+crates/core/src/details.rs [priv] impl std::fmt::Debug for DetailContext :: fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |5a1bc5f1a79d3aec
+crates/core/src/details.rs [priv] mod tests :: #[test] fn context_and_writer_cannot_cross_selected_profiles() -> TestResult |1c20d216d601db7e
+crates/core/src/details.rs [priv] mod tests :: #[test] fn distinct_relations_can_share_exact_source_bytes() -> TestResult |58bb5704dae6b13e
+crates/core/src/details.rs [priv] mod tests :: #[test] fn durable_reject_undo_retry_conflicts_and_restart_preserve_history() -> TestResult |75179bba239933f5
+crates/core/src/details.rs [priv] mod tests :: #[test] fn lost_ack_receipt_survives_source_removal_and_alias_reuse_without_leaking_overlay() -> TestResult |b586ed323ede6fbb
+crates/core/src/details.rs [priv] mod tests :: #[test] fn ordinary_restore_renews_incarnation_and_invalid_marker_is_not_regenerated() -> TestResult |41de7bdcd31fefa0
+crates/core/src/details.rs [priv] mod tests :: #[test] fn profile_audio_ranges_are_exact_and_bound_to_lecture_revision_and_profile() -> TestResult |2ab244001bf6eca9
+crates/core/src/details.rs [priv] mod tests :: #[test] fn same_path_replacement_has_a_new_incarnation_even_with_same_source_and_revision() -> TestResult |402553441ebb4c35
+crates/core/src/details.rs [priv] mod tests :: #[test] fn selected_empty_and_two_seeded_profiles_are_distinct() -> TestResult |52148b042a6a7f57
+crates/core/src/details.rs [priv] mod tests :: fn append_source_revision( profile: &SyntheticProfile, service: &mut AcceptanceService, mut corpus_claim: Claim, record: CorpusRecord, relation: Option<Claim>, seed: u8, ) -> TestResult |1b28cde00a3a3752
+crates/core/src/details.rs [priv] mod tests :: fn context(profile: &SyntheticProfile) -> Result<DetailContext, DetailError> |e3a978c40b2c11c0
+crates/core/src/details.rs [priv] mod tests :: fn corpus(label: &str) -> DetailCorpus |d8cc1e0a49548397
+crates/core/src/details.rs [priv] mod tests :: fn detail_test_root() -> std::path::PathBuf |00bd507be1b91515
+crates/core/src/details.rs [priv] mod tests :: fn open_service(profile: &SyntheticProfile) -> Result<AcceptanceService, DetailError> |3d34a7f4559311c5
+crates/core/src/details.rs [priv] mod tests :: fn read( context: &DetailContext, profile: &SyntheticProfile, service: &mut AcceptanceService, now: i64, ) -> Result<DetailState, DetailError> |68e19fd6554bab95
+crates/core/src/details.rs [priv] mod tests :: fn request( profile_id: &str, relation: &str, revision: u64, number: u8, action: DetailAction, ) -> DetailRequest |a133842bc2bc79de
+crates/core/src/details.rs [priv] mod tests :: static NEXT: AtomicU64 |33a00e420f25cedd
+crates/core/src/details.rs [priv] mod tests :: type TestResult = Result<(), Box<dyn std::error::Error>> |7a37f3abf03d7ba5
+crates/core/src/details.rs [priv] mod tests :: use academic_rpc::details::* |7fa2ec520b9e8820
+crates/core/src/details.rs [priv] mod tests :: use academic_store::{ path_policy::NativePathProbe, profile::{create_synthetic_profile, open_synthetic_profile}, queries::signed_history_snapshot, } |eaa13585d3248a27
+crates/core/src/details.rs [priv] mod tests :: use std::{ collections::BTreeMap, sync::atomic::{AtomicU64, Ordering}, } |2a76047522d6c71f
+crates/core/src/details.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/core/src/details.rs [priv] struct History |d010bd34cec4418b
+crates/core/src/details.rs [priv] struct Projection |0e186e4164117578
+crates/core/src/details.rs [priv] use academic_contracts::{DeviceAuthorization, VerifiedBatch, sign_batch, verify_signed_batch} |36eb9509cb9c0f90
+crates/core/src/details.rs [priv] use academic_domain::{ Actor, AuthorityClass, Claim, ClaimId, ClaimObject, ContentDigest, DomainId, EntityId, EpistemicStatus, Event, EventPayload, TimestampMillis, UnsignedBatch, ValidInterval, } |183c5dd987323034
+crates/core/src/details.rs [priv] use academic_rpc::details::{ self as dto, DetailAction, DetailCorpus, DetailDecisionRequest, DetailReply, DetailReplyState, DetailRequest, DetailSelector, DetailState, DispositionAction, Relation, RelationDecision, } |59ceaca94ce1bccd
+crates/core/src/details.rs [priv] use academic_store::{ accept::AcceptError, idempotency::{AcceptanceCommand, IdempotencyError}, profile::SyntheticProfile, queries::{QueryError, signed_history_snapshot}, } |76889e61bbb5ec13
+crates/core/src/details.rs [priv] use crate::{ Core, CoreError, service::{AcceptanceService, ServiceError}, } |75b65b3adf86ecae
+crates/core/src/details.rs [priv] use ed25519_dalek::SigningKey |70ab5f7e036912da
+crates/core/src/details.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/core/src/details.rs [priv] use std::{ collections::{BTreeMap, BTreeSet}, str::FromStr, } |2b5d7ce043c9786f
+crates/core/src/details.rs [pub(crate)] fn derived_id<T: FromStr<Err = academic_domain::DomainError>>( digest: ContentDigest, label: &str, ) -> Result<T, DetailError> |f523036e1421ac36
+crates/core/src/details.rs [pub(crate)] impl DetailContext :: fn referenced_artifacts( &self, profile: &SyntheticProfile, ) -> Result<Vec<academic_domain::ArtifactDescriptor>, DetailError> |7bb251b0cfc3392e
+crates/core/src/details.rs [pub] #[cfg(any(test, feature = "synthetic-detail-fixtures"))] mod fixture
+crates/core/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct CorpusRecord |0967b23c7dc1b908
+crates/core/src/details.rs [pub] #[derive(Debug, thiserror::Error)] enum DetailError |37b476c1a859b5af
+crates/core/src/details.rs [pub] const CORPUS_PREDICATE: &str |bd86e901fa456c59
+crates/core/src/details.rs [pub] const DISPOSITION_PREDICATE: &str |3a0ebd42b8b6cc26
+crates/core/src/details.rs [pub] const PROJECTOR_VERSION: &str |76c370eac45cca70
+crates/core/src/details.rs [pub] const RELATION_PREDICATE: &str |761a141b3dc577ef
+crates/core/src/details.rs [pub] impl DetailContext :: fn handle( &self, profile: &SyntheticProfile, service: &mut AcceptanceService, request: &DetailRequest, now: TimestampMillis, ) -> Result<DetailReply, DetailError> |c5ac121566f0de60
+crates/core/src/details.rs [pub] impl DetailContext :: fn new( profile: &SyntheticProfile, authorization: DeviceAuthorization, signing_key: SigningKey, mut trust: Vec<DeviceAuthorization>, ) -> Result<Self, DetailError> |db844dda5d4302f1
+crates/core/src/details.rs [pub] impl DetailContext :: fn profile_id(&self) -> &str |989df76243de7ee7
+crates/core/src/details.rs [pub] struct DetailContext |df1ad718194fb999
+crates/core/src/details/fixture.rs [priv] fn register_once( payloads: &mut Vec<EventPayload>, descriptor: academic_domain::ArtifactDescriptor, ) -> Result<(), DetailError> |396bccab8f421427
+crates/core/src/details/fixture.rs [priv] fn seal_source( service: &AcceptanceService, namespace: ContentDigest, label: &str, bytes: &[u8], payloads: &mut Vec<EventPayload>, ) -> Result<EvidenceId, DetailError> |553c2d8e51748728
+crates/core/src/details/fixture.rs [priv] use academic_contracts::sign_batch |02f207ffe9f1ddea
+crates/core/src/details/fixture.rs [priv] use academic_domain::{ Actor, ArtifactRepresentation, AuthorityClass, Claim, ClaimObject, Confidentiality, ContentDigest, EntityId, EpistemicStatus, Event, EventPayload, EvidenceId, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, MediaType, PredicateId, RetentionClass, ScopeDescriptor, TimestampMillis, UnsignedBatch, ValidInterval, } |ebac866174fb1ea6
+crates/core/src/details/fixture.rs [priv] use academic_rpc::details::{self as dto, DetailCorpus} |d01694e8cd1bf3ca
+crates/core/src/details/fixture.rs [priv] use academic_store::{ idempotency::AcceptanceCommand, profile::SyntheticProfile, queries::signed_history_snapshot, } |1e0e035c5a43458e
+crates/core/src/details/fixture.rs [priv] use academic_vault::{ArtifactIngestRequest, DomainKeyring} |7d21d1e360575b29
+crates/core/src/details/fixture.rs [priv] use crate::{ details::{ CORPUS_PREDICATE, CorpusRecord, DetailContext, DetailError, RELATION_PREDICATE, derived_id, }, service::AcceptanceService, } |e6d65f249d792db2
+crates/core/src/details/fixture.rs [priv] use std::{collections::BTreeMap, io::Cursor} |ff63d3137ceea535
+crates/core/src/details/fixture.rs [pub] fn import_synthetic_corpus( profile: &SyntheticProfile, corpus: DetailCorpus, ) -> Result<(), DetailError> |5f741c910700b900
+crates/core/src/details/fixture.rs [pub] fn import_synthetic_corpus_with_audio( profile: &SyntheticProfile, corpus: DetailCorpus, audio: BTreeMap<String, Vec<u8>>, ) -> Result<(), DetailError> |59168ed45d093d3a
 crates/core/src/lib.rs [priv] #[cfg(test)] mod tests
 crates/core/src/lib.rs [priv] #[derive(Debug)] struct RequiredNullableJsonSafeTimestamp(Option<TimestampMillis>) |6a06679e634a7c44
 crates/core/src/lib.rs [priv] #[derive(Debug, Clone, PartialEq, Eq, Serialize)] struct ReplayDigestMaterial<'a> |4072f12d4c92b59b
@@ -127,10 +200,11 @@ crates/core/src/lib.rs [pub] impl Core :: #[must_use] const fn ledger(&self) -> 
 crates/core/src/lib.rs [pub] impl Core :: #[must_use] fn new() -> Self |93a41b8182043330
 crates/core/src/lib.rs [pub] impl Core :: fn accept_signed_batch( &mut self, envelope_bytes: &[u8], authorization: &DeviceAuthorization, ) -> Result<(VerifiedBatch, AcceptanceReceipt), CoreError> |06be266fc8e3e0f6
 crates/core/src/lib.rs [pub] impl FixtureDocument :: fn validate_contract(&self) -> Result<(), CoreError> |1500fbc8d612dd57
+crates/core/src/lib.rs [pub] mod details
 crates/core/src/lib.rs [pub] mod local_service
 crates/core/src/lib.rs [pub] mod operations
 crates/core/src/lib.rs [pub] mod service
-crates/core/src/local_service.rs [priv] #[derive(Debug)] struct FixtureContext |6f18aa9d8217b94a
+crates/core/src/local_service.rs [priv] #[derive(Debug)] struct FixtureContext |9db7bd9a8ac72cf8
 crates/core/src/local_service.rs [priv] const RESPONSE_DIGEST_DOMAIN: &[u8] |bd5c87f3414aa2de
 crates/core/src/local_service.rs [priv] fn accepted_response( request: &MutableRequest, validated: &ValidatedMutableRequest, outcome: &AcceptanceOutcome, ) -> Result<MutableResponse, LocalServiceError> |c32c8e6f7d8d8f38
 crates/core/src/local_service.rs [priv] fn append_bytes(target: &mut Vec<u8>, value: &[u8]) |409165b485783c89
@@ -138,7 +212,7 @@ crates/core/src/local_service.rs [priv] fn append_range( bytes: &mut Vec<u8>, ra
 crates/core/src/local_service.rs [priv] fn mutable_response_digest(response: &MutableResponse) -> Result<ContentDigest, RpcError> |280a9237c86ed199
 crates/core/src/local_service.rs [priv] fn timestamp_now() -> Result<TimestampMillis, LocalServiceError> |c938df14b0769d54
 crates/core/src/local_service.rs [priv] impl FixtureContext
-crates/core/src/local_service.rs [priv] impl FixtureContext :: fn load() -> Result<Self, LocalServiceError> |ce304957827aeebe
+crates/core/src/local_service.rs [priv] impl FixtureContext :: fn load() -> Result<Self, LocalServiceError> |6950a06cf3ff4aa6
 crates/core/src/local_service.rs [priv] impl From<academic_store::error::StoreError> for LocalServiceError
 crates/core/src/local_service.rs [priv] impl From<academic_store::error::StoreError> for LocalServiceError :: fn from(error: academic_store::error::StoreError) -> Self |0ad1dba7684c6479
 crates/core/src/local_service.rs [priv] impl LocalService
@@ -146,24 +220,25 @@ crates/core/src/local_service.rs [priv] impl LocalService :: fn handle_mutable_r
 crates/core/src/local_service.rs [priv] impl LocalService :: fn reject( &self, request: &MutableRequest, reason: &'static str, revision: Option<u64>, ) -> Result<MutableResponse, LocalServiceError> |ffeef3d091fada87
 crates/core/src/local_service.rs [priv] impl LocalService :: fn seal_fixture_artifacts(&self) -> Result<(), LocalServiceError> |ab8daa947b4ff5e8
 crates/core/src/local_service.rs [priv] impl LocalServiceStartup
-crates/core/src/local_service.rs [priv] use academic_contracts::{DeviceAuthorization, VerifiedBatch, verify_signed_batch} |4d09b2d7876b3baa
+crates/core/src/local_service.rs [priv] use academic_contracts::{DeviceAuthorization, verify_signed_batch} |f62b4cec2b7fda78
 crates/core/src/local_service.rs [priv] use academic_domain::{ArtifactDescriptor, ContentDigest, EventPayload, TimestampMillis} |3051260b683a6039
 crates/core/src/local_service.rs [priv] use academic_rpc::{ RpcError, convert::{ValidatedMutableRequest, ValidatedWriteCommand, validate_mutable_request}, generated::{ AcceptanceRange, ImmutableReceipt, MutableRequest, MutableResponse, MutationStatus, }, } |a6774cc138887524
-crates/core/src/local_service.rs [priv] use academic_store::{ accept::{AcceptError, AcceptanceOutcome}, fault::{AcceptanceFaultInjector, NoFault}, idempotency::{AcceptanceCommand, IdempotencyError}, profile::SyntheticProfile, queries::{QueryError, batch_material, canonical_snapshot}, } |f73f4d27720f9155
+crates/core/src/local_service.rs [priv] use academic_store::{ accept::{AcceptError, AcceptanceOutcome}, fault::{AcceptanceFaultInjector, NoFault}, idempotency::{AcceptanceCommand, IdempotencyError}, profile::SyntheticProfile, queries::{QueryError, canonical_snapshot}, } |939df72818e436b1
 crates/core/src/local_service.rs [priv] use academic_vault::{ ArtifactIngestRequest, DomainKeyring, ReconcileOptions, ReconcileReport, ReconcileState, VaultError, } |1b60e384598d64be
 crates/core/src/local_service.rs [priv] use crate::{ CoreError, FixtureDocument, SYNTHETIC_ARTIFACT_BYTES, fixture_device_authorization, immutable_v2_fixture_document, service::{AcceptanceService, ServiceError}, verify_fixture_document, } |200f3d71f0481083
 crates/core/src/local_service.rs [priv] use std::{ collections::BTreeSet, io::Cursor, time::{SystemTime, UNIX_EPOCH}, } |724d1fa1aaac9576
 crates/core/src/local_service.rs [priv] use thiserror::Error |fc76a959c1db87ed
 crates/core/src/local_service.rs [pub(crate)] const FIXTURE_LOCATOR_KEY: &[u8] |3ed33ba2c9b40720
-crates/core/src/local_service.rs [pub] #[derive(Debug)] struct LocalService |065471fbc61bb396
+crates/core/src/local_service.rs [pub] #[derive(Debug)] struct LocalService |b6bcc2b60d5d4d35
 crates/core/src/local_service.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct LocalServiceStartup |0baf3aed5a9bfb39
-crates/core/src/local_service.rs [pub] #[derive(Debug, Error)] enum LocalServiceError |080b96b1088fe3ad
+crates/core/src/local_service.rs [pub] #[derive(Debug, Error)] enum LocalServiceError |0b61e493716d487f
 crates/core/src/local_service.rs [pub] const PHASE1_SYNTHETIC_FIXTURE_ID: &str |a3c74eff44996589
 crates/core/src/local_service.rs [pub] fn rejection_response( request: &MutableRequest, reason: &str, profile_revision: u64, ) -> Result<MutableResponse, LocalServiceError> |584788fcc94a8572
 crates/core/src/local_service.rs [pub] impl LocalService :: #[cfg(feature = "phase1-fault-injection")] fn handle_mutable_request_now_with_faults<F>( &mut self, request: &MutableRequest, faults: &F, ) -> Result<MutableResponse, LocalServiceError> where F: AcceptanceFaultInjector, |ddbceb637c4f3322
+crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_detail_request_now( &mut self, request: &academic_rpc::details::DetailRequest, ) -> Result<academic_rpc::details::DetailReply, LocalServiceError> |f7b2c77437721a25
 crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_mutable_request( &mut self, request: &MutableRequest, accepted_at: TimestampMillis, ) -> Result<MutableResponse, LocalServiceError> |44f961767ebd8930
 crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_mutable_request_now( &mut self, request: &MutableRequest, ) -> Result<MutableResponse, LocalServiceError> |4078cf3c5f684c4c
-crates/core/src/local_service.rs [pub] impl LocalService :: fn open( profile: SyntheticProfile, now: SystemTime, ) -> Result<(Self, LocalServiceStartup), LocalServiceError> |dffc50e15a508757
+crates/core/src/local_service.rs [pub] impl LocalService :: fn open( profile: SyntheticProfile, now: SystemTime, ) -> Result<(Self, LocalServiceStartup), LocalServiceError> |744c3373491217c1
 crates/core/src/local_service.rs [pub] impl LocalService :: fn open_reader( &self, ) -> Result<academic_store::connection::ReaderConnection, LocalServiceError> |f477222da6dbf66c
 crates/core/src/local_service.rs [pub] impl LocalServiceStartup :: #[must_use] const fn profile_revision(&self) -> u64 |80f9a1d15f3b3934
 crates/core/src/local_service.rs [pub] impl LocalServiceStartup :: #[must_use] const fn reconciliation(&self) -> &ReconcileReport |8da8e3034fd999b9
@@ -281,9 +356,10 @@ crates/core/src/service.rs [priv] use academic_store::{ accept::{AcceptError, Ac
 crates/core/src/service.rs [priv] use academic_vault::{DomainKeyring, Vault, VaultError} |bce3077658c1880c
 crates/core/src/service.rs [priv] use std::{error::Error, fmt} |da07ae2fa3e26f41
 crates/core/src/service.rs [pub(crate)] impl AcceptanceService :: fn accept_signed_command_with<F>( &mut self, command: AcceptanceCommand<'_>, authorization: &DeviceAuthorization, accepted_at: TimestampMillis, faults: &F, ) -> Result<AcceptanceOutcome, ServiceError> where F: AcceptanceFaultInjector, |440df0cd195f0891
+crates/core/src/service.rs [pub(crate)] impl AcceptanceService :: fn uses_profile(&self, profile: &SyntheticProfile) -> bool |673d069469877a7f
 crates/core/src/service.rs [pub] #[derive(Debug)] enum ServiceError |faeb00af4afc270a
 crates/core/src/service.rs [pub] impl AcceptanceService :: #[cfg(any(test, feature = "phase1-fault-injection"))] fn accept_signed_command_with_faults<F>( &mut self, command: AcceptanceCommand<'_>, authorization: &DeviceAuthorization, accepted_at: TimestampMillis, faults: &F, ) -> Result<AcceptanceOutcome, ServiceError> where F: AcceptanceFaultInjector, |70f1dcf5371086ba
 crates/core/src/service.rs [pub] impl AcceptanceService :: #[must_use] const fn vault(&self) -> &Vault |c33b431eb48f5cd9
 crates/core/src/service.rs [pub] impl AcceptanceService :: fn accept_signed_command( &mut self, command: AcceptanceCommand<'_>, authorization: &DeviceAuthorization, accepted_at: TimestampMillis, ) -> Result<AcceptanceOutcome, ServiceError> |b8f25870e43d3fa5
-crates/core/src/service.rs [pub] impl AcceptanceService :: fn open(profile: &SyntheticProfile, keyring: DomainKeyring) -> Result<Self, ServiceError> |9ce77a20341aa5d8
-crates/core/src/service.rs [pub] struct AcceptanceService |0efc2924cff8a69c
+crates/core/src/service.rs [pub] impl AcceptanceService :: fn open(profile: &SyntheticProfile, keyring: DomainKeyring) -> Result<Self, ServiceError> |469f23fb6bba4168
+crates/core/src/service.rs [pub] struct AcceptanceService |fb7aa7e1cee7b946

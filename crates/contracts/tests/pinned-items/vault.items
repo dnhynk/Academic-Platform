@@ -153,6 +153,7 @@ crates/vault/src/ingest.rs [pub(crate)] #[derive(Debug)] struct LiveObjectEviden
 crates/vault/src/ingest.rs [pub(crate)] fn hash_reader(mut source: impl Read, path: &Path) -> VaultResult<(ContentDigest, u64)> |d64e138aed8d9fb5
 crates/vault/src/ingest.rs [pub(crate)] fn ingest( vault: &Vault, request: &ArtifactIngestRequest, mut source: impl Read, ) -> VaultResult<SealedArtifactReceipt> |d2015ce3d1a3d9aa
 crates/vault/src/ingest.rs [pub(crate)] fn verify_object_with_lease( path: &Path, expected_digest: ContentDigest, expected_length: u64, lease: durability::SharedObjectLease, ) -> VaultResult<LiveObjectEvidence> |b85794aeef1144ce
+crates/vault/src/ingest.rs [pub(crate)] impl LiveObjectEvidence :: fn read_range( &mut self, path: &Path, offset: u64, length: usize, ) -> VaultResult<Vec<u8>> |b76b67677689c5a6
 crates/vault/src/ingest.rs [pub(crate)] impl LiveObjectEvidence :: fn revalidate( &mut self, path: &Path, expected_digest: ContentDigest, expected_length: u64, ) -> VaultResult<()> |272ab66dae571f83
 crates/vault/src/ingest.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ArtifactIngestRequest |13a9751bccd3cc8c
 crates/vault/src/ingest.rs [pub] impl ArtifactIngestRequest :: #[must_use] const fn artifact_id(&self) -> ArtifactId |a03a77dacbcf1e64
@@ -485,6 +486,7 @@ crates/vault/src/receipt.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] e
 crates/vault/src/receipt.rs [pub] impl SealedArtifactReceipt :: #[must_use] const fn descriptor(&self) -> &ArtifactDescriptor |4268918b78cfed56
 crates/vault/src/receipt.rs [pub] impl SealedArtifactReceipt :: #[must_use] const fn disposition(&self) -> SealDisposition |521edc0cb52433dd
 crates/vault/src/receipt.rs [pub] impl SealedArtifactReceipt :: #[must_use] fn object_path(&self) -> &Path |9d97f187fccd9c91
+crates/vault/src/receipt.rs [pub] impl SealedArtifactReceipt :: fn read_verified_range(&mut self, offset: u64, length: usize) -> VaultResult<Vec<u8>> |fff78835eecbdcff
 crates/vault/src/receipt.rs [pub] type SealedObjectCapability = SealedArtifactReceipt |386c4d1f5699a2a1
 crates/vault/src/reconcile.rs [priv] #[cfg(test)] mod tests
 crates/vault/src/reconcile.rs [priv] const DEFAULT_ORPHAN_GRACE: Duration |717ab7ab49c83dd1

@@ -4,6 +4,7 @@
 //! It accepts only canonically encoded batches whose signature matches an
 //! independently supplied device key.
 
+pub mod details;
 pub mod local_service;
 pub mod operations;
 pub mod service;
