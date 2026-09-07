@@ -80,7 +80,10 @@ impl NonSpeechEvidence {
     pub fn declared(reason: NonSpeechReason, decided_by: Actor) -> Result<Self, CoverageFault> {
         match &decided_by {
             Actor::User { .. } => Ok(Self { reason, decided_by }),
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => {
                 Err(CoverageFault::AutomaticActorCannotExclude)
             }
         }
@@ -160,7 +163,10 @@ impl RedactionPolicyRef {
                 basis,
                 decided_by,
             }),
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => {
                 Err(CoverageFault::AutomaticActorCannotExclude)
             }
         }
@@ -299,7 +305,10 @@ impl CaptureExclusion {
                 reason,
                 decided_by,
             }),
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => {
                 Err(CoverageFault::AutomaticActorCannotExclude)
             }
         }

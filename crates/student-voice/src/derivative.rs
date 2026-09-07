@@ -209,7 +209,10 @@ impl ManualExclusion {
     pub fn decided(index: usize, decided_by: Actor) -> Result<Self, RedactionFault> {
         match &decided_by {
             Actor::User { .. } => Ok(Self { index, decided_by }),
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => {
                 Err(RedactionFault::AutomaticActorCannotRedact)
             }
         }
@@ -697,9 +700,10 @@ impl RawAccessGrant {
                 purpose: purpose.to_owned(),
                 at,
             }),
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
-                Err(AccessRefusal::AutomaticActorCannotOpen)
-            }
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => Err(AccessRefusal::AutomaticActorCannotOpen),
         }
     }
 

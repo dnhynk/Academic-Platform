@@ -377,6 +377,7 @@ struct AcceptedEvidence {
 #[derive(Debug, Clone)]
 struct AcceptedClaim {
     claim: Claim,
+    actor: Actor,
     domain_id: DomainId,
     artifact_ids: BTreeSet<ArtifactId>,
 }
@@ -944,6 +945,7 @@ impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt>
             claim.id,
             AcceptedClaim {
                 claim: claim.clone(),
+                actor: event.actor.clone(),
                 domain_id: event.domain_id,
                 artifact_ids,
             },
@@ -975,6 +977,13 @@ impl<'transaction, 'connection, 'receipts, R: SealedObjectReceipt>
             relation.kind,
             &source.claim,
             &target.claim,
+        ) || !academic_ledger::prediction_relation_ownership_is_authorized(
+            &event.actor,
+            relation.kind,
+            &source.claim,
+            &source.actor,
+            &target.claim,
+            &target.actor,
         ) {
             return Err(LedgerError::UnauthorizedRelationEffect {
                 actor: event.actor.kind_name(),
@@ -1359,6 +1368,7 @@ fn load_claim(
         i64,
         Option<i64>,
         Vec<u8>,
+        Vec<u8>,
     );
     let row: Option<ClaimRow> = transaction
         .query_row(
@@ -1369,7 +1379,7 @@ fn load_claim(
                 "c.authority_class, c.epistemic_status, c.confidence_permille, ",
                 "c.prediction_metadata_version, c.prediction_observation_from, ",
                 "c.prediction_observation_to, c.prediction_sample_count, c.valid_from, c.valid_to, ",
-                "l.domain_id FROM claim c JOIN ledger_event l ON l.event_id = c.assertion_event_id ",
+                "l.domain_id, l.actor_canonical FROM claim c JOIN ledger_event l ON l.event_id = c.assertion_event_id ",
                 "WHERE c.claim_id = ?1"
             ),
             [id.as_bytes().as_slice()],
@@ -1379,7 +1389,7 @@ fn load_claim(
                     row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?, row.get(9)?,
                     row.get(10)?, row.get(11)?, row.get(12)?, row.get(13)?, row.get(14)?,
                     row.get(15)?, row.get(16)?, row.get(17)?, row.get(18)?, row.get(19)?,
-                    row.get(20)?,
+                    row.get(20)?, row.get(21)?,
                 ))
             },
         )
@@ -1438,9 +1448,11 @@ fn load_claim(
         )?,
         evidence_ids,
     };
-    claim.validate()?;
+    let actor = academic_contracts::decode_canonical_actor(&row.21)?;
+    claim.validate_for_actor(&actor)?;
     Ok(Some(AcceptedClaim {
         claim,
+        actor,
         domain_id: id_from_blob(row.20)?,
         artifact_ids,
     }))

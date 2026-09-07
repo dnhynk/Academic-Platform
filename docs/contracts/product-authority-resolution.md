@@ -105,3 +105,24 @@ downgrades a user-confirmed state.
 The duplicate-source case covers equal digests, unequal digests without an
 independence attestation, an absent digest, and the positive explicitly
 attested path.
+
+The resolved deterministic-forecast actor (`gate_7e4af1a2ad17`, schema v4) uses
+these existing Prediction ranks and no new precedence table. It may assert only
+`Prediction + Prediction`, with complete confidence, bounded versioned history,
+positive samples, source evidence and independent valid time. State-removing
+prediction relations additionally require the same model run or deterministic
+engine name/version for all three authors and the same semantic slot. This is
+checked at acceptance and again from canonical author provenance during SQL and
+in-memory resolution; a shared authority enum cannot erase another producer.
+User-selected objects remain protected and official arrivals remain separate
+claims, preserving forecast history.
+
+This closes a historical admission gap too: a v1/v2/v3 `ModelRun` prediction
+relation authored by another run still authenticates in its original wire
+version, but replay/acceptance now rejects the state-removing batch atomically.
+It is not rewritten or silently converted. Previously accepted SQL histories
+retain those rows; resolution ignores the unauthorized removal, so candidates
+coexist for user review. Thus frozen fixture semantics are preserved, while
+arbitrary previously admitted cross-run lifecycle effects are deliberately
+stricter. The compatibility receipt compares a synthetic v3 batch against the
+pre-change baseline and the current boundary.

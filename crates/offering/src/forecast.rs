@@ -204,10 +204,17 @@ impl AbstentionReason {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScoredForecast {
     calibrated: CalibratedConfidence,
+    actor: Box<academic_domain::Actor>,
     metadata: PredictionMetadata,
 }
 
 impl ScoredForecast {
+    /// The deterministic producer and exact evaluation inputs behind this forecast.
+    #[must_use]
+    pub fn actor(&self) -> &academic_domain::Actor {
+        &self.actor
+    }
+
     /// The calibrated probability, on `P2-M1`'s shared permille scale.
     #[must_use]
     pub const fn calibrated(&self) -> &CalibratedConfidence {
@@ -346,9 +353,18 @@ pub fn forecast(
     let features = FeatureVector::extract(history, window);
     let raw_units = features.raw_units();
 
-    let verdict = decide(history, window, &features, raw_units, policy, registry, now)?;
-    let root = root_status(&verdict, policy);
     let inputs = frozen_inputs(history, window, &features, raw_units, policy)?;
+    let verdict = decide(
+        history,
+        window,
+        &features,
+        raw_units,
+        policy,
+        registry,
+        now,
+        inputs.digest(),
+    )?;
+    let root = root_status(&verdict, policy);
     let tree = proof_tree(&features, &verdict, policy, root)?;
     let result = engine_result(&features, raw_units, &verdict, root)?;
     let outcome = EngineOutcome::new(result, tree, &inputs)
@@ -369,6 +385,7 @@ pub fn forecast(
 /// volatility rather than one change.
 const INSTRUCTOR_VOLATILITY_RUNS: usize = 3;
 
+#[allow(clippy::too_many_arguments)]
 fn decide(
     history: &CourseHistory,
     window: ObservationWindow,
@@ -377,6 +394,7 @@ fn decide(
     policy: ForecastPolicy,
     registry: &CalibrationRegistry,
     now: TimestampMillis,
+    frozen_inputs_digest: ContentDigest,
 ) -> Result<ForecastVerdict, OfferingError> {
     if features.positive_samples() == 0 {
         return Ok(ForecastVerdict::Abstained(AbstentionReason::NeverObserved));
@@ -415,8 +433,24 @@ fn decide(
     };
     let metadata =
         PredictionMetadata::new(disclosed_window(&seasonal)?, features.positive_samples())?;
+    // Calibration is an input to the published probability, even though it is
+    // not an input to the deterministic raw-score engine.
+    let frozen_inputs_digest = ContentDigest::sha256(
+        &[
+            b"academic.offering.prediction-inputs/v1\0".as_slice(),
+            frozen_inputs_digest.as_bytes().as_slice(),
+            calibrated.dataset_digest().as_bytes().as_slice(),
+        ]
+        .concat(),
+    );
     Ok(ForecastVerdict::Scored(ScoredForecast {
         calibrated,
+        actor: Box::new(academic_domain::Actor::DeterministicPrediction {
+            name: OFFERING_FORECAST_ENGINE_ID.to_owned(),
+            version: OFFERING_FORECAST_ENGINE_VERSION.to_string(),
+            frozen_inputs_digest,
+            rule_set_digest: rule_set_hash().digest(),
+        }),
         metadata,
     }))
 }

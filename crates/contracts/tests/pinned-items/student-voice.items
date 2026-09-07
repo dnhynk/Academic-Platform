@@ -108,11 +108,11 @@ crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] c
 crates/student-voice/src/derivative.rs [pub] impl KeptUtterance :: #[must_use] fn text(&self) -> &str |7fe9b569d6655b09
 crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: #[must_use] const fn decided_by(&self) -> &Actor |b598fbe979710f10
 crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: #[must_use] const fn index(&self) -> usize |a18f2202a3f231e5
-crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: fn decided(index: usize, decided_by: Actor) -> Result<Self, RedactionFault> |3f27bce44a4423ed
+crates/student-voice/src/derivative.rs [pub] impl ManualExclusion :: fn decided(index: usize, decided_by: Actor) -> Result<Self, RedactionFault> |8ee4d2caac67896d
 crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] const fn original_digest(&self) -> &ContentDigest |434ace0ab2da6620
 crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] const fn requested_by(&self) -> &Actor |33297f0127ffdb54
 crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: #[must_use] fn purpose(&self) -> &str |4e3767856e2c70cd
-crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: fn issued( original: &RestrictedOriginal, requested_by: Actor, purpose: &str, at: u64, ) -> Result<Self, AccessRefusal> |83570c8d297cd3c3
+crates/student-voice/src/derivative.rs [pub] impl RawAccessGrant :: fn issued( original: &RestrictedOriginal, requested_by: Actor, purpose: &str, at: u64, ) -> Result<Self, AccessRefusal> |29366a35dcd21ef5
 crates/student-voice/src/derivative.rs [pub] impl RawAccessLog :: #[must_use] const fn new() -> Self |cfe9e37864a3d19e
 crates/student-voice/src/derivative.rs [pub] impl RawAccessLog :: #[must_use] fn entries(&self) -> &[RawAccessRecord] |680886d5d76083cb
 crates/student-voice/src/derivative.rs [pub] impl RawAccessRecord :: #[must_use] const fn at(&self) -> u64 |368ea1dacb54a954
@@ -216,7 +216,7 @@ crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const 
 crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn outcome(&self) -> ReviewOutcome |451a469a9b60092b
 crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] const fn reviewed_by(&self) -> &Actor |868fdeadca3a15aa
 crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: #[must_use] fn addressed(&self) -> &[PiiClass] |b58e324bf777dc2c
-crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: fn recorded( capture_digest: ContentDigest, addressed: Vec<PiiClass>, outcome: ReviewOutcome, reviewed_by: Actor, at: u64, ) -> Result<Self, HoldRefusal> |47a98120bd018647
+crates/student-voice/src/hold.rs [pub] impl ReviewDecision :: fn recorded( capture_digest: ContentDigest, addressed: Vec<PiiClass>, outcome: ReviewOutcome, reviewed_by: Actor, at: u64, ) -> Result<Self, HoldRefusal> |36ea773f630013f9
 crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: #[must_use] const fn as_str(self) -> &'static str |ff2c269777a73815
 crates/student-voice/src/hold.rs [pub] impl ReviewOutcome :: const ALL: [Self; 2] |4f59f7e91d38ab17
 crates/student-voice/src/hold.rs [pub] impl ReviewedCapture<'_> :: #[must_use] const fn digest(&self) -> &ContentDigest |6f9c919d8ee114e4
@@ -317,7 +317,7 @@ crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn 
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn digest(&self) -> ContentDigest |da0b060b540ce27b
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn resolves(&self, reference: &RedactionPolicyRef) -> bool |b0748cc28a5c221a
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: #[must_use] fn targets(&self, speaker: Speaker) -> bool |b6885e5f5a8d5ab9
-crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn published( version: u32, basis: RedactionBasis, targeting: SpeakerTargeting, scope: RedactionScope, decided_by: Actor, ) -> Result<Self, RedactionFault> |9727675eaf72fedc
+crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn published( version: u32, basis: RedactionBasis, targeting: SpeakerTargeting, scope: RedactionScope, decided_by: Actor, ) -> Result<Self, RedactionFault> |836bf3f925f556b4
 crates/student-voice/src/policy.rs [pub] impl RedactionPolicy :: fn resolve(&self, reference: &RedactionPolicyRef) -> Result<(), RedactionFault> |f21c9e07f157be94
 crates/student-voice/src/policy.rs [pub] impl RedactionScope :: #[must_use] const fn as_str(self) -> &'static str |7222162fcdc654ef
 crates/student-voice/src/policy.rs [pub] impl RedactionScope :: const ALL: [Self; 1] |7634b0bd2d6ffb37

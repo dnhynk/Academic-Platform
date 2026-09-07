@@ -130,6 +130,10 @@ pub const MIGRATION_0014_SQL: &str =
 pub const MIGRATION_0015_SQL: &str =
     include_str!("../../../migrations/store/0015_phase2_requirement_rules.sql");
 
+/// Adds deterministic forecast actors without rewriting prior signed records.
+pub const MIGRATION_0016_SQL: &str =
+    include_str!("../../../migrations/store/0016_phase2_deterministic_prediction.sql");
+
 /// The Phase 2 encrypted-profile identity migration, embedded byte-for-byte.
 ///
 /// It replaces the Phase 1 identity singleton with the schema-2 one. The
@@ -173,6 +177,7 @@ pub const STORE_MIGRATION_SQL: &[&str] = &[
     MIGRATION_0012_SQL,
     MIGRATION_0014_SQL,
     MIGRATION_0015_SQL,
+    MIGRATION_0016_SQL,
 ];
 
 /// Result of invoking the forward-only migration runner.
@@ -352,8 +357,61 @@ fn apply_aggregate_migration_in_transaction(connection: &mut Connection) -> Stor
     transaction.execute_batch(MIGRATION_0012_SQL)?;
     transaction.execute_batch(MIGRATION_0014_SQL)?;
     transaction.execute_batch(MIGRATION_0015_SQL)?;
+    transaction.execute_batch(MIGRATION_0016_SQL)?;
     verify_integrity(&transaction)?;
     transaction.commit()?;
+    Ok(())
+}
+
+/// Applies only the forecast actor delta to an exact pre-0016 encrypted schema.
+/// Frozen plaintext schemas, partial schemas and repeated application are refused.
+///
+/// This explicit maintenance API is not called by normal profile opening. The
+/// caller owns an exclusive pre-listen handle, applies its store key before any
+/// page access, then calls this function and closes the handle before reopening
+/// the profile. Rejected input never enables checkpoint-on-close; the incoming
+/// foreign-key setting is preserved on both transaction success and failure.
+#[cfg(any(feature = "sqlcipher-store", test))]
+pub fn apply_prediction_actor_migration_pre_listen(connection: &mut Connection) -> StoreResult<()> {
+    disable_checkpoint_on_close(connection)?;
+    if !connection.is_autocommit() {
+        return Err(rusqlite::Error::InvalidQuery.into());
+    }
+    let base = [
+        MIGRATION_0001_SQL,
+        MIGRATION_0003_SQL,
+        MIGRATION_0004_SQL,
+        MIGRATION_0005_SQL,
+        MIGRATION_0006_SQL,
+        MIGRATION_0007_SQL,
+        MIGRATION_0009_SQL,
+        MIGRATION_0012_SQL,
+        MIGRATION_0014_SQL,
+        MIGRATION_0015_SQL,
+    ];
+    verify_integrity(connection)?;
+    crate::schema_fingerprint::verify_prior_store_schema_fingerprint(connection, &base)?;
+    // The plaintext unit harness builds the encrypted SQL shape without
+    // enabling the encrypted product lane. Real maintenance also admits the
+    // exact schema-2 identity, not merely its table definitions.
+    #[cfg(feature = "sqlcipher-store")]
+    verify_schema_identity(
+        &read_schema_identity(connection)?,
+        &read_pragma_snapshot(connection)?,
+    )?;
+    let foreign_keys: bool = connection.query_row("PRAGMA foreign_keys", [], |row| row.get(0))?;
+    connection.execute_batch("PRAGMA synchronous=FULL; PRAGMA trusted_schema=OFF; PRAGMA busy_timeout=250; PRAGMA recursive_triggers=ON;")?;
+    connection.execute_batch("PRAGMA foreign_keys = OFF;")?;
+    let applied: StoreResult<()> = (|| {
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
+        transaction.execute_batch(MIGRATION_0016_SQL)?;
+        verify_integrity(&transaction)?;
+        transaction.commit()?;
+        Ok(())
+    })();
+    connection.pragma_update(None, "foreign_keys", foreign_keys)?;
+    applied?;
+    enable_checkpoint_on_close(connection)?;
     Ok(())
 }
 

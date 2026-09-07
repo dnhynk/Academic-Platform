@@ -11,15 +11,16 @@ use academic_model_run::CalibratedConfidence;
 use academic_offering::{HistoricallyLikelyStanding, ScoredForecast};
 
 fn assemble(calibrated: CalibratedConfidence) {
-    let window = PredictionObservationWindow::new(
-        TimestampMillis::new(0),
-        TimestampMillis::new(1),
-    )
-    .unwrap();
+    let window =
+        PredictionObservationWindow::new(TimestampMillis::new(0), TimestampMillis::new(1)).unwrap();
     let metadata = PredictionMetadata::new(window, 1).unwrap();
     let _scored = ScoredForecast {
         calibrated,
         metadata,
+        actor: Box::new(academic_domain::Actor::DeterministicEngine {
+            name: "forged".into(),
+            version: "1".into(),
+        }),
     };
 }
 

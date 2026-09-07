@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://academic.local/schemas/deterministic-prediction-actor-v4.schema.json",
+  "title": "Event schema v4 deterministic prediction actor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "name", "version", "frozen_inputs_digest", "rule_set_digest"],
+  "properties": {
+    "kind": { "const": "DETERMINISTIC_PREDICTION" },
+    "name": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+/-]*$" },
+    "version": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+/-]*$" },
+    "frozen_inputs_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "rule_set_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

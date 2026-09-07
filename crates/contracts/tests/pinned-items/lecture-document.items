@@ -120,7 +120,7 @@ crates/lecture-document/src/disposition.rs [pub] #[derive(Debug, Clone, PartialE
 crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: #[must_use] const fn decided_by(&self) -> &Actor |b598fbe979710f10
 crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: #[must_use] const fn frame_seq(&self) -> u32 |e686e198a9cf9227
 crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: #[must_use] const fn reason(&self) -> CaptureExclusionReason |b4680632958bc3fd
-crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: fn declared( frame_seq: u32, reason: CaptureExclusionReason, decided_by: Actor, ) -> Result<Self, CoverageFault> |410b4006eec73654
+crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusion :: fn declared( frame_seq: u32, reason: CaptureExclusionReason, decided_by: Actor, ) -> Result<Self, CoverageFault> |7e6b305cc25d7cb4
 crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionLedger :: #[must_use] const fn new() -> Self |cfe9e37864a3d19e
 crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionLedger :: #[must_use] fn entries(&self) -> &[CaptureExclusion] |9d4745da1375314c
 crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionLedger :: #[must_use] fn for_frame(&self, frame_seq: u32) -> Option<&CaptureExclusion> |9cbf24d5f7d0d71e
@@ -129,7 +129,7 @@ crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionReason :: 
 crates/lecture-document/src/disposition.rs [pub] impl CaptureExclusionReason :: const ALL: [Self; 4] |2f7f3bf5c11f3dd3
 crates/lecture-document/src/disposition.rs [pub] impl NonSpeechEvidence :: #[must_use] const fn decided_by(&self) -> &Actor |b598fbe979710f10
 crates/lecture-document/src/disposition.rs [pub] impl NonSpeechEvidence :: #[must_use] const fn reason(&self) -> NonSpeechReason |02d5dda8481e7958
-crates/lecture-document/src/disposition.rs [pub] impl NonSpeechEvidence :: fn declared(reason: NonSpeechReason, decided_by: Actor) -> Result<Self, CoverageFault> |acb54642bcb091ed
+crates/lecture-document/src/disposition.rs [pub] impl NonSpeechEvidence :: fn declared(reason: NonSpeechReason, decided_by: Actor) -> Result<Self, CoverageFault> |fa27a22439e4b5bd
 crates/lecture-document/src/disposition.rs [pub] impl NonSpeechReason :: #[must_use] const fn as_str(self) -> &'static str |08e306e350571157
 crates/lecture-document/src/disposition.rs [pub] impl NonSpeechReason :: const ALL: [Self; 4] |1a07e644828db3b4
 crates/lecture-document/src/disposition.rs [pub] impl RedactionBasis :: #[must_use] const fn as_str(self) -> &'static str |282bfc554fab7050
@@ -137,7 +137,7 @@ crates/lecture-document/src/disposition.rs [pub] impl RedactionBasis :: const AL
 crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: #[must_use] const fn basis(&self) -> RedactionBasis |47e2ef1860c55b46
 crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: #[must_use] const fn decided_by(&self) -> &Actor |b598fbe979710f10
 crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: #[must_use] const fn policy_digest(&self) -> &ContentDigest |c216a210e07fdf7a
-crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: fn citing( policy_digest: ContentDigest, basis: RedactionBasis, decided_by: Actor, ) -> Result<Self, CoverageFault> |a6a15ccbb8fa714c
+crates/lecture-document/src/disposition.rs [pub] impl RedactionPolicyRef :: fn citing( policy_digest: ContentDigest, basis: RedactionBasis, decided_by: Actor, ) -> Result<Self, CoverageFault> |4b3cb0261f9c3d1c
 crates/lecture-document/src/disposition.rs [pub] impl TranscriptionFailure :: #[must_use] const fn cause(self) -> GapCause |b8e6bb14f5e0074e
 crates/lecture-document/src/disposition.rs [pub] impl TranscriptionFailure :: #[must_use] const fn frame_seq(self) -> u32 |5fa81faada8bbcc5
 crates/lecture-document/src/disposition.rs [pub] impl TranscriptionFailure :: fn citing_journal_gap( recovery: &JournalRecovery, frame_seq: u32, ) -> Result<Self, CoverageFault> |3c28620c2be2632c

@@ -68,6 +68,29 @@ pub(crate) fn verify_store_schema_fingerprint(
     }
 }
 
+/// Maintenance compares a prior schema without populating the current-schema cache.
+#[cfg(any(feature = "sqlcipher-store", test))]
+pub(crate) fn verify_prior_store_schema_fingerprint(
+    connection: &Connection,
+    migration_sql: &[&str],
+) -> StoreResult<()> {
+    let reference = Connection::open_in_memory()?;
+    for step in migration_sql {
+        reference.execute_batch(step)?;
+    }
+    let expected = schema_fingerprint(&reference)?;
+    let actual = schema_fingerprint(connection)?;
+    if actual.canonical_bytes == expected.canonical_bytes {
+        Ok(())
+    } else {
+        Err(StoreError::SchemaIdentityMismatch {
+            component: "schema.structural_fingerprint.v1",
+            expected: expected.digest.to_string(),
+            actual: actual.digest.to_string(),
+        })
+    }
+}
+
 /// Counts every non-SQLite-created schema object. This is deliberately broader
 /// than tables so a version-zero view, index, or trigger — including one whose
 /// name carries SQLite's reserved prefix — cannot be migrated in place before

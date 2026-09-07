@@ -732,7 +732,7 @@ fn every_settlement_door_is_named() -> TestResult {
 /// The receipt is what separates a user from an automatic actor, so what can be
 /// called on it is pinned as text: an inherent `pub fn forge` would name no
 /// trait and would pass a rule that only looked at trait implementations.
-const WHOLE_USER_DECISION: &str = "impl UserDecision { pub fn by(actor: &Actor) -> Result<Self, WorkflowError> { match actor { Actor::User { user_id } => Ok(Self { user_id: u128::from_be_bytes(*user_id.as_bytes()), }), Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => { Err(WorkflowError::AutomaticActor { actor: actor.kind_name(), }) } } } #[must_use] pub const fn user_id(&self) -> u128 { self.user_id } }";
+const WHOLE_USER_DECISION: &str = "impl UserDecision { pub fn by(actor: &Actor) -> Result<Self, WorkflowError> { match actor { Actor::User { user_id } => Ok(Self { user_id: u128::from_be_bytes(*user_id.as_bytes()), }), Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } | Actor::DeterministicPrediction { .. } => Err(WorkflowError::AutomaticActor { actor: actor.kind_name(), }), } } #[must_use] pub const fn user_id(&self) -> u128 { self.user_id } }";
 
 #[test]
 fn the_user_receipt_has_one_producer() -> TestResult {

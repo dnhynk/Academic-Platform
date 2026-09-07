@@ -346,7 +346,7 @@ mod encrypted {
         migration::{
             MIGRATION_0001_SQL, MIGRATION_0003_SQL, MIGRATION_0004_SQL, MIGRATION_0005_SQL,
             MIGRATION_0006_SQL, MIGRATION_0007_SQL, MIGRATION_0009_SQL, MIGRATION_0012_SQL,
-            MIGRATION_0014_SQL, MIGRATION_0015_SQL, STORE_MIGRATION_SQL,
+            MIGRATION_0014_SQL, MIGRATION_0015_SQL, MIGRATION_0016_SQL, STORE_MIGRATION_SQL,
         },
         path_policy::{
             PathEvidence, PathProbe, PathProbeFailure, ProfileAccess, ProfileRootState,
@@ -444,7 +444,7 @@ mod encrypted {
         // The lane runs the Phase 1 migration and the aggregate migration as
         // well: the canonical tables and their append-only triggers are present
         // and still bite.
-        assert_eq!(STORE_MIGRATION_SQL.len(), 10);
+        assert_eq!(STORE_MIGRATION_SQL.len(), 11);
         assert_eq!(STORE_MIGRATION_SQL[0], MIGRATION_0001_SQL);
         assert_eq!(STORE_MIGRATION_SQL[1], MIGRATION_0003_SQL);
         assert_eq!(STORE_MIGRATION_SQL[2], MIGRATION_0004_SQL);
@@ -455,6 +455,7 @@ mod encrypted {
         assert_eq!(STORE_MIGRATION_SQL[7], MIGRATION_0012_SQL);
         assert_eq!(STORE_MIGRATION_SQL[8], MIGRATION_0014_SQL);
         assert_eq!(STORE_MIGRATION_SQL[9], MIGRATION_0015_SQL);
+        assert_eq!(STORE_MIGRATION_SQL[10], MIGRATION_0016_SQL);
         let append_only = must_fail(
             connection.execute(
                 "UPDATE schema_meta SET schema_semver = '2.0.1' WHERE singleton = 1",
@@ -1393,6 +1394,349 @@ mod encrypted {
             matches!(locked, StoreError::EncryptedStoreLocked { .. }),
             "unexpected error: {locked}"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn prior_keyed_profile_requires_explicit_prediction_maintenance_and_reopens()
+    -> Result<(), Box<dyn Error>> {
+        use academic_store::migration::{
+            apply_prediction_actor_migration_pre_listen, read_schema_identity,
+        };
+        let root = TempRoot::new("prior-prediction")?;
+        let workdir = root.workdir();
+        let key = harness::provision(&workdir)?;
+        let profile = harness::create_profile(&workdir, &key)?;
+        // Keep the real encrypted profile marker/path policy and build its old
+        // database from the committed pre-0016 SQL, not a weakened current DDL.
+        fs::remove_file(profile.database_path())?;
+        let mut connection = Connection::open_with_flags(
+            profile.database_path(),
+            OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE,
+        )?;
+        harness::apply_raw_key(&connection, &key)?;
+        connection.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA trusted_schema=OFF; PRAGMA busy_timeout=250; PRAGMA temp_store=MEMORY; PRAGMA recursive_triggers=ON;")?;
+        for sql in &STORE_MIGRATION_SQL[..10] {
+            connection.execute_batch(sql)?;
+        }
+        connection.execute(
+            "INSERT INTO schema_meta VALUES (1, ?1, 2, '2.0.0', 2, 0, 2, 0, ?2, ?3, ?4, 1)",
+            rusqlite::params![
+                academic_store::STORE_FORMAT_UUID.as_slice(),
+                ENCRYPTED_STORE_STORAGE_MODE,
+                ENCRYPTED_STORE_STORAGE_ENCRYPTION,
+                [0x24_u8; 32].as_slice()
+            ],
+        )?;
+        connection.pragma_update(
+            None,
+            "application_id",
+            academic_store::SQLITE_APPLICATION_ID,
+        )?;
+        connection.pragma_update(None, "user_version", 2)?;
+        // An opaque frozen signed envelope exercises byte retention here;
+        // signed acceptance/replay and complete closure rows have separate tests.
+        let fixture = include_str!("../../../schemas/fixtures/signed-batch-v3.json");
+        let hex = fixture
+            .split("\"signed_batch_cbor_hex\": \"")
+            .nth(1)
+            .and_then(|value| value.split('"').next())
+            .ok_or("missing frozen envelope")?;
+        let envelope = hex
+            .as_bytes()
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|pair| u8::from_str_radix(std::str::from_utf8(pair)?, 16).map_err(Into::into))
+            .collect::<Result<Vec<u8>, Box<dyn Error>>>()?;
+        connection.execute("INSERT INTO ledger_batch VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1, 1, NULL, 100, 3, 1, 1, 100)",
+            rusqlite::params![[1_u8;16].as_slice(), &envelope, [2_u8;32].as_slice(), b"synthetic projection".as_slice(),
+                [3_u8;32].as_slice(), [4_u8;32].as_slice(), [5_u8;64].as_slice(), [6_u8;16].as_slice()])?;
+        let identity = read_schema_identity(&connection)?;
+        connection.set_db_config(
+            rusqlite::config::DbConfig::SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE,
+            true,
+        )?;
+        drop(connection);
+        let old_bytes = fs::read(profile.database_path())?;
+        let wal = profile
+            .database_path()
+            .with_file_name(format!("{STORE_DATABASE_FILE}-wal"));
+        let old_wal = fs::read(&wal)?;
+        assert!(!old_wal.is_empty());
+        assert!(
+            harness::open_profile(&workdir, &key).is_err(),
+            "normal opening must not imply upgrade"
+        );
+        assert_eq!(fs::read(profile.database_path())?, old_bytes);
+        assert_eq!(fs::read(&wal)?, old_wal);
+        connection = harness::open_keyed(profile.database_path(), &key)?;
+        connection.execute_batch("PRAGMA foreign_keys=ON; BEGIN;")?;
+        assert!(apply_prediction_actor_migration_pre_listen(&mut connection).is_err());
+        assert!(
+            !connection.is_autocommit(),
+            "refusal must not end caller's transaction"
+        );
+        connection.execute_batch("ROLLBACK;")?;
+        assert_eq!(
+            connection.query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))?,
+            1
+        );
+        // A mid-rebuild DDL denial rolls the public maintenance transaction back.
+        connection.authorizer(Some(|context: rusqlite::hooks::AuthContext<'_>| {
+            if matches!(
+                context.action,
+                rusqlite::hooks::AuthAction::DropTable {
+                    table_name: "claim_relation"
+                }
+            ) {
+                rusqlite::hooks::Authorization::Deny
+            } else {
+                rusqlite::hooks::Authorization::Allow
+            }
+        }))?;
+        assert!(apply_prediction_actor_migration_pre_listen(&mut connection).is_err());
+        connection.authorizer(
+            None::<fn(rusqlite::hooks::AuthContext<'_>) -> rusqlite::hooks::Authorization>,
+        )?;
+        assert_eq!(
+            connection.query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))?,
+            1
+        );
+        drop(connection);
+        assert_eq!(
+            fs::read(profile.database_path())?,
+            old_bytes,
+            "failed migration rewrote the main database"
+        );
+        assert_eq!(
+            fs::read(&wal)?,
+            old_wal,
+            "failed migration rewrote committed WAL"
+        );
+        connection = harness::open_keyed(profile.database_path(), &key)?;
+        connection.execute_batch("PRAGMA foreign_keys=ON;")?;
+        apply_prediction_actor_migration_pre_listen(&mut connection)?;
+        assert_eq!(read_schema_identity(&connection)?, identity);
+        assert_eq!(
+            connection.query_row("SELECT signed_envelope FROM ledger_batch", [], |row| row
+                .get::<_, Vec<u8>>(0))?,
+            envelope
+        );
+        assert_eq!(
+            connection.query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))?,
+            1
+        );
+        assert!(cipher::cipher_integrity_report(&connection)?.is_empty());
+        drop(connection);
+        let reopened = harness::open_profile(&workdir, &key)?;
+        let current_bytes = fs::read(reopened.database_path())?;
+        connection = harness::open_keyed(reopened.database_path(), &key)?;
+        connection.execute_batch("PRAGMA foreign_keys=OFF;")?;
+        assert!(apply_prediction_actor_migration_pre_listen(&mut connection).is_err());
+        assert_eq!(
+            connection.query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))?,
+            0
+        );
+        drop(connection);
+        assert_eq!(fs::read(reopened.database_path())?, current_bytes);
+        Ok(())
+    }
+
+    #[test]
+    fn deterministic_forecast_signed_acceptance_and_sql_resolution_preserve_ownership()
+    -> Result<(), Box<dyn Error>> {
+        use academic_contracts::{DeviceAuthorization, sign_batch, verify_signed_batch};
+        use academic_domain::{
+            Actor, ArtifactId, AuthorityClass, Claim, ClaimObject, ConfidencePermille,
+            Confidentiality, ContentDigest, DomainId, EpistemicStatus, Event, EventPayload,
+            EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, MediaType,
+            PermissionLineageId, PredicateId, PredictionMetadata, PredictionObservationWindow,
+            RetentionClass, ScopeDescriptor, TimestampMillis, UnsignedBatch, ValidInterval,
+        };
+        use academic_ledger::{AuthorityPolicy, ResolutionQuery};
+        use academic_store::{
+            idempotency::AcceptanceCommand,
+            queries::{batch_material, resolve},
+        };
+        use academic_vault::{ArtifactIngestRequest, DomainKeyring, Vault};
+        let root = TempRoot::new("prediction-actor")?;
+        let workdir = root.workdir();
+        let key = harness::provision(&workdir)?;
+        let profile = harness::create_profile(&workdir, &key)?;
+        let domain: DomainId = "01900000-0000-7000-8000-000000000001".parse()?;
+        let scope = "01900000-0000-7000-8000-000000000002".parse()?;
+        let mut keyring = DomainKeyring::new();
+        keyring.insert(domain, b"synthetic prediction locator")?;
+        let vault = Vault::open(profile.root(), keyring)?;
+        let receipt = vault.ingest(
+            &ArtifactIngestRequest::new(
+                "01900000-0000-7000-8000-000000000003".parse::<ArtifactId>()?,
+                MediaType::parse("text/plain")?,
+                domain,
+                Confidentiality::Personal,
+                RetentionClass::UserManaged,
+                "01900000-0000-7000-8000-000000000004".parse::<PermissionLineageId>()?,
+            ),
+            b"SYNTHETIC FORECAST HISTORY".as_slice(),
+        )?;
+        let mut descriptor = receipt.descriptor().clone();
+        let locator = EvidenceLocator::TextBytes {
+            source_digest: descriptor.content_digest,
+            start: 0,
+            end: descriptor.byte_length,
+        };
+        descriptor.evidence_representations = vec![academic_domain::ArtifactRepresentation {
+            locator: locator.clone(),
+            content_digest: descriptor.content_digest,
+            byte_length: descriptor.byte_length,
+        }];
+        let evidence_id = "01900000-0000-7000-8000-000000000005".parse()?;
+        let actor = Actor::DeterministicPrediction {
+            name: "forecast".to_owned(),
+            version: "1".to_owned(),
+            frozen_inputs_digest: descriptor.content_digest,
+            rule_set_digest: ContentDigest::sha256(b"synthetic rule"),
+        };
+        let importer = Actor::Importer {
+            name: "synthetic".to_owned(),
+            version: "1".to_owned(),
+        };
+        let first = Claim {
+            id: "01900000-0000-7000-8000-000000000006".parse()?,
+            subject_entity_id: "01900000-0000-7000-8000-000000000007".parse()?,
+            predicate_id: PredicateId::parse("academic.offering.status")?,
+            object: ClaimObject::Boolean(true),
+            scope_id: scope,
+            authority_class: AuthorityClass::Prediction,
+            epistemic_status: EpistemicStatus::Prediction,
+            confidence: Some(ConfidencePermille::new(720)?),
+            prediction_metadata: Some(PredictionMetadata::new(
+                PredictionObservationWindow::new(
+                    TimestampMillis::new(10),
+                    TimestampMillis::new(20),
+                )?,
+                1,
+            )?),
+            valid_time: ValidInterval::new(
+                TimestampMillis::new(100),
+                Some(TimestampMillis::new(200)),
+            )?,
+            evidence_ids: vec![evidence_id],
+        };
+        let mut second = first.clone();
+        second.id = "01900000-0000-7000-8000-000000000008".parse()?;
+        let payloads = [
+            (
+                importer.clone(),
+                EventPayload::ScopeRegistered(ScopeDescriptor {
+                    id: scope,
+                    domain_id: domain,
+                    label: "synthetic forecast".to_owned(),
+                }),
+            ),
+            (
+                importer.clone(),
+                EventPayload::ArtifactRegistered(descriptor.clone()),
+            ),
+            (
+                importer,
+                EventPayload::EvidenceRegistered(EvidenceItem {
+                    id: evidence_id,
+                    artifact_id: descriptor.id,
+                    locator,
+                    excerpt_digest: descriptor.content_digest,
+                    role: EvidenceRole::Supports,
+                    strength: EvidenceStrength::Direct,
+                    extraction_method: "synthetic".to_owned(),
+                    extractor_version: "1".to_owned(),
+                }),
+            ),
+            (actor.clone(), EventPayload::ClaimAsserted(first.clone())),
+            (actor.clone(), EventPayload::ClaimAsserted(second.clone())),
+            (
+                actor,
+                EventPayload::ClaimRelated(academic_domain::ClaimRelation {
+                    source_claim_id: second.id,
+                    target_claim_id: first.id,
+                    kind: academic_domain::ClaimRelationKind::Supersedes,
+                    scope_id: scope,
+                }),
+            ),
+        ];
+        let mut events = Vec::new();
+        for (index, (actor, payload)) in payloads.into_iter().enumerate() {
+            events.push(Event {
+                id: format!("01900000-0000-7000-8000-{:012x}", 100 + index).parse()?,
+                origin_seq: u64::try_from(index)? + 1,
+                origin_observed_at: TimestampMillis::new(30),
+                actor,
+                domain_id: domain,
+                payload,
+            });
+        }
+        let mut batch = UnsignedBatch {
+            schema_version: academic_domain::EVENT_SCHEMA_VERSION,
+            batch_id: "01900000-0000-7000-8000-000000000009".parse()?,
+            device_id: "01900000-0000-7000-8000-00000000000a".parse()?,
+            origin_seq_start: 1,
+            origin_seq_end: 6,
+            previous_batch_hash: None,
+            origin_created_at: TimestampMillis::new(30),
+            events,
+        };
+        let seed = [0x37_u8; 32];
+        let signing_key = seed.as_slice().try_into()?;
+        let envelope = sign_batch(&batch, &signing_key)?;
+        let auth = DeviceAuthorization::new(
+            batch.device_id,
+            "01900000-0000-7000-8000-00000000000b".parse()?,
+            signing_key.verifying_key(),
+        );
+        let mut store = profile.open_acceptance_store(&key)?;
+        batch.events[5].actor = Actor::ModelRun {
+            run_id: "01900000-0000-7000-8000-00000000000c".parse()?,
+        };
+        let invalid = sign_batch(&batch, &signing_key)?;
+        let command = |bytes| AcceptanceCommand {
+            request_id: [1; 16],
+            client_instance_id: [2; 16],
+            idempotency_key: [3; 32],
+            expected_revision: Some(0),
+            envelope_bytes: bytes,
+        };
+        let denied = store.accept_verified_batch(
+            &verify_signed_batch(&invalid, &auth)?,
+            command(&invalid),
+            TimestampMillis::new(31),
+            &vault,
+        );
+        assert!(denied.is_err());
+        let verified = verify_signed_batch(&envelope, &auth)?;
+        store.accept_verified_batch(
+            &verified,
+            command(&envelope),
+            TimestampMillis::new(31),
+            &vault,
+        )?;
+        let reader = profile.open_reader(&key)?;
+        assert_eq!(
+            batch_material(&reader, batch.batch_id)?.signed_envelope,
+            envelope
+        );
+        let result = resolve(
+            &reader,
+            &ResolutionQuery {
+                subject_entity_id: first.subject_entity_id,
+                predicate_id: first.predicate_id.clone(),
+                scope_id: scope,
+                valid_at: TimestampMillis::new(100),
+                known_at_accept_seq: 6,
+                policy: AuthorityPolicy::OfficialFact,
+            },
+        )?;
+        assert_eq!(result.active_claim_ids, vec![second.id]);
+        assert_eq!(result.rejected_claim_ids, vec![first.id]);
         Ok(())
     }
 

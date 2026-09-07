@@ -69,14 +69,18 @@ jobs:
         run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v2.json
       - name: Replay immutable v2 fixture
         run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v2.json
-      - name: Emit deterministic v3 fixture
-        run: cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v3.json
+      - name: Verify immutable v3 fixture and upcast
+        run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json
+      - name: Replay immutable v3 fixture
+        run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v3.json
+      - name: Emit deterministic v4 fixture
+        run: cargo run --locked --quiet -p academic-cli -- fixture emit --output schemas/fixtures/signed-batch-v4.json
       - name: Reject fixture byte drift
         run: git diff --exit-code -- schemas/fixtures/
-      - name: Verify deterministic v3 fixture
-        run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v3.json
-      - name: Replay deterministic v3 fixture
-        run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v3.json
+      - name: Verify deterministic v4 fixture
+        run: cargo run --locked --quiet -p academic-cli -- fixture verify schemas/fixtures/signed-batch-v4.json
+      - name: Replay deterministic v4 fixture
+        run: cargo run --locked --quiet -p academic-cli -- fixture replay schemas/fixtures/signed-batch-v4.json
 
   # `academic-store`'s default tests are 36-46% of the default lane's test
   # execution on every Windows reading, and they are file-backed: the store

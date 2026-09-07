@@ -86,11 +86,12 @@ impl UserDecision {
             Actor::User { user_id } => Ok(Self {
                 user_id: u128::from_be_bytes(*user_id.as_bytes()),
             }),
-            Actor::DeterministicEngine { .. } | Actor::ModelRun { .. } | Actor::Importer { .. } => {
-                Err(WorkflowError::AutomaticActor {
-                    actor: actor.kind_name(),
-                })
-            }
+            Actor::DeterministicEngine { .. }
+            | Actor::ModelRun { .. }
+            | Actor::Importer { .. }
+            | Actor::DeterministicPrediction { .. } => Err(WorkflowError::AutomaticActor {
+                actor: actor.kind_name(),
+            }),
         }
     }
 

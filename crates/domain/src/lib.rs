@@ -1356,6 +1356,7 @@ impl Claim {
 
     /// Enforces the fail-closed actor/authority/status matrix for signed events.
     pub fn validate_for_actor(&self, actor: &Actor) -> Result<(), DomainError> {
+        actor.validate()?;
         self.validate()?;
         let permitted = match actor {
             Actor::User { .. } => self.authority_class == AuthorityClass::UserExplicit,
@@ -1366,6 +1367,10 @@ impl Claim {
                 self.authority_class,
                 AuthorityClass::ModelInference | AuthorityClass::Prediction
             ),
+            Actor::DeterministicPrediction { .. } => {
+                self.authority_class == AuthorityClass::Prediction
+                    && self.epistemic_status == EpistemicStatus::Prediction
+            }
             Actor::Importer { .. } => matches!(
                 self.authority_class,
                 AuthorityClass::Official
@@ -1389,10 +1394,27 @@ impl Claim {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Actor {
-    User { user_id: EntityId },
-    DeterministicEngine { name: String, version: String },
-    ModelRun { run_id: EntityId },
-    Importer { name: String, version: String },
+    User {
+        user_id: EntityId,
+    },
+    DeterministicEngine {
+        name: String,
+        version: String,
+    },
+    ModelRun {
+        run_id: EntityId,
+    },
+    Importer {
+        name: String,
+        version: String,
+    },
+    /// A deterministic forecast, with the exact inputs and rules it evaluated.
+    DeterministicPrediction {
+        name: String,
+        version: String,
+        frozen_inputs_digest: ContentDigest,
+        rule_set_digest: ContentDigest,
+    },
 }
 
 impl Actor {
@@ -1409,6 +1431,23 @@ impl Actor {
                 }
                 Ok(())
             }
+            Self::DeterministicPrediction { name, version, .. } => {
+                for value in [name, version] {
+                    if !value
+                        .as_bytes()
+                        .first()
+                        .is_some_and(u8::is_ascii_alphanumeric)
+                        || !value
+                            .bytes()
+                            .all(|byte| byte.is_ascii_alphanumeric() || b"._+/-".contains(&byte))
+                    {
+                        return Err(DomainError::InvalidEventPayload(
+                            "invalid deterministic prediction identity".to_owned(),
+                        ));
+                    }
+                }
+                Ok(())
+            }
         }
     }
 
@@ -1420,6 +1459,7 @@ impl Actor {
             Self::DeterministicEngine { .. } => "DETERMINISTIC_ENGINE",
             Self::ModelRun { .. } => "MODEL_RUN",
             Self::Importer { .. } => "IMPORTER",
+            Self::DeterministicPrediction { .. } => "DETERMINISTIC_PREDICTION",
         }
     }
 }
@@ -1819,6 +1859,16 @@ impl Event {
     /// Validates nested payload invariants before signing or acceptance.
     pub fn validate(&self) -> Result<(), DomainError> {
         self.actor.validate()?;
+        if matches!(self.actor, Actor::DeterministicPrediction { .. })
+            && !matches!(
+                self.payload,
+                EventPayload::ClaimAsserted(_) | EventPayload::ClaimRelated(_)
+            )
+        {
+            return Err(DomainError::InvalidEventPayload(
+                "deterministic prediction actor can only assert or relate forecasts".to_owned(),
+            ));
+        }
         match &self.payload {
             EventPayload::ScopeRegistered(scope) => {
                 if scope.domain_id != self.domain_id {
@@ -1880,10 +1930,12 @@ impl Event {
 pub const EVENT_SCHEMA_VERSION_V1: u16 = 1;
 /// Legacy signed-batch semantic version with durable user-decision applicability.
 pub const EVENT_SCHEMA_VERSION_V2: u16 = 2;
-/// Current signed-batch semantic version whose arm table carries [`V3_EVENT_KINDS`].
+/// Historical signed-batch version that introduced [`V3_EVENT_KINDS`].
 pub const EVENT_SCHEMA_VERSION_V3: u16 = 3;
+/// Additive actor provenance contract; the event payload tag set is unchanged.
+pub const EVENT_SCHEMA_VERSION_V4: u16 = 4;
 /// Signed-batch semantic version emitted by current writers.
-pub const EVENT_SCHEMA_VERSION: u16 = EVENT_SCHEMA_VERSION_V3;
+pub const EVENT_SCHEMA_VERSION: u16 = EVENT_SCHEMA_VERSION_V4;
 
 /// An origin-authored batch before canonical framing and signature verification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

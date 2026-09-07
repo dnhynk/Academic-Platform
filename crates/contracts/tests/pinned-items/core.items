@@ -32,6 +32,7 @@ crates/core/src/lib.rs [priv] const FINDING_ID: &str |ac04300fcf5aade1
 crates/core/src/lib.rs [priv] const FIXTURE_SIGNING_SEED: [u8; 32] |a82a468b28862cf1
 crates/core/src/lib.rs [priv] const IMMUTABLE_V1_FIXTURE_JSON: &str |3e6a0aa81d6deab2
 crates/core/src/lib.rs [priv] const IMMUTABLE_V2_FIXTURE_JSON: &str |d963a4143df927ae
+crates/core/src/lib.rs [priv] const IMMUTABLE_V3_FIXTURE_JSON: &str |03dff74c88879c2a
 crates/core/src/lib.rs [priv] const JSON_SAFE_INTEGER_MAX: u64 |117cfb400b3a3a3a
 crates/core/src/lib.rs [priv] const LECTURE_DOCUMENT_ID: &str |1e8546c817e8fcc6
 crates/core/src/lib.rs [priv] const LECTURE_SESSION_ID: &str |2cea12a1c1c48139
@@ -50,7 +51,7 @@ crates/core/src/lib.rs [priv] const TRANSCRIPT_VERSION_ID: &str |8fbe3551b248b81
 crates/core/src/lib.rs [priv] const USER_ID: &str |80f25a450fcddb05
 crates/core/src/lib.rs [priv] fn assert_fixture_integer_lexemes(input: &str) -> Result<(), CoreError> |9c83be2c55e4ee88
 crates/core/src/lib.rs [priv] fn bounded_decimal_magnitude(digits: &[u8], limit: usize) -> usize |26e7050db634b51a
-crates/core/src/lib.rs [priv] fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> |455cd7173cfb3132
+crates/core/src/lib.rs [priv] fn build_unsigned_fixture_batch() -> Result<UnsignedBatch, CoreError> |4ba741da4bdbbe41
 crates/core/src/lib.rs [priv] fn claim( id: &str, subject: &str, predicate: &str, object: ClaimObject, provenance: (AuthorityClass, EpistemicStatus, Option<u16>), prediction_metadata: Option<PredictionMetadata>, valid_time: ValidInterval, ) -> Result<Claim, DomainError> |4b05bbc5fabe7d8e
 crates/core/src/lib.rs [priv] fn deserialize_json_safe_timestamp<'de, D>(deserializer: D) -> Result<TimestampMillis, D::Error> where D: Deserializer<'de>, |8c9880bd85fdad36
 crates/core/src/lib.rs [priv] fn deserialize_json_safe_u16<'de, D>(deserializer: D) -> Result<u16, D::Error> where D: Deserializer<'de>, |8fb83d7294053052
@@ -78,22 +79,24 @@ crates/core/src/lib.rs [priv] impl<'de> Deserialize<'de> for RequiredNullableJso
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn adr_003_has_at_least_twelve_bitemporal_examples() -> Result<(), Box<dyn std::error::Error>> |2a6b2a58ef14ca09
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn artifact_locator_is_keyed_and_not_plain_digest() -> Result<(), Box<dyn std::error::Error>> |7ed82ad89fade650
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn committed_fixture_relation_event_round_trips_protobuf_losslessly() -> Result<(), Box<dyn std::error::Error>> |86db1eb07553ff98
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn deterministic_prediction_replays_with_owned_relations_and_closed_evidence() -> Result<(), Box<dyn std::error::Error>> |738a97be1f0519d3
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn equal_rank_disagreement_is_reported_as_conflict_without_a_false_winner() -> Result<(), Box<dyn std::error::Error>> |1802f0ca11c3d92a
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn fixture_replay_rejects_wrapper_supplied_trust_anchor() -> Result<(), Box<dyn std::error::Error>> |fadf7f81da4ffecc
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn historical_cross_run_prediction_bytes_authenticate_but_removal_is_rejected() -> Result<(), Box<dyn std::error::Error>> |26546bcaca94961e
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn normalized_repository_locator_rejects_parent_escape() |d03f6c2f08d6ca43
-crates/core/src/lib.rs [priv] mod tests :: #[test] fn rust_fixture_wrapper_matches_schema_minimum_unique_and_exact_property_rules() -> Result<(), Box<dyn std::error::Error>> |00c382b19018629f
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn rust_fixture_wrapper_matches_schema_minimum_unique_and_exact_property_rules() -> Result<(), Box<dyn std::error::Error>> |a277c580fd072c9c
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn shared_prediction_metadata_corpus_matches_rust_wrapper_semantics() -> Result<(), Box<dyn std::error::Error>> |707a9d14bf518ea2
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn shared_raw_and_integer_fixture_corpora_match_rust_typed_deserialization() -> Result<(), Box<dyn std::error::Error>> |8fd08a6d6ef51a56
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn signed_fixture_round_trips_and_replays() -> Result<(), Box<dyn std::error::Error>> |f3df841c36f16ecd
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn strict_utf8_byte_corpus_rejects_before_json_deserialization() -> Result<(), Box<dyn std::error::Error>> |736998686af99400
 crates/core/src/lib.rs [priv] mod tests :: #[test] fn t010_v1_fixture_verification_is_constrained_to_the_exact_frozen_golden() -> Result<(), Box<dyn std::error::Error>> |bdfd549f1ec1df0e
-crates/core/src/lib.rs [priv] mod tests :: #[test] fn t093_v3_fixture_matches_the_deterministic_builder() -> Result<(), Box<dyn std::error::Error>> |954f2b09ac834e59
-crates/core/src/lib.rs [priv] mod tests :: #[test] fn v1_and_v2_bytes_remain_byte_identical() -> Result<(), Box<dyn std::error::Error>> |3af5521db036670c
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn t093_v3_fixture_matches_the_deterministic_builder() -> Result<(), Box<dyn std::error::Error>> |45516252f1225c26
+crates/core/src/lib.rs [priv] mod tests :: #[test] fn v1_and_v2_bytes_remain_byte_identical() -> Result<(), Box<dyn std::error::Error>> |5df98274262658c5
 crates/core/src/lib.rs [priv] mod tests :: use academic_contracts::{ decode_claim_relation_event_proto, encode_claim_relation_event_proto, } |758c431d14803734
 crates/core/src/lib.rs [priv] mod tests :: use academic_domain::LogicalPath |75b6ee61f4eb43fd
 crates/core/src/lib.rs [priv] mod tests :: use super::* |19dbf88307d136ac
 crates/core/src/lib.rs [priv] use academic_contracts::{ ContractError, DeviceAuthorization, VerifiedBatch, sign_batch, verify_signed_batch, } |8d70961a3bd74e34
-crates/core/src/lib.rs [priv] use academic_domain::{ Actor, ArtifactDescriptor, ArtifactRepresentation, AttemptRegistration, AuditRegistration, AuthorityClass, BatchId, CapturePermissionRegistration, Claim, ClaimId, ClaimObject, ClaimRelation, ClaimRelationKind, ConfidencePermille, Confidentiality, ConsentRegistration, ContentDigest, CourseRevisionRegistration, CurriculumVersionRegistration, DecisionAction, DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2, EVENT_SCHEMA_VERSION_V3, EgressDecisionRegistration, EntityIdentityChangeRegistration, EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, FindingRegistration, FreshnessBand, LectureDocumentRegistration, LectureSessionRegistration, MasteryLevel, MediaType, ModelRunRegistration, OfferingRegistration, PREDICTION_METADATA_VERSION_V1, PredicateId, PredictionMetadata, PredictionObservationWindow, ProposalDispositionRegistration, RequirementSetRegistration, ResolutionSlot, RetentionActionRegistration, RetentionClass, ScopeDescriptor, ScopeId, SnapshotRegistration, TimestampMillis, TranscriptVersionRegistration, UserDecision, ValidInterval, VaultLocator, } |6198c209aac6e00a
+crates/core/src/lib.rs [priv] use academic_domain::{ Actor, ArtifactDescriptor, ArtifactRepresentation, AttemptRegistration, AuditRegistration, AuthorityClass, BatchId, CapturePermissionRegistration, Claim, ClaimId, ClaimObject, ClaimRelation, ClaimRelationKind, ConfidencePermille, Confidentiality, ConsentRegistration, ContentDigest, CourseRevisionRegistration, CurriculumVersionRegistration, DecisionAction, DecisionId, DeviceId, DomainError, EVENT_SCHEMA_VERSION_V1, EVENT_SCHEMA_VERSION_V2, EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4, EgressDecisionRegistration, EntityIdentityChangeRegistration, EpistemicStatus, EventPayload, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, FindingRegistration, FreshnessBand, LectureDocumentRegistration, LectureSessionRegistration, MasteryLevel, MediaType, ModelRunRegistration, OfferingRegistration, PREDICTION_METADATA_VERSION_V1, PredicateId, PredictionMetadata, PredictionObservationWindow, ProposalDispositionRegistration, RequirementSetRegistration, ResolutionSlot, RetentionActionRegistration, RetentionClass, ScopeDescriptor, ScopeId, SnapshotRegistration, TimestampMillis, TranscriptVersionRegistration, UserDecision, ValidInterval, VaultLocator, } |809c595060d6d7d0
 crates/core/src/lib.rs [priv] use academic_ledger::{ AcceptanceReceipt, AuthorityPolicy, EVENT_SCHEMA_VERSION, LedgerError, LedgerState, ResolutionQuery, UnsignedBatch, event, } |59812905c81093ab
 crates/core/src/lib.rs [priv] use ed25519_dalek::SigningKey |70ab5f7e036912da
 crates/core/src/lib.rs [priv] use serde::{Deserialize, Deserializer, Serialize, de} |dc61b32e439c93bb
@@ -107,22 +110,23 @@ crates/core/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, De
 crates/core/src/lib.rs [pub] #[derive(Debug, Default)] struct Core |f5f969c39b31a33e
 crates/core/src/lib.rs [pub] #[derive(Debug, Error)] enum CoreError |b929aab3b09a6b6b
 crates/core/src/lib.rs [pub] const FINAL_VALID_AT: TimestampMillis |2dfc8759f30ac2aa
-crates/core/src/lib.rs [pub] const FIXTURE_VERSION: u16 |9bece099b3db2e1b
+crates/core/src/lib.rs [pub] const FIXTURE_VERSION: u16 |9bdbe099b3ccbae8
 crates/core/src/lib.rs [pub] const FIXTURE_VERSION_V1: u16 |87c426bd568660e8
 crates/core/src/lib.rs [pub] const FIXTURE_VERSION_V2: u16 |de20037498469bea
 crates/core/src/lib.rs [pub] const FIXTURE_VERSION_V3: u16 |e65136ba8db24720
+crates/core/src/lib.rs [pub] const FIXTURE_VERSION_V4: u16 |1de71d66f13addfe
 crates/core/src/lib.rs [pub] const SYNTHETIC_ARTIFACT_BYTES: &[u8] |6f01ad2c87b19169
-crates/core/src/lib.rs [pub] fn build_fixture_document() -> Result<FixtureDocument, CoreError> |1231fdfa8b3d8965
+crates/core/src/lib.rs [pub] fn build_fixture_document() -> Result<FixtureDocument, CoreError> |ee7131fde704684a
 crates/core/src/lib.rs [pub] fn fixture_json(document: &FixtureDocument) -> Result<String, CoreError> |f0875b0fbc0b0b7b
 crates/core/src/lib.rs [pub] fn immutable_v2_fixture_document() -> Result<FixtureDocument, CoreError> |d1b6cff6ad9bfe94
 crates/core/src/lib.rs [pub] fn parse_fixture_document_json(input: &[u8]) -> Result<FixtureDocument, CoreError> |a5b61b0c3b8177f6
 crates/core/src/lib.rs [pub] fn replay_fixture_document( document: &FixtureDocument, valid_at: TimestampMillis, known_at_accept_seq: u64, ) -> Result<ReplaySummary, CoreError> |63765b177a78a388
 crates/core/src/lib.rs [pub] fn time_travel_cases() -> Result<Vec<TimeTravelCase>, DomainError> |0bc0ffe44bf52cf6
-crates/core/src/lib.rs [pub] fn verify_fixture_document(document: &FixtureDocument) -> Result<ReplaySummary, CoreError> |b9a62baac59a6991
+crates/core/src/lib.rs [pub] fn verify_fixture_document(document: &FixtureDocument) -> Result<ReplaySummary, CoreError> |5753843ccbb7e971
 crates/core/src/lib.rs [pub] impl Core :: #[must_use] const fn ledger(&self) -> &LedgerState |5fcd492350fe4bb1
 crates/core/src/lib.rs [pub] impl Core :: #[must_use] fn new() -> Self |93a41b8182043330
 crates/core/src/lib.rs [pub] impl Core :: fn accept_signed_batch( &mut self, envelope_bytes: &[u8], authorization: &DeviceAuthorization, ) -> Result<(VerifiedBatch, AcceptanceReceipt), CoreError> |06be266fc8e3e0f6
-crates/core/src/lib.rs [pub] impl FixtureDocument :: fn validate_contract(&self) -> Result<(), CoreError> |f3e8893c3434e7be
+crates/core/src/lib.rs [pub] impl FixtureDocument :: fn validate_contract(&self) -> Result<(), CoreError> |1500fbc8d612dd57
 crates/core/src/lib.rs [pub] mod local_service
 crates/core/src/lib.rs [pub] mod operations
 crates/core/src/lib.rs [pub] mod service

@@ -797,9 +797,23 @@ fn the_migration_is_applied_and_guarded() -> Result<(), Box<dyn Error>> {
     assert!(migration_rs.contains("MIGRATION_0007_SQL"));
     assert_eq!(
         identifier_occurrences(&rust_code_only(&migration_rs), "MIGRATION_0007_SQL"),
-        3,
+        4,
         "MIGRATION_0007_SQL is declared, listed in STORE_MIGRATION_SQL, and applied \
-         pre-listen; a fourth or a missing site changes which profiles carry it"
+         pre-listen, plus one read-only prior-schema reference for prediction-actor maintenance"
+    );
+    let prediction = whole_item(
+        &migration_rs,
+        "pub fn apply_prediction_actor_migration_pre_listen(",
+    )
+    .ok_or("prediction migration boundary missing")?;
+    assert_eq!(
+        identifier_occurrences(&rust_code_only(&prediction), "MIGRATION_0007_SQL"),
+        1
+    );
+    assert!(prediction.contains("verify_prior_store_schema_fingerprint"));
+    assert!(
+        !prediction.contains("execute_batch(MIGRATION_0007_SQL)"),
+        "prediction maintenance must not apply model-run migration twice"
     );
     Ok(())
 }

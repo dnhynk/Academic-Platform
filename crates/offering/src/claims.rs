@@ -52,18 +52,10 @@
 //! `EpistemicStatus` variant; it answers the question at the level section
 //! 30.1 asks it.
 //!
-//! # What this crate found one step out
-//!
-//! ADR-003's actor matrix in `academic_domain::Claim::validate_for_actor`
-//! gives `AuthorityClass::Prediction` to `Actor::ModelRun` alone.
-//! `Actor::DeterministicEngine` carries `AuthorityClass::DeterministicEngine`
-//! and nothing else, so **a deterministic historical forecaster cannot sign
-//! its own prediction claim as a deterministic engine** -- while section
-//! 30.1's own example of a `PREDICTION` claim is a *historical pattern* and
-//! not a model. This crate does not widen the matrix; it records the
-//! divergence, and `a_forecast_claim_is_not_signable_by_a_deterministic_engine`
-//! executes it so a later widening is a deliberate change rather than a
-//! silent one.
+//! The resolved gate_7e4af1a2ad17 gives deterministic forecasts their own
+//! provenance-bearing actor. The original deterministic-result actor remains
+//! restricted to deterministic facts; a forecast is validated against its
+//! own producer before it leaves this boundary.
 
 use academic_domain::{
     AuthorityClass, Claim, ClaimId, ClaimObject, ConfidencePermille, EntityId, EpistemicStatus,
@@ -148,7 +140,7 @@ pub fn forecast_claim(
         valid_time: subject.valid_time,
         evidence_ids,
     };
-    claim.validate()?;
+    claim.validate_for_actor(scored.actor())?;
     Ok(claim)
 }
 

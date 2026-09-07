@@ -1,15 +1,17 @@
-error[E0451]: fields `calibrated` and `metadata` of struct `ScoredForecast` are private
-  --> tests/compile_fail/a_scored_forecast_cannot_be_assembled.rs:21:9
+error[E0451]: fields `calibrated`, `metadata` and `actor` of struct `ScoredForecast` are private
+  --> tests/compile_fail/a_scored_forecast_cannot_be_assembled.rs:18:9
    |
-20 |     let _scored = ScoredForecast {
+17 |     let _scored = ScoredForecast {
    |                   -------------- in this type
-21 |         calibrated,
+18 |         calibrated,
    |         ^^^^^^^^^^ private field
-22 |         metadata,
+19 |         metadata,
    |         ^^^^^^^^ private field
+20 |         actor: Box::new(academic_domain::Actor::DeterministicEngine {
+   |         ^^^^^ private field
 
 error[E0451]: field `scored` of struct `HistoricallyLikelyStanding` is private
-  --> tests/compile_fail/a_scored_forecast_cannot_be_assembled.rs:28:48
+  --> tests/compile_fail/a_scored_forecast_cannot_be_assembled.rs:29:48
    |
-28 |     let _likely = HistoricallyLikelyStanding { scored };
+29 |     let _likely = HistoricallyLikelyStanding { scored };
    |                                                ^^^^^^ private field
