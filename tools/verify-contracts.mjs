@@ -7,6 +7,9 @@ import Ajv2020 from "ajv/dist/2020.js";
 import protobuf from "protobufjs";
 
 import { parsePnpmLockYaml } from "./restricted-yaml.mjs";
+import { assertH1Workflow } from "./h1-workflow-policy.mjs";
+
+await assertH1Workflow();
 import {
   GENERATED_PATH,
   REGISTRY_PATH,
