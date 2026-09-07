@@ -142,6 +142,10 @@ export function readProbe(bundle, rows) {
   let hits = 0;
   for (const path of artifacts) {
     const bytes = readFileSync(join(bundle, "probe/artifacts", path));
+    if (path.endsWith(".sqlite3")) {
+      assert(bytes.length >= 16, "database artifact is shorter than its header");
+      assert(!bytes.subarray(0, 16).equals(Buffer.from("SQLite format 3\0")), "plaintext SQLite database header in probe artifacts");
+    }
     for (const canary of canaries) { let offset = 0; while ((offset = bytes.indexOf(canary, offset)) !== -1) { hits += 1; offset += 1; } }
   }
   assert.equal(hits, observed.plaintext_canary_hits);
@@ -162,6 +166,26 @@ function nativeLicenses(bundle) {
     output.push({ name, status: "observed", path, ...observed, version: receipt.bundled_sources[name].version, versionKind: "locked-source-not-runtime-provider" });
   }
   write(join(bundle, "licenses.json"), output);
+}
+export function validateLicenses(bundle, paths, admission, complete) {
+  const notices = json(join(bundle, "licenses.json"));
+  assert(Array.isArray(notices), "native notices must be an array");
+  const required = ["openssl", "sqlcipher_community"];
+  const names = notices.map((notice) => notice.name);
+  assert.equal(new Set(names).size, names.length, "duplicate native notice name");
+  for (const notice of notices) {
+    assert(required.includes(notice.name), "unknown native notice name");
+    assert(["observed", "missing"].includes(notice.status), "unknown native notice status");
+    if (notice.status === "missing") { assert(!complete && typeof notice.reason === "string" && notice.reason.length > 0, "missing native notice"); continue; }
+    assert.equal(notice.version, admission.bundled_sources[notice.name].version, "native notice version differs from admission");
+    assert.equal(notice.versionKind, "locked-source-not-runtime-provider", "native notice must not claim a runtime provider version");
+    assert.equal(notice.path, `licenses/${notice.name}.txt`);
+    assert(paths.includes(notice.path), "notice reference must be an inventoried artifact");
+    assert.equal(notice.sha256, admission.bundled_sources[notice.name].license_sha256);
+    assert.deepEqual(digestFile(join(bundle, notice.path)), { bytes: notice.bytes, sha256: notice.sha256 });
+  }
+  if (complete) assert.deepEqual(names.toSorted(), required, "complete component evidence requires both distinct native notices");
+  return notices;
 }
 function retainTestBinaries(bundle, rows, targetArch) {
   const binaries = [];
@@ -278,7 +302,7 @@ export function validate(bundle, expected) {
     total += actual.bytes;
   }
   assert(total <= MAX_TOTAL);
-  assert.deepEqual(discovered, [...paths, "manifest.json"].sort(), "unlisted artifact");
+  assert.deepEqual(discovered.toSorted(), [...paths, "manifest.json"].sort(), "unlisted artifact");
   const source = json(join(bundle, manifest.source));
   assert.equal(source.commit, manifest.commit); assert.equal(source.dirty, "");
   assert.equal(new Set(source.files.map((item) => item.path)).size, source.files.length);
@@ -288,12 +312,7 @@ export function validate(bundle, expected) {
     assert.deepEqual(digestFile(join(bundle, retained)), { bytes: item.bytes, sha256: item.sha256 });
   }
   const admission = json(join(bundle, "dependency-admission.json"));
-  for (const notice of json(join(bundle, "licenses.json"))) {
-    if (notice.status !== "observed") continue;
-    assert(paths.includes(notice.path), "notice reference must be an inventoried artifact");
-    assert.equal(notice.sha256, admission.bundled_sources[notice.name].license_sha256);
-    assert.deepEqual(digestFile(join(bundle, notice.path)), { bytes: notice.bytes, sha256: notice.sha256 });
-  }
+  validateLicenses(bundle, paths, admission, manifest.status === "component_checks_passed");
   const rows = manifest.commands.map((path) => { assert(paths.includes(path)); return json(join(bundle, path)); });
   assert.equal(new Set(rows.map((row) => row.id)).size, rows.length);
   const allowed = new Set(["rustc", "cargo", "perl", "cc", "make", "windows-prerequisites", "windows-toolchain", "fetch", "probe", ...commandPlan().map((command) => command.id)]);
@@ -333,7 +352,6 @@ export function validate(bundle, expected) {
     const binary = `binaries/sqlcipher_store_probe${host[1] === "win32" ? ".exe" : ""}`;
     assert(paths.includes(binary));
     assert.equal(binaryArchitecture(readFileSync(join(bundle, binary))), host[2]);
-    assert.equal(json(join(bundle, "licenses.json")).filter((notice) => notice.status === "observed").length, 2);
     const binaries = json(join(bundle, "binaries.json"));
     for (const [command, target] of [["store-tests", "encrypted_profile"], ["portability-tests", "encrypted_backup"], ["encrypted-crash", "encrypted_crash"]]) assert(binaries.some((binary) => binary.command === command && binary.target === target), "required test binary missing");
   }

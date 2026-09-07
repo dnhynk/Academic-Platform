@@ -97,3 +97,10 @@ device-key fixture, recovers keys from a 256-bit recovery secret and verifies a
 new empty destination's real encrypted database/object closure. It simulates
 fresh-machine conditions on the same runner; it is neither a second physical
 machine nor a 24-word phrase-codec test.
+
+The two native notice rows must have the exact distinct names `openssl` and
+`sqlcipher_community`, with admitted source versions, notice byte hashes and
+`locked-source-not-runtime-provider` version kind. Duplicate or substituted
+notice rows cannot satisfy completeness. Retained database scan files are also
+checked for the plaintext SQLite header; absence of that header alone is not
+encryption or H1 acceptance proof.

@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, readFileSync, symlinkSync, truncateSync, writeF
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { binaryArchitecture, collect, commandStatus, readProbe, testOutcomes, validate } from "./h1-evidence.mjs";
+import { binaryArchitecture, collect, commandStatus, readProbe, testOutcomes, validate, validateLicenses } from "./h1-evidence.mjs";
 import { validateH1Workflow } from "./h1-workflow-policy.mjs";
 
 const workflow = readFileSync(".github/workflows/h1-evidence.yml", "utf8");
@@ -50,14 +50,14 @@ test("probe observations reconcile actual retained bytes, versions and counts", 
   // Measurement-validator fixture only: these tiny files are not an encryption run.
   const root = mkdtempSync(join(tmpdir(), "h1-probe-validator-"));
   mkdirSync(join(root, "probe/artifacts"), { recursive: true });
-  writeFileSync(join(root, "probe/artifacts/synthetic.bin"), Buffer.from([1, 2, 3, 4]));
+  writeFileSync(join(root, "probe/artifacts/synthetic.sqlite3"), Buffer.alloc(32, 42));
   writeFileSync(join(root, "canaries.txt"), "# Test corpus\nsynthetic-canary\n");
   writeFileSync(join(root, "dependency-admission.json"), JSON.stringify({ bundled_sources: { sqlcipher_community: { version: "4.14.0", sqlite_version: "3.51.3" } } }));
   const observation = {
     lane: "sqlcipher-store", adr_002_accepted: false, production_data_allowed: false,
     schema_version: 2, storage_encryption: "SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000",
     cipher_page_size: 4096, kdf_iter: 256000, cipher_hmac_algorithm: "HMAC_SHA512", cipher_kdf_algorithm: "PBKDF2_HMAC_SHA512",
-    plaintext_canary_hits: 0, files_scanned: 1, bytes_scanned: 4, canary_count: 1, readable_canary_count: 1,
+    plaintext_canary_hits: 0, files_scanned: 1, bytes_scanned: 32, canary_count: 1, readable_canary_count: 1,
     cipher_version: "4.14.0 community", sqlite_version: "3.51.3",
   };
   const rows = [{ id: "probe", status: "passed", stdout: "probe.json" }];
@@ -67,10 +67,39 @@ test("probe observations reconcile actual retained bytes, versions and counts", 
     save({ ...observation, [key]: value }); assert.throws(() => readProbe(root, rows), key);
   }
   save({ ...observation, bytes_scanned: 16 });
-  writeFileSync(join(root, "probe/artifacts/synthetic.bin"), "synthetic-canary");
+  writeFileSync(join(root, "probe/artifacts/synthetic.sqlite3"), "synthetic-canary");
   assert.throws(() => readProbe(root, rows), "a claimed zero must fail the independent byte scan");
+  writeFileSync(join(root, "probe/artifacts/synthetic.sqlite3"), "SQLite format 3\0");
+  assert.throws(() => readProbe(root, rows), /plaintext SQLite database header/u);
   assert.equal(readProbe(root, [{ ...rows[0], status: "failed" }]), null);
   assert.equal(readProbe(root, []), null);
+});
+
+test("native notices require the distinct admitted set and source-version metadata", () => {
+  const root = mkdtempSync(join(tmpdir(), "h1-notice-validator-"));
+  mkdirSync(join(root, "licenses"));
+  const admission = { bundled_sources: {} };
+  const notices = ["sqlcipher_community", "openssl"].map((name) => {
+    const path = `licenses/${name}.txt`, bytes = Buffer.from(`synthetic ${name} notice fixture`);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    writeFileSync(join(root, path), bytes);
+    admission.bundled_sources[name] = { version: "synthetic-version", license_sha256: sha256 };
+    return { name, status: "observed", path, bytes: bytes.length, sha256, version: "synthetic-version", versionKind: "locked-source-not-runtime-provider" };
+  });
+  const paths = notices.map((notice) => notice.path);
+  const check = (rows, complete = true) => {
+    writeFileSync(join(root, "licenses.json"), JSON.stringify(rows));
+    return validateLicenses(root, paths, admission, complete);
+  };
+  assert.deepEqual(check(notices), notices);
+  assert.throws(() => check([notices[0], notices[0]]), /duplicate native notice/u);
+  assert.throws(() => check([notices[0]]), /both distinct native notices/u);
+  assert.throws(() => check([{ ...notices[0], name: "unknown" }, notices[1]]), /unknown native notice/u);
+  assert.throws(() => check([{ ...notices[0], version: "different" }, notices[1]]), /version differs/u);
+  assert.throws(() => check([{ ...notices[0], versionKind: "runtime-provider" }, notices[1]]), /must not claim a runtime/u);
+  assert.throws(() => check([{ ...notices[0], path: "../../notice.txt" }, notices[1]]));
+  assert.throws(() => check([{ name: "openssl", status: "missing", reason: "source unavailable" }]), /missing native notice/u);
+  assert.deepEqual(check([], false), []);
 });
 
 test("directory links and oversized metadata are rejected before JSON parsing", () => {
@@ -116,6 +145,13 @@ test("failed collection is retained and validates only against exact external id
     const save = () => writeFileSync(join(directory, "manifest.json"), JSON.stringify(manifest));
     save();
     assert.equal(validate(directory, expected).status, "failed");
+    // Directory traversal order differs from lexical order when both a directory
+    // and its dot-suffixed metadata file exist (the first real hosted bundle).
+    mkdirSync(join(directory, "licenses"));
+    const prefixFixture = Buffer.from("synthetic inventory prefix collision");
+    writeFileSync(join(directory, "licenses/fixture.txt"), prefixFixture);
+    manifest.artifacts.push({ path: "licenses/fixture.txt", bytes: prefixFixture.length, sha256: createHash("sha256").update(prefixFixture).digest("hex") });
+    save(); assert.equal(validate(directory, expected).status, "failed");
     manifest.source = "../../outside.json"; save();
     assert.throws(() => validate(directory, expected), /source reference/u);
     manifest.source = "source.json"; save();
