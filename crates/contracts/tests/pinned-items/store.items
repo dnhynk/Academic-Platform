@@ -54,7 +54,7 @@ crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn closure_row_requir
 crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn every_new_table_denies_update_and_delete() -> Result<(), Box<dyn Error>> |b84e01d166bfa9a8
 crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn migration_0004_is_forward_only_and_pre_listen() -> Result<(), Box<dyn Error>> |457cbfb8fdc724c0
 crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn no_aggregate_smuggled_into_object_text() -> Result<(), Box<dyn Error>> |1ed772fabbd2c8c0
-crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn prediction_actor_migration_preserves_rows_and_refuses_reentry_and_plaintext() -> Result<(), Box<dyn Error>> |bc30c35dfcef7a64
+crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn prediction_actor_migration_preserves_rows_and_refuses_reentry_and_plaintext() -> Result<(), Box<dyn Error>> |a5f1136abf6a9773
 crates/store/src/aggregate_closure_tests.rs [priv] #[test] fn the_test_base_is_the_real_schema_two() -> Result<(), Box<dyn Error>> |fe5077abfa7d0d6d
 crates/store/src/aggregate_closure_tests.rs [priv] const CLOSURE_TABLES: [(&str, &str, Option<&str>); 18] |e90de7da789d9bfe
 crates/store/src/aggregate_closure_tests.rs [priv] fn append_all_arms<'connection>( connection: &'connection mut Connection, stop_after: Option<usize>, ) -> Result<(Transaction<'connection>, usize), Box<dyn Error>> |7443a59a08cc1691

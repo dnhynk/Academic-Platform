@@ -123,7 +123,7 @@ The record shape, the retention result vocabulary, and the fault rows are in
 Migration `0016_phase2_deterministic_prediction.sql`, reserved for T238, widens
 only the `ledger_event` and `claim_relation` actor-kind CHECKs in the encrypted
 schema-2 lane. Both tables are rebuilt with every existing column copied and
-append-only triggers restored. The original envelope, signature, actor and
+append-only triggers and the target/scope lookup index restored. The original envelope, signature, actor and
 payload bytes are retained. The schema identity stays unchanged, while exact
 admission fingerprints include the additional migration; an older binary therefore
 refuses this schema rather than misreading its actors.
@@ -144,7 +144,11 @@ does not end an incoming transaction. A keyed prior-profile test verifies normal
 open refusal, mid-rebuild authorization failure and rollback, exact main-file
 bytes on rejection, identity and frozen envelope retention, successful reopen,
 and repeat refusal. Populated ledger/claim/relation rows are compared before
-and after the migration and a rolled-back rebuild. Backup/export retain signed
+and after the migration and a rolled-back rebuild. Independent index-column and
+query-plan assertions retain `idx_claim_relation_target(target_claim_id, scope_id)`
+and its ordinary indexed lookup across populated migration, rollback, fresh
+encrypted aggregate creation and keyed maintenance/reopen; the migration-derived
+current fingerprint alone is not evidence of retention. Backup/export retain signed
 envelopes unchanged; replay reads the authenticated source version and the
 resolver reads canonical author provenance for prediction removal ownership.
 

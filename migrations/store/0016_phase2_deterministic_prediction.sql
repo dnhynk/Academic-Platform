@@ -95,6 +95,8 @@ FROM claim_relation;
 DROP TABLE claim_relation;
 ALTER TABLE claim_relation_rebuilt_0016 RENAME TO claim_relation;
 
+CREATE INDEX idx_claim_relation_target ON claim_relation(target_claim_id, scope_id);
+
 CREATE TRIGGER guard_claim_relation_update BEFORE UPDATE ON claim_relation
 BEGIN SELECT RAISE(ABORT, 'canonical table is append-only'); END;
 CREATE TRIGGER guard_claim_relation_delete BEFORE DELETE ON claim_relation
