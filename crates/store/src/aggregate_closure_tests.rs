@@ -312,6 +312,34 @@ fn prediction_actor_migration_preserves_rows_and_refuses_reentry_and_plaintext()
         ],
     )?;
     transaction.commit()?;
+    // Check the target-first access path independently of the current schema
+    // fingerprint, which is itself derived from the migration under test.
+    let relation_lookup = |db: &Connection| -> Result<(), Box<dyn Error>> {
+        let columns = db
+            .prepare(
+                "SELECT name FROM pragma_index_info('idx_claim_relation_target') ORDER BY seqno",
+            )?
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        assert_eq!(columns, ["target_claim_id", "scope_id"]);
+        let plan: String = db.query_row(
+            "EXPLAIN QUERY PLAN SELECT relation_event_id FROM claim_relation WHERE target_claim_id=?1 AND scope_id=?2",
+            params![synthetic_id(10).as_slice(), synthetic_id(6).as_slice()],
+            |row| row.get(3),
+        )?;
+        assert!(
+            plan.contains("SEARCH claim_relation USING INDEX idx_claim_relation_target"),
+            "{plan}"
+        );
+        let relation: Vec<u8> = db.query_row(
+            "SELECT relation_event_id FROM claim_relation WHERE target_claim_id=?1 AND scope_id=?2",
+            params![synthetic_id(10).as_slice(), synthetic_id(6).as_slice()],
+            |row| row.get(0),
+        )?;
+        assert_eq!(relation, synthetic_id(5));
+        Ok(())
+    };
+    relation_lookup(&connection)?;
     let snapshot = |db: &Connection| -> Result<Vec<Vec<u8>>, rusqlite::Error> {
         db.prepare("SELECT signed_envelope FROM ledger_batch UNION ALL SELECT actor_canonical FROM ledger_event UNION ALL SELECT canonical_payload FROM ledger_event UNION ALL SELECT CAST(hex(relation_event_id) || hex(source_claim_id) || hex(target_claim_id) || hex(scope_id) || relation_kind || actor_kind AS BLOB) FROM claim_relation")?
             .query_map([], |row| row.get(0))?.collect()
@@ -329,6 +357,7 @@ fn prediction_actor_migration_preserves_rows_and_refuses_reentry_and_plaintext()
         );
     }
     assert_eq!(snapshot(&connection)?, before);
+    relation_lookup(&connection)?;
     let old_shape: String = connection.query_row(
         "SELECT sql FROM sqlite_schema WHERE name='ledger_event'",
         [],
@@ -338,6 +367,7 @@ fn prediction_actor_migration_preserves_rows_and_refuses_reentry_and_plaintext()
     connection.execute_batch("PRAGMA foreign_keys=ON;")?;
     apply_prediction_actor_migration_pre_listen(&mut connection)?;
     assert_eq!(snapshot(&connection)?, before);
+    relation_lookup(&connection)?;
     for table in ["ledger_event", "claim_relation"] {
         let shape: String = connection.query_row(
             "SELECT sql FROM sqlite_schema WHERE name=?1",
@@ -353,6 +383,7 @@ fn prediction_actor_migration_preserves_rows_and_refuses_reentry_and_plaintext()
     }
     assert!(apply_prediction_actor_migration_pre_listen(&mut connection).is_err());
     assert_eq!(snapshot(&connection)?, before);
+    relation_lookup(&connection)?;
     assert_eq!(
         connection.query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))?,
         1

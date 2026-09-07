@@ -1403,10 +1403,38 @@ mod encrypted {
         use academic_store::migration::{
             apply_prediction_actor_migration_pre_listen, read_schema_identity,
         };
+        let check_relation_index = |db: &Connection| -> Result<(), Box<dyn Error>> {
+            let columns = db
+                .prepare("SELECT name FROM pragma_index_info('idx_claim_relation_target') ORDER BY seqno")?
+                .query_map([], |row| row.get::<_, String>(0))?
+                .collect::<Result<Vec<_>, _>>()?;
+            assert_eq!(columns, ["target_claim_id", "scope_id"]);
+            let attributes: (i64, String, i64) = db.query_row(
+                "SELECT \"unique\", origin, partial FROM pragma_index_list('claim_relation') WHERE name='idx_claim_relation_target'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )?;
+            assert_eq!(attributes, (0, "c".to_owned(), 0));
+            let plan: String = db.query_row(
+                "EXPLAIN QUERY PLAN SELECT relation_event_id FROM claim_relation WHERE target_claim_id=?1 AND scope_id=?2",
+                rusqlite::params![[0x31_u8; 16].as_slice(), [0x32_u8; 16].as_slice()],
+                |row| row.get(3),
+            )?;
+            assert!(
+                plan.contains("SEARCH claim_relation USING INDEX idx_claim_relation_target"),
+                "{plan}"
+            );
+            Ok(())
+        };
         let root = TempRoot::new("prior-prediction")?;
         let workdir = root.workdir();
         let key = harness::provision(&workdir)?;
         let profile = harness::create_profile(&workdir, &key)?;
+        // Fresh aggregate creation also runs 0016, before any maintenance call.
+        {
+            let fresh = harness::open_keyed(profile.database_path(), &key)?;
+            check_relation_index(&fresh)?;
+        }
         // Keep the real encrypted profile marker/path policy and build its old
         // database from the committed pre-0016 SQL, not a weakened current DDL.
         fs::remove_file(profile.database_path())?;
@@ -1419,6 +1447,7 @@ mod encrypted {
         for sql in &STORE_MIGRATION_SQL[..10] {
             connection.execute_batch(sql)?;
         }
+        check_relation_index(&connection)?;
         connection.execute(
             "INSERT INTO schema_meta VALUES (1, ?1, 2, '2.0.0', 2, 0, 2, 0, ?2, ?3, ?4, 1)",
             rusqlite::params![
@@ -1499,6 +1528,7 @@ mod encrypted {
         connection.authorizer(
             None::<fn(rusqlite::hooks::AuthContext<'_>) -> rusqlite::hooks::Authorization>,
         )?;
+        check_relation_index(&connection)?;
         assert_eq!(
             connection.query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))?,
             1
@@ -1517,6 +1547,7 @@ mod encrypted {
         connection = harness::open_keyed(profile.database_path(), &key)?;
         connection.execute_batch("PRAGMA foreign_keys=ON;")?;
         apply_prediction_actor_migration_pre_listen(&mut connection)?;
+        check_relation_index(&connection)?;
         assert_eq!(read_schema_identity(&connection)?, identity);
         assert_eq!(
             connection.query_row("SELECT signed_envelope FROM ledger_batch", [], |row| row
@@ -1532,8 +1563,10 @@ mod encrypted {
         let reopened = harness::open_profile(&workdir, &key)?;
         let current_bytes = fs::read(reopened.database_path())?;
         connection = harness::open_keyed(reopened.database_path(), &key)?;
+        check_relation_index(&connection)?;
         connection.execute_batch("PRAGMA foreign_keys=OFF;")?;
         assert!(apply_prediction_actor_migration_pre_listen(&mut connection).is_err());
+        check_relation_index(&connection)?;
         assert_eq!(
             connection.query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))?,
             0
