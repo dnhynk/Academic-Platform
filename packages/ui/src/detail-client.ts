@@ -9,9 +9,15 @@ export interface DetailState {
 }
 export interface DetailClient {
   read(selector?: DetailSelector): Promise<DetailState>;
-  decide(relationId: string, action: "reject" | "undo", expectedRevision: number): Promise<DetailState>;
+  decide(relationId: string, action: "reject" | "undo", expectedRevision: number, options?: DetailDecisionOptions): Promise<DetailState>;
   pendingDecisions(): readonly DetailDecisionRequest[];
   audio(lectureId: string, signal?: AbortSignal): Promise<OriginalAudio>;
+}
+export interface DetailDecisionOptions {
+  /** Select an exact durable request; never create a replacement if it is gone. */
+  readonly requestId?: readonly number[];
+  /** Aborting releases view ownership, not the submitted request or its receipt. */
+  readonly selection?: AbortSignal;
 }
 /** Local retry identities only; these records never establish acceptance. */
 export interface DetailRetryStorage {
@@ -171,7 +177,6 @@ export function detailClient(invoke: NativeInvoke, storage?: DetailRetryStorage)
   let selectionReady = false;
   const pending = new Map<string, { readonly request: DetailDecisionRequest; readonly undoes: number | null }>();
   const active = new Map<string, Promise<DetailState>>();
-  const keyOf = (request: DetailDecisionRequest): string => JSON.stringify([request.expected_profile_id, request.relation_id, request.action, request.expected_revision]);
   const journalPrefix = "academic.imported-detail-retry.v1:";
   const storageKey = (request: DetailDecisionRequest): string => journalPrefix + request.request_id.map((byte) => byte.toString(16).padStart(2, "0")).join("");
   function loadRetries(): void {
@@ -191,8 +196,8 @@ export function detailClient(invoke: NativeInvoke, storage?: DetailRetryStorage)
         || request.selector.known_at_accept_seq !== null || request.selector.valid_at_ms !== null
         || [request.request_id, request.client_instance_id, request.idempotency_key].some((value, index) => value.length !== (index === 2 ? 32 : 16) || value.some((byte) => byte > 255))
         || (request.action === "reject" ? saved.undoes !== null : saved.undoes === null || !Number.isSafeInteger(saved.undoes) || saved.undoes < 1)) throw new Error("Invalid saved detail retry identity");
-      if (key !== storageKey(request) || loaded.has(keyOf(request))) throw new Error("Duplicate or mismatched saved detail retry");
-      loaded.set(keyOf(request), immutable(saved));
+      if (key !== storageKey(request) || loaded.has(key)) throw new Error("Duplicate or mismatched saved detail retry");
+      loaded.set(key, immutable(saved));
     }
     pending.clear(); for (const [key, saved] of loaded) pending.set(key, saved);
   }
@@ -236,15 +241,17 @@ export function detailClient(invoke: NativeInvoke, storage?: DetailRetryStorage)
       if (current && selection.known_at_accept_seq === null && selected.known_at_accept_seq === null && (state.revision < current.revision || state.known_at_accept_seq < current.known_at_accept_seq)) throw new Error("Read watermark moved backwards");
       current = state; selected = selection; selectionReady = true; return state;
     },
-    decide: async (relationId, action, expectedRevision) => {
+    decide: async (relationId, action, expectedRevision, options = {}) => {
       if (!current || !selectionReady) throw new Error("Reload the selected profile before deciding");
       if (selected.known_at_accept_seq !== null || selected.valid_at_ms !== null) throw new Error("Historical views are read-only");
       const profileId = current.profile_id;
       const generation = selectionGeneration;
-      const key = JSON.stringify([profileId, relationId, action, expectedRevision]);
-      const inFlight = active.get(key); if (inFlight) return inFlight;
       loadRetries();
-      let saved = pending.get(key);
+      const matches = [...pending.values()].filter(({ request }) => request.expected_profile_id === profileId && request.relation_id === relationId && request.action === action && request.expected_revision === expectedRevision
+        && (options.requestId === undefined || (options.requestId.length === request.request_id.length && request.request_id.every((byte, index) => byte === options.requestId?.[index]))));
+      if (matches.length > 1) throw new Error("Select the exact original pending request to confirm");
+      let saved = matches[0];
+      if (!saved && options.requestId !== undefined) throw new Error("The selected original pending request is no longer available; reload detail evidence");
       if (!saved) {
         if ([...pending.values()].some((item) => item.request.expected_profile_id === profileId)) throw new Error("Confirm the original pending request before starting another decision");
         if (current.revision !== expectedRevision) throw new Error("Reload the selected profile before deciding");
@@ -254,11 +261,14 @@ export function detailClient(invoke: NativeInvoke, storage?: DetailRetryStorage)
         if (action === "reject" && prior?.action === "REJECT") throw new Error("This relation already has an accepted rejection");
         if (pending.size >= 64) throw new Error("Saved detail retry limit reached");
         saved = immutable({ request: { relation_id: relationId, action, expected_revision: expectedRevision, expected_profile_id: profileId, selector: { ...selected }, request_id: bytes(16), client_instance_id: clientId, idempotency_key: bytes(32) }, undoes: action === "undo" ? prior?.sequence ?? null : null });
-        pending.set(key, saved);
+        // Write only this new identity; retrying must not resurrect an entry
+        // another context has already confirmed or refused.
+        storage?.setItem(storageKey(saved.request), JSON.stringify(saved));
+        pending.set(storageKey(saved.request), saved);
       }
-      // Write-ahead identity: failure here must prevent the native write.
-      storage?.setItem(storageKey(saved.request), JSON.stringify(saved));
       const decision = saved.request;
+      const key = storageKey(decision);
+      const inFlight = active.get(key); if (inFlight) return inFlight;
       const undoTarget = saved.undoes;
       const completion = (async (): Promise<DetailState> => {
         const identity = { request_id: decision.request_id, client_instance_id: decision.client_instance_id, idempotency_key: decision.idempotency_key, request_digest: await detailDecisionDigest(decision) };
@@ -268,7 +278,10 @@ export function detailClient(invoke: NativeInvoke, storage?: DetailRetryStorage)
         if (visible && (visible.relationId !== receipt.relation_id || visible.action !== receipt.action.toUpperCase() || visible.undoes !== receipt.undoes || visible.actor !== receipt.actor)) throw new Error("Visible decision disagrees with its original receipt");
         // Receipt confirmation is independent of current source visibility and selection.
         storage?.removeItem(storageKey(decision)); pending.delete(key);
-        if (generation === selectionGeneration && state.revision >= current.revision && state.known_at_accept_seq >= current.known_at_accept_seq) current = state;
+        if (generation === selectionGeneration) {
+          if (options.selection?.aborted) selectionReady = false;
+          else if (state.revision >= current.revision && state.known_at_accept_seq >= current.known_at_accept_seq) current = state;
+        }
         return current;
       })();
       active.set(key, completion);

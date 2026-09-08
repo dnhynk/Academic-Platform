@@ -32,6 +32,8 @@ export class DetailViews {
   #state: DetailState | null = null;
   #generation = 0;
   #pending = false;
+  #refreshRequired = false;
+  #selectionOwner = new AbortController();
   #root: HTMLElement | null = null;
   #destination: Destination | null = null;
   #message = "";
@@ -41,6 +43,7 @@ export class DetailViews {
   constructor(client: DetailClient, navigate: (destination: Destination) => void, onState?: () => void) { this.#client = client; this.#navigate = navigate; this.#onState = onState; }
   acceptedState(): DetailState | null { return this.#state; }
   mount(parent: HTMLElement, destination: Destination): boolean {
+    this.#selectionOwner.abort(); this.#selectionOwner = new AbortController();
     this.#clearPlayer();
     this.#generation++;
     this.#root = null;
@@ -61,7 +64,7 @@ export class DetailViews {
     try {
       const state = await this.#client.read(selector);
       if (generation !== this.#generation) return;
-      this.#selector = { ...selector }; this.#state = state; this.#message = ""; this.#render(); this.#onState?.();
+      this.#selector = { ...selector }; this.#state = state; this.#message = ""; this.#refreshRequired = false; this.#render(); this.#onState?.();
     } catch (error) {
       if (generation !== this.#generation) return;
       const status = node("p", String(error)); status.setAttribute("role", "status");
@@ -70,7 +73,7 @@ export class DetailViews {
   }
   #open(routeId: string, id: string): void { const route = ROUTES_BY_ID.get(routeId); if (!route) throw new Error("Missing relation destination"); this.#navigate(detailDestination(route, id)); }
   #clearPlayer(): void { this.#player?.dispose(); this.#player = null; }
-  dispose(): void { this.#generation++; this.#clearPlayer(); this.#root = null; }
+  dispose(): void { this.#generation++; this.#selectionOwner.abort(); this.#clearPlayer(); this.#root = null; }
   #render(): void {
     const root = this.#root; const state = this.#state; const destination = this.#destination;
     if (!root || !state || !destination) return;
@@ -92,8 +95,9 @@ export class DetailViews {
     const historical = this.#selector.known_at_accept_seq !== null || this.#selector.valid_at_ms !== null;
     if (historical) root.append(node("p", "Historical evidence is read-only. Return to current evidence to make or confirm a decision."));
     for (const pending of this.#client.pendingDecisions()) {
-      const retry = button(`Confirm original ${pending.action} request · ${pending.relation_id}`, () => { void this.#decide(pending.relation_id, pending.action, "", pending.expected_revision); });
-      retry.dataset.pendingRequest = "true"; retry.disabled = this.#pending || historical;
+      const identity = pending.request_id.map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      const retry = button(`Confirm original ${pending.action} request · ${pending.relation_id} · ${identity}`, () => { void this.#decide(pending.relation_id, pending.action, "", pending.expected_revision, pending.request_id); });
+      retry.dataset.pendingRequest = identity; retry.disabled = this.#pending || historical || this.#refreshRequired;
       root.append(node("p", "A prior request is unconfirmed. This retry keeps its original profile, revision and request identity, even if the source has changed."), retry);
     }
     const provenance = node("p", "Imported snapshot · Reported by importer. This does not establish user confirmation.");
@@ -143,25 +147,41 @@ export class DetailViews {
     this.#relationOrdinal++;
     const controlId = `decision-${String(this.#relationOrdinal)}`;
     const decision = button(rejected ? "Undo rejection" : "Reject relation", () => { void this.#decide(relation.id, rejected ? "undo" : "reject", controlId); }, controlId);
-    decision.disabled = this.#pending || this.#client.pendingDecisions().length > 0 || this.#selector.known_at_accept_seq !== null || this.#selector.valid_at_ms !== null; details.append(decision);
+    decision.disabled = this.#pending || this.#refreshRequired || this.#client.pendingDecisions().length > 0 || this.#selector.known_at_accept_seq !== null || this.#selector.valid_at_ms !== null; details.append(decision);
     if (decision.disabled) details.append(node("p", "Decisions require current evidence and confirmation of any original pending request."));
     const history = state.decisions.filter((event) => event.relationId === relation.id);
     if (history.length) list(details, history.map((event) => `#${String(event.sequence)} ${event.action} · ${event.actor}${event.undoes === null ? "" : ` · undoes #${String(event.undoes)}`}`));
     parent.append(details);
   }
-  async #decide(relationId: string, action: "reject" | "undo", controlId: string, expectedRevision?: number): Promise<void> {
-    if (this.#pending || !this.#state) return;
+  async #decide(relationId: string, action: "reject" | "undo", controlId: string, expectedRevision?: number, requestId?: readonly number[]): Promise<void> {
+    if (this.#pending || this.#refreshRequired || !this.#state) return;
     this.#pending = true;
     const root = this.#root; const revision = expectedRevision ?? this.#state.revision; const generation = this.#generation;
     for (const control of root?.querySelectorAll<HTMLButtonElement>("button[id^='decision-']") ?? []) control.disabled = true;
     const status = root?.querySelector("#detail-status"); if (status) status.textContent = "Waiting for the core to confirm this decision…";
     try {
-      this.#state = await this.#client.decide(relationId, action, revision);
-      this.#message = `${action === "reject" ? "Rejection" : "Undo"} recorded by the core for the requested source. Revision ${String(this.#state.revision)} shows the current snapshot; a replaced source keeps its own disposition.`;
+      const state = await this.#client.decide(relationId, action, revision, { ...(requestId === undefined ? {} : { requestId }), selection: this.#selectionOwner.signal });
+      if (generation === this.#generation) this.#state = state;
+      this.#message = `${action === "reject" ? "Rejection" : "Undo"} recorded by the core for the requested source. A replaced source keeps its own disposition.`;
     } catch (error) { this.#message = `${String(error)} No receipt confirmation is displayed. Use the original pending request to retry if one remains.`; }
     finally {
       this.#pending = false;
-      if (generation !== this.#generation) { if (this.#root) void this.reload(); }
+      if (generation !== this.#generation) {
+        // Keep the destination's actual nodes, drafts, selection and player.
+        // The old request is reconciled, but this snapshot needs an explicit read.
+        this.#refreshRequired = true;
+        this.#message += ` This view retains revision ${String(this.#state.revision)}. Reload detail evidence when ready to refresh and enable decisions.`;
+        const scroll: { element: HTMLElement; top: number; left: number }[] = [];
+        for (let element = this.#root; element; element = element.parentElement) scroll.push({ element, top: element.scrollTop, left: element.scrollLeft });
+        const currentStatus = this.#root?.querySelector("#detail-status");
+        if (currentStatus) currentStatus.textContent = this.#message;
+        for (const control of this.#root?.querySelectorAll<HTMLButtonElement>("button[id^='decision-'], button[data-pending-request]") ?? []) control.disabled = true;
+        const apply = this.#root?.querySelector<HTMLButtonElement>("#detail-known")?.form?.querySelector<HTMLButtonElement>("button[type='submit']");
+        if (apply) apply.disabled = false;
+        // The status can wrap onto another line; keep browser scroll anchoring
+        // from moving the user's viewport while the destination is retained.
+        for (const position of scroll) { position.element.scrollTop = position.top; position.element.scrollLeft = position.left; }
+      }
       else {
         this.#render();
         this.#onState?.();
