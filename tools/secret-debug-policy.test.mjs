@@ -92,6 +92,9 @@ const CRATES_ROOT = join(REPOSITORY_ROOT, "crates");
 
 /** Types known to carry key material or decrypted plaintext, and why. */
 const SECRET_BEARING_TYPES = new Map([
+  ["DetailAudio", "the verified lecture audio bytes returned by the local detail service"],
+  ["DetailSegment", "the original and corrected lecture transcript returned by the local detail service"],
+  ["SignedHistoryBatch", "signed history containing the imported detail source content"],
   ["OpenedHeader", "the raw per-object DEK and the plaintext digest"],
   ["EncryptedObjectReader", "a buffer of decrypted artifact plaintext"],
   ["RecoveredSecret", "the secret an operating-system broker returned"],
@@ -341,6 +344,24 @@ const BYTE_CLASSES = new Map([
 const SECRET_BYTE_CLASSES = new Set(["key-material", "content"]);
 
 const BYTE_FIELD_CLASSES = new Map([
+  ["DetailAudio.bytes", "content"],
+  ["DetailDecisionRequest.client_instance_id", "identifier"],
+  ["DetailDecisionRequest.idempotency_key", "identifier"],
+  ["DetailDecisionRequest.request_id", "identifier"],
+  ["DetailReply.client_instance_id", "identifier"],
+  ["DetailReply.idempotency_key", "identifier"],
+  ["DetailReply.receipt_id", "identifier"],
+  ["DetailReply.request_digest", "digest"],
+  ["DetailReply.request_id", "identifier"],
+  ["History.batches", "content"],
+  ["RuntimeCommand.client_instance_id", "identifier"],
+  ["RuntimeCommand.idempotency_key", "identifier"],
+  ["RuntimeCommand.request_id", "identifier"],
+  ["RuntimeDetailFields.client_instance_id", "identifier"],
+  ["RuntimeDetailFields.idempotency_key", "identifier"],
+  ["RuntimeDetailFields.request_digest", "digest"],
+  ["RuntimeDetailFields.request_id", "identifier"],
+  ["SignedHistoryBatch.envelope", "content"],
   ["LocalClient.client_id", "identifier"],
   ["RuntimeCommand.backup_receipt_id", "identifier"],
   ["RuntimeReply.receipt_id", "identifier"],

@@ -24,7 +24,7 @@ crates/rpc/src/convert.rs [priv] fn validate_mutable_request_wire(bytes: &[u8]) 
 crates/rpc/src/convert.rs [priv] fn validate_nonempty_bounded( value: &str, field: &'static str, maximum: usize, ) -> Result<(), RpcError> |85e70dca4fc9bd21
 crates/rpc/src/convert.rs [priv] fn validate_receipt(receipt: &generated::ImmutableReceipt) -> Result<ValidatedReceipt, RpcError> |53ebe8c954e62606
 crates/rpc/src/convert.rs [priv] fn validate_restore_command_wire(bytes: &[u8]) -> Result<(), RpcError> |4611138f18e5f960
-crates/rpc/src/convert.rs [priv] fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> |2e86ae18410e3bc7
+crates/rpc/src/convert.rs [priv] fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> |7fe6f67f7711372f
 crates/rpc/src/convert.rs [priv] impl IdempotencyKey
 crates/rpc/src/convert.rs [priv] impl OpaqueId
 crates/rpc/src/convert.rs [priv] mod tests :: #[test] fn an_admitted_handshake_validates_on_the_client() -> Result<(), RpcError> |225684414280364a
@@ -43,14 +43,76 @@ crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash
 crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum ValidatedWriteCommand |5b41b1637b9dcbd5
 crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ValidatedMutableRequest |736e47ac3cbc4353
 crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ValidatedMutableResponse |5bbb21066dee57c5
-crates/rpc/src/convert.rs [pub] fn validate_closed_envelope_wire(bytes: &[u8]) -> Result<(), RpcError> |a4846fd9a642475e
-crates/rpc/src/convert.rs [pub] fn validate_envelope(envelope: &LocalCoreEnvelope) -> Result<FrameClass, RpcError> |21e804471a38bd96
+crates/rpc/src/convert.rs [pub] fn validate_closed_envelope_wire(bytes: &[u8]) -> Result<(), RpcError> |42fb5ae23b79064c
+crates/rpc/src/convert.rs [pub] fn validate_envelope(envelope: &LocalCoreEnvelope) -> Result<FrameClass, RpcError> |b6b5cfc115445393
 crates/rpc/src/convert.rs [pub] fn validate_mutable_request( request: &MutableRequest, ) -> Result<ValidatedMutableRequest, RpcError> |4da363c108e2e2dd
 crates/rpc/src/convert.rs [pub] fn validate_mutable_response( response: &MutableResponse, ) -> Result<ValidatedMutableResponse, RpcError> |0a775e7bf2e3552a
 crates/rpc/src/convert.rs [pub] impl IdempotencyKey :: #[must_use] const fn as_bytes(&self) -> &[u8; IDEMPOTENCY_KEY_BYTES] |734385d593496b44
 crates/rpc/src/convert.rs [pub] impl IdempotencyKey :: #[must_use] const fn from_bytes(bytes: [u8; IDEMPOTENCY_KEY_BYTES]) -> Self |dfc371c80e1b1b47
 crates/rpc/src/convert.rs [pub] impl OpaqueId :: #[must_use] const fn as_bytes(&self) -> &[u8; OPAQUE_ID_BYTES] |4af9a8fff33e5f8c
 crates/rpc/src/convert.rs [pub] impl OpaqueId :: #[must_use] const fn from_bytes(bytes: [u8; OPAQUE_ID_BYTES]) -> Self |5cfe7c4c46c5355b
+crates/rpc/src/details.rs [priv] fn validate_value(value: &serde_json::Value, depth: usize) -> Result<(), RpcError> |9825591fd37df1c0
+crates/rpc/src/details.rs [priv] impl Default for DetailSelector
+crates/rpc/src/details.rs [priv] impl Default for DetailSelector :: fn default() -> Self |cbb6f843985875ba
+crates/rpc/src/details.rs [priv] impl DetailCorpus
+crates/rpc/src/details.rs [priv] impl DetailReply
+crates/rpc/src/details.rs [priv] impl DetailRequest
+crates/rpc/src/details.rs [priv] impl std::fmt::Debug for DetailAudio
+crates/rpc/src/details.rs [priv] impl std::fmt::Debug for DetailAudio :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |2948c4d6479dae76
+crates/rpc/src/details.rs [priv] impl std::fmt::Debug for DetailSegment
+crates/rpc/src/details.rs [priv] impl std::fmt::Debug for DetailSegment :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |b2df2b0ff1d6dda3
+crates/rpc/src/details.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
+crates/rpc/src/details.rs [priv] use crate::RpcError |011b223cd4a11e8d
+crates/rpc/src/details.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/rpc/src/details.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
+crates/rpc/src/details.rs [pub] #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailAudio |898cc8742ab72585
+crates/rpc/src/details.rs [pub] #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct DetailSegment |4bba531b129aa01f
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CoverageDisposition |110c05c51aa2c466
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum DispositionAction |612eaee5147d571e
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionStatus |79438baff903719d
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum RelationStatus |1e34508dc0df1fe4
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "snake_case")] enum DetailAction |fe81bfd9222af16c
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "snake_case")] enum DetailReplyState |8e579058ce3fdc2a
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "snake_case")] enum DetailView |66570738fd3a4956
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] enum ReviewKind |76993fa2b9b14a2d
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailCorpus |62d8901281ef0a74
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailAudioRequest |835f2c4787cf805b
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailDecisionReceipt |4c6a79765ba01d10
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailDecisionRequest |46bfe485c2d94ddf
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailFile |7b90fdda83680683
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailReply |91960bf0a79f3222
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailSelector |0c7dbe4a90f18a07
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DetailState |d30395a98a3e2a84
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Lecture |d383a2b5b332940f
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Relation |6e190c8546d5db50
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Source |fff24724a1f7091f
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct Capture |fce155c9d582c86b
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct Concept |69f7d31f24b6d2c0
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct DetailTarget |71ca93c461f12af2
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct Paragraph |cb1f7e2547c1ca4a
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct Project |a1e8d93a203790ea
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct Question |b256e2599837d1d6
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct QuestionRevision |ccccc6be091d63b4
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct RelationDecision |dc89462a12548609
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "camelCase", deny_unknown_fields)] struct ReviewItem |e04bde75a95da652
+crates/rpc/src/details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "command", rename_all = "snake_case", deny_unknown_fields)] enum DetailRequest |0368bede4fed3968
+crates/rpc/src/details.rs [pub] const DETAILS_AUDIO_CAPABILITY: &str |f2620ba183e27903
+crates/rpc/src/details.rs [pub] const DETAILS_CAPABILITIES: &[&str] |49ce35f653136d47
+crates/rpc/src/details.rs [pub] const DETAILS_DECIDE_CAPABILITY: &str |c5aee1502b96abd2
+crates/rpc/src/details.rs [pub] const DETAILS_READ_CAPABILITY: &str |abff828f5b454710
+crates/rpc/src/details.rs [pub] const MAX_DETAIL_BYTES: usize |ea79e1e096c4b1f8
+crates/rpc/src/details.rs [pub] const MAX_SAFE_INTEGER: u64 |d753dd42a110caba
+crates/rpc/src/details.rs [pub] fn decision_digest(request: &DetailDecisionRequest) -> Result<ContentDigest, RpcError> |3852655a32358012
+crates/rpc/src/details.rs [pub] fn decode<T: serde::de::DeserializeOwned + Serialize>(bytes: &[u8]) -> Result<T, RpcError> |cabc8d9be81f8eab
+crates/rpc/src/details.rs [pub] fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>, RpcError> |f8bbcd0a0effe1a1
+crates/rpc/src/details.rs [pub] fn invalid(reason: &'static str) -> RpcError |78b6095e34f684c0
+crates/rpc/src/details.rs [pub] fn reference(value: &str) -> Result<(), RpcError> |d095c2855886087a
+crates/rpc/src/details.rs [pub] impl DetailCorpus :: fn relation_owners(&self, alias: &str) -> BTreeSet<&str> |9adab08fb72e52ad
+crates/rpc/src/details.rs [pub] impl DetailCorpus :: fn relations(&self) -> Result<BTreeMap<&str, &Relation>, RpcError> |b4fb46b13dcfb2b2
+crates/rpc/src/details.rs [pub] impl DetailCorpus :: fn validate(&self) -> Result<(), RpcError> |496f2452c3b9335a
+crates/rpc/src/details.rs [pub] impl DetailReply :: fn validate(&self) -> Result<(), RpcError> |7764de3ff5324be1
+crates/rpc/src/details.rs [pub] impl DetailRequest :: const fn capability(&self) -> &'static str |086cbcdf4b3976cf
+crates/rpc/src/details.rs [pub] type RelationGroups = BTreeMap<String, Vec<Relation>> |36d16079eff6a1a9
 crates/rpc/src/digest.rs [priv] const REQUEST_DIGEST_DOMAIN: &[u8] |40d263b9d74a646d
 crates/rpc/src/digest.rs [priv] fn append_bytes(target: &mut Vec<u8>, value: &[u8]) |409165b485783c89
 crates/rpc/src/digest.rs [priv] fn append_optional_u64(bytes: &mut Vec<u8>, value: Option<u64>) |8e70f94d2ded06fa
@@ -83,15 +145,15 @@ crates/rpc/src/frame.rs [pub] fn decode_exact_frame(bytes: &[u8], class: FrameCl
 crates/rpc/src/frame.rs [pub] fn decode_message_frame<M>(bytes: &[u8], class: FrameClass) -> Result<M, RpcError> where M: Message + Default, |7bdf076975e7c00b
 crates/rpc/src/frame.rs [pub] fn encode_frame(payload: &[u8], class: FrameClass) -> Result<Vec<u8>, RpcError> |d5694c5133f1c83b
 crates/rpc/src/frame.rs [pub] fn encode_message_frame<M: Message>( message: &M, class: FrameClass, ) -> Result<Vec<u8>, RpcError> |17f9d48f9201cfcb
-crates/rpc/src/generated.rs [priv] const EXPECTED_CODEGEN_FNV1A64: u64 |4c4ae7f8b34e2121
-crates/rpc/src/generated.rs [priv] const EXPECTED_SCHEMA_FNV1A64: u64 |e3e82eae108792bc
+crates/rpc/src/generated.rs [priv] const EXPECTED_CODEGEN_FNV1A64: u64 |0c873564eb59cb2c
+crates/rpc/src/generated.rs [priv] const EXPECTED_SCHEMA_FNV1A64: u64 |a20a895a7e5e291b
 crates/rpc/src/generated.rs [priv] fn fnv1a64(bytes: &[u8]) -> u64 |601d1bccfa48d284
 crates/rpc/src/generated.rs [priv] include!(concat!(env!("OUT_DIR"), "/academic.v1.rs")) |77f0f0a178592621
 crates/rpc/src/generated.rs [pub] #[must_use] fn codegen_fingerprints_match() -> bool |fe708205c81e193f
 crates/rpc/src/handshake.rs [priv] const fn client_is_below_minimum(client: ProtocolVersion, minimum: ProtocolVersion) -> bool |1fc263e995cd1d0a
 crates/rpc/src/handshake.rs [priv] const fn negotiate_same_major_minor( client: ProtocolVersion, server: ProtocolVersion, ) -> ProtocolVersion |8a6be3ed01aa40bd
 crates/rpc/src/handshake.rs [priv] fn contains_capability(haystack: &[&str], needle: &str) -> bool |f52525c68cc35945
-crates/rpc/src/handshake.rs [priv] fn is_known_capability(capability: &str) -> bool |d118add5583026d0
+crates/rpc/src/handshake.rs [priv] fn is_known_capability(capability: &str) -> bool |f8a36f16fb6c7480
 crates/rpc/src/handshake.rs [priv] fn policy_message(posture: &Posture) -> DataPosture |cd14d255d55de1b9
 crates/rpc/src/handshake.rs [priv] fn proto_version(version: ProtocolVersion) -> generated::ProtocolVersion |19dc41ca76aeb946
 crates/rpc/src/handshake.rs [priv] impl Default for ServerHandshakeConfig
@@ -114,7 +176,7 @@ crates/rpc/src/handshake.rs [pub] const READ_ONLY_CAPABILITY_IDS: &[&str] |8673b
 crates/rpc/src/handshake.rs [pub] const WRITE_CAPABILITY_IDS: &[&str] |c43db9f25dbdd42d
 crates/rpc/src/handshake.rs [pub] fn authorize_mutable_request( handshake: &ServerHandshake, request: &MutableRequest, ) -> Result<(), RpcError> |848b9f1833300c2f
 crates/rpc/src/handshake.rs [pub] fn expected_capability_for_command(command: &mutable_request::Command) -> &'static str |2d49a6cdbb9e791a
-crates/rpc/src/handshake.rs [pub] fn negotiate_handshake( client: &ClientHandshake, config: &ServerHandshakeConfig, ) -> Result<ServerHandshake, RpcError> |152c0f495f5d7053
+crates/rpc/src/handshake.rs [pub] fn negotiate_handshake( client: &ClientHandshake, config: &ServerHandshakeConfig, ) -> Result<ServerHandshake, RpcError> |8a962a791063f26a
 crates/rpc/src/handshake.rs [pub] impl ServerHandshakeConfig :: #[must_use] fn with_posture(mut self, posture: Posture) -> Self |7e3eb8ed8e7e0b97
 crates/rpc/src/lib.rs [priv] #[cfg(test)] mod tests
 crates/rpc/src/lib.rs [priv] fn require_frame_class(actual: FrameClass, expected: FrameClass) -> Result<(), RpcError> |2b6186b5171493b2
@@ -133,6 +195,7 @@ crates/rpc/src/lib.rs [pub] fn decode_envelope_frame( bytes: &[u8], class: Frame
 crates/rpc/src/lib.rs [pub] fn decode_envelope_payload( payload: &[u8], class: FrameClass, ) -> Result<generated::LocalCoreEnvelope, RpcError> |eb75d17db0287587
 crates/rpc/src/lib.rs [pub] fn encode_envelope_frame( envelope: &generated::LocalCoreEnvelope, class: FrameClass, ) -> Result<Vec<u8>, RpcError> |d14c0f756953f8f1
 crates/rpc/src/lib.rs [pub] mod convert
+crates/rpc/src/lib.rs [pub] mod details
 crates/rpc/src/lib.rs [pub] mod digest
 crates/rpc/src/lib.rs [pub] mod error
 crates/rpc/src/lib.rs [pub] mod frame

@@ -66,6 +66,30 @@ use crate::{
 
 const FILE_DEVICE_NETWORK_FILE_SYSTEM: u32 = 0x0000_0014;
 
+pub(crate) fn read_detail_incarnation(root: &Path) -> std::io::Result<[u8; 32]> {
+    use std::{
+        io::Read,
+        os::windows::fs::{MetadataExt, OpenOptionsExt},
+    };
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+        .share_mode(FILE_SHARE_READ)
+        .open(root.join("detail-incarnation.v1"))?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file()
+        || metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+        || metadata.len() != 32
+    {
+        return Err(std::io::Error::other("invalid detail incarnation file"));
+    }
+    let mut bytes = Vec::new();
+    file.take(33).read_to_end(&mut bytes)?;
+    bytes
+        .try_into()
+        .map_err(|_| std::io::Error::other("invalid detail incarnation length"))
+}
+
 #[derive(Debug)]
 struct OwnedHandle(HANDLE);
 

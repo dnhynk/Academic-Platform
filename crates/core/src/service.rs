@@ -84,6 +84,7 @@ impl From<InjectedFault> for ServiceError {
 pub struct AcceptanceService {
     store: AcceptanceStore,
     vault: Vault,
+    profile_root: std::path::PathBuf,
 }
 
 impl fmt::Debug for AcceptanceService {
@@ -101,7 +102,15 @@ impl AcceptanceService {
     pub fn open(profile: &SyntheticProfile, keyring: DomainKeyring) -> Result<Self, ServiceError> {
         let vault = Vault::open(profile.root(), keyring)?;
         let store = profile.open_acceptance_store()?;
-        Ok(Self { store, vault })
+        Ok(Self {
+            store,
+            vault,
+            profile_root: profile.root().to_owned(),
+        })
+    }
+
+    pub(crate) fn uses_profile(&self, profile: &SyntheticProfile) -> bool {
+        self.profile_root == profile.root()
     }
 
     /// Returns the concrete vault used to ingest exact bytes before signed acceptance.

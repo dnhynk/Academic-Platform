@@ -332,7 +332,7 @@ crates/portability/src/manifest.rs [pub] impl ExportManifest :: fn seal(semantic
 crates/portability/src/manifest.rs [pub] impl ExportManifest :: fn to_json_bytes(&self) -> PortabilityResult<Vec<u8>> |9fd78e03b9692b87
 crates/portability/src/manifest.rs [pub] impl ExportManifest :: fn verify_semantic_digest(&self) -> PortabilityResult<()> |1bed48bcfc7c9c2c
 crates/portability/src/restore.rs [priv] #[cfg(test)] mod tests
-crates/portability/src/restore.rs [priv] fn build_restored_profile( staging: &Path, verified: &VerifiedBackup, keyring: DomainKeyring, plan: &RestorePlan<'_>, ) -> PortabilityResult<RestoreOutcome> |d843bd40ef8ef719
+crates/portability/src/restore.rs [priv] fn build_restored_profile( staging: &Path, verified: &VerifiedBackup, authorizations: &[DeviceAuthorization], material: impl FnOnce(&CanonicalDatabase) -> PortabilityResult<RestoreMaterial>, ) -> PortabilityResult<RestoreOutcome> |0bd5b78cdb382ddc
 crates/portability/src/restore.rs [priv] fn rebuild_projections( staging: &Path, database_path: &Path, plan: &RestorePlan<'_>, ) -> PortabilityResult<Vec<RestoredProjection>> |35beefb6a897065c
 crates/portability/src/restore.rs [priv] fn remove_journal_sidecars(database_path: &Path) -> PortabilityResult<()> |231b43b708be6240
 crates/portability/src/restore.rs [priv] fn remove_marker(staging: &Path, marker: &str) -> PortabilityResult<()> |23b740cece1f862d
@@ -348,6 +348,7 @@ crates/portability/src/restore.rs [priv] use academic_store::{ INCOMPLETE_PROFIL
 crates/portability/src/restore.rs [priv] use academic_vault::{DomainKeyring, Vault} |1871b6e6ef91f166
 crates/portability/src/restore.rs [priv] use crate::{ PortabilityError, PortabilityResult, RESTORE_INCOMPLETE_MARKER, backup::{VerifiedBackup, verify_backup_directory}, checksum::encode_hex, directory, fault::{self, PortabilityFaultPoint}, manifest::BackupManifest, verify::{CanonicalDatabase, ReplayReport, read_artifact_descriptors, read_canonical_rows}, } |21b21c4223e935ea
 crates/portability/src/restore.rs [priv] use std::path::{Path, PathBuf} |fbfcda12d64dcfcc
+crates/portability/src/restore.rs [pub] #[derive(Debug)] struct RestoreMaterial |45951889f412ba71
 crates/portability/src/restore.rs [pub] #[derive(Debug)] struct RestorePlan<'a> |863f1ddaee77387a
 crates/portability/src/restore.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ProjectionRebuildTarget |ec74ea940d64887d
 crates/portability/src/restore.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct RestoreReceipt |8a678546a20ac244
@@ -356,7 +357,8 @@ crates/portability/src/restore.rs [pub] const PROJECTION_SIDECAR_FILE: &str |caa
 crates/portability/src/restore.rs [pub] const RESTORED_VAULT_OBJECTS_DIRECTORY: &str |398ef3b4b68dfce0
 crates/portability/src/restore.rs [pub] fn find_unpublished_restores(destination: &Path) -> PortabilityResult<Vec<PathBuf>> |8b4662d0a7e019b9
 crates/portability/src/restore.rs [pub] fn remove_unpublished_restore(destination: &Path, staging: &Path) -> PortabilityResult<()> |dbfa46ae640db854
-crates/portability/src/restore.rs [pub] fn restore_profile<P: PathProbe + ?Sized>( backup_root: &Path, destination: &Path, probe: &P, keyring: DomainKeyring, plan: &RestorePlan<'_>, ) -> PortabilityResult<RestoreReceipt> |19363181f89a4cc3
+crates/portability/src/restore.rs [pub] fn restore_profile<P: PathProbe + ?Sized>( backup_root: &Path, destination: &Path, probe: &P, keyring: DomainKeyring, plan: &RestorePlan<'_>, ) -> PortabilityResult<RestoreReceipt> |d1bf7ca397f3376e
+crates/portability/src/restore.rs [pub] fn restore_profile_with_material<P: PathProbe + ?Sized>( backup_root: &Path, destination: &Path, probe: &P, authorizations: &[DeviceAuthorization], material: impl FnOnce(&CanonicalDatabase) -> PortabilityResult<RestoreMaterial>, ) -> PortabilityResult<RestoreReceipt> |2ebd8b3b340b7c0c
 crates/portability/src/verify.rs [priv] #[cfg(all(test, not(feature = "encrypted-portability")))] mod tests
 crates/portability/src/verify.rs [priv] #[cfg(feature = "encrypted-portability")] fn read_schema_identity(connection: &Connection) -> PortabilityResult<StoreSchemaIdentity> |16d11eb169a62967
 crates/portability/src/verify.rs [priv] #[cfg(feature = "encrypted-portability")] impl PolicyBlock

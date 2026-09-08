@@ -11,6 +11,8 @@ academic-admission = { path = "../admission" }
 academic-contracts = { path = "../contracts" }
 academic-domain = { path = "../domain" }
 prost.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 tokio.workspace = true
 
 [build-dependencies]

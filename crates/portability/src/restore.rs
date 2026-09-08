@@ -63,6 +63,17 @@ pub struct RestorePlan<'a> {
     pub projection_config_hash: ContentDigest,
 }
 
+/// Host-owned material derived only after the staged database passes signed replay.
+/// This factory result carries no new signing authorization.
+#[derive(Debug)]
+pub struct RestoreMaterial {
+    pub keyring: DomainKeyring,
+    pub projections: Vec<ProjectionRebuildTarget>,
+    pub predicate_policies: Option<PredicatePolicies>,
+    pub projection_builder_digest: ContentDigest,
+    pub projection_config_hash: ContentDigest,
+}
+
 /// One projection generation rebuilt from the restored canonical rows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RestoredProjection {
@@ -91,6 +102,26 @@ pub fn restore_profile<P: PathProbe + ?Sized>(
     keyring: DomainKeyring,
     plan: &RestorePlan<'_>,
 ) -> PortabilityResult<RestoreReceipt> {
+    restore_profile_with_material(backup_root, destination, probe, plan.authorizations, |_| {
+        Ok(RestoreMaterial {
+            keyring,
+            projections: plan.projections.to_vec(),
+            predicate_policies: plan.predicate_policies.cloned(),
+            projection_builder_digest: plan.projection_builder_digest,
+            projection_config_hash: plan.projection_config_hash,
+        })
+    })
+}
+
+/// Derives domain-specific restore material from the verified staged copy, never
+/// by opening or modifying the published backup database. Trust remains caller-owned.
+pub fn restore_profile_with_material<P: PathProbe + ?Sized>(
+    backup_root: &Path,
+    destination: &Path,
+    probe: &P,
+    authorizations: &[DeviceAuthorization],
+    material: impl FnOnce(&CanonicalDatabase) -> PortabilityResult<RestoreMaterial>,
+) -> PortabilityResult<RestoreReceipt> {
     directory::require_new_empty_directory(destination)?;
     let verified = verify_backup_directory(backup_root)?;
 
@@ -106,7 +137,7 @@ pub fn restore_profile<P: PathProbe + ?Sized>(
 
     fault::trip(PortabilityFaultPoint::Rs01);
 
-    let outcome = build_restored_profile(&staging, &verified, keyring, plan);
+    let outcome = build_restored_profile(&staging, &verified, authorizations, material);
     let (replay, projections, canonical_semantic_digest) = outcome?;
 
     remove_marker(&staging, RESTORE_INCOMPLETE_MARKER)?;
@@ -130,8 +161,8 @@ type RestoreOutcome = (ReplayReport, Vec<RestoredProjection>, String);
 fn build_restored_profile(
     staging: &Path,
     verified: &VerifiedBackup,
-    keyring: DomainKeyring,
-    plan: &RestorePlan<'_>,
+    authorizations: &[DeviceAuthorization],
+    material: impl FnOnce(&CanonicalDatabase) -> PortabilityResult<RestoreMaterial>,
 ) -> PortabilityResult<RestoreOutcome> {
     let semantic = &verified.manifest.semantic;
     let database_source = directory::resolve_relative(&verified.root, &semantic.database.path)?;
@@ -190,7 +221,7 @@ fn build_restored_profile(
         ));
     }
 
-    let replay = crate::verify::replay_signed_batches(&database, plan.authorizations)?;
+    let replay = crate::verify::replay_signed_batches(&database, authorizations)?;
     if replay.verified_batches != rows.counts.batches
         || replay.verified_events != rows.counts.events
         || replay.device_heads != rows.counts.device_heads
@@ -207,6 +238,20 @@ fn build_restored_profile(
         ));
     }
 
+    let RestoreMaterial {
+        keyring,
+        projections,
+        predicate_policies,
+        projection_builder_digest,
+        projection_config_hash,
+    } = material(&database)?;
+    let plan = RestorePlan {
+        authorizations,
+        projections: &projections,
+        predicate_policies: predicate_policies.as_ref(),
+        projection_builder_digest,
+        projection_config_hash,
+    };
     let descriptors = read_artifact_descriptors(&database)?;
     drop(database);
     remove_journal_sidecars(&database_path)?;
@@ -261,7 +306,7 @@ fn build_restored_profile(
         vault.verify_sealed_object(descriptor)?;
     }
 
-    let projections = rebuild_projections(staging, &database_path, plan)?;
+    let projections = rebuild_projections(staging, &database_path, &plan)?;
     Ok((replay, projections, canonical_semantic_digest))
 }
 

@@ -42,6 +42,25 @@ pub struct SealedArtifactReceipt {
 pub type SealedObjectCapability = SealedArtifactReceipt;
 
 impl SealedArtifactReceipt {
+    /// Reads a bounded range from the retained no-follow handle. Identity and
+    /// complete source bytes are revalidated before and after this read.
+    pub fn read_verified_range(&mut self, offset: u64, length: usize) -> VaultResult<Vec<u8>> {
+        if length == 0
+            || length > 4096
+            || offset
+                .checked_add(
+                    u64::try_from(length).map_err(|_| crate::VaultError::ArtifactTooLarge)?,
+                )
+                .is_none_or(|end| end > self.descriptor.byte_length)
+        {
+            return Err(crate::VaultError::ArtifactTooLarge);
+        }
+        let path = self.object_path.clone();
+        self.revalidate(&path)?;
+        let bytes = self.live_evidence.read_range(&path, offset, length)?;
+        self.revalidate(&path)?;
+        Ok(bytes)
+    }
     pub(crate) fn new(
         descriptor: ArtifactDescriptor,
         object_path: PathBuf,

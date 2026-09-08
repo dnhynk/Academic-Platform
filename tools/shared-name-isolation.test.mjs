@@ -421,6 +421,7 @@ const INDIRECT_READS = new Map([
  * returns a path hands it on, and only those need a row.
  */
 const ROOT_PRODUCERS = new Map([
+  ["crates/core/src/details.rs::detail_test_root", "A test profile root under the temporary directory, isolated by process id and an atomic counter."],
   [
     "crates/cli/src/client.rs::default_runtime_root",
     "XDG_RUNTIME_DIR, or the temporary directory.",
@@ -533,6 +534,14 @@ const DISCRIMINATORS = new Set([
  * than implied.
  */
 const SHARED_NAME_SITES = new Map([
+  [
+    'crates/core/src/details.rs :: path.join("detail-incarnation.v1")',
+    "SHARED, deliberately: the fixed incarnation marker inside the test profile returned by detail_test_root, whose parent name is isolated by process id and an atomic counter; this test corrupts only its own marker to verify fail-closed reopen.",
+  ],
+  [
+    'crates/core/src/details.rs :: base.join(format!("academic-detail-{}-{}",std::process::id(),NEXT.fetch_add(1,Ordering::Relaxed)))',
+    "UNIQUE: process id and an atomic counter for each disposable detail test profile.",
+  ],
   [
     'crates/core/src/service.rs :: temporary_base()?.join(format!("academic-s2-ipc02-{}-{sequence}",std::process::id()))',
     "UNIQUE: process id and a counter.",

@@ -896,6 +896,8 @@ dependencies = [
  "prost",
  "prost-build",
  "protoc-bin-vendored",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

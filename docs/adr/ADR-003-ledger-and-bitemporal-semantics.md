@@ -22,6 +22,21 @@ Event schema v2 is the current write contract for those decision semantics. The 
 
 Canonical events, claims, evidence links, claim relations, and user decisions are INSERT-only. Corrections append a new assertion plus `SUPERSEDES`, `RETRACTS`, `CONTRADICTS`, or an explicit user decision. Current state is a resolver projection.
 
+The synthetic detail bridge consumes that same resolver for imported corpus and
+relation claims under `ImplementationObservation`; acceptance order alone never
+selects a conflicting snapshot. Current relation eligibility is independent of
+the historical claim identity a durable disposition receipt names. Expiry or a
+canonical lifecycle correction removes current membership without invalidating
+an exact prior receipt or transferring its overlay to a replacement claim.
+
+Detail source version 1 used its owning entity as each relation subject, so
+distinct relations on one owner occupy a conflicting canonical slot. Version 2
+uses a stable per-relation subject derived from a domain-separated tuple of
+workspace, domain, scope and alias; the signed corpus separately binds every
+display owner. This corrects future imports without rewriting any old subject,
+claim ID or envelope. The v1 reader preserves its original semantics and refuses
+to grant writes from its conflicts. The exact tuple is in the detail contract.
+
 Authority and epistemic status are independent enums. Predicate policy—not arrival time—ranks official facts, user-owned state, direct implementation observation, curated relations, deterministic results, model inference, and prediction. Applicable decisions replay in acceptance order: rejects persist for the addressed object, confirmation reverses rejection only for that object, and replacement rejects A while selecting B. A decision contributes user-owned authority only for its exact semantic slot/object; it is not an early-return override of the predicate. Unaffected claims continue through `UserOwned`, `OfficialFact`, `ImplementationObservation`, or `CuratedRelation` ranking against the applicable decision's policy-specific user-authority rank, so an applicable official fact or direct implementation observation can remain active when a decision addresses a weaker unrelated object while lower automated alternatives do not silently reactivate. Their semantics survive regenerated claim IDs and adjacent valid-time handoffs.
 
 Confirm and Replace apply the policy-specific `UserExplicit` rank as a floor for every claim supporting the chosen object: `max(original authority rank, user-decision rank)`. They never erase stronger same-object provenance. Curated relation assertions use the sole active pairing `Curated + DeterministicDerived` and may be authored only by a signed `Importer`; a deterministic-engine actor cannot self-assign curated authority.

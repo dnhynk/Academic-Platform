@@ -91,6 +91,7 @@ fn contains_capability(haystack: &[&str], needle: &str) -> bool {
 
 fn is_known_capability(capability: &str) -> bool {
     contains_capability(PHASE1_CAPABILITY_IDS, capability)
+        || crate::details::DETAILS_CAPABILITIES.contains(&capability)
 }
 
 fn proto_version(version: ProtocolVersion) -> generated::ProtocolVersion {
@@ -254,12 +255,15 @@ pub fn negotiate_handshake(
 
     let capability_ids = PHASE1_CAPABILITY_IDS
         .iter()
+        .chain(crate::details::DETAILS_CAPABILITIES.iter())
         .copied()
         .filter(|capability| requested.contains(capability))
         .filter(|capability| {
             same_major || contains_capability(READ_ONLY_CAPABILITY_IDS, capability)
         })
         .map(str::to_owned)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
         .collect();
     let negotiated_protocol_version = same_major.then(|| {
         proto_version(negotiate_same_major_minor(

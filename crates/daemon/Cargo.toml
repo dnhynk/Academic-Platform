@@ -28,6 +28,7 @@ thiserror.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+academic-core = { path = "../core", features = ["synthetic-detail-fixtures"] }
 # Test-only edges used by the X1 exit harness to drive projection
 # rebuilds and to read published backup and restore evidence. The harness
 # vocabulary itself arrives through `#[path]` includes of

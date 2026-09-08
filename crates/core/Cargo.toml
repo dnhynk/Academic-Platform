@@ -8,6 +8,7 @@ publish.workspace = true
 
 [features]
 default = []
+synthetic-detail-fixtures = []
 phase1-fault-injection = [
   "academic-portability/phase1-fault-injection",
   "academic-projections/phase1-fault-injection",
@@ -29,6 +30,11 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
+
+[[bin]]
+name = "academic-detail-fixture"
+path = "src/bin/detail_fixture.rs"
+required-features = ["synthetic-detail-fixtures"]
 
 [dev-dependencies]
 # `tests/scenario_isolation.rs` needs the projection engine and the canonical

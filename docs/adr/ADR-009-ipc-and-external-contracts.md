@@ -66,4 +66,40 @@ frozen v3 fixture SHA-256 is
 
 ## Acceptance gates
 
+The durable detail workspace adds local envelope tags 16/17 with one bounded,
+canonical, closed typed JSON field and independently negotiated read/decide/audio
+capabilities. Versioned `ClaimAsserted` detail predicates bind imported snapshots
+to canonical relation claims and append explicit user rejection/undo overlays;
+they do not extend the canonical `UserDecision` action set. Existing signed
+v1-v4 and old local RPC fixture bytes are unchanged. The source/authority boundary,
+host profile incarnation, receipt correlation, deterministic source inventory
+update and incomplete ordinary-domain producer/media/preview coverage are defined
+in [the detail workspace contract](../contracts/detail-workspace.md). The ordinary
+item inventory is regenerated from actual source changes without changing scanner
+policy, accepting unreviewed closures or asserting restricted A5 acceptance.
+The binary-reference inventory adds only `daemon academic_rpc::details`,
+`desktop academic_rpc::details`, and `desktop academic_rpc::generated`, with
+reasons for the bounded DTO and frame calls. These references use the existing
+RPC dependency and local session; they grant no store, key or network authority.
+The exact source inventories also record the closed desktop DTO paths, the
+daemon's test-only core fixture feature and process/counter-isolated test roots.
+New correlation byte fields are identifiers or digests; audio and signed history
+buffers are content and their Debug implementations redact payloads. The
+transcript DTO uses the specific Rust name `DetailSegment` and redacts raw and
+corrected text. Existing source scanners and discovery floors remain unchanged.
+
+The review correction introduces imported source record version 2 with the same
+JSON fields, existing predicate and unchanged local RPC shape. Its per-relation
+subject binds the signed workspace/domain/scope/alias tuple; the reader retains
+strict canonical resolution for both source versions, and the explicit importer
+reports version 2. `academic.details.v2` identifies the corrected projection.
+Historical signed source bytes and disposition identities are never upcast into
+new subjects or rewritten. The fixed signed-history budget is shared between
+store reads and prospective acceptance; a refused new write creates no receipt.
+Exact core/store/platform/portability item inventories are regenerated with the
+unchanged repository resolver/lexer for these additions and the staged restore
+material factory. Their cardinality pin rises by 23 items; discovery rules,
+binary-reference permissions, dependency admission and historical goldens do
+not change.
+
 Kotlin and Swift golden decoding; general Protobuf unknown-field preservation rules; N-1 client compatibility; length-prefixed IPC framing; decompression/size/depth limits; malformed and fuzz corpus; and generated bindings for all payload types. Signed deterministic-CBOR authenticated-field discard is already fail-closed. Phase 0 executes Rust actor/relation wire round trips plus declarative schema drift checks.
