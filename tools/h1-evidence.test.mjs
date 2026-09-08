@@ -161,7 +161,7 @@ test("failed collection is retained and validates only against exact external id
     manifest.source = "../../outside.json"; save();
     assert.throws(() => validate(directory, expected), /source reference/u);
     manifest.source = "source.json"; save();
-    for (const [key, value] of [["commit", "f".repeat(40)], ["platform", "linux-aarch64"], ["runId", "124"], ["attempt", "2"], ["repository", "another/repository"]]) {
+    for (const [key, value] of [["commit", "f".repeat(40)], ["platform", platform === "linux-aarch64" ? "linux-x86_64" : "linux-aarch64"], ["runId", "124"], ["attempt", "2"], ["repository", "another/repository"]]) {
       assert.throws(() => validate(directory, { ...expected, [key]: value }));
     }
     manifest.acceptedH1 = true; save(); assert.throws(() => validate(directory, expected)); manifest.acceptedH1 = false;
@@ -347,6 +347,8 @@ for (const platform of ["windows-x86_64", "windows-aarch64", "linux-x86_64", "li
       const bundle = join(root, `case-${index}`); cpSync(fixture.bundle, bundle, { recursive: true }); mutate(bundle); rehash(bundle);
       assert.throws(() => validate(bundle, fixture.expected), message, name);
     }
+    const otherPlatform = platform === "linux-aarch64" ? "linux-x86_64" : "linux-aarch64";
+    assert.throws(() => validate(fixture.bundle, { ...fixture.expected, platform: otherPlatform }), /platform mismatch/u);
     const failed = join(root, "incomplete-failed-command"); cpSync(fixture.bundle, failed, { recursive: true }); omit(failed);
     edit(failed, "commands/portability-tests.json", (row) => { row.exitCode = 1; row.status = "failed"; });
     edit(failed, "manifest.json", (row) => { row.status = "failed"; }); rehash(failed);
