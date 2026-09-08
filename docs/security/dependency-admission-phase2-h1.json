@@ -1,0 +1,96 @@
+{
+  "receipt_version": 1,
+  "phase": "phase2-native-platform-preparation",
+  "task": "P2-H1",
+  "resolution_budget": 1,
+  "accepted_h1": false,
+  "summary": {
+    "added_external_crate_count": 2,
+    "linked_into_binary_count": 2,
+    "build_time_only_count": 0,
+    "added_workspace_path_package_count": 0,
+    "npm_additions": [],
+    "npm_install_scripts_added": false
+  },
+  "direct_workspace_dependencies": {
+    "objc2": "0.6.4",
+    "objc2-core-foundation": "0.3.2",
+    "objc2-local-authentication": "0.3.2",
+    "objc2-security": "0.3.2"
+  },
+  "added_workspace_path_packages": [],
+  "direct_edge_review": {
+    "target": "cfg(target_os = \"macos\")",
+    "owner": "academic-keystore-platform",
+    "objc2": {
+      "version": "0.6.4",
+      "already_in_lock": true,
+      "license": "MIT",
+      "default_features": false,
+      "features": ["std"],
+      "reason": "Retained Objective-C ownership, autorelease pools and main-thread detection for the private synchronous Keychain boundary. Existing build.rs reads target ABI and emits cfg only; no download or process execution."
+    },
+    "objc2-core-foundation": {
+      "version": "0.3.2",
+      "already_in_lock": true,
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "default_features": false,
+      "features": ["std", "CFData", "CFDictionary", "CFNumber", "CFString"],
+      "reason": "Typed CF values, type-ID checks, allocation and Create/Copy ownership. CFData and CFString imply already-admitted bitflags; no socket APIs are selected."
+    },
+    "getrandom": {
+      "version": "0.4.3",
+      "already_in_lock": true,
+      "license": "MIT OR Apache-2.0",
+      "default_features": false,
+      "features": ["std"],
+      "reason": "OS randomness for a non-secret 32-byte item generation. Prevents an obsolete opaque blob from deleting a later item at the same label. No new generator or network call."
+    },
+    "objc2-foundation": {
+      "version": "0.3.2",
+      "already_in_lock": true,
+      "license": "MIT",
+      "features": ["alloc", "NSData", "NSDate", "NSError", "NSString", "NSValue"],
+      "reason": "Existing transitive framework binding reused by LAContext; the leaf calls only new and setInteractionNotAllowed, with no biometric evaluation, credential setter, or authentication reuse."
+    }
+  },
+  "network_posture": "No outbound socket, remote credential store, synchronization or new async runtime. SecItem talks only to the selected local macOS data-protection Keychain. Framework internals and immutable returned CF data are not zeroizable by this leaf.",
+  "advisory_path": "RustSec advisory-db and upstream madsmtm/objc2 security notices and soundness issues; update only through reviewed pinned source admission. Snapshot review on 2026-09-08 found no RustSec entries for these five objc2 packages, which is not proof of absence of vulnerabilities.",
+  "license_review": "Both new generated binding archives declare Zlib OR Apache-2.0 OR MIT and contain no separate notice file. Upstream LICENSE.md at 7b1abfd750a2cacaea71d6a56ecfb83cb7de560b states that license and explicitly notes Apple SDK derived-work licensing uncertainty and the Xcode license requirement. This is the same binding family already admitted by P2-X1b; source implementation admission does not certify redistribution. Packaging/licensing review remains missing before distribution.",
+  "admissions": [
+    {
+      "name": "objc2-local-authentication",
+      "version": "0.3.2",
+      "checksum": "e48e0b8b339e0d9d2ed4416b7f93f9d4daadff7d4dd797f89867cde11aeac607",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "rust_version": "1.71",
+      "repository": "https://github.com/madsmtm/objc2",
+      "owner": "academic-keystore-platform",
+      "role": "linked on macOS only",
+      "default_features": false,
+      "admitted_features": ["std", "LAContext"],
+      "build_script": false,
+      "install_scripts": false,
+      "advisory_path": "RustSec and upstream madsmtm/objc2 security and soundness notices, reviewed pinned changes only.",
+      "trust_boundary_justification": "Supplies the supported LAContext interactionNotAllowed property used to refuse authentication UI, without the deprecated kSecUseAuthenticationUIFail. Default feature set, block2, right stores, security keys and biometric evaluation are not selected. No hand-written Objective-C ABI or new workspace foreign declarations."
+    },
+    {
+      "name": "objc2-security",
+      "version": "0.3.2",
+      "checksum": "709fe137109bd1e8b5a99390f77a7d8b2961dafc1a1c5db8f2e60329ad6d895a",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "rust_version": "1.71",
+      "repository": "https://github.com/madsmtm/objc2",
+      "owner": "academic-keystore-platform",
+      "role": "linked on macOS only",
+      "default_features": false,
+      "admitted_features": ["std", "SecBase", "SecItem"],
+      "build_script": false,
+      "install_scripts": false,
+      "advisory_path": "RustSec and upstream madsmtm/objc2 security and soundness notices, reviewed pinned changes only.",
+      "trust_boundary_justification": "Typed SecItemAdd/CopyMatching/Delete declarations and constants for explicit data-protection generic-password queries. Default features, legacy file-keychain APIs, SecKey/Secure Enclave, trust/TLS and network APIs are not selected. Existing bindings omit some query constants; choosing this already-admitted binding family avoids weakening the workspace ban on hand-written foreign declarations."
+    }
+  ]
+}

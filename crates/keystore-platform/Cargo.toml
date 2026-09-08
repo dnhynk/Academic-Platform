@@ -23,6 +23,13 @@ zeroize.workspace = true
 tokio = { workspace = true, features = ["rt"], optional = true }
 zbus = { workspace = true, optional = true }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+getrandom.workspace = true
+objc2.workspace = true
+objc2-core-foundation.workspace = true
+objc2-local-authentication.workspace = true
+objc2-security.workspace = true
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = [
   "Win32_Foundation",

@@ -26,6 +26,12 @@ const FORBIDDEN_IN_PUBLIC_SIGNATURES: &[&str] = &[
     "OwnedValue",
     "OwnedHandle",
     "OwnedNcryptBuffer",
+    "CFType",
+    "CFData",
+    "CFDictionary",
+    "CFRetained",
+    "LAContext",
+    "Retained<",
 ];
 
 /// Returns each line of the leaf's public surface, with doc comments removed.
@@ -115,7 +121,13 @@ fn keystore_leaf_public_facade_exposes_no_raw_handle() {
         "the windows module must be private"
     );
     assert!(
-        !source.contains("pub mod linux") && !source.contains("pub mod windows"),
+        source.contains("mod macos;"),
+        "the macOS module must be private"
+    );
+    assert!(
+        !source.contains("pub mod linux")
+            && !source.contains("pub mod windows")
+            && !source.contains("pub mod macos"),
         "a platform module must not be public"
     );
 
@@ -165,7 +177,10 @@ fn keystore_leaf_public_facade_exposes_no_raw_handle() {
     assert!(
         matches!(
             PROVIDER.as_str(),
-            "WINDOWS_DPAPI_CNG" | "LINUX_SECRET_SERVICE" | "UNSUPPORTED"
+            "WINDOWS_DPAPI_CNG"
+                | "LINUX_SECRET_SERVICE"
+                | "MACOS_KEYCHAIN_DATA_PROTECTION_V1"
+                | "UNSUPPORTED"
         ),
         "{}",
         PROVIDER.as_str()

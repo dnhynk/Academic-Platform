@@ -33,6 +33,18 @@ fn cleanup(label: &str, record: &RecipientRecord) {
     let _ = purge_device_key(label, record.keystore_blob());
 }
 
+/// Attempt exact task-item cleanup on assertion unwinding as well as success.
+struct NativeCleanup<'a> {
+    label: &'a str,
+    record: &'a RecipientRecord,
+}
+
+impl Drop for NativeCleanup<'_> {
+    fn drop(&mut self) {
+        cleanup(self.label, self.record);
+    }
+}
+
 /// Exercises the full device-recipient path against the real host broker:
 /// seal, reopen, reject a foreign label, reject a corrupted blob, and hold the
 /// broker to its own revocation contract.
@@ -51,6 +63,10 @@ fn native_roundtrip(prefix: &str, purge_removes: bool) {
     let record = match create_device_recipient(&key, PROFILE, RECIPIENT, &label, &keystore) {
         Ok(record) => record,
         Err(error) => unreachable!("the host broker must seal a device key: {error}"),
+    };
+    let _cleanup = NativeCleanup {
+        label: &label,
+        record: &record,
     };
 
     // The record names the broker this build actually carries.
@@ -219,4 +235,28 @@ fn linux_secret_service_is_selected_and_fails_closed_without_a_provider() {
     let never = unique_label("never-sealed");
     let refused = keystore.open(&never, never.as_bytes());
     assert!(refused.is_err(), "an unsealed label must not open");
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_data_protection_provider_rejects_foreign_blobs_before_native_access() {
+    let keystore = PlatformKeystore::new();
+    assert_eq!(keystore.provider(), "MACOS_KEYCHAIN_DATA_PROTECTION_V1");
+    let refused = keystore.open("academic-os:test:macos:foreign", b"AKSB\x01\x01\x01\0\0\0p");
+    assert!(refused.is_err());
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+#[ignore = "requires separately reviewed provisioned identity in a disposable signed-in synthetic user context"]
+fn macos_data_protection_roundtrip_native() {
+    assert_eq!(
+        std::env::var("ACADEMIC_MACOS_KEYCHAIN_TEST_CONTEXT").as_deref(),
+        Ok("disposable-provisioned-v1")
+    );
+    assert_eq!(
+        PlatformKeystore::new().provider(),
+        "MACOS_KEYCHAIN_DATA_PROTECTION_V1"
+    );
+    native_roundtrip("macos-data-protection", true);
 }

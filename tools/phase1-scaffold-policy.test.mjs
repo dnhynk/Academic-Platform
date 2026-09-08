@@ -3686,7 +3686,9 @@ const SOCKET_CAPABLE_CLOSURES = {
   // rather than empty, and it implements `ConditionalFetch` nowhere.
   "academic-curriculum": ["libc"],
   "academic-ingestion": ["libc"],
-  "academic-keystore-platform": ["windows-sys"],
+  // macOS generation randomness uses admitted getrandom -> libc. The source
+  // half still forbids socket calls; this pins the exact new link capability.
+  "academic-keystore-platform": ["libc", "windows-sys"],
   // `P2-U5`. `libc` reaches it through `academic-policy`'s bundled SQLite, by
   // way of `academic-model-run`. The crate spells no socket construct, which is
   // why its `SOCKET_ALLOWANCE` entry is absent rather than empty; it runs no
@@ -6091,6 +6093,26 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   // that is not covered by a reviewed admission receipt.
   const { receipt: keyReceipt } = receiptFor("P2-K1");
 
+  // H1 platform preparation admits two macOS bindings, not H1 acceptance.
+  const { receipt: macosReceipt, admitted: macosAdmitted } = receiptFor("P2-H1");
+  assert.equal(macosReceipt.accepted_h1, false);
+  assert.deepEqual([...macosAdmitted].sort(), ["objc2-local-authentication@0.3.2", "objc2-security@0.3.2"]);
+  assert.equal(macosReceipt.summary.added_external_crate_count, macosAdmitted.size);
+  for (const admission of macosReceipt.admissions) {
+    const pkg = metadata.packages.find((candidate) => candidate.name === admission.name && candidate.version === admission.version);
+    assert.ok(pkg, `missing macOS binding ${admission.name}`);
+    assert.equal(pkg.license, admission.license);
+    assert.equal(pkg.source, admission.source);
+    assert.equal(pkg.rust_version, admission.rust_version);
+    assert.equal(pkg.targets.some((target) => target.kind.includes("custom-build")), false);
+    assert.equal(admission.default_features, false);
+    assert.equal(admission.owner, "academic-keystore-platform");
+    const edge = workspacePackages.find((owner) => owner.name === admission.owner).dependencies.find((dependency) => dependency.name === admission.name);
+    assert.equal(edge.target, 'cfg(target_os = "macos")');
+    assert.equal(edge.uses_default_features, false);
+    assert.deepEqual(edge.features.toSorted(), admission.admitted_features.toSorted());
+  }
+
   // `P2-C7` is subtracted the same way and for the same reason. The two
   // receipts must not overlap: a package claimed by both would be subtracted
   // twice and the arithmetic below would hide a third, unreceipted arrival.
@@ -7646,6 +7668,7 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     ...preservedPhase0Versions,
     ...admittedVersions,
     ...keyReceipt.direct_workspace_dependencies,
+    ...macosReceipt.direct_workspace_dependencies,
     ...scenarioReceipt.direct_workspace_dependencies,
     ...sandboxReceipt.direct_workspace_dependencies,
     ...enforcementReceipt.direct_workspace_dependencies,
@@ -8081,6 +8104,10 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
         ]
       : [];
     const expectedUses = [
+      ...(admission.name === "getrandom" ? [{
+        package: "academic-keystore-platform", kind: "normal", target: 'cfg(target_os = "macos")',
+        default_features: false, features: ["std"],
+      }] : []),
       ...(admission.name === "tokio" ? [{
         package: "academic-desktop", kind: "normal", target: null,
         default_features: false,

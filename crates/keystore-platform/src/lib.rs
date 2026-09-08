@@ -17,6 +17,10 @@ use zeroize::Zeroizing;
 
 #[cfg(all(target_os = "linux", feature = "secret-service"))]
 mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(any(target_os = "macos", test))]
+mod macos_blob;
 #[cfg(windows)]
 mod windows;
 
@@ -28,6 +32,8 @@ pub enum KeystoreProvider {
     WindowsDpapiCng,
     /// Linux Secret Service (`org.freedesktop.secrets`) default collection.
     LinuxSecretService,
+    /// macOS data-protection Keychain, local generic-password items, version 1.
+    MacosKeychainDataProtectionV1,
     /// No reviewed broker exists for this target.
     Unsupported,
 }
@@ -39,6 +45,7 @@ impl KeystoreProvider {
         match self {
             Self::WindowsDpapiCng => "WINDOWS_DPAPI_CNG",
             Self::LinuxSecretService => "LINUX_SECRET_SERVICE",
+            Self::MacosKeychainDataProtectionV1 => "MACOS_KEYCHAIN_DATA_PROTECTION_V1",
             Self::Unsupported => "UNSUPPORTED",
         }
     }
@@ -47,6 +54,7 @@ impl KeystoreProvider {
         match self {
             Self::WindowsDpapiCng => 1,
             Self::LinuxSecretService => 2,
+            Self::MacosKeychainDataProtectionV1 => 3,
             Self::Unsupported => 0,
         }
     }
@@ -64,7 +72,15 @@ const fn compiled_provider() -> KeystoreProvider {
     {
         KeystoreProvider::LinuxSecretService
     }
-    #[cfg(not(any(windows, all(target_os = "linux", feature = "secret-service"))))]
+    #[cfg(target_os = "macos")]
+    {
+        KeystoreProvider::MacosKeychainDataProtectionV1
+    }
+    #[cfg(not(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service")
+    )))]
     {
         KeystoreProvider::Unsupported
     }
@@ -91,6 +107,8 @@ pub enum KeystoreErrorCode {
     NotFound,
     /// The broker refused this caller.
     AccessDenied,
+    /// A stored item already occupies the label; no existing key was replaced.
+    DuplicateLabel,
     /// The label is empty, over-long, or not in the accepted alphabet.
     InvalidLabel,
     /// The blob is not a well-formed sealed envelope.
@@ -144,7 +162,7 @@ impl std::error::Error for KeystoreError {}
 
 /// What a purge actually did.
 ///
-/// The two brokers differ and the difference is carried in the type rather than
+/// The brokers differ and the difference is carried in the type rather than
 /// hidden: a stored-key broker removes an object, a stateless sealing broker has
 /// nothing to remove and cannot revoke an already-issued blob.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,7 +170,7 @@ impl std::error::Error for KeystoreError {}
 pub enum PurgeOutcome {
     /// A stored key object was removed from the operating system.
     Removed,
-    /// This provider stores nothing; the blob remains openable by its owner.
+    /// No matching item was stored. A stateless provider's blob remains openable.
     NothingStored,
 }
 
@@ -215,7 +233,12 @@ impl RecoveredSecret {
     // with no reviewed broker returns `Unsupported` from `open` and never
     // constructs a recovered secret, so the constructor is absent there rather
     // than present and unreachable.
-    #[cfg(any(windows, all(target_os = "linux", feature = "secret-service"), test))]
+    #[cfg(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service"),
+        test
+    ))]
     pub(crate) fn new(bytes: Vec<u8>) -> Self {
         Self(Zeroizing::new(bytes))
     }
@@ -256,12 +279,17 @@ const ENVELOPE_HEADER_LEN: usize = 10;
 /// Frames a provider payload so a foreign or corrupt blob fails before any
 /// native call, and a blob from the other platform is refused by provider tag.
 ///
-/// Both brokers frame their blob with this, so the envelope is common; only the
+/// All brokers frame their blob with this, so the envelope is common; only the
 /// payload inside it is provider-specific. Compiled only where a broker is,
 /// because a build with none seals nothing. `decode_envelope` stays
 /// unconditional: `open` and `purge` exist on every target and must still
 /// reject a blob rather than read it.
-#[cfg(any(windows, all(target_os = "linux", feature = "secret-service"), test))]
+#[cfg(any(
+    windows,
+    target_os = "macos",
+    all(target_os = "linux", feature = "secret-service"),
+    test
+))]
 fn encode_envelope(provider: KeystoreProvider, payload: &[u8]) -> Vec<u8> {
     let declared = u32::try_from(payload.len()).unwrap_or(u32::MAX);
     let mut blob = Vec::with_capacity(ENVELOPE_HEADER_LEN + payload.len());
@@ -359,7 +387,15 @@ pub fn seal(label: &KeystoreLabel, secret: &[u8]) -> Result<Vec<u8>, KeystoreErr
     {
         linux::seal(label, secret, OPERATION)
     }
-    #[cfg(not(any(windows, all(target_os = "linux", feature = "secret-service"))))]
+    #[cfg(target_os = "macos")]
+    {
+        macos::seal(label, secret, OPERATION)
+    }
+    #[cfg(not(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service")
+    )))]
     {
         let _ = (label, secret);
         Err(KeystoreError::new(
@@ -382,7 +418,15 @@ pub fn open(label: &KeystoreLabel, blob: &[u8]) -> Result<RecoveredSecret, Keyst
     {
         linux::open(label, payload, OPERATION)
     }
-    #[cfg(not(any(windows, all(target_os = "linux", feature = "secret-service"))))]
+    #[cfg(target_os = "macos")]
+    {
+        macos::open(label, payload, OPERATION)
+    }
+    #[cfg(not(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service")
+    )))]
     {
         let _ = (label, payload);
         Err(KeystoreError::new(
@@ -406,7 +450,15 @@ pub fn purge(label: &KeystoreLabel, blob: &[u8]) -> Result<PurgeOutcome, Keystor
     {
         linux::purge(label, payload, OPERATION)
     }
-    #[cfg(not(any(windows, all(target_os = "linux", feature = "secret-service"))))]
+    #[cfg(target_os = "macos")]
+    {
+        macos::purge(label, payload, OPERATION)
+    }
+    #[cfg(not(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service")
+    )))]
     {
         let _ = (label, payload);
         Err(KeystoreError::new(
@@ -513,5 +565,18 @@ mod tests {
         );
         assert_eq!(KeystoreProvider::WindowsDpapiCng.tag(), 1);
         assert_eq!(KeystoreProvider::LinuxSecretService.tag(), 2);
+        assert_eq!(
+            encode_envelope(KeystoreProvider::WindowsDpapiCng, b"p"),
+            b"AKSB\x01\x01\x01\0\0\0p"
+        );
+        assert_eq!(
+            encode_envelope(KeystoreProvider::LinuxSecretService, b"p"),
+            b"AKSB\x01\x02\x01\0\0\0p"
+        );
+        assert_eq!(KeystoreProvider::MacosKeychainDataProtectionV1.tag(), 3);
+        assert_eq!(
+            KeystoreProvider::MacosKeychainDataProtectionV1.as_str(),
+            "MACOS_KEYCHAIN_DATA_PROTECTION_V1"
+        );
     }
 }

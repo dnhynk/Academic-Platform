@@ -342,6 +342,10 @@ const ENV_VOCABULARY = new Map([
  */
 const ENVIRONMENT_NAMES = new Map([
   [
+    "ACADEMIC_MACOS_KEYCHAIN_TEST_CONTEXT",
+    "Explicit synthetic context for ignored macOS native tests only. The bounded hosted collector selects unprovisioned refusal; positive tests additionally require a separately provisioned disposable identity. The product backend reads no such variable.",
+  ],
+  [
     "ACADEMIC_CRYPTO_TEST_FAULT_ACTION",
     "A fault hook's action, read and never set here: an operator sets it to hold a killed child instead of aborting it. Ambient by definition, and it changes nothing unless somebody sets it.",
   ],
@@ -534,6 +538,10 @@ const DISCRIMINATORS = new Set([
  * than implied.
  */
 const SHARED_NAME_SITES = new Map([
+  [
+    'crates/keystore-platform/tests/macos_native.rs :: std::env::temp_dir().join(label.as_str().replace(\':\',"-"))',
+    "SHARED, deliberately: the parent and its writer child derive the same task directory from the parent-generated label with 128 bits of OS randomness. The parent reserves it with create_dir; the child receives that exact label/path, checks the derived path, and writes only a create_new opaque blob. No independently generated test label is reused; cleanup removes only that task file and directory.",
+  ],
   [
     'crates/core/src/details.rs :: path.join("detail-incarnation.v1")',
     "SHARED, deliberately: the fixed incarnation marker inside the test profile returned by detail_test_root, whose parent name is isolated by process id and an atomic counter; this test corrupts only its own marker to verify fail-closed reopen.",
