@@ -35,6 +35,7 @@ import { csMapRegions } from "./cs-map.js";
 import { homeSections } from "./home.js";
 import { backlinksOf } from "./backlinks.js";
 import { ROUTE_MANIFEST, type RouteDefinition } from "./routes.js";
+import { detailSections } from "./details.js";
 
 /**
  * The shell affordances a view carries.
@@ -222,11 +223,11 @@ export const VIEW_BUILDERS: ReadonlyMap<string, ViewBuilder> = new Map<string, V
   ["academic.courses", academicRegions("academic.courses")],
   ["academic.graduation-audit", academicRegions("academic.graduation-audit")],
   ["learn", framed("Learn", "P2-X4")],
-  ["learn.lectures", framed("Lectures", "P2-X4")],
-  ["learn.concepts", csMapSections()],
-  ["learn.questions", framed("Questions", "P2-X4")],
+  ["learn.lectures", (route, destination) => detailSections(route.id, destination.entityId !== null)],
+  ["learn.concepts", (route, destination) => destination.entityId === null ? csMapSections()(route, destination) : detailSections(route.id, true)],
+  ["learn.questions", (route, destination) => detailSections(route.id, destination.entityId !== null)],
   ["build", framed("Build", "P2-X4")],
-  ["build.projects", framed("Projects", "P2-X4")],
+  ["build.projects", (route, destination) => detailSections(route.id, destination.entityId !== null)],
   ["build.repository-snapshots", framed("Repository snapshots", "P2-X4")],
   ["build.build-to-learn", framed("Build to learn", "P2-X4")],
   ["explore", framed("Explore", "P2-X5")],

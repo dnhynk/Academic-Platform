@@ -5,6 +5,9 @@ import { paletteFor } from "./palette.js";
 import { ROUTE_MANIFEST, ROUTES_BY_ID } from "./routes.js";
 import { initialState, navigate, render, select } from "./shell.js";
 import { runtimeRequests } from "./runtime-request.js";
+import { detailClient } from "./detail-client.js";
+import { DetailViews, isDetailSurface } from "./detail-view.js";
+import { profileBacklinks, profileEvidence, profilePalette, profileTitle } from "./detail-navigation.js";
 
 interface NativeBridge {
   readonly core: { readonly invoke: (command: string, args: unknown) => Promise<unknown> };
@@ -33,6 +36,28 @@ const drawer = element("drawer", HTMLElement);
 const navigation = element("navigation", HTMLElement);
 const dialog = element("palette", HTMLDialogElement);
 const query = element("palette-query", HTMLInputElement);
+const details = new DetailViews(detailClient(async (command, args) => {
+  if (!window.__TAURI__) throw new Error("Native runtime absent. Start the desktop with a local service session.");
+  return window.__TAURI__.core.invoke(command, args);
+}, {
+  keys: () => Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index) ?? ""),
+  getItem: (key) => window.localStorage.getItem(key),
+  setItem: (key, value) => { window.localStorage.setItem(key, value); },
+  removeItem: (key) => { window.localStorage.removeItem(key); },
+}), go, profileChrome);
+function profileChrome(): void {
+  const accepted = details.acceptedState();
+  const title = profileTitle(accepted, state.destination);
+  const heading = view.querySelector("h1"); if (heading) heading.textContent = title ?? render(state).title;
+  const links = view.querySelector(".backlinks");
+  if (links) {
+    links.replaceChildren(text("h2", "Backlinks"));
+    const backlinks = profileBacklinks(accepted, state.destination);
+    for (const backlink of backlinks) { const link = button(backlink.title, () => { go(backlink.target); }); link.dataset.destination = backlink.target.path; links.append(link); }
+    if (!backlinks.length) links.append(text("p", accepted ? "No backlinks in the selected profile projection." : "Selected profile evidence is unavailable or loading."));
+  }
+  if (dialog.open) palette();
+}
 function go(destination: Destination): void {
   state = navigate(state, destination);
   refresh();
@@ -44,16 +69,23 @@ function refresh(): void {
   const trail = text("p", frame.breadcrumb.map((id) => ROUTES_BY_ID.get(id)?.iaLabel ?? id).join(" / "));
   trail.className = "breadcrumb";
   view.replaceChildren(trail, text("h1", frame.title));
-  view.append(text("p", "Explore the synthetic course, concept, project and question examples. Live records are not loaded."), button("Browse examples", openPalette));
+  if (!isDetailSurface(frame.destination)) view.append(text("p", "Explore the synthetic course, concept, project and question examples. Live records are not loaded."), button("Browse examples", openPalette));
   view.dataset.route = frame.destination.path;
   const route = ROUTES_BY_ID.get(state.destination.routeId);
   if (route?.entityKind && state.destination.entityId) {
     const reference = { kind: route.entityKind, id: state.destination.entityId };
-    const pin = button("Pin evidence", () => { state = select(state, reference); refresh(); view.querySelector<HTMLButtonElement>("#pin-evidence")?.focus(); });
+    const pin = button("Pin evidence", () => {
+      const accepted = profileEvidence(details.acceptedState(), reference);
+      if (accepted) state = { ...state, drawer: { selected: reference, pinned: accepted } };
+      else if (isDetailSurface(state.destination)) state = { ...state, drawer: { selected: reference, pinned: { title: `Evidence — ${reference.id}`, evidence: [{ source: "Selected detail profile", statement: "Evidence for this entity is unavailable in the accepted detail projection. Reload detail evidence before pinning its sources." }] } } };
+      else if (entityFor(reference)) state = select(state, reference);
+      else { drawer.replaceChildren(text("h2", "Evidence unavailable"), text("p", "Reload detail evidence before pinning this entity.")); return; }
+      refresh(); view.querySelector<HTMLButtonElement>("#pin-evidence")?.focus();
+    });
     pin.id = "pin-evidence";
     view.append(pin);
   }
-  for (const section of frame.sections) {
+  if (!details.mount(view, frame.destination)) for (const section of frame.sections) {
     const region = text("section", "");
     region.append(text("h2", section.heading), text("p", "No live records loaded."));
     view.append(region);
@@ -64,6 +96,7 @@ function refresh(): void {
   for (const reference of frame.backlinks) backlinks.append(button(`${reference.kind}: ${entityFor(reference)?.title ?? reference.id}`, () => { go(destinationForEntity(reference)); }));
   if (frame.backlinks.length === 0) backlinks.append(text("p", "No entity backlinks in this view."));
   view.append(backlinks);
+  profileChrome();
   drawer.replaceChildren(text("h2", frame.drawer.title));
   drawer.dataset.entity = frame.drawer.selected?.id ?? "";
   for (const line of frame.drawer.evidence) drawer.append(text("p", line.statement), text("small", line.source));
@@ -76,8 +109,11 @@ function refresh(): void {
   }));
 }
 function palette(): void {
-  element("palette-results", HTMLElement).replaceChildren(...paletteFor(state.destination, query.value).map((entry) => { const node = button(entry.label, () => { dialog.close(); go(entry.target); }); node.dataset.destination = entry.target.path; return node; }));
-  if (paletteFor(state.destination, query.value).length === 0) element("palette-results", HTMLElement).append(text("p", "No matches. Try an entity type or a shorter search."), button("Clear search", () => { query.value = ""; palette(); query.focus(); }));
+  const profile = profilePalette(details.acceptedState(), state.destination, query.value);
+  const destinations = new Set(profile.map((entry) => entry.target.path));
+  const entries = [...profile, ...paletteFor(state.destination, query.value).filter((entry) => !destinations.has(entry.target.path))];
+  element("palette-results", HTMLElement).replaceChildren(...entries.map((entry) => { const node = button(entry.label, () => { dialog.close(); go(entry.target); }); node.dataset.destination = entry.target.path; return node; }));
+  if (entries.length === 0) element("palette-results", HTMLElement).append(text("p", "No matches. Try an entity type or a shorter search."), button("Clear search", () => { query.value = ""; palette(); query.focus(); }));
 }
 function openPalette(): void { dialog.showModal(); palette(); query.focus(); }
 element("palette-open", HTMLButtonElement).addEventListener("click", openPalette);

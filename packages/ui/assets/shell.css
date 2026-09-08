@@ -23,3 +23,26 @@ nav button[data-depth="2"] { padding-left: 24px; }
 @media (max-width: 1000px) { .workspace { grid-template-columns: 190px minmax(0, 1fr) 220px; } nav, main, aside { padding: 14px; } header { gap: 12px; } }
 
 #receipt-details { margin-top: 8px; } #receipt-details summary { cursor: pointer; } #receipt-id { overflow-wrap: anywhere; }
+.detail-surface { min-width: 0; }
+.detail-surface dl { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(0, 3fr); gap: 8px 16px; }
+.detail-surface dt { font-weight: 600; } .detail-surface dd { margin: 0; overflow-wrap: anywhere; }
+.detail-surface details { margin: 12px 0; border-top: 1px solid #dce2da; padding: 12px 0; }
+.detail-surface summary { cursor: pointer; line-height: 1.5; }
+.detail-surface pre { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; padding: 12px; background: #f0f4ed; }
+.detail-surface article { margin: 16px 0; padding-bottom: 16px; border-bottom: 1px solid #dce2da; }
+.detail-surface button { margin: 4px 8px 4px 0; }
+.detail-surface audio { width: 100%; }
+.detail-surface table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+.detail-surface th, .detail-surface td { vertical-align: top; text-align: left; padding: 10px 8px; border-bottom: 1px solid #dce2da; overflow-wrap: anywhere; }
+.detail-surface th { background: #f0f4ed; }
+.detail-surface td:first-child { min-width: 80px; }
+.detail-surface form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 12px; align-items: center; }
+.detail-surface input, .detail-surface select { min-width: 0; font: inherit; color: inherit; background: #fff; border: 1px solid #aab8a7; border-radius: 6px; padding: 8px; }
+.detail-surface :is(summary, select, audio):focus-visible { outline: 3px solid #276747; outline-offset: 2px; }
+.detail-surface [aria-invalid=true] { border-color: #a32626; }
+.stale-snapshot { position: sticky; top: 0; z-index: 1; margin: 0; padding: 12px; background: #fff2d6; border: 1px solid #b89444; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.detail-smoke-host { position: fixed; inset: 0; z-index: 5; background: #f7f8f5; overflow: auto; }
+.audio-waveform { display: block; width: 100%; height: 80px; border: 1px solid #dce2da; background: #f7f8f5; }
+.audio-waveform path { fill: none; stroke: #276747; stroke-width: 2; }
+.detail-surface input[type=range] { display: block; width: 100%; padding: 0; margin: 12px 0; accent-color: #276747; }
+.detail-surface output { font-variant-numeric: tabular-nums; }
